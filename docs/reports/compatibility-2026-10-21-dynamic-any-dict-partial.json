@@ -1,0 +1,110 @@
+{
+  "schema": 1,
+  "checkpoint": "2026-10-21 dynamic Any dictionary key fast path (partial)",
+  "event": {
+    "pull_request": 812,
+    "merge_sha": "838aff6d161c48450da46beaa1a772fd7de90bd8",
+    "source_sha": "838aff6d161c48450da46beaa1a772fd7de90bd8",
+    "source_tree": "09841b99c0b66843590536c1710d504d0644d1a3",
+    "implementation_head_sha": "ee33dd4cf06ece9aa1a1b8d05a12496aeed42848",
+    "previous_source_sha": "730886ea84d9f8d655e2da0d6b0ec98804b43e8b",
+    "merged_at_utc": "2026-10-21T07:26:19Z",
+    "first_parent_merges_since_previous": [812]
+  },
+  "changed_files": [
+    {"path": "docs/dynamic-any.md", "status": "modified", "bytes": 28941, "sha256": "1bb536b72c861387e5562cb75ef1d7d8413015e108bdcb1434ae9f3af80e514e"},
+    {"path": "runtime.c", "status": "modified", "bytes": 327924, "sha256": "7b4dc9b9b2067740aab8eece10d9d1506aad0534cd2e69e289cf339c30415848"},
+    {"path": "tests/programs/inference/dynany_dict_keys.out", "status": "added", "bytes": 355, "sha256": "beb1f3193559cba0a6a9d026cbeabddcd8af5cb0b4b46b382497e9e6e2eac93b"},
+    {"path": "tests/programs/inference/dynany_dict_keys.py", "status": "added", "bytes": 2576, "sha256": "d5d5d4394c166d0b0f814b60f1857f349af8e18e613ebdc6142a9ea4dd3ea01e"},
+    {"path": "tools/dictprobe.c", "status": "modified", "bytes": 24275, "sha256": "22ee23d46c24ece60e3b4febf9231750365eb2f2a38a70820b9f83e7b1e3b958"}
+  ],
+  "environment": {
+    "hosted_python": "Python 3.12.14",
+    "hosted_python_path": "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+    "pinned_cpython_3_13_16_available": false,
+    "llvm_18_available": false,
+    "native_compiler_available": false
+  },
+  "selection": {
+    "positive_patterns": [
+      "tests/programs/inference/dynany_*.py",
+      "tests/deviations/dynany_*.py",
+      "tests/programs/containers/dict_*.py",
+      "tests/programs/library/json_*.py",
+      "tests/programs/library/lib_tomllib*.py",
+      "tests/programs/upstream/upstream_tomllib_*.py"
+    ],
+    "rejection_pattern": "tests/errors/inference/dynany_*.py",
+    "current_positive_count": 103,
+    "common_positive_count": 102,
+    "new_positive_count": 1,
+    "rejection_count": 10,
+    "current_positive_path_source_manifest_sha256": "5b675bc3597222bfd04eef021d8a2f529efb3a09c5ea96876f6da3c7c066d976",
+    "common_positive_path_source_manifest_sha256": "a9335629ae495fbed303350b5aa6c102c4d74af6f490556f71b8702bfcf44b06",
+    "new_positive_path_source_manifest_sha256": "d6f4451c2bb9a5e7728fbcfc0e309e18324ab6363c0d879ca0368ad9ecf70d5f",
+    "rejection_path_source_manifest_sha256": "a6a5ecc0669358867841ce5501ca74e363ccbac4cb2a0f642ab81d6cf3122743"
+  },
+  "hosted_results": {
+    "common_positive_compiled_before": 102,
+    "common_positive_compiled_after": 102,
+    "common_positive_ir_byte_identical": 102,
+    "common_positive_messages_identical": 102,
+    "new_positive_compiled": 1,
+    "new_positive_ir_lines": 1420,
+    "new_positive_ir_sha256": "c208df5488e587ffdc980fd525509b2a111a14abb595ca22c4ea4569f3c23e94",
+    "rejections_exact_before_after": 10,
+    "reference": {
+      "path": "tests/programs/inference/dynany_dict_keys.py",
+      "exit": 0,
+      "stderr": "",
+      "expected_and_actual_sha256": "beb1f3193559cba0a6a9d026cbeabddcd8af5cb0b4b46b382497e9e6e2eac93b",
+      "matches_checked_in_recording": true
+    },
+    "source_contract": {
+      "runtime_dyn_keyeq_definitions": 1,
+      "runtime_hdyn_definitions": 1,
+      "dictprobe_keyeq_macro_definitions": 1
+    },
+    "source_snapshot_clean_before_and_after": true
+  },
+  "c_syntax_attempts": [
+    {
+      "command": "gcc -fsyntax-only -Wall -Wextra -Werror runtime.c tools/dictprobe.c",
+      "status": 1,
+      "result": "expected toolchain mismatch: GCC promotes Clang-only pragmas/attributes and __builtin_unpredictable diagnostics to errors"
+    },
+    {
+      "command": "gcc -fsyntax-only runtime.c tools/dictprobe.c",
+      "status": 0,
+      "result": "syntax accepted with GCC's Clang-specific diagnostics left as warnings"
+    }
+  ],
+  "implementation_workflows": {
+    "tree_identity": "implementation head and merged main both have tree 09841b99c0b66843590536c1710d504d0644d1a3",
+    "runs": [
+      {"name": "CI", "run_id": 39560000436, "url": "https://github.com/den-run-ai/pystachy/actions/runs/39560000436", "successful_jobs": 27, "total_jobs": 27, "conclusion": "success"},
+      {"name": "Installation", "run_id": 39560000384, "url": "https://github.com/den-run-ai/pystachy/actions/runs/39560000384", "successful_jobs": 3, "total_jobs": 3, "conclusion": "success"},
+      {"name": "Lint", "run_id": 39560000407, "url": "https://github.com/den-run-ai/pystachy/actions/runs/39560000407", "successful_jobs": 1, "total_jobs": 1, "conclusion": "success"},
+      {"name": "Packages", "run_id": 39560000415, "url": "https://github.com/den-run-ai/pystachy/actions/runs/39560000415", "successful_jobs": 1, "total_jobs": 1, "conclusion": "success"}
+    ]
+  },
+  "commands": [
+    "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B pystachy.py ir <selected-program> -o <temporary-output>.ll",
+    "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B pystachy.py ir <selected-rejection>",
+    "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B tests/programs/inference/dynany_dict_keys.py",
+    "gcc -fsyntax-only -Wall -Wextra -Werror runtime.c tools/dictprobe.c",
+    "gcc -fsyntax-only runtime.c tools/dictprobe.c"
+  ],
+  "issue_state": {
+    "780": "open; the merged comparison/hash fast path is the first proposal slice, while literal boxes, str-only strategies, shared decoded-key boxes and the repository pipeline guard remain",
+    "796": "open research record; number-box and broader dynamic Any work remain separate"
+  },
+  "limitations": [
+    "Hosted Python 3.12.14 is not the pinned CPython 3.13.16 reference.",
+    "LLVM 18 and the native compiler were unavailable; no fresh local JIT/AOT, GC-stress, dictprobe execution, callgrind, runtime timing, peak-memory or metadata import sweep was run.",
+    "Compiler IR does not include runtime.c, so unchanged IR is a compiler-surface regression check, not execution evidence for the runtime fast path.",
+    "The exact-tree native, GC, UBSan, dict-probe and full verification results are external GitHub Actions evidence, not fresh local native execution.",
+    "The pull request's 7912 to 5596 instructions-per-event result is not remeasured here and is not promoted to an independent audit measurement."
+  ],
+  "latest_fully_evaluated_main": "3c63613b9ad4748dfc030fc923f7704e26b21ba9"
+}

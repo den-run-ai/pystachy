@@ -1,0 +1,1231 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-19",
+  "status": "completed",
+  "source_revision": "d24710304245efa101bb8d44010174c7aa99ee90",
+  "previous_evaluated_main": "c71d4ca5413645c8094f306d727a8f18059bb722",
+  "merged_prs": [
+    725
+  ],
+  "compiler_build_source": "c71d4ca5413645c8094f306d727a8f18059bb722",
+  "compiler_sha256": "8f9e8d02d7a9311ef396f4e32b684afa98fe235bafb51575304be2468b0c3ef7",
+  "compiler_reused_reason": "Compiler and runtime sources unchanged; source identity checked with git diff. Binary copied from the verified #694 build; no new bootstrap claimed.",
+  "history": [
+    "d24710304245efa101bb8d44010174c7aa99ee90 Merge pull request #725 from den-run-ai/claude/warnings-port"
+  ],
+  "changed_files": [
+    "docs/stdlib.md",
+    "lib/README.md",
+    "lib/compatibility.md",
+    "lib/provenance.md",
+    "lib/warnings.py",
+    "tests/deviations/lib_warnings_location.out",
+    "tests/deviations/lib_warnings_location.py",
+    "tests/deviations/lib_warnings_message_type.out",
+    "tests/deviations/lib_warnings_message_type.py",
+    "tests/errors/lib_datetime_utcnow.py",
+    "tests/errors/lib_urllib_parse_deprecated.py",
+    "tests/errors/lib_warnings_category_tuple.py",
+    "tests/errors/lib_warnings_deprecated.py",
+    "tests/errors/lib_warnings_message_file.py",
+    "tests/errors/lib_warnings_showwarning.py",
+    "tests/errors/lib_warnings_skip_prefixes_mixed.py",
+    "tests/lib_warnings.err",
+    "tests/lib_warnings.out",
+    "tests/lib_warnings.py",
+    "tests/lib_warnings_main_filter.out",
+    "tests/lib_warnings_main_filter.py",
+    "tests/lib_warnings_objects.out",
+    "tests/lib_warnings_objects.py",
+    "tests/lib_warnings_options.err",
+    "tests/lib_warnings_options.out",
+    "tests/lib_warnings_options.py",
+    "tests/lib_warnings_skip_prefixes.out",
+    "tests/lib_warnings_skip_prefixes.py",
+    "tests/upstream_bool.py",
+    "tests/upstream_fnmatch.py"
+  ],
+  "environment": {
+    "python": "3.13.16 (main, Oct  3 2026, 01:06:22) [Clang 22.1.3 ]",
+    "python_executable": "/root/.local/bin/python3.13",
+    "llvm": "18.1.3",
+    "platform": "Linux-6.18.55-x86_64-with-glibc2.39",
+    "workers_per_group": 2,
+    "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-725",
+    "timing_caveat": "Concurrent validation on a shared host. Recorded durations are operational logs, not performance evidence."
+  },
+  "fixture_sha256": {
+    "tests/deviations/lib_warnings_location.py": "ce3b8269370d725e5a1620c89e7ba03918de8250e65b0dd992dd8f0026ba695e",
+    "tests/deviations/lib_warnings_location.out": "e82b096efc413c854a9d18c7cdb89f77b047f3c01698c52e8af4623d9c40236b",
+    "tests/deviations/lib_warnings_message_type.py": "e8bc4a81e740b8ced77adc4c3380f7e1cbc850311c0c8d973fa5704d72b3be98",
+    "tests/deviations/lib_warnings_message_type.out": "88b321c680fdee5b290eb1a1c2c31938274c5725de5d23ec67448c91651e344d",
+    "tests/errors/lib_warnings_category_tuple.py": "e3c5e819884173c7a09bdced4671c2280cae9e47b553eb92a9b5576684631ab8",
+    "tests/errors/lib_warnings_deprecated.py": "c4f60a90d93e8f64a7b41a335e00fa5f2c7c0de70f78a456c3c7f11547a8cb88",
+    "tests/errors/lib_warnings_message_file.py": "4d0b3cb492619f621e0a99b384583ac4e9076958b0a1d44e0b5424c8fadc6d08",
+    "tests/errors/lib_warnings_showwarning.py": "066b0963c62ed7092f5eaa857a1f4b2286003bd409023a5ba9b5054eb74639db",
+    "tests/errors/lib_warnings_skip_prefixes_mixed.py": "d28f1ee8d64d9c131dca10e0752d2e38fb84d3e1933c8bade48642735eccd043",
+    "tests/lib_warnings.py": "dc7c3fb6f55cf62d09d357018a83994aa3deda9418176d48ec9e24b6eaa601e9",
+    "tests/lib_warnings.out": "673a6dca5507230ee601ccd5e7966a483920240034e7994d8eb68026789f07d0",
+    "tests/lib_warnings.err": "c041a91b15b76eded2a3b7e5a52720c58199cf2f020432d5df94d62106750c64",
+    "tests/lib_warnings_main_filter.py": "71ba0a508e4561d2507042da10a57ac7bb52819c8394ba2f5b2f199896605d46",
+    "tests/lib_warnings_main_filter.out": "d431e024adb208f803fac8e69ee6929e3ba0ba66642876b55cb2ab466fa261b4",
+    "tests/lib_warnings_objects.py": "d79b0608f7200dd3a4eed7eac726f3cb26fdca9d7f410f99e9b07a08d12a3e0e",
+    "tests/lib_warnings_objects.out": "a5b53e0d197f2c5b8d6d771fe9c2a609318f8a6ce91f26edb64d6b7121386451",
+    "tests/lib_warnings_options.py": "ccdabd0d4dfd7130db0f3225042492ec9b9fa1500dbd6d98adb549650d9df631",
+    "tests/lib_warnings_options.out": "7f007d901ca90aa35f338a374f267428b767c98e10a872d51258847834fe1335",
+    "tests/lib_warnings_options.err": "061b674c56b08314d455770a9bc400a2e52f99506965bdf78dd1b906b5d126c7",
+    "tests/lib_warnings_skip_prefixes.py": "05efd4e57cffffe3f1b30a7b4bf97ada9dae354df933c9803aa12959a9ea7e9d",
+    "tests/lib_warnings_skip_prefixes.out": "5584b978d825e454e03f08a777e2ddc2c18e4c3e18605ed8155185eda3d56035",
+    "tests/errors/lib_datetime_utcnow.py": "9977e37a583961e61291955ff9272b21ef98a43823b735cbe7e4f120e86235ad",
+    "tests/errors/lib_urllib_parse_deprecated.py": "8e517fda3763d1894166ece2f6f27b009d7a604753f3639c80b14b33b6e9634d",
+    "tests/upstream_bool.py": "14fd4884a3b2e41c19beb1c52745f4939ee0ac83c95664b6e4a30334fb5c1604",
+    "tests/upstream_bool.out": "0c41284b3b76d42ca3e2d2264bd58525269b7c6c7d960bc5f0af66ef640210af",
+    "tests/upstream_fnmatch.py": "bfc9d75f69485e48468d19593a74ee3899cf73478952d4ce5841bfbcd0d1634b",
+    "tests/upstream_fnmatch.out": "d2c5952307d653311e45e02410f341db9ffa8646ac60e64836dcb5a78d6722af",
+    "tests/sys_warnoptions.py": "dca767efc5da1973fb74550cf7e60d271e396e577c6e8e1e638485d61333f931",
+    "tests/sys_warnoptions.out": "ec36bc729d6bffe5c529daaddde5d8e711e6723750557a8f6204ee75b00ec64c",
+    "tests/exc_class_misc.py": "0fd485254b7593186e5b4a8ed217cd9da010faae030f71301c7b4485b19646d1",
+    "tests/exc_class_misc.out": "d97c97755b176215aa78589d9037e12a2862b6d9d286b5a20b4f9deeb71db0a6",
+    "tests/exc_class_misc.err": "1a4dfb08920930e82a8f98a8a805dd43cb5e28ab431c799c266853d12e98e92d"
+  },
+  "stdlib": {
+    "path": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13",
+    "inventory_sha256": "a0d5b7bc965af0a8cc1e27ff71911aa8bbdb03ca472c1cc11c24009b9e07d0c5",
+    "modules": 522,
+    "inventory_source": "compatibility-2026-10-19-exception-diagnostics.json:stdlib.module_sha256"
+  },
+  "imports": {
+    "imports": {
+      "metadata": {
+        "compiler": {
+          "kind": "executable",
+          "path": "/workspace/scratch/3ba735e28fa7/pystachy-audit-725/pystachy",
+          "sha256": "8f9e8d02d7a9311ef396f4e32b684afa98fe235bafb51575304be2468b0c3ef7"
+        },
+        "counts": {
+          "error": 323,
+          "excluded": 55,
+          "included": 467,
+          "ok": 144,
+          "ok_without_stubs": 144,
+          "timeout": 0,
+          "total": 522
+        },
+        "duration_s": 30.359890449002705,
+        "mode": "import",
+        "overlay": {
+          "compiler_home": "/workspace/scratch/3ba735e28fa7/pystachy-audit-725",
+          "excluded_modules": [
+            "_markupbase",
+            "_opcode_metadata",
+            "bisect",
+            "codecs",
+            "collections",
+            "colorsys",
+            "contextlib",
+            "csv",
+            "curses",
+            "curses.ascii",
+            "curses.has_key",
+            "curses.panel",
+            "curses.textpad",
+            "datetime",
+            "difflib",
+            "fnmatch",
+            "functools",
+            "genericpath",
+            "getopt",
+            "heapq",
+            "html",
+            "html.entities",
+            "html.parser",
+            "io",
+            "json",
+            "json.decoder",
+            "json.encoder",
+            "json.scanner",
+            "json.tool",
+            "keyword",
+            "opcode",
+            "operator",
+            "posixpath",
+            "random",
+            "re",
+            "re._casefix",
+            "re._compiler",
+            "re._constants",
+            "re._parser",
+            "shlex",
+            "stat",
+            "statistics",
+            "string",
+            "struct",
+            "textwrap",
+            "this",
+            "token",
+            "types",
+            "urllib",
+            "urllib.error",
+            "urllib.parse",
+            "urllib.request",
+            "urllib.response",
+            "urllib.robotparser",
+            "warnings"
+          ],
+          "module_filter": "Python .py files except __main__, top-level __* names and names containing '-'.",
+          "policy": "Exclude top-level names supplied by the compiler home lib/; prefer those ports.",
+          "ported_names": [
+            "_markupbase",
+            "_opcode_metadata",
+            "_pyrandom",
+            "_pystachy_abc",
+            "_pystachy_ast",
+            "_pystachy_atexit",
+            "_pystachy_binascii",
+            "_pystachy_codecs",
+            "_pystachy_imp",
+            "_pystachy_iterators",
+            "_pystachy_itertools",
+            "_pystachy_opcode",
+            "_pystachy_opcode_db",
+            "_pystachy_range",
+            "_pystachy_string",
+            "_pystachy_struct",
+            "_pystachy_thread",
+            "_pystachy_types",
+            "_pystachy_unicodedata",
+            "_pystachy_unicodedata_db",
+            "_pystachy_unicodedata_names",
+            "_pystachy_weakref",
+            "bisect",
+            "codecs",
+            "collections",
+            "colorsys",
+            "contextlib",
+            "csv",
+            "curses",
+            "datetime",
+            "difflib",
+            "fnmatch",
+            "functools",
+            "genericpath",
+            "getopt",
+            "heapq",
+            "html",
+            "io",
+            "json",
+            "keyword",
+            "opcode",
+            "operator",
+            "posixpath",
+            "pyobj",
+            "random",
+            "re",
+            "shlex",
+            "stat",
+            "statistics",
+            "string",
+            "struct",
+            "textwrap",
+            "this",
+            "token",
+            "types",
+            "urllib",
+            "warnings"
+          ],
+          "skipped_directories": [
+            "test",
+            "tests",
+            "idlelib",
+            "tkinter",
+            "turtledemo",
+            "site-packages",
+            "dist-packages",
+            "lib2to3",
+            "ensurepip",
+            "venv",
+            "__pycache__"
+          ]
+        },
+        "python": {
+          "executable": "/root/.local/bin/python3.13",
+          "implementation": "cpython",
+          "version": "3.13.16 (main, Oct  3 2026, 01:06:22) [Clang 22.1.3 ]"
+        },
+        "result_path": "/workspace/scratch/3ba735e28fa7/pystachy-audit-725/build/audit-725/imports.json",
+        "schema_version": 1,
+        "scope": "Compilation of isolated imports to IR; no runtime or full module compatibility check.",
+        "source_git": {
+          "dirty": false,
+          "revision": "d24710304245efa101bb8d44010174c7aa99ee90",
+          "root": "/workspace/scratch/3ba735e28fa7/pystachy-audit-725"
+        },
+        "source_git_caveat": "The selected source tree is not proof of which source built the compiler file.",
+        "stdlib": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13",
+        "stubs": [],
+        "timeout_s": 120,
+        "workers": 2
+      },
+      "result_sha256": "f3241737145b74134e66c4fe7b184a44f8b0289220b62980aba25ed4cf369c20",
+      "previous_result_sha256": "9fd2e4331e23a4f5413b3cb2812b392d1b383094edd639536a982d1d2794b442",
+      "previous_map_source": "compatibility-2026-10-19-weakref-callbacks.json",
+      "deltas": {
+        "_aix_support": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:262: error: 'm' is bound both as a variable and by an import (not supported) (compiling warnings._getcategory(str) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:229; compiling warnings._setoption(str) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:215; compiling warnings._processoptions(list[str]) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:724)",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/threading.py:38: error: class '_thread.lock' cannot be used as a value (classes are not values: call it, or read an attribute, C.x)"
+        },
+        "_android_support": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:262: error: 'm' is bound both as a variable and by an import (not supported) (compiling warnings._getcategory(str) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:229; compiling warnings._setoption(str) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:215; compiling warnings._processoptions(list[str]) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:724)",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/threading.py:38: error: class '_thread.lock' cannot be used as a value (classes are not values: call it, or read an attribute, C.x)"
+        },
+        "_pyrepl._threading_handler": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:262: error: 'm' is bound both as a variable and by an import (not supported) (compiling warnings._getcategory(str) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:229; compiling warnings._setoption(str) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:215; compiling warnings._processoptions(list[str]) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:724)",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/traceback.py:133: error: unsupported call object()"
+        },
+        "code": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:262: error: 'm' is bound both as a variable and by an import (not supported) (compiling warnings._getcategory(str) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:229; compiling warnings._setoption(str) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:215; compiling warnings._processoptions(list[str]) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:724)",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/traceback.py:133: error: unsupported call object()"
+        },
+        "codeop": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:262: error: 'm' is bound both as a variable and by an import (not supported) (compiling warnings._getcategory(str) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:229; compiling warnings._setoption(str) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:215; compiling warnings._processoptions(list[str]) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:724)",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/codeop.py:39: error: unsupported module attribute __future__.all_feature_names"
+        },
+        "queue": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:262: error: 'm' is bound both as a variable and by an import (not supported) (compiling warnings._getcategory(str) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:229; compiling warnings._setoption(str) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:215; compiling warnings._processoptions(list[str]) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:724)",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/threading.py:38: error: class '_thread.lock' cannot be used as a value (classes are not values: call it, or read an attribute, C.x)"
+        },
+        "sched": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:262: error: 'm' is bound both as a variable and by an import (not supported) (compiling warnings._getcategory(str) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:229; compiling warnings._setoption(str) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:215; compiling warnings._processoptions(list[str]) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:724)",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/threading.py:38: error: class '_thread.lock' cannot be used as a value (classes are not values: call it, or read an attribute, C.x)"
+        },
+        "sre_constants": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:262: error: 'm' is bound both as a variable and by an import (not supported) (compiling warnings._getcategory(str) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:229; compiling warnings._setoption(str) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:215; compiling warnings._processoptions(list[str]) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:724)",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/sre_constants.py:7: error: unsupported call globals()"
+        },
+        "sysconfig": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:262: error: 'm' is bound both as a variable and by an import (not supported) (compiling warnings._getcategory(str) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:229; compiling warnings._setoption(str) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:215; compiling warnings._processoptions(list[str]) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:724)",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/threading.py:38: error: class '_thread.lock' cannot be used as a value (classes are not values: call it, or read an attribute, C.x)"
+        },
+        "threading": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:262: error: 'm' is bound both as a variable and by an import (not supported) (compiling warnings._getcategory(str) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:229; compiling warnings._setoption(str) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:215; compiling warnings._processoptions(list[str]) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:724)",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/threading.py:38: error: class '_thread.lock' cannot be used as a value (classes are not values: call it, or read an attribute, C.x)"
+        },
+        "traceback": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:262: error: 'm' is bound both as a variable and by an import (not supported) (compiling warnings._getcategory(str) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:229; compiling warnings._setoption(str) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:215; compiling warnings._processoptions(list[str]) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:724)",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/traceback.py:133: error: unsupported call object()"
+        },
+        "warnings": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:262: error: 'm' is bound both as a variable and by an import (not supported) (compiling warnings._getcategory(str) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:229; compiling warnings._setoption(str) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:215; compiling warnings._processoptions(list[str]) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:724)",
+          "after": "left out: lib/ has warnings"
+        },
+        "wsgiref.validate": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:262: error: 'm' is bound both as a variable and by an import (not supported) (compiling warnings._getcategory(str) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:229; compiling warnings._setoption(str) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:215; compiling warnings._processoptions(list[str]) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:724)",
+          "after": "OK"
+        }
+      }
+    },
+    "stubs": {
+      "metadata": {
+        "compiler": {
+          "kind": "hosted_entrypoint",
+          "path": "/workspace/scratch/3ba735e28fa7/pystachy-audit-725/pystachy.py",
+          "sha256": "542e1f9656f5cec853f9baf303d8eaa91a31f414c8e704a712f5d6078a82b917"
+        },
+        "counts": {
+          "error": 321,
+          "excluded": 55,
+          "included": 467,
+          "ok": 146,
+          "ok_without_stubs": 144,
+          "timeout": 0,
+          "total": 522
+        },
+        "duration_s": 212.7572596200007,
+        "mode": "stubs",
+        "overlay": {
+          "compiler_home": "/workspace/scratch/3ba735e28fa7/pystachy-audit-725",
+          "excluded_modules": [
+            "_markupbase",
+            "_opcode_metadata",
+            "bisect",
+            "codecs",
+            "collections",
+            "colorsys",
+            "contextlib",
+            "csv",
+            "curses",
+            "curses.ascii",
+            "curses.has_key",
+            "curses.panel",
+            "curses.textpad",
+            "datetime",
+            "difflib",
+            "fnmatch",
+            "functools",
+            "genericpath",
+            "getopt",
+            "heapq",
+            "html",
+            "html.entities",
+            "html.parser",
+            "io",
+            "json",
+            "json.decoder",
+            "json.encoder",
+            "json.scanner",
+            "json.tool",
+            "keyword",
+            "opcode",
+            "operator",
+            "posixpath",
+            "random",
+            "re",
+            "re._casefix",
+            "re._compiler",
+            "re._constants",
+            "re._parser",
+            "shlex",
+            "stat",
+            "statistics",
+            "string",
+            "struct",
+            "textwrap",
+            "this",
+            "token",
+            "types",
+            "urllib",
+            "urllib.error",
+            "urllib.parse",
+            "urllib.request",
+            "urllib.response",
+            "urllib.robotparser",
+            "warnings"
+          ],
+          "module_filter": "Python .py files except __main__, top-level __* names and names containing '-'.",
+          "policy": "Exclude top-level names supplied by the compiler home lib/; prefer those ports.",
+          "ported_names": [
+            "_markupbase",
+            "_opcode_metadata",
+            "_pyrandom",
+            "_pystachy_abc",
+            "_pystachy_ast",
+            "_pystachy_atexit",
+            "_pystachy_binascii",
+            "_pystachy_codecs",
+            "_pystachy_imp",
+            "_pystachy_iterators",
+            "_pystachy_itertools",
+            "_pystachy_opcode",
+            "_pystachy_opcode_db",
+            "_pystachy_range",
+            "_pystachy_string",
+            "_pystachy_struct",
+            "_pystachy_thread",
+            "_pystachy_types",
+            "_pystachy_unicodedata",
+            "_pystachy_unicodedata_db",
+            "_pystachy_unicodedata_names",
+            "_pystachy_weakref",
+            "bisect",
+            "codecs",
+            "collections",
+            "colorsys",
+            "contextlib",
+            "csv",
+            "curses",
+            "datetime",
+            "difflib",
+            "fnmatch",
+            "functools",
+            "genericpath",
+            "getopt",
+            "heapq",
+            "html",
+            "io",
+            "json",
+            "keyword",
+            "opcode",
+            "operator",
+            "posixpath",
+            "pyobj",
+            "random",
+            "re",
+            "shlex",
+            "stat",
+            "statistics",
+            "string",
+            "struct",
+            "textwrap",
+            "this",
+            "token",
+            "types",
+            "urllib",
+            "warnings"
+          ],
+          "skipped_directories": [
+            "test",
+            "tests",
+            "idlelib",
+            "tkinter",
+            "turtledemo",
+            "site-packages",
+            "dist-packages",
+            "lib2to3",
+            "ensurepip",
+            "venv",
+            "__pycache__"
+          ]
+        },
+        "python": {
+          "executable": "/root/.local/bin/python3.13",
+          "implementation": "cpython",
+          "version": "3.13.16 (main, Oct  3 2026, 01:06:22) [Clang 22.1.3 ]"
+        },
+        "result_path": "/workspace/scratch/3ba735e28fa7/pystachy-audit-725/build/audit-725/stubs.json",
+        "schema_version": 1,
+        "scope": "Compilation of isolated imports to IR; no runtime or full module compatibility check.",
+        "source_git": {
+          "dirty": false,
+          "revision": "d24710304245efa101bb8d44010174c7aa99ee90",
+          "root": "/workspace/scratch/3ba735e28fa7/pystachy-audit-725"
+        },
+        "source_git_caveat": "The selected source tree is not proof of which source built the compiler file.",
+        "stdlib": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13",
+        "stubs": [
+          "_io",
+          "_operator",
+          "_posixsubprocess",
+          "_signal",
+          "_socket",
+          "_symtable",
+          "_sysconfig",
+          "_tokenize",
+          "_tracemalloc",
+          "_typing",
+          "_warnings",
+          "array",
+          "fcntl",
+          "gc",
+          "grp",
+          "marshal",
+          "posix",
+          "pwd",
+          "pyexpat",
+          "select",
+          "zlib"
+        ],
+        "timeout_s": 600,
+        "workers": 2
+      },
+      "result_sha256": "4d6ecebafaeec1fc0692ecaceaa58233bf060a82830400341cd791df863f02c0",
+      "previous_result_sha256": "aa6a2fea1447b776cff8a132cbefab8a702b7db6f032d4cd92be4e55710e5743",
+      "previous_map_source": "compatibility-2026-10-19-weakref-callbacks.json",
+      "deltas": {
+        "_aix_support": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:262: error: 'm' is bound both as a variable and by an import (not supported) (compiling warnings._getcategory(str) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:229; compiling warnings._setoption(str) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:215; compiling warnings._processoptions(list[str]) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:724)",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/threading.py:38: error: class '_thread.lock' cannot be used as a value (classes are not values: call it, or read an attribute, C.x)"
+        },
+        "_android_support": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:262: error: 'm' is bound both as a variable and by an import (not supported) (compiling warnings._getcategory(str) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:229; compiling warnings._setoption(str) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:215; compiling warnings._processoptions(list[str]) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:724)",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/threading.py:38: error: class '_thread.lock' cannot be used as a value (classes are not values: call it, or read an attribute, C.x)"
+        },
+        "_pyrepl._threading_handler": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:262: error: 'm' is bound both as a variable and by an import (not supported) (compiling warnings._getcategory(str) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:229; compiling warnings._setoption(str) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:215; compiling warnings._processoptions(list[str]) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:724)",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/traceback.py:133: error: unsupported call object()"
+        },
+        "code": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:262: error: 'm' is bound both as a variable and by an import (not supported) (compiling warnings._getcategory(str) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:229; compiling warnings._setoption(str) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:215; compiling warnings._processoptions(list[str]) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:724)",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/traceback.py:133: error: unsupported call object()"
+        },
+        "codeop": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:262: error: 'm' is bound both as a variable and by an import (not supported) (compiling warnings._getcategory(str) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:229; compiling warnings._setoption(str) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:215; compiling warnings._processoptions(list[str]) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:724)",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/codeop.py:39: error: unsupported module attribute __future__.all_feature_names"
+        },
+        "queue": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:262: error: 'm' is bound both as a variable and by an import (not supported) (compiling warnings._getcategory(str) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:229; compiling warnings._setoption(str) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:215; compiling warnings._processoptions(list[str]) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:724)",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/threading.py:38: error: class '_thread.lock' cannot be used as a value (classes are not values: call it, or read an attribute, C.x)"
+        },
+        "sched": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:262: error: 'm' is bound both as a variable and by an import (not supported) (compiling warnings._getcategory(str) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:229; compiling warnings._setoption(str) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:215; compiling warnings._processoptions(list[str]) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:724)",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/threading.py:38: error: class '_thread.lock' cannot be used as a value (classes are not values: call it, or read an attribute, C.x)"
+        },
+        "sre_constants": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:262: error: 'm' is bound both as a variable and by an import (not supported) (compiling warnings._getcategory(str) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:229; compiling warnings._setoption(str) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:215; compiling warnings._processoptions(list[str]) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:724)",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/sre_constants.py:7: error: unsupported call globals()"
+        },
+        "sysconfig": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:262: error: 'm' is bound both as a variable and by an import (not supported) (compiling warnings._getcategory(str) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:229; compiling warnings._setoption(str) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:215; compiling warnings._processoptions(list[str]) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:724)",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/threading.py:38: error: class '_thread.lock' cannot be used as a value (classes are not values: call it, or read an attribute, C.x)"
+        },
+        "threading": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:262: error: 'm' is bound both as a variable and by an import (not supported) (compiling warnings._getcategory(str) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:229; compiling warnings._setoption(str) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:215; compiling warnings._processoptions(list[str]) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:724)",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/threading.py:38: error: class '_thread.lock' cannot be used as a value (classes are not values: call it, or read an attribute, C.x)"
+        },
+        "traceback": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:262: error: 'm' is bound both as a variable and by an import (not supported) (compiling warnings._getcategory(str) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:229; compiling warnings._setoption(str) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:215; compiling warnings._processoptions(list[str]) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:724)",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/traceback.py:133: error: unsupported call object()"
+        },
+        "warnings": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:262: error: 'm' is bound both as a variable and by an import (not supported) (compiling warnings._getcategory(str) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:229; compiling warnings._setoption(str) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:215; compiling warnings._processoptions(list[str]) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:724)",
+          "after": "left out: lib/ has warnings"
+        },
+        "wsgiref.validate": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:262: error: 'm' is bound both as a variable and by an import (not supported) (compiling warnings._getcategory(str) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:229; compiling warnings._setoption(str) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:215; compiling warnings._processoptions(list[str]) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/warnings.py:724)",
+          "after": "OK"
+        }
+      }
+    }
+  },
+  "records": {
+    "checks-gc": {
+      "command": [
+        "tests/run.sh",
+        "./pystachy",
+        "jit aot",
+        "tests/deviations/lib_warnings_location.py",
+        "tests/deviations/lib_warnings_message_type.py",
+        "tests/errors/lib_warnings_category_tuple.py",
+        "tests/errors/lib_warnings_deprecated.py",
+        "tests/errors/lib_warnings_message_file.py",
+        "tests/errors/lib_warnings_showwarning.py",
+        "tests/errors/lib_warnings_skip_prefixes_mixed.py",
+        "tests/lib_warnings.py",
+        "tests/lib_warnings_main_filter.py",
+        "tests/lib_warnings_objects.py",
+        "tests/lib_warnings_options.py",
+        "tests/lib_warnings_skip_prefixes.py",
+        "tests/errors/lib_datetime_utcnow.py",
+        "tests/errors/lib_urllib_parse_deprecated.py",
+        "tests/upstream_bool.py",
+        "tests/upstream_fnmatch.py",
+        "tests/sys_warnoptions.py",
+        "tests/exc_class_misc.py"
+      ],
+      "environment": {
+        "PYSTACHY_GC_STRESS_PROGRAM": "1"
+      },
+      "returncode": 0,
+      "stdout": "selected 18 cases\n29 passed, 0 failed\n",
+      "stderr": "",
+      "wall_seconds": 32.266423783999926,
+      "expected_exit": 0
+    },
+    "checks-hosted": {
+      "command": [
+        "tests/run.sh",
+        "/root/.local/bin/python3.13 -m pystachy",
+        "jit aot",
+        "tests/deviations/lib_warnings_location.py",
+        "tests/deviations/lib_warnings_message_type.py",
+        "tests/errors/lib_warnings_category_tuple.py",
+        "tests/errors/lib_warnings_deprecated.py",
+        "tests/errors/lib_warnings_message_file.py",
+        "tests/errors/lib_warnings_showwarning.py",
+        "tests/errors/lib_warnings_skip_prefixes_mixed.py",
+        "tests/lib_warnings.py",
+        "tests/lib_warnings_main_filter.py",
+        "tests/lib_warnings_objects.py",
+        "tests/lib_warnings_options.py",
+        "tests/lib_warnings_skip_prefixes.py",
+        "tests/errors/lib_datetime_utcnow.py",
+        "tests/errors/lib_urllib_parse_deprecated.py",
+        "tests/upstream_bool.py",
+        "tests/upstream_fnmatch.py",
+        "tests/sys_warnoptions.py",
+        "tests/exc_class_misc.py"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "selected 18 cases\n29 passed, 0 failed\n",
+      "stderr": "",
+      "wall_seconds": 47.17595320200053,
+      "expected_exit": 0
+    },
+    "checks-native": {
+      "command": [
+        "tests/run.sh",
+        "./pystachy",
+        "jit aot",
+        "tests/deviations/lib_warnings_location.py",
+        "tests/deviations/lib_warnings_message_type.py",
+        "tests/errors/lib_warnings_category_tuple.py",
+        "tests/errors/lib_warnings_deprecated.py",
+        "tests/errors/lib_warnings_message_file.py",
+        "tests/errors/lib_warnings_showwarning.py",
+        "tests/errors/lib_warnings_skip_prefixes_mixed.py",
+        "tests/lib_warnings.py",
+        "tests/lib_warnings_main_filter.py",
+        "tests/lib_warnings_objects.py",
+        "tests/lib_warnings_options.py",
+        "tests/lib_warnings_skip_prefixes.py",
+        "tests/errors/lib_datetime_utcnow.py",
+        "tests/errors/lib_urllib_parse_deprecated.py",
+        "tests/upstream_bool.py",
+        "tests/upstream_fnmatch.py",
+        "tests/sys_warnoptions.py",
+        "tests/exc_class_misc.py"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "selected 18 cases\n29 passed, 0 failed\n",
+      "stderr": "",
+      "wall_seconds": 36.267469336999056,
+      "expected_exit": 0
+    },
+    "checks-noopt": {
+      "command": [
+        "tests/run.sh",
+        "./pystachy",
+        "jit aot",
+        "tests/deviations/lib_warnings_location.py",
+        "tests/deviations/lib_warnings_message_type.py",
+        "tests/errors/lib_warnings_category_tuple.py",
+        "tests/errors/lib_warnings_deprecated.py",
+        "tests/errors/lib_warnings_message_file.py",
+        "tests/errors/lib_warnings_showwarning.py",
+        "tests/errors/lib_warnings_skip_prefixes_mixed.py",
+        "tests/lib_warnings.py",
+        "tests/lib_warnings_main_filter.py",
+        "tests/lib_warnings_objects.py",
+        "tests/lib_warnings_options.py",
+        "tests/lib_warnings_skip_prefixes.py",
+        "tests/errors/lib_datetime_utcnow.py",
+        "tests/errors/lib_urllib_parse_deprecated.py",
+        "tests/upstream_bool.py",
+        "tests/upstream_fnmatch.py",
+        "tests/sys_warnoptions.py",
+        "tests/exc_class_misc.py"
+      ],
+      "environment": {
+        "PYSTACHY_OPT": "-all"
+      },
+      "returncode": 0,
+      "stdout": "selected 18 cases\n29 passed, 0 failed\n",
+      "stderr": "",
+      "wall_seconds": 30.003878221999912,
+      "expected_exit": 0
+    },
+    "imports-command": {
+      "command": [
+        "/root/.local/bin/python3.13",
+        "tools/import_sweep.py",
+        "-j",
+        "2",
+        "--metadata",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-725/build/audit-725/imports-metadata.json",
+        "./pystachy",
+        "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-725/build/audit-725/imports.json"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "144 of 467 modules import: _collections_abc _colorize _compat_pickle _osx_support _py_abc _pyrepl _pyrepl.commands _pyrepl.input _pyrepl.keymap _pyrepl.pager _pyrepl.types _sitebuiltins _weakrefset abc base64 concurrent dataclasses email email._parseaddr email.base64mime email.encoders email.errors email.iterators email.mime email.quoprimime email.utils encodings encodings.aliases encodings.ascii encodings.base64_codec encodings.charmap encodings.cp037 encodings.cp1006 encodings.cp1026 encodings.cp1125 encodings.cp1140 encodings.cp1250 encodings.cp1251 encodings.cp1252 encodings.cp1253 encodings.cp1254 encodings.cp1255 encodings.cp1256 encodings.cp1257 encodings.cp1258 encodings.cp273 encodings.cp424 encodings.cp437 encodings.cp500 encodings.cp720 encodings.cp737 encodings.cp775 encodings.cp850 encodings.cp852 encodings.cp855 encodings.cp856 encodings.cp858 encodings.cp860 encodings.cp861 encodings.cp862 encodings.cp863 encodings.cp865 encodings.cp866 encodings.cp874 encodings.cp875 encodings.hex_codec encodings.hp_roman8 encodings.idna encodings.iso8859_1 encodings.iso8859_10 encodings.iso8859_11 encodings.iso8859_13 encodings.iso8859_14 encodings.iso8859_15 encodings.iso8859_16 encodings.iso8859_2 encodings.iso8859_3 encodings.iso8859_4 encodings.iso8859_5 encodings.iso8859_6 encodings.iso8859_7 encodings.iso8859_8 encodings.iso8859_9 encodings.koi8_r encodings.koi8_t encodings.koi8_u encodings.kz1048 encodings.latin_1 encodings.mac_arabic encodings.mac_croatian encodings.mac_cyrillic encodings.mac_farsi encodings.mac_greek encodings.mac_iceland encodings.mac_latin2 encodings.mac_roman encodings.mac_romanian encodings.mac_turkish encodings.palmos encodings.ptcp154 encodings.punycode encodings.quopri_codec encodings.raw_unicode_escape encodings.rot_13 encodings.tis_620 encodings.undefined encodings.unicode_escape encodings.utf_16 encodings.utf_16_be encodings.utf_16_le encodings.utf_32 encodings.utf_32_be encodings.utf_32_le encodings.utf_7 encodings.utf_8 encodings.utf_8_sig encodings.uu_codec fileinput graphlib linecache mimetypes netrc ntpath nturl2path os pydoc_data pydoc_data.module_docs pydoc_data.topics quopri stringprep tempfile typing wave wsgiref wsgiref.headers wsgiref.validate xml xml.dom xml.dom.NodeFilter xml.dom.domreg xml.dom.minicompat xml.etree xml.parsers xmlrpc\n\n55 left out, as lib/ has _markupbase, _opcode_metadata, bisect, codecs, collections, colorsys, contextlib, csv, curses, datetime, difflib, fnmatch, functools, genericpath, getopt, heapq, html, io, json, keyword, opcode, operator, posixpath, random, re, shlex, stat, statistics, string, struct, textwrap, this, token, types, urllib, warnings: _markupbase _opcode_metadata bisect codecs collections colorsys contextlib csv curses curses.ascii curses.has_key curses.panel curses.textpad datetime difflib fnmatch functools genericpath getopt heapq html html.entities html.parser io json json.decoder json.encoder json.scanner json.tool keyword opcode operator posixpath random re re._casefix re._compiler re._constants re._parser shlex stat statistics string struct textwrap this token types urllib urllib.error urllib.parse urllib.request urllib.response urllib.robotparser warnings\n\n   56  imports the missing module _io\n   54  cannot import name 'getweakrefcount' from '_weakref'\n   26  imports the missing module _signal\n   16  cannot infer the type of a dict of None values; add a type annotation (d: dict[K, V] = {}, or -> dic\n   11  imports the missing module _ctypes\n    9  class enum.FlagBoundary is not supported: unsupported base class: single inheritance requires a prev\n    9  imports the missing module pyexpat\n    8  imports the missing module _socket\n    7  imports the missing module _contextvars\n    7  imports the missing module _bz2\n    7  imports the missing module _codecs_jp\n    7  imports the missing module _codecs_iso2022\n    6  class '_thread.lock' cannot be used as a value (classes are not values: call it, or read an attribut\n    5  imports the missing module termios\n    5  imports the missing module _dbm\n    4  dict keys must be int or str, objects, or tuples of int, bool, str, str | None and objects, not <bui\n    4  unsupported module attribute os.O_RDONLY\n    4  imports the missing module _codecs_cn\n    4  types.MappingProxyType is not supported: of the types module, Pystachy has only GenericAlias, for a \n    4  imports the missing module _zoneinfo\n    3  redefinition of 'locale.localeconv' is not supported\n    3  cannot iterate over tuple[tuple[str],tuple[str],tuple[str,str],tuple[str,str,str,str],tuple[str,str]\n    3  unsupported call object()\n    3  imports the missing module _tokenize\n    3  class email._encoded_words._QByteMap is not supported: unsupported base class: single inheritance re\n    3  expected int, got None\n    3  imports the missing module _codecs_kr\n    3  imports the missing module _sqlite3\n    2  imports the missing module msvcrt\n    2  imports the missing module _operator\n",
+      "stderr": "",
+      "wall_seconds": 30.414734112000588,
+      "expected_exit": 0
+    },
+    "ir": {
+      "command": [
+        "tools/check_ir.sh",
+        "./pystachy",
+        "tests/deviations/lib_warnings_location.py",
+        "tests/deviations/lib_warnings_message_type.py",
+        "tests/lib_warnings.py",
+        "tests/lib_warnings_main_filter.py",
+        "tests/lib_warnings_objects.py",
+        "tests/lib_warnings_options.py",
+        "tests/lib_warnings_skip_prefixes.py",
+        "tests/upstream_bool.py",
+        "tests/upstream_fnmatch.py",
+        "tests/sys_warnoptions.py",
+        "tests/exc_class_misc.py"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "the IR check and llvm-as accept the IR of 11 programs\n",
+      "stderr": "",
+      "wall_seconds": 2.1675422839980456,
+      "expected_exit": 0
+    },
+    "matrix-aot-gc": {
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-725/build/audit-725/matrix-gc"
+      ],
+      "environment": {
+        "PYSTACHY_GC_STRESS": "1"
+      },
+      "returncode": 0,
+      "stdout": "default UserWarning [('matrix.py', 1, 'matrix'), ('matrix.py', 2, 'matrix')]\ndefault Child [('matrix.py', 1, 'matrix'), ('matrix.py', 2, 'matrix')]\ndefault RuntimeWarning [('matrix.py', 1, 'matrix'), ('matrix.py', 2, 'matrix')]\nalways UserWarning [('matrix.py', 1, 'matrix'), ('matrix.py', 1, 'matrix'), ('matrix.py', 2, 'matrix'), ('matrix.py', 2, 'matrix')]\nalways Child [('matrix.py', 1, 'matrix'), ('matrix.py', 1, 'matrix'), ('matrix.py', 2, 'matrix'), ('matrix.py', 2, 'matrix')]\nalways RuntimeWarning [('matrix.py', 1, 'matrix'), ('matrix.py', 1, 'matrix'), ('matrix.py', 2, 'matrix'), ('matrix.py', 2, 'matrix')]\nignore UserWarning []\nignore Child []\nignore RuntimeWarning []\nerror error UserWarning 1 matrix\nerror error UserWarning 1 matrix\nerror error UserWarning 2 matrix\nerror error UserWarning 2 matrix\nerror UserWarning []\nerror error Child 1 matrix\nerror error Child 1 matrix\nerror error Child 2 matrix\nerror error Child 2 matrix\nerror Child []\nerror error RuntimeWarning 1 matrix\nerror error RuntimeWarning 1 matrix\nerror error RuntimeWarning 2 matrix\nerror error RuntimeWarning 2 matrix\nerror RuntimeWarning []\nmodule UserWarning [('matrix.py', 1, 'matrix')]\nmodule Child [('matrix.py', 1, 'matrix')]\nmodule RuntimeWarning [('matrix.py', 1, 'matrix')]\nonce UserWarning [('matrix.py', 1, 'matrix')]\nonce Child [('matrix.py', 1, 'matrix')]\nonce RuntimeWarning [('matrix.py', 1, 'matrix')]\nfilter [(2, 'quiet'), (2, 'QUIET'), (2, 'quietly'), (3, 'quietly'), (2, 'quiet'), (2, 'QUIET'), (2, 'quietly'), (3, 'quiet'), (3, 'QUIET'), (3, 'quietly'), (2, 'quiet'), (2, 'QUIET'), (2, 'quietly'), (3, 'quiet'), (3, 'QUIET'), (3, 'quietly')]\nnested ['outer before', 'outer after'] ['inner']\n",
+      "stderr": "",
+      "wall_seconds": 0.01203245299984701,
+      "expected_exit": 0
+    },
+    "matrix-aot-noopt": {
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-725/build/audit-725/matrix-noopt"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "default UserWarning [('matrix.py', 1, 'matrix'), ('matrix.py', 2, 'matrix')]\ndefault Child [('matrix.py', 1, 'matrix'), ('matrix.py', 2, 'matrix')]\ndefault RuntimeWarning [('matrix.py', 1, 'matrix'), ('matrix.py', 2, 'matrix')]\nalways UserWarning [('matrix.py', 1, 'matrix'), ('matrix.py', 1, 'matrix'), ('matrix.py', 2, 'matrix'), ('matrix.py', 2, 'matrix')]\nalways Child [('matrix.py', 1, 'matrix'), ('matrix.py', 1, 'matrix'), ('matrix.py', 2, 'matrix'), ('matrix.py', 2, 'matrix')]\nalways RuntimeWarning [('matrix.py', 1, 'matrix'), ('matrix.py', 1, 'matrix'), ('matrix.py', 2, 'matrix'), ('matrix.py', 2, 'matrix')]\nignore UserWarning []\nignore Child []\nignore RuntimeWarning []\nerror error UserWarning 1 matrix\nerror error UserWarning 1 matrix\nerror error UserWarning 2 matrix\nerror error UserWarning 2 matrix\nerror UserWarning []\nerror error Child 1 matrix\nerror error Child 1 matrix\nerror error Child 2 matrix\nerror error Child 2 matrix\nerror Child []\nerror error RuntimeWarning 1 matrix\nerror error RuntimeWarning 1 matrix\nerror error RuntimeWarning 2 matrix\nerror error RuntimeWarning 2 matrix\nerror RuntimeWarning []\nmodule UserWarning [('matrix.py', 1, 'matrix')]\nmodule Child [('matrix.py', 1, 'matrix')]\nmodule RuntimeWarning [('matrix.py', 1, 'matrix')]\nonce UserWarning [('matrix.py', 1, 'matrix')]\nonce Child [('matrix.py', 1, 'matrix')]\nonce RuntimeWarning [('matrix.py', 1, 'matrix')]\nfilter [(2, 'quiet'), (2, 'QUIET'), (2, 'quietly'), (3, 'quietly'), (2, 'quiet'), (2, 'QUIET'), (2, 'quietly'), (3, 'quiet'), (3, 'QUIET'), (3, 'quietly'), (2, 'quiet'), (2, 'QUIET'), (2, 'quietly'), (3, 'quiet'), (3, 'QUIET'), (3, 'quietly')]\nnested ['outer before', 'outer after'] ['inner']\n",
+      "stderr": "",
+      "wall_seconds": 0.0014289639984781388,
+      "expected_exit": 0
+    },
+    "matrix-build-gc": {
+      "command": [
+        "./pystachy",
+        "build",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-725/build/audit-725/matrix.py",
+        "-o",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-725/build/audit-725/matrix-gc"
+      ],
+      "environment": {
+        "PYSTACHY_GC_STRESS_PROGRAM": "1"
+      },
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "",
+      "wall_seconds": 6.303152696000325,
+      "expected_exit": 0
+    },
+    "matrix-build-noopt": {
+      "command": [
+        "./pystachy",
+        "build",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-725/build/audit-725/matrix.py",
+        "-o",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-725/build/audit-725/matrix-noopt"
+      ],
+      "environment": {
+        "PYSTACHY_OPT": "-all"
+      },
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "",
+      "wall_seconds": 5.302722489999724,
+      "expected_exit": 0
+    },
+    "matrix-cpython": {
+      "command": [
+        "/root/.local/bin/python3.13",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-725/build/audit-725/matrix.py"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "default UserWarning [('matrix.py', 1, 'matrix'), ('matrix.py', 2, 'matrix')]\ndefault Child [('matrix.py', 1, 'matrix'), ('matrix.py', 2, 'matrix')]\ndefault RuntimeWarning [('matrix.py', 1, 'matrix'), ('matrix.py', 2, 'matrix')]\nalways UserWarning [('matrix.py', 1, 'matrix'), ('matrix.py', 1, 'matrix'), ('matrix.py', 2, 'matrix'), ('matrix.py', 2, 'matrix')]\nalways Child [('matrix.py', 1, 'matrix'), ('matrix.py', 1, 'matrix'), ('matrix.py', 2, 'matrix'), ('matrix.py', 2, 'matrix')]\nalways RuntimeWarning [('matrix.py', 1, 'matrix'), ('matrix.py', 1, 'matrix'), ('matrix.py', 2, 'matrix'), ('matrix.py', 2, 'matrix')]\nignore UserWarning []\nignore Child []\nignore RuntimeWarning []\nerror error UserWarning 1 matrix\nerror error UserWarning 1 matrix\nerror error UserWarning 2 matrix\nerror error UserWarning 2 matrix\nerror UserWarning []\nerror error Child 1 matrix\nerror error Child 1 matrix\nerror error Child 2 matrix\nerror error Child 2 matrix\nerror Child []\nerror error RuntimeWarning 1 matrix\nerror error RuntimeWarning 1 matrix\nerror error RuntimeWarning 2 matrix\nerror error RuntimeWarning 2 matrix\nerror RuntimeWarning []\nmodule UserWarning [('matrix.py', 1, 'matrix')]\nmodule Child [('matrix.py', 1, 'matrix')]\nmodule RuntimeWarning [('matrix.py', 1, 'matrix')]\nonce UserWarning [('matrix.py', 1, 'matrix')]\nonce Child [('matrix.py', 1, 'matrix')]\nonce RuntimeWarning [('matrix.py', 1, 'matrix')]\nfilter [(2, 'quiet'), (2, 'QUIET'), (2, 'quietly'), (3, 'quietly'), (2, 'quiet'), (2, 'QUIET'), (2, 'quietly'), (3, 'quiet'), (3, 'QUIET'), (3, 'quietly'), (2, 'quiet'), (2, 'QUIET'), (2, 'quietly'), (3, 'quiet'), (3, 'QUIET'), (3, 'quietly')]\nnested ['outer before', 'outer after'] ['inner']\n",
+      "stderr": "",
+      "wall_seconds": 0.01764845399884507,
+      "expected_exit": 0
+    },
+    "matrix-jit-gc": {
+      "command": [
+        "./pystachy",
+        "run",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-725/build/audit-725/matrix.py"
+      ],
+      "environment": {
+        "PYSTACHY_GC_STRESS_PROGRAM": "1"
+      },
+      "returncode": 0,
+      "stdout": "default UserWarning [('matrix.py', 1, 'matrix'), ('matrix.py', 2, 'matrix')]\ndefault Child [('matrix.py', 1, 'matrix'), ('matrix.py', 2, 'matrix')]\ndefault RuntimeWarning [('matrix.py', 1, 'matrix'), ('matrix.py', 2, 'matrix')]\nalways UserWarning [('matrix.py', 1, 'matrix'), ('matrix.py', 1, 'matrix'), ('matrix.py', 2, 'matrix'), ('matrix.py', 2, 'matrix')]\nalways Child [('matrix.py', 1, 'matrix'), ('matrix.py', 1, 'matrix'), ('matrix.py', 2, 'matrix'), ('matrix.py', 2, 'matrix')]\nalways RuntimeWarning [('matrix.py', 1, 'matrix'), ('matrix.py', 1, 'matrix'), ('matrix.py', 2, 'matrix'), ('matrix.py', 2, 'matrix')]\nignore UserWarning []\nignore Child []\nignore RuntimeWarning []\nerror error UserWarning 1 matrix\nerror error UserWarning 1 matrix\nerror error UserWarning 2 matrix\nerror error UserWarning 2 matrix\nerror UserWarning []\nerror error Child 1 matrix\nerror error Child 1 matrix\nerror error Child 2 matrix\nerror error Child 2 matrix\nerror Child []\nerror error RuntimeWarning 1 matrix\nerror error RuntimeWarning 1 matrix\nerror error RuntimeWarning 2 matrix\nerror error RuntimeWarning 2 matrix\nerror RuntimeWarning []\nmodule UserWarning [('matrix.py', 1, 'matrix')]\nmodule Child [('matrix.py', 1, 'matrix')]\nmodule RuntimeWarning [('matrix.py', 1, 'matrix')]\nonce UserWarning [('matrix.py', 1, 'matrix')]\nonce Child [('matrix.py', 1, 'matrix')]\nonce RuntimeWarning [('matrix.py', 1, 'matrix')]\nfilter [(2, 'quiet'), (2, 'QUIET'), (2, 'quietly'), (3, 'quietly'), (2, 'quiet'), (2, 'QUIET'), (2, 'quietly'), (3, 'quiet'), (3, 'QUIET'), (3, 'quietly'), (2, 'quiet'), (2, 'QUIET'), (2, 'quietly'), (3, 'quiet'), (3, 'QUIET'), (3, 'quietly')]\nnested ['outer before', 'outer after'] ['inner']\n",
+      "stderr": "",
+      "wall_seconds": 1.8392549279997183,
+      "expected_exit": 0
+    },
+    "matrix-jit-noopt": {
+      "command": [
+        "./pystachy",
+        "run",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-725/build/audit-725/matrix.py"
+      ],
+      "environment": {
+        "PYSTACHY_OPT": "-all"
+      },
+      "returncode": 0,
+      "stdout": "default UserWarning [('matrix.py', 1, 'matrix'), ('matrix.py', 2, 'matrix')]\ndefault Child [('matrix.py', 1, 'matrix'), ('matrix.py', 2, 'matrix')]\ndefault RuntimeWarning [('matrix.py', 1, 'matrix'), ('matrix.py', 2, 'matrix')]\nalways UserWarning [('matrix.py', 1, 'matrix'), ('matrix.py', 1, 'matrix'), ('matrix.py', 2, 'matrix'), ('matrix.py', 2, 'matrix')]\nalways Child [('matrix.py', 1, 'matrix'), ('matrix.py', 1, 'matrix'), ('matrix.py', 2, 'matrix'), ('matrix.py', 2, 'matrix')]\nalways RuntimeWarning [('matrix.py', 1, 'matrix'), ('matrix.py', 1, 'matrix'), ('matrix.py', 2, 'matrix'), ('matrix.py', 2, 'matrix')]\nignore UserWarning []\nignore Child []\nignore RuntimeWarning []\nerror error UserWarning 1 matrix\nerror error UserWarning 1 matrix\nerror error UserWarning 2 matrix\nerror error UserWarning 2 matrix\nerror UserWarning []\nerror error Child 1 matrix\nerror error Child 1 matrix\nerror error Child 2 matrix\nerror error Child 2 matrix\nerror Child []\nerror error RuntimeWarning 1 matrix\nerror error RuntimeWarning 1 matrix\nerror error RuntimeWarning 2 matrix\nerror error RuntimeWarning 2 matrix\nerror RuntimeWarning []\nmodule UserWarning [('matrix.py', 1, 'matrix')]\nmodule Child [('matrix.py', 1, 'matrix')]\nmodule RuntimeWarning [('matrix.py', 1, 'matrix')]\nonce UserWarning [('matrix.py', 1, 'matrix')]\nonce Child [('matrix.py', 1, 'matrix')]\nonce RuntimeWarning [('matrix.py', 1, 'matrix')]\nfilter [(2, 'quiet'), (2, 'QUIET'), (2, 'quietly'), (3, 'quietly'), (2, 'quiet'), (2, 'QUIET'), (2, 'quietly'), (3, 'quiet'), (3, 'QUIET'), (3, 'quietly'), (2, 'quiet'), (2, 'QUIET'), (2, 'quietly'), (3, 'quiet'), (3, 'QUIET'), (3, 'quietly')]\nnested ['outer before', 'outer after'] ['inner']\n",
+      "stderr": "",
+      "wall_seconds": 9.504724006001197,
+      "expected_exit": 0
+    },
+    "matrix-program": {
+      "program": "import warnings\n\nclass Child(UserWarning):\n    pass\n\nfor action in [\"default\", \"always\", \"ignore\", \"error\", \"module\", \"once\"]:\n    for category in [UserWarning, Child, RuntimeWarning]:\n        reg: dict[tuple[str, type[Warning], int], int] = {}\n        with warnings.catch_warnings(record=True) as log:\n            warnings.simplefilter(action)\n            for line in [1, 1, 2, 2]:\n                try:\n                    warnings.warn_explicit(\"matrix\", category, \"matrix.py\", line, \"pkg\", reg)\n                except Warning as e:\n                    print(\"error\", action, category.__name__, line, str(e))\n            print(action, category.__name__, [(m.filename, m.lineno, str(m.message)) for m in log])\n\nwith warnings.catch_warnings(record=True) as log:\n    warnings.simplefilter(\"always\")\n    warnings.filterwarnings(\"ignore\", \"^quiet$\", UserWarning, \"^pkg$\", 3)\n    for module in [\"pkg\", \"pkg.child\", \"other\"]:\n        for line in [2, 3]:\n            for message in [\"quiet\", \"QUIET\", \"quietly\"]:\n                warnings.warn_explicit(message, Child, \"matrix.py\", line, module)\n    print(\"filter\", [(m.lineno, str(m.message)) for m in log])\n\nwith warnings.catch_warnings(record=True) as outer:\n    warnings.simplefilter(\"always\")\n    warnings.warn(\"outer before\")\n    try:\n        with warnings.catch_warnings(record=True) as inner:\n            warnings.warn(\"inner\")\n            raise ValueError(\"restore\")\n    except ValueError:\n        pass\n    warnings.warn(\"outer after\")\n    print(\"nested\", [str(m.message) for m in outer], [str(m.message) for m in inner])\n",
+      "sha256": "6e05a6b8bded2bf2058815c3dbe3b2a238d5ba8b945385492b5da8283c0d8c2f"
+    },
+    "negative-controls": {
+      "unanchored-main": {
+        "before": "module=\"__main__\\\\Z\", append=1)",
+        "after": "module=\"__main__\", append=1)",
+        "test": "tests/lib_warnings_main_filter.py",
+        "expected_recording": "['c']\n[exit 0]\n",
+        "mutant_output": "['a', 'b', 'c']\n",
+        "detected": true
+      },
+      "unchecked-prefixes": {
+        "before": "    for prefix in skip_file_prefixes:\n        if not isinstance(prefix, str):\n            raise TypeError(\"Found non-str '\" + type(prefix).__name__ + \"' in skip_file_prefixes.\")\n",
+        "after": "",
+        "test": "tests/lib_warnings_skip_prefixes.py",
+        "expected_recording": "top: Found non-str 'int' in skip_file_prefixes.\ncall: Found non-str 'int' in skip_file_prefixes.\nints: Found non-str 'int' in skip_file_prefixes.\nbytes: Found non-str 'bytes' in skip_file_prefixes.\ncategory: category must be a Warning subclass, not 'int'\n['str prefixes', 'empty']\n[exit 0]\n",
+        "mutant_output": "category: category must be a Warning subclass, not 'int'\n['str prefixes', 'empty']\n",
+        "detected": true
+      }
+    },
+    "negative-unanchored-main": {
+      "command": [
+        "./pystachy",
+        "run",
+        "tests/lib_warnings_main_filter.py"
+      ],
+      "environment": {
+        "PYSTACHY_PATH": "/workspace/scratch/3ba735e28fa7/pystachy-audit-725/build/audit-725/unanchored-main"
+      },
+      "returncode": 0,
+      "stdout": "['a', 'b', 'c']\n",
+      "stderr": "",
+      "wall_seconds": 1.5478334299987182,
+      "expected_exit": 0
+    },
+    "negative-unchecked-prefixes": {
+      "command": [
+        "./pystachy",
+        "run",
+        "tests/lib_warnings_skip_prefixes.py"
+      ],
+      "environment": {
+        "PYSTACHY_PATH": "/workspace/scratch/3ba735e28fa7/pystachy-audit-725/build/audit-725/unchecked-prefixes"
+      },
+      "returncode": 0,
+      "stdout": "category: category must be a Warning subclass, not 'int'\n['str prefixes', 'empty']\n",
+      "stderr": "<sys>:0: UserWarning: top\n<sys>:0: UserWarning: in a function\n<sys>:0: UserWarning: ints\n<sys>:0: UserWarning: bytes\n",
+      "wall_seconds": 1.5940560400013055,
+      "expected_exit": 0
+    },
+    "oracle": {
+      "programs": 3178,
+      "identical": 3166,
+      "changed": [
+        {
+          "source": "tests/deviations/lib_warnings_location.py",
+          "old": {
+            "exit": 1,
+            "message": "tests/deviations/lib_warnings_location.py:9: error: module 'warnings' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no warnings.py on the module path\n",
+            "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "new": {
+            "exit": 0,
+            "message": "",
+            "ir_sha256": "0654c2630efe02db13232f4c1c6b0ddcda302120e6abc029b62110952aa11486"
+          }
+        },
+        {
+          "source": "tests/deviations/lib_warnings_message_type.py",
+          "old": {
+            "exit": 1,
+            "message": "tests/deviations/lib_warnings_message_type.py:5: error: module 'warnings' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no warnings.py on the module path\n",
+            "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "new": {
+            "exit": 0,
+            "message": "",
+            "ir_sha256": "e53aca5a500f6d97dd0e0c32a025b165379bd0268851fcb3dd48f652c240ea77"
+          }
+        },
+        {
+          "source": "tests/errors/lib_warnings_category_tuple.py",
+          "old": {
+            "exit": 1,
+            "message": "tests/errors/lib_warnings_category_tuple.py:4: error: module 'warnings' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no warnings.py on the module path\n",
+            "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "new": {
+            "exit": 1,
+            "message": "CHECKOUT/lib/warnings.py:163: error: expected tuple[str,Pattern,type[BaseException],Pattern,int], got tuple[str,None,tuple[type[BaseException],type[BaseException]],None,int] (compiling warnings._add_filter(tuple[str,None,tuple[exctype,exctype],None,int], bool) for the call at CHECKOUT/lib/warnings.py:156; compiling warnings.simplefilter(str, tuple[exctype,exctype], int, bool) for the call at tests/errors/lib_warnings_category_tuple.py:6)\n",
+            "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          }
+        },
+        {
+          "source": "tests/errors/lib_warnings_deprecated.py",
+          "old": {
+            "exit": 1,
+            "message": "tests/errors/lib_warnings_deprecated.py:4: error: module 'warnings' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no warnings.py on the module path\n",
+            "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "new": {
+            "exit": 1,
+            "message": "CHECKOUT/lib/warnings.py:596: error: type <function f (tests/errors/lib_warnings_deprecated.py:8)> has no attribute '__deprecated__' (compiling warnings.deprecated.__call__(fn[c:0:f@8]) for the call at tests/errors/lib_warnings_deprecated.py:7)\n",
+            "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          }
+        },
+        {
+          "source": "tests/errors/lib_warnings_message_file.py",
+          "old": {
+            "exit": 1,
+            "message": "tests/errors/lib_warnings_message_file.py:4: error: module 'warnings' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no warnings.py on the module path\n",
+            "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "new": {
+            "exit": 1,
+            "message": "tests/errors/lib_warnings_message_file.py:9: error: 'warnings.WarningMessage' object has no attribute 'file'\n",
+            "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          }
+        },
+        {
+          "source": "tests/errors/lib_warnings_showwarning.py",
+          "old": {
+            "exit": 1,
+            "message": "tests/errors/lib_warnings_showwarning.py:4: error: module 'warnings' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no warnings.py on the module path\n",
+            "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "new": {
+            "exit": 1,
+            "message": "tests/errors/lib_warnings_showwarning.py:11: error: 'warnings.showwarning' is bound both as a variable and as a function, class or import (not supported)\n",
+            "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          }
+        },
+        {
+          "source": "tests/errors/lib_warnings_skip_prefixes_mixed.py",
+          "old": {
+            "exit": 1,
+            "message": "tests/errors/lib_warnings_skip_prefixes_mixed.py:5: error: module 'warnings' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no warnings.py on the module path\n",
+            "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "new": {
+            "exit": 1,
+            "message": "CHECKOUT/lib/warnings.py:301: error: cannot iterate over tuple[str,None]: its items have different types (compiling warnings.warn(str, None, int, None, tuple[str,None]) for the call at tests/errors/lib_warnings_skip_prefixes_mixed.py:7)\n",
+            "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          }
+        },
+        {
+          "source": "tests/lib_warnings.py",
+          "old": {
+            "exit": 1,
+            "message": "tests/lib_warnings.py:9: error: module 'warnings' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no warnings.py on the module path\n",
+            "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "new": {
+            "exit": 0,
+            "message": "",
+            "ir_sha256": "169b88a71919ad49e6c48929f2f77116bbf4e97bf80f678db2b2d5a065f05853"
+          }
+        },
+        {
+          "source": "tests/lib_warnings_main_filter.py",
+          "old": {
+            "exit": 1,
+            "message": "tests/lib_warnings_main_filter.py:5: error: module 'warnings' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no warnings.py on the module path\n",
+            "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "new": {
+            "exit": 0,
+            "message": "",
+            "ir_sha256": "eae7b326ca3d71d7477baec8e906b0c4a93b8fe41ae8e0ef5488eba19e1eac6c"
+          }
+        },
+        {
+          "source": "tests/lib_warnings_objects.py",
+          "old": {
+            "exit": 1,
+            "message": "tests/lib_warnings_objects.py:4: error: module 'warnings' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no warnings.py on the module path\n",
+            "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "new": {
+            "exit": 0,
+            "message": "",
+            "ir_sha256": "a70ed5eb3d6046fbaba030ab32bcd9f7e11f8796a6770d9fee60ff583c2da176"
+          }
+        },
+        {
+          "source": "tests/lib_warnings_options.py",
+          "old": {
+            "exit": 1,
+            "message": "tests/lib_warnings_options.py:19: error: module 'warnings' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no warnings.py on the module path\n",
+            "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "new": {
+            "exit": 0,
+            "message": "",
+            "ir_sha256": "7610a905f68fd1a451f9cbcca53de18b3beb0c4b1d7f57ee0427cab1a5a01ef7"
+          }
+        },
+        {
+          "source": "tests/lib_warnings_skip_prefixes.py",
+          "old": {
+            "exit": 1,
+            "message": "tests/lib_warnings_skip_prefixes.py:4: error: module 'warnings' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no warnings.py on the module path\n",
+            "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "new": {
+            "exit": 0,
+            "message": "",
+            "ir_sha256": "6932b17052f7e4fa715e42fd25e2dad7d64385b20f023818353b6354352510af"
+          }
+        }
+      ],
+      "input_inventory_sha256": "8e7d1a7528c6a01d0bce1eb4b456060bb942ae85a57123d916d2ce178ebd24d1"
+    },
+    "references": {
+      "tests/lib_warnings.py": {
+        "exit": 0,
+        "stdout": "always 7 [('AppWarning', 'noisy 1'), ('AppWarning', 'noisy 2'), ('UserWarning', 'plain'), ('DeprecationWarning', 'old'), ('FutureWarning', 'an object'), ('AppWarning', 'of the program'), ('OtherWarning', 'other')]\nTrue True True None\nTrue True True None\nTrue True True None\nTrue True False None\nTrue True False None\nTrue True True None\nTrue True False None\nAppWarning AppWarning('noisy 1') True\ndefault 2 [('AppWarning', 'noisy 7'), ('RuntimeWarning', 'loop')]\nonce 2 [('AppWarning', 'noisy 8'), ('RuntimeWarning', 'other once')]\nmodule 1 [('AppWarning', 'noisy 9')]\nraised RuntimeWarning('bad') True\nfiltered 2 [('AppWarning', 'noisy 2'), ('ImportWarning', 'import')]\n1\nTrue\nerror action noisy 4\nerror action AppWarning('noisy 5')\nouter 2 [('UserWarning', 'kept'), ('UserWarning', 'outer')]\ninner 1 [('UserWarning', 'inner')]\nfile.py:12: UserWarning: msg\nfile.py:12: AppWarning: msg\n  x = 1\nf.py:1: AppWarning: w\nf.py:3: RuntimeWarning: shown\nf.py:4: RuntimeWarning: shown with line\n  y = 2\n[('mod.py', 5, 'explicit'), ('mod.py', 7, 'explicit'), ('mod.py', 5, 'again'), ('x.py', 1, 'no registry'), ('x.py', 1, 'no registry')] 4\nTrue False True\ndeprecated 3 [('DeprecationWarning', \"'thing' is deprecated and slated for removal in Python 3.15\"), ('DeprecationWarning', \"'other' goes in 3.16\"), ('DeprecationWarning', \"third {braces}  '4.0'\")]\nRuntimeError 'old' was slated for removal after Python 3.12 alpha\ncatch_warnings() catch_warnings(record=True)\nRuntimeError Cannot enter catch_warnings() twice\nRuntimeError Cannot exit catch_warnings() without entering first\nValueError invalid action: 'bogus'\nValueError invalid action: 'Error'\nValueError lineno must be an int >= 0\nTypeError category must be a Warning subclass, not 'int'\nTypeError warn() argument 'skip_file_prefixes' must be tuple, not list\n0\nignore Warning 1\n",
+        "stderr_last": "virtual.py:7: UserWarning: to stderr\n",
+        "stderr_sha256": "c041a91b15b76eded2a3b7e5a52720c58199cf2f020432d5df94d62106750c64",
+        "recording_equal": true
+      },
+      "tests/lib_warnings_main_filter.py": {
+        "exit": 0,
+        "stdout": "['c']\n",
+        "stderr_last": "",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "recording_equal": true
+      },
+      "tests/lib_warnings_objects.py": {
+        "exit": 0,
+        "stdout": "True 7 AppWarning('x')\nTrue UserWarning('b')\n[('AppWarning', 'x', False), ('UserWarning', 'b', True)]\n",
+        "stderr_last": "",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "recording_equal": true
+      },
+      "tests/lib_warnings_options.py": {
+        "exit": 0,
+        "stdout": "11\ndefault - Warning a\\.b\\Z 0\nonce hello SyntaxWarning mod\\Z 12\nignore - RuntimeWarning - 0\nalways - UserWarning - 0\nignore Quiet Warning - 0\nerror - DeprecationWarning - 0\n2 ['quiet here', 'hello']\nerror DeprecationWarning('old')\n",
+        "stderr_last": "Invalid -W option ignored: too many fields (max 5): 'a:b:c:d:e:f'\n",
+        "stderr_sha256": "4f7ef2ca855c6b97448940ac280cfe41cf08e9bef47664fbf90569ecc9d736ac",
+        "recording_equal": true
+      },
+      "tests/lib_warnings_skip_prefixes.py": {
+        "exit": 0,
+        "stdout": "top: Found non-str 'int' in skip_file_prefixes.\ncall: Found non-str 'int' in skip_file_prefixes.\nints: Found non-str 'int' in skip_file_prefixes.\nbytes: Found non-str 'bytes' in skip_file_prefixes.\ncategory: category must be a Warning subclass, not 'int'\n['str prefixes', 'empty']\n",
+        "stderr_last": "",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "recording_equal": true
+      },
+      "tests/upstream_bool.py": {
+        "exit": 0,
+        "stdout": "repr(False) 'False'\nrepr(True) 'True'\nstr(False) 'False'\nstr(True) 'True'\nint(False) 0\nint(False) 0\nint(True) 1\nint(True) 1\nfloat(False) 0.0\nfloat(False) 0.0\nfloat(True) 1.0\nfloat(True) 1.0\n+False 0\n+False 0\n-False 0\n-False 0\nabs(False) 0\nabs(False) 0\n+True 1\n+True 1\n-True -1\nabs(True) 1\nabs(True) 1\nFalse+2 2\nTrue+2 3\n2+False 2\n2+True 3\nFalse+False 0\nFalse+False 0\nFalse+True 1\nFalse+True 1\nTrue+False 1\nTrue+False 1\nTrue+True 2\nTrue-True 0\nTrue-True 0\nFalse-False 0\nFalse-False 0\nTrue-False 1\nTrue-False 1\nFalse-True -1\nTrue*1 1\nFalse*1 0\nFalse*1 0\nTrue/1 1.0\nTrue/1 1.0\nFalse/1 0.0\nFalse/1 0.0\nTrue%1 0\nTrue%1 0\nTrue%2 1\nTrue%2 1\nFalse%1 0\nFalse%1 0\nFalse**0 1\nFalse**0 1\nFalse**1 0\nFalse**1 0\nFalse**2 0\nFalse**2 0\nTrue**0 1\nTrue**0 1\nTrue**1 1\nTrue**1 1\nTrue**2 1\nTrue**2 1\nFalse&False False\nFalse|False False\nFalse^False False\nFalse&int(False) 0\nFalse&int(False) 0\nFalse|int(False) 0\nFalse|int(False) 0\nFalse^int(False) 0\nFalse^int(False) 0\nint(False)&False 0\nint(False)&False 0\nint(False)|False 0\nint(False)|False 0\nint(False)^False 0\nint(False)^False 0\nFalse&True False\nFalse|True True\nFalse^True True\nFalse&int(True) 0\nFalse&int(True) 0\nFalse|int(True) 1\nFalse|int(True) 1\nFalse^int(True) 1\nFalse^int(True) 1\nint(False)&True 0\nint(False)&True 0\nint(False)|True 1\nint(False)|True 1\nint(False)^True 1\nint(False)^True 1\nTrue&False False\nTrue|False True\nTrue^False True\nTrue&int(False) 0\nTrue&int(False) 0\nTrue|int(False) 1\nTrue|int(False) 1\nTrue^int(False) 1\nTrue^int(False) 1\nint(True)&False 0\nint(True)&False 0\nint(True)|False 1\nint(True)|False 1\nint(True)^False 1\nint(True)^False 1\nTrue&True True\nTrue|True True\nTrue^True False\nTrue&int(True) 1\nTrue&int(True) 1\nTrue|int(True) 1\nTrue|int(True) 1\nTrue^int(True) 0\nTrue^int(True) 0\nint(True)&True 1\nint(True)&True 1\nint(True)|True 1\nint(True)|True 1\nint(True)^True 0\nint(True)^True 0\n1==1 True\n1==0 False\n0<1 True\n1<0 False\n0<=0 True\n1<=0 False\n1>0 True\n1>1 False\n1>=1 True\n0>=1 False\n0!=1 True\n0!=0 False\nx is x True\nx is not x False\n1 in x True\n0 in x False\n1 not in x False\n0 not in x True\ny is y True\ny is not y False\n1 in y True\n0 in y False\n1 not in y False\n0 not in y True\nnot True False\nnot False True\nbool(10) True\nbool(1) True\nbool(-1) True\nbool(0) False\nbool(\"hello\") True\nbool(\"\") False\nbool() False\n\"%d\" % False '0'\n\"%d\" % True '1'\n\"%x\" % False '0'\n\"%x\" % True '1'\nhasattr([], \"append\") True\nhasattr([], \"wobble\") False\nisinstance(True, bool) True\nisinstance(False, bool) True\nisinstance(True, int) True\nisinstance(False, int) True\nisinstance(1, bool) False\nisinstance(0, bool) False\n1 in {} False\n1 in {1:1} True\n\"xyz\".endswith(\"z\") True\n\"xyz\".endswith(\"x\") False\n\"xyz0123\".isalnum() True\n\"@#$%\".isalnum() False\n\"xyz\".isalpha() True\n\"@#$%\".isalpha() False\n\"0123\".isdigit() True\n\"xyz\".isdigit() False\n\"xyz\".islower() True\n\"XYZ\".islower() False\n\"0123\".isdecimal() True\n\"xyz\".isdecimal() False\n\"0123\".isnumeric() True\n\"xyz\".isnumeric() False\n\" \".isspace() True\n\"\\xa0\".isspace() True\n\"\\u3000\".isspace() True\n\"XYZ\".isspace() False\n\"X\".istitle() True\n\"x\".istitle() False\n\"XYZ\".isupper() True\n\"xyz\".isupper() False\n\"xyz\".startswith(\"x\") True\n\"xyz\".startswith(\"z\") False\nTrue & 1 1\nisinstance(True & 1, bool) False\nTrue & True True\nTrue | 1 1\nisinstance(True | 1, bool) False\nTrue | True True\nTrue ^ 1 0\nisinstance(True ^ 1, bool) False\nTrue ^ True False\nf.closed False\nf.closed True\noperator.truth(0) False\noperator.truth(1) True\noperator.not_(1) False\noperator.not_(0) True\noperator.contains([], 1) False\noperator.contains([1], 1) True\noperator.lt(0, 0) False\noperator.lt(0, 1) True\nbool(Eggs()) ValueError: __len__() should return >= 0\nstr(e_bool) '__len__() should return >= 0'\nx.count 1\n",
+        "stderr_last": "",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "recording_equal": true
+      },
+      "tests/upstream_fnmatch.py": {
+        "exit": 0,
+        "stdout": "FnmatchTestCase.test_fnmatch 18\nFnmatchTestCase.test_slow_fnmatch 2\nFnmatchTestCase.test_fnmatchcase 8\nTranslateTestCase.test_translate 18\nFnmatchTestCase.test_case\nFnmatchTestCase.test_sep\nFnmatchTestCase.test_char_set\nFnmatchTestCase.test_range\nFnmatchTestCase.test_sep_in_char_set\nFnmatchTestCase.test_sep_in_range\nFilterTestCase.test_case\nFilterTestCase.test_sep\nPARTIAL FnmatchTestCase.test_warnings (matches only)\nPARTIAL FilterTestCase.test_filter (str only)\n",
+        "stderr_last": "",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "recording_equal": true
+      },
+      "tests/sys_warnoptions.py": {
+        "exit": 0,
+        "stdout": "[] 0 False True\n['error::DeprecationWarning', 'ignore::Warning:m2999'] 2 True False\noption ['error', '', 'DeprecationWarning']\noption ['ignore', '', 'Warning', 'm2999']\nTrue True 2\nFalse 0 ERROR::DEPRECATIONWARNING\n['default', 'once', 'error::DeprecationWarning'] ['default', 'once', 'error::DeprecationWarning'] ['default', 'once', 'error::DeprecationWarning'] ['default', 'error::DeprecationWarning', 'once']\n[] True 0\n",
+        "stderr_last": "",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "recording_equal": true
+      },
+      "tests/exc_class_misc.py": {
+        "exit": 1,
+        "stdout": "a=1 pos=1 Base(1)\nAttributeError: 'Base' object has no attribute 'pos'\na=2 pos=2 Sub(2)\nAttributeError: 'Sub' object has no attribute 'pos'\nx w a=4 pos=4\ny x\nAttributeError: 'Lazy' object has no attribute 'note'\nset 2 a=3 pos=3 Lazy(3)\n['sub s', 'value v', \"problem Problem('p')\", 'base 3']\nmodule base 0\nmodule os os\nmodule sub t\nNameError: name 'e' is not defined\nsort raised -3 4 [5, 1, 3, 2]\n{'subs': [Sub(1), Sub(2)], 'bases': [Base(3)]}\none 1 1\ntwo 2 2\nlatest: Base(20) 20\nBase False True False False True | Sub True True False False True | Lazy False True True False True | NoneType False False False False False\nValueError False False False True\nKeyError True True False True\nOSError False True False True\nSub True True False False\n",
+        "stderr_last": "Problem\n",
+        "stderr_sha256": "c240f5ded06d8acc17ef2a2041187846ec5f3d8dabbd1605f4c7612684002699",
+        "recording_equal": true
+      }
+    },
+    "selection": {
+      "warnings": [
+        "tests/deviations/lib_warnings_location.py",
+        "tests/deviations/lib_warnings_message_type.py",
+        "tests/errors/lib_warnings_category_tuple.py",
+        "tests/errors/lib_warnings_deprecated.py",
+        "tests/errors/lib_warnings_message_file.py",
+        "tests/errors/lib_warnings_showwarning.py",
+        "tests/errors/lib_warnings_skip_prefixes_mixed.py",
+        "tests/lib_warnings.py",
+        "tests/lib_warnings_main_filter.py",
+        "tests/lib_warnings_objects.py",
+        "tests/lib_warnings_options.py",
+        "tests/lib_warnings_skip_prefixes.py"
+      ],
+      "adjacent": [
+        "tests/errors/lib_datetime_utcnow.py",
+        "tests/errors/lib_urllib_parse_deprecated.py",
+        "tests/upstream_bool.py",
+        "tests/upstream_fnmatch.py",
+        "tests/sys_warnoptions.py",
+        "tests/exc_class_misc.py"
+      ]
+    },
+    "stubs-command": {
+      "command": [
+        "/root/.local/bin/python3.13",
+        "tools/import_sweep.py",
+        "-j",
+        "2",
+        "--metadata",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-725/build/audit-725/stubs-metadata.json",
+        "--stubs",
+        "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-725/build/audit-725/stubs.json"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "stubs for 21 modules built into CPython: _io _operator _posixsubprocess _signal _socket _symtable _sysconfig _tokenize _tracemalloc _typing _warnings array fcntl gc grp marshal posix pwd pyexpat select zlib\n\n146 of 467 modules import with the stubs: _collections_abc _colorize _compat_pickle _osx_support _py_abc _pyrepl _pyrepl.commands _pyrepl.input _pyrepl.keymap _pyrepl.pager _pyrepl.types _sitebuiltins _weakrefset abc base64 concurrent dataclasses email email._parseaddr email.base64mime email.encoders email.errors email.iterators email.mime email.quoprimime email.utils encodings encodings.aliases encodings.ascii encodings.base64_codec encodings.charmap encodings.cp037 encodings.cp1006 encodings.cp1026 encodings.cp1125 encodings.cp1140 encodings.cp1250 encodings.cp1251 encodings.cp1252 encodings.cp1253 encodings.cp1254 encodings.cp1255 encodings.cp1256 encodings.cp1257 encodings.cp1258 encodings.cp273 encodings.cp424 encodings.cp437 encodings.cp500 encodings.cp720 encodings.cp737 encodings.cp775 encodings.cp850 encodings.cp852 encodings.cp855 encodings.cp856 encodings.cp858 encodings.cp860 encodings.cp861 encodings.cp862 encodings.cp863 encodings.cp865 encodings.cp866 encodings.cp874 encodings.cp875 encodings.hex_codec encodings.hp_roman8 encodings.idna encodings.iso8859_1 encodings.iso8859_10 encodings.iso8859_11 encodings.iso8859_13 encodings.iso8859_14 encodings.iso8859_15 encodings.iso8859_16 encodings.iso8859_2 encodings.iso8859_3 encodings.iso8859_4 encodings.iso8859_5 encodings.iso8859_6 encodings.iso8859_7 encodings.iso8859_8 encodings.iso8859_9 encodings.koi8_r encodings.koi8_t encodings.koi8_u encodings.kz1048 encodings.latin_1 encodings.mac_arabic encodings.mac_croatian encodings.mac_cyrillic encodings.mac_farsi encodings.mac_greek encodings.mac_iceland encodings.mac_latin2 encodings.mac_roman encodings.mac_romanian encodings.mac_turkish encodings.palmos encodings.ptcp154 encodings.punycode encodings.quopri_codec encodings.raw_unicode_escape encodings.rot_13 encodings.tis_620 encodings.undefined encodings.unicode_escape encodings.utf_16 encodings.utf_16_be encodings.utf_16_le encodings.utf_32 encodings.utf_32_be encodings.utf_32_le encodings.utf_7 encodings.utf_8 encodings.utf_8_sig encodings.uu_codec encodings.zlib_codec fileinput graphlib linecache mimetypes netrc ntpath nturl2path os pydoc_data pydoc_data.module_docs pydoc_data.topics quopri stringprep tempfile timeit typing wave wsgiref wsgiref.headers wsgiref.validate xml xml.dom xml.dom.NodeFilter xml.dom.domreg xml.dom.minicompat xml.etree xml.parsers xmlrpc\n\n55 left out, as lib/ has _markupbase, _opcode_metadata, bisect, codecs, collections, colorsys, contextlib, csv, curses, datetime, difflib, fnmatch, functools, genericpath, getopt, heapq, html, io, json, keyword, opcode, operator, posixpath, random, re, shlex, stat, statistics, string, struct, textwrap, this, token, types, urllib, warnings: _markupbase _opcode_metadata bisect codecs collections colorsys contextlib csv curses curses.ascii curses.has_key curses.panel curses.textpad datetime difflib fnmatch functools genericpath getopt heapq html html.entities html.parser io json json.decoder json.encoder json.scanner json.tool keyword opcode operator posixpath random re re._casefix re._compiler re._constants re._parser shlex stat statistics string struct textwrap this token types urllib urllib.error urllib.parse urllib.request urllib.response urllib.robotparser warnings\n\n144 of them need no stub. The stubs the others need (modules needing it; needing only it):\n    1     1  gc\n    1     1  zlib\n\n   99  cannot import name 'getweakrefcount' from '_weakref'\n   31  'socketpair' is bound both as a variable and by an import (not supported)\n   16  cannot infer the type of a dict of None values; add a type annotation (d: dict[K, V] = {}, or -> dic\n   13  class enum.FlagBoundary is not supported: unsupported base class: single inheritance requires a prev\n   11  imports the missing module _ctypes\n   10  imports the missing module _bz2\n    9  cannot infer the type of 'importlib._bootstrap._bootstrap_external' from None; annotate it (importli\n    7  imports the missing module _contextvars\n    7  imports the missing module _codecs_jp\n    7  imports the missing module _codecs_iso2022\n    7  imports the missing module urllib.request\n    6  class '_thread.lock' cannot be used as a value (classes are not values: call it, or read an attribut\n    6  imports the missing module termios\n    5  imports the missing module _dbm\n    4  dict keys must be int or str, objects, or tuples of int, bool, str, str | None and objects, not <bui\n    4  unsupported module attribute os.O_RDONLY\n    4  imports the missing module _codecs_cn\n    4  types.MappingProxyType is not supported: of the types module, Pystachy has only GenericAlias, for a \n    4  imports the missing module _zoneinfo\n    3  redefinition of 'locale.localeconv' is not supported\n    3  cannot iterate over tuple[tuple[str],tuple[str],tuple[str,str],tuple[str,str,str,str],tuple[str,str]\n    3  unsupported call object()\n    3  class email._encoded_words._QByteMap is not supported: unsupported base class: single inheritance re\n    3  expected int, got None\n    3  imports the missing module _codecs_kr\n    3  imports the missing module _sqlite3\n    2  imports the missing module msvcrt\n    2  types.MethodType is not supported: of the types module, Pystachy has only GenericAlias, for a class \n    2  only 'del list[i]' and 'del dict[key]' are supported\n    2  unsupported type annotation\n",
+      "stderr": "",
+      "wall_seconds": 212.81904866400146,
+      "expected_exit": 0
+    }
+  },
+  "incomplete_attempts": [],
+  "review_context": {
+    "issues_read": [
+      491,
+      616
+    ],
+    "pr": 725,
+    "implementation_head": "d2bd48a41ee1dac6954cda7c5d6a9d3a0e48e3b4",
+    "scope": "Read current review comments, including accepted fixes and documented limitations; no implementation branch modified, PR merged, or independent full review certified."
+  },
+  "historical_implementation_ci": {
+    "head": "d2bd48a41ee1dac6954cda7c5d6a9d3a0e48e3b4",
+    "runs": [
+      {
+        "name": "CI",
+        "id": 39341833933,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/den-run-ai/pystachy/actions/runs/39341833933"
+      },
+      {
+        "name": "Lint",
+        "id": 39341834003,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/den-run-ai/pystachy/actions/runs/39341834003"
+      },
+      {
+        "name": "Packages",
+        "id": 39341834209,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/den-run-ai/pystachy/actions/runs/39341834209"
+      },
+      {
+        "name": "Installation",
+        "id": 39341834084,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/den-run-ai/pystachy/actions/runs/39341834084"
+      }
+    ],
+    "limits": "Fresh workflow summaries only, not individual jobs or combined-main/audit-head checks."
+  },
+  "reproduction_scripts": {
+    "audit-725.py": "import concurrent.futures\nimport hashlib\nimport json\nimport os\nfrom pathlib import Path\nimport subprocess\nimport sys\nimport sysconfig\nimport tempfile\nimport time\n\nBASE = Path('/workspace/scratch/3ba735e28fa7')\nROOT = BASE / 'pystachy-audit-725'\nOLD = BASE / 'pystachy-audit-694'\nOUT = ROOT / 'build/audit-725'\nOUT.mkdir(parents=True, exist_ok=True)\nPY = '/root/.local/bin/python3.13'\nLLVM = str(BASE / 'llvm18-recovered/usr/lib/llvm-18/bin')\nENV = {k: v for k, v in os.environ.items() if not k.startswith(('PYSTACHY_', 'COVERAGE_'))}\nENV.update(PYSTACHY_HOME=str(ROOT), PYSTACHY_LLVM=LLVM, PYSTACHY_JOBS='2', PY=PY, PATH=LLVM+':'+ENV['PATH'])\ndef save(n, v):\n    (OUT/(n+'.json')).write_text(json.dumps(v, indent=2)+'\\n')\ndef run(n, args, extra=None, expected=0):\n    start = time.monotonic()\n    p = subprocess.run(args, cwd=ROOT, env=ENV | (extra or {}), text=True, capture_output=True, timeout=1800)\n    r = dict(command=args, environment=extra or {}, returncode=p.returncode, stdout=p.stdout, stderr=p.stderr, wall_seconds=time.monotonic()-start, expected_exit=expected)\n    save(n, r)\n    print(n, p.returncode, p.stdout[-350:], p.stderr[-250:], flush=True)\n    assert p.returncode == expected\n    return r\nfiles = sorted(str(p.relative_to(ROOT)) for pattern in ['tests/lib_warnings*.py', 'tests/deviations/lib_warnings*.py', 'tests/errors/lib_warnings*.py'] for p in ROOT.glob(pattern))\nadjacent = ['tests/errors/lib_datetime_utcnow.py', 'tests/errors/lib_urllib_parse_deprecated.py', 'tests/upstream_bool.py', 'tests/upstream_fnmatch.py', 'tests/sys_warnoptions.py', 'tests/exc_class_misc.py']\nsave('selection', dict(warnings=files, adjacent=adjacent))\nmode = sys.argv[1]\nif mode == 'checks':\n    for label, compiler, extra in [('native', './pystachy', {}), ('gc', './pystachy', {'PYSTACHY_GC_STRESS_PROGRAM':'1'}), ('noopt', './pystachy', {'PYSTACHY_OPT':'-all'}), ('hosted', PY+' -m pystachy', {})]:\n        run('checks-'+label, ['tests/run.sh', compiler, 'jit aot', *files, *adjacent], extra)\nelif mode == 'references':\n    results = {}\n    for f in files + adjacent:\n        if '/errors/' in f or '/deviations/' in f:\n            continue\n        p = subprocess.run([PY, f, 'a1', 'a2'], cwd=ROOT, env=ENV, text=True, capture_output=True, timeout=120)\n        err = (ROOT/f).with_suffix('.err')\n        expected_err = err.read_text() if err.exists() else ''\n        stderr_last = p.stderr.splitlines()[-1]+'\\n' if p.stderr else ''\n        ok = p.stdout+f'[exit {p.returncode}]\\n' == (ROOT/f).with_suffix('.out').read_text() and stderr_last == expected_err\n        results[f] = dict(exit=p.returncode, stdout=p.stdout, stderr_last=stderr_last, stderr_sha256=hashlib.sha256(p.stderr.encode()).hexdigest(), recording_equal=ok)\n    save('references', results)\n    assert all(r['recording_equal'] for r in results.values())\n    print('references', len(results), flush=True)\nelif mode == 'sweeps':\n    for n, opts in [('imports', ['./pystachy']), ('stubs', ['--stubs'])]:\n        run(n+'-command', [PY, 'tools/import_sweep.py', '-j', '2', '--metadata', str(OUT/(n+'-metadata.json')), *opts, sysconfig.get_path('stdlib'), str(OUT/(n+'.json'))])\nelif mode == 'ir':\n    run('ir', ['tools/check_ir.sh', './pystachy', *[f for f in files+adjacent if '/errors/' not in f]])\nelif mode == 'negative':\n    original = (ROOT/'lib/warnings.py').read_text()\n    changes = {\n        'unanchored-main': ('module=\"__main__\\\\\\\\Z\", append=1)', 'module=\"__main__\", append=1)', 'tests/lib_warnings_main_filter.py'),\n        'unchecked-prefixes': ('    for prefix in skip_file_prefixes:\\n        if not isinstance(prefix, str):\\n            raise TypeError(\"Found non-str \\'\" + type(prefix).__name__ + \"\\' in skip_file_prefixes.\")\\n', '', 'tests/lib_warnings_skip_prefixes.py'),\n    }\n    results = {}\n    for name, (before, after, test) in changes.items():\n        assert original.count(before)==1\n        overlay = OUT/name\n        overlay.mkdir(exist_ok=True)\n        (overlay/'warnings.py').write_text(original.replace(before, after))\n        r=run('negative-'+name, ['./pystachy','run',test], {'PYSTACHY_PATH':str(overlay)})\n        recording=(ROOT/test).with_suffix('.out').read_text()\n        assert r['stdout']+'[exit 0]\\n' != recording\n        results[name]=dict(before=before,after=after,test=test,expected_recording=recording,mutant_output=r['stdout'],detected=True)\n    save('negative-controls',results)\nelif mode == 'matrix':\n    program = '''import warnings\n\nclass Child(UserWarning):\n    pass\n\nfor action in [\"default\", \"always\", \"ignore\", \"error\", \"module\", \"once\"]:\n    for category in [UserWarning, Child, RuntimeWarning]:\n        reg: dict[tuple[str, type[Warning], int], int] = {}\n        with warnings.catch_warnings(record=True) as log:\n            warnings.simplefilter(action)\n            for line in [1, 1, 2, 2]:\n                try:\n                    warnings.warn_explicit(\"matrix\", category, \"matrix.py\", line, \"pkg\", reg)\n                except Warning as e:\n                    print(\"error\", action, category.__name__, line, str(e))\n            print(action, category.__name__, [(m.filename, m.lineno, str(m.message)) for m in log])\n\nwith warnings.catch_warnings(record=True) as log:\n    warnings.simplefilter(\"always\")\n    warnings.filterwarnings(\"ignore\", \"^quiet$\", UserWarning, \"^pkg$\", 3)\n    for module in [\"pkg\", \"pkg.child\", \"other\"]:\n        for line in [2, 3]:\n            for message in [\"quiet\", \"QUIET\", \"quietly\"]:\n                warnings.warn_explicit(message, Child, \"matrix.py\", line, module)\n    print(\"filter\", [(m.lineno, str(m.message)) for m in log])\n\nwith warnings.catch_warnings(record=True) as outer:\n    warnings.simplefilter(\"always\")\n    warnings.warn(\"outer before\")\n    try:\n        with warnings.catch_warnings(record=True) as inner:\n            warnings.warn(\"inner\")\n            raise ValueError(\"restore\")\n    except ValueError:\n        pass\n    warnings.warn(\"outer after\")\n    print(\"nested\", [str(m.message) for m in outer], [str(m.message) for m in inner])\n'''\n    f=OUT/'matrix.py'; f.write_text(program)\n    save('matrix-program',dict(program=program,sha256=hashlib.sha256(program.encode()).hexdigest()))\n    ref=run('matrix-cpython',[PY,str(f)])\n    for label, extra in [('gc', {'PYSTACHY_GC_STRESS_PROGRAM':'1'}), ('noopt', {'PYSTACHY_OPT':'-all'})]:\n        r=run('matrix-jit-'+label,['./pystachy','run',str(f)],extra)\n        assert (r['stdout'],r['stderr'])==(ref['stdout'],ref['stderr'])\n        exe=OUT/('matrix-'+label)\n        run('matrix-build-'+label,['./pystachy','build',str(f),'-o',str(exe)],extra)\n        r=run('matrix-aot-'+label,[str(exe)],{'PYSTACHY_GC_STRESS':'1'} if label=='gc' else {})\n        assert (r['stdout'],r['stderr'])==(ref['stdout'],ref['stderr'])\nelif mode == 'oracle':\n    # All retained programs are cheap compile-only checks; changed executables\n    # beyond the selected warning consumers must be executed before completion.\n    sources = ['pystachy.py', 'runtime.py'] + sorted({str(p.relative_to(ROOT)) for base in ['tests', 'tests/errors', 'tests/deviations', 'tests/ir', 'bench', 'bench/pyperformance'] for p in (ROOT/base).glob('*.py')})\n    def compare(f):\n        rs = []\n        with tempfile.TemporaryDirectory(prefix='warnings-oracle-') as tmp:\n            for label, home in [('old', OLD), ('new', ROOT)]:\n                target = Path(tmp)/(label+'.ll')\n                extra = {'PYSTACHY_HOME':str(home)}\n                path = (ROOT/f).with_suffix('.path')\n                if path.exists(): extra['PYSTACHY_PATH'] = path.read_text().strip()\n                how = 'rt' if f == 'runtime.py' or Path(f).name.startswith('rtmode_') else 'ir'\n                p = subprocess.run([str(ROOT/'pystachy'), how, f, '-o', str(target)], cwd=ROOT, env=ENV | extra, text=True, capture_output=True, timeout=180)\n                ir = target.read_text() if target.exists() else ''\n                msg = p.stdout+p.stderr\n                for root in [ROOT, OLD]:\n                    ir = ir.replace(str(root), 'CHECKOUT'); msg = msg.replace(str(root), 'CHECKOUT')\n                rs.append(dict(exit=p.returncode, message=msg, ir_sha256=hashlib.sha256(ir.encode()).hexdigest()))\n        return dict(source=f, old=rs[0], new=rs[1])\n    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:\n        rs = list(pool.map(compare, sources))\n    changed = [r for r in rs if r['old'] != r['new']]\n    save('oracle', dict(programs=len(rs), identical=len(rs)-len(changed), changed=changed, input_inventory_sha256=hashlib.sha256(json.dumps({f:hashlib.sha256((ROOT/f).read_bytes()).hexdigest() for f in sources},sort_keys=True).encode()).hexdigest()))\n    assert not any(r['old']['exit'] == 0 and r['new']['exit'] != 0 for r in rs)\n    print('oracle', len(rs), len(changed), flush=True)\n",
+    "audit-740.py": "from pathlib import Path\nimport sys\n\n# Reuse the retained measurement driver, changing only checkout identities and\n# the affected selection. Both scripts are embedded in the published evidence.\ndriver = Path('/workspace/scratch/3ba735e28fa7/audit-725.py').read_text()\ndriver = driver.replace(\"'pystachy-audit-725'\", \"'pystachy-audit-740'\").replace(\"'pystachy-audit-694'\", \"'pystachy-audit-725'\").replace(\"'build/audit-725'\", \"'build/audit-740'\")\nprefix = driver.split(\"mode = sys.argv[1]\")[0]\nexec(prefix)\npatterns = ['tests/lib_re*.py','tests/deviations/lib_re*.py','tests/lib_fnmatch*.py','tests/upstream_fnmatch.py','tests/lib_textwrap*.py','tests/upstream_textwrap*.py','tests/lib_html_parser*.py','tests/upstream_html_parser.py','tests/example_route*.py','tests/port_pyfiglet*.py','tests/port_roman*.py','tests/port_sgp4*.py','tests/re_specialize.py']\nfiles = sorted({str(p.relative_to(ROOT)) for pattern in patterns for p in ROOT.glob(pattern)})\nwarnings_selection = json.loads((OLD/'build/audit-725/selection.json').read_text())\nadjacent = warnings_selection['warnings'] + warnings_selection['adjacent']\nsave('selection',dict(regex=files,warnings=adjacent))\nmode = sys.argv[1]\nif mode in ['sweeps', 'oracle']:\n    exec('mode = sys.argv[1]\\n'+driver.split('mode = sys.argv[1]\\n',1)[1])\nelif mode == 'checks':\n    run('checks-native',['tests/run.sh','./pystachy','jit aot',*files,*adjacent])\nelif mode == 'extras':\n    oracle=json.loads((OUT/'oracle.json').read_text())\n    extra=sorted({r['source'] for r in oracle['changed'] if r['source'].startswith('tests/') and r['new']['exit']==0}-set(files+adjacent))\n    save('extra-selection',extra)\n    run('checks-extra',['tests/run.sh','./pystachy','jit aot',*extra])\nelif mode == 'stress':\n    selected=['tests/re_specialize.py','tests/lib_re_branch_filter.py','tests/lib_re_groups.py','tests/lib_warnings.py','tests/lib_warnings_main_filter.py','tests/lib_warnings_skip_prefixes.py']\n    for label, compiler, extra in [('gc','./pystachy',{'PYSTACHY_GC_STRESS_PROGRAM':'1'}),('noopt','./pystachy',{'PYSTACHY_OPT':'-all'}),('hosted',PY+' -m pystachy',{})]:\n        run('checks-'+label,['tests/run.sh',compiler,'jit aot',*selected],extra)\nelif mode == 'unit':\n    run('unit',[PY,'-m','unittest','discover','-s','tools','-p','test_re_specialize.py','-v'])\n    run('fuzz',[PY,'tools/re_specialize.py','check','1000','19'])\nelif mode == 'proof':\n    import re\n    original=(ROOT/'tests/re_specialize_matchers/_pystachy_re_specialized.py').read_text()\n    def instrument(m):\n        return 'r = _p'+m[1]+'_'+m[2]+'('+m[3]+')\\n            print(\"AUDIT_MATCHER\", '+m[1]+', \"'+m[2]+'\", r)\\n            return r'\n    modified,n=re.subn(r'return _p(\\d+)_(match|attempt)\\(([^\\n]*)\\)',instrument,original)\n    assert n==58\n    overlay=OUT/'instrumented';overlay.mkdir(exist_ok=True)\n    (overlay/'_pystachy_re_specialized.py').write_text(modified)\n    expected=(ROOT/'tests/re_specialize.out').read_text().removesuffix('[exit 0]\\n')\n    summaries={}\n    for label,args in [('jit',['./pystachy','run','tests/re_specialize.py']),('aot',[str(OUT/'proof')])]:\n        if label=='aot': run('proof-build',['./pystachy','build','tests/re_specialize.py','-o',str(OUT/'proof')],{'PYSTACHY_PATH':str(overlay)})\n        r=run('proof-'+label,args,{'PYSTACHY_PATH':str(overlay)})\n        lines=r['stdout'].splitlines(keepends=True)\n        traces=[line.split() for line in lines if line.startswith('AUDIT_MATCHER ')]\n        assert ''.join(line for line in lines if not line.startswith('AUDIT_MATCHER '))==expected\n        answered=sorted({int(t[1]) for t in traces if int(t[3])>=0})\n        declined=sum(int(t[3])<0 for t in traces)\n        assert len(answered)==28 and declined>0\n        summaries[label]=dict(calls=len(traces),answered_indices=answered,declined_calls=declined,output_without_trace_equal=True)\n    disabled=OUT/'disabled';disabled.mkdir(exist_ok=True)\n    (disabled/'_pystachy_re_specialized.py').write_text(modified.replace('            return i\\n','            return -1\\n'))\n    r=run('proof-disabled',['./pystachy','run','tests/re_specialize.py'],{'PYSTACHY_PATH':str(disabled)})\n    assert r['stdout']==expected and 'AUDIT_MATCHER' not in r['stdout']\n    save('proof-summary',dict(results=summaries,disabled_lookup_output_equal=True,instrumentation_replacement=instrument(re.match(r'(\\d+)_(match|attempt)\\((.*)\\)','0_match(s, state)')) if False else 'Replace each dispatch return with r=call; print AUDIT_MATCHER/index/kind/r; return r.',original_sha256=hashlib.sha256(original.encode()).hexdigest(),instrumented_sha256=hashlib.sha256(modified.encode()).hexdigest()))\nelif mode == 'benchmarks':\n    for name,args in [('regex_effbot',['1']),('regex_dna',['1','1000']),('regex_v8',['1'])]:\n        f='bench/pyperformance/'+name+'.py'\n        ref=run(name+'-cpython',[PY,f,*args])['stdout']\n        profile=OUT/(name+'-profile.json');overlay=OUT/name\n        run(name+'-record',[PY,'tools/re_specialize.py','record','-o',str(profile),f,*args])\n        run(name+'-generate',[PY,'tools/re_specialize.py','generate','-o',str(overlay/'_pystachy_re_specialized.py'),str(profile)])\n        for label,extra in [('default',{}),('specialized',{'PYSTACHY_PATH':str(overlay)})]:\n            assert run(name+'-jit-'+label,['./pystachy','run',f,*args],extra)['stdout']==ref\n            exe=OUT/(name+'-'+label)\n            run(name+'-build-'+label,['./pystachy','build',f,'-o',str(exe)],extra)\n            assert run(name+'-aot-'+label,[str(exe),*args])['stdout']==ref\nelif mode == 'references':\n    results={}\n    for f in files:\n        if '/deviations/' in f: continue\n        extra={}\n        path=(ROOT/f).with_suffix('.path')\n        if path.exists() and f!='tests/re_specialize.py': extra['PYTHONPATH']=path.read_text().strip()\n        p=subprocess.run([PY,f,'a1','a2'],cwd=ROOT,env=ENV|extra,text=True,capture_output=True,timeout=120)\n        err=(ROOT/f).with_suffix('.err')\n        last=p.stderr.splitlines()[-1]+'\\n' if p.stderr else ''\n        ok=p.stdout+f'[exit {p.returncode}]\\n'==(ROOT/f).with_suffix('.out').read_text() and last==(err.read_text() if err.exists() else '')\n        results[f]=dict(exit=p.returncode,stdout_sha256=hashlib.sha256(p.stdout.encode()).hexdigest(),stderr_last=last,recording_equal=ok)\n    save('references',results)\n    assert all(r['recording_equal'] for r in results.values())\n    print('references',len(results),flush=True)\nelif mode == 'known-gap':\n    prog=OUT/'generator_exit.py';prog.write_text(\"import re\\nre.compile('a+').match('aaa')\\nraise GeneratorExit('audit')\\n\")\n    plain=run('gap-plain',[PY,str(prog)],expected=1)\n    recorded=run('gap-record',[PY,'tools/re_specialize.py','record','-o',str(OUT/'gap-profile.json'),str(prog)],expected=1)\n    assert plain['stderr']!=recorded['stderr'] and 're_specialize.py' in recorded['stderr'] and 're_specialize.py' not in plain['stderr']\n    save('known-gap',dict(program=prog.read_text(),profile=json.loads((OUT/'gap-profile.json').read_text()),existing_finding='https://github.com/den-run-ai/pystachy/pull/740#discussion_r4320067995',confirmed=True))\n",
+    "audit-725-740-assemble.py": "import hashlib\nimport json\nimport platform\nfrom pathlib import Path\nimport subprocess\nimport sys\n\nBASE=Path('/workspace/scratch/3ba735e28fa7')\nDEST=BASE/'pystachy-audit-followup-729/docs/reports'\ndef sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()\ndef git(root,*a):return subprocess.check_output(['git','-C',str(root),*a],text=True).strip()\nbaseline=json.loads((DEST/'compatibility-2026-10-19-exception-diagnostics.json').read_text())\nstdlib=Path(baseline['stdlib']['path']);inventory={}\nfor m in baseline['stdlib']['module_sha256']:\n    p=stdlib/Path(*m.split('.'));p=p/'__init__.py' if p.is_dir() else p.with_suffix('.py');inventory[m]=sha(p)\nassert inventory==baseline['stdlib']['module_sha256']\nnames={725:'warnings',740:'regex-specialization'}\nprevious={725:('694','c71d4ca5413645c8094f306d727a8f18059bb722'),740:('725','d24710304245efa101bb8d44010174c7aa99ee90')}\nci={725:('d2bd48a41ee1dac6954cda7c5d6a9d3a0e48e3b4',[('CI',39341833933),('Lint',39341834003),('Packages',39341834209),('Installation',39341834084)]),740:('4f0d28accbf52023573d0face2958e2077c2a9f9',[('CI',39344132702),('Lint',39344132634),('Packages',39344132696),('Installation',39344132685)])}\nfor number in [725,740]:\n    root=BASE/('pystachy-audit-'+str(number));out=root/('build/audit-'+str(number));prev,prevsha=previous[number]\n    def read(n):return json.loads((out/(n+'.json')).read_text())\n    required=['checks-native','checks-gc','checks-noopt','checks-hosted','references','oracle','imports','stubs','imports-metadata','stubs-metadata']+(['matrix-cpython','matrix-jit-gc','matrix-aot-gc','matrix-jit-noopt','matrix-aot-noopt','negative-controls','ir'] if number==725 else ['unit','fuzz','proof-summary','known-gap','regex_effbot-aot-specialized','regex_dna-aot-specialized','regex_v8-aot-specialized'])\n    if number==740: required += ['checks-extra','extra-selection']\n    for n in required:read(n)\n    assert not git(root,'status','--porcelain','--untracked-files=no')\n    assert not git(root,'diff',prevsha,'HEAD','--','src','pystachy.py','runtime.py','runtime.c')\n    imports={}\n    for n in ['imports','stubs']:\n        prior=BASE/('pystachy-audit-'+prev)/('build/audit-'+prev)/(n+'.json')\n        before=json.loads(prior.read_text());after=read(n)\n        deltas={k:dict(before=before.get(k),after=after.get(k)) for k in sorted(set(before)|set(after)) if before.get(k)!=after.get(k)}\n        assert not any(v['before']=='OK' and v['after']!='OK' for v in deltas.values())\n        imports[n]=dict(metadata=read(n+'-metadata'),result_sha256=sha(out/(n+'.json')),previous_result_sha256=sha(prior),previous_map_source='compatibility-2026-10-19-'+('weakref-callbacks' if number==725 else 'warnings')+'.json',deltas=deltas)\n    all_records={p.stem:json.loads(p.read_text()) for p in sorted(out.glob('*.json')) if p.stem not in ['imports','stubs','imports-metadata','stubs-metadata']}\n    commands={k:v for k,v in all_records.items() if isinstance(v,dict) and 'command' in v}\n    assert all(c['returncode']==c['expected_exit'] for c in commands.values())\n    assert all(r['recording_equal'] for r in read('references').values())\n    oracle=read('oracle')\n    assert not any(r['old']['exit']==0 and r['new']['exit']!=0 for r in oracle['changed'])\n    fixtures={}\n    for group in read('selection').values():\n        for f in group:\n            for ext in ['.py','.out','.err','.path']:\n                p=Path(f).with_suffix(ext)\n                if (root/p).exists():fixtures[str(p)]=sha(root/p)\n    if number==740:\n        for f in read('extra-selection'):\n            for ext in ['.py','.out','.err','.path']:\n                p=Path(f).with_suffix(ext)\n                if (root/p).exists():fixtures[str(p)]=sha(root/p)\n        for f in ['tests/re_specialize_matchers/_pystachy_re_specialized.py','bench/pyperformance/regex_effbot.py','bench/pyperformance/regex_dna.py','bench/pyperformance/regex_v8.py']:fixtures[f]=sha(root/f)\n    data=dict(schema_version=1,date='2026-10-19',status='completed',source_revision=git(root,'rev-parse','HEAD'),previous_evaluated_main=prevsha,merged_prs=[number],compiler_build_source='c71d4ca5413645c8094f306d727a8f18059bb722',compiler_sha256=sha(root/'pystachy'),compiler_reused_reason='Compiler and runtime sources unchanged; source identity checked with git diff. Binary copied from the verified #694 build; no new bootstrap claimed.',history=git(root,'log','--first-parent','--format=%H %s',prevsha+'..HEAD').splitlines(),changed_files=git(root,'diff','--name-only',prevsha,'HEAD').splitlines(),environment=dict(python=sys.version,python_executable=sys.executable,llvm=subprocess.check_output([str(BASE/'llvm18-recovered/usr/lib/llvm-18/bin/llvm-config'),'--version'],text=True).strip(),platform=platform.platform(),workers_per_group=2,PYSTACHY_HOME=str(root),timing_caveat='Concurrent validation on a shared host. Recorded durations are operational logs, not performance evidence.'),fixture_sha256=fixtures,stdlib=dict(path=str(stdlib),inventory_sha256=hashlib.sha256(json.dumps(inventory,sort_keys=True).encode()).hexdigest(),modules=len(inventory),inventory_source='compatibility-2026-10-19-exception-diagnostics.json:stdlib.module_sha256'),imports=imports,records=all_records,incomplete_attempts=[],review_context=dict(issues_read=[491,616],pr=number,implementation_head=ci[number][0],scope='Read current review comments, including accepted fixes and documented limitations; no implementation branch modified, PR merged, or independent full review certified.'),historical_implementation_ci=dict(head=ci[number][0],runs=[dict(name=n,id=i,status='completed',conclusion='success',url='https://github.com/den-run-ai/pystachy/actions/runs/'+str(i)) for n,i in ci[number][1]],limits='Fresh workflow summaries only, not individual jobs or combined-main/audit-head checks.'),reproduction_scripts={n:(BASE/n).read_text() for n in ['audit-725.py','audit-740.py','audit-725-740-assemble.py']},limits=['Native import counts measure isolated IR compilation, not full module APIs.', 'Reference recordings compare full stdout/status but only the final stderr line.', 'Hosted generator/fuzz tests are not native executions; adapted probes are not unmodified upstream suites.', 'No full local make verify, full recording rerun, unmodified CPython regrtest, general NumPy/PyPI census, dedicated performance or memory experiment.'])\n    if number==725:\n        data['adaptation']='Major semantic/structural port, not annotations-only: typed WarningMessage/registries, static record-log swapping, frame-free warn location. warn_explicit supplies explicit location. Hook replacement, arbitrary messages, deprecated decorator, recorded file/source and arbitrary category imports remain unsupported.'\n        data['upstream_warnings_sha256']=sha(stdlib/'warnings.py')\n    else:\n        data['adaptation']='Opt-in profile-guided AOT pattern-value specialization, not runtime Any or online JIT tier-up. Decoded subjects, missing/mismatched patterns, GROUPREF_EXISTS and deep repeats fall back. Retained benchmark runner adaptations are unchanged.'\n        data['known_gap']='GeneratorExit recorder traceback includes tool/runpy frames: existing #740 discussion_r4320067995, independently reproduced; no duplicate issue.'\n    (DEST/('compatibility-2026-10-19-'+names[number]+'.json')).write_text(json.dumps(data,indent=2)+'\\n')\n    print(number,json.dumps(dict(oracle=oracle['programs'],identical=oracle['identical'],imports={k:dict(counts=v['metadata']['counts'],delta_names=list(v['deltas'])) for k,v in imports.items()},checks={k:v['stdout'] for k,v in commands.items() if k.startswith('checks-')})))\n"
+  },
+  "limits": [
+    "Native import counts measure isolated IR compilation, not full module APIs.",
+    "Reference recordings compare full stdout/status but only the final stderr line.",
+    "Hosted generator/fuzz tests are not native executions; adapted probes are not unmodified upstream suites.",
+    "No full local make verify, full recording rerun, unmodified CPython regrtest, general NumPy/PyPI census, dedicated performance or memory experiment."
+  ],
+  "adaptation": "Major semantic/structural port, not annotations-only: typed WarningMessage/registries, static record-log swapping, frame-free warn location. warn_explicit supplies explicit location. Hook replacement, arbitrary messages, deprecated decorator, recorded file/source and arbitrary category imports remain unsupported.",
+  "upstream_warnings_sha256": "e040f52be0199c69fa8c0d35428ba64e6f9b6412691a689ccbd7c23e07c6ed3f"
+}

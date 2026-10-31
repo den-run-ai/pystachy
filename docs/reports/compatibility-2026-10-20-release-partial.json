@@ -1,0 +1,2844 @@
+{
+  "status": "incomplete-native-toolchain-unavailable",
+  "source_before": {
+    "revision": "afb59cd3c32eecaa38e4dd6b38ccff17f020ba24",
+    "tree": "d7b582fa8b1a1101292ca5bc31d87a8835c22d4d",
+    "status_including_untracked": "",
+    "ignored_paths": [],
+    "clean_before_generation": true
+  },
+  "python": "3.13.16 (main, Oct  3 2026, 01:06:22) [Clang 22.1.3 ]",
+  "python_executable": "/root/.local/bin/python3.13",
+  "native_compiler": null,
+  "llvm": null,
+  "records": [
+    {
+      "command": [
+        "/root/.local/bin/python3.13",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools",
+        "-p",
+        "test_release*.py",
+        "-v"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "passed": true,
+      "stderr": "test_archive_bytes_ignore_source_mtimes_and_permissions (test_release.ReleaseTests.test_archive_bytes_ignore_source_mtimes_and_permissions) ... ok\ntest_archive_contains_native_resources_licenses_and_matching_manifest (test_release.ReleaseTests.test_archive_contains_native_resources_licenses_and_matching_manifest) ... ok\ntest_extractor_rejects_traversal_and_links (test_release.ReleaseTests.test_extractor_rejects_traversal_and_links) ... ok\ntest_header_reader_recognizes_macos_architectures (test_release.ReleaseTests.test_header_reader_recognizes_macos_architectures) ... ok\ntest_launcher_handles_relative_symlink_chain_on_path (test_release.ReleaseTests.test_launcher_handles_relative_symlink_chain_on_path) ... ok\ntest_launcher_preserves_home_cache_and_llvm_overrides (test_release.ReleaseTests.test_launcher_preserves_home_cache_and_llvm_overrides) ... ok\ntest_launcher_remains_usable_after_relocation_and_preserves_arguments (test_release.ReleaseTests.test_launcher_remains_usable_after_relocation_and_preserves_arguments) ... ok\ntest_manifest_detects_corruption_and_extra_files (test_release.ReleaseTests.test_manifest_detects_corruption_and_extra_files) ... ok\ntest_manifest_detects_incorrect_target (test_release.ReleaseTests.test_manifest_detects_incorrect_target) ... ok\ntest_manifest_metadata_matches_native_version_resources (test_release.ReleaseTests.test_manifest_metadata_matches_native_version_resources) ... ok\ntest_missing_and_nonexecutable_inputs_fail_without_archive (test_release.ReleaseTests.test_missing_and_nonexecutable_inputs_fail_without_archive) ... ok\ntest_only_runtime_sources_and_provenance_are_packaged (test_release.ReleaseTests.test_only_runtime_sources_and_provenance_are_packaged) ... ok\ntest_rejects_script_instead_of_native_compiler (test_release.ReleaseTests.test_rejects_script_instead_of_native_compiler) ... ok\ntest_rejects_symlinked_resources_without_output (test_release.ReleaseTests.test_rejects_symlinked_resources_without_output) ... ok\ntest_rejects_target_mismatch_and_invalid_metadata (test_release.ReleaseTests.test_rejects_target_mismatch_and_invalid_metadata) ... ok\ntest_requested_version_replaces_source_metadata_and_is_hashed (test_release.ReleaseTests.test_requested_version_replaces_source_metadata_and_is_hashed) ... ok\ntest_all_workflows_required (test_release_gate.ReleaseGateTests.test_all_workflows_required) ... ok\ntest_annotated_tag_resolves_to_exact_commit (test_release_gate.ReleaseGateTests.test_annotated_tag_resolves_to_exact_commit) ... ok\ntest_cancelled_run_blocks (test_release_gate.ReleaseGateTests.test_cancelled_run_blocks) ... ok\ntest_existing_tag_must_match_release_commit (test_release_gate.ReleaseGateTests.test_existing_tag_must_match_release_commit) ... ok\ntest_latest_never_moves_backwards_or_to_prerelease (test_release_gate.ReleaseGateTests.test_latest_never_moves_backwards_or_to_prerelease) ... ok\ntest_new_version_or_draft_can_proceed (test_release_gate.ReleaseGateTests.test_new_version_or_draft_can_proceed) ... ok\ntest_newest_run_overrides_stale_success (test_release_gate.ReleaseGateTests.test_newest_run_overrides_stale_success) ... ok\ntest_other_commits_branches_and_prs_do_not_count (test_release_gate.ReleaseGateTests.test_other_commits_branches_and_prs_do_not_count) ... ok\ntest_published_version_cannot_be_replaced (test_release_gate.ReleaseGateTests.test_published_version_cannot_be_replaced) ... ok\ntest_source_wheel_packages_are_required (test_release_gate.ReleaseGateTests.test_source_wheel_packages_are_required) ... ok\ntest_timeout_names_the_missing_workflow (test_release_gate.ReleaseGateTests.test_timeout_names_the_missing_workflow) ... ok\ntest_unresolved_draft_must_target_exact_source_commit (test_release_gate.ReleaseGateTests.test_unresolved_draft_must_target_exact_source_commit) ... ok\ntest_equal_latest_repairs_interrupted_registry_promotion (test_release_promotion.PromotionTests.test_equal_latest_repairs_interrupted_registry_promotion) ... ok\ntest_older_version_never_replaces_latest (test_release_promotion.PromotionTests.test_older_version_never_replaces_latest) ... ok\ntest_push_failure_can_be_retried_without_republication (test_release_promotion.PromotionTests.test_push_failure_can_be_retried_without_republication) ... ok\ntest_source_and_version_mismatches_block_promotion (test_release_promotion.PromotionTests.test_source_and_version_mismatches_block_promotion) ... ok\ntest_unpublished_or_prerelease_is_rejected_before_registry_access (test_release_promotion.PromotionTests.test_unpublished_or_prerelease_is_rejected_before_registry_access) ... ok\n\n----------------------------------------------------------------------\nRan 33 tests in 0.482s\n\nOK\n",
+      "stdout": "Promoted v0.2.0: Docker and GitHub latest match commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nA newer stable version is already latest; nothing to change\n"
+    },
+    {
+      "command": [
+        "/root/.local/bin/python3.13",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools",
+        "-p",
+        "test_workflow_limits.py",
+        "-v"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "passed": true,
+      "stderr": "test_found (test_workflow_limits.LimitTests.test_found) ... ok\ntest_limits (test_workflow_limits.LimitTests.test_limits) ... ok\ntest_own_limits_current (test_workflow_limits.LimitTests.test_own_limits_current) ... ok\ntest_jobs (test_workflow_limits.ParseTests.test_jobs) ... ok\n\n----------------------------------------------------------------------\nRan 4 tests in 0.004s\n\nOK\n",
+      "stdout": ""
+    },
+    {
+      "command": [
+        "sh",
+        "-n",
+        "tools/docker_smoke.sh"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "passed": true,
+      "stderr": "",
+      "stdout": ""
+    },
+    {
+      "command": [
+        "/root/.local/bin/python3.13",
+        "-B",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-762-recovered/tests/lib_difflib.py"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "passed": true,
+      "stderr": "",
+      "stdout": "0.75 0.75 1.0\n[Match(a=1, b=0, size=3), Match(a=4, b=4, size=0)]\n[('delete', 0, 1, 0, 0), ('equal', 1, 4, 0, 3), ('insert', 4, 4, 3, 4)]\n0.995025 0.995025 0.995025\n[Match(a=0, b=1, size=100), Match(a=100, b=101, size=0)]\n[('insert', 0, 0, 0, 1), ('equal', 0, 100, 1, 101)]\n0.995025 0.995025 0.995025\n[Match(a=0, b=0, size=50), Match(a=50, b=51, size=50), Match(a=100, b=101, size=0)]\n[('equal', 0, 50, 0, 50), ('insert', 50, 50, 50, 51), ('equal', 50, 100, 51, 101)]\n0.993789 0.993789 0.993789\n[Match(a=0, b=0, size=40), Match(a=41, b=40, size=40), Match(a=81, b=80, size=0)]\n[('equal', 0, 40, 0, 40), ('delete', 40, 41, 40, 40), ('equal', 41, 81, 40, 80)]\n0.666667 0.666667 1.0\n[Match(a=1, b=0, size=2), Match(a=4, b=3, size=2), Match(a=6, b=6, size=0)]\n[('delete', 0, 1, 0, 0), ('equal', 1, 3, 0, 2), ('replace', 3, 4, 2, 3), ('equal', 4, 6, 3, 5), ('insert', 6, 6, 5, 6)]\n1.0 1.0 1.0\n[Match(a=0, b=0, size=0)]\n[]\n0.0 0.0 0.0\n[Match(a=3, b=0, size=0)]\n[('delete', 0, 3, 0, 0)]\n0.0 0.0 0.0\n[Match(a=0, b=3, size=0)]\n[('insert', 0, 0, 0, 3)]\n1.0 1.0 1.0\n[Match(a=0, b=0, size=9), Match(a=9, b=9, size=0)]\n[('equal', 0, 9, 0, 9)]\n0.866 [Match(a=0, b=0, size=8), Match(a=8, b=17, size=21), Match(a=29, b=38, size=0)] [' ']\nMatch(a=0, b=4, size=5) Match(a=0, b=4, size=5)\nMatch(a=1, b=0, size=4) Match(a=1, b=0, size=4) Match(a=0, b=4, size=3)\n[' ', 'b'] 0.434783 [('equal', 0, 40, 0, 40), ('replace', 40, 80, 40, 104)]\n0.0 ['b'] [('replace', 0, 200, 0, 201)]\n0.997506 [] [('insert', 0, 0, 0, 1), ('equal', 0, 200, 1, 201)]\n0.533333 0.666667 0.933333\n[Match(a=0, b=1, size=1), Match(a=3, b=4, size=1), Match(a=5, b=5, size=2), Match(a=7, b=8, size=0)]\n[('insert', 0, 0, 0, 1), ('equal', 0, 1, 1, 2), ('replace', 1, 3, 2, 4), ('equal', 3, 4, 4, 5), ('delete', 4, 5, 5, 5), ('equal', 5, 7, 5, 7), ('insert', 7, 7, 7, 8)]\n[('insert', 0, 0, 0, 1), ('equal', 0, 1, 1, 2), ('replace', 1, 4, 2, 3), ('equal', 4, 5, 3, 4), ('insert', 5, 5, 4, 5), ('equal', 5, 7, 5, 7), ('insert', 7, 7, 7, 8)] ['\\n']\ninsert  a[0:0] [] b[0:1] ['zero\\n']\nequal   a[0:1] ['one\\n'] b[1:2] ['one\\n']\nreplace a[1:4] ['two\\n', 'three\\n', '\\n'] b[2:3] ['tree\\n']\nequal   a[4:5] ['four\\n'] b[3:4] ['four\\n']\ninsert  a[5:5] [] b[4:5] ['\\n']\nequal   a[5:7] ['five\\n', 'six\\n'] b[5:7] ['five\\n', 'six\\n']\ninsert  a[7:7] [] b[7:8] ['seven\\n']\n1.0 1.0 1.0\n[Match(a=0, b=0, size=0)]\n[]\n0.0 0.0 0.0\n[Match(a=7, b=0, size=0)]\n[('delete', 0, 7, 0, 0)]\nTrue True [2, 2, 0]\n0.75 [('insert', 0, 0, 0, 1), ('equal', 0, 3, 1, 4), ('delete', 3, 4, 4, 4)]\n0.75 [('insert', 0, 0, 0, 1), ('equal', 0, 3, 1, 4), ('delete', 3, 4, 4, 4)]\n0.615385 0.615385 0.923077\n[Match(a=1, b=1, size=3), Match(a=5, b=5, size=1), Match(a=6, b=7, size=0)]\n[('replace', 0, 1, 0, 1), ('equal', 1, 4, 1, 4), ('replace', 4, 5, 4, 5), ('equal', 5, 6, 5, 6), ('insert', 6, 6, 6, 7)]\n1 1 3 3 True 3\n1 1 3\n['apple', 'ape']\n['appeal', 'apply', 'apple'] ['appeal', 'apply', 'apple', 'ape', 'apples']\n['appeal', 'apply'] [] ['peach']\n['wheel', 'where', 'while'] []\nValueError: n must be > 0: 0\nValueError: n must be > 0: -1\nValueError: cutoff must be in [0.0, 1.0]: 1.5\nValueError: cutoff must be in [0.0, 1.0]: -0.1\nTrue True False False\nTrue True False True\n[('equal', 0, 2, 0, 2), ('insert', 2, 2, 2, 3), ('equal', 2, 3, 3, 4), ('replace', 3, 4, 4, 5), ('equal', 4, 5, 5, 6)] [' ']\n[('equal', 0, 1, 0, 1), ('delete', 1, 2, 1, 1), ('equal', 2, 3, 1, 2), ('insert', 3, 3, 2, 3)]\n[('equal', 0, 1, 0, 1), ('delete', 1, 2, 1, 1), ('equal', 2, 3, 1, 2), ('insert', 3, 3, 2, 4)] ['  \\n', '#\\n']\nequal replace equal insert equal equal replace equal insert equal\nTrue 5\n",
+      "recording_matches": true
+    },
+    {
+      "command": [
+        "/root/.local/bin/python3.13",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-762-recovered/tests/lib_difflib.py"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "passed": true,
+      "stderr": "",
+      "stdout_bytes": 1781960,
+      "stdout_sha256": "e97d82a6fd66f234fb2afd8de0fee59f456d801dbaa9dfa9ccb27e2f0cfdd483"
+    },
+    {
+      "command": [
+        "/root/.local/bin/python3.13",
+        "-B",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-762-recovered/tests/lib_difflib_grouped.py"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "passed": true,
+      "stderr": "",
+      "stdout": "[('equal', 0, 1, 0, 1), ('replace', 1, 2, 1, 2), ('equal', 2, 3, 2, 3)]\n[('equal', 8, 9, 8, 9), ('replace', 9, 10, 9, 11)]\n[[('equal', 2, 2, 2, 2), ('replace', 2, 3, 2, 3), ('equal', 3, 3, 3, 3)]]\n[]\n2\n",
+      "recording_matches": true
+    },
+    {
+      "command": [
+        "/root/.local/bin/python3.13",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-762-recovered/tests/lib_difflib_grouped.py"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "passed": true,
+      "stderr": "",
+      "stdout_bytes": 847241,
+      "stdout_sha256": "4e5f5247a9e3c7e1a9c37b6cb0196ba4f25ba07cb11350e88d69ef44c965ca4b"
+    },
+    {
+      "command": [
+        "/root/.local/bin/python3.13",
+        "-B",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-762-recovered/tests/lib_difflib_unified.py"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "passed": true,
+      "stderr": "",
+      "stdout": "--- \n+++ \n@@ -1,8 +1,9 @@\n one\n-two\n+tree\n three\n four\n five\n six\n seven\n eight\n+nine\n--- a.txt\t2026-10-19\n+++ b.txt\t2026-10-20\n@@ -1,8 +1,9 @@\n one\n-two\n+tree\n three\n four\n five\n six\n seven\n eight\n+nine\n--- \n+++ \n@@ -2 +2 @@\n-two\n+tree\n@@ -8,0 +9 @@\n+nine\n--- \n+++ \n@@ -1,3 +1,3 @@\n one\n-two\n+tree\n three\n@@ -8 +8,2 @@\n eight\n+nine\n['--- ', '+++ ', '@@ -1 +1 @@', '-x', '+y']\n[]\n['--- \\n', '+++ \\n', '@@ -0,0 +1 @@\\n', '+only\\n']\n['--- \\n', '+++ \\n', '@@ -1 +0,0 @@\\n', '-only\\n']\none\ntwo\nthree\none\ntree\nthree\nfour\n",
+      "recording_matches": true
+    },
+    {
+      "command": [
+        "/root/.local/bin/python3.13",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-762-recovered/tests/lib_difflib_unified.py"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "passed": true,
+      "stderr": "",
+      "stdout_bytes": 830301,
+      "stdout_sha256": "1b5df53e1dd8df37c8b3900b50baddce22fc04bcefa35c21526f3a2b2a708179"
+    },
+    {
+      "command": [
+        "/root/.local/bin/python3.13",
+        "-B",
+        "/tmp/audit-release-probes-3_8lhi5n/context_diff.py"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "passed": true,
+      "stderr": "",
+      "stdout": "['*** \\n', '--- \\n', '***************\\n', '*** 1 ****\\n', '! a\\n', '--- 1 ----\\n', '! b\\n']\n"
+    },
+    {
+      "command": [
+        "/root/.local/bin/python3.13",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "/tmp/audit-release-probes-3_8lhi5n/context_diff.py"
+      ],
+      "exit": 1,
+      "expected_exit": 1,
+      "passed": true,
+      "stderr": "lib/difflib.py:1249: error: keyword argument 'insert' of dict() is not supported (compiling difflib.context_diff(list[str], list[str], str, str, str, str, int, str) for the call at /tmp/audit-release-probes-3_8lhi5n/context_diff.py:2)\n",
+      "stdout_bytes": 0,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": [
+        "/root/.local/bin/python3.13",
+        "-B",
+        "/tmp/audit-release-probes-3_8lhi5n/ndiff.py"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "passed": true,
+      "stderr": "",
+      "stdout": "['- a\\n', '+ b\\n']\n"
+    },
+    {
+      "command": [
+        "/root/.local/bin/python3.13",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "/tmp/audit-release-probes-3_8lhi5n/ndiff.py"
+      ],
+      "exit": 1,
+      "expected_exit": 1,
+      "passed": true,
+      "stderr": "lib/difflib.py:981: error: cannot infer what _fancy_helper() yields: it calls itself before its first yield; annotate its return type (-> Iterator[T]) (compiling difflib.Differ._fancy_replace(list[str], int, int, list[str], int, int | None) for the call at lib/difflib.py:1015; compiling difflib.Differ._fancy_helper(list[str], int, int, list[str], int, int | None) for the call at lib/difflib.py:981; compiling difflib.Differ._fancy_replace(list[str], int, int, list[str], int, int) for the call at lib/difflib.py:886; compiling difflib.Differ.compare(list[str], list[str]) for the call at lib/difflib.py:1362; compiling difflib.ndiff(list[str], list[str], None, fn[f:difflib.IS_CHARACTER_JUNK]) for the call at /tmp/audit-release-probes-3_8lhi5n/ndiff.py:2)\n",
+      "stdout_bytes": 0,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": [
+        "/root/.local/bin/python3.13",
+        "-B",
+        "/tmp/audit-release-probes-3_8lhi5n/Differ.py"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "passed": true,
+      "stderr": "",
+      "stdout": "['- a\\n', '+ b\\n']\n"
+    },
+    {
+      "command": [
+        "/root/.local/bin/python3.13",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "/tmp/audit-release-probes-3_8lhi5n/Differ.py"
+      ],
+      "exit": 1,
+      "expected_exit": 1,
+      "passed": true,
+      "stderr": "lib/difflib.py:981: error: cannot infer what _fancy_helper() yields: it calls itself before its first yield; annotate its return type (-> Iterator[T]) (compiling difflib.Differ._fancy_replace(list[str], int, int, list[str], int, int | None) for the call at lib/difflib.py:1015; compiling difflib.Differ._fancy_helper(list[str], int, int, list[str], int, int | None) for the call at lib/difflib.py:981; compiling difflib.Differ._fancy_replace(list[str], int, int, list[str], int, int) for the call at lib/difflib.py:886; compiling difflib.Differ.compare(list[str], list[str]) for the call at /tmp/audit-release-probes-3_8lhi5n/Differ.py:2)\n",
+      "stdout_bytes": 0,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": [
+        "/root/.local/bin/python3.13",
+        "-B",
+        "/tmp/audit-release-probes-3_8lhi5n/HtmlDiff.py"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "passed": true,
+      "stderr": "",
+      "stdout": "\n    <table class=\"diff\" id=\"difflib_chg_to0__top\"\n           cellspacing=\"0\" cellpadding=\"0\" rules=\"groups\" >\n        <colgroup></colgroup> <colgroup></colgroup> <colgroup></colgroup>\n        <colgroup></colgroup> <colgroup></colgroup> <colgroup></colgroup>\n        \n        <tbody>\n            <tr><td class=\"diff_next\" id=\"difflib_chg_to0__0\"><a href=\"#difflib_chg_to0__top\">t</a></td><td class=\"diff_header\" id=\"from0_1\">1</td><td nowrap=\"nowrap\"><span class=\"diff_sub\">a</span></td><td class=\"diff_next\"><a href=\"#difflib_chg_to0__top\">t</a></td><td class=\"diff_header\" id=\"to0_1\">1</td><td nowrap=\"nowrap\"><span class=\"diff_add\">b</span></td></tr>\n        </tbody>\n    </table>\n"
+    },
+    {
+      "command": [
+        "/root/.local/bin/python3.13",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "/tmp/audit-release-probes-3_8lhi5n/HtmlDiff.py"
+      ],
+      "exit": 1,
+      "expected_exit": 1,
+      "passed": true,
+      "stderr": "/tmp/audit-release-probes-3_8lhi5n/HtmlDiff.py:2: error: class difflib.HtmlDiff is not supported: cannot infer the type of class attribute '_file_template'\n",
+      "stdout_bytes": 0,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "provenance_controls": [
+    {
+      "case": "clean tracked fixture",
+      "passed": true
+    },
+    {
+      "case": "lib/untracked.py",
+      "passed": true,
+      "snapshot": {
+        "revision": "a1b0ec200d6b492130dc92457137ba1fc612af62",
+        "tree": "d84f84c26a2648d75f92c89f1297847a306527a7",
+        "status_including_untracked": "?? lib/untracked.py\n",
+        "ignored_paths": [],
+        "clean_before_generation": false
+      }
+    },
+    {
+      "case": "tests/untracked.py",
+      "passed": true,
+      "snapshot": {
+        "revision": "a1b0ec200d6b492130dc92457137ba1fc612af62",
+        "tree": "d84f84c26a2648d75f92c89f1297847a306527a7",
+        "status_including_untracked": "?? tests/untracked.py\n",
+        "ignored_paths": [],
+        "clean_before_generation": false
+      }
+    },
+    {
+      "case": "ignored.py",
+      "passed": true,
+      "snapshot": {
+        "revision": "a1b0ec200d6b492130dc92457137ba1fc612af62",
+        "tree": "d84f84c26a2648d75f92c89f1297847a306527a7",
+        "status_including_untracked": "",
+        "ignored_paths": [
+          "ignored.py"
+        ],
+        "clean_before_generation": false
+      }
+    },
+    {
+      "case": "modified tracked input",
+      "passed": true,
+      "snapshot": {
+        "revision": "a1b0ec200d6b492130dc92457137ba1fc612af62",
+        "tree": "d84f84c26a2648d75f92c89f1297847a306527a7",
+        "status_including_untracked": " M tracked.py\n",
+        "ignored_paths": [],
+        "clean_before_generation": false
+      }
+    }
+  ],
+  "fixture_sha256": {
+    "tests/lib_difflib.py": "661ea81e37da91888320758d0e2b5d8b5e537dfe09408452ce092625ca825ee2",
+    "tests/lib_difflib_grouped.py": "4570911b523c7da3ff9cca7280a22bcb598c8e90341aa4fc7828aea33ad5cd7c",
+    "tests/lib_difflib_unified.py": "4b450f9e37bd4757312346bb18c8f0acde320f630d2914f0eaf69f0c73a952c1"
+  },
+  "boundary_programs": {
+    "context_diff": "import difflib\nprint(list(difflib.context_diff(['a\\n'], ['b\\n'])))\n",
+    "ndiff": "import difflib\nprint(list(difflib.ndiff(['a\\n'], ['b\\n'])))\n",
+    "Differ": "import difflib\nprint(list(difflib.Differ().compare(['a\\n'], ['b\\n'])))\n",
+    "HtmlDiff": "import difflib\nprint(difflib.HtmlDiff().make_table(['a'], ['b']))\n"
+  },
+  "source_after": {
+    "revision": "afb59cd3c32eecaa38e4dd6b38ccff17f020ba24",
+    "tree": "d7b582fa8b1a1101292ca5bc31d87a8835c22d4d",
+    "status_including_untracked": "",
+    "ignored_paths": [],
+    "clean_before_generation": true
+  },
+  "all_selected_hosted_checks_pass": true,
+  "recorded_utc": "2026-10-20",
+  "previous_evaluated_main": "3c63613b9ad4748dfc030fc923f7704e26b21ba9",
+  "pr": 762,
+  "implementation_head": "e4613eda2d2f3fa3386e477a2a434a35f1c9ed6e",
+  "merge_and_implementation_tree": "d7b582fa8b1a1101292ca5bc31d87a8835c22d4d",
+  "historical_ci": {
+    "source_head": "e4613eda2d2f3fa3386e477a2a434a35f1c9ed6e",
+    "not_local_execution": true,
+    "runs": [
+      39382506256,
+      39382506161,
+      39382506335,
+      39382506187,
+      39382506276
+    ],
+    "release_jobs": [
+      {
+        "id": 118494594235,
+        "name": "prepare",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 39382506187,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Resolve immutable source and release version",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "Require green CI on the release commit",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 4
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 8
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 9
+          }
+        ]
+      },
+      {
+        "id": 118494644827,
+        "name": "container",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 39382506187,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Run docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "Build the Linux amd64 image",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4
+          },
+          {
+            "name": "Test JIT/AOT and bind mounts as an unprivileged user",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5
+          },
+          {
+            "name": "Save the tested image for publication",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6
+          },
+          {
+            "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 7
+          },
+          {
+            "name": "Post Run docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 13
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 14
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 15
+          }
+        ]
+      },
+      {
+        "id": 118494644834,
+        "name": "Binary (macos-arm64)",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 39382506187,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "LLVM 18 (Linux)",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 4
+          },
+          {
+            "name": "LLVM 20 (macOS)",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5
+          },
+          {
+            "name": "Bootstrap, package, and test relocation without Python",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6
+          },
+          {
+            "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 7
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 13
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 14
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 15
+          }
+        ]
+      },
+      {
+        "id": 118494644845,
+        "name": "Binary (linux-x86_64)",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 39382506187,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "LLVM 18 (Linux)",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4
+          },
+          {
+            "name": "LLVM 20 (macOS)",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 5
+          },
+          {
+            "name": "Bootstrap, package, and test relocation without Python",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6
+          },
+          {
+            "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 7
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 13
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 14
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 15
+          }
+        ]
+      },
+      {
+        "id": 118494644864,
+        "name": "Binary (macos-x86_64)",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 39382506187,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "LLVM 18 (Linux)",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 4
+          },
+          {
+            "name": "LLVM 20 (macOS)",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5
+          },
+          {
+            "name": "Bootstrap, package, and test relocation without Python",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6
+          },
+          {
+            "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 7
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 13
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 14
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 15
+          }
+        ]
+      },
+      {
+        "id": 118497049957,
+        "name": "publish",
+        "status": "completed",
+        "conclusion": "skipped",
+        "run_id": 39382506187,
+        "logs_url": null,
+        "steps": null
+      }
+    ],
+    "ci_jobs": [
+      {
+        "id": 118494595162,
+        "name": "upstream large regex (JIT and AOT, normal GC)",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 39382506276,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "Run tools/setup.sh --minimal",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4
+          },
+          {
+            "name": "Run make port-check-large",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 9
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 10
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 11
+          }
+        ]
+      },
+      {
+        "id": 118494595324,
+        "name": "upstream port preservation (CPython)",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 39382506276,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "Run make port-check",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4
+          },
+          {
+            "name": "Upload port report",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 9
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 10
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 11
+          }
+        ]
+      },
+      {
+        "id": 118494595361,
+        "name": "verify (bootstrap)",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 39382506276,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "Run tools/setup.sh --minimal",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4
+          },
+          {
+            "name": "Verify compiler and runtime fixed points",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5
+          },
+          {
+            "name": "Package verified bootstrap",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6
+          },
+          {
+            "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 7
+          },
+          {
+            "name": "Upload bootstrap report",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 8
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 15
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 16
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 17
+          }
+        ]
+      },
+      {
+        "id": 118495280950,
+        "name": "verify (hosted-2)",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 39382506276,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "LLVM 18 toolchain",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4
+          },
+          {
+            "name": "Download verified bootstrap",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5
+          },
+          {
+            "name": "Verify group",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6
+          },
+          {
+            "name": "Extended subset benchmark correctness",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 7
+          },
+          {
+            "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 8
+          },
+          {
+            "name": "Upload group report",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 9
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 17
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 18
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 19
+          }
+        ]
+      },
+      {
+        "id": 118495280956,
+        "name": "verify (opt-off-0)",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 39382506276,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "LLVM 18 toolchain",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4
+          },
+          {
+            "name": "Download verified bootstrap",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5
+          },
+          {
+            "name": "Verify group",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6
+          },
+          {
+            "name": "Extended subset benchmark correctness",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 7
+          },
+          {
+            "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 8
+          },
+          {
+            "name": "Upload group report",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 9
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 17
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 18
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 19
+          }
+        ]
+      },
+      {
+        "id": 118495280969,
+        "name": "verify (hosted-1)",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 39382506276,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "LLVM 18 toolchain",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4
+          },
+          {
+            "name": "Download verified bootstrap",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5
+          },
+          {
+            "name": "Verify group",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6
+          },
+          {
+            "name": "Extended subset benchmark correctness",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 7
+          },
+          {
+            "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 8
+          },
+          {
+            "name": "Upload group report",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 9
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 17
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 18
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 19
+          }
+        ]
+      },
+      {
+        "id": 118495280986,
+        "name": "verify (hosted-0)",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 39382506276,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "LLVM 18 toolchain",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4
+          },
+          {
+            "name": "Download verified bootstrap",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5
+          },
+          {
+            "name": "Verify group",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6
+          },
+          {
+            "name": "Extended subset benchmark correctness",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 7
+          },
+          {
+            "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 8
+          },
+          {
+            "name": "Upload group report",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 9
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 17
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 18
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 19
+          }
+        ]
+      },
+      {
+        "id": 118495280992,
+        "name": "verify (native-1)",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 39382506276,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "LLVM 18 toolchain",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4
+          },
+          {
+            "name": "Download verified bootstrap",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5
+          },
+          {
+            "name": "Verify group",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6
+          },
+          {
+            "name": "Extended subset benchmark correctness",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 7
+          },
+          {
+            "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 8
+          },
+          {
+            "name": "Upload group report",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 9
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 17
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 18
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 19
+          }
+        ]
+      },
+      {
+        "id": 118495281001,
+        "name": "verify (python-free-2)",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 39382506276,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "LLVM 18 toolchain",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4
+          },
+          {
+            "name": "Download verified bootstrap",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5
+          },
+          {
+            "name": "Verify group",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6
+          },
+          {
+            "name": "Extended subset benchmark correctness",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 7
+          },
+          {
+            "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 8
+          },
+          {
+            "name": "Upload group report",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 9
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 17
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 18
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 19
+          }
+        ]
+      },
+      {
+        "id": 118495281016,
+        "name": "verify (python-free-0)",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 39382506276,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "LLVM 18 toolchain",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4
+          },
+          {
+            "name": "Download verified bootstrap",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5
+          },
+          {
+            "name": "Verify group",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6
+          },
+          {
+            "name": "Extended subset benchmark correctness",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 7
+          },
+          {
+            "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 8
+          },
+          {
+            "name": "Upload group report",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 9
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 17
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 18
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 19
+          }
+        ]
+      },
+      {
+        "id": 118495281029,
+        "name": "verify (python-free-1)",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 39382506276,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "LLVM 18 toolchain",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4
+          },
+          {
+            "name": "Download verified bootstrap",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5
+          },
+          {
+            "name": "Verify group",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6
+          },
+          {
+            "name": "Extended subset benchmark correctness",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 7
+          },
+          {
+            "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 8
+          },
+          {
+            "name": "Upload group report",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 9
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 17
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 18
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 19
+          }
+        ]
+      },
+      {
+        "id": 118495281033,
+        "name": "verify (ubsan-0)",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 39382506276,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "LLVM 18 toolchain",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4
+          },
+          {
+            "name": "Download verified bootstrap",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5
+          },
+          {
+            "name": "Verify group",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6
+          },
+          {
+            "name": "Extended subset benchmark correctness",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 7
+          },
+          {
+            "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 8
+          },
+          {
+            "name": "Upload group report",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 9
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 17
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 18
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 19
+          }
+        ]
+      },
+      {
+        "id": 118495281034,
+        "name": "verify (gc-jit-0)",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 39382506276,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "LLVM 18 toolchain",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4
+          },
+          {
+            "name": "Download verified bootstrap",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5
+          },
+          {
+            "name": "Verify group",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6
+          },
+          {
+            "name": "Extended subset benchmark correctness",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 7
+          },
+          {
+            "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 8
+          },
+          {
+            "name": "Upload group report",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 9
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 17
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 18
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 19
+          }
+        ]
+      },
+      {
+        "id": 118495281056,
+        "name": "verify (ubsan-2)",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 39382506276,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "LLVM 18 toolchain",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4
+          },
+          {
+            "name": "Download verified bootstrap",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5
+          },
+          {
+            "name": "Verify group",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6
+          },
+          {
+            "name": "Extended subset benchmark correctness",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 7
+          },
+          {
+            "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 8
+          },
+          {
+            "name": "Upload group report",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 9
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 17
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 18
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 19
+          }
+        ]
+      },
+      {
+        "id": 118495281078,
+        "name": "verify (gc-aot-1)",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 39382506276,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "LLVM 18 toolchain",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4
+          },
+          {
+            "name": "Download verified bootstrap",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5
+          },
+          {
+            "name": "Verify group",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6
+          },
+          {
+            "name": "Extended subset benchmark correctness",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 7
+          },
+          {
+            "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 8
+          },
+          {
+            "name": "Upload group report",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 9
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 17
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 18
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 19
+          }
+        ]
+      },
+      {
+        "id": 118495281096,
+        "name": "verify (gc-self)",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 39382506276,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "LLVM 18 toolchain",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4
+          },
+          {
+            "name": "Download verified bootstrap",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5
+          },
+          {
+            "name": "Verify group",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6
+          },
+          {
+            "name": "Extended subset benchmark correctness",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 7
+          },
+          {
+            "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 8
+          },
+          {
+            "name": "Upload group report",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 9
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 17
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 18
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 19
+          }
+        ]
+      },
+      {
+        "id": 118495281100,
+        "name": "verify (opt-off-1)",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 39382506276,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "LLVM 18 toolchain",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4
+          },
+          {
+            "name": "Download verified bootstrap",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5
+          },
+          {
+            "name": "Verify group",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6
+          },
+          {
+            "name": "Extended subset benchmark correctness",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 7
+          },
+          {
+            "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 8
+          },
+          {
+            "name": "Upload group report",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 9
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 17
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 18
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 19
+          }
+        ]
+      },
+      {
+        "id": 118495281145,
+        "name": "verify (ubsan-1)",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 39382506276,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "LLVM 18 toolchain",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4
+          },
+          {
+            "name": "Download verified bootstrap",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5
+          },
+          {
+            "name": "Verify group",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6
+          },
+          {
+            "name": "Extended subset benchmark correctness",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 7
+          },
+          {
+            "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 8
+          },
+          {
+            "name": "Upload group report",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 9
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 17
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 18
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 19
+          }
+        ]
+      },
+      {
+        "id": 118495281158,
+        "name": "verify (native-0)",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 39382506276,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "LLVM 18 toolchain",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4
+          },
+          {
+            "name": "Download verified bootstrap",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5
+          },
+          {
+            "name": "Verify group",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6
+          },
+          {
+            "name": "Extended subset benchmark correctness",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 7
+          },
+          {
+            "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 8
+          },
+          {
+            "name": "Upload group report",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 9
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 17
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 18
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 19
+          }
+        ]
+      },
+      {
+        "id": 118495281179,
+        "name": "verify (gc-aot-2)",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 39382506276,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "LLVM 18 toolchain",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4
+          },
+          {
+            "name": "Download verified bootstrap",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5
+          },
+          {
+            "name": "Verify group",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6
+          },
+          {
+            "name": "Extended subset benchmark correctness",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 7
+          },
+          {
+            "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 8
+          },
+          {
+            "name": "Upload group report",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 9
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 17
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 18
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 19
+          }
+        ]
+      },
+      {
+        "id": 118495281198,
+        "name": "verify (contracts)",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 39382506276,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "LLVM 18 toolchain",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4
+          },
+          {
+            "name": "Download verified bootstrap",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5
+          },
+          {
+            "name": "Verify group",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6
+          },
+          {
+            "name": "Extended subset benchmark correctness",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 7
+          },
+          {
+            "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 8
+          },
+          {
+            "name": "Upload group report",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 9
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 17
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 18
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 19
+          }
+        ]
+      },
+      {
+        "id": 118495281212,
+        "name": "verify (scaling-1)",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 39382506276,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "LLVM 18 toolchain",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4
+          },
+          {
+            "name": "Download verified bootstrap",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5
+          },
+          {
+            "name": "Verify group",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6
+          },
+          {
+            "name": "Extended subset benchmark correctness",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 7
+          },
+          {
+            "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 8
+          },
+          {
+            "name": "Upload group report",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 9
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 17
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 18
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 19
+          }
+        ]
+      },
+      {
+        "id": 118495281216,
+        "name": "verify (gc-aot-0)",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 39382506276,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "LLVM 18 toolchain",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4
+          },
+          {
+            "name": "Download verified bootstrap",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5
+          },
+          {
+            "name": "Verify group",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6
+          },
+          {
+            "name": "Extended subset benchmark correctness",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 7
+          },
+          {
+            "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 8
+          },
+          {
+            "name": "Upload group report",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 9
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 17
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 18
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 19
+          }
+        ]
+      },
+      {
+        "id": 118495281228,
+        "name": "verify (benchmarks)",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 39382506276,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "LLVM 18 toolchain",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4
+          },
+          {
+            "name": "Download verified bootstrap",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5
+          },
+          {
+            "name": "Verify group",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6
+          },
+          {
+            "name": "Extended subset benchmark correctness",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 7
+          },
+          {
+            "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 8
+          },
+          {
+            "name": "Upload group report",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 9
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 17
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 18
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 19
+          }
+        ]
+      },
+      {
+        "id": 118495281353,
+        "name": "verify (runtime-cache)",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 39382506276,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "LLVM 18 toolchain",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4
+          },
+          {
+            "name": "Download verified bootstrap",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5
+          },
+          {
+            "name": "Verify group",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6
+          },
+          {
+            "name": "Extended subset benchmark correctness",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 7
+          },
+          {
+            "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 8
+          },
+          {
+            "name": "Upload group report",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 9
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 17
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 18
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 19
+          }
+        ]
+      },
+      {
+        "id": 118495281542,
+        "name": "verify (gc-jit-1)",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 39382506276,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "LLVM 18 toolchain",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4
+          },
+          {
+            "name": "Download verified bootstrap",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5
+          },
+          {
+            "name": "Verify group",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6
+          },
+          {
+            "name": "Extended subset benchmark correctness",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 7
+          },
+          {
+            "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 8
+          },
+          {
+            "name": "Upload group report",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 9
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 17
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 18
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 19
+          }
+        ]
+      },
+      {
+        "id": 118500329726,
+        "name": "make verify (Linux x86-64, LLVM 18, Python 3.13)",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 39382506276,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "Run actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4
+          },
+          {
+            "name": "Require complete verification reports",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5
+          },
+          {
+            "name": "Require every verification group",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6
+          },
+          {
+            "name": "Upload combined verification report",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 7
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 13
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 14
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 15
+          }
+        ]
+      }
+    ]
+  },
+  "blocker": {
+    "kind": "environment, not compiler failure",
+    "missing": [
+      "native compiler executable",
+      "complete LLVM 18 toolchain"
+    ],
+    "attempt": "apt-get update",
+    "exit": 100,
+    "error": "setgroups: Operation not permitted; setegid/seteuid: Invalid argument; apt HTTPS method exited 112",
+    "action": "No privileged retry or workaround attempted. Local native JIT/AOT and relocated archive smoke remain unrun."
+  },
+  "provenance_correction": "Older dirty/source_dirty=false values obtained with --untracked-files=no establish tracked-file status only. Untracked inputs were not ruled out; pruned historical working trees cannot be retrospectively certified. Original evidence is preserved."
+}

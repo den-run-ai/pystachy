@@ -1,0 +1,229 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-19",
+  "status": "completed",
+  "source_revision": "837843bcc82ae088ad92b61c8fdb0e6eeb37c2ed",
+  "previous_evaluated_main": "b7e869f8e324a30c59cbe36720a0f4d2e9f4f9c1",
+  "merged_pr": 747,
+  "compiler_build_source": "b7e869f8e324a30c59cbe36720a0f4d2e9f4f9c1",
+  "compiler_sha256": "12288231f46f77db1034d1afd59647fabe13e61452fd230577bbc6223897ff84",
+  "compiler_reused": true,
+  "implementation_identity_paths": [
+    "src",
+    "lib",
+    "ports",
+    "runtime.c",
+    "runtime.py",
+    "pystachy.py",
+    "Makefile",
+    "tools",
+    "tests/run.sh"
+  ],
+  "implementation_diff": [],
+  "environment": {
+    "python": "3.13.16 (main, Oct  3 2026, 01:06:22) [Clang 22.1.3 ]",
+    "python_executable": "/root/.local/bin/python3.13",
+    "llvm": "18.1.3",
+    "platform": "Linux-6.18.55-x86_64-with-glibc2.39",
+    "workers": 2,
+    "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-747",
+    "inherited_options": "PYSTACHY_ and COVERAGE_ variables removed; explicit options retained with each command"
+  },
+  "history": [
+    "837843bcc82ae088ad92b61c8fdb0e6eeb37c2ed Merge pull request #747 from den-run-ai/claude/tuple-return-closures"
+  ],
+  "changed_files": [
+    "tests/ir/tuple_return_closures.calls",
+    "tests/ir/tuple_return_closures.py",
+    "tests/tuple_return_closures.out",
+    "tests/tuple_return_closures.py"
+  ],
+  "fixture_sha256": {
+    "tests/tuple_return_closures.py": "95a954832e8dd007a359a6bda32ac6f7fcd9c3f7ae798f0be787420fbb4b318a",
+    "tests/tuple_return_closures.out": "0438f8978130832a6eec90f9b7361c6f2b69d49d4db8ccc4423d648484223eac",
+    "tests/tuple_return_values.py": "470fc3f24083baac8e6cf5e3dadf05be6583fd572b098f50c2e369ec52131964",
+    "tests/tuple_return_values.out": "b80dff414c70218a7f64e31d3a9f63b4718dd68b42764b6bc21ad0d32b31ffa8",
+    "tests/ir/tuple_return_closures.py": "11a1313cfef48599ffc64cce4526eb89aeb575fcd26e29c544d6459246e1943d",
+    "tests/ir/tuple_return_closures.calls": "6b2c6a185b5f72fe1778bceec12e063a657aa6dbf2a381f759727b48568e2b13",
+    "tests/ir/tuple_return.py": "b8bd95123ed3fda18f9b4c7bfdb4a8c7770d6a8b45a000194c1cab3f2c36b6a7",
+    "tests/ir/tuple_return.calls": "bcac192e75f9c95b33988a7a8f6c4c4e27094d677a9f7b559b3fa0448d0bacb3",
+    "tests/run.sh": "f808375aac9ca707ca794cd398bf939163728366ef6c380f6568cb0e531fef8e",
+    "tools/check_ir.sh": "7f339c6cb018031e0d88097180cd7074d48ce04c92c439f05e804c745b49f2f0"
+  },
+  "commands": {
+    "disabled-ir": {
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-686/pystachy",
+        "ir",
+        "tests/ir/tuple_return_closures.py",
+        "-o",
+        "/tmp/tuple-return-contract-sxi_vjir/no-tupleret.ll"
+      ],
+      "environment": {
+        "PYSTACHY_OPT": "-tupleret"
+      },
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "",
+      "wall_seconds": 0.0034244580019731075,
+      "expected_exit": 0
+    },
+    "gc": {
+      "command": [
+        "tests/run.sh",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-686/pystachy",
+        "jit aot",
+        "tests/tuple_return_closures.py",
+        "tests/tuple_return_values.py"
+      ],
+      "environment": {
+        "PYSTACHY_GC_STRESS_PROGRAM": "1"
+      },
+      "returncode": 0,
+      "stdout": "selected 2 cases\n4 passed, 0 failed\n",
+      "stderr": "",
+      "wall_seconds": 7.567978060000314,
+      "expected_exit": 0
+    },
+    "hosted": {
+      "command": [
+        "tests/run.sh",
+        "/root/.local/bin/python3.13 -m pystachy",
+        "jit aot",
+        "tests/tuple_return_closures.py",
+        "tests/tuple_return_values.py"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "selected 2 cases\n4 passed, 0 failed\n",
+      "stderr": "",
+      "wall_seconds": 8.515270159998181,
+      "expected_exit": 0
+    },
+    "ir": {
+      "command": [
+        "tools/check_ir.sh",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-686/pystachy",
+        "tests/ir/tuple_return_closures.py",
+        "tests/ir/tuple_return.py"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "the IR check and llvm-as accept the IR of 2 programs\n",
+      "stderr": "",
+      "wall_seconds": 0.0287801300000865,
+      "expected_exit": 0
+    },
+    "native": {
+      "command": [
+        "tests/run.sh",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-686/pystachy",
+        "jit aot",
+        "tests/tuple_return_closures.py",
+        "tests/tuple_return_values.py"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "selected 2 cases\n4 passed, 0 failed\n",
+      "stderr": "",
+      "wall_seconds": 7.520665780000854,
+      "expected_exit": 0
+    },
+    "negative-contract": {
+      "command": [
+        "tools/check_ir.sh",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-686/pystachy",
+        "/tmp/tuple-return-contract-sxi_vjir/probe.py"
+      ],
+      "environment": {},
+      "returncode": 1,
+      "stdout": "OTHER CALLS /tmp/tuple-return-contract-sxi_vjir/probe.py (than /tmp/tuple-return-contract-sxi_vjir/probe.calls lists)\n13a14\n> @v.f.three: pys_raise\n1 of 1 programs fail: 0 do not compile, the checks reject 1\n",
+      "stderr": "",
+      "wall_seconds": 0.014491892001387896,
+      "expected_exit": 1
+    },
+    "no-tupleret": {
+      "command": [
+        "tests/run.sh",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-686/pystachy",
+        "jit aot",
+        "tests/tuple_return_closures.py",
+        "tests/tuple_return_values.py"
+      ],
+      "environment": {
+        "PYSTACHY_OPT": "-tupleret"
+      },
+      "returncode": 0,
+      "stdout": "selected 2 cases\n4 passed, 0 failed\n",
+      "stderr": "",
+      "wall_seconds": 7.377454282999679,
+      "expected_exit": 0
+    },
+    "noopt": {
+      "command": [
+        "tests/run.sh",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-686/pystachy",
+        "jit aot",
+        "tests/tuple_return_closures.py",
+        "tests/tuple_return_values.py"
+      ],
+      "environment": {
+        "PYSTACHY_OPT": "-all"
+      },
+      "returncode": 0,
+      "stdout": "selected 2 cases\n4 passed, 0 failed\n",
+      "stderr": "",
+      "wall_seconds": 7.5624075620035,
+      "expected_exit": 0
+    },
+    "ref-tuple_return_closures": {
+      "command": [
+        "/root/.local/bin/python3.13",
+        "tests/tuple_return_closures.py",
+        "a1",
+        "a2"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "832040 346266 100 [7, 11, 15, 19, 23]\n2 1\n3 6 7 14\n['s', '[1]0', 'ss', '[2, 2]1', 'sss', '[3, 3, 3]2', 'ssss', '[4, 4, 4, 4]3']\n",
+      "stderr": "",
+      "wall_seconds": 0.010177889998885803,
+      "expected_exit": 0
+    },
+    "ref-tuple_return_values": {
+      "command": [
+        "/root/.local/bin/python3.13",
+        "tests/tuple_return_values.py",
+        "a1",
+        "a2"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "893363\n(12586269025, 20365011074)\n1548008755920 2504730781961 89\n['alpha', 'beta', 'gamma']\nValueError: empty field at 2\n-1.25 9.0 False True\n[2, 2, 2, 7] kk True\n[([0, 0, 0], '', False), ([1, 1, 1], 'k', False), ([2, 2, 2], 'kk', True)]\n8\n13\n(2, 3) True True\nTrue False True\n1 2\n-1 7 (-1, 7)\nValueError: b < 0 ['a=-4', 'b=4', 'a=4']\n20200\n",
+      "stderr": "",
+      "wall_seconds": 0.016769126999861328,
+      "expected_exit": 0
+    }
+  },
+  "negative_control": "Scratch copy omits @v.f.three from .calls; check_ir must reject with OTHER CALLS. No tracked fixture edited.",
+  "optimization_disabled_ir_sha256": "fd819bfa689afaf11457e7542b2a6e6ff3579c96838c46ad062330034aed3583",
+  "optimization_disabled_has_value_bodies": false,
+  "imports": {
+    "native": "143/468",
+    "stub_assisted": "145/468",
+    "exclusions": 54,
+    "inventory": 522,
+    "rerun": false,
+    "reason": "Compiler/runtime/library/import-tool inputs identical; carry forward completed #686 evidence, not new measurements."
+  },
+  "limits": [
+    "Tests-only merge: strengthens regression coverage without adding compiler behavior or measured library support.",
+    "20 harness checks across five configurations include both new and retained tuple-return programs. Two CPython output references and two IR contract programs are separate layers.",
+    "No full make verify, full regrtest, broad import/API/port rerun or performance/memory measurement. No runtime speedup or heap-size change inferred from IR allocation contracts.",
+    "Review finding on 6603c00 requested an IR contract; 4310685 added it. Independent positive/negative contract checks validate the response; not represented as a new completed bot review."
+  ],
+  "reproduction_scripts": {
+    "audit-747.py": "import concurrent.futures\nimport hashlib\nimport json\nimport os\nfrom pathlib import Path\nimport subprocess\nimport tempfile\nimport time\n\nBASE=Path('/workspace/scratch/3ba735e28fa7')\nROOT=BASE/'pystachy-audit-747'\nCOMPILER=BASE/'pystachy-audit-686/pystachy'\nPY='/root/.local/bin/python3.13'\nLLVM=str(BASE/'llvm18-recovered/usr/lib/llvm-18/bin')\nOUT=ROOT/'build/audit-747'\nOUT.mkdir(parents=True,exist_ok=True)\nENV={k:v for k,v in os.environ.items() if not k.startswith(('PYSTACHY_','COVERAGE_'))}\nENV.update(PYSTACHY_HOME=str(ROOT),PYSTACHY_LLVM=LLVM,PYSTACHY_JOBS='2',PY=PY,PATH=LLVM+':'+ENV['PATH'])\ndef run(name,command,extra=None,expected=0):\n    start=time.monotonic()\n    p=subprocess.run(command,cwd=ROOT,env=ENV|(extra or {}),text=True,capture_output=True,timeout=300)\n    result=dict(command=command,environment=extra or {},returncode=p.returncode,stdout=p.stdout,stderr=p.stderr,wall_seconds=time.monotonic()-start,expected_exit=expected)\n    (OUT/(name+'.json')).write_text(json.dumps(result,indent=2)+'\\n')\n    print(name,p.returncode,p.stdout[-700:],p.stderr[-200:],flush=True)\n    assert p.returncode==expected\n    return result\nfiles=['tests/tuple_return_closures.py','tests/tuple_return_values.py']\nconfigs=[('native',str(COMPILER),{}),('gc',str(COMPILER),{'PYSTACHY_GC_STRESS_PROGRAM':'1'}),('noopt',str(COMPILER),{'PYSTACHY_OPT':'-all'}),('no-tupleret',str(COMPILER),{'PYSTACHY_OPT':'-tupleret'}),('hosted',PY+' -m pystachy',{})]\nwith concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:\n    list(pool.map(lambda config:run(config[0],['tests/run.sh',config[1],'jit aot',*files],config[2]),configs))\nfor f in files:\n    result=run('ref-'+Path(f).stem,[PY,f,'a1','a2'])\n    assert result['stdout']+'[exit 0]\\n'==(ROOT/f).with_suffix('.out').read_text()\nrun('ir',['tools/check_ir.sh',str(COMPILER),'tests/ir/tuple_return_closures.py','tests/ir/tuple_return.py'])\nwith tempfile.TemporaryDirectory(prefix='tuple-return-contract-') as tmp:\n    p=Path(tmp)/'probe.py'\n    p.write_bytes((ROOT/'tests/ir/tuple_return_closures.py').read_bytes())\n    calls=(ROOT/'tests/ir/tuple_return_closures.calls').read_text()\n    p.with_suffix('.calls').write_text(''.join(line for line in calls.splitlines(keepends=True) if not line.startswith('@v.f.three:')))\n    result=run('negative-contract',['tools/check_ir.sh',str(COMPILER),str(p)],expected=1)\n    assert 'OTHER CALLS' in result['stdout'] and '@v.f.three' in result['stdout']\n    ll=Path(tmp)/'no-tupleret.ll'\n    run('disabled-ir',[str(COMPILER),'ir','tests/ir/tuple_return_closures.py','-o',str(ll)],{'PYSTACHY_OPT':'-tupleret'})\n    assert '@v.' not in ll.read_text()\n    (OUT/'disabled-ir-sha256.txt').write_text(hashlib.sha256(ll.read_bytes()).hexdigest()+'\\n')\nprint('ALL CHECKS PASS; negative contract failed as intended',flush=True)\n",
+    "audit-747-assemble.py": "import hashlib\nimport json\nfrom pathlib import Path\nimport platform\nimport subprocess\nimport sys\n\nBASE=Path('/workspace/scratch/3ba735e28fa7')\nROOT=BASE/'pystachy-audit-747'\nOUT=ROOT/'build/audit-747'\nDEST=BASE/'pystachy-audit-followup-729/docs/reports/compatibility-2026-10-19-tuple-return-coverage.json'\ndef git(*args):return subprocess.check_output(['git','-C',str(ROOT),*args],text=True).strip()\ndef sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()\ncommands={p.stem:json.loads(p.read_text()) for p in sorted(OUT.glob('*.json'))}\nassert len(commands)==10\nassert all(c['returncode']==c['expected_exit'] for c in commands.values())\nassert 'OTHER CALLS' in commands['negative-contract']['stdout']\npaths=['src','lib','ports','runtime.c','runtime.py','pystachy.py','Makefile','tools','tests/run.sh']\nassert not git('diff','--name-only','b7e869f8','HEAD','--',*paths)\nassert not git('status','--porcelain','--untracked-files=no')\ndata=dict(schema_version=1,date='2026-10-19',status='completed',source_revision=git('rev-parse','HEAD'),previous_evaluated_main='b7e869f8e324a30c59cbe36720a0f4d2e9f4f9c1',merged_pr=747,\n    compiler_build_source='b7e869f8e324a30c59cbe36720a0f4d2e9f4f9c1',compiler_sha256=sha(BASE/'pystachy-audit-686/pystachy'),compiler_reused=True,implementation_identity_paths=paths,implementation_diff=[],\n    environment=dict(python=sys.version,python_executable=sys.executable,llvm=subprocess.check_output([str(BASE/'llvm18-recovered/usr/lib/llvm-18/bin/llvm-config'),'--version'],text=True).strip(),platform=platform.platform(),workers=2,PYSTACHY_HOME=str(ROOT),inherited_options='PYSTACHY_ and COVERAGE_ variables removed; explicit options retained with each command'),\n    history=git('log','--first-parent','--format=%H %s','b7e869f8..HEAD').splitlines(),changed_files=git('diff','--name-only','b7e869f8','HEAD').splitlines(),\n    fixture_sha256={f:sha(ROOT/f) for f in ['tests/tuple_return_closures.py','tests/tuple_return_closures.out','tests/tuple_return_values.py','tests/tuple_return_values.out','tests/ir/tuple_return_closures.py','tests/ir/tuple_return_closures.calls','tests/ir/tuple_return.py','tests/ir/tuple_return.calls','tests/run.sh','tools/check_ir.sh']},\n    commands=commands,negative_control='Scratch copy omits @v.f.three from .calls; check_ir must reject with OTHER CALLS. No tracked fixture edited.',optimization_disabled_ir_sha256=(OUT/'disabled-ir-sha256.txt').read_text().strip(),optimization_disabled_has_value_bodies=False,\n    imports=dict(native='143/468',stub_assisted='145/468',exclusions=54,inventory=522,rerun=False,reason='Compiler/runtime/library/import-tool inputs identical; carry forward completed #686 evidence, not new measurements.'),\n    limits=['Tests-only merge: strengthens regression coverage without adding compiler behavior or measured library support.', '20 harness checks across five configurations include both new and retained tuple-return programs. Two CPython output references and two IR contract programs are separate layers.', 'No full make verify, full regrtest, broad import/API/port rerun or performance/memory measurement. No runtime speedup or heap-size change inferred from IR allocation contracts.', 'Review finding on 6603c00 requested an IR contract; 4310685 added it. Independent positive/negative contract checks validate the response; not represented as a new completed bot review.'],\n    reproduction_scripts={name:(BASE/name).read_text() for name in ['audit-747.py','audit-747-assemble.py']})\nDEST.write_text(json.dumps(data,indent=2)+'\\n')\nprint(DEST,DEST.stat().st_size)\n"
+  }
+}

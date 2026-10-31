@@ -1,0 +1,178 @@
+{
+  "schema": 1,
+  "checkpoint": "2026-10-21 constructor return values and dynamic Any dictionary views (partial)",
+  "event": {
+    "source_sha": "90156da26d83121f7584373cd15496e346e69361",
+    "source_tree": "acb6abf538952bd4763acb9fb05de614310aca5d",
+    "previous_source_sha": "bd0eb909eac0dd059570c307b49d2663425de1f2",
+    "previous_source_tree": "4c40005e0a0562d5115da3b2321e44826fcd5922",
+    "first_parent_merges_since_previous": [831, 830],
+    "pull_requests": [
+      {
+        "number": 831,
+        "merged_at_utc": "2026-10-21T20:43:44Z",
+        "merge_sha": "0099d47d660ab2d17259f67fdfa9fb0fc628a0ff",
+        "merge_tree": "22e32b5bf2848ab131e739b8b69f95b4e741e8b3",
+        "implementation_head_sha": "2183f230202d9eab841546927e86751482815419",
+        "implementation_head_tree": "22e32b5bf2848ab131e739b8b69f95b4e741e8b3",
+        "summary": "validate that constructor-site __init__ results are None after preserving argument evaluation, initializer side effects and raised exceptions"
+      },
+      {
+        "number": 830,
+        "merged_at_utc": "2026-10-21T20:46:28Z",
+        "merge_sha": "90156da26d83121f7584373cd15496e346e69361",
+        "merge_tree": "acb6abf538952bd4763acb9fb05de614310aca5d",
+        "implementation_head_sha": "7aa8a9cc8c24c75ca20e262e5683010b3f63b718",
+        "implementation_head_tree": "a39fcea2da1d8d6d4c639459874900ccc96c6533",
+        "summary": "forward hard expected types through saved and unbound dict view calls while refusing soft comparison hints"
+      }
+    ]
+  },
+  "changed_scope": {
+    "files": 27,
+    "compiler_files": [
+      "src/pystachy_compiler/builtins.py",
+      "src/pystachy_compiler/calls.py",
+      "src/pystachy_compiler/exceptions.py",
+      "src/pystachy_compiler/gen.py"
+    ],
+    "differential_program_recording_pairs": 8,
+    "modified_dynamic_view_program_recording_pairs": 2,
+    "new_expected_rejections": 1,
+    "runtime_library_ports_changed": false
+  },
+  "selected_changed_sha256": {
+    "docs/language.md": "e4e8227ac1ac477492540f2e36d495409e7893b2a3267c6b0a1a25a202332db5",
+    "src/pystachy_compiler/builtins.py": "e971ab1a1c1cc9470767f90296c2e5fdf29daa737dfcf365e7b0f090a5c66991",
+    "src/pystachy_compiler/calls.py": "0d4c874e60a978ca8641d755cbb370c1117520cc77670213097514146eedb33d",
+    "src/pystachy_compiler/exceptions.py": "f0b950d64e1c51361a0239b09b26a2ec72617220de93ba843690fd0b29f8e69f",
+    "src/pystachy_compiler/gen.py": "02b9bc1794978c67bbc62b492621ca78e7fa4ffbb6db1ba1d3fad3b02ebc1b68",
+    "tests/errors/inference/dynany_keys_view_soft.py": "de70cda64b4e73c39bd9a6bfbc170ae24359da363f3ebf9e50fa53aaa3fc1687",
+    "tests/programs/classes/init_result.py": "7d381f2548050a0a599e5d8e22078b0adebe800d08cabd61d9932950df8b98b8",
+    "tests/programs/classes/init_result.out": "cacb1b22484f7f1d2ab4e523f50d486064b8f1cfa9603bf7f574771c38dd3213",
+    "tests/programs/exceptions/exc_init_result.py": "47f1994a7f076121211365363f0000c4c4a7499821f027f158e143713d480a61",
+    "tests/programs/exceptions/exc_init_result.out": "a4ec1d55f235e7ea36ab0af51235eac91483f89e742fb65b024a4bba4d953c2c",
+    "tests/programs/inference/dynany_init_result.py": "e9ee386a05e4675ea6d94053c6563a42b732686aa3992c377815f383e993ea9d",
+    "tests/programs/inference/dynany_layout_items_view.py": "624789a9c90f90e442b1bf3ac6f584ac180580961770dfea7c9f05f40e1373df",
+    "tests/programs/inference/dynany_layout_keys_view.py": "c289d13bfc0d61b5ab6059f3d2b825d411caf0634df47128b7d643f0188be6f6",
+    "tools/test_typed_ir.py": "51fd655d50b30ee2a9dda62305e5d9e71151c45b0b1f3427cd258f52a19eb148"
+  },
+  "environment": {
+    "recording_python": "CPython 3.13.16",
+    "import_sweep_driver": "CPython 3.12.14",
+    "pinned_cpython_inventory": "CPython 3.13.16 source Lib",
+    "pinned_cpython_inventory_revision": "cbc944f4bc59639a444dd971c737788ba2283a91",
+    "pinned_cpython_inventory_tag": "v3.13.16",
+    "ruff": "0.17.0",
+    "mypy": "2.4.0",
+    "actionlint": "1.7.12",
+    "llvm_18": "unavailable locally"
+  },
+  "fresh_local_results": {
+    "recordings": {
+      "command": "for each of eight new constructor cases and the two modified dict-view cases, run with env -i PATH=<PATH> python3.13 FILE.py a1 a2, append [exit N], and compare with adjacent .out",
+      "matched": 10,
+      "total": 10,
+      "stderr_bytes": 0
+    },
+    "affected_hosted_corpus": {
+      "command": "for tests/programs/classes/*.py, tests/programs/exceptions/*.py and tests/programs/inference/dynany_*.py, honor adjacent .path and emit IR with bd0eb909 and 90156da2 compilers",
+      "programs": 313,
+      "previous_success_on_current_sources": 311,
+      "current_success": 313,
+      "byte_identical_outcomes": 303,
+      "differing_outcomes": 10,
+      "difference_scope": "the eight new constructor fixtures and two expanded dict-view fixtures",
+      "boundary": "hosted compiler emission; emitted IR was not executed locally"
+    },
+    "dynamic_any_subset": {
+      "programs": 76,
+      "previous_success_on_current_sources": 74,
+      "current_success": 76,
+      "byte_identical_outcomes": 73,
+      "differing_outcomes": [
+        "dynany_init_result.py",
+        "dynany_layout_items_view.py",
+        "dynany_layout_keys_view.py"
+      ]
+    },
+    "alternate_view_probes": {
+      "command": "emit hosted IR for retained direct-values control plus saved and unbound keys/values/items typed-list consumers",
+      "accepted": 7,
+      "total": 7,
+      "previous_blockers_resolved": 6,
+      "soft_hint_controls": {
+        "direct": "rejected: cannot compare list[str] == list[dyn]",
+        "saved_bound": "rejected: cannot compare list[str] == list[dyn]",
+        "unbound": "rejected: cannot compare list[str] == list[dyn]"
+      }
+    },
+    "pinned_import_sweep": {
+      "command": "PYSTACHY_HOME=<main> python3 tools/import_sweep.py -j 4 --metadata <meta.json> <current-wrapper> <cpython-v3.13.16-source>/Lib <result.json>",
+      "inventory_total": 522,
+      "overlay_exclusions": 62,
+      "included": 460,
+      "successful": 148,
+      "errors": 312,
+      "timeouts": 0,
+      "new_successes_vs_831": [],
+      "lost_successes_vs_831": [],
+      "normalized_first_error_changes_vs_831": 0,
+      "result_sha256": "da1af87ed51c42eaa60910366c6a4406a05b15e451babfde44d2dfbe4351d4ad",
+      "metadata_sha256": "871c71af1dba748b7ff8b992defcc1b10a31f43afd67fde3d2d3b1e031bbccac",
+      "duration_seconds": 90.463,
+      "scope": "isolated imports to hosted IR; not runtime or full module compatibility"
+    },
+    "fast_checks": {
+      "command": "uv run --python python3.13 --with-requirements tools/requirements-dev.txt make PY=python3.13 check-fast",
+      "ruff": "pass",
+      "mypy_files": 45,
+      "mypy_errors": 0,
+      "effect_summary_tests": 7,
+      "typed_ir_tests": 88
+    },
+    "verifier_tools": {"passed": 53, "failed": 0},
+    "workflow_limits": {"passed": 4, "failed": 0},
+    "workflow_lint": {"tool": "actionlint 1.7.12", "result": "pass"},
+    "diff_check": {"result": "pass"}
+  },
+  "implementation_head_workflows": {
+    "831": [
+      {"name": "CI", "run_id": 39670280205, "successful_jobs": 27, "total_jobs": 27, "conclusion": "success"},
+      {"name": "Installation", "run_id": 39670280606, "successful_jobs": 3, "total_jobs": 3, "conclusion": "success"},
+      {"name": "Lint", "run_id": 39670279965, "successful_jobs": 1, "total_jobs": 1, "conclusion": "success"},
+      {"name": "Packages", "run_id": 39670280328, "successful_jobs": 1, "total_jobs": 1, "conclusion": "success"}
+    ],
+    "830": [
+      {"name": "CI", "run_id": 39670655001, "successful_jobs": 27, "total_jobs": 27, "conclusion": "success"},
+      {"name": "Installation", "run_id": 39670655242, "successful_jobs": 3, "total_jobs": 3, "conclusion": "success"},
+      {"name": "Lint", "run_id": 39670655201, "successful_jobs": 1, "total_jobs": 1, "conclusion": "success"},
+      {"name": "Packages", "run_id": 39670655196, "successful_jobs": 1, "total_jobs": 1, "conclusion": "success"}
+    ],
+    "scope": "32/32 jobs succeeded for each implementation head; #830's head predates the #831 merge, so fresh local hosted checks cover their exact integrated merge tree"
+  },
+  "prior_audit_head": {
+    "sha": "1b44a2071fd6b6f62fe0d2e47e3af85e7375b947",
+    "lint_run_id": 39668296333,
+    "conclusion": "success"
+  },
+  "issues": {
+    "constructor_return_tracker": 64,
+    "dynamic_view_tracker": 777,
+    "new_issue": null
+  },
+  "compatibility_assessment": {
+    "constructor_gain": "construction now raises TypeError after an initializer returns non-None while preserving argument evaluation, initializer effects and exceptions; explicit, saved, unbound and super __init__ calls retain ordinary return values",
+    "dynamic_view_gain": "the six saved-bound and unbound keys/values/items typed-list consumers left open at #829 now compile",
+    "soft_hint_boundary": "comparison hints remain soft and do not trigger view unboxing; direct, saved and unbound list[str] comparison controls reject at compile time",
+    "imports": "unchanged 148/460 on the pinned CPython 3.13.16 source inventory and overlay",
+    "generalization_limit": "constructor and dictionary-view fixes do not establish general Python package, NumPy or PyPI compatibility"
+  },
+  "limitations": [
+    "LLVM 18 was unavailable locally, so the exact integrated merge tree did not receive a fresh local native build, JIT/AOT execution or GC-stress run.",
+    "Implementation-head CI supplies native matrices for each PR separately, but #830's implementation head was based on #829 and does not include #831.",
+    "Hosted IR emission does not execute generated code and cannot substitute for native validation.",
+    "No fresh full make verify, port, package, upstream-suite, CPython regrtest, performance or memory run completed."
+  ],
+  "latest_fully_evaluated_main": "3c63613b9ad4748dfc030fc923f7704e26b21ba9"
+}

@@ -1,0 +1,148 @@
+{
+  "status": "completed-hosted-tooling-scope",
+  "audit_context": {
+    "pull_request": 789,
+    "pull_request_url": "https://github.com/den-run-ai/pystachy/pull/789",
+    "merged_at_utc": "2026-10-20T21:40:51Z",
+    "implementation_head": "208be867a4bebfc6a64e6e726d575ad8e755e2ee",
+    "merge_commit": "870bfa154f940026a7135f5c285fb0df7148ee88",
+    "implementation_tree_equals_merge_tree": true,
+    "previous_main": "452a0864986b632980f1a23783bdd5b4e4001e5c",
+    "scope": "documentation, FFI clients, test runner, registration checker and Lint workflow; no compiler/runtime/library implementation paths",
+    "historical_workflows": {
+      "CI": "https://github.com/den-run-ai/pystachy/actions/runs/39495106554",
+      "Lint": "https://github.com/den-run-ai/pystachy/actions/runs/39495106564",
+      "Coverage": "https://github.com/den-run-ai/pystachy/actions/runs/39495106610",
+      "Packages": "https://github.com/den-run-ai/pystachy/actions/runs/39495106530",
+      "Installation": "https://github.com/den-run-ai/pystachy/actions/runs/39495106684",
+      "conclusion": "success",
+      "selected_jobs": {
+        "CI / verify (contracts)": "success",
+        "Coverage / native runtime coverage (ffi)": "success",
+        "Coverage / hosted compiler coverage (ffi, ir)": "success"
+      }
+    }
+  },
+  "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+  "executable": "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+  "environment_overrides": {
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "LC_ALL": "C"
+  },
+  "before": {
+    "sha": "870bfa154f940026a7135f5c285fb0df7148ee88",
+    "tree": "caab22cbf374eac3babc73df0a3c6db477e39d0f",
+    "tracked_and_untracked": "",
+    "ignored": ""
+  },
+  "changed_path_sha256": {
+    ".github/workflows/lint.yml": "cb5a7be84b539d41d42c7ac338670fae31511b37690eaa8cfd6f522e5c3d97d0",
+    "docs/README.md": "01e384935625cbedb25d85b159e23116bde004fe600cca6817adc0ca829abb71",
+    "docs/concurrency.md": "335dbbe5a24b200dd7d3d89f89b39309ed81a90cf1a85af8d8242d7b56392ae4",
+    "docs/ffi.md": "3d7c14361bf5eaec94df99b7b78de85cc1d3fc17395c2e0d12de5f665d2e8baa",
+    "docs/reference/ffi.md": "ae09b59e49e6cb49a78a230c9c459eadec9efa58867ec267a5d47121281d4ebe",
+    "tests/ffi/ext/aioclient.py": "46db53db3b9a89fb7e6924ed6a753261fcdabcc8a201f54171c2501193e0efc7",
+    "tests/ffi/ext/pw.py": "e49da9f4e7beb9c2412babc03cdc29fb03a4a0d8664af6c13fd057b9a4978fe6",
+    "tests/ffi/ext/pwclient.py": "e3d137098ee56cdf465a8525c3b1ccfbe484644c4cbb66d2f6eca498475ae97e",
+    "tests/ffi/ext/pwdeadline.py": "16b0d3837de9f8913f94bfb5bed34c0677fcb12583128183ec1d8ae62401d8d9",
+    "tests/ffi/run.sh": "22e5560bc7c750f4223a13cb1b5fee3c957fa6d9c9172e8bbb7aaf4850d8390c",
+    "tools/test_concurrency_contract.py": "c54d457842034ece431150fc188265439d54044c155e21b48eab446ab6685779"
+  },
+  "records": [
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools",
+        "-p",
+        "test_concurrency_contract.py",
+        "-v"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-789-clean",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.14833106500009308,
+      "stdout": "",
+      "stderr": "test_code (test_concurrency_contract.CapabilityProbes.test_code) ... ok\ntest_registered_on_this_tree (test_concurrency_contract.CapabilityProbes.test_registered_on_this_tree) ... ok\ntest_removed_probe_is_unregistered (test_concurrency_contract.CapabilityProbes.test_removed_probe_is_unregistered) ... ok\ntest_rows_name_registered_probes (test_concurrency_contract.CapabilityProbes.test_rows_name_registered_probes) ... ok\ntest_table_found (test_concurrency_contract.CapabilityProbes.test_table_found) ... ok\n\n----------------------------------------------------------------------\nRan 5 tests in 0.105s\n\nOK\n",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "a8a92bf9e6a7bddeb3e46d83115ca458ed1f1b79b68fc55fa94bcf96476df94b",
+      "stdout_lines": 0
+    },
+    {
+      "command": [
+        "sh",
+        "-n",
+        "tests/ffi/run.sh"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-789-clean",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.0012711070012301207,
+      "stdout": "",
+      "stderr": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_lines": 0
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "-W",
+        "ignore",
+        "pwclient.py",
+        "a",
+        "b"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-789-clean/tests/ffi/ext",
+      "extra_environment": {
+        "PYTHONPATH": "/workspace/scratch/3ba735e28fa7/pystachy-audit-789-clean/tools/rt_cpython"
+      },
+      "exit": 0,
+      "seconds_advisory": 0.400260275000619,
+      "stdout": "owner: 1\nthread: ['count() is compiled by Pystachy, whose runtime is single-threaded: call it from the thread that imported its module']\nthread pool: ('RuntimeError', ('count() is compiled by Pystachy, whose runtime is single-threaded: call it from the thread that imported its module',))\nbefore its argument: ('RuntimeError', ('fib() is compiled by Pystachy, whose runtime is single-threaded: call it from the thread that imported its module',))\nowner again: 2\nits argument: ('TypeError', (\"'str' object cannot be interpreted as an integer\",))\ntwo workers at once: 2\neach counts its own calls: [[1, 2], [1, 2]]\nmap: [55, 12586269025, 2880067194370816120]\nmap: ['0,1,4,9', '']\nraises: ('ValueError', ('negative: -5',))\nraises: ('LookupError', ('no key',))\nexits: ('SystemExit', (3,))\nworkers after the errors: 2\nand they still work: 7\nafter shutdown, exit codes: [0, 0]\nchildren left: []\nthen: ('RuntimeError', ('cannot schedule new futures after shutdown',))\nthe parent's own count: 3\nkilled: ('BrokenProcessPool', ('A process in the process pool was terminated abruptly while the future was running or pending.',))\nqueued: ('BrokenProcessPool', ('A process in the process pool was terminated abruptly while the future was running or pending.',))\nthen: ('BrokenProcessPool', ('A child process terminated abruptly, the process pool is not usable anymore',))\nthe parent's own count: 4\nProcess(bye) exit code: 3\nProcess(count) exit code: 0\n",
+      "stderr": "",
+      "stdout_sha256": "812031068c3e68a49868870e862f46e86eae92d6f9dcba69c73ad406c6e43a27",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_lines": 25
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "-W",
+        "ignore",
+        "aioclient.py",
+        "a",
+        "b"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-789-clean/tests/ffi/ext",
+      "extra_environment": {
+        "PYTHONPATH": "/workspace/scratch/3ba735e28fa7/pystachy-audit-789-clean/tools/rt_cpython"
+      },
+      "exit": 0,
+      "seconds_advisory": 0.25999997400140273,
+      "stdout": "loop thread: 55\nto_thread: ('RuntimeError', ('fib() is compiled by Pystachy, whose runtime is single-threaded: call it from the thread that imported its module',))\ndefault executor: ('RuntimeError', ('fib() is compiled by Pystachy, whose runtime is single-threaded: call it from the thread that imported its module',))\nloop thread again: 6765\na worker holds the job: True\nthe job is pending while the loop runs: False\nits result: 832040\ngather: [55, 6765, 832040]\nraises: ('ValueError', ('negative: -1',))\na worker holds the call: True\nwait_for: ('TimeoutError', ())\ncancel() of the started call: False\nits result: 102334155\na worker holds a call: True\na worker holds a call: True\nthe queued calls dispatched: True\na worker entered one: False\ncancel() of a dispatched call: [False, False, False]\nthe last call pending: (False, False)\ncancelled tasks: [('CancelledError', ()), ('CancelledError', ())]\nthe started call cancelled: False\nthe pending call cancelled: True\nthe held calls finish: [1, 1]\nthe dispatched calls run: [1, 1, 1]\nentered: each dispatched call, not the cancelled one: [True, True, True, False]\n",
+      "stderr": "",
+      "stdout_sha256": "bc05d17a17089b44d47c47cc1067367203620d0fb27f650f43eb1bef3135af15",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_lines": 25
+    }
+  ],
+  "toolchain": {
+    "pinned_cpython_3_13_16": false,
+    "llvm18_bin": false,
+    "native_extension_execution": false,
+    "boundary": "Fresh local checks use the CPython source twin under 3.12.14. Native extension and JIT/AOT results are historical identical-tree CI only."
+  },
+  "after": {
+    "sha": "870bfa154f940026a7135f5c285fb0df7148ee88",
+    "tree": "caab22cbf374eac3babc73df0a3c6db477e39d0f",
+    "tracked_and_untracked": "",
+    "ignored": ""
+  }
+}

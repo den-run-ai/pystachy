@@ -1,0 +1,246 @@
+{
+  "schema": 1,
+  "checkpoint": "2026-10-21 dynamic Any numeric object identity (partial)",
+  "event": {
+    "pull_request": 807,
+    "merge_sha": "8433b9d78e02c1b3e4abdba632999da33e2fac56",
+    "source_sha": "8433b9d78e02c1b3e4abdba632999da33e2fac56",
+    "source_tree": "3e1870f9ce5c538c2437ce7a186c5df51635cb35",
+    "implementation_head_sha": "13f7f674ce323866d067d2afe0520e95257b87e8",
+    "implementation_head_tree": "3e1870f9ce5c538c2437ce7a186c5df51635cb35",
+    "previous_source_sha": "4046df597cc41faa382c5012d233b73c4f56c095",
+    "previous_source_tree": "b87fe4ddfb86cd8a07df64aaeae62f4d4b63d97a",
+    "merged_at_utc": "2026-10-21T23:05:31Z",
+    "first_parent_merges_since_previous": [
+      807
+    ]
+  },
+  "changed_scope": {
+    "files": 29,
+    "additions": 841,
+    "deletions": 19,
+    "compiler_files": 10,
+    "runtime_files": 1,
+    "documentation_files": 1,
+    "test_tool_and_fixture_files": 17,
+    "library_or_port_files_changed": false,
+    "selected_sha256": {
+      "docs/dynamic-any.md": "9e81b59a46715636fd07d7d93ccef6cb2d5414e720010f80cbaf7106d8af9e6a",
+      "runtime.c": "5ab9e91a7e5d5d738d7f2b5a24c86a5db1857c84055df3186509310900160ee9",
+      "src/pystachy_compiler/dynamic.py": "1974fb106a872ba399c73ea423b2dbaad41524c8e05311e80e29248a16a31702",
+      "src/pystachy_compiler/emission.py": "038fb6b09b78a6a1fa869aec7d7f68605c58c872e1075f1cf045d6089e443c76",
+      "src/pystachy_compiler/expressions.py": "bbc7eea12a20a3ebf0010e04d19fd5d532825dd43104b69e85eba4da42417d17",
+      "src/pystachy_compiler/functions.py": "546a21a9120dd71ac57eac3d28d036a83775813483b5a250b63f96f32a004ac3",
+      "src/pystachy_compiler/gen.py": "1b39e098d49f7981ae54769648ac33e8e98dce21054610703625e99e526e9946",
+      "src/pystachy_compiler/ir.py": "397fd9849c440145d68d34257ca793908eebcf142a90fb608ccedbc5204cefd1",
+      "src/pystachy_compiler/lower_module.py": "13dd22ce7fd87d992299dbcb31da787fb647a6d0de91311524377e1f72d0d616",
+      "src/pystachy_compiler/statements.py": "33ca3be453b5eceb972d0138e8a58b0104f7a5a31c4c7eb754aef5b8f73b94d3",
+      "src/pystachy_compiler/variables.py": "dad16b3c0bc9853ed8854bf2fa3ab309b5dc52d3905dc5db288570d5fa55cc4e",
+      "tools/test_frame_fields.py": "dff00740e7319bda11fb4447898d5d99c04920b68ce2707ae8e422ab576a72c0"
+    }
+  },
+  "behavior": {
+    "contract": "For live dynamic values, is agrees with id equality. Int and float identity is the box; typed numeric variables in opted-in programs retain a box slot across supported assignments and typed-to-Any crossings.",
+    "covered": [
+      "small and non-small int constants",
+      "computed ints and floats",
+      "typed locals, parameters and module variables",
+      "Any to typed numeric values and back",
+      "isinstance-narrowed floats",
+      "swaps, repeated arguments and displays",
+      "self assignment and same-binding conditional expressions",
+      "module literals remain distinct across modules"
+    ],
+    "documented_deviations": [
+      "copies made before the first crossing",
+      "arguments, defaults and returns",
+      "typed container items, fields and class variables",
+      "closure and comprehension variables",
+      "folded numeric expressions and float literals",
+      "conditionals selecting between different variables",
+      "runtime-path-sensitive module or branch rebindings"
+    ]
+  },
+  "environment": {
+    "host": "Linux 6.18.55 x86_64",
+    "pinned_python": "CPython 3.13.16",
+    "pinned_python_path": "/root/.local/bin/python3.13",
+    "cpython_source_revision": "cbc944f4bc59639a444dd971c737788ba2283a91",
+    "cpython_stdlib": "/workspace/scratch/a4a358a2a3d7/cpython-source/Lib",
+    "actionlint": "1.7.12",
+    "llvm_18": "unavailable locally",
+    "source_snapshot_clean_before_and_after": true
+  },
+  "commands": [
+    "uv run --python /root/.local/bin/python3.13 --with-requirements tools/requirements-dev.txt make check-fast",
+    "uv run --python /root/.local/bin/python3.13 --with-requirements tools/requirements-dev.txt make check-recordings",
+    "/root/.local/bin/python3.13 -m unittest discover -s tools -p test_frame_fields.py",
+    "/root/.local/bin/python3.13 -m unittest discover -s tools -p 'test_compiler_state*.py'",
+    "/root/.local/bin/python3.13 tools/compiler_state_contract.py",
+    "emit hosted IR with the 4046df59 and 8433b9d7 compilers for all dynany*.py positive, deviation and rejection inputs, honoring adjacent .path files",
+    "PYSTACHY_HOME=<checkout> /root/.local/bin/python3.13 tools/import_sweep.py -j 4 --metadata <meta.json> <hosted-wrapper> <cpython-v3.13.16-source>/Lib <result.json>",
+    "/root/.local/bin/python3.13 -m unittest discover -s tools -p 'test_*verif*.py'",
+    "/root/.local/bin/python3.13 -m unittest discover -s tools -p test_workflow_limits.py",
+    "actionlint -pyflakes= .github/workflows/*.yml",
+    "git diff --check"
+  ],
+  "fresh_results": {
+    "recordings": {
+      "cpython": "3.13.16",
+      "recordings": 1563,
+      "deviations": 96,
+      "library_files": 12,
+      "failures": 0,
+      "new_positive_identity_recordings": 5,
+      "new_identity_deviation_recordings": 1
+    },
+    "dynamic_any_hosted_corpus": {
+      "scope": "all tests/programs and tests/deviations named dynany*.py, plus all tests/errors named dynany*.py, compiled from current source inputs with the previous and current hosted compiler frontends",
+      "positive_or_deviation_inputs": 87,
+      "previous_compiled": 87,
+      "current_compiled": 87,
+      "newly_compiled": [],
+      "lost_compilations": [],
+      "common_byte_identical_ir": 22,
+      "common_changed_ir": 65,
+      "rejection_inputs": 12,
+      "previous_rejected": 12,
+      "current_rejected": 12,
+      "byte_identical_rejection_diagnostics": 12,
+      "positive_evidence_sha256": "c8359b956c5989b3a60caa4588912c0f28be6f755920df3013cde3d68b0d4a34",
+      "rejection_evidence_sha256": "53678c926e1ab151ebfdf8a84809720faa3be3e438377914c2229fd3f4869b30",
+      "interpretation": "No compile-status change. The 65 IR changes are confined to opted-in dynamic-Any programs and implement numeric identity slots and boxes; hosted emission does not execute them."
+    },
+    "identity_program_hosted_ir": {
+      "dynany_identity": {
+        "previous_lines": 784,
+        "current_lines": 791,
+        "previous_sha256": "3047a052df06ee72e8a6932568019332c1c32051cd45114f2c974606ac6f2924",
+        "current_sha256": "3605775e660f5e00dc0cf7d83287d8ded92b9f2e0c26de956a1e25a33154207f"
+      },
+      "dynany_identity_modules": {
+        "previous_lines": 310,
+        "current_lines": 316,
+        "previous_sha256": "f4ad8cbeadb61f53182b1fc15c81d5f334a654f2403cfd577b2a434afc1abf4b",
+        "current_sha256": "b43dd71ab695db130ab4b680a7e4e19b1e5ea4fe24817ef8e0a35140e9b7fbde"
+      },
+      "dynany_identity_typed": {
+        "previous_lines": 1250,
+        "current_lines": 2841,
+        "previous_sha256": "b2973e53b60cedce80000df61817ef1bba6fa1497aa32abf9d21b49a2bf6684b",
+        "current_sha256": "8296fef63a8fd7da8b9ae7e2da5c8e230d0859aeced1af3df2c70dd75aefae48"
+      },
+      "dynany_identity_select": {
+        "previous_lines": 282,
+        "current_lines": 510,
+        "previous_sha256": "8ebb5203352f2efb7bc07f90b279f1e0fdd660732588f0e9bfe4e7ac64e60701",
+        "current_sha256": "73725cd30b231dddc5e60f81cda6849936d6222c3f9f1735c3f0e6b12c570c2c"
+      },
+      "dynany_identity_chained": {
+        "previous_lines": 218,
+        "current_lines": 388,
+        "previous_sha256": "f73b7e555732696d27b7104dc12259f59dc48ce2f71f9a061655f074212db280",
+        "current_sha256": "a8ca3cbf8ec98b7f3adbe78c4c4d126cc3964878a896c0bc78ad41b149a13a46"
+      },
+      "dynany_identity_boundary": {
+        "previous_lines": 937,
+        "current_lines": 1257,
+        "previous_sha256": "c4322443140c85b71a93c9c4f423edba1809fba8e45c750a0641e585ccbd4e9c",
+        "current_sha256": "198ae5c3bd4c82a5bd2677760ab36f7ee022f80167d5427a852e50e24c92b14c"
+      }
+    },
+    "compiler_state": {
+      "frame_field_tests_passed": 18,
+      "compiler_state_tests_passed": 31,
+      "contract": "all declared fields match Gen initialization and exact save/restore mappings",
+      "new_program_field": "gidbox is classified as program-scoped"
+    },
+    "pinned_import_sweep": {
+      "inventory_total": 522,
+      "overlay_exclusions": 62,
+      "included": 460,
+      "previous_successes": 148,
+      "current_successes": 148,
+      "errors": 312,
+      "timeouts": 0,
+      "new_successes": [],
+      "lost_successes": [],
+      "normalized_result_changes": 0,
+      "previous_result_sha256": "e26b88554d57f3b550b103e05ac7eeb1946c5515c817ecd0d59bcc2d088b5e60",
+      "current_result_sha256": "fd9b18d762b73c988b183a3a98d47d20d60f24487760be765b054db2fc4f56f5",
+      "normalized_result_sha256": "461118466edfd3b5a928afa1d70d02baaab26bdb839ccdd5e7861fbe6b36aff2",
+      "previous_duration_seconds": 126.015,
+      "current_duration_seconds": 121.659,
+      "scope": "Isolated imports to hosted IR; not runtime or full module compatibility."
+    },
+    "fast_and_tooling": {
+      "ruff": "pass",
+      "mypy_files": 45,
+      "function_summary_tests": 7,
+      "typed_ir_tests": 88,
+      "verifier_tests": 53,
+      "workflow_limit_tests": 4,
+      "actionlint": "pass",
+      "git_diff_check": "pass"
+    }
+  },
+  "implementation_workflows": [
+    {
+      "name": "CI",
+      "run_id": 39688727827,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/39688727827",
+      "successful_jobs": 27,
+      "total_jobs": 27,
+      "conclusion": "success"
+    },
+    {
+      "name": "Installation",
+      "run_id": 39688727840,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/39688727840",
+      "successful_jobs": 3,
+      "total_jobs": 3,
+      "conclusion": "success"
+    },
+    {
+      "name": "Lint",
+      "run_id": 39688727820,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/39688727820",
+      "successful_jobs": 1,
+      "total_jobs": 1,
+      "conclusion": "success"
+    },
+    {
+      "name": "Packages",
+      "run_id": 39688727855,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/39688727855",
+      "successful_jobs": 1,
+      "total_jobs": 1,
+      "conclusion": "success"
+    }
+  ],
+  "attributed_final_tree_results": {
+    "source": "PR #807 final description at implementation head 13f7f674; exact-tree workflows were independently read",
+    "selected_native_normal": "226 passing JIT/AOT checks across dynamic-Any, JSON, tomllib and nested-compilation programs",
+    "selected_native_gc_stress": "30 passing checks across identity and nested-compilation programs",
+    "dynamic_any_fuzzer": "450 generated JIT cases, zero mismatches; current main before #807 reported five identity mismatches",
+    "irsame": "70 of 3495 programs differ, all among opted-in dynamic-Any programs (65 dynany tests and five tomllib programs)",
+    "performance": "No fresh audit timing. Historical PR measurements are not treated as a regression or improvement claim."
+  },
+  "review": {
+    "final_no_major_findings_sha": "13f7f674ce323866d067d2afe0520e95257b87e8",
+    "resolved_threads": 8,
+    "unresolved_threads": 0
+  },
+  "issue_state": {
+    "797": "open; the core is/id disagreement and supported typed-variable crossings are fixed, while documented identity boundaries remain deviations",
+    "new_issue_filed": false
+  },
+  "limitations": [
+    "LLVM 18 was unavailable locally. No fresh local native fixed-point build, JIT/AOT execution, GC-stress run, dynamic-Any fuzzer run or full make verify completed.",
+    "Hosted IR emission proves compiler acceptance and output differences, not native runtime semantics. The exact-tree external workflow matrix and separately attributed final-head results supply native evidence.",
+    "The import sweep is compilation of isolated imports to hosted IR. It establishes no API execution, runtime, package, adapted-port or upstream-suite compatibility.",
+    "No fresh performance, memory, CPython regrtest or general NumPy/PyPI measurement completed.",
+    "The documented argument, return, container, field, closure, comprehension, constant-folding and runtime-path identity deviations remain."
+  ],
+  "latest_fully_evaluated_main": "3c63613b9ad4748dfc030fc923f7704e26b21ba9"
+}

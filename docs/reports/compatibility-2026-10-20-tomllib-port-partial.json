@@ -1,0 +1,148 @@
+{
+  "status": "partial-hosted-plus-identical-tree-ci",
+  "date": "2026-10-20",
+  "source_revision": "1cf6a676633a5d3e703648d26e3fe328d884b726",
+  "previous_audit_source": "387059bac6f2eec2940d66cdaa435e3132e92890",
+  "latest_fully_evaluated_main": "3c63613b9ad4748dfc030fc923f7704e26b21ba9",
+  "merged_prs": [
+    {
+      "number": 795,
+      "url": "https://github.com/den-run-ai/pystachy/pull/795",
+      "merge_commit": "1cf6a676633a5d3e703648d26e3fe328d884b726",
+      "head": "b607b51f4a2cb8a5e3cee19736c8ac9d219c5736",
+      "tree": "d42da0970158788551dc6be77bcb7aebf077b534",
+      "head_is_ancestor_of_merge": true,
+      "head_tree_equals_merge_tree": true,
+      "merged_at_utc": "2026-10-21T00:37:17Z",
+      "scope": "maintained CPython 3.13.16 tomllib port, focused differential/upstream-derived programs, documentation and provenance; no compiler/runtime/tool changes beyond prerequisite PR 794"
+    }
+  ],
+  "environment": {
+    "hosted_python": "CPython 3.12.14",
+    "hosted_python_executable": "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+    "platform": "Linux 6.18.55 x86_64",
+    "pinned_python_3_13_16_available": false,
+    "llvm_18_toolchain_available": false,
+    "local_native_jit_aot_available": false
+  },
+  "source_scope": {
+    "first_parent_merges_since_previous_audit_source": [795],
+    "diff": "23 files changed, 1451 insertions(+), 3 deletions(-)",
+    "implementation_scope": "library port only; src/, runtime.c, runtime.py, pystachy.py, tools/, Makefile and test scripts unchanged relative to PR 794",
+    "key_sha256": {
+      "lib/tomllib/__init__.py": "71f67036895f4c5acab942618af0cbd3d814451ba61e967f358d0f341a5b8f51",
+      "lib/tomllib/_parser.py": "11d40d79772967ebf81f5a0cf8dfa99608413b3ba6144d4beadae99baa28f279",
+      "lib/tomllib/_re.py": "17ec24dabd4e7089df6f04acacb331c85c437addbd2ab98bdfefcb18671ba056",
+      "lib/tomllib/_types.py": "e018cf69245202408dd97664cf76618e8cbb5efb6f43b134d29efd1d9221a6c0",
+      "tests/programs/library/lib_tomllib.py": "827946c79cabd2399d37a13041c339c609ed37d28a92b5e26caf957a5d083413",
+      "tests/programs/library/lib_tomllib_dynamic.py": "3e55096cbeeaffda7fc7789d4fdfb741e76ec9a6e8d71dee6a931adc76ce00fd",
+      "tests/programs/library/lib_tomllib_uncaught.py": "df6426ae6ac964f90afe89d8c1e0cf3b7f768c08d4118762e4ffba79eb9e88b3",
+      "tests/programs/upstream/upstream_tomllib_data.py": "988d753a92f700fdf734e65225bbb0be990f61290bdac27acf93bbd597062e90",
+      "tests/programs/upstream/upstream_tomllib_misc.py": "b9781f557550bde8b09e06d84668ee9fbbd3f699b689d9570d6b462afce65dbf"
+    },
+    "upstream_provenance": {
+      "release": "CPython 3.13.16 Python-3.13.16.tgz",
+      "archive_sha256": "cfac63bddf956deafb1172ca131ae5dcaafd6f95056086e233fca205593ed427",
+      "unchanged_package_file": "lib/tomllib/__init__.py",
+      "unchanged_package_file_sha256": "71f67036895f4c5acab942618af0cbd3d814451ba61e967f358d0f341a5b8f51",
+      "adapted_modules": ["lib/tomllib/_parser.py", "lib/tomllib/_re.py", "lib/tomllib/_types.py"],
+      "boundary": "The release/archive and upstream-original hashes are the repository's recorded provenance; the local audit independently hashed the landed files but did not redownload the archive."
+    }
+  },
+  "commands": [
+    "git merge-base --is-ancestor b607b51f4a2cb8a5e3cee19736c8ac9d219c5736 1cf6a676633a5d3e703648d26e3fe328d884b726",
+    "env -i PATH=$PATH python3 PROGRAM.py a1 a2; compare stdout, final stderr line and exit marker with sidecars",
+    "PYSTACHY_IRCHECK=1 PYSTACHY_HOME= python3 -B -m pystachy ir FILE.py -o OUTPUT.ll",
+    "PYSTACHY_IRCHECK=1 PYSTACHY_HOME= python3 -B -m pystachy ir CURRENT_TOMLLIB_TEST.py under previous main 387059ba"
+  ],
+  "measurements": {
+    "reference_recordings": {
+      "selection": [
+        "tests/programs/library/lib_tomllib.py",
+        "tests/programs/library/lib_tomllib_dynamic.py",
+        "tests/programs/library/lib_tomllib_uncaught.py",
+        "tests/programs/upstream/upstream_tomllib_data.py",
+        "tests/programs/upstream/upstream_tomllib_misc.py"
+      ],
+      "result": "5/5 CPython 3.12.14 stdout, final stderr line and exit recordings matched",
+      "boundary": "The checked-in recordings were made for pinned CPython 3.13.16; this confirms the selected outputs also match local 3.12.14, not a pinned regeneration."
+    },
+    "hosted_ir": {
+      "result": "5/5 emitted checked hosted IR",
+      "raw_ir_lines": {
+        "lib_tomllib": 66494,
+        "lib_tomllib_dynamic": 64480,
+        "lib_tomllib_uncaught": 61622,
+        "upstream_tomllib_data": 62417,
+        "upstream_tomllib_misc": 62995
+      },
+      "boundary": "Hosted compilation is not native execution, and raw LLVM-text lines are not performance or binary-size measurements."
+    },
+    "acceptance_transition": {
+      "previous_source": "387059bac6f2eec2940d66cdaa435e3132e92890",
+      "result": "all 5 selected sources changed from the exact unsupported-module rejection to successful checked hosted IR",
+      "regression_claim": "No whole-corpus before/after oracle was rerun locally; the exact-tree CI matrix and PR 794's unchanged non-port implementation comparison are retained separately."
+    },
+    "upstream_derived_data": {
+      "documents": 62,
+      "valid": 12,
+      "invalid": 50,
+      "reference_result": "all names/results or TOMLDecodeError messages matched the checked-in CPython recording",
+      "native_result": "covered by exact-tree CI and author validation, not fresh local execution"
+    },
+    "api_surface": {
+      "supported": "tomllib.loads(str, *, parse_float=float), TOMLDecodeError, dynamic dict/list/scalar/datetime results narrowed through isinstance or concrete annotations",
+      "covered_values": ["dict", "list", "str", "int", "float", "bool", "datetime", "date", "time"],
+      "error_and_misc_scope": "selected assertions from CPython test_error.py and test_misc.py that do not require binary files, decimal, copy or test.support"
+    }
+  },
+  "historical_identical_tree_ci": {
+    "head": "b607b51f4a2cb8a5e3cee19736c8ac9d219c5736",
+    "ci": "https://github.com/den-run-ai/pystachy/actions/runs/39521093627",
+    "ci_jobs": "27/27 successful",
+    "installation": "https://github.com/den-run-ai/pystachy/actions/runs/39521093470",
+    "installation_jobs": "3/3 successful",
+    "lint": "https://github.com/den-run-ai/pystachy/actions/runs/39521093578",
+    "packages": "https://github.com/den-run-ai/pystachy/actions/runs/39521093573",
+    "all_workflows_success": true,
+    "boundary": "These workflows ran on the exact implementation tree but are not fresh local native execution."
+  },
+  "review": {
+    "reviewed_commit": "ce1071f1aeabc9f40eba73d5fd286344d9b46810",
+    "result": "Codex code review completed with no findings",
+    "inline_threads": "0 total",
+    "later_head_changes": "merges of PR 794 heads plus a docs/dynamic-any.md paragraph move; final exact tree has green CI"
+  },
+  "observed_compatibility_changes": [
+    "A maintained CPython-derived tomllib port now compiles tomllib.loads() into native programs through the dynamic-Any library boundary.",
+    "The selected API program covers all documented TOML scalar/container/date-time result kinds and typed narrowing from dynamic values.",
+    "The selected upstream-derived corpus covers 62 CPython TOML data documents, including 50 exact error-message cases.",
+    "TOMLDecodeError keeps the tomllib module name in the selected uncaught-exception recording."
+  ],
+  "adaptations_and_limits": [
+    "The port uses dict[Any, Any] and an explicit empty-table helper where CPython writes untyped empty dicts (#777).",
+    "Flags uses dict keys instead of sets, and pending flags use a list because runtime-length tuple elements in sets remain unsupported (#775/#783).",
+    "One parser local is explicitly Callable because functions as local union values remain bounded (#782).",
+    "Regex group values are asserted or converted from str | None where the pattern guarantees they matched (#783).",
+    "tomllib.load(fp) remains unsupported because binary files are unavailable (#493); read text and call loads().",
+    "Dynamic-Any deviations remain: concrete annotation mismatch raises TypeError, and keys()/values()/items() produce lists.",
+    "parse_float returning a typed dict/list is a compile-time error; an Any dict/list result raises CPython's ValueError."
+  ],
+  "source_snapshots": {
+    "pre_run_tracked_and_untracked": "empty",
+    "pre_run_ignored": "empty",
+    "post_run_tracked_and_untracked": "empty",
+    "post_run_ignored": "empty; outputs were written outside the checkout and Python ran with -B for compiler work"
+  },
+  "incomplete_attempts": [
+    "Pinned CPython 3.13.16 and LLVM 18 were not present, so no fresh local native JIT/AOT, GC-stress or native adapted-port execution ran.",
+    "The metadata-enabled isolated import sweep was not rerun because the retained CPython 3.13.16 interpreter/inventory and LLVM 18 native compiler were unavailable; historical totals are not presented as fresh.",
+    "The full CPython tomllib test suite was not compiled: binary-file load(), decimal, copy, test.support and recursion-limit scaffolding are outside this retained hosted selection."
+  ],
+  "limits": [
+    "This establishes the documented tomllib.loads() surface and selected upstream-derived cases, not arbitrary TOML-adjacent packages or general PyPI compatibility.",
+    "Exact-tree CI includes native JIT/AOT, hosted, GC, UBSan, Python-free, optimization-off, contracts, runtime-cache, benchmark and final make verify gates, but remains external historical evidence.",
+    "No runtime-speed, parse-throughput or peak-memory measurement was made in this checkpoint.",
+    "The latest fully evaluated main marker remains 3c63613b9ad4748dfc030fc923f7704e26b21ba9."
+  ]
+}

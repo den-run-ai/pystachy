@@ -1,0 +1,403 @@
+{
+  "status": "partial-hosted-plus-identical-tree-ci",
+  "audit_context": {
+    "pull_request": 791,
+    "pull_request_url": "https://github.com/den-run-ai/pystachy/pull/791",
+    "merged_at_utc": "2026-10-20T22:21:37Z",
+    "implementation_head": "c4d28c11d41c8ed876c5cafb5f2140e9db6c0d30",
+    "merge_commit": "100979652775ab55ff2ecfd83750270395ece789",
+    "implementation_tree_equals_merge_tree": true,
+    "previous_main": "870bfa154f940026a7135f5c285fb0df7148ee88",
+    "historical_workflows": {
+      "CI": "https://github.com/den-run-ai/pystachy/actions/runs/39503338365",
+      "Coverage": "https://github.com/den-run-ai/pystachy/actions/runs/39503338411",
+      "Lint": "https://github.com/den-run-ai/pystachy/actions/runs/39503338360",
+      "Packages": "https://github.com/den-run-ai/pystachy/actions/runs/39503338413",
+      "Installation": "https://github.com/den-run-ai/pystachy/actions/runs/39503338340",
+      "conclusion": "success",
+      "job_summary": {
+        "CI": "27/27 jobs success",
+        "Coverage": "19 success, main-only badge publication skipped"
+      },
+      "selected_jobs": {
+        "CI / verify (bootstrap)": "success",
+        "CI / verify (gc-self)": "success",
+        "CI / verify (contracts)": "success",
+        "Coverage / native runtime coverage (ffi)": "success",
+        "Coverage / hosted compiler coverage (ffi, ir)": "success",
+        "Coverage / hosted compiler coverage (report)": "success",
+        "Coverage / native runtime coverage (report)": "success"
+      }
+    },
+    "previous_audit_lint": {
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/39502760660",
+      "conclusion": "success"
+    },
+    "review": {
+      "url": "https://github.com/den-run-ai/pystachy/pull/791#issuecomment-6300343270",
+      "reviewed_commit": "0cf7de2cb3c2c4c4e795a6dafe6ceeaf70893782",
+      "conclusion": "completed-no-findings",
+      "boundary": "later commits merge main; source hunks are unchanged according to the PR, but were not separately reviewed by this audit"
+    }
+  },
+  "python": "Python 3.12.14",
+  "executable": "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+  "environment_overrides": {
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "LC_ALL": "C"
+  },
+  "toolchain": {
+    "pinned_cpython_3_13_16": false,
+    "llvm18_bin": false,
+    "native_execution": false,
+    "boundary": "Fresh local checks are CPython 3.12.14 hosted compiler/source checks. Native JIT/AOT, GC and LLVM assembly are historical identical-tree CI only."
+  },
+  "before": {
+    "sha": "100979652775ab55ff2ecfd83750270395ece789",
+    "tree": "56c70c4875a633b20a0590c1767836c5b0b8c580",
+    "tracked_and_untracked": "",
+    "ignored": ""
+  },
+  "changed_path_sha256": {
+    "docs/typed-ir.md": "1792644aa55f67859f30d760271f2c9b2a2b377bf4000f13bf5ad783bb3648bf",
+    "src/pystachy_compiler/gen.py": "74070ccdf5e4fbbd49fdbc5a7884e5c6e413a4bdd9d5b456f7b91c46c8556ddf",
+    "src/pystachy_compiler/ir.py": "672ad966771244a2393d046dcf8ef95227c1934b56e52692f8d5e54d91235081",
+    "src/pystachy_compiler/optimizations.py": "82816ae95b82911d2da1794385ea7e7784f342af8dda74fbfd209634de0cba7a",
+    "src/pystachy_compiler/specs.py": "791494c8d39d2a0d9ee671eb5b5ae758a6a6e78f1b79295273eaf57f0ea92328",
+    "tests/cache.sh": "0621f592244dd12ea03bc5319961459b5243d29eb6b2154284be6f518cafe58e",
+    "tests/ir/index_key.calls": "6726a443970b754c50cd11897cdd34676d0bf8054627f75e2c8a730a01d35722",
+    "tests/ir/init_hasattr.calls": "67113e5638f96fb2b6ef22ca0fd58d87c6d509f915e05383b600816eb02c73e7",
+    "tests/ir/reflect_effects.calls": "0946bd71cf216e0583705c68dc33a69a11ce63f811db51df2cdc24b98201673f",
+    "tests/programs/optimizations/nullcheck_paths.out": "b162a17b69e0857f36258d3abbca46e789e6e98e9e3adad89868bb418eadabda",
+    "tests/programs/optimizations/nullcheck_paths.py": "a610f9d3e4173b943d28bcb4ba09f36d2487087689e7ebf9dbd4e865f26dd796",
+    "tools/scaling.py": "c8c4c275fcc46aa4799141c6382d824ee9a5a79349d7902e97035d1f3fe82c3b",
+    "tools/test_typed_nullcheck.py": "1e0f6e6f8f22e28a425ac1f808eb67e0d37273485bc9eabcffa4be43539f3625"
+  },
+  "records": [
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools",
+        "-p",
+        "test_typed*.py",
+        "-v"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-791-clean",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 4.242665900001157,
+      "stdout": "",
+      "stderr": "test_canonical_comparisons_retain_signedness_and_predicate (test_typed_comparisons.TypedComparisonTests.test_canonical_comparisons_retain_signedness_and_predicate) ... ok\ntest_reference_comparisons_reject_nonreferences_ordering_and_metadata (test_typed_comparisons.TypedComparisonTests.test_reference_comparisons_reject_nonreferences_ordering_and_metadata) ... ok\ntest_reference_identity_and_null_comparisons_are_typed_and_pure (test_typed_comparisons.TypedComparisonTests.test_reference_identity_and_null_comparisons_are_typed_and_pure) ... ok\ntest_repeated_reference_comparisons_keep_operand_and_predicate_identity (test_typed_comparisons.TypedComparisonTests.test_repeated_reference_comparisons_keep_operand_and_predicate_identity) ... ok\ntest_source_class_tag_dispatch_switches_on_the_tag (test_typed_comparisons.TypedComparisonTests.test_source_class_tag_dispatch_switches_on_the_tag) ... ok\ntest_source_loops_tag_checks_and_mixed_nan_comparisons_are_typed (test_typed_comparisons.TypedComparisonTests.test_source_loops_tag_checks_and_mixed_nan_comparisons_are_typed) ... ok\ntest_switch_is_a_pure_terminator_and_lowers_to_one_llvm_switch (test_typed_comparisons.TypedComparisonTests.test_switch_is_a_pure_terminator_and_lowers_to_one_llvm_switch) ... ok\ntest_switch_reaches_a_phi_by_one_edge_at_most (test_typed_comparisons.TypedComparisonTests.test_switch_reaches_a_phi_by_one_edge_at_most) ... ok\ntest_switch_verifier_rejects_other_operands_cases_and_labels (test_typed_comparisons.TypedComparisonTests.test_switch_verifier_rejects_other_operands_cases_and_labels) ... ok\ntest_typed_membership_conditions_preserve_dictfuse_and_mutation_barriers (test_typed_comparisons.TypedComparisonTests.test_typed_membership_conditions_preserve_dictfuse_and_mutation_barriers) ... ok\ntest_unsigned_predicates_are_pure_and_lower_without_changing_bits (test_typed_comparisons.TypedComparisonTests.test_unsigned_predicates_are_pure_and_lower_without_changing_bits) ... ok\ntest_unsigned_verifier_rejects_other_types_shapes_and_predicates (test_typed_comparisons.TypedComparisonTests.test_unsigned_verifier_rejects_other_types_shapes_and_predicates) ... ok\ntest_frontend_has_no_instruction_text_api (test_typed_complete.NoRawIRTests.test_frontend_has_no_instruction_text_api) ... ok\ntest_lowering_receives_only_registered_typed_operations (test_typed_complete.NoRawIRTests.test_lowering_receives_only_registered_typed_operations) ... ok\ntest_raw_operation_is_rejected (test_typed_complete.NoRawIRTests.test_raw_operation_is_rejected) ... ok\ntest_field_addresses_keep_memory_effects (test_typed_fields.TypedFieldTests.test_field_addresses_keep_memory_effects) ... ok\ntest_fields_flags_and_exact_lowering (test_typed_fields.TypedFieldTests.test_fields_flags_and_exact_lowering) ... ok\ntest_invalid_layout_index_type_shape_and_metadata (test_typed_fields.TypedFieldTests.test_invalid_layout_index_type_shape_and_metadata) ... ok\ntest_native_and_machine_accesses_share_field_alias_barriers (test_typed_fields.TypedFieldTests.test_native_and_machine_accesses_share_field_alias_barriers) ... ok\ntest_repeated_field_addresses_are_canonical (test_typed_fields.TypedFieldTests.test_repeated_field_addresses_are_canonical) ... ok\ntest_semantic_field_keys_retain_inheritance_aliases (test_typed_fields.TypedFieldTests.test_semantic_field_keys_retain_inheritance_aliases) ... ok\ntest_source_uses_typed_declared_layouts (test_typed_fields.TypedFieldTests.test_source_uses_typed_declared_layouts) ... ok\ntest_imported_closure_diagnostic_resolves_original_path (test_typed_ir.ClosurePathTests.test_imported_closure_diagnostic_resolves_original_path) ... ok\ntest_paths_do_not_change_tuple_layouts_or_closure_types (test_typed_ir.ClosurePathTests.test_paths_do_not_change_tuple_layouts_or_closure_types) ... ok\ntest_tuple_round_trip_check_is_always_on (test_typed_ir.ClosurePathTests.test_tuple_round_trip_check_is_always_on) ... ok\ntest_empty_result_layout_keeps_heap_write_effect (test_typed_ir.TypedIRTests.test_empty_result_layout_keeps_heap_write_effect) ... ok\ntest_empty_result_layout_rejects_bad_operands_and_holes (test_typed_ir.TypedIRTests.test_empty_result_layout_rejects_bad_operands_and_holes) ... ok\ntest_empty_result_layout_rejects_invalid_resolved_holes (test_typed_ir.TypedIRTests.test_empty_result_layout_rejects_invalid_resolved_holes) ... ok\ntest_fixed_allocation_rejects_non_layout_types_and_extra_metadata (test_typed_ir.TypedIRTests.test_fixed_allocation_rejects_non_layout_types_and_extra_metadata) ... ok\ntest_fixed_allocation_retains_runtime_self_recursion_guard (test_typed_ir.TypedIRTests.test_fixed_allocation_retains_runtime_self_recursion_guard) ... ok\ntest_fixed_allocations_retain_layout_type_and_allocation_effect (test_typed_ir.TypedIRTests.test_fixed_allocations_retain_layout_type_and_allocation_effect) ... ok\ntest_fixed_tuple_slots_lower_to_existing_llvm (test_typed_ir.TypedIRTests.test_fixed_tuple_slots_lower_to_existing_llvm) ... ok\ntest_fixed_tuple_slots_preserve_reaching_values_and_alias_barriers (test_typed_ir.TypedIRTests.test_fixed_tuple_slots_preserve_reaching_values_and_alias_barriers) ... ok\ntest_fixed_tuple_slots_reject_invalid_layout_index_and_member (test_typed_ir.TypedIRTests.test_fixed_tuple_slots_reject_invalid_layout_index_and_member) ... ok\ntest_fixed_tuple_slots_reject_wrong_operands_results_and_metadata (test_typed_ir.TypedIRTests.test_fixed_tuple_slots_reject_wrong_operands_results_and_metadata) ... ok\ntest_fixed_tuple_slots_retain_native_members_and_memory_effects (test_typed_ir.TypedIRTests.test_fixed_tuple_slots_retain_native_members_and_memory_effects) ... ok\ntest_integer_slot_conversions_keep_the_same_value (test_typed_ir.TypedIRTests.test_integer_slot_conversions_keep_the_same_value) ... ok\ntest_merged_union_operations_keep_typed_payload_operands (test_typed_ir.TypedIRTests.test_merged_union_operations_keep_typed_payload_operands) ... ok\ntest_numeric_casts_reject_other_type_pairs (test_typed_ir.TypedIRTests.test_numeric_casts_reject_other_type_pairs) ... ok\ntest_numeric_comparisons_reject_wrong_types_and_predicates (test_typed_ir.TypedIRTests.test_numeric_comparisons_reject_wrong_types_and_predicates) ... ok\ntest_numeric_operation_shapes_and_metadata (test_typed_ir.TypedIRTests.test_numeric_operation_shapes_and_metadata) ... ok\ntest_numeric_operations_are_typed_and_pure (test_typed_ir.TypedIRTests.test_numeric_operations_are_typed_and_pure) ... ok\ntest_optional_union_tag_stays_after_its_null_guard (test_typed_ir.TypedIRTests.test_optional_union_tag_stays_after_its_null_guard) ... ok\ntest_pack_result_and_unpack_operand_must_be_slots (test_typed_ir.TypedIRTests.test_pack_result_and_unpack_operand_must_be_slots) ... ok\ntest_rejects_empty_and_runtime_pseudo_types (test_typed_ir.TypedIRTests.test_rejects_empty_and_runtime_pseudo_types) ... ok\ntest_rejects_unused_metadata (test_typed_ir.TypedIRTests.test_rejects_unused_metadata) ... ok\ntest_requires_one_operand_and_one_result (test_typed_ir.TypedIRTests.test_requires_one_operand_and_one_result) ... ok\ntest_source_builds_declared_union_reads (test_typed_ir.TypedIRTests.test_source_builds_declared_union_reads) ... ok\ntest_source_builds_numeric_ops_and_retains_exact_mixed_comparison (test_typed_ir.TypedIRTests.test_source_builds_numeric_ops_and_retains_exact_mixed_comparison) ... ok\ntest_source_builds_typed_conversions_before_lowering (test_typed_ir.TypedIRTests.test_source_builds_typed_conversions_before_lowering) ... ok\ntest_sources_build_typed_class_exception_and_tuple_allocations (test_typed_ir.TypedIRTests.test_sources_build_typed_class_exception_and_tuple_allocations) ... ok\ntest_sources_build_typed_tuple_reads_and_heap_and_stack_stores (test_typed_ir.TypedIRTests.test_sources_build_typed_tuple_reads_and_heap_and_stack_stores) ... ok\ntest_union_read_shapes_and_metadata (test_typed_ir.TypedIRTests.test_union_read_shapes_and_metadata) ... ok\ntest_union_reads_keep_conservative_load_effects (test_typed_ir.TypedIRTests.test_union_reads_keep_conservative_load_effects) ... ok\ntest_union_reads_require_closed_nonoptional_operands (test_typed_ir.TypedIRTests.test_union_reads_require_closed_nonoptional_operands) ... ok\ntest_valid_native_types_and_pure_effects (test_typed_ir.TypedIRTests.test_valid_native_types_and_pure_effects) ... ok\ntest_weak_reference_reads_are_distinct_across_allocations (test_typed_ir.TypedIRTests.test_weak_reference_reads_are_distinct_across_allocations) ... ok\ntest_finite_metadata_preserves_tbaa_and_range (test_typed_machine_memory.TypedMachineMemoryTests.test_finite_metadata_preserves_tbaa_and_range) ... ok\ntest_indexed_address_has_explicit_element_index_and_inbounds (test_typed_machine_memory.TypedMachineMemoryTests.test_indexed_address_has_explicit_element_index_and_inbounds) ... ok\ntest_indexed_addresses_interoperate_with_tuple_slots (test_typed_machine_memory.TypedMachineMemoryTests.test_indexed_addresses_interoperate_with_tuple_slots) ... ok\ntest_source_memory_producers_are_structured (test_typed_machine_memory.TypedMachineMemoryTests.test_source_memory_producers_are_structured) ... ok\ntest_storage_rejects_malformed_operands_types_results_and_metadata (test_typed_machine_memory.TypedMachineMemoryTests.test_storage_rejects_malformed_operands_types_results_and_metadata) ... ok\ntest_storage_types_numbers_effects_and_exact_lowering (test_typed_machine_memory.TypedMachineMemoryTests.test_storage_types_numbers_effects_and_exact_lowering) ... ok\ntest_frontend_has_no_module_or_abi_llvm_templates (test_typed_module_lowering.ModuleLoweringTests.test_frontend_has_no_module_or_abi_llvm_templates) ... ok\ntest_frontend_records_native_globals_and_structured_constants (test_typed_module_lowering.ModuleLoweringTests.test_frontend_records_native_globals_and_structured_constants) ... ok\ntest_string_literal_header_matches_runtime_caches (test_typed_module_lowering.ModuleLoweringTests.test_string_literal_header_matches_runtime_caches) ... ok\ntest_a_check_goes_only_where_a_passed_test_of_the_same_value_dominates_it (test_typed_nullcheck.NullCheckTests.test_a_check_goes_only_where_a_passed_test_of_the_same_value_dominates_it) ... ok\ntest_a_cold_block_no_check_goes_to_goes_too (test_typed_nullcheck.NullCheckTests.test_a_cold_block_no_check_goes_to_goes_too) ... ok\ntest_arithmetic_bitwise_and_overflow_flags_lower_exactly (test_typed_scalars.TypedScalarTests.test_arithmetic_bitwise_and_overflow_flags_lower_exactly) ... ok\ntest_canonical_values_keep_types_flags_predicates_and_operand_order (test_typed_scalars.TypedScalarTests.test_canonical_values_keep_types_flags_predicates_and_operand_order) ... ok\ntest_cast_and_comparison_lowering_is_finite_and_typed (test_typed_scalars.TypedScalarTests.test_cast_and_comparison_lowering_is_finite_and_typed) ... ok\ntest_producers_do_not_encode_scalar_llvm_in_raw_instructions (test_typed_scalars.TypedScalarTests.test_producers_do_not_encode_scalar_llvm_in_raw_instructions) ... ok\ntest_select_verifier_checks_condition_values_and_metadata (test_typed_scalars.TypedScalarTests.test_select_verifier_checks_condition_values_and_metadata) ... ok\ntest_verifier_rejects_mismatches_unknown_operators_and_extra_metadata (test_typed_scalars.TypedScalarTests.test_verifier_rejects_mismatches_unknown_operators_and_extra_metadata) ... ok\ntest_calls_invalidate_global_and_heap_reads_but_preserve_local_values (test_typed_storage.TypedStorageTests.test_calls_invalidate_global_and_heap_reads_but_preserve_local_values) ... ok\ntest_effects_distinguish_local_global_field_and_unknown_memory (test_typed_storage.TypedStorageTests.test_effects_distinguish_local_global_field_and_unknown_memory) ... ok\ntest_frontend_keeps_variable_and_parameter_storage_typed (test_typed_storage.TypedStorageTests.test_frontend_keeps_variable_and_parameter_storage_typed) ... ok\ntest_heap_store_aliases_barrier_but_other_locals_and_globals_do_not (test_typed_storage.TypedStorageTests.test_heap_store_aliases_barrier_but_other_locals_and_globals_do_not) ... ok\ntest_lowering_retains_native_layouts_and_numbers (test_typed_storage.TypedStorageTests.test_lowering_retains_native_layouts_and_numbers) ... ok\ntest_native_address_and_value_contracts (test_typed_storage.TypedStorageTests.test_native_address_and_value_contracts) ... ok\ntest_reaching_preserves_native_and_machine_load_store_combinations (test_typed_storage.TypedStorageTests.test_reaching_preserves_native_and_machine_load_store_combinations) ... ok\ntest_rejects_mismatched_native_types (test_typed_storage.TypedStorageTests.test_rejects_mismatched_native_types) ... ok\ntest_rejects_operand_result_and_metadata_mutations (test_typed_storage.TypedStorageTests.test_rejects_operand_result_and_metadata_mutations) ... ok\ntest_rejects_untyped_addresses_and_runtime_pseudo_types (test_typed_storage.TypedStorageTests.test_rejects_untyped_addresses_and_runtime_pseudo_types) ... ok\n\n----------------------------------------------------------------------\nRan 84 tests in 3.734s\n\nOK\n",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "0093bd4d40bcc772a2716b438c34b727a2433f06fd05e591574644eb2d14d724"
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools",
+        "-p",
+        "test_*verif*.py",
+        "-v"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-791-clean",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 37.942678444000194,
+      "stdout": "",
+      "stderr": "test_gc_reports_require_original_stress_mode_ir_and_complete_counts (test_merge_verification.ContractTests.test_gc_reports_require_original_stress_mode_ir_and_complete_counts) ... ok\ntest_missing_duplicate_or_unknown_checks_cannot_weaken_the_gate (test_merge_verification.ContractTests.test_missing_duplicate_or_unknown_checks_cannot_weaken_the_gate) ... ok\ntest_real_plan_requires_native_suites_and_every_gc_job (test_merge_verification.ContractTests.test_real_plan_requires_native_suites_and_every_gc_job) ... ok\ntest_reports_require_the_corpus_check_counts (test_merge_verification.ContractTests.test_reports_require_the_corpus_check_counts) ... ok\ntest_all_reports_from_a_previous_commit_are_rejected (test_merge_verification.ReportTests.test_all_reports_from_a_previous_commit_are_rejected) ... ok\ntest_commit_source_toolchain_and_bootstrap_drift_are_rejected (test_merge_verification.ReportTests.test_commit_source_toolchain_and_bootstrap_drift_are_rejected) ... ok\ntest_failed_cli_overwrites_a_stale_success_report_and_exits_nonzero (test_merge_verification.ReportTests.test_failed_cli_overwrites_a_stale_success_report_and_exits_nonzero) ... ok\ntest_failed_skipped_missing_reordered_and_unexpected_steps_are_rejected (test_merge_verification.ReportTests.test_failed_skipped_missing_reordered_and_unexpected_steps_are_rejected) ... ok\ntest_missing_group_cannot_report_success (test_merge_verification.ReportTests.test_missing_group_cannot_report_success) ... ok\ntest_unexpected_and_duplicate_groups_are_rejected (test_merge_verification.ReportTests.test_unexpected_and_duplicate_groups_are_rejected) ... ok\ntest_valid_reports_preserve_checks_and_distinguish_parallel_from_runner_time (test_merge_verification.ReportTests.test_valid_reports_preserve_checks_and_distinguish_parallel_from_runner_time) ... ok\ntest_missing_changed_or_malformed_bundle_identity_is_rejected (test_merge_verification.SharedBootstrapTests.test_missing_changed_or_malformed_bundle_identity_is_rejected) ... ok\ntest_missing_producer_is_rejected (test_merge_verification.SharedBootstrapTests.test_missing_producer_is_rejected) ... ok\ntest_producer_cannot_claim_other_stages (test_merge_verification.SharedBootstrapTests.test_producer_cannot_claim_other_stages) ... ok\ntest_producer_cannot_reuse_and_consumers_must_reuse (test_merge_verification.SharedBootstrapTests.test_producer_cannot_reuse_and_consumers_must_reuse) ... ok\ntest_producer_commit_and_failed_fixed_point_are_rejected (test_merge_verification.SharedBootstrapTests.test_producer_commit_and_failed_fixed_point_are_rejected) ... ok\ntest_shared_bootstrap_preserves_producer_and_counts_serial_work_once (test_merge_verification.SharedBootstrapTests.test_shared_bootstrap_preserves_producer_and_counts_serial_work_once) ... ok\ntest_both_actual_fixed_points_are_required_at_export (test_verification_bootstrap.BootstrapBundleTests.test_both_actual_fixed_points_are_required_at_export) ... ok\ntest_commit_change_is_rejected_even_when_sources_match (test_verification_bootstrap.BootstrapBundleTests.test_commit_change_is_rejected_even_when_sources_match) ... ok\ntest_destination_symlink_is_rejected (test_verification_bootstrap.BootstrapBundleTests.test_destination_symlink_is_rejected) ... ok\ntest_duplicate_json_keys_are_rejected (test_verification_bootstrap.BootstrapBundleTests.test_duplicate_json_keys_are_rejected) ... ok\ntest_existing_destination_executable_unchanged_on_rejection (test_verification_bootstrap.BootstrapBundleTests.test_existing_destination_executable_unchanged_on_rejection) ... ok\ntest_failed_incomplete_or_reused_producer_cannot_be_exported (test_verification_bootstrap.BootstrapBundleTests.test_failed_incomplete_or_reused_producer_cannot_be_exported) ... ok\ntest_failed_report_rejected_even_if_manifest_hash_matches (test_verification_bootstrap.BootstrapBundleTests.test_failed_report_rejected_even_if_manifest_hash_matches) ... ok\ntest_missing_or_corrupt_payload_never_restores_compiler (test_verification_bootstrap.BootstrapBundleTests.test_missing_or_corrupt_payload_never_restores_compiler) ... ok\ntest_other_workflow_run_is_rejected (test_verification_bootstrap.BootstrapBundleTests.test_other_workflow_run_is_rejected) ... ok\ntest_payload_symlink_and_traversal_name_are_rejected (test_verification_bootstrap.BootstrapBundleTests.test_payload_symlink_and_traversal_name_are_rejected) ... ok\ntest_platform_and_python_identity_changes_are_rejected (test_verification_bootstrap.BootstrapBundleTests.test_platform_and_python_identity_changes_are_rejected) ... ok\ntest_relocated_checkout_and_failed_job_rerun_are_allowed (test_verification_bootstrap.BootstrapBundleTests.test_relocated_checkout_and_failed_job_rerun_are_allowed) ... ok\ntest_report_cannot_claim_different_payload_evidence (test_verification_bootstrap.BootstrapBundleTests.test_report_cannot_claim_different_payload_evidence) ... ok\ntest_round_trip_has_proof_timings_and_no_runtime_cache (test_verification_bootstrap.BootstrapBundleTests.test_round_trip_has_proof_timings_and_no_runtime_cache) ... ok\ntest_same_size_same_timestamp_source_change_is_rejected (test_verification_bootstrap.BootstrapBundleTests.test_same_size_same_timestamp_source_change_is_rejected) ... ok\ntest_toolchain_change_is_rejected (test_verification_bootstrap.BootstrapBundleTests.test_toolchain_change_is_rejected) ... ok\ntest_tracked_executable_bit_changes_identity (test_verification_bootstrap.BootstrapBundleTests.test_tracked_executable_bit_changes_identity) ... ok\ntest_tracked_noncompiler_source_change_is_rejected (test_verification_bootstrap.BootstrapBundleTests.test_tracked_noncompiler_source_change_is_rejected) ... ok\ntest_tracked_symlinks_dangling_links_and_loops_are_bound_without_following (test_verification_bootstrap.BootstrapBundleTests.test_tracked_symlinks_dangling_links_and_loops_are_bound_without_following) ... ok\ntest_cancellation_terminates_the_background_compiler (test_verify_gc.GCVerificationTests.test_cancellation_terminates_the_background_compiler) ... ok\ntest_each_suite_runs_its_complete_selection_at_original_stress (test_verify_gc.GCVerificationTests.test_each_suite_runs_its_complete_selection_at_original_stress) ... ok\ntest_failed_and_incomplete_suites_cannot_pass (test_verify_gc.GCVerificationTests.test_failed_and_incomplete_suites_cannot_pass) ... ok\ntest_failure_timeout_and_mismatched_ir_cannot_pass (test_verify_gc.GCVerificationTests.test_failure_timeout_and_mismatched_ir_cannot_pass) ... ok\ntest_local_alias_reports_failure_and_still_runs_remaining_modes (test_verify_gc.GCVerificationTests.test_local_alias_reports_failure_and_still_runs_remaining_modes) ... ok\ntest_local_aliases_run_all_selected_gc_checks (test_verify_gc.GCVerificationTests.test_local_aliases_run_all_selected_gc_checks) ... ok\ntest_self_compile_preserves_ir_stress_and_gc_diagnostics (test_verify_gc.GCVerificationTests.test_self_compile_preserves_ir_stress_and_gc_diagnostics) ... ok\ntest_a_test_outside_the_areas_is_a_stray (test_verify_layout.LayoutTests.test_a_test_outside_the_areas_is_a_stray) ... ok\ntest_cases_are_the_areas_programs_the_deviations_and_the_areas_rejections (test_verify_layout.LayoutTests.test_cases_are_the_areas_programs_the_deviations_and_the_areas_rejections) ... ok\ntest_check_recordings_fails_on_a_stray_and_on_two_cases_of_one_name (test_verify_layout.LayoutTests.test_check_recordings_fails_on_a_stray_and_on_two_cases_of_one_name) ... ok\ntest_record_finds_a_program_by_its_name_or_its_path (test_verify_layout.LayoutTests.test_record_finds_a_program_by_its_name_or_its_path) ... ok\ntest_run_refuses_a_stray_and_a_test_named_in_the_old_layout (test_verify_layout.LayoutTests.test_run_refuses_a_stray_and_a_test_named_in_the_old_layout) ... ok\ntest_verify_refuses_a_stray (test_verify_layout.LayoutTests.test_verify_refuses_a_stray) ... ok\ntest_each_shard_runs_its_share_of_the_corpus (test_verify_shards.ShardVerificationTests.test_each_shard_runs_its_share_of_the_corpus) ... ok\ntest_failed_and_incomplete_shards_cannot_pass (test_verify_shards.ShardVerificationTests.test_failed_and_incomplete_shards_cannot_pass) ... ok\ntest_local_aliases_run_all_their_shards (test_verify_shards.ShardVerificationTests.test_local_aliases_run_all_their_shards) ... ok\ntest_ubsan_shards_need_an_instrumented_runtime (test_verify_shards.ShardVerificationTests.test_ubsan_shards_need_an_instrumented_runtime) ... ok\n\n----------------------------------------------------------------------\nRan 53 tests in 37.835s\n\nOK\n",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "8ea613bdf268867a04354cff7ca2a5ebe089aa8585833d13df42a85da8c738b8"
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "tools/scaling.py",
+        "-c",
+        "hosted=/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B pystachy.py",
+        "-s",
+        "nulls,fields,long",
+        "-n",
+        "500,1000",
+        "-r",
+        "1",
+        "--ops",
+        "--check"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-791-clean",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 57.968211977000465,
+      "stdout": "| shape | N | hosted s | x | hosted lines | x | flow | x | items | x |\n| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |\n| nulls | 500 | 0.610 |  | 5928282 |  | 313900 |  | 9 |  |\n| nulls | 1000 | 0.673 | 1.1 | 11812482 | 2.0 | 626400 | 2.0 | 9 | 1.0 |\n| fields | 500 | 0.531 |  | 5817225 |  | 322499 |  | 1008 |  |\n| fields | 1000 | 0.663 | 1.2 | 11629725 | 2.0 | 643999 | 2.0 | 2008 | 2.0 |\n| long | 500 | 0.599 |  | 8270746 |  | 437865 |  | 501 |  |\n| long | 1000 | 0.785 | 1.3 | 16603888 | 2.0 | 875865 | 2.0 | 1001 | 2.0 |\n",
+      "stderr": "",
+      "stdout_sha256": "f62714c7de0f30d6e000a8049397b26e47336a080a6aacf2cf0aee72fee07236",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-791-clean/tests/programs/optimizations/nullcheck_paths.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-791-clean",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.012688963000982767,
+      "stdout": "9 6 15 6 6\n9 77 0 [3, 6]\n2 AttributeError: 'NoneType' object has no attribute 'v' ['then']\n3 AttributeError: 'NoneType' object has no attribute 'v' ['after']\n4 AttributeError: 'NoneType' object has no attribute 'v' ['after']\n5 AttributeError: 'NoneType' object has no attribute 'v' ['trip 0']\n6 AttributeError: 'NoneType' object has no attribute 'v' ['after']\n7 AttributeError: 'NoneType' object has no attribute 'v' []\n8 AttributeError: 'NoneType' object has no attribute 'v' ['handler', 'after']\n9 AttributeError: 'NoneType' object has no attribute 'v' ['again']\n10 AttributeError: 'NoneType' object has no attribute 'v' []\n11 AttributeError: 'NoneType' object has no attribute 'v' ['cleared']\n12 AttributeError: 'NoneType' object has no attribute 'v' []\n3\n6\n14 AttributeError: 'NoneType' object has no attribute 'v' []\n11\n",
+      "stderr": "",
+      "stdout_sha256": "3605ebc8fdc0b45453032464b43cf2f3ccbb96aeb86752bd4fb251bea7b1f562",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "matches_recording_without_exit_marker": true
+    }
+  ],
+  "small_program_ir": [
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-791-clean/tests/programs/optimizations/nullcheck_paths.py",
+        "-o",
+        "/workspace/scratch/3ba735e28fa7/audit-791-artifacts/nullcheck-current.ll"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-791-clean",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.4153618330019526,
+      "stdout": "",
+      "stderr": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "path": "/workspace/scratch/3ba735e28fa7/audit-791-artifacts/nullcheck-current.ll",
+        "lines": 1184,
+        "null_pointer_tests": 14,
+        "pys_raise_calls": 14,
+        "sha256": "427889c5b258fc568400cbb84bf7f8fffe0b6356caf4301ea42392920ad40cfe"
+      }
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-791-clean/tests/programs/optimizations/nullcheck_paths.py",
+        "-o",
+        "/workspace/scratch/3ba735e28fa7/audit-791-artifacts/nullcheck-current_nullcheck_disabled.ll"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-791-clean",
+      "extra_environment": {
+        "PYSTACHY_OPT": "-nullcheck"
+      },
+      "exit": 0,
+      "seconds_advisory": 0.40211325799828046,
+      "stdout": "",
+      "stderr": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "path": "/workspace/scratch/3ba735e28fa7/audit-791-artifacts/nullcheck-current_nullcheck_disabled.ll",
+        "lines": 1214,
+        "null_pointer_tests": 22,
+        "pys_raise_calls": 16,
+        "sha256": "eaca6167c5872404fedcaea9d893b4c5f83fd7b50b33b86c7ebf5ac07b671ca7"
+      }
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-791-clean/tests/programs/optimizations/nullcheck_paths.py",
+        "-o",
+        "/workspace/scratch/3ba735e28fa7/audit-791-artifacts/nullcheck-previous_compiler.ll"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-789-clean",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.4047659480020229,
+      "stdout": "",
+      "stderr": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "path": "/workspace/scratch/3ba735e28fa7/audit-791-artifacts/nullcheck-previous_compiler.ll",
+        "lines": 1214,
+        "null_pointer_tests": 22,
+        "pys_raise_calls": 16,
+        "sha256": "eaca6167c5872404fedcaea9d893b4c5f83fd7b50b33b86c7ebf5ac07b671ca7"
+      }
+    }
+  ],
+  "changed_call_contracts": [
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "tests/ir/index_key.py",
+        "-o",
+        "/workspace/scratch/3ba735e28fa7/audit-791-artifacts/index_key.ll"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-791-clean",
+      "extra_environment": {
+        "PYSTACHY_IRCHECK": "1",
+        "PYSTACHY_OPT": ""
+      },
+      "exit": 0,
+      "seconds_advisory": 0.3742230979987653,
+      "stdout": "",
+      "stderr": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "calls_match": true,
+      "calls_sha256": "6726a443970b754c50cd11897cdd34676d0bf8054627f75e2c8a730a01d35722",
+      "expected_calls_sha256": "6726a443970b754c50cd11897cdd34676d0bf8054627f75e2c8a730a01d35722",
+      "ir": {
+        "path": "/workspace/scratch/3ba735e28fa7/audit-791-artifacts/index_key.ll",
+        "lines": 454,
+        "null_pointer_tests": 3,
+        "pys_raise_calls": 7,
+        "sha256": "44cd4f6e778b49ce9138b16a68ac72149884d731f7e47903a5062e130636c8f0"
+      }
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "tests/ir/init_hasattr.py",
+        "-o",
+        "/workspace/scratch/3ba735e28fa7/audit-791-artifacts/init_hasattr.ll"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-791-clean",
+      "extra_environment": {
+        "PYSTACHY_IRCHECK": "1",
+        "PYSTACHY_OPT": ""
+      },
+      "exit": 0,
+      "seconds_advisory": 0.4058175790014502,
+      "stdout": "",
+      "stderr": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "calls_match": true,
+      "calls_sha256": "67113e5638f96fb2b6ef22ca0fd58d87c6d509f915e05383b600816eb02c73e7",
+      "expected_calls_sha256": "67113e5638f96fb2b6ef22ca0fd58d87c6d509f915e05383b600816eb02c73e7",
+      "ir": {
+        "path": "/workspace/scratch/3ba735e28fa7/audit-791-artifacts/init_hasattr.ll",
+        "lines": 194,
+        "null_pointer_tests": 1,
+        "pys_raise_calls": 2,
+        "sha256": "7f02dd83e3dc12dda8924c74d70e55cbbd74565895a89fa4557fd4cc080c0d79"
+      }
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "tests/ir/reflect_effects.py",
+        "-o",
+        "/workspace/scratch/3ba735e28fa7/audit-791-artifacts/reflect_effects.ll"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-791-clean",
+      "extra_environment": {
+        "PYSTACHY_IRCHECK": "1",
+        "PYSTACHY_OPT": ""
+      },
+      "exit": 0,
+      "seconds_advisory": 0.4396476059991983,
+      "stdout": "",
+      "stderr": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "calls_match": true,
+      "calls_sha256": "0946bd71cf216e0583705c68dc33a69a11ce63f811db51df2cdc24b98201673f",
+      "expected_calls_sha256": "0946bd71cf216e0583705c68dc33a69a11ce63f811db51df2cdc24b98201673f",
+      "ir": {
+        "path": "/workspace/scratch/3ba735e28fa7/audit-791-artifacts/reflect_effects.ll",
+        "lines": 421,
+        "null_pointer_tests": 6,
+        "pys_raise_calls": 2,
+        "sha256": "3d2a1de3f94474272a236aa2794741f138666505dca1a7f08c195e40ecbde497"
+      }
+    }
+  ],
+  "self_compiler_ir": {
+    "input_source": "/workspace/scratch/3ba735e28fa7/pystachy-audit-789-clean/pystachy.py",
+    "commands": {
+      "previous": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-789-clean/pystachy.py",
+        "-o",
+        "/workspace/scratch/3ba735e28fa7/self-previous.ll"
+      ],
+      "current": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-789-clean/pystachy.py",
+        "-o",
+        "/workspace/scratch/3ba735e28fa7/self-current.ll"
+      ],
+      "current_nullcheck_disabled": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-789-clean/pystachy.py",
+        "-o",
+        "/workspace/scratch/3ba735e28fa7/self-current-off.ll"
+      ]
+    },
+    "previous": {
+      "path": "/workspace/scratch/3ba735e28fa7/self-previous.ll",
+      "lines": 710837,
+      "null_pointer_tests": 36182,
+      "pys_raise_calls": 16911,
+      "sha256": "ff0a80360c8784b0727ce98a946f51ec940ec57aad1c19e2152fc26f42109d0e"
+    },
+    "current": {
+      "path": "/workspace/scratch/3ba735e28fa7/self-current.ll",
+      "lines": 621696,
+      "null_pointer_tests": 13978,
+      "pys_raise_calls": 9403,
+      "sha256": "569762f692fd7e097a1fc49e8fb9f85c462004c3e7f10b68b2d6bf622f73e2e3"
+    },
+    "current_nullcheck_disabled": {
+      "path": "/workspace/scratch/3ba735e28fa7/self-current-off.ll",
+      "lines": 710837,
+      "null_pointer_tests": 36182,
+      "pys_raise_calls": 16911,
+      "sha256": "ff0a80360c8784b0727ce98a946f51ec940ec57aad1c19e2152fc26f42109d0e"
+    },
+    "disabled_byte_identical_to_previous": true
+  },
+  "after": {
+    "sha": "100979652775ab55ff2ecfd83750270395ece789",
+    "tree": "56c70c4875a633b20a0590c1767836c5b0b8c580",
+    "tracked_and_untracked": "",
+    "ignored": ""
+  }
+}

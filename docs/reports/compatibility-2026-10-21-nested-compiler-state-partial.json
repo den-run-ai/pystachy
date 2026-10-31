@@ -1,0 +1,232 @@
+{
+  "schema": 1,
+  "checkpoint": "2026-10-21 nested compiler-state isolation (partial)",
+  "event": {
+    "source_sha": "4046df597cc41faa382c5012d233b73c4f56c095",
+    "source_tree": "b87fe4ddfb86cd8a07df64aaeae62f4d4b63d97a",
+    "previous_source_sha": "11722f0c0590441487fa4c9a2ead1c9fbcf618b4",
+    "previous_source_tree": "a9430983ce2a3ffac69d99468a2d43b90dbe6869",
+    "first_parent_merges_since_previous": [819],
+    "pull_request": {
+      "number": 819,
+      "merged_at_utc": "2026-10-21T22:33:52Z",
+      "merge_sha": "4046df597cc41faa382c5012d233b73c4f56c095",
+      "implementation_head_sha": "e6ecb232fc144388e3b9ae4349a68348268283f0",
+      "implementation_head_tree": "f8bdf99ca47e0fdb0d0853227e880f8d97cfaf19",
+      "merge_tree_equals_implementation_head": false,
+      "integration_note": "The landed merge adds the prior main parent 11722f0c. A clean trial merge of that parent with the implementation head produces the landed tree."
+    }
+  },
+  "changed_scope": {
+    "files": 23,
+    "insertions": 903,
+    "deletions": 14,
+    "compiler_files": [
+      "src/pystachy_compiler/declarations.py",
+      "src/pystachy_compiler/emission.py",
+      "src/pystachy_compiler/functions.py",
+      "src/pystachy_compiler/ir.py",
+      "src/pystachy_compiler/variables.py"
+    ],
+    "new_differential_programs": 8,
+    "new_structural_guard": "tools/test_frame_fields.py",
+    "runtime_library_ports_changed": false
+  },
+  "selected_changed_sha256": {
+    "src/pystachy_compiler/emission.py": "9845a6a61a3d6b71ed22017cb56e8e26856070445a4c3f707b3ab2006055f204",
+    "src/pystachy_compiler/functions.py": "5966163db404c0041da6ff5c692c7283e53888b8266bac937feb74b7616ae6de",
+    "src/pystachy_compiler/ir.py": "0249b6abf0a43f2361bce4553c2818bc33a9521d67bb4b44d14187953398f9f3",
+    "tools/test_frame_fields.py": "325328ba8a1576f195bf862cbf5e1ff1bc7c10d6ddfce4aacf143b2ec3d412a4",
+    "tests/programs/containers/nestcomp_stkkey.py": "98496cb02629729b67ee7141cbbc8865fbe63b17a47d36602c4e311a5e9bb02b",
+    "tests/programs/exceptions/nestcomp_carried.py": "e933b6f2386d3d0ee72e1468fb1a854cb10728a1817d2c9b48f62d5ae1da1d9e",
+    "tests/programs/generators/nestcomp_stmtexpr.py": "b4167dbdbf5b290705891ed384a87f0bec8402866ac4ed86ec22d0b228c2cd17",
+    "tests/programs/generics/nestcomp_dry_walrus.py": "0cd32bad3c81573afc682074de3fe2cd4f2c775bf4d2f07ca8a1695e9de6f77a",
+    "tests/programs/optional/nestcomp_cmpnode.py": "17aaf4b3ed28aa0ee3a9e110d3376bd2d7716aaff14522a3ce44fac1c29ce91f",
+    "tests/programs/optional/nestcomp_fieldcmp.py": "0f5a60da01809809061dd9b1b222ed9a5fe6903dca9652d6ecc303d137e2d14c",
+    "tests/programs/optional/nestcomp_nonecmp_clobber.py": "fa51271a26a1d576a85bee33d7ccf5f2fda85f3adbed7d3cb36026752fd82401",
+    "tests/programs/reflection/nestcomp_reflcopies.py": "34272e56639ad2df2c9a4e43ecf0390fb9c869c687349b996c7577570258debd"
+  },
+  "environment": {
+    "recording_python": "CPython 3.13.16",
+    "pinned_cpython_inventory_revision": "cbc944f4bc59639a444dd971c737788ba2283a91",
+    "pinned_cpython_inventory_tag": "v3.13.16",
+    "ruff": "0.17.0",
+    "mypy": "2.4.0",
+    "actionlint": "1.7.12",
+    "llvm_18": "unavailable locally"
+  },
+  "commands": [
+    "uv run --python /root/.local/bin/python3.13 --with-requirements tools/requirements-dev.txt tests/record.sh --check",
+    "uv run --python /root/.local/bin/python3.13 --with-requirements tools/requirements-dev.txt make check-fast",
+    "python3 -m unittest discover -s tools -p test_frame_fields.py",
+    "python3 -m unittest discover -s tools -p 'test_compiler_state*.py'",
+    "python3 tools/compiler_state_contract.py",
+    "python3 tools/compiler_state_nested_probe.py",
+    "python3 tools/compiler_state_nested_probe.py --strict",
+    "python3 tools/compiler_state_probe.py research/compiler-state-767/dry_template.py",
+    "python3 tools/compiler_state_probe.py --baseline research/compiler-state-767/dry_template.py",
+    "python3 tools/compiler_state_probe.py tests/programs/inference/dynany_eq_restart_global.py",
+    "python3 tools/compiler_state_probe.py --baseline tests/programs/inference/dynany_eq_restart_global.py",
+    "emit hosted IR with the 11722f0c and 4046df59 compilers for the eight new nestcomp programs and retained one-read control",
+    "emit hosted IR with both compilers for tests/programs/classes/*.py, tests/programs/exceptions/*.py and tests/programs/inference/dynany_*.py, honoring adjacent .path files",
+    "PYSTACHY_HOME=<checkout> /root/.local/bin/python3.13 tools/import_sweep.py -j 4 --metadata <meta.json> <hosted-wrapper> <cpython-v3.13.16-source>/Lib <result.json>",
+    "python3 -m unittest discover -s tools -p 'test_*verif*.py'",
+    "python3 -m unittest discover -s tools -p test_workflow_limits.py",
+    "actionlint -pyflakes= .github/workflows/*.yml",
+    "git diff --check 11722f0c0590441487fa4c9a2ead1c9fbcf618b4..4046df597cc41faa382c5012d233b73c4f56c095"
+  ],
+  "fresh_local_results": {
+    "recordings": {
+      "recordings": 1558,
+      "deviations": 95,
+      "pinned_library_files": 12,
+      "failed": 0,
+      "new_nested_state_recordings": 8,
+      "new_nested_state_recordings_matched": 8
+    },
+    "state_guards": {
+      "frame_field_tests_passed": 18,
+      "compiler_state_tests_passed": 31,
+      "frame_contract": "pass",
+      "covered_saved_fields": [
+        "drying",
+        "carried",
+        "nonecmp",
+        "fieldcmp",
+        "cmpnode",
+        "stkkey",
+        "reflcopies",
+        "stmtexpr",
+        "dmemo",
+        "dmemot"
+      ]
+    },
+    "nested_boundary_probe": {
+      "depths": [1, 2, 3],
+      "boundaries": 6,
+      "previous_entry_leak_observations": 48,
+      "current_entry_leak_observations": 6,
+      "current_entry_leak_field": "nonecmp",
+      "previous_caller_restore_change_observations": 48,
+      "current_caller_restore_change_observations": 0,
+      "strict_returncode": 1,
+      "strict_failure_expected": true,
+      "interpretation": "Seven of eight probed entry leaks are removed and all eight caller restorations are preserved. nonecmp remains inherited intentionally to keep the accepted one-read control; its stale multi-iteration behavior remains issue #822."
+    },
+    "focused_hosted_comparison": {
+      "new_fix_programs": 8,
+      "previous_accepted": 4,
+      "previous_rejected": 4,
+      "current_accepted": 8,
+      "current_rejected": 0,
+      "accepted_ir_changes": 4,
+      "rejected_to_accepted": 4,
+      "retained_one_read_control": {
+        "previous_status": "accepted",
+        "current_status": "accepted",
+        "ir_byte_identical": true,
+        "ir_sha256": "8eadb90a423016ac423c1f58eb6f8ea702e3790fcf4bf96091cb10421e131ee8"
+      },
+      "boundary": "Hosted compiler emission with typed-IR checks; generated IR was not executed locally."
+    },
+    "affected_hosted_corpus": {
+      "selection": "tests/programs/classes/*.py, tests/programs/exceptions/*.py and tests/programs/inference/dynany_*.py",
+      "programs": 314,
+      "previous_accepted": 314,
+      "current_accepted": 314,
+      "status_changes": 0,
+      "byte_identical_outcomes": 313,
+      "changed_outcomes": 1,
+      "changed_case": "tests/programs/exceptions/nestcomp_carried.py",
+      "boundary": "Hosted compiler emission; this selection covers retained class, exception and Dynamic-Any cases, not the whole corpus or native execution."
+    },
+    "probe_transparency": [
+      {
+        "case": "research/compiler-state-767/dry_template.py",
+        "observed_ir_sha256": "d78d631d9ff78aefc99690660837538e722e27ea4cf89d1d542f420fbce74af0",
+        "baseline_ir_sha256": "d78d631d9ff78aefc99690660837538e722e27ea4cf89d1d542f420fbce74af0",
+        "equal": true
+      },
+      {
+        "case": "tests/programs/inference/dynany_eq_restart_global.py",
+        "observed_ir_sha256": "f0252d782a0038d65e301f65a00de6f23107e920d0cb358701bf8845dcf158f0",
+        "baseline_ir_sha256": "f0252d782a0038d65e301f65a00de6f23107e920d0cb358701bf8845dcf158f0",
+        "equal": true
+      }
+    ],
+    "known_residual_nonecmp": {
+      "tracking_issue": 822,
+      "input_sha256": "00a22db6e45a4262b740080d6dfd0559cb4a3c70cbb21bc7215dcb5ebc173829",
+      "cpython_3_13_16_stdout": "x is None\ny is falsy\ny is truthy\ny is truthy\nx still None\n",
+      "previous_hosted_ir_sha256": "99c353e3e47d8eae909b91c4e29876455aec76ccd2ec6c4790bb7bcb2643f06d",
+      "current_hosted_ir_sha256": "99c353e3e47d8eae909b91c4e29876455aec76ccd2ec6c4790bb7bcb2643f06d",
+      "ir_byte_identical": true,
+      "current_ir_evidence": "The truth-test phi has false on both incoming edges, selecting the falsy branch on every loop iteration.",
+      "assessment": "Known residual miscompilation reconfirmed; no new issue filed."
+    },
+    "pinned_import_sweep": {
+      "inventory_total": 522,
+      "overlay_exclusions": 62,
+      "included": 460,
+      "successful": 148,
+      "errors": 312,
+      "timeouts": 0,
+      "new_successes_vs_11722f0c": [],
+      "lost_successes_vs_11722f0c": [],
+      "normalized_result_changes_vs_11722f0c": 0,
+      "current_result_sha256": "e26b88554d57f3b550b103e05ac7eeb1946c5515c817ecd0d59bcc2d088b5e60",
+      "current_metadata_sha256": "72464c6dbc03ad4d3986c62ce614bf5c61b76ffafd75c1d8fa3ebb6447fb35c7",
+      "normalized_result_sha256": "21e82df04f6769376e97692635cb1b8bbbaaf44580b767f7e182086075ac52f7",
+      "duration_seconds": 84.522,
+      "scope": "Isolated imports to hosted IR; not runtime or full module compatibility."
+    },
+    "fast_checks": {
+      "ruff": "pass",
+      "mypy_files": 45,
+      "mypy_errors": 0,
+      "effect_summary_tests": 7,
+      "typed_ir_tests": 88
+    },
+    "verifier_tools": {"passed": 53, "failed": 0},
+    "workflow_limits": {"passed": 4, "failed": 0},
+    "workflow_lint": {"tool": "actionlint 1.7.12", "result": "pass"},
+    "diff_check": {"result": "pass"}
+  },
+  "implementation_head_workflows": [
+    {"name": "CI", "run_id": 39685274766, "successful_jobs": 27, "total_jobs": 27, "conclusion": "success"},
+    {"name": "Installation", "run_id": 39685274713, "successful_jobs": 3, "total_jobs": 3, "conclusion": "success"},
+    {"name": "Lint", "run_id": 39685274709, "successful_jobs": 1, "total_jobs": 1, "conclusion": "success"},
+    {"name": "Packages", "run_id": 39685274666, "successful_jobs": 1, "total_jobs": 1, "conclusion": "success"}
+  ],
+  "prior_audit_head": {
+    "sha": "aa51b42195e4240e9b4445deba9f97c75917ecbf",
+    "lint_run_id": 39683932832,
+    "conclusion": "success"
+  },
+  "review": {
+    "reviewed_head_sha": "e6ecb232fc144388e3b9ae4349a68348268283f0",
+    "final_automated_codex_findings": 0,
+    "review_threads": 6,
+    "resolved_threads": 6,
+    "unresolved_threads": 0
+  },
+  "issues": {
+    "corrected_scope": [767, 822],
+    "known_residual": 822,
+    "new_issue": null
+  },
+  "compatibility_assessment": {
+    "gain": "Nested compilation no longer clobbers the interrupted function's saved operation state, eliminating three measured silent wrong outputs, one invalid-IR case and four unsupported rejections.",
+    "preserved_boundary": "The previously accepted one-read nonecmp control remains accepted with byte-identical hosted IR.",
+    "known_residual": "The inherited nonecmp stale-None multi-iteration miscompilation remains and is explicitly tracked by #822.",
+    "imports": "Unchanged 148/460 on the pinned CPython 3.13.16 source inventory and overlay.",
+    "generalization_limit": "This establishes the selected nested-compilation cases and structural state lists, not exhaustive compiler-state ownership, package compatibility or performance."
+  },
+  "limitations": [
+    "LLVM 18 was unavailable locally, so the landed tree did not receive a fresh local native build, JIT/AOT execution or GC-stress run.",
+    "The implementation head's 32 successful external jobs include the full LLVM 18 verification matrix; those jobs are reported separately from local measurements.",
+    "Hosted IR emission does not execute generated code and cannot substitute for native validation.",
+    "No fresh local full make verify, broad port/package/upstream-suite run, CPython regrtest, performance or memory comparison completed."
+  ],
+  "latest_fully_evaluated_main": "3c63613b9ad4748dfc030fc923f7704e26b21ba9"
+}

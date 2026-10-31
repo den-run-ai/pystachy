@@ -1,0 +1,126 @@
+{
+  "schema": 1,
+  "checkpoint": "2026-10-21 dynamic Any integer small-box overflow (partial)",
+  "event": {
+    "pull_request": 813,
+    "merge_sha": "896467802db0baa461ec187ea0497223bfe63e0a",
+    "source_sha": "896467802db0baa461ec187ea0497223bfe63e0a",
+    "source_tree": "5dee8d7f3dc3e50852c0c7dcd8606335f89ff92e",
+    "implementation_head_sha": "61750071ac8289662d1728453b448c2801c9ef3b",
+    "implementation_head_tree": "5dee8d7f3dc3e50852c0c7dcd8606335f89ff92e",
+    "previous_source_sha": "824dcca09a93f10b583e3ed166beac42bcbac376",
+    "previous_source_tree": "3e27f89b1a90e9a77f3fc70b7970421636751632",
+    "merged_at_utc": "2026-10-21T09:03:04Z",
+    "first_parent_merges_since_previous": [813]
+  },
+  "changed_scope": {
+    "files": 3,
+    "runtime": [
+      {
+        "path": "runtime.c",
+        "previous_sha256": "7b4dc9b9b2067740aab8eece10d9d1506aad0534cd2e69e289cf339c30415848",
+        "current_sha256": "c551a0df4d620a33825842b3eab15cddb4c7dadffc5c1396bd9c6b2dafe0decc"
+      }
+    ],
+    "tests": [
+      {
+        "path": "tests/programs/inference/dynany_int_limits.py",
+        "sha256": "b0d40b6d69ab1a80cdeb9dc33b525fd8f4294ac47b4dc94ea1abc362bc54095d"
+      },
+      {
+        "path": "tests/programs/inference/dynany_int_limits.out",
+        "sha256": "b74a795f77b9f8768bf4f6d200ef1218db127c7e60132c9e309df77758a2f78a"
+      }
+    ],
+    "compiler_library_ports_or_tools_changed": false
+  },
+  "environment": {
+    "hosted_python": "CPython 3.12.14",
+    "hosted_python_path": "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+    "focused_native_toolchain": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0",
+    "pinned_cpython_3_13_16_available": false,
+    "llvm_18_available": false,
+    "source_snapshot_clean_before_and_after": true
+  },
+  "fresh_local_results": {
+    "focused_runtime_ubsan": {
+      "scope": "runtime.c plus an external harness that calls pys_init and then pys_dyn_int(INT64_MAX); GCC section GC removes unrelated program-provided helpers",
+      "cflags": "-O1 -g -ffunction-sections -fdata-sections -fsanitize=undefined -fno-sanitize-recover=all",
+      "ldflags": "-Wl,--gc-sections -lm -ldl",
+      "current": {"exit": 0, "stdout": "boxed\n", "stderr": ""},
+      "previous": {
+        "exit": 1,
+        "stdout": "",
+        "stderr_contract": "runtime.c:3255:20: runtime error: signed integer overflow: 9223372036854775807 + 5 cannot be represented in type 'long int'"
+      },
+      "harness_sha256": "69d0034a752981e98bae61105f4a6b77a9d7595503c4e19ca0a0fcdfd4f298ca"
+    },
+    "differential_program": {
+      "path": "tests/programs/inference/dynany_int_limits.py",
+      "hosted_ir_emitted": true,
+      "hosted_ir_lines": 314,
+      "hosted_ir_sha256": "5b5237c9b6cd3bf6c8e7ed3224ca76a2f4662d810a5d69abdfa341b5e3a8593f",
+      "cpython_3_12_14_output_lines": 10,
+      "cpython_recording_matched": true,
+      "cpython_stdout_sha256": "cf44e5690003916929041183c59077ba43819de4b76a2d9931969c2075025880"
+    },
+    "predicate_boundary": {
+      "old": "(uint64_t)(v + 5) < 262",
+      "new": "(uint64_t)v + 5 < 262",
+      "finding": "the new unsigned addition cannot have signed overflow and is true exactly for signed v from -5 through 256; the guarded smallint[v + 5] index therefore remains 0 through 261"
+    }
+  },
+  "carried_forward_results": {
+    "import_sweep": {
+      "rerun": false,
+      "reason": "#813 changes runtime.c and a differential test only; isolated import compilation does not execute or embed runtime.c, while compiler, library, overlay and inventory inputs are byte-identical to #809",
+      "fresh_hosted_checkpoint_809": "141/441 on CPython 3.12.14",
+      "attributed_pinned_checkpoint_809": "149/457 on CPython 3.13.16",
+      "compatibility_gain_claimed": false
+    },
+    "latest_fully_evaluated_main": "3c63613b9ad4748dfc030fc923f7704e26b21ba9"
+  },
+  "implementation_workflows": [
+    {"name": "CI", "run_id": 39571782695, "url": "https://github.com/den-run-ai/pystachy/actions/runs/39571782695", "successful_jobs": 27, "total_jobs": 27, "conclusion": "success", "notable": ["ubsan-0", "ubsan-1", "ubsan-2", "native", "GC stress", "optimization off", "final make verify"]},
+    {"name": "Installation", "run_id": 39571782509, "url": "https://github.com/den-run-ai/pystachy/actions/runs/39571782509", "successful_jobs": 3, "total_jobs": 3, "conclusion": "success"},
+    {"name": "Lint", "run_id": 39571782619, "url": "https://github.com/den-run-ai/pystachy/actions/runs/39571782619", "successful_jobs": 1, "total_jobs": 1, "conclusion": "success"},
+    {"name": "Packages", "run_id": 39571782778, "url": "https://github.com/den-run-ai/pystachy/actions/runs/39571782778", "successful_jobs": 1, "total_jobs": 1, "conclusion": "success"}
+  ],
+  "attributed_final_tree_results": {
+    "source": "#813 PR body at implementation head 61750071; exact-tree workflows above were independently read",
+    "dynamic_any_selection": "144 JIT/AOT checks pass normally, with PYSTACHY_GC_STRESS_PROGRAM=1, and with the runtime under UBSan",
+    "fixed_points": "compiler 637,246 lines; runtime 18,709 lines",
+    "recordings": "1,513 recordings and 95 deviations reported by the PR; audit-head validation is separate"
+  },
+  "review": {
+    "resolved_threads": 0,
+    "unresolved_threads": 0,
+    "final_review_sha": "61750071ac8289662d1728453b448c2801c9ef3b",
+    "result": "completed with no findings"
+  },
+  "attempts": [
+    {"result": "setup failure", "detail": "linking the entire runtime without -ffunction-sections/--gc-sections exposed expected unresolved helpers supplied by compiled programs; no runtime probe executed"},
+    {"result": "invalid harness failure", "detail": "the first section-GC harness omitted pys_init: current runtime reached allocation and segfaulted, while the previous runtime stopped earlier at UBSan; adding pys_init made the current probe pass and retained the prior UBSan failure"}
+  ],
+  "commands": [
+    "gcc -O1 -g -ffunction-sections -fdata-sections -fsanitize=undefined -fno-sanitize-recover=all runtime.c <harness.c> -Wl,--gc-sections -o <current> -lm -ldl",
+    "gcc -O1 -g -ffunction-sections -fdata-sections -fsanitize=undefined -fno-sanitize-recover=all <previous>/runtime.c <harness.c> -Wl,--gc-sections -o <previous> -lm -ldl",
+    "<current>; <previous>",
+    "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 pystachy.py ir tests/programs/inference/dynany_int_limits.py -o <output.ll>",
+    "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 tests/programs/inference/dynany_int_limits.py",
+    "sed '$d' tests/programs/inference/dynany_int_limits.out > <expected>; cmp <cpython.stdout> <expected>"
+  ],
+  "issue_state": {
+    "797": "open; dynamic Any integer identity is separate from this overflow fix",
+    "807": "open PR at measurement time; its identity-rule work is independent and can consume this merged runtime line",
+    "808": "merged fuzzer includes INT64_MAX in its pool; this fix removes the sanitizer stop without establishing zero semantic mismatches",
+    "815": "open PR at measurement time; its adjacent dynamic-box layout change is separate"
+  },
+  "limitations": [
+    "Pinned CPython 3.13.16 and LLVM 18 were unavailable locally. The independent native negative control used GCC 13 UBSan, not Pystachy's pinned LLVM toolchain.",
+    "The local hosted compiler emits IR but does not execute runtime.c; native JIT/AOT, GC-stress and full make verify evidence comes from the exact final implementation workflows and is not relabeled local.",
+    "Import totals are carried forward by unchanged compiler/library/inventory identity, not freshly rerun. A runtime integer-boxing fix does not establish a new import, API, package or port success.",
+    "No timing, memory, broad package, upstream-suite or CPython regrtest claim follows."
+  ],
+  "latest_fully_evaluated_main": "3c63613b9ad4748dfc030fc923f7704e26b21ba9"
+}

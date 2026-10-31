@@ -1,0 +1,2114 @@
+{
+  "status": "completed",
+  "date": "2026-10-20",
+  "source_revision": "88013afb321048ef1edb92638f3dbc438b9e3c8d",
+  "previous_evaluated_main": "d87a215df913828337e522e367a7c2e1d38bbf5f",
+  "merged_prs": [
+    696
+  ],
+  "compiler_build_source": "9392fddf2b87b18e278abfc4f48f0f889ac99b16",
+  "compiler_sha256": "6f20c9a0d69f458beeb895a1160a7ed9a4caf26f93224cbada29ad394c7bccaf",
+  "environment": {
+    "python": "3.13.16 (main, Oct  3 2026, 01:06:22) [Clang 22.1.3 ]",
+    "executable": "/root/.local/bin/python3.13",
+    "llvm": "18.1.3",
+    "workers_per_group": 2
+  },
+  "stdlib": {
+    "path": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13",
+    "modules": 522,
+    "inventory_sha256": "a0d5b7bc965af0a8cc1e27ff71911aa8bbdb03ca472c1cc11c24009b9e07d0c5",
+    "inventory_source": "compatibility-2026-10-19-exception-diagnostics.json:stdlib.module_sha256"
+  },
+  "fixture_sha256": {
+    "tests/deviations/lib_weakref_all.py": "ad2c37561128048ba08afea1484814470ab53b59a7a88bd8ad1ab1e6ccfddb68",
+    "tests/deviations/lib_weakref_all.out": "ebe598050fd23b09465824eb9bec112ae9bca627f96a8752222ca71330b6839d",
+    "tests/errors/lib_weakref_finalize.py": "740eb2753241d6675cb2d8919fc0b9f5d8dac88ed7a6e77eb9abcebcc3e6b411",
+    "tests/errors/lib_weakref_getweakrefcount.py": "dc4907c9b28155c3e85d7b3155c7298473c0fe3ac401b576bb798b85e1cd3f10",
+    "tests/errors/lib_weakref_proxy.py": "de19337ed7d16461eb81407b58f9b7bf22e01be77c8291d47e23208505442958",
+    "tests/errors/lib_weakref_weakkeydict.py": "958be09d3ff3b9a459b7dcf83b99407e7aa3b13cdb20596bb91f21554166f5a6",
+    "tests/errors/lib_weakref_weakmethod.py": "d0a576d2549b72266945881ad1e966e1f64509a23b2c2ebd972d35c17ef4287c",
+    "tests/errors/lib_weakref_weakset.py": "30248470cea5ff7c6ba316f892e791017acf31722691a3fc5111eacd0ce8036c",
+    "tests/errors/lib_weakref_weakvaluedict.py": "ade5ee01b2ef797268b5c45bcd1fe30273980f92c26a13701ae9294c8205c9be",
+    "tests/errors/weakref_addr_private.py": "cd51c16e356d23c752beb1721d41d964a50d3f327f49717cef35ab6945bfb786",
+    "tests/errors/weakref_builtin.py": "e11077b2538904d69e5f7efcf7729f9af83fe51d105af5fe0c5baca7f499ca94",
+    "tests/errors/weakref_callback_keyword.py": "7ef23ea56a688bc2f36f3a1babc8d522b6acca28aef15c24a4617cfd908525d1",
+    "tests/errors/weakref_callback_value.py": "75bb96bac4f3f541b0baca5db2cf5685e0e7867ef0ec630d06b372b800b40735",
+    "tests/errors/weakref_compare_other.py": "7edecd5781da9d3dcd06608f21bc91ff405aed0c18712490b9104362cf327942",
+    "tests/errors/weakref_getattr_name.py": "322dc1965532423abefd495dbe7c0f9efc3e94ba4adf6b32cb3f877897ff3aa7",
+    "tests/errors/weakref_init_arity.py": "cfcab7870ffde6c659f4171f1faa9ec3eed9d0eb03c75ec6190713118af5f9c8",
+    "tests/errors/weakref_init_keyword.py": "bb3156078b28fcc7e9b4a78309f5e64966d4027edfec0fa5757ac319070661aa",
+    "tests/errors/weakref_nested.py": "23594723050d4ca5e7e12b722a716986f0a43e71c911ab9c3f2e61a770eae0b9",
+    "tests/errors/weakref_private.py": "7bd24c3792046a93f986cbd145f45ff90420591c62284527ca37a7b4f3b83546",
+    "tests/errors/weakref_private_field.py": "108229e71573ec67e260f716b377f13871b604c94018c73d5888a8e785a64806",
+    "tests/errors/weakref_private_hash.py": "f00713440c3f626e3b3a5a7fe240802f95ce57175418248bf6a3c0cfb9030bcb",
+    "tests/errors/weakref_private_store.py": "0fe96371b8b4a6afe8ebbf96635c802ece3df91e212594fdec8ec9e1df92515c",
+    "tests/errors/weakref_ref_arity.py": "33692c347f5bbbe93bc26efd51378c3c8892f55004683de16301ed80ecb4cb6e",
+    "tests/errors/weakref_slots.py": "d409a92b55055472fd01826d768aae981be1e326869d13ce07ed269c9e9d20ad",
+    "tests/errors/weakref_vars.py": "34c300525629bd40e9702bcea3fd6b004972e1e3d44d898bd5ff0c47a1ef063f",
+    "tests/lib_weakref.py": "ed79ae6bb8becae650acd41477b964efbff435a85e5ec46b0f8a11a5c0cdb00f",
+    "tests/lib_weakref.out": "c3467a483dc7653bed15056d2983cacf431aa12bbff92bdeaa6431bad4d808bf",
+    "tests/lib_weakref_callback.py": "41993fcbe782ffcb698d88ed744dfcfa681aa05b6b47019c63e9c362a071deb0",
+    "tests/lib_weakref_callback.out": "12dac7d2a821ea792a1a6838fa7e8f90675cfe574eee6c660f84acce4bb93e93",
+    "tests/lib_weakref_callback_dead_ref.py": "bec61a27d80b2e910b8f254f75445b8b5545a362b299fcf6d5f652d4ac016f9b",
+    "tests/lib_weakref_callback_dead_ref.out": "7c134b6362a917acfd0f500e1a1247be78785c9bc7a52f54dcac0a420e1538bd",
+    "tests/lib_weakref_callback_nested.py": "6b93245a44c1b77191a236af8c68d4b7543ef9aa8cdd4864ca8d0614087a2973",
+    "tests/lib_weakref_callback_nested.out": "7c134b6362a917acfd0f500e1a1247be78785c9bc7a52f54dcac0a420e1538bd",
+    "tests/lib_weakref_callback_order.py": "a08db048d4e0496770d0a2c4def48f1419c97bba767fd9041acc5ee2111c5281",
+    "tests/lib_weakref_callback_order.out": "f02fd7ed56105d696714a42c0d73fba1ca26881dd92f2d23fb8c775e2d1c9ce2",
+    "tests/lib_weakref_callback_raise.py": "3307ecace7e39841d175104533f6b64c5e547cd33ee3020f7f44dc809091369e",
+    "tests/lib_weakref_callback_raise.out": "f02fd7ed56105d696714a42c0d73fba1ca26881dd92f2d23fb8c775e2d1c9ce2",
+    "tests/lib_weakref_callback_raise.err": "cdf9ec2f77250bf3162d1b2c02c8ab035aabdf22bcfd754a40757893afb34981",
+    "tests/lib_weakref_dead.py": "bc69fa0baed2cf7955967b96555ed423735d0bd110c88799ab3fb6951490ca25",
+    "tests/lib_weakref_dead.out": "7c134b6362a917acfd0f500e1a1247be78785c9bc7a52f54dcac0a420e1538bd",
+    "tests/lib_weakref_dead_eq.py": "fdde597d1c81d3d32b14f4dab1e4a00fae82f8ff3277a55d23f8540479205c88",
+    "tests/lib_weakref_dead_eq.out": "fd6e7f70ef78e17109427ba19c5e3e6bf4a952b1bf406b12686dd31b2f3af78e",
+    "tests/lib_weakref_eq.py": "5e05df16afbdb31e8c6b8d5cfe4ea5a96b073ef8cc2a7470b70c84b27a4e49ec",
+    "tests/lib_weakref_eq.out": "0e82551fd274abbbcba2e70e0e6cb1cd223deb7ba002e0e887c10096b83cee57",
+    "tests/lib_weakref_module.py": "e98a8442495cd4faac8a7fc5920e122ce304de7b7140d68995e7db55b7476dbd",
+    "tests/lib_weakref_module.out": "88ee4018148903b57d804cd1bda8a51d530f166c08676b36d0654b2ed0be61a7",
+    "tests/lib_weakref_star.py": "9aeeb5e825ad4dae5289f56c0faa80f846f046bd21a17973d1801ae0285180c3",
+    "tests/lib_weakref_star.out": "7c134b6362a917acfd0f500e1a1247be78785c9bc7a52f54dcac0a420e1538bd",
+    "tests/lib_weakref_transition.py": "e8063466064091218320b4480fff338ac9d34b423b1f3c4e56884708a4a9ee03",
+    "tests/lib_weakref_transition.out": "20971efea71a4de83341e418152199d53e7398b45aa96f09c016fcf44331e693",
+    "tests/upstream_weakref.py": "97d0f7adb25a23a0bcf52967c23c67b08d34d63758a3f49d1f1ca206b01664af",
+    "tests/upstream_weakref.out": "68714e37c9ed522f1875332adaea2b1848f25d6c587745476c5fca8f873e64b0",
+    "tests/lib_gettext.py": "2704efb2c9ce3ce1bda95f669c2d95d72233f726365bc7cd815f06916e0242a9",
+    "tests/lib_gettext.out": "0cd6e4c2928d208022f348a095b1e7062119660e79f52bacd179ba0f79eca5a7",
+    "tests/sys_prefix.py": "00f5d146f11f7e0519ebf32ec7a396a825334c9c0580dc5c1d37af9f1da64da7",
+    "tests/sys_prefix.out": "22d661852cd3cc06aa03c4d0c75f8074356790bbb579d3a2581f428c28078d2e"
+  },
+  "records": {
+    "live-matrix-aot-gc": {
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-696/build/audit-696/live-matrix-gc"
+      ],
+      "environment": {
+        "PYSTACHY_GC_STRESS": "1"
+      },
+      "returncode": 0,
+      "stdout": "-7 True True True True True True\nReferenceType weakref -7 -7 -6\n-1 True True True True True True\nReferenceType weakref -1 -1 0\n0 True True True True True True\nReferenceType weakref 0 0 1\n1 True True True True True True\nReferenceType weakref 1 1 2\n7 True True True True True True\nReferenceType weakref 7 7 8\n1000 True True True True True True\nReferenceType weakref 1000 1000 1001\n",
+      "stderr": "",
+      "wall_seconds": 0.002182901997002773,
+      "expected_exit": 0
+    },
+    "imports-command": {
+      "command": [
+        "/root/.local/bin/python3.13",
+        "tools/import_sweep.py",
+        "-j",
+        "2",
+        "--metadata",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-696/build/audit-696/imports-metadata.json",
+        "./pystachy",
+        "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-696/build/audit-696/imports.json"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "145 of 464 modules import: _collections_abc _colorize _compat_pickle _osx_support _py_abc _pyrepl _pyrepl.commands _pyrepl.input _pyrepl.keymap _pyrepl.pager _pyrepl.types _sitebuiltins abc base64 concurrent dataclasses email email._parseaddr email.base64mime email.charset email.encoders email.errors email.iterators email.mime email.quoprimime email.utils encodings encodings.aliases encodings.ascii encodings.base64_codec encodings.charmap encodings.cp037 encodings.cp1006 encodings.cp1026 encodings.cp1125 encodings.cp1140 encodings.cp1250 encodings.cp1251 encodings.cp1252 encodings.cp1253 encodings.cp1254 encodings.cp1255 encodings.cp1256 encodings.cp1257 encodings.cp1258 encodings.cp273 encodings.cp424 encodings.cp437 encodings.cp500 encodings.cp720 encodings.cp737 encodings.cp775 encodings.cp850 encodings.cp852 encodings.cp855 encodings.cp856 encodings.cp858 encodings.cp860 encodings.cp861 encodings.cp862 encodings.cp863 encodings.cp865 encodings.cp866 encodings.cp874 encodings.cp875 encodings.hex_codec encodings.hp_roman8 encodings.idna encodings.iso8859_1 encodings.iso8859_10 encodings.iso8859_11 encodings.iso8859_13 encodings.iso8859_14 encodings.iso8859_15 encodings.iso8859_16 encodings.iso8859_2 encodings.iso8859_3 encodings.iso8859_4 encodings.iso8859_5 encodings.iso8859_6 encodings.iso8859_7 encodings.iso8859_8 encodings.iso8859_9 encodings.koi8_r encodings.koi8_t encodings.koi8_u encodings.kz1048 encodings.latin_1 encodings.mac_arabic encodings.mac_croatian encodings.mac_cyrillic encodings.mac_farsi encodings.mac_greek encodings.mac_iceland encodings.mac_latin2 encodings.mac_roman encodings.mac_romanian encodings.mac_turkish encodings.palmos encodings.ptcp154 encodings.punycode encodings.quopri_codec encodings.raw_unicode_escape encodings.rot_13 encodings.tis_620 encodings.undefined encodings.unicode_escape encodings.utf_16 encodings.utf_16_be encodings.utf_16_le encodings.utf_32 encodings.utf_32_be encodings.utf_32_le encodings.utf_7 encodings.utf_8 encodings.utf_8_sig encodings.uu_codec fileinput graphlib linecache mimetypes netrc ntpath nturl2path os pydoc_data pydoc_data.module_docs pydoc_data.topics quopri reprlib stringprep tempfile typing wave wsgiref wsgiref.headers wsgiref.validate xml xml.dom xml.dom.NodeFilter xml.dom.domreg xml.dom.minicompat xml.etree xml.parsers xmlrpc\n\n58 left out, as lib/ has _markupbase, _opcode_metadata, _weakrefset, bisect, codecs, collections, colorsys, contextlib, csv, curses, datetime, difflib, fnmatch, functools, genericpath, getopt, gettext, heapq, html, io, json, keyword, opcode, operator, posixpath, random, re, shlex, stat, statistics, string, struct, textwrap, this, token, types, urllib, warnings, weakref: _markupbase _opcode_metadata _weakrefset bisect codecs collections colorsys contextlib csv curses curses.ascii curses.has_key curses.panel curses.textpad datetime difflib fnmatch functools genericpath getopt gettext heapq html html.entities html.parser io json json.decoder json.encoder json.scanner json.tool keyword opcode operator posixpath random re re._casefix re._compiler re._constants re._parser shlex stat statistics string struct textwrap this token types urllib urllib.error urllib.parse urllib.request urllib.response urllib.robotparser warnings weakref\n\n   56  imports the missing module _warnings\n   44  imports the missing module _socket\n   27  imports the missing module _signal\n   15  class 'email.charset.Charset' cannot be used as a value (classes are not values: call it, or read an\n   11  imports the missing module _ctypes\n   10  imports the missing module pyexpat\n    9  class enum.FlagBoundary is not supported: unsupported base class: single inheritance requires a prev\n    8  dict keys must be int or str, objects, or tuples of int, bool, str, str | None and objects, not <bui\n    7  class '_thread.lock' cannot be used as a value (classes are not values: call it, or read an attribut\n    7  imports the missing module _contextvars\n    7  imports the missing module _bz2\n    7  imports the missing module _codecs_jp\n    7  imports the missing module _codecs_iso2022\n    6  unsupported call object()\n    5  imports the missing module termios\n    5  imports the missing module _dbm\n    4  unsupported module attribute os.O_RDONLY\n    4  inheritance with generic class templates is not supported: annotate __init__ parameters with concret\n    4  imports the missing module _codecs_cn\n    4  types.MappingProxyType is not supported: of the types module, Pystachy has only GenericAlias, for a \n    4  imports the missing module _zoneinfo\n    3  redefinition of 'locale.localeconv' is not supported\n    3  imports the missing module _tokenize\n    3  class email._encoded_words._QByteMap is not supported: unsupported base class: single inheritance re\n    3  expected int, got None\n    3  imports the missing module _codecs_kr\n    3  imports the missing module _sqlite3\n    3  imports the missing module _elementtree\n    2  imports the missing module msvcrt\n    2  imports the missing module zlib\n",
+      "stderr": "",
+      "wall_seconds": 33.62630561699916,
+      "expected_exit": 0
+    },
+    "nested-callbacks-aot-gc": {
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-696/build/audit-696/nested-callbacks-gc"
+      ],
+      "environment": {
+        "PYSTACHY_GC_STRESS": "1"
+      },
+      "returncode": 0,
+      "stdout": "True\n",
+      "stderr": "",
+      "wall_seconds": 0.07563776700408198,
+      "expected_exit": 0
+    },
+    "nested-callbacks-build-noopt": {
+      "command": [
+        "./pystachy",
+        "build",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-696/build/audit-696/nested-callbacks.py",
+        "-o",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-696/build/audit-696/nested-callbacks-noopt"
+      ],
+      "environment": {
+        "PYSTACHY_OPT": "-all"
+      },
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "",
+      "wall_seconds": 0.7528094259978388,
+      "expected_exit": 0
+    },
+    "references": {
+      "tests/lib_weakref.py": {
+        "exit": 0,
+        "stdout": "True True\n7\n42\nlive referent survives\n",
+        "stderr_last": "",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "recording_equal": true
+      },
+      "tests/lib_weakref_callback.py": {
+        "exit": 0,
+        "stdout": "0 True True\nTrue\n",
+        "stderr_last": "",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "recording_equal": true
+      },
+      "tests/lib_weakref_callback_dead_ref.py": {
+        "exit": 0,
+        "stdout": "True\n",
+        "stderr_last": "",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "recording_equal": true
+      },
+      "tests/lib_weakref_callback_nested.py": {
+        "exit": 0,
+        "stdout": "True\n",
+        "stderr_last": "",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "recording_equal": true
+      },
+      "tests/lib_weakref_callback_order.py": {
+        "exit": 0,
+        "stdout": "True True\n",
+        "stderr_last": "",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "recording_equal": true
+      },
+      "tests/lib_weakref_callback_raise.py": {
+        "exit": 0,
+        "stdout": "True True\n",
+        "stderr_last": "ValueError: boom\n",
+        "stderr_sha256": "07dc0b857aaf0181219f24892a577fb2d99271260c77fcf77597f4403fec54d5",
+        "recording_equal": true
+      },
+      "tests/lib_weakref_dead.py": {
+        "exit": 0,
+        "stdout": "True\n",
+        "stderr_last": "",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "recording_equal": true
+      },
+      "tests/lib_weakref_dead_eq.py": {
+        "exit": 0,
+        "stdout": "True\nTrue\nTrue\nTrue True\nTrue\n",
+        "stderr_last": "",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "recording_equal": true
+      },
+      "tests/lib_weakref_eq.py": {
+        "exit": 0,
+        "stdout": "ReferenceType ReferenceType weakref\nReferenceType ReferenceType True True\nFalse False False False\nTrue True True\nTrue False\nTrue False False True True False\nTrue True True\n2 True True\n3 1\nFalse True True False False True\nkept 2\nTrue False False True\nTrue True True\np s 2\nTrue False False\nTrue\nTypeError unhashable type: 'Unhashable'\nkept 9\n<weakref at ADDR; to 'Item' at ADDR> True\n2 True True\n<weakref at ADDR; to 'Sub' at ADDR>\n<weakref at ADDR; to 'ast.Constant' at ADDR>\n<ast.Constant object at ADDR> ast\nkept 3 1\n",
+        "stderr_last": "",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "recording_equal": true
+      },
+      "tests/lib_weakref_module.py": {
+        "exit": 0,
+        "stdout": "True True True True True\nReferenceType weakref 0\nWeak reference support for Python.\n",
+        "stderr_last": "",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "recording_equal": true
+      },
+      "tests/lib_weakref_star.py": {
+        "exit": 0,
+        "stdout": "True\n",
+        "stderr_last": "",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "recording_equal": true
+      },
+      "tests/lib_weakref_transition.py": {
+        "exit": 0,
+        "stdout": "True\nTrue\n",
+        "stderr_last": "",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "recording_equal": true
+      },
+      "tests/upstream_weakref.py": {
+        "exit": 0,
+        "stdout": "test_basic_ref True\ntest_ref_repr True\ntest_equality True\ntest_hashing True\nModuleTestCase_test_names ReferenceType ReferenceType 0\nTrue\nTrue\n",
+        "stderr_last": "",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "recording_equal": true
+      },
+      "tests/lib_gettext.py": {
+        "exit": 0,
+        "stdout": "hello Open None {}\nagain msg\nmessages app app\n/nonexistent/locale /nonexistent/locale\nTrue 16\n",
+        "stderr_last": "",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "recording_equal": true
+      },
+      "tests/sys_prefix.py": {
+        "exit": 0,
+        "stdout": "True True\nTrue True str\nTrue True True\n",
+        "stderr_last": "",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "recording_equal": true
+      }
+    },
+    "checks-native": {
+      "command": [
+        "tests/run.sh",
+        "./pystachy",
+        "jit aot",
+        "tests/deviations/lib_weakref_all.py",
+        "tests/errors/lib_weakref_finalize.py",
+        "tests/errors/lib_weakref_getweakrefcount.py",
+        "tests/errors/lib_weakref_proxy.py",
+        "tests/errors/lib_weakref_weakkeydict.py",
+        "tests/errors/lib_weakref_weakmethod.py",
+        "tests/errors/lib_weakref_weakset.py",
+        "tests/errors/lib_weakref_weakvaluedict.py",
+        "tests/errors/weakref_addr_private.py",
+        "tests/errors/weakref_builtin.py",
+        "tests/errors/weakref_callback_keyword.py",
+        "tests/errors/weakref_callback_value.py",
+        "tests/errors/weakref_compare_other.py",
+        "tests/errors/weakref_getattr_name.py",
+        "tests/errors/weakref_init_arity.py",
+        "tests/errors/weakref_init_keyword.py",
+        "tests/errors/weakref_nested.py",
+        "tests/errors/weakref_private.py",
+        "tests/errors/weakref_private_field.py",
+        "tests/errors/weakref_private_hash.py",
+        "tests/errors/weakref_private_store.py",
+        "tests/errors/weakref_ref_arity.py",
+        "tests/errors/weakref_slots.py",
+        "tests/errors/weakref_vars.py",
+        "tests/lib_weakref.py",
+        "tests/lib_weakref_callback.py",
+        "tests/lib_weakref_callback_dead_ref.py",
+        "tests/lib_weakref_callback_nested.py",
+        "tests/lib_weakref_callback_order.py",
+        "tests/lib_weakref_callback_raise.py",
+        "tests/lib_weakref_dead.py",
+        "tests/lib_weakref_dead_eq.py",
+        "tests/lib_weakref_eq.py",
+        "tests/lib_weakref_module.py",
+        "tests/lib_weakref_star.py",
+        "tests/lib_weakref_transition.py",
+        "tests/upstream_weakref.py",
+        "tests/lib_gettext.py",
+        "tests/sys_prefix.py"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "selected 39 cases\n55 passed, 0 failed\n",
+      "stderr": "",
+      "wall_seconds": 26.531449876005354,
+      "expected_exit": 0
+    },
+    "nested-callbacks-build-gc": {
+      "command": [
+        "./pystachy",
+        "build",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-696/build/audit-696/nested-callbacks.py",
+        "-o",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-696/build/audit-696/nested-callbacks-gc"
+      ],
+      "environment": {
+        "PYSTACHY_GC_STRESS_PROGRAM": "1"
+      },
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "",
+      "wall_seconds": 1.1830849649995798,
+      "expected_exit": 0
+    },
+    "oracle": {
+      "programs": 3227,
+      "identical": 3217,
+      "changed": [
+        {
+          "source": "tests/deviations/lib_weakref_all.py",
+          "old": {
+            "exit": 1,
+            "message": "tests/deviations/lib_weakref_all.py:4: error: module 'weakref' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no weakref.py on the module path\n",
+            "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "new": {
+            "exit": 0,
+            "message": "",
+            "ir_sha256": "3da389e7b52cae612911b2041f3566acc63cb377632737d371cb5cb08c611270"
+          }
+        },
+        {
+          "source": "tests/errors/lib_weakref_finalize.py",
+          "old": {
+            "exit": 1,
+            "message": "tests/errors/lib_weakref_finalize.py:2: error: module 'weakref' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no weakref.py on the module path\n",
+            "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "new": {
+            "exit": 1,
+            "message": "tests/errors/lib_weakref_finalize.py:11: error: module 'weakref' has no attribute 'finalize'\n",
+            "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          }
+        },
+        {
+          "source": "tests/errors/lib_weakref_getweakrefcount.py",
+          "old": {
+            "exit": 1,
+            "message": "tests/errors/lib_weakref_getweakrefcount.py:2: error: module 'weakref' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no weakref.py on the module path\n",
+            "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "new": {
+            "exit": 1,
+            "message": "tests/errors/lib_weakref_getweakrefcount.py:11: error: module 'weakref' has no attribute 'getweakrefcount'\n",
+            "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          }
+        },
+        {
+          "source": "tests/errors/lib_weakref_proxy.py",
+          "old": {
+            "exit": 1,
+            "message": "tests/errors/lib_weakref_proxy.py:2: error: module 'weakref' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no weakref.py on the module path\n",
+            "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "new": {
+            "exit": 1,
+            "message": "tests/errors/lib_weakref_proxy.py:11: error: module 'weakref' has no attribute 'proxy'\n",
+            "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          }
+        },
+        {
+          "source": "tests/errors/lib_weakref_weakkeydict.py",
+          "old": {
+            "exit": 1,
+            "message": "tests/errors/lib_weakref_weakkeydict.py:2: error: module 'weakref' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no weakref.py on the module path\n",
+            "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "new": {
+            "exit": 1,
+            "message": "tests/errors/lib_weakref_weakkeydict.py:11: error: class weakref.WeakKeyDictionary is not supported: unsupported base class: single inheritance requires a previously declared ordinary class or a supported exception class\n",
+            "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          }
+        },
+        {
+          "source": "tests/errors/lib_weakref_weakmethod.py",
+          "old": {
+            "exit": 1,
+            "message": "tests/errors/lib_weakref_weakmethod.py:2: error: module 'weakref' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no weakref.py on the module path\n",
+            "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "new": {
+            "exit": 1,
+            "message": "tests/errors/lib_weakref_weakmethod.py:11: error: class weakref.WeakMethod is not supported: inheritance with generic class templates is not supported: annotate __init__ parameters with concrete types (not Any or object)\n",
+            "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          }
+        },
+        {
+          "source": "tests/errors/lib_weakref_weakset.py",
+          "old": {
+            "exit": 1,
+            "message": "tests/errors/lib_weakref_weakset.py:2: error: module 'weakref' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no weakref.py on the module path\n",
+            "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "new": {
+            "exit": 1,
+            "message": "tests/errors/lib_weakref_weakset.py:11: error: class _weakrefset.WeakSet is not supported: cannot infer the type of class attribute '__sub__'\n",
+            "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          }
+        },
+        {
+          "source": "tests/errors/lib_weakref_weakvaluedict.py",
+          "old": {
+            "exit": 1,
+            "message": "tests/errors/lib_weakref_weakvaluedict.py:2: error: module 'weakref' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no weakref.py on the module path\n",
+            "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "new": {
+            "exit": 1,
+            "message": "tests/errors/lib_weakref_weakvaluedict.py:11: error: class weakref.WeakValueDictionary is not supported: unsupported base class: single inheritance requires a previously declared ordinary class or a supported exception class\n",
+            "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          }
+        },
+        {
+          "source": "tests/lib_weakref_module.py",
+          "old": {
+            "exit": 1,
+            "message": "tests/lib_weakref_module.py:4: error: module 'weakref' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no weakref.py on the module path\n",
+            "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "new": {
+            "exit": 0,
+            "message": "",
+            "ir_sha256": "7628a2887e880ba53636494a530948fb3c2ce4fb3030076fc0bc37f3158d0f23"
+          }
+        },
+        {
+          "source": "tests/lib_weakref_star.py",
+          "old": {
+            "exit": 1,
+            "message": "tests/lib_weakref_star.py:2: error: module 'weakref' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no weakref.py on the module path\n",
+            "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "new": {
+            "exit": 0,
+            "message": "",
+            "ir_sha256": "f53a973960022ced8efff3195a51269fcdbae6595e79c8786af9bc15d6a38b16"
+          }
+        }
+      ],
+      "input_inventory_sha256": "d323565550cd581488186958ea13c2eaba994aad7ed9edfffe4830a1a20749f6"
+    },
+    "live-matrix-aot-noopt": {
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-696/build/audit-696/live-matrix-noopt"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "-7 True True True True True True\nReferenceType weakref -7 -7 -6\n-1 True True True True True True\nReferenceType weakref -1 -1 0\n0 True True True True True True\nReferenceType weakref 0 0 1\n1 True True True True True True\nReferenceType weakref 1 1 2\n7 True True True True True True\nReferenceType weakref 7 7 8\n1000 True True True True True True\nReferenceType weakref 1000 1000 1001\n",
+      "stderr": "",
+      "wall_seconds": 0.0012532350010587834,
+      "expected_exit": 0
+    },
+    "stubs-command": {
+      "command": [
+        "/root/.local/bin/python3.13",
+        "tools/import_sweep.py",
+        "-j",
+        "2",
+        "--metadata",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-696/build/audit-696/stubs-metadata.json",
+        "--stubs",
+        "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-696/build/audit-696/stubs.json"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "stubs for 20 modules built into CPython: _operator _posixsubprocess _signal _socket _symtable _sysconfig _tokenize _tracemalloc _typing _warnings array fcntl gc grp marshal posix pwd pyexpat select zlib\n\n147 of 464 modules import with the stubs: _collections_abc _colorize _compat_pickle _osx_support _py_abc _pyrepl _pyrepl.commands _pyrepl.input _pyrepl.keymap _pyrepl.pager _pyrepl.types _sitebuiltins abc base64 concurrent dataclasses email email._parseaddr email.base64mime email.charset email.encoders email.errors email.iterators email.mime email.quoprimime email.utils encodings encodings.aliases encodings.ascii encodings.base64_codec encodings.charmap encodings.cp037 encodings.cp1006 encodings.cp1026 encodings.cp1125 encodings.cp1140 encodings.cp1250 encodings.cp1251 encodings.cp1252 encodings.cp1253 encodings.cp1254 encodings.cp1255 encodings.cp1256 encodings.cp1257 encodings.cp1258 encodings.cp273 encodings.cp424 encodings.cp437 encodings.cp500 encodings.cp720 encodings.cp737 encodings.cp775 encodings.cp850 encodings.cp852 encodings.cp855 encodings.cp856 encodings.cp858 encodings.cp860 encodings.cp861 encodings.cp862 encodings.cp863 encodings.cp865 encodings.cp866 encodings.cp874 encodings.cp875 encodings.hex_codec encodings.hp_roman8 encodings.idna encodings.iso8859_1 encodings.iso8859_10 encodings.iso8859_11 encodings.iso8859_13 encodings.iso8859_14 encodings.iso8859_15 encodings.iso8859_16 encodings.iso8859_2 encodings.iso8859_3 encodings.iso8859_4 encodings.iso8859_5 encodings.iso8859_6 encodings.iso8859_7 encodings.iso8859_8 encodings.iso8859_9 encodings.koi8_r encodings.koi8_t encodings.koi8_u encodings.kz1048 encodings.latin_1 encodings.mac_arabic encodings.mac_croatian encodings.mac_cyrillic encodings.mac_farsi encodings.mac_greek encodings.mac_iceland encodings.mac_latin2 encodings.mac_roman encodings.mac_romanian encodings.mac_turkish encodings.palmos encodings.ptcp154 encodings.punycode encodings.quopri_codec encodings.raw_unicode_escape encodings.rot_13 encodings.tis_620 encodings.undefined encodings.unicode_escape encodings.utf_16 encodings.utf_16_be encodings.utf_16_le encodings.utf_32 encodings.utf_32_be encodings.utf_32_le encodings.utf_7 encodings.utf_8 encodings.utf_8_sig encodings.uu_codec encodings.zlib_codec fileinput graphlib linecache mimetypes netrc ntpath nturl2path os pydoc_data pydoc_data.module_docs pydoc_data.topics quopri reprlib stringprep tempfile timeit typing wave wsgiref wsgiref.headers wsgiref.validate xml xml.dom xml.dom.NodeFilter xml.dom.domreg xml.dom.minicompat xml.etree xml.parsers xmlrpc\n\n58 left out, as lib/ has _markupbase, _opcode_metadata, _weakrefset, bisect, codecs, collections, colorsys, contextlib, csv, curses, datetime, difflib, fnmatch, functools, genericpath, getopt, gettext, heapq, html, io, json, keyword, opcode, operator, posixpath, random, re, shlex, stat, statistics, string, struct, textwrap, this, token, types, urllib, warnings, weakref: _markupbase _opcode_metadata _weakrefset bisect codecs collections colorsys contextlib csv curses curses.ascii curses.has_key curses.panel curses.textpad datetime difflib fnmatch functools genericpath getopt gettext heapq html html.entities html.parser io json json.decoder json.encoder json.scanner json.tool keyword opcode operator posixpath random re re._casefix re._compiler re._constants re._parser shlex stat statistics string struct textwrap this token types urllib urllib.error urllib.parse urllib.request urllib.response urllib.robotparser warnings weakref\n\n145 of them need no stub. The stubs the others need (modules needing it; needing only it):\n    1     1  gc\n    1     1  zlib\n\n   68  'socketpair' is bound both as a variable and by an import (not supported)\n   42  namedtuple() is only supported with field names that are a string literal or a list or tuple of stri\n   15  class 'email.charset.Charset' cannot be used as a value (classes are not values: call it, or read an\n   14  class enum.FlagBoundary is not supported: unsupported base class: single inheritance requires a prev\n   11  imports the missing module _ctypes\n   10  imports the missing module _bz2\n    9  unsupported decorator @_requires_builtin: CPython applies it when module 'importlib._bootstrap' is i\n    9  dict keys must be int or str, objects, or tuples of int, bool, str, str | None and objects, not <bui\n    8  imports the missing module urllib.request\n    7  class '_thread.lock' cannot be used as a value (classes are not values: call it, or read an attribut\n    7  imports the missing module _contextvars\n    7  unsupported call object()\n    7  imports the missing module _codecs_jp\n    7  imports the missing module _codecs_iso2022\n    6  imports the missing module termios\n    5  imports the missing module _dbm\n    4  unsupported module attribute os.O_RDONLY\n    4  inheritance with generic class templates is not supported: annotate __init__ parameters with concret\n    4  imports the missing module _codecs_cn\n    4  types.MappingProxyType is not supported: of the types module, Pystachy has only GenericAlias, for a \n    4  imports the missing module _zoneinfo\n    3  redefinition of 'locale.localeconv' is not supported\n    3  class email._encoded_words._QByteMap is not supported: unsupported base class: single inheritance re\n    3  expected int, got None\n    3  imports the missing module _codecs_kr\n    3  imports the missing module _sqlite3\n    3  imports the missing module _elementtree\n    2  class _compression.BaseStream is not supported: unsupported base class: single inheritance requires \n    2  imports the missing module msvcrt\n    2  types.MethodType is not supported: of the types module, Pystachy has only GenericAlias, for a class \n",
+      "stderr": "",
+      "wall_seconds": 196.7513984420002,
+      "expected_exit": 0
+    },
+    "adapted-upstream-aot-noopt": {
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-696/build/audit-696/adapted-upstream-noopt"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "test_basic_ref True\ntest_ref_repr True\ntest_equality True\ntest_hashing True\nModuleTestCase_test_names ReferenceType ReferenceType 0\nTrue\nTrue\n",
+      "stderr": "",
+      "wall_seconds": 0.23401375699904747,
+      "expected_exit": 0
+    },
+    "adapted-upstream-jit-gc": {
+      "command": [
+        "./pystachy",
+        "run",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-696/build/audit-696/adapted-upstream.py"
+      ],
+      "environment": {
+        "PYSTACHY_GC_STRESS_PROGRAM": "1"
+      },
+      "returncode": 0,
+      "stdout": "test_basic_ref True\ntest_ref_repr True\ntest_equality True\ntest_hashing True\nModuleTestCase_test_names ReferenceType ReferenceType 0\nTrue\nTrue\n",
+      "stderr": "",
+      "wall_seconds": 1.711375405000581,
+      "expected_exit": 0
+    },
+    "adapted-upstream-aot-gc": {
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-696/build/audit-696/adapted-upstream-gc"
+      ],
+      "environment": {
+        "PYSTACHY_GC_STRESS": "1"
+      },
+      "returncode": 0,
+      "stdout": "test_basic_ref True\ntest_ref_repr True\ntest_equality True\ntest_hashing True\nModuleTestCase_test_names ReferenceType ReferenceType 0\nTrue\nTrue\n",
+      "stderr": "",
+      "wall_seconds": 0.15716933200019412,
+      "expected_exit": 0
+    },
+    "checks-gc": {
+      "command": [
+        "tests/run.sh",
+        "./pystachy",
+        "jit aot",
+        "tests/deviations/lib_weakref_all.py",
+        "tests/errors/lib_weakref_finalize.py",
+        "tests/errors/lib_weakref_getweakrefcount.py",
+        "tests/errors/lib_weakref_proxy.py",
+        "tests/errors/lib_weakref_weakkeydict.py",
+        "tests/errors/lib_weakref_weakmethod.py",
+        "tests/errors/lib_weakref_weakset.py",
+        "tests/errors/lib_weakref_weakvaluedict.py",
+        "tests/errors/weakref_addr_private.py",
+        "tests/errors/weakref_builtin.py",
+        "tests/errors/weakref_callback_keyword.py",
+        "tests/errors/weakref_callback_value.py",
+        "tests/errors/weakref_compare_other.py",
+        "tests/errors/weakref_getattr_name.py",
+        "tests/errors/weakref_init_arity.py",
+        "tests/errors/weakref_init_keyword.py",
+        "tests/errors/weakref_nested.py",
+        "tests/errors/weakref_private.py",
+        "tests/errors/weakref_private_field.py",
+        "tests/errors/weakref_private_hash.py",
+        "tests/errors/weakref_private_store.py",
+        "tests/errors/weakref_ref_arity.py",
+        "tests/errors/weakref_slots.py",
+        "tests/errors/weakref_vars.py",
+        "tests/lib_weakref.py",
+        "tests/lib_weakref_callback.py",
+        "tests/lib_weakref_callback_dead_ref.py",
+        "tests/lib_weakref_callback_nested.py",
+        "tests/lib_weakref_callback_order.py",
+        "tests/lib_weakref_callback_raise.py",
+        "tests/lib_weakref_dead.py",
+        "tests/lib_weakref_dead_eq.py",
+        "tests/lib_weakref_eq.py",
+        "tests/lib_weakref_module.py",
+        "tests/lib_weakref_star.py",
+        "tests/lib_weakref_transition.py",
+        "tests/upstream_weakref.py",
+        "tests/lib_gettext.py",
+        "tests/sys_prefix.py"
+      ],
+      "environment": {
+        "PYSTACHY_GC_STRESS_PROGRAM": "1"
+      },
+      "returncode": 0,
+      "stdout": "selected 39 cases\n55 passed, 0 failed\n",
+      "stderr": "",
+      "wall_seconds": 17.872630904996186,
+      "expected_exit": 0
+    },
+    "live-matrix-build-noopt": {
+      "command": [
+        "./pystachy",
+        "build",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-696/build/audit-696/live-matrix.py",
+        "-o",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-696/build/audit-696/live-matrix-noopt"
+      ],
+      "environment": {
+        "PYSTACHY_OPT": "-all"
+      },
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "",
+      "wall_seconds": 0.4053563010020298,
+      "expected_exit": 0
+    },
+    "live-matrix-jit-noopt": {
+      "command": [
+        "./pystachy",
+        "run",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-696/build/audit-696/live-matrix.py"
+      ],
+      "environment": {
+        "PYSTACHY_OPT": "-all"
+      },
+      "returncode": 0,
+      "stdout": "-7 True True True True True True\nReferenceType weakref -7 -7 -6\n-1 True True True True True True\nReferenceType weakref -1 -1 0\n0 True True True True True True\nReferenceType weakref 0 0 1\n1 True True True True True True\nReferenceType weakref 1 1 2\n7 True True True True True True\nReferenceType weakref 7 7 8\n1000 True True True True True True\nReferenceType weakref 1000 1000 1001\n",
+      "stderr": "",
+      "wall_seconds": 0.1386823720022221,
+      "expected_exit": 0
+    },
+    "adapted-upstream-build-gc": {
+      "command": [
+        "./pystachy",
+        "build",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-696/build/audit-696/adapted-upstream.py",
+        "-o",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-696/build/audit-696/adapted-upstream-gc"
+      ],
+      "environment": {
+        "PYSTACHY_GC_STRESS_PROGRAM": "1"
+      },
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "",
+      "wall_seconds": 4.984224795000046,
+      "expected_exit": 0
+    },
+    "adapted-upstream-jit-noopt": {
+      "command": [
+        "./pystachy",
+        "run",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-696/build/audit-696/adapted-upstream.py"
+      ],
+      "environment": {
+        "PYSTACHY_OPT": "-all"
+      },
+      "returncode": 0,
+      "stdout": "test_basic_ref True\ntest_ref_repr True\ntest_equality True\ntest_hashing True\nModuleTestCase_test_names ReferenceType ReferenceType 0\nTrue\nTrue\n",
+      "stderr": "",
+      "wall_seconds": 1.691279343001952,
+      "expected_exit": 0
+    },
+    "live-matrix-cpython": {
+      "command": [
+        "/root/.local/bin/python3.13",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-696/build/audit-696/live-matrix.py"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "-7 True True True True True True\nReferenceType weakref -7 -7 -6\n-1 True True True True True True\nReferenceType weakref -1 -1 0\n0 True True True True True True\nReferenceType weakref 0 0 1\n1 True True True True True True\nReferenceType weakref 1 1 2\n7 True True True True True True\nReferenceType weakref 7 7 8\n1000 True True True True True True\nReferenceType weakref 1000 1000 1001\n",
+      "stderr": "",
+      "wall_seconds": 0.012587609002366662,
+      "expected_exit": 0
+    },
+    "nested-callbacks-jit-noopt": {
+      "command": [
+        "./pystachy",
+        "run",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-696/build/audit-696/nested-callbacks.py"
+      ],
+      "environment": {
+        "PYSTACHY_OPT": "-all"
+      },
+      "returncode": 0,
+      "stdout": "True\n",
+      "stderr": "",
+      "wall_seconds": 8.074013053999806,
+      "expected_exit": 0
+    },
+    "api-programs": {
+      "nested-callbacks": "# A callback that calls or makes a reference runs to its end before the referent's next callback\n# starts, as in CPython, which calls a referent's callbacks one after another.\nfrom typing import Callable\nfrom weakref import ref\n\n\nclass Item:\n    def __init__(self, value: int):\n        self.value = value\n\n\nlog: list[list[str]] = [[] for _ in range(64)]\nspare = Item(-1)\n\n\ndef noter(k: int, name: str) -> Callable[[ref[Item]], None]:\n    def note(r: ref[Item]) -> None:\n        log[k].append(\"begin \" + name)\n        assert r() is None  # (a reference called in a callback)\n        assert ref(spare)() is spare  # (and one made)\n        log[k].append(\"end \" + name)\n    return note\n\n\ndef create() -> tuple[list[ref[Item]], list[Item]]:\n    owners = [Item(i) for i in range(64)]\n    refs: list[ref[Item]] = []\n    for i in range(64):\n        refs.append(ref(owners[i], noter(i, \"old\")))\n        refs.append(ref(owners[i], noter(i, \"new\")))\n    return refs, owners\n\n\ndef churn() -> None:\n    for i in range(1024):\n        text = str(i) * 65536\n        assert len(text) >= 65536\n\n\nrefs, owners = create()\nowners.clear()\nchurn()\n# (the live referents, held while the callbacks run, so that every reference that reads None here\n# has called back)\npairs = [(refs[2 * i](), refs[2 * i + 1]()) for i in range(64)]\nboth = 0\nfor i in range(64):\n    a, b = pairs[i]\n    if a is None and b is None:\n        both += 1\n        assert log[i] == [\"begin new\", \"end new\", \"begin old\", \"end old\"]\n    else:\n        assert a is not None and b is a and log[i] == []\nprint(both > 0)\n",
+      "adapted-upstream": "# Adapted from CPython 3.13.16 Lib/test/test_weakref.py, commit\n# cbc944f4bc59639a444dd971c737788ba2283a91 (SHA-256\n# 500cd4b23e5c1d66d42910de90eec64c6e7968741d3dccfcce83cee8c3d339ef): class ReferencesTestCase's\n# test_basic_ref, test_ref_repr, test_equality and test_hashing, ModuleTestCase.test_names, and the\n# libreftest doctest example of a reference whose referent dies.\n# PSF License v2; see tests/upstream/CPYTHON-LICENSE.txt and THIRD_PARTY_NOTICES.\n# Each test method becomes a function of the same name (ModuleTestCase's is prefixed with its class,\n# and reads the attributes of a reference's type, as a class object is not a value here);\n# assertTrue(x), assertFalse(x), assertIs(a, b) and assertEqual(a, b) assert, and each function\n# prints what it checked. weakref.ref is _weakref.ref, which the test imports from _weakref\n# (docs/prototypes/weakref.md). Object's __eq__ and __lt__ take an Object (upstream returns\n# NotImplemented for another type, which is not a value here); C has a field, as a class without\n# one has nothing to hold it apart. Where upstream drops the last owners and calls gc.collect(), whose\n# reference counts free each referent at once, the test makes a cohort of referents, drops their\n# owners, allocates without reading the references, and checks upstream's assertions on every\n# reference whose referent died; at least one must (Pystachy's collector is a conservative tracing\n# one, which may keep a few referents through stale stack words: see tests/lib_weakref_transition.py).\n# A function reads its live referents last, as a native local is a root only until its last use.\n# EXCLUDED upstream cases:\n# - test_basic_ref's check_basic_ref(create_function) and check_basic_ref(create_bound_method):\n#   references to functions and bound methods are not supported (ordinary class instances only)\n# - test_ref_repr's WithName part, whose class's __name__ property CPython adds to the repr\n# - test_equality's a == x and a != x (a reference compared with an object of another type, a\n#   compile-time type error here) and a == ALWAYS_EQ\n# - callbacks (test_basic_callback, test_multiple_callbacks, test_callback_* and the others that pass\n#   one), proxies (test_proxy_*, test_basic_proxy, test_callable_proxy), reference reuse\n#   (test_ref_reuse, test_shared_ref_without_callback), getweakrefcount() and getweakrefs(),\n#   __callback__, weakrefs to classes and functions (test_classes, test_cfunction, test_init's\n#   ref(Exception)), test_init's and test_constructor_kwargs' TypeErrors and test_ordering's (compile-\n#   time errors here), gc thresholds and __del__ (test_gc_during_*, test_ref_created_during_del,\n#   test_callback_gcs), and the WeakMethod, mapping, WeakSet and finalize classes\n# - ModuleTestCase.test_names for ProxyType, CallableProxyType, WeakMethod, WeakSet,\n#   WeakKeyDictionary and WeakValueDictionary, which _weakref does not have\nimport re\nfrom weakref import ReferenceType, ref\n\n\nclass C:\n    def __init__(self):\n        self.tag = 0\n\n    def method(self) -> None:\n        pass\n\n\nclass Object:\n    def __init__(self, arg: int):\n        self.arg = arg\n\n    def __repr__(self) -> str:\n        return \"<Object %r>\" % self.arg\n\n    def __eq__(self, other: \"Object\") -> bool:\n        return self.arg == other.arg\n\n    def __lt__(self, other: \"Object\") -> bool:\n        return self.arg < other.arg\n\n    def __hash__(self) -> int:\n        return hash(self.arg)\n\n\ndef churn() -> None:\n    # (allocation pressure that reads no reference: see the header)\n    for i in range(1024):\n        text = str(i) * 65536\n        assert len(text) >= 65536\n\n\ndef check_basic_ref() -> None:\n    o = C()\n    r = ref(o)\n    assert r() is not None, \"weak reference to live object should be live\"\n    o2 = r()\n    assert o is o2, \"<ref>() should return original object if live\"\n    o.tag = 1\n\n\ndef make_cs(n: int) -> list[C]:\n    return [C() for i in range(n)]\n\n\ndef test_basic_ref() -> None:\n    check_basic_ref()\n    # Just make sure the tp_repr handler doesn't raise an exception.\n    # Live reference:\n    o = C()\n    wr = ref(o)\n    repr(wr)\n    o.tag = 1\n    # Dead reference: (a cohort, see the header)\n    owners = make_cs(64)\n    wrs = [ref(c) for c in owners]\n    owners.clear()\n    churn()\n    dead = [w for w in wrs if w() is None]\n    for w in dead:\n        repr(w)\n    print(\"test_basic_ref\", len(dead) > 0)\n\n\ndef test_ref_repr() -> None:\n    obj = C()\n    r = ref(obj)\n    regex = r\"<weakref at 0x[0-9a-fA-F]+; to 'C' at 0x[0-9a-fA-F]+>\"\n    assert re.fullmatch(regex, repr(r)) is not None\n    obj.tag = 1\n    owners = make_cs(64)\n    wrs = [ref(c) for c in owners]\n    owners.clear()\n    churn()\n    dead = [w for w in wrs if w() is None]\n    assert all(re.fullmatch(r\"<weakref at 0x[0-9a-fA-F]+; dead>\", repr(w)) is not None for w in dead)\n    print(\"test_ref_repr\", len(dead) > 0)\n\n\ndef make_objects(args: list[int]) -> list[Object]:\n    return [Object(arg) for arg in args]\n\n\ndef test_equality() -> None:\n    # Alive weakrefs defer equality testing to their underlying object.\n    xs = make_objects([1] * 64)\n    ys = make_objects([1] * 64)\n    zs = make_objects([2] * 64)\n    a_s = [ref(x) for x in xs]\n    b_s = [ref(y) for y in ys]\n    c_s = [ref(z) for z in zs]\n    d_s = [ref(x) for x in xs]\n    # Note how we directly test the operators here, to stress both\n    # __eq__ and __ne__.\n    for i in range(len(xs)):\n        a = a_s[i]\n        b = b_s[i]\n        c = c_s[i]\n        d = d_s[i]\n        assert a == b\n        assert not (a != b)\n        assert not (a == c)\n        assert a != c\n        assert a == d\n        assert not (a != d)\n    xs.clear()\n    ys.clear()\n    zs.clear()\n    churn()\n    dead = [i for i in range(len(a_s)) if a_s[i]() is None and b_s[i]() is None and c_s[i]() is None]\n    for i in dead:\n        a = a_s[i]\n        b = b_s[i]\n        c = c_s[i]\n        d = d_s[i]\n        # Sanity check\n        for r in [a, b, c]:\n            assert r() is None\n        # Dead weakrefs compare by identity: whether `a` and `d` are the\n        # same weakref object is an implementation detail, since they pointed\n        # to the same original object and didn't have a callback.\n        # (see issue #16453).\n        assert not (a == b)\n        assert a != b\n        assert not (a == c)\n        assert a != c\n        assert (a == d) == (a is d)\n        assert (a != d) == (a is not d)\n    print(\"test_equality\", len(dead) > 0)\n\n\ndef test_hashing() -> None:\n    # Alive weakrefs hash the same as the underlying object\n    xs = make_objects([42] * 64)\n    ys = make_objects([42] * 64)\n    a_s = [ref(x) for x in xs]\n    b_s = [ref(y) for y in ys]\n    for a in a_s:\n        assert hash(a) == hash(42)\n    xs.clear()\n    ys.clear()\n    churn()\n    dead = [i for i in range(len(a_s)) if a_s[i]() is None and b_s[i]() is None]\n    # Dead weakrefs:\n    # - retain their hash is they were hashed when alive;\n    # - otherwise, cannot be hashed.\n    for i in dead:\n        assert hash(a_s[i]) == hash(42)\n        try:\n            hash(b_s[i])\n            assert False, \"TypeError not raised\"\n        except TypeError:\n            pass\n    print(\"test_hashing\", len(dead) > 0)\n\n\ndef ModuleTestCase_test_names() -> None:\n    # (getattr(weakref, name) is a class object, not a value here: its type's attributes are read)\n    c = C()\n    obj = ref(c)\n    assert type(obj).__module__ == \"weakref\"\n    assert type(obj).__name__ == \"ReferenceType\"\n    assert type(obj).__qualname__ == \"ReferenceType\"\n    print(\"ModuleTestCase_test_names\", ReferenceType.__name__, ref.__name__, c.tag)\n\n\ndef libreftest_dead_reference() -> None:\n    # >>> o = Object(); r = weakref.ref(o); o2 = r(); o is o2  -> True\n    # >>> del o, o2; gc_collect(); print(r())                  -> None\n    owners = make_cs(64)\n    refs = [ref(o) for o in owners]\n    print(all(refs[i]() is owners[i] for i in range(len(owners))))\n    owners.clear()\n    churn()\n    print(any(r() is None for r in refs))\n\n\ntest_basic_ref()\ntest_ref_repr()\ntest_equality()\ntest_hashing()\nModuleTestCase_test_names()\nlibreftest_dead_reference()\n",
+      "live-matrix": "import weakref\nfrom weakref import ReferenceType, ref\nclass Value:\n    def __init__(self, n: int):\n        self.n = n\n    def __eq__(self, other: \"Value\") -> bool:\n        return self.n == other.n\n    def __hash__(self) -> int:\n        return self.n * 13\ndef exercise(n: int) -> None:\n    a = Value(n)\n    b = Value(n)\n    c = Value(n + 1)\n    x = weakref.ref(a)\n    y = ref(b)\n    z = ReferenceType(c)\n    print(n, x == y, x != z, hash(x) == hash(a), x() is a, y() is b, z() is c)\n    for i in range(20):\n        junk = [Value(i), Value(i + 1)]\n        assert x() is a and y() is b and z() is c\n        assert junk[0].n == i\n    print(type(x).__name__, type(x).__module__, a.n, b.n, c.n)\nfor n in [-7, -1, 0, 1, 7, 1000]:\n    exercise(n)\n"
+    },
+    "checks-hosted": {
+      "command": [
+        "tests/run.sh",
+        "/root/.local/bin/python3.13 -m pystachy",
+        "jit aot",
+        "tests/deviations/lib_weakref_all.py",
+        "tests/errors/lib_weakref_finalize.py",
+        "tests/errors/lib_weakref_getweakrefcount.py",
+        "tests/errors/lib_weakref_proxy.py",
+        "tests/errors/lib_weakref_weakkeydict.py",
+        "tests/errors/lib_weakref_weakmethod.py",
+        "tests/errors/lib_weakref_weakset.py",
+        "tests/errors/lib_weakref_weakvaluedict.py",
+        "tests/errors/weakref_addr_private.py",
+        "tests/errors/weakref_builtin.py",
+        "tests/errors/weakref_callback_keyword.py",
+        "tests/errors/weakref_callback_value.py",
+        "tests/errors/weakref_compare_other.py",
+        "tests/errors/weakref_getattr_name.py",
+        "tests/errors/weakref_init_arity.py",
+        "tests/errors/weakref_init_keyword.py",
+        "tests/errors/weakref_nested.py",
+        "tests/errors/weakref_private.py",
+        "tests/errors/weakref_private_field.py",
+        "tests/errors/weakref_private_hash.py",
+        "tests/errors/weakref_private_store.py",
+        "tests/errors/weakref_ref_arity.py",
+        "tests/errors/weakref_slots.py",
+        "tests/errors/weakref_vars.py",
+        "tests/lib_weakref.py",
+        "tests/lib_weakref_callback.py",
+        "tests/lib_weakref_callback_dead_ref.py",
+        "tests/lib_weakref_callback_nested.py",
+        "tests/lib_weakref_callback_order.py",
+        "tests/lib_weakref_callback_raise.py",
+        "tests/lib_weakref_dead.py",
+        "tests/lib_weakref_dead_eq.py",
+        "tests/lib_weakref_eq.py",
+        "tests/lib_weakref_module.py",
+        "tests/lib_weakref_star.py",
+        "tests/lib_weakref_transition.py",
+        "tests/upstream_weakref.py",
+        "tests/lib_gettext.py",
+        "tests/sys_prefix.py"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "selected 39 cases\n55 passed, 0 failed\n",
+      "stderr": "",
+      "wall_seconds": 31.26230451199808,
+      "expected_exit": 0
+    },
+    "adapted-upstream-cpython": {
+      "command": [
+        "/root/.local/bin/python3.13",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-696/build/audit-696/adapted-upstream.py"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "test_basic_ref True\ntest_ref_repr True\ntest_equality True\ntest_hashing True\nModuleTestCase_test_names ReferenceType ReferenceType 0\nTrue\nTrue\n",
+      "stderr": "",
+      "wall_seconds": 0.0542573960046866,
+      "expected_exit": 0
+    },
+    "nested-callbacks-aot-noopt": {
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-696/build/audit-696/nested-callbacks-noopt"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "True\n",
+      "stderr": "",
+      "wall_seconds": 0.07369252499483991,
+      "expected_exit": 0
+    },
+    "adapted-upstream-old": {
+      "command": [
+        "./pystachy",
+        "ir",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-696/build/audit-696/adapted-upstream.py",
+        "-o",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-696/build/audit-696/adapted-upstream-old.ll"
+      ],
+      "environment": {
+        "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-720"
+      },
+      "returncode": 1,
+      "stdout": "",
+      "stderr": "/workspace/scratch/3ba735e28fa7/pystachy-audit-696/build/audit-696/adapted-upstream.py:35: error: module 'weakref' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no weakref.py on the module path\n",
+      "wall_seconds": 0.09725246399466414,
+      "expected_exit": 1
+    },
+    "nested-callbacks-old": {
+      "command": [
+        "./pystachy",
+        "ir",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-696/build/audit-696/nested-callbacks.py",
+        "-o",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-696/build/audit-696/nested-callbacks-old.ll"
+      ],
+      "environment": {
+        "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-720"
+      },
+      "returncode": 1,
+      "stdout": "",
+      "stderr": "/workspace/scratch/3ba735e28fa7/pystachy-audit-696/build/audit-696/nested-callbacks.py:4: error: module 'weakref' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no weakref.py on the module path\n",
+      "wall_seconds": 0.003564433995052241,
+      "expected_exit": 1
+    },
+    "provenance": {
+      "files": {
+        "weakref": {
+          "upstream_sha256": "56f8d313fb74019e53eb9287400702fbce788b7fe30e097b0b6e06296f3f080c",
+          "port_sha256": "781ef9b242fde2b923e070fce64b751954d42955c5c66b367e54941678ab722b",
+          "adaptation_diff": "--- /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py\t2026-10-20 01:06:34.366286093 +0800\n+++ /workspace/scratch/3ba735e28fa7/pystachy-audit-696/lib/weakref.py\t2026-10-20 10:03:10.156287572 +0800\n@@ -9,15 +9,11 @@\n # they are called this instead of \"ref\" to avoid name collisions with\n # the module-global ref() function imported from _weakref.\n \n+# Pystachy port: _weakref has no getweakrefcount, getweakrefs, proxy, CallableProxyType, ProxyType\n+# or _remove_dead_weakref (docs/prototypes/weakref.md)\n from _weakref import (\n-     getweakrefcount,\n-     getweakrefs,\n      ref,\n-     proxy,\n-     CallableProxyType,\n-     ProxyType,\n-     ReferenceType,\n-     _remove_dead_weakref)\n+     ReferenceType)\n \n from _weakrefset import WeakSet, _IterationGuard\n \n@@ -25,15 +21,17 @@\n import sys\n import itertools\n \n-ProxyTypes = (ProxyType, CallableProxyType)\n+# Pystachy port: no proxies (so no ProxyTypes), counts or finalize (below)\n+__all__ = [\"ref\", \"WeakKeyDictionary\", \"ReferenceType\", \"WeakValueDictionary\",\n+           \"WeakSet\", \"WeakMethod\"]\n \n-__all__ = [\"ref\", \"proxy\", \"getweakrefcount\", \"getweakrefs\",\n-           \"WeakKeyDictionary\", \"ReferenceType\", \"ProxyType\",\n-           \"CallableProxyType\", \"ProxyTypes\", \"WeakValueDictionary\",\n-           \"WeakSet\", \"WeakMethod\", \"finalize\"]\n \n-\n-_collections_abc.MutableSet.register(WeakSet)\n+# Pystachy port: a class is not a value here (#7), so WeakSet is not registered as a MutableSet;\n+# _remove_dead_weakref, _weakref's in CPython (Modules/_weakref.c), is here in Python\n+def _remove_dead_weakref(dct, key, /):\n+    \"\"\"Atomically remove key from dict if it points to a dead weakref.\"\"\"\n+    if key in dct and dct[key]() is None:\n+        del dct[key]\n \n class WeakMethod(ref):\n     \"\"\"\n@@ -537,138 +535,5 @@\n         return NotImplemented\n \n \n-class finalize:\n-    \"\"\"Class for finalization of weakrefable objects\n-\n-    finalize(obj, func, *args, **kwargs) returns a callable finalizer\n-    object which will be called when obj is garbage collected. The\n-    first time the finalizer is called it evaluates func(*arg, **kwargs)\n-    and returns the result. After this the finalizer is dead, and\n-    calling it just returns None.\n-\n-    When the program exits any remaining finalizers for which the\n-    atexit attribute is true will be run in reverse order of creation.\n-    By default atexit is true.\n-    \"\"\"\n-\n-    # Finalizer objects don't have any state of their own.  They are\n-    # just used as keys to lookup _Info objects in the registry.  This\n-    # ensures that they cannot be part of a ref-cycle.\n-\n-    __slots__ = ()\n-    _registry = {}\n-    _shutdown = False\n-    _index_iter = itertools.count()\n-    _dirty = False\n-    _registered_with_atexit = False\n-\n-    class _Info:\n-        __slots__ = (\"weakref\", \"func\", \"args\", \"kwargs\", \"atexit\", \"index\")\n-\n-    def __init__(self, obj, func, /, *args, **kwargs):\n-        if not self._registered_with_atexit:\n-            # We may register the exit function more than once because\n-            # of a thread race, but that is harmless\n-            import atexit\n-            atexit.register(self._exitfunc)\n-            finalize._registered_with_atexit = True\n-        info = self._Info()\n-        info.weakref = ref(obj, self)\n-        info.func = func\n-        info.args = args\n-        info.kwargs = kwargs or None\n-        info.atexit = True\n-        info.index = next(self._index_iter)\n-        self._registry[self] = info\n-        finalize._dirty = True\n-\n-    def __call__(self, _=None):\n-        \"\"\"If alive then mark as dead and return func(*args, **kwargs);\n-        otherwise return None\"\"\"\n-        info = self._registry.pop(self, None)\n-        if info and not self._shutdown:\n-            return info.func(*info.args, **(info.kwargs or {}))\n-\n-    def detach(self):\n-        \"\"\"If alive then mark as dead and return (obj, func, args, kwargs);\n-        otherwise return None\"\"\"\n-        info = self._registry.get(self)\n-        obj = info and info.weakref()\n-        if obj is not None and self._registry.pop(self, None):\n-            return (obj, info.func, info.args, info.kwargs or {})\n-\n-    def peek(self):\n-        \"\"\"If alive then return (obj, func, args, kwargs);\n-        otherwise return None\"\"\"\n-        info = self._registry.get(self)\n-        obj = info and info.weakref()\n-        if obj is not None:\n-            return (obj, info.func, info.args, info.kwargs or {})\n-\n-    @property\n-    def alive(self):\n-        \"\"\"Whether finalizer is alive\"\"\"\n-        return self in self._registry\n-\n-    @property\n-    def atexit(self):\n-        \"\"\"Whether finalizer should be called at exit\"\"\"\n-        info = self._registry.get(self)\n-        return bool(info) and info.atexit\n-\n-    @atexit.setter\n-    def atexit(self, value):\n-        info = self._registry.get(self)\n-        if info:\n-            info.atexit = bool(value)\n-\n-    def __repr__(self):\n-        info = self._registry.get(self)\n-        obj = info and info.weakref()\n-        if obj is None:\n-            return '<%s object at %#x; dead>' % (type(self).__name__, id(self))\n-        else:\n-            return '<%s object at %#x; for %r at %#x>' % \\\n-                (type(self).__name__, id(self), type(obj).__name__, id(obj))\n-\n-    @classmethod\n-    def _select_for_exit(cls):\n-        # Return live finalizers marked for exit, oldest first\n-        L = [(f,i) for (f,i) in cls._registry.items() if i.atexit]\n-        L.sort(key=lambda item:item[1].index)\n-        return [f for (f,i) in L]\n-\n-    @classmethod\n-    def _exitfunc(cls):\n-        # At shutdown invoke finalizers for which atexit is true.\n-        # This is called once all other non-daemonic threads have been\n-        # joined.\n-        reenable_gc = False\n-        try:\n-            if cls._registry:\n-                import gc\n-                if gc.isenabled():\n-                    reenable_gc = True\n-                    gc.disable()\n-                pending = None\n-                while True:\n-                    if pending is None or finalize._dirty:\n-                        pending = cls._select_for_exit()\n-                        finalize._dirty = False\n-                    if not pending:\n-                        break\n-                    f = pending.pop()\n-                    try:\n-                        # gc is disabled, so (assuming no daemonic\n-                        # threads) the following is the only line in\n-                        # this function which might trigger creation\n-                        # of a new finalizer\n-                        f()\n-                    except Exception:\n-                        sys.excepthook(*sys.exc_info())\n-                    assert f not in cls._registry\n-        finally:\n-            # prevent any more finalizers from executing during shutdown\n-            finalize._shutdown = True\n-            if reenable_gc:\n-                gc.enable()\n+# Pystachy port: finalize is not ported: it takes *args and **kwargs, keeps an itertools.count()\n+# and a slotted _Info class in its class body, and turns the collector off with gc at exit\n"
+        },
+        "_weakrefset": {
+          "upstream_sha256": "91895a451d06e9f521a1171b31b9b19bc9740f35af00d4fa106338ab7167c9ac",
+          "port_sha256": "91895a451d06e9f521a1171b31b9b19bc9740f35af00d4fa106338ab7167c9ac",
+          "adaptation_diff": ""
+        }
+      },
+      "changed_files": [
+        "docs/language/modules.md",
+        "docs/prototypes/weakref.md",
+        "docs/stdlib.md",
+        "lib/README.md",
+        "lib/_weakrefset.py",
+        "lib/compatibility.md",
+        "lib/provenance.md",
+        "lib/weakref.py",
+        "tests/deviations/lib_weakref_all.out",
+        "tests/deviations/lib_weakref_all.py",
+        "tests/errors/lib_weakref_finalize.py",
+        "tests/errors/lib_weakref_getweakrefcount.py",
+        "tests/errors/lib_weakref_proxy.py",
+        "tests/errors/lib_weakref_weakkeydict.py",
+        "tests/errors/lib_weakref_weakmethod.py",
+        "tests/errors/lib_weakref_weakset.py",
+        "tests/errors/lib_weakref_weakvaluedict.py",
+        "tests/lib_weakref_module.out",
+        "tests/lib_weakref_module.py",
+        "tests/lib_weakref_star.out",
+        "tests/lib_weakref_star.py",
+        "tests/upstream_weakref.py"
+      ],
+      "compiler_sha256": "6f20c9a0d69f458beeb895a1160a7ed9a4caf26f93224cbada29ad394c7bccaf"
+    },
+    "live-matrix-build-gc": {
+      "command": [
+        "./pystachy",
+        "build",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-696/build/audit-696/live-matrix.py",
+        "-o",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-696/build/audit-696/live-matrix-gc"
+      ],
+      "environment": {
+        "PYSTACHY_GC_STRESS_PROGRAM": "1"
+      },
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "",
+      "wall_seconds": 0.4426628330038511,
+      "expected_exit": 0
+    },
+    "live-matrix-old": {
+      "command": [
+        "./pystachy",
+        "ir",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-696/build/audit-696/live-matrix.py",
+        "-o",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-696/build/audit-696/live-matrix-old.ll"
+      ],
+      "environment": {
+        "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-720"
+      },
+      "returncode": 1,
+      "stdout": "",
+      "stderr": "/workspace/scratch/3ba735e28fa7/pystachy-audit-696/build/audit-696/live-matrix.py:1: error: module 'weakref' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no weakref.py on the module path\n",
+      "wall_seconds": 0.0023575800005346537,
+      "expected_exit": 1
+    },
+    "checks-noopt": {
+      "command": [
+        "tests/run.sh",
+        "./pystachy",
+        "jit aot",
+        "tests/deviations/lib_weakref_all.py",
+        "tests/errors/lib_weakref_finalize.py",
+        "tests/errors/lib_weakref_getweakrefcount.py",
+        "tests/errors/lib_weakref_proxy.py",
+        "tests/errors/lib_weakref_weakkeydict.py",
+        "tests/errors/lib_weakref_weakmethod.py",
+        "tests/errors/lib_weakref_weakset.py",
+        "tests/errors/lib_weakref_weakvaluedict.py",
+        "tests/errors/weakref_addr_private.py",
+        "tests/errors/weakref_builtin.py",
+        "tests/errors/weakref_callback_keyword.py",
+        "tests/errors/weakref_callback_value.py",
+        "tests/errors/weakref_compare_other.py",
+        "tests/errors/weakref_getattr_name.py",
+        "tests/errors/weakref_init_arity.py",
+        "tests/errors/weakref_init_keyword.py",
+        "tests/errors/weakref_nested.py",
+        "tests/errors/weakref_private.py",
+        "tests/errors/weakref_private_field.py",
+        "tests/errors/weakref_private_hash.py",
+        "tests/errors/weakref_private_store.py",
+        "tests/errors/weakref_ref_arity.py",
+        "tests/errors/weakref_slots.py",
+        "tests/errors/weakref_vars.py",
+        "tests/lib_weakref.py",
+        "tests/lib_weakref_callback.py",
+        "tests/lib_weakref_callback_dead_ref.py",
+        "tests/lib_weakref_callback_nested.py",
+        "tests/lib_weakref_callback_order.py",
+        "tests/lib_weakref_callback_raise.py",
+        "tests/lib_weakref_dead.py",
+        "tests/lib_weakref_dead_eq.py",
+        "tests/lib_weakref_eq.py",
+        "tests/lib_weakref_module.py",
+        "tests/lib_weakref_star.py",
+        "tests/lib_weakref_transition.py",
+        "tests/upstream_weakref.py",
+        "tests/lib_gettext.py",
+        "tests/sys_prefix.py"
+      ],
+      "environment": {
+        "PYSTACHY_OPT": "-all"
+      },
+      "returncode": 0,
+      "stdout": "selected 39 cases\n55 passed, 0 failed\n",
+      "stderr": "",
+      "wall_seconds": 18.265709083003458,
+      "expected_exit": 0
+    },
+    "adapted-upstream-build-noopt": {
+      "command": [
+        "./pystachy",
+        "build",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-696/build/audit-696/adapted-upstream.py",
+        "-o",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-696/build/audit-696/adapted-upstream-noopt"
+      ],
+      "environment": {
+        "PYSTACHY_OPT": "-all"
+      },
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "",
+      "wall_seconds": 4.5229164749980555,
+      "expected_exit": 0
+    },
+    "nested-callbacks-cpython": {
+      "command": [
+        "/root/.local/bin/python3.13",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-696/build/audit-696/nested-callbacks.py"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "True\n",
+      "stderr": "",
+      "wall_seconds": 0.025677310004539322,
+      "expected_exit": 0
+    },
+    "live-matrix-jit-gc": {
+      "command": [
+        "./pystachy",
+        "run",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-696/build/audit-696/live-matrix.py"
+      ],
+      "environment": {
+        "PYSTACHY_GC_STRESS_PROGRAM": "1"
+      },
+      "returncode": 0,
+      "stdout": "-7 True True True True True True\nReferenceType weakref -7 -7 -6\n-1 True True True True True True\nReferenceType weakref -1 -1 0\n0 True True True True True True\nReferenceType weakref 0 0 1\n1 True True True True True True\nReferenceType weakref 1 1 2\n7 True True True True True True\nReferenceType weakref 7 7 8\n1000 True True True True True True\nReferenceType weakref 1000 1000 1001\n",
+      "stderr": "",
+      "wall_seconds": 0.11486565599625465,
+      "expected_exit": 0
+    },
+    "nested-callbacks-jit-gc": {
+      "command": [
+        "./pystachy",
+        "run",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-696/build/audit-696/nested-callbacks.py"
+      ],
+      "environment": {
+        "PYSTACHY_GC_STRESS_PROGRAM": "1"
+      },
+      "returncode": 0,
+      "stdout": "True\n",
+      "stderr": "",
+      "wall_seconds": 0.1855793700015056,
+      "expected_exit": 0
+    },
+    "selection": {
+      "weakref": [
+        "tests/deviations/lib_weakref_all.py",
+        "tests/errors/lib_weakref_finalize.py",
+        "tests/errors/lib_weakref_getweakrefcount.py",
+        "tests/errors/lib_weakref_proxy.py",
+        "tests/errors/lib_weakref_weakkeydict.py",
+        "tests/errors/lib_weakref_weakmethod.py",
+        "tests/errors/lib_weakref_weakset.py",
+        "tests/errors/lib_weakref_weakvaluedict.py",
+        "tests/errors/weakref_addr_private.py",
+        "tests/errors/weakref_builtin.py",
+        "tests/errors/weakref_callback_keyword.py",
+        "tests/errors/weakref_callback_value.py",
+        "tests/errors/weakref_compare_other.py",
+        "tests/errors/weakref_getattr_name.py",
+        "tests/errors/weakref_init_arity.py",
+        "tests/errors/weakref_init_keyword.py",
+        "tests/errors/weakref_nested.py",
+        "tests/errors/weakref_private.py",
+        "tests/errors/weakref_private_field.py",
+        "tests/errors/weakref_private_hash.py",
+        "tests/errors/weakref_private_store.py",
+        "tests/errors/weakref_ref_arity.py",
+        "tests/errors/weakref_slots.py",
+        "tests/errors/weakref_vars.py",
+        "tests/lib_weakref.py",
+        "tests/lib_weakref_callback.py",
+        "tests/lib_weakref_callback_dead_ref.py",
+        "tests/lib_weakref_callback_nested.py",
+        "tests/lib_weakref_callback_order.py",
+        "tests/lib_weakref_callback_raise.py",
+        "tests/lib_weakref_dead.py",
+        "tests/lib_weakref_dead_eq.py",
+        "tests/lib_weakref_eq.py",
+        "tests/lib_weakref_module.py",
+        "tests/lib_weakref_star.py",
+        "tests/lib_weakref_transition.py"
+      ],
+      "adjacent": [
+        "tests/upstream_weakref.py",
+        "tests/lib_gettext.py",
+        "tests/sys_prefix.py"
+      ]
+    },
+    "ir": {
+      "command": [
+        "tools/check_ir.sh",
+        "./pystachy",
+        "tests/deviations/lib_weakref_all.py",
+        "tests/lib_weakref.py",
+        "tests/lib_weakref_callback.py",
+        "tests/lib_weakref_callback_dead_ref.py",
+        "tests/lib_weakref_callback_nested.py",
+        "tests/lib_weakref_callback_order.py",
+        "tests/lib_weakref_callback_raise.py",
+        "tests/lib_weakref_dead.py",
+        "tests/lib_weakref_dead_eq.py",
+        "tests/lib_weakref_eq.py",
+        "tests/lib_weakref_module.py",
+        "tests/lib_weakref_star.py",
+        "tests/lib_weakref_transition.py",
+        "tests/upstream_weakref.py",
+        "tests/lib_gettext.py",
+        "tests/sys_prefix.py"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "the IR check and llvm-as accept the IR of 16 programs\n",
+      "stderr": "",
+      "wall_seconds": 1.0150941160027287,
+      "expected_exit": 0
+    }
+  },
+  "imports": {
+    "imports": {
+      "metadata": {
+        "compiler": {
+          "kind": "executable",
+          "path": "/workspace/scratch/3ba735e28fa7/pystachy-audit-696/pystachy",
+          "sha256": "6f20c9a0d69f458beeb895a1160a7ed9a4caf26f93224cbada29ad394c7bccaf"
+        },
+        "counts": {
+          "error": 319,
+          "excluded": 58,
+          "included": 464,
+          "ok": 145,
+          "ok_without_stubs": 145,
+          "timeout": 0,
+          "total": 522
+        },
+        "duration_s": 33.5641618189984,
+        "mode": "import",
+        "overlay": {
+          "compiler_home": "/workspace/scratch/3ba735e28fa7/pystachy-audit-696",
+          "excluded_modules": [
+            "_markupbase",
+            "_opcode_metadata",
+            "_weakrefset",
+            "bisect",
+            "codecs",
+            "collections",
+            "colorsys",
+            "contextlib",
+            "csv",
+            "curses",
+            "curses.ascii",
+            "curses.has_key",
+            "curses.panel",
+            "curses.textpad",
+            "datetime",
+            "difflib",
+            "fnmatch",
+            "functools",
+            "genericpath",
+            "getopt",
+            "gettext",
+            "heapq",
+            "html",
+            "html.entities",
+            "html.parser",
+            "io",
+            "json",
+            "json.decoder",
+            "json.encoder",
+            "json.scanner",
+            "json.tool",
+            "keyword",
+            "opcode",
+            "operator",
+            "posixpath",
+            "random",
+            "re",
+            "re._casefix",
+            "re._compiler",
+            "re._constants",
+            "re._parser",
+            "shlex",
+            "stat",
+            "statistics",
+            "string",
+            "struct",
+            "textwrap",
+            "this",
+            "token",
+            "types",
+            "urllib",
+            "urllib.error",
+            "urllib.parse",
+            "urllib.request",
+            "urllib.response",
+            "urllib.robotparser",
+            "warnings",
+            "weakref"
+          ],
+          "module_filter": "Python .py files except __main__, top-level __* names and names containing '-'.",
+          "policy": "Exclude top-level names supplied by the compiler home lib/; prefer those ports.",
+          "ported_names": [
+            "_markupbase",
+            "_opcode_metadata",
+            "_pyrandom",
+            "_pystachy__io",
+            "_pystachy_abc",
+            "_pystachy_ast",
+            "_pystachy_atexit",
+            "_pystachy_binascii",
+            "_pystachy_codecs",
+            "_pystachy_imp",
+            "_pystachy_iterators",
+            "_pystachy_itertools",
+            "_pystachy_opcode",
+            "_pystachy_opcode_db",
+            "_pystachy_range",
+            "_pystachy_re_specialized",
+            "_pystachy_string",
+            "_pystachy_struct",
+            "_pystachy_thread",
+            "_pystachy_types",
+            "_pystachy_unicodedata",
+            "_pystachy_unicodedata_db",
+            "_pystachy_unicodedata_names",
+            "_pystachy_weakref",
+            "_weakrefset",
+            "bisect",
+            "codecs",
+            "collections",
+            "colorsys",
+            "contextlib",
+            "csv",
+            "curses",
+            "datetime",
+            "difflib",
+            "fnmatch",
+            "functools",
+            "genericpath",
+            "getopt",
+            "gettext",
+            "heapq",
+            "html",
+            "io",
+            "json",
+            "keyword",
+            "opcode",
+            "operator",
+            "posixpath",
+            "pyobj",
+            "random",
+            "re",
+            "shlex",
+            "stat",
+            "statistics",
+            "string",
+            "struct",
+            "textwrap",
+            "this",
+            "token",
+            "types",
+            "urllib",
+            "warnings",
+            "weakref"
+          ],
+          "skipped_directories": [
+            "test",
+            "tests",
+            "idlelib",
+            "tkinter",
+            "turtledemo",
+            "site-packages",
+            "dist-packages",
+            "lib2to3",
+            "ensurepip",
+            "venv",
+            "__pycache__"
+          ]
+        },
+        "python": {
+          "executable": "/root/.local/bin/python3.13",
+          "implementation": "cpython",
+          "version": "3.13.16 (main, Oct  3 2026, 01:06:22) [Clang 22.1.3 ]"
+        },
+        "result_path": "/workspace/scratch/3ba735e28fa7/pystachy-audit-696/build/audit-696/imports.json",
+        "schema_version": 1,
+        "scope": "Compilation of isolated imports to IR; no runtime or full module compatibility check.",
+        "source_git": {
+          "dirty": false,
+          "revision": "88013afb321048ef1edb92638f3dbc438b9e3c8d",
+          "root": "/workspace/scratch/3ba735e28fa7/pystachy-audit-696"
+        },
+        "source_git_caveat": "The selected source tree is not proof of which source built the compiler file.",
+        "stdlib": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13",
+        "stubs": [],
+        "timeout_s": 120,
+        "workers": 2
+      },
+      "result_sha256": "30f37278b7af63681656795d9974ae5a147d00cee2409827eced2f8192e3ddaa",
+      "previous_result_sha256": "9abf6db070d3a0dc15de649cdd29f9663e79ccea798b15db767e1b11429411c4",
+      "path_normalization": "Only old/new checkout prefixes replaced with CHECKOUT for comparison; raw delta strings preserved.",
+      "deltas": {
+        "_threading_local": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/threading.py:38: error: class '_thread.lock' cannot be used as a value (classes are not values: call it, or read an attribute, C.x)"
+        },
+        "_weakrefset": {
+          "before": "OK",
+          "after": "left out: lib/ has _weakrefset"
+        },
+        "asyncio": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:52: error: module '_socket' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no _socket.py on the module path"
+        },
+        "asyncio.base_events": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:52: error: module '_socket' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no _socket.py on the module path"
+        },
+        "asyncio.base_futures": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:52: error: module '_socket' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no _socket.py on the module path"
+        },
+        "asyncio.base_subprocess": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:52: error: module '_socket' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no _socket.py on the module path"
+        },
+        "asyncio.base_tasks": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:52: error: module '_socket' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no _socket.py on the module path"
+        },
+        "asyncio.constants": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:52: error: module '_socket' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no _socket.py on the module path"
+        },
+        "asyncio.coroutines": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:52: error: module '_socket' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no _socket.py on the module path"
+        },
+        "asyncio.events": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:52: error: module '_socket' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no _socket.py on the module path"
+        },
+        "asyncio.exceptions": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:52: error: module '_socket' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no _socket.py on the module path"
+        },
+        "asyncio.format_helpers": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:52: error: module '_socket' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no _socket.py on the module path"
+        },
+        "asyncio.futures": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:52: error: module '_socket' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no _socket.py on the module path"
+        },
+        "asyncio.locks": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:52: error: module '_socket' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no _socket.py on the module path"
+        },
+        "asyncio.log": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:52: error: module '_socket' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no _socket.py on the module path"
+        },
+        "asyncio.mixins": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:52: error: module '_socket' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no _socket.py on the module path"
+        },
+        "asyncio.proactor_events": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:52: error: module '_socket' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no _socket.py on the module path"
+        },
+        "asyncio.protocols": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:52: error: module '_socket' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no _socket.py on the module path"
+        },
+        "asyncio.queues": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:52: error: module '_socket' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no _socket.py on the module path"
+        },
+        "asyncio.runners": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:52: error: module '_socket' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no _socket.py on the module path"
+        },
+        "asyncio.selector_events": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:52: error: module '_socket' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no _socket.py on the module path"
+        },
+        "asyncio.sslproto": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:52: error: module '_socket' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no _socket.py on the module path"
+        },
+        "asyncio.staggered": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:52: error: module '_socket' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no _socket.py on the module path"
+        },
+        "asyncio.streams": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:52: error: module '_socket' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no _socket.py on the module path"
+        },
+        "asyncio.subprocess": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:52: error: module '_socket' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no _socket.py on the module path"
+        },
+        "asyncio.taskgroups": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:52: error: module '_socket' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no _socket.py on the module path"
+        },
+        "asyncio.tasks": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:52: error: module '_socket' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no _socket.py on the module path"
+        },
+        "asyncio.threads": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:52: error: module '_socket' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no _socket.py on the module path"
+        },
+        "asyncio.timeouts": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:52: error: module '_socket' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no _socket.py on the module path"
+        },
+        "asyncio.transports": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:52: error: module '_socket' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no _socket.py on the module path"
+        },
+        "asyncio.trsock": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:52: error: module '_socket' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no _socket.py on the module path"
+        },
+        "asyncio.unix_events": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:52: error: module '_socket' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no _socket.py on the module path"
+        },
+        "asyncio.windows_events": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:52: error: module '_socket' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no _socket.py on the module path"
+        },
+        "asyncio.windows_utils": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:52: error: module '_socket' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no _socket.py on the module path"
+        },
+        "concurrent.futures": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/concurrent/futures/_base.py:59: error: inheritance with generic class templates is not supported: annotate __init__ parameters with concrete types (not Any or object)"
+        },
+        "concurrent.futures._base": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/concurrent/futures/_base.py:59: error: inheritance with generic class templates is not supported: annotate __init__ parameters with concrete types (not Any or object)"
+        },
+        "concurrent.futures.process": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/signal.py:1: error: module '_signal' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no _signal.py on the module path"
+        },
+        "concurrent.futures.thread": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/concurrent/futures/_base.py:59: error: inheritance with generic class templates is not supported: annotate __init__ parameters with concrete types (not Any or object)"
+        },
+        "copy": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/copyreg.py:15: error: dict keys must be int or str, objects, or tuples of int, bool, str, str | None and objects, not <built-in function complex> (compiling copyreg.pickle(fn[b:complex], fn[f:copyreg.pickle_complex], fn[b:complex]) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/copyreg.py:31)"
+        },
+        "email.generator": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/copyreg.py:15: error: dict keys must be int or str, objects, or tuples of int, bool, str, str | None and objects, not <built-in function complex> (compiling copyreg.pickle(fn[b:complex], fn[f:copyreg.pickle_complex], fn[b:complex]) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/copyreg.py:31)"
+        },
+        "gzip": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/gzip.py:16: error: module 'zlib' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no zlib.py on the module path"
+        },
+        "hashlib": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/traceback.py:133: error: unsupported call object()"
+        },
+        "http.cookiejar": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/http/cookiejar.py:36: error: module 'urllib.request' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no request.py on the module path"
+        },
+        "http.server": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:52: error: module '_socket' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no _socket.py on the module path"
+        },
+        "logging": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/traceback.py:133: error: unsupported call object()"
+        },
+        "logging.config": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:52: error: module '_socket' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no _socket.py on the module path"
+        },
+        "logging.handlers": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:52: error: module '_socket' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no _socket.py on the module path"
+        },
+        "weakref": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "left out: lib/ has weakref"
+        },
+        "wsgiref.simple_server": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:52: error: module '_socket' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no _socket.py on the module path"
+        },
+        "xml.dom.expatbuilder": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/xml/parsers/expat.py:4: error: module 'pyexpat' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no pyexpat.py on the module path"
+        },
+        "xml.dom.minidom": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/copyreg.py:15: error: dict keys must be int or str, objects, or tuples of int, bool, str, str | None and objects, not <built-in function complex> (compiling copyreg.pickle(fn[b:complex], fn[f:copyreg.pickle_complex], fn[b:complex]) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/copyreg.py:31)"
+        },
+        "xml.dom.xmlbuilder": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/copyreg.py:15: error: dict keys must be int or str, objects, or tuples of int, bool, str, str | None and objects, not <built-in function complex> (compiling copyreg.pickle(fn[b:complex], fn[f:copyreg.pickle_complex], fn[b:complex]) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/copyreg.py:31)"
+        },
+        "xml.etree.ElementInclude": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/xml/etree/ElementTree.py:2084: error: module '_elementtree' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no _elementtree.py on the module path; an optional import is supported only as try: <imports> / except ImportError: (except clauses naming only ImportError or ModuleNotFoundError, and no finally)"
+        },
+        "xml.etree.ElementTree": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/xml/etree/ElementTree.py:2084: error: module '_elementtree' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no _elementtree.py on the module path; an optional import is supported only as try: <imports> / except ImportError: (except clauses naming only ImportError or ModuleNotFoundError, and no finally)"
+        },
+        "xml.etree.cElementTree": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/xml/etree/ElementTree.py:2084: error: module '_elementtree' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no _elementtree.py on the module path; an optional import is supported only as try: <imports> / except ImportError: (except clauses naming only ImportError or ModuleNotFoundError, and no finally)"
+        }
+      },
+      "next_error_locations": {
+        "threading.py:38": 1,
+        "socket.py:52": 36,
+        "concurrent/futures/_base.py:59": 3,
+        "signal.py:1": 1,
+        "copyreg.py:15": 4,
+        "gzip.py:16": 1,
+        "traceback.py:133": 2,
+        "http/cookiejar.py:36": 1,
+        "xml/parsers/expat.py:4": 1,
+        "xml/etree/ElementTree.py:2084": 3
+      }
+    },
+    "stubs": {
+      "metadata": {
+        "compiler": {
+          "kind": "hosted_entrypoint",
+          "path": "/workspace/scratch/3ba735e28fa7/pystachy-audit-696/pystachy.py",
+          "sha256": "542e1f9656f5cec853f9baf303d8eaa91a31f414c8e704a712f5d6078a82b917"
+        },
+        "counts": {
+          "error": 317,
+          "excluded": 58,
+          "included": 464,
+          "ok": 147,
+          "ok_without_stubs": 145,
+          "timeout": 0,
+          "total": 522
+        },
+        "duration_s": 196.69838309400075,
+        "mode": "stubs",
+        "overlay": {
+          "compiler_home": "/workspace/scratch/3ba735e28fa7/pystachy-audit-696",
+          "excluded_modules": [
+            "_markupbase",
+            "_opcode_metadata",
+            "_weakrefset",
+            "bisect",
+            "codecs",
+            "collections",
+            "colorsys",
+            "contextlib",
+            "csv",
+            "curses",
+            "curses.ascii",
+            "curses.has_key",
+            "curses.panel",
+            "curses.textpad",
+            "datetime",
+            "difflib",
+            "fnmatch",
+            "functools",
+            "genericpath",
+            "getopt",
+            "gettext",
+            "heapq",
+            "html",
+            "html.entities",
+            "html.parser",
+            "io",
+            "json",
+            "json.decoder",
+            "json.encoder",
+            "json.scanner",
+            "json.tool",
+            "keyword",
+            "opcode",
+            "operator",
+            "posixpath",
+            "random",
+            "re",
+            "re._casefix",
+            "re._compiler",
+            "re._constants",
+            "re._parser",
+            "shlex",
+            "stat",
+            "statistics",
+            "string",
+            "struct",
+            "textwrap",
+            "this",
+            "token",
+            "types",
+            "urllib",
+            "urllib.error",
+            "urllib.parse",
+            "urllib.request",
+            "urllib.response",
+            "urllib.robotparser",
+            "warnings",
+            "weakref"
+          ],
+          "module_filter": "Python .py files except __main__, top-level __* names and names containing '-'.",
+          "policy": "Exclude top-level names supplied by the compiler home lib/; prefer those ports.",
+          "ported_names": [
+            "_markupbase",
+            "_opcode_metadata",
+            "_pyrandom",
+            "_pystachy__io",
+            "_pystachy_abc",
+            "_pystachy_ast",
+            "_pystachy_atexit",
+            "_pystachy_binascii",
+            "_pystachy_codecs",
+            "_pystachy_imp",
+            "_pystachy_iterators",
+            "_pystachy_itertools",
+            "_pystachy_opcode",
+            "_pystachy_opcode_db",
+            "_pystachy_range",
+            "_pystachy_re_specialized",
+            "_pystachy_string",
+            "_pystachy_struct",
+            "_pystachy_thread",
+            "_pystachy_types",
+            "_pystachy_unicodedata",
+            "_pystachy_unicodedata_db",
+            "_pystachy_unicodedata_names",
+            "_pystachy_weakref",
+            "_weakrefset",
+            "bisect",
+            "codecs",
+            "collections",
+            "colorsys",
+            "contextlib",
+            "csv",
+            "curses",
+            "datetime",
+            "difflib",
+            "fnmatch",
+            "functools",
+            "genericpath",
+            "getopt",
+            "gettext",
+            "heapq",
+            "html",
+            "io",
+            "json",
+            "keyword",
+            "opcode",
+            "operator",
+            "posixpath",
+            "pyobj",
+            "random",
+            "re",
+            "shlex",
+            "stat",
+            "statistics",
+            "string",
+            "struct",
+            "textwrap",
+            "this",
+            "token",
+            "types",
+            "urllib",
+            "warnings",
+            "weakref"
+          ],
+          "skipped_directories": [
+            "test",
+            "tests",
+            "idlelib",
+            "tkinter",
+            "turtledemo",
+            "site-packages",
+            "dist-packages",
+            "lib2to3",
+            "ensurepip",
+            "venv",
+            "__pycache__"
+          ]
+        },
+        "python": {
+          "executable": "/root/.local/bin/python3.13",
+          "implementation": "cpython",
+          "version": "3.13.16 (main, Oct  3 2026, 01:06:22) [Clang 22.1.3 ]"
+        },
+        "result_path": "/workspace/scratch/3ba735e28fa7/pystachy-audit-696/build/audit-696/stubs.json",
+        "schema_version": 1,
+        "scope": "Compilation of isolated imports to IR; no runtime or full module compatibility check.",
+        "source_git": {
+          "dirty": false,
+          "revision": "88013afb321048ef1edb92638f3dbc438b9e3c8d",
+          "root": "/workspace/scratch/3ba735e28fa7/pystachy-audit-696"
+        },
+        "source_git_caveat": "The selected source tree is not proof of which source built the compiler file.",
+        "stdlib": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13",
+        "stubs": [
+          "_operator",
+          "_posixsubprocess",
+          "_signal",
+          "_socket",
+          "_symtable",
+          "_sysconfig",
+          "_tokenize",
+          "_tracemalloc",
+          "_typing",
+          "_warnings",
+          "array",
+          "fcntl",
+          "gc",
+          "grp",
+          "marshal",
+          "posix",
+          "pwd",
+          "pyexpat",
+          "select",
+          "zlib"
+        ],
+        "timeout_s": 600,
+        "workers": 2
+      },
+      "result_sha256": "9e0950c8ce56be39c131d7a2c97827caf8fe0cce15f1fcc149bf1ff4f50d62f7",
+      "previous_result_sha256": "3271e5c874cc55ac85014d043dbebfdd2fed82ecf0f8889f42a9984533bd9ab5",
+      "path_normalization": "Only old/new checkout prefixes replaced with CHECKOUT for comparison; raw delta strings preserved.",
+      "deltas": {
+        "_pyrepl.main": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py:1725: error: namedtuple() is only supported with field names that are a string literal or a list or tuple of string literals (the compiler makes the class)"
+        },
+        "_pyrepl.readline": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py:1725: error: namedtuple() is only supported with field names that are a string literal or a list or tuple of string literals (the compiler makes the class)"
+        },
+        "_pyrepl.simple_interact": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py:1725: error: namedtuple() is only supported with field names that are a string literal or a list or tuple of string literals (the compiler makes the class)"
+        },
+        "_threading_local": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/threading.py:38: error: class '_thread.lock' cannot be used as a value (classes are not values: call it, or read an attribute, C.x)"
+        },
+        "_weakrefset": {
+          "before": "OK",
+          "after": "left out: lib/ has _weakrefset"
+        },
+        "asyncio": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:53: error: 'socketpair' is bound both as a variable and by an import (not supported)"
+        },
+        "asyncio.base_events": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:53: error: 'socketpair' is bound both as a variable and by an import (not supported)"
+        },
+        "asyncio.base_futures": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:53: error: 'socketpair' is bound both as a variable and by an import (not supported)"
+        },
+        "asyncio.base_subprocess": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:53: error: 'socketpair' is bound both as a variable and by an import (not supported)"
+        },
+        "asyncio.base_tasks": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:53: error: 'socketpair' is bound both as a variable and by an import (not supported)"
+        },
+        "asyncio.constants": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:53: error: 'socketpair' is bound both as a variable and by an import (not supported)"
+        },
+        "asyncio.coroutines": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:53: error: 'socketpair' is bound both as a variable and by an import (not supported)"
+        },
+        "asyncio.events": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:53: error: 'socketpair' is bound both as a variable and by an import (not supported)"
+        },
+        "asyncio.exceptions": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:53: error: 'socketpair' is bound both as a variable and by an import (not supported)"
+        },
+        "asyncio.format_helpers": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:53: error: 'socketpair' is bound both as a variable and by an import (not supported)"
+        },
+        "asyncio.futures": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:53: error: 'socketpair' is bound both as a variable and by an import (not supported)"
+        },
+        "asyncio.locks": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:53: error: 'socketpair' is bound both as a variable and by an import (not supported)"
+        },
+        "asyncio.log": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:53: error: 'socketpair' is bound both as a variable and by an import (not supported)"
+        },
+        "asyncio.mixins": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:53: error: 'socketpair' is bound both as a variable and by an import (not supported)"
+        },
+        "asyncio.proactor_events": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:53: error: 'socketpair' is bound both as a variable and by an import (not supported)"
+        },
+        "asyncio.protocols": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:53: error: 'socketpair' is bound both as a variable and by an import (not supported)"
+        },
+        "asyncio.queues": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:53: error: 'socketpair' is bound both as a variable and by an import (not supported)"
+        },
+        "asyncio.runners": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:53: error: 'socketpair' is bound both as a variable and by an import (not supported)"
+        },
+        "asyncio.selector_events": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:53: error: 'socketpair' is bound both as a variable and by an import (not supported)"
+        },
+        "asyncio.sslproto": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:53: error: 'socketpair' is bound both as a variable and by an import (not supported)"
+        },
+        "asyncio.staggered": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:53: error: 'socketpair' is bound both as a variable and by an import (not supported)"
+        },
+        "asyncio.streams": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:53: error: 'socketpair' is bound both as a variable and by an import (not supported)"
+        },
+        "asyncio.subprocess": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:53: error: 'socketpair' is bound both as a variable and by an import (not supported)"
+        },
+        "asyncio.taskgroups": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:53: error: 'socketpair' is bound both as a variable and by an import (not supported)"
+        },
+        "asyncio.tasks": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:53: error: 'socketpair' is bound both as a variable and by an import (not supported)"
+        },
+        "asyncio.threads": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:53: error: 'socketpair' is bound both as a variable and by an import (not supported)"
+        },
+        "asyncio.timeouts": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:53: error: 'socketpair' is bound both as a variable and by an import (not supported)"
+        },
+        "asyncio.transports": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:53: error: 'socketpair' is bound both as a variable and by an import (not supported)"
+        },
+        "asyncio.trsock": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:53: error: 'socketpair' is bound both as a variable and by an import (not supported)"
+        },
+        "asyncio.unix_events": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:53: error: 'socketpair' is bound both as a variable and by an import (not supported)"
+        },
+        "asyncio.windows_events": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:53: error: 'socketpair' is bound both as a variable and by an import (not supported)"
+        },
+        "asyncio.windows_utils": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:53: error: 'socketpair' is bound both as a variable and by an import (not supported)"
+        },
+        "bdb": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py:1725: error: namedtuple() is only supported with field names that are a string literal or a list or tuple of string literals (the compiler makes the class)"
+        },
+        "cmd": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py:1725: error: namedtuple() is only supported with field names that are a string literal or a list or tuple of string literals (the compiler makes the class)"
+        },
+        "concurrent.futures": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/concurrent/futures/_base.py:59: error: inheritance with generic class templates is not supported: annotate __init__ parameters with concrete types (not Any or object)"
+        },
+        "concurrent.futures._base": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/concurrent/futures/_base.py:59: error: inheritance with generic class templates is not supported: annotate __init__ parameters with concrete types (not Any or object)"
+        },
+        "concurrent.futures.process": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:53: error: 'socketpair' is bound both as a variable and by an import (not supported)"
+        },
+        "concurrent.futures.thread": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/concurrent/futures/_base.py:59: error: inheritance with generic class templates is not supported: annotate __init__ parameters with concrete types (not Any or object)"
+        },
+        "copy": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/copyreg.py:15: error: dict keys must be int or str, objects, or tuples of int, bool, str, str | None and objects, not <built-in function complex> (compiling copyreg.pickle(fn[b:complex], fn[f:copyreg.pickle_complex], fn[b:complex]) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/copyreg.py:31)"
+        },
+        "doctest": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py:1725: error: namedtuple() is only supported with field names that are a string literal or a list or tuple of string literals (the compiler makes the class)"
+        },
+        "email.generator": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/copyreg.py:15: error: dict keys must be int or str, objects, or tuples of int, bool, str, str | None and objects, not <built-in function complex> (compiling copyreg.pickle(fn[b:complex], fn[f:copyreg.pickle_complex], fn[b:complex]) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/copyreg.py:31)"
+        },
+        "gzip": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/_compression.py:9: error: class _compression.BaseStream is not supported: unsupported base class: single inheritance requires a previously declared ordinary class or a supported exception class; CPython creates class BaseStream when module '_compression' is imported, and module 'io' has no attribute 'BufferedIOBase'"
+        },
+        "hashlib": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/traceback.py:133: error: unsupported call object()"
+        },
+        "hmac": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/traceback.py:133: error: unsupported call object()"
+        },
+        "http.cookiejar": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/http/cookiejar.py:36: error: module 'urllib.request' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no request.py on the module path"
+        },
+        "http.server": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:53: error: 'socketpair' is bound both as a variable and by an import (not supported)"
+        },
+        "importlib.abc": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py:1725: error: namedtuple() is only supported with field names that are a string literal or a list or tuple of string literals (the compiler makes the class)"
+        },
+        "importlib.metadata": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py:1725: error: namedtuple() is only supported with field names that are a string literal or a list or tuple of string literals (the compiler makes the class)"
+        },
+        "importlib.metadata._adapters": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py:1725: error: namedtuple() is only supported with field names that are a string literal or a list or tuple of string literals (the compiler makes the class)"
+        },
+        "importlib.metadata._collections": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py:1725: error: namedtuple() is only supported with field names that are a string literal or a list or tuple of string literals (the compiler makes the class)"
+        },
+        "importlib.metadata._functools": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py:1725: error: namedtuple() is only supported with field names that are a string literal or a list or tuple of string literals (the compiler makes the class)"
+        },
+        "importlib.metadata._itertools": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py:1725: error: namedtuple() is only supported with field names that are a string literal or a list or tuple of string literals (the compiler makes the class)"
+        },
+        "importlib.metadata._meta": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py:1725: error: namedtuple() is only supported with field names that are a string literal or a list or tuple of string literals (the compiler makes the class)"
+        },
+        "importlib.metadata._text": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py:1725: error: namedtuple() is only supported with field names that are a string literal or a list or tuple of string literals (the compiler makes the class)"
+        },
+        "importlib.metadata.diagnose": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py:1725: error: namedtuple() is only supported with field names that are a string literal or a list or tuple of string literals (the compiler makes the class)"
+        },
+        "importlib.readers": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py:1725: error: namedtuple() is only supported with field names that are a string literal or a list or tuple of string literals (the compiler makes the class)"
+        },
+        "importlib.resources": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py:1725: error: namedtuple() is only supported with field names that are a string literal or a list or tuple of string literals (the compiler makes the class)"
+        },
+        "importlib.resources._adapters": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py:1725: error: namedtuple() is only supported with field names that are a string literal or a list or tuple of string literals (the compiler makes the class)"
+        },
+        "importlib.resources._common": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py:1725: error: namedtuple() is only supported with field names that are a string literal or a list or tuple of string literals (the compiler makes the class)"
+        },
+        "importlib.resources._functional": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py:1725: error: namedtuple() is only supported with field names that are a string literal or a list or tuple of string literals (the compiler makes the class)"
+        },
+        "importlib.resources._itertools": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py:1725: error: namedtuple() is only supported with field names that are a string literal or a list or tuple of string literals (the compiler makes the class)"
+        },
+        "importlib.resources.abc": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py:1725: error: namedtuple() is only supported with field names that are a string literal or a list or tuple of string literals (the compiler makes the class)"
+        },
+        "importlib.resources.readers": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py:1725: error: namedtuple() is only supported with field names that are a string literal or a list or tuple of string literals (the compiler makes the class)"
+        },
+        "importlib.resources.simple": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py:1725: error: namedtuple() is only supported with field names that are a string literal or a list or tuple of string literals (the compiler makes the class)"
+        },
+        "importlib.simple": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py:1725: error: namedtuple() is only supported with field names that are a string literal or a list or tuple of string literals (the compiler makes the class)"
+        },
+        "inspect": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py:1725: error: namedtuple() is only supported with field names that are a string literal or a list or tuple of string literals (the compiler makes the class)"
+        },
+        "logging": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/traceback.py:133: error: unsupported call object()"
+        },
+        "logging.config": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:53: error: 'socketpair' is bound both as a variable and by an import (not supported)"
+        },
+        "logging.handlers": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:53: error: 'socketpair' is bound both as a variable and by an import (not supported)"
+        },
+        "pdb": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py:1725: error: namedtuple() is only supported with field names that are a string literal or a list or tuple of string literals (the compiler makes the class)"
+        },
+        "pydoc": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py:1725: error: namedtuple() is only supported with field names that are a string literal or a list or tuple of string literals (the compiler makes the class)"
+        },
+        "rlcompleter": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py:1725: error: namedtuple() is only supported with field names that are a string literal or a list or tuple of string literals (the compiler makes the class)"
+        },
+        "secrets": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/secrets.py:18: error: cannot import name 'SystemRandom' from 'random'"
+        },
+        "symtable": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/enum.py:1412: error: class enum.FlagBoundary is not supported: unsupported base class: single inheritance requires a previously declared ordinary class or a supported exception class"
+        },
+        "trace": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py:1725: error: namedtuple() is only supported with field names that are a string literal or a list or tuple of string literals (the compiler makes the class)"
+        },
+        "unittest": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py:1725: error: namedtuple() is only supported with field names that are a string literal or a list or tuple of string literals (the compiler makes the class)"
+        },
+        "unittest._log": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py:1725: error: namedtuple() is only supported with field names that are a string literal or a list or tuple of string literals (the compiler makes the class)"
+        },
+        "unittest.async_case": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py:1725: error: namedtuple() is only supported with field names that are a string literal or a list or tuple of string literals (the compiler makes the class)"
+        },
+        "unittest.case": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py:1725: error: namedtuple() is only supported with field names that are a string literal or a list or tuple of string literals (the compiler makes the class)"
+        },
+        "unittest.loader": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py:1725: error: namedtuple() is only supported with field names that are a string literal or a list or tuple of string literals (the compiler makes the class)"
+        },
+        "unittest.main": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py:1725: error: namedtuple() is only supported with field names that are a string literal or a list or tuple of string literals (the compiler makes the class)"
+        },
+        "unittest.mock": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py:1725: error: namedtuple() is only supported with field names that are a string literal or a list or tuple of string literals (the compiler makes the class)"
+        },
+        "unittest.result": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py:1725: error: namedtuple() is only supported with field names that are a string literal or a list or tuple of string literals (the compiler makes the class)"
+        },
+        "unittest.runner": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py:1725: error: namedtuple() is only supported with field names that are a string literal or a list or tuple of string literals (the compiler makes the class)"
+        },
+        "unittest.signals": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py:1725: error: namedtuple() is only supported with field names that are a string literal or a list or tuple of string literals (the compiler makes the class)"
+        },
+        "unittest.suite": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py:1725: error: namedtuple() is only supported with field names that are a string literal or a list or tuple of string literals (the compiler makes the class)"
+        },
+        "unittest.util": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py:1725: error: namedtuple() is only supported with field names that are a string literal or a list or tuple of string literals (the compiler makes the class)"
+        },
+        "weakref": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "left out: lib/ has weakref"
+        },
+        "wsgiref.simple_server": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/socket.py:53: error: 'socketpair' is bound both as a variable and by an import (not supported)"
+        },
+        "xml.dom.expatbuilder": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/copyreg.py:15: error: dict keys must be int or str, objects, or tuples of int, bool, str, str | None and objects, not <built-in function complex> (compiling copyreg.pickle(fn[b:complex], fn[f:copyreg.pickle_complex], fn[b:complex]) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/copyreg.py:31)"
+        },
+        "xml.dom.minidom": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/copyreg.py:15: error: dict keys must be int or str, objects, or tuples of int, bool, str, str | None and objects, not <built-in function complex> (compiling copyreg.pickle(fn[b:complex], fn[f:copyreg.pickle_complex], fn[b:complex]) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/copyreg.py:31)"
+        },
+        "xml.dom.xmlbuilder": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/copyreg.py:15: error: dict keys must be int or str, objects, or tuples of int, bool, str, str | None and objects, not <built-in function complex> (compiling copyreg.pickle(fn[b:complex], fn[f:copyreg.pickle_complex], fn[b:complex]) for the call at /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/copyreg.py:31)"
+        },
+        "xml.etree.ElementInclude": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/xml/etree/ElementTree.py:2084: error: module '_elementtree' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no _elementtree.py on the module path; an optional import is supported only as try: <imports> / except ImportError: (except clauses naming only ImportError or ModuleNotFoundError, and no finally)"
+        },
+        "xml.etree.ElementTree": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/xml/etree/ElementTree.py:2084: error: module '_elementtree' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no _elementtree.py on the module path; an optional import is supported only as try: <imports> / except ImportError: (except clauses naming only ImportError or ModuleNotFoundError, and no finally)"
+        },
+        "xml.etree.cElementTree": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/weakref.py:12: error: cannot import name 'getweakrefcount' from '_weakref'",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/xml/etree/ElementTree.py:2084: error: module '_elementtree' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no _elementtree.py on the module path; an optional import is supported only as try: <imports> / except ImportError: (except clauses naming only ImportError or ModuleNotFoundError, and no finally)"
+        }
+      },
+      "next_error_locations": {
+        "inspect.py:1725": 42,
+        "threading.py:38": 1,
+        "socket.py:53": 37,
+        "concurrent/futures/_base.py:59": 3,
+        "copyreg.py:15": 5,
+        "_compression.py:9": 1,
+        "traceback.py:133": 3,
+        "http/cookiejar.py:36": 1,
+        "secrets.py:18": 1,
+        "enum.py:1412": 1,
+        "xml/etree/ElementTree.py:2084": 3
+      }
+    }
+  },
+  "reproduction_scripts": {
+    "audit-725.py": "import concurrent.futures\nimport hashlib\nimport json\nimport os\nfrom pathlib import Path\nimport subprocess\nimport sys\nimport sysconfig\nimport tempfile\nimport time\n\nBASE = Path('/workspace/scratch/3ba735e28fa7')\nROOT = BASE / 'pystachy-audit-725'\nOLD = BASE / 'pystachy-audit-694'\nOUT = ROOT / 'build/audit-725'\nOUT.mkdir(parents=True, exist_ok=True)\nPY = '/root/.local/bin/python3.13'\nLLVM = str(BASE / 'llvm18-recovered/usr/lib/llvm-18/bin')\nENV = {k: v for k, v in os.environ.items() if not k.startswith(('PYSTACHY_', 'COVERAGE_'))}\nENV.update(PYSTACHY_HOME=str(ROOT), PYSTACHY_LLVM=LLVM, PYSTACHY_JOBS='2', PY=PY, PATH=LLVM+':'+ENV['PATH'])\ndef save(n, v):\n    (OUT/(n+'.json')).write_text(json.dumps(v, indent=2)+'\\n')\ndef run(n, args, extra=None, expected=0):\n    start = time.monotonic()\n    p = subprocess.run(args, cwd=ROOT, env=ENV | (extra or {}), text=True, capture_output=True, timeout=1800)\n    r = dict(command=args, environment=extra or {}, returncode=p.returncode, stdout=p.stdout, stderr=p.stderr, wall_seconds=time.monotonic()-start, expected_exit=expected)\n    save(n, r)\n    print(n, p.returncode, p.stdout[-350:], p.stderr[-250:], flush=True)\n    assert p.returncode == expected\n    return r\nfiles = sorted(str(p.relative_to(ROOT)) for pattern in ['tests/lib_warnings*.py', 'tests/deviations/lib_warnings*.py', 'tests/errors/lib_warnings*.py'] for p in ROOT.glob(pattern))\nadjacent = ['tests/errors/lib_datetime_utcnow.py', 'tests/errors/lib_urllib_parse_deprecated.py', 'tests/upstream_bool.py', 'tests/upstream_fnmatch.py', 'tests/sys_warnoptions.py', 'tests/exc_class_misc.py']\nsave('selection', dict(warnings=files, adjacent=adjacent))\nmode = sys.argv[1]\nif mode == 'checks':\n    for label, compiler, extra in [('native', './pystachy', {}), ('gc', './pystachy', {'PYSTACHY_GC_STRESS_PROGRAM':'1'}), ('noopt', './pystachy', {'PYSTACHY_OPT':'-all'}), ('hosted', PY+' -m pystachy', {})]:\n        run('checks-'+label, ['tests/run.sh', compiler, 'jit aot', *files, *adjacent], extra)\nelif mode == 'references':\n    results = {}\n    for f in files + adjacent:\n        if '/errors/' in f or '/deviations/' in f:\n            continue\n        p = subprocess.run([PY, f, 'a1', 'a2'], cwd=ROOT, env=ENV, text=True, capture_output=True, timeout=120)\n        err = (ROOT/f).with_suffix('.err')\n        expected_err = err.read_text() if err.exists() else ''\n        stderr_last = p.stderr.splitlines()[-1]+'\\n' if p.stderr else ''\n        ok = p.stdout+f'[exit {p.returncode}]\\n' == (ROOT/f).with_suffix('.out').read_text() and stderr_last == expected_err\n        results[f] = dict(exit=p.returncode, stdout=p.stdout, stderr_last=stderr_last, stderr_sha256=hashlib.sha256(p.stderr.encode()).hexdigest(), recording_equal=ok)\n    save('references', results)\n    assert all(r['recording_equal'] for r in results.values())\n    print('references', len(results), flush=True)\nelif mode == 'sweeps':\n    for n, opts in [('imports', ['./pystachy']), ('stubs', ['--stubs'])]:\n        run(n+'-command', [PY, 'tools/import_sweep.py', '-j', '2', '--metadata', str(OUT/(n+'-metadata.json')), *opts, sysconfig.get_path('stdlib'), str(OUT/(n+'.json'))])\nelif mode == 'ir':\n    run('ir', ['tools/check_ir.sh', './pystachy', *[f for f in files+adjacent if '/errors/' not in f]])\nelif mode == 'negative':\n    original = (ROOT/'lib/warnings.py').read_text()\n    changes = {\n        'unanchored-main': ('module=\"__main__\\\\\\\\Z\", append=1)', 'module=\"__main__\", append=1)', 'tests/lib_warnings_main_filter.py'),\n        'unchecked-prefixes': ('    for prefix in skip_file_prefixes:\\n        if not isinstance(prefix, str):\\n            raise TypeError(\"Found non-str \\'\" + type(prefix).__name__ + \"\\' in skip_file_prefixes.\")\\n', '', 'tests/lib_warnings_skip_prefixes.py'),\n    }\n    results = {}\n    for name, (before, after, test) in changes.items():\n        assert original.count(before)==1\n        overlay = OUT/name\n        overlay.mkdir(exist_ok=True)\n        (overlay/'warnings.py').write_text(original.replace(before, after))\n        r=run('negative-'+name, ['./pystachy','run',test], {'PYSTACHY_PATH':str(overlay)})\n        recording=(ROOT/test).with_suffix('.out').read_text()\n        assert r['stdout']+'[exit 0]\\n' != recording\n        results[name]=dict(before=before,after=after,test=test,expected_recording=recording,mutant_output=r['stdout'],detected=True)\n    save('negative-controls',results)\nelif mode == 'matrix':\n    program = '''import warnings\n\nclass Child(UserWarning):\n    pass\n\nfor action in [\"default\", \"always\", \"ignore\", \"error\", \"module\", \"once\"]:\n    for category in [UserWarning, Child, RuntimeWarning]:\n        reg: dict[tuple[str, type[Warning], int], int] = {}\n        with warnings.catch_warnings(record=True) as log:\n            warnings.simplefilter(action)\n            for line in [1, 1, 2, 2]:\n                try:\n                    warnings.warn_explicit(\"matrix\", category, \"matrix.py\", line, \"pkg\", reg)\n                except Warning as e:\n                    print(\"error\", action, category.__name__, line, str(e))\n            print(action, category.__name__, [(m.filename, m.lineno, str(m.message)) for m in log])\n\nwith warnings.catch_warnings(record=True) as log:\n    warnings.simplefilter(\"always\")\n    warnings.filterwarnings(\"ignore\", \"^quiet$\", UserWarning, \"^pkg$\", 3)\n    for module in [\"pkg\", \"pkg.child\", \"other\"]:\n        for line in [2, 3]:\n            for message in [\"quiet\", \"QUIET\", \"quietly\"]:\n                warnings.warn_explicit(message, Child, \"matrix.py\", line, module)\n    print(\"filter\", [(m.lineno, str(m.message)) for m in log])\n\nwith warnings.catch_warnings(record=True) as outer:\n    warnings.simplefilter(\"always\")\n    warnings.warn(\"outer before\")\n    try:\n        with warnings.catch_warnings(record=True) as inner:\n            warnings.warn(\"inner\")\n            raise ValueError(\"restore\")\n    except ValueError:\n        pass\n    warnings.warn(\"outer after\")\n    print(\"nested\", [str(m.message) for m in outer], [str(m.message) for m in inner])\n'''\n    f=OUT/'matrix.py'; f.write_text(program)\n    save('matrix-program',dict(program=program,sha256=hashlib.sha256(program.encode()).hexdigest()))\n    ref=run('matrix-cpython',[PY,str(f)])\n    for label, extra in [('gc', {'PYSTACHY_GC_STRESS_PROGRAM':'1'}), ('noopt', {'PYSTACHY_OPT':'-all'})]:\n        r=run('matrix-jit-'+label,['./pystachy','run',str(f)],extra)\n        assert (r['stdout'],r['stderr'])==(ref['stdout'],ref['stderr'])\n        exe=OUT/('matrix-'+label)\n        run('matrix-build-'+label,['./pystachy','build',str(f),'-o',str(exe)],extra)\n        r=run('matrix-aot-'+label,[str(exe)],{'PYSTACHY_GC_STRESS':'1'} if label=='gc' else {})\n        assert (r['stdout'],r['stderr'])==(ref['stdout'],ref['stderr'])\nelif mode == 'oracle':\n    # All retained programs are cheap compile-only checks; changed executables\n    # beyond the selected warning consumers must be executed before completion.\n    sources = ['pystachy.py', 'runtime.py'] + sorted({str(p.relative_to(ROOT)) for base in ['tests', 'tests/errors', 'tests/deviations', 'tests/ir', 'bench', 'bench/pyperformance'] for p in (ROOT/base).glob('*.py')})\n    def compare(f):\n        rs = []\n        with tempfile.TemporaryDirectory(prefix='warnings-oracle-') as tmp:\n            for label, home in [('old', OLD), ('new', ROOT)]:\n                target = Path(tmp)/(label+'.ll')\n                extra = {'PYSTACHY_HOME':str(home)}\n                path = (ROOT/f).with_suffix('.path')\n                if path.exists(): extra['PYSTACHY_PATH'] = path.read_text().strip()\n                how = 'rt' if f == 'runtime.py' or Path(f).name.startswith('rtmode_') else 'ir'\n                p = subprocess.run([str(ROOT/'pystachy'), how, f, '-o', str(target)], cwd=ROOT, env=ENV | extra, text=True, capture_output=True, timeout=180)\n                ir = target.read_text() if target.exists() else ''\n                msg = p.stdout+p.stderr\n                for root in [ROOT, OLD]:\n                    ir = ir.replace(str(root), 'CHECKOUT'); msg = msg.replace(str(root), 'CHECKOUT')\n                rs.append(dict(exit=p.returncode, message=msg, ir_sha256=hashlib.sha256(ir.encode()).hexdigest()))\n        return dict(source=f, old=rs[0], new=rs[1])\n    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:\n        rs = list(pool.map(compare, sources))\n    changed = [r for r in rs if r['old'] != r['new']]\n    save('oracle', dict(programs=len(rs), identical=len(rs)-len(changed), changed=changed, input_inventory_sha256=hashlib.sha256(json.dumps({f:hashlib.sha256((ROOT/f).read_bytes()).hexdigest() for f in sources},sort_keys=True).encode()).hexdigest()))\n    assert not any(r['old']['exit'] == 0 and r['new']['exit'] != 0 for r in rs)\n    print('oracle', len(rs), len(changed), flush=True)\n",
+    "audit-696.py": "from pathlib import Path\nimport sys\ndriver=Path('/workspace/scratch/3ba735e28fa7/audit-725.py').read_text().replace(\"'pystachy-audit-725'\",\"'pystachy-audit-696'\").replace(\"'pystachy-audit-694'\",\"'pystachy-audit-720'\").replace(\"'build/audit-725'\",\"'build/audit-696'\")\nexec(driver.split('files = sorted')[0])\nfiles=sorted(str(p.relative_to(ROOT)) for pattern in ['tests/lib_weakref*.py','tests/errors/weakref_*.py','tests/errors/lib_weakref*.py','tests/deviations/lib_weakref*.py'] for p in ROOT.glob(pattern))\nadjacent=['tests/upstream_weakref.py','tests/lib_gettext.py','tests/sys_prefix.py']\nsave('selection',dict(weakref=files,adjacent=adjacent))\nmode=sys.argv[1]\nif mode in ['checks','references','sweeps','ir','oracle']:\n    exec('mode = sys.argv[1]\\n'+driver.split('mode = sys.argv[1]\\n',1)[1])\nelif mode=='provenance':\n    records={}\n    for name in ['weakref','_weakrefset']:\n        upstream=Path(sysconfig.get_path('stdlib'))/(name+'.py')\n        pristine=subprocess.check_output(['git','show','b48358b:lib/'+name+'.py'],cwd=ROOT)\n        assert pristine==upstream.read_bytes()\n        port=ROOT/'lib'/(name+'.py')\n        if name=='_weakrefset': assert port.read_bytes()==pristine\n        diff=subprocess.run(['diff','-u',str(upstream),str(port)],capture_output=True,text=True)\n        records[name]=dict(upstream_sha256=hashlib.sha256(pristine).hexdigest(),port_sha256=hashlib.sha256(port.read_bytes()).hexdigest(),adaptation_diff=diff.stdout)\n    changed=subprocess.check_output(['git','diff','--name-only','d87a215d','HEAD'],cwd=ROOT,text=True).splitlines()\n    assert not any(p.startswith(('src/','runtime','pystachy.py','ports/','bench/')) for p in changed)\n    assert subprocess.check_output(['git','diff','9392fddf','HEAD','--','src','runtime.py','runtime.c','pystachy.py'],cwd=ROOT)==b''\n    save('provenance',dict(files=records,changed_files=changed,compiler_sha256=hashlib.sha256((ROOT/'pystachy').read_bytes()).hexdigest()))\nelif mode=='api':\n    programs={\n        'nested-callbacks':(ROOT/'tests/lib_weakref_callback_nested.py').read_text().replace('from _weakref import ref','from weakref import ref'),\n        'adapted-upstream':(ROOT/'tests/upstream_weakref.py').read_text().replace('from _weakref import ReferenceType, ref','from weakref import ReferenceType, ref'),\n        'live-matrix':'''import weakref\nfrom weakref import ReferenceType, ref\nclass Value:\n    def __init__(self, n: int):\n        self.n = n\n    def __eq__(self, other: \"Value\") -> bool:\n        return self.n == other.n\n    def __hash__(self) -> int:\n        return self.n * 13\ndef exercise(n: int) -> None:\n    a = Value(n)\n    b = Value(n)\n    c = Value(n + 1)\n    x = weakref.ref(a)\n    y = ref(b)\n    z = ReferenceType(c)\n    print(n, x == y, x != z, hash(x) == hash(a), x() is a, y() is b, z() is c)\n    for i in range(20):\n        junk = [Value(i), Value(i + 1)]\n        assert x() is a and y() is b and z() is c\n        assert junk[0].n == i\n    print(type(x).__name__, type(x).__module__, a.n, b.n, c.n)\nfor n in [-7, -1, 0, 1, 7, 1000]:\n    exercise(n)\n'''\n    }\n    save('api-programs',programs)\n    for name,program in programs.items():\n        f=OUT/(name+'.py');f.write_text(program)\n        ref=run(name+'-cpython',[PY,str(f)])\n        old=run(name+'-old',['./pystachy','ir',str(f),'-o',str(OUT/(name+'-old.ll'))],{'PYSTACHY_HOME':str(OLD)},expected=1)\n        assert 'weakref' in old['stderr']\n        for label,extra in [('gc',{'PYSTACHY_GC_STRESS_PROGRAM':'1'}),('noopt',{'PYSTACHY_OPT':'-all'})]:\n            r=run(name+'-jit-'+label,['./pystachy','run',str(f)],extra)\n            assert (r['stdout'],r['stderr'])==(ref['stdout'],ref['stderr'])\n            exe=OUT/(name+'-'+label)\n            run(name+'-build-'+label,['./pystachy','build',str(f),'-o',str(exe)],extra)\n            r=run(name+'-aot-'+label,[str(exe)],{'PYSTACHY_GC_STRESS':'1'} if label=='gc' else {})\n            assert (r['stdout'],r['stderr'])==(ref['stdout'],ref['stderr'])\n",
+    "audit-696-assemble.py": "import hashlib\nimport json\nfrom pathlib import Path\nimport subprocess\nimport sys\nfrom collections import Counter\nBASE=Path('/workspace/scratch/3ba735e28fa7');ROOT=BASE/'pystachy-audit-696';OUT=ROOT/'build/audit-696';OLD=BASE/'pystachy-audit-720';DEST=BASE/'pystachy-audit-followup-729/docs/reports'\ndef read(n):return json.loads((OUT/(n+'.json')).read_text())\ndef sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()\ndef norm(s):return s.replace(str(ROOT),'CHECKOUT').replace(str(OLD),'CHECKOUT')\nfor n in ['checks-native','checks-gc','checks-noopt','checks-hosted','references','ir','provenance','oracle','imports','stubs','imports-metadata','stubs-metadata']:read(n)\nrecords={p.stem:json.loads(p.read_text()) for p in OUT.glob('*.json') if p.stem not in ['imports','stubs','imports-metadata','stubs-metadata']}\nassert all(r['returncode']==r['expected_exit'] for r in records.values() if isinstance(r,dict) and 'command' in r)\nassert all(r['recording_equal'] for r in read('references').values())\nfor name in read('api-programs'):\n    for config in ['jit-gc','aot-gc','jit-noopt','aot-noopt']:\n        assert (read(name+'-'+config)['stdout'],read(name+'-'+config)['stderr'])==(read(name+'-cpython')['stdout'],read(name+'-cpython')['stderr'])\nassert not subprocess.check_output(['git','status','--porcelain','--untracked-files=no'],cwd=ROOT,text=True)\nassert sha(ROOT/'pystachy')==sha(BASE/'pystachy-audit-750/pystachy')\nbase=json.loads((DEST/'compatibility-2026-10-19-exception-diagnostics.json').read_text());stdlib=Path(base['stdlib']['path']);inventory={}\nfor m in base['stdlib']['module_sha256']:\n    p=stdlib/Path(*m.split('.'));p=p/'__init__.py' if p.is_dir() else p.with_suffix('.py');inventory[m]=sha(p)\nassert inventory==base['stdlib']['module_sha256']\nimports={}\nfor n in ['imports','stubs']:\n    prev=OLD/'build/audit-720'/(n+'.json');before=json.loads(prev.read_text());after=read(n)\n    delta={k:dict(before=before.get(k),after=after.get(k)) for k in sorted(set(before)|set(after)) if norm(before.get(k,''))!=norm(after.get(k,''))}\n    assert not any(v['before']=='OK' and v['after']!='OK' and not v['after'].startswith('left out:') for v in delta.values())\n    groups=Counter()\n    for v in delta.values():\n        if v['after'].startswith('left out:'):continue\n        groups[v['after'].split(': error:')[0].replace(str(stdlib)+'/','')]+=1\n    imports[n]=dict(metadata=read(n+'-metadata'),result_sha256=sha(OUT/(n+'.json')),previous_result_sha256=sha(prev),path_normalization='Only old/new checkout prefixes replaced with CHECKOUT for comparison; raw delta strings preserved.',deltas=delta,next_error_locations=dict(groups))\noracle=read('oracle');assert not any(r['old']['exit']==0 and r['new']['exit']!=0 for r in oracle['changed'])\nfixtures={}\nfor f in [f for group in read('selection').values() for f in group]:\n    for ext in ['.py','.out','.err','.in','.path']:\n        p=Path(f).with_suffix(ext)\n        if (ROOT/p).exists():fixtures[str(p)]=sha(ROOT/p)\ndata=dict(status='completed',date='2026-10-20',source_revision='88013afb321048ef1edb92638f3dbc438b9e3c8d',previous_evaluated_main='d87a215df913828337e522e367a7c2e1d38bbf5f',merged_prs=[696],compiler_build_source='9392fddf2b87b18e278abfc4f48f0f889ac99b16',compiler_sha256=sha(ROOT/'pystachy'),environment=dict(python=sys.version,executable=sys.executable,llvm='18.1.3',workers_per_group=2),stdlib=dict(path=str(stdlib),modules=len(inventory),inventory_sha256=hashlib.sha256(json.dumps(inventory,sort_keys=True).encode()).hexdigest(),inventory_source='compatibility-2026-10-19-exception-diagnostics.json:stdlib.module_sha256'),fixture_sha256=fixtures,records=records,imports=imports,reproduction_scripts={n:(BASE/n).read_text() for n in ['audit-725.py','audit-696.py','audit-696-assemble.py']},adaptation='Localized import/export restrictions and deletion of finalize, plus Python _remove_dead_weakref; unchanged _weakrefset. Narrow public-reference workload requires only changing its import from _weakref to weakref. These local source changes do not supply major missing weak containers/finalizer/proxy semantics.',review_context=['https://github.com/den-run-ai/pystachy/pull/696#discussion_r4319331738','https://github.com/den-run-ai/pystachy/pull/696#discussion_r4319381113','https://github.com/den-run-ai/pystachy/pull/696#issuecomment-6262915980'],historical_implementation_ci=dict(head='846ff37ae14fc211a16047de394df1d0fcc39644',tree_equal_evaluated_main=True,successful_runs=[39354020201,39354020165,39354020518,39354020237]),limits=['Import IR acceptance, public executed APIs, adapted upstream tests and full upstream suites remain distinct. No full CPython weakref test suite was compiled.','WeakSet, WeakValueDictionary, WeakKeyDictionary, WeakMethod, finalize, proxy and getweakrefcount retain checked rejections. __all__ remains a recorded deviation.','Conservative collection timing, deferred callbacks and reference reuse differ from CPython. Cohort reclamation tests assert at least one death and per-referent callback order, not identical destruction timing or whole-heap ordering.','No compiler/runtime changes: hash-verified #750 binary reused; no rebuild or full local make verify. No port/benchmark source uses weakref in the searched corpus, and the oracle checks their IR before deciding whether execution needs expansion. No performance/memory inference from overlapping correctness runs.'],incomplete_attempts=['Initial read-only inspection tried two new fixtures in the old audit worktree; files were absent there. Read them from the new source checkout before tests.','Initial coordination reads used pull-request comments for #491/#616 (issues) and returned404; corrected to issue body/comments before evaluation.'])\n(DEST/'compatibility-2026-10-20-weakref-module.json').write_text(json.dumps(data,indent=2)+'\\n')\nprint(json.dumps(dict(imports={k:dict(counts=v['metadata']['counts'],changed=len(v['deltas']),next_error_locations=v['next_error_locations']) for k,v in imports.items()},oracle=oracle),indent=2))\n"
+  },
+  "adaptation": "Localized import/export restrictions and deletion of finalize, plus Python _remove_dead_weakref; unchanged _weakrefset. Narrow public-reference workload requires only changing its import from _weakref to weakref. These local source changes do not supply major missing weak containers/finalizer/proxy semantics.",
+  "review_context": [
+    "https://github.com/den-run-ai/pystachy/pull/696#discussion_r4319331738",
+    "https://github.com/den-run-ai/pystachy/pull/696#discussion_r4319381113",
+    "https://github.com/den-run-ai/pystachy/pull/696#issuecomment-6262915980"
+  ],
+  "historical_implementation_ci": {
+    "head": "846ff37ae14fc211a16047de394df1d0fcc39644",
+    "tree_equal_evaluated_main": true,
+    "successful_runs": [
+      39354020201,
+      39354020165,
+      39354020518,
+      39354020237
+    ]
+  },
+  "limits": [
+    "Import IR acceptance, public executed APIs, adapted upstream tests and full upstream suites remain distinct. No full CPython weakref test suite was compiled.",
+    "WeakSet, WeakValueDictionary, WeakKeyDictionary, WeakMethod, finalize, proxy and getweakrefcount retain checked rejections. __all__ remains a recorded deviation.",
+    "Conservative collection timing, deferred callbacks and reference reuse differ from CPython. Cohort reclamation tests assert at least one death and per-referent callback order, not identical destruction timing or whole-heap ordering.",
+    "No compiler/runtime changes: hash-verified #750 binary reused; no rebuild or full local make verify. No port/benchmark source uses weakref in the searched corpus, and the oracle checks their IR before deciding whether execution needs expansion. No performance/memory inference from overlapping correctness runs."
+  ],
+  "incomplete_attempts": [
+    "Initial read-only inspection tried two new fixtures in the old audit worktree; files were absent there. Read them from the new source checkout before tests.",
+    "Initial coordination reads used pull-request comments for #491/#616 (issues) and returned404; corrected to issue body/comments before evaluation."
+  ]
+}
