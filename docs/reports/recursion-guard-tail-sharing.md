@@ -1,6 +1,6 @@
 # Recursion guard tail-sharing follow-up
 
-Status: the aaec00cc checkpoint completed all applicable CI. A further exact-output frontend fix is published as da84d382; its fresh bootstrap, CI, kernel measurements and full comparison are in progress. Performance acceptance remains open.
+Status: the aaec00cc checkpoint completed all applicable CI. A further exact-output frontend fix is published as da84d382; its fresh bootstrap passed, CI is being verified, and kernel measurements/full comparison are in progress. Performance acceptance remains open.
 
 The current reviewed implementation is PR #996 head `da84d382ff83f09e46d4ef104e62e6f64e9c37c1`, tree `903a72dce156018f83f69f1e8b4d74a6f14e99dd`, based on main `06e3ad5d08514ba31fb231fe4636a962fe6578e3`. Its parent checkpoint is `aaec00cc81a862a2b29c117003e7c9cc73e1a3c1`, tree `2dd336a2a8f71d9a2c36d1fd233af24fee81c2a1`. This separate branch preserves evidence without adding raw evaluations to the PR.
 
@@ -104,4 +104,22 @@ This removes demonstrated redundant frontend work. It does **not** establish a w
 
 Exact hosted proof: `tail-early-rejection-proof.json`, SHA256 `dc7f5240868791a7418f3ad4e6a9b6a5b8bdc60082374ba352c150bd901600c0`. Exact native experiment: `tail-early-rejection-native-intel.json`, SHA256 `cb181e48ad3c730ebf7a3b1f56aac01e695e07c59d7a2d03268ce7afd7f9ada2`.
 
-Before publication, the integrated source passed 198 typed-IR tests, seven function-summary tests, 107 compiler-state tests, 11 repository-hygiene tests, Ruff and diff checks. Fresh full self-hosting, final-source CI and the full local comparison remain pending; the single hosted experimental build is not relabeled as that final validation.
+Before publication, the integrated source passed 198 typed-IR tests, seven function-summary tests, 107 compiler-state tests, 11 repository-hygiene tests, Ruff and diff checks. Fresh full self-hosting subsequently passed as recorded below. Final-source CI is being verified and the full local comparison remains pending; the single hosted experimental build is not relabeled as that final validation.
+
+## Final-source bootstrap and CI smoke
+
+The clean da84d382 checkout passed a full fresh `make` bootstrap in 347.7206 seconds, with its 137-file source snapshot unchanged. All three native binaries have SHA256 `8ee9b55b99c85a1406198643a5405d6e58ef566ec5896f6af3b03daf478b3f75`, also equal to the separately built experimental native compiler. All three compiler IR stages are **805,049 lines**, SHA256 `ed51d1f07ca2e47eb53646e57a0543bcbe41bd121abbf6b1eab3a0ddca74b709`. All three runtime IR stages remain **18,805 lines**, SHA256 `940a694da5ea93214d1308a8eb635b47d8d0a9d4256c63d084c24f5099f8aa5f`. CI independently produced those exact compiler/runtime IR hashes.
+
+The final-head [CI performance smoke](https://github.com/den-run-ai/pystachy/actions/runs/41220634754) completed successfully in approximately eight minutes and preserved all 11 workloads, including three confirmation batches. It tested synthetic merge `093436389af8356bb110b6b0b49e33d6b6c3d189`, whose tree exactly equals da84d382 and whose parents are main06e3ad5d and da84d382. This runner used AMD EPYC 9V74, CPython 3.13.16, LLVM/Clang 18.1.3 (Ubuntu 1ubuntu1), pinned CPU 0. It is a separate runner/series from both the previous CI artifact and the restored Intel measurements.
+
+| Workload | Initial whole-JIT process | Confirmation process | Initial JIT kernel | Confirmation kernel |
+|---|---:|---:|---:|---:|
+| fnmatch | +23.73% | +18.71% | +2.22% | +1.71% |
+| mixed JSON | +20.31% | +18.75% | +2.21% | +3.50% |
+| repair scan | +20.42% | +18.39% | −0.72% | +2.09% |
+
+Each process comparison had non-overlapping base/head ranges in both batches. The advisory classifier calls them **unconfirmed** because the confirmation ratios fall below its 20% trigger. This label does not establish parity or remove the material startup cost. The fnmatch AOT build ratio was +13.89% initially and +13.17% in confirmation. There are no warning-classified metrics, but **performance acceptance remains open**.
+
+The complete artifact is [13049892239](https://github.com/den-run-ai/pystachy/actions/runs/41220634754/artifacts/13049892239). ZIP SHA256: `95fb310fdd76ae3dbb212fdb5758a41cd831c6d4254fbb76989cb7225a261c71`. Exact JSON is `tail-ci-smoke-da84d382.json`, 61,675 bytes, SHA256 `401deeac72292dbc79b447f5b51fad7141009a33c2b6442156d15e14ef454391`. The bootstrap record is `tail-bootstrap-da84d382.json`, SHA256 `043fa1d1b5797a832deffd7b6a1841fff8982558cd4d07cb693021ca31b3c0cf`.
+
+Fresh final preparation also regenerated all six benchmark artifacts and verified literal raw LLVM, optimized JIT bitcode and AOT executable equality with aaec00cc. It retained and rehashed all 84 preceding artifacts, verified the actual normal-driver runtime descriptor and input/pipeline, and preserved earlier failed preparation records. Final counts, kernel timings, compilation samples and local correctness comparison remain in progress.
