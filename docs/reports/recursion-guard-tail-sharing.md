@@ -35,3 +35,15 @@ Fresh local startup/kernel/count/compilation measurements, focused native fixtur
 The two adjacent `tail-ci-correctness-aaec00cc.json` and `tail-ci-coverage-lint-aaec00cc.json` datasets preserve source/merge/tree identities, all expected jobs, aggregate artifact IDs/digests and raw-log hashes. Native, optimization-disabled and Python-free modes each passed 6,134 executions; UBSan passed 8,162; GC JIT and GC AOT each passed 4,081 including their stressed compiler samples; runtime-cache passed 134. The IR contract checked 2,134 programs; GC IR comparison covered 3,837 cases plus 250 parser checks. These are mode/check counts, not unique programs. Typed IR passed 198 tests, function summaries 7, compiler state 107, and smoke harness 24. Mypy checked 48 source files; 1,943 CPython recordings had no failures.
 
 The CI compiler and runtime IR hashes equal the fresh local fixed points listed above. CI uses synthetic merge `664c6c5d23f431a01c719f021d93027f09f09ffb`, whose tree exactly equals the published head and whose parents are main and aaec. The different local/CI native binary toolchain provenance is retained.
+
+## Fresh local three-variant startup series
+
+A complete same-host comparison used freshly bootstrapped native compilers for main, pre-tail region head eca993b9, and tail-sharing head aaec00cc. The harness preserves the original smoke classifiers and workloads but uses a disclosed three-variant rotating schedule: three samples per variant, with three reverse-rotated confirmation samples for all variants when any comparison triggers the original criterion. This is not the exact two-variant CI schedule. Output parity, clean source identities and native-binary hashes were checked; all initial and confirmation records are retained in `tail-native-startup-intel.json` (SHA256 `cb65e9912cde0dd9e6bae3fcd46ba6f9c037156c5dca72433398bc63b378133e`).
+
+| Case / batch | Main JIT process median | eca median | aaec median | aaec vs main | aaec vs eca |
+|---|---:|---:|---:|---:|---:|
+| fnmatch initial | 3.121756 s | 3.814543 s | 3.618984 s | +15.93% | -5.13% |
+| fnmatch confirmation | 2.921667 s | 3.664718 s | 3.664731 s | +25.43% | +0.0003% |
+| mixed JSON initial | 3.093792 s | 3.629913 s | 3.653249 s | +18.08% | +0.64% |
+
+The fnmatch initial ranges overlap, and its initial tail-sharing improvement did not persist in confirmation. JSON triggered no confirmation and showed no clear tail-sharing improvement. Consequently **this complete native series does not establish a startup speedup from tail sharing alone**. The reduced optimized IR is real; a robust elapsed benefit is not established. The remaining startup overhead versus main motivates a separately identified whole-region budget experiment. Its results are pending, and the released PR source still uses the original 2048 whole-closure budget.
