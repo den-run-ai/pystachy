@@ -18,6 +18,7 @@ import os
 from pathlib import Path
 import platform
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -46,10 +47,26 @@ def write_json(path: Path, value: object) -> None:
 
 
 def digest(path: Path) -> str | None:
+    descriptor = None
     try:
-        return hashlib.sha256(path.read_bytes()).hexdigest()
+        # Reports also run in the parent after a worker timeout. Never let a
+        # FIFO or device block that recovery path. Check the opened descriptor
+        # too: the path can change after stat, including a symlink's target.
+        if not stat.S_ISREG(path.stat().st_mode):
+            return None
+        flags = os.O_RDONLY | getattr(os, "O_NONBLOCK", 0) | getattr(os, "O_BINARY", 0)
+        descriptor = os.open(path, flags)
+        if not stat.S_ISREG(os.fstat(descriptor).st_mode):
+            return None
+        hashed = hashlib.sha256()
+        while data := os.read(descriptor, 1024 * 1024):
+            hashed.update(data)
+        return hashed.hexdigest()
     except OSError:
         return None
+    finally:
+        if descriptor is not None:
+            os.close(descriptor)
 
 
 def compiler_identity() -> dict:
@@ -353,6 +370,9 @@ def worker(args) -> int:
              (output / "compiler.stdout").open("w", encoding="utf-8") as stdout, \
              redirect_stderr(stderr), redirect_stdout(stdout):
             try:
+                source_path = Path(args.source)
+                if source_path.exists() and not source_path.is_file():
+                    raise OSError("inspection input must be a regular file")
                 driver.main()
             except SystemExit as error:
                 code = error.code if isinstance(error.code, int) else 1

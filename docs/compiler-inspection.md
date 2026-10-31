@@ -23,7 +23,8 @@ python3 tools/inspect_compiler.py tools/inspection_examples/score_samples.py \
 `--function SUBSTRING` selects functions whose symbols or display names contain
 the substring for the inspection output. Compilation still processes the whole
 input. Omit it to inspect every generated function. `--timeout SECONDS` bounds the
-worker.
+worker. Inputs must be regular source files (symlinks to regular files are
+supported); pipes and devices are operational input errors.
 
 The requested output directory must not already exist. The tool stages artifacts
 in a hidden temporary directory and creates the requested directory and any
@@ -118,7 +119,7 @@ Diagnostic codes are deliberately coarse in this prototype:
 |---|---|
 | `PYS0001` | Ordinary terminal compiler rejection |
 | `PYS9000` | An explicitly identified internal compiler error |
-| `PYS9001` | Unexpected worker exception |
+| `PYS9001` | Inspection-tool input or worker failure |
 | `PYS9002` | Worker timeout |
 | `PYS9003` | Source changed during compilation; provenance is inconsistent |
 
@@ -127,7 +128,8 @@ message and specialization notes remain the explanation; the code provides a
 stable category, not one unique identifier for every language restriction. The
 tool stops at the compiler's first terminal diagnostic and adds no error recovery.
 An unavailable input also retains `PYS0001`, with phase `input`, but has outcome
-`error` rather than a language rejection.
+`error` rather than a language rejection. An existing non-regular input produces
+`PYS9001` in phase `input` without invoking the compiler.
 
 ### Exit status
 

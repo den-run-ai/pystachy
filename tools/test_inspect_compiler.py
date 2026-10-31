@@ -3,6 +3,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import signal
 import subprocess
 import sys
 import tempfile
@@ -243,6 +244,57 @@ class InspectionTests(unittest.TestCase):
         self.assertEqual(report["diagnostics"][0]["phase"], "input")
         self.assertFalse(report["verification"]["completed"])
         self.assertFalse((destination / "llvm.ll").exists())
+
+    @unittest.skipUnless(hasattr(os, "mkfifo") and hasattr(os, "killpg"), "requires POSIX FIFOs")
+    def test_fifo_input_cannot_block_error_or_timeout_reporting(self):
+        source = self.directory / "source.py"
+        os.mkfifo(source)
+        # Keep temporary staging owned by this test even when the negative
+        # control is killed before TemporaryDirectory can clean itself up.
+        env = dict(self.env, TMPDIR=str(self.directory))
+        for name, timeout, expected_code, expected_status in (
+            ("nonregular", "5", 2, "error"),
+            ("expired", "0.000001", 124, "timeout"),
+        ):
+            with self.subTest(status=expected_status):
+                destination = self.directory / name
+                process = subprocess.Popen(
+                    [sys.executable, str(TOOL), str(source), "--output", str(destination),
+                     "--timeout", timeout], cwd=ROOT, env=env, stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE, text=True, start_new_session=True,
+                )
+                try:
+                    _, stderr = process.communicate(timeout=10)
+                except subprocess.TimeoutExpired:
+                    try:
+                        os.killpg(process.pid, signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
+                    process.communicate(timeout=5)
+                    self.fail("FIFO blocked the CLI beyond its worker deadline")
+                finally:
+                    if process.poll() is None:
+                        os.killpg(process.pid, signal.SIGKILL)
+                        process.communicate(timeout=5)
+                self.assertEqual(process.returncode, expected_code, stderr)
+                report = self.report(destination)
+                self.assertEqual(report["status"], expected_status)
+                self.assertIsNone(report["input"]["sha256"])
+                self.assertFalse(report["verification"]["completed"])
+                self.assertTrue(all(stage["status"] == "unavailable" for stage in report["stages"]))
+                self.assertFalse((destination / "llvm.ll").exists())
+                if expected_status == "error":
+                    self.assertEqual(report["diagnostics"][0]["code"], "PYS9001")
+                    self.assertEqual(report["diagnostics"][0]["phase"], "input")
+                    self.assertIn("regular file", report["diagnostics"][0]["message"])
+                    self.assertEqual(report["attempts"], [])
+        regular = self.source(LOOP, "regular.py")
+        linked = self.directory / "linked.py"
+        linked.symlink_to(regular)
+        completed, destination = self.inspect(linked, output="linked-report")
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertEqual(self.report(destination)["input"]["sha256"],
+                         hashlib.sha256(regular.read_bytes()).hexdigest())
 
     def test_output_and_missing_parent_do_not_create_imports_during_observation(self):
         # Creating the destination before compiling turns an absent module into
