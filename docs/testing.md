@@ -527,12 +527,14 @@ weight is a case's time in thousandths of a median program's. The suite steps of
 `PYSTACHY_CASE_TIMES`) in each group's artifact; refresh the table from one run's native thirds:
 
 ```sh
-python3 tools/case_weights.py verification-native-0/verify/tests-native-0-times.log \
-  verification-native-1/verify/tests-native-1-times.log \
-  verification-native-2/verify/tests-native-2-times.log
+python3 tools/case_weights.py x86_64-verification-native-0/verify/tests-native-0-times.log \
+  x86_64-verification-native-1/verify/tests-native-1-times.log \
+  x86_64-verification-native-2/verify/tests-native-2-times.log
 ```
 
-The table comes from the native halves of CI run 40753601291 (`--keep`; they timed every case).
+Use the `aarch64-` artifact prefix for ARM64 timings. Keep architectures in separate
+timing series. The table comes from the native halves of CI run 40753601291
+(`--keep`; they timed every case), before architecture-prefixed artifact names.
 It replaced a first table made from the 2-second file times of the promoting-int sweeps of runs
 40719438561 and 40731629369 and a one-core local run of the deviations and rejections. Judged by
 that run's opt-off halves and UBSan thirds, which it was not made from, the heaviest shard exceeds

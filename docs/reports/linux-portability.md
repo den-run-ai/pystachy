@@ -125,7 +125,10 @@ shared library in an extracted release directory. It records hashes,
 architectures, ELF interpreters, direct dependencies, required symbol versions and
 library search paths without running the binaries. GNU `readelf` is its only
 external tool. It rejects malformed/unreadable evidence and linked payloads that
-could escape or be omitted from the supplied tree.
+could escape or be omitted from the supplied tree. The explicitly supplied root
+and any entry below a directory root must not be symlinks. Aliases in the root's
+parent path components are resolved normally; the resulting real directory is
+the traversal boundary.
 
 ```sh
 # The documented alpha baseline; select aarch64 for the Linux ARM64 artifact.

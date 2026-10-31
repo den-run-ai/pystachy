@@ -109,6 +109,32 @@ class LinuxAbiTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "symlinks"):
             linux_abi.audit(self.root)
 
+    def test_explicit_file_symlink_is_rejected(self):
+        alias = self.root / "compiler-alias"
+        alias.symlink_to(self.elf())
+        with self.readelf(), self.assertRaisesRegex(ValueError, "symlinks"):
+            linux_abi.audit(alias)
+
+    def test_explicit_directory_symlink_is_rejected(self):
+        payload = self.root / "payload"
+        payload.mkdir()
+        self.elf("payload/compiler")
+        alias = self.root / "payload-alias"
+        alias.symlink_to(payload, target_is_directory=True)
+        with self.readelf(), self.assertRaisesRegex(ValueError, "symlinks"):
+            linux_abi.audit(alias)
+
+    def test_parent_directory_alias_is_permitted(self):
+        payload = self.root / "payload"
+        payload.mkdir()
+        self.elf("payload/compiler")
+        alias = self.root / "parent-alias"
+        alias.symlink_to(payload, target_is_directory=True)
+        with self.readelf():
+            report = linux_abi.audit(alias / "compiler")
+        self.assertEqual(report["elf_count"], 1)
+        self.assertEqual(report["binaries"][0]["path"], "compiler")
+
     def test_diagnostics_fail_instead_of_incomplete_evidence(self):
         path = self.elf()
         with mock.patch.object(linux_abi.subprocess, "run", return_value=subprocess.CompletedProcess(

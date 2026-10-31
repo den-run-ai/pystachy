@@ -92,6 +92,10 @@ def inspect_elf(path):
 
 
 def audit(root, architecture=None, max_glibc=None):
+    if root.is_symlink():
+        raise ValueError(f"audit requires real files/directories, not symlinks: {root}")
+    # Resolve aliases in parent components (for example macOS /var), but do not
+    # silently replace the explicitly selected root or any nested payload link.
     root = root.resolve(strict=True)
     ceiling = version_tuple(max_glibc) if max_glibc else None
     entries = [root] if root.is_file() else sorted(root.rglob("*"))

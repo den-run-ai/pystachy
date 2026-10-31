@@ -135,6 +135,16 @@ jobs:
           VERIFY_BOOTSTRAP_DIR: build/ci-bootstrap
         run: tests/verify.sh "$VERIFY_GROUP"
 
+      - name: Require C, embedding and extension FFI coverage
+        if: matrix.group == 'contracts'
+        run: |
+          test -s build/verify/ffi.log
+          if grep -Fq '; skipped:' build/verify/ffi.log; then
+            cat build/verify/ffi.log
+            echo 'Native Linux verification requires every advertised FFI mode' >&2
+            exit 1
+          fi
+
       - name: Extended subset benchmark correctness
         if: matrix.group == 'benchmarks'
         env:
