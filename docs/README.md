@@ -49,6 +49,7 @@ its numbers as results for your build.
 | Make a first contribution | [Contributing](../CONTRIBUTING.md), [agent workflow](../AGENTS.md) |
 | Follow a program through compilation | [Compiler internals](internals.md#compilation-pipeline), [source map](../src/README.md) |
 | Understand or change optimization | [Typed IR](typed-ir.md) |
+| Inspect compiler stages or a diagnostic | [Compiler inspection](compiler-inspection.md): hosted prototype, pass diffs and structured diagnostics |
 | Work on runtime code or its ABI | [Runtime in the subset](runtime-in-subset.md) |
 | Choose a check or investigation tool | [Development tools](../tools/README.md), [testing and CI](testing.md) |
 | Prepare a release | [Release procedure](releasing.md), [published releases](https://github.com/den-run-ai/pystachy/releases) |

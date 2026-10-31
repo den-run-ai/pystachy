@@ -710,6 +710,22 @@ for ordered in (sources, dict(reversed(list(sources.items())))):
         self.assertIn("unreviewed container writer: lexer.bad_writer writes lexer.KEYWORDS via KEYWORDS",
                       validate_sources(sources))
 
+    def test_diagnostic_observation_does_not_allow_additional_writers(self):
+        sources = read_sources()
+        sources["diagnostics"] += "\ndef added_capture_reset():\n    CAPTURED.clear()\n"
+        self.assertEqual(validate_sources(sources), [
+            "unreviewed container writer: diagnostics.added_capture_reset writes diagnostics.CAPTURED via CAPTURED",
+        ])
+        # A declared writer must still correspond to the real terminal-error path;
+        # retaining its allowlist entry after removing capture is also drift.
+        sources = read_sources()
+        original = "        CAPTURED.append(Diagnostic(msg, line, [] if context is None else context))"
+        self.assertEqual(sources["diagnostics"].count(original), 1)
+        sources["diagnostics"] = sources["diagnostics"].replace(original, "        pass")
+        self.assertEqual(validate_sources(sources), [
+            "stale container writer: diagnostics.fail writes diagnostics.CAPTURED via CAPTURED",
+        ])
+
     def test_alias_exception_cannot_hide_direct_sentinel_write(self):
         source = "def gen_verify():\n    NOLABELS.append('bad')\n"
         imports = "from src.pystachy_compiler.ir import NOLABELS\n"
