@@ -1,0 +1,59 @@
+{
+  "schema": 1,
+  "captured_utc": "2026-10-31T22:16:11.671527+00:00",
+  "scope": "Read-only live GitHub state snapshot after exact-head CI completed. This does not establish local corpus completion or performance acceptance, and does not authorize merge.",
+  "head": "ea68529b8a590eb8f3df7200b857e1d16becd7a3",
+  "main": "07b26e02425d023288ed95a9d2a5077be5aeb45e",
+  "synthetic_merge": "f5c491ddf1627a35a715ae71167fb5c5126309de",
+  "tree": "62ad6bb99fbc3e1625f36f167d664f2d8f221801",
+  "pull_request_url": "https://github.com/den-run-ai/pystachy/pull/996",
+  "pull_request_state": "open",
+  "draft": true,
+  "merged": false,
+  "mergeable": true,
+  "mergeable_state": "clean",
+  "updated_at": "2026-10-31T22:02:45Z",
+  "issue_comments": 2,
+  "inline_review_comments": 0,
+  "review_threads": 0,
+  "review_submissions": 0,
+  "comments": [
+    {
+      "id": 6536904148,
+      "author": "den-run-ai",
+      "created_at": "2026-10-31T01:03:44Z",
+      "updated_at": "2026-10-31T01:03:44Z",
+      "url": "https://github.com/den-run-ai/pystachy/pull/996#issuecomment-6536904148"
+    },
+    {
+      "id": 6549459735,
+      "author": "den-run-ai",
+      "created_at": "2026-10-31T21:37:47Z",
+      "updated_at": "2026-10-31T21:37:47Z",
+      "url": "https://github.com/den-run-ai/pystachy/pull/996#issuecomment-6549459735"
+    }
+  ],
+  "comment_review": "Only the two known author comments are present; no new reviewer requests or approvals. The older draft hold is conditional on complete validation and acceptable paired current-main/current-head overhead. The latest PR1000 tooling handoff expressly does not establish performance acceptance or authorize merge.",
+  "source_files": {
+    "readiness/comments.json": {
+      "sha256": "f56e2ab1b99c0a49414197f67cec30abcae11464a90540eab83ac2fa27e2da4b",
+      "bytes": 18455
+    },
+    "readiness/main-ref.json": {
+      "sha256": "3a017766de4b4b3a5b3d88447a0b62dfeeb8be037b3751df98e454a7ad8f2ec5",
+      "bytes": 375
+    },
+    "readiness/pr.json": {
+      "sha256": "96651b682b934d5dac796ac3ac5e9aaf2cb3f75b93f57a1eadcad6a65b60dda2",
+      "bytes": 30822
+    },
+    "readiness/review-threads.json": {
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "bytes": 3
+    },
+    "readiness/reviews.json": {
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "bytes": 3
+    }
+  }
+}

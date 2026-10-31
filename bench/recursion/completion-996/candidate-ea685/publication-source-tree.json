@@ -1,0 +1,171 @@
+{
+  "base": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+  "base_tree": "b7ca39aa08a2ec08f972ec36ae8ea26ed868ddad",
+  "local": "e01972861d676abc14f26829390d0ae71c493038",
+  "tree": "62ad6bb99fbc3e1625f36f167d664f2d8f221801",
+  "main": "07b26e02425d023288ed95a9d2a5077be5aeb45e",
+  "files": [
+    {
+      "path": "Makefile",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b7fc59b080c9eaecc0b7bc188344337c7e12cbc1",
+      "bytes": 21134,
+      "sha256": "a357ac3ffb0e17e855c125573cf597699818aac7d6cde3715423e841f28b5931",
+      "create_blob": false
+    },
+    {
+      "path": "docs/README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c49c6d313a9a3e42e23a6693f34cf0c81d181be5",
+      "bytes": 4231,
+      "sha256": "6fa79975a7c2afa66f24006a0b0dca388c04d3d797e114a00128f22d0befbd07",
+      "create_blob": false
+    },
+    {
+      "path": "docs/compiler-inspection.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4f2ae3a4bb308e7fafcc1a3aa59f8d7ee98c678c",
+      "bytes": 12197,
+      "sha256": "2c1cbeddf0271d07767511db17ed0e801743b5593603e687bfed3114b4b62246",
+      "create_blob": true
+    },
+    {
+      "path": "docs/reports/compiler-inspection-prototype.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "26b88064d3068744d732d882922e7cdadf3c8217",
+      "bytes": 13172,
+      "sha256": "2651fd7f9d72127e59f23d502ca22b2f9093ff571efbe944f638e1e4c5ff12cc",
+      "create_blob": false
+    },
+    {
+      "path": "docs/testing.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f12fc07274faceed130999aeca8bf41df4868ee5",
+      "bytes": 54758,
+      "sha256": "9b06954a9d3c44f5249398644a2747eff1464dec6f8e70937b12fa1c1ac66fcb",
+      "create_blob": true
+    },
+    {
+      "path": "docs/typed-ir.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e8cc22153f5faa2e39865df3e03039c8681fbff8",
+      "bytes": 46238,
+      "sha256": "267e3324527c9fca387fa5a942e372d37d3a16a22d13cc8f5b6749e1d93f447f",
+      "create_blob": true
+    },
+    {
+      "path": "src/pystachy_compiler/diagnostics.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "bad9ac82b4b5a10390a553e5f0508cf6d72af7a1",
+      "bytes": 7211,
+      "sha256": "b5e7ce06a2e389249591705a5bff407f98501cc54e37bfd701abacc3a087923c",
+      "create_blob": false
+    },
+    {
+      "path": "src/pystachy_compiler/emission.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9851ae0d7be77735a6bf1535db406f5fe3401073",
+      "bytes": 28336,
+      "sha256": "1f44a7b63af8c25b6fc5f285d0e10ca896d74685bf865fca82b3a47d5770eb8b",
+      "create_blob": false
+    },
+    {
+      "path": "tools/compiler_state_globals.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "801c511ee51b26b89756b6bd3b1434bd84ef75a1",
+      "bytes": 30219,
+      "sha256": "dda8c836449d44a00043dfa4a47e0362ff1494828e2514820b7a5766a1e64f60",
+      "create_blob": false
+    },
+    {
+      "path": "tools/inspect_compiler.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "541878d09690ad7e8bc4802feca663dbd9962a0d",
+      "bytes": 30514,
+      "sha256": "85f26f6cc5e292b6bc2d6dd026e6a6dff92e0731e7dba20c4ff22f878867a561",
+      "create_blob": true
+    },
+    {
+      "path": "tools/inspection_examples/inspection_support.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f2dbb1efbdb27248aec4aabe50a035760c3d3bfb",
+      "bytes": 121,
+      "sha256": "6d5100c25afb1babdcf31e93f7e9d517f152fafadb5b5eda4e1229f20e0c8bb5",
+      "create_blob": false
+    },
+    {
+      "path": "tools/inspection_examples/record_lookup.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "60be71c9742a08f059cb79840c2cf7ab00a84b74",
+      "bytes": 599,
+      "sha256": "fefff33111ba693c7fe32319f588bd267113ef2a4c1898b824b7dcf0260f3406",
+      "create_blob": false
+    },
+    {
+      "path": "tools/inspection_examples/score_samples.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ef1b547ee92a6b1ab3eb93ce51e3a391004bd101",
+      "bytes": 284,
+      "sha256": "523552ac1324d7c53b0d726019f31c56392621beaccc4004aac7d2a9553253a0",
+      "create_blob": false
+    },
+    {
+      "path": "tools/inspection_examples/specialization_error.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "81ee7220c78378941d98620365ea4f5aff62ca7e",
+      "bytes": 142,
+      "sha256": "de6ea4d7a3eed8435b663c5759520c6e7c87b11be1bf946141b1c14589becd3c",
+      "create_blob": false
+    },
+    {
+      "path": "tools/inspection_examples/specialization_fixed.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c4aeb59570a7668ad94a20f16c90a52c7b4f74ef",
+      "bytes": 139,
+      "sha256": "960ab79de17ab764e6e13874f0ea6e9041bdef7ad388f88e0f0256772e375698",
+      "create_blob": false
+    },
+    {
+      "path": "tools/test_compiler_state_globals.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cc96a149268d2dbb8e7589268558dd4dbc11d37b",
+      "bytes": 50684,
+      "sha256": "af2d555c572ecaaf17f175038ea827f7d0476ad80d580917f981ff1c70f31400",
+      "create_blob": false
+    },
+    {
+      "path": "tools/test_diagnostic_capture.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "edd992a4e8b690e10e505df47151df896fc62c53",
+      "bytes": 7475,
+      "sha256": "39ac39043f2a2ab967ec1583b339ffd59204b248c94441e8c9207f3d121dabcb",
+      "create_blob": false
+    },
+    {
+      "path": "tools/test_inspect_compiler.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "25957df9d0acddd80dbae20e0759e244a0ab7294",
+      "bytes": 27188,
+      "sha256": "f6edcb93f6313b3e5334dab1dc345d1f9402063272a77652dc6af8b57e32fcda",
+      "create_blob": true
+    }
+  ]
+}

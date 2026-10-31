@@ -1,0 +1,584 @@
+{
+  "aggregate_equal_except_assembly_timestamp_and_download_root": true,
+  "all_original_group_reports_remerged": true,
+  "contract": {
+    "all": [
+      "bootstrap",
+      "tests-cpython",
+      "tests-native-0",
+      "tests-native-1",
+      "tests-native-2",
+      "tests-opt-off-0",
+      "tests-opt-off-1",
+      "tests-opt-off-2",
+      "runtime-cache",
+      "python-free-0",
+      "python-free-1",
+      "python-free-2",
+      "ubsan-0",
+      "ubsan-1",
+      "ubsan-2",
+      "ubsan-3",
+      "gc-self",
+      "gc-ir-0",
+      "gc-ir-1",
+      "gc-jit-0",
+      "gc-jit-1",
+      "gc-aot-0",
+      "gc-aot-1",
+      "gc-aot-2",
+      "benchmarks",
+      "dynany-optin-0",
+      "dynany-optin-1",
+      "dynany-optin-2",
+      "python-int-optin-0",
+      "python-int-optin-1",
+      "python-int-optin-2",
+      "check-ir",
+      "runtime-table",
+      "rtcheck",
+      "re-fuzz",
+      "dynany-fuzz",
+      "re-probe",
+      "rt-abi",
+      "inherited-ast",
+      "streaming",
+      "ffi",
+      "list-storage",
+      "container-eq",
+      "weakrefs",
+      "box-slots",
+      "file-buffers",
+      "select-io",
+      "dict-probes",
+      "compile-limits",
+      "jit-dead-code",
+      "aot-dead-code",
+      "unicode-audit",
+      "scaling-0",
+      "scaling-1"
+    ],
+    "benchmarks": [
+      "bootstrap",
+      "benchmarks"
+    ],
+    "bootstrap": [
+      "bootstrap"
+    ],
+    "contracts": [
+      "bootstrap",
+      "check-ir",
+      "runtime-table",
+      "rtcheck",
+      "re-fuzz",
+      "dynany-fuzz",
+      "re-probe",
+      "rt-abi",
+      "inherited-ast",
+      "streaming",
+      "ffi",
+      "list-storage",
+      "container-eq",
+      "weakrefs",
+      "box-slots",
+      "file-buffers",
+      "select-io",
+      "dict-probes",
+      "compile-limits",
+      "jit-dead-code",
+      "aot-dead-code",
+      "unicode-audit"
+    ],
+    "dynany-optin-0": [
+      "bootstrap",
+      "dynany-optin-0"
+    ],
+    "dynany-optin-1": [
+      "bootstrap",
+      "dynany-optin-1"
+    ],
+    "dynany-optin-2": [
+      "bootstrap",
+      "dynany-optin-2"
+    ],
+    "gc-aot-0": [
+      "bootstrap",
+      "gc-aot-0"
+    ],
+    "gc-aot-1": [
+      "bootstrap",
+      "gc-aot-1"
+    ],
+    "gc-aot-2": [
+      "bootstrap",
+      "gc-aot-2"
+    ],
+    "gc-jit-0": [
+      "bootstrap",
+      "gc-ir-0",
+      "gc-jit-0"
+    ],
+    "gc-jit-1": [
+      "bootstrap",
+      "gc-ir-1",
+      "gc-jit-1"
+    ],
+    "gc-self": [
+      "bootstrap",
+      "gc-self"
+    ],
+    "hosted": [
+      "bootstrap",
+      "tests-cpython"
+    ],
+    "native-0": [
+      "bootstrap",
+      "tests-native-0"
+    ],
+    "native-1": [
+      "bootstrap",
+      "tests-native-1"
+    ],
+    "native-2": [
+      "bootstrap",
+      "tests-native-2"
+    ],
+    "opt-off-0": [
+      "bootstrap",
+      "tests-opt-off-0"
+    ],
+    "opt-off-1": [
+      "bootstrap",
+      "tests-opt-off-1"
+    ],
+    "opt-off-2": [
+      "bootstrap",
+      "tests-opt-off-2"
+    ],
+    "python-free-0": [
+      "bootstrap",
+      "python-free-0"
+    ],
+    "python-free-1": [
+      "bootstrap",
+      "python-free-1"
+    ],
+    "python-free-2": [
+      "bootstrap",
+      "python-free-2"
+    ],
+    "python-int-optin-0": [
+      "bootstrap",
+      "python-int-optin-0"
+    ],
+    "python-int-optin-1": [
+      "bootstrap",
+      "python-int-optin-1"
+    ],
+    "python-int-optin-2": [
+      "bootstrap",
+      "python-int-optin-2"
+    ],
+    "runtime-cache": [
+      "bootstrap",
+      "runtime-cache"
+    ],
+    "scaling": [
+      "bootstrap",
+      "scaling-0",
+      "scaling-1"
+    ],
+    "ubsan-0": [
+      "bootstrap",
+      "ubsan-0"
+    ],
+    "ubsan-1": [
+      "bootstrap",
+      "ubsan-1"
+    ],
+    "ubsan-2": [
+      "bootstrap",
+      "ubsan-2"
+    ],
+    "ubsan-3": [
+      "bootstrap",
+      "ubsan-3"
+    ]
+  },
+  "group_stage_executions": 84,
+  "groups": [
+    {
+      "group": "bootstrap",
+      "platform": {
+        "cpu": "(unknown)",
+        "machine": "x86_64",
+        "os": "Ubuntu 24.04.5 LTS",
+        "system": "Linux 7.0.0-1017-azure"
+      },
+      "report": "build/ci-reports/verification-bootstrap/verification.json",
+      "seconds": 150.465,
+      "steps": 1
+    },
+    {
+      "group": "hosted",
+      "platform": {
+        "cpu": "znver4",
+        "machine": "x86_64",
+        "os": "Ubuntu 24.04.5 LTS",
+        "system": "Linux 7.0.0-1017-azure"
+      },
+      "report": "build/ci-reports/verification-hosted/verification.json",
+      "seconds": 293.412,
+      "steps": 2
+    },
+    {
+      "group": "native-0",
+      "platform": {
+        "cpu": "znver3",
+        "machine": "x86_64",
+        "os": "Ubuntu 24.04.5 LTS",
+        "system": "Linux 7.0.0-1017-azure"
+      },
+      "report": "build/ci-reports/verification-native-0/verification.json",
+      "seconds": 446.709,
+      "steps": 2
+    },
+    {
+      "group": "native-1",
+      "platform": {
+        "cpu": "znver3",
+        "machine": "x86_64",
+        "os": "Ubuntu 24.04.5 LTS",
+        "system": "Linux 7.0.0-1017-azure"
+      },
+      "report": "build/ci-reports/verification-native-1/verification.json",
+      "seconds": 440.33,
+      "steps": 2
+    },
+    {
+      "group": "native-2",
+      "platform": {
+        "cpu": "sapphirerapids",
+        "machine": "x86_64",
+        "os": "Ubuntu 24.04.5 LTS",
+        "system": "Linux 7.0.0-1017-azure"
+      },
+      "report": "build/ci-reports/verification-native-2/verification.json",
+      "seconds": 371.734,
+      "steps": 2
+    },
+    {
+      "group": "opt-off-0",
+      "platform": {
+        "cpu": "graniterapids",
+        "machine": "x86_64",
+        "os": "Ubuntu 24.04.5 LTS",
+        "system": "Linux 7.0.0-1017-azure"
+      },
+      "report": "build/ci-reports/verification-opt-off-0/verification.json",
+      "seconds": 277.462,
+      "steps": 2
+    },
+    {
+      "group": "opt-off-1",
+      "platform": {
+        "cpu": "znver3",
+        "machine": "x86_64",
+        "os": "Ubuntu 24.04.5 LTS",
+        "system": "Linux 7.0.0-1017-azure"
+      },
+      "report": "build/ci-reports/verification-opt-off-1/verification.json",
+      "seconds": 442.019,
+      "steps": 2
+    },
+    {
+      "group": "opt-off-2",
+      "platform": {
+        "cpu": "(unknown)",
+        "machine": "x86_64",
+        "os": "Ubuntu 24.04.5 LTS",
+        "system": "Linux 7.0.0-1017-azure"
+      },
+      "report": "build/ci-reports/verification-opt-off-2/verification.json",
+      "seconds": 261.755,
+      "steps": 2
+    },
+    {
+      "group": "python-free-0",
+      "platform": {
+        "cpu": "znver3",
+        "machine": "x86_64",
+        "os": "Ubuntu 24.04.5 LTS",
+        "system": "Linux 7.0.0-1017-azure"
+      },
+      "report": "build/ci-reports/verification-python-free-0/verification.json",
+      "seconds": 521.892,
+      "steps": 2
+    },
+    {
+      "group": "python-free-1",
+      "platform": {
+        "cpu": "znver3",
+        "machine": "x86_64",
+        "os": "Ubuntu 24.04.5 LTS",
+        "system": "Linux 7.0.0-1017-azure"
+      },
+      "report": "build/ci-reports/verification-python-free-1/verification.json",
+      "seconds": 522.421,
+      "steps": 2
+    },
+    {
+      "group": "python-free-2",
+      "platform": {
+        "cpu": "znver3",
+        "machine": "x86_64",
+        "os": "Ubuntu 24.04.5 LTS",
+        "system": "Linux 7.0.0-1017-azure"
+      },
+      "report": "build/ci-reports/verification-python-free-2/verification.json",
+      "seconds": 545.616,
+      "steps": 2
+    },
+    {
+      "group": "ubsan-0",
+      "platform": {
+        "cpu": "znver4",
+        "machine": "x86_64",
+        "os": "Ubuntu 24.04.5 LTS",
+        "system": "Linux 7.0.0-1017-azure"
+      },
+      "report": "build/ci-reports/verification-ubsan-0/verification.json",
+      "seconds": 372.968,
+      "steps": 2
+    },
+    {
+      "group": "ubsan-1",
+      "platform": {
+        "cpu": "znver3",
+        "machine": "x86_64",
+        "os": "Ubuntu 24.04.5 LTS",
+        "system": "Linux 7.0.0-1017-azure"
+      },
+      "report": "build/ci-reports/verification-ubsan-1/verification.json",
+      "seconds": 544.468,
+      "steps": 2
+    },
+    {
+      "group": "ubsan-2",
+      "platform": {
+        "cpu": "znver3",
+        "machine": "x86_64",
+        "os": "Ubuntu 24.04.5 LTS",
+        "system": "Linux 7.0.0-1017-azure"
+      },
+      "report": "build/ci-reports/verification-ubsan-2/verification.json",
+      "seconds": 562.141,
+      "steps": 2
+    },
+    {
+      "group": "ubsan-3",
+      "platform": {
+        "cpu": "sapphirerapids",
+        "machine": "x86_64",
+        "os": "Ubuntu 24.04.5 LTS",
+        "system": "Linux 7.0.0-1017-azure"
+      },
+      "report": "build/ci-reports/verification-ubsan-3/verification.json",
+      "seconds": 382.94,
+      "steps": 2
+    },
+    {
+      "group": "gc-self",
+      "platform": {
+        "cpu": "graniterapids",
+        "machine": "x86_64",
+        "os": "Ubuntu 24.04.5 LTS",
+        "system": "Linux 7.0.0-1014-aws"
+      },
+      "report": "build/ci-reports/verification-gc-self/verification.json",
+      "seconds": 314.511,
+      "steps": 2
+    },
+    {
+      "group": "gc-jit-0",
+      "platform": {
+        "cpu": "icelake-server",
+        "machine": "x86_64",
+        "os": "Ubuntu 24.04.5 LTS",
+        "system": "Linux 7.0.0-1017-azure"
+      },
+      "report": "build/ci-reports/verification-gc-jit-0/verification.json",
+      "seconds": 752.626,
+      "steps": 3
+    },
+    {
+      "group": "gc-jit-1",
+      "platform": {
+        "cpu": "znver3",
+        "machine": "x86_64",
+        "os": "Ubuntu 24.04.5 LTS",
+        "system": "Linux 7.0.0-1017-azure"
+      },
+      "report": "build/ci-reports/verification-gc-jit-1/verification.json",
+      "seconds": 637.34,
+      "steps": 3
+    },
+    {
+      "group": "gc-aot-0",
+      "platform": {
+        "cpu": "znver3",
+        "machine": "x86_64",
+        "os": "Ubuntu 24.04.5 LTS",
+        "system": "Linux 7.0.0-1017-azure"
+      },
+      "report": "build/ci-reports/verification-gc-aot-0/verification.json",
+      "seconds": 461.699,
+      "steps": 2
+    },
+    {
+      "group": "gc-aot-1",
+      "platform": {
+        "cpu": "znver3",
+        "machine": "x86_64",
+        "os": "Ubuntu 24.04.5 LTS",
+        "system": "Linux 7.0.0-1017-azure"
+      },
+      "report": "build/ci-reports/verification-gc-aot-1/verification.json",
+      "seconds": 445.356,
+      "steps": 2
+    },
+    {
+      "group": "gc-aot-2",
+      "platform": {
+        "cpu": "znver3",
+        "machine": "x86_64",
+        "os": "Ubuntu 24.04.5 LTS",
+        "system": "Linux 7.0.0-1017-azure"
+      },
+      "report": "build/ci-reports/verification-gc-aot-2/verification.json",
+      "seconds": 409.363,
+      "steps": 2
+    },
+    {
+      "group": "runtime-cache",
+      "platform": {
+        "cpu": "znver3",
+        "machine": "x86_64",
+        "os": "Ubuntu 24.04.5 LTS",
+        "system": "Linux 7.0.0-1017-azure"
+      },
+      "report": "build/ci-reports/verification-runtime-cache/verification.json",
+      "seconds": 249.815,
+      "steps": 2
+    },
+    {
+      "group": "dynany-optin-0",
+      "platform": {
+        "cpu": "sapphirerapids",
+        "machine": "x86_64",
+        "os": "Ubuntu 24.04.5 LTS",
+        "system": "Linux 7.0.0-1017-azure"
+      },
+      "report": "build/ci-reports/verification-dynany-optin-0/verification.json",
+      "seconds": 388.922,
+      "steps": 2
+    },
+    {
+      "group": "dynany-optin-1",
+      "platform": {
+        "cpu": "znver3",
+        "machine": "x86_64",
+        "os": "Ubuntu 24.04.5 LTS",
+        "system": "Linux 7.0.0-1017-azure"
+      },
+      "report": "build/ci-reports/verification-dynany-optin-1/verification.json",
+      "seconds": 500.266,
+      "steps": 2
+    },
+    {
+      "group": "dynany-optin-2",
+      "platform": {
+        "cpu": "znver3",
+        "machine": "x86_64",
+        "os": "Ubuntu 24.04.5 LTS",
+        "system": "Linux 7.0.0-1017-azure"
+      },
+      "report": "build/ci-reports/verification-dynany-optin-2/verification.json",
+      "seconds": 484.828,
+      "steps": 2
+    },
+    {
+      "group": "python-int-optin-0",
+      "platform": {
+        "cpu": "(unknown)",
+        "machine": "x86_64",
+        "os": "Ubuntu 24.04.5 LTS",
+        "system": "Linux 7.0.0-1017-azure"
+      },
+      "report": "build/ci-reports/verification-python-int-optin-0/verification.json",
+      "seconds": 291.253,
+      "steps": 2
+    },
+    {
+      "group": "python-int-optin-1",
+      "platform": {
+        "cpu": "znver3",
+        "machine": "x86_64",
+        "os": "Ubuntu 24.04.5 LTS",
+        "system": "Linux 7.0.0-1017-azure"
+      },
+      "report": "build/ci-reports/verification-python-int-optin-1/verification.json",
+      "seconds": 544.552,
+      "steps": 2
+    },
+    {
+      "group": "python-int-optin-2",
+      "platform": {
+        "cpu": "sapphirerapids",
+        "machine": "x86_64",
+        "os": "Ubuntu 24.04.5 LTS",
+        "system": "Linux 7.0.0-1017-azure"
+      },
+      "report": "build/ci-reports/verification-python-int-optin-2/verification.json",
+      "seconds": 434.279,
+      "steps": 2
+    },
+    {
+      "group": "contracts",
+      "platform": {
+        "cpu": "znver4",
+        "machine": "x86_64",
+        "os": "Ubuntu 24.04.5 LTS",
+        "system": "Linux 7.0.0-1017-azure"
+      },
+      "report": "build/ci-reports/verification-contracts/verification.json",
+      "seconds": 241.911,
+      "steps": 22
+    },
+    {
+      "group": "benchmarks",
+      "platform": {
+        "cpu": "znver3",
+        "machine": "x86_64",
+        "os": "Ubuntu 24.04.5 LTS",
+        "system": "Linux 7.0.0-1017-azure"
+      },
+      "report": "build/ci-reports/verification-benchmarks/verification.json",
+      "seconds": 52.764,
+      "steps": 2
+    },
+    {
+      "group": "scaling",
+      "platform": {
+        "cpu": "(unknown)",
+        "machine": "x86_64",
+        "os": "Ubuntu 24.04.5 LTS",
+        "system": "Linux 7.0.0-1017-azure"
+      },
+      "report": "build/ci-reports/verification-scaling/verification.json",
+      "seconds": 64.476,
+      "steps": 3
+    }
+  ],
+  "logical_stages": 54
+}

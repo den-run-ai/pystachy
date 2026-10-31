@@ -1,0 +1,233 @@
+diff --git a/src/pystachy_compiler/lowering.py b/src/pystachy_compiler/lowering.py
+index ee9ef47e..fcb31aff 100644
+--- a/src/pystachy_compiler/lowering.py
++++ b/src/pystachy_compiler/lowering.py
+@@ -3,7 +3,7 @@ from __future__ import annotations
+ from src.pystachy_compiler.diagnostics import fail, int_program
+ from src.pystachy_compiler.ir import Blk, IFn, Ins, Val
+ from src.pystachy_compiler.lower_module import struct_types
+-from src.pystachy_compiler.specs import CHECKED, FCMP, FXBIT, GENDONE, GENNAME, GENNEW, GENRET, GENRETP, GENSLOTS, GENSLOTSB, GENSLOTSX, GENSTATE, GENVALP, ICMP, OBJECTC, RANGEC, STRLEN_RANGE, TBAA_BYTES, TBAA_FIELDS, TBAA_LEN, TBAA_SIZES
++from src.pystachy_compiler.specs import CHECKED, FCMP, FXBIT, GENDONE, GENNAME, GENNEW, GENRET, GENRETP, GENSLOTS, GENSLOTSB, GENSLOTSX, GENSTATE, GENVALP, ICMP, OBJECTC, RANGEC, STRLEN_RANGE, TBAA_BYTES, TBAA_DEPTH, TBAA_FIELDS, TBAA_LEN, TBAA_LIMIT, TBAA_SIZES
+ from src.pystachy_compiler.utils import atomic_dict, atomic_list, identity_abi, numeric_identity, is_dict, is_tuple, lt, selem, takes_self, targs, tslots
+ 
+ 
+@@ -287,6 +287,20 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
+         o.append("  unreachable")
+     elif op == "unreachable":
+         o.append("  unreachable")
++    elif op == "rt" and not self.rtmode and len(i.b) == 0 and i.s == "recursion.restore":
++        # These nonthrowing scalar operations need no helper call or LLVM
++        # inlining. Keep their typed effects and the same disjoint state tags.
++        o.append(f"  store i64 {i.a[0].v}, ptr @pys_recursion_state, !tbaa !{TBAA_DEPTH}")
++    elif op == "rt" and not self.rtmode and len(i.b) == 0 and i.s == "recursion.depth":
++        o.append(f"  %t{i.r[0]} = load i64, ptr @pys_recursion_state, !tbaa !{TBAA_DEPTH}")
++    elif op == "rt" and not self.rtmode and len(i.b) == 0 and i.s == "recursion.room":
++        r = f"%t{i.r[0]}"
++        o.append(f"  {r}.depth = load i64, ptr @pys_recursion_state, !tbaa !{TBAA_DEPTH}")
++        o.append(f"  {r}.limit.addr = getelementptr [2 x i64], ptr @pys_recursion_state, i64 0, i64 1")
++        o.append(f"  {r}.limit = load i64, ptr {r}.limit.addr, !tbaa !{TBAA_LIMIT}")
++        o.append(f"  {r}.remaining = sub i64 {r}.limit, {r}.depth")
++        o.append(f"  {r}.enough = icmp sge i64 {r}.remaining, {i.a[0].v}")
++        o.append(f"  {r} = zext i1 {r}.enough to i64")
+     elif op == "rt":
+         f = self.rtfns[i.s]
+         if i.k > 0 and ((i.s == "list.new" and atomic_list(self.holes[i.k])) or (i.s == "dict.new" and atomic_dict(self.holes[i.k]))):
+@@ -312,7 +326,14 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
+         o.append(f"  %t{i.r[0]} = {self.invoke(f'call {agg} @v.{i.s[1:]}({args})', i)}")
+         self.vaggs[f"%t{i.r[0]}"] = agg
+     elif op == "call":
+-        c = self.invoke(f"call {lt(i.t)} {i.s}({', '.join([lt(v.t) + ' ' + v.v for v in i.a])})", i)
++        # A shared bounded leaf has no frame storage and forwards its exact
++        # signature (including identity operands) after the original check.
++        # Require a tail transfer so sharing cannot add a native stack frame.
++        shared = (fn.counted and len(fn.slots) == 0 and len(fn.blocks) == 1
++                  and len(fn.blocks[0].code) == 3
++                  and fn.blocks[0].code[0].op == "rt" and fn.blocks[0].code[0].s == "recursion.check"
++                  and fn.blocks[0].code[2].op == "ret" and i.s == "@rf." + fn.f.ll[1:])
++        c = self.invoke(f"{'musttail ' if shared else ''}call {lt(i.t)} {i.s}({', '.join([lt(v.t) + ' ' + v.v for v in i.a])})", i)
+         o.append("  " + c if i.t == "None" else f"  %t{i.r[0]} = {c}")
+     elif op == "icall":
+         # a Callable's code (operand 0), called with its env and the arguments
+diff --git a/src/pystachy_compiler/optimizations.py b/src/pystachy_compiler/optimizations.py
+index cca4ed8e..111e3bb3 100644
+--- a/src/pystachy_compiler/optimizations.py
++++ b/src/pystachy_compiler/optimizations.py
+@@ -747,7 +747,43 @@ def recursion_partial(self) -> int:
+ 
+ 
+ def gen_recursionregion(self) -> int:
+-    return recursion_bounded(self) + recursion_partial(self)
++    count = recursion_bounded(self) + recursion_partial(self)
++    for fn in self.fns:
++        # Full-region leaves already have one proven unchecked body. Retain the
++        # original callable's entry check, then tail-forward to that same body
++        # instead of compiling both copies. Partial children have observer
++        # bridges and cannot use this transformation. Do this after partial
++        # selection so its original leaf-body proof and budgets do not change.
++        # The matching @rf body exists only after the full bounded proof;
++        # a check-only original then has no remaining depth observers.
++        fast = self.fll.get("@rf." + fn.f.ll[1:], -1)
++        if (not fn.counted or fn.rdepth != "" or fast < 0 or is_tuple(fn.f.ret)
++                or len(fn.blocks[0].code) == 0):
++            continue
++        check = fn.blocks[0].code[0]
++        if check.op != "rt" or check.s != "recursion.check":
++            continue
++        call = Ins("call", fn.f.ret, self.fns[fast].f.ll)
++        call.a = [Val(f"%a{p}", fn.f.ptypes[p]) for p in fn.ps]
++        if identity_abi(fn.f):
++            call.a.extend([Val(f"%aid{p}", "dyn") for p in fn.ps if numeric_identity(fn.f.ptypes[p])])
++            if numeric_identity(fn.f.ret):
++                call.a.append(Val("%idret", "*dyn"))
++        ret = Ins("ret", "", "")
++        if fn.f.ret != "None":
++            fn.n += 1
++            call.r = [fn.n]
++            ret.a = [Val(f"%t{fn.n}", fn.f.ret)]
++        block = Blk("entry")
++        block.code = [recursion_copy(check), call, ret]
++        fn.blocks = [block]
++        fn.slots = []
++        fn.loops = []
++        fn.cold = {}
++        fn.coldh = {}
++        fn.fa = {}
++        count += 1
++    return count
+ 
+ 
+ def gen_recursionleaf(self) -> int:
+diff --git a/tests/ir/dynany_field_locals.calls b/tests/ir/dynany_field_locals.calls
+index c614142c..a307d6d5 100644
+--- a/tests/ir/dynany_field_locals.calls
++++ b/tests/ir/dynany_field_locals.calls
+@@ -2,10 +2,10 @@
+ @rf.f.items: pys_list_new pys_bytes_get pys_dyn_ref pys_list_append pys_raise
+ @f.items: pys_list_new pys_bytes_get pys_dyn_ref pys_list_append pys_raise
+ @m.Scan.__init__:
+-@m.Scan.skip: pys_bytes_get pys_raise
+-@m.Scan.end_of: pys_bytes_get pys_raise
++@m.Scan.skip:
++@m.Scan.end_of:
+ @m.Scan.word: pys_raise
+-@m.Scan.cut: pys_bytes_slice pys_bytes_decode
++@m.Scan.cut:
+ @rf.m.Scan.skip: pys_bytes_get pys_raise
+ @rf.m.Scan.word: pys_raise
+ @rf.m.Scan.end_of: pys_bytes_get pys_raise
+diff --git a/tests/ir/field_tbaa.tbaa b/tests/ir/field_tbaa.tbaa
+index aab074d5..8a1702f6 100644
+--- a/tests/ir/field_tbaa.tbaa
++++ b/tests/ir/field_tbaa.tbaa
+@@ -1,6 +1,6 @@
+ @m.Point.__init__.1: store:Point+8 store:Point+24 store:Point+16 store:Point+25
+ @m.Point.__init__.2: store:Point+8 store:Point+24 store:Point+16 store:Point+25
+-@m.Labeled.__init__.1: store:Labeled+32 store:Labeled+40
++@m.Labeled.__init__.1: store:Labeled+32 store:Labeled+40 store:recursion depth+0
+ @main.init:
+ @f.shift: load:Point+25 load:Point+16 store:Point+8 store:Point+24 store:Labeled+32 store:Labeled+40 load:Point+25 load:Point+0 load:Point+16 load:Point+24 load:Point+8
+ @f.bump: load:Tally+8 load:Tally+0 store:Tally+0 store:Tally+8 load:Tally+8 load:Tally+0
+diff --git a/tests/ir/index_key.calls b/tests/ir/index_key.calls
+index 24eb7d0c..2c5cdccb 100644
+--- a/tests/ir/index_key.calls
++++ b/tests/ir/index_key.calls
+@@ -6,10 +6,10 @@
+ @rf.f.keep: pys_alloc pys_raise pys_raise
+ @f.keep: pys_alloc pys_raise pys_raise
+ @m.Grid.__init__: pys_list_new_atomic pys_list_append pys_list_mul pys_raise
+-@m.Grid.__getitem__: pys_list_get pys_raise
+-@m.Grid.__setitem__: pys_list_set pys_raise
++@m.Grid.__getitem__:
++@m.Grid.__setitem__:
+ @m.Keep.__init__: pys_list_new
+-@m.Keep.__getitem__: pys_list_append
++@m.Keep.__getitem__:
+ @rf.m.Grid.__getitem__: pys_list_get pys_raise
+ @rf.m.Grid.__setitem__: pys_list_set pys_raise
+ @rf.m.Keep.__getitem__: pys_list_append
+diff --git a/tools/test_typed_recursion.py b/tools/test_typed_recursion.py
+index 35241120..ca243840 100644
+--- a/tools/test_typed_recursion.py
++++ b/tools/test_typed_recursion.py
+@@ -161,7 +161,8 @@ g.close()
+         self.assertIn("store i64", helpers["@pys.recursion.restore"])
+         source_body = ir.split("define internal i64 @f.identity(", 1)[1].split("\n}", 1)[0]
+         self.assertIn("call i64 @pys.recursion.enter()", source_body)
+-        self.assertIn("call void @pys.recursion.restore(i64", source_body)
++        self.assertRegex(source_body, r"store i64 %t\d+, ptr @pys_recursion_state, !tbaa !\d+")
++        self.assertNotIn("call void @pys.recursion.restore", source_body)
+         self.assertNotIn("@pys_recursion_enter", source_body)
+ 
+     def test_leaf_keeps_entry_failure_without_publishing_depth(self):
+diff --git a/tools/test_typed_recursion_bounded.py b/tools/test_typed_recursion_bounded.py
+index cf0d5815..4646fe05 100644
+--- a/tools/test_typed_recursion_bounded.py
++++ b/tools/test_typed_recursion_bounded.py
+@@ -25,6 +25,55 @@ print(kernel(3))
+ 
+ 
+ class TypedRecursionBoundedTests(unittest.TestCase):
++    def test_checked_leaf_shares_its_existing_unchecked_body(self):
++        ir, functions = compile_source("# pystachy: dynamic-any\n" + ORDINARY)
++        leaf = functions["@f.step"]
++        self.assertEqual([op[:2] for op in operations(leaf)],
++                         [("rt", "recursion.check"), ("call", "@rf.f.step"), ("ret", "")])
++        body = re.search(r"^define internal i64 @f\.step\(.*?^}", ir, re.M | re.S).group(0)
++        self.assertNotIn("alloca", body)
++        self.assertLess(body.index("@pys.recursion.check()"), body.index("musttail call"))
++        self.assertIn("musttail call i64 @rf.f.step(i64 %a0, ptr %aid0, ptr %idret)", body)
++        self.assertTrue(any(op[:2] == ("ovf", "+")
++                            for op in operations(functions["@rf.f.step"])))
++
++    def test_shared_void_leaf_keeps_the_guard_and_void_tail_signature(self):
++        ir, functions = compile_source('''
++seen: list[int] = []
++def visit(n: int) -> None:
++    seen.append(n)
++def batch(n: int) -> None:
++    for i in range(n):
++        visit(i)
++batch(3)
++visit(4)
++print(seen)
++''')
++        leaf = functions["@f.visit"]
++        self.assertEqual([op[:2] for op in operations(leaf)],
++                         [("rt", "recursion.check"), ("call", "@rf.f.visit"), ("ret", "")])
++        body = re.search(r"^define internal void @f\.visit\(.*?^}", ir, re.M | re.S).group(0)
++        self.assertIn("musttail call void @rf.f.visit(i64 %a0)", body)
++        self.assertIn("ret void", body)
++
++    def test_tuple_leaf_retains_its_fresh_return_body(self):
++        ir, functions = compile_source('''
++def pair(n: int) -> tuple[int, int]:
++    return (n, n + 1)
++def batch(n: int) -> int:
++    total = 0
++    for i in range(n):
++        left, right = pair(i)
++        total += left + right
++    return total
++print(batch(3))
++''')
++        self.assertIn("@rf.f.pair", functions)
++        self.assertTrue(any(op[0] == "alloc.fixed"
++                            for op in operations(functions["@f.pair"])))
++        self.assertRegex(ir, r"define internal \{i64, i64\} @v\.f\.pair\(")
++        self.assertNotIn("musttail call ptr @rf.f.pair", ir)
++
+     def test_straight_line_helper_does_not_pay_an_unamortized_selector(self):
+         source = '''
+ def leaf(n: int) -> int:
+@@ -78,6 +127,11 @@ print(helper(3))
+         helper = ir.split(definition, 1)[1].split("\n}", 1)[0]
+         self.assertNotIn("@pys_recursion_error", helper)
+         self.assertNotIn("store ", helper)
++        source_body = re.search(r"^define internal i64 @f\.kernel\(.*?^}", ir, re.M | re.S).group(0)
++        self.assertNotIn("call i64 @pys.recursion.room", source_body)
++        self.assertRegex(source_body, r"%t\d+\.depth = load i64, ptr @pys_recursion_state, !tbaa !\d+")
++        self.assertRegex(source_body, r"%t\d+\.remaining = sub i64 %t\d+\.limit, %t\d+\.depth")
++        self.assertRegex(source_body, r"%t\d+\.enough = icmp sge i64 %t\d+\.remaining, 2")
+ 
+     def test_maximal_entry_stays_separate_and_precedes_its_guarded_wrapper(self):
+         ir, _ = compile_source(ORDINARY)

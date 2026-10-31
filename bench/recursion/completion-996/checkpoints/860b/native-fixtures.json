@@ -1,0 +1,181 @@
+{
+  "status": "passed",
+  "commit": "860b6c503a4261a6c4dd86b803f4cf270ce95c74",
+  "tree": "98d8ee9dea118a2cf3276defa3c4f6ccec126c78",
+  "bootstrap_sha256": "da32e0d45640cf22492abdf1a685910e4a4c1d6847fa1dd436b320a560252d76",
+  "compiler_sha256": "51892638750101cc2280960329636cfe968b3a1f9643e6f1f7a75bc52bb92943",
+  "harness_sha256": "6476d8d1552d3a98975e457f212fb4a0b629e9f04740031bf0c264c6c53baa7a",
+  "cases": {
+    "tests/programs/language/recursion_checked_leaf.py": "849b4b9a31b0b7c571b60bb1b8b101c98429d5a5a3cfd2326a77ffabb92db55d",
+    "tests/programs/language/recursion_after_call.py": "b7143c023f405bb58c169f075a3cbe3d1c7ecb659cf60c39d8e54839bf634384",
+    "tests/programs/exceptions/exc_recursion_unwind.py": "856ffb4ce060da0f141c04dd1097e652d2c591adff76df5aee560270594d0e53",
+    "tests/programs/exceptions/exc_recursion_contexts.py": "1224b18dda21133ccaa6284eef699567b17fb554f72c63126ec6be38c78caccd",
+    "tests/programs/generators/gen_recursion_guard.py": "0081278bf3af824468c220c5e386083fa3a523fc2d12b80be66b02ccae372c33",
+    "tests/programs/runtime/rt_recursion_scoped_files.py": "47f4d7e3c50b8e8618ebb9914edd1811e58467045f3d9beaf0b953eb41422cbc"
+  },
+  "environment": {
+    "PYSTACHY_LLVM": "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin",
+    "PYSTACHY_CACHE": "/workspace/scratch/a83500db0e17/experiments/final-native-860b/cache",
+    "PYSTACHY_JIT_INLINE": "0",
+    "PYSTACHY_JOBS": "2"
+  },
+  "started_utc": "2026-10-31T21:24:31.663748+00:00",
+  "observations": [
+    {
+      "name": "ir-0",
+      "command": [
+        "/workspace/scratch/a83500db0e17/pystachy/pystachy",
+        "ir",
+        "tests/programs/language/recursion_checked_leaf.py",
+        "-o",
+        "/workspace/scratch/a83500db0e17/experiments/final-native-860b/0.ll"
+      ],
+      "extra_environment": {},
+      "status": "passed",
+      "returncode": 0,
+      "seconds": 0.008123763996991329,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "raw_ir_sha256": "6b32591c82f00d28fbb96e516b8e65060182cc6782ca8ef866038a6988bb1e20",
+      "guard_definitions": [
+        "define internal void @pys.recursion.check() {",
+        "define internal i64 @pys.recursion.enter() {"
+      ]
+    },
+    {
+      "name": "ir-1",
+      "command": [
+        "/workspace/scratch/a83500db0e17/pystachy/pystachy",
+        "ir",
+        "tests/programs/language/recursion_after_call.py",
+        "-o",
+        "/workspace/scratch/a83500db0e17/experiments/final-native-860b/1.ll"
+      ],
+      "extra_environment": {},
+      "status": "passed",
+      "returncode": 0,
+      "seconds": 0.01619916400159127,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "raw_ir_sha256": "3b4a4ea799e02573a59fbb257826c28b5a230fc5f46b5fa18517fee9fae81954",
+      "guard_definitions": [
+        "define internal void @pys.recursion.check() {",
+        "define internal i64 @pys.recursion.enter() {"
+      ]
+    },
+    {
+      "name": "ir-2",
+      "command": [
+        "/workspace/scratch/a83500db0e17/pystachy/pystachy",
+        "ir",
+        "tests/programs/exceptions/exc_recursion_unwind.py",
+        "-o",
+        "/workspace/scratch/a83500db0e17/experiments/final-native-860b/2.ll"
+      ],
+      "extra_environment": {},
+      "status": "passed",
+      "returncode": 0,
+      "seconds": 0.007812915999238612,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "raw_ir_sha256": "e70af4d80772b1553a94ce3558a7f67836d02c62cab7226b5cb61811f10774f4",
+      "guard_definitions": [
+        "define internal void @pys.recursion.check() {",
+        "define internal i64 @pys.recursion.enter() {"
+      ]
+    },
+    {
+      "name": "ir-3",
+      "command": [
+        "/workspace/scratch/a83500db0e17/pystachy/pystachy",
+        "ir",
+        "tests/programs/exceptions/exc_recursion_contexts.py",
+        "-o",
+        "/workspace/scratch/a83500db0e17/experiments/final-native-860b/3.ll"
+      ],
+      "extra_environment": {},
+      "status": "passed",
+      "returncode": 0,
+      "seconds": 0.00827792600102839,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "raw_ir_sha256": "141b2d010560c97cddea3cb1227c4a32380d9f09e91763d6a28a4b5bbc310ec1",
+      "guard_definitions": [
+        "define internal void @pys.recursion.check() {",
+        "define internal i64 @pys.recursion.enter() {"
+      ]
+    },
+    {
+      "name": "ir-4",
+      "command": [
+        "/workspace/scratch/a83500db0e17/pystachy/pystachy",
+        "ir",
+        "tests/programs/generators/gen_recursion_guard.py",
+        "-o",
+        "/workspace/scratch/a83500db0e17/experiments/final-native-860b/4.ll"
+      ],
+      "extra_environment": {},
+      "status": "passed",
+      "returncode": 0,
+      "seconds": 0.015864841003349284,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "raw_ir_sha256": "dbd1cf7c3f50a0862f54861243ae98a4ab61645beb9ebe30a73f9fce28142c75",
+      "guard_definitions": [
+        "define internal i64 @pys.recursion.enter() {"
+      ]
+    },
+    {
+      "name": "ir-5",
+      "command": [
+        "/workspace/scratch/a83500db0e17/pystachy/pystachy",
+        "ir",
+        "tests/programs/runtime/rt_recursion_scoped_files.py",
+        "-o",
+        "/workspace/scratch/a83500db0e17/experiments/final-native-860b/5.ll"
+      ],
+      "extra_environment": {},
+      "status": "passed",
+      "returncode": 0,
+      "seconds": 0.016114508001919603,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "raw_ir_sha256": "243a112e8790577e34cddb2f77f7012bd0c159c8a9c7c2024b13ac8310a8e673",
+      "guard_definitions": [
+        "define internal void @pys.recursion.check() {",
+        "define internal i64 @pys.recursion.enter() {"
+      ]
+    },
+    {
+      "name": "jit-aot",
+      "command": [
+        "tests/run.sh",
+        "./pystachy",
+        "jit aot",
+        "tests/programs/language/recursion_checked_leaf.py",
+        "tests/programs/language/recursion_after_call.py",
+        "tests/programs/exceptions/exc_recursion_unwind.py",
+        "tests/programs/exceptions/exc_recursion_contexts.py",
+        "tests/programs/generators/gen_recursion_guard.py",
+        "tests/programs/runtime/rt_recursion_scoped_files.py"
+      ],
+      "extra_environment": {},
+      "status": "passed",
+      "returncode": 0,
+      "seconds": 15.9406350499994,
+      "log_sha256": "13825232b180756a6c300305f73ab1133591422e08b7368301f24b3b78851ffc"
+    },
+    {
+      "name": "gc-scoped-file",
+      "command": [
+        "tests/run.sh",
+        "./pystachy",
+        "jit",
+        "tests/programs/runtime/rt_recursion_scoped_files.py"
+      ],
+      "extra_environment": {
+        "PYSTACHY_GC_STRESS_PROGRAM": "1"
+      },
+      "status": "passed",
+      "returncode": 0,
+      "seconds": 0.21470446000239463,
+      "log_sha256": "4f1484516510f573d9eb01d56d5abbd1981491671a8b46777b5da399da924da7"
+    }
+  ],
+  "native_executions": 13,
+  "source_identity_stable": true
+}

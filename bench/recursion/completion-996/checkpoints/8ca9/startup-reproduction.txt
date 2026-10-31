@@ -1,0 +1,145 @@
+Pystachy PR 996 — frozen 8ca9 startup investigation
+
+Scope and identities
+--------------------
+The measured native source is 8ca9b82c60651f746d538ad5da41ba02775bbd3c,
+tree 0ac344db3198a5e867ede0b1dbeb47092a341fb6. The native binary SHA256 is
+5439a2503d8486e989713a22fedf8ec8a2d16ed9426b223b752ea09362836cfc.
+Its full fixed-point record is experiments/final-bootstrap-v2/bootstrap.json.
+The native binary, one of the three identical compiler LLVM stages, and one of
+the three identical runtime stages are retained under
+experiments/final-bootstrap-v2/preserved, with their own manifest.
+
+The source implementation of the selected guard ablation is local commit
+b4da009aa729c7f2b8a4c9a18bb83b00d52bf17f, parent 8ca9. Its independently reviewed
+patch captures the existing lifetime exclusion before optimization/EH lowering,
+then permits ordinary check/enter inlining only in eligible programs. The
+source-generated mixed raw LLVM literally matches the measured two-attribute
+ablation. The code changes do not adopt @rp2 outlining or ORC lazy.
+
+Later combined candidate 860b6c503a4261a6c4dd86b803f4cf270ce95c74 (tree
+98d8ee9dea118a2cf3276defa3c4f6ccec126c78) was published after these measurements.
+It also includes separate @rc body sharing. No results in this export measure
+that combined candidate; its fresh bootstrap/final measurements were pending
+when this export was assembled.
+
+The original recorded library/toolchain workspace is
+/workspace/scratch/e858f72517b9. The new evidence root is
+/workspace/scratch/a83500db0e17/final-startup. The common benchmark is the
+unchanged old workspace baselines/old-eca/bench/smoke/text.py, using fnmatch 1000,
+json 6000, and repair_scan 400. Every consumed source/tool/input identity is in
+curated-8ca9-investigation.json or its hashed full records.
+
+Environment
+-----------
+Source /workspace/scratch/e858f72517b9/toolchain/env.sh before reproducing.
+This selects the recorded Python 3.13.16, LLVM 18.1.3 and Valgrind 3.22 tools.
+The captured host is Intel Xeon Platinum 8573C, with workloads pinned to CPU 0.
+Use private caches. The normal-driver harness removes inherited PYSTACHY_ and
+ATTR_ options and PYTHONPATH/PYTHONHOME, then sets only its recorded home, cache,
+toolchain and deterministic Python settings. Do not silently inherit optimization
+or GC controls. The environment and current dynamic-library hashes are recorded.
+
+Reproduce normal native-driver measurements
+------------------------------------------
+measure.py has prepare, profile and timings phases. Each phase refuses to
+overwrite an existing phase; preserve failed attempts in distinct output paths.
+The 8ca9 series completed prepare and profile. Its six-round elapsed phase was
+not started after root redirected investigation because startup remained slower.
+Do not relabel preparation warmups or instrumented wall times as elapsed
+acceptance results. The first JIT warmups include fresh-cache work.
+
+The original invocation was:
+
+python /workspace/scratch/a83500db0e17/final-startup/measure.py prepare \
+  --output /workspace/scratch/a83500db0e17/final-startup/results-8ca9 \
+  --expected-final-commit 8ca9b82c60651f746d538ad5da41ba02775bbd3c \
+  --bootstrap /workspace/scratch/a83500db0e17/experiments/final-bootstrap-v2/bootstrap.json
+
+It was followed by the same invocation with profile in place of prepare.
+Do not execute these commands against the now-advanced active checkout. A source
+reproduction needs an isolated exact-commit checkout, the verified preserved
+binary or a fresh recorded bootstrap, and an explicitly adapted copy of the
+harness with its HOMES paths changed. That is a new measurement with new script
+and input hashes. Library paths may occur in emitted diagnostic strings; assess
+differences explicitly rather than normalizing arbitrary text.
+
+The final combined-candidate protocol uses the unchanged measure.py with:
+
+  --output /workspace/scratch/a83500db0e17/final-startup/results-860b
+  --expected-final-commit 860b6c503a4261a6c4dd86b803f4cf270ce95c74
+  --bootstrap /workspace/scratch/a83500db0e17/experiments/final-bootstrap-v3/bootstrap.json
+
+Only run after the bootstrap record is complete and the compute slot is granted.
+Use prepare, then profile, then timings. The planned timings contain six balanced
+compiler orders, rotating case order, and 54 normal JIT plus 54 AOT observations.
+The native call/JSON count harness runs before this series; its elapsed kernel
+series follows. Heavy builds and other tool activity stay outside elapsed windows.
+
+Exact backend replay and profiling
+---------------------------------
+results-8ca9/normal-{main,da84,final} retain the actual driver raw input, resulting
+bitcode, opt/lli metadata, and the runtime/fd9 bytes. opt-final and lli-final hold
+new 8ca9 instrumented controls and raw Callgrind files. Main/da84 counts are reused
+only after the harness verified their archived profile hashes/counts, completed
+statuses, successful returns, inputs, arguments, runtime bytes, tool identities,
+and optimized module bodies against these new normal controls.
+
+For exact backend input, replay the retained actual-input.ll and runtime-fd8.so;
+the frontend need not run. Use opt's exact recorded arguments/pipeline, replacing
+only its input/output paths with retained/new local paths. Open the captured
+runtime on inheritable descriptor 8 and the resulting bitcode on inheritable
+descriptor 9, then execute lli with the recorded -profile-guided-section-prefix=false,
+-dlopen=/dev/fd/8 and /dev/fd/9 arguments and the workload arguments. The provided
+replay scripts implement these descriptor bindings and process-group cleanup.
+
+outline_replay.py removed only the four @rp2 alwaysinline attributes, using four
+balanced control/outlined rounds. It was rejected as an insufficient improvement.
+guard_replay.py removed only check/enter alwaysinline on this eligible mixed
+module, also in four balanced rounds. guard_counts.py profiles that exact raw
+candidate with Callgrind and proves the instrumented optimizer output matches
+the uninstrumented output after dropping only demonstrated LLVM path headers.
+The source verification later proves literal equality with the selected raw input.
+
+lazy_replay.py uses the untouched 8ca9 raw module and changes only lli's
+-jit-kind=orc-lazy option in two balanced orders. It checks optimized-module body
+identity and all three program checksums. The experiment was slower and was not
+adopted. First-use lazy compilation can fall inside reported loop time; this is
+not a steady-state kernel experiment or broad runtime correctness validation.
+
+Each replay script refuses an existing output directory. For another run, make
+an explicit copy with a fresh output directory and record its new hash. Preserve
+the existing samples; do not select faster samples or combine different hosts.
+
+Source verification
+-------------------
+verify_guards.py runs the candidate frontend under CPython, using frozen root
+library/runtime paths to avoid an unrelated diagnostic-path string difference.
+It checks compiler-source admissibility, seven JIT fixtures with JIT_INLINE=0,
+three AOT counterparts, and scoped-file program GC stress. Captured optimized
+modules prove the eligible guards remain outlined. The unmanaged-file control
+has literal raw LLVM parity with 8ca9. The mixed source output literally equals
+the raw ablation. The complete report includes every execution observation and
+consumed-input manifest. commit-binding.json ties its exact patch to b4da009a.
+These are hosted-frontend/native-program checks, not a native compiler bootstrap.
+
+Boundaries and retained files
+----------------------------
+Whole opt+lli totals include code generation and executed program/runtime/GC work.
+Main has no recursion guard helpers. Raw replay timings bypass frontend work.
+Shared-host short-loop timing noise remains visible; no samples were discarded.
+The selected guard ablation still costs 10.12% more whole-tool instructions than
+main, so it does not by itself establish performance acceptance.
+
+The archived manifest did not separately hash LLVM/clang dynamic libraries.
+Current-series bytes are frozen, but that historical gap is not retroactively
+repaired. The handoff's older missing recursion-region-startup-diagnostics.json
+is also not claimed to be recovered.
+
+curated-8ca9-investigation.json contains all retained elapsed sample vectors,
+whole-count totals, normal capture identities, exact provenance, decisions, and
+an artifact inventory with SHA256/size/local paths. It does not embed raw LLVM,
+native binaries or Callgrind text. Those large files remain at their recorded
+locations. Preserve those directories when moving or archiving the export.
+curate_investigation.py reconstructs the export and verifies inventoried hashes
+without executing a compiler, native program or benchmark.

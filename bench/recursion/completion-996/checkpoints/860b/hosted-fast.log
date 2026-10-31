@@ -1,0 +1,54 @@
+ruff check
+All checks passed!
+mypy --config-file mypy.ini
+Success: no issues found in 48 source files
+/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13 tools/check_repository_hygiene.py
+repository hygiene: tracked paths are clean
+/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13 -m unittest discover -s tools -p test_repository_hygiene.py
+...........
+----------------------------------------------------------------------
+Ran 11 tests in 0.314s
+
+OK
+/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13 -m unittest discover -s tools -p test_function_summaries.py
+.......
+----------------------------------------------------------------------
+Ran 7 tests in 0.050s
+
+OK
+/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13 -m unittest discover -s tools -p 'test_typed*.py'
+.....................................................................................................................................................................................................................
+----------------------------------------------------------------------
+Ran 213 tests in 12.083s
+
+OK
+/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13 -m unittest discover -s tools -p 'test_json*.py'
+.............................
+----------------------------------------------------------------------
+Ran 29 tests in 2.304s
+
+OK
+/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13 -m unittest discover -s tools -p test_numeric_identity.py
+........................................................
+----------------------------------------------------------------------
+Ran 56 tests in 0.619s
+
+OK
+/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13 -m unittest discover -s tools -p test_identity_scope.py
+.................
+----------------------------------------------------------------------
+Ran 17 tests in 6.683s
+
+OK
+/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13 -m unittest discover -s tools -p test_dynany_comparisons.py
+..................................................
+----------------------------------------------------------------------
+Ran 50 tests in 14.018s
+
+OK
+/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13 -m unittest discover -s tools -p test_dynany_dict_kinds.py
+...
+----------------------------------------------------------------------
+Ran 3 tests in 0.008s
+
+OK

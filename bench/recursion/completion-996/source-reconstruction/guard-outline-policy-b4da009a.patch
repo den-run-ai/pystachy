@@ -1,0 +1,273 @@
+diff --git a/docs/internals.md b/docs/internals.md
+index 361e1eab..039f47d5 100644
+--- a/docs/internals.md
++++ b/docs/internals.md
+@@ -399,10 +399,15 @@ generator expressions emit the same typed IR and LLVM IR as before.
+ 
+ ## JIT, AOT and runtime caching
+ 
+-`run` favors startup latency. LLVM removes unused internal functions, inlines the small
++`run` favors startup latency. LLVM removes unused internal functions, inlines the scalar
+ recursion-accounting helpers and bounded partial versions, optionally inlines the program's
+ own functions, performs SSA cleanup, and runs `early-cse` and `adce` to remove
+ redundant computations and unused loop feedback before ORC JIT runs with the cached runtime.
++Recursion entry guards use ordinary inlining, allowing large modules to share their
++checks. Programs with unmanaged files, weak references, termination callbacks or
++embedding preserve their prior mandatory guard inlining policy. The eligibility
++decision is captured before optimization
++and exception lowering, while scoped-file roots can still be proved.
+ On Linux, `lli` loads the runtime as a shared library (`-dlopen`), which the driver links once
+ from the cached runtime object and caches beside it; elsewhere `lli` links the object into each
+ run (`-extra-object`), which cost about 35 ms a run
+@@ -418,8 +423,9 @@ lowered) gets LLVM's coroutine passes around that pipeline:
+ function's cleanup), and `coro-cleanup`. The final `early-cse`/`adce` cleanup runs after
+ those passes as well, so dead identity-generation loops do not reach code generation.
+ The default user-function inlining threshold is 20,000 lines of generated IR; larger programs
+-skip that pass. Recursion-accounting helpers and bounded partial versions remain inlined,
+-including with `PYSTACHY_JIT_INLINE=0`. The accounting helpers access the same mutable
++skip that pass. Scalar recursion helpers and bounded partial versions remain inlined,
++including with `PYSTACHY_JIT_INLINE=0`; entry guards do so only in programs excluded
++by the lifetime policy. The accounting helpers access the same mutable
+ depth/limit state as the runtime's
+ `sys.setrecursionlimit()` implementation and call the checked runtime entry only on the
+ overflow path. The precompiled runtime is not inlined into JIT code.
+@@ -541,7 +547,7 @@ provide the broader behavior check. See [testing](testing.md) for the commands.
+ | `PYSTACHY_IRCHECK=1` | Verify typed IR before lowering and after transforming passes |
+ | `PYSTACHY_IRFX=1` | Print function effect summaries to stderr |
+ | `PYSTACHY_OPT` | Disable named optimizations with `-name`, comma-separated, or all with `-all`; see [IR passes](typed-ir.md#optimizations) |
+-| `PYSTACHY_JIT_INLINE=N` | IR-line threshold for JIT user-function inlining; `0` disables it (recursion-accounting helpers and bounded partial versions remain inlined) |
++| `PYSTACHY_JIT_INLINE=N` | IR-line threshold for JIT user-function inlining; `0` disables it (scalar recursion helpers and bounded partial versions remain inlined; guard helpers also stay inlined in lifetime-excluded programs) |
+ | `PYSTACHY_JIT_CODEGEN=0\|2` | `0` selects MCJIT `-O0`; `2` (default) keeps ORC code generation |
+ | `PYSTACHY_GC_STRESS=N` | Collect every N allocations |
+ | `PYSTACHY_GC_STRESS_PROGRAM=N` | Apply the stress interval to the program run by JIT or the test runner, separately from its compiler |
+diff --git a/src/pystachy_compiler/gen.py b/src/pystachy_compiler/gen.py
+index 0fa26a82..16b54b66 100644
+--- a/src/pystachy_compiler/gen.py
++++ b/src/pystachy_compiler/gen.py
+@@ -3405,8 +3405,8 @@ class Gen:
+     def extern_decl(self, f: FnInfo) -> None:
+         return lower_module_extern_decl(self, f)
+ 
+-    def lower_module(self) -> str:
+-        return lower_module_lower_module(self)
++    def lower_module(self, inline_recursion_guards: bool) -> str:
++        return lower_module_lower_module(self, inline_recursion_guards)
+ 
+     def gen_module(self) -> list[str]:
+         return lower_module_gen_module(self)
+diff --git a/src/pystachy_compiler/lower_module.py b/src/pystachy_compiler/lower_module.py
+index ae7a5c9b..e5d7f21a 100644
+--- a/src/pystachy_compiler/lower_module.py
++++ b/src/pystachy_compiler/lower_module.py
+@@ -42,20 +42,22 @@ def struct_types(ci: ClassInfo) -> list[str]:
+     return [lt(ci.ftypes[x]) for x in ci.fields] + ["i1" for _ in range(ci.nflag)] + ["ptr" for _ in range(ci.nbox)]
+ 
+ 
+-def recursion_ir(keys: list[str], root: int, fields: bool) -> list[str]:
++def recursion_ir(keys: list[str], root: int, fields: bool, inline_guards: bool) -> list[str]:
+     # The mutable native ABI is runtime.c's two I words: active depth, configured
+     # limit. Keep the C RecursionError as the cold path, but make ordinary accounting
+-    # visible to LLVM even when JIT uses a separately compiled shared runtime. These
+-    # helpers are always inlined independently of the user-function inlining budget.
++    # visible to LLVM even when JIT uses a separately compiled shared runtime.
++    # Scalar helpers stay mandatory-inline. Check/enter use ordinary inlining
++    # unless lifetime observers require the prior mandatory-inlining policy.
+     if not any(key in keys for key in ["recursion.check", "recursion.room", "recursion.enter", "recursion.leave", "recursion.depth", "recursion.restore"]):
+         return []
+     out = ["@pys_recursion_state = external global [2 x i64]"]
++    guard_attrs = " alwaysinline" if inline_guards else ""
+     for key in ["recursion.check", "recursion.enter"]:
+         if key not in keys:
+             continue
+         check = key == "recursion.check"
+         out.extend([
+-            f"define internal {'void' if check else 'i64'} @pys.{key}() alwaysinline {{",
++            f"define internal {'void' if check else 'i64'} @pys.{key}(){guard_attrs} {{",
+             "entry:",
+             f"  %depth = load i64, ptr @pys_recursion_state, !tbaa !{TBAA_DEPTH}",
+             "  %limit.addr = getelementptr [2 x i64], ptr @pys_recursion_state, i64 0, i64 1",
+@@ -558,7 +560,7 @@ def gen_gen_module(self) -> list[str]:
+         "  ret void",
+         "}"]
+ 
+-def gen_lower_module(self) -> str:
++def gen_lower_module(self, inline_recursion_guards: bool) -> str:
+     if not self.rtmode and ("recursion.enter" in self.rtfns or "recursion.check" in self.rtfns):
+         self.runtime("pys_recursion_error")
+     hdr: list[str] = ["; generated by pystachy"]
+@@ -604,7 +606,7 @@ def gen_lower_module(self) -> str:
+     for key in ["recursion.depth", "recursion.restore"] if self.ext != "" else []:
+         if key not in recursion:
+             recursion.append(key)
+-    hdr.extend(recursion_ir(recursion, TBAA_FIELDS + len(self.tbaa), len(self.tbaa) > 0))
++    hdr.extend(recursion_ir(recursion, TBAA_FIELDS + len(self.tbaa), len(self.tbaa) > 0, inline_recursion_guards))
+     if self.ext != "":
+         return "\n".join(hdr + self.pyext()) + "\n"
+     # pys_init gets the GC roots: main's frame address bounds the stack scan (it also
+diff --git a/src/pystachy_compiler/program.py b/src/pystachy_compiler/program.py
+index 6529ab82..93a4c40a 100644
+--- a/src/pystachy_compiler/program.py
++++ b/src/pystachy_compiler/program.py
+@@ -10,6 +10,7 @@ from src.pystachy_compiler.generators import reads_cause, reads_handled, uses_pr
+ from src.pystachy_compiler.ir import Val, ClassInfo, FnInfo, IFn, NOLABELS, NONUMS, NOVALS
+ from src.pystachy_compiler.module import Mod
+ from src.pystachy_compiler.names import RENAMED, short
++from src.pystachy_compiler.optimizations import recursion_blocked
+ from src.pystachy_compiler.specs import (
+     ABSTRACT_DECOS,
+     EXCBASES,
+@@ -1161,6 +1162,10 @@ def gen_program(self, mods: list[Mod]) -> str:
+         # storage facts, so the first verification uses complete effect summaries too.
+         for fn in self.fns:
+             self.verify(fn, False)
++    # Guard outlining can change conservative stack roots just as scalar depth
++    # optimizations do. Capture the shared lifetime policy before optimization or
++    # EH lowering can split a scoped open from its immediate unwind root.
++    inline_recursion_guards = not self.rtmode and recursion_blocked(self)
+     if "recursionleaf" in on and not self.rtmode and self.recursionleaf() > 0:
+         # This has its own depth-observation summary; ordinary R/I effects remain
+         # on each entry check and still govern EH and the following optimizations.
+@@ -1216,7 +1221,7 @@ def gen_program(self, mods: list[Mod]) -> str:
+         fn.fa = {}
+     for op in ["eq", "cmp", "repr"] if not self.rtmode else []:
+         self.dispatch(op)  # (each program defines them: runtime.py calls them like runtime.c)
+-    ir = self.lower_module()
++    ir = self.lower_module(inline_recursion_guards)
+     RENAMED.clear()  # (the program's classes': runtime.py, which the driver may compile next, has none)
+     return ir
+ 
+diff --git a/tools/test_typed_recursion.py b/tools/test_typed_recursion.py
+index ca243840..a6b40b91 100644
+--- a/tools/test_typed_recursion.py
++++ b/tools/test_typed_recursion.py
+@@ -11,13 +11,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+ from src.pystachy_compiler.driver import runtime_ir
+ from src.pystachy_compiler.gen import Gen
+ from src.pystachy_compiler.loader import Loader
+-from src.pystachy_compiler.specs import FXBIT
++from src.pystachy_compiler.lower_module import recursion_ir
++from src.pystachy_compiler.specs import FXBIT, TBAA_FIELDS
+ 
+ 
+ ROOT = Path(__file__).resolve().parent.parent
+ 
+ 
+-def compile_source(source, opt=""):
++def compile_source(source, opt="", ext=""):
+     functions = {}
+     lower = Gen.lower
+ 
+@@ -36,7 +37,11 @@ def compile_source(source, opt=""):
+         lower(g, fn)
+ 
+     with patch.object(Gen, "lower", capture), patch.dict(os.environ, {"PYSTACHY_OPT": opt}):
+-        ir = Gen().program(Loader([str(ROOT / "lib")]).program("recursion_contract.py", source))
++        gen = Gen()
++        gen.ext = ext
++        loader = Loader([str(ROOT / "lib")])
++        loader.ext = ext
++        ir = gen.program(loader.program("recursion_contract.py", source))
+     return ir, functions
+ 
+ 
+@@ -141,7 +146,7 @@ g.close()
+                         self.assertTrue(any(i[:2] == ("rt", "recursion.leave") for i in code[at + 1:]))
+         self.assertGreaterEqual(resumes, 2)
+ 
+-    def test_inline_guards_use_mutable_runtime_state_and_throwing_slow_path(self):
++    def test_guard_helpers_use_mutable_runtime_state_and_throwing_slow_path(self):
+         ir, _ = compile_source("def identity(n: int) -> int:\n    return n\nprint(identity(1))\n",
+                                opt="-recursionleaf")
+         self.assertIn("@pys_recursion_state = external global [2 x i64]", ir)
+@@ -151,7 +156,8 @@ g.close()
+         self.assertNotIn("@pys.recursion.leave", helpers)
+         for name in helpers:
+             declaration = next(line for line in ir.splitlines() if line.startswith("define ") and name + "(" in line)
+-            self.assertIn("alwaysinline", declaration)
++            self.assertEqual("alwaysinline" in declaration,
++                             name not in ("@pys.recursion.check", "@pys.recursion.enter"))
+         entry = next(line for line in ir.splitlines() if line.startswith("define ") and "@pys.recursion.enter(" in line)
+         self.assertNotIn("nounwind", entry)
+         self.assertIn("call void @pys_recursion_error() noreturn", helpers["@pys.recursion.enter"])
+@@ -165,6 +171,68 @@ g.close()
+         self.assertNotIn("call void @pys.recursion.restore", source_body)
+         self.assertNotIn("@pys_recursion_enter", source_body)
+ 
++    def test_safe_guard_inlining_policy_does_not_depend_on_typed_optimizations(self):
++        source = '''
++def leaf(n: int) -> int:
++    return n + 1
++
++def recursive(n: int) -> int:
++    return leaf(n) if n == 0 else recursive(n - 1)
++
++print(recursive(2))
++'''
++        for opt in ("", "-all", "-recursionleaf", "-recursionregion"):
++            with self.subTest(opt=opt):
++                ir, _ = compile_source(source, opt)
++                guards = [line for line in ir.splitlines() if line.startswith("define ")
++                          and any(name in line for name in ("@pys.recursion.check(", "@pys.recursion.enter("))]
++                self.assertTrue(guards)
++                for declaration in guards:
++                    self.assertNotIn("alwaysinline", declaration)
++                    self.assertNotIn("nounwind", declaration)
++
++    def test_lifetime_observers_keep_guards_mandatory_inline(self):
++        scalar = "def scalar(n: int) -> int:\n    return n + 1\nprint(scalar(2))\n"
++        sources = {
++            "unmanaged": scalar + 'stream = open("pending.txt", "w")\nstream.write("pending")\n',
++            "weakref": scalar + '''
++from _weakref import ref
++
++class Item:
++    def __init__(self, n: int) -> None:
++        self.n = n
++
++item = Item(1)
++weak = ref(item)
++print(weak() is item)
++''',
++            "atexit": scalar + '''
++import atexit
++
++def done() -> None:
++    print("done")
++
++atexit.register(done)
++''',
++            "embedding": scalar + "from pyobj import of_int\nprint(of_int(5).to_int())\n",
++            "extension": "from ffi import export\n@export\ndef scalar(n: int) -> int:\n    return n + 1\n",
++        }
++        for name, source in sources.items():
++            with self.subTest(kind=name):
++                ir, _ = compile_source(source, ext="recursion_contract" if name == "extension" else "")
++                guards = [line for line in ir.splitlines() if line.startswith("define ")
++                          and any(key in line for key in ("@pys.recursion.check(", "@pys.recursion.enter("))]
++                self.assertTrue(guards)
++                self.assertTrue(all("alwaysinline" in declaration for declaration in guards))
++
++    def test_guard_policy_changes_only_check_and_enter_attributes(self):
++        keys = ["recursion." + name for name in ("check", "enter", "room", "leave", "depth", "restore")]
++        forced = "\n".join(recursion_ir(keys, TBAA_FIELDS, False, True))
++        ordinary = "\n".join(recursion_ir(keys, TBAA_FIELDS, False, False))
++        expected = forced.replace("@pys.recursion.check() alwaysinline {", "@pys.recursion.check() {")
++        expected = expected.replace("@pys.recursion.enter() alwaysinline {", "@pys.recursion.enter() {")
++        self.assertEqual(ordinary, expected)
++
+     def test_leaf_keeps_entry_failure_without_publishing_depth(self):
+         ir, functions = compile_source('''
+ class Counter:
+diff --git a/tools/test_typed_recursion_files.py b/tools/test_typed_recursion_files.py
+index a7fba1b5..61aa03a9 100644
+--- a/tools/test_typed_recursion_files.py
++++ b/tools/test_typed_recursion_files.py
+@@ -24,6 +24,8 @@ class ScopedFileRecursionTests(unittest.TestCase):
+         self.assertIn("@pys_file_close(", ir)
+         self.assertIn(("rt", "recursion.check"),
+                       [op[:2] for op in operations(functions["@f.scalar"])])
++        self.assertIn("define internal void @pys.recursion.check() {", ir)
++        self.assertIn("define internal i64 @pys.recursion.enter() {", guarded)
+ 
+     def test_unmanaged_open_in_other_function_preserves_guarded_ir(self):
+         source = SCOPED + '''

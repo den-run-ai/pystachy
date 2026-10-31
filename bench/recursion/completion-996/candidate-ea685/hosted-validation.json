@@ -1,0 +1,61 @@
+{
+  "schema": 1,
+  "status": "passed",
+  "scope": "Hosted validation of the full integrated tree; native fixed point and CI are separately recorded.",
+  "local_test_commit": "e01972861d676abc14f26829390d0ae71c493038",
+  "published_commit": "ea68529b8a590eb8f3df7200b857e1d16becd7a3",
+  "tree": "62ad6bb99fbc3e1625f36f167d664f2d8f221801",
+  "whole_tree_equality_verified": true,
+  "counts": {
+    "repository_hygiene": 11,
+    "function_summaries": 7,
+    "typed_ir": 213,
+    "json": 29,
+    "numeric_identity": 56,
+    "identity_scope": 17,
+    "dynamic_comparisons": 50,
+    "dynamic_dictionary_kinds": 3,
+    "diagnostic_capture": 8,
+    "inspector": 20
+  },
+  "compiler_state": {
+    "globals": 64,
+    "complementary_suites": 44,
+    "total": 108,
+    "complementary_test_commit": "ea68529b8a590eb8f3df7200b857e1d16becd7a3"
+  },
+  "unit_test_total": 522,
+  "ruff": "passed",
+  "mypy": {
+    "status": "passed",
+    "source_files": 48
+  },
+  "commands": [
+    "make check-fast PY=python3.13",
+    "python3.13 -m unittest discover -s tools -p 'test_compiler_state_globals.py'",
+    "python3.13 -m unittest discover -s tools -p 'test_compiler_state_[!g]*.py'"
+  ],
+  "logs": [
+    {
+      "path": "experiments/integrated-main1000-fast.log",
+      "bytes": 2273,
+      "sha256": "cedb3268131cd215b132e2a79f8f735e03871b830b6c60f816a15d24cf8f280f"
+    },
+    {
+      "path": "experiments/integrated-main1000-state.log",
+      "bytes": 165,
+      "sha256": "01daa5e0c029e69be0309149f3ab063c5c3a553d8608b008a9ff2956c33f9d69"
+    },
+    {
+      "path": "experiments/integrated-main1000-state-other.log",
+      "bytes": 143,
+      "sha256": "f3e8e4ec72d6c5a62466d3c120e2103a35edb2b4e3a24ad65fd26c27b19d0cd4"
+    },
+    {
+      "path": "json-experiment/observer-recursion-tests-v2.log",
+      "bytes": 119,
+      "sha256": "bfde556ebe9d81581996c5b0a62d2db53562cd4e9351dddea4124155c95f626d"
+    }
+  ],
+  "recorded_utc": "2026-10-31T21:57:23.434184+00:00"
+}

@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "status": "failed_checkpoint_in_progress",
+  "recorded_utc": "2026-10-31T21:24:55.743445+00:00",
+  "head": "860b6c503a4261a6c4dd86b803f4cf270ce95c74",
+  "base": "06e3ad5d08514ba31fb231fe4636a962fe6578e3",
+  "synthetic_merge": "b65d30fac6648352faa90d1ed4b8b48198d925a3",
+  "tree": "98d8ee9dea118a2cf3276defa3c4f6ccec126c78",
+  "head_and_merge_tree_equal": true,
+  "observed_failure": {
+    "workflow_run_id": 41242915218,
+    "job_id": 124660322571,
+    "job": "hosted compiler coverage (ffi, ir)",
+    "url": "https://github.com/den-run-ai/pystachy/actions/runs/41242915218/job/124660322571",
+    "reason": "tests/ir/raise_cold.attrs still expects alwaysinline on check/enter; emitted eligible helper attributes changed intentionally",
+    "ir_fixtures": 81,
+    "ir_fixture_failures": 1,
+    "compilation_failures": 0,
+    "ffi_passed": 145,
+    "ffi_failed": 0,
+    "ffi_documented_skip": "py_coerce: hosted CPython locale coercion reaches the program",
+    "log": "logs/failure-124660322571.txt",
+    "log_sha256": "1402c26affac9f22943a81c65dfa4de674376686edd201321c59622a0ed95d97"
+  },
+  "limitations": [
+    "Other workflows were still running when this failure was captured.",
+    "This checkpoint is not a successful CI proof and cannot be substituted for the corrected final head."
+  ]
+}

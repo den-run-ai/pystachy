@@ -1,0 +1,1701 @@
+{
+  "schema": 2,
+  "status": "complete",
+  "phase": "complete",
+  "revisions": {
+    "base": "06e3ad5d08514ba31fb231fe4636a962fe6578e3",
+    "head": "3c21de737512217db7739705f0786b28140880ab"
+  },
+  "bootstrap": {
+    "base": {
+      "command": [
+        "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3",
+        "/home/runner/work/pystachy/pystachy/base/pystachy.py",
+        "build",
+        "/home/runner/work/pystachy/pystachy/base/pystachy.py",
+        "-o",
+        "/tmp/pystachy-perf-_ssrl1pz/base/compiler"
+      ],
+      "wall_s": 100.104613112,
+      "stdout": "",
+      "stderr": "",
+      "returncode": 0
+    },
+    "head": {
+      "command": [
+        "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3",
+        "/home/runner/work/pystachy/pystachy/head/pystachy.py",
+        "build",
+        "/home/runner/work/pystachy/pystachy/head/pystachy.py",
+        "-o",
+        "/tmp/pystachy-perf-_ssrl1pz/head/compiler"
+      ],
+      "wall_s": 101.67401806999999,
+      "stdout": "",
+      "stderr": "",
+      "returncode": 0
+    }
+  },
+  "results": [
+    {
+      "name": "autograd",
+      "source": "bench/smoke/ml.py",
+      "arguments": [
+        "autograd",
+        "40000"
+      ],
+      "source_sha256": "e8814f71feb22de983f5e2c92854e9e7a50737acfddd8b17db7f758f825be946",
+      "loop_clock": "perf_counter",
+      "output": "autograd 35638368880\n",
+      "samples": {
+        "base": {
+          "build_s": [
+            1.0132189699999685,
+            1.0074760929999798,
+            1.0042680019999466
+          ],
+          "jit_process_s": [
+            0.12341205299998137,
+            0.12165185499998188,
+            0.12188906500000485
+          ],
+          "jit_loop_s": [
+            0.03486815700000534,
+            0.03460601500000848,
+            0.034524965000002794
+          ],
+          "aot_process_s": [
+            0.03886391599996841,
+            0.037720945999978994,
+            0.03779852000002393
+          ],
+          "aot_loop_s": [
+            0.033686077000027126,
+            0.032943180000017946,
+            0.03307453400003624
+          ]
+        },
+        "head": {
+          "build_s": [
+            1.03542795300001,
+            1.0292259880000074,
+            1.0317792170000075
+          ],
+          "jit_process_s": [
+            0.13822432599999956,
+            0.1350802540000018,
+            0.13527796500000022
+          ],
+          "jit_loop_s": [
+            0.035649142000011125,
+            0.03560776500000884,
+            0.035226822000026914
+          ],
+          "aot_process_s": [
+            0.03868473200003564,
+            0.03863217499997518,
+            0.038571168999965266
+          ],
+          "aot_loop_s": [
+            0.033944437999991806,
+            0.03389952500003801,
+            0.033898828999952
+          ]
+        },
+        "cpython": [
+          {
+            "command": [
+              "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3",
+              "/home/runner/work/pystachy/pystachy/head/bench/smoke/ml.py",
+              "autograd",
+              "40000"
+            ],
+            "wall_s": 0.3548237589999985,
+            "stdout": "autograd 35638368880\n",
+            "stderr": "seconds 0.3374842709999939\n",
+            "returncode": 0,
+            "cpu_s": 0.35321000000000646,
+            "loop_s": 0.3374842709999939
+          },
+          {
+            "command": [
+              "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3",
+              "/home/runner/work/pystachy/pystachy/head/bench/smoke/ml.py",
+              "autograd",
+              "40000"
+            ],
+            "wall_s": 0.3582032600000389,
+            "stdout": "autograd 35638368880\n",
+            "stderr": "seconds 0.3413449079999964\n",
+            "returncode": 0,
+            "cpu_s": 0.356620999999989,
+            "loop_s": 0.3413449079999964
+          },
+          {
+            "command": [
+              "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3",
+              "/home/runner/work/pystachy/pystachy/head/bench/smoke/ml.py",
+              "autograd",
+              "40000"
+            ],
+            "wall_s": 0.3613015280000127,
+            "stdout": "autograd 35638368880\n",
+            "stderr": "seconds 0.3443479100000104\n",
+            "returncode": 0,
+            "cpu_s": 0.35970900000001116,
+            "loop_s": 0.3443479100000104
+          }
+        ]
+      },
+      "confirmation": null,
+      "comparison": {
+        "build_s": {
+          "base_s": 1.0074760929999798,
+          "head_s": 1.0317792170000075,
+          "ratio": 1.0241227798544181,
+          "candidate": false,
+          "separated": true,
+          "status": "ok",
+          "confirmation": null
+        },
+        "jit_process_s": {
+          "base_s": 0.12188906500000485,
+          "head_s": 0.13527796500000022,
+          "ratio": 1.1098449643534047,
+          "candidate": false,
+          "separated": true,
+          "status": "ok",
+          "confirmation": null
+        },
+        "jit_loop_s": {
+          "base_s": 0.03460601500000848,
+          "head_s": 0.03560776500000884,
+          "ratio": 1.0289472798298247,
+          "candidate": false,
+          "separated": true,
+          "status": "ok",
+          "confirmation": null
+        },
+        "aot_process_s": {
+          "base_s": 0.03779852000002393,
+          "head_s": 0.03863217499997518,
+          "ratio": 1.022055228616113,
+          "candidate": false,
+          "separated": false,
+          "status": "ok",
+          "confirmation": null
+        },
+        "aot_loop_s": {
+          "base_s": 0.03307453400003624,
+          "head_s": 0.03389952500003801,
+          "ratio": 1.0249433899809706,
+          "candidate": false,
+          "separated": true,
+          "status": "ok",
+          "confirmation": null
+        }
+      }
+    },
+    {
+      "name": "numeric",
+      "source": "bench/smoke/ml.py",
+      "arguments": [
+        "numeric",
+        "20000"
+      ],
+      "source_sha256": "e8814f71feb22de983f5e2c92854e9e7a50737acfddd8b17db7f758f825be946",
+      "loop_clock": "perf_counter",
+      "output": "numeric 249692928587\n",
+      "samples": {
+        "base": {
+          "jit_process_s": [
+            0.1638889489999542,
+            0.1616804610000031,
+            0.16357672100002674
+          ],
+          "jit_loop_s": [
+            0.07505336799999895,
+            0.07444927900002085,
+            0.07475577899998598
+          ],
+          "aot_process_s": [
+            0.05030495699998028,
+            0.05016820899999175,
+            0.0502643570000032
+          ],
+          "aot_loop_s": [
+            0.04572245499997507,
+            0.045544441999993523,
+            0.04554063500000893
+          ]
+        },
+        "head": {
+          "jit_process_s": [
+            0.17147865000004003,
+            0.17147689899996976,
+            0.17142420900000843
+          ],
+          "jit_loop_s": [
+            0.07221749799998634,
+            0.07166287199999033,
+            0.0717035380000084
+          ],
+          "aot_process_s": [
+            0.047079951999990044,
+            0.04673276299996587,
+            0.04696831299997939
+          ],
+          "aot_loop_s": [
+            0.04245923799999218,
+            0.0421508940000308,
+            0.04243126600005098
+          ]
+        },
+        "cpython": [
+          {
+            "command": [
+              "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3",
+              "/home/runner/work/pystachy/pystachy/head/bench/smoke/ml.py",
+              "numeric",
+              "20000"
+            ],
+            "wall_s": 1.0337999399999944,
+            "stdout": "numeric 249692928587\n",
+            "stderr": "seconds 1.0165513829999782\n",
+            "returncode": 0,
+            "cpu_s": 1.03208200000002,
+            "loop_s": 1.0165513829999782
+          },
+          {
+            "command": [
+              "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3",
+              "/home/runner/work/pystachy/pystachy/head/bench/smoke/ml.py",
+              "numeric",
+              "20000"
+            ],
+            "wall_s": 1.032192847000033,
+            "stdout": "numeric 249692928587\n",
+            "stderr": "seconds 1.015212670999972\n",
+            "returncode": 0,
+            "cpu_s": 1.0306180000000151,
+            "loop_s": 1.015212670999972
+          },
+          {
+            "command": [
+              "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3",
+              "/home/runner/work/pystachy/pystachy/head/bench/smoke/ml.py",
+              "numeric",
+              "20000"
+            ],
+            "wall_s": 1.0402939749999973,
+            "stdout": "numeric 249692928587\n",
+            "stderr": "seconds 1.0230854210000189\n",
+            "returncode": 0,
+            "cpu_s": 1.0386139999999933,
+            "loop_s": 1.0230854210000189
+          }
+        ]
+      },
+      "confirmation": null,
+      "comparison": {
+        "jit_process_s": {
+          "base_s": 0.16357672100002674,
+          "head_s": 0.17147689899996976,
+          "ratio": 1.0482964687862997,
+          "candidate": false,
+          "separated": true,
+          "status": "ok",
+          "confirmation": null
+        },
+        "jit_loop_s": {
+          "base_s": 0.07475577899998598,
+          "head_s": 0.0717035380000084,
+          "ratio": 0.9591705010527928,
+          "candidate": false,
+          "separated": false,
+          "status": "ok",
+          "confirmation": null
+        },
+        "aot_process_s": {
+          "base_s": 0.0502643570000032,
+          "head_s": 0.04696831299997939,
+          "ratio": 0.9344258198702591,
+          "candidate": false,
+          "separated": false,
+          "status": "ok",
+          "confirmation": null
+        },
+        "aot_loop_s": {
+          "base_s": 0.045544441999993523,
+          "head_s": 0.04243126600005098,
+          "ratio": 0.9316453147028789,
+          "candidate": false,
+          "separated": false,
+          "status": "ok",
+          "confirmation": null
+        }
+      }
+    },
+    {
+      "name": "fnmatch",
+      "source": "bench/smoke/text.py",
+      "arguments": [
+        "fnmatch",
+        "1000"
+      ],
+      "source_sha256": "abcf4ba78bd62af42207230106b96f63b1a64758c1aa2831a49d0ba7781e6302",
+      "loop_clock": "perf_counter",
+      "output": "6000\n",
+      "samples": {
+        "base": {
+          "build_s": [
+            7.608711392999965,
+            7.63556421100003,
+            7.596117433000018
+          ],
+          "jit_process_s": [
+            2.0983082760000116,
+            2.0894068179999863,
+            2.090668486000027
+          ],
+          "jit_loop_s": [
+            0.03900227199994788,
+            0.03928632200000948,
+            0.037395845000048666
+          ],
+          "aot_process_s": [
+            0.03814033899999458,
+            0.03880154000000857,
+            0.03809720100002778
+          ],
+          "aot_loop_s": [
+            0.03234410900000739,
+            0.03293968799999902,
+            0.032187007999993966
+          ]
+        },
+        "head": {
+          "build_s": [
+            8.534841778999976,
+            8.348839843000007,
+            8.325020061000032
+          ],
+          "jit_process_s": [
+            2.3496996890000332,
+            2.3174529209999832,
+            2.317113586000005
+          ],
+          "jit_loop_s": [
+            0.03954015299996172,
+            0.03997367299996313,
+            0.04048923999999943
+          ],
+          "aot_process_s": [
+            0.04068220999999994,
+            0.03968300200000385,
+            0.03906058100000109
+          ],
+          "aot_loop_s": [
+            0.034043872000040665,
+            0.03404993599997397,
+            0.03316730100004861
+          ]
+        },
+        "cpython": [
+          {
+            "command": [
+              "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3",
+              "/home/runner/work/pystachy/pystachy/head/bench/smoke/text.py",
+              "fnmatch",
+              "1000"
+            ],
+            "wall_s": 0.10461722400003737,
+            "stdout": "6000\n",
+            "stderr": "seconds 0.07538523900001337\n",
+            "returncode": 0,
+            "cpu_s": 0.10306099999998697,
+            "loop_s": 0.07538523900001337
+          },
+          {
+            "command": [
+              "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3",
+              "/home/runner/work/pystachy/pystachy/head/bench/smoke/text.py",
+              "fnmatch",
+              "1000"
+            ],
+            "wall_s": 0.10478951400000369,
+            "stdout": "6000\n",
+            "stderr": "seconds 0.07583079799996995\n",
+            "returncode": 0,
+            "cpu_s": 0.10328200000000987,
+            "loop_s": 0.07583079799996995
+          },
+          {
+            "command": [
+              "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3",
+              "/home/runner/work/pystachy/pystachy/head/bench/smoke/text.py",
+              "fnmatch",
+              "1000"
+            ],
+            "wall_s": 0.1050494609999646,
+            "stdout": "6000\n",
+            "stderr": "seconds 0.07600749900001347\n",
+            "returncode": 0,
+            "cpu_s": 0.10350600000001808,
+            "loop_s": 0.07600749900001347
+          }
+        ]
+      },
+      "confirmation": null,
+      "comparison": {
+        "build_s": {
+          "base_s": 7.608711392999965,
+          "head_s": 8.348839843000007,
+          "ratio": 1.0972738236176185,
+          "candidate": false,
+          "separated": true,
+          "status": "ok",
+          "confirmation": null
+        },
+        "jit_process_s": {
+          "base_s": 2.090668486000027,
+          "head_s": 2.3174529209999832,
+          "ratio": 1.1084746034670718,
+          "candidate": false,
+          "separated": true,
+          "status": "ok",
+          "confirmation": null
+        },
+        "jit_loop_s": {
+          "base_s": 0.03900227199994788,
+          "head_s": 0.03997367299996313,
+          "ratio": 1.024906266999434,
+          "candidate": false,
+          "separated": true,
+          "status": "ok",
+          "confirmation": null
+        },
+        "aot_process_s": {
+          "base_s": 0.03814033899999458,
+          "head_s": 0.03968300200000385,
+          "ratio": 1.0404470185755164,
+          "candidate": false,
+          "separated": true,
+          "status": "ok",
+          "confirmation": null
+        },
+        "aot_loop_s": {
+          "base_s": 0.03234410900000739,
+          "head_s": 0.034043872000040665,
+          "ratio": 1.0525524756311229,
+          "candidate": false,
+          "separated": true,
+          "status": "ok",
+          "confirmation": null
+        }
+      }
+    },
+    {
+      "name": "json",
+      "source": "bench/smoke/text.py",
+      "arguments": [
+        "json",
+        "6000"
+      ],
+      "source_sha256": "abcf4ba78bd62af42207230106b96f63b1a64758c1aa2831a49d0ba7781e6302",
+      "loop_clock": "perf_counter",
+      "output": "1932000\n",
+      "samples": {
+        "base": {
+          "jit_process_s": [
+            2.070726366000031,
+            2.103086911000048,
+            2.0748208599999884
+          ],
+          "jit_loop_s": [
+            0.03546755299998949,
+            0.0349771799999985,
+            0.036030170000003636
+          ],
+          "aot_process_s": [
+            0.038276342000017394,
+            0.03816291999999066,
+            0.038729876000047625
+          ],
+          "aot_loop_s": [
+            0.032972990000018854,
+            0.0328378579999935,
+            0.033096870000008494
+          ]
+        },
+        "head": {
+          "jit_process_s": [
+            2.3279860970000072,
+            2.3438370450000434,
+            2.319227103000003
+          ],
+          "jit_loop_s": [
+            0.037416632000031314,
+            0.03783287699997118,
+            0.038021968000009565
+          ],
+          "aot_process_s": [
+            0.03883048299996972,
+            0.03904931099998521,
+            0.03888791899998978
+          ],
+          "aot_loop_s": [
+            0.03357090200000812,
+            0.03373517800002901,
+            0.03340689700002031
+          ]
+        },
+        "cpython": [
+          {
+            "command": [
+              "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3",
+              "/home/runner/work/pystachy/pystachy/head/bench/smoke/text.py",
+              "json",
+              "6000"
+            ],
+            "wall_s": 0.10746993599997268,
+            "stdout": "1932000\n",
+            "stderr": "seconds 0.07818344899999374\n",
+            "returncode": 0,
+            "cpu_s": 0.10592799999996672,
+            "loop_s": 0.07818344899999374
+          },
+          {
+            "command": [
+              "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3",
+              "/home/runner/work/pystachy/pystachy/head/bench/smoke/text.py",
+              "json",
+              "6000"
+            ],
+            "wall_s": 0.10769267099999524,
+            "stdout": "1932000\n",
+            "stderr": "seconds 0.07848974899997074\n",
+            "returncode": 0,
+            "cpu_s": 0.10619199999997786,
+            "loop_s": 0.07848974899997074
+          },
+          {
+            "command": [
+              "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3",
+              "/home/runner/work/pystachy/pystachy/head/bench/smoke/text.py",
+              "json",
+              "6000"
+            ],
+            "wall_s": 0.10788620100004209,
+            "stdout": "1932000\n",
+            "stderr": "seconds 0.07873966300002166\n",
+            "returncode": 0,
+            "cpu_s": 0.1063570000000249,
+            "loop_s": 0.07873966300002166
+          }
+        ]
+      },
+      "confirmation": null,
+      "comparison": {
+        "jit_process_s": {
+          "base_s": 2.0748208599999884,
+          "head_s": 2.3279860970000072,
+          "ratio": 1.1220178772446023,
+          "candidate": false,
+          "separated": true,
+          "status": "ok",
+          "confirmation": null
+        },
+        "jit_loop_s": {
+          "base_s": 0.03546755299998949,
+          "head_s": 0.03783287699997118,
+          "ratio": 1.066689799546712,
+          "candidate": false,
+          "separated": true,
+          "status": "ok",
+          "confirmation": null
+        },
+        "aot_process_s": {
+          "base_s": 0.038276342000017394,
+          "head_s": 0.03888791899998978,
+          "ratio": 1.0159779374939253,
+          "candidate": false,
+          "separated": true,
+          "status": "ok",
+          "confirmation": null
+        },
+        "aot_loop_s": {
+          "base_s": 0.032972990000018854,
+          "head_s": 0.03357090200000812,
+          "ratio": 1.0181333873570133,
+          "candidate": false,
+          "separated": true,
+          "status": "ok",
+          "confirmation": null
+        }
+      }
+    },
+    {
+      "name": "repair_scan",
+      "source": "bench/smoke/text.py",
+      "arguments": [
+        "repair_scan",
+        "400"
+      ],
+      "source_sha256": "abcf4ba78bd62af42207230106b96f63b1a64758c1aa2831a49d0ba7781e6302",
+      "loop_clock": "perf_counter",
+      "output": "1652800\n",
+      "samples": {
+        "base": {
+          "jit_process_s": [
+            2.1264771360000054,
+            2.1286816900000076,
+            2.134450568000034
+          ],
+          "jit_loop_s": [
+            0.09043279000002258,
+            0.09050610700001016,
+            0.09112371599997005
+          ],
+          "aot_process_s": [
+            0.10081215200000315,
+            0.09978378599998905,
+            0.10111512200001016
+          ],
+          "aot_loop_s": [
+            0.09524768399995764,
+            0.09376384099999768,
+            0.09509352499998158
+          ]
+        },
+        "head": {
+          "jit_process_s": [
+            2.3808157539999684,
+            2.384137898000006,
+            2.3828829600000176
+          ],
+          "jit_loop_s": [
+            0.08983557800002018,
+            0.09226910800003907,
+            0.09058530299995482
+          ],
+          "aot_process_s": [
+            0.09885468700002775,
+            0.10169210799995199,
+            0.09840279200000168
+          ],
+          "aot_loop_s": [
+            0.09283643399999164,
+            0.09574904599998035,
+            0.09257347300001584
+          ]
+        },
+        "cpython": [
+          {
+            "command": [
+              "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3",
+              "/home/runner/work/pystachy/pystachy/head/bench/smoke/text.py",
+              "repair_scan",
+              "400"
+            ],
+            "wall_s": 0.3461392579999938,
+            "stdout": "1652800\n",
+            "stderr": "seconds 0.3169221109999967\n",
+            "returncode": 0,
+            "cpu_s": 0.34457200000002164,
+            "loop_s": 0.3169221109999967
+          },
+          {
+            "command": [
+              "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3",
+              "/home/runner/work/pystachy/pystachy/head/bench/smoke/text.py",
+              "repair_scan",
+              "400"
+            ],
+            "wall_s": 0.34602365900002496,
+            "stdout": "1652800\n",
+            "stderr": "seconds 0.31679388899999594\n",
+            "returncode": 0,
+            "cpu_s": 0.3444939999999983,
+            "loop_s": 0.31679388899999594
+          },
+          {
+            "command": [
+              "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3",
+              "/home/runner/work/pystachy/pystachy/head/bench/smoke/text.py",
+              "repair_scan",
+              "400"
+            ],
+            "wall_s": 0.3455272250000121,
+            "stdout": "1652800\n",
+            "stderr": "seconds 0.3150645700000041\n",
+            "returncode": 0,
+            "cpu_s": 0.34393000000000207,
+            "loop_s": 0.3150645700000041
+          }
+        ]
+      },
+      "confirmation": null,
+      "comparison": {
+        "jit_process_s": {
+          "base_s": 2.1286816900000076,
+          "head_s": 2.3828829600000176,
+          "ratio": 1.1194172295436098,
+          "candidate": false,
+          "separated": true,
+          "status": "ok",
+          "confirmation": null
+        },
+        "jit_loop_s": {
+          "base_s": 0.09050610700001016,
+          "head_s": 0.09058530299995482,
+          "ratio": 1.000875034874107,
+          "candidate": false,
+          "separated": false,
+          "status": "ok",
+          "confirmation": null
+        },
+        "aot_process_s": {
+          "base_s": 0.10081215200000315,
+          "head_s": 0.09885468700002775,
+          "ratio": 0.9805830451870987,
+          "candidate": false,
+          "separated": false,
+          "status": "ok",
+          "confirmation": null
+        },
+        "aot_loop_s": {
+          "base_s": 0.09509352499998158,
+          "head_s": 0.09283643399999164,
+          "ratio": 0.9762645143295469,
+          "candidate": false,
+          "separated": false,
+          "status": "ok",
+          "confirmation": null
+        }
+      }
+    },
+    {
+      "name": "copy_int",
+      "source": "bench/smoke/identity.py",
+      "arguments": [
+        "int",
+        "6000000",
+        "123"
+      ],
+      "source_sha256": "7693416300598013128588e740a6d8faf0a8de1dbc7b28db49d262f565320ec0",
+      "loop_clock": "perf_counter",
+      "output": "int 2999726715025\n",
+      "samples": {
+        "base": {
+          "build_s": [
+            0.860226560000001,
+            0.8597714069999824,
+            0.8645094870000207
+          ],
+          "jit_process_s": [
+            0.10367689899999277,
+            0.10408810699999549,
+            0.1048437540000009
+          ],
+          "jit_loop_s": [
+            0.03361483599996973,
+            0.033650047999969956,
+            0.03364753400001064
+          ],
+          "aot_process_s": [
+            0.03794814100001531,
+            0.03810770600000524,
+            0.03812753300002214
+          ],
+          "aot_loop_s": [
+            0.03569766200001823,
+            0.035765014999981304,
+            0.0357451689999948
+          ]
+        },
+        "head": {
+          "build_s": [
+            0.8686565900000005,
+            0.8688890089999859,
+            0.869368742000006
+          ],
+          "jit_process_s": [
+            0.10775074200000745,
+            0.10889629799999057,
+            0.10852440399997931
+          ],
+          "jit_loop_s": [
+            0.03361828900000319,
+            0.033631903999946644,
+            0.03365165100001377
+          ],
+          "aot_process_s": [
+            0.037953469000001405,
+            0.03805355600002258,
+            0.03800692900000513
+          ],
+          "aot_loop_s": [
+            0.03568301200004953,
+            0.035745620000000145,
+            0.03563365100001192
+          ]
+        },
+        "cpython": [
+          {
+            "command": [
+              "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3",
+              "/home/runner/work/pystachy/pystachy/head/bench/smoke/identity.py",
+              "int",
+              "6000000",
+              "123"
+            ],
+            "wall_s": 0.7875761699999657,
+            "stdout": "int 2999726715025\n",
+            "stderr": "seconds 0.772362362000024\n",
+            "returncode": 0,
+            "cpu_s": 0.7860810000000313,
+            "loop_s": 0.772362362000024
+          },
+          {
+            "command": [
+              "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3",
+              "/home/runner/work/pystachy/pystachy/head/bench/smoke/identity.py",
+              "int",
+              "6000000",
+              "123"
+            ],
+            "wall_s": 0.8080408019999936,
+            "stdout": "int 2999726715025\n",
+            "stderr": "seconds 0.7924140540000053\n",
+            "returncode": 0,
+            "cpu_s": 0.8064970000000109,
+            "loop_s": 0.7924140540000053
+          },
+          {
+            "command": [
+              "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3",
+              "/home/runner/work/pystachy/pystachy/head/bench/smoke/identity.py",
+              "int",
+              "6000000",
+              "123"
+            ],
+            "wall_s": 0.8040304770000262,
+            "stdout": "int 2999726715025\n",
+            "stderr": "seconds 0.7886776689999806\n",
+            "returncode": 0,
+            "cpu_s": 0.8025150000000174,
+            "loop_s": 0.7886776689999806
+          }
+        ]
+      },
+      "confirmation": null,
+      "comparison": {
+        "build_s": {
+          "base_s": 0.860226560000001,
+          "head_s": 0.8688890089999859,
+          "ratio": 1.0100699622666671,
+          "candidate": false,
+          "separated": true,
+          "status": "ok",
+          "confirmation": null
+        },
+        "jit_process_s": {
+          "base_s": 0.10408810699999549,
+          "head_s": 0.10852440399997931,
+          "ratio": 1.042620594492933,
+          "candidate": false,
+          "separated": true,
+          "status": "ok",
+          "confirmation": null
+        },
+        "jit_loop_s": {
+          "base_s": 0.03364753400001064,
+          "head_s": 0.033631903999946644,
+          "ratio": 0.999535478586217,
+          "candidate": false,
+          "separated": false,
+          "status": "ok",
+          "confirmation": null
+        },
+        "aot_process_s": {
+          "base_s": 0.03810770600000524,
+          "head_s": 0.03800692900000513,
+          "ratio": 0.99735546925863,
+          "candidate": false,
+          "separated": false,
+          "status": "ok",
+          "confirmation": null
+        },
+        "aot_loop_s": {
+          "base_s": 0.0357451689999948,
+          "head_s": 0.03568301200004953,
+          "ratio": 0.9982611076773681,
+          "candidate": false,
+          "separated": false,
+          "status": "ok",
+          "confirmation": null
+        }
+      }
+    },
+    {
+      "name": "copy_float",
+      "source": "bench/smoke/identity.py",
+      "arguments": [
+        "float",
+        "6000000",
+        "123"
+      ],
+      "source_sha256": "7693416300598013128588e740a6d8faf0a8de1dbc7b28db49d262f565320ec0",
+      "loop_clock": "perf_counter",
+      "output": "float 2244571611\n",
+      "samples": {
+        "base": {
+          "jit_process_s": [
+            0.11745248400001174,
+            0.11474858700000823,
+            0.12219912599999816
+          ],
+          "jit_loop_s": [
+            0.04608747999998286,
+            0.04599769100002504,
+            0.05121207700000241
+          ],
+          "aot_process_s": [
+            0.03577119600004153,
+            0.035791574000029414,
+            0.03577955200000815
+          ],
+          "aot_loop_s": [
+            0.03348660500000733,
+            0.033507091000046785,
+            0.03351056700000754
+          ]
+        },
+        "head": {
+          "jit_process_s": [
+            0.11995404099997131,
+            0.121811804999993,
+            0.11949777700004915
+          ],
+          "jit_loop_s": [
+            0.04603492199998982,
+            0.046141919999968195,
+            0.04603102400000125
+          ],
+          "aot_process_s": [
+            0.03370483099996591,
+            0.03332224700000097,
+            0.03330583700000034
+          ],
+          "aot_loop_s": [
+            0.031393608000030326,
+            0.03104671099998768,
+            0.031060847999981434
+          ]
+        },
+        "cpython": [
+          {
+            "command": [
+              "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3",
+              "/home/runner/work/pystachy/pystachy/head/bench/smoke/identity.py",
+              "float",
+              "6000000",
+              "123"
+            ],
+            "wall_s": 0.7940187109999783,
+            "stdout": "float 2244571611\n",
+            "stderr": "seconds 0.7783340639999778\n",
+            "returncode": 0,
+            "cpu_s": 0.7924579999999626,
+            "loop_s": 0.7783340639999778
+          },
+          {
+            "command": [
+              "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3",
+              "/home/runner/work/pystachy/pystachy/head/bench/smoke/identity.py",
+              "float",
+              "6000000",
+              "123"
+            ],
+            "wall_s": 0.7758004860000369,
+            "stdout": "float 2244571611\n",
+            "stderr": "seconds 0.7597800350000057\n",
+            "returncode": 0,
+            "cpu_s": 0.7742390000000139,
+            "loop_s": 0.7597800350000057
+          },
+          {
+            "command": [
+              "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3",
+              "/home/runner/work/pystachy/pystachy/head/bench/smoke/identity.py",
+              "float",
+              "6000000",
+              "123"
+            ],
+            "wall_s": 0.7845151060000148,
+            "stdout": "float 2244571611\n",
+            "stderr": "seconds 0.76899076899997\n",
+            "returncode": 0,
+            "cpu_s": 0.7829690000000173,
+            "loop_s": 0.76899076899997
+          }
+        ]
+      },
+      "confirmation": null,
+      "comparison": {
+        "jit_process_s": {
+          "base_s": 0.11745248400001174,
+          "head_s": 0.11995404099997131,
+          "ratio": 1.0212984597240133,
+          "candidate": false,
+          "separated": false,
+          "status": "ok",
+          "confirmation": null
+        },
+        "jit_loop_s": {
+          "base_s": 0.04608747999998286,
+          "head_s": 0.04603492199998982,
+          "ratio": 0.998859603519371,
+          "candidate": false,
+          "separated": false,
+          "status": "ok",
+          "confirmation": null
+        },
+        "aot_process_s": {
+          "base_s": 0.03577955200000815,
+          "head_s": 0.03332224700000097,
+          "ratio": 0.9313209679090834,
+          "candidate": false,
+          "separated": false,
+          "status": "ok",
+          "confirmation": null
+        },
+        "aot_loop_s": {
+          "base_s": 0.033507091000046785,
+          "head_s": 0.031060847999981434,
+          "ratio": 0.9269932743471543,
+          "candidate": false,
+          "separated": false,
+          "status": "ok",
+          "confirmation": null
+        }
+      }
+    },
+    {
+      "name": "global_int",
+      "source": "bench/smoke/identity.py",
+      "arguments": [
+        "global_int",
+        "6000000",
+        "123"
+      ],
+      "source_sha256": "7693416300598013128588e740a6d8faf0a8de1dbc7b28db49d262f565320ec0",
+      "loop_clock": "perf_counter",
+      "output": "global_int 2999726715025\n",
+      "samples": {
+        "base": {
+          "jit_process_s": [
+            0.11662152400003833,
+            0.11493649800002004,
+            0.1173339990000386
+          ],
+          "jit_loop_s": [
+            0.04536116700001003,
+            0.04534328300002244,
+            0.04541432599995687
+          ],
+          "aot_process_s": [
+            0.03791925400003038,
+            0.03789606200001572,
+            0.038056559999972706
+          ],
+          "aot_loop_s": [
+            0.035650079999982154,
+            0.03566909599999235,
+            0.03565451900004746
+          ]
+        },
+        "head": {
+          "jit_process_s": [
+            0.11984377200002427,
+            0.12086286800001744,
+            0.12218881600000486
+          ],
+          "jit_loop_s": [
+            0.045373759999961294,
+            0.04540340500000184,
+            0.04585671999996066
+          ],
+          "aot_process_s": [
+            0.037995366000018294,
+            0.03798055899994779,
+            0.037969689000021845
+          ],
+          "aot_loop_s": [
+            0.03574615900004119,
+            0.03568227099998467,
+            0.0356664010000145
+          ]
+        },
+        "cpython": [
+          {
+            "command": [
+              "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3",
+              "/home/runner/work/pystachy/pystachy/head/bench/smoke/identity.py",
+              "global_int",
+              "6000000",
+              "123"
+            ],
+            "wall_s": 0.8712386760000186,
+            "stdout": "global_int 2999726715025\n",
+            "stderr": "seconds 0.8557795799999894\n",
+            "returncode": 0,
+            "cpu_s": 0.8697099999999871,
+            "loop_s": 0.8557795799999894
+          },
+          {
+            "command": [
+              "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3",
+              "/home/runner/work/pystachy/pystachy/head/bench/smoke/identity.py",
+              "global_int",
+              "6000000",
+              "123"
+            ],
+            "wall_s": 0.9413070849999485,
+            "stdout": "global_int 2999726715025\n",
+            "stderr": "seconds 0.9255537309999795\n",
+            "returncode": 0,
+            "cpu_s": 0.9397379999999895,
+            "loop_s": 0.9255537309999795
+          },
+          {
+            "command": [
+              "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3",
+              "/home/runner/work/pystachy/pystachy/head/bench/smoke/identity.py",
+              "global_int",
+              "6000000",
+              "123"
+            ],
+            "wall_s": 0.868606557000021,
+            "stdout": "global_int 2999726715025\n",
+            "stderr": "seconds 0.8532020029999785\n",
+            "returncode": 0,
+            "cpu_s": 0.8670590000000225,
+            "loop_s": 0.8532020029999785
+          }
+        ]
+      },
+      "confirmation": null,
+      "comparison": {
+        "jit_process_s": {
+          "base_s": 0.11662152400003833,
+          "head_s": 0.12086286800001744,
+          "ratio": 1.036368449446585,
+          "candidate": false,
+          "separated": true,
+          "status": "ok",
+          "confirmation": null
+        },
+        "jit_loop_s": {
+          "base_s": 0.04536116700001003,
+          "head_s": 0.04540340500000184,
+          "ratio": 1.0009311488831802,
+          "candidate": false,
+          "separated": false,
+          "status": "ok",
+          "confirmation": null
+        },
+        "aot_process_s": {
+          "base_s": 0.03791925400003038,
+          "head_s": 0.03798055899994779,
+          "ratio": 1.0016167248416163,
+          "candidate": false,
+          "separated": false,
+          "status": "ok",
+          "confirmation": null
+        },
+        "aot_loop_s": {
+          "base_s": 0.03565451900004746,
+          "head_s": 0.03568227099998467,
+          "ratio": 1.0007783585563774,
+          "candidate": false,
+          "separated": false,
+          "status": "ok",
+          "confirmation": null
+        }
+      }
+    },
+    {
+      "name": "global_float",
+      "source": "bench/smoke/identity.py",
+      "arguments": [
+        "global_float",
+        "6000000",
+        "123"
+      ],
+      "source_sha256": "7693416300598013128588e740a6d8faf0a8de1dbc7b28db49d262f565320ec0",
+      "loop_clock": "perf_counter",
+      "output": "global_float 2244571611\n",
+      "samples": {
+        "base": {
+          "jit_process_s": [
+            0.11699150499998723,
+            0.1159919039999977,
+            0.11802000900001985
+          ],
+          "jit_loop_s": [
+            0.04604305699996303,
+            0.04633258700005172,
+            0.046338376999983666
+          ],
+          "aot_process_s": [
+            0.035962412000003496,
+            0.03473795299998983,
+            0.03480171199998949
+          ],
+          "aot_loop_s": [
+            0.033726119999982984,
+            0.03248124300000654,
+            0.03251992499997414
+          ]
+        },
+        "head": {
+          "jit_process_s": [
+            0.12090825500001756,
+            0.12238707799997428,
+            0.1200144919999957
+          ],
+          "jit_loop_s": [
+            0.04717945299995563,
+            0.046116091999977016,
+            0.046116062999999485
+          ],
+          "aot_process_s": [
+            0.0348413849999929,
+            0.03599646599997186,
+            0.03610879500001829
+          ],
+          "aot_loop_s": [
+            0.03249150199997075,
+            0.03373297299998512,
+            0.03377643299995725
+          ]
+        },
+        "cpython": [
+          {
+            "command": [
+              "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3",
+              "/home/runner/work/pystachy/pystachy/head/bench/smoke/identity.py",
+              "global_float",
+              "6000000",
+              "123"
+            ],
+            "wall_s": 0.8497969199999602,
+            "stdout": "global_float 2244571611\n",
+            "stderr": "seconds 0.8342164770000409\n",
+            "returncode": 0,
+            "cpu_s": 0.8482640000000146,
+            "loop_s": 0.8342164770000409
+          },
+          {
+            "command": [
+              "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3",
+              "/home/runner/work/pystachy/pystachy/head/bench/smoke/identity.py",
+              "global_float",
+              "6000000",
+              "123"
+            ],
+            "wall_s": 0.8731768109999507,
+            "stdout": "global_float 2244571611\n",
+            "stderr": "seconds 0.8576310330000183\n",
+            "returncode": 0,
+            "cpu_s": 0.8716540000000226,
+            "loop_s": 0.8576310330000183
+          },
+          {
+            "command": [
+              "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3",
+              "/home/runner/work/pystachy/pystachy/head/bench/smoke/identity.py",
+              "global_float",
+              "6000000",
+              "123"
+            ],
+            "wall_s": 0.8595928940000022,
+            "stdout": "global_float 2244571611\n",
+            "stderr": "seconds 0.8438465930000234\n",
+            "returncode": 0,
+            "cpu_s": 0.8580630000000067,
+            "loop_s": 0.8438465930000234
+          }
+        ]
+      },
+      "confirmation": null,
+      "comparison": {
+        "jit_process_s": {
+          "base_s": 0.11699150499998723,
+          "head_s": 0.12090825500001756,
+          "ratio": 1.0334789265257402,
+          "candidate": false,
+          "separated": true,
+          "status": "ok",
+          "confirmation": null
+        },
+        "jit_loop_s": {
+          "base_s": 0.04633258700005172,
+          "head_s": 0.046116091999977016,
+          "ratio": 0.9953273707752502,
+          "candidate": false,
+          "separated": false,
+          "status": "ok",
+          "confirmation": null
+        },
+        "aot_process_s": {
+          "base_s": 0.03480171199998949,
+          "head_s": 0.03599646599997186,
+          "ratio": 1.0343303225997251,
+          "candidate": false,
+          "separated": false,
+          "status": "ok",
+          "confirmation": null
+        },
+        "aot_loop_s": {
+          "base_s": 0.03251992499997414,
+          "head_s": 0.03373297299998512,
+          "ratio": 1.0373016850442291,
+          "candidate": false,
+          "separated": false,
+          "status": "ok",
+          "confirmation": null
+        }
+      }
+    },
+    {
+      "name": "graph_copy",
+      "source": "tools/dynany_bench.py",
+      "arguments": [
+        "graph-smoke",
+        "4000"
+      ],
+      "source_sha256": "a2218d739d4d2b82f59730f03fd7cb60197035b83ac6883bb85428daf86951b6",
+      "loop_clock": "process_time_ns",
+      "output": "670230\n",
+      "samples": {
+        "base": {
+          "build_s": [
+            1.9761056279999707,
+            1.9444110739999587,
+            1.9434942990000081
+          ],
+          "jit_process_s": [
+            0.21124953999998297,
+            0.21413723699998854,
+            0.20885785399997303
+          ],
+          "jit_loop_s": [
+            0.055667697,
+            0.058087788,
+            0.054996171
+          ],
+          "aot_process_s": [
+            0.07094505700001719,
+            0.07146504899998263,
+            0.07011745100004418
+          ],
+          "aot_loop_s": [
+            0.052495201,
+            0.052810518,
+            0.051848261
+          ]
+        },
+        "head": {
+          "build_s": [
+            1.9759583539999994,
+            1.9660282300000063,
+            1.970207264999999
+          ],
+          "jit_process_s": [
+            0.2250071880000064,
+            0.22499463000002606,
+            0.22702931499998158
+          ],
+          "jit_loop_s": [
+            0.055554796,
+            0.054969853,
+            0.056437294
+          ],
+          "aot_process_s": [
+            0.07143210300000646,
+            0.07084229999998115,
+            0.06968573699998615
+          ],
+          "aot_loop_s": [
+            0.053307678,
+            0.052422255,
+            0.051429849
+          ]
+        },
+        "cpython": [
+          {
+            "command": [
+              "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3",
+              "/home/runner/work/pystachy/pystachy/head/tools/dynany_bench.py",
+              "graph-smoke",
+              "4000"
+            ],
+            "wall_s": 0.4471579990000123,
+            "stdout": "670230\n",
+            "stderr": "seconds 0.369739093\n",
+            "returncode": 0,
+            "cpu_s": 0.445467000000038,
+            "loop_s": 0.369739093
+          },
+          {
+            "command": [
+              "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3",
+              "/home/runner/work/pystachy/pystachy/head/tools/dynany_bench.py",
+              "graph-smoke",
+              "4000"
+            ],
+            "wall_s": 0.439785234999988,
+            "stdout": "670230\n",
+            "stderr": "seconds 0.363669334\n",
+            "returncode": 0,
+            "cpu_s": 0.4381950000000234,
+            "loop_s": 0.363669334
+          },
+          {
+            "command": [
+              "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3",
+              "/home/runner/work/pystachy/pystachy/head/tools/dynany_bench.py",
+              "graph-smoke",
+              "4000"
+            ],
+            "wall_s": 0.4423145359999694,
+            "stdout": "670230\n",
+            "stderr": "seconds 0.365762915\n",
+            "returncode": 0,
+            "cpu_s": 0.4407340000000328,
+            "loop_s": 0.365762915
+          }
+        ]
+      },
+      "confirmation": null,
+      "comparison": {
+        "build_s": {
+          "base_s": 1.9444110739999587,
+          "head_s": 1.970207264999999,
+          "ratio": 1.01326684019906,
+          "candidate": false,
+          "separated": false,
+          "status": "ok",
+          "confirmation": null
+        },
+        "jit_process_s": {
+          "base_s": 0.21124953999998297,
+          "head_s": 0.2250071880000064,
+          "ratio": 1.0651251027577364,
+          "candidate": false,
+          "separated": true,
+          "status": "ok",
+          "confirmation": null
+        },
+        "jit_loop_s": {
+          "base_s": 0.055667697,
+          "head_s": 0.055554796,
+          "ratio": 0.9979718758618664,
+          "candidate": false,
+          "separated": false,
+          "status": "ok",
+          "confirmation": null
+        },
+        "aot_process_s": {
+          "base_s": 0.07094505700001719,
+          "head_s": 0.07084229999998115,
+          "ratio": 0.9985515974701943,
+          "candidate": false,
+          "separated": false,
+          "status": "ok",
+          "confirmation": null
+        },
+        "aot_loop_s": {
+          "base_s": 0.052495201,
+          "head_s": 0.052422255,
+          "ratio": 0.9986104253605963,
+          "candidate": false,
+          "separated": false,
+          "status": "ok",
+          "confirmation": null
+        }
+      }
+    },
+    {
+      "name": "regex_effbot",
+      "source": "bench/pyperformance/regex_effbot.py",
+      "arguments": [
+        "20"
+      ],
+      "source_sha256": "91ead8e732223797be1ed75d57d781ad6682ec25fc9464e41f336e73c842ef5a",
+      "loop_clock": "perf_counter",
+      "output": "regex_effbot 20 636833\n",
+      "samples": {
+        "base": {
+          "build_s": [
+            5.805977146000032,
+            5.8149313870000015,
+            5.773889423000014
+          ],
+          "jit_process_s": [
+            1.7258279349999839,
+            1.733144072000016,
+            1.7322076869999705
+          ],
+          "jit_loop_s": [
+            0.29725478599999633,
+            0.29367695599995614,
+            0.29467922999998564
+          ],
+          "aot_process_s": [
+            0.23530893200000946,
+            0.2375579259999654,
+            0.23434493900003872
+          ],
+          "aot_loop_s": [
+            0.22794552599998497,
+            0.23021888499999932,
+            0.22705400799998188
+          ]
+        },
+        "head": {
+          "build_s": [
+            6.2284859730000335,
+            6.237842095999952,
+            6.214205096000001
+          ],
+          "jit_process_s": [
+            1.9553677880000464,
+            1.9414352779999717,
+            1.9646778189999168
+          ],
+          "jit_loop_s": [
+            0.3095790190000116,
+            0.3078119290000245,
+            0.30861291799999435
+          ],
+          "aot_process_s": [
+            0.24986726399998815,
+            0.2517648389999749,
+            0.2489666159999615
+          ],
+          "aot_loop_s": [
+            0.24252049500000794,
+            0.24388851899999509,
+            0.2417694670000401
+          ]
+        },
+        "cpython": [
+          {
+            "command": [
+              "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3",
+              "/home/runner/work/pystachy/pystachy/head/bench/pyperformance/regex_effbot.py",
+              "20"
+            ],
+            "wall_s": 0.6979949700000248,
+            "stdout": "regex_effbot 20 636833\n",
+            "stderr": "seconds 0.6696335219999696\n",
+            "returncode": 0,
+            "cpu_s": 0.6963879999999989,
+            "loop_s": 0.6696335219999696
+          },
+          {
+            "command": [
+              "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3",
+              "/home/runner/work/pystachy/pystachy/head/bench/pyperformance/regex_effbot.py",
+              "20"
+            ],
+            "wall_s": 0.6973727060000101,
+            "stdout": "regex_effbot 20 636833\n",
+            "stderr": "seconds 0.6686469020000345\n",
+            "returncode": 0,
+            "cpu_s": 0.6956630000000015,
+            "loop_s": 0.6686469020000345
+          },
+          {
+            "command": [
+              "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3",
+              "/home/runner/work/pystachy/pystachy/head/bench/pyperformance/regex_effbot.py",
+              "20"
+            ],
+            "wall_s": 0.6923455570000101,
+            "stdout": "regex_effbot 20 636833\n",
+            "stderr": "seconds 0.6638845690000039\n",
+            "returncode": 0,
+            "cpu_s": 0.6905940000000186,
+            "loop_s": 0.6638845690000039
+          }
+        ]
+      },
+      "confirmation": null,
+      "comparison": {
+        "build_s": {
+          "base_s": 5.805977146000032,
+          "head_s": 6.2284859730000335,
+          "ratio": 1.0727713555143916,
+          "candidate": false,
+          "separated": true,
+          "status": "ok",
+          "confirmation": null
+        },
+        "jit_process_s": {
+          "base_s": 1.7322076869999705,
+          "head_s": 1.9553677880000464,
+          "ratio": 1.1288298756984327,
+          "candidate": false,
+          "separated": true,
+          "status": "ok",
+          "confirmation": null
+        },
+        "jit_loop_s": {
+          "base_s": 0.29467922999998564,
+          "head_s": 0.30861291799999435,
+          "ratio": 1.047284255493709,
+          "candidate": false,
+          "separated": true,
+          "status": "ok",
+          "confirmation": null
+        },
+        "aot_process_s": {
+          "base_s": 0.23530893200000946,
+          "head_s": 0.24986726399998815,
+          "ratio": 1.0618690156648116,
+          "candidate": false,
+          "separated": true,
+          "status": "ok",
+          "confirmation": null
+        },
+        "aot_loop_s": {
+          "base_s": 0.22794552599998497,
+          "head_s": 0.24252049500000794,
+          "ratio": 1.0639405793822159,
+          "candidate": false,
+          "separated": true,
+          "status": "ok",
+          "confirmation": null
+        }
+      }
+    }
+  ],
+  "python": "3.13.16 (main, Oct  1 2026, 02:37:54) [GCC 13.3.0]",
+  "platform": "Linux-7.0.0-1017-azure-x86_64-with-glibc2.39",
+  "runner_sha256": "f37dff110059f0a5a55817d083df337c017f89306f66b365e1720b3e0da0f3fd",
+  "cpu": "\t: AMD EPYC 7763 64-Core Processor",
+  "affinity": [
+    0
+  ],
+  "load_average": [
+    0.63623046875,
+    0.171875,
+    0.05859375
+  ],
+  "clang": "Ubuntu clang version 18.1.3 (1ubuntu1)\nTarget: x86_64-pc-linux-gnu\nThread model: posix\nInstalledDir: /usr/lib/llvm-18/bin\n"
+}

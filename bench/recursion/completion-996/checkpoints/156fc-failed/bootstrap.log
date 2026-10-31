@@ -1,0 +1,4 @@
+mkdir -p build
+/workspace/scratch/e858f72517b9/toolchain/venv/bin/python pystachy.py build pystachy.py -o build/pystachy1
+src/pystachy_compiler/lowering.py:297: error: expected list[int], got str (compiling src.pystachy_compiler.lowering.gen_lower_ins(src.pystachy_compiler.gen.Gen, src.pystachy_compiler.ir.IFn, src.pystachy_compiler.ir.Ins) for the call at src/pystachy_compiler/gen.py:3418)
+make: *** [Makefile:9: pystachy] Error 1

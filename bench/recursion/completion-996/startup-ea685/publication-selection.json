@@ -1,0 +1,162 @@
+{
+  "schema": 2,
+  "status": "final curated selection",
+  "destination_prefix": "startup-ea685/",
+  "layout": "Preserve each relative_path beneath destination_prefix for review. Read reproduction-ea685-audit.txt first for original execution layout and required raw-archive dependencies; the review selection is not a standalone relocated execution environment.",
+  "files": [
+    {
+      "path": "/workspace/scratch/a83500db0e17/final-startup/results-ea685/report.json",
+      "relative_path": "results-ea685/report.json",
+      "bytes": 283590,
+      "sha256": "c9b6a8a134136a507978d2a275edca20f2a7ff2d78102282231bd7b238d7a470",
+      "role": "authoritative evidence"
+    },
+    {
+      "path": "/workspace/scratch/a83500db0e17/final-startup/fnmatch-ea685-long/report.json",
+      "relative_path": "fnmatch-ea685-long/report.json",
+      "bytes": 159308,
+      "sha256": "2cf5615902803ce06229de9978d4fd18d5d46a55cc31ab8c0fe555edecfb93d4",
+      "role": "authoritative evidence"
+    },
+    {
+      "path": "/workspace/scratch/a83500db0e17/final-startup/inspection-ea685/report.json",
+      "relative_path": "inspection-ea685/report.json",
+      "bytes": 708666,
+      "sha256": "d68ee2b8c19ec0578f6be8f1099818045957caa9c3d61da578a16015bb0d1cd9",
+      "role": "authoritative evidence"
+    },
+    {
+      "path": "/workspace/scratch/a83500db0e17/final-startup/inspection-ea685-backend-link-v2.json",
+      "relative_path": "inspection-ea685-backend-link-v2.json",
+      "bytes": 296289,
+      "sha256": "8fae5a074dca1d7975051519e5113279814c1cc6bf193e78bbc3436d52c3c86e",
+      "role": "authoritative evidence"
+    },
+    {
+      "path": "/workspace/scratch/a83500db0e17/final-startup/measure_current_v2.py",
+      "relative_path": "measure_current_v2.py",
+      "bytes": 24104,
+      "sha256": "26da6230845593233fb3970f0d65996c52d3e743eff74c69ac9cad572c9e3f8a",
+      "role": "authoritative evidence"
+    },
+    {
+      "path": "/workspace/scratch/a83500db0e17/final-startup/backend_tool_wrapper.py",
+      "relative_path": "backend_tool_wrapper.py",
+      "bytes": 3490,
+      "sha256": "36622935de34570dab2cc2773a68af4749c4eef22fb93ba6c5e888940ea2840e",
+      "role": "authoritative evidence"
+    },
+    {
+      "path": "/workspace/scratch/a83500db0e17/final-startup/inspect_series.py",
+      "relative_path": "inspect_series.py",
+      "bytes": 18626,
+      "sha256": "9b5da39ca23d3a6d35a7cbee272e2b91146eb24d9a0567df62b98fab0f90b1c4",
+      "role": "authoritative evidence"
+    },
+    {
+      "path": "/workspace/scratch/a83500db0e17/final-startup/link_inspection_backend_v2.py",
+      "relative_path": "link_inspection_backend_v2.py",
+      "bytes": 11151,
+      "sha256": "50127bc2d5c700c1072a9fe2a9861f863edd2651993bdc1914c2c654de32ee7f",
+      "role": "authoritative evidence"
+    },
+    {
+      "path": "/workspace/scratch/a83500db0e17/final-startup/fnmatch_followup.py",
+      "relative_path": "fnmatch_followup.py",
+      "bytes": 7608,
+      "sha256": "21b3e1eae0a817c7c1e9cff8e81fa5f4fa225af1b09a59c8933b066036790504",
+      "role": "authoritative evidence"
+    },
+    {
+      "path": "/workspace/scratch/a83500db0e17/final-startup/reproduce-ea685.txt",
+      "relative_path": "reproduce-ea685.txt",
+      "bytes": 1840,
+      "sha256": "5b0506d2a680c190e8028fe5da709c6aad322e1029da372f4416e97a6512bf60",
+      "role": "authoritative evidence"
+    },
+    {
+      "path": "/workspace/scratch/a83500db0e17/final-startup/ea685-final-readme.txt",
+      "relative_path": "ea685-final-readme.txt",
+      "bytes": 5723,
+      "sha256": "ce4d14ae3549b36f3dbdc10d95628f6ae58a6a51244911b29363fa3aa11c9fd1",
+      "role": "authoritative evidence"
+    },
+    {
+      "path": "/workspace/scratch/a83500db0e17/final-startup/inspection-ea685-backend-link-v2-artifacts/target-prefix.ll",
+      "relative_path": "inspection-ea685-backend-link-v2-artifacts/target-prefix.ll",
+      "bytes": 140,
+      "sha256": "d731095dd9678c2b6e0a5d79092eda16a17c05c2ff17f27f00c2101e732c79e2",
+      "role": "authoritative evidence"
+    },
+    {
+      "path": "/workspace/scratch/a83500db0e17/final-startup/inspection-ea685-backend-link-v2-artifacts/object-hooks.ll",
+      "relative_path": "inspection-ea685-backend-link-v2-artifacts/object-hooks.ll",
+      "bytes": 299,
+      "sha256": "f6b2656c0c887b4aba87106ed0af53e7575de289a6cb4ac162fe7e411b410ef3",
+      "role": "authoritative evidence"
+    },
+    {
+      "path": "/workspace/scratch/a83500db0e17/final-startup/curate_ea685_final.py",
+      "relative_path": "curate_ea685_final.py",
+      "bytes": 6683,
+      "sha256": "62acc8861abe833fb94457ea68e872eca2cebc995a04eb60f6956f861a4ad33b",
+      "role": "authoritative evidence"
+    },
+    {
+      "path": "/workspace/scratch/a83500db0e17/final-startup/curated-ea685-final.json",
+      "relative_path": "curated-ea685-final.json",
+      "bytes": 538709,
+      "sha256": "398099465264d4531fdea45ce18a6b76e3827fab9cdce2a1d96af1002338a32b",
+      "role": "authoritative evidence"
+    },
+    {
+      "path": "/workspace/scratch/a83500db0e17/final-startup/inspection-ea685-summary.json",
+      "relative_path": "inspection-ea685-summary.json",
+      "bytes": 43147,
+      "sha256": "60f7aa46c9ac3610a6fde546489940455dbbb99c6a1cae88d05aefc56cec6314",
+      "role": "historical pre-linkage hosted summary"
+    },
+    {
+      "path": "/workspace/scratch/a83500db0e17/final-startup/inspection-ea685-backend-link.json",
+      "relative_path": "inspection-ea685-backend-link.json",
+      "bytes": 235038,
+      "sha256": "d33a3d127558e9fb47123646468596d4d9ae1987860dcb4cc15b4243262e540a",
+      "role": "superseded printed-symbol join; valid exact augmentation"
+    },
+    {
+      "path": "/workspace/scratch/a83500db0e17/final-startup/curated-ea685-startup.json",
+      "relative_path": "curated-ea685-startup.json",
+      "bytes": 366951,
+      "sha256": "a23b470e4c485e4e0b0419d3186fedf726b7ec0c5acb092c9038b2fe6bcc7529",
+      "role": "historical startup checkpoint before duration follow-up"
+    },
+    {
+      "path": "/workspace/scratch/a83500db0e17/final-startup/reproduction-ea685-audit.txt",
+      "relative_path": "reproduction-ea685-audit.txt",
+      "bytes": 9997,
+      "sha256": "b2d91bef8235668ce9cf006ffd5a1ff6a19611ad031c579149e1f509ab9be1d2",
+      "role": "authoritative reproduction audit; supersedes earlier execution instructions"
+    },
+    {
+      "path": "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+      "relative_path": "probes/text.py",
+      "bytes": 4394,
+      "sha256": "abcf4ba78bd62af42207230106b96f63b1a64758c1aa2831a49d0ba7781e6302",
+      "role": "exact committed mixed-text source input"
+    },
+    {
+      "path": "/workspace/scratch/a83500db0e17/final-startup/remaining-cost-ea685.txt",
+      "relative_path": "remaining-cost-ea685.txt",
+      "bytes": 7495,
+      "sha256": "28eacb4f05775286ef64ac6b47a00d554e91f924838d3d942813cbb4fd79ef59",
+      "role": "read-only remaining-cost assessment; performance acceptance remains explicit"
+    }
+  ],
+  "total_bytes": 2733248,
+  "raw_archive_policy": "All raw profiles/captures, compiled executables and complete expected augmented module remain locally retained with hashes and paths in the curated archive inventory.",
+  "reproduction_audit": {
+    "note": "reproduction-ea685-audit.txt",
+    "original_selection_sha256": "224131d6fa351bddbdea2f95234001bdfce3555b03da021b8f57a8c9f4b7a68f",
+    "measurement_or_controller_changed": false
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "scope": "Exact-head Lint workflow direct unittest invocations plus make check-fast and its check-repository prerequisite; no execution performed.",
+  "head": "ea68529b8a590eb8f3df7200b857e1d16becd7a3",
+  "contracts": {
+    "Makefile": "a357ac3ffb0e17e855c125573cf597699818aac7d6cde3715423e841f28b5931",
+    ".github/workflows/lint.yml": "b22bfbbece2ef02329533cb09efc5d4b6f60d10fd5c73735969afdd35f70fe55"
+  },
+  "patterns": [
+    "test_*verif*.py",
+    "test_route_bench.py",
+    "test_runtime_*.py",
+    "test_bench_pyperformance.py",
+    "test_perf_smoke.py",
+    "test_check_nanogpt.py",
+    "test_import_sweep.py",
+    "test_dynany_fuzz.py",
+    "test_dynany_calls.py",
+    "test_dynany_optin.py",
+    "test_python_int*.py",
+    "test_bench_microgpt.py",
+    "test_bench_integers.py",
+    "test_frame_fields.py",
+    "test_compiler_state*.py",
+    "test_bench_json.py",
+    "test_ir_cost_report.py",
+    "test_dco_check.py",
+    "test_coverage_report.py",
+    "test_workflow_limits.py",
+    "test_re_specialize.py",
+    "test_concurrency_contract.py",
+    "test_function_summaries.py",
+    "test_typed*.py",
+    "test_json*.py",
+    "test_numeric_identity.py",
+    "test_identity_scope.py",
+    "test_dynany_comparisons.py",
+    "test_dynany_dict_kinds.py",
+    "test_diagnostic_capture.py",
+    "test_inspect_compiler.py",
+    "test_repository_hygiene.py"
+  ],
+  "expected_invocations": 32
+}

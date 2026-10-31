@@ -1,0 +1,77 @@
+{
+  "files": {
+    "README.md": {
+      "bytes": 6723,
+      "sha256": "c31c919d122aa7676500e3b01c56133891f9d34741eeeadb41d95e1322e245dc"
+    },
+    "analysis.json": {
+      "sha256": "696ec625d1564b8faa0d3d7af4f7b07b76d400fb08641b213e08204bf689b3b6",
+      "bytes": 105641
+    },
+    "count_support.py": {
+      "sha256": "f6a81214e91abede906eab70ab3c75073adc658bc6ece97016a3742b1d73ee03",
+      "bytes": 6461
+    },
+    "counts-ea685.log": {
+      "sha256": "be2fe89cb1d6e43b281b9ca600d9629d67546b3d0376ea13eb420516e26ff6aa",
+      "bytes": 974
+    },
+    "curate_current.py": {
+      "sha256": "e269d93b2eb839b5636c93899f9f4953ea5821e8af57e5af850b4b117fad2617",
+      "bytes": 13731
+    },
+    "curated.json": {
+      "sha256": "26ff20cc64888fa98e8152cd0dbae827e88e26b33a8c69e54b4bc0cb5ce114ad",
+      "bytes": 36060
+    },
+    "measure_current.py": {
+      "sha256": "69e1212820cd5016f88def66e51b2e43ac6949b95230a57d2b4832fa97b542b8",
+      "bytes": 18250
+    },
+    "measurement.json": {
+      "sha256": "a0fffb57d1f7461663617b2fd2a350aac41635155832b90f1b6ae48e5e2ab1ae",
+      "bytes": 509834
+    },
+    "prepare-ea685.log": {
+      "sha256": "a159266cee2aad1f9c02ba3bd64e583cfa18a562ce2d1badae94f5ac2a1745b9",
+      "bytes": 165
+    },
+    "probes/json_calls.py": {
+      "sha256": "04a3b45405ef1b96360dbe941e072e5922d8dcae39d8a5bd45745000ea47c9fc",
+      "bytes": 540
+    },
+    "probes/json_file_calls.py": {
+      "sha256": "390c2742d4258e1b13d5c7449fe93e1f460917f8ac8616a121da9b6642ec83f5",
+      "bytes": 925
+    },
+    "probes/json_warmed.py": {
+      "sha256": "7a8a94314179ba0797632f7241cb9c6541d891c79ded006b444c8bfd9dfea6cf",
+      "bytes": 584
+    },
+    "probes/object_calls.py": {
+      "sha256": "4da3eeae714a896bb205a4d16e1d91d0bafad2ec58a3dee0d33cc90096de70af",
+      "bytes": 654
+    },
+    "probes/ordinary_calls.py": {
+      "sha256": "ecf346f4e65bab89564c52d864bd405641bc7689374a303b3a9f74bc8ab4df6c",
+      "bytes": 440
+    },
+    "replay_support.py": {
+      "sha256": "8cb1ba7386907b79aa0531a707c9d3434d1107b4ddf37b05349a4fbcaad6ba44",
+      "bytes": 3602
+    },
+    "reproduction-ea685-audit.txt": {
+      "bytes": 9997,
+      "sha256": "b2d91bef8235668ce9cf006ffd5a1ff6a19611ad031c579149e1f509ab9be1d2"
+    }
+  },
+  "observations": {
+    "timing_processes": 252,
+    "instruction_counts": 24
+  },
+  "reproduction_audit": {
+    "note": "reproduction-ea685-audit.txt",
+    "original_manifest_sha256": "5d508766cbe968c32d99261dacbd676827d1865f5489c4b9a6efc4ea1da30f5c",
+    "measurement_or_controller_changed": false
+  }
+}

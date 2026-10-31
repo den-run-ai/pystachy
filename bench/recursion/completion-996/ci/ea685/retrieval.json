@@ -1,0 +1,176 @@
+{
+  "artifact_download_method": "GitHub connector follows artifact API redirects; ZIP bytes downloaded and verified against stable artifact metadata. Ephemeral signed download URLs were not retained.",
+  "recorded_utc": "2026-10-31T22:16:35.707104+00:00",
+  "reused_files": [],
+  "schema": 1,
+  "sources": [
+    {
+      "file": "raw/artifacts-41245734245.json",
+      "file_sha256": "f7417e1fb877d3f5934f143cc38ad9e2905476e8f5ac6776507d09441efcd6f6",
+      "method": "GitHub connector GET; JSON formatting normalized; full collection length checked against total_count (page1/per_page100)",
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/runs/41245734245/artifacts?per_page=100"
+    },
+    {
+      "file": "raw/artifacts-41245735565.json",
+      "file_sha256": "a2b98b5fc214771f642239bfef92837aca96601f3624122c58ced04293c1acef",
+      "method": "GitHub connector GET; JSON formatting normalized; full collection length checked against total_count (page1/per_page100)",
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/runs/41245735565/artifacts?per_page=100"
+    },
+    {
+      "file": "raw/artifacts-41245735566.json",
+      "file_sha256": "f7417e1fb877d3f5934f143cc38ad9e2905476e8f5ac6776507d09441efcd6f6",
+      "method": "GitHub connector GET; JSON formatting normalized; full collection length checked against total_count (page1/per_page100)",
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/runs/41245735566/artifacts?per_page=100"
+    },
+    {
+      "file": "raw/artifacts-41245735576.json",
+      "file_sha256": "f7417e1fb877d3f5934f143cc38ad9e2905476e8f5ac6776507d09441efcd6f6",
+      "method": "GitHub connector GET; JSON formatting normalized; full collection length checked against total_count (page1/per_page100)",
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/runs/41245735576/artifacts?per_page=100"
+    },
+    {
+      "file": "raw/artifacts-41245735577.json",
+      "file_sha256": "f7417e1fb877d3f5934f143cc38ad9e2905476e8f5ac6776507d09441efcd6f6",
+      "method": "GitHub connector GET; JSON formatting normalized; full collection length checked against total_count (page1/per_page100)",
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/runs/41245735577/artifacts?per_page=100"
+    },
+    {
+      "file": "raw/artifacts-41245735579.json",
+      "file_sha256": "a9a583258f44fb8fbfc6e1e7212e0796dce3c47e96dbdd1a9fb6de2997ddb51b",
+      "method": "GitHub connector GET; JSON formatting normalized; full collection length checked against total_count (page1/per_page100)",
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/runs/41245735579/artifacts?per_page=100"
+    },
+    {
+      "file": "raw/artifacts-41245735584.json",
+      "file_sha256": "c07ebd94834cd2dc0484b95246149eaa7f7a76fbb3936855b1bec11fa66ca5fc",
+      "method": "GitHub connector GET; JSON formatting normalized; full collection length checked against total_count (page1/per_page100)",
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/runs/41245735584/artifacts?per_page=100"
+    },
+    {
+      "file": "raw/check-runs.json",
+      "file_sha256": "848156b4423649ce02d4f6997fd3fa899b27a4f8a99a1696b00d9e2dcb9f18be",
+      "method": "GitHub connector GET; JSON formatting normalized; full collection length checked against total_count (page1/per_page100)",
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/commits/ea68529b8a590eb8f3df7200b857e1d16becd7a3/check-runs?filter=latest&per_page=100"
+    },
+    {
+      "file": "raw/head-commit.json",
+      "file_sha256": "c9c35c85e7515ec09b63b2c26ef17dc5b58f878e16fd58c383f325261472676f",
+      "method": "GitHub connector GET; JSON formatting normalized; full collection length checked against total_count (page1/per_page100)",
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/git/commits/ea68529b8a590eb8f3df7200b857e1d16becd7a3"
+    },
+    {
+      "file": "raw/jobs-41245734245.json",
+      "file_sha256": "23f02a6c78b2d06b3a672bc15a15b1054977eb26044d97337581beac96c0648e",
+      "method": "GitHub connector GET; JSON formatting normalized; full collection length checked against total_count (page1/per_page100)",
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/runs/41245734245/jobs?filter=latest&per_page=100"
+    },
+    {
+      "file": "raw/jobs-41245735565.json",
+      "file_sha256": "d61600c518f6ca0113a4bc2918408f420df668a383a80d7226557902f5f8315b",
+      "method": "GitHub connector GET; JSON formatting normalized; full collection length checked against total_count (page1/per_page100)",
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/runs/41245735565/jobs?filter=latest&per_page=100"
+    },
+    {
+      "file": "raw/jobs-41245735566.json",
+      "file_sha256": "546833adb6109452e5df9bf051b614a93f047149478ddcba977a0e3650e9cb93",
+      "method": "GitHub connector GET; JSON formatting normalized; full collection length checked against total_count (page1/per_page100)",
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/runs/41245735566/jobs?filter=latest&per_page=100"
+    },
+    {
+      "file": "raw/jobs-41245735576.json",
+      "file_sha256": "39b252bc5a0af7f031006513958705e76df65cdc5eb1ce8dfae33e4383dc72d1",
+      "method": "GitHub connector GET; JSON formatting normalized; full collection length checked against total_count (page1/per_page100)",
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/runs/41245735576/jobs?filter=latest&per_page=100"
+    },
+    {
+      "file": "raw/jobs-41245735577.json",
+      "file_sha256": "7ade46efd5bc9c7ec5b3ce9767dc02ab4f49ea12563841fe1a9ebcb2ffe2f4b2",
+      "method": "GitHub connector GET; JSON formatting normalized; full collection length checked against total_count (page1/per_page100)",
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/runs/41245735577/jobs?filter=latest&per_page=100"
+    },
+    {
+      "file": "raw/jobs-41245735579.json",
+      "file_sha256": "d05863fd1fef7e6d3ee80afa8a1dc73079325669fc0cf31cd55e81a5c1722ab4",
+      "method": "GitHub connector GET; JSON formatting normalized; full collection length checked against total_count (page1/per_page100)",
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/runs/41245735579/jobs?filter=latest&per_page=100"
+    },
+    {
+      "file": "raw/jobs-41245735584.json",
+      "file_sha256": "cd76c380228946f2fd43c70b41eb40858d93764cac74b0dd0ec747ab7b5c681b",
+      "method": "GitHub connector GET; JSON formatting normalized; full collection length checked against total_count (page1/per_page100)",
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/runs/41245735584/jobs?filter=latest&per_page=100"
+    },
+    {
+      "file": "raw/merge-commit.json",
+      "file_sha256": "217cc53efcb838909868bcfd1901d471dfa95785a93dfa51774f6ec7fb9e44b0",
+      "method": "GitHub connector GET; JSON formatting normalized; full collection length checked against total_count (page1/per_page100)",
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/git/commits/f5c491ddf1627a35a715ae71167fb5c5126309de"
+    },
+    {
+      "file": "raw/runs-all-events.json",
+      "file_sha256": "0ba5d0935849bb2697fdfb941293128dc5edd8a65b524d2ff1e897bad22d77d8",
+      "method": "GitHub connector GET; JSON formatting normalized; full collection length checked against total_count (page1/per_page100)",
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/runs?head_sha=ea68529b8a590eb8f3df7200b857e1d16becd7a3&per_page=100"
+    },
+    {
+      "file": "logs/compiler-coverage-124670711543.txt",
+      "file_sha256": "60a23945f62c7b4d6ad28f1bcb8689b1c86706e68f77d6fb3886ecf5dd5e6be4",
+      "method": "GitHub connector decoded logs; UTF-8 text retained with trailing newline",
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/jobs/124670711543/logs"
+    },
+    {
+      "file": "logs/lint-124668652959.txt",
+      "file_sha256": "a630311ca3afd44fe41d27bfbfd76ee6b465af418d1880aa8e46ab82f0b61e2a",
+      "method": "GitHub connector decoded logs; UTF-8 text retained with trailing newline",
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/jobs/124668652959/logs"
+    },
+    {
+      "file": "logs/port-preservation-124668652798.txt",
+      "file_sha256": "d55777955ddf94ac09daeef64b9f27a965e51900736d9c57779c628aa1c46945",
+      "method": "GitHub connector decoded logs; UTF-8 text retained with trailing newline",
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/jobs/124668652798/logs"
+    },
+    {
+      "file": "logs/runtime-coverage-124670715730.txt",
+      "file_sha256": "d8f2d0a348512cf5aa717912de63cf6d1439abdacc6809b1524e1d1dd8128498",
+      "method": "GitHub connector decoded logs; UTF-8 text retained with trailing newline",
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/jobs/124670715730/logs"
+    },
+    {
+      "file": "logs/upstream-large-124668652895.txt",
+      "file_sha256": "ca0bfd306dd87174da145f7258011422ae2d5492882d244661b73dcfd10cd2a4",
+      "method": "GitHub connector decoded logs; UTF-8 text retained with trailing newline",
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/jobs/124668652895/logs"
+    },
+    {
+      "file": "readiness/pr.json",
+      "file_sha256": "96651b682b934d5dac796ac3ac5e9aaf2cb3f75b93f57a1eadcad6a65b60dda2",
+      "method": "GitHub connector public REST GET",
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/pulls/996"
+    },
+    {
+      "file": "readiness/main-ref.json",
+      "file_sha256": "3a017766de4b4b3a5b3d88447a0b62dfeeb8be037b3751df98e454a7ad8f2ec5",
+      "method": "GitHub connector public REST GET",
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/git/ref/heads/main"
+    },
+    {
+      "file": "readiness/comments.json",
+      "file_sha256": "f56e2ab1b99c0a49414197f67cec30abcae11464a90540eab83ac2fa27e2da4b",
+      "method": "GitHub connector merged discussion timeline; its two entries equal REST issue-comment count and REST inline-review-comment count is zero",
+      "url": "https://github.com/den-run-ai/pystachy/pull/996"
+    },
+    {
+      "file": "readiness/review-threads.json",
+      "file_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "method": "GitHub connector GraphQL review-thread list; empty, consistent with REST inline review-comment count zero",
+      "url": "https://github.com/den-run-ai/pystachy/pull/996/files"
+    },
+    {
+      "file": "readiness/reviews.json",
+      "file_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "method": "GitHub connector GraphQL review-submission list; empty",
+      "url": "https://github.com/den-run-ai/pystachy/pull/996"
+    }
+  ]
+}

@@ -1,0 +1,180 @@
+{
+  "sources": {
+    "main": {
+      "commit": "06e3ad5d08514ba31fb231fe4636a962fe6578e3",
+      "tree": "db120afecf27ff03b08c25624dc64be8b06bac3b"
+    },
+    "da84": {
+      "commit": "da84d382ff83f09e46d4ef104e62e6f64e9c37c1",
+      "tree": "903a72dce156018f83f69f1e8b4d74a6f14e99dd"
+    },
+    "final": {
+      "commit": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "tree": "b7ca39aa08a2ec08f972ec36ae8ea26ed868ddad"
+    }
+  },
+  "phases": {
+    "prepare": {
+      "status": "passed",
+      "started_utc": "2026-10-31T21:32:32.702907+00:00",
+      "load_start": [
+        0.33935546875,
+        0.39990234375,
+        0.63525390625
+      ],
+      "harness_sha256": {
+        "measure.py": "5eb06e8e0c27de0de96e81664055fb17f30d9452f81bb5f5155b2e83c090e996",
+        "count_support.py": "f6a81214e91abede906eab70ab3c75073adc658bc6ece97016a3742b1d73ee03",
+        "replay_support.py": "8cb1ba7386907b79aa0531a707c9d3434d1107b4ddf37b05349a4fbcaad6ba44"
+      },
+      "finished_utc": "2026-10-31T21:35:59.227213+00:00",
+      "load_end": [
+        1.30615234375,
+        0.8447265625,
+        0.76904296875
+      ]
+    },
+    "counts": {
+      "status": "passed",
+      "started_utc": "2026-10-31T21:36:07.451171+00:00",
+      "load_start": [
+        1.201171875,
+        0.83056640625,
+        0.7646484375
+      ],
+      "harness_sha256": {
+        "measure.py": "5eb06e8e0c27de0de96e81664055fb17f30d9452f81bb5f5155b2e83c090e996",
+        "count_support.py": "f6a81214e91abede906eab70ab3c75073adc658bc6ece97016a3742b1d73ee03",
+        "replay_support.py": "8cb1ba7386907b79aa0531a707c9d3434d1107b4ddf37b05349a4fbcaad6ba44"
+      },
+      "finished_utc": "2026-10-31T21:40:47.424684+00:00",
+      "load_end": [
+        1.216796875,
+        1.08056640625,
+        0.89990234375
+      ]
+    }
+  },
+  "cases": {
+    "ordinary_calls": {
+      "n": 10000000,
+      "checksum": 52241,
+      "instruction_count_n": 1000000,
+      "instructions": {
+        "jit": {
+          "main": 80000160,
+          "da84": 80000233,
+          "final": 80000233
+        },
+        "aot": {
+          "main": 50000217,
+          "da84": 50000296,
+          "final": 50000296
+        }
+      },
+      "instruction_percent_vs_main": {
+        "jit": {
+          "da84": 9.12498175020815e-05,
+          "final": 9.12498175020815e-05
+        },
+        "aot": {
+          "da84": 0.00015799931427640246,
+          "final": 0.00015799931427640246
+        }
+      }
+    },
+    "object_calls": {
+      "n": 100000,
+      "checksum": 3226706707,
+      "instruction_count_n": 1000,
+      "instructions": {
+        "jit": {
+          "main": 18036184,
+          "da84": 18036392,
+          "final": 18036392
+        },
+        "aot": {
+          "main": 13432624,
+          "da84": 13432776,
+          "final": 13432776
+        }
+      },
+      "instruction_percent_vs_main": {
+        "jit": {
+          "da84": 0.0011532372923284129,
+          "final": 0.0011532372923284129
+        },
+        "aot": {
+          "da84": 0.0011315733992045551,
+          "final": 0.0011315733992045551
+        }
+      }
+    },
+    "object_long": {
+      "n": 1000000,
+      "checksum": 32256573577
+    },
+    "json_calls": {
+      "n": 2000,
+      "checksum": 64000,
+      "instruction_count_n": 2000,
+      "instructions": {
+        "jit": {
+          "main": 572272054,
+          "da84": 598872532,
+          "final": 591301608
+        },
+        "aot": {
+          "main": 526398962,
+          "da84": 536695570,
+          "final": 535671570
+        }
+      },
+      "instruction_percent_vs_main": {
+        "jit": {
+          "da84": 4.648222434429772,
+          "final": 3.325263546767565
+        },
+        "aot": {
+          "da84": 1.9560464102890807,
+          "final": 1.7615171513199135
+        }
+      }
+    },
+    "json_warmed_short": {
+      "n": 2000,
+      "checksum": 64000
+    },
+    "json_warmed_long": {
+      "n": 20000,
+      "checksum": 640000
+    },
+    "json_file_calls": {
+      "n": 20000,
+      "checksum": 640000,
+      "instruction_count_n": 2000,
+      "instructions": {
+        "jit": {
+          "main": 571047025,
+          "da84": 597945517,
+          "final": 590267863
+        },
+        "aot": {
+          "main": 526452858,
+          "da84": 536749438,
+          "final": 535725438
+        }
+      },
+      "instruction_percent_vs_main": {
+        "jit": {
+          "da84": 4.710381251001183,
+          "final": 3.3658940785130653
+        },
+        "aot": {
+          "da84": 1.955840839978884,
+          "final": 1.7613314960862159
+        }
+      }
+    }
+  }
+}

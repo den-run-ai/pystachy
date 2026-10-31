@@ -1,0 +1,1319 @@
+{
+  "checks": [
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838717/job/124667320239",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124667320239,
+      "name": "make verify (Linux x86-64, LLVM 18, Python 3.13)",
+      "status": "completed",
+      "workflow_run_id": 41243838717
+    },
+    {
+      "conclusion": "skipped",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838682/job/124665418464",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124665418464,
+      "name": "publish main's coverage to the badges branch",
+      "status": "completed",
+      "workflow_run_id": 41243838682
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838682/job/124665276360",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124665276360,
+      "name": "native runtime coverage (report)",
+      "status": "completed",
+      "workflow_run_id": 41243838682
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838682/job/124665124965",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124665124965,
+      "name": "hosted compiler coverage (report)",
+      "status": "completed",
+      "workflow_run_id": 41243838682
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838717/job/124664041277",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124664041277,
+      "name": "verify (contracts)",
+      "status": "completed",
+      "workflow_run_id": 41243838717
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838717/job/124664041219",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124664041219,
+      "name": "verify (native-2)",
+      "status": "completed",
+      "workflow_run_id": 41243838717
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838717/job/124664041210",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124664041210,
+      "name": "verify (scaling)",
+      "status": "completed",
+      "workflow_run_id": 41243838717
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838717/job/124664041204",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124664041204,
+      "name": "verify (python-int-optin-2)",
+      "status": "completed",
+      "workflow_run_id": 41243838717
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838717/job/124664041186",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124664041186,
+      "name": "verify (benchmarks)",
+      "status": "completed",
+      "workflow_run_id": 41243838717
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838717/job/124664041157",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124664041157,
+      "name": "verify (gc-jit-0)",
+      "status": "completed",
+      "workflow_run_id": 41243838717
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838717/job/124664041154",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124664041154,
+      "name": "verify (hosted)",
+      "status": "completed",
+      "workflow_run_id": 41243838717
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838717/job/124664041150",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124664041150,
+      "name": "verify (python-int-optin-0)",
+      "status": "completed",
+      "workflow_run_id": 41243838717
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838717/job/124664041146",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124664041146,
+      "name": "verify (gc-aot-2)",
+      "status": "completed",
+      "workflow_run_id": 41243838717
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838717/job/124664041145",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124664041145,
+      "name": "verify (dynany-optin-1)",
+      "status": "completed",
+      "workflow_run_id": 41243838717
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838717/job/124664041138",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124664041138,
+      "name": "verify (dynany-optin-2)",
+      "status": "completed",
+      "workflow_run_id": 41243838717
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838717/job/124664041135",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124664041135,
+      "name": "verify (opt-off-1)",
+      "status": "completed",
+      "workflow_run_id": 41243838717
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838717/job/124664041133",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124664041133,
+      "name": "verify (ubsan-3)",
+      "status": "completed",
+      "workflow_run_id": 41243838717
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838717/job/124664041129",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124664041129,
+      "name": "verify (ubsan-1)",
+      "status": "completed",
+      "workflow_run_id": 41243838717
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838717/job/124664041128",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124664041128,
+      "name": "verify (dynany-optin-0)",
+      "status": "completed",
+      "workflow_run_id": 41243838717
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838717/job/124664041121",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124664041121,
+      "name": "verify (ubsan-2)",
+      "status": "completed",
+      "workflow_run_id": 41243838717
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838717/job/124664041114",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124664041114,
+      "name": "verify (runtime-cache)",
+      "status": "completed",
+      "workflow_run_id": 41243838717
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838717/job/124664041112",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124664041112,
+      "name": "verify (python-int-optin-1)",
+      "status": "completed",
+      "workflow_run_id": 41243838717
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838717/job/124664041102",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124664041102,
+      "name": "verify (ubsan-0)",
+      "status": "completed",
+      "workflow_run_id": 41243838717
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838717/job/124664041101",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124664041101,
+      "name": "verify (gc-aot-0)",
+      "status": "completed",
+      "workflow_run_id": 41243838717
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838717/job/124664041090",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124664041090,
+      "name": "verify (gc-jit-1)",
+      "status": "completed",
+      "workflow_run_id": 41243838717
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838717/job/124664041087",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124664041087,
+      "name": "verify (gc-self)",
+      "status": "completed",
+      "workflow_run_id": 41243838717
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838717/job/124664041084",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124664041084,
+      "name": "verify (gc-aot-1)",
+      "status": "completed",
+      "workflow_run_id": 41243838717
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838717/job/124664041083",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124664041083,
+      "name": "verify (native-0)",
+      "status": "completed",
+      "workflow_run_id": 41243838717
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838717/job/124664041078",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124664041078,
+      "name": "verify (opt-off-2)",
+      "status": "completed",
+      "workflow_run_id": 41243838717
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838717/job/124664041075",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124664041075,
+      "name": "verify (python-free-1)",
+      "status": "completed",
+      "workflow_run_id": 41243838717
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838717/job/124664041066",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124664041066,
+      "name": "verify (python-free-2)",
+      "status": "completed",
+      "workflow_run_id": 41243838717
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838717/job/124664041065",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124664041065,
+      "name": "verify (native-1)",
+      "status": "completed",
+      "workflow_run_id": 41243838717
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838717/job/124664041055",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124664041055,
+      "name": "verify (opt-off-0)",
+      "status": "completed",
+      "workflow_run_id": 41243838717
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838717/job/124664041053",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124664041053,
+      "name": "verify (python-free-0)",
+      "status": "completed",
+      "workflow_run_id": 41243838717
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838717/job/124663352221",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124663352221,
+      "name": "upstream port preservation (CPython)",
+      "status": "completed",
+      "workflow_run_id": 41243838717
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838717/job/124663352170",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124663352170,
+      "name": "upstream large regex (JIT and AOT, normal GC)",
+      "status": "completed",
+      "workflow_run_id": 41243838717
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838717/job/124663351950",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124663351950,
+      "name": "verify (bootstrap)",
+      "status": "completed",
+      "workflow_run_id": 41243838717
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838780/job/124663077245",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124663077245,
+      "name": "source wheels (CPython, JIT and AOT)",
+      "status": "completed",
+      "workflow_run_id": 41243838780
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838682/job/124663077239",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124663077239,
+      "name": "hosted compiler coverage (corpus 6 of 8)",
+      "status": "completed",
+      "workflow_run_id": 41243838682
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838682/job/124663077209",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124663077209,
+      "name": "native runtime coverage (corpus 3 of 6)",
+      "status": "completed",
+      "workflow_run_id": 41243838682
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838682/job/124663077201",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124663077201,
+      "name": "hosted compiler coverage (corpus 0 of 8)",
+      "status": "completed",
+      "workflow_run_id": 41243838682
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838682/job/124663077191",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124663077191,
+      "name": "native runtime coverage (corpus 5 of 6)",
+      "status": "completed",
+      "workflow_run_id": 41243838682
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838682/job/124663077172",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124663077172,
+      "name": "hosted compiler coverage (cache, unit)",
+      "status": "completed",
+      "workflow_run_id": 41243838682
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838682/job/124663077168",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124663077168,
+      "name": "native runtime coverage (corpus 4 of 6)",
+      "status": "completed",
+      "workflow_run_id": 41243838682
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838682/job/124663077155",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124663077155,
+      "name": "native runtime coverage (corpus 0 of 6)",
+      "status": "completed",
+      "workflow_run_id": 41243838682
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838682/job/124663077153",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124663077153,
+      "name": "native runtime coverage (ffi)",
+      "status": "completed",
+      "workflow_run_id": 41243838682
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838682/job/124663077137",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124663077137,
+      "name": "hosted compiler coverage (corpus 2 of 8)",
+      "status": "completed",
+      "workflow_run_id": 41243838682
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838682/job/124663077129",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124663077129,
+      "name": "native runtime coverage (corpus 2 of 6)",
+      "status": "completed",
+      "workflow_run_id": 41243838682
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838682/job/124663077125",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124663077125,
+      "name": "hosted compiler coverage (corpus 4 of 8)",
+      "status": "completed",
+      "workflow_run_id": 41243838682
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838682/job/124663077121",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124663077121,
+      "name": "hosted compiler coverage (corpus 3 of 8)",
+      "status": "completed",
+      "workflow_run_id": 41243838682
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838682/job/124663077116",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124663077116,
+      "name": "hosted compiler coverage (corpus 5 of 8)",
+      "status": "completed",
+      "workflow_run_id": 41243838682
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838682/job/124663077103",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124663077103,
+      "name": "hosted compiler coverage (ffi, ir)",
+      "status": "completed",
+      "workflow_run_id": 41243838682
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838682/job/124663077076",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124663077076,
+      "name": "hosted compiler coverage (corpus 1 of 8)",
+      "status": "completed",
+      "workflow_run_id": 41243838682
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838682/job/124663077073",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124663077073,
+      "name": "hosted compiler coverage (corpus 7 of 8)",
+      "status": "completed",
+      "workflow_run_id": 41243838682
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838741/job/124663077072",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124663077072,
+      "name": "smoke",
+      "status": "completed",
+      "workflow_run_id": 41243838741
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838696/job/124663077049",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124663077049,
+      "name": "make lint (ruff, shellcheck, clang -Wall -Wextra)",
+      "status": "completed",
+      "workflow_run_id": 41243838696
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838691/job/124663077001",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124663077001,
+      "name": "Install (macos-15)",
+      "status": "completed",
+      "workflow_run_id": 41243838691
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838691/job/124663076968",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124663076968,
+      "name": "Install (ubuntu-24.04)",
+      "status": "completed",
+      "workflow_run_id": 41243838691
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838682/job/124663076934",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124663076934,
+      "name": "native runtime coverage (corpus 1 of 6)",
+      "status": "completed",
+      "workflow_run_id": 41243838682
+    },
+    {
+      "conclusion": "success",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838691/job/124663076851",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124663076851,
+      "name": "Install (macos-15-intel)",
+      "status": "completed",
+      "workflow_run_id": 41243838691
+    },
+    {
+      "conclusion": "skipped",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243837351/job/124663074575",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "id": 124663074575,
+      "name": "DCO certified (fork pull requests)",
+      "status": "completed",
+      "workflow_run_id": 41243837351
+    }
+  ],
+  "conclusions": {
+    "skipped": 2,
+    "success": 59
+  },
+  "conditional_step_skips": [
+    {
+      "group": "python-free-0",
+      "job_id": 124664041053,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Opt-in sweeps CPython oracle dependency"
+    },
+    {
+      "group": "python-free-0",
+      "job_id": 124664041053,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Extended subset benchmark correctness"
+    },
+    {
+      "group": "python-free-0",
+      "job_id": 124664041053,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Adapted pyperformance benchmark correctness"
+    },
+    {
+      "group": "python-free-0",
+      "job_id": 124664041053,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Optional BLAS adapter and nanoGPT fused-linear correctness"
+    },
+    {
+      "group": "opt-off-0",
+      "job_id": 124664041055,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Opt-in sweeps CPython oracle dependency"
+    },
+    {
+      "group": "opt-off-0",
+      "job_id": 124664041055,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Extended subset benchmark correctness"
+    },
+    {
+      "group": "opt-off-0",
+      "job_id": 124664041055,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Adapted pyperformance benchmark correctness"
+    },
+    {
+      "group": "opt-off-0",
+      "job_id": 124664041055,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Optional BLAS adapter and nanoGPT fused-linear correctness"
+    },
+    {
+      "group": "native-1",
+      "job_id": 124664041065,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Opt-in sweeps CPython oracle dependency"
+    },
+    {
+      "group": "native-1",
+      "job_id": 124664041065,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Extended subset benchmark correctness"
+    },
+    {
+      "group": "native-1",
+      "job_id": 124664041065,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Adapted pyperformance benchmark correctness"
+    },
+    {
+      "group": "native-1",
+      "job_id": 124664041065,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Optional BLAS adapter and nanoGPT fused-linear correctness"
+    },
+    {
+      "group": "python-free-2",
+      "job_id": 124664041066,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Opt-in sweeps CPython oracle dependency"
+    },
+    {
+      "group": "python-free-2",
+      "job_id": 124664041066,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Extended subset benchmark correctness"
+    },
+    {
+      "group": "python-free-2",
+      "job_id": 124664041066,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Adapted pyperformance benchmark correctness"
+    },
+    {
+      "group": "python-free-2",
+      "job_id": 124664041066,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Optional BLAS adapter and nanoGPT fused-linear correctness"
+    },
+    {
+      "group": "python-free-1",
+      "job_id": 124664041075,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Opt-in sweeps CPython oracle dependency"
+    },
+    {
+      "group": "python-free-1",
+      "job_id": 124664041075,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Extended subset benchmark correctness"
+    },
+    {
+      "group": "python-free-1",
+      "job_id": 124664041075,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Adapted pyperformance benchmark correctness"
+    },
+    {
+      "group": "python-free-1",
+      "job_id": 124664041075,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Optional BLAS adapter and nanoGPT fused-linear correctness"
+    },
+    {
+      "group": "opt-off-2",
+      "job_id": 124664041078,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Opt-in sweeps CPython oracle dependency"
+    },
+    {
+      "group": "opt-off-2",
+      "job_id": 124664041078,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Extended subset benchmark correctness"
+    },
+    {
+      "group": "opt-off-2",
+      "job_id": 124664041078,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Adapted pyperformance benchmark correctness"
+    },
+    {
+      "group": "opt-off-2",
+      "job_id": 124664041078,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Optional BLAS adapter and nanoGPT fused-linear correctness"
+    },
+    {
+      "group": "native-0",
+      "job_id": 124664041083,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Opt-in sweeps CPython oracle dependency"
+    },
+    {
+      "group": "native-0",
+      "job_id": 124664041083,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Extended subset benchmark correctness"
+    },
+    {
+      "group": "native-0",
+      "job_id": 124664041083,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Adapted pyperformance benchmark correctness"
+    },
+    {
+      "group": "native-0",
+      "job_id": 124664041083,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Optional BLAS adapter and nanoGPT fused-linear correctness"
+    },
+    {
+      "group": "gc-aot-1",
+      "job_id": 124664041084,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Opt-in sweeps CPython oracle dependency"
+    },
+    {
+      "group": "gc-aot-1",
+      "job_id": 124664041084,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Extended subset benchmark correctness"
+    },
+    {
+      "group": "gc-aot-1",
+      "job_id": 124664041084,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Adapted pyperformance benchmark correctness"
+    },
+    {
+      "group": "gc-aot-1",
+      "job_id": 124664041084,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Optional BLAS adapter and nanoGPT fused-linear correctness"
+    },
+    {
+      "group": "gc-self",
+      "job_id": 124664041087,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Opt-in sweeps CPython oracle dependency"
+    },
+    {
+      "group": "gc-self",
+      "job_id": 124664041087,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Extended subset benchmark correctness"
+    },
+    {
+      "group": "gc-self",
+      "job_id": 124664041087,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Adapted pyperformance benchmark correctness"
+    },
+    {
+      "group": "gc-self",
+      "job_id": 124664041087,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Optional BLAS adapter and nanoGPT fused-linear correctness"
+    },
+    {
+      "group": "gc-jit-1",
+      "job_id": 124664041090,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Opt-in sweeps CPython oracle dependency"
+    },
+    {
+      "group": "gc-jit-1",
+      "job_id": 124664041090,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Extended subset benchmark correctness"
+    },
+    {
+      "group": "gc-jit-1",
+      "job_id": 124664041090,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Adapted pyperformance benchmark correctness"
+    },
+    {
+      "group": "gc-jit-1",
+      "job_id": 124664041090,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Optional BLAS adapter and nanoGPT fused-linear correctness"
+    },
+    {
+      "group": "gc-aot-0",
+      "job_id": 124664041101,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Opt-in sweeps CPython oracle dependency"
+    },
+    {
+      "group": "gc-aot-0",
+      "job_id": 124664041101,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Extended subset benchmark correctness"
+    },
+    {
+      "group": "gc-aot-0",
+      "job_id": 124664041101,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Adapted pyperformance benchmark correctness"
+    },
+    {
+      "group": "gc-aot-0",
+      "job_id": 124664041101,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Optional BLAS adapter and nanoGPT fused-linear correctness"
+    },
+    {
+      "group": "ubsan-0",
+      "job_id": 124664041102,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Opt-in sweeps CPython oracle dependency"
+    },
+    {
+      "group": "ubsan-0",
+      "job_id": 124664041102,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Extended subset benchmark correctness"
+    },
+    {
+      "group": "ubsan-0",
+      "job_id": 124664041102,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Adapted pyperformance benchmark correctness"
+    },
+    {
+      "group": "ubsan-0",
+      "job_id": 124664041102,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Optional BLAS adapter and nanoGPT fused-linear correctness"
+    },
+    {
+      "group": "python-int-optin-1",
+      "job_id": 124664041112,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Extended subset benchmark correctness"
+    },
+    {
+      "group": "python-int-optin-1",
+      "job_id": 124664041112,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Adapted pyperformance benchmark correctness"
+    },
+    {
+      "group": "python-int-optin-1",
+      "job_id": 124664041112,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Optional BLAS adapter and nanoGPT fused-linear correctness"
+    },
+    {
+      "group": "runtime-cache",
+      "job_id": 124664041114,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Opt-in sweeps CPython oracle dependency"
+    },
+    {
+      "group": "runtime-cache",
+      "job_id": 124664041114,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Extended subset benchmark correctness"
+    },
+    {
+      "group": "runtime-cache",
+      "job_id": 124664041114,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Adapted pyperformance benchmark correctness"
+    },
+    {
+      "group": "runtime-cache",
+      "job_id": 124664041114,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Optional BLAS adapter and nanoGPT fused-linear correctness"
+    },
+    {
+      "group": "ubsan-2",
+      "job_id": 124664041121,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Opt-in sweeps CPython oracle dependency"
+    },
+    {
+      "group": "ubsan-2",
+      "job_id": 124664041121,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Extended subset benchmark correctness"
+    },
+    {
+      "group": "ubsan-2",
+      "job_id": 124664041121,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Adapted pyperformance benchmark correctness"
+    },
+    {
+      "group": "ubsan-2",
+      "job_id": 124664041121,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Optional BLAS adapter and nanoGPT fused-linear correctness"
+    },
+    {
+      "group": "dynany-optin-0",
+      "job_id": 124664041128,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Extended subset benchmark correctness"
+    },
+    {
+      "group": "dynany-optin-0",
+      "job_id": 124664041128,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Adapted pyperformance benchmark correctness"
+    },
+    {
+      "group": "dynany-optin-0",
+      "job_id": 124664041128,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Optional BLAS adapter and nanoGPT fused-linear correctness"
+    },
+    {
+      "group": "ubsan-1",
+      "job_id": 124664041129,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Opt-in sweeps CPython oracle dependency"
+    },
+    {
+      "group": "ubsan-1",
+      "job_id": 124664041129,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Extended subset benchmark correctness"
+    },
+    {
+      "group": "ubsan-1",
+      "job_id": 124664041129,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Adapted pyperformance benchmark correctness"
+    },
+    {
+      "group": "ubsan-1",
+      "job_id": 124664041129,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Optional BLAS adapter and nanoGPT fused-linear correctness"
+    },
+    {
+      "group": "ubsan-3",
+      "job_id": 124664041133,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Opt-in sweeps CPython oracle dependency"
+    },
+    {
+      "group": "ubsan-3",
+      "job_id": 124664041133,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Extended subset benchmark correctness"
+    },
+    {
+      "group": "ubsan-3",
+      "job_id": 124664041133,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Adapted pyperformance benchmark correctness"
+    },
+    {
+      "group": "ubsan-3",
+      "job_id": 124664041133,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Optional BLAS adapter and nanoGPT fused-linear correctness"
+    },
+    {
+      "group": "opt-off-1",
+      "job_id": 124664041135,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Opt-in sweeps CPython oracle dependency"
+    },
+    {
+      "group": "opt-off-1",
+      "job_id": 124664041135,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Extended subset benchmark correctness"
+    },
+    {
+      "group": "opt-off-1",
+      "job_id": 124664041135,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Adapted pyperformance benchmark correctness"
+    },
+    {
+      "group": "opt-off-1",
+      "job_id": 124664041135,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Optional BLAS adapter and nanoGPT fused-linear correctness"
+    },
+    {
+      "group": "dynany-optin-2",
+      "job_id": 124664041138,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Extended subset benchmark correctness"
+    },
+    {
+      "group": "dynany-optin-2",
+      "job_id": 124664041138,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Adapted pyperformance benchmark correctness"
+    },
+    {
+      "group": "dynany-optin-2",
+      "job_id": 124664041138,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Optional BLAS adapter and nanoGPT fused-linear correctness"
+    },
+    {
+      "group": "dynany-optin-1",
+      "job_id": 124664041145,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Extended subset benchmark correctness"
+    },
+    {
+      "group": "dynany-optin-1",
+      "job_id": 124664041145,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Adapted pyperformance benchmark correctness"
+    },
+    {
+      "group": "dynany-optin-1",
+      "job_id": 124664041145,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Optional BLAS adapter and nanoGPT fused-linear correctness"
+    },
+    {
+      "group": "gc-aot-2",
+      "job_id": 124664041146,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Opt-in sweeps CPython oracle dependency"
+    },
+    {
+      "group": "gc-aot-2",
+      "job_id": 124664041146,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Extended subset benchmark correctness"
+    },
+    {
+      "group": "gc-aot-2",
+      "job_id": 124664041146,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Adapted pyperformance benchmark correctness"
+    },
+    {
+      "group": "gc-aot-2",
+      "job_id": 124664041146,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Optional BLAS adapter and nanoGPT fused-linear correctness"
+    },
+    {
+      "group": "python-int-optin-0",
+      "job_id": 124664041150,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Extended subset benchmark correctness"
+    },
+    {
+      "group": "python-int-optin-0",
+      "job_id": 124664041150,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Adapted pyperformance benchmark correctness"
+    },
+    {
+      "group": "python-int-optin-0",
+      "job_id": 124664041150,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Optional BLAS adapter and nanoGPT fused-linear correctness"
+    },
+    {
+      "group": "hosted",
+      "job_id": 124664041154,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Opt-in sweeps CPython oracle dependency"
+    },
+    {
+      "group": "hosted",
+      "job_id": 124664041154,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Extended subset benchmark correctness"
+    },
+    {
+      "group": "hosted",
+      "job_id": 124664041154,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Adapted pyperformance benchmark correctness"
+    },
+    {
+      "group": "hosted",
+      "job_id": 124664041154,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Optional BLAS adapter and nanoGPT fused-linear correctness"
+    },
+    {
+      "group": "gc-jit-0",
+      "job_id": 124664041157,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Opt-in sweeps CPython oracle dependency"
+    },
+    {
+      "group": "gc-jit-0",
+      "job_id": 124664041157,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Extended subset benchmark correctness"
+    },
+    {
+      "group": "gc-jit-0",
+      "job_id": 124664041157,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Adapted pyperformance benchmark correctness"
+    },
+    {
+      "group": "gc-jit-0",
+      "job_id": 124664041157,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Optional BLAS adapter and nanoGPT fused-linear correctness"
+    },
+    {
+      "group": "benchmarks",
+      "job_id": 124664041186,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Opt-in sweeps CPython oracle dependency"
+    },
+    {
+      "group": "python-int-optin-2",
+      "job_id": 124664041204,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Extended subset benchmark correctness"
+    },
+    {
+      "group": "python-int-optin-2",
+      "job_id": 124664041204,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Adapted pyperformance benchmark correctness"
+    },
+    {
+      "group": "python-int-optin-2",
+      "job_id": 124664041204,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Optional BLAS adapter and nanoGPT fused-linear correctness"
+    },
+    {
+      "group": "scaling",
+      "job_id": 124664041210,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Opt-in sweeps CPython oracle dependency"
+    },
+    {
+      "group": "scaling",
+      "job_id": 124664041210,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Extended subset benchmark correctness"
+    },
+    {
+      "group": "scaling",
+      "job_id": 124664041210,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Adapted pyperformance benchmark correctness"
+    },
+    {
+      "group": "scaling",
+      "job_id": 124664041210,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Optional BLAS adapter and nanoGPT fused-linear correctness"
+    },
+    {
+      "group": "native-2",
+      "job_id": 124664041219,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Opt-in sweeps CPython oracle dependency"
+    },
+    {
+      "group": "native-2",
+      "job_id": 124664041219,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Extended subset benchmark correctness"
+    },
+    {
+      "group": "native-2",
+      "job_id": 124664041219,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Adapted pyperformance benchmark correctness"
+    },
+    {
+      "group": "native-2",
+      "job_id": 124664041219,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Optional BLAS adapter and nanoGPT fused-linear correctness"
+    },
+    {
+      "group": "contracts",
+      "job_id": 124664041277,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Opt-in sweeps CPython oracle dependency"
+    },
+    {
+      "group": "contracts",
+      "job_id": 124664041277,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Extended subset benchmark correctness"
+    },
+    {
+      "group": "contracts",
+      "job_id": 124664041277,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Adapted pyperformance benchmark correctness"
+    },
+    {
+      "group": "contracts",
+      "job_id": 124664041277,
+      "reason": "matrix condition false; required in its designated group",
+      "step": "Optional BLAS adapter and nanoGPT fused-linear correctness"
+    }
+  ],
+  "total": 61,
+  "workflows": [
+    {
+      "conclusion": "success",
+      "created_at": "2026-10-31T21:29:43Z",
+      "event": "pull_request",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838780",
+      "id": 41243838780,
+      "jobs": 1,
+      "name": "Packages",
+      "run_attempt": 1,
+      "status": "completed",
+      "updated_at": "2026-10-31T21:34:45Z"
+    },
+    {
+      "conclusion": "success",
+      "created_at": "2026-10-31T21:29:43Z",
+      "event": "pull_request",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838741",
+      "id": 41243838741,
+      "jobs": 1,
+      "name": "Performance smoke",
+      "run_attempt": 1,
+      "status": "completed",
+      "updated_at": "2026-10-31T21:38:00Z"
+    },
+    {
+      "conclusion": "success",
+      "created_at": "2026-10-31T21:29:43Z",
+      "event": "pull_request",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838691",
+      "id": 41243838691,
+      "jobs": 3,
+      "name": "Installation",
+      "run_attempt": 1,
+      "status": "completed",
+      "updated_at": "2026-10-31T21:38:18Z"
+    },
+    {
+      "conclusion": "success",
+      "created_at": "2026-10-31T21:29:43Z",
+      "event": "pull_request",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838696",
+      "id": 41243838696,
+      "jobs": 1,
+      "name": "Lint",
+      "run_attempt": 1,
+      "status": "completed",
+      "updated_at": "2026-10-31T21:38:20Z"
+    },
+    {
+      "conclusion": "success",
+      "created_at": "2026-10-31T21:29:43Z",
+      "event": "pull_request",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838682",
+      "id": 41243838682,
+      "jobs": 20,
+      "name": "Coverage",
+      "run_attempt": 1,
+      "status": "completed",
+      "updated_at": "2026-10-31T21:39:58Z"
+    },
+    {
+      "conclusion": "success",
+      "created_at": "2026-10-31T21:29:43Z",
+      "event": "pull_request",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838717",
+      "id": 41243838717,
+      "jobs": 34,
+      "name": "CI",
+      "run_attempt": 1,
+      "status": "completed",
+      "updated_at": "2026-10-31T21:48:46Z"
+    },
+    {
+      "conclusion": "skipped",
+      "created_at": "2026-10-31T21:29:42Z",
+      "event": "pull_request_target",
+      "head_sha": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41243837351",
+      "id": 41243837351,
+      "jobs": 1,
+      "name": "DCO",
+      "run_attempt": 1,
+      "status": "completed",
+      "updated_at": "2026-10-31T21:29:44Z"
+    }
+  ]
+}

@@ -1,0 +1,127 @@
+PR #996: remaining cost assessment at ea685
+
+Conclusion
+----------
+The retained evidence does not identify another proven, low-risk source change
+ready for adoption. The dominant remaining JIT tool-work difference is LLVM
+machine-code generation. The separate AOT fnmatch loop regression remains
+unexplained by the available profiles. Performance acceptance therefore remains
+an explicit owner decision; the earlier rejection of 15% is not a new budget,
+and none of the results below establishes an approved threshold.
+
+This is a read-only analysis of existing records. No new compilation, benchmark,
+profile, source change, or timing sample was performed for this note.
+
+Compared sources and retained observations
+-----------------------------------------
+Current main: 07b26e02425d023288ed95a9d2a5077be5aeb45e
+Candidate: ea68529b8a590eb8f3df7200b857e1d16becd7a3
+Historical guarded reference: da84d382ff83f09e46d4ef104e62e6f64e9c37c1
+
+The current-main and candidate profiles below are fresh observations from the
+same frozen native-driver series, using bench/smoke/text.py fnmatch 1000. Their
+actual tool arguments, source/native/tool identities, retained inputs, runtime
+bytes, and normal-versus-instrumented equivalence checks are in:
+/workspace/scratch/a83500db0e17/final-startup/results-ea685/report.json
+SHA256 c9b6a8a134136a507978d2a275edca20f2a7ff2d78102282231bd7b238d7a470
+
+LLVM tool work
+--------------
+Counter                                  Main             Candidate        Delta
+opt whole process                        1,674,260,324    1,846,555,997    +172,295,673
+lli whole process                        8,331,240,754    9,114,898,950    +783,658,196
+opt + lli                               10,005,501,078   10,961,454,947    +955,953,869
+
+The sum increases 9.5543%; lli accounts for 81.9766% of that difference. This is
+whole-tool work: lli includes code generation, initialization and program
+execution. The sum must not be described as a pure startup instruction count.
+
+Selected named inclusive counters from those exact retained profiles:
+
+Function (tool)                           Main             Candidate        Delta
+MachineFunctionPass::runOnFunction (lli)   6,643,135,913    7,279,667,883    +636,531,970
+SelectionDAGISel::runOnMachineFunction     2,113,547,619    2,366,974,568    +253,426,949
+RegAllocBase::allocatePhysRegs (lli)       1,144,732,794    1,202,857,928     +58,125,134
+AlwaysInlinerPass::run (opt)                           0       29,189,361     +29,189,361
+
+These inclusive rows are nested and NON-ADDITIVE. The SelectionDAG and register
+allocation work is contained within broader machine-pass work; do not sum the
+rows or interpret their deltas as independently removable costs. Main has no
+observed AlwaysInlinerPass row in its selected pipeline. The final pass accounts
+for only 3.0534% of the opt+lli difference as a descriptive inclusive comparison.
+The large mandatory-inliner hotspot from the earlier da84 investigation is no
+longer the dominant remaining difference.
+
+Read-only parsing used parse_profile from:
+/workspace/scratch/e858f72517b9/perf-work/profile_native_frontend.py
+Its self counters sum exactly to each recorded whole-process total. Inclusive
+cost is self plus outgoing call-edge cost; inlined work belongs to its emitted
+containing function. Unresolved address-only symbols were not assigned guessed
+names or used to attribute AOT execution.
+
+Exact profile files and SHA256 values:
+/workspace/scratch/a83500db0e17/final-startup/results-ea685/opt-main/opt.callgrind
+31abb7c4ea72e3529ef0ce13c66cce49046be259d06875de4e73fbd7c090d768
+/workspace/scratch/a83500db0e17/final-startup/results-ea685/opt-final/opt.callgrind
+223d4038c830f9ca332552a67997d541731f1143c21117fc834dc0e029e7b32a
+/workspace/scratch/a83500db0e17/final-startup/results-ea685/lli-main/lli.callgrind
+d9110a27a6b5bbea85844d55111f7ca90eaed8f7541f016f3c669148ccc7bb27
+/workspace/scratch/a83500db0e17/final-startup/results-ea685/lli-final/lli.callgrind
+acc3bf0b6b43d53e15dcda4dece2ef33c23389aeb7e76c835a0e4abf12cb40de
+
+The hosted observer and corrected driver linkage independently show remaining
+region expansion: 55 added private typed functions and a net 3,938 operations
+for the mixed module. This supports increased code volume/complexity as an
+investigation direction; it does not prove that removing any particular clone
+would safely remove a measured amount of work. Corrected linkage:
+/workspace/scratch/a83500db0e17/final-startup/inspection-ea685-backend-link-v2.json
+SHA256 8fae5a074dca1d7975051519e5113279814c1cc6bf193e78bbc3436d52c3c86e
+
+AOT fnmatch remains unresolved
+------------------------------
+The original six n=1000 AOT pairs were all slower than main. The 10x/100x
+follow-up used the same already-built, hash-bound executables, fresh CPython
+checksums and six balanced compiler orders. It retained all 36 observations
+separately from the original 108; it did not rebuild or discard outliers.
+
+At n=100000, loop medians were main 2.551652 s, da84 2.724147 s and candidate
+2.764386 s. Candidate/main was +8.3371% by ratio of medians and +8.8572% by median
+within-round paired ratio; four of six candidate/main pairs were slower. Process
+CPU medians were +8.9459%, so this evidence does not clear the concern as merely
+short-loop timing noise. Candidate/da84 was +1.4771% by ratio of loop medians;
+da84/main was already +6.7602%. Those comparisons locate the historical gap but
+do not causally attribute it to a particular source change.
+
+Follow-up record:
+/workspace/scratch/a83500db0e17/final-startup/fnmatch-ea685-long/report.json
+SHA256 2cf5615902803ce06229de9978d4fd18d5d46a55cc31ab8c0fe555edecfb93d4
+
+Current CI's three-sample AOT fnmatch n=1000 result was +1.2098% on an AMD EPYC
+7763, versus the local Intel Xeon Platinum 8573C. The different host, builds,
+sample count and loop size must remain distinct; CI does not override the local
+long-loop result. CI artifact:
+/workspace/scratch/a83500db0e17/ci-evidence/ea685/artifacts/perf-smoke.json
+SHA256 1e50c45d3863322614c5585761f52e9e1b34a11abe378bce3cb31881b8197631
+
+No retained function-level AOT fnmatch profile establishes the dominant hot-loop
+cause. The JIT opt/lli profiles above cannot fill that gap, and the retained JIT
+optimized module is not proof of the separately optimized AOT machine code.
+
+Implication for the next action
+------------------------------
+The narrow measured improvements (shared checked leaf bodies, scalar guard
+lowering, and ordinary inlining of eligible check/enter guards) are already in
+the candidate. Earlier raw experiments outlining @rp2 children and selecting
+ORC lazy code generation did not establish a useful improvement and were
+rejected. Those experiments are preserved in:
+/workspace/scratch/a83500db0e17/final-startup/curated-8ca9-investigation.json
+SHA256 213f75ae483891658fa96d6362d539f77cbc380062eef27285dff1be28bae3c7
+
+Further clone sharing would require new ABI/lifetime proof and measurement;
+blanket region caps have no accepted budget. Restoring AOT-only forced guard
+inlining is merely an untested diagnostic hypothesis, not an evidenced fix.
+There is no specific additional optimization that this retained evidence proves
+safe and beneficial enough to adopt. An owner can explicitly accept the measured
+remaining costs, or choose a new, bounded causal investigation of AOT fnmatch
+and remaining machine-pass work. This note does not start such an investigation
+or silently convert a correctness pass into performance acceptance.

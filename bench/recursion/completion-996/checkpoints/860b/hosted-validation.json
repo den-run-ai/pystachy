@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "status": "passed",
+  "scope": "Combined hosted checks on the exact published tree; not native bootstrap or runtime corpus evidence.",
+  "local_test_commit": "ab9ddbc2a6227c71c80374f18ca5dfe21da4deaf",
+  "published_commit": "860b6c503a4261a6c4dd86b803f4cf270ce95c74",
+  "tree": "98d8ee9dea118a2cf3276defa3c4f6ccec126c78",
+  "whole_tree_equality_verified": true,
+  "counts": {
+    "repository_hygiene": 11,
+    "function_summaries": 7,
+    "typed_ir": 213,
+    "json": 29,
+    "numeric_identity": 56,
+    "identity_scope": 17,
+    "dynamic_comparisons": 50,
+    "dynamic_dictionary_kinds": 3,
+    "compiler_state": 107
+  },
+  "ruff": "passed",
+  "mypy": {
+    "status": "passed",
+    "source_files": 48
+  },
+  "commands": [
+    "make check-fast",
+    "python -m unittest discover -s tools -p 'test_compiler_state*.py'"
+  ],
+  "logs": [
+    {
+      "path": "experiments/combined-guards-fast.log",
+      "bytes": 2369,
+      "sha256": "c87d0ae884b4a526b82f070b11b891f3ba6978effd59c8700d65773ab31b5d66"
+    },
+    {
+      "path": "experiments/combined-guards-state.log",
+      "bytes": 209,
+      "sha256": "923bfaf083ba6f60d709692065212ae7b1b53e387e7c54b641e24277b9a1ffd3"
+    }
+  ],
+  "recorded_utc": "2026-10-31T21:19:50.157188+00:00"
+}

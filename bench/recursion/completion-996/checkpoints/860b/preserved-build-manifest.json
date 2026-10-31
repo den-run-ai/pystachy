@@ -1,0 +1,26 @@
+{
+  "build_origin": "860b6c503a4261a6c4dd86b803f4cf270ce95c74",
+  "build_tree": "98d8ee9dea118a2cf3276defa3c4f6ccec126c78",
+  "bootstrap_sha256": "da32e0d45640cf22492abdf1a685910e4a4c1d6847fa1dd436b320a560252d76",
+  "equivalent_source_commit": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+  "files": [
+    {
+      "source": "pystachy",
+      "preserved_as": "pystachy-860b",
+      "bytes": 5092392,
+      "sha256": "51892638750101cc2280960329636cfe968b3a1f9643e6f1f7a75bc52bb92943"
+    },
+    {
+      "source": "build/stage3.ll",
+      "preserved_as": "compiler-stage.ll",
+      "bytes": 30431444,
+      "sha256": "4cdb5553b13b4a2c41e68ce4d8c977ae02ebab5840c20f72cf17ce41117c02db"
+    },
+    {
+      "source": "build/rt3.ll",
+      "preserved_as": "runtime-stage.ll",
+      "bytes": 549411,
+      "sha256": "940a694da5ea93214d1308a8eb635b47d8d0a9d4256c63d084c24f5099f8aa5f"
+    }
+  ]
+}

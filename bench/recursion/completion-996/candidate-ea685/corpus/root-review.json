@@ -1,0 +1,10 @@
+{
+  "status": "passed",
+  "scope": "Independent replay of all 29 published diagnostic byte-span proofs, checking raw retained streams, exact path-prefix replacement, equal relative paths/line numbers/source-hash bindings, and equality of every remaining byte. Controller also reviewed by root; no compiler rerun or original gate change.",
+  "assessment_sha256": "84c42011b80f0d393102b52eb252cb3c35bfdb91afc37772ef884e8cf7d79b72",
+  "original_comparison_sha256": "425b47eb39da4d4dabfe5ec4c0a8be63d6536bb38e23ee338c88238300b2d2a6",
+  "cases": 29,
+  "tokens_per_role": 74,
+  "distinct_files": 10,
+  "original_gate_preserved_failed": true
+}

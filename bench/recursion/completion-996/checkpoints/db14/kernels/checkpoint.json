@@ -1,0 +1,283 @@
+{
+  "status": "closed_historical_checkpoint",
+  "reason": "User reported main advanced via merged PR #1000 to 07b26e0 while the count phase was running. Finish authorized counts and retain this 06e3-based observation; do not treat it as current-main acceptance. No elapsed timing phase was executed.",
+  "phases": {
+    "prepare": {
+      "status": "passed",
+      "started_utc": "2026-10-31T21:32:32.702907+00:00",
+      "load_start": [
+        0.33935546875,
+        0.39990234375,
+        0.63525390625
+      ],
+      "harness_sha256": {
+        "measure.py": "5eb06e8e0c27de0de96e81664055fb17f30d9452f81bb5f5155b2e83c090e996",
+        "count_support.py": "f6a81214e91abede906eab70ab3c75073adc658bc6ece97016a3742b1d73ee03",
+        "replay_support.py": "8cb1ba7386907b79aa0531a707c9d3434d1107b4ddf37b05349a4fbcaad6ba44"
+      },
+      "finished_utc": "2026-10-31T21:35:59.227213+00:00",
+      "load_end": [
+        1.30615234375,
+        0.8447265625,
+        0.76904296875
+      ]
+    },
+    "counts": {
+      "status": "passed",
+      "started_utc": "2026-10-31T21:36:07.451171+00:00",
+      "load_start": [
+        1.201171875,
+        0.83056640625,
+        0.7646484375
+      ],
+      "harness_sha256": {
+        "measure.py": "5eb06e8e0c27de0de96e81664055fb17f30d9452f81bb5f5155b2e83c090e996",
+        "count_support.py": "f6a81214e91abede906eab70ab3c75073adc658bc6ece97016a3742b1d73ee03",
+        "replay_support.py": "8cb1ba7386907b79aa0531a707c9d3434d1107b4ddf37b05349a4fbcaad6ba44"
+      },
+      "finished_utc": "2026-10-31T21:40:47.424684+00:00",
+      "load_end": [
+        1.216796875,
+        1.08056640625,
+        0.89990234375
+      ]
+    }
+  },
+  "sources": {
+    "main": {
+      "commit": "06e3ad5d08514ba31fb231fe4636a962fe6578e3",
+      "tree": "db120afecf27ff03b08c25624dc64be8b06bac3b"
+    },
+    "da84": {
+      "commit": "da84d382ff83f09e46d4ef104e62e6f64e9c37c1",
+      "tree": "903a72dce156018f83f69f1e8b4d74a6f14e99dd"
+    },
+    "final": {
+      "commit": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "tree": "b7ca39aa08a2ec08f972ec36ae8ea26ed868ddad"
+    }
+  },
+  "native_build_provenance": {
+    "main": {
+      "path": "/workspace/scratch/e858f72517b9/baselines/main/pystachy",
+      "sha256": "14571111190e9c2efdf5d7e5620e498cb6697f05ef97e4a05953b240160c9e51",
+      "bootstrap_path": "/workspace/scratch/e858f72517b9/recovery-validation/main/bootstrap.json",
+      "bootstrap_sha256": "d1ab269d9c7c135345074e516970592487f16550dff5e99643018a0bb72bab74",
+      "record_kind": "bootstrap",
+      "fresh_local_build": null,
+      "build_origin": null,
+      "equivalence": null
+    },
+    "da84": {
+      "path": "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+      "sha256": "8ee9b55b99c85a1406198643a5405d6e58ef566ec5896f6af3b03daf478b3f75",
+      "bootstrap_path": "/workspace/scratch/e858f72517b9/recovery-validation/final-da84/bootstrap.json",
+      "bootstrap_sha256": "043fa1d1b5797a832deffd7b6a1841fff8982558cd4d07cb693021ca31b3c0cf",
+      "record_kind": "bootstrap",
+      "fresh_local_build": null,
+      "build_origin": null,
+      "equivalence": null
+    },
+    "final": {
+      "path": "/workspace/scratch/a83500db0e17/pystachy/pystachy",
+      "sha256": "51892638750101cc2280960329636cfe968b3a1f9643e6f1f7a75bc52bb92943",
+      "bootstrap_path": "/workspace/scratch/a83500db0e17/experiments/final-build-binding-db14.json",
+      "bootstrap_sha256": "1461f967c28dfc450d737d66836d21ca52f0bf67b4792f6eeec34161c2f2a5da",
+      "record_kind": "equivalent_build_binding",
+      "fresh_local_build": false,
+      "build_origin": {
+        "record_path": "/workspace/scratch/a83500db0e17/experiments/final-bootstrap-v3/bootstrap.json",
+        "record_sha256": "da32e0d45640cf22492abdf1a685910e4a4c1d6847fa1dd436b320a560252d76",
+        "commit": "860b6c503a4261a6c4dd86b803f4cf270ce95c74",
+        "tree": "98d8ee9dea118a2cf3276defa3c4f6ccec126c78",
+        "seconds": 312.22067132499797,
+        "fresh_local_build": true,
+        "log_path": "/workspace/scratch/a83500db0e17/experiments/final-bootstrap-v3/bootstrap.log",
+        "log_sha256": "1c26d6e0694f5a734e576299eec059f81f9c6ff984b41e8289135fd5d05e83de"
+      },
+      "equivalence": {
+        "changed_paths": [
+          "tests/ir/raise_cold.attrs"
+        ],
+        "old_oracle_sha256": "accf64404edf63e451057fc59bd763bbc3cc28915445dba497f9a09728f0ff8c",
+        "new_oracle_sha256": "1624d9320749a072dbe05353d3680c2fa536bb48f68965ba75fff9e234ae2f1e",
+        "diff_sha256": "440bdb263de73b29e30ec33a7cb604f053c9c602c5a9f3753a27944881e396f5",
+        "compiled_input_count": 137,
+        "extra_build_inputs": {
+          "Makefile": {
+            "bytes": 21002,
+            "sha256": "9d9574c44902625ce0c79e94c31513548080b0d7543c2ba82e6c707f28708997"
+          },
+          "VERSION": {
+            "bytes": 15,
+            "sha256": "e9b85876a80c5219e486ff11b5941de65d51ac17c751a489711d1b04df6c806e"
+          },
+          ".python-version": {
+            "bytes": 8,
+            "sha256": "2d82946ffb2ecf549699ebb86ecbbe663bbc19d53c49c681a1a425f003f80ddb"
+          }
+        },
+        "verified_artifacts": 9,
+        "exact_oracle_replacement": true
+      }
+    }
+  },
+  "instruction_counts": {
+    "ordinary_calls": {
+      "n": 1000000,
+      "checksum": 44561,
+      "complete_kernel_calls": 8,
+      "modes": {
+        "jit": {
+          "instructions": {
+            "main": 80000160,
+            "da84": 80000233,
+            "final": 80000233
+          },
+          "final_percent_vs_main": 9.12498175020815e-05,
+          "da84_percent_vs_main": 9.12498175020815e-05,
+          "final_percent_vs_da84": 0.0,
+          "collection": {
+            "main": "client markers",
+            "da84": "client markers",
+            "final": "client markers"
+          }
+        },
+        "aot": {
+          "instructions": {
+            "main": 50000217,
+            "da84": 50000296,
+            "final": 50000296
+          },
+          "final_percent_vs_main": 0.00015799931427640246,
+          "da84_percent_vs_main": 0.00015799931427640246,
+          "final_percent_vs_da84": 0.0,
+          "collection": {
+            "main": "client markers",
+            "da84": "client markers",
+            "final": "client markers"
+          }
+        }
+      }
+    },
+    "object_calls": {
+      "n": 1000,
+      "checksum": 32917889,
+      "complete_kernel_calls": 8,
+      "modes": {
+        "jit": {
+          "instructions": {
+            "main": 18036184,
+            "da84": 18036392,
+            "final": 18036392
+          },
+          "final_percent_vs_main": 0.0011532372923284129,
+          "da84_percent_vs_main": 0.0011532372923284129,
+          "final_percent_vs_da84": 0.0,
+          "collection": {
+            "main": "client markers",
+            "da84": "client markers",
+            "final": "client markers"
+          }
+        },
+        "aot": {
+          "instructions": {
+            "main": 13432624,
+            "da84": 13432776,
+            "final": 13432776
+          },
+          "final_percent_vs_main": 0.0011315733992045551,
+          "da84_percent_vs_main": 0.0011315733992045551,
+          "final_percent_vs_da84": 0.0,
+          "collection": {
+            "main": "unmodified AOT f.kernel entry/return",
+            "da84": "unmodified AOT f.kernel entry/return",
+            "final": "unmodified AOT f.kernel entry/return"
+          }
+        }
+      }
+    },
+    "json_calls": {
+      "n": 2000,
+      "checksum": 64000,
+      "complete_kernel_calls": 8,
+      "modes": {
+        "jit": {
+          "instructions": {
+            "main": 572272054,
+            "da84": 598872532,
+            "final": 591301608
+          },
+          "final_percent_vs_main": 3.325263546767565,
+          "da84_percent_vs_main": 4.648222434429772,
+          "final_percent_vs_da84": -1.264196234667181,
+          "collection": {
+            "main": "client markers",
+            "da84": "client markers",
+            "final": "client markers"
+          }
+        },
+        "aot": {
+          "instructions": {
+            "main": 526398962,
+            "da84": 536695570,
+            "final": 535671570
+          },
+          "final_percent_vs_main": 1.7615171513199135,
+          "da84_percent_vs_main": 1.9560464102890807,
+          "final_percent_vs_da84": -0.19079717762530146,
+          "collection": {
+            "main": "unmodified AOT f.kernel entry/return",
+            "da84": "unmodified AOT f.kernel entry/return",
+            "final": "unmodified AOT f.kernel entry/return"
+          }
+        }
+      }
+    },
+    "json_file_calls": {
+      "n": 2000,
+      "checksum": 64000,
+      "complete_kernel_calls": 8,
+      "modes": {
+        "jit": {
+          "instructions": {
+            "main": 571047025,
+            "da84": 597945517,
+            "final": 590267863
+          },
+          "final_percent_vs_main": 3.3658940785130653,
+          "da84_percent_vs_main": 4.710381251001183,
+          "final_percent_vs_da84": -1.2840056128391342,
+          "collection": {
+            "main": "client markers",
+            "da84": "client markers",
+            "final": "client markers"
+          }
+        },
+        "aot": {
+          "instructions": {
+            "main": 526452858,
+            "da84": 536749438,
+            "final": 535725438
+          },
+          "final_percent_vs_main": 1.7613314960862159,
+          "da84_percent_vs_main": 1.955840839978884,
+          "final_percent_vs_da84": -0.19077802928225696,
+          "collection": {
+            "main": "unmodified AOT f.kernel entry/return",
+            "da84": "unmodified AOT f.kernel entry/return",
+            "final": "unmodified AOT f.kernel entry/return"
+          }
+        }
+      }
+    }
+  },
+  "measurement_sha256": "f0ee730c610ca29b9eaa4ab349a579abc811dfb213cbb1893242fb9c8e1b28b2",
+  "curated_sha256": "cfcf3582783b07133d9f8562077abdfd875265c581ee267ab87631b3aeba44bf",
+  "frozen_harness_sha256": {
+    "measure.py": "5eb06e8e0c27de0de96e81664055fb17f30d9452f81bb5f5155b2e83c090e996",
+    "count_support.py": "f6a81214e91abede906eab70ab3c75073adc658bc6ece97016a3742b1d73ee03",
+    "replay_support.py": "8cb1ba7386907b79aa0531a707c9d3434d1107b4ddf37b05349a4fbcaad6ba44"
+  },
+  "status_note": "The original measurement.json remains status=incomplete because the planned timing phase was deliberately not run. This companion records why the otherwise passed preparation/count observations were closed."
+}

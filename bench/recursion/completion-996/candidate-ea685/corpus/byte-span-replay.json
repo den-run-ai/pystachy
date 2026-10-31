@@ -1,0 +1,9 @@
+{
+  "assessment_sha256": "84c42011b80f0d393102b52eb252cb3c35bfdb91afc37772ef884e8cf7d79b72",
+  "byte_span_replay_passed": true,
+  "cases": 29,
+  "original_failed_gate_preserved": true,
+  "path_tokens_per_role": 74,
+  "source_files": 10,
+  "verifier_sha256": "c9e24be57fa0f7b19b7dc38ec5d122df25067493e2d6aa32613d40c5604a1701"
+}

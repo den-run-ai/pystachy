@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "published_head": "ea68529b8a590eb8f3df7200b857e1d16becd7a3",
+  "local_reviewed_tree_commit": "e01972861d676abc14f26829390d0ae71c493038",
+  "tree": "62ad6bb99fbc3e1625f36f167d664f2d8f221801",
+  "parents": [
+    "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+    "07b26e02425d023288ed95a9d2a5077be5aeb45e"
+  ],
+  "whole_tree_and_mode_equality_verified": true,
+  "verified_after_fetch": true,
+  "branch": "fix/988-native-recursion-guards",
+  "publication_method": "GitHub immutable blobs/tree/merge commit, followed by expected-old-head ref update; no force update",
+  "source_manifest_sha256": "364cc37d22b1ff43a8bf35efc9e67e2f442a40e71a3e6f8e9bafaa5ea7af5c87"
+}

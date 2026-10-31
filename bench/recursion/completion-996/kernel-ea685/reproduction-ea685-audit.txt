@@ -1,0 +1,174 @@
+PR #996 ea685 reproduction audit and errata
+==========================================
+
+This note supersedes the execution instructions in reproduce-ea685.txt and the
+earlier planning notes. It does not change a measurement, compiler, controller,
+or source probe. The completed reports remain immutable. No workload was rerun
+for this audit.
+
+Scope and exact source identities
+--------------------------------
+Primary baseline: 07b26e02425d023288ed95a9d2a5077be5aeb45e
+  tree 9996e386de938ba299410aef49bd5bc4aa27abca
+Candidate: ea68529b8a590eb8f3df7200b857e1d16becd7a3
+  tree 62ad6bb99fbc3e1625f36f167d664f2d8f221801
+Historical comparison: da84d382ff83f09e46d4ef104e62e6f64e9c37c1
+  tree 903a72dce156018f83f69f1e8b4d74a6f14e99dd
+
+The two fresh native bootstrap records bind main07b and candidate ea685. The
+historical da84 record does not have a fresh_local_build field; this audit does
+not add that claim. The earlier db14/06e3 checkpoint is a separate experiment.
+
+The kernel report contains 252 timing processes and 24 count observations.
+The startup report contains 108 process observations; the longer fnmatch AOT
+report contains 36 additional observations, kept separate. Six hosted inspection
+cells and the corrected v2 backend linkage are complete. Completion of evidence
+does not establish performance acceptance. No threshold is inferred here.
+
+Authoritative report SHA256 values:
+  kernel measurement.json
+    a0fffb57d1f7461663617b2fd2a350aac41635155832b90f1b6ae48e5e2ab1ae
+  startup results-ea685/report.json
+    c9b6a8a134136a507978d2a275edca20f2a7ff2d78102282231bd7b238d7a470
+  startup fnmatch-ea685-long/report.json
+    2cf5615902803ce06229de9978d4fd18d5d46a55cc31ab8c0fe555edecfb93d4
+  startup inspection-ea685/report.json
+    d68ee2b8c19ec0578f6be8f1099818045957caa9c3d61da578a16015bb0d1cd9
+  startup inspection-ea685-backend-link-v2.json
+    8fae5a074dca1d7975051519e5113279814c1cc6bf193e78bbc3436d52c3c86e
+
+Publication layout and required archive contents
+------------------------------------------------
+The kernel-ea685/ and startup-ea685/ directories are review selections. They
+are not standalone relocatable execution packages. A path-preserving replay
+requires the complete retained workspace/toolchain archives, including the
+external items listed below. Preserve Unix executable permissions and symlinks.
+
+Restore the kernel controller files together under:
+  /workspace/scratch/a83500db0e17/final-perf/
+    measure_current.py
+    count_support.py
+    replay_support.py
+    curate_current.py                 (derivation only; not a measurement phase)
+
+Restore startup selection relative paths under:
+  /workspace/scratch/a83500db0e17/final-startup/
+The selected six Python files form a complete local import set:
+  measure_current_v2.py, backend_tool_wrapper.py, inspect_series.py,
+  link_inspection_backend_v2.py, fnmatch_followup.py, curate_ea685_final.py.
+The last file is a derivation controller, not a compiler or measurement phase.
+The audit note and probe selection were added after that controller generated
+the original publication index; this did not change the frozen method files.
+
+Required external archive paths:
+  /workspace/scratch/a83500db0e17/main1000/
+    Clean main07b checkout, native compiler and all nine recorded build artifacts.
+  /workspace/scratch/a83500db0e17/pystachy/
+    Clean candidate ea685 checkout, native compiler and all nine build artifacts.
+  /workspace/scratch/a83500db0e17/experiments/bootstrap-main1000/
+    bootstrap.json and bootstrap.log.
+  /workspace/scratch/a83500db0e17/experiments/bootstrap-ea685/
+    bootstrap.json and bootstrap.log.
+  /workspace/scratch/e858f72517b9/pystachy/
+    Clean historical da84 checkout and recorded native/build artifacts.
+  /workspace/scratch/e858f72517b9/recovery-validation/final-da84/
+    bootstrap.json and bootstrap.log.
+  /workspace/scratch/e858f72517b9/toolchain/
+    env.sh, manifest.json, matching Python/LLVM/Valgrind installations and libraries.
+  /workspace/scratch/e858f72517b9/perf-work/backend-attribution-da84/
+    Complete original report.json, curated.json and referenced profile/capture
+    subdirectories. The startup controller deliberately revalidates and reuses
+    historical da84 instruction profiles; it cannot reproduce that phase from
+    the two selected new reports alone.
+  /workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py
+    Exact mixed-text benchmark source (also selected as startup probes/text.py).
+
+That text.py is the unmodified committed blob from
+eca993b9a4563f7f7865cdeda6e6b22f29d044c1, 4,394 bytes, SHA256
+abcf4ba78bd62af42207230106b96f63b1a64758c1aa2831a49d0ba7781e6302.
+All four original kernel probes match ea685:bench/recursion/*.py. The included
+json_warmed.py is the exact controller-derived four-extra-warmup variant.
+No unpublished compiler or benchmark variant is needed. The audit compared all
+131 kernel and 133 startup recorded compiler inputs per role to their committed
+Git blobs, with no missing or differing blob.
+
+For independent linkage or replay of retained executables, also restore the
+complete original final-startup/results-ea685/, inspection-ea685/ and
+inspection-ea685-backend-link-v2-artifacts/ directories. Their reports reference
+raw LLVM, optimized bitcode/disassembly, runtime FD captures, private caches and
+executables by absolute path. These large files are in the raw archive, not the
+repository review selection. Likewise, the complete final-perf/results-ea685/
+contains generated LLVM, binaries, Callgrind outputs and count-attempt records.
+
+If the exact layout or pinned binaries cannot be restored, use a separately
+reviewed path/toolchain adapter and label its outputs as a new reproduction.
+Do not edit original report paths/hashes or relabel rebuilt binaries as the
+archived build. The controllers intentionally reject drift in source, tools,
+method, environment or consumed build inputs. New timings are separate host
+observations, even when all original bytes can be restored.
+
+Kernel commands for a new replay
+--------------------------------
+Use a new output directory. Never target the completed results-ea685 directory.
+Run this command once for each kernel_phase value, in order: prepare, counts,
+timings. Before timings, establish a separate quiet window with no other host
+tool calls, compilers, builds or profilers. Keep the environment unchanged.
+
+  source /workspace/scratch/e858f72517b9/toolchain/env.sh
+  kernel_phase=prepare
+  python3.13 /workspace/scratch/a83500db0e17/final-perf/measure_current.py "$kernel_phase" \
+    --output /workspace/scratch/a83500db0e17/final-perf/replay-ea685-new \
+    --final-bootstrap /workspace/scratch/a83500db0e17/experiments/bootstrap-ea685/bootstrap.json \
+    --expected-final-commit ea68529b8a590eb8f3df7200b857e1d16becd7a3
+
+Startup commands for a new replay
+---------------------------------
+Run this command once for each startup_phase value, in order: prepare, profile,
+timings. Establish another quiet window before timings. Each preparation output
+directory must not exist; phases cannot be overwritten.
+
+  source /workspace/scratch/e858f72517b9/toolchain/env.sh
+  startup_phase=prepare
+  python3.13 /workspace/scratch/a83500db0e17/final-startup/measure_current_v2.py "$startup_phase" \
+    --output /workspace/scratch/a83500db0e17/final-startup/replay-ea685-new \
+    --main-home /workspace/scratch/a83500db0e17/main1000 \
+    --main-bootstrap /workspace/scratch/a83500db0e17/experiments/bootstrap-main1000/bootstrap.json \
+    --expected-main-commit 07b26e02425d023288ed95a9d2a5077be5aeb45e \
+    --final-home /workspace/scratch/a83500db0e17/pystachy \
+    --bootstrap /workspace/scratch/a83500db0e17/experiments/bootstrap-ea685/bootstrap.json \
+    --expected-final-commit ea68529b8a590eb8f3df7200b857e1d16becd7a3
+
+After that new startup report is complete, run fnmatch_followup.py once with
+followup_phase=prepare and once with followup_phase=timings, using a further
+quiet window. It reuses the new report's already-built executables without a
+compiler invocation and keeps the original 108 observations separate.
+
+  followup_phase=prepare
+  python3.13 /workspace/scratch/a83500db0e17/final-startup/fnmatch_followup.py "$followup_phase" \
+    --startup-report /workspace/scratch/a83500db0e17/final-startup/replay-ea685-new/report.json \
+    --output /workspace/scratch/a83500db0e17/final-startup/replay-ea685-fnmatch-new
+
+Hosted capture and corrected linkage
+------------------------------------
+The selected inspect_series.py capture phase is valid. Its unused link-backend
+phase is obsolete and must not be used. The selected link_inspection_backend_v2.py
+is authoritative. Earlier reproduce-ea685.txt refers to missing planning notes
+and to link_inspection_backend.py; the concrete commands below replace those
+references. Version 1's exact augmentation result remains historical evidence;
+its printed-name symbol join is superseded by version 2.
+
+  python3.13 /workspace/scratch/a83500db0e17/final-startup/inspect_series.py capture \
+    --home /workspace/scratch/a83500db0e17/pystachy \
+    --expected-commit ea68529b8a590eb8f3df7200b857e1d16becd7a3 \
+    --output /workspace/scratch/a83500db0e17/final-startup/replay-ea685-inspection-new
+
+  python3.13 /workspace/scratch/a83500db0e17/final-startup/link_inspection_backend_v2.py \
+    --inspection-report /workspace/scratch/a83500db0e17/final-startup/replay-ea685-inspection-new/report.json \
+    --backend-report /workspace/scratch/a83500db0e17/final-startup/replay-ea685-new/report.json \
+    --output /workspace/scratch/a83500db0e17/final-startup/replay-ea685-link-new.json
+
+The linkage requires exact driver augmentation, preserves constructor code,
+and changes no captured bytes. It binds actual llvm-dis output to its produced
+bitcode and joins LLVM symbols while handling enclosing quotes. It does not
+attribute time or instructions to individual functions. The old hosted summary's
+pending label is historical; the authoritative v2 linkage status is complete.

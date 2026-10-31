@@ -1,0 +1,29 @@
+{
+  "status": "passed",
+  "scope": "Read-only current candidate fresh-build preflight; no compiler invocation",
+  "source": {
+    "commit": "ea68529b8a590eb8f3df7200b857e1d16becd7a3",
+    "tree": "62ad6bb99fbc3e1625f36f167d664f2d8f221801",
+    "status": ""
+  },
+  "harness_sha256": "2da54d464e5d560e77fc32ce45b659d69b25e82e2b8267c6d8c337ded6887ee7",
+  "bootstrap_record": "/workspace/scratch/a83500db0e17/experiments/bootstrap-ea685/bootstrap.json",
+  "bootstrap_sha256": "1844fd02b06b2ef28df5eda0f84f7ed353d73e0127b50a5458027e00a43941b7",
+  "bootstrap_log_sha256": "9633cc2f2e10e419ebd56bfdfe8da0012d761ca63aa83b7ca4c3dec73f319b00",
+  "consumed_inputs": 137,
+  "actual_artifacts_verified": 9,
+  "compiler_ir_fixed_point": {
+    "sha256": "4c64d1337da57bc0d88b936d19e9e49da5bf74c241092d80f37621e96e2ac5f1",
+    "bytes": 30439243,
+    "lines": 808317
+  },
+  "native": {
+    "sha256": "f00814e63cf2fecedf2f1f6dac8dc1aae714744d0357fdc58e59d68afcf4b84e",
+    "bytes": 5092728
+  },
+  "descriptors": {
+    ".python-version": "2d82946ffb2ecf549699ebb86ecbbe663bbc19d53c49c681a1a425f003f80ddb",
+    "Makefile": "a357ac3ffb0e17e855c125573cf597699818aac7d6cde3715423e841f28b5931",
+    "VERSION": "e9b85876a80c5219e486ff11b5941de65d51ac17c751a489711d1b04df6c806e"
+  }
+}

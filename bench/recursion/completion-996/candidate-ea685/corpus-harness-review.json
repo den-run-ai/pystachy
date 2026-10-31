@@ -1,0 +1,48 @@
+{
+  "status": "passed",
+  "scope": "Read-only source inventory, unchanged-function AST comparison, synthetic diagnostic cases, and fresh main build binding; no compiler invocation.",
+  "harness_sha256": "2da54d464e5d560e77fc32ce45b659d69b25e82e2b8267c6d8c337ded6887ee7",
+  "self_check_sha256": "03b6cdffdde380193d0cb1fe7527aff7de3fdc7212b4857e1c52be5194dca8ef",
+  "historical_harness_sha256": "d04520006f2946225f130754eaa15f709d1d1a26039c6921bd7e7c16c0393641",
+  "unchanged_functions": [
+    "snapshot",
+    "plan_cases",
+    "ProcessRunner",
+    "retain",
+    "validate"
+  ],
+  "synthetic_diagnostic_checks": 11,
+  "main_plan": 3903,
+  "candidate_plan": 3924,
+  "candidate_programs": 2140,
+  "candidate_rejections": 1784,
+  "added_cases": [
+    "bench/recursion/json_calls.py",
+    "bench/recursion/json_file_calls.py",
+    "bench/recursion/object_calls.py",
+    "bench/recursion/ordinary_calls.py",
+    "tests/programs/exceptions/exc_recursion_cold_uncaught.py",
+    "tests/programs/exceptions/exc_recursion_contexts.py",
+    "tests/programs/exceptions/exc_recursion_unwind.py",
+    "tests/programs/generators/gen_recursion_guard.py",
+    "tests/programs/inference/dynany_recursion_bounded.py",
+    "tests/programs/inference/dynany_recursion_guard.py",
+    "tests/programs/language/recursion_after_call.py",
+    "tests/programs/language/recursion_bounded.py",
+    "tests/programs/language/recursion_checked_leaf.py",
+    "tests/programs/language/recursion_cold.py",
+    "tests/programs/language/recursion_guard.py",
+    "tests/programs/language/recursion_leaf.py",
+    "tests/programs/language/recursion_partial_depth.py",
+    "tests/programs/language/recursion_partial_tails.py",
+    "tests/programs/language/recursion_set_limit.py",
+    "tests/programs/library/re_specialize_recursion.py",
+    "tests/programs/runtime/rt_recursion_scoped_files.py"
+  ],
+  "removed_cases": [],
+  "main_build_descriptors": {
+    ".python-version": "2d82946ffb2ecf549699ebb86ecbbe663bbc19d53c49c681a1a425f003f80ddb",
+    "Makefile": "a357ac3ffb0e17e855c125573cf597699818aac7d6cde3715423e841f28b5931",
+    "VERSION": "e9b85876a80c5219e486ff11b5941de65d51ac17c751a489711d1b04df6c806e"
+  }
+}

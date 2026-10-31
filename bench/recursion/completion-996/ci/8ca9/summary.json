@@ -1,0 +1,134 @@
+{
+  "artifacts": {
+    "archives_verified": 37,
+    "bytes": 31792691,
+    "sha256_size_and_zip_crc_verified": true
+  },
+  "base": "06e3ad5d08514ba31fb231fe4636a962fe6578e3",
+  "bootstrap": {
+    "all_bundle_member_hashes_verified": true,
+    "bundle_id": "03d7773d96294e3a4fa2b735fb9e4df617cd474d5264add577d83593874bd21e",
+    "compiler_ir_sha256": "600ed810c6c945784ced033ad0af7de09b352eca7b12ebfd58fcd285b695dfd4",
+    "native_sha256": "c592128785da4a5968e571c4d3682a812857b7eab6c0ecbc1059807c26d7da12",
+    "runtime_ir_sha256": "940a694da5ea93214d1308a8eb635b47d8d0a9d4256c63d084c24f5099f8aa5f"
+  },
+  "check_runs": 61,
+  "collector_sha256": "e82240fa75a1921bd8c624e1f322500c26a0558809d01a3638661d4c50953059",
+  "conclusions": {
+    "skipped": 2,
+    "success": 59
+  },
+  "coverage": [
+    {
+      "badge": "96.1% statements, 92.6% branches",
+      "name": "coverage",
+      "parts": 12
+    },
+    {
+      "badge": "95.5% lines, 87.5% branches",
+      "name": "runtime-coverage",
+      "parts": 7
+    }
+  ],
+  "expected_skips": {
+    "DCO certified (fork pull requests)": "same-repository branch; base workflow condition false",
+    "publish main's coverage to the badges branch": "pull-request event; publication is restricted to main"
+  },
+  "extra_benchmark_correctness": [
+    {
+      "cases": 7,
+      "name": "extended-smoke",
+      "status": "ok"
+    },
+    {
+      "cases": 22,
+      "name": "pyperformance-smoke",
+      "status": "ok"
+    }
+  ],
+  "head": "8ca9b82c60651f746d538ad5da41ba02775bbd3c",
+  "limitations": [
+    "This evidence belongs only to the named head/tree, not to later commits.",
+    "Successful performance-smoke execution is a checksum/completion result, not performance acceptance.",
+    "Opt-in completed checks include documented exact expected compiler rejections and AOT native-IR deferrals; those categories are preserved in suite-counts.json and validated against the complete native suite.",
+    "Coverage percentages are report-only; coverage part membership, test reports and source commit were verified.",
+    "Coverage intermediate data archives were inventoried; the combined coverage archives retain their original per-part reports/logs.",
+    "The bootstrap archive retains stage1 compiler IR and equal runtime stage1/stage2 IR; compiler fixed-point equality is attested by the successful producer report/log, not a separately retained stage2 compiler IR file."
+  ],
+  "lint": {
+    "mypy": "Success: no issues found in 48 source files",
+    "oracle_recordings": "CPython 3.13.16: 1945 recordings, 110 deviations, 11 files of lib/ checked; 0 failed",
+    "runtime_roots": "63 static pointer stores: 0 GC root problems",
+    "suite_invocations": 30,
+    "tests": 886,
+    "unittest_skips": 0
+  },
+  "merge_tree_equals_head_tree": true,
+  "port_preservation": [
+    {
+      "compiled_mapping": {
+        "compiled": 12,
+        "partial": 2,
+        "unsupported": 3
+      },
+      "mode": "cpython_hosted",
+      "module": "fnmatch",
+      "passed": 17,
+      "port": "lib/fnmatch.py",
+      "skipped": {},
+      "tests_run": 17
+    },
+    {
+      "compiled_mapping": {
+        "compiled": 65,
+        "partial": 1
+      },
+      "mode": "cpython_hosted",
+      "module": "textwrap",
+      "passed": 66,
+      "port": "lib/textwrap.py",
+      "skipped": {},
+      "tests_run": 66
+    }
+  ],
+  "pull_request": 996,
+  "purpose": "Historical exact-head CI correctness checkpoint; no performance acceptance decision",
+  "references": {
+    "artifacts": "artifact-verification.json",
+    "checks": "checks.json",
+    "coverage": "coverage-summary.json",
+    "groups": "groups.json",
+    "lint_tests": "lint-tests.json",
+    "source_binding": "source-binding.json",
+    "suite_counts": "suite-counts.json"
+  },
+  "repository": "den-run-ai/pystachy",
+  "schema": 1,
+  "status": "verified",
+  "synthetic_merge": "0270079e4295d324ed7f87aa9b9150b5cb57a97c",
+  "tree": "0ac344db3198a5e867ede0b1dbeb47092a341fb6",
+  "verification": {
+    "all_original_reports_remerged": true,
+    "corpus_counts": {
+      "corpus_cases": 3839,
+      "mode_checks": 4083,
+      "rejection_tests": 1784,
+      "suite_checks": 6138,
+      "syntax_cases": 250,
+      "test_programs": 1945
+    },
+    "expected_counts_and_source_identities_validated": true,
+    "failed": 0,
+    "group_stage_executions": 84,
+    "groups": 31,
+    "logical_stages": 54,
+    "reused_bootstrap_validations": 30,
+    "toolchain": {
+      "clang": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+      "llvm": "Ubuntu LLVM version 18.1.3",
+      "llvm_dir": "/usr/lib/llvm-18/bin",
+      "python": "Python 3.13.16"
+    }
+  },
+  "workflow_runs": 7
+}

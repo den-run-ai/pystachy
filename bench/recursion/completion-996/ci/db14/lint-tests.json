@@ -1,0 +1,193 @@
+{
+  "job_id": 124663077049,
+  "log_sha256": "3f0ba2fdc420b660d6349467519bcf586a5c68e08db97ffbff363c035c516c03",
+  "mypy": "Success: no issues found in 48 source files",
+  "oracle_recordings": "CPython 3.13.16: 1945 recordings, 110 deviations, 11 files of lib/ checked; 0 failed",
+  "runtime_roots": "63 static pointer stores: 0 GC root problems",
+  "suite_invocations": 30,
+  "suites": [
+    {
+      "command": "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p test_repository_hygiene.py",
+      "result": "OK",
+      "seconds": 0.187,
+      "tests": 11
+    },
+    {
+      "command": "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p test_function_summaries.py",
+      "result": "OK",
+      "seconds": 0.055,
+      "tests": 7
+    },
+    {
+      "command": "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p 'test_typed*.py'",
+      "result": "OK",
+      "seconds": 6.717,
+      "tests": 213
+    },
+    {
+      "command": "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p 'test_json*.py'",
+      "result": "OK",
+      "seconds": 1.423,
+      "tests": 29
+    },
+    {
+      "command": "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p test_numeric_identity.py",
+      "result": "OK",
+      "seconds": 0.469,
+      "tests": 56
+    },
+    {
+      "command": "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p test_identity_scope.py",
+      "result": "OK",
+      "seconds": 4.87,
+      "tests": 17
+    },
+    {
+      "command": "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p test_dynany_comparisons.py",
+      "result": "OK",
+      "seconds": 9.291,
+      "tests": 50
+    },
+    {
+      "command": "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p test_dynany_dict_kinds.py",
+      "result": "OK",
+      "seconds": 0.007,
+      "tests": 3
+    },
+    {
+      "command": "python3 -m unittest discover -s tools -p 'test_*verif*.py'",
+      "result": "OK",
+      "seconds": 154.313,
+      "tests": 93
+    },
+    {
+      "command": "python3 -m unittest discover -s tools -p test_route_bench.py",
+      "result": "OK",
+      "seconds": 0.005,
+      "tests": 9
+    },
+    {
+      "command": "python3 -m unittest discover -s tools -p 'test_runtime_*.py'",
+      "result": "OK",
+      "seconds": 89.999,
+      "tests": 43
+    },
+    {
+      "command": "python3 -m unittest discover -s tools -p test_bench_pyperformance.py",
+      "result": "OK",
+      "seconds": 6.756,
+      "tests": 21
+    },
+    {
+      "command": "python3 -m unittest discover -s tools -p test_perf_smoke.py",
+      "result": "OK",
+      "seconds": 0.569,
+      "tests": 24
+    },
+    {
+      "command": "python3 -m unittest discover -s tools -p test_check_nanogpt.py",
+      "result": "OK",
+      "seconds": 0.02,
+      "tests": 8
+    },
+    {
+      "command": "python3 -m unittest discover -s tools -p test_import_sweep.py",
+      "result": "OK",
+      "seconds": 0.797,
+      "tests": 10
+    },
+    {
+      "command": "python3 -m unittest discover -s tools -p test_dynany_fuzz.py",
+      "result": "OK",
+      "seconds": 0.27,
+      "tests": 22
+    },
+    {
+      "command": "python3 -m unittest discover -s tools -p test_dynany_calls.py",
+      "result": "OK",
+      "seconds": 0.147,
+      "tests": 4
+    },
+    {
+      "command": "python3 -m unittest discover -s tools -p test_dynany_optin.py",
+      "result": "OK",
+      "seconds": 0.956,
+      "tests": 28
+    },
+    {
+      "command": "python3 -m unittest discover -s tools -p 'test_python_int*.py'",
+      "result": "OK",
+      "seconds": 0.919,
+      "tests": 43
+    },
+    {
+      "command": "python3 -m unittest discover -s tools -p test_bench_microgpt.py",
+      "result": "OK",
+      "seconds": 0.01,
+      "tests": 3
+    },
+    {
+      "command": "python3 -m unittest discover -s tools -p test_bench_integers.py",
+      "result": "OK",
+      "seconds": 0.83,
+      "tests": 4
+    },
+    {
+      "command": "python3 -m unittest discover -s tools -p test_frame_fields.py",
+      "result": "OK",
+      "seconds": 5.06,
+      "tests": 18
+    },
+    {
+      "command": "python3 -m unittest discover -s tools -p 'test_compiler_state*.py'",
+      "result": "OK",
+      "seconds": 116.267,
+      "tests": 107
+    },
+    {
+      "command": "python3 -m unittest discover -s tools -p test_bench_json.py",
+      "result": "OK",
+      "seconds": 0.021,
+      "tests": 11
+    },
+    {
+      "command": "python3 -m unittest discover -s tools -p test_ir_cost_report.py",
+      "result": "OK",
+      "seconds": 0.005,
+      "tests": 7
+    },
+    {
+      "command": "python3 -m unittest discover -s tools -p test_dco_check.py",
+      "result": "OK",
+      "seconds": 0.006,
+      "tests": 9
+    },
+    {
+      "command": "python3 -m unittest discover -s tools -p test_coverage_report.py",
+      "result": "OK",
+      "seconds": 0.014,
+      "tests": 16
+    },
+    {
+      "command": "python3 -m unittest discover -s tools -p test_workflow_limits.py",
+      "result": "OK",
+      "seconds": 0.008,
+      "tests": 4
+    },
+    {
+      "command": "python3 -m unittest discover -s tools -p test_re_specialize.py",
+      "result": "OK",
+      "seconds": 3.342,
+      "tests": 15
+    },
+    {
+      "command": "python3 -m unittest discover -s tools -p test_concurrency_contract.py",
+      "result": "OK",
+      "seconds": 0.216,
+      "tests": 5
+    }
+  ],
+  "tests": 890,
+  "unittest_skips": 0,
+  "url": "https://github.com/den-run-ai/pystachy/actions/runs/41243838696/job/124663077049"
+}

@@ -1,0 +1,133 @@
+{
+  "current_checkouts": {
+    "main1000": "07b26e02425d023288ed95a9d2a5077be5aeb45e",
+    "pystachy": "ea68529b8a590eb8f3df7200b857e1d16becd7a3"
+  },
+  "current_workspace": "/workspace/scratch/a83500db0e17",
+  "final_curated_evidence": {
+    "commit_reference": "The commit containing this record",
+    "evidence_path": "bench/recursion/completion-996",
+    "report_path": "docs/reports/recursion-guard-completion.md"
+  },
+  "local_source_patches": [
+    {
+      "base_commit": "da84d382ff83f09e46d4ef104e62e6f64e9c37c1",
+      "base_url": "https://github.com/den-run-ai/pystachy/commit/da84d382ff83f09e46d4ef104e62e6f64e9c37c1",
+      "bytes": 14288,
+      "method": "Exact git diff --binary from published base to local source tree; apply with git apply --index then compare git write-tree. This reconstructs a tree without claiming the original local commit was published.",
+      "path": "archive-996/source-patches/cached-successful-call-d5541f22.patch",
+      "published_commit": null,
+      "published_path": "bench/recursion/completion-996/source-reconstruction/cached-successful-call-d5541f22.patch",
+      "published_with_this_record": true,
+      "sha256": "8dad6af7086fa6cb405e69dcf1638723d58475f6004a85aa5398e498989ea5d1",
+      "source_commit": "d5541f22ccbd12a86a9aa9a4f0c285a5ecf7f15b",
+      "source_tree": "982045348788e0d3de6d70164ebe1f337ccc6656"
+    },
+    {
+      "base_commit": "8ca9b82c60651f746d538ad5da41ba02775bbd3c",
+      "base_url": "https://github.com/den-run-ai/pystachy/commit/8ca9b82c60651f746d538ad5da41ba02775bbd3c",
+      "bytes": 9497,
+      "method": "Exact git diff --binary from published base to local source tree; apply with git apply --index then compare git write-tree. This reconstructs a tree without claiming the original local commit was published.",
+      "path": "archive-996/source-patches/shared-checked-rc-e2b1e7de.patch",
+      "published_commit": null,
+      "published_path": "bench/recursion/completion-996/source-reconstruction/shared-checked-rc-e2b1e7de.patch",
+      "published_with_this_record": true,
+      "sha256": "9ed9c347382074a7766a8d2b1b74e82eb31989357f5788a0e31ff3552fea07a2",
+      "source_commit": "e2b1e7dedd5cf2e4748ce6f539b7bf3dc9bdd8fc",
+      "source_tree": "dd2cdb347e617eac16dccbe542c0eadaaa743afa"
+    },
+    {
+      "base_commit": "8ca9b82c60651f746d538ad5da41ba02775bbd3c",
+      "base_url": "https://github.com/den-run-ai/pystachy/commit/8ca9b82c60651f746d538ad5da41ba02775bbd3c",
+      "bytes": 15195,
+      "method": "Exact git diff --binary from published base to local source tree; apply with git apply --index then compare git write-tree. This reconstructs a tree without claiming the original local commit was published.",
+      "path": "archive-996/source-patches/guard-outline-policy-b4da009a.patch",
+      "published_commit": null,
+      "published_path": "bench/recursion/completion-996/source-reconstruction/guard-outline-policy-b4da009a.patch",
+      "published_with_this_record": true,
+      "sha256": "fe8205c641b2359cfaddd113b619bd2c0451ebbebafae6dbe702493b316e29df",
+      "source_commit": "b4da009aa729c7f2b8a4c9a18bb83b00d52bf17f",
+      "source_tree": "93348ac527cee0b4f36b515243073a63e325dc0e"
+    },
+    {
+      "base_commit": "da84d382ff83f09e46d4ef104e62e6f64e9c37c1",
+      "base_url": "https://github.com/den-run-ai/pystachy/commit/da84d382ff83f09e46d4ef104e62e6f64e9c37c1",
+      "bytes": 12288,
+      "method": "Exact git diff --binary from published base to local source tree; apply with git apply --index then compare git write-tree. This reconstructs a tree without claiming the original local commit was published.",
+      "path": "archive-996/source-patches/early-shared-leaf-source-3d0a00ce.patch",
+      "published_commit": null,
+      "published_path": "bench/recursion/completion-996/source-reconstruction/early-shared-leaf-source-3d0a00ce.patch",
+      "published_with_this_record": true,
+      "sha256": "cca47049e89416469c85a524633fa1743353072fad04266a1bd5fa7f04dcb0d7",
+      "source_commit": "3d0a00ce40e87b5ecd7aa50ceaac7dbad96c90a9",
+      "source_tree": "a0dadc1c4c96b9370a909b040c98a469ff28bb03"
+    }
+  ],
+  "local_tree_equivalence": [
+    {
+      "local_commit": "4984b29291b84d22ce26843b2856ece3b83df4db",
+      "published_commit": "ea68529b8a590eb8f3df7200b857e1d16becd7a3",
+      "scope": "Whole tracked tree equality; original local commit identity is retained in historical records.",
+      "tree": "62ad6bb99fbc3e1625f36f167d664f2d8f221801"
+    }
+  ],
+  "original_archive_dependencies": [
+    "pystachy-recursion-996-artifacts.zip",
+    "pystachy-recursion-996-raw-ir.zip",
+    "pystachy-recursion-996-toolchain.zip"
+  ],
+  "original_known_gap": "recursion-region-startup-diagnostics.json was missing in the original handoff. This completion archive does not claim to recover it.",
+  "original_workspace": "/workspace/scratch/e858f72517b9",
+  "prior_published_evidence": [
+    {
+      "commit": "1b7080e164ab68a8fcde042162428d9131c9f533",
+      "scope": "Previously published historical evidence; the current continuation is published with this record.",
+      "url": "https://github.com/den-run-ai/pystachy/commit/1b7080e164ab68a8fcde042162428d9131c9f533"
+    }
+  ],
+  "publication_note": "The source patches are published with this record. This record cannot contain its own future commit ID; use the commit containing this file. Archive-local references are bound to that commit after publication.",
+  "repository": "https://github.com/den-run-ai/pystachy",
+  "schema": 1,
+  "source_commits": [
+    {
+      "commit": "ea68529b8a590eb8f3df7200b857e1d16becd7a3",
+      "tree": "62ad6bb99fbc3e1625f36f167d664f2d8f221801",
+      "url": "https://github.com/den-run-ai/pystachy/commit/ea68529b8a590eb8f3df7200b857e1d16becd7a3"
+    },
+    {
+      "commit": "07b26e02425d023288ed95a9d2a5077be5aeb45e",
+      "tree": "9996e386de938ba299410aef49bd5bc4aa27abca",
+      "url": "https://github.com/den-run-ai/pystachy/commit/07b26e02425d023288ed95a9d2a5077be5aeb45e"
+    },
+    {
+      "commit": "db14f824da52e83ab392a0096c9dd1bbb0895c29",
+      "tree": "b7ca39aa08a2ec08f972ec36ae8ea26ed868ddad",
+      "url": "https://github.com/den-run-ai/pystachy/commit/db14f824da52e83ab392a0096c9dd1bbb0895c29"
+    },
+    {
+      "commit": "860b6c503a4261a6c4dd86b803f4cf270ce95c74",
+      "tree": "98d8ee9dea118a2cf3276defa3c4f6ccec126c78",
+      "url": "https://github.com/den-run-ai/pystachy/commit/860b6c503a4261a6c4dd86b803f4cf270ce95c74"
+    },
+    {
+      "commit": "8ca9b82c60651f746d538ad5da41ba02775bbd3c",
+      "tree": "0ac344db3198a5e867ede0b1dbeb47092a341fb6",
+      "url": "https://github.com/den-run-ai/pystachy/commit/8ca9b82c60651f746d538ad5da41ba02775bbd3c"
+    },
+    {
+      "commit": "156fc09117e95eee41869b671bebe1b5fcf46fa4",
+      "tree": "4e7c47c45dd1eb08f5f67b5a91bd33382e6ddb0a",
+      "url": "https://github.com/den-run-ai/pystachy/commit/156fc09117e95eee41869b671bebe1b5fcf46fa4"
+    },
+    {
+      "commit": "da84d382ff83f09e46d4ef104e62e6f64e9c37c1",
+      "tree": "903a72dce156018f83f69f1e8b4d74a6f14e99dd",
+      "url": "https://github.com/den-run-ai/pystachy/commit/da84d382ff83f09e46d4ef104e62e6f64e9c37c1"
+    },
+    {
+      "commit": "06e3ad5d08514ba31fb231fe4636a962fe6578e3",
+      "tree": "db120afecf27ff03b08c25624dc64be8b06bac3b",
+      "url": "https://github.com/den-run-ai/pystachy/commit/06e3ad5d08514ba31fb231fe4636a962fe6578e3"
+    }
+  ]
+}

@@ -1,0 +1,161 @@
+diff --git a/docs/internals.md b/docs/internals.md
+index 361e1eab..2b03228f 100644
+--- a/docs/internals.md
++++ b/docs/internals.md
+@@ -456,12 +456,14 @@ acceptance. The [measurement report](reports/recursion-guard-regions.md) records
+ series and the captured code. This layout choice leaves the depth proof and fallback
+ behavior intact; it does not impose a new inlining boundary inside the unchecked graph.
+ 
+-An original check-only leaf can share its existing full bounded private body:
+-its guarded entry checks the limit, then tail-forwards to that body with the same
+-signature and hidden identity arguments. The three-operation wrapper has no frame
+-slots and lowers to `musttail`, so sharing adds no native stack frame. Tuple returns
+-and leaves with terminal depth-publication bridges keep their existing bodies.
+-This sharing runs after region selection and uses an already budgeted private clone.
++An original check-only leaf can share its existing full bounded private body (`@rf`),
++or its successful-child private body (`@rc`) when no full bounded clone exists.
++Its guarded entry checks the limit, then tail-forwards with the same signature and
++hidden identity arguments. The three-operation wrapper has no frame slots and
++lowers to `musttail`, so sharing adds no native stack frame. An `@rc` body retains
++the original one-frame terminal publication; the two-frame `@rp2` body is never a
++forwarding target. Tuple returns keep their existing fresh-return bodies. This
++sharing runs after region selection and uses an already budgeted private clone.
+ 
+ A separate two-frame version can cover
+ a mixed function's returning leaf paths. It publishes the active depth before an
+diff --git a/docs/typed-ir.md b/docs/typed-ir.md
+index 1a7fe5a9..e16ae4f2 100644
+--- a/docs/typed-ir.md
++++ b/docs/typed-ir.md
+@@ -458,14 +458,15 @@ separate timing series and captured code. These are generic graph and emission r
+ with no benchmark-name tests.
+ 
+ After bounded, partial and successful-child selection, a check-only original leaf
+-with an existing full bounded `@rf` clone can reuse that clone as its body. Its
+-original callable address retains the limit check, followed by a call and return;
+-the wrapper has no frame slots. LLVM lowering recognizes this exact shape and emits
+-`musttail`, forwarding the original signature and hidden identity arguments and
+-result pointer unchanged. Sharing therefore adds no native stack frame. All tuple
+-returns are excluded to preserve the fresh-tuple proof used by `tupleret`. Children
+-with terminal observer bridges do not qualify for the full bounded clone. This
+-uses an already budgeted body and leaves region selection and its proofs unchanged.
++can reuse an existing full bounded `@rf` clone, or a matching `@rc` clone if no
++full bounded clone exists. Its original callable address retains the limit check,
++followed by a call and return; the wrapper has no frame slots. LLVM lowering
++recognizes this exact shape and emits `musttail`, forwarding the original signature
++and hidden identity arguments and result pointer unchanged. Sharing therefore adds
++no native stack frame. All tuple returns are excluded to preserve the fresh-tuple
++proof used by `tupleret`. An `@rc` body retains the original single-frame terminal
++observer bridge; an `@rp2` body publishes two frames and is never a forwarding target.
++This uses an already budgeted body and leaves region selection and its proofs unchanged.
+ 
+ Partial versioning uses a two-frame budget for a mixed root and its immediate leaf
+ callees. A child must pass the leaf proof on every normal and exceptional path;
+diff --git a/src/pystachy_compiler/lowering.py b/src/pystachy_compiler/lowering.py
+index ecffd9f6..df7c5b71 100644
+--- a/src/pystachy_compiler/lowering.py
++++ b/src/pystachy_compiler/lowering.py
+@@ -326,13 +326,14 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
+         o.append(f"  %t{i.r[0]} = {self.invoke(f'call {agg} @v.{i.s[1:]}({args})', i)}")
+         self.vaggs[f"%t{i.r[0]}"] = agg
+     elif op == "call":
+-        # A shared bounded leaf has no frame storage and forwards its exact
++        # A shared checked leaf has no frame storage and forwards its exact
+         # signature (including identity operands) after the original check.
+         # Require a tail transfer so sharing cannot add a native stack frame.
+         shared = (fn.counted and len(fn.slots) == 0 and len(fn.blocks) == 1
+                   and len(fn.blocks[0].code) == 3
+                   and fn.blocks[0].code[0].op == "rt" and fn.blocks[0].code[0].s == "recursion.check"
+-                  and fn.blocks[0].code[2].op == "ret" and i.s == "@rf." + fn.f.ll[1:])
++                  and fn.blocks[0].code[2].op == "ret"
++                  and i.s in ["@rf." + fn.f.ll[1:], "@rc." + fn.f.ll[1:]])
+         c = self.invoke(f"{'musttail ' if shared else ''}call {lt(i.t)} {i.s}({', '.join([lt(v.t) + ' ' + v.v for v in i.a])})", i)
+         o.append("  " + c if i.t == "None" else f"  %t{i.r[0]} = {c}")
+     elif op == "icall":
+diff --git a/src/pystachy_compiler/optimizations.py b/src/pystachy_compiler/optimizations.py
+index c8f1286a..d6a40fd5 100644
+--- a/src/pystachy_compiler/optimizations.py
++++ b/src/pystachy_compiler/optimizations.py
+@@ -860,14 +860,14 @@ def recursion_cached(self) -> int:
+ def gen_recursionregion(self) -> int:
+     count = recursion_bounded(self) + recursion_partial(self) + recursion_cached(self)
+     for fn in self.fns:
+-        # Full-region leaves already have one proven unchecked body. Retain the
+-        # original callable's entry check, then tail-forward to that same body
+-        # instead of compiling both copies. Partial children have observer
+-        # bridges and cannot use this transformation. Do this after partial
+-        # selection so its original leaf-body proof and budgets do not change.
+-        # The matching @rf body exists only after the full bounded proof;
+-        # a check-only original then has no remaining depth observers.
++        # Bounded and following-call leaves already have an unchecked body.
++        # Retain the original callable's entry check and tail-forward to it.
++        # An @rc body keeps the original one-frame terminal publication; @rp2
++        # publishes two frames and must never be used for this forwarding.
++        # Run after selection so the original leaf proofs/budgets do not change.
+         fast = self.fll.get("@rf." + fn.f.ll[1:], -1)
++        if fast < 0:
++            fast = self.fll.get("@rc." + fn.f.ll[1:], -1)
+         if (not fn.counted or fn.rdepth != "" or fast < 0 or is_tuple(fn.f.ret)
+                 or len(fn.blocks[0].code) == 0):
+             continue
+diff --git a/tools/test_typed_recursion_cached.py b/tools/test_typed_recursion_cached.py
+index 8100bc36..6cd1592c 100644
+--- a/tools/test_typed_recursion_cached.py
++++ b/tools/test_typed_recursion_cached.py
+@@ -1,5 +1,6 @@
+ """Successful child calls prove later leaf checks redundant in an active frame."""
+ from pathlib import Path
++import re
+ import sys
+ import unittest
+ 
+@@ -19,6 +20,22 @@ def recursive(n: int) -> int:
+ 
+ 
+ class TypedRecursionCachedTests(unittest.TestCase):
++    def test_checked_leaf_shares_exact_identity_signature(self):
++        ir, functions = compile_source("# pystachy: dynamic-any\n" + PREFIX + '''
++def kernel(n: int) -> int:
++    total = leaf(0)
++    for i in range(n):
++        total += leaf(i) + recursive(i)
++    return total
++print(kernel(3))
++''')
++        self.assertEqual([op[:2] for op in operations(functions["@f.leaf"])],
++                         [("rt", "recursion.check"), ("call", "@rc.f.leaf"), ("ret", "")])
++        body = re.search(r"^define internal i64 @f\.leaf\(.*?^}", ir, re.M | re.S).group(0)
++        self.assertNotIn("alloca", body)
++        self.assertIn("musttail call i64 @rc.f.leaf(i64 %a0, ptr %aid0, ptr %idret)", body)
++        self.assertLess(body.index("@pys.recursion.check()"), body.index("musttail call"))
++
+     def test_successful_preheader_call_removes_only_later_checks(self):
+         _, functions = compile_source(PREFIX + '''
+ def kernel(n: int) -> int:
+@@ -133,6 +150,8 @@ print(kernel(3))
+         ir, functions = compile_source(source)
+         self.assertIn("@rc.f.leaf", functions)
+         self.assertIn("call {i64, i64} @v.rc.f.leaf(", ir)
++        self.assertTrue(any(op[0] == "alloc.fixed" for op in operations(functions["@f.leaf"])))
++        self.assertNotIn("musttail call ptr @rc.f.leaf", ir)
+ 
+     def test_terminal_child_keeps_single_frame_publication(self):
+         source = PREFIX + '''
+@@ -152,12 +171,16 @@ def kernel(n: int) -> int:
+     return total
+ print(kernel(3))
+ '''
+-        _, functions = compile_source(source)
++        ir, functions = compile_source(source)
+         cold = operations(functions["@rc.f.cold"])
+         self.assertFalse(any(op[:2] == ("rt", "recursion.check") for op in cold))
+         self.assertTrue(any(op[:2] == ("rt", "recursion.enter") for op in cold))
+         self.assertTrue(any(op[:2] == ("call", "@f.problem") for op in cold))
+         self.assertFalse(any(op[:2] == ("rt", "recursion.depth") for op in cold))
++        self.assertEqual([op[:2] for op in operations(functions["@f.cold"])],
++                         [("rt", "recursion.check"), ("call", "@rc.f.cold"), ("ret", "")])
++        body = re.search(r"^define internal i64 @f\.cold\(.*?^}", ir, re.M | re.S).group(0)
++        self.assertIn("musttail call i64 @rc.f.cold(i64 %a0)", body)
+ 
+ 
+ if __name__ == "__main__":

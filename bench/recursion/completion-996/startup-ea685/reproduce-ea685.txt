@@ -1,0 +1,30 @@
+Concrete ea685 current-main startup protocol
+===========================================
+
+Use the reviewed measure_current_v2.py. Version 2 adds a hash of retained llvm-dis
+text and its input bitcode at production, required by the separate inspector
+linkage. All prior controller versions remain preserved. No sampling or compiler
+invocation behavior differs from measure_current.py.
+
+After root certifies fresh candidate bootstrap and grants the compute slot:
+
+  source /workspace/scratch/e858f72517b9/toolchain/env.sh
+  python3.13 /workspace/scratch/a83500db0e17/final-startup/measure_current_v2.py PHASE \
+    --output /workspace/scratch/a83500db0e17/final-startup/results-ea685 \
+    --main-home /workspace/scratch/a83500db0e17/main1000 \
+    --main-bootstrap /workspace/scratch/a83500db0e17/experiments/bootstrap-main1000/bootstrap.json \
+    --expected-main-commit 07b26e02425d023288ed95a9d2a5077be5aeb45e \
+    --final-home /workspace/scratch/a83500db0e17/pystachy \
+    --bootstrap /workspace/scratch/a83500db0e17/experiments/bootstrap-ea685/bootstrap.json \
+    --expected-final-commit ea68529b8a590eb8f3df7200b857e1d16becd7a3
+
+PHASE order is prepare, profile, timings, one at a time. Timings require a quiet
+window with no concurrent host tool calls or other compiler/profile workloads.
+The detailed method, three role scopes, six balanced orders, provenance gates,
+and interpretation limits are in reproduce-current-main.txt. The current main
+and candidate profiles are fresh; only immutable da84 profiles may be reused
+under exact current-control parity gates. All elapsed observations are new.
+
+After the startup report is complete, follow inspection-linkage-plan.txt and use
+link_inspection_backend.py to prove exact driver augmentation. Do not use the
+obsolete literal-link phase in the frozen inspection capture controller.

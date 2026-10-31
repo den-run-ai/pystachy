@@ -1,0 +1,357 @@
+[
+  {
+    "badge": {
+      "color": "brightgreen",
+      "label": "hosted compiler coverage",
+      "message": "96.0% statements, 92.6% branches",
+      "schemaVersion": 1
+    },
+    "name": "coverage",
+    "parts": [
+      {
+        "cases": null,
+        "commit": "f5c491ddf1627a35a715ae71167fb5c5126309de",
+        "data_files": 33,
+        "dirty": false,
+        "part": "cache",
+        "processes": 34,
+        "report": "68 passed, 0 failed",
+        "seconds": 263,
+        "selected": false,
+        "shard": null,
+        "suite": "cache"
+      },
+      {
+        "cases": 479,
+        "commit": "f5c491ddf1627a35a715ae71167fb5c5126309de",
+        "data_files": 766,
+        "dirty": false,
+        "part": "corpus-0",
+        "processes": 766,
+        "report": "765 passed, 0 failed",
+        "seconds": 495,
+        "selected": false,
+        "shard": [
+          0,
+          8
+        ],
+        "suite": "corpus"
+      },
+      {
+        "cases": 479,
+        "commit": "f5c491ddf1627a35a715ae71167fb5c5126309de",
+        "data_files": 772,
+        "dirty": false,
+        "part": "corpus-1",
+        "processes": 772,
+        "report": "771 passed, 0 failed",
+        "seconds": 522,
+        "selected": false,
+        "shard": [
+          1,
+          8
+        ],
+        "suite": "corpus"
+      },
+      {
+        "cases": 480,
+        "commit": "f5c491ddf1627a35a715ae71167fb5c5126309de",
+        "data_files": 769,
+        "dirty": false,
+        "part": "corpus-2",
+        "processes": 769,
+        "report": "768 passed, 0 failed",
+        "seconds": 274,
+        "selected": false,
+        "shard": [
+          2,
+          8
+        ],
+        "suite": "corpus"
+      },
+      {
+        "cases": 480,
+        "commit": "f5c491ddf1627a35a715ae71167fb5c5126309de",
+        "data_files": 767,
+        "dirty": false,
+        "part": "corpus-3",
+        "processes": 767,
+        "report": "766 passed, 0 failed",
+        "seconds": 483,
+        "selected": false,
+        "shard": [
+          3,
+          8
+        ],
+        "suite": "corpus"
+      },
+      {
+        "cases": 480,
+        "commit": "f5c491ddf1627a35a715ae71167fb5c5126309de",
+        "data_files": 768,
+        "dirty": false,
+        "part": "corpus-4",
+        "processes": 768,
+        "report": "767 passed, 0 failed",
+        "seconds": 383,
+        "selected": false,
+        "shard": [
+          4,
+          8
+        ],
+        "suite": "corpus"
+      },
+      {
+        "cases": 480,
+        "commit": "f5c491ddf1627a35a715ae71167fb5c5126309de",
+        "data_files": 772,
+        "dirty": false,
+        "part": "corpus-5",
+        "processes": 772,
+        "report": "771 passed, 0 failed",
+        "seconds": 421,
+        "selected": false,
+        "shard": [
+          5,
+          8
+        ],
+        "suite": "corpus"
+      },
+      {
+        "cases": 481,
+        "commit": "f5c491ddf1627a35a715ae71167fb5c5126309de",
+        "data_files": 767,
+        "dirty": false,
+        "part": "corpus-6",
+        "processes": 767,
+        "report": "766 passed, 0 failed",
+        "seconds": 512,
+        "selected": false,
+        "shard": [
+          6,
+          8
+        ],
+        "suite": "corpus"
+      },
+      {
+        "cases": 480,
+        "commit": "f5c491ddf1627a35a715ae71167fb5c5126309de",
+        "data_files": 765,
+        "dirty": false,
+        "part": "corpus-7",
+        "processes": 765,
+        "report": "764 passed, 0 failed",
+        "seconds": 351,
+        "selected": false,
+        "shard": [
+          7,
+          8
+        ],
+        "suite": "corpus"
+      },
+      {
+        "cases": null,
+        "commit": "f5c491ddf1627a35a715ae71167fb5c5126309de",
+        "data_files": 131,
+        "dirty": false,
+        "part": "ffi",
+        "processes": 131,
+        "report": "145 passed, 0 failed; skipped: py_coerce (the CPython-hosted compiler's own locale coercion reaches the program)",
+        "seconds": 93,
+        "selected": false,
+        "shard": null,
+        "suite": "ffi"
+      },
+      {
+        "cases": null,
+        "commit": "f5c491ddf1627a35a715ae71167fb5c5126309de",
+        "data_files": 81,
+        "dirty": false,
+        "part": "ir",
+        "processes": 81,
+        "report": "the IR check and llvm-as accept the IR of 81 programs",
+        "seconds": 91,
+        "selected": false,
+        "shard": null,
+        "suite": "ir"
+      },
+      {
+        "cases": null,
+        "commit": "f5c491ddf1627a35a715ae71167fb5c5126309de",
+        "data_files": 2,
+        "dirty": false,
+        "part": "unit",
+        "processes": 2,
+        "report": "220 tests, OK",
+        "seconds": 17,
+        "selected": false,
+        "shard": null,
+        "suite": "unit"
+      }
+    ],
+    "totals": {
+      "covered_branches": 22015,
+      "covered_lines": 41983,
+      "excluded_lines": 0,
+      "missing_branches": 1757,
+      "missing_lines": 1730,
+      "num_branches": 23772,
+      "num_partial_branches": 1561,
+      "num_statements": 43713,
+      "percent_branches_covered": 92.60895170789163,
+      "percent_branches_covered_display": "92.6",
+      "percent_covered": 94.83292583537083,
+      "percent_covered_display": "94.8",
+      "percent_statements_covered": 96.04236725916775,
+      "percent_statements_covered_display": "96.0"
+    }
+  },
+  {
+    "badge": {
+      "color": "green",
+      "label": "native runtime coverage",
+      "message": "95.5% lines, 87.5% branches",
+      "schemaVersion": 1
+    },
+    "name": "runtime-coverage",
+    "parts": [
+      {
+        "cases": 640,
+        "commit": "f5c491ddf1627a35a715ae71167fb5c5126309de",
+        "dirty": false,
+        "part": "corpus-0",
+        "profiles": 2,
+        "report": "1021 passed, 0 failed",
+        "seconds": 215,
+        "selected": false,
+        "shard": [
+          0,
+          6
+        ],
+        "suite": "corpus"
+      },
+      {
+        "cases": 640,
+        "commit": "f5c491ddf1627a35a715ae71167fb5c5126309de",
+        "dirty": false,
+        "part": "corpus-1",
+        "profiles": 2,
+        "report": "1023 passed, 0 failed",
+        "seconds": 266,
+        "selected": false,
+        "shard": [
+          1,
+          6
+        ],
+        "suite": "corpus"
+      },
+      {
+        "cases": 639,
+        "commit": "f5c491ddf1627a35a715ae71167fb5c5126309de",
+        "dirty": false,
+        "part": "corpus-2",
+        "profiles": 2,
+        "report": "1024 passed, 0 failed",
+        "seconds": 273,
+        "selected": false,
+        "shard": [
+          2,
+          6
+        ],
+        "suite": "corpus"
+      },
+      {
+        "cases": 640,
+        "commit": "f5c491ddf1627a35a715ae71167fb5c5126309de",
+        "dirty": false,
+        "part": "corpus-3",
+        "profiles": 2,
+        "report": "1022 passed, 0 failed",
+        "seconds": 278,
+        "selected": false,
+        "shard": [
+          3,
+          6
+        ],
+        "suite": "corpus"
+      },
+      {
+        "cases": 640,
+        "commit": "f5c491ddf1627a35a715ae71167fb5c5126309de",
+        "dirty": false,
+        "part": "corpus-4",
+        "profiles": 2,
+        "report": "1020 passed, 0 failed",
+        "seconds": 287,
+        "selected": false,
+        "shard": [
+          4,
+          6
+        ],
+        "suite": "corpus"
+      },
+      {
+        "cases": 640,
+        "commit": "f5c491ddf1627a35a715ae71167fb5c5126309de",
+        "dirty": false,
+        "part": "corpus-5",
+        "profiles": 2,
+        "report": "1028 passed, 0 failed",
+        "seconds": 281,
+        "selected": false,
+        "shard": [
+          5,
+          6
+        ],
+        "suite": "corpus"
+      },
+      {
+        "cases": null,
+        "commit": "f5c491ddf1627a35a715ae71167fb5c5126309de",
+        "dirty": false,
+        "part": "ffi",
+        "profiles": 3,
+        "report": "110 passed, 0 failed",
+        "seconds": 68,
+        "selected": false,
+        "shard": null,
+        "suite": "ffi"
+      }
+    ],
+    "totals": {
+      "branches": {
+        "count": 7842,
+        "covered": 6863,
+        "notcovered": 979,
+        "percent": 87.51593981127263
+      },
+      "functions": {
+        "count": 899,
+        "covered": 863,
+        "percent": 95.99555061179088
+      },
+      "instantiations": {
+        "count": 924,
+        "covered": 888,
+        "percent": 96.1038961038961
+      },
+      "lines": {
+        "count": 6544,
+        "covered": 6247,
+        "percent": 95.4614914425428
+      },
+      "mcdc": {
+        "count": 0,
+        "covered": 0,
+        "notcovered": 0,
+        "percent": 0
+      },
+      "regions": {
+        "count": 10749,
+        "covered": 9979,
+        "notcovered": 770,
+        "percent": 92.83654293422644
+      }
+    }
+  }
+]

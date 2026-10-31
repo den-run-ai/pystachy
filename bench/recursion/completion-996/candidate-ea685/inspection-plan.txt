@@ -1,0 +1,80 @@
+PR #996 hosted inspection evidence plan
+======================================
+
+Controller: inspect_series.py. Execute only after the integrated source commit
+is published, clean, and frozen, with the compute owner granting the short hosted
+capture slot. The controller imports no compiler modules itself; each inspector
+and ordinary compiler invocation runs in a fresh CPython process from that exact
+checkout. No LLVM tool or benchmark program executes in this controller.
+
+Capture command (replace placeholders after publication):
+
+  source /workspace/scratch/e858f72517b9/toolchain/env.sh
+  python3.13 /workspace/scratch/a83500db0e17/final-startup/inspect_series.py capture \
+    --home /workspace/scratch/a83500db0e17/pystachy \
+    --expected-commit FINAL_INTEGRATED_COMMIT \
+    --output NEW_INSPECTION_DIRECTORY
+
+The six cells are object_calls, json_calls and the preserved mixed-text source,
+each with default optimization and PYSTACHY_OPT=-recursionregion. Both the
+inspector and its ordinary hosted `ir` control receive the same absolute source
+path, compiler home, PYSTACHY_IRCHECK=1, Python hash seed, locale, private cache,
+and optimizer setting. All inherited PYSTACHY/ATTR settings and Python import
+overrides are removed. Each cell must have exact raw LLVM and compiler stdout/
+stderr byte parity. Compiler/source/tool/input hashes and module reads are bound
+before and after the series. Each cell uses new directories and retains failures.
+
+Whole-program records cover every symbol, guard operation, slot, and typed
+operation. Detailed snapshots/diffs are filtered to kernel for object_calls,
+object for json_calls, and number for mixed text to bound report size while
+preserving the likely duplication sites. Filtering does not change compilation.
+Every record retains its semantic-attempt index; the summary uses only the final
+completed attempt. Previous retry records remain in the original tool report.
+
+Analysis order
+--------------
+1. Confirm exact observer-versus-ordinary bytes before interpreting any snapshot.
+   Check that the actual recursionregion pass call is present only in default
+   cells. Preserve the actual guard-inlining argument and lowering order.
+
+2. Compare recursionleaf before/after whole-program guard counts. Its reported
+   return value counts transformed functions. Describe explicit publication and
+   guard changes; do not infer why any untouched function was refused.
+
+3. Compare recursionregion's symbol union, added private families, changed
+   original wrappers, typed operation delta and slot delta. Its reported count
+   mixes selected bounded roots, partial roots, successful-call callers and
+   shared checked originals; it is not an instruction count. Symbol keys remain
+   stable even when clone creation or emission changes list order.
+
+4. Inspect the number scanner and its @rp2 counterpart in mixed text, the object
+   kernel and @rf descendants, and JSON object's @rc uses. Relate their exact
+   snapshots to final raw LLVM definition sizes, guard helper attributes, and
+   literal helper call sites. Directly lowered scalar accounting can exist even
+   when no corresponding helper call remains. Raw lines are textual size only.
+
+5. Compare region-on/off raw module size and definition counts as structural
+   evidence. This identifies growth and sharing but does not establish native
+   profitability, causality, or a missed proof. No observer time or raw-line
+   statistic is substituted for current-main normal-driver measurements.
+
+After the final startup report is complete, create a separate immutable linkage:
+
+  python3.13 /workspace/scratch/a83500db0e17/final-startup/inspect_series.py link-backend \
+    --inspection-report NEW_INSPECTION_DIRECTORY/report.json \
+    --backend-report COMPLETED_STARTUP_DIRECTORY/report.json \
+    --output NEW_BACKEND_LINK.json
+
+This requires matching source commit/tree/home/inputs and benchmark bytes,
+rehashes the retained mixed inspection artifacts, and checks literal equality
+with the actual native driver's captured input. It binds the report and raw
+profiles by path and SHA256 and joins exact raw/optimized LLVM symbols and line
+sizes. A raw-input mismatch is retained as a failed linkage requiring explanation;
+no path renaming or other normalization silently relaxes equality. The optimized
+LLVM inventory is the retained disassembly from the completed backend harness.
+
+Whole opt+lli instruction totals still include lli execution/runtime work. The
+symbol-size join is not per-function time attribution. Reuse the existing causal
+guard-attribute ablation only with its original source/scope label; do not present
+it as a new-main or final-candidate measurement. The older lost diagnostic export
+is not reconstructed by this new inspection series.

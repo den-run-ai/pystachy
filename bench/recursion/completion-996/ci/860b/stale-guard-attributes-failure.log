@@ -1,0 +1,323 @@
+﻿2026-10-31T21:17:54.5356100Z Current runner version: '2.338.2'
+2026-10-31T21:17:54.5372213Z ##[group]Runner Image Provisioner
+2026-10-31T21:17:54.5372868Z Hosted Compute Agent
+2026-10-31T21:17:54.5373363Z Version: 20261015.610
+2026-10-31T21:17:54.5373820Z Commit: 267fdb4e8bbec4ab5ea31367f3a00d5c480c7656
+2026-10-31T21:17:54.5374347Z Build Date: 2026-10-14T17:06:54Z
+2026-10-31T21:17:54.5374836Z Worker ID: {7c9934d5-dbfb-47c9-a53e-551605d8dc40}
+2026-10-31T21:17:54.5375336Z Region: us-west-2
+2026-10-31T21:17:54.5375756Z Cloud: AWS
+2026-10-31T21:17:54.5376127Z ##[endgroup]
+2026-10-31T21:17:54.5377000Z ##[group]Operating System
+2026-10-31T21:17:54.5377541Z Ubuntu
+2026-10-31T21:17:54.5377906Z 24.04.5
+2026-10-31T21:17:54.5378293Z LTS
+2026-10-31T21:17:54.5378654Z ##[endgroup]
+2026-10-31T21:17:54.5379025Z ##[group]Runner Image
+2026-10-31T21:17:54.5379473Z Image: ubuntu-24.04
+2026-10-31T21:17:54.5379868Z Version: 20261018.96.1
+2026-10-31T21:17:54.5380775Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261018.96/images/ubuntu/Ubuntu2404-Readme.md
+2026-10-31T21:17:54.5382064Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261018.96
+2026-10-31T21:17:54.5382763Z ##[endgroup]
+2026-10-31T21:17:54.5383545Z ##[group]GITHUB_TOKEN Permissions
+2026-10-31T21:17:54.5385074Z Contents: read
+2026-10-31T21:17:54.5385473Z Metadata: read
+2026-10-31T21:17:54.5385875Z ##[endgroup]
+2026-10-31T21:17:54.5387299Z Secret source: Actions
+2026-10-31T21:17:54.5387994Z Cache mode: write
+2026-10-31T21:17:54.5388479Z Prepare workflow directory
+2026-10-31T21:17:54.5645222Z Prepare all required actions
+2026-10-31T21:17:54.5680181Z Getting action download info
+2026-10-31T21:17:54.9334266Z Download action repository 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' (SHA:3d3c42e5aac5ba805825da76410c181273ba90b1)
+2026-10-31T21:17:56.9247264Z Download action repository 'actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97' (SHA:5fda3b95a4ea91299a34e894583c3862153e4b97)
+2026-10-31T21:17:57.0624001Z Download action repository 'actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9' (SHA:cf430e030ddbb5b0abf93d22962f4752f3646cd9)
+2026-10-31T21:17:57.3064031Z Complete job name: hosted compiler coverage (ffi, ir)
+2026-10-31T21:17:57.3818087Z ##[group]Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+2026-10-31T21:17:57.3819492Z with:
+2026-10-31T21:17:57.3820331Z   persist-credentials: false
+2026-10-31T21:17:57.3821522Z   repository: den-run-ai/pystachy
+2026-10-31T21:17:57.3827971Z   token: ***
+2026-10-31T21:17:57.3828751Z   ssh-strict: true
+2026-10-31T21:17:57.3829537Z   ssh-user: git
+2026-10-31T21:17:57.3830325Z   clean: true
+2026-10-31T21:17:57.3831255Z   sparse-checkout-cone-mode: true
+2026-10-31T21:17:57.3832339Z   fetch-depth: 1
+2026-10-31T21:17:57.3833175Z   fetch-tags: false
+2026-10-31T21:17:57.3833996Z   show-progress: true
+2026-10-31T21:17:57.3834806Z   lfs: false
+2026-10-31T21:17:57.3835543Z   submodules: false
+2026-10-31T21:17:57.3836338Z   set-safe-directory: true
+2026-10-31T21:17:57.3837244Z   allow-unsafe-pr-checkout: false
+2026-10-31T21:17:57.3838350Z env:
+2026-10-31T21:17:57.3839098Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-10-31T21:17:57.3840042Z ##[endgroup]
+2026-10-31T21:17:57.4619031Z Syncing repository: den-run-ai/pystachy
+2026-10-31T21:17:57.4621503Z ##[group]Getting Git version info
+2026-10-31T21:17:57.4622745Z Working directory is '/home/runner/work/pystachy/pystachy'
+2026-10-31T21:17:57.4624444Z [command]/usr/bin/git version
+2026-10-31T21:17:57.6828234Z git version 2.55.0
+2026-10-31T21:17:57.6841366Z ##[endgroup]
+2026-10-31T21:17:57.6847407Z Temporarily overriding HOME='/home/runner/work/_temp/1200c1e1-b88d-4c41-9f4c-c0cbf680d6c2' before making global git config changes
+2026-10-31T21:17:57.6849981Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-31T21:17:57.6852276Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/pystachy/pystachy
+2026-10-31T21:17:57.6892342Z Deleting the contents of '/home/runner/work/pystachy/pystachy'
+2026-10-31T21:17:57.6894714Z ##[group]Determining repository object format
+2026-10-31T21:17:57.6896155Z ##[endgroup]
+2026-10-31T21:17:57.6897461Z ##[group]Initializing the repository
+2026-10-31T21:17:57.6898677Z [command]/usr/bin/git init /home/runner/work/pystachy/pystachy
+2026-10-31T21:17:57.7356906Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-10-31T21:17:57.7359131Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-10-31T21:17:57.7360785Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-10-31T21:17:57.7362610Z hint: call:
+2026-10-31T21:17:57.7363374Z hint:
+2026-10-31T21:17:57.7364255Z hint: 	git config --global init.defaultBranch <name>
+2026-10-31T21:17:57.7365352Z hint:
+2026-10-31T21:17:57.7366475Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-10-31T21:17:57.7367994Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-10-31T21:17:57.7369232Z hint:
+2026-10-31T21:17:57.7369966Z hint: 	git branch -m <name>
+2026-10-31T21:17:57.7370789Z hint:
+2026-10-31T21:17:57.7372029Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-10-31T21:17:57.7373727Z Initialized empty Git repository in /home/runner/work/pystachy/pystachy/.git/
+2026-10-31T21:17:57.7376380Z [command]/usr/bin/git remote add origin https://github.com/den-run-ai/pystachy
+2026-10-31T21:17:57.7408519Z ##[endgroup]
+2026-10-31T21:17:57.7409884Z ##[group]Disabling automatic garbage collection
+2026-10-31T21:17:57.7411195Z [command]/usr/bin/git config --local gc.auto 0
+2026-10-31T21:17:57.7432722Z ##[endgroup]
+2026-10-31T21:17:57.7434077Z ##[group]Setting up auth
+2026-10-31T21:17:57.7435051Z Removing SSH command configuration
+2026-10-31T21:17:57.7436357Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-31T21:17:57.7458403Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-31T21:17:58.0642830Z Removing HTTP extra header
+2026-10-31T21:17:58.0645983Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-31T21:17:58.0674322Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-31T21:17:58.0817164Z Removing includeIf entries pointing to credentials config files
+2026-10-31T21:17:58.0819805Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-31T21:17:58.0843384Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-31T21:17:58.1007575Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-4f07efa4-ad2e-4bb7-9a1f-fc480a36d541.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-10-31T21:17:58.1020754Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/pystachy/pystachy/.git.path /home/runner/work/_temp/git-credentials-4f07efa4-ad2e-4bb7-9a1f-fc480a36d541.config
+2026-10-31T21:17:58.1040632Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/pystachy/pystachy/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-4f07efa4-ad2e-4bb7-9a1f-fc480a36d541.config
+2026-10-31T21:17:58.1066977Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-4f07efa4-ad2e-4bb7-9a1f-fc480a36d541.config
+2026-10-31T21:17:58.1093938Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-4f07efa4-ad2e-4bb7-9a1f-fc480a36d541.config
+2026-10-31T21:17:58.1117648Z ##[endgroup]
+2026-10-31T21:17:58.1118310Z ##[group]Fetching the repository
+2026-10-31T21:17:58.1122146Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +b65d30fac6648352faa90d1ed4b8b48198d925a3:refs/remotes/pull/996/merge
+2026-10-31T21:17:58.7457853Z From https://github.com/den-run-ai/pystachy
+2026-10-31T21:17:58.7459516Z  * [new ref]         b65d30fac6648352faa90d1ed4b8b48198d925a3 -> pull/996/merge
+2026-10-31T21:17:58.7463117Z ##[endgroup]
+2026-10-31T21:17:58.7463679Z ##[group]Determining the checkout info
+2026-10-31T21:17:58.7464193Z ##[endgroup]
+2026-10-31T21:17:58.7464809Z [command]/usr/bin/git sparse-checkout disable
+2026-10-31T21:17:58.7510268Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-10-31T21:17:58.7530785Z ##[group]Checking out the ref
+2026-10-31T21:17:58.7534278Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/996/merge
+2026-10-31T21:17:58.9714162Z Note: switching to 'refs/remotes/pull/996/merge'.
+2026-10-31T21:17:58.9714455Z 
+2026-10-31T21:17:58.9714742Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-10-31T21:17:58.9715202Z changes and commit them, and you can discard any commits you make in this
+2026-10-31T21:17:58.9715788Z state without impacting any branches by switching back to a branch.
+2026-10-31T21:17:58.9716044Z 
+2026-10-31T21:17:58.9716290Z If you want to create a new branch to retain commits you create, you may
+2026-10-31T21:17:58.9716720Z do so (now or later) by using -c with the switch command. Example:
+2026-10-31T21:17:58.9716970Z 
+2026-10-31T21:17:58.9717110Z   git switch -c <new-branch-name>
+2026-10-31T21:17:58.9717296Z 
+2026-10-31T21:17:58.9717423Z Or undo this operation with:
+2026-10-31T21:17:58.9717604Z 
+2026-10-31T21:17:58.9717934Z   git switch -
+2026-10-31T21:17:58.9718135Z 
+2026-10-31T21:17:58.9718364Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-10-31T21:17:58.9718637Z 
+2026-10-31T21:17:58.9718965Z HEAD is now at b65d30f Merge 860b6c503a4261a6c4dd86b803f4cf270ce95c74 into 06e3ad5d08514ba31fb231fe4636a962fe6578e3
+2026-10-31T21:17:58.9728790Z ##[endgroup]
+2026-10-31T21:17:58.9761780Z [command]/usr/bin/git log -1 --format=%H
+2026-10-31T21:17:58.9780050Z b65d30fac6648352faa90d1ed4b8b48198d925a3
+2026-10-31T21:17:58.9784682Z ##[group]Removing auth
+2026-10-31T21:17:58.9785138Z Removing SSH command configuration
+2026-10-31T21:17:58.9787372Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-31T21:17:58.9809054Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-31T21:17:58.9958996Z Removing HTTP extra header
+2026-10-31T21:17:58.9961642Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-31T21:17:58.9983287Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-31T21:17:59.0130674Z Removing includeIf entries pointing to credentials config files
+2026-10-31T21:17:59.0133303Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-31T21:17:59.0155067Z includeif.gitdir:/home/runner/work/pystachy/pystachy/.git.path
+2026-10-31T21:17:59.0155574Z includeif.gitdir:/home/runner/work/pystachy/pystachy/.git/worktrees/*.path
+2026-10-31T21:17:59.0156064Z includeif.gitdir:/github/workspace/.git.path
+2026-10-31T21:17:59.0156462Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-10-31T21:17:59.0159371Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/pystachy/pystachy/.git.path
+2026-10-31T21:17:59.0176411Z /home/runner/work/_temp/git-credentials-4f07efa4-ad2e-4bb7-9a1f-fc480a36d541.config
+2026-10-31T21:17:59.0182833Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/pystachy/pystachy/.git.path \/home\/runner\/work\/_temp\/git\-credentials\-4f07efa4\-ad2e\-4bb7\-9a1f\-fc480a36d541\.config
+2026-10-31T21:17:59.0206734Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/pystachy/pystachy/.git/worktrees/*.path
+2026-10-31T21:17:59.0224733Z /home/runner/work/_temp/git-credentials-4f07efa4-ad2e-4bb7-9a1f-fc480a36d541.config
+2026-10-31T21:17:59.0230381Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/pystachy/pystachy/.git/worktrees/*.path \/home\/runner\/work\/_temp\/git\-credentials\-4f07efa4\-ad2e\-4bb7\-9a1f\-fc480a36d541\.config
+2026-10-31T21:17:59.0254069Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+2026-10-31T21:17:59.0270409Z /github/runner_temp/git-credentials-4f07efa4-ad2e-4bb7-9a1f-fc480a36d541.config
+2026-10-31T21:17:59.0275799Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path \/github\/runner_temp\/git\-credentials\-4f07efa4\-ad2e\-4bb7\-9a1f\-fc480a36d541\.config
+2026-10-31T21:17:59.0303308Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-10-31T21:17:59.0321507Z /github/runner_temp/git-credentials-4f07efa4-ad2e-4bb7-9a1f-fc480a36d541.config
+2026-10-31T21:17:59.0326027Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \/github\/runner_temp\/git\-credentials\-4f07efa4\-ad2e\-4bb7\-9a1f\-fc480a36d541\.config
+2026-10-31T21:17:59.0349082Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-31T21:17:59.0498197Z Removing credentials config '/home/runner/work/_temp/git-credentials-4f07efa4-ad2e-4bb7-9a1f-fc480a36d541.config'
+2026-10-31T21:17:59.0503170Z ##[endgroup]
+2026-10-31T21:17:59.0684260Z ##[group]Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+2026-10-31T21:17:59.0684685Z with:
+2026-10-31T21:17:59.0684946Z   python-version-file: .python-version
+2026-10-31T21:17:59.0685256Z   check-latest: false
+2026-10-31T21:17:59.0687135Z   token: ***
+2026-10-31T21:17:59.0687398Z   update-environment: true
+2026-10-31T21:17:59.0687730Z   allow-prereleases: false
+2026-10-31T21:17:59.0687999Z   freethreaded: false
+2026-10-31T21:17:59.0688244Z env:
+2026-10-31T21:17:59.0688506Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-10-31T21:17:59.0688790Z ##[endgroup]
+2026-10-31T21:17:59.1534779Z Resolved .python-version as 3.13.16
+2026-10-31T21:17:59.1535621Z ##[group]Installed versions
+2026-10-31T21:17:59.2197670Z Successfully set up CPython (3.13.16)
+2026-10-31T21:17:59.2209625Z ##[endgroup]
+2026-10-31T21:17:59.2348413Z ##[group]Run tools/setup.sh --minimal
+2026-10-31T21:17:59.2348946Z [36;1mtools/setup.sh --minimal[0m
+2026-10-31T21:17:59.2753382Z shell: /usr/bin/bash -e {0}
+2026-10-31T21:17:59.2753707Z env:
+2026-10-31T21:17:59.2754084Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-10-31T21:17:59.2754513Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-10-31T21:17:59.2754976Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-10-31T21:17:59.2755409Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-10-31T21:17:59.2755788Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-10-31T21:17:59.2756215Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-10-31T21:17:59.2756605Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-10-31T21:17:59.2756953Z ##[endgroup]
+2026-10-31T21:18:04.7006783Z Ubuntu clang version 18.1.3 (1ubuntu1)
+2026-10-31T21:18:04.7092490Z Ubuntu LLVM version 18.1.3
+2026-10-31T21:18:04.7171714Z Ubuntu LLVM version 18.1.3
+2026-10-31T21:18:04.7246213Z Ubuntu LLVM version 18.1.3
+2026-10-31T21:18:04.7320627Z Ubuntu LLVM version 18.1.3
+2026-10-31T21:18:04.7327968Z Python 3.13.16
+2026-10-31T21:18:04.7328697Z ready: make PY=/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13
+2026-10-31T21:18:04.7363288Z ##[group]Run python3 -m pip install -r tools/requirements-dev.txt
+2026-10-31T21:18:04.7364376Z [36;1mpython3 -m pip install -r tools/requirements-dev.txt[0m
+2026-10-31T21:18:04.7389669Z shell: /usr/bin/bash -e {0}
+2026-10-31T21:18:04.7390003Z env:
+2026-10-31T21:18:04.7390238Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-10-31T21:18:04.7390543Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-10-31T21:18:04.7390969Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-10-31T21:18:04.7391694Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-10-31T21:18:04.7392067Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-10-31T21:18:04.7392400Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-10-31T21:18:04.7392777Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-10-31T21:18:04.7393089Z ##[endgroup]
+2026-10-31T21:18:08.4671715Z Collecting coverage==7.17.0 (from -r tools/requirements-dev.txt (line 6))
+2026-10-31T21:18:08.5184989Z   Downloading coverage-7.17.0-cp313-cp313-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl.metadata (8.1 kB)
+2026-10-31T21:18:08.7091255Z Collecting mypy==2.4.0 (from -r tools/requirements-dev.txt (line 7))
+2026-10-31T21:18:08.7171565Z   Downloading mypy-2.4.0-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (2.4 kB)
+2026-10-31T21:18:08.9170623Z Collecting ruff==0.17.2 (from -r tools/requirements-dev.txt (line 8))
+2026-10-31T21:18:08.9251873Z   Downloading ruff-0.17.2-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (20 kB)
+2026-10-31T21:18:08.9456660Z Collecting shellcheck-py==0.11.0.1 (from -r tools/requirements-dev.txt (line 9))
+2026-10-31T21:18:08.9534302Z   Downloading shellcheck_py-0.11.0.1-py2.py3-none-manylinux1_x86_64.manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_5_x86_64.whl.metadata (1.7 kB)
+2026-10-31T21:18:08.9677087Z Collecting typing_extensions==4.16.0 (from -r tools/requirements-dev.txt (line 10))
+2026-10-31T21:18:08.9749936Z   Downloading typing_extensions-4.16.0-py3-none-any.whl.metadata (3.3 kB)
+2026-10-31T21:18:08.9875189Z Collecting mypy_extensions>=1.0.0 (from mypy==2.4.0->-r tools/requirements-dev.txt (line 7))
+2026-10-31T21:18:08.9953226Z   Downloading mypy_extensions-1.1.0-py3-none-any.whl.metadata (1.1 kB)
+2026-10-31T21:18:09.0081625Z Collecting pathspec>=1.0.0 (from mypy==2.4.0->-r tools/requirements-dev.txt (line 7))
+2026-10-31T21:18:09.0160520Z   Downloading pathspec-1.1.1-py3-none-any.whl.metadata (14 kB)
+2026-10-31T21:18:09.0951515Z Collecting librt>=0.16.0 (from mypy==2.4.0->-r tools/requirements-dev.txt (line 7))
+2026-10-31T21:18:09.1042707Z   Downloading librt-0.16.0-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (1.3 kB)
+2026-10-31T21:18:09.1396635Z Collecting ast-serialize<1.0.0,>=0.11.2 (from mypy==2.4.0->-r tools/requirements-dev.txt (line 7))
+2026-10-31T21:18:09.1472330Z   Downloading ast_serialize-0.13.1-cp39-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (1.4 kB)
+2026-10-31T21:18:09.1580380Z Downloading coverage-7.17.0-cp313-cp313-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl (260 kB)
+2026-10-31T21:18:09.1886190Z Downloading mypy-2.4.0-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (15.5 MB)
+2026-10-31T21:18:09.3024360Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 15.5/15.5 MB 143.5 MB/s  0:00:00
+2026-10-31T21:18:09.3108029Z Downloading ruff-0.17.2-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (10.5 MB)
+2026-10-31T21:18:09.3382428Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 10.5/10.5 MB 399.1 MB/s  0:00:00
+2026-10-31T21:18:09.3464860Z Downloading shellcheck_py-0.11.0.1-py2.py3-none-manylinux1_x86_64.manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_5_x86_64.whl (3.8 MB)
+2026-10-31T21:18:09.3632864Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.8/3.8 MB 233.6 MB/s  0:00:00
+2026-10-31T21:18:09.3709132Z Downloading typing_extensions-4.16.0-py3-none-any.whl (45 kB)
+2026-10-31T21:18:09.3798649Z Downloading ast_serialize-0.13.1-cp39-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (1.3 MB)
+2026-10-31T21:18:09.3843450Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.3/1.3 MB 339.4 MB/s  0:00:00
+2026-10-31T21:18:09.3922522Z Downloading librt-0.16.0-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (531 kB)
+2026-10-31T21:18:09.3953757Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 531.7/531.7 kB 160.1 MB/s  0:00:00
+2026-10-31T21:18:09.4032894Z Downloading mypy_extensions-1.1.0-py3-none-any.whl (5.0 kB)
+2026-10-31T21:18:09.4126297Z Downloading pathspec-1.1.1-py3-none-any.whl (57 kB)
+2026-10-31T21:18:09.6059717Z Installing collected packages: typing_extensions, shellcheck-py, ruff, pathspec, mypy_extensions, librt, coverage, ast-serialize, mypy
+2026-10-31T21:18:10.9956883Z 
+2026-10-31T21:18:10.9968010Z Successfully installed ast-serialize-0.13.1 coverage-7.17.0 librt-0.16.0 mypy-2.4.0 mypy_extensions-1.1.0 pathspec-1.1.1 ruff-0.17.2 shellcheck-py-0.11.0.1 typing_extensions-4.16.0
+2026-10-31T21:18:10.9974638Z 
+2026-10-31T21:18:10.9975191Z [notice] A new release of pip is available: 26.2.1 -> 26.2.2
+2026-10-31T21:18:10.9975727Z [notice] To update, run: pip install --upgrade pip
+2026-10-31T21:18:11.0716958Z ##[group]Run tools/coverage.sh
+2026-10-31T21:18:11.0717260Z [36;1mtools/coverage.sh[0m
+2026-10-31T21:18:11.0742912Z shell: /usr/bin/bash -e {0}
+2026-10-31T21:18:11.0743182Z env:
+2026-10-31T21:18:11.0743465Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-10-31T21:18:11.0743815Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-10-31T21:18:11.0744190Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-10-31T21:18:11.0744584Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-10-31T21:18:11.0744927Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-10-31T21:18:11.0745275Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-10-31T21:18:11.0745613Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-10-31T21:18:11.0745909Z   PY: python3
+2026-10-31T21:18:11.0746165Z   COVERAGE_SUITES: ffi ir
+2026-10-31T21:18:11.0746422Z   COVERAGE_SHARD: 
+2026-10-31T21:18:11.0746646Z   COVERAGE_REPORT: 0
+2026-10-31T21:18:11.0746939Z ##[endgroup]
+2026-10-31T21:19:46.1392640Z 145 passed, 0 failed; skipped: py_coerce (the CPython-hosted compiler's own locale coercion reaches the program)
+2026-10-31T21:19:46.9410875Z ffi: 145 passed, 0 failed; skipped: py_coerce (the CPython-hosted compiler's own locale coercion reaches the program); 131 processes, 131 with data, 95 s
+2026-10-31T21:21:21.4139456Z OTHER ATTRIBUTES tests/ir/raise_cold.py (than tests/ir/raise_cold.attrs lists)
+2026-10-31T21:21:21.4139925Z 15,16c15,16
+2026-10-31T21:21:21.4140346Z < @pys.recursion.check: alwaysinline
+2026-10-31T21:21:21.4142125Z < @pys.recursion.enter: alwaysinline
+2026-10-31T21:21:21.4142437Z ---
+2026-10-31T21:21:21.4142684Z > @pys.recursion.check:
+2026-10-31T21:21:21.4142914Z > @pys.recursion.enter:
+2026-10-31T21:21:21.4143240Z 1 of 81 programs fail: 0 do not compile, the checks reject 1
+2026-10-31T21:21:21.4180141Z tools/coverage.sh: failed: ir (build/coverage/parts/)
+2026-10-31T21:21:21.4180571Z tools/coverage.sh: ir: the tests failed
+2026-10-31T21:21:21.4249397Z ##[error]Process completed with exit code 1.
+2026-10-31T21:21:21.4335553Z ##[group]Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+2026-10-31T21:21:21.4335948Z with:
+2026-10-31T21:21:21.4336201Z   name: coverage-part-8
+2026-10-31T21:21:21.4336457Z   path: build/coverage/parts
+2026-10-31T21:21:21.4336752Z   if-no-files-found: error
+2026-10-31T21:21:21.4336999Z   retention-days: 14
+2026-10-31T21:21:21.4337247Z   compression-level: 6
+2026-10-31T21:21:21.4337471Z   overwrite: false
+2026-10-31T21:21:21.4337698Z   include-hidden-files: false
+2026-10-31T21:21:21.4337948Z   archive: true
+2026-10-31T21:21:21.4338174Z env:
+2026-10-31T21:21:21.4338410Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-10-31T21:21:21.4338749Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-10-31T21:21:21.4339228Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-10-31T21:21:21.4339635Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-10-31T21:21:21.4340043Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-10-31T21:21:21.4340390Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-10-31T21:21:21.4340729Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-10-31T21:21:21.4341029Z ##[endgroup]
+2026-10-31T21:21:21.5441759Z With the provided path, there will be 4 files uploaded
+2026-10-31T21:21:21.5442626Z Artifact name is valid!
+2026-10-31T21:21:21.5442966Z Root directory input is valid!
+2026-10-31T21:21:21.9446771Z Uploading artifact: coverage-part-8.zip
+2026-10-31T21:21:21.9470928Z Beginning upload of artifact content to blob storage
+2026-10-31T21:21:22.6419990Z Uploaded bytes 309737
+2026-10-31T21:21:22.7290554Z Finished uploading artifact content to blob storage!
+2026-10-31T21:21:22.7291592Z SHA256 digest of uploaded artifact is 0bdc110bf4947a4a95f6815b63ecebb5d5540eeb043abd0ad87c6fe28179ec22
+2026-10-31T21:21:22.7292335Z Finalizing artifact upload
+2026-10-31T21:21:23.4015786Z Artifact coverage-part-8 successfully finalized. Artifact ID 13057199798
+2026-10-31T21:21:23.4016757Z Artifact coverage-part-8 has been successfully uploaded! Final size is 309737 bytes. Artifact ID is 13057199798
+2026-10-31T21:21:23.4018737Z Artifact download URL: https://github.com/den-run-ai/pystachy/actions/runs/41242915218/artifacts/13057199798
+2026-10-31T21:21:23.4160923Z Post job cleanup.
+2026-10-31T21:21:23.4781652Z [command]/usr/bin/git version
+2026-10-31T21:21:23.4808905Z git version 2.55.0
+2026-10-31T21:21:23.4831501Z Temporarily overriding HOME='/home/runner/work/_temp/22d5fc1e-4ec4-440e-b800-de90fdf05e91' before making global git config changes
+2026-10-31T21:21:23.4832413Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-31T21:21:23.4835580Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/pystachy/pystachy
+2026-10-31T21:21:23.4857846Z Removing SSH command configuration
+2026-10-31T21:21:23.4862843Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-31T21:21:23.4886725Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-31T21:21:23.5062146Z Removing HTTP extra header
+2026-10-31T21:21:23.5066051Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-31T21:21:23.5088611Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-31T21:21:23.5247466Z Removing includeIf entries pointing to credentials config files
+2026-10-31T21:21:23.5251743Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-31T21:21:23.5272854Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-31T21:21:23.5527680Z Cleaning up orphan processes
+
