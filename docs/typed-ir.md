@@ -391,7 +391,7 @@ the others select frontend or lowering choices.
 | `unionslots` | Keep a local of a union of numbers (`int`, `float`, `bool`) in a tag slot and a payload slot instead of a box per value, where its slot's address goes only to its loads and stores and, on every path, each load whose value leaves the local (to a call, a return, a phi) follows a store of a box made for that store alone, with no other such load between them: stores keep a `pys_ubox`'s operands or a union phi's parts, `union.tag` and `union.payload`/`union.raw` (and tag loads) of a loaded value read the slots, a leaving value is boxed where it is loaded (each box for one that a store no longer makes), and boxes nothing uses any more are dropped |
 | `nullcheck` | Drop a check that a value is not None (before a read through it) where a passed test of the same value dominates it: the block after a check, or the branch of a null test where the value is not None, reached from nowhere else. The same value is the value, an equal one, or a load of a slot that only the entry block stores and only loads and stores use (a parameter the function never assigns). The check becomes a branch, its test goes once nothing reads it, the block after it joins its block where nothing else goes there, and a cold block no check goes to any more goes too; a walk down the dominator tree keeps the work linear ([#787](https://github.com/den-run-ai/pystachy/issues/787)) |
 | `recursionleaf` | Retain a source function's entry-limit check but omit its depth increment and restoration where a separate call-graph proof finds no operation that can observe that depth, including exceptional and cleanup paths. Counted callees, indirect or unknown calls, runtime state, user callbacks and generator operations are depth observers. |
-| `recursionregion` | Select a bounded private version when enough depth remains, otherwise execute the original guarded body. Whole-function versions require repeated calls inside a loop and finite direct-call depth. Partial versions cover returning leaf paths and publish depth before any guarded suffix. Unchecked code excludes callbacks, limit changes, generators, local handlers and unknown calls. |
+| `recursionregion` | Select a bounded private version when enough depth remains, otherwise execute the original guarded body. Whole-function versions require repeated calls inside a loop and finite direct-call depth; partial versions cover returning leaf paths and publish depth before a guarded suffix. A separate successful-child proof removes later leaf checks while retaining the caller's published frame. |
 
 Disable one with `PYSTACHY_OPT=-dictfuse`, several with a comma-separated list, or all with
 `PYSTACHY_OPT=-all`. Differential runs check that the choices preserve behavior.
@@ -431,7 +431,8 @@ unchecked clones. Cloning and analysis have size/depth budgets, and tuple-return
 roots stay unchanged when versioning would defeat aggregate return optimization.
 Whole-function versioning requires a counted call inside a loop's control-flow
 cycle to amortize its selector; short helpers and functions with an unrelated
-loop retain their existing entries.
+loop retain their existing entries. Whole-function unchecked graphs exclude
+callbacks, limit changes, generators, local handlers and unknown calls.
 
 After selecting closed call graphs within the size budgets, the pass retains
 wrappers only for maximal roots: a root with an incoming call from any member of
@@ -455,6 +456,16 @@ elapsed-time result remains unresolved, so the controls do not establish perform
 acceptance. See the [measurement report](reports/recursion-guard-regions.md) for the
 separate timing series and captured code. These are generic graph and emission rules,
 with no benchmark-name tests.
+
+After bounded, partial and successful-child selection, a check-only original leaf
+with an existing full bounded `@rf` clone can reuse that clone as its body. Its
+original callable address retains the limit check, followed by a call and return;
+the wrapper has no frame slots. LLVM lowering recognizes this exact shape and emits
+`musttail`, forwarding the original signature and hidden identity arguments and
+result pointer unchanged. Sharing therefore adds no native stack frame. All tuple
+returns are excluded to preserve the fresh-tuple proof used by `tupleret`. Children
+with terminal observer bridges do not qualify for the full bounded clone. This
+uses an already budgeted body and leaves region selection and its proofs unchanged.
 
 Partial versioning uses a two-frame budget for a mixed root and its immediate leaf
 callees. A child must pass the leaf proof on every normal and exceptional path;
@@ -488,6 +499,32 @@ tail. The original guarded body and the child's depth-publication bridge are
 unchanged. Expansion accounting still charges the original callsites, so sharing
 does not admit larger regions or weaken the depth proof.
 
+The successful-child proof applies to a counted caller that retains its canonical
+entry and restoration, keeping its frame published throughout. A normal return
+from a known counted source child establishes at least one spare frame at the
+caller's active depth. Normal returns restore the incoming depth, and a successful
+`sys.setrecursionlimit()` must leave the limit strictly above the active depth, so
+it cannot remove this last slot. The caller's own entry can consume the last slot
+and does not establish the fact. No numeric headroom value is cached.
+
+A forward must analysis starts with no proven room and requires the fact on every
+incoming path, including implicit check-failure edges. Unknown or foreign `U`
+effects invalidate it, including those summarized transitively through source
+callees; generator operations also invalidate it. Roots exclude handlers, landing
+pads, generators, coroutines and exported or foreign entries, and require an
+eligible child call in a loop's control-flow cycle. The program-wide lifetime and
+callback exclusions described above still apply.
+
+Only a child that passes the complete returning-leaf and terminal-publication proof
+can use a shared `@rc` clone. The clone omits only its first entry check; a terminal
+bridge still enters exactly one child frame because this caller is already
+published. Rewriting a selected direct call changes neither argument evaluation nor
+control flow. Unproved calls retain their checks, and empty loops introduce no
+speculative failure. Roots have at most 2,048 input operations/slots; each root may
+add at most 2,048 operations/slots of shared child bodies, with 8,192 across this
+versioning family. Each child is cloned once and remains eligible for ordinary
+inlining, without mandatory expansion at every callsite.
+
 For a function without local handlers or generator operations, the pass also checks
 whether every observer lies in a region that cannot reach a normal return. In that
 case it retains the original entry check and publishes depth only on edges into that
@@ -496,6 +533,14 @@ failure edges; edge splitting repairs phi predecessors. The region cannot reente
 normal path, so each execution publishes at most once. A failing callee's own entry
 check stays at its call, after preceding side effects. This lets JSON's number parser
 avoid depth writes while scanning valid input and retain full depth on error paths.
+
+The typed `recursion.depth`, `recursion.restore` and `recursion.room` operations keep
+their runtime-state effects through optimization. For program IR without exceptional
+successors, LLVM lowering emits their scalar operations directly: a depth load, a
+depth store, or loads of depth and limit followed by subtraction, signed comparison
+and extension of the boolean result to `int`. These accesses retain the existing
+depth/limit TBAA tags. Runtime compilation and check/enter/leave helpers retain
+their existing paths; this lowering change does not move an entry failure.
 
 `tupleret` applies to a function whose every `return` returns a tuple display that the return's
 own block makes (`alloc.fixed`) and that nothing but that block's `tuple.store`s reaches: a new

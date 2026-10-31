@@ -424,6 +424,13 @@ depth/limit state as the runtime's
 `sys.setrecursionlimit()` implementation and call the checked runtime entry only on the
 overflow path. The precompiled runtime is not inlined into JIT code.
 
+For program operations without exceptional successors, lowering emits
+`recursion.depth` and `recursion.restore` directly as a state load and store.
+`recursion.room` becomes a non-raising comparison of the requested frames against
+`limit - depth`. These remain typed runtime operations with their existing effects
+and depth/limit alias tags; check, enter and leave operations still use the module
+helpers. Runtime compilation retains the runtime implementations.
+
 Before LLVM lowering, `recursionleaf` replaces entry bookkeeping with a check alone
 for functions whose active depth cannot be observed by any normal, exceptional or
 cleanup path. Where all observers occur in a region that cannot return, functions
@@ -449,6 +456,13 @@ acceptance. The [measurement report](reports/recursion-guard-regions.md) records
 series and the captured code. This layout choice leaves the depth proof and fallback
 behavior intact; it does not impose a new inlining boundary inside the unchecked graph.
 
+An original check-only leaf can share its existing full bounded private body:
+its guarded entry checks the limit, then tail-forwards to that body with the same
+signature and hidden identity arguments. The three-operation wrapper has no frame
+slots and lowers to `musttail`, so sharing adds no native stack frame. Tuple returns
+and leaves with terminal depth-publication bridges keep their existing bodies.
+This sharing runs after region selection and uses an already budgeted private clone.
+
 A separate two-frame version can cover
 a mixed function's returning leaf paths. It publishes the active depth before an
 observer or guarded suffix and never resumes unchecked calls after that publication.
@@ -458,6 +472,18 @@ with each rewritten child callsite charged against the expansion budget.
 Equivalent terminal load/call/return blocks in a selected private root share one
 child expansion before inlining. Their preceding paths and the guarded fallback
 remain intact, and the original callsite charges still bound region selection.
+
+A further proof keeps a caller's ordinary frame published. Once a known counted
+child returns normally, the caller has at least one spare frame. Subsequent valid
+limit changes preserve that slot because `sys.setrecursionlimit()` rejects a limit
+at or below the active depth. Where every incoming path establishes this fact,
+later proven leaf calls can share a body without its entry check. Their arguments
+stay in place, and a terminal observer still publishes exactly the child's one
+frame. The caller's own entry does not establish spare room. Unknown or foreign
+effects and generator operations invalidate the fact; roots with local handlers
+or generators are excluded. This case requires repeated eligible leaf calls in a
+loop and has separate root and clone-size budgets, detailed in the IR pass contract.
+
 Programs with unmanaged native files or weak references keep all
 original bookkeeping: even removing scalar instructions can change stale conservative
 roots in a caller's native frame, altering file closure or weak-reference observations.

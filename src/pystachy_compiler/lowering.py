@@ -294,13 +294,13 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
     elif op == "rt" and not self.rtmode and len(i.b) == 0 and i.s == "recursion.depth":
         o.append(f"  %t{i.r[0]} = load i64, ptr @pys_recursion_state, !tbaa !{TBAA_DEPTH}")
     elif op == "rt" and not self.rtmode and len(i.b) == 0 and i.s == "recursion.room":
-        r = f"%t{i.r[0]}"
-        o.append(f"  {r}.depth = load i64, ptr @pys_recursion_state, !tbaa !{TBAA_DEPTH}")
-        o.append(f"  {r}.limit.addr = getelementptr [2 x i64], ptr @pys_recursion_state, i64 0, i64 1")
-        o.append(f"  {r}.limit = load i64, ptr {r}.limit.addr, !tbaa !{TBAA_LIMIT}")
-        o.append(f"  {r}.remaining = sub i64 {r}.limit, {r}.depth")
-        o.append(f"  {r}.enough = icmp sge i64 {r}.remaining, {i.a[0].v}")
-        o.append(f"  {r} = zext i1 {r}.enough to i64")
+        recursion_result = f"%t{i.r[0]}"
+        o.append(f"  {recursion_result}.depth = load i64, ptr @pys_recursion_state, !tbaa !{TBAA_DEPTH}")
+        o.append(f"  {recursion_result}.limit.addr = getelementptr [2 x i64], ptr @pys_recursion_state, i64 0, i64 1")
+        o.append(f"  {recursion_result}.limit = load i64, ptr {recursion_result}.limit.addr, !tbaa !{TBAA_LIMIT}")
+        o.append(f"  {recursion_result}.remaining = sub i64 {recursion_result}.limit, {recursion_result}.depth")
+        o.append(f"  {recursion_result}.enough = icmp sge i64 {recursion_result}.remaining, {i.a[0].v}")
+        o.append(f"  {recursion_result} = zext i1 {recursion_result}.enough to i64")
     elif op == "rt":
         f = self.rtfns[i.s]
         if i.k > 0 and ((i.s == "list.new" and atomic_list(self.holes[i.k])) or (i.s == "dict.new" and atomic_dict(self.holes[i.k]))):
