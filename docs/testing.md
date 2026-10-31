@@ -620,6 +620,16 @@ sequence tests cover both dynamic-Any opt-in directions, successful and failed c
 imports, runtime interleaving and removal of either reset. The main source diagnostic
 name remains caller-owned (`diagnostics.SRC`); imported diagnostics use the current
 file table. These process-global tables do not provide concurrent compilation isolation.
+`diagnostics.CAPTURED` is separately observer-owned retained state: capture is off by
+default, and `diagnostics.fail()` is its only compiler writer, appending a terminal
+diagnostic after any retry guards. The [inspection tool](compiler-inspection.md)
+clears it before each request in a fresh worker process and reads it after compilation
+returns or fails. The observer also supplies `CAPTURE` and `PHASE`; neither a loader
+reset nor a restart clears its report. The external worker reset is outside this
+compiler-source inventory, and does not establish safe in-process session reuse.
+The capture tests preserve legacy rejection output, and inspection tests exercise a
+failed request followed by a repaired import in another worker. Inventory controls
+reject an added capture writer or a stale declaration of the existing writer.
 `GLUE` and `SPECSHOW` currently retain discoveries across restarts; the inventory records
 that behavior without certifying its safety. This is a hosted drift check, not a
 whole-program effect analysis: arbitrary helper calls, object-attribute aliases,

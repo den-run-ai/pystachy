@@ -37,6 +37,7 @@ at specific compiler revisions.
 | [Agent onboarding](../AGENTS.md) | Shared Codex/Claude Code workflow, verification rules and regression lessons |
 | [Internals](internals.md) | Compiler stages, runtime, commands and settings |
 | [Typed IR](typed-ir.md) | Intermediate representation, validation and optimization |
+| [Compiler inspection (prototype)](compiler-inspection.md) | Same-run typed snapshots, pass diffs and structured diagnostics |
 | [Runtime in the subset](runtime-in-subset.md) | Runtime functions written in Python and their build contract |
 | [Testing](testing.md) | Bootstrap, differential tests, CI and targeted checks |
 | [Releases](releasing.md) | Binary packaging, Docker publishing, release gates and [release notes](releases/) |
