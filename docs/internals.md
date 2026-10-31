@@ -455,6 +455,9 @@ observer or guarded suffix and never resumes unchecked calls after that publicat
 This narrower path requires a useful leaf call in a returning block; it does not
 version arbitrary prefix scans or recursive loops. Both private layers are inlined,
 with each rewritten child callsite charged against the expansion budget.
+Equivalent terminal load/call/return blocks in a selected private root share one
+child expansion before inlining. Their preceding paths and the guarded fallback
+remain intact, and the original callsite charges still bound region selection.
 Programs with unmanaged native files or weak references keep all
 original bookkeeping: even removing scalar instructions can change stale conservative
 roots in a caller's native frame, altering file closure or weak-reference observations.

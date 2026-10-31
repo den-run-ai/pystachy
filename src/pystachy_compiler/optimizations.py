@@ -467,6 +467,94 @@ def recursion_partial_leaf(fn: IFn, symbol: str) -> IFn:
     return out
 
 
+def recursion_same_tail(left: Blk, right: Blk) -> bool:
+    renamed: dict[str, str] = {}
+    for at in range(3):
+        a = left.code[at]
+        b = right.code[at]
+        if (a.op != b.op or a.t != b.t or a.s != b.s or a.k != b.k or a.x != b.x
+                or len(a.r) != len(b.r) or len(a.a) != len(b.a) or a.b != b.b):
+            return False
+        for pos in range(len(a.a)):
+            if a.a[pos].t != b.a[pos].t or renamed.get(a.a[pos].v, a.a[pos].v) != b.a[pos].v:
+                return False
+        for pos in range(len(a.r)):
+            renamed[f"%t{a.r[pos]}"] = f"%t{b.r[pos]}"
+    return True
+
+
+def recursion_merge_tails(fn: IFn) -> int:
+    # Always-inlining a partial child into duplicate return blocks duplicates
+    # its entire body. Share only a local-slot load, that child call, and return;
+    # prefixes stay on their original paths, including every depth publication.
+    # The proof/budget already selected this private root. Do not rewrite the
+    # guarded fallback or use this sharing to admit larger regions.
+    if not fn.f.ll.startswith("@rp.") or fn.coro or fn.f.gen or fn.pads or len(fn.tries) > 0:
+        return 0
+    slots: dict[str, str] = {}
+    uses: dict[str, str] = {}
+    blocked: dict[str, bool] = {"entry": True, "": True}
+    if len(fn.blocks) > 0:
+        blocked[fn.blocks[0].label] = True
+    for op in fn.slots:
+        if op.op == "slot" and op.k == 0 and len(op.r) == 1:
+            slots[f"%{op.s or 'h'}.{op.r[0]}"] = op.t
+        for arg in op.a:
+            uses[arg.v] = ""
+    for value in fn.fa:
+        uses[value] = ""
+    uses[fn.rdepth] = ""
+    uses[fn.gdepth] = ""
+    for label in fn.cold.values():
+        blocked[label] = True
+    for label in fn.coldh.values():
+        blocked[label] = True
+    for block in fn.blocks:
+        blocked[block.handler] = True
+        for op in block.code:
+            if op.op not in ["br", "cbr"]:
+                for label in op.b:
+                    blocked[label] = True  # phi, check and other hidden edges
+            for arg in op.a:
+                if arg.v not in uses:
+                    uses[arg.v] = block.label
+                elif uses[arg.v] != block.label:
+                    uses[arg.v] = ""
+    candidates: list[Blk] = []
+    redirects: dict[str, str] = {}
+    for block in fn.blocks:
+        if block.label in blocked or block.handler != "" or len(block.code) != 3:
+            continue
+        load = block.code[0]
+        call = block.code[1]
+        ret = block.code[2]
+        if (load.op != "mem.load" or len(load.r) != 1 or len(load.a) != 1 or len(load.b) != 0
+                or load.a[0].v not in slots or slots[load.a[0].v] != load.t
+                or call.op != "call" or not call.s.startswith("@rp2.") or len(call.r) != 1 or len(call.b) != 0
+                or ret.op != "ret" or len(ret.r) != 0 or len(ret.a) != 1 or len(ret.b) != 0):
+            continue
+        loaded = f"%t{load.r[0]}"
+        result = f"%t{call.r[0]}"
+        if (loaded == result or ret.a[0].v != result or ret.a[0].t != call.t
+                or not any(arg.v == loaded and arg.t == load.t for arg in call.a)
+                or uses.get(loaded, "") != block.label or uses.get(result, "") != block.label):
+            continue
+        for previous in candidates:
+            if recursion_same_tail(previous, block):
+                redirects[block.label] = previous.label
+                break
+        if block.label not in redirects:
+            candidates.append(block)
+    if len(redirects) == 0:
+        return 0
+    for block in fn.blocks:
+        for op in block.code:
+            if op.op in ["br", "cbr"]:
+                op.b = [redirects.get(label, label) for label in op.b]
+    fn.blocks = [block for block in fn.blocks if block.label not in redirects]
+    return len(redirects)
+
+
 def recursion_partial_wrap(self, fn: IFn, symbol: str) -> None:
     fn.n += 1
     slow = f"L{fn.n}"
@@ -647,6 +735,7 @@ def recursion_partial(self) -> int:
                     copied_op.s = names[op.s]
                 copied_block.code.append(copied_op)
             fast.blocks.append(copied_block)
+        recursion_merge_tails(fast)
         self.fll[symbol] = len(self.fns)
         self.fns.append(fast)
         self.runtime("pys_recursion_room")

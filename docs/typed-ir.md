@@ -477,6 +477,17 @@ Whole-function chains additionally have a 64-frame depth limit. These are
 profitability limits, not changes to accepted program behavior. Tuple-return roots
 retain their existing aggregate return optimization.
 
+After selecting and constructing a private partial root, the pass shares identical
+terminal local-slot-load, private-child-call and return blocks before mandatory
+inlining. Instruction metadata, operand types, external operands and hidden ABI
+arguments must match; only the two block-local result identifiers may differ, and
+neither result may have uses outside its block. Entry, handler, phi and cold/hidden
+edge targets are excluded. Redirecting existing predecessor branches keeps every
+prefix operation in place and reads the selected path's slot contents in the shared
+tail. The original guarded body and the child's depth-publication bridge are
+unchanged. Expansion accounting still charges the original callsites, so sharing
+does not admit larger regions or weaken the depth proof.
+
 For a function without local handlers or generator operations, the pass also checks
 whether every observer lies in a region that cannot reach a normal return. In that
 case it retains the original entry check and publishes depth only on edges into that
