@@ -860,14 +860,14 @@ def recursion_cached(self) -> int:
 def gen_recursionregion(self) -> int:
     count = recursion_bounded(self) + recursion_partial(self) + recursion_cached(self)
     for fn in self.fns:
-        # Full-region leaves already have one proven unchecked body. Retain the
-        # original callable's entry check, then tail-forward to that same body
-        # instead of compiling both copies. Partial children have observer
-        # bridges and cannot use this transformation. Do this after partial
-        # selection so its original leaf-body proof and budgets do not change.
-        # The matching @rf body exists only after the full bounded proof;
-        # a check-only original then has no remaining depth observers.
+        # Bounded and following-call leaves already have an unchecked body.
+        # Retain the original callable's entry check and tail-forward to it.
+        # An @rc body keeps the original one-frame terminal publication; @rp2
+        # publishes two frames and must never be used for this forwarding.
+        # Run after selection so the original leaf proofs/budgets do not change.
         fast = self.fll.get("@rf." + fn.f.ll[1:], -1)
+        if fast < 0:
+            fast = self.fll.get("@rc." + fn.f.ll[1:], -1)
         if (not fn.counted or fn.rdepth != "" or fast < 0 or is_tuple(fn.f.ret)
                 or len(fn.blocks[0].code) == 0):
             continue

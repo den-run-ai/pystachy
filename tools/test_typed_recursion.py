@@ -11,13 +11,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src.pystachy_compiler.driver import runtime_ir
 from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler.loader import Loader
-from src.pystachy_compiler.specs import FXBIT
+from src.pystachy_compiler.lower_module import recursion_ir
+from src.pystachy_compiler.specs import FXBIT, TBAA_FIELDS
 
 
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def compile_source(source, opt=""):
+def compile_source(source, opt="", ext=""):
     functions = {}
     lower = Gen.lower
 
@@ -36,7 +37,11 @@ def compile_source(source, opt=""):
         lower(g, fn)
 
     with patch.object(Gen, "lower", capture), patch.dict(os.environ, {"PYSTACHY_OPT": opt}):
-        ir = Gen().program(Loader([str(ROOT / "lib")]).program("recursion_contract.py", source))
+        gen = Gen()
+        gen.ext = ext
+        loader = Loader([str(ROOT / "lib")])
+        loader.ext = ext
+        ir = gen.program(loader.program("recursion_contract.py", source))
     return ir, functions
 
 
@@ -141,7 +146,7 @@ g.close()
                         self.assertTrue(any(i[:2] == ("rt", "recursion.leave") for i in code[at + 1:]))
         self.assertGreaterEqual(resumes, 2)
 
-    def test_inline_guards_use_mutable_runtime_state_and_throwing_slow_path(self):
+    def test_guard_helpers_use_mutable_runtime_state_and_throwing_slow_path(self):
         ir, _ = compile_source("def identity(n: int) -> int:\n    return n\nprint(identity(1))\n",
                                opt="-recursionleaf")
         self.assertIn("@pys_recursion_state = external global [2 x i64]", ir)
@@ -151,7 +156,8 @@ g.close()
         self.assertNotIn("@pys.recursion.leave", helpers)
         for name in helpers:
             declaration = next(line for line in ir.splitlines() if line.startswith("define ") and name + "(" in line)
-            self.assertIn("alwaysinline", declaration)
+            self.assertEqual("alwaysinline" in declaration,
+                             name not in ("@pys.recursion.check", "@pys.recursion.enter"))
         entry = next(line for line in ir.splitlines() if line.startswith("define ") and "@pys.recursion.enter(" in line)
         self.assertNotIn("nounwind", entry)
         self.assertIn("call void @pys_recursion_error() noreturn", helpers["@pys.recursion.enter"])
@@ -164,6 +170,68 @@ g.close()
         self.assertRegex(source_body, r"store i64 %t\d+, ptr @pys_recursion_state, !tbaa !\d+")
         self.assertNotIn("call void @pys.recursion.restore", source_body)
         self.assertNotIn("@pys_recursion_enter", source_body)
+
+    def test_safe_guard_inlining_policy_does_not_depend_on_typed_optimizations(self):
+        source = '''
+def leaf(n: int) -> int:
+    return n + 1
+
+def recursive(n: int) -> int:
+    return leaf(n) if n == 0 else recursive(n - 1)
+
+print(recursive(2))
+'''
+        for opt in ("", "-all", "-recursionleaf", "-recursionregion"):
+            with self.subTest(opt=opt):
+                ir, _ = compile_source(source, opt)
+                guards = [line for line in ir.splitlines() if line.startswith("define ")
+                          and any(name in line for name in ("@pys.recursion.check(", "@pys.recursion.enter("))]
+                self.assertTrue(guards)
+                for declaration in guards:
+                    self.assertNotIn("alwaysinline", declaration)
+                    self.assertNotIn("nounwind", declaration)
+
+    def test_lifetime_observers_keep_guards_mandatory_inline(self):
+        scalar = "def scalar(n: int) -> int:\n    return n + 1\nprint(scalar(2))\n"
+        sources = {
+            "unmanaged": scalar + 'stream = open("pending.txt", "w")\nstream.write("pending")\n',
+            "weakref": scalar + '''
+from _weakref import ref
+
+class Item:
+    def __init__(self, n: int) -> None:
+        self.n = n
+
+item = Item(1)
+weak = ref(item)
+print(weak() is item)
+''',
+            "atexit": scalar + '''
+import atexit
+
+def done() -> None:
+    print("done")
+
+atexit.register(done)
+''',
+            "embedding": scalar + "from pyobj import of_int\nprint(of_int(5).to_int())\n",
+            "extension": "from ffi import export\n@export\ndef scalar(n: int) -> int:\n    return n + 1\n",
+        }
+        for name, source in sources.items():
+            with self.subTest(kind=name):
+                ir, _ = compile_source(source, ext="recursion_contract" if name == "extension" else "")
+                guards = [line for line in ir.splitlines() if line.startswith("define ")
+                          and any(key in line for key in ("@pys.recursion.check(", "@pys.recursion.enter("))]
+                self.assertTrue(guards)
+                self.assertTrue(all("alwaysinline" in declaration for declaration in guards))
+
+    def test_guard_policy_changes_only_check_and_enter_attributes(self):
+        keys = ["recursion." + name for name in ("check", "enter", "room", "leave", "depth", "restore")]
+        forced = "\n".join(recursion_ir(keys, TBAA_FIELDS, False, True))
+        ordinary = "\n".join(recursion_ir(keys, TBAA_FIELDS, False, False))
+        expected = forced.replace("@pys.recursion.check() alwaysinline {", "@pys.recursion.check() {")
+        expected = expected.replace("@pys.recursion.enter() alwaysinline {", "@pys.recursion.enter() {")
+        self.assertEqual(ordinary, expected)
 
     def test_leaf_keeps_entry_failure_without_publishing_depth(self):
         ir, functions = compile_source('''

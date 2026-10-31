@@ -24,6 +24,8 @@ class ScopedFileRecursionTests(unittest.TestCase):
         self.assertIn("@pys_file_close(", ir)
         self.assertIn(("rt", "recursion.check"),
                       [op[:2] for op in operations(functions["@f.scalar"])])
+        self.assertIn("define internal void @pys.recursion.check() {", ir)
+        self.assertIn("define internal i64 @pys.recursion.enter() {", guarded)
 
     def test_unmanaged_open_in_other_function_preserves_guarded_ir(self):
         source = SCOPED + '''

@@ -1,5 +1,6 @@
 """Successful child calls prove later leaf checks redundant in an active frame."""
 from pathlib import Path
+import re
 import sys
 import unittest
 
@@ -19,6 +20,22 @@ def recursive(n: int) -> int:
 
 
 class TypedRecursionCachedTests(unittest.TestCase):
+    def test_checked_leaf_shares_exact_identity_signature(self):
+        ir, functions = compile_source("# pystachy: dynamic-any\n" + PREFIX + '''
+def kernel(n: int) -> int:
+    total = leaf(0)
+    for i in range(n):
+        total += leaf(i) + recursive(i)
+    return total
+print(kernel(3))
+''')
+        self.assertEqual([op[:2] for op in operations(functions["@f.leaf"])],
+                         [("rt", "recursion.check"), ("call", "@rc.f.leaf"), ("ret", "")])
+        body = re.search(r"^define internal i64 @f\.leaf\(.*?^}", ir, re.M | re.S).group(0)
+        self.assertNotIn("alloca", body)
+        self.assertIn("musttail call i64 @rc.f.leaf(i64 %a0, ptr %aid0, ptr %idret)", body)
+        self.assertLess(body.index("@pys.recursion.check()"), body.index("musttail call"))
+
     def test_successful_preheader_call_removes_only_later_checks(self):
         _, functions = compile_source(PREFIX + '''
 def kernel(n: int) -> int:
@@ -133,6 +150,8 @@ print(kernel(3))
         ir, functions = compile_source(source)
         self.assertIn("@rc.f.leaf", functions)
         self.assertIn("call {i64, i64} @v.rc.f.leaf(", ir)
+        self.assertTrue(any(op[0] == "alloc.fixed" for op in operations(functions["@f.leaf"])))
+        self.assertNotIn("musttail call ptr @rc.f.leaf", ir)
 
     def test_terminal_child_keeps_single_frame_publication(self):
         source = PREFIX + '''
@@ -152,12 +171,16 @@ def kernel(n: int) -> int:
     return total
 print(kernel(3))
 '''
-        _, functions = compile_source(source)
+        ir, functions = compile_source(source)
         cold = operations(functions["@rc.f.cold"])
         self.assertFalse(any(op[:2] == ("rt", "recursion.check") for op in cold))
         self.assertTrue(any(op[:2] == ("rt", "recursion.enter") for op in cold))
         self.assertTrue(any(op[:2] == ("call", "@f.problem") for op in cold))
         self.assertFalse(any(op[:2] == ("rt", "recursion.depth") for op in cold))
+        self.assertEqual([op[:2] for op in operations(functions["@f.cold"])],
+                         [("rt", "recursion.check"), ("call", "@rc.f.cold"), ("ret", "")])
+        body = re.search(r"^define internal i64 @f\.cold\(.*?^}", ir, re.M | re.S).group(0)
+        self.assertIn("musttail call i64 @rc.f.cold(i64 %a0)", body)
 
 
 if __name__ == "__main__":

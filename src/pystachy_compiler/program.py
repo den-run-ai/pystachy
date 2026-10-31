@@ -10,6 +10,7 @@ from src.pystachy_compiler.generators import reads_cause, reads_handled, uses_pr
 from src.pystachy_compiler.ir import Val, ClassInfo, FnInfo, IFn, NOLABELS, NONUMS, NOVALS
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import RENAMED, short
+from src.pystachy_compiler.optimizations import recursion_blocked
 from src.pystachy_compiler.specs import (
     ABSTRACT_DECOS,
     EXCBASES,
@@ -1161,6 +1162,10 @@ def gen_program(self, mods: list[Mod]) -> str:
         # storage facts, so the first verification uses complete effect summaries too.
         for fn in self.fns:
             self.verify(fn, False)
+    # Guard outlining can change conservative stack roots just as scalar depth
+    # optimizations do. Capture the shared lifetime policy before optimization or
+    # EH lowering can split a scoped open from its immediate unwind root.
+    inline_recursion_guards = not self.rtmode and recursion_blocked(self)
     if "recursionleaf" in on and not self.rtmode and self.recursionleaf() > 0:
         # This has its own depth-observation summary; ordinary R/I effects remain
         # on each entry check and still govern EH and the following optimizations.
@@ -1216,7 +1221,7 @@ def gen_program(self, mods: list[Mod]) -> str:
         fn.fa = {}
     for op in ["eq", "cmp", "repr"] if not self.rtmode else []:
         self.dispatch(op)  # (each program defines them: runtime.py calls them like runtime.c)
-    ir = self.lower_module()
+    ir = self.lower_module(inline_recursion_guards)
     RENAMED.clear()  # (the program's classes': runtime.py, which the driver may compile next, has none)
     return ir
 

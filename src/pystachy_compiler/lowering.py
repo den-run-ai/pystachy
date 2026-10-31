@@ -326,13 +326,14 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         o.append(f"  %t{i.r[0]} = {self.invoke(f'call {agg} @v.{i.s[1:]}({args})', i)}")
         self.vaggs[f"%t{i.r[0]}"] = agg
     elif op == "call":
-        # A shared bounded leaf has no frame storage and forwards its exact
+        # A shared checked leaf has no frame storage and forwards its exact
         # signature (including identity operands) after the original check.
         # Require a tail transfer so sharing cannot add a native stack frame.
         shared = (fn.counted and len(fn.slots) == 0 and len(fn.blocks) == 1
                   and len(fn.blocks[0].code) == 3
                   and fn.blocks[0].code[0].op == "rt" and fn.blocks[0].code[0].s == "recursion.check"
-                  and fn.blocks[0].code[2].op == "ret" and i.s == "@rf." + fn.f.ll[1:])
+                  and fn.blocks[0].code[2].op == "ret"
+                  and i.s in ["@rf." + fn.f.ll[1:], "@rc." + fn.f.ll[1:]])
         c = self.invoke(f"{'musttail ' if shared else ''}call {lt(i.t)} {i.s}({', '.join([lt(v.t) + ' ' + v.v for v in i.a])})", i)
         o.append("  " + c if i.t == "None" else f"  %t{i.r[0]} = {c}")
     elif op == "icall":

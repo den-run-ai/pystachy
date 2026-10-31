@@ -399,10 +399,15 @@ generator expressions emit the same typed IR and LLVM IR as before.
 
 ## JIT, AOT and runtime caching
 
-`run` favors startup latency. LLVM removes unused internal functions, inlines the small
+`run` favors startup latency. LLVM removes unused internal functions, inlines the scalar
 recursion-accounting helpers and bounded partial versions, optionally inlines the program's
 own functions, performs SSA cleanup, and runs `early-cse` and `adce` to remove
 redundant computations and unused loop feedback before ORC JIT runs with the cached runtime.
+Recursion entry guards use ordinary inlining, allowing large modules to share their
+checks. Programs with unmanaged files, weak references, termination callbacks or
+embedding preserve their prior mandatory guard inlining policy. The eligibility
+decision is captured before optimization
+and exception lowering, while scoped-file roots can still be proved.
 On Linux, `lli` loads the runtime as a shared library (`-dlopen`), which the driver links once
 from the cached runtime object and caches beside it; elsewhere `lli` links the object into each
 run (`-extra-object`), which cost about 35 ms a run
@@ -418,8 +423,9 @@ lowered) gets LLVM's coroutine passes around that pipeline:
 function's cleanup), and `coro-cleanup`. The final `early-cse`/`adce` cleanup runs after
 those passes as well, so dead identity-generation loops do not reach code generation.
 The default user-function inlining threshold is 20,000 lines of generated IR; larger programs
-skip that pass. Recursion-accounting helpers and bounded partial versions remain inlined,
-including with `PYSTACHY_JIT_INLINE=0`. The accounting helpers access the same mutable
+skip that pass. Scalar recursion helpers and bounded partial versions remain inlined,
+including with `PYSTACHY_JIT_INLINE=0`; entry guards do so only in programs excluded
+by the lifetime policy. The accounting helpers access the same mutable
 depth/limit state as the runtime's
 `sys.setrecursionlimit()` implementation and call the checked runtime entry only on the
 overflow path. The precompiled runtime is not inlined into JIT code.
@@ -456,12 +462,14 @@ acceptance. The [measurement report](reports/recursion-guard-regions.md) records
 series and the captured code. This layout choice leaves the depth proof and fallback
 behavior intact; it does not impose a new inlining boundary inside the unchecked graph.
 
-An original check-only leaf can share its existing full bounded private body:
-its guarded entry checks the limit, then tail-forwards to that body with the same
-signature and hidden identity arguments. The three-operation wrapper has no frame
-slots and lowers to `musttail`, so sharing adds no native stack frame. Tuple returns
-and leaves with terminal depth-publication bridges keep their existing bodies.
-This sharing runs after region selection and uses an already budgeted private clone.
+An original check-only leaf can share its existing full bounded private body (`@rf`),
+or its successful-child private body (`@rc`) when no full bounded clone exists.
+Its guarded entry checks the limit, then tail-forwards with the same signature and
+hidden identity arguments. The three-operation wrapper has no frame slots and
+lowers to `musttail`, so sharing adds no native stack frame. An `@rc` body retains
+the original one-frame terminal publication; the two-frame `@rp2` body is never a
+forwarding target. Tuple returns keep their existing fresh-return bodies. This
+sharing runs after region selection and uses an already budgeted private clone.
 
 A separate two-frame version can cover
 a mixed function's returning leaf paths. It publishes the active depth before an
@@ -541,7 +549,7 @@ provide the broader behavior check. See [testing](testing.md) for the commands.
 | `PYSTACHY_IRCHECK=1` | Verify typed IR before lowering and after transforming passes |
 | `PYSTACHY_IRFX=1` | Print function effect summaries to stderr |
 | `PYSTACHY_OPT` | Disable named optimizations with `-name`, comma-separated, or all with `-all`; see [IR passes](typed-ir.md#optimizations) |
-| `PYSTACHY_JIT_INLINE=N` | IR-line threshold for JIT user-function inlining; `0` disables it (recursion-accounting helpers and bounded partial versions remain inlined) |
+| `PYSTACHY_JIT_INLINE=N` | IR-line threshold for JIT user-function inlining; `0` disables it (scalar recursion helpers and bounded partial versions remain inlined; guard helpers also stay inlined in lifetime-excluded programs) |
 | `PYSTACHY_JIT_CODEGEN=0\|2` | `0` selects MCJIT `-O0`; `2` (default) keeps ORC code generation |
 | `PYSTACHY_GC_STRESS=N` | Collect every N allocations |
 | `PYSTACHY_GC_STRESS_PROGRAM=N` | Apply the stress interval to the program run by JIT or the test runner, separately from its compiler |

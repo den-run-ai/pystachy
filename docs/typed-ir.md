@@ -458,14 +458,15 @@ separate timing series and captured code. These are generic graph and emission r
 with no benchmark-name tests.
 
 After bounded, partial and successful-child selection, a check-only original leaf
-with an existing full bounded `@rf` clone can reuse that clone as its body. Its
-original callable address retains the limit check, followed by a call and return;
-the wrapper has no frame slots. LLVM lowering recognizes this exact shape and emits
-`musttail`, forwarding the original signature and hidden identity arguments and
-result pointer unchanged. Sharing therefore adds no native stack frame. All tuple
-returns are excluded to preserve the fresh-tuple proof used by `tupleret`. Children
-with terminal observer bridges do not qualify for the full bounded clone. This
-uses an already budgeted body and leaves region selection and its proofs unchanged.
+can reuse an existing full bounded `@rf` clone, or a matching `@rc` clone if no
+full bounded clone exists. Its original callable address retains the limit check,
+followed by a call and return; the wrapper has no frame slots. LLVM lowering
+recognizes this exact shape and emits `musttail`, forwarding the original signature
+and hidden identity arguments and result pointer unchanged. Sharing therefore adds
+no native stack frame. All tuple returns are excluded to preserve the fresh-tuple
+proof used by `tupleret`. An `@rc` body retains the original single-frame terminal
+observer bridge; an `@rp2` body publishes two frames and is never a forwarding target.
+This uses an already budgeted body and leaves region selection and its proofs unchanged.
 
 Partial versioning uses a two-frame budget for a mixed root and its immediate leaf
 callees. A child must pass the leaf proof on every normal and exceptional path;

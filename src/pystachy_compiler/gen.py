@@ -3405,8 +3405,8 @@ class Gen:
     def extern_decl(self, f: FnInfo) -> None:
         return lower_module_extern_decl(self, f)
 
-    def lower_module(self) -> str:
-        return lower_module_lower_module(self)
+    def lower_module(self, inline_recursion_guards: bool) -> str:
+        return lower_module_lower_module(self, inline_recursion_guards)
 
     def gen_module(self) -> list[str]:
         return lower_module_gen_module(self)
