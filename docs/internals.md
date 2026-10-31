@@ -428,9 +428,13 @@ for functions whose active depth cannot be observed by any normal, exceptional o
 cleanup path. Where all observers occur in a region that cannot return, functions
 without local handlers can instead publish depth on entry to that region. Recursive
 calls, callbacks and limit changes see the full active depth; generators keep their
-original accounting. The check can still raise before the body executes; its ordinary
-raising/state effects remain intact. State accesses carry separate depth/limit TBAA
-tags under the existing object-field root, so field stores cannot alias that state.
+original accounting. Programs that open native files or use weak references keep all
+original bookkeeping: even removing scalar instructions can change stale conservative
+roots in a caller's native frame, altering file closure or weak-reference observations.
+Standard streams alone do not impose this restriction. The check can still raise before
+the body executes; its ordinary raising/state effects remain intact. State accesses
+carry separate depth/limit TBAA tags under the existing object-field root, so field
+stores cannot alias that state.
 The overflow edge has cold branch weights. These metadata facts support LLVM's own
 optimization; they do not authorize moving an error before source side effects.
 See the [IR pass contract](typed-ir.md#optimizations) and use

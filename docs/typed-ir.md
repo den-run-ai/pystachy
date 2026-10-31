@@ -403,6 +403,17 @@ run source code, but custom exception throws remain boundaries, and programs wit
 callbacks or CPython extension/embedding hooks keep full bookkeeping. Disable it with
 `PYSTACHY_OPT=-recursionleaf` to compare the guarded implementation on the same compiler.
 
+Programs with the `open` or `weakref.*` runtime registrations retain the guarded IR
+from the same compiler with `PYSTACHY_OPT=-recursionleaf`. This preserves existing
+conservative lifetime behavior, including possible delayed file closure. Removing
+bookkeeping can change register allocation and stale
+conservative roots even in unrelated callers, delaying file finalization or changing
+weak-reference observations. A restriction on constructors or file operations alone
+would not prevent that. The registrations are available before this pass; standard
+streams and ordinary printing do not create collectable files and do not trigger it.
+Abandoned generators are not closed by collection; explicit generator cleanup remains
+a depth observer under the existing function-level proof.
+
 For a function without local handlers or generator operations, the pass also checks
 whether every observer lies in a region that cannot reach a normal return. In that
 case it retains the original entry check and publishes depth only on edges into that

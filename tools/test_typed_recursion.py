@@ -227,6 +227,59 @@ print(direct(1), indirect(leaf, 1), limit(1000), cleanup(2))
                 self.assertTrue(any(op[:2] == ("rt", "recursion.restore") for op in code))
                 self.assertFalse(any(op[:2] == ("rt", "recursion.check") for op in code))
 
+    def test_dynamic_files_preserve_entire_guarded_ir(self):
+        # An unrelated scalar leaf can also change the enclosing native frame's
+        # register allocation. Protect the whole program, not just the file owner.
+        source = (ROOT / "tests/programs/runtime/rt_list_vacated.py").read_text() + '''
+def scalar(n: int) -> int:
+    return n + 1
+print(scalar(2))
+'''
+        ir, functions = compile_source(source)
+        guarded, _ = compile_source(source, opt="-recursionleaf")
+        self.assertIn("@pys_open(", ir)
+        self.assertEqual(ir, guarded)
+        self.assertTrue(any(op[:2] == ("rt", "recursion.enter")
+                            for op in operations(functions["@f.scalar"])))
+
+    def test_weakrefs_preserve_entire_guarded_ir(self):
+        source = '''
+from _weakref import ref
+
+class Item:
+    def __init__(self, value: int) -> None:
+        self.value = value
+
+def scalar(n: int) -> int:
+    return n + 1
+
+item = Item(1)
+weak = ref(item)
+print(scalar(2), weak() is item)
+'''
+        ir, functions = compile_source(source)
+        guarded, _ = compile_source(source, opt="-recursionleaf")
+        self.assertIn("@pys_weakref_new(", ir)
+        self.assertEqual(ir, guarded)
+        self.assertTrue(any(op[:2] == ("rt", "recursion.enter")
+                            for op in operations(functions["@f.scalar"])))
+
+    def test_standard_streams_do_not_disable_scalar_leaf_elision(self):
+        ir, functions = compile_source('''
+import sys
+
+def scalar(n: int) -> int:
+    return n + 1
+
+print(scalar(2))
+sys.stdout.write("done\\n")
+''')
+        self.assertIn("@pys_std(", ir)
+        self.assertNotIn("@pys_open(", ir)
+        recursion = [name for op, name, _ in operations(functions["@f.scalar"])
+                     if op == "rt" and name.startswith("recursion.")]
+        self.assertEqual(recursion, ["recursion.check"])
+
     def test_state_tbaa_shares_field_root_and_overflow_edge_is_cold(self):
         ir, _ = compile_source('''
 class Box:

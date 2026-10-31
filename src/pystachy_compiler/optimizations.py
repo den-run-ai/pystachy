@@ -14,9 +14,16 @@ def gen_recursionleaf(self) -> int:
     # Uncounted compiler adapters can be transparent only through a complete
     # transitive proof. Unknown/indirect calls, generators, and U/I operations are
     # boundaries (including limit changes, descriptor callbacks and foreign code).
-    # A/R alone are not boundaries: native collection runs no user code. Weakref
-    # callbacks are queued for explicit invocation, and generator cleanup is an
-    # explicit gen.drop operation; file finalization cannot observe source depth.
+    # A/R alone are not depth observers: native collection runs no user code, and
+    # generator cleanup is an explicit gen.drop operation. But removing even
+    # scalar bookkeeping can change register allocation and stale conservative
+    # roots. Files and weakrefs expose that changed retention, so programs using
+    # them keep their original IR, including unrelated leaf functions. Excluding
+    # only their constructors or operations would not protect caller spills.
+    # Runtime registrations are complete here, before lowering; open creates a
+    # collectable File, while std, print and input do not.
+    if "open" in self.rtfns or any(k.startswith("weakref.") for k in self.rtfns):
+        return 0
     # Uncaught errors and allocation failure can nevertheless run termination
     # callbacks. Keep full bookkeeping when atexit or CPython hooks may exist.
     # A throw of a user exception can also render __str__ before terminating; it
