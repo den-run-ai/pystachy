@@ -400,8 +400,8 @@ generator expressions emit the same typed IR and LLVM IR as before.
 ## JIT, AOT and runtime caching
 
 `run` favors startup latency. LLVM removes unused internal functions, inlines the small
-recursion-accounting helpers and bounded partial versions, optionally inlines the program's own functions, performs SSA
-cleanup, and runs `early-cse` and `adce` to remove
+recursion-accounting helpers and bounded partial versions, optionally inlines the program's
+own functions, performs SSA cleanup, and runs `early-cse` and `adce` to remove
 redundant computations and unused loop feedback before ORC JIT runs with the cached runtime.
 On Linux, `lli` loads the runtime as a shared library (`-dlopen`), which the driver links once
 from the cached runtime object and caches beside it; elsewhere `lli` links the object into each
@@ -418,8 +418,9 @@ lowered) gets LLVM's coroutine passes around that pipeline:
 function's cleanup), and `coro-cleanup`. The final `early-cse`/`adce` cleanup runs after
 those passes as well, so dead identity-generation loops do not reach code generation.
 The default user-function inlining threshold is 20,000 lines of generated IR; larger programs
-skip that pass. Recursion-accounting helpers remain inlined, including with
-`PYSTACHY_JIT_INLINE=0`; they access the same mutable depth/limit state as the runtime's
+skip that pass. Recursion-accounting helpers and bounded partial versions remain inlined,
+including with `PYSTACHY_JIT_INLINE=0`. The accounting helpers access the same mutable
+depth/limit state as the runtime's
 `sys.setrecursionlimit()` implementation and call the checked runtime entry only on the
 overflow path. The precompiled runtime is not inlined into JIT code.
 
@@ -432,7 +433,21 @@ original accounting. `recursionregion` can check a loop-containing function's fi
 maximum call depth once and run an unchecked private call subgraph. Insufficient
 headroom runs the complete guarded body, preserving side effects and the original
 failing call. Callbacks, limit changes, generators, handlers and unknown calls remain
-boundaries; code-size limits bound cloning. A separate two-frame version can cover
+boundaries; code-size limits bound cloning.
+
+Whole-function versioning gives only maximal selected regions a separate unchecked
+entry. If one selected region is inside another's proven call graph, its private
+copy remains an inlineable descendant and its ordinary entry retains its guards.
+Independent regions can share private descendants. Each maximal private entry is
+marked `noinline` and its LLVM definition is emitted before the original guarded
+wrapper; descendants remain eligible for ordinary inlining. This keeps the guarded
+loop out of the hot function and controls the hot function's placement. LLVM 18
+object-loop measurements required both separation and this emission order to recover
+performance after guard removal: retaining the same hot-loop instruction count alone
+did not preserve elapsed time. This layout choice leaves the depth proof and fallback
+behavior intact; it does not impose a new inlining boundary inside the unchecked graph.
+
+A separate two-frame version can cover
 a mixed function's returning leaf paths. It publishes the active depth before an
 observer or guarded suffix and never resumes unchecked calls after that publication.
 This narrower path requires a useful leaf call in a returning block; it does not

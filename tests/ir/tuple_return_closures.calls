@@ -10,16 +10,16 @@
 @main.init: pys_alloc pys_list_new_atomic pys_list_append pys_list_copy pys_str_int pys_write pys_write pys_str_int pys_write pys_write pys_str_int pys_write pys_write pys_str_int pys_write pys_write pys_str_int pys_write pys_write pys_str_int pys_write pys_write pys_str_int pys_write pys_write pys_str_int pys_write pys_write pys_repr pys_write pys_write pys_raise
 @v.c.3.1: pys_raise
 @c.3.1: pys_alloc
+@rf.f.outer: pys_alloc pys_raise
 @f.outer: pys_alloc pys_raise
 @v.f.three: pys_raise
 @f.three: pys_alloc
+@rf.f.starred: pys_list_new_atomic pys_list_append pys_list_append pys_list_new_atomic pys_list_append pys_list_append pys_raise
 @f.starred: pys_list_new_atomic pys_list_append pys_list_append pys_list_new_atomic pys_list_append pys_list_append pys_raise
 @v.f.strs: pys_str_mul
 @f.strs: pys_alloc
-@rf.f.outer: pys_alloc pys_raise
 @v.rf.c.3.1: pys_raise
 @rf.c.3.1: pys_alloc
-@rf.f.starred: pys_list_new_atomic pys_list_append pys_list_append pys_list_new_atomic pys_list_append pys_list_append pys_raise
 @v.rf.f.three: pys_raise
 @rf.f.three: pys_alloc
 @pys_obj_eq:

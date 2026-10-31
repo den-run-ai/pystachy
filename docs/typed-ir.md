@@ -433,6 +433,26 @@ Whole-function versioning requires a counted call inside a loop's control-flow
 cycle to amortize its selector; short helpers and functions with an unrelated
 loop retain their existing entries.
 
+After selecting closed call graphs within the size budgets, the pass retains
+wrappers only for maximal roots: a root with an incoming call from any member of
+the selected private graphs remains a descendant instead. The graph includes
+intermediate functions and uncounted adapters, so this also handles transitive
+nesting. Nested roots keep their original guarded entries for calls outside the
+private graph. Independent roots may share one private descendant definition.
+Pruning nested wrappers preserves the accepted depth bounds and clone budgets.
+
+Only maximal private entries are marked `noinline`; their unchecked descendants
+remain eligible for normal LLVM inlining. No private descendant calls a maximal
+entry, so this choice cannot introduce a repeated out-of-line call inside another
+unchecked region. Final LLVM emission places each maximal entry before its original
+guarded wrapper, after effect, exception and tuple-return analysis, without
+reordering the compiler's function table or changing symbol indexes. Each private
+definition is emitted once, with its existing signature and hidden identity ABI.
+This layout keeps the guarded copy of a loop out of the hot function. LLVM 18
+object-loop measurements also required emitting the separate hot entry first;
+separation alone did not recover elapsed time despite a matching hot instruction
+sequence. These are generic graph and emission rules, with no benchmark-name tests.
+
 Partial versioning uses a two-frame budget for a mixed root and its immediate leaf
 callees. A child must pass the leaf proof on every normal and exceptional path;
 the pass additionally verifies that each terminal observer is preceded by exactly
