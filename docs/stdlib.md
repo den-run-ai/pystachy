@@ -31,7 +31,7 @@ supports matching strings and lists of strings, including `get_grouped_opcodes()
 `unified_diff()`, `context_diff()` and `restore()`; `ndiff()` and `HtmlDiff` still have
 blockers. `textwrap` supports its public operations with code-point widths and tab expansion.
 
-The [October 22 core sweep](reports/stdlib-expansion-2026-10-22.md) separates selected
+The [October 22 core sweep](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/reports/stdlib-expansion-2026-10-22.md) separates selected
 import results from executed APIs and lists the remaining blockers and exclusions.
 Its [CPython-derived regression guide](../tests/upstream/core-sweep.md) records the
 new heterogeneous JSON, dictionary, deque and context-diff cases; these are selected
@@ -120,7 +120,7 @@ writes can reserve native fields while preserving aliases; late-field `vars()`/`
 still raises an explicit unsupported-operation error (#486), and existing native fields
 retain their storage types.
 For opt-in code, the [comparison acceptance matrix](dynamic-any.md#operations) distinguishes
-supported mixed-container and object operations from the remaining skipped-body cases.
+supported mixed-container and object operations from explicitly rejected cases.
 The [iteration contract](dynamic-any.md#iteration) covers custom iterators, ranges and
 boxable generators through `Any`; existing module/API coverage in the table is unchanged.
 
@@ -135,37 +135,37 @@ have their own [FFI guide](ffi.md).
 
 ## Measuring coverage
 
-The [2026-10-17 compatibility audit](reports/compatibility-2026-10-17.md) records a
+The [2026-10-17 compatibility audit](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/reports/compatibility-2026-10-17.md) records a
 pinned main revision, execution checks, package adaptations, suite boundaries and
 remaining blockers. Treat its measurements as a snapshot, and rerun them after
 compiler or library changes. Later checkpoints are in the
-[rolling log](reports/compatibility-updates.md).
+[rolling log](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/reports/compatibility-updates.md).
 
 These tools answer different questions:
 
 | Check | What its result means |
 |---|---|
-| `tools/census.py` | Historical source-feature heuristic; inspect candidates, then verify with the current compiler. |
 | `tools/import_sweep.py` | A module's import program compiles; this does not verify its functions. |
 | `tools/import_sweep.py --stubs` | A module's import compiles once the modules built into CPython that it needs exist; this ranks those modules. |
 | `tests/programs/library/lib_*.py` | Selected compiled APIs match CPython in the differential suite. |
-| Upstream tests on an adapted file under CPython | The adaptations preserve the tested Python behavior. |
+| `make port-check` | Pinned upstream sources, reviewed adaptation diffs and selected upstream suites pass under CPython; compiled coverage is tracked separately. |
 
 With CPython's standard-library sources available, run from the repository root:
 
 ```sh
-python3 -I tools/census.py cpython=/usr/lib/python3.13 --json build/census.json
-python3 tools/import_sweep.py ./pystachy /usr/lib/python3.13 build/import-sweep.json
+python3 tools/import_sweep.py -j 2 --metadata build/import-sweep-meta.json \
+  ./pystachy /usr/lib/python3.13 build/import-sweep.json
 python3 tools/import_sweep.py --overlay ./pystachy /usr/lib/python3.13 build/cpython-lib
 python3 tools/import_sweep.py --stubs /usr/lib/python3.13 build/import-sweep-stubs.json
 PYSTACHY_PATH=build/cpython-lib ./pystachy run prog.py
 make test FILES="tests/programs/library/lib_*.py"
+make port-check
 ```
 
 Adjust the CPython source path for your installation. The overlay excludes names provided by
 Pystachy's `lib/`, so CPython's own `re`, `functools` and other files do not hide the ports.
-The census model predates shipped features and can flag constructs now supported; its
-results do not measure current compiler coverage.
+Source-feature counts cannot establish compiler coverage: functions with the same syntax
+may specialize for different types, and unused imported functions may not be compiled.
 The sweep reports excluded modules separately. Preserve the compiler revision, CPython version
 and overlay policy with any result; compare sweeps only when their denominators agree.
 Use `--metadata build/import-sweep-meta.json` on a sweep to retain its compiler-file hash,
@@ -181,13 +181,5 @@ CPython-hosted compiler. Its report counts, for each stub, the modules that impo
 those that need no other stub: these would import once Pystachy had that module, as far as
 their imports go. `--only NAME,...` stubs just those modules.
 
-<a id="4-pypys-pure-python-modules"></a>
-<a id="5-popular-packages"></a>
-
-## Earlier surveys
-
-The [October 2026 survey](archive/stdlib-survey.md) retains the original CPython, PyPy and PyPI
-measurements and feature projections. It predates many shipped features and ports, including
-class templates, exceptions, optional types, sets, closures and caching. Its package verdicts
-and projected percentages describe those recorded revisions, not current support.
-
+The [development tools index](../tools/README.md) lists maintained checks and measurement
+entry points. Historical surveys and superseded tool implementations remain in Git history.

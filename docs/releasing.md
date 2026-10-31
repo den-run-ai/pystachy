@@ -23,7 +23,7 @@ only build inputs and excludes environment files, keys and caches.
 ## Publish a version
 
 1. Set [VERSION](../VERSION) to the intended semantic version and add its curated notes
-   as `docs/releases/VERSION.md`, such as [v0.1.0-alpha.3](releases/v0.1.0-alpha.3.md).
+   as `docs/releases/VERSION.md`, such as [v0.1.0-alpha.4](releases/v0.1.0-alpha.4.md).
    Then merge the version bump, intended fixes and packaging changes into `main`.
 2. Wait for **CI**, **Installation**, **Lint** and **Packages** to succeed on the exact
    `main` commit.
@@ -43,6 +43,11 @@ generated asset list, Docker image, installation link and source commit. Every R
 run, including a pull request's, fails if `VERSION` has no notes file. GitHub shows the
 notes outside the repository, so they use absolute links and no top-level title; the
 release is titled "Pystachy VERSION". A retried publication keeps an existing draft's notes.
+
+Keep the current version's notes in the source tree: they are a required packaging input.
+Older published notes are available on [GitHub Releases](https://github.com/den-run-ai/pystachy/releases)
+and at their release tags. When retiring a report cited by release notes, pin the evidence
+link to the commit that contains it; a future release tag cannot resolve a deleted file.
 
 The same version identifies the Git tag, GitHub release, binary archive names, manifest,
 Docker version tag and OCI labels. `pystachy --version` (or `-V`) reports the release

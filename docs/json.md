@@ -1,7 +1,7 @@
-# Native recursive JSON prototype
+# Native JSON
 
-The prototype compiles a bounded `json.loads()`/`json.dumps()` implementation and
-recursive JSON values through the existing JIT/AOT pipeline. It supports data
+Pystachy provides an experimental, bounded `json.loads()`/`json.dumps()` implementation
+and recursive JSON values through the JIT/AOT pipeline. It supports data
 whose nesting and scalar alternatives are chosen by input text, without a
 CPython interpreter or a user-visible node wrapper.
 
@@ -9,6 +9,39 @@ This establishes a generic representation for one useful closed set of types.
 `Any` remains inference-only in its supported positions, except in modules that opt in to
 [dynamic `Any`](dynamic-any.md). There is no runtime profiling, online compilation or automatic
 skew-based specialization.
+
+## Consumer example
+
+```python
+import json
+
+
+def update(text: str) -> str:
+    value = json.loads(text)
+    if isinstance(value, dict):
+        rows = value.get("rows")
+        if isinstance(rows, list):
+            rows.append(None)
+        value["checked"] = True
+    return json.dumps(value, sort_keys=True, separators=(",", ":"))
+
+
+print(update('{"rows":[{"amount":7},{"amount":2.5},"unknown"]}'))
+```
+
+Save this as `jsondemo.py`, then run it or build an executable:
+
+```sh
+./pystachy run jsondemo.py
+./pystachy build jsondemo.py -o jsondemo
+./jsondemo
+```
+
+Both modes print:
+
+```text
+{"checked":true,"rows":[{"amount":7},{"amount":2.5},"unknown",null]}
+```
 
 ## Values and ownership
 
@@ -149,7 +182,7 @@ strings, and takes CPython's `skipkeys`, `check_circular` and `default` too. It 
 `TypeError`s: `Object of type C is not JSON serializable` for a value JSON cannot hold, and `keys
 must be str, int, float, bool or None, not C`. A `default` callback's result becomes an `Any` value,
 so the callback is declared `-> Any`: one declared `-> dict[str, int]` is rejected, as a typed
-container is wherever it would become an `Any` value. Its other limits are the prototype's, above.
+container is wherever it would become an `Any` value. Its other limits are those listed above.
 Without `sort_keys`, callbacks that delete and reinsert keys or clear and repopulate the dict
 can change output order or entries compared with CPython's live dict-table traversal (the
 [dynamic `Any` deviation](dynamic-any.md#selecting-dynamic-storage)).
@@ -195,39 +228,22 @@ escaped character by character, again copying the runs between escapes whole. A
 byte that starts no UTF-8 sequence is escaped as the character `str` counts it
 as.
 
-In the [recorded encoder benchmark](reports/native-json-encoder-2026-10-19.md),
+In the [recorded encoder benchmark](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/reports/native-json-encoder-2026-10-19.md),
 AOT and JIT `dumps()` of 5,000-record documents took 1.1–1.6 times CPython's C
 encoder time. Escaping non-ASCII text with `ensure_ascii=True` was the slowest
 case. The report includes inputs, measurements and comparisons with the earlier encoder.
 
-## Consumer example
-
-```python
-import json
-
-
-def update(text: str) -> str:
-    value = json.loads(text)
-    if isinstance(value, dict):
-        rows = value.get("rows")
-        if isinstance(rows, list):
-            rows.append(None)
-        value["checked"] = True
-    return json.dumps(value, sort_keys=True, separators=(",", ":"))
-
-
-print(update('{"rows":[{"amount":7},{"amount":2.5},"unknown"]}'))
-```
+## Benchmarks
 
 The [record-processing benchmark](json-benchmark.md) uses nested API/event
 records with common integer amounts and rare floats, nulls, missing fields and
 other values. It separates parsing, processing and their combination, and compares
 ordinary execution with a hand-written guarded control. Correct generic fallback
 behavior is required for every alternative. The
-[parser measurements](reports/native-json-parser-2026-10-18.md) compare CPython,
+[parser measurements](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/reports/native-json-parser-2026-10-18.md) compare CPython,
 PyPy and Pystachy, with parsing and processing timed separately. They do not
 establish a reliable benefit from the hand-written guarded path in JIT or AOT.
-The [initial checkpoint](reports/native-json-2026-10-18.md) retains the earlier
+The [initial checkpoint](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/reports/native-json-2026-10-18.md) retains the earlier
 parser baseline and experiment details.
 
 ## Validation and reproduction
@@ -236,7 +252,6 @@ Use the pinned CPython from `.python-version` and the documented LLVM toolchain.
 From the repository root:
 
 ```sh
-PYTHON=python3.13 tests/record.sh json_roundtrip json_unicode json_errors json_mutation json_scanner
 PYSTACHY_GC_STRESS_PROGRAM=1 make test-py PY=python3.13 FILES="tests/programs/library/json_*.py tests/programs/inference/recursive_alias_*.py tests/deviations/json_*.py tests/deviations/recursive_alias_limits.py"
 python3.13 tools/json_check.py --native --gc-stress
 python3.13 tools/bench_json.py --compiler "python3.13 -m pystachy" --smoke

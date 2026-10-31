@@ -71,7 +71,7 @@ Any]]`) or of typed items (`dict[str, int]`), and one that holds `None` items be
 value types it (`ws = [None]`, then `ws[0] = {...}`), keep their typed layouts.
 
 `json.loads()` decodes into these containers, and `json.dumps()` encodes `Any` values, in a module
-that opts in, where the document is `Any` values (#779; [the JSON prototype](json-prototype.md#in-modules-that-opt-in-to-dynamic-any)):
+that opts in, where the document is `Any` values (#779; [the JSON prototype](json.md#in-modules-that-opt-in-to-dynamic-any)):
 a document decoded once is the same objects to the typed functions and the `Any` code it passes
 through. Without `sort_keys`, a `default()` callback's changes to later values and deletion of
 later keys are observed. Structural changes can differ from CPython's live dict-table traversal:
@@ -526,16 +526,20 @@ str indexing and slice bounds call a boxed index object's `__index__`; list assi
 deletion do too. Dictionary keys and user-defined `__getitem__` arguments retain the original
 object. Slice conversion preserves receiver validation and step/start/stop ordering
 (`tests/programs/inference/dynany_numeric_protocols.py`,
-`tests/programs/inference/dynany_index_protocol.py`). These conversions keep the existing
-signed-64-bit dynamic integer representation; typed object conversions remain unsupported.
-An imported promoting-int method's integer result narrows at that existing boundary.
+`tests/programs/inference/dynany_index_protocol.py`). In a module with both opt-ins,
+`int()` preserves supported wide integer results, including results from an imported
+promoting-int method. In a dynamic-only module, `int()` still returns a checked signed-64-bit
+integer. Index consumers and other explicit fixed-width destinations retain their documented
+bounds; typed object conversions remain unsupported.
 Invalid typed-container or `None` members of a union result raise only when returned
 (`dynany_numeric_union_protocol.py`, `dynany_numeric_promoted_protocol.py`).
 
 `abs()` calls a boxed object's `__abs__` method, including inherited methods. Builtin bools
 give ints, nonnegative ints keep their identity, and floats give new float objects with a
-nonnegative sign. The [signed-64-bit integer limit](language/compatibility.md#numbers) still
-applies: `abs(-9223372036854775808)` raises `OverflowError`.
+nonnegative sign. For an in-range dynamic integer, the calling module's policy applies:
+`abs(-9223372036854775808)` raises `OverflowError` in a dynamic-only module and promotes
+with both opt-ins. Already-wide dynamic integers retain arbitrary-precision arithmetic;
+explicit [fixed-width destinations](python-int.md#64-bit-boundaries) can still narrow.
 
 Dict union `d | e` makes a new dict, with the right dict's values taking precedence. `d |= e`
 updates the existing dict through `dict.update()`, accepting a dict or builtin iterable of

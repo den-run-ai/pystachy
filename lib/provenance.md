@@ -256,4 +256,4 @@ The HTML parser probe pins CPython commit `cbc944f4bc59639a444dd971c737788ba2283
 methods, with helper/type adaptations and excluded methods disclosed in its header.
 `tests/programs/library/lib_html_parser.py` adds RAWTEXT/RCDATA, buffering, lifecycle and inheritance
 checks. Native results must be reported separately from CPython-hosted checks;
-see [the probe record](../docs/html-parser-probe.md).
+see [the probe record](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/html-parser-probe.md).

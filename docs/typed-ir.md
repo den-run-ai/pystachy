@@ -9,7 +9,7 @@ The implementation lives in the [compiler components](../src/README.md):
 [verification and effects](../src/pystachy_compiler/ircheck.py),
 [optimizations](../src/pystachy_compiler/optimizations.py) and
 [LLVM lowering](../src/pystachy_compiler/lowering.py).
-The original proposal and measurements are retained in the [historical design](archive/typed-ir-design.md).
+The original proposal and measurements are retained in the [historical design](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/archive/typed-ir-design.md).
 
 <a id="summary"></a>
 <a id="1-why"></a>
@@ -487,7 +487,7 @@ Named edges retain a finite type graph rather than repeatedly expanding canonica
 Recursive aliases are nominal, and existing mutable list/dict storage remains invariant.
 Mutual recursion, generic recursive aliases and recursive shapes outside that documented
 form remain unsupported. Runtime traversals have recursion guards; the
-[JSON codec's depth and integer limits](json-prototype.md) are separate from the type graph.
+[JSON codec's depth and integer limits](json.md) are separate from the type graph.
 
 <a id="appendix-a-how-this-design-was-chosen"></a>
 <a id="appendix-b-prior-art-and-the-measurements-behind-the-exception-and-none-designs"></a>
@@ -499,9 +499,9 @@ form remain unsupported. Runtime traversals have recursion guards; the
 
 ## Design history
 
-The [archived design](archive/typed-ir-design.md) preserves the original goals, migration
+The [archived design](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/archive/typed-ir-design.md) preserves the original goals, migration
 sequence, prototype measurements, prior-art links and implementation-departure log.
-Its [exception and optional-value analysis](archive/typed-ir-design.md#appendix-b-prior-art-and-the-measurements-behind-the-exception-and-none-designs)
+Its [exception and optional-value analysis](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/archive/typed-ir-design.md#appendix-b-prior-art-and-the-measurements-behind-the-exception-and-none-designs)
 explains rejected alternatives. The historical [prototype diff](https://github.com/den-run-ai/pystachy/blob/30b51d9169d802563380216b6352df561b7d8fc8/docs/typed-ir-prototype.diff) applies to
 `bd4cd6a`, not current source. Proposed operations and unsupported feature sketches there
 must not be read as executable examples for today's compiler.
