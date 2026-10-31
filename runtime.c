@@ -6203,6 +6203,9 @@ I pys_recursion_state[2] = {1, 1000};
 _Static_assert(sizeof(I) == 8 && sizeof(pys_recursion_state) == 16,
                "Recursion ABI: two i64 words, active depth then requested limit");
 _Noreturn void pys_recursion_error(void) { pys_fail("RecursionError: maximum recursion depth exceeded"); }
+void pys_recursion_check(void) {
+  if (pys_recursion_state[0] >= pys_recursion_state[1]) pys_recursion_error();
+}
 I pys_recursion_enter(void) {
   if (pys_recursion_state[0] >= pys_recursion_state[1]) pys_recursion_error();
   return ++pys_recursion_state[0];

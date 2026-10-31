@@ -302,7 +302,7 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
             vs[0] = f"i64 {self.key_kind(targs(h)[0] if is_dict(h) else selem(h), is_dict(h)) if h != '' else '0'}"
         # Recursion operations keep their conservative typed effects, but their
         # hot path is in the program module so JIT need not call out to its runtime.
-        sym = "pys." + i.s if not self.rtmode and i.s in ["recursion.enter", "recursion.leave", "recursion.depth", "recursion.restore"] else f.sym
+        sym = "pys." + i.s if not self.rtmode and i.s in ["recursion.check", "recursion.enter", "recursion.leave", "recursion.depth", "recursion.restore"] else f.sym
         c = self.invoke(f"call {ll[0]} @{sym}({', '.join(vs)})", i)
         o.append("  " + c if ll[0] == "void" else f"  %t{i.r[0]} = {c}")
     elif op == "call" and len(i.r) == 1 and f"{fn.f.ll} %t{i.r[0]}" in self.vcalls:

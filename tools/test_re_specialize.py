@@ -353,6 +353,84 @@ class TestGenerated(unittest.TestCase):
                     s = "x" + "ab" * k + "c"
                     self.assertEqual(port.search(p, s).span(), re.search(p, s).span())
 
+    def test_recursion_exhaustion_declines(self):
+        # Exercise real exhaustion of both generated entry paths, including
+        # partially written captures, rather than their explicit DEPTH decline.
+        # The native differential fixture runs these boundaries under JIT/AOT.
+        cases = [(r"(?:ab)*c", "ab" * 600 + "c"),
+                 (r"((a)|b)+", "ab" * 600),
+                 (r"(a|b)*?c", "ab" * 600 + "c")]
+        original_limit = sys.getrecursionlimit()
+        try:
+            with tempfile.TemporaryDirectory(prefix="re-specialize-") as tmp:
+                out = os.path.join(tmp, "_pystachy_re_specialized.py")
+                re_specialize.generate([], [(p, 0) for p, _ in cases], 1, out)
+                port = re_specialize.load_port(out)
+                matchers = sys.modules["_pystachy_re_specialized"]
+                exhausted = {"match": 0, "attempt": 0}
+
+                def track(name):
+                    original = getattr(matchers, name)
+
+                    def call(*args):
+                        try:
+                            return original(*args)
+                        except RecursionError:
+                            exhausted[name] += 1
+                            raise
+
+                    setattr(matchers, name, call)
+
+                track("match")
+                track("attempt")
+
+                def descend(call, subject, depth):
+                    return descend(call, subject, depth - 1) if depth else call(subject)
+
+                compiled = [(port.compile(p), re.compile(p), s) for p, s in cases]
+                sentinel = RecursionError("replacement sentinel")
+
+                def replacement(match):
+                    raise sentinel
+
+                def substitute(subject):
+                    return compiled[0][0].sub(replacement, subject)
+
+                for limit in [1000, 120]:
+                    sys.setrecursionlimit(limit)
+                    for depth in [0, 16]:
+                        for cp, want, subject in compiled:
+                            got = spans(descend(cp.match, subject, depth), cp.groups)
+                            self.assertEqual(got, spans(want.match(subject), want.groups))
+                            got = spans(descend(cp.search, "!!" + subject, depth), cp.groups)
+                            self.assertEqual(got, spans(want.search("!!" + subject), want.groups))
+                        cp, _, subject = compiled[0]
+                        with self.assertRaises(RecursionError) as caught:
+                            descend(substitute, subject, depth)
+                        self.assertIs(caught.exception, sentinel)
+                # The catch is restricted to specialization: an error in the
+                # interpreter fallback must retain its original identity too.
+                sre = sys.modules[port.__name__ + "._sre"]
+                interpreter = sre.sre_match
+                fallback_error = RecursionError("interpreter sentinel")
+
+                def fail_interpreter(*args):
+                    raise fallback_error
+
+                try:
+                    sre.sre_match = fail_interpreter
+                    cp, _, subject = compiled[0]
+                    for operation in [cp.match, cp.search]:
+                        with self.assertRaises(RecursionError) as caught:
+                            operation(subject)
+                        self.assertIs(caught.exception, fallback_error)
+                finally:
+                    sre.sre_match = interpreter
+                self.assertGreater(exhausted["match"], 0)
+                self.assertGreater(exhausted["attempt"], 0)
+        finally:
+            sys.setrecursionlimit(original_limit)
+
     def test_empty_iterations_stop(self):
         # an iteration of a group repeat that matched nothing ends it (_sre's last_ptr), here as there:
         # these short matches are answered, not left to the interpreter by DEPTH

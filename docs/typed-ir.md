@@ -375,8 +375,9 @@ Each `RUNTIME` entry has the form `result:params|effects|symbol`. Its type varia
 
 ## Optimizations
 
-`OPTS` lists the available switches. Only `listget`, `dictfuse`, `unionslots` and `nullcheck`
-are whole-function IR passes; the others select frontend or lowering choices.
+`OPTS` lists the available switches. `listget`, `dictfuse`, `unionslots` and `nullcheck`
+are whole-function IR passes. `recursionleaf` analyzes the complete native call graph;
+the others select frontend or lowering choices.
 
 | Option | Implemented behavior |
 |---|---|
@@ -389,9 +390,19 @@ are whole-function IR passes; the others select frontend or lowering choices.
 | `tupleret` | Return a function's new fixed tuple as an LLVM aggregate of its slots to the calls that only read the slots (`a, b = f()`, `f()[0]`, a loop over `f()`), so that neither makes the tuple ([#703](https://github.com/den-run-ai/pystachy/issues/703)) |
 | `unionslots` | Keep a local of a union of numbers (`int`, `float`, `bool`) in a tag slot and a payload slot instead of a box per value, where its slot's address goes only to its loads and stores and, on every path, each load whose value leaves the local (to a call, a return, a phi) follows a store of a box made for that store alone, with no other such load between them: stores keep a `pys_ubox`'s operands or a union phi's parts, `union.tag` and `union.payload`/`union.raw` (and tag loads) of a loaded value read the slots, a leaving value is boxed where it is loaded (each box for one that a store no longer makes), and boxes nothing uses any more are dropped |
 | `nullcheck` | Drop a check that a value is not None (before a read through it) where a passed test of the same value dominates it: the block after a check, or the branch of a null test where the value is not None, reached from nowhere else. The same value is the value, an equal one, or a load of a slot that only the entry block stores and only loads and stores use (a parameter the function never assigns). The check becomes a branch, its test goes once nothing reads it, the block after it joins its block where nothing else goes there, and a cold block no check goes to any more goes too; a walk down the dominator tree keeps the work linear ([#787](https://github.com/den-run-ai/pystachy/issues/787)) |
+| `recursionleaf` | Retain a source function's entry-limit check but omit its depth increment and restoration when a separate call-graph proof finds no operation that can observe that depth, including exceptional and cleanup paths. Counted callees, indirect or unknown calls, runtime state, user callbacks and generator operations prevent elision. |
 
 Disable one with `PYSTACHY_OPT=-dictfuse`, several with a comma-separated list, or all with
 `PYSTACHY_OPT=-all`. Differential runs check that the choices preserve behavior.
+`recursionleaf` preserves the check's raising and runtime-state effects; those effects
+remain available to exception lowering and other optimizations. Its depth-observation
+summary follows known uncounted adapters transitively and treats every counted call as
+an observer, even if that callee also qualifies for elision. It does not move a failing
+check before earlier side effects. Native allocation and built-in errors alone cannot
+run source code, but custom exception throws remain boundaries, and programs with exit
+callbacks or CPython extension/embedding hooks keep full bookkeeping. Disable it with
+`PYSTACHY_OPT=-recursionleaf` to compare the guarded implementation on the same compiler.
+
 `tupleret` applies to a function whose every `return` returns a tuple display that the return's
 own block makes (`alloc.fixed`) and that nothing but that block's `tuple.store`s reaches: a new
 tuple, which CPython makes too and no code could hold. A call of it whose result only

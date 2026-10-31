@@ -423,6 +423,17 @@ skip that pass. Recursion-accounting helpers remain inlined, including with
 `sys.setrecursionlimit()` implementation and call the checked runtime entry only on the
 overflow path. The precompiled runtime is not inlined into JIT code.
 
+Before LLVM lowering, `recursionleaf` replaces entry bookkeeping with a check alone
+for functions whose active depth cannot be observed by any normal, exceptional or
+cleanup path. It retains full bookkeeping for recursive calls, callbacks, limit changes
+and generators. The check can still raise before the body executes; its ordinary
+raising/state effects remain intact. State accesses carry separate depth/limit TBAA
+tags under the existing object-field root, so field stores cannot alias that state.
+The overflow edge has cold branch weights. These metadata facts support LLVM's own
+optimization; they do not authorize moving an error before source side effects.
+See the [IR pass contract](typed-ir.md#optimizations) and use
+`PYSTACHY_OPT=-recursionleaf` to retain the original bookkeeping for comparisons.
+
 `PYSTACHY_JIT_CODEGEN=0` selects MCJIT with `-O0` code generation. This can reduce
 startup for large programs, but the generated code can run slower. The default (`2`)
 keeps ORC and its normal code generation. This choice does not change the IR cleanup

@@ -1,0 +1,13 @@
+entry 0
+recovered True
+cleanup 1
+return 4
+entry 0
+recovered True
+cleanup 1
+return 4
+entry 0
+recovered True
+cleanup 1
+return 4
+[exit 0]

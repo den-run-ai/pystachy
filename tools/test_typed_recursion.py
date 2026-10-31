@@ -1,5 +1,6 @@
 """Native recursion policy survives typed lowering and helper inlining."""
 from pathlib import Path
+import os
 import re
 import sys
 import unittest
@@ -16,7 +17,7 @@ from src.pystachy_compiler.specs import FXBIT
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def compile_source(source):
+def compile_source(source, opt=""):
     functions = {}
     lower = Gen.lower
 
@@ -34,8 +35,8 @@ def compile_source(source):
         }
         lower(g, fn)
 
-    with patch.object(Gen, "lower", capture):
-        ir = Gen().program(Loader([]).program("recursion_contract.py", source))
+    with patch.object(Gen, "lower", capture), patch.dict(os.environ, {"PYSTACHY_OPT": opt}):
+        ir = Gen().program(Loader([str(ROOT / "lib")]).program("recursion_contract.py", source))
     return ir, functions
 
 
@@ -63,7 +64,7 @@ class Box:
 
 identity = lambda n: n
 print(guarded(2), Box().value(2), identity(1))
-''')
+''', opt="-recursionleaf")
         wanted = {"choose", "guarded", "value", "<lambda>"}
         found = set()
         for fn in functions.values():
@@ -141,7 +142,8 @@ g.close()
         self.assertGreaterEqual(resumes, 2)
 
     def test_inline_guards_use_mutable_runtime_state_and_throwing_slow_path(self):
-        ir, _ = compile_source("def identity(n: int) -> int:\n    return n\nprint(identity(1))\n")
+        ir, _ = compile_source("def identity(n: int) -> int:\n    return n\nprint(identity(1))\n",
+                               opt="-recursionleaf")
         self.assertIn("@pys_recursion_state = external global [2 x i64]", ir)
         helpers = dict(re.findall(r"^define internal [^@]*(@pys\.recursion\.[a-z]+)\([^\n]*\{\n(.*?)^}",
                                   ir, re.M | re.S))
@@ -161,6 +163,152 @@ g.close()
         self.assertIn("call i64 @pys.recursion.enter()", source_body)
         self.assertIn("call void @pys.recursion.restore(i64", source_body)
         self.assertNotIn("@pys_recursion_enter", source_body)
+
+    def test_leaf_keeps_entry_failure_without_publishing_depth(self):
+        ir, functions = compile_source('''
+class Counter:
+    def __init__(self, value: int) -> None:
+        self.value = value
+
+    def update(self, delta: int) -> int:
+        self.value += delta
+        return self.value
+
+def allocated(n: int) -> list[int]:
+    return [n, n + 1]
+
+print(Counter(1).update(2), allocated(3))
+''')
+        for fn in functions.values():
+            if fn["name"] not in ("__init__", "update", "allocated"):
+                continue
+            with self.subTest(function=fn["name"]):
+                recursion = [name for op, name, _ in operations(fn)
+                             if op == "rt" and name.startswith("recursion.")]
+                self.assertEqual(recursion, ["recursion.check"])
+                self.assertEqual(fn["fx"] & (FXBIT["R"] | FXBIT["I"]),
+                                 FXBIT["R"] | FXBIT["I"])
+        body = ir.split("define internal void @pys.recursion.check()", 1)[1].split("\n}", 1)[0]
+        self.assertIn("icmp sge i64 %depth, %limit", body)
+        self.assertIn("@pys_recursion_error() noreturn cold", body)
+        self.assertNotIn("store ", body)
+        self.assertNotIn("nounwind", body.split("{", 1)[0])
+
+    def test_calls_and_limit_observers_keep_published_depth(self):
+        _, functions = compile_source('''
+import sys
+from collections.abc import Callable
+
+def leaf(n: int) -> int:
+    return n + 1
+
+def direct(n: int) -> int:
+    return leaf(n)
+
+def indirect(f: Callable[[int], int], n: int) -> int:
+    return f(n)
+
+def limit(n: int) -> int:
+    sys.setrecursionlimit(n)
+    return sys.getrecursionlimit()
+
+def cleanup(n: int) -> int:
+    try:
+        return n // 2
+    finally:
+        sys.setrecursionlimit(1000)
+
+print(direct(1), indirect(leaf, 1), limit(1000), cleanup(2))
+''')
+        for name in ("direct", "indirect", "limit", "cleanup"):
+            with self.subTest(function=name):
+                code = operations(functions["@f." + name])
+                self.assertTrue(any(op[:2] == ("rt", "recursion.enter") for op in code))
+                self.assertTrue(any(op[:2] == ("rt", "recursion.restore") for op in code))
+                self.assertFalse(any(op[:2] == ("rt", "recursion.check") for op in code))
+
+    def test_state_tbaa_shares_field_root_and_overflow_edge_is_cold(self):
+        ir, _ = compile_source('''
+class Box:
+    def __init__(self, n: int) -> None:
+        self.n = n
+
+    def value(self) -> int:
+        return self.n
+
+print(Box(2).value())
+''')
+        nodes = dict(re.findall(r"^!(\d+) = (.*)$", ir, re.M))
+        root = next(key for key, value in nodes.items() if value == '!{!"pystachy fields"}')
+        for name in ("recursion depth", "recursion limit", "int"):
+            self.assertTrue(any(value == f'!{{!"{name}", !{root}, i64 0}}'
+                                for value in nodes.values()), name)
+        helpers = ir.split("define internal void @pys.recursion.check()", 1)[1].split("\n}", 1)[0]
+        self.assertRegex(helpers, r"load i64, ptr @pys_recursion_state, !tbaa !\d+")
+        self.assertRegex(helpers, r"load i64, ptr %limit.addr, !tbaa !\d+")
+        profile = re.search(r"br i1 %full, label %overflow, label %entered, !prof !(\d+)", helpers)
+        self.assertIsNotNone(profile)
+        self.assertEqual(nodes[profile.group(1)], '!{!"branch_weights", i32 1, i32 1048575}')
+
+    def test_custom_exception_and_termination_callbacks_keep_depth(self):
+        _, functions = compile_source('''
+class Error(Exception):
+    def __str__(self) -> str:
+        return "custom"
+
+def fail(e: Error) -> None:
+    raise e
+
+try:
+    fail(Error())
+except Error:
+    pass
+''')
+        self.assertTrue(any(op[:2] == ("rt", "recursion.enter")
+                            for op in operations(functions["@f.fail"])))
+        _, functions = compile_source('''
+import atexit
+
+def leaf(n: int) -> int:
+    return n + 1
+
+def done() -> None:
+    print("done")
+
+atexit.register(done)
+print(leaf(2))
+''')
+        self.assertTrue(any(op[:2] == ("rt", "recursion.enter")
+                            for op in operations(functions["@f.leaf"])))
+
+    def test_promoting_numeric_queries_preserve_callback_depth(self):
+        _, functions = compile_source('''
+# pystachy: dynamic-any
+# pystachy: python-int
+from typing import Any
+import sys
+
+class Key:
+    def __eq__(self, other: Any) -> bool:
+        sys.setrecursionlimit(1000)
+        return True
+
+    def __hash__(self) -> int:
+        sys.setrecursionlimit(1000)
+        return 1
+
+def sequence(items: list[int], query: Any) -> bool:
+    return query in items
+
+def mapping(items: dict[int, int], query: Any) -> bool:
+    return query in items
+
+query: Any = Key()
+print(sequence([1], query), mapping({1: 2}, query))
+''')
+        for name in ("sequence", "mapping"):
+            self.assertTrue(any(op[:2] == ("rt", "recursion.enter")
+                                for op in operations(functions["@f." + name])), name)
 
     def test_descriptor_raise_effects_remain_distinct_from_source_entry(self):
         # Aggregate source summaries now always include R. Keep the recursive

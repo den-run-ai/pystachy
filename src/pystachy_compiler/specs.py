@@ -158,6 +158,11 @@ STR_HEADER_SIZE = 24  # offsetof(Str, s), checked against runtime.c and both CPy
 TBAA_LEN = 3
 TBAA_BYTES = 4
 STRLEN_RANGE = 5  # !range of a str's length in runtime mode: 0 to 2**63 - 18 (_rt.str_new's limit)
+# Program-only metadata, below the object-field tags. The recursion scalar types
+# share the object-field root so LLVM can distinguish their storage from fields.
+TBAA_DEPTH = 6
+TBAA_LIMIT = 7
+RECURSION_BRANCH = 8
 # a program's TBAA of object fields (fieldtbaa): its access tags are numbered from here, in the order
 # lowering first tags each field, and the type nodes they name follow them (lower_module); the
 # members a class's struct may have, each with its size, which is its alignment too, and the name
@@ -664,7 +669,7 @@ GENTHROWC = 3
 # gives the loads and stores of object fields (Gen.field_tag), and tupleret, the fixed tuples that
 # functions return by value to the calls that only read their slots (Gen.tuple_rets), which
 # PYSTACHY_OPT turns off: "-name", comma-separated, or "-all"
-OPTS: list[str] = ["listget", "dictfuse", "tupleiter", "listfast", "moduleints", "fieldtbaa", "tupleret", "unionslots", "nullcheck"]
+OPTS: list[str] = ["listget", "dictfuse", "tupleiter", "listfast", "moduleints", "fieldtbaa", "tupleret", "unionslots", "nullcheck", "recursionleaf"]
 # what bounds dictfuse's work: the depth of the chain of values Gen.canon follows (the
 # self-compile's deepest is 18), the ops Gen.reaching walks back over (85) and the lookups that
 # hold at once (7)
@@ -976,6 +981,7 @@ RUNTIME: dict[str, str] = {
     "process_time": "float:|I|", "process_time_ns": "int:|I|", "sleep": "None:float|R I|", "sleep_int": "None:int|R I|",
     "select": "tuple[list[int],list[int],list[int]]:list[int],list[int],list[int],float,int|R A I rL wL|",
     "setrecursionlimit": "None:int|R I|", "getrecursionlimit": "int:|I|",
+    "recursion.check": "None:|R I|pys_recursion_check",
     "recursion.enter": "int:|R I|pys_recursion_enter", "recursion.leave": "None:|I|pys_recursion_leave",
     "recursion.depth": "int:|I|pys_recursion_depth", "recursion.restore": "None:int|I|pys_recursion_restore",
     "recursion.error": "None:|R N|pys_recursion_error",

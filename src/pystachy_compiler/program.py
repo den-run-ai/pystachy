@@ -1161,6 +1161,13 @@ def gen_program(self, mods: list[Mod]) -> str:
         # storage facts, so the first verification uses complete effect summaries too.
         for fn in self.fns:
             self.verify(fn, False)
+    if "recursionleaf" in on and not self.rtmode and self.recursionleaf() > 0:
+        # This has its own depth-observation summary; ordinary R/I effects remain
+        # on each entry check and still govern EH and the following optimizations.
+        self.effects()
+        if chk:
+            for fn in self.fns:
+                self.verify(fn, False)
     if len(on) > 0:
         # (before eh_ir: a block that a try statement covers keeps its exception edge to the
         # landing block, Blk.handler, which the passes count, see preds)

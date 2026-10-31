@@ -1,8 +1,92 @@
 """Optimizations component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.ir import IFn, Ins, Lookup, Val, Values
+from src.pystachy_compiler.ircheck import EffectSummaries
 from src.pystachy_compiler.specs import CANON_DEPTH, FXBIT, LOOKUPS, RAWW, REACH
 from src.pystachy_compiler.utils import is_list, is_union, umembers
+
+
+def gen_recursionleaf(self) -> int:
+    # Depth observation is separate from ordinary effects: the source entry still
+    # raises and reads runtime state after this pass. Scan every block, including
+    # exceptional/cleanup paths, before changing any function. A counted callee
+    # observes its caller's depth even when its own bookkeeping will be elided.
+    # Uncounted compiler adapters can be transparent only through a complete
+    # transitive proof. Unknown/indirect calls, generators, and U/I operations are
+    # boundaries (including limit changes, descriptor callbacks and foreign code).
+    # A/R alone are not boundaries: native collection runs no user code. Weakref
+    # callbacks are queued for explicit invocation, and generator cleanup is an
+    # explicit gen.drop operation; file finalization cannot observe source depth.
+    # Uncaught errors and allocation failure can nevertheless run termination
+    # callbacks. Keep full bookkeeping when atexit or CPython hooks may exist.
+    # A throw of a user exception can also render __str__ before terminating; it
+    # is a boundary below even though ordinary effect summaries label it only R.
+    if self.ext != "" or len(self.cdirect) > 0 or any(g.v == "@g.atexit$_hook" for g in self.globs):
+        return 0
+    direct: list[int] = []
+    calls: list[list[int]] = []
+    bases: list[str] = []
+    eligible: list[bool] = []
+    observed = FXBIT["I"]
+    for fn in self.fns:
+        own = fn.counted and not fn.coro and not fn.f.gen and len(fn.blocks[0].code) >= 2
+        base = ""
+        if own:
+            enter = fn.blocks[0].code[0]
+            sub = fn.blocks[0].code[1]
+            own = enter.op == "rt" and enter.s == "recursion.enter" and len(enter.r) == 1 and fn.rdepth == f"%t{enter.r[0]}"
+            own = own and sub.op == "scalar.bin" and sub.s == "sub" and sub.t == "int" and len(sub.a) == 2 and len(sub.r) == 1
+            own = own and sub.a[0].v == fn.rdepth and sub.a[1].v == "1"
+            if own:
+                base = f"%t{sub.r[0]}"
+        bases.append(base)
+        eligible.append(own)
+        m = observed if fn.f.gen or fn.coro else 0
+        cs: list[int] = []
+        seen: dict[int, bool] = {}
+        for b in fn.blocks:
+            for at in range(len(b.code)):
+                i = b.code[at]
+                if own and b is fn.blocks[0] and at < 2:
+                    continue  # the validated entry and its caller-depth subtraction
+                if own and i.op == "rt" and i.s == "recursion.restore" and len(i.a) == 1 and i.a[0].v in [fn.rdepth, base]:
+                    continue
+                # These tokens belong only to the bookkeeping above. A future
+                # consumer of either token must invalidate this proof explicitly.
+                if own and any(a.v == fn.rdepth or a.v == base for a in i.a):
+                    m |= observed
+                c = i.s if i.op == "call" else "@init." + i.s if i.op == "init" else ""
+                if c in self.fll:
+                    ix = self.fll[c]
+                    callee = self.fns[ix]
+                    if callee.counted or callee.f.gen or callee.coro:
+                        m |= observed
+                    elif ix not in seen:
+                        seen[ix] = True
+                        cs.append(ix)
+                elif i.op == "throw" or i.op.startswith("gen.") or (i.op == "rt" and i.s in ["throw", "reraise"]) or self.opfx(i, fn.fa) & (FXBIT["U"] | FXBIT["I"]) != 0:
+                    m |= observed
+        direct.append(m)
+        calls.append(cs)
+    depth = EffectSummaries()
+    depth.update(direct, calls)
+    n = 0
+    for j in range(len(self.fns)):
+        if not eligible[j] or depth.fx[j] != 0:
+            continue
+        fn = self.fns[j]
+        base = bases[j]
+        enter = fn.blocks[0].code[0]
+        self.runtime("pys_recursion_check")
+        enter.s = "recursion.check"
+        enter.t = "None"
+        enter.r = []
+        fn.blocks[0].code.pop(1)
+        for b in fn.blocks:
+            b.code = [i for i in b.code if not (i.op == "rt" and i.s == "recursion.restore" and len(i.a) == 1 and i.a[0].v in [fn.rdepth, base])]
+        fn.rdepth = ""
+        n += 1
+    return n
 
 
 def gen_optimize(self, fn: IFn, on: dict[str, bool]) -> int:

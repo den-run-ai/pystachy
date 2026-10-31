@@ -8,7 +8,7 @@ from src.pystachy_compiler.diagnostics import fail, dynamic_program, int_lists
 from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo
 from src.pystachy_compiler.llvm_abi import llstr
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.specs import CTYPES, DYNTYPE_LL, GENCLEAN, GENCMD, GENDONE, GENNAME, GENRUN, GENSTATE, GLUE, LIBS, LINKDL, OBJECTC, RANGEC, RTDATA, RTSYM, STR_HEADER_SIZE, STRLEN_RANGE, TBAA_BYTES, TBAA_FIELDS, TBAA_LEN, TBAA_NAMES, TBAA_SIZES
+from src.pystachy_compiler.specs import CTYPES, DYNTYPE_LL, GENCLEAN, GENCMD, GENDONE, GENNAME, GENRUN, GENSTATE, GLUE, LIBS, LINKDL, OBJECTC, RANGEC, RECURSION_BRANCH, RTDATA, RTSYM, STR_HEADER_SIZE, STRLEN_RANGE, TBAA_BYTES, TBAA_DEPTH, TBAA_FIELDS, TBAA_LEN, TBAA_LIMIT, TBAA_NAMES, TBAA_SIZES
 from src.pystachy_compiler.utils import RtFn, lt, runtime_decl, typestr
 
 # pystachy run on Linux, which loads the runtime as a shared library (the driver's RTSO, #704): a
@@ -42,55 +42,75 @@ def struct_types(ci: ClassInfo) -> list[str]:
     return [lt(ci.ftypes[x]) for x in ci.fields] + ["i1" for _ in range(ci.nflag)] + ["ptr" for _ in range(ci.nbox)]
 
 
-def recursion_ir(keys: list[str]) -> list[str]:
+def recursion_ir(keys: list[str], root: int, fields: bool) -> list[str]:
     # The mutable native ABI is runtime.c's two I words: active depth, configured
     # limit. Keep the C RecursionError as the cold path, but make ordinary accounting
     # visible to LLVM even when JIT uses a separately compiled shared runtime. These
     # helpers are always inlined independently of the user-function inlining budget.
-    if not any(key in keys for key in ["recursion.enter", "recursion.leave", "recursion.depth", "recursion.restore"]):
+    if not any(key in keys for key in ["recursion.check", "recursion.enter", "recursion.leave", "recursion.depth", "recursion.restore"]):
         return []
     out = ["@pys_recursion_state = external global [2 x i64]"]
-    if "recursion.enter" in keys:
+    for key in ["recursion.check", "recursion.enter"]:
+        if key not in keys:
+            continue
+        check = key == "recursion.check"
         out.extend([
-            "define internal i64 @pys.recursion.enter() alwaysinline {",
+            f"define internal {'void' if check else 'i64'} @pys.{key}() alwaysinline {{",
             "entry:",
-            "  %depth = load i64, ptr @pys_recursion_state",
+            f"  %depth = load i64, ptr @pys_recursion_state, !tbaa !{TBAA_DEPTH}",
             "  %limit.addr = getelementptr [2 x i64], ptr @pys_recursion_state, i64 0, i64 1",
-            "  %limit = load i64, ptr %limit.addr",
+            f"  %limit = load i64, ptr %limit.addr, !tbaa !{TBAA_LIMIT}",
             "  %full = icmp sge i64 %depth, %limit",
-            "  br i1 %full, label %overflow, label %entered",
+            f"  br i1 %full, label %overflow, label %entered, !prof !{RECURSION_BRANCH}",
             "overflow:",
-            "  call void @pys_recursion_error() noreturn",
+            "  call void @pys_recursion_error() noreturn cold",
             "  unreachable",
             "entered:",
-            "  %next = add i64 %depth, 1",
-            "  store i64 %next, ptr @pys_recursion_state",
-            "  ret i64 %next",
-            "}",
         ])
+        if check:
+            out.append("  ret void")
+        else:
+            out.extend([
+                "  %next = add i64 %depth, 1",
+                f"  store i64 %next, ptr @pys_recursion_state, !tbaa !{TBAA_DEPTH}",
+                "  ret i64 %next",
+            ])
+        out.append("}")
     if "recursion.leave" in keys:
         out.extend([
             "define internal void @pys.recursion.leave() alwaysinline nounwind {",
-            "  %depth = load i64, ptr @pys_recursion_state",
+            f"  %depth = load i64, ptr @pys_recursion_state, !tbaa !{TBAA_DEPTH}",
             "  %next = sub i64 %depth, 1",
-            "  store i64 %next, ptr @pys_recursion_state",
+            f"  store i64 %next, ptr @pys_recursion_state, !tbaa !{TBAA_DEPTH}",
             "  ret void",
             "}",
         ])
     if "recursion.depth" in keys:
         out.extend([
             "define internal i64 @pys.recursion.depth() alwaysinline nounwind {",
-            "  %depth = load i64, ptr @pys_recursion_state",
+            f"  %depth = load i64, ptr @pys_recursion_state, !tbaa !{TBAA_DEPTH}",
             "  ret i64 %depth",
             "}",
         ])
     if "recursion.restore" in keys:
         out.extend([
             "define internal void @pys.recursion.restore(i64 %depth) alwaysinline nounwind {",
-            "  store i64 %depth, ptr @pys_recursion_state",
+            f"  store i64 %depth, ptr @pys_recursion_state, !tbaa !{TBAA_DEPTH}",
             "  ret void",
             "}",
         ])
+    # These state words cannot alias source object fields. A separate TBAA root
+    # would make that relation unknown, so reuse exactly the fields' root. The
+    # scalar tags are separate from each other and from every source-field type.
+    if not fields:
+        out.append(f'!{root} = !{{!"pystachy fields"}}')
+    out.extend([
+        f'!9 = !{{!"recursion depth", !{root}, i64 0}}',
+        f'!10 = !{{!"recursion limit", !{root}, i64 0}}',
+        f"!{TBAA_DEPTH} = !{{!9, !9, i64 0}}",
+        f"!{TBAA_LIMIT} = !{{!10, !10, i64 0}}",
+        f'!{RECURSION_BRANCH} = !{{!"branch_weights", i32 1, i32 1048575}}',
+    ])
     return out
 
 
@@ -527,7 +547,7 @@ def gen_gen_module(self) -> list[str]:
         "}"]
 
 def gen_lower_module(self) -> str:
-    if not self.rtmode and "recursion.enter" in self.rtfns:
+    if not self.rtmode and ("recursion.enter" in self.rtfns or "recursion.check" in self.rtfns):
         self.runtime("pys_recursion_error")
     hdr: list[str] = ["; generated by pystachy"]
     for ci in self.classes.values():
@@ -572,7 +592,7 @@ def gen_lower_module(self) -> str:
     for key in ["recursion.depth", "recursion.restore"] if self.ext != "" else []:
         if key not in recursion:
             recursion.append(key)
-    hdr.extend(recursion_ir(recursion))
+    hdr.extend(recursion_ir(recursion, TBAA_FIELDS + len(self.tbaa), len(self.tbaa) > 0))
     if self.ext != "":
         return "\n".join(hdr + self.pyext()) + "\n"
     # pys_init gets the GC roots: main's frame address bounds the stack scan (it also
