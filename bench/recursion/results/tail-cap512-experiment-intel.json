@@ -1,0 +1,3636 @@
+{
+  "purpose": "Isolated whole-cap512 native experiment; one hosted build, explicitly not a fixed-point bootstrap.",
+  "status": "complete",
+  "started_utc": "2026-10-31T16:02:59.118504+00:00",
+  "source_identities": {
+    "current": {
+      "directory": "/workspace/scratch/e858f72517b9/pystachy",
+      "commit": "aaec00cc81a862a2b29c117003e7c9cc73e1a3c1",
+      "tree": "2dd336a2a8f71d9a2c36d1fd233af24fee81c2a1",
+      "git_status": "",
+      "input_sha256": {
+        "Makefile": "9d9574c44902625ce0c79e94c31513548080b0d7543c2ba82e6c707f28708997",
+        "lib/_markupbase.py": "6a294b294582f55905d310b8df054019e94f37b17eba3414be4e2cb61d5851d1",
+        "lib/_pyrandom.py": "5b37918369c0e4becdac2d012ffe9e40e314a330ee9f7b3fe2ce4cd3a926ff09",
+        "lib/_pystachy__io.py": "77ee03b3a67f79f49c3fe30666f4f5077bd41069797c727529a230c4caa0a117",
+        "lib/_pystachy_abc.py": "9f6f717c077b2dbac22e8dc9793373b939615a33f2698aaddd81ed905e5a48f8",
+        "lib/_pystachy_atexit.py": "a5ff97e421a4a8fd782e08a0124bac6a7b27486fc279cb4384655bc4b208d60c",
+        "lib/_pystachy_binascii.py": "c8ca70973dc409011ba89749878a2a205780fdc907437bc08521be0e3d07f848",
+        "lib/_pystachy_codecs.py": "fe8380d756e383192028c6a65d652047e9abb9c08b51e15aba5b35e8cf678acf",
+        "lib/_pystachy_iterators.py": "61894584c1fda85936a740d4dafa2c5d631f9b05f5022fca8913e4ad0a84b27e",
+        "lib/_pystachy_itertools.py": "14f451cf7647016ad8105aa988b9cbabe4fe3f5a08f2710f6ed2db5d81a00566",
+        "lib/_pystachy_json_any.py": "392d432c6ef3679f36bd3a86b302fe71858ff2d261bc25863c1673bf58944016",
+        "lib/_pystachy_mappingproxy.py": "e1d04e45f0b12e0e29fba497adf16f77864154c9e175a40065d2fd73654be70c",
+        "lib/_pystachy_object.py": "6a21df25fa11b3c80a70d95f310760d86adaeecd4a63e767bde5b9ecde63ca9c",
+        "lib/_pystachy_range.py": "50df392f248e25a79896007a3b0a23741f8f5f56622e7c56060ba9612292f8b2",
+        "lib/_pystachy_re_specialized.py": "d09604c416700c3a7acd3a9f8c6f7536289c895b2e72393a9875e68ed92e45bf",
+        "lib/_pystachy_string.py": "2e87bb96489d12051446c1b59c2e4ee65543a14f15d8eff3465a43f2e1f51434",
+        "lib/_pystachy_struct.py": "2f224f07dd5a8db374dc2604257cc7c41a4caa7140c5d2ddf30a34bc8f88f1d6",
+        "lib/_pystachy_thread.py": "62e5617d4f19c2deb6d714dbcc92ebaa6a97a78a596fc7d8c56c088cc4ad0f37",
+        "lib/_pystachy_types.py": "221d41e2f90c40493b3d712fb99cf39fb5a25c2306e63de7a89358e66cfcfe70",
+        "lib/_pystachy_unicodedata.py": "f1c877238f94279dfdb5a5f77396d9d25f504c409f34b78099613c6c3f71c7d0",
+        "lib/_pystachy_unicodedata_db.py": "d511e3c104f697e9e9ce150b97119ceb1fcaf00ebcdd3be21cf52c88337608b2",
+        "lib/_pystachy_unicodedata_names.py": "9b18f9e4aecb03f28672fdecce4fcf9d0ece0a1c565c7e9e0ce504fe4fc2bb28",
+        "lib/_pystachy_weakref.py": "da4181f6adb4cbbed1d3c45d95e32bd39e8ac210638ab902f26fb0b68bc7cbfe",
+        "lib/_weakrefset.py": "91895a451d06e9f521a1171b31b9b19bc9740f35af00d4fa106338ab7167c9ac",
+        "lib/bisect.py": "f1cf7b85fc36b5da249813fc5ab97d9464f8cc1bc817f7146206fa2713e35999",
+        "lib/codecs.py": "feafe30244cc2ac23a8f03ca6c8b106ef82dede1630aac103126767e123a3c42",
+        "lib/collections/__init__.py": "8a6533ddf04c4823e1c1da10925028613420cc4e5cb6264e6066fdd3739b4852",
+        "lib/colorsys.py": "65e3dfbf7bad61d4d7d7731a69dd7e75a347fd350d91327a51010a94e6fd2f1d",
+        "lib/contextlib.py": "08bf5d132ae0aceafcd94c72396e21fd45fc9cd1ba6e74807ce1e39f22d0d665",
+        "lib/csv.py": "29676a25a82679e93c6d0eb771a3f60890aedf49941206c0387ce59696b7c3c4",
+        "lib/curses/__init__.py": "91156d2c9afdc168cee4bb7085c8b16936ca7079fa4035ac4d7908712d86f394",
+        "lib/curses/ascii.py": "780dd8bbaf0ee7e832f164c1772953e694a9cd1031d1ab1471af65344d3645e6",
+        "lib/datetime.py": "d269c51c55e7668b988c8194a7a2e643a39aa3a2770a727c178a5c898b91c239",
+        "lib/difflib.py": "4d33db46d2f0748bd674b5ae2f52c59ab0cab0865c465a99ea9521d8751aea0f",
+        "lib/fnmatch.py": "fd1da199d0eeabc34ec9796d5a0790da6300fff4d15e16ee2d8ca26e6885eec5",
+        "lib/functools.py": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703",
+        "lib/genericpath.py": "cdac5a68dd738051e0d66fc81d5947d6a1776248fc6fe862253477608d870ec4",
+        "lib/getopt.py": "0d152bede49816f2924ffb944d86369099bea3b68ec1ee6f0c84c56251670241",
+        "lib/gettext.py": "97b7fa3d8112826dae4d021a6445fe791521524bd4b06e729d0497ed59a85e63",
+        "lib/heapq.py": "89bfee37cf47aecdf2a5ae8706b9805f1b1789d6e2edb7e3556fe8b42c5ecba3",
+        "lib/html/__init__.py": "067cf63fe3eee1bece807caba82a83d0307010bf1c30d9974e56ea704ddea893",
+        "lib/html/entities.py": "6fbeb0318e22905269b414b7d045574b8a98767f194310071b9177fadc738a2f",
+        "lib/html/parser.py": "f3ab8871f5342562328cd3ff8e65d5667c79d27189c7a0401982a193de7b4e90",
+        "lib/io.py": "31f5102c549e7051190c81838928db3f5c21863ac9cf63e7a493352e767fa71f",
+        "lib/json.py": "72fb29122acddd3b4d1bd43d8ae9e7fee506b1d7d4f30559edeeebd92ac044ce",
+        "lib/keyword.py": "833eb8e01577a8330f473ed49403fae4b5e6c95a66a81254405deb5c7ea7efb9",
+        "lib/mpz.py": "754e4844ff8425e92ee8cde26b1e84a4ad318312d1ca17d10ea724a6c4c46a45",
+        "lib/operator.py": "7d42396ef02c03aa69eb86643769cdb889ab9fc66ffd140bc0efa0896fc94c99",
+        "lib/posixpath.py": "69acb9e294987cd6056a2237048373cf8d6201faf1e43a49c38889b47d2fb28e",
+        "lib/pyobj.py": "2d673d060a386ceae11b381ca94ce71a4ec43be89e7c1c59651c936ffea9054e",
+        "lib/random.py": "91e7fa770bfc1affb76a6441a10e1913af8993d8c657c12ffe6cbadc3e3add1e",
+        "lib/re/__init__.py": "3e1c1d6312856cfb5c34d2ad5f24b933de77c00dd21d36f76f74c54f8cf0f856",
+        "lib/re/_constants.py": "d8c63d4b91920ceb02d7c00073a062504c349b3e0de83ba480c3f4d1bca442fe",
+        "lib/re/_sre.py": "c7e98ec21fe209e8d3833516f408a5b219002e26a2f630cceb933b3e12cca3c5",
+        "lib/re/_unicode.py": "61f1343780ef2537ff83813b7a2097a55482a51a23b172a609a6836af4197ea2",
+        "lib/shlex.py": "7392b7c738fe818c43a8031820bef96db0b9f598d354a9fac0b771546a4fdba4",
+        "lib/stat.py": "07217986d9b2172b509dab3578d18ac05ba768b418e1f1e8c90e38a8f7c2b3c6",
+        "lib/statistics.py": "05a091943eb6a01272f95c190e99bab0d33c72a108aef45261c838842301991b",
+        "lib/string.py": "5a6ea720721a70a9d76d30135697ea612b9cb6610366b38d8c1d997043508b27",
+        "lib/struct.py": "9c231f9497caf513a22dee8f790b07f969b0e45854a0bdd6dd84b492e08c2856",
+        "lib/textwrap.py": "5102b1deb8905ad1b31a2830f7ac5a980229e55f3bbce06fd64baa9930159c1b",
+        "lib/this.py": "481d0cb3de511eae0b5713dad18542b07eafd9c013bb7690f7497bad49923a71",
+        "lib/token.py": "1d81391050d5389c41f319ba4d42159c6247777400e48c27f2d28cac8ca4e6e2",
+        "lib/tomllib/__init__.py": "71f67036895f4c5acab942618af0cbd3d814451ba61e967f358d0f341a5b8f51",
+        "lib/tomllib/_parser.py": "11d40d79772967ebf81f5a0cf8dfa99608413b3ba6144d4beadae99baa28f279",
+        "lib/tomllib/_re.py": "17ec24dabd4e7089df6f04acacb331c85c437addbd2ab98bdfefcb18671ba056",
+        "lib/tomllib/_types.py": "e018cf69245202408dd97664cf76618e8cbb5efb6f43b134d29efd1d9221a6c0",
+        "lib/types.py": "d4215ea3abc258bdde763cc21ec4b0759f0c44e874b2483851c5681ae93f45e2",
+        "lib/urllib/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "lib/urllib/parse.py": "f5914562f9903ab7dde287fcb8bc0b1667a812f82e7e7c4419fed0493bfd0148",
+        "lib/warnings.py": "be4467c02d67040c87e31ede6787740815085298a880f2aa126b02fbabc0f133",
+        "lib/weakref.py": "781ef9b242fde2b923e070fce64b751954d42955c5c66b367e54941678ab722b",
+        "mpz/mpz.c": "2d648cec5de20c6bb7d4882a364cfc9fa1d355395255c1d0e82e4389bde03afa",
+        "pyembed.c": "98c9dd90c0964f885da08e1bd7622386421607723b7341b27783aaf3ff6a11b0",
+        "pyext.c": "4278d2506c88d20a08b4a5b5563237e6323372201603b6c5c78231ee52301109",
+        "pystachy.py": "a413782632f88d4746a81fd7cfb529d695ab36a35618522a83be1e25e1e31f29",
+        "runtime.c": "4bdf82b0663d1141667fe234029c8f92b6146978cff6457f79c1d554926f6637",
+        "runtime.py": "c45138f44a7aa25828b351b6d627e1a4f9fad69dc8a88532d053fb90e84beefb",
+        "ryu/common.h": "0bbd71d26da6193e678d0776cf418f43f287c73d6fd6725353df0aadf70f2a19",
+        "ryu/d2s.c": "c6357b5d53ac1ba7f4984847d3a76f0803e0a931b7d0b02680656576829cf1d2",
+        "ryu/d2s_intrinsics.h": "01d9bdaada67b42f2d1bbdebb3765867e6c44e3a181b806c1d7e851b93f9cc21",
+        "ryu/d2s_small_table.h": "01f3d8a3ff739a26ecbddc2caae44c91574592b1de7c01fec67bc2d06672b606",
+        "ryu/digit_table.h": "8b782573abc0b8554d74163ae6c02f0beb5c30d1e63eaebdb0ddf2c98d817e01",
+        "ryu/ryu.h": "b7feab0ba1df5e9ef3d602f386592ad152491405e49b408fb21c0e0e9e6bfb16",
+        "src/__init__.py": "c443ed6062edae246598189fb20f12799a5e87a04049acb855894652e3875af7",
+        "src/pystachy_compiler/__init__.py": "f60cd281f8ed4fd35776c9f4d40d6a1313c49a3cae5df61841028f711b9f13c8",
+        "src/pystachy_compiler/analysis.py": "5b3c134b21586a03909f89beddbff999f6f28f067ce1dd975fb46a4c1794fecd",
+        "src/pystachy_compiler/bigints.py": "888815dfc3b4a69caed4f88242863478c6b97471637b9f90c72185d09291cbe8",
+        "src/pystachy_compiler/builtins.py": "d0d25b4e975b1e7607131632656f17331ef3e4ac317fbed3a663977dd7614126",
+        "src/pystachy_compiler/calls.py": "1d9cff0879935d3dc48700ccd086b1b44e27641d142e8e71be8a2e24a31cbd55",
+        "src/pystachy_compiler/containers.py": "43a9d6b88602aa1feaecaeb1d11cc44d6fe87c057a6f156c4cf294b0129f1b5e",
+        "src/pystachy_compiler/conversions.py": "900a17d52ac83efb9bd82eb11723a001a51d6ac0f1af57becbf211363509daa5",
+        "src/pystachy_compiler/declarations.py": "d01904e710d79a12f2d33d4eda52c6e79e7605be08d5c974b2905098d6c62b87",
+        "src/pystachy_compiler/diagnostics.py": "4d256b7ea3ca66398723043deef4165bcfa076217f2ebd974746945ee04e6857",
+        "src/pystachy_compiler/driver.py": "48941caa98b340de4ec44ae03b1573f75828c24142eba88cc7c1ab617acea7b0",
+        "src/pystachy_compiler/dynamic.py": "7350dd8c95638ab416bce848d77347c8a75bd6cd9617e18c78e2fa42a8f69340",
+        "src/pystachy_compiler/emission.py": "5356b79e98096a2371c27c5d4caa32d1513a5b86894908d2b772189ed05867e3",
+        "src/pystachy_compiler/exceptions.py": "b2554ff2ac10570c010814a1c3740b6eb51d8cd9f79ac580d2fc323a68f90a30",
+        "src/pystachy_compiler/expressions.py": "5cb9ba837c5b4bd1f943ca21c4aa4dc886fff0eb1ac2c7e24fa4a2cc42084099",
+        "src/pystachy_compiler/flow.py": "cb6238905238d5dcd042b568f56243e9b407723a6e047d5f0cad478b060439c9",
+        "src/pystachy_compiler/functions.py": "6b2766311d39bcefa45a53d5ec03527935a42bcc9ebced029dbf83b5db7d1aaa",
+        "src/pystachy_compiler/gen.py": "6a66bc3ad42fc6d4cd95f04aa8ffa2cb041ad6b772ec0249a0759fc2c70893f6",
+        "src/pystachy_compiler/generators.py": "ca8611458ccc23c11fd095d1026b936caff86c100e410a833b202315a0778b63",
+        "src/pystachy_compiler/ir.py": "ad058f4b1a011b9fa101c2680eda11650f5b539fe8a259531f2a24689e806ffd",
+        "src/pystachy_compiler/ircheck.py": "781fa17c070480ed38ceb4d094757ac908e4ab027bb74af8b8ab6b405b5c0e60",
+        "src/pystachy_compiler/lexer.py": "1ca2874158eccdb0a4e3569a31940fb9b33a51fe2f06983be83de57d8d9fedeb",
+        "src/pystachy_compiler/llvm_abi.py": "7485f63097d4abac3de8b1fbfb782944ff7e3b68989d2fb266e40ebb8f8889ae",
+        "src/pystachy_compiler/loader.py": "e50415407b10644a710f666981e650414aeec439d2f46270c1bdc255b3590a49",
+        "src/pystachy_compiler/local_versions.py": "10bb0f2f0fb57c442af0807b5b4af6c95e8b950a97430161c97f766a3dc4b375",
+        "src/pystachy_compiler/lower_module.py": "826b72cefa86bf9c4d15a9ce50da10fbc98b5ed03b286d206cd8b5f0d8d47522",
+        "src/pystachy_compiler/lowering.py": "6866fc1a594081e14a081196fbed2c9d7394a6edeeec43a825e8404e321de125",
+        "src/pystachy_compiler/memory_ir.py": "c2544eda0bdb89ccb99ac1330c95d99974983cc7bdfa0d3a2b39a993c9f62bc1",
+        "src/pystachy_compiler/module.py": "3349556dee4dcda00013d770743f27d5dc3525b76cbd5e2ab312b14506e1f601",
+        "src/pystachy_compiler/names.py": "51eedecfa52aa390bdbe0e7303d6663fc0c32b3c74afce569a1a2aaf637a3fb5",
+        "src/pystachy_compiler/optimizations.py": "29de3b89d1389bc1d789fde8e96aa936ed48586e07a3a4a3363c3eae04e777cf",
+        "src/pystachy_compiler/parser.py": "05c4617ef7ce82f2c270c39ed82dea409e10e5d984826cee759d8cd922c5705b",
+        "src/pystachy_compiler/program.py": "1f436207078f6cdca536061f509d7fba8dfa3e516c34a406d9ca7facf2a26c84",
+        "src/pystachy_compiler/reflection.py": "ed77b340da37e38d4249adbc8e569cf351f0258acd74fdf63365c9d7d8830aeb",
+        "src/pystachy_compiler/scalar_ir.py": "14bc0ce71b4cbf066e8a4cab2ea0bb5c0a53880997484d74f5ea3e9a6d30c05a",
+        "src/pystachy_compiler/scope.py": "d9af25da84ba62a17a6a1a0b7d48d078977dd364528c8ec8e4135cc438f10a97",
+        "src/pystachy_compiler/specs.py": "1f8a54f4cdb2de9b2293d22005229bbedc9d03be8d7ff4cad76f71481418ec96",
+        "src/pystachy_compiler/statements.py": "4bb9347b64952570845df754efbb1e6a3b02467b1b629dd9171e9b98d3d85e2d",
+        "src/pystachy_compiler/structs.py": "e873fd6a6aeaebf39f740de2859a5de9a2da316d7a8993c728889677125c3090",
+        "src/pystachy_compiler/syntax.py": "799e522034af31967517409654d5788179bb6dfa727be9f544a8855c90d3ecb9",
+        "src/pystachy_compiler/templates.py": "b587b346bea5087b3422ea5117e023b521205285f0dc3d622f3c9aed5a94c36f",
+        "src/pystachy_compiler/union_arithmetic.py": "6d6892c0d97667d7e8ffeb5293ccbbe24c76529328e4761ffec6831229c416dd",
+        "src/pystachy_compiler/union_proof.py": "8027ed7a77006053e2da8b0264d1d2bf12ea465d193d4ce49ecd581e0b436cd9",
+        "src/pystachy_compiler/union_state.py": "b845af16073f24e1e1245bdcb00d4324dbf1d657874604cb4b991d852a07b026",
+        "src/pystachy_compiler/unions.py": "133448300155804316b04d6b1e80d99ba606905ad267835007d0d68e77195de3",
+        "src/pystachy_compiler/utils.py": "0efd4bb4f572c22b361890849e4d67c54977b216652a29c397eb44c92426d2ee",
+        "src/pystachy_compiler/variables.py": "f4ea9b2eb58cb7339add9ced65d890f2f5b37d26f4919f463cbb50c54c11b086"
+      }
+    },
+    "cap512": {
+      "directory": "/workspace/scratch/e858f72517b9/baselines/cap512",
+      "commit": "aaec00cc81a862a2b29c117003e7c9cc73e1a3c1",
+      "tree": "2dd336a2a8f71d9a2c36d1fd233af24fee81c2a1",
+      "git_status": "M src/pystachy_compiler/optimizations.py\n?? tools/test_typed_recursion_budget.py",
+      "input_sha256": {
+        "Makefile": "9d9574c44902625ce0c79e94c31513548080b0d7543c2ba82e6c707f28708997",
+        "lib/_markupbase.py": "6a294b294582f55905d310b8df054019e94f37b17eba3414be4e2cb61d5851d1",
+        "lib/_pyrandom.py": "5b37918369c0e4becdac2d012ffe9e40e314a330ee9f7b3fe2ce4cd3a926ff09",
+        "lib/_pystachy__io.py": "77ee03b3a67f79f49c3fe30666f4f5077bd41069797c727529a230c4caa0a117",
+        "lib/_pystachy_abc.py": "9f6f717c077b2dbac22e8dc9793373b939615a33f2698aaddd81ed905e5a48f8",
+        "lib/_pystachy_atexit.py": "a5ff97e421a4a8fd782e08a0124bac6a7b27486fc279cb4384655bc4b208d60c",
+        "lib/_pystachy_binascii.py": "c8ca70973dc409011ba89749878a2a205780fdc907437bc08521be0e3d07f848",
+        "lib/_pystachy_codecs.py": "fe8380d756e383192028c6a65d652047e9abb9c08b51e15aba5b35e8cf678acf",
+        "lib/_pystachy_iterators.py": "61894584c1fda85936a740d4dafa2c5d631f9b05f5022fca8913e4ad0a84b27e",
+        "lib/_pystachy_itertools.py": "14f451cf7647016ad8105aa988b9cbabe4fe3f5a08f2710f6ed2db5d81a00566",
+        "lib/_pystachy_json_any.py": "392d432c6ef3679f36bd3a86b302fe71858ff2d261bc25863c1673bf58944016",
+        "lib/_pystachy_mappingproxy.py": "e1d04e45f0b12e0e29fba497adf16f77864154c9e175a40065d2fd73654be70c",
+        "lib/_pystachy_object.py": "6a21df25fa11b3c80a70d95f310760d86adaeecd4a63e767bde5b9ecde63ca9c",
+        "lib/_pystachy_range.py": "50df392f248e25a79896007a3b0a23741f8f5f56622e7c56060ba9612292f8b2",
+        "lib/_pystachy_re_specialized.py": "d09604c416700c3a7acd3a9f8c6f7536289c895b2e72393a9875e68ed92e45bf",
+        "lib/_pystachy_string.py": "2e87bb96489d12051446c1b59c2e4ee65543a14f15d8eff3465a43f2e1f51434",
+        "lib/_pystachy_struct.py": "2f224f07dd5a8db374dc2604257cc7c41a4caa7140c5d2ddf30a34bc8f88f1d6",
+        "lib/_pystachy_thread.py": "62e5617d4f19c2deb6d714dbcc92ebaa6a97a78a596fc7d8c56c088cc4ad0f37",
+        "lib/_pystachy_types.py": "221d41e2f90c40493b3d712fb99cf39fb5a25c2306e63de7a89358e66cfcfe70",
+        "lib/_pystachy_unicodedata.py": "f1c877238f94279dfdb5a5f77396d9d25f504c409f34b78099613c6c3f71c7d0",
+        "lib/_pystachy_unicodedata_db.py": "d511e3c104f697e9e9ce150b97119ceb1fcaf00ebcdd3be21cf52c88337608b2",
+        "lib/_pystachy_unicodedata_names.py": "9b18f9e4aecb03f28672fdecce4fcf9d0ece0a1c565c7e9e0ce504fe4fc2bb28",
+        "lib/_pystachy_weakref.py": "da4181f6adb4cbbed1d3c45d95e32bd39e8ac210638ab902f26fb0b68bc7cbfe",
+        "lib/_weakrefset.py": "91895a451d06e9f521a1171b31b9b19bc9740f35af00d4fa106338ab7167c9ac",
+        "lib/bisect.py": "f1cf7b85fc36b5da249813fc5ab97d9464f8cc1bc817f7146206fa2713e35999",
+        "lib/codecs.py": "feafe30244cc2ac23a8f03ca6c8b106ef82dede1630aac103126767e123a3c42",
+        "lib/collections/__init__.py": "8a6533ddf04c4823e1c1da10925028613420cc4e5cb6264e6066fdd3739b4852",
+        "lib/colorsys.py": "65e3dfbf7bad61d4d7d7731a69dd7e75a347fd350d91327a51010a94e6fd2f1d",
+        "lib/contextlib.py": "08bf5d132ae0aceafcd94c72396e21fd45fc9cd1ba6e74807ce1e39f22d0d665",
+        "lib/csv.py": "29676a25a82679e93c6d0eb771a3f60890aedf49941206c0387ce59696b7c3c4",
+        "lib/curses/__init__.py": "91156d2c9afdc168cee4bb7085c8b16936ca7079fa4035ac4d7908712d86f394",
+        "lib/curses/ascii.py": "780dd8bbaf0ee7e832f164c1772953e694a9cd1031d1ab1471af65344d3645e6",
+        "lib/datetime.py": "d269c51c55e7668b988c8194a7a2e643a39aa3a2770a727c178a5c898b91c239",
+        "lib/difflib.py": "4d33db46d2f0748bd674b5ae2f52c59ab0cab0865c465a99ea9521d8751aea0f",
+        "lib/fnmatch.py": "fd1da199d0eeabc34ec9796d5a0790da6300fff4d15e16ee2d8ca26e6885eec5",
+        "lib/functools.py": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703",
+        "lib/genericpath.py": "cdac5a68dd738051e0d66fc81d5947d6a1776248fc6fe862253477608d870ec4",
+        "lib/getopt.py": "0d152bede49816f2924ffb944d86369099bea3b68ec1ee6f0c84c56251670241",
+        "lib/gettext.py": "97b7fa3d8112826dae4d021a6445fe791521524bd4b06e729d0497ed59a85e63",
+        "lib/heapq.py": "89bfee37cf47aecdf2a5ae8706b9805f1b1789d6e2edb7e3556fe8b42c5ecba3",
+        "lib/html/__init__.py": "067cf63fe3eee1bece807caba82a83d0307010bf1c30d9974e56ea704ddea893",
+        "lib/html/entities.py": "6fbeb0318e22905269b414b7d045574b8a98767f194310071b9177fadc738a2f",
+        "lib/html/parser.py": "f3ab8871f5342562328cd3ff8e65d5667c79d27189c7a0401982a193de7b4e90",
+        "lib/io.py": "31f5102c549e7051190c81838928db3f5c21863ac9cf63e7a493352e767fa71f",
+        "lib/json.py": "72fb29122acddd3b4d1bd43d8ae9e7fee506b1d7d4f30559edeeebd92ac044ce",
+        "lib/keyword.py": "833eb8e01577a8330f473ed49403fae4b5e6c95a66a81254405deb5c7ea7efb9",
+        "lib/mpz.py": "754e4844ff8425e92ee8cde26b1e84a4ad318312d1ca17d10ea724a6c4c46a45",
+        "lib/operator.py": "7d42396ef02c03aa69eb86643769cdb889ab9fc66ffd140bc0efa0896fc94c99",
+        "lib/posixpath.py": "69acb9e294987cd6056a2237048373cf8d6201faf1e43a49c38889b47d2fb28e",
+        "lib/pyobj.py": "2d673d060a386ceae11b381ca94ce71a4ec43be89e7c1c59651c936ffea9054e",
+        "lib/random.py": "91e7fa770bfc1affb76a6441a10e1913af8993d8c657c12ffe6cbadc3e3add1e",
+        "lib/re/__init__.py": "3e1c1d6312856cfb5c34d2ad5f24b933de77c00dd21d36f76f74c54f8cf0f856",
+        "lib/re/_constants.py": "d8c63d4b91920ceb02d7c00073a062504c349b3e0de83ba480c3f4d1bca442fe",
+        "lib/re/_sre.py": "c7e98ec21fe209e8d3833516f408a5b219002e26a2f630cceb933b3e12cca3c5",
+        "lib/re/_unicode.py": "61f1343780ef2537ff83813b7a2097a55482a51a23b172a609a6836af4197ea2",
+        "lib/shlex.py": "7392b7c738fe818c43a8031820bef96db0b9f598d354a9fac0b771546a4fdba4",
+        "lib/stat.py": "07217986d9b2172b509dab3578d18ac05ba768b418e1f1e8c90e38a8f7c2b3c6",
+        "lib/statistics.py": "05a091943eb6a01272f95c190e99bab0d33c72a108aef45261c838842301991b",
+        "lib/string.py": "5a6ea720721a70a9d76d30135697ea612b9cb6610366b38d8c1d997043508b27",
+        "lib/struct.py": "9c231f9497caf513a22dee8f790b07f969b0e45854a0bdd6dd84b492e08c2856",
+        "lib/textwrap.py": "5102b1deb8905ad1b31a2830f7ac5a980229e55f3bbce06fd64baa9930159c1b",
+        "lib/this.py": "481d0cb3de511eae0b5713dad18542b07eafd9c013bb7690f7497bad49923a71",
+        "lib/token.py": "1d81391050d5389c41f319ba4d42159c6247777400e48c27f2d28cac8ca4e6e2",
+        "lib/tomllib/__init__.py": "71f67036895f4c5acab942618af0cbd3d814451ba61e967f358d0f341a5b8f51",
+        "lib/tomllib/_parser.py": "11d40d79772967ebf81f5a0cf8dfa99608413b3ba6144d4beadae99baa28f279",
+        "lib/tomllib/_re.py": "17ec24dabd4e7089df6f04acacb331c85c437addbd2ab98bdfefcb18671ba056",
+        "lib/tomllib/_types.py": "e018cf69245202408dd97664cf76618e8cbb5efb6f43b134d29efd1d9221a6c0",
+        "lib/types.py": "d4215ea3abc258bdde763cc21ec4b0759f0c44e874b2483851c5681ae93f45e2",
+        "lib/urllib/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "lib/urllib/parse.py": "f5914562f9903ab7dde287fcb8bc0b1667a812f82e7e7c4419fed0493bfd0148",
+        "lib/warnings.py": "be4467c02d67040c87e31ede6787740815085298a880f2aa126b02fbabc0f133",
+        "lib/weakref.py": "781ef9b242fde2b923e070fce64b751954d42955c5c66b367e54941678ab722b",
+        "mpz/mpz.c": "2d648cec5de20c6bb7d4882a364cfc9fa1d355395255c1d0e82e4389bde03afa",
+        "pyembed.c": "98c9dd90c0964f885da08e1bd7622386421607723b7341b27783aaf3ff6a11b0",
+        "pyext.c": "4278d2506c88d20a08b4a5b5563237e6323372201603b6c5c78231ee52301109",
+        "pystachy.py": "a413782632f88d4746a81fd7cfb529d695ab36a35618522a83be1e25e1e31f29",
+        "runtime.c": "4bdf82b0663d1141667fe234029c8f92b6146978cff6457f79c1d554926f6637",
+        "runtime.py": "c45138f44a7aa25828b351b6d627e1a4f9fad69dc8a88532d053fb90e84beefb",
+        "ryu/common.h": "0bbd71d26da6193e678d0776cf418f43f287c73d6fd6725353df0aadf70f2a19",
+        "ryu/d2s.c": "c6357b5d53ac1ba7f4984847d3a76f0803e0a931b7d0b02680656576829cf1d2",
+        "ryu/d2s_intrinsics.h": "01d9bdaada67b42f2d1bbdebb3765867e6c44e3a181b806c1d7e851b93f9cc21",
+        "ryu/d2s_small_table.h": "01f3d8a3ff739a26ecbddc2caae44c91574592b1de7c01fec67bc2d06672b606",
+        "ryu/digit_table.h": "8b782573abc0b8554d74163ae6c02f0beb5c30d1e63eaebdb0ddf2c98d817e01",
+        "ryu/ryu.h": "b7feab0ba1df5e9ef3d602f386592ad152491405e49b408fb21c0e0e9e6bfb16",
+        "src/__init__.py": "c443ed6062edae246598189fb20f12799a5e87a04049acb855894652e3875af7",
+        "src/pystachy_compiler/__init__.py": "f60cd281f8ed4fd35776c9f4d40d6a1313c49a3cae5df61841028f711b9f13c8",
+        "src/pystachy_compiler/analysis.py": "5b3c134b21586a03909f89beddbff999f6f28f067ce1dd975fb46a4c1794fecd",
+        "src/pystachy_compiler/bigints.py": "888815dfc3b4a69caed4f88242863478c6b97471637b9f90c72185d09291cbe8",
+        "src/pystachy_compiler/builtins.py": "d0d25b4e975b1e7607131632656f17331ef3e4ac317fbed3a663977dd7614126",
+        "src/pystachy_compiler/calls.py": "1d9cff0879935d3dc48700ccd086b1b44e27641d142e8e71be8a2e24a31cbd55",
+        "src/pystachy_compiler/containers.py": "43a9d6b88602aa1feaecaeb1d11cc44d6fe87c057a6f156c4cf294b0129f1b5e",
+        "src/pystachy_compiler/conversions.py": "900a17d52ac83efb9bd82eb11723a001a51d6ac0f1af57becbf211363509daa5",
+        "src/pystachy_compiler/declarations.py": "d01904e710d79a12f2d33d4eda52c6e79e7605be08d5c974b2905098d6c62b87",
+        "src/pystachy_compiler/diagnostics.py": "4d256b7ea3ca66398723043deef4165bcfa076217f2ebd974746945ee04e6857",
+        "src/pystachy_compiler/driver.py": "48941caa98b340de4ec44ae03b1573f75828c24142eba88cc7c1ab617acea7b0",
+        "src/pystachy_compiler/dynamic.py": "7350dd8c95638ab416bce848d77347c8a75bd6cd9617e18c78e2fa42a8f69340",
+        "src/pystachy_compiler/emission.py": "5356b79e98096a2371c27c5d4caa32d1513a5b86894908d2b772189ed05867e3",
+        "src/pystachy_compiler/exceptions.py": "b2554ff2ac10570c010814a1c3740b6eb51d8cd9f79ac580d2fc323a68f90a30",
+        "src/pystachy_compiler/expressions.py": "5cb9ba837c5b4bd1f943ca21c4aa4dc886fff0eb1ac2c7e24fa4a2cc42084099",
+        "src/pystachy_compiler/flow.py": "cb6238905238d5dcd042b568f56243e9b407723a6e047d5f0cad478b060439c9",
+        "src/pystachy_compiler/functions.py": "6b2766311d39bcefa45a53d5ec03527935a42bcc9ebced029dbf83b5db7d1aaa",
+        "src/pystachy_compiler/gen.py": "6a66bc3ad42fc6d4cd95f04aa8ffa2cb041ad6b772ec0249a0759fc2c70893f6",
+        "src/pystachy_compiler/generators.py": "ca8611458ccc23c11fd095d1026b936caff86c100e410a833b202315a0778b63",
+        "src/pystachy_compiler/ir.py": "ad058f4b1a011b9fa101c2680eda11650f5b539fe8a259531f2a24689e806ffd",
+        "src/pystachy_compiler/ircheck.py": "781fa17c070480ed38ceb4d094757ac908e4ab027bb74af8b8ab6b405b5c0e60",
+        "src/pystachy_compiler/lexer.py": "1ca2874158eccdb0a4e3569a31940fb9b33a51fe2f06983be83de57d8d9fedeb",
+        "src/pystachy_compiler/llvm_abi.py": "7485f63097d4abac3de8b1fbfb782944ff7e3b68989d2fb266e40ebb8f8889ae",
+        "src/pystachy_compiler/loader.py": "e50415407b10644a710f666981e650414aeec439d2f46270c1bdc255b3590a49",
+        "src/pystachy_compiler/local_versions.py": "10bb0f2f0fb57c442af0807b5b4af6c95e8b950a97430161c97f766a3dc4b375",
+        "src/pystachy_compiler/lower_module.py": "826b72cefa86bf9c4d15a9ce50da10fbc98b5ed03b286d206cd8b5f0d8d47522",
+        "src/pystachy_compiler/lowering.py": "6866fc1a594081e14a081196fbed2c9d7394a6edeeec43a825e8404e321de125",
+        "src/pystachy_compiler/memory_ir.py": "c2544eda0bdb89ccb99ac1330c95d99974983cc7bdfa0d3a2b39a993c9f62bc1",
+        "src/pystachy_compiler/module.py": "3349556dee4dcda00013d770743f27d5dc3525b76cbd5e2ab312b14506e1f601",
+        "src/pystachy_compiler/names.py": "51eedecfa52aa390bdbe0e7303d6663fc0c32b3c74afce569a1a2aaf637a3fb5",
+        "src/pystachy_compiler/optimizations.py": "b35705b3e4dc7afabb8363474e132802e5afd651854d35940d76e70d90d413cc",
+        "src/pystachy_compiler/parser.py": "05c4617ef7ce82f2c270c39ed82dea409e10e5d984826cee759d8cd922c5705b",
+        "src/pystachy_compiler/program.py": "1f436207078f6cdca536061f509d7fba8dfa3e516c34a406d9ca7facf2a26c84",
+        "src/pystachy_compiler/reflection.py": "ed77b340da37e38d4249adbc8e569cf351f0258acd74fdf63365c9d7d8830aeb",
+        "src/pystachy_compiler/scalar_ir.py": "14bc0ce71b4cbf066e8a4cab2ea0bb5c0a53880997484d74f5ea3e9a6d30c05a",
+        "src/pystachy_compiler/scope.py": "d9af25da84ba62a17a6a1a0b7d48d078977dd364528c8ec8e4135cc438f10a97",
+        "src/pystachy_compiler/specs.py": "1f8a54f4cdb2de9b2293d22005229bbedc9d03be8d7ff4cad76f71481418ec96",
+        "src/pystachy_compiler/statements.py": "4bb9347b64952570845df754efbb1e6a3b02467b1b629dd9171e9b98d3d85e2d",
+        "src/pystachy_compiler/structs.py": "e873fd6a6aeaebf39f740de2859a5de9a2da316d7a8993c728889677125c3090",
+        "src/pystachy_compiler/syntax.py": "799e522034af31967517409654d5788179bb6dfa727be9f544a8855c90d3ecb9",
+        "src/pystachy_compiler/templates.py": "b587b346bea5087b3422ea5117e023b521205285f0dc3d622f3c9aed5a94c36f",
+        "src/pystachy_compiler/union_arithmetic.py": "6d6892c0d97667d7e8ffeb5293ccbbe24c76529328e4761ffec6831229c416dd",
+        "src/pystachy_compiler/union_proof.py": "8027ed7a77006053e2da8b0264d1d2bf12ea465d193d4ce49ecd581e0b436cd9",
+        "src/pystachy_compiler/union_state.py": "b845af16073f24e1e1245bdcb00d4324dbf1d657874604cb4b991d852a07b026",
+        "src/pystachy_compiler/unions.py": "133448300155804316b04d6b1e80d99ba606905ad267835007d0d68e77195de3",
+        "src/pystachy_compiler/utils.py": "0efd4bb4f572c22b361890849e4d67c54977b216652a29c397eb44c92426d2ee",
+        "src/pystachy_compiler/variables.py": "f4ea9b2eb58cb7339add9ced65d890f2f5b37d26f4919f463cbb50c54c11b086"
+      }
+    }
+  },
+  "changed_consumed_inputs": [
+    "src/pystachy_compiler/optimizations.py"
+  ],
+  "harness_sha256": "0c3caf32866617635f3666185f85f88377e8896399ea56a986a25846592f73a4",
+  "toolchain_manifest": {
+    "schema_version": 1,
+    "purpose": "Private toolchain recovered after scratch loss; same upstream versions, not asserted byte-identical to the lost toolchain",
+    "platform": "Linux-6.18.57-x86_64-with-glibc2.39",
+    "os_release": "PRETTY_NAME=\"Ubuntu 24.04.3 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION=\"24.04.3 LTS (Noble Numbat)\"\nVERSION_CODENAME=noble\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=noble\nLOGO=ubuntu-logo\n",
+    "python": {
+      "version": "3.13.16 (main, Oct 14 2026, 01:04:01) [Clang 23.1.3 ]",
+      "shared": 1,
+      "archive_url": "https://releases.astral.sh/github/python-build-standalone/releases/download/20261013/cpython-3.13.16%2B20261013-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz",
+      "archive_sha256": "d0080766b6b74aeb81e1949ef0d9a20e6c17f7b160fb295a69b936ccb17660be",
+      "installed_binary_archive_parity": {
+        "python/bin/python3.13": "6e9b7d27499f26dbec3c8687728f3a0500b9b61688664f03678242744567c461",
+        "python/lib/libpython3.13.so.1.0": "6f7f51cecac1102e5ed2b007c12dec5ebc116264448d91d190265e385fefac9b"
+      }
+    },
+    "versions": {
+      "clang": "Ubuntu clang version 18.1.3 (1)\nTarget: x86_64-pc-linux-gnu\nThread model: posix\nInstalledDir: /workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin",
+      "opt": "Ubuntu LLVM version 18.1.3\n  Optimized build.\n  Default target: x86_64-pc-linux-gnu\n  Host CPU: sapphirerapids",
+      "lli": "Ubuntu LLVM version 18.1.3\n  Optimized build.",
+      "llvm-as": "Ubuntu LLVM version 18.1.3\n  Optimized build."
+    },
+    "valgrind_version": "valgrind-3.22.0",
+    "python_packages": {
+      "pathspec": "1.1.1",
+      "shellcheck_py": "0.11.0.1",
+      "typing_extensions": "4.16.0",
+      "mypy": "2.4.0",
+      "coverage": "7.17.0",
+      "librt": "0.16.0",
+      "mypy_extensions": "1.1.0",
+      "ast_serialize": "0.13.1",
+      "ruff": "0.17.2"
+    },
+    "downloaded_debs": [
+      {
+        "name": "clang-18",
+        "url": "https://archive.ubuntu.com/ubuntu/pool/universe/l/llvm-toolchain-18/clang-18_18.1.3-1_amd64.deb",
+        "file": "/workspace/scratch/e858f72517b9/toolchain/downloads/clang-18_18.1.3-1_amd64.deb",
+        "sha256": "3d028a3b4c0b3dc942e043db94e153baedf5c384283181d274a5e915da1b5135",
+        "version": "1:18.1.3-1"
+      },
+      {
+        "name": "libclang-common-18-dev",
+        "url": "https://archive.ubuntu.com/ubuntu/pool/universe/l/llvm-toolchain-18/libclang-common-18-dev_18.1.3-1_amd64.deb",
+        "file": "/workspace/scratch/e858f72517b9/toolchain/downloads/libclang-common-18-dev_18.1.3-1_amd64.deb",
+        "sha256": "91df14d6e3829652b837e2b368e35b076124277f2962a3f3daaea296bf86e4b0",
+        "version": "1:18.1.3-1"
+      },
+      {
+        "name": "libpfm4",
+        "url": "https://archive.ubuntu.com/ubuntu/pool/universe/libp/libpfm4/libpfm4_4.13.0+git32-g0d4ed0e-1_amd64.deb",
+        "file": "/workspace/scratch/e858f72517b9/toolchain/downloads/libpfm4_4.13.0+git32-g0d4ed0e-1_amd64.deb",
+        "sha256": "037cdd0aad754b70df1df39aae34a9f857daa78fdfa132673b476c256e33ad52",
+        "version": "4.13.0+git32-g0d4ed0e-1"
+      },
+      {
+        "name": "libz3-4",
+        "url": "https://archive.ubuntu.com/ubuntu/pool/universe/z/z3/libz3-4_4.8.12-3.1build1_amd64.deb",
+        "file": "/workspace/scratch/e858f72517b9/toolchain/downloads/libz3-4_4.8.12-3.1build1_amd64.deb",
+        "sha256": "67ceb432593fe62afbaf3bd85c73d46c66fa19433a6b58326a3248162f139b19",
+        "version": "4.8.12-3.1build1"
+      },
+      {
+        "name": "lld-18",
+        "url": "https://archive.ubuntu.com/ubuntu/pool/universe/l/llvm-toolchain-18/lld-18_18.1.3-1_amd64.deb",
+        "file": "/workspace/scratch/e858f72517b9/toolchain/downloads/lld-18_18.1.3-1_amd64.deb",
+        "sha256": "3a57f9d283186f0779020104ae81db8138657d0ea36809cf06d9cc2bcbce387d",
+        "version": "1:18.1.3-1"
+      },
+      {
+        "name": "llvm-18",
+        "url": "https://archive.ubuntu.com/ubuntu/pool/universe/l/llvm-toolchain-18/llvm-18_18.1.3-1_amd64.deb",
+        "file": "/workspace/scratch/e858f72517b9/toolchain/downloads/llvm-18_18.1.3-1_amd64.deb",
+        "sha256": "24c6a9d7b763c2b9ce3199012eca7366cada3e41978ecee022e9d44a110a9c6d",
+        "version": "1:18.1.3-1"
+      },
+      {
+        "name": "llvm-18-linker-tools",
+        "url": "https://archive.ubuntu.com/ubuntu/pool/universe/l/llvm-toolchain-18/llvm-18-linker-tools_18.1.3-1_amd64.deb",
+        "file": "/workspace/scratch/e858f72517b9/toolchain/downloads/llvm-18-linker-tools_18.1.3-1_amd64.deb",
+        "sha256": "5724e42bd73a481386087b57dc9962c4d4d218c91175160668b6ceb297725093",
+        "version": "1:18.1.3-1"
+      },
+      {
+        "name": "llvm-18-runtime",
+        "url": "https://archive.ubuntu.com/ubuntu/pool/universe/l/llvm-toolchain-18/llvm-18-runtime_18.1.3-1_amd64.deb",
+        "file": "/workspace/scratch/e858f72517b9/toolchain/downloads/llvm-18-runtime_18.1.3-1_amd64.deb",
+        "sha256": "e41df891e8f509bb08b83fed4b7f0863c2b0e4e7624464160263840b5b25b2c1",
+        "version": "1:18.1.3-1"
+      },
+      {
+        "name": "llvm-18-tools",
+        "url": "https://archive.ubuntu.com/ubuntu/pool/universe/l/llvm-toolchain-18/llvm-18-tools_18.1.3-1_amd64.deb",
+        "file": "/workspace/scratch/e858f72517b9/toolchain/downloads/llvm-18-tools_18.1.3-1_amd64.deb",
+        "sha256": "a5865e3e70c3a9246d61ee602e31fd030a0d6c9b93664742c7aa1a3f4ec50292",
+        "version": "1:18.1.3-1"
+      },
+      {
+        "name": "libclang-cpp18",
+        "url": "https://archive.ubuntu.com/ubuntu/pool/main/l/llvm-toolchain-18/libclang-cpp18_18.1.3-1_amd64.deb",
+        "file": "/workspace/scratch/e858f72517b9/toolchain/downloads/libclang-cpp18_18.1.3-1_amd64.deb",
+        "sha256": "899e354d4719c31eb7829517a3ed8d6b64173590fb5c7fe7371ede469fbbe05d",
+        "version": "1:18.1.3-1"
+      },
+      {
+        "name": "libclang1-18",
+        "url": "https://archive.ubuntu.com/ubuntu/pool/main/l/llvm-toolchain-18/libclang1-18_18.1.3-1_amd64.deb",
+        "file": "/workspace/scratch/e858f72517b9/toolchain/downloads/libclang1-18_18.1.3-1_amd64.deb",
+        "sha256": "c7972cec7003be32e57fcfc3ec6ca3ee65ac5d648fb9c420db52022919562855",
+        "version": "1:18.1.3-1"
+      },
+      {
+        "name": "libgc-dev",
+        "url": "https://archive.ubuntu.com/ubuntu/pool/main/libg/libgc/libgc-dev_8.2.6-1build1_amd64.deb",
+        "file": "/workspace/scratch/e858f72517b9/toolchain/downloads/libgc-dev_8.2.6-1build1_amd64.deb",
+        "sha256": "e5d9a3129688bcf6722c381561aeef1c938e7a70bcade830c04c04e55cfa0744",
+        "version": "1:8.2.6-1build1"
+      },
+      {
+        "name": "libgc1",
+        "url": "https://archive.ubuntu.com/ubuntu/pool/main/libg/libgc/libgc1_8.2.6-1build1_amd64.deb",
+        "file": "/workspace/scratch/e858f72517b9/toolchain/downloads/libgc1_8.2.6-1build1_amd64.deb",
+        "sha256": "67d4d83f1c7f3bc240d44f4d9133e08d0da3e5069e50e6dd15ea998af7bccd06",
+        "version": "1:8.2.6-1build1"
+      },
+      {
+        "name": "libllvm18",
+        "url": "https://archive.ubuntu.com/ubuntu/pool/main/l/llvm-toolchain-18/libllvm18_18.1.3-1_amd64.deb",
+        "file": "/workspace/scratch/e858f72517b9/toolchain/downloads/libllvm18_18.1.3-1_amd64.deb",
+        "sha256": "826621c8e678dd27b4f5c3a9b26d10aae50d5de2d95575695a17c91014f5eaa5",
+        "version": "1:18.1.3-1"
+      },
+      {
+        "name": "valgrind",
+        "url": "https://archive.ubuntu.com/ubuntu/pool/main/v/valgrind/valgrind_3.22.0-0ubuntu3_amd64.deb",
+        "file": "/workspace/scratch/e858f72517b9/toolchain/downloads/valgrind_3.22.0-0ubuntu3_amd64.deb",
+        "sha256": "744e081e5cf3d5c598b499dbb7d2250ea3f2869dde4a4d7b231fe6114f347d7d",
+        "version": "1:3.22.0-0ubuntu3"
+      }
+    ],
+    "files": {
+      "clang": {
+        "path": "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin/clang",
+        "sha256": "37f126a5e97442563fa0963660a72a11f2b31a9d608664d9e5675f2ebac99eca",
+        "size": 140536
+      },
+      "lli": {
+        "path": "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin/lli",
+        "sha256": "44669e8442edb76ada08c806e80695c597240aedb7aa005986058d0111893370",
+        "size": 184384
+      },
+      "llvm-as": {
+        "path": "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin/llvm-as",
+        "sha256": "5daefabd373e614b6cc406c57fe37bc7ba20d0b80b4619cbef72b9fb5958910d",
+        "size": 31424
+      },
+      "opt": {
+        "path": "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin/opt",
+        "sha256": "68bce89007caf00c1c73c3e88f2ff90dde243799f9557d5a729b3a8b3d7ea370",
+        "size": 251312
+      },
+      "llvm-dis": {
+        "path": "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin/llvm-dis",
+        "sha256": "f3a0ed37da04e42f2f5cca1f88684ca8140e6f8252996e23c587591848487f77",
+        "size": 47952
+      },
+      "llvm-link": {
+        "path": "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin/llvm-link",
+        "sha256": "1eb44d783a8c7bd55af1af5abf786eacb994cef08110caaa52259da14558952c",
+        "size": 68656
+      },
+      "llc": {
+        "path": "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin/llc",
+        "sha256": "54b1109d0e51ead52fa9aade0d4c5504e87be45e8c0d57d42a1e76aa55c92875",
+        "size": 168600
+      },
+      "python3.13": {
+        "path": "/workspace/scratch/e858f72517b9/toolchain/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+        "sha256": "6e9b7d27499f26dbec3c8687728f3a0500b9b61688664f03678242744567c461",
+        "size": 31601560
+      },
+      "libpython3.13.so": {
+        "path": "/workspace/scratch/e858f72517b9/toolchain/python/cpython-3.13.16-linux-x86_64-gnu/lib/libpython3.13.so.1.0",
+        "sha256": "6f7f51cecac1102e5ed2b007c12dec5ebc116264448d91d190265e385fefac9b",
+        "size": 32338272
+      },
+      "valgrind": {
+        "path": "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/bin/valgrind",
+        "sha256": "4652774bd116cb49951ef74115ad4237cad5021b2bd4d80002f09d986ec438b9",
+        "size": 528
+      },
+      "callgrind-amd64-linux": {
+        "path": "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/libexec/valgrind/callgrind-amd64-linux",
+        "sha256": "825eb197d519240c112e03ed00f40a8bbe1a0a0614f79ea95e28c67e8695cb03",
+        "size": 2482912
+      }
+    },
+    "env_script": {
+      "path": "/workspace/scratch/e858f72517b9/toolchain/env.sh",
+      "sha256": "af7c564f3d51b1d7d8036a645d7ae18f792bea6bad025b61b261913b6d41e1b2",
+      "size": 865
+    },
+    "sanity_checks": {
+      "tools_setup_check": "passed",
+      "valgrind_callgrind_bin_true": "passed",
+      "native_c_compile_link_run": "passed"
+    },
+    "pystachy_builds_run": false
+  },
+  "cpuinfo": "processor\t: 0\nvendor_id\t: GenuineIntel\ncpu family\t: 6\nmodel\t\t: 207\nmodel name\t: INTEL(R) XEON(R) PLATINUM 8573C\nstepping\t: 2\nmicrocode\t: 0x1\ncpu MHz\t\t: 2300.000\ncache size\t: 266240 KB\nphysical id\t: 0\nsiblings\t: 9\ncore id\t\t: 0\ncpu cores\t: 9\napicid\t\t: 0\ninitial apicid\t: 0\nfpu\t\t: yes\nfpu_exception\t: yes\ncpuid level\t: 28\nwp\t\t: yes\nflags\t\t: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ss ht syscall nx pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm abm 3dnowprefetch cpuid_fault fsgsbase tsc_adjust bmi1 hle avx2 smep bmi2 erms invpcid rtm avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves avx_vnni avx512_bf16 arat avx512vbmi umip waitpkg avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq rdpid cldemote movdiri movdir64b fsrm serialize tsxldtrk avx512_fp16 arch_capabilities\nbugs\t\t: spectre_v1 spectre_v2 spec_store_bypass swapgs retbleed bhi spectre_v2_user its\nbogomips\t: 4600.00\nclflush size\t: 64\ncache_alignment\t: 64\naddress sizes\t: 46 bits physical, 57 bits virtual\npower management:\n\nprocessor\t: 1\nvendor_id\t: GenuineIntel\ncpu family\t: 6\nmodel\t\t: 207\nmodel name\t: INTEL(R) XEON(R) PLATINUM 8573C\nstepping\t: 2\nmicrocode\t: 0x1\ncpu MHz\t\t: 2300.000\ncache size\t: 266240 KB\nphysical id\t: 0\nsiblings\t: 9\ncore id\t\t: 1\ncpu cores\t: 9\napicid\t\t: 1\ninitial apicid\t: 1\nfpu\t\t: yes\nfpu_exception\t: yes\ncpuid level\t: 28\nwp\t\t: yes\nflags\t\t: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ss ht syscall nx pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm abm 3dnowprefetch cpuid_fault fsgsbase tsc_adjust bmi1 hle avx2 smep bmi2 erms invpcid rtm avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves avx_vnni avx512_bf16 arat avx512vbmi umip waitpkg avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq rdpid cldemote movdiri movdir64b fsrm serialize tsxldtrk avx512_fp16 arch_capabilities\nbugs\t\t: spectre_v1 spectre_v2 spec_store_bypass swapgs retbleed bhi spectre_v2_user its\nbogomips\t: 4600.00\nclflush size\t: 64\ncache_alignment\t: 64\naddress sizes\t: 46 bits physical, 57 bits virtual\npower management:\n\nprocessor\t: 2\nvendor_id\t: GenuineIntel\ncpu family\t: 6\nmodel\t\t: 207\nmodel name\t: INTEL(R) XEON(R) PLATINUM 8573C\nstepping\t: 2\nmicrocode\t: 0x1\ncpu MHz\t\t: 2300.000\ncache size\t: 266240 KB\nphysical id\t: 0\nsiblings\t: 9\ncore id\t\t: 2\ncpu cores\t: 9\napicid\t\t: 2\ninitial apicid\t: 2\nfpu\t\t: yes\nfpu_exception\t: yes\ncpuid level\t: 28\nwp\t\t: yes\nflags\t\t: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ss ht syscall nx pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm abm 3dnowprefetch cpuid_fault fsgsbase tsc_adjust bmi1 hle avx2 smep bmi2 erms invpcid rtm avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves avx_vnni avx512_bf16 arat avx512vbmi umip waitpkg avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq rdpid cldemote movdiri movdir64b fsrm serialize tsxldtrk avx512_fp16 arch_capabilities\nbugs\t\t: spectre_v1 spectre_v2 spec_store_bypass swapgs retbleed bhi spectre_v2_user its\nbogomips\t: 4600.00\nclflush size\t: 64\ncache_alignment\t: 64\naddress sizes\t: 46 bits physical, 57 bits virtual\npower management:\n\nprocessor\t: 3\nvendor_id\t: GenuineIntel\ncpu family\t: 6\nmodel\t\t: 207\nmodel name\t: INTEL(R) XEON(R) PLATINUM 8573C\nstepping\t: 2\nmicrocode\t: 0x1\ncpu MHz\t\t: 2300.000\ncache size\t: 266240 KB\nphysical id\t: 0\nsiblings\t: 9\ncore id\t\t: 3\ncpu cores\t: 9\napicid\t\t: 3\ninitial apicid\t: 3\nfpu\t\t: yes\nfpu_exception\t: yes\ncpuid level\t: 28\nwp\t\t: yes\nflags\t\t: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ss ht syscall nx pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm abm 3dnowprefetch cpuid_fault fsgsbase tsc_adjust bmi1 hle avx2 smep bmi2 erms invpcid rtm avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves avx_vnni avx512_bf16 arat avx512vbmi umip waitpkg avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq rdpid cldemote movdiri movdir64b fsrm serialize tsxldtrk avx512_fp16 arch_capabilities\nbugs\t\t: spectre_v1 spectre_v2 spec_store_bypass swapgs retbleed bhi spectre_v2_user its\nbogomips\t: 4600.00\nclflush size\t: 64\ncache_alignment\t: 64\naddress sizes\t: 46 bits physical, 57 bits virtual\npower management:\n\nprocessor\t: 4\nvendor_id\t: GenuineIntel\ncpu family\t: 6\nmodel\t\t: 207\nmodel name\t: INTEL(R) XEON(R) PLATINUM 8573C\nstepping\t: 2\nmicrocode\t: 0x1\ncpu MHz\t\t: 2300.000\ncache size\t: 266240 KB\nphysical id\t: 0\nsiblings\t: 9\ncore id\t\t: 4\ncpu cores\t: 9\napicid\t\t: 4\ninitial apicid\t: 4\nfpu\t\t: yes\nfpu_exception\t: yes\ncpuid level\t: 28\nwp\t\t: yes\nflags\t\t: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ss ht syscall nx pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm abm 3dnowprefetch cpuid_fault fsgsbase tsc_adjust bmi1 hle avx2 smep bmi2 erms invpcid rtm avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves avx_vnni avx512_bf16 arat avx512vbmi umip waitpkg avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq rdpid cldemote movdiri movdir64b fsrm serialize tsxldtrk avx512_fp16 arch_capabilities\nbugs\t\t: spectre_v1 spectre_v2 spec_store_bypass swapgs retbleed bhi spectre_v2_user its\nbogomips\t: 4600.00\nclflush size\t: 64\ncache_alignment\t: 64\naddress sizes\t: 46 bits physical, 57 bits virtual\npower management:\n\nprocessor\t: 5\nvendor_id\t: GenuineIntel\ncpu family\t: 6\nmodel\t\t: 207\nmodel name\t: INTEL(R) XEON(R) PLATINUM 8573C\nstepping\t: 2\nmicrocode\t: 0x1\ncpu MHz\t\t: 2300.000\ncache size\t: 266240 KB\nphysical id\t: 0\nsiblings\t: 9\ncore id\t\t: 5\ncpu cores\t: 9\napicid\t\t: 5\ninitial apicid\t: 5\nfpu\t\t: yes\nfpu_exception\t: yes\ncpuid level\t: 28\nwp\t\t: yes\nflags\t\t: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ss ht syscall nx pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm abm 3dnowprefetch cpuid_fault fsgsbase tsc_adjust bmi1 hle avx2 smep bmi2 erms invpcid rtm avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves avx_vnni avx512_bf16 arat avx512vbmi umip waitpkg avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq rdpid cldemote movdiri movdir64b fsrm serialize tsxldtrk avx512_fp16 arch_capabilities\nbugs\t\t: spectre_v1 spectre_v2 spec_store_bypass swapgs retbleed bhi spectre_v2_user its\nbogomips\t: 4600.00\nclflush size\t: 64\ncache_alignment\t: 64\naddress sizes\t: 46 bits physical, 57 bits virtual\npower management:\n\nprocessor\t: 6\nvendor_id\t: GenuineIntel\ncpu family\t: 6\nmodel\t\t: 207\nmodel name\t: INTEL(R) XEON(R) PLATINUM 8573C\nstepping\t: 2\nmicrocode\t: 0x1\ncpu MHz\t\t: 2300.000\ncache size\t: 266240 KB\nphysical id\t: 0\nsiblings\t: 9\ncore id\t\t: 6\ncpu cores\t: 9\napicid\t\t: 6\ninitial apicid\t: 6\nfpu\t\t: yes\nfpu_exception\t: yes\ncpuid level\t: 28\nwp\t\t: yes\nflags\t\t: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ss ht syscall nx pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm abm 3dnowprefetch cpuid_fault fsgsbase tsc_adjust bmi1 hle avx2 smep bmi2 erms invpcid rtm avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves avx_vnni avx512_bf16 arat avx512vbmi umip waitpkg avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq rdpid cldemote movdiri movdir64b fsrm serialize tsxldtrk avx512_fp16 arch_capabilities\nbugs\t\t: spectre_v1 spectre_v2 spec_store_bypass swapgs retbleed bhi spectre_v2_user its\nbogomips\t: 4600.00\nclflush size\t: 64\ncache_alignment\t: 64\naddress sizes\t: 46 bits physical, 57 bits virtual\npower management:\n\nprocessor\t: 7\nvendor_id\t: GenuineIntel\ncpu family\t: 6\nmodel\t\t: 207\nmodel name\t: INTEL(R) XEON(R) PLATINUM 8573C\nstepping\t: 2\nmicrocode\t: 0x1\ncpu MHz\t\t: 2300.000\ncache size\t: 266240 KB\nphysical id\t: 0\nsiblings\t: 9\ncore id\t\t: 7\ncpu cores\t: 9\napicid\t\t: 7\ninitial apicid\t: 7\nfpu\t\t: yes\nfpu_exception\t: yes\ncpuid level\t: 28\nwp\t\t: yes\nflags\t\t: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ss ht syscall nx pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm abm 3dnowprefetch cpuid_fault fsgsbase tsc_adjust bmi1 hle avx2 smep bmi2 erms invpcid rtm avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves avx_vnni avx512_bf16 arat avx512vbmi umip waitpkg avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq rdpid cldemote movdiri movdir64b fsrm serialize tsxldtrk avx512_fp16 arch_capabilities\nbugs\t\t: spectre_v1 spectre_v2 spec_store_bypass swapgs retbleed bhi spectre_v2_user its\nbogomips\t: 4600.00\nclflush size\t: 64\ncache_alignment\t: 64\naddress sizes\t: 46 bits physical, 57 bits virtual\npower management:\n\nprocessor\t: 8\nvendor_id\t: GenuineIntel\ncpu family\t: 6\nmodel\t\t: 207\nmodel name\t: INTEL(R) XEON(R) PLATINUM 8573C\nstepping\t: 2\nmicrocode\t: 0x1\ncpu MHz\t\t: 2300.000\ncache size\t: 266240 KB\nphysical id\t: 0\nsiblings\t: 9\ncore id\t\t: 8\ncpu cores\t: 9\napicid\t\t: 8\ninitial apicid\t: 8\nfpu\t\t: yes\nfpu_exception\t: yes\ncpuid level\t: 28\nwp\t\t: yes\nflags\t\t: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ss ht syscall nx pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm abm 3dnowprefetch cpuid_fault fsgsbase tsc_adjust bmi1 hle avx2 smep bmi2 erms invpcid rtm avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves avx_vnni avx512_bf16 arat avx512vbmi umip waitpkg avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq rdpid cldemote movdiri movdir64b fsrm serialize tsxldtrk avx512_fp16 arch_capabilities\nbugs\t\t: spectre_v1 spectre_v2 spec_store_bypass swapgs retbleed bhi spectre_v2_user its\nbogomips\t: 4600.00\nclflush size\t: 64\ncache_alignment\t: 64\naddress sizes\t: 46 bits physical, 57 bits virtual\npower management:\n\n",
+  "method": "Exactly three whole-region per-closure2048 limits become512; global8192 and partial limits unchanged. One CPython-hosted native build only; native/hosted six-probe IR equality and output parity are required before normal-driver timing. No fixed-point or final correctness claim for this experimental compiler.",
+  "six_probe_equivalence": {
+    "ordinary_calls": {
+      "source_sha256": "ecf346f4e65bab89564c52d864bd405641bc7689374a303b3a9f74bc8ab4df6c",
+      "current_sha256": "cdaaaea9565e9da7628a66f858b6733e59c38ed5cea53182919695983288bcc3",
+      "experimental_sha256": "cdaaaea9565e9da7628a66f858b6733e59c38ed5cea53182919695983288bcc3",
+      "hosted_sha256": "cdaaaea9565e9da7628a66f858b6733e59c38ed5cea53182919695983288bcc3",
+      "native_hosted_identical": true,
+      "current_cap_identical": true
+    },
+    "object_calls": {
+      "source_sha256": "4da3eeae714a896bb205a4d16e1d91d0bafad2ec58a3dee0d33cc90096de70af",
+      "current_sha256": "f80fbc9ccd43e357960853abccd50cf2e7409932e3ed001c638fe18022e73b89",
+      "experimental_sha256": "f80fbc9ccd43e357960853abccd50cf2e7409932e3ed001c638fe18022e73b89",
+      "hosted_sha256": "f80fbc9ccd43e357960853abccd50cf2e7409932e3ed001c638fe18022e73b89",
+      "native_hosted_identical": true,
+      "current_cap_identical": true
+    },
+    "json_calls": {
+      "source_sha256": "04a3b45405ef1b96360dbe941e072e5922d8dcae39d8a5bd45745000ea47c9fc",
+      "current_sha256": "467d86c8d6e697f5f02b24808b00509cc04bfe2bd81bd688faedc9a89f4dc8a8",
+      "experimental_sha256": "467d86c8d6e697f5f02b24808b00509cc04bfe2bd81bd688faedc9a89f4dc8a8",
+      "hosted_sha256": "467d86c8d6e697f5f02b24808b00509cc04bfe2bd81bd688faedc9a89f4dc8a8",
+      "native_hosted_identical": true,
+      "current_cap_identical": true
+    },
+    "json_warmed_short": {
+      "source_sha256": "7a8a94314179ba0797632f7241cb9c6541d891c79ded006b444c8bfd9dfea6cf",
+      "current_sha256": "9bd0ac2fb023832539633444e9a7baf241473e17b9095d5f02fa30eb3130e3fb",
+      "experimental_sha256": "9bd0ac2fb023832539633444e9a7baf241473e17b9095d5f02fa30eb3130e3fb",
+      "hosted_sha256": "9bd0ac2fb023832539633444e9a7baf241473e17b9095d5f02fa30eb3130e3fb",
+      "native_hosted_identical": true,
+      "current_cap_identical": true
+    },
+    "json_warmed_long": {
+      "source_sha256": "7a8a94314179ba0797632f7241cb9c6541d891c79ded006b444c8bfd9dfea6cf",
+      "current_sha256": "9bd0ac2fb023832539633444e9a7baf241473e17b9095d5f02fa30eb3130e3fb",
+      "experimental_sha256": "9bd0ac2fb023832539633444e9a7baf241473e17b9095d5f02fa30eb3130e3fb",
+      "hosted_sha256": "9bd0ac2fb023832539633444e9a7baf241473e17b9095d5f02fa30eb3130e3fb",
+      "native_hosted_identical": true,
+      "current_cap_identical": true
+    },
+    "json_file_calls": {
+      "source_sha256": "390c2742d4258e1b13d5c7449fe93e1f460917f8ac8616a121da9b6642ec83f5",
+      "current_sha256": "790affeddeb61651cf08e951ea4a83ae8b57dc611956e233d93d4c85228a0c02",
+      "experimental_sha256": "790affeddeb61651cf08e951ea4a83ae8b57dc611956e233d93d4c85228a0c02",
+      "hosted_sha256": "790affeddeb61651cf08e951ea4a83ae8b57dc611956e233d93d4c85228a0c02",
+      "native_hosted_identical": true,
+      "current_cap_identical": true
+    }
+  },
+  "mixed_text_modules": {
+    "current": {
+      "emission": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+          "ir",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "-o",
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/current-text.ll"
+        ],
+        "cwd": "/workspace/scratch/e858f72517b9/pystachy",
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "",
+        "wall_seconds": 0.695966094999676
+      },
+      "sha256": "259b376aaa98c7bfaf86baff8cebcd37fb9ce13ef5516528e18745cfdd0312aa",
+      "lines": 81576,
+      "bytes": 2903981,
+      "functions": 272,
+      "whole_clones": [
+        "rf.f.fnmatch$_translate.1",
+        "rf.f.scan_batch",
+        "rf.m.re$Pattern._new_match.1",
+        "rf.m.re$Pattern._new_match.2",
+        "rf.f.re$_sre$charset",
+        "rf.m.json$_Parser.char_index",
+        "rf.f.re$_isidentifier",
+        "rf.f.fnmatch$_next_char",
+        "rf.f.fnmatch$_last_char",
+        "rf.f.fnmatch$_char_value",
+        "rf.f.re$escape",
+        "rf.f.repair_tokens",
+        "rf.f.re$_to_index",
+        "rf.m.re$Match.__init__",
+        "rf.f.re$_sre$category",
+        "rf.f.re$_sre$upper_unicode",
+        "rf.f.re$_sre$is_word",
+        "rf.f.re$_sre$uni_isdecimal",
+        "rf.f.re$_sre$uni_isspace",
+        "rf.f.re$_sre$uni_is_word",
+        "rf.f.re$_sre$uni_islinebreak",
+        "rf.f.re$_sre$upper_ascii",
+        "rf.f.re$_sre$_mapped",
+        "rf.f.re$_sre$ascii_isalnum",
+        "rf.f.re$_sre$_inranges",
+        "rf.f.re$_sre$uni_isalnum",
+        "rf.f.re$_sre$_decode",
+        "rf.f.json$_u8len",
+        "rf.f.json$_u8char",
+        "rf.f.re$_codes_of",
+        "rf.f.re$_sre$uni_isidstart",
+        "rf.f.re$_sre$uni_isidcontinue",
+        "rf.f.re$_charat"
+      ],
+      "partial_clones": [
+        "rp2.m.json$_Parser.number",
+        "rp.m.json$_Parser.value",
+        "rp2.f.re$_sre$lower_ascii",
+        "rp.f.re$_sre$lower_unicode",
+        "rp2.f.re$_sre$upper_ascii",
+        "rp.f.re$_sre$upper_unicode",
+        "rp2.f.re$_sre$ascii_isalnum",
+        "rp.f.re$_sre$uni_isalnum",
+        "rp.m.json$_Parser.scalar_value"
+      ],
+      "maximal_whole_clone_headers": [
+        "define internal ptr @rf.f.fnmatch$_translate.1(ptr %a0, ptr %a2) noinline {",
+        "define internal i64 @rf.f.scan_batch(i64 %a0, ptr %aid0, ptr %idret) noinline {",
+        "define internal ptr @rf.m.re$Pattern._new_match.1(ptr nonnull %a0, ptr %a1, ptr %a2) noinline {",
+        "define internal ptr @rf.m.re$Pattern._new_match.2(ptr nonnull %a0, ptr %a1, ptr %a2) noinline {",
+        "define internal i1 @rf.f.re$_sre$charset(ptr %a0, i64 %a1, i64 %a2, ptr %aid1, ptr %aid2) noinline {",
+        "define internal i64 @rf.m.json$_Parser.char_index(ptr nonnull %a0, i64 %a1, ptr %aid1, ptr %idret) noinline {",
+        "define internal i1 @rf.f.re$_isidentifier(ptr %a0) noinline {"
+      ]
+    },
+    "cap512": {
+      "emission": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/cap512-compiler",
+          "ir",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "-o",
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/cap512-text.ll"
+        ],
+        "cwd": "/workspace/scratch/e858f72517b9/baselines/cap512",
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "",
+        "wall_seconds": 0.5830297550000978
+      },
+      "sha256": "3eb751c2a1313352061acbf1538b7bcd499a3e1fd6085407f2e5615c592a9496",
+      "lines": 77814,
+      "bytes": 2788218,
+      "functions": 252,
+      "whole_clones": [
+        "rf.f.scan_batch",
+        "rf.f.fnmatch$_last_char",
+        "rf.m.re$Pattern._new_match.1",
+        "rf.m.re$Pattern._new_match.2",
+        "rf.m.json$_Parser.char_index",
+        "rf.f.re$_codes_of",
+        "rf.f.repair_tokens",
+        "rf.f.fnmatch$_next_char",
+        "rf.f.re$_to_index",
+        "rf.m.re$Match.__init__",
+        "rf.f.json$_u8len",
+        "rf.f.json$_u8char",
+        "rf.f.re$_charat"
+      ],
+      "partial_clones": [
+        "rp2.m.json$_Parser.number",
+        "rp.m.json$_Parser.value",
+        "rp2.f.re$_sre$lower_ascii",
+        "rp.f.re$_sre$lower_unicode",
+        "rp2.f.re$_sre$upper_ascii",
+        "rp.f.re$_sre$upper_unicode",
+        "rp2.f.re$_sre$ascii_isalnum",
+        "rp.f.re$_sre$uni_isalnum",
+        "rp.m.json$_Parser.scalar_value"
+      ],
+      "maximal_whole_clone_headers": [
+        "define internal i64 @rf.f.scan_batch(i64 %a0, ptr %aid0, ptr %idret) noinline {",
+        "define internal i64 @rf.f.fnmatch$_last_char(ptr %a0, ptr %idret) noinline {",
+        "define internal ptr @rf.m.re$Pattern._new_match.1(ptr nonnull %a0, ptr %a1, ptr %a2) noinline {",
+        "define internal ptr @rf.m.re$Pattern._new_match.2(ptr nonnull %a0, ptr %a1, ptr %a2) noinline {",
+        "define internal i64 @rf.m.json$_Parser.char_index(ptr nonnull %a0, i64 %a1, ptr %aid1, ptr %idret) noinline {",
+        "define internal ptr @rf.f.re$_codes_of(ptr %a0) noinline {"
+      ]
+    }
+  },
+  "phases": {
+    "prepare": {
+      "status": "passed",
+      "started_utc": "2026-10-31T16:02:59.120092+00:00",
+      "load_start": [
+        0.05029296875,
+        0.25048828125,
+        0.59521484375
+      ],
+      "finished_utc": "2026-10-31T16:06:00.039594+00:00",
+      "load_end": [
+        1.06103515625,
+        0.6533203125,
+        0.6982421875
+      ]
+    },
+    "timings": {
+      "status": "passed",
+      "started_utc": "2026-10-31T16:07:20.487607+00:00",
+      "load_start": [
+        0.6376953125,
+        0.6162109375,
+        0.68212890625
+      ],
+      "harness_sha256": "1ba292eec6af150fa3c901dd34b2cad5974ae63940558b79d56a39192d24bcb3",
+      "helper_sha256": "530cb6e5e27546f1158e6844f3088ed33b7c82c47306710a9b68e4c4a8cbf52b",
+      "finished_utc": "2026-10-31T16:13:45.841789+00:00",
+      "load_end": [
+        1.97216796875,
+        1.32080078125,
+        0.97900390625
+      ]
+    }
+  },
+  "single_hosted_native_build": {
+    "command": [
+      "/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13",
+      "pystachy.py",
+      "build",
+      "pystachy.py",
+      "-o",
+      "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/cap512-compiler"
+    ],
+    "cwd": "/workspace/scratch/e858f72517b9/baselines/cap512",
+    "returncode": 0,
+    "stdout": "",
+    "stderr": "",
+    "wall_seconds": 177.7301678949998,
+    "native_sha256": "c6c9dc2c6e06dcca1fe0e3773efe46a9cc833bd4e12684bca5b6a6633ab94bd0",
+    "native_bytes": 5078896
+  },
+  "timing_inputs_sha256": {
+    "/workspace/scratch/e858f72517b9/perf-work/recovered-ci/ci_smoke_script.py": "9f060980da2f7c08e23f50f5abb50620242793429696be079f5b068f1bfd82ea",
+    "/workspace/scratch/e858f72517b9/perf-work/replay_support.py": "530cb6e5e27546f1158e6844f3088ed33b7c82c47306710a9b68e4c4a8cbf52b",
+    "/workspace/scratch/e858f72517b9/baselines/old-eca/tools/bench_extended.py": "1aaa4bc7a001e9bab21151281ea2c4ed1d408063c7a47ea2db81691b1e264f1e",
+    "/workspace/scratch/e858f72517b9/baselines/old-eca/tools/bench_pyperformance.py": "54804044e0f127940f63e9c0fe8649e6c31c7cb84fb5dcc002ddff33fb6423ca",
+    "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py": "abcf4ba78bd62af42207230106b96f63b1a64758c1aa2831a49d0ba7781e6302",
+    "/workspace/scratch/e858f72517b9/pystachy/pystachy": "066ca28a41256c32bb4962b6dfd82a4a8ce883e963ce4557a4be6aca9ad935e3",
+    "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/cap512-compiler": "c6c9dc2c6e06dcca1fe0e3773efe46a9cc833bd4e12684bca5b6a6633ab94bd0",
+    "/workspace/scratch/e858f72517b9/recovery-validation/candidate/bootstrap.json": "67df58f10888048030527a9f930298698c438ad9f73cd558a07cc580a6332a75",
+    "/workspace/scratch/e858f72517b9/toolchain/manifest.json": "abecac0463e37ea045c0e32ad445f5418efac20a31de8f02bd12f55b8c8c8488"
+  },
+  "current_bootstrap_gate": {
+    "report_sha256": "67df58f10888048030527a9f930298698c438ad9f73cd558a07cc580a6332a75",
+    "all_consumed_inputs_except_makefile_equal": true,
+    "clean_status_commit_tree_native_hash_equal": true
+  },
+  "between_phase_harness_change": "Prepare harness preserved as prepare-harness.py (original harness_sha256); timing phase adds source/status/bootstrap identity gates and unmodified-helper process-result capture. Native compiler, source modules and benchmark inputs are unchanged. Each phase records its own harness hash.",
+  "timing_method": "Six preplanned alternating pairs per case: original batch(offset0) plus batch(offset3), each three pairs, yielding each side first three times. The second batch is a planned replication, not an adaptively requested confirmation. Original compare/classify logic and workload sizes retained. Native normal-driver JIT/AOT, CPython parity, fresh private caches, build reuse across shared source file.",
+  "timing_results": [
+    {
+      "name": "fnmatch",
+      "source_sha256": "abcf4ba78bd62af42207230106b96f63b1a64758c1aa2831a49d0ba7781e6302",
+      "arguments": [
+        "fnmatch",
+        "1000"
+      ],
+      "expected_stdout": "6000\n",
+      "oracle": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "fnmatch",
+          "1000"
+        ],
+        "wall_s": 0.15450837300068088,
+        "stdout": "6000\n",
+        "stderr": "seconds 0.08075598100003845\n",
+        "returncode": 0,
+        "cpu_s": 0.15223399999999998,
+        "loop_s": 0.08075598100003845
+      },
+      "batches": {
+        "initial": {
+          "base": {
+            "build_s": [
+              18.044058313000278,
+              15.054212816000472,
+              18.71025395199922
+            ],
+            "jit_process_s": [
+              6.731465206999928,
+              3.9361962760003735,
+              4.11808202300017
+            ],
+            "jit_loop_s": [
+              0.07150684900079796,
+              0.05781558099988615,
+              0.056417868000607996
+            ],
+            "aot_process_s": [
+              0.0669896310000695,
+              0.06963471199924243,
+              0.04218362700066791
+            ],
+            "aot_loop_s": [
+              0.058563626000250224,
+              0.06338915600008477,
+              0.03759481300039624
+            ]
+          },
+          "head": {
+            "build_s": [
+              22.20590968399938,
+              18.98123872100041,
+              13.26336824000009
+            ],
+            "jit_process_s": [
+              4.152377254000385,
+              4.29791644099987,
+              3.552609610000218
+            ],
+            "jit_loop_s": [
+              0.05861811799968564,
+              0.055924304000654956,
+              0.04941676999987976
+            ],
+            "aot_process_s": [
+              0.04552359900026204,
+              0.053103786000065156,
+              0.050127352999879804
+            ],
+            "aot_loop_s": [
+              0.04026191200046014,
+              0.04708994500015251,
+              0.04308744399986608
+            ]
+          },
+          "cpython": [
+            {
+              "command": [
+                "/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13",
+                "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+                "fnmatch",
+                "1000"
+              ],
+              "wall_s": 0.13013538799987145,
+              "stdout": "6000\n",
+              "stderr": "seconds 0.09039253099945199\n",
+              "returncode": 0,
+              "cpu_s": 0.12926999999999733,
+              "loop_s": 0.09039253099945199
+            },
+            {
+              "command": [
+                "/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13",
+                "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+                "fnmatch",
+                "1000"
+              ],
+              "wall_s": 0.13737803600088228,
+              "stdout": "6000\n",
+              "stderr": "seconds 0.08682724700065592\n",
+              "returncode": 0,
+              "cpu_s": 0.13563500000000817,
+              "loop_s": 0.08682724700065592
+            },
+            {
+              "command": [
+                "/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13",
+                "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+                "fnmatch",
+                "1000"
+              ],
+              "wall_s": 0.12692006699944614,
+              "stdout": "6000\n",
+              "stderr": "seconds 0.08682990599936602\n",
+              "returncode": 0,
+              "cpu_s": 0.12630999999999037,
+              "loop_s": 0.08682990599936602
+            }
+          ]
+        },
+        "replication": {
+          "base": {
+            "build_s": [
+              17.292033554000227,
+              16.180505932000415,
+              13.031076410999958
+            ],
+            "jit_process_s": [
+              4.7365368820001095,
+              3.741591113999675,
+              4.444213615000081
+            ],
+            "jit_loop_s": [
+              0.044555147999744804,
+              0.04898839899942686,
+              0.04763435500080959
+            ],
+            "aot_process_s": [
+              0.04823012799988646,
+              0.04938413000036235,
+              0.04659564199937449
+            ],
+            "aot_loop_s": [
+              0.04118254100012564,
+              0.04335259999970731,
+              0.041218360000129906
+            ]
+          },
+          "head": {
+            "build_s": [
+              13.943443099999968,
+              14.844058263000079,
+              14.85176536400013
+            ],
+            "jit_process_s": [
+              4.689314321000893,
+              4.6491085869993185,
+              3.8224165849997007
+            ],
+            "jit_loop_s": [
+              0.08965511199949106,
+              0.07921050500044657,
+              0.0651568600005703
+            ],
+            "aot_process_s": [
+              0.056521168000472244,
+              0.1053833649993976,
+              0.0589910750004492
+            ],
+            "aot_loop_s": [
+              0.048479523999958474,
+              0.09067296800003533,
+              0.05316265300007217
+            ]
+          },
+          "cpython": [
+            {
+              "command": [
+                "/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13",
+                "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+                "fnmatch",
+                "1000"
+              ],
+              "wall_s": 0.12706478699965373,
+              "stdout": "6000\n",
+              "stderr": "seconds 0.08242094900015218\n",
+              "returncode": 0,
+              "cpu_s": 0.12519800000000636,
+              "loop_s": 0.08242094900015218
+            },
+            {
+              "command": [
+                "/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13",
+                "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+                "fnmatch",
+                "1000"
+              ],
+              "wall_s": 0.1135586250002234,
+              "stdout": "6000\n",
+              "stderr": "seconds 0.0783879419996083\n",
+              "returncode": 0,
+              "cpu_s": 0.11170400000000225,
+              "loop_s": 0.0783879419996083
+            },
+            {
+              "command": [
+                "/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13",
+                "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+                "fnmatch",
+                "1000"
+              ],
+              "wall_s": 0.19866554600048403,
+              "stdout": "6000\n",
+              "stderr": "seconds 0.10687640299966006\n",
+              "returncode": 0,
+              "cpu_s": 0.19353999999994542,
+              "loop_s": 0.10687640299966006
+            }
+          ]
+        }
+      },
+      "warmups": {
+        "base": [
+          {
+            "command": [
+              "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+              "build",
+              "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+              "-o",
+              "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/base/text"
+            ],
+            "wall_s": 24.870365063999998,
+            "stdout": "",
+            "stderr": "",
+            "returncode": 0
+          },
+          {
+            "command": [
+              "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+              "run",
+              "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+              "fnmatch",
+              "1000"
+            ],
+            "wall_s": 12.823427416000413,
+            "stdout": "6000\n",
+            "stderr": "seconds 0.0704486150007142\n",
+            "returncode": 0,
+            "cpu_s": 12.781735999999997,
+            "loop_s": 0.0704486150007142
+          },
+          {
+            "command": [
+              "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/base/text",
+              "fnmatch",
+              "1000"
+            ],
+            "wall_s": 0.05400842700055364,
+            "stdout": "6000\n",
+            "stderr": "seconds 0.048507072000575135\n",
+            "returncode": 0,
+            "cpu_s": 0.05283200000000565,
+            "loop_s": 0.048507072000575135
+          }
+        ],
+        "head": [
+          {
+            "command": [
+              "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/cap512-compiler",
+              "build",
+              "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+              "-o",
+              "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/head/text"
+            ],
+            "wall_s": 24.676522796000427,
+            "stdout": "",
+            "stderr": "",
+            "returncode": 0
+          },
+          {
+            "command": [
+              "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/cap512-compiler",
+              "run",
+              "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+              "fnmatch",
+              "1000"
+            ],
+            "wall_s": 15.003653501000372,
+            "stdout": "6000\n",
+            "stderr": "seconds 0.05670358800034592\n",
+            "returncode": 0,
+            "cpu_s": 14.993348999999997,
+            "loop_s": 0.05670358800034592
+          },
+          {
+            "command": [
+              "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/head/text",
+              "fnmatch",
+              "1000"
+            ],
+            "wall_s": 0.07913273200028925,
+            "stdout": "6000\n",
+            "stderr": "seconds 0.07144113899994409\n",
+            "returncode": 0,
+            "cpu_s": 0.07842900000001007,
+            "loop_s": 0.07144113899994409
+          }
+        ]
+      },
+      "comparison": {
+        "build_s": {
+          "base_s": 18.044058313000278,
+          "head_s": 18.98123872100041,
+          "ratio": 1.0519384493079873,
+          "candidate": false,
+          "separated": false,
+          "status": "ok",
+          "replication": {
+            "base_s": 16.180505932000415,
+            "head_s": 14.844058263000079,
+            "ratio": 0.9174038392484858,
+            "candidate": false,
+            "separated": false
+          }
+        },
+        "jit_process_s": {
+          "base_s": 4.11808202300017,
+          "head_s": 4.152377254000385,
+          "ratio": 1.0083279620970806,
+          "candidate": false,
+          "separated": false,
+          "status": "ok",
+          "replication": {
+            "base_s": 4.444213615000081,
+            "head_s": 4.6491085869993185,
+            "ratio": 1.0461037631736867,
+            "candidate": false,
+            "separated": false
+          }
+        },
+        "jit_loop_s": {
+          "base_s": 0.05781558099988615,
+          "head_s": 0.055924304000654956,
+          "ratio": 0.967287762805066,
+          "candidate": false,
+          "separated": false,
+          "status": "ok",
+          "replication": {
+            "base_s": 0.04763435500080959,
+            "head_s": 0.07921050500044657,
+            "ratio": 1.6628860619420651,
+            "candidate": true,
+            "separated": true
+          }
+        },
+        "aot_process_s": {
+          "base_s": 0.0669896310000695,
+          "head_s": 0.050127352999879804,
+          "ratio": 0.7482852532778962,
+          "candidate": false,
+          "separated": false,
+          "status": "ok",
+          "replication": {
+            "base_s": 0.04823012799988646,
+            "head_s": 0.0589910750004492,
+            "ratio": 1.2231167000134868,
+            "candidate": true,
+            "separated": true
+          }
+        },
+        "aot_loop_s": {
+          "base_s": 0.058563626000250224,
+          "head_s": 0.04308744399986608,
+          "ratio": 0.7357372987745325,
+          "candidate": false,
+          "separated": false,
+          "status": "ok",
+          "replication": {
+            "base_s": 0.041218360000129906,
+            "head_s": 0.05316265300007217,
+            "ratio": 1.2897808889025333,
+            "candidate": true,
+            "separated": true
+          }
+        }
+      },
+      "aot_sha256": {
+        "base": "417e55d9238038057f73441a50763bc5df21d6ee0c6600cd6e91409752ff144d",
+        "head": "2eb884ff144fa884515914d104190ba1e696d220452a0d6f533412f2e39c1053"
+      }
+    },
+    {
+      "name": "json",
+      "source_sha256": "abcf4ba78bd62af42207230106b96f63b1a64758c1aa2831a49d0ba7781e6302",
+      "arguments": [
+        "json",
+        "6000"
+      ],
+      "expected_stdout": "1932000\n",
+      "oracle": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "json",
+          "6000"
+        ],
+        "wall_s": 0.131483541000307,
+        "stdout": "1932000\n",
+        "stderr": "seconds 0.07087191400023585\n",
+        "returncode": 0,
+        "cpu_s": 0.12953200000000464,
+        "loop_s": 0.07087191400023585
+      },
+      "batches": {
+        "initial": {
+          "base": {
+            "jit_process_s": [
+              3.5733049509999546,
+              3.960001979000481,
+              4.778493902000264
+            ],
+            "jit_loop_s": [
+              0.03665482899941708,
+              0.039610525999705715,
+              0.0682482849997541
+            ],
+            "aot_process_s": [
+              0.040055862000372144,
+              0.04563699799928145,
+              0.05284898300033092
+            ],
+            "aot_loop_s": [
+              0.03570558200044616,
+              0.04114834099982545,
+              0.047686091999821656
+            ]
+          },
+          "head": {
+            "jit_process_s": [
+              3.5661070229998586,
+              4.566272463000132,
+              3.5191350519999105
+            ],
+            "jit_loop_s": [
+              0.04193044799922063,
+              0.04863336200014601,
+              0.04297517800023343
+            ],
+            "aot_process_s": [
+              0.04121035000025586,
+              0.046010836999812454,
+              0.04916140000023006
+            ],
+            "aot_loop_s": [
+              0.03689092900003743,
+              0.03912473299988051,
+              0.04046894600014639
+            ]
+          },
+          "cpython": [
+            {
+              "command": [
+                "/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13",
+                "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+                "json",
+                "6000"
+              ],
+              "wall_s": 0.11276698100027716,
+              "stdout": "1932000\n",
+              "stderr": "seconds 0.0775721270001668\n",
+              "returncode": 0,
+              "cpu_s": 0.11112800000000789,
+              "loop_s": 0.0775721270001668
+            },
+            {
+              "command": [
+                "/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13",
+                "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+                "json",
+                "6000"
+              ],
+              "wall_s": 0.10129175500060228,
+              "stdout": "1932000\n",
+              "stderr": "seconds 0.06337370400069631\n",
+              "returncode": 0,
+              "cpu_s": 0.09948800000000801,
+              "loop_s": 0.06337370400069631
+            },
+            {
+              "command": [
+                "/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13",
+                "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+                "json",
+                "6000"
+              ],
+              "wall_s": 0.10567691500000365,
+              "stdout": "1932000\n",
+              "stderr": "seconds 0.06528176900064864\n",
+              "returncode": 0,
+              "cpu_s": 0.10374899999999343,
+              "loop_s": 0.06528176900064864
+            }
+          ]
+        },
+        "replication": {
+          "base": {
+            "jit_process_s": [
+              3.69955341900004,
+              3.476668700999653,
+              3.784395485999994
+            ],
+            "jit_loop_s": [
+              0.04075442599969392,
+              0.045668149000448466,
+              0.07189651199951186
+            ],
+            "aot_process_s": [
+              0.04966795100062882,
+              0.045314774999496876,
+              0.04636357399976987
+            ],
+            "aot_loop_s": [
+              0.04453484800069418,
+              0.03824687500036816,
+              0.03938977899997553
+            ]
+          },
+          "head": {
+            "jit_process_s": [
+              4.078359019000345,
+              3.4311263230001714,
+              4.0305677779997495
+            ],
+            "jit_loop_s": [
+              0.04086299800019333,
+              0.04242574300042179,
+              0.09329952699954447
+            ],
+            "aot_process_s": [
+              0.06257032499979687,
+              0.04237280199959059,
+              0.050284662999729335
+            ],
+            "aot_loop_s": [
+              0.05446694299916999,
+              0.03606933300034143,
+              0.04070742699968832
+            ]
+          },
+          "cpython": [
+            {
+              "command": [
+                "/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13",
+                "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+                "json",
+                "6000"
+              ],
+              "wall_s": 0.107946899000126,
+              "stdout": "1932000\n",
+              "stderr": "seconds 0.06407081399993331\n",
+              "returncode": 0,
+              "cpu_s": 0.10725199999997237,
+              "loop_s": 0.06407081399993331
+            },
+            {
+              "command": [
+                "/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13",
+                "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+                "json",
+                "6000"
+              ],
+              "wall_s": 0.1006623289995332,
+              "stdout": "1932000\n",
+              "stderr": "seconds 0.06515763099923788\n",
+              "returncode": 0,
+              "cpu_s": 0.09892899999998228,
+              "loop_s": 0.06515763099923788
+            },
+            {
+              "command": [
+                "/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13",
+                "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+                "json",
+                "6000"
+              ],
+              "wall_s": 0.13583571999970445,
+              "stdout": "1932000\n",
+              "stderr": "seconds 0.09630628699960653\n",
+              "returncode": 0,
+              "cpu_s": 0.13412400000003188,
+              "loop_s": 0.09630628699960653
+            }
+          ]
+        }
+      },
+      "warmups": {
+        "base": [
+          {
+            "command": [
+              "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+              "run",
+              "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+              "json",
+              "6000"
+            ],
+            "wall_s": 4.46841075500015,
+            "stdout": "1932000\n",
+            "stderr": "seconds 0.0433746799999426\n",
+            "returncode": 0,
+            "cpu_s": 4.465460999999983,
+            "loop_s": 0.0433746799999426
+          },
+          {
+            "command": [
+              "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/base/text",
+              "json",
+              "6000"
+            ],
+            "wall_s": 0.04531625899926439,
+            "stdout": "1932000\n",
+            "stderr": "seconds 0.03794115399978182\n",
+            "returncode": 0,
+            "cpu_s": 0.0444910000000025,
+            "loop_s": 0.03794115399978182
+          }
+        ],
+        "head": [
+          {
+            "command": [
+              "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/cap512-compiler",
+              "run",
+              "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+              "json",
+              "6000"
+            ],
+            "wall_s": 3.9064148659999773,
+            "stdout": "1932000\n",
+            "stderr": "seconds 0.036394561000633985\n",
+            "returncode": 0,
+            "cpu_s": 3.9007910000000052,
+            "loop_s": 0.036394561000633985
+          },
+          {
+            "command": [
+              "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/head/text",
+              "json",
+              "6000"
+            ],
+            "wall_s": 0.04657826199945703,
+            "stdout": "1932000\n",
+            "stderr": "seconds 0.039488245000029565\n",
+            "returncode": 0,
+            "cpu_s": 0.04493099999999295,
+            "loop_s": 0.039488245000029565
+          }
+        ]
+      },
+      "comparison": {
+        "jit_process_s": {
+          "base_s": 3.960001979000481,
+          "head_s": 3.5661070229998586,
+          "ratio": 0.9005316264766002,
+          "candidate": false,
+          "separated": false,
+          "status": "ok",
+          "replication": {
+            "base_s": 3.69955341900004,
+            "head_s": 4.0305677779997495,
+            "ratio": 1.0894741395811984,
+            "candidate": false,
+            "separated": false
+          }
+        },
+        "jit_loop_s": {
+          "base_s": 0.039610525999705715,
+          "head_s": 0.04297517800023343,
+          "ratio": 1.0849433809728433,
+          "candidate": false,
+          "separated": false,
+          "status": "ok",
+          "replication": {
+            "base_s": 0.045668149000448466,
+            "head_s": 0.04242574300042179,
+            "ratio": 0.9290007133857158,
+            "candidate": false,
+            "separated": false
+          }
+        },
+        "aot_process_s": {
+          "base_s": 0.04563699799928145,
+          "head_s": 0.046010836999812454,
+          "ratio": 1.0081915773806351,
+          "candidate": false,
+          "separated": false,
+          "status": "ok",
+          "replication": {
+            "base_s": 0.04636357399976987,
+            "head_s": 0.050284662999729335,
+            "ratio": 1.0845726216011502,
+            "candidate": false,
+            "separated": false
+          }
+        },
+        "aot_loop_s": {
+          "base_s": 0.04114834099982545,
+          "head_s": 0.03912473299988051,
+          "ratio": 0.950821638229509,
+          "candidate": false,
+          "separated": false,
+          "status": "ok",
+          "replication": {
+            "base_s": 0.03938977899997553,
+            "head_s": 0.04070742699968832,
+            "ratio": 1.0334515205001178,
+            "candidate": false,
+            "separated": false
+          }
+        }
+      },
+      "aot_sha256": {
+        "base": "417e55d9238038057f73441a50763bc5df21d6ee0c6600cd6e91409752ff144d",
+        "head": "2eb884ff144fa884515914d104190ba1e696d220452a0d6f533412f2e39c1053"
+      }
+    }
+  ],
+  "process_records": [
+    {
+      "case": "fnmatch",
+      "batch": "oracle",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "fnmatch",
+        "1000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "fnmatch",
+          "1000"
+        ],
+        "wall_s": 0.15450837300068088,
+        "stdout": "6000\n",
+        "stderr": "seconds 0.08075598100003845\n",
+        "returncode": 0,
+        "cpu_s": 0.15223399999999998,
+        "loop_s": 0.08075598100003845
+      }
+    },
+    {
+      "case": "fnmatch",
+      "batch": "warmup",
+      "operation": "build",
+      "command": [
+        "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+        "build",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "-o",
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/base/text"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+          "build",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "-o",
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/base/text"
+        ],
+        "wall_s": 24.870365063999998,
+        "stdout": "",
+        "stderr": "",
+        "returncode": 0
+      }
+    },
+    {
+      "case": "fnmatch",
+      "batch": "warmup",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "fnmatch",
+        "1000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+          "run",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "fnmatch",
+          "1000"
+        ],
+        "wall_s": 12.823427416000413,
+        "stdout": "6000\n",
+        "stderr": "seconds 0.0704486150007142\n",
+        "returncode": 0,
+        "cpu_s": 12.781735999999997,
+        "loop_s": 0.0704486150007142
+      }
+    },
+    {
+      "case": "fnmatch",
+      "batch": "warmup",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/base/text",
+        "fnmatch",
+        "1000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/base/text",
+          "fnmatch",
+          "1000"
+        ],
+        "wall_s": 0.05400842700055364,
+        "stdout": "6000\n",
+        "stderr": "seconds 0.048507072000575135\n",
+        "returncode": 0,
+        "cpu_s": 0.05283200000000565,
+        "loop_s": 0.048507072000575135
+      }
+    },
+    {
+      "case": "fnmatch",
+      "batch": "warmup",
+      "operation": "build",
+      "command": [
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/cap512-compiler",
+        "build",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "-o",
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/head/text"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/cap512-compiler",
+          "build",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "-o",
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/head/text"
+        ],
+        "wall_s": 24.676522796000427,
+        "stdout": "",
+        "stderr": "",
+        "returncode": 0
+      }
+    },
+    {
+      "case": "fnmatch",
+      "batch": "warmup",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/cap512-compiler",
+        "run",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "fnmatch",
+        "1000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/cap512-compiler",
+          "run",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "fnmatch",
+          "1000"
+        ],
+        "wall_s": 15.003653501000372,
+        "stdout": "6000\n",
+        "stderr": "seconds 0.05670358800034592\n",
+        "returncode": 0,
+        "cpu_s": 14.993348999999997,
+        "loop_s": 0.05670358800034592
+      }
+    },
+    {
+      "case": "fnmatch",
+      "batch": "warmup",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/head/text",
+        "fnmatch",
+        "1000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/head/text",
+          "fnmatch",
+          "1000"
+        ],
+        "wall_s": 0.07913273200028925,
+        "stdout": "6000\n",
+        "stderr": "seconds 0.07144113899994409\n",
+        "returncode": 0,
+        "cpu_s": 0.07842900000001007,
+        "loop_s": 0.07144113899994409
+      }
+    },
+    {
+      "case": "fnmatch",
+      "batch": "initial",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "fnmatch",
+        "1000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "fnmatch",
+          "1000"
+        ],
+        "wall_s": 0.13013538799987145,
+        "stdout": "6000\n",
+        "stderr": "seconds 0.09039253099945199\n",
+        "returncode": 0,
+        "cpu_s": 0.12926999999999733,
+        "loop_s": 0.09039253099945199
+      }
+    },
+    {
+      "case": "fnmatch",
+      "batch": "initial",
+      "operation": "build",
+      "command": [
+        "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+        "build",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "-o",
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/base/text"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+          "build",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "-o",
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/base/text"
+        ],
+        "wall_s": 18.044058313000278,
+        "stdout": "",
+        "stderr": "",
+        "returncode": 0
+      }
+    },
+    {
+      "case": "fnmatch",
+      "batch": "initial",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "fnmatch",
+        "1000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+          "run",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "fnmatch",
+          "1000"
+        ],
+        "wall_s": 6.731465206999928,
+        "stdout": "6000\n",
+        "stderr": "seconds 0.07150684900079796\n",
+        "returncode": 0,
+        "cpu_s": 6.724849999999993,
+        "loop_s": 0.07150684900079796
+      }
+    },
+    {
+      "case": "fnmatch",
+      "batch": "initial",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/base/text",
+        "fnmatch",
+        "1000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/base/text",
+          "fnmatch",
+          "1000"
+        ],
+        "wall_s": 0.0669896310000695,
+        "stdout": "6000\n",
+        "stderr": "seconds 0.058563626000250224\n",
+        "returncode": 0,
+        "cpu_s": 0.06467900000001015,
+        "loop_s": 0.058563626000250224
+      }
+    },
+    {
+      "case": "fnmatch",
+      "batch": "initial",
+      "operation": "build",
+      "command": [
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/cap512-compiler",
+        "build",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "-o",
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/head/text"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/cap512-compiler",
+          "build",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "-o",
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/head/text"
+        ],
+        "wall_s": 22.20590968399938,
+        "stdout": "",
+        "stderr": "",
+        "returncode": 0
+      }
+    },
+    {
+      "case": "fnmatch",
+      "batch": "initial",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/cap512-compiler",
+        "run",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "fnmatch",
+        "1000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/cap512-compiler",
+          "run",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "fnmatch",
+          "1000"
+        ],
+        "wall_s": 4.152377254000385,
+        "stdout": "6000\n",
+        "stderr": "seconds 0.05861811799968564\n",
+        "returncode": 0,
+        "cpu_s": 4.1501230000000024,
+        "loop_s": 0.05861811799968564
+      }
+    },
+    {
+      "case": "fnmatch",
+      "batch": "initial",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/head/text",
+        "fnmatch",
+        "1000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/head/text",
+          "fnmatch",
+          "1000"
+        ],
+        "wall_s": 0.04552359900026204,
+        "stdout": "6000\n",
+        "stderr": "seconds 0.04026191200046014\n",
+        "returncode": 0,
+        "cpu_s": 0.04501699999999609,
+        "loop_s": 0.04026191200046014
+      }
+    },
+    {
+      "case": "fnmatch",
+      "batch": "initial",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "fnmatch",
+        "1000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "fnmatch",
+          "1000"
+        ],
+        "wall_s": 0.13737803600088228,
+        "stdout": "6000\n",
+        "stderr": "seconds 0.08682724700065592\n",
+        "returncode": 0,
+        "cpu_s": 0.13563500000000817,
+        "loop_s": 0.08682724700065592
+      }
+    },
+    {
+      "case": "fnmatch",
+      "batch": "initial",
+      "operation": "build",
+      "command": [
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/cap512-compiler",
+        "build",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "-o",
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/head/text"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/cap512-compiler",
+          "build",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "-o",
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/head/text"
+        ],
+        "wall_s": 18.98123872100041,
+        "stdout": "",
+        "stderr": "",
+        "returncode": 0
+      }
+    },
+    {
+      "case": "fnmatch",
+      "batch": "initial",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/cap512-compiler",
+        "run",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "fnmatch",
+        "1000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/cap512-compiler",
+          "run",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "fnmatch",
+          "1000"
+        ],
+        "wall_s": 4.29791644099987,
+        "stdout": "6000\n",
+        "stderr": "seconds 0.055924304000654956\n",
+        "returncode": 0,
+        "cpu_s": 4.294866999999991,
+        "loop_s": 0.055924304000654956
+      }
+    },
+    {
+      "case": "fnmatch",
+      "batch": "initial",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/head/text",
+        "fnmatch",
+        "1000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/head/text",
+          "fnmatch",
+          "1000"
+        ],
+        "wall_s": 0.053103786000065156,
+        "stdout": "6000\n",
+        "stderr": "seconds 0.04708994500015251\n",
+        "returncode": 0,
+        "cpu_s": 0.05145300000000619,
+        "loop_s": 0.04708994500015251
+      }
+    },
+    {
+      "case": "fnmatch",
+      "batch": "initial",
+      "operation": "build",
+      "command": [
+        "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+        "build",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "-o",
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/base/text"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+          "build",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "-o",
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/base/text"
+        ],
+        "wall_s": 15.054212816000472,
+        "stdout": "",
+        "stderr": "",
+        "returncode": 0
+      }
+    },
+    {
+      "case": "fnmatch",
+      "batch": "initial",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "fnmatch",
+        "1000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+          "run",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "fnmatch",
+          "1000"
+        ],
+        "wall_s": 3.9361962760003735,
+        "stdout": "6000\n",
+        "stderr": "seconds 0.05781558099988615\n",
+        "returncode": 0,
+        "cpu_s": 3.93357399999999,
+        "loop_s": 0.05781558099988615
+      }
+    },
+    {
+      "case": "fnmatch",
+      "batch": "initial",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/base/text",
+        "fnmatch",
+        "1000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/base/text",
+          "fnmatch",
+          "1000"
+        ],
+        "wall_s": 0.06963471199924243,
+        "stdout": "6000\n",
+        "stderr": "seconds 0.06338915600008477\n",
+        "returncode": 0,
+        "cpu_s": 0.06848400000000687,
+        "loop_s": 0.06338915600008477
+      }
+    },
+    {
+      "case": "fnmatch",
+      "batch": "initial",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "fnmatch",
+        "1000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "fnmatch",
+          "1000"
+        ],
+        "wall_s": 0.12692006699944614,
+        "stdout": "6000\n",
+        "stderr": "seconds 0.08682990599936602\n",
+        "returncode": 0,
+        "cpu_s": 0.12630999999999037,
+        "loop_s": 0.08682990599936602
+      }
+    },
+    {
+      "case": "fnmatch",
+      "batch": "initial",
+      "operation": "build",
+      "command": [
+        "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+        "build",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "-o",
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/base/text"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+          "build",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "-o",
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/base/text"
+        ],
+        "wall_s": 18.71025395199922,
+        "stdout": "",
+        "stderr": "",
+        "returncode": 0
+      }
+    },
+    {
+      "case": "fnmatch",
+      "batch": "initial",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "fnmatch",
+        "1000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+          "run",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "fnmatch",
+          "1000"
+        ],
+        "wall_s": 4.11808202300017,
+        "stdout": "6000\n",
+        "stderr": "seconds 0.056417868000607996\n",
+        "returncode": 0,
+        "cpu_s": 4.115698999999976,
+        "loop_s": 0.056417868000607996
+      }
+    },
+    {
+      "case": "fnmatch",
+      "batch": "initial",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/base/text",
+        "fnmatch",
+        "1000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/base/text",
+          "fnmatch",
+          "1000"
+        ],
+        "wall_s": 0.04218362700066791,
+        "stdout": "6000\n",
+        "stderr": "seconds 0.03759481300039624\n",
+        "returncode": 0,
+        "cpu_s": 0.041562000000020305,
+        "loop_s": 0.03759481300039624
+      }
+    },
+    {
+      "case": "fnmatch",
+      "batch": "initial",
+      "operation": "build",
+      "command": [
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/cap512-compiler",
+        "build",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "-o",
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/head/text"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/cap512-compiler",
+          "build",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "-o",
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/head/text"
+        ],
+        "wall_s": 13.26336824000009,
+        "stdout": "",
+        "stderr": "",
+        "returncode": 0
+      }
+    },
+    {
+      "case": "fnmatch",
+      "batch": "initial",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/cap512-compiler",
+        "run",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "fnmatch",
+        "1000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/cap512-compiler",
+          "run",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "fnmatch",
+          "1000"
+        ],
+        "wall_s": 3.552609610000218,
+        "stdout": "6000\n",
+        "stderr": "seconds 0.04941676999987976\n",
+        "returncode": 0,
+        "cpu_s": 3.5502819999999993,
+        "loop_s": 0.04941676999987976
+      }
+    },
+    {
+      "case": "fnmatch",
+      "batch": "initial",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/head/text",
+        "fnmatch",
+        "1000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/head/text",
+          "fnmatch",
+          "1000"
+        ],
+        "wall_s": 0.050127352999879804,
+        "stdout": "6000\n",
+        "stderr": "seconds 0.04308744399986608\n",
+        "returncode": 0,
+        "cpu_s": 0.04783500000000185,
+        "loop_s": 0.04308744399986608
+      }
+    },
+    {
+      "case": "fnmatch",
+      "batch": "replication",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "fnmatch",
+        "1000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "fnmatch",
+          "1000"
+        ],
+        "wall_s": 0.12706478699965373,
+        "stdout": "6000\n",
+        "stderr": "seconds 0.08242094900015218\n",
+        "returncode": 0,
+        "cpu_s": 0.12519800000000636,
+        "loop_s": 0.08242094900015218
+      }
+    },
+    {
+      "case": "fnmatch",
+      "batch": "replication",
+      "operation": "build",
+      "command": [
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/cap512-compiler",
+        "build",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "-o",
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/head/text"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/cap512-compiler",
+          "build",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "-o",
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/head/text"
+        ],
+        "wall_s": 13.943443099999968,
+        "stdout": "",
+        "stderr": "",
+        "returncode": 0
+      }
+    },
+    {
+      "case": "fnmatch",
+      "batch": "replication",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/cap512-compiler",
+        "run",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "fnmatch",
+        "1000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/cap512-compiler",
+          "run",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "fnmatch",
+          "1000"
+        ],
+        "wall_s": 4.689314321000893,
+        "stdout": "6000\n",
+        "stderr": "seconds 0.08965511199949106\n",
+        "returncode": 0,
+        "cpu_s": 4.631696000000008,
+        "loop_s": 0.08965511199949106
+      }
+    },
+    {
+      "case": "fnmatch",
+      "batch": "replication",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/head/text",
+        "fnmatch",
+        "1000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/head/text",
+          "fnmatch",
+          "1000"
+        ],
+        "wall_s": 0.056521168000472244,
+        "stdout": "6000\n",
+        "stderr": "seconds 0.048479523999958474\n",
+        "returncode": 0,
+        "cpu_s": 0.054712999999991574,
+        "loop_s": 0.048479523999958474
+      }
+    },
+    {
+      "case": "fnmatch",
+      "batch": "replication",
+      "operation": "build",
+      "command": [
+        "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+        "build",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "-o",
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/base/text"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+          "build",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "-o",
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/base/text"
+        ],
+        "wall_s": 17.292033554000227,
+        "stdout": "",
+        "stderr": "",
+        "returncode": 0
+      }
+    },
+    {
+      "case": "fnmatch",
+      "batch": "replication",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "fnmatch",
+        "1000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+          "run",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "fnmatch",
+          "1000"
+        ],
+        "wall_s": 4.7365368820001095,
+        "stdout": "6000\n",
+        "stderr": "seconds 0.044555147999744804\n",
+        "returncode": 0,
+        "cpu_s": 4.731192999999999,
+        "loop_s": 0.044555147999744804
+      }
+    },
+    {
+      "case": "fnmatch",
+      "batch": "replication",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/base/text",
+        "fnmatch",
+        "1000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/base/text",
+          "fnmatch",
+          "1000"
+        ],
+        "wall_s": 0.04823012799988646,
+        "stdout": "6000\n",
+        "stderr": "seconds 0.04118254100012564\n",
+        "returncode": 0,
+        "cpu_s": 0.047169999999997714,
+        "loop_s": 0.04118254100012564
+      }
+    },
+    {
+      "case": "fnmatch",
+      "batch": "replication",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "fnmatch",
+        "1000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "fnmatch",
+          "1000"
+        ],
+        "wall_s": 0.1135586250002234,
+        "stdout": "6000\n",
+        "stderr": "seconds 0.0783879419996083\n",
+        "returncode": 0,
+        "cpu_s": 0.11170400000000225,
+        "loop_s": 0.0783879419996083
+      }
+    },
+    {
+      "case": "fnmatch",
+      "batch": "replication",
+      "operation": "build",
+      "command": [
+        "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+        "build",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "-o",
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/base/text"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+          "build",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "-o",
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/base/text"
+        ],
+        "wall_s": 16.180505932000415,
+        "stdout": "",
+        "stderr": "",
+        "returncode": 0
+      }
+    },
+    {
+      "case": "fnmatch",
+      "batch": "replication",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "fnmatch",
+        "1000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+          "run",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "fnmatch",
+          "1000"
+        ],
+        "wall_s": 3.741591113999675,
+        "stdout": "6000\n",
+        "stderr": "seconds 0.04898839899942686\n",
+        "returncode": 0,
+        "cpu_s": 3.7395290000000143,
+        "loop_s": 0.04898839899942686
+      }
+    },
+    {
+      "case": "fnmatch",
+      "batch": "replication",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/base/text",
+        "fnmatch",
+        "1000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/base/text",
+          "fnmatch",
+          "1000"
+        ],
+        "wall_s": 0.04938413000036235,
+        "stdout": "6000\n",
+        "stderr": "seconds 0.04335259999970731\n",
+        "returncode": 0,
+        "cpu_s": 0.047642999999982116,
+        "loop_s": 0.04335259999970731
+      }
+    },
+    {
+      "case": "fnmatch",
+      "batch": "replication",
+      "operation": "build",
+      "command": [
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/cap512-compiler",
+        "build",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "-o",
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/head/text"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/cap512-compiler",
+          "build",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "-o",
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/head/text"
+        ],
+        "wall_s": 14.844058263000079,
+        "stdout": "",
+        "stderr": "",
+        "returncode": 0
+      }
+    },
+    {
+      "case": "fnmatch",
+      "batch": "replication",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/cap512-compiler",
+        "run",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "fnmatch",
+        "1000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/cap512-compiler",
+          "run",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "fnmatch",
+          "1000"
+        ],
+        "wall_s": 4.6491085869993185,
+        "stdout": "6000\n",
+        "stderr": "seconds 0.07921050500044657\n",
+        "returncode": 0,
+        "cpu_s": 4.641383999999998,
+        "loop_s": 0.07921050500044657
+      }
+    },
+    {
+      "case": "fnmatch",
+      "batch": "replication",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/head/text",
+        "fnmatch",
+        "1000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/head/text",
+          "fnmatch",
+          "1000"
+        ],
+        "wall_s": 0.1053833649993976,
+        "stdout": "6000\n",
+        "stderr": "seconds 0.09067296800003533\n",
+        "returncode": 0,
+        "cpu_s": 0.10175000000002399,
+        "loop_s": 0.09067296800003533
+      }
+    },
+    {
+      "case": "fnmatch",
+      "batch": "replication",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "fnmatch",
+        "1000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "fnmatch",
+          "1000"
+        ],
+        "wall_s": 0.19866554600048403,
+        "stdout": "6000\n",
+        "stderr": "seconds 0.10687640299966006\n",
+        "returncode": 0,
+        "cpu_s": 0.19353999999994542,
+        "loop_s": 0.10687640299966006
+      }
+    },
+    {
+      "case": "fnmatch",
+      "batch": "replication",
+      "operation": "build",
+      "command": [
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/cap512-compiler",
+        "build",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "-o",
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/head/text"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/cap512-compiler",
+          "build",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "-o",
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/head/text"
+        ],
+        "wall_s": 14.85176536400013,
+        "stdout": "",
+        "stderr": "",
+        "returncode": 0
+      }
+    },
+    {
+      "case": "fnmatch",
+      "batch": "replication",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/cap512-compiler",
+        "run",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "fnmatch",
+        "1000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/cap512-compiler",
+          "run",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "fnmatch",
+          "1000"
+        ],
+        "wall_s": 3.8224165849997007,
+        "stdout": "6000\n",
+        "stderr": "seconds 0.0651568600005703\n",
+        "returncode": 0,
+        "cpu_s": 3.820294999999996,
+        "loop_s": 0.0651568600005703
+      }
+    },
+    {
+      "case": "fnmatch",
+      "batch": "replication",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/head/text",
+        "fnmatch",
+        "1000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/head/text",
+          "fnmatch",
+          "1000"
+        ],
+        "wall_s": 0.0589910750004492,
+        "stdout": "6000\n",
+        "stderr": "seconds 0.05316265300007217\n",
+        "returncode": 0,
+        "cpu_s": 0.05707400000004892,
+        "loop_s": 0.05316265300007217
+      }
+    },
+    {
+      "case": "fnmatch",
+      "batch": "replication",
+      "operation": "build",
+      "command": [
+        "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+        "build",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "-o",
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/base/text"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+          "build",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "-o",
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/base/text"
+        ],
+        "wall_s": 13.031076410999958,
+        "stdout": "",
+        "stderr": "",
+        "returncode": 0
+      }
+    },
+    {
+      "case": "fnmatch",
+      "batch": "replication",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "fnmatch",
+        "1000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+          "run",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "fnmatch",
+          "1000"
+        ],
+        "wall_s": 4.444213615000081,
+        "stdout": "6000\n",
+        "stderr": "seconds 0.04763435500080959\n",
+        "returncode": 0,
+        "cpu_s": 4.440496999999988,
+        "loop_s": 0.04763435500080959
+      }
+    },
+    {
+      "case": "fnmatch",
+      "batch": "replication",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/base/text",
+        "fnmatch",
+        "1000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/base/text",
+          "fnmatch",
+          "1000"
+        ],
+        "wall_s": 0.04659564199937449,
+        "stdout": "6000\n",
+        "stderr": "seconds 0.041218360000129906\n",
+        "returncode": 0,
+        "cpu_s": 0.04552799999998847,
+        "loop_s": 0.041218360000129906
+      }
+    },
+    {
+      "case": "json",
+      "batch": "oracle",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "json",
+        "6000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "json",
+          "6000"
+        ],
+        "wall_s": 0.131483541000307,
+        "stdout": "1932000\n",
+        "stderr": "seconds 0.07087191400023585\n",
+        "returncode": 0,
+        "cpu_s": 0.12953200000000464,
+        "loop_s": 0.07087191400023585
+      }
+    },
+    {
+      "case": "json",
+      "batch": "warmup",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "json",
+        "6000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+          "run",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "json",
+          "6000"
+        ],
+        "wall_s": 4.46841075500015,
+        "stdout": "1932000\n",
+        "stderr": "seconds 0.0433746799999426\n",
+        "returncode": 0,
+        "cpu_s": 4.465460999999983,
+        "loop_s": 0.0433746799999426
+      }
+    },
+    {
+      "case": "json",
+      "batch": "warmup",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/base/text",
+        "json",
+        "6000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/base/text",
+          "json",
+          "6000"
+        ],
+        "wall_s": 0.04531625899926439,
+        "stdout": "1932000\n",
+        "stderr": "seconds 0.03794115399978182\n",
+        "returncode": 0,
+        "cpu_s": 0.0444910000000025,
+        "loop_s": 0.03794115399978182
+      }
+    },
+    {
+      "case": "json",
+      "batch": "warmup",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/cap512-compiler",
+        "run",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "json",
+        "6000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/cap512-compiler",
+          "run",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "json",
+          "6000"
+        ],
+        "wall_s": 3.9064148659999773,
+        "stdout": "1932000\n",
+        "stderr": "seconds 0.036394561000633985\n",
+        "returncode": 0,
+        "cpu_s": 3.9007910000000052,
+        "loop_s": 0.036394561000633985
+      }
+    },
+    {
+      "case": "json",
+      "batch": "warmup",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/head/text",
+        "json",
+        "6000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/head/text",
+          "json",
+          "6000"
+        ],
+        "wall_s": 0.04657826199945703,
+        "stdout": "1932000\n",
+        "stderr": "seconds 0.039488245000029565\n",
+        "returncode": 0,
+        "cpu_s": 0.04493099999999295,
+        "loop_s": 0.039488245000029565
+      }
+    },
+    {
+      "case": "json",
+      "batch": "initial",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "json",
+        "6000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "json",
+          "6000"
+        ],
+        "wall_s": 0.11276698100027716,
+        "stdout": "1932000\n",
+        "stderr": "seconds 0.0775721270001668\n",
+        "returncode": 0,
+        "cpu_s": 0.11112800000000789,
+        "loop_s": 0.0775721270001668
+      }
+    },
+    {
+      "case": "json",
+      "batch": "initial",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "json",
+        "6000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+          "run",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "json",
+          "6000"
+        ],
+        "wall_s": 3.5733049509999546,
+        "stdout": "1932000\n",
+        "stderr": "seconds 0.03665482899941708\n",
+        "returncode": 0,
+        "cpu_s": 3.5712279999999925,
+        "loop_s": 0.03665482899941708
+      }
+    },
+    {
+      "case": "json",
+      "batch": "initial",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/base/text",
+        "json",
+        "6000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/base/text",
+          "json",
+          "6000"
+        ],
+        "wall_s": 0.040055862000372144,
+        "stdout": "1932000\n",
+        "stderr": "seconds 0.03570558200044616\n",
+        "returncode": 0,
+        "cpu_s": 0.03956000000004778,
+        "loop_s": 0.03570558200044616
+      }
+    },
+    {
+      "case": "json",
+      "batch": "initial",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/cap512-compiler",
+        "run",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "json",
+        "6000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/cap512-compiler",
+          "run",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "json",
+          "6000"
+        ],
+        "wall_s": 3.5661070229998586,
+        "stdout": "1932000\n",
+        "stderr": "seconds 0.04193044799922063\n",
+        "returncode": 0,
+        "cpu_s": 3.5639329999999934,
+        "loop_s": 0.04193044799922063
+      }
+    },
+    {
+      "case": "json",
+      "batch": "initial",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/head/text",
+        "json",
+        "6000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/head/text",
+          "json",
+          "6000"
+        ],
+        "wall_s": 0.04121035000025586,
+        "stdout": "1932000\n",
+        "stderr": "seconds 0.03689092900003743\n",
+        "returncode": 0,
+        "cpu_s": 0.04054199999995589,
+        "loop_s": 0.03689092900003743
+      }
+    },
+    {
+      "case": "json",
+      "batch": "initial",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "json",
+        "6000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "json",
+          "6000"
+        ],
+        "wall_s": 0.10129175500060228,
+        "stdout": "1932000\n",
+        "stderr": "seconds 0.06337370400069631\n",
+        "returncode": 0,
+        "cpu_s": 0.09948800000000801,
+        "loop_s": 0.06337370400069631
+      }
+    },
+    {
+      "case": "json",
+      "batch": "initial",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/cap512-compiler",
+        "run",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "json",
+        "6000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/cap512-compiler",
+          "run",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "json",
+          "6000"
+        ],
+        "wall_s": 4.566272463000132,
+        "stdout": "1932000\n",
+        "stderr": "seconds 0.04863336200014601\n",
+        "returncode": 0,
+        "cpu_s": 4.562939000000034,
+        "loop_s": 0.04863336200014601
+      }
+    },
+    {
+      "case": "json",
+      "batch": "initial",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/head/text",
+        "json",
+        "6000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/head/text",
+          "json",
+          "6000"
+        ],
+        "wall_s": 0.046010836999812454,
+        "stdout": "1932000\n",
+        "stderr": "seconds 0.03912473299988051\n",
+        "returncode": 0,
+        "cpu_s": 0.044293999999993616,
+        "loop_s": 0.03912473299988051
+      }
+    },
+    {
+      "case": "json",
+      "batch": "initial",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "json",
+        "6000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+          "run",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "json",
+          "6000"
+        ],
+        "wall_s": 3.960001979000481,
+        "stdout": "1932000\n",
+        "stderr": "seconds 0.039610525999705715\n",
+        "returncode": 0,
+        "cpu_s": 3.9553659999999873,
+        "loop_s": 0.039610525999705715
+      }
+    },
+    {
+      "case": "json",
+      "batch": "initial",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/base/text",
+        "json",
+        "6000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/base/text",
+          "json",
+          "6000"
+        ],
+        "wall_s": 0.04563699799928145,
+        "stdout": "1932000\n",
+        "stderr": "seconds 0.04114834099982545\n",
+        "returncode": 0,
+        "cpu_s": 0.045081000000024574,
+        "loop_s": 0.04114834099982545
+      }
+    },
+    {
+      "case": "json",
+      "batch": "initial",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "json",
+        "6000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "json",
+          "6000"
+        ],
+        "wall_s": 0.10567691500000365,
+        "stdout": "1932000\n",
+        "stderr": "seconds 0.06528176900064864\n",
+        "returncode": 0,
+        "cpu_s": 0.10374899999999343,
+        "loop_s": 0.06528176900064864
+      }
+    },
+    {
+      "case": "json",
+      "batch": "initial",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "json",
+        "6000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+          "run",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "json",
+          "6000"
+        ],
+        "wall_s": 4.778493902000264,
+        "stdout": "1932000\n",
+        "stderr": "seconds 0.0682482849997541\n",
+        "returncode": 0,
+        "cpu_s": 4.776164000000005,
+        "loop_s": 0.0682482849997541
+      }
+    },
+    {
+      "case": "json",
+      "batch": "initial",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/base/text",
+        "json",
+        "6000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/base/text",
+          "json",
+          "6000"
+        ],
+        "wall_s": 0.05284898300033092,
+        "stdout": "1932000\n",
+        "stderr": "seconds 0.047686091999821656\n",
+        "returncode": 0,
+        "cpu_s": 0.05221699999997398,
+        "loop_s": 0.047686091999821656
+      }
+    },
+    {
+      "case": "json",
+      "batch": "initial",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/cap512-compiler",
+        "run",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "json",
+        "6000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/cap512-compiler",
+          "run",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "json",
+          "6000"
+        ],
+        "wall_s": 3.5191350519999105,
+        "stdout": "1932000\n",
+        "stderr": "seconds 0.04297517800023343\n",
+        "returncode": 0,
+        "cpu_s": 3.5159690000000143,
+        "loop_s": 0.04297517800023343
+      }
+    },
+    {
+      "case": "json",
+      "batch": "initial",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/head/text",
+        "json",
+        "6000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/head/text",
+          "json",
+          "6000"
+        ],
+        "wall_s": 0.04916140000023006,
+        "stdout": "1932000\n",
+        "stderr": "seconds 0.04046894600014639\n",
+        "returncode": 0,
+        "cpu_s": 0.04665700000001749,
+        "loop_s": 0.04046894600014639
+      }
+    },
+    {
+      "case": "json",
+      "batch": "replication",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "json",
+        "6000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "json",
+          "6000"
+        ],
+        "wall_s": 0.107946899000126,
+        "stdout": "1932000\n",
+        "stderr": "seconds 0.06407081399993331\n",
+        "returncode": 0,
+        "cpu_s": 0.10725199999997237,
+        "loop_s": 0.06407081399993331
+      }
+    },
+    {
+      "case": "json",
+      "batch": "replication",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/cap512-compiler",
+        "run",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "json",
+        "6000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/cap512-compiler",
+          "run",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "json",
+          "6000"
+        ],
+        "wall_s": 4.078359019000345,
+        "stdout": "1932000\n",
+        "stderr": "seconds 0.04086299800019333\n",
+        "returncode": 0,
+        "cpu_s": 4.076356999999984,
+        "loop_s": 0.04086299800019333
+      }
+    },
+    {
+      "case": "json",
+      "batch": "replication",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/head/text",
+        "json",
+        "6000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/head/text",
+          "json",
+          "6000"
+        ],
+        "wall_s": 0.06257032499979687,
+        "stdout": "1932000\n",
+        "stderr": "seconds 0.05446694299916999\n",
+        "returncode": 0,
+        "cpu_s": 0.060270000000000934,
+        "loop_s": 0.05446694299916999
+      }
+    },
+    {
+      "case": "json",
+      "batch": "replication",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "json",
+        "6000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+          "run",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "json",
+          "6000"
+        ],
+        "wall_s": 3.69955341900004,
+        "stdout": "1932000\n",
+        "stderr": "seconds 0.04075442599969392\n",
+        "returncode": 0,
+        "cpu_s": 3.697532999999998,
+        "loop_s": 0.04075442599969392
+      }
+    },
+    {
+      "case": "json",
+      "batch": "replication",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/base/text",
+        "json",
+        "6000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/base/text",
+          "json",
+          "6000"
+        ],
+        "wall_s": 0.04966795100062882,
+        "stdout": "1932000\n",
+        "stderr": "seconds 0.04453484800069418\n",
+        "returncode": 0,
+        "cpu_s": 0.0489930000000367,
+        "loop_s": 0.04453484800069418
+      }
+    },
+    {
+      "case": "json",
+      "batch": "replication",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "json",
+        "6000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "json",
+          "6000"
+        ],
+        "wall_s": 0.1006623289995332,
+        "stdout": "1932000\n",
+        "stderr": "seconds 0.06515763099923788\n",
+        "returncode": 0,
+        "cpu_s": 0.09892899999998228,
+        "loop_s": 0.06515763099923788
+      }
+    },
+    {
+      "case": "json",
+      "batch": "replication",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "json",
+        "6000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+          "run",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "json",
+          "6000"
+        ],
+        "wall_s": 3.476668700999653,
+        "stdout": "1932000\n",
+        "stderr": "seconds 0.045668149000448466\n",
+        "returncode": 0,
+        "cpu_s": 3.4744440000000107,
+        "loop_s": 0.045668149000448466
+      }
+    },
+    {
+      "case": "json",
+      "batch": "replication",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/base/text",
+        "json",
+        "6000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/base/text",
+          "json",
+          "6000"
+        ],
+        "wall_s": 0.045314774999496876,
+        "stdout": "1932000\n",
+        "stderr": "seconds 0.03824687500036816\n",
+        "returncode": 0,
+        "cpu_s": 0.043351999999998725,
+        "loop_s": 0.03824687500036816
+      }
+    },
+    {
+      "case": "json",
+      "batch": "replication",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/cap512-compiler",
+        "run",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "json",
+        "6000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/cap512-compiler",
+          "run",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "json",
+          "6000"
+        ],
+        "wall_s": 3.4311263230001714,
+        "stdout": "1932000\n",
+        "stderr": "seconds 0.04242574300042179\n",
+        "returncode": 0,
+        "cpu_s": 3.4291420000000183,
+        "loop_s": 0.04242574300042179
+      }
+    },
+    {
+      "case": "json",
+      "batch": "replication",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/head/text",
+        "json",
+        "6000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/head/text",
+          "json",
+          "6000"
+        ],
+        "wall_s": 0.04237280199959059,
+        "stdout": "1932000\n",
+        "stderr": "seconds 0.03606933300034143\n",
+        "returncode": 0,
+        "cpu_s": 0.0403919999999669,
+        "loop_s": 0.03606933300034143
+      }
+    },
+    {
+      "case": "json",
+      "batch": "replication",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "json",
+        "6000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "json",
+          "6000"
+        ],
+        "wall_s": 0.13583571999970445,
+        "stdout": "1932000\n",
+        "stderr": "seconds 0.09630628699960653\n",
+        "returncode": 0,
+        "cpu_s": 0.13412400000003188,
+        "loop_s": 0.09630628699960653
+      }
+    },
+    {
+      "case": "json",
+      "batch": "replication",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/cap512-compiler",
+        "run",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "json",
+        "6000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/cap512-compiler",
+          "run",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "json",
+          "6000"
+        ],
+        "wall_s": 4.0305677779997495,
+        "stdout": "1932000\n",
+        "stderr": "seconds 0.09329952699954447\n",
+        "returncode": 0,
+        "cpu_s": 4.023651999999952,
+        "loop_s": 0.09329952699954447
+      }
+    },
+    {
+      "case": "json",
+      "batch": "replication",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/head/text",
+        "json",
+        "6000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/head/text",
+          "json",
+          "6000"
+        ],
+        "wall_s": 0.050284662999729335,
+        "stdout": "1932000\n",
+        "stderr": "seconds 0.04070742699968832\n",
+        "returncode": 0,
+        "cpu_s": 0.046669000000024496,
+        "loop_s": 0.04070742699968832
+      }
+    },
+    {
+      "case": "json",
+      "batch": "replication",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "json",
+        "6000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+          "run",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "json",
+          "6000"
+        ],
+        "wall_s": 3.784395485999994,
+        "stdout": "1932000\n",
+        "stderr": "seconds 0.07189651199951186\n",
+        "returncode": 0,
+        "cpu_s": 3.781422000000015,
+        "loop_s": 0.07189651199951186
+      }
+    },
+    {
+      "case": "json",
+      "batch": "replication",
+      "operation": "run",
+      "command": [
+        "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/base/text",
+        "json",
+        "6000"
+      ],
+      "result": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/base/text",
+          "json",
+          "6000"
+        ],
+        "wall_s": 0.04636357399976987,
+        "stdout": "1932000\n",
+        "stderr": "seconds 0.03938977899997553\n",
+        "returncode": 0,
+        "cpu_s": 0.04436299999995974,
+        "loop_s": 0.03938977899997553
+      }
+    }
+  ],
+  "capture_method": "Original smoke helpers and batch are unmodified; wrappers retain returned records and checkpoint after each completed process, outside the helper's measured interval.",
+  "runtime_cache_artifacts": {
+    "base": {
+      "cache/runtime-py-a4ce378d-ebed0f0f649df53d.bc": {
+        "sha256": "38513b589fbf13baaf965c5cce6d0b8ee43deda5f21da086794dcc881c37b8a3",
+        "bytes": 804496
+      },
+      "cache/runtime-py-a4ce378d-ebed0f0f649df53d.o": {
+        "sha256": "ab1440eb91e3294c2993f097e829c5a104099708a1609876f3aebed74524ed65",
+        "bytes": 624568
+      },
+      "cache/runtime-py-a4ce378d-ebed0f0f649df53d.o.64-759bc741.tmpfqrgn3j4.tmp": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      },
+      "cache/runtime-py-a4ce378d-ebed0f0f649df53d.so": {
+        "sha256": "e9b69e7c922f202531a980c8896659530d28b24b2a109ee0757b90080a8aeab4",
+        "bytes": 486472
+      },
+      "cache/runtime-py-a4ce378d-ebed0f0f649df53d.target": {
+        "sha256": "d731095dd9678c2b6e0a5d79092eda16a17c05c2ff17f27f00c2101e732c79e2",
+        "bytes": 140
+      },
+      "cache/runtime-py.hashes": {
+        "sha256": "b53cd6184fdaa3f2ebe8324656b50567c6e385741890d0434d65ee18ba2b0b27",
+        "bytes": 767
+      }
+    },
+    "head": {
+      "cache/runtime-py-8ee34273-9765e6c87adb6609.bc": {
+        "sha256": "38513b589fbf13baaf965c5cce6d0b8ee43deda5f21da086794dcc881c37b8a3",
+        "bytes": 804496
+      },
+      "cache/runtime-py-8ee34273-9765e6c87adb6609.o": {
+        "sha256": "ab1440eb91e3294c2993f097e829c5a104099708a1609876f3aebed74524ed65",
+        "bytes": 624568
+      },
+      "cache/runtime-py-8ee34273-9765e6c87adb6609.o.110-1f1dbf63.tmpk2_1h2s9.tmp": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      },
+      "cache/runtime-py-8ee34273-9765e6c87adb6609.so": {
+        "sha256": "e9b69e7c922f202531a980c8896659530d28b24b2a109ee0757b90080a8aeab4",
+        "bytes": 486472
+      },
+      "cache/runtime-py-8ee34273-9765e6c87adb6609.target": {
+        "sha256": "d731095dd9678c2b6e0a5d79092eda16a17c05c2ff17f27f00c2101e732c79e2",
+        "bytes": 140
+      },
+      "cache/runtime-py.hashes": {
+        "sha256": "343720bb628050117aa3f777aff83562a9c2403e8b8dd8963c257d1d9702f7ae",
+        "bytes": 767
+      }
+    }
+  }
+}

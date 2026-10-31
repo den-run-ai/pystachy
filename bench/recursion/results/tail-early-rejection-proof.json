@@ -1,0 +1,196 @@
+{
+  "scope": "Isolated exact-output early partial-root size rejection; no native or elapsed-performance conclusion yet.",
+  "base_commit": "aaec00cc81a862a2b29c117003e7c9cc73e1a3c1",
+  "base_tree": "2dd336a2a8f71d9a2c36d1fd233af24fee81c2a1",
+  "compiler_source_sha256": "22e3a0ae01262b4f2c8520e70a0f603721ba7cfc713ddfc1edb21d7378187d95",
+  "test_source_sha256": "91906926e3aa27f669955713b63b3a39c9abe6a70efc328c193b77269e768883",
+  "patch_sha256": {
+    "compiler.patch": "a9c50e8d607acb202ab6ebb581a2495412478f5ef7b24ef9a909d05550d8a933",
+    "test.patch": "bea6d493207336be3e967d87fb28901243d20a99221adbae56402a617a124fc2",
+    "experiment.patch": "52cb63d2f4f9ec5e1681d4572ad5ad9a000f90669e1956733e8cce2bd3d21f01"
+  },
+  "root_worktree_clean": true,
+  "consumed_input_count": 131,
+  "changed_consumed_inputs": [
+    "src/pystachy_compiler/optimizations.py"
+  ],
+  "common_library_runtime_identical_files": 88,
+  "own_home_attempt": {
+    "preserved_directory": "/workspace/scratch/e858f72517b9/partial-prefilter-experiment/own-library-home-attempt",
+    "difference": "Exactly one LLVM constant line containing the lib/types.py absolute filename and its corresponding length (103 versus 122); no normalization was applied.",
+    "resolved_for_literal_comparison_by": "Use identical current library/runtime home while importing the experiment compiler from its own worktree."
+  },
+  "module_equivalence": {
+    "mixed_text": {
+      "source": "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+      "source_sha256": "abcf4ba78bd62af42207230106b96f63b1a64758c1aa2831a49d0ba7781e6302",
+      "emitted": "/workspace/scratch/e858f72517b9/partial-prefilter-experiment/candidate-mixed_text.ll",
+      "emission_record": "/workspace/scratch/e858f72517b9/partial-prefilter-experiment/candidate-mixed_text.json",
+      "expected": "/workspace/scratch/e858f72517b9/perf-work/cap-native-experiment/current-text.ll",
+      "output_sha256": "259b376aaa98c7bfaf86baff8cebcd37fb9ce13ef5516528e18745cfdd0312aa",
+      "byte_identical": true
+    },
+    "ordinary_calls": {
+      "source": "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/ordinary_calls.py",
+      "source_sha256": "ecf346f4e65bab89564c52d864bd405641bc7689374a303b3a9f74bc8ab4df6c",
+      "emitted": "/workspace/scratch/e858f72517b9/partial-prefilter-experiment/candidate-ordinary_calls.ll",
+      "emission_record": "/workspace/scratch/e858f72517b9/partial-prefilter-experiment/candidate-ordinary_calls.json",
+      "expected": "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/aaec-ordinary_calls.ll",
+      "output_sha256": "cdaaaea9565e9da7628a66f858b6733e59c38ed5cea53182919695983288bcc3",
+      "byte_identical": true
+    },
+    "object_calls": {
+      "source": "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/object_calls.py",
+      "source_sha256": "4da3eeae714a896bb205a4d16e1d91d0bafad2ec58a3dee0d33cc90096de70af",
+      "emitted": "/workspace/scratch/e858f72517b9/partial-prefilter-experiment/candidate-object_calls.ll",
+      "emission_record": "/workspace/scratch/e858f72517b9/partial-prefilter-experiment/candidate-object_calls.json",
+      "expected": "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/aaec-object_calls.ll",
+      "output_sha256": "f80fbc9ccd43e357960853abccd50cf2e7409932e3ed001c638fe18022e73b89",
+      "byte_identical": true
+    },
+    "json_calls": {
+      "source": "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/json_calls.py",
+      "source_sha256": "04a3b45405ef1b96360dbe941e072e5922d8dcae39d8a5bd45745000ea47c9fc",
+      "emitted": "/workspace/scratch/e858f72517b9/partial-prefilter-experiment/candidate-json_calls.ll",
+      "emission_record": "/workspace/scratch/e858f72517b9/partial-prefilter-experiment/candidate-json_calls.json",
+      "expected": "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/aaec-json_calls.ll",
+      "output_sha256": "467d86c8d6e697f5f02b24808b00509cc04bfe2bd81bd688faedc9a89f4dc8a8",
+      "byte_identical": true
+    },
+    "json_warmed_short": {
+      "source": "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/json_warmed.py",
+      "source_sha256": "7a8a94314179ba0797632f7241cb9c6541d891c79ded006b444c8bfd9dfea6cf",
+      "emitted": "/workspace/scratch/e858f72517b9/partial-prefilter-experiment/candidate-json_warmed_short.ll",
+      "emission_record": "/workspace/scratch/e858f72517b9/partial-prefilter-experiment/candidate-json_warmed_short.json",
+      "expected": "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/aaec-json_warmed_short.ll",
+      "output_sha256": "9bd0ac2fb023832539633444e9a7baf241473e17b9095d5f02fa30eb3130e3fb",
+      "byte_identical": true
+    },
+    "json_warmed_long": {
+      "source": "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/json_warmed.py",
+      "source_sha256": "7a8a94314179ba0797632f7241cb9c6541d891c79ded006b444c8bfd9dfea6cf",
+      "emitted": "/workspace/scratch/e858f72517b9/partial-prefilter-experiment/candidate-json_warmed_short.ll",
+      "emission_record": "/workspace/scratch/e858f72517b9/partial-prefilter-experiment/candidate-json_warmed_short.json",
+      "expected": "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/aaec-json_warmed_long.ll",
+      "output_sha256": "9bd0ac2fb023832539633444e9a7baf241473e17b9095d5f02fa30eb3130e3fb",
+      "byte_identical": true
+    },
+    "json_file_calls": {
+      "source": "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/json_file_calls.py",
+      "source_sha256": "390c2742d4258e1b13d5c7449fe93e1f460917f8ac8616a121da9b6642ec83f5",
+      "emitted": "/workspace/scratch/e858f72517b9/partial-prefilter-experiment/candidate-json_file_calls.ll",
+      "emission_record": "/workspace/scratch/e858f72517b9/partial-prefilter-experiment/candidate-json_file_calls.json",
+      "expected": "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/aaec-json_file_calls.ll",
+      "output_sha256": "790affeddeb61651cf08e951ea4a83ae8b57dc611956e233d93d4c85228a0c02",
+      "byte_identical": true
+    }
+  },
+  "private_functions_identical": 42,
+  "helper_analysis_before": {
+    "recursion_partial": {
+      "calls_per_helper": 121,
+      "blocks": 7254,
+      "edges": 9908
+    },
+    "recursion_partial_child": {
+      "calls_per_helper": 64,
+      "blocks": 1136,
+      "edges": 1451
+    }
+  },
+  "helper_analysis_after": {
+    "recursion_partial": {
+      "calls_per_helper": 114,
+      "blocks": 3082,
+      "edges": 3752
+    },
+    "recursion_partial_child": {
+      "calls_per_helper": 64,
+      "blocks": 1136,
+      "edges": 1451
+    }
+  },
+  "avoided_oversized_roots": [
+    {
+      "helper": "recursion_returning",
+      "owner": "recursion_partial",
+      "function": "@m.functools$_lru_cache_wrapper-1._call.1",
+      "size": 817,
+      "blocks": 133,
+      "edges": 194,
+      "can_return_blocks": 132
+    },
+    {
+      "helper": "recursion_returning",
+      "owner": "recursion_partial",
+      "function": "@f.re$_sre$sre_count.1",
+      "size": 974,
+      "blocks": 182,
+      "edges": 262,
+      "can_return_blocks": 176
+    },
+    {
+      "helper": "recursion_returning",
+      "owner": "recursion_partial",
+      "function": "@f.re$_sre$sre_match.1",
+      "size": 9079,
+      "blocks": 1598,
+      "edges": 2383,
+      "can_return_blocks": 1565
+    },
+    {
+      "helper": "recursion_returning",
+      "owner": "recursion_partial",
+      "function": "@f.re$_sre$sre_count.2",
+      "size": 929,
+      "blocks": 170,
+      "edges": 246,
+      "can_return_blocks": 164
+    },
+    {
+      "helper": "recursion_returning",
+      "owner": "recursion_partial",
+      "function": "@f.re$_sre$sre_match.2",
+      "size": 8929,
+      "blocks": 1556,
+      "edges": 2327,
+      "can_return_blocks": 1523
+    },
+    {
+      "helper": "recursion_returning",
+      "owner": "recursion_partial",
+      "function": "@f.re$_compile_code",
+      "size": 1731,
+      "blocks": 288,
+      "edges": 403,
+      "can_return_blocks": 259
+    },
+    {
+      "helper": "recursion_returning",
+      "owner": "recursion_partial",
+      "function": "@f.re$_optimize_charset",
+      "size": 1220,
+      "blocks": 245,
+      "edges": 341,
+      "can_return_blocks": 232
+    }
+  ],
+  "avoided_root_blocks": 4172,
+  "avoided_root_edges": 6156,
+  "avoided_root_operations_and_slots": 23679,
+  "focused_test": {
+    "focused_exit": 0,
+    "control_exit": 1,
+    "expected_old_analysis_failure": true,
+    "ruff_exit": 0,
+    "seconds": 0.6403165989995614,
+    "test_sha256": "91906926e3aa27f669955713b63b3a39c9abe6a70efc328c193b77269e768883"
+  },
+  "git_diff_check_exit": 0,
+  "limitations": [
+    "Hosted emission durations are instrumentation/setup observations and are not treated as timing evidence.",
+    "The original native reserve edge includes allocation/GC costs; removing this analysis may move collection work elsewhere.",
+    "The native candidate build/profile and controlled timings remain owned by the performance agent and are not claimed here.",
+    "The same 768-root limit, partial/whole budgets, eligibility, generated function set and target modules are preserved."
+  ]
+}
