@@ -1,0 +1,7069 @@
+{
+  "schema": "pystachy-recursion-performance-v1",
+  "disposition": "completed candidate measurement",
+  "rejection_reason": null,
+  "created_utc": "2026-10-31T05:05:58.510648+00:00",
+  "raw_measurement_sha256": "d1829faa42bacabd03f6b8578e68d2261a666efed757d31e8d070eed97900147",
+  "tools": {
+    "python": "Python 3.13.16",
+    "llvm": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+    "valgrind": "valgrind-3.22.0"
+  },
+  "host": {
+    "platform": "Linux-6.18.57-x86_64-with-glibc2.39",
+    "cpu_affinity": 0,
+    "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+    "shared_host": true,
+    "hardware_instruction_counter": "perf_event_open returned ENOENT"
+  },
+  "source_identity": {
+    "manifest_reconstruction": "Merge common_source_input_sha256 with each variant's source_input_sha256_overrides. Complete-manifest hash is SHA256 of sorted compact JSON with separators comma and colon.",
+    "common_source_input_sha256": {
+      "Makefile": "9d9574c44902625ce0c79e94c31513548080b0d7543c2ba82e6c707f28708997",
+      "lib/_markupbase.py": "6a294b294582f55905d310b8df054019e94f37b17eba3414be4e2cb61d5851d1",
+      "lib/_pyrandom.py": "5b37918369c0e4becdac2d012ffe9e40e314a330ee9f7b3fe2ce4cd3a926ff09",
+      "lib/_pystachy__io.py": "77ee03b3a67f79f49c3fe30666f4f5077bd41069797c727529a230c4caa0a117",
+      "lib/_pystachy_abc.py": "9f6f717c077b2dbac22e8dc9793373b939615a33f2698aaddd81ed905e5a48f8",
+      "lib/_pystachy_atexit.py": "a5ff97e421a4a8fd782e08a0124bac6a7b27486fc279cb4384655bc4b208d60c",
+      "lib/_pystachy_binascii.py": "c8ca70973dc409011ba89749878a2a205780fdc907437bc08521be0e3d07f848",
+      "lib/_pystachy_codecs.py": "fe8380d756e383192028c6a65d652047e9abb9c08b51e15aba5b35e8cf678acf",
+      "lib/_pystachy_iterators.py": "61894584c1fda85936a740d4dafa2c5d631f9b05f5022fca8913e4ad0a84b27e",
+      "lib/_pystachy_itertools.py": "14f451cf7647016ad8105aa988b9cbabe4fe3f5a08f2710f6ed2db5d81a00566",
+      "lib/_pystachy_json_any.py": "392d432c6ef3679f36bd3a86b302fe71858ff2d261bc25863c1673bf58944016",
+      "lib/_pystachy_mappingproxy.py": "e1d04e45f0b12e0e29fba497adf16f77864154c9e175a40065d2fd73654be70c",
+      "lib/_pystachy_object.py": "6a21df25fa11b3c80a70d95f310760d86adaeecd4a63e767bde5b9ecde63ca9c",
+      "lib/_pystachy_range.py": "50df392f248e25a79896007a3b0a23741f8f5f56622e7c56060ba9612292f8b2",
+      "lib/_pystachy_re_specialized.py": "d09604c416700c3a7acd3a9f8c6f7536289c895b2e72393a9875e68ed92e45bf",
+      "lib/_pystachy_string.py": "2e87bb96489d12051446c1b59c2e4ee65543a14f15d8eff3465a43f2e1f51434",
+      "lib/_pystachy_struct.py": "2f224f07dd5a8db374dc2604257cc7c41a4caa7140c5d2ddf30a34bc8f88f1d6",
+      "lib/_pystachy_thread.py": "62e5617d4f19c2deb6d714dbcc92ebaa6a97a78a596fc7d8c56c088cc4ad0f37",
+      "lib/_pystachy_types.py": "221d41e2f90c40493b3d712fb99cf39fb5a25c2306e63de7a89358e66cfcfe70",
+      "lib/_pystachy_unicodedata.py": "f1c877238f94279dfdb5a5f77396d9d25f504c409f34b78099613c6c3f71c7d0",
+      "lib/_pystachy_unicodedata_db.py": "d511e3c104f697e9e9ce150b97119ceb1fcaf00ebcdd3be21cf52c88337608b2",
+      "lib/_pystachy_unicodedata_names.py": "9b18f9e4aecb03f28672fdecce4fcf9d0ece0a1c565c7e9e0ce504fe4fc2bb28",
+      "lib/_pystachy_weakref.py": "da4181f6adb4cbbed1d3c45d95e32bd39e8ac210638ab902f26fb0b68bc7cbfe",
+      "lib/_weakrefset.py": "91895a451d06e9f521a1171b31b9b19bc9740f35af00d4fa106338ab7167c9ac",
+      "lib/bisect.py": "f1cf7b85fc36b5da249813fc5ab97d9464f8cc1bc817f7146206fa2713e35999",
+      "lib/codecs.py": "feafe30244cc2ac23a8f03ca6c8b106ef82dede1630aac103126767e123a3c42",
+      "lib/collections/__init__.py": "8a6533ddf04c4823e1c1da10925028613420cc4e5cb6264e6066fdd3739b4852",
+      "lib/colorsys.py": "65e3dfbf7bad61d4d7d7731a69dd7e75a347fd350d91327a51010a94e6fd2f1d",
+      "lib/contextlib.py": "08bf5d132ae0aceafcd94c72396e21fd45fc9cd1ba6e74807ce1e39f22d0d665",
+      "lib/csv.py": "29676a25a82679e93c6d0eb771a3f60890aedf49941206c0387ce59696b7c3c4",
+      "lib/curses/__init__.py": "91156d2c9afdc168cee4bb7085c8b16936ca7079fa4035ac4d7908712d86f394",
+      "lib/curses/ascii.py": "780dd8bbaf0ee7e832f164c1772953e694a9cd1031d1ab1471af65344d3645e6",
+      "lib/datetime.py": "d269c51c55e7668b988c8194a7a2e643a39aa3a2770a727c178a5c898b91c239",
+      "lib/difflib.py": "4d33db46d2f0748bd674b5ae2f52c59ab0cab0865c465a99ea9521d8751aea0f",
+      "lib/fnmatch.py": "fd1da199d0eeabc34ec9796d5a0790da6300fff4d15e16ee2d8ca26e6885eec5",
+      "lib/functools.py": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703",
+      "lib/genericpath.py": "cdac5a68dd738051e0d66fc81d5947d6a1776248fc6fe862253477608d870ec4",
+      "lib/getopt.py": "0d152bede49816f2924ffb944d86369099bea3b68ec1ee6f0c84c56251670241",
+      "lib/gettext.py": "97b7fa3d8112826dae4d021a6445fe791521524bd4b06e729d0497ed59a85e63",
+      "lib/heapq.py": "89bfee37cf47aecdf2a5ae8706b9805f1b1789d6e2edb7e3556fe8b42c5ecba3",
+      "lib/html/__init__.py": "067cf63fe3eee1bece807caba82a83d0307010bf1c30d9974e56ea704ddea893",
+      "lib/html/entities.py": "6fbeb0318e22905269b414b7d045574b8a98767f194310071b9177fadc738a2f",
+      "lib/html/parser.py": "f3ab8871f5342562328cd3ff8e65d5667c79d27189c7a0401982a193de7b4e90",
+      "lib/io.py": "31f5102c549e7051190c81838928db3f5c21863ac9cf63e7a493352e767fa71f",
+      "lib/json.py": "72fb29122acddd3b4d1bd43d8ae9e7fee506b1d7d4f30559edeeebd92ac044ce",
+      "lib/keyword.py": "833eb8e01577a8330f473ed49403fae4b5e6c95a66a81254405deb5c7ea7efb9",
+      "lib/mpz.py": "754e4844ff8425e92ee8cde26b1e84a4ad318312d1ca17d10ea724a6c4c46a45",
+      "lib/operator.py": "7d42396ef02c03aa69eb86643769cdb889ab9fc66ffd140bc0efa0896fc94c99",
+      "lib/posixpath.py": "69acb9e294987cd6056a2237048373cf8d6201faf1e43a49c38889b47d2fb28e",
+      "lib/pyobj.py": "2d673d060a386ceae11b381ca94ce71a4ec43be89e7c1c59651c936ffea9054e",
+      "lib/random.py": "91e7fa770bfc1affb76a6441a10e1913af8993d8c657c12ffe6cbadc3e3add1e",
+      "lib/re/_constants.py": "d8c63d4b91920ceb02d7c00073a062504c349b3e0de83ba480c3f4d1bca442fe",
+      "lib/re/_unicode.py": "61f1343780ef2537ff83813b7a2097a55482a51a23b172a609a6836af4197ea2",
+      "lib/shlex.py": "7392b7c738fe818c43a8031820bef96db0b9f598d354a9fac0b771546a4fdba4",
+      "lib/stat.py": "07217986d9b2172b509dab3578d18ac05ba768b418e1f1e8c90e38a8f7c2b3c6",
+      "lib/statistics.py": "05a091943eb6a01272f95c190e99bab0d33c72a108aef45261c838842301991b",
+      "lib/string.py": "5a6ea720721a70a9d76d30135697ea612b9cb6610366b38d8c1d997043508b27",
+      "lib/struct.py": "9c231f9497caf513a22dee8f790b07f969b0e45854a0bdd6dd84b492e08c2856",
+      "lib/textwrap.py": "5102b1deb8905ad1b31a2830f7ac5a980229e55f3bbce06fd64baa9930159c1b",
+      "lib/this.py": "481d0cb3de511eae0b5713dad18542b07eafd9c013bb7690f7497bad49923a71",
+      "lib/token.py": "1d81391050d5389c41f319ba4d42159c6247777400e48c27f2d28cac8ca4e6e2",
+      "lib/tomllib/__init__.py": "71f67036895f4c5acab942618af0cbd3d814451ba61e967f358d0f341a5b8f51",
+      "lib/tomllib/_parser.py": "11d40d79772967ebf81f5a0cf8dfa99608413b3ba6144d4beadae99baa28f279",
+      "lib/tomllib/_re.py": "17ec24dabd4e7089df6f04acacb331c85c437addbd2ab98bdfefcb18671ba056",
+      "lib/tomllib/_types.py": "e018cf69245202408dd97664cf76618e8cbb5efb6f43b134d29efd1d9221a6c0",
+      "lib/types.py": "d4215ea3abc258bdde763cc21ec4b0759f0c44e874b2483851c5681ae93f45e2",
+      "lib/urllib/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "lib/urllib/parse.py": "f5914562f9903ab7dde287fcb8bc0b1667a812f82e7e7c4419fed0493bfd0148",
+      "lib/warnings.py": "be4467c02d67040c87e31ede6787740815085298a880f2aa126b02fbabc0f133",
+      "lib/weakref.py": "781ef9b242fde2b923e070fce64b751954d42955c5c66b367e54941678ab722b",
+      "mpz/mpz.c": "2d648cec5de20c6bb7d4882a364cfc9fa1d355395255c1d0e82e4389bde03afa",
+      "pyembed.c": "98c9dd90c0964f885da08e1bd7622386421607723b7341b27783aaf3ff6a11b0",
+      "pyext.c": "4278d2506c88d20a08b4a5b5563237e6323372201603b6c5c78231ee52301109",
+      "pystachy.py": "a413782632f88d4746a81fd7cfb529d695ab36a35618522a83be1e25e1e31f29",
+      "runtime.py": "c45138f44a7aa25828b351b6d627e1a4f9fad69dc8a88532d053fb90e84beefb",
+      "src/__init__.py": "c443ed6062edae246598189fb20f12799a5e87a04049acb855894652e3875af7",
+      "src/pystachy_compiler/__init__.py": "f60cd281f8ed4fd35776c9f4d40d6a1313c49a3cae5df61841028f711b9f13c8",
+      "src/pystachy_compiler/analysis.py": "5b3c134b21586a03909f89beddbff999f6f28f067ce1dd975fb46a4c1794fecd",
+      "src/pystachy_compiler/bigints.py": "888815dfc3b4a69caed4f88242863478c6b97471637b9f90c72185d09291cbe8",
+      "src/pystachy_compiler/builtins.py": "d0d25b4e975b1e7607131632656f17331ef3e4ac317fbed3a663977dd7614126",
+      "src/pystachy_compiler/calls.py": "1d9cff0879935d3dc48700ccd086b1b44e27641d142e8e71be8a2e24a31cbd55",
+      "src/pystachy_compiler/containers.py": "43a9d6b88602aa1feaecaeb1d11cc44d6fe87c057a6f156c4cf294b0129f1b5e",
+      "src/pystachy_compiler/conversions.py": "900a17d52ac83efb9bd82eb11723a001a51d6ac0f1af57becbf211363509daa5",
+      "src/pystachy_compiler/declarations.py": "d01904e710d79a12f2d33d4eda52c6e79e7605be08d5c974b2905098d6c62b87",
+      "src/pystachy_compiler/diagnostics.py": "4d256b7ea3ca66398723043deef4165bcfa076217f2ebd974746945ee04e6857",
+      "src/pystachy_compiler/dynamic.py": "7350dd8c95638ab416bce848d77347c8a75bd6cd9617e18c78e2fa42a8f69340",
+      "src/pystachy_compiler/emission.py": "5356b79e98096a2371c27c5d4caa32d1513a5b86894908d2b772189ed05867e3",
+      "src/pystachy_compiler/expressions.py": "5cb9ba837c5b4bd1f943ca21c4aa4dc886fff0eb1ac2c7e24fa4a2cc42084099",
+      "src/pystachy_compiler/flow.py": "cb6238905238d5dcd042b568f56243e9b407723a6e047d5f0cad478b060439c9",
+      "src/pystachy_compiler/ircheck.py": "781fa17c070480ed38ceb4d094757ac908e4ab027bb74af8b8ab6b405b5c0e60",
+      "src/pystachy_compiler/lexer.py": "1ca2874158eccdb0a4e3569a31940fb9b33a51fe2f06983be83de57d8d9fedeb",
+      "src/pystachy_compiler/llvm_abi.py": "7485f63097d4abac3de8b1fbfb782944ff7e3b68989d2fb266e40ebb8f8889ae",
+      "src/pystachy_compiler/loader.py": "e50415407b10644a710f666981e650414aeec439d2f46270c1bdc255b3590a49",
+      "src/pystachy_compiler/local_versions.py": "10bb0f2f0fb57c442af0807b5b4af6c95e8b950a97430161c97f766a3dc4b375",
+      "src/pystachy_compiler/memory_ir.py": "c2544eda0bdb89ccb99ac1330c95d99974983cc7bdfa0d3a2b39a993c9f62bc1",
+      "src/pystachy_compiler/module.py": "3349556dee4dcda00013d770743f27d5dc3525b76cbd5e2ab312b14506e1f601",
+      "src/pystachy_compiler/names.py": "51eedecfa52aa390bdbe0e7303d6663fc0c32b3c74afce569a1a2aaf637a3fb5",
+      "src/pystachy_compiler/parser.py": "05c4617ef7ce82f2c270c39ed82dea409e10e5d984826cee759d8cd922c5705b",
+      "src/pystachy_compiler/reflection.py": "ed77b340da37e38d4249adbc8e569cf351f0258acd74fdf63365c9d7d8830aeb",
+      "src/pystachy_compiler/scalar_ir.py": "14bc0ce71b4cbf066e8a4cab2ea0bb5c0a53880997484d74f5ea3e9a6d30c05a",
+      "src/pystachy_compiler/scope.py": "d9af25da84ba62a17a6a1a0b7d48d078977dd364528c8ec8e4135cc438f10a97",
+      "src/pystachy_compiler/statements.py": "4bb9347b64952570845df754efbb1e6a3b02467b1b629dd9171e9b98d3d85e2d",
+      "src/pystachy_compiler/structs.py": "e873fd6a6aeaebf39f740de2859a5de9a2da316d7a8993c728889677125c3090",
+      "src/pystachy_compiler/syntax.py": "799e522034af31967517409654d5788179bb6dfa727be9f544a8855c90d3ecb9",
+      "src/pystachy_compiler/templates.py": "b587b346bea5087b3422ea5117e023b521205285f0dc3d622f3c9aed5a94c36f",
+      "src/pystachy_compiler/union_arithmetic.py": "6d6892c0d97667d7e8ffeb5293ccbbe24c76529328e4761ffec6831229c416dd",
+      "src/pystachy_compiler/union_proof.py": "8027ed7a77006053e2da8b0264d1d2bf12ea465d193d4ce49ecd581e0b436cd9",
+      "src/pystachy_compiler/union_state.py": "b845af16073f24e1e1245bdcb00d4324dbf1d657874604cb4b991d852a07b026",
+      "src/pystachy_compiler/unions.py": "133448300155804316b04d6b1e80d99ba606905ad267835007d0d68e77195de3",
+      "src/pystachy_compiler/utils.py": "0efd4bb4f572c22b361890849e4d67c54977b216652a29c397eb44c92426d2ee",
+      "src/pystachy_compiler/variables.py": "f4ea9b2eb58cb7339add9ced65d890f2f5b37d26f4919f463cbb50c54c11b086",
+      "ryu/common.h": "0bbd71d26da6193e678d0776cf418f43f287c73d6fd6725353df0aadf70f2a19",
+      "ryu/d2s.c": "c6357b5d53ac1ba7f4984847d3a76f0803e0a931b7d0b02680656576829cf1d2",
+      "ryu/d2s_intrinsics.h": "01d9bdaada67b42f2d1bbdebb3765867e6c44e3a181b806c1d7e851b93f9cc21",
+      "ryu/d2s_small_table.h": "01f3d8a3ff739a26ecbddc2caae44c91574592b1de7c01fec67bc2d06672b606",
+      "ryu/digit_table.h": "8b782573abc0b8554d74163ae6c02f0beb5c30d1e63eaebdb0ddf2c98d817e01",
+      "ryu/ryu.h": "b7feab0ba1df5e9ef3d602f386592ad152491405e49b408fb21c0e0e9e6bfb16"
+    },
+    "variants": {
+      "main": {
+        "measured_local_commit": "4ef9cb7b1872445596ea5df01f0dfed365faf875",
+        "tree": "db120afecf27ff03b08c25624dc64be8b06bac3b",
+        "clean_at_freeze": true,
+        "source_input_count": 131,
+        "source_input_sha256_overrides": {
+          "lib/re/__init__.py": "301df0312610d7ce92f7898db27b5e67e0ddf1cae07a2ed41773638919093e66",
+          "lib/re/_sre.py": "925eeba2c02e7d111e76def73d1df74c44db1a714b3f58bf4c7239d11d4418b8",
+          "runtime.c": "1671393a715c9ca99ce96ac64127aeef7f449d6d565c974a7a4c00c41fd970f8",
+          "src/pystachy_compiler/driver.py": "45dcbd9bf71f463e7772bce9f0c5d5b4e74c2fa5e91356746be4c976f07f1971",
+          "src/pystachy_compiler/exceptions.py": "9315fbc0d29b843b16905bea441e61a85ee5000f8590aa8156c80da35066495a",
+          "src/pystachy_compiler/functions.py": "faff8171d6f17fbd7bd11fbb907990bc3caee9adcceb7c5c7d3e12462a21c01e",
+          "src/pystachy_compiler/gen.py": "a0cc9b02b04b5095cf058ed70d5cbcd67e185e60d3e6ec9676fbca03ef82a759",
+          "src/pystachy_compiler/generators.py": "b8824c3d85dc674b1b2ec827ad88205a3f7ca211435bb05357165f75c3a3b23b",
+          "src/pystachy_compiler/ir.py": "e1bcdb6bd0b6a5d9738eca6073e3088e311a741ed61bb18a8292d21067402c31",
+          "src/pystachy_compiler/lower_module.py": "854471dc749104a3f3847d04b38c6c0e88f566592d1b065d50b8616f9c63bf40",
+          "src/pystachy_compiler/lowering.py": "14a55ab0861e4e51ca9fe6e133c01cdb5bf3461bda1f9631e83031d8cd764c63",
+          "src/pystachy_compiler/optimizations.py": "88fd9032a955aee8d3fcc0f02e044d81ff10a19bb4d6d701d8a75d7eb82c37ed",
+          "src/pystachy_compiler/program.py": "cf3ad432a72dbe88ad6e3abfbe9c05b463e9f472d3f98c6be9f209797ee5a0f1",
+          "src/pystachy_compiler/specs.py": "8a48e0de8200f6526b80e16e13588bf6ad926653a1fdb1277d9735baa51b2d64"
+        },
+        "complete_manifest_sha256": "403f3d223fb915225074ddaae1a4a47e98001ec8d21bb3d05e5bb92af12a67b5",
+        "published_commit_with_identical_tree": "06e3ad5d08514ba31fb231fe4636a962fe6578e3"
+      },
+      "original": {
+        "measured_local_commit": "d5bc7a93504e9e0ed0d8bb125d3a39a8711911cb",
+        "tree": "c2c4ffe9efdb1c9dfe9511e320cedc78ff675fac",
+        "clean_at_freeze": true,
+        "source_input_count": 131,
+        "source_input_sha256_overrides": {
+          "lib/re/__init__.py": "3e1c1d6312856cfb5c34d2ad5f24b933de77c00dd21d36f76f74c54f8cf0f856",
+          "lib/re/_sre.py": "c7e98ec21fe209e8d3833516f408a5b219002e26a2f630cceb933b3e12cca3c5",
+          "runtime.c": "cf27939dfc3ebb3ec19b4cc8e2e066d2dc1eeb39f16bbcbe3a05156889d8acbf",
+          "src/pystachy_compiler/driver.py": "48941caa98b340de4ec44ae03b1573f75828c24142eba88cc7c1ab617acea7b0",
+          "src/pystachy_compiler/exceptions.py": "b2554ff2ac10570c010814a1c3740b6eb51d8cd9f79ac580d2fc323a68f90a30",
+          "src/pystachy_compiler/functions.py": "6b2766311d39bcefa45a53d5ec03527935a42bcc9ebced029dbf83b5db7d1aaa",
+          "src/pystachy_compiler/gen.py": "a0cc9b02b04b5095cf058ed70d5cbcd67e185e60d3e6ec9676fbca03ef82a759",
+          "src/pystachy_compiler/generators.py": "ca8611458ccc23c11fd095d1026b936caff86c100e410a833b202315a0778b63",
+          "src/pystachy_compiler/ir.py": "ad058f4b1a011b9fa101c2680eda11650f5b539fe8a259531f2a24689e806ffd",
+          "src/pystachy_compiler/lower_module.py": "9d6185d9b7f2622f35893bd9e34c56a65d4fe0debc586ad683ec1290b5d4f6f8",
+          "src/pystachy_compiler/lowering.py": "a901e31a9c0a53df0e9f9c6413350c23bd0f0acaf6aa88f3f7d3931148c2f3bb",
+          "src/pystachy_compiler/optimizations.py": "88fd9032a955aee8d3fcc0f02e044d81ff10a19bb4d6d701d8a75d7eb82c37ed",
+          "src/pystachy_compiler/program.py": "cf3ad432a72dbe88ad6e3abfbe9c05b463e9f472d3f98c6be9f209797ee5a0f1",
+          "src/pystachy_compiler/specs.py": "507252799c4011808acb4fc048b2ae4f016388336370c14dc069f785f7c4f073"
+        },
+        "complete_manifest_sha256": "623b4e8e263e4a657c45957082ff769104296ca00227bdc39aefca8a654d0627",
+        "published_commit_with_identical_tree": "0166fbb556754b3d23ac68647baf458a55bd74cb"
+      },
+      "prior": {
+        "measured_local_commit": "a7c38c516e9730f4da8eeff4456c495e1ab29e0e",
+        "tree": "2eb5436ed29787064531da78679ba27067317e89",
+        "clean_at_freeze": true,
+        "source_input_count": 131,
+        "source_input_sha256_overrides": {
+          "lib/re/__init__.py": "3e1c1d6312856cfb5c34d2ad5f24b933de77c00dd21d36f76f74c54f8cf0f856",
+          "lib/re/_sre.py": "c7e98ec21fe209e8d3833516f408a5b219002e26a2f630cceb933b3e12cca3c5",
+          "runtime.c": "088ca6df94980e138eec7f25c9cc24f95120f508608fbfdfac889538deca1916",
+          "src/pystachy_compiler/driver.py": "48941caa98b340de4ec44ae03b1573f75828c24142eba88cc7c1ab617acea7b0",
+          "src/pystachy_compiler/exceptions.py": "b2554ff2ac10570c010814a1c3740b6eb51d8cd9f79ac580d2fc323a68f90a30",
+          "src/pystachy_compiler/functions.py": "6b2766311d39bcefa45a53d5ec03527935a42bcc9ebced029dbf83b5db7d1aaa",
+          "src/pystachy_compiler/gen.py": "93413bafec6916aa7a4a6ffb5b6880cd893bd65a0acce37d58178da6c6c26134",
+          "src/pystachy_compiler/generators.py": "ca8611458ccc23c11fd095d1026b936caff86c100e410a833b202315a0778b63",
+          "src/pystachy_compiler/ir.py": "ad058f4b1a011b9fa101c2680eda11650f5b539fe8a259531f2a24689e806ffd",
+          "src/pystachy_compiler/lower_module.py": "df8fd54bca36516375f1538193328079b654f059eb60258d5cf08dad818fef25",
+          "src/pystachy_compiler/lowering.py": "cafaa1b8d1fdb796c20c84804c5bde16ed5f3ea601995d0f266fb88da70b586a",
+          "src/pystachy_compiler/optimizations.py": "560a8808265b96fc8d97ee1dd4041897be4f946994dcd87790a5ba28240e9c3d",
+          "src/pystachy_compiler/program.py": "3c0a636c29358d65c71f094e57b4d51ead0c6ae88e1b9df80fa74fe336b1ce92",
+          "src/pystachy_compiler/specs.py": "34d34b978506256b7e174f2304d05a85187dd7d6675baa5aa7fabb7cae2cc30d"
+        },
+        "complete_manifest_sha256": "845922f4be531109584f62d772596291ecbddeb732969a083a834db43fd56f1b",
+        "published_commit_with_identical_tree": "993fb17eed953f332661841f7793a30902738242"
+      },
+      "candidate": {
+        "measured_local_commit": "37913cf96eabe1ef7446f56dc64e4d1f01b7282b",
+        "tree": "c597da7cd7a2ee1fddd1bf7dbd61e3c233ac0357",
+        "clean_at_freeze": true,
+        "source_input_count": 131,
+        "source_input_sha256_overrides": {
+          "lib/re/__init__.py": "3e1c1d6312856cfb5c34d2ad5f24b933de77c00dd21d36f76f74c54f8cf0f856",
+          "lib/re/_sre.py": "c7e98ec21fe209e8d3833516f408a5b219002e26a2f630cceb933b3e12cca3c5",
+          "runtime.c": "4bdf82b0663d1141667fe234029c8f92b6146978cff6457f79c1d554926f6637",
+          "src/pystachy_compiler/driver.py": "48941caa98b340de4ec44ae03b1573f75828c24142eba88cc7c1ab617acea7b0",
+          "src/pystachy_compiler/exceptions.py": "b2554ff2ac10570c010814a1c3740b6eb51d8cd9f79ac580d2fc323a68f90a30",
+          "src/pystachy_compiler/functions.py": "6b2766311d39bcefa45a53d5ec03527935a42bcc9ebced029dbf83b5db7d1aaa",
+          "src/pystachy_compiler/gen.py": "6a66bc3ad42fc6d4cd95f04aa8ffa2cb041ad6b772ec0249a0759fc2c70893f6",
+          "src/pystachy_compiler/generators.py": "ca8611458ccc23c11fd095d1026b936caff86c100e410a833b202315a0778b63",
+          "src/pystachy_compiler/ir.py": "ad058f4b1a011b9fa101c2680eda11650f5b539fe8a259531f2a24689e806ffd",
+          "src/pystachy_compiler/lower_module.py": "826b72cefa86bf9c4d15a9ce50da10fbc98b5ed03b286d206cd8b5f0d8d47522",
+          "src/pystachy_compiler/lowering.py": "6866fc1a594081e14a081196fbed2c9d7394a6edeeec43a825e8404e321de125",
+          "src/pystachy_compiler/optimizations.py": "a1019a92ccdc0d3cf30164dcc1056aa48e0286a92b75afb0b2464b1c3efcb316",
+          "src/pystachy_compiler/program.py": "1f436207078f6cdca536061f509d7fba8dfa3e516c34a406d9ca7facf2a26c84",
+          "src/pystachy_compiler/specs.py": "1f8a54f4cdb2de9b2293d22005229bbedc9d03be8d7ff4cad76f71481418ec96"
+        },
+        "complete_manifest_sha256": "dd6993182135e34015bfe1fbe4ef302ae848de6417d97cf8701157ee37c12436",
+        "published_commit_with_identical_tree": "72712b21813adf721aaa4e99f1f85b9eff8eb149"
+      }
+    }
+  },
+  "method": {
+    "variants": [
+      "main",
+      "original",
+      "prior",
+      "candidate"
+    ],
+    "compiler_flags": "default; separate runtime cache per variant",
+    "elapsed_summary": "median of 8 process medians; each process has 7 kernel times; all values retained",
+    "elapsed_process_order": "four forward rotations followed by four reversed rotations",
+    "elapsed_excludes": "compilation, startup, printing, and scoped-file I/O",
+    "timed_calls_per_process": 7,
+    "normal_untimed_warmup_calls": 1,
+    "instruction_scope": "8 kernel calls including warmup, with native runtime and GC; excludes startup/compiler/timers/printing",
+    "jit_instruction_markers": "actual ORC execution of instrumented equivalent; every preexisting non-initializer raw LLVM function body is equal, but later whole-module optimization can differ",
+    "aot_instruction_scope": "exact timing executable at f.kernel entry/return, including tail-transferred descendants; when original f.kernel is absent, markers enclose its complete source invocation even if a private fast callee remains",
+    "aot_original_kernel_symbol_absent": "The original f.kernel symbol is absent; this does not assert all private fast callees were inlined. Renamed from the legacy raw aot_kernel_fully_inlined field.",
+    "compile_samples": "192 invocations: 4 rotated samples for 6 case labels, 4 variants and 2 stages; 5 unique source files because warmed short/long share one source; outputs must match preparation SHA256",
+    "timing_limit": "descriptive shared-host results; small speedups or regressions do not establish precision"
+  },
+  "phases": {
+    "prepare": {
+      "status": "passed",
+      "started_utc": "2026-10-31T04:31:32.069210+00:00",
+      "finished_utc": "2026-10-31T04:32:38.166663+00:00",
+      "harness_sha256": {
+        "measure.py": "89d1fa4c56a245ed56873f8fa5866f654402d36998915e9832f4dddbb10fde10",
+        "count_support.py": "460da9109c6ffe726e1f1f1ca39408e7980834b66db6186a1c16df3ebbc17277",
+        "replay_support.py": "b74a4c19fcd1e51d221271e50c9a3bc45a466de146073476dbc2a7d4f09d5d02"
+      },
+      "all_sources_unchanged": true
+    },
+    "counts": {
+      "status": "passed",
+      "started_utc": "2026-10-31T04:48:32.924261+00:00",
+      "finished_utc": "2026-10-31T04:52:15.062203+00:00",
+      "harness_sha256": {
+        "measure.py": "89d1fa4c56a245ed56873f8fa5866f654402d36998915e9832f4dddbb10fde10",
+        "count_support.py": "87c985714d04b743bd45cf4cd023277049b2d5ca5ebfccecdfda5618ad57df4a",
+        "replay_support.py": "b74a4c19fcd1e51d221271e50c9a3bc45a466de146073476dbc2a7d4f09d5d02"
+      },
+      "all_sources_unchanged": true
+    },
+    "timings": {
+      "status": "passed",
+      "started_utc": "2026-10-31T04:53:23.754746+00:00",
+      "finished_utc": "2026-10-31T04:55:40.642134+00:00",
+      "harness_sha256": {
+        "measure.py": "89d1fa4c56a245ed56873f8fa5866f654402d36998915e9832f4dddbb10fde10",
+        "count_support.py": "87c985714d04b743bd45cf4cd023277049b2d5ca5ebfccecdfda5618ad57df4a",
+        "replay_support.py": "b74a4c19fcd1e51d221271e50c9a3bc45a466de146073476dbc2a7d4f09d5d02"
+      },
+      "rounds": 8,
+      "process_orders": [
+        [
+          "main",
+          "original",
+          "prior",
+          "candidate"
+        ],
+        [
+          "original",
+          "prior",
+          "candidate",
+          "main"
+        ],
+        [
+          "prior",
+          "candidate",
+          "main",
+          "original"
+        ],
+        [
+          "candidate",
+          "main",
+          "original",
+          "prior"
+        ],
+        [
+          "candidate",
+          "prior",
+          "original",
+          "main"
+        ],
+        [
+          "main",
+          "candidate",
+          "prior",
+          "original"
+        ],
+        [
+          "original",
+          "main",
+          "candidate",
+          "prior"
+        ],
+        [
+          "prior",
+          "original",
+          "main",
+          "candidate"
+        ]
+      ],
+      "variant_position_counts": {
+        "main": [
+          2,
+          2,
+          2,
+          2
+        ],
+        "original": [
+          2,
+          2,
+          2,
+          2
+        ],
+        "prior": [
+          2,
+          2,
+          2,
+          2
+        ],
+        "candidate": [
+          2,
+          2,
+          2,
+          2
+        ]
+      },
+      "all_sources_unchanged": true
+    },
+    "compile": {
+      "status": "passed",
+      "started_utc": "2026-10-31T05:03:15.672145+00:00",
+      "finished_utc": "2026-10-31T05:05:33.648643+00:00",
+      "harness_sha256": {
+        "measure.py": "89d1fa4c56a245ed56873f8fa5866f654402d36998915e9832f4dddbb10fde10",
+        "count_support.py": "87c985714d04b743bd45cf4cd023277049b2d5ca5ebfccecdfda5618ad57df4a",
+        "replay_support.py": "b74a4c19fcd1e51d221271e50c9a3bc45a466de146073476dbc2a7d4f09d5d02"
+      },
+      "samples": 4,
+      "all_sources_unchanged": true
+    }
+  },
+  "cases": {
+    "ordinary_calls": {
+      "probe_filename": "ordinary_calls.py",
+      "probe_sha256": "ecf346f4e65bab89564c52d864bd405641bc7689374a303b3a9f74bc8ab4df6c",
+      "elapsed_iterations": 10000000,
+      "checksum": 52241,
+      "extra_untimed_kernel_calls": 0,
+      "explicit_scratch_file_argument": false,
+      "artifact_sha256": {
+        "main": {
+          "raw_llvm": "f55bddbd400eb2c484fbc00ab6d0d2e6d68ee49df468366ee5062ef165b8db97",
+          "aot_executable": "abf3d5724e5bf3305e71983132b5dc3aa27ebc932a17c80fcf9e110110ba552d"
+        },
+        "original": {
+          "raw_llvm": "f4ad1f47fcd7b76b0924acd986b6d5bc91325a6f37c9f5407ae754d6400e8453",
+          "aot_executable": "a4c9d47f1084bc0b36682551f5dc26e29cc87a5d59d99151e62c7f3d53ef424a"
+        },
+        "prior": {
+          "raw_llvm": "66117555525f19237db8c9b2294b245dd0a6412213f11e2e213a5b87321c8b89",
+          "aot_executable": "a4c9d47f1084bc0b36682551f5dc26e29cc87a5d59d99151e62c7f3d53ef424a"
+        },
+        "candidate": {
+          "raw_llvm": "cdaaaea9565e9da7628a66f858b6733e59c38ed5cea53182919695983288bcc3",
+          "aot_executable": "3538916a4396769323684657a255776907474393657dd956aeef34caaee023bd"
+        }
+      },
+      "emitted_size": {
+        "main": {
+          "raw_llvm_lines": 194,
+          "aot_executable_bytes": 46312
+        },
+        "original": {
+          "raw_llvm_lines": 228,
+          "aot_executable_bytes": 46424
+        },
+        "prior": {
+          "raw_llvm_lines": 246,
+          "aot_executable_bytes": 46424
+        },
+        "candidate": {
+          "raw_llvm_lines": 317,
+          "aot_executable_bytes": 46464
+        }
+      },
+      "native_prepare_checksum_passes": {
+        "main": {
+          "jit": true,
+          "aot": true
+        },
+        "original": {
+          "jit": true,
+          "aot": true
+        },
+        "prior": {
+          "jit": true,
+          "aot": true
+        },
+        "candidate": {
+          "jit": true,
+          "aot": true
+        }
+      }
+    },
+    "object_calls": {
+      "probe_filename": "object_calls.py",
+      "probe_sha256": "4da3eeae714a896bb205a4d16e1d91d0bafad2ec58a3dee0d33cc90096de70af",
+      "elapsed_iterations": 100000,
+      "checksum": 3226706707,
+      "extra_untimed_kernel_calls": 0,
+      "explicit_scratch_file_argument": false,
+      "artifact_sha256": {
+        "main": {
+          "raw_llvm": "c406829c81adb02717787f3f7c7441f6a451b408479e5a96acff0e478ba678cb",
+          "aot_executable": "a03c1325f5b1d1d75e6a0200fd553ca3726fdf5e3bdaf27d829a8b0bf1a3b0e9"
+        },
+        "original": {
+          "raw_llvm": "0f68e435d3da19d84c0bf12f390964f72b1cf5bffa5783a6e83c73d361631970",
+          "aot_executable": "2f16c4c83b52c3a618fa65b8cf4e670e5d18b7a109de4c929e4bd20f586638ea"
+        },
+        "prior": {
+          "raw_llvm": "f41cebba0c0045faab53ccb90283b83d5ff220312a51f1e65bcfdf81f06525a7",
+          "aot_executable": "ed6f2201452bea2cdd9c2fbefd05c4d5c3c47b37d7c61e0035c2791523aab2fb"
+        },
+        "candidate": {
+          "raw_llvm": "f80fbc9ccd43e357960853abccd50cf2e7409932e3ed001c638fe18022e73b89",
+          "aot_executable": "697cfad357ad9e766ce2eadfa6d9bf63ef881b7856bf8ac7954e1b1b502231ef"
+        }
+      },
+      "emitted_size": {
+        "main": {
+          "raw_llvm_lines": 300,
+          "aot_executable_bytes": 46528
+        },
+        "original": {
+          "raw_llvm_lines": 337,
+          "aot_executable_bytes": 46640
+        },
+        "prior": {
+          "raw_llvm_lines": 352,
+          "aot_executable_bytes": 46640
+        },
+        "candidate": {
+          "raw_llvm_lines": 519,
+          "aot_executable_bytes": 46664
+        }
+      },
+      "native_prepare_checksum_passes": {
+        "main": {
+          "jit": true,
+          "aot": true
+        },
+        "original": {
+          "jit": true,
+          "aot": true
+        },
+        "prior": {
+          "jit": true,
+          "aot": true
+        },
+        "candidate": {
+          "jit": true,
+          "aot": true
+        }
+      }
+    },
+    "json_calls": {
+      "probe_filename": "json_calls.py",
+      "probe_sha256": "04a3b45405ef1b96360dbe941e072e5922d8dcae39d8a5bd45745000ea47c9fc",
+      "elapsed_iterations": 2000,
+      "checksum": 64000,
+      "extra_untimed_kernel_calls": 0,
+      "explicit_scratch_file_argument": false,
+      "artifact_sha256": {
+        "main": {
+          "raw_llvm": "43611463646a19f2c4b6e494c100092d15efc2fcb3c6443d2ecddba6707d140d",
+          "aot_executable": "c664ced5563784d946c279905687a9e8fd62a3214a8a76245a0b937461637cf9"
+        },
+        "original": {
+          "raw_llvm": "f9be9c984634a381cb95185e2fc1ae4f421ec2cf63d1d41c37e0018cbf6ac010",
+          "aot_executable": "2614d1507e649b8ec40923c16b772023967f82ed4d511b54afd6bc4078f8f6d5"
+        },
+        "prior": {
+          "raw_llvm": "ef8614b9d1c1675654092660da5d528fe18d93ac95b2fed2693d9d65fc74cdfb",
+          "aot_executable": "ce6e505221ecc4ac7748d9c7276f7c689b338aacb2eef6c94a48d557eb21bcb7"
+        },
+        "candidate": {
+          "raw_llvm": "80d135b599ad31d3f6ecdc0e53fbdc91f1e5f09d1035f7ccc2a48021ccc40ec4",
+          "aot_executable": "b7153a1fb1487340d073878f6b760fcd66c8d88c3459d2fcf46503a5c2b726a1"
+        }
+      },
+      "emitted_size": {
+        "main": {
+          "raw_llvm_lines": 4154,
+          "aot_executable_bytes": 153688
+        },
+        "original": {
+          "raw_llvm_lines": 4275,
+          "aot_executable_bytes": 153856
+        },
+        "prior": {
+          "raw_llvm_lines": 4289,
+          "aot_executable_bytes": 153808
+        },
+        "candidate": {
+          "raw_llvm_lines": 5651,
+          "aot_executable_bytes": 158072
+        }
+      },
+      "native_prepare_checksum_passes": {
+        "main": {
+          "jit": true,
+          "aot": true
+        },
+        "original": {
+          "jit": true,
+          "aot": true
+        },
+        "prior": {
+          "jit": true,
+          "aot": true
+        },
+        "candidate": {
+          "jit": true,
+          "aot": true
+        }
+      }
+    },
+    "json_warmed_short": {
+      "probe_filename": "json_warmed.py",
+      "probe_sha256": "7a8a94314179ba0797632f7241cb9c6541d891c79ded006b444c8bfd9dfea6cf",
+      "elapsed_iterations": 2000,
+      "checksum": 64000,
+      "extra_untimed_kernel_calls": 4,
+      "explicit_scratch_file_argument": false,
+      "artifact_sha256": {
+        "main": {
+          "raw_llvm": "74ba4b00ad774b0cddff162655588cbaeeba73342ddb0a5d3c28257da3bdb0a9",
+          "aot_executable": "9ba5d1f92c3bdf44a69a52977ff082d2fe09592a68be66cdaf821862cf75ae3d"
+        },
+        "original": {
+          "raw_llvm": "cd6d54341aa2c6ea4e950ceb4a85fffc3e256940cfe5327d19fc3743ec671f0d",
+          "aot_executable": "ff5b6b553c844ff5542fd3be01428cb6fa2486de847a1052cb752f1d71a7469e"
+        },
+        "prior": {
+          "raw_llvm": "e1d09f5470e6f3fff1a50a51e163503b1ab3f0f30426a6d451fda9d0c1630980",
+          "aot_executable": "eb2d5d881204c506bc7715dcc0429c6369b5da6970a000d26172a228c184f285"
+        },
+        "candidate": {
+          "raw_llvm": "1a3c86408651cc6fea06dfe280bee1d3dc303b2316b92f39284f9ef11b9727df",
+          "aot_executable": "f3ccf96e3eccdebc9a08e5d991ebd3d1c350bf9be9d1887cf200e6018f38e31c"
+        }
+      },
+      "emitted_size": {
+        "main": {
+          "raw_llvm_lines": 4176,
+          "aot_executable_bytes": 153688
+        },
+        "original": {
+          "raw_llvm_lines": 4297,
+          "aot_executable_bytes": 153856
+        },
+        "prior": {
+          "raw_llvm_lines": 4311,
+          "aot_executable_bytes": 153808
+        },
+        "candidate": {
+          "raw_llvm_lines": 5673,
+          "aot_executable_bytes": 158072
+        }
+      },
+      "native_prepare_checksum_passes": {
+        "main": {
+          "jit": true,
+          "aot": true
+        },
+        "original": {
+          "jit": true,
+          "aot": true
+        },
+        "prior": {
+          "jit": true,
+          "aot": true
+        },
+        "candidate": {
+          "jit": true,
+          "aot": true
+        }
+      }
+    },
+    "json_warmed_long": {
+      "probe_filename": "json_warmed.py",
+      "probe_sha256": "7a8a94314179ba0797632f7241cb9c6541d891c79ded006b444c8bfd9dfea6cf",
+      "elapsed_iterations": 20000,
+      "checksum": 640000,
+      "extra_untimed_kernel_calls": 4,
+      "explicit_scratch_file_argument": false,
+      "artifact_sha256": {
+        "main": {
+          "raw_llvm": "74ba4b00ad774b0cddff162655588cbaeeba73342ddb0a5d3c28257da3bdb0a9",
+          "aot_executable": "9ba5d1f92c3bdf44a69a52977ff082d2fe09592a68be66cdaf821862cf75ae3d"
+        },
+        "original": {
+          "raw_llvm": "cd6d54341aa2c6ea4e950ceb4a85fffc3e256940cfe5327d19fc3743ec671f0d",
+          "aot_executable": "ff5b6b553c844ff5542fd3be01428cb6fa2486de847a1052cb752f1d71a7469e"
+        },
+        "prior": {
+          "raw_llvm": "e1d09f5470e6f3fff1a50a51e163503b1ab3f0f30426a6d451fda9d0c1630980",
+          "aot_executable": "eb2d5d881204c506bc7715dcc0429c6369b5da6970a000d26172a228c184f285"
+        },
+        "candidate": {
+          "raw_llvm": "1a3c86408651cc6fea06dfe280bee1d3dc303b2316b92f39284f9ef11b9727df",
+          "aot_executable": "f3ccf96e3eccdebc9a08e5d991ebd3d1c350bf9be9d1887cf200e6018f38e31c"
+        }
+      },
+      "emitted_size": {
+        "main": {
+          "raw_llvm_lines": 4176,
+          "aot_executable_bytes": 153688
+        },
+        "original": {
+          "raw_llvm_lines": 4297,
+          "aot_executable_bytes": 153856
+        },
+        "prior": {
+          "raw_llvm_lines": 4311,
+          "aot_executable_bytes": 153808
+        },
+        "candidate": {
+          "raw_llvm_lines": 5673,
+          "aot_executable_bytes": 158072
+        }
+      },
+      "native_prepare_checksum_passes": {
+        "main": {
+          "jit": true,
+          "aot": true
+        },
+        "original": {
+          "jit": true,
+          "aot": true
+        },
+        "prior": {
+          "jit": true,
+          "aot": true
+        },
+        "candidate": {
+          "jit": true,
+          "aot": true
+        }
+      }
+    },
+    "json_file_calls": {
+      "probe_filename": "json_file_calls.py",
+      "probe_sha256": "390c2742d4258e1b13d5c7449fe93e1f460917f8ac8616a121da9b6642ec83f5",
+      "elapsed_iterations": 20000,
+      "checksum": 640000,
+      "extra_untimed_kernel_calls": 0,
+      "explicit_scratch_file_argument": true,
+      "artifact_sha256": {
+        "main": {
+          "raw_llvm": "035912ab451a0fc2ae37f61e751d681ba4ddceef5f60303f67297feae7d0c44c",
+          "aot_executable": "78afa9378307019d8eda6df51deb67b09b257f74ef51bdd1abc3b3c042b53d77"
+        },
+        "original": {
+          "raw_llvm": "8ad71aa3e77d74ac6385b6bd4d4adf8e92e450a896f760aa3709061c62c71567",
+          "aot_executable": "531ccd1a8914297d5b2af44233b9c86f9a2d7ffc689787cf1eb972670874bc1a"
+        },
+        "prior": {
+          "raw_llvm": "68f3ae1e9e3328a962cbd8bd0328d189fe7dfa0ca0fe353ab519eac56d0d46d8",
+          "aot_executable": "e3c4dad1ba9bc9d559f317cf1af4858322bd49ee73e3914b7cd4362e3e43e260"
+        },
+        "candidate": {
+          "raw_llvm": "d7eb099b4fdb2fa94174b243db1d931e2f631c31e22089bce6f735a9f8cb428f",
+          "aot_executable": "2af1f6e316b871d324c44f3988d4ba60e8d9b6811cd72fba275df70d49279130"
+        }
+      },
+      "emitted_size": {
+        "main": {
+          "raw_llvm_lines": 4191,
+          "aot_executable_bytes": 167608
+        },
+        "original": {
+          "raw_llvm_lines": 4312,
+          "aot_executable_bytes": 171864
+        },
+        "prior": {
+          "raw_llvm_lines": 4317,
+          "aot_executable_bytes": 171864
+        },
+        "candidate": {
+          "raw_llvm_lines": 5688,
+          "aot_executable_bytes": 176080
+        }
+      },
+      "native_prepare_checksum_passes": {
+        "main": {
+          "jit": true,
+          "aot": true
+        },
+        "original": {
+          "jit": true,
+          "aot": true
+        },
+        "prior": {
+          "jit": true,
+          "aot": true
+        },
+        "candidate": {
+          "jit": true,
+          "aot": true
+        }
+      }
+    }
+  },
+  "instruction_counts": {
+    "ordinary_calls": {
+      "iterations_per_kernel_call": 100000,
+      "kernel_calls": 8,
+      "checksum": 11281,
+      "variants": {
+        "main": {
+          "jit": {
+            "instructions": 8000160,
+            "instructions_per_kernel_call": 1000020.0,
+            "counting_scope": "client-request markers around kernel",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "profile_sha256": "e4d7b3ed128778570bd3aef92b47b50504db25fb5c7b1f79ece0ff78b6b7b14e",
+            "part_sha256": {
+              "main-ordinary_calls-jit.callgrind": "e4d7b3ed128778570bd3aef92b47b50504db25fb5c7b1f79ece0ff78b6b7b14e"
+            }
+          },
+          "aot": {
+            "instructions": 5000217,
+            "instructions_per_kernel_call": 625027.125,
+            "counting_scope": "client-request markers around kernel",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "profile_sha256": "a1f1bec54b060c29410e83b0cf53290940dc200ff409c10c53771829fe54ce05",
+            "part_sha256": {
+              "main-ordinary_calls-aot.callgrind": "a1f1bec54b060c29410e83b0cf53290940dc200ff409c10c53771829fe54ce05"
+            },
+            "aot_original_kernel_symbol_absent": true
+          }
+        },
+        "original": {
+          "jit": {
+            "instructions": 10400217,
+            "instructions_per_kernel_call": 1300027.125,
+            "counting_scope": "client-request markers around kernel",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "profile_sha256": "924bdb800039d963a0d46f5e6adb589aa20c93cec3ecb72ab8405c27f6be9465",
+            "part_sha256": {
+              "original-ordinary_calls-jit.callgrind": "924bdb800039d963a0d46f5e6adb589aa20c93cec3ecb72ab8405c27f6be9465"
+            }
+          },
+          "aot": {
+            "instructions": 5000289,
+            "instructions_per_kernel_call": 625036.125,
+            "counting_scope": "client-request markers around kernel",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "profile_sha256": "c026ef4a46d7cba91cb1637e09668d51a95ed0b6c73de6d5c7ffd30e6026297c",
+            "part_sha256": {
+              "original-ordinary_calls-aot.callgrind": "c026ef4a46d7cba91cb1637e09668d51a95ed0b6c73de6d5c7ffd30e6026297c"
+            },
+            "aot_original_kernel_symbol_absent": true
+          }
+        },
+        "prior": {
+          "jit": {
+            "instructions": 10400217,
+            "instructions_per_kernel_call": 1300027.125,
+            "counting_scope": "client-request markers around kernel",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "profile_sha256": "4cbd4f103ba5d75556ef311358d430138576b8068392afad134dbec108cda88c",
+            "part_sha256": {
+              "prior-ordinary_calls-jit.callgrind": "4cbd4f103ba5d75556ef311358d430138576b8068392afad134dbec108cda88c"
+            }
+          },
+          "aot": {
+            "instructions": 5000289,
+            "instructions_per_kernel_call": 625036.125,
+            "counting_scope": "client-request markers around kernel",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "profile_sha256": "eedcba8ca47077105b9af7d67bdbc5520ef0d5b3f7c2206bb6c49b2f4c9ec509",
+            "part_sha256": {
+              "prior-ordinary_calls-aot.callgrind": "eedcba8ca47077105b9af7d67bdbc5520ef0d5b3f7c2206bb6c49b2f4c9ec509"
+            },
+            "aot_original_kernel_symbol_absent": true
+          }
+        },
+        "candidate": {
+          "jit": {
+            "instructions": 8000233,
+            "instructions_per_kernel_call": 1000029.125,
+            "counting_scope": "client-request markers around kernel",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "profile_sha256": "fafdf3b8843ace6046d7553098d8ed5234779f08697f4839999343e76b4fbbc9",
+            "part_sha256": {
+              "candidate-ordinary_calls-jit.callgrind": "fafdf3b8843ace6046d7553098d8ed5234779f08697f4839999343e76b4fbbc9"
+            }
+          },
+          "aot": {
+            "instructions": 5000296,
+            "instructions_per_kernel_call": 625037.0,
+            "counting_scope": "client-request markers around kernel",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "profile_sha256": "eb7de7a9a4316ab14108d694a72a2b5ca88eb770824d5c8750c58fc03178f8c7",
+            "part_sha256": {
+              "candidate-ordinary_calls-aot.callgrind": "eb7de7a9a4316ab14108d694a72a2b5ca88eb770824d5c8750c58fc03178f8c7"
+            },
+            "aot_original_kernel_symbol_absent": true
+          }
+        }
+      }
+    },
+    "object_calls": {
+      "iterations_per_kernel_call": 5000,
+      "kernel_calls": 8,
+      "checksum": 162225943,
+      "variants": {
+        "main": {
+          "jit": {
+            "instructions": 90036184,
+            "instructions_per_kernel_call": 11254523.0,
+            "counting_scope": "client-request markers around kernel",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "profile_sha256": "876291e14adc45df90fffd4c6f7c7d90f7ff41e0140aeb020d19f17b7d705c17",
+            "part_sha256": {
+              "main-object_calls-jit.callgrind": "876291e14adc45df90fffd4c6f7c7d90f7ff41e0140aeb020d19f17b7d705c17"
+            }
+          },
+          "aot": {
+            "instructions": 67032624,
+            "instructions_per_kernel_call": 8379078.0,
+            "counting_scope": "unmodified executable, f.kernel entry/return",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "profile_sha256": "0373e9946ccbbc05c57bc05189a4d5a77b0e43769208fdafa90566f4821abe96",
+            "part_sha256": {
+              "main-object_calls-aot.callgrind": "0373e9946ccbbc05c57bc05189a4d5a77b0e43769208fdafa90566f4821abe96",
+              "main-object_calls-aot.callgrind.1": "0fdee8c3312d0219adbdcacf592119a6c7df2863d410184c0f984e5ba525f6cf",
+              "main-object_calls-aot.callgrind.2": "a35269df24126e9b7335f2fc381343da55fff89524b846514ff3a8b07f8ee6c7",
+              "main-object_calls-aot.callgrind.3": "f12c3eef32155468664d836e9fb9351690d82463d7df35c77adc5c676738b9a5",
+              "main-object_calls-aot.callgrind.4": "1d955adeed12b9eb3c51a955872a5095f646cd46a3124c642b0ce7254ee9aad5",
+              "main-object_calls-aot.callgrind.5": "881db174f17ba4b0068b32c59d50fa717770ea6b3ac9249be0fb785e48c857c9",
+              "main-object_calls-aot.callgrind.6": "9a9e2ae7463b3c691036c54b5055de0b4bf1aafb6233a8def11b71614aaafe8a",
+              "main-object_calls-aot.callgrind.7": "b0d06113ffd773e0d4b24eb2378055a3ecd35fc805403869c948fbc6730b8ddb",
+              "main-object_calls-aot.callgrind.8": "c1324b4b46c3a907da86348e4a83683959ed034950a68b1bb29d48dfa38217fd"
+            },
+            "aot_original_kernel_symbol_absent": false,
+            "verified_kernel_returns": 8
+          }
+        },
+        "original": {
+          "jit": {
+            "instructions": 115639360,
+            "instructions_per_kernel_call": 14454920.0,
+            "counting_scope": "client-request markers around kernel",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "profile_sha256": "c3fb0290b8f2da1ec4d5633b4a35031410bd7f5abddadd51cf9f911c68cbe3b4",
+            "part_sha256": {
+              "original-object_calls-jit.callgrind": "c3fb0290b8f2da1ec4d5633b4a35031410bd7f5abddadd51cf9f911c68cbe3b4"
+            }
+          },
+          "aot": {
+            "instructions": 82394752,
+            "instructions_per_kernel_call": 10299344.0,
+            "counting_scope": "unmodified executable, f.kernel entry/return",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "profile_sha256": "3526875874b9380012a68391b747a8dc9b3c2caf21301634237dbaa261ab4f48",
+            "part_sha256": {
+              "original-object_calls-aot.callgrind": "3526875874b9380012a68391b747a8dc9b3c2caf21301634237dbaa261ab4f48",
+              "original-object_calls-aot.callgrind.1": "96341fd60c84564c7e072c1622a2494e1290b49340abbcb2dea212bc0b609c36",
+              "original-object_calls-aot.callgrind.2": "6174704a7b05a21ad072a7babefb68a9550fc66262bfb843ff99917d604af60d",
+              "original-object_calls-aot.callgrind.3": "51b1170f2deb622fa51b9c9290517ec9d9a031ffd467c4dcba08cea0a5de949f",
+              "original-object_calls-aot.callgrind.4": "f500319e6da1878668084115b0fe0bb74527bea5c2607a932ca3907a9e2b1d05",
+              "original-object_calls-aot.callgrind.5": "c86745f23b3bbb0c395f58bdb4d5b1ba334aa0ca69f4523b134e79eede792860",
+              "original-object_calls-aot.callgrind.6": "a962b18f9b96f8044acbc319a1e0873ce7c6f992b57f0945077923c1943b615e",
+              "original-object_calls-aot.callgrind.7": "8a01c0f6ed4f5c25775ff68d5c0e4f234dc322a041e2262cab99b4da8f125630",
+              "original-object_calls-aot.callgrind.8": "d8b90a676f9f9d9d0f92a489d657e802d3fa64bcacc46496466233854fc6cf45"
+            },
+            "aot_original_kernel_symbol_absent": false,
+            "verified_kernel_returns": 8
+          }
+        },
+        "prior": {
+          "jit": {
+            "instructions": 97717792,
+            "instructions_per_kernel_call": 12214724.0,
+            "counting_scope": "client-request markers around kernel",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "profile_sha256": "7ac243b94b936579d1029ab6395c35c655d99d978f055fe953cb03516b0f0e99",
+            "part_sha256": {
+              "prior-object_calls-jit.callgrind": "7ac243b94b936579d1029ab6395c35c655d99d978f055fe953cb03516b0f0e99"
+            }
+          },
+          "aot": {
+            "instructions": 72194240,
+            "instructions_per_kernel_call": 9024280.0,
+            "counting_scope": "unmodified executable, f.kernel entry/return",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "profile_sha256": "61e3cc21eda811af22079a9084f80f8b08c735293109c69b3e2f02a7522a948a",
+            "part_sha256": {
+              "prior-object_calls-aot.callgrind": "61e3cc21eda811af22079a9084f80f8b08c735293109c69b3e2f02a7522a948a",
+              "prior-object_calls-aot.callgrind.1": "a670ff7927f6f330baf292f41c4ed726f1669862ebaf7715ddd50e0153acc48f",
+              "prior-object_calls-aot.callgrind.2": "aaadaa98e3e6fbcaf36c7f21b579444171c58c5dd56c0a17b8ebea0f6ee3eaf7",
+              "prior-object_calls-aot.callgrind.3": "6cc4953424e017ee11e79263c7faafcc2babdb309ca4c7c67c6553c373934fa9",
+              "prior-object_calls-aot.callgrind.4": "ea660a9ff8c7e48402d15b952ad3e2b92d891523d7be6dd8890c46352b1745e9",
+              "prior-object_calls-aot.callgrind.5": "e5077e89d99b4e0899843c91cca3e46b1e9bc7a37629e5e05fca074c3d622ca2",
+              "prior-object_calls-aot.callgrind.6": "3d65c2795aa42f7c0e6e879747850a7869c493a65d59f96aaf76c5c32f584812",
+              "prior-object_calls-aot.callgrind.7": "fbdf41637b242c1f9c717ed474eaccae1a233ff82c48c209d2af39a50aad2096",
+              "prior-object_calls-aot.callgrind.8": "f5ac07ec4e213c41a8b7ba3e76bf9545af9a086122877262246cc87904294482"
+            },
+            "aot_original_kernel_symbol_absent": false,
+            "verified_kernel_returns": 8
+          }
+        },
+        "candidate": {
+          "jit": {
+            "instructions": 90036392,
+            "instructions_per_kernel_call": 11254549.0,
+            "counting_scope": "client-request markers around kernel",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "profile_sha256": "fb729091851b9e2df34660db936f43018ee0d3ec276a29c9d05dc454985412d0",
+            "part_sha256": {
+              "candidate-object_calls-jit.callgrind": "fb729091851b9e2df34660db936f43018ee0d3ec276a29c9d05dc454985412d0"
+            }
+          },
+          "aot": {
+            "instructions": 67032776,
+            "instructions_per_kernel_call": 8379097.0,
+            "counting_scope": "unmodified executable, f.kernel entry/return",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "profile_sha256": "3d296345c94efd73029cb8e2ea9a5cf13928288a7151349ed0456b3803e994c9",
+            "part_sha256": {
+              "candidate-object_calls-aot.callgrind": "3d296345c94efd73029cb8e2ea9a5cf13928288a7151349ed0456b3803e994c9",
+              "candidate-object_calls-aot.callgrind.1": "28498765f0f67dce61d45f804a4d67fd39449e947242104168a9fce5995103c7",
+              "candidate-object_calls-aot.callgrind.2": "663670e038b745dad0149d6fecd1dcc6ca6c813b0a65f67be16887a6d67a5f9f",
+              "candidate-object_calls-aot.callgrind.3": "3a20a53ba444186449c9f9af39d3e50ab4ade2111956ba2317515a7c616e5cf7",
+              "candidate-object_calls-aot.callgrind.4": "6f696f6612fa8e1e3c9fcd78848a10f601df73b2fb8c0b1e8043fca0d7809a46",
+              "candidate-object_calls-aot.callgrind.5": "3b252c17306281d82834eb2de5de8a74ed18fb7a0f194575b56c237691444821",
+              "candidate-object_calls-aot.callgrind.6": "a3eac5f60e3276afb4386502fd61ac3a0795032d2f1d15260dbab83fb30c2ccf",
+              "candidate-object_calls-aot.callgrind.7": "0dac272185717e863121e26cb981b02a951df1bd0e0d7a0b3f4dc35adf16115f",
+              "candidate-object_calls-aot.callgrind.8": "911a449e2b80b8c7cff7ee8921ecdeb3c15df68f4573252cef945c570a079ffc"
+            },
+            "aot_original_kernel_symbol_absent": false,
+            "verified_kernel_returns": 8
+          }
+        }
+      }
+    },
+    "json_calls": {
+      "iterations_per_kernel_call": 2000,
+      "kernel_calls": 8,
+      "checksum": 64000,
+      "variants": {
+        "main": {
+          "jit": {
+            "instructions": 572271057,
+            "instructions_per_kernel_call": 71533882.125,
+            "counting_scope": "client-request markers around kernel",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "profile_sha256": "feb7ede55948867d3dcebeae4f6364c6778707f27c0512773fbace20cdc2b587",
+            "part_sha256": {
+              "main-json_calls-jit.callgrind": "feb7ede55948867d3dcebeae4f6364c6778707f27c0512773fbace20cdc2b587"
+            }
+          },
+          "aot": {
+            "instructions": 526398962,
+            "instructions_per_kernel_call": 65799870.25,
+            "counting_scope": "unmodified executable, f.kernel entry/return",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "profile_sha256": "1ec87c6a89953eeb311dfb91a1267f60f1961981db90077f5f604b33de1404b1",
+            "part_sha256": {
+              "main-json_calls-aot.callgrind": "1ec87c6a89953eeb311dfb91a1267f60f1961981db90077f5f604b33de1404b1",
+              "main-json_calls-aot.callgrind.1": "10162352fd0352130accbc8317b445aff855452ac9af418f34ba96b0922eb14c",
+              "main-json_calls-aot.callgrind.2": "10575752111508e5ce2d94b2ac928b7b15f88d76d3352bbe953852da42d98e32",
+              "main-json_calls-aot.callgrind.3": "975bb49bed126c425264781bafdd832698865d3e66b7b5a5db545c13b5eec7fa",
+              "main-json_calls-aot.callgrind.4": "b184424485a8692a29cb34fec7232be451cd735b9fe471f9dbddb22f6988230f",
+              "main-json_calls-aot.callgrind.5": "6d738fef22a0785b028a9b26035a802ff2db5afad6f9ab38cbe2ebd67906ab48",
+              "main-json_calls-aot.callgrind.6": "815f6200fa19415bdeb090819d8d3c523f2f22603d51b05c09c52af6f0b8f071",
+              "main-json_calls-aot.callgrind.7": "8594decdcbe3800cbacb786185f572bd3d4379ce36ba0a294bfbff03d49ba212",
+              "main-json_calls-aot.callgrind.8": "4cb64542d223ada1623a727409fc4401bc3f8cd5091887579dac2bd7247c2cb3"
+            },
+            "aot_original_kernel_symbol_absent": false,
+            "verified_kernel_returns": 8
+          }
+        },
+        "original": {
+          "jit": {
+            "instructions": 622599568,
+            "instructions_per_kernel_call": 77824946.0,
+            "counting_scope": "client-request markers around kernel",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "profile_sha256": "51a1fea6182c11e748d1dd6f58ad3a9b18b2b3206e2ea7923bfb3eac73f069c6",
+            "part_sha256": {
+              "original-json_calls-jit.callgrind": "51a1fea6182c11e748d1dd6f58ad3a9b18b2b3206e2ea7923bfb3eac73f069c6"
+            }
+          },
+          "aot": {
+            "instructions": 568691726,
+            "instructions_per_kernel_call": 71086465.75,
+            "counting_scope": "unmodified executable, f.kernel entry/return",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "profile_sha256": "b8433260bac2854d4baa2daa19e856fc8ff4dd910126ce3afc265f8b028467c9",
+            "part_sha256": {
+              "original-json_calls-aot.callgrind": "b8433260bac2854d4baa2daa19e856fc8ff4dd910126ce3afc265f8b028467c9",
+              "original-json_calls-aot.callgrind.1": "80a70b27fd1e6a20d4f7d45621aa86806c2aa9d814b88de8484441f562aa7e6f",
+              "original-json_calls-aot.callgrind.2": "53c0041e5acfb3db2241449ce618cd75807e408e683790ce3d0af8c4630c3c8b",
+              "original-json_calls-aot.callgrind.3": "b14363f0dd032dbb9b33ddff5cb8591ae22611c1e231a7fb83a64ba5788ed4b6",
+              "original-json_calls-aot.callgrind.4": "d70a7f561727dd9cb260f31a801a4774ce83ac9f36280f2436b24093506a3d32",
+              "original-json_calls-aot.callgrind.5": "9a02157ffc310f612bab99682488783c35e98769b4659470728c9cfca584d387",
+              "original-json_calls-aot.callgrind.6": "7732b4be35786b3f5475bb125a50e6a357698e6dd74dff2e92748e8b5ec35eec",
+              "original-json_calls-aot.callgrind.7": "e044ca04b0decfd6bc7b259cb79c62288014d0be8407c79062e933ea1b5255d8",
+              "original-json_calls-aot.callgrind.8": "fb3a03562194f800f2233b53b18ebb773348a6d2685c250db7374a0314592f4f"
+            },
+            "aot_original_kernel_symbol_absent": false,
+            "verified_kernel_returns": 8
+          }
+        },
+        "prior": {
+          "jit": {
+            "instructions": 608558798,
+            "instructions_per_kernel_call": 76069849.75,
+            "counting_scope": "client-request markers around kernel",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "profile_sha256": "e66ad5722bf95bcd0764f3b9747dce022df1e9ffb16a076809295f33d667869c",
+            "part_sha256": {
+              "prior-json_calls-jit.callgrind": "e66ad5722bf95bcd0764f3b9747dce022df1e9ffb16a076809295f33d667869c"
+            }
+          },
+          "aot": {
+            "instructions": 545551029,
+            "instructions_per_kernel_call": 68193878.625,
+            "counting_scope": "unmodified executable, f.kernel entry/return",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "profile_sha256": "2a20623059f1afb57fc16d2db4a09e3ff80c59bcb00fcc25a2bdf332e8dc1bd8",
+            "part_sha256": {
+              "prior-json_calls-aot.callgrind": "2a20623059f1afb57fc16d2db4a09e3ff80c59bcb00fcc25a2bdf332e8dc1bd8",
+              "prior-json_calls-aot.callgrind.1": "f924a2e14eefec9349d6e5465cf09df9e9b357a66546451ae340fc038d8a003f",
+              "prior-json_calls-aot.callgrind.2": "f82d75d2f065345adb43ae4b051ecc78a93a733cd755af26eab77127a5ed41d7",
+              "prior-json_calls-aot.callgrind.3": "907613b126f58f9f1a7d31f77c21581f75d7af4cab932ee3426e6ba2f0291d05",
+              "prior-json_calls-aot.callgrind.4": "a446e16df8243fb37e0e57408feb348841753462b773ca52684a7bca5de0e6bc",
+              "prior-json_calls-aot.callgrind.5": "8bafec41ae1f8b0111a10aa8e6a29c4f3a760172dd2b922976bec30988111291",
+              "prior-json_calls-aot.callgrind.6": "24abbccf8aeb52714955c25a59bea582dc6253f32b73abcac83cad933ffa8dc5",
+              "prior-json_calls-aot.callgrind.7": "a89973115d45c374cc01d5623287adcefc9936b0563763c859a82ea9ef18998a",
+              "prior-json_calls-aot.callgrind.8": "f70f8b3fbb42acee8d297d85c0371d769f28156cc5cb3fa7c5f84ededa90a246"
+            },
+            "aot_original_kernel_symbol_absent": false,
+            "verified_kernel_returns": 8
+          }
+        },
+        "candidate": {
+          "jit": {
+            "instructions": 599385724,
+            "instructions_per_kernel_call": 74923215.5,
+            "counting_scope": "client-request markers around kernel",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "profile_sha256": "679f12913e6e8102381a8c49ed296ab4119dc080e6e0dba988f5cc37317046aa",
+            "part_sha256": {
+              "candidate-json_calls-jit.callgrind": "679f12913e6e8102381a8c49ed296ab4119dc080e6e0dba988f5cc37317046aa"
+            }
+          },
+          "aot": {
+            "instructions": 536695516,
+            "instructions_per_kernel_call": 67086939.5,
+            "counting_scope": "unmodified executable, f.kernel entry/return",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "profile_sha256": "ec980526d327439ac9993c264ff469fccaf66ea1ceb59c343563ac942d501081",
+            "part_sha256": {
+              "candidate-json_calls-aot.callgrind": "ec980526d327439ac9993c264ff469fccaf66ea1ceb59c343563ac942d501081",
+              "candidate-json_calls-aot.callgrind.1": "e0332bb87a369756237f3302d47498c9ced3c459e161818d7c40cfc2fa0545ed",
+              "candidate-json_calls-aot.callgrind.2": "8cd0710e4657220b732ecebac75f0e8bbc3e1b7e828b04c9f80516830bd46b85",
+              "candidate-json_calls-aot.callgrind.3": "db212cf140c99d092ea60e4261c207192b09e92e402338c68e8bac4a9538a4f6",
+              "candidate-json_calls-aot.callgrind.4": "e6d73786355c7030250c5d17aac8eb1eed972c94e9d6cd6ae32bbe2afa095aa4",
+              "candidate-json_calls-aot.callgrind.5": "b7a6eb5657dfdb2b1d367de9e044c5a7eeb6b20334ec1961232ff4d4728d6b0e",
+              "candidate-json_calls-aot.callgrind.6": "7de3b587138cafed2e1abd7ad38eda9e1e108fc0460420ab29a176d0e593cf1b",
+              "candidate-json_calls-aot.callgrind.7": "60e87bb888026d4ac9afce687ae48f8d068c935d0d96e0d4765cfd57eeb2d7a9",
+              "candidate-json_calls-aot.callgrind.8": "a69eb2fe7097799b57c247681c5c29ef69a56f35f1b7d7d1decbc371d9fad489"
+            },
+            "aot_original_kernel_symbol_absent": false,
+            "verified_kernel_returns": 8
+          }
+        }
+      }
+    },
+    "json_file_calls": {
+      "iterations_per_kernel_call": 2000,
+      "kernel_calls": 8,
+      "checksum": 64000,
+      "variants": {
+        "main": {
+          "jit": {
+            "instructions": 571044526,
+            "instructions_per_kernel_call": 71380565.75,
+            "counting_scope": "client-request markers around kernel",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "profile_sha256": "edea4d79547a285e73cec430683840f12d24864bee24b1aacaa70a0f57e1581f",
+            "part_sha256": {
+              "main-json_file_calls-jit.callgrind": "edea4d79547a285e73cec430683840f12d24864bee24b1aacaa70a0f57e1581f"
+            }
+          },
+          "aot": {
+            "instructions": 525479955,
+            "instructions_per_kernel_call": 65684994.375,
+            "counting_scope": "unmodified executable, f.kernel entry/return",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "profile_sha256": "50dcd21111f52438028b49e2428877c127b53401bbe31a75835f6a81fff02076",
+            "part_sha256": {
+              "main-json_file_calls-aot.callgrind": "50dcd21111f52438028b49e2428877c127b53401bbe31a75835f6a81fff02076",
+              "main-json_file_calls-aot.callgrind.1": "a8bbee039edcf581cc9bc5327c9ad60301d184362c16db0c9292b98d9542b648",
+              "main-json_file_calls-aot.callgrind.2": "68fa66e8fd593bde252ab22a27a680a9f1b4c90899b7da01c620f07863b5077c",
+              "main-json_file_calls-aot.callgrind.3": "4853f2fbb2225c43d5e1f27162b10e41aecdea6d96f105672a50667b4ece29de",
+              "main-json_file_calls-aot.callgrind.4": "85a9ff961b9bc7ab3cec0179395cc7474702ec442ee0ea143fb1c7a6331bee90",
+              "main-json_file_calls-aot.callgrind.5": "08adf2fb47648efc822322b4ea098f6b4137bde224701ce118bcca91e736562d",
+              "main-json_file_calls-aot.callgrind.6": "4debea38d0683dbe76c1a487602f84830ec13f936e4f3e7fcf360b3d66003c6e",
+              "main-json_file_calls-aot.callgrind.7": "2023b36279b2a298d9edec5bc3d602ec56751f19a7155dcbc266a2641a85ecca",
+              "main-json_file_calls-aot.callgrind.8": "c4bb74c172bd7c82ace290be2f52b7c70bd0e97ccc4515f151b4c33e3fa47b3d"
+            },
+            "aot_original_kernel_symbol_absent": false,
+            "verified_kernel_returns": 8
+          }
+        },
+        "original": {
+          "jit": {
+            "instructions": 621574448,
+            "instructions_per_kernel_call": 77696806.0,
+            "counting_scope": "client-request markers around kernel",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "profile_sha256": "1a4552f67ed0d6c319c1161974ac46bb32f91536e7c828be34baf7f5e186075f",
+            "part_sha256": {
+              "original-json_file_calls-jit.callgrind": "1a4552f67ed0d6c319c1161974ac46bb32f91536e7c828be34baf7f5e186075f"
+            }
+          },
+          "aot": {
+            "instructions": 567696774,
+            "instructions_per_kernel_call": 70962096.75,
+            "counting_scope": "unmodified executable, f.kernel entry/return",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "profile_sha256": "9052bfc245903a03e2bf89f226dabcedd482901bc93e09a48fa5746d5295d442",
+            "part_sha256": {
+              "original-json_file_calls-aot.callgrind": "9052bfc245903a03e2bf89f226dabcedd482901bc93e09a48fa5746d5295d442",
+              "original-json_file_calls-aot.callgrind.1": "4f7cffcc647f6d311e5c5c856a945a5f7c87b2006dc89b710ce4ac9929075312",
+              "original-json_file_calls-aot.callgrind.2": "8956bf5bf5cb7ff9044c365f6f06a688b1f6c6354ea85544f27313229226c9f4",
+              "original-json_file_calls-aot.callgrind.3": "84fcfa03735b348f88cf44328a097d053defaa886b0eb07cdc9be9ad5fad5c66",
+              "original-json_file_calls-aot.callgrind.4": "3e77727da330985383a6e785905535524c238c442377900444ec7a1e8234187d",
+              "original-json_file_calls-aot.callgrind.5": "03a841335528934d49de2446f4a5a9f80502b19e2b6d6a24831cb325c8ce365c",
+              "original-json_file_calls-aot.callgrind.6": "df95328021a84cc45238261e8fd5c108b637583248f9e9e490ef61ed07e91a8f",
+              "original-json_file_calls-aot.callgrind.7": "fc1669d8ab735bc4f4ee29845b0a245a72e15d690f32359c79dfee36bcee61ec",
+              "original-json_file_calls-aot.callgrind.8": "b55770717c307d362399db30d17ad5dc7d7180927bb1113dcbb0dd8fc608afe0"
+            },
+            "aot_original_kernel_symbol_absent": false,
+            "verified_kernel_returns": 8
+          }
+        },
+        "prior": {
+          "jit": {
+            "instructions": 620573015,
+            "instructions_per_kernel_call": 77571626.875,
+            "counting_scope": "client-request markers around kernel",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "profile_sha256": "b869af6f9e2c42ff83ca4078dbf810af4ea408c9295e57f8aca05ef596e8b9b4",
+            "part_sha256": {
+              "prior-json_file_calls-jit.callgrind": "b869af6f9e2c42ff83ca4078dbf810af4ea408c9295e57f8aca05ef596e8b9b4"
+            }
+          },
+          "aot": {
+            "instructions": 557072830,
+            "instructions_per_kernel_call": 69634103.75,
+            "counting_scope": "unmodified executable, f.kernel entry/return",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "profile_sha256": "08a45ee4e7b452a49837415904435659feab43fe671e5471689dad14c5970325",
+            "part_sha256": {
+              "prior-json_file_calls-aot.callgrind": "08a45ee4e7b452a49837415904435659feab43fe671e5471689dad14c5970325",
+              "prior-json_file_calls-aot.callgrind.1": "556bb4a8e614d3a1eb059c09e270632c5a6290dfa4f21548ce2227fa6c33a8f6",
+              "prior-json_file_calls-aot.callgrind.2": "b0d594666a650fa7d073fc205c7797042b3846ff4d7f3c0d0b6ce452b7191f58",
+              "prior-json_file_calls-aot.callgrind.3": "ee405346f2d8eeaf09a4093b0c6f67f803d86e51e8d5a2d8a7a807036610b0db",
+              "prior-json_file_calls-aot.callgrind.4": "6076ad233f50570a7a54bf36e17a06c3517fff2c30a70d6982c1c24eca91ecd2",
+              "prior-json_file_calls-aot.callgrind.5": "227327fc64f9cddee58d730e8656c7ec003d2399ed618c5e34aa59c243fef816",
+              "prior-json_file_calls-aot.callgrind.6": "6c491bc0cc459440bbd81f0b166e9ef03325c25a897f184d3e5bb2dc6c998e9f",
+              "prior-json_file_calls-aot.callgrind.7": "c9ac8899d39d2be2d0ac752bb5fda3aa56edd9f39a06b4ce4ba70bc1d6a0d6fb",
+              "prior-json_file_calls-aot.callgrind.8": "b873683d33b6313e41c7ca2481cf882d3eceef8d678e9ed2ec5c9e08013dcc96"
+            },
+            "aot_original_kernel_symbol_absent": false,
+            "verified_kernel_returns": 8
+          }
+        },
+        "candidate": {
+          "jit": {
+            "instructions": 598367827,
+            "instructions_per_kernel_call": 74795978.375,
+            "counting_scope": "client-request markers around kernel",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "profile_sha256": "05dda1f4a596f4d0aeb1c783d7401a98d74abf018f013bae93f00f7dd8f8c456",
+            "part_sha256": {
+              "candidate-json_file_calls-jit.callgrind": "05dda1f4a596f4d0aeb1c783d7401a98d74abf018f013bae93f00f7dd8f8c456"
+            }
+          },
+          "aot": {
+            "instructions": 535776535,
+            "instructions_per_kernel_call": 66972066.875,
+            "counting_scope": "unmodified executable, f.kernel entry/return",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "profile_sha256": "792658a745081b6aafaa8279a6b0074760f5510ee9e27983bc1e0ecd98b15677",
+            "part_sha256": {
+              "candidate-json_file_calls-aot.callgrind": "792658a745081b6aafaa8279a6b0074760f5510ee9e27983bc1e0ecd98b15677",
+              "candidate-json_file_calls-aot.callgrind.1": "8dbb5340a6a1fec5a95582ba98a8e1a1d5de6e514ed64609bfc9655c6c9867be",
+              "candidate-json_file_calls-aot.callgrind.2": "8048f52d3480b5aa5c05b25c24c600876d55ce8ef6429171240bf2000ce15c2a",
+              "candidate-json_file_calls-aot.callgrind.3": "d795a526c286195810a0b85ed3622c11a7bd9b343d52b327e982a554d21dda93",
+              "candidate-json_file_calls-aot.callgrind.4": "c288c127f1f1f6a22fe82438c98cf54ed31c6c53cf21132c5b03366fce99ba0e",
+              "candidate-json_file_calls-aot.callgrind.5": "5dfaac1e7ad00f156740804d681bbc6b4758922fb95ad5522afa5499794667e5",
+              "candidate-json_file_calls-aot.callgrind.6": "fd3caa39baf5afc333ec136f6970bd0a6c26064eda36ee802ca9f1bd44a42430",
+              "candidate-json_file_calls-aot.callgrind.7": "c05e2e180fbeea0ef3c1c94fd697d334235ced7606b3be91b96b0d56447aa34e",
+              "candidate-json_file_calls-aot.callgrind.8": "f8cb0e23403069d859b942694ce614464dc2953993161f8d56640966e41485e5"
+            },
+            "aot_original_kernel_symbol_absent": false,
+            "verified_kernel_returns": 8
+          }
+        }
+      }
+    }
+  },
+  "elapsed_kernel_samples": {
+    "ordinary_calls": {
+      "main_jit": [
+        {
+          "round": 0,
+          "sample_ns": [
+            11345688,
+            11473901,
+            11548324,
+            11217906,
+            11289573,
+            11415273,
+            11486711
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            12273998,
+            11387701,
+            11488394,
+            11179717,
+            11217064,
+            11282463,
+            11920115
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            12115739,
+            12484896,
+            12709926,
+            11755837,
+            12634893,
+            12779480,
+            12496043
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            11435388,
+            11643831,
+            11495208,
+            11455158,
+            11579795,
+            12088701,
+            12167784
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            11540987,
+            11758073,
+            12367439,
+            12182672,
+            11673447,
+            12122421,
+            12003101
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            15177686,
+            11410571,
+            11349599,
+            11291673,
+            11348387,
+            11225202,
+            11436740
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            11081746,
+            11824484,
+            11980058,
+            11629761,
+            11673216,
+            12239317,
+            11380175
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            11295822,
+            11185144,
+            11082961,
+            11054948,
+            11651707,
+            11011803,
+            11289722
+          ]
+        }
+      ],
+      "original_jit": [
+        {
+          "round": 0,
+          "sample_ns": [
+            11250935,
+            11486781,
+            11434192,
+            11402123,
+            11458399,
+            11112146,
+            11229143
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            11271096,
+            11060738,
+            11777459,
+            11490146,
+            11717619,
+            11644639,
+            11139928
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            11240279,
+            11262052,
+            11377566,
+            11530507,
+            11497026,
+            11286929,
+            11327431
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            11276749,
+            11696071,
+            11837823,
+            11957884,
+            12265116,
+            11902100,
+            12467861
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            12994153,
+            13966675,
+            13406773,
+            12266618,
+            13694746,
+            13325080,
+            12310124
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            11336700,
+            11312283,
+            11455799,
+            11292853,
+            11313555,
+            11608208,
+            11293585
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            12061469,
+            12130584,
+            11688388,
+            11412704,
+            11567838,
+            11953798,
+            11587276
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            11048449,
+            11033997,
+            11371596,
+            11065544,
+            11028338,
+            11163562,
+            11474361
+          ]
+        }
+      ],
+      "prior_jit": [
+        {
+          "round": 0,
+          "sample_ns": [
+            12376132,
+            12531176,
+            12189230,
+            12110602,
+            12203742,
+            11922618,
+            12049089
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            11262312,
+            11444708,
+            11850249,
+            11497777,
+            11520862,
+            11007148,
+            11406330
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            11305187,
+            11574573,
+            12121889,
+            11419990,
+            12264815,
+            12458396,
+            12593520
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            11770572,
+            11822150,
+            11319244,
+            11743491,
+            12429343,
+            11770061,
+            11714898
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            11147896,
+            11273745,
+            11314897,
+            11125391,
+            11139874,
+            11124951,
+            11144912
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            12262062,
+            11631453,
+            11976202,
+            11624642,
+            11569780,
+            11950483,
+            12627971
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            11207836,
+            11715600,
+            11231161,
+            11116008,
+            32754130,
+            11547266,
+            11334036
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            11321216,
+            11276699,
+            11063448,
+            11154856,
+            11134145,
+            11016398,
+            11003338
+          ]
+        }
+      ],
+      "candidate_jit": [
+        {
+          "round": 0,
+          "sample_ns": [
+            11758451,
+            11869769,
+            11927706,
+            11911591,
+            11554723,
+            11407902,
+            11774184
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            11278577,
+            11443746,
+            11478599,
+            11943069,
+            13504042,
+            11260790,
+            12139475
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            11629026,
+            11774855,
+            11897751,
+            11506961,
+            11459159,
+            11409003,
+            11763027
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            11448206,
+            11293213,
+            14228223,
+            12046176,
+            11669771,
+            11757733,
+            12412403
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            12242382,
+            15326455,
+            11351061,
+            11241297,
+            11248377,
+            11261046,
+            11504021
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            11426645,
+            11843062,
+            11361568,
+            11297461,
+            11299514,
+            11352112,
+            11529881
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            11131861,
+            11519084,
+            11504172,
+            11324401,
+            11510542,
+            11370781,
+            11238251
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            11569705,
+            11140076,
+            11385947,
+            11374339,
+            11007256,
+            11061368,
+            11188810
+          ]
+        }
+      ],
+      "main_aot": [
+        {
+          "round": 0,
+          "sample_ns": [
+            9604002,
+            8960392,
+            9196618,
+            9027492,
+            9231731,
+            9575188,
+            8999571
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            9671224,
+            9095124,
+            9000412,
+            9548378,
+            9112381,
+            9051048,
+            9868280
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            10873746,
+            9382798,
+            10437359,
+            9372593,
+            9167022,
+            9306414,
+            9130057
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            10333811,
+            9405355,
+            9659627,
+            9384434,
+            9349651,
+            9796643,
+            10675295
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            10177897,
+            9747229,
+            9355229,
+            10190396,
+            10359690,
+            9424674,
+            9045905
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            9262510,
+            9150482,
+            9272666,
+            9881391,
+            9251654,
+            9426642,
+            9249361
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            9303933,
+            9506567,
+            8936741,
+            8944051,
+            8980256,
+            9332215,
+            9216030
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            9343668,
+            9149135,
+            9331970,
+            9460334,
+            9045087,
+            8998308,
+            9360783
+          ]
+        }
+      ],
+      "original_aot": [
+        {
+          "round": 0,
+          "sample_ns": [
+            9228175,
+            9210940,
+            8962775,
+            9189457,
+            9484512,
+            9272773,
+            9376419
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            9365823,
+            9856833,
+            9057247,
+            9018469,
+            9323850,
+            9244240,
+            9028504
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            9074724,
+            9166493,
+            9226082,
+            9334696,
+            10569507,
+            11253679,
+            12797638
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            9300537,
+            9554489,
+            9774530,
+            9642231,
+            9838256,
+            9624294,
+            9507048
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            29346564,
+            14387830,
+            10256215,
+            10745530,
+            10480922,
+            9980520,
+            9609883
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            9885397,
+            9733419,
+            9250272,
+            9485135,
+            9132645,
+            9523162,
+            9121558
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            9228469,
+            9061558,
+            10561414,
+            8969940,
+            9265004,
+            9947250,
+            9078023
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            9188174,
+            9150336,
+            9161844,
+            9344850,
+            9021343,
+            9128773,
+            9028523
+          ]
+        }
+      ],
+      "prior_aot": [
+        {
+          "round": 0,
+          "sample_ns": [
+            8992940,
+            9439133,
+            9323268,
+            9643061,
+            9338211,
+            9572295,
+            8931608
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            8997137,
+            9452323,
+            9903342,
+            9022956,
+            9013652,
+            9737203,
+            9152090
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            9459414,
+            9090478,
+            9231721,
+            10031547,
+            9153853,
+            9073411,
+            9016757
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            9977836,
+            9394218,
+            9803944,
+            10128502,
+            10061793,
+            10070005,
+            10007321
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            10247602,
+            10098327,
+            9717104,
+            9951136,
+            9866629,
+            9634880,
+            11581488
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            9134878,
+            9661441,
+            10339901,
+            11514237,
+            9477884,
+            9145605,
+            9234247
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            9610784,
+            9517684,
+            8954707,
+            9025113,
+            8939885,
+            9429001,
+            9248108
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            9066820,
+            9219621,
+            9325961,
+            9111578,
+            8969424,
+            8966479,
+            9005849
+          ]
+        }
+      ],
+      "candidate_aot": [
+        {
+          "round": 0,
+          "sample_ns": [
+            9708489,
+            9226964,
+            9411341,
+            9792116,
+            9164429,
+            9041474,
+            10054641
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            9259502,
+            9189487,
+            9115285,
+            9234745,
+            9215495,
+            9124288,
+            9405372
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            9095906,
+            9406585,
+            9101734,
+            9400085,
+            9189718,
+            9078259,
+            9117218
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            9564174,
+            9285655,
+            9426517,
+            9296341,
+            9102279,
+            9347328,
+            9265305
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            9881562,
+            13518201,
+            15413752,
+            9173025,
+            9474500,
+            10106790,
+            9034738
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            9613979,
+            9613128,
+            9139595,
+            9165474,
+            10789927,
+            9221078,
+            10023665
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            9027517,
+            9373016,
+            9006555,
+            8994458,
+            9172905,
+            8953996,
+            9005404
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            10388973,
+            9485682,
+            12380417,
+            9380323,
+            9165469,
+            9112098,
+            9411340
+          ]
+        }
+      ]
+    },
+    "object_calls": {
+      "main_jit": [
+        {
+          "round": 0,
+          "sample_ns": [
+            12782573,
+            12891978,
+            16980022,
+            12941673,
+            12613929,
+            12430372,
+            13531251
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            15010111,
+            15137063,
+            15395362,
+            14270581,
+            12836253,
+            14074892,
+            13459864
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            13744781,
+            15579745,
+            14804877,
+            14861833,
+            14811778,
+            14733671,
+            14996265
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            12850203,
+            14345060,
+            13163035,
+            13407583,
+            18222505,
+            19148840,
+            13075253
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            12866118,
+            12609962,
+            12593427,
+            13041361,
+            12588429,
+            12530382,
+            12622200
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            12859748,
+            12507468,
+            12817364,
+            13039929,
+            12970655,
+            12710293,
+            12745356
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            12485871,
+            12793696,
+            12419651,
+            12884753,
+            13124153,
+            12894007,
+            12873525
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            12637470,
+            12600704,
+            17299377,
+            24173549,
+            20139869,
+            19786296,
+            20378509
+          ]
+        }
+      ],
+      "original_jit": [
+        {
+          "round": 0,
+          "sample_ns": [
+            13462288,
+            13684262,
+            13602129,
+            13964936,
+            13541607,
+            13963304,
+            14609177
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            13652103,
+            14955539,
+            14068522,
+            14104015,
+            14268573,
+            20046585,
+            24071955
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            13882198,
+            13946054,
+            13707395,
+            14170092,
+            13829268,
+            14277884,
+            14511776
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            13627754,
+            13613784,
+            13439021,
+            13727815,
+            13875588,
+            13940225,
+            14180357
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            14069319,
+            13582717,
+            13755788,
+            14097622,
+            13432361,
+            17482750,
+            14168179
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            14725479,
+            15447155,
+            22571415,
+            15727387,
+            16177315,
+            17249499,
+            16957901
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            13814286,
+            14445416,
+            14363252,
+            15224028,
+            14405296,
+            15108554,
+            15860818
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            22967436,
+            22609071,
+            22989684,
+            14036519,
+            13717228,
+            14654530,
+            14696213
+          ]
+        }
+      ],
+      "prior_jit": [
+        {
+          "round": 0,
+          "sample_ns": [
+            14393863,
+            13506243,
+            14400753,
+            14608086,
+            14538260,
+            14017445,
+            13755610
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            19087399,
+            15067348,
+            15529424,
+            16547279,
+            14873005,
+            15166457,
+            15499409
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            12824284,
+            13304809,
+            12727158,
+            12635000,
+            12600197,
+            12927660,
+            12593106
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            13457468,
+            13310967,
+            13152419,
+            13247782,
+            13039139,
+            12750503,
+            12729091
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            13193531,
+            13095133,
+            13176436,
+            13379571,
+            13239029,
+            13496587,
+            13032198
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            13477373,
+            13596858,
+            20852567,
+            15217959,
+            14960973,
+            15116166,
+            14727882
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            22758757,
+            14498204,
+            13071144,
+            12526152,
+            12415365,
+            13208160,
+            12995710
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            12635617,
+            12417128,
+            12421344,
+            12434274,
+            12758723,
+            12891383,
+            12696178
+          ]
+        }
+      ],
+      "candidate_jit": [
+        {
+          "round": 0,
+          "sample_ns": [
+            13002635,
+            17441948,
+            16349331,
+            16160416,
+            14688150,
+            14800095,
+            14588776
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            13892687,
+            16077325,
+            15278615,
+            14049673,
+            19485980,
+            19854496,
+            19620693
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            13429366,
+            13096925,
+            12750112,
+            13668517,
+            19960953,
+            21834835,
+            21637999
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            12862552,
+            13173069,
+            14004107,
+            15629820,
+            14548983,
+            14377053,
+            15116091
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            13149474,
+            13725832,
+            13453352,
+            13175493,
+            13001502,
+            12692906,
+            13087571
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            12856844,
+            12717584,
+            13633313,
+            16327641,
+            16352329,
+            17716593,
+            16219989
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            16148071,
+            14610173,
+            14659929,
+            14179595,
+            14332034,
+            14450243,
+            14889745
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            13253859,
+            13627913,
+            13312527,
+            13035019,
+            14160125,
+            13688284,
+            13021829
+          ]
+        }
+      ],
+      "main_aot": [
+        {
+          "round": 0,
+          "sample_ns": [
+            11459719,
+            11185465,
+            10769638,
+            10693493,
+            14286166,
+            12949975,
+            13553255
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            11284385,
+            11173146,
+            11085984,
+            12000764,
+            11199376,
+            10740734,
+            10778091
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            10985124,
+            10512994,
+            10688558,
+            10772665,
+            10609789,
+            10622559,
+            10985075
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            11425487,
+            11848996,
+            10881769,
+            10679194,
+            10704943,
+            11290434,
+            10555938
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            11074019,
+            11044134,
+            10530109,
+            10519132,
+            10871583,
+            10759566,
+            10591482
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            10513444,
+            10631802,
+            11439688,
+            11203384,
+            12003068,
+            11279538,
+            11520171
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            10697565,
+            11032510,
+            11204239,
+            10752849,
+            11630933,
+            12038286,
+            14752648
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            18830660,
+            31921875,
+            17482168,
+            16019528,
+            15881289,
+            16052618,
+            16033119
+          ]
+        }
+      ],
+      "original_aot": [
+        {
+          "round": 0,
+          "sample_ns": [
+            13965046,
+            13991916,
+            13143947,
+            13722179,
+            13104468,
+            13880058,
+            15431987
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            12271943,
+            12466226,
+            12149357,
+            11905060,
+            12046153,
+            12174365,
+            12804256
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            11792861,
+            11914254,
+            12133595,
+            12308718,
+            11845821,
+            11727303,
+            12321647
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            11935847,
+            12040974,
+            13194863,
+            12353987,
+            12616562,
+            12213725,
+            12398082
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            12530483,
+            12670072,
+            11735085,
+            11836657,
+            11813663,
+            11714213,
+            11636887
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            13432531,
+            12362619,
+            12355909,
+            13415515,
+            12513517,
+            12511633,
+            12286785
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            11744874,
+            11972817,
+            12158398,
+            12560183,
+            11792877,
+            12036975,
+            12037234
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            13748535,
+            12968960,
+            13799542,
+            13245566,
+            13656916,
+            12614225,
+            13453981
+          ]
+        }
+      ],
+      "prior_aot": [
+        {
+          "round": 0,
+          "sample_ns": [
+            11024172,
+            11198034,
+            11002158,
+            10988238,
+            11924920,
+            11947274,
+            12413657
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            11102680,
+            11052434,
+            11244074,
+            10923800,
+            10778091,
+            10687915,
+            11088635
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            11074709,
+            10846647,
+            10870552,
+            10848279,
+            11066948,
+            10529408,
+            10751173
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            10996171,
+            12431853,
+            12034144,
+            10639814,
+            11162532,
+            10862214,
+            11228911
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            10685073,
+            10673906,
+            10790732,
+            10765583,
+            11292097,
+            10371761,
+            10632774
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            12090830,
+            12260095,
+            12031782,
+            10955529,
+            10550901,
+            11461903,
+            12127245
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            10972921,
+            10890020,
+            10608101,
+            10731907,
+            11308456,
+            10622543,
+            11579295
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            11400295,
+            10956015,
+            11426534,
+            11759181,
+            12043895,
+            11811044,
+            12144307
+          ]
+        }
+      ],
+      "candidate_aot": [
+        {
+          "round": 0,
+          "sample_ns": [
+            12751536,
+            11310563,
+            11966573,
+            12887240,
+            13165430,
+            12916024,
+            12339404
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            12786479,
+            11942866,
+            11000316,
+            10713443,
+            10968898,
+            10944032,
+            11139876
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            11441983,
+            11081750,
+            11230213,
+            11448602,
+            11119908,
+            10927318,
+            10626795
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            10827487,
+            11149823,
+            11417596,
+            10707005,
+            11051945,
+            10816550,
+            11494512
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            10553235,
+            10460896,
+            10607906,
+            10828799,
+            10591312,
+            10528977,
+            10830382
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            11405007,
+            10980547,
+            10918615,
+            10874548,
+            11285007,
+            11233168,
+            12291813
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            10855414,
+            11452994,
+            11450099,
+            12819824,
+            11035064,
+            10823385,
+            10644475
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            15795621,
+            16003604,
+            16061891,
+            16227381,
+            15910213,
+            14285684,
+            10924287
+          ]
+        }
+      ]
+    },
+    "json_calls": {
+      "main_jit": [
+        {
+          "round": 0,
+          "sample_ns": [
+            7946289,
+            7217229,
+            5033267,
+            5421182,
+            5334902,
+            5043933,
+            5526341
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            7953577,
+            7760676,
+            6187817,
+            6027865,
+            6716073,
+            5645518,
+            7764323
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            6979740,
+            6857916,
+            5033227,
+            4877822,
+            5214760,
+            4903911,
+            4867315
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            7683161,
+            6698866,
+            5441972,
+            5762445,
+            5866533,
+            5180869,
+            5232516
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            7067752,
+            7165369,
+            5115470,
+            5021809,
+            5346389,
+            4998444,
+            6111742
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            7557669,
+            7151918,
+            5231804,
+            5026775,
+            5769404,
+            5489542,
+            5394289
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            7188903,
+            6670252,
+            5327599,
+            5042209,
+            6008625,
+            5022829,
+            5162019
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            7341353,
+            6670211,
+            5203141,
+            5307298,
+            5721502,
+            5292926,
+            5231855
+          ]
+        }
+      ],
+      "original_jit": [
+        {
+          "round": 0,
+          "sample_ns": [
+            8400223,
+            7995092,
+            5649376,
+            5553912,
+            6127436,
+            5527232,
+            6237863
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            7994219,
+            7193101,
+            5886092,
+            5538668,
+            5953513,
+            5667451,
+            5591567
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            11526263,
+            10675429,
+            8341523,
+            8207330,
+            8895567,
+            8256275,
+            8164856
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            8219888,
+            8708526,
+            5857448,
+            6163330,
+            6318743,
+            5512468,
+            5587411
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            8600963,
+            7686255,
+            5867173,
+            5619580,
+            6034815,
+            5844989,
+            5926723
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            8312707,
+            8135179,
+            5885990,
+            5919180,
+            6384080,
+            6038539,
+            5760831
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            7517168,
+            7701866,
+            6102657,
+            5699008,
+            6423720,
+            6099842,
+            6180694
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            8130242,
+            9273124,
+            6481827,
+            5555291,
+            6581067,
+            6160855,
+            5973131
+          ]
+        }
+      ],
+      "prior_jit": [
+        {
+          "round": 0,
+          "sample_ns": [
+            7301776,
+            7487185,
+            5402653,
+            5568683,
+            5699350,
+            5203222,
+            5221520
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            7292872,
+            7276026,
+            5189352,
+            5282091,
+            6166725,
+            5256583,
+            5196262
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            11540994,
+            10578034,
+            7894809,
+            7435386,
+            5711508,
+            5725570,
+            6025682
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            7218630,
+            6912227,
+            4998654,
+            5204314,
+            5681914,
+            5182531,
+            5504916
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            7440535,
+            6712918,
+            5122821,
+            5200117,
+            5619430,
+            5191484,
+            5216032
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            7745152,
+            7028312,
+            5286947,
+            5289631,
+            5911528,
+            5770085,
+            5911889
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            8836487,
+            8324444,
+            6338101,
+            6965396,
+            6230108,
+            6254705,
+            5959180
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            11145926,
+            10865524,
+            7887466,
+            7912544,
+            8429594,
+            7819493,
+            7938262
+          ]
+        }
+      ],
+      "candidate_jit": [
+        {
+          "round": 0,
+          "sample_ns": [
+            7463018,
+            8118275,
+            5078755,
+            5221400,
+            5822956,
+            5123703,
+            5128700
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            7985075,
+            7737282,
+            5228640,
+            5912051,
+            5938160,
+            5865380,
+            5660582
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            8168232,
+            7643460,
+            6393827,
+            5175501,
+            6032052,
+            5316814,
+            5250022
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            11305741,
+            10350610,
+            6059078,
+            5279307,
+            5721284,
+            5381881,
+            5043791
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            7847107,
+            7025279,
+            5128891,
+            5255451,
+            5523856,
+            5153738,
+            5617057
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            7685993,
+            6978566,
+            4963209,
+            4996109,
+            5493459,
+            5403312,
+            5481030
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            7459182,
+            7633613,
+            5275810,
+            5488812,
+            5595722,
+            5176851,
+            5000105
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            7316636,
+            6577923,
+            5064552,
+            4952102,
+            5426377,
+            5068388,
+            4943320
+          ]
+        }
+      ],
+      "main_aot": [
+        {
+          "round": 0,
+          "sample_ns": [
+            6808162,
+            6493537,
+            4712824,
+            4639322,
+            4909720,
+            4523718,
+            4558270
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            10204490,
+            9779300,
+            7114624,
+            7063817,
+            7634285,
+            7117908,
+            7141184
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            10028336,
+            9504245,
+            7103286,
+            7174363,
+            7835099,
+            7046089,
+            7062334
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            6469571,
+            6271202,
+            4349555,
+            4401163,
+            4784311,
+            4318859,
+            4470147
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            6616282,
+            6726609,
+            4820205,
+            4986866,
+            5202732,
+            4676188,
+            4794095
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            7415325,
+            6463320,
+            5219145,
+            4982218,
+            5161478,
+            4645060,
+            4714886
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            7683659,
+            6465548,
+            4561354,
+            5034216,
+            5093756,
+            4859092,
+            6994350
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            7546241,
+            6145201,
+            4707024,
+            4444337,
+            4869588,
+            4452350,
+            4374312
+          ]
+        }
+      ],
+      "original_aot": [
+        {
+          "round": 0,
+          "sample_ns": [
+            6959860,
+            6504103,
+            4798522,
+            4924443,
+            5306458,
+            4860406,
+            4815068
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            10573807,
+            10033862,
+            7558292,
+            7384430,
+            8049893,
+            7390999,
+            7358582
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            10426285,
+            9814062,
+            7756601,
+            7825184,
+            8619812,
+            7630671,
+            7732804
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            6981964,
+            6724125,
+            4839053,
+            5070802,
+            5242582,
+            4646604,
+            4773845
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            7263328,
+            6785508,
+            4768877,
+            4964813,
+            5912892,
+            5008409,
+            5706882
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            7016633,
+            6455138,
+            4862708,
+            4833815,
+            5371895,
+            5458406,
+            5359497
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            7296215,
+            8399758,
+            5639449,
+            5927392,
+            6409189,
+            5145123,
+            5423142
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            6972667,
+            6234004,
+            5152224,
+            5428060,
+            5794673,
+            4855107,
+            4698701
+          ]
+        }
+      ],
+      "prior_aot": [
+        {
+          "round": 0,
+          "sample_ns": [
+            6687329,
+            6771466,
+            5212627,
+            4926154,
+            5395372,
+            5032705,
+            5065595
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            8255073,
+            7508927,
+            5386969,
+            5046996,
+            6351994,
+            5006386,
+            4811322
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            10473565,
+            10165152,
+            7497741,
+            7411060,
+            8136493,
+            7542619,
+            7416178
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            6671605,
+            6661611,
+            4579132,
+            4608787,
+            6319113,
+            5072675,
+            5206298
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            7234855,
+            6822833,
+            4847536,
+            4644801,
+            5343384,
+            5032996,
+            4870391
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            6724253,
+            6459333,
+            5014767,
+            5577706,
+            5677597,
+            4729127,
+            5225685
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            10950812,
+            9948782,
+            7412320,
+            7382796,
+            8076661,
+            7309915,
+            7309345
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            6682270,
+            6071219,
+            4686723,
+            4886103,
+            5166896,
+            4766633,
+            4553832
+          ]
+        }
+      ],
+      "candidate_aot": [
+        {
+          "round": 0,
+          "sample_ns": [
+            7198470,
+            6832889,
+            5102440,
+            4708987,
+            4983180,
+            4857761,
+            4903941
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            6774141,
+            7400584,
+            5064593,
+            7532773,
+            8074891,
+            7449378,
+            7770872
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            10347997,
+            10140173,
+            7300323,
+            7294485,
+            8027308,
+            7272622,
+            7284209
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            6578645,
+            6274276,
+            4854937,
+            4799434,
+            5204064,
+            4536297,
+            4728336
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            6966580,
+            6658705,
+            4675898,
+            4600765,
+            5518047,
+            5058214,
+            4784591
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            7072407,
+            6630032,
+            4685762,
+            4669707,
+            4864570,
+            6302217,
+            5003680
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            10387083,
+            9643272,
+            7289235,
+            7127530,
+            7800114,
+            7078457,
+            7108442
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            7047991,
+            6687958,
+            4718240,
+            4574964,
+            5206316,
+            4989810,
+            4579361
+          ]
+        }
+      ]
+    },
+    "json_warmed_short": {
+      "main_jit": [
+        {
+          "round": 0,
+          "sample_ns": [
+            5967834,
+            4904931,
+            5400458,
+            5800582,
+            5016851,
+            5490924,
+            4898061
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            8503355,
+            7948740,
+            7941388,
+            8618499,
+            7884543,
+            8642936,
+            7829750
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            5650416,
+            4926764,
+            4878432,
+            6077420,
+            5182670,
+            5633130,
+            5126316
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            5893042,
+            4926143,
+            4935448,
+            5449784,
+            4852343,
+            5509193,
+            5085204
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            5504716,
+            5069440,
+            5187377,
+            5395922,
+            4877771,
+            5729565,
+            5014868
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            6339024,
+            6230581,
+            6123208,
+            6997596,
+            5233227,
+            6344321,
+            5182300
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            5808172,
+            5086356,
+            4967197,
+            5569002,
+            5090032,
+            5468100,
+            5269021
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            6728348,
+            6647897,
+            5746600,
+            6186793,
+            5753551,
+            6118841,
+            5885890
+          ]
+        }
+      ],
+      "original_jit": [
+        {
+          "round": 0,
+          "sample_ns": [
+            5906491,
+            5434789,
+            5544016,
+            6230439,
+            5495952,
+            5867242,
+            5401510
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            8818739,
+            8265416,
+            8281610,
+            9052011,
+            8279787,
+            8893552,
+            8347129
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            7948027,
+            5709765,
+            5402061,
+            6082296,
+            5652098,
+            6091130,
+            5580851
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            5847262,
+            5459929,
+            5474329,
+            6326665,
+            5723526,
+            6050098,
+            5433008
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            5933082,
+            5524395,
+            5460349,
+            6177270,
+            5674792,
+            5737627,
+            5606229
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            5876026,
+            5604707,
+            7491531,
+            6092191,
+            5785439,
+            5932802,
+            5373158
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            5800872,
+            5529854,
+            5599800,
+            6422918,
+            5572408,
+            5901633,
+            5354810
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            8640586,
+            6647936,
+            5835104,
+            6066181,
+            5820221,
+            6322287,
+            5658217
+          ]
+        }
+      ],
+      "prior_jit": [
+        {
+          "round": 0,
+          "sample_ns": [
+            5463253,
+            5091613,
+            5109410,
+            5532497,
+            5073555,
+            5619518,
+            5126465
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            7110545,
+            5343102,
+            5544476,
+            6196618,
+            5161889,
+            6155185,
+            5200177
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            7324128,
+            6291381,
+            6400726,
+            9413001,
+            5765319,
+            6002867,
+            5887132
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            5860762,
+            5118995,
+            5299046,
+            5909977,
+            5387279,
+            5838079,
+            5143913
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            6185522,
+            7285871,
+            6186764,
+            8161220,
+            6884986,
+            6265282,
+            5512988
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            5736225,
+            5074347,
+            5240398,
+            6002195,
+            5081408,
+            5803697,
+            5060757
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            5835414,
+            5093296,
+            5142971,
+            5607591,
+            5160968,
+            5838588,
+            5127898
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            6002716,
+            11122956,
+            5722664,
+            6640185,
+            5455201,
+            6209217,
+            5387469
+          ]
+        }
+      ],
+      "candidate_jit": [
+        {
+          "round": 0,
+          "sample_ns": [
+            5764848,
+            5163641,
+            5251073,
+            6053834,
+            8128209,
+            8620060,
+            8171073
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            9031821,
+            8119185,
+            8384755,
+            8845269,
+            8076271,
+            8777156,
+            9232753
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            6142788,
+            5612518,
+            5419257,
+            6129778,
+            5364986,
+            5799991,
+            5472358
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            5590525,
+            5112775,
+            5178204,
+            5665318,
+            5119315,
+            5245986,
+            5026455
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            5683145,
+            5067948,
+            5092204,
+            5614251,
+            5027107,
+            5388361,
+            4915598
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            6167765,
+            5404825,
+            5656845,
+            5723185,
+            5021438,
+            5868434,
+            5060056
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            5640290,
+            5392688,
+            5124844,
+            5583464,
+            5034528,
+            5294209,
+            5033396
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            5735563,
+            5549373,
+            5099566,
+            5842374,
+            5011383,
+            5416243,
+            5865188
+          ]
+        }
+      ],
+      "main_aot": [
+        {
+          "round": 0,
+          "sample_ns": [
+            7665542,
+            5161318,
+            4512369,
+            5035137,
+            4495635,
+            4989188,
+            4507914
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            5015398,
+            4546221,
+            4676118,
+            5210122,
+            4685001,
+            5084453,
+            4571189
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            5024793,
+            4666704,
+            5114147,
+            5179326,
+            4889730,
+            5286867,
+            5577015
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            4903951,
+            4435865,
+            4396566,
+            5078403,
+            4533613,
+            4752222,
+            4389786
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            4930921,
+            4504398,
+            6513676,
+            5073776,
+            5176912,
+            5225335,
+            4998433
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            4932023,
+            5254128,
+            4838282,
+            5160317,
+            4734746,
+            4932423,
+            4537819
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            4929830,
+            4554145,
+            4518201,
+            5282932,
+            4681417,
+            5087999,
+            4799254
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            4986255,
+            4544260,
+            4573875,
+            5352397,
+            4507054,
+            4885133,
+            5192937
+          ]
+        }
+      ],
+      "original_aot": [
+        {
+          "round": 0,
+          "sample_ns": [
+            5199375,
+            4771180,
+            5158464,
+            5281769,
+            4884611,
+            5156530,
+            4747404
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            8102661,
+            7525421,
+            7523779,
+            8230915,
+            7480474,
+            8106918,
+            7723399
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            5698658,
+            4873215,
+            4880876,
+            5476173,
+            5184173,
+            5369162,
+            4768587
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            5295090,
+            4938844,
+            4752312,
+            5359928,
+            4665061,
+            5261670,
+            4864331
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            5122370,
+            4882569,
+            5213828,
+            5401181,
+            5047768,
+            6227535,
+            4966725
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            5490274,
+            4940095,
+            5059976,
+            5323813,
+            4864181,
+            5278666,
+            4836930
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            6905615,
+            6321435,
+            5669634,
+            8280755,
+            5559378,
+            6278941,
+            6563279
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            5673560,
+            4812163,
+            5077953,
+            5564956,
+            4852204,
+            5224855,
+            5071524
+          ]
+        }
+      ],
+      "prior_aot": [
+        {
+          "round": 0,
+          "sample_ns": [
+            5021707,
+            4593202,
+            4908236,
+            5357122,
+            4582055,
+            4954446,
+            4583937
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            7958865,
+            7324378,
+            7356788,
+            8118656,
+            7345921,
+            8022900,
+            7341845
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            5090751,
+            4634023,
+            4743559,
+            5220829,
+            4636788,
+            5489463,
+            4689488
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            4997241,
+            4585060,
+            4541895,
+            5073987,
+            4563178,
+            4946184,
+            4585631
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            5290934,
+            4830900,
+            4690229,
+            5177372,
+            4708937,
+            5365346,
+            4714144
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            5017783,
+            4691120,
+            4645712,
+            5169661,
+            4893655,
+            5456103,
+            4749007
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            6873736,
+            5778508,
+            5657245,
+            6354635,
+            5776374,
+            6168085,
+            6032650
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            5158124,
+            5048629,
+            4630189,
+            5129761,
+            4991353,
+            5152266,
+            4986706
+          ]
+        }
+      ],
+      "candidate_aot": [
+        {
+          "round": 0,
+          "sample_ns": [
+            5153195,
+            4506170,
+            4525640,
+            5208008,
+            4521143,
+            5622192,
+            5892820
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            5041768,
+            5059025,
+            4788957,
+            5384435,
+            4949249,
+            5236732,
+            4855087
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            5597335,
+            4732733,
+            5068750,
+            5574771,
+            5694602,
+            5618037,
+            5838139
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            5044753,
+            4700794,
+            4520072,
+            5010722,
+            4578190,
+            5009459,
+            4537729
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            5131393,
+            4983230,
+            5265285,
+            5423694,
+            4633202,
+            5339797,
+            5132786
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            5041949,
+            4731611,
+            4612061,
+            5099154,
+            4523547,
+            5189361,
+            4786324
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            4809530,
+            4663159,
+            4993546,
+            5225305,
+            4841257,
+            5095410,
+            4514576
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            5526088,
+            5318866,
+            5329392,
+            5928013,
+            5219486,
+            5217374,
+            4671361
+          ]
+        }
+      ]
+    },
+    "json_warmed_long": {
+      "main_jit": [
+        {
+          "round": 0,
+          "sample_ns": [
+            56918425,
+            57863588,
+            55579739,
+            56925720,
+            50636915,
+            51639851,
+            50654406
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            53777124,
+            54874659,
+            51372544,
+            53657415,
+            51549648,
+            51581225,
+            50315218
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            55790423,
+            56168362,
+            56819533,
+            52994681,
+            55003588,
+            56439140,
+            54746681
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            54733677,
+            53834697,
+            55647382,
+            54252721,
+            54064569,
+            54414261,
+            52043673
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            52113518,
+            52384726,
+            50743566,
+            51697922,
+            51683631,
+            51839605,
+            51667245
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            54893661,
+            53017749,
+            51726875,
+            51425022,
+            52987363,
+            52024814,
+            71605821
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            52969469,
+            52970781,
+            52078849,
+            51067986,
+            50069102,
+            51010089,
+            50762616
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            58271983,
+            58774295,
+            52662632,
+            51985421,
+            51479199,
+            51663757,
+            51566591
+          ]
+        }
+      ],
+      "original_jit": [
+        {
+          "round": 0,
+          "sample_ns": [
+            63416885,
+            61122889,
+            71598485,
+            80674961,
+            71579287,
+            56201091,
+            55522508
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            57108972,
+            57061451,
+            57911440,
+            55549453,
+            57647152,
+            57319278,
+            57065206
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            59282385,
+            58099392,
+            65821035,
+            58753748,
+            60012983,
+            62606792,
+            57550765
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            59666362,
+            58057279,
+            61740947,
+            65271458,
+            61811693,
+            60014393,
+            63487772
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            57255756,
+            57021995,
+            56517585,
+            56937497,
+            57562007,
+            57882690,
+            58053056
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            65027248,
+            82326776,
+            62794730,
+            57696142,
+            56564677,
+            55365872,
+            55575078
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            57704408,
+            60357544,
+            60234629,
+            57864970,
+            61115666,
+            63467747,
+            62624437
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            58443767,
+            59482206,
+            82881415,
+            94564042,
+            59966011,
+            55606517,
+            61771746
+          ]
+        }
+      ],
+      "prior_jit": [
+        {
+          "round": 0,
+          "sample_ns": [
+            52008822,
+            52120380,
+            51440626,
+            52841007,
+            51472374,
+            52697651,
+            52338188
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            58162849,
+            60171784,
+            56953868,
+            57247681,
+            72168670,
+            57251897,
+            56957774
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            51902826,
+            52836212,
+            51380389,
+            52668815,
+            52399153,
+            51861895,
+            51425777
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            52450518,
+            52410457,
+            52275454,
+            52685391,
+            52821056,
+            52098567,
+            52223605
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            55414082,
+            54399764,
+            54533405,
+            53644416,
+            53418175,
+            53688402,
+            54100933
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            56806221,
+            87996945,
+            61610607,
+            52904364,
+            52592605,
+            51960745,
+            52427877
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            52773714,
+            53188399,
+            53127598,
+            51768640,
+            50708414,
+            52281012,
+            52372781
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            53434075,
+            54141389,
+            62170868,
+            53187503,
+            53757622,
+            53438140,
+            55810566
+          ]
+        }
+      ],
+      "candidate_jit": [
+        {
+          "round": 0,
+          "sample_ns": [
+            52756149,
+            53188360,
+            52182754,
+            54356391,
+            56297821,
+            56591799,
+            57847923
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            51745385,
+            52536195,
+            52073539,
+            52044885,
+            51129926,
+            51313114,
+            51314376
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            55592815,
+            54504926,
+            54874223,
+            55610041,
+            53232279,
+            54029449,
+            54217173
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            52193765,
+            52794739,
+            55264410,
+            54066556,
+            52142567,
+            53402074,
+            52926919
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            52466932,
+            61937408,
+            54127894,
+            53231163,
+            54426063,
+            54883573,
+            53485216
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            59215245,
+            62655748,
+            52968023,
+            53682668,
+            53011079,
+            54032140,
+            53509669
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            52781206,
+            52444650,
+            51967250,
+            51579547,
+            53043080,
+            53920250,
+            53816434
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            60888550,
+            61556041,
+            55521760,
+            52450053,
+            56925184,
+            60752300,
+            73458168
+          ]
+        }
+      ],
+      "main_aot": [
+        {
+          "round": 0,
+          "sample_ns": [
+            49763047,
+            48898816,
+            48765334,
+            47241217,
+            49587402,
+            48841699,
+            50391815
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            48107198,
+            48522763,
+            47478099,
+            46644684,
+            46801434,
+            46043308,
+            47512592
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            46801881,
+            48527210,
+            51135821,
+            50463267,
+            48329833,
+            47650190,
+            48652239
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            50276333,
+            51324110,
+            49571416,
+            49983982,
+            52933065,
+            48911817,
+            52065988
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            50688813,
+            49183588,
+            49668277,
+            48684507,
+            48376604,
+            48005415,
+            48878499
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            45730881,
+            45230178,
+            45012742,
+            45680255,
+            45908681,
+            45301227,
+            46118425
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            47682258,
+            46537945,
+            45741625,
+            46337323,
+            45146650,
+            45848146,
+            50602235
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            45993799,
+            54957526,
+            48605492,
+            50777301,
+            58173630,
+            49638586,
+            50351100
+          ]
+        }
+      ],
+      "original_aot": [
+        {
+          "round": 0,
+          "sample_ns": [
+            53407748,
+            50858960,
+            50614893,
+            51640406,
+            49868408,
+            51460866,
+            50788384
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            48805523,
+            50811887,
+            49218020,
+            48512912,
+            50387547,
+            50361036,
+            50737624
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            51896507,
+            51615834,
+            53206130,
+            52146718,
+            56500112,
+            56590789,
+            54818919
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            52301683,
+            48862392,
+            51972527,
+            66830279,
+            72401320,
+            60753725,
+            55405284
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            51745994,
+            51897913,
+            51860346,
+            50866692,
+            52406989,
+            55511041,
+            52602312
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            52075281,
+            49610977,
+            48014227,
+            49509924,
+            51496612,
+            53042686,
+            55312268
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            48794764,
+            48447339,
+            47873045,
+            48035610,
+            48251585,
+            49267815,
+            48456573
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            52304190,
+            50477761,
+            49916336,
+            50960016,
+            51221261,
+            51134550,
+            51289232
+          ]
+        }
+      ],
+      "prior_aot": [
+        {
+          "round": 0,
+          "sample_ns": [
+            55060237,
+            59688976,
+            49151958,
+            50800883,
+            51759750,
+            48438956,
+            48770374
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            54007442,
+            51442966,
+            47796623,
+            49618408,
+            49029429,
+            47934501,
+            46929206
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            50396046,
+            47606703,
+            50671100,
+            51965380,
+            48503003,
+            48643074,
+            47995720
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            51443760,
+            63133710,
+            75013905,
+            65727397,
+            49178759,
+            51135787,
+            48737795
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            48774934,
+            47516619,
+            47176147,
+            47281756,
+            46942625,
+            48210253,
+            53041794
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            48093855,
+            47324550,
+            48783683,
+            47477809,
+            47918202,
+            51173466,
+            49946871
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            51766753,
+            53711983,
+            53955280,
+            50347635,
+            51774263,
+            50309197,
+            52466486
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            55583392,
+            49483783,
+            50396768,
+            47449037,
+            49132711,
+            51367431,
+            53412755
+          ]
+        }
+      ],
+      "candidate_aot": [
+        {
+          "round": 0,
+          "sample_ns": [
+            47074981,
+            48194728,
+            47667083,
+            50330594,
+            52029022,
+            50359608,
+            49545663
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            51501285,
+            49633411,
+            74314161,
+            54932776,
+            48635276,
+            49712881,
+            69494578
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            49840088,
+            48369563,
+            51471145,
+            50619673,
+            46652496,
+            46572695,
+            47368304
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            46603611,
+            46092500,
+            51077088,
+            52459962,
+            58890408,
+            57111172,
+            52432720
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            47868409,
+            47977333,
+            47896931,
+            47616349,
+            47265201,
+            48242492,
+            47155957
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            47129566,
+            46817447,
+            47204048,
+            46204785,
+            47145139,
+            47433223,
+            47604991
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            48187439,
+            48109121,
+            48114840,
+            48323052,
+            47962330,
+            48503825,
+            49580836
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            48281864,
+            48888358,
+            47477363,
+            47241627,
+            47983885,
+            47239034,
+            46925742
+          ]
+        }
+      ]
+    },
+    "json_file_calls": {
+      "main_jit": [
+        {
+          "round": 0,
+          "sample_ns": [
+            55847546,
+            53087000,
+            55759474,
+            56297004,
+            54429772,
+            53944461,
+            53550668
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            66379126,
+            64190170,
+            76934180,
+            79809851,
+            58845142,
+            52164872,
+            51696065
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            55498411,
+            55130047,
+            50940098,
+            51549975,
+            52270270,
+            53022053,
+            50662279
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            52257932,
+            51605428,
+            50752285,
+            51302733,
+            51871981,
+            51896307,
+            52631575
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            52262365,
+            55205487,
+            50864521,
+            55968697,
+            51842984,
+            52380524,
+            56266585
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            74644718,
+            50884000,
+            50384568,
+            52368025,
+            51108788,
+            59669249,
+            51775693
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            51145915,
+            51582983,
+            51188289,
+            50596458,
+            52390219,
+            50240993,
+            55149534
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            54680954,
+            50711091,
+            50438111,
+            50876399,
+            50283700,
+            50037430,
+            51515310
+          ]
+        }
+      ],
+      "original_jit": [
+        {
+          "round": 0,
+          "sample_ns": [
+            64148687,
+            58051365,
+            58075642,
+            60531931,
+            66780981,
+            58917150,
+            58403566
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            58097865,
+            56863337,
+            56705359,
+            56886812,
+            56385186,
+            56813471,
+            56614242
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            56261580,
+            58105166,
+            58745602,
+            57416870,
+            57942312,
+            57251862,
+            58339139
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            58849327,
+            56219577,
+            56093688,
+            73818959,
+            57790543,
+            57863393,
+            55997182
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            58437904,
+            60497616,
+            61010048,
+            57250036,
+            58984518,
+            57006099,
+            56454287
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            60568831,
+            57824117,
+            57650196,
+            59165513,
+            57306098,
+            61713002,
+            62413153
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            56963023,
+            58644841,
+            57237505,
+            59154075,
+            57517707,
+            57896575,
+            56905396
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            55679264,
+            54937650,
+            55307034,
+            54483497,
+            55917081,
+            55855518,
+            57934371
+          ]
+        }
+      ],
+      "prior_jit": [
+        {
+          "round": 0,
+          "sample_ns": [
+            56125686,
+            54487189,
+            56812730,
+            62739155,
+            56875706,
+            59035878,
+            58940765
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            55522984,
+            53976109,
+            53962228,
+            54023911,
+            54253487,
+            53537499,
+            54702422
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            58356465,
+            56710737,
+            57885055,
+            56478557,
+            57523601,
+            57329008,
+            68582033
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            58282370,
+            71447865,
+            64418330,
+            54134585,
+            58410803,
+            57002813,
+            57406222
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            55601153,
+            55158056,
+            58326316,
+            57076194,
+            58702123,
+            57979674,
+            55471097
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            55940025,
+            57033970,
+            56959647,
+            58787324,
+            55516449,
+            61761614,
+            65809749
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            54005101,
+            54693979,
+            54885807,
+            54898126,
+            56414800,
+            55117105,
+            56169300
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            53746651,
+            58741674,
+            54805561,
+            54942577,
+            57499908,
+            54547674,
+            54444929
+          ]
+        }
+      ],
+      "candidate_jit": [
+        {
+          "round": 0,
+          "sample_ns": [
+            57008766,
+            52965778,
+            59019664,
+            53067612,
+            52518585,
+            52104991,
+            52774681
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            53261148,
+            62189677,
+            50845745,
+            51183044,
+            52128907,
+            52364042,
+            56987264
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            58014466,
+            55658773,
+            53437618,
+            55213307,
+            63042081,
+            56515513,
+            59108848
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            53675716,
+            54048107,
+            52763153,
+            51041159,
+            52373416,
+            54808362,
+            52700027
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            52157318,
+            51745397,
+            52450539,
+            51735071,
+            50948277,
+            52999315,
+            54883288
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            53824905,
+            56976663,
+            66394562,
+            98677657,
+            67789805,
+            83512606,
+            54631528
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            56839820,
+            56514239,
+            58391245,
+            57997732,
+            57084508,
+            57023366,
+            55092088
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            52905328,
+            51488445,
+            50938878,
+            51314173,
+            51043556,
+            51498339,
+            52768002
+          ]
+        }
+      ],
+      "main_aot": [
+        {
+          "round": 0,
+          "sample_ns": [
+            50434356,
+            62643291,
+            49171834,
+            50999146,
+            50900809,
+            49792860,
+            50487006
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            53197335,
+            49095550,
+            47865818,
+            46625560,
+            46581283,
+            48508376,
+            50352042
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            48274103,
+            47307336,
+            45318071,
+            46263945,
+            46002332,
+            49833701,
+            46074731
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            53083712,
+            48181520,
+            57481805,
+            67645719,
+            45658512,
+            46980593,
+            49862561
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            47534447,
+            48401892,
+            46578417,
+            46880822,
+            47385062,
+            45849089,
+            46970587
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            50511046,
+            50947111,
+            48541406,
+            50192047,
+            48539592,
+            47034080,
+            47470006
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            69220933,
+            64117193,
+            46279116,
+            47606016,
+            47522759,
+            47533626,
+            47055015
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            47388072,
+            46412052,
+            45626000,
+            45769194,
+            46304852,
+            47740522,
+            46359924
+          ]
+        }
+      ],
+      "original_aot": [
+        {
+          "round": 0,
+          "sample_ns": [
+            54861873,
+            57282158,
+            53487223,
+            51641264,
+            53936850,
+            53001682,
+            53990731
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            53906465,
+            56839551,
+            54969164,
+            55071949,
+            54118423,
+            54433007,
+            69364753
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            51607483,
+            49308641,
+            48899454,
+            49127197,
+            49312256,
+            49332407,
+            51142211
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            52764001,
+            54672084,
+            52390188,
+            53352577,
+            54023808,
+            53658758,
+            54431573
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            49822572,
+            51411454,
+            49765355,
+            48991450,
+            50047781,
+            48834394,
+            48297124
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            52461998,
+            53737055,
+            53150853,
+            48990260,
+            51791100,
+            51990539,
+            51998471
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            49239154,
+            48659392,
+            48584478,
+            66961215,
+            50180812,
+            50469327,
+            50047091
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            52853490,
+            49503597,
+            48099864,
+            48029968,
+            49684539,
+            48320836,
+            48073955
+          ]
+        }
+      ],
+      "prior_aot": [
+        {
+          "round": 0,
+          "sample_ns": [
+            57646160,
+            72205550,
+            52292665,
+            51027689,
+            52625024,
+            49104744,
+            50773507
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            55906936,
+            54381259,
+            54886009,
+            50450450,
+            49206317,
+            49734732,
+            49112946
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            50769431,
+            49240968,
+            51676726,
+            51263214,
+            52757974,
+            53690619,
+            49962115
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            52859965,
+            49629942,
+            49122158,
+            47869360,
+            49371503,
+            52130647,
+            53106105
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            49726337,
+            49749622,
+            48628073,
+            49313866,
+            61389755,
+            49773658,
+            49627649
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            52581828,
+            55331390,
+            51057316,
+            54499300,
+            54724158,
+            49244922,
+            54003475
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            75167667,
+            72996145,
+            55028426,
+            74441766,
+            59690539,
+            49455996,
+            50681417
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            49274442,
+            50244372,
+            48836733,
+            48680017,
+            60971952,
+            50760800,
+            47736837
+          ]
+        }
+      ],
+      "candidate_aot": [
+        {
+          "round": 0,
+          "sample_ns": [
+            49409482,
+            55216597,
+            50335407,
+            53708967,
+            50322037,
+            51056192,
+            49881163
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            50022686,
+            48985363,
+            48567805,
+            51976829,
+            47668390,
+            49659279,
+            48948949
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            49323713,
+            49242380,
+            45850072,
+            47921792,
+            46271567,
+            46651309,
+            49148189
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            64723640,
+            53763035,
+            51482582,
+            48627893,
+            51552998,
+            48368583,
+            51033375
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            48418848,
+            48460181,
+            47471401,
+            49366926,
+            49004039,
+            46142691,
+            47960829
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            53315621,
+            50789013,
+            48631241,
+            50903676,
+            50184394,
+            51383177,
+            50668442
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            49850545,
+            48598219,
+            49448069,
+            48834915,
+            46386291,
+            46707825,
+            58941680
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            49061802,
+            47129833,
+            45697557,
+            47207791,
+            47447823,
+            47357366,
+            46070759
+          ]
+        }
+      ]
+    }
+  },
+  "compile_samples": {
+    "ordinary_calls": {
+      "main_ir": [
+        {
+          "round": 0,
+          "wall_seconds": 0.0480561439981102
+        },
+        {
+          "round": 1,
+          "wall_seconds": 0.04711578800197458
+        },
+        {
+          "round": 2,
+          "wall_seconds": 0.057688722998136654
+        },
+        {
+          "round": 3,
+          "wall_seconds": 0.04642207200231496
+        }
+      ],
+      "main_build": [
+        {
+          "round": 0,
+          "wall_seconds": 0.32009836500219535
+        },
+        {
+          "round": 1,
+          "wall_seconds": 0.3297781940054847
+        },
+        {
+          "round": 2,
+          "wall_seconds": 0.31416942000214476
+        },
+        {
+          "round": 3,
+          "wall_seconds": 0.3768896730034612
+        }
+      ],
+      "original_ir": [
+        {
+          "round": 0,
+          "wall_seconds": 0.05255685500014806
+        },
+        {
+          "round": 1,
+          "wall_seconds": 0.044376907993864734
+        },
+        {
+          "round": 2,
+          "wall_seconds": 0.046019891000469215
+        },
+        {
+          "round": 3,
+          "wall_seconds": 0.06077605999598745
+        }
+      ],
+      "original_build": [
+        {
+          "round": 0,
+          "wall_seconds": 0.3375583449960686
+        },
+        {
+          "round": 1,
+          "wall_seconds": 0.36837395400652895
+        },
+        {
+          "round": 2,
+          "wall_seconds": 0.3715643710020231
+        },
+        {
+          "round": 3,
+          "wall_seconds": 0.36410155599878635
+        }
+      ],
+      "prior_ir": [
+        {
+          "round": 0,
+          "wall_seconds": 0.04392208000354003
+        },
+        {
+          "round": 1,
+          "wall_seconds": 0.04358797799795866
+        },
+        {
+          "round": 2,
+          "wall_seconds": 0.04864265999640338
+        },
+        {
+          "round": 3,
+          "wall_seconds": 0.05360403899976518
+        }
+      ],
+      "prior_build": [
+        {
+          "round": 0,
+          "wall_seconds": 0.34404900800291216
+        },
+        {
+          "round": 1,
+          "wall_seconds": 0.31418998099979945
+        },
+        {
+          "round": 2,
+          "wall_seconds": 0.35546140000224113
+        },
+        {
+          "round": 3,
+          "wall_seconds": 0.35412705099588493
+        }
+      ],
+      "candidate_ir": [
+        {
+          "round": 0,
+          "wall_seconds": 0.04649678800342372
+        },
+        {
+          "round": 1,
+          "wall_seconds": 0.047441155002161395
+        },
+        {
+          "round": 2,
+          "wall_seconds": 0.05273871299868915
+        },
+        {
+          "round": 3,
+          "wall_seconds": 0.0648085560023901
+        }
+      ],
+      "candidate_build": [
+        {
+          "round": 0,
+          "wall_seconds": 0.3464242260015453
+        },
+        {
+          "round": 1,
+          "wall_seconds": 0.3764786730025662
+        },
+        {
+          "round": 2,
+          "wall_seconds": 0.3922178629945847
+        },
+        {
+          "round": 3,
+          "wall_seconds": 0.42219057100010104
+        }
+      ]
+    },
+    "object_calls": {
+      "main_ir": [
+        {
+          "round": 0,
+          "wall_seconds": 0.050833427005272824
+        },
+        {
+          "round": 1,
+          "wall_seconds": 0.05045235499710543
+        },
+        {
+          "round": 2,
+          "wall_seconds": 0.06121498499851441
+        },
+        {
+          "round": 3,
+          "wall_seconds": 0.06969825099804439
+        }
+      ],
+      "main_build": [
+        {
+          "round": 0,
+          "wall_seconds": 0.34333335499832174
+        },
+        {
+          "round": 1,
+          "wall_seconds": 0.35756627099908656
+        },
+        {
+          "round": 2,
+          "wall_seconds": 0.39675587999954587
+        },
+        {
+          "round": 3,
+          "wall_seconds": 0.3420431409977027
+        }
+      ],
+      "original_ir": [
+        {
+          "round": 0,
+          "wall_seconds": 0.04895477100217249
+        },
+        {
+          "round": 1,
+          "wall_seconds": 0.0474006360018393
+        },
+        {
+          "round": 2,
+          "wall_seconds": 0.05063699200400151
+        },
+        {
+          "round": 3,
+          "wall_seconds": 0.04705115999968257
+        }
+      ],
+      "original_build": [
+        {
+          "round": 0,
+          "wall_seconds": 0.3385431700007757
+        },
+        {
+          "round": 1,
+          "wall_seconds": 0.34133363199362066
+        },
+        {
+          "round": 2,
+          "wall_seconds": 0.405416358000366
+        },
+        {
+          "round": 3,
+          "wall_seconds": 0.3721709980018204
+        }
+      ],
+      "prior_ir": [
+        {
+          "round": 0,
+          "wall_seconds": 0.04766094299702672
+        },
+        {
+          "round": 1,
+          "wall_seconds": 0.06281567300175084
+        },
+        {
+          "round": 2,
+          "wall_seconds": 0.048262065000017174
+        },
+        {
+          "round": 3,
+          "wall_seconds": 0.051336851000087336
+        }
+      ],
+      "prior_build": [
+        {
+          "round": 0,
+          "wall_seconds": 0.3404721819970291
+        },
+        {
+          "round": 1,
+          "wall_seconds": 0.3545865549967857
+        },
+        {
+          "round": 2,
+          "wall_seconds": 0.36986376200366067
+        },
+        {
+          "round": 3,
+          "wall_seconds": 0.36358828200172866
+        }
+      ],
+      "candidate_ir": [
+        {
+          "round": 0,
+          "wall_seconds": 0.05668493499979377
+        },
+        {
+          "round": 1,
+          "wall_seconds": 0.052890567007125355
+        },
+        {
+          "round": 2,
+          "wall_seconds": 0.04981799700181
+        },
+        {
+          "round": 3,
+          "wall_seconds": 0.05042413699993631
+        }
+      ],
+      "candidate_build": [
+        {
+          "round": 0,
+          "wall_seconds": 0.3655417500049225
+        },
+        {
+          "round": 1,
+          "wall_seconds": 0.3529921809968073
+        },
+        {
+          "round": 2,
+          "wall_seconds": 0.390527216004557
+        },
+        {
+          "round": 3,
+          "wall_seconds": 0.35551827999734087
+        }
+      ]
+    },
+    "json_calls": {
+      "main_ir": [
+        {
+          "round": 0,
+          "wall_seconds": 0.1745238510047784
+        },
+        {
+          "round": 1,
+          "wall_seconds": 0.13990141799877165
+        },
+        {
+          "round": 2,
+          "wall_seconds": 0.14730127100483514
+        },
+        {
+          "round": 3,
+          "wall_seconds": 0.14037974600068992
+        }
+      ],
+      "main_build": [
+        {
+          "round": 0,
+          "wall_seconds": 2.0246114219989977
+        },
+        {
+          "round": 1,
+          "wall_seconds": 1.7386134799962747
+        },
+        {
+          "round": 2,
+          "wall_seconds": 1.7422362470024382
+        },
+        {
+          "round": 3,
+          "wall_seconds": 1.5963084350005374
+        }
+      ],
+      "original_ir": [
+        {
+          "round": 0,
+          "wall_seconds": 0.15067451399954734
+        },
+        {
+          "round": 1,
+          "wall_seconds": 0.1397675469997921
+        },
+        {
+          "round": 2,
+          "wall_seconds": 0.15088721599749988
+        },
+        {
+          "round": 3,
+          "wall_seconds": 0.13826621699990937
+        }
+      ],
+      "original_build": [
+        {
+          "round": 0,
+          "wall_seconds": 1.7774451990044327
+        },
+        {
+          "round": 1,
+          "wall_seconds": 1.697513760002039
+        },
+        {
+          "round": 2,
+          "wall_seconds": 1.6986846010040608
+        },
+        {
+          "round": 3,
+          "wall_seconds": 1.6107814230053918
+        }
+      ],
+      "prior_ir": [
+        {
+          "round": 0,
+          "wall_seconds": 0.15228382500208681
+        },
+        {
+          "round": 1,
+          "wall_seconds": 0.15776100600487553
+        },
+        {
+          "round": 2,
+          "wall_seconds": 0.15375949499866692
+        },
+        {
+          "round": 3,
+          "wall_seconds": 0.14146247200551443
+        }
+      ],
+      "prior_build": [
+        {
+          "round": 0,
+          "wall_seconds": 1.7486149160031346
+        },
+        {
+          "round": 1,
+          "wall_seconds": 1.8099249959996087
+        },
+        {
+          "round": 2,
+          "wall_seconds": 1.7851051930047106
+        },
+        {
+          "round": 3,
+          "wall_seconds": 1.7845418770011747
+        }
+      ],
+      "candidate_ir": [
+        {
+          "round": 0,
+          "wall_seconds": 0.15678921600192552
+        },
+        {
+          "round": 1,
+          "wall_seconds": 0.15188424399821088
+        },
+        {
+          "round": 2,
+          "wall_seconds": 0.17582728400157066
+        },
+        {
+          "round": 3,
+          "wall_seconds": 0.16596951200335752
+        }
+      ],
+      "candidate_build": [
+        {
+          "round": 0,
+          "wall_seconds": 1.7887230000051204
+        },
+        {
+          "round": 1,
+          "wall_seconds": 1.8479121290001785
+        },
+        {
+          "round": 2,
+          "wall_seconds": 1.9536989719999838
+        },
+        {
+          "round": 3,
+          "wall_seconds": 1.8385653829973307
+        }
+      ]
+    },
+    "json_warmed_short": {
+      "main_ir": [
+        {
+          "round": 0,
+          "wall_seconds": 0.15741586399963126
+        },
+        {
+          "round": 1,
+          "wall_seconds": 0.1512293390042032
+        },
+        {
+          "round": 2,
+          "wall_seconds": 0.16236197199759772
+        },
+        {
+          "round": 3,
+          "wall_seconds": 0.14143601399700856
+        }
+      ],
+      "main_build": [
+        {
+          "round": 0,
+          "wall_seconds": 1.6952463959969464
+        },
+        {
+          "round": 1,
+          "wall_seconds": 1.6275521560019115
+        },
+        {
+          "round": 2,
+          "wall_seconds": 1.763430093000352
+        },
+        {
+          "round": 3,
+          "wall_seconds": 1.6156896729953587
+        }
+      ],
+      "original_ir": [
+        {
+          "round": 0,
+          "wall_seconds": 0.14018105900322553
+        },
+        {
+          "round": 1,
+          "wall_seconds": 0.13580946299771313
+        },
+        {
+          "round": 2,
+          "wall_seconds": 0.1494631899986416
+        },
+        {
+          "round": 3,
+          "wall_seconds": 0.15951981400576187
+        }
+      ],
+      "original_build": [
+        {
+          "round": 0,
+          "wall_seconds": 1.6256730160021107
+        },
+        {
+          "round": 1,
+          "wall_seconds": 1.5829123360017547
+        },
+        {
+          "round": 2,
+          "wall_seconds": 1.7919313829988823
+        },
+        {
+          "round": 3,
+          "wall_seconds": 1.7550512440066086
+        }
+      ],
+      "prior_ir": [
+        {
+          "round": 0,
+          "wall_seconds": 0.16112349800096126
+        },
+        {
+          "round": 1,
+          "wall_seconds": 0.14792397400015034
+        },
+        {
+          "round": 2,
+          "wall_seconds": 0.1448518809993402
+        },
+        {
+          "round": 3,
+          "wall_seconds": 0.17001580399664817
+        }
+      ],
+      "prior_build": [
+        {
+          "round": 0,
+          "wall_seconds": 1.7414353339991067
+        },
+        {
+          "round": 1,
+          "wall_seconds": 1.6735318080027355
+        },
+        {
+          "round": 2,
+          "wall_seconds": 1.6573819659970468
+        },
+        {
+          "round": 3,
+          "wall_seconds": 1.8458923250000225
+        }
+      ],
+      "candidate_ir": [
+        {
+          "round": 0,
+          "wall_seconds": 0.15298168400477152
+        },
+        {
+          "round": 1,
+          "wall_seconds": 0.15265083400299773
+        },
+        {
+          "round": 2,
+          "wall_seconds": 0.17175490900262957
+        },
+        {
+          "round": 3,
+          "wall_seconds": 0.1643609539969475
+        }
+      ],
+      "candidate_build": [
+        {
+          "round": 0,
+          "wall_seconds": 1.7013286630026414
+        },
+        {
+          "round": 1,
+          "wall_seconds": 1.819389805001265
+        },
+        {
+          "round": 2,
+          "wall_seconds": 1.9044368859977112
+        },
+        {
+          "round": 3,
+          "wall_seconds": 1.8488570469999104
+        }
+      ]
+    },
+    "json_warmed_long": {
+      "main_ir": [
+        {
+          "round": 0,
+          "wall_seconds": 0.1654188289976446
+        },
+        {
+          "round": 1,
+          "wall_seconds": 0.14881833999970695
+        },
+        {
+          "round": 2,
+          "wall_seconds": 0.15026304600178264
+        },
+        {
+          "round": 3,
+          "wall_seconds": 0.16025214900582796
+        }
+      ],
+      "main_build": [
+        {
+          "round": 0,
+          "wall_seconds": 1.9285021820032853
+        },
+        {
+          "round": 1,
+          "wall_seconds": 1.6775188959945808
+        },
+        {
+          "round": 2,
+          "wall_seconds": 1.6131611480013817
+        },
+        {
+          "round": 3,
+          "wall_seconds": 1.6385399629944004
+        }
+      ],
+      "original_ir": [
+        {
+          "round": 0,
+          "wall_seconds": 0.13793670799350366
+        },
+        {
+          "round": 1,
+          "wall_seconds": 0.15029656200204045
+        },
+        {
+          "round": 2,
+          "wall_seconds": 0.13790352400246775
+        },
+        {
+          "round": 3,
+          "wall_seconds": 0.1403375669979141
+        }
+      ],
+      "original_build": [
+        {
+          "round": 0,
+          "wall_seconds": 1.730633836996276
+        },
+        {
+          "round": 1,
+          "wall_seconds": 1.7906961680055247
+        },
+        {
+          "round": 2,
+          "wall_seconds": 1.65521511699626
+        },
+        {
+          "round": 3,
+          "wall_seconds": 1.8192882369985455
+        }
+      ],
+      "prior_ir": [
+        {
+          "round": 0,
+          "wall_seconds": 0.17190509600186488
+        },
+        {
+          "round": 1,
+          "wall_seconds": 0.2015986350015737
+        },
+        {
+          "round": 2,
+          "wall_seconds": 0.17361607299972093
+        },
+        {
+          "round": 3,
+          "wall_seconds": 0.18208992300060345
+        }
+      ],
+      "prior_build": [
+        {
+          "round": 0,
+          "wall_seconds": 2.051468466001097
+        },
+        {
+          "round": 1,
+          "wall_seconds": 1.9411011089978274
+        },
+        {
+          "round": 2,
+          "wall_seconds": 1.749780104997626
+        },
+        {
+          "round": 3,
+          "wall_seconds": 1.8084454829950118
+        }
+      ],
+      "candidate_ir": [
+        {
+          "round": 0,
+          "wall_seconds": 0.16062982199946418
+        },
+        {
+          "round": 1,
+          "wall_seconds": 0.16986237499804702
+        },
+        {
+          "round": 2,
+          "wall_seconds": 0.15796567899815273
+        },
+        {
+          "round": 3,
+          "wall_seconds": 0.15405198199732695
+        }
+      ],
+      "candidate_build": [
+        {
+          "round": 0,
+          "wall_seconds": 1.9589035469980445
+        },
+        {
+          "round": 1,
+          "wall_seconds": 1.804760854000051
+        },
+        {
+          "round": 2,
+          "wall_seconds": 1.7986012100009248
+        },
+        {
+          "round": 3,
+          "wall_seconds": 1.7609443030014518
+        }
+      ]
+    },
+    "json_file_calls": {
+      "main_ir": [
+        {
+          "round": 0,
+          "wall_seconds": 0.13780089899955783
+        },
+        {
+          "round": 1,
+          "wall_seconds": 0.14716718399722595
+        },
+        {
+          "round": 2,
+          "wall_seconds": 0.14078896900173277
+        },
+        {
+          "round": 3,
+          "wall_seconds": 0.14233479000540683
+        }
+      ],
+      "main_build": [
+        {
+          "round": 0,
+          "wall_seconds": 1.7231192319959518
+        },
+        {
+          "round": 1,
+          "wall_seconds": 1.8838372030004393
+        },
+        {
+          "round": 2,
+          "wall_seconds": 1.7810525449967827
+        },
+        {
+          "round": 3,
+          "wall_seconds": 1.7632903720004833
+        }
+      ],
+      "original_ir": [
+        {
+          "round": 0,
+          "wall_seconds": 0.13961720599763794
+        },
+        {
+          "round": 1,
+          "wall_seconds": 0.14252098499855492
+        },
+        {
+          "round": 2,
+          "wall_seconds": 0.14119139299873495
+        },
+        {
+          "round": 3,
+          "wall_seconds": 0.13809985700208927
+        }
+      ],
+      "original_build": [
+        {
+          "round": 0,
+          "wall_seconds": 1.728461740000057
+        },
+        {
+          "round": 1,
+          "wall_seconds": 1.7095774980043643
+        },
+        {
+          "round": 2,
+          "wall_seconds": 1.806561473000329
+        },
+        {
+          "round": 3,
+          "wall_seconds": 1.8395734509977046
+        }
+      ],
+      "prior_ir": [
+        {
+          "round": 0,
+          "wall_seconds": 0.14030498800275382
+        },
+        {
+          "round": 1,
+          "wall_seconds": 0.14589004599838518
+        },
+        {
+          "round": 2,
+          "wall_seconds": 0.14850847899651853
+        },
+        {
+          "round": 3,
+          "wall_seconds": 0.13923767599771963
+        }
+      ],
+      "prior_build": [
+        {
+          "round": 0,
+          "wall_seconds": 1.8489376259967685
+        },
+        {
+          "round": 1,
+          "wall_seconds": 1.9037172320022364
+        },
+        {
+          "round": 2,
+          "wall_seconds": 1.9485097419965314
+        },
+        {
+          "round": 3,
+          "wall_seconds": 1.7092995820057695
+        }
+      ],
+      "candidate_ir": [
+        {
+          "round": 0,
+          "wall_seconds": 0.15879770099854795
+        },
+        {
+          "round": 1,
+          "wall_seconds": 0.16593938800360775
+        },
+        {
+          "round": 2,
+          "wall_seconds": 0.17928119499993045
+        },
+        {
+          "round": 3,
+          "wall_seconds": 0.156365189999633
+        }
+      ],
+      "candidate_build": [
+        {
+          "round": 0,
+          "wall_seconds": 1.9345855630017468
+        },
+        {
+          "round": 1,
+          "wall_seconds": 1.8364256569984718
+        },
+        {
+          "round": 2,
+          "wall_seconds": 1.869248326998786
+        },
+        {
+          "round": 3,
+          "wall_seconds": 1.8691808660005336
+        }
+      ]
+    }
+  },
+  "count_harness_correction": {
+    "reason": "Exact symbol matching correction: word-boundary regex falsely matched rf.f.kernel as f.kernel; the absent ordinary wrapper produced zero dumps. Repeat all32counts under one corrected harness identity.",
+    "recorded_utc": "2026-10-31T04:48:32.334531+00:00",
+    "failed_phase": {
+      "status": "failed",
+      "started_utc": "2026-10-31T04:44:40.010924+00:00",
+      "finished_utc": "2026-10-31T04:45:07.057956+00:00",
+      "harness_sha256": {
+        "measure.py": "89d1fa4c56a245ed56873f8fa5866f654402d36998915e9832f4dddbb10fde10",
+        "count_support.py": "460da9109c6ffe726e1f1f1ca39408e7980834b66db6186a1c16df3ebbc17277",
+        "replay_support.py": "b74a4c19fcd1e51d221271e50c9a3bc45a466de146073476dbc2a7d4f09d5d02"
+      },
+      "failure": {
+        "message": "('candidate', 'ordinary_calls', 'expected eight kernel returns', 0)"
+      }
+    },
+    "completed_instruction_totals_before_failure": {
+      "ordinary_calls": {
+        "main": {
+          "jit": 8000160,
+          "aot": 5000217
+        },
+        "original": {
+          "jit": 10400217,
+          "aot": 5000289
+        },
+        "prior": {
+          "jit": 10400217,
+          "aot": 5000289
+        },
+        "candidate": {
+          "jit": 8000233
+        }
+      }
+    },
+    "archived_artifact_sha256": {
+      "ordinary_calls-count.py": "87e56efefdb6094b7728a58b0e17a082ac37848c63f97ed57d9243fad9eb1452",
+      "main-ordinary_calls-count.ll": "17c3394abfe872e5fbe8499b4a6bcca18b70b0133f2b04a09e7ac88e656fc0c7",
+      "original-ordinary_calls-count": "e27136d00fa724dbb0371c5add11680b01c0d6a647acdca6ea106fbd1d1447f4",
+      "main-ordinary_calls-jit.callgrind": "e4d7b3ed128778570bd3aef92b47b50504db25fb5c7b1f79ece0ff78b6b7b14e",
+      "original-ordinary_calls-jit.callgrind": "41055e827fbde7a9553bad0a09c588423211012126193c6fe0e718d478806167",
+      "prior-ordinary_calls-count.ll": "450b9e58c0ad6348a497dec4c4e684d7942e74ad4aa84dcdb45365fbcd96f97d",
+      "main-ordinary_calls-count": "bbc90e5a1b856f079ad228771fc8c6dececdbd963721b663936d2a0b75232691",
+      "libcount_control.so": "76cd5a0c12d1f6591cff372284e72801774fd6d8d0a76b806c3ad1f0cfc286f0",
+      "prior-ordinary_calls-count": "e27136d00fa724dbb0371c5add11680b01c0d6a647acdca6ea106fbd1d1447f4",
+      "count_control.c": "d46d1cbef640bece35617c4d8bb7bda222c707187e3279a8f9c9bf35ed9664ca",
+      "prior-ordinary_calls-aot.callgrind": "eedcba8ca47077105b9af7d67bdbc5520ef0d5b3f7c2206bb6c49b2f4c9ec509",
+      "candidate-ordinary_calls-count.ll": "04f1ac1e529a5bfa41a7de4be1a90155c0003d5311eab85f0db52ade00cddc3f",
+      "original-ordinary_calls-count.ll": "00b6498b03ef6fa94bb308a5ce9da01adb0f4bd5f1e8cd939f2b44b604ac06c2",
+      "prior-ordinary_calls-jit.callgrind": "4cbd4f103ba5d75556ef311358d430138576b8068392afad134dbec108cda88c",
+      "original-ordinary_calls-aot.callgrind": "c026ef4a46d7cba91cb1637e09668d51a95ed0b6c73de6d5c7ffd30e6026297c",
+      "candidate-ordinary_calls-jit.callgrind": "fafdf3b8843ace6046d7553098d8ed5234779f08697f4839999343e76b4fbbc9",
+      "candidate-ordinary_calls-aot.callgrind": "5dd851fdad330244de815978e2846f60c7972776de1cbb604d0d42dcda5bf736",
+      "main-ordinary_calls-aot.callgrind": "a1f1bec54b060c29410e83b0cf53290940dc200ff409c10c53771829fe54ce05"
+    },
+    "prepared_artifact_sha256_unchanged_before_retry": {
+      "main-ordinary_calls.ll": "f55bddbd400eb2c484fbc00ab6d0d2e6d68ee49df468366ee5062ef165b8db97",
+      "main-ordinary_calls": "abf3d5724e5bf3305e71983132b5dc3aa27ebc932a17c80fcf9e110110ba552d",
+      "original-ordinary_calls.ll": "f4ad1f47fcd7b76b0924acd986b6d5bc91325a6f37c9f5407ae754d6400e8453",
+      "original-ordinary_calls": "a4c9d47f1084bc0b36682551f5dc26e29cc87a5d59d99151e62c7f3d53ef424a",
+      "prior-ordinary_calls.ll": "66117555525f19237db8c9b2294b245dd0a6412213f11e2e213a5b87321c8b89",
+      "prior-ordinary_calls": "a4c9d47f1084bc0b36682551f5dc26e29cc87a5d59d99151e62c7f3d53ef424a",
+      "candidate-ordinary_calls.ll": "cdaaaea9565e9da7628a66f858b6733e59c38ed5cea53182919695983288bcc3",
+      "candidate-ordinary_calls": "3538916a4396769323684657a255776907474393657dd956aeef34caaee023bd",
+      "main-object_calls.ll": "c406829c81adb02717787f3f7c7441f6a451b408479e5a96acff0e478ba678cb",
+      "main-object_calls": "a03c1325f5b1d1d75e6a0200fd553ca3726fdf5e3bdaf27d829a8b0bf1a3b0e9",
+      "original-object_calls.ll": "0f68e435d3da19d84c0bf12f390964f72b1cf5bffa5783a6e83c73d361631970",
+      "original-object_calls": "2f16c4c83b52c3a618fa65b8cf4e670e5d18b7a109de4c929e4bd20f586638ea",
+      "prior-object_calls.ll": "f41cebba0c0045faab53ccb90283b83d5ff220312a51f1e65bcfdf81f06525a7",
+      "prior-object_calls": "ed6f2201452bea2cdd9c2fbefd05c4d5c3c47b37d7c61e0035c2791523aab2fb",
+      "candidate-object_calls.ll": "f80fbc9ccd43e357960853abccd50cf2e7409932e3ed001c638fe18022e73b89",
+      "candidate-object_calls": "697cfad357ad9e766ce2eadfa6d9bf63ef881b7856bf8ac7954e1b1b502231ef",
+      "main-json_calls.ll": "43611463646a19f2c4b6e494c100092d15efc2fcb3c6443d2ecddba6707d140d",
+      "main-json_calls": "c664ced5563784d946c279905687a9e8fd62a3214a8a76245a0b937461637cf9",
+      "original-json_calls.ll": "f9be9c984634a381cb95185e2fc1ae4f421ec2cf63d1d41c37e0018cbf6ac010",
+      "original-json_calls": "2614d1507e649b8ec40923c16b772023967f82ed4d511b54afd6bc4078f8f6d5",
+      "prior-json_calls.ll": "ef8614b9d1c1675654092660da5d528fe18d93ac95b2fed2693d9d65fc74cdfb",
+      "prior-json_calls": "ce6e505221ecc4ac7748d9c7276f7c689b338aacb2eef6c94a48d557eb21bcb7",
+      "candidate-json_calls.ll": "80d135b599ad31d3f6ecdc0e53fbdc91f1e5f09d1035f7ccc2a48021ccc40ec4",
+      "candidate-json_calls": "b7153a1fb1487340d073878f6b760fcd66c8d88c3459d2fcf46503a5c2b726a1",
+      "main-json_warmed_short.ll": "74ba4b00ad774b0cddff162655588cbaeeba73342ddb0a5d3c28257da3bdb0a9",
+      "main-json_warmed_short": "9ba5d1f92c3bdf44a69a52977ff082d2fe09592a68be66cdaf821862cf75ae3d",
+      "original-json_warmed_short.ll": "cd6d54341aa2c6ea4e950ceb4a85fffc3e256940cfe5327d19fc3743ec671f0d",
+      "original-json_warmed_short": "ff5b6b553c844ff5542fd3be01428cb6fa2486de847a1052cb752f1d71a7469e",
+      "prior-json_warmed_short.ll": "e1d09f5470e6f3fff1a50a51e163503b1ab3f0f30426a6d451fda9d0c1630980",
+      "prior-json_warmed_short": "eb2d5d881204c506bc7715dcc0429c6369b5da6970a000d26172a228c184f285",
+      "candidate-json_warmed_short.ll": "1a3c86408651cc6fea06dfe280bee1d3dc303b2316b92f39284f9ef11b9727df",
+      "candidate-json_warmed_short": "f3ccf96e3eccdebc9a08e5d991ebd3d1c350bf9be9d1887cf200e6018f38e31c",
+      "main-json_warmed_long.ll": "74ba4b00ad774b0cddff162655588cbaeeba73342ddb0a5d3c28257da3bdb0a9",
+      "main-json_warmed_long": "9ba5d1f92c3bdf44a69a52977ff082d2fe09592a68be66cdaf821862cf75ae3d",
+      "original-json_warmed_long.ll": "cd6d54341aa2c6ea4e950ceb4a85fffc3e256940cfe5327d19fc3743ec671f0d",
+      "original-json_warmed_long": "ff5b6b553c844ff5542fd3be01428cb6fa2486de847a1052cb752f1d71a7469e",
+      "prior-json_warmed_long.ll": "e1d09f5470e6f3fff1a50a51e163503b1ab3f0f30426a6d451fda9d0c1630980",
+      "prior-json_warmed_long": "eb2d5d881204c506bc7715dcc0429c6369b5da6970a000d26172a228c184f285",
+      "candidate-json_warmed_long.ll": "1a3c86408651cc6fea06dfe280bee1d3dc303b2316b92f39284f9ef11b9727df",
+      "candidate-json_warmed_long": "f3ccf96e3eccdebc9a08e5d991ebd3d1c350bf9be9d1887cf200e6018f38e31c",
+      "main-json_file_calls.ll": "035912ab451a0fc2ae37f61e751d681ba4ddceef5f60303f67297feae7d0c44c",
+      "main-json_file_calls": "78afa9378307019d8eda6df51deb67b09b257f74ef51bdd1abc3b3c042b53d77",
+      "original-json_file_calls.ll": "8ad71aa3e77d74ac6385b6bd4d4adf8e92e450a896f760aa3709061c62c71567",
+      "original-json_file_calls": "531ccd1a8914297d5b2af44233b9c86f9a2d7ffc689787cf1eb972670874bc1a",
+      "prior-json_file_calls.ll": "68f3ae1e9e3328a962cbd8bd0328d189fe7dfa0ca0fe353ab519eac56d0d46d8",
+      "prior-json_file_calls": "e3c4dad1ba9bc9d559f317cf1af4858322bd49ee73e3914b7cd4362e3e43e260",
+      "candidate-json_file_calls.ll": "d7eb099b4fdb2fa94174b243db1d931e2f631c31e22089bce6f735a9f8cb428f",
+      "candidate-json_file_calls": "2af1f6e316b871d324c44f3988d4ba60e8d9b6811cd72fba275df70d49279130"
+    },
+    "failed_run_log_limit": "The zero-dump Callgrind profile is retained. The wrapper validated printed checksums before its dump assertion but did not persist that run process output; corrected harness persists each attempt before assertions.",
+    "retry": "All 32 final counts were repeated under the corrected exact-final-token symbol detector; none of the seven preliminary successes were reused."
+  },
+  "object_aot_collection_scope_audit": {
+    "verified_return_dumps": 8,
+    "per_function_instructions": {
+      "gc_slow": 9898,
+      "pys_list_append": 15034,
+      "f.kernel": 152,
+      "rf.f.kernel": 67006930,
+      "0x0000000000189600": 154,
+      "0x0000000000188c00": 608
+    },
+    "tail_target_counted": true,
+    "timer_print_marker_functions_have_zero_collected_instructions": true,
+    "total": 67032776
+  },
+  "json_aot_attribution": {
+    "method": "Noninclusive per-function instruction costs from the existing final profiles, grouped to account for inlining and out-of-line boxing. Group deltas mix code generation and recursion accounting; they are not a count of guard instructions alone.",
+    "group_symbols": {
+      "value_object_number_and_boxing": [
+        "m.json$_Parser.value",
+        "m.json$_Parser.value'2",
+        "m.json$_Parser.number",
+        "m.json$_Parser.object",
+        "pys_ubox"
+      ],
+      "decoded_key_path": [
+        "m.json$_Parser.decoded"
+      ],
+      "kernel_parse_and_constructor": [
+        "f.kernel",
+        "f.json$_parse",
+        "m.json$_Parser.__init__"
+      ]
+    },
+    "instruction_cost_by_variant": {
+      "main": {
+        "value_object_number_and_boxing": 224816369,
+        "decoded_key_path": 10240000,
+        "kernel_parse_and_constructor": 1808511,
+        "other_library_runtime_gc_and_collected_work": 289534082
+      },
+      "original": {
+        "value_object_number_and_boxing": 216912369,
+        "decoded_key_path": 14336000,
+        "kernel_parse_and_constructor": 2400591,
+        "other_library_runtime_gc_and_collected_work": 335042766
+      },
+      "prior": {
+        "value_object_number_and_boxing": 239408369,
+        "decoded_key_path": 14336000,
+        "kernel_parse_and_constructor": 2272591,
+        "other_library_runtime_gc_and_collected_work": 289534069
+      },
+      "candidate": {
+        "value_object_number_and_boxing": 230552449,
+        "decoded_key_path": 14336000,
+        "kernel_parse_and_constructor": 2272591,
+        "other_library_runtime_gc_and_collected_work": 289534476
+      }
+    },
+    "candidate_minus_main": {
+      "value_object_number_and_boxing": 5736080,
+      "decoded_key_path": 4096000,
+      "kernel_parse_and_constructor": 464080,
+      "other_library_runtime_gc_and_collected_work": 394
+    }
+  },
+  "performance_acceptance": {
+    "status": "open",
+    "elapsed_finding": "The complete final series reports candidate object JIT +10.22% versus main and +10.03% versus prior. Separately labelled controls do not reproduce it consistently, despite matching relocated hot-function bytes and low sampled guest runqueue delay. The cause is unresolved; all data remain preserved and elapsed acceptance stays open."
+  }
+}

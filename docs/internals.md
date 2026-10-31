@@ -442,9 +442,11 @@ Independent regions can share private descendants. Each maximal private entry is
 marked `noinline` and its LLVM definition is emitted before the original guarded
 wrapper; descendants remain eligible for ordinary inlining. This keeps the guarded
 loop out of the hot function and controls the hot function's placement. LLVM 18
-object-loop measurements required both separation and this emission order to recover
-performance after guard removal: retaining the same hot-loop instruction count alone
-did not preserve elapsed time. This layout choice leaves the depth proof and fallback
+object-loop development controls motivated this layout, which restores the observed
+compact hot function, including short conditional branches. The full normal-driver
+elapsed-time result remains unresolved; the controls do not establish performance
+acceptance. The [measurement report](reports/recursion-guard-regions.md) records both
+series and the captured code. This layout choice leaves the depth proof and fallback
 behavior intact; it does not impose a new inlining boundary inside the unchecked graph.
 
 A separate two-frame version can cover

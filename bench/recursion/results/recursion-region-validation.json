@@ -1,0 +1,365 @@
+{
+  "schema": "pystachy-recursion-validation-v1",
+  "created_utc": "2026-10-31T04:47:12.582779+00:00",
+  "source": {
+    "local_commit": "480b5554c44a8a73d463999a69e41d106727f48b",
+    "published_commit": "2fe3aa788c0d667fb89700fe13b5a5cb24172a68",
+    "tree": "d19e1b496ecbca3530bb45f409ee7da2d9b94375"
+  },
+  "toolchain": {
+    "python": "3.13.16",
+    "llvm": "18.1.3"
+  },
+  "native_compiler_sha256": "48d0c7fd5b17765c84657fbd1e98adbb057b6dde9069bfd3b99a146066392cab",
+  "compiler_ir_sha256": "050efd88825a84cfc9c0db171d4c7f0e3bb5d4c227bc1e35b3ad9882bc43e263",
+  "runtime_ir_sha256": "940a694da5ea93214d1308a8eb635b47d8d0a9d4256c63d084c24f5099f8aa5f",
+  "phases": {
+    "bootstrap": {
+      "status": "passed",
+      "source_manifest_stable": true,
+      "source_file_count": 8164,
+      "source_manifest_sha256": "da8fe226a5ec099b7e5117027fc9bc5c5b69f3ff3573e829ac03fe954d747ebb",
+      "raw_evidence_sha256": "171a0418de49911ae87cb911db419d038c7be33db9d7c6ca6598ab5a0ed94fee",
+      "native_compiler_sha256": "48d0c7fd5b17765c84657fbd1e98adbb057b6dde9069bfd3b99a146066392cab",
+      "checks": [
+        {
+          "name": "make",
+          "status": "passed",
+          "exit_code": 0,
+          "seconds": 220.614723,
+          "log_sha256": "e8af5b82a2acdcc0354ae67a33beb945097ff13f0b262d2053b4e7223147e7a3",
+          "compiler_ir_lines": 803142,
+          "runtime_ir_lines": 18805,
+          "compiler_ir_sha256": "050efd88825a84cfc9c0db171d4c7f0e3bb5d4c227bc1e35b3ad9882bc43e263",
+          "runtime_ir_sha256": "940a694da5ea93214d1308a8eb635b47d8d0a9d4256c63d084c24f5099f8aa5f"
+        }
+      ]
+    },
+    "fixtures": {
+      "status": "passed",
+      "source_manifest_stable": true,
+      "source_file_count": 8164,
+      "source_manifest_sha256": "da8fe226a5ec099b7e5117027fc9bc5c5b69f3ff3573e829ac03fe954d747ebb",
+      "raw_evidence_sha256": "3e8921fd2436c95272a919c9f85dbaff6c93e741a75c50acd94f65ceb21dd228",
+      "native_compiler_sha256": "48d0c7fd5b17765c84657fbd1e98adbb057b6dde9069bfd3b99a146066392cab",
+      "checks": [
+        {
+          "name": "normal",
+          "status": "passed",
+          "exit_code": 0,
+          "seconds": 27.344602,
+          "log_sha256": "393ab2e0bf6ac658c9c5752dd3c830e5fd8e8fb075448290d9dcdc4e7b93d76d",
+          "cases": 19,
+          "modes": [
+            "jit",
+            "aot"
+          ],
+          "passed": 38,
+          "failed": 0,
+          "environment": {},
+          "fixtures": [
+            "recursion_guard",
+            "recursion_limit",
+            "recursion_set_limit",
+            "recursion_leaf",
+            "recursion_cold",
+            "recursion_bounded",
+            "recursion_partial_depth",
+            "exc_recursion_unwind",
+            "exc_recursion_contexts",
+            "exc_recursion_cold_uncaught",
+            "dynany_recursion_guard",
+            "dynany_recursion_bounded",
+            "gen_recursion_guard",
+            "re_specialize",
+            "re_specialize_recursion",
+            "rt_list_vacated",
+            "rt_recursion_scoped_files",
+            "lib_weakref_dead",
+            "lib_weakref_callback"
+          ]
+        },
+        {
+          "name": "gc-stress",
+          "status": "passed",
+          "exit_code": 0,
+          "seconds": 19.73714,
+          "log_sha256": "393ab2e0bf6ac658c9c5752dd3c830e5fd8e8fb075448290d9dcdc4e7b93d76d",
+          "cases": 19,
+          "modes": [
+            "jit",
+            "aot"
+          ],
+          "passed": 38,
+          "failed": 0,
+          "environment": {
+            "PYSTACHY_GC_STRESS_PROGRAM": "1"
+          },
+          "fixtures": [
+            "recursion_guard",
+            "recursion_limit",
+            "recursion_set_limit",
+            "recursion_leaf",
+            "recursion_cold",
+            "recursion_bounded",
+            "recursion_partial_depth",
+            "exc_recursion_unwind",
+            "exc_recursion_contexts",
+            "exc_recursion_cold_uncaught",
+            "dynany_recursion_guard",
+            "dynany_recursion_bounded",
+            "gen_recursion_guard",
+            "re_specialize",
+            "re_specialize_recursion",
+            "rt_list_vacated",
+            "rt_recursion_scoped_files",
+            "lib_weakref_dead",
+            "lib_weakref_callback"
+          ]
+        }
+      ]
+    },
+    "contracts": {
+      "status": "passed",
+      "source_manifest_stable": true,
+      "source_file_count": 8164,
+      "source_manifest_sha256": "da8fe226a5ec099b7e5117027fc9bc5c5b69f3ff3573e829ac03fe954d747ebb",
+      "raw_evidence_sha256": "353401beb2d57926b492ac50842ee446d4f7669d334160de6a0a596d9b4ab1be",
+      "native_compiler_sha256": "48d0c7fd5b17765c84657fbd1e98adbb057b6dde9069bfd3b99a146066392cab",
+      "checks": [
+        {
+          "name": "typed",
+          "status": "passed",
+          "exit_code": 0,
+          "seconds": 4.748699,
+          "log_sha256": "42361c6997374c258e78de6b077b136c5108762da586876749306347fe444f89",
+          "passed": 191
+        },
+        {
+          "name": "summaries",
+          "status": "passed",
+          "exit_code": 0,
+          "seconds": 0.100806,
+          "log_sha256": "e31f3e41311d72413b992a5800b780157f60b95540dcb55efa41c0f24fd2c625",
+          "passed": 7
+        },
+        {
+          "name": "compiler-state",
+          "status": "passed",
+          "exit_code": 0,
+          "seconds": 75.744906,
+          "log_sha256": "ad481f0d4fa2ddb6ecb431c9ce4115478aa1bb31f0ce46b0819f840721f63faa",
+          "passed": 107
+        },
+        {
+          "name": "contracts",
+          "status": "passed",
+          "exit_code": 0,
+          "seconds": 0.43569,
+          "log_sha256": "b9959250cdb1ec5e5875af369c7689b42ba46e515ce17cc430627ee28a7f812c",
+          "passed": 43
+        },
+        {
+          "name": "hygiene",
+          "status": "passed",
+          "exit_code": 0,
+          "seconds": 14.109855,
+          "log_sha256": "90f84c176ac4f833f4ea3705fc1d3d617f288ece989acc1d407bafdae6ac9ba2",
+          "typechecked_files": 48,
+          "runtime_entries": 599,
+          "exception_classes": 70,
+          "subset_runtime_functions": 172,
+          "repository_tests": 11,
+          "ruff_passed": true
+        }
+      ]
+    },
+    "variants": {
+      "status": "passed",
+      "source_manifest_stable": true,
+      "source_file_count": 8164,
+      "source_manifest_sha256": "da8fe226a5ec099b7e5117027fc9bc5c5b69f3ff3573e829ac03fe954d747ebb",
+      "raw_evidence_sha256": "2d874e84664284166efde0c5ba0b524fe9d92f43011fbac2f69b79985bf459ea",
+      "native_compiler_sha256": "48d0c7fd5b17765c84657fbd1e98adbb057b6dde9069bfd3b99a146066392cab",
+      "checks": [
+        {
+          "name": "all-disabled",
+          "status": "passed",
+          "exit_code": 0,
+          "seconds": 26.532501,
+          "log_sha256": "393ab2e0bf6ac658c9c5752dd3c830e5fd8e8fb075448290d9dcdc4e7b93d76d",
+          "cases": 19,
+          "modes": [
+            "jit",
+            "aot"
+          ],
+          "passed": 38,
+          "failed": 0,
+          "environment": {
+            "PYSTACHY_OPT": "-all"
+          },
+          "fixtures": [
+            "recursion_guard",
+            "recursion_limit",
+            "recursion_set_limit",
+            "recursion_leaf",
+            "recursion_cold",
+            "recursion_bounded",
+            "recursion_partial_depth",
+            "exc_recursion_unwind",
+            "exc_recursion_contexts",
+            "exc_recursion_cold_uncaught",
+            "dynany_recursion_guard",
+            "dynany_recursion_bounded",
+            "gen_recursion_guard",
+            "re_specialize",
+            "re_specialize_recursion",
+            "rt_list_vacated",
+            "rt_recursion_scoped_files",
+            "lib_weakref_dead",
+            "lib_weakref_callback"
+          ]
+        },
+        {
+          "name": "no-user-inline",
+          "status": "passed",
+          "exit_code": 0,
+          "seconds": 13.286666,
+          "log_sha256": "f3f40aeed23a3cdafdc3fe8288b96f68557ef1bdac01170042a5e74140004a9b",
+          "cases": 19,
+          "modes": [
+            "jit"
+          ],
+          "passed": 19,
+          "failed": 0,
+          "environment": {
+            "PYSTACHY_JIT_INLINE": "0"
+          },
+          "fixtures": [
+            "recursion_guard",
+            "recursion_limit",
+            "recursion_set_limit",
+            "recursion_leaf",
+            "recursion_cold",
+            "recursion_bounded",
+            "recursion_partial_depth",
+            "exc_recursion_unwind",
+            "exc_recursion_contexts",
+            "exc_recursion_cold_uncaught",
+            "dynany_recursion_guard",
+            "dynany_recursion_bounded",
+            "gen_recursion_guard",
+            "re_specialize",
+            "re_specialize_recursion",
+            "rt_list_vacated",
+            "rt_recursion_scoped_files",
+            "lib_weakref_dead",
+            "lib_weakref_callback"
+          ]
+        },
+        {
+          "name": "leaf-disabled",
+          "status": "passed",
+          "exit_code": 0,
+          "seconds": 11.383561,
+          "log_sha256": "d12fbcbada799542a7911024e1012a54125698f44ed41d6b6e79b150d1389165",
+          "cases": 4,
+          "modes": [
+            "jit",
+            "aot"
+          ],
+          "passed": 8,
+          "failed": 0,
+          "environment": {
+            "PYSTACHY_OPT": "-recursionleaf"
+          },
+          "fixtures": [
+            "recursion_bounded",
+            "recursion_partial_depth",
+            "dynany_recursion_bounded",
+            "rt_recursion_scoped_files"
+          ]
+        }
+      ]
+    }
+  },
+  "issues": [],
+  "measurement_input_equivalence": {
+    "status": "passed",
+    "matched_inputs": 131,
+    "source_inputs_sha256": "dd6993182135e34015bfe1fbe4ef302ae848de6417d97cf8701157ee37c12436",
+    "measurement_local_commit": "37913cf96eabe1ef7446f56dc64e4d1f01b7282b",
+    "measurement_published_commit_prefix": "72712b21",
+    "measurement_tree": "c597da7cd7a2ee1fddd1bf7dbd61e3c233ac0357",
+    "freeze_evidence_sha256": "1f414092030f0efb8be7a41ad0604aee6a6adc2436fba97c667a64ba1d22eadf"
+  },
+  "native_probe_equivalence": {
+    "status": "passed",
+    "modules": 6,
+    "normalization": "none",
+    "raw_evidence_sha256": "70f3a0c545e732897c04ca1dbcdef4386ff4a6f4c3beb6d3ce882c740547953f",
+    "artifacts": [
+      {
+        "case": "ordinary_calls",
+        "raw_llvm_sha256": "cdaaaea9565e9da7628a66f858b6733e59c38ed5cea53182919695983288bcc3"
+      },
+      {
+        "case": "object_calls",
+        "raw_llvm_sha256": "f80fbc9ccd43e357960853abccd50cf2e7409932e3ed001c638fe18022e73b89"
+      },
+      {
+        "case": "json_calls",
+        "raw_llvm_sha256": "80d135b599ad31d3f6ecdc0e53fbdc91f1e5f09d1035f7ccc2a48021ccc40ec4"
+      },
+      {
+        "case": "json_warmed_short",
+        "raw_llvm_sha256": "1a3c86408651cc6fea06dfe280bee1d3dc303b2316b92f39284f9ef11b9727df"
+      },
+      {
+        "case": "json_warmed_long",
+        "raw_llvm_sha256": "1a3c86408651cc6fea06dfe280bee1d3dc303b2316b92f39284f9ef11b9727df"
+      },
+      {
+        "case": "json_file_calls",
+        "raw_llvm_sha256": "d7eb099b4fdb2fa94174b243db1d931e2f631c31e22089bce6f735a9f8cb428f"
+      }
+    ]
+  },
+  "compilation_comparison": {
+    "status": "passed",
+    "meaning": "compilation acceptance and diagnostic parity; intentional IR differences retained",
+    "cases": 3917,
+    "accepted": 2133,
+    "rejected": 1784,
+    "changed_exit_statuses": 0,
+    "new_acceptances": 0,
+    "new_rejections": 0,
+    "ir_classifications": {
+      "different": 2132,
+      "identical": 1,
+      "both_absent": 1784
+    },
+    "harness_exit_status": 1,
+    "changed_diagnostic_cases": 61,
+    "filename_only_diagnostic_cases": 61,
+    "header_replacements": 61,
+    "nested_call_replacements": 45,
+    "distinct_identical_library_files": 15,
+    "initial_strict_audit_exit_status": 2,
+    "initial_strict_review_cases": 29,
+    "remaining_diagnostic_differences": 0,
+    "baseline_source_files": 8124,
+    "baseline_native_sha256": "a77aa997feb4f60796c467a9e87d2ffde33de9fe235ead9d0cc731ff96cd0b36",
+    "source_manifests_stable": true,
+    "baseline_continuity_verified": true,
+    "raw_audit_sha256": "496720aa1f7cff9a1beabfef0602cd483274edb7ddd1b2934c5618f684204e8e",
+    "diagnostic_supplement_sha256": "99fcdc1fda827ac3f1433ee949b6b2b6288b9c77e7ec48372de0f0f3fcfc92cf"
+  },
+  "pending": [],
+  "local_validation_complete": true,
+  "scope": {
+    "full_local_make_verify": false,
+    "ci_status": "not_evaluated_by_this_report",
+    "pr_state": "draft"
+  }
+}

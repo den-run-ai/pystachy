@@ -449,9 +449,12 @@ guarded wrapper, after effect, exception and tuple-return analysis, without
 reordering the compiler's function table or changing symbol indexes. Each private
 definition is emitted once, with its existing signature and hidden identity ABI.
 This layout keeps the guarded copy of a loop out of the hot function. LLVM 18
-object-loop measurements also required emitting the separate hot entry first;
-separation alone did not recover elapsed time despite a matching hot instruction
-sequence. These are generic graph and emission rules, with no benchmark-name tests.
+object-loop development controls motivated emitting the separate hot entry first;
+the inspected code restores the observed compact hot function. The full normal-driver
+elapsed-time result remains unresolved, so the controls do not establish performance
+acceptance. See the [measurement report](reports/recursion-guard-regions.md) for the
+separate timing series and captured code. These are generic graph and emission rules,
+with no benchmark-name tests.
 
 Partial versioning uses a two-frame budget for a mixed root and its immediate leaf
 callees. A child must pass the leaf proof on every normal and exceptional path;
