@@ -200,6 +200,54 @@ print(candidate(1))
             self.assertEqual(blocks[bridge].code[0].s, "recursion.enter")
             self.assertEqual(blocks[bridge].code[-1].b, ["L3"])
 
+    def test_hidden_check_observer_declines_without_mutation(self):
+        # fn.cold currently contains only builtin raise sinks. If it ever holds
+        # user-code failure paths, leave this function fully guarded; edge
+        # splitting must not silently miss check's implicit failure successor.
+        g = Gen()
+        fn = IFn(FnInfo("candidate", "@f.candidate", Node("def", "candidate", 1), ""))
+        callback = IFn(FnInfo("callback", "@f.callback", Node("def", "callback", 1), ""))
+        callback.counted = True
+        g.fns = [fn, callback]
+        g.fll = {"@f.candidate": 0, "@f.callback": 1}
+        fn.counted = True
+        fn.rdepth = "%t1"
+        fn.n = 10
+        enter = Ins("rt", "int", "recursion.enter")
+        enter.r = [1]
+        base = Ins("scalar.bin", "int", "sub")
+        base.r = [2]
+        base.a = [Val("%t1", "int"), Val("1", "int")]
+        check = Ins("check", "", "ValueError: synthetic observer")
+        check.a = [Val("false", "bool")]
+        check.b = ["L1"]
+        fn.cold[check.s] = "L2"
+        fn.blocks[0].code = [enter, base, check]
+        normal = Blk("L1")
+        normal.code = [Ins("ret.none", "", "")]
+        terminal = Blk("L2")
+        terminal.code = [Ins("call", "None", "@f.callback"), Ins("unreachable", "", "")]
+        fn.blocks.extend([normal, terminal])
+
+        def snapshot():
+            return deepcopy((fn.n, fn.cold, [(b.label, b.handler,
+                             [(i.op, i.t, i.s, i.x, i.r, i.b,
+                               [(a.v, a.t) for a in i.a]) for i in b.code])
+                             for b in fn.blocks]))
+
+        before = snapshot()
+        self.assertFalse(recursion_cold(g, fn, "%t2", [16, 0]))
+        self.assertEqual(snapshot(), before)
+
+    def test_uncaught_custom_exception_keeps_rendering_depth(self):
+        source = (ROOT / "tests/programs/exceptions/exc_recursion_cold_uncaught.py").read_text()
+        functions = compiled(source)
+        fn = functions["cold"]
+        self.assertEqual(fn.blocks[0].code[0].s, "recursion.check")
+        self.assertTrue(any(i.op == "rt" and i.s == "recursion.enter"
+                            for b in fn.blocks[1:] for i in b.code))
+        self.assertEqual(functions["__str__"].blocks[0].code[0].s, "recursion.enter")
+
 
 if __name__ == "__main__":
     unittest.main()
