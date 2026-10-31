@@ -54,18 +54,18 @@ def gen_recursionleaf(self) -> int:
                 # These tokens belong only to the bookkeeping above. A future
                 # consumer of either token must invalidate this proof explicitly.
                 if own and any(a.v == fn.rdepth or a.v == base for a in i.a):
-                    m |= observed
+                    m = m | observed
                 c = i.s if i.op == "call" else "@init." + i.s if i.op == "init" else ""
                 if c in self.fll:
                     ix = self.fll[c]
                     callee = self.fns[ix]
                     if callee.counted or callee.f.gen or callee.coro:
-                        m |= observed
+                        m = m | observed
                     elif ix not in seen:
                         seen[ix] = True
                         cs.append(ix)
                 elif i.op == "throw" or i.op.startswith("gen.") or (i.op == "rt" and i.s in ["throw", "reraise"]) or self.opfx(i, fn.fa) & (FXBIT["U"] | FXBIT["I"]) != 0:
-                    m |= observed
+                    m = m | observed
         direct.append(m)
         calls.append(cs)
     depth = EffectSummaries()
