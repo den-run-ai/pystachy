@@ -1,0 +1,146 @@
+{
+  "schema": 1,
+  "scope": "Publication of already completed, archived da84 evidence. No new compiler or benchmark execution; no relabeling to a later source.",
+  "source_commit": "da84d382ff83f09e46d4ef104e62e6f64e9c37c1",
+  "source_tree": "903a72dce156018f83f69f1e8b4d74a6f14e99dd",
+  "original_workspace": "/workspace/scratch/e858f72517b9",
+  "files": [
+    {
+      "path": "backend-attribution/curated.json",
+      "source_path": "perf-work/backend-attribution-da84/curated.json",
+      "bytes": 125212,
+      "sha256": "df439519ce644d6e7951cf68becca2d07144d5001743147001bb1e6324b3aca0"
+    },
+    {
+      "path": "backend-attribution/backend-attribution-da84-full.json.gz",
+      "source_path": "perf-work/backend-attribution-da84/complete.json.gz",
+      "bytes": 801392,
+      "sha256": "ebc6776c3c355aa380ff16711c1ae9a40d81f9bebabfc036fb13c3019465b49e",
+      "decompressed_bytes": 7754882,
+      "decompressed_sha256": "5374af1a1bada3138183f33dc513ef55b128de80f802dd61994e16f5301bf352"
+    },
+    {
+      "path": "validation/validation-final-da84.json.gz",
+      "source_path": "tail-validation/validation-final-da84.json.gz",
+      "bytes": 1491811,
+      "sha256": "e8d52cef92de45d287083c0685f5d6d12670c05d8c0123aafd64fe243243b27e",
+      "decompressed_bytes": 7807297,
+      "decompressed_sha256": "1560bc34b2b404106eb51e4601b084edf1a9777336a285bc811c5330939cf566"
+    },
+    {
+      "path": "validation/validation-final-da84-manifest.json",
+      "source_path": "tail-validation/validation-final-da84-manifest.json",
+      "bytes": 491,
+      "sha256": "8b64cb06ef79d1505701c2d0db780cc51fd87ccabd348bad9ac0e6bcc52b6f71"
+    },
+    {
+      "path": "reproduction/README.md",
+      "source_path": "followup-reproduction-README.md",
+      "bytes": 12156,
+      "sha256": "e4c1712157b0fb9e2fac731cd8b5ed03e012c1edba82ed3f3b73fafe206c6930"
+    },
+    {
+      "path": "reproduction/recover_bootstrap.py",
+      "source_path": "recover_bootstrap.py",
+      "bytes": 2780,
+      "sha256": "2e7a8da9c974b1d2f38a3e95557428fc59661ad0d85ba95c43226a32ba9a34aa"
+    },
+    {
+      "path": "reproduction/perf-work/measure_recovered.py",
+      "source_path": "perf-work/measure_recovered.py",
+      "bytes": 18364,
+      "sha256": "d09d7eaaeb56d63ffdbecdd626de2cc1036e0d4175db703e39422d8ce240b24e"
+    },
+    {
+      "path": "reproduction/perf-work/finish_recovered_prepare.py",
+      "source_path": "perf-work/finish_recovered_prepare.py",
+      "bytes": 9355,
+      "sha256": "0b6ef4996baaf47b2e6d34c39afeafcc60d43e8a0f10f816d1bee041ec3d3cef"
+    },
+    {
+      "path": "reproduction/perf-work/prepare_final_recovered.py",
+      "source_path": "perf-work/prepare_final_recovered.py",
+      "bytes": 17360,
+      "sha256": "794259106c0bb7a36e2b2fd83ffb00770b97da8ca43dbb7eaf3a2796eac08d87"
+    },
+    {
+      "path": "reproduction/perf-work/run_final_recovered.py",
+      "source_path": "perf-work/run_final_recovered.py",
+      "bytes": 2371,
+      "sha256": "b22fb5a2748c308835caf3be48820d74bfd438e04990ca3ba5be0bd5be0d3a8c"
+    },
+    {
+      "path": "reproduction/perf-work/replay_support.py",
+      "source_path": "perf-work/replay_support.py",
+      "bytes": 3021,
+      "sha256": "530cb6e5e27546f1158e6844f3088ed33b7c82c47306710a9b68e4c4a8cbf52b"
+    },
+    {
+      "path": "reproduction/perf-work/count_support.py",
+      "source_path": "perf-work/count_support.py",
+      "bytes": 6133,
+      "sha256": "cf61855f5759ade0c2fb3bed68e580377185f3c89f8a68c26cf15f264e9b7050"
+    },
+    {
+      "path": "reproduction/perf-work/backend_attribution.py",
+      "source_path": "perf-work/backend_attribution.py",
+      "bytes": 11032,
+      "sha256": "2142e8a74f1850b81a141498ea8897587dd61167c51f78b68edb096615d75339"
+    },
+    {
+      "path": "reproduction/perf-work/backend_tool_wrapper.py",
+      "source_path": "perf-work/backend_tool_wrapper.py",
+      "bytes": 3490,
+      "sha256": "36622935de34570dab2cc2773a68af4749c4eef22fb93ba6c5e888940ea2840e"
+    },
+    {
+      "path": "reproduction/perf-work/export_backend_attribution.py",
+      "source_path": "perf-work/export_backend_attribution.py",
+      "bytes": 8585,
+      "sha256": "95368e4f37c944e7f234b8e4ffcaad02f3c005d013a0b814d01aa670d2a933a4"
+    },
+    {
+      "path": "reproduction/perf-work/recovered-ci/ci_smoke_script.py",
+      "source_path": "perf-work/recovered-ci/ci_smoke_script.py",
+      "bytes": 9054,
+      "sha256": "9f060980da2f7c08e23f50f5abb50620242793429696be079f5b068f1bfd82ea"
+    },
+    {
+      "path": "reproduction/perf-work/recovered-ci/ci_prior_smoke_script.py",
+      "source_path": "perf-work/recovered-ci/ci_prior_smoke_script.py",
+      "bytes": 9054,
+      "sha256": "9f060980da2f7c08e23f50f5abb50620242793429696be079f5b068f1bfd82ea"
+    },
+    {
+      "path": "reproduction/tail-validation/validate.py",
+      "source_path": "tail-validation/validate.py",
+      "bytes": 25027,
+      "sha256": "11fc94eecce77e113ef3bb6d0e504c4792dde41766298094e3a1cb17ee03b507"
+    },
+    {
+      "path": "reproduction/tail-validation/export.py",
+      "source_path": "tail-validation/export.py",
+      "bytes": 10607,
+      "sha256": "6a528b8df9988802e0e2fce19af4ff5e6df354d5f9dca76935305fcaf444ed36"
+    },
+    {
+      "path": "reproduction/tail-validation/irsame/irsame-instrumented.sh",
+      "source_path": "tail-validation/irsame/irsame-instrumented.sh",
+      "bytes": 5564,
+      "sha256": "2da7c41ffbcc0184156591c5470e4cf33fc9e07546f5d8a95b508c2907d5139f"
+    },
+    {
+      "path": "reproduction/tail-validation/irsame-original.sh",
+      "source_path": "tail-validation/irsame-original.sh",
+      "bytes": 5080,
+      "sha256": "bdfffe937a11dfbc6f3f1227cc825790e3d18df8e08eff324cae1f3d364f973c"
+    }
+  ],
+  "retained_elsewhere": "Source snapshots, complete raw LLVM corpus, native/toolchain binaries, caches, and all other archival files remain in the user-provided ZIP archives. This selection is not a standalone one-command replay package.",
+  "known_loss": {
+    "file": "recursion-region-startup-diagnostics.json",
+    "bytes": 85660,
+    "sha256": "8d4ccaa64ec19cd39484db48e28eae7a4d7ca91edbf8cc5b6955bae267c00503",
+    "status": "Not recovered; only previously published partial transcript vectors remain."
+  }
+}

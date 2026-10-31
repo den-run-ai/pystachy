@@ -1,8 +1,8 @@
 # Recursion guard tail-sharing follow-up
 
-Status: the aaec00cc checkpoint completed all applicable CI. A further exact-output frontend fix is published as da84d382; its fresh bootstrap passed, all applicable CI and the complete planned performance series passed their execution/provenance checks; bounded startup attribution and the local full comparison are in progress. Performance acceptance remains open.
+Status: frozen evidence for the da84d382 checkpoint. Its fresh bootstrap, applicable CI, complete planned performance series, bounded backend attribution, and full local compilation comparison completed before archival. The previously unpublished local validation export, backend profiles, and reproduction controllers are now preserved below. Performance acceptance remained open at this checkpoint; subsequent PR source changes require separately identified evidence.
 
-The current reviewed implementation is PR #996 head `da84d382ff83f09e46d4ef104e62e6f64e9c37c1`, tree `903a72dce156018f83f69f1e8b4d74a6f14e99dd`, based on main `06e3ad5d08514ba31fb231fe4636a962fe6578e3`. Its parent checkpoint is `aaec00cc81a862a2b29c117003e7c9cc73e1a3c1`, tree `2dd336a2a8f71d9a2c36d1fd233af24fee81c2a1`. This separate branch preserves evidence without adding raw evaluations to the PR.
+The evaluated implementation is former PR #996 head `da84d382ff83f09e46d4ef104e62e6f64e9c37c1`, tree `903a72dce156018f83f69f1e8b4d74a6f14e99dd`, based on main `06e3ad5d08514ba31fb231fe4636a962fe6578e3`. Its parent checkpoint is `aaec00cc81a862a2b29c117003e7c9cc73e1a3c1`, tree `2dd336a2a8f71d9a2c36d1fd233af24fee81c2a1`. This separate research branch preserves evidence and must not be merged into the source PR.
 
 ## Implemented changes
 
@@ -28,7 +28,7 @@ The aaec00cc CI performance smoke completed successfully with all 11 workloads, 
 - [Verified complete artifact](https://github.com/den-run-ai/pystachy/actions/runs/41214277702/artifacts/13047717899), ZIP SHA256 `59f096079b53c0ca9184988c83ea80208ca165f349cfb08b1c571aabe845a222`.
 - JSON SHA256 `936d3705f5847c98cf59cb0978c3fa04576d9dface9d5d51464a8e2e8cdb477d`.
 
-The local startup series is complete below. Fresh local kernel/count/compilation measurements, focused native fixtures and a complete 3,918-case compilation comparison remain pending. All applicable aaec00cc CI checks completed: **59 successful and two expected skips**, with no failures or pending jobs. The correctness workflow completed 34/34 jobs and 54/54 aggregate verification steps across 31 groups. Coverage completed 19 successful jobs and its expected main-only badge skip. Lint, installation, packaging and smoke passed. The skips are main-only coverage publication and fork-only DCO. PR #996 remains draft and unmerged.
+The local startup series is complete below. The later da84d382 sections record the subsequently completed kernel/count/compilation measurements, focused native fixtures, and full 3,918-case comparison. All applicable aaec00cc CI checks completed: **59 successful and two expected skips**, with no failures or pending jobs. The correctness workflow completed 34/34 jobs and 54/54 aggregate verification steps across 31 groups. Coverage completed 19 successful jobs and its expected main-only badge skip. Lint, installation, packaging and smoke passed. The skips are main-only coverage publication and fork-only DCO. PR #996 remained draft and unmerged at that checkpoint.
 
 ## Exact CI accounting
 
@@ -104,7 +104,7 @@ This removes demonstrated redundant frontend work. It does **not** establish a w
 
 Exact hosted proof: `tail-early-rejection-proof.json`, SHA256 `dc7f5240868791a7418f3ad4e6a9b6a5b8bdc60082374ba352c150bd901600c0`. Exact native experiment: `tail-early-rejection-native-intel.json`, SHA256 `cb181e48ad3c730ebf7a3b1f56aac01e695e07c59d7a2d03268ce7afd7f9ada2`.
 
-Before publication, the integrated source passed 198 typed-IR tests, seven function-summary tests, 107 compiler-state tests, 11 repository-hygiene tests, Ruff and diff checks. Fresh full self-hosting subsequently passed as recorded below. Final-source CI has completed successfully and the full local comparison remains pending; the single hosted experimental build is not relabeled as that final validation.
+Before publication, the integrated source passed 198 typed-IR tests, seven function-summary tests, 107 compiler-state tests, 11 repository-hygiene tests, Ruff and diff checks. Fresh full self-hosting subsequently passed as recorded below. Final-source CI and the full local comparison subsequently completed successfully; the single hosted experimental build is not relabeled as that final validation.
 
 ## Final-source bootstrap and CI smoke
 
@@ -122,7 +122,7 @@ Each process comparison had non-overlapping base/head ranges in both batches. Th
 
 The complete artifact is [13049892239](https://github.com/den-run-ai/pystachy/actions/runs/41220634754/artifacts/13049892239). ZIP SHA256: `95fb310fdd76ae3dbb212fdb5758a41cd831c6d4254fbb76989cb7225a261c71`. Exact JSON is `tail-ci-smoke-da84d382.json`, 61,675 bytes, SHA256 `401deeac72292dbc79b447f5b51fad7141009a33c2b6442156d15e14ef454391`. The bootstrap record is `tail-bootstrap-da84d382.json`, SHA256 `043fa1d1b5797a832deffd7b6a1841fff8982558cd4d07cb693021ca31b3c0cf`.
 
-Fresh final preparation also regenerated all six benchmark artifacts and verified literal raw LLVM, optimized JIT bitcode and AOT executable equality with aaec00cc. It retained and rehashed all 84 preceding artifacts, verified the actual normal-driver runtime descriptor and input/pipeline, and preserved earlier failed preparation records. Final counts, kernel timings and compilation samples subsequently completed as recorded below. The local correctness comparison remains in progress.
+Fresh final preparation also regenerated all six benchmark artifacts and verified literal raw LLVM, optimized JIT bitcode and AOT executable equality with aaec00cc. It retained and rehashed all 84 preceding artifacts, verified the actual normal-driver runtime descriptor and input/pipeline, and preserved earlier failed preparation records. Final counts, kernel timings, compilation samples, and the local correctness comparison subsequently completed as recorded below.
 
 ## Completed final JSON measurement series
 
@@ -182,3 +182,25 @@ The exact Coverage/Lint record is `tail-ci-coverage-lint-da84d382.json`, SHA256 
 Hosted coverage is 96.0% statements/92.6% branches; native runtime coverage is 95.5% lines/87.5% branches, exactly matching aaec. Changed-code gap lists are unchanged. Existing compiler gaps include defensive rejection and init-to-call rewrite paths. C recursion helper bodies remain uncovered because normal native lowering uses the program module's inline LLVM helpers; C coverage does not measure those emitted operations. Coverage is not a proof of every guard path.
 
 The exact correctness aggregate record is `tail-ci-correctness-da84d382.json` (SHA256 `4df44515855e4c429349601df64f8bd9044bfea5f33400418fb0c71b13e27aef`). Its verified ZIP, JSON and 61 retained raw-log hashes support native/optimization-disabled/Python-free totals of 6,134 mode executions each; UBSan 8,162; GC JIT and GC AOT 4,081 each; runtime-cache 66 native + 68 hosted = 134. The new-head regex job built the native stage-2 compiler and verified four upstream methods across CPython, native JIT and AOT. These totals are mode/check counts, not a count of unique programs.
+
+## Completed local validation and backend attribution at da84d382
+
+The [archived evidence directory](../../bench/recursion/archive-da84/README.md) publishes the completed records that were retained but unpublished at handoff. Its [publication manifest](../../bench/recursion/archive-da84/publication-manifest.json) binds every copied file to its original path, size, and hash. This is publication of frozen evidence, without new compiler or benchmark execution and without advancing the evaluated source.
+
+The complete local comparison covers **3,918 cases**: both main and da84d382 accept 2,134 and reject 1,784, with **zero changed exit statuses, new acceptances, or new rejections**. Of the accepted modules, 2,133 have intentional raw LLVM differences and one is identical. The export retains every raw diagnostic and the audited filename mappings: 61 diagnostics have checkout-path changes, including 45 nested call locations. Runtime IR is identical. This establishes compilation compatibility for the recorded corpus; it does not alone prove runtime equivalence.
+
+Twenty focused fixtures passed **150 native executions** across normal JIT/AOT, disabled leaf/region optimization, disabled user inlining, and GC stress configurations. The fixture list includes exact-limit failure and recovery, contexts/unwind, generators, dynamic calls, regex fallback, scoped files, and weakref controls. Full source inventories, bootstrap bindings, every comparison result, diagnostic bytes, and raw IR/archive hashes are in [the lossless validation export](../../bench/recursion/archive-da84/validation/validation-final-da84.json.gz). Its decompressed 7,807,297 bytes have SHA256 `1560bc34b2b404106eb51e4601b084edf1a9777336a285bc811c5330939cf566`.
+
+The actual-driver backend profile compiled the mixed-text module and ran `fnmatch 1000`, with CPython output parity and matching captured runtime descriptor bytes. Each row is one instrumented whole-tool observation per variant:
+
+| Process | Main instructions | da84d382 instructions |
+|---|---:|---:|
+| LLVM `opt` | 1,672,852,665 | 2,195,365,411 |
+| LLVM `lli` | 8,327,345,252 | 9,474,607,734 |
+| Sum of the two disjoint processes | 10,000,197,917 | 11,669,973,145 |
+
+The combined instruction increase is **16.70%**. LLVM's always-inline pass accounts for 318,912,600 inclusive instructions, approximately 61% of the additional `opt` work. Named machine-code generation work also increases. Inclusive rows overlap and must not be added; attribution does not measure the savings from removing a pass. Whole `lli` includes execution, runtime/GC, and teardown as well as code generation. These are instruction observations, not an elapsed acceptance series, and exclude the native frontend/driver.
+
+The [curated profile](../../bench/recursion/archive-da84/backend-attribution/curated.json) and [complete compressed backend record](../../bench/recursion/archive-da84/backend-attribution/backend-attribution-da84-full.json.gz) retain the exact pipelines, source/tool/input identities, normal controls, and limitations. The latter decompresses to 7,754,882 bytes with SHA256 `5374af1a1bada3138183f33dc513ef55b128de80f802dd61994e16f5301bf352`.
+
+Read the [original reproduction notes](../../bench/recursion/archive-da84/reproduction/README.md) before using the copied controllers. They have ordered dependencies and original-workspace path assumptions; the source/toolchain/cache/raw-IR archives remain necessary for exact reconstruction. The older missing startup diagnostic remains missing. This publication does not fill its unrecorded samples or close performance acceptance.

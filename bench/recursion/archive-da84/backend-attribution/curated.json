@@ -1,0 +1,2546 @@
+{
+  "arguments": [
+    "fnmatch",
+    "1000"
+  ],
+  "comparisons": {
+    "combined_stages": {
+      "candidate_ir": 11669973145,
+      "delta_ir": 1669775228,
+      "main_ir": 10000197917,
+      "percent_change": 16.69742180963678,
+      "ratio": 1.1669742180963678,
+      "scope": "Sum of two disjoint whole-tool processes, not a sum of inclusive function rows; native frontend and driver work are excluded."
+    },
+    "lli": {
+      "candidate_ir": 9474607734,
+      "delta_ir": 1147262482,
+      "largest_positive_named_llvm_self_deltas": [
+        {
+          "candidate_inclusive_ir": 850572810,
+          "candidate_self_ir": 197704485,
+          "delta_inclusive_ir": 116101899,
+          "delta_self_ir": 30042287,
+          "main_inclusive_ir": 734470911,
+          "main_self_ir": 167662198,
+          "name": "llvm::SelectionDAG::Combine(llvm::CombineLevel, llvm::AAResults*, llvm::CodeGenOptLevel)"
+        },
+        {
+          "candidate_inclusive_ir": 127379489,
+          "candidate_self_ir": 127379489,
+          "delta_inclusive_ir": 17429278,
+          "delta_self_ir": 17429278,
+          "main_inclusive_ir": 109950211,
+          "main_self_ir": 109950211,
+          "name": "llvm::LiveRegUnits::stepBackward(llvm::MachineInstr const&)"
+        },
+        {
+          "candidate_inclusive_ir": 252614272,
+          "candidate_self_ir": 80319850,
+          "delta_inclusive_ir": 42527914,
+          "delta_self_ir": 13530738,
+          "main_inclusive_ir": 210086358,
+          "main_self_ir": 66789112,
+          "name": "llvm::SelectionDAGISel::SelectCodeCommon(llvm::SDNode*, unsigned char const*, unsigned int)"
+        },
+        {
+          "candidate_inclusive_ir": 161842192,
+          "candidate_self_ir": 104880995,
+          "delta_inclusive_ir": 14961200,
+          "delta_self_ir": 10203269,
+          "main_inclusive_ir": 146880992,
+          "main_self_ir": 94677726,
+          "name": "llvm::SmallPtrSetImplBase::insert_imp_big(void const*)"
+        },
+        {
+          "candidate_inclusive_ir": 92751044,
+          "candidate_self_ir": 77744585,
+          "delta_inclusive_ir": 11318811,
+          "delta_self_ir": 9754761,
+          "main_inclusive_ir": 81432233,
+          "main_self_ir": 67989824,
+          "name": "llvm::MachineInstr::addOperand(llvm::MachineFunction&, llvm::MachineOperand const&)"
+        },
+        {
+          "candidate_inclusive_ir": 105989261,
+          "candidate_self_ir": 105950700,
+          "delta_inclusive_ir": 9504203,
+          "delta_self_ir": 9503292,
+          "main_inclusive_ir": 96485058,
+          "main_self_ir": 96447408,
+          "name": "llvm::SpillPlacement::activate(unsigned int)"
+        },
+        {
+          "candidate_inclusive_ir": 59998994,
+          "candidate_self_ir": 59998994,
+          "delta_inclusive_ir": 9030976,
+          "delta_self_ir": 9030976,
+          "main_inclusive_ir": 50968018,
+          "main_self_ir": 50968018,
+          "name": "llvm::TargetRegisterInfo::getMinimalPhysRegClass(llvm::MCRegister, llvm::MVT) const"
+        },
+        {
+          "candidate_inclusive_ir": 269827182,
+          "candidate_self_ir": 79852794,
+          "delta_inclusive_ir": 27925038,
+          "delta_self_ir": 8297738,
+          "main_inclusive_ir": 241902144,
+          "main_self_ir": 71555056,
+          "name": "llvm::LiveVariables::HandlePhysRegKill(llvm::Register, llvm::MachineInstr*)"
+        },
+        {
+          "candidate_inclusive_ir": 119257411,
+          "candidate_self_ir": 95515937,
+          "delta_inclusive_ir": 9947948,
+          "delta_self_ir": 7922677,
+          "main_inclusive_ir": 109309463,
+          "main_self_ir": 87593260,
+          "name": "llvm::SpillPlacement::iterate()"
+        },
+        {
+          "candidate_inclusive_ir": 72625883,
+          "candidate_self_ir": 69837140,
+          "delta_inclusive_ir": 8256993,
+          "delta_self_ir": 7834186,
+          "main_inclusive_ir": 64368890,
+          "main_self_ir": 62002954,
+          "name": "llvm::MachineInstr::addRegisterKilled(llvm::Register, llvm::TargetRegisterInfo const*, bool)"
+        },
+        {
+          "candidate_inclusive_ir": 160077253,
+          "candidate_self_ir": 95332586,
+          "delta_inclusive_ir": 12303626,
+          "delta_self_ir": 6941456,
+          "main_inclusive_ir": 147773627,
+          "main_self_ir": 88391130,
+          "name": "llvm::SpillPlacement::addLinks(llvm::ArrayRef<unsigned int>)"
+        },
+        {
+          "candidate_inclusive_ir": 70946863,
+          "candidate_self_ir": 43200015,
+          "delta_inclusive_ir": 11101701,
+          "delta_self_ir": 6813696,
+          "main_inclusive_ir": 59845162,
+          "main_self_ir": 36386319,
+          "name": "llvm::ScheduleDAGSDNodes::BuildSchedUnits()"
+        },
+        {
+          "candidate_inclusive_ir": 116907516,
+          "candidate_self_ir": 42117022,
+          "delta_inclusive_ir": 19180367,
+          "delta_self_ir": 6703791,
+          "main_inclusive_ir": 97727149,
+          "main_self_ir": 35413231,
+          "name": "llvm::ReachingDefAnalysis::enterBasicBlock(llvm::MachineBasicBlock*)"
+        },
+        {
+          "candidate_inclusive_ir": 121899307,
+          "candidate_self_ir": 36181403,
+          "delta_inclusive_ir": 17868248,
+          "delta_self_ir": 5725884,
+          "main_inclusive_ir": 104031059,
+          "main_self_ir": 30455519,
+          "name": "llvm::FoldingSetBase::FindNodeOrInsertPos(llvm::FoldingSetNodeID const&, void*&, llvm::FoldingSetBase::FoldingSetInfo const&)"
+        },
+        {
+          "candidate_inclusive_ir": 44054504,
+          "candidate_self_ir": 35009780,
+          "delta_inclusive_ir": 6667125,
+          "delta_self_ir": 5295497,
+          "main_inclusive_ir": 37387379,
+          "main_self_ir": 29714283,
+          "name": "llvm::SelectionDAG::createOperands(llvm::SDNode*, llvm::ArrayRef<llvm::SDValue>)"
+        },
+        {
+          "candidate_inclusive_ir": 69736192,
+          "candidate_self_ir": 48363421,
+          "delta_inclusive_ir": 7733585,
+          "delta_self_ir": 5259173,
+          "main_inclusive_ir": 62002607,
+          "main_self_ir": 43104248,
+          "name": "llvm::LiveRange::extendInBlock(llvm::ArrayRef<llvm::SlotIndex>, llvm::SlotIndex, llvm::SlotIndex)"
+        },
+        {
+          "candidate_inclusive_ir": 31878683,
+          "candidate_self_ir": 20138794,
+          "delta_inclusive_ir": 6311479,
+          "delta_self_ir": 4540216,
+          "main_inclusive_ir": 25567204,
+          "main_self_ir": 15598578,
+          "name": "llvm::LiveIntervalUnion::Query::collectInterferingVRegs(unsigned int)"
+        },
+        {
+          "candidate_inclusive_ir": 187155363,
+          "candidate_self_ir": 37527510,
+          "delta_inclusive_ir": 20505790,
+          "delta_self_ir": 4360262,
+          "main_inclusive_ir": 166649573,
+          "main_self_ir": 33167248,
+          "name": "llvm::LiveRangeCalc::findReachingDefs(llvm::LiveRange&, llvm::MachineBasicBlock&, llvm::SlotIndex, unsigned int, llvm::ArrayRef<llvm::SlotIndex>)"
+        },
+        {
+          "candidate_inclusive_ir": 40057211,
+          "candidate_self_ir": 37467857,
+          "delta_inclusive_ir": 4603976,
+          "delta_self_ir": 4176543,
+          "main_inclusive_ir": 35453235,
+          "main_self_ir": 33291314,
+          "name": "llvm::LiveRangeUpdater::add(llvm::LiveRange::Segment)"
+        },
+        {
+          "candidate_inclusive_ir": 123228163,
+          "candidate_self_ir": 24329761,
+          "delta_inclusive_ir": 20766403,
+          "delta_self_ir": 3949381,
+          "main_inclusive_ir": 102461760,
+          "main_self_ir": 20380380,
+          "name": "llvm::SelectionDAG::Legalize()"
+        }
+      ],
+      "main_ir": 8327345252,
+      "percent_change": 13.777049555192388,
+      "ratio": 1.1377704955519239,
+      "selected_inclusive_rows_do_not_sum": [
+        {
+          "candidate_inclusive_ir": 7597508527,
+          "candidate_self_ir": 4889280,
+          "delta_inclusive_ir": 954423277,
+          "delta_self_ir": 611160,
+          "main_inclusive_ir": 6643085250,
+          "main_self_ir": 4278120,
+          "name": "llvm::MachineFunctionPass::runOnFunction(llvm::Function&)"
+        },
+        {
+          "candidate_inclusive_ir": 2485291222,
+          "candidate_self_ir": 2278677,
+          "delta_inclusive_ir": 371672711,
+          "delta_self_ir": 330371,
+          "main_inclusive_ir": 2113618511,
+          "main_self_ir": 1948306,
+          "name": "llvm::SelectionDAGISel::runOnMachineFunction(llvm::MachineFunction&)"
+        },
+        {
+          "candidate_inclusive_ir": 1288018003,
+          "candidate_self_ir": 1230415,
+          "delta_inclusive_ir": 142534156,
+          "delta_self_ir": 245074,
+          "main_inclusive_ir": 1145483847,
+          "main_self_ir": 985341,
+          "name": "llvm::RegAllocBase::allocatePhysRegs()"
+        },
+        {
+          "candidate_inclusive_ir": 850572810,
+          "candidate_self_ir": 197704485,
+          "delta_inclusive_ir": 116101899,
+          "delta_self_ir": 30042287,
+          "main_inclusive_ir": 734470911,
+          "main_self_ir": 167662198,
+          "name": "llvm::SelectionDAG::Combine(llvm::CombineLevel, llvm::AAResults*, llvm::CodeGenOptLevel)"
+        }
+      ]
+    },
+    "opt": {
+      "candidate_ir": 2195365411,
+      "delta_ir": 522512746,
+      "largest_positive_named_llvm_self_deltas": [
+        {
+          "candidate_inclusive_ir": 149377330,
+          "candidate_self_ir": 58607745,
+          "delta_inclusive_ir": 149377330,
+          "delta_self_ir": 58607745,
+          "main_inclusive_ir": 0,
+          "main_self_ir": 0,
+          "name": "llvm::LoopBase<llvm::BasicBlock, llvm::Loop>::getExitBlocks(llvm::SmallVectorImpl<llvm::BasicBlock*>&) const"
+        },
+        {
+          "candidate_inclusive_ir": 52051668,
+          "candidate_self_ir": 52051668,
+          "delta_inclusive_ir": 46864285,
+          "delta_self_ir": 46864285,
+          "main_inclusive_ir": 5187383,
+          "main_self_ir": 5187383,
+          "name": "llvm::SmallPtrSetImplBase::FindBucketFor(void const*) const"
+        },
+        {
+          "candidate_inclusive_ir": 43749966,
+          "candidate_self_ir": 43749966,
+          "delta_inclusive_ir": 28539885,
+          "delta_self_ir": 28539885,
+          "main_inclusive_ir": 15210081,
+          "main_self_ir": 15210081,
+          "name": "llvm::Instruction::getSuccessor(unsigned int) const"
+        },
+        {
+          "candidate_inclusive_ir": 32103571,
+          "candidate_self_ir": 32103571,
+          "delta_inclusive_ir": 20626185,
+          "delta_self_ir": 20626185,
+          "main_inclusive_ir": 11477386,
+          "main_self_ir": 11477386,
+          "name": "llvm::Instruction::getNumSuccessors() const"
+        },
+        {
+          "candidate_inclusive_ir": 9344840,
+          "candidate_self_ir": 9344840,
+          "delta_inclusive_ir": 9344840,
+          "delta_self_ir": 9344840,
+          "main_inclusive_ir": 0,
+          "main_self_ir": 0,
+          "name": "llvm::BranchProbabilityInfo::LoopBlock::LoopBlock(llvm::BasicBlock const*, llvm::LoopInfo const&, llvm::BranchProbabilityInfo::SccInfo const&)"
+        },
+        {
+          "candidate_inclusive_ir": 136873506,
+          "candidate_self_ir": 77382610,
+          "delta_inclusive_ir": 12711717,
+          "delta_self_ir": 7319616,
+          "main_inclusive_ir": 124161789,
+          "main_self_ir": 70062994,
+          "name": "llvm::SmallPtrSetImplBase::insert_imp_big(void const*)"
+        },
+        {
+          "candidate_inclusive_ir": 158438955,
+          "candidate_self_ir": 73466046,
+          "delta_inclusive_ir": 16042648,
+          "delta_self_ir": 7246820,
+          "main_inclusive_ir": 142396307,
+          "main_self_ir": 66219226,
+          "name": "llvm::LLLexer::LexIdentifier()"
+        },
+        {
+          "candidate_inclusive_ir": 5830173,
+          "candidate_self_ir": 5830173,
+          "delta_inclusive_ir": 5830173,
+          "delta_self_ir": 5830173,
+          "main_inclusive_ir": 0,
+          "main_self_ir": 0,
+          "name": "llvm::BranchProbabilityInfo::getEstimatedEdgeWeight(std::pair<llvm::BranchProbabilityInfo::LoopBlock const&, llvm::BranchProbabilityInfo::LoopBlock const&> const&) const"
+        },
+        {
+          "candidate_inclusive_ir": 3701363,
+          "candidate_self_ir": 3701363,
+          "delta_inclusive_ir": 3683239,
+          "delta_self_ir": 3683239,
+          "main_inclusive_ir": 18124,
+          "main_self_ir": 18124,
+          "name": "llvm::ValueHandleBase::RemoveFromUseList()"
+        },
+        {
+          "candidate_inclusive_ir": 189958696,
+          "candidate_self_ir": 39136009,
+          "delta_inclusive_ir": 10618468,
+          "delta_self_ir": 3526396,
+          "main_inclusive_ir": 179340228,
+          "main_self_ir": 35609613,
+          "name": "llvm::IDFCalculatorBase<llvm::BasicBlock, false>::calculate(llvm::SmallVectorImpl<llvm::BasicBlock*>&)"
+        },
+        {
+          "candidate_inclusive_ir": 172832672,
+          "candidate_self_ir": 3292235,
+          "delta_inclusive_ir": 172832672,
+          "delta_self_ir": 3292235,
+          "main_inclusive_ir": 0,
+          "main_self_ir": 0,
+          "name": "llvm::BranchProbabilityInfo::computeEestimateBlockWeight(llvm::Function const&, llvm::DominatorTree*, llvm::PostDominatorTree*)"
+        },
+        {
+          "candidate_inclusive_ir": 237188197,
+          "candidate_self_ir": 32026923,
+          "delta_inclusive_ir": 23599145,
+          "delta_self_ir": 3138199,
+          "main_inclusive_ir": 213589052,
+          "main_self_ir": 28888724,
+          "name": "llvm::LLLexer::LexToken()"
+        },
+        {
+          "candidate_inclusive_ir": 59490896,
+          "candidate_self_ir": 33951945,
+          "delta_inclusive_ir": 5392101,
+          "delta_self_ir": 3129411,
+          "main_inclusive_ir": 54098795,
+          "main_self_ir": 30822534,
+          "name": "llvm::SmallPtrSetImplBase::Grow(unsigned int)"
+        },
+        {
+          "candidate_inclusive_ir": 45300837,
+          "candidate_self_ir": 2900761,
+          "delta_inclusive_ir": 45300837,
+          "delta_self_ir": 2900761,
+          "main_inclusive_ir": 0,
+          "main_self_ir": 0,
+          "name": "llvm::InlineFunction(llvm::CallBase&, llvm::InlineFunctionInfo&, bool, llvm::AAResults*, bool, llvm::Function*)"
+        },
+        {
+          "candidate_inclusive_ir": 7630118,
+          "candidate_self_ir": 2570850,
+          "delta_inclusive_ir": 7580903,
+          "delta_self_ir": 2552584,
+          "main_inclusive_ir": 49215,
+          "main_self_ir": 18266,
+          "name": "llvm::ValueHandleBase::AddToUseList()"
+        },
+        {
+          "candidate_inclusive_ir": 49197612,
+          "candidate_self_ir": 30143248,
+          "delta_inclusive_ir": 2908857,
+          "delta_self_ir": 1811743,
+          "main_inclusive_ir": 46288755,
+          "main_self_ir": 28331505,
+          "name": "llvm::IDFCalculatorDetail::ChildrenGetterTy<llvm::BasicBlock, false>::get(llvm::BasicBlock* const&)"
+        },
+        {
+          "candidate_inclusive_ir": 1804500,
+          "candidate_self_ir": 1804500,
+          "delta_inclusive_ir": 1802740,
+          "delta_self_ir": 1802740,
+          "main_inclusive_ir": 1760,
+          "main_self_ir": 1760,
+          "name": "llvm::ValueHandleBase::AddToExistingUseList(llvm::ValueHandleBase**)"
+        },
+        {
+          "candidate_inclusive_ir": 9878527,
+          "candidate_self_ir": 1692068,
+          "delta_inclusive_ir": 9878527,
+          "delta_self_ir": 1692068,
+          "main_inclusive_ir": 0,
+          "main_self_ir": 0,
+          "name": "llvm::LoopInfoBase<llvm::BasicBlock, llvm::Loop>::analyze(llvm::DominatorTreeBase<llvm::BasicBlock, false> const&)"
+        },
+        {
+          "candidate_inclusive_ir": 9292564,
+          "candidate_self_ir": 1659233,
+          "delta_inclusive_ir": 9292564,
+          "delta_self_ir": 1659233,
+          "main_inclusive_ir": 0,
+          "main_self_ir": 0,
+          "name": "llvm::BlockFrequencyInfoImpl<llvm::BasicBlock>::initializeRPOT()"
+        },
+        {
+          "candidate_inclusive_ir": 34577035,
+          "candidate_self_ir": 16331377,
+          "delta_inclusive_ir": 3497699,
+          "delta_self_ir": 1632277,
+          "main_inclusive_ir": 31079336,
+          "main_self_ir": 14699100,
+          "name": "llvm::LLLexer::LexVar(llvm::lltok::Kind, llvm::lltok::Kind)"
+        }
+      ],
+      "main_ir": 1672852665,
+      "percent_change": 31.234833582908507,
+      "ratio": 1.312348335829085,
+      "selected_inclusive_rows_do_not_sum": [
+        {
+          "candidate_inclusive_ir": 318912600,
+          "candidate_self_ir": 74,
+          "delta_inclusive_ir": 318912600,
+          "delta_self_ir": 74,
+          "main_inclusive_ir": 0,
+          "main_self_ir": 0,
+          "name": "llvm::AlwaysInlinerPass::run(llvm::Module&, llvm::AnalysisManager<llvm::Module>&)"
+        },
+        {
+          "candidate_inclusive_ir": 172832672,
+          "candidate_self_ir": 3292235,
+          "delta_inclusive_ir": 172832672,
+          "delta_self_ir": 3292235,
+          "main_inclusive_ir": 0,
+          "main_self_ir": 0,
+          "name": "llvm::BranchProbabilityInfo::computeEestimateBlockWeight(llvm::Function const&, llvm::DominatorTree*, llvm::PostDominatorTree*)"
+        },
+        {
+          "candidate_inclusive_ir": 149377330,
+          "candidate_self_ir": 58607745,
+          "delta_inclusive_ir": 149377330,
+          "delta_self_ir": 58607745,
+          "main_inclusive_ir": 0,
+          "main_self_ir": 0,
+          "name": "llvm::LoopBase<llvm::BasicBlock, llvm::Loop>::getExitBlocks(llvm::SmallVectorImpl<llvm::BasicBlock*>&) const"
+        },
+        {
+          "candidate_inclusive_ir": 538769462,
+          "candidate_self_ir": 58,
+          "delta_inclusive_ir": 55513429,
+          "delta_self_ir": 0,
+          "main_inclusive_ir": 483256033,
+          "main_self_ir": 58,
+          "name": "llvm::parseAssembly(llvm::MemoryBufferRef, llvm::SMDiagnostic&, llvm::LLVMContext&, llvm::SlotMapping*, llvm::function_ref<std::optional<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > (llvm::StringRef, llvm::StringRef)>)"
+        },
+        {
+          "candidate_inclusive_ir": 300668878,
+          "candidate_self_ir": 36519,
+          "delta_inclusive_ir": 34390750,
+          "delta_self_ir": 7823,
+          "main_inclusive_ir": 266278128,
+          "main_self_ir": 28696,
+          "name": "llvm::InstCombinePass::run(llvm::Function&, llvm::AnalysisManager<llvm::Function>&)"
+        },
+        {
+          "candidate_inclusive_ir": 115145568,
+          "candidate_self_ir": 14455,
+          "delta_inclusive_ir": 12660412,
+          "delta_self_ir": 1847,
+          "main_inclusive_ir": 102485156,
+          "main_self_ir": 12608,
+          "name": "llvm::SimplifyCFGPass::run(llvm::Function&, llvm::AnalysisManager<llvm::Function>&)"
+        }
+      ]
+    }
+  },
+  "environment": {
+    "cpu": 0,
+    "host": "Intel Xeon Platinum 8573C; Linux 6.18.57; separate from historical AMD EPYC 9V74 series",
+    "toolchain": "Recovered Python 3.13.16, LLVM 18.1.3, Valgrind 3.22.0; exact manifest hash below"
+  },
+  "findings": [
+    "The remaining mixed-text startup overhead includes demonstrably more LLVM optimization and machine-code generation work.",
+    "The final always-inline stage records 318,912,600 inclusive instructions, approximately 61% of the 522,512,746 extra opt instructions; its loop/branch-probability analysis is visible in the profile. This ratio is descriptive attribution and not an ablation estimate of what removing the pass would save.",
+    "MachineFunctionPass inclusive instructions rise by 954,423,277. SelectionDAG instruction selection and physical-register allocation also increase, but these nested inclusive rows overlap.",
+    "These profiles identify a concrete remaining optimization target. They do not establish that elapsed performance is acceptable, and they do not erase the preserved historical object-JIT regression or the final CI startup comparisons."
+  ],
+  "input_sha256": {
+    "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py": "abcf4ba78bd62af42207230106b96f63b1a64758c1aa2831a49d0ba7781e6302",
+    "/workspace/scratch/e858f72517b9/baselines/old-eca/tools/bench_extended.py": "1aaa4bc7a001e9bab21151281ea2c4ed1d408063c7a47ea2db81691b1e264f1e",
+    "/workspace/scratch/e858f72517b9/baselines/old-eca/tools/bench_pyperformance.py": "54804044e0f127940f63e9c0fe8649e6c31c7cb84fb5dcc002ddff33fb6423ca",
+    "/workspace/scratch/e858f72517b9/perf-work/backend_attribution.py": "2142e8a74f1850b81a141498ea8897587dd61167c51f78b68edb096615d75339",
+    "/workspace/scratch/e858f72517b9/perf-work/backend_tool_wrapper.py": "36622935de34570dab2cc2773a68af4749c4eef22fb93ba6c5e888940ea2840e",
+    "/workspace/scratch/e858f72517b9/perf-work/profile_native_frontend.py": "53950c99306fee450490efcc1925c8c9ce3ef184bbbdbe1128991cf3f66b09f6",
+    "/workspace/scratch/e858f72517b9/perf-work/replay_support.py": "530cb6e5e27546f1158e6844f3088ed33b7c82c47306710a9b68e4c4a8cbf52b",
+    "/workspace/scratch/e858f72517b9/perf-work/results-final-da84/measurement.json": "adddef35dede86bf36d3b064dee9fb09bed4a2d2dd0e4076030960cf77b37595",
+    "/workspace/scratch/e858f72517b9/toolchain/manifest.json": "abecac0463e37ea045c0e32ad445f5418efac20a31de8f02bd12f55b8c8c8488"
+  },
+  "limitations": [
+    "Each stage has one instrumented observation per variant. These are instruction attribution, not elapsed acceptance samples or hardware cycles.",
+    "The actual per-variant driver pipelines are retained: main omits always-inline, while final includes it. Same-flags checks compare each profile with its own normal control, not main with final.",
+    "All opt inputs are literal matches within each variant. Bitcode is not literally equal because temporary source filenames differ; retained disassembly diffs prove that only ModuleID and source_filename headers change.",
+    "Runtime bytes and arguments match each variant's normal control and frozen final-measurement cache. Source, native binary, helper and dataset hashes passed pre/post gates.",
+    "Whole lli includes JIT compilation, executed benchmark, runtime/GC and teardown. It is not a pure code-generation measurement.",
+    "Inclusive function costs overlap, including recursive/cyclic attribution, and must not be summed. Inlined work is attributed to the containing emitted function.",
+    "Named LLVM self-cost deltas below exclude anonymous-address names from causal attribution. Complete positive-function records, including anonymous entries, remain in the exact raw record.",
+    "Observed wall times include a diagnostic subprocess wrapper and are not a repeated timing series. They justified profiling lli but do not establish a causal elapsed-time decomposition."
+  ],
+  "lli_justification": "Both normal diagnostic captures spend more than four times as long in lli as in opt; opt profiles quantify only optimizer work, leaving the dominant lli startup/codegen and execution work unexplained.",
+  "module_shapes": {
+    "candidate": {
+      "actual_driver_opt_input": {
+        "bytes": 2904420,
+        "function_definitions": 273,
+        "lines": 81584,
+        "sha256": "2efe6a9ebb4641db3e99ff9157c6e7480413d8fb7f6e97ca141baac8a60e25d7"
+      },
+      "optimized_bitcode_bytes": 771352,
+      "optimized_disassembly": {
+        "bytes": 2684720,
+        "function_definitions": 259,
+        "lines": 57216,
+        "sha256": "b3a2fd12df2783934c47f2e1b4ad8756266b7d74f7a83402fda43dd185d5c08c"
+      }
+    },
+    "main": {
+      "actual_driver_opt_input": {
+        "bytes": 2627640,
+        "function_definitions": 226,
+        "lines": 72869,
+        "sha256": "fb4fd5aa8138d1ee51dfea76cfe53b93f08c0909800b8825dda4fb61f7353536"
+      },
+      "optimized_bitcode_bytes": 673832,
+      "optimized_disassembly": {
+        "bytes": 2280247,
+        "function_definitions": 226,
+        "lines": 48409,
+        "sha256": "3d606834141505f0533e44f813d487cb3c35cfe9c99ca14c7618fc16e2dfb8e5"
+      }
+    }
+  },
+  "native_compilers": {
+    "candidate": {
+      "bootstrap_record_sha256": "043fa1d1b5797a832deffd7b6a1841fff8982558cd4d07cb693021ca31b3c0cf",
+      "path": "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+      "sha256": "8ee9b55b99c85a1406198643a5405d6e58ef566ec5896f6af3b03daf478b3f75"
+    },
+    "main": {
+      "bootstrap_record_sha256": "d1ab269d9c7c135345074e516970592487f16550dff5e99643018a0bb72bab74",
+      "path": "/workspace/scratch/e858f72517b9/baselines/main/pystachy",
+      "sha256": "14571111190e9c2efdf5d7e5620e498cb6697f05ef97e4a05953b240160c9e51"
+    }
+  },
+  "observation_counts": {
+    "lli_profiles": 2,
+    "normal_captures": 2,
+    "opt_profiles": 2
+  },
+  "observations": {
+    "lli_candidate": {
+      "attribution": {
+        "method": "Self costs sum exactly to whole-process summary. Function inclusive cost is self plus recorded outgoing call-edge costs; nested inclusive rows overlap and must not be summed. Inlined instructions are charged to their containing emitted function, so absence of a source helper symbol does not prove zero work.",
+        "positive_functions": 11602,
+        "top_inclusive": [
+          {
+            "inclusive_ir": 18910279092,
+            "name": "(below main)",
+            "outgoing_calls": 7,
+            "self_ir": 93
+          },
+          {
+            "inclusive_ir": 9474607734,
+            "name": "0x000000000001f540",
+            "outgoing_calls": 4,
+            "self_ir": 23
+          },
+          {
+            "inclusive_ir": 9455045467,
+            "name": "0x000000000002a150",
+            "outgoing_calls": 3,
+            "self_ir": 28
+          },
+          {
+            "inclusive_ir": 9454197033,
+            "name": "main",
+            "outgoing_calls": 15,
+            "self_ir": 147
+          },
+          {
+            "inclusive_ir": 9453646891,
+            "name": "runOrcJIT(char const*)",
+            "outgoing_calls": 63,
+            "self_ir": 754
+          },
+          {
+            "inclusive_ir": 8948649486,
+            "name": "llvm::orc::ExecutionSession::lookup(llvm::orc::LookupKind, std::vector<std::pair<llvm::orc::JITDylib*, llvm::orc::JITDylibLookupFlags>, std::allocator<std::pair<llvm::orc::JITDylib*, llvm::orc::JITDylibLookupFlags> > > const&, llvm::orc::SymbolLookupSet, llvm::orc::SymbolState, llvm::unique_function<void (llvm::Expected<llvm::DenseMap<llvm::orc::SymbolStringPtr, llvm::orc::ExecutorSymbolDef, llvm::DenseMapInfo<llvm::orc::SymbolStringPtr, void>, llvm::detail::DenseMapPair<llvm::orc::SymbolStringPtr, llvm::orc::ExecutorSymbolDef> > >)>, std::function<void (llvm::DenseMap<llvm::orc::JITDylib*, llvm::DenseSet<llvm::orc::SymbolStringPtr, llvm::DenseMapInfo<llvm::orc::SymbolStringPtr, void> >, llvm::DenseMapInfo<llvm::orc::JITDylib*, void>, llvm::detail::DenseMapPair<llvm::orc::JITDylib*, llvm::DenseSet<llvm::orc::SymbolStringPtr, llvm::DenseMapInfo<llvm::orc::SymbolStringPtr, void> > > > const&)>)",
+            "outgoing_calls": 42,
+            "self_ir": 956
+          },
+          {
+            "inclusive_ir": 8948625317,
+            "name": "llvm::orc::Platform::lookupInitSymbols(llvm::orc::ExecutionSession&, llvm::DenseMap<llvm::orc::JITDylib*, llvm::orc::SymbolLookupSet, llvm::DenseMapInfo<llvm::orc::JITDylib*, void>, llvm::detail::DenseMapPair<llvm::orc::JITDylib*, llvm::orc::SymbolLookupSet> > const&)",
+            "outgoing_calls": 40,
+            "self_ir": 2192
+          },
+          {
+            "inclusive_ir": 8948606115,
+            "name": "llvm::orc::ExecutionSession::OL_applyQueryPhase1(std::unique_ptr<llvm::orc::InProgressLookupState, std::default_delete<llvm::orc::InProgressLookupState> >, llvm::Error)",
+            "outgoing_calls": 52,
+            "self_ir": 1109
+          },
+          {
+            "inclusive_ir": 8948598763,
+            "name": "0x00000000029e94c0",
+            "outgoing_calls": 24,
+            "self_ir": 366
+          },
+          {
+            "inclusive_ir": 8948590443,
+            "name": "llvm::orc::ExecutionSession::OL_completeLookup(std::unique_ptr<llvm::orc::InProgressLookupState, std::default_delete<llvm::orc::InProgressLookupState> >, std::shared_ptr<llvm::orc::AsynchronousSymbolQuery>, std::function<void (llvm::DenseMap<llvm::orc::JITDylib*, llvm::DenseSet<llvm::orc::SymbolStringPtr, llvm::DenseMapInfo<llvm::orc::SymbolStringPtr, void> >, llvm::DenseMapInfo<llvm::orc::JITDylib*, void>, llvm::detail::DenseMapPair<llvm::orc::JITDylib*, llvm::DenseSet<llvm::orc::SymbolStringPtr, llvm::DenseMapInfo<llvm::orc::SymbolStringPtr, void> > > > const&)>)",
+            "outgoing_calls": 84,
+            "self_ir": 4958
+          },
+          {
+            "inclusive_ir": 8948567704,
+            "name": "0x00000000029e83d0",
+            "outgoing_calls": 12,
+            "self_ir": 138
+          },
+          {
+            "inclusive_ir": 8948566001,
+            "name": "0x00000000029d81e0",
+            "outgoing_calls": 9,
+            "self_ir": 164
+          },
+          {
+            "inclusive_ir": 8948565796,
+            "name": "llvm::orc::ExecutionSession::dispatchOutstandingMUs()",
+            "outgoing_calls": 36,
+            "self_ir": 711
+          },
+          {
+            "inclusive_ir": 8948562531,
+            "name": "llvm::orc::MaterializationTask::run()",
+            "outgoing_calls": 3,
+            "self_ir": 69
+          },
+          {
+            "inclusive_ir": 8948562462,
+            "name": "llvm::orc::BasicIRLayerMaterializationUnit::materialize(std::unique_ptr<llvm::orc::MaterializationResponsibility, std::default_delete<llvm::orc::MaterializationResponsibility> >)",
+            "outgoing_calls": 9,
+            "self_ir": 159
+          },
+          {
+            "inclusive_ir": 8948560981,
+            "name": "llvm::orc::IRTransformLayer::emit(std::unique_ptr<llvm::orc::MaterializationResponsibility, std::default_delete<llvm::orc::MaterializationResponsibility> >, llvm::orc::ThreadSafeModule)",
+            "outgoing_calls": 15,
+            "self_ir": 213
+          },
+          {
+            "inclusive_ir": 8948548153,
+            "name": "llvm::orc::IRTransformLayer::emit(std::unique_ptr<llvm::orc::MaterializationResponsibility, std::default_delete<llvm::orc::MaterializationResponsibility> >, llvm::orc::ThreadSafeModule)'2",
+            "outgoing_calls": 15,
+            "self_ir": 210
+          },
+          {
+            "inclusive_ir": 8936688189,
+            "name": "0x0000000002a2e1f0",
+            "outgoing_calls": 21,
+            "self_ir": 1978
+          },
+          {
+            "inclusive_ir": 8878827246,
+            "name": "llvm::orc::IRCompileLayer::emit(std::unique_ptr<llvm::orc::MaterializationResponsibility, std::default_delete<llvm::orc::MaterializationResponsibility> >, llvm::orc::ThreadSafeModule)",
+            "outgoing_calls": 18,
+            "self_ir": 222
+          },
+          {
+            "inclusive_ir": 8784366231,
+            "name": "0x0000000002a1d040",
+            "outgoing_calls": 9,
+            "self_ir": 171
+          }
+        ],
+        "top_self": [
+          {
+            "inclusive_ir": 285171560,
+            "name": "0x0000000000189440",
+            "outgoing_calls": 0,
+            "self_ir": 285171560
+          },
+          {
+            "inclusive_ir": 850572810,
+            "name": "llvm::SelectionDAG::Combine(llvm::CombineLevel, llvm::AAResults*, llvm::CodeGenOptLevel)",
+            "outgoing_calls": 3149605,
+            "self_ir": 197704485
+          },
+          {
+            "inclusive_ir": 236074680,
+            "name": "0x00000000010bbec0",
+            "outgoing_calls": 689869,
+            "self_ir": 166925487
+          },
+          {
+            "inclusive_ir": 198171072,
+            "name": "0x00000000000ab570",
+            "outgoing_calls": 733943,
+            "self_ir": 156716299
+          },
+          {
+            "inclusive_ir": 127379489,
+            "name": "llvm::LiveRegUnits::stepBackward(llvm::MachineInstr const&)",
+            "outgoing_calls": 0,
+            "self_ir": 127379489
+          },
+          {
+            "inclusive_ir": 311457660,
+            "name": "llvm::LoopBase<llvm::BasicBlock, llvm::Loop>::getExitBlocks(llvm::SmallVectorImpl<llvm::BasicBlock*>&) const",
+            "outgoing_calls": 8286930,
+            "self_ir": 124440151
+          },
+          {
+            "inclusive_ir": 134753359,
+            "name": "0x00000000000ab170",
+            "outgoing_calls": 161836,
+            "self_ir": 120443359
+          },
+          {
+            "inclusive_ir": 114778739,
+            "name": "llvm::SmallPtrSetImplBase::FindBucketFor(void const*) const",
+            "outgoing_calls": 0,
+            "self_ir": 114778739
+          },
+          {
+            "inclusive_ir": 105989261,
+            "name": "llvm::SpillPlacement::activate(unsigned int)",
+            "outgoing_calls": 3544,
+            "self_ir": 105950700
+          },
+          {
+            "inclusive_ir": 161842192,
+            "name": "llvm::SmallPtrSetImplBase::insert_imp_big(void const*)",
+            "outgoing_calls": 33479,
+            "self_ir": 104880995
+          },
+          {
+            "inclusive_ir": 119257411,
+            "name": "llvm::SpillPlacement::iterate()",
+            "outgoing_calls": 554698,
+            "self_ir": 95515937
+          },
+          {
+            "inclusive_ir": 160077253,
+            "name": "llvm::SpillPlacement::addLinks(llvm::ArrayRef<unsigned int>)",
+            "outgoing_calls": 1489873,
+            "self_ir": 95332586
+          },
+          {
+            "inclusive_ir": 109439520,
+            "name": "0x0000000001416c10",
+            "outgoing_calls": 48238,
+            "self_ir": 92423512
+          },
+          {
+            "inclusive_ir": 81551255,
+            "name": "0x0000000001106f70",
+            "outgoing_calls": 0,
+            "self_ir": 81551255
+          },
+          {
+            "inclusive_ir": 252614272,
+            "name": "llvm::SelectionDAGISel::SelectCodeCommon(llvm::SDNode*, unsigned char const*, unsigned int)",
+            "outgoing_calls": 1122114,
+            "self_ir": 80319850
+          },
+          {
+            "inclusive_ir": 269827182,
+            "name": "llvm::LiveVariables::HandlePhysRegKill(llvm::Register, llvm::MachineInstr*)",
+            "outgoing_calls": 3250621,
+            "self_ir": 79852794
+          },
+          {
+            "inclusive_ir": 92751044,
+            "name": "llvm::MachineInstr::addOperand(llvm::MachineFunction&, llvm::MachineOperand const&)",
+            "outgoing_calls": 369216,
+            "self_ir": 77744585
+          },
+          {
+            "inclusive_ir": 513702531,
+            "name": "0x00000000012e0840",
+            "outgoing_calls": 1692441,
+            "self_ir": 72639878
+          },
+          {
+            "inclusive_ir": 72625883,
+            "name": "llvm::MachineInstr::addRegisterKilled(llvm::Register, llvm::TargetRegisterInfo const*, bool)",
+            "outgoing_calls": 30229,
+            "self_ir": 69837140
+          },
+          {
+            "inclusive_ir": 250142929,
+            "name": "malloc",
+            "outgoing_calls": 728317,
+            "self_ir": 66270404
+          }
+        ],
+        "total_instructions": 9474607734
+      },
+      "command": [
+        "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "fnmatch",
+        "1000"
+      ],
+      "equivalence": {
+        "actual_input_identical": true,
+        "diff_sha256": "c137a094b082bef900ffd22993c8ef4700f10285d82eaa17bf1cd0bd8a965fff",
+        "literal_bitcode_equal": false,
+        "normal_bitcode_sha256": "216255cce476a045daa3608e1b8725518c1ed4c98bb00337d046e494ab53c9e2",
+        "normal_text_sha256": "b3a2fd12df2783934c47f2e1b4ad8756266b7d74f7a83402fda43dd185d5c08c",
+        "only_demonstrated_path_headers_differ": true,
+        "profile_bitcode_sha256": "11706ab045b56242ed0269d1e18d57dfbb8d9d768326a52fd16a4140b9770be2",
+        "profile_text_sha256": "3b25917ee30821e2666e1cbabdffaae90855efd351915c02cb751e9420ba650f",
+        "raw_diff": "--- /workspace/scratch/e858f72517b9/perf-work/backend-attribution-da84/normal-candidate/optimized-output.ll\n+++ /workspace/scratch/e858f72517b9/perf-work/backend-attribution-da84/lli-candidate/optimized-output.ll\n@@ -1,5 +1,5 @@\n-; ModuleID = '/workspace/scratch/e858f72517b9/perf-work/backend-attribution-da84/normal-candidate/optimized-output.bc'\n-source_filename = \"/tmp/tmpbaqrtsu6/prog.ll\"\n+; ModuleID = '/workspace/scratch/e858f72517b9/perf-work/backend-attribution-da84/lli-candidate/optimized-output.bc'\n+source_filename = \"/tmp/tmpfwwuzpla/prog.ll\"\n target datalayout = \"e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128\"\n target triple = \"x86_64-pc-linux-gnu\"\n \n",
+        "same_flags_and_runtime_bytes": true
+      },
+      "execution": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+          "run",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "fnmatch",
+          "1000"
+        ],
+        "cpu_s": 104.550762,
+        "loop_s": 3.5345049719999224,
+        "returncode": 0,
+        "stderr": "seconds 3.5345049719999224\n",
+        "stdout": "6000\n",
+        "wall_s": 104.57320456900015
+      },
+      "lli": {
+        "arguments": [
+          "-profile-guided-section-prefix=false",
+          "-dlopen=/dev/fd/8",
+          "/dev/fd/9",
+          "fnmatch",
+          "1000"
+        ],
+        "command": [
+          "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/bin/valgrind",
+          "--tool=callgrind",
+          "--error-exitcode=99",
+          "--cache-sim=no",
+          "--branch-sim=no",
+          "--callgrind-out-file=/workspace/scratch/e858f72517b9/perf-work/backend-attribution-da84/lli-candidate/lli.callgrind",
+          "--log-file=/workspace/scratch/e858f72517b9/perf-work/backend-attribution-da84/lli-candidate/lli-valgrind.log",
+          "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin/lli",
+          "-profile-guided-section-prefix=false",
+          "-dlopen=/dev/fd/8",
+          "/dev/fd/9",
+          "fnmatch",
+          "1000"
+        ],
+        "cwd": "/workspace/scratch/e858f72517b9/baselines/old-eca",
+        "fd8": {
+          "bytes": 486472,
+          "elf_magic": "7f454c46",
+          "elf_type": 3,
+          "executable": true,
+          "mode": "0o100755",
+          "offset_before_exec": 0,
+          "path": "/workspace/scratch/e858f72517b9/perf-work/backend-attribution-da84/candidate-cache/runtime-py-baad4a50-a6eee1b817817a74.so",
+          "regular_file": true,
+          "sha256": "e9b69e7c922f202531a980c8896659530d28b24b2a109ee0757b90080a8aeab4"
+        },
+        "fd9": {
+          "bytes": 771352,
+          "mode": "0o100644",
+          "offset_before_exec": 0,
+          "path": "/tmp/tmpfwwuzpla/prog.bc (deleted)",
+          "regular_file": true,
+          "sha256": "11706ab045b56242ed0269d1e18d57dfbb8d9d768326a52fd16a4140b9770be2"
+        },
+        "instrumented": true,
+        "observed_tool_wall_s": 102.45669424900007,
+        "preserved_inheritable_fds": [
+          8,
+          9
+        ],
+        "returncode": 0,
+        "tool": "lli"
+      },
+      "opt": {
+        "arguments": [
+          "-passes=globaldce,always-inline,function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg),function(early-cse,adce)",
+          "/tmp/tmpfwwuzpla/prog.ll",
+          "-o",
+          "/tmp/tmpfwwuzpla/prog.bc"
+        ],
+        "command": [
+          "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin/opt",
+          "-passes=globaldce,always-inline,function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg),function(early-cse,adce)",
+          "/tmp/tmpfwwuzpla/prog.ll",
+          "-o",
+          "/tmp/tmpfwwuzpla/prog.bc"
+        ],
+        "cwd": "/workspace/scratch/e858f72517b9/baselines/old-eca",
+        "input_path": "/tmp/tmpfwwuzpla/prog.ll",
+        "input_sha256": "2efe6a9ebb4641db3e99ff9157c6e7480413d8fb7f6e97ca141baac8a60e25d7",
+        "instrumented": false,
+        "observed_tool_wall_s": 0.7603249149997282,
+        "output_path": "/tmp/tmpfwwuzpla/prog.bc",
+        "output_sha256": "11706ab045b56242ed0269d1e18d57dfbb8d9d768326a52fd16a4140b9770be2",
+        "preserved_inheritable_fds": [],
+        "returncode": 0,
+        "tool": "opt"
+      },
+      "profile_sha256": "7506629040a751ef29c6ee7366f0c8a3c7719a54df7300cc87d4ab4974cfde95",
+      "runtime_matches_frozen_final_cache": true,
+      "valgrind_log": "==56== Callgrind, a call-graph generating cache profiler\n==56== Copyright (C) 2002-2017, and GNU GPL'd, by Josef Weidendorfer et al.\n==56== Using Valgrind-3.22.0 and LibVEX; rerun with -h for copyright info\n==56== Command: /workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin/lli -profile-guided-section-prefix=false -dlopen=/dev/fd/8 /dev/fd/9 fnmatch 1000\n==56== Parent PID: 50\n==56== \n==56== For interactive control, run 'callgrind_control -h'.\n==56== brk segment overflow in thread #1: can't grow to 0x487c000\n==56== (see section Limitations in user manual)\n==56== NOTE: further instances of this message will not be shown\n==56== \n==56== Events    : Ir\n==56== Collected : 9474607734\n==56== \n==56== I   refs:      9,474,607,734\n"
+    },
+    "lli_main": {
+      "attribution": {
+        "method": "Self costs sum exactly to whole-process summary. Function inclusive cost is self plus recorded outgoing call-edge costs; nested inclusive rows overlap and must not be summed. Inlined instructions are charged to their containing emitted function, so absence of a source helper symbol does not prove zero work.",
+        "positive_functions": 11578,
+        "top_inclusive": [
+          {
+            "inclusive_ir": 16615754220,
+            "name": "(below main)",
+            "outgoing_calls": 7,
+            "self_ir": 93
+          },
+          {
+            "inclusive_ir": 8327345252,
+            "name": "0x000000000001f540",
+            "outgoing_calls": 4,
+            "self_ir": 23
+          },
+          {
+            "inclusive_ir": 8307783031,
+            "name": "0x000000000002a150",
+            "outgoing_calls": 3,
+            "self_ir": 28
+          },
+          {
+            "inclusive_ir": 8307004172,
+            "name": "main",
+            "outgoing_calls": 15,
+            "self_ir": 147
+          },
+          {
+            "inclusive_ir": 8306454100,
+            "name": "runOrcJIT(char const*)",
+            "outgoing_calls": 63,
+            "self_ir": 754
+          },
+          {
+            "inclusive_ir": 7845484938,
+            "name": "llvm::orc::ExecutionSession::lookup(llvm::orc::LookupKind, std::vector<std::pair<llvm::orc::JITDylib*, llvm::orc::JITDylibLookupFlags>, std::allocator<std::pair<llvm::orc::JITDylib*, llvm::orc::JITDylibLookupFlags> > > const&, llvm::orc::SymbolLookupSet, llvm::orc::SymbolState, llvm::unique_function<void (llvm::Expected<llvm::DenseMap<llvm::orc::SymbolStringPtr, llvm::orc::ExecutorSymbolDef, llvm::DenseMapInfo<llvm::orc::SymbolStringPtr, void>, llvm::detail::DenseMapPair<llvm::orc::SymbolStringPtr, llvm::orc::ExecutorSymbolDef> > >)>, std::function<void (llvm::DenseMap<llvm::orc::JITDylib*, llvm::DenseSet<llvm::orc::SymbolStringPtr, llvm::DenseMapInfo<llvm::orc::SymbolStringPtr, void> >, llvm::DenseMapInfo<llvm::orc::JITDylib*, void>, llvm::detail::DenseMapPair<llvm::orc::JITDylib*, llvm::DenseSet<llvm::orc::SymbolStringPtr, llvm::DenseMapInfo<llvm::orc::SymbolStringPtr, void> > > > const&)>)",
+            "outgoing_calls": 42,
+            "self_ir": 956
+          },
+          {
+            "inclusive_ir": 7845467786,
+            "name": "llvm::orc::Platform::lookupInitSymbols(llvm::orc::ExecutionSession&, llvm::DenseMap<llvm::orc::JITDylib*, llvm::orc::SymbolLookupSet, llvm::DenseMapInfo<llvm::orc::JITDylib*, void>, llvm::detail::DenseMapPair<llvm::orc::JITDylib*, llvm::orc::SymbolLookupSet> > const&)",
+            "outgoing_calls": 40,
+            "self_ir": 2192
+          },
+          {
+            "inclusive_ir": 7845452103,
+            "name": "llvm::orc::ExecutionSession::OL_applyQueryPhase1(std::unique_ptr<llvm::orc::InProgressLookupState, std::default_delete<llvm::orc::InProgressLookupState> >, llvm::Error)",
+            "outgoing_calls": 52,
+            "self_ir": 1109
+          },
+          {
+            "inclusive_ir": 7845444769,
+            "name": "0x00000000029e94c0",
+            "outgoing_calls": 24,
+            "self_ir": 366
+          },
+          {
+            "inclusive_ir": 7845437144,
+            "name": "llvm::orc::ExecutionSession::OL_completeLookup(std::unique_ptr<llvm::orc::InProgressLookupState, std::default_delete<llvm::orc::InProgressLookupState> >, std::shared_ptr<llvm::orc::AsynchronousSymbolQuery>, std::function<void (llvm::DenseMap<llvm::orc::JITDylib*, llvm::DenseSet<llvm::orc::SymbolStringPtr, llvm::DenseMapInfo<llvm::orc::SymbolStringPtr, void> >, llvm::DenseMapInfo<llvm::orc::JITDylib*, void>, llvm::detail::DenseMapPair<llvm::orc::JITDylib*, llvm::DenseSet<llvm::orc::SymbolStringPtr, llvm::DenseMapInfo<llvm::orc::SymbolStringPtr, void> > > > const&)>)",
+            "outgoing_calls": 84,
+            "self_ir": 4939
+          },
+          {
+            "inclusive_ir": 7845413428,
+            "name": "0x00000000029e83d0",
+            "outgoing_calls": 12,
+            "self_ir": 138
+          },
+          {
+            "inclusive_ir": 7845411727,
+            "name": "0x00000000029d81e0",
+            "outgoing_calls": 9,
+            "self_ir": 164
+          },
+          {
+            "inclusive_ir": 7845406416,
+            "name": "llvm::orc::ExecutionSession::dispatchOutstandingMUs()",
+            "outgoing_calls": 36,
+            "self_ir": 711
+          },
+          {
+            "inclusive_ir": 7845403153,
+            "name": "llvm::orc::MaterializationTask::run()",
+            "outgoing_calls": 3,
+            "self_ir": 69
+          },
+          {
+            "inclusive_ir": 7845403084,
+            "name": "llvm::orc::BasicIRLayerMaterializationUnit::materialize(std::unique_ptr<llvm::orc::MaterializationResponsibility, std::default_delete<llvm::orc::MaterializationResponsibility> >)",
+            "outgoing_calls": 9,
+            "self_ir": 159
+          },
+          {
+            "inclusive_ir": 7845401603,
+            "name": "llvm::orc::IRTransformLayer::emit(std::unique_ptr<llvm::orc::MaterializationResponsibility, std::default_delete<llvm::orc::MaterializationResponsibility> >, llvm::orc::ThreadSafeModule)",
+            "outgoing_calls": 15,
+            "self_ir": 213
+          },
+          {
+            "inclusive_ir": 7845388687,
+            "name": "llvm::orc::IRTransformLayer::emit(std::unique_ptr<llvm::orc::MaterializationResponsibility, std::default_delete<llvm::orc::MaterializationResponsibility> >, llvm::orc::ThreadSafeModule)'2",
+            "outgoing_calls": 15,
+            "self_ir": 210
+          },
+          {
+            "inclusive_ir": 7833539608,
+            "name": "0x0000000002a2e1f0",
+            "outgoing_calls": 21,
+            "self_ir": 1978
+          },
+          {
+            "inclusive_ir": 7786810856,
+            "name": "llvm::orc::IRCompileLayer::emit(std::unique_ptr<llvm::orc::MaterializationResponsibility, std::default_delete<llvm::orc::MaterializationResponsibility> >, llvm::orc::ThreadSafeModule)",
+            "outgoing_calls": 18,
+            "self_ir": 222
+          },
+          {
+            "inclusive_ir": 7706326873,
+            "name": "0x0000000002a1d040",
+            "outgoing_calls": 9,
+            "self_ir": 171
+          }
+        ],
+        "top_self": [
+          {
+            "inclusive_ir": 249534725,
+            "name": "0x0000000000189440",
+            "outgoing_calls": 0,
+            "self_ir": 249534725
+          },
+          {
+            "inclusive_ir": 734470911,
+            "name": "llvm::SelectionDAG::Combine(llvm::CombineLevel, llvm::AAResults*, llvm::CodeGenOptLevel)",
+            "outgoing_calls": 2705906,
+            "self_ir": 167662198
+          },
+          {
+            "inclusive_ir": 215452849,
+            "name": "0x00000000010bbec0",
+            "outgoing_calls": 623360,
+            "self_ir": 151940091
+          },
+          {
+            "inclusive_ir": 172021425,
+            "name": "0x00000000000ab570",
+            "outgoing_calls": 651864,
+            "self_ir": 135515202
+          },
+          {
+            "inclusive_ir": 309472636,
+            "name": "llvm::LoopBase<llvm::BasicBlock, llvm::Loop>::getExitBlocks(llvm::SmallVectorImpl<llvm::BasicBlock*>&) const",
+            "outgoing_calls": 8252421,
+            "self_ir": 123893836
+          },
+          {
+            "inclusive_ir": 111815609,
+            "name": "llvm::SmallPtrSetImplBase::FindBucketFor(void const*) const",
+            "outgoing_calls": 0,
+            "self_ir": 111815609
+          },
+          {
+            "inclusive_ir": 109950211,
+            "name": "llvm::LiveRegUnits::stepBackward(llvm::MachineInstr const&)",
+            "outgoing_calls": 0,
+            "self_ir": 109950211
+          },
+          {
+            "inclusive_ir": 115516808,
+            "name": "0x00000000000ab170",
+            "outgoing_calls": 136846,
+            "self_ir": 103221944
+          },
+          {
+            "inclusive_ir": 96485058,
+            "name": "llvm::SpillPlacement::activate(unsigned int)",
+            "outgoing_calls": 3454,
+            "self_ir": 96447408
+          },
+          {
+            "inclusive_ir": 146880992,
+            "name": "llvm::SmallPtrSetImplBase::insert_imp_big(void const*)",
+            "outgoing_calls": 28663,
+            "self_ir": 94677726
+          },
+          {
+            "inclusive_ir": 147773627,
+            "name": "llvm::SpillPlacement::addLinks(llvm::ArrayRef<unsigned int>)",
+            "outgoing_calls": 1367140,
+            "self_ir": 88391130
+          },
+          {
+            "inclusive_ir": 109309463,
+            "name": "llvm::SpillPlacement::iterate()",
+            "outgoing_calls": 505674,
+            "self_ir": 87593260
+          },
+          {
+            "inclusive_ir": 92288054,
+            "name": "0x0000000001416c10",
+            "outgoing_calls": 40338,
+            "self_ir": 77856605
+          },
+          {
+            "inclusive_ir": 73441397,
+            "name": "0x0000000001106f70",
+            "outgoing_calls": 0,
+            "self_ir": 73441397
+          },
+          {
+            "inclusive_ir": 241902144,
+            "name": "llvm::LiveVariables::HandlePhysRegKill(llvm::Register, llvm::MachineInstr*)",
+            "outgoing_calls": 2918104,
+            "self_ir": 71555056
+          },
+          {
+            "inclusive_ir": 81432233,
+            "name": "llvm::MachineInstr::addOperand(llvm::MachineFunction&, llvm::MachineOperand const&)",
+            "outgoing_calls": 327742,
+            "self_ir": 67989824
+          },
+          {
+            "inclusive_ir": 210086358,
+            "name": "llvm::SelectionDAGISel::SelectCodeCommon(llvm::SDNode*, unsigned char const*, unsigned int)",
+            "outgoing_calls": 925265,
+            "self_ir": 66789112
+          },
+          {
+            "inclusive_ir": 470854219,
+            "name": "0x00000000012e0840",
+            "outgoing_calls": 1536404,
+            "self_ir": 66184753
+          },
+          {
+            "inclusive_ir": 82060085,
+            "name": "llvm::LiveRange::addSegment(llvm::LiveRange::Segment)",
+            "outgoing_calls": 293684,
+            "self_ir": 62238060
+          },
+          {
+            "inclusive_ir": 62068869,
+            "name": "llvm::Instruction::getSuccessor(unsigned int) const",
+            "outgoing_calls": 0,
+            "self_ir": 62068869
+          }
+        ],
+        "total_instructions": 8327345252
+      },
+      "command": [
+        "/workspace/scratch/e858f72517b9/baselines/main/pystachy",
+        "run",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "fnmatch",
+        "1000"
+      ],
+      "equivalence": {
+        "actual_input_identical": true,
+        "diff_sha256": "05778a7109aa075c3b6834d96308c59688ad4b4408d2ddc687929d7552e36fd0",
+        "literal_bitcode_equal": false,
+        "normal_bitcode_sha256": "54c01d3ce8722f1625a776da97c39b1625875d781e8a34d845e7145f0e37731a",
+        "normal_text_sha256": "3d606834141505f0533e44f813d487cb3c35cfe9c99ca14c7618fc16e2dfb8e5",
+        "only_demonstrated_path_headers_differ": true,
+        "profile_bitcode_sha256": "cb380f080d09b6bf3dff0444c0bd3d64453ea038a460a94e40948aa2ba3cfaeb",
+        "profile_text_sha256": "4c964fe9a364882c62ec02e9199cc45949037270722228a6e18b6a5af53fb0f8",
+        "raw_diff": "--- /workspace/scratch/e858f72517b9/perf-work/backend-attribution-da84/normal-main/optimized-output.ll\n+++ /workspace/scratch/e858f72517b9/perf-work/backend-attribution-da84/lli-main/optimized-output.ll\n@@ -1,5 +1,5 @@\n-; ModuleID = '/workspace/scratch/e858f72517b9/perf-work/backend-attribution-da84/normal-main/optimized-output.bc'\n-source_filename = \"/tmp/tmp2wfsn17v/prog.ll\"\n+; ModuleID = '/workspace/scratch/e858f72517b9/perf-work/backend-attribution-da84/lli-main/optimized-output.bc'\n+source_filename = \"/tmp/tmpvr_js3vu/prog.ll\"\n target datalayout = \"e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128\"\n target triple = \"x86_64-pc-linux-gnu\"\n \n",
+        "same_flags_and_runtime_bytes": true
+      },
+      "execution": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/baselines/main/pystachy",
+          "run",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "fnmatch",
+          "1000"
+        ],
+        "cpu_s": 91.833461,
+        "loop_s": 3.424906253001609,
+        "returncode": 0,
+        "stderr": "seconds 3.424906253001609\n",
+        "stdout": "6000\n",
+        "wall_s": 91.86286118499993
+      },
+      "lli": {
+        "arguments": [
+          "-profile-guided-section-prefix=false",
+          "-dlopen=/dev/fd/8",
+          "/dev/fd/9",
+          "fnmatch",
+          "1000"
+        ],
+        "command": [
+          "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/bin/valgrind",
+          "--tool=callgrind",
+          "--error-exitcode=99",
+          "--cache-sim=no",
+          "--branch-sim=no",
+          "--callgrind-out-file=/workspace/scratch/e858f72517b9/perf-work/backend-attribution-da84/lli-main/lli.callgrind",
+          "--log-file=/workspace/scratch/e858f72517b9/perf-work/backend-attribution-da84/lli-main/lli-valgrind.log",
+          "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin/lli",
+          "-profile-guided-section-prefix=false",
+          "-dlopen=/dev/fd/8",
+          "/dev/fd/9",
+          "fnmatch",
+          "1000"
+        ],
+        "cwd": "/workspace/scratch/e858f72517b9/baselines/old-eca",
+        "fd8": {
+          "bytes": 486144,
+          "elf_magic": "7f454c46",
+          "elf_type": 3,
+          "executable": true,
+          "mode": "0o100755",
+          "offset_before_exec": 0,
+          "path": "/workspace/scratch/e858f72517b9/perf-work/backend-attribution-da84/main-cache/runtime-py-2274f535-99db46196a6603bf.so",
+          "regular_file": true,
+          "sha256": "f775fba0e91767dbeda0757f3c1008a59a2f3806f998ee66fe27a388d19a0ffc"
+        },
+        "fd9": {
+          "bytes": 673832,
+          "mode": "0o100644",
+          "offset_before_exec": 0,
+          "path": "/tmp/tmpvr_js3vu/prog.bc (deleted)",
+          "regular_file": true,
+          "sha256": "cb380f080d09b6bf3dff0444c0bd3d64453ea038a460a94e40948aa2ba3cfaeb"
+        },
+        "instrumented": true,
+        "observed_tool_wall_s": 90.62095799300005,
+        "preserved_inheritable_fds": [
+          8,
+          9
+        ],
+        "returncode": 0,
+        "tool": "lli"
+      },
+      "opt": {
+        "arguments": [
+          "-passes=globaldce,function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg),function(early-cse,adce)",
+          "/tmp/tmpvr_js3vu/prog.ll",
+          "-o",
+          "/tmp/tmpvr_js3vu/prog.bc"
+        ],
+        "command": [
+          "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin/opt",
+          "-passes=globaldce,function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg),function(early-cse,adce)",
+          "/tmp/tmpvr_js3vu/prog.ll",
+          "-o",
+          "/tmp/tmpvr_js3vu/prog.bc"
+        ],
+        "cwd": "/workspace/scratch/e858f72517b9/baselines/old-eca",
+        "input_path": "/tmp/tmpvr_js3vu/prog.ll",
+        "input_sha256": "fb4fd5aa8138d1ee51dfea76cfe53b93f08c0909800b8825dda4fb61f7353536",
+        "instrumented": false,
+        "observed_tool_wall_s": 0.5035459410009935,
+        "output_path": "/tmp/tmpvr_js3vu/prog.bc",
+        "output_sha256": "cb380f080d09b6bf3dff0444c0bd3d64453ea038a460a94e40948aa2ba3cfaeb",
+        "preserved_inheritable_fds": [],
+        "returncode": 0,
+        "tool": "opt"
+      },
+      "profile_sha256": "d254f041c5f6aa2ff56fccffd988a9566240c689b5e2bda5e28b4b054ed91640",
+      "runtime_matches_frozen_final_cache": true,
+      "valgrind_log": "==47== Callgrind, a call-graph generating cache profiler\n==47== Copyright (C) 2002-2017, and GNU GPL'd, by Josef Weidendorfer et al.\n==47== Using Valgrind-3.22.0 and LibVEX; rerun with -h for copyright info\n==47== Command: /workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin/lli -profile-guided-section-prefix=false -dlopen=/dev/fd/8 /dev/fd/9 fnmatch 1000\n==47== Parent PID: 41\n==47== \n==47== For interactive control, run 'callgrind_control -h'.\n==47== brk segment overflow in thread #1: can't grow to 0x4856000\n==47== (see section Limitations in user manual)\n==47== NOTE: further instances of this message will not be shown\n==47== \n==47== Events    : Ir\n==47== Collected : 8327345252\n==47== \n==47== I   refs:      8,327,345,252\n"
+    },
+    "normal_candidate": {
+      "command": [
+        "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "fnmatch",
+        "1000"
+      ],
+      "execution": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+          "run",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "fnmatch",
+          "1000"
+        ],
+        "cpu_s": 3.8063179999999983,
+        "loop_s": 0.056975377001435845,
+        "returncode": 0,
+        "stderr": "seconds 0.056975377001435845\n",
+        "stdout": "6000\n",
+        "wall_s": 3.81850679299896
+      },
+      "lli": {
+        "arguments": [
+          "-profile-guided-section-prefix=false",
+          "-dlopen=/dev/fd/8",
+          "/dev/fd/9",
+          "fnmatch",
+          "1000"
+        ],
+        "command": [
+          "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin/lli",
+          "-profile-guided-section-prefix=false",
+          "-dlopen=/dev/fd/8",
+          "/dev/fd/9",
+          "fnmatch",
+          "1000"
+        ],
+        "cwd": "/workspace/scratch/e858f72517b9/baselines/old-eca",
+        "fd8": {
+          "bytes": 486472,
+          "elf_magic": "7f454c46",
+          "elf_type": 3,
+          "executable": true,
+          "mode": "0o100755",
+          "offset_before_exec": 0,
+          "path": "/workspace/scratch/e858f72517b9/perf-work/backend-attribution-da84/candidate-cache/runtime-py-baad4a50-a6eee1b817817a74.so",
+          "regular_file": true,
+          "sha256": "e9b69e7c922f202531a980c8896659530d28b24b2a109ee0757b90080a8aeab4"
+        },
+        "fd9": {
+          "bytes": 771352,
+          "mode": "0o100644",
+          "offset_before_exec": 0,
+          "path": "/tmp/tmpbaqrtsu6/prog.bc (deleted)",
+          "regular_file": true,
+          "sha256": "216255cce476a045daa3608e1b8725518c1ed4c98bb00337d046e494ab53c9e2"
+        },
+        "instrumented": false,
+        "observed_tool_wall_s": 2.498313109999799,
+        "preserved_inheritable_fds": [
+          8,
+          9
+        ],
+        "returncode": 0,
+        "tool": "lli"
+      },
+      "opt": {
+        "arguments": [
+          "-passes=globaldce,always-inline,function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg),function(early-cse,adce)",
+          "/tmp/tmpbaqrtsu6/prog.ll",
+          "-o",
+          "/tmp/tmpbaqrtsu6/prog.bc"
+        ],
+        "command": [
+          "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin/opt",
+          "-passes=globaldce,always-inline,function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg),function(early-cse,adce)",
+          "/tmp/tmpbaqrtsu6/prog.ll",
+          "-o",
+          "/tmp/tmpbaqrtsu6/prog.bc"
+        ],
+        "cwd": "/workspace/scratch/e858f72517b9/baselines/old-eca",
+        "input_path": "/tmp/tmpbaqrtsu6/prog.ll",
+        "input_sha256": "2efe6a9ebb4641db3e99ff9157c6e7480413d8fb7f6e97ca141baac8a60e25d7",
+        "instrumented": false,
+        "observed_tool_wall_s": 0.565904490000321,
+        "output_path": "/tmp/tmpbaqrtsu6/prog.bc",
+        "output_sha256": "216255cce476a045daa3608e1b8725518c1ed4c98bb00337d046e494ab53c9e2",
+        "preserved_inheritable_fds": [],
+        "returncode": 0,
+        "tool": "opt"
+      },
+      "runtime_matches_frozen_final_cache": true
+    },
+    "normal_main": {
+      "command": [
+        "/workspace/scratch/e858f72517b9/baselines/main/pystachy",
+        "run",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "fnmatch",
+        "1000"
+      ],
+      "execution": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/baselines/main/pystachy",
+          "run",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "fnmatch",
+          "1000"
+        ],
+        "cpu_s": 18.395729000000003,
+        "loop_s": 0.04701290100092592,
+        "returncode": 0,
+        "stderr": "seconds 0.04701290100092592\n",
+        "stdout": "6000\n",
+        "wall_s": 18.400473937001152
+      },
+      "lli": {
+        "arguments": [
+          "-profile-guided-section-prefix=false",
+          "-dlopen=/dev/fd/8",
+          "/dev/fd/9",
+          "fnmatch",
+          "1000"
+        ],
+        "command": [
+          "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin/lli",
+          "-profile-guided-section-prefix=false",
+          "-dlopen=/dev/fd/8",
+          "/dev/fd/9",
+          "fnmatch",
+          "1000"
+        ],
+        "cwd": "/workspace/scratch/e858f72517b9/baselines/old-eca",
+        "fd8": {
+          "bytes": 486144,
+          "elf_magic": "7f454c46",
+          "elf_type": 3,
+          "executable": true,
+          "mode": "0o100755",
+          "offset_before_exec": 0,
+          "path": "/workspace/scratch/e858f72517b9/perf-work/backend-attribution-da84/main-cache/runtime-py-2274f535-99db46196a6603bf.so",
+          "regular_file": true,
+          "sha256": "f775fba0e91767dbeda0757f3c1008a59a2f3806f998ee66fe27a388d19a0ffc"
+        },
+        "fd9": {
+          "bytes": 673832,
+          "mode": "0o100644",
+          "offset_before_exec": 0,
+          "path": "/tmp/tmp2wfsn17v/prog.bc (deleted)",
+          "regular_file": true,
+          "sha256": "54c01d3ce8722f1625a776da97c39b1625875d781e8a34d845e7145f0e37731a"
+        },
+        "instrumented": false,
+        "observed_tool_wall_s": 2.086214775999906,
+        "preserved_inheritable_fds": [
+          8,
+          9
+        ],
+        "returncode": 0,
+        "tool": "lli"
+      },
+      "opt": {
+        "arguments": [
+          "-passes=globaldce,function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg),function(early-cse,adce)",
+          "/tmp/tmp2wfsn17v/prog.ll",
+          "-o",
+          "/tmp/tmp2wfsn17v/prog.bc"
+        ],
+        "command": [
+          "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin/opt",
+          "-passes=globaldce,function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg),function(early-cse,adce)",
+          "/tmp/tmp2wfsn17v/prog.ll",
+          "-o",
+          "/tmp/tmp2wfsn17v/prog.bc"
+        ],
+        "cwd": "/workspace/scratch/e858f72517b9/baselines/old-eca",
+        "input_path": "/tmp/tmp2wfsn17v/prog.ll",
+        "input_sha256": "fb4fd5aa8138d1ee51dfea76cfe53b93f08c0909800b8825dda4fb61f7353536",
+        "instrumented": false,
+        "observed_tool_wall_s": 0.4183613000004698,
+        "output_path": "/tmp/tmp2wfsn17v/prog.bc",
+        "output_sha256": "54c01d3ce8722f1625a776da97c39b1625875d781e8a34d845e7145f0e37731a",
+        "preserved_inheritable_fds": [],
+        "returncode": 0,
+        "tool": "opt"
+      },
+      "runtime_matches_frozen_final_cache": true
+    },
+    "opt_candidate": {
+      "attribution": {
+        "method": "Self costs sum exactly to whole-process summary. Function inclusive cost is self plus recorded outgoing call-edge costs; nested inclusive rows overlap and must not be summed. Inlined instructions are charged to their containing emitted function, so absence of a source helper symbol does not prove zero work.",
+        "positive_functions": 7706,
+        "top_inclusive": [
+          {
+            "inclusive_ir": 4351837304,
+            "name": "(below main)",
+            "outgoing_calls": 8,
+            "self_ir": 102
+          },
+          {
+            "inclusive_ir": 2195365411,
+            "name": "0x000000000001f540",
+            "outgoing_calls": 4,
+            "self_ir": 23
+          },
+          {
+            "inclusive_ir": 2175686279,
+            "name": "0x000000000002a150",
+            "outgoing_calls": 3,
+            "self_ir": 28
+          },
+          {
+            "inclusive_ir": 2174834408,
+            "name": "main",
+            "outgoing_calls": 82,
+            "self_ir": 654
+          },
+          {
+            "inclusive_ir": 1504242022,
+            "name": "llvm::runPassPipeline(llvm::StringRef, llvm::Module&, llvm::TargetMachine*, llvm::TargetLibraryInfoImpl*, llvm::ToolOutputFile*, llvm::ToolOutputFile*, llvm::ToolOutputFile*, llvm::StringRef, llvm::ArrayRef<llvm::PassPlugin>, llvm::opt_tool::OutputKind, llvm::opt_tool::VerifierKind, bool, bool, bool, bool, bool, bool, bool)",
+            "outgoing_calls": 63,
+            "self_ir": 705
+          },
+          {
+            "inclusive_ir": 1498862384,
+            "name": "0x000000000011eb80",
+            "outgoing_calls": 1,
+            "self_ir": 7
+          },
+          {
+            "inclusive_ir": 1498861178,
+            "name": "llvm::PassManager<llvm::Module, llvm::AnalysisManager<llvm::Module>>::run(llvm::Module&, llvm::AnalysisManager<llvm::Module>&)",
+            "outgoing_calls": 27,
+            "self_ir": 326
+          },
+          {
+            "inclusive_ir": 909533595,
+            "name": "0x0000000002e92610",
+            "outgoing_calls": 2,
+            "self_ir": 26
+          },
+          {
+            "inclusive_ir": 909533569,
+            "name": "llvm::ModuleToFunctionPassAdaptor::run(llvm::Module&, llvm::AnalysisManager<llvm::Module>&)",
+            "outgoing_calls": 3872,
+            "self_ir": 35488
+          },
+          {
+            "inclusive_ir": 909312152,
+            "name": "0x0000000002e92820",
+            "outgoing_calls": 518,
+            "self_ir": 6734
+          },
+          {
+            "inclusive_ir": 909305418,
+            "name": "llvm::PassManager<llvm::Function, llvm::AnalysisManager<llvm::Function>>::run(llvm::Function&, llvm::AnalysisManager<llvm::Function>&)",
+            "outgoing_calls": 6237,
+            "self_ir": 85015
+          },
+          {
+            "inclusive_ir": 538780175,
+            "name": "0x000000000011e340",
+            "outgoing_calls": 1,
+            "self_ir": 7
+          },
+          {
+            "inclusive_ir": 538778846,
+            "name": "llvm::parseIRFile(llvm::StringRef, llvm::SMDiagnostic&, llvm::LLVMContext&, llvm::ParserCallbacks)",
+            "outgoing_calls": 6,
+            "self_ir": 99
+          },
+          {
+            "inclusive_ir": 538769598,
+            "name": "llvm::parseIR(llvm::MemoryBufferRef, llvm::SMDiagnostic&, llvm::LLVMContext&, llvm::ParserCallbacks)",
+            "outgoing_calls": 4,
+            "self_ir": 94
+          },
+          {
+            "inclusive_ir": 538769462,
+            "name": "llvm::parseAssembly(llvm::MemoryBufferRef, llvm::SMDiagnostic&, llvm::LLVMContext&, llvm::SlotMapping*, llvm::function_ref<std::optional<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > (llvm::StringRef, llvm::StringRef)>)",
+            "outgoing_calls": 3,
+            "self_ir": 58
+          },
+          {
+            "inclusive_ir": 538766700,
+            "name": "0x0000000003e20de0",
+            "outgoing_calls": 8,
+            "self_ir": 107
+          },
+          {
+            "inclusive_ir": 537702578,
+            "name": "llvm::LLParser::Run(bool, llvm::function_ref<std::optional<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > (llvm::StringRef, llvm::StringRef)>)",
+            "outgoing_calls": 6,
+            "self_ir": 58
+          },
+          {
+            "inclusive_ir": 531373895,
+            "name": "llvm::LLParser::parseTopLevelEntities()",
+            "outgoing_calls": 2783,
+            "self_ir": 39592
+          },
+          {
+            "inclusive_ir": 505282306,
+            "name": "llvm::LLParser::parseDefine()",
+            "outgoing_calls": 819,
+            "self_ir": 14196
+          },
+          {
+            "inclusive_ir": 501062381,
+            "name": "llvm::LLParser::parseFunctionBody(llvm::Function&, llvm::ArrayRef<unsigned int>)",
+            "outgoing_calls": 12650,
+            "self_ir": 130322
+          }
+        ],
+        "top_self": [
+          {
+            "inclusive_ir": 87696582,
+            "name": "0x00000000001882e0",
+            "outgoing_calls": 0,
+            "self_ir": 87696582
+          },
+          {
+            "inclusive_ir": 136873506,
+            "name": "llvm::SmallPtrSetImplBase::insert_imp_big(void const*)",
+            "outgoing_calls": 11831,
+            "self_ir": 77382610
+          },
+          {
+            "inclusive_ir": 158438955,
+            "name": "llvm::LLLexer::LexIdentifier()",
+            "outgoing_calls": 4346005,
+            "self_ir": 73466046
+          },
+          {
+            "inclusive_ir": 149377330,
+            "name": "llvm::LoopBase<llvm::BasicBlock, llvm::Loop>::getExitBlocks(llvm::SmallVectorImpl<llvm::BasicBlock*>&) const",
+            "outgoing_calls": 3888727,
+            "self_ir": 58607745
+          },
+          {
+            "inclusive_ir": 52051668,
+            "name": "llvm::SmallPtrSetImplBase::FindBucketFor(void const*) const",
+            "outgoing_calls": 0,
+            "self_ir": 52051668
+          },
+          {
+            "inclusive_ir": 56686233,
+            "name": "0x00000000000ab570",
+            "outgoing_calls": 271180,
+            "self_ir": 48297770
+          },
+          {
+            "inclusive_ir": 43749966,
+            "name": "llvm::Instruction::getSuccessor(unsigned int) const",
+            "outgoing_calls": 0,
+            "self_ir": 43749966
+          },
+          {
+            "inclusive_ir": 309886809,
+            "name": "0x00000000019ffb80",
+            "outgoing_calls": 617334,
+            "self_ir": 43289941
+          },
+          {
+            "inclusive_ir": 189958696,
+            "name": "llvm::IDFCalculatorBase<llvm::BasicBlock, false>::calculate(llvm::SmallVectorImpl<llvm::BasicBlock*>&)",
+            "outgoing_calls": 1527878,
+            "self_ir": 39136009
+          },
+          {
+            "inclusive_ir": 39724835,
+            "name": "0x0000000001a066f0",
+            "outgoing_calls": 25015,
+            "self_ir": 38315161
+          },
+          {
+            "inclusive_ir": 48793252,
+            "name": "0x00000000000ab170",
+            "outgoing_calls": 39259,
+            "self_ir": 37481918
+          },
+          {
+            "inclusive_ir": 59490896,
+            "name": "llvm::SmallPtrSetImplBase::Grow(unsigned int)",
+            "outgoing_calls": 27533,
+            "self_ir": 33951945
+          },
+          {
+            "inclusive_ir": 32103571,
+            "name": "llvm::Instruction::getNumSuccessors() const",
+            "outgoing_calls": 0,
+            "self_ir": 32103571
+          },
+          {
+            "inclusive_ir": 237188197,
+            "name": "llvm::LLLexer::LexToken()",
+            "outgoing_calls": 694740,
+            "self_ir": 32026923
+          },
+          {
+            "inclusive_ir": 49197612,
+            "name": "llvm::IDFCalculatorDetail::ChildrenGetterTy<llvm::BasicBlock, false>::get(llvm::BasicBlock* const&)",
+            "outgoing_calls": 1104114,
+            "self_ir": 30143248
+          },
+          {
+            "inclusive_ir": 24247868,
+            "name": "0x0000000001877470",
+            "outgoing_calls": 30300,
+            "self_ir": 23851600
+          },
+          {
+            "inclusive_ir": 61057378,
+            "name": "0x0000000000f6e100",
+            "outgoing_calls": 381066,
+            "self_ir": 23046243
+          },
+          {
+            "inclusive_ir": 76399779,
+            "name": "malloc",
+            "outgoing_calls": 263936,
+            "self_ir": 21735779
+          },
+          {
+            "inclusive_ir": 21461304,
+            "name": "0x0000000000189410",
+            "outgoing_calls": 0,
+            "self_ir": 21461304
+          },
+          {
+            "inclusive_ir": 18229751,
+            "name": "0x0000000001852ee0",
+            "outgoing_calls": 0,
+            "self_ir": 18229751
+          }
+        ],
+        "total_instructions": 2195365411
+      },
+      "command": [
+        "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "fnmatch",
+        "1000"
+      ],
+      "equivalence": {
+        "actual_input_identical": true,
+        "diff_sha256": "9fc04475fff526beef7fd6ad5bb7dbf11069fc80123f1af8cec2dce510133948",
+        "literal_bitcode_equal": false,
+        "normal_bitcode_sha256": "216255cce476a045daa3608e1b8725518c1ed4c98bb00337d046e494ab53c9e2",
+        "normal_text_sha256": "b3a2fd12df2783934c47f2e1b4ad8756266b7d74f7a83402fda43dd185d5c08c",
+        "only_demonstrated_path_headers_differ": true,
+        "profile_bitcode_sha256": "38286ca0560c918d4700d9829f3f1289bd4c57ca4edfce74cba7444c6dd7b348",
+        "profile_text_sha256": "a94433079bacfdf2d2e275152abb60c4d020114af199403b5dd7778b8f0f96dd",
+        "raw_diff": "--- /workspace/scratch/e858f72517b9/perf-work/backend-attribution-da84/normal-candidate/optimized-output.ll\n+++ /workspace/scratch/e858f72517b9/perf-work/backend-attribution-da84/opt-candidate/optimized-output.ll\n@@ -1,5 +1,5 @@\n-; ModuleID = '/workspace/scratch/e858f72517b9/perf-work/backend-attribution-da84/normal-candidate/optimized-output.bc'\n-source_filename = \"/tmp/tmpbaqrtsu6/prog.ll\"\n+; ModuleID = '/workspace/scratch/e858f72517b9/perf-work/backend-attribution-da84/opt-candidate/optimized-output.bc'\n+source_filename = \"/tmp/tmpq6bny0b9/prog.ll\"\n target datalayout = \"e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128\"\n target triple = \"x86_64-pc-linux-gnu\"\n \n",
+        "same_flags_and_runtime_bytes": true
+      },
+      "execution": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+          "run",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "fnmatch",
+          "1000"
+        ],
+        "cpu_s": 31.738676000000005,
+        "loop_s": 0.15213389299970004,
+        "returncode": 0,
+        "stderr": "seconds 0.15213389299970004\n",
+        "stdout": "6000\n",
+        "wall_s": 31.76260535000074
+      },
+      "lli": {
+        "arguments": [
+          "-profile-guided-section-prefix=false",
+          "-dlopen=/dev/fd/8",
+          "/dev/fd/9",
+          "fnmatch",
+          "1000"
+        ],
+        "command": [
+          "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin/lli",
+          "-profile-guided-section-prefix=false",
+          "-dlopen=/dev/fd/8",
+          "/dev/fd/9",
+          "fnmatch",
+          "1000"
+        ],
+        "cwd": "/workspace/scratch/e858f72517b9/baselines/old-eca",
+        "fd8": {
+          "bytes": 486472,
+          "elf_magic": "7f454c46",
+          "elf_type": 3,
+          "executable": true,
+          "mode": "0o100755",
+          "offset_before_exec": 0,
+          "path": "/workspace/scratch/e858f72517b9/perf-work/backend-attribution-da84/candidate-cache/runtime-py-baad4a50-a6eee1b817817a74.so",
+          "regular_file": true,
+          "sha256": "e9b69e7c922f202531a980c8896659530d28b24b2a109ee0757b90080a8aeab4"
+        },
+        "fd9": {
+          "bytes": 771352,
+          "mode": "0o100644",
+          "offset_before_exec": 0,
+          "path": "/tmp/tmpq6bny0b9/prog.bc (deleted)",
+          "regular_file": true,
+          "sha256": "38286ca0560c918d4700d9829f3f1289bd4c57ca4edfce74cba7444c6dd7b348"
+        },
+        "instrumented": false,
+        "observed_tool_wall_s": 3.0712368470012734,
+        "preserved_inheritable_fds": [
+          8,
+          9
+        ],
+        "returncode": 0,
+        "tool": "lli"
+      },
+      "opt": {
+        "arguments": [
+          "-passes=globaldce,always-inline,function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg),function(early-cse,adce)",
+          "/tmp/tmpq6bny0b9/prog.ll",
+          "-o",
+          "/tmp/tmpq6bny0b9/prog.bc"
+        ],
+        "command": [
+          "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/bin/valgrind",
+          "--tool=callgrind",
+          "--error-exitcode=99",
+          "--cache-sim=no",
+          "--branch-sim=no",
+          "--callgrind-out-file=/workspace/scratch/e858f72517b9/perf-work/backend-attribution-da84/opt-candidate/opt.callgrind",
+          "--log-file=/workspace/scratch/e858f72517b9/perf-work/backend-attribution-da84/opt-candidate/opt-valgrind.log",
+          "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin/opt",
+          "-passes=globaldce,always-inline,function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg),function(early-cse,adce)",
+          "/tmp/tmpq6bny0b9/prog.ll",
+          "-o",
+          "/tmp/tmpq6bny0b9/prog.bc"
+        ],
+        "cwd": "/workspace/scratch/e858f72517b9/baselines/old-eca",
+        "input_path": "/tmp/tmpq6bny0b9/prog.ll",
+        "input_sha256": "2efe6a9ebb4641db3e99ff9157c6e7480413d8fb7f6e97ca141baac8a60e25d7",
+        "instrumented": true,
+        "observed_tool_wall_s": 27.937100675999318,
+        "output_path": "/tmp/tmpq6bny0b9/prog.bc",
+        "output_sha256": "38286ca0560c918d4700d9829f3f1289bd4c57ca4edfce74cba7444c6dd7b348",
+        "preserved_inheritable_fds": [],
+        "returncode": 0,
+        "tool": "opt"
+      },
+      "profile_sha256": "b3bde9716ac0dd80b42d2a36c96d74ef0524e9dc09db5abb550febadaf597a26",
+      "runtime_matches_frozen_final_cache": true,
+      "valgrind_log": "==152== Callgrind, a call-graph generating cache profiler\n==152== Copyright (C) 2002-2017, and GNU GPL'd, by Josef Weidendorfer et al.\n==152== Using Valgrind-3.22.0 and LibVEX; rerun with -h for copyright info\n==152== Command: /workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin/opt -passes=globaldce,always-inline,function(mem2reg,instcombine\\<no-verify-fixpoint\\>,simplifycfg),function(early-cse,adce) /tmp/tmpq6bny0b9/prog.ll -o /tmp/tmpq6bny0b9/prog.bc\n==152== Parent PID: 151\n==152== \n==152== For interactive control, run 'callgrind_control -h'.\n==152== brk segment overflow in thread #1: can't grow to 0x483d000\n==152== (see section Limitations in user manual)\n==152== NOTE: further instances of this message will not be shown\n==152== \n==152== Events    : Ir\n==152== Collected : 2195365411\n==152== \n==152== I   refs:      2,195,365,411\n"
+    },
+    "opt_main": {
+      "attribution": {
+        "method": "Self costs sum exactly to whole-process summary. Function inclusive cost is self plus recorded outgoing call-edge costs; nested inclusive rows overlap and must not be summed. Inlined instructions are charged to their containing emitted function, so absence of a source helper symbol does not prove zero work.",
+        "positive_functions": 7433,
+        "top_inclusive": [
+          {
+            "inclusive_ir": 3306811888,
+            "name": "(below main)",
+            "outgoing_calls": 8,
+            "self_ir": 102
+          },
+          {
+            "inclusive_ir": 1672852665,
+            "name": "0x000000000001f540",
+            "outgoing_calls": 4,
+            "self_ir": 23
+          },
+          {
+            "inclusive_ir": 1653173571,
+            "name": "0x000000000002a150",
+            "outgoing_calls": 3,
+            "self_ir": 28
+          },
+          {
+            "inclusive_ir": 1652321680,
+            "name": "main",
+            "outgoing_calls": 82,
+            "self_ir": 654
+          },
+          {
+            "inclusive_ir": 1052400637,
+            "name": "llvm::runPassPipeline(llvm::StringRef, llvm::Module&, llvm::TargetMachine*, llvm::TargetLibraryInfoImpl*, llvm::ToolOutputFile*, llvm::ToolOutputFile*, llvm::ToolOutputFile*, llvm::StringRef, llvm::ArrayRef<llvm::PassPlugin>, llvm::opt_tool::OutputKind, llvm::opt_tool::VerifierKind, bool, bool, bool, bool, bool, bool, bool)",
+            "outgoing_calls": 62,
+            "self_ir": 694
+          },
+          {
+            "inclusive_ir": 1047837226,
+            "name": "0x000000000011eb80",
+            "outgoing_calls": 1,
+            "self_ir": 7
+          },
+          {
+            "inclusive_ir": 1047836020,
+            "name": "llvm::PassManager<llvm::Module, llvm::AnalysisManager<llvm::Module>>::run(llvm::Module&, llvm::AnalysisManager<llvm::Module>&)",
+            "outgoing_calls": 23,
+            "self_ir": 284
+          },
+          {
+            "inclusive_ir": 821355735,
+            "name": "0x0000000002e92610",
+            "outgoing_calls": 2,
+            "self_ir": 26
+          },
+          {
+            "inclusive_ir": 821355709,
+            "name": "llvm::ModuleToFunctionPassAdaptor::run(llvm::Module&, llvm::AnalysisManager<llvm::Module>&)",
+            "outgoing_calls": 3402,
+            "self_ir": 31199
+          },
+          {
+            "inclusive_ir": 821162928,
+            "name": "0x0000000002e92820",
+            "outgoing_calls": 452,
+            "self_ir": 5876
+          },
+          {
+            "inclusive_ir": 821157052,
+            "name": "llvm::PassManager<llvm::Function, llvm::AnalysisManager<llvm::Function>>::run(llvm::Function&, llvm::AnalysisManager<llvm::Function>&)",
+            "outgoing_calls": 5439,
+            "self_ir": 74173
+          },
+          {
+            "inclusive_ir": 483266746,
+            "name": "0x000000000011e340",
+            "outgoing_calls": 1,
+            "self_ir": 7
+          },
+          {
+            "inclusive_ir": 483265417,
+            "name": "llvm::parseIRFile(llvm::StringRef, llvm::SMDiagnostic&, llvm::LLVMContext&, llvm::ParserCallbacks)",
+            "outgoing_calls": 6,
+            "self_ir": 99
+          },
+          {
+            "inclusive_ir": 483256169,
+            "name": "llvm::parseIR(llvm::MemoryBufferRef, llvm::SMDiagnostic&, llvm::LLVMContext&, llvm::ParserCallbacks)",
+            "outgoing_calls": 4,
+            "self_ir": 94
+          },
+          {
+            "inclusive_ir": 483256033,
+            "name": "llvm::parseAssembly(llvm::MemoryBufferRef, llvm::SMDiagnostic&, llvm::LLVMContext&, llvm::SlotMapping*, llvm::function_ref<std::optional<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > (llvm::StringRef, llvm::StringRef)>)",
+            "outgoing_calls": 3,
+            "self_ir": 58
+          },
+          {
+            "inclusive_ir": 483253271,
+            "name": "0x0000000003e20de0",
+            "outgoing_calls": 8,
+            "self_ir": 107
+          },
+          {
+            "inclusive_ir": 482373401,
+            "name": "llvm::LLParser::Run(bool, llvm::function_ref<std::optional<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > (llvm::StringRef, llvm::StringRef)>)",
+            "outgoing_calls": 6,
+            "self_ir": 58
+          },
+          {
+            "inclusive_ir": 476557631,
+            "name": "llvm::LLParser::parseTopLevelEntities()",
+            "outgoing_calls": 2723,
+            "self_ir": 38694
+          },
+          {
+            "inclusive_ir": 450652946,
+            "name": "llvm::LLParser::parseDefine()",
+            "outgoing_calls": 678,
+            "self_ir": 11752
+          },
+          {
+            "inclusive_ir": 447110374,
+            "name": "llvm::LLParser::parseFunctionBody(llvm::Function&, llvm::ArrayRef<unsigned int>)",
+            "outgoing_calls": 11077,
+            "self_ir": 113934
+          }
+        ],
+        "top_self": [
+          {
+            "inclusive_ir": 78503386,
+            "name": "0x00000000001882e0",
+            "outgoing_calls": 0,
+            "self_ir": 78503386
+          },
+          {
+            "inclusive_ir": 124161789,
+            "name": "llvm::SmallPtrSetImplBase::insert_imp_big(void const*)",
+            "outgoing_calls": 9800,
+            "self_ir": 70062994
+          },
+          {
+            "inclusive_ir": 142396307,
+            "name": "llvm::LLLexer::LexIdentifier()",
+            "outgoing_calls": 3900772,
+            "self_ir": 66219226
+          },
+          {
+            "inclusive_ir": 293291377,
+            "name": "0x00000000019ffb80",
+            "outgoing_calls": 585487,
+            "self_ir": 40534478
+          },
+          {
+            "inclusive_ir": 44131430,
+            "name": "0x00000000000ab570",
+            "outgoing_calls": 205241,
+            "self_ir": 37041759
+          },
+          {
+            "inclusive_ir": 37555721,
+            "name": "0x0000000001a066f0",
+            "outgoing_calls": 24404,
+            "self_ir": 36174636
+          },
+          {
+            "inclusive_ir": 179340228,
+            "name": "llvm::IDFCalculatorBase<llvm::BasicBlock, false>::calculate(llvm::SmallVectorImpl<llvm::BasicBlock*>&)",
+            "outgoing_calls": 1442865,
+            "self_ir": 35609613
+          },
+          {
+            "inclusive_ir": 54098795,
+            "name": "llvm::SmallPtrSetImplBase::Grow(unsigned int)",
+            "outgoing_calls": 23029,
+            "self_ir": 30822534
+          },
+          {
+            "inclusive_ir": 213589052,
+            "name": "llvm::LLLexer::LexToken()",
+            "outgoing_calls": 628108,
+            "self_ir": 28888724
+          },
+          {
+            "inclusive_ir": 46288755,
+            "name": "llvm::IDFCalculatorDetail::ChildrenGetterTy<llvm::BasicBlock, false>::get(llvm::BasicBlock* const&)",
+            "outgoing_calls": 1039663,
+            "self_ir": 28331505
+          },
+          {
+            "inclusive_ir": 35588914,
+            "name": "0x00000000000ab170",
+            "outgoing_calls": 34036,
+            "self_ir": 27802767
+          },
+          {
+            "inclusive_ir": 23649311,
+            "name": "0x0000000001877470",
+            "outgoing_calls": 30422,
+            "self_ir": 23251877
+          },
+          {
+            "inclusive_ir": 54442814,
+            "name": "0x0000000000f6e100",
+            "outgoing_calls": 330280,
+            "self_ir": 20334380
+          },
+          {
+            "inclusive_ir": 19689241,
+            "name": "0x0000000000189410",
+            "outgoing_calls": 0,
+            "self_ir": 19689241
+          },
+          {
+            "inclusive_ir": 58844796,
+            "name": "malloc",
+            "outgoing_calls": 202804,
+            "self_ir": 16059950
+          },
+          {
+            "inclusive_ir": 15819060,
+            "name": "0x0000000001852ee0",
+            "outgoing_calls": 0,
+            "self_ir": 15819060
+          },
+          {
+            "inclusive_ir": 16630111,
+            "name": "llvm::getUnderlyingObject(llvm::Value const*, unsigned int)",
+            "outgoing_calls": 24618,
+            "self_ir": 15789271
+          },
+          {
+            "inclusive_ir": 15210081,
+            "name": "llvm::Instruction::getSuccessor(unsigned int) const",
+            "outgoing_calls": 0,
+            "self_ir": 15210081
+          },
+          {
+            "inclusive_ir": 31079336,
+            "name": "llvm::LLLexer::LexVar(llvm::lltok::Kind, llvm::lltok::Kind)",
+            "outgoing_calls": 1088015,
+            "self_ir": 14699100
+          },
+          {
+            "inclusive_ir": 208492553,
+            "name": "0x0000000001b66c90",
+            "outgoing_calls": 722208,
+            "self_ir": 12851102
+          }
+        ],
+        "total_instructions": 1672852665
+      },
+      "command": [
+        "/workspace/scratch/e858f72517b9/baselines/main/pystachy",
+        "run",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+        "fnmatch",
+        "1000"
+      ],
+      "equivalence": {
+        "actual_input_identical": true,
+        "diff_sha256": "4d05d17d5566439efa200903e5ce9cebfe8cc826d9cd9e7a472e5519c13326c4",
+        "literal_bitcode_equal": false,
+        "normal_bitcode_sha256": "54c01d3ce8722f1625a776da97c39b1625875d781e8a34d845e7145f0e37731a",
+        "normal_text_sha256": "3d606834141505f0533e44f813d487cb3c35cfe9c99ca14c7618fc16e2dfb8e5",
+        "only_demonstrated_path_headers_differ": true,
+        "profile_bitcode_sha256": "b8fc9fcda3fc5ebc017630996d8b43f39140d8e6e354e28511e12f529b2bf6e3",
+        "profile_text_sha256": "e52337e0d3ced9bfd1eeb4e860369234355a9fc45713380c1b272d6e3dbcbb4a",
+        "raw_diff": "--- /workspace/scratch/e858f72517b9/perf-work/backend-attribution-da84/normal-main/optimized-output.ll\n+++ /workspace/scratch/e858f72517b9/perf-work/backend-attribution-da84/opt-main/optimized-output.ll\n@@ -1,5 +1,5 @@\n-; ModuleID = '/workspace/scratch/e858f72517b9/perf-work/backend-attribution-da84/normal-main/optimized-output.bc'\n-source_filename = \"/tmp/tmp2wfsn17v/prog.ll\"\n+; ModuleID = '/workspace/scratch/e858f72517b9/perf-work/backend-attribution-da84/opt-main/optimized-output.bc'\n+source_filename = \"/tmp/tmpde1y4oet/prog.ll\"\n target datalayout = \"e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128\"\n target triple = \"x86_64-pc-linux-gnu\"\n \n",
+        "same_flags_and_runtime_bytes": true
+      },
+      "execution": {
+        "command": [
+          "/workspace/scratch/e858f72517b9/baselines/main/pystachy",
+          "run",
+          "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+          "fnmatch",
+          "1000"
+        ],
+        "cpu_s": 25.318396000000003,
+        "loop_s": 0.0457251930001803,
+        "returncode": 0,
+        "stderr": "seconds 0.0457251930001803\n",
+        "stdout": "6000\n",
+        "wall_s": 25.323625369999718
+      },
+      "lli": {
+        "arguments": [
+          "-profile-guided-section-prefix=false",
+          "-dlopen=/dev/fd/8",
+          "/dev/fd/9",
+          "fnmatch",
+          "1000"
+        ],
+        "command": [
+          "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin/lli",
+          "-profile-guided-section-prefix=false",
+          "-dlopen=/dev/fd/8",
+          "/dev/fd/9",
+          "fnmatch",
+          "1000"
+        ],
+        "cwd": "/workspace/scratch/e858f72517b9/baselines/old-eca",
+        "fd8": {
+          "bytes": 486144,
+          "elf_magic": "7f454c46",
+          "elf_type": 3,
+          "executable": true,
+          "mode": "0o100755",
+          "offset_before_exec": 0,
+          "path": "/workspace/scratch/e858f72517b9/perf-work/backend-attribution-da84/main-cache/runtime-py-2274f535-99db46196a6603bf.so",
+          "regular_file": true,
+          "sha256": "f775fba0e91767dbeda0757f3c1008a59a2f3806f998ee66fe27a388d19a0ffc"
+        },
+        "fd9": {
+          "bytes": 673832,
+          "mode": "0o100644",
+          "offset_before_exec": 0,
+          "path": "/tmp/tmpde1y4oet/prog.bc (deleted)",
+          "regular_file": true,
+          "sha256": "b8fc9fcda3fc5ebc017630996d8b43f39140d8e6e354e28511e12f529b2bf6e3"
+        },
+        "instrumented": false,
+        "observed_tool_wall_s": 2.0170254549993842,
+        "preserved_inheritable_fds": [
+          8,
+          9
+        ],
+        "returncode": 0,
+        "tool": "lli"
+      },
+      "opt": {
+        "arguments": [
+          "-passes=globaldce,function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg),function(early-cse,adce)",
+          "/tmp/tmpde1y4oet/prog.ll",
+          "-o",
+          "/tmp/tmpde1y4oet/prog.bc"
+        ],
+        "command": [
+          "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/bin/valgrind",
+          "--tool=callgrind",
+          "--error-exitcode=99",
+          "--cache-sim=no",
+          "--branch-sim=no",
+          "--callgrind-out-file=/workspace/scratch/e858f72517b9/perf-work/backend-attribution-da84/opt-main/opt.callgrind",
+          "--log-file=/workspace/scratch/e858f72517b9/perf-work/backend-attribution-da84/opt-main/opt-valgrind.log",
+          "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin/opt",
+          "-passes=globaldce,function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg),function(early-cse,adce)",
+          "/tmp/tmpde1y4oet/prog.ll",
+          "-o",
+          "/tmp/tmpde1y4oet/prog.bc"
+        ],
+        "cwd": "/workspace/scratch/e858f72517b9/baselines/old-eca",
+        "input_path": "/tmp/tmpde1y4oet/prog.ll",
+        "input_sha256": "fb4fd5aa8138d1ee51dfea76cfe53b93f08c0909800b8825dda4fb61f7353536",
+        "instrumented": true,
+        "observed_tool_wall_s": 22.672374390000186,
+        "output_path": "/tmp/tmpde1y4oet/prog.bc",
+        "output_sha256": "b8fc9fcda3fc5ebc017630996d8b43f39140d8e6e354e28511e12f529b2bf6e3",
+        "preserved_inheritable_fds": [],
+        "returncode": 0,
+        "tool": "opt"
+      },
+      "profile_sha256": "783340e6acfa56ec24dcac6c56cc4a3aa2f3404557d3b2268a0aed7306d7c1f0",
+      "runtime_matches_frozen_final_cache": true,
+      "valgrind_log": "==143== Callgrind, a call-graph generating cache profiler\n==143== Copyright (C) 2002-2017, and GNU GPL'd, by Josef Weidendorfer et al.\n==143== Using Valgrind-3.22.0 and LibVEX; rerun with -h for copyright info\n==143== Command: /workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin/opt -passes=globaldce,function(mem2reg,instcombine\\<no-verify-fixpoint\\>,simplifycfg),function(early-cse,adce) /tmp/tmpde1y4oet/prog.ll -o /tmp/tmpde1y4oet/prog.bc\n==143== Parent PID: 142\n==143== \n==143== For interactive control, run 'callgrind_control -h'.\n==143== brk segment overflow in thread #1: can't grow to 0x4868000\n==143== (see section Limitations in user manual)\n==143== NOTE: further instances of this message will not be shown\n==143== \n==143== Events    : Ir\n==143== Collected : 1672852665\n==143== \n==143== I   refs:      1,672,852,665\n"
+    }
+  },
+  "oracle": {
+    "command": [
+      "/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13",
+      "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+      "fnmatch",
+      "1000"
+    ],
+    "cpu_s": 0.10746000000000078,
+    "loop_s": 0.06993903100010357,
+    "returncode": 0,
+    "stderr": "seconds 0.06993903100010357\n",
+    "stdout": "6000\n",
+    "wall_s": 0.10953441700075928
+  },
+  "performance_acceptance": "open",
+  "phases": {
+    "lli": {
+      "finished_utc": "2026-10-31T17:13:01.911302+00:00",
+      "started_utc": "2026-10-31T17:09:42.581481+00:00",
+      "status": "passed"
+    },
+    "opt": {
+      "finished_utc": "2026-10-31T17:08:14.898512+00:00",
+      "started_utc": "2026-10-31T17:06:10.258932+00:00",
+      "status": "passed"
+    }
+  },
+  "purpose": "Bounded actual-driver optimizer/lli instruction attribution; no elapsed acceptance series.",
+  "raw_compressed": {
+    "bytes": 801392,
+    "compression": "gzip, mtime=0; decompresses to the exact raw_record bytes",
+    "filename": "backend-attribution-da84-full.json.gz",
+    "sha256": "ebc6776c3c355aa380ff16711c1ae9a40d81f9bebabfc036fb13c3019465b49e"
+  },
+  "raw_record": {
+    "bytes": 7754882,
+    "filename": "backend-attribution-da84-full.json",
+    "sha256": "5374af1a1bada3138183f33dc513ef55b128de80f802dd61994e16f5301bf352"
+  },
+  "schema": "pystachy-recursion-backend-attribution-v1",
+  "scope": "One normal actual-driver capture and one opt profile per main/final variant. At most one subsequent lli profile each if opt leaves dominant startup work unexplained. Whole opt/lli processes include loading/initialization/teardown; lli also includes JIT code generation and executed program/runtime/GC. Instrumentation environment and inlining limit causal attribution. No real-hardware cycle or elapsed-acceptance claim.",
+  "source": "/workspace/scratch/e858f72517b9/baselines/old-eca/bench/smoke/text.py",
+  "source_identities": {
+    "candidate": {
+      "commit": "da84d382ff83f09e46d4ef104e62e6f64e9c37c1",
+      "directory": "/workspace/scratch/e858f72517b9/pystachy",
+      "git_status": "",
+      "input_sha256": {
+        "Makefile": "9d9574c44902625ce0c79e94c31513548080b0d7543c2ba82e6c707f28708997",
+        "lib/_markupbase.py": "6a294b294582f55905d310b8df054019e94f37b17eba3414be4e2cb61d5851d1",
+        "lib/_pyrandom.py": "5b37918369c0e4becdac2d012ffe9e40e314a330ee9f7b3fe2ce4cd3a926ff09",
+        "lib/_pystachy__io.py": "77ee03b3a67f79f49c3fe30666f4f5077bd41069797c727529a230c4caa0a117",
+        "lib/_pystachy_abc.py": "9f6f717c077b2dbac22e8dc9793373b939615a33f2698aaddd81ed905e5a48f8",
+        "lib/_pystachy_atexit.py": "a5ff97e421a4a8fd782e08a0124bac6a7b27486fc279cb4384655bc4b208d60c",
+        "lib/_pystachy_binascii.py": "c8ca70973dc409011ba89749878a2a205780fdc907437bc08521be0e3d07f848",
+        "lib/_pystachy_codecs.py": "fe8380d756e383192028c6a65d652047e9abb9c08b51e15aba5b35e8cf678acf",
+        "lib/_pystachy_iterators.py": "61894584c1fda85936a740d4dafa2c5d631f9b05f5022fca8913e4ad0a84b27e",
+        "lib/_pystachy_itertools.py": "14f451cf7647016ad8105aa988b9cbabe4fe3f5a08f2710f6ed2db5d81a00566",
+        "lib/_pystachy_json_any.py": "392d432c6ef3679f36bd3a86b302fe71858ff2d261bc25863c1673bf58944016",
+        "lib/_pystachy_mappingproxy.py": "e1d04e45f0b12e0e29fba497adf16f77864154c9e175a40065d2fd73654be70c",
+        "lib/_pystachy_object.py": "6a21df25fa11b3c80a70d95f310760d86adaeecd4a63e767bde5b9ecde63ca9c",
+        "lib/_pystachy_range.py": "50df392f248e25a79896007a3b0a23741f8f5f56622e7c56060ba9612292f8b2",
+        "lib/_pystachy_re_specialized.py": "d09604c416700c3a7acd3a9f8c6f7536289c895b2e72393a9875e68ed92e45bf",
+        "lib/_pystachy_string.py": "2e87bb96489d12051446c1b59c2e4ee65543a14f15d8eff3465a43f2e1f51434",
+        "lib/_pystachy_struct.py": "2f224f07dd5a8db374dc2604257cc7c41a4caa7140c5d2ddf30a34bc8f88f1d6",
+        "lib/_pystachy_thread.py": "62e5617d4f19c2deb6d714dbcc92ebaa6a97a78a596fc7d8c56c088cc4ad0f37",
+        "lib/_pystachy_types.py": "221d41e2f90c40493b3d712fb99cf39fb5a25c2306e63de7a89358e66cfcfe70",
+        "lib/_pystachy_unicodedata.py": "f1c877238f94279dfdb5a5f77396d9d25f504c409f34b78099613c6c3f71c7d0",
+        "lib/_pystachy_unicodedata_db.py": "d511e3c104f697e9e9ce150b97119ceb1fcaf00ebcdd3be21cf52c88337608b2",
+        "lib/_pystachy_unicodedata_names.py": "9b18f9e4aecb03f28672fdecce4fcf9d0ece0a1c565c7e9e0ce504fe4fc2bb28",
+        "lib/_pystachy_weakref.py": "da4181f6adb4cbbed1d3c45d95e32bd39e8ac210638ab902f26fb0b68bc7cbfe",
+        "lib/_weakrefset.py": "91895a451d06e9f521a1171b31b9b19bc9740f35af00d4fa106338ab7167c9ac",
+        "lib/bisect.py": "f1cf7b85fc36b5da249813fc5ab97d9464f8cc1bc817f7146206fa2713e35999",
+        "lib/codecs.py": "feafe30244cc2ac23a8f03ca6c8b106ef82dede1630aac103126767e123a3c42",
+        "lib/collections/__init__.py": "8a6533ddf04c4823e1c1da10925028613420cc4e5cb6264e6066fdd3739b4852",
+        "lib/colorsys.py": "65e3dfbf7bad61d4d7d7731a69dd7e75a347fd350d91327a51010a94e6fd2f1d",
+        "lib/contextlib.py": "08bf5d132ae0aceafcd94c72396e21fd45fc9cd1ba6e74807ce1e39f22d0d665",
+        "lib/csv.py": "29676a25a82679e93c6d0eb771a3f60890aedf49941206c0387ce59696b7c3c4",
+        "lib/curses/__init__.py": "91156d2c9afdc168cee4bb7085c8b16936ca7079fa4035ac4d7908712d86f394",
+        "lib/curses/ascii.py": "780dd8bbaf0ee7e832f164c1772953e694a9cd1031d1ab1471af65344d3645e6",
+        "lib/datetime.py": "d269c51c55e7668b988c8194a7a2e643a39aa3a2770a727c178a5c898b91c239",
+        "lib/difflib.py": "4d33db46d2f0748bd674b5ae2f52c59ab0cab0865c465a99ea9521d8751aea0f",
+        "lib/fnmatch.py": "fd1da199d0eeabc34ec9796d5a0790da6300fff4d15e16ee2d8ca26e6885eec5",
+        "lib/functools.py": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703",
+        "lib/genericpath.py": "cdac5a68dd738051e0d66fc81d5947d6a1776248fc6fe862253477608d870ec4",
+        "lib/getopt.py": "0d152bede49816f2924ffb944d86369099bea3b68ec1ee6f0c84c56251670241",
+        "lib/gettext.py": "97b7fa3d8112826dae4d021a6445fe791521524bd4b06e729d0497ed59a85e63",
+        "lib/heapq.py": "89bfee37cf47aecdf2a5ae8706b9805f1b1789d6e2edb7e3556fe8b42c5ecba3",
+        "lib/html/__init__.py": "067cf63fe3eee1bece807caba82a83d0307010bf1c30d9974e56ea704ddea893",
+        "lib/html/entities.py": "6fbeb0318e22905269b414b7d045574b8a98767f194310071b9177fadc738a2f",
+        "lib/html/parser.py": "f3ab8871f5342562328cd3ff8e65d5667c79d27189c7a0401982a193de7b4e90",
+        "lib/io.py": "31f5102c549e7051190c81838928db3f5c21863ac9cf63e7a493352e767fa71f",
+        "lib/json.py": "72fb29122acddd3b4d1bd43d8ae9e7fee506b1d7d4f30559edeeebd92ac044ce",
+        "lib/keyword.py": "833eb8e01577a8330f473ed49403fae4b5e6c95a66a81254405deb5c7ea7efb9",
+        "lib/mpz.py": "754e4844ff8425e92ee8cde26b1e84a4ad318312d1ca17d10ea724a6c4c46a45",
+        "lib/operator.py": "7d42396ef02c03aa69eb86643769cdb889ab9fc66ffd140bc0efa0896fc94c99",
+        "lib/posixpath.py": "69acb9e294987cd6056a2237048373cf8d6201faf1e43a49c38889b47d2fb28e",
+        "lib/pyobj.py": "2d673d060a386ceae11b381ca94ce71a4ec43be89e7c1c59651c936ffea9054e",
+        "lib/random.py": "91e7fa770bfc1affb76a6441a10e1913af8993d8c657c12ffe6cbadc3e3add1e",
+        "lib/re/__init__.py": "3e1c1d6312856cfb5c34d2ad5f24b933de77c00dd21d36f76f74c54f8cf0f856",
+        "lib/re/_constants.py": "d8c63d4b91920ceb02d7c00073a062504c349b3e0de83ba480c3f4d1bca442fe",
+        "lib/re/_sre.py": "c7e98ec21fe209e8d3833516f408a5b219002e26a2f630cceb933b3e12cca3c5",
+        "lib/re/_unicode.py": "61f1343780ef2537ff83813b7a2097a55482a51a23b172a609a6836af4197ea2",
+        "lib/shlex.py": "7392b7c738fe818c43a8031820bef96db0b9f598d354a9fac0b771546a4fdba4",
+        "lib/stat.py": "07217986d9b2172b509dab3578d18ac05ba768b418e1f1e8c90e38a8f7c2b3c6",
+        "lib/statistics.py": "05a091943eb6a01272f95c190e99bab0d33c72a108aef45261c838842301991b",
+        "lib/string.py": "5a6ea720721a70a9d76d30135697ea612b9cb6610366b38d8c1d997043508b27",
+        "lib/struct.py": "9c231f9497caf513a22dee8f790b07f969b0e45854a0bdd6dd84b492e08c2856",
+        "lib/textwrap.py": "5102b1deb8905ad1b31a2830f7ac5a980229e55f3bbce06fd64baa9930159c1b",
+        "lib/this.py": "481d0cb3de511eae0b5713dad18542b07eafd9c013bb7690f7497bad49923a71",
+        "lib/token.py": "1d81391050d5389c41f319ba4d42159c6247777400e48c27f2d28cac8ca4e6e2",
+        "lib/tomllib/__init__.py": "71f67036895f4c5acab942618af0cbd3d814451ba61e967f358d0f341a5b8f51",
+        "lib/tomllib/_parser.py": "11d40d79772967ebf81f5a0cf8dfa99608413b3ba6144d4beadae99baa28f279",
+        "lib/tomllib/_re.py": "17ec24dabd4e7089df6f04acacb331c85c437addbd2ab98bdfefcb18671ba056",
+        "lib/tomllib/_types.py": "e018cf69245202408dd97664cf76618e8cbb5efb6f43b134d29efd1d9221a6c0",
+        "lib/types.py": "d4215ea3abc258bdde763cc21ec4b0759f0c44e874b2483851c5681ae93f45e2",
+        "lib/urllib/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "lib/urllib/parse.py": "f5914562f9903ab7dde287fcb8bc0b1667a812f82e7e7c4419fed0493bfd0148",
+        "lib/warnings.py": "be4467c02d67040c87e31ede6787740815085298a880f2aa126b02fbabc0f133",
+        "lib/weakref.py": "781ef9b242fde2b923e070fce64b751954d42955c5c66b367e54941678ab722b",
+        "mpz/mpz.c": "2d648cec5de20c6bb7d4882a364cfc9fa1d355395255c1d0e82e4389bde03afa",
+        "pyembed.c": "98c9dd90c0964f885da08e1bd7622386421607723b7341b27783aaf3ff6a11b0",
+        "pyext.c": "4278d2506c88d20a08b4a5b5563237e6323372201603b6c5c78231ee52301109",
+        "pystachy.py": "a413782632f88d4746a81fd7cfb529d695ab36a35618522a83be1e25e1e31f29",
+        "runtime.c": "4bdf82b0663d1141667fe234029c8f92b6146978cff6457f79c1d554926f6637",
+        "runtime.py": "c45138f44a7aa25828b351b6d627e1a4f9fad69dc8a88532d053fb90e84beefb",
+        "ryu/common.h": "0bbd71d26da6193e678d0776cf418f43f287c73d6fd6725353df0aadf70f2a19",
+        "ryu/d2s.c": "c6357b5d53ac1ba7f4984847d3a76f0803e0a931b7d0b02680656576829cf1d2",
+        "ryu/d2s_intrinsics.h": "01d9bdaada67b42f2d1bbdebb3765867e6c44e3a181b806c1d7e851b93f9cc21",
+        "ryu/d2s_small_table.h": "01f3d8a3ff739a26ecbddc2caae44c91574592b1de7c01fec67bc2d06672b606",
+        "ryu/digit_table.h": "8b782573abc0b8554d74163ae6c02f0beb5c30d1e63eaebdb0ddf2c98d817e01",
+        "ryu/ryu.h": "b7feab0ba1df5e9ef3d602f386592ad152491405e49b408fb21c0e0e9e6bfb16",
+        "src/__init__.py": "c443ed6062edae246598189fb20f12799a5e87a04049acb855894652e3875af7",
+        "src/pystachy_compiler/__init__.py": "f60cd281f8ed4fd35776c9f4d40d6a1313c49a3cae5df61841028f711b9f13c8",
+        "src/pystachy_compiler/analysis.py": "5b3c134b21586a03909f89beddbff999f6f28f067ce1dd975fb46a4c1794fecd",
+        "src/pystachy_compiler/bigints.py": "888815dfc3b4a69caed4f88242863478c6b97471637b9f90c72185d09291cbe8",
+        "src/pystachy_compiler/builtins.py": "d0d25b4e975b1e7607131632656f17331ef3e4ac317fbed3a663977dd7614126",
+        "src/pystachy_compiler/calls.py": "1d9cff0879935d3dc48700ccd086b1b44e27641d142e8e71be8a2e24a31cbd55",
+        "src/pystachy_compiler/containers.py": "43a9d6b88602aa1feaecaeb1d11cc44d6fe87c057a6f156c4cf294b0129f1b5e",
+        "src/pystachy_compiler/conversions.py": "900a17d52ac83efb9bd82eb11723a001a51d6ac0f1af57becbf211363509daa5",
+        "src/pystachy_compiler/declarations.py": "d01904e710d79a12f2d33d4eda52c6e79e7605be08d5c974b2905098d6c62b87",
+        "src/pystachy_compiler/diagnostics.py": "4d256b7ea3ca66398723043deef4165bcfa076217f2ebd974746945ee04e6857",
+        "src/pystachy_compiler/driver.py": "48941caa98b340de4ec44ae03b1573f75828c24142eba88cc7c1ab617acea7b0",
+        "src/pystachy_compiler/dynamic.py": "7350dd8c95638ab416bce848d77347c8a75bd6cd9617e18c78e2fa42a8f69340",
+        "src/pystachy_compiler/emission.py": "5356b79e98096a2371c27c5d4caa32d1513a5b86894908d2b772189ed05867e3",
+        "src/pystachy_compiler/exceptions.py": "b2554ff2ac10570c010814a1c3740b6eb51d8cd9f79ac580d2fc323a68f90a30",
+        "src/pystachy_compiler/expressions.py": "5cb9ba837c5b4bd1f943ca21c4aa4dc886fff0eb1ac2c7e24fa4a2cc42084099",
+        "src/pystachy_compiler/flow.py": "cb6238905238d5dcd042b568f56243e9b407723a6e047d5f0cad478b060439c9",
+        "src/pystachy_compiler/functions.py": "6b2766311d39bcefa45a53d5ec03527935a42bcc9ebced029dbf83b5db7d1aaa",
+        "src/pystachy_compiler/gen.py": "6a66bc3ad42fc6d4cd95f04aa8ffa2cb041ad6b772ec0249a0759fc2c70893f6",
+        "src/pystachy_compiler/generators.py": "ca8611458ccc23c11fd095d1026b936caff86c100e410a833b202315a0778b63",
+        "src/pystachy_compiler/ir.py": "ad058f4b1a011b9fa101c2680eda11650f5b539fe8a259531f2a24689e806ffd",
+        "src/pystachy_compiler/ircheck.py": "781fa17c070480ed38ceb4d094757ac908e4ab027bb74af8b8ab6b405b5c0e60",
+        "src/pystachy_compiler/lexer.py": "1ca2874158eccdb0a4e3569a31940fb9b33a51fe2f06983be83de57d8d9fedeb",
+        "src/pystachy_compiler/llvm_abi.py": "7485f63097d4abac3de8b1fbfb782944ff7e3b68989d2fb266e40ebb8f8889ae",
+        "src/pystachy_compiler/loader.py": "e50415407b10644a710f666981e650414aeec439d2f46270c1bdc255b3590a49",
+        "src/pystachy_compiler/local_versions.py": "10bb0f2f0fb57c442af0807b5b4af6c95e8b950a97430161c97f766a3dc4b375",
+        "src/pystachy_compiler/lower_module.py": "826b72cefa86bf9c4d15a9ce50da10fbc98b5ed03b286d206cd8b5f0d8d47522",
+        "src/pystachy_compiler/lowering.py": "6866fc1a594081e14a081196fbed2c9d7394a6edeeec43a825e8404e321de125",
+        "src/pystachy_compiler/memory_ir.py": "c2544eda0bdb89ccb99ac1330c95d99974983cc7bdfa0d3a2b39a993c9f62bc1",
+        "src/pystachy_compiler/module.py": "3349556dee4dcda00013d770743f27d5dc3525b76cbd5e2ab312b14506e1f601",
+        "src/pystachy_compiler/names.py": "51eedecfa52aa390bdbe0e7303d6663fc0c32b3c74afce569a1a2aaf637a3fb5",
+        "src/pystachy_compiler/optimizations.py": "22e3a0ae01262b4f2c8520e70a0f603721ba7cfc713ddfc1edb21d7378187d95",
+        "src/pystachy_compiler/parser.py": "05c4617ef7ce82f2c270c39ed82dea409e10e5d984826cee759d8cd922c5705b",
+        "src/pystachy_compiler/program.py": "1f436207078f6cdca536061f509d7fba8dfa3e516c34a406d9ca7facf2a26c84",
+        "src/pystachy_compiler/reflection.py": "ed77b340da37e38d4249adbc8e569cf351f0258acd74fdf63365c9d7d8830aeb",
+        "src/pystachy_compiler/scalar_ir.py": "14bc0ce71b4cbf066e8a4cab2ea0bb5c0a53880997484d74f5ea3e9a6d30c05a",
+        "src/pystachy_compiler/scope.py": "d9af25da84ba62a17a6a1a0b7d48d078977dd364528c8ec8e4135cc438f10a97",
+        "src/pystachy_compiler/specs.py": "1f8a54f4cdb2de9b2293d22005229bbedc9d03be8d7ff4cad76f71481418ec96",
+        "src/pystachy_compiler/statements.py": "4bb9347b64952570845df754efbb1e6a3b02467b1b629dd9171e9b98d3d85e2d",
+        "src/pystachy_compiler/structs.py": "e873fd6a6aeaebf39f740de2859a5de9a2da316d7a8993c728889677125c3090",
+        "src/pystachy_compiler/syntax.py": "799e522034af31967517409654d5788179bb6dfa727be9f544a8855c90d3ecb9",
+        "src/pystachy_compiler/templates.py": "b587b346bea5087b3422ea5117e023b521205285f0dc3d622f3c9aed5a94c36f",
+        "src/pystachy_compiler/union_arithmetic.py": "6d6892c0d97667d7e8ffeb5293ccbbe24c76529328e4761ffec6831229c416dd",
+        "src/pystachy_compiler/union_proof.py": "8027ed7a77006053e2da8b0264d1d2bf12ea465d193d4ce49ecd581e0b436cd9",
+        "src/pystachy_compiler/union_state.py": "b845af16073f24e1e1245bdcb00d4324dbf1d657874604cb4b991d852a07b026",
+        "src/pystachy_compiler/unions.py": "133448300155804316b04d6b1e80d99ba606905ad267835007d0d68e77195de3",
+        "src/pystachy_compiler/utils.py": "0efd4bb4f572c22b361890849e4d67c54977b216652a29c397eb44c92426d2ee",
+        "src/pystachy_compiler/variables.py": "f4ea9b2eb58cb7339add9ced65d890f2f5b37d26f4919f463cbb50c54c11b086"
+      },
+      "tree": "903a72dce156018f83f69f1e8b4d74a6f14e99dd"
+    },
+    "main": {
+      "commit": "06e3ad5d08514ba31fb231fe4636a962fe6578e3",
+      "directory": "/workspace/scratch/e858f72517b9/baselines/main",
+      "git_status": "",
+      "input_sha256": {
+        "Makefile": "9d9574c44902625ce0c79e94c31513548080b0d7543c2ba82e6c707f28708997",
+        "lib/_markupbase.py": "6a294b294582f55905d310b8df054019e94f37b17eba3414be4e2cb61d5851d1",
+        "lib/_pyrandom.py": "5b37918369c0e4becdac2d012ffe9e40e314a330ee9f7b3fe2ce4cd3a926ff09",
+        "lib/_pystachy__io.py": "77ee03b3a67f79f49c3fe30666f4f5077bd41069797c727529a230c4caa0a117",
+        "lib/_pystachy_abc.py": "9f6f717c077b2dbac22e8dc9793373b939615a33f2698aaddd81ed905e5a48f8",
+        "lib/_pystachy_atexit.py": "a5ff97e421a4a8fd782e08a0124bac6a7b27486fc279cb4384655bc4b208d60c",
+        "lib/_pystachy_binascii.py": "c8ca70973dc409011ba89749878a2a205780fdc907437bc08521be0e3d07f848",
+        "lib/_pystachy_codecs.py": "fe8380d756e383192028c6a65d652047e9abb9c08b51e15aba5b35e8cf678acf",
+        "lib/_pystachy_iterators.py": "61894584c1fda85936a740d4dafa2c5d631f9b05f5022fca8913e4ad0a84b27e",
+        "lib/_pystachy_itertools.py": "14f451cf7647016ad8105aa988b9cbabe4fe3f5a08f2710f6ed2db5d81a00566",
+        "lib/_pystachy_json_any.py": "392d432c6ef3679f36bd3a86b302fe71858ff2d261bc25863c1673bf58944016",
+        "lib/_pystachy_mappingproxy.py": "e1d04e45f0b12e0e29fba497adf16f77864154c9e175a40065d2fd73654be70c",
+        "lib/_pystachy_object.py": "6a21df25fa11b3c80a70d95f310760d86adaeecd4a63e767bde5b9ecde63ca9c",
+        "lib/_pystachy_range.py": "50df392f248e25a79896007a3b0a23741f8f5f56622e7c56060ba9612292f8b2",
+        "lib/_pystachy_re_specialized.py": "d09604c416700c3a7acd3a9f8c6f7536289c895b2e72393a9875e68ed92e45bf",
+        "lib/_pystachy_string.py": "2e87bb96489d12051446c1b59c2e4ee65543a14f15d8eff3465a43f2e1f51434",
+        "lib/_pystachy_struct.py": "2f224f07dd5a8db374dc2604257cc7c41a4caa7140c5d2ddf30a34bc8f88f1d6",
+        "lib/_pystachy_thread.py": "62e5617d4f19c2deb6d714dbcc92ebaa6a97a78a596fc7d8c56c088cc4ad0f37",
+        "lib/_pystachy_types.py": "221d41e2f90c40493b3d712fb99cf39fb5a25c2306e63de7a89358e66cfcfe70",
+        "lib/_pystachy_unicodedata.py": "f1c877238f94279dfdb5a5f77396d9d25f504c409f34b78099613c6c3f71c7d0",
+        "lib/_pystachy_unicodedata_db.py": "d511e3c104f697e9e9ce150b97119ceb1fcaf00ebcdd3be21cf52c88337608b2",
+        "lib/_pystachy_unicodedata_names.py": "9b18f9e4aecb03f28672fdecce4fcf9d0ece0a1c565c7e9e0ce504fe4fc2bb28",
+        "lib/_pystachy_weakref.py": "da4181f6adb4cbbed1d3c45d95e32bd39e8ac210638ab902f26fb0b68bc7cbfe",
+        "lib/_weakrefset.py": "91895a451d06e9f521a1171b31b9b19bc9740f35af00d4fa106338ab7167c9ac",
+        "lib/bisect.py": "f1cf7b85fc36b5da249813fc5ab97d9464f8cc1bc817f7146206fa2713e35999",
+        "lib/codecs.py": "feafe30244cc2ac23a8f03ca6c8b106ef82dede1630aac103126767e123a3c42",
+        "lib/collections/__init__.py": "8a6533ddf04c4823e1c1da10925028613420cc4e5cb6264e6066fdd3739b4852",
+        "lib/colorsys.py": "65e3dfbf7bad61d4d7d7731a69dd7e75a347fd350d91327a51010a94e6fd2f1d",
+        "lib/contextlib.py": "08bf5d132ae0aceafcd94c72396e21fd45fc9cd1ba6e74807ce1e39f22d0d665",
+        "lib/csv.py": "29676a25a82679e93c6d0eb771a3f60890aedf49941206c0387ce59696b7c3c4",
+        "lib/curses/__init__.py": "91156d2c9afdc168cee4bb7085c8b16936ca7079fa4035ac4d7908712d86f394",
+        "lib/curses/ascii.py": "780dd8bbaf0ee7e832f164c1772953e694a9cd1031d1ab1471af65344d3645e6",
+        "lib/datetime.py": "d269c51c55e7668b988c8194a7a2e643a39aa3a2770a727c178a5c898b91c239",
+        "lib/difflib.py": "4d33db46d2f0748bd674b5ae2f52c59ab0cab0865c465a99ea9521d8751aea0f",
+        "lib/fnmatch.py": "fd1da199d0eeabc34ec9796d5a0790da6300fff4d15e16ee2d8ca26e6885eec5",
+        "lib/functools.py": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703",
+        "lib/genericpath.py": "cdac5a68dd738051e0d66fc81d5947d6a1776248fc6fe862253477608d870ec4",
+        "lib/getopt.py": "0d152bede49816f2924ffb944d86369099bea3b68ec1ee6f0c84c56251670241",
+        "lib/gettext.py": "97b7fa3d8112826dae4d021a6445fe791521524bd4b06e729d0497ed59a85e63",
+        "lib/heapq.py": "89bfee37cf47aecdf2a5ae8706b9805f1b1789d6e2edb7e3556fe8b42c5ecba3",
+        "lib/html/__init__.py": "067cf63fe3eee1bece807caba82a83d0307010bf1c30d9974e56ea704ddea893",
+        "lib/html/entities.py": "6fbeb0318e22905269b414b7d045574b8a98767f194310071b9177fadc738a2f",
+        "lib/html/parser.py": "f3ab8871f5342562328cd3ff8e65d5667c79d27189c7a0401982a193de7b4e90",
+        "lib/io.py": "31f5102c549e7051190c81838928db3f5c21863ac9cf63e7a493352e767fa71f",
+        "lib/json.py": "72fb29122acddd3b4d1bd43d8ae9e7fee506b1d7d4f30559edeeebd92ac044ce",
+        "lib/keyword.py": "833eb8e01577a8330f473ed49403fae4b5e6c95a66a81254405deb5c7ea7efb9",
+        "lib/mpz.py": "754e4844ff8425e92ee8cde26b1e84a4ad318312d1ca17d10ea724a6c4c46a45",
+        "lib/operator.py": "7d42396ef02c03aa69eb86643769cdb889ab9fc66ffd140bc0efa0896fc94c99",
+        "lib/posixpath.py": "69acb9e294987cd6056a2237048373cf8d6201faf1e43a49c38889b47d2fb28e",
+        "lib/pyobj.py": "2d673d060a386ceae11b381ca94ce71a4ec43be89e7c1c59651c936ffea9054e",
+        "lib/random.py": "91e7fa770bfc1affb76a6441a10e1913af8993d8c657c12ffe6cbadc3e3add1e",
+        "lib/re/__init__.py": "301df0312610d7ce92f7898db27b5e67e0ddf1cae07a2ed41773638919093e66",
+        "lib/re/_constants.py": "d8c63d4b91920ceb02d7c00073a062504c349b3e0de83ba480c3f4d1bca442fe",
+        "lib/re/_sre.py": "925eeba2c02e7d111e76def73d1df74c44db1a714b3f58bf4c7239d11d4418b8",
+        "lib/re/_unicode.py": "61f1343780ef2537ff83813b7a2097a55482a51a23b172a609a6836af4197ea2",
+        "lib/shlex.py": "7392b7c738fe818c43a8031820bef96db0b9f598d354a9fac0b771546a4fdba4",
+        "lib/stat.py": "07217986d9b2172b509dab3578d18ac05ba768b418e1f1e8c90e38a8f7c2b3c6",
+        "lib/statistics.py": "05a091943eb6a01272f95c190e99bab0d33c72a108aef45261c838842301991b",
+        "lib/string.py": "5a6ea720721a70a9d76d30135697ea612b9cb6610366b38d8c1d997043508b27",
+        "lib/struct.py": "9c231f9497caf513a22dee8f790b07f969b0e45854a0bdd6dd84b492e08c2856",
+        "lib/textwrap.py": "5102b1deb8905ad1b31a2830f7ac5a980229e55f3bbce06fd64baa9930159c1b",
+        "lib/this.py": "481d0cb3de511eae0b5713dad18542b07eafd9c013bb7690f7497bad49923a71",
+        "lib/token.py": "1d81391050d5389c41f319ba4d42159c6247777400e48c27f2d28cac8ca4e6e2",
+        "lib/tomllib/__init__.py": "71f67036895f4c5acab942618af0cbd3d814451ba61e967f358d0f341a5b8f51",
+        "lib/tomllib/_parser.py": "11d40d79772967ebf81f5a0cf8dfa99608413b3ba6144d4beadae99baa28f279",
+        "lib/tomllib/_re.py": "17ec24dabd4e7089df6f04acacb331c85c437addbd2ab98bdfefcb18671ba056",
+        "lib/tomllib/_types.py": "e018cf69245202408dd97664cf76618e8cbb5efb6f43b134d29efd1d9221a6c0",
+        "lib/types.py": "d4215ea3abc258bdde763cc21ec4b0759f0c44e874b2483851c5681ae93f45e2",
+        "lib/urllib/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "lib/urllib/parse.py": "f5914562f9903ab7dde287fcb8bc0b1667a812f82e7e7c4419fed0493bfd0148",
+        "lib/warnings.py": "be4467c02d67040c87e31ede6787740815085298a880f2aa126b02fbabc0f133",
+        "lib/weakref.py": "781ef9b242fde2b923e070fce64b751954d42955c5c66b367e54941678ab722b",
+        "mpz/mpz.c": "2d648cec5de20c6bb7d4882a364cfc9fa1d355395255c1d0e82e4389bde03afa",
+        "pyembed.c": "98c9dd90c0964f885da08e1bd7622386421607723b7341b27783aaf3ff6a11b0",
+        "pyext.c": "4278d2506c88d20a08b4a5b5563237e6323372201603b6c5c78231ee52301109",
+        "pystachy.py": "a413782632f88d4746a81fd7cfb529d695ab36a35618522a83be1e25e1e31f29",
+        "runtime.c": "1671393a715c9ca99ce96ac64127aeef7f449d6d565c974a7a4c00c41fd970f8",
+        "runtime.py": "c45138f44a7aa25828b351b6d627e1a4f9fad69dc8a88532d053fb90e84beefb",
+        "ryu/common.h": "0bbd71d26da6193e678d0776cf418f43f287c73d6fd6725353df0aadf70f2a19",
+        "ryu/d2s.c": "c6357b5d53ac1ba7f4984847d3a76f0803e0a931b7d0b02680656576829cf1d2",
+        "ryu/d2s_intrinsics.h": "01d9bdaada67b42f2d1bbdebb3765867e6c44e3a181b806c1d7e851b93f9cc21",
+        "ryu/d2s_small_table.h": "01f3d8a3ff739a26ecbddc2caae44c91574592b1de7c01fec67bc2d06672b606",
+        "ryu/digit_table.h": "8b782573abc0b8554d74163ae6c02f0beb5c30d1e63eaebdb0ddf2c98d817e01",
+        "ryu/ryu.h": "b7feab0ba1df5e9ef3d602f386592ad152491405e49b408fb21c0e0e9e6bfb16",
+        "src/__init__.py": "c443ed6062edae246598189fb20f12799a5e87a04049acb855894652e3875af7",
+        "src/pystachy_compiler/__init__.py": "f60cd281f8ed4fd35776c9f4d40d6a1313c49a3cae5df61841028f711b9f13c8",
+        "src/pystachy_compiler/analysis.py": "5b3c134b21586a03909f89beddbff999f6f28f067ce1dd975fb46a4c1794fecd",
+        "src/pystachy_compiler/bigints.py": "888815dfc3b4a69caed4f88242863478c6b97471637b9f90c72185d09291cbe8",
+        "src/pystachy_compiler/builtins.py": "d0d25b4e975b1e7607131632656f17331ef3e4ac317fbed3a663977dd7614126",
+        "src/pystachy_compiler/calls.py": "1d9cff0879935d3dc48700ccd086b1b44e27641d142e8e71be8a2e24a31cbd55",
+        "src/pystachy_compiler/containers.py": "43a9d6b88602aa1feaecaeb1d11cc44d6fe87c057a6f156c4cf294b0129f1b5e",
+        "src/pystachy_compiler/conversions.py": "900a17d52ac83efb9bd82eb11723a001a51d6ac0f1af57becbf211363509daa5",
+        "src/pystachy_compiler/declarations.py": "d01904e710d79a12f2d33d4eda52c6e79e7605be08d5c974b2905098d6c62b87",
+        "src/pystachy_compiler/diagnostics.py": "4d256b7ea3ca66398723043deef4165bcfa076217f2ebd974746945ee04e6857",
+        "src/pystachy_compiler/driver.py": "45dcbd9bf71f463e7772bce9f0c5d5b4e74c2fa5e91356746be4c976f07f1971",
+        "src/pystachy_compiler/dynamic.py": "7350dd8c95638ab416bce848d77347c8a75bd6cd9617e18c78e2fa42a8f69340",
+        "src/pystachy_compiler/emission.py": "5356b79e98096a2371c27c5d4caa32d1513a5b86894908d2b772189ed05867e3",
+        "src/pystachy_compiler/exceptions.py": "9315fbc0d29b843b16905bea441e61a85ee5000f8590aa8156c80da35066495a",
+        "src/pystachy_compiler/expressions.py": "5cb9ba837c5b4bd1f943ca21c4aa4dc886fff0eb1ac2c7e24fa4a2cc42084099",
+        "src/pystachy_compiler/flow.py": "cb6238905238d5dcd042b568f56243e9b407723a6e047d5f0cad478b060439c9",
+        "src/pystachy_compiler/functions.py": "faff8171d6f17fbd7bd11fbb907990bc3caee9adcceb7c5c7d3e12462a21c01e",
+        "src/pystachy_compiler/gen.py": "a0cc9b02b04b5095cf058ed70d5cbcd67e185e60d3e6ec9676fbca03ef82a759",
+        "src/pystachy_compiler/generators.py": "b8824c3d85dc674b1b2ec827ad88205a3f7ca211435bb05357165f75c3a3b23b",
+        "src/pystachy_compiler/ir.py": "e1bcdb6bd0b6a5d9738eca6073e3088e311a741ed61bb18a8292d21067402c31",
+        "src/pystachy_compiler/ircheck.py": "781fa17c070480ed38ceb4d094757ac908e4ab027bb74af8b8ab6b405b5c0e60",
+        "src/pystachy_compiler/lexer.py": "1ca2874158eccdb0a4e3569a31940fb9b33a51fe2f06983be83de57d8d9fedeb",
+        "src/pystachy_compiler/llvm_abi.py": "7485f63097d4abac3de8b1fbfb782944ff7e3b68989d2fb266e40ebb8f8889ae",
+        "src/pystachy_compiler/loader.py": "e50415407b10644a710f666981e650414aeec439d2f46270c1bdc255b3590a49",
+        "src/pystachy_compiler/local_versions.py": "10bb0f2f0fb57c442af0807b5b4af6c95e8b950a97430161c97f766a3dc4b375",
+        "src/pystachy_compiler/lower_module.py": "854471dc749104a3f3847d04b38c6c0e88f566592d1b065d50b8616f9c63bf40",
+        "src/pystachy_compiler/lowering.py": "14a55ab0861e4e51ca9fe6e133c01cdb5bf3461bda1f9631e83031d8cd764c63",
+        "src/pystachy_compiler/memory_ir.py": "c2544eda0bdb89ccb99ac1330c95d99974983cc7bdfa0d3a2b39a993c9f62bc1",
+        "src/pystachy_compiler/module.py": "3349556dee4dcda00013d770743f27d5dc3525b76cbd5e2ab312b14506e1f601",
+        "src/pystachy_compiler/names.py": "51eedecfa52aa390bdbe0e7303d6663fc0c32b3c74afce569a1a2aaf637a3fb5",
+        "src/pystachy_compiler/optimizations.py": "88fd9032a955aee8d3fcc0f02e044d81ff10a19bb4d6d701d8a75d7eb82c37ed",
+        "src/pystachy_compiler/parser.py": "05c4617ef7ce82f2c270c39ed82dea409e10e5d984826cee759d8cd922c5705b",
+        "src/pystachy_compiler/program.py": "cf3ad432a72dbe88ad6e3abfbe9c05b463e9f472d3f98c6be9f209797ee5a0f1",
+        "src/pystachy_compiler/reflection.py": "ed77b340da37e38d4249adbc8e569cf351f0258acd74fdf63365c9d7d8830aeb",
+        "src/pystachy_compiler/scalar_ir.py": "14bc0ce71b4cbf066e8a4cab2ea0bb5c0a53880997484d74f5ea3e9a6d30c05a",
+        "src/pystachy_compiler/scope.py": "d9af25da84ba62a17a6a1a0b7d48d078977dd364528c8ec8e4135cc438f10a97",
+        "src/pystachy_compiler/specs.py": "8a48e0de8200f6526b80e16e13588bf6ad926653a1fdb1277d9735baa51b2d64",
+        "src/pystachy_compiler/statements.py": "4bb9347b64952570845df754efbb1e6a3b02467b1b629dd9171e9b98d3d85e2d",
+        "src/pystachy_compiler/structs.py": "e873fd6a6aeaebf39f740de2859a5de9a2da316d7a8993c728889677125c3090",
+        "src/pystachy_compiler/syntax.py": "799e522034af31967517409654d5788179bb6dfa727be9f544a8855c90d3ecb9",
+        "src/pystachy_compiler/templates.py": "b587b346bea5087b3422ea5117e023b521205285f0dc3d622f3c9aed5a94c36f",
+        "src/pystachy_compiler/union_arithmetic.py": "6d6892c0d97667d7e8ffeb5293ccbbe24c76529328e4761ffec6831229c416dd",
+        "src/pystachy_compiler/union_proof.py": "8027ed7a77006053e2da8b0264d1d2bf12ea465d193d4ce49ecd581e0b436cd9",
+        "src/pystachy_compiler/union_state.py": "b845af16073f24e1e1245bdcb00d4324dbf1d657874604cb4b991d852a07b026",
+        "src/pystachy_compiler/unions.py": "133448300155804316b04d6b1e80d99ba606905ad267835007d0d68e77195de3",
+        "src/pystachy_compiler/utils.py": "0efd4bb4f572c22b361890849e4d67c54977b216652a29c397eb44c92426d2ee",
+        "src/pystachy_compiler/variables.py": "f4ea9b2eb58cb7339add9ced65d890f2f5b37d26f4919f463cbb50c54c11b086"
+      },
+      "tree": "db120afecf27ff03b08c25624dc64be8b06bac3b"
+    }
+  },
+  "status": "complete",
+  "timing_scope": "Tool wall observations are diagnostic, with a subprocess wrapper; they are not a timing series or normal-driver performance acceptance."
+}
