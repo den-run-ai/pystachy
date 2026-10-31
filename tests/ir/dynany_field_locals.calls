@@ -2,10 +2,10 @@
 @rf.f.items: pys_list_new pys_bytes_get pys_dyn_ref pys_list_append pys_raise
 @f.items: pys_list_new pys_bytes_get pys_dyn_ref pys_list_append pys_raise
 @m.Scan.__init__:
-@m.Scan.skip: pys_bytes_get pys_raise
-@m.Scan.end_of: pys_bytes_get pys_raise
+@m.Scan.skip:
+@m.Scan.end_of:
 @m.Scan.word: pys_raise
-@m.Scan.cut: pys_bytes_slice pys_bytes_decode
+@m.Scan.cut:
 @rf.m.Scan.skip: pys_bytes_get pys_raise
 @rf.m.Scan.word: pys_raise
 @rf.m.Scan.end_of: pys_bytes_get pys_raise

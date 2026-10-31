@@ -746,8 +746,155 @@ def recursion_partial(self) -> int:
     return count
 
 
+def recursion_cached(self) -> int:
+    # After a counted source child returns, its caller has at least one spare
+    # frame. Normal returns restore the incoming depth, and the public limit
+    # setter always rejects a limit at or below the currently active depth.
+    # Thus later returning calls/setters cannot take that last slot away. Keep
+    # the caller's own frame published, and remove only redundant leaf checks;
+    # its entry alone (which may consume the last slot) never establishes room.
+    # Unknown/foreign callbacks invalidate the fact, including transitively in
+    # a source callee. Handler and generator roots need a different edge proof.
+    if recursion_blocked(self):
+        return 0
+    nf = len(self.fns)
+    children = [recursion_partial_child(self, fn) for fn in self.fns]
+    bounds = [1 if child else 0 for child in children]
+    weights = [len(fn.slots) + sum(len(block.code) for block in fn.blocks) for fn in self.fns]
+    names: dict[str, str] = {}
+    total = 0
+    count = 0
+    for root in range(nf):
+        fn = self.fns[root]
+        if (not fn.counted or weights[root] > 2048 or fn.coro or fn.f.gen
+                or fn.f.export or fn.f.pyexport or fn.f.extern or len(fn.tries) > 0 or fn.gdepth != "" or fn.pads
+                or len(fn.blocks[0].code) < 2 or any(block.handler != "" for block in fn.blocks)):
+            continue
+        enter = fn.blocks[0].code[0]
+        sub = fn.blocks[0].code[1]
+        if (enter.op != "rt" or enter.s != "recursion.enter" or len(enter.r) != 1
+                or fn.rdepth != f"%t{enter.r[0]}" or sub.op != "scalar.bin" or sub.s != "sub"
+                or sub.t != "int" or len(sub.r) != 1 or len(sub.a) != 2
+                or sub.a[0].v != fn.rdepth or sub.a[1].v != "1"):
+            continue
+        if len(fn.loops) == 0 or not recursion_repeated(self, fn, bounds):
+            continue
+        succ = recursion_successors(fn)
+        back: list[list[int]] = [[] for _ in fn.blocks]
+        # Each operation either preserves, kills, or establishes the fact.
+        actions: list[list[int]] = []
+        for at in range(len(fn.blocks)):
+            for target in succ[at]:
+                back[target].append(at)
+            row: list[int] = []
+            for op in fn.blocks[at].code:
+                action = 0
+                if op.op.startswith("gen.") or self.opfx(op, fn.fa) & FXBIT["U"] != 0:
+                    action = -1
+                elif op.op == "call" and op.s in self.fll:
+                    callee = self.fns[self.fll[op.s]]
+                    if callee.counted and not callee.f.gen and not callee.coro:
+                        action = 1
+                row.append(action)
+            actions.append(row)
+        incoming = [False] * len(fn.blocks)
+        outgoing = [False] * len(fn.blocks)
+        work = list(range(len(fn.blocks)))
+        pos = 0
+        while pos < len(work):
+            at = work[pos]
+            pos += 1
+            state = at != 0 and len(back[at]) > 0 and all(outgoing[p] for p in back[at])
+            incoming[at] = state
+            for action in actions[at]:
+                if action != 0:
+                    state = action > 0
+            if state != outgoing[at]:
+                outgoing[at] = state
+                work.extend(succ[at])
+        wanted: dict[int, bool] = {}
+        selected: list[list[bool]] = []
+        for at in range(len(fn.blocks)):
+            state = incoming[at]
+            choices: list[bool] = []
+            for index in range(len(fn.blocks[at].code)):
+                op = fn.blocks[at].code[index]
+                child = self.fll.get(op.s, -1) if op.op == "call" else -1
+                take = state and child >= 0 and child < nf and children[child]
+                choices.append(take)
+                if take:
+                    wanted[child] = True
+                if actions[at][index] != 0:
+                    state = actions[at][index] > 0
+            selected.append(choices)
+        cost = sum(weights[child] for child in wanted if self.fns[child].f.ll not in names)
+        if len(wanted) == 0 or cost > 2048 or total + cost > 8192:
+            continue
+        total += cost
+        for child in wanted:
+            original = self.fns[child]
+            if original.f.ll not in names:
+                symbol = "@rc." + original.f.ll[1:]
+                names[original.f.ll] = symbol
+                fast = recursion_partial_header(original, symbol)
+                fast.f.name = original.f.name + "$recursioncached"
+                for block in original.blocks:
+                    copied = Blk(block.label)
+                    copied.code = [recursion_copy(op) for op in block.code]
+                    if block is original.blocks[0]:
+                        copied.code.pop(0)
+                    fast.blocks.append(copied)
+                # Terminal publication still enters ONE child frame because
+                # this caller is published; do not use rp2's two-frame bridge.
+                self.fll[symbol] = len(self.fns)
+                self.fns.append(fast)
+        for at in range(len(fn.blocks)):
+            for index in range(len(fn.blocks[at].code)):
+                if selected[at][index]:
+                    op = fn.blocks[at].code[index]
+                    op.s = names[op.s]
+        count += 1
+    return count
+
+
 def gen_recursionregion(self) -> int:
-    return recursion_bounded(self) + recursion_partial(self)
+    count = recursion_bounded(self) + recursion_partial(self) + recursion_cached(self)
+    for fn in self.fns:
+        # Full-region leaves already have one proven unchecked body. Retain the
+        # original callable's entry check, then tail-forward to that same body
+        # instead of compiling both copies. Partial children have observer
+        # bridges and cannot use this transformation. Do this after partial
+        # selection so its original leaf-body proof and budgets do not change.
+        # The matching @rf body exists only after the full bounded proof;
+        # a check-only original then has no remaining depth observers.
+        fast = self.fll.get("@rf." + fn.f.ll[1:], -1)
+        if (not fn.counted or fn.rdepth != "" or fast < 0 or is_tuple(fn.f.ret)
+                or len(fn.blocks[0].code) == 0):
+            continue
+        check = fn.blocks[0].code[0]
+        if check.op != "rt" or check.s != "recursion.check":
+            continue
+        call = Ins("call", fn.f.ret, self.fns[fast].f.ll)
+        call.a = [Val(f"%a{p}", fn.f.ptypes[p]) for p in fn.ps]
+        if identity_abi(fn.f):
+            call.a.extend([Val(f"%aid{p}", "dyn") for p in fn.ps if numeric_identity(fn.f.ptypes[p])])
+            if numeric_identity(fn.f.ret):
+                call.a.append(Val("%idret", "*dyn"))
+        ret = Ins("ret", "", "")
+        if fn.f.ret != "None":
+            fn.n += 1
+            call.r = [fn.n]
+            ret.a = [Val(f"%t{fn.n}", fn.f.ret)]
+        block = Blk("entry")
+        block.code = [recursion_copy(check), call, ret]
+        fn.blocks = [block]
+        fn.slots = []
+        fn.loops = []
+        fn.cold = {}
+        fn.coldh = {}
+        fn.fa = {}
+        count += 1
+    return count
 
 
 def gen_recursionleaf(self) -> int:

@@ -25,6 +25,55 @@ print(kernel(3))
 
 
 class TypedRecursionBoundedTests(unittest.TestCase):
+    def test_checked_leaf_shares_its_existing_unchecked_body(self):
+        ir, functions = compile_source("# pystachy: dynamic-any\n" + ORDINARY)
+        leaf = functions["@f.step"]
+        self.assertEqual([op[:2] for op in operations(leaf)],
+                         [("rt", "recursion.check"), ("call", "@rf.f.step"), ("ret", "")])
+        body = re.search(r"^define internal i64 @f\.step\(.*?^}", ir, re.M | re.S).group(0)
+        self.assertNotIn("alloca", body)
+        self.assertLess(body.index("@pys.recursion.check()"), body.index("musttail call"))
+        self.assertIn("musttail call i64 @rf.f.step(i64 %a0, ptr %aid0, ptr %idret)", body)
+        self.assertTrue(any(op[:2] == ("ovf", "+")
+                            for op in operations(functions["@rf.f.step"])))
+
+    def test_shared_void_leaf_keeps_the_guard_and_void_tail_signature(self):
+        ir, functions = compile_source('''
+seen: list[int] = []
+def visit(n: int) -> None:
+    seen.append(n)
+def batch(n: int) -> None:
+    for i in range(n):
+        visit(i)
+batch(3)
+visit(4)
+print(seen)
+''')
+        leaf = functions["@f.visit"]
+        self.assertEqual([op[:2] for op in operations(leaf)],
+                         [("rt", "recursion.check"), ("call", "@rf.f.visit"), ("ret", "")])
+        body = re.search(r"^define internal void @f\.visit\(.*?^}", ir, re.M | re.S).group(0)
+        self.assertIn("musttail call void @rf.f.visit(i64 %a0)", body)
+        self.assertIn("ret void", body)
+
+    def test_tuple_leaf_retains_its_fresh_return_body(self):
+        ir, functions = compile_source('''
+def pair(n: int) -> tuple[int, int]:
+    return (n, n + 1)
+def batch(n: int) -> int:
+    total = 0
+    for i in range(n):
+        left, right = pair(i)
+        total += left + right
+    return total
+print(batch(3))
+''')
+        self.assertIn("@rf.f.pair", functions)
+        self.assertTrue(any(op[0] == "alloc.fixed"
+                            for op in operations(functions["@f.pair"])))
+        self.assertRegex(ir, r"define internal \{i64, i64\} @v\.f\.pair\(")
+        self.assertNotIn("musttail call ptr @rf.f.pair", ir)
+
     def test_straight_line_helper_does_not_pay_an_unamortized_selector(self):
         source = '''
 def leaf(n: int) -> int:
@@ -78,6 +127,11 @@ print(helper(3))
         helper = ir.split(definition, 1)[1].split("\n}", 1)[0]
         self.assertNotIn("@pys_recursion_error", helper)
         self.assertNotIn("store ", helper)
+        source_body = re.search(r"^define internal i64 @f\.kernel\(.*?^}", ir, re.M | re.S).group(0)
+        self.assertNotIn("call i64 @pys.recursion.room", source_body)
+        self.assertRegex(source_body, r"%t\d+\.depth = load i64, ptr @pys_recursion_state, !tbaa !\d+")
+        self.assertRegex(source_body, r"%t\d+\.remaining = sub i64 %t\d+\.limit, %t\d+\.depth")
+        self.assertRegex(source_body, r"%t\d+\.enough = icmp sge i64 %t\d+\.remaining, 2")
 
     def test_maximal_entry_stays_separate_and_precedes_its_guarded_wrapper(self):
         ir, _ = compile_source(ORDINARY)

@@ -161,7 +161,8 @@ g.close()
         self.assertIn("store i64", helpers["@pys.recursion.restore"])
         source_body = ir.split("define internal i64 @f.identity(", 1)[1].split("\n}", 1)[0]
         self.assertIn("call i64 @pys.recursion.enter()", source_body)
-        self.assertIn("call void @pys.recursion.restore(i64", source_body)
+        self.assertRegex(source_body, r"store i64 %t\d+, ptr @pys_recursion_state, !tbaa !\d+")
+        self.assertNotIn("call void @pys.recursion.restore", source_body)
         self.assertNotIn("@pys_recursion_enter", source_body)
 
     def test_leaf_keeps_entry_failure_without_publishing_depth(self):

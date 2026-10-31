@@ -3,7 +3,7 @@ from __future__ import annotations
 from src.pystachy_compiler.diagnostics import fail, int_program
 from src.pystachy_compiler.ir import Blk, IFn, Ins, Val
 from src.pystachy_compiler.lower_module import struct_types
-from src.pystachy_compiler.specs import CHECKED, FCMP, FXBIT, GENDONE, GENNAME, GENNEW, GENRET, GENRETP, GENSLOTS, GENSLOTSB, GENSLOTSX, GENSTATE, GENVALP, ICMP, OBJECTC, RANGEC, STRLEN_RANGE, TBAA_BYTES, TBAA_FIELDS, TBAA_LEN, TBAA_SIZES
+from src.pystachy_compiler.specs import CHECKED, FCMP, FXBIT, GENDONE, GENNAME, GENNEW, GENRET, GENRETP, GENSLOTS, GENSLOTSB, GENSLOTSX, GENSTATE, GENVALP, ICMP, OBJECTC, RANGEC, STRLEN_RANGE, TBAA_BYTES, TBAA_DEPTH, TBAA_FIELDS, TBAA_LEN, TBAA_LIMIT, TBAA_SIZES
 from src.pystachy_compiler.utils import atomic_dict, atomic_list, identity_abi, numeric_identity, is_dict, is_tuple, lt, selem, takes_self, targs, tslots
 
 
@@ -287,6 +287,20 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         o.append("  unreachable")
     elif op == "unreachable":
         o.append("  unreachable")
+    elif op == "rt" and not self.rtmode and len(i.b) == 0 and i.s == "recursion.restore":
+        # These nonthrowing scalar operations need no helper call or LLVM
+        # inlining. Keep their typed effects and the same disjoint state tags.
+        o.append(f"  store i64 {i.a[0].v}, ptr @pys_recursion_state, !tbaa !{TBAA_DEPTH}")
+    elif op == "rt" and not self.rtmode and len(i.b) == 0 and i.s == "recursion.depth":
+        o.append(f"  %t{i.r[0]} = load i64, ptr @pys_recursion_state, !tbaa !{TBAA_DEPTH}")
+    elif op == "rt" and not self.rtmode and len(i.b) == 0 and i.s == "recursion.room":
+        r = f"%t{i.r[0]}"
+        o.append(f"  {r}.depth = load i64, ptr @pys_recursion_state, !tbaa !{TBAA_DEPTH}")
+        o.append(f"  {r}.limit.addr = getelementptr [2 x i64], ptr @pys_recursion_state, i64 0, i64 1")
+        o.append(f"  {r}.limit = load i64, ptr {r}.limit.addr, !tbaa !{TBAA_LIMIT}")
+        o.append(f"  {r}.remaining = sub i64 {r}.limit, {r}.depth")
+        o.append(f"  {r}.enough = icmp sge i64 {r}.remaining, {i.a[0].v}")
+        o.append(f"  {r} = zext i1 {r}.enough to i64")
     elif op == "rt":
         f = self.rtfns[i.s]
         if i.k > 0 and ((i.s == "list.new" and atomic_list(self.holes[i.k])) or (i.s == "dict.new" and atomic_dict(self.holes[i.k]))):
@@ -312,7 +326,14 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         o.append(f"  %t{i.r[0]} = {self.invoke(f'call {agg} @v.{i.s[1:]}({args})', i)}")
         self.vaggs[f"%t{i.r[0]}"] = agg
     elif op == "call":
-        c = self.invoke(f"call {lt(i.t)} {i.s}({', '.join([lt(v.t) + ' ' + v.v for v in i.a])})", i)
+        # A shared bounded leaf has no frame storage and forwards its exact
+        # signature (including identity operands) after the original check.
+        # Require a tail transfer so sharing cannot add a native stack frame.
+        shared = (fn.counted and len(fn.slots) == 0 and len(fn.blocks) == 1
+                  and len(fn.blocks[0].code) == 3
+                  and fn.blocks[0].code[0].op == "rt" and fn.blocks[0].code[0].s == "recursion.check"
+                  and fn.blocks[0].code[2].op == "ret" and i.s == "@rf." + fn.f.ll[1:])
+        c = self.invoke(f"{'musttail ' if shared else ''}call {lt(i.t)} {i.s}({', '.join([lt(v.t) + ' ' + v.v for v in i.a])})", i)
         o.append("  " + c if i.t == "None" else f"  %t{i.r[0]} = {c}")
     elif op == "icall":
         # a Callable's code (operand 0), called with its env and the arguments

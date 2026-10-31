@@ -1,0 +1,13 @@
+terminal last slot True
+terminal next slot True
+lowered limit True
+recovered 6 4
+terminal last slot True
+terminal next slot True
+lowered limit True
+recovered 6 4
+terminal last slot True
+terminal next slot True
+lowered limit True
+recovered 6 4
+[exit 0]
