@@ -604,12 +604,8 @@ def recursion_partial_wrap(self, fn: IFn, symbol: str) -> None:
     fn.blocks = [entry, fast] + fn.blocks
 
 
-def recursion_partial(self) -> int:
-    if recursion_blocked(self):
-        return 0
-    nf = len(self.fns)
-    children = [recursion_partial_child(self, fn) for fn in self.fns]
-    weights = [len(fn.slots) + sum(len(block.code) for block in fn.blocks) for fn in self.fns]
+def recursion_partial(self, children: list[bool], weights: list[int]) -> int:
+    nf = len(children)
     names: dict[str, str] = {}
     count = 0
     total = 0
@@ -758,7 +754,7 @@ def recursion_partial(self) -> int:
     return count
 
 
-def recursion_cached(self) -> int:
+def recursion_cached(self, children: list[bool], weights: list[int]) -> int:
     # After a counted source child returns, its caller has at least one spare
     # frame. Normal returns restore the incoming depth, and the public limit
     # setter always rejects a limit at or below the currently active depth.
@@ -767,12 +763,8 @@ def recursion_cached(self) -> int:
     # its entry alone (which may consume the last slot) never establishes room.
     # Unknown/foreign callbacks invalidate the fact, including transitively in
     # a source callee. Handler and generator roots need a different edge proof.
-    if recursion_blocked(self):
-        return 0
-    nf = len(self.fns)
-    children = [recursion_partial_child(self, fn) for fn in self.fns]
+    nf = len(children)
     bounds = [1 if child else 0 for child in children]
-    weights = [len(fn.slots) + sum(len(block.code) for block in fn.blocks) for fn in self.fns]
     names: dict[str, str] = {}
     total = 0
     count = 0
@@ -870,7 +862,16 @@ def recursion_cached(self) -> int:
 
 
 def gen_recursionregion(self) -> int:
-    count = recursion_bounded(self) + recursion_partial(self) + recursion_cached(self)
+    count = recursion_bounded(self)
+    if recursion_blocked(self):
+        return count
+    # Partial rewriting only changes enter-guarded roots, never the eligible
+    # check-only leaves. Rewritten roots cease to satisfy cached's entry shape,
+    # and all added private functions are uncounted. Share the original leaf
+    # proofs and weights; every caller or child that consumes them is unchanged.
+    children = [recursion_partial_child(self, fn) for fn in self.fns]
+    weights = [len(fn.slots) + sum(len(block.code) for block in fn.blocks) for fn in self.fns]
+    count += recursion_partial(self, children, weights) + recursion_cached(self, children, weights)
     for fn in self.fns:
         # Bounded and following-call leaves already have an unchecked body.
         # Retain the original callable's entry check and tail-forward to it.

@@ -1,11 +1,14 @@
 """Successful child calls prove later leaf checks redundant in an active frame."""
+from collections import Counter
 from pathlib import Path
 import re
 import sys
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from tools.test_typed_recursion import compile_source, operations
+from src.pystachy_compiler import optimizations
 
 
 PREFIX = '''
@@ -20,6 +23,59 @@ def recursive(n: int) -> int:
 
 
 class TypedRecursionCachedTests(unittest.TestCase):
+    def test_partial_and_cached_regions_share_stable_leaf_analysis(self):
+        source = PREFIX + '''
+def partial(n: int) -> int:
+    if n >= 0:
+        return leaf(n)
+    return recursive(-n)
+
+def kernel(n: int) -> int:
+    total = leaf(0)
+    for i in range(n):
+        total += leaf(i) + recursive(i)
+    return total
+
+print(partial(2), partial(-2), kernel(3))
+'''
+        proof = optimizations.recursion_partial_child
+        cached = optimizations.recursion_cached
+
+        for prefix in ("", "# pystachy: dynamic-any\n"):
+            with self.subTest(dynamic=bool(prefix)):
+                calls = Counter()
+
+                def count(g, fn, calls=calls):
+                    calls[fn.f.ll] += 1
+                    return proof(g, fn)
+
+                with patch.object(optimizations, "recursion_partial_child", count):
+                    shared, functions = compile_source(prefix + source)
+                self.assertTrue(calls)
+                self.assertEqual(set(calls.values()), {1})
+                for symbol in ("@rp.f.partial", "@rp2.f.leaf", "@rc.f.leaf"):
+                    self.assertIn(symbol, functions)
+
+                def recompute(g, children, weights):
+                    # Independently repeat the old analysis after partial
+                    # cloning. Only unchanged eligible leaves and unchanged
+                    # enter-guarded callers can consume the saved weights.
+                    fresh_children = [proof(g, fn) for fn in g.fns]
+                    fresh_weights = [len(fn.slots) + sum(len(b.code) for b in fn.blocks)
+                                     for fn in g.fns]
+                    self.assertEqual(fresh_children[:len(children)], children)
+                    for at, child in enumerate(children):
+                        fn = g.fns[at]
+                        entry = fn.blocks[0].code[0]
+                        if child or (entry.op, entry.s) == ("rt", "recursion.enter"):
+                            self.assertEqual(fresh_weights[at], weights[at])
+                    self.assertFalse(any(fresh_children[len(children):]))
+                    return cached(g, fresh_children, fresh_weights)
+
+                with patch.object(optimizations, "recursion_cached", recompute):
+                    repeated, _ = compile_source(prefix + source)
+                self.assertEqual(shared, repeated)
+
     def test_checked_leaf_shares_exact_identity_signature(self):
         ir, functions = compile_source("# pystachy: dynamic-any\n" + PREFIX + '''
 def kernel(n: int) -> int:
