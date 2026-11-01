@@ -46,7 +46,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        variant: [opt-1, opt-2, opt-3, opt-4, opt-5, opt-6, cflags-O0]
+        variant: [opt-1, opt-2, opt-3, opt-4, opt-5, cflags-O0]
         shard: [0/4, 1/4, 2/4, 3/4]
     env:
       PYSTACHY_LLVM: /usr/lib/llvm-18/bin

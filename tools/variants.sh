@@ -1,12 +1,12 @@
 #!/bin/sh
 # The corpus (tests/run.sh, JIT and AOT) in configurations that make verify does not test and that
 # must change no result (make variants; docs/testing.md#configuration-variants):
-#   opt-1 ... opt-6  PYSTACHY_OPT turning off the passes on the IR (specs.py's OPTS) that rows 1 to 6
+#   opt-1 ... opt-5  PYSTACHY_OPT turning off the passes on the IR (specs.py's OPTS) that rows 1 to 5
 #                    of a covering array leave off. Its row 0 is every pass on, the default that verify
 #                    tests (verify also turns them all off); with it, these rows run every two passes in
 #                    each of their four on/off combinations. A pass's column is a distinct set of 3 of
-#                    the 7 rows that includes row 0: two columns share row 0, each has a row the other
-#                    lacks, and some row is in neither. Fifteen sets exist; a new pass takes the next
+#                    the 6 rows that includes row 0: two columns share row 0, each has a row the other
+#                    lacks, and some row is in neither. Ten such sets exist; a new pass takes the next
 #   cflags-O0        PYSTACHY_CFLAGS=-O0: the runtime unoptimized, and with it an AOT program's whole
 #                    module, whose IR then runs as the compiler emitted it. The runtime's frames keep
 #                    every local in memory, which changes the dead words that the conservative
@@ -37,13 +37,13 @@ $PY -I - "$ROOT" > "$W/rows" <<'EOF' || { echo "tools/variants.sh: $PY cannot re
 import itertools, sys
 sys.path.insert(0, sys.argv[1])
 from src.pystachy_compiler.specs import OPTS
-cols = [c for c in itertools.combinations(range(7), 3) if 0 in c]
+cols = [c for c in itertools.combinations(range(6), 3) if 0 in c]
 if len(OPTS) > len(cols):
     raise SystemExit(f"{len(OPTS)} passes, but the array has {len(cols)} columns: widen it")
-rows = [[r in cols[j] for j in range(len(OPTS))] for r in range(7)]
+rows = [[r in cols[j] for j in range(len(OPTS))] for r in range(6)]
 for a, b in itertools.combinations(range(len(OPTS)), 2):
     assert len({(row[a], row[b]) for row in rows}) == 4, (OPTS[a], OPTS[b])
-for r in range(1, 7):
+for r in range(1, 6):
     print(f"opt-{r}", ",".join("-" + OPTS[j] for j in range(len(OPTS)) if not rows[r][j]))
 EOF
 all="$(cut -d' ' -f1 "$W/rows" | tr '\n' ' ')cflags-O0"
