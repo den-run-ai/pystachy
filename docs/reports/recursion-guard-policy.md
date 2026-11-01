@@ -169,11 +169,30 @@ A single "remaining frames" counter updated by read-modify-write instructions wo
 shorten the memory protocol, but it puts a second store-to-load dependency on every call's
 path, so it was not adopted without a timing result that favors it.
 
+### A resume that exceeds the limit
+
+A review of e79e451d found that a counted resume whose entry exceeded the limit raised
+`RecursionError` in the consumer but left the generator suspended, so a later `next()`
+resumed it, where CPython has cleared its frame: its `finally` blocks do not run, and
+`next()`, `send()`, `close()` and `throw()` then find it finished
+(`tests/programs/generators/gen_recursion_resume_limit.py`). A counted resume now enters with
+`recursion.resume`, given the generator's state word, whose overflow edge marks the generator
+finished before it raises. The first version of that fix,
+[c8d4ade1](https://github.com/den-run-ai/pystachy/commit/c8d4ade1),
+stored the mark before every counted entry instead, and cost the `generators` executable 2.9%
+more instructions and its JIT run 1.1%. On the cold path
+([338fec59](https://github.com/den-run-ai/pystachy/commit/338fec59)), the executable's count
+equals e79e451d's, the JIT run's is 0.06% higher, the plain generator loop's is unchanged and
+the frontend's are 0.01% lower. The tables above were measured with 55a7f4d7's compiler, whose
+counts these match within 0.1 point. With the fix the self-hosted compiler's IR is 788,316
+lines.
+
 ## Validation of the candidate
 
 Local, on the host above. The checks ran with 3d436d8b's compiler; after the wrappers became
 `noinline` (55a7f4d7), its bootstrap, IR checks, unit tests, JIT dead-code probe and the
-recursion, generator and regex cases ran again (the last rows). CI's results are in the PR.
+recursion, generator and regex cases ran again, and after the review's fixes (338fec59) the
+checks of the last rows. CI's results are in the PR.
 
 | Check | Result |
 |---|---|
@@ -192,6 +211,12 @@ recursion, generator and regex cases ran again (the last rows). CI's results are
 | 55a7f4d7: `make` bootstrap | Three matching compiler IR stages (788,153 lines) and runtime IR stages (18,805 lines); compiler SHA-256 `542259a4…` |
 | 55a7f4d7: `tools/check_ir.sh`, unit tests, `tools/jitprobe.py` | All 2,133 programs; 71 tests of `test_typed_recursion.py`, `test_frame_fields.py`, `test_identity_scope.py` and `test_inspect_compiler.py`; hosted and native probes pass |
 | 55a7f4d7: `make test` of the recursion, generator, regex, recursion-exception, dynamic-`Any` recursion, scoped-file and deviation cases | 48 cases, 96 passed in JIT and AOT |
+| 338fec59: `make` bootstrap | Three matching compiler IR stages (788,316 lines) and runtime IR stages (18,805 lines); compiler SHA-256 `1cca29c4…` |
+| 338fec59: IR, diagnostics and exit statuses against e79e451d's compiler: 3,929 programs, `irsame`'s corpus with `bench/recursion` and `bench/smoke` | No exit status or diagnostic changed, apart from the library's checkout path (e79e451d's compiler ran from outside the checkout). 3,806 compile to identical IR, among them the compiler and `runtime.py`; 63 differ only in their 1,493 counted resumes, which call `pys.recursion.resume` with the state word, and in that helper and its declaration; 60 whose resumes do not count differ in the declaration alone |
+| 338fec59: `tools/check_ir.sh` | All 2,134 programs |
+| 338fec59: generator, recursion and deviation cases, JIT and AOT | 63 cases, 126 passed, and 126 with `PYSTACHY_GC_STRESS_PROGRAM=1` |
+| 338fec59: `make check-runtime check-fast lint`; Lint's `test_*verif*.py` | Pass: 353 tests; 99 tests (on 871ff2bb, whose harness is the same) |
+| 338fec59: negative controls | `gen_recursion_resume_limit.py` differs from CPython in five of its cases with e79e451d's compiler; `test_typed_recursion.py`'s two resume tests fail on e79e451d's tree |
 
 Three checks failed on the way and were fixed: `test_frame_fields.py`, until
 [3cf9129e](https://github.com/den-run-ai/pystachy/commit/3cf9129e0f669c6417dbf33f08bc9cc23c7f47c1)
