@@ -1,0 +1,24 @@
+{
+  "failed_steps": [
+    {
+      "log": "build/verify/check-ir.log",
+      "name": "check-ir",
+      "result": "fail",
+      "seconds": 75.503
+    }
+  ],
+  "head": "1ff5efe4c4425b3728e138fa05a44856202fdea5",
+  "job_id": 124734277124,
+  "log": "contracts-failure.log",
+  "reason": "tests/ir/index_key.calls runtime-call inventory differs; 1 of 2136 programs failed expectations, zero failed compilation.",
+  "report_sha256": "b7cbd6ff3a63ecd2ea6f77f67bb269ce7d4be8735383d72de5b02e5afa198f41",
+  "result": "fail",
+  "run_id": 41267553971,
+  "summary": {
+    "failed": 1,
+    "passed": 21,
+    "seconds": 316.135,
+    "steps": 22
+  },
+  "synthetic_merge": "e55d22024299083ca86f551b29cb1550daee3cd3"
+}

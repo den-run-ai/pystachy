@@ -1,0 +1,37 @@
+{
+  "case_count": 3924,
+  "changed_diagnostics": 61,
+  "changed_ir": 238,
+  "changed_statuses": 0,
+  "complete": true,
+  "extra_case_count": 4,
+  "extra_cases": [
+    "bench/recursion/json_calls.py",
+    "bench/recursion/json_file_calls.py",
+    "bench/recursion/object_calls.py",
+    "bench/recursion/ordinary_calls.py"
+  ],
+  "gate_passed": false,
+  "inputs_stable": true,
+  "ir_new_lines": 67411,
+  "ir_old_lines": 186820,
+  "missing": [],
+  "omitted_rows": 3924,
+  "raw_comparison": {
+    "gzip_bytes": 612897,
+    "gzip_sha256": "7e72ad7075a1f0ea35f93907d0a87fd4b9c068208897903ae6c84fff5e3a3dfa",
+    "path": "local/corpus-final/comparison.json.gz",
+    "raw_bytes": 7569203,
+    "raw_sha256": "a98b4bd77504a8d7f33d7fc7dd55d40b7ebc99ad2065a606ba64d7eb914e54d3"
+  },
+  "recorded_cases": 3924,
+  "schema": 1,
+  "standard_case_count": 3920,
+  "status": "failed",
+  "strict_differences": 299,
+  "strict_exit_code": 1,
+  "strict_gate_passed": false,
+  "summary_note": "All original top-level fields except rows are retained. Full exact rows remain in the gzip addendum; strict failure is unchanged.",
+  "summary_schema": 1,
+  "validation_errors": []
+}

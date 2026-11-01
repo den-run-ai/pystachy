@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "pr_number": 996,
+  "repository": "den-run-ai/pystachy",
+  "captured_at": "2026-11-01T03:05:01.991Z",
+  "head": "1ff5efe4c4425b3728e138fa05a44856202fdea5",
+  "base": "07b26e02425d023288ed95a9d2a5077be5aeb45e",
+  "synthetic_merge": "e55d22024299083ca86f551b29cb1550daee3cd3",
+  "tree": "5459378ebc5816fb1a410236a75c9a78b61f4d60",
+  "merge_parents": [
+    "07b26e02425d023288ed95a9d2a5077be5aeb45e",
+    "1ff5efe4c4425b3728e138fa05a44856202fdea5"
+  ],
+  "draft": true,
+  "state": "open",
+  "merge_commit_api": {
+    "sha": "e55d22024299083ca86f551b29cb1550daee3cd3",
+    "node_id": "C_kwDOU_6QTtoAKGU1NWQyMjAyNDI5OTA4M2NhODZmNTUxYjI5Y2IxNTUwZGFlZTNjZDM",
+    "url": "https://api.github.com/repos/den-run-ai/pystachy/git/commits/e55d22024299083ca86f551b29cb1550daee3cd3",
+    "html_url": "https://github.com/den-run-ai/pystachy/commit/e55d22024299083ca86f551b29cb1550daee3cd3",
+    "author": {
+      "name": "Denis Akhiyarov",
+      "email": "denis.akhiyarov@gmail.com",
+      "date": "2026-11-01T03:02:29Z"
+    },
+    "committer": {
+      "name": "GitHub",
+      "email": "noreply@github.com",
+      "date": "2026-11-01T03:02:29Z"
+    },
+    "tree": {
+      "sha": "5459378ebc5816fb1a410236a75c9a78b61f4d60",
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/git/trees/5459378ebc5816fb1a410236a75c9a78b61f4d60"
+    },
+    "message": "Merge 1ff5efe4c4425b3728e138fa05a44856202fdea5 into 07b26e02425d023288ed95a9d2a5077be5aeb45e",
+    "parents": [
+      {
+        "sha": "07b26e02425d023288ed95a9d2a5077be5aeb45e",
+        "url": "https://api.github.com/repos/den-run-ai/pystachy/git/commits/07b26e02425d023288ed95a9d2a5077be5aeb45e",
+        "html_url": "https://github.com/den-run-ai/pystachy/commit/07b26e02425d023288ed95a9d2a5077be5aeb45e"
+      },
+      {
+        "sha": "1ff5efe4c4425b3728e138fa05a44856202fdea5",
+        "url": "https://api.github.com/repos/den-run-ai/pystachy/git/commits/1ff5efe4c4425b3728e138fa05a44856202fdea5",
+        "html_url": "https://github.com/den-run-ai/pystachy/commit/1ff5efe4c4425b3728e138fa05a44856202fdea5"
+      }
+    ],
+    "verification": {
+      "verified": true,
+      "reason": "valid",
+      "signature": "-----BEGIN PGP SIGNATURE-----\n\nwsFcBAABCAAQBQJq5qvFCRC1aQ7uu5UhlAAA+fMQAFZ/Nlj+ONrIToDuIIKj8hLK\ny9XbOemJcbM/Jngj9JIn3PlETIX4WjA/U7z9T9bvg6Wv7jt66eLrhj0yeSezQ4zV\nsRS6PdudfyUdhRoWcK5FGYFYh3dRm8NAZBVZ7q/A/M2MKPQjcpn7ZiNWuMNj4BzA\nwi4rQ003yLiLDbC0Ef35zFWOzliZajcikUE8BsbexznNwUAoj4J3sJ4xu8QpWaSR\n/NV6TOgPm+sEcpuTDBGa65jZbVP5SzGcnsMbhdIVNqSWOj5tF326tX9snxd7vvxf\nL7InUgeGu9yckQy0CyXFkxRc3xcWz2oVEauodezIUIH4d3T5vkQ1aHjQ2se92lPQ\nfbh0NVGujaoMcQpxz55TlTPhPyeXb37fQPC+qobvw7PplVVgHPN8nqBXjzeWLQt7\nfukeww05bpKD7nb3E+SR719aXiBq/D+pVOZLE8FU+Fa0NoErYqBZIoDGEolipOFq\n4kk7LBXGEWphjkVQoZ34WoJd/WmSJoNEyA74R2H3u5owla5tLNOiE4kukwxn/uM0\nD1K9Dk0M4/gGurqPjGDuWu6/6Pmg3uCeAtCtCfqaw6aOFpqqf12P1y1IyAa1q352\niBKTMt9mhYldNxCNCh5a9Sh0PTz8xGRAweYL4Dwni7nTl5pjx2DKcpAKUyd21YHV\nFDQxtZourWnUkz4Rv8jH\n=sqyN\n-----END PGP SIGNATURE-----\n",
+      "payload": "tree 5459378ebc5816fb1a410236a75c9a78b61f4d60\nparent 07b26e02425d023288ed95a9d2a5077be5aeb45e\nparent 1ff5efe4c4425b3728e138fa05a44856202fdea5\nauthor Denis Akhiyarov <denis.akhiyarov@gmail.com> 1793502149 +0000\ncommitter GitHub <noreply@github.com> 1793502149 +0000\n\nMerge 1ff5efe4c4425b3728e138fa05a44856202fdea5 into 07b26e02425d023288ed95a9d2a5077be5aeb45e\n",
+      "verified_at": "2026-11-01T03:02:29Z"
+    }
+  }
+}

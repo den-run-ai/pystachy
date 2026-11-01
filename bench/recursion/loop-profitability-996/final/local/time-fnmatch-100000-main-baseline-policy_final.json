@@ -1,0 +1,307 @@
+{
+  "action": "time",
+  "mode": "fnmatch",
+  "n": 100000,
+  "controller_sha256": "98269ef2e31c5e50d00e6c24e0729dc4d2999c1b73058d0b4040da24dde21927",
+  "python": "3.13.16 (main, Oct 14 2026, 01:04:01) [Clang 23.1.3 ]",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.39",
+  "affinity": [
+    0
+  ],
+  "oracle": "600000\n",
+  "binary_sha256": {
+    "main": "0b876f9394c97479660b527f3fffb0a78c5603b281db573e2e66788fd992a427",
+    "baseline": "dc6cf0f59bb0716cdcfe9b6debac79b98895ff1eca6a1fc75368b2f7418a339d",
+    "policy_final": "2bf62285198b4f9a9fd5520a4b4fd0691009a96b6a9cf7ccc1ddf653227cf48a"
+  },
+  "observations": [
+    {
+      "main": {
+        "command": [
+          "/workspace/scratch/8f4dd6deebd9/prototype-996-final/main/text",
+          "fnmatch",
+          "100000"
+        ],
+        "cwd": "/workspace/scratch/8f4dd6deebd9/pystachy-main",
+        "wall_s": 2.2811847909979406,
+        "returncode": 0,
+        "cpu_s": 2.2773260000000013,
+        "stdout": "600000\n",
+        "stderr": "seconds 2.269068781999522\n",
+        "loop_s": 2.269068781999522,
+        "binary_sha256": "0b876f9394c97479660b527f3fffb0a78c5603b281db573e2e66788fd992a427"
+      },
+      "baseline": {
+        "command": [
+          "/workspace/scratch/8f4dd6deebd9/prototype-996-final/baseline/text",
+          "fnmatch",
+          "100000"
+        ],
+        "cwd": "/workspace/scratch/8f4dd6deebd9/pystachy-baseline",
+        "wall_s": 2.2933442880021175,
+        "returncode": 0,
+        "cpu_s": 2.29188,
+        "stdout": "600000\n",
+        "stderr": "seconds 2.286278443003539\n",
+        "loop_s": 2.286278443003539,
+        "binary_sha256": "dc6cf0f59bb0716cdcfe9b6debac79b98895ff1eca6a1fc75368b2f7418a339d"
+      },
+      "policy_final": {
+        "command": [
+          "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/text",
+          "fnmatch",
+          "100000"
+        ],
+        "cwd": "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final",
+        "wall_s": 2.378725997004949,
+        "returncode": 0,
+        "cpu_s": 2.375492999999998,
+        "stdout": "600000\n",
+        "stderr": "seconds 2.368725407999591\n",
+        "loop_s": 2.368725407999591,
+        "binary_sha256": "2bf62285198b4f9a9fd5520a4b4fd0691009a96b6a9cf7ccc1ddf653227cf48a"
+      }
+    },
+    {
+      "main": {
+        "command": [
+          "/workspace/scratch/8f4dd6deebd9/prototype-996-final/main/text",
+          "fnmatch",
+          "100000"
+        ],
+        "cwd": "/workspace/scratch/8f4dd6deebd9/pystachy-main",
+        "wall_s": 2.255291080000461,
+        "returncode": 0,
+        "cpu_s": 2.2525820000000043,
+        "stdout": "600000\n",
+        "stderr": "seconds 2.2471616950060707\n",
+        "loop_s": 2.2471616950060707,
+        "binary_sha256": "0b876f9394c97479660b527f3fffb0a78c5603b281db573e2e66788fd992a427"
+      },
+      "policy_final": {
+        "command": [
+          "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/text",
+          "fnmatch",
+          "100000"
+        ],
+        "cwd": "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final",
+        "wall_s": 2.434567425996647,
+        "returncode": 0,
+        "cpu_s": 2.433515999999999,
+        "stdout": "600000\n",
+        "stderr": "seconds 2.4286144289944787\n",
+        "loop_s": 2.4286144289944787,
+        "binary_sha256": "2bf62285198b4f9a9fd5520a4b4fd0691009a96b6a9cf7ccc1ddf653227cf48a"
+      },
+      "baseline": {
+        "command": [
+          "/workspace/scratch/8f4dd6deebd9/prototype-996-final/baseline/text",
+          "fnmatch",
+          "100000"
+        ],
+        "cwd": "/workspace/scratch/8f4dd6deebd9/pystachy-baseline",
+        "wall_s": 2.327955127999303,
+        "returncode": 0,
+        "cpu_s": 2.326403999999998,
+        "stdout": "600000\n",
+        "stderr": "seconds 2.321551280998392\n",
+        "loop_s": 2.321551280998392,
+        "binary_sha256": "dc6cf0f59bb0716cdcfe9b6debac79b98895ff1eca6a1fc75368b2f7418a339d"
+      }
+    },
+    {
+      "baseline": {
+        "command": [
+          "/workspace/scratch/8f4dd6deebd9/prototype-996-final/baseline/text",
+          "fnmatch",
+          "100000"
+        ],
+        "cwd": "/workspace/scratch/8f4dd6deebd9/pystachy-baseline",
+        "wall_s": 2.30501537300006,
+        "returncode": 0,
+        "cpu_s": 2.302703000000003,
+        "stdout": "600000\n",
+        "stderr": "seconds 2.298436535995279\n",
+        "loop_s": 2.298436535995279,
+        "binary_sha256": "dc6cf0f59bb0716cdcfe9b6debac79b98895ff1eca6a1fc75368b2f7418a339d"
+      },
+      "main": {
+        "command": [
+          "/workspace/scratch/8f4dd6deebd9/prototype-996-final/main/text",
+          "fnmatch",
+          "100000"
+        ],
+        "cwd": "/workspace/scratch/8f4dd6deebd9/pystachy-main",
+        "wall_s": 2.2359220250000362,
+        "returncode": 0,
+        "cpu_s": 2.23464,
+        "stdout": "600000\n",
+        "stderr": "seconds 2.230192866001744\n",
+        "loop_s": 2.230192866001744,
+        "binary_sha256": "0b876f9394c97479660b527f3fffb0a78c5603b281db573e2e66788fd992a427"
+      },
+      "policy_final": {
+        "command": [
+          "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/text",
+          "fnmatch",
+          "100000"
+        ],
+        "cwd": "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final",
+        "wall_s": 2.322827577998396,
+        "returncode": 0,
+        "cpu_s": 2.3202579999999977,
+        "stdout": "600000\n",
+        "stderr": "seconds 2.3143281459997525\n",
+        "loop_s": 2.3143281459997525,
+        "binary_sha256": "2bf62285198b4f9a9fd5520a4b4fd0691009a96b6a9cf7ccc1ddf653227cf48a"
+      }
+    },
+    {
+      "baseline": {
+        "command": [
+          "/workspace/scratch/8f4dd6deebd9/prototype-996-final/baseline/text",
+          "fnmatch",
+          "100000"
+        ],
+        "cwd": "/workspace/scratch/8f4dd6deebd9/pystachy-baseline",
+        "wall_s": 2.457017808003002,
+        "returncode": 0,
+        "cpu_s": 2.454345000000003,
+        "stdout": "600000\n",
+        "stderr": "seconds 2.4493774420043337\n",
+        "loop_s": 2.4493774420043337,
+        "binary_sha256": "dc6cf0f59bb0716cdcfe9b6debac79b98895ff1eca6a1fc75368b2f7418a339d"
+      },
+      "policy_final": {
+        "command": [
+          "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/text",
+          "fnmatch",
+          "100000"
+        ],
+        "cwd": "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final",
+        "wall_s": 2.4754501300049014,
+        "returncode": 0,
+        "cpu_s": 2.4740309999999965,
+        "stdout": "600000\n",
+        "stderr": "seconds 2.468768443999579\n",
+        "loop_s": 2.468768443999579,
+        "binary_sha256": "2bf62285198b4f9a9fd5520a4b4fd0691009a96b6a9cf7ccc1ddf653227cf48a"
+      },
+      "main": {
+        "command": [
+          "/workspace/scratch/8f4dd6deebd9/prototype-996-final/main/text",
+          "fnmatch",
+          "100000"
+        ],
+        "cwd": "/workspace/scratch/8f4dd6deebd9/pystachy-main",
+        "wall_s": 2.627489477999916,
+        "returncode": 0,
+        "cpu_s": 2.625581000000002,
+        "stdout": "600000\n",
+        "stderr": "seconds 2.6199428609979805\n",
+        "loop_s": 2.6199428609979805,
+        "binary_sha256": "0b876f9394c97479660b527f3fffb0a78c5603b281db573e2e66788fd992a427"
+      }
+    },
+    {
+      "policy_final": {
+        "command": [
+          "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/text",
+          "fnmatch",
+          "100000"
+        ],
+        "cwd": "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final",
+        "wall_s": 2.5265817680046894,
+        "returncode": 0,
+        "cpu_s": 2.524085999999995,
+        "stdout": "600000\n",
+        "stderr": "seconds 2.5195630050002364\n",
+        "loop_s": 2.5195630050002364,
+        "binary_sha256": "2bf62285198b4f9a9fd5520a4b4fd0691009a96b6a9cf7ccc1ddf653227cf48a"
+      },
+      "main": {
+        "command": [
+          "/workspace/scratch/8f4dd6deebd9/prototype-996-final/main/text",
+          "fnmatch",
+          "100000"
+        ],
+        "cwd": "/workspace/scratch/8f4dd6deebd9/pystachy-main",
+        "wall_s": 2.296382305001316,
+        "returncode": 0,
+        "cpu_s": 2.2937680000000076,
+        "stdout": "600000\n",
+        "stderr": "seconds 2.2885845499986317\n",
+        "loop_s": 2.2885845499986317,
+        "binary_sha256": "0b876f9394c97479660b527f3fffb0a78c5603b281db573e2e66788fd992a427"
+      },
+      "baseline": {
+        "command": [
+          "/workspace/scratch/8f4dd6deebd9/prototype-996-final/baseline/text",
+          "fnmatch",
+          "100000"
+        ],
+        "cwd": "/workspace/scratch/8f4dd6deebd9/pystachy-baseline",
+        "wall_s": 2.515444613993168,
+        "returncode": 0,
+        "cpu_s": 2.5127260000000016,
+        "stdout": "600000\n",
+        "stderr": "seconds 2.508105382999929\n",
+        "loop_s": 2.508105382999929,
+        "binary_sha256": "dc6cf0f59bb0716cdcfe9b6debac79b98895ff1eca6a1fc75368b2f7418a339d"
+      }
+    },
+    {
+      "policy_final": {
+        "command": [
+          "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/text",
+          "fnmatch",
+          "100000"
+        ],
+        "cwd": "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final",
+        "wall_s": 2.550879670998256,
+        "returncode": 0,
+        "cpu_s": 2.5478369999999977,
+        "stdout": "600000\n",
+        "stderr": "seconds 2.534408240004268\n",
+        "loop_s": 2.534408240004268,
+        "binary_sha256": "2bf62285198b4f9a9fd5520a4b4fd0691009a96b6a9cf7ccc1ddf653227cf48a"
+      },
+      "baseline": {
+        "command": [
+          "/workspace/scratch/8f4dd6deebd9/prototype-996-final/baseline/text",
+          "fnmatch",
+          "100000"
+        ],
+        "cwd": "/workspace/scratch/8f4dd6deebd9/pystachy-baseline",
+        "wall_s": 3.239440546996775,
+        "returncode": 0,
+        "cpu_s": 3.235581999999998,
+        "stdout": "600000\n",
+        "stderr": "seconds 3.22955788699619\n",
+        "loop_s": 3.22955788699619,
+        "binary_sha256": "dc6cf0f59bb0716cdcfe9b6debac79b98895ff1eca6a1fc75368b2f7418a339d"
+      },
+      "main": {
+        "command": [
+          "/workspace/scratch/8f4dd6deebd9/prototype-996-final/main/text",
+          "fnmatch",
+          "100000"
+        ],
+        "cwd": "/workspace/scratch/8f4dd6deebd9/pystachy-main",
+        "wall_s": 2.4767976319999434,
+        "returncode": 0,
+        "cpu_s": 2.4757330000000013,
+        "stdout": "600000\n",
+        "stderr": "seconds 2.4665672529954463\n",
+        "loop_s": 2.4665672529954463,
+        "binary_sha256": "0b876f9394c97479660b527f3fffb0a78c5603b281db573e2e66788fd992a427"
+      }
+    }
+  ],
+  "medians": {
+    "main": 2.278826665999077,
+    "baseline": 2.385464361501363,
+    "policy_final": 2.448691436497029
+  },
+  "complete": true
+}

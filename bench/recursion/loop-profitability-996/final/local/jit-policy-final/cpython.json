@@ -1,0 +1,31 @@
+{
+  "command": [
+    "/workspace/scratch/8f4dd6deebd9/toolchain/venv/bin/python",
+    "/workspace/scratch/8f4dd6deebd9/pystachy-baseline/bench/smoke/text.py",
+    "fnmatch",
+    "1000"
+  ],
+  "cwd": "/workspace/scratch/8f4dd6deebd9/pystachy-baseline",
+  "timeout_s": 180,
+  "stdout_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/cpython.stdout",
+  "stderr_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/cpython.stderr",
+  "pid": 29,
+  "returncode": 0,
+  "wall_s": 0.11745766500098398,
+  "stdout": "6000\n",
+  "stdout_identity": {
+    "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/cpython.stdout",
+    "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/cpython.stdout",
+    "bytes": 5,
+    "mtime_ns": 1793503502838754795,
+    "sha256": "46251acfc71ec25370b9130041437638dd8bb98c6ce57a89d869f39d826358d5"
+  },
+  "stderr": "seconds 0.0777692119954736\n",
+  "stderr_identity": {
+    "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/cpython.stderr",
+    "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/cpython.stderr",
+    "bytes": 27,
+    "mtime_ns": 1793503502838754795,
+    "sha256": "78b6de5b65e6ef06b2446ad8d8289e16b060b02a6c4ede16ea41a29fc12f2723"
+  }
+}

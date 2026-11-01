@@ -1,0 +1,308 @@
+{
+  "actionlint_passed": true,
+  "check_fast_tests": 421,
+  "expected_commands": [
+    "test_repository_hygiene.py",
+    "test_function_summaries.py",
+    "test_typed*.py",
+    "test_json*.py",
+    "test_numeric_identity.py",
+    "test_identity_scope.py",
+    "test_dynany_comparisons.py",
+    "test_dynany_dict_kinds.py",
+    "test_diagnostic_capture.py",
+    "test_inspect_compiler.py",
+    "test_*verif*.py",
+    "test_route_bench.py",
+    "test_runtime_*.py",
+    "test_bench_pyperformance.py",
+    "test_perf_smoke.py",
+    "test_check_nanogpt.py",
+    "test_import_sweep.py",
+    "test_dynany_fuzz.py",
+    "test_dynany_calls.py",
+    "test_dynany_optin.py",
+    "test_python_int*.py",
+    "test_bench_microgpt.py",
+    "test_bench_integers.py",
+    "test_frame_fields.py",
+    "test_compiler_state*.py",
+    "test_bench_json.py",
+    "test_ir_cost_report.py",
+    "test_dco_check.py",
+    "test_coverage_report.py",
+    "test_workflow_limits.py",
+    "test_re_specialize.py",
+    "test_concurrency_contract.py"
+  ],
+  "head": "44b638bbf8df1835b67bebda0468d65374569c71",
+  "job_id": 124738080472,
+  "log_sha256": "f2f166fe2df43a255895ec0ca4deeb5269f6b24c1a7737121ab30638b5f72c43",
+  "mypy_source_files": 48,
+  "recordings_passed": true,
+  "result": "pass",
+  "ruff_passed": true,
+  "run_id": 41269133830,
+  "skipped": 0,
+  "suites": [
+    {
+      "command": "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p test_repository_hygiene.py",
+      "pattern": "test_repository_hygiene.py",
+      "result": "pass",
+      "seconds": 1.399,
+      "skipped": 0,
+      "tests": 11
+    },
+    {
+      "command": "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p test_function_summaries.py",
+      "pattern": "test_function_summaries.py",
+      "result": "pass",
+      "seconds": 0.028,
+      "skipped": 0,
+      "tests": 7
+    },
+    {
+      "command": "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p 'test_typed*.py'",
+      "pattern": "test_typed*.py",
+      "result": "pass",
+      "seconds": 3.385,
+      "skipped": 0,
+      "tests": 220
+    },
+    {
+      "command": "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p 'test_json*.py'",
+      "pattern": "test_json*.py",
+      "result": "pass",
+      "seconds": 0.765,
+      "skipped": 0,
+      "tests": 29
+    },
+    {
+      "command": "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p test_numeric_identity.py",
+      "pattern": "test_numeric_identity.py",
+      "result": "pass",
+      "seconds": 0.265,
+      "skipped": 0,
+      "tests": 56
+    },
+    {
+      "command": "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p test_identity_scope.py",
+      "pattern": "test_identity_scope.py",
+      "result": "pass",
+      "seconds": 2.527,
+      "skipped": 0,
+      "tests": 17
+    },
+    {
+      "command": "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p test_dynany_comparisons.py",
+      "pattern": "test_dynany_comparisons.py",
+      "result": "pass",
+      "seconds": 4.827,
+      "skipped": 0,
+      "tests": 50
+    },
+    {
+      "command": "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p test_dynany_dict_kinds.py",
+      "pattern": "test_dynany_dict_kinds.py",
+      "result": "pass",
+      "seconds": 0.004,
+      "skipped": 0,
+      "tests": 3
+    },
+    {
+      "command": "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p test_diagnostic_capture.py",
+      "pattern": "test_diagnostic_capture.py",
+      "result": "pass",
+      "seconds": 0.074,
+      "skipped": 0,
+      "tests": 8
+    },
+    {
+      "command": "/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p test_inspect_compiler.py",
+      "pattern": "test_inspect_compiler.py",
+      "result": "pass",
+      "seconds": 2.816,
+      "skipped": 0,
+      "tests": 20
+    },
+    {
+      "command": "python3 -m unittest discover -s tools -p 'test_*verif*.py'",
+      "pattern": "test_*verif*.py",
+      "result": "pass",
+      "seconds": 92.874,
+      "skipped": 0,
+      "tests": 93
+    },
+    {
+      "command": "python3 -m unittest discover -s tools -p test_route_bench.py",
+      "pattern": "test_route_bench.py",
+      "result": "pass",
+      "seconds": 0.002,
+      "skipped": 0,
+      "tests": 9
+    },
+    {
+      "command": "python3 -m unittest discover -s tools -p 'test_runtime_*.py'",
+      "pattern": "test_runtime_*.py",
+      "result": "pass",
+      "seconds": 51.672,
+      "skipped": 0,
+      "tests": 43
+    },
+    {
+      "command": "python3 -m unittest discover -s tools -p test_bench_pyperformance.py",
+      "pattern": "test_bench_pyperformance.py",
+      "result": "pass",
+      "seconds": 3.499,
+      "skipped": 0,
+      "tests": 21
+    },
+    {
+      "command": "python3 -m unittest discover -s tools -p test_perf_smoke.py",
+      "pattern": "test_perf_smoke.py",
+      "result": "pass",
+      "seconds": 0.393,
+      "skipped": 0,
+      "tests": 24
+    },
+    {
+      "command": "python3 -m unittest discover -s tools -p test_check_nanogpt.py",
+      "pattern": "test_check_nanogpt.py",
+      "result": "pass",
+      "seconds": 0.009,
+      "skipped": 0,
+      "tests": 8
+    },
+    {
+      "command": "python3 -m unittest discover -s tools -p test_import_sweep.py",
+      "pattern": "test_import_sweep.py",
+      "result": "pass",
+      "seconds": 0.431,
+      "skipped": 0,
+      "tests": 10
+    },
+    {
+      "command": "python3 -m unittest discover -s tools -p test_dynany_fuzz.py",
+      "pattern": "test_dynany_fuzz.py",
+      "result": "pass",
+      "seconds": 0.162,
+      "skipped": 0,
+      "tests": 22
+    },
+    {
+      "command": "python3 -m unittest discover -s tools -p test_dynany_calls.py",
+      "pattern": "test_dynany_calls.py",
+      "result": "pass",
+      "seconds": 0.076,
+      "skipped": 0,
+      "tests": 4
+    },
+    {
+      "command": "python3 -m unittest discover -s tools -p test_dynany_optin.py",
+      "pattern": "test_dynany_optin.py",
+      "result": "pass",
+      "seconds": 0.884,
+      "skipped": 0,
+      "tests": 28
+    },
+    {
+      "command": "python3 -m unittest discover -s tools -p 'test_python_int*.py'",
+      "pattern": "test_python_int*.py",
+      "result": "pass",
+      "seconds": 0.517,
+      "skipped": 0,
+      "tests": 43
+    },
+    {
+      "command": "python3 -m unittest discover -s tools -p test_bench_microgpt.py",
+      "pattern": "test_bench_microgpt.py",
+      "result": "pass",
+      "seconds": 0.006,
+      "skipped": 0,
+      "tests": 3
+    },
+    {
+      "command": "python3 -m unittest discover -s tools -p test_bench_integers.py",
+      "pattern": "test_bench_integers.py",
+      "result": "pass",
+      "seconds": 0.532,
+      "skipped": 0,
+      "tests": 4
+    },
+    {
+      "command": "python3 -m unittest discover -s tools -p test_frame_fields.py",
+      "pattern": "test_frame_fields.py",
+      "result": "pass",
+      "seconds": 3.019,
+      "skipped": 0,
+      "tests": 18
+    },
+    {
+      "command": "python3 -m unittest discover -s tools -p 'test_compiler_state*.py'",
+      "pattern": "test_compiler_state*.py",
+      "result": "pass",
+      "seconds": 71.576,
+      "skipped": 0,
+      "tests": 108
+    },
+    {
+      "command": "python3 -m unittest discover -s tools -p test_bench_json.py",
+      "pattern": "test_bench_json.py",
+      "result": "pass",
+      "seconds": 0.011,
+      "skipped": 0,
+      "tests": 11
+    },
+    {
+      "command": "python3 -m unittest discover -s tools -p test_ir_cost_report.py",
+      "pattern": "test_ir_cost_report.py",
+      "result": "pass",
+      "seconds": 0.002,
+      "skipped": 0,
+      "tests": 7
+    },
+    {
+      "command": "python3 -m unittest discover -s tools -p test_dco_check.py",
+      "pattern": "test_dco_check.py",
+      "result": "pass",
+      "seconds": 0.003,
+      "skipped": 0,
+      "tests": 9
+    },
+    {
+      "command": "python3 -m unittest discover -s tools -p test_coverage_report.py",
+      "pattern": "test_coverage_report.py",
+      "result": "pass",
+      "seconds": 0.008,
+      "skipped": 0,
+      "tests": 16
+    },
+    {
+      "command": "python3 -m unittest discover -s tools -p test_workflow_limits.py",
+      "pattern": "test_workflow_limits.py",
+      "result": "pass",
+      "seconds": 0.004,
+      "skipped": 0,
+      "tests": 4
+    },
+    {
+      "command": "python3 -m unittest discover -s tools -p test_re_specialize.py",
+      "pattern": "test_re_specialize.py",
+      "result": "pass",
+      "seconds": 1.911,
+      "skipped": 0,
+      "tests": 15
+    },
+    {
+      "command": "python3 -m unittest discover -s tools -p test_concurrency_contract.py",
+      "pattern": "test_concurrency_contract.py",
+      "result": "pass",
+      "seconds": 0.113,
+      "skipped": 0,
+      "tests": 5
+    }
+  ],
+  "tests": 926,
+  "typed_tests": 220,
+  "unittest_commands": 32
+}

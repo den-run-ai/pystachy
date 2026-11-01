@@ -1,0 +1,209 @@
+{
+  "archives": [
+    {
+      "compressed_bytes": 58380,
+      "internal_manifest_bytes": 3337,
+      "internal_manifest_member": "local/_archive-manifests/analysis.json",
+      "internal_manifest_mode": "0644",
+      "internal_manifest_sha256": "fb31d2c5715f240b0848d51f478142a34ad41f12a22d27b904e9a1ad0e11b9da",
+      "mode": "0644",
+      "path": "archives/analysis.tar.gz",
+      "payload_bytes": 463606,
+      "payload_members": 12,
+      "sha256": "a1251f966ea165f118de61544c466053509670c1fe757cc8efd5edf3a8b5064c",
+      "verified_all_member_hashes_modes_sizes": true
+    },
+    {
+      "compressed_bytes": 714215,
+      "internal_manifest_bytes": 1401,
+      "internal_manifest_member": "local/_archive-manifests/aot-baseline.json",
+      "internal_manifest_mode": "0644",
+      "internal_manifest_sha256": "53c9d88bc82cb87f08194424a962ec8b6e925333dd922ae4b671ac4a0aa88029",
+      "mode": "0644",
+      "path": "archives/aot-baseline.tar.gz",
+      "payload_bytes": 3956961,
+      "payload_members": 5,
+      "sha256": "f4f3488c52f4b79901d9d147a9e724903d88a6eed1e38fc4277c34bade308da5",
+      "verified_all_member_hashes_modes_sizes": true
+    },
+    {
+      "compressed_bytes": 687115,
+      "internal_manifest_bytes": 1357,
+      "internal_manifest_member": "local/_archive-manifests/aot-main.json",
+      "internal_manifest_mode": "0644",
+      "internal_manifest_sha256": "72f8959657afb6ebaa2504ad6065d5740a07e00db67c12f1eb81f37d16235b2d",
+      "mode": "0644",
+      "path": "archives/aot-main.tar.gz",
+      "payload_bytes": 3718763,
+      "payload_members": 5,
+      "sha256": "c3db342ce545b64046651b2305991f8dad8da6ee8e5617594bd6be8529379fe3",
+      "verified_all_member_hashes_modes_sizes": true
+    },
+    {
+      "compressed_bytes": 709543,
+      "internal_manifest_bytes": 2290,
+      "internal_manifest_member": "local/_archive-manifests/aot-policy.json",
+      "internal_manifest_mode": "0644",
+      "internal_manifest_sha256": "baba8ebc8f67c7189fe2dea7b373a56813df36c0cf3956f76d0b496080d741dc",
+      "mode": "0644",
+      "path": "archives/aot-policy.tar.gz",
+      "payload_bytes": 3888212,
+      "payload_members": 9,
+      "sha256": "6883a45db489fc86b78a1906c51a02d49e87933a98203ec12b9b36edee4c21ee",
+      "verified_all_member_hashes_modes_sizes": true
+    },
+    {
+      "compressed_bytes": 716569,
+      "internal_manifest_bytes": 1827,
+      "internal_manifest_member": "local/_archive-manifests/aot-value.json",
+      "internal_manifest_mode": "0644",
+      "internal_manifest_sha256": "bc283ced709a50df65314942c88c0610f1e30f64b699a7cd2fd436db451ea844",
+      "mode": "0644",
+      "path": "archives/aot-value.tar.gz",
+      "payload_bytes": 3906762,
+      "payload_members": 7,
+      "sha256": "82accb3476aaa5c7ec527094ac848cc72254e72f2d76548346fb3073c0b6a48c",
+      "verified_all_member_hashes_modes_sizes": true
+    },
+    {
+      "compressed_bytes": 11406128,
+      "compression": {
+        "check": "CRC64",
+        "dict_bytes": 8388608,
+        "filter": "LZMA2",
+        "format": "XZ",
+        "preset": 6,
+        "python": "3.12.14"
+      },
+      "expanded_ir_bytes": 536378529,
+      "gzip_ir_sources_expanded": 496,
+      "identical_raw_aliases": 14,
+      "internal_manifest_bytes": 9654720,
+      "internal_manifest_member": "local/_archive-manifests/corpus-policy.json",
+      "internal_manifest_mode": "0644",
+      "internal_manifest_sha256": "00962442bd5da543f7f7f6063b02463e3cf2ad460e3b49707483d0e51842b2d3",
+      "mode": "0644",
+      "path": "archives/corpus-policy.tar.xz",
+      "payload_bytes": 584657776,
+      "payload_members": 20191,
+      "sha256": "22a8298648a1dd82f9b00c319332a8a54ec5e1c3277bab07ac16c7ba1e738c88",
+      "source_files": 20205,
+      "verified_all_member_hashes_modes_sizes": true,
+      "verified_all_original_source_hashes": true
+    },
+    {
+      "compressed_bytes": 7217777,
+      "internal_manifest_bytes": 15733,
+      "internal_manifest_member": "local/_archive-manifests/jit-baseline.json",
+      "internal_manifest_mode": "0644",
+      "internal_manifest_sha256": "aa5da694be04b4d0ad6dc20c638da3a75df39f5f6fe8d2b368d611eae5be70cd",
+      "mode": "0644",
+      "path": "archives/jit-baseline.tar.gz",
+      "payload_bytes": 39827869,
+      "payload_members": 47,
+      "sha256": "03c0ed34a3f16711be228734f927bb3679d29cdeda766f3fd1cfac43ff81ea78",
+      "verified_all_member_hashes_modes_sizes": true
+    },
+    {
+      "compressed_bytes": 4426,
+      "internal_manifest_bytes": 9193,
+      "internal_manifest_member": "local/_archive-manifests/jit-common.json",
+      "internal_manifest_mode": "0644",
+      "internal_manifest_sha256": "fc84356c145a2d22ddbea2e725e642a1374b935fcbcc8005e526b558b7640be5",
+      "mode": "0644",
+      "path": "archives/jit-common.tar.gz",
+      "payload_bytes": 19754,
+      "payload_members": 33,
+      "sha256": "2906ef41824c0200262d2b87b9f8c3efbc4d7f20e40dc7061884596d66828c94",
+      "verified_all_member_hashes_modes_sizes": true
+    },
+    {
+      "compressed_bytes": 6990113,
+      "internal_manifest_bytes": 15297,
+      "internal_manifest_member": "local/_archive-manifests/jit-main.json",
+      "internal_manifest_mode": "0644",
+      "internal_manifest_sha256": "4905d45a9404113ecedbbe953c14c83c17d289f4d36ada63ba5662985c7016da",
+      "mode": "0644",
+      "path": "archives/jit-main.tar.gz",
+      "payload_bytes": 38549194,
+      "payload_members": 47,
+      "sha256": "0d494180c7e4b4099584c94b9476cac98eb213fd3553b57b57f64c4ce7c17301",
+      "verified_all_member_hashes_modes_sizes": true
+    },
+    {
+      "compressed_bytes": 7187608,
+      "internal_manifest_bytes": 15549,
+      "internal_manifest_member": "local/_archive-manifests/jit-policy.json",
+      "internal_manifest_mode": "0644",
+      "internal_manifest_sha256": "99e2a97a7e45c2235c078c0f37631836936f748f4ab50707de0ac2fee0eebc30",
+      "mode": "0644",
+      "path": "archives/jit-policy.tar.gz",
+      "payload_bytes": 39629076,
+      "payload_members": 47,
+      "sha256": "1a0a6341978e6668acd70b0a5a97a42b5087f91dcb701e5afd23a1fcbd350a9d",
+      "verified_all_member_hashes_modes_sizes": true
+    },
+    {
+      "compressed_bytes": 14495,
+      "internal_manifest_bytes": 4971,
+      "internal_manifest_member": "local/_archive-manifests/run-records.json",
+      "internal_manifest_mode": "0644",
+      "internal_manifest_sha256": "90302226d0a541d37c48b960a84c29125c6a04850fff9388a9d75b83822b6fd9",
+      "mode": "0644",
+      "path": "archives/run-records.tar.gz",
+      "payload_bytes": 48595,
+      "payload_members": 20,
+      "sha256": "ed7f77a45555f2e1b82e6ae5dc0f60fec6e82dbbd6ac32c6307c58c4ceb1e629",
+      "verified_all_member_hashes_modes_sizes": true
+    }
+  ],
+  "artifact_manifest": {
+    "bytes": 822694,
+    "encoding": "gzip",
+    "path": "local/artifact-manifest.json.gz",
+    "raw_bytes": 6790741,
+    "raw_sha256": "2f28f7f9bb283acb9e4c46ccdadd7a74690a70c2675b9cb9c9b8050dd9611e36",
+    "sha256": "a61e75a9acde9d63311190e3a828e12c127fff938940d28f7802eeca49601a45",
+    "verified_exact_raw_bytes": true
+  },
+  "complete": true,
+  "compressed_metadata_records": [
+    {
+      "compressed_bytes": 613379,
+      "compressed_sha256": "ef0b4fa2e88c7c988dfae308f5dd4c32cf6b93ae2aa8bb76627ddb900415a541",
+      "encoding": "gzip",
+      "path": "local/corpus-policy/comparison.json.gz",
+      "raw_bytes": 7517601,
+      "raw_original_path": "prototype-996/corpus-policy/comparison.json",
+      "raw_sha256": "2ec2357c33583bc5d3243ffd3d6b80f74785219f6c5a709b7734ef3cbf4e5e0c",
+      "verified_exact_raw_bytes": true
+    },
+    {
+      "bytes": 822694,
+      "encoding": "gzip",
+      "path": "local/artifact-manifest.json.gz",
+      "raw_bytes": 6790741,
+      "raw_sha256": "2f28f7f9bb283acb9e4c46ccdadd7a74690a70c2675b9cb9c9b8050dd9611e36",
+      "sha256": "a61e75a9acde9d63311190e3a828e12c127fff938940d28f7802eeca49601a45",
+      "verified_exact_raw_bytes": true
+    }
+  ],
+  "notes": [
+    "README, report and separately integrated CI/final-policy files are not included in the owned file count.",
+    "Every archive was reopened and every member SHA-256, size and mode was verified.",
+    "Corpus uses solid XZ after exact gzip-to-IR expansion; all other archives retain deterministic gzip.",
+    "The 96,760,228-byte original raw corpus container is retained outside the publication tree.",
+    "The complete strict comparison and detailed artifact manifest are gzip metadata addenda; compact readable summaries/index point to their exact byte identities."
+  ],
+  "owned_publication_file_count": 39,
+  "schema": 2,
+  "source_counts": {
+    "archive": 20437,
+    "compressed-record": 1,
+    "deferred": 1,
+    "direct": 22,
+    "excluded": 291
+  },
+  "total_archive_bytes": 35706369,
+  "total_archived_payload_bytes": 718666568
+}

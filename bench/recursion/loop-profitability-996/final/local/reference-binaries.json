@@ -1,0 +1,18 @@
+{
+  "main": {
+    "original_binary": "/workspace/scratch/8f4dd6deebd9/prototype-996/main/text",
+    "copy": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/main/text",
+    "sha256": "0b876f9394c97479660b527f3fffb0a78c5603b281db573e2e66788fd992a427",
+    "original_prepare_record": "/workspace/scratch/8f4dd6deebd9/prototype-996/main/prepare.json",
+    "prepare_record_sha256": "2e512be8ed06d46e0ee1d7b1441b00417755cad1ae2922055f38aa7750d7f670",
+    "note": "Byte-identical AOT binary reused for final interleaved timings; no new build is claimed."
+  },
+  "baseline": {
+    "original_binary": "/workspace/scratch/8f4dd6deebd9/prototype-996/baseline/text",
+    "copy": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/baseline/text",
+    "sha256": "dc6cf0f59bb0716cdcfe9b6debac79b98895ff1eca6a1fc75368b2f7418a339d",
+    "original_prepare_record": "/workspace/scratch/8f4dd6deebd9/prototype-996/baseline/prepare.json",
+    "prepare_record_sha256": "d5cf40db22dc592e8673d50a53389f78db73025dad9416d48d2b277f74df0c39",
+    "note": "Byte-identical AOT binary reused for final interleaved timings; no new build is claimed."
+  }
+}

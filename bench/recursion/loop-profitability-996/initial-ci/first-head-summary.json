@@ -1,0 +1,129 @@
+{
+  "all_downloaded_archive_sizes_hashes_crcs_verified": true,
+  "all_workflows_completed": true,
+  "annotation_detail_limitation": "The connector rejects check-runs/<id>/annotations. All annotation counts and complete logs for each annotated job are retained. macOS arm64 has two annotations and Intel has one; each installation log contains an LLVM 20 not-linked warning. Exact additional annotation detail remains unavailable.",
+  "archives_bytes": 25748878,
+  "archives_downloaded": 33,
+  "base": "07b26e02425d023288ed95a9d2a5077be5aeb45e",
+  "cause": "Coverage ffi/ir and CI/contracts reject tests/ir/index_key.calls; CI aggregate fails its report and dependency gates. Coverage hosted report is skipped after the failed part.",
+  "check_annotation_counts": [
+    {
+      "count": 2,
+      "id": 124736750824,
+      "name": "make verify (Linux x86-64, LLVM 18, Python 3.13)"
+    },
+    {
+      "count": 1,
+      "id": 124734277124,
+      "name": "verify (contracts)"
+    },
+    {
+      "count": 1,
+      "id": 124733416276,
+      "name": "hosted compiler coverage (ffi, ir)"
+    },
+    {
+      "count": 2,
+      "id": 124733416060,
+      "name": "Install (macos-15)"
+    },
+    {
+      "count": 1,
+      "id": 124733415972,
+      "name": "Install (macos-15-intel)"
+    }
+  ],
+  "collection_scope": "Stopped optional first-head collection after the confirmed failure; final-head validation will be independent.",
+  "complete_local_remerge_performed": false,
+  "evidence_files": {
+    "aggregate-failure.log": "ca8799d0bfc5cae9647e354c40e81054e46c292f99f8de72527ad752ea986f7d",
+    "api/final-checks-first-head.json": "2a92e8110356d2cfd4e801e4ad4dde19cfef666c12b01b32757ef0a21b86bc2e",
+    "api/final-snapshot-first-head.json": "75f476638f15112ab15ac646fea6e74cbd397637d11e1b3f9b0e227098f74285",
+    "artifact-checksums-first-head.json": "fe1d8d99d442d29b41ee59c899a95d6b7151b5ee3fba9ee0fe34abf66c6cc8a6",
+    "artifact-manifest.json": "690d7e4979729faab91da9cb1c0477a42274389b9a3e0a58691cebf7a223e36a",
+    "bootstrap-assessment.json": "8c7fa3631e18f3a9cc62597e7d22809f25bc94f6d376ae514ae19c268d527d80",
+    "contracts-failure-assessment.json": "9b2d9d530035cd2a3c238cdab5392149a2ddaba2297e7975a8fa3aa3196b5a83",
+    "contracts-failure.log": "efc24c9fc96bb6a5fc32d7353469f8ca770a4bc6c442870aef326bcb52f3c5b8",
+    "coverage-hosted-ffi-ir-failure.log": "c2de0a49c481c40e71cd6d7a384160207e2c8464abf826a3201b63cae557820d",
+    "failure-assessment.json": "282f43baa93a7c66513ac4e3921c6dde4d8ee2dd2884716fd054e2c27a203100",
+    "install-macos-15-intel.log": "538cb4de2acf2c9eef5c269caabb8c0034b14b9ee621b579a52e3c960e19efc0",
+    "install-macos-15.log": "44054adf2d9397898f6f52a7135e9c4b74c82917bdb8f9a53ca74f1333605ae7",
+    "jobs-assessment.json": "5240c5e7dd1da7da8c67fa50b328caea631324be5fa0674839a3abdc4cb0b569",
+    "lint-assessment.json": "c5318389ed4de53257c7640503217589c26cc39bbf5645f31660cfe0918d208b",
+    "lint.log": "fca01ab2e4a1b68cfa3ba4f0f74da4585cbaf1d04bb92c0c3b1c25d47f566165",
+    "performance-assessment.json": "30635a24c052c4069b28f4757a32840fb809f74865fa9bfcd2e71ab3e33c6a63",
+    "source-binding.json": "1ead19bccf55de597ca052461396e037eae072143a447975727fe97608d0e77c"
+  },
+  "failed_jobs": [
+    {
+      "id": 124734277124,
+      "name": "verify (contracts)",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/41267553971/job/124734277124",
+      "workflow": "CI"
+    },
+    {
+      "id": 124736750824,
+      "name": "make verify (Linux x86-64, LLVM 18, Python 3.13)",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/41267553971/job/124736750824",
+      "workflow": "CI"
+    },
+    {
+      "id": 124733416276,
+      "name": "hosted compiler coverage (ffi, ir)",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/41267554048/job/124733416276",
+      "workflow": "Coverage"
+    }
+  ],
+  "head": "1ff5efe4c4425b3728e138fa05a44856202fdea5",
+  "job_and_check_run_ids_match": true,
+  "job_counts": {
+    "failure": 3,
+    "skipped": 3,
+    "success": 55
+  },
+  "lint": {
+    "check_fast_tests": 419,
+    "mypy_source_files": 48,
+    "skipped": 0,
+    "tests": 924,
+    "typed_tests": 218,
+    "unittest_commands": 32
+  },
+  "original_reports_downloaded": 28,
+  "original_reports_expected": 31,
+  "original_reports_not_downloaded": [
+    "dynany-optin-0",
+    "native-0",
+    "native-1"
+  ],
+  "performance": {
+    "classifications": {
+      "ok": 49
+    },
+    "metrics": 49,
+    "performance_acceptance": "not_decided_by_advisory_smoke",
+    "result": "pass",
+    "workloads": 11
+  },
+  "result": "fail",
+  "schema": 1,
+  "skipped_jobs": [
+    {
+      "id": 124735751559,
+      "name": "hosted compiler coverage (report)",
+      "workflow": "Coverage"
+    },
+    {
+      "id": 124735875224,
+      "name": "publish main's coverage to the badges branch",
+      "workflow": "Coverage"
+    },
+    {
+      "id": 124733411646,
+      "name": "DCO certified (fork pull requests)",
+      "workflow": "DCO"
+    }
+  ],
+  "synthetic_merge": "e55d22024299083ca86f551b29cb1550daee3cd3",
+  "tree": "5459378ebc5816fb1a410236a75c9a78b61f4d60"
+}

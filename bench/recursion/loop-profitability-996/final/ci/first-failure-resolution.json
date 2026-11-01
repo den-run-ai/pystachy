@@ -1,0 +1,26 @@
+{
+  "check_ir_stage": {
+    "log": "build/verify/check-ir.log",
+    "name": "check-ir",
+    "programs": 2136,
+    "result": "pass",
+    "seconds": 49.789
+  },
+  "contracts_report_sha256": "9f32a65fb3b6bc7e5d3a69179e5d4384e142c16e4c2d706e3f710b2d91cde809",
+  "contracts_summary": {
+    "failed": 0,
+    "passed": 22,
+    "seconds": 197.02,
+    "steps": 22
+  },
+  "coverage_ir_programs": 81,
+  "coverage_log_sha256": "bcbeb5860e3965e9c39683b6b7c79092a58dcb4980904bfd4d9443bac381c84f",
+  "expectation": "tests/ir/index_key.calls",
+  "expectation_sha256": "19047e80ee41f7e133b56d663ff25f3519d61b084aa24551a26691d65d1b7bbb",
+  "expectation_unchanged_from_first_head": true,
+  "final_head": "44b638bbf8df1835b67bebda0468d65374569c71",
+  "final_merge": "b20d3720ed557a6934e6ac10a6287a5610d2fc1f",
+  "first_head": "1ff5efe4c4425b3728e138fa05a44856202fdea5",
+  "result": "pass",
+  "scope": "The first head's failed IR expectation now passes after the compiler loop-boundary refinement; its historical failed records remain unchanged."
+}

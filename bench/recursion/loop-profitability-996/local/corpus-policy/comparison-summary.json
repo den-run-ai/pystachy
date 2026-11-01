@@ -1,0 +1,41 @@
+{
+  "case_count": 3924,
+  "changed_diagnostics": 61,
+  "changed_ir": 248,
+  "changed_statuses": 0,
+  "complete": true,
+  "extra_case_count": 4,
+  "extra_cases": [
+    "bench/recursion/json_calls.py",
+    "bench/recursion/json_file_calls.py",
+    "bench/recursion/object_calls.py",
+    "bench/recursion/ordinary_calls.py"
+  ],
+  "gate_passed": false,
+  "inputs_stable": true,
+  "ir_new_lines": 82559,
+  "ir_old_lines": 204721,
+  "missing": [],
+  "omitted_rows": 3924,
+  "raw_comparison": {
+    "compressed_bytes": 613379,
+    "compressed_sha256": "ef0b4fa2e88c7c988dfae308f5dd4c32cf6b93ae2aa8bb76627ddb900415a541",
+    "encoding": "gzip",
+    "path": "local/corpus-policy/comparison.json.gz",
+    "raw_bytes": 7517601,
+    "raw_original_path": "prototype-996/corpus-policy/comparison.json",
+    "raw_sha256": "2ec2357c33583bc5d3243ffd3d6b80f74785219f6c5a709b7734ef3cbf4e5e0c",
+    "verified_exact_raw_bytes": true
+  },
+  "recorded_cases": 3924,
+  "schema": 1,
+  "scope": "Historical first policy checkpoint; final policy evidence is separate.",
+  "standard_case_count": 3920,
+  "status": "failed",
+  "strict_differences": 309,
+  "strict_exit_code": 1,
+  "strict_gate_passed": false,
+  "summary_note": "All original top-level fields except rows are retained. The exact original full JSON, including every row, is available in the gzip addendum. The strict failure is unchanged.",
+  "summary_schema": 1,
+  "validation_errors": []
+}

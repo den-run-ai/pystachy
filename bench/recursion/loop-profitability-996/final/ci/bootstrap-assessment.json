@@ -1,0 +1,50 @@
+{
+  "bootstrap_step": {
+    "bootstrap_bundle_id": "76dea66c9d42c6b1ebeac9b5163f2ed3560bd8bc5460ae06b2ea01ddfee4d391",
+    "bootstrap_reused": false,
+    "cpython_self_compile_seconds": 27.805,
+    "ir_identical": true,
+    "ir_lines": 808422,
+    "ir_sha256": "ce874ff52970f421fd4f0459bc6c3e21bfea6c212d774ab54cd8c8bf1c4f192b",
+    "log": "build/verify/bootstrap.log",
+    "name": "bootstrap",
+    "native_compiler_bytes": 5092736,
+    "native_self_compile_seconds": 5.235,
+    "producer_seconds": 224.402,
+    "result": "pass",
+    "runtime_ir_identical": true,
+    "runtime_ir_sha256": "940a694da5ea93214d1308a8eb635b47d8d0a9d4256c63d084c24f5099f8aa5f",
+    "seconds": 224.402
+  },
+  "bundle_id": "76dea66c9d42c6b1ebeac9b5163f2ed3560bd8bc5460ae06b2ea01ddfee4d391",
+  "ci_identity": {
+    "commit": "b20d3720ed557a6934e6ac10a6287a5610d2fc1f",
+    "github_run_id": "41269133835",
+    "libc": "glibc 2.39",
+    "machine": "x86_64",
+    "os": {
+      "ID": "ubuntu",
+      "VERSION_ID": "24.04"
+    },
+    "python": "3.13.16 (main, Oct  1 2026, 02:37:54) [GCC 13.3.0]",
+    "python_implementation": "cpython",
+    "python_version": "3.13.16",
+    "system": "Linux",
+    "tools": {
+      "clang": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+      "lli": "Ubuntu LLVM version 18.1.3",
+      "llvm-as": "Ubuntu LLVM version 18.1.3",
+      "llvm-link": "Ubuntu LLVM version 18.1.3",
+      "opt": "Ubuntu LLVM version 18.1.3"
+    },
+    "tracked_sources_sha256": "4ee8839ea586896b714032dc5ac6a988820d4e09c5eecdcc3a26fe5a484b0755"
+  },
+  "compiler_ir_sha256": "ce874ff52970f421fd4f0459bc6c3e21bfea6c212d774ab54cd8c8bf1c4f192b",
+  "github_run_id": "41269133835",
+  "payload_hashes_verified": 6,
+  "result": "pass",
+  "runtime_ir_sha256": "940a694da5ea93214d1308a8eb635b47d8d0a9d4256c63d084c24f5099f8aa5f",
+  "source_commit": "b20d3720ed557a6934e6ac10a6287a5610d2fc1f",
+  "tracked_paths": 8191,
+  "tracked_sources_sha256": "4ee8839ea586896b714032dc5ac6a988820d4e09c5eecdcc3a26fe5a484b0755"
+}

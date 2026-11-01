@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "head": "1ff5efe4c4425b3728e138fa05a44856202fdea5",
+  "synthetic_merge": "e55d22024299083ca86f551b29cb1550daee3cd3",
+  "workflow": "Coverage",
+  "run_id": 41267554048,
+  "job_id": 124733416276,
+  "job_url": "https://github.com/den-run-ai/pystachy/actions/runs/41267554048/job/124733416276",
+  "job_conclusion": "failure",
+  "failing_step": [
+    "tools/coverage.sh (a part of make coverage)"
+  ],
+  "command": "COVERAGE_SUITES='ffi ir' COVERAGE_REPORT=0 tools/coverage.sh",
+  "classification": "IR runtime-call inventory expectation mismatch",
+  "probe": "tests/ir/index_key.py",
+  "expectation": "tests/ir/index_key.calls",
+  "ir_probes": 81,
+  "failed_probes": 1,
+  "noncompiling_probes": 0,
+  "ffi": {
+    "passed": 145,
+    "failed": 0,
+    "documented_skip": "py_coerce (the CPython-hosted compiler's own locale coercion reaches the program)"
+  },
+  "log": "coverage-hosted-ffi-ir-failure.log",
+  "artifact": {
+    "id": 13067358163,
+    "name": "coverage-part-8",
+    "size": 308588,
+    "digest": "sha256:8a51b9891e682ecf0e5c96a1ca5f38970ee705931513e34ebe3584a5cff3f856"
+  },
+  "raw_diff_excerpt": "@rf.f.total and @rf.f.fill no longer listed; @m.Grid.__getitem__ and @m.Grid.__setitem__ now contain pys_list_get/pys_list_set and pys_raise.",
+  "scope_limit": "check_ir.sh prints only the first 10 diff lines. This records the failure; it does not justify a complete expectation update or establish runtime semantic equivalence."
+}

@@ -1,0 +1,254 @@
+diff --git a/docs/internals.md b/docs/internals.md
+index 499cbe1d..ac88fd64 100644
+--- a/docs/internals.md
++++ b/docs/internals.md
+@@ -443,7 +443,10 @@ cleanup path. Where all observers occur in a region that cannot return, function
+ without local handlers can instead publish depth on entry to that region. Recursive
+ calls, callbacks and limit changes see the full active depth; generators keep their
+ original accounting. `recursionregion` can check a loop-containing function's finite
+-maximum call depth once and run an unchecked private call subgraph. Insufficient
++maximum call depth once and run an unchecked private call subgraph. Whole-function
++versioning requires at least one loop with a control-flow cycle and a counted
++source call on every path back to its head. A branch that exits the loop is allowed;
++a continuing branch without a call disqualifies that loop. Insufficient
+ headroom runs the complete guarded body, preserving side effects and the original
+ failing call. Callbacks, limit changes, generators, handlers and unknown calls remain
+ boundaries; code-size limits bound cloning.
+@@ -489,8 +492,9 @@ later proven leaf calls can share a body without its entry check. Their argument
+ stay in place, and a terminal observer still publishes exactly the child's one
+ frame. The caller's own entry does not establish spare room. Unknown or foreign
+ effects and generator operations invalidate the fact; roots with local handlers
+-or generators are excluded. This case requires repeated eligible leaf calls in a
+-loop and has separate root and clone-size budgets, detailed in the IR pass contract.
++or generators are excluded. This case uses the same loop requirement, counting
++only eligible leaf calls, and has separate root and clone-size budgets, detailed
++in the IR pass contract.
+ 
+ Programs with unmanaged native files or weak references keep all
+ original bookkeeping: even removing scalar instructions can change stale conservative
+diff --git a/docs/typed-ir.md b/docs/typed-ir.md
+index e8cc2215..c196b55a 100644
+--- a/docs/typed-ir.md
++++ b/docs/typed-ir.md
+@@ -395,7 +395,7 @@ the others select frontend or lowering choices.
+ | `unionslots` | Keep a local of a union of numbers (`int`, `float`, `bool`) in a tag slot and a payload slot instead of a box per value, where its slot's address goes only to its loads and stores and, on every path, each load whose value leaves the local (to a call, a return, a phi) follows a store of a box made for that store alone, with no other such load between them: stores keep a `pys_ubox`'s operands or a union phi's parts, `union.tag` and `union.payload`/`union.raw` (and tag loads) of a loaded value read the slots, a leaving value is boxed where it is loaded (each box for one that a store no longer makes), and boxes nothing uses any more are dropped |
+ | `nullcheck` | Drop a check that a value is not None (before a read through it) where a passed test of the same value dominates it: the block after a check, or the branch of a null test where the value is not None, reached from nowhere else. The same value is the value, an equal one, or a load of a slot that only the entry block stores and only loads and stores use (a parameter the function never assigns). The check becomes a branch, its test goes once nothing reads it, the block after it joins its block where nothing else goes there, and a cold block no check goes to any more goes too; a walk down the dominator tree keeps the work linear ([#787](https://github.com/den-run-ai/pystachy/issues/787)) |
+ | `recursionleaf` | Retain a source function's entry-limit check but omit its depth increment and restoration where a separate call-graph proof finds no operation that can observe that depth, including exceptional and cleanup paths. Counted callees, indirect or unknown calls, runtime state, user callbacks and generator operations are depth observers. |
+-| `recursionregion` | Select a bounded private version when enough depth remains, otherwise execute the original guarded body. Whole-function versions require repeated calls inside a loop and finite direct-call depth; partial versions cover returning leaf paths and publish depth before a guarded suffix. A separate successful-child proof removes later leaf checks while retaining the caller's published frame. |
++| `recursionregion` | Select a bounded private version when enough depth remains, otherwise execute the original guarded body. Whole-function versions require finite direct-call depth and a counted call on every continuing path of at least one loop; partial versions cover returning leaf paths and publish depth before a guarded suffix. A separate successful-child proof removes later leaf checks while retaining the caller's published frame. |
+ 
+ Disable one with `PYSTACHY_OPT=-dictfuse`, several with a comma-separated list, or all with
+ `PYSTACHY_OPT=-all`. Differential runs check that the choices preserve behavior.
+@@ -433,9 +433,10 @@ still happen. Cycles never receive a finite bound. Original callable addresses
+ retain guarded entries; only direct calls within the proven subgraph use private
+ unchecked clones. Cloning and analysis have size/depth budgets, and tuple-return
+ roots stay unchanged when versioning would defeat aggregate return optimization.
+-Whole-function versioning requires a counted call inside a loop's control-flow
+-cycle to amortize its selector; short helpers and functions with an unrelated
+-loop retain their existing entries. Whole-function unchecked graphs exclude
++Whole-function versioning requires at least one loop with a control-flow cycle
++and a counted call on every path back to its head. Calls in the loop header qualify;
++exit paths need no call. A call-free continuing branch, an unrelated loop, or a loop
++record with no remaining cycle cannot justify a selector. Whole-function unchecked graphs exclude
+ callbacks, limit changes, generators, local handlers and unknown calls.
+ 
+ After selecting closed call graphs within the size budgets, the pass retains
+@@ -516,8 +517,10 @@ A forward must analysis starts with no proven room and requires the fact on ever
+ incoming path, including implicit check-failure edges. Unknown or foreign `U`
+ effects invalidate it, including those summarized transitively through source
+ callees; generator operations also invalidate it. Roots exclude handlers, landing
+-pads, generators, coroutines and exported or foreign entries, and require an
+-eligible child call in a loop's control-flow cycle. The program-wide lifetime and
++pads, generators, coroutines and exported or foreign entries. They use the same loop
++profitability requirement as whole-function versioning, counting only eligible
++leaf children: at least one loop must have a cycle and an eligible child call on
++every path back to its head. The program-wide lifetime and
+ callback exclusions described above still apply.
+ 
+ Only a child that passes the complete returning-leaf and terminal-publication proof
+diff --git a/src/pystachy_compiler/optimizations.py b/src/pystachy_compiler/optimizations.py
+index d6a40fd5..e6c828c8 100644
+--- a/src/pystachy_compiler/optimizations.py
++++ b/src/pystachy_compiler/optimizations.py
+@@ -89,9 +89,10 @@ def recursion_fast(fn: IFn, skip: int, base: str, names: dict[str, str], entry:
+ 
+ def recursion_repeated(self, fn: IFn, bounds: list[int]) -> bool:
+     # A loop elsewhere in the function does not amortize a one-off source call.
+-    # Find calls in the strongly connected region of a recorded loop head by
+-    # intersecting forward/backward reachability. Implicit failure exits cannot
+-    # lead back to a head in these handler-free functions.
++    # Require a counted call on every path that continues to a recorded loop
++    # head. A conditional call in an otherwise call-free loop does not justify
++    # its selector and outlined body. Implicit failure exits cannot lead back
++    # to a head in these handler-free functions.
+     at: dict[str, int] = {}
+     back: list[list[int]] = [[] for _ in fn.blocks]
+     forward: list[list[int]] = []
+@@ -119,18 +120,27 @@ def recursion_repeated(self, fn: IFn, bounds: list[int]) -> bool:
+                 if previous not in ancestors:
+                     ancestors[previous] = True
+                     work.append(previous)
++        # A surviving loop record alone does not prove that a cycle remains.
++        if not any(target in ancestors for target in forward[head]):
++            continue
+         reached: dict[int, bool] = {head: True}
+         work = [head]
+         pos = 0
+-        while pos < len(work):
++        bypass = False
++        while pos < len(work) and not bypass:
+             j = work[pos]
+             pos += 1
+             if counted[j]:
+-                return True
++                continue
+             for target in forward[j]:
++                if target == head:
++                    bypass = True
++                    break
+                 if target in ancestors and target not in reached:
+                     reached[target] = True
+                     work.append(target)
++        if not bypass:
++            return True
+     return False
+ 
+ 
+diff --git a/tools/test_typed_recursion_bounded.py b/tools/test_typed_recursion_bounded.py
+index 4646fe05..47ca5c7c 100644
+--- a/tools/test_typed_recursion_bounded.py
++++ b/tools/test_typed_recursion_bounded.py
+@@ -101,6 +101,100 @@ print(helper(3))
+         disabled, _ = compile_source(source, opt="-recursionregion")
+         self.assertEqual(enabled, disabled)
+ 
++    def test_conditional_loop_calls_do_not_justify_a_selector(self):
++        _, functions = compile_source('''
++def leaf(n: int) -> int:
++    return n + 1
++
++def conditional(n: int) -> int:
++    total = 0
++    for i in range(n):
++        if i % 2:
++            total = leaf(total)
++    return total
++
++def early_continue(n: int) -> int:
++    total = 0
++    for i in range(n):
++        if i % 2:
++            continue
++        total = leaf(total)
++    return total
++
++print(conditional(4), early_continue(4))
++''')
++        for name in ("conditional", "early_continue"):
++            with self.subTest(function=name):
++                self.assertNotIn("@rf.f." + name, functions)
++                ops = operations(functions["@f." + name])
++                self.assertFalse(any(op[:2] == ("rt", "recursion.room") for op in ops))
++                self.assertTrue(any(op[:2] == ("rt", "recursion.enter") for op in ops))
++                self.assertTrue(any(op[:2] == ("call", "@f.leaf") for op in ops))
++
++    def test_calls_on_every_continuing_branch_allow_a_selector(self):
++        _, functions = compile_source('''
++def left(n: int) -> int:
++    return n + 1
++
++def right(n: int) -> int:
++    return n - 1
++
++def kernel(n: int, stop: int) -> int:
++    total = 0
++    for i in range(n):
++        if i == stop:
++            break
++        if i % 2:
++            total = left(total)
++            continue
++        total = right(total)
++    return total
++
++print(kernel(4, 3))
++''')
++        self.assertTrue(any(op[:2] == ("rt", "recursion.room")
++                            for op in operations(functions["@f.kernel"])))
++        fast = operations(functions["@rf.f.kernel"])
++        for name in ("left", "right"):
++            self.assertTrue(any(op[:2] == ("call", "@rf.f." + name) for op in fast))
++
++    def test_counted_loop_condition_justifies_a_selector(self):
++        _, functions = compile_source('''
++def more(n: int) -> bool:
++    return n > 0
++
++def kernel(n: int) -> int:
++    total = 0
++    while more(n):
++        total += n
++        n -= 1
++    return total
++
++print(kernel(4))
++''')
++        self.assertTrue(any(op[:2] == ("rt", "recursion.room")
++                            for op in operations(functions["@f.kernel"])))
++        self.assertTrue(any(op[:2] == ("call", "@rf.f.more")
++                            for op in operations(functions["@rf.f.kernel"])))
++
++    def test_break_only_loop_does_not_justify_a_selector(self):
++        _, functions = compile_source('''
++def more(n: int) -> bool:
++    return n > 0
++
++def once(n: int) -> int:
++    while more(n):
++        n += 1
++        break
++    return n
++
++print(once(4))
++''')
++        self.assertNotIn("@rf.f.once", functions)
++        original = operations(functions["@f.once"])
++        self.assertFalse(any(op[:2] == ("rt", "recursion.room") for op in original))
++        self.assertTrue(any(op[:2] == ("call", "@f.more") for op in original))
++
+     def test_repeated_calls_share_one_nonraising_bound_and_unchecked_callees(self):
+         ir, functions = compile_source(ORDINARY)
+         original = functions["@f.kernel"]
+diff --git a/tools/test_typed_recursion_cached.py b/tools/test_typed_recursion_cached.py
+index 6cd1592c..82e69703 100644
+--- a/tools/test_typed_recursion_cached.py
++++ b/tools/test_typed_recursion_cached.py
+@@ -54,6 +54,28 @@ print(kernel(3))
+         self.assertTrue(any(op[:2] == ("rt", "recursion.check") for op in operations(functions["@f.leaf"])))
+         self.assertFalse(any(op[:2] == ("rt", "recursion.check") for op in operations(functions["@rc.f.leaf"])))
+ 
++    def test_conditional_leaf_calls_do_not_justify_cached_versioning(self):
++        _, functions = compile_source(PREFIX + '''
++def kernel(n: int) -> int:
++    total = leaf(0)
++    for i in range(n):
++        total += recursive(i)
++        if i % 2:
++            total += leaf(i)
++    return total
++
++print(kernel(4))
++''')
++        # The recursive child rules out bounded whole-function versioning. Its
++        # successful return proves room, but only the conditional leaf could
++        # benefit from the cached path, so that path would not run on every turn.
++        self.assertNotIn("@rf.f.kernel", functions)
++        self.assertNotIn("@rc.f.leaf", functions)
++        original = operations(functions["@f.kernel"])
++        self.assertEqual(sum(op[:2] == ("call", "@f.leaf") for op in original), 2)
++        self.assertTrue(any(op[:2] == ("call", "@f.recursive") for op in original))
++        self.assertTrue(any(op[:2] == ("rt", "recursion.enter") for op in original))
++
+     def test_loop_backedge_does_not_prove_its_own_first_call(self):
+         _, functions = compile_source(PREFIX + '''
+ def kernel(n: int) -> int:

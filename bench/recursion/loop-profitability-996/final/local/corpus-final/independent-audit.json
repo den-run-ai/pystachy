@@ -1,0 +1,794 @@
+{
+  "byte_different_ir_outputs": 238,
+  "case_count": 3924,
+  "changed_statuses": 0,
+  "comparison_sha256": "a98b4bd77504a8d7f33d7fc7dd55d40b7ebc99ad2065a606ba64d7eb914e54d3",
+  "compiler_status_counts": {
+    "0": 2140,
+    "1": 1784
+  },
+  "config_sha256": "d48406b636d5791fab63eb0c2df333df91529f8149e99e0bb4814da950fc683a",
+  "diagnostic_assessment_sha256": "0a3d4cc1cfe32092ca900796ee871d4f0c16705428ee6168a93e3412ba155943",
+  "diagnostic_cases": [
+    {
+      "case": "tests/errors/inference/any_lru_cache.py",
+      "every_residual_byte_identical": true,
+      "index": 2835,
+      "new_sha256": "9e5fc8b99d466564d7efed25944b3636ac26585e521e321da38955499b951e13",
+      "old_sha256": "70134271f0a2b6d54d4d342e4a240c60cbb2a12ddb247fb3c315e463e50f9626",
+      "path_spans_verified": 3
+    },
+    {
+      "case": "tests/errors/library/json_decoder_override_return.py",
+      "every_residual_byte_identical": true,
+      "index": 3049,
+      "new_sha256": "a5cc189c00f2e2d27392c3daab214f5598bd30edd188d65f9973285f2f6f8c14",
+      "old_sha256": "5e66faaf18f2f4a1e407541db5de89c96319d853aca1a8bfcc3c0b4ed1ef413c",
+      "path_spans_verified": 1
+    },
+    {
+      "case": "tests/errors/library/lib_collections_counter_float.py",
+      "every_residual_byte_identical": true,
+      "index": 3052,
+      "new_sha256": "682615d3db18c33951545af49e13e8c3f2c631c7ed0a3b334b4af79f1c4d5731",
+      "old_sha256": "3ca6768fc26bb4d0fdaeb34e67f54836061398ae242487c5cc2cd466bfb4dede",
+      "path_spans_verified": 2
+    },
+    {
+      "case": "tests/errors/library/lib_collections_ordereddict_iterable.py",
+      "every_residual_byte_identical": true,
+      "index": 3082,
+      "new_sha256": "f6d4a94302084d62a6ceab24eeb03c50cf818d6edc66dccbb939b78b0c9118b1",
+      "old_sha256": "8660394a0447a13d038a9e92c0f907f15f70fc6419d01654abbafe3d6943d9fb",
+      "path_spans_verified": 2
+    },
+    {
+      "case": "tests/errors/library/lib_csv_namedtuple_row.py",
+      "every_residual_byte_identical": true,
+      "index": 3083,
+      "new_sha256": "cddb6790c94845e81e6626c14746bcf458141aded3c970572c98115a98113fe9",
+      "old_sha256": "01bd43341396872caf292dd486dd900fa0a83ae80bfef0938d4eca70fdd37f00",
+      "path_spans_verified": 1
+    },
+    {
+      "case": "tests/errors/library/lib_csv_no_write.py",
+      "every_residual_byte_identical": true,
+      "index": 3084,
+      "new_sha256": "d21f897fc98b0837fa80b532d974946e6c5842b37682417efc30b360b8e6849c",
+      "old_sha256": "3c84c34ef40ecef0fc50fde9300ea374308c109d9cc45fadc4f801ec1c407b65",
+      "path_spans_verified": 2
+    },
+    {
+      "case": "tests/errors/library/lib_csv_row_not_iterable.py",
+      "every_residual_byte_identical": true,
+      "index": 3085,
+      "new_sha256": "2d95a0e99bd3b7080b905c424ad2d3deda000623c5c92bcf870a6fcf8750bb34",
+      "old_sha256": "86c93908c009e916cd5adbf866e6a542d3db51b40a027eed6ae888b0214b5b6f",
+      "path_spans_verified": 1
+    },
+    {
+      "case": "tests/errors/library/lib_datetime_strptime.py",
+      "every_residual_byte_identical": true,
+      "index": 3090,
+      "new_sha256": "801aa99602bb44744bb8a119df409ea2d310e0f55a396e6a9549cffb9a961353",
+      "old_sha256": "ca75afce2d12429a52a6831c6f9f73ca710ec2a5c3bb1c9de449dddc3b01bd39",
+      "path_spans_verified": 1
+    },
+    {
+      "case": "tests/errors/library/lib_datetime_utcnow.py",
+      "every_residual_byte_identical": true,
+      "index": 3092,
+      "new_sha256": "841d874eb4aa76174a1548c005b00c4c5de11f9b9b007c6218b641ceb74720c2",
+      "old_sha256": "d0b01b984c1050667232345f139d0bc37c6b4f2eb87e6687bc23dcc825595925",
+      "path_spans_verified": 1
+    },
+    {
+      "case": "tests/errors/library/lib_difflib_int_items.py",
+      "every_residual_byte_identical": true,
+      "index": 3093,
+      "new_sha256": "100f37499f4751619f9a3b8297cd61f97f7f0fd5f9c985484f7d139a90ebaba0",
+      "old_sha256": "34ffca06d8483d848fccfc1c9f4ca918dacd197ea3da5ac128c2809e61cf5082",
+      "path_spans_verified": 2
+    },
+    {
+      "case": "tests/errors/library/lib_functools_builtin.py",
+      "every_residual_byte_identical": true,
+      "index": 3095,
+      "new_sha256": "ac31f682730307fc425bec6d9324621492b8f1082e9d84a7ee306e7c08962883",
+      "old_sha256": "8cb97c09ca25027453b4833930ce8d96894f4d0fec5955963750abbb050393fa",
+      "path_spans_verified": 3
+    },
+    {
+      "case": "tests/errors/library/lib_functools_cmp_to_key_float_result.py",
+      "every_residual_byte_identical": true,
+      "index": 3096,
+      "new_sha256": "127f33e3cf28b3b948daed7fd2dada4ee08f5aa41c1c1fbc781169117b4e4765",
+      "old_sha256": "63208c7277bcd82b4803b6faaaf197a1196a03af6dde3b679872d59f106d0c87",
+      "path_spans_verified": 3
+    },
+    {
+      "case": "tests/errors/library/lib_functools_cmp_to_key_mixed.py",
+      "every_residual_byte_identical": true,
+      "index": 3097,
+      "new_sha256": "1479a9249c8fa931b0bd0996d61838c4a5cd8ce83cec0152c4012c5c69b42568",
+      "old_sha256": "1e0bac9310782ae6fc5cb726cf067e1a8113a4d53a071dd651a3851515ab91d1",
+      "path_spans_verified": 2
+    },
+    {
+      "case": "tests/errors/library/lib_functools_float.py",
+      "every_residual_byte_identical": true,
+      "index": 3099,
+      "new_sha256": "63013ab3141d4683712b7b1d3ce1d91a6b84d032361ed7a9a6782d21a4f64572",
+      "old_sha256": "254f4ab33683b3e739fb03aaeda4344faf170189cebd5a2ef6b1e268e115b7dd",
+      "path_spans_verified": 3
+    },
+    {
+      "case": "tests/errors/library/lib_functools_lambda.py",
+      "every_residual_byte_identical": true,
+      "index": 3101,
+      "new_sha256": "37b8467571065979ff2d86fa21b6b2d4b185745b49dbc4050137086d6d2aee00",
+      "old_sha256": "93f7297dc071e2f160bbfbc1183735c33f27816ca8b097df43466f2cfecb349d",
+      "path_spans_verified": 4
+    },
+    {
+      "case": "tests/errors/library/lib_functools_maxsize.py",
+      "every_residual_byte_identical": true,
+      "index": 3102,
+      "new_sha256": "ceca1012839eddcc95b81208d7e524a6db2bb25add62677ff608d9f32fa4c7ef",
+      "old_sha256": "4f58279487213428588bf310467c528d6a3d5555fbb745f18f7220d02cc2bed9",
+      "path_spans_verified": 3
+    },
+    {
+      "case": "tests/errors/library/lib_functools_none.py",
+      "every_residual_byte_identical": true,
+      "index": 3105,
+      "new_sha256": "63350564d74bb1ad62747e65f17a7381800f8993797103bc66fae505041140f4",
+      "old_sha256": "828d963ee56a61f8deb633ef777ced6b51fdebd147268de316d024ff5abe979f",
+      "path_spans_verified": 4
+    },
+    {
+      "case": "tests/errors/library/lib_functools_partial_missing.py",
+      "every_residual_byte_identical": true,
+      "index": 3107,
+      "new_sha256": "02e7ee68d46267655ffdc9e2efc8f98dc831101caaecf517cb43bcadf7be2de7",
+      "old_sha256": "9d7a30571c73021333b499093ceb28025a39985122e345e805c2cf5cd357a5b8",
+      "path_spans_verified": 1
+    },
+    {
+      "case": "tests/errors/library/lib_functools_reduce_noncallable.py",
+      "every_residual_byte_identical": true,
+      "index": 3110,
+      "new_sha256": "31318a459922b71f7f4397ed282d9c1809c4ecfbd292630f793ee5c07bc26d4f",
+      "old_sha256": "8b3ab1b49d1e0ca98fd1346fbce5c0c885c6d380afed34e4af8fb7576c04140a",
+      "path_spans_verified": 1
+    },
+    {
+      "case": "tests/errors/library/lib_functools_return.py",
+      "every_residual_byte_identical": true,
+      "index": 3111,
+      "new_sha256": "f3831a9fb88562bf076cb5ed21d066e9dcabb31e387f352092bcc8073dd6f1ae",
+      "old_sha256": "f94be0104d255d69253634e8ae6fcf90170f56707ac66f2cdc5513fbf79bea0c",
+      "path_spans_verified": 4
+    },
+    {
+      "case": "tests/errors/library/lib_functools_star.py",
+      "every_residual_byte_identical": true,
+      "index": 3112,
+      "new_sha256": "f65dc7b715b7db7038900e0d4eb2336d0de413ce3bbf17ee338cb0d16e127afa",
+      "old_sha256": "6205f4ce0fb967912d91e21a312f5b71cf9a41844f9abbd40ea410819f0c6d9c",
+      "path_spans_verified": 4
+    },
+    {
+      "case": "tests/errors/library/lib_functools_unannotated.py",
+      "every_residual_byte_identical": true,
+      "index": 3113,
+      "new_sha256": "c2f77941321fc742251dd13dc2e6adec8d5248a88c74a4ea2fe30c4944808267",
+      "old_sha256": "208bbcfb7e0e3955e455686630cc2fd864349121122ea8c64736afa41f07c0a7",
+      "path_spans_verified": 3
+    },
+    {
+      "case": "tests/errors/library/lib_gettext_lookup.py",
+      "every_residual_byte_identical": true,
+      "index": 3120,
+      "new_sha256": "bc106ded108bf7ab95d275f5befa6fc80a35da8fb8c19eec9a8aef88a9eaf93a",
+      "old_sha256": "12e254f2dfe8b7e0f2fd6da766d9c94b878e5f46c44702d180b59e8adb5f596a",
+      "path_spans_verified": 2
+    },
+    {
+      "case": "tests/errors/library/lib_gettext_ngettext.py",
+      "every_residual_byte_identical": true,
+      "index": 3121,
+      "new_sha256": "26069a6a1da7ef858d4fe81b2cbd6748469e6a1271b61298355f59a56931053b",
+      "old_sha256": "245a55625e8c2ef538d9e66bf382461825fdd47c497a5732137d4eec5ceeded5",
+      "path_spans_verified": 3
+    },
+    {
+      "case": "tests/errors/library/lib_itertools_accumulate_initial.py",
+      "every_residual_byte_identical": true,
+      "index": 3136,
+      "new_sha256": "b36fbe9d65e0e7d592db3eeb6258c5cb777c5fa0a6c3cf32b126340b03008ca2",
+      "old_sha256": "4ec02d84eb2d9fbf854814783f291732cd3fc09601bc183f940541e613a5a3b2",
+      "path_spans_verified": 2
+    },
+    {
+      "case": "tests/errors/library/lib_itertools_accumulate_type.py",
+      "every_residual_byte_identical": true,
+      "index": 3137,
+      "new_sha256": "955592afb4bba5de401df706c77da12c6943bc8b44b9686d3e7c0a59bd21d017",
+      "old_sha256": "e3184c3b43405c0a2786f9b236667397e7be32c18876592700811d662d0d1486",
+      "path_spans_verified": 2
+    },
+    {
+      "case": "tests/errors/library/lib_itertools_batched_tuples.py",
+      "every_residual_byte_identical": true,
+      "index": 3138,
+      "new_sha256": "dcbe76a4635a190e2d197ce50346b2c48679360a97a4880579178c6f2fda2165",
+      "old_sha256": "45079f8b2ee819682299207dc498bd7b89f9c6c9586220f2a77def515bc7f351",
+      "path_spans_verified": 2
+    },
+    {
+      "case": "tests/errors/library/lib_itertools_chain_mixed.py",
+      "every_residual_byte_identical": true,
+      "index": 3139,
+      "new_sha256": "216b529fed4b055a1b9f1e6a3e94cd836f48c0f6e20a8897db6bdbb24e24cfc1",
+      "old_sha256": "73b5da9679dcc8b949656ef70e3f4d916f85d35a78d1acf0b52f18ac94152537",
+      "path_spans_verified": 2
+    },
+    {
+      "case": "tests/errors/library/lib_itertools_combinations_objects.py",
+      "every_residual_byte_identical": true,
+      "index": 3140,
+      "new_sha256": "a50258ab7b3e5e052c36056f343193b0495d541aa7a70e7688fea4e777ef9686",
+      "old_sha256": "1f3d6681ddf21f8a6a4090499bdf3afe97ff365d74e564d9e744ce5fb206928f",
+      "path_spans_verified": 2
+    },
+    {
+      "case": "tests/errors/library/lib_itertools_groupby_key_object.py",
+      "every_residual_byte_identical": true,
+      "index": 3141,
+      "new_sha256": "b7fb9fa6d0d66eba6692776fb8f863dbbee4177c4aa633f1610edd5d6ffd1590",
+      "old_sha256": "4ce3f9ef187deab71eb6c4d66aa55f5f3a1f31f6b0002ceced65c2b519c16af2",
+      "path_spans_verified": 1
+    },
+    {
+      "case": "tests/errors/library/lib_itertools_product_repeat_mixed.py",
+      "every_residual_byte_identical": true,
+      "index": 3144,
+      "new_sha256": "e093325c305590720a29edf74918dea912d97d10b56e7f9c479c1b5a2b148856",
+      "old_sha256": "5bed102c05273fb59a2075dc79dff8fd0523c13313d5c878dad1ceb7fc1fba80",
+      "path_spans_verified": 3
+    },
+    {
+      "case": "tests/errors/library/lib_itertools_starmap_list.py",
+      "every_residual_byte_identical": true,
+      "index": 3146,
+      "new_sha256": "1190e041927c22ae85b7a3d77ae0f70f21ff1ff968eb2ac4e54dcdef45d8989d",
+      "old_sha256": "8a1ca5e85bd84d9fbecb2a4264027c1af3c0837c69bc250797d21b773f6af8de",
+      "path_spans_verified": 2
+    },
+    {
+      "case": "tests/errors/library/lib_operator_attrgetter_missing.py",
+      "every_residual_byte_identical": true,
+      "index": 3150,
+      "new_sha256": "0a0560e5aefe072f642017071355de906e8e62e199888984a7683644b9b3957a",
+      "old_sha256": "6626988f94602f017ea9802143c228b292c0e154d49f54ebbd419348ffd30c52",
+      "path_spans_verified": 1
+    },
+    {
+      "case": "tests/errors/library/lib_operator_attrgetter_names.py",
+      "every_residual_byte_identical": true,
+      "index": 3151,
+      "new_sha256": "5b033f13a309ec06c588b09f63d9dff4d14abbab185fc3965f9673d64588ff05",
+      "old_sha256": "3e5b6f40ee55ccc958163a2301e6be9692f7d79b3ebac8e134280968d842b8b5",
+      "path_spans_verified": 1
+    },
+    {
+      "case": "tests/errors/library/lib_operator_itemgetter_object.py",
+      "every_residual_byte_identical": true,
+      "index": 3154,
+      "new_sha256": "2d24594be4c6b8d40be1f10e86af5bdd64f1fa4a8937b82b035ccc04da27ae25",
+      "old_sha256": "cce3de2811e95bced862ebbf3027e78157bf7840f02e442c656ee754d71cb5d9",
+      "path_spans_verified": 1
+    },
+    {
+      "case": "tests/errors/library/lib_operator_methodcaller_variable.py",
+      "every_residual_byte_identical": true,
+      "index": 3155,
+      "new_sha256": "4aedd70303d10e576b552b6fc8211526bf675395c7e096278d1a41ce0b1d61b9",
+      "old_sha256": "45961987e12b039c5c6f665b1a80601db6ea55699e339a5ef84a37bdd5e2212e",
+      "path_spans_verified": 1
+    },
+    {
+      "case": "tests/errors/library/lib_random_choices_k.py",
+      "every_residual_byte_identical": true,
+      "index": 3157,
+      "new_sha256": "ee4d9dd38c26c407e44b10422ceab0a598961ce71c69e002e77e7bb768a0d73b",
+      "old_sha256": "68e72d56a0f1c7acb1061213496d72948bef5dc23161338ec2349ea7251c8307",
+      "path_spans_verified": 2
+    },
+    {
+      "case": "tests/errors/library/lib_random_randbytes.py",
+      "every_residual_byte_identical": true,
+      "index": 3159,
+      "new_sha256": "c9244b96db50642e41ee1e5bb3468c1d69d34f428c8df0db333e4de01e3a3540",
+      "old_sha256": "ec7e5b1fc381131161cd9b77a21d3a98ac3381fb4b5cb8e63ffc691a7b2fa5c1",
+      "path_spans_verified": 1
+    },
+    {
+      "case": "tests/errors/library/lib_random_randrange_float.py",
+      "every_residual_byte_identical": true,
+      "index": 3160,
+      "new_sha256": "6e52ca23ec71839ace2155da1e63e98dd65e62b38d607d55979b1a9e1d493ca3",
+      "old_sha256": "96f60a8ef3889effa91fb26b02b0f2ba6ab365a146bdc09a0c6ebeb096c13c62",
+      "path_spans_verified": 2
+    },
+    {
+      "case": "tests/errors/library/lib_shlex_punctuation_list.py",
+      "every_residual_byte_identical": true,
+      "index": 3169,
+      "new_sha256": "a903ec5b303376bf4aa58a26d52fcaf3662f9dace89896b502f82cb6d8f4c541",
+      "old_sha256": "8737e88c8dc191352bd60094de5108ad9c65f3a5a88cbf89a5f00dfa85e0bae9",
+      "path_spans_verified": 1
+    },
+    {
+      "case": "tests/errors/library/lib_statistics_correlation.py",
+      "every_residual_byte_identical": true,
+      "index": 3170,
+      "new_sha256": "54af976fe0dba2d71a8bcfb92b8586e6b95b17dae236eab9956cbd589ff79c1d",
+      "old_sha256": "ad974b1e1619869a9d92d3ac5741d32d12e39e811369ba9dca2830e9bd228692",
+      "path_spans_verified": 1
+    },
+    {
+      "case": "tests/errors/library/lib_statistics_harmonic_mean.py",
+      "every_residual_byte_identical": true,
+      "index": 3171,
+      "new_sha256": "1ed1aa08292f463783e9b5db52205cd3681f04363811e9d57a095d5b262d3fe0",
+      "old_sha256": "b28491b986be0d34ccf8d6b595c9962792007d64a1e90a3f543aa318fd94d9df",
+      "path_spans_verified": 1
+    },
+    {
+      "case": "tests/errors/library/lib_statistics_kde.py",
+      "every_residual_byte_identical": true,
+      "index": 3172,
+      "new_sha256": "14b54206d160b3dd2ad925c32b8bf45b6655a720b65ebfcb3cc7098145d66d4a",
+      "old_sha256": "0e0ad79b9580f549008af6967b3ea372fb583936d1980f367867720a22f0eed0",
+      "path_spans_verified": 1
+    },
+    {
+      "case": "tests/errors/library/lib_statistics_kde_random.py",
+      "every_residual_byte_identical": true,
+      "index": 3173,
+      "new_sha256": "9df702ee49baa40112e504e6d47b9ee7f132b2771802afd5368c2a9f51116485",
+      "old_sha256": "d351543715c8b885cb6a58cbd2a50a1795e0c81df6116abe97b4105a6bf6d88e",
+      "path_spans_verified": 1
+    },
+    {
+      "case": "tests/errors/library/lib_statistics_linear_regression.py",
+      "every_residual_byte_identical": true,
+      "index": 3174,
+      "new_sha256": "2fca59d160ed44585edb477a5552dc1a6f4173eeaf0a78f3d2f9b9df0aed1062",
+      "old_sha256": "259559eb19b6241a4906ed05b41d74cba0e5dd2dd679cbfa2cf40651ae7d8057",
+      "path_spans_verified": 1
+    },
+    {
+      "case": "tests/errors/library/lib_statistics_mean.py",
+      "every_residual_byte_identical": true,
+      "index": 3175,
+      "new_sha256": "39fe05596c42554c88b22489858ed3dfac61427531e003aa4c0feba07b95c2e3",
+      "old_sha256": "5321943ff43c5ff6047d934685ef6da346073960ca670d8e1d4a9d70f43a6575",
+      "path_spans_verified": 2
+    },
+    {
+      "case": "tests/errors/library/lib_statistics_median_str.py",
+      "every_residual_byte_identical": true,
+      "index": 3176,
+      "new_sha256": "565706a2a496ab9c34decc43656b3916b32f2a8ff19d83cfc8d2f7de209404ab",
+      "old_sha256": "ec19553e7b65b2e60fc9956fa0c8aa7464a88697e818ec51bc20a2d1216bf546",
+      "path_spans_verified": 1
+    },
+    {
+      "case": "tests/errors/library/lib_statistics_mode_float.py",
+      "every_residual_byte_identical": true,
+      "index": 3177,
+      "new_sha256": "0ade91aef41c84c58a918e6e5e70af11cae0c057d8b5f27f1ef7bdfe63a629b4",
+      "old_sha256": "d0bf930a201dd109c88eff26a65507a3b9fa30eb15c5fcd94a75c4d1ae05a925",
+      "path_spans_verified": 1
+    },
+    {
+      "case": "tests/errors/library/lib_statistics_quantiles_int.py",
+      "every_residual_byte_identical": true,
+      "index": 3179,
+      "new_sha256": "022b88e85bbb5b1e7f97469a0ec442bc9649d177e9311cc6e53f9def64988641",
+      "old_sha256": "b3736b80f56067126ac1d9fa0e31fbdade8e2d80ff0e40d715b3fc847d920d5e",
+      "path_spans_verified": 1
+    },
+    {
+      "case": "tests/errors/library/lib_statistics_variance.py",
+      "every_residual_byte_identical": true,
+      "index": 3180,
+      "new_sha256": "0fe1718f40d7bc9e31a412122099e8320749e6799069457fc5e0090555bf7bfb",
+      "old_sha256": "2689d8ecb44fb1aede164857f325dcea140c5731920aa538d2e4e2a60ee0192e",
+      "path_spans_verified": 2
+    },
+    {
+      "case": "tests/errors/library/lib_urllib_parse_deprecated.py",
+      "every_residual_byte_identical": true,
+      "index": 3189,
+      "new_sha256": "eda5232c42fa487890e7aabfe93255ee76dd3bfcf61f6c475327d7aefc901ca7",
+      "old_sha256": "dc0e97d8a5eaa2086352389e0760e878f2793b6ad880fa6374d3ecdc1718c7a3",
+      "path_spans_verified": 1
+    },
+    {
+      "case": "tests/errors/library/lib_urllib_parse_doseq_mixed.py",
+      "every_residual_byte_identical": true,
+      "index": 3190,
+      "new_sha256": "5dcfa7944f7e308dfa256e95f2597e448006fc6563588a4bb8e988b5d19b050c",
+      "old_sha256": "d28a789ea7fb324476adb6a3623f854f86da5bd9bf6d010050e20c5c804b375d",
+      "path_spans_verified": 1
+    },
+    {
+      "case": "tests/errors/library/lib_urllib_parse_not_sequence.py",
+      "every_residual_byte_identical": true,
+      "index": 3193,
+      "new_sha256": "6c65a1a944ebc77aefffe2097f610b57962cecf02237ca0143819e388332a734",
+      "old_sha256": "de90476fb053048c142c7c8a80e591b445c699eafd8d9c65363d81e50f6a47a0",
+      "path_spans_verified": 1
+    },
+    {
+      "case": "tests/errors/library/lib_urllib_parse_unquote_to_bytes.py",
+      "every_residual_byte_identical": true,
+      "index": 3194,
+      "new_sha256": "1fb6d009f1687258361c0d72df541dc068d239fb5a5977e1e37ee2dac5a32afc",
+      "old_sha256": "f065bfc3367c0c7a9d354a83a4a8d4863f2037de16426c5b29295073c6691d08",
+      "path_spans_verified": 1
+    },
+    {
+      "case": "tests/errors/library/lib_warnings_category_tuple.py",
+      "every_residual_byte_identical": true,
+      "index": 3195,
+      "new_sha256": "265cbf287d58a3a5b0b34fcff8e916e3382007b7cedde7e17445c104a2f58a10",
+      "old_sha256": "81a68c05bc85ad4044be03a333471e4b6d29d12af01821b54d39bea7d5b37421",
+      "path_spans_verified": 2
+    },
+    {
+      "case": "tests/errors/library/lib_warnings_deprecated.py",
+      "every_residual_byte_identical": true,
+      "index": 3196,
+      "new_sha256": "f90466243219b35e03cb822f59c4f3fbdbbb3b1980e8eb7b61131a30f3deafe6",
+      "old_sha256": "8db6dd3dd8cea443b2daef3b2481f3e22e72e14495c3b0fa1652437eb0d06c66",
+      "path_spans_verified": 1
+    },
+    {
+      "case": "tests/errors/library/lib_warnings_skip_prefixes_mixed.py",
+      "every_residual_byte_identical": true,
+      "index": 3199,
+      "new_sha256": "e4b5df0e84ad4c52db77f4dec050740352af5ccfd5d254883a370eb92a333b14",
+      "old_sha256": "6e7f4fde0d8d7cea8e2543b46ddfc4eaf28970734c437e7e64bac03fd8ae0a86",
+      "path_spans_verified": 1
+    },
+    {
+      "case": "tests/errors/library/weakref_builtin.py",
+      "every_residual_byte_identical": true,
+      "index": 3244,
+      "new_sha256": "efadde8f0406983a14219d6bebcad3e394dcd12dee72ff214bc4cd138a014166",
+      "old_sha256": "33b0499ce1a1ff9cdf0f7d9c03ae8f893d4b513b248c06de6fb35345c0212865",
+      "path_spans_verified": 1
+    },
+    {
+      "case": "tests/errors/library/weakref_nested.py",
+      "every_residual_byte_identical": true,
+      "index": 3251,
+      "new_sha256": "878a2d6b64997244134b245d314db641a6bfe34d5b4270b3ba781f3aea7012dc",
+      "old_sha256": "902e3aed0075ec05275f90bdceae8c55f1006ac5ca7da5de99bdb48494d93c5e",
+      "path_spans_verified": 1
+    },
+    {
+      "case": "tests/errors/library/weakref_slots.py",
+      "every_residual_byte_identical": true,
+      "index": 3257,
+      "new_sha256": "91c07e5529f473b9b859cb54734d061b65a6b4397e4b599150dc5c987f362185",
+      "old_sha256": "174159709b27b3b42bc03d5631448ee6305242e8aecc8ade041488aea31ce682",
+      "path_spans_verified": 1
+    },
+    {
+      "case": "tests/errors/reflection/reflect_attrgetter_runtime.py",
+      "every_residual_byte_identical": true,
+      "index": 3420,
+      "new_sha256": "dc01e67a6f087ec53b60fd009dd06def51f09fb5862c1e71f248bc8328a9110f",
+      "old_sha256": "8fefb559060145ddb9a5276b76d71fb14be6b28704f271ab774a911a81684539",
+      "path_spans_verified": 1
+    }
+  ],
+  "diagnostic_cases_verified": 61,
+  "diff_line_totals": {
+    "added": 67411,
+    "meaning": "Changed lines in textual IR diffs, not whole-program IR volume; no volume-reduction percentage follows from their ratio.",
+    "removed": 186820
+  },
+  "differing_diagnostic_outputs": 61,
+  "exact_path_spans_verified": 106,
+  "extra_cases": [
+    "bench/recursion/json_calls.py",
+    "bench/recursion/json_file_calls.py",
+    "bench/recursion/object_calls.py",
+    "bench/recursion/ordinary_calls.py"
+  ],
+  "input_manifests_identical": true,
+  "library_file_proofs": [
+    {
+      "baseline_git_ref": "ea68529b8a590eb8f3df7200b857e1d16becd7a3",
+      "before_after_snapshot_match": true,
+      "live_old_new_and_pinned_blob_identical": true,
+      "relative": "lib/_pystachy_itertools.py",
+      "sha256": "14f451cf7647016ad8105aa988b9cbabe4fe3f5a08f2710f6ed2db5d81a00566"
+    },
+    {
+      "baseline_git_ref": "ea68529b8a590eb8f3df7200b857e1d16becd7a3",
+      "before_after_snapshot_match": true,
+      "live_old_new_and_pinned_blob_identical": true,
+      "relative": "lib/_pystachy_weakref.py",
+      "sha256": "da4181f6adb4cbbed1d3c45d95e32bd39e8ac210638ab902f26fb0b68bc7cbfe"
+    },
+    {
+      "baseline_git_ref": "ea68529b8a590eb8f3df7200b857e1d16becd7a3",
+      "before_after_snapshot_match": true,
+      "live_old_new_and_pinned_blob_identical": true,
+      "relative": "lib/collections/__init__.py",
+      "sha256": "8a6533ddf04c4823e1c1da10925028613420cc4e5cb6264e6066fdd3739b4852"
+    },
+    {
+      "baseline_git_ref": "ea68529b8a590eb8f3df7200b857e1d16becd7a3",
+      "before_after_snapshot_match": true,
+      "live_old_new_and_pinned_blob_identical": true,
+      "relative": "lib/csv.py",
+      "sha256": "29676a25a82679e93c6d0eb771a3f60890aedf49941206c0387ce59696b7c3c4"
+    },
+    {
+      "baseline_git_ref": "ea68529b8a590eb8f3df7200b857e1d16becd7a3",
+      "before_after_snapshot_match": true,
+      "live_old_new_and_pinned_blob_identical": true,
+      "relative": "lib/datetime.py",
+      "sha256": "d269c51c55e7668b988c8194a7a2e643a39aa3a2770a727c178a5c898b91c239"
+    },
+    {
+      "baseline_git_ref": "ea68529b8a590eb8f3df7200b857e1d16becd7a3",
+      "before_after_snapshot_match": true,
+      "live_old_new_and_pinned_blob_identical": true,
+      "relative": "lib/difflib.py",
+      "sha256": "4d33db46d2f0748bd674b5ae2f52c59ab0cab0865c465a99ea9521d8751aea0f"
+    },
+    {
+      "baseline_git_ref": "ea68529b8a590eb8f3df7200b857e1d16becd7a3",
+      "before_after_snapshot_match": true,
+      "live_old_new_and_pinned_blob_identical": true,
+      "relative": "lib/functools.py",
+      "sha256": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703"
+    },
+    {
+      "baseline_git_ref": "ea68529b8a590eb8f3df7200b857e1d16becd7a3",
+      "before_after_snapshot_match": true,
+      "live_old_new_and_pinned_blob_identical": true,
+      "relative": "lib/gettext.py",
+      "sha256": "97b7fa3d8112826dae4d021a6445fe791521524bd4b06e729d0497ed59a85e63"
+    },
+    {
+      "baseline_git_ref": "ea68529b8a590eb8f3df7200b857e1d16becd7a3",
+      "before_after_snapshot_match": true,
+      "live_old_new_and_pinned_blob_identical": true,
+      "relative": "lib/json.py",
+      "sha256": "72fb29122acddd3b4d1bd43d8ae9e7fee506b1d7d4f30559edeeebd92ac044ce"
+    },
+    {
+      "baseline_git_ref": "ea68529b8a590eb8f3df7200b857e1d16becd7a3",
+      "before_after_snapshot_match": true,
+      "live_old_new_and_pinned_blob_identical": true,
+      "relative": "lib/operator.py",
+      "sha256": "7d42396ef02c03aa69eb86643769cdb889ab9fc66ffd140bc0efa0896fc94c99"
+    },
+    {
+      "baseline_git_ref": "ea68529b8a590eb8f3df7200b857e1d16becd7a3",
+      "before_after_snapshot_match": true,
+      "live_old_new_and_pinned_blob_identical": true,
+      "relative": "lib/random.py",
+      "sha256": "91e7fa770bfc1affb76a6441a10e1913af8993d8c657c12ffe6cbadc3e3add1e"
+    },
+    {
+      "baseline_git_ref": "ea68529b8a590eb8f3df7200b857e1d16becd7a3",
+      "before_after_snapshot_match": true,
+      "live_old_new_and_pinned_blob_identical": true,
+      "relative": "lib/shlex.py",
+      "sha256": "7392b7c738fe818c43a8031820bef96db0b9f598d354a9fac0b771546a4fdba4"
+    },
+    {
+      "baseline_git_ref": "ea68529b8a590eb8f3df7200b857e1d16becd7a3",
+      "before_after_snapshot_match": true,
+      "live_old_new_and_pinned_blob_identical": true,
+      "relative": "lib/statistics.py",
+      "sha256": "05a091943eb6a01272f95c190e99bab0d33c72a108aef45261c838842301991b"
+    },
+    {
+      "baseline_git_ref": "ea68529b8a590eb8f3df7200b857e1d16becd7a3",
+      "before_after_snapshot_match": true,
+      "live_old_new_and_pinned_blob_identical": true,
+      "relative": "lib/urllib/parse.py",
+      "sha256": "f5914562f9903ab7dde287fcb8bc0b1667a812f82e7e7c4419fed0493bfd0148"
+    },
+    {
+      "baseline_git_ref": "ea68529b8a590eb8f3df7200b857e1d16becd7a3",
+      "before_after_snapshot_match": true,
+      "live_old_new_and_pinned_blob_identical": true,
+      "relative": "lib/warnings.py",
+      "sha256": "be4467c02d67040c87e31ede6787740815085298a880f2aa126b02fbabc0f133"
+    }
+  ],
+  "limits": [
+    "This audit verifies corpus bookkeeping, exact diagnostic-path differences and representative retained IR shapes; it is not a semantic equivalence proof for all changed IR.",
+    "Byte-different IR includes embedded absolute-path constants, so not all 238 differing outputs are attributed to the policy.",
+    "Zero changed compiler statuses establishes no new acceptance/rejection difference in this corpus; it does not resolve the separately preserved native cold-cache JIT preparation failures."
+  ],
+  "method": "Independent read-only replay without importing corpus_compare.py; no compilers or tests were run and no original evidence file was modified.",
+  "missing_records": [],
+  "mode_counts": {
+    "ir": 3911,
+    "rt": 13
+  },
+  "pinned_identical_library_files_verified": 15,
+  "recorded_at": "2026-11-01T03:54:29.371518+00:00",
+  "recorded_cases": 3924,
+  "representative_ir_samples": [
+    {
+      "case": "pystachy.py",
+      "index": 1,
+      "ir_equal": true,
+      "line_changes": {
+        "new_lines": 0,
+        "old_lines": 0
+      },
+      "new_ir": {
+        "bytes": 30442333,
+        "sha256": "ce874ff52970f421fd4f0459bc6c3e21bfea6c212d774ab54cd8c8bf1c4f192b"
+      },
+      "old_ir": {
+        "bytes": 30442333,
+        "sha256": "ce874ff52970f421fd4f0459bc6c3e21bfea6c212d774ab54cd8c8bf1c4f192b"
+      },
+      "verification_limit": "Unchanged IR bytes are represented by the independently recorded equal hashes; the controller did not retain equal IR files."
+    },
+    {
+      "case": "tests/ir/index_key.py",
+      "index": 2113,
+      "ir_equal": true,
+      "line_changes": {
+        "new_lines": 0,
+        "old_lines": 0
+      },
+      "new_ir": {
+        "bytes": 25729,
+        "sha256": "406913812a822f504f4bac0c3592ccedb469eaa9de08beb5b7386a879c76e799"
+      },
+      "old_ir": {
+        "bytes": 25729,
+        "sha256": "406913812a822f504f4bac0c3592ccedb469eaa9de08beb5b7386a879c76e799"
+      },
+      "verification_limit": "Unchanged IR bytes are represented by the independently recorded equal hashes; the controller did not retain equal IR files."
+    },
+    {
+      "added_definitions": [],
+      "case": "tests/programs/apps/example_mazepath.py",
+      "index": 11,
+      "interpretation": "Private rf definitions/unused recursion room helper are removed, consistent with declining region outlining.",
+      "ir_equal": false,
+      "line_changes": {
+        "new_lines": 1,
+        "old_lines": 470
+      },
+      "new_ir": {
+        "bytes": 128805,
+        "sha256": "f936c55c8697f3e738403fc5d27eff088118a9f60bbc2b702864a511cc2f4a2f"
+      },
+      "old_ir": {
+        "bytes": 144228,
+        "sha256": "2ff51cd0da4cf605bda161fcd9d9422e7ea572e1ed89847d9cb49b60ceb9a5a0"
+      },
+      "removed_definitions": [
+        "@pys.recursion.room",
+        "@rf.f.genmaze$maze",
+        "@rf.f.genmaze$rand"
+      ],
+      "retained_gzip_hashes_match_row": true
+    },
+    {
+      "added_definitions": [],
+      "case": "tests/programs/apps/example_montecarlo.py",
+      "index": 12,
+      "interpretation": "An embedded ImportError string and its lengths differ with the absolute checkout path. This is an IR byte difference, not evidence of an optimization-caused instruction change.",
+      "ir_equal": false,
+      "line_changes": {
+        "new_lines": 1,
+        "old_lines": 1
+      },
+      "new_ir": {
+        "bytes": 209223,
+        "sha256": "6b7a09f7876f31444b1c5fc4fb7d5d1e2ec8ee344aa171f1b1cb82299d378e5e"
+      },
+      "old_ir": {
+        "bytes": 209233,
+        "sha256": "52ab20e2c7e552eaa3b06f1abfbd8236e4583a43cb02b97dffaf798987ec7f3f"
+      },
+      "removed_definitions": [],
+      "retained_gzip_hashes_match_row": true,
+      "single_differing_line": {
+        "new": "@s.32 = private unnamed_addr global {i64, i64, i64, [112 x i8]} {i64 111, i64 0, i64 112, [112 x i8] c\"cannot import name 'bisect' from 'bisect' (/workspace/scratch/8f4dd6deebd9/pystachy-policy-final/lib/bisect.py)\\00\"}, align 8",
+        "old": "@s.32 = private unnamed_addr global {i64, i64, i64, [122 x i8]} {i64 121, i64 0, i64 122, [122 x i8] c\"cannot import name 'bisect' from 'bisect' (/workspace/scratch/8f4dd6deebd9/pystachy-policy-final/build/ref/lib/bisect.py)\\00\"}, align 8"
+      }
+    },
+    {
+      "added_definitions": [],
+      "case": "bench/recursion/json_calls.py",
+      "index": 3921,
+      "interpretation": "The shared private hex4 definition disappears; public guarded implementation remains. This matches the narrower outlining policy.",
+      "ir_equal": false,
+      "line_changes": {
+        "new_lines": 191,
+        "old_lines": 196
+      },
+      "new_ir": {
+        "bytes": 179078,
+        "sha256": "6b984afdf0bdfb11c2e90b90109667397fbf5d3b86dfc9a422075a6306699199"
+      },
+      "old_ir": {
+        "bytes": 179248,
+        "sha256": "d79d35d4beb9845e8251ea16da4d5c724a910ad5827b51177bb2ce4a432e2453"
+      },
+      "removed_definitions": [
+        "@rc.m.json$_Parser.hex4"
+      ],
+      "retained_gzip_hashes_match_row": true
+    },
+    {
+      "case": "bench/recursion/object_calls.py",
+      "index": 3923,
+      "ir_equal": true,
+      "line_changes": {
+        "new_lines": 0,
+        "old_lines": 0
+      },
+      "new_ir": {
+        "bytes": 16230,
+        "sha256": "f4731ff5ca821b2e9ff3111a8efcbb62cc6935e9a71102eb221f9a34b14094a8"
+      },
+      "old_ir": {
+        "bytes": 16230,
+        "sha256": "f4731ff5ca821b2e9ff3111a8efcbb62cc6935e9a71102eb221f9a34b14094a8"
+      },
+      "verification_limit": "Unchanged IR bytes are represented by the independently recorded equal hashes; the controller did not retain equal IR files."
+    },
+    {
+      "case": "bench/recursion/ordinary_calls.py",
+      "index": 3924,
+      "ir_equal": true,
+      "line_changes": {
+        "new_lines": 0,
+        "old_lines": 0
+      },
+      "new_ir": {
+        "bytes": 10411,
+        "sha256": "b16b5283365495bb35dcf7a29dda52e555212d8bd7d326ddc6790c0abda4d116"
+      },
+      "old_ir": {
+        "bytes": 10411,
+        "sha256": "b16b5283365495bb35dcf7a29dda52e555212d8bd7d326ddc6790c0abda4d116"
+      },
+      "verification_limit": "Unchanged IR bytes are represented by the independently recorded equal hashes; the controller did not retain equal IR files."
+    }
+  ],
+  "result": "passed within stated audit scope",
+  "schema": 1,
+  "standard_cases": 3920,
+  "strict_differences": 299,
+  "strict_exit_code": 1,
+  "strict_failed_flags_retained": true,
+  "strict_log_sha256": "e206c771e5660ea474de3a3cce1cf75dec759ba4de0dd02514ff5412057a3274",
+  "strict_status": "failed",
+  "validation_errors": []
+}

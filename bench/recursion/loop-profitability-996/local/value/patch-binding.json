@@ -1,0 +1,12 @@
+{
+  "compiler_files_identical": {
+    "src/pystachy_compiler/gen.py": true,
+    "src/pystachy_compiler/ir.py": true,
+    "src/pystachy_compiler/ircheck.py": true,
+    "src/pystachy_compiler/lowering.py": true,
+    "src/pystachy_compiler/optimizations.py": true,
+    "src/pystachy_compiler/program.py": true,
+    "src/pystachy_compiler/specs.py": true
+  },
+  "note": "Native fixture and hosted unit additions are preserved with the rejected patch; compiler source matches the measured value checkout."
+}

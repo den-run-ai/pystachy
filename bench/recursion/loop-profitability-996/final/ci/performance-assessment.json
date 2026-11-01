@@ -1,0 +1,411 @@
+{
+  "classifications": {
+    "ok": 49
+  },
+  "comparisons": [
+    {
+      "base_seconds": 0.6528536799999927,
+      "change_percent": 3.9386516133324445,
+      "classification": "ok",
+      "head_seconds": 0.6785673120000126,
+      "metric": "build_s",
+      "workload": "autograd"
+    },
+    {
+      "base_seconds": 0.0949251629999992,
+      "change_percent": 7.590962998921436,
+      "classification": "ok",
+      "head_seconds": 0.102130896999995,
+      "metric": "jit_process_s",
+      "workload": "autograd"
+    },
+    {
+      "base_seconds": 0.023989083000003575,
+      "change_percent": 0.7349676516577697,
+      "classification": "ok",
+      "head_seconds": 0.024165394999982936,
+      "metric": "jit_loop_s",
+      "workload": "autograd"
+    },
+    {
+      "base_seconds": 0.028115256999996063,
+      "change_percent": -1.9383390306676684,
+      "classification": "ok",
+      "head_seconds": 0.027570287999992615,
+      "metric": "aot_process_s",
+      "workload": "autograd"
+    },
+    {
+      "base_seconds": 0.02330407700000592,
+      "change_percent": -1.323536649912449,
+      "classification": "ok",
+      "head_seconds": 0.022995638999987023,
+      "metric": "aot_loop_s",
+      "workload": "autograd"
+    },
+    {
+      "base_seconds": 0.1269255370000053,
+      "change_percent": 3.9176119459684466,
+      "classification": "ok",
+      "head_seconds": 0.1318979870000021,
+      "metric": "jit_process_s",
+      "workload": "numeric"
+    },
+    {
+      "base_seconds": 0.05572370300001239,
+      "change_percent": -3.468952879914855,
+      "classification": "ok",
+      "head_seconds": 0.05379067399999826,
+      "metric": "jit_loop_s",
+      "workload": "numeric"
+    },
+    {
+      "base_seconds": 0.03167100499999265,
+      "change_percent": 1.9236617214561713,
+      "classification": "ok",
+      "head_seconds": 0.03228024799997797,
+      "metric": "aot_process_s",
+      "workload": "numeric"
+    },
+    {
+      "base_seconds": 0.02723974799999951,
+      "change_percent": 1.0364596617659982,
+      "classification": "ok",
+      "head_seconds": 0.02752207699998621,
+      "metric": "aot_loop_s",
+      "workload": "numeric"
+    },
+    {
+      "base_seconds": 4.594557646000027,
+      "change_percent": 7.275230125602472,
+      "classification": "ok",
+      "head_seconds": 4.928822287999992,
+      "metric": "build_s",
+      "workload": "fnmatch"
+    },
+    {
+      "base_seconds": 1.280346752000014,
+      "change_percent": 12.171212271717714,
+      "classification": "ok",
+      "head_seconds": 1.436180472999979,
+      "metric": "jit_process_s",
+      "workload": "fnmatch"
+    },
+    {
+      "base_seconds": 0.02451230300002294,
+      "change_percent": 6.196896309495092,
+      "classification": "ok",
+      "head_seconds": 0.026031305000003613,
+      "metric": "jit_loop_s",
+      "workload": "fnmatch"
+    },
+    {
+      "base_seconds": 0.026619329999988395,
+      "change_percent": 0.9538820098372369,
+      "classification": "ok",
+      "head_seconds": 0.02687324699999749,
+      "metric": "aot_process_s",
+      "workload": "fnmatch"
+    },
+    {
+      "base_seconds": 0.021177813999997852,
+      "change_percent": 1.5303798587981143,
+      "classification": "ok",
+      "head_seconds": 0.021501914999987548,
+      "metric": "aot_loop_s",
+      "workload": "fnmatch"
+    },
+    {
+      "base_seconds": 1.3478054549999854,
+      "change_percent": 8.689103725285307,
+      "classification": "ok",
+      "head_seconds": 1.4649176689999877,
+      "metric": "jit_process_s",
+      "workload": "json"
+    },
+    {
+      "base_seconds": 0.02314709399999515,
+      "change_percent": 6.548990555689871,
+      "classification": "ok",
+      "head_seconds": 0.024662994999971488,
+      "metric": "jit_loop_s",
+      "workload": "json"
+    },
+    {
+      "base_seconds": 0.02686562399998138,
+      "change_percent": -2.0212670288355605,
+      "classification": "ok",
+      "head_seconds": 0.026322597999978825,
+      "metric": "aot_process_s",
+      "workload": "json"
+    },
+    {
+      "base_seconds": 0.021748429000012948,
+      "change_percent": -1.7294490559635167,
+      "classification": "ok",
+      "head_seconds": 0.021372300999985328,
+      "metric": "aot_loop_s",
+      "workload": "json"
+    },
+    {
+      "base_seconds": 1.371819232000007,
+      "change_percent": 10.45242220368323,
+      "classification": "ok",
+      "head_seconds": 1.5152075699999727,
+      "metric": "jit_process_s",
+      "workload": "repair_scan"
+    },
+    {
+      "base_seconds": 0.05459113499995283,
+      "change_percent": 1.4675807712304811,
+      "classification": "ok",
+      "head_seconds": 0.05539230400000861,
+      "metric": "jit_loop_s",
+      "workload": "repair_scan"
+    },
+    {
+      "base_seconds": 0.058545853999987685,
+      "change_percent": -4.972838896497156,
+      "classification": "ok",
+      "head_seconds": 0.055634462999989864,
+      "metric": "aot_process_s",
+      "workload": "repair_scan"
+    },
+    {
+      "base_seconds": 0.05275185400000737,
+      "change_percent": -5.342962922274975,
+      "classification": "ok",
+      "head_seconds": 0.049933341999974346,
+      "metric": "aot_loop_s",
+      "workload": "repair_scan"
+    },
+    {
+      "base_seconds": 0.5838709639999706,
+      "change_percent": -1.8307822548243147,
+      "classification": "ok",
+      "head_seconds": 0.5731815579999875,
+      "metric": "build_s",
+      "workload": "copy_int"
+    },
+    {
+      "base_seconds": 0.08373728700001948,
+      "change_percent": 2.9696698914640107,
+      "classification": "ok",
+      "head_seconds": 0.08622400799998786,
+      "metric": "jit_process_s",
+      "workload": "copy_int"
+    },
+    {
+      "base_seconds": 0.02611754600002314,
+      "change_percent": -1.488225578262481,
+      "classification": "ok",
+      "head_seconds": 0.025728858000036325,
+      "metric": "jit_loop_s",
+      "workload": "copy_int"
+    },
+    {
+      "base_seconds": 0.02898744499998429,
+      "change_percent": 1.2586863038017038,
+      "classification": "ok",
+      "head_seconds": 0.029352306000021144,
+      "metric": "aot_process_s",
+      "workload": "copy_int"
+    },
+    {
+      "base_seconds": 0.026631638000026214,
+      "change_percent": 1.489465274335089,
+      "classification": "ok",
+      "head_seconds": 0.027028307000023233,
+      "metric": "aot_loop_s",
+      "workload": "copy_int"
+    },
+    {
+      "base_seconds": 0.0837127510000073,
+      "change_percent": 5.3108086245524655,
+      "classification": "ok",
+      "head_seconds": 0.08815857499996582,
+      "metric": "jit_process_s",
+      "workload": "copy_float"
+    },
+    {
+      "base_seconds": 0.02906276800001706,
+      "change_percent": 0.5039368583796389,
+      "classification": "ok",
+      "head_seconds": 0.029209226000034505,
+      "metric": "jit_loop_s",
+      "workload": "copy_float"
+    },
+    {
+      "base_seconds": 0.030504559000007703,
+      "change_percent": -0.5160343409658985,
+      "classification": "ok",
+      "head_seconds": 0.03034714500000746,
+      "metric": "aot_process_s",
+      "workload": "copy_float"
+    },
+    {
+      "base_seconds": 0.028277351000042472,
+      "change_percent": -0.8768360234954309,
+      "classification": "ok",
+      "head_seconds": 0.028029404999983853,
+      "metric": "aot_loop_s",
+      "workload": "copy_float"
+    },
+    {
+      "base_seconds": 0.08090921500001969,
+      "change_percent": 5.413661472259812,
+      "classification": "ok",
+      "head_seconds": 0.0852893659999836,
+      "metric": "jit_process_s",
+      "workload": "global_int"
+    },
+    {
+      "base_seconds": 0.025304149000021425,
+      "change_percent": 1.0363517855646043,
+      "classification": "ok",
+      "head_seconds": 0.025566389000005074,
+      "metric": "jit_loop_s",
+      "workload": "global_int"
+    },
+    {
+      "base_seconds": 0.028839025999957357,
+      "change_percent": 2.1523334387258064,
+      "classification": "ok",
+      "head_seconds": 0.02945973799995727,
+      "metric": "aot_process_s",
+      "workload": "global_int"
+    },
+    {
+      "base_seconds": 0.026645218999988174,
+      "change_percent": 1.9607119760702618,
+      "classification": "ok",
+      "head_seconds": 0.02716765499997109,
+      "metric": "aot_loop_s",
+      "workload": "global_int"
+    },
+    {
+      "base_seconds": 0.0816004699999553,
+      "change_percent": 2.33996813997015,
+      "classification": "ok",
+      "head_seconds": 0.08350989500002015,
+      "metric": "jit_process_s",
+      "workload": "global_float"
+    },
+    {
+      "base_seconds": 0.028333145000033255,
+      "change_percent": 0.539710646240299,
+      "classification": "ok",
+      "head_seconds": 0.028486062000013135,
+      "metric": "jit_loop_s",
+      "workload": "global_float"
+    },
+    {
+      "base_seconds": 0.029175394999981563,
+      "change_percent": 0.7056494007898539,
+      "classification": "ok",
+      "head_seconds": 0.029381270999977005,
+      "metric": "aot_process_s",
+      "workload": "global_float"
+    },
+    {
+      "base_seconds": 0.027012845999990986,
+      "change_percent": 0.8302050069716405,
+      "classification": "ok",
+      "head_seconds": 0.027237108000008448,
+      "metric": "aot_loop_s",
+      "workload": "global_float"
+    },
+    {
+      "base_seconds": 1.2835902349999628,
+      "change_percent": 0.5100558434886882,
+      "classification": "ok",
+      "head_seconds": 1.2901372620000302,
+      "metric": "build_s",
+      "workload": "graph_copy"
+    },
+    {
+      "base_seconds": 0.15397732000002406,
+      "change_percent": 5.281537566662631,
+      "classification": "ok",
+      "head_seconds": 0.16210968999996567,
+      "metric": "jit_process_s",
+      "workload": "graph_copy"
+    },
+    {
+      "base_seconds": 0.041366856,
+      "change_percent": -0.18944393550237582,
+      "classification": "ok",
+      "head_seconds": 0.041288489,
+      "metric": "jit_loop_s",
+      "workload": "graph_copy"
+    },
+    {
+      "base_seconds": 0.05398487299999033,
+      "change_percent": -1.1497498567695663,
+      "classification": "ok",
+      "head_seconds": 0.05336418199999571,
+      "metric": "aot_process_s",
+      "workload": "graph_copy"
+    },
+    {
+      "base_seconds": 0.039268936,
+      "change_percent": -0.8493405576356805,
+      "classification": "ok",
+      "head_seconds": 0.038935409,
+      "metric": "aot_loop_s",
+      "workload": "graph_copy"
+    },
+    {
+      "base_seconds": 3.9224813179999956,
+      "change_percent": 10.29803986946658,
+      "classification": "ok",
+      "head_seconds": 4.326420008000014,
+      "metric": "build_s",
+      "workload": "regex_effbot"
+    },
+    {
+      "base_seconds": 1.1045589260000384,
+      "change_percent": 11.943133941952633,
+      "classification": "ok",
+      "head_seconds": 1.2364778780000165,
+      "metric": "jit_process_s",
+      "workload": "regex_effbot"
+    },
+    {
+      "base_seconds": 0.1499887399999693,
+      "change_percent": 0.8900868158930653,
+      "classification": "ok",
+      "head_seconds": 0.15132377000003316,
+      "metric": "jit_loop_s",
+      "workload": "regex_effbot"
+    },
+    {
+      "base_seconds": 0.12464968299997281,
+      "change_percent": 3.2670207432718312,
+      "classification": "ok",
+      "head_seconds": 0.1287220140000045,
+      "metric": "aot_process_s",
+      "workload": "regex_effbot"
+    },
+    {
+      "base_seconds": 0.11817528300002778,
+      "change_percent": 3.3816614596093197,
+      "classification": "ok",
+      "head_seconds": 0.12217157100002396,
+      "metric": "aot_loop_s",
+      "workload": "regex_effbot"
+    }
+  ],
+  "metrics": 49,
+  "performance_acceptance": "not_decided_by_advisory_smoke",
+  "raw_samples_and_classifications_recomputed": true,
+  "result": "pass",
+  "revisions": {
+    "base": "07b26e02425d023288ed95a9d2a5077be5aeb45e",
+    "head": "b20d3720ed557a6934e6ac10a6287a5610d2fc1f"
+  },
+  "source": "artifacts/perf-smoke/perf-smoke.json",
+  "source_and_runner_hashes_verified": true,
+  "source_sha256": "b6c2a4e5ddc793396fa98dfca0d98622f00c3155a0f8ca4fa947f18a238e01ef",
+  "workloads": 11
+}

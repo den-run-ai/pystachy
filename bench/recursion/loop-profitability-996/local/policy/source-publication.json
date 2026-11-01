@@ -1,0 +1,15 @@
+{
+  "commit": "1ff5efe4c4425b3728e138fa05a44856202fdea5",
+  "parent": "ea68529b8a590eb8f3df7200b857e1d16becd7a3",
+  "tree": "5459378ebc5816fb1a410236a75c9a78b61f4d60",
+  "complete_recursive_entries": 8191,
+  "all_paths_modes_and_object_ids_match": true,
+  "changed_paths": [
+    "docs/internals.md",
+    "docs/typed-ir.md",
+    "src/pystachy_compiler/optimizations.py",
+    "tools/test_typed_recursion_bounded.py",
+    "tools/test_typed_recursion_cached.py"
+  ],
+  "fetched_origin_head": "1ff5efe4c4425b3728e138fa05a44856202fdea5"
+}

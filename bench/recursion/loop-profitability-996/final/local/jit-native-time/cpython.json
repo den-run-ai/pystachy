@@ -1,0 +1,99 @@
+{
+  "command": [
+    "/workspace/scratch/8f4dd6deebd9/toolchain/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+    "/workspace/scratch/8f4dd6deebd9/pystachy-baseline/bench/smoke/text.py",
+    "fnmatch",
+    "1000"
+  ],
+  "complete": true,
+  "cpu_s": 0.11952499999999999,
+  "cpu_system_s": 0.007639000000000007,
+  "cpu_user_s": 0.11188599999999999,
+  "cwd": "/workspace/scratch/8f4dd6deebd9/pystachy-baseline/bench/smoke",
+  "end_context": {
+    "/proc/loadavg": "1.63 2.10 1.52 1/205 84\n",
+    "/proc/meminfo": "MemTotal:       10206468 kB\nMemFree:         5913388 kB\nMemAvailable:    9434300 kB\nBuffers:          294084 kB\nCached:          2995632 kB\nSwapCached:            0 kB\nActive:          2506868 kB\nInactive:         868176 kB\nActive(anon):         64 kB\nInactive(anon):   115172 kB\nActive(file):    2506804 kB\nInactive(file):   753004 kB\nUnevictable:       29924 kB\nMlocked:               0 kB\nSwapTotal:             0 kB\nSwapFree:              0 kB\nDirty:            186896 kB\nWriteback:            16 kB\nAnonPages:        115488 kB\nMapped:            77044 kB\nShmem:                12 kB\nKReclaimable:     574804 kB\nSlab:             661928 kB\nSReclaimable:     574804 kB\nSUnreclaim:        87124 kB\nKernelStack:        3408 kB\nPageTables:         5676 kB\nSecPageTables:         0 kB\nNFS_Unstable:          0 kB\nBounce:                0 kB\nWritebackTmp:          0 kB\nCommitLimit:     5103232 kB\nCommitted_AS:     472624 kB\nVmallocTotal:   34359738367 kB\nVmallocUsed:        4696 kB\nVmallocChunk:          0 kB\nPercpu:             3888 kB\nAnonHugePages:         0 kB\nShmemHugePages:        0 kB\nShmemPmdMapped:        0 kB\nFileHugePages:    516096 kB\nFilePmdMapped:         0 kB\nBalloon:               0 kB\nHugePages_Total:       0\nHugePages_Free:        0\nHugePages_Rsvd:        0\nHugePages_Surp:        0\nHugepagesize:       2048 kB\nHugetlb:               0 kB\nDirectMap4k:      579584 kB\nDirectMap2M:     7116800 kB\nDirectMap1G:    13631488 kB\n",
+    "/proc/stat": "cpu  1294119 0 448694 39138227 28348 0 18199 1058059 0 0\ncpu0 526854 0 41634 3847949 1382 0 2231 261029 0 0\ncpu1 102536 0 53551 4383739 8594 0 2974 130052 0 0\ncpu2 128660 0 48107 4357126 1688 0 3955 128322 0 0\ncpu3 106374 0 51045 4407483 3191 0 1497 94362 0 0\ncpu4 79055 0 49855 4446011 3803 0 986 77501 0 0\ncpu5 86536 0 60194 4397763 3015 0 4341 109400 0 0\ncpu6 82797 0 53224 4425475 1629 0 1322 96946 0 0\ncpu7 68344 0 46530 4463758 1856 0 522 72370 0 0\ncpu8 112959 0 44551 4408919 3186 0 369 88073 0 0\nintr 34582299 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1028 0 765 0 1874770 0 0 0 863955 582697 0 1465290 1100449 0 49385 242517 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0\nctxt 35494026\nbtime 1793458187\nprocesses 283779\nprocs_running 1\nprocs_blocked 0\nsoftirq 15570570 0 1578183 8650 3884219 1872856 0 415914 3338618 1058452 3413678\n",
+    "/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq": {
+      "unavailable": "[Errno 2] No such file or directory: '/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq'"
+    },
+    "/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor": {
+      "unavailable": "[Errno 2] No such file or directory: '/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor'"
+    },
+    "affinity": [
+      0
+    ],
+    "load_average": [
+      1.63037109375,
+      2.10205078125,
+      1.52294921875
+    ],
+    "utc": "2026-11-01T03:41:22.899684+00:00"
+  },
+  "environment": {
+    "HOME": "/root",
+    "LANG": "C",
+    "LC_ALL": "C",
+    "PATH": "/usr/lib/llvm-18/bin:/usr/bin:/bin",
+    "PYTHONHASHSEED": "0",
+    "PYTHONNOUSERSITE": "1",
+    "TMPDIR": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time/tmp/metadata",
+    "TZ": "UTC"
+  },
+  "involuntary_context_switches": 1,
+  "pid": 84,
+  "returncode": 0,
+  "start_context": {
+    "/proc/loadavg": "1.63 2.10 1.52 1/205 83\n",
+    "/proc/meminfo": "MemTotal:       10206468 kB\nMemFree:         5913616 kB\nMemAvailable:    9434528 kB\nBuffers:          294080 kB\nCached:          2995636 kB\nSwapCached:            0 kB\nActive:          2506868 kB\nInactive:         867948 kB\nActive(anon):         64 kB\nInactive(anon):   114944 kB\nActive(file):    2506804 kB\nInactive(file):   753004 kB\nUnevictable:       29924 kB\nMlocked:               0 kB\nSwapTotal:             0 kB\nSwapFree:              0 kB\nDirty:            186896 kB\nWriteback:            16 kB\nAnonPages:        115260 kB\nMapped:            76824 kB\nShmem:                12 kB\nKReclaimable:     574804 kB\nSlab:             661928 kB\nSReclaimable:     574804 kB\nSUnreclaim:        87124 kB\nKernelStack:        3408 kB\nPageTables:         5676 kB\nSecPageTables:         0 kB\nNFS_Unstable:          0 kB\nBounce:                0 kB\nWritebackTmp:          0 kB\nCommitLimit:     5103232 kB\nCommitted_AS:     472624 kB\nVmallocTotal:   34359738367 kB\nVmallocUsed:        4696 kB\nVmallocChunk:          0 kB\nPercpu:             3888 kB\nAnonHugePages:         0 kB\nShmemHugePages:        0 kB\nShmemPmdMapped:        0 kB\nFileHugePages:    516096 kB\nFilePmdMapped:         0 kB\nBalloon:               0 kB\nHugePages_Total:       0\nHugePages_Free:        0\nHugePages_Rsvd:        0\nHugePages_Surp:        0\nHugepagesize:       2048 kB\nHugetlb:               0 kB\nDirectMap4k:      579584 kB\nDirectMap2M:     7116800 kB\nDirectMap1G:    13631488 kB\n",
+    "/proc/stat": "cpu  1294110 0 448694 39138131 28348 0 18199 1058056 0 0\ncpu0 526845 0 41633 3847949 1382 0 2231 261027 0 0\ncpu1 102536 0 53551 4383727 8594 0 2974 130052 0 0\ncpu2 128660 0 48107 4357114 1688 0 3955 128322 0 0\ncpu3 106374 0 51045 4407471 3191 0 1497 94362 0 0\ncpu4 79055 0 49855 4445999 3803 0 986 77501 0 0\ncpu5 86536 0 60194 4397751 3015 0 4341 109400 0 0\ncpu6 82797 0 53224 4425462 1629 0 1322 96946 0 0\ncpu7 68344 0 46530 4463746 1856 0 522 72370 0 0\ncpu8 112959 0 44551 4408907 3186 0 369 88073 0 0\nintr 34582245 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1028 0 765 0 1874770 0 0 0 863955 582697 0 1465290 1100449 0 49385 242517 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0\nctxt 35494002\nbtime 1793458187\nprocesses 283778\nprocs_running 1\nprocs_blocked 0\nsoftirq 15570541 0 1578179 8650 3884219 1872856 0 415914 3338612 1058452 3413659\n",
+    "/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq": {
+      "unavailable": "[Errno 2] No such file or directory: '/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq'"
+    },
+    "/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor": {
+      "unavailable": "[Errno 2] No such file or directory: '/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor'"
+    },
+    "affinity": [
+      0
+    ],
+    "load_average": [
+      1.63037109375,
+      2.10205078125,
+      1.52294921875
+    ],
+    "utc": "2026-11-01T03:41:22.779161+00:00"
+  },
+  "stderr": "seconds 0.07681257699732669\n",
+  "stderr_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time/cpython.stderr",
+  "stderr_identity": {
+    "bytes": 28,
+    "ctime_ns": 1793504482888718896,
+    "device": 27,
+    "inode": 2764044,
+    "mode": 33188,
+    "mtime_ns": 1793504482888718896,
+    "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time/cpython.stderr",
+    "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time/cpython.stderr",
+    "sha256": "5439ae23f1675e04f94157f730a91f4b54b624817338b63248a0b7a4d72d425a",
+    "symlink": null
+  },
+  "stdout": "6000\n",
+  "stdout_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time/cpython.stdout",
+  "stdout_identity": {
+    "bytes": 5,
+    "ctime_ns": 1793504482888718896,
+    "device": 27,
+    "inode": 2764043,
+    "mode": 33188,
+    "mtime_ns": 1793504482888718896,
+    "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time/cpython.stdout",
+    "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time/cpython.stdout",
+    "sha256": "46251acfc71ec25370b9130041437638dd8bb98c6ce57a89d869f39d826358d5",
+    "symlink": null
+  },
+  "timed_out": false,
+  "timeout_s": 900,
+  "voluntary_context_switches": 1,
+  "wall_ns": 120051714,
+  "wall_s": 0.120051714
+}

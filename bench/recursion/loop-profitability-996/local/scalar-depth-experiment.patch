@@ -1,0 +1,820 @@
+diff --git a/src/pystachy_compiler/gen.py b/src/pystachy_compiler/gen.py
+index 16b54b66..31a5d213 100644
+--- a/src/pystachy_compiler/gen.py
++++ b/src/pystachy_compiler/gen.py
+@@ -1006,6 +1006,7 @@ from src.pystachy_compiler.optimizations import (
+     gen_reaching as optimizations_reaching,
+     gen_recursionleaf as optimizations_recursionleaf,
+     gen_recursionregion as optimizations_recursionregion,
++    gen_recursionvalue as optimizations_recursionvalue,
+     gen_same as optimizations_same,
+     gen_tag_read as optimizations_tag_read,
+     gen_ufresh as optimizations_ufresh,
+@@ -3453,6 +3454,9 @@ class Gen:
+     def recursionleaf(self) -> int:
+         return optimizations_recursionleaf(self)
+ 
++    def recursionvalue(self) -> int:
++        return optimizations_recursionvalue(self)
++
+     def recursionregion(self) -> int:
+         return optimizations_recursionregion(self)
+ 
+diff --git a/src/pystachy_compiler/ir.py b/src/pystachy_compiler/ir.py
+index 1dd04959..8d8d7cdc 100644
+--- a/src/pystachy_compiler/ir.py
++++ b/src/pystachy_compiler/ir.py
+@@ -364,6 +364,9 @@ class IFn:
+         self.counted = False
+         self.rdepth = ""
+         self.gdepth = ""
++        # A closed private source body receives its caller's logical depth after
++        # all source and identity operands. Its public callable ABI is unchanged.
++        self.rarg = ""
+         # its effect summary (FX bits): every letter (but N) until Gen.effects computes it, once
+         # the whole program is built
+         self.fx: int = FXALL
+diff --git a/src/pystachy_compiler/ircheck.py b/src/pystachy_compiler/ircheck.py
+index 7913cd32..df97b557 100644
+--- a/src/pystachy_compiler/ircheck.py
++++ b/src/pystachy_compiler/ircheck.py
+@@ -4,7 +4,7 @@ from src.pystachy_compiler.diagnostics import fail, int_lists, int_program
+ from src.pystachy_compiler.ir import Blk, IFn, Ins, NOLABELS
+ from src.pystachy_compiler.union_proof import UnionProof, simple_union_proof
+ from src.pystachy_compiler.specs import BIG, FX, FXALL, FXBIT, ICMP, IROPS, NONEVAR, RAWR, RAWW, RUNTIME
+-from src.pystachy_compiler.utils import is_dict, is_gen, is_opt, is_set, is_tuple, is_union, lt, same_kind, targs, tslots, umembers
++from src.pystachy_compiler.utils import identity_abi, is_dict, is_gen, is_opt, is_set, is_tuple, is_union, lt, numeric_identity, same_kind, targs, tslots, umembers
+ 
+ # Fixed SSA result counts printed by each lowering (gen_nums handles calls).
+ RESULT_NUMBERS: dict[str, int] = {
+@@ -17,6 +17,7 @@ RESULT_NUMBERS: dict[str, int] = {
+     "tuple.store": 1, "mem.load": 1, "int.ucmp": 1, "ptr.cmp": 1,
+     "empty.kind": 1, "gen.yield": 2, "gen.ret": 2, "gen.promise": 1,
+     "big.make": 2, "big.lo": 1, "big.hi": 1,
++    "recursion.limit": 1,
+ }
+ 
+ 
+@@ -143,6 +144,10 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
+     union_proofs = False
+     machine_tags = False
+     lands: dict[str, bool] = {}
++    if fn.rarg != "" and (fn.rarg != "%rdepth" or not fn.f.ll.startswith("@rv.")
++                           or not fn.counted or fn.coro or fn.f.gen or fn.f.export or fn.f.pyexport or fn.f.extern
++                           or len(fn.tries) > 0 or fn.pads or fn.gdepth != "" or is_tuple(fn.f.ret)):
++        self.bad_ir(fn, fn.blocks[0], "invalid private scalar-depth function")
+     for b in fn.blocks:
+         if len(b.code) > 0 and b.code[0].op == "landing":
+             lands[b.label] = True
+@@ -165,6 +170,8 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
+         owned = False
+         for j in range(len(b.code)):
+             i = b.code[j]
++            if fn.rarg == "" and any(a.v == "%rdepth" for a in i.a):
++                self.bad_ir(fn, b, "hidden scalar depth is undefined outside its private function")
+             if i.op not in IROPS:
+                 self.bad_ir(fn, b, f"unknown op {i.op}")
+             inv = len(i.b) == 2 and (i.op == "rt" or i.op == "call" or i.op == "icall" or i.op == "init" or i.op == "gen.resume")
+@@ -186,6 +193,10 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
+                     union_proofs = True
+                 if i.s not in self.rtfns:
+                     self.bad_ir(fn, b, f"no RUNTIME entry for {i.s}" if i.s not in RUNTIME else f"{i.s}, which runtime() did not declare")
++            if i.op == "recursion.limit":
++                if (fn.rarg == "" or i.t != "int" or len(i.a) != 0 or len(i.b) != 0
++                        or i.s != "" or i.x != "" or i.k != 0 or self.rtmode):
++                    self.bad_ir(fn, b, "recursion.limit needs a private scalar-depth body and no operands or metadata")
+             if i.op == "empty.kind":
+                 if len(i.a) != 1 or i.t != "" or i.s != "" or i.x != "" or len(i.b) != 0 or i.k < 0 or i.k >= len(self.holes):
+                     self.bad_ir(fn, b, "empty.kind needs one empty dict/set and a valid type hole")
+@@ -349,6 +360,14 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
+                     self.bad_ir(fn, b, f"{i.op} {i.s} numbered {x}, above IFn.n ({fn.n})")
+             if (i.op == "call" and i.s not in self.fll and i.s not in self.externs) or (i.op == "init" and "@init." + i.s not in self.fll):
+                 self.bad_ir(fn, b, f"a call of {i.s}, which is not compiled")
++            if i.op == "call" and i.s in self.fll and self.fns[self.fll[i.s]].rarg != "":
++                target = self.fns[self.fll[i.s]]
++                arity = len(target.ps) + 1
++                if identity_abi(target.f):
++                    arity += sum(1 for p in target.ps if numeric_identity(target.f.ptypes[p]))
++                    arity += 1 if numeric_identity(target.f.ret) else 0
++                if len(i.a) != arity or i.a[len(i.a) - 1].t != "int":
++                    self.bad_ir(fn, b, "private scalar-depth call needs its original ABI followed by one int depth")
+             if i.op != "phi" and len(i.b) > 0:
+                 if len(out) == 0:
+                     out = i.b
+diff --git a/src/pystachy_compiler/lowering.py b/src/pystachy_compiler/lowering.py
+index df7c5b71..b9f6162a 100644
+--- a/src/pystachy_compiler/lowering.py
++++ b/src/pystachy_compiler/lowering.py
+@@ -16,6 +16,8 @@ def gen_lower(self, fn: IFn) -> None:
+         ps.extend([f"ptr %aid{j}" for j in fn.ps if numeric_identity(f.ptypes[j])])
+         if numeric_identity(f.ret):
+             ps.append("ptr %idret")
++    if fn.rarg != "":
++        ps.append("i64 " + fn.rarg)
+     # tupleret: a function that returns its tuple's slots by value (Gen.tuple_rets) is lowered as
+     # @v.<its symbol>, returning them as an LLVM aggregate, and its own symbol is a wrapper below
+     n = self.vrets.get(f.ll, 0)
+@@ -287,6 +289,10 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
+         o.append("  unreachable")
+     elif op == "unreachable":
+         o.append("  unreachable")
++    elif op == "recursion.limit":
++        result = f"%t{i.r[0]}"
++        o.append(f"  {result}.addr = getelementptr [2 x i64], ptr @pys_recursion_state, i64 0, i64 1")
++        o.append(f"  {result} = load i64, ptr {result}.addr, !tbaa !{TBAA_LIMIT}")
+     elif op == "rt" and not self.rtmode and len(i.b) == 0 and i.s == "recursion.restore":
+         # These nonthrowing scalar operations need no helper call or LLVM
+         # inlining. Keep their typed effects and the same disjoint state tags.
+diff --git a/src/pystachy_compiler/optimizations.py b/src/pystachy_compiler/optimizations.py
+index d6a40fd5..c687c1d0 100644
+--- a/src/pystachy_compiler/optimizations.py
++++ b/src/pystachy_compiler/optimizations.py
+@@ -48,6 +48,176 @@ def recursion_copy(i: Ins) -> Ins:
+     return out
+ 
+ 
++def gen_recursionvalue(self) -> int:
++    # A closed source-call graph can carry depth as an immutable scalar. Every
++    # source entry still checks at its original call; returns need no state store.
++    # Move each body once and preserve its public address as a thin ABI adapter.
++    # This deliberately excludes every observer, including on exceptional paths.
++    if recursion_blocked(self):
++        return 0
++    nf = len(self.fns)
++    valid: list[bool] = []
++    bases: list[str] = []
++    back: list[list[int]] = [[] for _ in range(nf)]
++    bad: list[int] = []
++    for j in range(nf):
++        fn = self.fns[j]
++        ok = (fn.counted and not fn.coro and not fn.f.gen and not fn.f.export
++              and not fn.f.pyexport and not fn.f.extern and len(fn.tries) == 0
++              and fn.gdepth == "" and not fn.pads and fn.rarg == "" and not is_tuple(fn.f.ret))
++        code = fn.blocks[0].code
++        own = False
++        base = ""
++        if len(code) >= 2:
++            enter = code[0]
++            sub = code[1]
++            own = (enter.op == "rt" and enter.s == "recursion.enter" and len(enter.r) == 1
++                   and fn.rdepth == f"%t{enter.r[0]}" and sub.op == "scalar.bin"
++                   and sub.s == "sub" and sub.t == "int" and len(sub.r) == 1 and len(sub.a) == 2
++                   and sub.a[0].v == fn.rdepth and sub.a[1].v == "1")
++            if own:
++                base = f"%t{sub.r[0]}"
++        ok = ok and own
++        seen: dict[int, bool] = {}
++        for block in fn.blocks:
++            ok = ok and block.handler == ""
++            for at in range(len(block.code)):
++                op = block.code[at]
++                if own and block is fn.blocks[0] and at < 2:
++                    continue
++                if (own and op.op == "rt" and op.s == "recursion.restore"
++                        and len(op.a) == 1 and op.a[0].v == base):
++                    continue
++                if any(a.v != "" and a.v in [fn.rdepth, base] for a in op.a):
++                    ok = False
++                if op.op == "call" and op.s in self.fll:
++                    child = self.fll[op.s]
++                    if child not in seen:
++                        seen[child] = True
++                        back[child].append(j)
++                elif (op.op in ["throw", "landing", "init"] or op.op.startswith("gen.")
++                      or (op.op == "rt" and op.s in ["throw", "reraise"])
++                      or self.opfx(op, fn.fa) & (FXBIT["U"] | FXBIT["I"]) != 0):
++                    ok = False
++        valid.append(ok)
++        bases.append(base)
++        if not ok:
++            bad.append(j)
++    # Propagate exclusions, rather than assuming recursive cycles have finite
++    # depth. A wholly closed cycle remains eligible and checks every activation.
++    pos = 0
++    while pos < len(bad):
++        child = bad[pos]
++        pos += 1
++        for parent in back[child]:
++            if valid[parent]:
++                valid[parent] = False
++                bad.append(parent)
++    selected = [j for j in range(nf) if valid[j]]
++    if len(selected) == 0:
++        return 0
++    names: dict[str, str] = {}
++    for j in selected:
++        names[self.fns[j].f.ll] = "@rv." + self.fns[j].f.ll[1:]
++    self.runtime("pys_recursion_depth")
++    self.runtime("pys_recursion_error")
++    for j in selected:
++        fn = self.fns[j]
++        private = recursion_partial_header(fn, names[fn.f.ll])
++        private.f.name = fn.f.name + "$recursionvalue"
++        private.counted = True
++        private.rarg = "%rdepth"
++        private.rdepth = fn.rdepth
++        # Only the private body retains these loops; the public wrapper has none.
++        private.loops = fn.loops
++        entry = Blk("entry")
++        limit = Ins("recursion.limit", "int", "")
++        private.n += 1
++        limit.r = [private.n]
++        full = Ins("scalar.cmp", "bool", "sge")
++        full.a = [Val(private.rarg, "int"), Val(f"%t{private.n}", "int")]
++        private.n += 1
++        full.r = [private.n]
++        private.n += 1
++        body = f"L{private.n}"
++        private.n += 1
++        overflow = Blk(f"L{private.n}")
++        branch = Ins("cbr", "", "")
++        branch.a = [Val(f"%t{full.r[0]}", "bool")]
++        branch.b = [overflow.label, body]
++        entry.code = [limit, full, branch]
++        private.blocks = [entry]
++        for block in fn.blocks:
++            copied = Blk(body if block is fn.blocks[0] else block.label)
++            if block is fn.blocks[0]:
++                active = Ins("scalar.bin", "int", "add")
++                active.a = [Val(private.rarg, "int"), Val("1", "int")]
++                active.r = [r for r in block.code[0].r]
++                copied.code.append(active)
++            for at in range(len(block.code)):
++                op = block.code[at]
++                if block is fn.blocks[0] and at < 2:
++                    continue
++                if (op.op == "rt" and op.s == "recursion.restore"
++                        and len(op.a) == 1 and op.a[0].v == bases[j]):
++                    continue
++                item = recursion_copy(op)
++                item.b = [body if label == "entry" else label for label in item.b]
++                copied.code.append(item)
++            private.blocks.append(copied)
++        error = Ins("rt", "None", "recursion.error")
++        overflow.code = [error, Ins("unreachable", "", "")]
++        private.blocks.append(overflow)
++        self.fll[private.f.ll] = len(self.fns)
++        self.fns.append(private)
++        # The original signature and address still handle callbacks and foreign
++        # callers. Argument evaluation is complete before this adapter is entered.
++        entry = Blk("entry")
++        depth = Ins("rt", "int", "recursion.depth")
++        fn.n += 1
++        depth.r = [fn.n]
++        call = Ins("call", fn.f.ret, private.f.ll)
++        call.a = [Val(f"%a{p}", fn.f.ptypes[p]) for p in fn.ps]
++        if identity_abi(fn.f):
++            call.a.extend([Val(f"%aid{p}", "dyn") for p in fn.ps if numeric_identity(fn.f.ptypes[p])])
++            if numeric_identity(fn.f.ret):
++                call.a.append(Val("%idret", "*dyn"))
++        call.a.append(Val(f"%t{depth.r[0]}", "int"))
++        ret = Ins("ret", "", "")
++        if fn.f.ret != "None":
++            fn.n += 1
++            call.r = [fn.n]
++            ret.a = [Val(f"%t{fn.n}", fn.f.ret)]
++        entry.code = [depth, call, ret]
++        fn.blocks = [entry]
++        fn.slots = []
++        fn.loops = []
++        fn.cold = {}
++        fn.fa = {}
++        fn.rdepth = ""
++    # Closed bodies pass their immutable active depth directly. Other callers
++    # read the currently published depth at the call, after argument evaluation;
++    # this also handles generators resumed under a different caller and adapters
++    # without an entry-depth token. No new operand is added to an indirect ABI.
++    for fn in self.fns:
++        for block in fn.blocks:
++            code = []
++            for op in block.code:
++                if op.op == "call" and op.s in names:
++                    depth_value = fn.rdepth
++                    if fn.rarg == "":
++                        depth = Ins("rt", "int", "recursion.depth")
++                        fn.n += 1
++                        depth.r = [fn.n]
++                        depth_value = f"%t{fn.n}"
++                        code.append(depth)
++                    op.s = names[op.s]
++                    op.a.append(Val(depth_value, "int"))
++                code.append(op)
++            block.code = code
++    return len(selected)
++
++
+ def recursion_fast(fn: IFn, skip: int, base: str, names: dict[str, str], entry: bool) -> IFn:
+     # This runs after ordinary typed optimizations. Copy only their final IR and
+     # the signature/lowering metadata it uses; never mutate the source FnInfo.
+diff --git a/src/pystachy_compiler/program.py b/src/pystachy_compiler/program.py
+index 93a4c40a..b6ed22bf 100644
+--- a/src/pystachy_compiler/program.py
++++ b/src/pystachy_compiler/program.py
+@@ -1166,6 +1166,11 @@ def gen_program(self, mods: list[Mod]) -> str:
+     # optimizations do. Capture the shared lifetime policy before optimization or
+     # EH lowering can split a scoped open from its immediate unwind root.
+     inline_recursion_guards = not self.rtmode and recursion_blocked(self)
++    if "recursionvalue" in on and not self.rtmode and self.recursionvalue() > 0:
++        self.effects()
++        if chk:
++            for fn in self.fns:
++                self.verify(fn, False)
+     if "recursionleaf" in on and not self.rtmode and self.recursionleaf() > 0:
+         # This has its own depth-observation summary; ordinary R/I effects remain
+         # on each entry check and still govern EH and the following optimizations.
+diff --git a/src/pystachy_compiler/specs.py b/src/pystachy_compiler/specs.py
+index 85126f87..4048ad23 100644
+--- a/src/pystachy_compiler/specs.py
++++ b/src/pystachy_compiler/specs.py
+@@ -622,6 +622,7 @@ IROPS: dict[str, str] = {
+     "dyn.type": "", "dyn.payload": "",
+     "big.make": "", "big.lo": "", "big.hi": "",
+     "landing": "T", "throw": "T R N", "exc.match": "",
++    "recursion.limit": "I",
+     # generators (LLVM switched-resume coroutines, docs/internals.md#generators): gen.start ends a
+     # generator function's entry block (the frame, its promise and the initial suspend), gen.yield
+     # and gen.ret suspend it (gen.ret finally); gen.promise is the address of its promise (of the
+@@ -669,7 +670,7 @@ GENTHROWC = 3
+ # gives the loads and stores of object fields (Gen.field_tag), and tupleret, the fixed tuples that
+ # functions return by value to the calls that only read their slots (Gen.tuple_rets), which
+ # PYSTACHY_OPT turns off: "-name", comma-separated, or "-all"
+-OPTS: list[str] = ["listget", "dictfuse", "tupleiter", "listfast", "moduleints", "fieldtbaa", "tupleret", "unionslots", "nullcheck", "recursionleaf", "recursionregion"]
++OPTS: list[str] = ["listget", "dictfuse", "tupleiter", "listfast", "moduleints", "fieldtbaa", "tupleret", "unionslots", "nullcheck", "recursionvalue", "recursionleaf", "recursionregion"]
+ # what bounds dictfuse's work: the depth of the chain of values Gen.canon follows (the
+ # self-compile's deepest is 18), the ops Gen.reaching walks back over (85) and the lookups that
+ # hold at once (7)
+@@ -687,7 +688,7 @@ LOOKUPS = 32
+ VALUE_AT: dict[str, int] = {"select": 1, "scalar.bin": 1, "scalar.cast": 1, "scalar.cmp": 1, "rt": 1, "slot.pack": 1, "slot.unpack": 1,
+                             "num.cast": 1, "num.cmp": 1, "mach.load": 1, "mach.addr": 1, "mem.load": 1, "field.addr": 1, "int.ucmp": 1,
+                             "ptr.cmp": 1, "dyn.type": 1, "big.lo": 1, "big.hi": 1, "union.payload": 2, "union.raw": 2, "dyn.payload": 2,
+-                            "big.make": 2, "tuple.load": 3, "tuple.store": 3}
++                            "big.make": 2, "tuple.load": 3, "tuple.store": 3, "recursion.limit": 1}
+ # Types are serialized strings. Bound their size before joining children, and the active
+ # template signatures before making keys or call contexts; a depth limit alone misses
+ # exponential width growth such as f((x, x)). These are compiler resource limits.
+diff --git a/tests/programs/language/recursion_value.out b/tests/programs/language/recursion_value.out
+new file mode 100644
+index 00000000..1452a046
+--- /dev/null
++++ b/tests/programs/language/recursion_value.out
+@@ -0,0 +1,19 @@
++short circuit True False
++loop 9 [6, 9, 12]
++failure [5]
++after failure 3
++indirect caught
++after recursion 4 3
++loop 9 [6, 9, 12]
++failure [5]
++after failure 3
++indirect caught
++after recursion 4 3
++loop 9 [6, 9, 12]
++failure [5]
++after failure 3
++indirect caught
++after recursion 4 3
++raised limit 100
++lowered caught 3
++[exit 0]
+diff --git a/tests/programs/language/recursion_value.py b/tests/programs/language/recursion_value.py
+new file mode 100644
+index 00000000..1b8ac428
+--- /dev/null
++++ b/tests/programs/language/recursion_value.py
+@@ -0,0 +1,61 @@
++# A closed loop's builtin failure crosses the scalar-depth boundary; later
++# direct and indirect calls must retain their caller's current limit and depth.
++import sys
++from collections.abc import Callable
++
++events: list[int] = []
++
++
++def fold(values: list[int], divisor: int) -> int:
++    total = 0
++    for value in values:
++        events.append(value)
++        total += value // divisor
++    return total
++
++
++def positive(n: int) -> bool:
++    return n > 0 and n < 10
++
++
++def depth(n: int) -> int:
++    if n == 0:
++        return 0
++    return 1 + depth(n - 1)
++
++
++def relay(n: int) -> int:
++    return depth(n)
++
++
++def indirect(callback: Callable[[int], int], n: int) -> int:
++    return callback(n)
++
++
++callbacks: list[Callable[[int], int]] = [relay]
++original = sys.getrecursionlimit()
++sys.setrecursionlimit(60)
++print("short circuit", positive(3), positive(0))
++for attempt in range(3):
++    events.clear()
++    print("loop", fold([6, 9, 12], 3), events)
++    events.clear()
++    try:
++        fold([5, 7], 0)
++    except ZeroDivisionError:
++        print("failure", events)
++    print("after failure", relay(3))
++    for callback in callbacks:
++        try:
++            indirect(callback, 100)
++        except RecursionError:
++            print("indirect caught")
++        print("after recursion", indirect(callback, 4), depth(3))
++sys.setrecursionlimit(180)
++print("raised limit", indirect(callbacks[0], 100))
++sys.setrecursionlimit(60)
++try:
++    relay(100)
++except RecursionError:
++    print("lowered caught", relay(3))
++sys.setrecursionlimit(original)
+diff --git a/tools/test_typed_recursion_value.py b/tools/test_typed_recursion_value.py
+new file mode 100644
+index 00000000..7a959e6c
+--- /dev/null
++++ b/tools/test_typed_recursion_value.py
+@@ -0,0 +1,368 @@
++"""Scalar depth keeps source-call checks and the existing callable ABI."""
++from contextlib import redirect_stderr
++from io import StringIO
++from pathlib import Path
++import os
++import re
++import sys
++import unittest
++from unittest.mock import patch
++
++sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
++
++from tools.test_typed_recursion import compile_source, operations
++from src.pystachy_compiler.gen import Gen
++from src.pystachy_compiler.specs import FXBIT
++
++
++VALUE_ONLY = "-recursionleaf,-recursionregion"
++CLOSED = '''
++def depth(n: int) -> int:
++    if n <= 0:
++        return 0
++    return depth(n - 1) + 1
++
++def even(n: int) -> bool:
++    if n <= 0:
++        return True
++    return odd(n - 1)
++
++def odd(n: int) -> bool:
++    if n <= 0:
++        return False
++    return even(n - 1)
++
++print(depth(3), even(4), odd(4))
++'''
++
++
++def definition(ir, name):
++    match = re.search(r"^define [^\n]* " + re.escape(name) + r"\([^\n]*\)[^\n]* \{\n.*?^}",
++                      ir, re.M | re.S)
++    if match is None:
++        raise AssertionError("missing LLVM definition: " + name)
++    return match.group(0)
++
++
++class TypedRecursionValueTests(unittest.TestCase):
++    def test_direct_and_mutual_recursion_pass_active_scalar_depth(self):
++        ir, functions = compile_source(CLOSED, opt=VALUE_ONLY)
++        for original, target in (("depth", "depth"), ("even", "odd"), ("odd", "even")):
++            with self.subTest(function=original):
++                name = "@rv.f." + original
++                self.assertIn(name, functions)
++                function = functions[name]
++                code = operations(function)
++                additions = [function["operands"][(label, at)]
++                             for label, _, block in function["blocks"]
++                             for at, instruction in enumerate(block)
++                             if instruction[:2] == ("scalar.bin", "add")
++                             and function["operands"][(label, at)][0] == ["%rdepth", "1"]]
++                self.assertEqual(len(additions), 1)
++                active = "%t" + str(additions[0][1][0])
++                calls = [function["operands"][(label, at)][0]
++                         for label, _, block in function["blocks"]
++                         for at, instruction in enumerate(block)
++                         if instruction[:2] == ("call", "@rv.f." + target)]
++                self.assertEqual(len(calls), 1)
++                self.assertEqual(calls[0][-1], active)
++                limits = [function["operands"][(label, at)][1]
++                          for label, _, block in function["blocks"]
++                          for at, instruction in enumerate(block)
++                          if instruction[:2] == ("recursion.limit", "")]
++                self.assertEqual(len(limits), 1)
++                limit = "%t" + str(limits[0][0])
++                self.assertTrue(any(instruction[:2] == ("scalar.cmp", "sge")
++                                    and function["operands"][(label, at)][0] == ["%rdepth", limit]
++                                    for label, _, block in function["blocks"]
++                                    for at, instruction in enumerate(block)))
++                self.assertTrue(any(op[:2] == ("rt", "recursion.error") for op in code))
++                self.assertTrue(function["fx"] & FXBIT["R"])
++                self.assertFalse(any(op[0] == "rt" and op[1] in (
++                    "recursion.enter", "recursion.leave", "recursion.depth",
++                    "recursion.restore", "recursion.check", "recursion.room") for op in code))
++                body = definition(ir, name)
++                self.assertIn("i64 %rdepth)", body.splitlines()[0])
++                self.assertNotRegex(body, r"store i64 [^\n]*@pys_recursion_state")
++
++    def test_public_wrapper_preserves_signature_and_forwards_incoming_depth(self):
++        ir, functions = compile_source(CLOSED, opt=VALUE_ONLY)
++        control, _ = compile_source(CLOSED, opt=VALUE_ONLY + ",-recursionvalue")
++        for name in ("depth", "even", "odd"):
++            with self.subTest(function=name):
++                symbol = "@f." + name
++                public = definition(ir, symbol)
++                self.assertEqual(public.splitlines()[0], definition(control, symbol).splitlines()[0])
++                function = functions[symbol]
++                loads = [function["operands"][(label, at)][1]
++                         for label, _, block in function["blocks"]
++                         for at, instruction in enumerate(block)
++                         if instruction[:2] == ("rt", "recursion.depth")]
++                self.assertEqual(len(loads), 1)
++                incoming = "%t" + str(loads[0][0])
++                calls = [function["operands"][(label, at)][0]
++                         for label, _, block in function["blocks"]
++                         for at, instruction in enumerate(block)
++                         if instruction[:2] == ("call", "@rv.f." + name)]
++                self.assertEqual(len(calls), 1)
++                self.assertEqual(calls[0][-1], incoming)
++                self.assertFalse(any(op[:2] == ("rt", "recursion.enter")
++                                     for op in operations(function)))
++
++    def test_indirect_callable_keeps_its_adapter_signature(self):
++        source = CLOSED + '''
++from collections.abc import Callable
++
++def indirect(callback: Callable[[int], int], n: int) -> int:
++    return callback(n)
++
++callbacks: list[Callable[[int], int]] = [depth]
++print(indirect(callbacks[0], 3))
++'''
++        ir, functions = compile_source(source, opt=VALUE_ONLY)
++        control, _ = compile_source(source, opt=VALUE_ONLY + ",-recursionvalue")
++        self.assertIn("@rv.f.depth", functions)
++        self.assertNotIn("@rv.f.indirect", functions)
++        adapters = [name for name in functions if name.startswith("@cv.")]
++        self.assertTrue(adapters)
++        for name in adapters:
++            self.assertEqual(definition(ir, name).splitlines()[0],
++                             definition(control, name).splitlines()[0])
++        indirect = functions["@f.indirect"]
++        calls = [indirect["operands"][(label, at)][0]
++                 for label, _, block in indirect["blocks"]
++                 for at, instruction in enumerate(block) if instruction[0] == "icall"]
++        self.assertEqual(len(calls), 1)
++        self.assertEqual(len(calls[0]), 3)  # function pointer, environment and source argument
++        self.assertFalse(any("@rv." in line for line in ir.splitlines()
++                             if "private constant {ptr, ptr}" in line))
++
++    def test_numeric_identity_operands_precede_the_hidden_depth(self):
++        source = '''# pystachy: dynamic-any
++from typing import Any
++
++def identity(value: int) -> int:
++    return value
++
++def relay(value: int) -> int:
++    return identity(value)
++
++value: Any = int("1000")
++alias: Any = relay(value)
++print(value is alias)
++'''
++        for prefix in ("", "# pystachy: python-int\n"):
++            with self.subTest(promoting_int=bool(prefix)):
++                ir, functions = compile_source(prefix + source, opt=VALUE_ONLY)
++                control, _ = compile_source(prefix + source, opt=VALUE_ONLY + ",-recursionvalue")
++                public = definition(ir, "@f.identity").splitlines()[0]
++                self.assertEqual(public, definition(control, "@f.identity").splitlines()[0])
++                private = definition(ir, "@rv.f.identity").splitlines()[0]
++                expected = public.replace("@f.identity(", "@rv.f.identity(")
++                expected = expected.replace(") {", ", i64 %rdepth) {")
++                self.assertEqual(private, expected)
++                self.assertIn("ptr %aid0, ptr %idret, i64 %rdepth)", private)
++                relay = functions["@rv.f.relay"]
++                calls = [relay["operands"][(label, at)][0]
++                         for label, _, block in relay["blocks"]
++                         for at, instruction in enumerate(block)
++                         if instruction[:2] == ("call", "@rv.f.identity")]
++                self.assertEqual(len(calls), 1)
++                self.assertEqual(len(calls[0]), 4)
++
++    def test_loop_and_builtin_failure_edges_remain_valid(self):
++        source = '''
++def fold(values: list[int], divisor: int) -> int:
++    total = 0
++    for value in values:
++        total += value // divisor
++    return total
++
++print(fold([6, 9], 3))
++'''
++        ir, functions = compile_source(source, opt=VALUE_ONLY)
++        self.assertIn("@rv.f.fold", functions)
++        private = definition(ir, "@rv.f.fold")
++        self.assertIn("@pys_floordiv(", private)
++        self.assertNotRegex(private, r"store i64 [^\n]*@pys_recursion_state")
++
++    def test_entry_phi_predecessor_follows_the_moved_body(self):
++        source = '''
++def positive(n: int) -> bool:
++    return n > 0 and n < 10
++
++print(positive(3), positive(0))
++'''
++        ir, _ = compile_source(source, opt=VALUE_ONLY)
++        control, _ = compile_source(source, opt=VALUE_ONLY + ",-recursionvalue")
++        self.assertRegex(definition(control, "@f.positive"), r"phi i1 [^\n]*%entry")
++        private = definition(ir, "@rv.f.positive")
++        self.assertIn("phi i1", private)
++        self.assertNotRegex(private, r"phi i1 [^\n]*%entry")
++
++    def test_verifier_rejects_missing_or_wrong_typed_hidden_depth(self):
++        original = Gen.recursionvalue
++        for invalid in ("missing", "wrong_type"):
++            with self.subTest(invalid=invalid):
++                def corrupt(g):
++                    count = original(g)
++                    for fn in g.fns:
++                        for block in fn.blocks:
++                            for op in block.code:
++                                if op.op == "call" and op.s.startswith("@rv."):
++                                    if invalid == "missing":
++                                        op.a.pop()
++                                    else:
++                                        op.a[-1].t = "bool"
++                                    return count
++                    raise AssertionError("the mutation did not find a private call")
++
++                error = StringIO()
++                with patch.object(Gen, "recursionvalue", corrupt), \
++                        patch.dict(os.environ, {"PYSTACHY_IRCHECK": "1"}), \
++                        redirect_stderr(error), self.assertRaises(SystemExit) as raised:
++                    compile_source(CLOSED, opt=VALUE_ONLY)
++                self.assertEqual(raised.exception.code, 1)
++                self.assertIn("private scalar-depth call", error.getvalue())
++
++    def test_limit_observer_and_its_direct_parent_stay_canonical(self):
++        source = CLOSED + '''
++import sys
++
++def observer(n: int) -> int:
++    sys.setrecursionlimit(n)
++    return sys.getrecursionlimit()
++
++def parent(n: int) -> int:
++    return observer(n)
++
++print(parent(1000))
++'''
++        _, functions = compile_source(source, opt=VALUE_ONLY)
++        self.assertIn("@rv.f.depth", functions)
++        self.assertNotIn("@rv.f.observer", functions)
++        self.assertNotIn("@rv.f.parent", functions)
++        for name in ("observer", "parent"):
++            self.assertTrue(any(op[:2] == ("rt", "recursion.enter")
++                                for op in operations(functions["@f." + name])))
++
++    def test_runtime_object_callbacks_and_io_are_not_closed_calls(self):
++        source = CLOSED + '''
++class Item:
++    def __init__(self, value: int) -> None:
++        self.value = value
++
++    def __eq__(self, other: "Item") -> bool:
++        return self.value == other.value
++
++def contains(items: list[Item], query: Item) -> bool:
++    return query in items
++
++def reporting(n: int) -> int:
++    print(n)
++    return depth(n)
++
++print(contains([Item(1)], Item(1)), reporting(3))
++'''
++        _, functions = compile_source(source, opt=VALUE_ONLY)
++        self.assertIn("@rv.f.depth", functions)
++        self.assertNotIn("@rv.f.contains", functions)
++        self.assertNotIn("@rv.f.reporting", functions)
++
++    def test_local_handlers_generators_and_user_throws_are_excluded(self):
++        source = CLOSED + '''
++from collections.abc import Iterator
++
++def handled(n: int) -> int:
++    try:
++        return depth(n)
++    except RecursionError:
++        return -1
++
++def values(n: int) -> Iterator[int]:
++    yield depth(n)
++
++def fail(n: int) -> int:
++    if n < 0:
++        raise ValueError("negative")
++    return depth(n)
++
++print(handled(3), list(values(3)), fail(3))
++'''
++        _, functions = compile_source(source, opt=VALUE_ONLY)
++        self.assertIn("@rv.f.depth", functions)
++        for name in ("handled", "values", "fail"):
++            self.assertNotIn("@rv.f." + name, functions)
++
++    def test_tuple_return_body_and_aggregate_return_abi_are_retained(self):
++        source = CLOSED + '''
++def pair(n: int) -> tuple[int, int]:
++    return (n, n + 1)
++
++def unpack(n: int) -> int:
++    left, right = pair(n)
++    return left + right
++
++print(unpack(3))
++'''
++        ir, functions = compile_source(source, opt=VALUE_ONLY)
++        self.assertIn("@rv.f.depth", functions)
++        self.assertNotIn("@rv.f.pair", functions)
++        self.assertNotIn("@rv.f.unpack", functions)
++        self.assertRegex(ir, r"define internal \{i64, i64\} @v\.f\.pair\(")
++
++    def test_lifetime_observers_keep_the_entire_original_program(self):
++        sources = {
++            "unmanaged": CLOSED + 'stream = open("pending.txt", "w")\nstream.write("pending")\n',
++            "weakref": CLOSED + '''
++from _weakref import ref
++
++class Item:
++    def __init__(self, n: int) -> None:
++        self.n = n
++
++item = Item(1)
++weak = ref(item)
++print(weak() is item)
++''',
++            "atexit": CLOSED + '''
++import atexit
++
++def done() -> None:
++    print("done")
++
++atexit.register(done)
++''',
++            "embedding": CLOSED + "from pyobj import of_int\nprint(of_int(5).to_int())\n",
++            "extension": "from ffi import export\n@export\ndef scalar(n: int) -> int:\n    return n + 1\n",
++        }
++        for kind, source in sources.items():
++            with self.subTest(kind=kind):
++                ext = "recursion_contract" if kind == "extension" else ""
++                ir, functions = compile_source(source, opt=VALUE_ONLY, ext=ext)
++                control, _ = compile_source(source, opt=VALUE_ONLY + ",-recursionvalue", ext=ext)
++                self.assertFalse(any(name.startswith("@rv.") for name in functions))
++                self.assertEqual(ir, control)
++
++    def test_scoped_files_keep_their_roots_and_allow_a_closed_child(self):
++        source = CLOSED + '''
++with open("scoped.txt", "w") as stream:
++    stream.write(str(depth(3)))
++'''
++        ir, functions = compile_source(source, opt=VALUE_ONLY)
++        self.assertIn("@rv.f.depth", functions)
++        self.assertIn("@pys_unwind_file(", ir)
++        self.assertIn("@pys_file_close(", ir)
++
++    def test_disabling_the_pass_keeps_the_original_recursive_body(self):
++        for opt in (VALUE_ONLY + ",-recursionvalue", "-all"):
++            with self.subTest(opt=opt):
++                _, functions = compile_source(CLOSED, opt=opt)
++                self.assertFalse(any(name.startswith("@rv.") for name in functions))
++                original = operations(functions["@f.depth"])
++                self.assertTrue(any(op[:2] == ("rt", "recursion.enter") for op in original))
++                self.assertTrue(any(op[:2] == ("call", "@f.depth") for op in original))
++
++
++if __name__ == "__main__":
++    unittest.main()

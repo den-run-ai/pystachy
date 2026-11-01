@@ -1,0 +1,64 @@
+{
+  "compact_comparison_summary": "local/corpus-policy/comparison-summary.json",
+  "exact_full_comparison_addendum": {
+    "compressed_bytes": 613379,
+    "compressed_sha256": "ef0b4fa2e88c7c988dfae308f5dd4c32cf6b93ae2aa8bb76627ddb900415a541",
+    "encoding": "gzip",
+    "path": "local/corpus-policy/comparison.json.gz",
+    "raw_bytes": 7517601,
+    "raw_original_path": "prototype-996/corpus-policy/comparison.json",
+    "raw_sha256": "2ec2357c33583bc5d3243ffd3d6b80f74785219f6c5a709b7734ef3cbf4e5e0c",
+    "verified_exact_raw_bytes": true
+  },
+  "historical_scope": "Initial policy checkpoint; policy_final is collected separately.",
+  "original_bytes_retained_locally": "/workspace/scratch/8f4dd6deebd9/corpus-original-retained",
+  "original_raw_archive": {
+    "compressed_bytes": 96760228,
+    "internal_manifest_bytes": 5067939,
+    "internal_manifest_member": "local/_archive-manifests/corpus-policy.json",
+    "internal_manifest_mode": "0644",
+    "internal_manifest_sha256": "4c843e0847d0b0d0e70226d3eefd8a0551cb3314e365749b3dad5271e565498e",
+    "mode": "0644",
+    "path": "archives/corpus-policy.tar.gz",
+    "payload_bytes": 164897152,
+    "payload_members": 20204,
+    "sha256": "a2df3c1d65517280ffa87764300aedb7462b77877f3532c031db9ecaa1332ce1",
+    "verified_all_member_hashes_modes_sizes": true
+  },
+  "published_solid_archive": {
+    "compressed_bytes": 11406128,
+    "compression": {
+      "check": "CRC64",
+      "dict_bytes": 8388608,
+      "filter": "LZMA2",
+      "format": "XZ",
+      "preset": 6,
+      "python": "3.12.14"
+    },
+    "expanded_ir_bytes": 536378529,
+    "gzip_ir_sources_expanded": 496,
+    "identical_raw_aliases": 14,
+    "internal_manifest_bytes": 9654720,
+    "internal_manifest_member": "local/_archive-manifests/corpus-policy.json",
+    "internal_manifest_mode": "0644",
+    "internal_manifest_sha256": "00962442bd5da543f7f7f6063b02463e3cf2ad460e3b49707483d0e51842b2d3",
+    "mode": "0644",
+    "path": "archives/corpus-policy.tar.xz",
+    "payload_bytes": 584657776,
+    "payload_members": 20191,
+    "sha256": "22a8298648a1dd82f9b00c319332a8a54ec5e1c3277bab07ac16c7ba1e738c88",
+    "source_files": 20205,
+    "verified_all_member_hashes_modes_sizes": true,
+    "verified_all_original_source_hashes": true
+  },
+  "schema": 1,
+  "source_mapping_manifest": "local/artifact-manifest.json.gz",
+  "strict_comparison_verdict_changed": false,
+  "transformation": "Per-case .ll.gz containers expand losslessly to native compiler IR. Original container identities and exact decompressed payload identities are retained. All JSON and diagnostics remain unchanged.",
+  "validation": {
+    "all_14_raw_aliases_identical": true,
+    "all_496_decompressed_IRs_match_native_compiler_records": true,
+    "all_original_source_hashes": true,
+    "all_published_member_hashes_modes_sizes": true
+  }
+}

@@ -1,0 +1,113 @@
+diff --git a/docs/internals.md b/docs/internals.md
+index ac88fd64..0aba2259 100644
+--- a/docs/internals.md
++++ b/docs/internals.md
+@@ -445,8 +445,9 @@ calls, callbacks and limit changes see the full active depth; generators keep th
+ original accounting. `recursionregion` can check a loop-containing function's finite
+ maximum call depth once and run an unchecked private call subgraph. Whole-function
+ versioning requires at least one loop with a control-flow cycle and a counted
+-source call on every path back to its head. A branch that exits the loop is allowed;
+-a continuing branch without a call disqualifies that loop. Insufficient
++source call on every path back to its head before its recorded exit. Paths through
++that exit are allowed, including re-entry through an enclosing loop; a continuing
++branch without a call disqualifies that loop. Insufficient
+ headroom runs the complete guarded body, preserving side effects and the original
+ failing call. Callbacks, limit changes, generators, handlers and unknown calls remain
+ boundaries; code-size limits bound cloning.
+diff --git a/docs/typed-ir.md b/docs/typed-ir.md
+index c196b55a..a4dc2d01 100644
+--- a/docs/typed-ir.md
++++ b/docs/typed-ir.md
+@@ -434,10 +434,11 @@ retain guarded entries; only direct calls within the proven subgraph use private
+ unchecked clones. Cloning and analysis have size/depth budgets, and tuple-return
+ roots stay unchanged when versioning would defeat aggregate return optimization.
+ Whole-function versioning requires at least one loop with a control-flow cycle
+-and a counted call on every path back to its head. Calls in the loop header qualify;
+-exit paths need no call. A call-free continuing branch, an unrelated loop, or a loop
+-record with no remaining cycle cannot justify a selector. Whole-function unchecked graphs exclude
+-callbacks, limit changes, generators, local handlers and unknown calls.
++and a counted call on every path back to its head before its recorded exit. Calls
++in the loop header qualify; paths through the recorded exit need no call, even if
++an enclosing loop can re-enter this loop. A call-free continuing branch, an unrelated
++loop, or a loop record with no remaining cycle cannot justify a selector. Whole-function
++unchecked graphs exclude callbacks, limit changes, generators, local handlers and unknown calls.
+ 
+ After selecting closed call graphs within the size budgets, the pass retains
+ wrappers only for maximal roots: a root with an incoming call from any member of
+diff --git a/src/pystachy_compiler/optimizations.py b/src/pystachy_compiler/optimizations.py
+index e6c828c8..2cc15540 100644
+--- a/src/pystachy_compiler/optimizations.py
++++ b/src/pystachy_compiler/optimizations.py
+@@ -117,7 +117,9 @@ def recursion_repeated(self, fn: IFn, bounds: list[int]) -> bool:
+             j = work[pos]
+             pos += 1
+             for previous in back[j]:
+-                if previous not in ancestors:
++                # An exit followed by re-entry through an enclosing loop is not
++                # a continuing path of this loop.
++                if previous not in ancestors and fn.blocks[previous].label != loop.exit:
+                     ancestors[previous] = True
+                     work.append(previous)
+         # A surviving loop record alone does not prove that a cycle remains.
+diff --git a/tools/test_typed_recursion_bounded.py b/tools/test_typed_recursion_bounded.py
+index 47ca5c7c..be59eaf4 100644
+--- a/tools/test_typed_recursion_bounded.py
++++ b/tools/test_typed_recursion_bounded.py
+@@ -121,6 +121,57 @@ def early_continue(n: int) -> int:
+         total = leaf(total)
+     return total
+ 
++print(conditional(4), early_continue(4))
++''')
++        for name in ("conditional", "early_continue"):
++            with self.subTest(function=name):
++                self.assertNotIn("@rf.f." + name, functions)
++                ops = operations(functions["@f." + name])
++                self.assertFalse(any(op[:2] == ("rt", "recursion.room") for op in ops))
++                self.assertTrue(any(op[:2] == ("rt", "recursion.enter") for op in ops))
++                self.assertTrue(any(op[:2] == ("call", "@f.leaf") for op in ops))
++
++    def test_nested_loop_calls_allow_a_selector_before_the_inner_exit(self):
++        _, functions = compile_source('''
++def leaf(n: int) -> int:
++    return n + 1
++
++def kernel(rows: int, columns: int) -> int:
++    total = 0
++    for i in range(rows):
++        for j in range(columns):
++            total = leaf(total)
++    return total
++
++print(kernel(3, 4))
++''')
++        self.assertTrue(any(op[:2] == ("rt", "recursion.room")
++                            for op in operations(functions["@f.kernel"])))
++        self.assertTrue(any(op[:2] == ("call", "@rf.f.leaf")
++                            for op in operations(functions["@rf.f.kernel"])))
++
++    def test_nested_conditional_and_continue_bypasses_reject_a_selector(self):
++        _, functions = compile_source('''
++def leaf(n: int) -> int:
++    return n + 1
++
++def conditional(n: int) -> int:
++    total = 0
++    for i in range(n):
++        for j in range(n):
++            if j % 2:
++                total = leaf(total)
++    return total
++
++def early_continue(n: int) -> int:
++    total = 0
++    for i in range(n):
++        for j in range(n):
++            if j % 2:
++                continue
++            total = leaf(total)
++    return total
++
+ print(conditional(4), early_continue(4))
+ ''')
+         for name in ("conditional", "early_continue"):

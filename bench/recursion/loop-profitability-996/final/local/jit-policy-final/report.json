@@ -1,0 +1,1819 @@
+{
+  "controller": {
+    "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit_measure.py",
+    "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit_measure.py",
+    "bytes": 20948,
+    "mtime_ns": 1793499729355812378,
+    "sha256": "3783ef49e423dcb55afb0b3a31a76e90189059a4cd306d395fb56b0ae01f3515"
+  },
+  "helper": {
+    "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/measure.py",
+    "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/measure.py",
+    "bytes": 6881,
+    "mtime_ns": 1793503282846039328,
+    "sha256": "98269ef2e31c5e50d00e6c24e0729dc4d2999c1b73058d0b4040da24dde21927"
+  },
+  "command": [
+    "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit_measure.py",
+    "policy_final",
+    "--n",
+    "1000",
+    "--output",
+    "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final"
+  ],
+  "python": "3.13.16 (main, Oct 14 2026, 01:04:01) [Clang 23.1.3 ]",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.39",
+  "affinity": [
+    0
+  ],
+  "mode": "fnmatch",
+  "n": 1000,
+  "source": {
+    "path": "/workspace/scratch/8f4dd6deebd9/pystachy-baseline/bench/smoke/text.py",
+    "realpath": "/workspace/scratch/8f4dd6deebd9/pystachy-baseline/bench/smoke/text.py",
+    "bytes": 4394,
+    "mtime_ns": 1793498559915645970,
+    "sha256": "abcf4ba78bd62af42207230106b96f63b1a64758c1aa2831a49d0ba7781e6302"
+  },
+  "role_order": [
+    "policy_final"
+  ],
+  "roles": {
+    "policy_final": {
+      "role": "policy_final",
+      "inputs_before": {
+        "lib/_markupbase.py": "6a294b294582f55905d310b8df054019e94f37b17eba3414be4e2cb61d5851d1",
+        "lib/_pyrandom.py": "5b37918369c0e4becdac2d012ffe9e40e314a330ee9f7b3fe2ce4cd3a926ff09",
+        "lib/_pystachy__io.py": "77ee03b3a67f79f49c3fe30666f4f5077bd41069797c727529a230c4caa0a117",
+        "lib/_pystachy_abc.py": "9f6f717c077b2dbac22e8dc9793373b939615a33f2698aaddd81ed905e5a48f8",
+        "lib/_pystachy_atexit.py": "a5ff97e421a4a8fd782e08a0124bac6a7b27486fc279cb4384655bc4b208d60c",
+        "lib/_pystachy_binascii.py": "c8ca70973dc409011ba89749878a2a205780fdc907437bc08521be0e3d07f848",
+        "lib/_pystachy_codecs.py": "fe8380d756e383192028c6a65d652047e9abb9c08b51e15aba5b35e8cf678acf",
+        "lib/_pystachy_iterators.py": "61894584c1fda85936a740d4dafa2c5d631f9b05f5022fca8913e4ad0a84b27e",
+        "lib/_pystachy_itertools.py": "14f451cf7647016ad8105aa988b9cbabe4fe3f5a08f2710f6ed2db5d81a00566",
+        "lib/_pystachy_json_any.py": "392d432c6ef3679f36bd3a86b302fe71858ff2d261bc25863c1673bf58944016",
+        "lib/_pystachy_mappingproxy.py": "e1d04e45f0b12e0e29fba497adf16f77864154c9e175a40065d2fd73654be70c",
+        "lib/_pystachy_object.py": "6a21df25fa11b3c80a70d95f310760d86adaeecd4a63e767bde5b9ecde63ca9c",
+        "lib/_pystachy_range.py": "50df392f248e25a79896007a3b0a23741f8f5f56622e7c56060ba9612292f8b2",
+        "lib/_pystachy_re_specialized.py": "d09604c416700c3a7acd3a9f8c6f7536289c895b2e72393a9875e68ed92e45bf",
+        "lib/_pystachy_string.py": "2e87bb96489d12051446c1b59c2e4ee65543a14f15d8eff3465a43f2e1f51434",
+        "lib/_pystachy_struct.py": "2f224f07dd5a8db374dc2604257cc7c41a4caa7140c5d2ddf30a34bc8f88f1d6",
+        "lib/_pystachy_thread.py": "62e5617d4f19c2deb6d714dbcc92ebaa6a97a78a596fc7d8c56c088cc4ad0f37",
+        "lib/_pystachy_types.py": "221d41e2f90c40493b3d712fb99cf39fb5a25c2306e63de7a89358e66cfcfe70",
+        "lib/_pystachy_unicodedata.py": "f1c877238f94279dfdb5a5f77396d9d25f504c409f34b78099613c6c3f71c7d0",
+        "lib/_pystachy_unicodedata_db.py": "d511e3c104f697e9e9ce150b97119ceb1fcaf00ebcdd3be21cf52c88337608b2",
+        "lib/_pystachy_unicodedata_names.py": "9b18f9e4aecb03f28672fdecce4fcf9d0ece0a1c565c7e9e0ce504fe4fc2bb28",
+        "lib/_pystachy_weakref.py": "da4181f6adb4cbbed1d3c45d95e32bd39e8ac210638ab902f26fb0b68bc7cbfe",
+        "lib/_weakrefset.py": "91895a451d06e9f521a1171b31b9b19bc9740f35af00d4fa106338ab7167c9ac",
+        "lib/bisect.py": "f1cf7b85fc36b5da249813fc5ab97d9464f8cc1bc817f7146206fa2713e35999",
+        "lib/codecs.py": "feafe30244cc2ac23a8f03ca6c8b106ef82dede1630aac103126767e123a3c42",
+        "lib/collections/__init__.py": "8a6533ddf04c4823e1c1da10925028613420cc4e5cb6264e6066fdd3739b4852",
+        "lib/colorsys.py": "65e3dfbf7bad61d4d7d7731a69dd7e75a347fd350d91327a51010a94e6fd2f1d",
+        "lib/contextlib.py": "08bf5d132ae0aceafcd94c72396e21fd45fc9cd1ba6e74807ce1e39f22d0d665",
+        "lib/csv.py": "29676a25a82679e93c6d0eb771a3f60890aedf49941206c0387ce59696b7c3c4",
+        "lib/curses/__init__.py": "91156d2c9afdc168cee4bb7085c8b16936ca7079fa4035ac4d7908712d86f394",
+        "lib/curses/ascii.py": "780dd8bbaf0ee7e832f164c1772953e694a9cd1031d1ab1471af65344d3645e6",
+        "lib/datetime.py": "d269c51c55e7668b988c8194a7a2e643a39aa3a2770a727c178a5c898b91c239",
+        "lib/difflib.py": "4d33db46d2f0748bd674b5ae2f52c59ab0cab0865c465a99ea9521d8751aea0f",
+        "lib/fnmatch.py": "fd1da199d0eeabc34ec9796d5a0790da6300fff4d15e16ee2d8ca26e6885eec5",
+        "lib/functools.py": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703",
+        "lib/genericpath.py": "cdac5a68dd738051e0d66fc81d5947d6a1776248fc6fe862253477608d870ec4",
+        "lib/getopt.py": "0d152bede49816f2924ffb944d86369099bea3b68ec1ee6f0c84c56251670241",
+        "lib/gettext.py": "97b7fa3d8112826dae4d021a6445fe791521524bd4b06e729d0497ed59a85e63",
+        "lib/heapq.py": "89bfee37cf47aecdf2a5ae8706b9805f1b1789d6e2edb7e3556fe8b42c5ecba3",
+        "lib/html/__init__.py": "067cf63fe3eee1bece807caba82a83d0307010bf1c30d9974e56ea704ddea893",
+        "lib/html/entities.py": "6fbeb0318e22905269b414b7d045574b8a98767f194310071b9177fadc738a2f",
+        "lib/html/parser.py": "f3ab8871f5342562328cd3ff8e65d5667c79d27189c7a0401982a193de7b4e90",
+        "lib/io.py": "31f5102c549e7051190c81838928db3f5c21863ac9cf63e7a493352e767fa71f",
+        "lib/json.py": "72fb29122acddd3b4d1bd43d8ae9e7fee506b1d7d4f30559edeeebd92ac044ce",
+        "lib/keyword.py": "833eb8e01577a8330f473ed49403fae4b5e6c95a66a81254405deb5c7ea7efb9",
+        "lib/mpz.py": "754e4844ff8425e92ee8cde26b1e84a4ad318312d1ca17d10ea724a6c4c46a45",
+        "lib/operator.py": "7d42396ef02c03aa69eb86643769cdb889ab9fc66ffd140bc0efa0896fc94c99",
+        "lib/posixpath.py": "69acb9e294987cd6056a2237048373cf8d6201faf1e43a49c38889b47d2fb28e",
+        "lib/pyobj.py": "2d673d060a386ceae11b381ca94ce71a4ec43be89e7c1c59651c936ffea9054e",
+        "lib/random.py": "91e7fa770bfc1affb76a6441a10e1913af8993d8c657c12ffe6cbadc3e3add1e",
+        "lib/re/__init__.py": "3e1c1d6312856cfb5c34d2ad5f24b933de77c00dd21d36f76f74c54f8cf0f856",
+        "lib/re/_constants.py": "d8c63d4b91920ceb02d7c00073a062504c349b3e0de83ba480c3f4d1bca442fe",
+        "lib/re/_sre.py": "c7e98ec21fe209e8d3833516f408a5b219002e26a2f630cceb933b3e12cca3c5",
+        "lib/re/_unicode.py": "61f1343780ef2537ff83813b7a2097a55482a51a23b172a609a6836af4197ea2",
+        "lib/shlex.py": "7392b7c738fe818c43a8031820bef96db0b9f598d354a9fac0b771546a4fdba4",
+        "lib/stat.py": "07217986d9b2172b509dab3578d18ac05ba768b418e1f1e8c90e38a8f7c2b3c6",
+        "lib/statistics.py": "05a091943eb6a01272f95c190e99bab0d33c72a108aef45261c838842301991b",
+        "lib/string.py": "5a6ea720721a70a9d76d30135697ea612b9cb6610366b38d8c1d997043508b27",
+        "lib/struct.py": "9c231f9497caf513a22dee8f790b07f969b0e45854a0bdd6dd84b492e08c2856",
+        "lib/textwrap.py": "5102b1deb8905ad1b31a2830f7ac5a980229e55f3bbce06fd64baa9930159c1b",
+        "lib/this.py": "481d0cb3de511eae0b5713dad18542b07eafd9c013bb7690f7497bad49923a71",
+        "lib/token.py": "1d81391050d5389c41f319ba4d42159c6247777400e48c27f2d28cac8ca4e6e2",
+        "lib/tomllib/__init__.py": "71f67036895f4c5acab942618af0cbd3d814451ba61e967f358d0f341a5b8f51",
+        "lib/tomllib/_parser.py": "11d40d79772967ebf81f5a0cf8dfa99608413b3ba6144d4beadae99baa28f279",
+        "lib/tomllib/_re.py": "17ec24dabd4e7089df6f04acacb331c85c437addbd2ab98bdfefcb18671ba056",
+        "lib/tomllib/_types.py": "e018cf69245202408dd97664cf76618e8cbb5efb6f43b134d29efd1d9221a6c0",
+        "lib/types.py": "d4215ea3abc258bdde763cc21ec4b0759f0c44e874b2483851c5681ae93f45e2",
+        "lib/urllib/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "lib/urllib/parse.py": "f5914562f9903ab7dde287fcb8bc0b1667a812f82e7e7c4419fed0493bfd0148",
+        "lib/warnings.py": "be4467c02d67040c87e31ede6787740815085298a880f2aa126b02fbabc0f133",
+        "lib/weakref.py": "781ef9b242fde2b923e070fce64b751954d42955c5c66b367e54941678ab722b",
+        "mpz/mpz.c": "2d648cec5de20c6bb7d4882a364cfc9fa1d355395255c1d0e82e4389bde03afa",
+        "pyembed.c": "98c9dd90c0964f885da08e1bd7622386421607723b7341b27783aaf3ff6a11b0",
+        "pyext.c": "4278d2506c88d20a08b4a5b5563237e6323372201603b6c5c78231ee52301109",
+        "pystachy.py": "a413782632f88d4746a81fd7cfb529d695ab36a35618522a83be1e25e1e31f29",
+        "runtime.c": "4bdf82b0663d1141667fe234029c8f92b6146978cff6457f79c1d554926f6637",
+        "runtime.py": "c45138f44a7aa25828b351b6d627e1a4f9fad69dc8a88532d053fb90e84beefb",
+        "ryu/common.h": "0bbd71d26da6193e678d0776cf418f43f287c73d6fd6725353df0aadf70f2a19",
+        "ryu/d2s.c": "c6357b5d53ac1ba7f4984847d3a76f0803e0a931b7d0b02680656576829cf1d2",
+        "ryu/d2s_intrinsics.h": "01d9bdaada67b42f2d1bbdebb3765867e6c44e3a181b806c1d7e851b93f9cc21",
+        "ryu/d2s_small_table.h": "01f3d8a3ff739a26ecbddc2caae44c91574592b1de7c01fec67bc2d06672b606",
+        "ryu/digit_table.h": "8b782573abc0b8554d74163ae6c02f0beb5c30d1e63eaebdb0ddf2c98d817e01",
+        "ryu/ryu.h": "b7feab0ba1df5e9ef3d602f386592ad152491405e49b408fb21c0e0e9e6bfb16",
+        "src/__init__.py": "c443ed6062edae246598189fb20f12799a5e87a04049acb855894652e3875af7",
+        "src/pystachy_compiler/__init__.py": "f60cd281f8ed4fd35776c9f4d40d6a1313c49a3cae5df61841028f711b9f13c8",
+        "src/pystachy_compiler/analysis.py": "5b3c134b21586a03909f89beddbff999f6f28f067ce1dd975fb46a4c1794fecd",
+        "src/pystachy_compiler/bigints.py": "888815dfc3b4a69caed4f88242863478c6b97471637b9f90c72185d09291cbe8",
+        "src/pystachy_compiler/builtins.py": "d0d25b4e975b1e7607131632656f17331ef3e4ac317fbed3a663977dd7614126",
+        "src/pystachy_compiler/calls.py": "1d9cff0879935d3dc48700ccd086b1b44e27641d142e8e71be8a2e24a31cbd55",
+        "src/pystachy_compiler/containers.py": "43a9d6b88602aa1feaecaeb1d11cc44d6fe87c057a6f156c4cf294b0129f1b5e",
+        "src/pystachy_compiler/conversions.py": "900a17d52ac83efb9bd82eb11723a001a51d6ac0f1af57becbf211363509daa5",
+        "src/pystachy_compiler/declarations.py": "d01904e710d79a12f2d33d4eda52c6e79e7605be08d5c974b2905098d6c62b87",
+        "src/pystachy_compiler/diagnostics.py": "b5e7ce06a2e389249591705a5bff407f98501cc54e37bfd701abacc3a087923c",
+        "src/pystachy_compiler/driver.py": "48941caa98b340de4ec44ae03b1573f75828c24142eba88cc7c1ab617acea7b0",
+        "src/pystachy_compiler/dynamic.py": "7350dd8c95638ab416bce848d77347c8a75bd6cd9617e18c78e2fa42a8f69340",
+        "src/pystachy_compiler/emission.py": "1f44a7b63af8c25b6fc5f285d0e10ca896d74685bf865fca82b3a47d5770eb8b",
+        "src/pystachy_compiler/exceptions.py": "b2554ff2ac10570c010814a1c3740b6eb51d8cd9f79ac580d2fc323a68f90a30",
+        "src/pystachy_compiler/expressions.py": "5cb9ba837c5b4bd1f943ca21c4aa4dc886fff0eb1ac2c7e24fa4a2cc42084099",
+        "src/pystachy_compiler/flow.py": "cb6238905238d5dcd042b568f56243e9b407723a6e047d5f0cad478b060439c9",
+        "src/pystachy_compiler/functions.py": "6b2766311d39bcefa45a53d5ec03527935a42bcc9ebced029dbf83b5db7d1aaa",
+        "src/pystachy_compiler/gen.py": "451b14c49d4da65089e280744f8192d6f0a751660ccd5bccf22939673f38f263",
+        "src/pystachy_compiler/generators.py": "ca8611458ccc23c11fd095d1026b936caff86c100e410a833b202315a0778b63",
+        "src/pystachy_compiler/ir.py": "ad058f4b1a011b9fa101c2680eda11650f5b539fe8a259531f2a24689e806ffd",
+        "src/pystachy_compiler/ircheck.py": "781fa17c070480ed38ceb4d094757ac908e4ab027bb74af8b8ab6b405b5c0e60",
+        "src/pystachy_compiler/lexer.py": "1ca2874158eccdb0a4e3569a31940fb9b33a51fe2f06983be83de57d8d9fedeb",
+        "src/pystachy_compiler/llvm_abi.py": "7485f63097d4abac3de8b1fbfb782944ff7e3b68989d2fb266e40ebb8f8889ae",
+        "src/pystachy_compiler/loader.py": "e50415407b10644a710f666981e650414aeec439d2f46270c1bdc255b3590a49",
+        "src/pystachy_compiler/local_versions.py": "10bb0f2f0fb57c442af0807b5b4af6c95e8b950a97430161c97f766a3dc4b375",
+        "src/pystachy_compiler/lower_module.py": "439a613ebfd95d8fbdbe290f863151fd05780dfaf85a9a547d752443c878d79f",
+        "src/pystachy_compiler/lowering.py": "308bf74ae11fa712c8bf29498e6ed0f5418bdd144fa7903ba2559aab7b8c09d3",
+        "src/pystachy_compiler/memory_ir.py": "c2544eda0bdb89ccb99ac1330c95d99974983cc7bdfa0d3a2b39a993c9f62bc1",
+        "src/pystachy_compiler/module.py": "3349556dee4dcda00013d770743f27d5dc3525b76cbd5e2ab312b14506e1f601",
+        "src/pystachy_compiler/names.py": "51eedecfa52aa390bdbe0e7303d6663fc0c32b3c74afce569a1a2aaf637a3fb5",
+        "src/pystachy_compiler/optimizations.py": "1d9cae781b0464ee8b3c8d30060a91cc819432d73e9098ce94f22b0c5701d55f",
+        "src/pystachy_compiler/parser.py": "05c4617ef7ce82f2c270c39ed82dea409e10e5d984826cee759d8cd922c5705b",
+        "src/pystachy_compiler/program.py": "6b7a7894a50978d8af2c771c9d51a2fe7459cbe816b6bf28c64db627f3eb4575",
+        "src/pystachy_compiler/reflection.py": "ed77b340da37e38d4249adbc8e569cf351f0258acd74fdf63365c9d7d8830aeb",
+        "src/pystachy_compiler/scalar_ir.py": "14bc0ce71b4cbf066e8a4cab2ea0bb5c0a53880997484d74f5ea3e9a6d30c05a",
+        "src/pystachy_compiler/scope.py": "d9af25da84ba62a17a6a1a0b7d48d078977dd364528c8ec8e4135cc438f10a97",
+        "src/pystachy_compiler/specs.py": "1f8a54f4cdb2de9b2293d22005229bbedc9d03be8d7ff4cad76f71481418ec96",
+        "src/pystachy_compiler/statements.py": "4bb9347b64952570845df754efbb1e6a3b02467b1b629dd9171e9b98d3d85e2d",
+        "src/pystachy_compiler/structs.py": "e873fd6a6aeaebf39f740de2859a5de9a2da316d7a8993c728889677125c3090",
+        "src/pystachy_compiler/syntax.py": "799e522034af31967517409654d5788179bb6dfa727be9f544a8855c90d3ecb9",
+        "src/pystachy_compiler/templates.py": "b587b346bea5087b3422ea5117e023b521205285f0dc3d622f3c9aed5a94c36f",
+        "src/pystachy_compiler/union_arithmetic.py": "6d6892c0d97667d7e8ffeb5293ccbbe24c76529328e4761ffec6831229c416dd",
+        "src/pystachy_compiler/union_proof.py": "8027ed7a77006053e2da8b0264d1d2bf12ea465d193d4ce49ecd581e0b436cd9",
+        "src/pystachy_compiler/union_state.py": "b845af16073f24e1e1245bdcb00d4324dbf1d657874604cb4b991d852a07b026",
+        "src/pystachy_compiler/unions.py": "133448300155804316b04d6b1e80d99ba606905ad267835007d0d68e77195de3",
+        "src/pystachy_compiler/utils.py": "0efd4bb4f572c22b361890849e4d67c54977b216652a29c397eb44c92426d2ee",
+        "src/pystachy_compiler/variables.py": "f4ea9b2eb58cb7339add9ced65d890f2f5b37d26f4919f463cbb50c54c11b086"
+      },
+      "wrappers_before": {
+        "opt": {
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/llvm/opt",
+          "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/llvm/opt",
+          "bytes": 6173,
+          "mtime_ns": 1793503502876288703,
+          "sha256": "a4375bbeeada4c370ac38eff522ce82b2e0695614e06f07adcf01ccf599a3141"
+        },
+        "lli": {
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/llvm/lli",
+          "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/llvm/lli",
+          "bytes": 6173,
+          "mtime_ns": 1793503502873684215,
+          "sha256": "a4375bbeeada4c370ac38eff522ce82b2e0695614e06f07adcf01ccf599a3141"
+        }
+      },
+      "cache_before": {},
+      "phases": [
+        {
+          "phase": "warm-build",
+          "driver": {
+            "command": [
+              "/workspace/scratch/8f4dd6deebd9/toolchain/venv/bin/python",
+              "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final/pystachy.py",
+              "run",
+              "/workspace/scratch/8f4dd6deebd9/pystachy-baseline/bench/smoke/text.py",
+              "fnmatch",
+              "1000"
+            ],
+            "cwd": "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final",
+            "timeout_s": 900,
+            "stdout_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-build/driver.stdout",
+            "stderr_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-build/driver.stderr",
+            "pid": 30,
+            "returncode": 0,
+            "wall_s": 26.747244015001343,
+            "stdout": "6000\n",
+            "stdout_identity": {
+              "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-build/driver.stdout",
+              "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-build/driver.stdout",
+              "bytes": 5,
+              "mtime_ns": 1793503531693400178,
+              "sha256": "46251acfc71ec25370b9130041437638dd8bb98c6ce57a89d869f39d826358d5"
+            },
+            "stderr": "seconds 0.06788701900222804\n",
+            "stderr_identity": {
+              "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-build/driver.stderr",
+              "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-build/driver.stderr",
+              "bytes": 28,
+              "mtime_ns": 1793503531693400178,
+              "sha256": "7ecc8e99c09b5f0e3a8da544fdfe33a712ccf39806af3d8cca1430f5dd2e10b0"
+            }
+          },
+          "tool_invocations": [
+            {
+              "record_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-build/tools/lli.1793503529386828756.30.json",
+              "tool": "lli",
+              "kind": "lli-whole",
+              "profiled": false,
+              "wrapper_pid": 30,
+              "wrapper": {
+                "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/llvm/lli",
+                "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/llvm/lli",
+                "bytes": 6173,
+                "sha256": "a4375bbeeada4c370ac38eff522ce82b2e0695614e06f07adcf01ccf599a3141"
+              },
+              "tool_identity": {
+                "path": "/usr/lib/llvm-18/bin/lli",
+                "realpath": "/usr/lib/llvm-18/bin/lli",
+                "bytes": 180344,
+                "sha256": "f787c770f5281ab909eac3d28ed984d8f0759caf87def4794f432fd008ef4f8c"
+              },
+              "cwd": "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final",
+              "original_command": [
+                "/usr/lib/llvm-18/bin/lli",
+                "-profile-guided-section-prefix=false",
+                "-dlopen=/dev/fd/8",
+                "/dev/fd/9",
+                "fnmatch",
+                "1000"
+              ],
+              "complete": true,
+              "stdout_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-build/tools/lli.1793503529386828756.30.stdout",
+              "stderr_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-build/tools/lli.1793503529386828756.30.stderr",
+              "executed_command": [
+                "/usr/lib/llvm-18/bin/lli",
+                "-profile-guided-section-prefix=false",
+                "-dlopen=/dev/fd/8",
+                "/dev/fd/9",
+                "fnmatch",
+                "1000"
+              ],
+              "child_pid": 72,
+              "returncode": 0,
+              "wall_s": 2.3098400849994505,
+              "stream_errors": [],
+              "stdout": {
+                "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-build/tools/lli.1793503529386828756.30.stdout",
+                "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-build/tools/lli.1793503529386828756.30.stdout",
+                "bytes": 5,
+                "sha256": "46251acfc71ec25370b9130041437638dd8bb98c6ce57a89d869f39d826358d5"
+              },
+              "stderr": {
+                "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-build/tools/lli.1793503529386828756.30.stderr",
+                "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-build/tools/lli.1793503529386828756.30.stderr",
+                "bytes": 28,
+                "sha256": "7ecc8e99c09b5f0e3a8da544fdfe33a712ccf39806af3d8cca1430f5dd2e10b0"
+              }
+            },
+            {
+              "record_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-build/tools/opt.1793503516137638050.38.json",
+              "tool": "opt",
+              "kind": "opt-other",
+              "profiled": false,
+              "wrapper_pid": 38,
+              "wrapper": {
+                "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/llvm/opt",
+                "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/llvm/opt",
+                "bytes": 6173,
+                "sha256": "a4375bbeeada4c370ac38eff522ce82b2e0695614e06f07adcf01ccf599a3141"
+              },
+              "tool_identity": {
+                "path": "/usr/lib/llvm-18/bin/opt",
+                "realpath": "/usr/lib/llvm-18/bin/opt",
+                "bytes": 251368,
+                "sha256": "67ebe8635087b5ebe22d8f085d5e5857e431f86be9ed76576e59b86b9743c0fb"
+              },
+              "cwd": "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final",
+              "original_command": [
+                "/usr/lib/llvm-18/bin/opt",
+                "-O2",
+                "/tmp/tmpfx36lcdb/runtime-l.bc",
+                "-o",
+                "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/cache/runtime-py-105ca419-a9a3f3f631a45ff2.bc.30.tmpfx36lcdb"
+              ],
+              "complete": true,
+              "stdout_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-build/tools/opt.1793503516137638050.38.stdout",
+              "stderr_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-build/tools/opt.1793503516137638050.38.stderr",
+              "executed_command": [
+                "/usr/lib/llvm-18/bin/opt",
+                "-O2",
+                "/tmp/tmpfx36lcdb/runtime-l.bc",
+                "-o",
+                "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/cache/runtime-py-105ca419-a9a3f3f631a45ff2.bc.30.tmpfx36lcdb"
+              ],
+              "child_pid": 39,
+              "returncode": 0,
+              "wall_s": 5.052514255003189,
+              "stream_errors": [],
+              "stdout": {
+                "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-build/tools/opt.1793503516137638050.38.stdout",
+                "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-build/tools/opt.1793503516137638050.38.stdout",
+                "bytes": 0,
+                "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+              },
+              "stderr": {
+                "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-build/tools/opt.1793503516137638050.38.stderr",
+                "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-build/tools/opt.1793503516137638050.38.stderr",
+                "bytes": 0,
+                "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+              }
+            },
+            {
+              "record_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-build/tools/opt.1793503528477303258.59.json",
+              "tool": "opt",
+              "kind": "opt-user",
+              "profiled": false,
+              "wrapper_pid": 59,
+              "wrapper": {
+                "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/llvm/opt",
+                "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/llvm/opt",
+                "bytes": 6173,
+                "sha256": "a4375bbeeada4c370ac38eff522ce82b2e0695614e06f07adcf01ccf599a3141"
+              },
+              "tool_identity": {
+                "path": "/usr/lib/llvm-18/bin/opt",
+                "realpath": "/usr/lib/llvm-18/bin/opt",
+                "bytes": 251368,
+                "sha256": "67ebe8635087b5ebe22d8f085d5e5857e431f86be9ed76576e59b86b9743c0fb"
+              },
+              "cwd": "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final",
+              "original_command": [
+                "/usr/lib/llvm-18/bin/opt",
+                "-S",
+                "-passes=verify",
+                "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/cache/runtime-py-105ca419-a9a3f3f631a45ff2.bc",
+                "-o",
+                "/tmp/tmpfx36lcdb/runtime-s.ll"
+              ],
+              "complete": true,
+              "stdout_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-build/tools/opt.1793503528477303258.59.stdout",
+              "stderr_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-build/tools/opt.1793503528477303258.59.stderr",
+              "executed_command": [
+                "/usr/lib/llvm-18/bin/opt",
+                "-S",
+                "-passes=verify",
+                "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/cache/runtime-py-105ca419-a9a3f3f631a45ff2.bc",
+                "-o",
+                "/tmp/tmpfx36lcdb/runtime-s.ll"
+              ],
+              "child_pid": 60,
+              "returncode": 0,
+              "wall_s": 0.23869073599780677,
+              "stream_errors": [],
+              "stdout": {
+                "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-build/tools/opt.1793503528477303258.59.stdout",
+                "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-build/tools/opt.1793503528477303258.59.stdout",
+                "bytes": 0,
+                "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+              },
+              "stderr": {
+                "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-build/tools/opt.1793503528477303258.59.stderr",
+                "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-build/tools/opt.1793503528477303258.59.stderr",
+                "bytes": 0,
+                "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+              }
+            },
+            {
+              "record_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-build/tools/opt.1793503528817485975.66.json",
+              "tool": "opt",
+              "kind": "opt-user",
+              "profiled": false,
+              "wrapper_pid": 66,
+              "wrapper": {
+                "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/llvm/opt",
+                "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/llvm/opt",
+                "bytes": 6173,
+                "sha256": "a4375bbeeada4c370ac38eff522ce82b2e0695614e06f07adcf01ccf599a3141"
+              },
+              "tool_identity": {
+                "path": "/usr/lib/llvm-18/bin/opt",
+                "realpath": "/usr/lib/llvm-18/bin/opt",
+                "bytes": 251368,
+                "sha256": "67ebe8635087b5ebe22d8f085d5e5857e431f86be9ed76576e59b86b9743c0fb"
+              },
+              "cwd": "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final",
+              "original_command": [
+                "/usr/lib/llvm-18/bin/opt",
+                "-passes=globaldce,always-inline,function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg),function(early-cse,adce)",
+                "/tmp/tmpfx36lcdb/prog.ll",
+                "-o",
+                "/tmp/tmpfx36lcdb/prog.bc"
+              ],
+              "complete": true,
+              "stdout_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-build/tools/opt.1793503528817485975.66.stdout",
+              "stderr_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-build/tools/opt.1793503528817485975.66.stderr",
+              "executed_command": [
+                "/usr/lib/llvm-18/bin/opt",
+                "-passes=globaldce,always-inline,function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg),function(early-cse,adce)",
+                "/tmp/tmpfx36lcdb/prog.ll",
+                "-o",
+                "/tmp/tmpfx36lcdb/prog.bc"
+              ],
+              "child_pid": 67,
+              "returncode": 0,
+              "wall_s": 0.49644265100505436,
+              "stream_errors": [],
+              "stdout": {
+                "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-build/tools/opt.1793503528817485975.66.stdout",
+                "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-build/tools/opt.1793503528817485975.66.stdout",
+                "bytes": 0,
+                "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+              },
+              "stderr": {
+                "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-build/tools/opt.1793503528817485975.66.stderr",
+                "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-build/tools/opt.1793503528817485975.66.stderr",
+                "bytes": 0,
+                "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+              }
+            }
+          ],
+          "cache_after": {
+            "runtime-py-105ca419-a9a3f3f631a45ff2.bc": {
+              "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/cache/runtime-py-105ca419-a9a3f3f631a45ff2.bc",
+              "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/cache/runtime-py-105ca419-a9a3f3f631a45ff2.bc",
+              "bytes": 804508,
+              "mtime_ns": 1793503521169894329,
+              "sha256": "f1004bf6df6ca1a89520a14f9ca96e554e20596ac00291815055fb1c479ce2b1"
+            },
+            "runtime-py-105ca419-a9a3f3f631a45ff2.o": {
+              "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/cache/runtime-py-105ca419-a9a3f3f631a45ff2.o",
+              "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/cache/runtime-py-105ca419-a9a3f3f631a45ff2.o",
+              "bytes": 624568,
+              "mtime_ns": 1793503528261561365,
+              "sha256": "8c9bc6864faac7ab5b58652dfa3af57f0423603437fe778a8bc955601e3eefa0"
+            },
+            "runtime-py-105ca419-a9a3f3f631a45ff2.so": {
+              "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/cache/runtime-py-105ca419-a9a3f3f631a45ff2.so",
+              "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/cache/runtime-py-105ca419-a9a3f3f631a45ff2.so",
+              "bytes": 486480,
+              "mtime_ns": 1793503528410121829,
+              "sha256": "1a839e9f1ba20ad1a759c98b7afc251e916f1686b89d85d09b49bcdbc011f1ff"
+            },
+            "runtime-py-105ca419-a9a3f3f631a45ff2.target": {
+              "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/cache/runtime-py-105ca419-a9a3f3f631a45ff2.target",
+              "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/cache/runtime-py-105ca419-a9a3f3f631a45ff2.target",
+              "bytes": 140,
+              "mtime_ns": 1793503528760726961,
+              "sha256": "d731095dd9678c2b6e0a5d79092eda16a17c05c2ff17f27f00c2101e732c79e2"
+            },
+            "runtime-py.hashes": {
+              "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/cache/runtime-py.hashes",
+              "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/cache/runtime-py.hashes",
+              "bytes": 4401,
+              "mtime_ns": 1793503528419408642,
+              "sha256": "c19becc91c70205adabe41bc7342ac55ab1378b046465ea5b42511c49ff976f3"
+            }
+          },
+          "stdout_matches_cpython": true
+        },
+        {
+          "phase": "warm-reuse",
+          "driver": {
+            "command": [
+              "/workspace/scratch/8f4dd6deebd9/toolchain/venv/bin/python",
+              "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final/pystachy.py",
+              "run",
+              "/workspace/scratch/8f4dd6deebd9/pystachy-baseline/bench/smoke/text.py",
+              "fnmatch",
+              "1000"
+            ],
+            "cwd": "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final",
+            "timeout_s": 900,
+            "stdout_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-reuse/driver.stdout",
+            "stderr_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-reuse/driver.stderr",
+            "pid": 75,
+            "returncode": 0,
+            "wall_s": 5.4405651970009785,
+            "stdout": "6000\n",
+            "stdout_identity": {
+              "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-reuse/driver.stdout",
+              "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-reuse/driver.stdout",
+              "bytes": 5,
+              "mtime_ns": 1793503537125145129,
+              "sha256": "46251acfc71ec25370b9130041437638dd8bb98c6ce57a89d869f39d826358d5"
+            },
+            "stderr": "seconds 0.05511756600026274\n",
+            "stderr_identity": {
+              "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-reuse/driver.stderr",
+              "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-reuse/driver.stderr",
+              "bytes": 28,
+              "mtime_ns": 1793503537125145129,
+              "sha256": "032c8d408dfe2b7bc22e8bcf6e4cb432a6e9996671dd442274fadb963a57e7d6"
+            }
+          },
+          "tool_invocations": [
+            {
+              "record_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-reuse/tools/lli.1793503534954608364.75.json",
+              "tool": "lli",
+              "kind": "lli-whole",
+              "profiled": false,
+              "wrapper_pid": 75,
+              "wrapper": {
+                "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/llvm/lli",
+                "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/llvm/lli",
+                "bytes": 6173,
+                "sha256": "a4375bbeeada4c370ac38eff522ce82b2e0695614e06f07adcf01ccf599a3141"
+              },
+              "tool_identity": {
+                "path": "/usr/lib/llvm-18/bin/lli",
+                "realpath": "/usr/lib/llvm-18/bin/lli",
+                "bytes": 180344,
+                "sha256": "f787c770f5281ab909eac3d28ed984d8f0759caf87def4794f432fd008ef4f8c"
+              },
+              "cwd": "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final",
+              "original_command": [
+                "/usr/lib/llvm-18/bin/lli",
+                "-profile-guided-section-prefix=false",
+                "-dlopen=/dev/fd/8",
+                "/dev/fd/9",
+                "fnmatch",
+                "1000"
+              ],
+              "complete": true,
+              "stdout_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-reuse/tools/lli.1793503534954608364.75.stdout",
+              "stderr_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-reuse/tools/lli.1793503534954608364.75.stderr",
+              "executed_command": [
+                "/usr/lib/llvm-18/bin/lli",
+                "-profile-guided-section-prefix=false",
+                "-dlopen=/dev/fd/8",
+                "/dev/fd/9",
+                "fnmatch",
+                "1000"
+              ],
+              "child_pid": 83,
+              "returncode": 0,
+              "wall_s": 2.173894587001996,
+              "stream_errors": [],
+              "stdout": {
+                "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-reuse/tools/lli.1793503534954608364.75.stdout",
+                "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-reuse/tools/lli.1793503534954608364.75.stdout",
+                "bytes": 5,
+                "sha256": "46251acfc71ec25370b9130041437638dd8bb98c6ce57a89d869f39d826358d5"
+              },
+              "stderr": {
+                "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-reuse/tools/lli.1793503534954608364.75.stderr",
+                "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-reuse/tools/lli.1793503534954608364.75.stderr",
+                "bytes": 28,
+                "sha256": "032c8d408dfe2b7bc22e8bcf6e4cb432a6e9996671dd442274fadb963a57e7d6"
+              }
+            },
+            {
+              "record_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-reuse/tools/opt.1793503534409939683.77.json",
+              "tool": "opt",
+              "kind": "opt-user",
+              "profiled": false,
+              "wrapper_pid": 77,
+              "wrapper": {
+                "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/llvm/opt",
+                "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/llvm/opt",
+                "bytes": 6173,
+                "sha256": "a4375bbeeada4c370ac38eff522ce82b2e0695614e06f07adcf01ccf599a3141"
+              },
+              "tool_identity": {
+                "path": "/usr/lib/llvm-18/bin/opt",
+                "realpath": "/usr/lib/llvm-18/bin/opt",
+                "bytes": 251368,
+                "sha256": "67ebe8635087b5ebe22d8f085d5e5857e431f86be9ed76576e59b86b9743c0fb"
+              },
+              "cwd": "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final",
+              "original_command": [
+                "/usr/lib/llvm-18/bin/opt",
+                "-passes=globaldce,always-inline,function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg),function(early-cse,adce)",
+                "/tmp/tmpqbbckzpb/prog.ll",
+                "-o",
+                "/tmp/tmpqbbckzpb/prog.bc"
+              ],
+              "complete": true,
+              "stdout_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-reuse/tools/opt.1793503534409939683.77.stdout",
+              "stderr_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-reuse/tools/opt.1793503534409939683.77.stderr",
+              "executed_command": [
+                "/usr/lib/llvm-18/bin/opt",
+                "-passes=globaldce,always-inline,function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg),function(early-cse,adce)",
+                "/tmp/tmpqbbckzpb/prog.ll",
+                "-o",
+                "/tmp/tmpqbbckzpb/prog.bc"
+              ],
+              "child_pid": 78,
+              "returncode": 0,
+              "wall_s": 0.47754158500174526,
+              "stream_errors": [],
+              "stdout": {
+                "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-reuse/tools/opt.1793503534409939683.77.stdout",
+                "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-reuse/tools/opt.1793503534409939683.77.stdout",
+                "bytes": 0,
+                "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+              },
+              "stderr": {
+                "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-reuse/tools/opt.1793503534409939683.77.stderr",
+                "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/warm-reuse/tools/opt.1793503534409939683.77.stderr",
+                "bytes": 0,
+                "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+              }
+            }
+          ],
+          "cache_after": {
+            "runtime-py-105ca419-a9a3f3f631a45ff2.bc": {
+              "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/cache/runtime-py-105ca419-a9a3f3f631a45ff2.bc",
+              "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/cache/runtime-py-105ca419-a9a3f3f631a45ff2.bc",
+              "bytes": 804508,
+              "mtime_ns": 1793503521169894329,
+              "sha256": "f1004bf6df6ca1a89520a14f9ca96e554e20596ac00291815055fb1c479ce2b1"
+            },
+            "runtime-py-105ca419-a9a3f3f631a45ff2.o": {
+              "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/cache/runtime-py-105ca419-a9a3f3f631a45ff2.o",
+              "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/cache/runtime-py-105ca419-a9a3f3f631a45ff2.o",
+              "bytes": 624568,
+              "mtime_ns": 1793503528261561365,
+              "sha256": "8c9bc6864faac7ab5b58652dfa3af57f0423603437fe778a8bc955601e3eefa0"
+            },
+            "runtime-py-105ca419-a9a3f3f631a45ff2.so": {
+              "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/cache/runtime-py-105ca419-a9a3f3f631a45ff2.so",
+              "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/cache/runtime-py-105ca419-a9a3f3f631a45ff2.so",
+              "bytes": 486480,
+              "mtime_ns": 1793503528410121829,
+              "sha256": "1a839e9f1ba20ad1a759c98b7afc251e916f1686b89d85d09b49bcdbc011f1ff"
+            },
+            "runtime-py-105ca419-a9a3f3f631a45ff2.target": {
+              "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/cache/runtime-py-105ca419-a9a3f3f631a45ff2.target",
+              "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/cache/runtime-py-105ca419-a9a3f3f631a45ff2.target",
+              "bytes": 140,
+              "mtime_ns": 1793503528760726961,
+              "sha256": "d731095dd9678c2b6e0a5d79092eda16a17c05c2ff17f27f00c2101e732c79e2"
+            },
+            "runtime-py.hashes": {
+              "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/cache/runtime-py.hashes",
+              "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/cache/runtime-py.hashes",
+              "bytes": 4401,
+              "mtime_ns": 1793503528419408642,
+              "sha256": "c19becc91c70205adabe41bc7342ac55ab1378b046465ea5b42511c49ff976f3"
+            }
+          },
+          "stdout_matches_cpython": true
+        },
+        {
+          "phase": "profile",
+          "driver": {
+            "command": [
+              "/workspace/scratch/8f4dd6deebd9/toolchain/venv/bin/python",
+              "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final/pystachy.py",
+              "run",
+              "/workspace/scratch/8f4dd6deebd9/pystachy-baseline/bench/smoke/text.py",
+              "fnmatch",
+              "1000"
+            ],
+            "cwd": "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final",
+            "timeout_s": 900,
+            "stdout_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/profile/driver.stdout",
+            "stderr_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/profile/driver.stderr",
+            "pid": 86,
+            "returncode": 0,
+            "wall_s": 125.65673104899906,
+            "stdout": "6000\n",
+            "stdout_identity": {
+              "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/profile/driver.stdout",
+              "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/profile/driver.stdout",
+              "bytes": 5,
+              "mtime_ns": 1793503662791239927,
+              "sha256": "46251acfc71ec25370b9130041437638dd8bb98c6ce57a89d869f39d826358d5"
+            },
+            "stderr": "seconds 4.184296653002093\n",
+            "stderr_identity": {
+              "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/profile/driver.stderr",
+              "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/profile/driver.stderr",
+              "bytes": 26,
+              "mtime_ns": 1793503662791239927,
+              "sha256": "812eb56097227696cbe492eff70d0c153b18076bb27d39f55b7e6a16f4089782"
+            }
+          },
+          "tool_invocations": [
+            {
+              "record_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/profile/tools/lli.1793503564513056975.86.json",
+              "tool": "lli",
+              "kind": "lli-whole",
+              "profiled": true,
+              "wrapper_pid": 86,
+              "wrapper": {
+                "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/llvm/lli",
+                "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/llvm/lli",
+                "bytes": 6173,
+                "sha256": "a4375bbeeada4c370ac38eff522ce82b2e0695614e06f07adcf01ccf599a3141"
+              },
+              "tool_identity": {
+                "path": "/usr/lib/llvm-18/bin/lli",
+                "realpath": "/usr/lib/llvm-18/bin/lli",
+                "bytes": 180344,
+                "sha256": "f787c770f5281ab909eac3d28ed984d8f0759caf87def4794f432fd008ef4f8c"
+              },
+              "cwd": "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final",
+              "original_command": [
+                "/usr/lib/llvm-18/bin/lli",
+                "-profile-guided-section-prefix=false",
+                "-dlopen=/dev/fd/8",
+                "/dev/fd/9",
+                "fnmatch",
+                "1000"
+              ],
+              "complete": true,
+              "stdout_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/profile/tools/lli.1793503564513056975.86.stdout",
+              "stderr_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/profile/tools/lli.1793503564513056975.86.stderr",
+              "optimized_user_bitcode": {
+                "fd": 9,
+                "target": "/tmp/tmphfjptje7/prog.bc (deleted)",
+                "offset_before": 0,
+                "offset_after": 0,
+                "bytes": 721836,
+                "sha256": "5f6bfd5f8eb7e88c51f4de2eea39950e2568d4a189cf031a9a436be76c2ef32e",
+                "capture": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/profile/tools/lli.1793503564513056975.86.optimized.bc"
+              },
+              "loaded_runtime": {
+                "fd": 8,
+                "target": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/cache/runtime-py-105ca419-a9a3f3f631a45ff2.so",
+                "offset_before": 0,
+                "offset_after": 0,
+                "bytes": 486480,
+                "sha256": "1a839e9f1ba20ad1a759c98b7afc251e916f1686b89d85d09b49bcdbc011f1ff",
+                "capture": null
+              },
+              "callgrind_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/profile/tools/lli.1793503564513056975.86.callgrind",
+              "valgrind_log_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/profile/tools/lli.1793503564513056975.86.valgrind.log",
+              "executed_command": [
+                "/usr/bin/valgrind",
+                "--tool=callgrind",
+                "--compress-strings=no",
+                "--compress-pos=no",
+                "--dump-instr=yes",
+                "--callgrind-out-file=/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/profile/tools/lli.1793503564513056975.86.callgrind",
+                "--log-file=/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/profile/tools/lli.1793503564513056975.86.valgrind.log",
+                "/usr/lib/llvm-18/bin/lli",
+                "-profile-guided-section-prefix=false",
+                "-dlopen=/dev/fd/8",
+                "/dev/fd/9",
+                "fnmatch",
+                "1000"
+              ],
+              "child_pid": 94,
+              "returncode": 0,
+              "wall_s": 98.27661114599323,
+              "stream_errors": [],
+              "stdout": {
+                "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/profile/tools/lli.1793503564513056975.86.stdout",
+                "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/profile/tools/lli.1793503564513056975.86.stdout",
+                "bytes": 5,
+                "sha256": "46251acfc71ec25370b9130041437638dd8bb98c6ce57a89d869f39d826358d5"
+              },
+              "stderr": {
+                "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/profile/tools/lli.1793503564513056975.86.stderr",
+                "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/profile/tools/lli.1793503564513056975.86.stderr",
+                "bytes": 26,
+                "sha256": "812eb56097227696cbe492eff70d0c153b18076bb27d39f55b7e6a16f4089782"
+              },
+              "callgrind_identity": {
+                "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/profile/tools/lli.1793503564513056975.86.callgrind",
+                "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/profile/tools/lli.1793503564513056975.86.callgrind",
+                "bytes": 21369645,
+                "mtime_ns": 1793503662767241055,
+                "sha256": "67c1b5f21877154e040c64b904dda17edf9dcd7ccc1ff0de5226b01982c1191b"
+              },
+              "valgrind_log_identity": {
+                "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/profile/tools/lli.1793503564513056975.86.valgrind.log",
+                "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/profile/tools/lli.1793503564513056975.86.valgrind.log",
+                "bytes": 699,
+                "mtime_ns": 1793503662767241055,
+                "sha256": "c361a9bb1fa95bfece00570f7a266f3e5cc45e4253c484c56e8c269ed4f939ac"
+              }
+            },
+            {
+              "record_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/profile/tools/opt.1793503539861364958.88.json",
+              "tool": "opt",
+              "kind": "opt-user",
+              "profiled": true,
+              "wrapper_pid": 88,
+              "wrapper": {
+                "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/llvm/opt",
+                "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/llvm/opt",
+                "bytes": 6173,
+                "sha256": "a4375bbeeada4c370ac38eff522ce82b2e0695614e06f07adcf01ccf599a3141"
+              },
+              "tool_identity": {
+                "path": "/usr/lib/llvm-18/bin/opt",
+                "realpath": "/usr/lib/llvm-18/bin/opt",
+                "bytes": 251368,
+                "sha256": "67ebe8635087b5ebe22d8f085d5e5857e431f86be9ed76576e59b86b9743c0fb"
+              },
+              "cwd": "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final",
+              "original_command": [
+                "/usr/lib/llvm-18/bin/opt",
+                "-passes=globaldce,always-inline,function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg),function(early-cse,adce)",
+                "/tmp/tmphfjptje7/prog.ll",
+                "-o",
+                "/tmp/tmphfjptje7/prog.bc"
+              ],
+              "complete": true,
+              "stdout_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/profile/tools/opt.1793503539861364958.88.stdout",
+              "stderr_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/profile/tools/opt.1793503539861364958.88.stderr",
+              "inputs": [
+                {
+                  "path": "/tmp/tmphfjptje7/prog.ll",
+                  "realpath": "/tmp/tmphfjptje7/prog.ll",
+                  "bytes": 2774999,
+                  "sha256": "232be952efd7fa67b847da5301466694ab6f1e0da14c6fc16534c0b494ff5ea5",
+                  "capture": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/profile/tools/opt.1793503539861364958.88.input-1.ll"
+                }
+              ],
+              "callgrind_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/profile/tools/opt.1793503539861364958.88.callgrind",
+              "valgrind_log_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/profile/tools/opt.1793503539861364958.88.valgrind.log",
+              "executed_command": [
+                "/usr/bin/valgrind",
+                "--tool=callgrind",
+                "--compress-strings=no",
+                "--compress-pos=no",
+                "--dump-instr=yes",
+                "--callgrind-out-file=/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/profile/tools/opt.1793503539861364958.88.callgrind",
+                "--log-file=/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/profile/tools/opt.1793503539861364958.88.valgrind.log",
+                "/usr/lib/llvm-18/bin/opt",
+                "-passes=globaldce,always-inline,function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg),function(early-cse,adce)",
+                "/tmp/tmphfjptje7/prog.ll",
+                "-o",
+                "/tmp/tmphfjptje7/prog.bc"
+              ],
+              "child_pid": 89,
+              "returncode": 0,
+              "wall_s": 24.58042607499374,
+              "stream_errors": [],
+              "stdout": {
+                "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/profile/tools/opt.1793503539861364958.88.stdout",
+                "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/profile/tools/opt.1793503539861364958.88.stdout",
+                "bytes": 0,
+                "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+              },
+              "stderr": {
+                "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/profile/tools/opt.1793503539861364958.88.stderr",
+                "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/profile/tools/opt.1793503539861364958.88.stderr",
+                "bytes": 0,
+                "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+              },
+              "outputs": [
+                {
+                  "path": "/tmp/tmphfjptje7/prog.bc",
+                  "realpath": "/tmp/tmphfjptje7/prog.bc",
+                  "bytes": 721836,
+                  "sha256": "5f6bfd5f8eb7e88c51f4de2eea39950e2568d4a189cf031a9a436be76c2ef32e"
+                }
+              ],
+              "callgrind_identity": {
+                "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/profile/tools/opt.1793503539861364958.88.callgrind",
+                "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/profile/tools/opt.1793503539861364958.88.callgrind",
+                "bytes": 12275435,
+                "mtime_ns": 1793503564431862389,
+                "sha256": "eee8a0a16cd592b2e5f4e5bbe22cc9cbab02b2fca7346b93b4e4f4574debbe7e"
+              },
+              "valgrind_log_identity": {
+                "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/profile/tools/opt.1793503539861364958.88.valgrind.log",
+                "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/profile/tools/opt.1793503539861364958.88.valgrind.log",
+                "bytes": 795,
+                "mtime_ns": 1793503564431862389,
+                "sha256": "6f2f378e43f3b2ea2eed1d19675d9443100569bba366855394bb2c068ae1084d"
+              }
+            }
+          ],
+          "cache_after": {
+            "runtime-py-105ca419-a9a3f3f631a45ff2.bc": {
+              "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/cache/runtime-py-105ca419-a9a3f3f631a45ff2.bc",
+              "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/cache/runtime-py-105ca419-a9a3f3f631a45ff2.bc",
+              "bytes": 804508,
+              "mtime_ns": 1793503521169894329,
+              "sha256": "f1004bf6df6ca1a89520a14f9ca96e554e20596ac00291815055fb1c479ce2b1"
+            },
+            "runtime-py-105ca419-a9a3f3f631a45ff2.o": {
+              "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/cache/runtime-py-105ca419-a9a3f3f631a45ff2.o",
+              "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/cache/runtime-py-105ca419-a9a3f3f631a45ff2.o",
+              "bytes": 624568,
+              "mtime_ns": 1793503528261561365,
+              "sha256": "8c9bc6864faac7ab5b58652dfa3af57f0423603437fe778a8bc955601e3eefa0"
+            },
+            "runtime-py-105ca419-a9a3f3f631a45ff2.so": {
+              "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/cache/runtime-py-105ca419-a9a3f3f631a45ff2.so",
+              "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/cache/runtime-py-105ca419-a9a3f3f631a45ff2.so",
+              "bytes": 486480,
+              "mtime_ns": 1793503528410121829,
+              "sha256": "1a839e9f1ba20ad1a759c98b7afc251e916f1686b89d85d09b49bcdbc011f1ff"
+            },
+            "runtime-py-105ca419-a9a3f3f631a45ff2.target": {
+              "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/cache/runtime-py-105ca419-a9a3f3f631a45ff2.target",
+              "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/cache/runtime-py-105ca419-a9a3f3f631a45ff2.target",
+              "bytes": 140,
+              "mtime_ns": 1793503528760726961,
+              "sha256": "d731095dd9678c2b6e0a5d79092eda16a17c05c2ff17f27f00c2101e732c79e2"
+            },
+            "runtime-py.hashes": {
+              "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/cache/runtime-py.hashes",
+              "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/cache/runtime-py.hashes",
+              "bytes": 4401,
+              "mtime_ns": 1793503528419408642,
+              "sha256": "c19becc91c70205adabe41bc7342ac55ab1378b046465ea5b42511c49ff976f3"
+            }
+          },
+          "stdout_matches_cpython": true,
+          "instruction_counts": {
+            "lli-whole": 8899675882,
+            "opt-user": 1800303546,
+            "combined": 10699979428
+          },
+          "llvm_dis": {
+            "command": [
+              "/usr/lib/llvm-18/bin/llvm-dis",
+              "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/profile/tools/lli.1793503564513056975.86.optimized.bc",
+              "-o",
+              "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/profile/tools/lli.1793503564513056975.86.optimized.ll"
+            ],
+            "cwd": "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final",
+            "timeout_s": 30,
+            "stdout_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/profile/llvm-dis.stdout",
+            "stderr_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/profile/llvm-dis.stderr",
+            "pid": 97,
+            "returncode": 0,
+            "wall_s": 0.16695209399767919,
+            "stdout": "",
+            "stdout_identity": {
+              "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/profile/llvm-dis.stdout",
+              "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/profile/llvm-dis.stdout",
+              "bytes": 0,
+              "mtime_ns": 1793503663131223949,
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            "stderr": "",
+            "stderr_identity": {
+              "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/profile/llvm-dis.stderr",
+              "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/profile/llvm-dis.stderr",
+              "bytes": 0,
+              "mtime_ns": 1793503663131223949,
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            }
+          },
+          "optimized_user_code": {
+            "bitcode": {
+              "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/profile/tools/lli.1793503564513056975.86.optimized.bc",
+              "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/profile/tools/lli.1793503564513056975.86.optimized.bc",
+              "bytes": 721836,
+              "mtime_ns": 1793503564515026560,
+              "sha256": "5f6bfd5f8eb7e88c51f4de2eea39950e2568d4a189cf031a9a436be76c2ef32e"
+            },
+            "llvm_ir": {
+              "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/profile/tools/lli.1793503564513056975.86.optimized.ll",
+              "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/profile/tools/lli.1793503564513056975.86.optimized.ll",
+              "bytes": 2459860,
+              "mtime_ns": 1793503663247218498,
+              "sha256": "efcc98d8336230617c0f31a088436b5c29bd9acecb8510c5e801e27b9cb9f21f"
+            },
+            "llvm_lines": 52499,
+            "defined_functions": 251,
+            "note": "Captured with pread on fd9 before lli; disassembled after the profiled driver completed."
+          }
+        }
+      ],
+      "complete": true,
+      "environment_controls": {
+        "PYSTACHY_LLVM": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/llvm",
+        "PYSTACHY_HOME": "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final",
+        "PYSTACHY_CACHE": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/cache",
+        "PYTHONHASHSEED": "0",
+        "PY996_JIT_REAL_LLVM": "/usr/lib/llvm-18/bin",
+        "PY996_JIT_VALGRIND": "/usr/bin/valgrind"
+      },
+      "wrapper_settle_wait_s": 2.0994707107543946,
+      "inputs_after": {
+        "lib/_markupbase.py": "6a294b294582f55905d310b8df054019e94f37b17eba3414be4e2cb61d5851d1",
+        "lib/_pyrandom.py": "5b37918369c0e4becdac2d012ffe9e40e314a330ee9f7b3fe2ce4cd3a926ff09",
+        "lib/_pystachy__io.py": "77ee03b3a67f79f49c3fe30666f4f5077bd41069797c727529a230c4caa0a117",
+        "lib/_pystachy_abc.py": "9f6f717c077b2dbac22e8dc9793373b939615a33f2698aaddd81ed905e5a48f8",
+        "lib/_pystachy_atexit.py": "a5ff97e421a4a8fd782e08a0124bac6a7b27486fc279cb4384655bc4b208d60c",
+        "lib/_pystachy_binascii.py": "c8ca70973dc409011ba89749878a2a205780fdc907437bc08521be0e3d07f848",
+        "lib/_pystachy_codecs.py": "fe8380d756e383192028c6a65d652047e9abb9c08b51e15aba5b35e8cf678acf",
+        "lib/_pystachy_iterators.py": "61894584c1fda85936a740d4dafa2c5d631f9b05f5022fca8913e4ad0a84b27e",
+        "lib/_pystachy_itertools.py": "14f451cf7647016ad8105aa988b9cbabe4fe3f5a08f2710f6ed2db5d81a00566",
+        "lib/_pystachy_json_any.py": "392d432c6ef3679f36bd3a86b302fe71858ff2d261bc25863c1673bf58944016",
+        "lib/_pystachy_mappingproxy.py": "e1d04e45f0b12e0e29fba497adf16f77864154c9e175a40065d2fd73654be70c",
+        "lib/_pystachy_object.py": "6a21df25fa11b3c80a70d95f310760d86adaeecd4a63e767bde5b9ecde63ca9c",
+        "lib/_pystachy_range.py": "50df392f248e25a79896007a3b0a23741f8f5f56622e7c56060ba9612292f8b2",
+        "lib/_pystachy_re_specialized.py": "d09604c416700c3a7acd3a9f8c6f7536289c895b2e72393a9875e68ed92e45bf",
+        "lib/_pystachy_string.py": "2e87bb96489d12051446c1b59c2e4ee65543a14f15d8eff3465a43f2e1f51434",
+        "lib/_pystachy_struct.py": "2f224f07dd5a8db374dc2604257cc7c41a4caa7140c5d2ddf30a34bc8f88f1d6",
+        "lib/_pystachy_thread.py": "62e5617d4f19c2deb6d714dbcc92ebaa6a97a78a596fc7d8c56c088cc4ad0f37",
+        "lib/_pystachy_types.py": "221d41e2f90c40493b3d712fb99cf39fb5a25c2306e63de7a89358e66cfcfe70",
+        "lib/_pystachy_unicodedata.py": "f1c877238f94279dfdb5a5f77396d9d25f504c409f34b78099613c6c3f71c7d0",
+        "lib/_pystachy_unicodedata_db.py": "d511e3c104f697e9e9ce150b97119ceb1fcaf00ebcdd3be21cf52c88337608b2",
+        "lib/_pystachy_unicodedata_names.py": "9b18f9e4aecb03f28672fdecce4fcf9d0ece0a1c565c7e9e0ce504fe4fc2bb28",
+        "lib/_pystachy_weakref.py": "da4181f6adb4cbbed1d3c45d95e32bd39e8ac210638ab902f26fb0b68bc7cbfe",
+        "lib/_weakrefset.py": "91895a451d06e9f521a1171b31b9b19bc9740f35af00d4fa106338ab7167c9ac",
+        "lib/bisect.py": "f1cf7b85fc36b5da249813fc5ab97d9464f8cc1bc817f7146206fa2713e35999",
+        "lib/codecs.py": "feafe30244cc2ac23a8f03ca6c8b106ef82dede1630aac103126767e123a3c42",
+        "lib/collections/__init__.py": "8a6533ddf04c4823e1c1da10925028613420cc4e5cb6264e6066fdd3739b4852",
+        "lib/colorsys.py": "65e3dfbf7bad61d4d7d7731a69dd7e75a347fd350d91327a51010a94e6fd2f1d",
+        "lib/contextlib.py": "08bf5d132ae0aceafcd94c72396e21fd45fc9cd1ba6e74807ce1e39f22d0d665",
+        "lib/csv.py": "29676a25a82679e93c6d0eb771a3f60890aedf49941206c0387ce59696b7c3c4",
+        "lib/curses/__init__.py": "91156d2c9afdc168cee4bb7085c8b16936ca7079fa4035ac4d7908712d86f394",
+        "lib/curses/ascii.py": "780dd8bbaf0ee7e832f164c1772953e694a9cd1031d1ab1471af65344d3645e6",
+        "lib/datetime.py": "d269c51c55e7668b988c8194a7a2e643a39aa3a2770a727c178a5c898b91c239",
+        "lib/difflib.py": "4d33db46d2f0748bd674b5ae2f52c59ab0cab0865c465a99ea9521d8751aea0f",
+        "lib/fnmatch.py": "fd1da199d0eeabc34ec9796d5a0790da6300fff4d15e16ee2d8ca26e6885eec5",
+        "lib/functools.py": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703",
+        "lib/genericpath.py": "cdac5a68dd738051e0d66fc81d5947d6a1776248fc6fe862253477608d870ec4",
+        "lib/getopt.py": "0d152bede49816f2924ffb944d86369099bea3b68ec1ee6f0c84c56251670241",
+        "lib/gettext.py": "97b7fa3d8112826dae4d021a6445fe791521524bd4b06e729d0497ed59a85e63",
+        "lib/heapq.py": "89bfee37cf47aecdf2a5ae8706b9805f1b1789d6e2edb7e3556fe8b42c5ecba3",
+        "lib/html/__init__.py": "067cf63fe3eee1bece807caba82a83d0307010bf1c30d9974e56ea704ddea893",
+        "lib/html/entities.py": "6fbeb0318e22905269b414b7d045574b8a98767f194310071b9177fadc738a2f",
+        "lib/html/parser.py": "f3ab8871f5342562328cd3ff8e65d5667c79d27189c7a0401982a193de7b4e90",
+        "lib/io.py": "31f5102c549e7051190c81838928db3f5c21863ac9cf63e7a493352e767fa71f",
+        "lib/json.py": "72fb29122acddd3b4d1bd43d8ae9e7fee506b1d7d4f30559edeeebd92ac044ce",
+        "lib/keyword.py": "833eb8e01577a8330f473ed49403fae4b5e6c95a66a81254405deb5c7ea7efb9",
+        "lib/mpz.py": "754e4844ff8425e92ee8cde26b1e84a4ad318312d1ca17d10ea724a6c4c46a45",
+        "lib/operator.py": "7d42396ef02c03aa69eb86643769cdb889ab9fc66ffd140bc0efa0896fc94c99",
+        "lib/posixpath.py": "69acb9e294987cd6056a2237048373cf8d6201faf1e43a49c38889b47d2fb28e",
+        "lib/pyobj.py": "2d673d060a386ceae11b381ca94ce71a4ec43be89e7c1c59651c936ffea9054e",
+        "lib/random.py": "91e7fa770bfc1affb76a6441a10e1913af8993d8c657c12ffe6cbadc3e3add1e",
+        "lib/re/__init__.py": "3e1c1d6312856cfb5c34d2ad5f24b933de77c00dd21d36f76f74c54f8cf0f856",
+        "lib/re/_constants.py": "d8c63d4b91920ceb02d7c00073a062504c349b3e0de83ba480c3f4d1bca442fe",
+        "lib/re/_sre.py": "c7e98ec21fe209e8d3833516f408a5b219002e26a2f630cceb933b3e12cca3c5",
+        "lib/re/_unicode.py": "61f1343780ef2537ff83813b7a2097a55482a51a23b172a609a6836af4197ea2",
+        "lib/shlex.py": "7392b7c738fe818c43a8031820bef96db0b9f598d354a9fac0b771546a4fdba4",
+        "lib/stat.py": "07217986d9b2172b509dab3578d18ac05ba768b418e1f1e8c90e38a8f7c2b3c6",
+        "lib/statistics.py": "05a091943eb6a01272f95c190e99bab0d33c72a108aef45261c838842301991b",
+        "lib/string.py": "5a6ea720721a70a9d76d30135697ea612b9cb6610366b38d8c1d997043508b27",
+        "lib/struct.py": "9c231f9497caf513a22dee8f790b07f969b0e45854a0bdd6dd84b492e08c2856",
+        "lib/textwrap.py": "5102b1deb8905ad1b31a2830f7ac5a980229e55f3bbce06fd64baa9930159c1b",
+        "lib/this.py": "481d0cb3de511eae0b5713dad18542b07eafd9c013bb7690f7497bad49923a71",
+        "lib/token.py": "1d81391050d5389c41f319ba4d42159c6247777400e48c27f2d28cac8ca4e6e2",
+        "lib/tomllib/__init__.py": "71f67036895f4c5acab942618af0cbd3d814451ba61e967f358d0f341a5b8f51",
+        "lib/tomllib/_parser.py": "11d40d79772967ebf81f5a0cf8dfa99608413b3ba6144d4beadae99baa28f279",
+        "lib/tomllib/_re.py": "17ec24dabd4e7089df6f04acacb331c85c437addbd2ab98bdfefcb18671ba056",
+        "lib/tomllib/_types.py": "e018cf69245202408dd97664cf76618e8cbb5efb6f43b134d29efd1d9221a6c0",
+        "lib/types.py": "d4215ea3abc258bdde763cc21ec4b0759f0c44e874b2483851c5681ae93f45e2",
+        "lib/urllib/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "lib/urllib/parse.py": "f5914562f9903ab7dde287fcb8bc0b1667a812f82e7e7c4419fed0493bfd0148",
+        "lib/warnings.py": "be4467c02d67040c87e31ede6787740815085298a880f2aa126b02fbabc0f133",
+        "lib/weakref.py": "781ef9b242fde2b923e070fce64b751954d42955c5c66b367e54941678ab722b",
+        "mpz/mpz.c": "2d648cec5de20c6bb7d4882a364cfc9fa1d355395255c1d0e82e4389bde03afa",
+        "pyembed.c": "98c9dd90c0964f885da08e1bd7622386421607723b7341b27783aaf3ff6a11b0",
+        "pyext.c": "4278d2506c88d20a08b4a5b5563237e6323372201603b6c5c78231ee52301109",
+        "pystachy.py": "a413782632f88d4746a81fd7cfb529d695ab36a35618522a83be1e25e1e31f29",
+        "runtime.c": "4bdf82b0663d1141667fe234029c8f92b6146978cff6457f79c1d554926f6637",
+        "runtime.py": "c45138f44a7aa25828b351b6d627e1a4f9fad69dc8a88532d053fb90e84beefb",
+        "ryu/common.h": "0bbd71d26da6193e678d0776cf418f43f287c73d6fd6725353df0aadf70f2a19",
+        "ryu/d2s.c": "c6357b5d53ac1ba7f4984847d3a76f0803e0a931b7d0b02680656576829cf1d2",
+        "ryu/d2s_intrinsics.h": "01d9bdaada67b42f2d1bbdebb3765867e6c44e3a181b806c1d7e851b93f9cc21",
+        "ryu/d2s_small_table.h": "01f3d8a3ff739a26ecbddc2caae44c91574592b1de7c01fec67bc2d06672b606",
+        "ryu/digit_table.h": "8b782573abc0b8554d74163ae6c02f0beb5c30d1e63eaebdb0ddf2c98d817e01",
+        "ryu/ryu.h": "b7feab0ba1df5e9ef3d602f386592ad152491405e49b408fb21c0e0e9e6bfb16",
+        "src/__init__.py": "c443ed6062edae246598189fb20f12799a5e87a04049acb855894652e3875af7",
+        "src/pystachy_compiler/__init__.py": "f60cd281f8ed4fd35776c9f4d40d6a1313c49a3cae5df61841028f711b9f13c8",
+        "src/pystachy_compiler/analysis.py": "5b3c134b21586a03909f89beddbff999f6f28f067ce1dd975fb46a4c1794fecd",
+        "src/pystachy_compiler/bigints.py": "888815dfc3b4a69caed4f88242863478c6b97471637b9f90c72185d09291cbe8",
+        "src/pystachy_compiler/builtins.py": "d0d25b4e975b1e7607131632656f17331ef3e4ac317fbed3a663977dd7614126",
+        "src/pystachy_compiler/calls.py": "1d9cff0879935d3dc48700ccd086b1b44e27641d142e8e71be8a2e24a31cbd55",
+        "src/pystachy_compiler/containers.py": "43a9d6b88602aa1feaecaeb1d11cc44d6fe87c057a6f156c4cf294b0129f1b5e",
+        "src/pystachy_compiler/conversions.py": "900a17d52ac83efb9bd82eb11723a001a51d6ac0f1af57becbf211363509daa5",
+        "src/pystachy_compiler/declarations.py": "d01904e710d79a12f2d33d4eda52c6e79e7605be08d5c974b2905098d6c62b87",
+        "src/pystachy_compiler/diagnostics.py": "b5e7ce06a2e389249591705a5bff407f98501cc54e37bfd701abacc3a087923c",
+        "src/pystachy_compiler/driver.py": "48941caa98b340de4ec44ae03b1573f75828c24142eba88cc7c1ab617acea7b0",
+        "src/pystachy_compiler/dynamic.py": "7350dd8c95638ab416bce848d77347c8a75bd6cd9617e18c78e2fa42a8f69340",
+        "src/pystachy_compiler/emission.py": "1f44a7b63af8c25b6fc5f285d0e10ca896d74685bf865fca82b3a47d5770eb8b",
+        "src/pystachy_compiler/exceptions.py": "b2554ff2ac10570c010814a1c3740b6eb51d8cd9f79ac580d2fc323a68f90a30",
+        "src/pystachy_compiler/expressions.py": "5cb9ba837c5b4bd1f943ca21c4aa4dc886fff0eb1ac2c7e24fa4a2cc42084099",
+        "src/pystachy_compiler/flow.py": "cb6238905238d5dcd042b568f56243e9b407723a6e047d5f0cad478b060439c9",
+        "src/pystachy_compiler/functions.py": "6b2766311d39bcefa45a53d5ec03527935a42bcc9ebced029dbf83b5db7d1aaa",
+        "src/pystachy_compiler/gen.py": "451b14c49d4da65089e280744f8192d6f0a751660ccd5bccf22939673f38f263",
+        "src/pystachy_compiler/generators.py": "ca8611458ccc23c11fd095d1026b936caff86c100e410a833b202315a0778b63",
+        "src/pystachy_compiler/ir.py": "ad058f4b1a011b9fa101c2680eda11650f5b539fe8a259531f2a24689e806ffd",
+        "src/pystachy_compiler/ircheck.py": "781fa17c070480ed38ceb4d094757ac908e4ab027bb74af8b8ab6b405b5c0e60",
+        "src/pystachy_compiler/lexer.py": "1ca2874158eccdb0a4e3569a31940fb9b33a51fe2f06983be83de57d8d9fedeb",
+        "src/pystachy_compiler/llvm_abi.py": "7485f63097d4abac3de8b1fbfb782944ff7e3b68989d2fb266e40ebb8f8889ae",
+        "src/pystachy_compiler/loader.py": "e50415407b10644a710f666981e650414aeec439d2f46270c1bdc255b3590a49",
+        "src/pystachy_compiler/local_versions.py": "10bb0f2f0fb57c442af0807b5b4af6c95e8b950a97430161c97f766a3dc4b375",
+        "src/pystachy_compiler/lower_module.py": "439a613ebfd95d8fbdbe290f863151fd05780dfaf85a9a547d752443c878d79f",
+        "src/pystachy_compiler/lowering.py": "308bf74ae11fa712c8bf29498e6ed0f5418bdd144fa7903ba2559aab7b8c09d3",
+        "src/pystachy_compiler/memory_ir.py": "c2544eda0bdb89ccb99ac1330c95d99974983cc7bdfa0d3a2b39a993c9f62bc1",
+        "src/pystachy_compiler/module.py": "3349556dee4dcda00013d770743f27d5dc3525b76cbd5e2ab312b14506e1f601",
+        "src/pystachy_compiler/names.py": "51eedecfa52aa390bdbe0e7303d6663fc0c32b3c74afce569a1a2aaf637a3fb5",
+        "src/pystachy_compiler/optimizations.py": "1d9cae781b0464ee8b3c8d30060a91cc819432d73e9098ce94f22b0c5701d55f",
+        "src/pystachy_compiler/parser.py": "05c4617ef7ce82f2c270c39ed82dea409e10e5d984826cee759d8cd922c5705b",
+        "src/pystachy_compiler/program.py": "6b7a7894a50978d8af2c771c9d51a2fe7459cbe816b6bf28c64db627f3eb4575",
+        "src/pystachy_compiler/reflection.py": "ed77b340da37e38d4249adbc8e569cf351f0258acd74fdf63365c9d7d8830aeb",
+        "src/pystachy_compiler/scalar_ir.py": "14bc0ce71b4cbf066e8a4cab2ea0bb5c0a53880997484d74f5ea3e9a6d30c05a",
+        "src/pystachy_compiler/scope.py": "d9af25da84ba62a17a6a1a0b7d48d078977dd364528c8ec8e4135cc438f10a97",
+        "src/pystachy_compiler/specs.py": "1f8a54f4cdb2de9b2293d22005229bbedc9d03be8d7ff4cad76f71481418ec96",
+        "src/pystachy_compiler/statements.py": "4bb9347b64952570845df754efbb1e6a3b02467b1b629dd9171e9b98d3d85e2d",
+        "src/pystachy_compiler/structs.py": "e873fd6a6aeaebf39f740de2859a5de9a2da316d7a8993c728889677125c3090",
+        "src/pystachy_compiler/syntax.py": "799e522034af31967517409654d5788179bb6dfa727be9f544a8855c90d3ecb9",
+        "src/pystachy_compiler/templates.py": "b587b346bea5087b3422ea5117e023b521205285f0dc3d622f3c9aed5a94c36f",
+        "src/pystachy_compiler/union_arithmetic.py": "6d6892c0d97667d7e8ffeb5293ccbbe24c76529328e4761ffec6831229c416dd",
+        "src/pystachy_compiler/union_proof.py": "8027ed7a77006053e2da8b0264d1d2bf12ea465d193d4ce49ecd581e0b436cd9",
+        "src/pystachy_compiler/union_state.py": "b845af16073f24e1e1245bdcb00d4324dbf1d657874604cb4b991d852a07b026",
+        "src/pystachy_compiler/unions.py": "133448300155804316b04d6b1e80d99ba606905ad267835007d0d68e77195de3",
+        "src/pystachy_compiler/utils.py": "0efd4bb4f572c22b361890849e4d67c54977b216652a29c397eb44c92426d2ee",
+        "src/pystachy_compiler/variables.py": "f4ea9b2eb58cb7339add9ced65d890f2f5b37d26f4919f463cbb50c54c11b086"
+      },
+      "wrappers_after": {
+        "opt": {
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/llvm/opt",
+          "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/llvm/opt",
+          "bytes": 6173,
+          "mtime_ns": 1793503502876288703,
+          "sha256": "a4375bbeeada4c370ac38eff522ce82b2e0695614e06f07adcf01ccf599a3141"
+        },
+        "lli": {
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/llvm/lli",
+          "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/policy_final/llvm/lli",
+          "bytes": 6173,
+          "mtime_ns": 1793503502873684215,
+          "sha256": "a4375bbeeada4c370ac38eff522ce82b2e0695614e06f07adcf01ccf599a3141"
+        }
+      }
+    }
+  },
+  "complete": true,
+  "scope": "opt: actual user optimization; lli-whole: JIT machine-code generation plus program, runtime and GC execution. No startup-only claim.",
+  "timing_note": "All wall times are diagnostics under instrumentation or hosted compilation, not native timing results.",
+  "raw_output_note": "All stdout/stderr, returncodes and Valgrind logs are retained without filtering; version invocations bypass profiling.",
+  "tools": {
+    "clang": {
+      "identity": {
+        "path": "/usr/lib/llvm-18/bin/clang",
+        "realpath": "/usr/lib/llvm-18/bin/clang",
+        "bytes": 140592,
+        "mtime_ns": 1716798380000000000,
+        "sha256": "8ef402d453d1ba4902e4ee0f0f847f6cfa01400c95aa43c24e97818b9c0e3f45"
+      },
+      "version": {
+        "command": [
+          "/usr/lib/llvm-18/bin/clang",
+          "--version"
+        ],
+        "cwd": "/workspace/scratch/8f4dd6deebd9",
+        "timeout_s": 30,
+        "stdout_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/clang.stdout",
+        "stderr_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/clang.stderr",
+        "pid": 7,
+        "returncode": 0,
+        "wall_s": 0.06737232000159565,
+        "stdout": "Ubuntu clang version 18.1.3 (1ubuntu1)\nTarget: x86_64-pc-linux-gnu\nThread model: posix\nInstalledDir: /usr/lib/llvm-18/bin\n",
+        "stdout_identity": {
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/clang.stdout",
+          "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/clang.stdout",
+          "bytes": 122,
+          "mtime_ns": 1793503501158833646,
+          "sha256": "d5488a2e583e2cbd3f61386073b6c38a24a2bf4d45f3b6b6ac048b541121d804"
+        },
+        "stderr": "",
+        "stderr_identity": {
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/clang.stderr",
+          "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/clang.stderr",
+          "bytes": 0,
+          "mtime_ns": 1793503501100180592,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    "opt": {
+      "identity": {
+        "path": "/usr/lib/llvm-18/bin/opt",
+        "realpath": "/usr/lib/llvm-18/bin/opt",
+        "bytes": 251368,
+        "mtime_ns": 1716798380000000000,
+        "sha256": "67ebe8635087b5ebe22d8f085d5e5857e431f86be9ed76576e59b86b9743c0fb"
+      },
+      "version": {
+        "command": [
+          "/usr/lib/llvm-18/bin/opt",
+          "--version"
+        ],
+        "cwd": "/workspace/scratch/8f4dd6deebd9",
+        "timeout_s": 30,
+        "stdout_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/opt.stdout",
+        "stderr_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/opt.stderr",
+        "pid": 8,
+        "returncode": 0,
+        "wall_s": 0.032019077996665146,
+        "stdout": "Ubuntu LLVM version 18.1.3\n  Optimized build.\n  Default target: x86_64-pc-linux-gnu\n  Host CPU: sapphirerapids\n",
+        "stdout_identity": {
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/opt.stdout",
+          "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/opt.stdout",
+          "bytes": 111,
+          "mtime_ns": 1793503501178832707,
+          "sha256": "dbc0d81b649aaefe2354fe3e149a1841011856ec6a35956845fe7f86c0460914"
+        },
+        "stderr": "",
+        "stderr_identity": {
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/opt.stderr",
+          "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/opt.stderr",
+          "bytes": 0,
+          "mtime_ns": 1793503501168877200,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "dependencies": {
+        "/lib/x86_64-linux-gnu/libbsd.so.0": {
+          "path": "/lib/x86_64-linux-gnu/libbsd.so.0",
+          "realpath": "/usr/lib/x86_64-linux-gnu/libbsd.so.0.12.1",
+          "bytes": 80888,
+          "mtime_ns": 1727872850000000000,
+          "sha256": "e86cd4f0019f42c2ba5e60602e0edc8694d2948377d98c3654d0f6bddb5254bb"
+        },
+        "/lib/x86_64-linux-gnu/libc.so.6": {
+          "path": "/lib/x86_64-linux-gnu/libc.so.6",
+          "realpath": "/usr/lib/x86_64-linux-gnu/libc.so.6",
+          "bytes": 2125328,
+          "mtime_ns": 1784827093000000000,
+          "sha256": "8db37cf3f2169f59a0f07ef1fea308c35656668c64c8ff294e1860f4121eb161"
+        },
+        "/lib/x86_64-linux-gnu/libedit.so.2": {
+          "path": "/lib/x86_64-linux-gnu/libedit.so.2",
+          "realpath": "/usr/lib/x86_64-linux-gnu/libedit.so.2.0.72",
+          "bytes": 220472,
+          "mtime_ns": 1712592172000000000,
+          "sha256": "195c607216f8581dbf516346ed38f4c73500cac4b84e18eb0a4fd49931e4cd56"
+        },
+        "/lib/x86_64-linux-gnu/libffi.so.8": {
+          "path": "/lib/x86_64-linux-gnu/libffi.so.8",
+          "realpath": "/usr/lib/x86_64-linux-gnu/libffi.so.8.1.4",
+          "bytes": 47672,
+          "mtime_ns": 1712592217000000000,
+          "sha256": "00f593fe192f2851b8ce23b25cec2488d769beb5a8f63e8c9e563071e1075153"
+        },
+        "/lib/x86_64-linux-gnu/libgcc_s.so.1": {
+          "path": "/lib/x86_64-linux-gnu/libgcc_s.so.1",
+          "realpath": "/usr/lib/x86_64-linux-gnu/libgcc_s.so.1",
+          "bytes": 183024,
+          "mtime_ns": 1766093810000000000,
+          "sha256": "d93224d2b0dab4247598be683adca02f5cf00586f99c187579cd7e92058fb7cb"
+        },
+        "/lib/x86_64-linux-gnu/libicudata.so.74": {
+          "path": "/lib/x86_64-linux-gnu/libicudata.so.74",
+          "realpath": "/usr/lib/x86_64-linux-gnu/libicudata.so.74.2",
+          "bytes": 30795392,
+          "mtime_ns": 1723170800000000000,
+          "sha256": "ddbb3718b8bd9cbd780e5ab08b4503c30a6c4fa0706ebe5d074ed6b596c1714e"
+        },
+        "/lib/x86_64-linux-gnu/libicuuc.so.74": {
+          "path": "/lib/x86_64-linux-gnu/libicuuc.so.74",
+          "realpath": "/usr/lib/x86_64-linux-gnu/libicuuc.so.74.2",
+          "bytes": 2140336,
+          "mtime_ns": 1723170800000000000,
+          "sha256": "7560aadde38e5f4237a47a1ddd5891f9b36768a77a60faae30beee003ac01901"
+        },
+        "/lib/x86_64-linux-gnu/liblzma.so.5": {
+          "path": "/lib/x86_64-linux-gnu/liblzma.so.5",
+          "realpath": "/usr/lib/x86_64-linux-gnu/liblzma.so.5.4.5",
+          "bytes": 202904,
+          "mtime_ns": 1743445342000000000,
+          "sha256": "a9793942a8a5f6f4d0f523ef9e0a5be4f0033f2c6c28520cd2b4e706d53c6e17"
+        },
+        "/lib/x86_64-linux-gnu/libm.so.6": {
+          "path": "/lib/x86_64-linux-gnu/libm.so.6",
+          "realpath": "/usr/lib/x86_64-linux-gnu/libm.so.6",
+          "bytes": 952616,
+          "mtime_ns": 1784827093000000000,
+          "sha256": "e9c4b28d340e415b8137480ec442662f981e1399386c5931dae0e886e3639e91"
+        },
+        "/lib/x86_64-linux-gnu/libmd.so.0": {
+          "path": "/lib/x86_64-linux-gnu/libmd.so.0",
+          "realpath": "/usr/lib/x86_64-linux-gnu/libmd.so.0.1.0",
+          "bytes": 55536,
+          "mtime_ns": 1727872850000000000,
+          "sha256": "423e18586b6ea740f4465afd64f7a9a4cb7264ed979c8e7256f9085af5345fef"
+        },
+        "/lib/x86_64-linux-gnu/libstdc++.so.6": {
+          "path": "/lib/x86_64-linux-gnu/libstdc++.so.6",
+          "realpath": "/usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.33",
+          "bytes": 2592224,
+          "mtime_ns": 1766093810000000000,
+          "sha256": "1fd75fe70354a416d75aef22bcae68c47bd25d20e2d0568c30b1a9838cf62f11"
+        },
+        "/lib/x86_64-linux-gnu/libtinfo.so.6": {
+          "path": "/lib/x86_64-linux-gnu/libtinfo.so.6",
+          "realpath": "/usr/lib/x86_64-linux-gnu/libtinfo.so.6.4",
+          "bytes": 208328,
+          "mtime_ns": 1712592843000000000,
+          "sha256": "61f693cd7f8e55ad3ab518b20a00c01adb46ef829cf90773c97615a73f99e09b"
+        },
+        "/lib/x86_64-linux-gnu/libxml2.so.2": {
+          "path": "/lib/x86_64-linux-gnu/libxml2.so.2",
+          "realpath": "/usr/lib/x86_64-linux-gnu/libxml2.so.2.9.14",
+          "bytes": 1967424,
+          "mtime_ns": 1757086572000000000,
+          "sha256": "3061d35b168d1eb472bba5d2c52931e408364770ec9b00ae1100aacd0c35c7da"
+        },
+        "/lib/x86_64-linux-gnu/libz.so.1": {
+          "path": "/lib/x86_64-linux-gnu/libz.so.1",
+          "realpath": "/usr/lib/x86_64-linux-gnu/libz.so.1.3",
+          "bytes": 113000,
+          "mtime_ns": 1723170800000000000,
+          "sha256": "9b64150b28505a33d6bc3ecf709c279f6de97a1c184dbda65d06ee4537f6d286"
+        },
+        "/lib/x86_64-linux-gnu/libzstd.so.1": {
+          "path": "/lib/x86_64-linux-gnu/libzstd.so.1",
+          "realpath": "/usr/lib/x86_64-linux-gnu/libzstd.so.1.5.5",
+          "bytes": 755864,
+          "mtime_ns": 1723170802000000000,
+          "sha256": "0a2128bc10841fb29e76d08d945864dfb0b6a66da5df6df5d8299197439e54bb"
+        },
+        "/lib64/ld-linux-x86-64.so.2": {
+          "path": "/lib64/ld-linux-x86-64.so.2",
+          "realpath": "/usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2",
+          "bytes": 236616,
+          "mtime_ns": 1784827093000000000,
+          "sha256": "cd4df4f3c7b83673d61189bf2eaebd33ca4f2853ab9772b8a25e025ef99b1e81"
+        },
+        "/usr/lib/llvm-18/bin/../lib/libLLVM.so.18.1": {
+          "path": "/usr/lib/llvm-18/bin/../lib/libLLVM.so.18.1",
+          "realpath": "/usr/lib/llvm-18/lib/libLLVM.so.1",
+          "bytes": 123215144,
+          "mtime_ns": 1716798380000000000,
+          "sha256": "5c3a63957e28c15cdf1503892074f032d29b72e36a9824a77dfa87e48a0dafb0"
+        }
+      },
+      "ldd": {
+        "command": [
+          "ldd",
+          "/usr/lib/llvm-18/bin/opt"
+        ],
+        "cwd": "/workspace/scratch/8f4dd6deebd9",
+        "timeout_s": 30,
+        "stdout_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/opt-ldd.stdout",
+        "stderr_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/opt-ldd.stderr",
+        "pid": 15,
+        "returncode": 0,
+        "wall_s": 0.01592737600003602,
+        "stdout": "\tlinux-vdso.so.1 (0x00007fb0078d9000)\n\tlibLLVM.so.18.1 => /usr/lib/llvm-18/bin/../lib/libLLVM.so.18.1 (0x00007fb000283000)\n\tlibstdc++.so.6 => /lib/x86_64-linux-gnu/libstdc++.so.6 (0x00007fafffffc000)\n\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fafffdea000)\n\tlibffi.so.8 => /lib/x86_64-linux-gnu/libffi.so.8 (0x00007fafffdde000)\n\tlibedit.so.2 => /lib/x86_64-linux-gnu/libedit.so.2 (0x00007fafffda4000)\n\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007fafffcb9000)\n\tlibz.so.1 => /lib/x86_64-linux-gnu/libz.so.1 (0x00007fafffc9d000)\n\tlibzstd.so.1 => /lib/x86_64-linux-gnu/libzstd.so.1 (0x00007fafffbe3000)\n\tlibtinfo.so.6 => /lib/x86_64-linux-gnu/libtinfo.so.6 (0x00007fafffbaf000)\n\tlibxml2.so.2 => /lib/x86_64-linux-gnu/libxml2.so.2 (0x00007fafff9cd000)\n\tlibgcc_s.so.1 => /lib/x86_64-linux-gnu/libgcc_s.so.1 (0x00007fafff99f000)\n\t/lib64/ld-linux-x86-64.so.2 (0x00007fb0078db000)\n\tlibbsd.so.0 => /lib/x86_64-linux-gnu/libbsd.so.0 (0x00007fafff987000)\n\tlibicuuc.so.74 => /lib/x86_64-linux-gnu/libicuuc.so.74 (0x00007fafff77a000)\n\tliblzma.so.5 => /lib/x86_64-linux-gnu/liblzma.so.5 (0x00007fafff748000)\n\tlibmd.so.0 => /lib/x86_64-linux-gnu/libmd.so.0 (0x00007fafff739000)\n\tlibicudata.so.74 => /lib/x86_64-linux-gnu/libicudata.so.74 (0x00007faffd9d9000)\n",
+        "stdout_identity": {
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/opt-ldd.stdout",
+          "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/opt-ldd.stdout",
+          "bytes": 1262,
+          "mtime_ns": 1793503501446820129,
+          "sha256": "f504a0db526eebc4ee758244f990cb46008479f6db873af88ad9aad3805646a0"
+        },
+        "stderr": "",
+        "stderr_identity": {
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/opt-ldd.stderr",
+          "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/opt-ldd.stderr",
+          "bytes": 0,
+          "mtime_ns": 1793503501434820692,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    "lli": {
+      "identity": {
+        "path": "/usr/lib/llvm-18/bin/lli",
+        "realpath": "/usr/lib/llvm-18/bin/lli",
+        "bytes": 180344,
+        "mtime_ns": 1716798380000000000,
+        "sha256": "f787c770f5281ab909eac3d28ed984d8f0759caf87def4794f432fd008ef4f8c"
+      },
+      "version": {
+        "command": [
+          "/usr/lib/llvm-18/bin/lli",
+          "--version"
+        ],
+        "cwd": "/workspace/scratch/8f4dd6deebd9",
+        "timeout_s": 30,
+        "stdout_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/lli.stdout",
+        "stderr_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/lli.stderr",
+        "pid": 9,
+        "returncode": 0,
+        "wall_s": 0.01668949000304565,
+        "stdout": "Ubuntu LLVM version 18.1.3\n  Optimized build.\n",
+        "stdout_identity": {
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/lli.stdout",
+          "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/lli.stdout",
+          "bytes": 46,
+          "mtime_ns": 1793503501214831017,
+          "sha256": "cfb9286322cccef53a692448cf4007a998d186dfb8e8313d317390a95eeb10f1"
+        },
+        "stderr": "",
+        "stderr_identity": {
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/lli.stderr",
+          "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/lli.stderr",
+          "bytes": 0,
+          "mtime_ns": 1793503501202177032,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "dependencies": {
+        "/lib/x86_64-linux-gnu/libbsd.so.0": {
+          "path": "/lib/x86_64-linux-gnu/libbsd.so.0",
+          "realpath": "/usr/lib/x86_64-linux-gnu/libbsd.so.0.12.1",
+          "bytes": 80888,
+          "mtime_ns": 1727872850000000000,
+          "sha256": "e86cd4f0019f42c2ba5e60602e0edc8694d2948377d98c3654d0f6bddb5254bb"
+        },
+        "/lib/x86_64-linux-gnu/libc.so.6": {
+          "path": "/lib/x86_64-linux-gnu/libc.so.6",
+          "realpath": "/usr/lib/x86_64-linux-gnu/libc.so.6",
+          "bytes": 2125328,
+          "mtime_ns": 1784827093000000000,
+          "sha256": "8db37cf3f2169f59a0f07ef1fea308c35656668c64c8ff294e1860f4121eb161"
+        },
+        "/lib/x86_64-linux-gnu/libedit.so.2": {
+          "path": "/lib/x86_64-linux-gnu/libedit.so.2",
+          "realpath": "/usr/lib/x86_64-linux-gnu/libedit.so.2.0.72",
+          "bytes": 220472,
+          "mtime_ns": 1712592172000000000,
+          "sha256": "195c607216f8581dbf516346ed38f4c73500cac4b84e18eb0a4fd49931e4cd56"
+        },
+        "/lib/x86_64-linux-gnu/libffi.so.8": {
+          "path": "/lib/x86_64-linux-gnu/libffi.so.8",
+          "realpath": "/usr/lib/x86_64-linux-gnu/libffi.so.8.1.4",
+          "bytes": 47672,
+          "mtime_ns": 1712592217000000000,
+          "sha256": "00f593fe192f2851b8ce23b25cec2488d769beb5a8f63e8c9e563071e1075153"
+        },
+        "/lib/x86_64-linux-gnu/libgcc_s.so.1": {
+          "path": "/lib/x86_64-linux-gnu/libgcc_s.so.1",
+          "realpath": "/usr/lib/x86_64-linux-gnu/libgcc_s.so.1",
+          "bytes": 183024,
+          "mtime_ns": 1766093810000000000,
+          "sha256": "d93224d2b0dab4247598be683adca02f5cf00586f99c187579cd7e92058fb7cb"
+        },
+        "/lib/x86_64-linux-gnu/libicudata.so.74": {
+          "path": "/lib/x86_64-linux-gnu/libicudata.so.74",
+          "realpath": "/usr/lib/x86_64-linux-gnu/libicudata.so.74.2",
+          "bytes": 30795392,
+          "mtime_ns": 1723170800000000000,
+          "sha256": "ddbb3718b8bd9cbd780e5ab08b4503c30a6c4fa0706ebe5d074ed6b596c1714e"
+        },
+        "/lib/x86_64-linux-gnu/libicuuc.so.74": {
+          "path": "/lib/x86_64-linux-gnu/libicuuc.so.74",
+          "realpath": "/usr/lib/x86_64-linux-gnu/libicuuc.so.74.2",
+          "bytes": 2140336,
+          "mtime_ns": 1723170800000000000,
+          "sha256": "7560aadde38e5f4237a47a1ddd5891f9b36768a77a60faae30beee003ac01901"
+        },
+        "/lib/x86_64-linux-gnu/liblzma.so.5": {
+          "path": "/lib/x86_64-linux-gnu/liblzma.so.5",
+          "realpath": "/usr/lib/x86_64-linux-gnu/liblzma.so.5.4.5",
+          "bytes": 202904,
+          "mtime_ns": 1743445342000000000,
+          "sha256": "a9793942a8a5f6f4d0f523ef9e0a5be4f0033f2c6c28520cd2b4e706d53c6e17"
+        },
+        "/lib/x86_64-linux-gnu/libm.so.6": {
+          "path": "/lib/x86_64-linux-gnu/libm.so.6",
+          "realpath": "/usr/lib/x86_64-linux-gnu/libm.so.6",
+          "bytes": 952616,
+          "mtime_ns": 1784827093000000000,
+          "sha256": "e9c4b28d340e415b8137480ec442662f981e1399386c5931dae0e886e3639e91"
+        },
+        "/lib/x86_64-linux-gnu/libmd.so.0": {
+          "path": "/lib/x86_64-linux-gnu/libmd.so.0",
+          "realpath": "/usr/lib/x86_64-linux-gnu/libmd.so.0.1.0",
+          "bytes": 55536,
+          "mtime_ns": 1727872850000000000,
+          "sha256": "423e18586b6ea740f4465afd64f7a9a4cb7264ed979c8e7256f9085af5345fef"
+        },
+        "/lib/x86_64-linux-gnu/libstdc++.so.6": {
+          "path": "/lib/x86_64-linux-gnu/libstdc++.so.6",
+          "realpath": "/usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.33",
+          "bytes": 2592224,
+          "mtime_ns": 1766093810000000000,
+          "sha256": "1fd75fe70354a416d75aef22bcae68c47bd25d20e2d0568c30b1a9838cf62f11"
+        },
+        "/lib/x86_64-linux-gnu/libtinfo.so.6": {
+          "path": "/lib/x86_64-linux-gnu/libtinfo.so.6",
+          "realpath": "/usr/lib/x86_64-linux-gnu/libtinfo.so.6.4",
+          "bytes": 208328,
+          "mtime_ns": 1712592843000000000,
+          "sha256": "61f693cd7f8e55ad3ab518b20a00c01adb46ef829cf90773c97615a73f99e09b"
+        },
+        "/lib/x86_64-linux-gnu/libxml2.so.2": {
+          "path": "/lib/x86_64-linux-gnu/libxml2.so.2",
+          "realpath": "/usr/lib/x86_64-linux-gnu/libxml2.so.2.9.14",
+          "bytes": 1967424,
+          "mtime_ns": 1757086572000000000,
+          "sha256": "3061d35b168d1eb472bba5d2c52931e408364770ec9b00ae1100aacd0c35c7da"
+        },
+        "/lib/x86_64-linux-gnu/libz.so.1": {
+          "path": "/lib/x86_64-linux-gnu/libz.so.1",
+          "realpath": "/usr/lib/x86_64-linux-gnu/libz.so.1.3",
+          "bytes": 113000,
+          "mtime_ns": 1723170800000000000,
+          "sha256": "9b64150b28505a33d6bc3ecf709c279f6de97a1c184dbda65d06ee4537f6d286"
+        },
+        "/lib/x86_64-linux-gnu/libzstd.so.1": {
+          "path": "/lib/x86_64-linux-gnu/libzstd.so.1",
+          "realpath": "/usr/lib/x86_64-linux-gnu/libzstd.so.1.5.5",
+          "bytes": 755864,
+          "mtime_ns": 1723170802000000000,
+          "sha256": "0a2128bc10841fb29e76d08d945864dfb0b6a66da5df6df5d8299197439e54bb"
+        },
+        "/lib64/ld-linux-x86-64.so.2": {
+          "path": "/lib64/ld-linux-x86-64.so.2",
+          "realpath": "/usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2",
+          "bytes": 236616,
+          "mtime_ns": 1784827093000000000,
+          "sha256": "cd4df4f3c7b83673d61189bf2eaebd33ca4f2853ab9772b8a25e025ef99b1e81"
+        },
+        "/usr/lib/llvm-18/bin/../lib/libLLVM.so.18.1": {
+          "path": "/usr/lib/llvm-18/bin/../lib/libLLVM.so.18.1",
+          "realpath": "/usr/lib/llvm-18/lib/libLLVM.so.1",
+          "bytes": 123215144,
+          "mtime_ns": 1716798380000000000,
+          "sha256": "5c3a63957e28c15cdf1503892074f032d29b72e36a9824a77dfa87e48a0dafb0"
+        }
+      },
+      "ldd": {
+        "command": [
+          "ldd",
+          "/usr/lib/llvm-18/bin/lli"
+        ],
+        "cwd": "/workspace/scratch/8f4dd6deebd9",
+        "timeout_s": 30,
+        "stdout_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/lli-ldd.stdout",
+        "stderr_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/lli-ldd.stderr",
+        "pid": 22,
+        "returncode": 0,
+        "wall_s": 0.016870248000486754,
+        "stdout": "\tlinux-vdso.so.1 (0x00007f0090945000)\n\tlibLLVM.so.18.1 => /usr/lib/llvm-18/bin/../lib/libLLVM.so.18.1 (0x00007f0089303000)\n\tlibstdc++.so.6 => /lib/x86_64-linux-gnu/libstdc++.so.6 (0x00007f008907c000)\n\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f0088e6a000)\n\tlibffi.so.8 => /lib/x86_64-linux-gnu/libffi.so.8 (0x00007f0088e5e000)\n\tlibedit.so.2 => /lib/x86_64-linux-gnu/libedit.so.2 (0x00007f0088e24000)\n\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007f0088d39000)\n\tlibz.so.1 => /lib/x86_64-linux-gnu/libz.so.1 (0x00007f0088d1d000)\n\tlibzstd.so.1 => /lib/x86_64-linux-gnu/libzstd.so.1 (0x00007f0088c63000)\n\tlibtinfo.so.6 => /lib/x86_64-linux-gnu/libtinfo.so.6 (0x00007f0088c2f000)\n\tlibxml2.so.2 => /lib/x86_64-linux-gnu/libxml2.so.2 (0x00007f0088a4d000)\n\tlibgcc_s.so.1 => /lib/x86_64-linux-gnu/libgcc_s.so.1 (0x00007f0088a1f000)\n\t/lib64/ld-linux-x86-64.so.2 (0x00007f0090947000)\n\tlibbsd.so.0 => /lib/x86_64-linux-gnu/libbsd.so.0 (0x00007f0088a07000)\n\tlibicuuc.so.74 => /lib/x86_64-linux-gnu/libicuuc.so.74 (0x00007f00887fa000)\n\tliblzma.so.5 => /lib/x86_64-linux-gnu/liblzma.so.5 (0x00007f00887c8000)\n\tlibmd.so.0 => /lib/x86_64-linux-gnu/libmd.so.0 (0x00007f00887b9000)\n\tlibicudata.so.74 => /lib/x86_64-linux-gnu/libicudata.so.74 (0x00007f0086a59000)\n",
+        "stdout_identity": {
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/lli-ldd.stdout",
+          "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/lli-ldd.stdout",
+          "bytes": 1262,
+          "mtime_ns": 1793503502454772818,
+          "sha256": "175b9121f4aefc5323e5e2dd99d4fdc2b4dcacc4a08a9d27905bc5b3af02a281"
+        },
+        "stderr": "",
+        "stderr_identity": {
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/lli-ldd.stderr",
+          "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/lli-ldd.stderr",
+          "bytes": 0,
+          "mtime_ns": 1793503502446773194,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    "llvm-as": {
+      "identity": {
+        "path": "/usr/lib/llvm-18/bin/llvm-as",
+        "realpath": "/usr/lib/llvm-18/bin/llvm-as",
+        "bytes": 31480,
+        "mtime_ns": 1716798380000000000,
+        "sha256": "8e7460eff4ba4e22d8ae881404bb24c5fc346996264e883ba26d41da4188215d"
+      },
+      "version": {
+        "command": [
+          "/usr/lib/llvm-18/bin/llvm-as",
+          "--version"
+        ],
+        "cwd": "/workspace/scratch/8f4dd6deebd9",
+        "timeout_s": 30,
+        "stdout_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/llvm-as.stdout",
+        "stderr_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/llvm-as.stderr",
+        "pid": 10,
+        "returncode": 0,
+        "wall_s": 0.01584148900292348,
+        "stdout": "Ubuntu LLVM version 18.1.3\n  Optimized build.\n",
+        "stdout_identity": {
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/llvm-as.stdout",
+          "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/llvm-as.stdout",
+          "bytes": 46,
+          "mtime_ns": 1793503501226830454,
+          "sha256": "cfb9286322cccef53a692448cf4007a998d186dfb8e8313d317390a95eeb10f1"
+        },
+        "stderr": "",
+        "stderr_identity": {
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/llvm-as.stderr",
+          "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/llvm-as.stderr",
+          "bytes": 0,
+          "mtime_ns": 1793503501219768396,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    "llvm-link": {
+      "identity": {
+        "path": "/usr/lib/llvm-18/bin/llvm-link",
+        "realpath": "/usr/lib/llvm-18/bin/llvm-link",
+        "bytes": 64616,
+        "mtime_ns": 1716798380000000000,
+        "sha256": "e340363ed9e5346f0d6dc4441f4953c5f516ff73fa0a03e1955c1adaad68b651"
+      },
+      "version": {
+        "command": [
+          "/usr/lib/llvm-18/bin/llvm-link",
+          "--version"
+        ],
+        "cwd": "/workspace/scratch/8f4dd6deebd9",
+        "timeout_s": 30,
+        "stdout_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/llvm-link.stdout",
+        "stderr_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/llvm-link.stderr",
+        "pid": 11,
+        "returncode": 0,
+        "wall_s": 0.01629799100192031,
+        "stdout": "Ubuntu LLVM version 18.1.3\n  Optimized build.\n",
+        "stdout_identity": {
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/llvm-link.stdout",
+          "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/llvm-link.stdout",
+          "bytes": 46,
+          "mtime_ns": 1793503501246829515,
+          "sha256": "cfb9286322cccef53a692448cf4007a998d186dfb8e8313d317390a95eeb10f1"
+        },
+        "stderr": "",
+        "stderr_identity": {
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/llvm-link.stderr",
+          "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/llvm-link.stderr",
+          "bytes": 0,
+          "mtime_ns": 1793503501236011666,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    "llvm-dis": {
+      "identity": {
+        "path": "/usr/lib/llvm-18/bin/llvm-dis",
+        "realpath": "/usr/lib/llvm-18/bin/llvm-dis",
+        "bytes": 43912,
+        "mtime_ns": 1716798380000000000,
+        "sha256": "d06db012b9ad15ecce7dafaf5a7d78e8ef6e3fad8402b4eed3745259f1b3df7b"
+      },
+      "version": {
+        "command": [
+          "/usr/lib/llvm-18/bin/llvm-dis",
+          "--version"
+        ],
+        "cwd": "/workspace/scratch/8f4dd6deebd9",
+        "timeout_s": 30,
+        "stdout_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/llvm-dis.stdout",
+        "stderr_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/llvm-dis.stderr",
+        "pid": 12,
+        "returncode": 0,
+        "wall_s": 0.01906065700313775,
+        "stdout": "Ubuntu LLVM version 18.1.3\n  Optimized build.\n",
+        "stdout_identity": {
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/llvm-dis.stdout",
+          "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/llvm-dis.stdout",
+          "bytes": 46,
+          "mtime_ns": 1793503501262828765,
+          "sha256": "cfb9286322cccef53a692448cf4007a998d186dfb8e8313d317390a95eeb10f1"
+        },
+        "stderr": "",
+        "stderr_identity": {
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/llvm-dis.stderr",
+          "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/llvm-dis.stderr",
+          "bytes": 0,
+          "mtime_ns": 1793503501253370156,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    "python": {
+      "identity": {
+        "path": "/workspace/scratch/8f4dd6deebd9/toolchain/venv/bin/python",
+        "realpath": "/workspace/scratch/8f4dd6deebd9/toolchain/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+        "bytes": 31601560,
+        "mtime_ns": 1793498518112616892,
+        "sha256": "6e9b7d27499f26dbec3c8687728f3a0500b9b61688664f03678242744567c461"
+      },
+      "version": {
+        "command": [
+          "/workspace/scratch/8f4dd6deebd9/toolchain/venv/bin/python",
+          "--version"
+        ],
+        "cwd": "/workspace/scratch/8f4dd6deebd9",
+        "timeout_s": 30,
+        "stdout_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/python.stdout",
+        "stderr_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/python.stderr",
+        "pid": 13,
+        "returncode": 0,
+        "wall_s": 0.003612915999838151,
+        "stdout": "Python 3.13.16\n",
+        "stdout_identity": {
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/python.stdout",
+          "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/python.stdout",
+          "bytes": 15,
+          "mtime_ns": 1793503501272856403,
+          "sha256": "8a078b480fefb612930032cc46f81bc6d76b152bac4903485d0c5771f32219ad"
+        },
+        "stderr": "",
+        "stderr_identity": {
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/python.stderr",
+          "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/python.stderr",
+          "bytes": 0,
+          "mtime_ns": 1793503501272856403,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    "valgrind": {
+      "identity": {
+        "path": "/usr/bin/valgrind",
+        "realpath": "/usr/bin/valgrind",
+        "bytes": 528,
+        "mtime_ns": 1668095361000000000,
+        "sha256": "4652774bd116cb49951ef74115ad4237cad5021b2bd4d80002f09d986ec438b9"
+      },
+      "version": {
+        "command": [
+          "/usr/bin/valgrind",
+          "--version"
+        ],
+        "cwd": "/workspace/scratch/8f4dd6deebd9",
+        "timeout_s": 30,
+        "stdout_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/valgrind.stdout",
+        "stderr_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/valgrind.stderr",
+        "pid": 14,
+        "returncode": 0,
+        "wall_s": 0.008570279998821206,
+        "stdout": "valgrind-3.22.0\n",
+        "stdout_identity": {
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/valgrind.stdout",
+          "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/valgrind.stdout",
+          "bytes": 16,
+          "mtime_ns": 1793503501418821443,
+          "sha256": "06bd4b41e0b515a43bbb6fa5d24e6596c4604fbc070ea04aa1dd8d2ad3035a53"
+        },
+        "stderr": "",
+        "stderr_identity": {
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/valgrind.stderr",
+          "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/metadata/valgrind.stderr",
+          "bytes": 0,
+          "mtime_ns": 1793503501414821630,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    "valgrind.bin": {
+      "identity": {
+        "path": "/usr/bin/valgrind.bin",
+        "realpath": "/usr/bin/valgrind.bin",
+        "bytes": 22688,
+        "mtime_ns": 1712593300000000000,
+        "sha256": "def5fdcf6ae64a4d3e6af3786b622978d8313e0734ecf3f6cbe71d8be9e274c8"
+      }
+    },
+    "callgrind-amd64-linux": {
+      "identity": {
+        "path": "/usr/libexec/valgrind/callgrind-amd64-linux",
+        "realpath": "/usr/libexec/valgrind/callgrind-amd64-linux",
+        "bytes": 2482912,
+        "mtime_ns": 1712593300000000000,
+        "sha256": "825eb197d519240c112e03ed00f40a8bbe1a0a0614f79ea95e28c67e8695cb03"
+      }
+    },
+    "vgpreload_core-amd64-linux.so": {
+      "identity": {
+        "path": "/usr/libexec/valgrind/vgpreload_core-amd64-linux.so",
+        "realpath": "/usr/libexec/valgrind/vgpreload_core-amd64-linux.so",
+        "bytes": 14024,
+        "mtime_ns": 1712593300000000000,
+        "sha256": "87edd6ad90b12bb5fe58f2ea2235db5b6a3d637657488f3e06d07e482354a8c5"
+      }
+    }
+  },
+  "cpython": {
+    "command": [
+      "/workspace/scratch/8f4dd6deebd9/toolchain/venv/bin/python",
+      "/workspace/scratch/8f4dd6deebd9/pystachy-baseline/bench/smoke/text.py",
+      "fnmatch",
+      "1000"
+    ],
+    "cwd": "/workspace/scratch/8f4dd6deebd9/pystachy-baseline",
+    "timeout_s": 180,
+    "stdout_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/cpython.stdout",
+    "stderr_file": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/cpython.stderr",
+    "pid": 29,
+    "returncode": 0,
+    "wall_s": 0.11745766500098398,
+    "stdout": "6000\n",
+    "stdout_identity": {
+      "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/cpython.stdout",
+      "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/cpython.stdout",
+      "bytes": 5,
+      "mtime_ns": 1793503502838754795,
+      "sha256": "46251acfc71ec25370b9130041437638dd8bb98c6ce57a89d869f39d826358d5"
+    },
+    "stderr": "seconds 0.0777692119954736\n",
+    "stderr_identity": {
+      "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/cpython.stderr",
+      "realpath": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-policy-final/cpython.stderr",
+      "bytes": 27,
+      "mtime_ns": 1793503502838754795,
+      "sha256": "78b6de5b65e6ef06b2446ad8d8289e16b060b02a6c4ede16ea41a29fc12f2723"
+    }
+  }
+}

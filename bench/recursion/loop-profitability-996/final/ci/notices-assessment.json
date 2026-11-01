@@ -1,0 +1,56 @@
+{
+  "annotations": [
+    {
+      "annotation_level": "warning",
+      "blob_href": "https://github.com/den-run-ai/pystachy/blob/44b638bbf8df1835b67bebda0468d65374569c71/.github",
+      "check": "Install (macos-15-intel)",
+      "check_id": 124738080738,
+      "end_column": null,
+      "end_line": 18,
+      "message": "llvm@20 was installed but not linked because llvm@18 is already installed.\nTo link this version, run:\n  brew link llvm@20\n",
+      "path": ".github",
+      "raw_details": "",
+      "start_column": null,
+      "start_line": 18,
+      "title": ""
+    },
+    {
+      "annotation_level": "warning",
+      "blob_href": "https://github.com/den-run-ai/pystachy/blob/44b638bbf8df1835b67bebda0468d65374569c71/.github",
+      "check": "Install (macos-15)",
+      "check_id": 124738080525,
+      "end_column": null,
+      "end_line": 16,
+      "message": "llvm@20 was installed but not linked because llvm@18 is already installed.\nTo link this version, run:\n  brew link llvm@20\n",
+      "path": ".github",
+      "raw_details": "",
+      "start_column": null,
+      "start_line": 16,
+      "title": ""
+    },
+    {
+      "annotation_level": "notice",
+      "blob_href": "https://github.com/den-run-ai/pystachy/blob/44b638bbf8df1835b67bebda0468d65374569c71/.github",
+      "check": "Install (macos-15)",
+      "check_id": 124738080525,
+      "end_column": null,
+      "end_line": 1,
+      "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "path": ".github",
+      "raw_details": "",
+      "start_column": null,
+      "start_line": 1,
+      "title": ""
+    }
+  ],
+  "annotations_complete": true,
+  "annotations_count": 3,
+  "logs": [
+    "install-macos-15.log",
+    "install-macos-15-intel.log"
+  ],
+  "performance_job_annotations": 0,
+  "performance_job_log_warning_or_error_count": 0,
+  "result": "nonblocking",
+  "schema": 1
+}

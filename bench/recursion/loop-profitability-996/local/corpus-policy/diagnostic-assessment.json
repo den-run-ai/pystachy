@@ -1,0 +1,2243 @@
+{
+  "all_diagnostics_explained": true,
+  "cases": [
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/inference/any_lru_cache.py",
+      "index": 2835,
+      "new_message_sha256": "fd5d57f79836ae2bca2d92363c10b11e2e60a51dfdf4cd296ab46865190c892b",
+      "old_message_sha256": "c52ae59ea67f05e8a320630cca857fb8e6ad27462528b5d5a0aabb1c98af9c1a",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/functools.py",
+          "new_span": [
+            0,
+            64
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/functools.py",
+          "old_span": [
+            0,
+            74
+          ],
+          "relative": "lib/functools.py",
+          "source_sha256": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703"
+        },
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/functools.py",
+          "new_span": [
+            462,
+            526
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/functools.py",
+          "old_span": [
+            472,
+            546
+          ],
+          "relative": "lib/functools.py",
+          "source_sha256": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703"
+        },
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/functools.py",
+          "new_span": [
+            611,
+            675
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/functools.py",
+          "old_span": [
+            631,
+            705
+          ],
+          "relative": "lib/functools.py",
+          "source_sha256": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/json_decoder_override_return.py",
+      "index": 3049,
+      "new_message_sha256": "a2a5ad746ad628a832f322626f3b4a2e54ca7bf47395b9cf7c453120681403c3",
+      "old_message_sha256": "78fcb9a2e495befe696c1430678edd36596920c225fba7fbd052887b4548e19e",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/json.py",
+          "new_span": [
+            0,
+            59
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/json.py",
+          "old_span": [
+            0,
+            69
+          ],
+          "relative": "lib/json.py",
+          "source_sha256": "72fb29122acddd3b4d1bd43d8ae9e7fee506b1d7d4f30559edeeebd92ac044ce"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_collections_counter_float.py",
+      "index": 3052,
+      "new_message_sha256": "065c29564b26d3dddb87ece1038146e38ec0a8a18d3e6d356c48b2cac9512cde",
+      "old_message_sha256": "79a22a7d41be007e555afcc0b9caadd5483bd910540f34d48453c13319bf0750",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/collections/__init__.py",
+          "new_span": [
+            0,
+            75
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/collections/__init__.py",
+          "old_span": [
+            0,
+            85
+          ],
+          "relative": "lib/collections/__init__.py",
+          "source_sha256": "8a6533ddf04c4823e1c1da10925028613420cc4e5cb6264e6066fdd3739b4852"
+        },
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/collections/__init__.py",
+          "new_span": [
+            189,
+            264
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/collections/__init__.py",
+          "old_span": [
+            199,
+            284
+          ],
+          "relative": "lib/collections/__init__.py",
+          "source_sha256": "8a6533ddf04c4823e1c1da10925028613420cc4e5cb6264e6066fdd3739b4852"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_collections_ordereddict_iterable.py",
+      "index": 3082,
+      "new_message_sha256": "bae2b7c2b8b58a5a13d94498dd54573b7f54614d744c68770b69c4bd15889632",
+      "old_message_sha256": "11d78474c4f19b2bbe71571d48697d28a84e9b8c86436a0d2123e55784fa80d6",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/collections/__init__.py",
+          "new_span": [
+            0,
+            75
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/collections/__init__.py",
+          "old_span": [
+            0,
+            85
+          ],
+          "relative": "lib/collections/__init__.py",
+          "source_sha256": "8a6533ddf04c4823e1c1da10925028613420cc4e5cb6264e6066fdd3739b4852"
+        },
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/collections/__init__.py",
+          "new_span": [
+            231,
+            306
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/collections/__init__.py",
+          "old_span": [
+            241,
+            326
+          ],
+          "relative": "lib/collections/__init__.py",
+          "source_sha256": "8a6533ddf04c4823e1c1da10925028613420cc4e5cb6264e6066fdd3739b4852"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_csv_namedtuple_row.py",
+      "index": 3083,
+      "new_message_sha256": "f38ca0f74cf71fb21b19f7e0f97e886d213535a42ad9041811b34e8573f1a678",
+      "old_message_sha256": "83bd573de06e577f24a429c546da1ee4e9314335e039bb0449b4b6f7f8d17dfc",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/csv.py",
+          "new_span": [
+            0,
+            58
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/csv.py",
+          "old_span": [
+            0,
+            68
+          ],
+          "relative": "lib/csv.py",
+          "source_sha256": "29676a25a82679e93c6d0eb771a3f60890aedf49941206c0387ce59696b7c3c4"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_csv_no_write.py",
+      "index": 3084,
+      "new_message_sha256": "707316fc985a82825f89a6ea146cb6c961168be151d6f6cb74e1287c54de7b13",
+      "old_message_sha256": "324c1206132821beffd65f6897b2613766aa36b7dc0ef8d4f1fb9dfd5ef3b250",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/csv.py",
+          "new_span": [
+            0,
+            58
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/csv.py",
+          "old_span": [
+            0,
+            68
+          ],
+          "relative": "lib/csv.py",
+          "source_sha256": "29676a25a82679e93c6d0eb771a3f60890aedf49941206c0387ce59696b7c3c4"
+        },
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/csv.py",
+          "new_span": [
+            156,
+            214
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/csv.py",
+          "old_span": [
+            166,
+            234
+          ],
+          "relative": "lib/csv.py",
+          "source_sha256": "29676a25a82679e93c6d0eb771a3f60890aedf49941206c0387ce59696b7c3c4"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_csv_row_not_iterable.py",
+      "index": 3085,
+      "new_message_sha256": "d7fc2bbd3b90d4a0a8be2e119d05c322d397831437e5c92f7c7a741768a6406a",
+      "old_message_sha256": "596cab37b0c49a57d145b34238f97a6f27aaca816ce635388d21e572cedf6493",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/csv.py",
+          "new_span": [
+            0,
+            58
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/csv.py",
+          "old_span": [
+            0,
+            68
+          ],
+          "relative": "lib/csv.py",
+          "source_sha256": "29676a25a82679e93c6d0eb771a3f60890aedf49941206c0387ce59696b7c3c4"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_datetime_strptime.py",
+      "index": 3090,
+      "new_message_sha256": "718b4c0d798f2fbb7abd82a57ba0d82d3f6216d1ee2e7299d49c92664ede0a8a",
+      "old_message_sha256": "99fa35b0744211b940822d15e71e34f7ef6dbba5c7b594728303cb55495d121c",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/datetime.py",
+          "new_span": [
+            0,
+            63
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/datetime.py",
+          "old_span": [
+            0,
+            73
+          ],
+          "relative": "lib/datetime.py",
+          "source_sha256": "d269c51c55e7668b988c8194a7a2e643a39aa3a2770a727c178a5c898b91c239"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_datetime_utcnow.py",
+      "index": 3092,
+      "new_message_sha256": "382925dd622ac7703a9f936bd120c25c01c380a7c9af791eb7ad7e48c66f3ebc",
+      "old_message_sha256": "2928180af64447871cf5f24bea9b9b4f31080badfbf522ed6e4c39ff070892ae",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/datetime.py",
+          "new_span": [
+            0,
+            63
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/datetime.py",
+          "old_span": [
+            0,
+            73
+          ],
+          "relative": "lib/datetime.py",
+          "source_sha256": "d269c51c55e7668b988c8194a7a2e643a39aa3a2770a727c178a5c898b91c239"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_difflib_int_items.py",
+      "index": 3093,
+      "new_message_sha256": "bbe3f619fbc490bbfd4af1529f94f96372b07916ab239f478a7eb9473eb8ed3f",
+      "old_message_sha256": "311d0e452770fbab64796e7e34b27a66761e3b6ff493da2f008da5bb0936ad28",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/difflib.py",
+          "new_span": [
+            0,
+            62
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/difflib.py",
+          "old_span": [
+            0,
+            72
+          ],
+          "relative": "lib/difflib.py",
+          "source_sha256": "4d33db46d2f0748bd674b5ae2f52c59ab0cab0865c465a99ea9521d8751aea0f"
+        },
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/difflib.py",
+          "new_span": [
+            160,
+            222
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/difflib.py",
+          "old_span": [
+            170,
+            242
+          ],
+          "relative": "lib/difflib.py",
+          "source_sha256": "4d33db46d2f0748bd674b5ae2f52c59ab0cab0865c465a99ea9521d8751aea0f"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_functools_builtin.py",
+      "index": 3095,
+      "new_message_sha256": "5c91baceb4a5365008fcee6f03aff6bd317b89305f839935f82efe3373e5b23d",
+      "old_message_sha256": "c94d99d0f277f9f1219e8985fc2ec2330da14a3c2fc66efdb6a9f93d5bbc4bb8",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/functools.py",
+          "new_span": [
+            0,
+            64
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/functools.py",
+          "old_span": [
+            0,
+            74
+          ],
+          "relative": "lib/functools.py",
+          "source_sha256": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703"
+        },
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/functools.py",
+          "new_span": [
+            390,
+            454
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/functools.py",
+          "old_span": [
+            400,
+            474
+          ],
+          "relative": "lib/functools.py",
+          "source_sha256": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703"
+        },
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/functools.py",
+          "new_span": [
+            532,
+            596
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/functools.py",
+          "old_span": [
+            552,
+            626
+          ],
+          "relative": "lib/functools.py",
+          "source_sha256": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_functools_cmp_to_key_float_result.py",
+      "index": 3096,
+      "new_message_sha256": "14c9ede09105148c4d1510c9923f67d4c85902a178250cbab1716070c1ab693d",
+      "old_message_sha256": "f2264d0ea8b697b2d876b6bdc13cf409868cbf250ed16c8a837df43c57f6ccbe",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/functools.py",
+          "new_span": [
+            0,
+            64
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/functools.py",
+          "old_span": [
+            0,
+            74
+          ],
+          "relative": "lib/functools.py",
+          "source_sha256": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703"
+        },
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/functools.py",
+          "new_span": [
+            176,
+            240
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/functools.py",
+          "old_span": [
+            186,
+            260
+          ],
+          "relative": "lib/functools.py",
+          "source_sha256": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703"
+        },
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/functools.py",
+          "new_span": [
+            463,
+            527
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/functools.py",
+          "old_span": [
+            483,
+            557
+          ],
+          "relative": "lib/functools.py",
+          "source_sha256": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_functools_cmp_to_key_mixed.py",
+      "index": 3097,
+      "new_message_sha256": "f4c23a919f7da216823203b875aec585fa9ed0e7c11c189e0e6c3b122632bb56",
+      "old_message_sha256": "4bc7ae624a18a6dda66bd3a523a9f08fc6d064630a8b402f04186070f4a602f9",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/functools.py",
+          "new_span": [
+            0,
+            64
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/functools.py",
+          "old_span": [
+            0,
+            74
+          ],
+          "relative": "lib/functools.py",
+          "source_sha256": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703"
+        },
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/functools.py",
+          "new_span": [
+            174,
+            238
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/functools.py",
+          "old_span": [
+            184,
+            258
+          ],
+          "relative": "lib/functools.py",
+          "source_sha256": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_functools_float.py",
+      "index": 3099,
+      "new_message_sha256": "ec5fc764e6cd3f6140cf90074bda3c579deb58b34b8dc377f9733dbb1c76ae5b",
+      "old_message_sha256": "478b9deb0972ba3afdde3e7a857a30e9f219b2345c083eb7edaa91e6e9956bf9",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/functools.py",
+          "new_span": [
+            0,
+            64
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/functools.py",
+          "old_span": [
+            0,
+            74
+          ],
+          "relative": "lib/functools.py",
+          "source_sha256": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703"
+        },
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/functools.py",
+          "new_span": [
+            374,
+            438
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/functools.py",
+          "old_span": [
+            384,
+            458
+          ],
+          "relative": "lib/functools.py",
+          "source_sha256": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703"
+        },
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/functools.py",
+          "new_span": [
+            521,
+            585
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/functools.py",
+          "old_span": [
+            541,
+            615
+          ],
+          "relative": "lib/functools.py",
+          "source_sha256": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_functools_lambda.py",
+      "index": 3101,
+      "new_message_sha256": "d67e085726fc829037a5837163a76ab445663f606f750d91939454516c714753",
+      "old_message_sha256": "fae2782ca3531c4c4f7ec9e266f6b6e67372161f7067bb3769255f23984dabbe",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/functools.py",
+          "new_span": [
+            0,
+            64
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/functools.py",
+          "old_span": [
+            0,
+            74
+          ],
+          "relative": "lib/functools.py",
+          "source_sha256": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703"
+        },
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/functools.py",
+          "new_span": [
+            483,
+            547
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/functools.py",
+          "old_span": [
+            493,
+            567
+          ],
+          "relative": "lib/functools.py",
+          "source_sha256": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703"
+        },
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/functools.py",
+          "new_span": [
+            634,
+            698
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/functools.py",
+          "old_span": [
+            654,
+            728
+          ],
+          "relative": "lib/functools.py",
+          "source_sha256": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703"
+        },
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/functools.py",
+          "new_span": [
+            788,
+            852
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/functools.py",
+          "old_span": [
+            818,
+            892
+          ],
+          "relative": "lib/functools.py",
+          "source_sha256": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_functools_maxsize.py",
+      "index": 3102,
+      "new_message_sha256": "4f1a5eda28bce5aaa00a7fbeefe133d5b2fb9d25f8c086eaccbe25f75e4da0c4",
+      "old_message_sha256": "f9cde74d38f2bcae7f56f8343794351574a781dbb2cc4297014b48fe2bbcfde8",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/functools.py",
+          "new_span": [
+            0,
+            64
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/functools.py",
+          "old_span": [
+            0,
+            74
+          ],
+          "relative": "lib/functools.py",
+          "source_sha256": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703"
+        },
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/functools.py",
+          "new_span": [
+            330,
+            394
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/functools.py",
+          "old_span": [
+            340,
+            414
+          ],
+          "relative": "lib/functools.py",
+          "source_sha256": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703"
+        },
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/functools.py",
+          "new_span": [
+            466,
+            530
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/functools.py",
+          "old_span": [
+            486,
+            560
+          ],
+          "relative": "lib/functools.py",
+          "source_sha256": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_functools_none.py",
+      "index": 3105,
+      "new_message_sha256": "07338e92d0774ec26e3635ad6db6e0d236972b8fb6cdfd779777f21dc0891fe9",
+      "old_message_sha256": "aa0d8665b59ca4a5ed2b3ec92bb69acb4922ce7966f548b4120b9b1db2943058",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/functools.py",
+          "new_span": [
+            0,
+            64
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/functools.py",
+          "old_span": [
+            0,
+            74
+          ],
+          "relative": "lib/functools.py",
+          "source_sha256": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703"
+        },
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/functools.py",
+          "new_span": [
+            475,
+            539
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/functools.py",
+          "old_span": [
+            485,
+            559
+          ],
+          "relative": "lib/functools.py",
+          "source_sha256": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703"
+        },
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/functools.py",
+          "new_span": [
+            623,
+            687
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/functools.py",
+          "old_span": [
+            643,
+            717
+          ],
+          "relative": "lib/functools.py",
+          "source_sha256": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703"
+        },
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/functools.py",
+          "new_span": [
+            774,
+            838
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/functools.py",
+          "old_span": [
+            804,
+            878
+          ],
+          "relative": "lib/functools.py",
+          "source_sha256": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_functools_partial_missing.py",
+      "index": 3107,
+      "new_message_sha256": "aea836491c7b91a09fab3390e21bc47dfd2289824fbf614008e16b9a25b56f51",
+      "old_message_sha256": "2528625a2d7898b8a0ee8700becec77a039f4865f339dcabb1e012ea72cc76bc",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/functools.py",
+          "new_span": [
+            0,
+            64
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/functools.py",
+          "old_span": [
+            0,
+            74
+          ],
+          "relative": "lib/functools.py",
+          "source_sha256": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_functools_reduce_noncallable.py",
+      "index": 3110,
+      "new_message_sha256": "92d03948c285a87741940b921b2e9730fb391eec8ddc82ab695bffcdefdac24e",
+      "old_message_sha256": "766b16c8b0ce7808df791591558415c5ccd56ef0c747e6bd0906df39bc401c46",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/functools.py",
+          "new_span": [
+            0,
+            64
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/functools.py",
+          "old_span": [
+            0,
+            74
+          ],
+          "relative": "lib/functools.py",
+          "source_sha256": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_functools_return.py",
+      "index": 3111,
+      "new_message_sha256": "c440840dd2451cdf06dd3e11439c12ee720dec65f5441eecd1655523a5aa386a",
+      "old_message_sha256": "8cdf1f381e74f2e644a225a618b8ccc0eee2ca7df027c7bc1e7edda23c47429b",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/functools.py",
+          "new_span": [
+            0,
+            64
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/functools.py",
+          "old_span": [
+            0,
+            74
+          ],
+          "relative": "lib/functools.py",
+          "source_sha256": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703"
+        },
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/functools.py",
+          "new_span": [
+            466,
+            530
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/functools.py",
+          "old_span": [
+            476,
+            550
+          ],
+          "relative": "lib/functools.py",
+          "source_sha256": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703"
+        },
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/functools.py",
+          "new_span": [
+            615,
+            679
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/functools.py",
+          "old_span": [
+            635,
+            709
+          ],
+          "relative": "lib/functools.py",
+          "source_sha256": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703"
+        },
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/functools.py",
+          "new_span": [
+            767,
+            831
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/functools.py",
+          "old_span": [
+            797,
+            871
+          ],
+          "relative": "lib/functools.py",
+          "source_sha256": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_functools_star.py",
+      "index": 3112,
+      "new_message_sha256": "ff6db817d0f5db93a5358ace04d5c7c4ae1a2fdfa386ee325d583104a43711ab",
+      "old_message_sha256": "75102c9b8a7cb0dbacc18f032a3661b6b612667e8ef50b85c2c77285d7c7ad33",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/functools.py",
+          "new_span": [
+            0,
+            64
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/functools.py",
+          "old_span": [
+            0,
+            74
+          ],
+          "relative": "lib/functools.py",
+          "source_sha256": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703"
+        },
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/functools.py",
+          "new_span": [
+            443,
+            507
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/functools.py",
+          "old_span": [
+            453,
+            527
+          ],
+          "relative": "lib/functools.py",
+          "source_sha256": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703"
+        },
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/functools.py",
+          "new_span": [
+            591,
+            655
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/functools.py",
+          "old_span": [
+            611,
+            685
+          ],
+          "relative": "lib/functools.py",
+          "source_sha256": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703"
+        },
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/functools.py",
+          "new_span": [
+            742,
+            806
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/functools.py",
+          "old_span": [
+            772,
+            846
+          ],
+          "relative": "lib/functools.py",
+          "source_sha256": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_functools_unannotated.py",
+      "index": 3113,
+      "new_message_sha256": "dbc0e4d20196e0b312c315c6c2a64eed443f92d606c23d2adda87bb582bcf239",
+      "old_message_sha256": "e6842070ad1a838e3b78e15cf1be4df9b4296272072219bafd534a421369c7ed",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/functools.py",
+          "new_span": [
+            0,
+            64
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/functools.py",
+          "old_span": [
+            0,
+            74
+          ],
+          "relative": "lib/functools.py",
+          "source_sha256": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703"
+        },
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/functools.py",
+          "new_span": [
+            487,
+            551
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/functools.py",
+          "old_span": [
+            497,
+            571
+          ],
+          "relative": "lib/functools.py",
+          "source_sha256": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703"
+        },
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/functools.py",
+          "new_span": [
+            636,
+            700
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/functools.py",
+          "old_span": [
+            656,
+            730
+          ],
+          "relative": "lib/functools.py",
+          "source_sha256": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_gettext_lookup.py",
+      "index": 3120,
+      "new_message_sha256": "aff174d4ea10c44dd1133a158cbf10624c08ac2e8f4555a5543a56873c16a825",
+      "old_message_sha256": "fedd520b7f2be5409e2492275ecf672d28a265f70e49df94118cd33655c68f8c",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/gettext.py",
+          "new_span": [
+            0,
+            62
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/gettext.py",
+          "old_span": [
+            0,
+            72
+          ],
+          "relative": "lib/gettext.py",
+          "source_sha256": "97b7fa3d8112826dae4d021a6445fe791521524bd4b06e729d0497ed59a85e63"
+        },
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/gettext.py",
+          "new_span": [
+            203,
+            265
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/gettext.py",
+          "old_span": [
+            213,
+            285
+          ],
+          "relative": "lib/gettext.py",
+          "source_sha256": "97b7fa3d8112826dae4d021a6445fe791521524bd4b06e729d0497ed59a85e63"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_gettext_ngettext.py",
+      "index": 3121,
+      "new_message_sha256": "4348f4417350a644292f5a4ea051a3e1efb14855c019aafadea023fe3c79197e",
+      "old_message_sha256": "fcd0a4a70d7bacbcdee2f7cf1768d65884e335ff9d38bac67fcacb2613afc6ea",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/operator.py",
+          "new_span": [
+            0,
+            63
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/operator.py",
+          "old_span": [
+            0,
+            73
+          ],
+          "relative": "lib/operator.py",
+          "source_sha256": "7d42396ef02c03aa69eb86643769cdb889ab9fc66ffd140bc0efa0896fc94c99"
+        },
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/gettext.py",
+          "new_span": [
+            154,
+            216
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/gettext.py",
+          "old_span": [
+            164,
+            236
+          ],
+          "relative": "lib/gettext.py",
+          "source_sha256": "97b7fa3d8112826dae4d021a6445fe791521524bd4b06e729d0497ed59a85e63"
+        },
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/gettext.py",
+          "new_span": [
+            270,
+            332
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/gettext.py",
+          "old_span": [
+            290,
+            362
+          ],
+          "relative": "lib/gettext.py",
+          "source_sha256": "97b7fa3d8112826dae4d021a6445fe791521524bd4b06e729d0497ed59a85e63"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_itertools_accumulate_initial.py",
+      "index": 3136,
+      "new_message_sha256": "1170e5b141412ca09ee9327ed72138e0a2608b82c34988ad9f5ecf2617620c2c",
+      "old_message_sha256": "304b4398f0cc265ca310d665c08e62a465f1ea6fcd6dab32ab2446156f0951d3",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/_pystachy_itertools.py",
+          "new_span": [
+            0,
+            74
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/_pystachy_itertools.py",
+          "old_span": [
+            0,
+            84
+          ],
+          "relative": "lib/_pystachy_itertools.py",
+          "source_sha256": "14f451cf7647016ad8105aa988b9cbabe4fe3f5a08f2710f6ed2db5d81a00566"
+        },
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/_pystachy_itertools.py",
+          "new_span": [
+            216,
+            290
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/_pystachy_itertools.py",
+          "old_span": [
+            226,
+            310
+          ],
+          "relative": "lib/_pystachy_itertools.py",
+          "source_sha256": "14f451cf7647016ad8105aa988b9cbabe4fe3f5a08f2710f6ed2db5d81a00566"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_itertools_accumulate_type.py",
+      "index": 3137,
+      "new_message_sha256": "3c3ddee976c21b484b3a435a3d562afcff7e307f82c7499daac11dd89e8f34bf",
+      "old_message_sha256": "7be1233470c1a396db2c04a0f59c16389ad51c0c2b75570d13c7deac313e4637",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/_pystachy_itertools.py",
+          "new_span": [
+            0,
+            74
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/_pystachy_itertools.py",
+          "old_span": [
+            0,
+            84
+          ],
+          "relative": "lib/_pystachy_itertools.py",
+          "source_sha256": "14f451cf7647016ad8105aa988b9cbabe4fe3f5a08f2710f6ed2db5d81a00566"
+        },
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/_pystachy_itertools.py",
+          "new_span": [
+            215,
+            289
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/_pystachy_itertools.py",
+          "old_span": [
+            225,
+            309
+          ],
+          "relative": "lib/_pystachy_itertools.py",
+          "source_sha256": "14f451cf7647016ad8105aa988b9cbabe4fe3f5a08f2710f6ed2db5d81a00566"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_itertools_batched_tuples.py",
+      "index": 3138,
+      "new_message_sha256": "39ff85b6056ac6e00e062dd84cedebbb107694108d51c497d59311a9906dbb2c",
+      "old_message_sha256": "00611598f915aba4dad04594cd75e9bb731afe7a7cf51b9686abf78b313163ed",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/_pystachy_itertools.py",
+          "new_span": [
+            0,
+            74
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/_pystachy_itertools.py",
+          "old_span": [
+            0,
+            84
+          ],
+          "relative": "lib/_pystachy_itertools.py",
+          "source_sha256": "14f451cf7647016ad8105aa988b9cbabe4fe3f5a08f2710f6ed2db5d81a00566"
+        },
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/_pystachy_itertools.py",
+          "new_span": [
+            265,
+            339
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/_pystachy_itertools.py",
+          "old_span": [
+            275,
+            359
+          ],
+          "relative": "lib/_pystachy_itertools.py",
+          "source_sha256": "14f451cf7647016ad8105aa988b9cbabe4fe3f5a08f2710f6ed2db5d81a00566"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_itertools_chain_mixed.py",
+      "index": 3139,
+      "new_message_sha256": "09a87d62799e114ef9dddd36f99e963f419380c41b63f1f14a9066dbfd292619",
+      "old_message_sha256": "81723e8c669d776cc2d9f3d86199218b206802e5ea4a08c26b1c32db51359de7",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/_pystachy_itertools.py",
+          "new_span": [
+            0,
+            74
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/_pystachy_itertools.py",
+          "old_span": [
+            0,
+            84
+          ],
+          "relative": "lib/_pystachy_itertools.py",
+          "source_sha256": "14f451cf7647016ad8105aa988b9cbabe4fe3f5a08f2710f6ed2db5d81a00566"
+        },
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/_pystachy_itertools.py",
+          "new_span": [
+            236,
+            310
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/_pystachy_itertools.py",
+          "old_span": [
+            246,
+            330
+          ],
+          "relative": "lib/_pystachy_itertools.py",
+          "source_sha256": "14f451cf7647016ad8105aa988b9cbabe4fe3f5a08f2710f6ed2db5d81a00566"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_itertools_combinations_objects.py",
+      "index": 3140,
+      "new_message_sha256": "5e8fee2912a2dc44a43b41e88300d31a6aa85cff147dd6a31f0063e01fdd2b4d",
+      "old_message_sha256": "a0f9699c4f274f6508a9ca5091ffb7c6a0f8b6fcc80b26f11a647f170e03bf95",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/_pystachy_itertools.py",
+          "new_span": [
+            0,
+            74
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/_pystachy_itertools.py",
+          "old_span": [
+            0,
+            84
+          ],
+          "relative": "lib/_pystachy_itertools.py",
+          "source_sha256": "14f451cf7647016ad8105aa988b9cbabe4fe3f5a08f2710f6ed2db5d81a00566"
+        },
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/_pystachy_itertools.py",
+          "new_span": [
+            240,
+            314
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/_pystachy_itertools.py",
+          "old_span": [
+            250,
+            334
+          ],
+          "relative": "lib/_pystachy_itertools.py",
+          "source_sha256": "14f451cf7647016ad8105aa988b9cbabe4fe3f5a08f2710f6ed2db5d81a00566"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_itertools_groupby_key_object.py",
+      "index": 3141,
+      "new_message_sha256": "817d60679ecb21a47a5bed999a7d6548cab1c13ff87065410eae6f497c7c3b91",
+      "old_message_sha256": "b588584d340390b363b6a469a385d8c78ad4fe0748e6a751448a06ebd9c9841e",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/_pystachy_itertools.py",
+          "new_span": [
+            0,
+            74
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/_pystachy_itertools.py",
+          "old_span": [
+            0,
+            84
+          ],
+          "relative": "lib/_pystachy_itertools.py",
+          "source_sha256": "14f451cf7647016ad8105aa988b9cbabe4fe3f5a08f2710f6ed2db5d81a00566"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_itertools_product_repeat_mixed.py",
+      "index": 3144,
+      "new_message_sha256": "649e516045fd83bc2de50241733d6010cd137903d8feed532a990e78fe8fa7ad",
+      "old_message_sha256": "56822a5f3cff62d35719e274fd1abd560e38a5cc00df0b9de4ed89ad3ea0ed38",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/_pystachy_itertools.py",
+          "new_span": [
+            0,
+            74
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/_pystachy_itertools.py",
+          "old_span": [
+            0,
+            84
+          ],
+          "relative": "lib/_pystachy_itertools.py",
+          "source_sha256": "14f451cf7647016ad8105aa988b9cbabe4fe3f5a08f2710f6ed2db5d81a00566"
+        },
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/_pystachy_itertools.py",
+          "new_span": [
+            261,
+            335
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/_pystachy_itertools.py",
+          "old_span": [
+            271,
+            355
+          ],
+          "relative": "lib/_pystachy_itertools.py",
+          "source_sha256": "14f451cf7647016ad8105aa988b9cbabe4fe3f5a08f2710f6ed2db5d81a00566"
+        },
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/_pystachy_itertools.py",
+          "new_span": [
+            426,
+            500
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/_pystachy_itertools.py",
+          "old_span": [
+            446,
+            530
+          ],
+          "relative": "lib/_pystachy_itertools.py",
+          "source_sha256": "14f451cf7647016ad8105aa988b9cbabe4fe3f5a08f2710f6ed2db5d81a00566"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_itertools_starmap_list.py",
+      "index": 3146,
+      "new_message_sha256": "38512862d58fe5035f30e759f3b5c713e2fdadf3cc135e41371a690c6d02f080",
+      "old_message_sha256": "ddba4a3818f811c8a858b92388bc690fd5baa036efcd502edc080ff8c6d87f81",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/_pystachy_itertools.py",
+          "new_span": [
+            0,
+            74
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/_pystachy_itertools.py",
+          "old_span": [
+            0,
+            84
+          ],
+          "relative": "lib/_pystachy_itertools.py",
+          "source_sha256": "14f451cf7647016ad8105aa988b9cbabe4fe3f5a08f2710f6ed2db5d81a00566"
+        },
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/_pystachy_itertools.py",
+          "new_span": [
+            275,
+            349
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/_pystachy_itertools.py",
+          "old_span": [
+            285,
+            369
+          ],
+          "relative": "lib/_pystachy_itertools.py",
+          "source_sha256": "14f451cf7647016ad8105aa988b9cbabe4fe3f5a08f2710f6ed2db5d81a00566"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_operator_attrgetter_missing.py",
+      "index": 3150,
+      "new_message_sha256": "98645b627a016a2f1164c65fde8afd0009ecb9799e7b6fa4fc2db1899f1f4dbc",
+      "old_message_sha256": "4ba8cecb9a26f3ea83387b1fee4b8ae389848ba009996496df4a2c4d236d381a",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/operator.py",
+          "new_span": [
+            0,
+            63
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/operator.py",
+          "old_span": [
+            0,
+            73
+          ],
+          "relative": "lib/operator.py",
+          "source_sha256": "7d42396ef02c03aa69eb86643769cdb889ab9fc66ffd140bc0efa0896fc94c99"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_operator_attrgetter_names.py",
+      "index": 3151,
+      "new_message_sha256": "94471fc04f0a1b15e9964119ce8396195f2fe6daf7812a18c5f092b14a0879e8",
+      "old_message_sha256": "338813b6fbcf001c60b5ef409ffe44cbfeb3b005a0f477fd9540745eff0b75fc",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/operator.py",
+          "new_span": [
+            0,
+            63
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/operator.py",
+          "old_span": [
+            0,
+            73
+          ],
+          "relative": "lib/operator.py",
+          "source_sha256": "7d42396ef02c03aa69eb86643769cdb889ab9fc66ffd140bc0efa0896fc94c99"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_operator_itemgetter_object.py",
+      "index": 3154,
+      "new_message_sha256": "a5bd3de7b1f70d0e97062b7b08c56912dc05c0088e6d28915d7a53b45fe0b468",
+      "old_message_sha256": "988dd5978d5b5960f60988130a687d35e918692a37185595a3d80fcae53b40c3",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/operator.py",
+          "new_span": [
+            0,
+            63
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/operator.py",
+          "old_span": [
+            0,
+            73
+          ],
+          "relative": "lib/operator.py",
+          "source_sha256": "7d42396ef02c03aa69eb86643769cdb889ab9fc66ffd140bc0efa0896fc94c99"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_operator_methodcaller_variable.py",
+      "index": 3155,
+      "new_message_sha256": "6b2bca1a49e488c94b4f473ab42aec39101409277369f7a540c1e5e9eef274b3",
+      "old_message_sha256": "486735921b1d1afc46220ddee9306f4fe44b0d4d96dd9c6e1d89c3d3df9e139a",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/operator.py",
+          "new_span": [
+            0,
+            63
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/operator.py",
+          "old_span": [
+            0,
+            73
+          ],
+          "relative": "lib/operator.py",
+          "source_sha256": "7d42396ef02c03aa69eb86643769cdb889ab9fc66ffd140bc0efa0896fc94c99"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_random_choices_k.py",
+      "index": 3157,
+      "new_message_sha256": "e7b551500a31956464b42cbdccbac2cf4a38a1f23f0dafd7d8ba19cb647fa1b1",
+      "old_message_sha256": "ce52656b017b54ef72a3019e74c85d11bc9cacde4fd20fb488b7fb07b6ff005d",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/random.py",
+          "new_span": [
+            0,
+            61
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/random.py",
+          "old_span": [
+            0,
+            71
+          ],
+          "relative": "lib/random.py",
+          "source_sha256": "91e7fa770bfc1affb76a6441a10e1913af8993d8c657c12ffe6cbadc3e3add1e"
+        },
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/random.py",
+          "new_span": [
+            148,
+            209
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/random.py",
+          "old_span": [
+            158,
+            229
+          ],
+          "relative": "lib/random.py",
+          "source_sha256": "91e7fa770bfc1affb76a6441a10e1913af8993d8c657c12ffe6cbadc3e3add1e"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_random_randbytes.py",
+      "index": 3159,
+      "new_message_sha256": "11dcb0ba69321e84f4367a1807ecb9cb71381de8580046dc5a64cb7485dfd878",
+      "old_message_sha256": "72b7db798c768408e8f43876ad8cad42c9796d3e98d71b92fa9174c708f1c4af",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/random.py",
+          "new_span": [
+            0,
+            61
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/random.py",
+          "old_span": [
+            0,
+            71
+          ],
+          "relative": "lib/random.py",
+          "source_sha256": "91e7fa770bfc1affb76a6441a10e1913af8993d8c657c12ffe6cbadc3e3add1e"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_random_randrange_float.py",
+      "index": 3160,
+      "new_message_sha256": "37e7d12d7e3ec11dc9b5780987e30b6b8dda77e14b806a421ab62bad576d5a5a",
+      "old_message_sha256": "e127e28948d2f8afe1f5a204a376a5b5a9b15ba2fac8ecce7f603271274a2cca",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/random.py",
+          "new_span": [
+            0,
+            61
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/random.py",
+          "old_span": [
+            0,
+            71
+          ],
+          "relative": "lib/random.py",
+          "source_sha256": "91e7fa770bfc1affb76a6441a10e1913af8993d8c657c12ffe6cbadc3e3add1e"
+        },
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/random.py",
+          "new_span": [
+            155,
+            216
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/random.py",
+          "old_span": [
+            165,
+            236
+          ],
+          "relative": "lib/random.py",
+          "source_sha256": "91e7fa770bfc1affb76a6441a10e1913af8993d8c657c12ffe6cbadc3e3add1e"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_shlex_punctuation_list.py",
+      "index": 3169,
+      "new_message_sha256": "2fd2bdcde394a07c261b0d7b745fd85dbe03ddce736a5dbab862a5ed8b14741a",
+      "old_message_sha256": "aae54c5ce78d305ac17d7a1efbff8d2fdf23950fe1da21e0f90987e05aca8854",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/shlex.py",
+          "new_span": [
+            0,
+            60
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/shlex.py",
+          "old_span": [
+            0,
+            70
+          ],
+          "relative": "lib/shlex.py",
+          "source_sha256": "7392b7c738fe818c43a8031820bef96db0b9f598d354a9fac0b771546a4fdba4"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_statistics_correlation.py",
+      "index": 3170,
+      "new_message_sha256": "ccc3d9fbe923ab722dc6f8e393b543dc20c69d3f02200ea99a67617c79926011",
+      "old_message_sha256": "ca0e01da00c9d608707ca2b04bc2742103398203389d410c534ecbbb5b0f76ee",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/statistics.py",
+          "new_span": [
+            0,
+            65
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/statistics.py",
+          "old_span": [
+            0,
+            75
+          ],
+          "relative": "lib/statistics.py",
+          "source_sha256": "05a091943eb6a01272f95c190e99bab0d33c72a108aef45261c838842301991b"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_statistics_harmonic_mean.py",
+      "index": 3171,
+      "new_message_sha256": "e1e59122ce6686c442a2a47b425b24ccad74aac293ddb7f92261f5f260042c99",
+      "old_message_sha256": "065e60b07bcda515d525755a87faf5d4d8ba509c964dc2c96d1f0dd304c8b2c7",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/statistics.py",
+          "new_span": [
+            0,
+            65
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/statistics.py",
+          "old_span": [
+            0,
+            75
+          ],
+          "relative": "lib/statistics.py",
+          "source_sha256": "05a091943eb6a01272f95c190e99bab0d33c72a108aef45261c838842301991b"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_statistics_kde.py",
+      "index": 3172,
+      "new_message_sha256": "1eded6c5615402fcd6f14e9a84ff52127d47b4a98db7f091d39fa204fdd2e218",
+      "old_message_sha256": "355eedf0caf0ccb96b076961a609185b57aeaadcdef87c22a376e8b4cea2e641",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/statistics.py",
+          "new_span": [
+            0,
+            65
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/statistics.py",
+          "old_span": [
+            0,
+            75
+          ],
+          "relative": "lib/statistics.py",
+          "source_sha256": "05a091943eb6a01272f95c190e99bab0d33c72a108aef45261c838842301991b"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_statistics_kde_random.py",
+      "index": 3173,
+      "new_message_sha256": "0d95c9c4817741d09dce677ef68e8e0e0d4652187781e5fe899718e038da3031",
+      "old_message_sha256": "df1758ba8d433bb10d6e8d9aba478dc160f0c08e0ed3641c81b0e008758e12c7",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/statistics.py",
+          "new_span": [
+            0,
+            65
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/statistics.py",
+          "old_span": [
+            0,
+            75
+          ],
+          "relative": "lib/statistics.py",
+          "source_sha256": "05a091943eb6a01272f95c190e99bab0d33c72a108aef45261c838842301991b"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_statistics_linear_regression.py",
+      "index": 3174,
+      "new_message_sha256": "f9553e0768a9381c1c4a5144551e38b10d55d733acbbe4097443dc379abdee8a",
+      "old_message_sha256": "fef2854c68d96467ab2df8c2960073e7403089f9dbd3623ba4730a8dd4974f2d",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/statistics.py",
+          "new_span": [
+            0,
+            65
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/statistics.py",
+          "old_span": [
+            0,
+            75
+          ],
+          "relative": "lib/statistics.py",
+          "source_sha256": "05a091943eb6a01272f95c190e99bab0d33c72a108aef45261c838842301991b"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_statistics_mean.py",
+      "index": 3175,
+      "new_message_sha256": "3ea5ab9df4d82d7c8c90d82b9727b0a10b0efeefd21320755eeee7bed1649707",
+      "old_message_sha256": "30237f52640b1d1931738983e0985fb22847fc3238e3bdf0c5a460a0177fcad7",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/statistics.py",
+          "new_span": [
+            0,
+            65
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/statistics.py",
+          "old_span": [
+            0,
+            75
+          ],
+          "relative": "lib/statistics.py",
+          "source_sha256": "05a091943eb6a01272f95c190e99bab0d33c72a108aef45261c838842301991b"
+        },
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/statistics.py",
+          "new_span": [
+            225,
+            290
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/statistics.py",
+          "old_span": [
+            235,
+            310
+          ],
+          "relative": "lib/statistics.py",
+          "source_sha256": "05a091943eb6a01272f95c190e99bab0d33c72a108aef45261c838842301991b"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_statistics_median_str.py",
+      "index": 3176,
+      "new_message_sha256": "119952b0fd248b86db7c8700accb73ad3d7bd35c24de8bfffbdc969ab9aecba7",
+      "old_message_sha256": "4fd3493ad782731b536ca286d52ab8bf198d2f47cafef3530769b7441317f2fa",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/statistics.py",
+          "new_span": [
+            0,
+            65
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/statistics.py",
+          "old_span": [
+            0,
+            75
+          ],
+          "relative": "lib/statistics.py",
+          "source_sha256": "05a091943eb6a01272f95c190e99bab0d33c72a108aef45261c838842301991b"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_statistics_mode_float.py",
+      "index": 3177,
+      "new_message_sha256": "55d89bae6fdad76ce908497263a4130ad93b03631c1872bda929b015b39db060",
+      "old_message_sha256": "47f2a4aff89efd233c35657c4e3fa8b368d30fe626b5f9999f1198d181e1d885",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/statistics.py",
+          "new_span": [
+            0,
+            65
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/statistics.py",
+          "old_span": [
+            0,
+            75
+          ],
+          "relative": "lib/statistics.py",
+          "source_sha256": "05a091943eb6a01272f95c190e99bab0d33c72a108aef45261c838842301991b"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_statistics_quantiles_int.py",
+      "index": 3179,
+      "new_message_sha256": "16a5434177f93e9a48264696dda9b0f532ca100877a6d51770d0d252c637900d",
+      "old_message_sha256": "bbe95bbfdd12a016f8c01bd8e12d2ef6d7f3e5dbbbfb416dc391f75d80fe315d",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/statistics.py",
+          "new_span": [
+            0,
+            65
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/statistics.py",
+          "old_span": [
+            0,
+            75
+          ],
+          "relative": "lib/statistics.py",
+          "source_sha256": "05a091943eb6a01272f95c190e99bab0d33c72a108aef45261c838842301991b"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_statistics_variance.py",
+      "index": 3180,
+      "new_message_sha256": "56c45349f06580d742cb967d6b5719aea87178ea665f97cf926390e558208255",
+      "old_message_sha256": "2fb38ee5cc3da60d4f54c266174d850aa0b2d9bee99afe9dd5f2ad0c4067e2cb",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/statistics.py",
+          "new_span": [
+            0,
+            65
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/statistics.py",
+          "old_span": [
+            0,
+            75
+          ],
+          "relative": "lib/statistics.py",
+          "source_sha256": "05a091943eb6a01272f95c190e99bab0d33c72a108aef45261c838842301991b"
+        },
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/statistics.py",
+          "new_span": [
+            230,
+            295
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/statistics.py",
+          "old_span": [
+            240,
+            315
+          ],
+          "relative": "lib/statistics.py",
+          "source_sha256": "05a091943eb6a01272f95c190e99bab0d33c72a108aef45261c838842301991b"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_urllib_parse_deprecated.py",
+      "index": 3189,
+      "new_message_sha256": "8d7a7b7d3df4c7cf0f541c216c0da757022edf4a3d159bfb571809bde6d28683",
+      "old_message_sha256": "bd044c37a46b8cb7dc856e0417edb04823b2926b06314c4b4b3e993bd0b7a5a2",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/urllib/parse.py",
+          "new_span": [
+            0,
+            67
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/urllib/parse.py",
+          "old_span": [
+            0,
+            77
+          ],
+          "relative": "lib/urllib/parse.py",
+          "source_sha256": "f5914562f9903ab7dde287fcb8bc0b1667a812f82e7e7c4419fed0493bfd0148"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_urllib_parse_doseq_mixed.py",
+      "index": 3190,
+      "new_message_sha256": "7520aebc6623c57275d99560b5c31273d1e6b73b30647a3c5a02d4933e8f79c5",
+      "old_message_sha256": "2dcef34828ea7325fcc23772d72cf9d22d84f8f6bac83c8737d5b0e7ad8c334e",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/urllib/parse.py",
+          "new_span": [
+            0,
+            67
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/urllib/parse.py",
+          "old_span": [
+            0,
+            77
+          ],
+          "relative": "lib/urllib/parse.py",
+          "source_sha256": "f5914562f9903ab7dde287fcb8bc0b1667a812f82e7e7c4419fed0493bfd0148"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_urllib_parse_not_sequence.py",
+      "index": 3193,
+      "new_message_sha256": "be03b7be36b3be0ad1186be7f5b66e2f06fe200c42a8027003290436bd8aec22",
+      "old_message_sha256": "11e083d3fec1bf383a21f15e1fde8f8c5987a93aea2b97dd063c25189bf706e8",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/urllib/parse.py",
+          "new_span": [
+            0,
+            67
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/urllib/parse.py",
+          "old_span": [
+            0,
+            77
+          ],
+          "relative": "lib/urllib/parse.py",
+          "source_sha256": "f5914562f9903ab7dde287fcb8bc0b1667a812f82e7e7c4419fed0493bfd0148"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_urllib_parse_unquote_to_bytes.py",
+      "index": 3194,
+      "new_message_sha256": "44a8e9d71804ab13f39dbd97288e69058e006c243f609527d4d7c2f11a25ac55",
+      "old_message_sha256": "dea2a404a3e9a6e64c76c0acbfa285bec1679891b9f10811f1274c68a6b75b36",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/urllib/parse.py",
+          "new_span": [
+            0,
+            67
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/urllib/parse.py",
+          "old_span": [
+            0,
+            77
+          ],
+          "relative": "lib/urllib/parse.py",
+          "source_sha256": "f5914562f9903ab7dde287fcb8bc0b1667a812f82e7e7c4419fed0493bfd0148"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_warnings_category_tuple.py",
+      "index": 3195,
+      "new_message_sha256": "a3275aadebde29bf23318a1e9cf9251d8aa8bb78a70a4390faaf434f71b89cf5",
+      "old_message_sha256": "46b2cb3595734c5bd7eb6bf916d7f6fc184c7a375067d23ffa38700124d1e9fb",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/warnings.py",
+          "new_span": [
+            0,
+            63
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/warnings.py",
+          "old_span": [
+            0,
+            73
+          ],
+          "relative": "lib/warnings.py",
+          "source_sha256": "be4467c02d67040c87e31ede6787740815085298a880f2aa126b02fbabc0f133"
+        },
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/warnings.py",
+          "new_span": [
+            316,
+            379
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/warnings.py",
+          "old_span": [
+            326,
+            399
+          ],
+          "relative": "lib/warnings.py",
+          "source_sha256": "be4467c02d67040c87e31ede6787740815085298a880f2aa126b02fbabc0f133"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_warnings_deprecated.py",
+      "index": 3196,
+      "new_message_sha256": "6b36f39acd20fa4a0b8513b4546f84e6c70ed834e7572f5c38ff34c8f94c2d6b",
+      "old_message_sha256": "ceb84ea79a83ad2211dc6f227950af02b461546b54c3ee303a92f0894b04deb0",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/warnings.py",
+          "new_span": [
+            0,
+            63
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/warnings.py",
+          "old_span": [
+            0,
+            73
+          ],
+          "relative": "lib/warnings.py",
+          "source_sha256": "be4467c02d67040c87e31ede6787740815085298a880f2aa126b02fbabc0f133"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/lib_warnings_skip_prefixes_mixed.py",
+      "index": 3199,
+      "new_message_sha256": "0e5f7d4f571cf3c6c62c74da36ac4692c0bec107e70404a432b71047f4b14035",
+      "old_message_sha256": "293c9359fd198277626ec31bc856137aa0ef521584a53c8b769311aa6b612dd5",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/warnings.py",
+          "new_span": [
+            0,
+            63
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/warnings.py",
+          "old_span": [
+            0,
+            73
+          ],
+          "relative": "lib/warnings.py",
+          "source_sha256": "be4467c02d67040c87e31ede6787740815085298a880f2aa126b02fbabc0f133"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/weakref_builtin.py",
+      "index": 3244,
+      "new_message_sha256": "05133e4f052418fd3891ad0c6237a7ef1260e702eb82750b6810992c7d00e01a",
+      "old_message_sha256": "0610530d47f2a41571e3a25c447a54bf6c8235fdf2283d89a2280ec6ce59152b",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/_pystachy_weakref.py",
+          "new_span": [
+            0,
+            72
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/_pystachy_weakref.py",
+          "old_span": [
+            0,
+            82
+          ],
+          "relative": "lib/_pystachy_weakref.py",
+          "source_sha256": "da4181f6adb4cbbed1d3c45d95e32bd39e8ac210638ab902f26fb0b68bc7cbfe"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/weakref_nested.py",
+      "index": 3251,
+      "new_message_sha256": "93be84850f05eab825ec6678c4ccc8a604153e75a3f7cefba14a5c2f1015011e",
+      "old_message_sha256": "a5f7034557fc445752370d237938ec8116ee061167386c1cf98d8675a214e441",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/_pystachy_weakref.py",
+          "new_span": [
+            0,
+            72
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/_pystachy_weakref.py",
+          "old_span": [
+            0,
+            82
+          ],
+          "relative": "lib/_pystachy_weakref.py",
+          "source_sha256": "da4181f6adb4cbbed1d3c45d95e32bd39e8ac210638ab902f26fb0b68bc7cbfe"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/library/weakref_slots.py",
+      "index": 3257,
+      "new_message_sha256": "d680bb2299d714a3eac9bcfdd1e24415fc53cf3fc62816eb8d9edadc8a0dceb9",
+      "old_message_sha256": "83e2f807a646fc8ebd3ec8aaf5972d2d480edf796688134f221cea58092b2af4",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/_pystachy_weakref.py",
+          "new_span": [
+            0,
+            72
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/_pystachy_weakref.py",
+          "old_span": [
+            0,
+            82
+          ],
+          "relative": "lib/_pystachy_weakref.py",
+          "source_sha256": "da4181f6adb4cbbed1d3c45d95e32bd39e8ac210638ab902f26fb0b68bc7cbfe"
+        }
+      ],
+      "status": "checkout_path_only"
+    },
+    {
+      "all_residual_bytes_identical": true,
+      "case": "tests/errors/reflection/reflect_attrgetter_runtime.py",
+      "index": 3420,
+      "new_message_sha256": "9c084f475f2d7acd56cee91fe5258074d3a07d66c8a48736318ada1a12e4f118",
+      "old_message_sha256": "cd7fdd432e180c60d23ed594eaec8658dc7a74cf4d2ce699d86e23f29ec3b567",
+      "replacements": [
+        {
+          "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/operator.py",
+          "new_span": [
+            0,
+            63
+          ],
+          "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/operator.py",
+          "old_span": [
+            0,
+            73
+          ],
+          "relative": "lib/operator.py",
+          "source_sha256": "7d42396ef02c03aa69eb86643769cdb889ab9fc66ffd140bc0efa0896fc94c99"
+        }
+      ],
+      "status": "checkout_path_only"
+    }
+  ],
+  "checkout_path_only_cases": 61,
+  "files": {
+    "_pystachy_itertools.py": {
+      "baseline_git_ref": "ea68529b8a590eb8f3df7200b857e1d16becd7a3",
+      "before_and_after_match": true,
+      "bytes": 33009,
+      "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/_pystachy_itertools.py",
+      "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/_pystachy_itertools.py",
+      "relative": "lib/_pystachy_itertools.py",
+      "sha256": "14f451cf7647016ad8105aa988b9cbabe4fe3f5a08f2710f6ed2db5d81a00566"
+    },
+    "_pystachy_weakref.py": {
+      "baseline_git_ref": "ea68529b8a590eb8f3df7200b857e1d16becd7a3",
+      "before_and_after_match": true,
+      "bytes": 4563,
+      "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/_pystachy_weakref.py",
+      "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/_pystachy_weakref.py",
+      "relative": "lib/_pystachy_weakref.py",
+      "sha256": "da4181f6adb4cbbed1d3c45d95e32bd39e8ac210638ab902f26fb0b68bc7cbfe"
+    },
+    "collections/__init__.py": {
+      "baseline_git_ref": "ea68529b8a590eb8f3df7200b857e1d16becd7a3",
+      "before_and_after_match": true,
+      "bytes": 48812,
+      "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/collections/__init__.py",
+      "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/collections/__init__.py",
+      "relative": "lib/collections/__init__.py",
+      "sha256": "8a6533ddf04c4823e1c1da10925028613420cc4e5cb6264e6066fdd3739b4852"
+    },
+    "csv.py": {
+      "baseline_git_ref": "ea68529b8a590eb8f3df7200b857e1d16becd7a3",
+      "before_and_after_match": true,
+      "bytes": 42860,
+      "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/csv.py",
+      "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/csv.py",
+      "relative": "lib/csv.py",
+      "sha256": "29676a25a82679e93c6d0eb771a3f60890aedf49941206c0387ce59696b7c3c4"
+    },
+    "datetime.py": {
+      "baseline_git_ref": "ea68529b8a590eb8f3df7200b857e1d16becd7a3",
+      "before_and_after_match": true,
+      "bytes": 117346,
+      "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/datetime.py",
+      "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/datetime.py",
+      "relative": "lib/datetime.py",
+      "sha256": "d269c51c55e7668b988c8194a7a2e643a39aa3a2770a727c178a5c898b91c239"
+    },
+    "difflib.py": {
+      "baseline_git_ref": "ea68529b8a590eb8f3df7200b857e1d16becd7a3",
+      "before_and_after_match": true,
+      "bytes": 85162,
+      "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/difflib.py",
+      "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/difflib.py",
+      "relative": "lib/difflib.py",
+      "sha256": "4d33db46d2f0748bd674b5ae2f52c59ab0cab0865c465a99ea9521d8751aea0f"
+    },
+    "functools.py": {
+      "baseline_git_ref": "ea68529b8a590eb8f3df7200b857e1d16becd7a3",
+      "before_and_after_match": true,
+      "bytes": 16995,
+      "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/functools.py",
+      "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/functools.py",
+      "relative": "lib/functools.py",
+      "sha256": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703"
+    },
+    "gettext.py": {
+      "baseline_git_ref": "ea68529b8a590eb8f3df7200b857e1d16becd7a3",
+      "before_and_after_match": true,
+      "bytes": 22096,
+      "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/gettext.py",
+      "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/gettext.py",
+      "relative": "lib/gettext.py",
+      "sha256": "97b7fa3d8112826dae4d021a6445fe791521524bd4b06e729d0497ed59a85e63"
+    },
+    "json.py": {
+      "baseline_git_ref": "ea68529b8a590eb8f3df7200b857e1d16becd7a3",
+      "before_and_after_match": true,
+      "bytes": 27811,
+      "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/json.py",
+      "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/json.py",
+      "relative": "lib/json.py",
+      "sha256": "72fb29122acddd3b4d1bd43d8ae9e7fee506b1d7d4f30559edeeebd92ac044ce"
+    },
+    "operator.py": {
+      "baseline_git_ref": "ea68529b8a590eb8f3df7200b857e1d16becd7a3",
+      "before_and_after_match": true,
+      "bytes": 11429,
+      "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/operator.py",
+      "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/operator.py",
+      "relative": "lib/operator.py",
+      "sha256": "7d42396ef02c03aa69eb86643769cdb889ab9fc66ffd140bc0efa0896fc94c99"
+    },
+    "random.py": {
+      "baseline_git_ref": "ea68529b8a590eb8f3df7200b857e1d16becd7a3",
+      "before_and_after_match": true,
+      "bytes": 42756,
+      "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/random.py",
+      "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/random.py",
+      "relative": "lib/random.py",
+      "sha256": "91e7fa770bfc1affb76a6441a10e1913af8993d8c657c12ffe6cbadc3e3add1e"
+    },
+    "shlex.py": {
+      "baseline_git_ref": "ea68529b8a590eb8f3df7200b857e1d16becd7a3",
+      "before_and_after_match": true,
+      "bytes": 16501,
+      "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/shlex.py",
+      "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/shlex.py",
+      "relative": "lib/shlex.py",
+      "sha256": "7392b7c738fe818c43a8031820bef96db0b9f598d354a9fac0b771546a4fdba4"
+    },
+    "statistics.py": {
+      "baseline_git_ref": "ea68529b8a590eb8f3df7200b857e1d16becd7a3",
+      "before_and_after_match": true,
+      "bytes": 68829,
+      "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/statistics.py",
+      "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/statistics.py",
+      "relative": "lib/statistics.py",
+      "sha256": "05a091943eb6a01272f95c190e99bab0d33c72a108aef45261c838842301991b"
+    },
+    "urllib/parse.py": {
+      "baseline_git_ref": "ea68529b8a590eb8f3df7200b857e1d16becd7a3",
+      "before_and_after_match": true,
+      "bytes": 66448,
+      "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/urllib/parse.py",
+      "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/urllib/parse.py",
+      "relative": "lib/urllib/parse.py",
+      "sha256": "f5914562f9903ab7dde287fcb8bc0b1667a812f82e7e7c4419fed0493bfd0148"
+    },
+    "warnings.py": {
+      "baseline_git_ref": "ea68529b8a590eb8f3df7200b857e1d16becd7a3",
+      "before_and_after_match": true,
+      "bytes": 31522,
+      "new_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/lib/warnings.py",
+      "old_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/ref/lib/warnings.py",
+      "relative": "lib/warnings.py",
+      "sha256": "be4467c02d67040c87e31ede6787740815085298a880f2aa126b02fbabc0f133"
+    }
+  },
+  "no_unexplained_diagnostics_or_status_changes": true,
+  "schema": 1,
+  "scope": "Diagnostic byte proof only; changed LLVM is not claimed equivalent or passed.",
+  "strict_comparison_sha256": "2ec2357c33583bc5d3243ffd3d6b80f74785219f6c5a709b7734ef3cbf4e5e0c",
+  "strict_result_unchanged": true,
+  "unexplained_cases": 0
+}

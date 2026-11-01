@@ -1,0 +1,100 @@
+{
+  "archive": {
+    "compressed_bytes": 36570,
+    "internal_manifest_bytes": 3070,
+    "internal_manifest_member": "local/_archive-manifests/initial-ci-evidence.json",
+    "internal_manifest_mode": "0644",
+    "internal_manifest_sha256": "a6a51905ebd3b04f98ab1c5a0f3f33ff89934e3512ca52e7f4047373b6c39f0f",
+    "mode": "0644",
+    "path": "initial-ci/ci-evidence.tar.gz",
+    "payload_bytes": 176370,
+    "payload_members": 11,
+    "sha256": "fb5a45dae35cf26a8a0b99c314e482f61bac710648a3587a594d7f05eab993a3",
+    "verified_all_member_hashes_modes_sizes": true
+  },
+  "direct_files": [
+    "initial-ci/contracts-failure-assessment.json",
+    "initial-ci/failure-assessment.json",
+    "initial-ci/first-head-summary.json",
+    "initial-ci/jobs-assessment.json",
+    "initial-ci/source-binding.json"
+  ],
+  "exclusions": [
+    "artifact ZIP archives",
+    "native compiler executables",
+    "LLVM IR and object/bitcode payloads",
+    "coverage binary profiles",
+    "copied source/case output trees",
+    "temporary signed download URL files",
+    "raw API snapshots except selected compact ledgers"
+  ],
+  "raw_member_mappings": [
+    {
+      "bytes": 50644,
+      "member": "initial-ci/aggregate-failure.log",
+      "sha256": "ca8799d0bfc5cae9647e354c40e81054e46c292f99f8de72527ad752ea986f7d",
+      "source": "/workspace/scratch/8f4dd6deebd9/prototype-996/ci/aggregate-failure.log"
+    },
+    {
+      "bytes": 13950,
+      "member": "initial-ci/artifact-checksums-first-head.json",
+      "sha256": "fe1d8d99d442d29b41ee59c899a95d6b7151b5ee3fba9ee0fe34abf66c6cc8a6",
+      "source": "/workspace/scratch/8f4dd6deebd9/prototype-996/ci/artifact-checksums-first-head.json"
+    },
+    {
+      "bytes": 699,
+      "member": "initial-ci/contracts-failure-assessment.json",
+      "sha256": "9b2d9d530035cd2a3c238cdab5392149a2ddaba2297e7975a8fa3aa3196b5a83",
+      "source": "/workspace/scratch/8f4dd6deebd9/prototype-996/ci/contracts-failure-assessment.json"
+    },
+    {
+      "bytes": 30059,
+      "member": "initial-ci/contracts-failure.log",
+      "sha256": "efc24c9fc96bb6a5fc32d7353469f8ca770a4bc6c442870aef326bcb52f3c5b8",
+      "source": "/workspace/scratch/8f4dd6deebd9/prototype-996/ci/contracts-failure.log"
+    },
+    {
+      "bytes": 30223,
+      "member": "initial-ci/coverage-hosted-ffi-ir-failure.log",
+      "sha256": "c2de0a49c481c40e71cd6d7a384160207e2c8464abf826a3201b63cae557820d",
+      "source": "/workspace/scratch/8f4dd6deebd9/prototype-996/ci/coverage-hosted-ffi-ir-failure.log"
+    },
+    {
+      "bytes": 1458,
+      "member": "initial-ci/failure-assessment.json",
+      "sha256": "282f43baa93a7c66513ac4e3921c6dde4d8ee2dd2884716fd054e2c27a203100",
+      "source": "/workspace/scratch/8f4dd6deebd9/prototype-996/ci/failure-assessment.json"
+    },
+    {
+      "bytes": 5099,
+      "member": "initial-ci/first-head-summary.json",
+      "sha256": "2882ba63ea05fdc68ce6bac3572fb921c55ca089d416bdd20c51528dd5ca1912",
+      "source": "/workspace/scratch/8f4dd6deebd9/prototype-996/ci/first-head-summary.json"
+    },
+    {
+      "bytes": 26330,
+      "member": "initial-ci/jobs-assessment.json",
+      "sha256": "5240c5e7dd1da7da8c67fa50b328caea631324be5fa0674839a3abdc4cb0b569",
+      "source": "/workspace/scratch/8f4dd6deebd9/prototype-996/ci/jobs-assessment.json"
+    },
+    {
+      "bytes": 3446,
+      "member": "initial-ci/source-binding.json",
+      "sha256": "1ead19bccf55de597ca052461396e037eae072143a447975727fe97608d0e77c",
+      "source": "/workspace/scratch/8f4dd6deebd9/prototype-996/ci/source-binding.json"
+    },
+    {
+      "bytes": 11259,
+      "member": "initial-ci/verification-contracts.json",
+      "sha256": "b7cbd6ff3a63ecd2ea6f77f67bb269ce7d4be8735383d72de5b02e5afa198f41",
+      "source": "/workspace/scratch/8f4dd6deebd9/prototype-996/ci/original-reports/verification-contracts/verification.json"
+    }
+  ],
+  "schema": 1,
+  "scope": "Historical first-policy CI failure",
+  "selection_allowlist_member": "initial-ci/selection-allowlist.json",
+  "selection_allowlist_sha256": "a3677759955644bbe551848b5951d793f7d5ba7aa6ef928676d12c831e561875",
+  "selection_file_count": 10,
+  "selection_total_bytes": 173167,
+  "verification": "Every source matched the CI owner's frozen allowlist hash. Every tar member was read back and checked for SHA-256, size and mode. No JSON, logs, verdicts or original reports were rewritten."
+}

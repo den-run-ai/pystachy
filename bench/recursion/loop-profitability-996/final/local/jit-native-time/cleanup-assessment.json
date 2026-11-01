@@ -1,0 +1,1568 @@
+{
+  "archive_note": "Generated temporary copies may be excluded from packed evidence using the exact file hashes recorded here. Original command reports, stdout/stderr, failure statuses and this assessment must remain. No local files were removed.",
+  "attempts": [
+    {
+      "binary_identities": {
+        "baseline": {
+          "bytes": 5092736,
+          "ctime_ns": 1793503664307168689,
+          "device": 27,
+          "inode": 2636341,
+          "mode": 33261,
+          "mtime_ns": 1793500300297012896,
+          "path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final/build/ref/pystachy",
+          "realpath": "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final/build/ref/pystachy",
+          "sha256": "253bb154343ae0221b185b7b8002124b237e2efa9819db6a00cc986fa22da92d",
+          "symlink": null
+        },
+        "candidate": {
+          "bytes": 5092736,
+          "ctime_ns": 1793504278018324276,
+          "device": 27,
+          "inode": 2525665,
+          "mode": 33261,
+          "mtime_ns": 1793504278018324276,
+          "path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final/pystachy",
+          "realpath": "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final/pystachy",
+          "sha256": "aa1c7c0a0fe38d1e2da4e0a75017020aff0b5add647996e250818dd28c9b2bef",
+          "symlink": null
+        }
+      },
+      "complete": false,
+      "directory": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time",
+      "errors": [
+        "RuntimeError('warm preparation/reuse failed; no timed samples were attempted')"
+      ],
+      "inputs_stable": true,
+      "phases": [
+        {
+          "command": [
+            "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final/build/ref/pystachy",
+            "run",
+            "/workspace/scratch/8f4dd6deebd9/pystachy-baseline/bench/smoke/text.py",
+            "fnmatch",
+            "1000"
+          ],
+          "complete": true,
+          "cpu_s": 19.122536,
+          "cwd": "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final/build/ref",
+          "environment": {
+            "HOME": "/root",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "PATH": "/usr/lib/llvm-18/bin:/usr/bin:/bin",
+            "PYSTACHY_CACHE": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time/baseline/cache",
+            "PYSTACHY_HOME": "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final/build/ref",
+            "PYSTACHY_LLVM": "/usr/lib/llvm-18/bin",
+            "PYSTACHY_OPT": "",
+            "PYTHONHASHSEED": "0",
+            "PYTHONNOUSERSITE": "1",
+            "TMPDIR": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time/tmp/baseline",
+            "TZ": "UTC"
+          },
+          "phase": "warm-build",
+          "pid": 85,
+          "returncode": 0,
+          "role": "baseline",
+          "stderr": "seconds 0.0591250340003171\n",
+          "stdout": "6000\n",
+          "timed_out": false,
+          "valid": true,
+          "validation_errors": [],
+          "wall_s": 19.131567978
+        },
+        {
+          "command": [
+            "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final/pystachy",
+            "run",
+            "/workspace/scratch/8f4dd6deebd9/pystachy-baseline/bench/smoke/text.py",
+            "fnmatch",
+            "1000"
+          ],
+          "complete": true,
+          "cpu_s": 16.202907000000003,
+          "cwd": "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final",
+          "environment": {
+            "HOME": "/root",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "PATH": "/usr/lib/llvm-18/bin:/usr/bin:/bin",
+            "PYSTACHY_CACHE": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time/candidate/cache",
+            "PYSTACHY_HOME": "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final",
+            "PYSTACHY_LLVM": "/usr/lib/llvm-18/bin",
+            "PYSTACHY_OPT": "",
+            "PYTHONHASHSEED": "0",
+            "PYTHONNOUSERSITE": "1",
+            "TMPDIR": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time/tmp/candidate",
+            "TZ": "UTC"
+          },
+          "phase": "warm-build",
+          "pid": 118,
+          "returncode": 1,
+          "role": "candidate",
+          "stderr": "rmdir: failed to remove '/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time/tmp/candidate/tmpzkpi_9zk': Directory not empty\n",
+          "stdout": "",
+          "timed_out": false,
+          "valid": false,
+          "validation_errors": [
+            "command did not complete successfully",
+            "stdout differs from the CPython oracle",
+            "expected exactly one in-program seconds line"
+          ],
+          "wall_s": 16.213525829
+        },
+        {
+          "command": [
+            "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final/build/ref/pystachy",
+            "run",
+            "/workspace/scratch/8f4dd6deebd9/pystachy-baseline/bench/smoke/text.py",
+            "fnmatch",
+            "1000"
+          ],
+          "complete": true,
+          "cpu_s": 3.136980999999998,
+          "cwd": "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final/build/ref",
+          "environment": {
+            "HOME": "/root",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "PATH": "/usr/lib/llvm-18/bin:/usr/bin:/bin",
+            "PYSTACHY_CACHE": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time/baseline/cache",
+            "PYSTACHY_HOME": "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final/build/ref",
+            "PYSTACHY_LLVM": "/usr/lib/llvm-18/bin",
+            "PYSTACHY_OPT": "",
+            "PYTHONHASHSEED": "0",
+            "PYTHONNOUSERSITE": "1",
+            "TMPDIR": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time/tmp/baseline",
+            "TZ": "UTC"
+          },
+          "phase": "warm-reuse",
+          "pid": 151,
+          "returncode": 0,
+          "role": "baseline",
+          "stderr": "seconds 0.05186935500387335\n",
+          "stdout": "6000\n",
+          "timed_out": false,
+          "valid": true,
+          "validation_errors": [],
+          "wall_s": 3.147281553
+        },
+        {
+          "command": [
+            "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final/pystachy",
+            "run",
+            "/workspace/scratch/8f4dd6deebd9/pystachy-baseline/bench/smoke/text.py",
+            "fnmatch",
+            "1000"
+          ],
+          "complete": true,
+          "cpu_s": 3.408974000000001,
+          "cwd": "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final",
+          "environment": {
+            "HOME": "/root",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "PATH": "/usr/lib/llvm-18/bin:/usr/bin:/bin",
+            "PYSTACHY_CACHE": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time/candidate/cache",
+            "PYSTACHY_HOME": "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final",
+            "PYSTACHY_LLVM": "/usr/lib/llvm-18/bin",
+            "PYSTACHY_OPT": "",
+            "PYTHONHASHSEED": "0",
+            "PYTHONNOUSERSITE": "1",
+            "TMPDIR": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time/tmp/candidate",
+            "TZ": "UTC"
+          },
+          "phase": "warm-reuse",
+          "pid": 156,
+          "returncode": 0,
+          "role": "candidate",
+          "stderr": "seconds 0.05283380900073098\n",
+          "stdout": "6000\n",
+          "timed_out": false,
+          "valid": true,
+          "validation_errors": [],
+          "wall_s": 3.409866775
+        }
+      ],
+      "report": {
+        "bytes": 615939,
+        "ctime_ns": 1793504525448732823,
+        "inode": 2764124,
+        "mode": 33188,
+        "mtime_ns": 1793504525448732823,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time/report.json",
+        "sha256": "b0fdbde8f3485d89044c265137295f2e1f01ee1f8aaa5b853eba160481b6eba9"
+      },
+      "runtime_artifacts_stable": true,
+      "temporary_leftovers": {
+        "baseline": {
+          "bytes": 4096,
+          "ctime_ns": 1793504520522955252,
+          "inode": 2764036,
+          "kind": "directory",
+          "mode": 16877,
+          "mtime_ns": 1793504499867923278,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time/tmp/baseline"
+        },
+        "candidate": {
+          "bytes": 4096,
+          "ctime_ns": 1793504524974746461,
+          "inode": 2764037,
+          "kind": "directory",
+          "mode": 16877,
+          "mtime_ns": 1793504482768724519,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time/tmp/candidate"
+        },
+        "candidate/tmpzkpi_9zk": {
+          "bytes": 4096,
+          "ctime_ns": 1793504524974746461,
+          "inode": 2764074,
+          "kind": "directory",
+          "mode": 16832,
+          "mtime_ns": 1793504520890937993,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time/tmp/candidate/tmpzkpi_9zk"
+        },
+        "candidate/tmpzkpi_9zk/mpz": {
+          "bytes": 4096,
+          "ctime_ns": 1793504512999307913,
+          "inode": 2764092,
+          "kind": "directory",
+          "mode": 16877,
+          "mtime_ns": 1793504502838431604,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time/tmp/candidate/tmpzkpi_9zk/mpz"
+        },
+        "candidate/tmpzkpi_9zk/mpz/mpz.c": {
+          "bytes": 22409,
+          "ctime_ns": 1793504512947310350,
+          "inode": 2764094,
+          "kind": "file",
+          "mode": 33188,
+          "mtime_ns": 1793504502838476808,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time/tmp/candidate/tmpzkpi_9zk/mpz/mpz.c",
+          "sha256": "2d648cec5de20c6bb7d4882a364cfc9fa1d355395255c1d0e82e4389bde03afa"
+        },
+        "candidate/tmpzkpi_9zk/prog.ll": {
+          "bytes": 2774560,
+          "ctime_ns": 1793504520890937993,
+          "inode": 2764111,
+          "kind": "file",
+          "mode": 33188,
+          "mtime_ns": 1793504502831784407,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time/tmp/candidate/tmpzkpi_9zk/prog.ll",
+          "sha256": "21d968b9787ea97d2f8e6f5fae8f25b9c09ef2b19f39f7342d2e8d495ceb0953"
+        },
+        "candidate/tmpzkpi_9zk/rtpy.ll": {
+          "bytes": 549411,
+          "ctime_ns": 1793504520890937993,
+          "inode": 2764113,
+          "kind": "file",
+          "mode": 33188,
+          "mtime_ns": 1793504502833687849,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time/tmp/candidate/tmpzkpi_9zk/rtpy.ll",
+          "sha256": "940a694da5ea93214d1308a8eb635b47d8d0a9d4256c63d084c24f5099f8aa5f"
+        },
+        "candidate/tmpzkpi_9zk/runtime-c.bc": {
+          "bytes": 550628,
+          "ctime_ns": 1793504520890937993,
+          "inode": 2764114,
+          "kind": "file",
+          "mode": 33188,
+          "mtime_ns": 1793504506851596027,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time/tmp/candidate/tmpzkpi_9zk/runtime-c.bc",
+          "sha256": "a417ef3b142fefdeb4c33fe5ae9d33e9bea3f6b4e86f50f75e9a397ba596a5b5"
+        },
+        "candidate/tmpzkpi_9zk/runtime-l.bc": {
+          "bytes": 758820,
+          "ctime_ns": 1793504520890937993,
+          "inode": 2764115,
+          "kind": "file",
+          "mode": 33188,
+          "mtime_ns": 1793504507051586655,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time/tmp/candidate/tmpzkpi_9zk/runtime-l.bc",
+          "sha256": "dfa54a548654ccd0e7e8ea5e2b2ebad76ec26eb303840b5cb8318bae451aa23f"
+        },
+        "candidate/tmpzkpi_9zk/runtime-s.ll": {
+          "bytes": 3144469,
+          "ctime_ns": 1793504520890937993,
+          "inode": 2764116,
+          "kind": "file",
+          "mode": 33188,
+          "mtime_ns": 1793504506691603525,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time/tmp/candidate/tmpzkpi_9zk/runtime-s.ll",
+          "sha256": "7a4cd40145fadb38cf41259e8c993f6917bd13af21e2584fbcdd968531c29926"
+        },
+        "candidate/tmpzkpi_9zk/runtime.c": {
+          "bytes": 420408,
+          "ctime_ns": 1793504520890937993,
+          "inode": 2764117,
+          "kind": "file",
+          "mode": 33188,
+          "mtime_ns": 1793504502834934921,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time/tmp/candidate/tmpzkpi_9zk/runtime.c",
+          "sha256": "a97102a4fe4a27a27e7d40f5978e36377440a13d000890bbc054bfe74ce50ae3"
+        },
+        "candidate/tmpzkpi_9zk/runtime.ll": {
+          "bytes": 3150125,
+          "ctime_ns": 1793504520890937993,
+          "inode": 2764118,
+          "kind": "file",
+          "mode": 33188,
+          "mtime_ns": 1793504506659605025,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time/tmp/candidate/tmpzkpi_9zk/runtime.ll",
+          "sha256": "00d85b59de8e318481640c4483cb39f8ce981db5813fb4563227358e987877ec"
+        },
+        "candidate/tmpzkpi_9zk/ryu": {
+          "bytes": 4096,
+          "ctime_ns": 1793504512999307913,
+          "inode": 2764093,
+          "kind": "directory",
+          "mode": 16877,
+          "mtime_ns": 1793504502838396384,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time/tmp/candidate/tmpzkpi_9zk/ryu"
+        },
+        "candidate/tmpzkpi_9zk/ryu/common.h": {
+          "bytes": 3648,
+          "ctime_ns": 1793504512947310350,
+          "inode": 2764096,
+          "kind": "file",
+          "mode": 33188,
+          "mtime_ns": 1793504502838351459,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time/tmp/candidate/tmpzkpi_9zk/ryu/common.h",
+          "sha256": "0bbd71d26da6193e678d0776cf418f43f287c73d6fd6725353df0aadf70f2a19"
+        },
+        "candidate/tmpzkpi_9zk/ryu/d2s.c": {
+          "bytes": 17681,
+          "ctime_ns": 1793504512947310350,
+          "inode": 2764098,
+          "kind": "file",
+          "mode": 33188,
+          "mtime_ns": 1793504502838201888,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time/tmp/candidate/tmpzkpi_9zk/ryu/d2s.c",
+          "sha256": "c6357b5d53ac1ba7f4984847d3a76f0803e0a931b7d0b02680656576829cf1d2"
+        },
+        "candidate/tmpzkpi_9zk/ryu/d2s_intrinsics.h": {
+          "bytes": 13011,
+          "ctime_ns": 1793504512947310350,
+          "inode": 2764099,
+          "kind": "file",
+          "mode": 33188,
+          "mtime_ns": 1793504502838396384,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time/tmp/candidate/tmpzkpi_9zk/ryu/d2s_intrinsics.h",
+          "sha256": "01d9bdaada67b42f2d1bbdebb3765867e6c44e3a181b806c1d7e851b93f9cc21"
+        },
+        "candidate/tmpzkpi_9zk/ryu/d2s_small_table.h": {
+          "bytes": 7637,
+          "ctime_ns": 1793504512947310350,
+          "inode": 2764100,
+          "kind": "file",
+          "mode": 33188,
+          "mtime_ns": 1793504502838431604,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time/tmp/candidate/tmpzkpi_9zk/ryu/d2s_small_table.h",
+          "sha256": "01f3d8a3ff739a26ecbddc2caae44c91574592b1de7c01fec67bc2d06672b606"
+        },
+        "candidate/tmpzkpi_9zk/ryu/digit_table.h": {
+          "bytes": 1745,
+          "ctime_ns": 1793504512947310350,
+          "inode": 2764101,
+          "kind": "file",
+          "mode": 33188,
+          "mtime_ns": 1793504502838367857,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time/tmp/candidate/tmpzkpi_9zk/ryu/digit_table.h",
+          "sha256": "8b782573abc0b8554d74163ae6c02f0beb5c30d1e63eaebdb0ddf2c98d817e01"
+        },
+        "candidate/tmpzkpi_9zk/ryu/ryu.h": {
+          "bytes": 1360,
+          "ctime_ns": 1793504512947310350,
+          "inode": 2764102,
+          "kind": "file",
+          "mode": 33188,
+          "mtime_ns": 1793504502838326927,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time/tmp/candidate/tmpzkpi_9zk/ryu/ryu.h",
+          "sha256": "b7feab0ba1df5e9ef3d602f386592ad152491405e49b408fb21c0e0e9e6bfb16"
+        },
+        "metadata": {
+          "bytes": 4096,
+          "ctime_ns": 1793504481238996385,
+          "inode": 2763979,
+          "kind": "directory",
+          "mode": 16877,
+          "mtime_ns": 1793504481238996385,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time/tmp/metadata"
+        }
+      },
+      "timed_observation_count": 0,
+      "valid": false
+    },
+    {
+      "binary_identities": {
+        "baseline": {
+          "bytes": 5092736,
+          "ctime_ns": 1793503664307168689,
+          "device": 27,
+          "inode": 2636341,
+          "mode": 33261,
+          "mtime_ns": 1793500300297012896,
+          "path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final/build/ref/pystachy",
+          "realpath": "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final/build/ref/pystachy",
+          "sha256": "253bb154343ae0221b185b7b8002124b237e2efa9819db6a00cc986fa22da92d",
+          "symlink": null
+        },
+        "candidate": {
+          "bytes": 5092736,
+          "ctime_ns": 1793504278018324276,
+          "device": 27,
+          "inode": 2525665,
+          "mode": 33261,
+          "mtime_ns": 1793504278018324276,
+          "path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final/pystachy",
+          "realpath": "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final/pystachy",
+          "sha256": "aa1c7c0a0fe38d1e2da4e0a75017020aff0b5add647996e250818dd28c9b2bef",
+          "symlink": null
+        }
+      },
+      "complete": false,
+      "directory": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time-repeat",
+      "errors": [
+        "RuntimeError('warm preparation/reuse failed; no timed samples were attempted')"
+      ],
+      "inputs_stable": true,
+      "phases": [
+        {
+          "command": [
+            "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final/build/ref/pystachy",
+            "run",
+            "/workspace/scratch/8f4dd6deebd9/pystachy-baseline/bench/smoke/text.py",
+            "fnmatch",
+            "1000"
+          ],
+          "complete": true,
+          "cpu_s": 18.205155,
+          "cwd": "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final/build/ref",
+          "environment": {
+            "HOME": "/root",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "PATH": "/usr/lib/llvm-18/bin:/usr/bin:/bin",
+            "PYSTACHY_CACHE": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time-repeat/baseline/cache",
+            "PYSTACHY_HOME": "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final/build/ref",
+            "PYSTACHY_LLVM": "/usr/lib/llvm-18/bin",
+            "PYSTACHY_OPT": "",
+            "PYTHONHASHSEED": "0",
+            "PYTHONNOUSERSITE": "1",
+            "TMPDIR": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time-repeat/tmp/baseline",
+            "TZ": "UTC"
+          },
+          "phase": "warm-build",
+          "pid": 85,
+          "returncode": 1,
+          "role": "baseline",
+          "stderr": "rmdir: failed to remove '/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time-repeat/tmp/baseline/tmp42wnmncc': Directory not empty\n",
+          "stdout": "",
+          "timed_out": false,
+          "valid": false,
+          "validation_errors": [
+            "command did not complete successfully",
+            "stdout differs from the CPython oracle",
+            "expected exactly one in-program seconds line"
+          ],
+          "wall_s": 18.240797127
+        },
+        {
+          "command": [
+            "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final/pystachy",
+            "run",
+            "/workspace/scratch/8f4dd6deebd9/pystachy-baseline/bench/smoke/text.py",
+            "fnmatch",
+            "1000"
+          ],
+          "complete": true,
+          "cpu_s": 18.735775999999994,
+          "cwd": "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final",
+          "environment": {
+            "HOME": "/root",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "PATH": "/usr/lib/llvm-18/bin:/usr/bin:/bin",
+            "PYSTACHY_CACHE": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time-repeat/candidate/cache",
+            "PYSTACHY_HOME": "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final",
+            "PYSTACHY_LLVM": "/usr/lib/llvm-18/bin",
+            "PYSTACHY_OPT": "",
+            "PYTHONHASHSEED": "0",
+            "PYTHONNOUSERSITE": "1",
+            "TMPDIR": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time-repeat/tmp/candidate",
+            "TZ": "UTC"
+          },
+          "phase": "warm-build",
+          "pid": 118,
+          "returncode": 1,
+          "role": "candidate",
+          "stderr": "rmdir: failed to remove '/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time-repeat/tmp/candidate/tmp3ki_l09_': Directory not empty\n",
+          "stdout": "",
+          "timed_out": false,
+          "valid": false,
+          "validation_errors": [
+            "command did not complete successfully",
+            "stdout differs from the CPython oracle",
+            "expected exactly one in-program seconds line"
+          ],
+          "wall_s": 18.760316997
+        },
+        {
+          "command": [
+            "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final/build/ref/pystachy",
+            "run",
+            "/workspace/scratch/8f4dd6deebd9/pystachy-baseline/bench/smoke/text.py",
+            "fnmatch",
+            "1000"
+          ],
+          "complete": true,
+          "cpu_s": 3.634326000000005,
+          "cwd": "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final/build/ref",
+          "environment": {
+            "HOME": "/root",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "PATH": "/usr/lib/llvm-18/bin:/usr/bin:/bin",
+            "PYSTACHY_CACHE": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time-repeat/baseline/cache",
+            "PYSTACHY_HOME": "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final/build/ref",
+            "PYSTACHY_LLVM": "/usr/lib/llvm-18/bin",
+            "PYSTACHY_OPT": "",
+            "PYTHONHASHSEED": "0",
+            "PYTHONNOUSERSITE": "1",
+            "TMPDIR": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time-repeat/tmp/baseline",
+            "TZ": "UTC"
+          },
+          "phase": "warm-reuse",
+          "pid": 151,
+          "returncode": 0,
+          "role": "baseline",
+          "stderr": "seconds 0.0471194950005156\n",
+          "stdout": "6000\n",
+          "timed_out": false,
+          "valid": true,
+          "validation_errors": [],
+          "wall_s": 3.647190024
+        },
+        {
+          "command": [
+            "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final/pystachy",
+            "run",
+            "/workspace/scratch/8f4dd6deebd9/pystachy-baseline/bench/smoke/text.py",
+            "fnmatch",
+            "1000"
+          ],
+          "complete": true,
+          "cpu_s": 3.2607849999999967,
+          "cwd": "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final",
+          "environment": {
+            "HOME": "/root",
+            "LANG": "C",
+            "LC_ALL": "C",
+            "PATH": "/usr/lib/llvm-18/bin:/usr/bin:/bin",
+            "PYSTACHY_CACHE": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time-repeat/candidate/cache",
+            "PYSTACHY_HOME": "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final",
+            "PYSTACHY_LLVM": "/usr/lib/llvm-18/bin",
+            "PYSTACHY_OPT": "",
+            "PYTHONHASHSEED": "0",
+            "PYTHONNOUSERSITE": "1",
+            "TMPDIR": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time-repeat/tmp/candidate",
+            "TZ": "UTC"
+          },
+          "phase": "warm-reuse",
+          "pid": 156,
+          "returncode": 0,
+          "role": "candidate",
+          "stderr": "seconds 0.052775984004256316\n",
+          "stdout": "6000\n",
+          "timed_out": false,
+          "valid": true,
+          "validation_errors": [],
+          "wall_s": 3.263268685
+        }
+      ],
+      "report": {
+        "bytes": 620702,
+        "ctime_ns": 1793505033278353263,
+        "inode": 2792192,
+        "mode": 33188,
+        "mtime_ns": 1793505033278353263,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time-repeat/report.json",
+        "sha256": "545a49e21b3ab7ca9ea3ca9281f21bd1030fb249aa99923c4791548ce2385f09"
+      },
+      "runtime_artifacts_stable": true,
+      "temporary_leftovers": {
+        "baseline": {
+          "bytes": 4096,
+          "ctime_ns": 1793505028059064403,
+          "inode": 2792076,
+          "kind": "directory",
+          "mode": 16877,
+          "mtime_ns": 1793504989452881851,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time-repeat/tmp/baseline"
+        },
+        "baseline/tmp42wnmncc": {
+          "bytes": 4096,
+          "ctime_ns": 1793505019027489568,
+          "inode": 2792089,
+          "kind": "directory",
+          "mode": 16832,
+          "mtime_ns": 1793504993772678466,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time-repeat/tmp/baseline/tmp42wnmncc"
+        },
+        "baseline/tmp42wnmncc/mpz": {
+          "bytes": 4096,
+          "ctime_ns": 1793504999840392776,
+          "inode": 2792108,
+          "kind": "directory",
+          "mode": 16877,
+          "mtime_ns": 1793504989474502237,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time-repeat/tmp/baseline/tmp42wnmncc/mpz"
+        },
+        "baseline/tmp42wnmncc/mpz/mpz.c": {
+          "bytes": 22409,
+          "ctime_ns": 1793504999776395789,
+          "inode": 2792110,
+          "kind": "file",
+          "mode": 33188,
+          "mtime_ns": 1793504989474544239,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time-repeat/tmp/baseline/tmp42wnmncc/mpz/mpz.c",
+          "sha256": "2d648cec5de20c6bb7d4882a364cfc9fa1d355395255c1d0e82e4389bde03afa"
+        },
+        "baseline/tmp42wnmncc/prog.ll": {
+          "bytes": 2852466,
+          "ctime_ns": 1793505009147954652,
+          "inode": 2792142,
+          "kind": "file",
+          "mode": 33188,
+          "mtime_ns": 1793504989460881475,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time-repeat/tmp/baseline/tmp42wnmncc/prog.ll",
+          "sha256": "912eaaff2ddb2fab1f4e104cfed02ab0daaafb1527660dff8071f1b3e7bf5a80"
+        },
+        "baseline/tmp42wnmncc/rtpy.ll": {
+          "bytes": 549411,
+          "ctime_ns": 1793505009147954652,
+          "inode": 2792144,
+          "kind": "file",
+          "mode": 33188,
+          "mtime_ns": 1793504989465560040,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time-repeat/tmp/baseline/tmp42wnmncc/rtpy.ll",
+          "sha256": "940a694da5ea93214d1308a8eb635b47d8d0a9d4256c63d084c24f5099f8aa5f"
+        },
+        "baseline/tmp42wnmncc/runtime-c.bc": {
+          "bytes": 550636,
+          "ctime_ns": 1793505009147954652,
+          "inode": 2792145,
+          "kind": "file",
+          "mode": 33188,
+          "mtime_ns": 1793504993652684113,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time-repeat/tmp/baseline/tmp42wnmncc/runtime-c.bc",
+          "sha256": "a5f472783d73dc27436ae4d1575892e5ec9750ba98f8cf7137961aae6d5c021f"
+        },
+        "baseline/tmp42wnmncc/runtime-l.bc": {
+          "bytes": 758820,
+          "ctime_ns": 1793505009147954652,
+          "inode": 2792146,
+          "kind": "file",
+          "mode": 33188,
+          "mtime_ns": 1793504993872673760,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time-repeat/tmp/baseline/tmp42wnmncc/runtime-l.bc",
+          "sha256": "dfa54a548654ccd0e7e8ea5e2b2ebad76ec26eb303840b5cb8318bae451aa23f"
+        },
+        "baseline/tmp42wnmncc/runtime-s.ll": {
+          "bytes": 3144481,
+          "ctime_ns": 1793505009147954652,
+          "inode": 2792147,
+          "kind": "file",
+          "mode": 33188,
+          "mtime_ns": 1793504993464692961,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time-repeat/tmp/baseline/tmp42wnmncc/runtime-s.ll",
+          "sha256": "cb935f2969000505c133a00e65dd3cf64164bd8b01ea9549928fad3eb73b7b6a"
+        },
+        "baseline/tmp42wnmncc/runtime.c": {
+          "bytes": 420408,
+          "ctime_ns": 1793505009147954652,
+          "inode": 2792148,
+          "kind": "file",
+          "mode": 33188,
+          "mtime_ns": 1793504989468972397,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time-repeat/tmp/baseline/tmp42wnmncc/runtime.c",
+          "sha256": "a97102a4fe4a27a27e7d40f5978e36377440a13d000890bbc054bfe74ce50ae3"
+        },
+        "baseline/tmp42wnmncc/runtime.ll": {
+          "bytes": 3150137,
+          "ctime_ns": 1793505009147954652,
+          "inode": 2792149,
+          "kind": "file",
+          "mode": 33188,
+          "mtime_ns": 1793504993432694467,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time-repeat/tmp/baseline/tmp42wnmncc/runtime.ll",
+          "sha256": "0ef25c058c2670f9847259c2a3dc016c8140c76b37d28e6368ef06fee31fb5fd"
+        },
+        "baseline/tmp42wnmncc/ryu": {
+          "bytes": 4096,
+          "ctime_ns": 1793504999840392776,
+          "inode": 2792109,
+          "kind": "directory",
+          "mode": 16877,
+          "mtime_ns": 1793504989474430374,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time-repeat/tmp/baseline/tmp42wnmncc/ryu"
+        },
+        "baseline/tmp42wnmncc/ryu/common.h": {
+          "bytes": 3648,
+          "ctime_ns": 1793504999776395789,
+          "inode": 2792112,
+          "kind": "file",
+          "mode": 33188,
+          "mtime_ns": 1793504989474384848,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time-repeat/tmp/baseline/tmp42wnmncc/ryu/common.h",
+          "sha256": "0bbd71d26da6193e678d0776cf418f43f287c73d6fd6725353df0aadf70f2a19"
+        },
+        "baseline/tmp42wnmncc/ryu/d2s.c": {
+          "bytes": 17681,
+          "ctime_ns": 1793504999776395789,
+          "inode": 2792114,
+          "kind": "file",
+          "mode": 33188,
+          "mtime_ns": 1793504989474326584,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time-repeat/tmp/baseline/tmp42wnmncc/ryu/d2s.c",
+          "sha256": "c6357b5d53ac1ba7f4984847d3a76f0803e0a931b7d0b02680656576829cf1d2"
+        },
+        "baseline/tmp42wnmncc/ryu/d2s_intrinsics.h": {
+          "bytes": 13011,
+          "ctime_ns": 1793504999776395789,
+          "inode": 2792115,
+          "kind": "file",
+          "mode": 33188,
+          "mtime_ns": 1793504989474430374,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time-repeat/tmp/baseline/tmp42wnmncc/ryu/d2s_intrinsics.h",
+          "sha256": "01d9bdaada67b42f2d1bbdebb3765867e6c44e3a181b806c1d7e851b93f9cc21"
+        },
+        "baseline/tmp42wnmncc/ryu/d2s_small_table.h": {
+          "bytes": 7637,
+          "ctime_ns": 1793504999776395789,
+          "inode": 2792116,
+          "kind": "file",
+          "mode": 33188,
+          "mtime_ns": 1793504989474502237,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time-repeat/tmp/baseline/tmp42wnmncc/ryu/d2s_small_table.h",
+          "sha256": "01f3d8a3ff739a26ecbddc2caae44c91574592b1de7c01fec67bc2d06672b606"
+        },
+        "baseline/tmp42wnmncc/ryu/digit_table.h": {
+          "bytes": 1745,
+          "ctime_ns": 1793504999776395789,
+          "inode": 2792117,
+          "kind": "file",
+          "mode": 33188,
+          "mtime_ns": 1793504989474401101,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time-repeat/tmp/baseline/tmp42wnmncc/ryu/digit_table.h",
+          "sha256": "8b782573abc0b8554d74163ae6c02f0beb5c30d1e63eaebdb0ddf2c98d817e01"
+        },
+        "baseline/tmp42wnmncc/ryu/ryu.h": {
+          "bytes": 1360,
+          "ctime_ns": 1793504999776395789,
+          "inode": 2792118,
+          "kind": "file",
+          "mode": 33188,
+          "mtime_ns": 1793504989474359189,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time-repeat/tmp/baseline/tmp42wnmncc/ryu/ryu.h",
+          "sha256": "b7feab0ba1df5e9ef3d602f386592ad152491405e49b408fb21c0e0e9e6bfb16"
+        },
+        "candidate": {
+          "bytes": 4096,
+          "ctime_ns": 1793505033434811354,
+          "inode": 2792077,
+          "kind": "directory",
+          "mode": 16877,
+          "mtime_ns": 1793504988464928389,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time-repeat/tmp/candidate"
+        },
+        "candidate/tmp3ki_l09_": {
+          "bytes": 4096,
+          "ctime_ns": 1793505033434811354,
+          "inode": 2792125,
+          "kind": "directory",
+          "mode": 16832,
+          "mtime_ns": 1793505028220499714,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time-repeat/tmp/candidate/tmp3ki_l09_"
+        },
+        "candidate/tmp3ki_l09_/mpz": {
+          "bytes": 4096,
+          "ctime_ns": 1793505019451469611,
+          "inode": 2792156,
+          "kind": "directory",
+          "mode": 16877,
+          "mtime_ns": 1793505007946416348,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time-repeat/tmp/candidate/tmp3ki_l09_/mpz"
+        },
+        "candidate/tmp3ki_l09_/mpz/mpz.c": {
+          "bytes": 22409,
+          "ctime_ns": 1793505019391472436,
+          "inode": 2792158,
+          "kind": "file",
+          "mode": 33188,
+          "mtime_ns": 1793505007946466037,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time-repeat/tmp/candidate/tmp3ki_l09_/mpz/mpz.c",
+          "sha256": "2d648cec5de20c6bb7d4882a364cfc9fa1d355395255c1d0e82e4389bde03afa"
+        },
+        "candidate/tmp3ki_l09_/prog.ll": {
+          "bytes": 2774560,
+          "ctime_ns": 1793505028459045575,
+          "inode": 2792179,
+          "kind": "file",
+          "mode": 33188,
+          "mtime_ns": 1793505007932011893,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time-repeat/tmp/candidate/tmp3ki_l09_/prog.ll",
+          "sha256": "21d968b9787ea97d2f8e6f5fae8f25b9c09ef2b19f39f7342d2e8d495ceb0953"
+        },
+        "candidate/tmp3ki_l09_/rtpy.ll": {
+          "bytes": 549411,
+          "ctime_ns": 1793505028459045575,
+          "inode": 2792181,
+          "kind": "file",
+          "mode": 33188,
+          "mtime_ns": 1793505007936011704,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time-repeat/tmp/candidate/tmp3ki_l09_/rtpy.ll",
+          "sha256": "940a694da5ea93214d1308a8eb635b47d8d0a9d4256c63d084c24f5099f8aa5f"
+        },
+        "candidate/tmp3ki_l09_/runtime-24b64a11.ll.tmp": {
+          "bytes": 0,
+          "ctime_ns": 1793505014299712129,
+          "inode": 2792154,
+          "kind": "file",
+          "mode": 33188,
+          "mtime_ns": 1793505007984009445,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time-repeat/tmp/candidate/tmp3ki_l09_/runtime-24b64a11.ll.tmp",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "candidate/tmp3ki_l09_/runtime-c.bc": {
+          "bytes": 550644,
+          "ctime_ns": 1793505028459045575,
+          "inode": 2792182,
+          "kind": "file",
+          "mode": 33188,
+          "mtime_ns": 1793505012179811938,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time-repeat/tmp/candidate/tmp3ki_l09_/runtime-c.bc",
+          "sha256": "0285594cb92fd8546c0d992bacd0934d707675b6f64521e7dff4cb3fc5982319"
+        },
+        "candidate/tmp3ki_l09_/runtime-l.bc": {
+          "bytes": 758820,
+          "ctime_ns": 1793505028459045575,
+          "inode": 2792183,
+          "kind": "file",
+          "mode": 33188,
+          "mtime_ns": 1793505012395801769,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time-repeat/tmp/candidate/tmp3ki_l09_/runtime-l.bc",
+          "sha256": "dfa54a548654ccd0e7e8ea5e2b2ebad76ec26eb303840b5cb8318bae451aa23f"
+        },
+        "candidate/tmp3ki_l09_/runtime-s.ll": {
+          "bytes": 3144483,
+          "ctime_ns": 1793505028459045575,
+          "inode": 2792184,
+          "kind": "file",
+          "mode": 33188,
+          "mtime_ns": 1793505011991820789,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time-repeat/tmp/candidate/tmp3ki_l09_/runtime-s.ll",
+          "sha256": "71b56b442471fe4821e9bbafbbfc198b629ce5f89902775bbf2f0dea8046512e"
+        },
+        "candidate/tmp3ki_l09_/runtime.c": {
+          "bytes": 420408,
+          "ctime_ns": 1793505028459045575,
+          "inode": 2792185,
+          "kind": "file",
+          "mode": 33188,
+          "mtime_ns": 1793505007940011517,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time-repeat/tmp/candidate/tmp3ki_l09_/runtime.c",
+          "sha256": "a97102a4fe4a27a27e7d40f5978e36377440a13d000890bbc054bfe74ce50ae3"
+        },
+        "candidate/tmp3ki_l09_/runtime.ll": {
+          "bytes": 3150139,
+          "ctime_ns": 1793505028459045575,
+          "inode": 2792186,
+          "kind": "file",
+          "mode": 33188,
+          "mtime_ns": 1793505011967821919,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time-repeat/tmp/candidate/tmp3ki_l09_/runtime.ll",
+          "sha256": "aa87ead3ce0dd8beff371da2afac138e78c85e1cc3032d5c71dd5f2980f62f00"
+        },
+        "candidate/tmp3ki_l09_/ryu": {
+          "bytes": 4096,
+          "ctime_ns": 1793505019451469611,
+          "inode": 2792157,
+          "kind": "directory",
+          "mode": 16877,
+          "mtime_ns": 1793505007946355118,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time-repeat/tmp/candidate/tmp3ki_l09_/ryu"
+        },
+        "candidate/tmp3ki_l09_/ryu/common.h": {
+          "bytes": 3648,
+          "ctime_ns": 1793505019391472436,
+          "inode": 2792160,
+          "kind": "file",
+          "mode": 33188,
+          "mtime_ns": 1793505007946299477,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time-repeat/tmp/candidate/tmp3ki_l09_/ryu/common.h",
+          "sha256": "0bbd71d26da6193e678d0776cf418f43f287c73d6fd6725353df0aadf70f2a19"
+        },
+        "candidate/tmp3ki_l09_/ryu/d2s.c": {
+          "bytes": 17681,
+          "ctime_ns": 1793505019391472436,
+          "inode": 2792162,
+          "kind": "file",
+          "mode": 33188,
+          "mtime_ns": 1793505007946195761,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time-repeat/tmp/candidate/tmp3ki_l09_/ryu/d2s.c",
+          "sha256": "c6357b5d53ac1ba7f4984847d3a76f0803e0a931b7d0b02680656576829cf1d2"
+        },
+        "candidate/tmp3ki_l09_/ryu/d2s_intrinsics.h": {
+          "bytes": 13011,
+          "ctime_ns": 1793505019391472436,
+          "inode": 2792163,
+          "kind": "file",
+          "mode": 33188,
+          "mtime_ns": 1793505007946355118,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time-repeat/tmp/candidate/tmp3ki_l09_/ryu/d2s_intrinsics.h",
+          "sha256": "01d9bdaada67b42f2d1bbdebb3765867e6c44e3a181b806c1d7e851b93f9cc21"
+        },
+        "candidate/tmp3ki_l09_/ryu/d2s_small_table.h": {
+          "bytes": 7637,
+          "ctime_ns": 1793505019391472436,
+          "inode": 2792164,
+          "kind": "file",
+          "mode": 33188,
+          "mtime_ns": 1793505007946416348,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time-repeat/tmp/candidate/tmp3ki_l09_/ryu/d2s_small_table.h",
+          "sha256": "01f3d8a3ff739a26ecbddc2caae44c91574592b1de7c01fec67bc2d06672b606"
+        },
+        "candidate/tmp3ki_l09_/ryu/digit_table.h": {
+          "bytes": 1745,
+          "ctime_ns": 1793505019391472436,
+          "inode": 2792165,
+          "kind": "file",
+          "mode": 33188,
+          "mtime_ns": 1793505007946320244,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time-repeat/tmp/candidate/tmp3ki_l09_/ryu/digit_table.h",
+          "sha256": "8b782573abc0b8554d74163ae6c02f0beb5c30d1e63eaebdb0ddf2c98d817e01"
+        },
+        "candidate/tmp3ki_l09_/ryu/ryu.h": {
+          "bytes": 1360,
+          "ctime_ns": 1793505019391472436,
+          "inode": 2792166,
+          "kind": "file",
+          "mode": 33188,
+          "mtime_ns": 1793505007946275683,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time-repeat/tmp/candidate/tmp3ki_l09_/ryu/ryu.h",
+          "sha256": "b7feab0ba1df5e9ef3d602f386592ad152491405e49b408fb21c0e0e9e6bfb16"
+        },
+        "metadata": {
+          "bytes": 4096,
+          "ctime_ns": 1793504986833796478,
+          "inode": 2792018,
+          "kind": "directory",
+          "mode": 16877,
+          "mtime_ns": 1793504986833796478,
+          "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/jit-native-time-repeat/tmp/metadata"
+        }
+      },
+      "timed_observation_count": 0,
+      "valid": false
+    }
+  ],
+  "conclusions": {
+    "all_four_warm_reuse_invocations_succeeded": true,
+    "attribution": "No attribution to the execution environment, compiler policy, runtime, LLVM, or sandbox is established by this inspection.",
+    "both_attempts_incomplete": true,
+    "initial_candidate_cold_build_failed": true,
+    "measurement_use": "No elapsed comparison can be reported from these attempts. Successful warm-reuse observations are preparation diagnostics, not selected timed samples.",
+    "not_exclusive_to_new_candidate": true,
+    "repeat_baseline_and_candidate_cold_builds_failed": true,
+    "total_timed_observations": 0,
+    "underlying_cause_proven": false
+  },
+  "driver_main_ir_comparison": {
+    "body_bytes": 226205,
+    "body_sha256": "bc8c40e67253458d89e05434fea22b0ab63d040bae8f11a489994958c0e4ea59",
+    "byte_identical": true,
+    "function": "@f.src$pystachy_compiler$driver$main",
+    "limitation": "Equality of this function does not prove every invoked helper or runtime state behaved identically.",
+    "method": "Read the exact definition from its define line through its closing brace, compare bytes directly. No normalization.",
+    "new_source_commit": "44b638bbf8df1835b67bebda0468d65374569c71",
+    "new_stage_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final/build/stage1.ll",
+    "new_whole_stage_sha256_from_bootstrap_record": "ce874ff52970f421fd4f0459bc6c3e21bfea6c212d774ab54cd8c8bf1c4f192b",
+    "old_source_commit": "1ff5efe4c4425b3728e138fa05a44856202fdea5",
+    "old_stage_path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy/build/stage1.ll",
+    "old_whole_stage_sha256_from_bootstrap_record": "18f79739fd9818b8c45b3284be029d7f63bebe46296e776cf7fd72907ca2135c"
+  },
+  "driver_source": {
+    "cache_publication": "Lines 701-741 publish completed cache artifacts before the final JIT handoff.",
+    "cold_runtime_input_cleanup": "Lines 633-636 remove RTPARTS and their directories after runtime compilation.",
+    "file": "src/pystachy_compiler/driver.py",
+    "final_native_cleanup": "Lines 852-854 explicitly remove temporary input/output files.",
+    "sha256": "48941caa98b340de4ec44ae03b1573f75828c24142eba88cc7c1ab617acea7b0",
+    "shell_handoff": "Line 864 opens runtime and user bitcode, removes remaining parts, then rmdir && exec lli; the observed diagnostic is from this shell rmdir."
+  },
+  "focused_harness": {
+    "complete": true,
+    "harness_source": {
+      "bytes": 10487,
+      "ctime_ns": 1793503136249614055,
+      "inode": 2528079,
+      "mode": 33261,
+      "mtime_ns": 1793503136249614055,
+      "path": "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final/tests/run.sh",
+      "sha256": "fcc0ceedff84366addafddd0284b5c62487739095424b1af6e61f848bcf82496"
+    },
+    "observation_limit": "Retained temporary files include runtime-input copies and intermediate harness artifacts. Their presence alone does not determine why deletion did not complete or establish a filesystem defect.",
+    "passed": true,
+    "phases": [
+      {
+        "name": "focused",
+        "returncode": 0,
+        "stdout": "selected 6 cases\n12 passed, 0 failed\n"
+      },
+      {
+        "name": "scoped-files-gc",
+        "returncode": 0,
+        "stdout": "selected 1 cases\n1 passed, 0 failed\n"
+      }
+    ],
+    "report": {
+      "bytes": 201995,
+      "ctime_ns": 1793504685568487964,
+      "inode": 2768750,
+      "mode": 33188,
+      "mtime_ns": 1793504685568487964,
+      "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/focused-native/report.json",
+      "sha256": "e8860b58e170b131fa0e35b778696b04791551382c5da73b9854a9b8a09d35fe"
+    },
+    "temporary_leftovers": {
+      "candidate": {
+        "bytes": 4096,
+        "ctime_ns": 1793504691810912516,
+        "inode": 2768746,
+        "kind": "directory",
+        "mode": 16877,
+        "mtime_ns": 1793504685523209132,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/focused-native/tmp/candidate"
+      },
+      "candidate/pystachy-tests.UNUMl2": {
+        "bytes": 4096,
+        "ctime_ns": 1793504687859099058,
+        "inode": 2768841,
+        "kind": "directory",
+        "mode": 16832,
+        "mtime_ns": 1793504663452247694,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/focused-native/tmp/candidate/pystachy-tests.UNUMl2"
+      },
+      "candidate/pystachy-tests.UNUMl2/0.log": {
+        "bytes": 0,
+        "ctime_ns": 1793504687803101704,
+        "inode": 2768847,
+        "kind": "file",
+        "mode": 33188,
+        "mtime_ns": 1793504680715435548,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/focused-native/tmp/candidate/pystachy-tests.UNUMl2/0.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "candidate/pystachy-tests.UNUMl2/0.n": {
+        "bytes": 4,
+        "ctime_ns": 1793504687803101704,
+        "inode": 2768849,
+        "kind": "file",
+        "mode": 33188,
+        "mtime_ns": 1793504681379404137,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/focused-native/tmp/candidate/pystachy-tests.UNUMl2/0.n",
+        "sha256": "4516f6eaaa675488778d6ca333df14bc68c27fb7d7b8015073220d4571aa9c51"
+      },
+      "candidate/pystachy-tests.UNUMl2/1.log": {
+        "bytes": 0,
+        "ctime_ns": 1793504687803101704,
+        "inode": 2768850,
+        "kind": "file",
+        "mode": 33188,
+        "mtime_ns": 1793504681383403948,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/focused-native/tmp/candidate/pystachy-tests.UNUMl2/1.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "candidate/pystachy-tests.UNUMl2/1.n": {
+        "bytes": 4,
+        "ctime_ns": 1793504687803101704,
+        "inode": 2768851,
+        "kind": "file",
+        "mode": 33188,
+        "mtime_ns": 1793504682023828611,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/focused-native/tmp/candidate/pystachy-tests.UNUMl2/1.n",
+        "sha256": "4516f6eaaa675488778d6ca333df14bc68c27fb7d7b8015073220d4571aa9c51"
+      },
+      "candidate/pystachy-tests.UNUMl2/2.log": {
+        "bytes": 0,
+        "ctime_ns": 1793504687803101704,
+        "inode": 2768852,
+        "kind": "file",
+        "mode": 33188,
+        "mtime_ns": 1793504682023828611,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/focused-native/tmp/candidate/pystachy-tests.UNUMl2/2.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "candidate/pystachy-tests.UNUMl2/2.n": {
+        "bytes": 4,
+        "ctime_ns": 1793504687803101704,
+        "inode": 2768853,
+        "kind": "file",
+        "mode": 33188,
+        "mtime_ns": 1793504682674520464,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/focused-native/tmp/candidate/pystachy-tests.UNUMl2/2.n",
+        "sha256": "4516f6eaaa675488778d6ca333df14bc68c27fb7d7b8015073220d4571aa9c51"
+      },
+      "candidate/pystachy-tests.UNUMl2/3.log": {
+        "bytes": 0,
+        "ctime_ns": 1793504687803101704,
+        "inode": 2768854,
+        "kind": "file",
+        "mode": 33188,
+        "mtime_ns": 1793504682675342884,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/focused-native/tmp/candidate/pystachy-tests.UNUMl2/3.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "candidate/pystachy-tests.UNUMl2/c.0": {
+        "bytes": 4096,
+        "ctime_ns": 1793504687450954577,
+        "inode": 2768842,
+        "kind": "directory",
+        "mode": 16877,
+        "mtime_ns": 1793504680715435548,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/focused-native/tmp/candidate/pystachy-tests.UNUMl2/c.0"
+      },
+      "candidate/pystachy-tests.UNUMl2/c.1": {
+        "bytes": 4096,
+        "ctime_ns": 1793504687450996319,
+        "inode": 2768843,
+        "kind": "directory",
+        "mode": 16877,
+        "mtime_ns": 1793504681383403948,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/focused-native/tmp/candidate/pystachy-tests.UNUMl2/c.1"
+      },
+      "candidate/pystachy-tests.UNUMl2/c.2": {
+        "bytes": 4096,
+        "ctime_ns": 1793504687451017322,
+        "inode": 2768844,
+        "kind": "directory",
+        "mode": 16877,
+        "mtime_ns": 1793504682023828611,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/focused-native/tmp/candidate/pystachy-tests.UNUMl2/c.2"
+      },
+      "candidate/pystachy-tests.UNUMl2/c.3": {
+        "bytes": 4096,
+        "ctime_ns": 1793504687451038805,
+        "inode": 2768845,
+        "kind": "directory",
+        "mode": 16877,
+        "mtime_ns": 1793504682675342884,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/focused-native/tmp/candidate/pystachy-tests.UNUMl2/c.3"
+      },
+      "candidate/pystachy-tests.UNUMl2/now.0": {
+        "bytes": 49,
+        "ctime_ns": 1793504687803101704,
+        "inode": 2768855,
+        "kind": "file",
+        "mode": 33188,
+        "mtime_ns": 1793504682675342884,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/focused-native/tmp/candidate/pystachy-tests.UNUMl2/now.0",
+        "sha256": "d89be569945c75723f3b996537aea85f98047b6d18e4b4cfa4ae48ddddf9bd50"
+      },
+      "candidate/pystachy-tests.UNUMl2/recursion_after_call.build": {
+        "bytes": 0,
+        "ctime_ns": 1793504687803101704,
+        "inode": 2768856,
+        "kind": "file",
+        "mode": 33188,
+        "mtime_ns": 1793504682779337999,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/focused-native/tmp/candidate/pystachy-tests.UNUMl2/recursion_after_call.build",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "candidate/pystachy-tests.UNUMl2/recursion_after_call.err": {
+        "bytes": 0,
+        "ctime_ns": 1793504687803101704,
+        "inode": 2768857,
+        "kind": "file",
+        "mode": 33188,
+        "mtime_ns": 1793504682779337999,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/focused-native/tmp/candidate/pystachy-tests.UNUMl2/recursion_after_call.err",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "candidate/pystachy-tests.UNUMl2/recursion_after_call.jit": {
+        "bytes": 252,
+        "ctime_ns": 1793504687803101704,
+        "inode": 2768858,
+        "kind": "file",
+        "mode": 33188,
+        "mtime_ns": 1793504682775338187,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/focused-native/tmp/candidate/pystachy-tests.UNUMl2/recursion_after_call.jit",
+        "sha256": "4115deffb37252fcde6cdb6211a472fb08acbac36cde9bb7bb4f87a857076260"
+      },
+      "candidate/pystachy-tests.UNUMl2/recursion_bounded.aot": {
+        "bytes": 141,
+        "ctime_ns": 1793504687803101704,
+        "inode": 2768859,
+        "kind": "file",
+        "mode": 33188,
+        "mtime_ns": 1793504681375404326,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/focused-native/tmp/candidate/pystachy-tests.UNUMl2/recursion_bounded.aot",
+        "sha256": "4d2349c57e88b552b36ed97773dd141da89327c513783631c861d14396fd8ead"
+      },
+      "candidate/pystachy-tests.UNUMl2/recursion_bounded.build": {
+        "bytes": 0,
+        "ctime_ns": 1793504687803101704,
+        "inode": 2768860,
+        "kind": "file",
+        "mode": 33188,
+        "mtime_ns": 1793504680799431574,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/focused-native/tmp/candidate/pystachy-tests.UNUMl2/recursion_bounded.build",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "candidate/pystachy-tests.UNUMl2/recursion_bounded.err": {
+        "bytes": 0,
+        "ctime_ns": 1793504687803101704,
+        "inode": 2768861,
+        "kind": "file",
+        "mode": 33188,
+        "mtime_ns": 1793504681375404326,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/focused-native/tmp/candidate/pystachy-tests.UNUMl2/recursion_bounded.err",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "candidate/pystachy-tests.UNUMl2/recursion_bounded.exe": {
+        "bytes": 56480,
+        "ctime_ns": 1793504687803101704,
+        "inode": 2768862,
+        "kind": "file",
+        "mode": 33261,
+        "mtime_ns": 1793504681371768723,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/focused-native/tmp/candidate/pystachy-tests.UNUMl2/recursion_bounded.exe",
+        "sha256": "c89a2cb9c3defdf1e5731b9847ce29910e1e4719def0342d6ebaeb247c967442"
+      },
+      "candidate/pystachy-tests.UNUMl2/recursion_bounded.jit": {
+        "bytes": 141,
+        "ctime_ns": 1793504687803101704,
+        "inode": 2768863,
+        "kind": "file",
+        "mode": 33188,
+        "mtime_ns": 1793504680799431574,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/focused-native/tmp/candidate/pystachy-tests.UNUMl2/recursion_bounded.jit",
+        "sha256": "4d2349c57e88b552b36ed97773dd141da89327c513783631c861d14396fd8ead"
+      },
+      "candidate/pystachy-tests.UNUMl2/recursion_guard.aot": {
+        "bytes": 154,
+        "ctime_ns": 1793504687803101704,
+        "inode": 2768864,
+        "kind": "file",
+        "mode": 33188,
+        "mtime_ns": 1793504682023828611,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/focused-native/tmp/candidate/pystachy-tests.UNUMl2/recursion_guard.aot",
+        "sha256": "902648d65b7073d6110c10f3e4a5ef0529152d57245e6cc46a108c970f887a8b"
+      },
+      "candidate/pystachy-tests.UNUMl2/recursion_guard.build": {
+        "bytes": 0,
+        "ctime_ns": 1793504687803101704,
+        "inode": 2768865,
+        "kind": "file",
+        "mode": 33188,
+        "mtime_ns": 1793504681471399785,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/focused-native/tmp/candidate/pystachy-tests.UNUMl2/recursion_guard.build",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "candidate/pystachy-tests.UNUMl2/recursion_guard.err": {
+        "bytes": 0,
+        "ctime_ns": 1793504687803101704,
+        "inode": 2768866,
+        "kind": "file",
+        "mode": 33188,
+        "mtime_ns": 1793504682019373861,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/focused-native/tmp/candidate/pystachy-tests.UNUMl2/recursion_guard.err",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "candidate/pystachy-tests.UNUMl2/recursion_guard.exe": {
+        "bytes": 56696,
+        "ctime_ns": 1793504687803101704,
+        "inode": 2768867,
+        "kind": "file",
+        "mode": 33261,
+        "mtime_ns": 1793504682017703934,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/focused-native/tmp/candidate/pystachy-tests.UNUMl2/recursion_guard.exe",
+        "sha256": "b813d1f86969c6415553eb66f76b4e93cce3e5439556d469c7bc9a677544783f"
+      },
+      "candidate/pystachy-tests.UNUMl2/recursion_guard.jit": {
+        "bytes": 154,
+        "ctime_ns": 1793504687803101704,
+        "inode": 2768868,
+        "kind": "file",
+        "mode": 33188,
+        "mtime_ns": 1793504681467399974,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/focused-native/tmp/candidate/pystachy-tests.UNUMl2/recursion_guard.jit",
+        "sha256": "902648d65b7073d6110c10f3e4a5ef0529152d57245e6cc46a108c970f887a8b"
+      },
+      "candidate/pystachy-tests.UNUMl2/recursion_set_limit.aot": {
+        "bytes": 76,
+        "ctime_ns": 1793504687803101704,
+        "inode": 2768869,
+        "kind": "file",
+        "mode": 33188,
+        "mtime_ns": 1793504682674520464,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/focused-native/tmp/candidate/pystachy-tests.UNUMl2/recursion_set_limit.aot",
+        "sha256": "9024d0d3e165455e5df8124dad3ee598dc8b5d3a7cf1f2da78ee4498727a4cec"
+      },
+      "candidate/pystachy-tests.UNUMl2/recursion_set_limit.build": {
+        "bytes": 0,
+        "ctime_ns": 1793504687803101704,
+        "inode": 2768870,
+        "kind": "file",
+        "mode": 33188,
+        "mtime_ns": 1793504682099370077,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/focused-native/tmp/candidate/pystachy-tests.UNUMl2/recursion_set_limit.build",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "candidate/pystachy-tests.UNUMl2/recursion_set_limit.err": {
+        "bytes": 0,
+        "ctime_ns": 1793504687803101704,
+        "inode": 2768871,
+        "kind": "file",
+        "mode": 33188,
+        "mtime_ns": 1793504682671343071,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/focused-native/tmp/candidate/pystachy-tests.UNUMl2/recursion_set_limit.err",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "candidate/pystachy-tests.UNUMl2/recursion_set_limit.exe": {
+        "bytes": 52440,
+        "ctime_ns": 1793504687803101704,
+        "inode": 2768872,
+        "kind": "file",
+        "mode": 33261,
+        "mtime_ns": 1793504682663343447,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/focused-native/tmp/candidate/pystachy-tests.UNUMl2/recursion_set_limit.exe",
+        "sha256": "77b58606cf7fe34c2a33a8646e1c86e634d0a32df90f0da6b8b479ecc71228c6"
+      },
+      "candidate/pystachy-tests.UNUMl2/recursion_set_limit.jit": {
+        "bytes": 76,
+        "ctime_ns": 1793504687803101704,
+        "inode": 2768873,
+        "kind": "file",
+        "mode": 33188,
+        "mtime_ns": 1793504682099370077,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/focused-native/tmp/candidate/pystachy-tests.UNUMl2/recursion_set_limit.jit",
+        "sha256": "9024d0d3e165455e5df8124dad3ee598dc8b5d3a7cf1f2da78ee4498727a4cec"
+      },
+      "candidate/pystachy-tests.UNUMl2/warm.py": {
+        "bytes": 5,
+        "ctime_ns": 1793504687803101704,
+        "inode": 2768874,
+        "kind": "file",
+        "mode": 33188,
+        "mtime_ns": 1793504663452247694,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/focused-native/tmp/candidate/pystachy-tests.UNUMl2/warm.py",
+        "sha256": "9f56e761d79bfdb34304a012586cb04d16b435ef6130091a97702e559260a2f2"
+      },
+      "candidate/tmp934lhkll": {
+        "bytes": 4096,
+        "ctime_ns": 1793504691810912516,
+        "inode": 2768756,
+        "kind": "directory",
+        "mode": 16832,
+        "mtime_ns": 1793504669651956478,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/focused-native/tmp/candidate/tmp934lhkll"
+      },
+      "candidate/tmp934lhkll/mpz": {
+        "bytes": 4096,
+        "ctime_ns": 1793504675059701828,
+        "inode": 2768774,
+        "kind": "directory",
+        "mode": 16877,
+        "mtime_ns": 1793504664809831695,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/focused-native/tmp/candidate/tmp934lhkll/mpz"
+      },
+      "candidate/tmp934lhkll/mpz/mpz.c": {
+        "bytes": 22409,
+        "ctime_ns": 1793504675003704456,
+        "inode": 2768776,
+        "kind": "file",
+        "mode": 33188,
+        "mtime_ns": 1793504664809914029,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/focused-native/tmp/candidate/tmp934lhkll/mpz/mpz.c",
+        "sha256": "2d648cec5de20c6bb7d4882a364cfc9fa1d355395255c1d0e82e4389bde03afa"
+      },
+      "candidate/tmp934lhkll/prog.ll": {
+        "bytes": 1418,
+        "ctime_ns": 1793504683315312827,
+        "inode": 2768818,
+        "kind": "file",
+        "mode": 33188,
+        "mtime_ns": 1793504664794986836,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/focused-native/tmp/candidate/tmp934lhkll/prog.ll",
+        "sha256": "ecb973009ba56509f40e01782274d12e18968888fbfebc478026c827628dbe22"
+      },
+      "candidate/tmp934lhkll/rtpy.ll": {
+        "bytes": 549411,
+        "ctime_ns": 1793504683315312827,
+        "inode": 2768820,
+        "kind": "file",
+        "mode": 33188,
+        "mtime_ns": 1793504664796184306,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/focused-native/tmp/candidate/tmp934lhkll/rtpy.ll",
+        "sha256": "940a694da5ea93214d1308a8eb635b47d8d0a9d4256c63d084c24f5099f8aa5f"
+      },
+      "candidate/tmp934lhkll/runtime-c.bc": {
+        "bytes": 550652,
+        "ctime_ns": 1793504683315312827,
+        "inode": 2768821,
+        "kind": "file",
+        "mode": 33188,
+        "mtime_ns": 1793504669543961545,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/focused-native/tmp/candidate/tmp934lhkll/runtime-c.bc",
+        "sha256": "62659395d0f40bcce6af443fba73a8427e8a337c2ce91a3e519607b091d5af15"
+      },
+      "candidate/tmp934lhkll/runtime-l.bc": {
+        "bytes": 758820,
+        "ctime_ns": 1793504683315312827,
+        "inode": 2768822,
+        "kind": "file",
+        "mode": 33188,
+        "mtime_ns": 1793504669751951786,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/focused-native/tmp/candidate/tmp934lhkll/runtime-l.bc",
+        "sha256": "dfa54a548654ccd0e7e8ea5e2b2ebad76ec26eb303840b5cb8318bae451aa23f"
+      },
+      "candidate/tmp934lhkll/runtime-s.ll": {
+        "bytes": 3144493,
+        "ctime_ns": 1793504683315312827,
+        "inode": 2768823,
+        "kind": "file",
+        "mode": 33188,
+        "mtime_ns": 1793504669375969427,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/focused-native/tmp/candidate/tmp934lhkll/runtime-s.ll",
+        "sha256": "2d0a6ad1f9109fe8b008f7241ccd17704058ddf4bf77013bf2862f4ea64ca3ab"
+      },
+      "candidate/tmp934lhkll/runtime.c": {
+        "bytes": 420408,
+        "ctime_ns": 1793504683315312827,
+        "inode": 2768824,
+        "kind": "file",
+        "mode": 33188,
+        "mtime_ns": 1793504664804183931,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/focused-native/tmp/candidate/tmp934lhkll/runtime.c",
+        "sha256": "a97102a4fe4a27a27e7d40f5978e36377440a13d000890bbc054bfe74ce50ae3"
+      },
+      "candidate/tmp934lhkll/runtime.ll": {
+        "bytes": 3150149,
+        "ctime_ns": 1793504683315312827,
+        "inode": 2768825,
+        "kind": "file",
+        "mode": 33188,
+        "mtime_ns": 1793504669351970553,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/focused-native/tmp/candidate/tmp934lhkll/runtime.ll",
+        "sha256": "b58e3c17a0956788970ae8e6de5032a3b9933357a7d94d2f33f4b0dbffcf2ea8"
+      },
+      "candidate/tmp934lhkll/ryu": {
+        "bytes": 4096,
+        "ctime_ns": 1793504675059701828,
+        "inode": 2768775,
+        "kind": "directory",
+        "mode": 16877,
+        "mtime_ns": 1793504664809767879,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/focused-native/tmp/candidate/tmp934lhkll/ryu"
+      },
+      "candidate/tmp934lhkll/ryu/common.h": {
+        "bytes": 3648,
+        "ctime_ns": 1793504675003704456,
+        "inode": 2768778,
+        "kind": "file",
+        "mode": 33188,
+        "mtime_ns": 1793504664809649583,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/focused-native/tmp/candidate/tmp934lhkll/ryu/common.h",
+        "sha256": "0bbd71d26da6193e678d0776cf418f43f287c73d6fd6725353df0aadf70f2a19"
+      },
+      "candidate/tmp934lhkll/ryu/d2s.c": {
+        "bytes": 17681,
+        "ctime_ns": 1793504675003704456,
+        "inode": 2768780,
+        "kind": "file",
+        "mode": 33188,
+        "mtime_ns": 1793504664809553263,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/focused-native/tmp/candidate/tmp934lhkll/ryu/d2s.c",
+        "sha256": "c6357b5d53ac1ba7f4984847d3a76f0803e0a931b7d0b02680656576829cf1d2"
+      },
+      "candidate/tmp934lhkll/ryu/d2s_intrinsics.h": {
+        "bytes": 13011,
+        "ctime_ns": 1793504675003704456,
+        "inode": 2768781,
+        "kind": "file",
+        "mode": 33188,
+        "mtime_ns": 1793504664809767879,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/focused-native/tmp/candidate/tmp934lhkll/ryu/d2s_intrinsics.h",
+        "sha256": "01d9bdaada67b42f2d1bbdebb3765867e6c44e3a181b806c1d7e851b93f9cc21"
+      },
+      "candidate/tmp934lhkll/ryu/d2s_small_table.h": {
+        "bytes": 7637,
+        "ctime_ns": 1793504675003704456,
+        "inode": 2768782,
+        "kind": "file",
+        "mode": 33188,
+        "mtime_ns": 1793504664809831695,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/focused-native/tmp/candidate/tmp934lhkll/ryu/d2s_small_table.h",
+        "sha256": "01f3d8a3ff739a26ecbddc2caae44c91574592b1de7c01fec67bc2d06672b606"
+      },
+      "candidate/tmp934lhkll/ryu/digit_table.h": {
+        "bytes": 1745,
+        "ctime_ns": 1793504675003704456,
+        "inode": 2768783,
+        "kind": "file",
+        "mode": 33188,
+        "mtime_ns": 1793504664809682460,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/focused-native/tmp/candidate/tmp934lhkll/ryu/digit_table.h",
+        "sha256": "8b782573abc0b8554d74163ae6c02f0beb5c30d1e63eaebdb0ddf2c98d817e01"
+      },
+      "candidate/tmp934lhkll/ryu/ryu.h": {
+        "bytes": 1360,
+        "ctime_ns": 1793504675003704456,
+        "inode": 2768784,
+        "kind": "file",
+        "mode": 33188,
+        "mtime_ns": 1793504664809607184,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/focused-native/tmp/candidate/tmp934lhkll/ryu/ryu.h",
+        "sha256": "b7feab0ba1df5e9ef3d602f386592ad152491405e49b408fb21c0e0e9e6bfb16"
+      },
+      "candidate/tmphtu1ohkw": {
+        "bytes": 4096,
+        "ctime_ns": 1793504687451090962,
+        "inode": 2768846,
+        "kind": "directory",
+        "mode": 16832,
+        "mtime_ns": 1793504682851334618,
+        "path": "/workspace/scratch/8f4dd6deebd9/prototype-996-final/policy_final/focused-native/tmp/candidate/tmphtu1ohkw"
+      }
+    },
+    "warmup_status_qualification": "tests/run.sh line 183 runs its pass-only cache warm-up with stdout/stderr redirected to /dev/null and does not check its exit status before the workers. The 13 successful executions do not establish that warm-up succeeded. Its actual status was not retained by the unchanged harness."
+  },
+  "native_cleanup_disassembly": {
+    "binary_sha256": "aa1c7c0a0fe38d1e2da4e0a75017020aff0b5add647996e250818dd28c9b2bef",
+    "command": [
+      "/usr/lib/llvm-18/bin/llvm-objdump",
+      "-d",
+      "--disassemble-symbols=pys_remove,pys_rmdir",
+      "/workspace/scratch/8f4dd6deebd9/pystachy-policy-final/pystachy"
+    ],
+    "finding": "pys_remove calls unlink@plt; pys_rmdir calls rmdir@plt. Both test the return code and branch to oserr on failure. They are not compiled no-ops. This static evidence does not show which calls executed in a failed attempt.",
+    "returncode": 0,
+    "stderr": "",
+    "stdout": "\n/workspace/scratch/8f4dd6deebd9/pystachy-policy-final/pystachy:\tfile format elf64-x86-64\n\nDisassembly of section .text:\n\n00000000003ede30 <pys_remove>:\n  3ede30: 53                           \tpushq\t%rbx\n  3ede31: 48 89 fb                     \tmovq\t%rdi, %rbx\n  3ede34: 48 8b 17                     \tmovq\t(%rdi), %rdx\n  3ede37: 48 83 c3 18                  \taddq\t$0x18, %rbx\n  3ede3b: 48 89 df                     \tmovq\t%rbx, %rdi\n  3ede3e: 31 f6                        \txorl\t%esi, %esi\n  3ede40: e8 6b 84 c1 ff               \tcallq\t0x62b0 <memchr@plt>\n  3ede45: 48 85 c0                     \ttestq\t%rax, %rax\n  3ede48: 75 0e                        \tjne\t0x3ede58 <pys_remove+0x28>\n  3ede4a: 48 89 df                     \tmovq\t%rbx, %rdi\n  3ede4d: e8 5e 82 c1 ff               \tcallq\t0x60b0 <unlink@plt>\n  3ede52: 85 c0                        \ttestl\t%eax, %eax\n  3ede54: 75 0e                        \tjne\t0x3ede64 <pys_remove+0x34>\n  3ede56: 5b                           \tpopq\t%rbx\n  3ede57: c3                           \tretq\n  3ede58: 48 8d 3d 41 57 00 00         \tleaq\t0x5741(%rip), %rdi      # 0x3f35a0 <pchange+0x23e0>\n  3ede5f: e8 0c 77 fe ff               \tcallq\t0x3d5570 <pys_fail>\n  3ede64: 48 89 df                     \tmovq\t%rbx, %rdi\n  3ede67: e8 e4 dd ff ff               \tcallq\t0x3ebc50 <oserr>\n  3ede6c: 0f 1f 40 00                  \tnopl\t(%rax)\n\n00000000003ede70 <pys_rmdir>:\n  3ede70: 53                           \tpushq\t%rbx\n  3ede71: 48 89 fb                     \tmovq\t%rdi, %rbx\n  3ede74: 48 8b 17                     \tmovq\t(%rdi), %rdx\n  3ede77: 48 83 c3 18                  \taddq\t$0x18, %rbx\n  3ede7b: 48 89 df                     \tmovq\t%rbx, %rdi\n  3ede7e: 31 f6                        \txorl\t%esi, %esi\n  3ede80: e8 2b 84 c1 ff               \tcallq\t0x62b0 <memchr@plt>\n  3ede85: 48 85 c0                     \ttestq\t%rax, %rax\n  3ede88: 75 0e                        \tjne\t0x3ede98 <pys_rmdir+0x28>\n  3ede8a: 48 89 df                     \tmovq\t%rbx, %rdi\n  3ede8d: e8 5e 83 c1 ff               \tcallq\t0x61f0 <rmdir@plt>\n  3ede92: 85 c0                        \ttestl\t%eax, %eax\n  3ede94: 75 0e                        \tjne\t0x3edea4 <pys_rmdir+0x34>\n  3ede96: 5b                           \tpopq\t%rbx\n  3ede97: c3                           \tretq\n  3ede98: 48 8d 3d 35 57 00 00         \tleaq\t0x5735(%rip), %rdi      # 0x3f35d4 <pchange+0x2414>\n  3ede9f: e8 cc 76 fe ff               \tcallq\t0x3d5570 <pys_fail>\n  3edea4: 48 89 df                     \tmovq\t%rbx, %rdi\n  3edea7: e8 a4 dd ff ff               \tcallq\t0x3ebc50 <oserr>\n  3edeac: 0f 1f 40 00                  \tnopl\t(%rax)\n",
+    "tool": {
+      "bytes": 919920,
+      "ctime_ns": 1793485661287622977,
+      "inode": 2777224,
+      "mode": 33261,
+      "mtime_ns": 1716798380000000000,
+      "path": "/usr/lib/llvm-18/bin/llvm-objdump",
+      "sha256": "4f98b86448d23bd1f858c50e93fbfc799f1c3640961a95e3b6c89d229a1b91bb"
+    }
+  },
+  "proximate_failure": "The native driver published prepared runtime artifacts, then its final shell command failed at rmdir. The && chain therefore did not execute lli for those warm-build invocations. The reason earlier native cleanup left files behind is not established.",
+  "recorded_at": "2026-11-01T03:53:12.312486+00:00",
+  "schema": 1,
+  "scope": "Read-only examination of preserved attempts, source, emitted IR, native disassembly and temporary files. No workload or timing rerun, source edit, evidence normalization, or temporary-file deletion performed.",
+  "status": "unresolved"
+}

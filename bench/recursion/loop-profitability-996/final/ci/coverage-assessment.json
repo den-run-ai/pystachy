@@ -1,0 +1,328 @@
+{
+  "hosted_parts": 12,
+  "reports": [
+    {
+      "coverage_json_sha256": "d94613aeb7d187e5c087c7837e42d4338acfc04f6809a66a62782458abe0c22b",
+      "metadata_files": {
+        "cache.json": "7f946abb1a6bad89dead94264e44cac7d94e229e3c0175a2b7b4570f3b57354b",
+        "corpus-0.json": "21b120092f3cdc47e3fe1985d8a1fa1c2c87749c7bf11721a8d5f1163312b901",
+        "corpus-1.json": "a680fdfbe316e72a1efe8ee8af4f8e6483522fd93462d35c929f3243c8752f7b",
+        "corpus-2.json": "addd5a85283a91e904c635d70cd8a5fb9ac236581bcddda90b74ef66ef122533",
+        "corpus-3.json": "78799129099f50062dc40e61d52ec9926343f32760ca4a853b9cd0cc9d69c69d",
+        "corpus-4.json": "a8f96e33fc2d5f5be890b9a60da646b786e7d8fe623522722cf5d03aea0ac234",
+        "corpus-5.json": "730e227c8c52762695267c7d2a67e70343bfbc80f290e7fab90582c04e30671c",
+        "corpus-6.json": "5735c97291f1312a600c052b3dbad6fcbc5822846ed3a40aa484527fa7598d71",
+        "corpus-7.json": "3294f094dbeaa14d4b749370dcb653bde02d3a3acbbfffc9a5b8f7233795b4b4",
+        "ffi.json": "5382f659d5d15d1b38ee4b860c34a5639b5beeb9cc06826d8c279f5bb4cc4f38",
+        "ir.json": "b9d6ea9a2940f7095dbeed7d88af69f59ddb499f5645c5cbc68ab874c8c5ab97",
+        "unit.json": "75cb7b6a90f9536569192f010e9b32f3d58dbe98b5ed6ebc7587518d2f992540"
+      },
+      "name": "coverage",
+      "parts": [
+        {
+          "cases": null,
+          "commit": "b20d3720ed557a6934e6ac10a6287a5610d2fc1f",
+          "data_files": 33,
+          "dirty": false,
+          "part": "cache",
+          "processes": 34,
+          "report": "68 passed, 0 failed",
+          "seconds": 314,
+          "selected": false,
+          "shard": null,
+          "suite": "cache"
+        },
+        {
+          "cases": 479,
+          "commit": "b20d3720ed557a6934e6ac10a6287a5610d2fc1f",
+          "data_files": 766,
+          "dirty": false,
+          "part": "corpus-0",
+          "processes": 766,
+          "report": "765 passed, 0 failed",
+          "seconds": 502,
+          "selected": false,
+          "shard": [
+            0,
+            8
+          ],
+          "suite": "corpus"
+        },
+        {
+          "cases": 479,
+          "commit": "b20d3720ed557a6934e6ac10a6287a5610d2fc1f",
+          "data_files": 772,
+          "dirty": false,
+          "part": "corpus-1",
+          "processes": 772,
+          "report": "771 passed, 0 failed",
+          "seconds": 528,
+          "selected": false,
+          "shard": [
+            1,
+            8
+          ],
+          "suite": "corpus"
+        },
+        {
+          "cases": 480,
+          "commit": "b20d3720ed557a6934e6ac10a6287a5610d2fc1f",
+          "data_files": 769,
+          "dirty": false,
+          "part": "corpus-2",
+          "processes": 769,
+          "report": "768 passed, 0 failed",
+          "seconds": 503,
+          "selected": false,
+          "shard": [
+            2,
+            8
+          ],
+          "suite": "corpus"
+        },
+        {
+          "cases": 480,
+          "commit": "b20d3720ed557a6934e6ac10a6287a5610d2fc1f",
+          "data_files": 767,
+          "dirty": false,
+          "part": "corpus-3",
+          "processes": 767,
+          "report": "766 passed, 0 failed",
+          "seconds": 346,
+          "selected": false,
+          "shard": [
+            3,
+            8
+          ],
+          "suite": "corpus"
+        },
+        {
+          "cases": 480,
+          "commit": "b20d3720ed557a6934e6ac10a6287a5610d2fc1f",
+          "data_files": 768,
+          "dirty": false,
+          "part": "corpus-4",
+          "processes": 768,
+          "report": "767 passed, 0 failed",
+          "seconds": 545,
+          "selected": false,
+          "shard": [
+            4,
+            8
+          ],
+          "suite": "corpus"
+        },
+        {
+          "cases": 480,
+          "commit": "b20d3720ed557a6934e6ac10a6287a5610d2fc1f",
+          "data_files": 772,
+          "dirty": false,
+          "part": "corpus-5",
+          "processes": 772,
+          "report": "771 passed, 0 failed",
+          "seconds": 488,
+          "selected": false,
+          "shard": [
+            5,
+            8
+          ],
+          "suite": "corpus"
+        },
+        {
+          "cases": 481,
+          "commit": "b20d3720ed557a6934e6ac10a6287a5610d2fc1f",
+          "data_files": 767,
+          "dirty": false,
+          "part": "corpus-6",
+          "processes": 767,
+          "report": "766 passed, 0 failed",
+          "seconds": 264,
+          "selected": false,
+          "shard": [
+            6,
+            8
+          ],
+          "suite": "corpus"
+        },
+        {
+          "cases": 480,
+          "commit": "b20d3720ed557a6934e6ac10a6287a5610d2fc1f",
+          "data_files": 765,
+          "dirty": false,
+          "part": "corpus-7",
+          "processes": 765,
+          "report": "764 passed, 0 failed",
+          "seconds": 340,
+          "selected": false,
+          "shard": [
+            7,
+            8
+          ],
+          "suite": "corpus"
+        },
+        {
+          "cases": null,
+          "commit": "b20d3720ed557a6934e6ac10a6287a5610d2fc1f",
+          "data_files": 131,
+          "dirty": false,
+          "part": "ffi",
+          "processes": 131,
+          "report": "145 passed, 0 failed; skipped: py_coerce (the CPython-hosted compiler's own locale coercion reaches the program)",
+          "seconds": 97,
+          "selected": false,
+          "shard": null,
+          "suite": "ffi"
+        },
+        {
+          "cases": null,
+          "commit": "b20d3720ed557a6934e6ac10a6287a5610d2fc1f",
+          "data_files": 81,
+          "dirty": false,
+          "part": "ir",
+          "processes": 81,
+          "report": "the IR check and llvm-as accept the IR of 81 programs",
+          "seconds": 90,
+          "selected": false,
+          "shard": null,
+          "suite": "ir"
+        },
+        {
+          "cases": null,
+          "commit": "b20d3720ed557a6934e6ac10a6287a5610d2fc1f",
+          "data_files": 2,
+          "dirty": false,
+          "part": "unit",
+          "processes": 2,
+          "report": "227 tests, OK",
+          "seconds": 21,
+          "selected": false,
+          "shard": null,
+          "suite": "unit"
+        }
+      ],
+      "summary_sha256": "d214eb2e10330d2af5c6b4f69cd446db79cde348f1b04ec8f3088304bb5bf3f2"
+    },
+    {
+      "coverage_json_sha256": "0216ee1cf19fcb359c7f716a64ff7bd65b7e03a645eec67ca746fd3fae99dbf2",
+      "metadata_files": {
+        "corpus-0.json": "ef0e160e85663f0e48e776b6b3781c6fd0b024f3fcded8aabc67afa171c1cfdd",
+        "corpus-1.json": "09015c0254935a20342ae1ca150891822a4e25d0480c6535152664d533de8d22",
+        "corpus-2.json": "203c3ffe062ea6176dbbdab96b2eb9b14a0e57479ab4d63585718d951a32019d",
+        "corpus-3.json": "00ef60e0f107c41041430fd6ed47ef02ebeffaad4bc9cb2b4215d0a00a3e9b10",
+        "corpus-4.json": "26da53f6a1b7ef566e7990614afade080d66844a20d445bb4241d037839cd445",
+        "corpus-5.json": "4c1c41ae11eb014224c8702adf2ab932f77e86bf968fc1f3f7de2514f0546533",
+        "ffi.json": "d9e65aa89f2de2d3cefb698ebdba194474e834a302715cc3a04fbbbe648a945c"
+      },
+      "name": "runtime-coverage",
+      "parts": [
+        {
+          "cases": 640,
+          "commit": "b20d3720ed557a6934e6ac10a6287a5610d2fc1f",
+          "dirty": false,
+          "part": "corpus-0",
+          "profiles": 2,
+          "report": "1021 passed, 0 failed",
+          "seconds": 284,
+          "selected": false,
+          "shard": [
+            0,
+            6
+          ],
+          "suite": "corpus"
+        },
+        {
+          "cases": 640,
+          "commit": "b20d3720ed557a6934e6ac10a6287a5610d2fc1f",
+          "dirty": false,
+          "part": "corpus-1",
+          "profiles": 2,
+          "report": "1023 passed, 0 failed",
+          "seconds": 246,
+          "selected": false,
+          "shard": [
+            1,
+            6
+          ],
+          "suite": "corpus"
+        },
+        {
+          "cases": 639,
+          "commit": "b20d3720ed557a6934e6ac10a6287a5610d2fc1f",
+          "dirty": false,
+          "part": "corpus-2",
+          "profiles": 2,
+          "report": "1024 passed, 0 failed",
+          "seconds": 275,
+          "selected": false,
+          "shard": [
+            2,
+            6
+          ],
+          "suite": "corpus"
+        },
+        {
+          "cases": 640,
+          "commit": "b20d3720ed557a6934e6ac10a6287a5610d2fc1f",
+          "dirty": false,
+          "part": "corpus-3",
+          "profiles": 2,
+          "report": "1022 passed, 0 failed",
+          "seconds": 163,
+          "selected": false,
+          "shard": [
+            3,
+            6
+          ],
+          "suite": "corpus"
+        },
+        {
+          "cases": 640,
+          "commit": "b20d3720ed557a6934e6ac10a6287a5610d2fc1f",
+          "dirty": false,
+          "part": "corpus-4",
+          "profiles": 2,
+          "report": "1020 passed, 0 failed",
+          "seconds": 197,
+          "selected": false,
+          "shard": [
+            4,
+            6
+          ],
+          "suite": "corpus"
+        },
+        {
+          "cases": 640,
+          "commit": "b20d3720ed557a6934e6ac10a6287a5610d2fc1f",
+          "dirty": false,
+          "part": "corpus-5",
+          "profiles": 2,
+          "report": "1028 passed, 0 failed",
+          "seconds": 172,
+          "selected": false,
+          "shard": [
+            5,
+            6
+          ],
+          "suite": "corpus"
+        },
+        {
+          "cases": null,
+          "commit": "b20d3720ed557a6934e6ac10a6287a5610d2fc1f",
+          "dirty": false,
+          "part": "ffi",
+          "profiles": 3,
+          "report": "110 passed, 0 failed",
+          "seconds": 83,
+          "selected": false,
+          "shard": null,
+          "suite": "ffi"
+        }
+      ],
+      "summary_sha256": "56941d59ad8b638630c0eb8d52c7e76b33895b5b92215343559aee1b72f5db67"
+    }
+  ],
+  "result": "pass",
+  "runtime_parts": 7,
+  "scope": "Independent metadata completeness, shard, source, cleanliness and recorded data-count checks for the successful CI coverage reports. The binary profiles were not recombined locally.",
+  "source_commit": "b20d3720ed557a6934e6ac10a6287a5610d2fc1f"
+}

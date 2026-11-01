@@ -1,0 +1,169 @@
+{
+  "annotations": {
+    "details": "Two nonblocking LLVM 20/18 installation link warnings and one macOS arm64 queue-capacity notice.",
+    "notices": 1,
+    "warnings": 2
+  },
+  "artifacts_verified": 37,
+  "base": "07b26e02425d023288ed95a9d2a5077be5aeb45e",
+  "bootstrap": {
+    "bundle_id": "76dea66c9d42c6b1ebeac9b5163f2ed3560bd8bc5460ae06b2ea01ddfee4d391",
+    "compiler_ir_lines": 808422,
+    "compiler_ir_sha256": "ce874ff52970f421fd4f0459bc6c3e21bfea6c212d774ab54cd8c8bf1c4f192b",
+    "native_stage2_sha256": "267feabe6acb7f801fca99a22da55a92edffcabb621b80b11b4e78738d556315",
+    "payload_hashes_verified": 6,
+    "runtime_ir_sha256": "940a694da5ea93214d1308a8eb635b47d8d0a9d4256c63d084c24f5099f8aa5f",
+    "tracked_paths": 8191
+  },
+  "checked_at": "2026-11-01T03:45:09.309Z",
+  "coverage": {
+    "hosted_parts": 12,
+    "runtime_parts": 7,
+    "scope": "Report metadata, source/shards and completeness checked; binary coverage profiles not recombined locally."
+  },
+  "expected_skips": [
+    {
+      "id": 124740251961,
+      "name": "publish main's coverage to the badges branch",
+      "workflow": "Coverage"
+    },
+    {
+      "id": 124738076749,
+      "name": "DCO certified (fork pull requests)",
+      "workflow": "DCO"
+    }
+  ],
+  "head": "44b638bbf8df1835b67bebda0468d65374569c71",
+  "head_tree_matches_merge": true,
+  "independent_verification": {
+    "comparison_ignores": [
+      "top-level timestamp_utc",
+      "local root prefix of steps[].log",
+      "local root prefix of ci.groups[].report"
+    ],
+    "exit_code": 0,
+    "group_stage_records": 84,
+    "logical_stages": 54,
+    "original_reports": 31,
+    "original_reports_unchanged": true,
+    "published_report_matches": true,
+    "result": "pass"
+  },
+  "job_conclusions": {
+    "skipped": 2,
+    "success": 59
+  },
+  "jobs": 61,
+  "limitations": [
+    "CI evidence does not establish performance acceptance. Performance smoke uses an advisory threshold of at least 20 percent and at least 5 milliseconds.",
+    "CI results do not validate local native-JIT cold-cache preparation or replace missing local timing samples.",
+    "Lint total includes check-fast and typed subsets; these counts must not be added.",
+    "Only the bundled stage-2 executable has an independently verified executable hash. No stage-3 executable hash is claimed.",
+    "First-head 1ff5efe4 failure records remain separate and unchanged."
+  ],
+  "lint": {
+    "actionlint_passed": true,
+    "check_fast_tests": 421,
+    "mypy_source_files": 48,
+    "recordings_passed": true,
+    "ruff_passed": true,
+    "skipped": 0,
+    "tests": 926,
+    "typed_tests": 220,
+    "unittest_commands": 32
+  },
+  "performance_smoke": {
+    "classifications": {
+      "ok": 49
+    },
+    "metrics": 49,
+    "performance_acceptance": "not_decided_by_advisory_smoke",
+    "workloads": 11
+  },
+  "pr_number": 996,
+  "repository": "den-run-ai/pystachy",
+  "schema": 1,
+  "selected_performance_comparisons": [
+    {
+      "base_seconds": 4.594557646000027,
+      "change_percent": 7.275230125602472,
+      "classification": "ok",
+      "head_seconds": 4.928822287999992,
+      "metric": "build_s",
+      "workload": "fnmatch"
+    },
+    {
+      "base_seconds": 1.280346752000014,
+      "change_percent": 12.171212271717714,
+      "classification": "ok",
+      "head_seconds": 1.436180472999979,
+      "metric": "jit_process_s",
+      "workload": "fnmatch"
+    },
+    {
+      "base_seconds": 0.02451230300002294,
+      "change_percent": 6.196896309495092,
+      "classification": "ok",
+      "head_seconds": 0.026031305000003613,
+      "metric": "jit_loop_s",
+      "workload": "fnmatch"
+    },
+    {
+      "base_seconds": 0.026619329999988395,
+      "change_percent": 0.9538820098372369,
+      "classification": "ok",
+      "head_seconds": 0.02687324699999749,
+      "metric": "aot_process_s",
+      "workload": "fnmatch"
+    },
+    {
+      "base_seconds": 0.021177813999997852,
+      "change_percent": 1.5303798587981143,
+      "classification": "ok",
+      "head_seconds": 0.021501914999987548,
+      "metric": "aot_loop_s",
+      "workload": "fnmatch"
+    },
+    {
+      "base_seconds": 1.3478054549999854,
+      "change_percent": 8.689103725285307,
+      "classification": "ok",
+      "head_seconds": 1.4649176689999877,
+      "metric": "jit_process_s",
+      "workload": "json"
+    },
+    {
+      "base_seconds": 0.02314709399999515,
+      "change_percent": 6.548990555689871,
+      "classification": "ok",
+      "head_seconds": 0.024662994999971488,
+      "metric": "jit_loop_s",
+      "workload": "json"
+    },
+    {
+      "base_seconds": 0.02686562399998138,
+      "change_percent": -2.0212670288355605,
+      "classification": "ok",
+      "head_seconds": 0.026322597999978825,
+      "metric": "aot_process_s",
+      "workload": "json"
+    },
+    {
+      "base_seconds": 0.021748429000012948,
+      "change_percent": -1.7294490559635167,
+      "classification": "ok",
+      "head_seconds": 0.021372300999985328,
+      "metric": "aot_loop_s",
+      "workload": "json"
+    }
+  ],
+  "source_tree": "a1eddfe2c43d368b5c48ac79798501d8d7add552",
+  "state": "draft, unmerged",
+  "synthetic_merge": "b20d3720ed557a6934e6ac10a6287a5610d2fc1f",
+  "workflow_attempt": 1,
+  "workflow_conclusions": {
+    "skipped": 1,
+    "success": 6
+  },
+  "workflows": 7
+}
