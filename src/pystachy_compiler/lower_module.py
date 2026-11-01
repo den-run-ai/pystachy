@@ -8,7 +8,7 @@ from src.pystachy_compiler.diagnostics import fail, dynamic_program, int_lists
 from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo
 from src.pystachy_compiler.llvm_abi import llstr
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.specs import CTYPES, DYNTYPE_LL, GENCLEAN, GENCMD, GENDONE, GENNAME, GENRUN, GENSTATE, GLUE, LIBS, LINKDL, OBJECTC, RANGEC, RECURSION_BRANCH, RTDATA, RTSYM, STR_HEADER_SIZE, STRLEN_RANGE, TBAA_BYTES, TBAA_DEPTH, TBAA_FIELDS, TBAA_LEN, TBAA_LIMIT, TBAA_NAMES, TBAA_SIZES
+from src.pystachy_compiler.specs import CTYPES, DYNTYPE_LL, GENCLEAN, GENCMD, GENDONE, GENNAME, GENRUN, GENSTATE, GLUE, LIBS, LINKDL, OBJECTC, RANGEC, RECURSION_BRANCH, RTDATA, RTSYM, STR_HEADER_SIZE, STRLEN_RANGE, TBAA_BYTES, TBAA_DEPTH, TBAA_DEPTH_TYPE, TBAA_FIELDS, TBAA_LEN, TBAA_LIMIT, TBAA_LIMIT_TYPE, TBAA_NAMES, TBAA_SIZES
 from src.pystachy_compiler.utils import RtFn, lt, runtime_decl, typestr
 
 # pystachy run on Linux, which loads the runtime as a shared library (the driver's RTSO, #704): a
@@ -119,10 +119,10 @@ def recursion_ir(keys: list[str], used: bool, root: int, fields: bool, check: bo
     if not fields:
         out.append(f'!{root} = !{{!"pystachy fields"}}')
     out.extend([
-        f'!9 = !{{!"recursion depth", !{root}, i64 0}}',
-        f'!10 = !{{!"recursion limit", !{root}, i64 0}}',
-        f"!{TBAA_DEPTH} = !{{!9, !9, i64 0}}",
-        f"!{TBAA_LIMIT} = !{{!10, !10, i64 0}}",
+        f'!{TBAA_DEPTH_TYPE} = !{{!"recursion depth", !{root}, i64 0}}',
+        f'!{TBAA_LIMIT_TYPE} = !{{!"recursion limit", !{root}, i64 0}}',
+        f"!{TBAA_DEPTH} = !{{!{TBAA_DEPTH_TYPE}, !{TBAA_DEPTH_TYPE}, i64 0}}",
+        f"!{TBAA_LIMIT} = !{{!{TBAA_LIMIT_TYPE}, !{TBAA_LIMIT_TYPE}, i64 0}}",
         f'!{RECURSION_BRANCH} = !{{!"branch_weights", i32 1, i32 1048575}}',
     ])
     return out

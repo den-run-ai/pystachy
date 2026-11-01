@@ -163,6 +163,8 @@ STRLEN_RANGE = 5  # !range of a str's length in runtime mode: 0 to 2**63 - 18 (_
 TBAA_DEPTH = 6
 TBAA_LIMIT = 7
 RECURSION_BRANCH = 8
+TBAA_DEPTH_TYPE = 9  # (the scalar type nodes of TBAA_DEPTH's and TBAA_LIMIT's tags)
+TBAA_LIMIT_TYPE = 10
 # a program's TBAA of object fields (fieldtbaa): its access tags are numbered from here, in the order
 # lowering first tags each field, and the type nodes they name follow them (lower_module); the
 # members a class's struct may have, each with its size, which is its alignment too, and the name
