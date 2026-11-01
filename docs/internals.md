@@ -467,8 +467,10 @@ entry's and the returns' effects (`R I`) instead of another walk over every oper
 `gen_effects` leaves a function's entry snapshot out of its own mask, since an
 uncounted function either drops it or keeps it only beside the restorations that its
 handlers already contribute. A generator body counts while it runs: its consumer enters
-(`recursion.enter`) before each resume, so a failed entry leaves the generator suspended,
-and restores the depth it entered from after a normal resume. The pass removes that
+(`recursion.enter`) before each resume and restores the depth it entered from after a
+normal resume. A failed entry raises in the consumer and finishes the generator first (its
+state is `GENDONE` until the resume's `GENRUN` replaces it), as CPython clears a frame whose
+entry exceeds the limit: its handlers do not run, and it never resumes. The pass removes that
 accounting where no body of the handle's type can be entered again, and computes the
 summaries afresh there. Closing a loop's generator (`gen.drop`) uses `pys.gen.drop`
 unchanged, or `pys.gen.drop.counted`, which counts the cleanup as a frame and reports a

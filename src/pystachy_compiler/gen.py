@@ -3284,8 +3284,8 @@ class Gen:
     def gen_next(self, h: Val, done: str) -> str:
         return generators_gen_next(self, h, done)
 
-    def gen_resume_enter(self) -> str:
-        return generators_gen_resume_enter(self)
+    def gen_resume_enter(self, st: str) -> str:
+        return generators_gen_resume_enter(self, st)
 
     def gen_none_end(self) -> None:
         return generators_gen_none_end(self)
