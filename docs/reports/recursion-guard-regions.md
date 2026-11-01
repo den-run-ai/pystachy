@@ -2,7 +2,9 @@
 
 > **Superseded.** The `recursionleaf` and `recursionregion` passes measured here were removed
 > when the native depth policy changed to count only functions that recursion can repeat; see
-> [the policy report](recursion-guard-policy.md). This report and its evidence are kept as history.
+> [the policy report](recursion-guard-policy.md). This report is kept as history; its raw
+> measurement files are not in the tree, and stay at the commit that recorded them,
+> [eca993b9](https://github.com/den-run-ai/pystachy/tree/eca993b9a4563f7f7865cdeda6e6b22f29d044c1/bench/recursion/results).
 
 This report separates final frozen-source measurements from development
 experiments. The final candidate contains bounded whole-function versioning,
@@ -389,8 +391,9 @@ machine-code bytes and text offset zero as main's kernel, including registers
 and short branches. This is a function-body identity check, not whole-binary
 identity. The final table above comes from the subsequent fresh full series.
 
-`recursion-region-rejected-b04.json` and
-`recursion-region-layout-controls.json` preserve the rejected result and all
+[`recursion-region-rejected-b04.json`](https://github.com/den-run-ai/pystachy/blob/eca993b9a4563f7f7865cdeda6e6b22f29d044c1/bench/recursion/results/recursion-region-rejected-b04.json) and
+[`recursion-region-layout-controls.json`](https://github.com/den-run-ai/pystachy/blob/eca993b9a4563f7f7865cdeda6e6b22f29d044c1/bench/recursion/results/recursion-region-layout-controls.json)
+(at eca993b9) preserve the rejected result and all
 follow-up samples, identities, transforms, and object hashes. They show why
 removing instructions alone was insufficient to accept the optimization.
 
@@ -637,12 +640,12 @@ first counting attempt's missing process output explicitly noted above.
 Exploratory series remain distinct from final acceptance evidence.
 
 
-Committed evidence:
+Evidence, at the commit that recorded it (eca993b9; the files are not in the tree):
 
-- [Final measurements](../../bench/recursion/results/recursion-region-results.json): four source manifests, all counts, elapsed samples and compile observations.
-- [Rejected first layout](../../bench/recursion/results/recursion-region-rejected-b04.json): the complete earlier series, retained with its rejection reason.
-- [Layout and normal-driver controls](../../bench/recursion/results/recursion-region-layout-controls.json): separate controlled experiments, actual code identity and scheduler observations.
-- [Corrected-source validation](../../bench/recursion/results/recursion-region-validation.json): local gates, artifact identities and the diagnostic comparison audit.
+- [Final measurements](https://github.com/den-run-ai/pystachy/blob/eca993b9a4563f7f7865cdeda6e6b22f29d044c1/bench/recursion/results/recursion-region-results.json): four source manifests, all counts, elapsed samples and compile observations.
+- [Rejected first layout](https://github.com/den-run-ai/pystachy/blob/eca993b9a4563f7f7865cdeda6e6b22f29d044c1/bench/recursion/results/recursion-region-rejected-b04.json): the complete earlier series, retained with its rejection reason.
+- [Layout and normal-driver controls](https://github.com/den-run-ai/pystachy/blob/eca993b9a4563f7f7865cdeda6e6b22f29d044c1/bench/recursion/results/recursion-region-layout-controls.json): separate controlled experiments, actual code identity and scheduler observations.
+- [Corrected-source validation](https://github.com/den-run-ai/pystachy/blob/eca993b9a4563f7f7865cdeda6e6b22f29d044c1/bench/recursion/results/recursion-region-validation.json): local gates, artifact identities and the diagnostic comparison audit.
 
 The local validation commands were `make`, the `test_typed*.py`,
 `test_function_summaries.py` and `test_compiler_state*.py` unittest discovery
