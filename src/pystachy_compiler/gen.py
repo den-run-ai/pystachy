@@ -1461,6 +1461,8 @@ class Gen:
         self.ngenexp = 0  # the generator expressions made values (genexp_value): each a function of its own
         self.vowned: dict[str, FnInfo] = {}  # val nodes of such generators (owned_node), by the node's text
         self.gendrops = False  # a gen.drop op was lowered: the module defines its helper (lower_module)
+        self.gendrops_counted = False  # one that counts its cleanup as a frame (pys.gen.drop.counted)
+        self.genplain: dict[str, bool] = {}  # the generator types none of whose bodies can recur (Gen.recursionscope)
         # the program uses the generator protocol's send() or throw(), or the value of a yield
         # (generators.uses_protocol, closed world): its generators' promises hold what is sent and
         # thrown, and their yields take them (docs/internals.md#generators)

@@ -415,6 +415,13 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
             o.append(f"  %t{i.r[0]} = call ptr @llvm.coro.promise(ptr {i.a[0].v}, i32 8, i1 false)")
     elif op == "gen.resume":
         o.append("  " + self.invoke(f"call void @llvm.coro.resume(ptr {i.a[0].v})", i))
+    elif op == "gen.drop" and not self.rtmode and i.a[0].t not in self.genplain:
+        # (a generator whose body can recur, Gen.recursionscope: its cleanup counts as a frame)
+        o.append(f"  call void @pys.gen.drop.counted(ptr {i.a[0].v})")
+        self.gendrops_counted = True
+        for name in ["pys_recursion_enter", "pys_recursion_leave", "pys_recursion_depth", "pys_recursion_restore",
+                     "pys_try_mark", "pys_exc_begin", "pys_gen_unraisable", "pys_personality"]:
+            self.runtime(name)
     elif op == "gen.drop":
         o.append(f"  call void @pys.gen.drop(ptr {i.a[0].v})")
         self.gendrops = True

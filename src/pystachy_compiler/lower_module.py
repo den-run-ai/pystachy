@@ -50,7 +50,7 @@ def recursion_ir(keys: list[str], used: bool, root: int, fields: bool) -> list[s
     # its cold path) and counts; LLVM's ordinary inliners take it (clang -O2 for build, the JIT's
     # below its line limit), not mandatory inlining: LLVM 18's always-inline pass computes block
     # frequencies of each caller, which costs a large JIT program's start-up more than the call
-    # saves. The scalar helpers, which only the hand-written pys.gen.drop and extension entries
+    # saves. The scalar helpers, which only the hand-written pys.gen.drop.counted and extension entries
     # call, are always inlined
     if not used:
         return []
@@ -496,52 +496,84 @@ def gen_gen_module(self) -> list[str]:
         "declare i8 @llvm.coro.suspend(token, i1)", "declare ptr @llvm.coro.free(token, ptr)",
         "declare i1 @llvm.coro.end(ptr, i1, token)", "declare void @llvm.coro.resume(ptr)",
         "declare void @llvm.coro.destroy(ptr)", "declare ptr @llvm.coro.promise(ptr, i32, i1)"]
-    if not self.gendrops:
-        return o
-    return o + [
-        "define internal void @pys.gen.drop(ptr %h) personality ptr @pys_personality {",
-        "entry:",
-        "  %p = call ptr @llvm.coro.promise(ptr %h, i32 8, i1 false)",
-        f"  %sa = getelementptr i64, ptr %p, i64 {GENSTATE}",
-        "  %s = load i64, ptr %sa",
-        f"  %c = icmp eq i64 %s, {GENCLEAN}",
-        "  br i1 %c, label %close, label %done",
-        "close:",
-        "  %base = call i64 @pys.recursion.depth()",
-        "  %mark = call i64 @pys_try_mark()",
-        "  %x = call ptr @pys_exc_handled()",
-        f"  %ca = getelementptr i64, ptr %p, i64 {GENCMD}",
-        "  store i64 1, ptr %ca",
-        "  %depth = invoke i64 @pys.recursion.enter() to label %resume unwind label %failed",
-        "resume:",
-        f"  store i64 {GENRUN}, ptr %sa",
-        "  invoke void @llvm.coro.resume(ptr %h) to label %resumed unwind label %failed",
-        "resumed:",
-        "  call void @pys.recursion.leave()",
-        "  call void @pys_exc_restore(ptr %x)",
-        "  %s2 = load i64, ptr %sa",
-        f"  %ok = icmp eq i64 %s2, {GENDONE}",
-        "  br i1 %ok, label %done, label %ignored",
-        "ignored:",
-        f"  %na = getelementptr i64, ptr %p, i64 {GENNAME}",
-        "  %n = load ptr, ptr %na",
-        "  call void @pys_gen_ignored(ptr %n, ptr %p)",
-        "  br label %done",
-        "failed:",
-        "  %lp = landingpad { ptr, i32 } catch ptr null",
-        "  %ue = extractvalue { ptr, i32 } %lp, 0",
-        "  call void @pys.recursion.restore(i64 %base)",
-        "  %e = call ptr @pys_exc_begin(ptr %ue, i64 %mark)",
-        f"  %ena = getelementptr i64, ptr %p, i64 {GENNAME}",
-        "  %ename = load ptr, ptr %ena",
-        "  call void @pys_gen_unraisable(ptr %e, ptr %ename, ptr %p)",
-        "  call void @pys_exc_restore(ptr %x)",
-        "  br label %done",
-        "done:",  # (finished, as close() leaves it, for a yield from's consumer that holds it too)
-        f"  store i64 {GENDONE}, ptr %sa",
-        "  call void @llvm.coro.destroy(ptr %h)",
-        "  ret void",
-        "}"]
+    if self.gendrops:
+        o.extend([
+            "define internal void @pys.gen.drop(ptr %h) {",
+            "entry:",
+            "  %p = call ptr @llvm.coro.promise(ptr %h, i32 8, i1 false)",
+            f"  %sa = getelementptr i64, ptr %p, i64 {GENSTATE}",
+            "  %s = load i64, ptr %sa",
+            f"  %c = icmp eq i64 %s, {GENCLEAN}",
+            "  br i1 %c, label %close, label %done",
+            "close:",
+            f"  %ca = getelementptr i64, ptr %p, i64 {GENCMD}",
+            "  store i64 1, ptr %ca",
+            f"  store i64 {GENRUN}, ptr %sa",
+            "  %x = call ptr @pys_exc_handled()",
+            "  call void @llvm.coro.resume(ptr %h)",
+            "  call void @pys_exc_restore(ptr %x)",
+            "  %s2 = load i64, ptr %sa",
+            f"  %ok = icmp eq i64 %s2, {GENDONE}",
+            "  br i1 %ok, label %done, label %ignored",
+            "ignored:",
+            f"  %na = getelementptr i64, ptr %p, i64 {GENNAME}",
+            "  %n = load ptr, ptr %na",
+            "  call void @pys_gen_ignored(ptr %n, ptr %p)",
+            "  br label %done",
+            "done:",  # (finished, as close() leaves it, for a yield from's consumer that holds it too)
+            f"  store i64 {GENDONE}, ptr %sa",
+            "  call void @llvm.coro.destroy(ptr %h)",
+            "  ret void",
+            "}"])
+    if self.gendrops_counted:
+        # The same for a generator whose body can recur (Gen.recursionscope): its cleanup runs as
+        # an active frame. An entry that fails, like an exception the cleanup lets out, is
+        # reported as one raised by closing it, and the depth restored
+        o.extend([
+            "define internal void @pys.gen.drop.counted(ptr %h) personality ptr @pys_personality {",
+            "entry:",
+            "  %p = call ptr @llvm.coro.promise(ptr %h, i32 8, i1 false)",
+            f"  %sa = getelementptr i64, ptr %p, i64 {GENSTATE}",
+            "  %s = load i64, ptr %sa",
+            f"  %c = icmp eq i64 %s, {GENCLEAN}",
+            "  br i1 %c, label %close, label %done",
+            "close:",
+            "  %base = call i64 @pys.recursion.depth()",
+            "  %mark = call i64 @pys_try_mark()",
+            "  %x = call ptr @pys_exc_handled()",
+            f"  %ca = getelementptr i64, ptr %p, i64 {GENCMD}",
+            "  store i64 1, ptr %ca",
+            "  %depth = invoke i64 @pys.recursion.enter() to label %resume unwind label %failed",
+            "resume:",
+            f"  store i64 {GENRUN}, ptr %sa",
+            "  invoke void @llvm.coro.resume(ptr %h) to label %resumed unwind label %failed",
+            "resumed:",
+            "  call void @pys.recursion.leave()",
+            "  call void @pys_exc_restore(ptr %x)",
+            "  %s2 = load i64, ptr %sa",
+            f"  %ok = icmp eq i64 %s2, {GENDONE}",
+            "  br i1 %ok, label %done, label %ignored",
+            "ignored:",
+            f"  %na = getelementptr i64, ptr %p, i64 {GENNAME}",
+            "  %n = load ptr, ptr %na",
+            "  call void @pys_gen_ignored(ptr %n, ptr %p)",
+            "  br label %done",
+            "failed:",
+            "  %lp = landingpad { ptr, i32 } catch ptr null",
+            "  %ue = extractvalue { ptr, i32 } %lp, 0",
+            "  call void @pys.recursion.restore(i64 %base)",
+            "  %e = call ptr @pys_exc_begin(ptr %ue, i64 %mark)",
+            f"  %ena = getelementptr i64, ptr %p, i64 {GENNAME}",
+            "  %ename = load ptr, ptr %ena",
+            "  call void @pys_gen_unraisable(ptr %e, ptr %ename, ptr %p)",
+            "  call void @pys_exc_restore(ptr %x)",
+            "  br label %done",
+            "done:",
+            f"  store i64 {GENDONE}, ptr %sa",
+            "  call void @llvm.coro.destroy(ptr %h)",
+            "  ret void",
+            "}"])
+    return o
 
 def gen_lower_module(self) -> str:
     if not self.rtmode and "recursion.enter" in self.rtfns:
@@ -572,7 +604,7 @@ def gen_lower_module(self) -> str:
     for x in self.externs.values():
         if x != "":
             hdr.append(x)
-    if self.coros or self.gendrops:
+    if self.coros or self.gendrops or self.gendrops_counted:
         hdr.extend(self.gen_module())
     if self.rtmode:
         for ci in self.classes.values():
@@ -586,9 +618,9 @@ def gen_lower_module(self) -> str:
         hdr.append(f"!{STRLEN_RANGE} = !{{i64 0, i64 9223372036854775791}}")
         return "\n".join(hdr) + "\n"
     recursion = [key for key in self.rtfns if key.startswith("recursion.")]
-    # (lowering stores and loads the depth itself: only the extension's entries and pys.gen.drop
+    # (lowering stores and loads the depth itself: only the extension's entries and pys.gen.drop.counted
     # call those helpers by name)
-    named = ["recursion.enter", "recursion.leave"] + (["recursion.depth", "recursion.restore"] if self.ext != "" or self.gendrops else [])
+    named = ["recursion.enter", "recursion.leave"] + (["recursion.depth", "recursion.restore"] if self.ext != "" or self.gendrops_counted else [])
     for key in ["recursion.depth", "recursion.restore"] if self.ext != "" else []:
         if key not in recursion:
             recursion.append(key)

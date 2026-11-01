@@ -464,7 +464,10 @@ handlers already contribute. A generator body counts while it runs: its consumer
 (`recursion.enter`) before each resume, so a failed entry leaves the generator suspended,
 and restores the depth it entered from after a normal resume. The pass removes that
 accounting where no body of the handle's type can be entered again, and computes the
-summaries afresh there; `pys.gen.drop`, which closes a generator, always counts. In a
+summaries afresh there. Closing a loop's generator (`gen.drop`) uses `pys.gen.drop`
+unchanged, or `pys.gen.drop.counted`, which counts the cleanup as a frame and reports a
+failed entry as an exception raised by closing, where a body of its type can recur. Main's
+small `pys.gen.drop` keeps LLVM's coroutine elision able to inline a loop's generator. In a
 program with exception handling the body saves the depth at each resume for its
 handlers, since a resumed generator may have another consumer. This is the depth policy, not an optimization, so `PYSTACHY_OPT` does not change
 it.
@@ -477,7 +480,7 @@ helper: clang `-O2` for `build`, and the JIT's inliner below its line threshold.
 marked `alwaysinline`, because LLVM 18's mandatory inliner computes block frequencies
 for every caller it changes, which cost a large program's JIT start-up more than the call
 saves (24 counted functions of `bench/smoke/text.py` added 13% to `opt`). The scalar
-helpers, which only `pys.gen.drop` and extension entries call by name, are `alwaysinline`. The state's
+helpers, which only `pys.gen.drop.counted` and extension entries call by name, are `alwaysinline`. The state's
 accesses carry depth/limit TBAA tags under the object-field root, so object field stores
 cannot alias it. Runtime compilation (`runtime.py`) has no recursion accounting.
 

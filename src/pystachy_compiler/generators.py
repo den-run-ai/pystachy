@@ -870,9 +870,6 @@ def gen_gen_drop(self, h: Val) -> None:
     self.runtime("pys_exc_handled")
     self.runtime("pys_exc_restore")
     self.runtime("pys_gen_ignored")
-    for name in ["pys_recursion_enter", "pys_recursion_leave", "pys_recursion_depth", "pys_recursion_restore",
-                 "pys_try_mark", "pys_exc_begin", "pys_gen_unraisable", "pys_personality"]:
-        self.runtime(name)
     self.add(i)
 
 

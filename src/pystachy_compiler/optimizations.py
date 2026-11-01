@@ -118,7 +118,7 @@ def gen_recursionscope(self) -> int:
     # may have left it higher). A counted one's entry op checks and counts
     # (pys.recursion.enter), its handlers restore that active depth, and each normal return
     # the caller's. A resume counts the generator body it runs unless no body of the
-    # handle's type can be entered again (pys.gen.drop always counts). The summaries gain
+    # handle's type can be entered again, and so does closing one (pys.gen.drop.counted). The summaries gain
     # exactly the entries' and returns' effects (R I) without another walk of every op, or
     # are computed again where resumes lose their accounting. Returns how many functions count.
     nf = len(self.fns)
@@ -150,7 +150,7 @@ def gen_recursionscope(self) -> int:
                     elif i.op != "gen.yield":
                         c = i.s if i.op == "call" else "@init." + i.s if i.op == "init" else ""
                         if c not in self.fll:
-                            u |= self.opfx(i, fn.fa) & unknown
+                            u = u | (self.opfx(i, fn.fa) & unknown)
         edges.append(es)
         local.append(u)
     cyclic = recursion_cycles(edges)
@@ -160,6 +160,8 @@ def gen_recursionscope(self) -> int:
     repeat: dict[str, bool] = {}
     for t in bodies:
         repeat[t] = any(again[j] for j in bodies[t])
+        if not repeat[t]:
+            self.genplain[t] = True  # (closing one need not count either: lowering's gen.drop)
     rescan = False
     for j in range(nf):
         fn = self.fns[j]
@@ -208,7 +210,7 @@ def gen_recursionscope(self) -> int:
                     code.append(restore)
                 code.append(i)
             b.code = code
-        direct[j] |= entered
+        direct[j] = direct[j] | entered
         n += 1
     if n > 0:
         self.runtime("pys_recursion_enter")
