@@ -32,7 +32,7 @@ representations, which the host checker converts to exact `float.hex()` values,
 including negative zero. Error classes and exact messages are also compared.
 
 **Case 59 exceeds signed 64-bit integer range.** It stays in the corpus and now
-passes through the port's promoting number parser. Native JIT, AOT and both
+passes through the native dynamic JSON decoder's token-promotion path. Native JIT, AOT and both
 modes with collection at every allocation match **645/645**. There is no silent
 exclusion or automatic known-failure allowance.
 
