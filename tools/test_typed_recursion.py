@@ -183,7 +183,8 @@ class TypedRecursionTests(unittest.TestCase):
         self.assertRegex(body, r"call i64 @r\.f\.direct\(i64 %t\d+, i64 %t\d+\)")
         self.assertNotIn("@pys_recursion_state", body)
         self.assertNotIn("@f.direct(", body)
-        wrapper = ir.split("define internal i64 @f.direct(i64 %a0) {", 1)[1].split("\n}", 1)[0]
+        # (the wrapper stays out of line, so that it adds nothing to its callers' inlining costs)
+        wrapper = ir.split("define internal i64 @f.direct(i64 %a0) noinline {", 1)[1].split("\n}", 1)[0]
         self.assertRegex(wrapper, r"%rd = load i64, ptr @pys_recursion_state, !tbaa !\d+")
         self.assertIn("call i64 @r.f.direct(i64 %a0, i64 %rd)", wrapper)
         self.assertNotIn("store", wrapper)

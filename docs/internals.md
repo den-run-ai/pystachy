@@ -489,7 +489,10 @@ depth: the entry calls `pys.recursion.check`, which raises at the limit as
 `pys.recursion.enter` does and otherwise returns the frame's own depth, without a store, and
 calls within the cycle pass that depth to the callee's body; landings restore nothing. The
 member's own symbol becomes a wrapper that loads the word and calls the body, for every
-caller outside the cycle and for its uses as a value. Each frame counts at the same call as
+caller outside the cycle and for its uses as a value. The wrapper is `noinline`, a load and
+a jump to the body: inlined, it would add a load and an argument to each caller, which in
+`bench/pyperformance/regex_effbot.py` was enough for clang `-O2` to keep `Pattern._search` out
+of `re.search`. Each frame counts at the same call as
 with the word, tail calls included, since the depth is an argument. A function returning a
 fixed tuple stays out, since `tupleret` may return its slots instead. Without the chain of
 stores and loads to one word, `bench/fib.py`'s executable runs about 5% slower than without
