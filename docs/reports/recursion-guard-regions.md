@@ -1,5 +1,9 @@
 # Recursion guard regions: measurements and validation
 
+> **Superseded.** The `recursionleaf` and `recursionregion` passes measured here were removed
+> when the native depth policy changed to count only functions that recursion can repeat; see
+> [the policy report](recursion-guard-policy.md). This report and its evidence are kept as history.
+
 This report separates final frozen-source measurements from development
 experiments. The final candidate contains bounded whole-function versioning,
 direct-return partial versioning with bounded child inlining, and the scoped

@@ -367,6 +367,7 @@ class IFn:
         self.rdepth = ""
         self.landed = False
         self.gdepth = ""
+        self.resumes = False  # whether it resumes or drops a generator (Gen.recursionscope looks for the sites)
         # its effect summary (FX bits): every letter (but N) until Gen.effects computes it, once
         # the whole program is built
         self.fx: int = FXALL

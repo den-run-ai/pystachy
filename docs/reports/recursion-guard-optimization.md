@@ -1,5 +1,9 @@
 # Recursion guard optimization, 31 October 2026
 
+> **Superseded.** The `recursionleaf` and `recursionregion` passes measured here were removed
+> when the native depth policy changed to count only functions that recursion can repeat; see
+> [the policy report](recursion-guard-policy.md). This report and its evidence are kept as history.
+
 The optimized recursion guards reduce the measured cost of
 [PR #996](https://github.com/den-run-ai/pystachy/pull/996) on the JSON and object
 kernels after integration with merged

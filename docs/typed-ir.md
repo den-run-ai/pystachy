@@ -401,9 +401,10 @@ The native recursion depth policy is not an option: `Gen.recursionscope` decides
 source functions count toward `sys.setrecursionlimit()` once the whole program is built
 and summarized, before these passes, and gives exactly those functions a checked
 `recursion.enter`, restorations before their returns and the effects (`R I`) of both in
-their summaries. A source function counts if it lies on a cycle of direct calls or its
-summary has `U`; every other function keeps at most its entry-depth snapshot
-(`recursion.depth`), for its handlers. See
+their summaries. A source function counts if it lies on a cycle of direct calls and
+generator resumes, or reaches `U` other than its resumes and yields; every other function
+keeps at most its entry-depth snapshot (`recursion.depth`), for its handlers. Resumes of
+generators that cannot recur lose their accounting. See
 [native recursion depth](internals.md#native-recursion-depth).
 
 `tupleret` applies to a function whose every `return` returns a tuple display that the return's

@@ -830,6 +830,9 @@ def gen_gen_resume_enter(self) -> str:
     # generator runs) and restores the depth it entered from after a normal one, which a
     # landing restores otherwise. The body is balanced: it counts nothing itself, and every
     # call it makes restores its caller's depth.
+    # Gen.recursionscope removes both, and the restoration after the resume, where no generator
+    # body of the handle's type can be entered again while it runs.
+    self.fn.resumes = True
     entered = self.rt("pys_recursion_enter", "i64", [])
     return self.scalar("sub", [Val(entered, "int"), Val("1", "int")])
 
@@ -863,6 +866,7 @@ def gen_gen_drop(self, h: Val) -> None:
     # a with block or a loop of its own: GeneratorExit is raised there), and destroyed
     i = Ins("gen.drop", "", "")
     i.a = [h]
+    self.fn.resumes = True
     self.runtime("pys_exc_handled")
     self.runtime("pys_exc_restore")
     self.runtime("pys_gen_ignored")

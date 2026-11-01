@@ -251,6 +251,57 @@ g.close()
                         self.assertFalse(any(i[:2] == ("rt", "recursion.leave") for i in code))
         self.assertGreaterEqual(resumes, 2)
 
+    def test_resumes_count_only_generator_bodies_that_can_recur(self):
+        _, functions = compile_source('''
+from collections.abc import Iterator
+
+def squares(n: int) -> Iterator[int]:
+    for i in range(n):
+        yield i * i
+
+def total(n: int) -> int:
+    t = 0
+    for v in squares(n):
+        t += v
+    return t
+
+class Tree:
+    def __init__(self, left: "Tree | None", value: str) -> None:
+        self.left = left
+        self.value = value
+
+def walk(t: Tree) -> Iterator[str]:
+    if t.left is not None:
+        yield from walk(t.left)
+    yield t.value
+
+def names(t: Tree) -> list[str]:
+    out: list[str] = []
+    for name in walk(t):
+        out.append(name)
+    return out
+
+print(total(4), names(Tree(Tree(None, "a"), "b")))
+''')
+        def resumes(fn):
+            found = []
+            for _, _, code in fn["blocks"]:
+                for at, (op, _, _) in enumerate(code):
+                    if op == "gen.resume":
+                        found.append(any(i[:2] == ("rt", "recursion.enter") for i in code[:at]))
+            return found
+        # A plain generator's body cannot be entered again while it runs: its resumes do not
+        # count, and its consumer, which no longer reaches unseen code, does not either.
+        total = named(functions, "total")
+        self.assertEqual(resumes(total), [False])
+        self.assertFalse(total["counted"])
+        self.assertEqual(guards(total), [])
+        # walk resumes walk generators: those resumes count, inside the body and outside it.
+        self.assertTrue(all(resumes(named(functions, "walk"))))
+        self.assertTrue(resumes(named(functions, "walk")))
+        self.assertTrue(all(resumes(named(functions, "names"))))
+        self.assertTrue(resumes(named(functions, "names")))
+
     def test_guard_helpers_use_mutable_runtime_state_and_throwing_slow_path(self):
         ir, _ = compile_source("def count(n: int) -> int:\n    return 0 if n == 0 else count(n - 1)\nprint(count(1))\n")
         self.assertIn("@pys_recursion_state = external global [2 x i64]", ir)

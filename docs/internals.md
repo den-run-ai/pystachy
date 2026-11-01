@@ -428,7 +428,7 @@ below). The precompiled runtime is not inlined into JIT code.
 
 `sys.setrecursionlimit()` bounds the native depth: one for module execution, plus each
 active call of a source function that recursion can repeat, plus each running generator
-body ([compatibility](language/compatibility.md#errors-and-control-flow)). The state is
+body that it can repeat ([compatibility](language/compatibility.md#errors-and-control-flow)). The state is
 runtime.c's `pys_recursion_state`, two mutable words (active depth, then limit) that the
 program's guards and the runtime's `sys.setrecursionlimit()` share; the program module
 defines the guard helpers itself, even when the JIT runs the runtime as a shared library.
@@ -437,17 +437,19 @@ Every non-generator function starts with a snapshot of the depth it was entered 
 (`recursion.depth`), which its exception landings restore: callees that raised may have
 left the depth higher, since the unwinder skipped their returns. Once the whole program is
 built and `Gen.effects` has summarized it, `Gen.recursionscope` (`optimizations.py`)
-decides which source functions count. Tarjan's algorithm over the summaries' direct
-calls (`call` and `init`, through uncounted adapters too) finds the functions on a cycle.
-A source function counts if it lies on a cycle or if its summary has `U`: something it
-runs can call code that the direct graph does not show, such as an `icall` of a function
-value, a runtime operation that calls `__eq__`, `__hash__` or `__repr__`, or a generator
-resume. Any other function cannot be entered again while it is active, so it is at most
-once on any native stack: counting it could change only at which call a bounded
-recursion fails, never whether an unbounded one is caught, because every cycle of calls
-passes through a counted function (one on a direct cycle, or the one whose call leaves
-the known graph). It neither checks nor counts; it keeps its snapshot only when one of
-its handlers restores it.
+decides which functions count. Its graph has the summaries' direct calls (`call` and
+`init`, through uncounted adapters too), and from each resume or drop of a `gen[Y]`
+handle an edge to every generator body that makes such handles (generators of all
+functions that yield `Y` share the type). A function can be entered again while it is
+active if it lies on a cycle of that graph (Tarjan's algorithm, iteratively) or reaches
+`U`: code the graph does not show, such as an `icall` of a function value or a runtime
+operation that calls `__eq__`, `__hash__` or `__repr__`. A body's own yields, which
+suspend it, and resumes, which are edges, do not count as `U` there. Any other function
+is at most once on any native stack: counting it could change only at which call a
+bounded recursion fails, never whether an unbounded one is caught, because every cycle of
+calls passes through a counted function or a counted resume. A source function that can
+be entered again counts; any other neither checks nor counts, and keeps its snapshot
+only when one of its handlers restores it.
 
 A counted function's snapshot becomes its entry, `recursion.enter`: it raises
 `RecursionError` if the depth has reached the limit (before any local handler or body
@@ -459,9 +461,12 @@ entry's and the returns' effects (`R I`) instead of another walk over every oper
 `gen_effects` leaves a function's entry snapshot out of its own mask, since an
 uncounted function either drops it or keeps it only beside the restorations that its
 handlers already contribute. A generator body counts while it runs: its consumer enters
-(`recursion.enter`) before each resume and leaves after it, and in a program with
-exception handling the body saves the depth at each resume for its handlers, since a
-resumed generator may have another consumer. This is the depth policy, not an optimization, so `PYSTACHY_OPT` does not change
+(`recursion.enter`) before each resume, so a failed entry leaves the generator suspended,
+and restores the depth it entered from after a normal resume. The pass removes that
+accounting where no body of the handle's type can be entered again, and computes the
+summaries afresh there; `pys.gen.drop`, which closes a generator, always counts. In a
+program with exception handling the body saves the depth at each resume for its
+handlers, since a resumed generator may have another consumer. This is the depth policy, not an optimization, so `PYSTACHY_OPT` does not change
 it.
 
 For operations without exceptional successors, lowering emits `recursion.depth` and

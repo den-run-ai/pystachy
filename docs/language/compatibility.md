@@ -224,16 +224,17 @@ above apply to well-formed text (with the surrogate exception described above).
 
   The native depth starts at one for module execution and counts each active call of a
   source function, lambda or method that can be entered again before it returns: one on a
-  cycle of direct calls (direct or mutual recursion), or one that runs code the compiler
-  cannot follow, such as a call of a function value, a special method that the runtime
-  calls (`__eq__`, `__hash__`, `__repr__`) or a generator's resume. A function that cannot
-  be entered again while it is active is at most once on the native stack: it neither
-  checks nor consumes the limit, and does not add to the depth that
+  cycle of calls (direct or mutual recursion, also through generators), or one that runs
+  code the compiler cannot follow, such as a call of a function value or a special method
+  that the runtime calls (`__eq__`, `__hash__`, `__repr__`). A running generator body counts
+  in the same way: while it runs, if some body of its type can be entered again. A function
+  or generator that cannot be entered again while it is active is at most once on the native
+  stack: it neither checks nor consumes the limit, and does not add to the depth that
   `sys.setrecursionlimit()` compares a new limit with. Unbounded recursion therefore always
   raises `RecursionError`, but a bounded one can fail at another call than in CPython,
-  which counts every frame: in the deepest frame, a non-recursive helper still runs where
-  CPython raises (`tests/deviations/recursion_uncounted_frames.py`). Compiler dispatch
-  adapters and runtime helpers do not add frames. A generator counts only while
+  which counts every frame: in the deepest frame, a non-recursive helper or generator still
+  runs where CPython raises (`tests/deviations/recursion_uncounted_frames.py`). Compiler
+  dispatch adapters and runtime helpers do not add frames. A generator counts only while
   its body is running, not while suspended; resuming it uses its current caller's depth.
   Inlining and optimized tail calls preserve this policy. Exact failure depths and error
   messages can also differ from CPython because its internal frames differ. Native stack

@@ -2,6 +2,7 @@
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import fail
 from src.pystachy_compiler.ir import IFn, Ins, Lookup, Val, Values
+from src.pystachy_compiler.ircheck import EffectSummaries
 from src.pystachy_compiler.specs import CANON_DEPTH, FXBIT, LOOKUPS, RAWW, REACH
 from src.pystachy_compiler.utils import is_list, is_union, umembers
 
@@ -82,32 +83,107 @@ def recursion_unsnapshot(fn: IFn) -> None:
     fn.rdepth = ""
 
 
+def recursion_resume_site(code: list[Ins], at: int) -> list[int]:
+    # the positions of the accounting gen_resume_enter put around the resume at code[at] (its entry,
+    # the depth it entered from, and that depth's restoration after the resume), or [] if not found
+    enter = at - 1
+    while enter >= 0 and not (code[enter].op == "rt" and code[enter].s == "recursion.enter"):
+        enter -= 1
+    if enter < 0 or enter + 1 >= at or len(code[enter].r) != 1:
+        return []
+    sub = code[enter + 1]
+    if (sub.op != "scalar.bin" or sub.s != "sub" or len(sub.r) != 1 or len(sub.a) != 2
+            or sub.a[0].v != f"%t{code[enter].r[0]}" or sub.a[1].v != "1"):
+        return []
+    for after in range(at + 1, len(code)):
+        i = code[after]
+        if i.op == "rt" and i.s == "recursion.restore" and len(i.a) == 1 and i.a[0].v == f"%t{sub.r[0]}":
+            return [enter, enter + 1, after]
+    return []
+
+
 def gen_recursionscope(self) -> int:
     # The native depth counts the activations that recursion can repeat
     # (docs/internals.md#native-recursion-depth), once the whole program is built and
-    # Gen.effects has summarized it. A source function that lies on no cycle of direct
-    # calls, and whose summary (of everything it runs) has no U, so that nothing it runs
-    # can call code the compiler does not see (an icall, a runtime callback such as an
-    # __eq__ or __repr__, a generator's resume), cannot be entered again while it is
-    # active: it is at most once on any native stack. Its frame can change at which call
-    # a bounded recursion fails, never whether an unbounded one is caught: every cycle of
-    # calls passes through a counted function, one on a direct cycle or one that makes
-    # the call leaving the known graph. Such a function neither checks nor counts; its
-    # handlers still restore the depth it was entered at (callees that raised may have
-    # left it higher). A counted one's entry op checks and counts (pys.recursion.enter),
-    # its handlers restore that active depth, and each normal return the caller's. The
-    # summaries gain exactly the entry's and the returns' effects (R I), without another
-    # walk of every op. Returns how many functions count.
+    # Gen.effects has summarized it. The graph is the summaries' direct calls, and from each
+    # resume or drop of a generator handle gen[Y] an edge to every generator body that makes
+    # such handles (they share the type). A function can be entered again while it is active
+    # only if it lies on a cycle of that graph or reaches code that the graph does not show
+    # (U, apart from generator resumes, which are edges, and a body's own yields, which
+    # suspend it): an icall, a runtime callback such as an __eq__ or __repr__. Any other
+    # function is at most once on any native stack, so its frame can change at which call a
+    # bounded recursion fails, never whether an unbounded one is caught: every cycle passes
+    # through a counted function or a counted resume. Such a source function neither checks
+    # nor counts; its handlers still restore the depth it was entered at (callees that raised
+    # may have left it higher). A counted one's entry op checks and counts
+    # (pys.recursion.enter), its handlers restore that active depth, and each normal return
+    # the caller's. A resume counts the generator body it runs unless no body of the
+    # handle's type can be entered again (pys.gen.drop always counts). The summaries gain
+    # exactly the entries' and returns' effects (R I) without another walk of every op, or
+    # are computed again where resumes lose their accounting. Returns how many functions count.
+    nf = len(self.fns)
     calls = self.summaries.calls
-    cyclic = recursion_cycles(calls)
+    unknown = FXBIT["U"]
+    bodies: dict[str, list[int]] = {}
+    for j in range(nf):
+        if self.fns[j].f.gen:
+            t = self.fns[j].f.ret
+            if t not in bodies:
+                bodies[t] = []
+            bodies[t].append(j)
+    edges: list[list[int]] = []
+    local: list[int] = []
+    for j in range(nf):
+        fn = self.fns[j]
+        es = [c for c in calls[j]]
+        u = self.summaries.direct[j] & unknown
+        if u != 0 and (fn.resumes or fn.f.gen):
+            # (its own U may be only its yields and resumes: look at each op)
+            u = 0
+            for b in fn.blocks:
+                for i in b.code:
+                    if i.op == "gen.resume" or i.op == "gen.drop":
+                        if len(i.a) == 1 and i.a[0].t in bodies:
+                            es.extend(bodies[i.a[0].t])
+                        else:
+                            u = unknown
+                    elif i.op != "gen.yield":
+                        c = i.s if i.op == "call" else "@init." + i.s if i.op == "init" else ""
+                        if c not in self.fll:
+                            u |= self.opfx(i, fn.fa) & unknown
+        edges.append(es)
+        local.append(u)
+    cyclic = recursion_cycles(edges)
+    reach = EffectSummaries()
+    reach.update(local, edges)
+    again = [cyclic[j] or reach.fx[j] & unknown != 0 for j in range(nf)]
+    repeat: dict[str, bool] = {}
+    for t in bodies:
+        repeat[t] = any(again[j] for j in bodies[t])
+    rescan = False
+    for j in range(nf):
+        fn = self.fns[j]
+        if not fn.resumes:
+            continue
+        for b in fn.blocks:
+            at = 0
+            while at < len(b.code):
+                i = b.code[at]
+                if i.op == "gen.resume" and len(i.a) == 1 and i.a[0].t in bodies and not repeat[i.a[0].t]:
+                    site = recursion_resume_site(b.code, at)
+                    if len(site) == 3:
+                        b.code = [b.code[k] for k in range(len(b.code)) if k not in site]
+                        at -= 2
+                        rescan = True
+                at += 1
     direct = [m for m in self.summaries.direct]
     entered = FXBIT["R"] | FXBIT["I"]
     n = 0
-    for j in range(len(self.fns)):
+    for j in range(nf):
         fn = self.fns[j]
         if not fn.counted:
             continue
-        if not cyclic[j] and fn.fx & FXBIT["U"] == 0:
+        if not again[j]:
             fn.counted = False
             if not fn.landed:
                 recursion_unsnapshot(fn)
@@ -137,8 +213,11 @@ def gen_recursionscope(self) -> int:
     if n > 0:
         self.runtime("pys_recursion_enter")
         self.runtime("pys_recursion_restore")
+    if rescan:
+        self.effects()
+    elif n > 0:
         self.summaries.update(direct, calls)
-        for j in range(len(self.fns)):
+        for j in range(nf):
             self.fns[j].fx = self.summaries.fx[j]
     return n
 
