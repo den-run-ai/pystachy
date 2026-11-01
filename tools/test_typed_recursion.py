@@ -12,7 +12,7 @@ from src.pystachy_compiler.driver import runtime_ir
 from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler.loader import Loader
 from src.pystachy_compiler.optimizations import recursion_cycles
-from src.pystachy_compiler.specs import FXBIT
+from src.pystachy_compiler.specs import FXBIT, GENDONE, GENRUN
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -67,6 +67,23 @@ def operations(function):
 
 def guards(function):
     return [name for op, name, _ in operations(function) if op == "rt" and name.startswith("recursion.")]
+
+
+def resume_marks(function):
+    # (how many entries, recursion.enter, follow a mark of the generator as finished, GENDONE, which
+    # a failed entry leaves; how many marks stand right before a resume's GENRUN in the same state
+    # word, left by a removed entry. close()'s command, GENCLOSEC, is 2 as well, in another word)
+    entered, stale = 0, 0
+    for label, _, code in function["blocks"]:
+        for at in range(1, len(code)):
+            mark = function["operands"][(label, at - 1)][0]
+            if code[at - 1][0] != "mach.store" or mark[1:] != [str(GENDONE)]:
+                continue
+            if code[at][:2] == ("rt", "recursion.enter"):
+                entered += 1
+            elif code[at][0] == "mach.store" and function["operands"][(label, at)][0] == [mark[0], str(GENRUN)]:
+                stale += 1
+    return entered, stale
 
 
 def named(functions, name):
@@ -358,6 +375,8 @@ g.close()
             # function's own entry counts too where it counts
             entries = len([op for op in code if op[:2] == ("rt", "recursion.enter")])
             self.assertEqual(entries, own + (1 if fn["counted"] else 0), fn["name"])
+            # each first marks the generator finished, as CPython leaves one whose entry fails
+            self.assertEqual(resume_marks(fn), (own, 0), fn["name"])
             # (after a normal resume, the depth the entry counted from; no load-and-decrement)
             self.assertGreaterEqual(len([op for op in code if op[:2] == ("rt", "recursion.restore")]), own)
             self.assertFalse(any(op[:2] == ("rt", "recursion.leave") for op in code))
@@ -408,11 +427,14 @@ print(total(4), names(Tree(Tree(None, "a"), "b")))
         self.assertEqual(resumes(total), [False])
         self.assertFalse(total["counted"])
         self.assertEqual(guards(total), [])
+        self.assertEqual(resume_marks(total), (0, 0))  # (the mark goes with the entry)
         # walk resumes walk generators: those resumes count, inside the body and outside it.
         self.assertTrue(all(resumes(named(functions, "walk"))))
         self.assertTrue(resumes(named(functions, "walk")))
         self.assertTrue(all(resumes(named(functions, "names"))))
         self.assertTrue(resumes(named(functions, "names")))
+        for name in ("walk", "names"):
+            self.assertEqual(resume_marks(named(functions, name)), (len(resumes(named(functions, name))), 0), name)
 
     def test_guard_helpers_use_mutable_runtime_state_and_throwing_slow_path(self):
         # (a cycle through a function value keeps the depth word current: closed recursion does not)
