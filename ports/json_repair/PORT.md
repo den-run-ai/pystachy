@@ -61,6 +61,12 @@ Split trace records before repair and validate types and content afterward.
   removes repeated growing-prefix copies. The [accumulator report](../../bench/json_repair/ACCUMULATOR.md)
   records native wins, a warmed PyPy mixed-workload regression and higher CPython
   peak memory; this remains an experimental port tradeoff.
+- Process ordinary repair text in spans between quotes, escapes and structural
+  characters, retaining the existing heuristics at each boundary. Append source
+  ranges in bounded chunks; the same storage helper serves decoded escapes and
+  inline-container content. Positions and whitespace decisions remain based on
+  Unicode code points. This is a port optimization using existing string
+  operations, independent of the native JSON decoder's byte scanner.
 - Use the native `json._raw_decode` adapter at two call sites, with a guarded
   import falling back to CPython’s `JSONDecoder`. The public decoder keeps its
   class identity; see the [JSON API notes](../../docs/json-prototype.md).
