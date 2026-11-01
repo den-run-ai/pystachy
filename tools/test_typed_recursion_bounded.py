@@ -101,6 +101,100 @@ print(helper(3))
         disabled, _ = compile_source(source, opt="-recursionregion")
         self.assertEqual(enabled, disabled)
 
+    def test_conditional_loop_calls_do_not_justify_a_selector(self):
+        _, functions = compile_source('''
+def leaf(n: int) -> int:
+    return n + 1
+
+def conditional(n: int) -> int:
+    total = 0
+    for i in range(n):
+        if i % 2:
+            total = leaf(total)
+    return total
+
+def early_continue(n: int) -> int:
+    total = 0
+    for i in range(n):
+        if i % 2:
+            continue
+        total = leaf(total)
+    return total
+
+print(conditional(4), early_continue(4))
+''')
+        for name in ("conditional", "early_continue"):
+            with self.subTest(function=name):
+                self.assertNotIn("@rf.f." + name, functions)
+                ops = operations(functions["@f." + name])
+                self.assertFalse(any(op[:2] == ("rt", "recursion.room") for op in ops))
+                self.assertTrue(any(op[:2] == ("rt", "recursion.enter") for op in ops))
+                self.assertTrue(any(op[:2] == ("call", "@f.leaf") for op in ops))
+
+    def test_calls_on_every_continuing_branch_allow_a_selector(self):
+        _, functions = compile_source('''
+def left(n: int) -> int:
+    return n + 1
+
+def right(n: int) -> int:
+    return n - 1
+
+def kernel(n: int, stop: int) -> int:
+    total = 0
+    for i in range(n):
+        if i == stop:
+            break
+        if i % 2:
+            total = left(total)
+            continue
+        total = right(total)
+    return total
+
+print(kernel(4, 3))
+''')
+        self.assertTrue(any(op[:2] == ("rt", "recursion.room")
+                            for op in operations(functions["@f.kernel"])))
+        fast = operations(functions["@rf.f.kernel"])
+        for name in ("left", "right"):
+            self.assertTrue(any(op[:2] == ("call", "@rf.f." + name) for op in fast))
+
+    def test_counted_loop_condition_justifies_a_selector(self):
+        _, functions = compile_source('''
+def more(n: int) -> bool:
+    return n > 0
+
+def kernel(n: int) -> int:
+    total = 0
+    while more(n):
+        total += n
+        n -= 1
+    return total
+
+print(kernel(4))
+''')
+        self.assertTrue(any(op[:2] == ("rt", "recursion.room")
+                            for op in operations(functions["@f.kernel"])))
+        self.assertTrue(any(op[:2] == ("call", "@rf.f.more")
+                            for op in operations(functions["@rf.f.kernel"])))
+
+    def test_break_only_loop_does_not_justify_a_selector(self):
+        _, functions = compile_source('''
+def more(n: int) -> bool:
+    return n > 0
+
+def once(n: int) -> int:
+    while more(n):
+        n += 1
+        break
+    return n
+
+print(once(4))
+''')
+        self.assertNotIn("@rf.f.once", functions)
+        original = operations(functions["@f.once"])
+        self.assertFalse(any(op[:2] == ("rt", "recursion.room") for op in original))
+        self.assertTrue(any(op[:2] == ("call", "@f.more") for op in original))
+
     def test_repeated_calls_share_one_nonraising_bound_and_unchecked_callees(self):
         ir, functions = compile_source(ORDINARY)
         original = functions["@f.kernel"]

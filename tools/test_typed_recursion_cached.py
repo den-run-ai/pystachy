@@ -54,6 +54,28 @@ print(kernel(3))
         self.assertTrue(any(op[:2] == ("rt", "recursion.check") for op in operations(functions["@f.leaf"])))
         self.assertFalse(any(op[:2] == ("rt", "recursion.check") for op in operations(functions["@rc.f.leaf"])))
 
+    def test_conditional_leaf_calls_do_not_justify_cached_versioning(self):
+        _, functions = compile_source(PREFIX + '''
+def kernel(n: int) -> int:
+    total = leaf(0)
+    for i in range(n):
+        total += recursive(i)
+        if i % 2:
+            total += leaf(i)
+    return total
+
+print(kernel(4))
+''')
+        # The recursive child rules out bounded whole-function versioning. Its
+        # successful return proves room, but only the conditional leaf could
+        # benefit from the cached path, so that path would not run on every turn.
+        self.assertNotIn("@rf.f.kernel", functions)
+        self.assertNotIn("@rc.f.leaf", functions)
+        original = operations(functions["@f.kernel"])
+        self.assertEqual(sum(op[:2] == ("call", "@f.leaf") for op in original), 2)
+        self.assertTrue(any(op[:2] == ("call", "@f.recursive") for op in original))
+        self.assertTrue(any(op[:2] == ("rt", "recursion.enter") for op in original))
+
     def test_loop_backedge_does_not_prove_its_own_first_call(self):
         _, functions = compile_source(PREFIX + '''
 def kernel(n: int) -> int:

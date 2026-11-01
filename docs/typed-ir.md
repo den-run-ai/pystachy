@@ -395,7 +395,7 @@ the others select frontend or lowering choices.
 | `unionslots` | Keep a local of a union of numbers (`int`, `float`, `bool`) in a tag slot and a payload slot instead of a box per value, where its slot's address goes only to its loads and stores and, on every path, each load whose value leaves the local (to a call, a return, a phi) follows a store of a box made for that store alone, with no other such load between them: stores keep a `pys_ubox`'s operands or a union phi's parts, `union.tag` and `union.payload`/`union.raw` (and tag loads) of a loaded value read the slots, a leaving value is boxed where it is loaded (each box for one that a store no longer makes), and boxes nothing uses any more are dropped |
 | `nullcheck` | Drop a check that a value is not None (before a read through it) where a passed test of the same value dominates it: the block after a check, or the branch of a null test where the value is not None, reached from nowhere else. The same value is the value, an equal one, or a load of a slot that only the entry block stores and only loads and stores use (a parameter the function never assigns). The check becomes a branch, its test goes once nothing reads it, the block after it joins its block where nothing else goes there, and a cold block no check goes to any more goes too; a walk down the dominator tree keeps the work linear ([#787](https://github.com/den-run-ai/pystachy/issues/787)) |
 | `recursionleaf` | Retain a source function's entry-limit check but omit its depth increment and restoration where a separate call-graph proof finds no operation that can observe that depth, including exceptional and cleanup paths. Counted callees, indirect or unknown calls, runtime state, user callbacks and generator operations are depth observers. |
-| `recursionregion` | Select a bounded private version when enough depth remains, otherwise execute the original guarded body. Whole-function versions require repeated calls inside a loop and finite direct-call depth; partial versions cover returning leaf paths and publish depth before a guarded suffix. A separate successful-child proof removes later leaf checks while retaining the caller's published frame. |
+| `recursionregion` | Select a bounded private version when enough depth remains, otherwise execute the original guarded body. Whole-function versions require finite direct-call depth and a counted call on every continuing path of at least one loop; partial versions cover returning leaf paths and publish depth before a guarded suffix. A separate successful-child proof removes later leaf checks while retaining the caller's published frame. |
 
 Disable one with `PYSTACHY_OPT=-dictfuse`, several with a comma-separated list, or all with
 `PYSTACHY_OPT=-all`. Differential runs check that the choices preserve behavior.
@@ -433,9 +433,10 @@ still happen. Cycles never receive a finite bound. Original callable addresses
 retain guarded entries; only direct calls within the proven subgraph use private
 unchecked clones. Cloning and analysis have size/depth budgets, and tuple-return
 roots stay unchanged when versioning would defeat aggregate return optimization.
-Whole-function versioning requires a counted call inside a loop's control-flow
-cycle to amortize its selector; short helpers and functions with an unrelated
-loop retain their existing entries. Whole-function unchecked graphs exclude
+Whole-function versioning requires at least one loop with a control-flow cycle
+and a counted call on every path back to its head. Calls in the loop header qualify;
+exit paths need no call. A call-free continuing branch, an unrelated loop, or a loop
+record with no remaining cycle cannot justify a selector. Whole-function unchecked graphs exclude
 callbacks, limit changes, generators, local handlers and unknown calls.
 
 After selecting closed call graphs within the size budgets, the pass retains
@@ -516,8 +517,10 @@ A forward must analysis starts with no proven room and requires the fact on ever
 incoming path, including implicit check-failure edges. Unknown or foreign `U`
 effects invalidate it, including those summarized transitively through source
 callees; generator operations also invalidate it. Roots exclude handlers, landing
-pads, generators, coroutines and exported or foreign entries, and require an
-eligible child call in a loop's control-flow cycle. The program-wide lifetime and
+pads, generators, coroutines and exported or foreign entries. They use the same loop
+profitability requirement as whole-function versioning, counting only eligible
+leaf children: at least one loop must have a cycle and an eligible child call on
+every path back to its head. The program-wide lifetime and
 callback exclusions described above still apply.
 
 Only a child that passes the complete returning-leaf and terminal-publication proof

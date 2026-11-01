@@ -89,9 +89,10 @@ def recursion_fast(fn: IFn, skip: int, base: str, names: dict[str, str], entry: 
 
 def recursion_repeated(self, fn: IFn, bounds: list[int]) -> bool:
     # A loop elsewhere in the function does not amortize a one-off source call.
-    # Find calls in the strongly connected region of a recorded loop head by
-    # intersecting forward/backward reachability. Implicit failure exits cannot
-    # lead back to a head in these handler-free functions.
+    # Require a counted call on every path that continues to a recorded loop
+    # head. A conditional call in an otherwise call-free loop does not justify
+    # its selector and outlined body. Implicit failure exits cannot lead back
+    # to a head in these handler-free functions.
     at: dict[str, int] = {}
     back: list[list[int]] = [[] for _ in fn.blocks]
     forward: list[list[int]] = []
@@ -119,18 +120,27 @@ def recursion_repeated(self, fn: IFn, bounds: list[int]) -> bool:
                 if previous not in ancestors:
                     ancestors[previous] = True
                     work.append(previous)
+        # A surviving loop record alone does not prove that a cycle remains.
+        if not any(target in ancestors for target in forward[head]):
+            continue
         reached: dict[int, bool] = {head: True}
         work = [head]
         pos = 0
-        while pos < len(work):
+        bypass = False
+        while pos < len(work) and not bypass:
             j = work[pos]
             pos += 1
             if counted[j]:
-                return True
+                continue
             for target in forward[j]:
+                if target == head:
+                    bypass = True
+                    break
                 if target in ancestors and target not in reached:
                     reached[target] = True
                     work.append(target)
+        if not bypass:
+            return True
     return False
 
 

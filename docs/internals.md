@@ -443,7 +443,10 @@ cleanup path. Where all observers occur in a region that cannot return, function
 without local handlers can instead publish depth on entry to that region. Recursive
 calls, callbacks and limit changes see the full active depth; generators keep their
 original accounting. `recursionregion` can check a loop-containing function's finite
-maximum call depth once and run an unchecked private call subgraph. Insufficient
+maximum call depth once and run an unchecked private call subgraph. Whole-function
+versioning requires at least one loop with a control-flow cycle and a counted
+source call on every path back to its head. A branch that exits the loop is allowed;
+a continuing branch without a call disqualifies that loop. Insufficient
 headroom runs the complete guarded body, preserving side effects and the original
 failing call. Callbacks, limit changes, generators, handlers and unknown calls remain
 boundaries; code-size limits bound cloning.
@@ -489,8 +492,9 @@ later proven leaf calls can share a body without its entry check. Their argument
 stay in place, and a terminal observer still publishes exactly the child's one
 frame. The caller's own entry does not establish spare room. Unknown or foreign
 effects and generator operations invalidate the fact; roots with local handlers
-or generators are excluded. This case requires repeated eligible leaf calls in a
-loop and has separate root and clone-size budgets, detailed in the IR pass contract.
+or generators are excluded. This case uses the same loop requirement, counting
+only eligible leaf calls, and has separate root and clone-size budgets, detailed
+in the IR pass contract.
 
 Programs with unmanaged native files or weak references keep all
 original bookkeeping: even removing scalar instructions can change stale conservative
