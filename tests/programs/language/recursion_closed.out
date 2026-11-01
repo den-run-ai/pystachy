@@ -1,0 +1,18 @@
+down 56 56
+down 57 57
+down 58 RecursionError
+even 57 False True
+even 58 True False
+even 59 RecursionError
+tail 57 57
+tail 58 58
+tail 59 RecursionError
+helper -1 RecursionError
+generator 0 RecursionError
+value 57 RecursionError
+climb 583
+escaped deep 57 RecursionError
+unbounded caught
+below counted 104 57
+True 500
+[exit 0]

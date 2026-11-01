@@ -901,6 +901,7 @@ from src.pystachy_compiler.generators import (
     gen_hidden_loop as generators_hidden_loop,
     gen_gen_name as generators_gen_name,
     gen_gen_next as generators_gen_next,
+    gen_gen_resume_enter as generators_gen_resume_enter,
     gen_gen_none_end as generators_gen_none_end,
     gen_none_null as generators_none_null,
     gen_gen_promise as generators_gen_promise,
@@ -1004,6 +1005,7 @@ from src.pystachy_compiler.optimizations import (
     gen_optimize as optimizations_optimize,
     gen_preds as optimizations_preds,
     gen_reaching as optimizations_reaching,
+    gen_recursionscope as optimizations_recursionscope,
     gen_same as optimizations_same,
     gen_tag_read as optimizations_tag_read,
     gen_ufresh as optimizations_ufresh,
@@ -1459,6 +1461,14 @@ class Gen:
         self.ngenexp = 0  # the generator expressions made values (genexp_value): each a function of its own
         self.vowned: dict[str, FnInfo] = {}  # val nodes of such generators (owned_node), by the node's text
         self.gendrops = False  # a gen.drop op was lowered: the module defines its helper (lower_module)
+        self.gendrops_counted = False  # one that counts its cleanup as a frame (pys.gen.drop.counted)
+        self.genplain: dict[str, bool] = {}  # the generator types none of whose bodies can recur (Gen.recursionscope)
+        # the functions of closed recursion (Gen.recursionscope), whose depth lowering passes as an
+        # argument, and whether a lowered op calls pys.recursion.enter, or a generator resume's
+        # pys.recursion.resume (lower_module defines each)
+        self.rdpass: dict[str, bool] = {}
+        self.entries = False
+        self.resumes_counted = False
         # the program uses the generator protocol's send() or throw(), or the value of a yield
         # (generators.uses_protocol, closed world): its generators' promises hold what is sent and
         # thrown, and their yields take them (docs/internals.md#generators)
@@ -3276,6 +3286,9 @@ class Gen:
     def gen_next(self, h: Val, done: str) -> str:
         return generators_gen_next(self, h, done)
 
+    def gen_resume_enter(self, st: str) -> str:
+        return generators_gen_resume_enter(self, st)
+
     def gen_none_end(self) -> None:
         return generators_gen_none_end(self)
 
@@ -3447,6 +3460,9 @@ class Gen:
 
     def optimize(self, fn: IFn, on: dict[str, bool]) -> int:
         return optimizations_optimize(self, fn, on)
+
+    def recursionscope(self) -> int:
+        return optimizations_recursionscope(self)
 
     def preds(self, fn: IFn) -> dict[str, list[int]]:
         return optimizations_preds(self, fn)
