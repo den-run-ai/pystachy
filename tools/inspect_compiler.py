@@ -34,7 +34,7 @@ PASS_RULES = {
     "unionslots": "Split eligible local union slots into tag/payload storage and reconstruct boxes at uses that require them.",
     "nullcheck": "Remove redundant null checks only where the existing control-flow proof establishes a non-null value.",
     "exceptions": "Lower retained exception regions using the compiler's conservative effect summaries.",
-    "recursionscope": "The native depth policy, not a PYSTACHY_OPT pass: give checked entries and restorations to the source functions on a direct-call cycle or whose summary can run unseen code (U); the others keep an entry-depth snapshot only for their handlers.",
+    "recursionscope": "The native depth policy, not a PYSTACHY_OPT pass: give checked entries and restorations to the source functions on a direct-call cycle or whose summary can run unseen code (U); the others keep an entry-depth snapshot only for their handlers. A cycle that reaches no U and nothing else that uses the depth (closed recursion) keeps its entries without restorations: lowering passes its depth as an argument.",
 }
 PROGRAM_PASS_UNITS = {
     "recursionscope": "counted source functions",
@@ -329,7 +329,7 @@ class Observer:
                 "snapshot_sha256": hashlib.sha256(json.dumps(snapshot, sort_keys=True).encode()).hexdigest(),
                 "operations": operations, "slots": len(snapshot["slots"]),
                 "guards": {name: operations.get("rt:recursion." + name, 0) for name in RECURSION_OPS},
-                "recursion": snapshot["recursion"],
+                "recursion": dict(snapshot["recursion"], closed=fn.f.ll in gen.rdpass),
             }
             if self.selected(fn):
                 selected[fn.f.ll] = snapshot

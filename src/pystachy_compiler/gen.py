@@ -1463,6 +1463,10 @@ class Gen:
         self.gendrops = False  # a gen.drop op was lowered: the module defines its helper (lower_module)
         self.gendrops_counted = False  # one that counts its cleanup as a frame (pys.gen.drop.counted)
         self.genplain: dict[str, bool] = {}  # the generator types none of whose bodies can recur (Gen.recursionscope)
+        # the functions of closed recursion (Gen.recursionscope), whose depth lowering passes as an
+        # argument, and whether a lowered op calls pys.recursion.enter (lower_module defines it)
+        self.rdpass: dict[str, bool] = {}
+        self.entries = False
         # the program uses the generator protocol's send() or throw(), or the value of a yield
         # (generators.uses_protocol, closed world): its generators' promises hold what is sent and
         # thrown, and their yields take them (docs/internals.md#generators)

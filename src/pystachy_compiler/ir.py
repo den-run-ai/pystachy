@@ -368,6 +368,7 @@ class IFn:
         self.landed = False
         self.gdepth = ""
         self.resumes = False  # whether it resumes or drops a generator (Gen.recursionscope looks for the sites)
+        self.setslimit = False  # whether it calls sys.setrecursionlimit, which reads the depth (Gen.recursionscope)
         # its effect summary (FX bits): every letter (but N) until Gen.effects computes it, once
         # the whole program is built
         self.fx: int = FXALL

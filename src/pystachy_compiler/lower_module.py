@@ -42,7 +42,7 @@ def struct_types(ci: ClassInfo) -> list[str]:
     return [lt(ci.ftypes[x]) for x in ci.fields] + ["i1" for _ in range(ci.nflag)] + ["ptr" for _ in range(ci.nbox)]
 
 
-def recursion_ir(keys: list[str], used: bool, root: int, fields: bool) -> list[str]:
+def recursion_ir(keys: list[str], used: bool, root: int, fields: bool, check: bool) -> list[str]:
     # The native depth accounting (docs/internals.md#native-recursion-depth) works on runtime.c's
     # mutable state, two I words: the active depth, then the configured limit, which the program
     # declares where it is used. The helpers keys names are the program's, even where the JIT
@@ -50,11 +50,28 @@ def recursion_ir(keys: list[str], used: bool, root: int, fields: bool) -> list[s
     # its cold path) and counts; LLVM's ordinary inliners take it (clang -O2 for build, the JIT's
     # below its line limit), not mandatory inlining: LLVM 18's always-inline pass computes block
     # frequencies of each caller, which costs a large JIT program's start-up more than the call
-    # saves. The scalar helpers, which only the hand-written pys.gen.drop.counted and extension entries
-    # call, are always inlined
+    # saves. check: closed recursion's entry (Gen.recursionscope), which checks the depth its
+    # caller passed and returns its own, inlined alike. The scalar helpers, which only the
+    # hand-written pys.gen.drop.counted and extension entries call, are always inlined
     if not used:
         return []
     out = ["@pys_recursion_state = external global [2 x i64]"]
+    if check:
+        out.extend([
+            "define internal i64 @pys.recursion.check(i64 %depth) {",
+            "entry:",
+            "  %limit.addr = getelementptr [2 x i64], ptr @pys_recursion_state, i64 0, i64 1",
+            f"  %limit = load i64, ptr %limit.addr, !tbaa !{TBAA_LIMIT}",
+            "  %full = icmp sge i64 %depth, %limit",
+            f"  br i1 %full, label %overflow, label %entered, !prof !{RECURSION_BRANCH}",
+            "overflow:",
+            "  call void @pys_recursion_error() noreturn cold",
+            "  unreachable",
+            "entered:",
+            "  %next = add i64 %depth, 1",
+            "  ret i64 %next",
+            "}",
+        ])
     if "recursion.enter" in keys:
         out.extend([
             "define internal i64 @pys.recursion.enter() {",
@@ -620,11 +637,12 @@ def gen_lower_module(self) -> str:
     recursion = [key for key in self.rtfns if key.startswith("recursion.")]
     # (lowering stores and loads the depth itself: only the extension's entries and pys.gen.drop.counted
     # call those helpers by name)
-    named = ["recursion.enter", "recursion.leave"] + (["recursion.depth", "recursion.restore"] if self.ext != "" or self.gendrops_counted else [])
+    # (the entry helper, where an op or pys.gen.drop.counted calls it: closed recursion's checks do not)
+    named = (["recursion.enter"] if self.entries or self.gendrops_counted else []) + ["recursion.leave"] + (["recursion.depth", "recursion.restore"] if self.ext != "" or self.gendrops_counted else [])
     for key in ["recursion.depth", "recursion.restore"] if self.ext != "" else []:
         if key not in recursion:
             recursion.append(key)
-    hdr.extend(recursion_ir([key for key in recursion if key in named], len(recursion) > 0, TBAA_FIELDS + len(self.tbaa), len(self.tbaa) > 0))
+    hdr.extend(recursion_ir([key for key in recursion if key in named], len(recursion) > 0, TBAA_FIELDS + len(self.tbaa), len(self.tbaa) > 0, len(self.rdpass) > 0))
     if self.ext != "":
         return "\n".join(hdr + self.pyext()) + "\n"
     # pys_init gets the GC roots: main's frame address bounds the stack scan (it also

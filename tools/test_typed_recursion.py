@@ -40,6 +40,7 @@ def compile_source(source, opt="", ext="", recheck=False):
             "name": fn.f.name,
             "generator": fn.f.gen,
             "counted": fn.counted,
+            "closed": fn.f.ll in g.rdpass,
             "rdepth": fn.rdepth,
             "fx": fn.fx,
             "blocks": [(b.label, b.handler,
@@ -113,15 +114,20 @@ def caller(n: int) -> int:
 def indirect(f: Callable[[int], int], n: int) -> int:
     return f(n)
 
+def through(f: Callable[[int], int], n: int) -> int:
+    if n <= 0:
+        return f(0)
+    return through(f, n - 1) + 1
+
 identity = lambda n: n
-print(caller(3), even(4), indirect(leaf, 2), identity(1), pure(3))
+print(caller(3), even(4), indirect(leaf, 2), through(leaf, 2), identity(1), pure(3))
 '''
 
 
 class TypedRecursionTests(unittest.TestCase):
     def test_cycles_and_unknown_calls_count_and_other_functions_do_not(self):
         _, functions = compile_source(SHAPES)
-        for name in ("direct", "even", "odd", "step", "indirect"):
+        for name in ("direct", "even", "odd", "step", "indirect", "through"):
             with self.subTest(counted=name):
                 fn = named(functions, name)
                 self.assertTrue(fn["counted"])
@@ -138,7 +144,7 @@ class TypedRecursionTests(unittest.TestCase):
 
     def test_counted_entry_is_first_and_every_return_restores_the_callers_depth(self):
         _, functions = compile_source(SHAPES)
-        for name in ("direct", "even", "step"):
+        for name in ("indirect", "through"):
             fn = named(functions, name)
             with self.subTest(function=name):
                 entries = [(label, handler, at) for label, handler, code in fn["blocks"]
@@ -158,6 +164,91 @@ class TypedRecursionTests(unittest.TestCase):
                             self.assertEqual(code[at - 1][:2], ("rt", "recursion.restore"))
                             self.assertEqual(fn["operands"][(block, at - 1)][0], [base])
                 self.assertGreater(returns, 0)
+
+    def test_closed_recursion_counts_in_a_register(self):
+        ir, functions = compile_source(SHAPES)
+        # direct, even and odd, and step call only each other and functions that cannot recur;
+        # indirect and through call a function value, which could run anything
+        self.assertEqual(sorted(fn["name"] for fn in functions.values() if fn["closed"]),
+                         ["direct", "even", "odd", "step"])
+        for name in ("direct", "even", "odd", "step"):
+            fn = named(functions, name)
+            with self.subTest(function=name):
+                self.assertTrue(fn["counted"])
+                # (the typed entry stays; lowering checks the depth argument and restores nothing)
+                self.assertEqual(guards(fn), ["recursion.enter"])
+                self.assertEqual(fn["fx"] & GUARDS, GUARDS)
+        body = ir.split("define internal i64 @r.f.direct(i64 %a0, i64 %rd) {", 1)[1].split("\n}", 1)[0]
+        self.assertRegex(body, r"%t\d+ = call i64 @pys.recursion.check\(i64 %rd\)")
+        self.assertRegex(body, r"call i64 @r\.f\.direct\(i64 %t\d+, i64 %t\d+\)")
+        self.assertNotIn("@pys_recursion_state", body)
+        self.assertNotIn("@f.direct(", body)
+        wrapper = ir.split("define internal i64 @f.direct(i64 %a0) {", 1)[1].split("\n}", 1)[0]
+        self.assertRegex(wrapper, r"%rd = load i64, ptr @pys_recursion_state, !tbaa !\d+")
+        self.assertIn("call i64 @r.f.direct(i64 %a0, i64 %rd)", wrapper)
+        self.assertNotIn("store", wrapper)
+        even = re.search(r"^define internal \S+ @r\.f\.even\(i64 %a0, i64 %rd\) \{\n(.*?)^}", ir, re.M | re.S)
+        self.assertIsNotNone(even)
+        self.assertRegex(even.group(1), r"call \S+ @r\.f\.odd\(i64 %t\d+, i64 %t\d+\)")
+        # (callers outside a cycle call its symbol, which reads the depth word)
+        caller = ir.split("define internal i64 @f.caller(", 1)[1].split("\n}", 1)[0]
+        self.assertIn("call i64 @f.direct(", caller)
+        self.assertNotIn("@r.", caller)
+
+    def test_closed_recursion_excludes_cycles_that_reach_other_depth_users(self):
+        _, functions = compile_source('''
+import sys
+from collections.abc import Iterator
+
+def inner(n: int) -> int:
+    return 0 if n == 0 else inner(n - 1) + 1
+
+def outer(n: int) -> int:
+    return 0 if n == 0 else outer(n - 1) + inner(n)
+
+def limited(n: int) -> int:
+    if n == 0:
+        sys.setrecursionlimit(sys.getrecursionlimit())
+        return 0
+    return limited(n - 1)
+
+def setter() -> None:
+    sys.setrecursionlimit(sys.getrecursionlimit())
+
+def indirectly(n: int) -> int:
+    if n == 0:
+        setter()
+        return 0
+    return indirectly(n - 1)
+
+def walk(n: int) -> Iterator[int]:
+    yield n
+    if n > 0:
+        yield from walk(n - 1)
+
+def consume(n: int) -> int:
+    if n == 0:
+        return 0
+    t = consume(n - 1)
+    for v in walk(n):
+        t += v
+    return t
+
+def pair(n: int) -> tuple[int, int]:
+    return (0, 0) if n == 0 else pair(n - 1)
+
+print(outer(3), limited(2), indirectly(2), consume(2), pair(2))
+''')
+        self.assertTrue(named(functions, "inner")["closed"])
+        # outer reaches inner, which counts in a cycle of its own; limited and indirectly reach
+        # sys.setrecursionlimit, which compares the depth word with the new limit; consume
+        # resumes generators whose body can recur; pair's tuple may come back by value
+        for name in ("outer", "limited", "indirectly", "consume", "pair"):
+            with self.subTest(function=name):
+                fn = named(functions, name)
+                self.assertTrue(fn["counted"])
+                self.assertFalse(fn["closed"])
+        self.assertFalse(named(functions, "setter")["counted"])
 
     def test_handlers_restore_the_entry_or_active_depth(self):
         _, functions = compile_source('''
@@ -205,11 +296,22 @@ print(plain(0), recursive(3))
                 self.assertEqual(names, counted)
 
     def test_strongly_connected_components(self):
-        self.assertEqual(recursion_cycles([[1], [2], [0], [3, 4], []]), [True, True, True, True, False])
-        self.assertEqual(recursion_cycles([[1], [2], []]), [False, False, False])
-        self.assertEqual(recursion_cycles([[1, 2], [0], [2], [0]]), [True, True, True, False])
+        def components(calls):
+            comp = [-1] * len(calls)
+            cyclic = recursion_cycles(calls, comp)
+            groups = {}
+            for j, c in enumerate(comp):
+                groups.setdefault(c, []).append(j)
+            return cyclic, sorted(groups.values())
+        self.assertEqual(components([[1], [2], [0], [3, 4], []]),
+                         ([True, True, True, True, False], [[0, 1, 2], [3], [4]]))
+        self.assertEqual(components([[1], [2], []]), ([False, False, False], [[0], [1], [2]]))
+        self.assertEqual(components([[1, 2], [0], [2], [0]]),
+                         ([True, True, True, False], [[0, 1], [2], [3]]))
+        # (two cycles joined by a call stay apart)
+        self.assertEqual(components([[1], [0, 2], [3], [2]]), ([True] * 4, [[0, 1], [2, 3]]))
         chain = [[j + 1] for j in range(2999)] + [[0]]
-        self.assertEqual(recursion_cycles(chain), [True] * 3000)
+        self.assertEqual(components(chain), ([True] * 3000, [list(range(3000))]))
 
     def test_runtime_subset_does_not_consume_source_depth(self):
         ir = runtime_ir("recursion_runtime.py", "def pys_probe(n: int) -> int:\n    return n + 1\n", False)
@@ -312,12 +414,17 @@ print(total(4), names(Tree(Tree(None, "a"), "b")))
         self.assertTrue(resumes(named(functions, "names")))
 
     def test_guard_helpers_use_mutable_runtime_state_and_throwing_slow_path(self):
-        ir, _ = compile_source("def count(n: int) -> int:\n    return 0 if n == 0 else count(n - 1)\nprint(count(1))\n")
+        # (a cycle through a function value keeps the depth word current: closed recursion does not)
+        ir, _ = compile_source("from collections.abc import Callable\n"
+                               "def count(n: int, f: Callable[[int], int]) -> int:\n"
+                               "    return f(n) if n == 0 else count(n - 1, f)\n"
+                               "print(count(1, lambda k: k))\n")
         self.assertIn("@pys_recursion_state = external global [2 x i64]", ir)
         helpers = dict(re.findall(r"^define internal [^@]*(@pys\.recursion\.[a-z]+)\([^\n]*\{\n(.*?)^}",
                                   ir, re.M | re.S))
         self.assertIn("@pys.recursion.enter", helpers)
         self.assertTrue(set(helpers) <= {"@pys.recursion." + name for name in ("enter", "leave", "depth", "restore")})
+        self.assertRegex(helpers["@pys.recursion.enter"], r"load i64, ptr @pys_recursion_state, !tbaa !\d+")
         for name in helpers:
             declaration = next(line for line in ir.splitlines() if line.startswith("define ") and name + "(" in line)
             # (an entry is left to LLVM's ordinary inliners; the scalar helpers are mandatory)
@@ -332,6 +439,21 @@ print(total(4), names(Tree(Tree(None, "a"), "b")))
         self.assertIn("call i64 @pys.recursion.enter()", source_body)
         self.assertRegex(source_body, r"store i64 %t\d+, ptr @pys_recursion_state, !tbaa !\d+")
         self.assertNotIn("@pys_recursion_enter", source_body)
+
+    def test_closed_recursion_helper_checks_without_storing(self):
+        ir, _ = compile_source("def count(n: int) -> int:\n    return 0 if n == 0 else count(n - 1)\nprint(count(1))\n")
+        helpers = dict(re.findall(r"^define internal [^@]*(@pys\.recursion\.[a-z]+)\([^\n]*\{\n(.*?)^}",
+                                  ir, re.M | re.S))
+        # (no op calls the entry helper, so the module leaves it out)
+        self.assertEqual(set(helpers), {"@pys.recursion.check"})
+        declaration = next(line for line in ir.splitlines() if line.startswith("define internal i64 @pys.recursion.check("))
+        self.assertNotIn("alwaysinline", declaration)
+        body = helpers["@pys.recursion.check"]
+        self.assertIn("icmp sge i64 %depth, %limit", body)
+        self.assertIn("call void @pys_recursion_error() noreturn cold", body)
+        self.assertIn("%next = add i64 %depth, 1", body)
+        self.assertNotIn("store", body)
+        self.assertNotIn("@pys_recursion_enter", ir.split("define internal i64 @r.f.count(", 1)[1].split("\n}", 1)[0])
 
     def test_programs_without_counted_functions_declare_no_guard(self):
         ir, _ = compile_source("def leaf(n: int) -> int:\n    return n + 1\nprint(leaf(1))\n")
@@ -354,9 +476,10 @@ print(Box(2).value(2))
         for name in ("recursion depth", "recursion limit", "int"):
             self.assertTrue(any(value == f'!{{!"{name}", !{root}, i64 0}}'
                                 for value in nodes.values()), name)
-        helper = ir.split("define internal i64 @pys.recursion.enter()", 1)[1].split("\n}", 1)[0]
-        self.assertRegex(helper, r"load i64, ptr @pys_recursion_state, !tbaa !\d+")
+        # (Box.value is closed recursion: its check reads the limit, its symbol the depth)
+        helper = ir.split("define internal i64 @pys.recursion.check(i64 %depth)", 1)[1].split("\n}", 1)[0]
         self.assertRegex(helper, r"load i64, ptr %limit.addr, !tbaa !\d+")
+        self.assertRegex(ir, r"%rd = load i64, ptr @pys_recursion_state, !tbaa !\d+")
         profile = re.search(r"br i1 %full, label %overflow, label %entered, !prof !(\d+)", helper)
         self.assertIsNotNone(profile)
         self.assertEqual(nodes[profile.group(1)], '!{!"branch_weights", i32 1, i32 1048575}')

@@ -4,14 +4,15 @@ from src.pystachy_compiler.diagnostics import fail
 from src.pystachy_compiler.ir import IFn, Ins, Lookup, Val, Values
 from src.pystachy_compiler.ircheck import EffectSummaries
 from src.pystachy_compiler.specs import CANON_DEPTH, FXBIT, LOOKUPS, RAWW, REACH
-from src.pystachy_compiler.utils import is_list, is_union, umembers
+from src.pystachy_compiler.utils import is_list, is_tuple, is_union, umembers
 
 
-def recursion_cycles(calls: list[list[int]]) -> list[bool]:
+def recursion_cycles(calls: list[list[int]], comp: list[int]) -> list[bool]:
     # Whether each function lies on a cycle of the program's direct calls (the callees of its
     # call and init ops, EffectSummaries.calls, through uncounted adapters too), including a
     # call of itself: Tarjan's strongly connected components, with explicit stacks (no
-    # recursion; each edge is followed once).
+    # recursion; each edge is followed once). comp gets each function's component: the
+    # functions of one cycle share it.
     nf = len(calls)
     index = [-1] * nf
     low = [0] * nf
@@ -58,6 +59,7 @@ def recursion_cycles(calls: list[list[int]]) -> list[bool]:
                     w = stack.pop()
                     onstack[w] = False
                     members.append(w)
+                    comp[w] = v
                     if w == v:
                         break
                 if len(members) > 1:
@@ -159,7 +161,8 @@ def gen_recursionscope(self) -> int:
                             u = u | (self.opfx(i, fn.fa) & unknown)
         edges.append(es)
         local.append(u)
-    cyclic = recursion_cycles(edges)
+    comp = [-1] * nf
+    cyclic = recursion_cycles(edges, comp)
     reach = EffectSummaries()
     reach.update(local, edges)
     again = [cyclic[j] or reach.fx[j] & unknown != 0 for j in range(nf)]
@@ -168,6 +171,32 @@ def gen_recursionscope(self) -> int:
         repeat[t] = any(again[j] for j in bodies[t])
         if not repeat[t]:
             self.genplain[t] = True  # (closing one need not count either: lowering's gen.drop)
+    # Closed recursion: the source functions of a cycle that reaches no U, no function outside it
+    # that can be entered again (a counted function, a body of a generator type that can recur)
+    # and no sys.setrecursionlimit find the depth word as the cycle's outermost call found it,
+    # until that call returns: nothing else they run reads or changes it. Lowering passes their
+    # depth as an argument instead (rdpass): each checks the limit and counts in a register, and
+    # its own symbol loads the word for the body. Each frame still counts at the same call.
+    marks = [unknown if again[j] or self.fns[j].setslimit else 0 for j in range(nf)]
+    outer = EffectSummaries()
+    outer.update(marks, edges)
+    cycles: dict[int, list[int]] = {}
+    for j in range(nf):
+        if cyclic[j]:
+            if comp[j] not in cycles:
+                cycles[comp[j]] = []
+            cycles[comp[j]].append(j)
+    for cy in cycles:
+        closed = True
+        for j in cycles[cy]:
+            fn = self.fns[j]
+            if not fn.counted or fn.f.gen or fn.setslimit or reach.fx[j] & unknown != 0 or is_tuple(fn.f.ret):
+                closed = False  # (a fixed tuple's function may return its slots instead: tupleret)
+            for w in edges[j]:
+                if comp[w] != cy and outer.fx[w] != 0:
+                    closed = False
+        for j in cycles[cy] if closed else []:
+            self.rdpass[self.fns[j].f.ll] = True
     rescan = False
     for j in range(nf):
         fn = self.fns[j]
@@ -202,6 +231,11 @@ def gen_recursionscope(self) -> int:
         # tail-call elimination from discarding the activation.
         at = recursion_snapshot(fn)
         fn.blocks[0].code[at].s = "recursion.enter"
+        if fn.f.ll in self.rdpass:
+            # (closed recursion: lowering checks the depth its caller passed and leaves the word alone)
+            direct[j] = direct[j] | entered
+            n += 1
+            continue
         base = Ins("scalar.bin", "int", "sub")
         base.a = [Val(fn.rdepth, "int"), Val("1", "int")]
         fn.n += 1
