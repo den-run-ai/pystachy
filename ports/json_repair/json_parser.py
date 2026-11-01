@@ -24,6 +24,14 @@ from .utils.object_comparer import ObjectComparer
 
 
 class JSONParser:
+    def _enter_parse(self) -> None:
+        # Pystachy port: bound the repair parser's native stack independently of
+        # the compiler's recursion guards. Count active container/string parses,
+        # including reparsing and fenced JSON, not just delimiters in the input.
+        if self._parse_depth >= 256:
+            raise RecursionError("maximum repair parser depth exceeded")
+        self._parse_depth += 1
+
     # Split the parse methods into separate files because this one was like 3000 lines
     def parse_array(
         self,
@@ -31,7 +39,11 @@ class JSONParser:
         path: str = "$",
         closing_delimiter: str = "]",
     ) -> list[Any]:
-        return _parse_array(self, schema, path, closing_delimiter)
+        self._enter_parse()
+        try:
+            return _parse_array(self, schema, path, closing_delimiter)
+        finally:
+            self._parse_depth -= 1
 
     def parse_comment(self, record_top_level_value: bool = False) -> Any:
         return _parse_comment(self, record_top_level_value=record_top_level_value)
@@ -44,10 +56,18 @@ class JSONParser:
         schema: dict[str, Any] | bool | None = None,
         path: str = "$",
     ) -> Any:
-        return _parse_object(self, schema, path)
+        self._enter_parse()
+        try:
+            return _parse_object(self, schema, path)
+        finally:
+            self._parse_depth -= 1
 
     def parse_string(self) -> Any:
-        return _parse_string(self)
+        self._enter_parse()
+        try:
+            return _parse_string(self)
+        finally:
+            self._parse_depth -= 1
 
     def __init__(
         self,
@@ -62,6 +82,7 @@ class JSONParser:
         self.json_str: str = json_str
         # Index is our iterator that will keep track of which character we are looking at right now
         self.index: int = 0
+        self._parse_depth: int = 0
         # This is used in the object member parsing to manage the special cases of missing quotes in key or value
         self.context = JsonContext()
         self.deferred_contexts: list[int] = []
@@ -185,9 +206,7 @@ class JSONParser:
         self.has_tried_valid_json_suffix = True
         try:
             value, end_idx = raw_decode(self.json_str[self.index :])
-        except (json.JSONDecodeError, OverflowError):
-            # Pystachy port: retry integer tokens beyond the native codec's
-            # int64 range through parse_number(), which uses promoting ints.
+        except json.JSONDecodeError:
             return False, ""
 
         self.index += end_idx
@@ -214,9 +233,9 @@ class JSONParser:
         candidate = "{" + self.json_str[:]
         try:
             value, end_idx = raw_decode(candidate)
-        except ValueError:
-            # Decoder limits (such as oversized integers) also mean the
-            # insertion is insufficient; leave these inputs to normal repair.
+        except json.JSONDecodeError:
+            # Pystachy port: only syntax errors disprove this repair. Preserve
+            # resource errors, such as the integer text conversion limit.
             return False, ""
         if candidate[end_idx:].strip(" \t\r\n"):
             return False, ""
@@ -306,6 +325,12 @@ class JSONParser:
                 )
             if char in ["#", "/"]:
                 value = self.parse_comment(record_top_level_value)
+                if self.context.empty:
+                    # Pystachy port: continue iteratively even when prose lies
+                    # between comments. The old re-entry started at a nonzero
+                    # index, so it did not probe a missing opening object brace.
+                    check_initial_quote = False
+                    continue
                 return self._finalize_parsed_value(value, repairer, schema, path, finalize_schema)
             # Only probe a missing brace when normal dispatch would discard the
             # initial quote; later quoted prose must not start this recovery.

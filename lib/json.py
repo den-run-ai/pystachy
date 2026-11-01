@@ -2,8 +2,8 @@
 """Native recursive JSON values and a bounded JSON text codec.
 
 This prototype implements loads(str), dumps(JSONValue) and the default JSONDecoder.
-Integers use Pystachy's
-signed 64-bit range, nesting is limited to 256 containers, and object keys are str.
+Typed JSONValue integers use Pystachy's signed 64-bit range; the dynamic Any
+decoder promotes larger tokens. Nesting is limited to 256 containers, and object keys are str.
 Decoder hooks, bytes input, encoder subclasses, indentation and file APIs are not
 implemented. Containers are created with recursive JSONValue storage; narrowing
 keeps their original identity and mutable contents.
@@ -161,19 +161,21 @@ class _Parser:
     def scalar_value(self) -> JSONValue:
         # The Any decoder has already ruled out strings and containers. Keep this
         # dispatch independent of value() so an Any-only decoder does not pull in
-        # typed recursive containers. Number scanning remains shared in number().
+        # typed recursive containers. Number scanning remains shared in number();
+        # an overflowing integer is returned as its token, for the Any decoder
+        # to promote without changing the scanner's fixed-width cursor arithmetic.
         i = self.pos
         if i == self.n:
             raise self.error("Expecting value", i)
         data = self.data
         c = data[i]
         if 48 <= c <= 57:
-            return self.number()
+            return self.number(True)
         if c == 45:
             if data.startswith(b"-Infinity", i):
                 self.pos = i + 9
                 return -float("inf")
-            return self.number()
+            return self.number(True)
         if c == 110 and data.startswith(b"null", i):
             self.pos = i + 4
             return None
@@ -363,7 +365,7 @@ class _Parser:
             start = i
         raise self.error("Unterminated string starting at", begin)
 
-    def number(self) -> JSONValue:
+    def number(self, wide: bool = False) -> JSONValue:
         data = self.data
         n = len(data)
         start = self.pos
@@ -407,6 +409,8 @@ class _Parser:
             token = data[first:i].decode()
             bound = "9223372036854775808" if negative else "9223372036854775807"
             if digits > 19 or token > bound:
+                if wide:
+                    return data[start:i].decode()
                 raise OverflowError("JSON integer exceeds signed 64-bit range")
             return int(data[start:i].decode())
         return -value if negative else value

@@ -143,7 +143,8 @@ Some standard-library modules compile unchanged. Others, including `fnmatch`, `t
 The adapted code remains valid Python and can be diffed against upstream.
 The library also includes `re`, `itertools`, Unicode normalization, a bounded native `json`,
 `tomllib.loads()`, `functools.cache` / `lru_cache`, `collections.namedtuple`, and in-memory
-binary I/O with `io.BytesIO`.
+binary I/O with `io.BytesIO`. Dynamic `Any` JSON decoding preserves integers beyond 64 bits;
+typed `JSONValue` decoding retains checked 64-bit storage.
 See [library coverage and port notes](lib/README.md) for supported APIs and remaining limits.
 The [CPython support map](docs/support-surface.md) diagrams the native core, bounded features
 and the compiler, runtime and IR costs of broader compatibility.

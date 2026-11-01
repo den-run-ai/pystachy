@@ -39,4 +39,9 @@ def parse_number(self) -> Any:
             return float(number_str)
         return int(number_str)
     except ValueError:
+        # Pystachy port: valid decimal integer syntax can fail only because of
+        # a conversion limit. Do not silently turn that number into a string.
+        digits = number_str[1:] if number_str.startswith("-") else number_str
+        if digits.isdecimal():
+            raise
         return number_str

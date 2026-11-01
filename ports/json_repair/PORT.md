@@ -30,10 +30,15 @@ silently change meaning. `loads` supports the corresponding parsing options.
 Schema/Pydantic, file wrappers, CLI, other `json.dumps` options and the
 `JSONReturnType` export are outside this subset and are not advertised as supported.
 
-The default valid-JSON fast path is retained. This port preserves upstream's
-heuristics, including undesirable behavior: truncated `fal` becomes a string;
+The default valid-JSON fast path is retained, including wide integer tokens, decoded
+surrogate pairs and CPython's nonfinite-number extensions. This port preserves most
+upstream heuristics, including undesirable behavior: truncated `fal` becomes a string;
 repeated top-level objects can replace earlier objects; duplicate keys can use
 the last value; malformed escaped emoji can remain two surrogate characters.
+Forced repair (`skip_json_loads=True`) can discard standalone primitive roots, as
+can a primitive surrounded by comments/prose. Keep the default decoder path for
+valid scalar documents. Comments inside arrays and between an object colon and its
+value are consumed before parsing the actual value, fixing upstream value loss.
 Split trace records before repair and validate types and content afterward.
 
 ## Adaptations
@@ -64,6 +69,16 @@ Split trace records before repair and validate types and content afterward.
 - Use the native `json._raw_decode` adapter at two call sites, with a guarded
   import falling back to CPython’s `JSONDecoder`. The public decoder keeps its
   class identity; see the [JSON API notes](../../docs/json-prototype.md).
+- Keep integer-limit errors visible instead of retrying valid JSON as malformed
+  input or turning decimal numbers into strings. The number parser combines
+  dynamic `Any` with promoting integers; parser indices stay fixed-width.
+- Skip comments while still expecting an array item or object member value,
+  without recursive calls for consecutive comments. Top-level comments resume
+  the main parse loop, so alternating comments and discarded prose do not grow
+  the native stack either.
+- Limit active array, object and string repair parses to 256, restoring the
+  counter on normal and exceptional exits. This also bounds recursive recovery
+  paths such as object continuations and fenced JSON inside strings.
 
 The string-repair implementation remains upstream's roughly 900-line heuristic
 parser. Changes are marked with `Pystachy port` comments or described above.
@@ -78,16 +93,22 @@ mismatch; it does not silently waive known limitations.
 
 On CPython 3.13.16, pristine upstream and adapted sources match **645/645**.
 Native JIT, AOT and both modes with collection at every allocation now match
-**645/645**. The number parser combines dynamic `Any` with promoting integers.
-The native JSON codec still rejects integer tokens outside signed 64-bit range;
-the facade and valid-suffix fast path catch that specific overflow and retry
-through the repair parser. This preserves integer `12345678901234567890` in
-case 59, which previously failed, without converting it to a float or string.
+**645/645** at the preceding integration checkpoint. That corpus did not detect
+wide primitive-root loss, Unicode/strict-mode changes after overflow fallback,
+comment-related value loss or digit-limit swallowing. Additional differential
+regressions now cover those cases, independently of the retained upstream oracle.
+The dynamic native JSON decoder promotes a wide token directly, so valid documents
+keep the normal decoder's semantics instead of entering heuristic repair.
 
-The existing native JSON codec also limits nesting to 256 containers. Unlimited
-depth, schema APIs and Python's exact resource-exhaustion behavior are not
-established by these tests. Integer text conversions retain the runtime's
-digit limit. The replay establishes these 645 cases, not full-package parity.
+The native JSON codec limits nesting to 256 containers and raises `RecursionError`.
+The repair parser separately permits 256 active array/object/string parses; its
+facade translates exhaustion to `ValueError("Input nesting exceeds the supported
+parser recursion depth.")`. Sibling values do not consume a cumulative budget.
+CPython may exhaust its interpreter stack earlier. This port limit does not resolve
+general native recursion compatibility. Decimal integer conversions retain the
+runtime's 4,300-digit limit and raise `ValueError` rather than silently dropping or
+stringifying the value. Forced-repair primitive-root heuristics described above remain.
+The replay establishes these 645 cases, not full-package parity.
 
 The small [native regression](../../tests/programs/apps/port_json_repair.py)
 checks mutable `Any` results, repair behavior, Unicode and the fast path. Run:
