@@ -34,14 +34,12 @@ PASS_RULES = {
     "unionslots": "Split eligible local union slots into tag/payload storage and reconstruct boxes at uses that require them.",
     "nullcheck": "Remove redundant null checks only where the existing control-flow proof establishes a non-null value.",
     "exceptions": "Lower retained exception regions using the compiler's conservative effect summaries.",
-    "recursionleaf": "Retain source entry checks; remove or defer depth publication only under the existing whole-program depth-observation and lifetime proofs.",
-    "recursionregion": "Use the existing bounded, partial and successful-call proofs and budgets; preserve original failure points and guarded observer paths.",
+    "recursionscope": "The native depth policy, not a PYSTACHY_OPT pass: give checked entries and restorations to the source functions on a direct-call cycle or whose summary can run unseen code (U); the others keep an entry-depth snapshot only for their handlers.",
 }
 PROGRAM_PASS_UNITS = {
-    "recursionleaf": "transformed functions",
-    "recursionregion": "mixed sum: maximal bounded roots, partial roots, rewritten successful-call callers, and shared checked originals",
+    "recursionscope": "counted source functions",
 }
-RECURSION_OPS = ("check", "room", "enter", "leave", "depth", "restore")
+RECURSION_OPS = ("enter", "leave", "depth", "restore")
 # Only compiler inputs are recorded, never arbitrary process environment values.
 ENV_KEYS = (
     "PYSTACHY_HOME", "PYSTACHY_PATH", "PYSTACHY_OPT", "PYSTACHY_IRCHECK",
@@ -168,7 +166,7 @@ class Observer:
             "return_type": self.typestr(f.ret), "return_representation": f.ret,
             "specialization": {"instantiated": f.inst, "generic": f.generic},
             "effects": self.fxs(fn.fx), "effects_scope": "last compiler analysis; may be conservative after rewrites",
-            "recursion": {"counted": fn.counted, "rdepth": fn.rdepth, "gdepth": fn.gdepth,
+            "recursion": {"counted": fn.counted, "rdepth": fn.rdepth, "landed": fn.landed, "gdepth": fn.gdepth,
                           "generator": f.gen, "coroutine": fn.coro},
             "slots": [self.instruction(i) for i in fn.slots],
             "blocks": [{"label": b.label, "handler": b.handler,
@@ -384,24 +382,10 @@ class Observer:
     def lower_wrapper(self, original):
         def wrapped(gen, fn, *args, **kwargs):
             self.capture_before(gen)
-            if self.attempt is not None:
-                if "function_order_before_lowering" not in self.attempt:
-                    self.attempt["function_order_before_lowering"] = [item.f.ll for item in gen.fns]
             if self.selected(fn):
                 self.after.append(self.snapshot(fn))
             self.diagnostics.PHASE = "lower"
-            result = original(gen, fn, *args, **kwargs)
-            if self.attempt is not None:
-                self.attempt.setdefault("lowered_function_order", []).append(fn.f.ll)
-            return result
-        return wrapped
-
-    def lower_module_wrapper(self, original):
-        def wrapped(gen, *args, **kwargs):
-            if self.attempt is not None and (args or "inline_recursion_guards" in kwargs):
-                self.attempt["inline_recursion_guards_argument"] = args[0] if args else kwargs["inline_recursion_guards"]
-            self.diagnostics.PHASE = "lower"
-            return original(gen, *args, **kwargs)
+            return original(gen, fn, *args, **kwargs)
         return wrapped
 
     def install(self) -> None:
@@ -422,7 +406,7 @@ class Observer:
             self.wrap(Gen, name, self.program_pass_wrapper(name))
         self.wrap(Gen, "eh_ir", self.pass_wrapper("exceptions"))
         self.wrap(Gen, "lower", self.lower_wrapper)
-        self.wrap(Gen, "lower_module", self.lower_module_wrapper)
+        self.wrap(Gen, "lower_module", self.phase_wrapper("lower"))
 
     def restore(self) -> None:
         for cls, name, original in reversed(self.restores):

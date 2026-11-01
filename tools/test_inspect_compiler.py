@@ -125,10 +125,13 @@ class InspectionTests(unittest.TestCase):
         self.assertEqual(completed.returncode, 0, completed.stderr)
         before = self.named_function(self.snapshot(destination, "typed-before"), "total")
         after = self.named_function(self.snapshot(destination, "typed-after"), "total")
-        self.assertEqual(self.operations(before), self.operations(after))
         self.assertTrue(any(op["op"] == "rt" and op["text"] == "list.get"
                             for op in self.operations(after)))
-        self.assertEqual(self.report(destination)["program_passes"], [])
+        # The depth policy is no optimization: it still runs, and drops only the entry-depth
+        # snapshot of this function, which neither recurses nor has a handler.
+        before_ops = [op for op in self.operations(before) if op["text"] != "recursion.depth"]
+        self.assertEqual(before_ops, self.operations(after))
+        self.assertEqual([event["name"] for event in self.report(destination)["program_passes"]], ["recursionscope"])
         passes = self.report(destination)["passes"]
         self.assertFalse(any(event["name"] in {"listget", "dictfuse", "unionslots", "nullcheck"}
                              for event in passes), "disabled pass was reported as executed")
@@ -136,14 +139,18 @@ class InspectionTests(unittest.TestCase):
         self.assertEqual(ordinary.returncode, 0, ordinary.stderr)
         self.assertEqual((destination / "llvm.ll").read_bytes(), ordinary.stdout)
 
-    def test_recursion_program_passes_track_symbol_union_and_emission_order(self):
+    def test_recursion_policy_pass_reports_counted_functions_by_symbol(self):
         program = self.source('''
 def leaf(n: int) -> int:
     return n + 1
+def recursive(n: int) -> int:
+    if n <= 0:
+        return 0
+    return recursive(n - 1) + leaf(n)
 def kernel(n: int) -> int:
     total = 0
     for i in range(n):
-        total += leaf(i)
+        total += leaf(i) + recursive(i)
     return total
 print(kernel(3))
 ''')
@@ -154,74 +161,41 @@ print(kernel(3))
         self.assertEqual((destination / "llvm.ll").read_bytes(), ordinary.stdout)
         report = self.report(destination)
         events = {event["name"]: event for event in report["program_passes"]}
-        self.assertEqual(set(events), {"recursionleaf", "recursionregion"})
-        self.assertEqual(events["recursionleaf"]["return_unit"], "transformed functions")
-        event = events["recursionregion"]
-        self.assertIn("mixed sum", event["return_unit"])
-        self.assertGreater(event["reported_transformations"], 0)
-        self.assertNotIn("reported_rewrites", event)
-        self.assertIn("@rf.f.kernel", event["added_functions"])
-        self.assertIn("@rf.f.leaf", event["added_functions"])
+        self.assertEqual(set(events), {"recursionscope"})
+        event = events["recursionscope"]
+        self.assertEqual(event["return_unit"], "counted source functions")
+        self.assertEqual(event["reported_transformations"], 1)
+        self.assertEqual(event["added_functions"], [])
         self.assertEqual(event["removed_functions"], [])
+        self.assertFalse(event["order_changed"])
+        self.assertIn("@f.recursive", event["changed_functions"])
         self.assertIn("@f.kernel", event["changed_functions"])
         snapshots = json.loads((destination / event["snapshot"]).read_text())
         before, after = snapshots["before"], snapshots["after"]
-        self.assertNotIn("@rf.f.kernel", before["functions"])
-        self.assertIn("@rf.f.kernel", after["functions"])
-        self.assertIn("@f.leaf", before["functions"])
-        self.assertNotIn("@f.leaf", before["selected_snapshots"])
-        self.assertLess(event["before_selected_totals"]["functions"], event["before_totals"]["functions"])
         for snapshot in (before, after):
             totals = snapshot["totals"]
             self.assertEqual(totals["slots"], sum(fn["slots"] for fn in snapshot["functions"].values()))
             self.assertEqual(totals["operation_count"], sum(totals["operations"].values()))
-            self.assertEqual(set(totals["guards"]), {"check", "room", "enter", "leave", "depth", "restore"})
-        self.assertTrue(before["functions"]["@f.kernel"]["recursion"]["counted"])
-        self.assertFalse(after["functions"]["@rf.f.kernel"]["recursion"]["counted"])
-        self.assertTrue(any(op["text"] == "recursion.enter"
-                            for op in self.operations(before["selected_snapshots"]["@f.kernel"])))
+            self.assertEqual(set(totals["guards"]), {"enter", "leave", "depth", "restore"})
+        for name in ("@f.leaf", "@f.recursive", "@f.kernel"):
+            self.assertTrue(before["functions"][name]["recursion"]["counted"], name)
+            self.assertEqual(before["functions"][name]["guards"]["depth"], 1, name)
+        self.assertTrue(after["functions"]["@f.recursive"]["recursion"]["counted"])
+        self.assertEqual(after["functions"]["@f.recursive"]["guards"]["enter"], 1)
+        self.assertGreater(after["functions"]["@f.recursive"]["guards"]["restore"], 0)
+        for name in ("@f.leaf", "@f.kernel"):
+            self.assertFalse(after["functions"][name]["recursion"]["counted"], name)
+            self.assertEqual(sum(after["functions"][name]["guards"].values()), 0, name)
+        self.assertIn("@f.kernel", before["selected_snapshots"])
+        self.assertNotIn("@f.leaf", before["selected_snapshots"])
         self.assertTrue((destination / event["diff"]).is_file())
-        attempt = report["attempts"][-1]
-        self.assertEqual(set(attempt["function_order_before_lowering"]), set(attempt["lowered_function_order"]))
-        self.assertLess(attempt["lowered_function_order"].index("@rf.f.kernel"),
-                        attempt["lowered_function_order"].index("@f.kernel"))
-        self.assertFalse(attempt["inline_recursion_guards_argument"])
 
-    def test_successful_call_observation_keeps_added_private_leaf_snapshot(self):
-        program = self.source('''
-def leaf(n: int) -> int:
-    return n + 1
-def recursive(n: int) -> int:
-    if n <= 0:
-        return 0
-    return recursive(n - 1) + 1
-def kernel(n: int) -> int:
-    total = leaf(0)
-    for i in range(n):
-        total += leaf(i) + recursive(i)
-    return total
-print(kernel(3))
-''')
-        completed, destination = self.inspect(program, args=("--function", "leaf"))
-        self.assertEqual(completed.returncode, 0, completed.stderr)
-        event = next(row for row in self.report(destination)["program_passes"] if row["name"] == "recursionregion")
-        self.assertIn("@rc.f.leaf", event["added_functions"])
-        snapshots = json.loads((destination / event["snapshot"]).read_text())
-        self.assertNotIn("@rc.f.leaf", snapshots["before"]["selected_snapshots"])
-        private = snapshots["after"]["selected_snapshots"]["@rc.f.leaf"]
-        self.assertFalse(private["recursion"]["counted"])
-        self.assertFalse(any(op["text"] == "recursion.check" for op in self.operations(private)))
-        ordinary = self.ordinary_ir(program)
-        self.assertEqual(ordinary.returncode, 0, ordinary.stderr)
-        self.assertEqual((destination / "llvm.ll").read_bytes(), ordinary.stdout)
-
-    def test_zero_program_result_and_real_guard_policy_do_not_invent_refusal(self):
+    def test_zero_program_result_does_not_invent_refusal(self):
         program = self.source("stream = open('never-opened-for-observation')\nstream.close()\n")
         completed, destination = self.inspect(program, args=("--function", "no_such_function"))
         self.assertEqual(completed.returncode, 0, completed.stderr)
         report = self.report(destination)
-        self.assertTrue(report["attempts"][-1]["inline_recursion_guards_argument"])
-        self.assertEqual(len(report["program_passes"]), 2)
+        self.assertEqual(len(report["program_passes"]), 1)
         for event in report["program_passes"]:
             self.assertEqual(event["reported_transformations"], 0)
             self.assertEqual(event["before_selected_totals"]["functions"], 0)
@@ -231,6 +205,7 @@ print(kernel(3))
         ordinary = self.ordinary_ir(program)
         self.assertEqual(ordinary.returncode, 0, ordinary.stderr)
         self.assertEqual((destination / "llvm.ll").read_bytes(), ordinary.stdout)
+
     def test_semantic_rejection_links_imported_specialization_without_parsing_paths(self):
         support = self.source("def add(value):\n    return value + 'x'\n", "folder:é/worker_support.py")
         program = self.source("import worker_support\nprint(worker_support.add(1))\n", "folder:é/program.py")

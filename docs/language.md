@@ -292,7 +292,7 @@ The most important differences for supported programs are:
 | Strings | Code-point length, indexing, slicing and search; Unicode case mapping and some other operations remain incomplete |
 | Containers | Dictionary views are snapshots; string-set order differs from CPython |
 | Exceptions | Uncaught errors omit the full traceback; native resource failures bypass handlers |
-| Recursion | `sys.setrecursionlimit()` bounds active source calls; exact failure depth differs from CPython, and excessive limits can still exhaust the native stack |
+| Recursion | `sys.setrecursionlimit()` bounds recursive calls; non-recursive frames do not count, so the exact failure depth differs from CPython, and excessive limits can still exhaust the native stack |
 | Lifetime | Garbage collection runs in batches; `__del__` never runs; close files explicitly |
 | Evaluation | Some consumers materialize their input before processing it |
 

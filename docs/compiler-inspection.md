@@ -39,7 +39,7 @@ compiler is resolving imports.
 | `typed-after.json` | Selected functions after optimization and exception lowering, just before LLVM serialization |
 | `llvm.ll` | Final LLVM IR, when compilation succeeds |
 | `passes/NNNN-name.diff` | A readable before/after diff for a pass that changed a selected function |
-| `program-passes/NNNN-name.json` | Whole-program recursion pass snapshots keyed by LLVM symbol, including added private functions |
+| `program-passes/NNNN-name.json` | Whole-program pass snapshots keyed by LLVM symbol (the native recursion depth policy) |
 | `program-passes/NNNN-name.diff` | Typed instruction changes across the union of selected before/after functions |
 | `compiler.stderr`, `compiler.stdout` | The ordinary compiler's captured text streams |
 
@@ -107,7 +107,8 @@ passes an integer; CPython prints `8`.
   or ownership analysis.
 - **Passes:** `passes` records the function passes `listget`, `dictfuse`,
   `unionslots`, `nullcheck` and exception lowering. `program_passes` separately
-  observes whole-program `recursionleaf` and `recursionregion` calls. Other
+  observes the whole-program `recursionscope` call, the native recursion depth
+  policy, which runs whatever `PYSTACHY_OPT` turns off. Other
   [optimization settings](typed-ir.md#71-language-level-optimizations)
   control frontend or lowering choices and have no invented pass snapshot here.
 - **Phases:** the compiler still combines name resolution, typing, folding and
@@ -118,45 +119,33 @@ passes an integer; CPython prints `8`.
 
 ### Whole-program recursion observations
 
-For example, inspect the bounded call region and its private descendants:
+For example, inspect which functions count toward the recursion limit:
 
 ```sh
-python3 tools/inspect_compiler.py bench/recursion/ordinary_calls.py \
-  --output /tmp/pystachy-inspect-recursion --function step
+python3 tools/inspect_compiler.py tests/programs/language/recursion_guard.py \
+  --output /tmp/pystachy-inspect-recursion --function direct
 ```
 
-Each `program_passes` record comes from one real pass call. Its snapshot artifact
-contains before/after `functions` maps keyed by LLVM symbol, explicit function
-order, and immutable full `selected_snapshots`. New `@rf`, `@rp`, `@rp2` and `@rc`
-functions therefore remain visible even when absent before the pass. The record
-separates added, removed and changed symbols; changes include metadata as well as
-instructions. A snapshot hash detects same-count changes outside the function
-filter without retaining every unselected function's complete IR.
+The `program_passes` record comes from the real `recursionscope` call. Its snapshot
+artifact contains before/after `functions` maps keyed by LLVM symbol, explicit function
+order, and immutable full `selected_snapshots`. The record separates added, removed and
+changed symbols; changes include metadata as well as instructions. A snapshot hash
+detects same-count changes outside the function filter without retaining every
+unselected function's complete IR. Before the pass, every source function has only
+its entry-depth snapshot (`recursion.depth`); after it, a counted function's entry is
+`recursion.enter` and each return restores the caller's depth, and an uncounted one
+keeps the snapshot only when a handler restores it.
 
 Global totals remain separate from selected-function totals. Both count block
-operations and frame slots separately, and report the six typed runtime operations
-`recursion.check`, `room`, `enter`, `leave`, `depth` and `restore`. Function summaries
-also retain `counted`, `rdepth`, `gdepth`, generator and coroutine metadata. These
-are observed state, not an independently rerun proof or an LLVM instruction count.
+operations and frame slots separately, and report the four typed runtime operations
+`recursion.enter`, `leave`, `depth` and `restore`. Function summaries also retain
+`counted`, `rdepth`, `landed`, `gdepth`, generator and coroutine metadata. These are
+observed state, not an independently rerun proof or an LLVM instruction count.
 
-The raw integer returned by each pass is named `reported_transformations`:
-
-| Pass | Return unit |
-|---|---|
-| `recursionleaf` | Transformed functions |
-| `recursionregion` | Mixed sum of maximal bounded roots, partial roots, rewritten successful-call callers, and shared checked originals |
-
-Neither return value is an instruction count. Use the before/after operation
-totals and selected diffs to assess actual IR changes. A zero result does not
-identify a refusal reason; a disabled pass has no call record. The observer does
-not call eligibility or depth proofs again to invent explanations.
-
-Each compilation attempt records the function-table order before lowering and
-the order of successfully completed `lower` calls. It also records the actual
-`inline_recursion_guards` argument passed to `lower_module` when present. This
-observes the existing decision without recomputing lifetime policy. Read these
-fields with the attempt status; an interrupted attempt can have a partial
-emission order. LLVM helper attributes remain available in `llvm.ll`.
+The raw integer the pass returns, `reported_transformations`, is the number of
+counted source functions. It is not an instruction count. A zero result does not
+identify a refusal reason; the observer does not rerun the call-graph analysis to
+invent explanations. LLVM helper attributes remain available in `llvm.ll`.
 
 Diagnostic codes are deliberately coarse in this prototype:
 

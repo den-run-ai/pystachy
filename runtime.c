@@ -6190,7 +6190,9 @@ _Noreturn void pys_execv(Str *path, List *args) {   /* os.execv: the process bec
   ioerr(errno);
 }
 I pys_getpid(void) { return getpid(); }
-/* Native source-function depth, with one outer module frame, including an active generator
+/* Native recursion depth (docs/internals.md#native-recursion-depth): one outer module frame, then
+   each active call of a source function that recursion can repeat (the compiler leaves the
+   functions that cannot be entered again while active uncounted), including an active generator
    resume (not its suspended frame). Generated entries and normal returns balance enter/leave;
    each exception landing restores the depth saved by its function's entry, since the unwinder
    has skipped the returns of callees. A failed entry does not change the depth. Like the rest
@@ -6203,15 +6205,6 @@ I pys_recursion_state[2] = {1, 1000};
 _Static_assert(sizeof(I) == 8 && sizeof(pys_recursion_state) == 16,
                "Recursion ABI: two i64 words, active depth then requested limit");
 _Noreturn void pys_recursion_error(void) { pys_fail("RecursionError: maximum recursion depth exceeded"); }
-void pys_recursion_check(void) {
-  if (pys_recursion_state[0] >= pys_recursion_state[1]) pys_recursion_error();
-}
-I pys_recursion_room(I needed) {
-  /* Compiler-proven bounded regions use a non-raising selector. Both state
-     words are nonnegative and bounded by INT32_MAX; subtract, do not add an
-     unchecked budget to the active depth. Failure runs the original code. */
-  return needed <= pys_recursion_state[1] - pys_recursion_state[0];
-}
 I pys_recursion_enter(void) {
   if (pys_recursion_state[0] >= pys_recursion_state[1]) pys_recursion_error();
   return ++pys_recursion_state[0];

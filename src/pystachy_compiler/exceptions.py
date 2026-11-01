@@ -452,6 +452,7 @@ def gen_landing(self, l: str, slot: str, mark: Val) -> Val:
     x = self.mload('%ptr', slot)
     if not self.rtmode:
         active = self.mload("int", self.fn.gdepth) if self.fn.gdepth != "" else self.fn.rdepth
+        self.fn.landed = self.fn.landed or self.fn.gdepth == ""
         self.rt("pys_recursion_restore", "void", [f"i64 {active}"])
     if self.fn.gbase != "":
         # (a generator's marks are relative to the depth of the unwind actions where it was

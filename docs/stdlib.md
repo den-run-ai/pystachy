@@ -39,7 +39,7 @@ adapted tests, not execution of CPython's complete test suite.
 
 Selected APIs from `sys`, `os`, `math`, `time`, `errno`, `tempfile` and `select` are compiler builtins.
 `sys.setrecursionlimit()` and `sys.getrecursionlimit()` enforce the
-[native source-call depth policy](language/compatibility.md#errors-and-control-flow),
+[native recursion depth policy](language/compatibility.md#errors-and-control-flow),
 with catchable `RecursionError` in JIT and AOT.
 `typing`, `collections.abc` (also imported as `_collections_abc`) and `dataclasses` also have
 compiler support; this does not provide

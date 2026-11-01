@@ -400,14 +400,9 @@ generator expressions emit the same typed IR and LLVM IR as before.
 ## JIT, AOT and runtime caching
 
 `run` favors startup latency. LLVM removes unused internal functions, inlines the scalar
-recursion-accounting helpers and bounded partial versions, optionally inlines the program's
+recursion-accounting helpers, optionally inlines the program's
 own functions, performs SSA cleanup, and runs `early-cse` and `adce` to remove
 redundant computations and unused loop feedback before ORC JIT runs with the cached runtime.
-Recursion entry guards use ordinary inlining, allowing large modules to share their
-checks. Programs with unmanaged files, weak references, termination callbacks or
-embedding preserve their prior mandatory guard inlining policy. The eligibility
-decision is captured before optimization
-and exception lowering, while scoped-file roots can still be proved.
 On Linux, `lli` loads the runtime as a shared library (`-dlopen`), which the driver links once
 from the cached runtime object and caches beside it; elsewhere `lli` links the object into each
 run (`-extra-object`), which cost about 35 ms a run
@@ -423,94 +418,63 @@ lowered) gets LLVM's coroutine passes around that pipeline:
 function's cleanup), and `coro-cleanup`. The final `early-cse`/`adce` cleanup runs after
 those passes as well, so dead identity-generation loops do not reach code generation.
 The default user-function inlining threshold is 20,000 lines of generated IR; larger programs
-skip that pass. Scalar recursion helpers and bounded partial versions remain inlined,
-including with `PYSTACHY_JIT_INLINE=0`; entry guards do so only in programs excluded
-by the lifetime policy. The accounting helpers access the same mutable
-depth/limit state as the runtime's
-`sys.setrecursionlimit()` implementation and call the checked runtime entry only on the
-overflow path. The precompiled runtime is not inlined into JIT code.
+skip that pass. The scalar recursion-accounting helpers remain inlined, including with
+`PYSTACHY_JIT_INLINE=0`; the recursion entry follows the user-function threshold (see
+below). The precompiled runtime is not inlined into JIT code.
 
-For program operations without exceptional successors, lowering emits
-`recursion.depth` and `recursion.restore` directly as a state load and store.
-`recursion.room` becomes a non-raising comparison of the requested frames against
-`limit - depth`. These remain typed runtime operations with their existing effects
-and depth/limit alias tags; check, enter and leave operations still use the module
-helpers. Runtime compilation retains the runtime implementations.
+<a id="native-recursion-depth"></a>
 
-Before LLVM lowering, `recursionleaf` replaces entry bookkeeping with a check alone
-for functions whose active depth cannot be observed by any normal, exceptional or
-cleanup path. Where all observers occur in a region that cannot return, functions
-without local handlers can instead publish depth on entry to that region. Recursive
-calls, callbacks and limit changes see the full active depth; generators keep their
-original accounting. `recursionregion` can check a loop-containing function's finite
-maximum call depth once and run an unchecked private call subgraph. Whole-function
-versioning requires at least one loop with a control-flow cycle and a counted
-source call on every path back to its head before its recorded exit. Paths through
-that exit are allowed, including re-entry through an enclosing loop; a continuing
-branch without a call disqualifies that loop. Insufficient
-headroom runs the complete guarded body, preserving side effects and the original
-failing call. Callbacks, limit changes, generators, handlers and unknown calls remain
-boundaries; code-size limits bound cloning.
+### Native recursion depth
 
-Whole-function versioning gives only maximal selected regions a separate unchecked
-entry. If one selected region is inside another's proven call graph, its private
-copy remains an inlineable descendant and its ordinary entry retains its guards.
-Independent regions can share private descendants. Each maximal private entry is
-marked `noinline` and its LLVM definition is emitted before the original guarded
-wrapper; descendants remain eligible for ordinary inlining. This keeps the guarded
-loop out of the hot function and controls the hot function's placement. LLVM 18
-object-loop development controls motivated this layout, which restores the observed
-compact hot function, including short conditional branches. The full normal-driver
-elapsed-time result remains unresolved; the controls do not establish performance
-acceptance. The [measurement report](reports/recursion-guard-regions.md) records both
-series and the captured code. This layout choice leaves the depth proof and fallback
-behavior intact; it does not impose a new inlining boundary inside the unchecked graph.
+`sys.setrecursionlimit()` bounds the native depth: one for module execution, plus each
+active call of a source function that recursion can repeat, plus each running generator
+body ([compatibility](language/compatibility.md#errors-and-control-flow)). The state is
+runtime.c's `pys_recursion_state`, two mutable words (active depth, then limit) that the
+program's guards and the runtime's `sys.setrecursionlimit()` share; the program module
+defines the guard helpers itself, even when the JIT runs the runtime as a shared library.
 
-An original check-only leaf can share its existing full bounded private body (`@rf`),
-or its successful-child private body (`@rc`) when no full bounded clone exists.
-Its guarded entry checks the limit, then tail-forwards with the same signature and
-hidden identity arguments. The three-operation wrapper has no frame slots and
-lowers to `musttail`, so sharing adds no native stack frame. An `@rc` body retains
-the original one-frame terminal publication; the two-frame `@rp2` body is never a
-forwarding target. Tuple returns keep their existing fresh-return bodies. This
-sharing runs after region selection and uses an already budgeted private clone.
+Every non-generator function starts with a snapshot of the depth it was entered at
+(`recursion.depth`), which its exception landings restore: callees that raised may have
+left the depth higher, since the unwinder skipped their returns. Once the whole program is
+built and `Gen.effects` has summarized it, `Gen.recursionscope` (`optimizations.py`)
+decides which source functions count. Tarjan's algorithm over the summaries' direct
+calls (`call` and `init`, through uncounted adapters too) finds the functions on a cycle.
+A source function counts if it lies on a cycle or if its summary has `U`: something it
+runs can call code that the direct graph does not show, such as an `icall` of a function
+value, a runtime operation that calls `__eq__`, `__hash__` or `__repr__`, or a generator
+resume. Any other function cannot be entered again while it is active, so it is at most
+once on any native stack: counting it could change only at which call a bounded
+recursion fails, never whether an unbounded one is caught, because every cycle of calls
+passes through a counted function (one on a direct cycle, or the one whose call leaves
+the known graph). It neither checks nor counts; it keeps its snapshot only when one of
+its handlers restores it.
 
-A separate two-frame version can cover
-a mixed function's returning leaf paths. It publishes the active depth before an
-observer or guarded suffix and never resumes unchecked calls after that publication.
-This narrower path requires a useful leaf call in a returning block; it does not
-version arbitrary prefix scans or recursive loops. Both private layers are inlined,
-with each rewritten child callsite charged against the expansion budget.
-Equivalent terminal load/call/return blocks in a selected private root share one
-child expansion before inlining. Their preceding paths and the guarded fallback
-remain intact, and the original callsite charges still bound region selection.
+A counted function's snapshot becomes its entry, `recursion.enter`: it raises
+`RecursionError` if the depth has reached the limit (before any local handler or body
+code, so a failed entry belongs to the caller) and otherwise counts the frame. Each
+normal return restores the caller's depth (the entry's result minus one), and its
+landings restore its own active depth. Restoring after the last call also keeps LLVM's
+tail-call elimination from discarding the activation. The summaries gain exactly the
+entry's and the returns' effects (`R I`) instead of another walk over every operation;
+`gen_effects` leaves a function's entry snapshot out of its own mask, since an
+uncounted function either drops it or keeps it only beside the restorations that its
+handlers already contribute. A generator body counts while it runs: its consumer enters
+(`recursion.enter`) before each resume and leaves after it, and in a program with
+exception handling the body saves the depth at each resume for its handlers, since a
+resumed generator may have another consumer. This is the depth policy, not an optimization, so `PYSTACHY_OPT` does not change
+it.
 
-A further proof keeps a caller's ordinary frame published. Once a known counted
-child returns normally, the caller has at least one spare frame. Subsequent valid
-limit changes preserve that slot because `sys.setrecursionlimit()` rejects a limit
-at or below the active depth. Where every incoming path establishes this fact,
-later proven leaf calls can share a body without its entry check. Their arguments
-stay in place, and a terminal observer still publishes exactly the child's one
-frame. The caller's own entry does not establish spare room. Unknown or foreign
-effects and generator operations invalidate the fact; roots with local handlers
-or generators are excluded. This case uses the same loop requirement, counting
-only eligible leaf calls, and has separate root and clone-size budgets, detailed
-in the IR pass contract.
-
-Programs with unmanaged native files or weak references keep all
-original bookkeeping: even removing scalar instructions can change stale conservative
-roots in a caller's native frame, altering file closure or weak-reference observations.
-Files opened directly in `with` blocks can qualify when every open is immediately
-registered as an existing unwind root outside a generator. Those roots keep the file
-alive until deterministic close, so the optimization does not change GC policy.
-Standard streams alone do not impose this restriction. The check can still raise before
-the body executes; its ordinary raising/state effects remain intact. State accesses
-carry separate depth/limit TBAA tags under the existing object-field root, so field
-stores cannot alias that state.
-The overflow edge has cold branch weights. These metadata facts support LLVM's own
-optimization; they do not authorize moving an error before source side effects.
-See the [IR pass contract](typed-ir.md#optimizations) and use
-`PYSTACHY_OPT=-recursionleaf,-recursionregion` to retain the original bookkeeping for comparisons.
+For operations without exceptional successors, lowering emits `recursion.depth` and
+`recursion.restore` directly as a load and a store of the depth word. `recursion.enter`
+calls the module's `pys.recursion.enter`, whose overflow edge calls the runtime's
+`pys_recursion_error` and has cold branch weights. LLVM's ordinary inliners take that
+helper: clang `-O2` for `build`, and the JIT's inliner below its line threshold. It is not
+marked `alwaysinline`, because LLVM 18's mandatory inliner computes block frequencies
+for every caller it changes, which cost a large program's JIT start-up more than the call
+saves (24 counted functions of `bench/smoke/text.py` added 13% to `opt`). The scalar
+helpers, which only `pys.gen.drop` and extension entries call by name, are `alwaysinline`. The state's
+accesses carry depth/limit TBAA tags under the object-field root, so object field stores
+cannot alias it. Runtime compilation (`runtime.py`) has no recursion accounting.
 
 `PYSTACHY_JIT_CODEGEN=0` selects MCJIT with `-O0` code generation. This can reduce
 startup for large programs, but the generated code can run slower. The default (`2`)
@@ -554,7 +518,7 @@ provide the broader behavior check. See [testing](testing.md) for the commands.
 | `PYSTACHY_IRCHECK=1` | Verify typed IR before lowering and after transforming passes |
 | `PYSTACHY_IRFX=1` | Print function effect summaries to stderr |
 | `PYSTACHY_OPT` | Disable named optimizations with `-name`, comma-separated, or all with `-all`; see [IR passes](typed-ir.md#optimizations) |
-| `PYSTACHY_JIT_INLINE=N` | IR-line threshold for JIT user-function inlining; `0` disables it (scalar recursion helpers and bounded partial versions remain inlined; guard helpers also stay inlined in lifetime-excluded programs) |
+| `PYSTACHY_JIT_INLINE=N` | IR-line threshold for JIT user-function inlining, including the recursion entry helper; `0` disables it (the scalar recursion helpers remain inlined) |
 | `PYSTACHY_JIT_CODEGEN=0\|2` | `0` selects MCJIT `-O0`; `2` (default) keeps ORC code generation |
 | `PYSTACHY_GC_STRESS=N` | Collect every N allocations |
 | `PYSTACHY_GC_STRESS_PROGRAM=N` | Apply the stress interval to the program run by JIT or the test runner, separately from its compiler |

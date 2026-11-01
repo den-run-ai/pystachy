@@ -824,6 +824,16 @@ def gen_hidden_loop(self, loop: Node, own: list[str], names: list[str]) -> None:
             self.idbox.pop(nm, "")
 
 
+def gen_gen_resume_enter(self) -> str:
+    # A running generator body counts as a frame (docs/internals.md#native-recursion-depth): its
+    # consumer enters before each resume (a failed entry belongs to the consumer, before the
+    # generator runs) and restores the depth it entered from after a normal one, which a
+    # landing restores otherwise. The body is balanced: it counts nothing itself, and every
+    # call it makes restores its caller's depth.
+    entered = self.rt("pys_recursion_enter", "i64", [])
+    return self.scalar("sub", [Val(entered, "int"), Val("1", "int")])
+
+
 def gen_gen_next(self, h: Val, done: str) -> str:
     # the next step of generator h: done if it has finished (so a finished generator is never
     # resumed), else it is resumed (a ValueError if it is running: it resumed itself), and done
@@ -835,12 +845,12 @@ def gen_gen_next(self, h: Val, done: str) -> str:
     self.cbr(self.num_cmp("==", Val(s0, "int"), Val(str(GENDONE), "int")).v, done, go)
     self.place(go)
     self.guard(self.num_cmp("==", Val(s0, "int"), Val(str(GENRUN), "int")).v, "ValueError: generator already executing")
-    self.rt("pys_recursion_enter", "i64", [])
+    resumed = self.gen_resume_enter()
     self.mstore("int", str(GENRUN), st)
     i = Ins("gen.resume", "", "")
     i.a = [h]
     self.add(i)
-    self.rt("pys_recursion_leave", "void", [])
+    self.rt("pys_recursion_restore", "void", [f"i64 {resumed}"])
     s1 = self.mload("int", st)
     got = self.label()
     self.cbr(self.num_cmp("==", Val(s1, "int"), Val(str(GENDONE), "int")).v, done, got)
@@ -1091,7 +1101,7 @@ def gen_gen_close(self, h: Val) -> None:
         go = self.label()
         self.cbr(self.num_cmp("==", Val(s0, "int"), Val(str(GENCLEAN), "int")).v, go, fin)
         self.place(go)
-        self.rt("pys_recursion_enter", "i64", [])
+        resumed = self.gen_resume_enter()
         ca = self.maddr("int", p, str(GENCMD))
         self.mstore("int", str(GENCLOSEC), ca)
         self.mstore("int", str(GENRUN), st)
@@ -1099,7 +1109,7 @@ def gen_gen_close(self, h: Val) -> None:
         i = Ins("gen.resume", "", "")
         i.a = [h]
         self.add(i)
-        self.rt("pys_recursion_leave", "void", [])
+        self.rt("pys_recursion_restore", "void", [f"i64 {resumed}"])
         self.rt("pys_exc_restore", "void", [f"ptr {x}"])
         e = Val(self.rt("pys_gen_closed", "ptr", []), "exc")
         lr = self.label()
@@ -1167,14 +1177,14 @@ def gen_gen_throw_into(self, h: Val, e: Val, done: str) -> str:
     self.mstore("int", str(GENDONE), st)
     self.throw(e)
     self.place(go)
-    self.rt("pys_recursion_enter", "i64", [])
+    resumed = self.gen_resume_enter()
     self.mstore("int", str(GENTHROWC), self.maddr("int", p, str(GENCMD)))
     self.mstore("exc", e.v, self.maddr("int", p, str(GENEXC)))
     self.mstore("int", str(GENRUN), st)
     i = Ins("gen.resume", "", "")
     i.a = [h]
     self.add(i)
-    self.rt("pys_recursion_leave", "void", [])
+    self.rt("pys_recursion_restore", "void", [f"i64 {resumed}"])
     s1 = self.mload("int", st)
     got = self.label()
     self.cbr(self.num_cmp("==", Val(s1, "int"), Val(str(GENDONE), "int")).v, done, got)

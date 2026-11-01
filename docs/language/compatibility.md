@@ -215,19 +215,28 @@ above apply to well-formed text (with the surrogate exception described above).
   `except` clause catches them, and no `finally` block runs (a `raise KeyboardInterrupt` is
   an exception like the others).
 
-- `sys.setrecursionlimit()` bounds active native source-function calls in both JIT and AOT.
+- `sys.setrecursionlimit()` bounds recursive native calls in both JIT and AOT.
   Exceeding it raises catchable `RecursionError`, with ordinary `except`, `finally` and
   context-manager unwinding. The default limit is 1,000; `sys.getrecursionlimit()` returns
   the configured value. A nonpositive argument raises `ValueError`, a value outside the
   C `int` range raises `OverflowError`, and lowering the limit to or below the active native
   depth raises `RecursionError` without changing it.
 
-  The native depth starts at one for module execution and counts each active source
-  function, lambda or method, including supported dynamic callbacks. Compiler dispatch
-  adapters and runtime helpers do not add source frames. A generator counts only while
+  The native depth starts at one for module execution and counts each active call of a
+  source function, lambda or method that can be entered again before it returns: one on a
+  cycle of direct calls (direct or mutual recursion), or one that runs code the compiler
+  cannot follow, such as a call of a function value, a special method that the runtime
+  calls (`__eq__`, `__hash__`, `__repr__`) or a generator's resume. A function that cannot
+  be entered again while it is active is at most once on the native stack: it neither
+  checks nor consumes the limit, and does not add to the depth that
+  `sys.setrecursionlimit()` compares a new limit with. Unbounded recursion therefore always
+  raises `RecursionError`, but a bounded one can fail at another call than in CPython,
+  which counts every frame: in the deepest frame, a non-recursive helper still runs where
+  CPython raises (`tests/deviations/recursion_uncounted_frames.py`). Compiler dispatch
+  adapters and runtime helpers do not add frames. A generator counts only while
   its body is running, not while suspended; resuming it uses its current caller's depth.
   Inlining and optimized tail calls preserve this policy. Exact failure depths and error
-  messages can differ from CPython because its internal frames differ. Native stack
+  messages can also differ from CPython because its internal frames differ. Native stack
   exhaustion itself is still not recoverable: an excessively raised limit, unusually large
   native frames or foreign calls can exhaust the physical stack before the logical limit.
   Keep recursion limits conservative for the deployment stack. The separate fixed
