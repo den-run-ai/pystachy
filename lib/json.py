@@ -273,7 +273,9 @@ class _Parser:
         # Short keys/values stay in the original scalar loop. The native helper
         # pays off only once an ordinary span has passed this small prefix.
         # Negative positions retain the old private method's indexing behavior.
-        limit = n if i < 0 else min(n, i + 16)
+        limit = n
+        if i >= 0 and n - i > 16:
+            limit = i + 16
         while i < limit:
             c = data[i]
             if c == 34:
