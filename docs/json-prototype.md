@@ -160,8 +160,9 @@ Elsewhere, including where the result has a typed or no annotation (`doc = json.
 
 `loads()` scans the UTF-8 bytes of its argument with integer comparisons, so it
 creates no one-character strings and translates no code-point offsets while
-scanning. Ordinary string spans use a shared bounded byte scanner, skipping eight
-bytes at a time until a quote, backslash or control byte is possible, then checking
+scanning. Short strings and spans retain a small scalar prefix. Longer ordinary
+spans use a shared bounded byte scanner, skipping eight bytes at a time until a
+quote, backslash or control byte is possible, then checking
 the matching word and tail scalar. The same helper scans ordinary text after an
 escape, and both typed and dynamic decoders use it. Loads use `memcpy`, require a
 complete word inside the range, and accept any alignment; high bytes keep their

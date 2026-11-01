@@ -9,6 +9,13 @@ Arguments: direct|repair, long|short|mixed|sparse|dense|unicode|control,
 string size, calls per batch, warmup batches, measured batches. Use long sizes
 4096, 8192 and 16384 for N/2N/4N. Short/mixed have fixed small inputs.
 
+Suite form: suite all|no-direct-control BASE MULTIPLIER WARMUPS SAMPLES.
+For example, suite all 4096 1 3 7 runs both APIs and all three long sizes in
+one process, compiling JIT only once. Other cases use size 8192 and fixed batch
+counts scaled by MULTIPLIER. Select no-direct-control for PyPy 8.0.1, whose
+control-character error offset is one character earlier than CPython's; this
+omits only that incompatible diagnostic case, keeping the oracle unchanged.
+
 Setup and complete expected-value checks are outside timing. Every call's result
 is consumed inside timing; the checksum is checked after every batch. The first
 batch is reported separately. Compare process medians in interleaved, pinned
@@ -93,15 +100,7 @@ def batch(mode: str, source: str, count: int, error_pos: int) -> int:
     return checksum
 
 
-def main() -> None:
-    if len(sys.argv) != 7:
-        raise ValueError("expected: direct|repair CASE SIZE CALLS WARMUPS SAMPLES")
-    mode = sys.argv[1]
-    name = sys.argv[2]
-    size = int(sys.argv[3])
-    count = int(sys.argv[4])
-    warmups = int(sys.argv[5])
-    samples = int(sys.argv[6])
+def run_case(mode: str, name: str, size: int, count: int, warmups: int, samples: int) -> None:
     if mode not in ["direct", "repair"] or size < 1 or count < 1 or warmups < 0 or samples < 1:
         raise ValueError("invalid benchmark arguments")
     source, expected, error_pos = make_case(name, size)
@@ -126,6 +125,33 @@ def main() -> None:
         print("sample", checksum, elapsed)
     validate(mode, source, expected, error_pos)
     print("verified", per_call)
+
+
+def suite(selection: str, base: int, multiplier: int, warmups: int, samples: int) -> None:
+    if selection not in ["all", "no-direct-control"] or base < 1 or multiplier < 1 or warmups < 0 or samples < 1:
+        raise ValueError("invalid suite arguments")
+    cases: list[tuple[str, int]] = [
+        ("short", 200000), ("mixed", 40000), ("sparse", 3000),
+        ("dense", 300), ("unicode", 300), ("control", 300),
+    ]
+    for mode in ["direct", "repair"]:
+        for factor in [1, 2, 4]:
+            run_case(mode, "long", base * factor, multiplier * 2000, warmups, samples)
+        for name, calls in cases:
+            if name == "control" and mode == "direct" and selection == "no-direct-control":
+                continue
+            if name == "control" and mode == "repair":
+                calls = 100
+            run_case(mode, name, 8192, multiplier * calls, warmups, samples)
+
+
+def main() -> None:
+    if len(sys.argv) != 7:
+        raise ValueError("expected: direct|repair CASE SIZE CALLS WARMUPS SAMPLES, or suite SELECTION BASE MULTIPLIER WARMUPS SAMPLES")
+    if sys.argv[1] == "suite":
+        suite(sys.argv[2], int(sys.argv[3]), int(sys.argv[4]), int(sys.argv[5]), int(sys.argv[6]))
+    else:
+        run_case(sys.argv[1], sys.argv[2], int(sys.argv[3]), int(sys.argv[4]), int(sys.argv[5]), int(sys.argv[6]))
 
 
 main()

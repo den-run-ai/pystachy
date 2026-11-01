@@ -268,18 +268,20 @@ class _Parser:
         data = self.data
         n = len(data)
         i = begin + 1
-        # Actual parser calls start at an opening quote. Keep the old method's
-        # negative-index behavior and EOF sentinel for direct internal callers.
-        if i < 0:
-            while i < n:
-                c = data[i]
-                if c == 34:
-                    return i
-                if c == 92 or c < 32:
-                    return -1 - i
-                i += 1
-            return -1 - n
         if i >= n:
+            return -1 - n
+        # Short keys/values stay in the original scalar loop. The native helper
+        # pays off only once an ordinary span has passed this small prefix.
+        # Negative positions retain the old private method's indexing behavior.
+        limit = n if i < 0 else min(n, i + 16)
+        while i < limit:
+            c = data[i]
+            if c == 34:
+                return i
+            if c == 92 or c < 32:
+                return -1 - i
+            i += 1
+        if i == n:
             return -1 - n
         i = _scan_bytes(data, i, n, 34, 92, 32)
         return i if i < n and data[i] == 34 else -1 - i
@@ -321,6 +323,7 @@ class _Parser:
         data = self.data
         n = len(data)
         start = begin + 1
+        limit = start + 16
         chunks: list[str] = []
         while i < n:
             c = data[i]
@@ -332,7 +335,9 @@ class _Parser:
             if c < 32:
                 raise self.error("Invalid control character at", i)
             if c != 92:
-                i = _scan_bytes(data, i, n, 34, 92, 32)
+                i += 1
+                if i == limit:
+                    i = _scan_bytes(data, i, n, 34, 92, 32)
                 continue
             if i > start:
                 chunks.append(self.text(start, i))
@@ -370,6 +375,7 @@ class _Parser:
             else:
                 raise self.error("Invalid \\escape", slash)
             start = i
+            limit = start + 16
         raise self.error("Unterminated string starting at", begin)
 
     def number(self) -> JSONValue:
