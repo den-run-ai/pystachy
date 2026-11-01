@@ -1,0 +1,2433 @@
+[
+  {
+    "variant": "base_aot",
+    "api": "direct",
+    "name": "long",
+    "size": 4096,
+    "calls": 2000,
+    "median_ns": 22718136,
+    "min_process_ns": 21307446,
+    "max_process_ns": 23248676,
+    "process_medians_ns": [
+      22718136,
+      21307446,
+      23248676,
+      21954770,
+      22828533
+    ]
+  },
+  {
+    "variant": "base_aot",
+    "api": "direct",
+    "name": "long",
+    "size": 8192,
+    "calls": 2000,
+    "median_ns": 42589120,
+    "min_process_ns": 40413230,
+    "max_process_ns": 45333309,
+    "process_medians_ns": [
+      45333309,
+      42589120,
+      40413230,
+      43144906,
+      41432472
+    ]
+  },
+  {
+    "variant": "base_aot",
+    "api": "direct",
+    "name": "long",
+    "size": 16384,
+    "calls": 2000,
+    "median_ns": 82585910,
+    "min_process_ns": 79815494,
+    "max_process_ns": 83523988,
+    "process_medians_ns": [
+      83523988,
+      82585910,
+      80824559,
+      83077133,
+      79815494
+    ]
+  },
+  {
+    "variant": "base_aot",
+    "api": "direct",
+    "name": "short",
+    "size": 8192,
+    "calls": 200000,
+    "median_ns": 71450195,
+    "min_process_ns": 69282747,
+    "max_process_ns": 86337050,
+    "process_medians_ns": [
+      72157483,
+      71450195,
+      86337050,
+      71116513,
+      69282747
+    ]
+  },
+  {
+    "variant": "base_aot",
+    "api": "direct",
+    "name": "mixed",
+    "size": 8192,
+    "calls": 40000,
+    "median_ns": 29883804,
+    "min_process_ns": 29167883,
+    "max_process_ns": 37021700,
+    "process_medians_ns": [
+      29883804,
+      29859817,
+      37021700,
+      29167883,
+      30862975
+    ]
+  },
+  {
+    "variant": "base_aot",
+    "api": "direct",
+    "name": "sparse",
+    "size": 8192,
+    "calls": 3000,
+    "median_ns": 68661233,
+    "min_process_ns": 67045823,
+    "max_process_ns": 72441716,
+    "process_medians_ns": [
+      68689957,
+      72441716,
+      67045823,
+      68423780,
+      68661233
+    ]
+  },
+  {
+    "variant": "base_aot",
+    "api": "direct",
+    "name": "dense",
+    "size": 8192,
+    "calls": 300,
+    "median_ns": 41166817,
+    "min_process_ns": 36229887,
+    "max_process_ns": 42711092,
+    "process_medians_ns": [
+      41166817,
+      36229887,
+      42711092,
+      38180980,
+      41834436
+    ]
+  },
+  {
+    "variant": "base_aot",
+    "api": "direct",
+    "name": "unicode",
+    "size": 8192,
+    "calls": 300,
+    "median_ns": 36618143,
+    "min_process_ns": 35685944,
+    "max_process_ns": 38125698,
+    "process_medians_ns": [
+      36618143,
+      38125698,
+      35922957,
+      37392596,
+      35685944
+    ]
+  },
+  {
+    "variant": "base_aot",
+    "api": "direct",
+    "name": "control",
+    "size": 8192,
+    "calls": 300,
+    "median_ns": 37594855,
+    "min_process_ns": 35195875,
+    "max_process_ns": 39444148,
+    "process_medians_ns": [
+      37594855,
+      37103231,
+      35195875,
+      39444148,
+      38976148
+    ]
+  },
+  {
+    "variant": "base_aot",
+    "api": "repair",
+    "name": "long",
+    "size": 4096,
+    "calls": 2000,
+    "median_ns": 21886315,
+    "min_process_ns": 20503407,
+    "max_process_ns": 22536706,
+    "process_medians_ns": [
+      22536706,
+      22161756,
+      21733899,
+      20503407,
+      21886315
+    ]
+  },
+  {
+    "variant": "base_aot",
+    "api": "repair",
+    "name": "long",
+    "size": 8192,
+    "calls": 2000,
+    "median_ns": 42119189,
+    "min_process_ns": 41443152,
+    "max_process_ns": 47053259,
+    "process_medians_ns": [
+      42079891,
+      42421477,
+      41443152,
+      42119189,
+      47053259
+    ]
+  },
+  {
+    "variant": "base_aot",
+    "api": "repair",
+    "name": "long",
+    "size": 16384,
+    "calls": 2000,
+    "median_ns": 83845836,
+    "min_process_ns": 80580852,
+    "max_process_ns": 86055200,
+    "process_medians_ns": [
+      85243603,
+      80580852,
+      83845836,
+      81406214,
+      86055200
+    ]
+  },
+  {
+    "variant": "base_aot",
+    "api": "repair",
+    "name": "short",
+    "size": 8192,
+    "calls": 200000,
+    "median_ns": 71086671,
+    "min_process_ns": 70244584,
+    "max_process_ns": 73411223,
+    "process_medians_ns": [
+      73411223,
+      70244584,
+      71086671,
+      70415761,
+      72339820
+    ]
+  },
+  {
+    "variant": "base_aot",
+    "api": "repair",
+    "name": "mixed",
+    "size": 8192,
+    "calls": 40000,
+    "median_ns": 29583712,
+    "min_process_ns": 26887862,
+    "max_process_ns": 31387564,
+    "process_medians_ns": [
+      29583712,
+      29548991,
+      26887862,
+      31387564,
+      30507504
+    ]
+  },
+  {
+    "variant": "base_aot",
+    "api": "repair",
+    "name": "sparse",
+    "size": 8192,
+    "calls": 3000,
+    "median_ns": 68204296,
+    "min_process_ns": 65744893,
+    "max_process_ns": 72123698,
+    "process_medians_ns": [
+      67836075,
+      65744893,
+      72123698,
+      68204296,
+      71668720
+    ]
+  },
+  {
+    "variant": "base_aot",
+    "api": "repair",
+    "name": "dense",
+    "size": 8192,
+    "calls": 300,
+    "median_ns": 34860536,
+    "min_process_ns": 34755930,
+    "max_process_ns": 37580598,
+    "process_medians_ns": [
+      34759591,
+      34755930,
+      34860536,
+      37580598,
+      36878225
+    ]
+  },
+  {
+    "variant": "base_aot",
+    "api": "repair",
+    "name": "unicode",
+    "size": 8192,
+    "calls": 300,
+    "median_ns": 36485884,
+    "min_process_ns": 35243777,
+    "max_process_ns": 37379468,
+    "process_medians_ns": [
+      37379468,
+      37274202,
+      35243777,
+      35613840,
+      36485884
+    ]
+  },
+  {
+    "variant": "base_aot",
+    "api": "repair",
+    "name": "control",
+    "size": 8192,
+    "calls": 100,
+    "median_ns": 33937418,
+    "min_process_ns": 30406496,
+    "max_process_ns": 34451811,
+    "process_medians_ns": [
+      31145383,
+      33937418,
+      30406496,
+      34218891,
+      34451811
+    ]
+  },
+  {
+    "variant": "candidate_aot",
+    "api": "direct",
+    "name": "long",
+    "size": 4096,
+    "calls": 2000,
+    "median_ns": 12026164,
+    "min_process_ns": 11067748,
+    "max_process_ns": 16299479,
+    "process_medians_ns": [
+      11522010,
+      12026164,
+      11067748,
+      13128502,
+      16299479
+    ]
+  },
+  {
+    "variant": "candidate_aot",
+    "api": "direct",
+    "name": "long",
+    "size": 8192,
+    "calls": 2000,
+    "median_ns": 21410068,
+    "min_process_ns": 20632715,
+    "max_process_ns": 22540859,
+    "process_medians_ns": [
+      20864843,
+      22540859,
+      22042232,
+      21410068,
+      20632715
+    ]
+  },
+  {
+    "variant": "candidate_aot",
+    "api": "direct",
+    "name": "long",
+    "size": 16384,
+    "calls": 2000,
+    "median_ns": 40130080,
+    "min_process_ns": 38824788,
+    "max_process_ns": 41319109,
+    "process_medians_ns": [
+      38888084,
+      40130080,
+      41319109,
+      40570947,
+      38824788
+    ]
+  },
+  {
+    "variant": "candidate_aot",
+    "api": "direct",
+    "name": "short",
+    "size": 8192,
+    "calls": 200000,
+    "median_ns": 71854017,
+    "min_process_ns": 70226369,
+    "max_process_ns": 72829093,
+    "process_medians_ns": [
+      71854017,
+      71293291,
+      72829093,
+      72775199,
+      70226369
+    ]
+  },
+  {
+    "variant": "candidate_aot",
+    "api": "direct",
+    "name": "mixed",
+    "size": 8192,
+    "calls": 40000,
+    "median_ns": 29786903,
+    "min_process_ns": 29088386,
+    "max_process_ns": 30831890,
+    "process_medians_ns": [
+      29885355,
+      29088386,
+      29786903,
+      30831890,
+      29145751
+    ]
+  },
+  {
+    "variant": "candidate_aot",
+    "api": "direct",
+    "name": "sparse",
+    "size": 8192,
+    "calls": 3000,
+    "median_ns": 35128307,
+    "min_process_ns": 34034595,
+    "max_process_ns": 36820529,
+    "process_medians_ns": [
+      35128307,
+      36554167,
+      36820529,
+      34034595,
+      34678673
+    ]
+  },
+  {
+    "variant": "candidate_aot",
+    "api": "direct",
+    "name": "dense",
+    "size": 8192,
+    "calls": 300,
+    "median_ns": 42121812,
+    "min_process_ns": 41904780,
+    "max_process_ns": 43593215,
+    "process_medians_ns": [
+      41904780,
+      43593215,
+      41919771,
+      42121812,
+      42239749
+    ]
+  },
+  {
+    "variant": "candidate_aot",
+    "api": "direct",
+    "name": "unicode",
+    "size": 8192,
+    "calls": 300,
+    "median_ns": 29014015,
+    "min_process_ns": 28250208,
+    "max_process_ns": 29462203,
+    "process_medians_ns": [
+      28633892,
+      28250208,
+      29462203,
+      29018264,
+      29014015
+    ]
+  },
+  {
+    "variant": "candidate_aot",
+    "api": "direct",
+    "name": "control",
+    "size": 8192,
+    "calls": 300,
+    "median_ns": 35341969,
+    "min_process_ns": 34828099,
+    "max_process_ns": 37587631,
+    "process_medians_ns": [
+      35341969,
+      37587631,
+      36258134,
+      34828099,
+      35146903
+    ]
+  },
+  {
+    "variant": "candidate_aot",
+    "api": "repair",
+    "name": "long",
+    "size": 4096,
+    "calls": 2000,
+    "median_ns": 10869833,
+    "min_process_ns": 9822845,
+    "max_process_ns": 11066833,
+    "process_medians_ns": [
+      10686891,
+      10981972,
+      9822845,
+      11066833,
+      10869833
+    ]
+  },
+  {
+    "variant": "candidate_aot",
+    "api": "repair",
+    "name": "long",
+    "size": 8192,
+    "calls": 2000,
+    "median_ns": 20142709,
+    "min_process_ns": 18879881,
+    "max_process_ns": 21623229,
+    "process_medians_ns": [
+      19899245,
+      21623229,
+      18879881,
+      20755436,
+      20142709
+    ]
+  },
+  {
+    "variant": "candidate_aot",
+    "api": "repair",
+    "name": "long",
+    "size": 16384,
+    "calls": 2000,
+    "median_ns": 39297416,
+    "min_process_ns": 38153235,
+    "max_process_ns": 39703642,
+    "process_medians_ns": [
+      39639541,
+      39297416,
+      39703642,
+      38153235,
+      39185809
+    ]
+  },
+  {
+    "variant": "candidate_aot",
+    "api": "repair",
+    "name": "short",
+    "size": 8192,
+    "calls": 200000,
+    "median_ns": 72287932,
+    "min_process_ns": 71189858,
+    "max_process_ns": 74474576,
+    "process_medians_ns": [
+      71189858,
+      74474576,
+      72287932,
+      71438744,
+      73739686
+    ]
+  },
+  {
+    "variant": "candidate_aot",
+    "api": "repair",
+    "name": "mixed",
+    "size": 8192,
+    "calls": 40000,
+    "median_ns": 31633602,
+    "min_process_ns": 30042787,
+    "max_process_ns": 33908322,
+    "process_medians_ns": [
+      30507205,
+      32564299,
+      31633602,
+      33908322,
+      30042787
+    ]
+  },
+  {
+    "variant": "candidate_aot",
+    "api": "repair",
+    "name": "sparse",
+    "size": 8192,
+    "calls": 3000,
+    "median_ns": 35039716,
+    "min_process_ns": 33363124,
+    "max_process_ns": 36268977,
+    "process_medians_ns": [
+      33363124,
+      35039716,
+      36268977,
+      35606654,
+      34487070
+    ]
+  },
+  {
+    "variant": "candidate_aot",
+    "api": "repair",
+    "name": "dense",
+    "size": 8192,
+    "calls": 300,
+    "median_ns": 41193446,
+    "min_process_ns": 39596954,
+    "max_process_ns": 44543669,
+    "process_medians_ns": [
+      41518838,
+      41193446,
+      44543669,
+      40364166,
+      39596954
+    ]
+  },
+  {
+    "variant": "candidate_aot",
+    "api": "repair",
+    "name": "unicode",
+    "size": 8192,
+    "calls": 300,
+    "median_ns": 29029708,
+    "min_process_ns": 27250582,
+    "max_process_ns": 32874341,
+    "process_medians_ns": [
+      32874341,
+      28608209,
+      29429537,
+      27250582,
+      29029708
+    ]
+  },
+  {
+    "variant": "candidate_aot",
+    "api": "repair",
+    "name": "control",
+    "size": 8192,
+    "calls": 100,
+    "median_ns": 29495385,
+    "min_process_ns": 29013765,
+    "max_process_ns": 36498286,
+    "process_medians_ns": [
+      36498286,
+      30225521,
+      29331665,
+      29495385,
+      29013765
+    ]
+  },
+  {
+    "variant": "base_jit",
+    "api": "direct",
+    "name": "long",
+    "size": 4096,
+    "calls": 2000,
+    "median_ns": 22495583,
+    "min_process_ns": 21249611,
+    "max_process_ns": 23633903,
+    "process_medians_ns": [
+      22883688,
+      21249611,
+      21923503,
+      22495583,
+      23633903
+    ]
+  },
+  {
+    "variant": "base_jit",
+    "api": "direct",
+    "name": "long",
+    "size": 8192,
+    "calls": 2000,
+    "median_ns": 42065251,
+    "min_process_ns": 39971883,
+    "max_process_ns": 43893190,
+    "process_medians_ns": [
+      43893190,
+      41809366,
+      42065251,
+      42168883,
+      39971883
+    ]
+  },
+  {
+    "variant": "base_jit",
+    "api": "direct",
+    "name": "long",
+    "size": 16384,
+    "calls": 2000,
+    "median_ns": 82877023,
+    "min_process_ns": 81512395,
+    "max_process_ns": 84892771,
+    "process_medians_ns": [
+      82021381,
+      82877023,
+      84892771,
+      84219124,
+      81512395
+    ]
+  },
+  {
+    "variant": "base_jit",
+    "api": "direct",
+    "name": "short",
+    "size": 8192,
+    "calls": 200000,
+    "median_ns": 90644417,
+    "min_process_ns": 87924120,
+    "max_process_ns": 143264751,
+    "process_medians_ns": [
+      90644417,
+      88251454,
+      143264751,
+      87924120,
+      91370005
+    ]
+  },
+  {
+    "variant": "base_jit",
+    "api": "direct",
+    "name": "mixed",
+    "size": 8192,
+    "calls": 40000,
+    "median_ns": 40882947,
+    "min_process_ns": 39516878,
+    "max_process_ns": 55979428,
+    "process_medians_ns": [
+      40882947,
+      41212136,
+      55979428,
+      40091988,
+      39516878
+    ]
+  },
+  {
+    "variant": "base_jit",
+    "api": "direct",
+    "name": "sparse",
+    "size": 8192,
+    "calls": 3000,
+    "median_ns": 69404805,
+    "min_process_ns": 67930017,
+    "max_process_ns": 74354354,
+    "process_medians_ns": [
+      70416220,
+      74354354,
+      67930017,
+      69404805,
+      69346774
+    ]
+  },
+  {
+    "variant": "base_jit",
+    "api": "direct",
+    "name": "dense",
+    "size": 8192,
+    "calls": 300,
+    "median_ns": 46757087,
+    "min_process_ns": 45734588,
+    "max_process_ns": 48218122,
+    "process_medians_ns": [
+      45734588,
+      46863186,
+      46756250,
+      46757087,
+      48218122
+    ]
+  },
+  {
+    "variant": "base_jit",
+    "api": "direct",
+    "name": "unicode",
+    "size": 8192,
+    "calls": 300,
+    "median_ns": 36748228,
+    "min_process_ns": 36249857,
+    "max_process_ns": 37902036,
+    "process_medians_ns": [
+      37838650,
+      37902036,
+      36249857,
+      36748228,
+      36312753
+    ]
+  },
+  {
+    "variant": "base_jit",
+    "api": "direct",
+    "name": "control",
+    "size": 8192,
+    "calls": 300,
+    "median_ns": 50405815,
+    "min_process_ns": 49185525,
+    "max_process_ns": 61080473,
+    "process_medians_ns": [
+      61080473,
+      49185525,
+      50405815,
+      49197226,
+      52140127
+    ]
+  },
+  {
+    "variant": "base_jit",
+    "api": "repair",
+    "name": "long",
+    "size": 4096,
+    "calls": 2000,
+    "median_ns": 22713869,
+    "min_process_ns": 21176580,
+    "max_process_ns": 23765146,
+    "process_medians_ns": [
+      23765146,
+      21176580,
+      22289426,
+      23328593,
+      22713869
+    ]
+  },
+  {
+    "variant": "base_jit",
+    "api": "repair",
+    "name": "long",
+    "size": 8192,
+    "calls": 2000,
+    "median_ns": 42147752,
+    "min_process_ns": 40808379,
+    "max_process_ns": 58383626,
+    "process_medians_ns": [
+      41377287,
+      42655547,
+      58383626,
+      42147752,
+      40808379
+    ]
+  },
+  {
+    "variant": "base_jit",
+    "api": "repair",
+    "name": "long",
+    "size": 16384,
+    "calls": 2000,
+    "median_ns": 81834725,
+    "min_process_ns": 80455327,
+    "max_process_ns": 86644826,
+    "process_medians_ns": [
+      81661933,
+      80455327,
+      86644826,
+      83426951,
+      81834725
+    ]
+  },
+  {
+    "variant": "base_jit",
+    "api": "repair",
+    "name": "short",
+    "size": 8192,
+    "calls": 200000,
+    "median_ns": 87200997,
+    "min_process_ns": 86016706,
+    "max_process_ns": 89898119,
+    "process_medians_ns": [
+      87149373,
+      86016706,
+      87200997,
+      87554243,
+      89898119
+    ]
+  },
+  {
+    "variant": "base_jit",
+    "api": "repair",
+    "name": "mixed",
+    "size": 8192,
+    "calls": 40000,
+    "median_ns": 43147244,
+    "min_process_ns": 41831396,
+    "max_process_ns": 45734770,
+    "process_medians_ns": [
+      43147244,
+      45734770,
+      41866842,
+      41831396,
+      44236758
+    ]
+  },
+  {
+    "variant": "base_jit",
+    "api": "repair",
+    "name": "sparse",
+    "size": 8192,
+    "calls": 3000,
+    "median_ns": 68704122,
+    "min_process_ns": 68009737,
+    "max_process_ns": 77325507,
+    "process_medians_ns": [
+      68377584,
+      71363905,
+      68009737,
+      77325507,
+      68704122
+    ]
+  },
+  {
+    "variant": "base_jit",
+    "api": "repair",
+    "name": "dense",
+    "size": 8192,
+    "calls": 300,
+    "median_ns": 47337807,
+    "min_process_ns": 45686157,
+    "max_process_ns": 54623744,
+    "process_medians_ns": [
+      47171206,
+      48006476,
+      45686157,
+      54623744,
+      47337807
+    ]
+  },
+  {
+    "variant": "base_jit",
+    "api": "repair",
+    "name": "unicode",
+    "size": 8192,
+    "calls": 300,
+    "median_ns": 35432731,
+    "min_process_ns": 34806634,
+    "max_process_ns": 43078952,
+    "process_medians_ns": [
+      35217842,
+      35432731,
+      35506989,
+      43078952,
+      34806634
+    ]
+  },
+  {
+    "variant": "base_jit",
+    "api": "repair",
+    "name": "control",
+    "size": 8192,
+    "calls": 100,
+    "median_ns": 35040901,
+    "min_process_ns": 34051210,
+    "max_process_ns": 36124423,
+    "process_medians_ns": [
+      35040901,
+      35289107,
+      34386061,
+      34051210,
+      36124423
+    ]
+  },
+  {
+    "variant": "candidate_jit",
+    "api": "direct",
+    "name": "long",
+    "size": 4096,
+    "calls": 2000,
+    "median_ns": 12218388,
+    "min_process_ns": 11379183,
+    "max_process_ns": 14098066,
+    "process_medians_ns": [
+      14098066,
+      12428860,
+      11379183,
+      11765516,
+      12218388
+    ]
+  },
+  {
+    "variant": "candidate_jit",
+    "api": "direct",
+    "name": "long",
+    "size": 8192,
+    "calls": 2000,
+    "median_ns": 21065899,
+    "min_process_ns": 19901888,
+    "max_process_ns": 23440184,
+    "process_medians_ns": [
+      23440184,
+      21795610,
+      19901888,
+      20324891,
+      21065899
+    ]
+  },
+  {
+    "variant": "candidate_jit",
+    "api": "direct",
+    "name": "long",
+    "size": 16384,
+    "calls": 2000,
+    "median_ns": 39859307,
+    "min_process_ns": 38503171,
+    "max_process_ns": 46326337,
+    "process_medians_ns": [
+      40888385,
+      39859307,
+      38503171,
+      46326337,
+      39727562
+    ]
+  },
+  {
+    "variant": "candidate_jit",
+    "api": "direct",
+    "name": "short",
+    "size": 8192,
+    "calls": 200000,
+    "median_ns": 87062906,
+    "min_process_ns": 85263787,
+    "max_process_ns": 93569782,
+    "process_medians_ns": [
+      87062906,
+      89399030,
+      93569782,
+      85414322,
+      85263787
+    ]
+  },
+  {
+    "variant": "candidate_jit",
+    "api": "direct",
+    "name": "mixed",
+    "size": 8192,
+    "calls": 40000,
+    "median_ns": 43190933,
+    "min_process_ns": 41904265,
+    "max_process_ns": 46861152,
+    "process_medians_ns": [
+      46861152,
+      44130115,
+      42103783,
+      41904265,
+      43190933
+    ]
+  },
+  {
+    "variant": "candidate_jit",
+    "api": "direct",
+    "name": "sparse",
+    "size": 8192,
+    "calls": 3000,
+    "median_ns": 35840952,
+    "min_process_ns": 34095791,
+    "max_process_ns": 37917721,
+    "process_medians_ns": [
+      34095791,
+      35840952,
+      37917721,
+      37164517,
+      34177880
+    ]
+  },
+  {
+    "variant": "candidate_jit",
+    "api": "direct",
+    "name": "dense",
+    "size": 8192,
+    "calls": 300,
+    "median_ns": 47211525,
+    "min_process_ns": 44540653,
+    "max_process_ns": 51175783,
+    "process_medians_ns": [
+      47211525,
+      49078430,
+      51175783,
+      44871828,
+      44540653
+    ]
+  },
+  {
+    "variant": "candidate_jit",
+    "api": "direct",
+    "name": "unicode",
+    "size": 8192,
+    "calls": 300,
+    "median_ns": 28687904,
+    "min_process_ns": 26615228,
+    "max_process_ns": 29825913,
+    "process_medians_ns": [
+      29499898,
+      28687904,
+      26615228,
+      29825913,
+      27968955
+    ]
+  },
+  {
+    "variant": "candidate_jit",
+    "api": "direct",
+    "name": "control",
+    "size": 8192,
+    "calls": 300,
+    "median_ns": 42916634,
+    "min_process_ns": 42193156,
+    "max_process_ns": 47119633,
+    "process_medians_ns": [
+      42193156,
+      44737036,
+      47119633,
+      42830628,
+      42916634
+    ]
+  },
+  {
+    "variant": "candidate_jit",
+    "api": "repair",
+    "name": "long",
+    "size": 4096,
+    "calls": 2000,
+    "median_ns": 10670442,
+    "min_process_ns": 9973672,
+    "max_process_ns": 12694725,
+    "process_medians_ns": [
+      9973672,
+      10670442,
+      12694725,
+      10985538,
+      10481393
+    ]
+  },
+  {
+    "variant": "candidate_jit",
+    "api": "repair",
+    "name": "long",
+    "size": 8192,
+    "calls": 2000,
+    "median_ns": 20755443,
+    "min_process_ns": 19607278,
+    "max_process_ns": 22273743,
+    "process_medians_ns": [
+      21265648,
+      20755443,
+      22273743,
+      20749262,
+      19607278
+    ]
+  },
+  {
+    "variant": "candidate_jit",
+    "api": "repair",
+    "name": "long",
+    "size": 16384,
+    "calls": 2000,
+    "median_ns": 41015875,
+    "min_process_ns": 40469835,
+    "max_process_ns": 41188066,
+    "process_medians_ns": [
+      41036033,
+      40469835,
+      41188066,
+      40685876,
+      41015875
+    ]
+  },
+  {
+    "variant": "candidate_jit",
+    "api": "repair",
+    "name": "short",
+    "size": 8192,
+    "calls": 200000,
+    "median_ns": 92102803,
+    "min_process_ns": 89149648,
+    "max_process_ns": 95477788,
+    "process_medians_ns": [
+      91668834,
+      95477788,
+      94528178,
+      92102803,
+      89149648
+    ]
+  },
+  {
+    "variant": "candidate_jit",
+    "api": "repair",
+    "name": "mixed",
+    "size": 8192,
+    "calls": 40000,
+    "median_ns": 43609310,
+    "min_process_ns": 42097562,
+    "max_process_ns": 49963298,
+    "process_medians_ns": [
+      49963298,
+      42478593,
+      43609310,
+      46715173,
+      42097562
+    ]
+  },
+  {
+    "variant": "candidate_jit",
+    "api": "repair",
+    "name": "sparse",
+    "size": 8192,
+    "calls": 3000,
+    "median_ns": 37144622,
+    "min_process_ns": 35744642,
+    "max_process_ns": 41065226,
+    "process_medians_ns": [
+      41065226,
+      35744642,
+      37144622,
+      39848241,
+      36660398
+    ]
+  },
+  {
+    "variant": "candidate_jit",
+    "api": "repair",
+    "name": "dense",
+    "size": 8192,
+    "calls": 300,
+    "median_ns": 46922460,
+    "min_process_ns": 44511305,
+    "max_process_ns": 53566333,
+    "process_medians_ns": [
+      47715940,
+      46922460,
+      44511305,
+      53566333,
+      45439959
+    ]
+  },
+  {
+    "variant": "candidate_jit",
+    "api": "repair",
+    "name": "unicode",
+    "size": 8192,
+    "calls": 300,
+    "median_ns": 29912992,
+    "min_process_ns": 28084352,
+    "max_process_ns": 36897345,
+    "process_medians_ns": [
+      31404624,
+      28084352,
+      29912992,
+      36897345,
+      28287429
+    ]
+  },
+  {
+    "variant": "candidate_jit",
+    "api": "repair",
+    "name": "control",
+    "size": 8192,
+    "calls": 100,
+    "median_ns": 34639149,
+    "min_process_ns": 32721882,
+    "max_process_ns": 35579068,
+    "process_medians_ns": [
+      32721882,
+      34832792,
+      35579068,
+      34639149,
+      33938368
+    ]
+  },
+  {
+    "variant": "integer_fix_aot",
+    "api": "direct",
+    "name": "long",
+    "size": 4096,
+    "calls": 2000,
+    "median_ns": 23144323,
+    "min_process_ns": 22224658,
+    "max_process_ns": 23968806,
+    "process_medians_ns": [
+      23968806,
+      23508119,
+      22266572,
+      23144323,
+      22224658
+    ]
+  },
+  {
+    "variant": "integer_fix_aot",
+    "api": "direct",
+    "name": "long",
+    "size": 8192,
+    "calls": 2000,
+    "median_ns": 41949395,
+    "min_process_ns": 40429718,
+    "max_process_ns": 63177995,
+    "process_medians_ns": [
+      41949395,
+      44821896,
+      40814707,
+      63177995,
+      40429718
+    ]
+  },
+  {
+    "variant": "integer_fix_aot",
+    "api": "direct",
+    "name": "long",
+    "size": 16384,
+    "calls": 2000,
+    "median_ns": 86417422,
+    "min_process_ns": 83630584,
+    "max_process_ns": 100942919,
+    "process_medians_ns": [
+      86417422,
+      84495369,
+      83630584,
+      100942919,
+      93636482
+    ]
+  },
+  {
+    "variant": "integer_fix_aot",
+    "api": "direct",
+    "name": "short",
+    "size": 8192,
+    "calls": 200000,
+    "median_ns": 68543420,
+    "min_process_ns": 67829101,
+    "max_process_ns": 74155732,
+    "process_medians_ns": [
+      71476027,
+      68543420,
+      67829101,
+      74155732,
+      67947262
+    ]
+  },
+  {
+    "variant": "integer_fix_aot",
+    "api": "direct",
+    "name": "mixed",
+    "size": 8192,
+    "calls": 40000,
+    "median_ns": 29192189,
+    "min_process_ns": 28445357,
+    "max_process_ns": 29432334,
+    "process_medians_ns": [
+      29432334,
+      28774665,
+      29192189,
+      29213917,
+      28445357
+    ]
+  },
+  {
+    "variant": "integer_fix_aot",
+    "api": "direct",
+    "name": "sparse",
+    "size": 8192,
+    "calls": 3000,
+    "median_ns": 71533564,
+    "min_process_ns": 67373319,
+    "max_process_ns": 90376009,
+    "process_medians_ns": [
+      71533564,
+      71792409,
+      67373319,
+      90376009,
+      68373777
+    ]
+  },
+  {
+    "variant": "integer_fix_aot",
+    "api": "direct",
+    "name": "dense",
+    "size": 8192,
+    "calls": 300,
+    "median_ns": 36633127,
+    "min_process_ns": 36430860,
+    "max_process_ns": 38889579,
+    "process_medians_ns": [
+      36633127,
+      37703376,
+      38889579,
+      36430860,
+      36603274
+    ]
+  },
+  {
+    "variant": "integer_fix_aot",
+    "api": "direct",
+    "name": "unicode",
+    "size": 8192,
+    "calls": 300,
+    "median_ns": 37276477,
+    "min_process_ns": 36699230,
+    "max_process_ns": 42606701,
+    "process_medians_ns": [
+      42606701,
+      37203384,
+      36699230,
+      39717191,
+      37276477
+    ]
+  },
+  {
+    "variant": "integer_fix_aot",
+    "api": "direct",
+    "name": "control",
+    "size": 8192,
+    "calls": 300,
+    "median_ns": 41457060,
+    "min_process_ns": 36657219,
+    "max_process_ns": 43163471,
+    "process_medians_ns": [
+      41806110,
+      41457060,
+      40902387,
+      43163471,
+      36657219
+    ]
+  },
+  {
+    "variant": "integer_fix_aot",
+    "api": "repair",
+    "name": "long",
+    "size": 4096,
+    "calls": 2000,
+    "median_ns": 21866204,
+    "min_process_ns": 21392205,
+    "max_process_ns": 23710010,
+    "process_medians_ns": [
+      23598566,
+      21394481,
+      21866204,
+      23710010,
+      21392205
+    ]
+  },
+  {
+    "variant": "integer_fix_aot",
+    "api": "repair",
+    "name": "long",
+    "size": 8192,
+    "calls": 2000,
+    "median_ns": 42923766,
+    "min_process_ns": 40991993,
+    "max_process_ns": 45220616,
+    "process_medians_ns": [
+      43044198,
+      41385863,
+      42923766,
+      45220616,
+      40991993
+    ]
+  },
+  {
+    "variant": "integer_fix_aot",
+    "api": "repair",
+    "name": "long",
+    "size": 16384,
+    "calls": 2000,
+    "median_ns": 82720439,
+    "min_process_ns": 79862015,
+    "max_process_ns": 84108248,
+    "process_medians_ns": [
+      82720439,
+      84108248,
+      80397095,
+      83861308,
+      79862015
+    ]
+  },
+  {
+    "variant": "integer_fix_aot",
+    "api": "repair",
+    "name": "short",
+    "size": 8192,
+    "calls": 200000,
+    "median_ns": 73948561,
+    "min_process_ns": 70758095,
+    "max_process_ns": 89107525,
+    "process_medians_ns": [
+      74005059,
+      73098436,
+      89107525,
+      73948561,
+      70758095
+    ]
+  },
+  {
+    "variant": "integer_fix_aot",
+    "api": "repair",
+    "name": "mixed",
+    "size": 8192,
+    "calls": 40000,
+    "median_ns": 30532711,
+    "min_process_ns": 29228461,
+    "max_process_ns": 36794524,
+    "process_medians_ns": [
+      29713712,
+      30532711,
+      36794524,
+      32521641,
+      29228461
+    ]
+  },
+  {
+    "variant": "integer_fix_aot",
+    "api": "repair",
+    "name": "sparse",
+    "size": 8192,
+    "calls": 3000,
+    "median_ns": 73267233,
+    "min_process_ns": 67223182,
+    "max_process_ns": 73987431,
+    "process_medians_ns": [
+      73987431,
+      73440696,
+      73267233,
+      70838278,
+      67223182
+    ]
+  },
+  {
+    "variant": "integer_fix_aot",
+    "api": "repair",
+    "name": "dense",
+    "size": 8192,
+    "calls": 300,
+    "median_ns": 34687428,
+    "min_process_ns": 33947468,
+    "max_process_ns": 43580146,
+    "process_medians_ns": [
+      35393949,
+      33947468,
+      43580146,
+      34687428,
+      34353124
+    ]
+  },
+  {
+    "variant": "integer_fix_aot",
+    "api": "repair",
+    "name": "unicode",
+    "size": 8192,
+    "calls": 300,
+    "median_ns": 37286420,
+    "min_process_ns": 36676897,
+    "max_process_ns": 44635678,
+    "process_medians_ns": [
+      38921562,
+      36842178,
+      44635678,
+      36676897,
+      37286420
+    ]
+  },
+  {
+    "variant": "integer_fix_aot",
+    "api": "repair",
+    "name": "control",
+    "size": 8192,
+    "calls": 100,
+    "median_ns": 31872048,
+    "min_process_ns": 30141389,
+    "max_process_ns": 32539491,
+    "process_medians_ns": [
+      31951861,
+      31020253,
+      32539491,
+      30141389,
+      31872048
+    ]
+  },
+  {
+    "variant": "integrated_aot",
+    "api": "direct",
+    "name": "long",
+    "size": 4096,
+    "calls": 2000,
+    "median_ns": 11805767,
+    "min_process_ns": 10674977,
+    "max_process_ns": 16305036,
+    "process_medians_ns": [
+      11805767,
+      10674977,
+      16305036,
+      11566532,
+      12463532
+    ]
+  },
+  {
+    "variant": "integrated_aot",
+    "api": "direct",
+    "name": "long",
+    "size": 8192,
+    "calls": 2000,
+    "median_ns": 20135608,
+    "min_process_ns": 19555473,
+    "max_process_ns": 21449564,
+    "process_medians_ns": [
+      21449564,
+      19791497,
+      20593193,
+      20135608,
+      19555473
+    ]
+  },
+  {
+    "variant": "integrated_aot",
+    "api": "direct",
+    "name": "long",
+    "size": 16384,
+    "calls": 2000,
+    "median_ns": 39450341,
+    "min_process_ns": 38608275,
+    "max_process_ns": 42865605,
+    "process_medians_ns": [
+      39168255,
+      39450341,
+      42705921,
+      42865605,
+      38608275
+    ]
+  },
+  {
+    "variant": "integrated_aot",
+    "api": "direct",
+    "name": "short",
+    "size": 8192,
+    "calls": 200000,
+    "median_ns": 73807702,
+    "min_process_ns": 71751426,
+    "max_process_ns": 79906900,
+    "process_medians_ns": [
+      72966346,
+      73807702,
+      79906900,
+      78196512,
+      71751426
+    ]
+  },
+  {
+    "variant": "integrated_aot",
+    "api": "direct",
+    "name": "mixed",
+    "size": 8192,
+    "calls": 40000,
+    "median_ns": 30777586,
+    "min_process_ns": 30172757,
+    "max_process_ns": 36128347,
+    "process_medians_ns": [
+      30831340,
+      30172757,
+      36128347,
+      30515397,
+      30777586
+    ]
+  },
+  {
+    "variant": "integrated_aot",
+    "api": "direct",
+    "name": "sparse",
+    "size": 8192,
+    "calls": 3000,
+    "median_ns": 35536898,
+    "min_process_ns": 35192330,
+    "max_process_ns": 42186925,
+    "process_medians_ns": [
+      35303290,
+      35536898,
+      42186925,
+      41930356,
+      35192330
+    ]
+  },
+  {
+    "variant": "integrated_aot",
+    "api": "direct",
+    "name": "dense",
+    "size": 8192,
+    "calls": 300,
+    "median_ns": 38278725,
+    "min_process_ns": 36594349,
+    "max_process_ns": 39058511,
+    "process_medians_ns": [
+      39058511,
+      36594349,
+      36992309,
+      38278725,
+      38386228
+    ]
+  },
+  {
+    "variant": "integrated_aot",
+    "api": "direct",
+    "name": "unicode",
+    "size": 8192,
+    "calls": 300,
+    "median_ns": 28160802,
+    "min_process_ns": 26937545,
+    "max_process_ns": 29167212,
+    "process_medians_ns": [
+      29000346,
+      28160802,
+      29167212,
+      27903617,
+      26937545
+    ]
+  },
+  {
+    "variant": "integrated_aot",
+    "api": "direct",
+    "name": "control",
+    "size": 8192,
+    "calls": 300,
+    "median_ns": 37464138,
+    "min_process_ns": 33842237,
+    "max_process_ns": 39365684,
+    "process_medians_ns": [
+      36911264,
+      37464138,
+      39050689,
+      39365684,
+      33842237
+    ]
+  },
+  {
+    "variant": "integrated_aot",
+    "api": "repair",
+    "name": "long",
+    "size": 4096,
+    "calls": 2000,
+    "median_ns": 11617533,
+    "min_process_ns": 10343758,
+    "max_process_ns": 13584636,
+    "process_medians_ns": [
+      12586829,
+      10343758,
+      13584636,
+      11617533,
+      11093119
+    ]
+  },
+  {
+    "variant": "integrated_aot",
+    "api": "repair",
+    "name": "long",
+    "size": 8192,
+    "calls": 2000,
+    "median_ns": 21618601,
+    "min_process_ns": 19327094,
+    "max_process_ns": 22426024,
+    "process_medians_ns": [
+      22426024,
+      21618601,
+      22358617,
+      20936982,
+      19327094
+    ]
+  },
+  {
+    "variant": "integrated_aot",
+    "api": "repair",
+    "name": "long",
+    "size": 16384,
+    "calls": 2000,
+    "median_ns": 38806729,
+    "min_process_ns": 37676608,
+    "max_process_ns": 42249798,
+    "process_medians_ns": [
+      42249798,
+      40145008,
+      38640576,
+      38806729,
+      37676608
+    ]
+  },
+  {
+    "variant": "integrated_aot",
+    "api": "repair",
+    "name": "short",
+    "size": 8192,
+    "calls": 200000,
+    "median_ns": 75607430,
+    "min_process_ns": 74225658,
+    "max_process_ns": 77385728,
+    "process_medians_ns": [
+      77385728,
+      77310259,
+      75607430,
+      75473878,
+      74225658
+    ]
+  },
+  {
+    "variant": "integrated_aot",
+    "api": "repair",
+    "name": "mixed",
+    "size": 8192,
+    "calls": 40000,
+    "median_ns": 31537971,
+    "min_process_ns": 29219303,
+    "max_process_ns": 37412086,
+    "process_medians_ns": [
+      31537971,
+      32306856,
+      37412086,
+      29854481,
+      29219303
+    ]
+  },
+  {
+    "variant": "integrated_aot",
+    "api": "repair",
+    "name": "sparse",
+    "size": 8192,
+    "calls": 3000,
+    "median_ns": 37123113,
+    "min_process_ns": 36299228,
+    "max_process_ns": 46518880,
+    "process_medians_ns": [
+      36299228,
+      43135626,
+      46518880,
+      36573873,
+      37123113
+    ]
+  },
+  {
+    "variant": "integrated_aot",
+    "api": "repair",
+    "name": "dense",
+    "size": 8192,
+    "calls": 300,
+    "median_ns": 37569965,
+    "min_process_ns": 35269817,
+    "max_process_ns": 42263280,
+    "process_medians_ns": [
+      37569965,
+      42263280,
+      35269817,
+      37835271,
+      35915541
+    ]
+  },
+  {
+    "variant": "integrated_aot",
+    "api": "repair",
+    "name": "unicode",
+    "size": 8192,
+    "calls": 300,
+    "median_ns": 28165566,
+    "min_process_ns": 26563959,
+    "max_process_ns": 29508416,
+    "process_medians_ns": [
+      29078935,
+      26563959,
+      28165566,
+      29508416,
+      27801263
+    ]
+  },
+  {
+    "variant": "integrated_aot",
+    "api": "repair",
+    "name": "control",
+    "size": 8192,
+    "calls": 100,
+    "median_ns": 29199489,
+    "min_process_ns": 28340457,
+    "max_process_ns": 29473092,
+    "process_medians_ns": [
+      29446972,
+      28340457,
+      29199489,
+      29473092,
+      28821856
+    ]
+  },
+  {
+    "variant": "cpython",
+    "api": "direct",
+    "name": "long",
+    "size": 4096,
+    "calls": 2000,
+    "median_ns": 11176565,
+    "min_process_ns": 10626056,
+    "max_process_ns": 11584608,
+    "process_medians_ns": [
+      11584608,
+      10626056,
+      10748669,
+      11314550,
+      11176565
+    ]
+  },
+  {
+    "variant": "cpython",
+    "api": "direct",
+    "name": "long",
+    "size": 8192,
+    "calls": 2000,
+    "median_ns": 21302080,
+    "min_process_ns": 19950120,
+    "max_process_ns": 22191006,
+    "process_medians_ns": [
+      21302080,
+      21661093,
+      19950120,
+      22191006,
+      20391974
+    ]
+  },
+  {
+    "variant": "cpython",
+    "api": "direct",
+    "name": "long",
+    "size": 16384,
+    "calls": 2000,
+    "median_ns": 37817441,
+    "min_process_ns": 36387066,
+    "max_process_ns": 38684097,
+    "process_medians_ns": [
+      38684097,
+      38658168,
+      37817441,
+      37645145,
+      36387066
+    ]
+  },
+  {
+    "variant": "cpython",
+    "api": "direct",
+    "name": "short",
+    "size": 8192,
+    "calls": 200000,
+    "median_ns": 213677169,
+    "min_process_ns": 207193825,
+    "max_process_ns": 227190699,
+    "process_medians_ns": [
+      227190699,
+      222972989,
+      213147174,
+      213677169,
+      207193825
+    ]
+  },
+  {
+    "variant": "cpython",
+    "api": "direct",
+    "name": "mixed",
+    "size": 8192,
+    "calls": 40000,
+    "median_ns": 72018418,
+    "min_process_ns": 64084654,
+    "max_process_ns": 77638787,
+    "process_medians_ns": [
+      72711815,
+      77638787,
+      72018418,
+      69101781,
+      64084654
+    ]
+  },
+  {
+    "variant": "cpython",
+    "api": "direct",
+    "name": "sparse",
+    "size": 8192,
+    "calls": 3000,
+    "median_ns": 34706822,
+    "min_process_ns": 30867384,
+    "max_process_ns": 36895252,
+    "process_medians_ns": [
+      36895252,
+      36187966,
+      32356514,
+      34706822,
+      30867384
+    ]
+  },
+  {
+    "variant": "cpython",
+    "api": "direct",
+    "name": "dense",
+    "size": 8192,
+    "calls": 300,
+    "median_ns": 14342669,
+    "min_process_ns": 13036819,
+    "max_process_ns": 24115202,
+    "process_medians_ns": [
+      24115202,
+      19159719,
+      13036819,
+      14342669,
+      13560952
+    ]
+  },
+  {
+    "variant": "cpython",
+    "api": "direct",
+    "name": "unicode",
+    "size": 8192,
+    "calls": 300,
+    "median_ns": 5823346,
+    "min_process_ns": 5150162,
+    "max_process_ns": 7083022,
+    "process_medians_ns": [
+      5823346,
+      7083022,
+      6610574,
+      5402323,
+      5150162
+    ]
+  },
+  {
+    "variant": "cpython",
+    "api": "direct",
+    "name": "control",
+    "size": 8192,
+    "calls": 300,
+    "median_ns": 4321146,
+    "min_process_ns": 4025087,
+    "max_process_ns": 5675180,
+    "process_medians_ns": [
+      5675180,
+      4025087,
+      4321146,
+      4561062,
+      4301458
+    ]
+  },
+  {
+    "variant": "cpython",
+    "api": "repair",
+    "name": "long",
+    "size": 4096,
+    "calls": 2000,
+    "median_ns": 11532026,
+    "min_process_ns": 11153712,
+    "max_process_ns": 13105382,
+    "process_medians_ns": [
+      11153712,
+      13105382,
+      11184214,
+      11532026,
+      11728100
+    ]
+  },
+  {
+    "variant": "cpython",
+    "api": "repair",
+    "name": "long",
+    "size": 8192,
+    "calls": 2000,
+    "median_ns": 20713005,
+    "min_process_ns": 20007693,
+    "max_process_ns": 22211317,
+    "process_medians_ns": [
+      20713005,
+      21245488,
+      20007693,
+      22211317,
+      20506566
+    ]
+  },
+  {
+    "variant": "cpython",
+    "api": "repair",
+    "name": "long",
+    "size": 16384,
+    "calls": 2000,
+    "median_ns": 39533533,
+    "min_process_ns": 38229026,
+    "max_process_ns": 42685137,
+    "process_medians_ns": [
+      39533533,
+      42685137,
+      38364523,
+      39557337,
+      38229026
+    ]
+  },
+  {
+    "variant": "cpython",
+    "api": "repair",
+    "name": "short",
+    "size": 8192,
+    "calls": 200000,
+    "median_ns": 254674605,
+    "min_process_ns": 245181177,
+    "max_process_ns": 256434747,
+    "process_medians_ns": [
+      254728715,
+      256434747,
+      254674605,
+      251872493,
+      245181177
+    ]
+  },
+  {
+    "variant": "cpython",
+    "api": "repair",
+    "name": "mixed",
+    "size": 8192,
+    "calls": 40000,
+    "median_ns": 78376641,
+    "min_process_ns": 74890889,
+    "max_process_ns": 84535710,
+    "process_medians_ns": [
+      78376641,
+      80609385,
+      84535710,
+      77993249,
+      74890889
+    ]
+  },
+  {
+    "variant": "cpython",
+    "api": "repair",
+    "name": "sparse",
+    "size": 8192,
+    "calls": 3000,
+    "median_ns": 33824233,
+    "min_process_ns": 32071864,
+    "max_process_ns": 48562205,
+    "process_medians_ns": [
+      34609732,
+      32071864,
+      48562205,
+      33824233,
+      33257728
+    ]
+  },
+  {
+    "variant": "cpython",
+    "api": "repair",
+    "name": "dense",
+    "size": 8192,
+    "calls": 300,
+    "median_ns": 13480978,
+    "min_process_ns": 12619621,
+    "max_process_ns": 15122573,
+    "process_medians_ns": [
+      15122573,
+      12619621,
+      13176273,
+      14979032,
+      13480978
+    ]
+  },
+  {
+    "variant": "cpython",
+    "api": "repair",
+    "name": "unicode",
+    "size": 8192,
+    "calls": 300,
+    "median_ns": 5693911,
+    "min_process_ns": 5172115,
+    "max_process_ns": 6016517,
+    "process_medians_ns": [
+      5693911,
+      5940610,
+      5418326,
+      5172115,
+      6016517
+    ]
+  },
+  {
+    "variant": "cpython",
+    "api": "repair",
+    "name": "control",
+    "size": 8192,
+    "calls": 100,
+    "median_ns": 70385529,
+    "min_process_ns": 67956573,
+    "max_process_ns": 106198580,
+    "process_medians_ns": [
+      70848263,
+      68418504,
+      106198580,
+      70385529,
+      67956573
+    ]
+  },
+  {
+    "variant": "pypy",
+    "api": "direct",
+    "name": "long",
+    "size": 4096,
+    "calls": 2000,
+    "median_ns": 9029069,
+    "min_process_ns": 7551215,
+    "max_process_ns": 52159022,
+    "process_medians_ns": [
+      7551215,
+      9029069,
+      14155399,
+      52159022,
+      7911976
+    ]
+  },
+  {
+    "variant": "pypy",
+    "api": "direct",
+    "name": "long",
+    "size": 8192,
+    "calls": 2000,
+    "median_ns": 6384426,
+    "min_process_ns": 6135257,
+    "max_process_ns": 7601258,
+    "process_medians_ns": [
+      6258485,
+      6135257,
+      6384426,
+      6817621,
+      7601258
+    ]
+  },
+  {
+    "variant": "pypy",
+    "api": "direct",
+    "name": "long",
+    "size": 16384,
+    "calls": 2000,
+    "median_ns": 11497491,
+    "min_process_ns": 10918981,
+    "max_process_ns": 13098671,
+    "process_medians_ns": [
+      11410856,
+      11497491,
+      12962545,
+      10918981,
+      13098671
+    ]
+  },
+  {
+    "variant": "pypy",
+    "api": "direct",
+    "name": "short",
+    "size": 8192,
+    "calls": 200000,
+    "median_ns": 39622517,
+    "min_process_ns": 36957835,
+    "max_process_ns": 41732406,
+    "process_medians_ns": [
+      36957835,
+      40017294,
+      39622517,
+      38699782,
+      41732406
+    ]
+  },
+  {
+    "variant": "pypy",
+    "api": "direct",
+    "name": "mixed",
+    "size": 8192,
+    "calls": 40000,
+    "median_ns": 19188142,
+    "min_process_ns": 18068704,
+    "max_process_ns": 20588000,
+    "process_medians_ns": [
+      18910626,
+      18068704,
+      19188142,
+      20588000,
+      19430680
+    ]
+  },
+  {
+    "variant": "pypy",
+    "api": "direct",
+    "name": "sparse",
+    "size": 8192,
+    "calls": 3000,
+    "median_ns": 66173354,
+    "min_process_ns": 62283244,
+    "max_process_ns": 67374010,
+    "process_medians_ns": [
+      67078027,
+      64092965,
+      62283244,
+      67374010,
+      66173354
+    ]
+  },
+  {
+    "variant": "pypy",
+    "api": "direct",
+    "name": "dense",
+    "size": 8192,
+    "calls": 300,
+    "median_ns": 10929748,
+    "min_process_ns": 9791689,
+    "max_process_ns": 11180641,
+    "process_medians_ns": [
+      10070802,
+      10929748,
+      11078304,
+      9791689,
+      11180641
+    ]
+  },
+  {
+    "variant": "pypy",
+    "api": "direct",
+    "name": "unicode",
+    "size": 8192,
+    "calls": 300,
+    "median_ns": 7079090,
+    "min_process_ns": 6560098,
+    "max_process_ns": 9216558,
+    "process_medians_ns": [
+      7018958,
+      6560098,
+      9216558,
+      8157997,
+      7079090
+    ]
+  },
+  {
+    "variant": "pypy",
+    "api": "repair",
+    "name": "long",
+    "size": 4096,
+    "calls": 2000,
+    "median_ns": 3418853,
+    "min_process_ns": 2985122,
+    "max_process_ns": 4155687,
+    "process_medians_ns": [
+      3418853,
+      4155687,
+      2985122,
+      3163360,
+      3962371
+    ]
+  },
+  {
+    "variant": "pypy",
+    "api": "repair",
+    "name": "long",
+    "size": 8192,
+    "calls": 2000,
+    "median_ns": 5882697,
+    "min_process_ns": 5734932,
+    "max_process_ns": 6459490,
+    "process_medians_ns": [
+      5882697,
+      6398318,
+      5754210,
+      6459490,
+      5734932
+    ]
+  },
+  {
+    "variant": "pypy",
+    "api": "repair",
+    "name": "long",
+    "size": 16384,
+    "calls": 2000,
+    "median_ns": 12712270,
+    "min_process_ns": 11727596,
+    "max_process_ns": 15083650,
+    "process_medians_ns": [
+      11727596,
+      15083650,
+      12712270,
+      13251645,
+      12514772
+    ]
+  },
+  {
+    "variant": "pypy",
+    "api": "repair",
+    "name": "short",
+    "size": 8192,
+    "calls": 200000,
+    "median_ns": 40709883,
+    "min_process_ns": 35305961,
+    "max_process_ns": 44349437,
+    "process_medians_ns": [
+      44349437,
+      35305961,
+      36343900,
+      40709883,
+      40879007
+    ]
+  },
+  {
+    "variant": "pypy",
+    "api": "repair",
+    "name": "mixed",
+    "size": 8192,
+    "calls": 40000,
+    "median_ns": 18718107,
+    "min_process_ns": 18379439,
+    "max_process_ns": 20522951,
+    "process_medians_ns": [
+      18718107,
+      20522951,
+      18379439,
+      18600162,
+      18782588
+    ]
+  },
+  {
+    "variant": "pypy",
+    "api": "repair",
+    "name": "sparse",
+    "size": 8192,
+    "calls": 3000,
+    "median_ns": 67464853,
+    "min_process_ns": 64724799,
+    "max_process_ns": 73561396,
+    "process_medians_ns": [
+      66696209,
+      67464853,
+      73561396,
+      68174375,
+      64724799
+    ]
+  },
+  {
+    "variant": "pypy",
+    "api": "repair",
+    "name": "dense",
+    "size": 8192,
+    "calls": 300,
+    "median_ns": 10742823,
+    "min_process_ns": 10033820,
+    "max_process_ns": 11818664,
+    "process_medians_ns": [
+      10033820,
+      10877488,
+      10742823,
+      11818664,
+      10412300
+    ]
+  },
+  {
+    "variant": "pypy",
+    "api": "repair",
+    "name": "unicode",
+    "size": 8192,
+    "calls": 300,
+    "median_ns": 7457994,
+    "min_process_ns": 6331513,
+    "max_process_ns": 11064171,
+    "process_medians_ns": [
+      7457994,
+      7094606,
+      6331513,
+      11064171,
+      7630989
+    ]
+  },
+  {
+    "variant": "pypy",
+    "api": "repair",
+    "name": "control",
+    "size": 8192,
+    "calls": 100,
+    "median_ns": 16757548,
+    "min_process_ns": 15543467,
+    "max_process_ns": 19876512,
+    "process_medians_ns": [
+      19876512,
+      15543467,
+      16623913,
+      18908712,
+      16757548
+    ]
+  }
+]
