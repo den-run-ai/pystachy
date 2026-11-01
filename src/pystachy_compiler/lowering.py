@@ -335,6 +335,8 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
             o.append("  " + c if ll[0] == "void" else f"  %t{i.r[0]} = {c}")
             if i.s == "recursion.enter":
                 self.entries = True
+            elif i.s == "recursion.resume":
+                self.resumes_counted = True
     elif op == "rt":
         f = self.rtfns[i.s]
         if i.k > 0 and ((i.s == "list.new" and atomic_list(self.holes[i.k])) or (i.s == "dict.new" and atomic_dict(self.holes[i.k]))):

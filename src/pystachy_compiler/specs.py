@@ -984,6 +984,7 @@ RUNTIME: dict[str, str] = {
     "select": "tuple[list[int],list[int],list[int]]:list[int],list[int],list[int],float,int|R A I rL wL|",
     "setrecursionlimit": "None:int|R I|", "getrecursionlimit": "int:|I|",
     "recursion.enter": "int:|R I|pys_recursion_enter", "recursion.leave": "None:|I|pys_recursion_leave",
+    "recursion.resume": "int:%ptr|R I|pys_recursion_resume",
     "recursion.depth": "int:|I|pys_recursion_depth", "recursion.restore": "None:int|I|pys_recursion_restore",
     "recursion.error": "None:|R N|pys_recursion_error",
     # exceptions (runtime.c's "exceptions"); a landing's pys_exc_begin runs the unwind actions: it

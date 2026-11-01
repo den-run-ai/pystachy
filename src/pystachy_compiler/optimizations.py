@@ -3,7 +3,7 @@ from __future__ import annotations
 from src.pystachy_compiler.diagnostics import fail
 from src.pystachy_compiler.ir import IFn, Ins, Lookup, Val, Values
 from src.pystachy_compiler.ircheck import EffectSummaries
-from src.pystachy_compiler.specs import CANON_DEPTH, FXBIT, GENDONE, LOOKUPS, RAWW, REACH
+from src.pystachy_compiler.specs import CANON_DEPTH, FXBIT, LOOKUPS, RAWW, REACH
 from src.pystachy_compiler.utils import is_list, is_tuple, is_union, umembers
 
 
@@ -86,16 +86,13 @@ def recursion_unsnapshot(fn: IFn) -> None:
 
 
 def recursion_resume_site(code: list[Ins], at: int) -> list[int]:
-    # the positions of the accounting gen_resume_enter put around the resume at code[at] (the
-    # generator marked finished, should its entry fail; the entry; the depth it entered from; and
-    # that depth's restoration after the resume), or [] if not found
+    # the positions of the accounting gen_resume_enter put around the resume at code[at] (its entry,
+    # recursion.resume; the depth it entered from; and that depth's restoration after the resume),
+    # or [] if not found
     enter = at - 1
-    while enter >= 0 and not (code[enter].op == "rt" and code[enter].s == "recursion.enter"):
+    while enter >= 0 and not (code[enter].op == "rt" and code[enter].s == "recursion.resume"):
         enter -= 1
-    if enter < 1 or enter + 1 >= at or len(code[enter].r) != 1:
-        return []
-    mark = code[enter - 1]
-    if mark.op != "mach.store" or len(mark.a) != 2 or mark.a[1].v != str(GENDONE):
+    if enter < 0 or enter + 1 >= at or len(code[enter].r) != 1:
         return []
     sub = code[enter + 1]
     if (sub.op != "scalar.bin" or sub.s != "sub" or len(sub.r) != 1 or len(sub.a) != 2
@@ -104,7 +101,7 @@ def recursion_resume_site(code: list[Ins], at: int) -> list[int]:
     for after in range(at + 1, len(code)):
         i = code[after]
         if i.op == "rt" and i.s == "recursion.restore" and len(i.a) == 1 and i.a[0].v == f"%t{sub.r[0]}":
-            return [enter - 1, enter, enter + 1, after]
+            return [enter, enter + 1, after]
     return []
 
 
@@ -212,9 +209,9 @@ def gen_recursionscope(self) -> int:
                 i = b.code[at]
                 if i.op == "gen.resume" and len(i.a) == 1 and i.a[0].t in bodies and not repeat[i.a[0].t]:
                     site = recursion_resume_site(b.code, at)
-                    if len(site) == 4:
+                    if len(site) == 3:
                         b.code = [b.code[k] for k in range(len(b.code)) if k not in site]
-                        at -= 3
+                        at -= 2
                         rescan = True
                 at += 1
     direct = [m for m in self.summaries.direct]

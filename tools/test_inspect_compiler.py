@@ -176,7 +176,7 @@ print(kernel(3))
             totals = snapshot["totals"]
             self.assertEqual(totals["slots"], sum(fn["slots"] for fn in snapshot["functions"].values()))
             self.assertEqual(totals["operation_count"], sum(totals["operations"].values()))
-            self.assertEqual(set(totals["guards"]), {"enter", "leave", "depth", "restore"})
+            self.assertEqual(set(totals["guards"]), {"enter", "resume", "leave", "depth", "restore"})
         for name in ("@f.leaf", "@f.recursive", "@f.kernel"):
             self.assertTrue(before["functions"][name]["recursion"]["counted"], name)
             self.assertEqual(before["functions"][name]["guards"]["depth"], 1, name)

@@ -6209,6 +6209,16 @@ I pys_recursion_enter(void) {
   if (pys_recursion_state[0] >= pys_recursion_state[1]) pys_recursion_error();
   return ++pys_recursion_state[0];
 }
+/* a generator resume's entry (lower_module's pys.recursion.resume), given the generator's state
+   word: one that fails finishes the generator first (2, specs.py's GENDONE), as CPython clears a
+   frame whose entry exceeds the limit */
+I pys_recursion_resume(I *state) {
+  if (pys_recursion_state[0] >= pys_recursion_state[1]) {
+    *state = 2;
+    pys_recursion_error();
+  }
+  return ++pys_recursion_state[0];
+}
 void pys_recursion_leave(void) { pys_recursion_state[0]--; }
 I pys_recursion_depth(void) { return pys_recursion_state[0]; }
 void pys_recursion_restore(I depth) { pys_recursion_state[0] = depth; }

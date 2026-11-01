@@ -39,7 +39,7 @@ PASS_RULES = {
 PROGRAM_PASS_UNITS = {
     "recursionscope": "counted source functions",
 }
-RECURSION_OPS = ("enter", "leave", "depth", "restore")
+RECURSION_OPS = ("enter", "resume", "leave", "depth", "restore")
 # Only compiler inputs are recorded, never arbitrary process environment values.
 ENV_KEYS = (
     "PYSTACHY_HOME", "PYSTACHY_PATH", "PYSTACHY_OPT", "PYSTACHY_IRCHECK",

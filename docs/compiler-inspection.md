@@ -139,8 +139,8 @@ keeps the snapshot only when a handler restores it. A function of closed recursi
 passes its depth as an argument.
 
 Global totals remain separate from selected-function totals. Both count block
-operations and frame slots separately, and report the four typed runtime operations
-`recursion.enter`, `leave`, `depth` and `restore`. Function summaries also retain
+operations and frame slots separately, and report the five typed runtime operations
+`recursion.enter`, `resume` (a generator resume's entry), `leave`, `depth` and `restore`. Function summaries also retain
 `counted`, `rdepth`, `landed`, `gdepth`, generator and coroutine metadata. These are
 observed state, not an independently rerun proof or an LLVM instruction count.
 

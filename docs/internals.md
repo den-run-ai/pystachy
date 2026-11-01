@@ -467,10 +467,10 @@ entry's and the returns' effects (`R I`) instead of another walk over every oper
 `gen_effects` leaves a function's entry snapshot out of its own mask, since an
 uncounted function either drops it or keeps it only beside the restorations that its
 handlers already contribute. A generator body counts while it runs: its consumer enters
-(`recursion.enter`) before each resume and restores the depth it entered from after a
-normal resume. A failed entry raises in the consumer and finishes the generator first (its
-state is `GENDONE` until the resume's `GENRUN` replaces it), as CPython clears a frame whose
-entry exceeds the limit: its handlers do not run, and it never resumes. The pass removes that
+(`recursion.resume`, given the generator's state word) before each resume and restores the
+depth it entered from after a normal resume. A failed entry raises in the consumer and
+finishes the generator first (`GENDONE`, on the entry's cold path), as CPython clears a frame
+whose entry exceeds the limit: its handlers do not run, and it never resumes. The pass removes that
 accounting where no body of the handle's type can be entered again, and computes the
 summaries afresh there. Closing a loop's generator (`gen.drop`) uses `pys.gen.drop`
 unchanged, or `pys.gen.drop.counted`, which counts the cleanup as a frame and reports a
@@ -502,8 +502,9 @@ guards instead of 34% ([report](reports/recursion-guard-policy.md)).
 
 For operations without exceptional successors, lowering emits `recursion.depth` and
 `recursion.restore` directly as a load and a store of the depth word. `recursion.enter`
-calls the module's `pys.recursion.enter`, or in closed recursion `pys.recursion.check`; the
-module defines each only where something calls it. Their overflow edge calls the runtime's
+calls the module's `pys.recursion.enter`, or in closed recursion `pys.recursion.check`, and a
+resume's `recursion.resume` calls `pys.recursion.resume`, whose overflow edge first marks the
+generator finished; the module defines each only where something calls it. Their overflow edge calls the runtime's
 `pys_recursion_error` and has cold branch weights. LLVM's ordinary inliners take those
 helpers: clang `-O2` for `build`, and the JIT's inliner below its line threshold. They are
 not marked `alwaysinline`, because LLVM 18's mandatory inliner computes block frequencies

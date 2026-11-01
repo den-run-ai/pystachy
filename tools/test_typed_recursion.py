@@ -69,21 +69,18 @@ def guards(function):
     return [name for op, name, _ in operations(function) if op == "rt" and name.startswith("recursion.")]
 
 
-def resume_marks(function):
-    # (how many entries, recursion.enter, follow a mark of the generator as finished, GENDONE, which
-    # a failed entry leaves; how many marks stand right before a resume's GENRUN in the same state
-    # word, left by a removed entry. close()'s command, GENCLOSEC, is 2 as well, in another word)
-    entered, stale = 0, 0
+def resume_entries(function):
+    # (the state words that the function's resume entries, recursion.resume, are given, whose
+    # generator a failed entry finishes; the state words that its GENRUN stores mark running)
+    states, running = [], set()
     for label, _, code in function["blocks"]:
-        for at in range(1, len(code)):
-            mark = function["operands"][(label, at - 1)][0]
-            if code[at - 1][0] != "mach.store" or mark[1:] != [str(GENDONE)]:
-                continue
-            if code[at][:2] == ("rt", "recursion.enter"):
-                entered += 1
-            elif code[at][0] == "mach.store" and function["operands"][(label, at)][0] == [mark[0], str(GENRUN)]:
-                stale += 1
-    return entered, stale
+        for at, op in enumerate(code):
+            operands = function["operands"][(label, at)][0]
+            if op[:2] == ("rt", "recursion.resume"):
+                states.append(operands[0])
+            elif op[0] == "mach.store" and operands[1:] == [str(GENRUN)]:
+                running.add(operands[0])
+    return states, running
 
 
 def named(functions, name):
@@ -358,7 +355,7 @@ g.close()
         self.assertTrue(bodies[0]["generator"])
         body = operations(bodies[0])
         # A body counts nothing itself: its only entries are those of its own resumes (yield from).
-        entries = [op for op in body if op[:2] == ("rt", "recursion.enter")]
+        entries = [op for op in body if op[:2] == ("rt", "recursion.resume")]
         own = [op for op in body if op[0] == "gen.resume"]
         self.assertGreater(len(own), 0)
         self.assertEqual(len(entries), len(own))
@@ -371,19 +368,21 @@ g.close()
             if own == 0:
                 continue
             resumes += own
-            # each resume enters (exception lowering may end its block with that invoke), and the
-            # function's own entry counts too where it counts
+            # each resume enters (exception lowering may end its block with that invoke), given the
+            # state word that the resume marks running and a failed entry finishes; the function's
+            # own entry counts too where it counts
+            states, running = resume_entries(fn)
+            self.assertEqual(len(states), own, fn["name"])
+            self.assertTrue(all(state in running for state in states), fn["name"])
             entries = len([op for op in code if op[:2] == ("rt", "recursion.enter")])
-            self.assertEqual(entries, own + (1 if fn["counted"] else 0), fn["name"])
-            # each first marks the generator finished, as CPython leaves one whose entry fails
-            self.assertEqual(resume_marks(fn), (own, 0), fn["name"])
+            self.assertEqual(entries, 1 if fn["counted"] else 0, fn["name"])
             # (after a normal resume, the depth the entry counted from; no load-and-decrement)
             self.assertGreaterEqual(len([op for op in code if op[:2] == ("rt", "recursion.restore")]), own)
             self.assertFalse(any(op[:2] == ("rt", "recursion.leave") for op in code))
         self.assertGreaterEqual(resumes, 2)
 
     def test_resumes_count_only_generator_bodies_that_can_recur(self):
-        _, functions = compile_source('''
+        ir, functions = compile_source('''
 from collections.abc import Iterator
 
 def squares(n: int) -> Iterator[int]:
@@ -419,7 +418,7 @@ print(total(4), names(Tree(Tree(None, "a"), "b")))
             for _, _, code in fn["blocks"]:
                 for at, (op, _, _) in enumerate(code):
                     if op == "gen.resume":
-                        found.append(any(i[:2] == ("rt", "recursion.enter") for i in code[:at]))
+                        found.append(any(i[:2] == ("rt", "recursion.resume") for i in code[:at]))
             return found
         # A plain generator's body cannot be entered again while it runs: its resumes do not
         # count, and its consumer, which no longer reaches unseen code, does not either.
@@ -427,14 +426,22 @@ print(total(4), names(Tree(Tree(None, "a"), "b")))
         self.assertEqual(resumes(total), [False])
         self.assertFalse(total["counted"])
         self.assertEqual(guards(total), [])
-        self.assertEqual(resume_marks(total), (0, 0))  # (the mark goes with the entry)
+        self.assertEqual(resume_entries(total)[0], [])
         # walk resumes walk generators: those resumes count, inside the body and outside it.
         self.assertTrue(all(resumes(named(functions, "walk"))))
         self.assertTrue(resumes(named(functions, "walk")))
         self.assertTrue(all(resumes(named(functions, "names"))))
         self.assertTrue(resumes(named(functions, "names")))
         for name in ("walk", "names"):
-            self.assertEqual(resume_marks(named(functions, name)), (len(resumes(named(functions, name))), 0), name)
+            states, running = resume_entries(named(functions, name))
+            self.assertEqual(len(states), len(resumes(named(functions, name))), name)
+            self.assertTrue(all(state in running for state in states), name)
+        # The resume's entry marks its generator finished only on the cold path, where it fails.
+        helper = ir.split("define internal i64 @pys.recursion.resume(ptr %state) {", 1)[1].split("\n}", 1)[0]
+        overflow, entered = helper.split("overflow:", 1)[1].split("entered:", 1)
+        self.assertIn(f"store i64 {GENDONE}, ptr %state", overflow)
+        self.assertIn("call void @pys_recursion_error() noreturn cold", overflow)
+        self.assertNotIn("%state", entered)
 
     def test_guard_helpers_use_mutable_runtime_state_and_throwing_slow_path(self):
         # (a cycle through a function value keeps the depth word current: closed recursion does not)
@@ -482,6 +489,16 @@ print(total(4), names(Tree(Tree(None, "a"), "b")))
         ir, _ = compile_source("def leaf(n: int) -> int:\n    return n + 1\nprint(leaf(1))\n")
         self.assertNotIn("pys.recursion.enter", ir)
         self.assertNotIn("pys_recursion_error", ir)
+
+    def test_resumes_that_cannot_recur_define_no_resume_entry(self):
+        ir, functions = compile_source("from collections.abc import Iterator\n"
+                                       "def squares(n: int) -> Iterator[int]:\n"
+                                       "    for i in range(n):\n"
+                                       "        yield i * i\n"
+                                       "print(sum(squares(3)), next(squares(2)))\n")
+        self.assertTrue(any(op[0] == "gen.resume" for fn in functions.values() for op in operations(fn)))
+        self.assertFalse(any(op[:2] == ("rt", "recursion.resume") for fn in functions.values() for op in operations(fn)))
+        self.assertNotIn("define internal i64 @pys.recursion.resume(", ir)
 
     def test_state_tbaa_shares_field_root_and_overflow_edge_is_cold(self):
         ir, _ = compile_source('''

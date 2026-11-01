@@ -826,17 +826,16 @@ def gen_hidden_loop(self, loop: Node, own: list[str], names: list[str]) -> None:
 
 def gen_gen_resume_enter(self, st: str) -> str:
     # A running generator body counts as a frame (docs/internals.md#native-recursion-depth): its
-    # consumer enters before each resume and restores the depth it entered from after a normal
-    # one, which a landing restores otherwise. A failed entry belongs to the consumer, before
-    # the generator runs, and finishes the generator (its state word st marked GENDONE first,
-    # which the resume's GENRUN replaces): CPython clears a frame whose entry exceeds the limit,
-    # so its handlers do not run and it never resumes. The body is balanced: it counts nothing
-    # itself, and every call it makes restores its caller's depth.
-    # Gen.recursionscope removes the mark, the entry and the restoration after the resume, where
-    # no generator body of the handle's type can be entered again while it runs.
+    # consumer enters before each resume (recursion.resume, an entry that is given the generator's
+    # state word st) and restores the depth it entered from after a normal one, which a landing
+    # restores otherwise. A failed entry belongs to the consumer, before the generator runs, and
+    # finishes the generator (GENDONE, on the entry's cold path): CPython clears a frame whose
+    # entry exceeds the limit, so its handlers do not run and it never resumes. The body is
+    # balanced: it counts nothing itself, and every call it makes restores its caller's depth.
+    # Gen.recursionscope removes the entry and the restoration after the resume, where no
+    # generator body of the handle's type can be entered again while it runs.
     self.fn.resumes = True
-    self.mstore("int", str(GENDONE), st)
-    entered = self.rt("pys_recursion_enter", "i64", [])
+    entered = self.rt("pys_recursion_resume", "i64", [f"ptr {st}"])
     return self.scalar("sub", [Val(entered, "int"), Val("1", "int")])
 
 
