@@ -26,7 +26,7 @@ guards' stores out of recursive kernels such as `fib`.
 |---|---|
 | Baseline | main [07b26e0](https://github.com/den-run-ai/pystachy/commit/07b26e02425d023288ed95a9d2a5077be5aeb45e) |
 | Previous candidate | PR #996 head [43eddb45](https://github.com/den-run-ai/pystachy/commit/43eddb455bc01ad348baec01590b258cacce681b) |
-| Candidate | [3d436d8b](https://github.com/den-run-ai/pystachy/commit/3d436d8bbfeccfcb38ed510fe2e2677381203487) on `claude/cool-gates-ownabn` (compiler sources; later commits add tests and documentation) |
+| Candidate | [55a7f4d7](https://github.com/den-run-ai/pystachy/commit/55a7f4d71f0c0adbf9c36eb729eab9f4b06ce3a9) on `claude/cool-gates-ownabn`, counted with a build of the same compiler code (4fdf4a4c with its wrappers `noinline`); the wall-clock runs measured [3d436d8b](https://github.com/den-run-ai/pystachy/commit/3d436d8bbfeccfcb38ed510fe2e2677381203487), whose wrappers clang could still inline |
 | Intermediate | [ed51330c](https://github.com/den-run-ai/pystachy/commit/ed51330cd36c6632a39ce464190f59f15d983626), the same policy without closed recursion |
 | Compilers | Each revision's native compiler from a fresh `make` bootstrap (three matching IR stages); PR head binary SHA-256 `588eb206…`, matching the PR record |
 | Toolchain | LLVM/clang 18.1.3, CPython 3.13.18 (hosted compiler and oracle), Valgrind 3.22.0 |
@@ -87,6 +87,9 @@ Measured on the PR head against main before this change:
   Frames count at the same calls as before. 195 of the compiler's own functions, 10 of
   `text.py`'s 24 counted ones and 8 of `regex_effbot.py`'s 12 are closed
   (`tests/programs/language/recursion_closed.py`, `tests/ir/closed_recursion.tbaa`).
+- **Out-of-line wrappers.** The wrapper is `noinline` and compiles to a load and a jump to the
+  body. Inlined, it added a load and an argument to each caller outside the cycle, which kept
+  clang from inlining `Pattern._search` into `re.search` (below).
 
 ## Results
 
@@ -94,34 +97,34 @@ Instruction counts, main's absolute count and each revision's change from it:
 
 | Frontend (`pystachy ir`) | main | PR #996 head | ed51330c | this branch |
 |---|---:|---:|---:|---:|
-| text | 2,283.8M | +21.62% | +1.66% | **+1.34%** |
-| regex_effbot | 1,434.4M | +28.87% | +1.60% | **+1.39%** |
-| ml | 33.3M | +26.14% | +1.95% | **+1.87%** |
-| graph_copy | 89.5M | n/a | +2.43% | **+2.37%** |
+| text | 2,283.8M | +21.62% | +1.66% | **+1.35%** |
+| regex_effbot | 1,434.4M | +28.87% | +1.60% | **+1.40%** |
+| ml | 33.3M | +26.14% | +1.95% | **+1.88%** |
+| graph_copy | 89.5M | n/a | +2.43% | **+2.38%** |
 
 | JIT (`pystachy run`, all processes) | main | PR #996 head | ed51330c | this branch |
 |---|---:|---:|---:|---:|
-| fnmatch | 10,004.5M | +6.88% | +0.22% | **+0.31%** |
-| json | 9,979.9M | +7.00% | +0.29% | **+0.37%** |
+| fnmatch | 10,004.5M | +6.88% | +0.22% | **+0.22%** |
+| json | 9,979.9M | +7.00% | +0.29% | **+0.27%** |
 | regex_effbot | 10,488.3M | +8.00% | +1.10% | **+1.04%** |
-| autograd | 474.3M | +11.74% | +1.39% | **+1.19%** |
+| autograd | 474.3M | +11.74% | +1.39% | **+1.46%** |
 | richards | 1,384.9M | +20.13% | +0.10% | **+0.11%** |
 | graph_copy | 910.9M | +6.82% | +3.53% | **+3.54%** |
-| generators | 1,453.2M | +15.79% | +15.46% | **+15.47%** |
+| generators | 1,453.2M | +15.79% | +15.46% | **+15.52%** |
 
 | AOT executable | main | PR #996 head | ed51330c | this branch |
 |---|---:|---:|---:|---:|
-| fnmatch | 162.8M | +2.51% | +0.44% | **+0.65%** |
+| fnmatch | 162.8M | +2.51% | +0.44% | **+0.77%** |
 | json | 167.9M | +3.44% | +1.91% | **+1.91%** |
 | repair_scan | 758.2M | +0.01% | +0.00% | **+0.00%** |
-| regex_effbot | 3,291.5M | +4.64% | +1.21% | **+1.92%** |
-| autograd | 214.2M | +3.04% | +1.79% | **+1.41%** |
+| regex_effbot | 3,291.5M | +4.64% | +1.21% | **+1.01%** |
+| autograd | 214.2M | +3.04% | +1.79% | **+1.43%** |
 | numeric | 432.5M | +0.44% | +0.00% | **+0.00%** |
 | richards | 133.3M | +31.08% | +0.00% | **+0.00%** |
 | object | 268.3M | +0.00% | +0.00% | **+0.00%** |
 | ordinary | 100.3M | -0.00% | +0.00% | **+0.00%** |
-| json_calls | 803.9M | +1.74% | +1.02% | **+0.62%** |
-| genloop | 9.7M | +68.43% | +0.00% | **-0.00%** |
+| json_calls | 803.9M | +1.74% | +1.02% | **+0.63%** |
+| genloop | 9.7M | +68.43% | +0.00% | **+0.01%** |
 | graph_copy | 387.2M | +1.78% | +1.62% | **+1.62%** |
 | generators | 1,091.7M | +11.19% | +10.96% | **+10.93%** |
 | fib | 433.3M | +41.35% | +41.35% | **+24.12%** |
@@ -132,7 +135,7 @@ and `ordinary` are `bench/recursion`'s method and helper kernels, `json_calls` i
 `graph_copy` is the performance smoke's dynamic-`Any` deep copy (`tools/dynany_bench.py
 graph-smoke 4000`). Emitted IR for `text.py` is 73,147 lines (main 72,861, ed51330c 73,118), for
 `regex_effbot.py` 54,774 (main 54,598, ed51330c 54,746). The self-hosted compiler's IR is
-788,145 lines (main 775,228, PR 808,291, ed51330c 786,440).
+788,153 lines (main 775,228, PR 808,291, ed51330c 786,440).
 
 ### What still costs
 
@@ -144,12 +147,16 @@ them stores. The pyperformance `generators` benchmark walks a tree with recursiv
 about 17 counted generator resumes per value, which keep the depth word. JSON's and regex's
 parsers and the autograd backward pass are recursive too; their counted calls cost 1–2%.
 
-Closed recursion moves a little work to the cycle's callers: each call from outside loads the
-word and passes one more argument. In `regex_effbot`'s executable the matcher itself runs 13M
-fewer instructions than under ed51330c, but clang now keeps `Pattern._search` out of line in
-`re.search` (each inlined wrapper adds 10 to the inline costs it weighs), which costs 33M: a
-threshold effect of clang's inliner. The JIT build of `regex_effbot`, whose inlining differs,
-runs fewer instructions than under ed51330c.
+Closed recursion moves a little work to the cycle's callers: each call from outside goes
+through the member's wrapper, which loads the word and passes it on. While clang could inline
+the wrappers (3d436d8b), `regex_effbot`'s matcher ran 13M fewer instructions than under
+ed51330c, but clang kept `Pattern._search` out of line in `re.search` (each inlined wrapper
+added 10 to the inline costs it weighs), which cost 33M: the executable ran 1.92% more
+instructions than main's. CI's advisory smoke measured its loop 8.4% and 8.1% slower than
+main's on the runners of 2650357e and 4fdf4a4c. With `noinline` wrappers it runs 1.01% more
+instructions than main's. The extra jump through a wrapper costs autograd's JIT run 0.27% of
+its instructions and fnmatch's executable 0.11%, and the JIT runs of fnmatch and json
+0.10% less.
 
 `graph_copy` recurses through a table of copier functions (calls of function values),
 so 12 of its 51 functions count, among them `copy_value`, every copier and `checksum`; none
@@ -164,7 +171,9 @@ path, so it was not adopted without a timing result that favors it.
 
 ## Validation of the candidate
 
-All local, on the host above, with the candidate's compiler; no CI has run on this branch.
+Local, on the host above. The checks ran with 3d436d8b's compiler; after the wrappers became
+`noinline` (55a7f4d7), its bootstrap, IR checks, unit tests, JIT dead-code probe and the
+recursion, generator and regex cases ran again (the last rows). CI's results are in the PR.
 
 | Check | Result |
 |---|---|
@@ -180,21 +189,27 @@ All local, on the host above, with the candidate's compiler; no CI has run on th
 | Lint's 22 other unit-suite commands | 511 tests pass, with `libclang-rt-18-dev` installed for the ASan controls as Lint installs it |
 | `tests/record.sh --check` | 1,940 recordings and 111 deviations match CPython, except the two `sys_version_info` cases, which print the interpreter's version (3.13.18 here, 3.13.16 pinned) |
 | Negative controls | `recursion_closed.py` crashes when a cycle's calls pass their caller's depth, and differs from CPython when the wrapper ignores the depth word; `recursion_set_limit.py` and the unit tests fail without the `setrecursionlimit` exclusion; the closed-recursion unit tests fail without the marking |
+| 55a7f4d7: `make` bootstrap | Three matching compiler IR stages (788,153 lines) and runtime IR stages (18,805 lines); compiler SHA-256 `542259a4…` |
+| 55a7f4d7: `tools/check_ir.sh`, unit tests, `tools/jitprobe.py` | All 2,133 programs; 71 tests of `test_typed_recursion.py`, `test_frame_fields.py`, `test_identity_scope.py` and `test_inspect_compiler.py`; hosted and native probes pass |
+| 55a7f4d7: `make test` of the recursion, generator, regex, recursion-exception, dynamic-`Any` recursion, scoped-file and deviation cases | 48 cases, 96 passed in JIT and AOT |
 
-Two checks failed on the way and were fixed: `test_frame_fields.py`, until
+Three checks failed on the way and were fixed: `test_frame_fields.py`, until
 [3cf9129e](https://github.com/den-run-ai/pystachy/commit/3cf9129e0f669c6417dbf33f08bc9cc23c7f47c1)
-classified the `Gen` fields this change adds, and `test_identity_scope.py`'s JSON delimiter
+classified the `Gen` fields this change adds; `test_identity_scope.py`'s JSON delimiter
 test, which read the parser's methods by their symbols until
 [80ce9146](https://github.com/den-run-ai/pystachy/commit/80ce91465da3a70d783e4d1bbeb1f398e2298e01)
-read their closed-recursion bodies. The new `tests/programs/language/recursion_counted_boundary.py`,
+read their closed-recursion bodies; and CI's `jit-dead-code` contract, whose
+`tools/jitprobe.py` required 35 definitions named `unused_*` until
+[4fdf4a4c](https://github.com/den-run-ai/pystachy/commit/4fdf4a4cea33ff1d4b70da9a2cc90a60f2f08648)
+counted source functions: closed recursion emits two of them as a symbol and a body. The new `tests/programs/language/recursion_counted_boundary.py`,
 `recursion_callable_frames.py` and `recursion_closed.py` were recorded with CPython 3.13.18; the
 pinned interpreter is 3.13.16.
 
 ## Wall-clock checks
 
-Two timing runs followed the counts on the host above; neither carries the decision.
-Interleaved runs of the AOT executables measured above, 21 rounds pinned to one core, give each
-revision's median per-round ratio to main:
+Two timing runs followed the counts on the host above, before the wrappers became `noinline`;
+neither carries the decision. Interleaved runs of the AOT executables, 21 rounds pinned to one
+core, give each revision's median per-round ratio to main (this branch: 3d436d8b):
 
 | AOT executable, wall clock | PR #996 head | ed51330c | this branch |
 |---|---:|---:|---:|
@@ -222,6 +237,7 @@ three more where the first batch is at least 20% and 5 ms slower) compared main 
 3d436d8b and with ed51330c and raised no warning either time; every JIT and AOT output matched
 CPython's. Its medians moved between -24.6% and +12.2% for 3d436d8b, `copy_float`'s and
 `copy_int`'s among the largest, although their program IR differs from main's only in value
-names and unused declarations. Its +11.2% for `regex_effbot`'s AOT loop did not hold up: 41
-interleaved rounds of that executable gave +0.8% against main (ed51330c: -1.5%), with
-overlapping quartiles.
+names and unused declarations. Its +11.2% for `regex_effbot`'s AOT loop did not hold up on
+this host: 41 interleaved rounds of that executable gave +0.8% against main (ed51330c: -1.5%),
+with overlapping quartiles. CI's runners repeated it, though (+8.4% and +8.1%, above), and the
+`noinline` wrappers remove the inlining change behind it.
