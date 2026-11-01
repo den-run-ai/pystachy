@@ -134,6 +134,16 @@ def _append_string_span(state: StringParseState, source: str, start: int, end: i
     # substring or copying the growing prefix. Every stored piece stays bounded.
     if start >= end:
         return
+    if end - start == 1:
+        # Avoid a one-code-point slice on short runs and decoded escapes.
+        char = source[start]
+        state.string_length += 1
+        state.string_last = char
+        state.string_tail += char
+        if len(state.string_tail) == STRING_CHUNK_SIZE:
+            state.string_chunks.append(state.string_tail)
+            state.string_tail = ""
+        return
     state.string_length += end - start
     state.string_last = source[end - 1]
     room = STRING_CHUNK_SIZE - len(state.string_tail)
