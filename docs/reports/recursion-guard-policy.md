@@ -24,7 +24,7 @@ can fail at a different call than in CPython
 |---|---|
 | Baseline | main [07b26e0](https://github.com/den-run-ai/pystachy/commit/07b26e02425d023288ed95a9d2a5077be5aeb45e) |
 | Previous candidate | PR #996 head [43eddb45](https://github.com/den-run-ai/pystachy/commit/43eddb455bc01ad348baec01590b258cacce681b) |
-| Candidate | CANDIDATE_SHA (this branch) |
+| Candidate | [ed51330c](https://github.com/den-run-ai/pystachy/commit/ed51330cd36c6632a39ce464190f59f15d983626) on `claude/cool-gates-ownabn` (compiler sources; later commits add a test and documentation) |
 | Compilers | Each revision's native compiler from a fresh `make` bootstrap (three matching IR stages); PR head binary SHA-256 `588eb206…`, matching the PR record |
 | Toolchain | LLVM/clang 18.1.3, CPython 3.13.18 (hosted compiler and oracle), Valgrind 3.22.0 |
 | Host | Linux x86-64, Intel Xeon @ 2.10 GHz, 4 vCPUs, shared; counts pinned with `taskset` |
@@ -33,8 +33,164 @@ can fail at a different call than in CPython
 Instruction counts are Valgrind `callgrind` totals (`Ir`) and are deterministic: they do not
 depend on host load. *Frontend* is `pystachy ir`. *AOT* is the whole process of the built
 executable. *JIT* is `pystachy run` with every child process traced (frontend, `opt`,
-`lli` code generation, execution and teardown). Every executable's output matched CPython's.
-Wall-clock samples are reported separately; on this shared host, sides with byte-identical
-program IR differed by up to 9% between medians, so instruction counts carry the decision.
+`lli` code generation, execution and teardown). The counting runs themselves discard output;
+afterwards every measured AOT executable (14 workloads, three revisions) was run again and its
+output, apart from printed timings, matched CPython's. The wall-clock smoke below compares
+every JIT and AOT run's output with CPython's. Its samples are reported separately: on this
+shared host, sides with byte-identical program IR differed by up to 9% between medians, so
+instruction counts carry the decision.
 
-RESULTS_PLACEHOLDER
+## Where the PR's cost came from
+
+Measured on the PR head against main before this change:
+
+- **The analyses themselves.** With `PYSTACHY_OPT=-recursionleaf,-recursionregion`, the same PR
+  compiler spent 3.0% more frontend instructions than main on `text.py`; with the passes on,
+  21.6%. The passes ran on every compilation, and their clones (`@rf`, `@rp`, `@rp2`, `@rc`) grew
+  `text.py`'s module from 225 to 265 functions and 72,861 to 77,266 lines, which `opt` and `lli`
+  then compiled too.
+- **Lost purity.** Every source function gained `R I` from its entry check, so effect summaries
+  of pure helpers stopped being empty (`tests/ir/effects.fx`: `@f.band:` became `@f.band: R I`).
+  Typed optimizations and exception lowering treat such calls as raising and stateful.
+- **Generator loops.** Each resume entered and left the depth, and the guarded `pys.gen.drop`
+  (personality, invokes, landing pad) kept LLVM's coroutine elision from inlining a loop's
+  generator: a plain generator loop ran 68% more AOT instructions than main.
+
+## What changed
+
+- `Gen.recursionscope` (`optimizations.py`, about 220 lines) replaces both passes (about 1,100
+  lines, their eight test modules and eight exact-boundary fixtures). It runs once after the first
+  effect summaries, from their call graph, and patches the summaries with the guards' known
+  `R I` instead of walking every operation again. It is not a `PYSTACHY_OPT` pass.
+- Uncounted functions keep their summaries from main; the `.fx` effect probes in `tests/ir` are
+  byte-identical to main's again, and 31 of the 40 `tests/ir` expectation files are (the other
+  nine add only the definition of the entry helper, in programs that have counted functions).
+- A resume of a generator type none of whose bodies can recur has no accounting, and its loop's
+  drop uses main's `pys.gen.drop`; recursive generators keep the counted forms.
+- A Callable's adapter (`@cv.N`) no longer counts as a source frame. Under the PR, a call
+  through a function value counted the adapter and its target, so a recursion through function
+  values failed at about half of CPython's depth
+  (`tests/programs/language/recursion_callable_frames.py`, which the PR head fails).
+- The entry helper is no longer `alwaysinline`: LLVM 18's mandatory inliner builds block
+  frequencies for every caller it changes, which added 13.8% to `opt` on `text.py` for 24
+  inlined entries. clang `-O2` and the JIT's ordinary inliner still inline it where they run.
+
+## Results
+
+Instruction counts, main's absolute count and each revision's change from it:
+
+| Frontend (`pystachy ir`) | main | PR #996 head | this branch |
+|---|---:|---:|---:|
+| text | 2,283.8M | +21.62% | **+1.66%** |
+| regex_effbot | 1,434.4M | +28.87% | **+1.60%** |
+| ml | 33.3M | +26.14% | **+1.95%** |
+
+| JIT (`pystachy run`, all processes) | main | PR #996 head | this branch |
+|---|---:|---:|---:|
+| fnmatch | 10,004.5M | +6.88% | **+0.22%** |
+| json | 9,979.9M | +7.00% | **+0.29%** |
+| regex_effbot | 10,488.3M | +8.00% | **+1.10%** |
+| autograd | 474.3M | +11.74% | **+1.39%** |
+| richards | 1,384.9M | +20.13% | **+0.10%** |
+| graph_copy | 910.9M | +6.82% | **+3.53%** |
+| generators | 1,453.2M | +15.79% | **+15.46%** |
+
+| AOT executable | main | PR #996 head | this branch |
+|---|---:|---:|---:|
+| fnmatch | 162.8M | +2.51% | **+0.44%** |
+| json | 167.9M | +3.44% | **+1.91%** |
+| repair_scan | 758.2M | +0.01% | **+0.00%** |
+| regex_effbot | 3,291.5M | +4.64% | **+1.21%** |
+| autograd | 214.2M | +3.04% | **+1.79%** |
+| numeric | 432.5M | +0.44% | **+0.00%** |
+| richards | 133.3M | +31.08% | **+0.00%** |
+| object | 268.3M | +0.00% | **+0.00%** |
+| ordinary | 100.3M | -0.00% | **+0.00%** |
+| json_calls | 803.9M | +1.74% | **+1.02%** |
+| genloop | 9.7M | +68.43% | **+0.00%** |
+| generators | 1,091.7M | +11.19% | **+10.96%** |
+| fib | 433.3M | +41.35% | **+41.35%** |
+
+`genloop` is [`bench/recursion/generator_loops.py`](../../bench/recursion/generator_loops.py)
+with `200000`: two plain generators consumed by `for` loops (about 400,000 resumes). `object`
+and `ordinary` are `bench/recursion`'s method and helper kernels, `json_calls` its JSON kernel.
+`graph_copy` is the performance smoke's dynamic-`Any` deep copy (`tools/dynany_bench.py
+graph-smoke 4000`). Emitted IR for `text.py` is 73,118 lines (main 72,861) with 24 counted
+functions, for `regex_effbot.py` 54,746 (main 54,598) with 12. The self-hosted compiler's IR is
+786,440 lines (main 775,228, PR 808,291).
+
+### What still costs
+
+The remaining overhead is in code that genuinely recurses, where an exact limit has to count
+every call. `fib` (every call recursive, about 14 instructions each on main) gains about six
+instructions per call: one depth load, a compare against the limit, the increment's store, the
+restoring store, and a callee-saved register. The pyperformance `generators` benchmark walks a
+tree with recursive `yield from`, about 17 counted generator resumes per value. JSON's and
+regex's parsers and the autograd backward pass are recursive too; their counted calls cost
+1–2%. `graph_copy` recurses through a table of copier functions (calls of function values),
+so 12 of its 51 functions count, among them `copy_value`, every copier and `checksum`. Its
+executable runs 1.62% more instructions (PR: 1.79%). Under the JIT most of its 3.53% is fixed
+cost: with one graph instead of 4,000, `pystachy run` takes 5.2% more. The JIT's pass pipeline,
+applied offline, leaves a module 7% larger (2,683 against 2,504 lines), whose `llc -O2` code
+generation takes 6% more instructions.
+
+A single "remaining frames" counter updated by read-modify-write instructions would cut
+`fib`'s instructions by half, but it puts a second store-to-load dependency on every call's path,
+so it was not adopted without a timing result that favors it.
+
+## Validation of the candidate
+
+All local, on the host above; no CI has run on this branch.
+
+| Check | Result |
+|---|---|
+| `make` bootstrap | Three matching compiler IR stages (786,440 lines) and runtime IR stages (18,805 lines); compiler SHA-256 `b850cc85…` |
+| Corpus, JIT and AOT (`tests/run.sh`) | 6,126 passed, 0 failed; then the new `recursion_callable_frames.py` with the 12 other Callable cases, 26 passed |
+| `tools/check_ir.sh` | IR check and `llvm-as` accept all 2,131 programs; `.calls`/`.fx`/`.attrs`/`.tbaa` expectations hold |
+| Diagnostics and exit statuses against the PR head | All 3,915 corpus programs identical (`irsame` without the IR comparison, one shared library home whose compiled files are byte-identical in both revisions) |
+| `PYSTACHY_GC_STRESS_PROGRAM=1`, JIT and AOT: recursion, generator, recursion-exception and Callable cases | 58 cases, 116 passed, 0 failed |
+| `tests/ffi/run.sh` (extension recursion guards included) | 147 passed, 0 failed |
+| `tests/cache.sh`, native and hosted | 66 and 68 passed |
+| `make check-fast lint` | Pass: 349 tests, `ruff` 0.17.2, `mypy` 2.4.0 on 48 files, repository hygiene, runtime roots, shellcheck, clang `-Wall -Werror` |
+| Lint's 22 other unit-suite commands | 511 tests pass, with `libclang-rt-18-dev` installed for the ASan controls as Lint installs it. `test_frame_fields.py` failed until [3cf9129e](https://github.com/den-run-ai/pystachy/commit/3cf9129e0f669c6417dbf33f08bc9cc23c7f47c1) classified the two `Gen` fields this change adds |
+| `tests/record.sh --check` | 1,939 recordings and 111 deviations match CPython, except the two `sys_version_info` cases, which print the interpreter's version (3.13.18 here, 3.13.16 pinned) |
+
+The new `tests/programs/language/recursion_counted_boundary.py` and
+`recursion_callable_frames.py` were recorded with CPython 3.13.18; the pinned interpreter is
+3.13.16.
+
+## Wall-clock checks
+
+Two timing runs followed the counts on the host above; neither carries the decision.
+`tools/perf_smoke.py --base` (CI's advisory smoke: three interleaved pairs per workload, and
+three more where the first batch is at least 20% and 5 ms slower) compared main with ed51330c
+and raised no warning, and every JIT and AOT output matched CPython's. Its medians moved
+between -15.7% and +19.9%, in workloads whose executables differ from main's by at most 1.9%
+in instructions; `copy_int`'s program IR differs from main's only in value names and unused
+declarations. fnmatch's JIT loop was 34.8% slower in the first batch and faster in its
+confirmation pairs.
+
+Interleaved runs of the AOT executables measured above, 21 rounds pinned to one core, give each
+revision's median per-round ratio to main:
+
+| AOT executable, wall clock | PR #996 head | this branch |
+|---|---:|---:|
+| fnmatch | +1.3% | -0.4% |
+| json | -0.4% | +1.1% |
+| repair_scan | -1.1% | -4.4% |
+| regex_effbot | +4.0% | -1.8% |
+| autograd | +1.5% | +0.8% |
+| numeric | +3.5% | +0.3% |
+| richards | +16.8% | +0.2% |
+| object | +0.1% | -0.2% |
+| ordinary | -2.0% | -2.7% |
+| json_calls | +3.1% | +0.5% |
+| genloop | +6.3% | +1.2% |
+| graph_copy | +0.8% | +0.7% |
+| generators | +3.5% | +2.9% |
+| fib | +34.8% | +35.3% |
+
+`fib` is the first row of [the performance page](../performance.md). Its cost is mostly the
+depth word's memory traffic: each entry loads the depth that the previous call stored. In a
+hand-edited build whose recursive body takes the caller's depth as an argument (one check
+against the limit, no stores), `fib` ran 6.2% slower than main instead of 35.3%.

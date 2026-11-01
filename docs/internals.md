@@ -444,12 +444,17 @@ functions that yield `Y` share the type). A function can be entered again while 
 active if it lies on a cycle of that graph (Tarjan's algorithm, iteratively) or reaches
 `U`: code the graph does not show, such as an `icall` of a function value or a runtime
 operation that calls `__eq__`, `__hash__` or `__repr__`. A body's own yields, which
-suspend it, and resumes, which are edges, do not count as `U` there. Any other function
+suspend it, and resumes, which are edges, do not count as `U` there. Nor does a body's report
+of what closing it raised (`gen.unraisable`) unless the program defines exception classes: a
+built-in exception's message is rendered when it is made, and only a class of the program's
+own runs code (its `__str__`) to report it. Any other function
 is at most once on any native stack: counting it could change only at which call a
 bounded recursion fails, never whether an unbounded one is caught, because every cycle of
-calls passes through a counted function or a counted resume. A source function that can
-be entered again counts; any other neither checks nor counts, and keeps its snapshot
-only when one of its handlers restores it.
+calls passes through a counted function or a counted resume. A source function or lambda
+that can be entered again counts; any other neither checks nor counts, and keeps its
+snapshot only when one of its handlers restores it. A Callable's adapter (`@cv.N`) only
+forwards to its target and never counts: a cycle through it also passes through the
+function that makes the indirect call, which reaches `U`.
 
 A counted function's snapshot becomes its entry, `recursion.enter`: it raises
 `RecursionError` if the depth has reached the limit (before any local handler or body
@@ -479,7 +484,7 @@ calls the module's `pys.recursion.enter`, whose overflow edge calls the runtime'
 helper: clang `-O2` for `build`, and the JIT's inliner below its line threshold. It is not
 marked `alwaysinline`, because LLVM 18's mandatory inliner computes block frequencies
 for every caller it changes, which cost a large program's JIT start-up more than the call
-saves (24 counted functions of `bench/smoke/text.py` added 13% to `opt`). The scalar
+saves (24 counted functions of `bench/smoke/text.py` added 13.8% to `opt`). The scalar
 helpers, which only `pys.gen.drop.counted` and extension entries call by name, are `alwaysinline`. The state's
 accesses carry depth/limit TBAA tags under the object-field root, so object field stores
 cannot alias it. Runtime compilation (`runtime.py`) has no recursion accounting.
