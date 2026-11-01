@@ -174,9 +174,9 @@ def gen_recursionscope(self) -> int:
     # Closed recursion: the source functions of a cycle that reaches no U, no function outside it
     # that can be entered again (a counted function, a body of a generator type that can recur)
     # and no sys.setrecursionlimit find the depth word as the cycle's outermost call found it,
-    # until that call returns: nothing else they run reads or changes it. Lowering passes their
-    # depth as an argument instead (rdpass): each checks the limit and counts in a register, and
-    # its own symbol loads the word for the body. Each frame still counts at the same call.
+    # until that call returns: nothing else they run changes it or counts from it. Lowering
+    # passes their depth as an argument instead (rdpass): each checks the limit and counts in a
+    # register, and its own symbol loads the word for the body. Each frame counts at the same call.
     marks = [unknown if again[j] or self.fns[j].setslimit else 0 for j in range(nf)]
     outer = EffectSummaries()
     outer.update(marks, edges)

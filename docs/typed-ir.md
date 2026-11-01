@@ -404,7 +404,9 @@ and summarized, before these passes, and gives exactly those functions a checked
 their summaries. A source function counts if it lies on a cycle of direct calls and
 generator resumes, or reaches `U` other than its resumes and yields; every other function
 keeps at most its entry-depth snapshot (`recursion.depth`), for its handlers. Resumes of
-generators that cannot recur lose their accounting. See
+generators that cannot recur lose their accounting. A cycle that reaches nothing else that
+uses the depth (closed recursion) keeps its entries without restorations: lowering passes
+its depth as an argument. See
 [native recursion depth](internals.md#native-recursion-depth).
 
 `tupleret` applies to a function whose every `return` returns a tuple display that the return's

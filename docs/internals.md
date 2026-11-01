@@ -428,10 +428,11 @@ below). The precompiled runtime is not inlined into JIT code.
 
 `sys.setrecursionlimit()` bounds the native depth: one for module execution, plus each
 active call of a source function that recursion can repeat, plus each running generator
-body that it can repeat ([compatibility](language/compatibility.md#errors-and-control-flow)). The state is
-runtime.c's `pys_recursion_state`, two mutable words (active depth, then limit) that the
-program's guards and the runtime's `sys.setrecursionlimit()` share; the program module
-defines the guard helpers itself, even when the JIT runs the runtime as a shared library.
+body that it can repeat ([compatibility](language/compatibility.md#errors-and-control-flow)).
+The state is runtime.c's `pys_recursion_state`, two mutable words (active depth, then
+limit) that the program's guards and the runtime's `sys.setrecursionlimit()` share; the
+program module defines the guard helpers itself, even when the JIT runs the runtime as a
+shared library.
 
 Every non-generator function starts with a snapshot of the depth it was entered at
 (`recursion.depth`), which its exception landings restore: callees that raised may have
@@ -474,20 +475,39 @@ unchanged, or `pys.gen.drop.counted`, which counts the cleanup as a frame and re
 failed entry as an exception raised by closing, where a body of its type can recur. Main's
 small `pys.gen.drop` keeps LLVM's coroutine elision able to inline a loop's generator. In a
 program with exception handling the body saves the depth at each resume for its
-handlers, since a resumed generator may have another consumer. This is the depth policy, not an optimization, so `PYSTACHY_OPT` does not change
-it.
+handlers, since a resumed generator may have another consumer. This is the depth policy,
+not an optimization, so `PYSTACHY_OPT` does not change it.
+
+Closed recursion keeps the depth in a register. A cycle of counted source functions that
+reaches no `U`, no function outside it that can be entered again (a counted function, a
+body of a generator type that can recur) and no `sys.setrecursionlimit`, which compares the
+depth word with the new limit, finds the word as its outermost call found it until that call
+returns: nothing it runs changes the word or counts from it (an uncounted function's handlers
+restore the value they read). `Gen.recursionscope` records such cycles (`Gen.rdpass`). Their typed IR keeps its entries, but neither base nor restorations, and
+lowering emits each member's body as `@r.<symbol>`, whose last argument is its caller's
+depth: the entry calls `pys.recursion.check`, which raises at the limit as
+`pys.recursion.enter` does and otherwise returns the frame's own depth, without a store, and
+calls within the cycle pass that depth to the callee's body; landings restore nothing. The
+member's own symbol becomes a wrapper that loads the word and calls the body, for every
+caller outside the cycle and for its uses as a value. Each frame counts at the same call as
+with the word, tail calls included, since the depth is an argument. A function returning a
+fixed tuple stays out, since `tupleret` may return its slots instead. Without the chain of
+stores and loads to one word, `bench/fib.py`'s executable runs about 5% slower than without
+guards instead of 34% ([report](reports/recursion-guard-policy.md)).
 
 For operations without exceptional successors, lowering emits `recursion.depth` and
 `recursion.restore` directly as a load and a store of the depth word. `recursion.enter`
-calls the module's `pys.recursion.enter`, whose overflow edge calls the runtime's
-`pys_recursion_error` and has cold branch weights. LLVM's ordinary inliners take that
-helper: clang `-O2` for `build`, and the JIT's inliner below its line threshold. It is not
-marked `alwaysinline`, because LLVM 18's mandatory inliner computes block frequencies
+calls the module's `pys.recursion.enter`, or in closed recursion `pys.recursion.check`; the
+module defines each only where something calls it. Their overflow edge calls the runtime's
+`pys_recursion_error` and has cold branch weights. LLVM's ordinary inliners take those
+helpers: clang `-O2` for `build`, and the JIT's inliner below its line threshold. They are
+not marked `alwaysinline`, because LLVM 18's mandatory inliner computes block frequencies
 for every caller it changes, which cost a large program's JIT start-up more than the call
 saves (24 counted functions of `bench/smoke/text.py` added 13.8% to `opt`). The scalar
-helpers, which only `pys.gen.drop.counted` and extension entries call by name, are `alwaysinline`. The state's
-accesses carry depth/limit TBAA tags under the object-field root, so object field stores
-cannot alias it. Runtime compilation (`runtime.py`) has no recursion accounting.
+helpers, which only `pys.gen.drop.counted` and extension entries call by name, are
+`alwaysinline`. The state's accesses carry depth/limit TBAA tags under the object-field
+root, so object field stores cannot alias it. Runtime compilation (`runtime.py`) has no
+recursion accounting.
 
 `PYSTACHY_JIT_CODEGEN=0` selects MCJIT with `-O0` code generation. This can reduce
 startup for large programs, but the generated code can run slower. The default (`2`)

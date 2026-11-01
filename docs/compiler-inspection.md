@@ -134,7 +134,9 @@ detects same-count changes outside the function filter without retaining every
 unselected function's complete IR. Before the pass, every source function has only
 its entry-depth snapshot (`recursion.depth`); after it, a counted function's entry is
 `recursion.enter` and each return restores the caller's depth, and an uncounted one
-keeps the snapshot only when a handler restores it.
+keeps the snapshot only when a handler restores it. A function of closed recursion
+(`recursion.closed` in the after map) keeps its entry without restorations: lowering
+passes its depth as an argument.
 
 Global totals remain separate from selected-function totals. Both count block
 operations and frame slots separately, and report the four typed runtime operations
