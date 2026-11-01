@@ -168,7 +168,13 @@ compares it with `./pystachy`. `make irsame-py REF=<commit>` compares the hosted
 Use `FILES="..."` to select cases; otherwise the corpus includes the compiler, runtime,
 differential tests, deviations, benchmarks and compile-only IR probes.
 
-The oracle compares emitted IR byte for byte, and rejection messages and exit statuses.
+The oracle compares emitted IR byte for byte, rejection messages and exit statuses.
+It normalizes each compiler's own library prefix to `lib/` in diagnostic source locations;
+diagnostic text, line numbers, unrelated paths and IR remain significant. Each compiler
+still reads its own library and runtime inputs. Direct executables and Python script
+commands have their homes recognized; unfamiliar wrappers keep raw comparisons.
+Messages with quoted library paths or ambiguous quoting also stay raw so normalization
+cannot hide a change to diagnostic prose.
 Use it when a refactor should preserve code generation. An intentional optimization can
 change IR and needs behavioral tests instead.
 

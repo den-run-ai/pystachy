@@ -2,6 +2,9 @@
 # IR oracle for refactors of the code generator: compilers OLD and NEW run `ir` on every program
 # of the corpus, from the repository root as tests/run.sh runs them, and must print the same LLVM
 # IR byte for byte, the same messages (all of a rejection's) and the same exit status.
+# Only each compiler's own library prefix in diagnostic source locations is normalized to lib/;
+# messages, line numbers, other paths and IR remain significant. Each compiler still reads its
+# own library, so changes to library contents are exercised rather than hidden by a shared home.
 # The corpus is pystachy.py (first: it takes longest), runtime.py, tests/programs/*/*.py,
 # tests/deviations/*.py, bench/*.py, bench/pyperformance/*.py, tests/ir/*.py and the rejections
 # tests/errors/*/*.py (tests/corpus.sh), with PYSTACHY_PATH
@@ -27,6 +30,83 @@ HOW=ir
 [ $# -ge 2 ] || { echo "usage: tools/irsame.sh [--check] OLD NEW [FILE...]" >&2; exit 2; }
 OLD=$1; NEW=$2; shift 2
 for f; do [ -f "$f" ] || { echo "tools/irsame.sh: no such program: $f" >&2; exit 2; }; done
+
+# Match driver.compiler_home() and the loader's removal of one leading ./, without running a
+# command to discover its home. Recognize direct executables and Python script invocations;
+# unfamiliar wrappers stay unnormalized rather than guessing which library they load.
+library_prefix() (
+  set -f
+  set -- $1
+  [ $# -gt 0 ] || exit 0
+  if [ $# -gt 1 ]; then
+    case ${1##*/} in python | python[0-9]* | pypy | pypy[0-9]*) shift ;; *) exit 0 ;; esac
+    while [ $# -gt 1 ]; do
+      case $1 in -I | -B | -E | -s | -S | -u | -O | -OO) shift ;; *) exit 0 ;; esac
+    done
+    case $1 in *.py) ;; *) exit 0 ;; esac
+  fi
+  home=${PYSTACHY_HOME:-}
+  if [ -z "$home" ]; then
+    case $1 in */*) home=${1%/*} ;; *) home=. ;; esac
+    [ -f "$home/runtime.c" ] || home=$home/..
+  fi
+  [ -d "$home/lib" ] || exit 0
+  prefix=$home/lib/
+  printf '%s\n' "${prefix#./}"
+)
+OLD_LIB=$(library_prefix "$OLD")
+NEW_LIB=$(library_prefix "$NEW")
+
+# A quoted value can imitate a complete compilation context or function description. If it
+# contains this library prefix, preserve the messages verbatim; never hide a literal difference.
+# Apostrophes inside words make prose quoting ambiguous, so those diagnostics also stay raw.
+quoted_library_path() (
+  prefix=$1
+  while IFS= read -r message || [ -n "$message" ]; do
+    message=${message#*: error:}
+    quote=; escaped=0; previous=
+    while [ -n "$message" ]; do
+      if [ -n "$quote" ]; then
+        case $message in "$prefix"*) exit 0 ;; esac
+      fi
+      char=${message%"${message#?}"}
+      message=${message#?}
+      next=${message%"${message#?}"}
+      if [ "$escaped" = 1 ]; then escaped=0
+      elif [ -n "$quote" ]; then
+        if [ "$char" = '\' ]; then escaped=1
+        elif [ "$char" = "$quote" ]; then quote=
+        fi
+      else
+        case $char in
+          "'")
+            case $previous$next in [[:alnum:]_][[:alnum:]_]) exit 0 ;; esac
+            quote=$char ;;
+          '"') quote=$char ;;
+        esac
+      fi
+      previous=$char
+    done
+    [ -z "$quote" ] || exit 0
+  done < "$2"
+  exit 1
+)
+
+# Only source-location shapes emitted by diagnostics.where(), including nested call contexts.
+# Ambiguous quoted payloads and unfamiliar contexts remain raw rather than weakening the oracle.
+normalize_messages() {
+  if [ -z "$1" ]; then cat "$2"; return; fi
+  if quoted_library_path "$1" "$2"; then cat "$2"; return; fi
+  # Literal prefix in a BRE with | as delimiter (paths may contain regexp metacharacters).
+  pattern=$(printf '%s\n' "$1" | sed 's/[][\\.^$*|]/\\&/g')
+  location='[A-Za-z0-9_/-][A-Za-z0-9_./-]*\.py:[0-9][0-9]*'
+  sed -e "s|^$pattern\($location: error:\)|lib/\1|" \
+      -e "s|\([;(] *compiling [^;]* at \)$pattern\($location\)|\1lib/\2|g" \
+      -e "s|\([;(] *specializing [^;]* at \)$pattern\($location\)|\1lib/\2|g" \
+      -e "s|\([;(] *making [^;]* at \)$pattern\($location\)|\1lib/\2|g" \
+      -e "s|\(<function [^<>]* (\)$pattern\($location\))|\1lib/\2)|g" "$2"
+}
+
 RT=0  # (whether both have runtime mode: their usage names it)
 [ $HOW = check ] || { { $OLD 2>&1 | grep -q 'pystachy rt '; } && { $NEW 2>&1 | grep -q 'pystachy rt '; } && RT=1; }
 if [ $# = 0 ]; then
@@ -59,10 +139,18 @@ same() {
     PYSTACHY_PATH=$mp $OLD $how "$1" -o "$2/old.ll" > "$2/old.msg" 2>&1; a=$?
     PYSTACHY_PATH=$mp $NEW $how "$1" -o "$2/new.ll" > "$2/new.msg" 2>&1; b=$?
   fi
+  messages=0
+  if ! cmp -s "$2/old.msg" "$2/new.msg"; then
+    if ! normalize_messages "$OLD_LIB" "$2/old.msg" > "$2/old.normal.msg" ||
+        ! normalize_messages "$NEW_LIB" "$2/new.msg" > "$2/new.normal.msg"; then
+      echo "  cannot normalize diagnostics" > "$2/report"; return
+    fi
+    cmp -s "$2/old.normal.msg" "$2/new.normal.msg" || messages=1
+  fi
   {
     [ $a = $b ] || echo "  exit status $a -> $b"
-    if ! cmp -s "$2/old.msg" "$2/new.msg"; then
-      echo "  messages:"; diff -u "$2/old.msg" "$2/new.msg" | sed 1,2d | head -12
+    if [ $messages = 1 ]; then
+      echo "  messages:"; diff -u "$2/old.normal.msg" "$2/new.normal.msg" | sed 1,2d | head -12
     fi
     if [ -f "$2/old.ll" ] && [ -f "$2/new.ll" ]; then
       if ! cmp -s "$2/old.ll" "$2/new.ll"; then
