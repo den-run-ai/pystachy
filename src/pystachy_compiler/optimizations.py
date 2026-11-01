@@ -117,7 +117,9 @@ def recursion_repeated(self, fn: IFn, bounds: list[int]) -> bool:
             j = work[pos]
             pos += 1
             for previous in back[j]:
-                if previous not in ancestors:
+                # An exit followed by re-entry through an enclosing loop is not
+                # a continuing path of this loop.
+                if previous not in ancestors and fn.blocks[previous].label != loop.exit:
                     ancestors[previous] = True
                     work.append(previous)
         # A surviving loop record alone does not prove that a cycle remains.

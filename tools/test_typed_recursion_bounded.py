@@ -131,6 +131,57 @@ print(conditional(4), early_continue(4))
                 self.assertTrue(any(op[:2] == ("rt", "recursion.enter") for op in ops))
                 self.assertTrue(any(op[:2] == ("call", "@f.leaf") for op in ops))
 
+    def test_nested_loop_calls_allow_a_selector_before_the_inner_exit(self):
+        _, functions = compile_source('''
+def leaf(n: int) -> int:
+    return n + 1
+
+def kernel(rows: int, columns: int) -> int:
+    total = 0
+    for i in range(rows):
+        for j in range(columns):
+            total = leaf(total)
+    return total
+
+print(kernel(3, 4))
+''')
+        self.assertTrue(any(op[:2] == ("rt", "recursion.room")
+                            for op in operations(functions["@f.kernel"])))
+        self.assertTrue(any(op[:2] == ("call", "@rf.f.leaf")
+                            for op in operations(functions["@rf.f.kernel"])))
+
+    def test_nested_conditional_and_continue_bypasses_reject_a_selector(self):
+        _, functions = compile_source('''
+def leaf(n: int) -> int:
+    return n + 1
+
+def conditional(n: int) -> int:
+    total = 0
+    for i in range(n):
+        for j in range(n):
+            if j % 2:
+                total = leaf(total)
+    return total
+
+def early_continue(n: int) -> int:
+    total = 0
+    for i in range(n):
+        for j in range(n):
+            if j % 2:
+                continue
+            total = leaf(total)
+    return total
+
+print(conditional(4), early_continue(4))
+''')
+        for name in ("conditional", "early_continue"):
+            with self.subTest(function=name):
+                self.assertNotIn("@rf.f." + name, functions)
+                ops = operations(functions["@f." + name])
+                self.assertFalse(any(op[:2] == ("rt", "recursion.room") for op in ops))
+                self.assertTrue(any(op[:2] == ("rt", "recursion.enter") for op in ops))
+                self.assertTrue(any(op[:2] == ("call", "@f.leaf") for op in ops))
+
     def test_calls_on_every_continuing_branch_allow_a_selector(self):
         _, functions = compile_source('''
 def left(n: int) -> int:

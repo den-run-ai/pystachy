@@ -445,8 +445,9 @@ calls, callbacks and limit changes see the full active depth; generators keep th
 original accounting. `recursionregion` can check a loop-containing function's finite
 maximum call depth once and run an unchecked private call subgraph. Whole-function
 versioning requires at least one loop with a control-flow cycle and a counted
-source call on every path back to its head. A branch that exits the loop is allowed;
-a continuing branch without a call disqualifies that loop. Insufficient
+source call on every path back to its head before its recorded exit. Paths through
+that exit are allowed, including re-entry through an enclosing loop; a continuing
+branch without a call disqualifies that loop. Insufficient
 headroom runs the complete guarded body, preserving side effects and the original
 failing call. Callbacks, limit changes, generators, handlers and unknown calls remain
 boundaries; code-size limits bound cloning.

@@ -434,10 +434,11 @@ retain guarded entries; only direct calls within the proven subgraph use private
 unchecked clones. Cloning and analysis have size/depth budgets, and tuple-return
 roots stay unchanged when versioning would defeat aggregate return optimization.
 Whole-function versioning requires at least one loop with a control-flow cycle
-and a counted call on every path back to its head. Calls in the loop header qualify;
-exit paths need no call. A call-free continuing branch, an unrelated loop, or a loop
-record with no remaining cycle cannot justify a selector. Whole-function unchecked graphs exclude
-callbacks, limit changes, generators, local handlers and unknown calls.
+and a counted call on every path back to its head before its recorded exit. Calls
+in the loop header qualify; paths through the recorded exit need no call, even if
+an enclosing loop can re-enter this loop. A call-free continuing branch, an unrelated
+loop, or a loop record with no remaining cycle cannot justify a selector. Whole-function
+unchecked graphs exclude callbacks, limit changes, generators, local handlers and unknown calls.
 
 After selecting closed call graphs within the size budgets, the pass retains
 wrappers only for maximal roots: a root with an incoming call from any member of
