@@ -55,7 +55,7 @@ for source in sources:
     per_round += len(result)
 validate(results, serialized)
 # Explicit expected strings are small; retaining them makes the witness replayable.
-print("outputs", json.dumps(EXPECTED))
+print("outputs", repr(EXPECTED))
 print("witness before", mode, len(sources), per_round, "exact")
 print("rounds", rounds)
 
