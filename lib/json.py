@@ -9,6 +9,8 @@ implemented. Containers are created with recursive JSONValue storage; narrowing
 keeps their original identity and mutable contents.
 """
 
+from _pystachy_bytescan import scan as _scan_bytes
+
 type JSONValue = None | bool | int | float | str | list[JSONValue] | dict[str, JSONValue]
 
 __all__ = ["loads", "dumps", "JSONDecoder", "JSONDecodeError", "JSONValue"]
@@ -266,14 +268,21 @@ class _Parser:
         data = self.data
         n = len(data)
         i = begin + 1
-        while i < n:
-            c = data[i]
-            if c == 34:
-                return i
-            if c == 92 or c < 32:
-                return -1 - i
-            i += 1
-        return -1 - n
+        # Actual parser calls start at an opening quote. Keep the old method's
+        # negative-index behavior and EOF sentinel for direct internal callers.
+        if i < 0:
+            while i < n:
+                c = data[i]
+                if c == 34:
+                    return i
+                if c == 92 or c < 32:
+                    return -1 - i
+                i += 1
+            return -1 - n
+        if i >= n:
+            return -1 - n
+        i = _scan_bytes(data, i, n, 34, 92, 32)
+        return i if i < n and data[i] == 34 else -1 - i
 
     def string(self) -> str:
         # Most strings have no escape: one slice of the bytes is the result.
@@ -323,7 +332,7 @@ class _Parser:
             if c < 32:
                 raise self.error("Invalid control character at", i)
             if c != 92:
-                i += 1
+                i = _scan_bytes(data, i, n, 34, 92, 32)
                 continue
             if i > start:
                 chunks.append(self.text(start, i))

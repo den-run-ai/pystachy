@@ -160,7 +160,12 @@ Elsewhere, including where the result has a typed or no annotation (`doc = json.
 
 `loads()` scans the UTF-8 bytes of its argument with integer comparisons, so it
 creates no one-character strings and translates no code-point offsets while
-scanning. Pystachy's `str.encode()` returns the string's own UTF-8 storage unless
+scanning. Ordinary string spans use a shared bounded byte scanner, skipping eight
+bytes at a time until a quote, backslash or control byte is possible, then checking
+the matching word and tail scalar. The same helper scans ordinary text after an
+escape, and both typed and dynamic decoders use it. Loads use `memcpy`, require a
+complete word inside the range, and accept any alignment; high bytes keep their
+existing decoding behavior. Pystachy's `str.encode()` returns the string's own UTF-8 storage unless
 the text contains a character from U+D000 to U+DFFF; then it checks and copies
 every character. Every delimiter, digit and escape is ASCII: the scanner stops
 only at character boundaries, and an error converts its byte offset into the

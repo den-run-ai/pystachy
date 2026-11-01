@@ -111,6 +111,15 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
             r = self.json_any(f.s, args, want, resultsoft)  # (of Any values: #779)
             if r is not None:
                 return r
+        if self.lib_fn(f, "_pystachy_bytescan$scan") and len(args) == 6 and not any([a.kind == "kw" for a in args]):
+            # Only the shipped scalar helper is replaced. Evaluate/coerce arguments in
+            # their original order; keyword and callable forms retain the Python body.
+            fn = self.funcs[f.s]
+            scan_args: list[str] = []
+            for j in range(6):
+                v = self.pcoerce(self.expr(args[j], fn.ptypes[j]), fn.ptypes[j], fn, j)
+                scan_args.append(("ptr " if j == 0 else "i64 ") + v.v)
+            return Val(self.rt("pys_bytes_scan", "i64", scan_args), "int")
         if f.s in self.funcs:
             return self.call_fn(self.funcs[f.s], [], args, want, resultsoft=resultsoft)
         if f.s in self.aliases and f.s not in self.gtypes:
