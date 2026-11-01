@@ -1,0 +1,840 @@
+{
+  "head": "946bb203c1835af708b5779c388b85482cf7514b",
+  "tree": "f4d7c98eeb1f36b4c42136acc556e67a157d4479",
+  "summary": {
+    "successful_checks": 40,
+    "skipped_checks": 1,
+    "expected_skip": "DCO certified (fork pull requests)",
+    "failed_checks": 0,
+    "pending_checks": 0,
+    "ci_jobs": 34
+  },
+  "workflows": [
+    {
+      "id": 41282000083,
+      "name": "Packages",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 41282000144,
+      "name": "Performance smoke",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 41282000190,
+      "name": "Lint",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 41282000167,
+      "name": "Installation",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 41282000146,
+      "name": "CI",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "check_runs": [
+    {
+      "id": 124778244598,
+      "name": "make verify (Linux x86-64, LLVM 18, Python 3.13)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124778244598",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124778244598",
+      "started_at": "2026-11-01T06:58:11Z",
+      "completed_at": "2026-11-01T06:58:41Z"
+    },
+    {
+      "id": 124776505514,
+      "name": "verify (ubsan-2)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505514",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505514",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:54:57Z"
+    },
+    {
+      "id": 124776505504,
+      "name": "verify (benchmarks)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505504",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505504",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:51:39Z"
+    },
+    {
+      "id": 124776505465,
+      "name": "verify (gc-aot-2)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505465",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505465",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:55:51Z"
+    },
+    {
+      "id": 124776505463,
+      "name": "verify (python-int-optin-2)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505463",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505463",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:56:52Z"
+    },
+    {
+      "id": 124776505452,
+      "name": "verify (dynany-optin-0)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505452",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505452",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:56:28Z"
+    },
+    {
+      "id": 124776505441,
+      "name": "verify (ubsan-0)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505441",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505441",
+      "started_at": "2026-11-01T06:48:39Z",
+      "completed_at": "2026-11-01T06:57:27Z"
+    },
+    {
+      "id": 124776505440,
+      "name": "verify (ubsan-1)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505440",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505440",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:57:45Z"
+    },
+    {
+      "id": 124776505431,
+      "name": "verify (dynany-optin-1)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505431",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505431",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:56:46Z"
+    },
+    {
+      "id": 124776505427,
+      "name": "verify (contracts)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505427",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505427",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:54:02Z"
+    },
+    {
+      "id": 124776505425,
+      "name": "verify (gc-self)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505425",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505425",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:54:20Z"
+    },
+    {
+      "id": 124776505421,
+      "name": "verify (python-int-optin-0)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505421",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505421",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:57:09Z"
+    },
+    {
+      "id": 124776505417,
+      "name": "verify (gc-jit-0)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505417",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505417",
+      "started_at": "2026-11-01T06:48:39Z",
+      "completed_at": "2026-11-01T06:58:08Z"
+    },
+    {
+      "id": 124776505392,
+      "name": "verify (gc-aot-1)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505392",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505392",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:53:09Z"
+    },
+    {
+      "id": 124776505390,
+      "name": "verify (gc-jit-1)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505390",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505390",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:57:13Z"
+    },
+    {
+      "id": 124776505389,
+      "name": "verify (runtime-cache)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505389",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505389",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:53:08Z"
+    },
+    {
+      "id": 124776505387,
+      "name": "verify (python-free-1)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505387",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505387",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:57:17Z"
+    },
+    {
+      "id": 124776505386,
+      "name": "verify (gc-aot-0)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505386",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505386",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:56:21Z"
+    },
+    {
+      "id": 124776505382,
+      "name": "verify (ubsan-3)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505382",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505382",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:57:33Z"
+    },
+    {
+      "id": 124776505372,
+      "name": "verify (scaling)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505372",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505372",
+      "started_at": "2026-11-01T06:48:37Z",
+      "completed_at": "2026-11-01T06:51:00Z"
+    },
+    {
+      "id": 124776505371,
+      "name": "verify (opt-off-0)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505371",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505371",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:56:08Z"
+    },
+    {
+      "id": 124776505370,
+      "name": "verify (python-free-2)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505370",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505370",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:57:20Z"
+    },
+    {
+      "id": 124776505368,
+      "name": "verify (python-int-optin-1)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505368",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505368",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:56:44Z"
+    },
+    {
+      "id": 124776505349,
+      "name": "verify (native-1)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505349",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505349",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:54:02Z"
+    },
+    {
+      "id": 124776505343,
+      "name": "verify (dynany-optin-2)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505343",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505343",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:56:18Z"
+    },
+    {
+      "id": 124776505308,
+      "name": "verify (native-0)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505308",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505308",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:54:02Z"
+    },
+    {
+      "id": 124776505306,
+      "name": "verify (python-free-0)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505306",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505306",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:53:52Z"
+    },
+    {
+      "id": 124776505288,
+      "name": "verify (native-2)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505288",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505288",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:55:40Z"
+    },
+    {
+      "id": 124776505264,
+      "name": "verify (opt-off-1)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505264",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505264",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:56:05Z"
+    },
+    {
+      "id": 124776505249,
+      "name": "verify (opt-off-2)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505249",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505249",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:53:59Z"
+    },
+    {
+      "id": 124776505245,
+      "name": "verify (hosted)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505245",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505245",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:54:55Z"
+    },
+    {
+      "id": 124775851277,
+      "name": "upstream large regex (JIT and AOT, normal GC)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124775851277",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124775851277",
+      "started_at": "2026-11-01T06:45:14Z",
+      "completed_at": "2026-11-01T06:49:21Z"
+    },
+    {
+      "id": 124775851272,
+      "name": "upstream port preservation (CPython)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124775851272",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124775851272",
+      "started_at": "2026-11-01T06:45:14Z",
+      "completed_at": "2026-11-01T06:45:31Z"
+    },
+    {
+      "id": 124775851097,
+      "name": "verify (bootstrap)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124775851097",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124775851097",
+      "started_at": "2026-11-01T06:45:14Z",
+      "completed_at": "2026-11-01T06:48:35Z"
+    },
+    {
+      "id": 124775775676,
+      "name": "Install (ubuntu-24.04)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000167/job/124775775676",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000167/job/124775775676",
+      "started_at": "2026-11-01T06:44:50Z",
+      "completed_at": "2026-11-01T06:48:02Z"
+    },
+    {
+      "id": 124775775623,
+      "name": "Install (macos-15)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000167/job/124775775623",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000167/job/124775775623",
+      "started_at": "2026-11-01T06:44:50Z",
+      "completed_at": "2026-11-01T06:48:34Z"
+    },
+    {
+      "id": 124775775508,
+      "name": "Install (macos-15-intel)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000167/job/124775775508",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000167/job/124775775508",
+      "started_at": "2026-11-01T06:44:54Z",
+      "completed_at": "2026-11-01T06:53:19Z"
+    },
+    {
+      "id": 124775752125,
+      "name": "smoke",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000144/job/124775752125",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000144/job/124775752125",
+      "started_at": "2026-11-01T06:44:42Z",
+      "completed_at": "2026-11-01T06:52:43Z"
+    },
+    {
+      "id": 124775719635,
+      "name": "make lint (ruff, shellcheck, clang -Wall -Wextra)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000190/job/124775719635",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000190/job/124775719635",
+      "started_at": "2026-11-01T06:44:32Z",
+      "completed_at": "2026-11-01T06:53:16Z"
+    },
+    {
+      "id": 124775660069,
+      "name": "DCO certified (fork pull requests)",
+      "status": "completed",
+      "conclusion": "skipped",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41281998647/job/124775660069",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41281998647/job/124775660069",
+      "started_at": "2026-11-01T06:44:11Z",
+      "completed_at": "2026-11-01T06:44:01Z"
+    },
+    {
+      "id": 124775633283,
+      "name": "source wheels (CPython, JIT and AOT)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000083/job/124775633283",
+      "details_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000083/job/124775633283",
+      "started_at": "2026-11-01T06:44:05Z",
+      "completed_at": "2026-11-01T06:48:47Z"
+    }
+  ],
+  "ci_jobs": [
+    {
+      "id": 124775851097,
+      "name": "verify (bootstrap)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124775851097",
+      "started_at": "2026-11-01T06:45:14Z",
+      "completed_at": "2026-11-01T06:48:35Z"
+    },
+    {
+      "id": 124775851272,
+      "name": "upstream port preservation (CPython)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124775851272",
+      "started_at": "2026-11-01T06:45:14Z",
+      "completed_at": "2026-11-01T06:45:31Z"
+    },
+    {
+      "id": 124775851277,
+      "name": "upstream large regex (JIT and AOT, normal GC)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124775851277",
+      "started_at": "2026-11-01T06:45:14Z",
+      "completed_at": "2026-11-01T06:49:21Z"
+    },
+    {
+      "id": 124776505245,
+      "name": "verify (hosted)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505245",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:54:55Z"
+    },
+    {
+      "id": 124776505249,
+      "name": "verify (opt-off-2)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505249",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:53:59Z"
+    },
+    {
+      "id": 124776505264,
+      "name": "verify (opt-off-1)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505264",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:56:05Z"
+    },
+    {
+      "id": 124776505288,
+      "name": "verify (native-2)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505288",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:55:40Z"
+    },
+    {
+      "id": 124776505306,
+      "name": "verify (python-free-0)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505306",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:53:52Z"
+    },
+    {
+      "id": 124776505308,
+      "name": "verify (native-0)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505308",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:54:02Z"
+    },
+    {
+      "id": 124776505343,
+      "name": "verify (dynany-optin-2)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505343",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:56:18Z"
+    },
+    {
+      "id": 124776505349,
+      "name": "verify (native-1)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505349",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:54:02Z"
+    },
+    {
+      "id": 124776505368,
+      "name": "verify (python-int-optin-1)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505368",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:56:44Z"
+    },
+    {
+      "id": 124776505370,
+      "name": "verify (python-free-2)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505370",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:57:20Z"
+    },
+    {
+      "id": 124776505371,
+      "name": "verify (opt-off-0)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505371",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:56:08Z"
+    },
+    {
+      "id": 124776505372,
+      "name": "verify (scaling)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505372",
+      "started_at": "2026-11-01T06:48:37Z",
+      "completed_at": "2026-11-01T06:51:00Z"
+    },
+    {
+      "id": 124776505382,
+      "name": "verify (ubsan-3)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505382",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:57:33Z"
+    },
+    {
+      "id": 124776505386,
+      "name": "verify (gc-aot-0)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505386",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:56:21Z"
+    },
+    {
+      "id": 124776505387,
+      "name": "verify (python-free-1)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505387",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:57:17Z"
+    },
+    {
+      "id": 124776505389,
+      "name": "verify (runtime-cache)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505389",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:53:08Z"
+    },
+    {
+      "id": 124776505390,
+      "name": "verify (gc-jit-1)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505390",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:57:13Z"
+    },
+    {
+      "id": 124776505392,
+      "name": "verify (gc-aot-1)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505392",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:53:09Z"
+    },
+    {
+      "id": 124776505417,
+      "name": "verify (gc-jit-0)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505417",
+      "started_at": "2026-11-01T06:48:39Z",
+      "completed_at": "2026-11-01T06:58:08Z"
+    },
+    {
+      "id": 124776505421,
+      "name": "verify (python-int-optin-0)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505421",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:57:09Z"
+    },
+    {
+      "id": 124776505425,
+      "name": "verify (gc-self)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505425",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:54:20Z"
+    },
+    {
+      "id": 124776505427,
+      "name": "verify (contracts)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505427",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:54:02Z"
+    },
+    {
+      "id": 124776505431,
+      "name": "verify (dynany-optin-1)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505431",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:56:46Z"
+    },
+    {
+      "id": 124776505440,
+      "name": "verify (ubsan-1)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505440",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:57:45Z"
+    },
+    {
+      "id": 124776505441,
+      "name": "verify (ubsan-0)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505441",
+      "started_at": "2026-11-01T06:48:39Z",
+      "completed_at": "2026-11-01T06:57:27Z"
+    },
+    {
+      "id": 124776505452,
+      "name": "verify (dynany-optin-0)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505452",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:56:28Z"
+    },
+    {
+      "id": 124776505463,
+      "name": "verify (python-int-optin-2)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505463",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:56:52Z"
+    },
+    {
+      "id": 124776505465,
+      "name": "verify (gc-aot-2)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505465",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:55:51Z"
+    },
+    {
+      "id": 124776505504,
+      "name": "verify (benchmarks)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505504",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:51:39Z"
+    },
+    {
+      "id": 124776505514,
+      "name": "verify (ubsan-2)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124776505514",
+      "started_at": "2026-11-01T06:48:38Z",
+      "completed_at": "2026-11-01T06:54:57Z"
+    },
+    {
+      "id": 124778244598,
+      "name": "make verify (Linux x86-64, LLVM 18, Python 3.13)",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "946bb203c1835af708b5779c388b85482cf7514b",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41282000146/job/124778244598",
+      "started_at": "2026-11-01T06:58:11Z",
+      "completed_at": "2026-11-01T06:58:41Z"
+    }
+  ],
+  "full_responses": "evidence.tar.xz: span-evidence/ci-ledger.json"
+}

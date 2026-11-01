@@ -1,0 +1,13 @@
+{
+  "source_harness_sha256": "90393b18690340d978821c55feb929227db611b6feded7d0052859514542f6f1",
+  "portable_harness_sha256": "bffb2228b9efbab53aed74dd5b8aa1dd55c857100b3d26dee0b0d1900f85ac34",
+  "changes": {
+    "ROOT = Path('/workspace/scratch/a9cec5b79fe1')": "ROOT = Path(os.environ['PYSTACHY_SPAN_ROOT']).expanduser().resolve()",
+    "LLVM = Path('/usr/lib/llvm-18/bin')": "LLVM = Path(os.environ.get('PYSTACHY_LLVM', '/usr/lib/llvm-18/bin')).expanduser().resolve()",
+    "CPU = 0": "CPU = int(os.environ.get('PYSTACHY_SPAN_CPU', '0'))",
+    "'These are repeated synthetic controls on a shared host, pinned to CPU 0.',": "f'These are repeated synthetic controls on the recorded host, pinned to CPU {CPU}.',",
+    "raise SystemExit('CPU 0 is not available; do not silently change the pinned CPU')": "raise SystemExit(f'CPU {CPU} is not available; explicitly set PYSTACHY_SPAN_CPU to an allowed CPU')"
+  },
+  "reproduction_driver_sha256": "a5ee1ab0a4fa16d7aed24c78164c60ab197786f90353f5fed9bfdf438ec0205a",
+  "git_policy": "No hooks-path or signing override; preserve installed Git configuration, hook and signing environment; remove repository-routing variables to keep commands isolated."
+}
