@@ -1,8 +1,7 @@
 """Functions component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.analysis import globals_in, lambda_flags, local_names, nonlocal_decls, numeric_statement, numeric_return_names, str_appends, targets
-from src.pystachy_compiler.bigints import int_replay_state
-from src.pystachy_compiler.diagnostics import Rejoin, int_lists, int_program
+from src.pystachy_compiler.diagnostics import Rejoin, int_program
 from src.pystachy_compiler.ir import Blk, FnInfo, IFn, Try, Val
 from src.pystachy_compiler.local_versions import local_versions
 from src.pystachy_compiler.names import short
@@ -125,7 +124,8 @@ def gen_function(self, f: FnInfo, body: list[Node]) -> None:
     ret = f.ret
     noret = f.noret
     asked = self.dyn_asked(f)
-    before = int_replay_state(self) if int_lists() else None
+    before = self.replay_state()
+    declared = len(self.rtfns)
     self.function_body(f, body)
     while self.dyn_again(f, asked):
         # (an Any value reached storage that its first value typed, in a module that compiles
@@ -134,16 +134,20 @@ def gen_function(self, f: FnInfo, body: list[Node]) -> None:
         f.noret = noret
         asked = self.dyn_asked(f)
         self.function_body(f, body)
-    if before is not None and len(self.newhints) > 0 and self.int_again(f, before):
+    if len(self.newhints) > 0 and self.local_again(f, before):
         f.ret = ret
         f.noret = noret
+        # (the discarded body's runtime functions are declared again where the retry uses them,
+        # in the order the program's next pass would declare them)
+        for k in list(self.rtfns)[declared:]:
+            del self.rtfns[k]
         self.function_body(f, body)
-        if int_replay_state(self) != before or f.ll in self.retseen or f.ll in self.dynseen:
+        if self.replay_state() != before or f.ll in self.retseen or f.ll in self.dynseen:
             raise Rejoin()  # the retry itself discovered a dependent layout or signature
         prefix = self.fnkey(f) + "|"
         for name in self.ltype:
             key = prefix + name
-            if self.ltype[name] == BIG and self.hints.get(key, "") == BIG and self.newhints.get(key, "") == BIG:
+            if key in self.newhints and self.hints.get(key, "") == self.newhints[key] and self.ltype[name] == self.newhints[key]:
                 del self.newhints[key]
     del self.building[f.ll]
     self.selfcls = sel
