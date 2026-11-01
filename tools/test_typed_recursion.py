@@ -221,14 +221,15 @@ print(plain(0), recursive(3))
         _, functions = compile_source('''
 from collections.abc import Iterator
 
-def values() -> Iterator[int]:
+def values(n: int) -> Iterator[int]:
     try:
-        yield 1
-        yield 2
+        yield n
+        if n > 0:
+            yield from values(n - 1)
     finally:
         print("done")
 
-g = values()
+g = values(2)
 print(next(g))
 g.close()
 ''')
@@ -236,19 +237,27 @@ g.close()
         self.assertEqual(len(bodies), 1)
         self.assertTrue(bodies[0]["generator"])
         body = operations(bodies[0])
-        self.assertFalse(any(op[:2] == ("rt", "recursion.enter") for op in body))
+        # A body counts nothing itself: its only entries are those of its own resumes (yield from).
+        entries = [op for op in body if op[:2] == ("rt", "recursion.enter")]
+        own = [op for op in body if op[0] == "gen.resume"]
+        self.assertGreater(len(own), 0)
+        self.assertEqual(len(entries), len(own))
         self.assertTrue(any(op[:2] == ("rt", "recursion.depth") for op in body))
         self.assertTrue(any(op[:2] == ("rt", "recursion.restore") for op in body))
         resumes = 0
         for fn in functions.values():
-            for _, _, code in fn["blocks"]:
-                for at, (op, _, _) in enumerate(code):
-                    if op == "gen.resume":
-                        resumes += 1
-                        self.assertTrue(any(i[:2] == ("rt", "recursion.enter") for i in code[:at]))
-                        # (after a normal resume, the depth the entry counted from)
-                        self.assertTrue(any(i[:2] == ("rt", "recursion.restore") for i in code[at + 1:]))
-                        self.assertFalse(any(i[:2] == ("rt", "recursion.leave") for i in code))
+            code = operations(fn)
+            own = len([op for op in code if op[0] == "gen.resume"])
+            if own == 0:
+                continue
+            resumes += own
+            # each resume enters (exception lowering may end its block with that invoke), and the
+            # function's own entry counts too where it counts
+            entries = len([op for op in code if op[:2] == ("rt", "recursion.enter")])
+            self.assertEqual(entries, own + (1 if fn["counted"] else 0), fn["name"])
+            # (after a normal resume, the depth the entry counted from; no load-and-decrement)
+            self.assertGreaterEqual(len([op for op in code if op[:2] == ("rt", "recursion.restore")]), own)
+            self.assertFalse(any(op[:2] == ("rt", "recursion.leave") for op in code))
         self.assertGreaterEqual(resumes, 2)
 
     def test_resumes_count_only_generator_bodies_that_can_recur(self):

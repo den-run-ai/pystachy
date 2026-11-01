@@ -147,6 +147,12 @@ def gen_recursionscope(self) -> int:
                             es.extend(bodies[i.a[0].t])
                         else:
                             u = unknown
+                    elif i.op == "rt" and i.s == "gen.unraisable":
+                        # (reporting what closing raised renders the exception: user code only
+                        # for an exception class of the program's, as ircheck's E descriptors;
+                        # an exception renders its arguments as it is made)
+                        if len(self.xcls) > 0:
+                            u = unknown
                     elif i.op != "gen.yield":
                         c = i.s if i.op == "call" else "@init." + i.s if i.op == "init" else ""
                         if c not in self.fll:
