@@ -316,7 +316,7 @@ and AOT, in configurations that `make verify` does not test and that must change
 
 | Variant | Configuration |
 |---|---|
-| `opt-1` … `opt-5` | `PYSTACHY_OPT` turning off the IR passes that each row of a covering array of their pairs leaves off. Verification runs every pass on and all of them off (`-all`); with these five rows, every two passes run in each of their four on/off combinations. A pass added to `OPTS` gets a column of its own; the rows have room for ten. |
+| `opt-1` … `opt-6` | `PYSTACHY_OPT` turning off the IR passes that each row of a covering array of their pairs leaves off. Verification runs every pass on and all of them off (`-all`); with these six rows, every two passes run in each of their four on/off combinations. A pass added to `OPTS` gets a column of its own; the rows have room for fifteen. |
 | `cflags-O0` | `PYSTACHY_CFLAGS=-O0`: the runtime unoptimized, and with it an AOT program's whole module, whose IR then runs as the compiler emitted it. The runtime's frames keep every local in memory, which changes the dead words that the conservative collector scans as roots. |
 
 `make runtime-coverage` is another variant: clang's instrumentation changes the runtime's register
@@ -329,8 +329,8 @@ the corpus (`tools/shard_cases.sh`) and `MODES=jit` one tier. The script drops t
 settings that verification drops, builds each variant's runtime in a cache of its own and writes
 the logs to `build/variants/`, so run one at a time in a checkout. Each variant takes about as
 long as `make test`. The [Variants workflow](../.github/workflows/variants.yml) runs each one in
-four shards, each in a job of its own (24 jobs, each about five minutes after the compiler's
-build), daily, on demand and when the script or the workflow changes; no check requires it.
+four shards, each in a job of its own (28 jobs, each about five minutes after the compiler's
+build), daily, on demand and when the pass list, script or workflow changes; no check requires it.
 
 ## Continuous integration
 
