@@ -268,12 +268,10 @@ class _Parser:
         data = self.data
         n = len(data)
         i = begin + 1
-        if i >= n:
-            return -1 - n
         # Short keys/values stay in the original scalar loop. The native helper
         # pays off only once an ordinary span has passed this small prefix.
         # Negative positions retain the old private method's indexing behavior.
-        limit = n
+        limit = n + 0  # a scalar cursor, without borrowing n's numeric identity
         if i >= 0 and n - i > 16:
             limit = i + 16
         while i < limit:
@@ -283,7 +281,7 @@ class _Parser:
             if c == 92 or c < 32:
                 return -1 - i
             i += 1
-        if i == n:
+        if i >= n:
             return -1 - n
         i = _scan_bytes(data, i, n, 34, 92, 32)
         return i if i < n and data[i] == 34 else -1 - i
