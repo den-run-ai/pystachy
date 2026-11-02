@@ -1,6 +1,6 @@
 # index_key: o[i, j], o[i, j] = v and o[i, j] op= v of a class whose __getitem__ and __setitem__
 # only read the key make the key tuple in the caller's frame (Gen.stack_key). index_key.calls pins
-# that total() and fill() allocate nothing (each made a tuple with pys_alloc per index before), and
+# that total() and fill() allocate nothing (each made a tuple per index before), and
 # that keep() still makes its keys on the heap: its class's __getitem__ keeps them
 class Grid:
     def __init__(self, n: int) -> None:

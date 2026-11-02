@@ -985,6 +985,7 @@ from src.pystachy_compiler.lowering import (
     gen_lower as lowering_lower,
     gen_lower_ins as lowering_lower_ins,
     gen_tuple_rets as lowering_tuple_rets,
+    gen_alloc_call as lowering_alloc_call,
 )
 from src.pystachy_compiler.lower_module import (
     gen_cextern as lower_module_cextern,
@@ -3446,6 +3447,9 @@ class Gen:
 
     def tuple_rets(self) -> None:
         return lowering_tuple_rets(self)
+
+    def alloc_call(self, size: str) -> str:
+        return lowering_alloc_call(self, size)
 
     def invoke(self, c: str, i: Ins) -> str:
         return lowering_invoke(self, c, i)

@@ -103,7 +103,8 @@ running Clang's optimizer; a GCC object sidecar is a different experiment. The
 distinction can be checked for the helpers under investigation.
 
 For AOT, capture the driver's `prog.bc` at the `clang -O2 -c` invocation,
-after `llvm-link --only-needed`. The transparent Clang wrapper in
+after `llvm-link --only-needed` (with `allocelide`, the first of two: `-emit-llvm`, then
+`prog-late.bc` once the fast path is inlined). The transparent Clang wrapper in
 [`tools/aotprobe.py`](../tools/aotprobe.py) demonstrates that capture; the
 driver normally deletes its temporary files. Do not select an arbitrary cached
 `runtime*.bc`, which may belong to another compiler or configuration. Once that
@@ -168,6 +169,7 @@ This inventory does not implement source-line annotations or explain missed pass
 | `dictfuse` | Reuses a proven lookup of the same key | `PYSTACHY_OPT=-dictfuse` |
 | `listget` | Removes bounds checks from proven sequence-loop reads, of lists and `bytes` | `PYSTACHY_OPT=-listget` |
 | `listfast` | Inlines checked `list[int]` and `bytes` reads; negative/invalid indices use the runtime | `PYSTACHY_OPT=-listfast` |
+| `allocelide` | Lets LLVM delete the allocation of an object or fixed tuple that nothing keeps; AOT builds then inline the allocator's fast path into the allocations left ([#1017](https://github.com/den-run-ai/pystachy/issues/1017)) | `PYSTACHY_OPT=-allocelide` |
 | Stack tuple keys | Cache and memo hits can avoid heap allocation; escaping tuples are copied. `o[i, j]` of a class whose `__getitem__` and `__setitem__` only read the key makes the key in the caller's frame | [#308](https://github.com/den-run-ai/pystachy/pull/308), [#660](https://github.com/den-run-ai/pystachy/issues/660) |
 | First-part split | `s.split(...)[0]` produces only the required string | [#317](https://github.com/den-run-ai/pystachy/pull/317) |
 | In-place str append | `s += t` and `s = s + t` on a str local grow its str in place while only the local holds it; past 8,200 bytes a second copy leaves room for as much again, trimmed after its length is unchanged across two sweeps | [#544](https://github.com/den-run-ai/pystachy/pull/544), [#567](https://github.com/den-run-ai/pystachy/issues/567); no switch |

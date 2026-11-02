@@ -108,13 +108,24 @@ def gen_lower(self, fn: IFn) -> None:
             o.append("const:")
             o.append("  ret ptr %c")
             o.append("made:")
-        o.append(f"  %p = call ptr @{self.rtfns['alloc'].sym}(i64 {8 * n})")
+        o.append(f"  %p = {self.alloc_call(str(8 * n))}")
         for k in range(n):
             o.append(f"  %v{k} = extractvalue {agg} %v, {k}")
             o.append(f"  %p{k} = getelementptr i64, ptr %p, i64 {k}")
             o.append(f"  store i64 %v{k}, ptr %p{k}")
         o.append("  ret ptr %p")
         o.append("}")
+
+def gen_alloc_call(self, size: str) -> str:
+    # the call that gives compiled code size zeroed bytes for an object or a fixed tuple
+    # (alloc.fixed, a tupleret wrapper's tuple). With allocelide, pys_new's, which the call marks
+    # as an allocation that LLVM may delete when nothing keeps its object (it sees each call:
+    # runtime.c keeps pys_new out of line; an AOT build then inlines the allocator's fast path
+    # into the calls left, driver.py). The runtime's own code (rtmode), and every program without
+    # allocelide, calls pys_alloc
+    if "allocelide" in self.opts and not self.rtmode:
+        return f'call noalias nonnull ptr @{self.rtfns["new"].sym}(i64 {size}) allockind("alloc,zeroed") allocsize(0) "alloc-family"="pys"'
+    return f"call ptr @{self.rtfns['alloc'].sym}(i64 {size})"
 
 def gen_tuple_rets(self) -> None:
     # tupleret: which functions return their fixed tuple's slots by value, and which calls take
@@ -251,7 +262,7 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         self.objectused = self.objectused or i.t == OBJECTC
         size = str(8 * tslots(i.t)) if is_tuple(i.t) else f"ptrtoint (ptr getelementptr (%C.{i.t}, ptr null, i32 1) to i64)"
         if f"%t{i.r[0]}" not in self.vtuples:  # (a tuple returned by value is never made: tupleret)
-            o.append(f"  %t{i.r[0]} = call ptr @{self.rtfns['alloc'].sym}(i64 {size})")
+            o.append(f"  %t{i.r[0]} = {self.alloc_call(size)}")
     elif op == "tuple.store" and i.a[0].v in self.vtuples:
         self.vslots[f"{i.a[0].v} {i.k}"] = i.a[1].v  # (the slot its ret returns)
     elif op == "tuple.load" and i.a[0].v in self.vaggs:
