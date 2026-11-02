@@ -196,8 +196,10 @@ creates no one-character strings and translates no code-point offsets while
 scanning. Short strings and spans retain a small scalar prefix. Longer ordinary
 spans use a shared bounded byte scanner, skipping eight bytes at a time until a
 quote, backslash or control byte is possible, then checking
-the matching word and tail scalar. The same helper scans ordinary text after an
-escape, and both typed and dynamic decoders use it. Loads use `memcpy`, require a
+the matching word and tail scalar. After an escape, the helper scans the next ordinary
+run when the run before the escape reached 16 bytes; dense escapes keep the byte loop,
+which a per-byte bound check made mispredict. Both typed and dynamic decoders use it.
+Loads use `memcpy`, require a
 complete word inside the range, and accept any alignment; high bytes keep their
 existing decoding behavior. Pystachy's `str.encode()` returns the string's own UTF-8 storage unless
 the text contains a character from U+D000 to U+DFFF; then it checks and copies
