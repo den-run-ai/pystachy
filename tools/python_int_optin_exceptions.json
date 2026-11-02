@@ -546,6 +546,38 @@
       "issue": "https://github.com/den-run-ai/pystachy/issues/907"
     },
     {
+      "case": "tests/programs/upstream/upstream_augassign_extracted.py",
+      "mode": "jit",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/upstream/upstream_augassign_extracted.py:12: error: expected !int in a closed union is not supported (use scalar, list/dict or native class/file types), got float",
+      "reason": "testBasic's x /= 2 rebinds the augmented-assignment local from a promoting int to a float: a closed numeric union that cannot hold a promoting int beside float.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_augassign_extracted.py",
+      "mode": "aot",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/upstream/upstream_augassign_extracted.py:12: error: expected !int in a closed union is not supported (use scalar, list/dict or native class/file types), got float",
+      "reason": "testBasic's x /= 2 rebinds the augmented-assignment local from a promoting int to a float: a closed numeric union that cannot hold a promoting int beside float.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_bytes_extracted.py",
+      "mode": "jit",
+      "category": "unsupported-builtin",
+      "diagnostic": "tests/programs/upstream/upstream_bytes_extracted.py:53: error: cannot convert 'int' object to bytes (compiling BaseBytesTest.test_from_ssize() for the call at tests/programs/upstream/upstream_bytes_extracted.py:251)",
+      "reason": "bytes() takes a fixed 64-bit int size but rejects a promoting int during compilation, here test_from_ssize's bytes(sys.maxsize + 1), where CPython raises OverflowError.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_bytes_extracted.py",
+      "mode": "aot",
+      "category": "unsupported-builtin",
+      "diagnostic": "tests/programs/upstream/upstream_bytes_extracted.py:53: error: cannot convert 'int' object to bytes (compiling BaseBytesTest.test_from_ssize() for the call at tests/programs/upstream/upstream_bytes_extracted.py:251)",
+      "reason": "bytes() takes a fixed 64-bit int size but rejects a promoting int during compilation, here test_from_ssize's bytes(sys.maxsize + 1), where CPython raises OverflowError.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
       "case": "tests/programs/upstream/upstream_iter_classes.py",
       "mode": "jit",
       "category": "unsupported-identity",

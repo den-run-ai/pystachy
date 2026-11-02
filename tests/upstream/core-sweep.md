@@ -148,7 +148,10 @@ added again; their passing methods are candidates for extending those adaptation
 
 Each program's header names its tests. Together they hold 96 tests; under the opted-in
 `dynamic-any` sweep, `upstream_colorsys_extracted` is an expected failure (`f(*value)` of an
-`Any` value, #774). Each source's SHA-256 is that of the file at the pinned commit (fetched
+`Any` value, #774). Under the promoting-int sweep, two are (#907):
+`upstream_augassign_extracted`, whose `x /= 2` rebinds a promoting int to a float, and
+`upstream_bytes_extracted`, whose `bytes(sys.maxsize + 1)` is rejected because `bytes()`
+takes no promoting int. Each source's SHA-256 is that of the file at the pinned commit (fetched
 from GitHub) and of the python.org `Python-3.13.16.tar.xz` source archive, which also matches
 every hash in this guide's earlier table.
 
