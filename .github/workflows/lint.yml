@@ -84,6 +84,9 @@ jobs:
       - name: Import sweep provenance and argument tests
         run: python3 -m unittest discover -s tools -p test_import_sweep.py
 
+      - name: CPython test-method extraction tests
+        run: python3 -m unittest discover -s tools -p test_cpython_test_methods.py
+
       - name: Dynamic Any fuzzer generator and comparison tests
         run: python3 -m unittest discover -s tools -p test_dynany_fuzz.py
 
