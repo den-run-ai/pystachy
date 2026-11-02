@@ -66,7 +66,7 @@ row: it needs [promoting ints](python-int.md), and alpha.3's executable raises `
 - **Counts include startup and the untimed output checks.** Those make up most of `regex_v8`'s
   count (its checksum pass) and of `unpack_sequence`'s, whose unpacking AOT optimizes away.
 - **Executables and builds grew.** alpha.4's executables are 12% larger than alpha.3's, and single
-  builds on the shared host took 20–30% longer (geometric means).
+  builds on a shared host took 20–30% longer (geometric means).
 
 ## Data and earlier results
 
