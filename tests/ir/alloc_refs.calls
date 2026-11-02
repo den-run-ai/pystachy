@@ -1,0 +1,31 @@
+@m.Base.get.1: pys_str_add pys_str_add pys_raise
+@m.Scalars.get.1: pys_raise pys_raise
+@m.Base.get.2: pys_raise
+@main.init: pys_alloc pys_str_float pys_write pys_write pys_write pys_write pys_repr pys_write pys_write pys_str_int pys_write pys_write pys_str_int pys_write pys_write pys_str_float pys_write pys_write pys_repr pys_write pys_write pys_repr pys_write pys_write pys_str_int pys_write pys_write pys_repr pys_write pys_write pys_str_int pys_write pys_write pys_raise pys_raise pys_raise pys_raise
+@f.floats: pys_new
+@f.named: pys_alloc
+@f.maybe: pys_alloc pys_box
+@m.Base.__init__.1:
+@m.Scalars.__init__.1:
+@f.scalars: pys_new
+@m.Base.__init__.2:
+@m.Tagged.__init__.1:
+@f.tagged: pys_alloc
+@f.vec: pys_alloc
+@f.pair: pys_new pys_list_new pys_list_append
+@f.labeled: pys_alloc pys_list_new pys_list_append
+@v.f.make_strs: pys_str_mul
+@f.make_strs: pys_alloc
+@v.f.make_ints: pys_raise
+@f.make_ints: pys_new
+@f.unpacked: pys_text_len pys_raise
+@f.kept: pys_list_new pys_list_append pys_list_new
+@f.sentinels: pys_new pys_new pys_list_new pys_list_append pys_list_append
+@m.Floats.__init__:
+@m.Named.__init__:
+@m.Maybe.__init__:
+@m.Vec.__init__:
+@pys_obj_eq:
+@pys_obj_cmp:
+@pys_obj_repr:
+@main: pys_init pys_finish
