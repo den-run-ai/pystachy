@@ -61,3 +61,102 @@ PYSTACHY_GC_STRESS_PROGRAM=1 PYSTACHY_JOBS=2 tests/run.sh ./pystachy 'jit aot' t
 The normal corpus discovery includes these programs in hosted/native, JIT/AOT,
 GC-stressed, unoptimized and sanitizer verification configurations. Recorded
 stdout is derived only from CPython, including the final exit status.
+
+## Mechanical method extraction (2026-11-02)
+
+[`tools/cpython_test_methods.py`](../../tools/cpython_test_methods.py) turns the unittest
+methods of a CPython test file into standalone programs by fixed rules, with no per-test
+editing: unittest/test.support imports and their users are dropped; a pure-Python
+`import_fresh_module` result becomes a plain import (C-accelerator variants and their test
+classes are dropped) and `self.module` is inlined; `setUp()` becomes `__init__()`; assertion
+methods become `assert` statements of the same condition, `assertRaises`/`assertRaisesRegex`
+become try/except/else (the regex is still checked), `subTest` keeps its body; skip,
+`cpython_only` and `requires_*` tests are left out. Each program keeps only the definitions and
+the one test it needs. A method that needs another unittest feature raises
+`NotImplementedError`, so it cannot pass by accident. The tool's docstring has the complete
+rules, and `tools/test_cpython_test_methods.py` (run by Lint) checks them, including negative
+controls for false assertions and exceptions that are not raised.
+
+### Triage
+
+On main `973c68e4`, 144 CPython 3.13.16 test files for builtins, the language and the
+modules Pystachy ships or that the core scope names were triaged with
+`tools/cpython_test_methods.py triage` (CPython 3.13.16, the native compiler's JIT); 140 of
+them hold extractable methods:
+
+| Result | Methods |
+|---|---:|
+| Extracted | 10,329 |
+| Fail on CPython after extraction (unittest/test.support features beyond the rules): not counted | 4,313 |
+| Compile and match CPython | 374 |
+| Match once the program opts in to promoting ints | 6 |
+| Rejected at compile time | 5,619 |
+| Compile but differ | 17 |
+
+That is **380 of 6,016 (6.3%)** methods passing with no hand edit. All 17 differences are
+documented deviations, not new wrong results: 13 raise `OverflowError` past 64 bits in
+modules without promoting ints (`lib/random`'s too), one asks for the unsupported `utf-16`
+codec, two use bytes patterns and one compares `repr(re.I)`, as `re`'s flags are ints
+([lib/compatibility.md](../../lib/compatibility.md)).
+
+Missing modules account for 2,884 of the rejections, led by `enum` (1,016 methods, nearly
+all of `test_enum`), `configparser`, `decimal`, `pickle` (25 files), `copy` (16 files), `gc`,
+`_pyio`, `locale`, `pprint`, `threading`, `calendar`, `inspect` and `array`. The most frequent
+other rejections are a class defined inside a function (296 methods in 49 files), fields
+whose type is not inferred, often because a test class stores a class it calls
+(`self.s = self.thetype(...)`), `match` (`test_patma`), base classes other than an ordinary
+class (builtin subclasses, 175), modules used as values (62), inheritance from generic class
+templates (59), statements other than definitions in a class body (115), empty containers
+whose type is not inferred (81), `str.format()` of a computed format string (49) and
+multiple inheritance (41).
+
+### Delivered programs
+
+The corpus takes the passing methods of the 20 files that no earlier adaptation covers, one
+program per file (`tests/programs/upstream/upstream_NAME_extracted.py`), and a separate
+promoting-int program where a file's passing tests need it. Files whose passing methods
+overlap an existing hand adaptation (`test_named_expressions` 37, `test_fstring` 28,
+`test_urlparse` 21, `test_textwrap` 19, `test_random` 18, `test_difflib` 16, `test_math` 16,
+`test_float` 13, `test_fnmatch` 13, `test_scope` 12, `test_statistics` 11 and others) are not
+added again; their passing methods are candidates for extending those adaptations.
+
+| Program | Tests | Source under `Lib/test/` and SHA-256 |
+|---|---:|---|
+| `upstream_augassign_extracted` | 2 | `test_augassign.py` `fa336b354cb98b5e290f71d9565cc0c1fc26d603450c9b96a2ee2a927ff99ea6` |
+| `upstream_bisect_extracted` | 3 | `test_bisect.py` `c2cc55581e637768faa0f51cbb66acbaa6664eb023e287b37db687faefa2c1c4` |
+| `upstream_bytes_extracted`, `upstream_bytes_extracted_python_int` | 17 + 1 | `test_bytes.py` `aae9cf5348faa9b39bdccb13489e14facb6cdf51bfa5310a75518608645f6e06` |
+| `upstream_colorsys_extracted` | 7 | `test_colorsys.py` `f48dd64aaf7497c5f5809803345581f1daac03d5a5ed148a661066d0200d7661` |
+| `upstream_dictviews_extracted` | 1 | `test_dictviews.py` `f6e290a9cda996fd2531e20902cb99fd8785da069a31e27038daed194b3295e2` |
+| `upstream_exception_variations_extracted` | 16 | `test_exception_variations.py` `1d7b1fa4bdae0354b9981db98001b2ad7ab83894c1701a83db2a434d0036cebf` |
+| `upstream_heapq_extracted` | 2 | `test_heapq.py` `ab72726259119159f060aa80274efb33e53a5455636bd5aa16f923535375b348` |
+| `upstream_int_literal_extracted`, `upstream_int_literal_extracted_python_int` | 3 + 3 | `test_int_literal.py` `2dd1dd8ca1e049abef5e5548179aba2532952f9f5362bc7c6d09bd73f80c5974` |
+| `upstream_opcodes_extracted` | 1 | `test_opcodes.py` `2c30b2eeffad6d2b8eefa0bea40b7a7ce1e3674c5b6912805d81f1b3455d9c11` |
+| `upstream_positional_only_arg_extracted` | 1 | `test_positional_only_arg.py` `3f34be8648b28a6baccb20d65ee65241a14ae2494cf9e3cfc4d12b7362358f6b` |
+| `upstream_pow_extracted` | 2 | `test_pow.py` `0cfbf5bc3b271db92d5f728c649b9501b4c786d42db74bc75afeb41a54dde27d` |
+| `upstream_raise_extracted` | 12 | `test_raise.py` `ff1037ebdfb6b1f8900041bbb4b39d26441ed25b13783368169cda6e57bc8647` |
+| `upstream_range_extracted` | 3 | `test_range.py` `603d1ca7b740d2e4702b3ff42202de4c261b41d51078227526c7447caa3bf80e` |
+| `upstream_reprlib_extracted` | 1 | `test_reprlib.py` `ec84a6d632f43fce37efde8f18f6507dfec899bbbdae99000326a8c30fe17621` |
+| `upstream_richcmp_extracted` | 1 | `test_richcmp.py` `87ffd49f08a617224cdbb84f0eeb7cef643f3cd918090c606a311a25d929d135` |
+| `upstream_sort_extracted` | 8 | `test_sort.py` `dd8cee99c70a21f6a220f64bf40e2ab9099c6df79f15859577cea4c4377fb382` |
+| `upstream_types_extracted` | 8 | `test_types.py` `9ecf8e399e30e83794a1fafc34c5b990da2fa469c980e2f2157eeedc1b118d24` |
+| `upstream_unary_extracted` | 2 | `test_unary.py` `867adb0ac3eddbe957c0137a84f2dbac75bfd09c0a8b51e3e75a7af9eaa3f8eb` |
+| `upstream_unicodedata_extracted` | 1 | `test_unicodedata.py` `0c2dda3daca931131fecc7241215f5eb484a705ad7bcc2aab110c2d838cf95ad` |
+| `upstream_with_extracted` | 1 | `test_with.py` `dbcf093c3ed4e5be77fd6f345c178d545b7cd741f73dcac2a55cf97596e84b7f` |
+
+Each program's header names its tests. Together they hold 96 tests; under the opted-in
+`dynamic-any` sweep, `upstream_colorsys_extracted` is an expected failure (`f(*value)` of an
+`Any` value, #774). Each source's SHA-256 is that of the file at the pinned commit (fetched
+from GitHub) and of the python.org `Python-3.13.16.tar.xz` source archive, which also matches
+every hash in this guide's earlier table.
+
+Regenerate a program from a `Lib/test` checkout of the pinned commit, then record it with
+the pinned CPython:
+
+```sh
+python3.13 tools/cpython_test_methods.py triage triage.json build/methods Lib/test/test_sort.py
+python3.13 tools/cpython_test_methods.py combine Lib/test/test_sort.py tests/programs/upstream/upstream_sort_extracted.py TestBase.test_small_stability ...
+PYTHON=python3.13 tests/record.sh upstream_sort_extracted
+PYSTACHY_JOBS=2 tests/run.sh ./pystachy 'jit aot' tests/programs/upstream/upstream_*_extracted*.py
+```
+
+`combine` writes the program without the provenance header the delivered files carry.

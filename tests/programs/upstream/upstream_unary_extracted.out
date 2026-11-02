@@ -1,0 +1,3 @@
+ok UnaryOpTestCase.test_invert
+ok UnaryOpTestCase.test_negation_of_exponentiation
+[exit 0]

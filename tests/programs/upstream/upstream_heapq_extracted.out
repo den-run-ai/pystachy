@@ -1,0 +1,3 @@
+ok TestHeapPython.test_heappop_max
+ok TestHeapPython.test_heapsort
+[exit 0]
