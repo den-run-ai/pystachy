@@ -36,9 +36,10 @@ In these cases a program can compile but behave differently from CPython.
 
 - The native JSON prototype's typed `JSONValue` path rejects integer tokens outside
   signed 64-bit range with `OverflowError`; its dynamic `Any` decoder promotes them
-  and retains the runtime's decimal digit limit. The decoder and encoder allow at most 256 nested
-  containers, then raise `RecursionError`, independently of CPython's recursion
-  limit ([deviation](../../tests/deviations/json_limits.py),
+  and retains the runtime's decimal digit limit. Nested containers count against the native
+  recursion limit (about 500 decoded and 1,000 encoded at the default limit of 1,000) and stop
+  at 2,000 under a raised limit, then raise `RecursionError`; CPython's C codec accepts 9,998 at
+  any recursion limit ([deviation](../../tests/deviations/json_limits.py),
   [API scope](../../lib/compatibility.md#json)).
 
 - Floats are unboxed, so a NaN has no identity: `nan in [nan]` is `False`, and lists or
@@ -245,8 +246,8 @@ above apply to well-formed text (with the surrogate exception described above).
   dispatch adapters and runtime helpers do not add frames. A generator counts only while
   its body is running, not while suspended; resuming it uses its current caller's depth.
   Inlining and optimized tail calls preserve this policy. Exact failure depths and error
-  messages can also differ from CPython because its internal frames differ. The separate
-  fixed budgets for recursive aliases and JSON remain in effect.
+  messages can also differ from CPython because its internal frames differ. Recursive aliases
+  keep their separate fixed budget, and JSON nesting stops at 2,000 containers under any limit.
 
   Compiled frames live on the thread's native stack, where CPython keeps Python frames on
   the heap. The same counted entries therefore also compare the stack pointer with a floor

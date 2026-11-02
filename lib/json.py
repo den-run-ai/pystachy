@@ -3,7 +3,8 @@
 
 This prototype implements loads(str), dumps(JSONValue) and the default JSONDecoder.
 Typed JSONValue integers use Pystachy's signed 64-bit range; the dynamic Any
-decoder promotes larger tokens. Nesting is limited to 256 containers, and object keys are str.
+decoder promotes larger tokens. Nesting counts against sys.setrecursionlimit() and stops at
+2,000 containers, which keeps a raised limit within the native stack; object keys are str.
 Decoder hooks, bytes input, encoder subclasses, indentation and file APIs are not
 implemented. Containers are created with recursive JSONValue storage; narrowing
 keeps their original identity and mutable contents.
@@ -538,8 +539,15 @@ class _Parser:
         if c == 34:
             return self.string()
         if c == 123 or c == 91:
-            if depth >= 256:
-                raise RecursionError("maximum JSON nesting depth exceeded")
+            # Each nested container is two calls that sys.setrecursionlimit() counts (value(),
+            # then array() or object()). Past 2,000 containers, a raised limit could exhaust the
+            # native stack in its largest-frame configurations (docs/json.md's JSON API limits).
+            if depth >= 2000:
+                if c == 91:
+                    raise RecursionError("maximum recursion depth exceeded"
+                                         " while decoding a JSON array from a unicode string")
+                raise RecursionError("maximum recursion depth exceeded"
+                                     " while decoding a JSON object from a unicode string")
             if c == 91:
                 return self.array(depth)
             return self.object(depth)
@@ -760,8 +768,8 @@ class _Encoder:
             for list_parent in self.lists:
                 if value is list_parent:
                     raise ValueError("Circular reference detected")
-            if depth >= 256:
-                raise RecursionError("maximum JSON nesting depth exceeded")
+            if depth >= 2000:  # (the decoder's bound on nesting, as value() explains)
+                raise RecursionError("maximum recursion depth exceeded while encoding a JSON object")
             self.lists.append(value)
             self.out.append("[")
             first = True
@@ -776,8 +784,8 @@ class _Encoder:
             for dict_parent in self.dicts:
                 if value is dict_parent:
                     raise ValueError("Circular reference detected")
-            if depth >= 256:
-                raise RecursionError("maximum JSON nesting depth exceeded")
+            if depth >= 2000:  # (the decoder's bound on nesting, as value() explains)
+                raise RecursionError("maximum recursion depth exceeded while encoding a JSON object")
             self.dicts.append(value)
             self.out.append("{")
             keys = sorted(value) if self.sort_keys else list(value)
