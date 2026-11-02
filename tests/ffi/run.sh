@@ -6,7 +6,8 @@
 #                          libpystachy-ffitest.so on LD_LIBRARY_PATH): stdout and "[exit N]" must be
 #                          tests/ffi/NAME.out, which CPython printed with tools/rt_cpython on PYTHONPATH,
 #                          and for a run that fails, "[stderr] " and the last line of stderr (the error
-#                          raised; --record writes it)
+#                          raised; libm's architecture-dependent loader directory is omitted;
+#                          --record writes the same normalized form)
 #   tests/ffi/errors/*.py  rejected with the message in the first line ("pystachy ext" for ext_*.py)
 #   tests/ffi/py_*.py      lib/pyobj.py, CPython embedded: stdout, exit status and the last line of
 #                          stderr must be what $PY prints running the file with tools/rt_cpython on
@@ -39,7 +40,14 @@ mkdir -p "$T/locales"
 localedef -i de_DE -f UTF-8 "$T/locales/de_DE.UTF-8" > /dev/null 2>&1
 export LOCPATH="$T/locales"
 # stderr's last line after "[exit N]" of a run that failed: cerr OUT ERR
-cerr() { if [ "$(tail -1 "$1")" != "[exit 0]" ]; then echo "[stderr] $(tail -1 "$2")" >> "$1"; fi; }
+cerr() {
+  if [ "$(tail -1 "$1")" != "[exit 0]" ]; then
+    # glibc reports libm's absolute loader path, which changes with architecture
+    # and distribution. Preserve the error type, library and exact symbol text.
+    ffi_last_error=$(tail -1 "$2" | sed 's@^\(AttributeError: \)/[^:]*/\(libm\.so\.6: undefined symbol: \)@\1\2@')
+    printf '[stderr] %s\n' "$ffi_last_error" >> "$1"
+  fi
+}
 if [ "$1" = --record ]; then
   for f in tests/ffi/c_*.py; do
     (PYTHONPATH=$TW env -u PYTHONUNBUFFERED "$PY" "$f" a1 a2 < /dev/null; echo "[exit $?]") > "${f%.py}.out" 2> "$T/rec.err"

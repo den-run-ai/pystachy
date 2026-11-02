@@ -69,7 +69,9 @@ Use a [native release package or Docker image](docs/install.md) to skip bootstra
 The current prerelease is [v0.1.0-alpha.3](https://github.com/den-run-ai/pystachy/releases/tag/v0.1.0-alpha.3);
 see its [release notes](docs/releases/v0.1.0-alpha.3.md) for changes and known issues.
 Release packages require LLVM; the image includes it. Source `main` can contain newer changes.
-For a source build:
+Source builds support Linux x86-64/ARM64 and macOS Apple Silicon/Intel. Linux ARM64
+release archives and native Docker images are part of alpha.4 preparation; alpha.3
+does not include them. For a source build:
 
 Install LLVM, **Python 3.11+** and `make` with your package manager.
 On Ubuntu 24.04:
@@ -110,7 +112,7 @@ use `python3 -m pystachy run demo.py` with Python 3.11+ on Ubuntu, or
 `python3.13 -m pystachy run demo.py` with Homebrew.
 See [installation and setup](docs/install.md) for uv, custom prefixes and dependency checks,
 or [compiler commands and settings](docs/internals.md). Full verification uses Python 3.13
-on Linux x86-64.
+on Linux x86-64 and ARM64, with independent bootstrap and verification artifacts.
 
 ## Performance
 

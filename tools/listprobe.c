@@ -90,6 +90,28 @@ static void operations(void) {
   pys_list_clear(&l);
   if (l.a == sorting) bad("clear hides mutation during sort");
 }
+static void vacated(void) {
+  /* Check the original backing storage directly. A conservative collector may
+     retain a dead register or stack word, so finalizer timing alone cannot prove
+     that these slots stop holding their removed values. */
+  for (I how = 0; how < 6; how++) {
+    List *l = pys_list_new(4);
+    for (I i = 0; i < 4; i++) pys_list_append(l, 7 + 2 * i);
+    I *backing = l->a;
+    if (how == 0) { if (pys_list_pop(l, -1) != 13) bad("vacated pop result"); }
+    else if (how == 1) { if (pys_list_pop(l, 0) != 7) bad("vacated front-pop result"); }
+    else if (how == 2) pys_list_del(l, 0);
+    else if (how == 3) pys_list_remove(l, 7, cstr("i"));
+    else if (how == 4) pys_list_clear(l);
+    else pys_list_imul(l, 0);
+    I n = how < 4 ? 3 : 0;
+    if (l->len != n) bad("vacated list length");
+    for (I i = 0; i < 4; i++) {
+      I want = i >= n ? 0 : 7 + 2 * (i + (how != 0));
+      if (backing[i] != want) bad("vacated backing slot retains removed value");
+    }
+  }
+}
 static void ranges(void) {
   buffers = pys_list_new(8);
   kinds(buffers, 0);
@@ -431,6 +453,7 @@ int main(void) {
   if (gc_live >= 1048576) bad("cleared list storage survives collection");
   for (I i = 0; i < buffers->len; i++) check_empty((List *)buffers->a[i]);
   operations();
+  vacated();
   ranges();
   numeric();
   identities();
