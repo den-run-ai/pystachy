@@ -55,26 +55,27 @@ row: it needs [promoting ints](python-int.md), and alpha.3's executable raises `
 - **Allocation removal speeds up `chaos`.** AOT builds now delete objects that hold only numbers
   when nothing reads them ([#1020](https://github.com/den-run-ai/pystachy/pull/1020),
   [#1025](https://github.com/den-run-ai/pystachy/pull/1025)).
-- The other regressions above 2% were profiled only on an earlier candidate, main `c3aaa068`,
-  which lacked alpha.4's last fixes
+- **The smaller regressions are not attributed on alpha.4.** Those above 2% were profiled only on
+  an earlier candidate, main `c3aaa068`, which lacked alpha.4's last fixes
   ([function-level attribution](../bench/pyperformance/results/alpha3-vs-candidate-2026-11-02.json)).
-- Counts are deterministic but are not wall time: Callgrind ignores cache misses and branch
+- **Counts are deterministic but are not wall time.** Callgrind ignores cache misses and branch
   prediction, and counts each byte that `rep stosb` clears. In paired wall-time runs of
   `c3aaa068`, regressions were smaller than their counts (`generators`, +13% in counts, was
   level), and `regex_dna` took 31% less wall time with almost the same count. Wall times and the
   JIT were not measured on alpha.4.
-- Counts include startup and the untimed output checks. Those make up most of `regex_v8`'s count
-  (its checksum pass) and of `unpack_sequence`'s, whose unpacking AOT optimizes away.
-- alpha.4's executables are 12% larger than alpha.3's, and single builds on the shared host took
-  20–30% longer (geometric means).
+- **Counts include startup and the untimed output checks.** Those make up most of `regex_v8`'s
+  count (its checksum pass) and of `unpack_sequence`'s, whose unpacking AOT optimizes away.
+- **Executables and builds grew.** alpha.4's executables are 12% larger than alpha.3's, and single
+  builds on the shared host took 20–30% longer (geometric means).
 
 ## Data and earlier results
 
-The [measurement record](../bench/pyperformance/results/alpha3-vs-release-candidate-2026-11-02.json)
-holds each benchmark's arguments, commands and hashes. It measured the release candidate, main
-`ec442a20`, whose code the alpha.4 tag shares, and its alpha.4 counts leave out a stack-bounds
-lookup of about 100,000 instructions that only Valgrind triggers. Earlier results, including the
-2026-10-16 wall-time comparison with CPython and the October regex reruns, are on
-[this page as of alpha.4](https://github.com/den-run-ai/pystachy/blob/9c8bc74648aa7c7e6a1b9d8f9dbbfeb1f2908ad3/docs/pyperformance.md);
-their raw samples stay in [`docs/benchmarks/`](benchmarks/). To time CPython, the JIT and AOT on
-your own machine, run `make bench-pyperformance` ([port notes](../bench/pyperformance/README.md#run)).
+- **Measurement record.** The [retained JSON](../bench/pyperformance/results/alpha3-vs-release-candidate-2026-11-02.json)
+  holds each benchmark's arguments, commands and hashes. It measured the release candidate, main
+  `ec442a20`, whose code the alpha.4 tag shares. Its alpha.4 counts leave out a stack-bounds lookup
+  of about 100,000 instructions that only Valgrind triggers.
+- **Earlier results.** The 2026-10-16 wall-time comparison with CPython and the October regex
+  reruns are on [this page as of alpha.4](https://github.com/den-run-ai/pystachy/blob/9c8bc74648aa7c7e6a1b9d8f9dbbfeb1f2908ad3/docs/pyperformance.md);
+  their raw samples stay in [`docs/benchmarks/`](benchmarks/).
+- **Timing on your machine.** `make bench-pyperformance` times CPython, the JIT and AOT; see the
+  [port notes](../bench/pyperformance/README.md#run).
