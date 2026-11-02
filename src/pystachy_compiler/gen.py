@@ -701,6 +701,7 @@ from src.pystachy_compiler.exceptions import (
     gen_exc_tree as exceptions_exc_tree,
     gen_exc_type_of as exceptions_exc_type_of,
     gen_exc_isinst as exceptions_exc_isinst,
+    gen_exc_init_keeps as exceptions_exc_init_keeps,
     gen_exc_keep as exceptions_exc_keep,
     gen_exc_kw as exceptions_exc_kw,
     gen_exc_match as exceptions_exc_match,
@@ -3840,6 +3841,9 @@ class Gen:
 
     def exc_keep(self, o: Val, vals: list[Val], coded: bool=True) -> None:
         return exceptions_exc_keep(self, o, vals, coded)
+
+    def exc_init_keeps(self, c: str, init: FnInfo) -> bool:
+        return exceptions_exc_init_keeps(self, c, init)
 
     def exc_of(self, v: Val) -> Val:
         return exceptions_exc_of(self, v)

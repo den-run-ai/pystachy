@@ -36,9 +36,10 @@ In these cases a program can compile but behave differently from CPython.
 
 - The native JSON prototype's typed `JSONValue` path rejects integer tokens outside
   signed 64-bit range with `OverflowError`; its dynamic `Any` decoder promotes them
-  and retains the runtime's decimal digit limit. The decoder and encoder allow at most 256 nested
-  containers, then raise `RecursionError`, independently of CPython's recursion
-  limit ([deviation](../../tests/deviations/json_limits.py),
+  and retains the runtime's decimal digit limit. Nested containers count against the native
+  recursion limit (about 500 decoded and 1,000 encoded at the default limit of 1,000) and stop
+  at 2,000 under a raised limit, then raise `RecursionError`; CPython's C codec accepts 9,998 at
+  any recursion limit ([deviation](../../tests/deviations/json_limits.py),
   [API scope](../../lib/compatibility.md#json)).
 
 - Floats are unboxed, so a NaN has no identity: `nan in [nan]` is `False`, and lists or
@@ -245,8 +246,8 @@ above apply to well-formed text (with the surrogate exception described above).
   dispatch adapters and runtime helpers do not add frames. A generator counts only while
   its body is running, not while suspended; resuming it uses its current caller's depth.
   Inlining and optimized tail calls preserve this policy. Exact failure depths and error
-  messages can also differ from CPython because its internal frames differ. The separate
-  fixed budgets for recursive aliases and JSON remain in effect.
+  messages can also differ from CPython because its internal frames differ. Recursive aliases
+  keep their separate fixed budget, and JSON nesting stops at 2,000 containers under any limit.
 
   Compiled frames live on the thread's native stack, where CPython keeps Python frames on
   the heap. The same counted entries therefore also compare the stack pointer with a floor
@@ -289,7 +290,19 @@ above apply to well-formed text (with the surrogate exception described above).
   `TabError` made of one argument also tests that argument's truth as it is made (its `__bool__`
   or `__len__` runs then), for the `<no detail available>` of its traceback line, where CPython
   tests it only when it prints that line; no other exception class tests it
-  (`tests/deviations/exc_syntax_error_truth.py`).
+  (`tests/deviations/exc_syntax_error_truth.py`). An exception class of the program whose
+  `__init__` surely calls `BaseException.__init__` before anything can read that text does not
+  format the arguments it was made with, which that call replaces: only that call's arguments
+  are formatted, as it runs (`tests/programs/exceptions/exc_keep_repr_effects.py`). That holds
+  where the `__init__` body's first call of an `__init__` is `super().__init__(...)` or
+  `Base.__init__(self, ...)` without star arguments, as a statement of its own (not within an
+  `if`, a loop, a `try` or a `with`); where nothing before it or in its arguments returns,
+  yields, names `locals`, `vars`, `eval`, `exec`, `dir`, `breakpoint` or `super`, or uses `self`
+  other than to assign and read plain fields; and where a program base's `__init__` that it
+  reaches holds to the same rule. Other classes still format their arguments as they are made,
+  among them those deriving `OSError` or `SystemExit`, those that define `__new__`, `__del__`,
+  `__getattr__`, `__getattribute__`, `__setattr__` or `__delattr__`, and those whose `__init__`
+  is decorated, a generator or `async`.
 
 - `E.__module__ = "builtins"` of an exception class raises `NotImplementedError`, where CPython
   assigns it and its uncaught exceptions' line names the class alone; other names are assigned

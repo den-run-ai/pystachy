@@ -1,0 +1,1652 @@
+{
+ "schema": 1,
+ "measured_utc_date": "2026-11-02",
+ "scope": "Cumulative v0.1.0-alpha.3 -> v0.1.0-alpha.4 release-candidate AOT performance: whole-process callgrind instruction counts (Ir) of the 23 adapted pyperformance benchmarks plus bench/fib.py, bench/nbody.py, bench/spectral.py and a reduced-size microGPT. Each candidate source is built by both compilers, so differences come from compiler, library and runtime. Instruction counts, not wall-time claims.",
+ "revisions": {
+  "alpha3_tag": "f5a09d4223139d7255e31051be97fc509e1ca1fe (v0.1.0-alpha.3; its own natively bootstrapped compiler at the 675,209-line IR fixed point, its own lib/ and runtime)",
+  "candidate": "c3aaa068574d440a7104599dc22f683cbae07481 (main; natively bootstrapped compiler at the 790,749-line IR fixed point, its own lib/ and runtime)",
+  "candidate_checkout": "checkout HEAD ee2e4cdabc7f4662dd89f7ae6461dbe62ace12df, which differs from c3aaa068 only in README.md, docs/releases/v0.1.0-alpha.4.md, bench/json_repair/README.md, bench/smoke/README.md and two retained result JSON files",
+  "inputs": "benchmark sources from the candidate checkout; every bench/pyperformance/*.py, bench/fib.py, bench/nbody.py, bench/spectral.py and bench/microgpt/microgpt.py blob equals c3aaa068's"
+ },
+ "compilers": {
+  "alpha3": {
+   "sha256": "63aed92b2c8efa69b71af960d25c7989e2580baf2413614e96ce6727937d81fa",
+   "path": "$SCRATCH/alpha3/pystachy"
+  },
+  "candidate": {
+   "sha256": "7f5fc4bc2a29cda8bf41c74c459ed75b7ffb2df8d3d29e74f713be01e26684a8",
+   "path": "candidate checkout ./pystachy"
+  }
+ },
+ "toolchain": {
+  "llvm": "18.1.3",
+  "valgrind": "3.22.0",
+  "cpython_oracle": "3.13.18",
+  "host": "shared 4-vCPU Linux x86-64 VM (Firecracker), Intel Xeon @ 2.10 GHz; three other agents active"
+ },
+ "environment": {
+  "variables": "Every build and run gets an explicit minimal environment: PATH, HOME, PYTHONHASHSEED=0, LC_ALL=C.UTF-8. No inherited PYSTACHY_*, PYTHONPATH, PYTHONHOME or PYTHONUNBUFFERED.",
+  "builds": "pystachy build SOURCE -o EXE, run from the compiler's own checkout directory with PYSTACHY_HOME set to that checkout and a private PYSTACHY_CACHE per compiler ($SCRATCH/perf/cache-alpha3, $SCRATCH/perf/cache-candidate), each warmed by building a hello-world program first (cold-cache builds: alpha.3 5.10 s, candidate 7.15 s). Builds took the shared $SCRATCH/build.lock (flock) so they did not overlap other agents' builds.",
+  "runs": "Executables and CPython run from an empty directory ($SCRATCH/perf/run); microgpt from $SCRATCH/perf/inputs/microgpt-run, which holds input.txt. Every build, CPython run, callgrind run and wall sample is pinned with taskset -c 3."
+ },
+ "method": {
+  "instruction_counts": "valgrind --tool=callgrind --error-exitcode=99 --callgrind-out-file=FILE EXE ARGS; the whole-process 'summary:' Ir. One run per executable: for a fixed binary, arguments and environment, counts repeat to within a few tens of instructions (see reproducibility).",
+  "oracle": "python3.13 -s -P SOURCE ARGS (CPython 3.13.18) with the same environment and arguments; each executable's stdout under callgrind is compared byte for byte with the oracle's stdout.",
+  "arguments": "The controller's measured arguments (tools/bench_pyperformance.py BENCHMARKS[name][0]) where they give roughly 0.3-2 billion instructions; otherwise the loop count is scaled (per-benchmark 'controller_measured_args' shows the original). The same arguments are used for both compilers and CPython.",
+  "build_time_and_size": "Single build per compiler and benchmark on a warmed runtime cache: wall seconds and executable bytes are indicative only (shared host). The candidate's AOT pipeline adds #1020's late step (clang -O2 -emit-llvm, opt forceattrs/always-inline of pys_new, then clang -O2 -c -Xclang -disable-llvm-passes) to alpha.3's single clang -O2 -c.",
+  "attribution": "callgrind_annotate --inclusive=no --threshold=100 --auto=no on both profiles; object paths dropped so functions compare by name. callgrind's 'NAME'2' entries are recursion levels (--separate-recs default). Call counts from the profiles' calls= records; recursion-depth accesses confirmed in objdump -d of the measured executables.",
+  "scripts": [
+   "$SCRATCH/perf/driver.py",
+   "$SCRATCH/perf/run_plan.sh",
+   "$SCRATCH/perf/plan.txt",
+   "$SCRATCH/perf/annotate_diff.py",
+   "$SCRATCH/perf/calls.py",
+   "$SCRATCH/perf/wall_pairs.py",
+   "$SCRATCH/perf/assemble.py",
+   "$SCRATCH/perf/extra_base.py",
+   "$SCRATCH/perf/extra_attr.py",
+   "$SCRATCH/perf/extra_final.py",
+   "$SCRATCH/perf/attribution.py",
+   "$SCRATCH/perf/exp_run.py",
+   "$SCRATCH/perf/run_exp.sh",
+   "$SCRATCH/perf/calib_native.sh"
+  ],
+  "raw_state": [
+   "$SCRATCH/perf/builds.json",
+   "$SCRATCH/perf/oracles.json",
+   "$SCRATCH/perf/callgrind.json",
+   "$SCRATCH/perf/wall.json",
+   "$SCRATCH/perf/cg",
+   "$SCRATCH/perf/oracle",
+   "$SCRATCH/perf/exe"
+  ]
+ },
+ "reproducibility": {
+  "retained_json_control": "json_loads 300 executables are byte-identical to the retained broad JSON control's (bench/smoke/results/json-controls-2026-11-02.json: alpha.3 61a3a680daf89e122b404dc6f73f33fd64afb7a6665fbff90a0edd43edfa878f, candidate 4f086575f1a27af6bb7138667ec0c78530561479cca8bc89220ae9ce88f4adc8), so both compilers, libraries and runtimes reproduce that record's builds. Counts here: 1,300,276,404 and 1,428,396,351 (+9.853%); retained: 1,300,394,281 and 1,428,523,891 (+9.853%). The 0.009% offset on both sides is environmental: with this run's minimal environment glibc's __tunables_init scans fewer variables (-105,777 Ir) and GC/stack work changes slightly.",
+  "repeat_runs": "Repeating two counts with the same executable, arguments and environment gave scimark 8 (candidate) 735,780,715 versus 735,780,736 and fannkuch 1 (alpha.3) 868,840,650 versus 868,840,644; the experiment's scimark repeat differed by 19. Each program prints its varying timed seconds and reads the clock, so counts repeat to within a few tens of instructions (about 3e-8), far below every reported change.",
+  "inputs": "Benchmark source SHA-256s are per benchmark (input_sha256); compiler binary SHA-256s under 'compilers'."
+ },
+ "benchmarks": [
+  {
+   "benchmark": "raytrace",
+   "suite": "pyperformance",
+   "source": "bench/pyperformance/raytrace.py",
+   "input_sha256": "e5f71075698d02ac3e91fe99bf43799905c03651be4a41ff574c99790f5d2213",
+   "args": [
+    "8"
+   ],
+   "controller_measured_args": [
+    "4"
+   ],
+   "cpython_stdout_sha256": "22f3a2db3272a593a654b07482e1600f1f46b0aaa77a3e91be417bddc3558324",
+   "cpython_exit_status": 0,
+   "cpython_wall_seconds_single_run": 1.73,
+   "alpha3": {
+    "instructions": 681940042,
+    "exit_status": 0,
+    "stdout_matches_cpython": true,
+    "executable_bytes": 97976,
+    "build_wall_seconds": 1.18,
+    "binary_sha256": "dc0674099c276093ace83c7ef5a70e178f74d8fa955d5d0358c784671f81c4e2",
+    "callgrind_file": "$SCRATCH/perf/cg/raytrace@8.alpha3.callgrind"
+   },
+   "candidate": {
+    "instructions": 490076740,
+    "exit_status": 0,
+    "stdout_matches_cpython": true,
+    "executable_bytes": 107344,
+    "build_wall_seconds": 1.349,
+    "binary_sha256": "7abcad86ff9795110aab3d2fa92e9e7ea96332c21923388378892db15f57898f",
+    "callgrind_file": "$SCRATCH/perf/cg/raytrace@8.candidate.callgrind"
+   },
+   "ratio": 0.718651,
+   "change_percent": -28.135,
+   "args_note": "loops 4 -> 8"
+  },
+  {
+   "benchmark": "chaos",
+   "suite": "pyperformance",
+   "source": "bench/pyperformance/chaos.py",
+   "input_sha256": "228afbb7b936034eb83a616fb8ef88a267653d55906af6bd2f0e117faa4fb702",
+   "args": [
+    "40"
+   ],
+   "controller_measured_args": [
+    "10"
+   ],
+   "cpython_stdout_sha256": "806d1725128f19d28bff232a7ba090c3b2880437c69e92f803143840f425789b",
+   "cpython_exit_status": 0,
+   "cpython_wall_seconds_single_run": 4.489,
+   "alpha3": {
+    "instructions": 1027698712,
+    "exit_status": 0,
+    "stdout_matches_cpython": true,
+    "executable_bytes": 119760,
+    "build_wall_seconds": 1.691,
+    "binary_sha256": "4a3b4f2973394f96e70f8e74b9beead52f929805812ecc35cbd93f8f303c821b",
+    "callgrind_file": "$SCRATCH/perf/cg/chaos@40.alpha3.callgrind"
+   },
+   "candidate": {
+    "instructions": 985506975,
+    "exit_status": 0,
+    "stdout_matches_cpython": true,
+    "executable_bytes": 137312,
+    "build_wall_seconds": 2.13,
+    "binary_sha256": "c2a2e68c0be7e54d25f1b51739d62a2e6de384a37eca377a5ec685868b119ac2",
+    "callgrind_file": "$SCRATCH/perf/cg/chaos@40.candidate.callgrind"
+   },
+   "ratio": 0.958945,
+   "change_percent": -4.105,
+   "args_note": "loops 10 -> 40 (10 loops counted about 0.23 billion on the candidate)"
+  },
+  {
+   "benchmark": "comprehensions",
+   "suite": "pyperformance",
+   "source": "bench/pyperformance/comprehensions.py",
+   "input_sha256": "e80eeec489f4b6158d9181478151b4884dce3834067cd98e43d430ff2e3d3abf",
+   "args": [
+    "10000"
+   ],
+   "controller_measured_args": [
+    "10000"
+   ],
+   "cpython_stdout_sha256": "0d9805308bc0f684f5e1194b5b92d78be83977740859f070b56ce74a49564708",
+   "cpython_exit_status": 0,
+   "cpython_wall_seconds_single_run": 0.261,
+   "alpha3": {
+    "instructions": 435589711,
+    "exit_status": 0,
+    "stdout_matches_cpython": true,
+    "executable_bytes": 107048,
+    "build_wall_seconds": 1.476,
+    "binary_sha256": "ab2190a6cc9ca89c5b44f2ce82dd337264e7433c0efa53233830858b396551f6",
+    "callgrind_file": "$SCRATCH/perf/cg/comprehensions@10000.alpha3.callgrind"
+   },
+   "candidate": {
+    "instructions": 428917097,
+    "exit_status": 0,
+    "stdout_matches_cpython": true,
+    "executable_bytes": 116432,
+    "build_wall_seconds": 1.773,
+    "binary_sha256": "cd84ca6610c5f18b98f9c732448613985070c50050bd5a90d47572f32f60b2e6",
+    "callgrind_file": "$SCRATCH/perf/cg/comprehensions@10000.candidate.callgrind"
+   },
+   "ratio": 0.984681,
+   "change_percent": -1.532
+  },
+  {
+   "benchmark": "microgpt",
+   "suite": "extra",
+   "source": "$SCRATCH/perf/inputs/microgpt_reduced.py",
+   "input_sha256": "274d39f04289343b2aa1df07642d0ce632a6fb182632b8797a70eeff93f5388f",
+   "args": [
+    "10",
+    "3"
+   ],
+   "controller_measured_args": null,
+   "cpython_stdout_sha256": "604c1642d3da263ad60f393a5e5cbd60b91c52613a24fc9cf3cc1df50361246d",
+   "cpython_exit_status": 0,
+   "cpython_wall_seconds_single_run": 1.491,
+   "alpha3": {
+    "instructions": 926127687,
+    "exit_status": 0,
+    "stdout_matches_cpython": true,
+    "executable_bytes": 195256,
+    "build_wall_seconds": 4.169,
+    "binary_sha256": "319f0359fffb4204c647a8f448b32b064718719d21751bda26505883a6966ab3",
+    "callgrind_file": "$SCRATCH/perf/cg/microgpt@10_3.alpha3.callgrind"
+   },
+   "candidate": {
+    "instructions": 919169689,
+    "exit_status": 0,
+    "stdout_matches_cpython": true,
+    "executable_bytes": 212824,
+    "build_wall_seconds": 6.639,
+    "binary_sha256": "e09c3c2c1168f29f0e73e71c95442fba3382bf84031574cb614d67cd00ab2ca5",
+    "callgrind_file": "$SCRATCH/perf/cg/microgpt@10_3.candidate.callgrind"
+   },
+   "ratio": 0.992487,
+   "change_percent": -0.751,
+   "args_note": "reduced-size microGPT: $SCRATCH/perf/inputs/microgpt_reduced.py is bench/microgpt/microgpt.py with three edits (import sys; the training loop runs int(sys.argv[1]) steps, keeping num_steps=1000 for the learning-rate schedule; int(sys.argv[2]) samples). Args 10 3: 10 training steps, 3 samples. Dataset: karpathy/makemore 988aa59 names.txt, SHA-256 0a30b5557f192f32ab962680889aac5f6fda0f4cecf40a6d0b5694f58ea8cc4d (as documented in bench/microgpt/README.md), downloaded to $SCRATCH/perf/download-names/names.txt",
+   "upstream_source": "bench/microgpt/microgpt.py",
+   "upstream_source_sha256": "bc4de9ceec8348e8b14b4f80dfe5d64b092ece18286029db2640bb92162ee69e"
+  },
+  {
+   "benchmark": "richards",
+   "suite": "pyperformance",
+   "source": "bench/pyperformance/richards.py",
+   "input_sha256": "f290fb528a0086dc5fd98bdf866c591252d8c8a31c80415c051a6ae69c7e0c82",
+   "args": [
+    "100"
+   ],
+   "controller_measured_args": [
+    "20"
+   ],
+   "cpython_stdout_sha256": "9b7c407e69c37032f2b5c8a216bbb8ec1931070a78fe89e54c3eea7688f69651",
+   "cpython_exit_status": 0,
+   "cpython_wall_seconds_single_run": 4.274,
+   "alpha3": {
+    "instructions": 662856115,
+    "exit_status": 0,
+    "stdout_matches_cpython": true,
+    "executable_bytes": 113792,
+    "build_wall_seconds": 1.381,
+    "binary_sha256": "f297f52ea30bc7cdbd1c18ae2d3e34415bb4eb1974d152429de6f937ed307157",
+    "callgrind_file": "$SCRATCH/perf/cg/richards@100.alpha3.callgrind"
+   },
+   "candidate": {
+    "instructions": 659368355,
+    "exit_status": 0,
+    "stdout_matches_cpython": true,
+    "executable_bytes": 122624,
+    "build_wall_seconds": 1.694,
+    "binary_sha256": "702b4cf7a0c58c3c214703cf93edcdb17497286a1cb358edd149b0a5ec097620",
+    "callgrind_file": "$SCRATCH/perf/cg/richards@100.candidate.callgrind"
+   },
+   "ratio": 0.994738,
+   "change_percent": -0.526,
+   "args_note": "loops 20 -> 100 (20 loops counted 0.13 billion)"
+  },
+  {
+   "benchmark": "spectral_norm",
+   "suite": "pyperformance",
+   "source": "bench/pyperformance/spectral_norm.py",
+   "input_sha256": "1f55b1a0cb7931bbdec446be916b762c7fd60cc0e34a3b76cfd02ec4b10bba79",
+   "args": [
+    "40"
+   ],
+   "controller_measured_args": [
+    "10"
+   ],
+   "cpython_stdout_sha256": "7b95b3a2966494eb4bd3ed4d75e6ce107b44a5edda32fafbda1e9a4f09b40003",
+   "cpython_exit_status": 0,
+   "cpython_wall_seconds_single_run": 3.658,
+   "alpha3": {
+    "instructions": 691017217,
+    "exit_status": 0,
+    "stdout_matches_cpython": true,
+    "executable_bytes": 72136,
+    "build_wall_seconds": 0.831,
+    "binary_sha256": "5cba436243cf90c9eb22aecb04978a6174305c8fc5330ec2449633e309f39be6",
+    "callgrind_file": "$SCRATCH/perf/cg/spectral_norm@40.alpha3.callgrind"
+   },
+   "candidate": {
+    "instructions": 687429749,
+    "exit_status": 0,
+    "stdout_matches_cpython": true,
+    "executable_bytes": 77352,
+    "build_wall_seconds": 1.025,
+    "binary_sha256": "5c45533ee24c853dde9d2e317ddac63b2a63acca0b0e025f0a1817a61dc5e46c",
+    "callgrind_file": "$SCRATCH/perf/cg/spectral_norm@40.candidate.callgrind"
+   },
+   "ratio": 0.994808,
+   "change_percent": -0.519,
+   "args_note": "loops 10 -> 40 (10 loops counted 0.17 billion)"
+  },
+  {
+   "benchmark": "richards_super",
+   "suite": "pyperformance",
+   "source": "bench/pyperformance/richards_super.py",
+   "input_sha256": "376e2407aaaf91f880d2e53b0853455272183130e157afc56d1539a5f259496f",
+   "args": [
+    "100"
+   ],
+   "controller_measured_args": [
+    "20"
+   ],
+   "cpython_stdout_sha256": "460d020e30663314776f8e2925943fd2cb0a297a33b4d187ba49d572ee8795c4",
+   "cpython_exit_status": 0,
+   "cpython_wall_seconds_single_run": 4.902,
+   "alpha3": {
+    "instructions": 676781651,
+    "exit_status": 0,
+    "stdout_matches_cpython": true,
+    "executable_bytes": 109528,
+    "build_wall_seconds": 1.39,
+    "binary_sha256": "e99b109407b3258bde235c6f5952f3313791ec9e9c5f444409cc06bb36a16dc0",
+    "callgrind_file": "$SCRATCH/perf/cg/richards_super@100.alpha3.callgrind"
+   },
+   "candidate": {
+    "instructions": 673294278,
+    "exit_status": 0,
+    "stdout_matches_cpython": true,
+    "executable_bytes": 122456,
+    "build_wall_seconds": 1.785,
+    "binary_sha256": "f30b1c20059b4153230416a5f34c979acda57879f2a993b3f3f1e55dc2ce03fa",
+    "callgrind_file": "$SCRATCH/perf/cg/richards_super@100.candidate.callgrind"
+   },
+   "ratio": 0.994847,
+   "change_percent": -0.515,
+   "args_note": "loops 20 -> 100"
+  },
+  {
+   "benchmark": "unpack_sequence",
+   "suite": "pyperformance",
+   "source": "bench/pyperformance/unpack_sequence.py",
+   "input_sha256": "a4c67ad1e0fc2c7dcc102c98042c0b9e08bf1b46ac980b7e1916294e34997a67",
+   "args": [
+    "50000"
+   ],
+   "controller_measured_args": [
+    "50000"
+   ],
+   "cpython_stdout_sha256": "473df238339ec83d8f3574f31fc224d39010b2a1819fda113704a65ed29ff889",
+   "cpython_exit_status": 0,
+   "cpython_wall_seconds_single_run": 0.947,
+   "alpha3": {
+    "instructions": 1218023,
+    "exit_status": 0,
+    "stdout_matches_cpython": true,
+    "executable_bytes": 71928,
+    "build_wall_seconds": 0.972,
+    "binary_sha256": "e6a46b2a99f725a5264b0459465acf760907f86edabe52d934d6a88eac07c767",
+    "callgrind_file": "$SCRATCH/perf/cg/unpack_sequence@50000.alpha3.callgrind"
+   },
+   "candidate": {
+    "instructions": 1217308,
+    "exit_status": 0,
+    "stdout_matches_cpython": true,
+    "executable_bytes": 77024,
+    "build_wall_seconds": 1.078,
+    "binary_sha256": "0a485c05a11557e51418bfe066de9ab83749fa154b09b6a0e7f3d53c12f304da",
+    "callgrind_file": "$SCRATCH/perf/cg/unpack_sequence@50000.candidate.callgrind"
+   },
+   "ratio": 0.999413,
+   "change_percent": -0.059,
+   "args_note": "controller's 50000 loops; LLVM reduces the timed loop to a few instructions per iteration in both builds (about 25-35 us for 50000 loops), so the count is about 1.2 million, startup-dominated, far below the 0.2-billion target; reaching it would need ~10^8 loops (hours of CPython oracle). Excluded from one geomean variant."
+  },
+  {
+   "benchmark": "bench_nbody",
+   "suite": "extra",
+   "source": "bench/nbody.py",
+   "input_sha256": "1c163e560eea0d5196202fd19cb43c6c59c8db335f1157cbdd252af0e1eebc7b",
+   "args": [],
+   "controller_measured_args": null,
+   "cpython_stdout_sha256": "7fee18aa4de449f07aa173bae7a37df103ff0317ed8055566e6f3c9358c09b2c",
+   "cpython_exit_status": 0,
+   "cpython_wall_seconds_single_run": 2.129,
+   "alpha3": {
+    "instructions": 424193609,
+    "exit_status": 0,
+    "stdout_matches_cpython": true,
+    "executable_bytes": 87552,
+    "build_wall_seconds": 1.003,
+    "binary_sha256": "1c07f00f526fda0e1b1f2017a1dd1edba8452067ead0a5eb65bcca710a8e0001",
+    "callgrind_file": "$SCRATCH/perf/cg/bench_nbody@.alpha3.callgrind"
+   },
+   "candidate": {
+    "instructions": 424193802,
+    "exit_status": 0,
+    "stdout_matches_cpython": true,
+    "executable_bytes": 101048,
+    "build_wall_seconds": 1.264,
+    "binary_sha256": "d928cfdbe051f2b698cdcc3c67894ed237e1d51eecea3967ec8cc808ff2871ab",
+    "callgrind_file": "$SCRATCH/perf/cg/bench_nbody@.candidate.callgrind"
+   },
+   "ratio": 1.0,
+   "change_percent": 0.0,
+   "args_note": "no arguments (500,000 steps)"
+  },
+  {
+   "benchmark": "regex_dna",
+   "suite": "pyperformance",
+   "source": "bench/pyperformance/regex_dna.py",
+   "input_sha256": "8f02c6b44688f6c1e3a96bbd0155367f3bf9327e65f42be2967008891e1aa2aa",
+   "args": [
+    "2"
+   ],
+   "controller_measured_args": [
+    "4"
+   ],
+   "cpython_stdout_sha256": "2ad4aad0732867841db3f6fcf33779b0ecdefb407be2aaf78b3527440a141163",
+   "cpython_exit_status": 0,
+   "cpython_wall_seconds_single_run": 0.575,
+   "alpha3": {
+    "instructions": 1176348680,
+    "exit_status": 0,
+    "stdout_matches_cpython": true,
+    "executable_bytes": 389224,
+    "build_wall_seconds": 6.722,
+    "binary_sha256": "3b42ef4fb6bb2a05fad6228b0b336f526b0b47e661e9b58cc120669d6893367d",
+    "callgrind_file": "$SCRATCH/perf/cg/regex_dna@2.alpha3.callgrind"
+   },
+   "candidate": {
+    "instructions": 1183639237,
+    "exit_status": 0,
+    "stdout_matches_cpython": true,
+    "executable_bytes": 414200,
+    "build_wall_seconds": 7.5,
+    "binary_sha256": "6c03d55ddc6510d4579518cf92fff1e3dc9ba208550443cbfe03110f8b1b9067",
+    "callgrind_file": "$SCRATCH/perf/cg/regex_dna@2.candidate.callgrind"
+   },
+   "ratio": 1.006198,
+   "change_percent": 0.62,
+   "args_note": "loops 4 -> 2"
+  },
+  {
+   "benchmark": "regex_effbot",
+   "suite": "pyperformance",
+   "source": "bench/pyperformance/regex_effbot.py",
+   "input_sha256": "91ead8e732223797be1ed75d57d781ad6682ec25fc9464e41f336e73c842ef5a",
+   "args": [
+    "10"
+   ],
+   "controller_measured_args": [
+    "20"
+   ],
+   "cpython_stdout_sha256": "bb44a91051b2622607c6dbc2a223727d2872ddefc32472506ef23a8e66b3c6da",
+   "cpython_exit_status": 0,
+   "cpython_wall_seconds_single_run": 0.387,
+   "alpha3": {
+    "instructions": 1648717112,
+    "exit_status": 0,
+    "stdout_matches_cpython": true,
+    "executable_bytes": 365080,
+    "build_wall_seconds": 6.417,
+    "binary_sha256": "8b06a7cdbd580876a0a46fea39658fbd11d417e17b217fe0b3811be71f19a300",
+    "callgrind_file": "$SCRATCH/perf/cg/regex_effbot@10.alpha3.callgrind"
+   },
+   "candidate": {
+    "instructions": 1665607144,
+    "exit_status": 0,
+    "stdout_matches_cpython": true,
+    "executable_bytes": 394464,
+    "build_wall_seconds": 6.908,
+    "binary_sha256": "02d7ed7d236dd934177bf9b137604c488e86a927ddc9914ecf553cda37177fed",
+    "callgrind_file": "$SCRATCH/perf/cg/regex_effbot@10.candidate.callgrind"
+   },
+   "ratio": 1.010244,
+   "change_percent": 1.024,
+   "args_note": "loops 20 -> 10"
+  },
+  {
+   "benchmark": "regex_v8",
+   "suite": "pyperformance",
+   "source": "bench/pyperformance/regex_v8.py",
+   "input_sha256": "a2bf22b48133192c4931bef3a65f2385337b3f1b1e4359ff67ebebe96821b490",
+   "args": [
+    "1"
+   ],
+   "controller_measured_args": [
+    "20"
+   ],
+   "cpython_stdout_sha256": "890b1ca7bfc41fd860877c397a2b52c3f9987f85b7c0c674e1c09adbedca7aa6",
+   "cpython_exit_status": 0,
+   "cpython_wall_seconds_single_run": 0.842,
+   "alpha3": {
+    "instructions": 15371706854,
+    "exit_status": 0,
+    "stdout_matches_cpython": true,
+    "executable_bytes": 589136,
+    "build_wall_seconds": 11.25,
+    "binary_sha256": "0ae2f4828f94500a4e85c5253c3e468d51a47ad4a4d0507e22b661e0fe9de1ec",
+    "callgrind_file": "$SCRATCH/perf/cg/regex_v8@1.alpha3.callgrind"
+   },
+   "candidate": {
+    "instructions": 15635318397,
+    "exit_status": 0,
+    "stdout_matches_cpython": true,
+    "executable_bytes": 618248,
+    "build_wall_seconds": 12.256,
+    "binary_sha256": "77bfbf8799a5e096c14b89cee86fe4bb77f54f8f11cb95b7f0ead643ea796321",
+    "callgrind_file": "$SCRATCH/perf/cg/regex_v8@1.candidate.callgrind"
+   },
+   "ratio": 1.017149,
+   "change_percent": 1.715,
+   "args_note": "loops 20 -> 1: the untimed checksum pass (every regex over every string after the timed loop) is a fixed cost of about 2.6 s natively, so even 1 loop exceeds the 2-billion target; the count is dominated by that pass"
+  },
+  {
+   "benchmark": "bench_spectral",
+   "suite": "extra",
+   "source": "bench/spectral.py",
+   "input_sha256": "0ba2115a31ca52d8b6a6d8949882c25bdce261ef8e756d976eb348c8cc11e0b0",
+   "args": [],
+   "controller_measured_args": null,
+   "cpython_stdout_sha256": "8fdf61c16abc8435add5a81e7f774b75b689673474c916e8859ebe8f8a528277",
+   "cpython_exit_status": 0,
+   "cpython_wall_seconds_single_run": 1.651,
+   "alpha3": {
+    "instructions": 245415316,
+    "exit_status": 0,
+    "stdout_matches_cpython": true,
+    "executable_bytes": 82952,
+    "build_wall_seconds": 0.951,
+    "binary_sha256": "f4ff870f16957a7a3f549699636ac1a94d9c8399b03b6305f5867cddb59a3788",
+    "callgrind_file": "$SCRATCH/perf/cg/bench_spectral@.alpha3.callgrind"
+   },
+   "candidate": {
+    "instructions": 250345725,
+    "exit_status": 0,
+    "stdout_matches_cpython": true,
+    "executable_bytes": 100592,
+    "build_wall_seconds": 1.227,
+    "binary_sha256": "309547cd88acfc02dadc1df506d19a97734f16c112c878bd0ffa98255a0acedf",
+    "callgrind_file": "$SCRATCH/perf/cg/bench_spectral@.candidate.callgrind"
+   },
+   "ratio": 1.02009,
+   "change_percent": 2.009,
+   "args_note": "no arguments (n=500, 10 iterations)"
+  },
+  {
+   "benchmark": "float",
+   "suite": "pyperformance",
+   "source": "bench/pyperformance/float.py",
+   "input_sha256": "cc19566e50f47bc26d78324475260ff9808509266b70fffeff0091d1144388d0",
+   "args": [
+    "10"
+   ],
+   "controller_measured_args": [
+    "10"
+   ],
+   "cpython_stdout_sha256": "f3f09d1ccfe5d26be85d50dd99c36ca1af4d7fe4f308bfe2bbec91d296ad654c",
+   "cpython_exit_status": 0,
+   "cpython_wall_seconds_single_run": 0.805,
+   "alpha3": {
+    "instructions": 339469015,
+    "exit_status": 0,
+    "stdout_matches_cpython": true,
+    "executable_bytes": 72664,
+    "build_wall_seconds": 0.815,
+    "binary_sha256": "5a0871d8b9608bb8a940a2f863d0769cf8beb135e7657392fd1072888a3f6a93",
+    "callgrind_file": "$SCRATCH/perf/cg/float@10.alpha3.callgrind"
+   },
+   "candidate": {
+    "instructions": 346608518,
+    "exit_status": 0,
+    "stdout_matches_cpython": true,
+    "executable_bytes": 77840,
+    "build_wall_seconds": 0.968,
+    "binary_sha256": "0f86182086b5721b70646e868a3098ba8c5a4e80550a909c857956897afdb657",
+    "callgrind_file": "$SCRATCH/perf/cg/float@10.candidate.callgrind"
+   },
+   "ratio": 1.021031,
+   "change_percent": 2.103
+  },
+  {
+   "benchmark": "hexiom",
+   "suite": "pyperformance",
+   "source": "bench/pyperformance/hexiom.py",
+   "input_sha256": "988d2adb90f8ab6a67180200436e93290fdb077e218b7339bb4ac7caf1cd2502",
+   "args": [
+    "100"
+   ],
+   "controller_measured_args": [
+    "100"
+   ],
+   "cpython_stdout_sha256": "11c533cc5aee8170694a4d11b8821f34ac9c5527f0c4d005fe2edc205d30c547",
+   "cpython_exit_status": 0,
+   "cpython_wall_seconds_single_run": 0.592,
+   "alpha3": {
+    "instructions": 689269863,
+    "exit_status": 0,
+    "stdout_matches_cpython": true,
+    "executable_bytes": 139640,
+    "build_wall_seconds": 2.075,
+    "binary_sha256": "2783504ee01203306bab7d4700900a10a0006645b881173e967bd51a393d1975",
+    "callgrind_file": "$SCRATCH/perf/cg/hexiom@100.alpha3.callgrind"
+   },
+   "candidate": {
+    "instructions": 713175551,
+    "exit_status": 0,
+    "stdout_matches_cpython": true,
+    "executable_bytes": 157528,
+    "build_wall_seconds": 2.54,
+    "binary_sha256": "472f140dd1cff16d4c93a3b6ab05bd5025a86600b72a18da0fd6f6f88cc9086b",
+    "callgrind_file": "$SCRATCH/perf/cg/hexiom@100.candidate.callgrind"
+   },
+   "ratio": 1.034683,
+   "change_percent": 3.468
+  },
+  {
+   "benchmark": "nbody",
+   "suite": "pyperformance",
+   "source": "bench/pyperformance/nbody.py",
+   "input_sha256": "2ec9c9e9c36cf2e819dc1026debbb7f9f901410ae36032795d60057c9f447e30",
+   "args": [
+    "10"
+   ],
+   "controller_measured_args": [
+    "10"
+   ],
+   "cpython_stdout_sha256": "24b08a7d9609be413381dc6269a427c7ee5845f1683b3f0584a0fa4877d311c3",
+   "cpython_exit_status": 0,
+   "cpython_wall_seconds_single_run": 0.826,
+   "alpha3": {
+    "instructions": 570450945,
+    "exit_status": 0,
+    "stdout_matches_cpython": true,
+    "executable_bytes": 85688,
+    "build_wall_seconds": 0.99,
+    "binary_sha256": "341043d53a9e469d01bd4bf24fc5fbd78a9d841d8fd4fdcc6f05bc2ee2a42789",
+    "callgrind_file": "$SCRATCH/perf/cg/nbody@10.alpha3.callgrind"
+   },
+   "candidate": {
+    "instructions": 590251469,
+    "exit_status": 0,
+    "stdout_matches_cpython": true,
+    "executable_bytes": 99056,
+    "build_wall_seconds": 1.218,
+    "binary_sha256": "1aad2d602de55072bce46c2d9755f47eee72ef20dfbfa3e0a4bf530a6e3a28dd",
+    "callgrind_file": "$SCRATCH/perf/cg/nbody@10.candidate.callgrind"
+   },
+   "ratio": 1.03471,
+   "change_percent": 3.471
+  },
+  {
+   "benchmark": "meteor_contest",
+   "suite": "pyperformance",
+   "source": "bench/pyperformance/meteor_contest.py",
+   "input_sha256": "876ffc333e293ab11d19298002da139b6ccf88dd50e3e92b9384d4485c3a7340",
+   "args": [
+    "2"
+   ],
+   "controller_measured_args": [
+    "6"
+   ],
+   "cpython_stdout_sha256": "86f69d61ba45313153b848e054b673981ac6b8a6a0c27e3d8ca1ccea615608ff",
+   "cpython_exit_status": 0,
+   "cpython_wall_seconds_single_run": 0.569,
+   "alpha3": {
+    "instructions": 828641899,
+    "exit_status": 0,
+    "stdout_matches_cpython": true,
+    "executable_bytes": 117160,
+    "build_wall_seconds": 1.452,
+    "binary_sha256": "c5015441ac7bfa2d6bc22063782a13436f09a6d124edb3059877854ccb5a603f",
+    "callgrind_file": "$SCRATCH/perf/cg/meteor_contest@2.alpha3.callgrind"
+   },
+   "candidate": {
+    "instructions": 860599321,
+    "exit_status": 0,
+    "stdout_matches_cpython": true,
+    "executable_bytes": 130944,
+    "build_wall_seconds": 1.839,
+    "binary_sha256": "1c2923234d5a3b706d4b40ee98645b7b0261413ee0e2ca9efb59341b535dcff1",
+    "callgrind_file": "$SCRATCH/perf/cg/meteor_contest@2.candidate.callgrind"
+   },
+   "ratio": 1.038566,
+   "change_percent": 3.857,
+   "args_note": "loops 6 -> 2 (6 loops would be about 3 billion)"
+  },
+  {
+   "benchmark": "json_dumps",
+   "suite": "pyperformance",
+   "source": "bench/pyperformance/json_dumps.py",
+   "input_sha256": "00d75868e820e56f2281e061583d418574b6dda96de180d3cf3adc76cff532c2",
+   "args": [
+    "20"
+   ],
+   "controller_measured_args": [
+    "20"
+   ],
+   "cpython_stdout_sha256": "b243e95da81964b30d2aa5901f2f431238953e7ed71eecf5753c54c06afae50c",
+   "cpython_exit_status": 0,
+   "cpython_wall_seconds_single_run": 0.228,
+   "alpha3": {
+    "instructions": 1440549847,
+    "exit_status": 0,
+    "stdout_matches_cpython": true,
+    "executable_bytes": 171624,
+    "build_wall_seconds": 2.272,
+    "binary_sha256": "a74f2779549ef56cc489a78f343b3996c6c35f6f6742b99067bc2e89c943c56a",
+    "callgrind_file": "$SCRATCH/perf/cg/json_dumps@20.alpha3.callgrind"
+   },
+   "candidate": {
+    "instructions": 1508536469,
+    "exit_status": 0,
+    "stdout_matches_cpython": true,
+    "executable_bytes": 207352,
+    "build_wall_seconds": 2.734,
+    "binary_sha256": "1b616e3aedebe8eaba9db02ba2ccce2e8d1c3ec5a5ee647a6673b0f68ff7caf4",
+    "callgrind_file": "$SCRATCH/perf/cg/json_dumps@20.candidate.callgrind"
+   },
+   "ratio": 1.047195,
+   "change_percent": 4.719
+  },
+  {
+   "benchmark": "nqueens",
+   "suite": "pyperformance",
+   "source": "bench/pyperformance/nqueens.py",
+   "input_sha256": "5ccc5d1f8724daf6550b870d8031120653eef6df0fa93bddeb7afaa5e28f4b53",
+   "args": [
+    "5"
+   ],
+   "controller_measured_args": [
+    "10"
+   ],
+   "cpython_stdout_sha256": "c2efe03d295e00971a72e5e300ff0a8b90a05e0e310111a799fe53c5eb86c798",
+   "cpython_exit_status": 0,
+   "cpython_wall_seconds_single_run": 0.346,
+   "alpha3": {
+    "instructions": 1148615907,
+    "exit_status": 0,
+    "stdout_matches_cpython": true,
+    "executable_bytes": 81032,
+    "build_wall_seconds": 0.978,
+    "binary_sha256": "657d4e62d7fbebb67e3dbb9a97ffe79e1f9569a617c6b46769af65d7b00e6311",
+    "callgrind_file": "$SCRATCH/perf/cg/nqueens@5.alpha3.callgrind"
+   },
+   "candidate": {
+    "instructions": 1216148654,
+    "exit_status": 0,
+    "stdout_matches_cpython": true,
+    "executable_bytes": 94456,
+    "build_wall_seconds": 1.109,
+    "binary_sha256": "e240d298b2a3a08fd801840e24d96ac3dd78681fbd2c13eba4de6befe4306209",
+    "callgrind_file": "$SCRATCH/perf/cg/nqueens@5.candidate.callgrind"
+   },
+   "ratio": 1.058795,
+   "change_percent": 5.879,
+   "args_note": "loops 10 -> 5"
+  },
+  {
+   "benchmark": "go",
+   "suite": "pyperformance",
+   "source": "bench/pyperformance/go.py",
+   "input_sha256": "521cffbc4d15cdd93e0693230143aa274e4e190dd3e5f49cb45c9745565c5a13",
+   "args": [
+    "8"
+   ],
+   "controller_measured_args": [
+    "4"
+   ],
+   "cpython_stdout_sha256": "b223bbdb7cbcd67ce7aa2711dc5c0a87ba0084304cfedccafc39491e74738bfb",
+   "cpython_exit_status": 0,
+   "cpython_wall_seconds_single_run": 1.397,
+   "alpha3": {
+    "instructions": 350188877,
+    "exit_status": 0,
+    "stdout_matches_cpython": true,
+    "executable_bytes": 98096,
+    "build_wall_seconds": 1.182,
+    "binary_sha256": "2946eaedb2f44372ea2ea12da13f4b37c2424f6c59573ac6f34c48936b87c231",
+    "callgrind_file": "$SCRATCH/perf/cg/go@8.alpha3.callgrind"
+   },
+   "candidate": {
+    "instructions": 374382791,
+    "exit_status": 0,
+    "stdout_matches_cpython": true,
+    "executable_bytes": 107648,
+    "build_wall_seconds": 1.566,
+    "binary_sha256": "a80694e7b56d4f1daafce0c92f48cc6731010c91e49a464e367c5028c6948506",
+    "callgrind_file": "$SCRATCH/perf/cg/go@8.candidate.callgrind"
+   },
+   "ratio": 1.069088,
+   "change_percent": 6.909,
+   "args_note": "loops 4 -> 8"
+  },
+  {
+   "benchmark": "fannkuch",
+   "suite": "pyperformance",
+   "source": "bench/pyperformance/fannkuch.py",
+   "input_sha256": "42d906410ede9419d8f3eceda729b2027d78085f455a0fbb0445e081b53df2cf",
+   "args": [
+    "1"
+   ],
+   "controller_measured_args": [
+    "2"
+   ],
+   "cpython_stdout_sha256": "c92b4a998854993c83b7b23d25149489fb9d09260907040e1ebe1ce9c58aa41b",
+   "cpython_exit_status": 0,
+   "cpython_wall_seconds_single_run": 0.345,
+   "alpha3": {
+    "instructions": 868840644,
+    "exit_status": 0,
+    "stdout_matches_cpython": true,
+    "executable_bytes": 72112,
+    "build_wall_seconds": 0.812,
+    "binary_sha256": "309edb7b256cfd302f38dae5cc3bf420a1498467204050b2c909fc3f7106495d",
+    "callgrind_file": "$SCRATCH/perf/cg/fannkuch@1.alpha3.callgrind"
+   },
+   "candidate": {
+    "instructions": 941219167,
+    "exit_status": 0,
+    "stdout_matches_cpython": true,
+    "executable_bytes": 81616,
+    "build_wall_seconds": 1.087,
+    "binary_sha256": "b5df0f7853a764bb59d0d39224d86243b4eed6b3b25959d0399187c9336e43dd",
+    "callgrind_file": "$SCRATCH/perf/cg/fannkuch@1.candidate.callgrind"
+   },
+   "ratio": 1.083305,
+   "change_percent": 8.33,
+   "args_note": "loops 2 -> 1 (2 loops would approach 2 billion)"
+  },
+  {
+   "benchmark": "barnes_hut",
+   "suite": "pyperformance",
+   "source": "bench/pyperformance/barnes_hut.py",
+   "input_sha256": "e68bffb93b84c4fb44d50dd0de057af886533efc969a5ea9424c1feff381ac3d",
+   "args": [
+    "4"
+   ],
+   "controller_measured_args": [
+    "1"
+   ],
+   "cpython_stdout_sha256": "33598832210ae69505173425ed74da35b1b10801fa5bc5d4a61198c82754ba44",
+   "cpython_exit_status": 0,
+   "cpython_wall_seconds_single_run": 6.768,
+   "alpha3": {
+    "instructions": 768490218,
+    "exit_status": 0,
+    "stdout_matches_cpython": true,
+    "executable_bytes": 81744,
+    "build_wall_seconds": 0.97,
+    "binary_sha256": "f312ff6f63095adf2438baea3a99947129885f127c49639a4f581e17e6f24add",
+    "callgrind_file": "$SCRATCH/perf/cg/barnes_hut@4.alpha3.callgrind"
+   },
+   "candidate": {
+    "instructions": 837401538,
+    "exit_status": 0,
+    "stdout_matches_cpython": true,
+    "executable_bytes": 86912,
+    "build_wall_seconds": 1.222,
+    "binary_sha256": "fd50a6077e577dc31a176feba41dfca8db66d4c4612bd61e1a41d8d15cb46add",
+    "callgrind_file": "$SCRATCH/perf/cg/barnes_hut@4.candidate.callgrind"
+   },
+   "ratio": 1.089671,
+   "change_percent": 8.967,
+   "args_note": "loops 1 -> 4 (1 loop counted about 0.2 billion instructions)"
+  },
+  {
+   "benchmark": "json_loads",
+   "suite": "pyperformance",
+   "source": "bench/pyperformance/json_loads.py",
+   "input_sha256": "51d23d4d8dcc3dea512988ae424988be6bf17d70e9e6d2a09d908799b3319c77",
+   "args": [
+    "300"
+   ],
+   "controller_measured_args": [
+    "2000"
+   ],
+   "cpython_stdout_sha256": "f981cc57c94dc16070dabcc6f543f14c52a5f0ed8240cb7f7db403f073d61e4c",
+   "cpython_exit_status": 0,
+   "cpython_wall_seconds_single_run": 0.179,
+   "alpha3": {
+    "instructions": 1300276404,
+    "exit_status": 0,
+    "stdout_matches_cpython": true,
+    "executable_bytes": 224408,
+    "build_wall_seconds": 2.615,
+    "binary_sha256": "61a3a680daf89e122b404dc6f73f33fd64afb7a6665fbff90a0edd43edfa878f",
+    "callgrind_file": "$SCRATCH/perf/cg/json_loads@300.alpha3.callgrind"
+   },
+   "candidate": {
+    "instructions": 1428396351,
+    "exit_status": 0,
+    "stdout_matches_cpython": true,
+    "executable_bytes": 274672,
+    "build_wall_seconds": 3.854,
+    "binary_sha256": "4f086575f1a27af6bb7138667ec0c78530561479cca8bc89220ae9ce88f4adc8",
+    "callgrind_file": "$SCRATCH/perf/cg/json_loads@300.candidate.callgrind"
+   },
+   "ratio": 1.098533,
+   "change_percent": 9.853,
+   "args_note": "300 loops, the retained broad JSON control's arguments, instead of the controller's 2000"
+  },
+  {
+   "benchmark": "generators",
+   "suite": "pyperformance",
+   "source": "bench/pyperformance/generators.py",
+   "input_sha256": "4c5b29669136d4cf7d51f039253b0fd5a21f35d0dd068e2f35a06a889f8d997f",
+   "args": [
+    "10"
+   ],
+   "controller_measured_args": [
+    "10"
+   ],
+   "cpython_stdout_sha256": "e49ac9b974b13a75b55cbaa9841c8c721819efba94d59b5181dbb7bb165b974e",
+   "cpython_exit_status": 0,
+   "cpython_wall_seconds_single_run": 0.545,
+   "alpha3": {
+    "instructions": 1068640989,
+    "exit_status": 0,
+    "stdout_matches_cpython": true,
+    "executable_bytes": 82848,
+    "build_wall_seconds": 1.115,
+    "binary_sha256": "b40fab51a6f3166caa842eb31e880a6f6a9627fc7b785b41f593986edfaef0b3",
+    "callgrind_file": "$SCRATCH/perf/cg/generators@10.alpha3.callgrind"
+   },
+   "candidate": {
+    "instructions": 1210949709,
+    "exit_status": 0,
+    "stdout_matches_cpython": true,
+    "executable_bytes": 96296,
+    "build_wall_seconds": 1.306,
+    "binary_sha256": "4a79ef3ccd2e83612c68742f23409d8a5157db84944d54afb6cff26594c11239",
+    "callgrind_file": "$SCRATCH/perf/cg/generators@10.candidate.callgrind"
+   },
+   "ratio": 1.133168,
+   "change_percent": 13.317
+  },
+  {
+   "benchmark": "scimark",
+   "suite": "pyperformance",
+   "source": "bench/pyperformance/scimark.py",
+   "input_sha256": "dd34b452b124fb104750aed8c82082fca734695561e221de47147ec13bec7629",
+   "args": [
+    "8"
+   ],
+   "controller_measured_args": [
+    "2"
+   ],
+   "cpython_stdout_sha256": "6bf0c073725af1aa570c71501237eb7dd078333273fc956d062ba63bfe160022",
+   "cpython_exit_status": 0,
+   "cpython_wall_seconds_single_run": 3.139,
+   "alpha3": {
+    "instructions": 602665516,
+    "exit_status": 0,
+    "stdout_matches_cpython": true,
+    "executable_bytes": 86480,
+    "build_wall_seconds": 1.232,
+    "binary_sha256": "d0682fc746d82a49ce65c1077aaa5efaf08839e70a34817d87186edeaeda5ab5",
+    "callgrind_file": "$SCRATCH/perf/cg/scimark@8.alpha3.callgrind"
+   },
+   "candidate": {
+    "instructions": 735780736,
+    "exit_status": 0,
+    "stdout_matches_cpython": true,
+    "executable_bytes": 95704,
+    "build_wall_seconds": 1.478,
+    "binary_sha256": "85fd896f73ac3fc8caad1a9ed01176b26d3bff6ce2f7834e46ce0efd532add95",
+    "callgrind_file": "$SCRATCH/perf/cg/scimark@8.candidate.callgrind"
+   },
+   "ratio": 1.220877,
+   "change_percent": 22.088,
+   "args_note": "loops 2 -> 8 (2 loops counted 0.19 billion)"
+  },
+  {
+   "benchmark": "bench_fib",
+   "suite": "extra",
+   "source": "bench/fib.py",
+   "input_sha256": "20035a6334baba74b250c187d92b915671a394d4fa5cabf703433bd938b4bd26",
+   "args": [],
+   "controller_measured_args": null,
+   "cpython_stdout_sha256": "a46206445bb93c50ca0779bf8a18f318b0dfc4fd39a9bb75020bc2ff1d5df6f0",
+   "cpython_exit_status": 0,
+   "cpython_wall_seconds_single_run": 1.157,
+   "alpha3": {
+    "instructions": 433158653,
+    "exit_status": 0,
+    "stdout_matches_cpython": true,
+    "executable_bytes": 28816,
+    "build_wall_seconds": 0.261,
+    "binary_sha256": "2300bc88c07bc257b03149a347778240e840719851fc22211b4fea20b044d6c6",
+    "callgrind_file": "$SCRATCH/perf/cg/bench_fib@.alpha3.callgrind"
+   },
+   "candidate": {
+    "instructions": 537671332,
+    "exit_status": 0,
+    "stdout_matches_cpython": true,
+    "executable_bytes": 37896,
+    "build_wall_seconds": 0.271,
+    "binary_sha256": "36ad4a6286e67fc55e95ba8f7b7a713079618d95eb7ab003eca4ade2836a5cd6",
+    "callgrind_file": "$SCRATCH/perf/cg/bench_fib@.candidate.callgrind"
+   },
+   "ratio": 1.24128,
+   "change_percent": 24.128,
+   "args_note": "no arguments (fib(35))"
+  }
+ ],
+ "summary": [
+  {
+   "set": "pyperformance, all comparable (22)",
+   "benchmarks": 22,
+   "alpha3_total_instructions": 32349974241,
+   "candidate_total_instructions": 33173825554,
+   "total_change_percent": 2.547,
+   "geomean_ratio": 1.02349,
+   "geomean_change_percent": 2.349,
+   "improved_over_0_5_percent": 6,
+   "within_0_5_percent": 1,
+   "regressed_over_0_5_percent": 15,
+   "over_plus_2_percent": [
+    "barnes_hut",
+    "fannkuch",
+    "float",
+    "generators",
+    "go",
+    "hexiom",
+    "json_dumps",
+    "json_loads",
+    "meteor_contest",
+    "nbody",
+    "nqueens",
+    "scimark"
+   ]
+  },
+  {
+   "set": "pyperformance without unpack_sequence (startup-dominated, 21)",
+   "benchmarks": 21,
+   "alpha3_total_instructions": 32348756218,
+   "candidate_total_instructions": 33172608246,
+   "total_change_percent": 2.547,
+   "geomean_ratio": 1.02465,
+   "geomean_change_percent": 2.465,
+   "improved_over_0_5_percent": 6,
+   "within_0_5_percent": 0,
+   "regressed_over_0_5_percent": 15,
+   "over_plus_2_percent": [
+    "barnes_hut",
+    "fannkuch",
+    "float",
+    "generators",
+    "go",
+    "hexiom",
+    "json_dumps",
+    "json_loads",
+    "meteor_contest",
+    "nbody",
+    "nqueens",
+    "scimark"
+   ]
+  },
+  {
+   "set": "pyperformance without unpack_sequence and regex_v8 (whose 15.4-billion count dominates totals, 20)",
+   "benchmarks": 20,
+   "alpha3_total_instructions": 16977049364,
+   "candidate_total_instructions": 17537289849,
+   "total_change_percent": 3.3,
+   "geomean_ratio": 1.02503,
+   "geomean_change_percent": 2.503,
+   "improved_over_0_5_percent": 6,
+   "within_0_5_percent": 0,
+   "regressed_over_0_5_percent": 14,
+   "over_plus_2_percent": [
+    "barnes_hut",
+    "fannkuch",
+    "float",
+    "generators",
+    "go",
+    "hexiom",
+    "json_dumps",
+    "json_loads",
+    "meteor_contest",
+    "nbody",
+    "nqueens",
+    "scimark"
+   ]
+  },
+  {
+   "set": "extra workloads (fib, nbody, spectral, microgpt)",
+   "benchmarks": 4,
+   "alpha3_total_instructions": 2028895265,
+   "candidate_total_instructions": 2131380548,
+   "total_change_percent": 5.051,
+   "geomean_ratio": 1.05879,
+   "geomean_change_percent": 5.879,
+   "improved_over_0_5_percent": 1,
+   "within_0_5_percent": 1,
+   "regressed_over_0_5_percent": 2,
+   "over_plus_2_percent": [
+    "bench_fib",
+    "bench_spectral"
+   ]
+  },
+  {
+   "set": "all comparable workloads",
+   "benchmarks": 26,
+   "alpha3_total_instructions": 34378869506,
+   "candidate_total_instructions": 35305206102,
+   "total_change_percent": 2.694,
+   "geomean_ratio": 1.02884,
+   "geomean_change_percent": 2.884,
+   "improved_over_0_5_percent": 7,
+   "within_0_5_percent": 2,
+   "regressed_over_0_5_percent": 17,
+   "over_plus_2_percent": [
+    "barnes_hut",
+    "bench_fib",
+    "bench_spectral",
+    "fannkuch",
+    "float",
+    "generators",
+    "go",
+    "hexiom",
+    "json_dumps",
+    "json_loads",
+    "meteor_contest",
+    "nbody",
+    "nqueens",
+    "scimark"
+   ]
+  }
+ ],
+ "build_summary": {
+  "benchmarks": 26,
+  "geomean_build_wall_ratio": 1.223,
+  "alpha3_total_build_wall_seconds": 56.2,
+  "candidate_total_build_wall_seconds": 67.82,
+  "geomean_executable_size_ratio": 1.1241,
+  "note": "single builds on a warmed runtime cache, shared host: indicative only"
+ },
+ "not_comparable": [
+  {
+   "benchmark": "pidigits",
+   "source": "bench/pyperformance/pidigits.py",
+   "reason": "New in alpha.4 and needs promoting ints. alpha.3 builds it (it treats the '# pystachy: python-int' pragma as a comment), but its executable fails at run time with 'OverflowError: integer result does not fit in 64 bits' (exit status 1, no stdout) for both '1 200' and the controller's '4'. The candidate's output matches CPython (see candidate_check).",
+   "alpha3_first_error": "OverflowError: integer result does not fit in 64 bits",
+   "candidate_check": {
+    "args": [
+     "4"
+    ],
+    "candidate_stdout_matches_cpython": true,
+    "candidate_exit_status": 0,
+    "alpha3_exit_status": 1,
+    "alpha3_stderr": "OverflowError: integer result does not fit in 64 bits",
+    "cpython_stdout_sha256": "f15cdc6180a45c519b4037198347f681517a29e52bb9a6d18ba246dbb6ddc863",
+    "also_checked": "args '1 200': alpha.3 exit 1 with the same OverflowError; candidate matches CPython",
+    "note": "no instruction count: there is no alpha.3 baseline"
+   }
+  }
+ ],
+ "attribution": {
+  "selection": "The three largest instruction regressions above +2%: bench_fib (+24.13%), scimark (+22.09%) and generators (+13.32%). json_loads (+9.85%) is the known #1004 byte-scanner result and is only confirmed here. Function-level notes for the other regressions above +2% follow.",
+  "top3": [
+   {
+    "benchmark": "bench_fib",
+    "args": [],
+    "change_percent": 24.128,
+    "cause": "#996 (eac64613, native recursion guards)",
+    "evidence": "All +104,512,679 Ir is in fib itself (f.fib -> closed-recursion body r.f.fib): 29,860,703 calls, +3.500 instructions per call. objdump of the candidate's r.f.fib shows the depth argument compared with pys_recursion_state+8 (the limit), incremented and kept across the first recursive call; alpha.3's f.fib has no recursion state. docs/reports/recursion-guard-policy.md records the same AOT cost (fib 433.3M on pre-#996 main, +24.12%; 'its closed form adds 3.5 per call'), an accepted cost of catchable RecursionError.",
+    "profiles": [
+     "$SCRATCH/perf/cg/bench_fib@.alpha3.callgrind",
+     "$SCRATCH/perf/cg/bench_fib@.candidate.callgrind"
+    ],
+    "top_self_cost_changes": [
+     {
+      "function": "r.f.fib'2",
+      "change": 537492624,
+      "before": 0,
+      "after": 537492624
+     },
+     {
+      "function": "f.fib'2",
+      "change": -432980170,
+      "before": 432980170,
+      "after": 0
+     }
+    ]
+   },
+   {
+    "benchmark": "scimark",
+    "args": [
+     "8"
+    ],
+    "change_percent": 22.088,
+    "cause": "#888 (6daa6aea, numeric list item identity): the identity-companion line in runtime.c pys_list_set, inlined into every typed list store",
+    "evidence": "+130,827,200 of +133,115,220 Ir is in f.FFT_transform_internal.1 (+38.8%), plus +4.8M in Random.nextDouble. Both compilers emit the same FFT IR up to block order and value numbering (identical sorted instruction multiset; 8 pys_list_set and 12 pys_list_get calls), but the linked -O2 function is 546 instructions instead of 317. pys_list_set gained 'if (l->ids) { l->ids[i + 1] = 0; if (!big_list(l)) l->ids[0] |= 4; }' in #888; #979's pys_plain opt_in() trap does not cover this store, so plain programs keep it. Experiment: the candidate compiler with a scratch copy of c3aaa068 whose runtime.c omits only that line rebuilds FFT_transform_internal at exactly 317 instructions, and scimark 8 counts 573,678,724 Ir (a repeat: 573,678,743; 4.81% below alpha.3, 22.03% below the candidate) with stdout matching CPython; FFT_transform_internal and Random.nextDouble return to alpha.3's exact self costs.",
+    "profiles": [
+     "$SCRATCH/perf/cg/scimark@8.alpha3.callgrind",
+     "$SCRATCH/perf/cg/scimark@8.candidate.callgrind"
+    ],
+    "top_self_cost_changes": [
+     {
+      "function": "f.FFT_transform_internal.1",
+      "change": 130827200,
+      "before": 337378404,
+      "after": 468205604
+     },
+     {
+      "function": "m.Random-1.nextDouble.1",
+      "change": 4836144,
+      "before": 90512086,
+      "after": 95348230
+     },
+     {
+      "function": "main",
+      "change": -2558658,
+      "before": 172107690,
+      "after": 169549032
+     }
+    ]
+   },
+   {
+    "benchmark": "generators",
+    "args": [
+     "10"
+    ],
+    "change_percent": 13.317,
+    "cause": "#996 (eac64613): counted resumes of the recursive Tree.__iter__ generator",
+    "evidence": "Tree.__iter__'s recursive resumes (17,258,423, identical in both) cost +113,108,839 Ir (+6.55 per resume); top-level resumes +7.0 each; the new pys.gen.drop.counted runs 1,100,008 times (+17,600,128, 16 per drop); f.tree became closed recursion (+1.9M). GC work shifts (scan -22.7M, collect +17.3M). objdump: the candidate's m.Tree.__iter__.resume accesses pys_recursion_state 15 times and calls pys_recursion_error twice; alpha.3's has neither. docs/reports/recursion-guard-policy.md reports generators AOT +10.93% for #996 against its own baseline ('about 17 counted generator resumes per value, which keep the depth word').",
+    "profiles": [
+     "$SCRATCH/perf/cg/generators@10.alpha3.callgrind",
+     "$SCRATCH/perf/cg/generators@10.candidate.callgrind"
+    ],
+    "top_self_cost_changes": [
+     {
+      "function": "m.Tree.__iter__.resume'2",
+      "change": 113108839,
+      "before": 707970575,
+      "after": 821079414
+     },
+     {
+      "function": "scan",
+      "change": -22696173,
+      "before": 114311504,
+      "after": 91615331
+     },
+     {
+      "function": "pys.gen.drop.counted",
+      "change": 17600128,
+      "before": 0,
+      "after": 17600128
+     },
+     {
+      "function": "collect",
+      "change": 17280620,
+      "before": 11652504,
+      "after": 28933124
+     },
+     {
+      "function": "r.f.tree'2",
+      "change": 14004430,
+      "before": 0,
+      "after": 14004430
+     },
+     {
+      "function": "f.tree'2",
+      "change": -12104344,
+      "before": 12104344,
+      "after": 0
+     },
+     {
+      "function": "m.Tree.__iter__.resume",
+      "change": 7700130,
+      "before": 44001480,
+      "after": 51701610
+     },
+     {
+      "function": "main",
+      "change": 6600107,
+      "before": 9801034,
+      "after": 16401141
+     }
+    ]
+   }
+  ],
+  "known": {
+   "benchmark": "json_loads",
+   "args": [
+    "300"
+   ],
+   "change_percent": 9.853,
+   "note": "Confirms the retained broad JSON control: byte-identical executables (alpha.3 61a3a680..., candidate 4f086575...), 1,300,276,404 -> 1,428,396,351 Ir here versus 1,300,394,281 -> 1,428,523,891 retained (both -0.009%: this run's minimal environment shortens glibc's __tunables_init scan and changes a little GC work), +9.853% in both. Attributed to #1004's byte scanner (pys_bytes_scan +87.8M) in bench/smoke/results/json-controls-2026-11-02.json; not re-investigated."
+  },
+  "other_regressions_over_2_percent": [
+   {
+    "benchmark": "barnes_hut",
+    "args": [
+     "4"
+    ],
+    "change_percent": 8.967,
+    "cause": "#996",
+    "note": "QuadTree.calculate_force (8,844,212 recursive calls in both) +62.0M, +7.01 Ir per call: it returns a fixed (fx, fy) tuple, so it stays out of closed recursion and loads/compares/stores pys_recursion_state (objdump: a load and three stores of the depth word, a compare with the limit word, and a cold pys_recursion_error call; none in alpha.3). QuadTree.insert became closed recursion (+7.2M, +8.2 per call)."
+   },
+   {
+    "benchmark": "fannkuch",
+    "args": [
+     "1"
+    ],
+    "change_percent": 8.33,
+    "cause": "#888's list identity companion paths in runtime list operations",
+    "note": "pys_list_slice_step +30.3M (+16.9%), pys_list_slice +19.5M (out of line now), pys_list_set_slice +12.1M, reserve +6.2M, pys_list_pop +5.6M, main -3.1M: each gained 'if (l->ids)' companion work in #888 (git log -S), not covered by the pys_plain trap. Removing only pys_list_set's line changes fannkuch by -0.28%, so these other paths carry it."
+   },
+   {
+    "benchmark": "go",
+    "args": [
+     "8"
+    ],
+    "change_percent": 6.909,
+    "cause": "#996 and #888",
+    "note": "Square.find (closed recursion) +12.2M; EmptySet.set is no longer inlined (+16.2M, with random_move -5.8M and move -3.0M): the experiment without pys_list_set's companion line restores both callers' exact alpha.3 costs and saves 7.48M (-2.00%); pys_list_append +2.7M, pys_list_pop +1.5M, sresize +2.6M."
+   },
+   {
+    "benchmark": "nqueens",
+    "args": [
+     "5"
+    ],
+    "change_percent": 5.879,
+    "cause": "mostly #888 list paths; set helper changes",
+    "note": "pys_list_slice +65.6M with main -54.2M (slice no longer inlined; net +11.4M), reserve +16.3M, pys_list_add +16.6M, pys_vtuple_new +9.7M, collect +10.4M; sets net about +3.8M (pys_set_add -169.4M versus pys_set_update_list +145.0M, sresize +27.8M, pys_set_new +7.5M)."
+   },
+   {
+    "benchmark": "json_dumps",
+    "args": [
+     "20"
+    ],
+    "change_percent": 4.719,
+    "cause": "mixed dynamic-Any/JSON writer changes",
+    "note": "f.json$_quote +18.9M, _Writer.write +16.3M, _Writer.key +9.6M, _Writer.entry +12.4M, pys_dict_keys +8.8M, pys_dict_getitem +8.6M, dfindc +4.8M, pys_list_slice/copy net +4.5M against dfind -28.8M. Not attributed to a single merge."
+   },
+   {
+    "benchmark": "meteor_contest",
+    "args": [
+     "2"
+    ],
+    "change_percent": 3.857,
+    "cause": "runtime helpers no longer inlined; #996 closed recursion in solve",
+    "note": "solve -41.8M while out-of-line helpers appear: pys_set_list +36.9M, pys_list_minmax +18.1M, sresize +14.1M, smerge +13.3M, pys_list_slice +11.3M, pys_set_new +7.4M, against pys_set_copy -14.2M and sadd -9.8M."
+   },
+   {
+    "benchmark": "hexiom",
+    "args": [
+     "100"
+    ],
+    "change_percent": 3.468,
+    "cause": "#996 and #888",
+    "note": "solve_step (closed recursion) +17.9M; pys_list_slice +16.7M out of line with Pos.clone -7.3M; list remove/pop/del +2.8M; eqv -7.4M."
+   },
+   {
+    "benchmark": "nbody",
+    "args": [
+     "10"
+    ],
+    "change_percent": 3.471,
+    "cause": "#888: pys_list_set's identity-companion line",
+    "note": "All of it (+19.8M, +8.8%) is main's own self cost, where the advance loop and its list stores are inlined. The pys_list_set experiment counts 570,451,456 Ir, +511 instructions (+0.0001%) from alpha.3: that one line carries the whole regression."
+   },
+   {
+    "benchmark": "float",
+    "args": [
+     "10"
+    ],
+    "change_percent": 2.103,
+    "cause": "partly #888's pys_list_set line",
+    "note": "main +4.0M and collect +3.0M; the pys_list_set experiment removes 4.0M of the 7.1M (56%)."
+   },
+   {
+    "benchmark": "bench_spectral",
+    "args": [],
+    "change_percent": 2.009,
+    "cause": "#888: pys_list_set's identity-companion line",
+    "note": "All in f.mul_atav (+4.93M). The pys_list_set experiment counts 245,415,727 Ir, +411 from alpha.3: that line carries it."
+   }
+  ],
+  "improvements": {
+   "raytrace": "-28.13%: allocation zeroing (memset -136.7M) and gc_slow (-29.0M) fall and Sphere.intersectionTime -27.2M, consistent with #1020's allocation elision (reported -29.7% against its parent).",
+   "chaos": "-4.11%: memset -25.8M, gc_slow -13.9M, GVector.__sub__ inlined (-8.4M), consistent with #1020 (reported -5.8% against its parent).",
+   "comprehensions": "-1.53%: dfindi -24.7M (typed int-key dict lookups) against pys_list_append +9.1M."
+  }
+ },
+ "experiment_pys_list_set": {
+  "what": "Not a candidate measurement: the candidate compiler with PYSTACHY_HOME=$SCRATCH/perf/exp-home, a git-archive copy of c3aaa068 whose runtime.c drops only pys_list_set's identity-companion line (#888), and its own runtime cache. It shows how much of each change that one inlined branch carries. Binaries for barnes_hut, comprehensions, generators, spectral_norm, unpack_sequence, bench_fib and bench_nbody were byte-identical to the candidate's, so they were not re-counted; regex_v8 was not rebuilt.",
+  "results": {
+   "bench_spectral@": {
+    "instructions": 245415727,
+    "stdout_matches_cpython": true,
+    "change_vs_alpha3_percent": 0.0,
+    "change_vs_candidate_percent": -1.969,
+    "binary_sha256": "0c861f3787a1651dd172e5a8343854aac9bd04cd9c05c180b6ec3c7f64208ab5"
+   },
+   "chaos@40": {
+    "instructions": 976552545,
+    "stdout_matches_cpython": true,
+    "change_vs_alpha3_percent": -4.977,
+    "change_vs_candidate_percent": -0.909,
+    "binary_sha256": "95d21ff3e6bf9dd107a99af0aa72b57c466f1e7ce607e7fad9bc1ec2cf0b1b12"
+   },
+   "fannkuch@1": {
+    "instructions": 938566625,
+    "stdout_matches_cpython": true,
+    "change_vs_alpha3_percent": 8.025,
+    "change_vs_candidate_percent": -0.282,
+    "binary_sha256": "dca951efc24bc7fc46a796a1171060346cf7d7cb77df170b7fc1062028dd3b6c"
+   },
+   "float@10": {
+    "instructions": 342608427,
+    "stdout_matches_cpython": true,
+    "change_vs_alpha3_percent": 0.925,
+    "change_vs_candidate_percent": -1.154,
+    "binary_sha256": "0a723774adb50eb7603bf22ecfe009476850cd53e13ec25408db74e2e02710bc"
+   },
+   "go@8": {
+    "instructions": 366898874,
+    "stdout_matches_cpython": true,
+    "change_vs_alpha3_percent": 4.772,
+    "change_vs_candidate_percent": -1.999,
+    "binary_sha256": "ffe7d8560cce80d59f3b3e7fba28e140699fdb79813f58ccb1f2b02f9b7f64af"
+   },
+   "hexiom@100": {
+    "instructions": 712166890,
+    "stdout_matches_cpython": true,
+    "change_vs_alpha3_percent": 3.322,
+    "change_vs_candidate_percent": -0.141,
+    "binary_sha256": "71556f04157893ad6443a26b2b906fa36cddcb036c3e7a2bd06bc5ae2f2f9843"
+   },
+   "json_dumps@20": {
+    "instructions": 1508536652,
+    "stdout_matches_cpython": true,
+    "change_vs_alpha3_percent": 4.72,
+    "change_vs_candidate_percent": 0.0,
+    "binary_sha256": "0739147d2d594694c757303deaf94ce645e3062ce9dfb580c9c983052a17489e"
+   },
+   "json_loads@300": {
+    "instructions": 1425525486,
+    "stdout_matches_cpython": true,
+    "change_vs_alpha3_percent": 9.632,
+    "change_vs_candidate_percent": -0.201,
+    "binary_sha256": "339de2973d0f1669307940c221727c0f89dd5795abd29640fabce00b924969d8"
+   },
+   "meteor_contest@2": {
+    "instructions": 857511706,
+    "stdout_matches_cpython": true,
+    "change_vs_alpha3_percent": 3.484,
+    "change_vs_candidate_percent": -0.359,
+    "binary_sha256": "67b768bf95349b98ab993907fec60b84588bde490c6795eb2ecb30197a07b1c7"
+   },
+   "microgpt@10 3": {
+    "instructions": 918415345,
+    "stdout_matches_cpython": true,
+    "change_vs_alpha3_percent": -0.833,
+    "change_vs_candidate_percent": -0.082,
+    "binary_sha256": "d0b5d7c43792008ae0ba6af3a5484bd30ef23f1657b98a0db3437373468a474d"
+   },
+   "nbody@10": {
+    "instructions": 570451456,
+    "stdout_matches_cpython": true,
+    "change_vs_alpha3_percent": 0.0,
+    "change_vs_candidate_percent": -3.355,
+    "binary_sha256": "4be51c9770c1acee9e8c759c51665125c32401be0a1a5df3a68bf2f2acccc41b"
+   },
+   "nqueens@5": {
+    "instructions": 1214973055,
+    "stdout_matches_cpython": true,
+    "change_vs_alpha3_percent": 5.777,
+    "change_vs_candidate_percent": -0.097,
+    "binary_sha256": "f23f1d4a9e76f0c6c0bdcee20ea0b69a853034656cbb3f3f974e6d07fc27eadf"
+   },
+   "raytrace@8": {
+    "instructions": 489035971,
+    "stdout_matches_cpython": true,
+    "change_vs_alpha3_percent": -28.288,
+    "change_vs_candidate_percent": -0.212,
+    "binary_sha256": "c0db4e720beaac3e5aad269861a458e0144c97cf2d218e746046e338f84da6f9"
+   },
+   "regex_dna@2": {
+    "instructions": 1181241478,
+    "stdout_matches_cpython": true,
+    "change_vs_alpha3_percent": 0.416,
+    "change_vs_candidate_percent": -0.203,
+    "binary_sha256": "71f5a8eda078c46e1665576a38a83f151494918aa3e839e52c7b8641cc5dda29"
+   },
+   "regex_effbot@10": {
+    "instructions": 1670405036,
+    "stdout_matches_cpython": true,
+    "change_vs_alpha3_percent": 1.315,
+    "change_vs_candidate_percent": 0.288,
+    "binary_sha256": "26de980f226c2bdcc5ec91092234b2436799310e8bdb2ca0aff6b664f59f36a8"
+   },
+   "richards@100": {
+    "instructions": 656574121,
+    "stdout_matches_cpython": true,
+    "change_vs_alpha3_percent": -0.948,
+    "change_vs_candidate_percent": -0.424,
+    "binary_sha256": "373cb3bc2dc255e1cad0dcbc44341a9475952f07fed4f4ad902a1f7db3b6bd8d"
+   },
+   "richards_super@100": {
+    "instructions": 670500199,
+    "stdout_matches_cpython": true,
+    "change_vs_alpha3_percent": -0.928,
+    "change_vs_candidate_percent": -0.415,
+    "binary_sha256": "a8a5d34999e0bfcf8695429f18a07706775f9edaae9188e8ee831d70f83c633c"
+   },
+   "scimark@8": {
+    "instructions": 573678724,
+    "stdout_matches_cpython": true,
+    "change_vs_alpha3_percent": -4.81,
+    "change_vs_candidate_percent": -22.031,
+    "binary_sha256": "60955e35260746c9d1823d890d7274badd7cd5f5a15a3f33da4b9bf39932344e"
+   }
+  },
+  "suite_effect": "Over the 21 comparable pyperformance benchmarks other than regex_v8 (byte-identical binaries taken at the candidate's counts), the geomean change from alpha.3 is +2.379% for the candidate and +0.714% for this experiment. The line carries all of scimark's, nbody's and bench_spectral's regressions, 56% of float's and 31% of go's."
+ },
+ "wall_time_pairs": {
+  "method": "Five pairs per benchmark, alpha.3 and candidate alternating (order flips every pair), each run pinned with taskset -c 3, same arguments and environment as the counts; ratio = candidate / alpha.3. Noisy shared-host timings (one-minute load about 2.3 from other agents during the pairs); raw samples, timed parts and load averages in $SCRATCH/perf/wall.json.",
+  "results": {
+   "bench_fib@": {
+    "instruction_change_percent": 24.13,
+    "alpha3_median_process_wall_seconds": 0.05442,
+    "candidate_median_process_wall_seconds": 0.06054,
+    "alpha3_range": [
+     0.05335,
+     0.06782
+    ],
+    "candidate_range": [
+     0.05671,
+     0.06918
+    ],
+    "median_paired_process_wall_ratio": 1.063,
+    "median_paired_timed_part_ratio": null,
+    "all_outputs_match_cpython": true
+   },
+   "scimark@8": {
+    "instruction_change_percent": 22.09,
+    "alpha3_median_process_wall_seconds": 0.05871,
+    "candidate_median_process_wall_seconds": 0.06961,
+    "alpha3_range": [
+     0.05789,
+     0.06118
+    ],
+    "candidate_range": [
+     0.06355,
+     0.07468
+    ],
+    "median_paired_process_wall_ratio": 1.1492,
+    "median_paired_timed_part_ratio": 1.1349,
+    "all_outputs_match_cpython": true
+   },
+   "generators@10": {
+    "instruction_change_percent": 13.32,
+    "alpha3_median_process_wall_seconds": 0.2126,
+    "candidate_median_process_wall_seconds": 0.21727,
+    "alpha3_range": [
+     0.20592,
+     0.23892
+    ],
+    "candidate_range": [
+     0.20836,
+     0.22333
+    ],
+    "median_paired_process_wall_ratio": 0.99,
+    "median_paired_timed_part_ratio": 0.977,
+    "all_outputs_match_cpython": true
+   },
+   "raytrace@8": {
+    "instruction_change_percent": -28.13,
+    "alpha3_median_process_wall_seconds": 0.08833,
+    "candidate_median_process_wall_seconds": 0.08208,
+    "alpha3_range": [
+     0.08684,
+     0.10302
+    ],
+    "candidate_range": [
+     0.07905,
+     0.09119
+    ],
+    "median_paired_process_wall_ratio": 0.9292,
+    "median_paired_timed_part_ratio": 0.9065,
+    "all_outputs_match_cpython": true
+   },
+   "json_loads@300": {
+    "instruction_change_percent": 9.85,
+    "alpha3_median_process_wall_seconds": 0.13683,
+    "candidate_median_process_wall_seconds": 0.1454,
+    "alpha3_range": [
+     0.13561,
+     0.14341
+    ],
+    "candidate_range": [
+     0.13876,
+     0.20941
+    ],
+    "median_paired_process_wall_ratio": 1.0358,
+    "median_paired_timed_part_ratio": 1.0321,
+    "all_outputs_match_cpython": true
+   },
+   "barnes_hut@4": {
+    "instruction_change_percent": 8.97,
+    "alpha3_median_process_wall_seconds": 0.08609,
+    "candidate_median_process_wall_seconds": 0.09385,
+    "alpha3_range": [
+     0.08262,
+     0.09868
+    ],
+    "candidate_range": [
+     0.08913,
+     0.10811
+    ],
+    "median_paired_process_wall_ratio": 1.0788,
+    "median_paired_timed_part_ratio": 1.0755,
+    "all_outputs_match_cpython": true
+   },
+   "fannkuch@1": {
+    "instruction_change_percent": 8.33,
+    "alpha3_median_process_wall_seconds": 0.11583,
+    "candidate_median_process_wall_seconds": 0.11989,
+    "alpha3_range": [
+     0.11172,
+     0.11775
+    ],
+    "candidate_range": [
+     0.11449,
+     0.12314
+    ],
+    "median_paired_process_wall_ratio": 1.0351,
+    "median_paired_timed_part_ratio": 1.0327,
+    "all_outputs_match_cpython": true
+   },
+   "regex_dna@2": {
+    "instruction_change_percent": 0.62,
+    "alpha3_median_process_wall_seconds": 0.18675,
+    "candidate_median_process_wall_seconds": 0.12887,
+    "alpha3_range": [
+     0.17756,
+     0.19007
+    ],
+    "candidate_range": [
+     0.12296,
+     0.13594
+    ],
+    "median_paired_process_wall_ratio": 0.6901,
+    "median_paired_timed_part_ratio": 0.6433,
+    "all_outputs_match_cpython": true
+   }
+  },
+  "observations": [
+   "Directions agree for bench_fib, scimark, raytrace, json_loads, barnes_hut and fannkuch, with smaller magnitudes than the instruction counts (bench_fib +6% wall versus +24% Ir, close to the recursion-guard report's 'about 5% slower').",
+   "generators: +13.3% Ir but about -1% wall (within noise).",
+   "regex_dna: +0.6% Ir but about 31% lower wall time. getrusage over three runs each: user time 0.167-0.171 s (alpha.3) versus 0.099-0.123 s (candidate), the same ~8,980 minor faults and ~19.4 MB peak RSS. A microarchitectural (layout/branch/memory) difference that callgrind does not model; not investigated."
+  ]
+ },
+ "caveats": [
+  "Instruction counts are not wall time: callgrind counts each byte of a rep stosb memset as an instruction (allocation zeroing) and ignores cache misses, branch prediction and memory bandwidth.",
+  "Whole-process counts include startup, setup and untimed checks; regex_v8's (15.4 billion) is dominated by its untimed checksum pass, and unpack_sequence's (1.2 million) by startup.",
+  "Counts repeat to within a few tens of instructions for a fixed executable, arguments and environment (printed timings and clock reads vary); a different environment block changed json_loads by about 0.009% (glibc tunables scan and GC stack contents).",
+  "Shared host (4 vCPUs, three other agents): build times and the optional wall-time pairs are noisy, single machine indications.",
+  "The oracle is CPython 3.13.18 (python3.13 on this host), while the repository's .python-version pins 3.13.16, which earlier published results used; every output here matched 3.13.18 byte for byte.",
+  "Arguments differ from the controller's measured ones for 15 benchmarks (args_note), so these counts are not comparable with tools/bench_pyperformance.py timings.",
+  "microgpt is a reduced-size derivative of bench/microgpt/microgpt.py (10 steps, 3 samples), not the controller's instrumented run; its printed losses have 4 decimals, so last-digit float differences would not show.",
+  "Only AOT executables were measured; JIT (pystachy run) startup/compile cost and frontend compile time were not.",
+  "Paths are normalized: $CHECKOUT is the candidate checkout and $SCRATCH a private scratch directory (callgrind profiles, executables and the alpha.3 worktree are not retained in the repository)."
+ ]
+}

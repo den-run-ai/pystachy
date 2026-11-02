@@ -1,0 +1,90 @@
+objects-and-keys 18
+boundaries 6
+0 Invalid control character at 4 1 5
+0 Unterminated string starting at 2 1 3
+0 Invalid \escape 9 1 10
+0 Invalid control character at 12 1 13
+0 Invalid control character at 4 1 5
+0 accepted 2
+16 Invalid control character at 20 1 21
+16 Unterminated string starting at 2 1 3
+16 Invalid \escape 25 1 26
+16 Invalid control character at 44 1 45
+16 Invalid control character at 20 1 21
+16 accepted 2
+31 Invalid control character at 35 1 36
+31 Unterminated string starting at 2 1 3
+31 Invalid \escape 40 1 41
+31 Invalid control character at 74 1 75
+31 Invalid control character at 35 1 36
+31 accepted 2
+32 Invalid control character at 36 1 37
+32 Unterminated string starting at 2 1 3
+32 Invalid \escape 41 1 42
+32 Invalid control character at 76 1 77
+32 Invalid control character at 36 1 37
+32 accepted 2
+33 Invalid control character at 37 1 38
+33 Unterminated string starting at 2 1 3
+33 Invalid \escape 42 1 43
+33 Invalid control character at 78 1 79
+33 Invalid control character at 37 1 38
+33 accepted 2
+100 Invalid control character at 104 1 105
+100 Unterminated string starting at 2 1 3
+100 Invalid \escape 109 1 110
+100 Invalid control character at 212 1 213
+100 Invalid control character at 104 1 105
+100 accepted 2
+1500 Invalid control character at 1504 1 1505
+1500 Unterminated string starting at 2 1 3
+1500 Invalid \escape 1509 1 1510
+1500 Invalid control character at 3012 1 3013
+1500 Invalid control character at 1504 1 1505
+1500 accepted 2
+0 Invalid control character at 1104 2 404
+0 Unterminated string starting at 1102 2 402
+0 Invalid \escape 1109 2 409
+0 Invalid control character at 1112 2 412
+0 Invalid control character at 1104 2 404
+0 accepted 2
+16 Invalid control character at 1120 2 420
+16 Unterminated string starting at 1102 2 402
+16 Invalid \escape 1125 2 425
+16 Invalid control character at 1144 2 444
+16 Invalid control character at 1120 2 420
+16 accepted 2
+31 Invalid control character at 1135 2 435
+31 Unterminated string starting at 1102 2 402
+31 Invalid \escape 1140 2 440
+31 Invalid control character at 1174 2 474
+31 Invalid control character at 1135 2 435
+31 accepted 2
+32 Invalid control character at 1136 2 436
+32 Unterminated string starting at 1102 2 402
+32 Invalid \escape 1141 2 441
+32 Invalid control character at 1176 2 476
+32 Invalid control character at 1136 2 436
+32 accepted 2
+33 Invalid control character at 1137 2 437
+33 Unterminated string starting at 1102 2 402
+33 Invalid \escape 1142 2 442
+33 Invalid control character at 1178 2 478
+33 Invalid control character at 1137 2 437
+33 accepted 2
+100 Invalid control character at 1204 2 504
+100 Unterminated string starting at 1102 2 402
+100 Invalid \escape 1209 2 509
+100 Invalid control character at 1312 2 612
+100 Invalid control character at 1204 2 504
+100 accepted 2
+1500 Invalid control character at 2604 2 1904
+1500 Unterminated string starting at 1102 2 402
+1500 Invalid \escape 2609 2 1909
+1500 Invalid control character at 4112 2 3412
+1500 Invalid control character at 2604 2 1904
+1500 accepted 2
+raw 0 11
+raw 33 77
+raw 1500 3011
+[exit 0]

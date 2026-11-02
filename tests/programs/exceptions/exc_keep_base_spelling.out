@@ -1,0 +1,5 @@
+key at 3 Located('key at 3') key 3
+name at 5 Missing('name at 5') name 5
+path at 3 Deep('path at 3') path 3 2
+caught x at 1 Deep('x at 1')
+[exit 0]
