@@ -3788,7 +3788,7 @@ static inline __attribute__((always_inline)) I dlook(Dict *d, I k, uint64_t h, I
     int32_t e = d->idx[i];
     if (!e) { if (free) *free = ran ? dempty(d, h) : f < 0 ? (I)i : f; return -1; }
     if (e < 0) { if (f < 0) f = i; }
-    else if (kbig(d, e - 1)) continue;   /* (a wide key's sentinel is never the native scalar query) */
+    else if (objs != 3 && kbig(d, e - 1)) continue;   /* (a wide key's sentinel is never the native scalar query; a str table, 3, has none) */
     else if (objs == 2 && d->keys[e - 1] == k) return i;
     else if (d->hs[e - 1] == h) {
       I x = d->keys[e - 1];
