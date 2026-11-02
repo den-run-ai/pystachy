@@ -1,0 +1,10 @@
+output before the recursion is kept
+climb: caught 0
+climb: finally 0
+climb: caught 1
+climb: finally 1
+nested: every finally ran True True
+relay: re-raised True
+hop: caught
+300000 2432902008176640000
+[exit 0]
