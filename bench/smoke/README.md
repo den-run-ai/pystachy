@@ -180,3 +180,24 @@ and stderr measures the loop, checksum assertion and final stdout print in secon
 Interleave pinned-core baseline/candidate
 runs and keep JIT startup separate. The control is intentionally standalone, not an added
 CI timing threshold or an entry in `perf_smoke.py`'s default matrix.
+
+### Release-candidate counts
+
+On 2 November 2026, the alpha.4 candidate (main `c3aaa068`) executed more instructions
+than the alpha.3 tag on seven of these eight controls, with every output matching
+CPython:
+
+| Control | alpha.3 | Candidate | Change |
+|---|---:|---:|---:|
+| Broad (`json_loads.py 300`) | 1,300.4M | 1,428.5M | +9.85% |
+| Typed 32-key numeric / strings / mixed | 91.5M / 108.7M / 127.4M | 93.2M / 113.1M / 130.3M | +1.9% / +4.1% / +2.3% |
+| Short observed `Any` (`json_decode_any.py 2000`) | 30.0M | 30.5M | +1.7% |
+| Observed `Any` 32-key numeric / strings / mixed | 106.8M / 117.0M / 142.8M | 105.2M / 122.7M / 144.7M | −1.5% / +4.9% / +1.3% |
+
+A first-parent bisect of the broad control stays between −0.2% and +0.5% of alpha.3 from
+#987 through main `14d4eb15`, then rises to 1,428.5M with #1004's byte scanner (`c1bfb48a`).
+In that merge, `pys_bytes_scan`, `plain_rest()` and `key()` add 137M instructions while
+`string()` saves 12M: keys and strings just past the 16-byte scalar prefix pay for a
+scanner call. Nine alternating wall-time pairs on the shared host were inconclusive
+(medians 138.7 and 138.2 ms). The
+[counts, bisect, attribution and timings](results/json-controls-2026-11-02.json) are retained.
