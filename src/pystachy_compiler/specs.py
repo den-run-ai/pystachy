@@ -414,7 +414,7 @@ EXCATTRS: dict[str, str] = {"BaseException": "args", "SystemExit": "code", "OSEr
 # the attributes that the __init__ of builtin exception classes sets (StopIteration's value to its
 # first argument, the others to their keyword argument or None), which only CPython reads: an
 # exception class's field of that name must be assigned after that __init__ runs
-EXCINIT: dict[str, str] = {"StopIteration": "value", "AttributeError": "name obj", "NameError": "name", "ImportError": "name path"}
+EXCINIT: dict[str, str] = {"StopIteration": "value", "AttributeError": "name obj", "NameError": "name", "ImportError": "name path name_from"}
 
 
 def is_excname(s: str) -> bool:
@@ -423,7 +423,7 @@ def is_excname(s: str) -> bool:
 
 
 # the keyword arguments that the __init__ of builtin exception classes takes (and those deriving from them)
-EXCKW: dict[str, str] = {"ImportError": "name path", "AttributeError": "name obj", "NameError": "name"}
+EXCKW: dict[str, str] = {"ImportError": "name path name_from", "AttributeError": "name obj", "NameError": "name"}
 
 
 def exc_base_of(c: str, base: str) -> bool:
