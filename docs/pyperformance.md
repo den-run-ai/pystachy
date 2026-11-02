@@ -6,6 +6,28 @@ adapted files, and every JIT and AOT run must print exactly what CPython printed
 comparisons on that source, not pyperformance scores: some inputs, random number generators and data
 types differ from upstream.
 
+## alpha.3 to alpha.4 candidate instruction counts (2026-11-02)
+
+Each benchmark's adapted source at main `c3aaa068` was built with the v0.1.0-alpha.3
+compiler (`f5a09d42`) and with the candidate's, each with its own library and runtime,
+and run as AOT executables under Callgrind. Every output matched CPython 3.13.18.
+Across the 22 benchmarks both releases run, the candidate executes a geometric mean of
+**+2.35%** more whole-process instructions (15 regress by more than 0.5%, 6 improve).
+`pidigits` is not comparable: alpha.3 has no promoting ints and raises `OverflowError`.
+
+| Change | Benchmarks (instructions, candidate vs alpha.3) | Main cause |
+|---|---|---|
+| Largest regressions | scimark +22.1%, generators +13.3%, json_loads +9.9%, barnes_hut +9.0%, fannkuch +8.3%, go +6.9%, nqueens +5.9% | Recursion accounting (#996), list identity maintenance inlined into every list store (#888), JSON byte scanning (#1004) |
+| Largest improvements | raytrace −28.1%, chaos −4.1%, comprehensions −1.5% | Allocation removal (#1020) |
+
+A scratch build that drops only `pys_list_set`'s identity-companion line brings scimark to
+4.8% below alpha.3 and the suite's geometric mean to +0.71%. Paired wall times on the
+shared host follow the larger changes only loosely (scimark 1.15×, barnes_hut 1.08×,
+fib 1.06×, raytrace 0.93×). Builds took 22% longer and executables are 12% larger
+(geometric means of single builds). The
+[counts, arguments, hashes, attribution and timings](../bench/pyperformance/results/alpha3-vs-candidate-2026-11-02.json)
+are retained.
+
 ## Coverage expansion (2026-11-02)
 
 `pidigits` is the first big-integer benchmark in the suite. Its module opts in to
