@@ -26,7 +26,7 @@ The comprehensions case replaces enum tags with integers; its complete sorted ou
 the generator's complete yielded sequence and JSON results are checked outside the timers.
 See the [adaptations and refreshed 52-source census](../bench/pyperformance/README.md#runner-only-census-2026-10-22)
 for exact scope, blocked candidates and exclusions. Seven runner-only sources produce IR;
-that count is distinct from the 22 adapted benchmarks with differential execution coverage.
+that count is distinct from the 22 adapted benchmarks that then had differential execution coverage.
 
 Run `make bench-pyperformance-check` for all delivered cases, or use
 `--benchmarks comprehensions generators json_dumps json_loads --smoke` with the controller
