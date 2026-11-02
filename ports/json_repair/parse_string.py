@@ -129,15 +129,39 @@ def _append_literal_char(
     return self.get_char_at()
 
 
-def _append_string_content(state: StringParseState, content: str) -> None:
-    start_index = state.string_length
-    state.string_length += len(content)
-    for offset, char in enumerate(content):
+def _append_string_span(state: StringParseState, source: str, start: int, end: int) -> None:
+    # Pystachy port: append a code-point range without materializing the whole
+    # substring or copying the growing prefix. Every stored piece stays bounded.
+    if start >= end:
+        return
+    if end - start == 1:
+        # Avoid a one-code-point slice on short runs and decoded escapes.
+        char = source[start]
+        state.string_length += 1
+        state.string_last = char
         state.string_tail += char
         if len(state.string_tail) == STRING_CHUNK_SIZE:
             state.string_chunks.append(state.string_tail)
             state.string_tail = ""
-        state.string_last = char
+        return
+    state.string_length += end - start
+    state.string_last = source[end - 1]
+    room = STRING_CHUNK_SIZE - len(state.string_tail)
+    if end - start < room:
+        state.string_tail += source[start:end]
+        return
+    state.string_chunks.append(state.string_tail + source[start:start + room])
+    start += room
+    while end - start >= STRING_CHUNK_SIZE:
+        state.string_chunks.append(source[start:start + STRING_CHUNK_SIZE])
+        start += STRING_CHUNK_SIZE
+    state.string_tail = source[start:end]
+
+
+def _append_string_content(state: StringParseState, content: str) -> None:
+    start_index = state.string_length
+    _append_string_span(state, content, 0, len(content))
+    for offset, char in enumerate(content):
         if char == "{":
             state.object_value_unmatched_opening_braces += 1
         elif char == "}" and state.object_value_unmatched_opening_braces:
@@ -863,8 +887,28 @@ def _scan_string_body(
                 )
                 break
         assert char is not None
-        _append_string_content(state, char)
-        self.index += 1
+        # Pystachy port: ordinary runs have no brace/bracket/quote side effects.
+        # Whitespace matters only in bare keys and open regex character classes.
+        # Keep the post-append handling below: a quote or colon at the end of a
+        # run still needs the same repair heuristic as after a single character.
+        stop_at_space = (
+            state.missing_quotes and self.context.current == ContextValues.OBJECT_KEY
+        ) or state.regex_character_class_start is not None
+        if char not in "\\\"'“”„{}[](),:" and not (stop_at_space and char.isspace()):
+            source = self.json_str
+            start = self.index
+            end = start + 1
+            limit = len(source)
+            while end < limit:
+                next_char = source[end]
+                if next_char in "\\\"'“”„{}[](),:" or (stop_at_space and next_char.isspace()):
+                    break
+                end += 1
+            _append_string_span(state, source, start, end)
+            self.index = end
+        else:
+            _append_string_content(state, char)
+            self.index += 1
         char = self.get_char_at()
         if char is None:
             if self.stream_stable and state.string_length and state.string_last == "\\":
