@@ -588,6 +588,12 @@ run takes the hosted driver past the IR along a path of its own (`tests/verify.s
 program of each kind, and fails if a kind has none; the gate requires every kind, each a program
 of the checkout's corpus of that kind and in the sample. The maintainer accepted this identity
 check with its stratified end-to-end sample on 2026-10-28.
+
+The `unicode-audit` contract also runs `tools/bytescanprobe.c` normally and with GC
+stress. Its independent scalar oracle covers all byte values, alignments, tails,
+delimiter predicates and range boundaries. Guard pages expose reads outside the
+declared range, and deterministic word/scalar counts ensure long spans retain bulk
+scanning. Run it independently with `make bytescanprobe`; its timings are not gates.
 The compiler-scaling check is split by shapes: `scaling-0` checks those of `SCALING_0`, about
 half of the lines the CPython-hosted compiler executes, and `scaling-1` every other shape of
 `tools/scaling.py` (its `-x`), so a new shape is checked as well; the gate requires the two to
