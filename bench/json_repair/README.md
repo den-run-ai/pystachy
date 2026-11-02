@@ -52,3 +52,29 @@ does not isolate a shared host.
 The [typing and scaling report](PROFILING.md) adds larger valid, malformed,
 Unicode, logging and escaped-code-string workloads. It separates native code-size
 changes from inconclusive timing differences and identifies quadratic rescanning.
+
+## Separate decoder, repair and serialization controls
+
+`codec.py` measures dynamic `json.loads()` and predecoded `json.dumps()` without
+importing the repair package. `facade.py` separates valid and malformed inputs,
+with either object or serialized returns. Both check complete outputs before and
+after every batch; they work with `tools/json_repair_bench.py`'s interleaved runner.
+Examples (arguments end in measured batches and warmup batches):
+
+```sh
+./pystachy build bench/json_repair/codec.py -o /tmp/json_codec
+PYSTACHY_PATH=ports ./pystachy build bench/json_repair/facade.py -o /tmp/json_facade
+/tmp/json_codec loads 32 300 5 6
+/tmp/json_codec dumps 32 300 5 6
+/tmp/json_facade valid 500 5 6
+/tmp/json_facade malformed 200 5 6
+/tmp/json_facade serialized-valid 500 5 6
+/tmp/json_facade serialized-malformed 200 5 6
+```
+
+Use zero rounds for process-start observations, which still include imports,
+fixture creation and validation. The runner's whole-process peak RSS includes
+those costs and is not retained heap. Its 10 ms child polling limits the resolution
+of short process wall-time measurements. Compare the same source under CPython
+explicitly; these controls do not establish performance against pristine upstream,
+PyPy or GraalPy.

@@ -26,6 +26,10 @@ The non-stdlib [`mpz` module](mpz.md) offers explicit arbitrary-precision intege
 through a subset class and a packed-limb C backend. It does not change ordinary
 `int`, JSON parsing or native integer interfaces.
 
+Separately, the dynamic `Any` JSON decoder promotes integer tokens beyond 64 bits
+through the ordinary promoting-integer runtime. The typed `JSONValue` decoder keeps
+its bounded integer storage; see [JSON scope](json.md).
+
 The library reference is the authority for each module's limits. For example, `difflib`
 supports matching strings and lists of strings, including `get_grouped_opcodes()`,
 `unified_diff()`, `context_diff()` and `restore()`; `ndiff()` and `HtmlDiff` still have
