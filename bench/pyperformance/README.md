@@ -180,7 +180,7 @@ supplied upstream module could compile.
 **Seven of 52 sources compile with runner replacement alone:** `fannkuch`, `generators`,
 `nbody`, `nqueens`, `regex_v8`, `spectral_norm` and `unpack_sequence`. This is one more
 than the 2026-10-17 census (`spectral_norm`). The other 45 have a compile error. An IR
-success is not an execution result. The delivered suite now has **22 adapted benchmarks**,
+success is not an execution result. The delivered suite then had **22 adapted benchmarks**,
 including four additions: `comprehensions`, `generators`, `json_dumps` and `json_loads`.
 Their CPython, native JIT and AOT outputs are compared by the existing smoke runner;
 this does not execute the upstream pyperf harness or establish a speedup.
