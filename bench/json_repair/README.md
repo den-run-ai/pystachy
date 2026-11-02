@@ -8,8 +8,9 @@ of production failure frequencies.
 
 ## Release-candidate measurements
 
-Measured on 2 November 2026 at main `c3aaa068`, against pristine upstream `ace9b23c`, on a
-shared 4-vCPU Linux x86-64 VM (Intel Xeon @ 2.10 GHz) with LLVM 18.1.3 and CPython 3.13.18.
+Measured on 2 November 2026 on the release candidate, main `ec442a20` (`c3aaa068` with
+#1025–#1029 and #1031), against pristine upstream `ace9b23c`, on a shared 4-vCPU Linux
+x86-64 VM (Intel Xeon @ 2.10 GHz) with LLVM 18.1.3 and CPython 3.13.18.
 `tools/json_repair_bench.py` ran five rotating process pairs per workload, with two warmup
 and five measured batches each, pinned to one CPU. Values are medians of process medians.
 [All 330 processes, commands and source manifests](results/release-candidate-2026-11-02.json)
@@ -17,49 +18,50 @@ are retained.
 
 | Workload, time per repair | Upstream, CPython | Port, CPython | Port, AOT | Port, JIT | AOT vs upstream |
 |---|---:|---:|---:|---:|---:|
-| Ten mixed trace records (`bench.py 200`) | 40.8 µs | 35.1 µs | 7.9 µs | 9.5 µs | 5.2× |
-| Small valid objects (`facade.py valid 4000`) | 2.0 µs | 1.9 µs | 0.8 µs | 1.0 µs | 2.6× |
-| Small malformed objects (`facade.py malformed 400`) | 67.5 µs | 61.6 µs | 12.7 µs | 13.4 µs | 5.3× |
-| Same, serialized result | 70.2 µs | 64.9 µs | 12.9 µs | 14.6 µs | 5.4× |
-| Valid 8 KB string (`scaling.py valid 4000`) | 13.1 µs | 13.1 µs | 9.6 µs | 9.7 µs | 1.4× |
-| 2,000 escaped newlines (`scaling.py escaped 2000`) | 427 ms | 9.4 ms | 2.3 ms | 2.5 ms | 183× |
-| Non-ASCII text (`scaling.py unicode 2000`) | 451 µs | 451 µs | 469 µs | 529 µs | 0.96× |
-| Comma-dense text (`scaling.py comma 1000`) | 4.9 ms | 6.5 ms | 1.4 ms | 1.5 ms | 3.5× |
-| Logged repair (`scaling.py logs 1000`) | 171 µs | 175 µs | 59 µs | 54 µs | 2.9× |
+| Ten mixed trace records (`bench.py 200`) | 40.4 µs | 34.0 µs | 7.6 µs | 9.1 µs | 5.3× |
+| Small valid objects (`facade.py valid 4000`) | 1.9 µs | 1.9 µs | 0.7 µs | 1.0 µs | 2.7× |
+| Small malformed objects (`facade.py malformed 400`) | 63.4 µs | 59.4 µs | 10.9 µs | 12.5 µs | 5.8× |
+| Same, serialized result | 76.0 µs | 62.7 µs | 12.4 µs | 13.6 µs | 6.1× |
+| Valid 8 KB string (`scaling.py valid 4000`) | 13.3 µs | 14.2 µs | 9.5 µs | 9.8 µs | 1.4× |
+| 2,000 escaped newlines (`scaling.py escaped 2000`) | 416 ms | 9.4 ms | 2.2 ms | 2.4 ms | 187× |
+| Non-ASCII text (`scaling.py unicode 2000`) | 454 µs | 464 µs | 273 µs | 292 µs | 1.7× |
+| Comma-dense text (`scaling.py comma 1000`) | 4.9 ms | 6.5 ms | 1.3 ms | 1.4 ms | 3.8× |
+| Logged repair (`scaling.py logs 1000`) | 170 µs | 169 µs | 50 µs | 48 µs | 3.4× |
 
 A size sweep with the same method (upstream, port on CPython and AOT) shows linear
 scaling at both ends; values are AOT's speedup over upstream:
 
 | Repeated units | 500 | 1,000 | 2,000 | 4,000 | 8,000 |
 |---|---:|---:|---:|---:|---:|
-| Non-ASCII (`unicode`) | 1.01× | 0.94× | 0.96× | 0.97× | 0.91× |
-| Comma-dense (`comma`) | 3.68× | 3.65× | 3.74× | 3.61× | 3.69× |
+| Non-ASCII (`unicode`) | 1.39× | 1.71× | 1.54× | 1.72× | 1.63× |
+| Comma-dense (`comma`) | 3.58× | 3.72× | 3.91× | 3.40× | 4.08× |
 
-- Small malformed records gain about 5×. Valid JSON takes the decoder fast path and gains
-  less: 2.6× for small objects, 1.4× for one long string.
+- Small malformed records gain about 6×. Valid JSON takes the decoder fast path and gains
+  less: 2.7× for small objects, 1.4× for one long string.
 - Upstream rebuilds brace state over the whole accumulated string after every escape, so
   its cost grows quadratically with escaped newlines. The port's incremental state alone
-  is 45× faster on CPython at 2,000 escapes; AOT adds about 4×.
-- Non-ASCII text gains nothing. With the same malformed shape, AOT's advantage falls from
-  1.7–1.8× for ASCII to 1.1–1.3× for two-byte characters and 0.94–0.96× with four-byte
-  characters. In a Callgrind profile of the non-ASCII case, 41% of instructions build the
-  `JSONDecodeError` that the facade's first `json.loads()` attempt raises and discards:
-  constructing an exception formats `repr()` of all its arguments, here the whole document
-  (28%), and the decoder converts the byte offset to a code-point position (13%). That
-  `repr()` costs 87 µs to 1.1 ms for 2,000 to 32,000 non-ASCII code points, where CPython's
-  construction takes 0.4 µs; alpha.3 behaves the same.
+  is 44× faster on CPython at 2,000 escapes; AOT adds about 4×.
+- Non-ASCII malformed text gains 1.4–1.7×. At `c3aaa068` it gained nothing (0.91–1.01×):
+  41% of its instructions built the `JSONDecodeError` that the facade's first `json.loads()`
+  attempt raises and discards, mostly `repr()` of the whole document. #1031 stops formatting
+  arguments that an exception's `__init__` replaces, and steps UTF-8 faster when converting
+  the byte offset to a character position. The workload executes 42% fewer instructions.
+  `JSONDecodeError.__init__`'s line and column arithmetic on non-ASCII text remains.
 - The adapted port is 1.3–1.4× slower than upstream under CPython on comma-dense text,
   and its accumulator has the PyPy and memory costs in the [accumulator report](ACCUMULATOR.md).
   CPython users should keep upstream.
 - Each JIT process first compiles the package, about 1.2 s here. An AOT executable starts
-  and repairs the ten records in 2 ms, where importing either version under CPython takes
-  43–59 ms. An AOT build of `bench.py` took 7.3 s.
+  and repairs the ten records in 4–5 ms, where importing either version under CPython takes
+  46–57 ms. An AOT build of `facade.py` or `scaling.py` took about 7 s.
 - Whole-process RSS for CPython and AOT stayed at the runner's launch floor (about 47 MiB),
   so these runs establish no memory difference.
-- With #1025–#1029 merged into `c3aaa068` (local merge `c15dc6f8`), whole-process AOT
-  Callgrind counts of nine of these workloads stay within 1.4% of `c3aaa068`'s, with
-  identical output. They range from −1.39% (`facade.py valid`) to +1.21%
-  (`scaling.py logs`), so the timings above still describe the release candidate.
+- Whole-process AOT Callgrind counts of the same nine workloads against `c3aaa068`'s, with
+  identical output: non-ASCII −42.1%, logged repair −6.1%, mixed records −5.1%, escaped
+  newlines −5.0%, malformed objects −4.4% (serialized −4.0%), valid objects −1.6%,
+  comma-dense −1.0% and the long valid string +0.4%. These leave out about 110,000
+  instructions that a Valgrind run alone spends on the runtime's stack-bounds fallback.
+- The 645-case parity replay matches pristine upstream at this build on CPython and in AOT
+  and JIT, normally and with collection at every allocation.
 
 To repeat the campaign, build the probes as in [Reproduce](#reproduce) and run
 `tools/json_repair_bench.py` with a variants file like the one in the

@@ -367,94 +367,111 @@
   },
   "note": "Internal timed loop of json_loads.py 300, nine alternating pairs on one CPU of a shared host; the ranges overlap and no wall-time difference is resolved."
  },
- "integrated_candidate": {
-  "revision": "local merge c15dc6f8 of c3aaa068 with #1025-#1029 (see bench/pyperformance/results/alpha3-vs-integrated-2026-11-02.json)",
-  "method": "run_controls.sh as for the candidate: each control built by its own compiler (alpha.3 f5a09d42 and the integrated tree), whole-process AOT Callgrind instructions, pinned to one CPU, outputs compared with CPython 3.13.18",
+ "release_candidate": {
+  "revision": "main ec442a20 (c3aaa068 with #1025-#1029 and #1031), measured as the local merge 9496b00d, whose code is identical (see bench/pyperformance/results/alpha3-vs-release-candidate-2026-11-02.json)",
+  "method": "run_controls.sh as for the candidate: each control built by its own compiler (alpha.3 f5a09d42 and the release candidate), whole-process AOT Callgrind instructions, pinned to one CPU, outputs compared with CPython 3.13.18",
+  "valgrind_adjustment": "release_candidate instructions subtract the inclusive cost of glibc's pthread_getattr_np, which the runtime's stack-bounds lookup (#1026) calls only when Valgrind moves AT_EXECFN off its page boundary (a /proc/self/maps parse, about 110,000 instructions once per process; native runs never make it). Without the adjustment, the earlier merge c15dc6f8 read +0.11% on the short observed-Any control.",
   "controls": {
    "broad": {
     "alpha3": {
-     "instructions": 1300404124,
+     "instructions": 1300402961,
      "stdout_matches_cpython": true
     },
-    "integrated": {
-     "instructions": 1296401448,
+    "release_candidate": {
+     "instructions": 1296236550,
+     "callgrind_total": 1296345127,
+     "valgrind_only_fallback_instructions": 108577,
      "stdout_matches_cpython": true
     },
-    "change_percent": -0.31
+    "change_percent": -0.32
    },
    "typed-numeric": {
     "alpha3": {
-     "instructions": 91472194,
+     "instructions": 91471048,
      "stdout_matches_cpython": true
     },
-    "integrated": {
-     "instructions": 91166043,
+    "release_candidate": {
+     "instructions": 91042051,
+     "callgrind_total": 91152840,
+     "valgrind_only_fallback_instructions": 110789,
      "stdout_matches_cpython": true
     },
-    "change_percent": -0.33
+    "change_percent": -0.47
    },
    "typed-strings": {
     "alpha3": {
-     "instructions": 108711039,
+     "instructions": 108709893,
      "stdout_matches_cpython": true
     },
-    "integrated": {
-     "instructions": 107266789,
+    "release_candidate": {
+     "instructions": 107142798,
+     "callgrind_total": 107253587,
+     "valgrind_only_fallback_instructions": 110789,
      "stdout_matches_cpython": true
     },
-    "change_percent": -1.33
+    "change_percent": -1.44
    },
    "typed-mixed": {
     "alpha3": {
-     "instructions": 127366630,
+     "instructions": 127365458,
      "stdout_matches_cpython": true
     },
-    "integrated": {
-     "instructions": 126844672,
+    "release_candidate": {
+     "instructions": 126834299,
+     "callgrind_total": 126945088,
+     "valgrind_only_fallback_instructions": 110789,
      "stdout_matches_cpython": true
     },
-    "change_percent": -0.41
+    "change_percent": -0.42
    },
    "any-short": {
     "alpha3": {
-     "instructions": 30011439,
+     "instructions": 30010294,
      "stdout_matches_cpython": true
     },
-    "integrated": {
-     "instructions": 30043597,
+    "release_candidate": {
+     "instructions": 29923646,
+     "callgrind_total": 30034512,
+     "valgrind_only_fallback_instructions": 110866,
      "stdout_matches_cpython": true
     },
-    "change_percent": 0.11
+    "change_percent": -0.29
    },
    "any32-numeric": {
     "alpha3": {
-     "instructions": 106837564,
+     "instructions": 106836428,
      "stdout_matches_cpython": true
     },
-    "integrated": {
-     "instructions": 103223786,
+    "release_candidate": {
+     "instructions": 103099793,
+     "callgrind_total": 103210666,
+     "valgrind_only_fallback_instructions": 110873,
      "stdout_matches_cpython": true
     },
-    "change_percent": -3.38
+    "change_percent": -3.5
    },
    "any32-strings": {
     "alpha3": {
-     "instructions": 116972035,
+     "instructions": 116970899,
      "stdout_matches_cpython": true
     },
-    "integrated": {
-     "instructions": 116774460,
+    "release_candidate": {
+     "instructions": 116650467,
+     "callgrind_total": 116761340,
+     "valgrind_only_fallback_instructions": 110873,
      "stdout_matches_cpython": true
     },
-    "change_percent": -0.17
+    "change_percent": -0.27
    },
    "any32-mixed": {
     "alpha3": {
-     "instructions": 142771358,
+     "instructions": 142770271,
      "stdout_matches_cpython": true
     },
-    "integrated": {
-     "instructions": 141147372,
+    "release_candidate": {
+     "instructions": 141137093,
+     "callgrind_total": 141247966,
+     "valgrind_only_fallback_instructions": 110873,
      "stdout_matches_cpython": true
     },
     "change_percent": -1.14
