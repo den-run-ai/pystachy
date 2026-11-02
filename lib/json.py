@@ -3,7 +3,8 @@
 
 This prototype implements loads(str), dumps(JSONValue) and the default JSONDecoder.
 Typed JSONValue integers use Pystachy's signed 64-bit range; the dynamic Any
-decoder promotes larger tokens. Nesting is limited to 256 containers, and object keys are str.
+decoder promotes larger tokens. Nesting counts against sys.setrecursionlimit() and stops at
+2,000 containers, which keeps a raised limit within the native stack; object keys are str.
 Decoder hooks, bytes input, encoder subclasses, indentation and file APIs are not
 implemented. Containers are created with recursive JSONValue storage; narrowing
 keeps their original identity and mutable contents.
@@ -51,6 +52,26 @@ def _u8len(data: bytes, i: int) -> int:
     return _u8char(data, i) >> 21
 
 
+def _u8next(data: bytes, i: int, n: int) -> int:
+    # Where the character at data[i] ends, i + _u8len(data, i) of n = len(data) bytes, without
+    # computing its code point: a lead byte and continuation bytes of a code point its length
+    # holds (a surrogate's too) are one character; anything else is left to _u8len.
+    c = data[i]
+    if c < 0x80:
+        return i + 1
+    if c >= 0xC2 and c < 0xE0:
+        if i + 1 < n and (data[i + 1] & 0xC0) == 0x80:
+            return i + 2
+    elif c >= 0xE0 and c < 0xF0:
+        if i + 2 < n and (data[i + 1] & 0xC0) == 0x80 and (data[i + 2] & 0xC0) == 0x80 and (c != 0xE0 or data[i + 1] >= 0xA0):
+            return i + 3
+    elif c >= 0xF0 and c <= 0xF4:
+        if (i + 3 < n and (data[i + 1] & 0xC0) == 0x80 and (data[i + 2] & 0xC0) == 0x80 and (data[i + 3] & 0xC0) == 0x80
+                and (c != 0xF0 or data[i + 1] >= 0x90) and (c != 0xF4 or data[i + 1] < 0x90)):
+            return i + 4
+    return i + _u8len(data, i)
+
+
 _STRING_TOKEN = b'"'
 _ARRAY_TOKEN = b"["
 _OBJECT_TOKEN = b"{"
@@ -94,10 +115,14 @@ class _Parser:
             self.mark_byte = 0
             self.mark_char = 0
         data = self.data
+        n = self.n
         i = self.mark_byte
         count = self.mark_char
         while i < at:
-            i += _u8len(data, i)
+            if data[i] < 0x80:
+                i += 1
+            else:
+                i = _u8next(data, i, n)
             count += 1
         self.mark_byte = i
         self.mark_char = count
@@ -107,10 +132,15 @@ class _Parser:
         # raw_decode's idx is a character offset; the scanner itself uses byte offsets.
         if idx < 0:
             raise ValueError("idx cannot be negative")
+        data = self.data
+        n = self.n
         i = 0
         count = 0
-        while count < idx and i < self.n:
-            i += _u8len(self.data, i)
+        while count < idx and i < n:
+            if data[i] < 0x80:
+                i += 1
+            else:
+                i = _u8next(data, i, n)
             count += 1
         if count < idx:
             raise JSONDecodeError("Expecting value", self.doc, idx)
@@ -264,32 +294,52 @@ class _Parser:
             value = value * 16 + digit
         return value
 
+    # Strings are scanned in one of two ways. A scalar loop over the whole string needs no setup,
+    # so object keys and every string of a text of at most 1 KiB use plain_end(). A longer text
+    # may hold strings long enough to repay a call of the bulk byte scanner: its string values
+    # scan a 32-byte scalar prefix (plain_prefix()) and continue past it with plain_rest(). A
+    # bound on the scalar loop costs some instructions for every string and every byte, which
+    # short strings in short texts never repay (bench/smoke/README.md's JSON decoder controls).
     def plain_end(self, begin: int) -> int:
         # The closing quote of the string that begins at begin when no escape or control
-        # character comes first; else -1 - the offset where the scan stopped: an escape,
-        # a control character, the end, or the byte after a 16-byte ordinary prefix.
+        # character comes first; else -1 - the offset where the scan stopped (or the end).
         data = self.data
         n = len(data)
         i = begin + 1
-        # Short keys/values stay in the original scalar loop. The native helper
-        # pays off only once an ordinary span has passed this small prefix.
-        # Negative positions retain the old private method's indexing behavior.
-        limit = n + 0  # a scalar cursor, without borrowing n's numeric identity
-        if i >= 0 and n - i > 16:
-            limit = i + 16
+        while i < n:
+            c = data[i]
+            # One comparison and a check for a backslash pass most ordinary bytes ('#' and above).
+            if c < 35 or c == 92:
+                if c == 34:
+                    return i
+                if c == 92 or c < 32:
+                    return -1 - i
+            i += 1
+        return -1 - n
+
+    def plain_prefix(self, begin: int) -> int:
+        # plain_end() for a string of at most 32 bytes: else -1 - the offset where the scan
+        # stopped (an escape, a control character, the end, or the 33rd byte of the string).
+        data = self.data
+        n = len(data)
+        i = begin + 1
+        limit = i + 33  # (32 ordinary bytes and the closing quote)
+        if limit > n:
+            limit = n + 0  # a scalar cursor, without borrowing n's numeric identity
         while i < limit:
             c = data[i]
-            if c == 34:
-                return i
-            if c == 92 or c < 32:
-                return -1 - i
+            if c < 35 or c == 92:
+                if c == 34:
+                    return i
+                if c == 92 or c < 32:
+                    return -1 - i
             i += 1
         return -1 - i
 
     def plain_rest(self, i: int) -> int:
-        # Continues plain_end() where its scalar prefix stopped: an ordinary byte at i
-        # starts a bulk scan for the closing quote. Keeping the native call out of
-        # plain_end() keeps that loop small enough to inline into string() and key().
+        # Continues an ordinary run at i with the bulk byte scanner: the closing quote, else
+        # -1 - the offset where the run ended (an escape, a control character or the end).
+        # string() and escaped() share it, which keeps the native call out of line.
         data = self.data
         n = len(data)
         if i < n:
@@ -303,11 +353,14 @@ class _Parser:
     def string(self) -> str:
         # Most strings have no escape: one slice of the bytes is the result.
         begin = self.pos
-        end = self.plain_end(begin)
-        if end < 0:
-            end = self.plain_rest(-1 - end)
+        if len(self.data) > 1024:
+            end = self.plain_prefix(begin)
             if end < 0:
-                return self.escaped(begin, -1 - end)
+                end = self.plain_rest(-1 - end)
+        else:
+            end = self.plain_end(begin)
+        if end < 0:
+            return self.escaped(begin, -1 - end)
         self.pos = end + 1
         return self.text(begin + 1, end)
 
@@ -316,9 +369,7 @@ class _Parser:
         begin = self.pos
         end = self.plain_end(begin)
         if end < 0:
-            end = self.plain_rest(-1 - end)
-            if end < 0:
-                return self.escaped(begin, -1 - end)
+            return self.escaped(begin, -1 - end)
         self.pos = end + 1
         if not self.key_bytes:
             self.key_bytes = [b""] * 64
@@ -336,7 +387,7 @@ class _Parser:
         return text
 
     def escaped(self, begin: int, i: int) -> str:
-        # The rest of the string that begins at begin, from where plain_end() stopped: its
+        # The rest of the string that begins at begin, from where its scan stopped: its
         # first backslash, a control character or the end of the text.
         data = self.data
         n = len(data)
@@ -393,8 +444,9 @@ class _Parser:
             else:
                 raise self.error("Invalid \\escape", slash)
             start = i
-            if long_run and i < n:
-                i = _scan_bytes(data, i, n, 34, 92, 32)
+            if long_run:
+                end = self.plain_rest(i)
+                i = end if end >= 0 else -1 - end
         raise self.error("Unterminated string starting at", begin)
 
     def number(self, wide: bool = False) -> JSONValue:
@@ -516,8 +568,15 @@ class _Parser:
         if c == 34:
             return self.string()
         if c == 123 or c == 91:
-            if depth >= 256:
-                raise RecursionError("maximum JSON nesting depth exceeded")
+            # Each nested container is two calls that sys.setrecursionlimit() counts (value(),
+            # then array() or object()). Past 2,000 containers, a raised limit could exhaust the
+            # native stack in its largest-frame configurations (docs/json.md's JSON API limits).
+            if depth >= 2000:
+                if c == 91:
+                    raise RecursionError("maximum recursion depth exceeded"
+                                         " while decoding a JSON array from a unicode string")
+                raise RecursionError("maximum recursion depth exceeded"
+                                     " while decoding a JSON object from a unicode string")
             if c == 91:
                 return self.array(depth)
             return self.object(depth)
@@ -738,8 +797,8 @@ class _Encoder:
             for list_parent in self.lists:
                 if value is list_parent:
                     raise ValueError("Circular reference detected")
-            if depth >= 256:
-                raise RecursionError("maximum JSON nesting depth exceeded")
+            if depth >= 2000:  # (the decoder's bound on nesting, as value() explains)
+                raise RecursionError("maximum recursion depth exceeded while encoding a JSON object")
             self.lists.append(value)
             self.out.append("[")
             first = True
@@ -754,8 +813,8 @@ class _Encoder:
             for dict_parent in self.dicts:
                 if value is dict_parent:
                     raise ValueError("Circular reference detected")
-            if depth >= 256:
-                raise RecursionError("maximum JSON nesting depth exceeded")
+            if depth >= 2000:  # (the decoder's bound on nesting, as value() explains)
+                raise RecursionError("maximum recursion depth exceeded while encoding a JSON object")
             self.dicts.append(value)
             self.out.append("{")
             keys = sorted(value) if self.sort_keys else list(value)

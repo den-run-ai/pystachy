@@ -1,0 +1,76 @@
+97 0 1 1 Expecting value
+97 1 1 2 Expecting value
+97 9 1 10 Expecting value
+97 7 1 8 Illegal trailing comma before end of object
+97 0 1 1 Unterminated string starting at
+97 5 1 6 Expecting ',' delimiter
+97 3 1 4 Invalid control character at
+97 0 1 1 Expecting value
+raw 2 [1, "a"] 10
+raw 0 0 1 1 Expecting value
+raw 9 9 1 10 Expecting value
+raw 7 7 1 8 Expecting value
+raw 12 12 2 1 Expecting value
+raw 11 11 1 12 Expecting value
+raw 30 30 2 19 Expecting value
+233 0 1 1 Expecting value
+233 1 1 2 Expecting value
+233 9 1 10 Expecting value
+233 7 1 8 Illegal trailing comma before end of object
+233 0 1 1 Unterminated string starting at
+233 5 1 6 Expecting ',' delimiter
+233 3 1 4 Invalid control character at
+233 0 1 1 Expecting value
+raw 2 [1, "\u00e9"] 10
+raw 0 0 1 1 Expecting value
+raw 9 9 1 10 Expecting value
+raw 7 7 1 8 Expecting value
+raw 12 12 2 1 Expecting value
+raw 11 11 1 12 Expecting value
+raw 30 30 2 19 Expecting value
+8364 0 1 1 Expecting value
+8364 1 1 2 Expecting value
+8364 9 1 10 Expecting value
+8364 7 1 8 Illegal trailing comma before end of object
+8364 0 1 1 Unterminated string starting at
+8364 5 1 6 Expecting ',' delimiter
+8364 3 1 4 Invalid control character at
+8364 0 1 1 Expecting value
+raw 2 [1, "\u20ac"] 10
+raw 0 0 1 1 Expecting value
+raw 9 9 1 10 Expecting value
+raw 7 7 1 8 Expecting value
+raw 12 12 2 1 Expecting value
+raw 11 11 1 12 Expecting value
+raw 30 30 2 19 Expecting value
+127794 0 1 1 Expecting value
+127794 1 1 2 Expecting value
+127794 9 1 10 Expecting value
+127794 7 1 8 Illegal trailing comma before end of object
+127794 0 1 1 Unterminated string starting at
+127794 5 1 6 Expecting ',' delimiter
+127794 3 1 4 Invalid control character at
+127794 0 1 1 Expecting value
+raw 2 [1, "\ud83c\udf32"] 10
+raw 0 0 1 1 Expecting value
+raw 9 9 1 10 Expecting value
+raw 7 7 1 8 Expecting value
+raw 12 12 2 1 Expecting value
+raw 11 11 1 12 Expecting value
+raw 30 30 2 19 Expecting value
+55296 0 1 1 Expecting value
+55296 1 1 2 Expecting value
+55296 9 1 10 Expecting value
+55296 7 1 8 Illegal trailing comma before end of object
+55296 0 1 1 Unterminated string starting at
+55296 5 1 6 Expecting ',' delimiter
+55296 3 1 4 Invalid control character at
+55296 0 1 1 Expecting value
+raw 2 [1, "\ud800"] 10
+raw 0 0 1 1 Expecting value
+raw 9 9 1 10 Expecting value
+raw 7 7 1 8 Expecting value
+raw 12 12 2 1 Expecting value
+raw 11 11 1 12 Expecting value
+raw 30 30 2 19 Expecting value
+[exit 0]

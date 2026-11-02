@@ -121,24 +121,25 @@ def check_limits(module) -> int:
         else:
             raise AssertionError("accepted out-of-range integer: " + source)
         checks += 1
-    # The module's explicit budget is independent of CPython's incidental Python
-    # call-stack budget. Raise that budget for this hosted implementation check.
+    # Nesting counts against the recursion limit and stops at the module's fixed bound of
+    # 2,000 containers. Raise the limit past that bound for this hosted implementation check.
     old_limit = sys.getrecursionlimit()
     sys.setrecursionlimit(max(old_limit, 5000))
     try:
-        accepted = "[" * 256 + "0" + "]" * 256
+        accepted = "[" * 2000 + "0" + "]" * 2000
         assert module.dumps(module.loads(accepted), separators=(",", ":")) == accepted
         try:
-            module.loads("[" * 257 + "0" + "]" * 257)
+            module.loads("[" * 2001 + "0" + "]" * 2001)
         except RecursionError as exc:
-            assert str(exc) == "maximum JSON nesting depth exceeded"
+            assert str(exc) == ("maximum recursion depth exceeded while decoding a JSON array"
+                                " from a unicode string")
         else:
             raise AssertionError("accepted excess JSON nesting")
         value = module.loads(accepted)
         try:
             module.dumps([value])
         except RecursionError as exc:
-            assert str(exc) == "maximum JSON nesting depth exceeded"
+            assert str(exc) == "maximum recursion depth exceeded while encoding a JSON object"
         else:
             raise AssertionError("encoded excess JSON nesting")
     finally:

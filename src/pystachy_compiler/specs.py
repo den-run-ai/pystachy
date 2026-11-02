@@ -165,6 +165,8 @@ TBAA_LIMIT = 7
 RECURSION_BRANCH = 8
 TBAA_DEPTH_TYPE = 9  # (the scalar type nodes of TBAA_DEPTH's and TBAA_LIMIT's tags)
 TBAA_LIMIT_TYPE = 10
+TBAA_FLOOR = 11  # the native stack's floor, the state's third word (#1015), and its type node
+TBAA_FLOOR_TYPE = 12
 # a program's TBAA of object fields (fieldtbaa): its access tags are numbered from here, in the order
 # lowering first tags each field, and the type nodes they name follow them (lower_module); the
 # members a class's struct may have, each with its size, which is its alignment too, and the name
@@ -670,9 +672,10 @@ GENTHROWC = 3
 # byte reads of a loop over a bytes, in gen_seq_item), fieldtbaa, the TBAA tags that lowering
 # gives the loads and stores of object fields (Gen.field_tag), and tupleret, the fixed tuples that
 # functions return by value to the calls that only read their slots (Gen.tuple_rets), and
-# allocelide, compiled code's objects and fixed tuples from pys_new, whose calls lowering marks as
-# allocations, so that LLVM deletes those whose objects nothing keeps (lowering's alloc_call), which
-# PYSTACHY_OPT turns off: "-name", comma-separated, or "-all"
+# allocelide, compiled code's objects and fixed tuples that hold no reference (only ints, floats
+# and bools) from pys_new, whose calls lowering marks as allocations, so that LLVM deletes those
+# whose objects nothing keeps (lowering's alloc_call and ref_free), which PYSTACHY_OPT turns off:
+# "-name", comma-separated, or "-all"
 OPTS: list[str] = ["listget", "dictfuse", "tupleiter", "listfast", "moduleints", "fieldtbaa", "tupleret", "unionslots", "nullcheck", "allocelide"]
 # what bounds dictfuse's work: the depth of the chain of values Gen.canon follows (the
 # self-compile's deepest is 18), the ops Gen.reaching walks back over (85) and the lookups that
@@ -990,7 +993,7 @@ RUNTIME: dict[str, str] = {
     "recursion.enter": "int:|R I|pys_recursion_enter", "recursion.leave": "None:|I|pys_recursion_leave",
     "recursion.resume": "int:%ptr|R I|pys_recursion_resume",
     "recursion.depth": "int:|I|pys_recursion_depth", "recursion.restore": "None:int|I|pys_recursion_restore",
-    "recursion.error": "None:|R N|pys_recursion_error",
+    "recursion.error": "None:|R N|pys_recursion_error", "recursion.stack": "None:|R N|pys_recursion_stack_error",
     # exceptions (runtime.c's "exceptions"); a landing's pys_exc_begin runs the unwind actions: it
     # closes with-files (which may raise) and gives a list being sorted its items back. str() and
     # repr() of an exception object run its class's __str__ and __repr__ (through its ExcClass)

@@ -327,8 +327,10 @@ the `abi3` floor and fails to load `PyErr_GetRaisedException`; package it with a
 `cp312-abi3` wheel tag.
 
 Two Pystachy extension modules carry independent runtimes and heaps. Values cross
-between them through Python as copies. Allocation failure inside a collection or
-stack exhaustion ends the host process.
+between them through Python as copies. Allocation failure inside a collection ends the
+host process, as does stack exhaustion outside the recursion checks: a compiled recursion
+that the importing thread's stack cannot hold raises `RecursionError` before it runs out
+([recursion policy](language/compatibility.md#errors-and-control-flow)).
 
 <a id="why-this-design"></a>
 <a id="tests"></a>

@@ -179,9 +179,9 @@ best; most PyPI packages do not compile unchanged.
   [Unicode porting audit](docs/language/compatibility.md#text-and-file-positions) flags
   byte-oriented operations on non-ASCII input.
 - **Recursion** respects `sys.setrecursionlimit()` and raises a catchable `RecursionError`.
-  Only recursive calls count, so the reachable depth differs from CPython's, and a very high
-  limit can still overflow the native stack
-  ([recursion policy](docs/language/compatibility.md#errors-and-control-flow)).
+  Only recursive calls count, so the reachable depth differs from CPython's, and recursion that
+  the native stack cannot hold raises `RecursionError` before the stack runs out, even below a
+  raised limit ([recursion policy](docs/language/compatibility.md#errors-and-control-flow)).
 - **Diagnostics** catch many unsupported constructs at compile time, but not all. Known
   semantic differences are listed under
   [deviations from CPython](docs/language.md#deviations-from-cpython).
