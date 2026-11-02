@@ -152,12 +152,16 @@ def main():
             label, command = spec.split("=", 1)
             cmd = shlex.split(command)
             raw = run(cmd + ["ir", str(source)], env).decode()
+            # (unused_left and unused_right recur only through each other: closed recursion emits each
+            # as its symbol and a body, @r.<symbol> (docs/internals.md#native-recursion-depth), and
+            # neither may reach lli)
             dead = set(re.findall(r"^define internal .*?@([^ (]*unused_[^ (]*)\(", raw, re.MULTILINE))
+            unused = {name.removeprefix("r.") for name in dead}
             feedback = re.search(r"^define[^\n]*@f\.loop_feedback\([^\n]*\n.*?^}", raw, re.MULTILINE | re.DOTALL)
             if feedback is None or "xor i64" not in feedback.group():
                 raise RuntimeError(f"{label}: loop-feedback probe did not emit its dead xor")
-            if len(dead) != 35:
-                raise RuntimeError(f"{label}: expected 35 emitted unused functions, got {len(dead)}")
+            if len(unused) != 35 or len(dead) != 37:
+                raise RuntimeError(f"{label}: expected 35 emitted unused functions in 37 definitions, got {len(unused)} in {len(dead)}")
             capture.unlink(missing_ok=True)
             if run(cmd + ["run", str(source), *arguments], env) != expected:
                 raise RuntimeError(f"{label}: JIT output differs from CPython")

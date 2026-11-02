@@ -41,12 +41,14 @@ print(int("123456789012345678901234567890") % 97)  # 52
   the function is compiled again with it promoting, as a [join](language/typing.md) widens
   other types. A literal that fits is a 64-bit int until it meets one.
   Ordinary functions whose unannotated locals widen from 64-bit to promoting ints can retry
-  just their own body once, including locals receiving a `Callable` or generic class result
+  just their own body once, as other [local joins](language/typing.md#inferred-unions) do,
+  including locals receiving a `Callable` or generic class result
   in a module without the comment. This avoids reloading and compiling unrelated code.
   Other pending joins, captured locals, generators, recursive return inference and newly
   materialized dependencies retain the whole-program retry. Programs using dynamic `Any`
   also retain that retry, including its dispatcher and identity state. The retry changes no integer
-  policy or annotated boundary; `tools/test_python_int_retry.py` checks its pass counts.
+  policy or annotated boundary; `tools/test_python_int_retry.py` and
+  `tools/test_local_join_retry.py` check its pass counts.
 - A `bool` stays a `bool`, as in a module that does not opt in: one returned or stored as an
   `int` (a variable, a field, a tuple's item), or given by a conditional expression, `and`, `or`,
   `min()` or `max()` that may give an int is rejected during compilation (CPython keeps the
