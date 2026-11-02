@@ -399,8 +399,9 @@ generator expressions emit the same typed IR and LLVM IR as before.
 
 ## JIT, AOT and runtime caching
 
-`run` favors startup latency. LLVM removes unused internal functions, optionally inlines the
-program's own functions, performs SSA cleanup, and runs `early-cse` and `adce` to remove
+`run` favors startup latency. LLVM removes unused internal functions, inlines the scalar
+recursion-accounting helpers, optionally inlines the program's
+own functions, performs SSA cleanup, and runs `early-cse` and `adce` to remove
 redundant computations and unused loop feedback before ORC JIT runs with the cached runtime.
 On Linux, `lli` loads the runtime as a shared library (`-dlopen`), which the driver links once
 from the cached runtime object and caches beside it; elsewhere `lli` links the object into each
@@ -416,8 +417,103 @@ lowered) gets LLVM's coroutine passes around that pipeline:
 `coro-early`, `coro-split` in the bottom-up walk that inlines (with `coro-elide` after each
 function's cleanup), and `coro-cleanup`. The final `early-cse`/`adce` cleanup runs after
 those passes as well, so dead identity-generation loops do not reach code generation.
-The default inlining threshold is 20,000 lines of generated IR; larger programs skip that
-pass. The precompiled runtime is not inlined into JIT code.
+The default user-function inlining threshold is 20,000 lines of generated IR; larger programs
+skip that pass. The scalar recursion-accounting helpers remain inlined, including with
+`PYSTACHY_JIT_INLINE=0`; the recursion entry follows the user-function threshold (see
+below). The precompiled runtime is not inlined into JIT code.
+
+<a id="native-recursion-depth"></a>
+
+### Native recursion depth
+
+`sys.setrecursionlimit()` bounds the native depth: one for module execution, plus each
+active call of a source function that recursion can repeat, plus each running generator
+body that it can repeat ([compatibility](language/compatibility.md#errors-and-control-flow)).
+The state is runtime.c's `pys_recursion_state`, two mutable words (active depth, then
+limit) that the program's guards and the runtime's `sys.setrecursionlimit()` share; the
+program module defines the guard helpers itself, even when the JIT runs the runtime as a
+shared library.
+
+Every non-generator function starts with a snapshot of the depth it was entered at
+(`recursion.depth`), which its exception landings restore: callees that raised may have
+left the depth higher, since the unwinder skipped their returns. Once the whole program is
+built and `Gen.effects` has summarized it, `Gen.recursionscope` (`optimizations.py`)
+decides which functions count. Its graph has the summaries' direct calls (`call` and
+`init`, through uncounted adapters too), and from each resume or drop of a `gen[Y]`
+handle an edge to every generator body that makes such handles (generators of all
+functions that yield `Y` share the type). A function can be entered again while it is
+active if it lies on a cycle of that graph (Tarjan's algorithm, iteratively) or reaches
+`U`: code the graph does not show, such as an `icall` of a function value or a runtime
+operation that calls `__eq__`, `__hash__` or `__repr__`. A body's own yields, which
+suspend it, and resumes, which are edges, do not count as `U` there. Nor does a body's report
+of what closing it raised (`gen.unraisable`) unless the program defines exception classes: a
+built-in exception's message is rendered when it is made, and only a class of the program's
+own runs code (its `__str__`) to report it. Any other function
+is at most once on any native stack: counting it could change only at which call a
+bounded recursion fails, never whether an unbounded one is caught, because every cycle of
+calls passes through a counted function or a counted resume. A source function or lambda
+that can be entered again counts; any other neither checks nor counts, and keeps its
+snapshot only when one of its handlers restores it. A Callable's adapter (`@cv.N`) only
+forwards to its target and never counts: a cycle through it also passes through the
+function that makes the indirect call, which reaches `U`.
+
+A counted function's snapshot becomes its entry, `recursion.enter`: it raises
+`RecursionError` if the depth has reached the limit (before any local handler or body
+code, so a failed entry belongs to the caller) and otherwise counts the frame. Each
+normal return restores the caller's depth (the entry's result minus one), and its
+landings restore its own active depth. Restoring after the last call also keeps LLVM's
+tail-call elimination from discarding the activation. The summaries gain exactly the
+entry's and the returns' effects (`R I`) instead of another walk over every operation;
+`gen_effects` leaves a function's entry snapshot out of its own mask, since an
+uncounted function either drops it or keeps it only beside the restorations that its
+handlers already contribute. A generator body counts while it runs: its consumer enters
+(`recursion.resume`, given the generator's state word) before each resume and restores the
+depth it entered from after a normal resume. A failed entry raises in the consumer and
+finishes the generator first (`GENDONE`, on the entry's cold path), as CPython clears a frame
+whose entry exceeds the limit: its handlers do not run, and it never resumes. The pass removes that
+accounting where no body of the handle's type can be entered again, and computes the
+summaries afresh there. Closing a loop's generator (`gen.drop`) uses `pys.gen.drop`
+unchanged, or `pys.gen.drop.counted`, which counts the cleanup as a frame and reports a
+failed entry as an exception raised by closing, where a body of its type can recur. Main's
+small `pys.gen.drop` keeps LLVM's coroutine elision able to inline a loop's generator. In a
+program with exception handling the body saves the depth at each resume for its
+handlers, since a resumed generator may have another consumer. This is the depth policy,
+not an optimization, so `PYSTACHY_OPT` does not change it.
+
+Closed recursion keeps the depth in a register. A cycle of counted source functions that
+reaches no `U`, no function outside it that can be entered again (a counted function, a
+body of a generator type that can recur) and no `sys.setrecursionlimit`, which compares the
+depth word with the new limit, finds the word as its outermost call found it until that call
+returns: nothing it runs changes the word or counts from it (an uncounted function's handlers
+restore the value they read). `Gen.recursionscope` records such cycles (`Gen.rdpass`). Their typed IR keeps its entries, but neither base nor restorations, and
+lowering emits each member's body as `@r.<symbol>`, whose last argument is its caller's
+depth: the entry calls `pys.recursion.check`, which raises at the limit as
+`pys.recursion.enter` does and otherwise returns the frame's own depth, without a store, and
+calls within the cycle pass that depth to the callee's body; landings restore nothing. The
+member's own symbol becomes a wrapper that loads the word and calls the body, for every
+caller outside the cycle and for its uses as a value. The wrapper is `noinline`, a load and
+a jump to the body: inlined, it would add a load and an argument to each caller, which in
+`bench/pyperformance/regex_effbot.py` was enough for clang `-O2` to keep `Pattern._search` out
+of `re.search`. Each frame counts at the same call as
+with the word, tail calls included, since the depth is an argument. A function returning a
+fixed tuple stays out, since `tupleret` may return its slots instead. Without the chain of
+stores and loads to one word, `bench/fib.py`'s executable runs about 5% slower than without
+guards instead of 34% ([report](reports/recursion-guard-policy.md)).
+
+For operations without exceptional successors, lowering emits `recursion.depth` and
+`recursion.restore` directly as a load and a store of the depth word. `recursion.enter`
+calls the module's `pys.recursion.enter`, or in closed recursion `pys.recursion.check`, and a
+resume's `recursion.resume` calls `pys.recursion.resume`, whose overflow edge first marks the
+generator finished; the module defines each only where something calls it. Their overflow edge calls the runtime's
+`pys_recursion_error` and has cold branch weights. LLVM's ordinary inliners take those
+helpers: clang `-O2` for `build`, and the JIT's inliner below its line threshold. They are
+not marked `alwaysinline`, because LLVM 18's mandatory inliner computes block frequencies
+for every caller it changes, which cost a large program's JIT start-up more than the call
+saves (24 counted functions of `bench/smoke/text.py` added 13.8% to `opt`). The scalar
+helpers, which only `pys.gen.drop.counted` and extension entries call by name, are
+`alwaysinline`. The state's accesses carry depth/limit TBAA tags under the object-field
+root, so object field stores cannot alias it. Runtime compilation (`runtime.py`) has no
+recursion accounting.
 
 `PYSTACHY_JIT_CODEGEN=0` selects MCJIT with `-O0` code generation. This can reduce
 startup for large programs, but the generated code can run slower. The default (`2`)
@@ -461,7 +557,7 @@ provide the broader behavior check. See [testing](testing.md) for the commands.
 | `PYSTACHY_IRCHECK=1` | Verify typed IR before lowering and after transforming passes |
 | `PYSTACHY_IRFX=1` | Print function effect summaries to stderr |
 | `PYSTACHY_OPT` | Disable named optimizations with `-name`, comma-separated, or all with `-all`; see [IR passes](typed-ir.md#optimizations) |
-| `PYSTACHY_JIT_INLINE=N` | IR-line threshold for JIT inlining; `0` disables it |
+| `PYSTACHY_JIT_INLINE=N` | IR-line threshold for JIT user-function inlining, including the recursion entry helper; `0` disables it (the scalar recursion helpers remain inlined) |
 | `PYSTACHY_JIT_CODEGEN=0\|2` | `0` selects MCJIT `-O0`; `2` (default) keeps ORC code generation |
 | `PYSTACHY_GC_STRESS=N` | Collect every N allocations |
 | `PYSTACHY_GC_STRESS_PROGRAM=N` | Apply the stress interval to the program run by JIT or the test runner, separately from its compiler |

@@ -162,7 +162,10 @@ class IdentityScopeTests(unittest.TestCase):
         # adds one bytes_get to each function and regresses the broad JSON probe.
         for method, limit in [("array", 3), ("object", 5)]:
             with self.subTest(method=method):
-                body = bodies["@m.json$_Parser." + method]
+                symbol = "@m.json$_Parser." + method
+                # (the parser's methods are closed recursion: each body is @r.<its symbol>, and
+                # its symbol a wrapper that passes the depth along, docs/internals.md#native-recursion-depth)
+                body = bodies.get("@r." + symbol[1:], bodies[symbol])
                 self.assertGreater(body.count("@pys_bytes_get("), 0)
                 self.assertLessEqual(body.count("@pys_bytes_get("), limit)
 

@@ -1,4 +1,4 @@
-@main.init: pys_dict_new_atomic pys_dict_set pys_dict_set pys_dict_set pys_str_int pys_write pys_write pys_str_int pys_write pys_write pys_str_int pys_write pys_write pys_repr pys_write pys_write pys_alloc pys_alloc pys_dict_new_atomic pys_dict_set pys_dict_set pys_dict_new_atomic pys_dict_set pys_dict_new_atomic pys_dict_set pys_box pys_repr pys_write pys_write pys_repr pys_write pys_write pys_repr pys_write pys_write
+@main.init: pys_dict_new_atomic pys_dict_set pys_dict_set pys_dict_set pys_str_int pys_write pys_write pys_str_int pys_write pys_write pys_str_int pys_write pys_write pys_repr pys_write pys_write pys_dict_new_atomic pys_dict_set pys_dict_set pys_dict_new_atomic pys_dict_set pys_dict_new_atomic pys_dict_set pys_box pys_repr pys_write pys_write pys_repr pys_write pys_write pys_repr pys_write pys_write
 @f.get: pys_dict_find pys_repr pys_raise pys_dict_val
 @f.tested: pys_dict_has pys_dict_find pys_repr pys_raise pys_dict_val
 @f.pop: pys_dict_find pys_repr pys_raise pys_dict_pop

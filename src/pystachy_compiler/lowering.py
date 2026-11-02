@@ -2,8 +2,8 @@
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import fail, int_program
 from src.pystachy_compiler.ir import Blk, IFn, Ins, Val
-from src.pystachy_compiler.lower_module import struct_types
-from src.pystachy_compiler.specs import CHECKED, FCMP, FXBIT, GENDONE, GENNAME, GENNEW, GENRET, GENRETP, GENSLOTS, GENSLOTSB, GENSLOTSX, GENSTATE, GENVALP, ICMP, OBJECTC, RANGEC, STRLEN_RANGE, TBAA_BYTES, TBAA_FIELDS, TBAA_LEN, TBAA_SIZES
+from src.pystachy_compiler.lower_module import const_slot, struct_types
+from src.pystachy_compiler.specs import CHECKED, FCMP, FXBIT, GENDONE, GENNAME, GENNEW, GENRET, GENRETP, GENSLOTS, GENSLOTSB, GENSLOTSX, GENSTATE, GENVALP, ICMP, OBJECTC, RANGEC, STRLEN_RANGE, TBAA_BYTES, TBAA_DEPTH, TBAA_FIELDS, TBAA_LEN, TBAA_SIZES
 from src.pystachy_compiler.utils import atomic_dict, atomic_list, identity_abi, numeric_identity, is_dict, is_tuple, lt, selem, takes_self, targs, tslots
 
 
@@ -19,14 +19,19 @@ def gen_lower(self, fn: IFn) -> None:
     # tupleret: a function that returns its tuple's slots by value (Gen.tuple_rets) is lowered as
     # @v.<its symbol>, returning them as an LLVM aggregate, and its own symbol is a wrapper below
     n = self.vrets.get(f.ll, 0)
-    agg = "{" + ", ".join(["i64" for _ in range(n)]) + "}"
+    agg = vagg(n, f.ll in self.vconst)
     self.vtuples = fresh_rets(fn) if n > 0 else {}
     self.vslots = {}
     self.vaggs = {}
+    # closed recursion (Gen.recursionscope): the body is @r.<its symbol>, whose last argument is
+    # the depth its caller was at (%rd), and its own symbol is a wrapper below
+    rd = f.ll in self.rdpass
+    cold = " cold noinline" if raises_only(fn) else ""
+    name = "@v." + f.ll[1:] if n > 0 else "@r." + f.ll[1:] if rd else f.ll
     # (a generator function is a coroutine that LLVM's coroutine passes split: see gen.start)
     # (a function that only raises is an error path: cold, and kept out of its callers, so that
     # what it formats does not keep LLVM from inlining the checks that call it: raises_only)
-    o.append(f"define {'' if f.export else 'internal '}{agg if n > 0 else lt(f.ret)} {'@v.' + f.ll[1:] if n > 0 else f.ll}({', '.join(ps)}){' presplitcoroutine' if fn.coro else ''}{' cold noinline' if raises_only(fn) else ''}{' personality ptr @pys_personality' if fn.pads else ''} {{")
+    o.append(f"define {'' if f.export and not rd else 'internal '}{agg if n > 0 else lt(f.ret)} {name}({', '.join(ps + ['i64 %rd'] if rd else ps)}){' presplitcoroutine' if fn.coro else ''}{cold}{' personality ptr @pys_personality' if fn.pads else ''} {{")
     o.append("entry:")
     self.ftags = {}  # (its own numbers: another function's %tN is no field address of this one)
     if fn.coro:
@@ -63,6 +68,28 @@ def gen_lower(self, fn: IFn) -> None:
         o.append("coro.unreach:")
         o.append("  unreachable")
     o.append("}")
+    if rd:
+        # its symbol, for every caller outside its cycle (and as a value): the body at the depth
+        # word's value, which the cycle leaves as it found it. It stays out of line (a load and a
+        # jump to the body): inlined, it adds a load and an argument to every caller, which can
+        # cost them their own inlining (clang kept the regex search's Pattern._search out of
+        # re.search, docs/reports/recursion-guard-policy.md)
+        o.append(f"define {'' if f.export else 'internal '}{lt(f.ret)} {f.ll}({', '.join(ps)}){cold or ' noinline'} {{")
+        o.append("entry:")
+        forwarded = [f'{lt(f.ptypes[j])} %a{j}' for j in fn.ps]
+        if identity_abi(f):
+            forwarded.extend([f"ptr %aid{j}" for j in fn.ps if numeric_identity(f.ptypes[j])])
+            if numeric_identity(f.ret):
+                forwarded.append("ptr %idret")
+        forwarded.append("i64 %rd")
+        o.append(f"  %rd = load i64, ptr @pys_recursion_state, !tbaa !{TBAA_DEPTH}")
+        if lt(f.ret) == "void":
+            o.append(f"  call void @r.{f.ll[1:]}({', '.join(forwarded)})")
+            o.append("  ret void")
+        else:
+            o.append(f"  %r = call {lt(f.ret)} @r.{f.ll[1:]}({', '.join(forwarded)})")
+            o.append(f"  ret {lt(f.ret)} %r")
+        o.append("}")
     if n > 0:
         # its symbol, for every other use: the tuple, made from the slots the body returns
         o.append(f"define internal ptr {f.ll}({', '.join(ps)}) {{")
@@ -73,6 +100,14 @@ def gen_lower(self, fn: IFn) -> None:
             if numeric_identity(f.ret):
                 forwarded.append("ptr %idret")
         o.append(f"  %v = call {agg} @v.{f.ll[1:]}({', '.join(forwarded)})")
+        if f.ll in self.vconst:
+            # (where the body returned a constant tuple, that tuple: Gen.tuple_const)
+            o.append(f"  %c = extractvalue {agg} %v, {n}")
+            o.append("  %k = icmp ne ptr %c, null")
+            o.append("  br i1 %k, label %const, label %made")
+            o.append("const:")
+            o.append("  ret ptr %c")
+            o.append("made:")
         o.append(f"  %p = call ptr @{self.rtfns['alloc'].sym}(i64 {8 * n})")
         for k in range(n):
             o.append(f"  %v{k} = extractvalue {agg} %v, {k}")
@@ -92,8 +127,12 @@ def gen_tuple_rets(self) -> None:
     # the others are lowered as before
     fns: dict[str, int] = {}
     for fn in self.fns:
-        if len(fresh_rets(fn)) > 0:
+        # (one that returns constant tuples alone returns their addresses, which need no tuple made)
+        rets = fresh_rets(fn)
+        if len([v for v in rets if not v.startswith("@tc.")]) > 0:
             fns[fn.f.ll] = tslots(fn.f.ret)
+            if len([v for v in rets if v.startswith("@tc.")]) > 0:
+                self.vconst[fn.f.ll] = True  # (its slots go with the constant's address: vagg)
     for fn in self.fns:
         calls: dict[str, str] = {}
         used: dict[str, bool] = {}  # (values that an op reads other than as a tuple.load's tuple)
@@ -111,7 +150,8 @@ def gen_tuple_rets(self) -> None:
 
 def fresh_rets(fn: IFn) -> dict[str, bool]:
     # the tuples that fn returns (tupleret), if each is made by an alloc.fixed of its ret's block,
-    # of fn's fixed tuple type, and nothing but tuple.stores and the ret reach it; else none. Not a
+    # of fn's fixed tuple type, and nothing but tuple.stores and the ret reach it, or is a constant
+    # tuple of that type (@tc.N, which any code may read: Gen.tuple_const); else none. Not a
     # generator's (its returns are gen.ret), nor an exported function's, whose ABI C or CPython use
     t = fn.f.ret
     if fn.coro or fn.f.export or fn.f.pyexport or not is_tuple(t) or not t.endswith("]") or len(targs(t)) == 0 or "..." in targs(t) or "" in targs(t):
@@ -122,16 +162,23 @@ def fresh_rets(fn: IFn) -> dict[str, bool]:
         for i in b.code:
             if i.op == "alloc.fixed" and i.t == t:
                 made[f"%t{i.r[0]}"] = True
-            elif i.op == "ret.none" or (i.op == "ret" and (len(i.a) != 1 or i.a[0].v not in made)):
+            elif i.op == "ret.none" or (i.op == "ret" and (len(i.a) != 1 or (i.a[0].v not in made and not (i.a[0].v.startswith("@tc.") and i.a[0].t == t)))):
                 return {}
             elif i.op == "ret":
                 rets[i.a[0].v] = True
     for b in fn.blocks:
         for i in b.code:
             for j in range(len(i.a)):
-                if i.a[j].v in rets and i.op != "ret" and (i.op != "tuple.store" or j != 0):
+                if i.a[j].v in rets and not i.a[j].v.startswith("@tc.") and i.op != "ret" and (i.op != "tuple.store" or j != 0):
                     return {}
     return rets
+
+
+def vagg(n: int, c: bool) -> str:
+    # the LLVM aggregate that a tupleret function returns: its tuple's n slots, then, where some
+    # return of it is a constant tuple (c: Gen.vconst), that tuple's address, null where it
+    # returns a new one, which its wrapper makes of the slots
+    return "{" + ", ".join(["i64" for _ in range(n)] + (["ptr"] if c else [])) + "}"
 
 def raises_only(fn: IFn) -> bool:
     # whether no call of fn returns: it has no ret, and no branch back to a block before it (a
@@ -266,11 +313,18 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         x = i.a[1]
         y = i.a[2]
         o.append(f"  %t{i.r[0]} = select i1 {i.a[0].v}, {lt(x.t)} {x.v}, {lt(y.t)} {y.v}")
+    elif op == "ret" and len(i.a) > 0 and i.a[0].v.startswith("@tc.") and i.a[0].v in self.vtuples:
+        # a constant tuple's slots and its address, by value (tupleret: vagg). Its promoting int
+        # items are 64-bit literals (Gen.tuple_const): their Mpz words, past the items, are 0
+        n = tslots(fn.f.ret)
+        slots = ["i64 " + const_slot(x) for x in self.tconstdata[i.a[0].v].items]
+        slots = slots + ["i64 0" for _ in range(n - len(slots))]
+        o.append(f"  ret {vagg(n, True)} {{{', '.join(slots + ['ptr ' + i.a[0].v])}}}")
     elif op == "ret" and len(i.a) > 0 and i.a[0].v in self.vtuples:
         # the tuple's slots, by value (tupleret): what its tuple.stores gave each, else the zero
-        # of the tuple that alloc.fixed would have made
+        # of the tuple that alloc.fixed would have made (and a null constant's address: vagg)
         n = tslots(fn.f.ret)
-        agg = "{" + ", ".join(["i64" for _ in range(n)]) + "}"
+        agg = vagg(n, fn.f.ll in self.vconst)
         cur = "zeroinitializer"
         for k in range(n):
             s = self.vslots.get(i.a[0].v + " " + str(k), "0")
@@ -287,6 +341,29 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         o.append("  unreachable")
     elif op == "unreachable":
         o.append("  unreachable")
+    elif op == "rt" and not self.rtmode and i.s.startswith("recursion."):
+        # The native depth accounting's state is the program's, even where the runtime is a
+        # separate library (lower_module's recursion_ir): a depth snapshot or restoration
+        # is a plain load or store with the state's own TBAA tag; an entry or a generator
+        # resume's leaving calls the module's helper, which LLVM inlines. Closed recursion's
+        # entry checks the depth its caller passed and counts in a register, and its
+        # restorations go: the word stays as the cycle's outermost call found it
+        if fn.f.ll in self.rdpass and i.s == "recursion.enter" and len(i.r) == 1 and f"%t{i.r[0]}" == fn.rdepth:
+            o.append(f"  %t{i.r[0]} = {self.invoke('call i64 @pys.recursion.check(i64 %rd)', i)}")
+        elif fn.f.ll in self.rdpass and i.s == "recursion.restore":
+            return
+        elif i.s == "recursion.restore" and len(i.b) == 0:
+            o.append(f"  store i64 {i.a[0].v}, ptr @pys_recursion_state, !tbaa !{TBAA_DEPTH}")
+        elif i.s == "recursion.depth" and len(i.b) == 0:
+            o.append(f"  %t{i.r[0]} = load i64, ptr @pys_recursion_state, !tbaa !{TBAA_DEPTH}")
+        else:
+            ll = self.rtfns[i.s].ll
+            c = self.invoke(f"call {ll[0]} @pys.{i.s}({', '.join([ll[j + 1] + ' ' + i.a[j].v for j in range(len(i.a))])})", i)
+            o.append("  " + c if ll[0] == "void" else f"  %t{i.r[0]} = {c}")
+            if i.s == "recursion.enter":
+                self.entries = True
+            elif i.s == "recursion.resume":
+                self.resumes_counted = True
     elif op == "rt":
         f = self.rtfns[i.s]
         if i.k > 0 and ((i.s == "list.new" and atomic_list(self.holes[i.k])) or (i.s == "dict.new" and atomic_dict(self.holes[i.k]))):
@@ -302,9 +379,13 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
             vs[0] = f"i64 {self.key_kind(targs(h)[0] if is_dict(h) else selem(h), is_dict(h)) if h != '' else '0'}"
         c = self.invoke(f"call {ll[0]} @{f.sym}({', '.join(vs)})", i)
         o.append("  " + c if ll[0] == "void" else f"  %t{i.r[0]} = {c}")
+    elif op == "call" and i.s in self.rdpass and fn.f.ll in self.rdpass:
+        # (closed recursion: a call within the cycle gives the callee's body this function's depth)
+        c = self.invoke(f"call {lt(i.t)} @r.{i.s[1:]}({', '.join([lt(v.t) + ' ' + v.v for v in i.a] + ['i64 ' + fn.rdepth])})", i)
+        o.append("  " + c if i.t == "None" else f"  %t{i.r[0]} = {c}")
     elif op == "call" and len(i.r) == 1 and f"{fn.f.ll} %t{i.r[0]}" in self.vcalls:
         # the slots of the tuple a function returns, by value, to tuple.loads alone (tupleret)
-        agg = "{" + ", ".join(["i64" for _ in range(self.vrets[i.s])]) + "}"
+        agg = vagg(self.vrets[i.s], i.s in self.vconst)
         args = ", ".join([lt(v.t) + " " + v.v for v in i.a])
         o.append(f"  %t{i.r[0]} = {self.invoke(f'call {agg} @v.{i.s[1:]}({args})', i)}")
         self.vaggs[f"%t{i.r[0]}"] = agg
@@ -402,6 +483,13 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
             o.append(f"  %t{i.r[0]} = call ptr @llvm.coro.promise(ptr {i.a[0].v}, i32 8, i1 false)")
     elif op == "gen.resume":
         o.append("  " + self.invoke(f"call void @llvm.coro.resume(ptr {i.a[0].v})", i))
+    elif op == "gen.drop" and not self.rtmode and i.a[0].t not in self.genplain:
+        # (a generator whose body can recur, Gen.recursionscope: its cleanup counts as a frame)
+        o.append(f"  call void @pys.gen.drop.counted(ptr {i.a[0].v})")
+        self.gendrops_counted = True
+        for name in ["pys_recursion_enter", "pys_recursion_leave", "pys_recursion_depth", "pys_recursion_restore",
+                     "pys_try_mark", "pys_exc_begin", "pys_gen_unraisable", "pys_personality"]:
+            self.runtime(name)
     elif op == "gen.drop":
         o.append(f"  call void @pys.gen.drop(ptr {i.a[0].v})")
         self.gendrops = True

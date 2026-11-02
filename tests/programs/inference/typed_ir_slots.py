@@ -45,7 +45,8 @@ nested = [[1.5, -0.0], [2.5]]
 print(nested[0][0], nested[0][1], nested[1][0])
 mapping = {"first": 1.25, "second": -0.0}
 print(mapping["first"], mapping["second"])
-pair = (True, -0.0, "tuple", None)
+# (an item read at run time: a display of literals alone is a constant, whose slots no slot.pack fills)
+pair = (booleans[1], -0.0, "tuple", None)
 print(pair[0], pair[1], pair[2], pair[3])
 optional: list[float | None] = [None, -0.0, 2.5]
 for maybe in optional:
