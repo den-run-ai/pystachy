@@ -39,9 +39,15 @@ Archive SHA-256: `8ade438cced7eae579e622f3f54354e52609840f597f7b09a16d7789a15d4e
 
 ## Adaptation record
 
+The edit counts below and in the provenance table describe the original port. The
+upstream datetime imports in `gregorian.py`, `iso.py`, `julian.py` and `julianday.py`
+have since been restored without changing their consumer functions. The current
+[datetime regression](../../tests/programs/apps/port_convertdate_datetime.py) covers
+formatting, ISO year boundaries, Julian-day conversion and naive/aware datetime inputs.
+
 - Twenty-nine marked edits in thirteen files preserve the conversion algorithms: numeric locals that change type in a branch or by `+=` keep one static type, and mutually recursive Hebrew functions have explicit return types.
 - `_calendar.py` supplies the small calendar/date-arithmetic API the port uses, with CPython input checks and the exception-base difference documented in the guide.
-- Imports and exports omit the PyMeeus calendars; unused datetime/formatting/generator paths remain outside the validated coverage.
+- Imports and exports omit the PyMeeus calendars; Mayan generator paths remain outside the validated coverage.
 - Optional lists are built with one consistent item type. Error messages keep upstream's `str.format()` calls.
 - The re-baseline (#262) restored the Dublin module (a `DayCount`'s bound methods), Easter's
   `*_easter_julian(...)` arguments and the `jd` parameters that `hebrew`, `islamic` and
