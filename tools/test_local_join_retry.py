@@ -139,6 +139,37 @@ class LocalJoinRetryTests(unittest.TestCase):
             print(target([1.0, 2.0]), boxed(3))
         """)
 
+    def test_recursive_functions_retry_only_their_function(self):
+        # Native recursion accounting (docs/internals.md#native-recursion-depth) checks the depth
+        # where a recursive body is entered: the retried body gets the same check, whether target
+        # calls itself or a function that calls it.
+        programs = ["""
+            def target(n: int) -> float:
+                total = 0
+                for i in range(n):
+                    total += 0.5
+                if n > 0:
+                    return total + target(n - 1)
+                return total / 1
+            print(target(3))
+        """, """
+            def other(n: int) -> float:
+                if n > 0:
+                    return target(n - 1) + 1.0
+                return 0.0
+
+            def target(n: int) -> float:
+                total = 0
+                for i in range(n):
+                    total += 0.5
+                return total + other(n)
+            print(target(3))
+        """]
+        for source in programs:
+            with self.subTest(source=source):
+                without, with_retry = self.assert_function_retry(source)
+                self.assertIn("@pys.recursion.check(", with_retry[0])
+
     def test_retry_error_keeps_the_hint_for_whole_program_fallback(self):
         without, with_retry = self.pair("""
             def target(xs: list[float]) -> float:
