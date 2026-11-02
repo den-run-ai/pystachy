@@ -305,7 +305,10 @@ CPython's hash of it, which no 64-bit key's hash equals but -2\*\*63's could, an
 cannot (the int keys' hash gives each int its own, and CPython's hash is never -2\*\*63): the
 lookups of 64-bit keys never meet such an entry and run as before, and only the lookups of keys
 past 64 bits compare digits. A store of a promoting int key finds or adds its entry and then
-writes the value there, as a store by an entry that a lookup found does.
+writes the value there, as a store by an entry that a lookup found does. A program that also opts
+in to [dynamic `Any`](dynamic-any.md) hashes the int keys of its dicts by CPython's hash itself,
+which a key past 64 bits can share with -2\*\*63 (-4): there the lookups skip the entries of keys
+past 64 bits before they compare a key as itself.
 
 A set of ints holds an element that fits in its 8-byte slot, as before, and one past 64 bits at
 CPython's hash of its value, with its pointer in a companion array as long as the table, which the
@@ -495,6 +498,8 @@ the first measurements, before the inline paths, in
   dict that such a call types; `python_int_dict_optional_key_methods.py`: their `get()` and `pop()`
   by an `int | None`; `python_int_hash_collisions.py`: probe chains of 120 keys and
   elements past 64 bits of one CPython hash beside 64-bit ones of the same hash, in dicts and sets;
+  `python_int_dict_sentinel.py`: -2\*\*63 beside a key past 64 bits of its CPython hash, which
+  `python_int_any_dict_eq.py` also holds in a program that opts in to dynamic `Any`;
   `python_int_dict_popitem.py`: `popitem()` of dicts of ints and of int keys, and its tuple;
   `python_int_dict_bool_pop.py`: `pop()` of a bool key of a dict of ints;
   `python_int_dict_items.py`: the tuples of `items()` of dicts of ints and of int keys (also

@@ -3713,8 +3713,12 @@ static uint64_t hkey(I k, const char *d) {   /* a tuple or object key's, or an A
 }
 static uint64_t hint1(I k) { uint64_t h = (uint64_t)pys_hash_int(k); return h ? h : 1; }   /* an int key's: 0 marks a hole */
 /* A wide key follows its table's hash scheme too. Python-hash tables compare
-   across native and dynamic layouts; legacy tables mix the Python hash through
-   hint1. A native scalar probe skips a wide entry's sentinel (dlook). */
+   across native and dynamic layouts, so a wide key there can have the hash of
+   -2**63, its slot's sentinel: their probe (dfindc) skips wide entries (dlook).
+   Legacy tables mix the Python hash through hint1, which gives -2**63 a hash of
+   its own (pys_hash_int is a bijection, and is neither 0 nor 1 at -2**63), and
+   CPython's hash is never -2**63: a lookup of the 64-bit key -2**63 there never
+   meets a wide entry of its hash, so their probes need no such test. */
 static uint64_t hbig(Dict *d, Mpz *m) { I h = pys_mpz_hash(m); return khash(d->kind) ? (uint64_t)h : hint1(h); }
 /* The hash of key k of a table of kind > 1. Marked native str/int keys use the same
    hashes as hitem, including None and -1 normalization, without its descriptor walk.
@@ -3779,9 +3783,11 @@ static I dempty(Dict *d, uint64_t h);
    objs: d's keys may be tuples or objects (kind > 1, compared by keq or dkeyeq, an Any key's by
    dyn_keyeq first), else they are ints or strs; 2: they are hashed by CPython's hash (KTAG), so a
    key is found as itself before its hash is compared, as compare_generic does, whatever the hash
-   its __hash__ gives now; 3: immediate str keys, with no user comparison and no key past 64 bits
-   to skip (kbig), in a KTAG table or a native one (dfinds). Immutable strings retain their hash,
-   so 3 can test it before reading/comparing a key. 0 (dfindi) and 1 meet no str key. */
+   its __hash__ gives now; 3: immediate str keys, with no user comparison, in a KTAG table or a
+   native one (dfinds). Immutable strings retain their hash, so 3 can test it before
+   reading/comparing a key. 0 (dfindi) and 1 meet no str key. Only 2 skips the entries of int keys
+   past 64 bits (kbig), whose slots hold -2**63, before it finds a key as itself; in the others'
+   tables such an entry never has the hash of a lookup of -2**63 (hbig): their hash test skips it. */
 static inline __attribute__((always_inline)) I dlook(Dict *d, I k, uint64_t h, I *free, uint64_t m, int objs) {
   I f = -1; int ran = 0;
   for (uint64_t i = h & m, p = h;; p >>= 5, i = (i * 5 + p + 1) & m) {
@@ -3789,7 +3795,7 @@ static inline __attribute__((always_inline)) I dlook(Dict *d, I k, uint64_t h, I
     int32_t e = d->idx[i];
     if (!e) { if (free) *free = ran ? dempty(d, h) : f < 0 ? (I)i : f; return -1; }
     if (e < 0) { if (f < 0) f = i; }
-    else if (objs != 3 && kbig(d, e - 1)) continue;   /* (a wide key's sentinel is never the native scalar query; a str table, 3, has none) */
+    else if (objs == 2 && kbig(d, e - 1)) continue;   /* (a wide key's sentinel is never the native scalar query) */
     else if (objs == 2 && d->keys[e - 1] == k) return i;
     else if (d->hs[e - 1] == h) {
       I x = d->keys[e - 1];
