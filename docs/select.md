@@ -1,10 +1,9 @@
-# POSIX `select` prototype
+# POSIX `select`
 
-This prototype adds a real native `select.select` boundary for integer file
-descriptors, in JIT and AOT. It is part of the missing builtin-module work in
-[#491](https://github.com/den-run-ai/pystachy/issues/491) and the stdlib milestone
-[#11](https://github.com/den-run-ai/pystachy/issues/11). It does not establish
-`selectors`, `subprocess`, native unittest, pytest or pyperf compatibility.
+Pystachy implements a bounded native `select.select` API for integer file
+descriptors in JIT and AOT. It uses POSIX readiness calls directly. This experimental
+subset does not establish `selectors`, `subprocess`, unittest, pytest or pyperf
+compatibility.
 
 ## Contract
 
@@ -34,7 +33,7 @@ readable, writable, exceptional = select.select(read_fds, write_fds, error_fds, 
 Unsupported forms are compile-time errors, not successful no-op calls: arbitrary
 iterables, `fileno()` objects, dynamically optional timeout values, keyword
 arguments, `select.error`, `PIPE_BUF`, `poll`, `epoll`, `devpoll`, `kqueue` and their
-constants. The prototype targets the existing Linux/macOS POSIX runtime; it does
+constants. The implementation targets the Linux/macOS POSIX runtime; it does
 not implement Windows socket-only select semantics. No descriptor creation API
 is added to `os`; applications can use existing C FFI for their native handles.
 A file's `fileno()`, also of `sys.stdin`, `sys.stdout` and `sys.stderr`, is its
@@ -43,33 +42,23 @@ file's raises CPython's `ValueError: I/O operation on closed file`. The file
 objects themselves are not accepted in the lists.
 `select.error` remains explicitly unsupported: an honest alias needs consistent
 import, construction, exception-handler and class-base handling in the compiler.
-For accepted list/numeric values, runtime validation checks timeout first, then
-read, write and exceptional descriptors. Within each list, descriptor conversion
+Promoting integers outside signed 64-bit range are rejected with `OverflowError`
+when the descriptor lists cross into the runtime, before timeout validation.
+For representable descriptors and accepted numeric timeout values, runtime validation
+checks timeout first, then read, write and exceptional descriptors. Within each list, descriptor conversion
 and range checks precede the count guard at the first excess item; later items
 are not examined. Differential tests cover the competing errors against CPython
 3.13.16. Unsupported static types are compile-time errors, so their error ordering
 is outside this contract.
 
-## Architecture and comparison
+## Implementation
 
 One compiler builtin lowers to `pys_select` with three typed lists, a timeout and
 an indefinite-wait flag. The runtime calls POSIX `pselect`, returns GC-managed
 lists, and records read-list, allocation, I/O and error effects. No CPython
 interpreter, extension ABI, object emulation or extra dependency is involved.
 
-Sources reviewed for this scope:
-
-| Source | Relevant design |
-|---|---|
-| [CPython 3.13 select documentation](https://docs.python.org/3.13/library/select.html), [test_select.py at v3.13.16](https://github.com/python/cpython/blob/v3.13.16/Lib/test/test_select.py) | Real readiness, fresh result lists, invalid/closed descriptor errors, blocking waits and interrupted-call retry. |
-| [PyPy interp_select.py, Python 3.11 branch snapshot 3ce8ee9](https://github.com/pypy/pypy/blob/3ce8ee955977343ff96902fdedbc5dad535d0f95/pypy/module/select/interp_select.py) | Interpreter-level wrappers reach the OS, preserve original inputs and recompute interrupted timeouts from a monotonic deadline. Pystachy's initial boundary accepts only integer descriptors. |
-| [GraalPy SelectModuleBuiltins.java, snapshot 7e7182b](https://github.com/oracle/graalpython/blob/7e7182b1036d56f8e89ecc9c7a86cee292180aa6/graalpython/com.oracle.graal.python/src/com/oracle/graal/python/builtins/modules/SelectModuleBuiltins.java), [POSIX backend documentation](https://www.graalvm.org/jdk23/reference-manual/python/Embedding-Permissions/) | Select uses a platform-service boundary; native and Java-backed descriptors have different interoperability limits. Pystachy uses native descriptors directly. |
-
-This is an independent implementation, not a copied PyPy or GraalPy module.
-The native service boundary is useful precedent; their broader dynamic object,
-event-loop and signal infrastructure is outside this small prototype.
-
-## Acceptance and remaining work
+## Verification
 
 `tests/programs/library/lib_select.py` covers empty/finite polling, timeout errors and descriptor
 bounds in all three input positions. `tests/ffi/c_select.py` uses C stdio to
@@ -98,9 +87,5 @@ allocation, and is required by `make verify`'s `select-io` step in the `contract
 CI group. Timing is used
 only to verify that a wait is not shortened; there is no throughput threshold.
 
-Follow-ups should prioritize a concrete `selectors.SelectSelector` consumer,
-then typed `fileno()` objects with original-object return mapping. Do not expose
-`poll`/`epoll` names until their registration, lifetime, error and readiness
-contracts work. `FD_SETSIZE` bounds and `select`'s scan of the highest descriptor
-remain scalability limits; this prototype makes no large-server performance
-claim.
+The API retains `FD_SETSIZE` bounds and scans up to the highest descriptor;
+these are scalability limits. There is no large-server throughput claim.

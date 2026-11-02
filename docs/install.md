@@ -9,7 +9,7 @@ the Docker image includes LLVM. Neither requires Python to run the compiler.
 Download the matching archive and `SHA256SUMS` from
 [GitHub Releases](https://github.com/den-run-ai/pystachy/releases). The current prerelease is
 [v0.1.0-alpha.3](https://github.com/den-run-ai/pystachy/releases/tag/v0.1.0-alpha.3); read its
-[known issues and workarounds](releases/v0.1.0-alpha.3.md#known-issues-and-workarounds) before adoption.
+[known issues and workarounds](https://github.com/den-run-ai/pystachy/blob/v0.1.0-alpha.3/docs/releases/v0.1.0-alpha.3.md#known-issues-and-workarounds) before adoption.
 
 | Package target | Requirements |
 |---|---|

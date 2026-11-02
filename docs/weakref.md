@@ -1,10 +1,9 @@
-# Experimental `_weakref` prototype
+# Weak references
 
-This is a collector-backed prototype for the missing builtin tracked in
-[#491](https://github.com/den-run-ai/pystachy/issues/491). It is not a complete
-`_weakref` implementation. No tested standard-library weakref consumer is
-unblocked yet; unmodified `weakref`, `unittest`, `pytest` and `pyperf` remain
-unsupported. It does not retain targets strongly to imitate a weak reference.
+Pystachy provides an experimental, collector-backed `_weakref` subset for ordinary
+class instances. It supports references, callbacks, equality and hashing, with
+collection timing that differs from CPython's reference counting. It does not
+retain targets strongly to imitate a weak reference.
 
 ```python
 from _weakref import ref, ReferenceType
@@ -21,21 +20,12 @@ r = borrow(item)
 assert r() is item
 ```
 
-## Standard-library compatibility is still blocked
+## Standard-library compatibility
 
-With CPython 3.13.16 sources in the import overlay, this prototype rebased on
-`92a33b48` produces these results:
-
-| Probe | Result |
-|---|---|
-| Direct `_weakref.ref(obj)` for the supported class subset | Works in the focused JIT/AOT tests below |
-| `import weakref` | Compiles: `lib/weakref.py` adapts CPython's module, without the names `_weakref` lacks, `ProxyTypes` and `finalize` ([limits](../../lib/compatibility.md#_weakref-prototype)) |
-| `weakref.WeakSet()`, `WeakValueDictionary()`, `WeakKeyDictionary()`, `WeakMethod(m)` | Rejected: `WeakSet.__sub__` cannot be typed, and the others' base classes are not supported |
-
-Importing a module is not evidence that its APIs work. Callbacks, equality and
-hashing are implemented (below); proxies and the registry helpers are not, and
-must be implemented and tested before claiming a standard-library weakref user
-is supported.
+`lib/weakref.py` adapts CPython's module and imports, but weak containers,
+`WeakMethod`, proxies, reference counts and `finalize` remain unsupported.
+Importing the module does not establish a working `weakref`, unittest, pytest or
+pyperf application. See the [library compatibility notes](../lib/compatibility.md#_weakref-prototype).
 
 ## Contract and limits
 
@@ -79,7 +69,7 @@ is supported.
 * `repr()` is CPython's: `<weakref at 0x...; to 'Item' at 0x...>` with the referent's
   type by its fully qualified name (without `__main__`), or `<weakref at 0x...; dead>`.
   CPython also appends ` (NAME)` when the referent's class defines `__name__`;
-  this prototype does not.
+  this implementation does not.
 * As in CPython, a reference has no attributes of its own. The wrapper's fields
   (the handle and the kept hash) belong to `_weakref`: a program cannot read or
   assign them, `hasattr()` reports them, `__dict__` and `__weakref__` absent, and
@@ -87,7 +77,7 @@ is supported.
   `r.__init__(obj)` and `r.__init__(obj, callback)` check their arguments as
   CPython's do and leave the reference to its first referent.
 * Each call makes a separate reference. CPython and PyPy may reuse an existing
-  no-callback reference; this prototype does not preserve that reference-cache
+  no-callback reference; this implementation does not preserve that reference-cache
   identity. `is` still compares the actual reference objects. Two references made
   separately to one object are therefore unequal here once it dies, where CPython's
   one reused reference equals itself (an implementation detail, CPython issue
@@ -95,7 +85,7 @@ is supported.
 * Proxies, `getweakrefs`, `getweakrefcount`, `_remove_dead_weakref`, weak mappings,
   weak sets, `finalize`, callback introspection (`__callback__`, which a
   decorated special name cannot provide here) and reference subclassing are
-  outside the prototype contract. `getweakrefcount()` would also
+  outside this contract. `getweakrefcount()` would also
   need CPython's reuse of one reference per referent to give its counts. Missing
   module APIs remain missing; no success-shaped placeholder is provided.
 
@@ -138,17 +128,14 @@ Lookup has an `I` effect in typed IR. `Gen.canon` only reuses runtime expression
 whose effects are at most `R`, and function summaries preserve `I` through the
 Python wrapper. LLVM can see that `weakref_get` reads its argument's memory, but
 allocation can call `collect`, which writes existing weak handles; allocation's
-fresh return value does not make it a pure operation. Review found no stale-read
-optimizer bug. A direct canonicalization regression and live-read, last-owner
+fresh return value does not make it a pure operation. A direct canonicalization regression and live-read, last-owner
 removal, allocation-only collection, dead-read tests protect these boundaries.
 The public tests use cohorts. The transition test first observes every reference
 live, then at least one must clear after owners are dropped; any remaining
 target must stay valid.
 Requiring one particular target to clear is not portable even when its helper
 returns: AOT can inline that helper and leave the target in a callee-saved
-register throughout later allocation. The Unicode length fast path exposed
-exactly this valid conservative retention, not stale-read optimization.
-The C probe separately uses non-inlined helpers and stack scrubbing to assert
+register throughout later allocation. The C probe separately uses non-inlined helpers and stack scrubbing to assert
 exact clearing of every deliberately unrooted target.
 
 The compiler primitives are available only while compiling this library
@@ -159,22 +146,6 @@ A third primitive gives an object's address for `repr()`. `specs.OPAQUE` names
 rejects other modules' access to its classes' fields and their `__init__` calls
 on existing objects leave them unchanged; `specs.TYPEMODS` gives its classes the
 module CPython's types report, `weakref`.
-
-## Reference implementations
-
-* [Python 3.13 weakref contract](https://docs.python.org/3.13/library/weakref.html)
-  is the semantic oracle. Unlike reference counting, it permits a target to be
-  returned until the object is actually destroyed.
-* [PyPy `_weakref`, Python 3.11 branch, revision 3ce8ee9](https://github.com/pypy/pypy/blob/3ce8ee955977343ff96902fdedbc5dad535d0f95/pypy/module/_weakref/interp__weakref.py)
-  separates weak pointers/lifelines from strong ownership and implements cached
-  hashes and live/dead equality. Those latter contracts are explicitly rejected
-  here until implemented. [PyPy's documented GC differences](https://doc.pypy.org/en/latest/cpython_differences.html)
-  also explain why immediate refcount timing is not a portable test.
-* [GraalPy revision 7e7182b](https://github.com/oracle/graalpython/tree/7e7182b1036d56f8e89ecc9c7a86cee292180aa6/graalpython/com.oracle.graal.python/src/com/oracle/graal/python/builtins/objects/referencetype)
-  uses Java weak references and reference queues. This supports keeping target
-  clearing tied to collector state, while its asynchronous callback machinery
-  is beyond this single-threaded prototype. Incomplete helper stubs are not an
-  implementation model for this port.
 
 ## Verification
 
@@ -225,7 +196,7 @@ fails. It clears its carrier list before dropping the list root, so a stale
 conservative address of that carrier cannot invalidate the test.
 The same probe belongs to `make verify` and the CI `contracts` group.
 
-Promotion requires full-suite validation and review of the GC change.
 No-callback reference caching, `__callback__`, standard-library helper coverage
-and supported type coverage remain separate work; this prototype does not close
-#491.
+and support for further target types remain outside this contract. The
+[CPython weakref reference](https://docs.python.org/3.13/library/weakref.html)
+defines the comparison behavior; collector timing remains different here.

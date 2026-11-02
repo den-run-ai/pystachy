@@ -1,4 +1,4 @@
-"""Experimental collector-backed _weakref subset; see docs/prototypes/weakref.md.
+"""Experimental collector-backed _weakref subset; see docs/weakref.md.
 
 Pystachy loads this file for the builtin _weakref module. The private compiler
 primitives create an atomic, unscanned handle and read its nullable target.
