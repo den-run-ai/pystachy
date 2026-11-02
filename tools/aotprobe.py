@@ -19,7 +19,8 @@ allocator's fast path into the calls left. An opt wrapper keeps the module -O2 g
 (prog-opt.bc), where each allocation left is a call of pys_new (the runtime's C code never calls
 it): TEMPS, whose vectors never leave walk(), keeps none, and KEPT, whose objects a list keeps,
 does. With allocelide off there is no late step, and with pys_new inlined before -O2 KEPT keeps
-no call: either fails here.
+no call: either fails here. KEPT also builds with PYSTACHY_CFLAGS=-O0, whose runtime gives pys_new
+optnone, which the late step must drop too (LLVM's verifier rejects optnone without noinline).
 """
 import argparse
 import os
@@ -217,6 +218,14 @@ def main():
             if left["kept"] == 0:
                 raise RuntimeError(f"{label}: no allocation left where a list keeps the objects: the check counts nothing")
             print(f"{label}: allocations after -O2: none where no object escapes, {left['kept']} where a list keeps them")
+            exe = temp / f"{label}-kept-O0"
+            late.unlink(missing_ok=True)
+            run(cmd + ["build", str(temp / "kept.py"), "-o", str(exe)], env | {"PYSTACHY_CFLAGS": "-O0"})
+            if not late.exists():
+                raise RuntimeError(f"{label} kept with PYSTACHY_CFLAGS=-O0: the AOT build had no late step (prog-opt.bc)")
+            if run([str(exe)], env, temp) != run([sys.executable, "kept.py"], env, temp):
+                raise RuntimeError(f"{label} kept with PYSTACHY_CFLAGS=-O0: the AOT executable's output differs from CPython's")
+            print(f"{label}: with PYSTACHY_CFLAGS=-O0 (a runtime whose pys_new is optnone), the late step runs and the output is CPython's")
     return 0
 
 

@@ -21,8 +21,10 @@ JOINS = 8  # the passes after the first that a program's joins may take (see com
 # allocelide's late step (#1017), for an AOT build or extension module whose IR calls pys_new: once
 # -O2 has deleted the allocations whose objects nothing keeps, opt's forceattrs makes runtime.c's
 # out-of-line pys_new always inline, and always-inline puts it, the allocator's fast path, into each
-# call that -O2 left
-LATE_INLINE = "-force-remove-attribute=pys_new:noinline -force-attribute=pys_new:alwaysinline"
+# call that -O2 left. A runtime compiled with PYSTACHY_CFLAGS=-O0 gives pys_new optnone as well,
+# which LLVM allows only beside noinline: forceattrs removes both
+LATE_INLINE = ("-force-remove-attribute=pys_new:noinline -force-remove-attribute=pys_new:optnone"
+               " -force-attribute=pys_new:alwaysinline")
 
 # Every hosted component contributes to runtime-cache identity and startup trust.
 COMPILER_SOURCES: list[str] = [
