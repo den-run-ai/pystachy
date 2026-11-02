@@ -6,7 +6,7 @@
 # Copyright (c) 2016, fitnr <fitnr@fakeisthenewreal>
 """Conversions for the `ISO calendar system <https://en.wikipedia.org/wiki/ISO_week_date>`__."""
 from ._calendar import isleap  # Pystachy port: the calendar stand-in, _calendar.py (#11)
-# from datetime import date  # Pystachy port: no datetime module yet (#11); from_gregorian() uses it
+from datetime import date
 
 from . import gregorian
 from .utils import jwday, n_weeks
