@@ -1,6 +1,6 @@
 @main.init: pys_str_int pys_write pys_write pys_write pys_write pys_raise pys_raise pys_raise
-@f.made: pys_new
-@f.kept: pys_new pys_new pys_repr pys_text_slice
+@f.made: pys_alloc
+@f.kept: pys_alloc pys_alloc pys_repr pys_text_slice
 @m.DocError.__init__: pys_str_int pys_str_cat pys_repr
 @m.Early.__init__: pys_exc_ostr pys_repr
 @x.str.DocError:
@@ -10,5 +10,5 @@
 @pys_obj_eq:
 @pys_obj_cmp:
 @pys_obj_repr:
-@pys.recursion.enter: pys_recursion_error
+@pys.recursion.enter: pys_recursion_error pys_recursion_stack_error
 @main: pys_init pys_finish
