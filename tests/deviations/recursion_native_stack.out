@@ -1,0 +1,6 @@
+output before the recursion is kept
+RecursionError: maximum recursion depth exceeded (the native stack is nearly full)
+finally
+2000000 450.0
+RecursionError: maximum recursion depth exceeded (the native stack is nearly full)
+[exit 1]

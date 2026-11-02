@@ -139,7 +139,9 @@ every allocation. `--aot --gc-stress` selects the same configurations locally; t
 requires all four modes, 540 cases including 90 parity cases and zero mismatches. This bounded
 check complements the full opt-in corpus sweep, `make dynany-optin`), `make dictprobe`,
 `make listprobe`, `make eqprobe`, `make fileprobe`, `make streamprobe`, `make jitprobe` and
-`make aotprobe` (the runtime's opt-in code that AOT executables keep, by symbol, plain or not).
+`make aotprobe` (the runtime's opt-in code that AOT executables keep, by symbol and in a list
+store's `-O2` code, plain or not, and the allocations `allocelide` lets `-O2` delete and those it
+keeps, with the objects they hold).
 They use deterministic operation or allocation limits where possible; shared CI runners do
 not gate on benchmark speed.
 
@@ -412,7 +414,8 @@ IR fixed points once, then groups run in parallel using that architecture's veri
 compiler. Pushes to `main` (the release gate's per-commit CI) and manual runs execute all
 thirty groups on both architectures, and the upstream large-regex check on both. To keep
 pull-request CI near its single-architecture size, a pull request runs all thirty x86-64
-groups but an ARM64 smoke subset: the bootstrap, `contracts` (FFI, ABI and thread controls),
+groups but an ARM64 smoke subset: the bootstrap, `contracts` (FFI, ABI, thread and native stack
+floor controls),
 `native-0` and `ubsan-0` (sanitized compiler-rt linkage). An ARM64-only failure in another
 group therefore appears on `main` after merge. Runners are `ubuntu-24.04` and `ubuntu-24.04-arm`, both
 with LLVM 18 and the pinned Python 3.13. Each group checks the same-run bundle's file hashes,

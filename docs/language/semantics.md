@@ -528,8 +528,9 @@ An exception leaving a file context closes the file. If closing fails, its `OSEr
 replaces the exception being handled. A failed Python-module import leaves its imported
 names unbound and is retried on a later import; see [module initialization](modules.md).
 
-Actual memory exhaustion, native stack exhaustion and Ctrl-C bypass ordinary handlers and
-cleanup. Uncaught exceptions have abbreviated output. These are documented in
+Actual memory exhaustion, native stack exhaustion outside the recursion checks (recursion
+that the stack cannot hold raises `RecursionError` first) and Ctrl-C bypass ordinary handlers
+and cleanup. Uncaught exceptions have abbreviated output. These are documented in
 [errors and control flow](compatibility.md#errors-and-control-flow).
 
 ### User exception classes

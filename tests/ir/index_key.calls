@@ -1,4 +1,4 @@
-@main.init: pys_new pys_new pys_str_float pys_write pys_write pys_str_int pys_write pys_write
+@main.init: pys_alloc pys_alloc pys_str_float pys_write pys_write pys_str_int pys_write pys_write
 @f.total: pys_raise
 @f.fill: pys_raise
 @f.keep: pys_new pys_raise pys_raise

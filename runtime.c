@@ -29,10 +29,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <sys/resource.h>
 #include <sys/select.h>
 #include <sys/stat.h>
 #ifdef __APPLE__
 #include <sys/random.h>
+#endif
+#ifdef __linux__
+#include <sys/auxv.h>
 #endif
 #include <time.h>
 #include <unistd.h>
@@ -470,9 +474,12 @@ static inline __attribute__((always_inline)) void *gc_alloc(I n, int atomic) {
 }
 __attribute__((malloc, returns_nonnull)) void *pys_alloc(I n) { return gc_alloc(n, 0); }
 __attribute__((malloc, returns_nonnull)) void *pys_alloc_atomic(I n) { return gc_alloc(n, 1); }
-/* Compiled code's own objects and fixed tuples (alloc.fixed) come from pys_new, which stays out of
-   line so that LLVM sees each allocation: the program marks its calls allockind("alloc,zeroed"),
-   and LLVM deletes one whose object nothing keeps. Once that optimization has run, an AOT build
+/* Compiled code's own objects and fixed tuples (alloc.fixed) that hold no reference, only ints,
+   floats and bools, come from pys_new (lowering's alloc_call), which stays out of line so that
+   LLVM sees each allocation: the program marks its calls allockind("alloc,zeroed"), and LLVM
+   deletes one whose object nothing keeps. The others come from pys_alloc: LLVM may leave the
+   address of such a marked object dead while the program still reads its fields, and the
+   collector would then not see what it holds. Once that optimization has run, an AOT build
    inlines pys_new, the fast path, into the calls that remain (driver.py's LATE_INLINE). It is
    gc_alloc, whose slots come zeroed */
 __attribute__((noinline, malloc, returns_nonnull)) void *pys_new(I n) { return gc_alloc(n, 0); }
@@ -1529,7 +1536,7 @@ static I titem(const I *t, I n, I i, const char *e, I *w) {   /* item i of tuple
    in that slot's word of kb (see sets) */
 static Mpz *sbig(Set *s, I j) { return s->keys[j] <= INT64_MIN + 1 && s->kb && opt_in() ? (Mpz *)s->kb[j] : NULL; }
 static int list_has_big(List *l) {   /* does l hold an item past 64 bits */
-  if (l->ids) for (I i = 0; i < l->len; i++) if (lbig(l, i)) return 1;
+  if (l->ids && opt_in()) for (I i = 0; i < l->len; i++) if (lbig(l, i)) return 1;
   return 0;
 }
 static void list_narrow(List *l) { if (list_has_big(l)) pys_fail(NARROW); }   /* l's ints for 64-bit code */
@@ -2445,7 +2452,7 @@ static I dfind(Dict *d, I k, uint64_t h, I *free);
 static I dbfind(Dict *d, Mpz *m, uint64_t h, I *free);
 I pys_set_cmp(Set *a, Set *b, I op);
 static int list_same_item(List *a, I i, List *b, I j) {
-  return a->ids && b->ids && ((a == b && i == j) ||
+  return a->ids && b->ids && opt_in() && ((a == b && i == j) ||
          (a->ids[i + 1] && a->ids[i + 1] == b->ids[j + 1]));
 }
 static int eqv(I a, I b, const char *d);
@@ -2783,7 +2790,7 @@ static int atomic_items(const I *a) {  /* is the item array a atomic? its kind, 
   return w - gc_lo < gc_hi - gc_lo && (m = pmap[w >> 30]) && (s = m[w >> 12 & 0x3ffff]) && (s->k & 1);
 }
 static void empty(List *l) {           /* detach an empty list's historical storage without allocating */
-  if (l->cap) { l->cap = 0; l->a = atomic_items(l->a) ? empty_atomic : empty_list; if (l->ids) l->ids = empty_identity(l->ids[0]); }   /* cap 0 during sort: preserve its mutation marker */
+  if (l->cap) { l->cap = 0; l->a = atomic_items(l->a) ? empty_atomic : empty_list; if (l->ids && opt_in()) l->ids = empty_identity(l->ids[0]); }   /* cap 0 during sort: preserve its mutation marker */
 }
 static I *item_array(I n, int atomic) { return atomic ? pys_alloc_atomic(n * 8) : pys_alloc(n * 8); }
 static List *list_new(I cap, int atomic) {
@@ -2806,7 +2813,14 @@ List *pys_list_new_atomic(I cap) { return list_new(cap, 1); }   /* a list[int], 
    item's slot holding -2**63, as a tuple's does, and the entries of its other items (-2**63 among
    them) null: list_box makes none, so the code above and below keeps it in step as it is. (BIGIDS,
    big_list and lbig are with the promoting ints' code.) An identity observer upgrades
-   that companion to integer boxes once; the raw array stays unboxed and atomic. */
+   that companion to integer boxes once; the raw array stays unboxed and atomic.
+   Only a program that opts in makes a companion: list_identity_slow, which calls opt_in()
+   first, and the BIGIDS ones of promoting ints' stores (big_companion) and of a dict's or a
+   set's ints past 64 bits (col, pys_set_list). So each list operation that a plain program
+   calls tests opt_in() where it finds a companion, before it keeps the companion in step (the
+   *_identity and *_big entry points, which only programs that opt in call, need not): a plain
+   AOT program's -O2 makes that test a trap and drops the rest from its stores, appends, pops,
+   inserts, copies and sorts (pys_plain) */
 void pys_list_narrow(List *l) { list_narrow(l); }
 static I list_box(I value, I kind) {
   opt_in();
@@ -2881,7 +2895,7 @@ static void reserve(List *l, I n) {
   if (c < 4) c = 4;
   I *a = item_array(c, atomic_items(l->a));
   memcpy(a, l->a, l->len * 8); l->a = a;
-  if (l->ids) {
+  if (l->ids && opt_in()) {
     if (c > INT64_MAX / (I)sizeof(I) - 1) oom();
     I *ids = pys_alloc((c + 1) * sizeof(I));
     memcpy(ids, l->ids, (l->len + 1) * sizeof(I)); l->ids = ids;
@@ -2900,7 +2914,7 @@ static __attribute__((noinline)) void list_append_boxed(List *l, I v) {
 void pys_list_append(List *l, I v) {
   /* Leave the ordinary append small enough for LLVM to inline, including in an
      opt-in program. The companion path retains allocation order and GC roots. */
-  if (l->ids) { list_append_boxed(l, v); return; }
+  if (l->ids && opt_in()) { list_append_boxed(l, v); return; }
   if (l->len == l->cap) reserve(l, l->len + 1);
   AT(l, l->len++) = v;
 }
@@ -2916,7 +2930,7 @@ Dyn *pys_list_get_identity(List *l, I i, I kind) {
 I pys_list_get(List *l, I i) { return AT(l, idx(i, l->len, "IndexError: list index out of range")); }
 void pys_list_set(List *l, I i, I v) {
   i = idx(i, l->len, "IndexError: list assignment index out of range");
-  if (l->ids) { l->ids[i + 1] = 0; if (!big_list(l)) l->ids[0] |= 4; }   /* pending fresh identity; no allocation (an int that fits: BIGIDS) */
+  if (l->ids && opt_in()) { l->ids[i + 1] = 0; if (!big_list(l)) l->ids[0] |= 4; }   /* pending fresh identity; no allocation (an int that fits: BIGIDS) */
   AT(l, i) = v;
 }
 void pys_list_set_identity(List *l, I i, I v, Dyn *id, I kind) {
@@ -2929,7 +2943,7 @@ I pys_list_pop(List *l, I i) {
   if (!l->len) pys_fail("IndexError: pop from empty list");
   i = idx(i, l->len, "IndexError: pop index out of range");
   I v = l->a[i];
-  if (l->ids) { memmove(l->ids + i + 1, l->ids + i + 2, (l->len - i - 1) * 8); l->ids[l->len] = 0; }
+  if (l->ids && opt_in()) { memmove(l->ids + i + 1, l->ids + i + 2, (l->len - i - 1) * 8); l->ids[l->len] = 0; }
   memmove(l->a + i, l->a + i + 1, (l->len - i - 1) * 8); l->a[--l->len] = 0;
   if (!l->len) empty(l);
   return v;
@@ -2947,9 +2961,9 @@ void pys_list_del(List *l, I i) {
 void pys_list_insert(List *l, I i, I v) {
   if (i < 0 && (i += l->len) < 0) i = 0;
   if (i > l->len) i = l->len;
-  I id = l->ids ? list_box(v, l->ids[0]) : 0;
+  I id = l->ids && opt_in() ? list_box(v, l->ids[0]) : 0;
   reserve(l, l->len + 1);
-  if (l->ids) { memmove(l->ids + i + 2, l->ids + i + 1, (l->len - i) * 8); l->ids[i + 1] = id; }
+  if (l->ids && opt_in()) { memmove(l->ids + i + 2, l->ids + i + 1, (l->len - i) * 8); l->ids[i + 1] = id; }
   memmove(l->a + i + 1, l->a + i, (l->len - i) * 8); l->a[i] = v; l->len++;
 }
 void pys_list_insert_identity(List *l, I i, I v, Dyn *id, I kind) {
@@ -2999,26 +3013,26 @@ Big pys_list_big_pop(List *l, I i) {   /* l.pop(i) of a list of ints, as a promo
 }
 void pys_list_extend(List *l, List *m) {
   identity_pair(l, m); I n = m->len; reserve(l, l->len + n);
-  if (l->ids) { if (m->ids) memcpy(l->ids + l->len + 1, m->ids + 1, n * 8); else memset(l->ids + l->len + 1, 0, n * 8); }   /* (m's ints fit) */
+  if (l->ids && opt_in()) { if (m->ids) memcpy(l->ids + l->len + 1, m->ids + 1, n * 8); else memset(l->ids + l->len + 1, 0, n * 8); }   /* (m's ints fit) */
   memcpy(l->a + l->len, m->a, n * 8); l->len += n;
 }
 List *pys_list_slice(List *l, I lo, I hi) {
   span(&lo, &hi, l->len);
-  if (l->ids) pys_list_identity(l, l->ids[0]);
+  if (l->ids && opt_in()) pys_list_identity(l, l->ids[0]);
   List *r = list_new(hi - lo, atomic_items(l->a));
-  if (l->ids) { pys_list_identity(r, l->ids[0]); memcpy(r->ids + 1, l->ids + lo + 1, (hi - lo) * 8); }
+  if (l->ids && opt_in()) { pys_list_identity(r, l->ids[0]); memcpy(r->ids + 1, l->ids + lo + 1, (hi - lo) * 8); }
   memcpy(r->a, l->a + lo, (hi - lo) * 8); r->len = hi - lo; return r;
 }
 List *pys_list_copy(List *l) { return pys_list_slice(l, NONE, NONE); }
-void pys_list_clear(List *l) { memset(l->a, 0, l->len * 8); if (l->ids) memset(l->ids + 1, 0, l->len * 8); l->len = 0; empty(l); }
+void pys_list_clear(List *l) { memset(l->a, 0, l->len * 8); if (l->ids && opt_in()) memset(l->ids + 1, 0, l->len * 8); l->len = 0; empty(l); }
 List *pys_list_slice_step(List *l, I lo, I hi, I st) {
   I n = sspan(&lo, hi, &st, l->len);
-  if (l->ids) pys_list_identity(l, l->ids[0]);
+  if (l->ids && opt_in()) pys_list_identity(l, l->ids[0]);
   List *r = list_new(n, atomic_items(l->a));
-  if (l->ids) pys_list_identity(r, l->ids[0]);
+  if (l->ids && opt_in()) pys_list_identity(r, l->ids[0]);
   for (I i = 0; i < n; i++) {
     r->a[i] = l->a[lo + i * st];
-    if (l->ids) r->ids[i + 1] = l->ids[lo + i * st + 1];
+    if (l->ids && opt_in()) r->ids[i + 1] = l->ids[lo + i * st + 1];
   }
   r->len = n; return r;
 }
@@ -3034,13 +3048,13 @@ void pys_list_set_slice(List *l, I lo, I hi, I st, List *v) {
     if (m != k) failf("ValueError: attempt to assign sequence of size %lld to extended slice of size %lld", (long long)m, (long long)k);
     for (I i = 0; i < k; i++) {
       l->a[lo + i * st] = v->a[i];
-      if (l->ids) l->ids[lo + i * st + 1] = v->ids ? v->ids[i + 1] : 0;   /* (v's ints fit) */
+      if (l->ids && opt_in()) l->ids[lo + i * st + 1] = v->ids ? v->ids[i + 1] : 0;   /* (v's ints fit) */
     }
     return;
   }
   if (n + m - k == 0) { pys_list_clear(l); return; }
   if (m > k) reserve(l, n + m - k);
-  if (l->ids) {
+  if (l->ids && opt_in()) {
     memmove(l->ids + lo + m + 1, l->ids + lo + k + 1, (n - lo - k) * 8);
     if (m < k) memset(l->ids + n + m - k + 1, 0, (k - m) * 8);
     if (v->ids) memcpy(l->ids + lo + 1, v->ids + 1, m * 8); else memset(l->ids + lo + 1, 0, m * 8);
@@ -3054,17 +3068,17 @@ void pys_list_del_slice(List *l, I lo, I hi, I st) {
   I n = l->len, k = sspan(&lo, hi, &st, n), w = n - k;
   if (st == 1) {
     memmove(l->a + lo, l->a + lo + k, (n - lo - k) * 8);
-    if (l->ids) memmove(l->ids + lo + 1, l->ids + lo + k + 1, (n - lo - k) * 8);
+    if (l->ids && opt_in()) memmove(l->ids + lo + 1, l->ids + lo + k + 1, (n - lo - k) * 8);
   }
   else if (k) {
     if (st < 0) { lo += st * (k - 1); st = -st; }   /* the same items, first to last */
     w = lo;
     for (I i = lo, j = 0; i < n; i++)
       if (j < k && i == lo + j * st) j++;
-      else { l->a[w] = l->a[i]; if (l->ids) l->ids[w + 1] = l->ids[i + 1]; w++; }
+      else { l->a[w] = l->a[i]; if (l->ids && opt_in()) l->ids[w + 1] = l->ids[i + 1]; w++; }
   }
   memset(l->a + w, 0, k * 8);
-  if (l->ids) memset(l->ids + w + 1, 0, k * 8);
+  if (l->ids && opt_in()) memset(l->ids + w + 1, 0, k * 8);
   if (!(l->len = w)) empty(l);
 }
 List *pys_list_add(List *a, List *b) {
@@ -3081,10 +3095,10 @@ void pys_list_imul(List *l, I n) {               /* xs *= n, in place */
   I m = l->len;
   if (n <= 0 || !m) { pys_list_clear(l); return; }
   if (m > (INT64_MAX >> 4) / n) pys_fail("MemoryError");
-  if (l->ids) pys_list_identity(l, l->ids[0]);
+  if (l->ids && opt_in()) pys_list_identity(l, l->ids[0]);
   reserve(l, m * n);
   repeat_items(l->a, m, m * n);
-  if (l->ids) repeat_items(l->ids + 1, m, m * n);
+  if (l->ids && opt_in()) repeat_items(l->ids + 1, m, m * n);
   l->len = m * n;
 }
 List *pys_list_mul(List *a, I n) {               /* xs * n. A new list's items are zero, so one item of
@@ -3092,10 +3106,10 @@ List *pys_list_mul(List *a, I n) {               /* xs * n. A new list's items a
   I m = a->len;
   if (!m) n = 0;
   if (n > 0 && m > (INT64_MAX >> 4) / n) pys_fail("MemoryError");
-  if (a->ids) pys_list_identity(a, a->ids[0]);
+  if (a->ids && opt_in()) pys_list_identity(a, a->ids[0]);
   List *r = list_new(n > 0 ? m * n : 0, atomic_items(a->a));
   if (n > 0 && (m > 1 || a->a[0])) { memcpy(r->a, a->a, m * 8); repeat_items(r->a, m, m * n); }
-  if (a->ids) {
+  if (a->ids && opt_in()) {
     pys_list_identity(r, a->ids[0]);
     if (n > 0) { memcpy(r->ids + 1, a->ids + 1, m * 8); repeat_items(r->ids + 1, m, m * n); }
   }
@@ -3192,7 +3206,7 @@ void pys_list_remove_identity(List *l, I v, Dyn *id, Str *d, Str *vd, I kind) {
   if (i < l->len) pys_list_del(l, i);
 }
 static void rev(I *a, I n) { for (I i = 0, j = n - 1; i < j; i++, j--) { I t = a[i]; a[i] = a[j]; a[j] = t; } }
-void pys_list_reverse(List *l) { rev(l->a, l->len); if (l->ids) rev(l->ids + 1, l->len); }
+void pys_list_reverse(List *l) { rev(l->a, l->len); if (l->ids && opt_in()) rev(l->ids + 1, l->len); }
 /* Portions derived from CPython's Objects/listobject.c: Copyright (c) 2001-2024 Python Software
    Foundation; All Rights Reserved; used under the PSF License Agreement (see THIRD_PARTY_NOTICES). */
 /* list.sort is CPython 3.13's timsort (Objects/listobject.c, designed in listsort.txt), ported
@@ -3476,7 +3490,7 @@ void pys_list_sort_r(List *l, Str *d, I reverse) {
     I *ids = l->ids; l->ids = NULL; pys_list_sort_r(l, d, reverse); l->ids = ids; return;
   }
   if (big_list(l)) { big_sort(l, d, reverse); return; }
-  if (l->ids) {
+  if (l->ids && opt_in()) {
     /* Numeric comparisons cannot call user code. Move a record containing the number
        and its box through the same stable timsort, preserving NaN comparison order. */
     List *p = pys_list_keyed(l, l, 0);
@@ -3536,21 +3550,21 @@ static void untake(void *p) {
 List *pys_list_take(List *l) {
   Taken *k = pys_alloc(sizeof(Taken) - 1);   /* the allocator adds its slack byte */
   k->t = *l; k->l = l; k->p = 0;
-  if (l->ids) l->ids = empty_identity(l->ids[0]);
+  if (l->ids && opt_in()) l->ids = empty_identity(l->ids[0]);
   l->len = l->cap = 0; l->a = sorting;
   if (eh) unwind_push(untake, k);
   return &k->t;
 }
 List *pys_list_keyed(List *l, List *keys, I taken) {   /* the records of l's items and their keys */
-  if (l->ids) pys_list_identity(l, l->ids[0]);
+  if (l->ids && opt_in()) pys_list_identity(l, l->ids[0]);
   if (list_has_big(keys)) keys = big_ranks(keys);   /* (ints past 64 bits: sorted by their ranks) */
-  I n = l->len, width = l->ids ? 3 : 2;
-  if (l->ids && n > (INT64_MAX - 8) / (width * 8)) oom();
+  I n = l->len, width = l->ids && opt_in() ? 3 : 2;
+  if (l->ids && opt_in() && n > (INT64_MAX - 8) / (width * 8)) oom();
   I *r = pys_alloc(n * width * 8 + 8);
   List *p = pys_list_new(n);
   for (I i = 0; i < n; i++) {
     r[width * i] = keys->a[i]; r[width * i + 1] = l->a[i];
-    if (l->ids) r[width * i + 2] = l->ids[i + 1];
+    if (l->ids && opt_in()) r[width * i + 2] = l->ids[i + 1];
     p->a[i] = (I)(r + width * i);
   }
   p->len = n;
@@ -3560,7 +3574,7 @@ List *pys_list_keyed(List *l, List *keys, I taken) {   /* the records of l's ite
 void pys_list_unkey(List *l, List *p) {
   for (I i = 0; i < p->len; i++) {
     l->a[i] = ((I *)p->a[i])[1];
-    if (l->ids) l->ids[i + 1] = ((I *)p->a[i])[2];
+    if (l->ids && opt_in()) l->ids[i + 1] = ((I *)p->a[i])[2];
   }
 }
 void pys_list_give(List *t) {
@@ -4230,7 +4244,7 @@ static List *col(Dict *d, I *a) {    /* the keys or values in a list whose array
   List *l = list_new(d->len, atomic_items(a));
   I *b = a == d->vals ? d->vb : d->kb;   /* (an int past 64 bits, -2**63 in a: dbig, kbig) */
   for (I e = 0; e < d->n; e++) if (dlive(d, e)) {
-    Mpz *m = b && a[e] == INT64_MIN ? (Mpz *)b[e] : NULL;   /* (the new list's BIGIDS companion) */
+    Mpz *m = b && a[e] == INT64_MIN && opt_in() ? (Mpz *)b[e] : NULL;   /* (the new list's BIGIDS companion) */
     if (m && !l->ids) { l->ids = pys_alloc((l->cap + 1) * sizeof(I)); l->ids[0] = BIGIDS; }
     if (m) l->ids[l->len + 1] = (I)m;
     l->a[l->len++] = a[e];
@@ -4316,7 +4330,7 @@ __attribute__((noinline)) static void fromkeys_big(Dict *d, List *l, I v) {   /*
 }
 Dict *pys_dict_fromkeys(I kind, List *l, I v) {
   Dict *d = pys_dict_new(kind, 0);
-  if (l->ids) fromkeys_big(d, l, v);   /* (a path of its own, so that the others' loop stays as it was) */
+  if (l->ids && opt_in()) fromkeys_big(d, l, v);   /* (a path of its own, so that the others' loop stays as it was) */
   else for (I i = 0; i < l->len; i++) pys_dict_set(d, l->a[i], v);
   return d;
 }
@@ -5889,8 +5903,10 @@ static void setbuf1(File *f, I bs) {   /* CPython's write layers: 8 KiB of pendi
 }
 static int jit;                        /* pystachy run: the program runs in lli's process */
 I pys_jit(void) { return jit; }
+static void stack_floor(void);         /* the native stack's floor (see the recursion depth) */
 __attribute__((minsize)) void pys_init(int argc, char **argv, char *sb, I **roots, I nroots) {   /* first call of @main */
   gc_init(sb, roots, nroots);
+  stack_floor();
   args = pys_list_new(argc); for (int i = 0; i < argc; i++) pys_list_append(args, (I)cstr(argv[i]));
   char *a0 = getenv("PYSTACHY_ARGV0");  /* pystachy run: sys.argv[0] is the script, as in CPython */
   jit = a0 != 0;
@@ -5925,6 +5941,7 @@ void pys_out_sync(void) {              /* embedded CPython is about to run: what
 }
 void pys_init_lib(I **roots, I nroots) {
   pys_c_numeric();                     /* (the host may call setlocale) */
+  stack_floor();                       /* (the importing thread's: the only one that may call the module) */
   if (!pmap) {                         /* (else an import that failed is tried again) */
     gc_init(gc_bottom - 2 * sizeof(void *), roots, nroots);
     std_in.f = stdin; std_in.rd = 1; std_in.nl = 2; std_in.std = 1;
@@ -6284,16 +6301,87 @@ I pys_thread_stack_valid(I size) {
    each exception landing restores the depth saved by its function's entry, since the unwinder
    has skipped the returns of callees. A failed entry does not change the depth. Like the rest
    of the runtime this state belongs to its one execution thread (pyext.c enforces that for extensions).
-   It is a logical limit, not a native-stack-size guarantee: raising it too far can still
-   exhaust the process's stack before this guard, as can an unusually large native frame.
-   Mutable ABI shared with the program's inlined guards (lower_module): two i64 words,
-   active depth then requested limit. Both JIT and AOT guards use this same storage. */
-I pys_recursion_state[2] = {1, 1000};
-_Static_assert(sizeof(I) == 8 && sizeof(pys_recursion_state) == 16,
-               "Recursion ABI: two i64 words, active depth then requested limit");
+   The limit is logical; the native stack's floor (below) bounds the same entries physically.
+   Mutable ABI shared with the program's inlined guards (lower_module): three i64 words,
+   active depth, requested limit, then the stack floor. Both JIT and AOT guards use this same
+   storage, kept in one cache line. */
+__attribute__((aligned(32))) I pys_recursion_state[3] = {1, 1000, 0};
+_Static_assert(sizeof(I) == 8 && sizeof(pys_recursion_state) == 24,
+               "Recursion ABI: three i64 words, active depth, requested limit, then stack floor");
 _Noreturn void pys_recursion_error(void) { pys_fail("RecursionError: maximum recursion depth exceeded"); }
+_Noreturn void pys_recursion_stack_error(void) {
+  pys_fail("RecursionError: maximum recursion depth exceeded (the native stack is nearly full)");
+}
+/* The native stack's floor (#1015), the state's third word: an entry that finds the stack pointer
+   below it raises RecursionError as one past the limit does, however high sys.setrecursionlimit()
+   is set, so that handlers and finally blocks run where the thread's stack would otherwise run out
+   (a SIGSEGV). The stack grows down on every supported target; the floor lies STACK_MARGIN above
+   the lowest address of the thread's stack, or an eighth of a stack below 8 * STACK_MARGIN. The
+   margin is what the deepest counted frame may still use without another entry: the functions that
+   cannot recur (uncounted), the runtime's own calls (a repr or comparison follows at most 512 nested
+   containers: about 150 KiB), the unwinder raising the error (under 5 KiB), and a signal handler's
+   frame (docs/internals.md#native-recursion-depth). 0, no floor (the unsigned comparison never
+   fails), where the bounds are unknown or unlimited, or do not hold this frame (a switched stack).
+   A frame already within the margin gets the floor too: the next counted entry below it raises,
+   and those from higher frames, once it has returned, are checked as usual. Set by pys_init on the
+   program's thread (lli's main thread under the JIT) and by pys_init_lib on the thread that
+   imports an extension module, the only one that may call it (pyext.c). Linux's main thread's
+   bounds assume that its stack can grow to RLIMIT_STACK: the kernel maps nothing that close below
+   it, for the limit exec saw, but memory mapped there anyway, or a limit raised in-process before
+   an import, can stop it sooner (docs/language/compatibility.md#errors-and-control-flow). */
+#if defined(__has_feature)
+#if __has_feature(address_sanitizer)
+#define STACK_ASAN 1
+#endif
+#endif
+#if defined(__SANITIZE_ADDRESS__) || defined(STACK_ASAN)
+#define STACK_MARGIN ((uintptr_t)512 << 10)   /* (ASan's frames and its runtime need more) */
+#else
+#define STACK_MARGIN ((uintptr_t)256 << 10)
+#endif
+static void stack_floor_at(uintptr_t here) {   /* (here: the caller's frame address) */
+  uintptr_t lo = 0, hi = 0;
+#if defined(__APPLE__)
+  pthread_t self = pthread_self();
+  size_t size = pthread_get_stacksize_np(self);
+  hi = (uintptr_t)pthread_get_stackaddr_np(self);   /* (the highest address) */
+  lo = hi > size ? hi - size : 0;
+#elif defined(__linux__)
+  /* Linux's main thread, without glibc's parse of /proc/self/maps (about 100,000 instructions at
+     every start): exec copies the program's file name (AT_EXECFN) to the top of the stack's mapping,
+     just below its last word, and RLIMIT_STACK bounds the mapping, glibc's computation too. A loader
+     run as a program (ld.so ./prog) points AT_EXECFN at an argument instead, which no page boundary
+     follows: then, on another thread (an extension module's importer) and under an unlimited stack
+     (whose main thread's reaches the mapping below: no floor in practice), glibc's
+     pthread_getattr_np reports the bounds (musl's reports only the main thread's mapped part:
+     other C libraries get no floor there) */
+  const char *name = (const char *)getauxval(AT_EXECFN);
+  uintptr_t page = (uintptr_t)sysconf(_SC_PAGESIZE), end = name ? (uintptr_t)name + strlen(name) + 1 + sizeof(void *) : 0;
+  struct rlimit rl;
+  if (end && page && !(end & (page - 1)) && here < end && !getrlimit(RLIMIT_STACK, &rl) &&
+      rl.rlim_cur < end - page && end - here < rl.rlim_cur) {   /* (RLIM_INFINITY is not) */
+    hi = end; lo = (end - rl.rlim_cur + page - 1) & ~(page - 1);
+  }
+#if defined(__GLIBC__)
+  int pthread_getattr_np(pthread_t, pthread_attr_t *);   /* (<pthread.h>'s with _GNU_SOURCE, which the probes
+                                                             that include this file set too late) */
+  pthread_attr_t attr;
+  void *addr;
+  size_t size;
+  if (!lo && !pthread_getattr_np(pthread_self(), &attr)) {
+    if (!pthread_attr_getstack(&attr, &addr, &size)) { lo = (uintptr_t)addr; hi = lo + size; }
+    pthread_attr_destroy(&attr);
+  }
+#endif
+#endif
+  uintptr_t margin = (hi - lo) / 8 < STACK_MARGIN ? (hi - lo) / 8 : STACK_MARGIN;
+  pys_recursion_state[2] = lo && lo < here && here <= hi ? (I)(lo + margin) : 0;
+}
+static void stack_floor(void) { stack_floor_at((uintptr_t)__builtin_frame_address(0)); }
+/* the C entries, as the program's own helpers (lower_module's recursion_ir) do it */
 I pys_recursion_enter(void) {
   if (pys_recursion_state[0] >= pys_recursion_state[1]) pys_recursion_error();
+  if ((uintptr_t)__builtin_frame_address(0) < (uintptr_t)pys_recursion_state[2]) pys_recursion_stack_error();
   return ++pys_recursion_state[0];
 }
 /* a generator resume's entry (lower_module's pys.recursion.resume), given the generator's state
@@ -6303,6 +6391,10 @@ I pys_recursion_resume(I *state) {
   if (pys_recursion_state[0] >= pys_recursion_state[1]) {
     *state = 2;
     pys_recursion_error();
+  }
+  if ((uintptr_t)__builtin_frame_address(0) < (uintptr_t)pys_recursion_state[2]) {
+    *state = 2;
+    pys_recursion_stack_error();
   }
   return ++pys_recursion_state[0];
 }
@@ -6914,7 +7006,7 @@ void **pys_select(List *r, List *w, List *x, double timeout, I blocking) {
   for (int k = 0; k < 3; k++) {
     List *src = inputs[k], *dst = pys_list_new_atomic(src->len);
     out[k] = dst;
-    int ids = src->ids && !big_list(src);   /* (a list of promoting ints' companion holds no identities: BIGIDS) */
+    int ids = src->ids && opt_in() && !big_list(src);   /* (a list of promoting ints' companion holds no identities: BIGIDS) */
     if (ids) pys_list_identity(src, src->ids[0]);
     for (I i = 0; i < src->len; i++)
       if (FD_ISSET((int)src->a[i], &ready[k])) {

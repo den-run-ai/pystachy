@@ -1,4 +1,4 @@
-@main.init: pys_new pys_str_int pys_write pys_write
+@main.init: pys_alloc pys_str_int pys_write pys_write
 @f.items: pys_list_new pys_bytes_get pys_dyn_ref pys_list_append pys_raise
 @m.Scan.__init__:
 @m.Scan.skip: pys_bytes_get pys_raise

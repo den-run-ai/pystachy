@@ -7,7 +7,9 @@
 # where NAME.path exists, it is PYSTACHY_PATH (as PYTHONPATH was for tests/record.sh).
 # A test program dies by no signal but SIGTERM and SIGINT: bash as sh reports a death by another
 # one with the process ID (and "core dumped" or not, by ulimit -c: 0 here, so that no core file
-# lands in the tree).
+# lands in the tree). Every case runs on an 8 MiB stack (ulimit -s 8192, CI's and the usual size),
+# which decides where deep recursion meets the native stack's floor
+# (tests/deviations/recursion_native_stack.py), whatever the caller's.
 # PYSTACHY_GC_STRESS_PROGRAM=N makes the programs collect every N allocations (JIT and AOT), whatever
 # PYSTACHY_GC_STRESS gives the compiler that builds them.
 # Every tests/errors/AREA/*.py must be rejected with the message in its first line (rtmode_*.py as
@@ -33,6 +35,8 @@ cd "$(dirname "$0")/.." || exit 1
 . tests/corpus.sh
 # shellcheck disable=SC3045 # (ulimit -c is not POSIX, but dash, bash, ksh and busybox have it)
 ulimit -c 0 2> /dev/null
+# shellcheck disable=SC3045 # (and -s)
+ulimit -s 8192 2> /dev/null
 PYS=${1:-./pystachy}
 MODES=${2:-jit aot}
 if [ $# -gt 2 ]; then shift 2; else set --; fi

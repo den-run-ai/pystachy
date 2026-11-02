@@ -82,7 +82,7 @@ distinct cyclic structures eventually raise `RecursionError`. `repr()` uses
 cycle markers. Runtime representation and comparison follow at most 512
 recursive alias edges before raising `RecursionError`; the edges are counted
 independently of the JSON codec's bound on nesting, and other reprs (a
-class's own `__repr__`, say) remain limited only by the native stack. Ordering
+class's own `__repr__`, say) remain limited by the recursion limit and the native stack's floor. Ordering
 requires narrowing, and so does `==` on a union that holds a
 recursive alias beside members holding objects or sets. These are bounded
 builtin-value operations, not general user-defined dynamic dispatch.
@@ -210,10 +210,15 @@ Elsewhere, including where the result has a typed or no annotation (`doc = json.
 
 `loads()` scans the UTF-8 bytes of its argument with integer comparisons, so it
 creates no one-character strings and translates no code-point offsets while
-scanning. Short strings and spans retain a small scalar prefix. Longer ordinary
-spans use a shared bounded byte scanner, skipping eight bytes at a time until a
-quote, backslash or control byte is possible, then checking
-the matching word and tail scalar. After an escape, the helper scans the next ordinary
+scanning. Object keys, and the strings of a text of at most 1 KiB, use a scalar loop
+with no per-string setup. In a longer text, a string value of more than 32 bytes
+continues past that scalar prefix with a shared bounded byte scanner, skipping eight
+bytes at a time until a quote, backslash or control byte is possible, then checking
+the matching word and tail scalar. Bounding the scalar loop and calling the scanner
+cost more than short strings save, so short texts and keys keep the plain loop; the
+retained [JSON decoder controls](../bench/smoke/README.md#retained-json-decoder-controls)
+and the [byte-scanning controls](extended-performance.md#json-byte-scanning-controls)
+measure both sides. After an escape, the helper scans the next ordinary
 run when the run before the escape reached 16 bytes; dense escapes keep the byte loop,
 which a per-byte bound check made mispredict. Both typed and dynamic decoders use it.
 Loads use `memcpy`, require a
