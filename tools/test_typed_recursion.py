@@ -19,6 +19,29 @@ ROOT = Path(__file__).resolve().parent.parent
 GUARDS = FXBIT["R"] | FXBIT["I"]
 
 
+def assert_stack_floor(test, body, failed=""):
+    # An entry's second check (#1015): the stack pointer (llvm.stacksave, no frame pointer and no
+    # escaping alloca) against the state's third word, the native stack's floor, under its own TBAA
+    # tag; the depth check comes first, and each failure has its cold runtime call, after what the
+    # helper does on both (failed)
+    test.assertIn("getelementptr [3 x i64], ptr @pys_recursion_state, i64 0, i64 2", body)
+    test.assertRegex(body, r"%floor = load i64, ptr %floor.addr, !tbaa !\d+")
+    test.assertIn("%sp = call ptr @llvm.stacksave.p0()", body)
+    test.assertIn("%low = icmp ult i64 %here, %floor", body)
+    test.assertNotIn("alloca", body)
+    test.assertNotIn("frameaddress", body)
+    test.assertLess(body.index("%full = icmp sge i64 %depth, %limit"), body.index("%sp = call"))
+    overflow = body.split("overflow:", 1)[1].split("exhausted:", 1)[0]
+    exhausted = body.split("exhausted:", 1)[1].split("entered:", 1)[0]
+    test.assertIn("call void @pys_recursion_error() noreturn cold", overflow)
+    test.assertIn("call void @pys_recursion_stack_error() noreturn cold", exhausted)
+    test.assertNotIn("pys_recursion_stack_error", overflow)
+    for block in (overflow, exhausted):
+        test.assertIn("unreachable", block)
+        if failed != "":
+            test.assertLess(block.index(failed), block.index("call void"))
+
+
 def compile_source(source, opt="", ext="", recheck=False):
     functions = {}
     lower = Gen.lower
@@ -442,6 +465,8 @@ print(total(4), names(Tree(Tree(None, "a"), "b")))
         self.assertIn(f"store i64 {GENDONE}, ptr %state", overflow)
         self.assertIn("call void @pys_recursion_error() noreturn cold", overflow)
         self.assertNotIn("%state", entered)
+        self.assertNotIn("%state", helper.split("overflow:", 1)[0])
+        assert_stack_floor(self, helper, f"store i64 {GENDONE}, ptr %state")
 
     def test_guard_helpers_use_mutable_runtime_state_and_throwing_slow_path(self):
         # (a cycle through a function value keeps the depth word current: closed recursion does not)
@@ -449,7 +474,8 @@ print(total(4), names(Tree(Tree(None, "a"), "b")))
                                "def count(n: int, f: Callable[[int], int]) -> int:\n"
                                "    return f(n) if n == 0 else count(n - 1, f)\n"
                                "print(count(1, lambda k: k))\n")
-        self.assertIn("@pys_recursion_state = external global [2 x i64]", ir)
+        self.assertIn("@pys_recursion_state = external global [3 x i64]", ir)
+        self.assertEqual(ir.count("declare ptr @llvm.stacksave.p0()"), 1)
         helpers = dict(re.findall(r"^define internal [^@]*(@pys\.recursion\.[a-z]+)\([^\n]*\{\n(.*?)^}",
                                   ir, re.M | re.S))
         self.assertIn("@pys.recursion.enter", helpers)
@@ -465,6 +491,9 @@ print(total(4), names(Tree(Tree(None, "a"), "b")))
         self.assertIn("call void @pys_recursion_error() noreturn cold", body)
         self.assertIn("unreachable", body)
         self.assertIn("store i64 %next, ptr @pys_recursion_state", body)
+        assert_stack_floor(self, body)
+        # (the depth is counted only once both checks pass)
+        self.assertNotIn("store", body.split("entered:", 1)[0])
         source_body = ir.split("define internal i64 @f.count(", 1)[1].split("\n}", 1)[0]
         self.assertIn("call i64 @pys.recursion.enter()", source_body)
         self.assertRegex(source_body, r"store i64 %t\d+, ptr @pys_recursion_state, !tbaa !\d+")
@@ -483,12 +512,15 @@ print(total(4), names(Tree(Tree(None, "a"), "b")))
         self.assertIn("call void @pys_recursion_error() noreturn cold", body)
         self.assertIn("%next = add i64 %depth, 1", body)
         self.assertNotIn("store", body)
+        assert_stack_floor(self, body)
         self.assertNotIn("@pys_recursion_enter", ir.split("define internal i64 @r.f.count(", 1)[1].split("\n}", 1)[0])
 
     def test_programs_without_counted_functions_declare_no_guard(self):
         ir, _ = compile_source("def leaf(n: int) -> int:\n    return n + 1\nprint(leaf(1))\n")
         self.assertNotIn("pys.recursion.enter", ir)
         self.assertNotIn("pys_recursion_error", ir)
+        self.assertNotIn("pys_recursion_stack_error", ir)
+        self.assertNotIn("llvm.stacksave", ir)
 
     def test_resumes_that_cannot_recur_define_no_resume_entry(self):
         ir, functions = compile_source("from collections.abc import Iterator\n"
@@ -513,16 +545,22 @@ print(Box(2).value(2))
 ''')
         nodes = dict(re.findall(r"^!(\d+) = (.*)$", ir, re.M))
         root = next(key for key, value in nodes.items() if value == '!{!"pystachy fields"}')
-        for name in ("recursion depth", "recursion limit", "int"):
+        for name in ("recursion depth", "recursion limit", "stack floor", "int"):
             self.assertTrue(any(value == f'!{{!"{name}", !{root}, i64 0}}'
                                 for value in nodes.values()), name)
         # (Box.value is closed recursion: its check reads the limit, its symbol the depth)
         helper = ir.split("define internal i64 @pys.recursion.check(i64 %depth)", 1)[1].split("\n}", 1)[0]
         self.assertRegex(helper, r"load i64, ptr %limit.addr, !tbaa !\d+")
         self.assertRegex(ir, r"%rd = load i64, ptr @pys_recursion_state, !tbaa !\d+")
-        profile = re.search(r"br i1 %full, label %overflow, label %entered, !prof !(\d+)", helper)
-        self.assertIsNotNone(profile)
-        self.assertEqual(nodes[profile.group(1)], '!{!"branch_weights", i32 1, i32 1048575}')
+        self.assertRegex(helper, r"load i64, ptr %floor.addr, !tbaa !\d+")
+        tags = dict(re.findall(r"%(limit|floor) = load i64, ptr %\w+.addr, !tbaa !(\d+)", helper))
+        self.assertNotEqual(tags["limit"], tags["floor"])
+        floor_type = nodes[tags["floor"]].split(",")[0].strip("!{")
+        self.assertEqual(nodes[floor_type], f'!{{!"stack floor", !{root}, i64 0}}')
+        for cold, then in (("overflow", "stack"), ("exhausted", "entered")):
+            profile = re.search(rf"br i1 %\w+, label %{cold}, label %{then}, !prof !(\d+)", helper)
+            self.assertIsNotNone(profile, cold)
+            self.assertEqual(nodes[profile.group(1)], '!{!"branch_weights", i32 1, i32 1048575}')
 
     def test_runtime_callbacks_count_their_callers(self):
         _, functions = compile_source('''

@@ -210,8 +210,8 @@ called and raised ([exception classes as values](language/semantics.md#exception
 
 Exception attributes such as `e.args`, exception groups and `except*` are not supported.
 Uncaught exceptions print the final error line rather than a complete traceback.
-Native stack exhaustion, memory exhaustion and an actual Ctrl-C do not follow ordinary
-catchable exception handling. See [exception semantics](language/semantics.md#exceptions)
+Native stack exhaustion outside the recursion checks, memory exhaustion and an actual Ctrl-C
+do not follow ordinary catchable exception handling. See [exception semantics](language/semantics.md#exceptions)
 and [runtime differences](language/compatibility.md#errors-and-control-flow).
 
 <a id="finding-and-running-modules"></a>
@@ -292,7 +292,7 @@ The most important differences for supported programs are:
 | Strings | Code-point length, indexing, slicing and search; Unicode case mapping and some other operations remain incomplete |
 | Containers | Dictionary views are snapshots; string-set order differs from CPython |
 | Exceptions | Uncaught errors omit the full traceback; native resource failures bypass handlers |
-| Recursion | `sys.setrecursionlimit()` bounds recursive calls; non-recursive frames do not count, so the exact failure depth differs from CPython, and excessive limits can still exhaust the native stack |
+| Recursion | `sys.setrecursionlimit()` bounds recursive calls; non-recursive frames do not count, so the exact failure depth differs from CPython, and recursion that the native stack cannot hold raises `RecursionError` below a raised limit |
 | Lifetime | Garbage collection runs in batches; `__del__` never runs; close files explicitly |
 | Evaluation | Some consumers materialize their input before processing it |
 

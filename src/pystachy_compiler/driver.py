@@ -594,7 +594,8 @@ def main() -> None:
         # that only values of those opt-ins reach (opt_in()), before it is optimized; the JIT tier
         # and extension modules keep the runtime's weak 0
         f.write(f"@pys_plain = constant i64 {1 if plain else 0}\n")
-    # compiled code's objects from pys_new (allocelide): an AOT build or extension module is
+    # compiled code's objects that hold no reference from pys_new (allocelide, lowering's
+    # alloc_call, which declares it only where it calls it): an AOT build or extension module is
     # optimized with pys_new out of line (runtime.c), so that LLVM deletes the allocations whose
     # objects nothing keeps; then LATE_INLINE puts pys_new, the allocator's fast path, into the
     # calls left (the JIT tier calls the shared runtime's pys_new, which it never inlines)

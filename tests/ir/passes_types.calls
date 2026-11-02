@@ -1,6 +1,6 @@
-@main.init: pys_dict_new_atomic pys_dict_set pys_dict_new_atomic pys_dict_set pys_new pys_list_new_atomic pys_list_append pys_box pys_dict_new pys_dict_set pys_dict_set pys_str_int pys_write pys_write pys_new pys_new pys_dict_new_atomic pys_dict_set pys_new pys_list_new pys_list_append pys_new pys_new pys_list_new_atomic pys_list_append pys_list_append pys_list_new_atomic pys_list_append pys_new pys_repr pys_write pys_write pys_repr pys_write pys_write pys_str_int pys_write pys_write pys_str_int pys_write pys_write pys_str_int pys_write pys_write
+@main.init: pys_dict_new_atomic pys_dict_set pys_dict_new_atomic pys_dict_set pys_alloc pys_list_new_atomic pys_list_append pys_box pys_dict_new pys_dict_set pys_dict_set pys_str_int pys_write pys_write pys_alloc pys_alloc pys_dict_new_atomic pys_dict_set pys_new pys_list_new pys_list_append pys_new pys_alloc pys_list_new_atomic pys_list_append pys_list_append pys_list_new_atomic pys_list_append pys_new pys_repr pys_write pys_write pys_repr pys_write pys_write pys_str_int pys_write pys_write pys_str_int pys_write pys_write pys_str_int pys_write pys_write
 @f.tkey: pys_dict_find pys_dict_val pys_dict_entry_set pys_raise
-@f.tbuilt: pys_dict_has pys_new pys_dict_entry pys_dict_val pys_dict_entry_set pys_raise
+@f.tbuilt: pys_dict_has pys_alloc pys_dict_entry pys_dict_val pys_dict_entry_set pys_raise
 @f.optd: pys_dict_find pys_dict_val pys_dict_entry_set pys_raise
 @f.optand: pys_dict_has pys_dict_entry pys_dict_val pys_dict_entry_set pys_raise
 @f.ntfield: pys_dict_find pys_dict_val pys_dict_entry_set pys_raise pys_raise
@@ -27,5 +27,5 @@
 @pys_obj_eq:
 @pys_obj_cmp:
 @pys_obj_repr:
-@pys.recursion.enter: pys_recursion_error
+@pys.recursion.enter: pys_recursion_error pys_recursion_stack_error
 @main: pys_init pys_eh_on pys_finish
