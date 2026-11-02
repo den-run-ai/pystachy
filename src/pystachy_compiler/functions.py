@@ -1,11 +1,11 @@
 """Functions component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.analysis import globals_in, lambda_flags, local_names, nonlocal_decls, numeric_statement, numeric_return_names, str_appends, targets
-from src.pystachy_compiler.bigints import int_replay_state
-from src.pystachy_compiler.diagnostics import Rejoin, int_lists, int_program
+from src.pystachy_compiler.diagnostics import Rejoin, int_program
 from src.pystachy_compiler.ir import Blk, FnInfo, IFn, Try, Val
 from src.pystachy_compiler.local_versions import local_versions
 from src.pystachy_compiler.names import short
+from src.pystachy_compiler.optimizations import recursion_unsnapshot
 from src.pystachy_compiler.specs import BIG, CTYPES, NONEVAR, RTSYM
 from src.pystachy_compiler.syntax import Node, mk
 from src.pystachy_compiler.utils import (
@@ -81,6 +81,16 @@ def gen_enter(self, f: FnInfo, body: list[Node]) -> None:
     if not self.modlevel:
         local_names(body, self.assigned)
         globals_in(body, self.gdecl)  # (global holds for the whole function, also from a dead branch)
+    if not self.rtmode and not f.gen:
+        # The depth this function was entered at, which its handlers restore (callees that
+        # raised may have left it higher), before any local handler or body code. Capture
+        # it before dry() can build temporary landings: their discarded blocks must not
+        # leave a live token referring to a discarded definition. A source function or lambda
+        # (not a module's code or a Callable's adapter, which forwards to one) may count as a
+        # frame: Gen.recursionscope decides once the program is built, and makes this op its
+        # checked entry (docs/internals.md#native-recursion-depth).
+        self.fn.counted = f.node.kind == "def" and len(f.node.kids) >= 3 and f.name != "<callable>"
+        self.fn.rdepth = self.rt("pys_recursion_depth", "i64", [])
 
 def gen_materialize(self, f: FnInfo) -> None:
     # Flow annotates nodes and cls substitution renames them: each compiled inherited
@@ -125,7 +135,8 @@ def gen_function(self, f: FnInfo, body: list[Node]) -> None:
     ret = f.ret
     noret = f.noret
     asked = self.dyn_asked(f)
-    before = int_replay_state(self) if int_lists() else None
+    before = self.replay_state()
+    declared = len(self.rtfns)
     self.function_body(f, body)
     while self.dyn_again(f, asked):
         # (an Any value reached storage that its first value typed, in a module that compiles
@@ -134,16 +145,20 @@ def gen_function(self, f: FnInfo, body: list[Node]) -> None:
         f.noret = noret
         asked = self.dyn_asked(f)
         self.function_body(f, body)
-    if before is not None and len(self.newhints) > 0 and self.int_again(f, before):
+    if len(self.newhints) > 0 and self.local_again(f, before):
         f.ret = ret
         f.noret = noret
+        # (the discarded body's runtime functions are declared again where the retry uses them,
+        # in the order the program's next pass would declare them)
+        for k in list(self.rtfns)[declared:]:
+            del self.rtfns[k]
         self.function_body(f, body)
-        if int_replay_state(self) != before or f.ll in self.retseen or f.ll in self.dynseen:
+        if self.replay_state() != before or f.ll in self.retseen or f.ll in self.dynseen:
             raise Rejoin()  # the retry itself discovered a dependent layout or signature
         prefix = self.fnkey(f) + "|"
         for name in self.ltype:
             key = prefix + name
-            if self.ltype[name] == BIG and self.hints.get(key, "") == BIG and self.newhints.get(key, "") == BIG:
+            if key in self.newhints and self.hints.get(key, "") == self.newhints[key] and self.ltype[name] == self.newhints[key]:
                 del self.newhints[key]
     del self.building[f.ll]
     self.selfcls = sel
@@ -422,6 +437,10 @@ def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
             # (the same LLVM types, but another layout: a tuple of two strs for one of three)
             self.err(f"{f.name}() is defined as {typestr(ts[0])}({', '.join([typestr(t) for t in ts[1:]])}), but the compiler calls it as {rt_subset(RTSYM[f.ll[1:]], ts)} (RUNTIME's {RTSYM[f.ll[1:]]})")
         self.untold(f, ts, "defined")
+    if self.fn.rdepth != "" and not self.fn.counted and not self.fn.landed:
+        # No handler restores the snapshot: do not charge module initializers or adapters
+        # a load (a source function keeps it until Gen.recursionscope decides).
+        recursion_unsnapshot(self.fn)
 
 def gen_extern_args(self, x: Node, more: bool) -> list[str]:
     # decorator x, @ffi.extern(lib, symbol=""): the library and the symbol ("" for the function's

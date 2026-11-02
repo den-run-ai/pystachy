@@ -1,0 +1,14 @@
+result 1
+0 True 11
+result 2
+1 True 2
+value error
+2 True 3
+recursion error
+3 True 4
+recovered 2
+loop True 2
+nested True True
+outer
+inner
+[exit 0]

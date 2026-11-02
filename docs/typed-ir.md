@@ -396,6 +396,19 @@ are whole-function IR passes; the others select frontend or lowering choices.
 
 Disable one with `PYSTACHY_OPT=-dictfuse`, several with a comma-separated list, or all with
 `PYSTACHY_OPT=-all`. Differential runs check that the choices preserve behavior.
+
+The native recursion depth policy is not an option: `Gen.recursionscope` decides which
+source functions count toward `sys.setrecursionlimit()` once the whole program is built
+and summarized, before these passes, and gives exactly those functions a checked
+`recursion.enter`, restorations before their returns and the effects (`R I`) of both in
+their summaries. A source function counts if it lies on a cycle of direct calls and
+generator resumes, or reaches `U` other than its resumes and yields; every other function
+keeps at most its entry-depth snapshot (`recursion.depth`), for its handlers. Resumes of
+generators that cannot recur lose their accounting (`recursion.resume` and its restoration). A cycle that reaches nothing else that
+uses the depth (closed recursion) keeps its entries without restorations: lowering passes
+its depth as an argument. See
+[native recursion depth](internals.md#native-recursion-depth).
+
 `tupleret` applies to a function whose every `return` returns a tuple display that the return's
 own block makes (`alloc.fixed`) and that nothing but that block's `tuple.store`s reaches: a new
 tuple, which CPython makes too and no code could hold. A call of it whose result only
