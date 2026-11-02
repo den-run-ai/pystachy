@@ -1,6 +1,7 @@
 """Explicit closed scalar, container and native reference unions."""
 from __future__ import annotations
 from src.pystachy_compiler.analysis import ann_target
+from src.pystachy_compiler.diagnostics import dynamic_program, int_lists
 from src.pystachy_compiler.ir import ClassInfo, FnInfo, Ins, Val
 from src.pystachy_compiler.names import owner
 from src.pystachy_compiler.syntax import Node, mk
@@ -543,3 +544,48 @@ def gen_joinable(self, t: str) -> bool:
     if not is_union(u):
         return is_opt(t)
     return all([m in ["int", "float", "bool", "str"] for m in umembers(u)])
+
+
+def gen_replay_state(self) -> list[int]:
+    # what a function body that local_again discards must not leave behind: the functions,
+    # classes, closures, specializations, globals and roots compiled so far (an unused
+    # specialization still counts toward the compiler's bounded inference budgets)
+    return [len(self.fns), len(self.classes), len(self.closures), self.template_instances, self.template_retained,
+            len(self.globs), len(self.gcroots)]
+
+
+def gen_local_again(self, f: FnInfo, before: list[int]) -> bool:
+    # A bounded alternative to Rejoin: where every join that compiling f found (join_hint) widens
+    # one of f's own unannotated locals (a total that 0 starts and floats are added to; an int
+    # local that a promoting int reaches, bigints.py), f alone is compiled again with those joins,
+    # as the program's next pass would compile it. Joins of parameters, globals, fields and
+    # returns (f's own is the key ...|return, which names no local), a generator or closure, a
+    # function with captured cells and a body that compiled a new dependency (replay_state) keep
+    # the whole-program pass, as does dynamic Any's own retry. No new Gen/Frame state: the
+    # driver's hints survive a fallback, and dry() cannot request joins.
+    if dynamic_program() or self.modlevel or self.rtmode or f.gen or f.clo >= 0 or f.node.kind != "def":
+        return False
+    if len(self.cells) > 0 or f.ll in self.retseen or f.ll in self.dynseen or self.replay_state() != before:
+        return False
+    prefix = self.fnkey(f) + "|"
+    names: list[str] = []
+    for key in self.newhints:
+        name = key[len(prefix):] if key.startswith(prefix) else ""
+        if name == "" or name in f.params or name in self.compvars or name not in self.ltype:
+            return False  # another pending join already needs the whole-program fallback
+        if self.newhints[key] == BIG and (not int_lists() or self.ltype[name] != "int"):
+            return False  # (a promoting int replaces only an int local, where a module opts in)
+        names.append(name)
+    if len(names) == 0:
+        return False
+    for name in names:
+        self.hints[prefix + name] = self.newhints[prefix + name]
+    # Keep newhints until the retry succeeds: gen_err then falls back through Rejoin if
+    # a changed type exposes a diagnostic or a specialization limit during this attempt.
+    # Its result is inferred afresh, just as in dyn_again; no recursive consumer took it.
+    self.guessed.pop(f.ll, "")
+    self.qused.pop(f.ll, "")
+    self.qret.pop(f.ll, "")
+    self.qholes.pop(f.ll, [])
+    self.qforward.pop(f.ll, False)
+    return True

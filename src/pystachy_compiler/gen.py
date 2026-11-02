@@ -27,7 +27,6 @@ from src.pystachy_compiler.bigints import (
     gen_big_compare as bigints_big_compare,
     gen_big_binop as bigints_big_binop,
     gen_int_policy as bigints_int_policy,
-    gen_int_again as bigints_int_again,
     gen_read_policy as bigints_read_policy,
     gen_big as bigints_big,
     gen_big_lo as bigints_big_lo,
@@ -243,6 +242,8 @@ from src.pystachy_compiler.unions import (
     gen_join_type as unions_join_type,
     gen_joinable as unions_joinable,
     gen_local_hint as unions_local_hint,
+    gen_local_again as unions_local_again,
+    gen_replay_state as unions_replay_state,
     gen_stable as unions_stable,
     gen_ueq_type as unions_ueq_type,
     gen_scalar_union as unions_scalar_union,
@@ -1596,9 +1597,6 @@ class Gen:
         self.dmemot: list[str] = []
 
     # ---- promoting ints (bigints.py)
-    def int_again(self, f: FnInfo, before: list[int]) -> bool:
-        return bigints_int_again(self, f, before)
-
     def int_policy(self, line: int) -> bool:
         return bigints_int_policy(self, line)
 
@@ -3023,6 +3021,12 @@ class Gen:
 
     def join_type(self, a: str, b: str) -> str:
         return unions_join_type(self, a, b)
+
+    def local_again(self, f: FnInfo, before: list[int]) -> bool:
+        return unions_local_again(self, f, before)
+
+    def replay_state(self) -> list[int]:
+        return unions_replay_state(self)
 
     def stable(self, s: str) -> str:
         return unions_stable(self, s)
