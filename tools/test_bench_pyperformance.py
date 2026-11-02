@@ -289,7 +289,7 @@ class RecordTests(unittest.TestCase):
 class ArgumentTests(unittest.TestCase):
     def test_invalid_settings_fail_before_execution(self):
         for arguments in (["--runs", "0"], ["--timeout", "inf"], ["--timeout", "-1"], ["--compiler", ""],
-                          ["--benchmarks", "pidigits"], ["--benchmarks", "deltablue"]):
+                          ["--benchmarks", "pprint"], ["--benchmarks", "deltablue"]):
             with self.subTest(arguments=arguments), mock.patch.object(bench, "execute") as execute:
                 with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as caught:
                     bench.main(arguments)
