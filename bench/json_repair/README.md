@@ -56,6 +56,10 @@ scaling at both ends; values are AOT's speedup over upstream:
   43–59 ms. An AOT build of `bench.py` took 7.3 s.
 - Whole-process RSS for CPython and AOT stayed at the runner's launch floor (about 47 MiB),
   so these runs establish no memory difference.
+- With #1025–#1029 merged into `c3aaa068` (local merge `c15dc6f8`), whole-process AOT
+  Callgrind counts of nine of these workloads stay within 1.4% of `c3aaa068`'s, with
+  identical output. They range from −1.39% (`facade.py valid`) to +1.21%
+  (`scaling.py logs`), so the timings above still describe the release candidate.
 
 To repeat the campaign, build the probes as in [Reproduce](#reproduce) and run
 `tools/json_repair_bench.py` with a variants file like the one in the

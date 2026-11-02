@@ -28,6 +28,29 @@ fib 1.06×, raytrace 0.93×). Builds took 22% longer and executables are 12% lar
 [counts, arguments, hashes, attribution and timings](../bench/pyperformance/results/alpha3-vs-candidate-2026-11-02.json)
 are retained.
 
+### Release candidate with the alpha.4 fixes
+
+The same comparison was repeated on main `c3aaa068` with #1025–#1029 merged in
+(local merge `c15dc6f8`), using the same sources, arguments and oracles. The
+geometric mean across the 22 benchmarks becomes **+2.56%** against alpha.3
+(+0.21% against `c3aaa068`), and every output matches CPython.
+
+| Benchmark | `c3aaa068` vs alpha.3 | With the fixes vs alpha.3 | What changed |
+|---|---:|---:|---|
+| json_loads | +9.9% | −0.3% | Short strings and keys skip the byte scanner (#1028) |
+| scimark | +22.1% | +3.5% | List companion upkeep only in opt-in programs (#1027); objects that hold lists are allocated again (#1025) |
+| fannkuch | +8.3% | +3.8% | #1027 |
+| raytrace | −28.1% | −0.2% | Allocation removal now skips objects that hold references (#1025) |
+| chaos | −4.1% | −4.5% | Keeps #1020's saving: its objects hold only numbers |
+| generators | +13.3% | +18.2% | The native stack check (#1026) on top of recursion accounting (#996) |
+| barnes_hut | +9.0% | +11.2% | Same |
+
+Outside the 22, `bench/fib.py` executes 37.9% more instructions than alpha.3, up from
+24.1%: its calls are almost all recursion guards. Executables remain 12% larger than
+alpha.3's. Single builds took 27% longer, measured while other jobs shared the host. The
+[counts, hashes and combined checks](../bench/pyperformance/results/alpha3-vs-integrated-2026-11-02.json)
+are retained.
+
 ## Coverage expansion (2026-11-02)
 
 `pidigits` is the first big-integer benchmark in the suite. Its module opts in to

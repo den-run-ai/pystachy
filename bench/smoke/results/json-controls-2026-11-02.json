@@ -366,5 +366,99 @@
    ]
   },
   "note": "Internal timed loop of json_loads.py 300, nine alternating pairs on one CPU of a shared host; the ranges overlap and no wall-time difference is resolved."
+ },
+ "integrated_candidate": {
+  "revision": "local merge c15dc6f8 of c3aaa068 with #1025-#1029 (see bench/pyperformance/results/alpha3-vs-integrated-2026-11-02.json)",
+  "method": "run_controls.sh as for the candidate: each control built by its own compiler (alpha.3 f5a09d42 and the integrated tree), whole-process AOT Callgrind instructions, pinned to one CPU, outputs compared with CPython 3.13.18",
+  "controls": {
+   "broad": {
+    "alpha3": {
+     "instructions": 1300404124,
+     "stdout_matches_cpython": true
+    },
+    "integrated": {
+     "instructions": 1296401448,
+     "stdout_matches_cpython": true
+    },
+    "change_percent": -0.31
+   },
+   "typed-numeric": {
+    "alpha3": {
+     "instructions": 91472194,
+     "stdout_matches_cpython": true
+    },
+    "integrated": {
+     "instructions": 91166043,
+     "stdout_matches_cpython": true
+    },
+    "change_percent": -0.33
+   },
+   "typed-strings": {
+    "alpha3": {
+     "instructions": 108711039,
+     "stdout_matches_cpython": true
+    },
+    "integrated": {
+     "instructions": 107266789,
+     "stdout_matches_cpython": true
+    },
+    "change_percent": -1.33
+   },
+   "typed-mixed": {
+    "alpha3": {
+     "instructions": 127366630,
+     "stdout_matches_cpython": true
+    },
+    "integrated": {
+     "instructions": 126844672,
+     "stdout_matches_cpython": true
+    },
+    "change_percent": -0.41
+   },
+   "any-short": {
+    "alpha3": {
+     "instructions": 30011439,
+     "stdout_matches_cpython": true
+    },
+    "integrated": {
+     "instructions": 30043597,
+     "stdout_matches_cpython": true
+    },
+    "change_percent": 0.11
+   },
+   "any32-numeric": {
+    "alpha3": {
+     "instructions": 106837564,
+     "stdout_matches_cpython": true
+    },
+    "integrated": {
+     "instructions": 103223786,
+     "stdout_matches_cpython": true
+    },
+    "change_percent": -3.38
+   },
+   "any32-strings": {
+    "alpha3": {
+     "instructions": 116972035,
+     "stdout_matches_cpython": true
+    },
+    "integrated": {
+     "instructions": 116774460,
+     "stdout_matches_cpython": true
+    },
+    "change_percent": -0.17
+   },
+   "any32-mixed": {
+    "alpha3": {
+     "instructions": 142771358,
+     "stdout_matches_cpython": true
+    },
+    "integrated": {
+     "instructions": 141147372,
+     "stdout_matches_cpython": true
+    },
+    "change_percent": -1.14
+   }
+  }
  }
 }

@@ -201,3 +201,17 @@ In that merge, `pys_bytes_scan`, `plain_rest()` and `key()` add 137M instruction
 scanner call. Nine alternating wall-time pairs on the shared host were inconclusive
 (medians 138.7 and 138.2 ms). The
 [counts, bisect, attribution and timings](results/json-controls-2026-11-02.json) are retained.
+
+With #1025–#1029 merged into `c3aaa068` (local merge `c15dc6f8`), seven of the eight controls
+execute fewer instructions than alpha.3, every output still matching CPython:
+
+| Control | alpha.3 | With the fixes | Change |
+|---|---:|---:|---:|
+| Broad (`json_loads.py 300`) | 1,300.4M | 1,296.4M | −0.31% |
+| Typed 32-key numeric / strings / mixed | 91.5M / 108.7M / 127.4M | 91.2M / 107.3M / 126.8M | −0.33% / −1.33% / −0.41% |
+| Short observed `Any` (`json_decode_any.py 2000`) | 30.0M | 30.0M | +0.11% |
+| Observed `Any` 32-key numeric / strings / mixed | 106.8M / 117.0M / 142.8M | 103.2M / 116.8M / 141.1M | −3.38% / −0.17% / −1.14% |
+
+#1028 keeps object keys, and the strings of texts up to 1 KiB, in a scalar loop without the
+scanner call. Longer string values still use the scanner after their first 32 bytes. The
+counts are under `integrated_candidate` in the same results file.
