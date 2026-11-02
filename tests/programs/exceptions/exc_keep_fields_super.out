@@ -1,0 +1,7 @@
+Expecting value: line 2 (char 4)
+DocError('Expecting value: line 2 (char 4)')
+Expecting value 4 2 18
+"a'b" NoKey("a'b") t
+(1, 2) Pair(1, 2) 3
+caught Bad: line 2 (char 2) DocError('Bad: line 2 (char 2)')
+[exit 1]

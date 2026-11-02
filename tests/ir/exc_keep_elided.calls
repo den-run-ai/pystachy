@@ -1,0 +1,14 @@
+@main.init: pys_str_int pys_write pys_write pys_write pys_write pys_raise pys_raise pys_raise
+@f.made: pys_new
+@f.kept: pys_new pys_new pys_repr pys_text_slice
+@m.DocError.__init__: pys_str_int pys_str_cat pys_repr
+@m.Early.__init__: pys_exc_ostr pys_repr
+@x.str.DocError:
+@x.repr.DocError: pys_exc_brepr
+@x.str.Early:
+@x.repr.Early: pys_exc_brepr
+@pys_obj_eq:
+@pys_obj_cmp:
+@pys_obj_repr:
+@pys.recursion.enter: pys_recursion_error
+@main: pys_init pys_finish
