@@ -5,7 +5,7 @@ object dispatch and process/extension entry points. They do not create IR operat
 """
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import fail, dynamic_program, int_lists
-from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo
+from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Val
 from src.pystachy_compiler.llvm_abi import llstr
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.specs import CTYPES, DYNTYPE_LL, GENCLEAN, GENCMD, GENDONE, GENNAME, GENRUN, GENSTATE, GLUE, LIBS, LINKDL, OBJECTC, RANGEC, RECURSION_BRANCH, RTDATA, RTSYM, STR_HEADER_SIZE, STRLEN_RANGE, TBAA_BYTES, TBAA_DEPTH, TBAA_DEPTH_TYPE, TBAA_FIELDS, TBAA_LEN, TBAA_LIMIT, TBAA_LIMIT_TYPE, TBAA_NAMES, TBAA_SIZES
@@ -191,6 +191,20 @@ def gen_extern_decl(self, f: FnInfo) -> None:
     self.externs[f.ll] = f"declare {lt(f.ret)} {f.ll}({', '.join([lt(t) for t in f.ptypes])})"
 
 
+def const_slot(v: Val) -> str:
+    # the i64 slot of item v of a constant tuple (Gen.tuple_const): an int's value, a float's
+    # bits, a bool's 0 or 1, None's null, the address of a static str, bytes or tuple constant
+    if v.t == "int":
+        return v.v
+    if v.t == "float":
+        return f"bitcast (double {v.v} to i64)"
+    if v.t == "bool":
+        return "1" if v.v == "true" else "0"
+    if v.v == "null":
+        return "0"
+    return f"ptrtoint (ptr {v.v} to i64)"
+
+
 def lower_data(d: Data) -> str:
     if d.kind == "string":
         n = len(d.text) + 1
@@ -204,9 +218,11 @@ def lower_data(d: Data) -> str:
         # Bytes are immutable; runtime.c's Str hash and character-count caches are writable.
         return f'{d.name} = private unnamed_addr global {{i64, i64, i64, [{n} x i8]}} {{i64 {n - 1}, i64 0, i64 {chars1}, [{n} x i8] c"{llstr(d.text)}\\00"}}, align 8'
     if d.kind == "tuple":
-        # Fixed tuples use one i64 slot per item. These literals refer only to static strings,
-        # so no heap allocation or collector root is needed; keep their address significant.
-        slots = ["i64 ptrtoint (ptr " + v.v + " to i64)" if v.t == "str" else "i64 " + v.v for v in d.items]
+        # Fixed tuples use one i64 slot per item. These literals refer only to static strings and
+        # other such constants, so no heap allocation or collector root is needed; keep their
+        # address significant (an object's identity). The empty tuple is a slot that nothing
+        # reads, so that no other constant can share its address
+        slots = ["i64 " + const_slot(v) for v in d.items] if len(d.items) > 0 else ["i64 0"]
         return f"{d.name} = private constant [{len(slots)} x i64] [{', '.join(slots)}], align 8"
     if d.kind == "callable" or d.kind == "exception":
         # (an ExcClass whose displayed name the program assigns, d.text, is written: exc_set_module)
