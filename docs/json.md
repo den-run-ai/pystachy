@@ -133,8 +133,9 @@ As with CPython's defaults, the decoder accepts `NaN`, `Infinity` and
 
 Deliberate limits:
 
-- Integer tokens must fit signed 64-bit storage; a larger integer raises
-  `OverflowError`. Floating-point tokens use native double precision.
+- Typed `JSONValue` integer tokens must fit signed 64-bit storage; a larger integer
+  raises `OverflowError`. Dynamic `Any` decoding promotes larger integers as described
+  below. Floating-point tokens use native double precision.
 - Decoding and encoding permit at most 256 nested containers and raise
   `RecursionError` beyond that budget. Circular serialization raises
   `ValueError: Circular reference detected`.
@@ -177,12 +178,20 @@ code (`dict[str, Any]`, `list[dict[str, Any]]`) and `Any` code share, with no co
 through either shows through the other (`tests/programs/inference/dynany_json.py`,
 `tests/programs/inference/dynany_json_app.py`).
 
+The dynamic `loads()` and `_raw_decode()` paths preserve integer tokens beyond signed
+64-bit range as Python `int` values. The scanner retains its small-integer fast path and
+fixed-width indices; only an overflowing token crosses into a promoting-integer helper.
+The calling module does not need a `python-int` pragma. Conversion retains the runtime's
+4,300-digit limit and raises `ValueError` when it is exceeded. Typed `JSONValue` and the
+public `JSONDecoder` methods retain their signed-64-bit boundary.
+
 `dumps()` of `Any` values writes tuples as arrays, and int, float, bool and `None` keys as
 strings, and takes CPython's `skipkeys`, `check_circular` and `default` too. It raises CPython's
 `TypeError`s: `Object of type C is not JSON serializable` for a value JSON cannot hold, and `keys
 must be str, int, float, bool or None, not C`. A `default` callback's result becomes an `Any` value,
 so the callback is declared `-> Any`: one declared `-> dict[str, int]` is rejected, as a typed
-container is wherever it would become an `Any` value. Its other limits are those listed above.
+container is wherever it would become an `Any` value. It preserves wide integer values and
+keys; its other limits are those listed above.
 Without `sort_keys`, callbacks that delete and reinsert keys or clear and repopulate the dict
 can change output order or entries compared with CPython's live dict-table traversal (the
 [dynamic `Any` deviation](dynamic-any.md#selecting-dynamic-storage)).

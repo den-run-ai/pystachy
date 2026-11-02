@@ -73,7 +73,9 @@ value types it (`ws = [None]`, then `ws[0] = {...}`), keep their typed layouts.
 `json.loads()` decodes into these containers, and `json.dumps()` encodes `Any` values, in a module
 that opts in, where the document is `Any` values (#779; [the JSON prototype](json.md#in-modules-that-opt-in-to-dynamic-any)):
 a document decoded once is the same objects to the typed functions and the `Any` code it passes
-through. Without `sort_keys`, a `default()` callback's changes to later values and deletion of
+through. Dynamic JSON decoding promotes integer tokens beyond 64 bits without a caller
+`python-int` pragma, while retaining the decimal digit limit and fixed-width scanner indices.
+Without `sort_keys`, a `default()` callback's changes to later values and deletion of
 later keys are observed. Structural changes can differ from CPython's live dict-table traversal:
 the encoder keeps queued keys in their old order and appends newly observed keys. A deleted and
 reinserted key can therefore keep its old output position, and clearing and repopulating the

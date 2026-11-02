@@ -17,9 +17,7 @@ def repair_json(json_str: str = "", return_objects: bool = False,
         try:
             parsed_json = json.loads(json_str)
             is_valid_json = True
-        except (json.JSONDecodeError, TypeError, ValueError, OverflowError):
-            # Pystachy port: the native JSON scanner still bounds integer tokens
-            # to int64. The repair parser accepts those tokens as promoting ints.
+        except (json.JSONDecodeError, TypeError, ValueError):
             pass
     if not is_valid_json:
         parser = JSONParser(json_str, logging, stream_stable=stream_stable,
