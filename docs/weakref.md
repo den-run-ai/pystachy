@@ -95,6 +95,15 @@ not tied to `del`, scope exit or the loss of CPython's last counted reference.
 Repeatedly calling `r()` while waiting for collection can itself keep the target
 alive. `PYSTACHY_GC=off` naturally prevents automatic clearing.
 
+Allocations start collections, and the optimizer can delete some: an object or
+fixed tuple whose fields or items are all `int`, `float` or `bool` and that
+nothing keeps may never be allocated (`allocelide`, see
+[internals](internals.md#whole-program-optimization)). Such a deleted allocation
+counts toward no collection, so a reference can be cleared later than the
+program's allocations suggest. The optimizer never deletes an object or tuple
+that holds a reference: while the program still reads one, what it holds stays
+available.
+
 ## Implementation
 
 The Python wrapper stores one opaque, statically typed `weakhandle[T]`. The

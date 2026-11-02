@@ -1,0 +1,24 @@
+513 True
+1537 True
+1027 True
+514 512 512 1787
+515 True
+1543 True
+1027 True
+516 514 514 1794
+601 True
+1801 True
+1203 True
+602 600 600 2095
+801 True
+2401 True
+1603 True
+802 800 800 2795
+4000 True
+4000 13995
+maximum recursion depth exceeded while decoding a JSON array from a unicode string
+maximum recursion depth exceeded while decoding a JSON object from a unicode string
+maximum recursion depth exceeded while decoding a JSON array from a unicode string
+maximum recursion depth exceeded while encoding a JSON object
+1000
+[exit 0]

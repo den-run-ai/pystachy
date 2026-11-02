@@ -8,7 +8,7 @@ from src.pystachy_compiler.diagnostics import fail, dynamic_program, int_lists
 from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Val
 from src.pystachy_compiler.llvm_abi import llstr
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.specs import CTYPES, DYNTYPE_LL, GENCLEAN, GENCMD, GENDONE, GENNAME, GENRUN, GENSTATE, GLUE, LIBS, LINKDL, OBJECTC, RANGEC, RECURSION_BRANCH, RTDATA, RTSYM, STR_HEADER_SIZE, STRLEN_RANGE, TBAA_BYTES, TBAA_DEPTH, TBAA_DEPTH_TYPE, TBAA_FIELDS, TBAA_LEN, TBAA_LIMIT, TBAA_LIMIT_TYPE, TBAA_NAMES, TBAA_SIZES
+from src.pystachy_compiler.specs import CTYPES, DYNTYPE_LL, GENCLEAN, GENCMD, GENDONE, GENNAME, GENRUN, GENSTATE, GLUE, LIBS, LINKDL, OBJECTC, RANGEC, RECURSION_BRANCH, RTDATA, RTSYM, STR_HEADER_SIZE, STRLEN_RANGE, TBAA_BYTES, TBAA_DEPTH, TBAA_DEPTH_TYPE, TBAA_FIELDS, TBAA_FLOOR, TBAA_FLOOR_TYPE, TBAA_LEN, TBAA_LIMIT, TBAA_LIMIT_TYPE, TBAA_NAMES, TBAA_SIZES
 from src.pystachy_compiler.utils import RtFn, lt, runtime_decl, typestr
 
 # pystachy run on Linux, which loads the runtime as a shared library (the driver's RTSO, #704): a
@@ -42,75 +42,65 @@ def struct_types(ci: ClassInfo) -> list[str]:
     return [lt(ci.ftypes[x]) for x in ci.fields] + ["i1" for _ in range(ci.nflag)] + ["ptr" for _ in range(ci.nbox)]
 
 
+def recursion_guard(depth: list[str], failed: list[str]) -> list[str]:
+    # An entry's checks, after the code that reads the active depth (%depth): the limit, then the
+    # native stack's floor (#1015), the state's third word, which the stack pointer must not be
+    # below (llvm.stacksave reads it without a frame pointer, and unlike an alloca's address it
+    # leaves the function's tail calls alone). Each failure has its cold call of the runtime, whose
+    # RecursionError names the stack when it is the floor's; failed: what both do first
+    return ["entry:"] + depth + [
+        "  %limit.addr = getelementptr [3 x i64], ptr @pys_recursion_state, i64 0, i64 1",
+        f"  %limit = load i64, ptr %limit.addr, !tbaa !{TBAA_LIMIT}",
+        "  %full = icmp sge i64 %depth, %limit",
+        f"  br i1 %full, label %overflow, label %stack, !prof !{RECURSION_BRANCH}",
+        "stack:",
+        "  %floor.addr = getelementptr [3 x i64], ptr @pys_recursion_state, i64 0, i64 2",
+        f"  %floor = load i64, ptr %floor.addr, !tbaa !{TBAA_FLOOR}",
+        "  %sp = call ptr @llvm.stacksave.p0()",
+        "  %here = ptrtoint ptr %sp to i64",
+        "  %low = icmp ult i64 %here, %floor",
+        f"  br i1 %low, label %exhausted, label %entered, !prof !{RECURSION_BRANCH}",
+        "overflow:"] + failed + [
+        "  call void @pys_recursion_error() noreturn cold",
+        "  unreachable",
+        "exhausted:"] + failed + [
+        "  call void @pys_recursion_stack_error() noreturn cold",
+        "  unreachable",
+        "entered:",
+        "  %next = add i64 %depth, 1"]
+
+
 def recursion_ir(keys: list[str], used: bool, root: int, fields: bool, check: bool) -> list[str]:
     # The native depth accounting (docs/internals.md#native-recursion-depth) works on runtime.c's
-    # mutable state, two I words: the active depth, then the configured limit, which the program
-    # declares where it is used. The helpers keys names are the program's, even where the JIT
-    # runs the runtime as a separate library. An entry checks the limit (the C RecursionError is
-    # its cold path) and counts; LLVM's ordinary inliners take it (clang -O2 for build, the JIT's
-    # below its line limit), not mandatory inlining: LLVM 18's always-inline pass computes block
-    # frequencies of each caller, which costs a large JIT program's start-up more than the call
-    # saves. check: closed recursion's entry (Gen.recursionscope), which checks the depth its
-    # caller passed and returns its own, inlined alike. The scalar helpers, which only the
-    # hand-written pys.gen.drop.counted and extension entries call, are always inlined
+    # mutable state, three I words: the active depth, the configured limit and the native stack's
+    # floor, which the program declares where it is used. The helpers keys names are the program's,
+    # even where the JIT runs the runtime as a separate library. An entry checks the limit and the
+    # floor (recursion_guard: the C RecursionErrors are its cold paths) and counts; LLVM's ordinary
+    # inliners take it (clang -O2 for build, the JIT's below its line limit), not mandatory
+    # inlining: LLVM 18's always-inline pass computes block frequencies of each caller, which costs
+    # a large JIT program's start-up more than the call saves. check: closed recursion's entry
+    # (Gen.recursionscope), which checks the depth its caller passed and returns its own, inlined
+    # alike. The scalar helpers, which only the hand-written pys.gen.drop.counted and extension
+    # entries call, are always inlined
     if not used:
         return []
-    out = ["@pys_recursion_state = external global [2 x i64]"]
+    out = ["@pys_recursion_state = external global [3 x i64]"]
+    if check or "recursion.enter" in keys or "recursion.resume" in keys:
+        out.append("declare ptr @llvm.stacksave.p0()")
     if check:
-        out.extend([
-            "define internal i64 @pys.recursion.check(i64 %depth) {",
-            "entry:",
-            "  %limit.addr = getelementptr [2 x i64], ptr @pys_recursion_state, i64 0, i64 1",
-            f"  %limit = load i64, ptr %limit.addr, !tbaa !{TBAA_LIMIT}",
-            "  %full = icmp sge i64 %depth, %limit",
-            f"  br i1 %full, label %overflow, label %entered, !prof !{RECURSION_BRANCH}",
-            "overflow:",
-            "  call void @pys_recursion_error() noreturn cold",
-            "  unreachable",
-            "entered:",
-            "  %next = add i64 %depth, 1",
+        out.extend(["define internal i64 @pys.recursion.check(i64 %depth) {"] + recursion_guard([], []) + [
             "  ret i64 %next",
             "}",
         ])
+    load = [f"  %depth = load i64, ptr @pys_recursion_state, !tbaa !{TBAA_DEPTH}"]
+    counted = [f"  store i64 %next, ptr @pys_recursion_state, !tbaa !{TBAA_DEPTH}", "  ret i64 %next", "}"]
     if "recursion.enter" in keys:
-        out.extend([
-            "define internal i64 @pys.recursion.enter() {",
-            "entry:",
-            f"  %depth = load i64, ptr @pys_recursion_state, !tbaa !{TBAA_DEPTH}",
-            "  %limit.addr = getelementptr [2 x i64], ptr @pys_recursion_state, i64 0, i64 1",
-            f"  %limit = load i64, ptr %limit.addr, !tbaa !{TBAA_LIMIT}",
-            "  %full = icmp sge i64 %depth, %limit",
-            f"  br i1 %full, label %overflow, label %entered, !prof !{RECURSION_BRANCH}",
-            "overflow:",
-            "  call void @pys_recursion_error() noreturn cold",
-            "  unreachable",
-            "entered:",
-            "  %next = add i64 %depth, 1",
-            f"  store i64 %next, ptr @pys_recursion_state, !tbaa !{TBAA_DEPTH}",
-            "  ret i64 %next",
-            "}",
-        ])
+        out.extend(["define internal i64 @pys.recursion.enter() {"] + recursion_guard(load, []) + counted)
     if "recursion.resume" in keys:
         # (a generator resume's entry, given the generator's state word: one that fails finishes the
         # generator before it raises, as CPython clears a frame whose entry exceeds the limit)
-        out.extend([
-            "define internal i64 @pys.recursion.resume(ptr %state) {",
-            "entry:",
-            f"  %depth = load i64, ptr @pys_recursion_state, !tbaa !{TBAA_DEPTH}",
-            "  %limit.addr = getelementptr [2 x i64], ptr @pys_recursion_state, i64 0, i64 1",
-            f"  %limit = load i64, ptr %limit.addr, !tbaa !{TBAA_LIMIT}",
-            "  %full = icmp sge i64 %depth, %limit",
-            f"  br i1 %full, label %overflow, label %entered, !prof !{RECURSION_BRANCH}",
-            "overflow:",
-            f"  store i64 {GENDONE}, ptr %state",
-            "  call void @pys_recursion_error() noreturn cold",
-            "  unreachable",
-            "entered:",
-            "  %next = add i64 %depth, 1",
-            f"  store i64 %next, ptr @pys_recursion_state, !tbaa !{TBAA_DEPTH}",
-            "  ret i64 %next",
-            "}",
-        ])
+        out.extend(["define internal i64 @pys.recursion.resume(ptr %state) {"]
+                   + recursion_guard(load, [f"  store i64 {GENDONE}, ptr %state"]) + counted)
     if "recursion.leave" in keys:
         out.extend([
             "define internal void @pys.recursion.leave() alwaysinline nounwind {",
@@ -142,8 +132,10 @@ def recursion_ir(keys: list[str], used: bool, root: int, fields: bool, check: bo
     out.extend([
         f'!{TBAA_DEPTH_TYPE} = !{{!"recursion depth", !{root}, i64 0}}',
         f'!{TBAA_LIMIT_TYPE} = !{{!"recursion limit", !{root}, i64 0}}',
+        f'!{TBAA_FLOOR_TYPE} = !{{!"stack floor", !{root}, i64 0}}',
         f"!{TBAA_DEPTH} = !{{!{TBAA_DEPTH_TYPE}, !{TBAA_DEPTH_TYPE}, i64 0}}",
         f"!{TBAA_LIMIT} = !{{!{TBAA_LIMIT_TYPE}, !{TBAA_LIMIT_TYPE}, i64 0}}",
+        f"!{TBAA_FLOOR} = !{{!{TBAA_FLOOR_TYPE}, !{TBAA_FLOOR_TYPE}, i64 0}}",
         f'!{RECURSION_BRANCH} = !{{!"branch_weights", i32 1, i32 1048575}}',
     ])
     return out
@@ -632,6 +624,7 @@ def gen_gen_module(self) -> list[str]:
 def gen_lower_module(self) -> str:
     if not self.rtmode and ("recursion.enter" in self.rtfns or "recursion.resume" in self.rtfns):
         self.runtime("pys_recursion_error")
+        self.runtime("pys_recursion_stack_error")
     hdr: list[str] = ["; generated by pystachy"]
     for ci in self.classes.values():
         if ci.name in self.tmpl:

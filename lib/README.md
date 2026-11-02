@@ -41,7 +41,7 @@ also applies to compiled library functions.
 | `shlex` | Adapted CPython | `split`, `quote`, `join`, lexer options and source stacking | Files are read eagerly; punctuation field is writable |
 | `io`, `_io` | Subset implementation; `_io` (`_pystachy__io`) gives its names under the C module's | `StringIO` and `BytesIO` (also in `with`), seek constants and `TextIOWrapper` over binary buffer objects, with CPython's chunked reads and writes; `IncrementalNewlineDecoder` of `str` input, `text_encoding()`, `open`, `BlockingIOError` and `DEFAULT_BUFFER_SIZE` | Lazy line iteration; no `getbuffer()` or `readinto()`; `TextIOWrapper` of UTF-8, Latin-1 and ASCII, without `seek`/`tell`/`detach`/`reconfigure`; no binary files, so no `FileIO`, `Buffered*` classes or `open_code()` |
 | `csv` | Subset implementation | Reader/writer, dict reader/writer, dialects and registry | Eager reading; reader fields are strings; no `Sniffer` |
-| `json` | Native recursive-value prototype | `loads(str)`, `dumps(JSONValue)`, default `JSONDecoder.decode/raw_decode`, `JSONDecodeError`; Unicode, mixed arrays/objects, sorting and separators; in modules that opt in to dynamic `Any`, `loads()` into `Any` storage with promoting integer tokens and `dumps()` of `Any` values (tuples, non-`str` keys, `skipkeys`, `check_circular`, `default`) | Typed `JSONValue` integers remain signed 64-bit; 256-container depth, string keys for `JSONValue`; no hooks, indentation or file APIs; see [scope](../docs/json.md) |
+| `json` | Native recursive-value prototype | `loads(str)`, `dumps(JSONValue)`, default `JSONDecoder.decode/raw_decode`, `JSONDecodeError`; Unicode, mixed arrays/objects, sorting and separators; in modules that opt in to dynamic `Any`, `loads()` into `Any` storage with promoting integer tokens and `dumps()` of `Any` values (tuples, non-`str` keys, `skipkeys`, `check_circular`, `default`) | Typed `JSONValue` integers remain signed 64-bit; nesting within the recursion limit and 2,000 containers, string keys for `JSONValue`; no hooks, indentation or file APIs; see [scope](../docs/json.md) |
 | `tomllib` | Adapted CPython, compiled with [dynamic `Any`](../docs/dynamic-any.md) | `loads()` (also with `parse_float`) and `TOMLDecodeError`, with CPython's results and messages: tables, arrays, strings, numbers, booleans and datetimes, as dynamic values that a program narrows with `isinstance()` or annotations | No `load()`, which reads a binary file; see [limits](compatibility.md#tomllib) |
 | `re` | Subset port of parser/compiler and C engine; optional matchers generated for a program's own patterns ([prototype](../docs/re-specialization.md)) | String regex syntax and matching, substitution, caches, runtime-length `Match.groups()` | Selected variable-length result APIs unavailable |
 | `fnmatch` | Adapted CPython | `fnmatch`, `fnmatchcase`, `filter`, `translate` | String patterns; POSIX case handling |
@@ -156,8 +156,9 @@ overflowing integer tokens without promoting the shared scanner's indices.
 
 `_pystachy_bytescan.py` provides a bounded byte-span helper for native parsers.
 It finds either of two delimiter bytes or a byte below a threshold, returning the
-range end on a miss. JSON shares it between ordinary strings and the spans that
-follow a long run and an escape, for both recursive typed values and dynamic `Any`. Direct positional
+range end on a miss. JSON uses it past the first 32 bytes of a string value in a text
+longer than 1 KiB, and for the spans that follow a long run and an escape, for both
+recursive typed values and dynamic `Any`. Direct positional
 calls of the shipped helper use portable eight-byte scanning; other call forms
 and CPython retain its scalar implementation. It adds no method to `bytes` and
 does not change decoding, Unicode positions or repair heuristics.

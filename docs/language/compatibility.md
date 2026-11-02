@@ -36,9 +36,10 @@ In these cases a program can compile but behave differently from CPython.
 
 - The native JSON prototype's typed `JSONValue` path rejects integer tokens outside
   signed 64-bit range with `OverflowError`; its dynamic `Any` decoder promotes them
-  and retains the runtime's decimal digit limit. The decoder and encoder allow at most 256 nested
-  containers, then raise `RecursionError`, independently of CPython's recursion
-  limit ([deviation](../../tests/deviations/json_limits.py),
+  and retains the runtime's decimal digit limit. Nested containers count against the native
+  recursion limit (about 500 decoded and 1,000 encoded at the default limit of 1,000) and stop
+  at 2,000 under a raised limit, then raise `RecursionError`; CPython's C codec accepts 9,998 at
+  any recursion limit ([deviation](../../tests/deviations/json_limits.py),
   [API scope](../../lib/compatibility.md#json)).
 
 - Floats are unboxed, so a NaN has no identity: `nan in [nan]` is `False`, and lists or
@@ -219,9 +220,9 @@ above apply to well-formed text (with the surrogate exception described above).
 - An exception that nothing catches prints only the last line of CPython's traceback (without
   `NameError`'s "Did you mean" hints) and exits with status 1 after flushing stdout; CPython's
   compile-time `SyntaxWarning`s are not printed. Running out of memory (`MemoryError`), a
-  Ctrl-C (`KeyboardInterrupt`) and running out of stack end the program at once: no
-  `except` clause catches them, and no `finally` block runs (a `raise KeyboardInterrupt` is
-  an exception like the others).
+  Ctrl-C (`KeyboardInterrupt`) and running out of stack where no recursion check comes
+  first (below) end the program at once: no `except` clause catches them, and no `finally`
+  block runs (a `raise KeyboardInterrupt` is an exception like the others).
 
 - `sys.setrecursionlimit()` bounds recursive native calls in both JIT and AOT.
   Exceeding it raises catchable `RecursionError`, with ordinary `except`, `finally` and
@@ -245,11 +246,30 @@ above apply to well-formed text (with the surrogate exception described above).
   dispatch adapters and runtime helpers do not add frames. A generator counts only while
   its body is running, not while suspended; resuming it uses its current caller's depth.
   Inlining and optimized tail calls preserve this policy. Exact failure depths and error
-  messages can also differ from CPython because its internal frames differ. Native stack
-  exhaustion itself is still not recoverable: an excessively raised limit, unusually large
-  native frames or foreign calls can exhaust the physical stack before the logical limit.
-  Keep recursion limits conservative for the deployment stack. The separate fixed
-  budgets for recursive aliases and JSON remain in effect.
+  messages can also differ from CPython because its internal frames differ. Recursive aliases
+  keep their separate fixed budget, and JSON nesting stops at 2,000 containers under any limit.
+
+  Compiled frames live on the thread's native stack, where CPython keeps Python frames on
+  the heap. The same counted entries therefore also compare the stack pointer with a floor
+  256 KiB above the end of the thread's stack (an eighth of the way up a stack smaller than
+  2 MiB), and raise `RecursionError` there, with the same unwinding, whatever the limit:
+  the message is `maximum recursion depth exceeded (the native stack is nearly full)`. A
+  recursion that the stack cannot hold, under a limit raised that far, raises where CPython
+  completes (`tests/deviations/recursion_native_stack.py`): with the usual 8 MiB stack,
+  somewhere between tens of thousands and a few hundred thousand frames, depending on their
+  sizes. A larger stack (`ulimit -s`) moves the floor with it. The margin is left to what
+  runs without a counted entry: non-recursive functions called from the deepest frame, the
+  runtime's own bounded recursion (a `repr()` or comparison of nested containers), raising
+  the error and a signal handler. Running out of stack is still not recoverable where those
+  need more than the margin, in foreign code (C calls through `ffi`, an embedded CPython),
+  or where the runtime cannot find the thread's stack bounds (a thread other than the main
+  one under a Linux C library other than glibc, or a stack the program has switched): there
+  is no floor. An unlimited stack (`ulimit -s unlimited`) has none in practice either. On
+  Linux, the main thread's floor assumes that its stack can grow to `RLIMIT_STACK`: memory
+  mapped within that range, which a host process can have after raising the limit itself
+  before it imports an extension module, stops the stack sooner, and recursion can still
+  overflow it there. An extension module takes the floor of the thread that imports it, the
+  only one that may call it, even when that thread is already within the margin.
 
 - An exception keeps `str()` of its arguments and what `repr()` shows of them as it is made,
   once all the arguments of the call are evaluated (their `__str__` and `__repr__` run then),
@@ -355,7 +375,14 @@ above apply to well-formed text (with the surrogate exception described above).
   it, and opening a file that has a writer open runs a collection first; but the stack scan
   is conservative, so a writer that a function dropped a moment ago can still look reachable.
   Its data can then be missing when the file is read back, and appends through several
-  dropped writers can land out of order.
+  dropped writers can land out of order. Collections start as the program allocates, and
+  the optimizer deletes the allocations of objects and fixed tuples that hold only `int`,
+  `float` and `bool` values and that nothing keeps (`allocelide`,
+  [internals](../internals.md#whole-program-optimization)): those count toward no
+  collection, so a dropped file is closed, a weak reference cleared and an `ffi.track`
+  reference released at a later collection than the program's allocations suggest. The
+  optimizer never deletes an object or tuple that holds a reference, which keeps what it
+  holds while the program reads it.
 
 - A suspended generator that the program drops (a variable that goes, `del`, a generator kept
   only in a container, a temporary such as `next(g())`'s, one still suspended when the program

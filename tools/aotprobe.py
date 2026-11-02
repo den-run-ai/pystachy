@@ -4,23 +4,33 @@ usage: python3 tools/aotprobe.py [-c LABEL=COMMAND]...
 pystachy build defines pys_plain in the program's module, which -O2 optimizes with the runtime:
 1 for a program that opts in to neither dynamic Any nor promoting ints, else 0 (runtime.c's
 opt_in). A transparent clang wrapper captures the module the driver compiles, which must hold
-that definition. A plain program that appends to, compares, hashes, looks up, formats and
-prints lists, dicts, sets and tuples must keep none of the runtime's code for ints past 64 bits,
-promoting ints and list identities (OPT_IN_ONLY: static functions and data that only such values
-reach). The same program opting in to promoting ints (with ints past 64 bits in its containers)
+that definition. A plain program that appends to, stores into, compares, hashes, looks up,
+formats and prints lists, dicts, sets and tuples must keep none of the runtime's code for ints
+past 64 bits, promoting ints and list identities (OPT_IN_ONLY: static functions and data that
+only such values reach, including the code that keeps a list's identity companion in step). The
+same program opting in to promoting ints (with ints past 64 bits in its containers)
 or to dynamic Any collectively keep each of them, so that a renamed or inlined symbol fails here
 rather than passes unseen. Wrappers importing those modules check that an imported opt-in also
 keeps the feature paths available. Every executable prints what CPython prints. The symbols are LLVM 18's on
-Linux (CI's); another LLVM may inline differently.
+Linux (CI's); another LLVM may inline differently. A list store has no symbol of its own: in the
+module -O2 makes of the captured one (the driver's own step, clang -O2), the plain program's
+pys_list_set must store its item alone, and the python-int program's also its companion entry
+and pending mark (STORE), so that the check sees them where they belong.
 
-Allocations (allocelide, #1017): compiled code's objects come from pys_new, which -O2 sees as an
-allocation and deletes where nothing keeps the object, before the late step inlines the
-allocator's fast path into the calls left. An opt wrapper keeps the module -O2 gave that step
-(prog-opt.bc), where each allocation left is a call of pys_new (the runtime's C code never calls
-it): TEMPS, whose vectors never leave walk(), keeps none, and KEPT, whose objects a list keeps,
-does. With allocelide off there is no late step, and with pys_new inlined before -O2 KEPT keeps
-no call: either fails here. KEPT also builds with PYSTACHY_CFLAGS=-O0, whose runtime gives pys_new
-optnone, which the late step must drop too (LLVM's verifier rejects optnone without noinline).
+Allocations (allocelide, #1017): compiled code's objects that hold no reference (only ints,
+floats and bools) come from pys_new, which -O2 sees as an allocation and deletes where nothing
+keeps the object, before the late step inlines the allocator's fast path into the calls left. An
+opt wrapper keeps the module -O2 gave that step (prog-opt.bc), where each allocation left is a
+call of pys_new (the runtime's C code never calls it): TEMPS, whose vectors never leave walk(),
+keeps none, and KEPT, whose objects a list keeps, does. With allocelide off there is no late step,
+and with pys_new inlined before -O2 KEPT keeps no call: either fails here. KEPT also builds with
+PYSTACHY_CFLAGS=-O0, whose runtime gives pys_new optnone, which the late step must drop too (LLVM's
+verifier rejects optnone without noinline). HELD's holders, an object and a tuple that hold an
+object each and that run() reads after collections, hold references: their allocations are
+pys_alloc's, which -O2 never deletes, and only the objects they hold, which hold none, pys_new's.
+Its executable, also with a collection at every allocation, keeps the held objects alive, as
+CPython does: weak references to them stay alive (with the marked call, -O2 forwarded a holder's
+fields across the collections and left the holder's address dead, and the collector freed them).
 """
 import argparse
 import os
@@ -48,6 +58,7 @@ for i in [3, 1, 2]:
     xs.append(i)
 xs.insert(0, 3)
 xs.remove(3)
+xs[-1] = 2
 d: dict[int, int] = {}
 for k in [3, 1]:
     d[k] = k * k
@@ -69,8 +80,15 @@ INT = "# pystachy: python-int\n"
 DYN = "# pystachy: dynamic-any\n"
 # what only an int past 64 bits, a promoting int or a list's identity reaches (runtime.c): its
 # repr's and float comparison's mpz code, a dict's and a set's lookups of such a key, the
-# comparisons of promoting ints in containers and tuples, and the small-int boxes of identities
-OPT_IN_ONLY = ["mpz_digits", "mpz_cmp_float", "big_eq", "dbfind", "sbfind", "jeq", "smallint"]
+# comparisons of promoting ints in containers and tuples, the small-int boxes of identities, and
+# the list code that keeps a companion in step: an append's, a copy's, and an emptied list's
+OPT_IN_ONLY = ["mpz_digits", "mpz_cmp_float", "big_eq", "dbfind", "sbfind", "jeq", "smallint",
+               "list_append_boxed", "list_identity_slow", "empty_identity_int", "empty_identity_float",
+               "empty_identity_big"]
+# the stores of -O2's pys_list_set (PROGRAM's xs[-1] = 2): the item's, and an opt-in program's
+# companion entry and pending mark
+LIST_SET = re.compile(r"^define [^\n]*@pys_list_set\(.*?^}$", re.M | re.S)
+STORE = re.compile(r"^\s+store ", re.M)
 # objects that never escape (allocelide: none is allocated) and objects that a list keeps (each is)
 TEMPS = '''class Vec:
     def __init__(self, x: float, y: float, z: float) -> None:
@@ -119,8 +137,44 @@ def keep(n: int) -> list[Item]:
 
 print(sum([item.x for item in keep(1000)]))
 '''
+# holders, which hold references, that run() reads after collections, and the objects they hold,
+# which hold none: weak references to those must stay alive
+HELD = '''from _weakref import ref
+
+
+class Item:
+    def __init__(self, value: int) -> None:
+        self.value = value
+
+
+class Holder:
+    def __init__(self, item: Item, tag: str) -> None:
+        self.item = item
+        self.tag = tag
+
+
+def churn() -> None:
+    for i in range(1024):
+        text = str(i) * 65536
+        assert len(text) >= 65536
+
+
+def run(n: int) -> None:
+    h = Holder(Item(n), "h")
+    t = (Item(n + 1), n * 2)
+    rs = [ref(h.item), ref(t[0])]
+    churn()
+    print([r() is None for r in rs], h.tag, t[1])
+
+
+run(1)
+'''
 # the allocations of compiled code that -O2 left: its calls of pys_new
 NEW = re.compile(r"call [^@\n]*@pys_new\(")
+# HELD's run() as the compiler emits it, and the operands of its calls of pys_new and pys_alloc
+RUN = re.compile(r"^define[^\n]*@f\.run\([^\n]*\n.*?^}", re.M | re.S)
+NEWS = re.compile(r"call [^@\n]*@pys_new\(([^\n]*)")
+ALLOCS = re.compile(r"call ptr @pys_alloc\(([^\n]*)")
 
 
 def run(command, env, cwd=ROOT):
@@ -178,6 +232,7 @@ def main():
             label, command = spec.split("=", 1)
             cmd = shlex.split(command)
             kept = {}
+            stores = {}
             for name in sources:
                 src = temp / f"{name.replace('-', '_')}.py"
                 exe = temp / f"{label}-{name}"
@@ -193,14 +248,26 @@ def main():
                 if run([str(exe)], env, temp) != expected[name]:
                     raise RuntimeError(f"{label} {name}: the AOT executable's output differs from CPython's")
                 kept[name] = symbols(real["llvm-nm"], exe) & set(OPT_IN_ONLY)
+                if name in ("plain", "python-int"):
+                    o2 = temp / f"{label}-{name}-O2.bc"
+                    run([real["clang"], "-O2", "-c", "-emit-llvm", str(capture), "-o", str(o2)], env)
+                    body = LIST_SET.search(run([real["llvm-dis"], str(o2), "-o", "-"], env).decode())
+                    if body is None:
+                        raise RuntimeError(f"{label} {name}: the module -O2 made defines no pys_list_set")
+                    stores[name] = len(STORE.findall(body.group(0)))
             if kept["plain"]:
                 raise RuntimeError(f"{label}: the plain program's executable keeps opt-in runtime code: {sorted(kept['plain'])}")
+            if stores["plain"] != 1 or stores["python-int"] < 2:
+                raise RuntimeError(f"{label}: -O2's pys_list_set stores {stores['plain']} times in the plain program (its item "
+                                   f"alone: 1) and {stores['python-int']} in the python-int one (its companion's too: 2 or more)")
             for suffix in ("", "-import"):
                 missing = set(OPT_IN_ONLY) - kept["python-int" + suffix] - kept["dynamic-any" + suffix]
                 if missing:
                     raise RuntimeError(f"{label}: opt-in programs{suffix} do not keep {sorted(missing)}: update OPT_IN_ONLY")
             print(f"{label}: pys_plain 1, 0, 0, 0, 0; the plain executable keeps none of {len(OPT_IN_ONLY)} opt-in symbols, "
                   f"the python-int one {len(kept['python-int'])} and the dynamic-any one {len(kept['dynamic-any'])}; outputs as CPython's")
+            print(f"{label}: -O2's pys_list_set stores {stores['plain']} time in the plain program, "
+                  f"{stores['python-int']} times in the python-int one")
             left = {}
             for name, text in (("temps", TEMPS), ("kept", KEPT)):
                 src = temp / f"{name}.py"
@@ -226,6 +293,24 @@ def main():
             if run([str(exe)], env, temp) != run([sys.executable, "kept.py"], env, temp):
                 raise RuntimeError(f"{label} kept with PYSTACHY_CFLAGS=-O0: the AOT executable's output differs from CPython's")
             print(f"{label}: with PYSTACHY_CFLAGS=-O0 (a runtime whose pys_new is optnone), the late step runs and the output is CPython's")
+            src = temp / "held.py"
+            src.write_text(HELD)
+            body = RUN.search(run(cmd + ["ir", str(src)], env).decode())
+            if body is None:
+                raise RuntimeError(f"{label} held: the IR defines no run()")
+            news = NEWS.findall(body.group())
+            allocs = ALLOCS.findall(body.group())
+            if len(news) != 2 or any("%C.Item," not in a for a in news):
+                raise RuntimeError(f"{label} held: run()'s pys_new calls are not the two held objects': {news}")
+            if not any("%C.Holder," in a for a in allocs) or "i64 16)" not in allocs:
+                raise RuntimeError(f"{label} held: run()'s holders do not come from pys_alloc: {allocs}")
+            exe = temp / f"{label}-held"
+            run(cmd + ["build", str(src), "-o", str(exe)], env)
+            want = run([sys.executable, "held.py"], env, temp)
+            for stress in ({}, {"PYSTACHY_GC_STRESS": "1"}):
+                if run([str(exe)], env | stress, temp) != want:
+                    raise RuntimeError(f"{label} held: the AOT executable's output differs from CPython's{' under GC stress' if stress else ''}: a holder's object was collected")
+            print(f"{label}: held objects stay alive through collections, also under GC stress; their holders come from pys_alloc, the objects from pys_new")
     return 0
 
 

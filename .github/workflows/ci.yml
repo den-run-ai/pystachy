@@ -151,10 +151,11 @@ jobs:
             exit 1
           fi
 
-      - name: Native thread stack-size edge cases and ABI controls
+      - name: Native thread stack-size edge cases, the native stack's floor and ABI controls
         if: matrix.group == 'contracts'
         run: |
           python3 -m unittest discover -s tools -p test_runtime_thread.py
+          python3 -m unittest discover -s tools -p test_stack_floor.py
           python3 -m unittest discover -s tools -p test_runtime_signatures.py
 
       - name: Sanitized shared and object JIT linkage controls
