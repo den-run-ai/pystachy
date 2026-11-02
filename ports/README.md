@@ -65,4 +65,4 @@ compiler snapshots; they are not promises for current builds or comparisons agai
 native accelerator. In particular, faster execution does not imply less memory for every port.
 
 The [standard-library notes](../lib/README.md) cover modules shipped in `lib/`.
-The [language guide](../docs/language.md) describes current typing and runtime boundaries.
+The [language guide](../docs/language.md#support-at-a-glance) describes current typing and runtime boundaries.

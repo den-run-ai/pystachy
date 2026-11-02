@@ -45,7 +45,8 @@ not mean a feature is experimental unless it says **PROTO**, and red does not me
 entire enclosing feature should be removed. The areas are schematic, not coverage percentages.
 Read **support status**, **representation** and **measured cost** separately. A yellow
 operation can outperform CPython; a green operation can still have high algorithmic cost.
-The red examples are not an exhaustive inventory of deviations.
+The red examples are not an exhaustive inventory of deviations. The
+[language guide](language.md#support-at-a-glance) applies the same statuses to feature areas.
 
 ## 1. The native subset to preserve
 
@@ -329,7 +330,8 @@ a default switch with its own cost budget. This map makes neither promotion: cor
 gaps, corpus exceptions, whole-import-graph behavior and application/retained-memory
 acceptance still matter.
 
-When updating this page, change the affected SVG labels and tables together, recheck the
+When updating this page, change the affected SVG labels and tables together, including the
+language guide's [summary of the payoff map](language.md#performance-and-complexity), recheck the
 linked issue's remaining scope, and retain the distinction between an unavailable feature,
 an intentional restriction, a known accepted deviation and a measured cost. The SVGs are
 editable vector sources in [images/](images/); labels and the tables carry the meaning

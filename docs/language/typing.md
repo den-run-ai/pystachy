@@ -8,7 +8,7 @@ unsupported forms, see [compatibility](compatibility.md).
 | Type | Constraint |
 |---|---|
 | `int` | Signed 64-bit; overflow raises `OverflowError` |
-| `float`, `bool`, `str` | Double-precision floats; strings hold UTF-8 with byte-based indexing |
+| `float`, `bool`, `str` | Double-precision floats; strings hold UTF-8, with code-point lengths, indexing and slicing |
 | `bytes` | Immutable bytes, whose items are ints; also a dict key and set element |
 | `list[T]`, `dict[K, V]` | One static element type, or one key and value type |
 | `set[T]`, `frozenset[T]` | Elements must use the supported dict key types |
@@ -42,8 +42,8 @@ handlers. Their errors are CPython's `UnicodeDecodeError` and `UnicodeEncodeErro
 messages.
 
 `tuple(xs)` copies a supported homogeneous list or a string into an immutable
-runtime-length tuple; later list mutation does not change it. String conversion follows
-the existing UTF-8 byte iteration rules ([compatibility](compatibility.md)). `tuple(t)` returns an
+runtime-length tuple; later list mutation does not change it. A string converts to a tuple of
+its code points ([text](compatibility.md#text-and-file-positions)). `tuple(t)` returns an
 existing tuple unchanged unless an annotation requests a representation conversion
 ([identity limitations](compatibility.md#functions-and-object-identity)). A fixed tuple literal can initialize `tuple[T, ...]`,
 including `()`, and a tuple display with a starred list makes one (`(*xs, 0)`). Supported
@@ -941,6 +941,11 @@ specialization and does not execute the helper or its defaults during inference.
 unpacked arguments, local call targets, and helpers whose return is needed before class
 specialization still require an explicit field annotation.
 
+Construction requires `__init__` to return `None`. A different result raises a catchable
+`TypeError` after the initializer runs, including for inherited initializers, exception
+classes and `dataclasses.replace()`. Explicit method calls such as `obj.__init__()` or
+`super().__init__()` return the method's result normally.
+
 A class-body default is a class attribute, read by instances until they assign their own
 value. Later changes to the class attribute affect those instances. Unannotated class-body
 assignments infer their type, except in dataclasses and NamedTuples, where annotations are
@@ -956,7 +961,8 @@ that read.
 
 A `@dataclass` writes `__init__` (which calls `__post_init__`), `__repr__` and `__eq__` unless
 its `init`, `repr` or `eq` option is false, and with `order=True` the comparisons of the tuples
-of its fields. `dataclasses.field()` takes `default`, `default_factory`, `init`, `repr`,
+of its fields. Its options are `init`, `repr`, `eq`, `order`, `unsafe_hash`, `frozen`,
+`match_args` and `kw_only`; `slots=True` is not supported. `dataclasses.field()` takes `default`, `default_factory`, `init`, `repr`,
 `compare`, `hash` and `kw_only`; a factory is a function, a class or a lambda without
 parameters, called for each object that is not given the field (after the call's arguments,
 in field order, also for `init=False` fields). `_: KW_ONLY` makes the
@@ -989,6 +995,20 @@ docstrings of classes, so reading one is rejected.
 Static and class methods can be called through their class or an instance, subject to the
 inheritance restrictions below. See [compatibility](compatibility.md#classes-dataclasses-and-namedtuples)
 for dataclass options and further restrictions.
+
+### Slots
+
+Literal `__slots__` strings, tuples and lists restrict instance field writes when every
+base also declares slots. A subclass without slots, or with an unslotted base, may add
+fields. Dynamic slots, private slot names, `__dict__` and `__weakref__` slots are
+unsupported. The `__slots__` class attribute remains readable through the class or an
+instance; changing its value does not change the declared slots. Instance rebinding
+of `__slots__` is unsupported, as are base-typed reads when subclasses use different
+metadata types, or when an exception subclass overrides the metadata (read through
+the concrete class instead). Slot violations are compile errors rather than catchable
+exceptions. Repeated slot declarations and class variables or methods shadowing inherited
+slots are also unsupported, as are new slots shadowing inherited methods, properties or
+class variables.
 
 ## Single inheritance
 

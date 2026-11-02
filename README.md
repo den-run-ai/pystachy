@@ -186,7 +186,8 @@ best; most PyPI packages do not compile unchanged.
   semantic differences are listed under
   [deviations from CPython](docs/language.md#deviations-from-cpython).
 
-The [language reference](docs/language.md) documents supported features and typing rules.
+The [language guide](docs/language.md#support-at-a-glance) summarizes each feature area's
+status, gaps and costs, and links the detailed typing and compatibility rules.
 
 ## Roadmap
 
@@ -206,7 +207,7 @@ Start with the [documentation index](docs/README.md) for task-based navigation.
 | Guide | Covers |
 |---|---|
 | [Getting started](docs/getting-started.md) | One program, a compiler diagnostic, a fix and measurement basics |
-| [Language](docs/language.md) | Supported Python, typing rules and semantic differences |
+| [Language](docs/language.md) | Support by feature area, performance trade-offs, typing rules and CPython differences |
 | [Libraries](lib/README.md) | Available modules, port adaptations and upstream tests |
 | [Performance](docs/performance.md) | Speed, startup, memory and compile-time measurements |
 | [Caching](docs/caching.md) | Regex, text processing and memoization benchmarks |
