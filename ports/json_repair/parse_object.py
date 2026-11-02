@@ -195,6 +195,13 @@ def _parse_object_value(
     try:
         self.skip_whitespaces()
         char = self.get_char_at()
+        # Pystachy port: a comment after ':' is not the member's value.
+        # Consume consecutive comments without recursing, then dispatch the
+        # actual value in the same context (upstream json_repair issue #240).
+        while char in ["#", "/"]:
+            self.parse_comment()
+            self.skip_whitespaces()
+            char = self.get_char_at()
         if char in [",", "}"]:
             self.log(
                 f"While parsing an object value we found a stray {char}, ignoring it",

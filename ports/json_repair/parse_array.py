@@ -24,6 +24,14 @@ def parse_array(
         self.skip_whitespaces()
         char = self.get_char_at()
         while char and char not in [closing_delimiter, "}"]:
+            # Pystachy port: comments are not empty array items. In particular,
+            # the empty-value recovery below must not skip the next value's
+            # first character when it immediately follows a block comment.
+            if char in ["#", "/"]:
+                self.parse_comment()
+                self.skip_whitespaces()
+                char = self.get_char_at()
+                continue
             if char is not None and char in STRING_DELIMITERS:
                 # A string followed by ':' is often a missing object start; treat it as an object.
                 i = 1

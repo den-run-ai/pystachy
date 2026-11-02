@@ -8,11 +8,13 @@ json.dumps() of a value that holds Any values. loads() decodes straight into Any
 then share; dumps() walks Any values as CPython's encoder walks objects: tuples are arrays, int,
 float, bool and None keys become strings, and a value JSON cannot hold raises its TypeError.
 json's own functions keep JSONValue's typed storage for other code. The text scanner, its errors
-and limits are json's (_Parser): strings, keys, numbers, 64-bit integers, 256 levels of nesting.
+and limits are json's (_Parser): strings, keys, number syntax and 256 levels of nesting.
+Integer tokens beyond int64 promote through a separate helper; scanner indices stay fixed-width.
 """
 from typing import Any
 
 from json import _ARRAY_TOKEN, _OBJECT_TOKEN, _Parser, _STRING_TOKEN, _quote
+from _pystachy_json_int import _integer
 
 
 def _value(p: _Parser, depth: int) -> Any:
@@ -25,13 +27,15 @@ def _value(p: _Parser, depth: int) -> Any:
         if token is _ARRAY_TOKEN:
             return _array(p, depth)
         return _object(p, depth)
-    v = p.scalar_value()  # a number or a constant, in json's existing typed representation
+    v = p.scalar_value()  # a number, constant, or an overflowing integer token
     if isinstance(v, bool):
         return v
     if isinstance(v, int):
         return v
     if isinstance(v, float):
         return v
+    if isinstance(v, str):
+        return _integer(v)
     return None
 
 

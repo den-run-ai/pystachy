@@ -64,11 +64,11 @@ def parse_comment(self, record_top_level_value: bool = False) -> Any:
                 # to avoid getting stuck in an infinite loop
                 self.index += 1
         if self.context.empty:
-            # Avoid a parse_json -> parse_comment -> parse_json chain for long runs of
-            # top-level comments; re-enter only once after we have consumed them all.
+            # Pystachy port: consume consecutive top-level comments here, then
+            # let parse_json's loop resume. Re-entering it recursively also
+            # accumulates frames when comments alternate with discarded prose.
             self.skip_whitespaces()
             if self.get_char_at() in ["#", "/"]:
                 continue
-            return self.parse_json(record_top_level_value=record_top_level_value)
         break
     return ""
