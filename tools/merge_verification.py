@@ -179,10 +179,10 @@ def validate_report(report, group, expected):
                     integer(step.get("mismatches"), f"{label}.mismatches") != 0):
                 raise ValueError(f"{label}: expected 3 programs, 540 cases including 90 parity cases, JIT/AOT with program GC stress, and no mismatches")
         if step["name"] == "aot-dead-code":
-            if (integer(step.get("opt_in_symbols"), f"{label}.opt_in_symbols") != 7 or
+            if (integer(step.get("opt_in_symbols"), f"{label}.opt_in_symbols") != 12 or
                     step.get("programs") != ["plain", "python-int", "dynamic-any", "python-int-import", "dynamic-any-import"] or
                     step.get("compilers") != ["CPython-hosted", "stage2"]):
-                raise ValueError(f"{label}: expected 7 symbol controls, plain/direct/imported opt-ins, and both compilers")
+                raise ValueError(f"{label}: expected 12 symbol controls, plain/direct/imported opt-ins, and both compilers")
         if step["name"].startswith("dynany-optin-"):
             optin = step.get("optin")
             dynany_optin.validate_report(optin, root=ROOT)

@@ -234,7 +234,7 @@ def report(group, steps):
             step.update(programs=3, cases=540, parity_cases=90, modes=["jit", "aot", "jit-gc", "aot-gc"],
                         program_gc_interval=1, mismatches=0)
         if name == "aot-dead-code":
-            step.update(opt_in_symbols=7, programs=["plain", "python-int", "dynamic-any", "python-int-import", "dynamic-any-import"],
+            step.update(opt_in_symbols=12, programs=["plain", "python-int", "dynamic-any", "python-int-import", "dynamic-any-import"],
                         compilers=["CPython-hosted", "stage2"])
         if name.startswith("dynany-optin-"):
             step["optin"] = copy.deepcopy(optin_report(int(name[-1])))

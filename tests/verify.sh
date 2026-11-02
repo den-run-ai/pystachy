@@ -99,9 +99,10 @@
 #                  inlined (not with PYSTACHY_JIT_INLINE=0); live code and runtime callbacks still
 #                  execute as in CPython, with both compilers
 #   aot-dead-code  tools/aotprobe.py: an AOT build defines pys_plain; a program that opts in to
-#                  neither dynamic Any nor promoting ints keeps none of their runtime helpers;
-#                  direct and imported opt-ins retain them; objects that never escape compile to
-#                  no allocation and those a list keeps do (allocelide), with outputs matching CPython
+#                  neither dynamic Any nor promoting ints keeps none of their runtime helpers, and
+#                  its list stores none of their companion code; direct and imported opt-ins
+#                  retain them; objects that never escape compile to no allocation and those a
+#                  list keeps do (allocelide), with outputs matching CPython
 #   unicode-audit  tools/unicode_audit.py: optional byte-boundary checks in JIT/AOT, cache
 #                  reuse, ASCII/Unicode controls and GC-stress exception paths, both compilers;
 #                  unicodeprobe checks code-point cache/locality, mutation and GC invalidation
@@ -960,7 +961,7 @@ fi
 if want aot-dead-code; then
 L=$V/aot-dead-code.log; s=$(now); r=fail
 $PY tools/aotprobe.py -c "hosted=$PY -m pystachy" -c "native=$V/pystachy2" > "$L" 2>&1 && r=pass
-step aot-dead-code $r "$s" "$L" ', "opt_in_symbols": 7, "programs": ["plain", "python-int", "dynamic-any", "python-int-import", "dynamic-any-import"], "compilers": ["CPython-hosted", "stage2"]'
+step aot-dead-code $r "$s" "$L" ', "opt_in_symbols": 12, "programs": ["plain", "python-int", "dynamic-any", "python-int-import", "dynamic-any-import"], "compilers": ["CPython-hosted", "stage2"]'
 fi
 
 # ---- dict-probes: table slots per dict lookup for colliding keys, sequential keys the control
