@@ -1,5 +1,5 @@
 # tupleret (tuple_return.calls): run's unpacking takes step's slots by value from @v.f.step, which
-# makes no tuple (no pys_alloc); step's own symbol, a wrapper that makes the tuple, is what other
+# makes no tuple (no pys_new); step's own symbol, a wrapper that makes the tuple, is what other
 # uses get. pair's only call keeps its tuple, which escapes into a list, and kept returns a tuple
 # it did not make: both are lowered as before, each making or returning its tuple. kept's (1, 1)
 # and ORIGIN's (0, 0) are constant tuples (Gen.tuple_const, tuple_const.calls), which neither

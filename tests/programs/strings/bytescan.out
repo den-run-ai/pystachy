@@ -1,0 +1,18 @@
+predicate-cases 14
+callable 8 5
+positional-order ['data', 'start', 'end', 'first', 'second', 'below']
+keyword-order ['below', 'data', 'end', 'second', 'start', 'first']
+bounds byte scan out of range
+bounds byte scan out of range
+bounds byte scan out of range
+bounds byte scan out of range
+bounds byte scan out of range
+bounds byte scan out of range
+predicate invalid byte scan predicate
+predicate invalid byte scan predicate
+predicate invalid byte scan predicate
+predicate invalid byte scan predicate
+predicate invalid byte scan predicate
+predicate invalid byte scan predicate
+bounds-before-predicate byte scan out of range
+[exit 0]

@@ -1,0 +1,16 @@
+end 1000 False False False
+initial 1000 False False False
+walrus 1000 True
+local-alias 1000 True
+global-snapshot 1000 0
+field-snapshot 1000 0 True
+list-snapshot 1000 0 True
+argument-order 1000 ['data', 'start', 'end', 'first', 'second', 'below']
+argument-before-validation argument failed ['data', 'start', 'end', 'first', 'second']
+validation-after-arguments byte scan out of range ['data', 'start', 'end', 'first', 'second', 'below']
+none 2
+none 3
+none 4
+none 5
+none 6
+[exit 0]

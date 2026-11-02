@@ -12,6 +12,15 @@ or to dynamic Any collectively keep each of them, so that a renamed or inlined s
 rather than passes unseen. Wrappers importing those modules check that an imported opt-in also
 keeps the feature paths available. Every executable prints what CPython prints. The symbols are LLVM 18's on
 Linux (CI's); another LLVM may inline differently.
+
+Allocations (allocelide, #1017): compiled code's objects come from pys_new, which -O2 sees as an
+allocation and deletes where nothing keeps the object, before the late step inlines the
+allocator's fast path into the calls left. An opt wrapper keeps the module -O2 gave that step
+(prog-opt.bc), where each allocation left is a call of pys_new (the runtime's C code never calls
+it): TEMPS, whose vectors never leave walk(), keeps none, and KEPT, whose objects a list keeps,
+does. With allocelide off there is no late step, and with pys_new inlined before -O2 KEPT keeps
+no call: either fails here. KEPT also builds with PYSTACHY_CFLAGS=-O0, whose runtime gives pys_new
+optnone, which the late step must drop too (LLVM's verifier rejects optnone without noinline).
 """
 import argparse
 import os
@@ -62,6 +71,56 @@ DYN = "# pystachy: dynamic-any\n"
 # repr's and float comparison's mpz code, a dict's and a set's lookups of such a key, the
 # comparisons of promoting ints in containers and tuples, and the small-int boxes of identities
 OPT_IN_ONLY = ["mpz_digits", "mpz_cmp_float", "big_eq", "dbfind", "sbfind", "jeq", "smallint"]
+# objects that never escape (allocelide: none is allocated) and objects that a list keeps (each is)
+TEMPS = '''class Vec:
+    def __init__(self, x: float, y: float, z: float) -> None:
+        self.x = x
+        self.y = y
+        self.z = z
+
+    def __add__(self, other: "Vec") -> "Vec":
+        return Vec(self.x + other.x, self.y + other.y, self.z + other.z)
+
+    def __sub__(self, other: "Vec") -> "Vec":
+        return Vec(self.x - other.x, self.y - other.y, self.z - other.z)
+
+    def scale(self, f: float) -> "Vec":
+        return Vec(f * self.x, f * self.y, f * self.z)
+
+    def dot(self, other: "Vec") -> float:
+        return self.x * other.x + self.y * other.y + self.z * other.z
+
+
+def walk(n: int) -> float:
+    o = Vec(0.5, -1.0, 2.0)
+    d = Vec(0.25, 0.75, -0.5)
+    c = Vec(1.0, 2.0, 3.0)
+    m = Vec(0.0, 0.6, 0.8)
+    acc = 0.0
+    for i in range(n):
+        p = o + d.scale(i * 1e-3)
+        acc += (p - c).dot(m)
+    return acc
+
+
+print(walk(1000))
+'''
+KEPT = '''class Item:
+    def __init__(self, x: float) -> None:
+        self.x = x
+
+
+def keep(n: int) -> list[Item]:
+    kept: list[Item] = []
+    for i in range(n):
+        kept.append(Item(i * 0.5))
+    return kept
+
+
+print(sum([item.x for item in keep(1000)]))
+'''
+# the allocations of compiled code that -O2 left: its calls of pys_new
+NEW = re.compile(r"call [^@\n]*@pys_new\(")
 
 
 def run(command, env, cwd=ROOT):
@@ -90,6 +149,7 @@ def main():
         for name, text in sources.items():
             (temp / f"{name.replace('-', '_')}.py").write_text(text)
         capture = temp / "captured.bc"
+        late = temp / "opt.bc"
         bindir = temp / "bin"
         bindir.mkdir()
         real = {}
@@ -98,13 +158,18 @@ def main():
             if path is None:
                 raise RuntimeError(f"cannot find {name}; set PYSTACHY_LLVM")
             real[name] = str(Path(path).absolute())
-            if name not in ("clang", "llvm-dis", "llvm-nm"):
+            if name not in ("clang", "opt", "llvm-dis", "llvm-nm"):
                 (bindir / name).symlink_to(real[name])
-        # the driver's AOT step is clang -O2 -c <its temporary directory>/prog.bc: keep a copy of that
+        # the driver's AOT step is clang -O2 -c <its temporary directory>/prog.bc: keep a copy of that,
+        # and of prog-opt.bc, the module -O2 made, which allocelide's late step (opt) reads
         wrapper = bindir / "clang"
         wrapper.write_text(f"#!/bin/sh\nfor a in \"$@\"; do case $a in */prog.bc) cp \"$a\" {shlex.quote(str(capture))} ;; esac; done\n"
                            f"exec {shlex.quote(real['clang'])} \"$@\"\n")
         wrapper.chmod(0o755)
+        optimizer = bindir / "opt"
+        optimizer.write_text(f"#!/bin/sh\nfor a in \"$@\"; do case $a in */prog-opt.bc) cp \"$a\" {shlex.quote(str(late))} ;; esac; done\n"
+                             f"exec {shlex.quote(real['opt'])} \"$@\"\n")
+        optimizer.chmod(0o755)
         env = os.environ | {"PYSTACHY_LLVM": str(bindir), "PYSTACHY_CACHE": str(temp / "cache")}
         for k in ("PYSTACHY_CFLAGS", "PYSTACHY_OPT", "PYSTACHY_PATH", "PYSTACHY_GC", "PYSTACHY_GC_STRESS", "PYSTACHY_GC_STRESS_PROGRAM"):
             env.pop(k, None)  # (-O0 or other passes would keep what the default build drops)
@@ -136,6 +201,31 @@ def main():
                     raise RuntimeError(f"{label}: opt-in programs{suffix} do not keep {sorted(missing)}: update OPT_IN_ONLY")
             print(f"{label}: pys_plain 1, 0, 0, 0, 0; the plain executable keeps none of {len(OPT_IN_ONLY)} opt-in symbols, "
                   f"the python-int one {len(kept['python-int'])} and the dynamic-any one {len(kept['dynamic-any'])}; outputs as CPython's")
+            left = {}
+            for name, text in (("temps", TEMPS), ("kept", KEPT)):
+                src = temp / f"{name}.py"
+                src.write_text(text)
+                exe = temp / f"{label}-{name}"
+                late.unlink(missing_ok=True)
+                run(cmd + ["build", str(src), "-o", str(exe)], env)
+                if not late.exists():
+                    raise RuntimeError(f"{label} {name}: the AOT build had no late step (prog-opt.bc): is allocelide off?")
+                left[name] = len(NEW.findall(run([real["llvm-dis"], str(late), "-o", "-"], env).decode()))
+                if run([str(exe)], env, temp) != run([sys.executable, f"{name}.py"], env, temp):
+                    raise RuntimeError(f"{label} {name}: the AOT executable's output differs from CPython's")
+            if left["temps"] != 0:
+                raise RuntimeError(f"{label}: objects that never escape stay allocated ({left['temps']} calls of pys_new after -O2)")
+            if left["kept"] == 0:
+                raise RuntimeError(f"{label}: no allocation left where a list keeps the objects: the check counts nothing")
+            print(f"{label}: allocations after -O2: none where no object escapes, {left['kept']} where a list keeps them")
+            exe = temp / f"{label}-kept-O0"
+            late.unlink(missing_ok=True)
+            run(cmd + ["build", str(temp / "kept.py"), "-o", str(exe)], env | {"PYSTACHY_CFLAGS": "-O0"})
+            if not late.exists():
+                raise RuntimeError(f"{label} kept with PYSTACHY_CFLAGS=-O0: the AOT build had no late step (prog-opt.bc)")
+            if run([str(exe)], env, temp) != run([sys.executable, "kept.py"], env, temp):
+                raise RuntimeError(f"{label} kept with PYSTACHY_CFLAGS=-O0: the AOT executable's output differs from CPython's")
+            print(f"{label}: with PYSTACHY_CFLAGS=-O0 (a runtime whose pys_new is optnone), the late step runs and the output is CPython's")
     return 0
 
 

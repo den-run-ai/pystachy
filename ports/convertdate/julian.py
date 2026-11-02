@@ -19,7 +19,7 @@ this module uses the astronomical convention of including a year 0 to simplify
 mathematical comparisons across epochs. To present a date in the standard
 convention, use the :meth:`julian.format` function.
 """
-# from datetime import date  # Pystachy port: no datetime module yet (#11); format() uses it
+from datetime import date
 from math import floor
 
 from .gregorian import from_jd as gregorian_from_jd

@@ -49,6 +49,41 @@ collects timings; CI runs the correctness smoke and controller tests only.
 
 ## What the measurements include
 
+### JSON byte-scanning controls
+
+`bench/extended/json_scan.py` measures direct dynamic JSON decoding and the
+maintained JSON-repair facade. It checks complete expected values outside timing,
+consumes every result inside timing, and checks each batch's checksum. Each `case`
+row records API, workload, requested size, source character/byte counts and calls;
+`first`, `warmup`, `sample` and `verified` rows separate execution phases.
+Durations are nanoseconds. This standalone driver is separate from the kernel
+controller above so that both APIs and all cases can share one JIT compilation.
+
+```sh
+PYTHONPATH=ports python3 bench/extended/json_scan.py suite all 4096 1 3 7
+PYSTACHY_PATH=ports ./pystachy run bench/extended/json_scan.py suite all 4096 1 3 7
+PYSTACHY_PATH=ports ./pystachy build bench/extended/json_scan.py -o build/json-scan
+build/json-scan suite all 4096 1 3 7
+PYTHONPATH=ports pypy3 bench/extended/json_scan.py suite no-direct-control 4096 1 3 7
+```
+
+`all` runs 18 cases; `no-direct-control` omits only the direct malformed-control
+case. PyPy 8.0.1 reports that control one character earlier than CPython 3.13.16,
+so that comparison fails the exact diagnostic oracle. The oracle remains strict.
+Long strings use N/2N/4N. Other cases use size 8192, except fixed small short/mixed
+inputs. Batch counts are 2000 for long strings, 200000 short, 40000 mixed, 3000
+sparse escapes, 300 dense escapes, 300 Unicode, 300 direct-control and 100
+repair-control, multiplied by the fourth argument. The last arguments select
+warmup and measured batches. A single case uses
+`direct|repair CASE SIZE CALLS WARMUPS SAMPLES`.
+
+Use interleaved independent processes pinned to one CPU, compare medians of
+per-process medians, and retain raw samples and source/executable/toolchain hashes.
+Keep startup, compilation and instrumented memory runs separate. Both APIs compile
+into this driver, so its startup is not a decoder-only import or compilation cost.
+
+### Kernel timing boundaries
+
 | Measurement | Included work |
 |---|---|
 | `hosted_ir` / `native_ir` | Compiler process startup, loading/lowering and IR output |

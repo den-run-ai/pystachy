@@ -8,8 +8,7 @@
 The `Julian day <https://en.wikipedia.org/wiki/Julian_day>`__
 is a continuous count of days since the beginning of the Julian era on January 1, 4713 BC.
 """
-# Pystachy port: no datetime module yet (#11); to_datetime() and from_datetime() use it
-# from datetime import datetime, timezone
+from datetime import datetime, timezone
 
 from . import gregorian, julian
 

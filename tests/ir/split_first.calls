@@ -1,4 +1,4 @@
-@main.init: pys_alloc pys_alloc pys_write pys_write pys_write pys_write pys_write pys_write pys_write pys_write pys_write pys_write pys_write pys_write pys_write pys_write
+@main.init: pys_new pys_new pys_write pys_write pys_write pys_write pys_write pys_write pys_write pys_write pys_write pys_write pys_write pys_write pys_write pys_write
 @f.name: pys_str_split_first
 @f.word: pys_str_split_first
 @f.field: pys_str_split_first
