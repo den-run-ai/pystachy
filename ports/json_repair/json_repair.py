@@ -17,9 +17,7 @@ def repair_json(json_str: str = "", return_objects: bool = False,
         try:
             parsed_json = json.loads(json_str)
             is_valid_json = True
-        except (json.JSONDecodeError, TypeError):
-            # Pystachy port: a numeric conversion limit is a resource error,
-            # not malformed JSON to reinterpret through repair heuristics.
+        except (json.JSONDecodeError, TypeError, ValueError):
             pass
     if not is_valid_json:
         parser = JSONParser(json_str, logging, stream_stable=stream_stable,

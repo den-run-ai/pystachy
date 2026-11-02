@@ -24,14 +24,6 @@ from .utils.object_comparer import ObjectComparer
 
 
 class JSONParser:
-    def _enter_parse(self) -> None:
-        # Pystachy port: bound the repair parser's native stack independently of
-        # the compiler's recursion guards. Count active container/string parses,
-        # including reparsing and fenced JSON, not just delimiters in the input.
-        if self._parse_depth >= 256:
-            raise RecursionError("maximum repair parser depth exceeded")
-        self._parse_depth += 1
-
     # Split the parse methods into separate files because this one was like 3000 lines
     def parse_array(
         self,
@@ -39,11 +31,7 @@ class JSONParser:
         path: str = "$",
         closing_delimiter: str = "]",
     ) -> list[Any]:
-        self._enter_parse()
-        try:
-            return _parse_array(self, schema, path, closing_delimiter)
-        finally:
-            self._parse_depth -= 1
+        return _parse_array(self, schema, path, closing_delimiter)
 
     def parse_comment(self, record_top_level_value: bool = False) -> Any:
         return _parse_comment(self, record_top_level_value=record_top_level_value)
@@ -56,18 +44,10 @@ class JSONParser:
         schema: dict[str, Any] | bool | None = None,
         path: str = "$",
     ) -> Any:
-        self._enter_parse()
-        try:
-            return _parse_object(self, schema, path)
-        finally:
-            self._parse_depth -= 1
+        return _parse_object(self, schema, path)
 
     def parse_string(self) -> Any:
-        self._enter_parse()
-        try:
-            return _parse_string(self)
-        finally:
-            self._parse_depth -= 1
+        return _parse_string(self)
 
     def __init__(
         self,
@@ -82,7 +62,6 @@ class JSONParser:
         self.json_str: str = json_str
         # Index is our iterator that will keep track of which character we are looking at right now
         self.index: int = 0
-        self._parse_depth: int = 0
         # This is used in the object member parsing to manage the special cases of missing quotes in key or value
         self.context = JsonContext()
         self.deferred_contexts: list[int] = []
@@ -233,9 +212,9 @@ class JSONParser:
         candidate = "{" + self.json_str[:]
         try:
             value, end_idx = raw_decode(candidate)
-        except json.JSONDecodeError:
-            # Pystachy port: only syntax errors disprove this repair. Preserve
-            # resource errors, such as the integer text conversion limit.
+        except ValueError:
+            # Decoder limits (such as oversized integers) also mean the
+            # insertion is insufficient; leave these inputs to normal repair.
             return False, ""
         if candidate[end_idx:].strip(" \t\r\n"):
             return False, ""

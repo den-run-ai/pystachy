@@ -1,6 +1,7 @@
 # pystachy: dynamic-any
-# The port bounds active repair parses independently of native stack exhaustion.
-# Exercise ordinary nesting and the reparsing cycles that contain no new braces.
+# Deep repair raises RecursionError at the recursion limit, which the facade
+# reports as upstream's ValueError, in CPython and natively. Exercise ordinary
+# nesting and the reparsing cycles that contain no new braces.
 from typing import Any
 from json_repair import loads
 from json_repair.json_parser import JSONParser
@@ -26,6 +27,22 @@ rejected('{"a":0}' + ',"a":0}' * depth)
 rejected('{"a":' + '"```json ' * depth + "1" + '```"' * depth + "}")
 print("six recursive repair paths rejected")
 
+# Nesting below the recursion limit still repairs, as upstream does on CPython;
+# a fixed budget of 256 active array/object/string parses rejected both.
+nested: Any = loads("[" * 300 + "0" + "]" * 300, skip_json_loads=True)
+levels = 0
+while isinstance(nested, list):
+    nested = nested[0]
+    levels += 1
+assert levels == 300 and nested == 0
+nested = loads('[{"a":' * 130 + "0" + "}]" * 130, skip_json_loads=True)
+levels = 0
+while isinstance(nested, list):
+    nested = nested[0]["a"]
+    levels += 1
+assert levels == 130 and nested == 0
+print("nesting below the recursion limit repaired")
+
 # Wide or sequential input must not consume a cumulative recursion budget.
 value: Any = loads("[" + "[1]," * 400 + "]", skip_json_loads=True)
 assert len(value) == 400 and value[0] == [1] and value[399] == [1]
@@ -43,7 +60,7 @@ print("alternating comments and prose stay iterative")
 # Retain comment log order and the found-value flag, including empty containers.
 parser = JSONParser("/* first */ ignored // second\n 123 # third\n {}", True)
 assert parser.parse_json(record_top_level_value=True) == {}
-assert parser._last_parse_found_value and parser._parse_depth == 0
+assert parser._last_parse_found_value
 assert [entry["text"] for entry in parser.logger] == [
     "Found block comment: /* first */, ignoring",
     "Found line comment: // second, ignoring",
@@ -58,36 +75,7 @@ assert parser.parse_json(record_top_level_value=True) == []
 assert parser._last_parse_found_value
 print("comment logs and top-level flags preserved")
 
-# Seeding the private counter exercises the exact boundary without relying on
-# CPython's interpreter recursion limit (which can fire before the native cap).
-for kind in range(3):
-    text = "]" if kind == 0 else "}" if kind == 1 else '"ok"'
-    parser = JSONParser(text, False)
-    parser._parse_depth = 255
-    if kind == 0:
-        assert parser.parse_array() == []
-    elif kind == 1:
-        assert parser.parse_object() == {}
-    else:
-        assert parser.parse_string() == "ok"
-    assert parser._parse_depth == 255
-    parser.index = 0
-    parser._parse_depth = 256
-    try:
-        if kind == 0:
-            parser.parse_array()
-        elif kind == 1:
-            parser.parse_object()
-        else:
-            parser.parse_string()
-    except RecursionError as exc:
-        assert str(exc) == "maximum repair parser depth exceeded"
-    else:
-        raise AssertionError("repair boundary accepted")
-    assert parser._parse_depth == 256 and parser.index == 0
-print("exact repair boundary preserved")
-
-# Restore the counter after both the depth guard and ordinary parser exceptions.
+# A parser stays usable after the recursion limit or a strict error unwinds it.
 parser = JSONParser("[" * depth + "0", False)
 try:
     parser.parse()
@@ -95,10 +83,9 @@ except RecursionError:
     pass
 else:
     raise AssertionError("deep parser accepted")
-assert parser._parse_depth == 0
 parser.json_str = "[7]"
 parser.index = 0
-assert parser.parse() == [7] and parser._parse_depth == 0
+assert parser.parse() == [7]
 
 parser = JSONParser('{"":1}', False, strict=True)
 try:
@@ -107,8 +94,7 @@ except ValueError:
     pass
 else:
     raise AssertionError("strict empty key accepted")
-assert parser._parse_depth == 0
 parser.json_str = '{"ok":1}'
 parser.index = 0
-assert parser.parse() == {"ok": 1} and parser._parse_depth == 0
-print("repair depth restored after exceptions")
+assert parser.parse() == {"ok": 1}
+print("parser reusable after exceptions")

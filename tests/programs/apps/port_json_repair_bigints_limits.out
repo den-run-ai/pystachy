@@ -1,32 +1,32 @@
-root False False integer preserved
-object False False integer preserved
-array False False integer preserved
-missing brace False False integer preserved
-object True False integer preserved
-array True False integer preserved
-missing brace True False integer preserved
-root False False ValueError
-object False False ValueError
-array False False ValueError
-missing brace False False ValueError
-object True False ValueError
-array True False ValueError
-missing brace True False ValueError
-root False True integer preserved
-object False True integer preserved
-array False True integer preserved
-missing brace False True integer preserved
-object True True integer preserved
-array True True integer preserved
-missing brace True True integer preserved
-root False True ValueError
-object False True ValueError
-array False True ValueError
-missing brace False True ValueError
-object True True ValueError
-array True True ValueError
-missing brace True True ValueError
-repair False False ValueError
-repair True False ValueError
-serialized root ValueError
+root False False int(4300) 0
+object False False {n: int(4300)} 0
+array False False [int(4300)] 0
+missing brace False False {n: int(4300)} 1
+object True False {n: int(4300)} 0
+array True False [int(4300)] 0
+missing brace True False {n: int(4300)} 1
+root False False str(0) 0
+object False False {n: str(4301)} 0
+array False False [str(4301)] 0
+missing brace False False str(0) 0
+object True False {n: str(4301)} 0
+array True False [str(4301)] 0
+missing brace True False str(0) 0
+root False True int(4301) 0
+object False True {n: int(4301)} 0
+array False True [int(4301)] 0
+missing brace False True {n: int(4301)} 1
+object True True {n: int(4301)} 0
+array True True [int(4301)] 0
+missing brace True True {n: int(4301)} 1
+root False True str(0) 0
+object False True {n: str(4302)} 0
+array False True [str(4302)] 0
+missing brace False True str(0) 0
+object True True {n: str(4302)} 0
+array True True [str(4302)] 0
+missing brace True True str(0) 0
+'{"n": "9999
+'{"n": "9999
+'' ''
 [exit 0]

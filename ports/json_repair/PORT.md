@@ -69,16 +69,10 @@ Split trace records before repair and validate types and content afterward.
 - Use the native `json._raw_decode` adapter at two call sites, with a guarded
   import falling back to CPython’s `JSONDecoder`. The public decoder keeps its
   class identity; see the [JSON API notes](../../docs/json-prototype.md).
-- Keep integer-limit errors visible instead of retrying valid JSON as malformed
-  input or turning decimal numbers into strings. The number parser combines
-  dynamic `Any` with promoting integers; parser indices stay fixed-width.
 - Skip comments while still expecting an array item or object member value,
   without recursive calls for consecutive comments. Top-level comments resume
   the main parse loop, so alternating comments and discarded prose do not grow
   the native stack either.
-- Limit active array, object and string repair parses to 256, restoring the
-  counter on normal and exceptional exits. This also bounds recursive recovery
-  paths such as object continuations and fenced JSON inside strings.
 
 The string-repair implementation remains upstream's roughly 900-line heuristic
 parser. Changes are marked with `Pystachy port` comments or described above.
@@ -94,21 +88,29 @@ mismatch; it does not silently waive known limitations.
 On CPython 3.13.16, pristine upstream and adapted sources match **645/645**.
 Native JIT, AOT and both modes with collection at every allocation now match
 **645/645** at the preceding integration checkpoint. That corpus did not detect
-wide primitive-root loss, Unicode/strict-mode changes after overflow fallback,
-comment-related value loss or digit-limit swallowing. Additional differential
-regressions now cover those cases, independently of the retained upstream oracle.
-The dynamic native JSON decoder promotes a wide token directly, so valid documents
-keep the normal decoder's semantics instead of entering heuristic repair.
+wide primitive-root loss, Unicode/strict-mode changes after overflow fallback or
+comment-related value loss. Additional differential regressions now cover those
+cases, independently of the retained upstream oracle. The dynamic native JSON
+decoder promotes a wide token directly, so valid documents keep the normal
+decoder's semantics instead of entering heuristic repair; the facade and both
+`raw_decode` probes keep upstream's exception handling. The number parser
+combines dynamic `Any` with promoting integers; parser indices stay fixed-width.
 
-The native JSON codec limits nesting to 256 containers and raises `RecursionError`.
-The repair parser separately permits 256 active array/object/string parses; its
-facade translates exhaustion to `ValueError("Input nesting exceeds the supported
-parser recursion depth.")`. Sibling values do not consume a cumulative budget.
-CPython may exhaust its interpreter stack earlier. This port limit does not resolve
-general native recursion compatibility. Decimal integer conversions retain the
-runtime's 4,300-digit limit and raise `ValueError` rather than silently dropping or
-stringifying the value. Forced-repair primitive-root heuristics described above remain.
-The replay establishes these 645 cases, not full-package parity.
+The native JSON codec limits nesting to 256 containers and raises `RecursionError`,
+so valid input nested more deeply raises that error from the default fast path,
+whereas CPython decodes it ([deviation](../../tests/deviations/json_limits.py)).
+Malformed-input repair has no separate depth budget: exceeding the native
+recursion limit raises `RecursionError`, which the facade translates to upstream's
+`ValueError("Input nesting exceeds the supported parser recursion depth.")`. At the
+default limit, native JIT and AOT repair the same maximum array, object and
+array-of-object nesting as upstream on CPython 3.13.16 (arrays one level deeper);
+see the [native recursion policy](../../docs/language/compatibility.md#errors-and-control-flow)
+for frames that do not count. Integer tokens beyond the runtime's 4,300-digit
+conversion limit follow upstream: valid-JSON decoding falls back to repair, the
+missing-brace probe declines, and the number parser keeps the token as a string,
+so forced repair can drop such a top-level number. Forced-repair primitive-root
+heuristics described above remain. The replay establishes these 645 cases, not
+full-package parity.
 
 The small [native regression](../../tests/programs/apps/port_json_repair.py)
 checks mutable `Any` results, repair behavior, Unicode and the fast path. Run:
