@@ -7,6 +7,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import tempfile
 import unittest
@@ -790,6 +791,27 @@ class ReportTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "missing report groups"):
             self.merged()
 
+    def test_architecture_namespaces_require_native_evidence(self):
+        for group, data in self.reports.items():
+            data["platform"] = {"machine": "aarch64"}
+            old = self.directory / f"verification-{group}"
+            old.rename(self.directory / f"aarch64-verification-{group}")
+            path = self.directory / f"aarch64-verification-{group}" / "verification.json"
+            path.write_text(json.dumps(data))
+        merged = merge.merge_reports(self.directory, self.groups, COMMIT, "aarch64")
+        self.assertEqual(merged["platform"]["machine"], "aarch64")
+        self.assertEqual([step["name"] for step in merged["steps"]], self.groups["all"])
+        # An x86 report cannot pass as ARM even if its artifact was renamed.
+        path = self.directory / "aarch64-verification-contracts" / "verification.json"
+        data = self.reports["contracts"]
+        data["platform"]["machine"] = "x86_64"
+        path.write_text(json.dumps(data))
+        with self.assertRaisesRegex(ValueError, "expected aarch64 platform evidence"):
+            merge.merge_reports(self.directory, self.groups, COMMIT, "aarch64")
+        # The default gate still rejects namespaced reports instead of mixing platforms.
+        with self.assertRaisesRegex(ValueError, "unexpected report path"):
+            self.merged()
+
     def test_failed_skipped_missing_reordered_and_unexpected_steps_are_rejected(self):
         original = copy.deepcopy(self.reports["opt-off-0"])
         mutations = [lambda data: data.update(result="fail"),
@@ -940,6 +962,93 @@ class SharedBootstrapTests(unittest.TestCase):
     def test_producer_cannot_claim_other_stages(self):
         with self.assertRaisesRegex(ValueError, "producer must run only bootstrap"):
             merge.parse_groups(CONTRACT.replace("contracts bootstrap check-ir", "bootstrap bootstrap check-ir"))
+
+
+class PullRequestSubsetTests(unittest.TestCase):
+    """A pull request's ARM64 smoke gate accepts exactly its groups and never claims full verification."""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.directory = Path(self.temp.name)
+        self.groups = merge.parse_groups(CONTRACT + "bootstrap bootstrap\n")
+        self.reports = {group: report(group, steps) for group, steps in self.groups.items() if group != "all"}
+        for data in self.reports.values():
+            data["platform"] = {"machine": "aarch64"}
+
+    def write(self, groups):
+        for group in groups:
+            path = self.directory / f"aarch64-verification-{group}" / "verification.json"
+            path.parent.mkdir(exist_ok=True)
+            path.write_text(json.dumps(self.reports[group]))
+
+    def test_subset_requires_exactly_its_groups_and_is_never_labelled_all(self):
+        self.write(["bootstrap", "contracts"])
+        result = merge.merge_reports(self.directory, self.groups, COMMIT, "aarch64", ["contracts"])
+        self.assertEqual(result["group"], "subset")
+        self.assertEqual([step["name"] for step in result["steps"]], ["bootstrap", "check-ir"])
+        self.assertEqual(result["ci"]["subset"], ["bootstrap", "contracts"])
+        self.assertEqual(result["summary"]["steps"], 2)
+        # Without a subset, the same artifacts remain an incomplete full matrix.
+        with self.assertRaisesRegex(ValueError, r"missing report groups: \['opt-off-0'\]"):
+            merge.merge_reports(self.directory, self.groups, COMMIT, "aarch64")
+
+    def test_missing_extra_and_foreign_subset_reports_are_rejected(self):
+        self.write(["contracts"])
+        with self.assertRaisesRegex(ValueError, r"missing report groups: \['bootstrap'\]"):
+            merge.merge_reports(self.directory, self.groups, COMMIT, "aarch64", ["contracts"])
+        self.write(["bootstrap", "opt-off-0"])
+        with self.assertRaisesRegex(ValueError, r"unexpected report groups: \['opt-off-0'\]"):
+            merge.merge_reports(self.directory, self.groups, COMMIT, "aarch64", ["contracts"])
+        self.reports["contracts"]["platform"]["machine"] = "x86_64"
+        self.write(["contracts"])
+        with self.assertRaisesRegex(ValueError, "expected aarch64 platform evidence"):
+            merge.merge_reports(self.directory, self.groups, COMMIT, "aarch64", ["contracts", "opt-off-0"])
+
+    def test_invalid_subsets_are_rejected_before_reading_reports(self):
+        for subset in ([], ["all"], ["nope"], ["contracts", "contracts"], [""]):
+            with self.subTest(subset=subset), self.assertRaisesRegex(ValueError, "invalid report subset"):
+                merge.merge_reports(self.directory, self.groups, COMMIT, "aarch64", subset)
+
+    def test_cli_labels_subset_success_and_failure(self):
+        output = self.directory / "combined.json"
+        self.write(["bootstrap", "contracts"])
+        with mock.patch.object(merge, "load_groups", return_value=self.groups), \
+                mock.patch.object(merge.subprocess, "run", return_value=mock.Mock(stdout=COMMIT)), \
+                contextlib.redirect_stdout(io.StringIO()) as stdout:
+            status = merge.main([str(self.directory), "--machine", "aarch64", "--groups", "contracts", "-o", str(output)])
+        self.assertEqual(status, 0)
+        self.assertEqual(json.loads(output.read_text())["group"], "subset")
+        self.assertIn("verification subset: 2 checks passed across 2 groups", stdout.getvalue())
+        with mock.patch.object(merge, "load_groups", return_value=self.groups), \
+                mock.patch.object(merge.subprocess, "run", return_value=mock.Mock(stdout=COMMIT)), \
+                contextlib.redirect_stderr(io.StringIO()):
+            status = merge.main([str(self.directory), "--machine", "aarch64", "--groups", "", "-o", str(output)])
+        self.assertEqual(status, 1)
+        self.assertEqual(json.loads(output.read_text())["group"], "subset")
+        self.assertEqual(json.loads(output.read_text())["result"], "fail")
+
+
+class PullRequestMatrixTests(unittest.TestCase):
+    """CI's ARM64 smoke subset and its gate name the same real groups; pushes keep every group."""
+
+    def test_smoke_include_matches_gate_subset_and_contract(self):
+        text = (merge.ROOT / ".github/workflows/ci.yml").read_text()
+        job = text[text.index("\n  verification:\n"):text.index("\n  port-check:\n")]
+        matrix = re.search(r"group: \[([^\]]*)\]", job)
+        self.assertIsNotNone(matrix, "the verification matrix's group list")
+        everything = [name.strip() for name in matrix[1].split(",")]
+        groups = merge.load_groups()
+        self.assertEqual(sorted(everything), sorted(name for name in groups if name not in ("all", "bootstrap")))
+        smoke = re.findall(r"^          - \{machine: aarch64, group: ([a-z0-9-]+)\}$", job, re.M)
+        gate = re.search(r"VERIFY_SUBSET: \$\{\{ matrix\.machine == 'aarch64' && "
+                         r"github\.event_name == 'pull_request' && '([a-z0-9,-]+)' \|\| '' \}\}", text)
+        self.assertIsNotNone(gate, "the gate's pull-request subset")
+        self.assertTrue(smoke)
+        self.assertEqual(sorted(smoke), sorted(gate[1].split(",")))
+        self.assertTrue(set(smoke) <= set(everything))
+        # Only pull requests drop ARM64 groups; other events exclude a value no entry has.
+        self.assertIn("exclude:\n          - machine: ${{ github.event_name == 'pull_request' && 'aarch64' || '' }}", job)
 
 
 if __name__ == "__main__":

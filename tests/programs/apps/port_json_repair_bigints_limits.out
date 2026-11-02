@@ -1,0 +1,32 @@
+root False False int(4300) 0
+object False False {n: int(4300)} 0
+array False False [int(4300)] 0
+missing brace False False {n: int(4300)} 1
+object True False {n: int(4300)} 0
+array True False [int(4300)] 0
+missing brace True False {n: int(4300)} 1
+root False False str(0) 0
+object False False {n: str(4301)} 0
+array False False [str(4301)] 0
+missing brace False False str(0) 0
+object True False {n: str(4301)} 0
+array True False [str(4301)] 0
+missing brace True False str(0) 0
+root False True int(4301) 0
+object False True {n: int(4301)} 0
+array False True [int(4301)] 0
+missing brace False True {n: int(4301)} 1
+object True True {n: int(4301)} 0
+array True True [int(4301)] 0
+missing brace True True {n: int(4301)} 1
+root False True str(0) 0
+object False True {n: str(4302)} 0
+array False True [str(4302)] 0
+missing brace False True str(0) 0
+object True True {n: str(4302)} 0
+array True True [str(4302)] 0
+missing brace True True str(0) 0
+'{"n": "9999
+'{"n": "9999
+'' ''
+[exit 0]

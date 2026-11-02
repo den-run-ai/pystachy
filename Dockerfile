@@ -3,14 +3,16 @@
 # The compiler image ships the LLVM tools needed by both JIT and AOT. Keep the
 # toolchain in a common stage so the final image does not inherit bootstrap Python.
 FROM ubuntu:24.04 AS toolchain
-RUN test "$(dpkg --print-architecture)" = amd64 \
-    || { echo "Pystachy's Docker release is currently verified on linux/amd64 only" >&2; exit 1; }
+RUN case "$(dpkg --print-architecture)" in amd64|arm64) ;; \
+    *) echo "Pystachy's Docker release requires linux/amd64 or linux/arm64" >&2; exit 1 ;; esac
 RUN apt-get update \
     && apt-get install -y --no-install-recommends clang-18 llvm-18 llvm-18-runtime \
     && rm -rf /var/lib/apt/lists/*
 ENV PYSTACHY_LLVM=/usr/lib/llvm-18/bin
 
 FROM toolchain AS build
+# Release CI overrides this stage with a named build context containing the
+# verified native archive at out/usr/local. Local builds bootstrap from source.
 ARG VERSION=dev
 ARG REVISION=unknown
 RUN apt-get update \

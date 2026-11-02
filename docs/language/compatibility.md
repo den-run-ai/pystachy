@@ -34,8 +34,9 @@ In these cases a program can compile but behave differently from CPython.
   opts in to [promoting ints](#promoting-ints-opt-in-prototype) gets CPython's `int`, with the
   limits below.
 
-- The native JSON prototype also rejects integer tokens outside signed 64-bit
-  range with `OverflowError`. Its decoder and encoder allow at most 256 nested
+- The native JSON prototype's typed `JSONValue` path rejects integer tokens outside
+  signed 64-bit range with `OverflowError`; its dynamic `Any` decoder promotes them
+  and retains the runtime's decimal digit limit. The decoder and encoder allow at most 256 nested
   containers, then raise `RecursionError`, independently of CPython's recursion
   limit ([deviation](../../tests/deviations/json_limits.py),
   [API scope](../../lib/compatibility.md#json)).

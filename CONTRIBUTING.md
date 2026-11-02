@@ -25,8 +25,12 @@ Keep research proposals, roadmaps and transient integration notes in issues or P
 keep raw experiments and evaluation dumps on a separate research branch. Do not
 merge `research/` directories or unapplied prototype patches into `main`.
 Promote useful checks into `tools/` and regression fixtures into their maintained
-test locations before merging. Curated documentation and reproducible benchmark
-or compatibility reports remain in their established locations.
+test locations before merging. Keep documentation focused on current tasks, APIs
+and implementation contracts. Use Git history and commit-pinned PR links for
+superseded designs, chronological logs and one-off audit dumps; preserve those
+links wherever a current guide cites an earlier measurement. Keep reproducible
+benchmark inputs and results beside their workload, and keep the current version's
+release notes in `docs/releases/` for the release workflow.
 `make check-repository` rejects tracked root `research` paths, even when ignored.
 Tracked file and directory names must contain only ASCII letters, digits, dots,
 underscores and hyphens. Tests that need spaces, brackets, Unicode or other special
