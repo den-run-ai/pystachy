@@ -1,6 +1,6 @@
 # pyperformance benchmarks
 
-These are 22 of the 52 benchmarks tried from [pyperformance](https://github.com/python/pyperformance)
+These are 23 of the 52 benchmarks tried from [pyperformance](https://github.com/python/pyperformance)
 1.14.0, adapted so that Pystachy compiles them. CPython runs the same adapted files, so each
 comparison runs identical source in CPython, the JIT and AOT. The adaptations and smaller
 inputs change the work, so these results are not comparable with published pyperformance numbers.
@@ -88,7 +88,7 @@ reporting the first compiler error.
 | `nqueens` | `f50ef0d82036790c99f5469b9cffc368e097de860231b328caa6652183af059e` | ported |
 | `pathlib` | `113a1cbbec13165dfdb84db649d8114279460110733957a3749ffb9c9527612d` | blocked |
 | `pickle` | `31c0e30be79514b45db0d4e858632eb429b0fea3edbac6463ad5f34d92f3cab8` | blocked |
-| `pidigits` | `4bf89183acb8651623676ece6e10787b6c71eec549fe53ce17a62a812ef7447d` | blocked |
+| `pidigits` | `4bf89183acb8651623676ece6e10787b6c71eec549fe53ce17a62a812ef7447d` | ported |
 | `pprint` | `07ef57201c7919aedf9e340c7fb1561a40dfee698818c9694930f3e427091d6d` | blocked |
 | `pyflate` | `ec5347c7045af86ba33e1b2c6f64bc4b506d0ade3b77391d7e41863fe25fb464` | blocked |
 | `python_startup` | `4cc396c9fe32d633a5e902c8ca738391a4cfe80b6d7658a9d9048989fc796d0c` | blocked |
@@ -114,8 +114,8 @@ pyperformance is distributed under the MIT License; [LICENSE](LICENSE) and [AUTH
 are its `COPYING` and `AUTHORS` files. Each port keeps its upstream header. `regex_v8.py`'s
 header carries the V8 project's BSD license, and `raytrace.py`'s states the MIT License.
 `deltablue` is excluded pending a separate provenance decision: its upstream docstring
-says the JavaScript original was GPL-licensed. The other 22 benchmarks remain included.
-`fannkuch.py`, `meteor_contest.py`, `nbody.py`, `regex_dna.py` and `spectral_norm.py` say they
+says the JavaScript original was GPL-licensed. The other 23 benchmarks remain included.
+`fannkuch.py`, `meteor_contest.py`, `nbody.py`, `pidigits.py`, `regex_dna.py` and `spectral_norm.py` say they
 come from The Computer Language Benchmarks Game, whose programs are published under the
 3-clause BSD License. `richards.py` and `richards_super.py` credit a Java version
 "Copyright (C) 1995 Sun Microsystems, Inc.", and `chaos.py` says "Copyright (C) 2005 Carl
@@ -158,6 +158,7 @@ The runner adaptations follow these rules:
 | `meteor_contest` | `SE` is `51`, not `51.0`, because floats cannot be set elements or dict keys. Loops replace a two-clause comprehension and `dict()` of a generator expression. A list replaces another generator expression, and `''.join(reversed(s))` replaces `s[::-1]`. |
 | `nbody` | None. |
 | `nqueens` | `permutations()` and `n_queens()` return lists instead of yielding. `tuple()` takes a list comprehension. `reverse()` and concatenation replace a slice step and a slice assignment. |
+| `pidigits` | The module opts in to [promoting ints](../../docs/python-int.md) with `# pystachy: python-int`, so the digits use CPython's arbitrary-precision `int`. A generator expression replaces `map(lambda k: ..., icount(1))`, which is equally lazy over the infinite count. Every computed digit is printed. |
 | `raytrace` | A list replaces `array.array('B')`. `Vector` and `Point` have float coordinates, and the scene uses float literals. Class attributes are declared. Unreachable `Point` and `Vector` results are commented out of `Vector.__add__()` and `Point.__sub__()`. Raising a string becomes the `TypeError` it raises. Keyword parameters replace `**kwargs`, and the image is not written. |
 | `regex_dna` | The sequence is an ASCII `str`, not bytes. The generator builds lists of strings, and the patterns are strings. |
 | `regex_effbot` | A global replaces the function attribute `bench_regex_effbot.data`, and a loop replaces a dict comprehension. The `USE_BYTES` branches, never taken, are commented out. |
@@ -190,7 +191,7 @@ supplied upstream module could compile.
 **Seven of 52 sources compile with runner replacement alone:** `fannkuch`, `generators`,
 `nbody`, `nqueens`, `regex_v8`, `spectral_norm` and `unpack_sequence`. This is one more
 than the 2026-10-17 census (`spectral_norm`). The other 45 have a compile error. An IR
-success is not an execution result. The delivered suite now has **22 adapted benchmarks**,
+success is not an execution result. The delivered suite then had **22 adapted benchmarks**,
 including four additions: `comprehensions`, `generators`, `json_dumps` and `json_loads`.
 Their CPython, native JIT and AOT outputs are compared by the existing smoke runner;
 this does not execute the upstream pyperf harness or establish a speedup.
@@ -209,8 +210,9 @@ nested comprehensions and tuple sorting with small enum/annotation adaptations, 
   `concurrent_imap`, `gc_collect`, `gc_traversal`, `python_startup`, `2to3` and
   `sqlite_synth`. Their dependencies are outside this expansion, not silently passed.
 - Keep arbitrary-precision/decimal workloads blocked: `decimal_factorial`, `decimal_pi`,
-  `telco`, `pidigits` and the fractions-based `mdp`. Replacing their arithmetic with
-  fixed-width floats/ints would change what they test.
+  `telco` and the fractions-based `mdp`. Replacing their arithmetic with
+  fixed-width floats/ints would change what they test. `pidigits` is now ported with
+  [promoting ints](../../docs/python-int.md) instead, which keep CPython's `int` semantics.
 - Remaining core candidates need missing APIs or additional adapters: `argparse`,
   `base64`, `bpe_tokeniser`, `deepcopy`, `logging`, `pathlib`, `pickle`, `pprint`,
   `pyflate`, `regex_compile`, `tomli_loads`, `typing_runtime_protocols` and `xml_etree`.
@@ -228,6 +230,40 @@ The table records the first error, not all blockers. Related trackers:
 [#783](https://github.com/den-run-ai/pystachy/issues/783) (TOML),
 [#805](https://github.com/den-run-ai/pystachy/issues/805) (copy/pickle dispatch),
 [#775](https://github.com/den-run-ai/pystachy/issues/775) (dynamic builtin values).
+
+<a id="refresh-2026-11-02"></a>
+
+### Refresh (2026-11-02)
+
+On main `973c68e4`, with CPython 3.13.16, the census is unchanged: the same seven sources
+compile with runner replacement alone, and every other source stops at the same construct or
+module as in the tables below (some messages now say more). `pidigits` is now ported, for
+23 adapted benchmarks.
+
+A missing module is only the first blocker. Compiling the 29 unported sources again with
+CPython 3.13.16's own standard library on `PYSTACHY_PATH` (the import sweep's overlay, less
+the modules `lib/` replaces) shows the next one:
+
+| Benchmark | First error with CPython's standard library available |
+|---|---|
+| `argparse`, `deepcopy` | `unsupported type annotation`: a bare `list` (`-> list`, `lst: list`) |
+| `base64` | `random.randbytes()` needs `int.to_bytes()` |
+| `bpe_tokeniser` | field `_decoder` needs a type annotation |
+| `logging` | `threading`: class `_thread.RLock` cannot be used as a value |
+| `pickle` | `copyreg`: a dict keyed by classes |
+| `pprint` | executable statements in the body of class `PrettyPrinter` |
+| `pyflate` | inheritance with generic class templates |
+| `decimal_factorial`, `decimal_pi`, `telco`, `mdp` | missing `_contextvars` (via `decimal` / `fractions`) |
+| `2to3`, `concurrent_imap`, `python_startup` / `async_tree`, `asyncio_tcp` | missing `_signal` / `_socket` |
+| `pathlib` | `shutil` imports `bz2`, whose `_bz2` is missing |
+| `xml_etree` / `sqlite_synth` / `gc_*` | missing `_elementtree` / `_sqlite3` / `gc` |
+
+The other unported sources stop where the tables below say: `async_generators` and
+`coroutines` at `async def`, `crypto_pyaes` at the third-party `pyaes`, `deltablue` and
+`typing_runtime_protocols` at their base classes, `regex_compile` at its unannotated global.
+`tomli_loads` needs the third-party `tomli` (its stdlib twin `tomllib` is shipped, and
+parses the benchmark's 16.8 MB fixture to the same document in a JIT probe), but the fixture
+is too large to vendor, so it stays unported. The overlay probe is not a delivered port.
 
 ### Sources without a delivered port
 
@@ -253,7 +289,6 @@ The table records the first error, not all blockers. Related trackers:
 | `mdp` | `bm_mdp.py:3: error: module 'fractions' is not supported` |
 | `pathlib` | `bm_pathlib.py:10: error: module 'pathlib' is not supported` |
 | `pickle` | `bm_pickle.py:253: error: module 'pickle' is not supported` |
-| `pidigits` | `bm_pidigits.py:22: error: map() is unsupported in this value position` |
 | `pprint` | `bm_pprint.py:9: error: module 'pprint' is not supported` |
 | `pyflate` | `bm_pyflate.py:19: error: module 'hashlib' is not supported` |
 | `python_startup` | `bm_python_startup.py:19: error: module 'subprocess' is not supported` |
@@ -285,6 +320,7 @@ checksums and timing records.
 | `meteor_contest` | `bm_meteor_contest.py:88: error: expected int, got float` |
 | `nbody` | Compiles after runner replacement |
 | `nqueens` | Compiles after runner replacement |
+| `pidigits` | `bm_pidigits.py:22: error: map() is supported as the argument of list(), tuple() (with scalar or optional scalar items), bytes(), sorted(), sum(), min(), max(), any(), all(), math.fsum(), math.prod(), str.join() and list.extend(), and as the value assigned to a list slice, which take its items at once; elsewhere use a list comprehension` |
 | `raytrace` | `bm_raytrace.py:11: error: module 'array' is not supported` |
 | `regex_dna` | `bm_regex_dna.py:135: error: unsupported call bytearray()` |
 | `regex_effbot` | `bm_regex_effbot.py:156: error: type <function bench_regex_effbot> has no attribute 'data'` |

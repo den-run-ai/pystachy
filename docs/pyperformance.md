@@ -1,10 +1,21 @@
 # pyperformance results
 
-Pystachy includes 22 of the 52 benchmarks tried from pyperformance 1.14.0, after the localized
+Pystachy includes 23 of the 52 benchmarks tried from pyperformance 1.14.0, after the localized
 adaptations listed in the [port notes](../bench/pyperformance/README.md). CPython runs the same
 adapted files, and every JIT and AOT run must print exactly what CPython printed. These are
 comparisons on that source, not pyperformance scores: some inputs, random number generators and data
 types differ from upstream.
+
+## Coverage expansion (2026-11-02)
+
+`pidigits` is the first big-integer benchmark in the suite. Its module opts in to
+[promoting ints](python-int.md), so the 2,000 digits use CPython's arbitrary-precision `int`
+instead of checked 64-bit ints; the only source change is a generator expression for a
+`map()` over `itertools.count()`. Every computed digit is checked against CPython. The
+refreshed runner-only census is unchanged at seven of 52 compiling sources; see the
+[port notes](../bench/pyperformance/README.md#refresh-2026-11-02) for the blockers that remain.
+Run `--benchmarks pidigits --smoke` with the controller for the addition. This is a
+correctness addition, with no new performance claim.
 
 ## Coverage expansion (2026-10-22)
 
@@ -15,7 +26,7 @@ The comprehensions case replaces enum tags with integers; its complete sorted ou
 the generator's complete yielded sequence and JSON results are checked outside the timers.
 See the [adaptations and refreshed 52-source census](../bench/pyperformance/README.md#runner-only-census-2026-10-22)
 for exact scope, blocked candidates and exclusions. Seven runner-only sources produce IR;
-that count is distinct from the 22 adapted benchmarks with differential execution coverage.
+that count is distinct from the 22 adapted benchmarks that then had differential execution coverage.
 
 Run `make bench-pyperformance-check` for all delivered cases, or use
 `--benchmarks comprehensions generators json_dumps json_loads --smoke` with the controller
