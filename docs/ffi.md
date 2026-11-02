@@ -1,8 +1,8 @@
 # Calling C and CPython, and building Python extensions
 
 Pystachy's experimental FFI can call C libraries and CPython from JIT and AOT programs, or
-build AOT extension modules that CPython imports. The tested platform is x86-64 Linux with
-glibc.
+build AOT extension modules that CPython imports. The tested platforms are x86-64 and ARM64
+Linux with glibc; both architectures run the FFI suite in native CI.
 
 | Direction | Interface | Status |
 |---|---|---|
@@ -379,8 +379,10 @@ For general language differences, see [compatibility](language/compatibility.md)
 <a id="limitations"></a>
 ## Platform and API limits
 
-The tested platform is x86-64 Linux with LP64, glibc and Itanium exception
-unwinding. macOS would need `-undefined dynamic_lookup` for extensions and lacks
+Native CI targets x86-64 and little-endian ARM64 Linux with LP64, glibc and
+Itanium exception unwinding. Embedding and extension tests require the runner's
+shared libpython; a skipped embedding/extension section is not validation of that
+mode. macOS would need `-undefined dynamic_lookup` for extensions and lacks
 `RTLD_DEEPBIND`; Windows requires another loader and unwinding implementation.
 
 Keyword arguments/defaults for exports, public classes, exception classes,

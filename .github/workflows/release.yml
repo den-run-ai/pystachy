@@ -8,6 +8,8 @@ on:
       - .dockerignore
       - tools/release*.py
       - tools/test_release*.py
+      - tools/linux_abi.py
+      - tools/test_linux_abi.py
       - tools/docker_smoke.sh
       - VERSION
   push:
@@ -102,6 +104,8 @@ jobs:
         include:
           - os: ubuntu-24.04
             target: linux-x86_64
+          - os: ubuntu-24.04-arm
+            target: linux-aarch64
           - os: macos-15
             target: macos-arm64
           - os: macos-15-intel
@@ -139,6 +143,25 @@ jobs:
             --target "$RELEASE_TARGET" --output-dir dist
           python3 tools/release_smoke.py "dist/pystachy-$RELEASE_VERSION-$RELEASE_TARGET.tar.gz"
 
+      - name: Audit the complete Linux archive payload
+        if: runner.os == 'Linux'
+        env:
+          RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+          RELEASE_TARGET: ${{ matrix.target }}
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          import sys
+          sys.path.insert(0, 'tools')
+          from release_smoke import extract, verify_manifest
+          name = 'pystachy-' + os.environ['RELEASE_VERSION'] + '-' + os.environ['RELEASE_TARGET']
+          directory = extract(Path('dist', name + '.tar.gz'), Path('build/linux-abi-payload'))
+          verify_manifest(directory)
+          PY
+          python3 tools/linux_abi.py build/linux-abi-payload --architecture "${RELEASE_TARGET#linux-}" \
+            --max-glibc 2.39 --json "dist/linux-abi-$RELEASE_TARGET.json"
+
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: binary-${{ matrix.target }}
@@ -147,9 +170,25 @@ jobs:
           retention-days: 14
 
   container:
-    needs: prepare
-    runs-on: ubuntu-24.04
+    needs: [prepare, binaries]
+    name: Container (linux/${{ matrix.arch }})
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            arch: amd64
+            target: linux-x86_64
+          - os: ubuntu-24.04-arm
+            arch: arm64
+            target: linux-aarch64
+    env:
+      RELEASE_ARCH: ${{ matrix.arch }}
+      RELEASE_TARGET: ${{ matrix.target }}
+      RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+      RELEASE_COMMIT: ${{ needs.prepare.outputs.commit }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
@@ -158,39 +197,64 @@ jobs:
 
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069  # v4.4.1
 
-      - name: Build the Linux amd64 image
-        env:
-          RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
-          RELEASE_COMMIT: ${{ needs.prepare.outputs.commit }}
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8
+        with:
+          name: binary-${{ matrix.target }}
+          path: dist/binary
+
+      - name: Verify and stage the tested native archive
         run: |
-          docker buildx build --platform linux/amd64 --load \
+          (cd dist/binary && sha256sum -c ./*.sha256)
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          import shutil
+          import sys
+          sys.path.insert(0, 'tools')
+          from release_smoke import extract, verify_manifest
+          version, target, commit = (os.environ[name] for name in ('RELEASE_VERSION', 'RELEASE_TARGET', 'RELEASE_COMMIT'))
+          archive = Path('dist/binary') / f'pystachy-{version}-{target}.tar.gz'
+          directory = extract(archive, Path('build/container-extract'))
+          manifest = verify_manifest(directory)
+          if (manifest['version'], manifest['target'], manifest['commit']) != (version, target, commit):
+              raise SystemExit('Container archive does not match the selected release')
+          prefix = Path('build/container-payload/out/usr/local')
+          for name in ('bin', 'libexec'):
+              shutil.copytree(directory / name, prefix / name)
+          PY
+
+      - name: Build the native image from its verified compiler archive
+        run: |
+          docker buildx build --platform "linux/$RELEASE_ARCH" --load \
+            --build-context build=build/container-payload \
             --build-arg "VERSION=$RELEASE_VERSION" --build-arg "REVISION=$RELEASE_COMMIT" \
-            --tag pystachy:release-test .
+            --tag "pystachy:release-test-$RELEASE_ARCH" .
+          test "$(docker image inspect "pystachy:release-test-$RELEASE_ARCH" --format '{{.Os}}/{{.Architecture}}')" = "linux/$RELEASE_ARCH"
 
       - name: Test JIT/AOT and bind mounts as an unprivileged user
         run: |
-          docker run --rm --user 10001:10001 --entrypoint pystachy-smoke pystachy:release-test
+          docker run --rm --user 10001:10001 --entrypoint pystachy-smoke "pystachy:release-test-$RELEASE_ARCH"
           mkdir -p build/container-smoke
           chmod 777 build/container-smoke
           printf 'print(332833500)\n' > build/container-smoke/demo.py
           docker run --rm --user 10001:10001 -v "$PWD/build/container-smoke:/work" \
-            pystachy:release-test run demo.py | tee build/container-smoke/jit.out
+            "pystachy:release-test-$RELEASE_ARCH" run demo.py | tee build/container-smoke/jit.out
           test "$(cat build/container-smoke/jit.out)" = 332833500
           docker run --rm --user 10001:10001 -v "$PWD/build/container-smoke:/work" \
-            pystachy:release-test build demo.py -o demo
+            "pystachy:release-test-$RELEASE_ARCH" build demo.py -o demo
           test "$(build/container-smoke/demo)" = 332833500
 
       - name: Save the tested image for publication
         run: |
-          mkdir -p dist
-          docker save pystachy:release-test | gzip -n > dist/pystachy-image.tar.gz
-          cd dist
-          sha256sum pystachy-image.tar.gz > pystachy-image.tar.gz.sha256
+          mkdir -p dist/container
+          docker save "pystachy:release-test-$RELEASE_ARCH" | gzip -n > "dist/container/pystachy-image-$RELEASE_ARCH.tar.gz"
+          cd dist/container
+          sha256sum "pystachy-image-$RELEASE_ARCH.tar.gz" > "pystachy-image-$RELEASE_ARCH.tar.gz.sha256"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
-          name: container-linux-amd64
-          path: dist/*
+          name: container-linux-${{ matrix.arch }}
+          path: dist/container/*
           if-no-files-found: error
           retention-days: 14
 
@@ -215,6 +279,8 @@ jobs:
           ref: ${{ needs.prepare.outputs.commit }}
           persist-credentials: false
 
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069  # v4.4.1
+
       - name: Recheck version and exact commit immediately before publishing
         env:
           GH_TOKEN: ${{ github.token }}
@@ -236,63 +302,32 @@ jobs:
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8
         with:
-          name: container-linux-amd64
+          pattern: container-linux-*
+          merge-multiple: true
           path: dist/container
 
-      - name: Verify downloads and load the tested image
+      - name: Verify downloads and load both tested native images
         run: |
           cd dist/binaries
           sha256sum -c ./*.sha256
           sha256sum ./*.tar.gz > SHA256SUMS
           cd ../container
-          sha256sum -c pystachy-image.tar.gz.sha256
-          docker load --input pystachy-image.tar.gz
+          sha256sum -c ./*.sha256
+          for arch in amd64 arm64; do
+            docker load --input "pystachy-image-$arch.tar.gz"
+          done
 
-      - name: Push the versioned image to Docker Hub
+      - name: Push both tested images and their versioned manifest to Docker Hub
         env:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
           DOCKERHUB_IMAGE: ${{ vars.DOCKERHUB_IMAGE }}
         run: |
           image=${DOCKERHUB_IMAGE:-$DOCKERHUB_USERNAME/pystachy}
-          export DOCKER_IMAGE="$image"
-          python3 - <<'PY'
-          import json
-          import os
-          import re
-          import urllib.error
-          import urllib.request
-          image = os.environ['DOCKER_IMAGE']
-          if not re.fullmatch(r'[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*', image):
-              raise SystemExit('DOCKERHUB_IMAGE must be namespace/repository')
-          url = 'https://hub.docker.com/v2/repositories/' + image + '/'
-          with urllib.request.urlopen(url, timeout=30) as response:
-              repository = json.load(response)
-          if repository.get('is_private') is not False:
-              raise SystemExit('Create a public Docker Hub repository before publishing')
-          try:
-              with urllib.request.urlopen(url + 'tags/' + os.environ['RELEASE_VERSION'] + '/', timeout=30):
-                  exists = True
-          except urllib.error.HTTPError as error:
-              if error.code != 404:
-                  raise
-              exists = False
-          with open(os.environ['GITHUB_ENV'], 'a') as output:
-              output.write(f'DOCKER_IMAGE={image}\n')
-          with open(os.environ['RUNNER_TEMP'] + '/docker-version-exists', 'w') as output:
-              output.write(str(exists).lower())
-          PY
           printf '%s' "$DOCKERHUB_TOKEN" | docker login --username "$DOCKERHUB_USERNAME" --password-stdin
           trap 'docker logout >/dev/null 2>&1' EXIT
-          if [ "$(cat "$RUNNER_TEMP/docker-version-exists")" = true ]; then
-            tested_id=$(docker image inspect pystachy:release-test --format '{{.Id}}')
-            docker pull "$image:$RELEASE_VERSION"
-            existing_id=$(docker image inspect "$image:$RELEASE_VERSION" --format '{{.Id}}')
-            test "$tested_id" = "$existing_id" || { echo 'Docker version already exists with different contents; choose a new version' >&2; exit 1; }
-          else
-            docker tag pystachy:release-test "$image:$RELEASE_VERSION"
-            docker push "$image:$RELEASE_VERSION"
-          fi
+          python3 tools/release_images.py --image "$image" --version "$RELEASE_VERSION" --commit "$RELEASE_COMMIT"
+          printf 'DOCKER_IMAGE=%s\n' "$image" >> "$GITHUB_ENV"
 
       - name: Determine whether to advance latest
         if: needs.prepare.outputs.prerelease == 'false'
@@ -318,8 +353,8 @@ jobs:
           # Markdown backticks are literal text, not command substitutions.
           # shellcheck disable=SC2016
           {
-            printf '\n## Release assets\n\nNative compiler packages for Linux x86-64 and macOS arm64/x86-64.\n\n'
-            printf 'Docker image: `%s:%s` (linux/amd64, LLVM 18 included).\n\n' "$DOCKER_IMAGE" "$RELEASE_VERSION"
+            printf '\n## Release assets\n\nNative compiler packages for Linux x86-64/AArch64 and macOS arm64/x86-64.\n\n'
+            printf 'Docker image: `%s:%s` (linux/amd64 and linux/arm64, LLVM 18 included).\n\n' "$DOCKER_IMAGE" "$RELEASE_VERSION"
             printf 'Binary packages require LLVM 18 on Linux or LLVM 20 on macOS. See [installation instructions](https://github.com/%s/blob/%s/docs/install.md).\n\nSource commit: `%s`.\n' \
               "$GITHUB_REPOSITORY" "$RELEASE_COMMIT" "$RELEASE_COMMIT"
           } >> release-notes.md

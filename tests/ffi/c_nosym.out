@@ -1,3 +1,3 @@
 before
 [exit 1]
-[stderr] AttributeError: /lib/x86_64-linux-gnu/libm.so.6: undefined symbol: no_such_function_here
+[stderr] AttributeError: libm.so.6: undefined symbol: no_such_function_here
