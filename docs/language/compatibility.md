@@ -158,6 +158,13 @@ above apply to well-formed text (with the surrogate exception described above).
   A subclass can therefore collide with a base's private fields or replace its private
   methods. Use distinct names across the hierarchy until name mangling is supported.
 
+- A tuple display of literals is one constant of its module, as CPython compiles it. Literals
+  here are numbers, strings, bytes, `True`, `False`, `None`, signs on numbers and tuples of
+  these. Each run of the display, and each equal display in the same module, is the same object,
+  and `()` is one object everywhere. CPython's compiler also makes constants of displays that
+  Pystachy builds at each run: those with operators on literals (`(1 + 2, 3)`) and those whose
+  items an annotation retypes or boxes (a `str | None` or `int | None` item).
+
 - Runtime-length tuples use a different layout from fixed-shape tuples. Converting a
   fixed-shape tuple to `tuple[T, ...]`, or boxing its scalar elements for an optional-element
   annotation, creates a new tuple. Values compare equally, but identity across such a

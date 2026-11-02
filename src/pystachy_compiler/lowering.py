@@ -2,7 +2,7 @@
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import fail, int_program
 from src.pystachy_compiler.ir import Blk, IFn, Ins, Val
-from src.pystachy_compiler.lower_module import struct_types
+from src.pystachy_compiler.lower_module import const_slot, struct_types
 from src.pystachy_compiler.specs import CHECKED, FCMP, FXBIT, GENDONE, GENNAME, GENNEW, GENRET, GENRETP, GENSLOTS, GENSLOTSB, GENSLOTSX, GENSTATE, GENVALP, ICMP, OBJECTC, RANGEC, STRLEN_RANGE, TBAA_BYTES, TBAA_DEPTH, TBAA_FIELDS, TBAA_LEN, TBAA_SIZES
 from src.pystachy_compiler.utils import atomic_dict, atomic_list, identity_abi, numeric_identity, is_dict, is_tuple, lt, selem, takes_self, targs, tslots
 
@@ -19,7 +19,7 @@ def gen_lower(self, fn: IFn) -> None:
     # tupleret: a function that returns its tuple's slots by value (Gen.tuple_rets) is lowered as
     # @v.<its symbol>, returning them as an LLVM aggregate, and its own symbol is a wrapper below
     n = self.vrets.get(f.ll, 0)
-    agg = "{" + ", ".join(["i64" for _ in range(n)]) + "}"
+    agg = vagg(n, f.ll in self.vconst)
     self.vtuples = fresh_rets(fn) if n > 0 else {}
     self.vslots = {}
     self.vaggs = {}
@@ -100,6 +100,14 @@ def gen_lower(self, fn: IFn) -> None:
             if numeric_identity(f.ret):
                 forwarded.append("ptr %idret")
         o.append(f"  %v = call {agg} @v.{f.ll[1:]}({', '.join(forwarded)})")
+        if f.ll in self.vconst:
+            # (where the body returned a constant tuple, that tuple: Gen.tuple_const)
+            o.append(f"  %c = extractvalue {agg} %v, {n}")
+            o.append("  %k = icmp ne ptr %c, null")
+            o.append("  br i1 %k, label %const, label %made")
+            o.append("const:")
+            o.append("  ret ptr %c")
+            o.append("made:")
         o.append(f"  %p = call ptr @{self.rtfns['alloc'].sym}(i64 {8 * n})")
         for k in range(n):
             o.append(f"  %v{k} = extractvalue {agg} %v, {k}")
@@ -119,8 +127,12 @@ def gen_tuple_rets(self) -> None:
     # the others are lowered as before
     fns: dict[str, int] = {}
     for fn in self.fns:
-        if len(fresh_rets(fn)) > 0:
+        # (one that returns constant tuples alone returns their addresses, which need no tuple made)
+        rets = fresh_rets(fn)
+        if len([v for v in rets if not v.startswith("@tc.")]) > 0:
             fns[fn.f.ll] = tslots(fn.f.ret)
+            if len([v for v in rets if v.startswith("@tc.")]) > 0:
+                self.vconst[fn.f.ll] = True  # (its slots go with the constant's address: vagg)
     for fn in self.fns:
         calls: dict[str, str] = {}
         used: dict[str, bool] = {}  # (values that an op reads other than as a tuple.load's tuple)
@@ -138,7 +150,8 @@ def gen_tuple_rets(self) -> None:
 
 def fresh_rets(fn: IFn) -> dict[str, bool]:
     # the tuples that fn returns (tupleret), if each is made by an alloc.fixed of its ret's block,
-    # of fn's fixed tuple type, and nothing but tuple.stores and the ret reach it; else none. Not a
+    # of fn's fixed tuple type, and nothing but tuple.stores and the ret reach it, or is a constant
+    # tuple of that type (@tc.N, which any code may read: Gen.tuple_const); else none. Not a
     # generator's (its returns are gen.ret), nor an exported function's, whose ABI C or CPython use
     t = fn.f.ret
     if fn.coro or fn.f.export or fn.f.pyexport or not is_tuple(t) or not t.endswith("]") or len(targs(t)) == 0 or "..." in targs(t) or "" in targs(t):
@@ -149,16 +162,23 @@ def fresh_rets(fn: IFn) -> dict[str, bool]:
         for i in b.code:
             if i.op == "alloc.fixed" and i.t == t:
                 made[f"%t{i.r[0]}"] = True
-            elif i.op == "ret.none" or (i.op == "ret" and (len(i.a) != 1 or i.a[0].v not in made)):
+            elif i.op == "ret.none" or (i.op == "ret" and (len(i.a) != 1 or (i.a[0].v not in made and not (i.a[0].v.startswith("@tc.") and i.a[0].t == t)))):
                 return {}
             elif i.op == "ret":
                 rets[i.a[0].v] = True
     for b in fn.blocks:
         for i in b.code:
             for j in range(len(i.a)):
-                if i.a[j].v in rets and i.op != "ret" and (i.op != "tuple.store" or j != 0):
+                if i.a[j].v in rets and not i.a[j].v.startswith("@tc.") and i.op != "ret" and (i.op != "tuple.store" or j != 0):
                     return {}
     return rets
+
+
+def vagg(n: int, c: bool) -> str:
+    # the LLVM aggregate that a tupleret function returns: its tuple's n slots, then, where some
+    # return of it is a constant tuple (c: Gen.vconst), that tuple's address, null where it
+    # returns a new one, which its wrapper makes of the slots
+    return "{" + ", ".join(["i64" for _ in range(n)] + (["ptr"] if c else [])) + "}"
 
 def raises_only(fn: IFn) -> bool:
     # whether no call of fn returns: it has no ret, and no branch back to a block before it (a
@@ -293,11 +313,15 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         x = i.a[1]
         y = i.a[2]
         o.append(f"  %t{i.r[0]} = select i1 {i.a[0].v}, {lt(x.t)} {x.v}, {lt(y.t)} {y.v}")
+    elif op == "ret" and len(i.a) > 0 and i.a[0].v.startswith("@tc.") and i.a[0].v in self.vtuples:
+        # a constant tuple's slots and its address, by value (tupleret: vagg)
+        slots = ["i64 " + const_slot(x) for x in self.tconstdata[i.a[0].v].items]
+        o.append(f"  ret {vagg(tslots(fn.f.ret), True)} {{{', '.join(slots + ['ptr ' + i.a[0].v])}}}")
     elif op == "ret" and len(i.a) > 0 and i.a[0].v in self.vtuples:
         # the tuple's slots, by value (tupleret): what its tuple.stores gave each, else the zero
-        # of the tuple that alloc.fixed would have made
+        # of the tuple that alloc.fixed would have made (and a null constant's address: vagg)
         n = tslots(fn.f.ret)
-        agg = "{" + ", ".join(["i64" for _ in range(n)]) + "}"
+        agg = vagg(n, fn.f.ll in self.vconst)
         cur = "zeroinitializer"
         for k in range(n):
             s = self.vslots.get(i.a[0].v + " " + str(k), "0")
@@ -358,7 +382,7 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         o.append("  " + c if i.t == "None" else f"  %t{i.r[0]} = {c}")
     elif op == "call" and len(i.r) == 1 and f"{fn.f.ll} %t{i.r[0]}" in self.vcalls:
         # the slots of the tuple a function returns, by value, to tuple.loads alone (tupleret)
-        agg = "{" + ", ".join(["i64" for _ in range(self.vrets[i.s])]) + "}"
+        agg = vagg(self.vrets[i.s], i.s in self.vconst)
         args = ", ".join([lt(v.t) + " " + v.v for v in i.a])
         o.append(f"  %t{i.r[0]} = {self.invoke(f'call {agg} @v.{i.s[1:]}({args})', i)}")
         self.vaggs[f"%t{i.r[0]}"] = agg

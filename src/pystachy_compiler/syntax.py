@@ -19,6 +19,9 @@ class Node:
         self.depth = 1  # levels of nodes from this one down, as mk counted them
         self.made = False  # the variable of a comprehension the compiler makes (made_var)
         self.memo = 0  # an item of a display: where Gen.dmemo remembers its dry-run type, + 1 (Gen.dyn_dry)
+        # a tuple display that the source writes (the parser's, not one the compiler makes):
+        # CPython's compiler makes one of literals a constant of its module (Gen.tuple_const)
+        self.src = False
 
 
 # an empty list of nodes for a for loop to run over where a node has no kids to visit (for k in
