@@ -1,0 +1,21 @@
+0
+next: RecursionError
+then finished
+next: RecursionError
+then finished
+0
+send: RecursionError
+then finished
+0
+close: RecursionError
+then finished
+0
+throw: RecursionError
+then finished
+0
+next: delegate RecursionError
+then finished
+0 60
+finally 0
+then finished
+[exit 0]

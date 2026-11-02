@@ -1,5 +1,4 @@
-# sys.setrecursionlimit() checks its argument (Pystachy's recursion is limited by the native
-# stack alone, so the limit changes nothing)
+# sys.setrecursionlimit() rejects a nonpositive limit before storing it.
 import sys
 
 sys.setrecursionlimit(5000)
