@@ -102,7 +102,8 @@
 #                  neither dynamic Any nor promoting ints keeps none of their runtime helpers, and
 #                  its list stores none of their companion code; direct and imported opt-ins
 #                  retain them; objects that never escape compile to no allocation and those a
-#                  list keeps do (allocelide), with outputs matching CPython
+#                  list keeps do (allocelide), and holders of objects keep their allocations and
+#                  those objects through collections, with outputs matching CPython
 #   unicode-audit  tools/unicode_audit.py: optional byte-boundary checks in JIT/AOT, cache
 #                  reuse, ASCII/Unicode controls and GC-stress exception paths, both compilers;
 #                  unicodeprobe checks code-point cache/locality, mutation and GC invalidation
