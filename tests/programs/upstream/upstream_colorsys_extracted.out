@@ -1,0 +1,8 @@
+ok ColorsysTest.test_hls_roundtrip
+ok ColorsysTest.test_hls_values
+ok ColorsysTest.test_hsv_roundtrip
+ok ColorsysTest.test_hsv_values
+ok ColorsysTest.test_yiq_roundtrip
+ok ColorsysTest.test_yiq_to_rgb_clamping
+ok ColorsysTest.test_yiq_values
+[exit 0]
