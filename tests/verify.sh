@@ -87,8 +87,9 @@
 #                  timeout-deadline/blocking retries, normally and with GC stress
 #   dict-probes    tools/dictprobe.c: dict lookups visit few table slots for keys that defeat a weak
 #                  hash or probe sequence (deterministic counts against a fixed limit, no timings);
-#                  the collector scans the key tables of strs and tuples, and none of ints; the
-#                  probe of str keys (dfinds) tests no entry for a key past 64 bits
+#                  the collector scans the key tables of strs and tuples, and none of ints;
+#                  dfinds, the probe of every str key, tests no entry for a key past 64 bits,
+#                  and dfindi, the probe of native int keys, compares no strs
 #   compile-limits tools/compilelimits.py: hosted/native ir/run/build reject growing types,
 #                  specialization breadth and the signature bytes specializations retain under
 #                  256 MiB / ten CPU seconds, with short diagnostics;
@@ -957,8 +958,12 @@ fi
 if want dict-probes; then
 L=$V/dict-probes.log; s=$(now); r=fail
 { "$V/pystachy2" rt runtime.py -o "$V/dictprobe-rt.ll" && "${LLVM}clang" -O2 -S -emit-llvm tools/dictprobe.c -o "$V/dictprobe.ll" &&
+  if [ "$(grep -c '^define[^@]*@dfind[is](' "$V/dictprobe.ll")" != 2 ]; then
+    echo 'dict-probes: dictprobe.ll must define dfinds and dfindi'; false; fi &&
   if sed -n '/^define[^@]*@dfinds(/,/^}/p' "$V/dictprobe.ll" | grep -q -- '-9223372036854775808'; then
     echo 'dict-probes: the str-key probe (dfinds) must not test entries for wide int keys'; false; fi &&
+  if sed -n '/^define[^@]*@dfindi(/,/^}/p' "$V/dictprobe.ll" | grep -Eq '@(bcmp|memcmp|pys_str_eq)\('; then
+    echo 'dict-probes: dfindi, the probe of native int keys, must compare no strs (str keys use dfinds)'; false; fi &&
   "${LLVM}llvm-link" "$V/dictprobe-rt.ll" "$V/dictprobe.ll" -o "$V/dictprobe.bc" && "${LLVM}clang" -O2 "$V/dictprobe.bc" -o "$V/dictprobe" -lm &&
   "$V/dictprobe" && PYSTACHY_GC_STRESS=1 "$V/dictprobe" --hash-cache && r=pass; } > "$L" 2>&1
 step dict-probes $r "$s" "$L" "$(sed -n 's/^worst average: \([0-9.]*\) slots per lookup (limit \([0-9.]*\))$/, "worst_average_slots": \1, "limit": \2/p' "$L")"

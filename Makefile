@@ -105,14 +105,17 @@ bench-pyperformance-check: $(BENCH_COMPILER)
 # counts, so the run fails above a fixed limit; the timings it prints are for information only
 # (it includes runtime.c, whose hash functions are runtime.py's: llvm-link adds those). It also
 # checks that the collector scans no key table of ints, and those of strs, tuples and objects,
-# and that the probe of str keys (dfinds) tests no entry for a key past 64 bits (kbig's -2**63)
+# and that dfinds, the probe of every str key, tests no entry for a key past 64 bits (kbig's
+# -2**63), while dfindi, the probe of native int keys, compares no strs
 LLVMBIN = $(if $(PYSTACHY_LLVM),"$(PYSTACHY_LLVM)/")
 dictprobe: tools/dictprobe.c runtime.c runtime.py pystachy
 	mkdir -p build
 	./pystachy rt runtime.py -o build/dictprobe-rt.ll
 	$(LLVMBIN)clang -O2 -S -emit-llvm tools/dictprobe.c -o build/dictprobe.ll
 	@if grep -Eq '^define[^@]*@hobj[.(]' build/dictprobe.ll; then echo 'dictprobe: scalar-key hashing must inline hobj' >&2; exit 1; fi
+	@if [ "$$(grep -c '^define[^@]*@dfind[is](' build/dictprobe.ll)" != 2 ]; then echo 'dictprobe: build/dictprobe.ll must define dfinds and dfindi' >&2; exit 1; fi
 	@if sed -n '/^define[^@]*@dfinds(/,/^}/p' build/dictprobe.ll | grep -q -- '-9223372036854775808'; then echo 'dictprobe: the str-key probe (dfinds) must not test entries for wide int keys' >&2; exit 1; fi
+	@if sed -n '/^define[^@]*@dfindi(/,/^}/p' build/dictprobe.ll | grep -Eq '@(bcmp|memcmp|pys_str_eq)\('; then echo 'dictprobe: dfindi, the probe of native int keys, must compare no strs (str keys use dfinds)' >&2; exit 1; fi
 	$(LLVMBIN)llvm-link build/dictprobe-rt.ll build/dictprobe.ll -o build/dictprobe.bc
 	$(LLVMBIN)clang -O2 build/dictprobe.bc -o build/dictprobe -lm
 	build/dictprobe
