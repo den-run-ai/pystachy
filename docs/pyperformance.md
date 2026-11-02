@@ -21,7 +21,8 @@ Across the 22 benchmarks both releases run, the candidate executes a geometric m
 | Largest improvements | raytrace −28.1%, chaos −4.1%, comprehensions −1.5% | Allocation removal (#1020) |
 
 A scratch build that drops only `pys_list_set`'s identity-companion line brings scimark to
-4.8% below alpha.3 and the suite's geometric mean to +0.71%. Paired wall times on the
+4.8% below alpha.3 and, over the 21 benchmarks other than `regex_v8`, which it did not
+rebuild, the geometric mean from +2.38% to +0.71%. Paired wall times on the
 shared host follow the larger changes only loosely (scimark 1.15×, barnes_hut 1.08×,
 fib 1.06×, raytrace 0.93×). Builds took 22% longer and executables are 12% larger
 (geometric means of single builds). The
