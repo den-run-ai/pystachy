@@ -80,9 +80,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LLVM = os.environ.get("PYSTACHY_LLVM", "")
 TOOL = (LLVM.rstrip("/") + "/") if LLVM else ""
 # Mutable data directly accessed by generated helpers, distinct from RTDATA's constants.
-# The native recursion guards and the C limit APIs must share these three i64 words
-# (active depth, limit, native stack floor).
-MUTABLE_DATA = {"pys_recursion_state": "[3 x i64]"}
+# The native recursion guards and the C limit APIs must share these four i64 words
+# (active depth, trip, limit, native stack floor).
+MUTABLE_DATA = {"pys_recursion_state": "[4 x i64]"}
 # functions whose call graph reaches user code, and rec_deep, only through comparing elements, which
 # they never do: set.copy merges into a new set, whose table has none yet (the dict and set
 # operations that hash or compare keys have U? and R?, which an object's or a recursive alias's

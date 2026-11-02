@@ -5893,7 +5893,8 @@ static void setbuf1(File *f, I bs) {   /* CPython's write layers: 8 KiB of pendi
 }
 static int jit;                        /* pystachy run: the program runs in lli's process */
 I pys_jit(void) { return jit; }
-static void stack_floor(void);         /* the native stack's floor (see the recursion depth) */
+static void stack_floor(void);         /* the native stack's floor and the safe depth (see the recursion depth) */
+static void stack_rebase(uintptr_t here, int outermost);
 __attribute__((minsize)) void pys_init(int argc, char **argv, char *sb, I **roots, I nroots) {   /* first call of @main */
   gc_init(sb, roots, nroots);
   stack_floor();
@@ -5924,7 +5925,10 @@ __attribute__((minsize)) void pys_init(int argc, char **argv, char *sb, I **root
    outermost one's frame bounds the stack scan, as @main's does. One thread only (pyext.c). */
 static I lib_depth;
 void pys_set_hooks(int (*s)(const char *, I, I), Str *(*i)(I, Str *, I)) { std_hook = s; in_hook = i; }
-void pys_enter(char *sb) { if (!lib_depth++) gc_bottom = sb + 2 * sizeof(void *); }
+void pys_enter(char *sb) {
+  stack_rebase((uintptr_t)sb, !lib_depth);
+  if (!lib_depth++) gc_bottom = sb + 2 * sizeof(void *);
+}
 I pys_leave(void) { return --lib_depth; }
 void pys_out_sync(void) {              /* embedded CPython is about to run: what Pystachy wrote to stdout goes first */
   if (!std_out.closed) flush1(&std_out);   /* fflush of an empty stream is harmless; no libc-specific pending probe */
@@ -6292,17 +6296,20 @@ I pys_thread_stack_valid(I size) {
    has skipped the returns of callees. A failed entry does not change the depth. Like the rest
    of the runtime this state belongs to its one execution thread (pyext.c enforces that for extensions).
    The limit is logical; the native stack's floor (below) bounds the same entries physically.
-   Mutable ABI shared with the program's inlined guards (lower_module): three i64 words,
-   active depth, requested limit, then the stack floor. Both JIT and AOT guards use this same
-   storage, kept in one cache line. */
-__attribute__((aligned(32))) I pys_recursion_state[3] = {1, 1000, 0};
-_Static_assert(sizeof(I) == 8 && sizeof(pys_recursion_state) == 24,
-               "Recursion ABI: three i64 words, active depth, requested limit, then stack floor");
+   Mutable ABI shared with the program's inlined guards (lower_module): four i64 words, the active
+   depth, the trip, the requested limit, then the stack floor. An entry compares the depth with the
+   trip alone, the lower of the limit and the safe depth (below), and one at or past it looks
+   further, on its cold path: at the limit it raises RecursionError, with the stack pointer below
+   the floor the stack's RecursionError, and otherwise it enters. Both JIT and AOT guards use this
+   same storage, kept in one cache line; only the runtime writes its last three words. */
+__attribute__((aligned(32))) I pys_recursion_state[4] = {1, 1000, 1000, 0};
+_Static_assert(sizeof(I) == 8 && sizeof(pys_recursion_state) == 32,
+               "Recursion ABI: four i64 words, active depth, trip, requested limit, then stack floor");
 _Noreturn void pys_recursion_error(void) { pys_fail("RecursionError: maximum recursion depth exceeded"); }
 _Noreturn void pys_recursion_stack_error(void) {
   pys_fail("RecursionError: maximum recursion depth exceeded (the native stack is nearly full)");
 }
-/* The native stack's floor (#1015), the state's third word: an entry that finds the stack pointer
+/* The native stack's floor (#1015), the state's fourth word: an entry that finds the stack pointer
    below it raises RecursionError as one past the limit does, however high sys.setrecursionlimit()
    is set, so that handlers and finally blocks run where the thread's stack would otherwise run out
    (a SIGSEGV). The stack grows down on every supported target; the floor lies STACK_MARGIN above
@@ -6326,9 +6333,29 @@ _Noreturn void pys_recursion_stack_error(void) {
 #endif
 #if defined(__SANITIZE_ADDRESS__) || defined(STACK_ASAN)
 #define STACK_MARGIN ((uintptr_t)512 << 10)   /* (ASan's frames and its runtime need more) */
+#define STACK_LEVEL ((uintptr_t)32 << 10)   /* (and so do its levels, unmeasured: four times as much) */
 #else
 #define STACK_MARGIN ((uintptr_t)256 << 10)
+#define STACK_LEVEL ((uintptr_t)8 << 10)
 #endif
+/* The safe depth: the depth to which the stack holds every counted entry without a look at the
+   stack pointer, at STACK_LEVEL bytes a counted level on average, from a frame at a known depth
+   (here) down to the floor. A level is a counted frame with the uncounted functions and the
+   runtime's frames below it, up to the next entry. In the corpus' optimized code (AOT and the
+   JIT's default), the first level used at most 3 KiB, any other 720 bytes, and the deep
+   recursions under 420 bytes a level on average; the JIT's -O0 code generation, 9.6 KiB for a
+   single level but at most 1 KiB a level on average (docs/internals.md#native-recursion-depth).
+   Below the safe depth, the floor's protection relies on that average. None (INT64_MAX) without
+   a floor; the depth itself for a frame already below the floor, where every entry looks. The
+   trip, the state's second word, is the lower of it and the limit, which whatever writes either
+   keeps so (retrip): below it no entry reads the stack pointer. An 8 MiB main thread's safe
+   depth is about 990, near the default limit */
+static I stack_safe = INT64_MAX;
+static void retrip(void) { pys_recursion_state[1] = pys_recursion_state[2] < stack_safe ? pys_recursion_state[2] : stack_safe; }
+static I safe_from(uintptr_t here) {   /* (here: a frame at the current depth) */
+  uintptr_t floor = (uintptr_t)pys_recursion_state[3];
+  return !floor ? INT64_MAX : pys_recursion_state[0] + (here > floor ? (I)((here - floor) / STACK_LEVEL) : 0);
+}
 static void stack_floor_at(uintptr_t here) {   /* (here: the caller's frame address) */
   uintptr_t lo = 0, hi = 0;
 #if defined(__APPLE__)
@@ -6365,13 +6392,26 @@ static void stack_floor_at(uintptr_t here) {   /* (here: the caller's frame addr
 #endif
 #endif
   uintptr_t margin = (hi - lo) / 8 < STACK_MARGIN ? (hi - lo) / 8 : STACK_MARGIN;
-  pys_recursion_state[2] = lo && lo < here && here <= hi ? (I)(lo + margin) : 0;
+  pys_recursion_state[3] = lo && lo < here && here <= hi ? (I)(lo + margin) : 0;
+  stack_safe = safe_from(here);
+  retrip();
 }
 static void stack_floor(void) { stack_floor_at((uintptr_t)__builtin_frame_address(0)); }
+/* an extension module's entry from the host (pys_enter, here its frame), which may come deeper in
+   the importing thread's stack than its import did: the safe depth from there. The outermost
+   entry's replaces the last; a callback's, while compiled frames above it keep their own, only
+   lowers it */
+static void stack_rebase(uintptr_t here, int outermost) {
+  I safe = safe_from(here);
+  if (outermost || safe < stack_safe) stack_safe = safe;
+  retrip();
+}
 /* the C entries, as the program's own helpers (lower_module's recursion_ir) do it */
 I pys_recursion_enter(void) {
-  if (pys_recursion_state[0] >= pys_recursion_state[1]) pys_recursion_error();
-  if ((uintptr_t)__builtin_frame_address(0) < (uintptr_t)pys_recursion_state[2]) pys_recursion_stack_error();
+  if (pys_recursion_state[0] >= pys_recursion_state[1]) {   /* (the trip: then the limit and the floor) */
+    if (pys_recursion_state[0] >= pys_recursion_state[2]) pys_recursion_error();
+    if ((uintptr_t)__builtin_frame_address(0) < (uintptr_t)pys_recursion_state[3]) pys_recursion_stack_error();
+  }
   return ++pys_recursion_state[0];
 }
 /* a generator resume's entry (lower_module's pys.recursion.resume), given the generator's state
@@ -6379,12 +6419,14 @@ I pys_recursion_enter(void) {
    frame whose entry exceeds the limit */
 I pys_recursion_resume(I *state) {
   if (pys_recursion_state[0] >= pys_recursion_state[1]) {
-    *state = 2;
-    pys_recursion_error();
-  }
-  if ((uintptr_t)__builtin_frame_address(0) < (uintptr_t)pys_recursion_state[2]) {
-    *state = 2;
-    pys_recursion_stack_error();
+    if (pys_recursion_state[0] >= pys_recursion_state[2]) {
+      *state = 2;
+      pys_recursion_error();
+    }
+    if ((uintptr_t)__builtin_frame_address(0) < (uintptr_t)pys_recursion_state[3]) {
+      *state = 2;
+      pys_recursion_stack_error();
+    }
   }
   return ++pys_recursion_state[0];
 }
@@ -6397,9 +6439,10 @@ void pys_setrecursionlimit(I n) {
   if (n <= pys_recursion_state[0])
     failf("RecursionError: cannot set the recursion limit to %lld at the recursion depth %lld: the limit is too low",
           (long long)n, (long long)pys_recursion_state[0]);
-  pys_recursion_state[1] = n;
+  pys_recursion_state[2] = n;
+  retrip();
 }
-I pys_getrecursionlimit(void) { return pys_recursion_state[1]; }
+I pys_getrecursionlimit(void) { return pys_recursion_state[2]; }
 Str *pys_platform(void) {              /* sys.platform */
 #if defined(__linux__)
   return cstr("linux");

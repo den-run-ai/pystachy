@@ -43,7 +43,7 @@ PREFIX = r"""
 #include <sys/resource.h>
 #include <unistd.h>
 typedef int64_t I;
-static I pys_recursion_state[3];
+static I pys_recursion_state[4] = {1, 1000, 1000, 0};   /* (depth, trip, limit, floor) */
 /* simulated: the main thread's file name (AT_EXECFN), its stack limit, the page size and the
    pthread bounds; got counts pthread_getattr_np calls, destroyed pthread_attr_destroy calls */
 static const char *execfn;
@@ -79,11 +79,23 @@ SUFFIX = r"""
 static _Alignas(4096) char page[2 * 4096];
 static void check(const char *what, uintptr_t here, uintptr_t expected, int pthread_calls, int destroys) {
   got = destroyed = 0;
-  pys_recursion_state[2] = -1;
+  pys_recursion_state[1] = pys_recursion_state[3] = -1;
   stack_floor_at(here);
-  if ((uintptr_t)pys_recursion_state[2] != expected || got != pthread_calls || destroyed != destroys) {
+  if ((uintptr_t)pys_recursion_state[3] != expected || got != pthread_calls || destroyed != destroys) {
     fprintf(stderr, "incorrect stack floor (%s): %#llx, expected %#llx (%d pthread calls)\n", what,
-            (unsigned long long)pys_recursion_state[2], (unsigned long long)expected, got);
+            (unsigned long long)pys_recursion_state[3], (unsigned long long)expected, got);
+    exit(1);
+  }
+  if (!expected && pys_recursion_state[1] != pys_recursion_state[2]) {   /* (no floor: the limit) */
+    fprintf(stderr, "incorrect stack floor (%s): no floor, but a trip of %lld\n", what, (long long)pys_recursion_state[1]);
+    exit(1);
+  }
+}
+/* the trip, the state's second word: the limit, or the safe depth if it is lower */
+static void trip(const char *what, I expected) {
+  if (pys_recursion_state[1] != expected) {
+    fprintf(stderr, "incorrect stack floor (%s): a trip of %lld, expected %lld\n", what,
+            (long long)pys_recursion_state[1], (long long)expected);
     exit(1);
   }
 }
@@ -96,12 +108,37 @@ int main(void) {
   execfn = name; limit = 8 * MiB;
   mock_lo = 0x100000; mock_size = 8 * MiB;   /* (pthread bounds the main thread's path must not use) */
   check("the main thread's 8 MiB: the full margin", here, end - 8 * MiB + 256 * KiB, 0, 0);
+  /* the safe depth: the depth (1), and a level for each STACK_LEVEL bytes from this frame to the floor */
+  I safe = 1 + (I)((8 * MiB - 64 * KiB - 256 * KiB) / STACK_LEVEL);
+  trip("8 MiB: the safe depth, below the default limit", safe);
+  pys_recursion_state[2] = 50; retrip();
+  trip("a limit below the safe depth", 50);
+  pys_recursion_state[2] = 300000; retrip();
+  trip("a limit above it", safe);
+  pys_recursion_state[2] = 1000; retrip();
+  /* an extension module's entries from the host (pys_enter): the outermost replaces the safe depth,
+     from its own frame and the depth then; a callback, while compiled frames are active, can only
+     lower it */
+  pys_recursion_state[0] = 3;
+  stack_rebase(here - 4 * MiB, 1);
+  trip("an outermost host entry 4 MiB deeper", 3 + (I)((4 * MiB - 64 * KiB - 256 * KiB) / STACK_LEVEL));
+  stack_rebase(here - MiB, 0);
+  trip("a callback from higher up keeps it", 3 + (I)((4 * MiB - 64 * KiB - 256 * KiB) / STACK_LEVEL));
+  stack_rebase(here - 7 * MiB, 0);
+  trip("a deeper callback lowers it", 3 + (I)((MiB - 64 * KiB - 256 * KiB) / STACK_LEVEL));
+  stack_rebase(here - 9 * MiB, 0);
+  trip("one below the floor: its first entry looks", 3);
+  stack_rebase(here, 1);
+  trip("the next outermost entry", safe + 2);
+  pys_recursion_state[0] = 1;
   limit = 1024 * MiB;
   check("the main thread's 1 GiB", here, end - 1024 * MiB + 256 * KiB, 0, 0);
+  trip("1 GiB: the limit", 1000);
   limit = 1001 * KiB;   /* (page-aligned up: 250 pages, of which an eighth) */
   check("the main thread's 1001 KiB: an eighth", here, end - 1000 * KiB + 125 * KiB, 0, 0);
   limit = 8 * MiB;
   check("a main thread frame within the margin: the floor", end - 8 * MiB + 100 * KiB, end - 8 * MiB + 256 * KiB, 0, 0);
+  trip("a frame within the margin: its safe depth is the depth, where every entry looks", 1);
   /* otherwise the thread's pthread bounds */
   mock_lo = here - 4 * MiB; mock_size = 8 * MiB;
   limit = RLIM_INFINITY;
@@ -118,12 +155,16 @@ int main(void) {
   check("another thread: its pthread bounds", thread, thread - 4 * MiB + 256 * KiB, 1, 1);
   mock_lo = thread - 256 * KiB; mock_size = 512 * KiB;
   check("a 512 KiB thread stack: an eighth of it", thread, thread - 256 * KiB + 64 * KiB, 1, 1);
+  trip("a 512 KiB thread stack: a small safe depth", 1 + (I)(192 * KiB / STACK_LEVEL));
   mock_lo = thread - 16 * MiB; mock_size = 8 * MiB;
   check("bounds below the frame (a switched stack): no floor", thread, 0, 1, 1);
+  stack_rebase(thread, 1);
+  trip("no floor: a host entry keeps the limit", 1000);
   mock_lo = thread + MiB;
   check("bounds above the frame: no floor", thread, 0, 1, 1);
   mock_lo = thread - 100 * KiB;
   check("a frame already within the margin: the floor", thread, thread - 100 * KiB + 256 * KiB, 1, 1);
+  trip("a thread frame within the margin: every entry looks", 1);
   mock_lo = thread - 4 * MiB; getattr_error = 1;
   check("no thread attributes: no floor", thread, 0, 1, 0);
   getattr_error = 0; getstack_error = 1;
@@ -133,8 +174,8 @@ int main(void) {
   execfn = 0; getstack_error = 0; mock_lo = frame - 4 * MiB; mock_size = 8 * MiB;
   got = destroyed = 0;
   stack_floor();
-  if ((uintptr_t)pys_recursion_state[2] != frame - 4 * MiB + 256 * KiB || got != 1) {
-    fprintf(stderr, "incorrect stack floor (this frame): %#llx\n", (unsigned long long)pys_recursion_state[2]);
+  if ((uintptr_t)pys_recursion_state[3] != frame - 4 * MiB + 256 * KiB || got != 1) {
+    fprintf(stderr, "incorrect stack floor (this frame): %#llx\n", (unsigned long long)pys_recursion_state[3]);
     exit(1);
   }
   puts("stack floor policy passed");
@@ -197,7 +238,7 @@ CAUGHT = f"caught recursion: {STACK_ERROR.split(': ', 1)[1]}\nfinally\n"
 
 def floor_source():
     source = (ROOT / "runtime.c").read_text()
-    match = re.search(r"^#if defined\(__has_feature\)\n.*?^static void stack_floor\(void\) \{[^\n]*\}\n", source, re.M | re.S)
+    match = re.search(r"^#if defined\(__has_feature\)\n.*?^static void stack_rebase\(.*?^\}\n", source, re.M | re.S)
     if match is None:
         raise AssertionError("runtime.c's stack_floor is missing")
     return match[0]
@@ -245,6 +286,18 @@ class StackFloorPolicyTests(unittest.TestCase):
             "AT_EXECFN not at a page boundary": ("if (end && page && !(end & (page - 1)) && here < end", "if (end && page && here < end"),
             "a frame outside the main thread's limit": (" && end - here < rl.rlim_cur) {", ") {"),
             "an unlimited stack": ("rl.rlim_cur < end - page && ", ""),
+            # (the trip: the lower of the limit and the safe depth)
+            "a trip that ignores the floor": ("pys_recursion_state[1] = pys_recursion_state[2] < stack_safe ? pys_recursion_state[2] : stack_safe;",
+                                              "pys_recursion_state[1] = pys_recursion_state[2];"),
+            "a trip that ignores the limit": ("pys_recursion_state[1] = pys_recursion_state[2] < stack_safe ? pys_recursion_state[2] : stack_safe;",
+                                              "pys_recursion_state[1] = stack_safe;"),
+            "a safe depth from depth 0": ("pys_recursion_state[0] + (here > floor", "(here > floor"),
+            "a safe depth from the stack's end": ("(here - floor) / STACK_LEVEL", "(here - floor + STACK_MARGIN) / STACK_LEVEL"),
+            "a floor that keeps the old safe depth": ("  stack_safe = safe_from(here);\n  retrip();\n}\nstatic void stack_floor(void)",
+                                                      "  retrip();\n}\nstatic void stack_floor(void)"),
+            "a callback that raises the safe depth": ("if (outermost || safe < stack_safe)", "if (outermost || safe != stack_safe)"),
+            "an outermost entry that keeps it": ("if (outermost || safe < stack_safe)",
+                                                 "if ((outermost && safe < stack_safe) || safe < stack_safe)"),
         }
         for name, (original, mutated) in mutations.items():
             with self.subTest(name):
