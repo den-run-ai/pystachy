@@ -4,7 +4,7 @@ This page is the execution contract for concurrency: what holds today, the guara
 later features must keep, and the probes that check them. It specifies observable behavior;
 schedulers, threading backends and object representations remain free to change. Today each
 runtime runs on one thread, and parallel work runs in separate processes that CPython starts
-and that import [extension modules](reference/ffi.md#extension-modules) compiled by
+and that import [extension modules](ffi.md#extension-modules) compiled by
 `pystachy ext`. Native parallel loops ([#714](https://github.com/den-run-ai/pystachy/issues/714))
 and `async def` ([#12](https://github.com/den-run-ai/pystachy/issues/12)) are proposals, not
 features. [#754](https://github.com/den-run-ai/pystachy/issues/754) records the evidence behind

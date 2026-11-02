@@ -40,7 +40,7 @@ unmodified or with minimal annotations.
 | Tests and CI | [testing](docs/testing.md), `tests/verify.sh --list`, `.github/workflows/` |
 | Dynamic storage and dispatch | [dynamic `Any`](docs/dynamic-any.md), including typed/dynamic boundaries and deviations |
 | Packaging/release | [releasing](docs/releasing.md), `.github/workflows/packages.yml`, `.github/workflows/release.yml` |
-| Library gaps and ports | [stdlib](docs/stdlib.md), [lib](lib/README.md), [ports](ports/README.md), [audit updates](docs/reports/compatibility-updates.md) |
+| Library gaps and ports | [stdlib](docs/stdlib.md), [lib](lib/README.md), [ports](ports/README.md), [maintained tools](tools/README.md) |
 
 Use `rg` and the source map to find the responsible layer. Use the available GitHub
 connector/API or authenticated CLI; do not assume `gh`, browser access or a particular
@@ -238,7 +238,7 @@ Lessons from reviewed changes (links are evidence, not claims about today's open
   [#264](https://github.com/den-run-ai/pystachy/issues/264)).
 - Reuse `tools/import_sweep.py` and port/audit tooling. Pin compiler/source/input versions
   and overlay exclusions; denominator changes need not mean lost coverage. Retain
-  repros/first errors and dated reports; index completed checkpoints in the rolling log.
+  repros/first errors as dated, commit-pinned evidence in PRs or research branches.
 - Account for every consumed input before generating outputs, including untracked/ignored
   importable files or their hashes/deviations. `git status --untracked-files=no` cannot
   certify clean evidence. Incomplete replays must not advance the evaluated checkpoint
@@ -251,7 +251,7 @@ Lessons from reviewed changes (links are evidence, not claims about today's open
   CPython executability where promised.
 - On feature changes, refresh README, `lib/README.md`, `docs/stdlib.md` and compatibility
   docs. Keep README concise, with a stable roadmap and no active issues. Cite committed
-  results from `bench/*/results`, `examples/*/results` or `docs/reports/`.
+  results from `bench/*/results`, `examples/*/results` or commit-pinned historical evidence.
 - Check output/checksums before timing. Separate original/adapted CPython, old/new
   Pystachy, JIT startup/compilation, AOT build and steady-state costs. Record flags,
   hardware, input size, samples, shared-host load and BLAS provider. Compare JIT/AOT,

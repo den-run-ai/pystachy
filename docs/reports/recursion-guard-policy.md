@@ -6,7 +6,10 @@ counted every source frame, as CPython does, and recovered performance with whol
 `recursionleaf` and `recursionregion` passes. Those passes cost more compilation than they
 saved: on `bench/smoke/text.py` they added 18.6% to the frontend's instructions and 6% to
 the LLVM IR, and every guarded function gained `R I` effects, so pure helpers stopped being
-pure for the typed optimizations.
+pure for the typed optimizations. That design's superseded
+[optimization](https://github.com/den-run-ai/pystachy/blob/eac646137480a27467f5c933fd3a0507c39b6643/docs/reports/recursion-guard-optimization.md)
+and [region](https://github.com/den-run-ai/pystachy/blob/eac646137480a27467f5c933fd3a0507c39b6643/docs/reports/recursion-guard-regions.md)
+measurements remain at #996's merge commit.
 
 The policy now counts only the functions that recursion can repeat
 ([internals](../internals.md#native-recursion-depth)): a source function on a cycle of
