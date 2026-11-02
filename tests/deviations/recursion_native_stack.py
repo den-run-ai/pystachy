@@ -3,9 +3,9 @@
 # RecursionError below sys.getrecursionlimit(), when the stack pointer reaches the native stack's
 # floor (a margin above its end), where CPython, whose Python frames live on the heap, completes.
 # The error is catchable, and finally blocks and stdout written before it survive; uncaught, it
-# ends the program with status 1. This assumes a stack of at most 16 MiB (ulimit -s; 8 MiB
-# is usual): 700,000 of climb's frames need twice that (tools/test_stack_floor.py pins the
-# behaviour under a fixed ulimit -s).
+# ends the program with status 1. tests/run.sh gives every case an 8 MiB stack (ulimit -s 8192):
+# 700,000 of climb's frames need four times that (tools/test_stack_floor.py checks the floor
+# under other stack limits).
 import sys
 
 seen: list[float] = [0.0]

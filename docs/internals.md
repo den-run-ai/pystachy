@@ -542,7 +542,13 @@ an extension module, the only one that may call it. The floor lies 256 KiB above
 address (512 KiB under ASan), or an eighth of the way up a stack smaller than 2 MiB. Bounds that
 are unknown (musl's `pthread_getattr_np` reports only the main thread's mapped part, so only
 glibc's is used) or that do not contain the current frame leave the word 0, which no stack
-pointer is below. The margin is what the deepest counted frame may still use without an entry
+pointer is below; a frame that they contain but that already lies within the margin (an
+extension imported deep in its thread's stack) gets the floor, so that the next counted entry
+there raises and entries from higher frames are checked as usual. The main thread's bounds assume
+that its stack can grow to `RLIMIT_STACK`: the kernel maps nothing below it within the limit exec
+saw, but memory mapped there anyway, or a limit that a host raised in-process before importing
+an extension module, can stop it sooner, where the floor does not help (glibc's bounds then end
+at the mapping below, inside the kernel's guard gap). The margin is what the deepest counted frame may still use without an entry
 of its own: on Linux x86-64, raising the error and unwinding to a handler used under 5 KiB
 below the floor (JIT and AOT, also with handlers or `finally` in every frame and through
 generator resumes), and a `repr()` of 510 nested lists from the deepest frame (the runtime

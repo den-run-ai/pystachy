@@ -6312,8 +6312,13 @@ _Noreturn void pys_recursion_stack_error(void) {
    containers: about 150 KiB), the unwinder raising the error (under 5 KiB), and a signal handler's
    frame (docs/internals.md#native-recursion-depth). 0, no floor (the unsigned comparison never
    fails), where the bounds are unknown or unlimited, or do not hold this frame (a switched stack).
-   Set by pys_init on the program's thread (lli's main thread under the JIT) and by pys_init_lib on
-   the thread that imports an extension module, the only one that may call it (pyext.c). */
+   A frame already within the margin gets the floor too: the next counted entry below it raises,
+   and those from higher frames, once it has returned, are checked as usual. Set by pys_init on the
+   program's thread (lli's main thread under the JIT) and by pys_init_lib on the thread that
+   imports an extension module, the only one that may call it (pyext.c). Linux's main thread's
+   bounds assume that its stack can grow to RLIMIT_STACK: the kernel maps nothing that close below
+   it, for the limit exec saw, but memory mapped there anyway, or a limit raised in-process before
+   an import, can stop it sooner (docs/language/compatibility.md#errors-and-control-flow). */
 #if defined(__has_feature)
 #if __has_feature(address_sanitizer)
 #define STACK_ASAN 1
@@ -6360,7 +6365,7 @@ static void stack_floor_at(uintptr_t here) {   /* (here: the caller's frame addr
 #endif
 #endif
   uintptr_t margin = (hi - lo) / 8 < STACK_MARGIN ? (hi - lo) / 8 : STACK_MARGIN;
-  pys_recursion_state[2] = lo && lo + margin < here && here <= hi ? (I)(lo + margin) : 0;
+  pys_recursion_state[2] = lo && lo < here && here <= hi ? (I)(lo + margin) : 0;
 }
 static void stack_floor(void) { stack_floor_at((uintptr_t)__builtin_frame_address(0)); }
 /* the C entries, as the program's own helpers (lower_module's recursion_ir) do it */

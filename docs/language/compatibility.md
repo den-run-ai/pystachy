@@ -263,9 +263,12 @@ above apply to well-formed text (with the surrogate exception described above).
   need more than the margin, in foreign code (C calls through `ffi`, an embedded CPython),
   or where the runtime cannot find the thread's stack bounds (a thread other than the main
   one under a Linux C library other than glibc, or a stack the program has switched): there
-  is no floor. An unlimited stack (`ulimit -s unlimited`) has none in practice either. An
-  extension module takes the floor of the thread that imports it, the only one that may call
-  it.
+  is no floor. An unlimited stack (`ulimit -s unlimited`) has none in practice either. On
+  Linux, the main thread's floor assumes that its stack can grow to `RLIMIT_STACK`: memory
+  mapped within that range, which a host process can have after raising the limit itself
+  before it imports an extension module, stops the stack sooner, and recursion can still
+  overflow it there. An extension module takes the floor of the thread that imports it, the
+  only one that may call it, even when that thread is already within the margin.
 
 - An exception keeps `str()` of its arguments and what `repr()` shows of them as it is made,
   once all the arguments of the call are evaluated (their `__str__` and `__repr__` run then),

@@ -101,7 +101,7 @@ int main(void) {
   limit = 1001 * KiB;   /* (page-aligned up: 250 pages, of which an eighth) */
   check("the main thread's 1001 KiB: an eighth", here, end - 1000 * KiB + 125 * KiB, 0, 0);
   limit = 8 * MiB;
-  check("a main thread frame within the margin: no floor", end - 8 * MiB + 100 * KiB, 0, 0, 0);
+  check("a main thread frame within the margin: the floor", end - 8 * MiB + 100 * KiB, end - 8 * MiB + 256 * KiB, 0, 0);
   /* otherwise the thread's pthread bounds */
   mock_lo = here - 4 * MiB; mock_size = 8 * MiB;
   limit = RLIM_INFINITY;
@@ -123,7 +123,7 @@ int main(void) {
   mock_lo = thread + MiB;
   check("bounds above the frame: no floor", thread, 0, 1, 1);
   mock_lo = thread - 100 * KiB;
-  check("a frame already within the margin: no floor", thread, 0, 1, 1);
+  check("a frame already within the margin: the floor", thread, thread - 100 * KiB + 256 * KiB, 1, 1);
   mock_lo = thread - 4 * MiB; getattr_error = 1;
   check("no thread attributes: no floor", thread, 0, 1, 0);
   getattr_error = 0; getstack_error = 1;
@@ -237,7 +237,8 @@ class StackFloorPolicyTests(unittest.TestCase):
     def test_mutations_are_detected(self):
         source = floor_source()
         mutations = {
-            "bounds that exclude the frame": ("lo && lo + margin < here && here <= hi ?", "lo && here ?"),
+            "bounds that exclude the frame": ("lo && lo < here && here <= hi ?", "lo && here ?"),
+            "a frame within the margin left without a floor": ("lo && lo < here", "lo && lo + margin < here"),
             "a margin larger than a small stack": ("(hi - lo) / 8 < STACK_MARGIN ? (hi - lo) / 8 : STACK_MARGIN", "STACK_MARGIN"),
             "a pthread failure ignored": ("if (!lo && !pthread_getattr_np(pthread_self(), &attr)) {",
                                           "if (!lo && (pthread_getattr_np(pthread_self(), &attr), 1)) {"),
@@ -333,9 +334,11 @@ class StackFloorProgramTests(unittest.TestCase):
         # 100,000 frames fit in 8 MiB, not in 1 MiB, whose floor is an eighth of the way up; 1,000,000
         # fit in 128 MiB (at up to 133 bytes a frame), which the floor leaves to the program
         self.assert_caught(self.aot("deep", "depth", "100000", stack_kib=1024))
-        result = self.aot("deep", "depth", "1000000", stack_kib=131072)
-        self.assertEqual((result.returncode, result.stderr, result.stdout), (0, "", "1000000 1000000\nfinally\n"))
-        if resource.getrlimit(resource.RLIMIT_STACK)[1] == resource.RLIM_INFINITY:
+        hard = resource.getrlimit(resource.RLIMIT_STACK)[1]
+        if hard == resource.RLIM_INFINITY or hard >= 128 * MIB:   # (setrlimit cannot raise past it)
+            result = self.aot("deep", "depth", "1000000", stack_kib=131072)
+            self.assertEqual((result.returncode, result.stderr, result.stdout), (0, "", "1000000 1000000\nfinally\n"))
+        if hard == resource.RLIM_INFINITY:
             # (an unlimited stack reaches the mapping below it: no floor in practice)
             result = self.aot("deep", "depth", "1000000", stack_kib=None)
             self.assertEqual((result.returncode, result.stderr, result.stdout), (0, "", "1000000 1000000\nfinally\n"))
