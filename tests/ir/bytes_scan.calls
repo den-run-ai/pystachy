@@ -1,0 +1,8 @@
+@init._pystachy_bytescan:
+@main.init: pys_str_int pys_write pys_write pys_str_int pys_write pys_write
+@f.delimiters: pys_bytes_scan pys_raise
+@f.controls: pys_bytes_scan pys_raise
+@pys_obj_eq:
+@pys_obj_cmp:
+@pys_obj_repr:
+@main: pys_init pys_finish

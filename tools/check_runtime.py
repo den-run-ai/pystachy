@@ -136,7 +136,7 @@ BUG_ONLY = ("IndexError: string index out of range", "IndexError: compare out of
 # trim, and the mark that its copy writes), which no str's value depends on; atomic_items
 # reads the kind of a list's item array (scanned or not), which is fixed when the array is made
 END = RAISES | {"oom", "opt_in_trap"}
-ALLOC = {"gc_slow", "pys_alloc", "pys_alloc_atomic", "gc_seg", "gc_find", "atomic_items"}
+ALLOC = {"gc_slow", "pys_alloc", "pys_alloc_atomic", "pys_new", "gc_seg", "gc_find", "atomic_items"}
 # a collection, which A stands for: the allocator's (gc_slow), or pys_track's for the Python object
 # it counts as allocated
 COLLECTS = {"gc_slow", "collect"}

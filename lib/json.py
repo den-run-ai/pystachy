@@ -9,6 +9,8 @@ implemented. Containers are created with recursive JSONValue storage; narrowing
 keeps their original identity and mutable contents.
 """
 
+from _pystachy_bytescan import scan as _scan_bytes
+
 type JSONValue = None | bool | int | float | str | list[JSONValue] | dict[str, JSONValue]
 
 __all__ = ["loads", "dumps", "JSONDecoder", "JSONDecodeError", "JSONValue"]
@@ -264,25 +266,48 @@ class _Parser:
 
     def plain_end(self, begin: int) -> int:
         # The closing quote of the string that begins at begin when no escape or control
-        # character comes first; else -1 - the offset where the scan stopped (or the end).
+        # character comes first; else -1 - the offset where the scan stopped: an escape,
+        # a control character, the end, or the byte after a 16-byte ordinary prefix.
         data = self.data
         n = len(data)
         i = begin + 1
-        while i < n:
+        # Short keys/values stay in the original scalar loop. The native helper
+        # pays off only once an ordinary span has passed this small prefix.
+        # Negative positions retain the old private method's indexing behavior.
+        limit = n + 0  # a scalar cursor, without borrowing n's numeric identity
+        if i >= 0 and n - i > 16:
+            limit = i + 16
+        while i < limit:
             c = data[i]
             if c == 34:
                 return i
             if c == 92 or c < 32:
                 return -1 - i
             i += 1
-        return -1 - n
+        return -1 - i
+
+    def plain_rest(self, i: int) -> int:
+        # Continues plain_end() where its scalar prefix stopped: an ordinary byte at i
+        # starts a bulk scan for the closing quote. Keeping the native call out of
+        # plain_end() keeps that loop small enough to inline into string() and key().
+        data = self.data
+        n = len(data)
+        if i < n:
+            c = data[i]
+            if c != 92 and c >= 32:
+                i = _scan_bytes(data, i, n, 34, 92, 32)
+                if i < n and data[i] == 34:
+                    return i
+        return -1 - i
 
     def string(self) -> str:
         # Most strings have no escape: one slice of the bytes is the result.
         begin = self.pos
         end = self.plain_end(begin)
         if end < 0:
-            return self.escaped(begin, -1 - end)
+            end = self.plain_rest(-1 - end)
+            if end < 0:
+                return self.escaped(begin, -1 - end)
         self.pos = end + 1
         return self.text(begin + 1, end)
 
@@ -291,7 +316,9 @@ class _Parser:
         begin = self.pos
         end = self.plain_end(begin)
         if end < 0:
-            return self.escaped(begin, -1 - end)
+            end = self.plain_rest(-1 - end)
+            if end < 0:
+                return self.escaped(begin, -1 - end)
         self.pos = end + 1
         if not self.key_bytes:
             self.key_bytes = [b""] * 64
@@ -327,6 +354,9 @@ class _Parser:
             if c != 92:
                 i += 1
                 continue
+            # A long ordinary run before this escape predicts another after it: bulk-scan
+            # that one. Dense escapes keep the byte loop, without a per-byte bound check.
+            long_run = i - start >= 16
             if i > start:
                 chunks.append(self.text(start, i))
             slash = i
@@ -363,6 +393,8 @@ class _Parser:
             else:
                 raise self.error("Invalid \\escape", slash)
             start = i
+            if long_run and i < n:
+                i = _scan_bytes(data, i, n, 34, 92, 32)
         raise self.error("Unterminated string starting at", begin)
 
     def number(self, wide: bool = False) -> JSONValue:

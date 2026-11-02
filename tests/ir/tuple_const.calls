@@ -1,11 +1,11 @@
-@f.varargs.1: pys_on_stack pys_alloc pys_alloc pys_vtuple_from
+@f.varargs.1: pys_on_stack pys_new pys_new pys_vtuple_from
 @main.init: pys_dict_new_atomic pys_dict_set pys_repr pys_write pys_write pys_repr pys_write pys_write pys_repr pys_write pys_write pys_repr pys_write pys_write pys_write pys_write pys_str_int pys_write pys_write pys_repr pys_write pys_write pys_str_int pys_write pys_write
 @f.zero:
 @f.empty:
 @f.nested:
-@f.ray: pys_alloc
+@f.ray: pys_new
 @v.f.either: pys_raise
-@f.either: pys_alloc
+@f.either: pys_new
 @f.run: pys_mod pys_raise
 @f.lookup: pys_dict_getitem
 @pys_obj_eq:

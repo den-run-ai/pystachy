@@ -170,7 +170,8 @@ def main():
             executed = capture.read_text()
             if 'target datalayout = ' not in executed or 'target triple = ' not in executed:
                 raise RuntimeError(f"{label}: JIT optimization ran without the runtime's target")
-            if not re.search(r"call ptr @pys_alloc\(i64 56\)", executed):
+            # (the object's allocation: pys_new's marked call, or with PYSTACHY_OPT=-allocelide pys_alloc's)
+            if not re.search(r"call (?:noalias nonnull )?ptr @pys_(?:new|alloc)\(i64 56\)", executed):
                 raise RuntimeError(f"{label}: padded object allocation does not use the host's 56-byte layout")
             remaining = {name for name in dead if f"@{name}(" in executed}
             if remaining:

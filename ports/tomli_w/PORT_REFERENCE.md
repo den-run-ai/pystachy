@@ -26,6 +26,11 @@ Archive SHA-256: `2dd14fac5a47c27be9cd4c976af5a12d87fb1f0b4512f81d69cce3b35ae250
   Temporary table/literal lists hold keys and look up typed values when rendered.
 - Type tests guard statically specialized branches. Chunk generators return lists.
 - Date/time imports and branches are omitted, and identity-keyed inline-table caching is removed.
+  Re-probing the original date/time branches with `dumps({"d": date(2024, 2, 29)})`
+  reaches the lazy `decimal` import: a record loaded from a table may be `None` during
+  specialization, so the preceding type test does not eliminate that fallback. The
+  cause is no longer an absent `datetime` module. The original `MappingProxyType`
+  import and read-only `COMPACT_ESCAPES` construction have been restored.
 - `format_key_part()` has no `try` for the `TypeError` of a key that is no `str`: its message
   names `type(part)`, and keys are strings.
 - `_writer.py` has eleven logical edits; `__init__.py` is unchanged. The re-baseline (#262)

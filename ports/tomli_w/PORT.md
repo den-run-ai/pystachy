@@ -26,6 +26,9 @@ print(dumps({"project": {"name": "demo", "version": "1.0"}}))
 - Inline-table line limits count characters, as in CPython, so non-ASCII tables choose the same layout.
 - Checked 64-bit integers fit TOML’s integer range.
 - The cache removal can make small inline-table workloads slower. Many escaped characters in one long string also caused a historical concatenation regression; see the benchmark snapshot.
+- Although `datetime` is shipped, restoring upstream's date/time branches for values
+  loaded from tables still reaches the unsupported lazy `decimal` import during static
+  specialization. Date/time serialization remains outside this port's coverage.
 
 <a id="tests"></a>
 

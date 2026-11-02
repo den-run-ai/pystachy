@@ -154,6 +154,14 @@ compiler loads it for a program that has `json` and a module that opts in to
 values (#779); programs do not import it. Its `_pystachy_json_int.py` helper promotes
 overflowing integer tokens without promoting the shared scanner's indices.
 
+`_pystachy_bytescan.py` provides a bounded byte-span helper for native parsers.
+It finds either of two delimiter bytes or a byte below a threshold, returning the
+range end on a miss. JSON shares it between ordinary strings and the spans that
+follow a long run and an escape, for both recursive typed values and dynamic `Any`. Direct positional
+calls of the shipped helper use portable eight-byte scanning; other call forms
+and CPython retain its scalar implementation. It adds no method to `bytes` and
+does not change decoding, Unicode positions or repair heuristics.
+
 ## Examples and measurements
 
 | Example | Library use |

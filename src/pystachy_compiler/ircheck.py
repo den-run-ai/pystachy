@@ -254,8 +254,9 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                     self.bad_ir(fn, b, "alloc.fixed needs no operands or extra metadata")
                 if i.t not in self.classes and not (is_tuple(i.t) and i.t.endswith("]") and i.t.count("[") == i.t.count("]") and "" not in targs(i.t) and "..." not in targs(i.t)):
                     self.bad_ir(fn, b, "alloc.fixed needs a declared class or fixed tuple type")
-                if "alloc" not in self.rtfns:
-                    self.bad_ir(fn, b, "alloc.fixed needs the alloc runtime declaration")
+                need = "new" if "allocelide" in self.opts and not self.rtmode else "alloc"
+                if need not in self.rtfns:
+                    self.bad_ir(fn, b, f"alloc.fixed needs the {need} runtime declaration")
             if i.op == "field.addr":
                 if len(i.a) != 1 or i.s != "" or i.x != "" or len(i.b) != 0:
                     self.bad_ir(fn, b, "field.addr needs one object and no extra metadata")
