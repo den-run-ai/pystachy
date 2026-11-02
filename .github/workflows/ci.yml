@@ -1,7 +1,8 @@
 # Every original verification stage runs on every commit, in independent groups; pull requests
 # that change only Markdown or docs/ skip this workflow, and Lint checks them. Each architecture's
 # producer checks the bootstrap fixed point; groups validate its same-run, same-architecture artifact.
-# No runtime cache is shared.
+# No runtime cache is shared. Pushes to main and manual runs verify both Linux architectures
+# completely; pull requests run every x86-64 group and an ARM64 smoke subset.
 # The final gate retains the required check name and rejects missing, failed or cancelled groups.
 name: CI
 
@@ -77,24 +78,29 @@ jobs:
   verification:
     name: verify (${{ matrix.group }}, ${{ matrix.machine }})
     needs: bootstrap
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.machine == 'aarch64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
     # Target <10 minutes of work per group; retain headroom for runner variation
     # and failure diagnostics. GC self-compilation has its own 10-minute bound.
     timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, ubuntu-24.04-arm]
+        machine: [x86_64, aarch64]
         group: [hosted, native-0, native-1, native-2, opt-off-0, opt-off-1, opt-off-2, python-free-0,
                 python-free-1, python-free-2, ubsan-0, ubsan-1, ubsan-2, ubsan-3, gc-self, gc-jit-0, gc-jit-1, gc-aot-0,
                 gc-aot-1, gc-aot-2, runtime-cache, dynany-optin-0, dynany-optin-1, dynany-optin-2,
                 python-int-optin-0, python-int-optin-1, python-int-optin-2,
                 contracts, benchmarks, scaling]
+        # Pull requests drop the ARM64 groups, then include adds back this smoke subset (include
+        # runs after exclude). Pushes to main and manual runs exclude nothing, so these entries
+        # match existing combinations and every group runs on both architectures. The gate's
+        # VERIFY_SUBSET must list the same groups (tools/test_merge_verification.py checks this).
+        exclude:
+          - machine: ${{ github.event_name == 'pull_request' && 'aarch64' || '' }}
         include:
-          - os: ubuntu-24.04
-            machine: x86_64
-          - os: ubuntu-24.04-arm
-            machine: aarch64
+          - {machine: aarch64, group: contracts}
+          - {machine: aarch64, group: native-0}
+          - {machine: aarch64, group: ubsan-0}
     env:
       PYSTACHY_LLVM: /usr/lib/llvm-18/bin
     steps:
@@ -224,16 +230,14 @@ jobs:
 
   upstream-large:
     name: upstream large regex (JIT and AOT, normal GC, ${{ matrix.machine }})
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.machine == 'aarch64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
     timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: ubuntu-24.04
-            machine: x86_64
-          - os: ubuntu-24.04-arm
-            machine: aarch64
+        machine: [x86_64, aarch64]
+        exclude:   # ARM64 runs this on pushes to main and manual runs, not in a pull request's smoke subset
+          - machine: ${{ github.event_name == 'pull_request' && 'aarch64' || '' }}
     env:
       PYSTACHY_LLVM: /usr/lib/llvm-18/bin
     steps:
@@ -282,7 +286,12 @@ jobs:
         if: always()
         env:
           VERIFY_MACHINE: ${{ matrix.machine }}
-        run: python3 tools/merge_verification.py build/ci-reports --machine "$VERIFY_MACHINE" -o build/verification.json
+          # A pull request's ARM64 smoke subset: exactly the verification matrix's include list.
+          # Its combined report is labelled "subset"; every other run requires every group.
+          VERIFY_SUBSET: ${{ matrix.machine == 'aarch64' && github.event_name == 'pull_request' && 'contracts,native-0,ubsan-0' || '' }}
+        run: |
+          python3 tools/merge_verification.py build/ci-reports --machine "$VERIFY_MACHINE" \
+            ${VERIFY_SUBSET:+--groups "$VERIFY_SUBSET"} -o build/verification.json
 
       - name: Require every verification group
         if: always()

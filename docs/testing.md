@@ -402,8 +402,13 @@ and optimized-away `unpack_sequence`). This small monitor does not cover memory,
 end-to-end json_repair or all examples; broader benchmark history remains under #45.
 
 A native bootstrap job on each of **Linux x86-64 and ARM64** checks compiler and runtime
-IR fixed points once, then thirty groups per architecture run in parallel using that
-architecture's verified compiler. Runners are `ubuntu-24.04` and `ubuntu-24.04-arm`, both
+IR fixed points once, then groups run in parallel using that architecture's verified
+compiler. Pushes to `main` (the release gate's per-commit CI) and manual runs execute all
+thirty groups on both architectures, and the upstream large-regex check on both. To keep
+pull-request CI near its single-architecture size, a pull request runs all thirty x86-64
+groups but an ARM64 smoke subset: the bootstrap, `contracts` (FFI, ABI and thread controls),
+`native-0` and `ubsan-0` (sanitized compiler-rt linkage). An ARM64-only failure in another
+group therefore appears on `main` after merge. Runners are `ubuntu-24.04` and `ubuntu-24.04-arm`, both
 with LLVM 18 and the pinned Python 3.13. Each group checks the same-run bundle's file hashes,
 complete tracked source identity, commit, architecture and toolchain before using it. No runtime cache is
 shared; Python-free and sanitizer rebuilds, GC stress and cache invalidation checks remain
@@ -438,7 +443,10 @@ merger checks that every input names the expected native machine. An x86 report 
 to look like an ARM artifact is rejected. Combined reports are `x86_64-verification` and
 `aarch64-verification`; download the corresponding `MACHINE-verification-*` artifacts
 and use `tools/merge_verification.py DIRECTORY --machine MACHINE -o REPORT.json` to
-reproduce either gate. Both architectures must pass for the CI workflow to succeed.
+reproduce either gate. Both architectures must pass for the CI workflow to succeed. On a
+pull request the ARM64 gate runs the merger with `--groups contracts,native-0,ubsan-0`: it
+requires exactly those groups and the bootstrap, and labels its combined report `subset`
+rather than `all`. Lint checks that this list matches the matrix's ARM64 `include` entries.
 Reports and logs are uploaded as workflow artifacts, together with the generated dynamic-`Any`
 fuzzer programs. The gate requires its complete 3-program/540-case budget, including 90 typed/Any
 parity cases, all four execution modes, program GC interval 1 and zero mismatches.

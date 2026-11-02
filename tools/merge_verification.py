@@ -290,7 +290,15 @@ def validate_report(report, group, expected):
         raise ValueError(f"{group}: invalid git commit")
 
 
-def merge_reports(directory, groups, expected_commit=None, machine=None):
+def merge_reports(directory, groups, expected_commit=None, machine=None, subset=None):
+    """Combine every group's report, or with SUBSET only those groups (and bootstrap).
+
+    A subset is a pull request's reduced matrix: exactly its groups must be present, and the
+    combined report is labelled "subset" rather than "all", so it never stands for full verification.
+    """
+    if subset is not None and (not subset or len(set(subset)) != len(subset) or
+                               any(name == "all" or name not in groups for name in subset)):
+        raise ValueError(f"invalid report subset: {subset}")
     reports, paths = {}, {}
     prefix = f"{machine}-verification" if machine else "verification"
     for path in sorted(directory.rglob("verification.json")):
@@ -307,9 +315,12 @@ def merge_reports(directory, groups, expected_commit=None, machine=None):
         if machine and report.get("platform", {}).get("machine") != machine:
             raise ValueError(f"{group}: expected {machine} platform evidence")
         reports[group], paths[group] = report, path
-    wanted = [name for name in groups if name != "all"]
+    wanted = [name for name in groups
+              if name != "all" and (subset is None or name in subset or name == "bootstrap")]
     if set(reports) != set(wanted):
-        raise ValueError(f"missing report groups: {sorted(set(wanted) - set(reports))}")
+        if set(wanted) - set(reports):
+            raise ValueError(f"missing report groups: {sorted(set(wanted) - set(reports))}")
+        raise ValueError(f"unexpected report groups: {sorted(set(reports) - set(wanted))}")
     shared_bootstrap = "bootstrap" in groups
     if shared_bootstrap:
         # Retain the producer's actual fixed-point proof and duration in the combined report,
@@ -439,8 +450,8 @@ def merge_reports(directory, groups, expected_commit=None, machine=None):
                         "steps": report["summary"]["steps"], "report": str(paths[group]),
                         "platform": report.get("platform", {})})
     result = copy.deepcopy(first)
-    result["group"] = "all"
-    result["steps"] = [steps[name] for name in groups["all"]]
+    result["group"] = "all" if subset is None else "subset"
+    result["steps"] = [steps[name] for name in groups["all"] if subset is None or name in steps]
     maximum = round(max(timing["seconds"] for timing in timings), 3)
     critical_path = maximum
     if shared_bootstrap:
@@ -456,6 +467,8 @@ def merge_reports(directory, groups, expected_commit=None, machine=None):
                     "timing_scope": ("verification only; bootstrap then parallel groups; " if shared_bootstrap
                                      else "verification only; parallel groups; ") +
                                     "excludes queue, setup and artifact transfer"}
+    if subset is not None:
+        result["ci"]["subset"] = wanted
     return result
 
 
@@ -465,21 +478,25 @@ def main(argv=None):
     parser.add_argument("-o", "--output", type=Path, required=True)
     parser.add_argument("--machine", choices=("x86_64", "aarch64"),
                         help="require this native architecture and its namespaced artifacts")
+    parser.add_argument("--groups", help="comma-separated groups of a reduced pull-request matrix: require "
+                        "exactly these and bootstrap, and label the combined report subset")
     args = parser.parse_args(argv)
+    subset = args.groups.split(",") if args.groups is not None else None
     try:
         groups = load_groups()
         commit = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, check=True,
                                 capture_output=True, text=True, timeout=10).stdout.strip()
-        result = merge_reports(args.directory, groups, commit, args.machine)
+        result = merge_reports(args.directory, groups, commit, args.machine, subset)
     except (OSError, ValueError, subprocess.SubprocessError) as exc:
-        result = {"project": "Pystachy", "group": "all", "result": "fail", "error": str(exc),
+        result = {"project": "Pystachy", "group": "all" if subset is None else "subset", "result": "fail", "error": str(exc),
                   "summary": {"steps": 0, "passed": 0, "failed": 1, "seconds": 0}, "steps": []}
         print(f"verification merge: {exc}", file=sys.stderr)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, indent=2, allow_nan=False) + "\n")
     if result["result"] != "pass":
         return 1
-    print(f"verification: {len(result['steps'])} checks passed across {len(result['ci']['groups'])} groups")
+    scope = "verification" if subset is None else "verification subset"
+    print(f"{scope}: {len(result['steps'])} checks passed across {len(result['ci']['groups'])} groups")
     return 0
 
 

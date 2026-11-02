@@ -28,8 +28,9 @@ only build inputs and excludes environment files, keys and caches.
    as `docs/releases/VERSION.md`, such as [v0.1.0-alpha.3](releases/v0.1.0-alpha.3.md).
    Then merge the version bump, intended fixes and packaging changes into `main`.
 2. Wait for **CI**, **Installation**, **Lint** and **Packages** to succeed on the exact
-   `main` commit. CI includes the complete Linux x86-64 and Linux ARM64 verification
-   matrices; a success on only one architecture does not satisfy this gate.
+   `main` commit. CI on a `main` push includes the complete Linux x86-64 and Linux ARM64
+   verification matrices; a success on only one architecture does not satisfy this gate.
+   A pull request's ARM64 smoke subset is not release evidence.
 3. Run **Release** manually from `main`, with a new tag matching `VERSION`.
    Alternatively, push that tag pointing to a verified commit on `main`.
 4. Download an archive and `SHA256SUMS` from the release, check the archive's hash, and
