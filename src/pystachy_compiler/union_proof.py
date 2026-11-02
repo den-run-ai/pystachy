@@ -5,7 +5,7 @@ The worklist joins tag possibilities and loses equalities/conditional implicatio
 stable. It keeps one state per block, not a product of whole-function execution paths.
 """
 from __future__ import annotations
-from src.pystachy_compiler.ir import IFn, Ins, Val
+from src.pystachy_compiler.ir import Data, IFn, Ins, Val
 from src.pystachy_compiler.specs import BIG
 from src.pystachy_compiler.union_state import UnionState, intersect_tags, union_join
 from src.pystachy_compiler.utils import is_opt, is_union, targs, umembers
@@ -229,7 +229,7 @@ def simple_union_proof(fn: IFn, utags: dict[str, int], at: dict[str, int] | None
 
 
 class UnionProof:
-    def __init__(self, fn: IFn, utags: dict[str, int], writes: dict[str, bool] | None = None, globals: dict[str, str] | None = None, raises: dict[str, bool] | None = None, declarations: list[Val] | None = None):
+    def __init__(self, fn: IFn, utags: dict[str, int], writes: dict[str, bool] | None = None, globals: dict[str, str] | None = None, raises: dict[str, bool] | None = None, declarations: list[Val] | None = None, consts: dict[str, Data] | None = None):
         self.fn = fn
         self.writes: dict[str, bool] = {} if writes is None else writes
         self.raises: dict[str, bool] = {} if raises is None else raises
@@ -299,6 +299,13 @@ class UnionProof:
                 if i.op == "alloc.fixed" or (i.op == "rt" and (i.s == "alloc" or i.s == "alloc_atomic")):
                     v = "%t" + str(i.r[0])
                     self.roots[v] = v
+                for a in i.a:
+                    if consts is not None and a.v in consts:
+                        # A constant tuple (Gen.tuple_const) is immutable storage of its own
+                        # fixed tuple type (its Data's text), as an alloc.fixed's tuple is once
+                        # its slots are stored; an indexed read may see it as a machine pointer.
+                        self.roots[a.v] = a.v
+                        self.native[a.v] = consts[a.v].text
                 if len(i.r) == 1:
                     self.typebase(("MU:" if i.t.startswith("*") else "U:") + "%t" + str(i.r[0]), i.t[1:] if i.t.startswith("*") else i.t)
                     if i.t.startswith("*") and i.op != "rt":

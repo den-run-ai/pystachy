@@ -330,7 +330,7 @@ settings that verification drops, builds each variant's runtime in a cache of it
 the logs to `build/variants/`, so run one at a time in a checkout. Each variant takes about as
 long as `make test`. The [Variants workflow](../.github/workflows/variants.yml) runs each one in
 four shards, each in a job of its own (24 jobs, each about five minutes after the compiler's
-build), daily, on demand and when the script or the workflow changes; no check requires it.
+build), daily, on demand and when the pass list, script or workflow changes; no check requires it.
 
 ## Continuous integration
 
@@ -368,8 +368,13 @@ to emit an advisory Actions warning; other threshold crossings are `unconfirmed`
 Correctness, setup and measurement errors fail the job. Timing warnings do not gate merging.
 Peak RSS and retained-memory costs remain separate measurements; this suite records timing.
 The step summary and 30-day `perf-smoke` JSON artifacts retain revisions, toolchain, source
-hashes, raw samples and same-run CPython controls. There is no cross-run download or extra
-dependency. Locally on Linux, use
+hashes, raw samples and same-run CPython controls. The job allows 15 minutes for both
+compiler builds, warmups and any confirmation batches. Atomic JSON checkpoints preserve
+completed workloads during execution. Their `status` is `incomplete` until every workload
+and the summary finish, `error` if a caught exception is recorded and re-raised, or
+`complete` after success; `phase` identifies the current or last stage. A cancelled process
+can leave an `incomplete` checkpoint, which must not be treated as a complete comparison.
+There is no cross-run download or extra dependency. Locally on Linux, use
 `python3 tools/perf_smoke.py --base /path/to/baseline --json build/perf-smoke.json`.
 
 Weekly runs (Monday 08:23 UTC) compare current `main` against the fixed reference

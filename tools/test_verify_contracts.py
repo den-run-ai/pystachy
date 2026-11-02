@@ -131,7 +131,10 @@ import sys
 args = sys.argv[1:]
 if "-o" in args:
     out = Path(args[args.index("-o") + 1])
-    if out.suffix:
+    if out.name == "dictprobe.ll":  # (dict-probes checks the probes: only dfindc tests for wide int keys)
+        out.write_text("define i64 @dfind() {\\n  ret i64 0\\n}\\ndefine i64 @dfindc(i64 %k) {\\n  %w = icmp eq i64 %k, -9223372036854775808\\n  ret i64 0\\n}\\n"
+                       "define i64 @dfindi() {\\n  ret i64 0\\n}\\ndefine i64 @dfinds() {\\n  ret i64 0\\n}\\n")
+    elif out.suffix:
         out.write_text("probe")
     else:
         out.write_text("#!" + sys.executable + "\\n" + Path(os.environ["MOCK_PROBE"]).read_text())

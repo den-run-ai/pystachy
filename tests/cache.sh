@@ -108,7 +108,7 @@ others() {
 # pys ARGS...: the compiler under test, run by its path from $T, PYSTACHY_LLVM the wrappers (or $LLVM)
 pys() { (cd "$T" && TMPDIR="$T/tmp" PYSTACHY_HOME="$H" PYSTACHY_LLVM="${LLVM-$T/llvm}" $PY "$T/bin/$me" "$@"); }
 # check NAME OUTPUT BUILDS [VAR=VALUE...]: pystachy run prog.py, with VAR=VALUE in its environment (and
-# the compiler run by name from directory $BYNAME if that is set), prints OUTPUT after BUILDS builds
+# the compiler run by name from directory $BYNAME if that is set), succeeds and prints OUTPUT after BUILDS builds
 check() {
   c_name=$1; c_want=$2; c_n=$3; shift 3
   c_b=$(builds)
@@ -116,9 +116,10 @@ check() {
             if [ -n "${BYNAME-}" ]; then
               cd "$BYNAME" && TMPDIR="$T/tmp" PYSTACHY_HOME="$H" PYSTACHY_LLVM="${LLVM-$T/llvm}" $PY $me run "$T/prog.py"
             else pys run prog.py; fi) 2>&1)
+  c_st=$?
   c_b=$(($(builds) - c_b))
-  if [ "$c_got" = "$c_want" ] && [ "$c_b" = "$c_n" ]; then ok "$c_name"
-  else bad "$c_name: printed '$c_got' after $c_b builds of the runtime (expected '$c_want' after $c_n)"; fi
+  if [ "$c_st" = 0 ] && [ "$c_got" = "$c_want" ] && [ "$c_b" = "$c_n" ]; then ok "$c_name"
+  else bad "$c_name: exited $c_st, printed '$c_got' after $c_b builds of the runtime (expected '$c_want' after $c_n)"; fi
 }
 same() { if [ "$(entries)" = "$1" ]; then ok "$2"; else bad "$2: the entries changed from:"; echo "$1"; echo "to:"; entries; fi; }
 npairs() { if [ "$(pairs)" = "$1" ]; then ok "$2"; else bad "$2: $(pairs) entries, not $1"; entries; fi; }

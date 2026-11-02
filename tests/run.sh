@@ -180,7 +180,13 @@ worker() {
   rm -f "$T/now.$k"
 }
 # the cached runtime is built once, before the workers start (each would rebuild a stale one)
-echo pass > "$T/warm.py" && $PYS run "$T/warm.py" > /dev/null 2>&1
+echo pass > "$T/warm.py" || exit 1
+if $PYS run "$T/warm.py" > "$T/warm.log" 2>&1; then :; else
+  st=$?
+  echo "tests/run.sh: runtime cache preparation failed (exit $st)" >&2
+  cat "$T/warm.log" >&2
+  exit 1
+fi
 k=1
 while [ $k -lt "$JOBS" ]; do
   worker $k "$@" &

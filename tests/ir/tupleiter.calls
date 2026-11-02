@@ -1,7 +1,7 @@
-@main.init: pys_alloc pys_alloc pys_alloc pys_alloc pys_alloc
+@main.init:
 @f.total:
 @f.near: pys_raise
-@f.mixed: pys_alloc pys_alloc
+@f.mixed:
 @m.Bag.__init__:
 @m.Bag.__iter__: pys_list_new pys_list_append pys_list_append
 @pys_obj_eq:
