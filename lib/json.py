@@ -266,7 +266,8 @@ class _Parser:
 
     def plain_end(self, begin: int) -> int:
         # The closing quote of the string that begins at begin when no escape or control
-        # character comes first; else -1 - the offset where the scan stopped (or the end).
+        # character comes first; else -1 - the offset where the scan stopped: an escape,
+        # a control character, the end, or the byte after a 16-byte ordinary prefix.
         data = self.data
         n = len(data)
         i = begin + 1
@@ -283,17 +284,30 @@ class _Parser:
             if c == 92 or c < 32:
                 return -1 - i
             i += 1
-        if i >= n:
-            return -1 - n
-        i = _scan_bytes(data, i, n, 34, 92, 32)
-        return i if i < n and data[i] == 34 else -1 - i
+        return -1 - i
+
+    def plain_rest(self, i: int) -> int:
+        # Continues plain_end() where its scalar prefix stopped: an ordinary byte at i
+        # starts a bulk scan for the closing quote. Keeping the native call out of
+        # plain_end() keeps that loop small enough to inline into string() and key().
+        data = self.data
+        n = len(data)
+        if i < n:
+            c = data[i]
+            if c != 92 and c >= 32:
+                i = _scan_bytes(data, i, n, 34, 92, 32)
+                if i < n and data[i] == 34:
+                    return i
+        return -1 - i
 
     def string(self) -> str:
         # Most strings have no escape: one slice of the bytes is the result.
         begin = self.pos
         end = self.plain_end(begin)
         if end < 0:
-            return self.escaped(begin, -1 - end)
+            end = self.plain_rest(-1 - end)
+            if end < 0:
+                return self.escaped(begin, -1 - end)
         self.pos = end + 1
         return self.text(begin + 1, end)
 
@@ -302,7 +316,9 @@ class _Parser:
         begin = self.pos
         end = self.plain_end(begin)
         if end < 0:
-            return self.escaped(begin, -1 - end)
+            end = self.plain_rest(-1 - end)
+            if end < 0:
+                return self.escaped(begin, -1 - end)
         self.pos = end + 1
         if not self.key_bytes:
             self.key_bytes = [b""] * 64
