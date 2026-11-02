@@ -1,8 +1,268 @@
 """Optimizations component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
+from src.pystachy_compiler.diagnostics import fail
 from src.pystachy_compiler.ir import IFn, Ins, Lookup, Val, Values
+from src.pystachy_compiler.ircheck import EffectSummaries
 from src.pystachy_compiler.specs import CANON_DEPTH, FXBIT, LOOKUPS, RAWW, REACH
-from src.pystachy_compiler.utils import is_list, is_union, umembers
+from src.pystachy_compiler.utils import is_list, is_tuple, is_union, umembers
+
+
+def recursion_cycles(calls: list[list[int]], comp: list[int]) -> list[bool]:
+    # Whether each function lies on a cycle of the program's direct calls (the callees of its
+    # call and init ops, EffectSummaries.calls, through uncounted adapters too), including a
+    # call of itself: Tarjan's strongly connected components, with explicit stacks (no
+    # recursion; each edge is followed once). comp gets each function's component: the
+    # functions of one cycle share it.
+    nf = len(calls)
+    index = [-1] * nf
+    low = [0] * nf
+    onstack = [False] * nf
+    cyclic = [False] * nf
+    stack: list[int] = []
+    count = 0
+    for root in range(nf):
+        if index[root] >= 0:
+            continue
+        index[root] = count
+        low[root] = count
+        count += 1
+        stack.append(root)
+        onstack[root] = True
+        work = [root]
+        edges = [0]
+        while len(work) > 0:
+            v = work[len(work) - 1]
+            e = edges[len(edges) - 1]
+            if e < len(calls[v]):
+                edges[len(edges) - 1] = e + 1
+                w = calls[v][e]
+                if w == v:
+                    cyclic[v] = True
+                elif index[w] < 0:
+                    index[w] = count
+                    low[w] = count
+                    count += 1
+                    stack.append(w)
+                    onstack[w] = True
+                    work.append(w)
+                    edges.append(0)
+                elif onstack[w] and index[w] < low[v]:
+                    low[v] = index[w]
+                continue
+            work.pop()
+            edges.pop()
+            if len(work) > 0 and low[v] < low[work[len(work) - 1]]:
+                low[work[len(work) - 1]] = low[v]
+            if low[v] == index[v]:
+                members: list[int] = []
+                while True:
+                    w = stack.pop()
+                    onstack[w] = False
+                    members.append(w)
+                    comp[w] = v
+                    if w == v:
+                        break
+                if len(members) > 1:
+                    for w in members:
+                        cyclic[w] = True
+    return cyclic
+
+
+def recursion_snapshot(fn: IFn) -> int:
+    # the position, in fn's entry block, of the op that gen_enter made fn.rdepth
+    code = fn.blocks[0].code
+    for at in range(len(code)):
+        i = code[at]
+        if i.op == "rt" and i.s == "recursion.depth" and len(i.r) == 1 and f"%t{i.r[0]}" == fn.rdepth:
+            return at
+    fail(f"internal error: {fn.f.ll} has no entry depth for its recursion accounting", 0)
+    return -1
+
+
+def recursion_unsnapshot(fn: IFn) -> None:
+    # fn's entry depth, which no handler restores, is not needed
+    fn.blocks[0].code.pop(recursion_snapshot(fn))
+    fn.rdepth = ""
+
+
+def recursion_resume_site(code: list[Ins], at: int) -> list[int]:
+    # the positions of the accounting gen_resume_enter put around the resume at code[at] (its entry,
+    # recursion.resume; the depth it entered from; and that depth's restoration after the resume),
+    # or [] if not found
+    enter = at - 1
+    while enter >= 0 and not (code[enter].op == "rt" and code[enter].s == "recursion.resume"):
+        enter -= 1
+    if enter < 0 or enter + 1 >= at or len(code[enter].r) != 1:
+        return []
+    sub = code[enter + 1]
+    if (sub.op != "scalar.bin" or sub.s != "sub" or len(sub.r) != 1 or len(sub.a) != 2
+            or sub.a[0].v != f"%t{code[enter].r[0]}" or sub.a[1].v != "1"):
+        return []
+    for after in range(at + 1, len(code)):
+        i = code[after]
+        if i.op == "rt" and i.s == "recursion.restore" and len(i.a) == 1 and i.a[0].v == f"%t{sub.r[0]}":
+            return [enter, enter + 1, after]
+    return []
+
+
+def gen_recursionscope(self) -> int:
+    # The native depth counts the activations that recursion can repeat
+    # (docs/internals.md#native-recursion-depth), once the whole program is built and
+    # Gen.effects has summarized it. The graph is the summaries' direct calls, and from each
+    # resume or drop of a generator handle gen[Y] an edge to every generator body that makes
+    # such handles (they share the type). A function can be entered again while it is active
+    # only if it lies on a cycle of that graph or reaches code that the graph does not show
+    # (U, apart from generator resumes, which are edges, and a body's own yields, which
+    # suspend it): an icall, a runtime callback such as an __eq__ or __repr__. Any other
+    # function is at most once on any native stack, so its frame can change at which call a
+    # bounded recursion fails, never whether an unbounded one is caught: every cycle passes
+    # through a counted function or a counted resume. Such a source function neither checks
+    # nor counts; its handlers still restore the depth it was entered at (callees that raised
+    # may have left it higher). A counted one's entry op checks and counts
+    # (pys.recursion.enter), its handlers restore that active depth, and each normal return
+    # the caller's. A resume counts the generator body it runs unless no body of the
+    # handle's type can be entered again, and so does closing one (pys.gen.drop.counted). The summaries gain
+    # exactly the entries' and returns' effects (R I) without another walk of every op, or
+    # are computed again where resumes lose their accounting. Returns how many functions count.
+    nf = len(self.fns)
+    calls = self.summaries.calls
+    unknown = FXBIT["U"]
+    bodies: dict[str, list[int]] = {}
+    for j in range(nf):
+        if self.fns[j].f.gen:
+            t = self.fns[j].f.ret
+            if t not in bodies:
+                bodies[t] = []
+            bodies[t].append(j)
+    edges: list[list[int]] = []
+    local: list[int] = []
+    for j in range(nf):
+        fn = self.fns[j]
+        es = [c for c in calls[j]]
+        u = self.summaries.direct[j] & unknown
+        if u != 0 and (fn.resumes or fn.f.gen):
+            # (its own U may be only its yields and resumes: look at each op)
+            u = 0
+            for b in fn.blocks:
+                for i in b.code:
+                    if i.op == "gen.resume" or i.op == "gen.drop":
+                        if len(i.a) == 1 and i.a[0].t in bodies:
+                            es.extend(bodies[i.a[0].t])
+                        else:
+                            u = unknown
+                    elif i.op == "rt" and i.s == "gen.unraisable":
+                        # (reporting what closing raised renders the exception: user code only
+                        # for an exception class of the program's, as ircheck's E descriptors;
+                        # an exception renders its arguments as it is made)
+                        if len(self.xcls) > 0:
+                            u = unknown
+                    elif i.op != "gen.yield":
+                        c = i.s if i.op == "call" else "@init." + i.s if i.op == "init" else ""
+                        if c not in self.fll:
+                            u = u | (self.opfx(i, fn.fa) & unknown)
+        edges.append(es)
+        local.append(u)
+    comp = [-1] * nf
+    cyclic = recursion_cycles(edges, comp)
+    reach = EffectSummaries()
+    reach.update(local, edges)
+    again = [cyclic[j] or reach.fx[j] & unknown != 0 for j in range(nf)]
+    repeat: dict[str, bool] = {}
+    for t in bodies:
+        repeat[t] = any(again[j] for j in bodies[t])
+        if not repeat[t]:
+            self.genplain[t] = True  # (closing one need not count either: lowering's gen.drop)
+    # Closed recursion: the source functions of a cycle that reaches no U, no function outside it
+    # that can be entered again (a counted function, a body of a generator type that can recur)
+    # and no sys.setrecursionlimit find the depth word as the cycle's outermost call found it,
+    # until that call returns: nothing else they run changes it or counts from it. Lowering
+    # passes their depth as an argument instead (rdpass): each checks the limit and counts in a
+    # register, and its own symbol loads the word for the body. Each frame counts at the same call.
+    marks = [unknown if again[j] or self.fns[j].setslimit else 0 for j in range(nf)]
+    outer = EffectSummaries()
+    outer.update(marks, edges)
+    cycles: dict[int, list[int]] = {}
+    for j in range(nf):
+        if cyclic[j]:
+            if comp[j] not in cycles:
+                cycles[comp[j]] = []
+            cycles[comp[j]].append(j)
+    for cy in cycles:
+        closed = True
+        for j in cycles[cy]:
+            fn = self.fns[j]
+            if not fn.counted or fn.f.gen or fn.setslimit or reach.fx[j] & unknown != 0 or is_tuple(fn.f.ret):
+                closed = False  # (a fixed tuple's function may return its slots instead: tupleret)
+            for w in edges[j]:
+                if comp[w] != cy and outer.fx[w] != 0:
+                    closed = False
+        for j in cycles[cy] if closed else []:
+            self.rdpass[self.fns[j].f.ll] = True
+    rescan = False
+    for j in range(nf):
+        fn = self.fns[j]
+        if not fn.resumes:
+            continue
+        for b in fn.blocks:
+            at = 0
+            while at < len(b.code):
+                i = b.code[at]
+                if i.op == "gen.resume" and len(i.a) == 1 and i.a[0].t in bodies and not repeat[i.a[0].t]:
+                    site = recursion_resume_site(b.code, at)
+                    if len(site) == 3:
+                        b.code = [b.code[k] for k in range(len(b.code)) if k not in site]
+                        at -= 2
+                        rescan = True
+                at += 1
+    direct = [m for m in self.summaries.direct]
+    entered = FXBIT["R"] | FXBIT["I"]
+    n = 0
+    for j in range(nf):
+        fn = self.fns[j]
+        if not fn.counted:
+            continue
+        if not again[j]:
+            fn.counted = False
+            if not fn.landed:
+                recursion_unsnapshot(fn)
+            continue
+        # Before any local handler or body code: a failed entry belongs to the caller.
+        # The checked entry guarantees depth >= 1, so the caller's depth (the entry's
+        # result minus one) cannot overflow. Restoring it after a recursive call also keeps
+        # tail-call elimination from discarding the activation.
+        at = recursion_snapshot(fn)
+        fn.blocks[0].code[at].s = "recursion.enter"
+        if fn.f.ll in self.rdpass:
+            # (closed recursion: lowering checks the depth its caller passed and leaves the word alone)
+            direct[j] = direct[j] | entered
+            n += 1
+            continue
+        base = Ins("scalar.bin", "int", "sub")
+        base.a = [Val(fn.rdepth, "int"), Val("1", "int")]
+        fn.n += 1
+        base.r = [fn.n]
+        fn.blocks[0].code.insert(at + 1, base)
+        for b in fn.blocks:
+            code: list[Ins] = []
+            for i in b.code:
+                if i.op == "ret" or i.op == "ret.none":
+                    restore = Ins("rt", "None", "recursion.restore")
+                    restore.a = [Val(f"%t{base.r[0]}", "int")]
+                    code.append(restore)
+                code.append(i)
+            b.code = code
+        direct[j] = direct[j] | entered
+        n += 1
+    if n > 0:
+        self.runtime("pys_recursion_enter")
+        self.runtime("pys_recursion_restore")
+    if rescan:
+        self.effects()
+    elif n > 0:
+        self.summaries.update(direct, calls)
+        for j in range(nf):
+            self.fns[j].fx = self.summaries.fx[j]
+    return n
 
 
 def gen_optimize(self, fn: IFn, on: dict[str, bool]) -> int:

@@ -2021,7 +2021,13 @@ class Pattern:
         # each position it tries: _sre._attempt.)
         if st.fast >= 0:
             ptr = st.ptr
-            r = _pystachy_re_specialized.match(st.fast, st)
+            try:
+                r = _pystachy_re_specialized.match(st.fast, st)
+            except RecursionError:
+                # A generated recursive matcher may exhaust the native source-call
+                # budget before its own specialization depth cap. Decline this
+                # optimization and let the iterative interpreter finish the match.
+                r = -1
             if r >= 0:
                 return r
             st.ptr = ptr
