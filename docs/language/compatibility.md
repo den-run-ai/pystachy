@@ -263,10 +263,18 @@ above apply to well-formed text (with the surrogate exception described above).
   or `__len__` runs then), for the `<no detail available>` of its traceback line, where CPython
   tests it only when it prints that line; no other exception class tests it
   (`tests/deviations/exc_syntax_error_truth.py`). An exception class of the program whose
-  `__init__` calls `super().__init__(...)` (or `Base.__init__(self, ...)`) as a statement of its
-  own body, using `self` before it only to assign and read plain fields, does not format the
-  arguments it was made with, which that call replaces: only that call's arguments are formatted,
-  as it runs (`tests/programs/exceptions/exc_keep_repr_effects.py`).
+  `__init__` surely calls `BaseException.__init__` before anything can read that text does not
+  format the arguments it was made with, which that call replaces: only that call's arguments
+  are formatted, as it runs (`tests/programs/exceptions/exc_keep_repr_effects.py`). That holds
+  where the `__init__` body's first call of an `__init__` is `super().__init__(...)` or
+  `Base.__init__(self, ...)` without star arguments, as a statement of its own (not within an
+  `if`, a loop, a `try` or a `with`); where nothing before it or in its arguments returns,
+  yields, names `locals`, `vars`, `eval`, `exec`, `dir`, `breakpoint` or `super`, or uses `self`
+  other than to assign and read plain fields; and where a program base's `__init__` that it
+  reaches holds to the same rule. Other classes still format their arguments as they are made,
+  among them those deriving `OSError` or `SystemExit`, those that define `__new__`, `__del__`,
+  `__getattr__`, `__getattribute__`, `__setattr__` or `__delattr__`, and those whose `__init__`
+  is decorated, a generator or `async`.
 
 - `E.__module__ = "builtins"` of an exception class raises `NotImplementedError`, where CPython
   assigns it and its uncaught exceptions' line names the class alone; other names are assigned
