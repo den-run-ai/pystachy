@@ -256,11 +256,19 @@ above apply to well-formed text (with the surrogate exception described above).
   recursion that the stack cannot hold, under a limit raised that far, raises where CPython
   completes (`tests/deviations/recursion_native_stack.py`): with the usual 8 MiB stack,
   somewhere between tens of thousands and a few hundred thousand frames, depending on their
-  sizes. A larger stack (`ulimit -s`) moves the floor with it. The margin is left to what
-  runs without a counted entry: non-recursive functions called from the deepest frame, the
-  runtime's own bounded recursion (a `repr()` or comparison of nested containers), raising
-  the error and a signal handler. Running out of stack is still not recoverable where those
-  need more than the margin, in foreign code (C calls through `ffi`, an embedded CPython),
+  sizes. A larger stack (`ulimit -s`) moves the floor with it. An entry looks at the stack
+  pointer only past the depth that the stack is known to hold, at 8 KiB of stack for each
+  counted call with what it calls before the next one, from where the program starts (in an
+  extension module, from each call from Python): about 990 calls of an 8 MiB stack, nearly
+  the default limit. Below that depth, the protection relies on that bound, which the corpus's
+  deep recursions keep eight times over (under 1 KiB a call on average, under 420 bytes in
+  optimized code); calls that use more stack on average, such as a long chain of
+  non-recursive functions with large frames between recursive calls, can still exhaust the
+  stack first. The margin is left to what runs without a counted entry: non-recursive
+  functions called from the deepest frame, the runtime's own bounded recursion (a `repr()`
+  or comparison of nested containers), raising the error and a signal handler. Running out
+  of stack is still not recoverable where those need more than the margin, in foreign code
+  (C calls through `ffi`, an embedded CPython),
   or where the runtime cannot find the thread's stack bounds (a thread other than the main
   one under a Linux C library other than glibc, or a stack the program has switched): there
   is no floor. An unlimited stack (`ulimit -s unlimited`) has none in practice either. On
