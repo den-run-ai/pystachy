@@ -594,7 +594,19 @@ the inline cold path cost as much on those but 1.5% on `generators.py`, and 37% 
 instructions in all past the safe depth.
 
 `tools/test_stack_floor.py` checks the floor's and the trip's policy against simulated bounds,
-with mutations, and runs deep recursion in JIT and AOT under a fixed `RLIMIT_STACK`.
+with mutations, and runs deep recursion in JIT and AOT under a fixed `RLIMIT_STACK`. It also runs
+representative recursions with larger frames until the floor raises (floats and ints live across
+the call, a handler and `finally` in every frame, a helper with sixteen live floats, the
+runtime's sort calling `__lt__`, a chain of generators) and requires each to use at most half of
+`STACK_LEVEL` a counted level on average, counting 8 MiB less the margin over the depth reached
+(which overstates it): AOT, the JIT and its `-O0` code generation used at most 192, 144 and 337
+bytes for all but the sort's levels, which hold the runtime's frames (922, 938 and 986). A
+recursion whose frame holds a tuple of 1,000 floats used 6.8 KiB a level AOT and 8.1 KiB in the
+JIT, and with `-O0` code generation ran out of stack before reaching the trip: frames that large
+are outside the bound. `tests/ffi/ext/recdeepclient.py` calls an extension module from a C
+callback below the floor of a 1 MiB thread stack, directly and through a Python callback that the
+module makes itself: each call's first counted entry must raise there, where the import's safe
+depth, without `pys_enter`'s, would let about a hundred run unchecked.
 
 `PYSTACHY_JIT_CODEGEN=0` selects MCJIT with `-O0` code generation. This can reduce
 startup for large programs, but the generated code can run slower. The default (`2`)

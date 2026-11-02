@@ -7,7 +7,9 @@ bounds, with negative controls. Live programs then run as subprocesses under a f
 (RLIMIT_STACK), without core dumps and with time limits, normally and with program GC stress:
 a recursion that fits matches CPython, and one that does not pins the documented deviation
 (docs/language/compatibility.md#errors-and-control-flow), where CPython, whose Python frames
-live on the heap, completes.
+live on the heap, completes. Representative recursions with larger frames, run until the floor
+raises in AOT and in the JIT with either code generation, use well under runtime.c's STACK_LEVEL a
+counted level on average: the bound that entries below the trip rely on.
 """
 
 import os
@@ -234,6 +236,116 @@ print("output before the recursion is kept")
 print(depth(int(sys.argv[1]), out), len(out))
 '''
 CAUGHT = f"caught recursion: {STACK_ERROR.split(': ', 1)[1]}\nfinally\n"
+# Representative recursions with larger frames, each run until the native stack's floor raises
+# RecursionError under a raised limit: each prints its shape, the deepest turn it reached and the
+# error. LEVELS: the counted levels a turn adds (a turn of walk is walk's frame and helper's).
+SHAPES = '''import sys
+from collections.abc import Iterator
+
+reached: list[int] = [0]
+finished: list[int] = [0]
+seen: list[float] = [0.0]
+
+
+def wide(n: int, a: float, b: float, c: float, d: float, e: float, f: float, g: float, h: float,
+         i: int, j: int, k: int, m: int) -> float:
+    # (many floats and ints, arguments and locals, live across the call)
+    reached[0] = n
+    p = a * 1.5 + b
+    q = c * 2.5 + d
+    r = e * 3.5 + f
+    s = g * 4.5 + h
+    t = i * 3 + j
+    u = k * 5 + m
+    x = wide(n + 1, a + 1.0, b + 2.0, c + 3.0, d + 4.0, e + 5.0, f + 6.0, g + 7.0, h + 8.0, i + 1, j + 2, k + 3, m + 4)
+    seen[0] = x
+    return x + p + q + r + s + float(t * u) + a * b + c * d + e * f + g * h + float(i * j + k * m)
+
+
+def guarded(n: int) -> int:
+    # (a handler and a finally block in every frame)
+    try:
+        reached[0] = n
+        return guarded(n + 1) + 1
+    except ValueError:
+        return -1
+    finally:
+        finished[0] += 1
+
+
+def walk(n: int, xs: list[float]) -> float:
+    reached[0] = n
+    return helper(n, xs) * 0.5
+
+
+def helper(n: int, xs: list[float]) -> float:
+    # (the other half of each turn: a frame with sixteen floats live across the call)
+    a0 = xs[0] + 1.0
+    a1 = xs[1] + 2.0
+    a2 = xs[2] + 3.0
+    a3 = xs[3] + 4.0
+    a4 = xs[4] + 5.0
+    a5 = xs[5] + 6.0
+    a6 = xs[6] + 7.0
+    a7 = xs[7] + 8.0
+    a8 = xs[8] + 9.0
+    a9 = xs[9] + 10.0
+    a10 = xs[10] + 11.0
+    a11 = xs[11] + 12.0
+    a12 = xs[12] + 13.0
+    a13 = xs[13] + 14.0
+    a14 = xs[14] + 15.0
+    a15 = xs[15] + 16.0
+    r = walk(n + 1, xs)
+    return r + a0 * a1 + a2 * a3 + a4 * a5 + a6 * a7 + a8 * a9 + a10 * a11 + a12 * a13 + a14 * a15
+
+
+class Turn:
+    def __init__(self, n: int) -> None:
+        self.n = n
+
+    def __lt__(self, other: "Turn") -> bool:
+        # (each turn's call goes through the runtime, whose sort compares with __lt__)
+        reached[0] = self.n
+        return sorted([Turn(self.n + 1), Turn(self.n + 2)])[0].n < other.n
+
+
+def nest(n: int) -> Iterator[int]:
+    # (a chain of generators, each level resuming the next)
+    reached[0] = n
+    for v in nest(n + 1):
+        yield v + 1
+    yield 0
+
+
+sys.setrecursionlimit(2000000)
+for shape in sys.argv[1].split(","):
+    reached[0] = 0
+    try:
+        if shape == "wide":
+            print(wide(0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0, 0, 0, 0))
+        elif shape == "guarded":
+            print(guarded(0))
+        elif shape == "helper":
+            print(walk(0, [float(k) for k in range(16)]))
+        elif shape == "compared":
+            print(sorted([Turn(0), Turn(1)])[0].n)
+        else:
+            print(sum(nest(0)))
+    except RecursionError as error:
+        print(shape, reached[0], error)
+'''
+LEVELS = {"wide": 1, "guarded": 1, "helper": 2, "compared": 1, "nest": 1}
+
+
+def stack_level():
+    # runtime.c's STACK_LEVEL outside ASan: the stack a counted level may use on average, which the
+    # safe depth assumes
+    source = (ROOT / "runtime.c").read_text()
+    match = re.search(r"^#else\n#define STACK_MARGIN .*\n#define STACK_LEVEL \(\(uintptr_t\)(\d+) << 10\)$", source, re.M)
+    if match is None:
+        raise AssertionError("runtime.c's STACK_LEVEL is missing")
+    return int(match[1]) * KIB
 
 
 def floor_source():
@@ -330,7 +442,7 @@ class StackFloorProgramTests(unittest.TestCase):
         cls.environment = {key: value for key, value in os.environ.items() if not key.startswith("PYSTACHY_")}
         cls.environment.update(PYSTACHY_LLVM=LLVM, PYSTACHY_CACHE=str(cls.work / "cache"), PYSTACHY_IRCHECK="1")
         cls.compiler = [sys.executable, str(ROOT / "pystachy.py")]
-        for name, text in (("deep", PROGRAM), ("bare", BARE)):
+        for name, text in (("deep", PROGRAM), ("bare", BARE), ("shapes", SHAPES)):
             (cls.work / f"{name}.py").write_text(text)
             build = subprocess.run([*cls.compiler, "build", str(cls.work / f"{name}.py"), "-o", str(cls.work / name)],
                                    cwd=ROOT, capture_output=True, text=True, env=cls.environment, timeout=600)
@@ -408,6 +520,33 @@ class StackFloorProgramTests(unittest.TestCase):
             self.assertEqual(result.returncode, 1, result.stderr)
             self.assertEqual(result.stdout, "output before the recursion is kept\n")
             self.assertEqual(result.stderr.splitlines()[-1:], [STACK_ERROR])
+
+    def level_averages(self, result):
+        # the stack a counted level of each shape used on average, from the depth it reached when
+        # the floor raised: the stack between the frame that set the floor and the floor (at most
+        # 8 MiB less the 256 KiB margin, the frames above that frame and main's being left out:
+        # this overstates the average) over the counted levels (the turns reached and the module's)
+        self.assertEqual((result.returncode, result.stderr), (0, ""))   # (no signal)
+        lines = [line.split(" ", 2) for line in result.stdout.splitlines()]
+        self.assertEqual([line[0] for line in lines], list(LEVELS))
+        averages = {}
+        for shape, turns, message in lines:
+            self.assertEqual(f"RecursionError: {message}", STACK_ERROR, shape)
+            averages[shape] = (8 * MIB - 256 * KIB) / (LEVELS[shape] * (int(turns) + 1) + 1)
+        return averages
+
+    def test_counted_levels_stay_well_inside_the_bound(self):
+        # Below the trip, the floor relies on counted levels that use at most STACK_LEVEL bytes of
+        # stack on average (runtime.c's safe depth). Representative larger frames, run until the floor
+        # raises, must stay within half of it in AOT and in the JIT with either code generation
+        # (PYSTACHY_JIT_CODEGEN=0's -O0 frames are the largest)
+        budget = stack_level() // 2
+        shapes = ",".join(LEVELS)
+        for label, result in (("AOT", self.aot("shapes", shapes)), ("JIT", self.jit("shapes", shapes)),
+                              ("JIT -O0", self.jit("shapes", shapes, PYSTACHY_JIT_CODEGEN="0"))):
+            with self.subTest(label):
+                for shape, average in self.level_averages(result).items():
+                    self.assertLessEqual(average, budget, f"{label} {shape}: {average:.0f} bytes a counted level, of {budget}")
 
 
 if __name__ == "__main__":
