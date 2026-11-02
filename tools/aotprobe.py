@@ -13,14 +13,20 @@ rather than passes unseen. Wrappers importing those modules check that an import
 keeps the feature paths available. Every executable prints what CPython prints. The symbols are LLVM 18's on
 Linux (CI's); another LLVM may inline differently.
 
-Allocations (allocelide, #1017): compiled code's objects come from pys_new, which -O2 sees as an
-allocation and deletes where nothing keeps the object, before the late step inlines the
-allocator's fast path into the calls left. An opt wrapper keeps the module -O2 gave that step
-(prog-opt.bc), where each allocation left is a call of pys_new (the runtime's C code never calls
-it): TEMPS, whose vectors never leave walk(), keeps none, and KEPT, whose objects a list keeps,
-does. With allocelide off there is no late step, and with pys_new inlined before -O2 KEPT keeps
-no call: either fails here. KEPT also builds with PYSTACHY_CFLAGS=-O0, whose runtime gives pys_new
-optnone, which the late step must drop too (LLVM's verifier rejects optnone without noinline).
+Allocations (allocelide, #1017): compiled code's objects that hold no reference (only ints,
+floats and bools) come from pys_new, which -O2 sees as an allocation and deletes where nothing
+keeps the object, before the late step inlines the allocator's fast path into the calls left. An
+opt wrapper keeps the module -O2 gave that step (prog-opt.bc), where each allocation left is a
+call of pys_new (the runtime's C code never calls it): TEMPS, whose vectors never leave walk(),
+keeps none, and KEPT, whose objects a list keeps, does. With allocelide off there is no late step,
+and with pys_new inlined before -O2 KEPT keeps no call: either fails here. KEPT also builds with
+PYSTACHY_CFLAGS=-O0, whose runtime gives pys_new optnone, which the late step must drop too (LLVM's
+verifier rejects optnone without noinline). HELD's holders, an object and a tuple that hold an
+object each and that run() reads after collections, hold references: their allocations are
+pys_alloc's, which -O2 never deletes, and only the objects they hold, which hold none, pys_new's.
+Its executable, also with a collection at every allocation, keeps the held objects alive, as
+CPython does: weak references to them stay alive (with the marked call, -O2 forwarded a holder's
+fields across the collections and left the holder's address dead, and the collector freed them).
 """
 import argparse
 import os
@@ -119,8 +125,44 @@ def keep(n: int) -> list[Item]:
 
 print(sum([item.x for item in keep(1000)]))
 '''
+# holders, which hold references, that run() reads after collections, and the objects they hold,
+# which hold none: weak references to those must stay alive
+HELD = '''from _weakref import ref
+
+
+class Item:
+    def __init__(self, value: int) -> None:
+        self.value = value
+
+
+class Holder:
+    def __init__(self, item: Item, tag: str) -> None:
+        self.item = item
+        self.tag = tag
+
+
+def churn() -> None:
+    for i in range(1024):
+        text = str(i) * 65536
+        assert len(text) >= 65536
+
+
+def run(n: int) -> None:
+    h = Holder(Item(n), "h")
+    t = (Item(n + 1), n * 2)
+    rs = [ref(h.item), ref(t[0])]
+    churn()
+    print([r() is None for r in rs], h.tag, t[1])
+
+
+run(1)
+'''
 # the allocations of compiled code that -O2 left: its calls of pys_new
 NEW = re.compile(r"call [^@\n]*@pys_new\(")
+# HELD's run() as the compiler emits it, and the operands of its calls of pys_new and pys_alloc
+RUN = re.compile(r"^define[^\n]*@f\.run\([^\n]*\n.*?^}", re.M | re.S)
+NEWS = re.compile(r"call [^@\n]*@pys_new\(([^\n]*)")
+ALLOCS = re.compile(r"call ptr @pys_alloc\(([^\n]*)")
 
 
 def run(command, env, cwd=ROOT):
@@ -226,6 +268,24 @@ def main():
             if run([str(exe)], env, temp) != run([sys.executable, "kept.py"], env, temp):
                 raise RuntimeError(f"{label} kept with PYSTACHY_CFLAGS=-O0: the AOT executable's output differs from CPython's")
             print(f"{label}: with PYSTACHY_CFLAGS=-O0 (a runtime whose pys_new is optnone), the late step runs and the output is CPython's")
+            src = temp / "held.py"
+            src.write_text(HELD)
+            body = RUN.search(run(cmd + ["ir", str(src)], env).decode())
+            if body is None:
+                raise RuntimeError(f"{label} held: the IR defines no run()")
+            news = NEWS.findall(body.group())
+            allocs = ALLOCS.findall(body.group())
+            if len(news) != 2 or any("%C.Item," not in a for a in news):
+                raise RuntimeError(f"{label} held: run()'s pys_new calls are not the two held objects': {news}")
+            if not any("%C.Holder," in a for a in allocs) or "i64 16)" not in allocs:
+                raise RuntimeError(f"{label} held: run()'s holders do not come from pys_alloc: {allocs}")
+            exe = temp / f"{label}-held"
+            run(cmd + ["build", str(src), "-o", str(exe)], env)
+            want = run([sys.executable, "held.py"], env, temp)
+            for stress in ({}, {"PYSTACHY_GC_STRESS": "1"}):
+                if run([str(exe)], env | stress, temp) != want:
+                    raise RuntimeError(f"{label} held: the AOT executable's output differs from CPython's{' under GC stress' if stress else ''}: a holder's object was collected")
+            print(f"{label}: held objects stay alive through collections, also under GC stress; their holders come from pys_alloc, the objects from pys_new")
     return 0
 
 

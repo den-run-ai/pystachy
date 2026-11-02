@@ -15,7 +15,7 @@
 @f.three: pys_new
 @f.starred: pys_list_new_atomic pys_list_append pys_list_append pys_list_new_atomic pys_list_append pys_list_append pys_raise
 @v.f.strs: pys_str_mul
-@f.strs: pys_new
+@f.strs: pys_alloc
 @pys_obj_eq:
 @pys_obj_cmp:
 @pys_obj_repr:
