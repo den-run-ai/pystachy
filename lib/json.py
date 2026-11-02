@@ -323,7 +323,6 @@ class _Parser:
         data = self.data
         n = len(data)
         start = begin + 1
-        limit = start + 16
         chunks: list[str] = []
         while i < n:
             c = data[i]
@@ -336,9 +335,10 @@ class _Parser:
                 raise self.error("Invalid control character at", i)
             if c != 92:
                 i += 1
-                if i == limit:
-                    i = _scan_bytes(data, i, n, 34, 92, 32)
                 continue
+            # A long ordinary run before this escape predicts another after it: bulk-scan
+            # that one. Dense escapes keep the byte loop, without a per-byte bound check.
+            long_run = i - start >= 16
             if i > start:
                 chunks.append(self.text(start, i))
             slash = i
@@ -375,7 +375,8 @@ class _Parser:
             else:
                 raise self.error("Invalid \\escape", slash)
             start = i
-            limit = start + 16
+            if long_run and i < n:
+                i = _scan_bytes(data, i, n, 34, 92, 32)
         raise self.error("Unterminated string starting at", begin)
 
     def number(self) -> JSONValue:
