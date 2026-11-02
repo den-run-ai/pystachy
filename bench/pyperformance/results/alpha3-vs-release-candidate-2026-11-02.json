@@ -1,0 +1,1100 @@
+{
+ "schema": 1,
+ "measured_utc_date": "2026-11-02",
+ "scope": "The alpha.4 release candidate, main ec442a20 (c3aaa068 with #1025-#1029 and #1031), against the alpha.3 tag over the adapted pyperformance sources, with perf/driver.py's sources, arguments, environment and CPython oracles",
+ "revisions": {
+  "alpha3": "f5a09d42 (v0.1.0-alpha.3)",
+  "c3aaa068": "c3aaa068574d440a7104599dc22f683cbae07481",
+  "release_candidate": "ec442a20927f7d2968db5ce554d8ba39aff503bd",
+  "measured_tree": "9496b00d, a local merge of f1abf82c (#1029's head, whose tree main b9bc8192 has) and 4ea780ed (#1031); its code (src, lib, runtime.c, runtime.py, ports, bench) is identical to ec442a20's, which differs only in tests/ir/exc_keep_elided.calls"
+ },
+ "compiler": {
+  "bootstrap": "stage1 == stage2 == stage3 (792,790 IR lines); runtime.py rt1 == rt2 == rt3 (18,805 lines)"
+ },
+ "toolchain": {
+  "llvm": "18.1.3",
+  "valgrind": "3.22.0",
+  "cpython_oracle": "3.13.18",
+  "host": "shared 4-vCPU Linux x86-64 VM, Intel Xeon @ 2.10 GHz"
+ },
+ "valgrind_adjustment": "Under Valgrind only, the runtime's stack-bounds lookup (#1026) can miss its AT_EXECFN fast path and call glibc's pthread_getattr_np, which parses /proc/self/maps: about 98,000-113,000 instructions once per process, depending on the executable's path. Native runs never open /proc/self/maps (checked with strace in #1026). release_candidate_instructions subtract that call's inclusive cost (valgrind_only_fallback_instructions) from the Callgrind total; alpha.3 and c3aaa068 have no such call.",
+ "summary": {
+  "geomean_vs_alpha3_percent_22": 2.55,
+  "geomean_vs_c3aaa068_percent_22": 0.2,
+  "every_output_matches_cpython": true,
+  "bench_fib_vs_alpha3_percent": 37.92
+ },
+ "benchmarks": [
+  {
+   "benchmark": "barnes_hut",
+   "arguments": [
+    "4"
+   ],
+   "in_geomean": true,
+   "alpha3_instructions": 768490218,
+   "c3aaa068_instructions": 837401538,
+   "release_candidate_instructions": 854628288,
+   "release_candidate_callgrind_total": 854731050,
+   "valgrind_only_fallback_instructions": 102762,
+   "change_vs_alpha3_percent": 11.21,
+   "change_vs_c3aaa068_percent": 2.06,
+   "stdout_matches_cpython": true,
+   "command": [
+    "taskset",
+    "-c",
+    "2",
+    "valgrind",
+    "--tool=callgrind",
+    "--error-exitcode=99",
+    "--callgrind-out-file=$SCRATCH/final/perf/cg/barnes_hut_4.final0.callgrind",
+    "$SCRATCH/final/perf/exe/final0/barnes_hut",
+    "4"
+   ],
+   "binary_sha256": "651b6e087f953dad70a33bc581297669649f389ee6950ef9539e2cda901a07fc",
+   "binary_size_bytes": 87352,
+   "build_command": [
+    "taskset",
+    "-c",
+    "2",
+    "$SCRATCH/wt-final0/pystachy",
+    "build",
+    "$CHECKOUT/bench/pyperformance/barnes_hut.py",
+    "-o",
+    "$SCRATCH/final/perf/exe/final0/barnes_hut"
+   ],
+   "build_wall_seconds": 1.15,
+   "input_sha256": "e68bffb93b84c4fb44d50dd0de057af886533efc969a5ea9424c1feff381ac3d",
+   "with_1033_instructions": 839078739
+  },
+  {
+   "benchmark": "bench_fib",
+   "arguments": [],
+   "in_geomean": false,
+   "alpha3_instructions": 433158653,
+   "c3aaa068_instructions": 537671332,
+   "release_candidate_instructions": 597398163,
+   "release_candidate_callgrind_total": 597498624,
+   "valgrind_only_fallback_instructions": 100461,
+   "change_vs_alpha3_percent": 37.92,
+   "change_vs_c3aaa068_percent": 11.11,
+   "stdout_matches_cpython": true,
+   "command": [
+    "taskset",
+    "-c",
+    "2",
+    "valgrind",
+    "--tool=callgrind",
+    "--error-exitcode=99",
+    "--callgrind-out-file=$SCRATCH/final/perf/cg/bench_fib_.final0.callgrind",
+    "$SCRATCH/final/perf/exe/final0/bench_fib"
+   ],
+   "binary_sha256": "3bc6e9c418ae1cf79f38f68bc67755eb4b26e8d7fc3cc9139c75b62529a58667",
+   "binary_size_bytes": 34224,
+   "build_command": [
+    "taskset",
+    "-c",
+    "2",
+    "$SCRATCH/wt-final0/pystachy",
+    "build",
+    "$CHECKOUT/bench/fib.py",
+    "-o",
+    "$SCRATCH/final/perf/exe/final0/bench_fib"
+   ],
+   "build_wall_seconds": 0.27,
+   "input_sha256": "20035a6334baba74b250c187d92b915671a394d4fa5cabf703433bd938b4bd26",
+   "with_1033_instructions": 537676771
+  },
+  {
+   "benchmark": "bench_nbody",
+   "arguments": [],
+   "in_geomean": false,
+   "alpha3_instructions": 424193609,
+   "c3aaa068_instructions": 424193802,
+   "release_candidate_instructions": 424198796,
+   "release_candidate_callgrind_total": 424299268,
+   "valgrind_only_fallback_instructions": 100472,
+   "change_vs_alpha3_percent": 0.0,
+   "change_vs_c3aaa068_percent": 0.0,
+   "stdout_matches_cpython": true,
+   "command": [
+    "taskset",
+    "-c",
+    "2",
+    "valgrind",
+    "--tool=callgrind",
+    "--error-exitcode=99",
+    "--callgrind-out-file=$SCRATCH/final/perf/cg/bench_nbody_.final0.callgrind",
+    "$SCRATCH/final/perf/exe/final0/bench_nbody"
+   ],
+   "binary_sha256": "6e3ce5846f14662f870f7b5bee1ea65212ef35da2e7dbafb7b61d8cdf16417de",
+   "binary_size_bytes": 101464,
+   "build_command": [
+    "taskset",
+    "-c",
+    "2",
+    "$SCRATCH/wt-final0/pystachy",
+    "build",
+    "$CHECKOUT/bench/nbody.py",
+    "-o",
+    "$SCRATCH/final/perf/exe/final0/bench_nbody"
+   ],
+   "build_wall_seconds": 1.36,
+   "input_sha256": "1c163e560eea0d5196202fd19cb43c6c59c8db335f1157cbdd252af0e1eebc7b",
+   "with_1033_instructions": 424198810
+  },
+  {
+   "benchmark": "bench_spectral",
+   "arguments": [],
+   "in_geomean": false,
+   "alpha3_instructions": 245415316,
+   "c3aaa068_instructions": 250345725,
+   "release_candidate_instructions": 245460609,
+   "release_candidate_callgrind_total": 245558796,
+   "valgrind_only_fallback_instructions": 98187,
+   "change_vs_alpha3_percent": 0.02,
+   "change_vs_c3aaa068_percent": -1.95,
+   "stdout_matches_cpython": true,
+   "command": [
+    "taskset",
+    "-c",
+    "2",
+    "valgrind",
+    "--tool=callgrind",
+    "--error-exitcode=99",
+    "--callgrind-out-file=$SCRATCH/final/perf/cg/bench_spectral_.final0.callgrind",
+    "$SCRATCH/final/perf/exe/final0/bench_spectral"
+   ],
+   "binary_sha256": "9a11ec8d3d542b262acfa6c034d9bfec57f4e2c1fa5ff646c57806b1a1df98f0",
+   "binary_size_bytes": 100976,
+   "build_command": [
+    "taskset",
+    "-c",
+    "2",
+    "$SCRATCH/wt-final0/pystachy",
+    "build",
+    "$CHECKOUT/bench/spectral.py",
+    "-o",
+    "$SCRATCH/final/perf/exe/final0/bench_spectral"
+   ],
+   "build_wall_seconds": 1.19,
+   "input_sha256": "0ba2115a31ca52d8b6a6d8949882c25bdce261ef8e756d976eb348c8cc11e0b0",
+   "with_1033_instructions": 245460623
+  },
+  {
+   "benchmark": "chaos",
+   "arguments": [
+    "40"
+   ],
+   "in_geomean": true,
+   "alpha3_instructions": 1027698712,
+   "c3aaa068_instructions": 985506975,
+   "release_candidate_instructions": 981626053,
+   "release_candidate_callgrind_total": 981736931,
+   "valgrind_only_fallback_instructions": 110878,
+   "change_vs_alpha3_percent": -4.48,
+   "change_vs_c3aaa068_percent": -0.39,
+   "stdout_matches_cpython": true,
+   "command": [
+    "taskset",
+    "-c",
+    "2",
+    "valgrind",
+    "--tool=callgrind",
+    "--error-exitcode=99",
+    "--callgrind-out-file=$SCRATCH/final/perf/cg/chaos_40.final0.callgrind",
+    "$SCRATCH/final/perf/exe/final0/chaos",
+    "40"
+   ],
+   "binary_sha256": "846f2b853b3d818a966a0e953cf50e206cdf2c5b51f94a60a06bbb2a7577e089",
+   "binary_size_bytes": 137728,
+   "build_command": [
+    "taskset",
+    "-c",
+    "2",
+    "$SCRATCH/wt-final0/pystachy",
+    "build",
+    "$CHECKOUT/bench/pyperformance/chaos.py",
+    "-o",
+    "$SCRATCH/final/perf/exe/final0/chaos"
+   ],
+   "build_wall_seconds": 2.0,
+   "input_sha256": "228afbb7b936034eb83a616fb8ef88a267653d55906af6bd2f0e117faa4fb702",
+   "with_1033_instructions": 981626027
+  },
+  {
+   "benchmark": "comprehensions",
+   "arguments": [
+    "10000"
+   ],
+   "in_geomean": true,
+   "alpha3_instructions": 435589711,
+   "c3aaa068_instructions": 428917097,
+   "release_candidate_instructions": 424225307,
+   "release_candidate_callgrind_total": 424336148,
+   "valgrind_only_fallback_instructions": 110841,
+   "change_vs_alpha3_percent": -2.61,
+   "change_vs_c3aaa068_percent": -1.09,
+   "stdout_matches_cpython": true,
+   "command": [
+    "taskset",
+    "-c",
+    "2",
+    "valgrind",
+    "--tool=callgrind",
+    "--error-exitcode=99",
+    "--callgrind-out-file=$SCRATCH/final/perf/cg/comprehensions_10000.final0.callgrind",
+    "$SCRATCH/final/perf/exe/final0/comprehensions",
+    "10000"
+   ],
+   "binary_sha256": "1729081d8ee8acbbd9806ed819547495ad9e921cad86019f7af4c2fad333dce2",
+   "binary_size_bytes": 116848,
+   "build_command": [
+    "taskset",
+    "-c",
+    "2",
+    "$SCRATCH/wt-final0/pystachy",
+    "build",
+    "$CHECKOUT/bench/pyperformance/comprehensions.py",
+    "-o",
+    "$SCRATCH/final/perf/exe/final0/comprehensions"
+   ],
+   "build_wall_seconds": 1.68,
+   "input_sha256": "e80eeec489f4b6158d9181478151b4884dce3834067cd98e43d430ff2e3d3abf",
+   "with_1033_instructions": 424225298
+  },
+  {
+   "benchmark": "fannkuch",
+   "arguments": [
+    "1"
+   ],
+   "in_geomean": true,
+   "alpha3_instructions": 868840644,
+   "c3aaa068_instructions": 941219167,
+   "release_candidate_instructions": 901945079,
+   "release_candidate_callgrind_total": 902047823,
+   "valgrind_only_fallback_instructions": 102744,
+   "change_vs_alpha3_percent": 3.81,
+   "change_vs_c3aaa068_percent": -4.17,
+   "stdout_matches_cpython": true,
+   "command": [
+    "taskset",
+    "-c",
+    "2",
+    "valgrind",
+    "--tool=callgrind",
+    "--error-exitcode=99",
+    "--callgrind-out-file=$SCRATCH/final/perf/cg/fannkuch_1.final0.callgrind",
+    "$SCRATCH/final/perf/exe/final0/fannkuch",
+    "1"
+   ],
+   "binary_sha256": "5a2e571d905fb813b5cec1bc8f5a81ede50bfd72d215387fa31800b1346cc213",
+   "binary_size_bytes": 81880,
+   "build_command": [
+    "taskset",
+    "-c",
+    "2",
+    "$SCRATCH/wt-final0/pystachy",
+    "build",
+    "$CHECKOUT/bench/pyperformance/fannkuch.py",
+    "-o",
+    "$SCRATCH/final/perf/exe/final0/fannkuch"
+   ],
+   "build_wall_seconds": 0.94,
+   "input_sha256": "42d906410ede9419d8f3eceda729b2027d78085f455a0fbb0445e081b53df2cf",
+   "with_1033_instructions": 901944988
+  },
+  {
+   "benchmark": "float",
+   "arguments": [
+    "10"
+   ],
+   "in_geomean": true,
+   "alpha3_instructions": 339469015,
+   "c3aaa068_instructions": 346608518,
+   "release_candidate_instructions": 344613808,
+   "release_candidate_callgrind_total": 344716560,
+   "valgrind_only_fallback_instructions": 102752,
+   "change_vs_alpha3_percent": 1.52,
+   "change_vs_c3aaa068_percent": -0.58,
+   "stdout_matches_cpython": true,
+   "command": [
+    "taskset",
+    "-c",
+    "2",
+    "valgrind",
+    "--tool=callgrind",
+    "--error-exitcode=99",
+    "--callgrind-out-file=$SCRATCH/final/perf/cg/float_10.final0.callgrind",
+    "$SCRATCH/final/perf/exe/final0/float",
+    "10"
+   ],
+   "binary_sha256": "3be5f33b23ead36d79a55605064733cb0405e24073004ced69a67d73e3c7869a",
+   "binary_size_bytes": 78224,
+   "build_command": [
+    "taskset",
+    "-c",
+    "2",
+    "$SCRATCH/wt-final0/pystachy",
+    "build",
+    "$CHECKOUT/bench/pyperformance/float.py",
+    "-o",
+    "$SCRATCH/final/perf/exe/final0/float"
+   ],
+   "build_wall_seconds": 0.97,
+   "input_sha256": "cc19566e50f47bc26d78324475260ff9808509266b70fffeff0091d1144388d0",
+   "with_1033_instructions": 344613773
+  },
+  {
+   "benchmark": "generators",
+   "arguments": [
+    "10"
+   ],
+   "in_geomean": true,
+   "alpha3_instructions": 1068640989,
+   "c3aaa068_instructions": 1210949709,
+   "release_candidate_instructions": 1262654204,
+   "release_candidate_callgrind_total": 1262654204,
+   "valgrind_only_fallback_instructions": 0,
+   "change_vs_alpha3_percent": 18.16,
+   "change_vs_c3aaa068_percent": 4.27,
+   "stdout_matches_cpython": true,
+   "command": [
+    "taskset",
+    "-c",
+    "2",
+    "valgrind",
+    "--tool=callgrind",
+    "--error-exitcode=99",
+    "--callgrind-out-file=$SCRATCH/final/perf/cg/generators_10.final0.callgrind",
+    "$SCRATCH/final/perf/exe/final0/generators",
+    "10"
+   ],
+   "binary_sha256": "0c0df74c532d59df2565e124946dc258b08b2752abcbb44a529f64a0a69619d1",
+   "binary_size_bytes": 96720,
+   "build_command": [
+    "taskset",
+    "-c",
+    "2",
+    "$SCRATCH/wt-final0/pystachy",
+    "build",
+    "$CHECKOUT/bench/pyperformance/generators.py",
+    "-o",
+    "$SCRATCH/final/perf/exe/final0/generators"
+   ],
+   "build_wall_seconds": 1.21,
+   "input_sha256": "4c5b29669136d4cf7d51f039253b0fd5a21f35d0dd068e2f35a06a889f8d997f",
+   "with_1033_instructions": 1210478886
+  },
+  {
+   "benchmark": "go",
+   "arguments": [
+    "8"
+   ],
+   "in_geomean": true,
+   "alpha3_instructions": 350188877,
+   "c3aaa068_instructions": 374382791,
+   "release_candidate_instructions": 377926545,
+   "release_candidate_callgrind_total": 378027020,
+   "valgrind_only_fallback_instructions": 100475,
+   "change_vs_alpha3_percent": 7.92,
+   "change_vs_c3aaa068_percent": 0.95,
+   "stdout_matches_cpython": true,
+   "command": [
+    "taskset",
+    "-c",
+    "2",
+    "valgrind",
+    "--tool=callgrind",
+    "--error-exitcode=99",
+    "--callgrind-out-file=$SCRATCH/final/perf/cg/go_8.final0.callgrind",
+    "$SCRATCH/final/perf/exe/final0/go",
+    "8"
+   ],
+   "binary_sha256": "81a10d2fb04618d092b422b34a2955e9d10151b8a4729fa64042500c5d539dec",
+   "binary_size_bytes": 107960,
+   "build_command": [
+    "taskset",
+    "-c",
+    "2",
+    "$SCRATCH/wt-final0/pystachy",
+    "build",
+    "$CHECKOUT/bench/pyperformance/go.py",
+    "-o",
+    "$SCRATCH/final/perf/exe/final0/go"
+   ],
+   "build_wall_seconds": 1.63,
+   "input_sha256": "521cffbc4d15cdd93e0693230143aa274e4e190dd3e5f49cb45c9745565c5a13",
+   "with_1033_instructions": 371928271
+  },
+  {
+   "benchmark": "hexiom",
+   "arguments": [
+    "100"
+   ],
+   "in_geomean": true,
+   "alpha3_instructions": 689269863,
+   "c3aaa068_instructions": 713175551,
+   "release_candidate_instructions": 710666195,
+   "release_candidate_callgrind_total": 710774775,
+   "valgrind_only_fallback_instructions": 108580,
+   "change_vs_alpha3_percent": 3.1,
+   "change_vs_c3aaa068_percent": -0.35,
+   "stdout_matches_cpython": true,
+   "command": [
+    "taskset",
+    "-c",
+    "2",
+    "valgrind",
+    "--tool=callgrind",
+    "--error-exitcode=99",
+    "--callgrind-out-file=$SCRATCH/final/perf/cg/hexiom_100.final0.callgrind",
+    "$SCRATCH/final/perf/exe/final0/hexiom",
+    "100"
+   ],
+   "binary_sha256": "1940f519cf4e072856087245fbb892c640b5eb21c0a21b8da2ebf4256df91bf2",
+   "binary_size_bytes": 157848,
+   "build_command": [
+    "taskset",
+    "-c",
+    "2",
+    "$SCRATCH/wt-final0/pystachy",
+    "build",
+    "$CHECKOUT/bench/pyperformance/hexiom.py",
+    "-o",
+    "$SCRATCH/final/perf/exe/final0/hexiom"
+   ],
+   "build_wall_seconds": 2.44,
+   "input_sha256": "988d2adb90f8ab6a67180200436e93290fdb077e218b7339bb4ac7caf1cd2502",
+   "with_1033_instructions": 710656409
+  },
+  {
+   "benchmark": "json_dumps",
+   "arguments": [
+    "20"
+   ],
+   "in_geomean": true,
+   "alpha3_instructions": 1440549847,
+   "c3aaa068_instructions": 1508536469,
+   "release_candidate_instructions": 1513952350,
+   "release_candidate_callgrind_total": 1513952350,
+   "valgrind_only_fallback_instructions": 0,
+   "change_vs_alpha3_percent": 5.1,
+   "change_vs_c3aaa068_percent": 0.36,
+   "stdout_matches_cpython": true,
+   "command": [
+    "taskset",
+    "-c",
+    "2",
+    "valgrind",
+    "--tool=callgrind",
+    "--error-exitcode=99",
+    "--callgrind-out-file=$SCRATCH/final/perf/cg/json_dumps_20.final0.callgrind",
+    "$SCRATCH/final/perf/exe/final0/json_dumps",
+    "20"
+   ],
+   "binary_sha256": "45f9774decf3cb2ca3d9f55cd243bc2a1f245cd5597891ccbf7ec8050812a363",
+   "binary_size_bytes": 207816,
+   "build_command": [
+    "taskset",
+    "-c",
+    "2",
+    "$SCRATCH/wt-final0/pystachy",
+    "build",
+    "$CHECKOUT/bench/pyperformance/json_dumps.py",
+    "-o",
+    "$SCRATCH/final/perf/exe/final0/json_dumps"
+   ],
+   "build_wall_seconds": 2.64,
+   "input_sha256": "00d75868e820e56f2281e061583d418574b6dda96de180d3cf3adc76cff532c2",
+   "with_1033_instructions": 1508538982
+  },
+  {
+   "benchmark": "json_loads",
+   "arguments": [
+    "300"
+   ],
+   "in_geomean": true,
+   "alpha3_instructions": 1300276404,
+   "c3aaa068_instructions": 1428396351,
+   "release_candidate_instructions": 1296095622,
+   "release_candidate_callgrind_total": 1296204206,
+   "valgrind_only_fallback_instructions": 108584,
+   "change_vs_alpha3_percent": -0.32,
+   "change_vs_c3aaa068_percent": -9.26,
+   "stdout_matches_cpython": true,
+   "command": [
+    "taskset",
+    "-c",
+    "2",
+    "valgrind",
+    "--tool=callgrind",
+    "--error-exitcode=99",
+    "--callgrind-out-file=$SCRATCH/final/perf/cg/json_loads_300.final0.callgrind",
+    "$SCRATCH/final/perf/exe/final0/json_loads",
+    "300"
+   ],
+   "binary_sha256": "f78000d760095d9c7abcebc2663565ae905af9fc1cdcc421fa68fcbfb17749ea",
+   "binary_size_bytes": 275544,
+   "build_command": [
+    "taskset",
+    "-c",
+    "2",
+    "$SCRATCH/wt-final0/pystachy",
+    "build",
+    "$CHECKOUT/bench/pyperformance/json_loads.py",
+    "-o",
+    "$SCRATCH/final/perf/exe/final0/json_loads"
+   ],
+   "build_wall_seconds": 3.65,
+   "input_sha256": "51d23d4d8dcc3dea512988ae424988be6bf17d70e9e6d2a09d908799b3319c77",
+   "with_1033_instructions": 1293969501
+  },
+  {
+   "benchmark": "meteor_contest",
+   "arguments": [
+    "2"
+   ],
+   "in_geomean": true,
+   "alpha3_instructions": 828641899,
+   "c3aaa068_instructions": 860599321,
+   "release_candidate_instructions": 851889040,
+   "release_candidate_callgrind_total": 851987203,
+   "valgrind_only_fallback_instructions": 98163,
+   "change_vs_alpha3_percent": 2.81,
+   "change_vs_c3aaa068_percent": -1.01,
+   "stdout_matches_cpython": true,
+   "command": [
+    "taskset",
+    "-c",
+    "2",
+    "valgrind",
+    "--tool=callgrind",
+    "--error-exitcode=99",
+    "--callgrind-out-file=$SCRATCH/final/perf/cg/meteor_contest_2.final0.callgrind",
+    "$SCRATCH/final/perf/exe/final0/meteor_contest",
+    "2"
+   ],
+   "binary_sha256": "db9508778d0a720e8781eb154f315608b49af083e5151088595bbcf184c2f30d",
+   "binary_size_bytes": 131200,
+   "build_command": [
+    "taskset",
+    "-c",
+    "2",
+    "$SCRATCH/wt-final0/pystachy",
+    "build",
+    "$CHECKOUT/bench/pyperformance/meteor_contest.py",
+    "-o",
+    "$SCRATCH/final/perf/exe/final0/meteor_contest"
+   ],
+   "build_wall_seconds": 1.69,
+   "input_sha256": "876ffc333e293ab11d19298002da139b6ccf88dd50e3e92b9384d4485c3a7340",
+   "with_1033_instructions": 851700061
+  },
+  {
+   "benchmark": "microgpt",
+   "arguments": [
+    "10",
+    "3"
+   ],
+   "in_geomean": false,
+   "alpha3_instructions": 926127687,
+   "c3aaa068_instructions": 919169689,
+   "release_candidate_instructions": 920925421,
+   "release_candidate_callgrind_total": 921034004,
+   "valgrind_only_fallback_instructions": 108583,
+   "change_vs_alpha3_percent": -0.56,
+   "change_vs_c3aaa068_percent": 0.19,
+   "stdout_matches_cpython": true,
+   "command": [
+    "taskset",
+    "-c",
+    "2",
+    "valgrind",
+    "--tool=callgrind",
+    "--error-exitcode=99",
+    "--callgrind-out-file=$SCRATCH/final/perf/cg/microgpt_10_3.final0.callgrind",
+    "$SCRATCH/final/perf/exe/final0/microgpt",
+    "10",
+    "3"
+   ],
+   "binary_sha256": "68f3da627ce3ad977700a6c53fc4e4688e9f96a48fbdcf7ff0be2c794b58d609",
+   "binary_size_bytes": 217664,
+   "build_command": [
+    "taskset",
+    "-c",
+    "2",
+    "$SCRATCH/wt-final0/pystachy",
+    "build",
+    "$SCRATCH/perf/inputs/microgpt_reduced.py",
+    "-o",
+    "$SCRATCH/final/perf/exe/final0/microgpt"
+   ],
+   "build_wall_seconds": 2.99,
+   "input_sha256": "274d39f04289343b2aa1df07642d0ce632a6fb182632b8797a70eeff93f5388f",
+   "with_1033_instructions": 919805583
+  },
+  {
+   "benchmark": "nbody",
+   "arguments": [
+    "10"
+   ],
+   "in_geomean": true,
+   "alpha3_instructions": 570450945,
+   "c3aaa068_instructions": 590251469,
+   "release_candidate_instructions": 580457007,
+   "release_candidate_callgrind_total": 580557514,
+   "valgrind_only_fallback_instructions": 100507,
+   "change_vs_alpha3_percent": 1.75,
+   "change_vs_c3aaa068_percent": -1.66,
+   "stdout_matches_cpython": true,
+   "command": [
+    "taskset",
+    "-c",
+    "2",
+    "valgrind",
+    "--tool=callgrind",
+    "--error-exitcode=99",
+    "--callgrind-out-file=$SCRATCH/final/perf/cg/nbody_10.final0.callgrind",
+    "$SCRATCH/final/perf/exe/final0/nbody",
+    "10"
+   ],
+   "binary_sha256": "fab2f68caa25dabbac52c596bc66dac0a9b002b86f3639b8ceaf1edbd10d059b",
+   "binary_size_bytes": 99432,
+   "build_command": [
+    "taskset",
+    "-c",
+    "2",
+    "$SCRATCH/wt-final0/pystachy",
+    "build",
+    "$CHECKOUT/bench/pyperformance/nbody.py",
+    "-o",
+    "$SCRATCH/final/perf/exe/final0/nbody"
+   ],
+   "build_wall_seconds": 1.24,
+   "input_sha256": "2ec9c9e9c36cf2e819dc1026debbb7f9f901410ae36032795d60057c9f447e30",
+   "with_1033_instructions": 580457020
+  },
+  {
+   "benchmark": "nqueens",
+   "arguments": [
+    "5"
+   ],
+   "in_geomean": true,
+   "alpha3_instructions": 1148615907,
+   "c3aaa068_instructions": 1216148654,
+   "release_candidate_instructions": 1195620781,
+   "release_candidate_callgrind_total": 1195721265,
+   "valgrind_only_fallback_instructions": 100484,
+   "change_vs_alpha3_percent": 4.09,
+   "change_vs_c3aaa068_percent": -1.69,
+   "stdout_matches_cpython": true,
+   "command": [
+    "taskset",
+    "-c",
+    "2",
+    "valgrind",
+    "--tool=callgrind",
+    "--error-exitcode=99",
+    "--callgrind-out-file=$SCRATCH/final/perf/cg/nqueens_5.final0.callgrind",
+    "$SCRATCH/final/perf/exe/final0/nqueens",
+    "5"
+   ],
+   "binary_sha256": "191442c08cab73ff33fb014f3c64dd14ff5882800fe54e2070a8ce53e19bf7aa",
+   "binary_size_bytes": 94816,
+   "build_command": [
+    "taskset",
+    "-c",
+    "2",
+    "$SCRATCH/wt-final0/pystachy",
+    "build",
+    "$CHECKOUT/bench/pyperformance/nqueens.py",
+    "-o",
+    "$SCRATCH/final/perf/exe/final0/nqueens"
+   ],
+   "build_wall_seconds": 1.22,
+   "input_sha256": "5ccc5d1f8724daf6550b870d8031120653eef6df0fa93bddeb7afaa5e28f4b53",
+   "with_1033_instructions": 1196359464
+  },
+  {
+   "benchmark": "raytrace",
+   "arguments": [
+    "8"
+   ],
+   "in_geomean": true,
+   "alpha3_instructions": 681940042,
+   "c3aaa068_instructions": 490076740,
+   "release_candidate_instructions": 680378204,
+   "release_candidate_callgrind_total": 680491338,
+   "valgrind_only_fallback_instructions": 113134,
+   "change_vs_alpha3_percent": -0.23,
+   "change_vs_c3aaa068_percent": 38.83,
+   "stdout_matches_cpython": true,
+   "command": [
+    "taskset",
+    "-c",
+    "2",
+    "valgrind",
+    "--tool=callgrind",
+    "--error-exitcode=99",
+    "--callgrind-out-file=$SCRATCH/final/perf/cg/raytrace_8.final0.callgrind",
+    "$SCRATCH/final/perf/exe/final0/raytrace",
+    "8"
+   ],
+   "binary_sha256": "11c40d942ad158b3585e032f68627947a1f9f9c67f26a2d8e7107a7ab1fe6e57",
+   "binary_size_bytes": 107856,
+   "build_command": [
+    "taskset",
+    "-c",
+    "2",
+    "$SCRATCH/wt-final0/pystachy",
+    "build",
+    "$CHECKOUT/bench/pyperformance/raytrace.py",
+    "-o",
+    "$SCRATCH/final/perf/exe/final0/raytrace"
+   ],
+   "build_wall_seconds": 1.51,
+   "input_sha256": "e5f71075698d02ac3e91fe99bf43799905c03651be4a41ff574c99790f5d2213",
+   "with_1033_instructions": 680048106
+  },
+  {
+   "benchmark": "regex_dna",
+   "arguments": [
+    "2"
+   ],
+   "in_geomean": true,
+   "alpha3_instructions": 1176348680,
+   "c3aaa068_instructions": 1183639237,
+   "release_candidate_instructions": 1183924447,
+   "release_candidate_callgrind_total": 1184035236,
+   "valgrind_only_fallback_instructions": 110789,
+   "change_vs_alpha3_percent": 0.64,
+   "change_vs_c3aaa068_percent": 0.02,
+   "stdout_matches_cpython": true,
+   "command": [
+    "taskset",
+    "-c",
+    "2",
+    "valgrind",
+    "--tool=callgrind",
+    "--error-exitcode=99",
+    "--callgrind-out-file=$SCRATCH/final/perf/cg/regex_dna_2.final0.callgrind",
+    "$SCRATCH/final/perf/exe/final0/regex_dna",
+    "2"
+   ],
+   "binary_sha256": "7ab0ff7bd282f42b0b659843ba6f6c68e1e6aecc77e22c148373d24faec58dc5",
+   "binary_size_bytes": 415912,
+   "build_command": [
+    "taskset",
+    "-c",
+    "2",
+    "$SCRATCH/wt-final0/pystachy",
+    "build",
+    "$CHECKOUT/bench/pyperformance/regex_dna.py",
+    "-o",
+    "$SCRATCH/final/perf/exe/final0/regex_dna"
+   ],
+   "build_wall_seconds": 7.55,
+   "input_sha256": "8f02c6b44688f6c1e3a96bbd0155367f3bf9327e65f42be2967008891e1aa2aa",
+   "with_1033_instructions": 1183855724
+  },
+  {
+   "benchmark": "regex_effbot",
+   "arguments": [
+    "10"
+   ],
+   "in_geomean": true,
+   "alpha3_instructions": 1648717112,
+   "c3aaa068_instructions": 1665607144,
+   "release_candidate_instructions": 1680513167,
+   "release_candidate_callgrind_total": 1680513167,
+   "valgrind_only_fallback_instructions": 0,
+   "change_vs_alpha3_percent": 1.93,
+   "change_vs_c3aaa068_percent": 0.89,
+   "stdout_matches_cpython": true,
+   "command": [
+    "taskset",
+    "-c",
+    "2",
+    "valgrind",
+    "--tool=callgrind",
+    "--error-exitcode=99",
+    "--callgrind-out-file=$SCRATCH/final/perf/cg/regex_effbot_10.final0.callgrind",
+    "$SCRATCH/final/perf/exe/final0/regex_effbot",
+    "10"
+   ],
+   "binary_sha256": "9e9b4a38e3c0d69889c450d8429ab6ffdd894dc5cf636da6860e9907efd75949",
+   "binary_size_bytes": 387712,
+   "build_command": [
+    "taskset",
+    "-c",
+    "2",
+    "$SCRATCH/wt-final0/pystachy",
+    "build",
+    "$CHECKOUT/bench/pyperformance/regex_effbot.py",
+    "-o",
+    "$SCRATCH/final/perf/exe/final0/regex_effbot"
+   ],
+   "build_wall_seconds": 7.44,
+   "input_sha256": "91ead8e732223797be1ed75d57d781ad6682ec25fc9464e41f336e73c842ef5a",
+   "with_1033_instructions": 1677158264
+  },
+  {
+   "benchmark": "regex_v8",
+   "arguments": [
+    "1"
+   ],
+   "in_geomean": true,
+   "alpha3_instructions": 15371706854,
+   "c3aaa068_instructions": 15635318397,
+   "release_candidate_instructions": 15600779995,
+   "release_candidate_callgrind_total": 15600888578,
+   "valgrind_only_fallback_instructions": 108583,
+   "change_vs_alpha3_percent": 1.49,
+   "change_vs_c3aaa068_percent": -0.22,
+   "stdout_matches_cpython": true,
+   "command": [
+    "taskset",
+    "-c",
+    "2",
+    "valgrind",
+    "--tool=callgrind",
+    "--error-exitcode=99",
+    "--callgrind-out-file=$SCRATCH/final/perf/cg/regex_v8_1.final0.callgrind",
+    "$SCRATCH/final/perf/exe/final0/regex_v8",
+    "1"
+   ],
+   "binary_sha256": "3742e6e25efc50d477982af9a06148b4e28f9106246c311cc7e8364f6ad1989a",
+   "binary_size_bytes": 619944,
+   "build_command": [
+    "taskset",
+    "-c",
+    "2",
+    "$SCRATCH/wt-final0/pystachy",
+    "build",
+    "$CHECKOUT/bench/pyperformance/regex_v8.py",
+    "-o",
+    "$SCRATCH/final/perf/exe/final0/regex_v8"
+   ],
+   "build_wall_seconds": 12.5,
+   "input_sha256": "a2bf22b48133192c4931bef3a65f2385337b3f1b1e4359ff67ebebe96821b490",
+   "with_1033_instructions": 15599758384
+  },
+  {
+   "benchmark": "richards",
+   "arguments": [
+    "100"
+   ],
+   "in_geomean": true,
+   "alpha3_instructions": 662856115,
+   "c3aaa068_instructions": 659368355,
+   "release_candidate_instructions": 658434577,
+   "release_candidate_callgrind_total": 658535038,
+   "valgrind_only_fallback_instructions": 100461,
+   "change_vs_alpha3_percent": -0.67,
+   "change_vs_c3aaa068_percent": -0.14,
+   "stdout_matches_cpython": true,
+   "command": [
+    "taskset",
+    "-c",
+    "2",
+    "valgrind",
+    "--tool=callgrind",
+    "--error-exitcode=99",
+    "--callgrind-out-file=$SCRATCH/final/perf/cg/richards_100.final0.callgrind",
+    "$SCRATCH/final/perf/exe/final0/richards",
+    "100"
+   ],
+   "binary_sha256": "8ba0e1b8434f408124a77fbaaf0e60328ea3e4460b75d6d8b921abd171b58a54",
+   "binary_size_bytes": 123048,
+   "build_command": [
+    "taskset",
+    "-c",
+    "2",
+    "$SCRATCH/wt-final0/pystachy",
+    "build",
+    "$CHECKOUT/bench/pyperformance/richards.py",
+    "-o",
+    "$SCRATCH/final/perf/exe/final0/richards"
+   ],
+   "build_wall_seconds": 1.66,
+   "input_sha256": "f290fb528a0086dc5fd98bdf866c591252d8c8a31c80415c051a6ae69c7e0c82",
+   "with_1033_instructions": 658434591
+  },
+  {
+   "benchmark": "richards_super",
+   "arguments": [
+    "100"
+   ],
+   "in_geomean": true,
+   "alpha3_instructions": 676781651,
+   "c3aaa068_instructions": 673294278,
+   "release_candidate_instructions": 672360659,
+   "release_candidate_callgrind_total": 672461085,
+   "valgrind_only_fallback_instructions": 100426,
+   "change_vs_alpha3_percent": -0.65,
+   "change_vs_c3aaa068_percent": -0.14,
+   "stdout_matches_cpython": true,
+   "command": [
+    "taskset",
+    "-c",
+    "2",
+    "valgrind",
+    "--tool=callgrind",
+    "--error-exitcode=99",
+    "--callgrind-out-file=$SCRATCH/final/perf/cg/richards_super_100.final0.callgrind",
+    "$SCRATCH/final/perf/exe/final0/richards_super",
+    "100"
+   ],
+   "binary_sha256": "ab15ca98fb099c4308f2c6c2cb4b6dd517870f285cd95d4784fc4e3bb88d88fc",
+   "binary_size_bytes": 122880,
+   "build_command": [
+    "taskset",
+    "-c",
+    "2",
+    "$SCRATCH/wt-final0/pystachy",
+    "build",
+    "$CHECKOUT/bench/pyperformance/richards_super.py",
+    "-o",
+    "$SCRATCH/final/perf/exe/final0/richards_super"
+   ],
+   "build_wall_seconds": 1.64,
+   "input_sha256": "376e2407aaaf91f880d2e53b0853455272183130e157afc56d1539a5f259496f",
+   "with_1033_instructions": 672360673
+  },
+  {
+   "benchmark": "scimark",
+   "arguments": [
+    "8"
+   ],
+   "in_geomean": true,
+   "alpha3_instructions": 602665516,
+   "c3aaa068_instructions": 735780736,
+   "release_candidate_instructions": 623567781,
+   "release_candidate_callgrind_total": 623668265,
+   "valgrind_only_fallback_instructions": 100484,
+   "change_vs_alpha3_percent": 3.47,
+   "change_vs_c3aaa068_percent": -15.25,
+   "stdout_matches_cpython": true,
+   "command": [
+    "taskset",
+    "-c",
+    "2",
+    "valgrind",
+    "--tool=callgrind",
+    "--error-exitcode=99",
+    "--callgrind-out-file=$SCRATCH/final/perf/cg/scimark_8.final0.callgrind",
+    "$SCRATCH/final/perf/exe/final0/scimark",
+    "8"
+   ],
+   "binary_sha256": "0de545f102eaa88b1457c227b93dabb7aa909da799aba82586a1f29fec47b877",
+   "binary_size_bytes": 96128,
+   "build_command": [
+    "taskset",
+    "-c",
+    "2",
+    "$SCRATCH/wt-final0/pystachy",
+    "build",
+    "$CHECKOUT/bench/pyperformance/scimark.py",
+    "-o",
+    "$SCRATCH/final/perf/exe/final0/scimark"
+   ],
+   "build_wall_seconds": 8.11,
+   "input_sha256": "dd34b452b124fb104750aed8c82082fca734695561e221de47147ec13bec7629",
+   "with_1033_instructions": 623567776
+  },
+  {
+   "benchmark": "spectral_norm",
+   "arguments": [
+    "40"
+   ],
+   "in_geomean": true,
+   "alpha3_instructions": 691017217,
+   "c3aaa068_instructions": 687429749,
+   "release_candidate_instructions": 691504591,
+   "release_candidate_callgrind_total": 691607307,
+   "valgrind_only_fallback_instructions": 102716,
+   "change_vs_alpha3_percent": 0.07,
+   "change_vs_c3aaa068_percent": 0.59,
+   "stdout_matches_cpython": true,
+   "command": [
+    "taskset",
+    "-c",
+    "2",
+    "valgrind",
+    "--tool=callgrind",
+    "--error-exitcode=99",
+    "--callgrind-out-file=$SCRATCH/final/perf/cg/spectral_norm_40.final0.callgrind",
+    "$SCRATCH/final/perf/exe/final0/spectral_norm",
+    "40"
+   ],
+   "binary_sha256": "d10bca842ccba3ef59f85d0d44e9732d62440bfbd8b1273db0ad5fd1a5b5f918",
+   "binary_size_bytes": 77712,
+   "build_command": [
+    "taskset",
+    "-c",
+    "2",
+    "$SCRATCH/wt-final0/pystachy",
+    "build",
+    "$CHECKOUT/bench/pyperformance/spectral_norm.py",
+    "-o",
+    "$SCRATCH/final/perf/exe/final0/spectral_norm"
+   ],
+   "build_wall_seconds": 0.9,
+   "input_sha256": "1f55b1a0cb7931bbdec446be916b762c7fd60cc0e34a3b76cfd02ec4b10bba79",
+   "with_1033_instructions": 691504604
+  },
+  {
+   "benchmark": "unpack_sequence",
+   "arguments": [
+    "50000"
+   ],
+   "in_geomean": true,
+   "alpha3_instructions": 1218023,
+   "c3aaa068_instructions": 1217308,
+   "release_candidate_instructions": 1222676,
+   "release_candidate_callgrind_total": 1325406,
+   "valgrind_only_fallback_instructions": 102730,
+   "change_vs_alpha3_percent": 0.38,
+   "change_vs_c3aaa068_percent": 0.44,
+   "stdout_matches_cpython": true,
+   "command": [
+    "taskset",
+    "-c",
+    "2",
+    "valgrind",
+    "--tool=callgrind",
+    "--error-exitcode=99",
+    "--callgrind-out-file=$SCRATCH/final/perf/cg/unpack_sequence_50000.final0.callgrind",
+    "$SCRATCH/final/perf/exe/final0/unpack_sequence",
+    "50000"
+   ],
+   "binary_sha256": "6da0846ed565da358d5e1b914bde00975b9565faef01e79fb31cc5e55885d9b2",
+   "binary_size_bytes": 77432,
+   "build_command": [
+    "taskset",
+    "-c",
+    "2",
+    "$SCRATCH/wt-final0/pystachy",
+    "build",
+    "$CHECKOUT/bench/pyperformance/unpack_sequence.py",
+    "-o",
+    "$SCRATCH/final/perf/exe/final0/unpack_sequence"
+   ],
+   "build_wall_seconds": 1.11,
+   "input_sha256": "a4c67ad1e0fc2c7dcc102c98042c0b9e08bf1b46ac980b7e1916294e34997a67",
+   "with_1033_instructions": 1222711
+  }
+ ],
+ "build_summary": {
+  "geomean_size_vs_alpha3_percent": 12.35,
+  "geomean_build_wall_vs_alpha3_percent": 24.64,
+  "note": "single builds on a shared host; the size ratio is deterministic, the wall ratio is not"
+ },
+ "held_follow_up_1033": {
+  "status": "not in alpha.4: a recursion averaging more than 8 KiB of stack per level can crash under it where #1026 alone raises RecursionError",
+  "measured_tree": "d377b695, the measured tree merged with #1033's head cde96f41",
+  "geomean_vs_alpha3_percent_22": 2.16,
+  "note": "with_1033_instructions per benchmark, adjusted the same way"
+ },
+ "scripts": "$SCRATCH/final/perf/final_run.py (perf/driver.py's sources, arguments, environment and oracles), $SCRATCH/final/fallback.py (the adjustment); not part of the repository"
+}
