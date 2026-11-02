@@ -66,7 +66,7 @@ typed control loop, native tool calls and file edits in a standalone executable.
 
 To skip bootstrapping, use a [native release archive or Docker image](docs/install.md).
 Archives require LLVM; the image includes it. The current prerelease is
-[v0.1.0-alpha.3](https://github.com/den-run-ai/pystachy/releases/tag/v0.1.0-alpha.3); its
+[v0.1.0-alpha.4](https://github.com/den-run-ai/pystachy/releases/tag/v0.1.0-alpha.4); its
 release page lists changes, known issues, supported platforms and downloads. Source `main`
 can contain newer changes.
 

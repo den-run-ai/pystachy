@@ -26,9 +26,9 @@ reflect this checkpoint. No new timings were collected for this documentation up
 Identity scoping (#973) and compatible scalar dict-hash fast paths (#980) remain in place.
 The [latest recorded JSON acceptance report](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/reports/json-acceptance-controls-2026-10-29.md)
 supersedes the earlier residual instruction figures for its named workloads; it does not
-establish a general wall-time speedup. VERSION is v0.1.0-alpha.4; setting it does not
-publish a tag or release. Follow the
-[release tracker](https://github.com/den-run-ai/pystachy/issues/976) for publication status.
+establish a general wall-time speedup. Later, on 2 November 2026,
+[v0.1.0-alpha.4](https://github.com/den-run-ai/pystachy/releases/tag/v0.1.0-alpha.4) was
+published from main `9c8bc746`.
 
 ## Reading the colors
 
