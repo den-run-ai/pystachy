@@ -1,0 +1,4 @@
+ok TestInsortPython.test_backcompatibility
+ok TestDocExamplePython.test_colors
+ok TestDocExamplePython.test_grades
+[exit 0]

@@ -1,0 +1,9 @@
+ok TestBase.test_small_stability
+ok TestDecorateSortUndecorate.test_decorated
+ok TestDecorateSortUndecorate.test_key_with_exception
+ok TestDecorateSortUndecorate.test_key_with_mutation
+ok TestDecorateSortUndecorate.test_reverse
+ok TestDecorateSortUndecorate.test_reverse_stability
+ok TestDecorateSortUndecorate.test_stability
+ok TestOptimizedCompares.test_none_in_tuples
+[exit 0]

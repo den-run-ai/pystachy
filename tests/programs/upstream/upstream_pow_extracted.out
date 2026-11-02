@@ -1,0 +1,3 @@
+ok PowTest.test_negative_exponent
+ok PowTest.test_other
+[exit 0]

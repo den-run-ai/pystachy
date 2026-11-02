@@ -1,0 +1,9 @@
+ok TypesTests.test_boolean_ops
+ok TypesTests.test_comparisons
+ok TypesTests.test_float_constructor
+ok TypesTests.test_floats
+ok TypesTests.test_format_spec_errors
+ok TypesTests.test_numeric_types
+ok TypesTests.test_strings
+ok TypesTests.test_zero_division
+[exit 0]

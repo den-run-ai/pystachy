@@ -1,0 +1,4 @@
+ok TestHexOctBin.test_bin_unsigned
+ok TestHexOctBin.test_hex_unsigned
+ok TestHexOctBin.test_oct_unsigned
+[exit 0]

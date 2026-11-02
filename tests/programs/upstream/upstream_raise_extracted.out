@@ -1,0 +1,13 @@
+ok TestRaise.test_assert_with_tuple_arg
+ok TestRaise.test_except_reraise
+ok TestRaise.test_finally_reraise
+ok TestRaise.test_invalid_reraise
+ok TestRaise.test_nested_reraise
+ok TestRaise.test_reraise
+ok TestRaise.test_with_reraise1
+ok TestRaise.test_with_reraise2
+ok TestRaise.test_yield_reraise
+ok TestCause.test_class_cause
+ok TestCause.test_instance_cause
+ok TestCause.test_invalid_cause
+[exit 0]
