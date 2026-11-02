@@ -428,7 +428,10 @@ A tuple display of literals makes no `alloc.fixed`. `Gen.tuple_const` makes it m
 constant ([#1016](https://github.com/den-run-ai/pystachy/issues/1016)). There is one constant
 for each module and items, and `()` is one for the whole program, because CPython merges a
 module's equal constants. Its items are literals and the addresses of static strings, bytes
-and other such tuples, so the collector need not scan it. Only displays that the parser made
+and other such tuples, so the collector need not scan it. A promoting int item (a module that
+opts in to [promoting ints](python-int.md)) is held as its 64-bit literal: a tuple of 64-bit ints
+is a tuple of promoting ints as it is (`big_tuple_view`), so one constant serves both types,
+and a by-value return gives its Mpz words as 0; a display with `-2**63` is not one. Only displays that the parser made
 (`Node.src`) qualify: one that the compiler builds, such as a call's `*args`, is a new tuple
 at each run, as CPython's is. `tests/programs/containers/tuple_constant_identity.py` and
 `tests/programs/imports/tuple_constant_modules.py` check identity, and

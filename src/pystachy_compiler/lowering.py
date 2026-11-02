@@ -314,9 +314,12 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         y = i.a[2]
         o.append(f"  %t{i.r[0]} = select i1 {i.a[0].v}, {lt(x.t)} {x.v}, {lt(y.t)} {y.v}")
     elif op == "ret" and len(i.a) > 0 and i.a[0].v.startswith("@tc.") and i.a[0].v in self.vtuples:
-        # a constant tuple's slots and its address, by value (tupleret: vagg)
+        # a constant tuple's slots and its address, by value (tupleret: vagg). Its promoting int
+        # items are 64-bit literals (Gen.tuple_const): their Mpz words, past the items, are 0
+        n = tslots(fn.f.ret)
         slots = ["i64 " + const_slot(x) for x in self.tconstdata[i.a[0].v].items]
-        o.append(f"  ret {vagg(tslots(fn.f.ret), True)} {{{', '.join(slots + ['ptr ' + i.a[0].v])}}}")
+        slots = slots + ["i64 0" for _ in range(n - len(slots))]
+        o.append(f"  ret {vagg(n, True)} {{{', '.join(slots + ['ptr ' + i.a[0].v])}}}")
     elif op == "ret" and len(i.a) > 0 and i.a[0].v in self.vtuples:
         # the tuple's slots, by value (tupleret): what its tuple.stores gave each, else the zero
         # of the tuple that alloc.fixed would have made (and a null constant's address: vagg)
