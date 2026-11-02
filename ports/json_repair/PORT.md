@@ -63,7 +63,7 @@ Split trace records before repair and validate types and content afterward.
   peak memory; this remains an experimental port tradeoff.
 - Use the native `json._raw_decode` adapter at two call sites, with a guarded
   import falling back to CPython’s `JSONDecoder`. The public decoder keeps its
-  class identity; see the [JSON API notes](../../docs/json-prototype.md).
+  class identity; see the [JSON API notes](../../docs/json.md).
 
 The string-repair implementation remains upstream's roughly 900-line heuristic
 parser. Changes are marked with `Pystachy port` comments or described above.
@@ -101,5 +101,5 @@ See the replay README for the complete corpus commands and original input proven
 See the [performance report](../../bench/json_repair/PROFILING.md) for historical typed-cache
 measurements, payload scaling and bottlenecks, and the
 [bounded-accumulator report](../../bench/json_repair/ACCUMULATOR.md) for the refreshed
-integrated baseline, copy-work evidence and current cross-engine tradeoffs. The [completion report](../../docs/reports/json-repair-port.md)
+integrated baseline, copy-work evidence and current cross-engine tradeoffs. The [completion report](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/reports/json-repair-port.md)
 records validation and the minimal upstream contribution strategy.
