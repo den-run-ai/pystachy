@@ -14,17 +14,6 @@ from src.pystachy_compiler.utils import RtFn, lt, runtime_decl, typestr
 # pystachy run on Linux, which loads the runtime as a shared library (the driver's RTSO, #704): a
 # constructor, which the driver adds to the program's module, that hands the library the program's
 # object callbacks (gen_dispatch) before @main
-# allocelide's late step (driver.py), for an AOT build or extension module that uses pys_new: KEEP_ALLOC,
-# after the program's IR, keeps the allocator's fast path, pys_alloc_inline, through -O2 (llvm.used);
-# LATE_ALLOC, linked over runtime.c's out-of-line pys_new once -O2 has run, always inlines it into
-# each call that -O2 left (it holds no code that has a layout: no target lines)
-KEEP_ALLOC = 'declare ptr @pys_alloc_inline(i64)\n@llvm.used = appending global [1 x ptr] [ptr @pys_alloc_inline], section "llvm.metadata"\n'
-LATE_ALLOC = """declare ptr @pys_alloc_inline(i64)
-define ptr @pys_new(i64 %n) alwaysinline {
-  %p = tail call ptr @pys_alloc_inline(i64 %n)
-  ret ptr %p
-}
-"""
 OBJHOOKS = """declare void @pys_obj_hooks(ptr, ptr, ptr)
 define internal void @pys.obj.hooks() {
   call void @pys_obj_hooks(ptr @pys_obj_eq, ptr @pys_obj_cmp, ptr @pys_obj_repr)

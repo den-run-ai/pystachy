@@ -15,7 +15,7 @@ Linux (CI's); another LLVM may inline differently.
 
 Allocations (allocelide, #1017): compiled code's objects come from pys_new, which -O2 sees as an
 allocation and deletes where nothing keeps the object, before the late step inlines the
-allocator's fast path into the calls left. A llvm-link wrapper keeps the module -O2 gave it
+allocator's fast path into the calls left. An opt wrapper keeps the module -O2 gave that step
 (prog-opt.bc), where each allocation left is a call of pys_new (the runtime's C code never calls
 it): TEMPS, whose vectors never leave walk(), keeps none, and KEPT, whose objects a list keeps,
 does. With allocelide off there is no late step, and with pys_new inlined before -O2 KEPT keeps
@@ -157,18 +157,18 @@ def main():
             if path is None:
                 raise RuntimeError(f"cannot find {name}; set PYSTACHY_LLVM")
             real[name] = str(Path(path).absolute())
-            if name not in ("clang", "llvm-link", "llvm-dis", "llvm-nm"):
+            if name not in ("clang", "opt", "llvm-dis", "llvm-nm"):
                 (bindir / name).symlink_to(real[name])
         # the driver's AOT step is clang -O2 -c <its temporary directory>/prog.bc: keep a copy of that,
-        # and of prog-opt.bc, the module -O2 made, which allocelide's late step links
+        # and of prog-opt.bc, the module -O2 made, which allocelide's late step (opt) reads
         wrapper = bindir / "clang"
         wrapper.write_text(f"#!/bin/sh\nfor a in \"$@\"; do case $a in */prog.bc) cp \"$a\" {shlex.quote(str(capture))} ;; esac; done\n"
                            f"exec {shlex.quote(real['clang'])} \"$@\"\n")
         wrapper.chmod(0o755)
-        linker = bindir / "llvm-link"
-        linker.write_text(f"#!/bin/sh\nfor a in \"$@\"; do case $a in */prog-opt.bc) cp \"$a\" {shlex.quote(str(late))} ;; esac; done\n"
-                          f"exec {shlex.quote(real['llvm-link'])} \"$@\"\n")
-        linker.chmod(0o755)
+        optimizer = bindir / "opt"
+        optimizer.write_text(f"#!/bin/sh\nfor a in \"$@\"; do case $a in */prog-opt.bc) cp \"$a\" {shlex.quote(str(late))} ;; esac; done\n"
+                             f"exec {shlex.quote(real['opt'])} \"$@\"\n")
+        optimizer.chmod(0o755)
         env = os.environ | {"PYSTACHY_LLVM": str(bindir), "PYSTACHY_CACHE": str(temp / "cache")}
         for k in ("PYSTACHY_CFLAGS", "PYSTACHY_OPT", "PYSTACHY_PATH", "PYSTACHY_GC", "PYSTACHY_GC_STRESS", "PYSTACHY_GC_STRESS_PROGRAM"):
             env.pop(k, None)  # (-O0 or other passes would keep what the default build drops)

@@ -537,14 +537,15 @@ Compiled code gets its objects and fixed tuples from `pys_new` (the `allocelide`
 `allockind("alloc,zeroed") allocsize(0)`, so LLVM deletes an allocation whose object nothing
 keeps, after inlining has shown that. `runtime.c` keeps `pys_new` out of line so that `-O2`
 still sees those calls. Each surviving allocation then gets the allocator's fast path back:
-`build` optimizes the linked module to bitcode, links `LATE_ALLOC` over `pys_new`, and runs
-`opt`'s `always-inline`. That inlines `pys_alloc_inline`, the fast path, which an
-`@llvm.used` entry keeps alive until then. Clang then compiles the module without
-optimizing it again. `ext` does the same between its `opt -O2` and its compilation. A module
-without `pys_new` keeps the single `clang -O2 -c` step. The JIT calls the shared runtime's
-`pys_new`, and its cleanup pipeline deletes what instcombine can prove unused. The runtime's
-own code (`runtime.py`) and generator frames call `pys_alloc`. `make aotprobe` checks that
-objects that never escape compile to no allocation, and that objects a list keeps do.
+`build` optimizes the linked module to bitcode, and one `opt` run then inlines `pys_new`
+into the calls that are left. Its `forceattrs` pass first swaps `pys_new`'s `noinline` for
+`alwaysinline` (the driver's `LATE_INLINE`), then `always-inline` inlines it. Clang then
+compiles the module without optimizing it again. `ext` does the same between its `opt -O2`
+and its compilation. A module without `pys_new` keeps the single `clang -O2 -c` step. The
+JIT calls the shared runtime's `pys_new`, and its cleanup pipeline deletes what instcombine
+can prove unused. The runtime's own code (`runtime.py`) and generator frames call
+`pys_alloc`. `make aotprobe` checks that objects that never escape compile to no
+allocation, and that objects a list keeps do.
 
 Cached runtime artifacts depend on the runtime sources, included Ryu files, compiler,
 LLVM tools and compilation flags. Changes invalidate the relevant cache. Builds use private

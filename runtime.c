@@ -472,11 +472,10 @@ __attribute__((malloc, returns_nonnull)) void *pys_alloc(I n) { return gc_alloc(
 __attribute__((malloc, returns_nonnull)) void *pys_alloc_atomic(I n) { return gc_alloc(n, 1); }
 /* Compiled code's own objects and fixed tuples (alloc.fixed) come from pys_new, which stays out of
    line so that LLVM sees each allocation: the program marks its calls allockind("alloc,zeroed"),
-   and LLVM deletes one whose object nothing keeps. An AOT build then gives the calls that remain
-   pys_alloc_inline's fast path, once that optimization has run (driver.py). Both are gc_alloc,
-   whose slots come zeroed */
+   and LLVM deletes one whose object nothing keeps. Once that optimization has run, an AOT build
+   inlines pys_new, the fast path, into the calls that remain (driver.py's LATE_INLINE). It is
+   gc_alloc, whose slots come zeroed */
 __attribute__((noinline, malloc, returns_nonnull)) void *pys_new(I n) { return gc_alloc(n, 0); }
-__attribute__((always_inline, malloc, returns_nonnull)) void *pys_alloc_inline(I n) { return gc_alloc(n, 0); }
 /* A box, a dynamic value's DynType and payload or a closed union's tag and payload: 16 bytes in a
    16-byte slot (the class for 15 bytes and the byte of slack). The slack keeps an object alive
    through a pointer one past its end, which code walking the object leaves; code reads a box's two
