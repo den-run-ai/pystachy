@@ -2809,9 +2809,11 @@ List *pys_list_new_atomic(I cap) { return list_new(cap, 1); }   /* a list[int], 
    that companion to integer boxes once; the raw array stays unboxed and atomic.
    Only a program that opts in makes a companion: list_identity_slow, which calls opt_in()
    first, and the BIGIDS ones of promoting ints' stores (big_companion) and of a dict's or a
-   set's ints past 64 bits (col, pys_set_list). So the list code calls opt_in() wherever it
-   finds a companion, before it keeps it in step or reads it: a plain AOT program's -O2 makes
-   that a trap and drops the rest from every store, pop, insert, copy and sort (pys_plain) */
+   set's ints past 64 bits (col, pys_set_list). So each list operation that a plain program
+   calls tests opt_in() where it finds a companion, before it keeps the companion in step (the
+   *_identity and *_big entry points, which only programs that opt in call, need not): a plain
+   AOT program's -O2 makes that test a trap and drops the rest from its stores, appends, pops,
+   inserts, copies and sorts (pys_plain) */
 void pys_list_narrow(List *l) { list_narrow(l); }
 static I list_box(I value, I kind) {
   opt_in();
