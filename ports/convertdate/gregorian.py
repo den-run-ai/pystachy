@@ -15,7 +15,7 @@ mathematical comparisons across epochs. To present a date in the standard conven
 use the :meth:`gregorian.format` function.
 """
 from ._calendar import isleap, monthrange  # Pystachy port: the calendar stand-in, _calendar.py (#11)
-# from datetime import date  # Pystachy port: no datetime module yet (#11); format() uses it
+from datetime import date
 from math import floor
 
 from .utils import jwday, monthcalendarhelper

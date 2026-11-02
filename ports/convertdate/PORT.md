@@ -17,9 +17,11 @@ print(islamic.from_jd(jd))
 ## Coverage
 
 - Calendar conversions, month lengths, leap years, month calendars and selected holiday functions.
-- Julian day counts, the Dublin day count, ordinal dates, and the tested ISO week helpers.
+- Julian day counts, the Dublin day count, ordinal dates and ISO week conversions.
+- Gregorian/Julian date formatting, and Julian-day conversions to/from `datetime` values,
+  including naive dates, UTC and fixed offsets. These use the shipped `datetime` subset.
 - The astronomical Bahá’í, French Republican and Persian calendars are omitted.
-- Date/time objects, calendar formatting, Mayan generators and the `Holidays` convenience class are outside the tested port coverage.
+- Mayan generators and the `Holidays` convenience class are outside the tested port coverage.
 
 <a id="deviations-it-hits"></a>
 
@@ -37,12 +39,15 @@ From the repository root, after building the compiler:
 
 ```sh
 PYSTACHY_PATH=ports ./pystachy run tests/programs/apps/port_convertdate_calendars.py
-./tests/run.sh ./pystachy "jit aot" tests/programs/apps/port_convertdate_calendars.py tests/programs/apps/port_convertdate_holidays.py
+./tests/run.sh ./pystachy "jit aot" tests/programs/apps/port_convertdate_*.py
 ```
 
-The differential tests cover calendar round trips, epochs, leap years, holiday variants and error paths against CPython.
+The differential tests cover calendar round trips, epochs, leap years, holiday variants,
+ISO year boundaries, datetime conversion/formatting and error paths against CPython.
 
-Cases: [port_convertdate_calendars.py](../../tests/programs/apps/port_convertdate_calendars.py), [port_convertdate_holidays.py](../../tests/programs/apps/port_convertdate_holidays.py).
+Cases: [port_convertdate_calendars.py](../../tests/programs/apps/port_convertdate_calendars.py),
+[port_convertdate_holidays.py](../../tests/programs/apps/port_convertdate_holidays.py),
+[port_convertdate_datetime.py](../../tests/programs/apps/port_convertdate_datetime.py).
 
 <a id="speed"></a>
 

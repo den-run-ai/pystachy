@@ -31,11 +31,7 @@ def fannkuch(n):
             flips_count = 0
             k = perm[0]
             while k:
-                # Pystachy port: for 'perm[:k + 1] = perm[k::-1]' (neither slice
-                # assignment nor a slice step is supported)
-                head = perm[:k + 1]
-                head.reverse()
-                perm = head + perm[k + 1:]
+                perm[:k + 1] = perm[k::-1]
                 flips_count += 1
                 k = perm[0]
 

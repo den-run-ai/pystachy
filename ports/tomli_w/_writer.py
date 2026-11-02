@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-# Pystachy port: no datetime and types modules (#11): no date and time values, and
-# COMPACT_ESCAPES is a dict instead of a MappingProxyType
+# Pystachy port: date/time branches remain omitted: restoring them for table
+# values reaches the unsupported lazy decimal import below (#262). datetime itself
+# is available.
+from types import MappingProxyType
 
 TYPE_CHECKING = False
 if TYPE_CHECKING:
@@ -18,7 +20,7 @@ BARE_KEY_CHARS = frozenset(
 # Pystachy port: no ARRAY_TYPES = (list, tuple): classes are not values (M2)
 MAX_LINE_LENGTH = 100
 
-COMPACT_ESCAPES = (  # Pystachy port: was MappingProxyType(
+COMPACT_ESCAPES = MappingProxyType(
     {
         "\u0008": "\\b",  # backspace
         "\u000A": "\\n",  # linefeed
@@ -131,7 +133,7 @@ def gen_table_chunks(
 def format_literal(obj, ctx: Context, *, nest_level: int = 0) -> str:  # Pystachy port: obj: object
     if isinstance(obj, bool):
         return "true" if obj else "false"
-    # Pystachy port: no date, datetime and time values (#11)
+    # Pystachy port: datetime table values still reach the decimal fallback (see above).
     if isinstance(obj, (int, float)):
         return str(obj)
     if isinstance(obj, str):
