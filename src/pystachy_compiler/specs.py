@@ -670,9 +670,10 @@ GENTHROWC = 3
 # byte reads of a loop over a bytes, in gen_seq_item), fieldtbaa, the TBAA tags that lowering
 # gives the loads and stores of object fields (Gen.field_tag), and tupleret, the fixed tuples that
 # functions return by value to the calls that only read their slots (Gen.tuple_rets), and
-# allocelide, compiled code's objects and fixed tuples from pys_new, whose calls lowering marks as
-# allocations, so that LLVM deletes those whose objects nothing keeps (lowering's alloc_call), which
-# PYSTACHY_OPT turns off: "-name", comma-separated, or "-all"
+# allocelide, compiled code's objects and fixed tuples that hold no reference (only ints, floats
+# and bools) from pys_new, whose calls lowering marks as allocations, so that LLVM deletes those
+# whose objects nothing keeps (lowering's alloc_call and ref_free), which PYSTACHY_OPT turns off:
+# "-name", comma-separated, or "-all"
 OPTS: list[str] = ["listget", "dictfuse", "tupleiter", "listfast", "moduleints", "fieldtbaa", "tupleret", "unionslots", "nullcheck", "allocelide"]
 # what bounds dictfuse's work: the depth of the chain of values Gen.canon follows (the
 # self-compile's deepest is 18), the ops Gen.reaching walks back over (85) and the lookups that

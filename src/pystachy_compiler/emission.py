@@ -325,10 +325,11 @@ def gen_rt(self, name: str, ret: str, args: list[str], x: str = "") -> str:
 
 def gen_alloc_fixed(self, t: str) -> Val:
     # A zeroed, GC-scanned class or fixed tuple: only lowering chooses its byte size, and the call
-    # (lowering's alloc_call: pys_new, but the runtime's own code calls pys_alloc)
+    # (lowering's alloc_call: pys_alloc, or with allocelide pys_new for an object that holds no
+    # reference, which it declares; whether one does is known once the class's layout is final)
     if self.rtmode and self.curfn.ll == "@pys_alloc":
         self.err("pys_alloc() implements an operation that it uses: write it without that operation")
-    self.runtime("pys_new" if "allocelide" in self.opts and not self.rtmode else "pys_alloc")
+    self.runtime("pys_alloc")
     i = Ins("alloc.fixed", t, "")
     self.put(i, 1)
     return Val(f"%t{i.r[0]}", t)

@@ -3448,8 +3448,8 @@ class Gen:
     def tuple_rets(self) -> None:
         return lowering_tuple_rets(self)
 
-    def alloc_call(self, size: str) -> str:
-        return lowering_alloc_call(self, size)
+    def alloc_call(self, size: str, t: str) -> str:
+        return lowering_alloc_call(self, size, t)
 
     def invoke(self, c: str, i: Ins) -> str:
         return lowering_invoke(self, c, i)

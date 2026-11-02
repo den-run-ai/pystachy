@@ -470,9 +470,12 @@ static inline __attribute__((always_inline)) void *gc_alloc(I n, int atomic) {
 }
 __attribute__((malloc, returns_nonnull)) void *pys_alloc(I n) { return gc_alloc(n, 0); }
 __attribute__((malloc, returns_nonnull)) void *pys_alloc_atomic(I n) { return gc_alloc(n, 1); }
-/* Compiled code's own objects and fixed tuples (alloc.fixed) come from pys_new, which stays out of
-   line so that LLVM sees each allocation: the program marks its calls allockind("alloc,zeroed"),
-   and LLVM deletes one whose object nothing keeps. Once that optimization has run, an AOT build
+/* Compiled code's own objects and fixed tuples (alloc.fixed) that hold no reference, only ints,
+   floats and bools, come from pys_new (lowering's alloc_call), which stays out of line so that
+   LLVM sees each allocation: the program marks its calls allockind("alloc,zeroed"), and LLVM
+   deletes one whose object nothing keeps. The others come from pys_alloc: LLVM may leave the
+   address of such a marked object dead while the program still reads its fields, and the
+   collector would then not see what it holds. Once that optimization has run, an AOT build
    inlines pys_new, the fast path, into the calls that remain (driver.py's LATE_INLINE). It is
    gc_alloc, whose slots come zeroed */
 __attribute__((noinline, malloc, returns_nonnull)) void *pys_new(I n) { return gc_alloc(n, 0); }
