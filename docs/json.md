@@ -82,7 +82,7 @@ distinct cyclic structures eventually raise `RecursionError`. `repr()` uses
 cycle markers. Runtime representation and comparison follow at most 512
 recursive alias edges before raising `RecursionError`; the edges are counted
 independently of the JSON codec's 256-container budget, and other reprs (a
-class's own `__repr__`, say) remain limited only by the native stack. Ordering
+class's own `__repr__`, say) remain limited by the recursion limit and the native stack's floor. Ordering
 requires narrowing, and so does `==` on a union that holds a
 recursive alias beside members holding objects or sets. These are bounded
 builtin-value operations, not general user-defined dynamic dispatch.

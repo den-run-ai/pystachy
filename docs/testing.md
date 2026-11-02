@@ -414,7 +414,8 @@ IR fixed points once, then groups run in parallel using that architecture's veri
 compiler. Pushes to `main` (the release gate's per-commit CI) and manual runs execute all
 thirty groups on both architectures, and the upstream large-regex check on both. To keep
 pull-request CI near its single-architecture size, a pull request runs all thirty x86-64
-groups but an ARM64 smoke subset: the bootstrap, `contracts` (FFI, ABI and thread controls),
+groups but an ARM64 smoke subset: the bootstrap, `contracts` (FFI, ABI, thread and native stack
+floor controls),
 `native-0` and `ubsan-0` (sanitized compiler-rt linkage). An ARM64-only failure in another
 group therefore appears on `main` after merge. Runners are `ubuntu-24.04` and `ubuntu-24.04-arm`, both
 with LLVM 18 and the pinned Python 3.13. Each group checks the same-run bundle's file hashes,

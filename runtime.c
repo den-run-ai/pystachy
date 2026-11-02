@@ -29,10 +29,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <sys/resource.h>
 #include <sys/select.h>
 #include <sys/stat.h>
 #ifdef __APPLE__
 #include <sys/random.h>
+#endif
+#ifdef __linux__
+#include <sys/auxv.h>
 #endif
 #include <time.h>
 #include <unistd.h>
@@ -5899,8 +5903,10 @@ static void setbuf1(File *f, I bs) {   /* CPython's write layers: 8 KiB of pendi
 }
 static int jit;                        /* pystachy run: the program runs in lli's process */
 I pys_jit(void) { return jit; }
+static void stack_floor(void);         /* the native stack's floor (see the recursion depth) */
 __attribute__((minsize)) void pys_init(int argc, char **argv, char *sb, I **roots, I nroots) {   /* first call of @main */
   gc_init(sb, roots, nroots);
+  stack_floor();
   args = pys_list_new(argc); for (int i = 0; i < argc; i++) pys_list_append(args, (I)cstr(argv[i]));
   char *a0 = getenv("PYSTACHY_ARGV0");  /* pystachy run: sys.argv[0] is the script, as in CPython */
   jit = a0 != 0;
@@ -5935,6 +5941,7 @@ void pys_out_sync(void) {              /* embedded CPython is about to run: what
 }
 void pys_init_lib(I **roots, I nroots) {
   pys_c_numeric();                     /* (the host may call setlocale) */
+  stack_floor();                       /* (the importing thread's: the only one that may call the module) */
   if (!pmap) {                         /* (else an import that failed is tried again) */
     gc_init(gc_bottom - 2 * sizeof(void *), roots, nroots);
     std_in.f = stdin; std_in.rd = 1; std_in.nl = 2; std_in.std = 1;
@@ -6294,16 +6301,87 @@ I pys_thread_stack_valid(I size) {
    each exception landing restores the depth saved by its function's entry, since the unwinder
    has skipped the returns of callees. A failed entry does not change the depth. Like the rest
    of the runtime this state belongs to its one execution thread (pyext.c enforces that for extensions).
-   It is a logical limit, not a native-stack-size guarantee: raising it too far can still
-   exhaust the process's stack before this guard, as can an unusually large native frame.
-   Mutable ABI shared with the program's inlined guards (lower_module): two i64 words,
-   active depth then requested limit. Both JIT and AOT guards use this same storage. */
-I pys_recursion_state[2] = {1, 1000};
-_Static_assert(sizeof(I) == 8 && sizeof(pys_recursion_state) == 16,
-               "Recursion ABI: two i64 words, active depth then requested limit");
+   The limit is logical; the native stack's floor (below) bounds the same entries physically.
+   Mutable ABI shared with the program's inlined guards (lower_module): three i64 words,
+   active depth, requested limit, then the stack floor. Both JIT and AOT guards use this same
+   storage, kept in one cache line. */
+__attribute__((aligned(32))) I pys_recursion_state[3] = {1, 1000, 0};
+_Static_assert(sizeof(I) == 8 && sizeof(pys_recursion_state) == 24,
+               "Recursion ABI: three i64 words, active depth, requested limit, then stack floor");
 _Noreturn void pys_recursion_error(void) { pys_fail("RecursionError: maximum recursion depth exceeded"); }
+_Noreturn void pys_recursion_stack_error(void) {
+  pys_fail("RecursionError: maximum recursion depth exceeded (the native stack is nearly full)");
+}
+/* The native stack's floor (#1015), the state's third word: an entry that finds the stack pointer
+   below it raises RecursionError as one past the limit does, however high sys.setrecursionlimit()
+   is set, so that handlers and finally blocks run where the thread's stack would otherwise run out
+   (a SIGSEGV). The stack grows down on every supported target; the floor lies STACK_MARGIN above
+   the lowest address of the thread's stack, or an eighth of a stack below 8 * STACK_MARGIN. The
+   margin is what the deepest counted frame may still use without another entry: the functions that
+   cannot recur (uncounted), the runtime's own calls (a repr or comparison follows at most 512 nested
+   containers: about 150 KiB), the unwinder raising the error (under 5 KiB), and a signal handler's
+   frame (docs/internals.md#native-recursion-depth). 0, no floor (the unsigned comparison never
+   fails), where the bounds are unknown or unlimited, or do not hold this frame (a switched stack).
+   A frame already within the margin gets the floor too: the next counted entry below it raises,
+   and those from higher frames, once it has returned, are checked as usual. Set by pys_init on the
+   program's thread (lli's main thread under the JIT) and by pys_init_lib on the thread that
+   imports an extension module, the only one that may call it (pyext.c). Linux's main thread's
+   bounds assume that its stack can grow to RLIMIT_STACK: the kernel maps nothing that close below
+   it, for the limit exec saw, but memory mapped there anyway, or a limit raised in-process before
+   an import, can stop it sooner (docs/language/compatibility.md#errors-and-control-flow). */
+#if defined(__has_feature)
+#if __has_feature(address_sanitizer)
+#define STACK_ASAN 1
+#endif
+#endif
+#if defined(__SANITIZE_ADDRESS__) || defined(STACK_ASAN)
+#define STACK_MARGIN ((uintptr_t)512 << 10)   /* (ASan's frames and its runtime need more) */
+#else
+#define STACK_MARGIN ((uintptr_t)256 << 10)
+#endif
+static void stack_floor_at(uintptr_t here) {   /* (here: the caller's frame address) */
+  uintptr_t lo = 0, hi = 0;
+#if defined(__APPLE__)
+  pthread_t self = pthread_self();
+  size_t size = pthread_get_stacksize_np(self);
+  hi = (uintptr_t)pthread_get_stackaddr_np(self);   /* (the highest address) */
+  lo = hi > size ? hi - size : 0;
+#elif defined(__linux__)
+  /* Linux's main thread, without glibc's parse of /proc/self/maps (about 100,000 instructions at
+     every start): exec copies the program's file name (AT_EXECFN) to the top of the stack's mapping,
+     just below its last word, and RLIMIT_STACK bounds the mapping, glibc's computation too. A loader
+     run as a program (ld.so ./prog) points AT_EXECFN at an argument instead, which no page boundary
+     follows: then, on another thread (an extension module's importer) and under an unlimited stack
+     (whose main thread's reaches the mapping below: no floor in practice), glibc's
+     pthread_getattr_np reports the bounds (musl's reports only the main thread's mapped part:
+     other C libraries get no floor there) */
+  const char *name = (const char *)getauxval(AT_EXECFN);
+  uintptr_t page = (uintptr_t)sysconf(_SC_PAGESIZE), end = name ? (uintptr_t)name + strlen(name) + 1 + sizeof(void *) : 0;
+  struct rlimit rl;
+  if (end && page && !(end & (page - 1)) && here < end && !getrlimit(RLIMIT_STACK, &rl) &&
+      rl.rlim_cur < end - page && end - here < rl.rlim_cur) {   /* (RLIM_INFINITY is not) */
+    hi = end; lo = (end - rl.rlim_cur + page - 1) & ~(page - 1);
+  }
+#if defined(__GLIBC__)
+  int pthread_getattr_np(pthread_t, pthread_attr_t *);   /* (<pthread.h>'s with _GNU_SOURCE, which the probes
+                                                             that include this file set too late) */
+  pthread_attr_t attr;
+  void *addr;
+  size_t size;
+  if (!lo && !pthread_getattr_np(pthread_self(), &attr)) {
+    if (!pthread_attr_getstack(&attr, &addr, &size)) { lo = (uintptr_t)addr; hi = lo + size; }
+    pthread_attr_destroy(&attr);
+  }
+#endif
+#endif
+  uintptr_t margin = (hi - lo) / 8 < STACK_MARGIN ? (hi - lo) / 8 : STACK_MARGIN;
+  pys_recursion_state[2] = lo && lo < here && here <= hi ? (I)(lo + margin) : 0;
+}
+static void stack_floor(void) { stack_floor_at((uintptr_t)__builtin_frame_address(0)); }
+/* the C entries, as the program's own helpers (lower_module's recursion_ir) do it */
 I pys_recursion_enter(void) {
   if (pys_recursion_state[0] >= pys_recursion_state[1]) pys_recursion_error();
+  if ((uintptr_t)__builtin_frame_address(0) < (uintptr_t)pys_recursion_state[2]) pys_recursion_stack_error();
   return ++pys_recursion_state[0];
 }
 /* a generator resume's entry (lower_module's pys.recursion.resume), given the generator's state
@@ -6313,6 +6391,10 @@ I pys_recursion_resume(I *state) {
   if (pys_recursion_state[0] >= pys_recursion_state[1]) {
     *state = 2;
     pys_recursion_error();
+  }
+  if ((uintptr_t)__builtin_frame_address(0) < (uintptr_t)pys_recursion_state[2]) {
+    *state = 2;
+    pys_recursion_stack_error();
   }
   return ++pys_recursion_state[0];
 }
