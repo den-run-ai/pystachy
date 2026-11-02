@@ -1152,10 +1152,15 @@ def gen_program(self, mods: list[Mod]) -> str:
     chk = os.getenv("PYSTACHY_IRCHECK", "") == "1"
     dump = os.getenv("PYSTACHY_IRFX", "") == "1" and not self.rtcache
     on = self.opts
-    if self.eh or len(on) > 0 or chk or dump:
-        # the passes and eh_ir read the effect summaries (eh_ir: which calls may raise); the IR
-        # check computes them too, so that the tests run effects even with every pass off
+    if self.eh or len(on) > 0 or chk or dump or not self.rtmode:
+        # the passes and eh_ir read the effect summaries (eh_ir: which calls may raise), and so
+        # does the native depth policy, which is no optimization; the IR check computes them
+        # too, so that the tests run effects even with every pass off
         self.effects()
+    if not self.rtmode:
+        # which source functions count toward the recursion limit (docs/internals.md#native-recursion-depth):
+        # their guards' effects join the summaries before any pass or verification reads them
+        self.recursionscope()
     if chk:
         # Union proofs distinguish read-only callees from calls that can invalidate
         # storage facts, so the first verification uses complete effect summaries too.

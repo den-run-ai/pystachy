@@ -39,6 +39,8 @@ compiler is resolving imports.
 | `typed-after.json` | Selected functions after optimization and exception lowering, just before LLVM serialization |
 | `llvm.ll` | Final LLVM IR, when compilation succeeds |
 | `passes/NNNN-name.diff` | A readable before/after diff for a pass that changed a selected function |
+| `program-passes/NNNN-name.json` | Whole-program pass snapshots keyed by LLVM symbol (the native recursion depth policy) |
+| `program-passes/NNNN-name.diff` | Typed instruction changes across the union of selected before/after functions |
 | `compiler.stderr`, `compiler.stdout` | The ordinary compiler's captured text streams |
 
 The snapshots are serialized from the live IR in the same compilation. They do
@@ -103,15 +105,49 @@ passes an integer; CPython prints `8`.
 - **Effects:** function summaries come from the compiler's last analysis and may
   remain conservative after rewrites. They are not a new post-optimization proof
   or ownership analysis.
-- **Passes:** `listget`, `dictfuse`, `unionslots` and `nullcheck` are the four
-  whole-function passes. Other [optimization settings](typed-ir.md#71-language-level-optimizations)
+- **Passes:** `passes` records the function passes `listget`, `dictfuse`,
+  `unionslots`, `nullcheck` and exception lowering. `program_passes` separately
+  observes the whole-program `recursionscope` call, the native recursion depth
+  policy, which runs whatever `PYSTACHY_OPT` turns off. Other
+  [optimization settings](typed-ir.md#71-language-level-optimizations)
   control frontend or lowering choices and have no invented pass snapshot here.
-  Exception lowering has its own `exceptions` record and diff when applicable.
 - **Phases:** the compiler still combines name resolution, typing, folding and
   specialization while building IR. The report does not imply a new independent
   type-checking stage.
 - **Retries:** inference may restart compilation. An incomplete attempt is not
   a successful compilation; interpret stages together with the final outcome.
+
+### Whole-program recursion observations
+
+For example, inspect which functions count toward the recursion limit:
+
+```sh
+python3 tools/inspect_compiler.py tests/programs/language/recursion_guard.py \
+  --output /tmp/pystachy-inspect-recursion --function direct
+```
+
+The `program_passes` record comes from the real `recursionscope` call. Its snapshot
+artifact contains before/after `functions` maps keyed by LLVM symbol, explicit function
+order, and immutable full `selected_snapshots`. The record separates added, removed and
+changed symbols; changes include metadata as well as instructions. A snapshot hash
+detects same-count changes outside the function filter without retaining every
+unselected function's complete IR. Before the pass, every source function has only
+its entry-depth snapshot (`recursion.depth`); after it, a counted function's entry is
+`recursion.enter` and each return restores the caller's depth, and an uncounted one
+keeps the snapshot only when a handler restores it. A function of closed recursion
+(`recursion.closed` in the after map) keeps its entry without restorations: lowering
+passes its depth as an argument.
+
+Global totals remain separate from selected-function totals. Both count block
+operations and frame slots separately, and report the five typed runtime operations
+`recursion.enter`, `resume` (a generator resume's entry), `leave`, `depth` and `restore`. Function summaries also retain
+`counted`, `rdepth`, `landed`, `gdepth`, generator and coroutine metadata. These are
+observed state, not an independently rerun proof or an LLVM instruction count.
+
+The raw integer the pass returns, `reported_transformations`, is the number of
+counted source functions. It is not an instruction count. A zero result does not
+identify a refusal reason; the observer does not rerun the call-graph analysis to
+invent explanations. LLVM helper attributes remain available in `llvm.ll`.
 
 Diagnostic codes are deliberately coarse in this prototype:
 

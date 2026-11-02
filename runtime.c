@@ -3752,8 +3752,12 @@ static uint64_t hkey(I k, const char *d) {   /* a tuple or object key's, or an A
 }
 static uint64_t hint1(I k) { uint64_t h = (uint64_t)pys_hash_int(k); return h ? h : 1; }   /* an int key's: 0 marks a hole */
 /* A wide key follows its table's hash scheme too. Python-hash tables compare
-   across native and dynamic layouts; legacy tables mix the Python hash through
-   hint1. A native scalar probe skips a wide entry's sentinel (dlook). */
+   across native and dynamic layouts, so a wide key there can have the hash of
+   -2**63, its slot's sentinel: their probe (dfindc) skips wide entries (dlook).
+   Legacy tables mix the Python hash through hint1, which gives -2**63 a hash of
+   its own (pys_hash_int is a bijection, and is neither 0 nor 1 at -2**63), and
+   CPython's hash is never -2**63: a lookup of the 64-bit key -2**63 there never
+   meets a wide entry of its hash, so their probes need no such test. */
 static uint64_t hbig(Dict *d, Mpz *m) { I h = pys_mpz_hash(m); return khash(d->kind) ? (uint64_t)h : hint1(h); }
 /* The hash of key k of a table of kind > 1. Marked native str/int keys use the same
    hashes as hitem, including None and -1 normalization, without its descriptor walk.
@@ -3810,7 +3814,7 @@ __attribute__((noinline)) static int dkeyeq(Dict *d, I e, I x, I k) {
   return d->idx != ix || d->keys[e] != x ? -1 : eq;
 }
 static I dfindc(Dict *d, I k, uint64_t h, I *free);
-static I dfinds(Dict *d, I k, uint64_t h, I *free);
+static I dfinds(Dict *d, I k, uint64_t h, I *free, uint64_t m);
 static I dempty(Dict *d, uint64_t h);
 /* the probes for key k, whose hash is h, over idx's m + 1 slots: k's idx slot or -1, and *free
    where to insert it (the first hole or empty slot they met; after an __eq__, which may have
@@ -3818,8 +3822,11 @@ static I dempty(Dict *d, uint64_t h);
    objs: d's keys may be tuples or objects (kind > 1, compared by keq or dkeyeq, an Any key's by
    dyn_keyeq first), else they are ints or strs; 2: they are hashed by CPython's hash (KTAG), so a
    key is found as itself before its hash is compared, as compare_generic does, whatever the hash
-   its __hash__ gives now; 3: immediate str keys, with that same table but no user comparison.
-   Immutable strings retain their hash, so 3 can test it before reading/comparing a key. */
+   its __hash__ gives now; 3: immediate str keys, with no user comparison, in a KTAG table or a
+   native one (dfinds). Immutable strings retain their hash, so 3 can test it before
+   reading/comparing a key. 0 (dfindi) and 1 meet no str key. Only 2 skips the entries of int keys
+   past 64 bits (kbig), whose slots hold -2**63, before it finds a key as itself; in the others'
+   tables such an entry never has the hash of a lookup of -2**63 (hbig): their hash test skips it. */
 static inline __attribute__((always_inline)) I dlook(Dict *d, I k, uint64_t h, I *free, uint64_t m, int objs) {
   I f = -1; int ran = 0;
   for (uint64_t i = h & m, p = h;; p >>= 5, i = (i * 5 + p + 1) & m) {
@@ -3827,11 +3834,11 @@ static inline __attribute__((always_inline)) I dlook(Dict *d, I k, uint64_t h, I
     int32_t e = d->idx[i];
     if (!e) { if (free) *free = ran ? dempty(d, h) : f < 0 ? (I)i : f; return -1; }
     if (e < 0) { if (f < 0) f = i; }
-    else if (kbig(d, e - 1)) continue;   /* (a wide key's sentinel is never the native scalar query) */
+    else if (objs == 2 && kbig(d, e - 1)) continue;   /* (a wide key's sentinel is never the native scalar query) */
     else if (objs == 2 && d->keys[e - 1] == k) return i;
     else if (d->hs[e - 1] == h) {
       I x = d->keys[e - 1];
-      if (x == k || ((d->kind == 1 || objs == 3) && pys_str_eq((Str *)x, (Str *)k))) return i;
+      if (x == k || (objs == 3 && pys_str_eq((Str *)x, (Str *)k))) return i;
       if (objs && objs != 3 && d->kind > 1) {
         const char *s = kdesc(d->kind);
         int eq = *s == 'T' ? keq(x, k, s, 1) : *s == 'A' && !s[1] ? dyn_keyeq((Dyn *)x, (Dyn *)k) : 2;
@@ -3843,29 +3850,31 @@ static inline __attribute__((always_inline)) I dlook(Dict *d, I k, uint64_t h, I
   }
 }
 /* k's idx slot or -1; *free: where to insert k, whose hash is h. A KTAG dict's idx has size slots
-   (dfindc), another's 2*size; dfindi is dfind for int and str keys, which have no KTAG */
+   (dfindc), another's 2*size; dfindi is dfind for native int keys, dfinds for str keys */
 static I dfind(Dict *d, I k, uint64_t h, I *free) {
   if (!d->size) return -1;
-  if (d->kind == (1 | KTAG)) return dfinds(d, k, h, free);
+  if ((d->kind & ~(I)KTAG) == 1) return dfinds(d, k, h, free, dmask(d));
   if (d->kind & KTAG) return dfindc(d, k, h, free);
   return dlook(d, k, h, free, d->size * 2 - 1, 1);
 }
 __attribute__((noinline)) static I dfindi(Dict *d, I k, uint64_t h, I *free) { return d->size ? dlook(d, k, h, free, d->size * 2 - 1, 0) : -1; }
 __attribute__((noinline)) static I dfindc(Dict *d, I k, uint64_t h, I *free) { return dlook(d, k, h, free, d->size - 1, 2); }
-/* The string probe has no callbacks; keep its register saves separate from the generic probe. */
-__attribute__((noinline)) static I dfinds(Dict *d, I k, uint64_t h, I *free) { return dlook(d, k, h, free, d->size - 1, 3); }
+/* The string probe, of a KTAG or a native table (m: dmask's): no callbacks, so keep its register
+   saves separate from the generic probe; one probe for both keeps dhfind's call sites as few */
+__attribute__((noinline)) static I dfinds(Dict *d, I k, uint64_t h, I *free, uint64_t m) { return dlook(d, k, h, free, m, 3); }
 /* dfind of key k, which it hashes (hsh) into *hp first: one test of the kind for both */
 static inline __attribute__((always_inline)) I dhfind(Dict *d, I k, uint64_t *hp, I *free) {
   if ((d->kind & ~(I)KTAG) == 1) {
     *hp = hstrd((Str *)k);
     if (!d->size) return -1;
+    uint64_t m = dmask(d);
     /* Fresh string insertions usually find an empty first slot. Read-only lookups
        skip this check; tombstones and occupied slots retain their full probe. */
     if (free) {
-      I i = *hp & dmask(d);
+      I i = *hp & m;
       if (!d->idx[i]) { DICT_PROBE(); DICT_STRING_EMPTY(); *free = i; return -1; }
     }
-    return d->kind & KTAG ? dfinds(d, k, *hp, free) : dfindi(d, k, *hp, free);
+    return dfinds(d, k, *hp, free, m);
   }
   if (d->kind > 1) {
     *hp = hobj(d->kind, k);
@@ -4023,7 +4032,7 @@ static I dtake(Dict *d, I i) {                       /* the value of the entry i
    del d[k] (pys_dict_del) hashes it first, as PyDict_DelItem. Only a class's __hash__ can tell
    them apart (kind > 1): the compiler calls pys_dict_pop for del of other keys */
 static inline __attribute__((always_inline)) I dpfind(Dict *d, I k) {
-  if (d->kind == 1) return dfindi(d, k, hstrd((Str *)k), 0);
+  if (d->kind == 1) return d->size ? dfinds(d, k, hstrd((Str *)k), 0, d->size * 2 - 1) : -1;
   if (d->kind > 1) { uint64_t h; return d->len ? dhfind(d, k, &h, 0) : -1; }
   return dfindi(d, k, hint1(k), 0);
 }
@@ -6229,13 +6238,47 @@ _Noreturn void pys_execv(Str *path, List *args) {   /* os.execv: the process bec
   ioerr(errno);
 }
 I pys_getpid(void) { return getpid(); }
-static I recursion_limit = 1000;       /* sys.setrecursionlimit: only recorded, the native stack bounds recursion */
+/* Native recursion depth (docs/internals.md#native-recursion-depth): one outer module frame, then
+   each active call of a source function that recursion can repeat (the compiler leaves the
+   functions that cannot be entered again while active uncounted), including an active generator
+   resume (not its suspended frame). Generated entries and normal returns balance enter/leave;
+   each exception landing restores the depth saved by its function's entry, since the unwinder
+   has skipped the returns of callees. A failed entry does not change the depth. Like the rest
+   of the runtime this state belongs to its one execution thread (pyext.c enforces that for extensions).
+   It is a logical limit, not a native-stack-size guarantee: raising it too far can still
+   exhaust the process's stack before this guard, as can an unusually large native frame.
+   Mutable ABI shared with the program's inlined guards (lower_module): two i64 words,
+   active depth then requested limit. Both JIT and AOT guards use this same storage. */
+I pys_recursion_state[2] = {1, 1000};
+_Static_assert(sizeof(I) == 8 && sizeof(pys_recursion_state) == 16,
+               "Recursion ABI: two i64 words, active depth then requested limit");
+_Noreturn void pys_recursion_error(void) { pys_fail("RecursionError: maximum recursion depth exceeded"); }
+I pys_recursion_enter(void) {
+  if (pys_recursion_state[0] >= pys_recursion_state[1]) pys_recursion_error();
+  return ++pys_recursion_state[0];
+}
+/* a generator resume's entry (lower_module's pys.recursion.resume), given the generator's state
+   word: one that fails finishes the generator first (2, specs.py's GENDONE), as CPython clears a
+   frame whose entry exceeds the limit */
+I pys_recursion_resume(I *state) {
+  if (pys_recursion_state[0] >= pys_recursion_state[1]) {
+    *state = 2;
+    pys_recursion_error();
+  }
+  return ++pys_recursion_state[0];
+}
+void pys_recursion_leave(void) { pys_recursion_state[0]--; }
+I pys_recursion_depth(void) { return pys_recursion_state[0]; }
+void pys_recursion_restore(I depth) { pys_recursion_state[0] = depth; }
 void pys_setrecursionlimit(I n) {
   if (n > INT32_MAX || n < INT32_MIN) pys_fail("OverflowError: Python int too large to convert to C int");
   if (n < 1) pys_fail("ValueError: recursion limit must be greater or equal than 1");
-  recursion_limit = n;
+  if (n <= pys_recursion_state[0])
+    failf("RecursionError: cannot set the recursion limit to %lld at the recursion depth %lld: the limit is too low",
+          (long long)n, (long long)pys_recursion_state[0]);
+  pys_recursion_state[1] = n;
 }
-I pys_getrecursionlimit(void) { return recursion_limit; }
+I pys_getrecursionlimit(void) { return pys_recursion_state[1]; }
 Str *pys_platform(void) {              /* sys.platform */
 #if defined(__linux__)
   return cstr("linux");

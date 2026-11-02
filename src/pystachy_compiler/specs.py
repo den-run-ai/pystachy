@@ -158,6 +158,13 @@ STR_HEADER_SIZE = 24  # offsetof(Str, s), checked against runtime.c and both CPy
 TBAA_LEN = 3
 TBAA_BYTES = 4
 STRLEN_RANGE = 5  # !range of a str's length in runtime mode: 0 to 2**63 - 18 (_rt.str_new's limit)
+# Program-only metadata, below the object-field tags. The recursion scalar types
+# share the object-field root so LLVM can distinguish their storage from fields.
+TBAA_DEPTH = 6
+TBAA_LIMIT = 7
+RECURSION_BRANCH = 8
+TBAA_DEPTH_TYPE = 9  # (the scalar type nodes of TBAA_DEPTH's and TBAA_LIMIT's tags)
+TBAA_LIMIT_TYPE = 10
 # a program's TBAA of object fields (fieldtbaa): its access tags are numbered from here, in the order
 # lowering first tags each field, and the type nodes they name follow them (lower_module); the
 # members a class's struct may have, each with its size, which is its alignment too, and the name
@@ -977,6 +984,10 @@ RUNTIME: dict[str, str] = {
     "process_time": "float:|I|", "process_time_ns": "int:|I|", "sleep": "None:float|R I|", "sleep_int": "None:int|R I|",
     "select": "tuple[list[int],list[int],list[int]]:list[int],list[int],list[int],float,int|R A I rL wL|",
     "setrecursionlimit": "None:int|R I|", "getrecursionlimit": "int:|I|",
+    "recursion.enter": "int:|R I|pys_recursion_enter", "recursion.leave": "None:|I|pys_recursion_leave",
+    "recursion.resume": "int:%ptr|R I|pys_recursion_resume",
+    "recursion.depth": "int:|I|pys_recursion_depth", "recursion.restore": "None:int|I|pys_recursion_restore",
+    "recursion.error": "None:|R N|pys_recursion_error",
     # exceptions (runtime.c's "exceptions"); a landing's pys_exc_begin runs the unwind actions: it
     # closes with-files (which may raise) and gives a list being sorted its items back. str() and
     # repr() of an exception object run its class's __str__ and __repr__ (through its ExcClass)

@@ -42,7 +42,7 @@ class PythonIntRetryTests(unittest.TestCase):
                 stack.enter_context(patch.object(Gen, "function_body", observed_body))
                 if not enabled:
                     # A negative control: run the same compiler with only local retry removed.
-                    stack.enter_context(patch.object(Gen, "int_again", return_value=False))
+                    stack.enter_context(patch.object(Gen, "local_again", return_value=False))
                 ir = driver.compile_program(str(path), source,
                                             [str(path.parent), str(ROOT / "lib")], "")
         finally:

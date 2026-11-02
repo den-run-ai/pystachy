@@ -3,9 +3,9 @@ from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, umembers
 from src.pystachy_compiler.bigints import TSLOT_BIG, big_tree, big_viewable, held, narrow_type, narrows, search_type
 from src.pystachy_compiler.analysis import collect, comp_shared, comp_unbound, comp_vars, deleted, key_reads, local_names, only_none, stack_aliases, stack_kept, walrus_names
-from src.pystachy_compiler.diagnostics import dynamic_program, int_lists, shown
+from src.pystachy_compiler.diagnostics import LINES, dynamic_program, int_lists, shown
 from src.pystachy_compiler.dynamic import comparison_container_pair, comparison_invalid, comparison_property_type
-from src.pystachy_compiler.ir import ClassInfo, FmtArgs, FnInfo, Ins, IterArg, Loop, Val
+from src.pystachy_compiler.ir import ClassInfo, Data, FmtArgs, FnInfo, Ins, IterArg, Loop, Val
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.reflection import VARS_USES, refl_annotated, refl_body, refl_fold, refl_reflective
 from src.pystachy_compiler.specs import (
@@ -82,6 +82,7 @@ from src.pystachy_compiler.utils import (
     hislot,
     tname,
     tslots,
+    tuple_literal,
     typestr,
     unopt,
 )
@@ -1191,6 +1192,9 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             elif i < len(ws) and is_fn(v.t) and is_callable(unopt(ws[i])):
                 v = self.coerce(v, ws[i])  # (a function where a Callable is expected: made one)
             vals.append(v)
+        tconst = self.tuple_const(n, vals)
+        if tconst.v != "":
+            return tconst  # (a display of literals: CPython's constant, the same object at each run)
         return self.stack_tuple(vals) if n is self.stkkey else self.tuple_(vals)
     if k == "listcomp":
         if n.s == "gen":
@@ -2340,6 +2344,53 @@ def gen_tuple_(self, vals: list[Val]) -> Val:
     for i in range(len(vals)):
         self.tput(Val(p, t), i, vals[i])
     return Val(p, t)
+
+def gen_tuple_const(self, n: Node, vals: list[Val]) -> Val:
+    # a tuple display of literals that the source writes (n.src), whose items are vals: the
+    # constant that CPython's compiler makes of it, which each run of the display is. Its
+    # compiler merges equal constants of one module, telling 1 from True and 1.0, and 0.0
+    # from -0.0, as the items' types and bits here do; the empty tuple is one object
+    # everywhere. Immutable module data (Data "tuple") of literals, static strings and such
+    # constants, which the collector need not scan. A promoting int item is its 64-bit
+    # literal there, as a tuple of 64-bit ints is a tuple of promoting ints as it is
+    # (big_tuple_view), so both are one constant; but not -2**63, whose slot would say to read
+    # an Mpz word. Val("", "") where an item is no such literal: a box, a dynamic value
+    if not n.src or self.rtmode or not tuple_literal(n):
+        return Val("", "")
+    items: list[Val] = []
+    keys: list[str] = []
+    for i in range(len(vals)):
+        v = vals[i]
+        x = n.kids[i].kids[0] if n.kids[i].kind == "unary" else n.kids[i]
+        if x.kind == "tuple":
+            ok = v.v in self.tconstdata
+        elif x.kind == "int":
+            if v.t == BIG:
+                v = self.expr(n.kids[i], "")  # (its 64-bit literal, as it is but where the module promotes)
+            ok = v.t == "int" and v.lit and int_fits(v.v) and (vals[i].t != BIG or v.v != TSLOT_BIG)
+        elif x.kind == "float":
+            ok = v.t == "float" and v.v.startswith("0x")
+        elif x.kind == "str":
+            ok = v.t == "str" and v.v.startswith("@s.")
+        elif x.kind == "bytes":
+            ok = v.t == "bytes" and v.v.startswith("@b.")
+        elif x.kind == "True" or x.kind == "False":
+            ok = v.t == "bool" and (v.v == "true" or v.v == "false")
+        else:
+            ok = x.kind == "None" and v.t == "None" and v.v == "null"
+        if not ok:
+            return Val("", "")
+        items.append(Val(v.v, v.t))
+        keys.append(f"{'tuple' if x.kind == 'tuple' else v.t} {v.v}")
+    key = ("" if len(vals) == 0 else str(n.line // LINES)) + "(" + ", ".join(keys) + ")"
+    if key not in self.tconsts:
+        d = Data("tuple", f"@tc.{len(self.tconsts)}")
+        d.text = self.ctype("tuple", [v.t for v in items])  # (its type: union_proof reads it where a machine address reads the tuple)
+        d.items = items
+        self.consts.append(d)
+        self.tconsts[key] = d.name
+        self.tconstdata[d.name] = d
+    return Val(self.tconsts[key], self.ctype("tuple", [v.t for v in vals]))
 
 def gen_stack_tuple(self, vals: list[Val]) -> Val:
     # tuple_, in this function's frame (a slot of its items, lowered to an array): the *args of

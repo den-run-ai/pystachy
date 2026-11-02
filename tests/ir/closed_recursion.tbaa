@@ -1,0 +1,16 @@
+@cv.0:
+@main.init:
+@f.helper:
+@r.f.down:
+@f.down: load:recursion depth+0
+@r.f.even:
+@f.even: load:recursion depth+0
+@r.f.odd:
+@f.odd: load:recursion depth+0
+@f.through: store:recursion depth+0 store:recursion depth+0
+@pys_obj_eq:
+@pys_obj_cmp:
+@pys_obj_repr:
+@pys.recursion.check: load:recursion limit+0
+@pys.recursion.enter: load:recursion depth+0 load:recursion limit+0 store:recursion depth+0
+@main:
