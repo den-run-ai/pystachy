@@ -262,7 +262,11 @@ above apply to well-formed text (with the surrogate exception described above).
   `TabError` made of one argument also tests that argument's truth as it is made (its `__bool__`
   or `__len__` runs then), for the `<no detail available>` of its traceback line, where CPython
   tests it only when it prints that line; no other exception class tests it
-  (`tests/deviations/exc_syntax_error_truth.py`).
+  (`tests/deviations/exc_syntax_error_truth.py`). An exception class of the program whose
+  `__init__` calls `super().__init__(...)` (or `Base.__init__(self, ...)`) as a statement of its
+  own body, using `self` before it only to assign and read plain fields, does not format the
+  arguments it was made with, which that call replaces: only that call's arguments are formatted,
+  as it runs (`tests/programs/exceptions/exc_keep_repr_effects.py`).
 
 - `E.__module__ = "builtins"` of an exception class raises `NotImplementedError`, where CPython
   assigns it and its uncaught exceptions' line names the class alone; other names are assigned
