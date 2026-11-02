@@ -11,6 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import cpython_test_methods as ctm
 
 SOURCE = '''
+import random
 import unittest
 from test import support
 from test.support import import_helper
@@ -70,6 +71,12 @@ class RegexTests(unittest.TestCase):
 
     def test_raises_regex_call_mismatch(self):
         self.assertRaisesRegex(ValueError, 'nomatch', int, 'bad')
+
+
+class RandomTests(unittest.TestCase):
+    def test_seeded(self):
+        # true only when random is seeded with 0 just before the test
+        self.assertEqual(round(random.random(), 6), 0.844422)
 
 
 class OtherTests(unittest.TestCase):
@@ -139,6 +146,22 @@ if __name__ == '__main__':
 '''
 
 
+FUTURE_SOURCE = '''"""A test module whose docstring and __future__ import must stay first."""
+from __future__ import annotations
+
+import unittest
+from random import randrange
+
+
+class FutureTests(unittest.TestCase):
+    def test_regex_and_doc(self):
+        self.assertRegex(__doc__, 'must stay first')
+
+    def test_from_import_seeded(self):
+        self.assertEqual(randrange(1000), 864)
+'''
+
+
 def run(path):
     return subprocess.run([sys.executable, "-I", str(path)], capture_output=True, text=True, timeout=60)
 
@@ -161,7 +184,7 @@ class ExtractTests(unittest.TestCase):
     def test_selection(self):
         self.assertEqual(sorted(f"{c}.{m}" for c, m in self.tests), [
             "BisectPython.test_module_attribute", "ChainTests.test_chain", "OtherTests.test_asserts",
-            "OtherTests.test_other", "RegexTests.test_raises_regex_call_mismatch",
+            "OtherTests.test_other", "RandomTests.test_seeded", "RegexTests.test_raises_regex_call_mismatch",
             "RegexTests.test_raises_regex_mismatch", "RegexTests.test_regex", "SampleTests.test_asserts", "SampleTests.test_fail",
             "SampleTests.test_false_assertion", "SampleTests.test_nothing_raised", "SampleTests.test_raises",
             "SampleTests.test_warns"])
@@ -197,6 +220,28 @@ class ExtractTests(unittest.TestCase):
             r = run(self.program(name))
             self.assertNotEqual(r.returncode, 0, name)
             self.assertIn("AssertionError", r.stderr, name)
+
+    def test_random_is_seeded_before_each_test(self):
+        text = self.program("RandomTests__test_seeded").read_text()
+        self.assertIn("    random.seed(0)\n    t = RandomTests()", text)
+        self.assertNotIn("seed", self.program("SampleTests__test_asserts").read_text())
+        r = run(self.program("RandomTests__test_seeded"))
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_added_imports_follow_the_docstring_and_future_imports(self):
+        src = self.dir / "test_future.py"
+        src.write_text(FUTURE_SOURCE)
+        out = self.dir / "future"
+        tests, _ = ctm.extract(str(src), str(out))
+        self.assertEqual(len(tests), 2)
+        for name in ("FutureTests__test_regex_and_doc", "FutureTests__test_from_import_seeded"):
+            text = (out / f"{name}.py").read_text()
+            self.assertTrue(text.startswith("\"\"\"A test module"), name)
+            self.assertLess(text.index("from __future__"), text.index("import unittest") if "import unittest" in text
+                            else text.index("import re") if "import re" in text else len(text), name)
+            r = run(out / f"{name}.py")
+            self.assertEqual(r.returncode, 0, f"{name}: {r.stderr}")
+        self.assertIn("import random", (out / "FutureTests__test_from_import_seeded.py").read_text())
 
     def test_unsupported_feature_raises_instead_of_passing(self):
         r = run(self.program("SampleTests__test_warns"))

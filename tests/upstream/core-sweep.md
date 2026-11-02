@@ -72,14 +72,15 @@ classes are dropped) and `self.module` is inlined; `setUp()` becomes `__init__()
 methods become `assert` statements of the same condition, `assertRaises`/`assertRaisesRegex`
 become try/except/else (the regex is still checked), `subTest` keeps its body; skip,
 `cpython_only` and `requires_*` tests are left out. Each program keeps only the definitions and
-the one test it needs. A method that needs another unittest feature raises
+the one test it needs; a program whose tests use `random` seeds it with 0 before each test, so
+every run draws the same inputs. A method that needs another unittest feature raises
 `NotImplementedError`, so it cannot pass by accident. The tool's docstring has the complete
 rules, and `tools/test_cpython_test_methods.py` (run by Lint) checks them, including negative
 controls for false assertions and exceptions that are not raised.
 
 ### Triage
 
-On main `973c68e4`, 144 CPython 3.13.16 test files for builtins, the language and the
+On main `8563b854`, 144 CPython 3.13.16 test files for builtins, the language and the
 modules Pystachy ships or that the core scope names were triaged with
 `tools/cpython_test_methods.py triage` (CPython 3.13.16, the native compiler's JIT); 140 of
 them hold extractable methods:
@@ -87,17 +88,19 @@ them hold extractable methods:
 | Result | Methods |
 |---|---:|
 | Extracted | 10,329 |
-| Fail on CPython after extraction (unittest/test.support features beyond the rules): not counted | 4,313 |
+| Fail on CPython after extraction (unittest/test.support features beyond the rules): not counted | 4,314 |
 | Compile and match CPython | 374 |
-| Match once the program opts in to promoting ints | 6 |
-| Rejected at compile time | 5,619 |
+| Match once the program opts in to promoting ints | 7 |
+| Rejected at compile time | 5,617 |
 | Compile but differ | 17 |
 
-That is **380 of 6,016 (6.3%)** methods passing with no hand edit. All 17 differences are
+That is **381 of 6,015 (6.3%)** methods passing with no hand edit. All 17 differences are
 documented deviations, not new wrong results: 13 raise `OverflowError` past 64 bits in
 modules without promoting ints (`lib/random`'s too), one asks for the unsupported `utf-16`
 codec, two use bytes patterns and one compares `repr(re.I)`, as `re`'s flags are ints
-([lib/compatibility.md](../../lib/compatibility.md)).
+([lib/compatibility.md](../../lib/compatibility.md)). Seeding `random` makes one test fail
+under CPython itself: `TestPStdev.test_compare_to_variance` compares two float results on
+random data exactly, and they differ for seed 0, so it counts as not runnable.
 
 Missing modules account for 2,884 of the rejections, led by `enum` (1,016 methods, nearly
 all of `test_enum`), `configparser`, `decimal`, `pickle` (25 files), `copy` (16 files), `gc`,
@@ -105,10 +108,10 @@ all of `test_enum`), `configparser`, `decimal`, `pickle` (25 files), `copy` (16 
 other rejections are a class defined inside a function (296 methods in 49 files), fields
 whose type is not inferred, often because a test class stores a class it calls
 (`self.s = self.thetype(...)`), `match` (`test_patma`), base classes other than an ordinary
-class (builtin subclasses, 175), modules used as values (62), inheritance from generic class
-templates (59), statements other than definitions in a class body (115), empty containers
-whose type is not inferred (81), `str.format()` of a computed format string (49) and
-multiple inheritance (41).
+class (builtin subclasses, 176), modules used as values (62), inheritance from generic class
+templates (63), statements other than definitions in a class body (126), empty containers
+whose type is not inferred (83), `str.format()` of a computed format string (49) and
+multiple inheritance (40).
 
 ### Delivered programs
 

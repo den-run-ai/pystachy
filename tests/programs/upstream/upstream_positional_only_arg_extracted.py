@@ -4,8 +4,8 @@
 # made mechanically by tools/cpython_test_methods.py: unittest scaffolding becomes plain
 # statements that keep each test's inputs and assertions (tests/upstream/core-sweep.md).
 # Tests: PositionalOnlyTestCase.test_pos_only_call_via_unpacking.
+"""Unit tests for the positional only argument syntax specified in PEP 570."""
 import re
-'Unit tests for the positional only argument syntax specified in PEP 570.'
 
 class PositionalOnlyTestCase:
 

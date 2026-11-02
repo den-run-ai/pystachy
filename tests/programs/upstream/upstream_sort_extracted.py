@@ -103,48 +103,56 @@ class TestOptimizedCompares:
 
 
 def _TestBase__test_small_stability():
+    random.seed(0)
     t = TestBase()
     t.test_small_stability()
     print('ok TestBase.test_small_stability')
 
 
 def _TestDecorateSortUndecorate__test_decorated():
+    random.seed(0)
     t = TestDecorateSortUndecorate()
     t.test_decorated()
     print('ok TestDecorateSortUndecorate.test_decorated')
 
 
 def _TestDecorateSortUndecorate__test_key_with_exception():
+    random.seed(0)
     t = TestDecorateSortUndecorate()
     t.test_key_with_exception()
     print('ok TestDecorateSortUndecorate.test_key_with_exception')
 
 
 def _TestDecorateSortUndecorate__test_key_with_mutation():
+    random.seed(0)
     t = TestDecorateSortUndecorate()
     t.test_key_with_mutation()
     print('ok TestDecorateSortUndecorate.test_key_with_mutation')
 
 
 def _TestDecorateSortUndecorate__test_reverse():
+    random.seed(0)
     t = TestDecorateSortUndecorate()
     t.test_reverse()
     print('ok TestDecorateSortUndecorate.test_reverse')
 
 
 def _TestDecorateSortUndecorate__test_reverse_stability():
+    random.seed(0)
     t = TestDecorateSortUndecorate()
     t.test_reverse_stability()
     print('ok TestDecorateSortUndecorate.test_reverse_stability')
 
 
 def _TestDecorateSortUndecorate__test_stability():
+    random.seed(0)
     t = TestDecorateSortUndecorate()
     t.test_stability()
     print('ok TestDecorateSortUndecorate.test_stability')
 
 
 def _TestOptimizedCompares__test_none_in_tuples():
+    random.seed(0)
     t = TestOptimizedCompares()
     t.test_none_in_tuples()
     print('ok TestOptimizedCompares.test_none_in_tuples')
