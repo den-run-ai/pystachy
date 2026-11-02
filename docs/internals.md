@@ -566,20 +566,36 @@ or inlining pipeline, and does not affect `build` or `ext`.
 pipeline, allowing optimization across that boundary. The program's module also defines
 `pys_plain`: 1 when no module opts in to dynamic `Any` or promoting ints, else 0. The runtime
 tests it (`opt_in()` in `runtime.c`) only on paths that values of those opt-ins lead to: ints
-past 64 bits in containers, promoting ints and list identity companions. For a plain program
-those paths become traps, and `-O2` drops static helpers that have no remaining caller from
-the executable. Explicit `mpz` users retain the helpers they need. The reusable runtime cache
-still contains all features. `make aotprobe` checks retained symbols and output for plain programs, direct
-opt-ins and imported opt-ins. The JIT tier's precompiled runtime and `ext` keep the runtime's
-weak definition, 0. `ext` builds a shared CPython module with its boundary wrappers; see the
+past 64 bits in containers, promoting ints and list identity companions, which only those
+opt-ins create (every list operation that keeps a companion in step tests it first). For a
+plain program those paths become traps, and `-O2` drops static helpers that have no remaining
+caller from the executable. Explicit `mpz` users retain the helpers they need. The reusable
+runtime cache still contains all features. `make aotprobe` checks retained symbols and output
+for plain programs, direct opt-ins and imported opt-ins, and that a plain program's list store
+writes no companion. The JIT tier's precompiled runtime and `ext` keep the runtime's weak
+definition, 0. `ext` builds a shared CPython module with its boundary wrappers; see the
 [FFI guide](ffi.md).
 
-Compiled code gets its objects and fixed tuples from `pys_new` (the `allocelide` optimization,
-[#1017](https://github.com/den-run-ai/pystachy/issues/1017)). Each call is marked
-`allockind("alloc,zeroed") allocsize(0)`, so LLVM deletes an allocation whose object nothing
-keeps, after inlining has shown that. `runtime.c` keeps `pys_new` out of line so that `-O2`
-still sees those calls. Each surviving allocation then gets the allocator's fast path back:
-`build` optimizes the linked module to bitcode, and one `opt` run then inlines `pys_new`
+Compiled code gets its objects and fixed tuples that hold no reference from `pys_new` (the
+`allocelide` optimization, [#1017](https://github.com/den-run-ai/pystachy/issues/1017)): those
+whose every word is a 64-bit `int`, a `float` or a `bool` by the compiler's types (a class's
+fields, inherited and hidden ones included, and a tuple's items; lowering's `alloc_call`). A
+class attribute that the class body declares takes a slot of its type in each object, so
+`ZERO: "Vector" = None` makes a vector of floats hold a reference.
+Each call is marked `allockind("alloc,zeroed") allocsize(0)`, so LLVM deletes an allocation
+whose object nothing keeps, after inlining has shown that. Every other object and tuple comes
+from `pys_alloc`, as without `allocelide`: one that holds a reference, a promoting int's `Mpz`
+word or a numeric identity companion. The marked call's object is `noalias`, so LLVM forwards
+the loads of its fields across calls, and can then delete it, or leave its address dead, while
+the program still reads those fields. The conservative collector would then miss what it
+holds: a weakly referenced object it held could be cleared, a file it held closed, an
+`ffi.track` reference released. An object that holds no reference keeps nothing alive, so
+deleting it changes no other object's lifetime. A deleted allocation starts no collection,
+though: it counts toward neither the collector's threshold nor `PYSTACHY_GC_STRESS`'s, so the
+collections that clear weak references, close dropped files and release `ffi.track` references
+can come later than without `allocelide`. `runtime.c` keeps `pys_new` out of line so that
+`-O2` still sees those calls. Each surviving allocation then gets the allocator's fast path
+back: `build` optimizes the linked module to bitcode, and one `opt` run then inlines `pys_new`
 into the calls that are left. Its `forceattrs` pass first swaps `pys_new`'s `noinline` (and the
 `optnone` of a runtime compiled at `-O0`) for `alwaysinline` (the driver's `LATE_INLINE`), then
 `always-inline` inlines it. Clang then compiles the module without optimizing it again.
@@ -587,8 +603,9 @@ into the calls that are left. Its `forceattrs` pass first swaps `pys_new`'s `noi
 keeps the single `clang -O2 -c` step. The JIT calls the shared runtime's `pys_new`, and
 its cleanup pipeline deletes what instcombine can prove unused. The runtime's own code
 (`runtime.py`) and generator frames call `pys_alloc`. `make aotprobe` checks that
-objects that never escape compile to no allocation, that objects a list keeps do, and
-that a build with `PYSTACHY_CFLAGS=-O0` still takes the late step.
+objects that never escape compile to no allocation, that objects a list keeps do,
+that a build with `PYSTACHY_CFLAGS=-O0` still takes the late step, and that an object and
+a tuple that hold objects come from `pys_alloc` and keep those alive through collections.
 
 Cached runtime artifacts depend on the runtime sources, included Ryu files, compiler,
 LLVM tools and compilation flags. Changes invalidate the relevant cache. Builds use private

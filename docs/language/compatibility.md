@@ -362,7 +362,14 @@ above apply to well-formed text (with the surrogate exception described above).
   it, and opening a file that has a writer open runs a collection first; but the stack scan
   is conservative, so a writer that a function dropped a moment ago can still look reachable.
   Its data can then be missing when the file is read back, and appends through several
-  dropped writers can land out of order.
+  dropped writers can land out of order. Collections start as the program allocates, and
+  the optimizer deletes the allocations of objects and fixed tuples that hold only `int`,
+  `float` and `bool` values and that nothing keeps (`allocelide`,
+  [internals](../internals.md#whole-program-optimization)): those count toward no
+  collection, so a dropped file is closed, a weak reference cleared and an `ffi.track`
+  reference released at a later collection than the program's allocations suggest. The
+  optimizer never deletes an object or tuple that holds a reference, which keeps what it
+  holds while the program reads it.
 
 - A suspended generator that the program drops (a variable that goes, `del`, a generator kept
   only in a container, a temporary such as `next(g())`'s, one still suspended when the program
