@@ -36,9 +36,10 @@ In these cases a program can compile but behave differently from CPython.
 
 - The native JSON prototype's typed `JSONValue` path rejects integer tokens outside
   signed 64-bit range with `OverflowError`; its dynamic `Any` decoder promotes them
-  and retains the runtime's decimal digit limit. The decoder and encoder allow at most 256 nested
-  containers, then raise `RecursionError`, independently of CPython's recursion
-  limit ([deviation](../../tests/deviations/json_limits.py),
+  and retains the runtime's decimal digit limit. Nested containers count against the native
+  recursion limit (about 500 decoded and 1,000 encoded at the default limit of 1,000) and stop
+  at 2,000 under a raised limit, then raise `RecursionError`; CPython's C codec accepts 9,998 at
+  any recursion limit ([deviation](../../tests/deviations/json_limits.py),
   [API scope](../../lib/compatibility.md#json)).
 
 - Floats are unboxed, so a NaN has no identity: `nan in [nan]` is `False`, and lists or
@@ -248,8 +249,8 @@ above apply to well-formed text (with the surrogate exception described above).
   messages can also differ from CPython because its internal frames differ. Native stack
   exhaustion itself is still not recoverable: an excessively raised limit, unusually large
   native frames or foreign calls can exhaust the physical stack before the logical limit.
-  Keep recursion limits conservative for the deployment stack. The separate fixed
-  budgets for recursive aliases and JSON remain in effect.
+  Keep recursion limits conservative for the deployment stack. Recursive aliases keep their
+  separate fixed budget, and JSON nesting stops at 2,000 containers under any limit.
 
 - An exception keeps `str()` of its arguments and what `repr()` shows of them as it is made,
   once all the arguments of the call are evaluated (their `__str__` and `__repr__` run then),
