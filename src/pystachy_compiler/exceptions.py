@@ -1026,7 +1026,7 @@ def gen_exc_init_keeps(self, c: str, init: FnInfo) -> bool:
             loc[p] = True
         for nm in ["super", fc.base]:
             # (bound as gen_call finds it while it compiles f: a local of f, or of the program)
-            if nm in self.funcs or nm in self.classes or nm in self.mvars:
+            if nm in self.funcs or nm in self.mvars or (nm == "super" and nm in self.classes):
                 loc[nm] = True
         k = -1
         for i in range(len(body)):
@@ -1046,7 +1046,7 @@ def gen_exc_init_keeps(self, c: str, init: FnInfo) -> bool:
         if o.kind == "call" and len(o.kids) == 1 and o.kids[0].kind == "name" and o.kids[0].s == "super" and "super" not in loc:
             args = call.kids[1:]
         elif (o.kind == "name" and o.s == b and len(call.kids) > 1 and call.kids[1].kind == "name" and call.kids[1].s == me
-              and (b in self.classes or b not in loc) and len([a for a in call.kids if a.kind == "starred" or a.kind == "dstar"]) == 0):
+              and b not in loc and len([a for a in call.kids if a.kind == "starred" or a.kind == "dstar"]) == 0):
             args = call.kids[2:]
         else:
             return False
