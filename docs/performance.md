@@ -103,7 +103,8 @@ running Clang's optimizer; a GCC object sidecar is a different experiment. The
 distinction can be checked for the helpers under investigation.
 
 For AOT, capture the driver's `prog.bc` at the `clang -O2 -c` invocation,
-after `llvm-link --only-needed`. The transparent Clang wrapper in
+after `llvm-link --only-needed` (with `allocelide`, the first of two: `-emit-llvm`, then
+`prog-late.bc` once the fast path is inlined). The transparent Clang wrapper in
 [`tools/aotprobe.py`](../tools/aotprobe.py) demonstrates that capture; the
 driver normally deletes its temporary files. Do not select an arbitrary cached
 `runtime*.bc`, which may belong to another compiler or configuration. Once that

@@ -669,9 +669,11 @@ GENTHROWC = 3
 # list[int] and bytes reads in Gen.list_read and Gen.bytes_read; listget also chooses the inline
 # byte reads of a loop over a bytes, in gen_seq_item), fieldtbaa, the TBAA tags that lowering
 # gives the loads and stores of object fields (Gen.field_tag), and tupleret, the fixed tuples that
-# functions return by value to the calls that only read their slots (Gen.tuple_rets), which
+# functions return by value to the calls that only read their slots (Gen.tuple_rets), and
+# allocelide, compiled code's objects and fixed tuples from pys_new, whose calls lowering marks as
+# allocations, so that LLVM deletes those whose objects nothing keeps (lowering's alloc_call), which
 # PYSTACHY_OPT turns off: "-name", comma-separated, or "-all"
-OPTS: list[str] = ["listget", "dictfuse", "tupleiter", "listfast", "moduleints", "fieldtbaa", "tupleret", "unionslots", "nullcheck"]
+OPTS: list[str] = ["listget", "dictfuse", "tupleiter", "listfast", "moduleints", "fieldtbaa", "tupleret", "unionslots", "nullcheck", "allocelide"]
 # what bounds dictfuse's work: the depth of the chain of values Gen.canon follows (the
 # self-compile's deepest is 18), the ops Gen.reaching walks back over (85) and the lookups that
 # hold at once (7)
@@ -973,7 +975,7 @@ RUNTIME: dict[str, str] = {
     "format": "str:*T,#,str|R A I rL rD U?|", "default_repr": "str:str,%ptr|A|", "repr_enter": "bool:%ptr|I|",
     # reflection records (reflection.py): a name's index in a record's name table, and repr(vars(o))
     "refl.find": "int:%ptr,str||", "refl.vars": "str:%ptr,%ptr|A I rO rL rD U|",
-    "repr_leave": "None:%ptr|I|", "alloc": "%ptr:int|A|", "on_stack": "int:%ptr|I|", "box": "%ptr:*T|A|", "ubox": "%ptr:int,*T|A|", "ubox_opt": "%ptr:int,%ptr,int|A|", "unpack_check": "None:int,int|R|", "unpack_ex_check": "None:int,int|R|",
+    "repr_leave": "None:%ptr|I|", "alloc": "%ptr:int|A|", "new": "%ptr:int|A|", "alloc_inline": "%ptr:int|A|", "on_stack": "int:%ptr|I|", "box": "%ptr:*T|A|", "ubox": "%ptr:int,*T|A|", "ubox_opt": "%ptr:int,%ptr,int|A|", "unpack_check": "None:int,int|R|", "unpack_ex_check": "None:int,int|R|",
     # errors and the process
     "raise": "None:str,str|R N|", "exit": "None:int|R N I|", "exit_msg": "None:str|R N I|", "argv": "list[str]:|I|", "warnoptions": "list[str]:|A I|",
     "platform": "str:|A|", "errno": "int:str|R A|", "system": "int:str|R I|", "execv": "None:str,list[str]|R N A I rL|", "getpid": "int:|I|", "exists": "bool:str|I|",

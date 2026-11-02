@@ -1,5 +1,5 @@
 @c.0.1: pys_raise
-@main.init: pys_alloc pys_alloc pys_alloc pys_str_int pys_write pys_write pys_str_int pys_write pys_write pys_str_int pys_write pys_write pys_str_int pys_write pys_write
+@main.init: pys_alloc pys_new pys_new pys_str_int pys_write pys_write pys_str_int pys_write pys_write pys_str_int pys_write pys_write pys_str_int pys_write pys_write
 @f.__main__$next: pys_raise
 @c.1.1: pys_raise
 @f.bump: pys_alloc pys_alloc

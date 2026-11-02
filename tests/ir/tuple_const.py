@@ -1,5 +1,5 @@
 # Gen.tuple_const (tuple_const.calls): a tuple display of literals is a constant tuple of its
-# module, which no call makes (no pys_alloc): zero's, the empty tuple's, nested's, and the
+# module, which no call makes (no pys_new): zero's, the empty tuple's, nested's, and the
 # subscript key's in lookup. either returns a constant or a new tuple: run's unpacking takes its
 # slots by value from @v.f.either, which makes no tuple, and the wrapper that other calls get
 # makes one only where the body returned no constant. A display of a parameter is made at each

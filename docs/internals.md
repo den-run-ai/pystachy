@@ -532,6 +532,20 @@ opt-ins and imported opt-ins. The JIT tier's precompiled runtime and `ext` keep 
 weak definition, 0. `ext` builds a shared CPython module with its boundary wrappers; see the
 [FFI guide](ffi.md).
 
+Compiled code gets its objects and fixed tuples from `pys_new` (the `allocelide` optimization,
+[#1017](https://github.com/den-run-ai/pystachy/issues/1017)). Each call is marked
+`allockind("alloc,zeroed") allocsize(0)`, so LLVM deletes an allocation whose object nothing
+keeps, after inlining has shown that. `runtime.c` keeps `pys_new` out of line so that `-O2`
+still sees those calls. Each surviving allocation then gets the allocator's fast path back:
+`build` optimizes the linked module to bitcode, links `LATE_ALLOC` over `pys_new`, and runs
+`opt`'s `always-inline`. That inlines `pys_alloc_inline`, the fast path, which an
+`@llvm.used` entry keeps alive until then. Clang then compiles the module without
+optimizing it again. `ext` does the same between its `opt -O2` and its compilation. A module
+without `pys_new` keeps the single `clang -O2 -c` step. The JIT calls the shared runtime's
+`pys_new`, and its cleanup pipeline deletes what instcombine can prove unused. The runtime's
+own code (`runtime.py`) and generator frames call `pys_alloc`. `make aotprobe` checks that
+objects that never escape compile to no allocation, and that objects a list keeps do.
+
 Cached runtime artifacts depend on the runtime sources, included Ryu files, compiler,
 LLVM tools and compilation flags. Changes invalidate the relevant cache. Builds use private
 temporary files and publish reusable artifacts only after checking their inputs stayed stable.

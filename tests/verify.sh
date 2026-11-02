@@ -100,7 +100,8 @@
 #                  execute as in CPython, with both compilers
 #   aot-dead-code  tools/aotprobe.py: an AOT build defines pys_plain; a program that opts in to
 #                  neither dynamic Any nor promoting ints keeps none of their runtime helpers;
-#                  direct and imported opt-ins retain them, with outputs matching CPython
+#                  direct and imported opt-ins retain them; objects that never escape compile to
+#                  no allocation and those a list keeps do (allocelide), with outputs matching CPython
 #   unicode-audit  tools/unicode_audit.py: optional byte-boundary checks in JIT/AOT, cache
 #                  reuse, ASCII/Unicode controls and GC-stress exception paths, both compilers;
 #                  unicodeprobe checks code-point cache/locality, mutation and GC invalidation

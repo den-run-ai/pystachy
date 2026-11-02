@@ -9,7 +9,7 @@ from src.pystachy_compiler.diagnostics import MAXNEST, RAW, Rejoin, fail
 from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler.lexer import Lexer
 from src.pystachy_compiler.loader import Loader
-from src.pystachy_compiler.lower_module import OBJHOOKS, address_runtime_ir
+from src.pystachy_compiler.lower_module import KEEP_ALLOC, LATE_ALLOC, OBJHOOKS, address_runtime_ir
 from src.pystachy_compiler.names import RENAMED
 from src.pystachy_compiler.parser import Parser
 from src.pystachy_compiler.specs import JIT_INLINE, LIBS, LINKDL, MODULES, OPTS, PLATFORM
@@ -560,6 +560,9 @@ def main() -> None:
     ll = tmp + "/prog.ll"
     bc = tmp + "/prog.bc"
     obj = tmp + "/prog.o"
+    obc = tmp + "/prog-opt.bc"  # (allocelide's late step, below: -O2's module, that module once it is
+    lbc = tmp + "/prog-late.bc"  # given the allocator's fast path, and the definition that gives it)
+    late = tmp + "/late.ll"
     rcc = tmp + "/runtime.c"
     rll = tmp + "/runtime.ll"
     rsl = tmp + "/runtime-s.ll"
@@ -585,6 +588,17 @@ def main() -> None:
         # that only values of those opt-ins reach (opt_in()), before it is optimized; the JIT tier
         # and extension modules keep the runtime's weak 0
         f.write(f"@pys_plain = constant i64 {1 if plain else 0}\n")
+    # compiled code's objects from pys_new (allocelide): an AOT build or extension module is
+    # optimized with pys_new out of line (runtime.c), so that LLVM deletes the allocations whose
+    # objects nothing keeps; then LATE_ALLOC, linked over pys_new, puts the allocator's fast path,
+    # pys_alloc_inline, which llvm.used keeps until then, into the calls left (the JIT tier
+    # calls the shared runtime's pys_new, which it never inlines)
+    newalloc = (cmd == "build" or cmd == "ext") and "@pys_new(" in ir
+    if newalloc:
+        f.write(KEEP_ALLOC)
+        lf = open(late, "w", encoding=RAW)
+        lf.write(LATE_ALLOC)
+        lf.close()
     f.close()
     tc = [q(paths[i]) if paths[i] != "" else tools[i] for i in range(len(tools))]
     msg = ""
@@ -755,14 +769,28 @@ def main() -> None:
         entry = "PyModExport_" if abi == "abi3t" else "PyInit_"
         if out == "":
             out = diagnostics.SRC[:-3] + "." + abi + ".so"
+        # (allocelide: pys_new and the fast path stay visible through -O2, then the late step
+        # inlines it and hides them as the rest)
+        public = f"{entry}{ext}" + (",pys_new,pys_alloc_inline" if newalloc else "")
+        inline = (f" && {llvm}llvm-link --suppress-warnings --override={q(late)} {q(bc)} -o {q(bc)}"
+                  f" && {llvm}opt -passes='always-inline,internalize,globaldce' -internalize-public-api-list={entry}{ext} {q(bc)} -o {q(bc)}") if newalloc else ""
         code = sh(f"{llvm}llvm-link {q(ll)} {q(glue[1][2])} {q(glue[0][2])} -o {q(lnk)} && {llvm}llvm-link --only-needed {q(lnk)} {q(usebc)} -o {q(bc)}"
-                  + f" && {llvm}opt -passes='internalize,default<O2>' -internalize-public-api-list={entry}{ext} {q(bc)} -o {q(bc)}"
+                  + f" && {llvm}opt -passes='internalize,default<O2>' -internalize-public-api-list={public} {q(bc)} -o {q(bc)}" + inline
                   + f" && {llvm}clang -O2 -fPIC -c {q(bc)} -o {q(obj)} -Wno-unused-command-line-argument{ccflags} && {llvm}clang -shared {q(obj)} -o {q(out)}{libs} -lm{cflags}")
     elif cmd == "build":
-        # AOT tier: full -O2 over program + runtime as one module (whole-program optimization)
+        # AOT tier: full -O2 over program + runtime as one module (whole-program optimization).
+        # With allocelide, clang optimizes it to bitcode, the late step gives the calls of pys_new
+        # that -O2 left the allocator's fast path, and clang compiles that without optimizing it
+        # again (the same code generation: a module without pys_new keeps the one step)
         if out == "":
             out = diagnostics.SRC[:-3] if diagnostics.SRC.endswith(".py") else diagnostics.SRC + ".exe"
-        code = sh(f"{link} && {llvm}clang -O2 -c {q(bc)} -o {q(obj)} -Wno-unused-command-line-argument{ccflags} && {llvm}clang {q(obj)} -o {q(out)}{libs} -lm{cflags}")
+        cc = f"{llvm}clang -O2 -c {q(bc)} -o {q(obj)} -Wno-unused-command-line-argument{ccflags}"
+        if newalloc:
+            cc = (f"{llvm}clang -O2 -c -emit-llvm {q(bc)} -o {q(obc)} -Wno-unused-command-line-argument{ccflags}"
+                  f" && {llvm}llvm-link --suppress-warnings --override={q(late)} {q(obc)} -o {q(lbc)}"
+                  f" && {llvm}opt -passes=always-inline {q(lbc)} -o {q(lbc)}"
+                  f" && {llvm}clang -O2 -c -Xclang -disable-llvm-passes {q(lbc)} -o {q(obj)} -Wno-unused-command-line-argument{ccflags}")
+        code = sh(f"{link} && {cc} && {llvm}clang {q(obj)} -o {q(out)}{libs} -lm{cflags}")
     else:
         # Match the precompiled runtime's target before instcombine folds sizeof/GEP.
         # LLVM's default layout gives i64 only four-byte alignment; ORC later installs
@@ -862,7 +890,7 @@ def main() -> None:
             fds = f" 7< {q(peo[1])}" if embed else ""
             parts = q(parto) + " " + q(partso) + (" " + q(peo[2]) if peo[2] != "" else "")
             os.execv("/bin/sh", ["sh", "-c", f"exec 9< {q(bc)} 8< {q(useso if useso != '' else useo)}{fds} && rm -f {q(bc)} {parts} && rmdir {q(tmp)} && {run}"])
-    for p in [ll, bc, obj, rcc, rll, rsl, rcb, rpl, rpb, lnk, part, parto, partso, hp, rso, tmp + "/pyembed.c", tmp + "/pyext.c", peo[2]] + [g[3] for g in glue]:
+    for p in [ll, bc, obj, obc, lbc, late, rcc, rll, rsl, rcb, rpl, rpb, lnk, part, parto, partso, hp, rso, tmp + "/pyembed.c", tmp + "/pyext.c", peo[2]] + [g[3] for g in glue]:
         if os.path.exists(p):
             os.remove(p)
     os.rmdir(tmp)
