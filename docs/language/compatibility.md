@@ -34,8 +34,9 @@ In these cases a program can compile but behave differently from CPython.
   opts in to [promoting ints](#promoting-ints-opt-in-prototype) gets CPython's `int`, with the
   limits below.
 
-- The native JSON prototype also rejects integer tokens outside signed 64-bit
-  range with `OverflowError`. Its decoder and encoder allow at most 256 nested
+- The native JSON prototype's typed `JSONValue` path rejects integer tokens outside
+  signed 64-bit range with `OverflowError`; its dynamic `Any` decoder promotes them
+  and retains the runtime's decimal digit limit. The decoder and encoder allow at most 256 nested
   containers, then raise `RecursionError`, independently of CPython's recursion
   limit ([deviation](../../tests/deviations/json_limits.py),
   [API scope](../../lib/compatibility.md#json)).
@@ -158,6 +159,13 @@ above apply to well-formed text (with the surrogate exception described above).
   A subclass can therefore collide with a base's private fields or replace its private
   methods. Use distinct names across the hierarchy until name mangling is supported.
 
+- A tuple display of literals is one constant of its module, as CPython compiles it. Literals
+  here are numbers, strings, bytes, `True`, `False`, `None`, signs on numbers and tuples of
+  these. Each run of the display, and each equal display in the same module, is the same object,
+  and `()` is one object everywhere. CPython's compiler also makes constants of displays that
+  Pystachy builds at each run: those with operators on literals (`(1 + 2, 3)`) and those whose
+  items an annotation retypes or boxes (a `str | None` or `int | None` item).
+
 - Runtime-length tuples use a different layout from fixed-shape tuples. Converting a
   fixed-shape tuple to `tuple[T, ...]`, or boxing its scalar elements for an optional-element
   annotation, creates a new tuple. Values compare equally, but identity across such a
@@ -213,13 +221,35 @@ above apply to well-formed text (with the surrogate exception described above).
   compile-time `SyntaxWarning`s are not printed. Running out of memory (`MemoryError`), a
   Ctrl-C (`KeyboardInterrupt`) and running out of stack end the program at once: no
   `except` clause catches them, and no `finally` block runs (a `raise KeyboardInterrupt` is
-  an exception like the others). Recursion is limited only by the native
-  stack: it goes past CPython's limit of 1,000 calls (`sys.setrecursionlimit()` checks its
-  argument as CPython does and records it for `sys.getrecursionlimit()`, but bounds nothing and
-  is not compared with the current depth),
-  and where CPython raises `RecursionError` the program dies with `SIGSEGV` (status 139, losing buffered output) or,
-  for a tail call in an AOT build, loops forever. `==` between two cyclic dataclass objects
-  recurses like that too.
+  an exception like the others).
+
+- `sys.setrecursionlimit()` bounds recursive native calls in both JIT and AOT.
+  Exceeding it raises catchable `RecursionError`, with ordinary `except`, `finally` and
+  context-manager unwinding. The default limit is 1,000; `sys.getrecursionlimit()` returns
+  the configured value. A nonpositive argument raises `ValueError`, a value outside the
+  C `int` range raises `OverflowError`, and lowering the limit to or below the active native
+  depth raises `RecursionError` without changing it.
+
+  The native depth starts at one for module execution and counts each active call of a
+  source function, lambda or method that can be entered again before it returns: one on a
+  cycle of calls (direct or mutual recursion, also through generators), or one that runs
+  code the compiler cannot follow, such as a call of a function value or a special method
+  that the runtime calls (`__eq__`, `__hash__`, `__repr__`). A running generator body counts
+  in the same way: while it runs, if some body of its type can be entered again. A function
+  or generator that cannot be entered again while it is active is at most once on the native
+  stack: it neither checks nor consumes the limit, and does not add to the depth that
+  `sys.setrecursionlimit()` compares a new limit with. Unbounded recursion therefore always
+  raises `RecursionError`, but a bounded one can fail at another call than in CPython,
+  which counts every frame: in the deepest frame, a non-recursive helper or generator still
+  runs where CPython raises (`tests/deviations/recursion_uncounted_frames.py`). Compiler
+  dispatch adapters and runtime helpers do not add frames. A generator counts only while
+  its body is running, not while suspended; resuming it uses its current caller's depth.
+  Inlining and optimized tail calls preserve this policy. Exact failure depths and error
+  messages can also differ from CPython because its internal frames differ. Native stack
+  exhaustion itself is still not recoverable: an excessively raised limit, unusually large
+  native frames or foreign calls can exhaust the physical stack before the logical limit.
+  Keep recursion limits conservative for the deployment stack. The separate fixed
+  budgets for recursive aliases and JSON remain in effect.
 
 - An exception keeps `str()` of its arguments and what `repr()` shows of them as it is made,
   once all the arguments of the call are evaluated (their `__str__` and `__repr__` run then),

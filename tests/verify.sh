@@ -87,7 +87,10 @@
 #                  timeout-deadline/blocking retries, normally and with GC stress
 #   dict-probes    tools/dictprobe.c: dict lookups visit few table slots for keys that defeat a weak
 #                  hash or probe sequence (deterministic counts against a fixed limit, no timings);
-#                  the collector scans the key tables of strs and tuples, and none of ints
+#                  the collector scans the key tables of strs and tuples, and none of ints;
+#                  only dfindc, the probe of CPython-hashed tables, tests entries for a key
+#                  past 64 bits: not dfinds (str keys), dfindi (native int keys, which
+#                  compares no strs) or dfind's generic probe
 #   compile-limits tools/compilelimits.py: hosted/native ir/run/build reject growing types,
 #                  specialization breadth and the signature bytes specializations retain under
 #                  256 MiB / ten CPU seconds, with short diagnostics;
@@ -182,7 +185,9 @@ want() { case " $SELECTED " in *" $1 "*) return 0 ;; *) return 1 ;; esac; }
 expected=0
 for x in $SELECTED; do expected=$((expected + 1)); done
 PY=${PY:-python3}
-UBSAN="-fsanitize=undefined -fno-sanitize-recover=all"
+# LLVM's checked 128-bit multiplication can call __muloti4 on ARM64. That builtin
+# belongs to compiler-rt, not libgcc or the preloaded UBSan shared library.
+UBSAN="-fsanitize=undefined -fno-sanitize-recover=all --rtlib=compiler-rt"
 V=$ROOT/build/verify
 OUT=$ROOT/build/verification.json
 rm -rf "$V" "$OUT"
@@ -956,6 +961,18 @@ fi
 if want dict-probes; then
 L=$V/dict-probes.log; s=$(now); r=fail
 { "$V/pystachy2" rt runtime.py -o "$V/dictprobe-rt.ll" && "${LLVM}clang" -O2 -S -emit-llvm tools/dictprobe.c -o "$V/dictprobe.ll" &&
+  if [ "$(grep -Ec '^define[^@]*@dfind[cis]?\(' "$V/dictprobe.ll")" != 4 ]; then
+    echo 'dict-probes: dictprobe.ll must define dfind, dfindc, dfindi and dfinds'; false; fi &&
+  if sed -n '/^define[^@]*@dfinds(/,/^}/p' "$V/dictprobe.ll" | grep -q -- '-9223372036854775808'; then
+    echo 'dict-probes: the str-key probe (dfinds) must not test entries for wide int keys'; false; fi &&
+  if sed -n '/^define[^@]*@dfindi(/,/^}/p' "$V/dictprobe.ll" | grep -Eq '@(bcmp|memcmp|pys_str_eq)\('; then
+    echo 'dict-probes: dfindi, the probe of native int keys, must compare no strs (str keys use dfinds)'; false; fi &&
+  if sed -n '/^define[^@]*@dfindi(/,/^}/p' "$V/dictprobe.ll" | grep -q -- '-9223372036854775808'; then
+    echo 'dict-probes: dfindi, the probe of native int keys, must not test entries for wide int keys (hbig)'; false; fi &&
+  ktag_wide=$(sed -n '/^define[^@]*@dfindc(/,/^}/p' "$V/dictprobe.ll" | grep -c -- '-9223372036854775808' || true) &&
+  generic_wide=$(sed -n '/^define[^@]*@dfind(/,/^}/p' "$V/dictprobe.ll" | grep -c -- '-9223372036854775808' || true) &&
+  if [ "$ktag_wide" -le "$generic_wide" ]; then
+    echo "dict-probes: dfindc must test entries for wide int keys, and dfind's generic probe must not: they compare $ktag_wide and $generic_wide words with -2**63"; false; fi &&
   "${LLVM}llvm-link" "$V/dictprobe-rt.ll" "$V/dictprobe.ll" -o "$V/dictprobe.bc" && "${LLVM}clang" -O2 "$V/dictprobe.bc" -o "$V/dictprobe" -lm &&
   "$V/dictprobe" && PYSTACHY_GC_STRESS=1 "$V/dictprobe" --hash-cache && r=pass; } > "$L" 2>&1
 step dict-probes $r "$s" "$L" "$(sed -n 's/^worst average: \([0-9.]*\) slots per lookup (limit \([0-9.]*\))$/, "worst_average_slots": \1, "limit": \2/p' "$L")"

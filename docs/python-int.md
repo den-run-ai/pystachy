@@ -41,12 +41,14 @@ print(int("123456789012345678901234567890") % 97)  # 52
   the function is compiled again with it promoting, as a [join](language/typing.md) widens
   other types. A literal that fits is a 64-bit int until it meets one.
   Ordinary functions whose unannotated locals widen from 64-bit to promoting ints can retry
-  just their own body once, including locals receiving a `Callable` or generic class result
+  just their own body once, as other [local joins](language/typing.md#inferred-unions) do,
+  including locals receiving a `Callable` or generic class result
   in a module without the comment. This avoids reloading and compiling unrelated code.
   Other pending joins, captured locals, generators, recursive return inference and newly
   materialized dependencies retain the whole-program retry. Programs using dynamic `Any`
   also retain that retry, including its dispatcher and identity state. The retry changes no integer
-  policy or annotated boundary; `tools/test_python_int_retry.py` checks its pass counts.
+  policy or annotated boundary; `tools/test_python_int_retry.py` and
+  `tools/test_local_join_retry.py` check its pass counts.
 - A `bool` stays a `bool`, as in a module that does not opt in: one returned or stored as an
   `int` (a variable, a field, a tuple's item), or given by a conditional expression, `and`, `or`,
   `min()` or `max()` that may give an int is rejected during compilation (CPython keeps the
@@ -303,7 +305,10 @@ CPython's hash of it, which no 64-bit key's hash equals but -2\*\*63's could, an
 cannot (the int keys' hash gives each int its own, and CPython's hash is never -2\*\*63): the
 lookups of 64-bit keys never meet such an entry and run as before, and only the lookups of keys
 past 64 bits compare digits. A store of a promoting int key finds or adds its entry and then
-writes the value there, as a store by an entry that a lookup found does.
+writes the value there, as a store by an entry that a lookup found does. A program that also opts
+in to [dynamic `Any`](dynamic-any.md) hashes the int keys of its dicts by CPython's hash itself,
+which a key past 64 bits can share with -2\*\*63 (-4): there the lookups skip the entries of keys
+past 64 bits before they compare a key as itself.
 
 A set of ints holds an element that fits in its 8-byte slot, as before, and one past 64 bits at
 CPython's hash of its value, with its pointer in a companion array as long as the table, which the
@@ -493,6 +498,8 @@ the first measurements, before the inline paths, in
   dict that such a call types; `python_int_dict_optional_key_methods.py`: their `get()` and `pop()`
   by an `int | None`; `python_int_hash_collisions.py`: probe chains of 120 keys and
   elements past 64 bits of one CPython hash beside 64-bit ones of the same hash, in dicts and sets;
+  `python_int_dict_sentinel.py`: -2\*\*63 beside a key past 64 bits of its CPython hash, which
+  `python_int_any_dict_eq.py` also holds in a program that opts in to dynamic `Any`;
   `python_int_dict_popitem.py`: `popitem()` of dicts of ints and of int keys, and its tuple;
   `python_int_dict_bool_pop.py`: `pop()` of a bool key of a dict of ints;
   `python_int_dict_items.py`: the tuples of `items()` of dicts of ints and of int keys (also
@@ -588,7 +595,7 @@ the first measurements, before the inline paths, in
   comment, against a fresh pinned CPython recording, in both JIT and AOT. CI requires three
   complete shards. The reviewed manifest permits only exact compiler rejections, classified
   and linked to their remaining limitation; crashes, runtime errors, changed output, changed
-  diagnostics and obsolete exceptions fail. See the [baseline review](reports/python-int-compatibility-2026-10-28.md)
+  diagnostics and obsolete exceptions fail. See the [baseline review](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/reports/python-int-compatibility-2026-10-28.md)
   and [gate contract](testing.md#make-verify). This checks the supported experimental surface;
   it does not establish compatibility for the known rejected programs.
 - `make python-int-optin` retains the exploratory sweep and comparison with an earlier report.

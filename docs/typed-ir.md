@@ -9,7 +9,7 @@ The implementation lives in the [compiler components](../src/README.md):
 [verification and effects](../src/pystachy_compiler/ircheck.py),
 [optimizations](../src/pystachy_compiler/optimizations.py) and
 [LLVM lowering](../src/pystachy_compiler/lowering.py).
-The original proposal and measurements are retained in the [historical design](archive/typed-ir-design.md).
+The original proposal and measurements are retained in the [historical design](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/archive/typed-ir-design.md).
 
 <a id="summary"></a>
 <a id="1-why"></a>
@@ -66,8 +66,9 @@ stages, function signatures/effects and per-pass diffs in one compilation. Its
 JSON report also retains terminal diagnostic locations and specialization notes.
 
 Module declarations follow the same boundary. Globals retain native types in `Val`
-records; `Data` records retain string bytes, callable code/environment references,
-exception descriptor references and classes' reflection records with their name and field
+records; `Data` records retain string bytes, constant tuples' slots, callable
+code/environment references, exception descriptor references and classes' reflection
+records with their name and field
 tables (see [reflection](internals.md#reflection)). `lower_module.py` alone selects their LLVM layouts,
 GC root tables and entry points. It also owns native C ABI adapters, CPython extension
 wrappers and object dispatch tables; these backend stubs do not enter the optimization
@@ -396,15 +397,46 @@ are whole-function IR passes; the others select frontend or lowering choices.
 
 Disable one with `PYSTACHY_OPT=-dictfuse`, several with a comma-separated list, or all with
 `PYSTACHY_OPT=-all`. Differential runs check that the choices preserve behavior.
+
+The native recursion depth policy is not an option: `Gen.recursionscope` decides which
+source functions count toward `sys.setrecursionlimit()` once the whole program is built
+and summarized, before these passes, and gives exactly those functions a checked
+`recursion.enter`, restorations before their returns and the effects (`R I`) of both in
+their summaries. A source function counts if it lies on a cycle of direct calls and
+generator resumes, or reaches `U` other than its resumes and yields; every other function
+keeps at most its entry-depth snapshot (`recursion.depth`), for its handlers. Resumes of
+generators that cannot recur lose their accounting (`recursion.resume` and its restoration). A cycle that reaches nothing else that
+uses the depth (closed recursion) keeps its entries without restorations: lowering passes
+its depth as an argument. See
+[native recursion depth](internals.md#native-recursion-depth).
+
 `tupleret` applies to a function whose every `return` returns a tuple display that the return's
 own block makes (`alloc.fixed`) and that nothing but that block's `tuple.store`s reaches: a new
-tuple, which CPython makes too and no code could hold. A call of it whose result only
+tuple, which CPython makes too and no code could hold. Where another `return` makes one, a
+`return` of a constant tuple (below) qualifies too. A call of it whose result only
 `tuple.load`s read takes the slots from the function's by-value body, `@v.<symbol>`, which
 returns `{i64, ...}`; the function's own symbol becomes a wrapper that makes the tuple from them,
-for every other call and use. A function that returns another tuple on some path (`return t`),
+for every other call and use. A function that may return a constant returns `{i64, ..., ptr}`:
+the last member is the constant's address, or null for a new tuple, and the wrapper returns that
+constant where it is set. A function that returns another tuple on some path (`return t`),
 a generator, and a function no such call reaches are lowered as before, which keeps the identity
 of a tuple a function returns again. `tests/programs/containers/tuple_return_values.py` checks behavior, and
 `tests/ir/tuple_return.calls` pins which calls allocate.
+
+A tuple display of literals makes no `alloc.fixed`. `Gen.tuple_const` makes it module data,
+`@tc.N`, an `[N x i64]` constant of its slots, as CPython's compiler makes such a display a
+constant ([#1016](https://github.com/den-run-ai/pystachy/issues/1016)). There is one constant
+for each module and items, and `()` is one for the whole program, because CPython merges a
+module's equal constants. Its items are literals and the addresses of static strings, bytes
+and other such tuples, so the collector need not scan it. A promoting int item (a module that
+opts in to [promoting ints](python-int.md)) is held as its 64-bit literal: a tuple of 64-bit ints
+is a tuple of promoting ints as it is (`big_tuple_view`), so one constant serves both types,
+and a by-value return gives its Mpz words as 0; a display with `-2**63` is not one. Only displays that the parser made
+(`Node.src`) qualify: one that the compiler builds, such as a call's `*args`, is a new tuple
+at each run, as CPython's is. `tests/programs/containers/tuple_constant_identity.py` and
+`tests/programs/imports/tuple_constant_modules.py` check identity, and
+`tests/ir/tuple_const.calls` pins that such displays allocate nothing.
+
 A field's TBAA tag names the class whose struct lays the field out. A derived class's struct
 begins with its base's, flags included, so an inherited field has its base's tag whichever class
 a reference names, and two references to one object agree (the rule of `Gen.disjoint`). The
@@ -491,7 +523,7 @@ Named edges retain a finite type graph rather than repeatedly expanding canonica
 Recursive aliases are nominal, and existing mutable list/dict storage remains invariant.
 Mutual recursion, generic recursive aliases and recursive shapes outside that documented
 form remain unsupported. Runtime traversals have recursion guards; the
-[JSON codec's depth and integer limits](json-prototype.md) are separate from the type graph.
+[JSON codec's depth and integer limits](json.md) are separate from the type graph.
 
 <a id="appendix-a-how-this-design-was-chosen"></a>
 <a id="appendix-b-prior-art-and-the-measurements-behind-the-exception-and-none-designs"></a>
@@ -503,9 +535,9 @@ form remain unsupported. Runtime traversals have recursion guards; the
 
 ## Design history
 
-The [archived design](archive/typed-ir-design.md) preserves the original goals, migration
+The [archived design](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/archive/typed-ir-design.md) preserves the original goals, migration
 sequence, prototype measurements, prior-art links and implementation-departure log.
-Its [exception and optional-value analysis](archive/typed-ir-design.md#appendix-b-prior-art-and-the-measurements-behind-the-exception-and-none-designs)
+Its [exception and optional-value analysis](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/archive/typed-ir-design.md#appendix-b-prior-art-and-the-measurements-behind-the-exception-and-none-designs)
 explains rejected alternatives. The historical [prototype diff](https://github.com/den-run-ai/pystachy/blob/30b51d9169d802563380216b6352df561b7d8fc8/docs/typed-ir-prototype.diff) applies to
 `bd4cd6a`, not current source. Proposed operations and unsupported feature sketches there
 must not be read as executable examples for today's compiler.

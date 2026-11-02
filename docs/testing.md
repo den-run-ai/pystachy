@@ -114,6 +114,13 @@ Full verification checks the bootstrap and suite under CPython-hosted and native
 with optimizations disabled, without Python available, under UBSan, and with a collection at
 every program allocation. It also runs the contract checks below.
 
+UBSan uses LLVM's compiler-rt builtins (`--rtlib=compiler-rt`) as well as its sanitizer
+runtime. Checked 128-bit multiplication on ARM64 needs a helper that libgcc does not
+provide. CI checks the shared-library and object-cache JIT paths, including deliberate
+overflow and missing-builtin controls, on both Linux architectures. Native thread
+stack-size edge cases are compared with the local CPython oracle rather than an
+architecture-specific recording.
+
 | Area | Checks |
 |---|---|
 | Compiler and IR | Valid typed/LLVM IR, runtime ABI and effects, bounded specialization failures, linear compilation, inherited-AST storage and hierarchy comparison code, JIT dead-code removal and inlining, AOT opt-in code retention. |
@@ -188,7 +195,7 @@ python3 -I tools/syntax_sweep.py --compiler ./pystachy /usr/lib/python3.13
 
 It reports diagnostic differences separately from valid Python that Pystachy cannot parse.
 Current boundaries are in [syntax checks](language/semantics.md#syntax-errors). Earlier test
-counts and syntax-survey results are retained as [historical snapshots](archive/verification-snapshots.md).
+counts and syntax-survey results are retained as [historical snapshots](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/archive/verification-snapshots.md).
 
 ## Compiler coverage
 
@@ -330,7 +337,7 @@ settings that verification drops, builds each variant's runtime in a cache of it
 the logs to `build/variants/`, so run one at a time in a checkout. Each variant takes about as
 long as `make test`. The [Variants workflow](../.github/workflows/variants.yml) runs each one in
 four shards, each in a job of its own (24 jobs, each about five minutes after the compiler's
-build), daily, on demand and when the script or the workflow changes; no check requires it.
+build), daily, on demand and when the pass list, script or workflow changes; no check requires it.
 
 ## Continuous integration
 
@@ -368,8 +375,13 @@ to emit an advisory Actions warning; other threshold crossings are `unconfirmed`
 Correctness, setup and measurement errors fail the job. Timing warnings do not gate merging.
 Peak RSS and retained-memory costs remain separate measurements; this suite records timing.
 The step summary and 30-day `perf-smoke` JSON artifacts retain revisions, toolchain, source
-hashes, raw samples and same-run CPython controls. There is no cross-run download or extra
-dependency. Locally on Linux, use
+hashes, raw samples and same-run CPython controls. The job allows 15 minutes for both
+compiler builds, warmups and any confirmation batches. Atomic JSON checkpoints preserve
+completed workloads during execution. Their `status` is `incomplete` until every workload
+and the summary finish, `error` if a caught exception is recorded and re-raised, or
+`complete` after success; `phase` identifies the current or last stage. A cancelled process
+can leave an `incomplete` checkpoint, which must not be treated as a complete comparison.
+There is no cross-run download or extra dependency. Locally on Linux, use
 `python3 tools/perf_smoke.py --base /path/to/baseline --json build/perf-smoke.json`.
 
 Weekly runs (Monday 08:23 UTC) compare current `main` against the fixed reference
@@ -389,9 +401,16 @@ AOT workloads had over 20% within-revision wall-time spread (excluding removed `
 and optimized-away `unpack_sequence`). This small monitor does not cover memory, full models,
 end-to-end json_repair or all examples; broader benchmark history remains under #45.
 
-A bootstrap job checks compiler and runtime IR fixed points once, then thirty groups
-run in parallel using its verified compiler. Each group checks the same-run bundle's file hashes,
-complete tracked source identity, commit and toolchain before using it. No runtime cache is
+A native bootstrap job on each of **Linux x86-64 and ARM64** checks compiler and runtime
+IR fixed points once, then groups run in parallel using that architecture's verified
+compiler. Pushes to `main` (the release gate's per-commit CI) and manual runs execute all
+thirty groups on both architectures, and the upstream large-regex check on both. To keep
+pull-request CI near its single-architecture size, a pull request runs all thirty x86-64
+groups but an ARM64 smoke subset: the bootstrap, `contracts` (FFI, ABI and thread controls),
+`native-0` and `ubsan-0` (sanitized compiler-rt linkage). An ARM64-only failure in another
+group therefore appears on `main` after merge. Runners are `ubuntu-24.04` and `ubuntu-24.04-arm`, both
+with LLVM 18 and the pinned Python 3.13. Each group checks the same-run bundle's file hashes,
+complete tracked source identity, commit, architecture and toolchain before using it. No runtime cache is
 shared; Python-free and sanitizer rebuilds, GC stress and cache invalidation checks remain
 independent. Local `make verify` and group runs still build their own bootstrap.
 The target is under ten minutes of work per group; the 15-minute job limit leaves room for
@@ -414,10 +433,20 @@ runner variation:
 | `benchmarks` | Benchmark correctness/timings; extended correctness checks reuse the verified compiler. |
 | `scaling` | Every compiler-scaling shape, in two steps, shapes measured side by side. |
 
-A failed group leaves the others running. The required check remains
-`make verify (Linux x86-64, LLVM 18, Python 3.13)`. Its report gate requires every group to
+A failed group leaves the others running. The existing required check remains
+`make verify (Linux x86-64, LLVM 18, Python 3.13)`, alongside
+`make verify (Linux ARM64, LLVM 18, Python 3.13)`. Each report gate requires every group to
 succeed and rejects missing/unexpected stages, inconsistent source revisions/hashes or
 toolchains, different bootstrap IR, and missing or inconsistent bootstrap provenance.
+Bootstrap and report artifact names include `x86_64` or `aarch64`; the final report
+merger checks that every input names the expected native machine. An x86 report renamed
+to look like an ARM artifact is rejected. Combined reports are `x86_64-verification` and
+`aarch64-verification`; download the corresponding `MACHINE-verification-*` artifacts
+and use `tools/merge_verification.py DIRECTORY --machine MACHINE -o REPORT.json` to
+reproduce either gate. Both architectures must pass for the CI workflow to succeed. On a
+pull request the ARM64 gate runs the merger with `--groups contracts,native-0,ubsan-0`: it
+requires exactly those groups and the bootstrap, and labels its combined report `subset`
+rather than `all`. Lint checks that this list matches the matrix's ARM64 `include` entries.
 Reports and logs are uploaded as workflow artifacts, together with the generated dynamic-`Any`
 fuzzer programs. The gate requires its complete 3-program/540-case budget, including 90 typed/Any
 parity cases, all four execution modes, program GC interval 1 and zero mismatches.
@@ -518,12 +547,14 @@ weight is a case's time in thousandths of a median program's. The suite steps of
 `PYSTACHY_CASE_TIMES`) in each group's artifact; refresh the table from one run's native thirds:
 
 ```sh
-python3 tools/case_weights.py verification-native-0/verify/tests-native-0-times.log \
-  verification-native-1/verify/tests-native-1-times.log \
-  verification-native-2/verify/tests-native-2-times.log
+python3 tools/case_weights.py x86_64-verification-native-0/verify/tests-native-0-times.log \
+  x86_64-verification-native-1/verify/tests-native-1-times.log \
+  x86_64-verification-native-2/verify/tests-native-2-times.log
 ```
 
-The table comes from the native halves of CI run 40753601291 (`--keep`; they timed every case).
+Use the `aarch64-` artifact prefix for ARM64 timings. Keep architectures in separate
+timing series. The table comes from the native halves of CI run 40753601291
+(`--keep`; they timed every case), before architecture-prefixed artifact names.
 It replaced a first table made from the 2-second file times of the promoting-int sweeps of runs
 40719438561 and 40731629369 and a one-core local run of the deviations and rejections. Judged by
 that run's opt-off halves and UBSan thirds, which it was not made from, the heaviest shard exceeds
@@ -676,7 +707,7 @@ test programs (many intentionally invalid), and `runtime.py`'s compiler-only `_r
 intrinsics. It does not replace bootstrap, IR parity or runtime verification.
 
 The [Installation workflow](../.github/workflows/install.yml) builds and installs from source
-on Ubuntu 24.04, macOS 15 arm64 and macOS 15 x86-64, then runs hosted and native JIT/AOT smoke
+on Ubuntu 24.04 x86-64/ARM64, macOS 15 arm64 and macOS 15 x86-64, then runs hosted and native JIT/AOT smoke
 tests (`tools/install_smoke.py`). The [Packages workflow](../.github/workflows/packages.yml)
 builds the example and ports source wheels and runs them under CPython, JIT and AOT
 (`tools/package_smoke.py`). The [Release workflow](../.github/workflows/release.yml) runs its

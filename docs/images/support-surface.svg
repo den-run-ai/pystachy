@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1056" viewBox="0 0 1200 1056" role="img" aria-labelledby="title desc">
   <title id="title">Pystachy inside the CPython feature surface</title>
-  <desc id="desc">A concrete native core with default int64 and NaN identity limits is nested inside the larger bounded Pystachy surface. Dynamic Any, promoting ints and closed recursive JSON unions are separate prototypes. Experimental Any has local accepted gaps: skipped cross-type comparison bodies, remaining container and generator identity boundaries, and objects with only __getitem__ that raise when iterated. A separate region lists CPython features with no native contract, beside a neutral explicit-interop note. Area is schematic, not a coverage measurement or a parity guarantee.</desc>
+  <desc id="desc">A concrete native core with default int64 and NaN identity limits is nested inside the larger bounded Pystachy surface. Dynamic Any and promoting ints can be enabled together; closed recursive JSON unions use a separate representation. Unsupported comparison bodies raise explicit TypeError. Experimental Any retains container and generator identity gaps, and objects with only __getitem__ raise when iterated. A separate region lists CPython features with no native contract, beside a neutral explicit-interop note. Area is schematic, not a coverage measurement or a parity guarantee.</desc>
   <style>
     text { font-family: "DejaVu Sans", Arial, sans-serif; fill: #18263b; }
     .title { font-size: 30px; font-weight: 700; }
@@ -14,7 +14,7 @@
   </style>
   <rect width="1200" height="1056" fill="#ffffff"/>
   <text x="38" y="47" class="title">CPython support surface</text>
-  <text x="38" y="79" class="sub">Native compilation · schematic subsets · snapshot 9c38ee6c, 28 October 2026 (Pacific)</text>
+  <text x="38" y="79" class="sub">Native compilation · schematic subsets · contracts at main 06e3ad5d</text>
   <rect x="38" y="103" width="18" height="18" rx="4" fill="#e5f4e9" stroke="#248049"/>
   <text x="65" y="118" class="body green">G KEEP</text>
   <rect x="219" y="103" width="18" height="18" rx="4" fill="#fff4ce" stroke="#ae7b00"/>
@@ -45,13 +45,13 @@
   <text x="62" y="617" class="body yellow">Strings + dictionaries · classes / properties / inheritance</text>
   <text x="62" y="643" class="body yellow">Generators + cleanup · exceptions + native unwinding</text>
   <text x="62" y="669" class="body yellow">Closed value unions · boxed items · retained memory</text>
-  <text x="62" y="710" class="head yellow">Y PROTO · Three separate representations</text>
+  <text x="62" y="710" class="head yellow">Y PROTO · Representations with bounded contracts</text>
   <text x="62" y="738" class="body yellow">Dynamic Any: mixed records, runtime boxes and identity tracking</text>
-  <text x="62" y="763" class="body yellow">Promoting ints: python-int opt-in; inline while values fit 64 bits</text>
+  <text x="62" y="763" class="body yellow">Promoting ints: can combine with Any; inline while values fit 64 bits</text>
   <text x="62" y="789" class="body yellow">Recursive JSON: closed recursive union boxes; no Any opt-in needed</text>
   <rect x="60" y="806" width="730" height="125" rx="12" fill="#fce9e7" stroke="#ba4036" stroke-width="2"/>
-  <text x="82" y="833" class="head red">R FIX · Accepted-program gaps inside experimental Any</text>
-  <text x="82" y="863" class="body red">Some cross-type comparison bodies still skipped (#803)</text>
+  <text x="82" y="833" class="head red">Dynamic Any · Documented compatibility boundaries</text>
+  <text x="82" y="863" class="body red">Unsupported comparison bodies raise TypeError (#803)</text>
   <text x="82" y="889" class="body red">Container / generator identity boundaries remain (#858)</text>
   <text x="82" y="915" class="body red">Objects with only __getitem__ raise when iterated (#773)</text>
   <rect x="835" y="198" width="325" height="757" rx="18" fill="#fce9e7" stroke="#ba4036" stroke-width="2"/>

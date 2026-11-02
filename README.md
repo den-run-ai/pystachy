@@ -67,9 +67,11 @@ typed control loop, native tool calls and file edits in a standalone executable.
 
 Use a [native release package or Docker image](docs/install.md) to skip bootstrapping.
 The current prerelease is [v0.1.0-alpha.3](https://github.com/den-run-ai/pystachy/releases/tag/v0.1.0-alpha.3);
-see its [release notes](docs/releases/v0.1.0-alpha.3.md) for changes and known issues.
+its release page has changes, known issues and downloadable assets.
 Release packages require LLVM; the image includes it. Source `main` can contain newer changes.
-For a source build:
+Source builds support Linux x86-64/ARM64 and macOS Apple Silicon/Intel. Linux ARM64
+release archives and native Docker images are part of alpha.4 preparation; alpha.3
+does not include them. For a source build:
 
 Install LLVM, **Python 3.11+** and `make` with your package manager.
 On Ubuntu 24.04:
@@ -110,7 +112,10 @@ use `python3 -m pystachy run demo.py` with Python 3.11+ on Ubuntu, or
 `python3.13 -m pystachy run demo.py` with Homebrew.
 See [installation and setup](docs/install.md) for uv, custom prefixes and dependency checks,
 or [compiler commands and settings](docs/internals.md). Full verification uses Python 3.13
-on Linux x86-64.
+on Linux x86-64 and ARM64, with independent bootstrap and verification artifacts.
+
+Continue with [your first compiled program](docs/getting-started.md) for a small
+run–diagnose–fix walkthrough and a fair comparison of execution modes.
 
 ## Performance
 
@@ -143,12 +148,14 @@ Some standard-library modules compile unchanged. Others, including `fnmatch`, `t
 The adapted code remains valid Python and can be diffed against upstream.
 The library also includes `re`, `itertools`, Unicode normalization, a bounded native `json`,
 `tomllib.loads()`, `functools.cache` / `lru_cache`, `collections.namedtuple`, and in-memory
-binary I/O with `io.BytesIO`.
+binary I/O with `io.BytesIO`. Dynamic `Any` JSON decoding preserves integers beyond 64 bits;
+typed `JSONValue` decoding retains checked 64-bit storage.
 See [library coverage and port notes](lib/README.md) for supported APIs and remaining limits.
 The [CPython support map](docs/support-surface.md) diagrams the native core, bounded features
 and the compiler, runtime and IR costs of broader compatibility.
 There are also [14 third-party ports](ports/README.md), with scoped APIs and documented adaptations.
-The [compatibility audit](docs/reports/compatibility-updates.md) records measured coverage and blockers.
+The [historical compatibility audit](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/reports/compatibility-updates.md) records
+coverage and blockers at its evaluated revisions; use the library reference for current APIs.
 
 For numerical work, the [float64 array example](examples/ndarray/README.md) provides
 multidimensional views, broadcasting, fused expressions and optional BLAS matrix products.
@@ -169,7 +176,7 @@ algorithmic code; broad compatibility with arbitrary PyPI packages is still limi
   native `bytearray` and binary filesystem I/O remain unsupported. `io.BytesIO` is supported.
   See the [class rules](docs/language/typing.md#single-inheritance).
 - Dynamic `Any` remains experimental and opt-in. Unsupported cross-type comparison bodies
-  can still skip user code outside the proven operation surface. Supported paths now include
+  raise an explicit error when selected. Supported paths include
   finite missing-field writes, known helper calls and escapes, operand rebinding, inferred
   getters and nested container comparisons with user callbacks. They preserve effects,
   native storage and aliases within the [comparison acceptance matrix](docs/dynamic-any.md#operations).
@@ -185,6 +192,10 @@ algorithmic code; broad compatibility with arbitrary PyPI packages is still limi
 - Strings store UTF-8 with code-point lengths, indexing, slicing and search offsets; Unicode case mapping remains incomplete.
   Use the opt-in [Unicode porting audit](docs/language/compatibility.md#text-and-file-positions)
   to flag byte-oriented operations on non-ASCII input.
+- Recursive native calls respect `sys.setrecursionlimit()`, raising catchable `RecursionError` in JIT
+  and AOT. Non-recursive frames do not count, so native depth differs from CPython, and excessively
+  raised limits can still exhaust the physical stack;
+  see the [recursion policy](docs/language/compatibility.md#errors-and-control-flow).
 - Many unsupported constructs produce compile-time diagnostics; this is not a complete
   compatibility check. Known semantic differences are listed in
   [deviations from CPython](docs/language.md#deviations-from-cpython).
@@ -208,6 +219,7 @@ Start with the [documentation index](docs/README.md) for task-based navigation.
 
 | Guide | Covers |
 |---|---|
+| [Getting started](docs/getting-started.md) | One program, a compiler diagnostic, a fix and measurement basics |
 | [Language](docs/language.md) | Supported Python, typing rules and semantic differences |
 | [Libraries](lib/README.md) | Available modules, port adaptations and upstream tests |
 | [Performance](docs/performance.md) | Speed, startup, memory and compile-time measurements |
@@ -217,7 +229,7 @@ Start with the [documentation index](docs/README.md) for task-based navigation.
 | [Typed IR](docs/typed-ir.md) | Shared intermediate representation and optimizations |
 | [Interoperability](docs/ffi.md) | C calls, embedded CPython and CPython extension modules |
 | [Runtime in Python](docs/runtime-in-subset.md) | Runtime functions compiled from the typed subset |
-| [History](docs/history.md) | Design decisions and the Ouro v1 lineage |
+| [Development tools](tools/README.md) | Maintained checks, compatibility probes and profiling entry points |
 
 ## Get involved
 

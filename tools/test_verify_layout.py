@@ -72,6 +72,47 @@ class LayoutTests(unittest.TestCase):
         self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
         self.assertIn("tests/errors/old.py", result.stderr)
 
+    def test_run_stops_before_workers_when_cache_preparation_fails(self):
+        self.write("compiler", """#!/bin/sh
+echo "$1 $2" >> calls
+case $2 in
+  */warm.py) echo 'cache preparation output'; echo 'cache cleanup failed' >&2; exit 23 ;;
+esac
+echo 1
+""")
+        (self.root / "compiler").chmod(0o755)
+        result = self.run_script("tests/run.sh", "./compiler", "jit",
+                                 "tests/programs/a/one.py", PYSTACHY_JOBS="2")
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("runtime cache preparation failed (exit 23)", result.stderr)
+        self.assertIn("cache preparation output", result.stderr)
+        self.assertIn("cache cleanup failed", result.stderr)
+        self.assertNotIn("passed", result.stdout)
+        calls = (self.root / "calls").read_text().splitlines()
+        self.assertEqual(len(calls), 1)
+        self.assertTrue(calls[0].startswith("run "))
+        self.assertTrue(calls[0].endswith("/warm.py"))
+
+    def test_run_keeps_successful_cache_preparation_quiet(self):
+        self.write("compiler", """#!/bin/sh
+echo "$1 $2" >> calls
+case $2 in
+  */warm.py) echo 'cache preparation output'; echo 'cache diagnostic' >&2; exit 0 ;;
+esac
+case $2 in */one.py) echo 1 ;; */two.py) echo 2 ;; esac
+""")
+        (self.root / "compiler").chmod(0o755)
+        result = self.run_script("tests/run.sh", "./compiler", "jit",
+                                 "tests/programs/a/one.py", "tests/programs/b/two.py",
+                                 PYSTACHY_JOBS="2")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("2 passed, 0 failed", result.stdout)
+        self.assertNotIn("cache", result.stdout + result.stderr)
+        calls = (self.root / "calls").read_text().splitlines()
+        self.assertEqual(len(calls), 3)
+        self.assertTrue(calls[0].endswith("/warm.py"))
+        self.assertCountEqual(calls[1:], ["run tests/programs/a/one.py", "run tests/programs/b/two.py"])
+
     def test_closure_helper_uses_a_temporary_bracket_path_in_both_modes(self):
         for name in ("tests/programs/language/closure_paths.py",
                      "tests/programs/language/closure_paths.path",
