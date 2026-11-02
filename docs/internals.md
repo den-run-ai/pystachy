@@ -524,12 +524,14 @@ or inlining pipeline, and does not affect `build` or `ext`.
 pipeline, allowing optimization across that boundary. The program's module also defines
 `pys_plain`: 1 when no module opts in to dynamic `Any` or promoting ints, else 0. The runtime
 tests it (`opt_in()` in `runtime.c`) only on paths that values of those opt-ins lead to: ints
-past 64 bits in containers, promoting ints and list identity companions. For a plain program
-those paths become traps, and `-O2` drops static helpers that have no remaining caller from
-the executable. Explicit `mpz` users retain the helpers they need. The reusable runtime cache
-still contains all features. `make aotprobe` checks retained symbols and output for plain programs, direct
-opt-ins and imported opt-ins. The JIT tier's precompiled runtime and `ext` keep the runtime's
-weak definition, 0. `ext` builds a shared CPython module with its boundary wrappers; see the
+past 64 bits in containers, promoting ints and list identity companions, which only those
+opt-ins create (every list operation that keeps a companion in step tests it first). For a
+plain program those paths become traps, and `-O2` drops static helpers that have no remaining
+caller from the executable. Explicit `mpz` users retain the helpers they need. The reusable
+runtime cache still contains all features. `make aotprobe` checks retained symbols and output
+for plain programs, direct opt-ins and imported opt-ins, and that a plain program's list store
+writes no companion. The JIT tier's precompiled runtime and `ext` keep the runtime's weak
+definition, 0. `ext` builds a shared CPython module with its boundary wrappers; see the
 [FFI guide](ffi.md).
 
 Compiled code gets its objects and fixed tuples that hold no reference from `pys_new` (the
