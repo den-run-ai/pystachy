@@ -24,7 +24,7 @@ Pystachy loads its ports of those C modules, `lib/_pystachy_binascii.py`,
 end of the program runs `atexit`'s callbacks. For `abc`, which CPython imports as it starts, it
 loads `lib/_pystachy_abc.py` ([abc](../../lib/compatibility.md#abc)).
 `_weakref` loads `lib/_pystachy_weakref.py`,
-[collector-backed references](../prototypes/weakref.md) to ordinary class instances, with
+[collector-backed references](../weakref.md) to ordinary class instances, with
 callbacks that run after the collection that finds a referent dead; as in CPython, a reference
 has no attributes of its own, so its class's fields are the module's.
 `import weakref` loads an adapted `lib/weakref.py`, whose `ref` is
@@ -286,9 +286,8 @@ arguments. Supported iteration contexts and other restrictions are in the
 | `time` | `time`, `time_ns`, `monotonic`, `perf_counter`, `process_time`, their `_ns` forms, and `sleep`. |
 | `tempfile` | `mkdtemp`. |
 | `errno` | The errno constants. |
-| `select` | `select()` of three lists of integer descriptors and an optional timeout, a [POSIX prototype](../prototypes/select.md); a file's `fileno()` is its descriptor. |
+| `select` | `select()` of `list[int]` file descriptors and an optional positional timeout; pass a file's `fileno()` rather than the file itself. No `poll`, `epoll`, `fileno()` objects or keyword arguments; see the [POSIX contract](../select.md). |
 | `math` | Functions and constants with CPython's domain and range errors; restrictions below. |
-| `select` | `select()` of `list[int]` file descriptors and an optional positional timeout, with CPython's results and errors; no `poll`, `epoll`, `fileno()` objects or keyword arguments ([prototype](../prototypes/select.md)). |
 | Type and compiler support | `typing`, `collections.abc` (also `_collections_abc`), `dataclasses`, `builtins`, `__future__`; [FFI](../ffi.md) provides `@ffi.extern` and `@ffi.export`. |
 
 `open()` supports text modes, `buffering=`, `newline=` translation and positions for `"+"`

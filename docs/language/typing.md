@@ -205,7 +205,7 @@ existing mutable containers remain invariant. The type graph is finite and does
 not prescribe a fixed data depth. Runtime traversal has recursion guards, and the
 native JSON codec has its own depth/int64 limits. Unlike other aliases, a recursive
 alias is nominal: another alias with the same members is a different type. See the
-[JSON prototype](../json-prototype.md) for representation, operations and API scope.
+[JSON prototype](../json.md) for representation, operations and API scope.
 `Any` remains inference-only here (but in a module that opts in to
 [dynamic `Any`](../dynamic-any.md)); this adds no runtime compilation.
 

@@ -81,7 +81,9 @@ handle.join()
 print(handle.is_done())
 _thread._shutdown()
 
-for size in [32768, 1 << 40, 32767, -1, 0]:
+# The platform can require more than 32 KiB (notably Linux ARM64). The native
+# edge values are checked against live CPython by tools/test_runtime_thread.py.
+for size in [1 << 20, 1 << 40, 32767, -1, 0]:
     try:
         print(size, _thread.stack_size(size), _thread.stack_size())
     except ValueError as e:

@@ -43,7 +43,7 @@ classes, hooks, `default`, `skipkeys`, `check_circular`, `strict` and indentatio
 are unsupported. Existing typed containers are not implicitly converted to
 recursive mutable storage. `ensure_ascii=False` returns non-ASCII and surrogate
 characters unchanged; writing that string follows the runtime's text-encoding
-rules. See the [prototype design and validation](../docs/json-prototype.md).
+rules. See the [native JSON API and representation](../docs/json.md).
 
 ## Tomllib
 
@@ -87,17 +87,17 @@ an offset's hour and minute groups matched, which its pattern ensures, and passe
 
 The former lock/capability prototype has been removed. `_imp` is unavailable:
 Pystachy resolves imports while compiling and has no CPython runtime importer.
-See [scope](../docs/prototypes/imp.md).
+See [scope](../docs/stdlib.md#library-scope).
 
 ## `_ast` prototype
 
 The former constructor-only prototype has been removed. `_ast` and `ast` are
 unavailable; Pystachy does not expose source parsing or AST compilation through
-these APIs. See [scope](../docs/prototypes/ast.md).
+these APIs. See [scope](../docs/stdlib.md#library-scope).
 
 ## `_weakref` prototype
 
-The [prototype contract](../docs/prototypes/weakref.md) covers `ref` and
+The [weak-reference contract](../docs/weakref.md) covers `ref` and
 `ReferenceType`, one class, to ordinary class instances: calling a reference
 returns its referent, or `None` once the collector has reclaimed it. While both
 referents live, `==`, `!=` and `hash()` are the referents'; a dead reference
@@ -220,7 +220,7 @@ and dynamic attributes remain unavailable.
 `_markupbase` is an internal implementation detail. Its abstract-construction
 guard is omitted and its field layout is declared in `__init__`. Its legacy SGML
 helpers remain in the source but are outside the compiled surface tested here.
-See [the probe record](../docs/html-parser-probe.md) for provenance and commands.
+See [the probe record](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/html-parser-probe.md) for provenance and commands.
 
 ## Difflib
 

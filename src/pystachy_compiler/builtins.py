@@ -162,6 +162,12 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         self.err(GALIASUSE if name == GALIAS else TYPESUSE.replace("NAME", name[len(TYPESMOD) + 1 :]))
     if name == "ffi.at":
         self.err("ffi.at(xs, k) passes a list from an index to C: it is only an argument of a call of an @extern function, for a list[float] or list[ffi.c_int64] parameter")
+    if name == "__pys_thread_stack_valid":
+        if (self.curfn.mod != "_thread" or not lib_source(self.curfn.node.line, self.libdir, "_pystachy_thread.py") or
+                len(args) != 1 or any([a.kind in ["kw", "starred", "dstar"] for a in args])):
+            self.err(f"name '{name}' is not defined")
+        size = self.as_int(self.expr(args[0], "int"))
+        return Val(self.rt("pys_thread_stack_valid", "i64", [f"i64 {size.v}"]), "int")
     if name == "__pys_exc_repr":
         return self.exc_brepr(self.expr(args[0], ""))  # (exc_helpers)
     if name == "__pys_repr_enter" or name == "__pys_repr_leave":

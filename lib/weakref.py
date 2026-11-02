@@ -10,7 +10,7 @@ https://peps.python.org/pep-0205/
 # the module-global ref() function imported from _weakref.
 
 # Pystachy port: _weakref has no getweakrefcount, getweakrefs, proxy, CallableProxyType, ProxyType
-# or _remove_dead_weakref (docs/prototypes/weakref.md)
+# or _remove_dead_weakref (docs/weakref.md)
 from _weakref import (
      ref,
      ReferenceType)
