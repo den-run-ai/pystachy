@@ -459,6 +459,14 @@ two classes, still need an annotation or are rejected. A joined union supports t
 operations of an annotated one, so narrow it before other operations; a global or a field
 is not narrowed by a test, as described above.
 
+Where the only joins a function's body finds are its own unannotated locals, as with
+`total` above, the compiler compiles just that function again instead of the program.
+Joins of globals, fields and returns, of locals in nested functions and generators or that
+a closure captures, and of functions whose first attempt compiled another function, class,
+closure or specialization still compile the program again; so do all joins in a program
+that opts in to [dynamic `Any`](../dynamic-any.md). Either way, the result is that of the
+annotated program.
+
 ## Mixed scalar and container unions
 
 Explicit unions may also combine scalar types with `list[T]` and `dict[K, V]`,

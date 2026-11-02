@@ -1432,6 +1432,7 @@ class Parser:
         if self.peek() != ",":
             return e
         t = mk("tuple", "", line, [e])
+        t.src = True
         while self.eat(","):
             if self.peek() not in STARTS and self.peek() != "*":
                 break
@@ -1660,7 +1661,11 @@ class Parser:
                 if not comma and items[0].kind == "sliceitem":
                     e = mk("slice", "", line, [e] + items[0].kids)
                 else:
-                    e = mk("index", "", line, [e, items[0] if not comma else mk("tuple", "", line, items)])
+                    k = items[0]
+                    if comma:
+                        k = mk("tuple", "", line, items)
+                        k.src = True
+                    e = mk("index", "", line, [e, k])
             elif self.eat("."):
                 e = mk("attr", self.expect("id").text, line, [e])
             else:
@@ -1861,7 +1866,9 @@ class Parser:
             return mk(k, "", line, [])
         if k == "(":
             if self.eat(")"):
-                return mk("tuple", "", line, [])
+                e = mk("tuple", "", line, [])
+                e.src = True
+                return e
             if self.peek() == "yield":
                 e = self.yield_()
                 if self.peek() != ")":
@@ -1874,6 +1881,7 @@ class Parser:
                 e.s = "gen"
             elif self.peek() == ",":
                 e = mk("tuple", "", line, [e])
+                e.src = True
                 self.extra += 3  # (later items are 2 or 3 levels deeper in CPython's parser)
                 while self.eat(","):
                     if self.peek() == ")":

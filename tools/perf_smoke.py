@@ -115,6 +115,20 @@ def summary(report):
     return "\n".join(lines) + "\n"
 
 
+def write_report(path, report):
+    """Publish a valid checkpoint; cancellation must not truncate the previous one."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent, delete=False) as output:
+        temporary = Path(output.name)
+        try:
+            json.dump(report, output, indent=2)
+            output.write("\n")
+            output.flush()
+            os.replace(temporary, path)
+        finally:
+            temporary.unlink(missing_ok=True)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--base", type=Path, required=True, help="baseline checkout")
@@ -125,45 +139,65 @@ def main():
     if "PYSTACHY_LLVM" in os.environ:
         env["PYSTACHY_LLVM"] = os.environ["PYSTACHY_LLVM"]
     env["PYTHONHASHSEED"] = "0"
-    affinity = sorted(os.sched_getaffinity(0))
-    os.sched_setaffinity(0, {affinity[0]})
-    roots = {"base": args.base.resolve(), "head": ROOT}
-    report = {"schema": 2, "python": sys.version, "platform": platform.platform(),
-              "runner_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
-              "cpu": Path("/proc/cpuinfo").read_text().split("model name", 1)[-1].splitlines()[0],
-              "affinity": [affinity[0]], "load_average": os.getloadavg(),
+    affinity = None
+    report = {"schema": 2, "status": "incomplete", "phase": "setup",
               "revisions": {}, "bootstrap": {}, "results": []}
     try:
+        write_report(args.json, report)
+        affinity = sorted(os.sched_getaffinity(0))
+        os.sched_setaffinity(0, {affinity[0]})
+        roots = {"base": args.base.resolve(), "head": ROOT}
+        report.update(python=sys.version, platform=platform.platform(),
+                      runner_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+                      cpu=Path("/proc/cpuinfo").read_text().split("model name", 1)[-1].splitlines()[0],
+                      affinity=[affinity[0]], load_average=os.getloadavg())
+        write_report(args.json, report)
         with tempfile.TemporaryDirectory(prefix="pystachy-perf-") as tmp:
             directory = Path(tmp)
             compilers, envs = {}, {}
             for side, root in roots.items():
+                report["phase"] = f"bootstrap:{side}"
+                write_report(args.json, report)
                 report["revisions"][side] = execute(["git", "-C", str(root), "rev-parse", "HEAD"], env, 10)["stdout"].strip()
                 (directory / side).mkdir()
                 envs[side] = dict(env, PYSTACHY_HOME=str(root), PYSTACHY_CACHE=str(directory / side / "cache"))
                 compiler = str(directory / side / "compiler")
                 print(f"Building {side} compiler at {report['revisions'][side]}", flush=True)
+                write_report(args.json, report)
                 report["bootstrap"][side] = execute([sys.executable, str(root / "pystachy.py"), "build",
                                                      str(root / "pystachy.py"), "-o", compiler], envs[side], 180)
                 compilers[side] = compiler
+                write_report(args.json, report)
+            report["phase"] = "toolchain"
+            write_report(args.json, report)
             llvm = Path(env.get("PYSTACHY_LLVM", "/usr/lib/llvm-18/bin"))
             report["clang"] = execute([str(llvm / "clang"), "--version"], env, 10)["stdout"]
             built = set()
             for name in CASES:
+                report["phase"] = f"measure:{name}"
+                write_report(args.json, report)
                 print(f"Measuring {name}", flush=True)
                 report["results"].append(measure(name, compilers, envs, directory, built))
+                write_report(args.json, report)
+        report["phase"] = "summary"
+        write_report(args.json, report)
         text = summary(report)
         print(text)
         if os.environ.get("GITHUB_STEP_SUMMARY"):
             with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as output:
                 output.write(text)
-    except (OSError, RuntimeError, ValueError) as exc:
+        report.update(status="complete", phase="complete")
+    except BaseException as exc:
+        report["status"] = "error"
         report["error"] = str(exc)
+        report["error_type"] = type(exc).__name__
         raise
     finally:
-        args.json.parent.mkdir(parents=True, exist_ok=True)
-        args.json.write_text(json.dumps(report, indent=2) + "\n")
-        os.sched_setaffinity(0, affinity)
+        try:
+            write_report(args.json, report)
+        finally:
+            if affinity is not None:
+                os.sched_setaffinity(0, affinity)
 
 
 if __name__ == "__main__":

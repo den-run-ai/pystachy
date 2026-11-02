@@ -57,19 +57,19 @@ NOT_RESET = {
 # and the function it interrupts sees what it added. Only Gen.__init__ assigns them of the lists.
 PROGRAM = """
     classes tmpl compiling utags specdone funcs aliases imports fglobals mvars gtypes globs gcroots
-    consts bconsts strs bstrs strvals vnodes cmexit rtfns opfxs out fns fll summaries xcls xvals
+    consts bconsts tconsts tconstdata strs bstrs strvals vnodes cmexit rtfns opfxs out fns fll summaries xcls xvals
     xmods xsigs xctors xtypes exctree eh opts reds lazy lazyat wake called gflag ocls ocmp hcls one
     xobj impg wide nokey nonereads noneglobalpending attrvals attrown hints newhints final xnot newx retseen
     template_instances template_retained retainers unsupported cnodes hooks chooks flagged unraised
     noneglobals intglobals rangeused objectused intat strglobals strtuples abstracts abcmeta
     constflags late ext libdir prefix csyms csymline cdirect extvars unicode_audit rtmode rtdefs
     rtcache externs deps comp flowctx closures clokeys adapters adrets ncv cacheforms decorated
-    decoexprs cvos ngenexp vowned gendrops gproto excread causeread coros tbaa tbaacls vrets vcalls
+    decoexprs cvos ngenexp vowned gendrops gproto excread causeread coros tbaa tbaacls vrets vconst vcalls
     gkk holes twin_of twin_set origin inits mfile compiled pending qret qholes qused qforward qroot
     inited guessed galias nts cnts ntdflts hasfrozen cvars typevars tvtuples tvdefaults tparams
     pep695 taliases recursive reflrecs reflstores refllate refltexts rtdatas dyntypes dynclasses
     dynfns dynkeys dynlines dynsig dynfuncs dynfnt dynboxes dynwide dynrets dynrline dynseen gidbox
-    idoff idfull idevent idsplit idtry idhint
+    idoff idfull idevent idsplit idtry idhint gendrops_counted genplain rdpass entries resumes_counted
 """.split()
 # Gen's fields that hold a module's state, one lowering's, or one operation's, which the operation
 # sets and then restores or clears: a nested compile that starts inside the operation sees them.

@@ -22,7 +22,7 @@ import tempfile
 from install import DIRS, FILES
 
 ROOT = Path(__file__).resolve().parents[1]
-TARGETS = ("linux-x86_64", "macos-arm64", "macos-x86_64")
+TARGETS = ("linux-x86_64", "linux-aarch64", "macos-arm64", "macos-x86_64")
 LAUNCHER = '''#!/bin/sh
 # Relocatable native Pystachy release; also supports a symlink on PATH.
 pystachy_launcher=$0
@@ -56,6 +56,8 @@ def host_target():
     system = {"Linux": "linux", "Darwin": "macos"}.get(platform.system())
     machine = {"x86_64": "x86_64", "amd64": "x86_64", "arm64": "arm64",
                "aarch64": "arm64"}.get(platform.machine().lower())
+    if system == "linux" and machine == "arm64":
+        machine = "aarch64"
     target = f"{system}-{machine}"
     if target not in TARGETS:
         raise ValueError(f"unsupported release host: {platform.system()} {platform.machine()}")
@@ -67,11 +69,14 @@ def binary_target(binary):
     with binary.open("rb") as handle:
         header = handle.read(32)
     if header[:4] == b"\x7fELF" and len(header) >= 20:
-        if header[4] == 2 and header[5] in (1, 2):
-            endian = "<" if header[5] == 1 else ">"
-            kind, machine = struct.unpack(endian + "HH", header[16:20])
-            if kind in (2, 3) and machine == 62:
-                return "linux-x86_64"
+        # Both supported Linux ABIs are little-endian LP64. In particular,
+        # AArch64 big-endian and ELF32/ILP32 are not this release target.
+        if header[4] == 2 and header[5] == 1:
+            kind, machine = struct.unpack("<HH", header[16:20])
+            if kind in (2, 3):
+                target = {62: "linux-x86_64", 183: "linux-aarch64"}.get(machine)
+                if target is not None:
+                    return target
     # Release artifacts are single-architecture executables, rather than fat Mach-O.
     endian = {b"\xcf\xfa\xed\xfe": "<", b"\xfe\xed\xfa\xcf": ">"}.get(header[:4])
     if endian and len(header) >= 16:

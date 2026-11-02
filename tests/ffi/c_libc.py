@@ -67,7 +67,9 @@ def strncmp(a: str, b: str, n: c_size_t) -> c_int: ...
 p = strdup("Wikipedia")
 s = string_at(p, strlen("Wikipedia"))
 free(p)
-print(s, strlen(s), strnlen("a\0b", 3), strcmp("a", "b"), strcmp("b", "a"), atoi("-5"), abs(-7), labs(-2**62))
+# C guarantees only strcmp's sign; optimized libc implementations can return
+# different magnitudes (for example -1/+1 on x86-64 and -64/+64 on AArch64).
+print(s, strlen(s), strnlen("a\0b", 3), strcmp("a", "b") < 0, strcmp("b", "a") > 0, atoi("-5"), abs(-7), labs(-2**62))
 print(to_u64("9223372036854775807", 0, 10), getenv("PYSTACHY_FFI_TEST_UNSET"), memchr("abc", 98, 3) != 0, "abc".find("b"))
 # a dict key (made at run time, or a literal) caches its hash in the str, beside its bytes: C still
 # gets only the bytes

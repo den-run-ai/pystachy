@@ -385,7 +385,7 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                     effects = self.opfx(i, fn.fa)
                     writes[key] = effects & (RAWW | FXBIT["wG"]) != 0
                     raises[key] = effects & FXBIT["R"] != 0
-        proof = UnionProof(fn, self.utags, writes, self.gtypes, raises, self.globs)
+        proof = UnionProof(fn, self.utags, writes, self.gtypes, raises, self.globs, self.tconstdata)
         proof.run()
         for j in range(len(proof.bad)):
             self.bad_ir(fn, fn.blocks[at[proof.badblocks[j]]], proof.bad[j])
@@ -436,8 +436,18 @@ def gen_effects(self) -> None:
         m = 0
         cs: list[int] = []
         seen: dict[int, bool] = {}
+        # (a function's entry depth, gen_enter's snapshot, adds no effect of its own: a counted
+        # function's entry gets its own (Gen.recursionscope), an uncounted one keeps it only for
+        # its handlers' restorations, whose effects count, and the others drop it)
+        snap: Ins | None = None
+        if fn.rdepth != "" and len(fn.blocks) > 0 and len(fn.blocks[0].code) > 0:
+            first = fn.blocks[0].code[0]
+            if first.op == "rt" and first.s == "recursion.depth" and len(first.r) == 1 and f"%t{first.r[0]}" == fn.rdepth:
+                snap = first
         for b in fn.blocks:
             for i in b.code:
+                if i is snap:
+                    continue
                 c = i.s if i.op == "call" else "@init." + i.s if i.op == "init" else ""
                 if c in self.fll:
                     ix = self.fll[c]

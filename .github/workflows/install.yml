@@ -1,5 +1,5 @@
-# Validate the documented source install on Linux and both macOS architectures.
-# Full verification retains its separate Linux x86-64 gate.
+# Validate the documented source install on both Linux and macOS architectures.
+# Full verification retains its separate Linux x86-64 and ARM64 gates.
 name: Installation
 
 on:
@@ -26,7 +26,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, macos-15, macos-15-intel]
+        os: [ubuntu-24.04, ubuntu-24.04-arm, macos-15, macos-15-intel]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:

@@ -693,6 +693,7 @@ def clone_node(n: Node) -> Node:
     c.chk = n.chk
     c.mchk = n.mchk
     c.depth = n.depth
+    c.src = n.src
     return c
 
 
