@@ -768,6 +768,45 @@ static I ascii_end(const char *p, I i, I n) {   /* the first index from i of a b
   while (i < n && (unsigned char)p[i] < 128) i++;
   return i;
 }
+#ifndef BYTESCAN_WORD
+#define BYTESCAN_WORD() ((void)0)
+#endif
+#ifndef BYTESCAN_BYTE
+#define BYTESCAN_BYTE() ((void)0)
+#endif
+static I byte_scan(const char *p, I i, I end, unsigned first, unsigned second, unsigned below) {
+  /* Skip eight bytes only after proving all are ordinary. memcpy permits every alignment
+     and reads only within [i, end); neither a NUL terminator nor allocation padding is read.
+     Refine a matching word in byte order: subtraction can mark neighboring lanes through
+     borrowing, and the same code must work on both little- and big-endian targets. */
+  if (below <= 128 && end - i >= 8) {
+    const uint64_t ones = UINT64_C(0x0101010101010101), highs = UINT64_C(0x8080808080808080);
+    uint64_t a = ones * first, b = ones * second, low = ones * below;
+    do {
+      uint64_t w;
+      memcpy(&w, p + i, sizeof w);
+      BYTESCAN_WORD();
+      uint64_t x = w ^ a, y = w ^ b;
+      if ((((x - ones) & ~x) | ((y - ones) & ~y) | ((w - low) & ~w)) & highs) break;
+      i += 8;
+    } while (end - i >= 8);
+  }
+  while (i < end) {
+    unsigned c = (unsigned char)p[i];
+    BYTESCAN_BYTE();
+    if (c == first || c == second || c < below) break;
+    i++;
+  }
+  return i;
+}
+I pys_bytes_scan(Str *s, I start, I end, I first, I second, I below) {
+  if (start < 0 || end < start) pys_fail("IndexError: byte scan out of range");
+  if (!s) pys_fail("TypeError: object of type 'NoneType' has no len()");
+  if (end > s->len) pys_fail("IndexError: byte scan out of range");
+  if ((uint64_t)first > 255 || (uint64_t)second > 255 || (uint64_t)below > 256)
+    pys_fail("ValueError: invalid byte scan predicate");
+  return byte_scan(s->s, start, end, (unsigned)first, (unsigned)second, (unsigned)below);
+}
 I pys_text_len(Str *s) {
   if (!s->chars1) {
     I n = 0, cp, i = 0;
