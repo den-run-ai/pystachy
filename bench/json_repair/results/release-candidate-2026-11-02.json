@@ -11015,6 +11015,197 @@
    }
   }
  },
+ "callgrind_counts": {
+  "scope": "Whole-process AOT Callgrind instructions of the nine timed workloads, main c3aaa068 (c3aaa068574d440a7104599dc22f683cbae07481, before #1025-#1031) against the release candidate: one run each, pinned to one CPU, on the timed inputs with one batch, no warmup and, for scaling.py, 20 rounds. Each revision's executables were built by its own compiler, library and port. The programs print their witnesses and repaired outputs, which were identical.",
+  "args": "bench.py ROUNDS BATCHES WARMUPS; facade.py MODE ROUNDS BATCHES WARMUPS; scaling.py MODE SIZE ROUNDS BATCHES WARMUPS",
+  "commands": {
+   "build": "cd $TREE && PYSTACHY_HOME=$TREE PYSTACHY_CACHE=$SCRATCH/cache-$REV PYSTACHY_PATH=ports ./pystachy build bench/json_repair/$PROGRAM.py -o $PROGRAM-$REV, with inherited PYSTACHY_* settings cleared",
+   "count": "taskset -c $CPU valgrind --tool=callgrind --callgrind-out-file=$WORKLOAD.$REV.cg $PROGRAM-$REV $ARGS 2>/dev/null | grep -v -E '^(seconds|warmup_seconds)' > $WORKLOAD.$REV.out",
+   "check": "cmp -s $WORKLOAD.c3aaa068.out $WORKLOAD.release_candidate.out (the timing lines are dropped)",
+   "adjustment": "callgrind_annotate --inclusive=yes --threshold=100 on the release candidate's file: valgrind_only_fallback_instructions is the inclusive count of glibc's pthread_getattr_np, which c3aaa068's runtime never calls, and instructions = callgrind_total - valgrind_only_fallback_instructions"
+  },
+  "binary_sha256": {
+   "c3aaa068": {
+    "bench": "d49b1f8f1f0140c5b390ab390038664669156dcda68760b69656289178bb5cc6",
+    "facade": "b38d97f734b46ef93313d731fc59601ffada30108ae875b036776136de9fcfc1",
+    "scaling": "ac0291f2e352c937830e9a707c422992199ad36658db71bbb64251f882fc14fa"
+   },
+   "release_candidate": {
+    "bench": "bbc6041f2df347e9e6ae9f36a7e364aaebffb639a989b0d7e679d28e9cc3b471",
+    "facade": "71c675fdf956d74376dd0f8eaaaba4b341a2834eeb924a2737e72bd691ac812f",
+    "scaling": "b07c3dd4a1702de8b39e763a8171abf48c4c49ddc7c2f652759d424eb315b126"
+   }
+  },
+  "binary_note": "The release candidate's executables are the timed ones (variants.port-aot).",
+  "workloads": [
+   {
+    "workload": "mixed records",
+    "program": "bench/json_repair/bench.py",
+    "args": [
+     "200",
+     "1",
+     "0"
+    ],
+    "c3aaa068_instructions": 124139880,
+    "release_candidate": {
+     "callgrind_total": 117986275,
+     "valgrind_only_fallback_instructions": 113148,
+     "instructions": 117873127
+    },
+    "change_percent": -5.05,
+    "outputs_identical": true
+   },
+   {
+    "workload": "valid objects",
+    "program": "bench/json_repair/facade.py",
+    "args": [
+     "valid",
+     "4000",
+     "1",
+     "0"
+    ],
+    "c3aaa068_instructions": 101049191,
+    "release_candidate": {
+     "callgrind_total": 99396295,
+     "valgrind_only_fallback_instructions": 0,
+     "instructions": 99396295
+    },
+    "change_percent": -1.64,
+    "outputs_identical": true
+   },
+   {
+    "workload": "malformed objects",
+    "program": "bench/json_repair/facade.py",
+    "args": [
+     "malformed",
+     "400",
+     "1",
+     "0"
+    ],
+    "c3aaa068_instructions": 142218836,
+    "release_candidate": {
+     "callgrind_total": 136127487,
+     "valgrind_only_fallback_instructions": 113141,
+     "instructions": 136014346
+    },
+    "change_percent": -4.36,
+    "outputs_identical": true
+   },
+   {
+    "workload": "serialized malformed objects",
+    "program": "bench/json_repair/facade.py",
+    "args": [
+     "serialized-malformed",
+     "400",
+     "1",
+     "0"
+    ],
+    "c3aaa068_instructions": 154916430,
+    "release_candidate": {
+     "callgrind_total": 148869692,
+     "valgrind_only_fallback_instructions": 113141,
+     "instructions": 148756551
+    },
+    "change_percent": -3.98,
+    "outputs_identical": true
+   },
+   {
+    "workload": "long valid string",
+    "program": "bench/json_repair/scaling.py",
+    "args": [
+     "valid",
+     "4000",
+     "20",
+     "1",
+     "0"
+    ],
+    "c3aaa068_instructions": 2715472,
+    "release_candidate": {
+     "callgrind_total": 2836455,
+     "valgrind_only_fallback_instructions": 110853,
+     "instructions": 2725602
+    },
+    "change_percent": 0.37,
+    "outputs_identical": true
+   },
+   {
+    "workload": "escaped newlines",
+    "program": "bench/json_repair/scaling.py",
+    "args": [
+     "escaped",
+     "2000",
+     "20",
+     "1",
+     "0"
+    ],
+    "c3aaa068_instructions": 303122894,
+    "release_candidate": {
+     "callgrind_total": 288153167,
+     "valgrind_only_fallback_instructions": 110853,
+     "instructions": 288042314
+    },
+    "change_percent": -4.98,
+    "outputs_identical": true
+   },
+   {
+    "workload": "non-ASCII malformed text",
+    "program": "bench/json_repair/scaling.py",
+    "args": [
+     "unicode",
+     "2000",
+     "20",
+     "1",
+     "0"
+    ],
+    "c3aaa068_instructions": 104553672,
+    "release_candidate": {
+     "callgrind_total": 60647899,
+     "valgrind_only_fallback_instructions": 110853,
+     "instructions": 60537046
+    },
+    "change_percent": -42.1,
+    "outputs_identical": true
+   },
+   {
+    "workload": "comma-dense text",
+    "program": "bench/json_repair/scaling.py",
+    "args": [
+     "comma",
+     "1000",
+     "20",
+     "1",
+     "0"
+    ],
+    "c3aaa068_instructions": 236311617,
+    "release_candidate": {
+     "callgrind_total": 234069927,
+     "valgrind_only_fallback_instructions": 110853,
+     "instructions": 233959074
+    },
+    "change_percent": -1.0,
+    "outputs_identical": true
+   },
+   {
+    "workload": "logged repair",
+    "program": "bench/json_repair/scaling.py",
+    "args": [
+     "logs",
+     "1000",
+     "20",
+     "1",
+     "0"
+    ],
+    "c3aaa068_instructions": 9801496,
+    "release_candidate": {
+     "callgrind_total": 9204449,
+     "valgrind_only_fallback_instructions": 0,
+     "instructions": 9204449
+    },
+    "change_percent": -6.09,
+    "outputs_identical": true
+   }
+  ]
+ },
  "process_observations": {
   "note": "Single runs on the same host, outside the interleaved campaigns; indicative only.",
   "aot_build_seconds": {

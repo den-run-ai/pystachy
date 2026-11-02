@@ -167,9 +167,9 @@ best; most PyPI packages do not compile unchanged.
   [class rules](docs/language/typing.md#single-inheritance).
 - **Integers** are checked 64-bit values; overflow raises `OverflowError`. A module can opt in
   to experimental [promoting ints](docs/python-int.md), which behave like CPython's `int` in
-  variables, calls, fields, tuples, generators and integer lists, dicts and sets; other
-  containers keep 64-bit ints. The explicit experimental [`mpz`](docs/mpz.md) type also
-  provides arbitrary-precision arithmetic.
+  variables, calls, fields, tuples, generators, and lists, dicts and sets of ints or of tuples
+  of ints; other containers keep 64-bit ints. The explicit experimental [`mpz`](docs/mpz.md)
+  type also provides arbitrary-precision arithmetic.
 - **Dynamic `Any`** is experimental and opt-in. It covers common operations,
   [iteration](docs/dynamic-any.md#iteration) and comparisons, but some cross-type comparison
   bodies raise an explicit error, and numeric identity can differ at typed storage boundaries.

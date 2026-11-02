@@ -58,8 +58,10 @@ scaling at both ends; values are AOT's speedup over upstream:
 - Whole-process AOT Callgrind counts of the same nine workloads against `c3aaa068`'s, with
   identical output: non-ASCII −42.1%, logged repair −6.1%, mixed records −5.1%, escaped
   newlines −5.0%, malformed objects −4.4% (serialized −4.0%), valid objects −1.6%,
-  comma-dense −1.0% and the long valid string +0.4%. These leave out about 110,000
-  instructions that a Valgrind run alone spends on the runtime's stack-bounds fallback.
+  comma-dense −1.0% and the long valid string +0.4%. Seven of the nine release-candidate
+  runs spent 110,000–113,000 instructions on the runtime's stack-bounds fallback, which only a
+  Valgrind run takes; the counts leave them out. The evidence file's `callgrind_counts` retains
+  both revisions' totals, arguments and executable hashes, and each subtraction.
 - The 645-case parity replay matches pristine upstream at this build on CPython and in AOT
   and JIT, normally and with collection at every allocation.
 

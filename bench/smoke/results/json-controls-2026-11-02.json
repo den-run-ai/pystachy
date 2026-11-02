@@ -369,110 +369,172 @@
  },
  "release_candidate": {
   "revision": "main ec442a20 (c3aaa068 with #1025-#1029 and #1031), measured as the local merge 9496b00d, whose code is identical (see bench/pyperformance/results/alpha3-vs-release-candidate-2026-11-02.json)",
-  "method": "run_controls.sh as for the candidate: each control built by its own compiler (alpha.3 f5a09d42 and the release candidate), whole-process AOT Callgrind instructions, pinned to one CPU, outputs compared with CPython 3.13.18",
+  "method": "Each control script, from the measured checkout (unchanged: input_sha256), built by each revision's own compiler, library and runtime: the alpha.3 tag f5a09d42 and the release candidate. Whole-process AOT Callgrind instructions pinned to one CPU, stdout compared with CPython 3.13.18 byte for byte, in the settings the environment field lists. Each control records its script, arguments and both executables' SHA-256; the alpha.3 executables are the ones the controls list measured.",
+  "commands": {
+   "build": "cd $REV && PYSTACHY_HOME=$REV PYSTACHY_CACHE=$SCRATCH/cache-$REVNAME ./pystachy build $CHECKOUT/$SCRIPT -o $EXE (REV: the alpha.3 tag's checkout, or $CHECKOUT)",
+   "oracle": "python3.13 -s -P $CHECKOUT/$SCRIPT $ARGS > $CONTROL.oracle",
+   "count": "taskset -c 2 valgrind --tool=callgrind --error-exitcode=99 --callgrind-out-file=$CONTROL.$REVNAME.callgrind $EXE $ARGS > $CONTROL.$REVNAME.out",
+   "check": "cmp -s $CONTROL.oracle $CONTROL.$REVNAME.out; callgrind_total is the summary line of $CONTROL.$REVNAME.callgrind",
+   "adjustment": "callgrind_annotate --inclusive=yes --threshold=100 $CONTROL.$REVNAME.callgrind: valgrind_only_fallback_instructions is the inclusive count of glibc's pthread_getattr_np, and instructions = callgrind_total - valgrind_only_fallback_instructions"
+  },
+  "paths": "$CHECKOUT is the measured checkout and $SCRATCH a private scratch directory; executables are identified by hash and not retained.",
   "valgrind_adjustment": "release_candidate instructions subtract the inclusive cost of glibc's pthread_getattr_np, which the runtime's stack-bounds lookup (#1026) calls only when Valgrind moves AT_EXECFN off its page boundary (a /proc/self/maps parse, about 110,000 instructions once per process; native runs never make it). Without the adjustment, the earlier merge c15dc6f8 read +0.11% on the short observed-Any control.",
   "controls": {
    "broad": {
+    "script": "bench/pyperformance/json_loads.py",
+    "args": [
+     "300"
+    ],
     "alpha3": {
      "instructions": 1300402961,
-     "stdout_matches_cpython": true
+     "stdout_matches_cpython": true,
+     "binary_sha256": "61a3a680daf89e122b404dc6f73f33fd64afb7a6665fbff90a0edd43edfa878f"
     },
     "release_candidate": {
      "instructions": 1296236550,
      "callgrind_total": 1296345127,
      "valgrind_only_fallback_instructions": 108577,
-     "stdout_matches_cpython": true
+     "stdout_matches_cpython": true,
+     "binary_sha256": "f78000d760095d9c7abcebc2663565ae905af9fc1cdcc421fa68fcbfb17749ea"
     },
     "change_percent": -0.32
    },
    "typed-numeric": {
+    "script": "bench/smoke/json_decode.py",
+    "args": [
+     "numeric",
+     "3000"
+    ],
     "alpha3": {
      "instructions": 91471048,
-     "stdout_matches_cpython": true
+     "stdout_matches_cpython": true,
+     "binary_sha256": "a3a9635cda261a7f42b26799b70c862b3c7a5c6466370ee7bdef42b8228682c5"
     },
     "release_candidate": {
      "instructions": 91042051,
      "callgrind_total": 91152840,
      "valgrind_only_fallback_instructions": 110789,
-     "stdout_matches_cpython": true
+     "stdout_matches_cpython": true,
+     "binary_sha256": "4fa6156034569c1640edf000187079bccd6d2b88f2a7f345b432876fa63ec093"
     },
     "change_percent": -0.47
    },
    "typed-strings": {
+    "script": "bench/smoke/json_decode.py",
+    "args": [
+     "strings",
+     "3000"
+    ],
     "alpha3": {
      "instructions": 108709893,
-     "stdout_matches_cpython": true
+     "stdout_matches_cpython": true,
+     "binary_sha256": "a3a9635cda261a7f42b26799b70c862b3c7a5c6466370ee7bdef42b8228682c5"
     },
     "release_candidate": {
      "instructions": 107142798,
      "callgrind_total": 107253587,
      "valgrind_only_fallback_instructions": 110789,
-     "stdout_matches_cpython": true
+     "stdout_matches_cpython": true,
+     "binary_sha256": "4fa6156034569c1640edf000187079bccd6d2b88f2a7f345b432876fa63ec093"
     },
     "change_percent": -1.44
    },
    "typed-mixed": {
+    "script": "bench/smoke/json_decode.py",
+    "args": [
+     "mixed",
+     "3000"
+    ],
     "alpha3": {
      "instructions": 127365458,
-     "stdout_matches_cpython": true
+     "stdout_matches_cpython": true,
+     "binary_sha256": "a3a9635cda261a7f42b26799b70c862b3c7a5c6466370ee7bdef42b8228682c5"
     },
     "release_candidate": {
      "instructions": 126834299,
      "callgrind_total": 126945088,
      "valgrind_only_fallback_instructions": 110789,
-     "stdout_matches_cpython": true
+     "stdout_matches_cpython": true,
+     "binary_sha256": "4fa6156034569c1640edf000187079bccd6d2b88f2a7f345b432876fa63ec093"
     },
     "change_percent": -0.42
    },
    "any-short": {
+    "script": "bench/smoke/json_decode_any.py",
+    "args": [
+     "2000"
+    ],
     "alpha3": {
      "instructions": 30010294,
-     "stdout_matches_cpython": true
+     "stdout_matches_cpython": true,
+     "binary_sha256": "e46ce55611af12443acb0a04706f966a42ca826accb9377b94a868c4267422e8"
     },
     "release_candidate": {
      "instructions": 29923646,
      "callgrind_total": 30034512,
      "valgrind_only_fallback_instructions": 110866,
-     "stdout_matches_cpython": true
+     "stdout_matches_cpython": true,
+     "binary_sha256": "bc94ba84634e8ec0470c2c69967c5d53612a3f7553c1734e4d5fa817cc188d24"
     },
     "change_percent": -0.29
    },
    "any32-numeric": {
+    "script": "bench/smoke/json_decode_any32.py",
+    "args": [
+     "numeric",
+     "3000"
+    ],
     "alpha3": {
      "instructions": 106836428,
-     "stdout_matches_cpython": true
+     "stdout_matches_cpython": true,
+     "binary_sha256": "44c022bffc893199adffb252753105c4709deeaf4f759c4fdab3853d4dfff8c4"
     },
     "release_candidate": {
      "instructions": 103099793,
      "callgrind_total": 103210666,
      "valgrind_only_fallback_instructions": 110873,
-     "stdout_matches_cpython": true
+     "stdout_matches_cpython": true,
+     "binary_sha256": "f2e2d91866861515025b534841e71475944d478834bb78e1dfc331c9ed5ae7c2"
     },
     "change_percent": -3.5
    },
    "any32-strings": {
+    "script": "bench/smoke/json_decode_any32.py",
+    "args": [
+     "strings",
+     "3000"
+    ],
     "alpha3": {
      "instructions": 116970899,
-     "stdout_matches_cpython": true
+     "stdout_matches_cpython": true,
+     "binary_sha256": "44c022bffc893199adffb252753105c4709deeaf4f759c4fdab3853d4dfff8c4"
     },
     "release_candidate": {
      "instructions": 116650467,
      "callgrind_total": 116761340,
      "valgrind_only_fallback_instructions": 110873,
-     "stdout_matches_cpython": true
+     "stdout_matches_cpython": true,
+     "binary_sha256": "f2e2d91866861515025b534841e71475944d478834bb78e1dfc331c9ed5ae7c2"
     },
     "change_percent": -0.27
    },
    "any32-mixed": {
+    "script": "bench/smoke/json_decode_any32.py",
+    "args": [
+     "mixed",
+     "3000"
+    ],
     "alpha3": {
      "instructions": 142770271,
-     "stdout_matches_cpython": true
+     "stdout_matches_cpython": true,
+     "binary_sha256": "44c022bffc893199adffb252753105c4709deeaf4f759c4fdab3853d4dfff8c4"
     },
     "release_candidate": {
      "instructions": 141137093,
      "callgrind_total": 141247966,
      "valgrind_only_fallback_instructions": 110873,
-     "stdout_matches_cpython": true
+     "stdout_matches_cpython": true,
+     "binary_sha256": "f2e2d91866861515025b534841e71475944d478834bb78e1dfc331c9ed5ae7c2"
     },
     "change_percent": -1.14
    }
