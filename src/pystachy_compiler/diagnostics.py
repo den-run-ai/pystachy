@@ -129,7 +129,33 @@ def where(line: int) -> str:
     return f"{SRC}:{line}"
 
 
-def fail(msg: str, line: int) -> None:
+class Diagnostic:
+    # A terminal compiler diagnostic, before its file/line are flattened into text.
+    # Codes are deliberately coarse: PYS0001 is an ordinary compiler rejection;
+    # PYS9000 is an existing explicitly marked internal error, not a Python exception.
+    # Context contains the compiler's specialization notes, outermost first. These
+    # are notes, not invented instruction spans or separately parsed call locations.
+    def __init__(self, msg: str, line: int, context: list[str]):
+        self.code: str = "PYS9000" if msg.startswith("internal error:") else "PYS0001"
+        self.severity: str = "error"
+        self.phase: str = PHASE
+        self.message: str = shown(msg)
+        self.file: str = FILES[line // LINES] if line >= LINES else SRC
+        self.line: int = line % LINES if line >= LINES else line
+        self.context: list[str] = [shown(note) for note in context]
+
+
+# Opt-in observation for isolated hosted tooling. Normal CLI behavior stays text;
+# capture does not recover from errors or make process-global compilation concurrent.
+# The observer owns clearing CAPTURED and setting PHASE at actual stage boundaries.
+CAPTURE = False
+PHASE = "compile"
+CAPTURED: list[Diagnostic] = []
+
+
+def fail(msg: str, line: int, context: list[str] | None = None) -> None:
+    if CAPTURE:
+        CAPTURED.append(Diagnostic(msg, line, [] if context is None else context))
     print(f"{where(line)}: error: {shown(msg)}", file=sys.stderr)
     sys.exit(1)
 

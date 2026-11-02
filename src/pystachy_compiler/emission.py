@@ -41,7 +41,7 @@ def gen_err(self, msg: str) -> None:
         # (a recursive alias's edge is the alias, as typestr writes it; the message may quote the
         # program's text, getattr(o, "rec[1]"), which only an alias's own name could match)
         msg = msg.replace("rec[" + name + "]", short(name))
-    fail(msg, self.line)
+    fail(msg, self.line, self.making)
 
 def gen_save(self) -> Frame:
     fr = Frame(self.curfn, self.fn, self.blk)
@@ -286,6 +286,8 @@ def gen_rt(self, name: str, ret: str, args: list[str], x: str = "") -> str:
     k = self.runtime(name)
     ts = self.rtfns[k].sig
     ll = self.rtfns[k].ll
+    if k == "setrecursionlimit":
+        self.fn.setslimit = True  # (it compares the depth word with the new limit: Gen.recursionscope)
     if k in NARROWED and int_lists():
         # (a list of ints that may hold promoting ints past 64 bits, which it reads as 64-bit ints,
         # and the dict whose values it reads so)

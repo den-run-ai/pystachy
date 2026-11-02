@@ -812,7 +812,10 @@ def main() -> None:
         clean = "function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg)"
         if ir.count("\n") <= int(lim):
             clean = f"cgscc(inline,{clean})"
-        passes = f"globaldce,{clean}"
+        # Recursion accounting helpers belong to the program module, even when the
+        # runtime is a separate library. Inline only those explicitly marked helpers
+        # regardless of the user-function budget, including PYSTACHY_JIT_INLINE=0.
+        passes = f"globaldce,always-inline,{clean}"
         if "@llvm.coro.id(" in ir:
             # generators are LLVM coroutines (docs/internals.md#generators), which lli cannot run
             # before LLVM's coroutine passes lower them: coro-early, then coro-split in the same
@@ -820,7 +823,7 @@ def main() -> None:
             # ramp, and coro-elide may put a loop's generator frame in the loop's own frame), then
             # coro-cleanup. A module without them keeps the pipeline above
             split = clean.replace("simplifycfg)", "simplifycfg,coro-elide),coro-split") if clean.startswith("cgscc(") else f"cgscc({clean},coro-split)"
-            passes = f"coro-early,globaldce,{split},coro-cleanup,globaldce"
+            passes = f"coro-early,globaldce,always-inline,{split},coro-cleanup,globaldce"
         # SSA promotion can leave unused feedback cycles (including numeric identity
         # generations). Remove those after inlining and coroutine lowering are complete;
         # instcombine alone does not eliminate cycles with no externally used result.

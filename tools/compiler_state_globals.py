@@ -60,6 +60,7 @@ RESET = {
     "diagnostics.INTSPANS": "loader resets the line spans of lib's promoting definitions with the file table",
 }
 RETAINED = {
+    "diagnostics.CAPTURED": "opt-in observer records; inspection worker clears before its request and exits after it, not compiler restart state",
     "specs.GLUE": "loader public-name discoveries; currently retained across restarts",
     "specs.SPECSHOW": "specialization display names; currently retained across restarts",
     "specs.MODULES": "driver builtin-module configuration; runtime_ir restores its temporary _rt entry on every exit",
@@ -67,6 +68,9 @@ RETAINED = {
 # Retained means observed policy, not proof that retaining semantic state is safe.
 # Keep #767 open for those contracts and for indirect mutation/alias effects.
 WRITERS = {
+    # Only fail appends terminal records inside the compiler. The hosted observer's
+    # pre-request clear is outside this source inventory; see docs/testing.md.
+    "diagnostics.CAPTURED": {"diagnostics.fail"},
     "diagnostics.FILES": {"loader.Loader.program", "loader.Loader.parse"},
     "diagnostics.DYNFILES": {"loader.Loader.program", "loader.Loader.pragmas"},
     "diagnostics.IDINERT": {"loader.Loader.program", "loader.Loader.pragmas"},

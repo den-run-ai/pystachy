@@ -358,6 +358,17 @@ class IFn:
         self.coldh: dict[str, str] = {}
         self.tries: list[Try] = []
         self.pads = False  # whether it keeps landing pads (once the exception passes have run)
+        # Native recursion counts the activations of source functions that recursion can
+        # repeat (Gen.recursionscope), never dispatch adapters: counted is whether this is
+        # a source function until that pass decides, then whether it counts. rdepth is the
+        # entry op's value, the depth every local landing restores (landed: some landing
+        # does); a generator refreshes gdepth on each resume, since it may have another caller.
+        self.counted = False
+        self.rdepth = ""
+        self.landed = False
+        self.gdepth = ""
+        self.resumes = False  # whether it resumes or drops a generator (Gen.recursionscope looks for the sites)
+        self.setslimit = False  # whether it calls sys.setrecursionlimit, which reads the depth (Gen.recursionscope)
         # its effect summary (FX bits): every letter (but N) until Gen.effects computes it, once
         # the whole program is built
         self.fx: int = FXALL

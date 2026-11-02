@@ -96,6 +96,9 @@ jobs:
       - name: Promoting int tooling and retry controls
         run: python3 -m unittest discover -s tools -p 'test_python_int*.py'
 
+      - name: Function-local join retry controls
+        run: python3 -m unittest discover -s tools -p test_local_join_retry.py
+
       - name: microGPT graph parity and benchmark contract tests
         run: python3 -m unittest discover -s tools -p test_bench_microgpt.py
 
