@@ -854,6 +854,7 @@ from src.pystachy_compiler.expressions import (
     gen_tslot as expressions_tslot,
     gen_truth as expressions_truth,
     gen_tuple_ as expressions_tuple_,
+    gen_tuple_const as expressions_tuple_const,
     gen_dict_merge as expressions_dict_merge,
     gen_unroll as expressions_unroll,
     gen_pick as expressions_pick,
@@ -1245,6 +1246,10 @@ class Gen:
         self.gcroots: list[str] = []
         self.consts: list[Data] = []
         self.bconsts: dict[str, Val] = {}  # builtin module singleton values
+        # the constant tuples of displays of literals (Gen.tuple_const): each one's name (@tc.N),
+        # by its module and items, and each one's Data, by its name (tupleret reads its slots)
+        self.tconsts: dict[str, str] = {}
+        self.tconstdata: dict[str, Data] = {}
         self.strs: dict[str, str] = {}
         self.bstrs: dict[str, str] = {}  # the name of each bytes constant (@b.N), by its bytes
         self.strvals: list[str] = []  # the text of each @s.N
@@ -1496,6 +1501,7 @@ class Gen:
         # %tN"; while a function is lowered, the tuples it returns so, the slots its tuple.stores
         # give them (by "%tN k") and the results of its calls that take slots (their LLVM type)
         self.vrets: dict[str, int] = {}
+        self.vconst: dict[str, bool] = {}  # (those of them that may return a constant tuple: vagg)
         self.vcalls: dict[str, bool] = {}
         self.vtuples: dict[str, bool] = {}
         self.vslots: dict[str, str] = {}
@@ -4193,6 +4199,9 @@ class Gen:
 
     def tuple_(self, vals: list[Val]) -> Val:
         return expressions_tuple_(self, vals)
+
+    def tuple_const(self, n: Node, vals: list[Val]) -> Val:
+        return expressions_tuple_const(self, n, vals)
 
     def dict_merge(self, n: Node, want: str) -> Val:
         return expressions_dict_merge(self, n, want)

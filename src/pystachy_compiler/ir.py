@@ -32,7 +32,8 @@ class Val:
 
 
 class Data:
-    # Immutable module data: string bytes, callable/exception references, or constant tuple slots.
+    # Immutable module data: string bytes, callable/exception references, or constant tuple slots
+    # (whose type its text is).
     # LLVM's concrete layout and declaration syntax belong to lower_module.
     def __init__(self, kind: str, name: str):
         self.kind = kind

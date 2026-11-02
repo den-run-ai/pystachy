@@ -712,6 +712,17 @@ def literal(e: Node) -> bool:
     return False
 
 
+def tuple_literal(e: Node) -> bool:
+    # is e a tuple display that CPython's compiler always makes a constant (Gen.tuple_const): one
+    # of literals (bytes too), signs on numbers and such tuples
+    if e.kind != "tuple":
+        return False
+    for x in e.kids:
+        if x.kind != "bytes" and not tuple_literal(x) and (x.kind == "tuple" or not literal(x)):
+            return False
+    return True
+
+
 def folds(e: Node) -> bool:
     # is e a constant once CPython's AST optimizer has run (ast_opt.c): a literal, a tuple of
     # constants, or an operator applied to constants (a set display of constants is then a
@@ -967,6 +978,7 @@ def clone(n: Node) -> Node:
     c.mchk = n.mchk
     c.depth = n.depth
     c.made = n.made
+    c.src = n.src
     return c
 
 
