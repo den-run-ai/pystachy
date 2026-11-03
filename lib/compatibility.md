@@ -5,11 +5,8 @@ APIs when CPython runs them, because optional imports select CPython's C modules
 and dynamic features. Differential cases live in `tests/programs/library/lib_*.py`; deliberate
 differences live in `tests/deviations/`, and rejected inputs in `tests/errors/`.
 
-Pystachy uses 64-bit integers, homogeneous containers and UTF-8 string storage.
-Public string lengths, indexing, slicing, iteration and search positions count Unicode
-code points. Unicode case mapping, most character tests and some byte-oriented runtime
-operations remain incomplete; individual modules may have additional restrictions.
-See [language compatibility](../docs/language/compatibility.md).
+For shared numeric, container, Unicode and resource-lifetime limits, see
+[language compatibility](../docs/language/compatibility.md).
 
 Sections follow the areas of the [library support table](../docs/stdlib.md#library-support-at-a-glance);
 the [module guide](README.md#module-guide) summarizes what each module supports.
@@ -21,12 +18,12 @@ the [module guide](README.md#module-guide) summarizes what each module supports.
 | [Regular expressions](#regular-expressions) | [`re`](#re), [`fnmatch`](#fnmatch) |
 | [Data formats and markup](#data-formats-and-markup) | [`json`](#json), [`tomllib`](#tomllib), [`csv`](#csv), [`html` and `html.parser`](#html-and-htmlparser), [`urllib.parse`](#urllibparse) |
 | [Binary data and encodings](#binary-data-and-encodings) | [`struct`](#struct), [`binascii`](#binascii), [`codecs`](#codecs) |
-| [Collections and functional tools](#collections-and-functional-tools) | [`collections`](#collections), [`heapq`](#heapq), [`itertools`](#itertools), [`functools`](#functools), [`operator`](#operator), [`contextlib`](#contextlib) |
+| [Collections and functional tools](#collections-and-functional-tools) | [`collections`](#collections), [`copy`](#copy), [`enum`](#enum), [`heapq`](#heapq), [`itertools`](#itertools), [`functools`](#functools), [`operator`](#operator), [`contextlib`](#contextlib) |
 | [Numbers and randomness](#numbers-and-randomness) | [`random`](#random), [`statistics`](#statistics), [`mpz`](#mpz) |
 | [Dates and times](#dates-and-times) | [`datetime`](#datetime) |
-| [Files, OS and command line](#files-os-and-command-line) | [`io`](#io), [Path modules](#path-modules), [`getopt`](#getopt) |
-| [Processes and threads](#processes-and-threads) | [`_thread`](#_thread), [`atexit`](#atexit) |
-| [Runtime services](#runtime-services) | [`abc`](#abc), [`types`](#types), [`warnings`](#warnings), [`weakref` and `_weakref` (prototype)](#weakref-and-_weakref-prototype) |
+| [Files, OS and command line](#files-os-and-command-line) | [`io`](#io), [Path modules](#path-modules), [`pathlib`](#pathlib), [`glob`](#glob), [`shutil`](#shutil), [`getopt`](#getopt) |
+| [Processes and threads](#processes-and-threads) | [`_thread`](#_thread), [`threading`](#threading), [`atexit`](#atexit) |
+| [Runtime services](#runtime-services) | [`abc`](#abc), [`types`](#types), [`warnings`](#warnings), [`logging`](#logging), [`traceback`](#traceback), [`weakref` and `_weakref` (prototype)](#weakref-and-_weakref-prototype) |
 | [Removed modules](#removed-modules) | `_imp`, `_ast`, `opcode` |
 
 ## Across modules

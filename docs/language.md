@@ -14,7 +14,7 @@ from CPython. The detailed references define each rule:
 | [Types and inference](language/typing.md) | Type forms, inference, templates, unions, generics, classes and inheritance |
 | [Execution and expressions](language/semantics.md) | Statements, expressions, iterators, generators, protocols, reflection and exceptions |
 | [Modules and builtins](language/modules.md) | Module search, scope, compile-time branches, optional imports and builtin APIs |
-| [CPython compatibility](language/compatibility.md) | Every documented deviation and compile-time rejection |
+| [CPython compatibility](language/compatibility.md) | Semantic differences, compile-time restrictions and links to module/opt-in limits |
 | [Support surface](support-surface.md) | Representations, costs, measurements and engineering trade-offs |
 
 The experimental [dynamic `Any`](dynamic-any.md) and [promoting ints](python-int.md) have
