@@ -7672,6 +7672,127 @@ void pys_copymode(Str *a, Str *b) {
   if (stat(a->s, &st)) oserr(a->s);
   if (chmod(b->s, st.st_mode & 07777)) oserr(b->s);
 }
+/* lib/shutil.py's __pys_rmtree(path, ignore_errors): rmtree() as CPython 3.13 runs it on Linux,
+   its _rmtree_safe_fd. Each directory is opened through its parent's descriptor, and fstat()
+   must find the device and inode that lstat() found before its entries are read and removed
+   through that descriptor, so that a directory replaced by a link meanwhile is not followed. The
+   steps, their order and their errors are CPython's: a stack of steps (lstat, open, check and
+   scan; close; rmdir), a directory's other entries unlinked as its scan meets them and its
+   subdirectories pushed, so walked last first. An error carries the path of the step that met
+   it (CPython sets err.filename = path), a link's is an OSError of no errno ("[Errno None] None:
+   'path'"), and FileNotFoundError is one only for the top directory and for a close. CPython's
+   onexc re-raises it once the descriptors left on the stack are closed, or, where ignore_errors,
+   passes over it: the step ends, but an entry's unlink error lets the scan go on. The walk's
+   paths and names are malloc'd: it allocates nothing the collector sees until it raises. */
+typedef struct { int op, dirfd, top; char *path, *name; } RmStep;   /* op: 0 lstat (then open, check, scan), 1 close, 2 rmdir */
+typedef struct {
+  RmStep *a; I n, cap, ignore;                     /* the steps to run */
+  RmStep cur;                                      /* the step running */
+  char **names; unsigned char *types; I nn, ncap;  /* its scan's entries, and their d_type */
+} RmWalk;
+static char *rm_dup(const char *s) { size_t n = strlen(s); char *p = malloc(n + 1); if (!p) oom(); memcpy(p, s, n + 1); return p; }
+static void rm_push(RmWalk *w, int op, int dirfd, int top, char *path, char *name) {   /* takes path and name */
+  if (w->n == w->cap) { I c = w->cap * 2 + 16; RmStep *a = realloc(w->a, c * sizeof(RmStep)); if (!a) oom(); w->a = a; w->cap = c; }
+  w->a[w->n++] = (RmStep){op, dirfd, top, path, name};
+}
+static void rm_entries_free(RmWalk *w) { for (I i = 0; i < w->nn; i++) free(w->names[i]); w->nn = 0; }
+static _Noreturn void rm_raise(RmWalk *w, int e) {   /* onexc's raise, then rmtree's finally: close what is open */
+  Buf b = {0};
+  if (e) {
+    char t[32]; const char *k = errcls(e), *m = strerror(e);
+    put(&b, k, strlen(k)); put(&b, t, snprintf(t, sizeof t, ": [Errno %d] ", e)); put(&b, m, strlen(m)); put(&b, ": ", 2);
+  } else put(&b, "OSError: [Errno None] None: ", 28);
+  repr_str(&b, cstr(w->cur.path)); put(&b, "", 1);
+  rm_entries_free(w); free(w->names); free(w->types);
+  free(w->cur.path); free(w->cur.name);
+  while (w->n > 0) { RmStep *s = &w->a[--w->n]; if (s->op == 1) close(s->dirfd); free(s->path); free(s->name); }
+  free(w->a);
+  pys_fail(b.p);
+}
+static void rm_scan(RmWalk *w, int fd) {   /* entries = list(os.scandir(fd)), then each entry's unlink or push */
+  RmStep *c = &w->cur;
+  int d = dup(fd);                         /* (os.scandir(fd) reads a duplicate of it) */
+  DIR *dp = d < 0 ? NULL : fdopendir(d);
+  if (!dp) {
+    int e = errno; if (d >= 0) close(d);
+    if (e != ENOENT || c->top) { if (!w->ignore) rm_raise(w, e); }
+    return;
+  }
+  for (;;) {
+    errno = 0;
+    struct dirent *de = readdir(dp);
+    if (!de) break;
+    const char *nm = de->d_name;
+    if (nm[0] == '.' && (nm[1] == 0 || (nm[1] == '.' && nm[2] == 0))) continue;
+    if (w->nn == w->ncap) {
+      I k = w->ncap * 2 + 16; char **a = realloc(w->names, k * sizeof(char *)); if (!a) oom(); w->names = a;
+      unsigned char *t = realloc(w->types, k); if (!t) oom(); w->types = t; w->ncap = k;
+    }
+    w->names[w->nn] = rm_dup(nm); w->types[w->nn++] = de->d_type;
+  }
+  int e = errno;
+  closedir(dp);
+  if (e) {
+    rm_entries_free(w);
+    if (e != ENOENT || c->top) { if (!w->ignore) rm_raise(w, e); }
+    return;
+  }
+  size_t pl = strlen(c->path);
+  for (I i = 0; i < w->nn; i++) {
+    const char *nm = w->names[i];
+    int isdir = w->types[i] == DT_DIR;     /* entry.is_dir(follow_symlinks=False): d_type, or an lstat */
+    if (w->types[i] == DT_UNKNOWN) {
+      struct stat es;
+      if (fstatat(fd, nm, &es, AT_SYMLINK_NOFOLLOW)) { if (errno == ENOENT) continue; }
+      else isdir = S_ISDIR(es.st_mode);
+    }
+    if (isdir) {                           /* fullname = os.path.join(path, name), walked later */
+      size_t nl = strlen(nm);
+      char *full = malloc(pl + nl + 2); if (!full) oom();
+      memcpy(full, c->path, pl); size_t k = pl;
+      if (pl && c->path[pl - 1] != '/') full[k++] = '/';
+      memcpy(full + k, nm, nl + 1);
+      rm_push(w, 0, fd, 0, full, rm_dup(nm));
+      continue;
+    }
+    if (unlinkat(fd, nm, 0) && errno != ENOENT && !w->ignore) rm_raise(w, errno);
+  }
+  rm_entries_free(w);
+}
+static void rm_step(RmWalk *w) {
+  RmStep *c = &w->cur;
+  *c = w->a[--w->n];
+  if (c->op == 1) {                        /* os.close(dirfd) */
+    if (close(c->dirfd) && !w->ignore) rm_raise(w, errno);
+  } else if (c->op == 2) {                 /* os.rmdir(name, dir_fd=dirfd) */
+    if ((c->top ? rmdir(c->name) : unlinkat(c->dirfd, c->name, AT_REMOVEDIR)) && (errno != ENOENT || c->top) && !w->ignore)
+      rm_raise(w, errno);
+  } else {
+    struct stat orig, now;
+    int r = c->top ? lstat(c->name, &orig) : fstatat(c->dirfd, c->name, &orig, AT_SYMLINK_NOFOLLOW);
+    int fd = r ? -1 : openat(c->top ? AT_FDCWD : c->dirfd, c->name, O_RDONLY | O_NONBLOCK | O_CLOEXEC);
+    if (fd < 0) {                          /* lstat's or open's error */
+      if ((errno != ENOENT || c->top) && !w->ignore) rm_raise(w, errno);
+    } else {
+      int ok = !fstat(fd, &now), e = errno;
+      int same = ok && now.st_dev == orig.st_dev && now.st_ino == orig.st_ino;
+      if (same) rm_push(w, 2, c->dirfd, c->top, rm_dup(c->path), rm_dup(c->name));
+      rm_push(w, 1, fd, c->top, rm_dup(c->path), rm_dup(c->name));
+      if (!same) {                         /* fstat's error, or a link: symlinks to directories are forbidden (GH-46010) */
+        if (!w->ignore) rm_raise(w, ok ? 0 : e);
+      } else rm_scan(w, fd);
+    }
+  }
+  free(c->path); free(c->name); c->path = c->name = NULL;
+}
+void pys_rmtree(Str *path, I ignore_errors) {
+  if (nul(path)) pys_fail("ValueError: lstat: embedded null character in path");
+  RmWalk w = {0};
+  w.ignore = ignore_errors;
+  rm_push(&w, 0, -1, 1, rm_dup(path->s), rm_dup(path->s));
+  while (w.n > 0) rm_step(&w);
+  free(w.a); free(w.names); free(w.types);
+}
 /* os.path.samefile(a, b): genericpath's, whether stat() finds one device and inode for both */
 I pys_samefile(Str *a, Str *b) {
   struct stat x, y;

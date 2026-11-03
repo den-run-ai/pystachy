@@ -7,8 +7,8 @@ XXX The functions here don't copy the resource fork or other metadata on Mac.
 # copyfileobj(), copyfile(), copymode(), copy(), move() and rmtree() of files and directories
 # given by str paths, with CPython's checks and errors. A file's bytes are copied by the
 # compiler's primitive of this module (runtime.c's pys_copyfile), as Pystachy has no binary
-# files; rmtree() removes a tree as CPython's _rmtree_safe_fd does on Linux, without file
-# descriptors.
+# files; rmtree() is CPython's _rmtree_safe_fd, which removes a tree through directory
+# descriptors on Linux, as another primitive (runtime.c's pys_rmtree).
 import os
 import posixpath
 
@@ -110,25 +110,6 @@ def copy(src: str, dst: str, *, follow_symlinks: bool = True) -> str:
     return dst
 
 
-def _rmtree_dir(path: str) -> None:
-    # (_rmtree_safe_fd_step: the entries of directory path, then path itself, a subdirectory's
-    # first; a link is removed, not followed)
-    for name in os.listdir(path):
-        full = os.path.join(path, name)
-        mode = __pys_stat_mode(full, False)
-        if mode >= 0 and (mode & 0o170000) == 0o040000:
-            _rmtree_dir(full)
-        else:
-            try:
-                os.remove(full)
-            except FileNotFoundError:
-                continue
-    try:
-        os.rmdir(path)
-    except FileNotFoundError:
-        pass
-
-
 def rmtree(path: str, ignore_errors: bool = False, onerror=None, *, onexc=None, dir_fd: int | None = None) -> None:
     """Recursively delete a directory tree.
 
@@ -151,19 +132,8 @@ def rmtree(path: str, ignore_errors: bool = False, onerror=None, *, onexc=None, 
     """
     if onerror is not None or onexc is not None or dir_fd is not None:
         raise NotImplementedError("shutil.rmtree() with onerror, onexc or dir_fd is not supported")
-    try:
-        mode = __pys_stat_mode(path, False)
-        if mode < 0:
-            raise FileNotFoundError(2, "No such file or directory", path)
-        if (mode & 0o170000) == 0o120000:
-            # symlinks to directories are forbidden, see bug #1669
-            raise OSError("Cannot call rmtree on a symbolic link")
-        if (mode & 0o170000) != 0o040000:
-            raise NotADirectoryError(20, "Not a directory", path)
-        _rmtree_dir(path)
-    except OSError:
-        if not ignore_errors:
-            raise
+    # (_rmtree_safe_fd's walk, with the onexc that re-raises, or that passes where ignore_errors)
+    __pys_rmtree(path, ignore_errors)
 
 
 def _basename(path: str) -> str:

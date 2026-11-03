@@ -1233,13 +1233,19 @@ raises `NotImplementedError`, and `translate()` is not provided.
 `copyfileobj()`, `copyfile()`, `copymode()`, `copy()`, `move()` and `rmtree()`, with `Error`,
 `SameFileError` and `SpecialFileError` and CPython's checks and messages
 ([test](../tests/programs/library/lib_shutil.py)). `copyfile()` copies a file's bytes through
-the runtime, as Pystachy has no binary files. `rmtree()` removes a tree as CPython's
-`_rmtree_safe_fd` does on Linux (a missing path, a link and a file raise CPython's errors);
-its `onerror`, `onexc` and `dir_fd`, and `copyfile()` of a link with `follow_symlinks=False`,
-raise `NotImplementedError`. `move()` of a file to another file system copies it with
-`copy()` (CPython uses `copy2()`, which also copies its times), and of a directory raises the
-rename's `OSError`. `copytree()`, `copy2()`, `copystat()`, `which()`, `disk_usage()` and the
-archive functions are not provided.
+the runtime, as Pystachy has no binary files; it opens and checks the source before it truncates
+the destination, as CPython does ([test](../tests/programs/library/lib_shutil_copyfile_dir.py)).
+`rmtree()` is CPython 3.13's Linux `_rmtree_safe_fd`, in the runtime: it walks the tree through
+directory descriptors, and finds each directory by the device and inode that `lstat()` found,
+so a directory replaced by a link during the walk is not followed. Its steps, their order and
+its errors are CPython's, a link's included (`OSError: [Errno None] None: 'path'`), and
+`ignore_errors` passes over each ([test](../tests/programs/library/lib_shutil_rmtree.py)).
+`rmtree.avoids_symlink_attacks` is not provided. `rmtree()`'s `onerror`, `onexc` and `dir_fd`,
+and `copyfile()` of a link with `follow_symlinks=False`, raise `NotImplementedError`
+([deviation](../tests/deviations/lib_shutil_unsupported.py)). `move()` of a file to another
+file system copies it with `copy()` (CPython uses `copy2()`, which also copies its times), and
+of a directory raises the rename's `OSError`. `copytree()`, `copy2()`, `copystat()`, `which()`,
+`disk_usage()`, `get_terminal_size()` and the archive functions are not provided.
 
 ### `getopt`
 

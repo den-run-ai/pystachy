@@ -156,7 +156,8 @@ def gen_modattr(self, path: str) -> Val:
 
 
 # lib's private file system primitives (gen_builtin), by the modules that may call them
-FSPRIMS: dict[str, str] = {"__pys_stat_mode": "pathlib shutil", "__pys_touch": "pathlib", "__pys_copyfile": "shutil", "__pys_copymode": "shutil"}
+FSPRIMS: dict[str, str] = {"__pys_stat_mode": "pathlib shutil", "__pys_touch": "pathlib", "__pys_copyfile": "shutil", "__pys_copymode": "shutil",
+                            "__pys_rmtree": "shutil"}
 
 def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool = False) -> Val:
     # retval's open-result marker belongs to forwarding calls, not to the
@@ -184,7 +185,7 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         return Val(self.rt("pys_strftime_at", "ptr", [f"ptr {fmt.v}", f"double {secs.v}", f"i64 {utc.v}"]), "str")
     if name in FSPRIMS:
         # (lib/pathlib.py's and lib/shutil.py's file system calls: runtime.c's pys_stat_mode,
-        # pys_touch, pys_copyfile and pys_copymode)
+        # pys_touch, pys_copyfile, pys_copymode and pys_rmtree)
         mods = FSPRIMS[name].split()
         n = 3 if name == "__pys_touch" else 2
         if (self.curfn.mod not in mods or not lib_source(self.curfn.node.line, self.libdir, self.curfn.mod + ".py") or
@@ -198,6 +199,10 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             mode = self.as_int(self.expr(args[1], "int"))
             ok = self.as_int(self.expr(args[2], "bool"))
             self.rt("pys_touch", "void", [f"ptr {path.v}", f"i64 {mode.v}", f"i64 {ok.v}"])
+            return Val("null", "None")
+        if name == "__pys_rmtree":
+            ignore = self.as_int(self.expr(args[1], "bool"))
+            self.rt("pys_rmtree", "void", [f"ptr {path.v}", f"i64 {ignore.v}"])
             return Val("null", "None")
         dst = self.coerce(self.expr(args[1], "str"), "str")
         self.rt("pys_copyfile" if name == "__pys_copyfile" else "pys_copymode", "void", [f"ptr {path.v}", f"ptr {dst.v}"])
