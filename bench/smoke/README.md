@@ -181,41 +181,31 @@ Interleave pinned-core baseline/candidate
 runs and keep JIT startup separate. The control is intentionally standalone, not an added
 CI timing threshold or an entry in `perf_smoke.py`'s default matrix.
 
-### Release-candidate counts
+<a id="release-candidate-counts"></a>
 
-On 2 November 2026, the alpha.4 candidate (main `c3aaa068`) executed more instructions
-than the alpha.3 tag on seven of these eight controls, with every output matching
-CPython:
+### alpha.3 to alpha.4
 
-| Control | alpha.3 | Candidate | Change |
-|---|---:|---:|---:|
-| Broad (`json_loads.py 300`) | 1,300.4M | 1,428.5M | +9.85% |
-| Typed 32-key numeric / strings / mixed | 91.5M / 108.7M / 127.4M | 93.2M / 113.1M / 130.3M | +1.9% / +4.1% / +2.3% |
-| Short observed `Any` (`json_decode_any.py 2000`) | 30.0M | 30.5M | +1.7% |
-| Observed `Any` 32-key numeric / strings / mixed | 106.8M / 117.0M / 142.8M | 105.2M / 122.7M / 144.7M | −1.5% / +4.9% / +1.3% |
+All eight controls execute fewer instructions under v0.1.0-alpha.4 than under alpha.3, and
+every output matches CPython. These are whole-process AOT counts under Callgrind, measured on
+2 November 2026 on main `ec442a20`, whose code the alpha.4 tag shares:
 
-A first-parent bisect of the broad control stays between −0.2% and +0.5% of alpha.3 from
-#987 through main `14d4eb15`, then rises to 1,428.5M with #1004's byte scanner (`c1bfb48a`).
-In that merge, `pys_bytes_scan`, `plain_rest()` and `key()` add 137M instructions while
-`string()` saves 12M: keys and strings just past the 16-byte scalar prefix pay for a
-scanner call. Nine alternating wall-time pairs on the shared host were inconclusive
-(medians 138.7 and 138.2 ms). The
-[counts, bisect, attribution and timings](results/json-controls-2026-11-02.json) are retained.
-
-On the release candidate, main `ec442a20` (`c3aaa068` with #1025–#1029 and #1031), all eight
-controls execute fewer instructions than alpha.3, every output still matching CPython:
-
-| Control | alpha.3 | Release candidate | Change |
+| Control | alpha.3 | alpha.4 | Change |
 |---|---:|---:|---:|
 | Broad (`json_loads.py 300`) | 1,300.4M | 1,296.2M | −0.32% |
 | Typed 32-key numeric / strings / mixed | 91.5M / 108.7M / 127.4M | 91.0M / 107.1M / 126.8M | −0.47% / −1.44% / −0.42% |
 | Short observed `Any` (`json_decode_any.py 2000`) | 30.0M | 29.9M | −0.29% |
 | Observed `Any` 32-key numeric / strings / mixed | 106.8M / 117.0M / 142.8M | 103.1M / 116.7M / 141.1M | −3.50% / −0.27% / −1.14% |
 
-#1028 keeps object keys, and the strings of texts up to 1 KiB, in a scalar loop without the
-scanner call. Longer string values still use the scanner after their first 32 bytes. Under
-Valgrind alone, the runtime's stack-bounds lookup (#1026) can fall back to glibc's parse of
-`/proc/self/maps`, about 110,000 instructions once per process, which a native run never
-makes. These counts leave it out. With it, an earlier merge of the fixes read +0.11% on the
-short observed-`Any` control. The counts are under `release_candidate` in the same results
-file.
+- **The byte scanner's regression is gone.** On an earlier alpha.4 candidate,
+  [#1004](https://github.com/den-run-ai/pystachy/pull/1004)'s scanner raised the broad control
+  by 9.85%: keys and strings just past the 16-byte scalar prefix paid for a scanner call.
+  [#1028](https://github.com/den-run-ai/pystachy/pull/1028) keeps object keys, and the strings
+  of texts up to 1 KiB, in a scalar loop; longer string values still use the scanner after
+  their first 32 bytes.
+- **Work that only Valgrind causes is left out.** Under Valgrind, the runtime's stack-bounds
+  lookup ([#1026](https://github.com/den-run-ai/pystachy/pull/1026)) can fall back to glibc's
+  parse of `/proc/self/maps`, about 110,000 instructions once per process, which a native run
+  never makes.
+- **Data.** The [results file](results/json-controls-2026-11-02.json) keeps these counts under
+  `release_candidate`, with the earlier candidate's counts, a bisect and per-function
+  attribution of #1004's regression, and nine wall-time pairs that could not resolve it.

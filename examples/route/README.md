@@ -76,76 +76,23 @@ this host; fnmatch whole-program times are approximately equal. New names still 
 matching and eviction costs. Measurements from different hosts do not establish a
 performance regression.
 
-Streaming RSS is 12.2–12.8 MiB CPython and 34.4–36.3 MiB AOT. Keeping distinct names
-raises unique-trace RSS to 24.1 and 47.8 MiB respectively. Reading the whole trace into
+Streaming RSS is 12.2–12.8 MiB CPython and 34.4–36.3 MiB AOT. AOT's is higher because
+collection is deferred, not because of the classification cache, which is bounded at 4,096
+names. Keeping distinct names raises unique-trace RSS to 24.1 and 47.8 MiB respectively. Reading the whole trace into
 memory is only used for the routing-time column; it is not the streaming memory measurement.
 
-The **self-hosted compiler at local measured commit `a74efdf`** gives the same conclusion
-in five paired rounds with the same host, CPU, inputs and policies. All reports agree. Its
-source tree matches published commit `5ec733c1`
-([PR #371](https://github.com/den-run-ai/pystachy/pull/371)).
-The [raw measurements](../../docs/benchmarks/route-2026-10-14-a74efdf.json) record the native
-compiler's hash and source revision separately from the router harness revision.
+A build by the self-hosted compiler, at local commit `a74efdf` (the source tree of published
+`5ec733c1`, [PR #371](https://github.com/den-run-ai/pystachy/pull/371)), gave the same
+conclusion in five paired rounds with the same host, CPU, inputs and policies, and every report
+agreed. Its [raw measurements](../../docs/benchmarks/route-2026-10-14-a74efdf.json) record the
+native compiler's hash and source revision separately from the router harness revision.
 
-| Repeated-name mode | CPython wall | AOT wall | AOT speedup | CPython routing | AOT routing |
-|---|---:|---:|---:|---:|---:|
-| Cached classifications | 0.309 s | 0.165 s | 1.88× | 130 ns | 69 ns |
-| `--fnmatch` | 2.923 s | 3.071 s | 0.95× | 2,804 ns | 3,751 ns |
+<a id="historical-snapshots"></a>
+<a id="routing-only-timings-and-memory"></a>
 
-The self-hosted build's cached wall times span 0.288–0.331 s CPython and 0.161–0.193 s AOT; fnmatch spans
-2.867–3.129 s and 2.944–3.182 s respectively. These ranges describe host variability,
-not statistical confidence intervals.
-
-<details>
-<summary>Earlier measurements and provenance</summary>
-
-### Historical snapshots
-
-Measurements recorded in [#294](https://github.com/den-run-ai/pystachy/pull/294): 4-core x86-64 VM,
-CPython 3.13.16, median of five whole-program wall-time runs including startup. AOT compilation
-is excluded. Repeating traces contain 1M events over 2,476 names; unique traces contain
-100,000 new names. These measurements use an older build and a different host from the paired results above.
-
-| Trace | Mode | CPython | Initial AOT | AOT speedup |
-|---|---|---:|---:|---:|
-| Repeated names | Cached classifications | 0.238 s | 0.165 s | 1.4× |
-| Repeated names | `--no-cache` | 1.632 s | 1.596 s | 1.0× |
-| Repeated names | `--fnmatch` | 2.927 s | 1.866 s | 1.6× |
-| Unique names | Cached classifications | 0.197 s | 0.207 s | 1.0× |
-| Unique names | `--no-cache` | 0.185 s | 0.189 s | 1.0× |
-| Unique names | `--fnmatch` | 0.318 s | 0.221 s | 1.4× |
-
-A follow-up in #294, tested with main `bbf8959` and the stack-tuple changes in #308/#315,
-measured **0.236 s CPython versus 0.158 s AOT** for cached repeated names: about **1.5×**.
-Routing alone measured **100 ns versus 55 ns per event**. Other rows stayed within about 6%.
-The announcement's rounded fnmatch comparison uses the initial 1.6× row above.
-
-Caching helps both runtimes; it produces the largest improvement when names repeat.
-With new names it pays lookup/eviction overhead and still runs regexes. In the initial routing-only
-measurements, Pystachy's precompiled-regex misses were slower than CPython's C engine.
-
-#### Routing-only timings and memory
-
-The same initial #294 benchmark used five `--in-memory` runs for routing time and one run
-for peak RSS. Its exact tested revision was not recorded separately from the PR's later follow-up.
-RSS figures originally labeled MB are MiB (`ru_maxrss` converted from KiB).
-
-| Trace | Mode | CPython routing | AOT routing | CPython RSS | AOT RSS |
-|---|---|---:|---:|---:|---:|
-| Repeated | Cached | 99 ns | 60 ns | 11.3 MiB | 35.6 MiB |
-| Repeated | `--no-cache` | 1,430 ns | 1,976 ns | 10.9 MiB | 35.8 MiB |
-| Repeated | `--fnmatch` | 2,650 ns | 2,283 ns | 10.9 MiB | 35.6 MiB |
-| Unique | Cached | 1,558 ns | 2,027 ns | 11.7 MiB | 37.8 MiB |
-| Unique | `--no-cache` | 1,456 ns | 1,873 ns | 10.9 MiB | 35.7 MiB |
-| Unique | `--fnmatch` | 2,653 ns | 2,200 ns | 10.9 MiB | 35.8 MiB |
-
-For repeated names, classifications reduced routing from 1,430 to 99 ns in CPython and
-1,976 to 60 ns AOT. Higher AOT RSS reflects deferred collection rather than a larger live
-classification cache. The cache is bounded at 4,096 names; adding `--names` makes memory
-grow with distinct names (unique trace: 23.0 MiB CPython, 48.8 MiB AOT).
-
-
-</details>
+Earlier measurements from [#294](https://github.com/den-run-ai/pystachy/pull/294), on an older
+build and another host, are on
+[this page as of alpha.4](https://github.com/den-run-ai/pystachy/blob/9c8bc74648aa7c7e6a1b9d8f9dbbfeb1f2908ad3/examples/route/README.md#historical-snapshots).
 
 ## Tests
 
