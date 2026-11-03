@@ -709,8 +709,15 @@ as it makes dataclasses and `NamedTuple` classes ([test](../tests/programs/libra
   ([test](../tests/errors/library/lib_enum_isinstance_base.py)), and a member as an `Any` value,
   whose `isinstance()` would find no `int` or `str`
   ([test](../tests/errors/library/lib_enum_any_strenum.py)): its `.value` can be one.
-- These are compile-time errors: `Flag`, `IntFlag` and `ReprEnum`; mixin types
-  (`class C(str, Enum)`) and keywords; members of other values or types, `_ignore_`, `_order_`
+- An enum class of `str` and `Enum`, or of `int` and `Enum` (`class C(str, Enum)`), is made as a
+  `StrEnum` or an `IntEnum` class with `Enum`'s `str()` and `format()` (`C.A`, where a
+  `StrEnum` member's is its value), as CPython 3.12 gives a mixed-in class
+  ([test](../tests/programs/library/lib_enum_mixin.py)). Its members follow the rules above, and
+  `isinstance()` of one and `IntEnum`, `StrEnum` or `ReprEnum`, which CPython answers `False`, is
+  a compile-time error ([test](../tests/errors/library/lib_enum_mixin_isinstance.py)), as is
+  `auto()` in a class of `str` and `Enum`, whose CPython value is the str of `Enum`'s next int.
+- These are compile-time errors: `Flag`, `IntFlag` and `ReprEnum`; other mixin types
+  (`class C(float, Enum)`) and keywords; members of other values or types, `_ignore_`, `_order_`
   and private names; `__new__`, `__init__`, `_missing_` and `_generate_next_value_`; an enum
   class that derives from an enum class of another module, or from one with members (CPython's
   `TypeError`); the functional API (`Enum("Color", "RED GREEN")`); reassigning a member

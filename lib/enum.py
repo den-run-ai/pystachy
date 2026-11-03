@@ -391,6 +391,30 @@ class StrEnum(ReprEnum):
         return self._value_.encode(encoding, errors)
 
 
+class _IntMixin(IntEnum):
+    # (an enum class of int and Enum, class C(int, Enum), which the compiler makes as one derived
+    # from this class: an IntEnum member's operations, with Enum's str() and format(), as CPython
+    # 3.12 gives a mixed-in enum class; isinstance() of a member and IntEnum or ReprEnum, which
+    # CPython's answers False, is a compile-time error)
+
+    def __str__(self) -> str:
+        return "%s.%s" % (self.__class__.__name__, self._name_, )
+
+    def __format__(self, format_spec: str) -> str:
+        return format(str(self), format_spec)
+
+
+class _StrMixin(StrEnum):
+    # (an enum class of str and Enum, class C(str, Enum): a StrEnum member's operations, with
+    # Enum's str() and format(), as for _IntMixin)
+
+    def __str__(self) -> str:
+        return "%s.%s" % (self.__class__.__name__, self._name_, )
+
+    def __format__(self, format_spec: str) -> str:
+        return format(str(self), format_spec)
+
+
 def unique(enumeration):
     """
     Class decorator for enumerations ensuring unique member values.

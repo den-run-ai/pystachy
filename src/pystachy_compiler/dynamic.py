@@ -20,7 +20,7 @@ from src.pystachy_compiler.bigints import held
 from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, INTFILES, LINES, Rejoin, dynamic_file, dynamic_program, int_lists, int_program
 from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Val
 from src.pystachy_compiler.module import Mod
-from src.pystachy_compiler.names import owner, retoken, short
+from src.pystachy_compiler.names import ENUMCLASSES, owner, retoken, short
 from src.pystachy_compiler.specs import BIG, ITERS, JSONANY, METHODS, NONEVAR, RANGEC, RTDATA
 from src.pystachy_compiler.syntax import Node, has_kind, mk
 from src.pystachy_compiler.utils import builtin_key, disjoint_sets, elem, gelem, holds_dyn, identity_abi, is_callable, is_dict, is_fn, is_gen, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, numeric_identity, selem, takes_self, targs, tname, typestr, umembers, unopt
@@ -296,7 +296,7 @@ def gen_dyn_boxable(self, t: str) -> str:
         for kind in ["enum$IntEnum", "enum$StrEnum"]:
             # (CPython's IntEnum member is an int, a StrEnum member a str, as an Any value's
             # isinstance() would find: here an object of its class)
-            ms = [k for k in self.refl_concrete(t) if k != kind and self.derives(k, kind)] if kind in self.classes else []
+            ms = [k for k in self.refl_concrete(t) if k in self.classes and self.classes[k].node.line in ENUMCLASSES and self.derives(k, kind)] if kind in self.classes else []
             if len(ms) > 0:
                 what = f"a {short(t)} member" if self.derives(t, kind) else f"a {short(t)} value, which may be a {short(ms[0])} member,"
                 return f"{what} cannot become an Any value: {'an IntEnum' if kind == 'enum$IntEnum' else 'a StrEnum'} member is an object of its class, where CPython's is also {'an int' if kind == 'enum$IntEnum' else 'a str'}, which isinstance() of the Any value would find (give its .value)"

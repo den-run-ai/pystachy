@@ -244,10 +244,19 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
     full: dict[str, bool] = {}  # (those with members, which no class may derive from)
     top: list[Node] = []
     imported = False
+    mixed = False
     for st in n.kids:
         kind = ""
         base = ""
-        for b in st.kids[1:] if st.kind == "subclass" else []:
+        mixin = ""
+        if st.kind == "subclass" and len(st.kids) == 3 and st.kids[1].kind == "name" and (st.kids[1].s == "str" or st.kids[1].s == "int") and names.get(dotted(st.kids[2]), "") == "Enum":
+            # (class C(str, Enum), class C(int, Enum): a mixed-in enum class, made as a StrEnum's
+            # or an IntEnum's with Enum's str() and format(): lib/enum.py's _StrMixin, _IntMixin)
+            mixin = st.kids[1].s
+            st.kids = [st.kids[0], mk("name", "_pys_StrMixin" if mixin == "str" else "_pys_IntMixin", st.line, [])]
+            kind = "StrEnum" if mixin == "str" else "IntEnum"
+            base = "Enum"
+        for b in st.kids[1:] if st.kind == "subclass" and mixin == "" else []:
             d = dotted(b)
             k = names.get(d, "")
             if k == "Flag" or k == "IntFlag" or k == "ReprEnum":
@@ -297,6 +306,8 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
                 if v.kind == "call" and names.get(dotted(v.kids[0]), "") == "auto":
                     if len(v.kids) > 1:
                         fail("auto() with an argument is not supported", v.line)
+                    if kind == "StrEnum" and mixin == "str":
+                        fail("auto() in an enum class of str and Enum is not supported (CPython's is the str of Enum's next int)", v.line)
                     if kind == "StrEnum":
                         v = mk("str", nm.lower(), v.line, [])
                     elif vtype != "" and vtype != "int":
@@ -340,6 +351,9 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
         if len(mnames) > 0 and not imported:
             top.append(Parser(Lexer("from enum import EnumType as _pys_EnumType\n", st.line).file()).module().kids[0])
             imported = True
+        if mixin != "" and not mixed:
+            top.append(Parser(Lexer("from enum import _StrMixin as _pys_StrMixin, _IntMixin as _pys_IntMixin\n", st.line).file()).module().kids[0])
+            mixed = True
         top.append(st)
         if len(mnames) > 0:
             full[st.s] = True

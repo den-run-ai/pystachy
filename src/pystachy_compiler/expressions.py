@@ -435,6 +435,13 @@ def gen_isinst(self, t: str, c: Node) -> int:
     while c.s in self.taliases and self.alias_kept(c.s):
         c = self.alias_value(c.s)  # (Pos = int: the class int, which nothing else binds to Pos)
     if c.s in self.classes:
+        if (c.s == "enum$IntEnum" or c.s == "enum$StrEnum" or c.s == "enum$ReprEnum") and t in self.classes and not lib_source(self.curfn.node.line, self.libdir, "enum.py"):
+            # (an enum class of int or str and Enum derives from lib/enum.py's _IntMixin or
+            # _StrMixin here, which derive from IntEnum and StrEnum: CPython's is no IntEnum)
+            mx = [k for k in self.refl_concrete(t) if self.classes[k].node.line in ENUMCLASSES and (self.derives(k, "enum$_IntMixin") or self.derives(k, "enum$_StrMixin"))]
+            if len(mx) > 0:
+                what = f"a {short(t)} member" if t == mx[0] else f"a {short(t)} value, which may be a {short(mx[0])} member,"
+                self.err(f"isinstance() of {what} and {short(c.s)} is not supported: an enum class of {'int' if self.derives(mx[0], 'enum$_IntMixin') else 'str'} and Enum derives from {'IntEnum' if self.derives(mx[0], 'enum$_IntMixin') else 'StrEnum'} here, where CPython's derives from Enum only")
         if t in self.classes and self.classes[t].tag > 0:
             return -2 if self.derives(t, c.s) else -1 if self.derives(c.s, t) else 0
         # (an exception of class t, or of a builtin one, may be an object of a class deriving from t)
@@ -448,7 +455,7 @@ def gen_isinst(self, t: str, c: Node) -> int:
     if kind in self.classes and t in self.classes and not lib_source(self.curfn.node.line, self.libdir, "enum.py"):
         # (CPython's IntEnum member is an int, a StrEnum member a str: here an object of its class,
         # which a value of a class it derives from, Enum's, may hold too)
-        ms = [k for k in self.refl_concrete(t) if k != kind and self.derives(k, kind)]
+        ms = [k for k in self.refl_concrete(t) if self.classes[k].node.line in ENUMCLASSES and self.derives(k, kind)]
         if len(ms) > 0:
             what = f"a {short(t)} member" if self.derives(t, kind) else f"a {short(t)} value, which may be a {short(ms[0])} member,"
             self.err(f"isinstance() of {what} and {c.s} is not supported: {'an IntEnum' if c.s == 'int' else 'a StrEnum'} member is an object of its class (in CPython also {'an int' if c.s == 'int' else 'a str'})")
