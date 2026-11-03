@@ -1029,26 +1029,161 @@ class PullRequestSubsetTests(unittest.TestCase):
         self.assertEqual(json.loads(output.read_text())["result"], "fail")
 
 
-class PullRequestMatrixTests(unittest.TestCase):
-    """CI's ARM64 smoke subset and its gate name the same real groups; pushes keep every group."""
+class PullRequestProfileTests(unittest.TestCase):
+    """Sparse evidence is exact, complete for its compact contract, and never release evidence."""
 
-    def test_smoke_include_matches_gate_subset_and_contract(self):
+    def setUp(self):
+        env = mock.patch.dict(os.environ, {"CI_BASE_SHA": ""})
+        env.start()
+        self.addCleanup(env.stop)
+        # The opt-in validators separately test real source-digest drift. Keep this test focused
+        # on aggregate scope, exact case selection, and the producer/consumer boundary.
+        digest = mock.patch.object(merge.python_int_gate, "source_digest", return_value="e" * 64)
+        digest.start()
+        self.addCleanup(digest.stop)
+        self.groups = merge.load_groups("pr")
+        self.selection = merge.pr_selection()
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.directory = Path(self.temp.name)
+        self.corpus = hosted_corpus()
+        self.native = [subprocess.run(["sh", "-c", f". tests/corpus.sh; corpus_shard {index} 2"],
+                                      cwd=merge.ROOT, check=True, capture_output=True, text=True).stdout.splitlines()
+                       for index in range(2)]
+        self.data = {}
+        for group, steps in self.groups.items():
+            if group == "all":
+                continue
+            data = report(group, steps)
+            data["profile"] = "full" if group == "bootstrap" else "pr"
+            if group != "bootstrap":
+                data["selection"] = copy.deepcopy(self.selection)
+            data["sources"].update(corpus_cases=len(self.corpus),
+                                   syntax_cases=sum(Path(case).name.startswith("syntax_") for case in self.corpus),
+                                   suite_checks=merge.case_checks(self.corpus, ["jit", "aot"]),
+                                   mode_checks=merge.case_checks(self.corpus, ["jit"]))
+            for step in data["steps"]:
+                name = step["name"]
+                if name == "tests-cpython":
+                    step.update(ir_cases=data["sources"]["corpus_cases"], check_cases=data["sources"]["syntax_cases"])
+                if name in merge.PR_SHARDED_STEPS:
+                    cases = (self.native[int(name[-1])] if name.startswith("tests-native-")
+                             else self.selection["cases"])
+                    step.update(selected_cases=list(cases), shard_count=merge.PR_SHARDED_STEPS[name])
+                    expected = merge.case_checks(cases, ["jit", "aot"])
+                    if name in merge.GC_STEPS:
+                        mode = step["modes"][0]
+                        offset = merge.GC_SAMPLE_OFFSETS[mode]
+                        sample = cases[offset::merge.GC_SAMPLE_EVERY]
+                        rest = [case for position, case in enumerate(cases)
+                                if position % merge.GC_SAMPLE_EVERY != offset]
+                        expected = merge.case_checks(rest, [mode])
+                        sample_checks = merge.case_checks(sample, [mode])
+                        step.update(shard_cases=len(cases), cases=len(rest))
+                        step["stressed_sample"].update(cases=len(sample), expected=sample_checks, passed=sample_checks)
+                    elif name == "ubsan-0":
+                        expected = 2 * merge.case_checks(cases, ["jit"])
+                        step.update(modes=["aot", "jit"], ir_identical=True,
+                                    cflags="-fsanitize=undefined -fno-sanitize-recover=all --rtlib=compiler-rt",
+                                    jit_preload="/llvm/lib/libclang_rt.ubsan_standalone-x86_64.so")
+                    elif name == "python-free-0":
+                        step.update(python_on_path=False, ir_identical=True, path_tools=["sh", "clang", "lli"])
+                    else:
+                        step.update(compiler="stage2", modes=["jit", "aot"])
+                    step.update(expected=expected, passed=expected)
+                for field, make in (("optin", optin_report), ("python_int_optin", python_int_report)):
+                    if field not in step:
+                        continue
+                    selected = [case for case in self.selection["cases"] if case.startswith("tests/programs/")]
+                    rows = {(row["case"], row["mode"]): row for index in range(3)
+                            for row in make(index)["results"]}
+                    rows = [rows[(case, mode)] for case in selected for mode in ("jit", "aot")]
+                    step[field].update(shard_index=0, shard_count=1, subset=True, cases=selected,
+                                       oracle_cases=len(selected), expected_checks=len(rows), completed_checks=len(rows),
+                                       passed_checks=sum(row["result"] == "pass" for row in rows),
+                                       expected_failures=sum(row["result"] == "expected-failure" for row in rows),
+                                       results=rows)
+            self.data[group] = data
+            self.write(group, data)
+
+    def write(self, group, data):
+        path = self.directory / f"verification-{group}" / "verification.json"
+        path.parent.mkdir(exist_ok=True)
+        path.write_text(json.dumps(data))
+        return path
+
+    def merge(self):
+        return merge.merge_reports(self.directory, self.groups, COMMIT, profile="pr")
+
+    def test_nine_groups_reuse_full_bootstrap_and_cover_every_native_case_in_two_workers(self):
+        result = self.merge()
+        self.assertEqual(len(self.groups) - 2, 9)
+        self.assertEqual(result["profile"], "pr")
+        self.assertEqual(result["group"], "pr")
+        self.assertEqual(result["selection"], self.selection)
+        self.assertEqual([step["name"] for step in result["steps"]], self.groups["all"])
+        self.assertEqual(sorted(self.native[0] + self.native[1]), sorted(self.corpus))
+        self.assertFalse(set(self.native[0]) & set(self.native[1]))
+        self.assertEqual(result["steps"][0]["ci_group"], "bootstrap")
+        self.assertNotIn("bootstrap_reused", result["steps"][0])
+        for group in ("native-1", "safety-1", "opt-in", "cache-gc"):
+            path = self.directory / f"verification-{group}" / "verification.json"
+            path.unlink()
+            with self.subTest(missing=group), self.assertRaisesRegex(ValueError, "missing report groups"):
+                self.merge()
+            self.write(group, self.data[group])
+
+    def test_profile_selection_and_scope_cannot_be_downgraded_or_fabricated(self):
+        for group, mutate in (
+                ("contracts", lambda data: data.pop("profile")),
+                ("contracts", lambda data: data.update(profile="full")),
+                ("bootstrap", lambda data: data.update(profile="pr")),
+                ("safety-0", lambda data: data["selection"].update(base_commit="f" * 40)),
+                ("safety-0", lambda data: data["selection"]["cases"].pop()),
+                ("native-1", lambda data: data["steps"][1].update(shard_count=3)),
+                ("native-0", lambda data: data["steps"][1]["selected_cases"].pop()),
+                ("safety-0", lambda data: data["steps"][1]["selected_cases"].reverse()),
+                ("safety-0", lambda data: data["steps"][1].update(expected=1, passed=1)),
+                ("safety-0", lambda data: data["steps"][2].update(python_on_path=True)),
+                ("safety-1", lambda data: data["steps"][1].update(cflags="")),
+                ("safety-1", lambda data: data["steps"][2]["stressed_sample"].update(expected=1, passed=1)),
+                ("opt-in", lambda data: data["steps"][1]["optin"].update(subset=False)),
+                ("opt-in", lambda data: data["steps"][2]["python_int_optin"]["results"].pop())):
+            changed = copy.deepcopy(self.data[group])
+            mutate(changed)
+            self.write(group, changed)
+            with self.subTest(group=group, mutate=mutate), self.assertRaises(ValueError):
+                self.merge()
+            self.write(group, self.data[group])
+        with self.assertRaisesRegex(ValueError, "profile differs"):
+            merge.validate_report(self.data["contracts"], "contracts", self.groups["contracts"])
+        with self.assertRaisesRegex(ValueError, "profile differs"):
+            merge.merge_reports(self.directory, self.groups, COMMIT)
+        with self.assertRaisesRegex(ValueError, "requires every compact group"):
+            merge.merge_reports(self.directory, self.groups, COMMIT, subset=["contracts"], profile="pr")
+
+
+class PullRequestMatrixTests(unittest.TestCase):
+    """The compact PR matrix and full main/release matrix each match their own gate contract."""
+
+    def test_profile_matrices_match_the_harness_and_gate(self):
         text = (merge.ROOT / ".github/workflows/ci.yml").read_text()
-        job = text[text.index("\n  verification:\n"):text.index("\n  port-check:\n")]
-        matrix = re.search(r"group: \[([^\]]*)\]", job)
-        self.assertIsNotNone(matrix, "the verification matrix's group list")
-        everything = [name.strip() for name in matrix[1].split(",")]
-        groups = merge.load_groups()
-        self.assertEqual(sorted(everything), sorted(name for name in groups if name not in ("all", "bootstrap")))
-        smoke = re.findall(r"^          - \{machine: aarch64, group: ([a-z0-9-]+)\}$", job, re.M)
-        gate = re.search(r"VERIFY_SUBSET: \$\{\{ matrix\.machine == 'aarch64' && "
-                         r"github\.event_name == 'pull_request' && '([a-z0-9,-]+)' \|\| '' \}\}", text)
-        self.assertIsNotNone(gate, "the gate's pull-request subset")
-        self.assertTrue(smoke)
-        self.assertEqual(sorted(smoke), sorted(gate[1].split(",")))
-        self.assertTrue(set(smoke) <= set(everything))
-        # Only pull requests drop ARM64 groups; other events exclude a value no entry has.
-        self.assertIn("exclude:\n          - machine: ${{ github.event_name == 'pull_request' && 'aarch64' || '' }}", job)
+        job = text[text.index("\n  verification:\n"):text.index("\n  pr-variants:\n")]
+        matrix = re.search(r"group: \$\{\{ fromJSON\(github\.event_name == 'pull_request' && '([^']+)' \|\| '([^']+)'\) \}\}", job)
+        self.assertIsNotNone(matrix, "the verification matrix's explicit PR and full group lists")
+        for profile, value in zip(("pr", "full"), matrix.groups()):
+            groups = merge.load_groups(profile)
+            self.assertEqual(sorted(json.loads(value)), sorted(name for name in groups if name not in ("all", "bootstrap")))
+        self.assertEqual(len(json.loads(matrix[1])), 9)
+        machines = re.search(r"machine: \$\{\{ fromJSON\(github\.event_name == 'pull_request' && '([^']+)' \|\| '([^']+)'\) \}\}", job)
+        self.assertIsNotNone(machines)
+        self.assertEqual(json.loads(machines[1]), ["x86_64"])
+        self.assertEqual(json.loads(machines[2]), ["x86_64", "aarch64"])
+        self.assertIn("VERIFY_PROFILE: ${{ github.event_name == 'pull_request' && 'pr' || 'full' }}", text)
+        self.assertIn('--profile "$VERIFY_PROFILE"', text)
+        # An ambient PR setting must not silently downgrade a caller asking for full evidence.
+        with mock.patch.dict(os.environ, {"VERIFY_PROFILE": "pr"}):
+            self.assertEqual(merge.load_groups(), merge.load_groups("full"))
 
 
 if __name__ == "__main__":
