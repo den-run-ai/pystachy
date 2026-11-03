@@ -179,18 +179,28 @@ are 3.13.16's):
 | `make listprobe eqprobe fileprobe selectprobe weakrefprobe boxprobe dictprobe unicodeprobe bytescanprobe` (each also with `PYSTACHY_GC_STRESS=1`) | passed |
 | `make jitprobe aotprobe` (hosted and native compilers) | passed; 4 collections in the default window, 136 with `PYSTACHY_GC_MIN=1`, 0 with 256 |
 | `make check-ir` | 2,201 programs |
-| `tools/test_runtime_*.py` (59 tests, including the ASan and UBSan runtime builds) and `tools/test_*verif*.py` | passed |
+| `tools/test_runtime_*.py` (64 tests, including the ASan and UBSan runtime builds and the page heap's below) and `tools/test_*verif*.py` | passed |
 | `make lint check-runtime typecheck` | passed |
 | `make check-recordings` | 1,998 of 2,000: `sys_version_info` and `upstream_sys_version_info` print this container's CPython 3.13.18, not the pinned 3.13.16 |
 | `tools/irsame.sh` with main's compiler and this one, both reading one library home | 3,985 programs: the same IR, messages and exit status (each with its own home, 194 differed only in the library path that `ImportError` messages embed) |
 
 `tools/test_runtime_pages.py` now compiles the page heap's purge with simulated 4, 16 and 64 KiB
 kernel pages for a string in a region and in its own mapping; its negative control, a purge that
-rounds to the collector's 4 KiB pages, fails on 64 KiB pages. `tools/jitprobe.py` expects the
+rounds to the collector's 4 KiB pages, fails on 64 KiB pages. `tools/test_runtime_pageheap.py`
+replays seeded random cycles of chunks and large objects (in regions and in mappings of their own),
+sweeps and budgets through the page heap's own functions, against a model of the object on each
+page: no two live objects share a page; zeroed allocations, chunks taken as clean and free pages
+marked clean read zero; live objects keep their bytes; the bitmaps, free runs and heap count agree
+with the model; and the free memory a sweep keeps fits its budget. Its negative controls, freed
+pages left marked clean and a split run that overlaps its allocation, fail.
+`tools/test_runtime_frames.py` compiles `runtime.c` with `-fstack-usage` and bounds the frames that
+marking scans (`gc_slow` with `refill` inlined, `collect`, `mark_roots`: 72, 120 and 24 bytes) at
+256 bytes; with `pages_settle` inlined, `collect`'s exceeds it. `tools/jitprobe.py` expects the
 padded object's allocation as the fast path's slow call, `pys_gc_slow(i64 56, i64 0)`.
-Not run: the full `make verify` matrix (sanitizer and Python-free rebuilds, all GC shards,
-`gc-self`), macOS (whose purge maps fresh pages over the old instead of `MADV_DONTNEED`), and
-Linux ARM64.
+Not run locally: the full `make verify` matrix (sanitizer and Python-free rebuilds, all GC shards,
+`gc-self`), Linux ARM64 and macOS (whose purge maps fresh pages over the old instead of
+`MADV_DONTNEED`). The pull request's CI runs the matrix on Linux x86-64 and ARM64, and the
+bootstrap on macOS.
 
 ## 6. Follow-ups
 
