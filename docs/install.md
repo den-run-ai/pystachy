@@ -212,8 +212,9 @@ Primary status does not imply identical testing depth across operating systems.
 
 Linux ARM64 uses the little-endian LP64 ABI and untagged heap pointers below
 2^48, matching Linux's default allocation range; explicitly requested 52-bit
-heap mappings and tagged-pointer allocators are not supported. The string-trimming
-runtime queries the OS page size before discarding pages. Its regression control
+heap mappings and tagged-pointer allocators are not supported. The collector's page
+heap maps 2 MiB regions and queries the OS page size before returning pages to the
+system (free pages and the room a trimmed string leaves). Its regression control
 covers 4/16/64 KiB page boundaries; native CI verifies the runner's page size and
 does not establish complete execution coverage on every kernel page-size variant.
 Cross-compilation, 32-bit ARM,

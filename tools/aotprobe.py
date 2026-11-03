@@ -31,6 +31,10 @@ pys_alloc's, which -O2 never deletes, and only the objects they hold, which hold
 Its executable, also with a collection at every allocation, keeps the held objects alive, as
 CPython does: weak references to them stay alive (with the marked call, -O2 forwarded a holder's
 fields across the collections and left the holder's address dead, and the collector freed them).
+
+The allocation window (#650): WINDOW's executable makes about 150 MiB of small lists that die at
+once, and collects more often with PYSTACHY_GC_MIN=1 and less with 256 than in the default 32 MiB
+window; values out of range (0, negative, not a number, past 2**20) keep the default.
 """
 import argparse
 import os
@@ -168,6 +172,17 @@ def run(n: int) -> None:
 
 
 run(1)
+'''
+# small lists that die at once: about 150 MiB of allocation, whose collections the allocation window
+# between them sets (32 MiB, or PYSTACHY_GC_MIN's, #650)
+WINDOW = '''def churn(n: int) -> int:
+    total = 0
+    for i in range(n):
+        total += len([i, i + 1, i + 2])
+    return total
+
+
+print(churn(2000000))
 '''
 # the allocations of compiled code that -O2 left: its calls of pys_new
 NEW = re.compile(r"call [^@\n]*@pys_new\(")
@@ -311,6 +326,24 @@ def main():
                 if run([str(exe)], env | stress, temp) != want:
                     raise RuntimeError(f"{label} held: the AOT executable's output differs from CPython's{' under GC stress' if stress else ''}: a holder's object was collected")
             print(f"{label}: held objects stay alive through collections, also under GC stress; their holders come from pys_alloc, the objects from pys_new")
+            src = temp / "window.py"
+            src.write_text(WINDOW)
+            exe = temp / f"{label}-window"
+            run(cmd + ["build", str(src), "-o", str(exe)], env)
+            want = run([sys.executable, "window.py"], env, temp)
+            counts = {}
+            for setting in ("", "1", "256", "0", "-4", "x", "1048577"):
+                result = subprocess.run([str(exe)], cwd=temp, env=env | {"PYSTACHY_GC": "stats", "PYSTACHY_GC_MIN": setting},
+                                        capture_output=True, timeout=300, check=False)
+                stats = re.search(rb"^gc: (\d+) collections", result.stderr, re.M)
+                if result.returncode or result.stdout != want or stats is None:
+                    raise RuntimeError(f"{label} window with PYSTACHY_GC_MIN={setting!r}: exit {result.returncode}, output {result.stdout!r}, stderr {result.stderr.decode()}")
+                counts[setting] = int(stats.group(1))
+            if not counts["1"] > counts[""] > counts["256"] or counts[""] < 2:
+                raise RuntimeError(f"{label} window: PYSTACHY_GC_MIN does not set the window between collections: {counts}")
+            if any(counts[v] != counts[""] for v in ("0", "-4", "x", "1048577")):
+                raise RuntimeError(f"{label} window: an invalid PYSTACHY_GC_MIN changed the window: {counts}")
+            print(f"{label}: collections over 150 MiB of small lists: {counts['']} in the default 32 MiB window, {counts['1']} with PYSTACHY_GC_MIN=1, {counts['256']} with 256; invalid values keep the default")
     return 0
 
 

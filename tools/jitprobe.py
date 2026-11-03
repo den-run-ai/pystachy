@@ -170,10 +170,12 @@ def main():
             executed = capture.read_text()
             if 'target datalayout = ' not in executed or 'target triple = ' not in executed:
                 raise RuntimeError(f"{label}: JIT optimization ran without the runtime's target")
-            # (the object's allocation: pys_alloc's call, with or without allocelide, since the object
+            # (the object's allocation: pys_alloc's, with or without allocelide, since the object
             # holds a list: only an object that holds no reference may come from pys_new's marked
-            # call, which LLVM may delete, lowering's alloc_call)
-            if not re.search(r"call ptr @pys_alloc\(i64 56\)", executed):
+            # call, which LLVM may delete, lowering's alloc_call. The JIT tier inlines pys_alloc's
+            # fast path, driver.py's JITFAST, whose slow path calls pys_gc_slow with the size and
+            # 0, scanned memory)
+            if not re.search(r"call ptr @pys_gc_slow\(i64 56, i64 0\)", executed):
                 raise RuntimeError(f"{label}: padded object allocation does not use pys_alloc and the host's 56-byte layout")
             remaining = {name for name in dead if f"@{name}(" in executed}
             if remaining:
