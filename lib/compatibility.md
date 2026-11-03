@@ -738,7 +738,10 @@ as it makes dataclasses and `NamedTuple` classes ([test](../tests/programs/libra
   boundary `STRICT`); a flag's `in`, iteration, `len()`, `bool()`, `repr()` (`<P.R|X: 5>`,
   `<P: 0>`), `str()`, `format()` and `hash()`, and a member of value 0, are CPython's, and the
   name of a pseudo-member without members is `None`
-  ([test](../tests/programs/library/lib_enum_flag.py)). An `IntFlag` member has `int`'s
+  ([test](../tests/programs/library/lib_enum_flag.py)). Lookup also accepts a non-int value
+  equal to a declared member's value, or an already cached pseudo-member's value, as CPython's
+  value map does; class containment tests declared values for non-ints
+  ([test](../tests/programs/library/lib_enum_flag_numeric_lookup.py)). An `IntFlag` member has `int`'s
   operations, `str()` and `format()`, as an `IntEnum` member does, and `|`, `&` and `^` with an
   int keep its class, whose boundary `KEEP` keeps the bits no member has (`<I: 12>`,
   `<I.A|12: 13>`); its members follow the int-like members' rules above, and `isinstance()` of

@@ -505,6 +505,11 @@ class _FlagType:
         if own is not None:
             return own
         if not isinstance(value, int):
+            # (Enum.__new__ looks in the value map before Flag._missing_ requires an int:
+            # an equal float can find a declared member or an already cached pseudo-member)
+            for key, member in self._value2member_map_.items():
+                if key == value:
+                    return member
             raise ValueError("%r is not a valid %s" % (value, self._cls_name_))
         hit = self._value2member_map_.get(value)
         if hit is not None:
@@ -598,6 +603,11 @@ class _FlagType:
                 return True
             except ValueError:
                 pass
+        # (EnumType.__contains__ also tests the class's declared values. Cached pseudo-members
+        # are not among them, even when a non-int value can now find one through __call__.)
+        for member in self._member_map_.values():
+            if member._value_ == value:
+                return True
         return False
 
     def __getitem__(self, name: str):
