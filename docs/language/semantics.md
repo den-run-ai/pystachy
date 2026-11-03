@@ -347,8 +347,8 @@ An `__iter__` annotated `-> Iterator[T]` or `-> Iterable[T]` whose returns are a
 of a list, tuple, string or object with such an `__iter__` keeps a faster form: a loop
 steps through that list directly. A supported `__reversed__` has that form, or returns
 `reversed(xs)`, whose items it copies when it returns; every consumer of `reversed(o)` steps
-through the iterator it returns. Calling `o.__iter__()` is unsupported. Generator
-implementations are unsupported.
+through the iterator it returns. Direct calls to these optimized iterator methods are
+unsupported. Generator implementations follow the [generator rules](#generators).
 
 A missing protocol method produces a compilation error using CPython's message.
 An object that is `None` when the operation executes raises the corresponding runtime error.

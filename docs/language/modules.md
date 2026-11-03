@@ -191,8 +191,10 @@ when the statement executes.
 
 A base that raises is diagnosed when the statement runs, including a subscript of a class
 without bases. `class C(object)` is treated as having no bases only when `object` is certainly
-the builtin at that point. Class creation checks that Pystachy skips are listed among the
-[CPython deviations](../language.md#deviations-from-cpython).
+the builtin at that point. Other validation of uncompiled classes is skipped:
+`NamedTuple`, `TypedDict`, `Protocol` and `Generic` checks; `__slots__` conflicts;
+dataclass field order and mutable defaults; and invalid bases or class-body errors
+outside the evaluation rules above.
 
 ## Library code
 
@@ -278,8 +280,8 @@ arguments. Supported iteration contexts and other restrictions are in the
 
 | Module | Supported surface |
 |---|---|
-| `sys` | `argv`, `warnoptions`, `exit`, `stdin`, `stdout`, `stderr`, `maxsize`, `platform`, `implementation.name` (`"pystachy"`), `prefix`, `base_prefix`, `exec_prefix`, `base_exec_prefix` (see [compatibility](compatibility.md)), `setrecursionlimit`, `getrecursionlimit` (enforced on [recursive native calls](compatibility.md#errors-and-control-flow)); the streams are files. `warnoptions` is `[]`, CPython's for a program run without `-W` options (an extension module's is its host's). |
-| `sys.version_info` | CPython 3.13.16's, a tuple of its items, and `major`, `minor`, `micro`, `releaselevel`, `serial` read as `sys.version_info.major` and the like; `str()` shows the tuple. |
+| `sys` | `argv`, `warnoptions`, `exit`, `stdin`/`stdout`/`stderr` (files), `maxsize`, `platform`, `implementation.name` (`"pystachy"`), `prefix`/`base_prefix`/`exec_prefix`/`base_exec_prefix`; see [runtime values](compatibility.md#modules-and-libraries). `setrecursionlimit`/`getrecursionlimit` enforce [native recursion limits](compatibility.md#recursion). |
+| `sys.version_info` | CPython 3.13.16's items and `major`, `minor`, `micro`, `releaselevel`, `serial`; see [representation differences](compatibility.md#modules-and-libraries). |
 | `sys.float_info` | `max`, `max_exp`, `max_10_exp`, `min`, `min_exp`, `min_10_exp`, `dig`, `mant_dig`, `epsilon`, `radix`, `rounds`, matching CPython for IEEE 754 doubles. `sys.float_info` itself is not a value. |
 | `os` | `system`, `execv`, `getpid`, `getcwd`, `getenv`, `remove`, `unlink`, `rmdir`, `mkdir`, `listdir`, `rename`, `replace`, `fspath`; `name`, `sep`, `curdir`, `pardir`, `extsep`, `pathsep`, `linesep`, `devnull`. |
 | `os.path` | `exists`, `lexists`, `isdir`, `isfile`, `islink`, `samefile`, `realpath`, `join`, `normcase`, `getsize`, `getmtime`, `getctime`. |
@@ -292,8 +294,9 @@ arguments. Supported iteration contexts and other restrictions are in the
 
 `open()` supports text modes, `buffering=`, `newline=` translation and positions for `"+"`
 modes. Files provide `read`, `readline`, `readlines`, `write`, `writelines`, `flush`, `close`,
-`fileno`, iteration, and `closed`, `name` and `mode`. Encoding, buffering and automatic closure differences
-are documented in [CPython deviations](../language.md#deviations-from-cpython).
+`fileno`, iteration, and `closed`, `name` and `mode`. See
+[text encodings and positions](compatibility.md#text-and-file-positions) and
+[automatic closure](compatibility.md#memory-and-resource-lifetime).
 
 `math.fsum()`, `math.prod()` (including `start=`) and `math.dist()` follow CPython's algorithms.
 `fsum()` and `prod()` accept the iterables accepted by `sum()`; `fsum()` also accepts a tuple
