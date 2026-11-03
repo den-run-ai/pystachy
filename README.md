@@ -145,8 +145,8 @@ can also hold values whose type is known only at run time. See the
 adapted code remains valid Python and can be diffed against upstream. The library also
 provides `re`, `itertools`, Unicode normalization, a bounded native `json`, `tomllib.loads()`,
 `functools.cache` / `lru_cache`, `collections.namedtuple` and `io.BytesIO`. See
-[library coverage](lib/README.md) for supported APIs and limits, and the
-[CPython support map](docs/support-surface.md) for what broader compatibility would cost.
+[library support](docs/stdlib.md#library-support-at-a-glance) for each area's modules and gaps,
+and the [CPython support map](docs/support-surface.md) for what broader compatibility would cost.
 
 **Third-party code.** [14 ported packages](ports/README.md) have scoped APIs and documented
 adaptations. Libraries ship as ordinary Python wheels: uv or pip installs them, and Pystachy
@@ -199,7 +199,7 @@ The next priorities are:
 - Broader library coverage, with localized ports checked against CPython.
 - Further compiler and runtime optimizations, backed by reproducible benchmarks.
 
-The [library survey](docs/stdlib.md) and
+The [library support table](docs/stdlib.md#library-support-at-a-glance) and
 [open issues](https://github.com/den-run-ai/pystachy/issues) track coverage gaps and planned work.
 
 ## Documentation
@@ -210,7 +210,7 @@ Start with the [documentation index](docs/README.md) for task-based navigation.
 |---|---|
 | [Getting started](docs/getting-started.md) | One program, a compiler diagnostic, a fix and measurement basics |
 | [Language](docs/language.md) | Support by feature area, performance trade-offs, typing rules and CPython differences |
-| [Libraries](lib/README.md) | Available modules, port adaptations and upstream tests |
+| [Libraries](docs/stdlib.md) | Support and gaps by area, the [module guide](lib/README.md#module-guide), porting and upstream tests |
 | [Performance](docs/performance.md) | Speed, startup, memory and compile-time measurements |
 | [Caching](docs/caching.md) | Regex, text processing and memoization benchmarks |
 | [Testing](docs/testing.md) | Differential tests, bootstrap checks and CI |

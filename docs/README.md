@@ -8,7 +8,8 @@ program you can also run under CPython, then check the APIs your application use
 1. [Install Pystachy](install.md): native archives, Docker or a source build.
 2. [Run your first program](getting-started.md): compare CPython, JIT and AOT;
    read a real diagnostic, fix the program and measure it fairly.
-3. [Check supported Python](language.md#support-at-a-glance) and [library APIs](../lib/README.md).
+3. [Check supported Python](language.md#support-at-a-glance) and
+   [library support](stdlib.md#library-support-at-a-glance).
    Import success alone does not establish that a package works.
 
 ## Use Pystachy
@@ -17,7 +18,7 @@ program you can also run under CPython, then check the APIs your application use
 |---|---|
 | Understand types, inference or a rejected program | [Language](language.md), [typing](language/typing.md), [compatibility limits](language/compatibility.md) |
 | Choose an appropriate workload | [Costs by feature](language.md#performance-and-complexity), [support surface](support-surface.md), [application examples](../examples/) |
-| Use a library or adapt a Python package | [Shipped libraries](../lib/README.md), [porting](stdlib.md), [third-party ports](../ports/README.md) |
+| Use a library or adapt a Python package | [Library support](stdlib.md#library-support-at-a-glance), [module guide](../lib/README.md#module-guide), [porting](stdlib.md#porting-a-library), [third-party ports](../ports/README.md) |
 | Read or write JSON | [Native JSON](json.md): API, recursive values, dynamic storage and limits |
 | Use mixed values or large integers | [Dynamic `Any`](dynamic-any.md), [promoting integers](python-int.md), [explicit `mpz`](mpz.md); these remain experimental |
 | Call C or Python, or build a Python extension | [Interoperability](ffi.md), including ABI and ownership contracts |
