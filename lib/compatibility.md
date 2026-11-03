@@ -1118,16 +1118,23 @@ decoding or newline translation:
   `truncate()`, `flush()`, `close()`, `fileno()`, `isatty()`, `readable()`, `writable()`,
   `seekable()`, `name`, `mode` (as `FileIO` names it: `w+b` is `rb+`), `closed` and `with`, and
   `type()` and `repr()` name `_io`'s classes.
+  `readlines(hint)` includes the line that takes the total byte count above a positive hint;
+  reaching it exactly does not stop reading ([test](../tests/programs/io/bfile_readlines_hint.py)).
 - Errors are CPython's, in its order: `open()`'s checks of the mode, and of `encoding`, `errors`
   and `newline`, which a binary mode refuses; the OS's errors; and each class's messages for an
   operation on a closed file or one its mode does not have (`io.UnsupportedOperation`)
   ([test](../tests/programs/io/bfile_errors.py)).
 - A buffered file's writes reach the OS when CPython's do (its buffer has `st_blksize` bytes, or
-  those of `buffering=`), and its reads and writes are at its position; `truncate()` drops what it
-  read ahead, so reads see the file as it now is ([test](../tests/programs/io/bfile_truncate_read.py)).
+  those of `buffering=`), and its reads and writes are at its position. `truncate()` discards
+  read-ahead and cached position state, so reads see the file as it now is, including after a
+  seek into a partial final buffer. A failed seek preserves the logical position
+  ([truncate test](../tests/programs/io/bfile_truncate_read.py),
+  [position test](../tests/programs/io/bfile_stdio_sync.py)).
   A `FileIO`'s `read(n)` is one read of the OS, which a pipe or a terminal may end short
   ([test](../tests/programs/io/bfile_fifo_raw.py)), and a read error raises CPython's `OSError`
-  ([test](../tests/programs/io/bfile_read_error.py)).
+  ([test](../tests/programs/io/bfile_read_error.py)). Its `write()` likewise makes one OS write
+  and returns the number of bytes accepted, which can be less than the input length
+  ([file-layer probe](../tools/fileprobe.c)).
 - A file used in one expression (`open(p, "wb").write(data)`) is closed right after it, as
   CPython's finalizer closes it ([test](../tests/programs/io/bfile_temp.py)), unless that call
   returns the file, as `__iter__()` and `__enter__()` do

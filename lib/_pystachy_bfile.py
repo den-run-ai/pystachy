@@ -104,7 +104,7 @@ class BinaryIO:
                 break
             lines.append(line)
             total += len(line)
-            if 0 < n <= total:
+            if 0 < n < total:
                 break
         return lines
 

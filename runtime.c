@@ -6550,11 +6550,22 @@ static void buse(File *f, int rd) {    /* a binary file's read (rd) or write, at
   else if (!rd && f->last == 2) fseeko(f->f, 0, SEEK_CUR);   /* (C stdio: a write after a read repositions) */
   f->last = rd ? 2 : 1;
 }
+static void bsync(File *f) {          /* before a descriptor operation: rewind unread input and invalidate stdio's
+                                          cached offset. Purging alone lets glibc's fseeko reuse stale buffer bytes.
+                                          Flush BEFORE moving the descriptor, or it can rewind from the new offset. */
+  int e = osflush(f, 0); if (e) ioerr(e);
+  pys_fpurge(f->f);                   /* also discard BSD/macOS input buffers */
+}
+static void bposition(File *f) {      /* a raw OS read/write moved the descriptor; stdio learns its new position */
+  off_t at = lseek(fileno(f->f), 0, SEEK_CUR);
+  if (at >= 0 && fseeko(f->f, at, SEEK_SET)) ioerr(errno);   /* pipes and terminals need no position sync */
+}
 Str *pys_bfile_read(File *f, I n) {    /* read(n): n bytes, or what remains (n < 0: all of it). A read error raises */
   io_in(); buse(f, 1);
   Buf b = {0}; char t[1 << 16];
   if (f->bin == 4 && n >= 0) {         /* FileIO's read(n) is one read of the OS, which ends short where a pipe or a
                                           terminal has fewer bytes (fread waits for n) */
+    bsync(f);
     char *p = n <= (I)sizeof t ? t : malloc(n);
     ssize_t r;
     if (!p) oom();
@@ -6562,8 +6573,7 @@ Str *pys_bfile_read(File *f, I n) {    /* read(n): n bytes, or what remains (n <
     if (r < 0) { int e = errno; if (p != t) free(p); ioerr(e); }
     if (r) put(&b, p, r);
     if (p != t) free(p);
-    off_t at = lseek(fileno(f->f), 0, SEEK_CUR);   /* stdio, which did not read it, learns the position */
-    if (at >= 0) fseeko(f->f, at, SEEK_SET);
+    bposition(f);
     io_out();
     return done(&b);
   }
@@ -6591,8 +6601,18 @@ Str *pys_bfile_readline(File *f, I limit) {   /* readline(limit): through b"\n",
   else b = (Buf){t, k, k};             /* the line fit in t */
   return done(&b);
 }
-I pys_bfile_write(File *f, Str *s) {   /* write(b): its length, as CPython's buffered and regular files' writes give */
+I pys_bfile_write(File *f, Str *s) {   /* write(b): a raw file may accept fewer bytes than b holds */
   io_in(); buse(f, 0);
+  if (f->bin == 4) {                 /* FileIO makes one write: fwrite retries a short write, losing its progress
+                                          if that retry fails (for example at the process's file-size limit) */
+    bsync(f);
+    ssize_t n;
+    while ((n = write(fileno(f->f), s->s, s->len)) < 0 && errno == EINTR && !io_intr) {}
+    if (n < 0) ioerr(errno);
+    bposition(f);
+    io_out();
+    return n;
+  }
   int e = f->emu ? bput(f, s->s, s->len, "", 0) : ((void)fwrite(s->s, 1, s->len, f->f), ferror(f->f) ? osflush(f, 0) : 0);
   if (e) ioerr(e);
   io_out();
@@ -6604,8 +6624,15 @@ I pys_bfile_seek(File *f, I pos, I whence) {   /* seek(pos, whence): the new pos
   off_t at = ftello(f->f), r, to = pos;   /* (where a read left the file, before stdio's read-ahead) */
   if (at < 0) ioerr(errno);
   if (whence == SEEK_CUR && __builtin_add_overflow(at, pos, &to)) ioerr(EINVAL);   /* (the OS's error for it) */
-  if (fseeko(f->f, at, SEEK_SET) || (r = lseek(fileno(f->f), to, whence == SEEK_CUR ? SEEK_SET : whence)) < 0
-      || fseeko(f->f, r, SEEK_SET)) ioerr(errno);
+  bsync(f);
+  r = lseek(fileno(f->f), to, whence == SEEK_CUR ? SEEK_SET : whence);
+  if (r < 0) {
+    e = errno;
+    (void)fseeko(f->f, at, SEEK_SET);   /* keep the logical position and the original seek error */
+    f->last = 0;
+    ioerr(e);
+  }
+  if (fseeko(f->f, r, SEEK_SET)) ioerr(errno);
   f->last = 0;
   io_out();
   return r;
@@ -6623,10 +6650,10 @@ I pys_bfile_truncate(File *f, I size) {   /* truncate(size): what was written re
   io_in(); int e = flush1(f); if (e) ioerr(e);
   off_t at = f->bin != 4 ? ftello(f->f) : 0;   /* (a pipe's ESPIPE, as BufferedRandom's rewind raises it) */
   if (at < 0) ioerr(errno);
+  if (f->bin != 4) bsync(f);          /* discard both read-ahead and its cached offset before changing the file */
   if (ftruncate(fileno(f->f), size)) ioerr(errno);
-  if (f->bin != 4) {                   /* then the read-ahead goes (flush1 wrote what stdio held): a seek within */
-    pys_fpurge(f->f);                  /* the buffer keeps it, and glibc's fseeko reads ahead again, from the */
-    if (fseeko(f->f, at, SEEK_SET)) ioerr(errno);   /* file as it is now */
+  if (f->bin != 4) {
+    if (fseeko(f->f, at, SEEK_SET)) ioerr(errno);   /* any new read-ahead sees the truncated file */
     f->last = 0;
   }
   io_out();
