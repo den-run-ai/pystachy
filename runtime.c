@@ -5,8 +5,10 @@
    Value model: every container slot is 8 bytes (int, float bits, bool, or pointer). */
 #define _GNU_SOURCE
 #include <ctype.h>
+#include <dirent.h>
 #include <dlfcn.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <langinfo.h>
 #include <locale.h>
 #include <pthread.h>
@@ -41,6 +43,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <unwind.h>
+#include <utime.h>
 
 /* A float's shortest round-trip digits: Ryu's d2s (ryu/, upstream commit 4c0618b; ryu/README.md),
    with its small tables. The driver's cached runtime is built from its files too, which RTPARTS
@@ -7585,6 +7588,94 @@ static _Noreturn void oserr(const char *path) {         /* raise CPython's OSErr
 }
 void pys_remove(Str *p) { if (nul(p)) pys_fail("ValueError: remove: embedded null character in path"); if (unlink(p->s)) oserr(p->s); }
 void pys_rmdir(Str *p) { if (nul(p)) pys_fail("ValueError: rmdir: embedded null character in path"); if (rmdir(p->s)) oserr(p->s); }
+/* os.listdir(p): the names in directory p but . and .., in the order readdir gives them, as
+   CPython's _posix_listdir lists them (os.listdir() lists ".") */
+List *pys_listdir(Str *p) {
+  if (nul(p)) pys_fail("ValueError: listdir: embedded null character in path");
+  DIR *d = opendir(p->s);
+  if (!d) oserr(p->s);
+  List *l = pys_list_new(0);
+  for (;;) {
+    errno = 0;
+    struct dirent *e = readdir(d);
+    if (!e) break;
+    const char *n = e->d_name;
+    if (n[0] == '.' && (n[1] == 0 || (n[1] == '.' && n[2] == 0))) continue;
+    pys_list_append(l, (I)pys_str(n, (I)strlen(n)));
+  }
+  int err = errno;
+  closedir(d);
+  if (err) { errno = err; oserr(p->s); }
+  return l;
+}
+List *pys_listdir_cwd(void) { return pys_listdir(pys_str(".", 1)); }
+/* os.mkdir(p, mode): CPython's posix_mkdir */
+void pys_mkdir(Str *p, I mode) { if (nul(p)) pys_fail("ValueError: mkdir: embedded null character in path"); if (mkdir(p->s, (mode_t)mode)) oserr(p->s); }
+void pys_mkdir_default(Str *p) { pys_mkdir(p, 0777); }
+static _Noreturn void oserr2(const char *a, const char *b) {   /* the OSError of a call of two paths: 'a' -> 'b' */
+  int e = errno; Buf bf = {0}; char t[32];
+  const char *k = errcls(e), *m = strerror(e);
+  put(&bf, k, strlen(k)); put(&bf, t, snprintf(t, sizeof t, ": [Errno %d] ", e)); put(&bf, m, strlen(m)); put(&bf, ": ", 2);
+  repr_str(&bf, cstr(a)); put(&bf, " -> ", 4); repr_str(&bf, cstr(b)); put(&bf, "", 1); pys_fail(bf.p);
+}
+/* os.rename(a, b) and os.replace(a, b), which POSIX's rename(2) both are */
+void pys_rename(Str *a, Str *b) { if (nul(a) || nul(b)) pys_fail("ValueError: rename: embedded null character in path"); if (rename(a->s, b->s)) oserr2(a->s, b->s); }
+void pys_replace(Str *a, Str *b) { if (nul(a) || nul(b)) pys_fail("ValueError: replace: embedded null character in path"); if (rename(a->s, b->s)) oserr2(a->s, b->s); }
+/* os.path.isdir, isfile, islink and lexists: genericpath's and posixpath's, false where stat() or lstat() fails */
+I pys_isdir(Str *p) { struct stat st; return !nul(p) && stat(p->s, &st) == 0 && S_ISDIR(st.st_mode); }
+I pys_isfile(Str *p) { struct stat st; return !nul(p) && stat(p->s, &st) == 0 && S_ISREG(st.st_mode); }
+I pys_islink(Str *p) { struct stat st; return !nul(p) && lstat(p->s, &st) == 0 && S_ISLNK(st.st_mode); }
+I pys_lexists(Str *p) { struct stat st; return !nul(p) && lstat(p->s, &st) == 0; }
+/* lib/pathlib.py's and lib/shutil.py's __pys_stat_mode(p, follow): the st_mode of os.stat(p) (of
+   os.lstat(p) where follow is 0), or -1 where pathlib ignores the error (ENOENT, ENOTDIR, EBADF and
+   ELOOP: _ignore_error) or for an embedded null character (ValueError); another error raises */
+I pys_stat_mode(Str *p, I follow) {
+  struct stat st;
+  if (nul(p)) return -1;
+  if ((follow ? stat(p->s, &st) : lstat(p->s, &st)) == 0) return st.st_mode;
+  if (errno == ENOENT || errno == ENOTDIR || errno == EBADF || errno == ELOOP) return -1;
+  oserr(p->s);
+}
+/* lib/pathlib.py's __pys_touch(p, mode, exist_ok): Path.touch(), the times of a file that exists
+   made now where exist_ok, else os.open(p, O_CREAT | O_WRONLY, mode), with O_EXCL unless exist_ok */
+void pys_touch(Str *p, I mode, I exist_ok) {
+  if (nul(p)) pys_fail("ValueError: open: embedded null character in path");
+  if (exist_ok && utime(p->s, NULL) == 0) return;
+  int fd = open(p->s, O_CREAT | O_WRONLY | (exist_ok ? 0 : O_EXCL), (mode_t)mode);
+  if (fd < 0) oserr(p->s);
+  close(fd);
+}
+/* lib/shutil.py's __pys_copyfile(a, b) and __pys_copymode(a, b): the bytes of file a written to
+   file b (CPython's copyfile once its checks pass), and a's permission bits given to b (chmod) */
+void pys_copyfile(Str *a, Str *b) {
+  if (nul(a) || nul(b)) pys_fail("ValueError: open: embedded null character in path");
+  FILE *in = fopen(a->s, "rb");
+  if (!in) oserr(a->s);
+  FILE *out = fopen(b->s, "wb");
+  if (!out) { int e = errno; fclose(in); errno = e; oserr(b->s); }
+  char buf[65536];
+  size_t n;
+  while ((n = fread(buf, 1, sizeof buf, in)) > 0)
+    if (fwrite(buf, 1, n, out) != n) { int e = errno; fclose(in); fclose(out); errno = e; oserr(b->s); }
+  int rerr = ferror(in) ? errno : 0;
+  fclose(in);
+  if (fclose(out)) oserr(b->s);
+  if (rerr) { errno = rerr; oserr(a->s); }
+}
+void pys_copymode(Str *a, Str *b) {
+  struct stat st;
+  if (nul(a) || nul(b)) pys_fail("ValueError: stat: embedded null character in path");
+  if (stat(a->s, &st)) oserr(a->s);
+  if (chmod(b->s, st.st_mode & 07777)) oserr(b->s);
+}
+/* os.path.samefile(a, b): genericpath's, whether stat() finds one device and inode for both */
+I pys_samefile(Str *a, Str *b) {
+  struct stat x, y;
+  if (nul(a) || nul(b)) pys_fail("ValueError: stat: embedded null character in path");
+  if (stat(a->s, &x)) oserr(a->s);
+  if (stat(b->s, &y)) oserr(b->s);
+  return x.st_dev == y.st_dev && x.st_ino == y.st_ino;
+}
 typedef struct { Str **a; I n, cap; } Parts;            /* a stack of path components; NULL marks a resolved link */
 static void parts_push(Parts *p, Str *s) {
   if (p->n == p->cap) { I c = p->cap * 2 + 16; Str **a = pys_alloc(c * sizeof(Str *)); if (p->n) memcpy(a, p->a, p->n * sizeof(Str *)); p->a = a; p->cap = c; }

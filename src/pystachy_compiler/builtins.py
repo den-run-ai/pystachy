@@ -154,6 +154,10 @@ def gen_modattr(self, path: str) -> Val:
     self.err(f"unsupported module attribute {path}")
     return Val("", "")
 
+
+# lib's private file system primitives (gen_builtin), by the modules that may call them
+FSPRIMS: dict[str, str] = {"__pys_stat_mode": "pathlib shutil", "__pys_touch": "pathlib", "__pys_copyfile": "shutil", "__pys_copymode": "shutil"}
+
 def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool = False) -> Val:
     # retval's open-result marker belongs to forwarding calls, not to the
     # arguments a builtin consumes (sorted/list/dict may reuse their context).
@@ -178,6 +182,26 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         secs = self.as_float(self.expr(args[1], "float"))
         utc = self.as_int(self.expr(args[2], "int"))
         return Val(self.rt("pys_strftime_at", "ptr", [f"ptr {fmt.v}", f"double {secs.v}", f"i64 {utc.v}"]), "str")
+    if name in FSPRIMS:
+        # (lib/pathlib.py's and lib/shutil.py's file system calls: runtime.c's pys_stat_mode,
+        # pys_touch, pys_copyfile and pys_copymode)
+        mods = FSPRIMS[name].split()
+        n = 3 if name == "__pys_touch" else 2
+        if (self.curfn.mod not in mods or not lib_source(self.curfn.node.line, self.libdir, self.curfn.mod + ".py") or
+                len(args) != n or any([a.kind in ["kw", "starred", "dstar"] for a in args])):
+            self.err(f"name '{name}' is not defined")
+        path = self.coerce(self.expr(args[0], "str"), "str")
+        if name == "__pys_stat_mode":
+            follow = self.as_int(self.expr(args[1], "bool"))
+            return Val(self.rt("pys_stat_mode", "i64", [f"ptr {path.v}", f"i64 {follow.v}"]), "int")
+        if name == "__pys_touch":
+            mode = self.as_int(self.expr(args[1], "int"))
+            ok = self.as_int(self.expr(args[2], "bool"))
+            self.rt("pys_touch", "void", [f"ptr {path.v}", f"i64 {mode.v}", f"i64 {ok.v}"])
+            return Val("null", "None")
+        dst = self.coerce(self.expr(args[1], "str"), "str")
+        self.rt("pys_copyfile" if name == "__pys_copyfile" else "pys_copymode", "void", [f"ptr {path.v}", f"ptr {dst.v}"])
+        return Val("null", "None")
     if name == "__pys_exc_repr":
         return self.exc_brepr(self.expr(args[0], ""))  # (exc_helpers)
     if name == "__pys_repr_enter" or name == "__pys_repr_leave":

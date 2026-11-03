@@ -281,8 +281,8 @@ arguments. Supported iteration contexts and other restrictions are in the
 | `sys` | `argv`, `warnoptions`, `exit`, `stdin`, `stdout`, `stderr`, `maxsize`, `platform`, `implementation.name` (`"pystachy"`), `prefix`, `base_prefix`, `exec_prefix`, `base_exec_prefix` (see [compatibility](compatibility.md)), `setrecursionlimit`, `getrecursionlimit` (enforced on [recursive native calls](compatibility.md#errors-and-control-flow)); the streams are files. `warnoptions` is `[]`, CPython's for a program run without `-W` options (an extension module's is its host's). |
 | `sys.version_info` | CPython 3.13.16's, a tuple of its items, and `major`, `minor`, `micro`, `releaselevel`, `serial` read as `sys.version_info.major` and the like; `str()` shows the tuple. |
 | `sys.float_info` | `max`, `max_exp`, `max_10_exp`, `min`, `min_exp`, `min_10_exp`, `dig`, `mant_dig`, `epsilon`, `radix`, `rounds`, matching CPython for IEEE 754 doubles. `sys.float_info` itself is not a value. |
-| `os` | `system`, `execv`, `getpid`, `getcwd`, `getenv`, `remove`, `rmdir`, `fspath`; `name`, `sep`, `curdir`, `pardir`, `extsep`, `pathsep`, `linesep`, `devnull`. |
-| `os.path` | `exists`, `realpath`, `join`, `normcase`, `getsize`, `getmtime`, `getctime`. |
+| `os` | `system`, `execv`, `getpid`, `getcwd`, `getenv`, `remove`, `unlink`, `rmdir`, `mkdir`, `listdir`, `rename`, `replace`, `fspath`; `name`, `sep`, `curdir`, `pardir`, `extsep`, `pathsep`, `linesep`, `devnull`. |
+| `os.path` | `exists`, `lexists`, `isdir`, `isfile`, `islink`, `samefile`, `realpath`, `join`, `normcase`, `getsize`, `getmtime`, `getctime`. |
 | `time` | `time`, `time_ns`, `monotonic`, `perf_counter`, `process_time`, their `_ns` forms, and `sleep`. |
 | `tempfile` | `mkdtemp`. |
 | `errno` | The errno constants. |

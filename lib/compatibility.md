@@ -1188,6 +1188,59 @@ outside this supported API set. Builtin `os.path` has its own documented APIs.
 
 `stat` supports constants, `S_IS*`, `S_IMODE` and `S_IFMT`, but not `filemode`.
 
+### `pathlib`
+
+`pathlib` is Pystachy's own subset (`lib/pathlib.py`) of CPython 3.13.16's package, for POSIX: its
+`PurePosixPath` and `PosixPath` classes, which `PurePath` and `Path` name, as CPython's
+`PurePath(...)` and `Path(...)` make them on POSIX, with CPython's code for their methods
+([test](../tests/programs/library/lib_pathlib.py)):
+
+- Pure paths: construction from strs and paths, `/` and `joinpath()`, `str()`, `repr()`,
+  `as_posix()`, `parts`, `drive`, `root`, `anchor`, `parent`, `parents` (indexing, `len()`,
+  `in`, iteration), `name`, `suffix`, `suffixes`, `stem`, `with_name()`, `with_stem()`,
+  `with_suffix()`, `relative_to()` (also `walk_up`), `is_relative_to()`, `is_absolute()`,
+  `match()`, equality, hashing and ordering, with CPython's errors.
+- Concrete paths: `exists()`, `is_dir()`, `is_file()`, `is_symlink()` (CPython's errors for
+  what they do not ignore), `open()`, `read_text()`, `write_text()`, `iterdir()`, `glob()` and
+  `rglob()` (CPython 3.13's selectors and order, hidden files included), `mkdir()` (also
+  `parents` and `exist_ok`), `touch()`, `unlink()`, `rmdir()`, `rename()`, `replace()`,
+  `absolute()`, `resolve()`, `expanduser()`, `cwd()` and `home()`.
+- A path's constructor takes at most eight segments, as parameters, so that subclasses can
+  derive from the classes, and unpacking a list into it (`Path(*parts)`) is not supported; a
+  tuple's items are. Iterating over a `Path`'s `parents` gives its parents typed as `PurePath`
+  objects (indexing one gives a `Path`), so a `Path` method of an iterated parent is a
+  compile-time error.
+- Pystachy has no `os.PathLike` objects: `open()` and the `os` functions take `str(path)`,
+  and passing a path is a compile-time error; `path.open()` opens one.
+- `expanduser()` of `~user`, and `open()` with `buffering`, `errors` or `newline`, raise
+  `UnsupportedOperation` ([deviation](../tests/deviations/lib_pathlib_unsupported.py)).
+  Windows paths, `stat()`, `lstat()`, binary I/O (`read_bytes()`, `write_bytes()`), `walk()`,
+  `samefile()`, links, owners, `chmod()`, `as_uri()` and `full_match()` are not provided; a
+  subclass's derived paths are `PurePath` or `Path` objects.
+
+### `glob`
+
+`glob` is Pystachy's own subset (`lib/glob.py`) of CPython 3.13.16's module: `glob()` and
+`iglob()` with `root_dir`, `recursive` and `include_hidden`, `escape()` and `has_magic()`,
+with CPython's functions for them and their order of results
+([test](../tests/programs/library/lib_glob.py)). Directories are listed with `os.listdir()`
+and tested with `os.path.isdir()`, as CPython's `os.scandir()` entries would be. `dir_fd`
+raises `NotImplementedError`, and `translate()` is not provided.
+
+### `shutil`
+
+`shutil` is Pystachy's own subset (`lib/shutil.py`) of CPython 3.13.16's module, for str paths:
+`copyfileobj()`, `copyfile()`, `copymode()`, `copy()`, `move()` and `rmtree()`, with `Error`,
+`SameFileError` and `SpecialFileError` and CPython's checks and messages
+([test](../tests/programs/library/lib_shutil.py)). `copyfile()` copies a file's bytes through
+the runtime, as Pystachy has no binary files. `rmtree()` removes a tree as CPython's
+`_rmtree_safe_fd` does on Linux (a missing path, a link and a file raise CPython's errors);
+its `onerror`, `onexc` and `dir_fd`, and `copyfile()` of a link with `follow_symlinks=False`,
+raise `NotImplementedError`. `move()` of a file to another file system copies it with
+`copy()` (CPython uses `copy2()`, which also copies its times), and of a directory raises the
+rename's `OSError`. `copytree()`, `copy2()`, `copystat()`, `which()`, `disk_usage()` and the
+archive functions are not provided.
+
 ### `getopt`
 
 `getopt` and `gnu_getopt` support short and long options, unique long-option
