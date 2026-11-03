@@ -317,8 +317,11 @@ from src.pystachy_compiler.reflection import (
     gen_copy_own as reflection_copy_own,
     gen_copy_private as reflection_copy_private,
     gen_enum_alias as reflection_enum_alias,
+    gen_enum_class_test as reflection_enum_class_test,
     gen_enum_is as reflection_enum_is,
     gen_enum_is_static as reflection_enum_is_static,
+    gen_enum_own as reflection_enum_own,
+    gen_enum_own_call as reflection_enum_own_call,
     gen_enum_member as reflection_enum_member,
     gen_enum_missing as reflection_enum_missing,
     gen_enum_new as reflection_enum_new,
@@ -2461,6 +2464,15 @@ class Gen:
 
     def enum_is(self, args: list[Node]) -> Val:
         return reflection_enum_is(self, args)
+
+    def enum_class_test(self, v: Val, c: str) -> str:
+        return reflection_enum_class_test(self, v, c)
+
+    def enum_own(self, v: Val, c: str) -> Val:
+        return reflection_enum_own(self, v, c)
+
+    def enum_own_call(self, args: list[Node]) -> Val:
+        return reflection_enum_own_call(self, args)
 
     def enum_missing(self, args: list[Node]) -> Val:
         return reflection_enum_missing(self, args)

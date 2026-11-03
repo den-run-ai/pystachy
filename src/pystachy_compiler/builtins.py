@@ -298,6 +298,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         return self.copy_prim(name, args)  # (lib/copy.py's and lib/_pystachy_copy.py's: reflection.py)
     if name == "__pys_enum_is":
         return self.enum_is(args)  # (lib/enum.py's: reflection.py)
+    if name == "__pys_enum_own":
+        return self.enum_own_call(args)  # (lib/enum.py's: reflection.py)
     if name == "__pys_enum_missing":
         return self.enum_missing(args)  # (lib/enum.py's: reflection.py)
     if name == "__pys_enum_new":

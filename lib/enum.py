@@ -40,10 +40,12 @@ class EnumType:
         Either returns an existing member, or creates a new enum class.
         """
         # (Enum.__new__'s lookup by value: a member is its own, and another value finds the
-        # member whose value equals it; making a new enum class is not supported)
+        # member whose value equals it; making a new enum class is not supported). A member is
+        # found by its class, also where value's type is a base class's (x: Enum) or Any
         members = self._member_list_
-        if __pys_enum_is(value, members):
-            return value
+        own = __pys_enum_own(value, members)
+        if own is not None:
+            return own
         for member in members:
             if member._value_ == value:
                 return member
@@ -499,8 +501,9 @@ class _FlagType:
         """
         # (Enum.__new__'s lookup by value, then Flag._missing_'s pseudo-member)
         members = self._member_list_
-        if __pys_enum_is(value, members):
-            return value
+        own = __pys_enum_own(value, members)
+        if own is not None:
+            return own
         if not isinstance(value, int):
             raise ValueError("%r is not a valid %s" % (value, self._cls_name_))
         hit = self._value2member_map_.get(value)

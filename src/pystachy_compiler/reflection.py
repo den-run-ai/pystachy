@@ -2918,7 +2918,9 @@ def gen_enum_alias(self, n: Node, want: str) -> Val:
 def gen_enum_is_static(self, t: str, ms: str) -> int:
     # lib/enum.py's __pys_enum_is(value, members) for value of static type t and members, a list of
     # an enum class's members, of type ms: 1 where value is an object of the class (a member), 0
-    # where it cannot be one, -1 where its value decides (an optional or Any value)
+    # where it cannot be one, -1 where its value decides: an optional or Any value, an object of a
+    # class the enum class derives from (Enum, or a base enum class), which may be a member, and a
+    # union with such a member type (enum_own)
     c = targs(ms)[0] if is_list(ms) else ""
     if c not in self.classes:
         return 0
@@ -2927,7 +2929,78 @@ def gen_enum_is_static(self, t: str, ms: str) -> int:
     u = unopt(t)
     if u in self.classes and self.derives(u, c):
         return 1 if u == t else -1
+    for m in umembers(u) if is_union(u) else [u]:
+        if m in self.classes and (self.derives(m, c) or (self.derives(c, m) and self.classes[m].tag > 0)):
+            return -1
     return 0
+
+
+def gen_enum_class_test(self, v: Val, c: str) -> str:
+    # i1: v, an object of a tagged class type or None, is an object of class c or of one deriving
+    # from it, by its tag (as obj_isinst tests a class)
+    end = self.label()
+    nonnull = self.label()
+    start = self.cur
+    self.cbr(self.ptr_cmp('==', v, Val('null', 'None')).v, end, nonnull)
+    self.place(nonnull)
+    tag = self.mload('int', v.v)
+    r = "false"
+    for k in self.classes.values():
+        if k.tag > 0 and self.derives(k.name, unopt(v.t)) and self.derives(k.name, c):
+            hit = self.num_cmp('==', Val(tag, "int"), Val(str(k.tag), "int")).v
+            r = hit if r == "false" else self.scalar('or', [Val(r, 'bool'), Val(hit, 'bool')])
+    done = self.cur
+    self.br(end)
+    self.place(end)
+    ph = Ins("phi", "bool", "")
+    self.incoming(ph, "false", start)
+    self.incoming(ph, r, done)
+    return self.phi(ph)
+
+
+def gen_enum_own(self, v: Val, c: str) -> Val:
+    # value v as a member of enum class c, or None where it is not one, for a v that enum_is_static
+    # says may be one (-1): an Any value by its box's class; an optional member; an object of a
+    # class c derives from by its tag; a union's value by its member type, then that tag
+    oc = self.optional(c)
+    if v.t == "dyn":
+        hit = self.label()
+        end = self.label()
+        start = self.cur
+        self.cbr(self.dyn_test(v, [c]), hit, end)
+        self.place(hit)
+        x = self.dyn_unbox(v, c)
+        after = self.cur
+        self.br(end)
+        self.place(end)
+        ph = Ins("phi", oc, "")
+        self.incoming(ph, "null", start)
+        self.incoming(ph, x.v, after)
+        return Val(self.phi(ph), oc)
+    u = unopt(v.t)
+    if not is_union(u):
+        if self.derives(u, c):
+            return Val(v.v, oc)  # (an optional member: None stays None)
+        return Val(self.select(self.enum_class_test(v, c), Val(v.v, oc), Val("null", oc)), oc)
+    may_none = (is_opt(v.t) or self.optional(u) == u) and v.v not in self.nn
+    end = self.label()
+    ph = Ins("phi", oc, "")
+    for m in umembers(u):
+        if m not in self.classes or not (self.derives(m, c) or (self.derives(c, m) and self.classes[m].tag > 0)):
+            continue
+        hit = self.label()
+        nxt = self.label()
+        self.cbr(self.utest(v, [m], may_none), hit, nxt)
+        self.place(hit)
+        x = self.uget(Val(v.v, u), m)
+        own = x.v if self.derives(m, c) else self.select(self.enum_class_test(x, c), Val(x.v, oc), Val("null", oc))
+        self.incoming(ph, own, self.cur)
+        self.br(end)
+        self.place(nxt)
+    self.incoming(ph, "null", self.cur)
+    self.br(end)
+    self.place(end)
+    return Val(self.phi(ph), oc)
 
 
 def gen_enum_is(self, args: list[Node]) -> Val:
@@ -2943,7 +3016,26 @@ def gen_enum_is(self, args: list[Node]) -> Val:
         return Val("true" if r == 1 else "false", "bool")
     if v.t == "dyn":
         return Val(self.dyn_test(v, [targs(ms.t)[0]]), "bool")
-    return self.ptr_cmp("!=", v, Val("null", "None"))
+    if self.derives(unopt(v.t), targs(ms.t)[0]):
+        return self.ptr_cmp("!=", v, Val("null", "None"))
+    return self.ptr_cmp("!=", self.enum_own(v, targs(ms.t)[0]), Val("null", "None"))
+
+
+def gen_enum_own_call(self, args: list[Node]) -> Val:
+    # lib/enum.py's __pys_enum_own(value, members): value itself as a member of the enum class whose
+    # members list members holds, where it is one, else None (what CPython's lookup by value returns
+    # first, with the class's type: value may be of a base class's type, as Enum, or Any)
+    if self.curfn.mod != "enum" or not lib_source(self.curfn.node.line, self.libdir, "enum.py") or len(args) != 2 or any([a.kind in ["kw", "starred", "dstar"] for a in args]):
+        self.err("name '__pys_enum_own' is not defined")
+    v = self.expr(args[0], "")
+    ms = self.expr(args[1], "")
+    c = targs(ms.t)[0] if is_list(ms.t) else ""
+    r = self.enum_is_static(v.t, ms.t)
+    if r == 0:
+        return Val("null", "None")
+    if r == 1:
+        return Val(v.v, c)
+    return self.enum_own(v, c)
 
 
 def gen_enum_missing(self, args: list[Node]) -> Val:
