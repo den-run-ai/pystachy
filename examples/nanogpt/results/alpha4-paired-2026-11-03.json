@@ -1,0 +1,1261 @@
+{
+ "schema": 1,
+ "measured_utc": "2026-11-03T01:25:57Z",
+ "compiler": {
+  "revision": "9c8bc74648aa7c7e6a1b9d8f9dbbfeb1f2908ad3",
+  "binary_sha256": "10373a1365f1390ea83e118a20fc96b400efa11c4bfa735e7b054cb1c3743d2b"
+ },
+ "host": {
+  "platform": "Linux-6.18.44-fc-v230-x86_64-with-glibc2.39",
+  "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+  "cpus": 4,
+  "pinned_cpu": 3
+ },
+ "typed_port_python": "3.13.18 (main, Oct 26 2026, 14:08:19) [Clang 23.1.3 ]",
+ "reference_python": "3.13.18 (main, Oct 26 2026, 14:08:19) [Clang 23.1.3 ]",
+ "llvm": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+ "thread_environment": {
+  "OPENBLAS_NUM_THREADS": "1",
+  "OMP_NUM_THREADS": "1",
+  "MKL_NUM_THREADS": "1",
+  "VECLIB_MAXIMUM_THREADS": "1",
+  "NUMEXPR_NUM_THREADS": "1",
+  "BLIS_NUM_THREADS": "1",
+  "GOTO_NUM_THREADS": "1"
+ },
+ "model": {
+  "name": "benchmark",
+  "n_layer": 2,
+  "n_head": 2,
+  "n_embd": 64,
+  "block_size": 64,
+  "vocab_size": 64,
+  "bias": true,
+  "batch": 2,
+  "length": 16
+ },
+ "fixture": {
+  "weight_sha256": "0cb4fec803794d46a0a05e1d19d5799c7969dbd74bdcb8582a3916e6cf4f0a2b",
+  "input_sha256": "935adb2787ae8be551bc3522cf6816be3412a1653686f46c408a30aebce6916b",
+  "upstream_model_sha256": "7c01703240dbec5d554527dc666e35b3df8391d0b117fddc07afcf325a21d11c"
+ },
+ "blas": {
+  "library": "$SCRATCH/venv-ref/lib/python3.13/site-packages/scipy.libs/libscipy_openblas-5f890258.so",
+  "symbol": "scipy_cblas_dgemm",
+  "library_sha256": "2a5b4c1a6311873c59132b2ceaaf3c26258a17350b7cd27ea8782a47e3322981"
+ },
+ "method": {
+  "rounds": 10,
+  "warmups": 20,
+  "repeats": 300,
+  "typed_port_warmups": 1,
+  "typed_port_repeats": 5,
+  "statistic": "median over rounds of each run's median",
+  "order": "per round, every tier once, pinned to one CPU, in an order rotated by one tier each round",
+  "runners": "tools/check_nanogpt.py runner_source('blas', 0) and runner_source('scalar', 0); CPython + NumPy and PyTorch through tools/nanogpt_numpy_baseline.py in one process"
+ },
+ "sources_sha256": {
+  "examples/nanogpt/blas_parity.py": "1346feb0a22cc2350820b6543ee7e063845f970f3807d72d7d0aa821d3d1d02a",
+  "examples/nanogpt/driver.py": "8ec9f3dc2d267e90523199d30c43a2610a45797dba04ec01dff9e9321f274f28",
+  "examples/nanogpt/model.py": "5740c8ef8998d550e4e7c72646df77332ff9212912b3cc352811abd07a236776",
+  "examples/nanogpt/run.py": "765c801e52cef432bcaa034e63d8330f07cdb6b3922dd646461f89038023058a",
+  "examples/nanogpt/run_blas.py": "7204fd35acc59589e4a235adcd3c1468e477fdbfa44d404e6545f1aebb0413da",
+  "examples/nanogpt/training.py": "de24f2c761a90f0f02301d4e3f99bf11d5c0c3914fd2378408320ce2da51594f",
+  "examples/ndarray/bench.py": "baf709a2f2521bb38a53c2841e100bfb3850e0a96bdad3b989998ff063348761",
+  "examples/ndarray/blas_cases.py": "f3a3eb658b1883a5f6682d1b6b795f2783c4a5211cd2125b18804a8732c50c67",
+  "examples/ndarray/check_blas.py": "8bbcc827458da88c15e53f4cfd2b49c0275a2ea20f5a8112d7be941f77cca722",
+  "examples/ndarray/check_numpy.py": "f0c3e826d890e1104001f991c5b8d15c20d28126d7999a9f9abbb91e7bf7162c",
+  "examples/ndarray/check_upstream.py": "84c582613f7e373c9153cf572804e984af5ba4bf0e4c174dcb8a8e952257f2ab",
+  "examples/ndarray/demo.py": "fa946f7e673dfb88464bcb6bc8a34a875fab5ce1bf78b08e5bf0c425fc71965d",
+  "examples/ndarray/lazy.py": "511fd14877da5e8ca35b02212fb23a9c40d14985da0b9559c4f7c44207e76aac",
+  "examples/ndarray/ndarray.py": "1d45505ef10ed4eae5d727f8e2425312d3c5b134bcffb1bf462bb83506f9722f",
+  "examples/ndarray/ndarray_blas.py": "d88f940be13449c624d19cf9e74e8b5247ee9d1dd148232461273ba8e97a2222",
+  "examples/ndarray/workloads.py": "64d6b61d4ad2ca9d4551c7762ab6af0d14bac4cb42712d807b58131bcea13ec7",
+  "lib/_markupbase.py": "6a294b294582f55905d310b8df054019e94f37b17eba3414be4e2cb61d5851d1",
+  "lib/_pyrandom.py": "5b37918369c0e4becdac2d012ffe9e40e314a330ee9f7b3fe2ce4cd3a926ff09",
+  "lib/_pystachy__io.py": "77ee03b3a67f79f49c3fe30666f4f5077bd41069797c727529a230c4caa0a117",
+  "lib/_pystachy_abc.py": "9f6f717c077b2dbac22e8dc9793373b939615a33f2698aaddd81ed905e5a48f8",
+  "lib/_pystachy_atexit.py": "a5ff97e421a4a8fd782e08a0124bac6a7b27486fc279cb4384655bc4b208d60c",
+  "lib/_pystachy_binascii.py": "c8ca70973dc409011ba89749878a2a205780fdc907437bc08521be0e3d07f848",
+  "lib/_pystachy_bytescan.py": "9d67b07a3bbcdf944454abbf138f3c588ffba4a5787d43ba148e5f918a3c8f63",
+  "lib/_pystachy_codecs.py": "fe8380d756e383192028c6a65d652047e9abb9c08b51e15aba5b35e8cf678acf",
+  "lib/_pystachy_iterators.py": "61894584c1fda85936a740d4dafa2c5d631f9b05f5022fca8913e4ad0a84b27e",
+  "lib/_pystachy_itertools.py": "14f451cf7647016ad8105aa988b9cbabe4fe3f5a08f2710f6ed2db5d81a00566",
+  "lib/_pystachy_json_any.py": "9d4bf30d0a11b50d013de9b62f7c9b75269a66c26cbce1dcc67b6504428ea7af",
+  "lib/_pystachy_json_int.py": "dde398779410ac2476e4205468df5477af8e56a59809e8c12068a1938a19adb0",
+  "lib/_pystachy_mappingproxy.py": "e1d04e45f0b12e0e29fba497adf16f77864154c9e175a40065d2fd73654be70c",
+  "lib/_pystachy_object.py": "6a21df25fa11b3c80a70d95f310760d86adaeecd4a63e767bde5b9ecde63ca9c",
+  "lib/_pystachy_range.py": "50df392f248e25a79896007a3b0a23741f8f5f56622e7c56060ba9612292f8b2",
+  "lib/_pystachy_re_specialized.py": "d09604c416700c3a7acd3a9f8c6f7536289c895b2e72393a9875e68ed92e45bf",
+  "lib/_pystachy_string.py": "2e87bb96489d12051446c1b59c2e4ee65543a14f15d8eff3465a43f2e1f51434",
+  "lib/_pystachy_struct.py": "2f224f07dd5a8db374dc2604257cc7c41a4caa7140c5d2ddf30a34bc8f88f1d6",
+  "lib/_pystachy_thread.py": "dd0712205af00f8a3ac180e1442a9e9d3214b0da20dab49903de8ab2fa481bc1",
+  "lib/_pystachy_types.py": "221d41e2f90c40493b3d712fb99cf39fb5a25c2306e63de7a89358e66cfcfe70",
+  "lib/_pystachy_unicodedata.py": "f1c877238f94279dfdb5a5f77396d9d25f504c409f34b78099613c6c3f71c7d0",
+  "lib/_pystachy_unicodedata_db.py": "d511e3c104f697e9e9ce150b97119ceb1fcaf00ebcdd3be21cf52c88337608b2",
+  "lib/_pystachy_unicodedata_names.py": "9b18f9e4aecb03f28672fdecce4fcf9d0ece0a1c565c7e9e0ce504fe4fc2bb28",
+  "lib/_pystachy_weakref.py": "961b272cf9e756d3829f57ad7325b123e5329a06dfb64519a50c8132728cb3cb",
+  "lib/_weakrefset.py": "91895a451d06e9f521a1171b31b9b19bc9740f35af00d4fa106338ab7167c9ac",
+  "lib/bisect.py": "f1cf7b85fc36b5da249813fc5ab97d9464f8cc1bc817f7146206fa2713e35999",
+  "lib/codecs.py": "feafe30244cc2ac23a8f03ca6c8b106ef82dede1630aac103126767e123a3c42",
+  "lib/collections/__init__.py": "8a6533ddf04c4823e1c1da10925028613420cc4e5cb6264e6066fdd3739b4852",
+  "lib/colorsys.py": "65e3dfbf7bad61d4d7d7731a69dd7e75a347fd350d91327a51010a94e6fd2f1d",
+  "lib/contextlib.py": "08bf5d132ae0aceafcd94c72396e21fd45fc9cd1ba6e74807ce1e39f22d0d665",
+  "lib/csv.py": "29676a25a82679e93c6d0eb771a3f60890aedf49941206c0387ce59696b7c3c4",
+  "lib/curses/__init__.py": "91156d2c9afdc168cee4bb7085c8b16936ca7079fa4035ac4d7908712d86f394",
+  "lib/curses/ascii.py": "780dd8bbaf0ee7e832f164c1772953e694a9cd1031d1ab1471af65344d3645e6",
+  "lib/datetime.py": "d269c51c55e7668b988c8194a7a2e643a39aa3a2770a727c178a5c898b91c239",
+  "lib/difflib.py": "4d33db46d2f0748bd674b5ae2f52c59ab0cab0865c465a99ea9521d8751aea0f",
+  "lib/fnmatch.py": "fd1da199d0eeabc34ec9796d5a0790da6300fff4d15e16ee2d8ca26e6885eec5",
+  "lib/functools.py": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703",
+  "lib/genericpath.py": "cdac5a68dd738051e0d66fc81d5947d6a1776248fc6fe862253477608d870ec4",
+  "lib/getopt.py": "0d152bede49816f2924ffb944d86369099bea3b68ec1ee6f0c84c56251670241",
+  "lib/gettext.py": "97b7fa3d8112826dae4d021a6445fe791521524bd4b06e729d0497ed59a85e63",
+  "lib/heapq.py": "89bfee37cf47aecdf2a5ae8706b9805f1b1789d6e2edb7e3556fe8b42c5ecba3",
+  "lib/html/__init__.py": "067cf63fe3eee1bece807caba82a83d0307010bf1c30d9974e56ea704ddea893",
+  "lib/html/entities.py": "6fbeb0318e22905269b414b7d045574b8a98767f194310071b9177fadc738a2f",
+  "lib/html/parser.py": "f3ab8871f5342562328cd3ff8e65d5667c79d27189c7a0401982a193de7b4e90",
+  "lib/io.py": "31f5102c549e7051190c81838928db3f5c21863ac9cf63e7a493352e767fa71f",
+  "lib/json.py": "b217485992131dd49d083a0fcff14fe56e6507933b4d7e3d5e09071be071dd39",
+  "lib/keyword.py": "833eb8e01577a8330f473ed49403fae4b5e6c95a66a81254405deb5c7ea7efb9",
+  "lib/mpz.py": "754e4844ff8425e92ee8cde26b1e84a4ad318312d1ca17d10ea724a6c4c46a45",
+  "lib/operator.py": "7d42396ef02c03aa69eb86643769cdb889ab9fc66ffd140bc0efa0896fc94c99",
+  "lib/posixpath.py": "69acb9e294987cd6056a2237048373cf8d6201faf1e43a49c38889b47d2fb28e",
+  "lib/pyobj.py": "2d673d060a386ceae11b381ca94ce71a4ec43be89e7c1c59651c936ffea9054e",
+  "lib/random.py": "91e7fa770bfc1affb76a6441a10e1913af8993d8c657c12ffe6cbadc3e3add1e",
+  "lib/re/__init__.py": "3e1c1d6312856cfb5c34d2ad5f24b933de77c00dd21d36f76f74c54f8cf0f856",
+  "lib/re/_constants.py": "d8c63d4b91920ceb02d7c00073a062504c349b3e0de83ba480c3f4d1bca442fe",
+  "lib/re/_sre.py": "c7e98ec21fe209e8d3833516f408a5b219002e26a2f630cceb933b3e12cca3c5",
+  "lib/re/_unicode.py": "61f1343780ef2537ff83813b7a2097a55482a51a23b172a609a6836af4197ea2",
+  "lib/shlex.py": "7392b7c738fe818c43a8031820bef96db0b9f598d354a9fac0b771546a4fdba4",
+  "lib/stat.py": "07217986d9b2172b509dab3578d18ac05ba768b418e1f1e8c90e38a8f7c2b3c6",
+  "lib/statistics.py": "05a091943eb6a01272f95c190e99bab0d33c72a108aef45261c838842301991b",
+  "lib/string.py": "5a6ea720721a70a9d76d30135697ea612b9cb6610366b38d8c1d997043508b27",
+  "lib/struct.py": "9c231f9497caf513a22dee8f790b07f969b0e45854a0bdd6dd84b492e08c2856",
+  "lib/textwrap.py": "5102b1deb8905ad1b31a2830f7ac5a980229e55f3bbce06fd64baa9930159c1b",
+  "lib/this.py": "481d0cb3de511eae0b5713dad18542b07eafd9c013bb7690f7497bad49923a71",
+  "lib/token.py": "1d81391050d5389c41f319ba4d42159c6247777400e48c27f2d28cac8ca4e6e2",
+  "lib/tomllib/__init__.py": "71f67036895f4c5acab942618af0cbd3d814451ba61e967f358d0f341a5b8f51",
+  "lib/tomllib/_parser.py": "11d40d79772967ebf81f5a0cf8dfa99608413b3ba6144d4beadae99baa28f279",
+  "lib/tomllib/_re.py": "17ec24dabd4e7089df6f04acacb331c85c437addbd2ab98bdfefcb18671ba056",
+  "lib/tomllib/_types.py": "e018cf69245202408dd97664cf76618e8cbb5efb6f43b134d29efd1d9221a6c0",
+  "lib/types.py": "d4215ea3abc258bdde763cc21ec4b0759f0c44e874b2483851c5681ae93f45e2",
+  "lib/urllib/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "lib/urllib/parse.py": "f5914562f9903ab7dde287fcb8bc0b1667a812f82e7e7c4419fed0493bfd0148",
+  "lib/warnings.py": "be4467c02d67040c87e31ede6787740815085298a880f2aa126b02fbabc0f133",
+  "lib/weakref.py": "4a08091ebed64fcd1d2368e97381009eab49669e40cdbddaaefd64d525e46e7a",
+  "pystachy.py": "a413782632f88d4746a81fd7cfb529d695ab36a35618522a83be1e25e1e31f29",
+  "runtime.c": "ddeaa7ac188caa2f7cce282a7c9f44b00a643ad898e138a75be7ad0b63fceb52",
+  "runtime.py": "c45138f44a7aa25828b351b6d627e1a4f9fad69dc8a88532d053fb90e84beefb",
+  "src/__init__.py": "c443ed6062edae246598189fb20f12799a5e87a04049acb855894652e3875af7",
+  "src/pystachy_compiler/__init__.py": "f60cd281f8ed4fd35776c9f4d40d6a1313c49a3cae5df61841028f711b9f13c8",
+  "src/pystachy_compiler/analysis.py": "5b3c134b21586a03909f89beddbff999f6f28f067ce1dd975fb46a4c1794fecd",
+  "src/pystachy_compiler/bigints.py": "9f6cfbe7b95f469ed65736c95df81e51946195eabea85303551f5d5376a9c4e1",
+  "src/pystachy_compiler/builtins.py": "e9c5db8c93ef4db82df01674394afec44e9ed416fec76442b05853135e82edb3",
+  "src/pystachy_compiler/calls.py": "47fcab6d60a2e77744e8ca35be3482f336fbbf32f81dd5c02fe8827f8a687a6b",
+  "src/pystachy_compiler/containers.py": "43a9d6b88602aa1feaecaeb1d11cc44d6fe87c057a6f156c4cf294b0129f1b5e",
+  "src/pystachy_compiler/conversions.py": "900a17d52ac83efb9bd82eb11723a001a51d6ac0f1af57becbf211363509daa5",
+  "src/pystachy_compiler/declarations.py": "d01904e710d79a12f2d33d4eda52c6e79e7605be08d5c974b2905098d6c62b87",
+  "src/pystachy_compiler/diagnostics.py": "b5e7ce06a2e389249591705a5bff407f98501cc54e37bfd701abacc3a087923c",
+  "src/pystachy_compiler/driver.py": "1b3234da8657d7972b99b43bbf3077aeddc489d3b4e216eb87af944f6dd36b68",
+  "src/pystachy_compiler/dynamic.py": "7350dd8c95638ab416bce848d77347c8a75bd6cd9617e18c78e2fa42a8f69340",
+  "src/pystachy_compiler/emission.py": "55aa7214ab700368dc43cfb23b167219f8de57c3e1fe63d1f1215f8acc3ec38c",
+  "src/pystachy_compiler/exceptions.py": "2325ee5c687e9b38382c8b2c7c32452b4510816b7591bfbcc1ac80303c0e9961",
+  "src/pystachy_compiler/expressions.py": "5da6aeaf55f8ea31e75412e04e1278ed166b71b7ab9a168695c7b00e70738a0b",
+  "src/pystachy_compiler/flow.py": "cb6238905238d5dcd042b568f56243e9b407723a6e047d5f0cad478b060439c9",
+  "src/pystachy_compiler/functions.py": "3743e405f03039b4d5d0fb98a31473bb2f203857624d188e350f2700b23f28c2",
+  "src/pystachy_compiler/gen.py": "0c2fe74493f9681ebf42bee884c8f71dd4e589c682d38cc7d2abd1de13a3071e",
+  "src/pystachy_compiler/generators.py": "e6dde0b55178adeca943b596f8f108915e652726954c9675aae04ea1454bc96c",
+  "src/pystachy_compiler/ir.py": "0f589ae1ecee6ededd74b453a7b8497e2e6c81767ba57182fab271f511694c77",
+  "src/pystachy_compiler/ircheck.py": "02b8516dd9824897a4de905f2f1e42a1a6ed1ca41c45005c7de73d6e16e03008",
+  "src/pystachy_compiler/lexer.py": "1ca2874158eccdb0a4e3569a31940fb9b33a51fe2f06983be83de57d8d9fedeb",
+  "src/pystachy_compiler/llvm_abi.py": "7485f63097d4abac3de8b1fbfb782944ff7e3b68989d2fb266e40ebb8f8889ae",
+  "src/pystachy_compiler/loader.py": "e50415407b10644a710f666981e650414aeec439d2f46270c1bdc255b3590a49",
+  "src/pystachy_compiler/local_versions.py": "10bb0f2f0fb57c442af0807b5b4af6c95e8b950a97430161c97f766a3dc4b375",
+  "src/pystachy_compiler/lower_module.py": "cbd9a23ccd60e80f6a842749861487d3d48ffcf1d579a337d4d1f6c09d64dd4e",
+  "src/pystachy_compiler/lowering.py": "ed3d9a2214e1f1313e87ca5fe4a76ce89dfbc57bd4c8b2a53684c98a6fa2d1d2",
+  "src/pystachy_compiler/memory_ir.py": "c2544eda0bdb89ccb99ac1330c95d99974983cc7bdfa0d3a2b39a993c9f62bc1",
+  "src/pystachy_compiler/module.py": "3349556dee4dcda00013d770743f27d5dc3525b76cbd5e2ab312b14506e1f601",
+  "src/pystachy_compiler/names.py": "51eedecfa52aa390bdbe0e7303d6663fc0c32b3c74afce569a1a2aaf637a3fb5",
+  "src/pystachy_compiler/optimizations.py": "a3f8767852323fe51a7801e03c7d29c9770ee347ca11aacca53ce4f2df180237",
+  "src/pystachy_compiler/parser.py": "0c378ed0d99ab484e45028bf5a7c2f2e075a771e756627955eabf7fc71d22d5d",
+  "src/pystachy_compiler/program.py": "0b7d145012bc1cb7c8af16a94c5b6fe7422a8cfdf8dea1de1066df930d636767",
+  "src/pystachy_compiler/reflection.py": "8f74cf42d80aa68cdfb4a925ddd72a7c1c87b2275e1e05a59c525cef2de423f1",
+  "src/pystachy_compiler/scalar_ir.py": "14bc0ce71b4cbf066e8a4cab2ea0bb5c0a53880997484d74f5ea3e9a6d30c05a",
+  "src/pystachy_compiler/scope.py": "d9af25da84ba62a17a6a1a0b7d48d078977dd364528c8ec8e4135cc438f10a97",
+  "src/pystachy_compiler/specs.py": "49c32a7cc81f1261533958958d93d6931faf6cc1fe4177f85d0f7bf4b7995585",
+  "src/pystachy_compiler/statements.py": "4bb9347b64952570845df754efbb1e6a3b02467b1b629dd9171e9b98d3d85e2d",
+  "src/pystachy_compiler/structs.py": "e873fd6a6aeaebf39f740de2859a5de9a2da316d7a8993c728889677125c3090",
+  "src/pystachy_compiler/syntax.py": "613233fb43d8fdb38ae417a4021886c1efab900318a17b24261c50fd8ebfa969",
+  "src/pystachy_compiler/templates.py": "b587b346bea5087b3422ea5117e023b521205285f0dc3d622f3c9aed5a94c36f",
+  "src/pystachy_compiler/union_arithmetic.py": "6d6892c0d97667d7e8ffeb5293ccbbe24c76529328e4761ffec6831229c416dd",
+  "src/pystachy_compiler/union_proof.py": "a0d5ac800d3a2d1ab43842226e535079134a6beaf9a2041aa7c1c6b59618d197",
+  "src/pystachy_compiler/union_state.py": "b845af16073f24e1e1245bdcb00d4324dbf1d657874604cb4b991d852a07b026",
+  "src/pystachy_compiler/unions.py": "d20fbcc4521ed8719b6735b647c03cfb7fd35e55a2c9e0569cafbbfb160d4765",
+  "src/pystachy_compiler/utils.py": "0200c92d92093c0db4cd649bfc5b8a4edce0e85cbc5ef1b569533b4437dde37a",
+  "src/pystachy_compiler/variables.py": "f4ea9b2eb58cb7339add9ced65d890f2f5b37d26f4919f463cbb50c54c11b086",
+  "tools/check_nanogpt.py": "694aaa15456be0123d7f87ac92cd499d69d1049dad23e8f8ef588ce94bc95141"
+ },
+ "rounds": [
+  {
+   "round": 0,
+   "order": [
+    "blas_aot",
+    "blas_jit",
+    "scalar_aot",
+    "scalar_jit",
+    "typed_port_cpython",
+    "numpy_and_torch"
+   ],
+   "load_before": [
+    0.662109375,
+    0.63818359375,
+    0.4296875
+   ],
+   "tiers": {
+    "blas_aot": {
+     "median_full_ms": 0.5154984999080625,
+     "median_last_ms": 0.4647055000077671,
+     "load_s": 0.05621423900015543,
+     "wall_s": 0.39346064399978786,
+     "max_abs_error": 3.3306690738754696e-16,
+     "output_sha256_prefix": "4b8f7eac1793e82d"
+    },
+    "blas_jit": {
+     "median_full_ms": 0.6446610000239161,
+     "median_last_ms": 0.5959540000048946,
+     "load_s": 0.05214426599991384,
+     "wall_s": 0.8128886140000304,
+     "max_abs_error": 3.3306690738754696e-16,
+     "output_sha256_prefix": "4b8f7eac1793e82d"
+    },
+    "scalar_aot": {
+     "median_full_ms": 2.0612214999573553,
+     "median_last_ms": 2.01949849997618,
+     "load_s": 0.049108574999991106,
+     "wall_s": 1.3764438129999235,
+     "max_abs_error": 3.885780586188048e-16,
+     "output_sha256_prefix": "c873a3b53c6b6379"
+    },
+    "scalar_jit": {
+     "median_full_ms": 2.7743064999867784,
+     "median_last_ms": 2.665199499915616,
+     "load_s": 0.055018691999976,
+     "wall_s": 2.2670011810000688,
+     "max_abs_error": 3.885780586188048e-16,
+     "output_sha256_prefix": "c873a3b53c6b6379"
+    },
+    "typed_port_cpython": {
+     "median_full_ms": 85.41461999993771,
+     "median_last_ms": 86.27625000008265,
+     "load_s": 0.038768367000102444,
+     "wall_s": 1.339680348999991,
+     "max_abs_error": 3.885780586188048e-16,
+     "output_sha256_prefix": "c873a3b53c6b6379"
+    },
+    "cpython_numpy": {
+     "version": "2.5.4",
+     "median_full_ms": 0.753125000073851,
+     "median_last_ms": 0.6337945000041145,
+     "max_abs_error": 3.885780586188048e-16,
+     "wall_s": 2.216196899000124
+    },
+    "pytorch": {
+     "version": "2.15.0+cpu",
+     "median_full_ms": 0.4764929999510059,
+     "median_last_ms": 0.5155359999662323,
+     "max_abs_error": 0.0,
+     "wall_s": 2.216196899000124
+    }
+   },
+   "load_after": [
+    0.7880859375,
+    0.6669921875,
+    0.44189453125
+   ]
+  },
+  {
+   "round": 1,
+   "order": [
+    "blas_jit",
+    "scalar_aot",
+    "scalar_jit",
+    "typed_port_cpython",
+    "numpy_and_torch",
+    "blas_aot"
+   ],
+   "load_before": [
+    0.7880859375,
+    0.6669921875,
+    0.44189453125
+   ],
+   "tiers": {
+    "blas_jit": {
+     "median_full_ms": 0.6272314999478112,
+     "median_last_ms": 0.6014874999209496,
+     "load_s": 0.047985635000031834,
+     "wall_s": 0.8546763699998792,
+     "max_abs_error": 3.3306690738754696e-16,
+     "output_sha256_prefix": "4b8f7eac1793e82d"
+    },
+    "scalar_aot": {
+     "median_full_ms": 2.0300324999880104,
+     "median_last_ms": 2.009221999969668,
+     "load_s": 0.0482735269999921,
+     "wall_s": 1.3826762769999732,
+     "max_abs_error": 3.885780586188048e-16,
+     "output_sha256_prefix": "c873a3b53c6b6379"
+    },
+    "scalar_jit": {
+     "median_full_ms": 2.579189000016413,
+     "median_last_ms": 2.4481680000008055,
+     "load_s": 0.0465144979998513,
+     "wall_s": 2.0803532769998583,
+     "max_abs_error": 3.885780586188048e-16,
+     "output_sha256_prefix": "c873a3b53c6b6379"
+    },
+    "typed_port_cpython": {
+     "median_full_ms": 100.22654999988845,
+     "median_last_ms": 86.62787399998706,
+     "load_s": 0.033872752999968725,
+     "wall_s": 1.4049609109999892,
+     "max_abs_error": 3.885780586188048e-16,
+     "output_sha256_prefix": "c873a3b53c6b6379"
+    },
+    "cpython_numpy": {
+     "version": "2.5.4",
+     "median_full_ms": 0.7315560000051846,
+     "median_last_ms": 0.6836860000021261,
+     "max_abs_error": 3.885780586188048e-16,
+     "wall_s": 2.269590517999859
+    },
+    "pytorch": {
+     "version": "2.15.0+cpu",
+     "median_full_ms": 0.4710029999159815,
+     "median_last_ms": 0.46948850012995536,
+     "max_abs_error": 0.0,
+     "wall_s": 2.269590517999859
+    },
+    "blas_aot": {
+     "median_full_ms": 0.5101834999550192,
+     "median_last_ms": 0.482758000089234,
+     "load_s": 0.05188722399998369,
+     "wall_s": 0.38812400100005107,
+     "max_abs_error": 3.3306690738754696e-16,
+     "output_sha256_prefix": "4b8f7eac1793e82d"
+    }
+   },
+   "load_after": [
+    0.80517578125,
+    0.6728515625,
+    0.4453125
+   ]
+  },
+  {
+   "round": 2,
+   "order": [
+    "scalar_aot",
+    "scalar_jit",
+    "typed_port_cpython",
+    "numpy_and_torch",
+    "blas_aot",
+    "blas_jit"
+   ],
+   "load_before": [
+    0.80517578125,
+    0.6728515625,
+    0.4453125
+   ],
+   "tiers": {
+    "scalar_aot": {
+     "median_full_ms": 2.085609999994631,
+     "median_last_ms": 1.932306500066261,
+     "load_s": 0.051109260999965045,
+     "wall_s": 1.3531058030000622,
+     "max_abs_error": 3.885780586188048e-16,
+     "output_sha256_prefix": "c873a3b53c6b6379"
+    },
+    "scalar_jit": {
+     "median_full_ms": 2.626963500006241,
+     "median_last_ms": 2.597609500071485,
+     "load_s": 0.0444841930000166,
+     "wall_s": 2.0521293179999702,
+     "max_abs_error": 3.885780586188048e-16,
+     "output_sha256_prefix": "c873a3b53c6b6379"
+    },
+    "typed_port_cpython": {
+     "median_full_ms": 96.87223299988545,
+     "median_last_ms": 85.27449799998976,
+     "load_s": 0.037725094000052195,
+     "wall_s": 1.4254346370000803,
+     "max_abs_error": 3.885780586188048e-16,
+     "output_sha256_prefix": "c873a3b53c6b6379"
+    },
+    "cpython_numpy": {
+     "version": "2.5.4",
+     "median_full_ms": 0.6762040000012348,
+     "median_last_ms": 0.6430370000316543,
+     "max_abs_error": 3.885780586188048e-16,
+     "wall_s": 2.1684490109998933
+    },
+    "pytorch": {
+     "version": "2.15.0+cpu",
+     "median_full_ms": 0.47113549987898296,
+     "median_last_ms": 0.46570350002639316,
+     "max_abs_error": 0.0,
+     "wall_s": 2.1684490109998933
+    },
+    "blas_aot": {
+     "median_full_ms": 0.5593025000507623,
+     "median_last_ms": 0.4993864999960351,
+     "load_s": 0.05683305599995947,
+     "wall_s": 0.43865110100000493,
+     "max_abs_error": 3.3306690738754696e-16,
+     "output_sha256_prefix": "4b8f7eac1793e82d"
+    },
+    "blas_jit": {
+     "median_full_ms": 0.682761500002016,
+     "median_last_ms": 0.6698624999899039,
+     "load_s": 0.0530028929999844,
+     "wall_s": 0.9141178570000648,
+     "max_abs_error": 3.3306690738754696e-16,
+     "output_sha256_prefix": "4b8f7eac1793e82d"
+    }
+   },
+   "load_after": [
+    0.83544921875,
+    0.68408203125,
+    0.4521484375
+   ]
+  },
+  {
+   "round": 3,
+   "order": [
+    "scalar_jit",
+    "typed_port_cpython",
+    "numpy_and_torch",
+    "blas_aot",
+    "blas_jit",
+    "scalar_aot"
+   ],
+   "load_before": [
+    0.83544921875,
+    0.68408203125,
+    0.4521484375
+   ],
+   "tiers": {
+    "scalar_jit": {
+     "median_full_ms": 2.7987510000002658,
+     "median_last_ms": 2.597878000074161,
+     "load_s": 0.04963456500013308,
+     "wall_s": 2.271145225000055,
+     "max_abs_error": 3.885780586188048e-16,
+     "output_sha256_prefix": "c873a3b53c6b6379"
+    },
+    "typed_port_cpython": {
+     "median_full_ms": 93.64045799998166,
+     "median_last_ms": 92.41034599995146,
+     "load_s": 0.03279894599995714,
+     "wall_s": 1.4373925739998867,
+     "max_abs_error": 3.885780586188048e-16,
+     "output_sha256_prefix": "c873a3b53c6b6379"
+    },
+    "cpython_numpy": {
+     "version": "2.5.4",
+     "median_full_ms": 0.7798290000664565,
+     "median_last_ms": 0.6542440000885108,
+     "max_abs_error": 3.885780586188048e-16,
+     "wall_s": 2.429394565000166
+    },
+    "pytorch": {
+     "version": "2.15.0+cpu",
+     "median_full_ms": 0.4818704999252077,
+     "median_last_ms": 0.474202999953377,
+     "max_abs_error": 0.0,
+     "wall_s": 2.429394565000166
+    },
+    "blas_aot": {
+     "median_full_ms": 0.5159260000482391,
+     "median_last_ms": 0.4805704999171212,
+     "load_s": 0.056681432999994286,
+     "wall_s": 0.41257312700008697,
+     "max_abs_error": 3.3306690738754696e-16,
+     "output_sha256_prefix": "4b8f7eac1793e82d"
+    },
+    "blas_jit": {
+     "median_full_ms": 0.7179254999982732,
+     "median_last_ms": 0.6657440000026327,
+     "load_s": 0.05418245700002444,
+     "wall_s": 0.9154100419998485,
+     "max_abs_error": 3.3306690738754696e-16,
+     "output_sha256_prefix": "4b8f7eac1793e82d"
+    },
+    "scalar_aot": {
+     "median_full_ms": 2.249015499955931,
+     "median_last_ms": 2.0580950000521625,
+     "load_s": 0.053303327000094214,
+     "wall_s": 1.476946572000088,
+     "max_abs_error": 3.885780586188048e-16,
+     "output_sha256_prefix": "c873a3b53c6b6379"
+    }
+   },
+   "load_after": [
+    0.86083984375,
+    0.69482421875,
+    0.45849609375
+   ]
+  },
+  {
+   "round": 4,
+   "order": [
+    "typed_port_cpython",
+    "numpy_and_torch",
+    "blas_aot",
+    "blas_jit",
+    "scalar_aot",
+    "scalar_jit"
+   ],
+   "load_before": [
+    0.86083984375,
+    0.69482421875,
+    0.45849609375
+   ],
+   "tiers": {
+    "typed_port_cpython": {
+     "median_full_ms": 86.61806399982197,
+     "median_last_ms": 87.03383700003542,
+     "load_s": 0.035480000999996264,
+     "wall_s": 1.3822330039999997,
+     "max_abs_error": 3.885780586188048e-16,
+     "output_sha256_prefix": "c873a3b53c6b6379"
+    },
+    "cpython_numpy": {
+     "version": "2.5.4",
+     "median_full_ms": 0.7250939999039474,
+     "median_last_ms": 0.7063709998647028,
+     "max_abs_error": 3.885780586188048e-16,
+     "wall_s": 2.249128767000002
+    },
+    "pytorch": {
+     "version": "2.15.0+cpu",
+     "median_full_ms": 0.45567350002784224,
+     "median_last_ms": 0.4791704999433932,
+     "max_abs_error": 0.0,
+     "wall_s": 2.249128767000002
+    },
+    "blas_aot": {
+     "median_full_ms": 0.5186160000221207,
+     "median_last_ms": 0.4694780000136234,
+     "load_s": 0.0502337880000141,
+     "wall_s": 0.3836579470000743,
+     "max_abs_error": 3.3306690738754696e-16,
+     "output_sha256_prefix": "4b8f7eac1793e82d"
+    },
+    "blas_jit": {
+     "median_full_ms": 0.6355670000175451,
+     "median_last_ms": 0.6112039999379704,
+     "load_s": 0.04741889499996432,
+     "wall_s": 0.8401749939998808,
+     "max_abs_error": 3.3306690738754696e-16,
+     "output_sha256_prefix": "4b8f7eac1793e82d"
+    },
+    "scalar_aot": {
+     "median_full_ms": 2.038371000139705,
+     "median_last_ms": 1.9139945000006264,
+     "load_s": 0.050554099000009955,
+     "wall_s": 1.3251715820001664,
+     "max_abs_error": 3.885780586188048e-16,
+     "output_sha256_prefix": "c873a3b53c6b6379"
+    },
+    "scalar_jit": {
+     "median_full_ms": 2.636438999957136,
+     "median_last_ms": 2.600398999902609,
+     "load_s": 0.04619498300007763,
+     "wall_s": 2.15436541400004,
+     "max_abs_error": 3.885780586188048e-16,
+     "output_sha256_prefix": "c873a3b53c6b6379"
+    }
+   },
+   "load_after": [
+    0.8720703125,
+    0.7001953125,
+    0.46142578125
+   ]
+  },
+  {
+   "round": 5,
+   "order": [
+    "numpy_and_torch",
+    "blas_aot",
+    "blas_jit",
+    "scalar_aot",
+    "scalar_jit",
+    "typed_port_cpython"
+   ],
+   "load_before": [
+    0.8720703125,
+    0.7001953125,
+    0.46142578125
+   ],
+   "tiers": {
+    "cpython_numpy": {
+     "version": "2.5.4",
+     "median_full_ms": 0.6749570001147731,
+     "median_last_ms": 0.6533255000249483,
+     "max_abs_error": 3.885780586188048e-16,
+     "wall_s": 2.2359241009999096
+    },
+    "pytorch": {
+     "version": "2.15.0+cpu",
+     "median_full_ms": 0.4534199999852717,
+     "median_last_ms": 0.4435999999259366,
+     "max_abs_error": 0.0,
+     "wall_s": 2.2359241009999096
+    },
+    "blas_aot": {
+     "median_full_ms": 0.497313499977281,
+     "median_last_ms": 0.45118549996914226,
+     "load_s": 0.04980371700003161,
+     "wall_s": 0.3714665310001237,
+     "max_abs_error": 3.3306690738754696e-16,
+     "output_sha256_prefix": "4b8f7eac1793e82d"
+    },
+    "blas_jit": {
+     "median_full_ms": 0.6285939999770562,
+     "median_last_ms": 0.5884645000833189,
+     "load_s": 0.047730591000117784,
+     "wall_s": 0.7875851260000672,
+     "max_abs_error": 3.3306690738754696e-16,
+     "output_sha256_prefix": "4b8f7eac1793e82d"
+    },
+    "scalar_aot": {
+     "median_full_ms": 2.1407049999879746,
+     "median_last_ms": 2.005547000067054,
+     "load_s": 0.06118880799999715,
+     "wall_s": 1.5091527829999904,
+     "max_abs_error": 3.885780586188048e-16,
+     "output_sha256_prefix": "c873a3b53c6b6379"
+    },
+    "scalar_jit": {
+     "median_full_ms": 2.7555885000083435,
+     "median_last_ms": 2.741353499914112,
+     "load_s": 0.05655126900001051,
+     "wall_s": 2.2167256420000285,
+     "max_abs_error": 3.885780586188048e-16,
+     "output_sha256_prefix": "c873a3b53c6b6379"
+    },
+    "typed_port_cpython": {
+     "median_full_ms": 89.47559800003546,
+     "median_last_ms": 83.95484099992245,
+     "load_s": 0.03229861899990283,
+     "wall_s": 1.4765649599999051,
+     "max_abs_error": 3.885780586188048e-16,
+     "output_sha256_prefix": "c873a3b53c6b6379"
+    }
+   },
+   "load_after": [
+    0.97216796875,
+    0.7275390625,
+    0.47265625
+   ]
+  },
+  {
+   "round": 6,
+   "order": [
+    "blas_aot",
+    "blas_jit",
+    "scalar_aot",
+    "scalar_jit",
+    "typed_port_cpython",
+    "numpy_and_torch"
+   ],
+   "load_before": [
+    0.97216796875,
+    0.7275390625,
+    0.47265625
+   ],
+   "tiers": {
+    "blas_aot": {
+     "median_full_ms": 0.5162705000429924,
+     "median_last_ms": 0.4739800000379546,
+     "load_s": 0.056404423999993014,
+     "wall_s": 0.3969580049999877,
+     "max_abs_error": 3.3306690738754696e-16,
+     "output_sha256_prefix": "4b8f7eac1793e82d"
+    },
+    "blas_jit": {
+     "median_full_ms": 0.6680779999896913,
+     "median_last_ms": 0.604178999992655,
+     "load_s": 0.05121291199998268,
+     "wall_s": 0.84333115000004,
+     "max_abs_error": 3.3306690738754696e-16,
+     "output_sha256_prefix": "4b8f7eac1793e82d"
+    },
+    "scalar_aot": {
+     "median_full_ms": 2.2108130000333404,
+     "median_last_ms": 2.0496959999718456,
+     "load_s": 0.0477908570001091,
+     "wall_s": 1.4463563159999921,
+     "max_abs_error": 3.885780586188048e-16,
+     "output_sha256_prefix": "c873a3b53c6b6379"
+    },
+    "scalar_jit": {
+     "median_full_ms": 2.608518999863918,
+     "median_last_ms": 2.680395999959728,
+     "load_s": 0.04893791500012412,
+     "wall_s": 2.1871403350000946,
+     "max_abs_error": 3.885780586188048e-16,
+     "output_sha256_prefix": "c873a3b53c6b6379"
+    },
+    "typed_port_cpython": {
+     "median_full_ms": 88.93901600004028,
+     "median_last_ms": 87.91418500004511,
+     "load_s": 0.034437530000104744,
+     "wall_s": 1.4055796099999043,
+     "max_abs_error": 3.885780586188048e-16,
+     "output_sha256_prefix": "c873a3b53c6b6379"
+    },
+    "cpython_numpy": {
+     "version": "2.5.4",
+     "median_full_ms": 0.733998999976393,
+     "median_last_ms": 0.7067654998991202,
+     "max_abs_error": 3.885780586188048e-16,
+     "wall_s": 2.3406786799998827
+    },
+    "pytorch": {
+     "version": "2.15.0+cpu",
+     "median_full_ms": 0.4929655000296407,
+     "median_last_ms": 0.4627675000392628,
+     "max_abs_error": 0.0,
+     "wall_s": 2.3406786799998827
+    }
+   },
+   "load_after": [
+    1.05712890625,
+    0.75390625,
+    0.48388671875
+   ]
+  },
+  {
+   "round": 7,
+   "order": [
+    "blas_jit",
+    "scalar_aot",
+    "scalar_jit",
+    "typed_port_cpython",
+    "numpy_and_torch",
+    "blas_aot"
+   ],
+   "load_before": [
+    1.05712890625,
+    0.75390625,
+    0.48388671875
+   ],
+   "tiers": {
+    "blas_jit": {
+     "median_full_ms": 0.6267049999451046,
+     "median_last_ms": 0.6243819999554034,
+     "load_s": 0.04691791999994166,
+     "wall_s": 0.841862108999976,
+     "max_abs_error": 3.3306690738754696e-16,
+     "output_sha256_prefix": "4b8f7eac1793e82d"
+    },
+    "scalar_aot": {
+     "median_full_ms": 2.243292000002839,
+     "median_last_ms": 1.976321500137601,
+     "load_s": 0.056058134000068094,
+     "wall_s": 1.5035658839999542,
+     "max_abs_error": 3.885780586188048e-16,
+     "output_sha256_prefix": "c873a3b53c6b6379"
+    },
+    "scalar_jit": {
+     "median_full_ms": 2.7731834999258353,
+     "median_last_ms": 2.604083000164792,
+     "load_s": 0.04799826400017082,
+     "wall_s": 2.186022960999935,
+     "max_abs_error": 3.885780586188048e-16,
+     "output_sha256_prefix": "c873a3b53c6b6379"
+    },
+    "typed_port_cpython": {
+     "median_full_ms": 85.46423500001765,
+     "median_last_ms": 80.59102199990775,
+     "load_s": 0.03291415900002903,
+     "wall_s": 1.336515712000164,
+     "max_abs_error": 3.885780586188048e-16,
+     "output_sha256_prefix": "c873a3b53c6b6379"
+    },
+    "cpython_numpy": {
+     "version": "2.5.4",
+     "median_full_ms": 0.7148224999582453,
+     "median_last_ms": 0.6884010000476337,
+     "max_abs_error": 3.885780586188048e-16,
+     "wall_s": 2.302637302999983
+    },
+    "pytorch": {
+     "version": "2.15.0+cpu",
+     "median_full_ms": 0.4465604999950301,
+     "median_last_ms": 0.46703450004770275,
+     "max_abs_error": 0.0,
+     "wall_s": 2.302637302999983
+    },
+    "blas_aot": {
+     "median_full_ms": 0.5175125000960179,
+     "median_last_ms": 0.4806364999012658,
+     "load_s": 0.052277338000067175,
+     "wall_s": 0.40405539899984433,
+     "max_abs_error": 3.3306690738754696e-16,
+     "output_sha256_prefix": "4b8f7eac1793e82d"
+    }
+   },
+   "load_after": [
+    1.0478515625,
+    0.7626953125,
+    0.48974609375
+   ]
+  },
+  {
+   "round": 8,
+   "order": [
+    "scalar_aot",
+    "scalar_jit",
+    "typed_port_cpython",
+    "numpy_and_torch",
+    "blas_aot",
+    "blas_jit"
+   ],
+   "load_before": [
+    1.0478515625,
+    0.7626953125,
+    0.48974609375
+   ],
+   "tiers": {
+    "scalar_aot": {
+     "median_full_ms": 2.274785999929918,
+     "median_last_ms": 2.0312945000569016,
+     "load_s": 0.04993643800003156,
+     "wall_s": 1.53263016599999,
+     "max_abs_error": 3.885780586188048e-16,
+     "output_sha256_prefix": "c873a3b53c6b6379"
+    },
+    "scalar_jit": {
+     "median_full_ms": 2.7257714999677773,
+     "median_last_ms": 2.8812765000338914,
+     "load_s": 0.04709894699999495,
+     "wall_s": 2.283021338000026,
+     "max_abs_error": 3.885780586188048e-16,
+     "output_sha256_prefix": "c873a3b53c6b6379"
+    },
+    "typed_port_cpython": {
+     "median_full_ms": 93.04808800015962,
+     "median_last_ms": 82.89569699991262,
+     "load_s": 0.03979939800001375,
+     "wall_s": 1.4011321289999614,
+     "max_abs_error": 3.885780586188048e-16,
+     "output_sha256_prefix": "c873a3b53c6b6379"
+    },
+    "cpython_numpy": {
+     "version": "2.5.4",
+     "median_full_ms": 0.7072000000789558,
+     "median_last_ms": 0.6379655000046114,
+     "max_abs_error": 3.885780586188048e-16,
+     "wall_s": 2.2039098679999825
+    },
+    "pytorch": {
+     "version": "2.15.0+cpu",
+     "median_full_ms": 0.46028550002574775,
+     "median_last_ms": 0.43968299996777205,
+     "max_abs_error": 0.0,
+     "wall_s": 2.2039098679999825
+    },
+    "blas_aot": {
+     "median_full_ms": 0.5498504999650322,
+     "median_last_ms": 0.46762600004512933,
+     "load_s": 0.05600358300011976,
+     "wall_s": 0.42031189800013635,
+     "max_abs_error": 3.3306690738754696e-16,
+     "output_sha256_prefix": "4b8f7eac1793e82d"
+    },
+    "blas_jit": {
+     "median_full_ms": 0.6187000001318665,
+     "median_last_ms": 0.6007885000371971,
+     "load_s": 0.048899750999908065,
+     "wall_s": 0.7959388879999096,
+     "max_abs_error": 3.3306690738754696e-16,
+     "output_sha256_prefix": "4b8f7eac1793e82d"
+    }
+   },
+   "load_after": [
+    1.0439453125,
+    0.76708984375,
+    0.49267578125
+   ]
+  },
+  {
+   "round": 9,
+   "order": [
+    "scalar_jit",
+    "typed_port_cpython",
+    "numpy_and_torch",
+    "blas_aot",
+    "blas_jit",
+    "scalar_aot"
+   ],
+   "load_before": [
+    1.0439453125,
+    0.76708984375,
+    0.49267578125
+   ],
+   "tiers": {
+    "scalar_jit": {
+     "median_full_ms": 2.667994499915949,
+     "median_last_ms": 2.6201525001852133,
+     "load_s": 0.045741038999949524,
+     "wall_s": 2.142983652999874,
+     "max_abs_error": 3.885780586188048e-16,
+     "output_sha256_prefix": "c873a3b53c6b6379"
+    },
+    "typed_port_cpython": {
+     "median_full_ms": 91.04909300003783,
+     "median_last_ms": 83.26597199993557,
+     "load_s": 0.032998101999965,
+     "wall_s": 1.4357279880000533,
+     "max_abs_error": 3.885780586188048e-16,
+     "output_sha256_prefix": "c873a3b53c6b6379"
+    },
+    "cpython_numpy": {
+     "version": "2.5.4",
+     "median_full_ms": 0.751755500004947,
+     "median_last_ms": 0.6712350000270817,
+     "max_abs_error": 3.885780586188048e-16,
+     "wall_s": 2.3481660050001665
+    },
+    "pytorch": {
+     "version": "2.15.0+cpu",
+     "median_full_ms": 0.468586999886611,
+     "median_last_ms": 0.4515919999903417,
+     "max_abs_error": 0.0,
+     "wall_s": 2.3481660050001665
+    },
+    "blas_aot": {
+     "median_full_ms": 0.5017720002342685,
+     "median_last_ms": 0.49406250013817044,
+     "load_s": 0.05210149499998806,
+     "wall_s": 0.4180363549999129,
+     "max_abs_error": 3.3306690738754696e-16,
+     "output_sha256_prefix": "4b8f7eac1793e82d"
+    },
+    "blas_jit": {
+     "median_full_ms": 0.6563535000623233,
+     "median_last_ms": 0.5773400000634865,
+     "load_s": 0.04529180200006522,
+     "wall_s": 0.8231058649998886,
+     "max_abs_error": 3.3306690738754696e-16,
+     "output_sha256_prefix": "4b8f7eac1793e82d"
+    },
+    "scalar_aot": {
+     "median_full_ms": 2.0849850000104198,
+     "median_last_ms": 1.9522115001109341,
+     "load_s": 0.050144092999744316,
+     "wall_s": 1.3904891759998463,
+     "max_abs_error": 3.885780586188048e-16,
+     "output_sha256_prefix": "c873a3b53c6b6379"
+    }
+   },
+   "load_after": [
+    1.03662109375,
+    0.77490234375,
+    0.49853515625
+   ]
+  }
+ ],
+ "errors": [],
+ "builds": {
+  "blas": {
+   "seconds": 2.5859986469999967,
+   "runner_sha256": "ec50094a38f26e445c135d9927171405bb5133fe233e6bc6773d452047a267a3",
+   "binary_sha256": "5fe5d61c21ba22c5a313d362737ceb223f6b1338f3ceff5af59d1867891f2c75"
+  },
+  "scalar": {
+   "seconds": 2.4865585390000433,
+   "runner_sha256": "a0100c56d2bc9edfd61fa03f5ae1276e31c62d89b02005d04d890c396f405d7d",
+   "binary_sha256": "396eb5c2e58c3955b17dffe13c98c476cb6e31f509b1986929ab799da1bbb6f0"
+  }
+ },
+ "median_ms": {
+  "blas_aot": {
+   "full": 0.5160982500456157,
+   "last": 0.4772752499775379
+  },
+  "blas_jit": {
+   "full": 0.6401140000207306,
+   "last": 0.6028332499568023
+  },
+  "scalar_aot": {
+   "full": 2.1131574999913028,
+   "last": 2.007384500018361
+  },
+  "scalar_jit": {
+   "full": 2.696882999941863,
+   "last": 2.6121177501750026
+  },
+  "typed_port_cpython": {
+   "full": 90.26234550003664,
+   "last": 85.77537400003621
+  },
+  "cpython_numpy": {
+   "full": 0.728324999954566,
+   "last": 0.6627395000577962
+  },
+  "pytorch": {
+   "full": 0.46979499990129625,
+   "last": 0.46636900003704795
+  }
+ },
+ "range_ms": {
+  "blas_aot": {
+   "full": [
+    0.497313499977281,
+    0.5593025000507623
+   ],
+   "last": [
+    0.45118549996914226,
+    0.4993864999960351
+   ]
+  },
+  "blas_jit": {
+   "full": [
+    0.6187000001318665,
+    0.7179254999982732
+   ],
+   "last": [
+    0.5773400000634865,
+    0.6698624999899039
+   ]
+  },
+  "scalar_aot": {
+   "full": [
+    2.0300324999880104,
+    2.274785999929918
+   ],
+   "last": [
+    1.9139945000006264,
+    2.0580950000521625
+   ]
+  },
+  "scalar_jit": {
+   "full": [
+    2.579189000016413,
+    2.7987510000002658
+   ],
+   "last": [
+    2.4481680000008055,
+    2.8812765000338914
+   ]
+  },
+  "typed_port_cpython": {
+   "full": [
+    85.41461999993771,
+    100.22654999988845
+   ],
+   "last": [
+    80.59102199990775,
+    92.41034599995146
+   ]
+  },
+  "cpython_numpy": {
+   "full": [
+    0.6749570001147731,
+    0.7798290000664565
+   ],
+   "last": [
+    0.6337945000041145,
+    0.7067654998991202
+   ]
+  },
+  "pytorch": {
+   "full": [
+    0.4465604999950301,
+    0.4929655000296407
+   ],
+   "last": [
+    0.43968299996777205,
+    0.5155359999662323
+   ]
+  }
+ },
+ "paired_ratios": {
+  "blas_aot_over_cpython_numpy": {
+   "full": 0.7093032207778386,
+   "last": 0.7195532249525666
+  },
+  "blas_aot_over_pytorch": {
+   "full": 1.08999531766692,
+   "last": 1.0262464837853593
+  },
+  "typed_port_cpython_over_blas_aot": {
+   "full": 172.73699210799182,
+   "last": 182.41397771399113
+  }
+ },
+ "output_sha256_prefix": {
+  "blas_aot": [
+   "4b8f7eac1793e82d"
+  ],
+  "blas_jit": [
+   "4b8f7eac1793e82d"
+  ],
+  "scalar_aot": [
+   "c873a3b53c6b6379"
+  ],
+  "scalar_jit": [
+   "c873a3b53c6b6379"
+  ],
+  "typed_port_cpython": [
+   "c873a3b53c6b6379"
+  ]
+ },
+ "max_abs_error_vs_reference": {
+  "blas_aot": 3.3306690738754696e-16,
+  "blas_jit": 3.3306690738754696e-16,
+  "scalar_aot": 3.885780586188048e-16,
+  "scalar_jit": 3.885780586188048e-16,
+  "typed_port_cpython": 3.885780586188048e-16,
+  "cpython_numpy": 3.885780586188048e-16,
+  "pytorch": 0.0
+ },
+ "status": "ok",
+ "recorded_date": "2026-11-03",
+ "verification": {
+  "command": "tools/check_nanogpt.py --fixtures FIXTURES --compiler ./pystachy --benchmark --warmups 1 --repeats 5 --blas-library LIB --blas-symbol scipy_cblas_dgemm (two training steps, the default)",
+  "all_verified": true,
+  "errors": [],
+  "git_revision": "9c8bc74648aa7c7e6a1b9d8f9dbbfeb1f2908ad3",
+  "reference": {
+   "upstream_commit": "3adf61e154c3fe3fca428ad6bc3818b27a3b8291",
+   "upstream_sha256": "7c01703240dbec5d554527dc666e35b3df8391d0b117fddc07afcf325a21d11c",
+   "torch_version": "2.15.0+cpu",
+   "python": "3.13.18 (main, Oct 26 2026, 14:08:19) [Clang 23.1.3 ]",
+   "torch_num_threads": 1,
+   "dtype": "float64",
+   "dropout": 0.0,
+   "training_steps": 2
+  },
+  "blas": {
+   "library": "$SCRATCH/venv-ref/lib/python3.13/site-packages/scipy.libs/libscipy_openblas-5f890258.so",
+   "symbol": "scipy_cblas_dgemm",
+   "library_sha256": "2a5b4c1a6311873c59132b2ceaaf3c26258a17350b7cd27ea8782a47e3322981",
+   "overlay_sha256": "012978808cdb99c5e32074975a5dcc01fc76f3d4be655f096003e0952c4dedae",
+   "integer_abi": "LP64 (32-bit C int)"
+  },
+  "cases": {
+   "one_token": {
+    "scalar_aot": {
+     "verified": true,
+     "numeric_values": 9343,
+     "max_absolute_error": 3.738329090730019e-15
+    },
+    "scalar_jit": {
+     "verified": true,
+     "numeric_values": 9343,
+     "max_absolute_error": 3.738329090730019e-15
+    },
+    "scalar_cpython": {
+     "verified": true,
+     "numeric_values": 9343,
+     "max_absolute_error": 3.738329090730019e-15
+    },
+    "blas_aot": {
+     "verified": true,
+     "numeric_values": 9343,
+     "max_absolute_error": 3.738329090730019e-15
+    },
+    "blas_jit": {
+     "verified": true,
+     "numeric_values": 9343,
+     "max_absolute_error": 3.738329090730019e-15
+    }
+   },
+   "batched_bias": {
+    "scalar_jit": {
+     "verified": true,
+     "numeric_values": 37331,
+     "max_absolute_error": 1.41655115257776e-15
+    },
+    "scalar_cpython": {
+     "verified": true,
+     "numeric_values": 37331,
+     "max_absolute_error": 1.41655115257776e-15
+    },
+    "blas_aot": {
+     "verified": true,
+     "numeric_values": 37331,
+     "max_absolute_error": 1.2215106713030902e-15
+    },
+    "blas_jit": {
+     "verified": true,
+     "numeric_values": 37331,
+     "max_absolute_error": 1.2215106713030902e-15
+    },
+    "scalar_aot": {
+     "verified": true,
+     "numeric_values": 37331,
+     "max_absolute_error": 1.41655115257776e-15
+    }
+   },
+   "batched_no_bias": {
+    "scalar_cpython": {
+     "verified": true,
+     "numeric_values": 34363,
+     "max_absolute_error": 4.440892098500626e-16
+    },
+    "blas_aot": {
+     "verified": true,
+     "numeric_values": 34363,
+     "max_absolute_error": 4.440892098500626e-16
+    },
+    "blas_jit": {
+     "verified": true,
+     "numeric_values": 34363,
+     "max_absolute_error": 4.440892098500626e-16
+    },
+    "scalar_aot": {
+     "verified": true,
+     "numeric_values": 34363,
+     "max_absolute_error": 4.440892098500626e-16
+    },
+    "scalar_jit": {
+     "verified": true,
+     "numeric_values": 34363,
+     "max_absolute_error": 4.440892098500626e-16
+    }
+   },
+   "benchmark": {
+    "blas_aot": {
+     "verified": true,
+     "numeric_values": 980867,
+     "max_absolute_error": 1.565896435376451e-14
+    },
+    "blas_jit": {
+     "verified": true,
+     "numeric_values": 980867,
+     "max_absolute_error": 1.565896435376451e-14
+    },
+    "scalar_aot": {
+     "verified": true,
+     "numeric_values": 980867,
+     "max_absolute_error": 1.740274591099933e-14
+    },
+    "scalar_jit": {
+     "verified": true,
+     "numeric_values": 980867,
+     "max_absolute_error": 1.740274591099933e-14
+    },
+    "scalar_cpython": {
+     "verified": true,
+     "numeric_values": 980867,
+     "max_absolute_error": 1.740274591099933e-14
+    }
+   }
+  }
+ }
+}
