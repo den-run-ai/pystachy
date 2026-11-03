@@ -7646,11 +7646,15 @@ void pys_touch(Str *p, I mode, I exist_ok) {
   close(fd);
 }
 /* lib/shutil.py's __pys_copyfile(a, b) and __pys_copymode(a, b): the bytes of file a written to
-   file b (CPython's copyfile once its checks pass), and a's permission bits given to b (chmod) */
+   file b (CPython's copyfile once its checks pass), and a's permission bits given to b (chmod).
+   a is opened, and checked as CPython's FileIO checks it (open() of a directory succeeds on Linux,
+   then fstat() makes it IsADirectoryError), before b is opened, which truncates b */
 void pys_copyfile(Str *a, Str *b) {
   if (nul(a) || nul(b)) pys_fail("ValueError: open: embedded null character in path");
   FILE *in = fopen(a->s, "rb");
   if (!in) oserr(a->s);
+  struct stat st;
+  if (fstat(fileno(in), &st) == 0 && S_ISDIR(st.st_mode)) { fclose(in); errno = EISDIR; oserr(a->s); }
   FILE *out = fopen(b->s, "wb");
   if (!out) { int e = errno; fclose(in); errno = e; oserr(b->s); }
   char buf[65536];
