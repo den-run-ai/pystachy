@@ -6315,7 +6315,21 @@ static void use(File *f, int rd) {     /* check a read (rd) or write, and reposi
   }
   f->last = rd ? 2 : 1;
 }
-static int get(File *f) { int c = getc_unlocked(f->f); f->rcons += c != EOF; return c; }
+/* stdio's EOF of a read: 0 at the end of the file. A read error raises CPython's OSError, and the file reads
+   again later (clearerr): CPython's error is no end of the file. The EINTR of a Ctrl-C raises KeyboardInterrupt
+   (pys_fail); another EINTR, of a signal a handler took, reads again: 1, as CPython retries (PEP 475) */
+static int again(File *f) {
+  if (!ferror(f->f)) return 0;
+  int e = errno ? errno : EIO;
+  clearerr(f->f);
+  if (e == EINTR && !io_intr) return 1;
+  ioerr(e);
+}
+static int get(File *f) {
+  int c;
+  while ((c = getc_unlocked(f->f)) == EOF && again(f)) {}
+  f->rcons += c != EOF; return c;
+}
 static void unget(File *f, int c) { ungetc(c, f->f); f->rcons--; }
 static int getnl(File *f, int c) {     /* newline=None reads "\r\n" and "\r" as "\n" */
   if (c == '\r' && !f->nl) { int d = get(f); if (d != '\n' && d != EOF) unget(f, d); c = '\n'; }
@@ -6335,8 +6349,12 @@ static Str *decode(File *f, Buf *b) {  /* the str of the bytes a read got: in a 
 static Str *read1(File *f, I n) {      /* n < 0: to the end; else n characters (in a Latin-1 file, n bytes) */
   use(f, 1); Buf b = {0};
   if (n < 0) {
-    char t[1 << 16]; size_t k;
-    while ((k = fread(t, 1, sizeof t, f->f)) > 0) { put(&b, t, k); f->rcons += k; }
+    char t[1 << 16];
+    for (;;) {
+      size_t k = fread(t, 1, sizeof t, f->f);
+      if (k) { put(&b, t, k); f->rcons += k; }
+      if (k < sizeof t && !again(f)) break;   /* the end (a read error raises) */
+    }
     I j = 0;
     if (!f->nl) for (I i = 0; i < b.n; i++) { char c = b.p[i]; if (c == '\r') { c = '\n'; i += i + 1 < b.n && b.p[i + 1] == '\n'; } b.p[j++] = c; }
     if (!f->nl) b.n = j;
@@ -6532,18 +6550,24 @@ static void buse(File *f, int rd) {    /* a binary file's read (rd) or write, at
   else if (!rd && f->last == 2) fseeko(f->f, 0, SEEK_CUR);   /* (C stdio: a write after a read repositions) */
   f->last = rd ? 2 : 1;
 }
-Str *pys_bfile_read(File *f, I n) {    /* read(n): n bytes, or what remains (n < 0: all of it) */
+Str *pys_bfile_read(File *f, I n) {    /* read(n): n bytes, or what remains (n < 0: all of it). A read error raises */
   io_in(); buse(f, 1);
-  Buf b = {0}; char t[1 << 16]; size_t k;
-  for (I left = n; left && (k = fread(t, 1, left < 0 || left > (I)sizeof t ? sizeof t : (size_t)left, f->f)) > 0; left -= left < 0 ? 0 : (I)k)
-    put(&b, t, k);
+  Buf b = {0}; char t[1 << 16];
+  for (I left = n; left;) {
+    size_t want = left < 0 || left > (I)sizeof t ? sizeof t : (size_t)left, k = fread(t, 1, want, f->f);
+    if (k) put(&b, t, k);
+    if (left > 0) left -= (I)k;
+    if (k < want && !again(f)) break;   /* the end */
+  }
   io_out();
   return done(&b);
 }
 Str *pys_bfile_readline(File *f, I limit) {   /* readline(limit): through b"\n", at most limit bytes (limit < 0: all) */
   io_in(); buse(f, 1);
   Buf b = {0}; int c; char t[256]; I k = 0;
-  for (I n = 0; n != limit && (c = getc_unlocked(f->f)) != EOF; n++) {
+  for (I n = 0; n != limit; n++) {
+    while ((c = getc_unlocked(f->f)) == EOF && again(f)) {}
+    if (c == EOF) break;
     t[k++] = (char)c;
     if (k == (I)sizeof t) { put(&b, t, k); k = 0; }
     if (c == '\n') break;
