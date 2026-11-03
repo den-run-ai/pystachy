@@ -161,15 +161,16 @@ def _deepcopy_dict(x, memo: _Memo):
 
 
 def _deepcopy_set(x, memo: _Memo):
-    # (as CPython copies a set through its __reduce__: its items' copies first, then the new set,
-    # which the memo then holds)
+    # (as CPython copies a set through its __reduce__: a list of its items, then their copies, then
+    # the new set of them, which the memo then holds; a hook that changes x changes none of these)
     hit = _memo_get(memo, x)
     if hit is not None:
         return hit
+    copies = [_deepcopy(a, memo) for a in list(x)]
     y = x.copy()
     y.clear()
-    for a in x:
-        y.add(_deepcopy(a, memo))
+    for a in copies:
+        y.add(a)
     _memo_put(memo, x, y)
     return y
 
