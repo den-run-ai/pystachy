@@ -48,7 +48,7 @@ The statuses correspond to the KEEP, BOUND, PROTO and OUT labels of the
 | [Generators and iterators](language/semantics.md#generators) | 🟢 Direct<br>🟡 Suspended | `yield`, `yield from`, `send()`, `throw()` and `close()`; generator expressions; iterator classes; lazy `itertools` | — | A dropped suspended generator is never closed; some consumers materialize their input |
 | [Exceptions](language/semantics.md#exceptions) | 🟡 Bounded | CPython 3.13's builtin hierarchy; user exception classes; `raise ... from`; `try` / `except` / `else` / `finally`; catchable `RecursionError` | `except*` and exception groups | No `e.args` or traceback objects; uncaught errors print only the last line; `MemoryError` and Ctrl-C end the program |
 | [Modules](language/modules.md) | 🟡 Bounded | Modules and packages; relative, circular and optional imports; compile-time `__main__`, platform and version branches | CPython C extensions; imports chosen at run time (`importlib`, `__import__`) | A builtin module's import binds program-wide; a module whose code raises keeps its partial globals |
-| [Standard library](../lib/README.md) | 🟡 Bounded | [Common builtins](language/modules.md#builtins); `sys`, `os`, `math`, `time`, `errno`, `tempfile`, `select`; shipped `re`, `json`, `collections`, `itertools`, `functools`, `datetime`, `tomllib` and more | `threading`, `asyncio`, `subprocess`, `socket`, `multiprocessing` and other unshipped modules | Each module supports its own API subset |
+| [Standard library](stdlib.md#library-support-at-a-glance) | 🟡 Bounded | [Common builtins](language/modules.md#builtins); `sys`, `os`, `math`, `time`, `errno`, `tempfile`, `select`; shipped `re`, `json`, `collections`, `itertools`, `functools`, `datetime`, `tomllib`, `logging` and more | Starting threads (`threading` runs one), `asyncio`, `subprocess`, `socket`, `multiprocessing` and other unshipped modules | Each module supports its own API subset |
 | [Memory and lifetime](language/compatibility.md#memory-and-resource-lifetime) | 🟡 Bounded | Automatic memory through a conservative, batched collector; `with` closes files; experimental `weakref.ref` | Finalizers: `__del__` never runs | A dropped file closes at a later collection; no weak containers |
 | [Interop and concurrency](ffi.md) | 🧪 Experimental | C calls (`ffi`); CPython embedded through `pyobj`; extension modules that CPython imports, also in [process pools](concurrency.md) | Native threads; `async` | `pyobj` converts scalars only; an extension runs only on the thread that imported it |
 
@@ -339,8 +339,9 @@ The shipped libraries include unchanged upstream modules, localized ports such a
 `Counter`), `io.StringIO`, `io.BytesIO`, `io.TextIOWrapper`, `csv` and a bounded native `json`.
 Each has its own supported operations and deviations.
 
-Use the [builtin API reference](language/modules.md#builtins) and
-[library port notes](../lib/README.md) for current coverage. C calls, calls into an
+Use the [builtin API reference](language/modules.md#builtins), the
+[library support table](stdlib.md#library-support-at-a-glance) and the
+[module guide](../lib/README.md#module-guide) for current coverage. C calls, calls into an
 embedded CPython (`pyobj`) and experimental CPython extension builds are documented
 separately in [FFI](ffi.md).
 
@@ -393,7 +394,7 @@ These are not the complete differences. Read the
 Unicode, mutation during iteration, exception details, file buffering or object identity.
 The opt-in prototypes list their own [dynamic `Any`](dynamic-any.md#deviations) and
 [promoting int](python-int.md#deviations) differences, and module-specific differences remain
-in the [library port notes](../lib/README.md).
+in the [library compatibility reference](../lib/compatibility.md).
 
 <a id="names-and-scopes"></a>
 <a id="modules-and-imports"></a>

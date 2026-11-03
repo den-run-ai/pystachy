@@ -439,7 +439,7 @@ def main(argv=None):
     status = execute(["git", "status", "--porcelain", "--", "pystachy.py", "runtime.py", "runtime.c", "src", "lib", "examples/nanogpt", "examples/ndarray", "tools/check_nanogpt.py"], env, args.timeout)
     report = {"schema": 1, "platform": platform.platform(), "machine": platform.machine(),
               "controller_python": sys.version, "thread_environment": {k: env[k] for k in THREAD_ENV},
-              "runtime_environment": {k: env[k] for k in ("PYSTACHY_LLVM", "PYSTACHY_GC", "PYSTACHY_GC_STRESS", "PYSTACHY_GC_STRESS_PROGRAM", "PYSTACHY_OPT", "PYSTACHY_CFLAGS") if k in env},
+              "runtime_environment": {k: env[k] for k in ("PYSTACHY_LLVM", "PYSTACHY_GC", "PYSTACHY_GC_MIN", "PYSTACHY_GC_STRESS", "PYSTACHY_GC_STRESS_PROGRAM", "PYSTACHY_OPT", "PYSTACHY_CFLAGS") if k in env},
               "git_revision": revision["stdout"].strip(), "git_status": status["stdout"].splitlines(),
               "source_hashes": source_hashes(), "builds": {}, "cases": {}, "errors": [],
               "all_verified": False, "reference_exported_in_this_run": args.fixtures is None}

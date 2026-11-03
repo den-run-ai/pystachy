@@ -6,69 +6,145 @@ Pystachy reuses CPython library code where it fits the typed subset. This direct
 contains unchanged CPython modules, adapted modules with localized
 `# Pystachy port:` comments, and subset implementations of APIs backed by C in
 CPython. The sources remain valid Python; successful execution under CPython does
-not by itself establish that every API compiles with Pystachy.
-Ports using dynamic `Any` also inherit its [comparison boundaries](../docs/dynamic-any.md#operations),
-including supported helper/alias flows, inferred getters, operand rebinding and nested
-container callbacks. Finite literal missing-field writes preserve native aliases; late-field
-reflection and incompatible writes to existing native fields remain explicit limits.
-Its [iteration surface](../docs/dynamic-any.md#iteration) also covers custom iterators,
-ranges and boxable generators. This protocol support alone does not establish additional
-whole-module compatibility.
+not by itself establish that every API compiles with Pystachy. The
+[library guide](../docs/stdlib.md#library-support-at-a-glance) summarizes support and gaps by
+area, and the [compatibility reference](compatibility.md) gives each module's limits.
 
 Imports search builtin modules first, then the program's directory,
 `PYSTACHY_PATH`, and `lib/`. See [module rules](../docs/language/modules.md).
 Compiler-provided `sys.setrecursionlimit()` bounds recursive native calls with
 catchable `RecursionError`; [its depth policy](../docs/language/compatibility.md#errors-and-control-flow)
-also applies to compiled library functions.
+also applies to compiled library functions. Ports that opt in to
+[dynamic `Any`](../docs/dynamic-any.md) rely on its [operation](../docs/dynamic-any.md#operations)
+and [iteration](../docs/dynamic-any.md#iteration) contracts; that protocol support alone does
+not establish whole-module compatibility.
 
 ## Module guide
 
+Each area matches a row of the [library support table](../docs/stdlib.md#library-support-at-a-glance):
+🟢 the module's public API works, apart from the limitation listed; 🟡 selected APIs or argument
+types; 🧪 built on a prototype. Other modules are not shipped, apart from the private helpers
+described [below](#unchanged-cpython-files).
+
+### Text
+
 | Module | Origin | Supported APIs | Main limitation |
 |---|---|---|---|
-| `bisect`, `colorsys`, `curses.ascii`, `this` | Unchanged CPython | See the pinned-copy table below | Subset string and type rules apply |
-| `stat`, `posixpath`, `genericpath` | Unchanged CPython | Mode tests and string path operations | Partial API coverage |
-| `operator` | Adapted CPython | Operator functions, `itemgetter`, `attrgetter`, `methodcaller` | Getters specialize on literal items and names |
-| `html`, `html.entities` | Adapted CPython | `escape`, `unescape`, HTML4 and HTML5 entity tables | No configurable integer digit limit |
-| `html.parser` | Adapted CPython | Incremental HTMLParser with typed subclass callbacks | ASCII name case conversion; see [API scope](compatibility.md#html) |
-| `difflib` | Adapted CPython | `SequenceMatcher` (also the generator `get_grouped_opcodes()`), `unified_diff()`, `context_diff()`, `restore()`, `get_close_matches`, junk predicates and `Match` | String items; `ndiff()` and `Differ` need the yield type of a recursive generator, and `HtmlDiff` its class attributes' types |
-| `getopt` | Adapted CPython | `getopt`, `gnu_getopt`, `GetoptError` | `longopts` must be `list[str]`; untranslated messages |
-| `gettext` | Adapted CPython | `NullTranslations`, `textdomain`, `bindtextdomain`; the module imports, as `argparse` needs | Catalog lookups (`gettext()`, `translation()`, `install()`) do not compile: they import `locale` and key their cache by a class (#7); no subclass of `NullTranslations`; see [limits](compatibility.md#gettext) |
-| `heapq` | Adapted CPython | Heap operations, `nlargest`, `nsmallest`, `key=` | `merge` unavailable; non-list inputs are materialized |
-| `keyword` | Adapted CPython | Keyword lists, `iskeyword`, `issoftkeyword` | Compiled predicates accept strings and `None` |
-| `token` | Adapted CPython | Token constants, `tok_name`, `EXACT_TOKEN_TYPES`, `ISTERMINAL`, `ISNONTERMINAL`, `ISEOF` | `__all__` and `tok_name` written out, with CPython's values and order |
-| `warnings` | Adapted CPython | `warn`, `warn_explicit`, the filters (`simplefilter`, `filterwarnings`, `resetwarnings`, `sys.warnoptions`) and their actions, `catch_warnings` (also `record=True`), `formatwarning`, `showwarning`, with the registries of CPython's C module | `warn()` shows a warning at `<sys>:0`, with no source line; `showwarning` cannot be replaced; no `deprecated`; see [limits](compatibility.md#warnings) |
-| `collections` | Subset implementation | Typed `deque` (both ends, bounded queues, searches and comparisons), `defaultdict`, `OrderedDict`, `Counter` and `namedtuple()` (a NamedTuple class the compiler makes); where a module opts in to [promoting ints](../docs/python-int.md), `Counter`'s counts promote, and so do the ints of the classes' type variables | Items share one type; mappings hold dicts; deque iterators check mutation, other iteration is a snapshot; `namedtuple()` only as a module's top-level `NAME = namedtuple(...)` with literal arguments |
-| `shlex` | Adapted CPython | `split`, `quote`, `join`, lexer options and source stacking | Files are read eagerly; punctuation field is writable |
-| `io`, `_io` | Subset implementation; `_io` (`_pystachy__io`) gives its names under the C module's | `StringIO` and `BytesIO` (also in `with`), seek constants and `TextIOWrapper` over binary buffer objects, with CPython's chunked reads and writes; `IncrementalNewlineDecoder` of `str` input, `text_encoding()`, `open`, `BlockingIOError` and `DEFAULT_BUFFER_SIZE` | Lazy line iteration; no `getbuffer()` or `readinto()`; `TextIOWrapper` of UTF-8, Latin-1 and ASCII, without `seek`/`tell`/`detach`/`reconfigure`; no binary files, so no `FileIO`, `Buffered*` classes or `open_code()` |
-| `csv` | Subset implementation | Reader/writer, dict reader/writer, dialects and registry | Eager reading; reader fields are strings; no `Sniffer` |
-| `json` | Native recursive-value prototype | `loads(str)`, `dumps(JSONValue)`, default `JSONDecoder.decode/raw_decode`, `JSONDecodeError`; Unicode, mixed arrays/objects, sorting and separators; in modules that opt in to dynamic `Any`, `loads()` into `Any` storage with promoting integer tokens and `dumps()` of `Any` values (tuples, non-`str` keys, `skipkeys`, `check_circular`, `default`) | Typed `JSONValue` integers remain signed 64-bit; nesting within the recursion limit and 2,000 containers, string keys for `JSONValue`; no hooks, indentation or file APIs; see [scope](../docs/json.md) |
-| `tomllib` | Adapted CPython, compiled with [dynamic `Any`](../docs/dynamic-any.md) | `loads()` (also with `parse_float`) and `TOMLDecodeError`, with CPython's results and messages: tables, arrays, strings, numbers, booleans and datetimes, as dynamic values that a program narrows with `isinstance()` or annotations | No `load()`, which reads a binary file; see [limits](compatibility.md#tomllib) |
-| `re` | Subset port of parser/compiler and C engine; optional matchers generated for a program's own patterns ([prototype](../docs/re-specialization.md)) | String regex syntax and matching, substitution, caches, runtime-length `Match.groups()` | Selected variable-length result APIs unavailable |
-| `fnmatch` | Adapted CPython | `fnmatch`, `fnmatchcase`, `filter`, `translate` | String patterns; POSIX case handling |
-| `functools` | Typed subset implementation | `cache`, `lru_cache`, statistics, clearing, `reduce`, `cmp_to_key`, `partial`, `wraps`, `update_wrapper` | Typed callables and supported value/key types |
-| `textwrap` | Adapted CPython | `TextWrapper`, `wrap`, `fill`, `shorten`, `dedent`, `indent` | No subclassing |
-| `string` | Adapted CPython | Constants, `capwords`, `Template`, `Formatter` and its subclasses | No `Template` subclasses; `Formatter` arguments of one union, no attribute or item fields |
-| `statistics` | Adapted CPython | `fmean`, geometric mean, medians, quantiles, mode, `covariance`, `correlation` (of floats) | Selected numeric types and APIs |
-| `random` | Adapted CPython on a subset `_random` (`_pyrandom`) | Seeded `Random` and module functions, integers, sequences, distributions, state | Int, bool and float seeds; 63-bit `getrandbits`; no subclasses |
-| `urllib.parse` | Adapted CPython | String quoting, query parsing/encoding and cached URL parsing/joining | Three codecs; no bytes or result properties |
-| `codecs` | Adapted CPython on a subset `_codecs` (`_pystachy_codecs`) | BOM constants, `encode`, `decode`, the UTF-8, Latin-1, ASCII and charmap codec functions, `lookup_error`, `register_error`, the incremental classes | No codec registry (`lookup()`); no UTF-16, UTF-32, UTF-7 or escape codecs |
-| `atexit` | Subset port of CPython's C module (`_pystachy_atexit`) | `register` (also as a decorator, with arguments), callbacks run at the end of the program, also after `sys.exit()` or an uncaught exception; `_run_exitfuncs`, `_clear`, `_ncallbacks` | No `unregister`; a failing callback's report shows the exception's last line |
-| `abc` | Subset implementation (`_pystachy_abc`) | `ABC`, `metaclass=ABCMeta`, `@abstractmethod` (also under `@property`, `@classmethod`, `@staticmethod`) and the deprecated `abstractproperty`, `abstractclassmethod`, `abstractstaticmethod`, with CPython's `TypeError` for a class with abstract methods; `get_cache_token` | No virtual subclasses (`register()`), `__subclasshook__` or `__abstractmethods__` |
-| `_thread` | Subset port of CPython's C module for one thread (`_pystachy_thread`) | `allocate_lock`, `LockType`, `RLock` (with `_is_owned`, `_release_save`, `_acquire_restore`), `get_ident`, `get_native_id`, `stack_size`, `interrupt_main`, `exit`, `TIMEOUT_MAX`, `error`, `_local` as a base class | One thread: `start_new_thread()` raises `NotImplementedError`, and an acquire that would wait for ever raises `RuntimeError` |
-| `unicodedata` | Port of CPython's C module (`_pystachy_unicodedata`) on its tables of Unicode 15.1.0 | Every function: the properties, numeric values and decompositions of characters, `normalize()` and `is_normalized()` in the four forms, `name()`, `lookup()` (also of aliases, named sequences and derived names) and `ucd_3_2_0` | `lookup()` takes `str` only; no `_ucnhash_CAPI` |
-| `binascii` | Subset port of CPython's C module (`_pystachy_binascii`) | Hex with separators, base64 with strict mode, uu, quoted-printable, `crc32`, `crc_hqx`, `Error` and `Incomplete` | Bytes and ASCII-str arguments only; Python functions, not builtins |
-| `struct` | Unchanged CPython on a subset port of the C module `_struct` (`_pystachy_struct`) | `pack`, `unpack`, `unpack_from`, `iter_unpack`, `calcsize` and `Struct` for every code of the native and standard tables, with CPython's bytes, values and errors | The format must be known as the program compiles (`calcsize()` takes any); `bytes` buffers; no `pack_into` |
-| `itertools` | Subset implementation of CPython's C module on generators (`_pystachy_itertools`), following the documented pure-Python equivalents | Every function: `count`, `cycle`, `repeat`, `accumulate`, `batched`, `chain` and `chain.from_iterable`, `compress`, `dropwhile`, `filterfalse`, `groupby`, `islice`, `pairwise`, `starmap`, `takewhile`, `tee`, `zip_longest`, `product`, `permutations`, `combinations` and `combinations_with_replacement`, lazy as in CPython, with the C module's argument checks and messages | Iterators are generators of one item type; runtime-length tuples (`batched`, the combinatorics) of scalar items; `tee(it, n)` gives a list; an iterator an exception has left is finished |
-| `threading` | Adapted CPython on the one-thread `_thread`, compiled with [dynamic `Any`](../docs/dynamic-any.md) | Locks, reentrant locks, `Condition`, semaphores, `Event`, `Barrier`, `Timer`, `local`, `current_thread()`, `main_thread()`, `enumerate()` and `Thread` objects and subclasses, as in CPython where no other thread runs | `Thread.start()` raises `NotImplementedError`; see [limits](compatibility.md#threading) |
-| `logging` | Adapted CPython (`logging/__init__.py`), compiled with dynamic `Any` | Loggers and their hierarchy, levels, the module's functions, `basicConfig()`, `Formatter` (`%`, `{}` and `$` styles, `asctime`), `extra`, `exc_info`, filters, `StreamHandler`, `FileHandler`, `NullHandler`, the last resort handler and `handleError()` | No frames or tracebacks (the caller is unknown); arguments are `Any` values; no `logging.config`, `logging.handlers` or `LoggerAdapter`; see [limits](compatibility.md#logging) |
-| `traceback` | Subset implementation | `format_exception()`, `print_exception()`, `format_exc()`, `print_exc()`, `format_exception_only()` (also of the legacy `(type, value, tb)`), with causes; empty stacks | No tracebacks or frames: an exception formats as one whose `__traceback__` is `None`; see [limits](compatibility.md#traceback) |
-| `contextlib` | Adapted CPython | `contextmanager` (also as a decorator), `closing`, `nullcontext`, `suppress`, `AbstractContextManager`, `ContextDecorator` | No `ExitStack`, `redirect_stdout`, `chdir` or async managers; positional `nullcontext(value)` |
-| `types` | Subset implementation (`_pystachy_types`, `_pystachy_mappingproxy` and the compiler's `_pystachy_typenames`) | `TracebackType`, for `__exit__`'s annotation; `MappingProxyType`, a read-only live view of a dict (indexing, `in`, `len()`, iteration, `get`, `keys`, `values`, `items`, `copy`, `==`, `\|`, `repr()`); `GenericAlias`, for CPython's idiom for a generic class: `__class_getitem__ = classmethod(GenericAlias)` in a class body, whose subscripts in annotations name the class | Its other names import, but any use of one is a compile-time error; a generic-alias class's subscripts at run time are too; `MappingProxyType` takes a dict |
-| `mpz` | Experimental subset wrapper over a compact MicroPython-derived C core | Explicit arbitrary-precision arithmetic, comparisons, decimal text, hashing and typed containers | Ordinary `int` remains checked 64-bit; see [API and limits](../docs/mpz.md) |
-| `pyobj` | Subset implementation over CPython's stable ABI (`@ffi.extern`), with its twin in `tools/rt_cpython` | Python objects through an embedded CPython, or an extension module's host: `Object`, `import_module`, `of_int`, `of_float`, `of_str`, `of_list` | Needs `PYSTACHY_LIBPYTHON` (CPython 3.12+); scalar conversions only; see [FFI](../docs/ffi.md#calling-cpython) |
-| `datetime` | Adapted CPython (`_pydatetime`, following `_datetime`) | `timedelta`, `date`, `time`, `datetime`, fixed-offset `timezone`, `tzinfo` subclasses, ISO 8601, `strftime()` | No local time zone; no `strptime()` or pickling |
-| `_weakref` | Experimental collector-backed subset (`_pystachy_weakref`) | `ref`/`ReferenceType` of ordinary class instances: call, `==`, `!=`, `hash()`, `repr()` and callbacks as CPython's, though referents die at collection rather than at the last reference, and callbacks run after it | No `__callback__`, proxies, reference counts or weak containers; see [contract](../docs/weakref.md) |
-| `weakref` | Adapted CPython, on `_weakref` | `ref` and `ReferenceType`, also by from-imports and `import *` | `WeakSet`, `WeakValueDictionary`, `WeakKeyDictionary` and `WeakMethod` are compile-time errors where used; no `finalize`, proxies, `getweakrefcount()` or `getweakrefs()`; see [limits](compatibility.md#_weakref-prototype) |
+| 🟢 `textwrap` | Adapted CPython | `TextWrapper`, `wrap`, `fill`, `shorten`, `dedent`, `indent` | No subclassing |
+| 🟢 `unicodedata` | Port of CPython's C module (`_pystachy_unicodedata`) on its tables of Unicode 15.1.0 | Every function: the properties, numeric values and decompositions of characters, `normalize()` and `is_normalized()` in the four forms, `name()`, `lookup()` (also of aliases, named sequences and derived names) and `ucd_3_2_0` | `lookup()` takes `str` only; no `_ucnhash_CAPI` |
+| 🟢 `shlex` | Adapted CPython | `split`, `quote`, `join`, lexer options and source stacking | Files are read eagerly; punctuation field is writable |
+| 🟢 `keyword` | Adapted CPython | Keyword lists, `iskeyword`, `issoftkeyword` | Compiled predicates accept strings and `None` |
+| 🟢 `token` | Adapted CPython | Token constants, `tok_name`, `EXACT_TOKEN_TYPES`, `ISTERMINAL`, `ISNONTERMINAL`, `ISEOF` | `__all__` and `tok_name` written out, with CPython's values and order |
+| 🟢 `curses.ascii`, `this` | Unchanged CPython | ASCII character predicates and conversions; the Zen of Python | Subset string and type rules apply |
+| 🟡 `string` | Adapted CPython | Constants, `capwords`, `Template`, `Formatter` and its subclasses | No `Template` subclasses; `Formatter` arguments of one union, no attribute or item fields |
+| 🟡 `difflib` | Adapted CPython | `SequenceMatcher` (also the generator `get_grouped_opcodes()`), `unified_diff()`, `context_diff()`, `restore()`, `get_close_matches`, junk predicates and `Match` | String items; `ndiff()` and `Differ` need the yield type of a recursive generator, and `HtmlDiff` its class attributes' types |
+| 🟡 `gettext` | Adapted CPython | `NullTranslations`, `textdomain`, `bindtextdomain`; the module imports, as `argparse` needs | Catalog lookups (`gettext()`, `translation()`, `install()`) do not compile: they import `locale` and key their cache by a class (#7); no subclass of `NullTranslations`; see [limits](compatibility.md#gettext) |
+
+### Regular expressions
+
+| Module | Origin | Supported APIs | Main limitation |
+|---|---|---|---|
+| 🟡 `re` | Subset port of parser/compiler and C engine; optional matchers generated for a program's own patterns ([prototype](../docs/re-specialization.md)) | String regex syntax and matching, substitution, caches, runtime-length `Match.groups()` | No bytes patterns; `findall()` with two or more groups raises `NotImplementedError`; see [limits](compatibility.md#re) |
+| 🟢 `fnmatch` | Adapted CPython | `fnmatch`, `fnmatchcase`, `filter`, `translate` | String patterns; POSIX case handling |
+
+### Data formats and markup
+
+| Module | Origin | Supported APIs | Main limitation |
+|---|---|---|---|
+| 🧪 `json` | Native recursive-value prototype | `loads(str)`, `dumps(JSONValue)`, default `JSONDecoder.decode/raw_decode`, `JSONDecodeError`; Unicode, mixed arrays/objects, sorting and separators; in modules that opt in to dynamic `Any`, `loads()` into `Any` storage with promoting integer tokens and `dumps()` of `Any` values (tuples, non-`str` keys, `skipkeys`, `check_circular`, `default`) | Typed `JSONValue` integers remain signed 64-bit; nesting within the recursion limit and 2,000 containers, string keys for `JSONValue`; no hooks, indentation or file APIs; see [scope](../docs/json.md) |
+| 🧪 `tomllib` | Adapted CPython, compiled with [dynamic `Any`](../docs/dynamic-any.md) | `loads()` (also with `parse_float`) and `TOMLDecodeError`, with CPython's results and messages: tables, arrays, strings, numbers, booleans and datetimes, as dynamic values that a program narrows with `isinstance()` or annotations | No `load()`, which reads a binary file; see [limits](compatibility.md#tomllib) |
+| 🟡 `csv` | Subset implementation | Reader/writer, dict reader/writer, dialects and registry | Eager reading; reader fields are strings; no `Sniffer` |
+| 🟢 `html`, `html.entities` | Adapted CPython | `escape`, `unescape`, HTML4 and HTML5 entity tables | No configurable integer digit limit |
+| 🟢 `html.parser` | Adapted CPython | Incremental HTMLParser with typed subclass callbacks | ASCII name case conversion; see [API scope](compatibility.md#html-and-htmlparser) |
+| 🟡 `urllib.parse` | Adapted CPython | String quoting, query parsing/encoding and cached URL parsing/joining | Three codecs; no bytes or result properties |
+
+### Binary data and encodings
+
+| Module | Origin | Supported APIs | Main limitation |
+|---|---|---|---|
+| 🟡 `struct` | Unchanged CPython on a subset port of the C module `_struct` (`_pystachy_struct`) | `pack`, `unpack`, `unpack_from`, `iter_unpack`, `calcsize` and `Struct` for every code of the native and standard tables, with CPython's bytes, values and errors | The format must be known as the program compiles (`calcsize()` takes any); `bytes` buffers; no `pack_into` |
+| 🟢 `binascii` | Subset port of CPython's C module (`_pystachy_binascii`) | Hex with separators, base64 with strict mode, uu, quoted-printable, `crc32`, `crc_hqx`, `Error` and `Incomplete` | Bytes and ASCII-str arguments only; Python functions, not builtins |
+| 🟡 `codecs` | Adapted CPython on a subset `_codecs` (`_pystachy_codecs`) | BOM constants, `encode`, `decode`, the UTF-8, Latin-1, ASCII and charmap codec functions, `lookup_error`, `register_error`, the incremental classes | No codec registry (`lookup()`); no UTF-16, UTF-32, UTF-7 or escape codecs |
+
+### Collections and functional tools
+
+| Module | Origin | Supported APIs | Main limitation |
+|---|---|---|---|
+| 🟡 `collections` | Subset implementation | Typed `deque` (both ends, bounded queues, searches and comparisons), `defaultdict`, `OrderedDict`, `Counter` and `namedtuple()` (a NamedTuple class the compiler makes); where a module opts in to [promoting ints](../docs/python-int.md), `Counter`'s counts promote, and so do the ints of the classes' type variables | Items share one type; mappings hold dicts; deque iterators check mutation, other iteration is a snapshot; `namedtuple()` only as a module's top-level `NAME = namedtuple(...)` with literal arguments |
+| 🟡 `heapq` | Adapted CPython | Heap operations, `nlargest`, `nsmallest`, `key=` | `merge` unavailable; non-list inputs are materialized |
+| 🟢 `bisect` | Unchanged CPython | Bisection and insertion, including `key=` | Subset string and type rules apply |
+| 🟢 `itertools` | Subset implementation of CPython's C module on generators (`_pystachy_itertools`), following the documented pure-Python equivalents | Every function: `count`, `cycle`, `repeat`, `accumulate`, `batched`, `chain` and `chain.from_iterable`, `compress`, `dropwhile`, `filterfalse`, `groupby`, `islice`, `pairwise`, `starmap`, `takewhile`, `tee`, `zip_longest`, `product`, `permutations`, `combinations` and `combinations_with_replacement`, lazy as in CPython, with the C module's argument checks and messages | Iterators are generators of one item type; runtime-length tuples (`batched`, the combinatorics) of scalar items; `tee(it, n)` gives a list; an iterator an exception has left is finished |
+| 🟡 `functools` | Typed subset implementation | `cache`, `lru_cache`, statistics, clearing, `reduce`, `cmp_to_key`, `partial`, `wraps`, `update_wrapper` | Typed callables and supported value/key types |
+| 🟡 `operator` | Adapted CPython | Operator functions, `itemgetter`, `attrgetter`, `methodcaller` | Getters specialize on literal items and names |
+| 🟡 `contextlib` | Adapted CPython | `contextmanager` (also as a decorator), `closing`, `nullcontext`, `suppress`, `AbstractContextManager`, `ContextDecorator` | No `ExitStack`, `redirect_stdout`, `chdir` or async managers; positional `nullcontext(value)` |
+
+### Numbers and randomness
+
+`math` is a compiler builtin; see its
+[functions and limits](../docs/language/modules.md#builtin-modules-and-files).
+
+| Module | Origin | Supported APIs | Main limitation |
+|---|---|---|---|
+| 🟡 `random` | Adapted CPython on a subset `_random` (`_pyrandom`) | Seeded `Random` and module functions, integers, sequences, distributions, state | Int, bool and float seeds; 63-bit `getrandbits`; no subclasses |
+| 🟡 `statistics` | Adapted CPython | `fmean`, geometric mean, medians, quantiles, mode, `covariance`, `correlation` (of floats) | Selected numeric types and APIs |
+| 🟢 `colorsys` | Unchanged CPython | All conversion functions | Subset string and type rules apply |
+| 🧪 `mpz` | Experimental subset wrapper over a compact MicroPython-derived C core | Explicit arbitrary-precision arithmetic, comparisons, decimal text, hashing and typed containers | Ordinary `int` remains checked 64-bit; see [API and limits](../docs/mpz.md) |
+
+### Dates and times
+
+The builtin `time` module has `time()`, `monotonic()`, `perf_counter()`, `process_time()`,
+their `_ns` forms and `sleep()`.
+
+| Module | Origin | Supported APIs | Main limitation |
+|---|---|---|---|
+| 🟡 `datetime` | Adapted CPython (`_pydatetime`, following `_datetime`) | `timedelta`, `date`, `time`, `datetime`, fixed-offset `timezone`, `tzinfo` subclasses, ISO 8601, `strftime()` | No local time zone; no `strptime()` or pickling |
+
+### Files, OS and command line
+
+`sys`, `os`, `os.path`, `tempfile`, `errno` and `select` are compiler builtins with
+[selected APIs](../docs/language/modules.md#builtin-modules-and-files). The
+[POSIX select guide](../docs/select.md) describes `select.select()` on integer descriptor lists,
+which a file's `fileno()` gives; other `select` APIs remain unsupported.
+
+| Module | Origin | Supported APIs | Main limitation |
+|---|---|---|---|
+| 🟡 `io`, `_io` | Subset implementation; `_io` (`_pystachy__io`) gives its names under the C module's | `StringIO` and `BytesIO` (also in `with`), seek constants and `TextIOWrapper` over binary buffer objects, with CPython's chunked reads and writes; `IncrementalNewlineDecoder` of `str` input, `text_encoding()`, `open`, `BlockingIOError` and `DEFAULT_BUFFER_SIZE` | Lazy line iteration; no `getbuffer()` or `readinto()`; `TextIOWrapper` of UTF-8, Latin-1 and ASCII, without `seek`/`tell`/`detach`/`reconfigure`; no binary files, so no `FileIO`, `Buffered*` classes or `open_code()` |
+| 🟡 `stat`, `posixpath`, `genericpath` | Unchanged CPython | Mode tests and string path operations | Partial API coverage |
+| 🟢 `getopt` | Adapted CPython | `getopt`, `gnu_getopt`, `GetoptError` | `longopts` must be `list[str]`; untranslated messages |
+
+### Processes and threads
+
+`multiprocessing`, `subprocess` and `asyncio` are not shipped; a program runs on one thread,
+which `threading` and `_thread` describe.
+
+| Module | Origin | Supported APIs | Main limitation |
+|---|---|---|---|
+| 🟡 `_thread` | Subset port of CPython's C module for one thread (`_pystachy_thread`) | `allocate_lock`, `LockType`, `RLock` (with `_is_owned`, `_release_save`, `_acquire_restore`), `get_ident`, `get_native_id`, `stack_size`, `interrupt_main`, `exit`, `TIMEOUT_MAX`, `error`, `_local` as a base class | One thread: `start_new_thread()` raises `NotImplementedError`, and an acquire that would wait for ever raises `RuntimeError` |
+| 🟡 `threading` | Adapted CPython on the one-thread `_thread`, compiled with [dynamic `Any`](../docs/dynamic-any.md) | Locks, reentrant locks, `Condition`, semaphores, `Event`, `Barrier`, `Timer`, `local`, `current_thread()`, `main_thread()`, `enumerate()` and `Thread` objects and subclasses, as in CPython where no other thread runs | `Thread.start()` raises `NotImplementedError`; see [limits](compatibility.md#threading) |
+| 🟡 `atexit` | Subset port of CPython's C module (`_pystachy_atexit`) | `register` (also as a decorator, with arguments), callbacks run at the end of the program, also after `sys.exit()` or an uncaught exception; `_run_exitfuncs`, `_clear`, `_ncallbacks` | No `unregister`; a failing callback's report shows the exception's last line |
+
+### Runtime services
+
+`typing`, `dataclasses` and `collections.abc` are compiler support; see
+[typing](../docs/language/typing.md).
+
+| Module | Origin | Supported APIs | Main limitation |
+|---|---|---|---|
+| 🟡 `abc` | Subset implementation (`_pystachy_abc`) | `ABC`, `metaclass=ABCMeta`, `@abstractmethod` (also under `@property`, `@classmethod`, `@staticmethod`) and the deprecated `abstractproperty`, `abstractclassmethod`, `abstractstaticmethod`, with CPython's `TypeError` for a class with abstract methods; `get_cache_token` | No virtual subclasses (`register()`), `__subclasshook__` or `__abstractmethods__` |
+| 🧪 `logging` | Adapted CPython (`logging/__init__.py`), compiled with dynamic `Any` | Loggers and their hierarchy, levels, the module's functions, `basicConfig()`, `Formatter` (`%`, `{}` and `$` styles, `asctime`), `extra`, `exc_info`, filters, `StreamHandler`, `FileHandler`, `NullHandler`, the last resort handler and `handleError()` | No frames or tracebacks (the caller is unknown); arguments are `Any` values; no `logging.config`, `logging.handlers` or `LoggerAdapter`; see [limits](compatibility.md#logging) |
+| 🟡 `traceback` | Subset implementation | `format_exception()`, `print_exception()`, `format_exc()`, `print_exc()`, `format_exception_only()` (also of the legacy `(type, value, tb)`), with causes; empty stacks | No tracebacks or frames: an exception formats as one whose `__traceback__` is `None`; see [limits](compatibility.md#traceback) |
+| 🟡 `types` | Subset implementation (`_pystachy_types`, `_pystachy_mappingproxy` and the compiler's `_pystachy_typenames`) | `TracebackType`, for `__exit__`'s annotation; `MappingProxyType`, a read-only live view of a dict (indexing, `in`, `len()`, iteration, `get`, `keys`, `values`, `items`, `copy`, `==`, `\|`, `repr()`); `GenericAlias`, for CPython's idiom for a generic class: `__class_getitem__ = classmethod(GenericAlias)` in a class body, whose subscripts in annotations name the class | Its other names import, but any use of one is a compile-time error; a generic-alias class's subscripts at run time are too; `MappingProxyType` takes a dict |
+| 🟡 `warnings` | Adapted CPython | `warn`, `warn_explicit`, the filters (`simplefilter`, `filterwarnings`, `resetwarnings`, `sys.warnoptions`) and their actions, `catch_warnings` (also `record=True`), `formatwarning`, `showwarning`, with the registries of CPython's C module | `warn()` shows a warning at `<sys>:0`, with no source line; `showwarning` cannot be replaced; no `deprecated`; see [limits](compatibility.md#warnings) |
+| 🧪 `_weakref` | Experimental collector-backed subset (`_pystachy_weakref`) | `ref`/`ReferenceType` of ordinary class instances: call, `==`, `!=`, `hash()`, `repr()` and callbacks as CPython's, though referents die at collection rather than at the last reference, and callbacks run after it | No `__callback__`, proxies, reference counts or weak containers; see [contract](../docs/weakref.md) |
+| 🧪 `weakref` | Adapted CPython, on `_weakref` | `ref` and `ReferenceType`, also by from-imports and `import *` | `WeakSet`, `WeakValueDictionary`, `WeakKeyDictionary` and `WeakMethod` are compile-time errors where used; no `finalize`, proxies, `getweakrefcount()` or `getweakrefs()`; see [limits](compatibility.md#_weakref-prototype) |
+
+### C and CPython interop
+
+`ffi` is the compiler's interface to C; see the [FFI guide](../docs/ffi.md).
+
+| Module | Origin | Supported APIs | Main limitation |
+|---|---|---|---|
+| 🧪 `pyobj` | Subset implementation over CPython's stable ABI (`@ffi.extern`), with its twin in `tools/rt_cpython` | Python objects through an embedded CPython, or an extension module's host: `Object`, `import_module`, `of_int`, `of_float`, `of_str`, `of_list` | Needs `PYSTACHY_LIBPYTHON` (CPython 3.12+); scalar conversions only; see [FFI](../docs/ffi.md#calling-cpython) |
 
 CPython VM adapters `opcode`, `_opcode`, `_imp` and `_ast` are not shipped; see the
 [library scope](../docs/stdlib.md#library-scope).
@@ -80,9 +156,6 @@ The [porting checklist](../docs/porting.md) describes compiled upstream test
 coverage and the pinned `make port-check` checks for fnmatch and textwrap.
 Builtin modules such as `sys`, `os` and `math` are documented in the
 [language guide](../docs/language.md#builtins-and-library-modules).
-The [POSIX select guide](../docs/select.md) describes
-`select.select` on integer descriptor lists, which a file's `fileno()` gives;
-other select APIs remain unsupported.
 
 <!-- Existing section links remain valid. Detailed contracts moved to compatibility.md. -->
 <a id="difflib-a-port-of-cpythons"></a>
