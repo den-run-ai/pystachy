@@ -1,7 +1,7 @@
 """Lowering component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import fail, int_program
-from src.pystachy_compiler.ir import Blk, IFn, Ins, Val
+from src.pystachy_compiler.ir import Blk, ClassInfo, IFn, Ins, Val
 from src.pystachy_compiler.lower_module import const_slot, struct_types
 from src.pystachy_compiler.specs import CHECKED, FCMP, FXBIT, GENDONE, GENNAME, GENNEW, GENRET, GENRETP, GENSLOTS, GENSLOTSB, GENSLOTSX, GENSTATE, GENVALP, ICMP, OBJECTC, RANGEC, STRLEN_RANGE, TBAA_BYTES, TBAA_DEPTH, TBAA_FIELDS, TBAA_LEN, TBAA_SIZES
 from src.pystachy_compiler.utils import atomic_dict, atomic_list, identity_abi, numeric_identity, is_dict, is_tuple, lt, selem, takes_self, targs, tslots
@@ -108,13 +108,44 @@ def gen_lower(self, fn: IFn) -> None:
             o.append("const:")
             o.append("  ret ptr %c")
             o.append("made:")
-        o.append(f"  %p = call ptr @{self.rtfns['alloc'].sym}(i64 {8 * n})")
+        o.append(f"  %p = {self.alloc_call(str(8 * n), f.ret)}")
         for k in range(n):
             o.append(f"  %v{k} = extractvalue {agg} %v, {k}")
             o.append(f"  %p{k} = getelementptr i64, ptr %p, i64 {k}")
             o.append(f"  store i64 %v{k}, ptr %p{k}")
         o.append("  ret ptr %p")
         o.append("}")
+
+def gen_alloc_call(self, size: str, t: str) -> str:
+    # the call that gives compiled code size zeroed bytes for an object or a fixed tuple of type t
+    # (alloc.fixed, a tupleret wrapper's tuple), which declares the runtime function it calls.
+    # With allocelide, an object that holds no reference (ref_free) comes from pys_new, a call
+    # that the program marks as an allocation, which LLVM may delete when nothing keeps its
+    # object (it sees each call: runtime.c keeps pys_new out of line; an AOT build then inlines
+    # the allocator's fast path into the calls left, driver.py). Every other object comes from
+    # pys_alloc, as without allocelide: the marked call's object is noalias, so LLVM forwards
+    # its fields' loads across calls, and then deletes the object or leaves its address dead
+    # while the program still reads it, after which the conservative collector finds nothing
+    # that the object holds (a referent of a weak reference, a file, an ffi.track reference)
+    # while it is in use. An object that holds no reference keeps nothing alive: deleting it
+    # changes no other object's lifetime. The runtime's own code (rtmode) calls pys_alloc
+    if "allocelide" in self.opts and not self.rtmode and ref_free(self.classes, t):
+        return f'call noalias nonnull ptr @{self.rtfns[self.runtime("pys_new")].sym}(i64 {size}) allockind("alloc,zeroed") allocsize(0) "alloc-family"="pys"'
+    return f"call ptr @{self.rtfns[self.runtime('pys_alloc')].sym}(i64 {size})"
+
+def ref_free(classes: dict[str, ClassInfo], t: str) -> bool:
+    # does every word of an object or fixed tuple of type t hold a 64-bit int, a float or a bool,
+    # so that it holds no reference, by the compiler's types: a tuple's items, a class's fields,
+    # its bases' and the hidden ones among them (a hierarchy's class word, the base's "is
+    # assigned" flags, which are bools, and its numeric identity companions, which are boxes),
+    # then its own flags and companions (struct_types). Not by its LLVM types: a pointer item of a
+    # tuple is an i64 slot, and so is a promoting int item's Mpz word (tslots)
+    if is_tuple(t):
+        return all(x in ["int", "float", "bool"] for x in targs(t))
+    if t not in classes:
+        return False
+    ci = classes[t]
+    return ci.nbox == 0 and all(ci.ftypes[x] in ["int", "float", "bool"] for x in ci.fields)
 
 def gen_tuple_rets(self) -> None:
     # tupleret: which functions return their fixed tuple's slots by value, and which calls take
@@ -251,7 +282,7 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         self.objectused = self.objectused or i.t == OBJECTC
         size = str(8 * tslots(i.t)) if is_tuple(i.t) else f"ptrtoint (ptr getelementptr (%C.{i.t}, ptr null, i32 1) to i64)"
         if f"%t{i.r[0]}" not in self.vtuples:  # (a tuple returned by value is never made: tupleret)
-            o.append(f"  %t{i.r[0]} = call ptr @{self.rtfns['alloc'].sym}(i64 {size})")
+            o.append(f"  %t{i.r[0]} = {self.alloc_call(size, i.t)}")
     elif op == "tuple.store" and i.a[0].v in self.vtuples:
         self.vslots[f"{i.a[0].v} {i.k}"] = i.a[1].v  # (the slot its ret returns)
     elif op == "tuple.load" and i.a[0].v in self.vaggs:

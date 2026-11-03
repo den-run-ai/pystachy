@@ -40,6 +40,8 @@ observable contract.
 | `codecs` | `Lib/codecs.py` | `2f278497548b8313580b247a1097a0a304e5087a355ebb11a92ec685fa9e63ff` |
 | `weakref` | `Lib/weakref.py` | `56f8d313fb74019e53eb9287400702fbce788b7fe30e097b0b6e06296f3f080c` |
 | `warnings` | `Lib/warnings.py` | `e040f52be0199c69fa8c0d35428ba64e6f9b6412691a689ccbd7c23e07c6ed3f` |
+| `threading` | `Lib/threading.py` | `a979d5ab97993d7fbfd7601e928476c8dc90e1807df7c8c7d9f324e620331caa` |
+| `logging` | `Lib/logging/__init__.py` | `4106cc3aa4e722116bbf0a3ffae3a8c7bc4981468ca7998ca35ed201a5605519` |
 | `tomllib._parser` | `Lib/tomllib/_parser.py` | `82591be9349687b88926a7b1a28b0f892a132e4043cb249bd1bd1594bdd721e3` |
 | `tomllib._re` | `Lib/tomllib/_re.py` | `0bd8a54280babaa755456e0e4ceabd5f072558f19373698e29d2491e0fb7e4b4` |
 | `tomllib._types` | `Lib/tomllib/_types.py` | `f864c6d9552a929c7032ace654ee05ef26ca75d21b027b801d77e65907138b74` |
@@ -56,6 +58,9 @@ modules opt in to dynamic `Any` and carry the edits lib/compatibility.md lists. 
 test data of `tests/programs/upstream/upstream_tomllib_data.py` were taken from the
 `Python-3.13.16.tgz` release (SHA-256
 `cfac63bddf956deafb1172ca131ae5dcaafd6f95056086e233fca205593ed427`).
+`threading` and `logging` were committed unchanged from the `Python-3.13.16` release first, so the
+diff of the next commit to each is its port's edits; both opt in to dynamic `Any` and carry the
+edits lib/compatibility.md lists.
 `datetime` is `_pydatetime`, which CPython's `Lib/datetime.py` re-exports when its C
 accelerator is missing. Where CPython's accelerator behaves differently, the edits follow
 `Modules/_datetimemodule.c` (SHA-256

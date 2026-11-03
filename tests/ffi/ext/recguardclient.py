@@ -19,5 +19,14 @@ try:
             print("exported ordinary exception caught")
         assert recguard.depth(10) == 10
     print("exported calls recovered", recguard.get_limit())
+    # a recursion deeper than this thread's stack holds, under a raised limit: the native stack's
+    # floor raises before the stack runs out (CPython's twin reaches the limit)
+    recguard.set_limit(300000)
+    try:
+        recguard.climb()
+    except RecursionError:
+        print("deep exported recursion caught")
+    assert recguard.depth(10) == 10
+    print("exported calls recovered", recguard.get_limit())
 finally:
     recguard.set_limit(original)

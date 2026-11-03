@@ -1,0 +1,4 @@
+TypeError negative: -1
+four=4 Checked('four=4') 4 four
+TypeError negative: -2
+[exit 0]

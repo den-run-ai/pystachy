@@ -139,7 +139,9 @@ every allocation. `--aot --gc-stress` selects the same configurations locally; t
 requires all four modes, 540 cases including 90 parity cases and zero mismatches. This bounded
 check complements the full opt-in corpus sweep, `make dynany-optin`), `make dictprobe`,
 `make listprobe`, `make eqprobe`, `make fileprobe`, `make streamprobe`, `make jitprobe` and
-`make aotprobe` (the runtime's opt-in code that AOT executables keep, by symbol, plain or not).
+`make aotprobe` (the runtime's opt-in code that AOT executables keep, by symbol and in a list
+store's `-O2` code, plain or not, and the allocations `allocelide` lets `-O2` delete and those it
+keeps, with the objects they hold).
 They use deterministic operation or allocation limits where possible; shared CI runners do
 not gate on benchmark speed.
 
@@ -175,7 +177,13 @@ compares it with `./pystachy`. `make irsame-py REF=<commit>` compares the hosted
 Use `FILES="..."` to select cases; otherwise the corpus includes the compiler, runtime,
 differential tests, deviations, benchmarks and compile-only IR probes.
 
-The oracle compares emitted IR byte for byte, and rejection messages and exit statuses.
+The oracle compares emitted IR byte for byte, rejection messages and exit statuses.
+It normalizes each compiler's own library prefix to `lib/` in diagnostic source locations;
+diagnostic text, line numbers, unrelated paths and IR remain significant. Each compiler
+still reads its own library and runtime inputs. Direct executables and Python script
+commands have their homes recognized; unfamiliar wrappers keep raw comparisons.
+Messages with quoted library paths or ambiguous quoting also stay raw so normalization
+cannot hide a change to diagnostic prose.
 Use it when a refactor should preserve code generation. An intentional optimization can
 change IR and needs behavioral tests instead.
 
@@ -323,7 +331,7 @@ and AOT, in configurations that `make verify` does not test and that must change
 
 | Variant | Configuration |
 |---|---|
-| `opt-1` … `opt-5` | `PYSTACHY_OPT` turning off the IR passes that each row of a covering array of their pairs leaves off. Verification runs every pass on and all of them off (`-all`); with these five rows, every two passes run in each of their four on/off combinations. A pass added to `OPTS` gets a column of its own; the rows have room for ten. |
+| `opt-1` … `opt-5` | `PYSTACHY_OPT` turning off the IR passes that each row of a covering array of their pairs leaves off. Verification runs every pass on and all of them off (`-all`); with these five rows, every two passes run in each of their four on/off combinations. A pass added to `OPTS` gets a column of its own; the rows have room for ten, all of which `OPTS` now uses, so another pass needs a wider array (`tools/variants.sh`). |
 | `cflags-O0` | `PYSTACHY_CFLAGS=-O0`: the runtime unoptimized, and with it an AOT program's whole module, whose IR then runs as the compiler emitted it. The runtime's frames keep every local in memory, which changes the dead words that the conservative collector scans as roots. |
 
 `make runtime-coverage` is another variant: clang's instrumentation changes the runtime's register
@@ -406,7 +414,8 @@ IR fixed points once, then groups run in parallel using that architecture's veri
 compiler. Pushes to `main` (the release gate's per-commit CI) and manual runs execute all
 thirty groups on both architectures, and the upstream large-regex check on both. To keep
 pull-request CI near its single-architecture size, a pull request runs all thirty x86-64
-groups but an ARM64 smoke subset: the bootstrap, `contracts` (FFI, ABI and thread controls),
+groups but an ARM64 smoke subset: the bootstrap, `contracts` (FFI, ABI, thread and native stack
+floor controls),
 `native-0` and `ubsan-0` (sanitized compiler-rt linkage). An ARM64-only failure in another
 group therefore appears on `main` after merge. Runners are `ubuntu-24.04` and `ubuntu-24.04-arm`, both
 with LLVM 18 and the pinned Python 3.13. Each group checks the same-run bundle's file hashes,
@@ -582,6 +591,12 @@ run takes the hosted driver past the IR along a path of its own (`tests/verify.s
 program of each kind, and fails if a kind has none; the gate requires every kind, each a program
 of the checkout's corpus of that kind and in the sample. The maintainer accepted this identity
 check with its stratified end-to-end sample on 2026-10-28.
+
+The `unicode-audit` contract also runs `tools/bytescanprobe.c` normally and with GC
+stress. Its independent scalar oracle covers all byte values, alignments, tails,
+delimiter predicates and range boundaries. Guard pages expose reads outside the
+declared range, and deterministic word/scalar counts ensure long spans retain bulk
+scanning. Run it independently with `make bytescanprobe`; its timings are not gates.
 The compiler-scaling check is split by shapes: `scaling-0` checks those of `SCALING_0`, about
 half of the lines the CPython-hosted compiler executes, and `scaling-1` every other shape of
 `tools/scaling.py` (its `-x`), so a new shape is checked as well; the gate requires the two to

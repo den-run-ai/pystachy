@@ -115,7 +115,7 @@ CALLS: dict[str, str] = {
     "sum(list[bool],float)": "pys_sum_int_float:float", "any(list[bool])": "pys_any:bool",
     "all(list[bool])": "pys_all:bool", "any(list[int])": "pys_any:bool", "all(list[int])": "pys_all:bool",
     "os.system(str)": "pys_system:int", "os.execv(str,list[str])": "pys_execv:None",
-    "os.getpid()": "pys_getpid:int", "os.path.exists(str)": "pys_exists:bool", "os.path.realpath(str)": "pys_realpath:str",
+    "os.getpid()": "pys_getpid:int", "os.getcwd()": "pys_getcwd:str", "os.path.exists(str)": "pys_exists:bool", "os.path.realpath(str)": "pys_realpath:str",
     "os.path.getsize(str)": "pys_getsize:int", "os.path.getmtime(str)": "pys_getmtime:float", "os.path.getctime(str)": "pys_getctime:float",
     "os.getenv(str,str)": "pys_getenv:str", "ffi.string_at(int,int)": "pys_string_at:str",
     "ffi.untrack(int)": "pys_untrack:None", "ffi.collected()": "pys_collected:int",
@@ -165,6 +165,8 @@ TBAA_LIMIT = 7
 RECURSION_BRANCH = 8
 TBAA_DEPTH_TYPE = 9  # (the scalar type nodes of TBAA_DEPTH's and TBAA_LIMIT's tags)
 TBAA_LIMIT_TYPE = 10
+TBAA_FLOOR = 11  # the native stack's floor, the state's third word (#1015), and its type node
+TBAA_FLOOR_TYPE = 12
 # a program's TBAA of object fields (fieldtbaa): its access tags are numbered from here, in the order
 # lowering first tags each field, and the type nodes they name follow them (lower_module); the
 # members a class's struct may have, each with its size, which is its alignment too, and the name
@@ -669,9 +671,12 @@ GENTHROWC = 3
 # list[int] and bytes reads in Gen.list_read and Gen.bytes_read; listget also chooses the inline
 # byte reads of a loop over a bytes, in gen_seq_item), fieldtbaa, the TBAA tags that lowering
 # gives the loads and stores of object fields (Gen.field_tag), and tupleret, the fixed tuples that
-# functions return by value to the calls that only read their slots (Gen.tuple_rets), which
-# PYSTACHY_OPT turns off: "-name", comma-separated, or "-all"
-OPTS: list[str] = ["listget", "dictfuse", "tupleiter", "listfast", "moduleints", "fieldtbaa", "tupleret", "unionslots", "nullcheck"]
+# functions return by value to the calls that only read their slots (Gen.tuple_rets), and
+# allocelide, compiled code's objects and fixed tuples that hold no reference (only ints, floats
+# and bools) from pys_new, whose calls lowering marks as allocations, so that LLVM deletes those
+# whose objects nothing keeps (lowering's alloc_call and ref_free), which PYSTACHY_OPT turns off:
+# "-name", comma-separated, or "-all"
+OPTS: list[str] = ["listget", "dictfuse", "tupleiter", "listfast", "moduleints", "fieldtbaa", "tupleret", "unionslots", "nullcheck", "allocelide"]
 # what bounds dictfuse's work: the depth of the chain of values Gen.canon follows (the
 # self-compile's deepest is 18), the ops Gen.reaching walks back over (85) and the lookups that
 # hold at once (7)
@@ -925,6 +930,7 @@ RUNTIME: dict[str, str] = {
     "bytes.get": "int:S,int|R|", "bytes.list": "list[int]:bytes|A|", "bytes.add": "bytes:S,bytes|A|", "bytes.mul": "bytes:S,int|R A|",
     "bytes.slice": "bytes:S,int,int|A|", "bytes.slice_step": "bytes:S,int,int,int|R A|", "bytes.has": "bool:str,int|R|",
     "bytes.contains": "bool:str,str|R|", "bytes.decode": "str:str,str,str|R A|", "str.encode": "str:str,str,str|R A|",
+    "bytes.scan": "int:bytes,int,int,int,int,int|R|",  # internal bounded delimiter/control-byte scan
     "unicode_error_str": "str:int,str,str,int,int,str|R A|",
     "bytes.hex": "str:str|R A|", "bytes.hex_sep": "str:str,str,int,int|R A|", "bytes.maketrans": "str:str,str|R A|",
     "bytes.translate": "str:str,str,str|R A|", "bytes.fromhex": "str:str|R A|", "bytes.from_list": "str:list[int]|R A rL|",
@@ -973,21 +979,21 @@ RUNTIME: dict[str, str] = {
     "format": "str:*T,#,str|R A I rL rD U?|", "default_repr": "str:str,%ptr|A|", "repr_enter": "bool:%ptr|I|",
     # reflection records (reflection.py): a name's index in a record's name table, and repr(vars(o))
     "refl.find": "int:%ptr,str||", "refl.vars": "str:%ptr,%ptr|A I rO rL rD U|",
-    "repr_leave": "None:%ptr|I|", "alloc": "%ptr:int|A|", "on_stack": "int:%ptr|I|", "box": "%ptr:*T|A|", "ubox": "%ptr:int,*T|A|", "ubox_opt": "%ptr:int,%ptr,int|A|", "unpack_check": "None:int,int|R|", "unpack_ex_check": "None:int,int|R|",
+    "repr_leave": "None:%ptr|I|", "alloc": "%ptr:int|A|", "new": "%ptr:int|A|", "on_stack": "int:%ptr|I|", "box": "%ptr:*T|A|", "ubox": "%ptr:int,*T|A|", "ubox_opt": "%ptr:int,%ptr,int|A|", "unpack_check": "None:int,int|R|", "unpack_ex_check": "None:int,int|R|",
     # errors and the process
     "raise": "None:str,str|R N|", "exit": "None:int|R N I|", "exit_msg": "None:str|R N I|", "argv": "list[str]:|I|", "warnoptions": "list[str]:|A I|",
-    "platform": "str:|A|", "errno": "int:str|R A|", "system": "int:str|R I|", "execv": "None:str,list[str]|R N A I rL|", "getpid": "int:|I|", "exists": "bool:str|I|",
+    "platform": "str:|A|", "errno": "int:str|R A|", "system": "int:str|R I|", "execv": "None:str,list[str]|R N A I rL|", "getpid": "int:|I|", "getcwd": "str:|R A I|", "exists": "bool:str|I|",
     "path_join": "str:str,str|A|", "realpath": "str:str|R A I|", "getenv": "opt[str]:str,opt[str]|A I|", "remove": "None:str|R A I|", "rmdir": "None:str|R A I|",
     "getsize": "int:str|R A I|", "getmtime": "float:str|R A I|", "getctime": "float:str|R A I|",
     "mkdtemp": "str:|R A I|", "time": "float:|I|", "time_ns": "int:|I|", "monotonic": "float:|I|", "monotonic_ns": "int:|I|",
     "process_time": "float:|I|", "process_time_ns": "int:|I|", "sleep": "None:float|R I|", "sleep_int": "None:int|R I|",
     "select": "tuple[list[int],list[int],list[int]]:list[int],list[int],list[int],float,int|R A I rL wL|",
     "setrecursionlimit": "None:int|R I|", "getrecursionlimit": "int:|I|",
-    "thread_stack_valid": "int:int|I|",
+    "thread_stack_valid": "int:int|I|", "strftime_at": "str:str,float,int|R A I|",
     "recursion.enter": "int:|R I|pys_recursion_enter", "recursion.leave": "None:|I|pys_recursion_leave",
     "recursion.resume": "int:%ptr|R I|pys_recursion_resume",
     "recursion.depth": "int:|I|pys_recursion_depth", "recursion.restore": "None:int|I|pys_recursion_restore",
-    "recursion.error": "None:|R N|pys_recursion_error",
+    "recursion.error": "None:|R N|pys_recursion_error", "recursion.stack": "None:|R N|pys_recursion_stack_error",
     # exceptions (runtime.c's "exceptions"); a landing's pys_exc_begin runs the unwind actions: it
     # closes with-files (which may raise) and gives a list being sorted its items back. str() and
     # repr() of an exception object run its class's __str__ and __repr__ (through its ExcClass)

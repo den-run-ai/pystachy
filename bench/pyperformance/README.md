@@ -37,6 +37,12 @@ the measured run. `--compiler "python3 -m pystachy"` uses the CPython-hosted com
 passes, and `PYSTACHY_GC_STRESS_PROGRAM=1` collects at every allocation in JIT and AOT runs, as
 in `tests/run.sh`.
 
+The separate [correctness controls](../../tests/programs/apps/pyperformance_controls.py)
+exercise Fannkuch sizes 2–7, SOR with nonuniform inputs and sparse multiplication with
+signed coefficients and an empty row. These run in the differential corpus. The SOR and
+sparse timing workloads retain upstream's zero-filled inputs; their zero checksums alone
+cannot validate the kernels.
+
 ## Provenance
 
 The sources are `pyperformance/data-files/benchmarks/bm_NAME/run_benchmark.py` from the
@@ -145,7 +151,7 @@ The runner adaptations follow these rules:
 | `generators` | The recursive `Tree`, `yield from`, range slicing and iteration are unchanged. A size argument limits smoke/GC runs to 100 nodes; the normal run keeps 100,000. The complete yielded sequence is checked outside the timer. |
 | `json_dumps` | Opt into dynamic `Any`; annotate the empty dict and the list of `(Any, range)` workload tuples. Preserve all four upstream payloads and counts by default; smoke uses one encode per case and a three-element HUGE list. Complete small encodings and the repeated huge encoding are checked outside the timer. |
 | `json_loads` | Opt into dynamic `Any` and annotate the fresh heterogeneous tuple. All keys in upstream `DICT` are strings, so `str(rand_val)` replaces the generic `type(key)(rand_val)` branch. Preserve `Random(5)`, all three payloads and the 20 unrolled loads per payload; decoded values are printed after timing. |
-| `fannkuch` | The reversing slice assignment uses a slice, `reverse()` and concatenation. |
+| `fannkuch` | None besides the runner. The original reversing slice assignment is restored. |
 | `float` | `self.x = x = sin(i)` is split so that fields can be annotated, and so are `__init__` and `points`. |
 | `go` | The same generator replaces `random`, so the games differ from upstream. Fields set outside `__init__` are declared in the class body. `useful()` returns `bool(...)`, and `score()` counts in a float. `maxscore` starts as `-1.0`. The never-called `Board.check()`, whose sets hold `Square` objects, is commented out. |
 | `hexiom` | A class-body default `HIGHEST_VALUE_STRATEGY` becomes its value, `2`. Conditional `range` values become lists, and `[None] * n` replaces `n * [None]`. Fields and constructors are annotated. `main()` returns the solution. |
@@ -164,6 +170,11 @@ The runner adaptations follow these rules:
 
 The `random` substitutes produce 31-bit values, including `go`'s Zobrist hash strings.
 Results within a benchmark are checked against CPython, not against upstream pyperformance.
+
+Older Fannkuch timing records used a copy/`reverse()`/concatenation workaround. Restoring
+upstream's `perm[:k + 1] = perm[k::-1]` changes its allocations and timed work, so new
+measurements must use the restored source in every mode. Comparing an old timing with
+a new one does not isolate compiler performance.
 
 <a id="blocked"></a>
 

@@ -80,8 +80,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LLVM = os.environ.get("PYSTACHY_LLVM", "")
 TOOL = (LLVM.rstrip("/") + "/") if LLVM else ""
 # Mutable data directly accessed by generated helpers, distinct from RTDATA's constants.
-# The native recursion guards and the C limit APIs must share these two i64 words.
-MUTABLE_DATA = {"pys_recursion_state": "[2 x i64]"}
+# The native recursion guards and the C limit APIs must share these three i64 words
+# (active depth, limit, native stack floor).
+MUTABLE_DATA = {"pys_recursion_state": "[3 x i64]"}
 # functions whose call graph reaches user code, and rec_deep, only through comparing elements, which
 # they never do: set.copy merges into a new set, whose table has none yet (the dict and set
 # operations that hash or compare keys have U? and R?, which an object's or a recursive alias's
@@ -136,7 +137,7 @@ BUG_ONLY = ("IndexError: string index out of range", "IndexError: compare out of
 # trim, and the mark that its copy writes), which no str's value depends on; atomic_items
 # reads the kind of a list's item array (scanned or not), which is fixed when the array is made
 END = RAISES | {"oom", "opt_in_trap"}
-ALLOC = {"gc_slow", "pys_alloc", "pys_alloc_atomic", "gc_seg", "gc_find", "atomic_items"}
+ALLOC = {"gc_slow", "pys_alloc", "pys_alloc_atomic", "pys_new", "gc_seg", "gc_find", "atomic_items"}
 # a collection, which A stands for: the allocator's (gc_slow), or pys_track's for the Python object
 # it counts as allocated
 COLLECTS = {"gc_slow", "collect"}

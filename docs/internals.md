@@ -429,10 +429,10 @@ below). The precompiled runtime is not inlined into JIT code.
 `sys.setrecursionlimit()` bounds the native depth: one for module execution, plus each
 active call of a source function that recursion can repeat, plus each running generator
 body that it can repeat ([compatibility](language/compatibility.md#errors-and-control-flow)).
-The state is runtime.c's `pys_recursion_state`, two mutable words (active depth, then
-limit) that the program's guards and the runtime's `sys.setrecursionlimit()` share; the
-program module defines the guard helpers itself, even when the JIT runs the runtime as a
-shared library.
+The state is runtime.c's `pys_recursion_state`, three mutable words (active depth, limit,
+then the native stack's floor, below) that the program's guards and the runtime's
+`sys.setrecursionlimit()` share; the program module defines the guard helpers itself, even
+when the JIT runs the runtime as a shared library.
 
 Every non-generator function starts with a snapshot of the depth it was entered at
 (`recursion.depth`), which its exception landings restore: callees that raised may have
@@ -504,16 +504,58 @@ For operations without exceptional successors, lowering emits `recursion.depth` 
 `recursion.restore` directly as a load and a store of the depth word. `recursion.enter`
 calls the module's `pys.recursion.enter`, or in closed recursion `pys.recursion.check`, and a
 resume's `recursion.resume` calls `pys.recursion.resume`, whose overflow edge first marks the
-generator finished; the module defines each only where something calls it. Their overflow edge calls the runtime's
-`pys_recursion_error` and has cold branch weights. LLVM's ordinary inliners take those
+generator finished; the module defines each only where something calls it. Each checks the
+limit, then the stack's floor; their failure edges call the runtime's `pys_recursion_error`
+or `pys_recursion_stack_error` and have cold branch weights. LLVM's ordinary inliners take those
 helpers: clang `-O2` for `build`, and the JIT's inliner below its line threshold. They are
 not marked `alwaysinline`, because LLVM 18's mandatory inliner computes block frequencies
 for every caller it changes, which cost a large program's JIT start-up more than the call
 saves (24 counted functions of `bench/smoke/text.py` added 13.8% to `opt`). The scalar
 helpers, which only `pys.gen.drop.counted` and extension entries call by name, are
-`alwaysinline`. The state's accesses carry depth/limit TBAA tags under the object-field
-root, so object field stores cannot alias it. Runtime compilation (`runtime.py`) has no
-recursion accounting.
+`alwaysinline`. The state's accesses carry depth, limit and floor TBAA tags under the
+object-field root, so object field stores cannot alias it. Runtime compilation (`runtime.py`)
+has no recursion accounting.
+
+The native stack's floor ([#1015](https://github.com/den-run-ai/pystachy/issues/1015)) keeps a
+recursion that the thread's stack cannot hold, under a raised limit, from overflowing it: a
+counted entry or resume whose stack pointer lies below the state's third word raises
+`RecursionError` as one past the limit does (`maximum recursion depth exceeded (the native
+stack is nearly full)`), with the same unwinding, so `except` and `finally` run and buffered
+output survives. The check reads the stack pointer with `llvm.stacksave`: `llvm.frameaddress`
+would make every counted function set up a frame pointer, and an alloca's address would escape
+and so keep LLVM from marking the function's calls as tail calls, which tail-recursion
+elimination needs; on x86-64 the check is `cmp %rsp, floor(%rip)` and a branch to the cold
+block. That is 11% more instructions for `bench/fib.py`, whose calls are all counted and tiny, 4%
+for `bench/pyperformance/generators.py` and 0.2% for `regex_effbot.py` (callgrind, AOT, against
+c3aaa068); uncounted calls pay nothing. `stack_floor` (runtime.c) sets the word from the thread's
+stack bounds. On Linux, exec
+copies the program's file name (`AT_EXECFN`) to the top of the main thread's stack mapping, just
+below its last word, and `RLIMIT_STACK` bounds the mapping's size: the bottom glibc's
+`pthread_getattr_np` reports too, without its parse of `/proc/self/maps` (about 20 µs and
+100,000 instructions at every start, where this takes 0.2 µs). Where that does not hold (another
+thread, such as an extension module's importer; a loader run as a program, `ld.so ./prog`, which
+points `AT_EXECFN` at an argument; an unlimited stack, whose main thread's reaches the next
+mapping below), glibc's `pthread_getattr_np` reports the bounds; macOS's come from
+`pthread_get_stackaddr_np` and `pthread_get_stacksize_np`. `pys_init` calls it on the program's
+thread (`@main`'s: lli's main thread under the JIT) and `pys_init_lib` on the thread that imports
+an extension module, the only one that may call it. The floor lies 256 KiB above the lowest
+address (512 KiB under ASan), or an eighth of the way up a stack smaller than 2 MiB. Bounds that
+are unknown (musl's `pthread_getattr_np` reports only the main thread's mapped part, so only
+glibc's is used) or that do not contain the current frame leave the word 0, which no stack
+pointer is below; a frame that they contain but that already lies within the margin (an
+extension imported deep in its thread's stack) gets the floor, so that the next counted entry
+there raises and entries from higher frames are checked as usual. The main thread's bounds assume
+that its stack can grow to `RLIMIT_STACK`: the kernel maps nothing below it within the limit exec
+saw, but memory mapped there anyway, or a limit that a host raised in-process before importing
+an extension module, can stop it sooner, where the floor does not help (glibc's bounds then end
+at the mapping below, inside the kernel's guard gap). The margin is what the deepest counted frame may still use without an entry
+of its own: on Linux x86-64, raising the error and unwinding to a handler used under 5 KiB
+below the floor (JIT and AOT, also with handlers or `finally` in every frame and through
+generator resumes), and a `repr()` of 510 nested lists from the deepest frame (the runtime
+stops at 512) about 150 KiB; the rest covers non-recursive callees and a signal handler's
+frame. No signal handler is involved ([#988](https://github.com/den-run-ai/pystachy/issues/988)).
+`tools/test_stack_floor.py` checks the floor's policy against simulated bounds and runs deep
+recursion in JIT and AOT under a fixed `RLIMIT_STACK`.
 
 `PYSTACHY_JIT_CODEGEN=0` selects MCJIT with `-O0` code generation. This can reduce
 startup for large programs, but the generated code can run slower. The default (`2`)
@@ -524,13 +566,46 @@ or inlining pipeline, and does not affect `build` or `ext`.
 pipeline, allowing optimization across that boundary. The program's module also defines
 `pys_plain`: 1 when no module opts in to dynamic `Any` or promoting ints, else 0. The runtime
 tests it (`opt_in()` in `runtime.c`) only on paths that values of those opt-ins lead to: ints
-past 64 bits in containers, promoting ints and list identity companions. For a plain program
-those paths become traps, and `-O2` drops static helpers that have no remaining caller from
-the executable. Explicit `mpz` users retain the helpers they need. The reusable runtime cache
-still contains all features. `make aotprobe` checks retained symbols and output for plain programs, direct
-opt-ins and imported opt-ins. The JIT tier's precompiled runtime and `ext` keep the runtime's
-weak definition, 0. `ext` builds a shared CPython module with its boundary wrappers; see the
+past 64 bits in containers, promoting ints and list identity companions, which only those
+opt-ins create (every list operation that keeps a companion in step tests it first). For a
+plain program those paths become traps, and `-O2` drops static helpers that have no remaining
+caller from the executable. Explicit `mpz` users retain the helpers they need. The reusable
+runtime cache still contains all features. `make aotprobe` checks retained symbols and output
+for plain programs, direct opt-ins and imported opt-ins, and that a plain program's list store
+writes no companion. The JIT tier's precompiled runtime and `ext` keep the runtime's weak
+definition, 0. `ext` builds a shared CPython module with its boundary wrappers; see the
 [FFI guide](ffi.md).
+
+Compiled code gets its objects and fixed tuples that hold no reference from `pys_new` (the
+`allocelide` optimization, [#1017](https://github.com/den-run-ai/pystachy/issues/1017)): those
+whose every word is a 64-bit `int`, a `float` or a `bool` by the compiler's types (a class's
+fields, inherited and hidden ones included, and a tuple's items; lowering's `alloc_call`). A
+class attribute that the class body declares takes a slot of its type in each object, so
+`ZERO: "Vector" = None` makes a vector of floats hold a reference.
+Each call is marked `allockind("alloc,zeroed") allocsize(0)`, so LLVM deletes an allocation
+whose object nothing keeps, after inlining has shown that. Every other object and tuple comes
+from `pys_alloc`, as without `allocelide`: one that holds a reference, a promoting int's `Mpz`
+word or a numeric identity companion. The marked call's object is `noalias`, so LLVM forwards
+the loads of its fields across calls, and can then delete it, or leave its address dead, while
+the program still reads those fields. The conservative collector would then miss what it
+holds: a weakly referenced object it held could be cleared, a file it held closed, an
+`ffi.track` reference released. An object that holds no reference keeps nothing alive, so
+deleting it changes no other object's lifetime. A deleted allocation starts no collection,
+though: it counts toward neither the collector's threshold nor `PYSTACHY_GC_STRESS`'s, so the
+collections that clear weak references, close dropped files and release `ffi.track` references
+can come later than without `allocelide`. `runtime.c` keeps `pys_new` out of line so that
+`-O2` still sees those calls. Each surviving allocation then gets the allocator's fast path
+back: `build` optimizes the linked module to bitcode, and one `opt` run then inlines `pys_new`
+into the calls that are left. Its `forceattrs` pass first swaps `pys_new`'s `noinline` (and the
+`optnone` of a runtime compiled at `-O0`) for `alwaysinline` (the driver's `LATE_INLINE`), then
+`always-inline` inlines it. Clang then compiles the module without optimizing it again.
+`ext` does the same between its `opt -O2` and its compilation. A module without `pys_new`
+keeps the single `clang -O2 -c` step. The JIT calls the shared runtime's `pys_new`, and
+its cleanup pipeline deletes what instcombine can prove unused. The runtime's own code
+(`runtime.py`) and generator frames call `pys_alloc`. `make aotprobe` checks that
+objects that never escape compile to no allocation, that objects a list keeps do,
+that a build with `PYSTACHY_CFLAGS=-O0` still takes the late step, and that an object and
+a tuple that hold objects come from `pys_alloc` and keep those alive through collections.
 
 Cached runtime artifacts depend on the runtime sources, included Ryu files, compiler,
 LLVM tools and compilation flags. Changes invalidate the relevant cache. Builds use private

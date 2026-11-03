@@ -1,0 +1,62 @@
+'plain'
+"a|'bé'|'c\\xe9'"
+'p-str Pé() P\\xe9()'
+'42|-42|7|   42|42   |-0042|+7| 7|+0007|-7    |'
+'005|0|     -0005|0005      |0000000005'
+'ff|FF|10|0xff|0XFF|0o10|  0xa|0x00a|0o10   |'
+'-ff -10 -0xff -0o10'
+'1 True False 1'
+'3 -2'
+'1.234568e+04|1.230000E-04|1.500000|-2.250000|1e-05|3E+20'
+'2e+00|2.67|     3.142|2.5       |+1.0| 1.00|-000003.50|2.|1.00000|0.3333333333'
+'inf -INF nan -0'
+'3.000000 1.000000e+00'
+'xA\x01|  y|☺  |'
+'ab|   ab|ab   |    x||"it\'s"'
+'   9|9   |3.14|   2.500|ab    '
+TypeError: not enough arguments for format string
+"1 and 'two', 00001"
+'nested'
+"[1, 'two', None]"
+"{'k': [1, 2]}"
+"{'k': 1} [2]"
+'None'
+'(1, 2)'
+'no conversions'
+'no conversions'
+"{'a': 5} and 5"
+'1 2 3 4.500000'
+'7'
+"'single'"
+TypeError: not enough arguments for format string
+TypeError: not enough arguments for format string
+TypeError: %d format: a real number is required, not str
+TypeError: %i format: a real number is required, not NoneType
+TypeError: %x format: an integer is required, not float
+TypeError: %X format: an integer is required, not str
+TypeError: must be real number, not str
+TypeError: %c requires int or char
+TypeError: %c requires int or char
+OverflowError: %c arg not in range(0x110000)
+OverflowError: %c arg not in range(0x110000)
+TypeError: * wants int
+TypeError: * wants int
+ValueError: unsupported format character 'z' (0x7a) at index 1
+ValueError: unsupported format character '?' (0xe9) at index 1
+ValueError: incomplete format
+ValueError: incomplete format
+ValueError: incomplete format
+ValueError: incomplete format key
+ValueError: incomplete format
+TypeError: format requires a mapping
+KeyError: 'missing'
+TypeError: list indices must be integers or slices, not str
+TypeError: not all arguments converted during string formatting
+TypeError: not all arguments converted during string formatting
+TypeError: not all arguments converted during string formatting
+TypeError: not enough arguments for format string
+OverflowError: cannot convert float infinity to integer
+ValueError: cannot convert float NaN to integer
+ValueError: width too big
+ValueError: precision too big
+[exit 0]

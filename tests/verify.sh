@@ -99,11 +99,15 @@
 #                  inlined (not with PYSTACHY_JIT_INLINE=0); live code and runtime callbacks still
 #                  execute as in CPython, with both compilers
 #   aot-dead-code  tools/aotprobe.py: an AOT build defines pys_plain; a program that opts in to
-#                  neither dynamic Any nor promoting ints keeps none of their runtime helpers;
-#                  direct and imported opt-ins retain them, with outputs matching CPython
+#                  neither dynamic Any nor promoting ints keeps none of their runtime helpers, and
+#                  its list stores none of their companion code; direct and imported opt-ins
+#                  retain them; objects that never escape compile to no allocation and those a
+#                  list keeps do (allocelide), and holders of objects keep their allocations and
+#                  those objects through collections, with outputs matching CPython
 #   unicode-audit  tools/unicode_audit.py: optional byte-boundary checks in JIT/AOT, cache
 #                  reuse, ASCII/Unicode controls and GC-stress exception paths, both compilers;
 #                  unicodeprobe checks code-point cache/locality, mutation and GC invalidation
+#                  bytescanprobe checks bounded delimiter scans, guard pages and bulk-work counts
 #   scaling-0/-1   tools/scaling.py --check: both compilers compile its generated programs (500 and 1000
 #                  functions, globals, classes, modules, chained imports, breaks, elifs, ...), and the
 #                  lines the CPython-hosted compiler executes, and the items its builtin calls copy or
@@ -913,7 +917,11 @@ L=$V/unicode-audit.log; s=$(now); r=fail
   "${LLVM}clang" -O2 -S -emit-llvm tools/unicodeprobe.c -o "$V/unicodeprobe.ll" &&
   "${LLVM}llvm-link" "$V/rt2.ll" "$V/unicodeprobe.ll" -o "$V/unicodeprobe.bc" &&
   "${LLVM}clang" -O2 "$V/unicodeprobe.bc" -o "$V/unicodeprobe" -lm &&
-  "$V/unicodeprobe" && PYSTACHY_GC_STRESS=1 "$V/unicodeprobe" && r=pass; } > "$L" 2>&1
+  "$V/unicodeprobe" && PYSTACHY_GC_STRESS=1 "$V/unicodeprobe" &&
+  "${LLVM}clang" -O2 -S -emit-llvm tools/bytescanprobe.c -o "$V/bytescanprobe.ll" &&
+  "${LLVM}llvm-link" "$V/rt2.ll" "$V/bytescanprobe.ll" -o "$V/bytescanprobe.bc" &&
+  "${LLVM}clang" -O2 "$V/bytescanprobe.bc" -o "$V/bytescanprobe" -lm &&
+  "$V/bytescanprobe" && PYSTACHY_GC_STRESS=1 "$V/bytescanprobe" && r=pass; } > "$L" 2>&1
 step unicode-audit $r "$s" "$L" ', "compilers": ["CPython-hosted", "stage2"], "codepoint_probe_gc_modes": ["normal", "stress"]'
 fi
 }
@@ -954,7 +962,7 @@ fi
 if want aot-dead-code; then
 L=$V/aot-dead-code.log; s=$(now); r=fail
 $PY tools/aotprobe.py -c "hosted=$PY -m pystachy" -c "native=$V/pystachy2" > "$L" 2>&1 && r=pass
-step aot-dead-code $r "$s" "$L" ', "opt_in_symbols": 7, "programs": ["plain", "python-int", "dynamic-any", "python-int-import", "dynamic-any-import"], "compilers": ["CPython-hosted", "stage2"]'
+step aot-dead-code $r "$s" "$L" ', "opt_in_symbols": 12, "programs": ["plain", "python-int", "dynamic-any", "python-int-import", "dynamic-any-import"], "compilers": ["CPython-hosted", "stage2"]'
 fi
 
 # ---- dict-probes: table slots per dict lookup for colliding keys, sequential keys the control

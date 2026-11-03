@@ -46,12 +46,14 @@ class TestHeapPython(TestHeap):
 
 
 def _TestHeapPython__test_heappop_max():
+    random.seed(0)
     t = TestHeapPython()
     t.test_heappop_max()
     print('ok TestHeapPython.test_heappop_max')
 
 
 def _TestHeapPython__test_heapsort():
+    random.seed(0)
     t = TestHeapPython()
     t.test_heapsort()
     print('ok TestHeapPython.test_heapsort')

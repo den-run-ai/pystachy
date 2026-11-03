@@ -28,7 +28,8 @@ assertions; nothing is edited by hand:
 - Each program keeps only the module-level definitions it uses and, in its test classes, only
   its own test method (a method that takes only self is compiled whether or not it is called,
   so another rejected test would reject the whole class). It runs the test on a fresh
-  instance and tearDown(), then prints `ok CLASS.METHOD`.
+  instance and tearDown(), then prints `ok CLASS.METHOD`. A program that uses random calls
+  random.seed(0) before each test, so every run draws the same inputs.
 
 `triage` extracts each file's methods into WORKDIR, runs every program under the running
 CPython and under the compiler's `run`, and writes one record per method: cpython-fail (the
@@ -282,6 +283,8 @@ class ModuleAttribute(ast.NodeTransformer):
 def defines(st):
     if isinstance(st, (ast.FunctionDef, ast.ClassDef, ast.AsyncFunctionDef)):
         return {st.name}
+    if isinstance(st, ast.ImportFrom) and st.module == "__future__":
+        return set()  # (binds nothing a test uses, but changes how the module compiles: always kept)
     if isinstance(st, (ast.Import, ast.ImportFrom)):
         return {(a.asname or a.name).split(".")[0] for a in st.names}
     return ({n.id for n in ast.walk(st) if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Store)}
@@ -504,14 +507,30 @@ class TestFile:
             # helper methods always stay; a test only where it was selected
             return any(isinstance(st, ast.ClassDef) and st.name == k for st in kept) and (
                 not m.startswith("test") or m in keep.get(k, ()))
+        imports = [st for st in kept if isinstance(st, (ast.Import, ast.ImportFrom))]
+        # (after the docstring and any `from __future__` import, which must come first)
+        at = next((i for i, st in enumerate(kept) if not (
+            (i == 0 and isinstance(st, ast.Expr) and isinstance(st.value, ast.Constant) and isinstance(st.value.value, str))
+            or (isinstance(st, ast.ImportFrom) and st.module == "__future__"))), len(kept))
         if any(present(k, m) for k, m in self.needs_re) and not any(
-                "re" in d for st, d, _ in facts if st in kept and isinstance(st, (ast.Import, ast.ImportFrom))):
-            kept.insert(0, ast.Import([ast.alias("re")]))
+                isinstance(st, ast.Import) and any((a.asname or a.name) == "re" for a in st.names) for st in imports):
+            kept.insert(at, ast.Import([ast.alias("re")]))
+        # a program whose tests use random seeds it before each test, so that every run draws the same
+        # inputs (lib/random is CPython's Mersenne Twister: native runs draw CPython's values too)
+        rand = next((a.asname or a.name for st in imports if isinstance(st, ast.Import) for a in st.names
+                     if a.name == "random"), None)
+        if rand is None and any(isinstance(st, ast.ImportFrom) and st.module == "random" for st in imports):
+            rand = "random"
+            if not any("random" in defines(st) for st in kept):
+                kept.insert(at, ast.Import([ast.alias("random")]))
         module = ast.Module(kept, [])
         lines = [ast.unparse(ast.fix_missing_locations(module)), "", ""]
         for cname, name in selection:
             ms = self.methods(next(c for c in self.concrete if c.name == cname))
-            lines += [f"def _{cname}__{name}():", f"    t = {cname}()"]
+            lines.append(f"def _{cname}__{name}():")
+            if rand:
+                lines.append(f"    {rand}.seed(0)")
+            lines.append(f"    t = {cname}()")
             if "setUp" in ms:
                 lines.append("    t.setUp()")
             lines.append(f"    t.{name}()")

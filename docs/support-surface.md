@@ -26,9 +26,9 @@ reflect this checkpoint. No new timings were collected for this documentation up
 Identity scoping (#973) and compatible scalar dict-hash fast paths (#980) remain in place.
 The [latest recorded JSON acceptance report](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/reports/json-acceptance-controls-2026-10-29.md)
 supersedes the earlier residual instruction figures for its named workloads; it does not
-establish a general wall-time speedup. VERSION is v0.1.0-alpha.4; setting it does not
-publish a tag or release. Follow the
-[release tracker](https://github.com/den-run-ai/pystachy/issues/976) for publication status.
+establish a general wall-time speedup. Later, on 2 November 2026,
+[v0.1.0-alpha.4](https://github.com/den-run-ai/pystachy/releases/tag/v0.1.0-alpha.4) was
+published from main `9c8bc746`.
 
 ## Reading the colors
 
@@ -45,7 +45,8 @@ not mean a feature is experimental unless it says **PROTO**, and red does not me
 entire enclosing feature should be removed. The areas are schematic, not coverage percentages.
 Read **support status**, **representation** and **measured cost** separately. A yellow
 operation can outperform CPython; a green operation can still have high algorithmic cost.
-The red examples are not an exhaustive inventory of deviations.
+The red examples are not an exhaustive inventory of deviations. The
+[language guide](language.md#support-at-a-glance) applies the same statuses to feature areas.
 
 ## 1. The native subset to preserve
 
@@ -329,7 +330,8 @@ a default switch with its own cost budget. This map makes neither promotion: cor
 gaps, corpus exceptions, whole-import-graph behavior and application/retained-memory
 acceptance still matter.
 
-When updating this page, change the affected SVG labels and tables together, recheck the
+When updating this page, change the affected SVG labels and tables together, including the
+language guide's [summary of the payoff map](language.md#performance-and-complexity), recheck the
 linked issue's remaining scope, and retain the distinction between an unavailable feature,
 an intentional restriction, a known accepted deviation and a measured cost. The SVGs are
 editable vector sources in [images/](images/); labels and the tables carry the meaning

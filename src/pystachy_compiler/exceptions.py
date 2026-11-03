@@ -7,6 +7,7 @@ from src.pystachy_compiler.analysis import (
     deleted,
     globals_in,
     has_finally,
+    local_names,
     reads,
 )
 from src.pystachy_compiler.diagnostics import dynamic_program, shown
@@ -24,7 +25,7 @@ from src.pystachy_compiler.specs import (
     exc_derives,
     is_excname,
 )
-from src.pystachy_compiler.syntax import NOKIDS, Node, mk
+from src.pystachy_compiler.syntax import NOKIDS, Node, has_kind, mk
 from src.pystachy_compiler.utils import (
     is_const,
     is_opt,
@@ -958,13 +959,111 @@ def gen_exc_object(self, c: str, args: list[Node]) -> Val:
     self.xcls[c] = True
     self.setfield(o, self.field(o, " cls"), " cls", Val(f"@x.{c}", "str"))
     # (with an __init__ of the program, an OSError's args are left empty, and a SystemExit's
-    # code None, until its super().__init__() sets them, as OSError.__new__ and SystemExit.__init__ do)
-    self.exc_keep(o, vals if init is None or not self.derives(c, "OSError") else vals[:0], init is None)
+    # code None, until its super().__init__() sets them, as OSError.__new__ and SystemExit.__init__ do;
+    # an __init__ that surely keeps its own args before anything can read these needs none either)
+    keep = vals if init is None or not self.derives(c, "OSError") else vals[:0]
+    if init is not None and len(keep) > 0 and self.exc_init_keeps(c, init):
+        keep = vals[:0]
+    self.exc_keep(o, keep, init is None)
     self.class_defaults(o)
     self.line = line
     if init is not None:
         self.init_result(self.call_fn(init, [o] + vals, kws))
     return o
+
+def exc_init_uses(n: Node, me: str, plain: dict[str, bool], nested: bool) -> bool:
+    # whether code n, which runs before an exception class's __init__ calls BaseException's
+    # (exc_init_keeps), can neither skip that call nor see what the constructor kept: it does not
+    # return or yield (but in the functions it defines: nested), and it uses me, the object,
+    # only as me.f of its plain fields f, read or assigned. Not me itself (passed on, str(me),
+    # print(me), rebound), a method of it, a property, super() or locals(): each may read
+    # str(me) or repr(me)
+    k = n.kind
+    if (k == "return" or k == "yield" or k == "await") and not nested:
+        return False
+    if k == "attr" and n.kids[0].kind == "name" and n.kids[0].s == me:
+        return n.s in plain
+    if k == "call" and n.kids[0].kind == "attr" and n.kids[0].kids[0].kind == "name" and n.kids[0].kids[0].s == me:
+        return False  # (me.m(...), or a function that a field holds, called)
+    if k == "name" and n.s in ["locals", "vars", "eval", "exec", "dir", "breakpoint", "super"]:
+        return False
+    if k != "str" and k != "bytes" and (n.s == me or (k == "deco" and n.s.startswith(me + "."))):
+        return False  # (me read, or bound: an except, import, walrus or def of the name)
+    inner = nested or k == "def" or k == "lambda" or k == "class" or k == "subclass"
+    for kid in n.kids:
+        if not exc_init_uses(kid, me, plain, inner):
+            return False
+    return True
+
+
+def gen_exc_init_keeps(self, c: str, init: FnInfo) -> bool:
+    # whether the __init__ of exception class c, init (its own or a base's), surely calls
+    # BaseException.__init__ (super().__init__(...) or Base.__init__(self, ...), which keep their
+    # arguments again: super_call) before anything can read what the constructor keeps, so that
+    # exc_object need not format c's arguments (CPython never does: str(e) and repr(e) format
+    # e.args when they run). Only where that is certain: the call is a statement of the body
+    # itself (not in an if, a loop, a try or a with), nothing before it returns, and until it
+    # runs the object is used only for its plain fields (exc_init_uses). Where the call reaches
+    # the __init__ of a base of the program instead, that __init__ must be such a one too
+    ci = self.classes[c]
+    if self.derives(c, "OSError") or self.derives(c, "SystemExit"):
+        return False  # (their own fields: os_error, exit_value)
+    for m in ["__new__", "__del__", "__getattr__", "__getattribute__", "__setattr__", "__delattr__"]:
+        if m in ci.methods:
+            return False
+    f = init
+    for _ in range(len(self.classes) + 1):
+        if f.cls not in self.classes or f.node.kind != "def" or f.synthetic or f.prop or f.deco != "" or f.acc != "" or len(f.params) == 0:
+            return False
+        fc = self.classes[f.cls]
+        if fc.exc == "" or fc.tag > 0 or not self.derives(c, f.cls):
+            return False
+        me = f.params[0]
+        body = f.node.kids[2].kids
+        loc: dict[str, bool] = {}
+        local_names(body, loc)
+        for p in f.params:
+            loc[p] = True
+        for nm in ["super", fc.base]:
+            # (bound as gen_call finds it while it compiles f: a local of f, or of the program)
+            if nm in self.funcs or nm in self.classes or nm in self.mvars:
+                loc[nm] = True
+        k = -1
+        for i in range(len(body)):
+            st = body[i]
+            if has_kind(st, "yield") or has_kind(st, "await"):
+                return False  # (a generator, whose body a call does not run)
+            if k < 0 and st.kind == "expr" and st.kids[0].kind == "call" and st.kids[0].kids[0].kind == "attr" and st.kids[0].kids[0].s == "__init__":
+                k = i
+        if k < 0:
+            return False
+        # (the call as gen_call compiles it: super().__init__(...) where super is the builtin,
+        # or Base.__init__(self, ...) of the class's base, without stars)
+        call = body[k].kids[0]
+        o = call.kids[0].kids[0]
+        b = fc.base
+        args: list[Node] = []
+        if o.kind == "call" and len(o.kids) == 1 and o.kids[0].kind == "name" and o.kids[0].s == "super" and "super" not in loc:
+            args = call.kids[1:]
+        elif (o.kind == "name" and o.s == b and len(call.kids) > 1 and call.kids[1].kind == "name" and call.kids[1].s == me
+              and (b in self.classes or b not in loc) and len([a for a in call.kids if a.kind == "starred" or a.kind == "dstar"]) == 0):
+            args = call.kids[2:]
+        else:
+            return False
+        plain: dict[str, bool] = {}
+        for x in fc.ftypes:
+            dunder = x.startswith("__") and x.endswith("__")
+            if not x.startswith(" ") and not dunder and len([ms for ms in [ci.methods, fc.methods] if x in ms or x + ".setter" in ms or x + ".deleter" in ms]) == 0:
+                plain[x] = True
+        for n in body[:k] + args:
+            if not exc_init_uses(n, me, plain, False):
+                return False
+        if b in self.classes and "__init__" in self.classes[b].methods:
+            f = self.classes[b].methods["__init__"]  # (super_call calls it with the object)
+        else:
+            return True  # (super_call keeps the arguments: exc_keep)
+    return False
+
 
 def gen_class_defaults(self, o: Val) -> None:
     # new object o's class-body defaults: CPython's class attributes, which o reads until it

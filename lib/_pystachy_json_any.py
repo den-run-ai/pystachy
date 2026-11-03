@@ -8,7 +8,7 @@ json.dumps() of a value that holds Any values. loads() decodes straight into Any
 then share; dumps() walks Any values as CPython's encoder walks objects: tuples are arrays, int,
 float, bool and None keys become strings, and a value JSON cannot hold raises its TypeError.
 json's own functions keep JSONValue's typed storage for other code. The text scanner, its errors
-and limits are json's (_Parser): strings, keys, number syntax and 256 levels of nesting.
+and limits are json's (_Parser): strings, keys, number syntax and its bound on nesting.
 Integer tokens beyond int64 promote through a separate helper; scanner indices stay fixed-width.
 """
 from typing import Any
@@ -22,8 +22,12 @@ def _value(p: _Parser, depth: int) -> Any:
     if token is _STRING_TOKEN:
         return p.string()
     if token is _ARRAY_TOKEN or token is _OBJECT_TOKEN:
-        if depth >= 256:
-            raise RecursionError("maximum JSON nesting depth exceeded")
+        if depth >= 2000:  # (json's bound on nesting: _Parser.value())
+            if token is _ARRAY_TOKEN:
+                raise RecursionError("maximum recursion depth exceeded"
+                                     " while decoding a JSON array from a unicode string")
+            raise RecursionError("maximum recursion depth exceeded"
+                                 " while decoding a JSON object from a unicode string")
         if token is _ARRAY_TOKEN:
             return _array(p, depth)
         return _object(p, depth)
@@ -104,8 +108,8 @@ class _Writer:
             for parent in self.open:
                 if value is parent:
                     raise ValueError("Circular reference detected")
-        if depth >= 256:
-            raise RecursionError("maximum JSON nesting depth exceeded")
+        if depth >= 2000:  # (json's bound on nesting: _Parser.value())
+            raise RecursionError("maximum recursion depth exceeded while encoding a JSON object")
         self.open.append(value)
 
     def supported_key(self, k: Any) -> bool:
