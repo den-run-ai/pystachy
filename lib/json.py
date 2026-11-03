@@ -3,7 +3,8 @@
 
 This prototype implements loads(str), dumps(JSONValue) and the default JSONDecoder.
 Typed JSONValue integers use Pystachy's signed 64-bit range; the dynamic Any
-decoder promotes larger tokens. Nesting is limited to 256 containers, and object keys are str.
+decoder promotes larger tokens. Nesting counts against sys.setrecursionlimit() and stops at
+2,000 containers, which keeps a raised limit within the native stack; object keys are str.
 Decoder hooks, bytes input, encoder subclasses, indentation and file APIs are not
 implemented. Containers are created with recursive JSONValue storage; narrowing
 keeps their original identity and mutable contents.
@@ -51,6 +52,26 @@ def _u8len(data: bytes, i: int) -> int:
     return _u8char(data, i) >> 21
 
 
+def _u8next(data: bytes, i: int, n: int) -> int:
+    # Where the character at data[i] ends, i + _u8len(data, i) of n = len(data) bytes, without
+    # computing its code point: a lead byte and continuation bytes of a code point its length
+    # holds (a surrogate's too) are one character; anything else is left to _u8len.
+    c = data[i]
+    if c < 0x80:
+        return i + 1
+    if c >= 0xC2 and c < 0xE0:
+        if i + 1 < n and (data[i + 1] & 0xC0) == 0x80:
+            return i + 2
+    elif c >= 0xE0 and c < 0xF0:
+        if i + 2 < n and (data[i + 1] & 0xC0) == 0x80 and (data[i + 2] & 0xC0) == 0x80 and (c != 0xE0 or data[i + 1] >= 0xA0):
+            return i + 3
+    elif c >= 0xF0 and c <= 0xF4:
+        if (i + 3 < n and (data[i + 1] & 0xC0) == 0x80 and (data[i + 2] & 0xC0) == 0x80 and (data[i + 3] & 0xC0) == 0x80
+                and (c != 0xF0 or data[i + 1] >= 0x90) and (c != 0xF4 or data[i + 1] < 0x90)):
+            return i + 4
+    return i + _u8len(data, i)
+
+
 _STRING_TOKEN = b'"'
 _ARRAY_TOKEN = b"["
 _OBJECT_TOKEN = b"{"
@@ -94,10 +115,14 @@ class _Parser:
             self.mark_byte = 0
             self.mark_char = 0
         data = self.data
+        n = self.n
         i = self.mark_byte
         count = self.mark_char
         while i < at:
-            i += _u8len(data, i)
+            if data[i] < 0x80:
+                i += 1
+            else:
+                i = _u8next(data, i, n)
             count += 1
         self.mark_byte = i
         self.mark_char = count
@@ -107,10 +132,15 @@ class _Parser:
         # raw_decode's idx is a character offset; the scanner itself uses byte offsets.
         if idx < 0:
             raise ValueError("idx cannot be negative")
+        data = self.data
+        n = self.n
         i = 0
         count = 0
-        while count < idx and i < self.n:
-            i += _u8len(self.data, i)
+        while count < idx and i < n:
+            if data[i] < 0x80:
+                i += 1
+            else:
+                i = _u8next(data, i, n)
             count += 1
         if count < idx:
             raise JSONDecodeError("Expecting value", self.doc, idx)
@@ -538,8 +568,15 @@ class _Parser:
         if c == 34:
             return self.string()
         if c == 123 or c == 91:
-            if depth >= 256:
-                raise RecursionError("maximum JSON nesting depth exceeded")
+            # Each nested container is two calls that sys.setrecursionlimit() counts (value(),
+            # then array() or object()). Past 2,000 containers, a raised limit could exhaust the
+            # native stack in its largest-frame configurations (docs/json.md's JSON API limits).
+            if depth >= 2000:
+                if c == 91:
+                    raise RecursionError("maximum recursion depth exceeded"
+                                         " while decoding a JSON array from a unicode string")
+                raise RecursionError("maximum recursion depth exceeded"
+                                     " while decoding a JSON object from a unicode string")
             if c == 91:
                 return self.array(depth)
             return self.object(depth)
@@ -760,8 +797,8 @@ class _Encoder:
             for list_parent in self.lists:
                 if value is list_parent:
                     raise ValueError("Circular reference detected")
-            if depth >= 256:
-                raise RecursionError("maximum JSON nesting depth exceeded")
+            if depth >= 2000:  # (the decoder's bound on nesting, as value() explains)
+                raise RecursionError("maximum recursion depth exceeded while encoding a JSON object")
             self.lists.append(value)
             self.out.append("[")
             first = True
@@ -776,8 +813,8 @@ class _Encoder:
             for dict_parent in self.dicts:
                 if value is dict_parent:
                     raise ValueError("Circular reference detected")
-            if depth >= 256:
-                raise RecursionError("maximum JSON nesting depth exceeded")
+            if depth >= 2000:  # (the decoder's bound on nesting, as value() explains)
+                raise RecursionError("maximum recursion depth exceeded while encoding a JSON object")
             self.dicts.append(value)
             self.out.append("{")
             keys = sorted(value) if self.sort_keys else list(value)

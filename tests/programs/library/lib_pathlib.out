@@ -1,0 +1,32 @@
+/usr/lib/python3.13/os.py PurePosixPath('/usr/lib/python3.13/os.py') os.py os .py /usr/lib/python3.13 / / 
+('/', 'usr', 'lib', 'python3.13', 'os.py') ['/usr/lib/python3.13', '/usr/lib', '/usr', '/'] 4 /usr/lib/python3.13 True
+['.tar', '.gz'] b.tar a/c.txt a/b.tar.zip a/d.gz a/b.tar
+a/b/c a/b/c /b . . a/b/c
+a/b/c True True
+[PurePosixPath('a'), PurePosixPath('a/c'), PurePosixPath('b')] True
+b/c . True
+../b False
+ValueError '/a/b' is not in the subpath of '/a/c'
+ValueError '/a/b' is not in the subpath of 'd'
+ValueError Invalid name ''
+ValueError Invalid suffix 'txt'
+True True False False
+True False PosixPath PurePosixPath
+True /x True
+True False False
+12 print('hi')
+ True
+['.hidden', 'main.py', 'pkg']
+['src/main.py']
+['src/main.py', 'src/pkg/util.py']
+['.', 'src', 'src/pkg']
+['src/.hidden', 'src/main.py', 'src/pkg']
+['src/pkg/data.txt']
+data
+app.py True False
+True
+FileNotFoundError True
+FileExistsError True
+FileNotFoundError True
+False
+[exit 0]

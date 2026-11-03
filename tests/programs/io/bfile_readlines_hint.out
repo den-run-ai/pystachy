@@ -1,0 +1,31 @@
+BufferedReader
+-1 [b'a\n', b'b\n', b'c\n'] 6 b''
+0 [b'a\n', b'b\n', b'c\n'] 6 b''
+1 [b'a\n'] 2 b'b\n'
+2 [b'a\n', b'b\n'] 4 b'c\n'
+3 [b'a\n', b'b\n'] 4 b'c\n'
+4 [b'a\n', b'b\n', b'c\n'] 6 b''
+6 [b'a\n', b'b\n', b'c\n'] 6 b''
+7 [b'a\n', b'b\n', b'c\n'] 6 b''
+None [b'a\n', b'b\n', b'c\n'] 6
+BufferedRandom
+-1 [b'a\n', b'b\n', b'c\n'] 6 b''
+0 [b'a\n', b'b\n', b'c\n'] 6 b''
+1 [b'a\n'] 2 b'b\n'
+2 [b'a\n', b'b\n'] 4 b'c\n'
+3 [b'a\n', b'b\n'] 4 b'c\n'
+4 [b'a\n', b'b\n', b'c\n'] 6 b''
+6 [b'a\n', b'b\n', b'c\n'] 6 b''
+7 [b'a\n', b'b\n', b'c\n'] 6 b''
+None [b'a\n', b'b\n', b'c\n'] 6
+FileIO
+-1 [b'a\n', b'b\n', b'c\n'] 6 b''
+0 [b'a\n', b'b\n', b'c\n'] 6 b''
+1 [b'a\n'] 2 b'b\n'
+2 [b'a\n', b'b\n'] 4 b'c\n'
+3 [b'a\n', b'b\n'] 4 b'c\n'
+4 [b'a\n', b'b\n', b'c\n'] 6 b''
+6 [b'a\n', b'b\n', b'c\n'] 6 b''
+7 [b'a\n', b'b\n', b'c\n'] 6 b''
+None [b'a\n', b'b\n', b'c\n'] 6
+[exit 0]

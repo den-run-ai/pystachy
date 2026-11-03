@@ -161,7 +161,16 @@ do not by themselves make storage dynamic. Experimental opt-in `Any` uses the
 The collector is conservative, non-moving mark-and-sweep. It scans stack/register roots and
 registered program globals; buffers that cannot contain pointers are not scanned. Marking
 prefetches each object a few objects before it scans it (`MQ`), so the cache misses of a big
-heap overlap; the objects it marks do not depend on that order. Unreachable
+heap overlap; the objects it marks do not depend on that order. Its 64 KiB chunks of small
+objects and its large objects take whole pages from a page heap that the runtime maps itself
+in 2 MiB regions, not from `malloc`. A region's bitmaps record which pages are used and which
+may be dirty, so a zeroed allocation clears only dirty pages, and a new string's bytes, which
+its maker writes in full, are not cleared at all. Each sweep keeps as many free pages as the
+next cycle may take (up to half as much again as its allocation window, which grows with the
+live bytes), reused before clean ones without page faults, and returns the rest to the system. Pointer-free slots of more than 136 bytes are cleared when they are handed out rather
+than when they die. `PYSTACHY_GC_MIN` sets the 32 MiB allocation window between collections
+([#650](https://github.com/den-run-ai/pystachy/issues/650)). The
+[allocator report](reports/allocator-prototype.md) has the measurements. Unreachable
 files close during collection or at program exit. Supported Python operations are checked
 against CPython; the [compatibility reference](language/compatibility.md) lists deviations.
 
@@ -600,8 +609,12 @@ into the calls that are left. Its `forceattrs` pass first swaps `pys_new`'s `noi
 `optnone` of a runtime compiled at `-O0`) for `alwaysinline` (the driver's `LATE_INLINE`), then
 `always-inline` inlines it. Clang then compiles the module without optimizing it again.
 `ext` does the same between its `opt -O2` and its compilation. A module without `pys_new`
-keeps the single `clang -O2 -c` step. The JIT calls the shared runtime's `pys_new`, and
-its cleanup pipeline deletes what instcombine can prove unused. The runtime's own code
+keeps the single `clang -O2 -c` step. The JIT tier, which never inlines the shared runtime,
+puts its own copy of the fast path in the program's module (`lower_module.py`'s `JITFAST`): calls of
+`pys_new` and `pys_alloc` stay calls (`noinline`) through its cleanup pipeline, which deletes
+what instcombine can prove unused, and a last `forceattrs,always-inline` step then inlines the
+calls left. Each pops the runtime's free list of its class (`pys_fl`, a constant slot once
+inlined) and calls `pys_gc_slow` for everything else. The runtime's own code
 (`runtime.py`) and generator frames call `pys_alloc`. `make aotprobe` checks that
 objects that never escape compile to no allocation, that objects a list keeps do,
 that a build with `PYSTACHY_CFLAGS=-O0` still takes the late step, and that an object and
@@ -637,6 +650,7 @@ provide the broader behavior check. See [testing](testing.md) for the commands.
 | `PYSTACHY_GC_STRESS=N` | Collect every N allocations |
 | `PYSTACHY_GC_STRESS_PROGRAM=N` | Apply the stress interval to the program run by JIT or the test runner, separately from its compiler |
 | `PYSTACHY_GC` | `off` disables collection; `stats` prints a summary at exit |
+| `PYSTACHY_GC_MIN=N` | Make the allocation window between collections at least N MiB (1 to 2<sup>20</sup>) instead of 32: more memory for fewer collections, or the reverse ([#650](https://github.com/den-run-ai/pystachy/issues/650)). Pointer-free large objects can still start a collection sooner (see [start-up and memory](performance.md#start-up-and-memory)) |
 | `PYSTACHY_JOBS` | Parallelism for the test runner and IR tools |
 | `PYSTACHY_CASE_TIMES=FILE` | The test runner appends each case's milliseconds to `FILE`, from which `tools/case_weights.py` balances verification's shards; `tests/verify.sh` sets its own |
 

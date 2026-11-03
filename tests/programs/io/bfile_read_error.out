@@ -1,0 +1,16 @@
+buffering -1
+read(1) OSError [Errno 5] Input/output error
+read() OSError [Errno 5] Input/output error
+readline() OSError [Errno 5] Input/output error
+readlines() OSError [Errno 5] Input/output error
+iteration OSError [Errno 5] Input/output error
+closed True
+buffering 0
+read(1) OSError [Errno 5] Input/output error
+read() OSError [Errno 5] Input/output error
+readline() OSError [Errno 5] Input/output error
+readlines() OSError [Errno 5] Input/output error
+iteration OSError [Errno 5] Input/output error
+closed True
+readall() OSError [Errno 5] Input/output error
+[exit 0]

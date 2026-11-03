@@ -1,0 +1,19 @@
+['ValueError: x\n']
+['ValueError: legacy\n']
+['AppError: app\n'] ['Quiet\n']
+["KeyError: 'k'\n"] ['NoneType: None\n']
+['TypeError: never raised\n']
+['FileNotFoundError: [Errno 2] gone\n']
+'AppError: to a file\n'
+NoneType: None
+'NoneType: None'
+['AppError: bad thing\n']
+'AppError: bad thing'
+['AppError: bad thing']
+["KeyError: 'inner'\n", '\nThe above exception was the direct cause of the following exception:\n\n', 'ValueError: outer\n']
+['ValueError: outer\n']
+['OSError: first\n', '\nThe above exception was the direct cause of the following exception:\n\n', 'RuntimeError\n']
+[] [] []
+TypeError: Exception expected for value, int found
+None
+[exit 0]

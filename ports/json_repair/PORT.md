@@ -102,9 +102,12 @@ decoder's semantics instead of entering heuristic repair; the facade and both
 `raw_decode` probes keep upstream's exception handling. The number parser
 combines dynamic `Any` with promoting integers; parser indices stay fixed-width.
 
-The native JSON codec limits nesting to 256 containers and raises `RecursionError`,
-so valid input nested more deeply raises that error from the default fast path,
-whereas CPython decodes it ([deviation](../../tests/deviations/json_limits.py)).
+Valid input takes the default fast path, `json.loads()`, whose nesting counts against
+the native recursion limit: at the default limit, about 500 nested containers decode and
+return as upstream does on CPython (#1021), and deeper valid input raises
+`RecursionError` from the fast path, whereas CPython's C decoder accepts up to 9,998 at any
+limit. Under a raised limit the codec stops at 2,000 containers with CPython's message
+([deviation](../../tests/deviations/json_limits.py)).
 Malformed-input repair has no separate depth budget: exceeding the native
 recursion limit raises `RecursionError`, which the facade translates to upstream's
 `ValueError("Input nesting exceeds the supported parser recursion depth.")`. At the

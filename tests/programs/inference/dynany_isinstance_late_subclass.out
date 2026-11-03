@@ -1,0 +1,6 @@
+emit first
+emit n0
+emit n2
+emit m0
+[True, True, False] [True, True, False]
+[exit 0]

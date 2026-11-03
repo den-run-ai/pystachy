@@ -1,0 +1,8 @@
+<C.A: 'a'> C.A C.A C.A a A True True
+<N.ONE: 1> N.ONE N.ONE N.ONE 1 ONE True True
+  N.ONE|C.B |
+ValueError Unknown format code 'd' for object of type 'str'
+ax A 1 2 6 True [<N.ONE: 1>, <N.TWO: 2>]
+C.A N.TWO [<C.A: 'a'>, <C.B: 'b'>] {'A': <C.A: 'a'>, 'B': <C.B: 'b'>}
+True True True True True True
+[exit 0]

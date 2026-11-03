@@ -5,9 +5,9 @@ from src.pystachy_compiler.bigints import converts
 from src.pystachy_compiler.diagnostics import dynamic_program, shown, where
 from src.pystachy_compiler.generators import fresh_yield_context
 from src.pystachy_compiler.ir import Data, FnInfo, Ins, Val
-from src.pystachy_compiler.names import short
+from src.pystachy_compiler.names import ENUMCLASSES, short
 from src.pystachy_compiler.reflection import VARS_USES, refl_attr_fields, refl_formatter
-from src.pystachy_compiler.specs import BIG, EXCEPTIONS, GLUE, HASATTR, MODATTRS, PYBUILTINS, RANGEC
+from src.pystachy_compiler.specs import BFILE, BIG, EXCEPTIONS, GLUE, HASATTR, MODATTRS, PYBUILTINS, RANGEC
 from src.pystachy_compiler.structs import STRUCT_FNS
 from src.pystachy_compiler.syntax import Node, made_var, mk
 from src.pystachy_compiler.utils import (
@@ -130,12 +130,17 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
                 scan_args.append(("ptr " if j == 0 else "i64 ") + v.v)
             return Val(self.rt("pys_bytes_scan", "i64", scan_args), "int")
         if f.s in self.funcs:
+            self.copy_private(f.s)
             return self.call_fn(self.funcs[f.s], [], args, want, resultsoft=resultsoft)
         if f.s in self.aliases and f.s not in self.gtypes:
             return self.builtin(self.aliases[f.s], args, want, resultsoft)
         if f.s in self.classes:
             if self.classes[f.s].exc != "":
                 return self.exc_object(f.s, args)
+            if self.classes[f.s].node.line in ENUMCLASSES:
+                # (an enum class's lookup by value: its EnumType object's __call__)
+                self.class_ready(f)
+                return self.obj_call(self.expr(self.enum_view(f.s, f.line), ""), args, want, resultsoft)
             if self.classes[f.s].bad != "":
                 self.err(self.classes[f.s].bad)
             if self.classes[f.s].mod in GLUE and self.curfn.mod != self.classes[f.s].mod:
@@ -201,7 +206,7 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
         o = self.expr(f.kids[0], self.default_want(f.kids[0], f.s, args, ""))
         self.mcall = n
         r = self.method(o, f.s, args, want, resultsoft)
-        if f.s != "close":
+        if f.s != "close" and r.t != BFILE:  # (__enter__() and __iter__() return the file: it stays open)
             self.close_temp(f.kids[0], o)
         return r
     if f.kind == "name":
@@ -715,9 +720,19 @@ def gen_open_call(self, n: Node) -> bool:
 
 def gen_close_temp(self, n: Node, v: Val) -> None:
     # open(p).read(): nothing else refers to the file, so CPython closes it right after its use,
-    # in its finalizer, which reports a failure and goes on
+    # in its finalizer, which reports a failure and goes on. So does open(p, "wb").write(b), a call
+    # of lib/_pystachy_bfile.py's open_writer() (loader.py's binary_opens), whose object holds the file
     if v.t == "file" and self.open_call(n):
         self.rt("pys_file_drop", "void", [f"ptr {v.v}"])
+    elif v.t == BFILE and bfile_temp(n):
+        self.rt("pys_file_drop", "void", [f"ptr {self.getfield(v, self.field(v, '_raw'), '_raw').v}"])
+
+def bfile_temp(n: Node) -> bool:
+    # (gen_close_temp) n makes a binary file that nothing else refers to: open(file, mode) of a binary
+    # mode, or its __enter__() or __iter__(), which return the file itself (open(p, "wb").__enter__().write(b))
+    while n.kind == "call" and len(n.kids) == 1 and n.kids[0].kind == "attr" and (n.kids[0].s == "__enter__" or n.kids[0].s == "__iter__"):
+        n = n.kids[0].kids[0]
+    return n.kind == "call" and n.kids[0].kind == "name" and n.kids[0].s.startswith("_pystachy_bfile$open_")
 
 def gen_open_(self, args: list[Node]) -> Val:
     # open(file, mode="r", buffering=-1, encoding=None, errors=None, newline=None): text files
@@ -738,7 +753,14 @@ def gen_open_(self, args: list[Node]) -> Val:
     if "file" not in given:
         self.err("open() missing required argument 'file' (pos 1)")
     if "mode" in given and given["mode"].kind == "str" and given["mode"].s.find("b") >= 0:
-        self.err("binary files are not supported (files read and write str)")
+        # (the loader makes open() of a literal binary mode a binary file's, binary_opens, except with a
+        # buffering= that these files do not take, rejected here, where the program reaches the call)
+        b = given.get("buffering", mk("None", "", self.line, []))
+        if b.kind == "int" and b.s == "1":
+            self.err("open() of a binary mode with buffering=1 is not supported (CPython warns that line buffering isn't supported in binary mode, and buffers by the default size)")
+        if b.kind != "None" and b.kind != "int" and not (b.kind == "unary" and b.s == "-" and len(b.kids) == 1 and b.kids[0].kind == "int"):
+            self.err("open() of a binary mode is only supported with a literal int buffering=, as the class of the file it makes depends on it (FileIO for 0)")
+        self.err("open() of a binary mode is only supported by that name, with a literal mode, in a module that binds no other open (this open() makes a text file)")
     e = given.get("errors", mk("None", "", self.line, []))
     if not (e.kind == "None" or (e.kind == "str" and e.s == "strict")):
         self.err("open(errors=...) is not supported: files are UTF-8, and decoding errors are not checked")

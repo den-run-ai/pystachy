@@ -154,6 +154,11 @@ def gen_modattr(self, path: str) -> Val:
     self.err(f"unsupported module attribute {path}")
     return Val("", "")
 
+
+# lib's private file system primitives (gen_builtin), by the modules that may call them
+FSPRIMS: dict[str, str] = {"__pys_stat_mode": "pathlib shutil", "__pys_touch": "pathlib", "__pys_copyfile": "shutil", "__pys_copymode": "shutil",
+                            "__pys_rmtree": "shutil"}
+
 def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool = False) -> Val:
     # retval's open-result marker belongs to forwarding calls, not to the
     # arguments a builtin consumes (sorted/list/dict may reuse their context).
@@ -168,6 +173,40 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             self.err(f"name '{name}' is not defined")
         size = self.as_int(self.expr(args[0], "int"))
         return Val(self.rt("pys_thread_stack_valid", "i64", [f"i64 {size.v}"]), "int")
+    if name == "__pys_strftime_at":
+        # (lib/_pystachy_time.py's: time.strftime(fmt, time.localtime(secs)), or of gmtime() where
+        # utc, through runtime.c's pys_strftime_at)
+        if (self.curfn.mod != "_pystachy_time" or not lib_source(self.curfn.node.line, self.libdir, "_pystachy_time.py") or
+                len(args) != 3 or any([a.kind in ["kw", "starred", "dstar"] for a in args])):
+            self.err(f"name '{name}' is not defined")
+        fmt = self.expr(args[0], "str")
+        secs = self.as_float(self.expr(args[1], "float"))
+        utc = self.as_int(self.expr(args[2], "int"))
+        return Val(self.rt("pys_strftime_at", "ptr", [f"ptr {fmt.v}", f"double {secs.v}", f"i64 {utc.v}"]), "str")
+    if name in FSPRIMS:
+        # (lib/pathlib.py's and lib/shutil.py's file system calls: runtime.c's pys_stat_mode,
+        # pys_touch, pys_copyfile, pys_copymode and pys_rmtree)
+        mods = FSPRIMS[name].split()
+        n = 3 if name == "__pys_touch" else 2
+        if (self.curfn.mod not in mods or not lib_source(self.curfn.node.line, self.libdir, self.curfn.mod + ".py") or
+                len(args) != n or any([a.kind in ["kw", "starred", "dstar"] for a in args])):
+            self.err(f"name '{name}' is not defined")
+        path = self.coerce(self.expr(args[0], "str"), "str")
+        if name == "__pys_stat_mode":
+            follow = self.as_int(self.expr(args[1], "bool"))
+            return Val(self.rt("pys_stat_mode", "i64", [f"ptr {path.v}", f"i64 {follow.v}"]), "int")
+        if name == "__pys_touch":
+            mode = self.as_int(self.expr(args[1], "int"))
+            ok = self.as_int(self.expr(args[2], "bool"))
+            self.rt("pys_touch", "void", [f"ptr {path.v}", f"i64 {mode.v}", f"i64 {ok.v}"])
+            return Val("null", "None")
+        if name == "__pys_rmtree":
+            ignore = self.as_int(self.expr(args[1], "bool"))
+            self.rt("pys_rmtree", "void", [f"ptr {path.v}", f"i64 {ignore.v}"])
+            return Val("null", "None")
+        dst = self.coerce(self.expr(args[1], "str"), "str")
+        self.rt("pys_copyfile" if name == "__pys_copyfile" else "pys_copymode", "void", [f"ptr {path.v}", f"ptr {dst.v}"])
+        return Val("null", "None")
     if name == "__pys_exc_repr":
         return self.exc_brepr(self.expr(args[0], ""))  # (exc_helpers)
     if name == "__pys_repr_enter" or name == "__pys_repr_leave":
@@ -197,6 +236,41 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         self.err(f"name '{name}' is not defined")
     if name.startswith("__pys_range_"):
         return self.range_prim(name, args)
+    if name.startswith("__pys_bfile_"):
+        # lib/_pystachy_bfile.py's binary files, in that module only: a file of a binary mode
+        # (runtime.c's pys_bopen), its reads and writes of bytes, and io.UnsupportedOperation
+        if self.curfn.mod != "_pystachy_bfile" or not lib_source(self.curfn.node.line, self.libdir, "_pystachy_bfile.py"):
+            self.err(f"name '{name}' is not defined")
+        bsigs: dict[str, str] = {
+            "__pys_bfile_open": "pys_bopen:file:str,str,opt[str],opt[str],opt[str],int",
+            "__pys_bfile_read": "pys_bfile_read:bytes:file,int", "__pys_bfile_readline": "pys_bfile_readline:bytes:file,int",
+            "__pys_bfile_write": "pys_bfile_write:int:file,bytes", "__pys_bfile_seek": "pys_bfile_seek:int:file,int,int",
+            "__pys_bfile_tell": "pys_bfile_tell:int:file", "__pys_bfile_truncate": "pys_bfile_truncate:int:file,int",
+            "__pys_bfile_isatty": "pys_bfile_isatty:bool:file", "__pys_bfile_seekable": "pys_bfile_seekable:bool:file",
+            "__pys_bfile_unsupported": "pys_io_unsupported:None:str",
+        }
+        if name not in bsigs or any([a.kind in ["kw", "starred", "dstar"] for a in args]):
+            self.err(f"name '{name}' is not defined")
+        bsig = bsigs[name].split(":")
+        bts = bsig[2].split(",")
+        if len(args) != len(bts):
+            self.err(f"invalid arguments to private binary file primitive {name}")
+        bvs: list[str] = []
+        for j in range(len(args)):
+            v = self.expr(args[j], bts[j])
+            if bts[j] == "int":
+                v = self.as_int(v)
+            elif bts[j] == "opt[str]" and (v.t == "None" or v.t == "str"):
+                v = Val(v.v, "opt[str]")
+            if v.t != bts[j]:
+                self.err(f"invalid argument to private binary file primitive {name}: expected {typestr(bts[j])}, got {typestr(v.t)}")
+            bvs.append(("i64 " if bts[j] == "int" else "ptr ") + v.v)
+        if bsig[1] == "None":
+            self.rt(bsig[0], "void", bvs)
+            return Val("null", "None")
+        if bsig[1] == "bool":
+            return self.num_cmp('!=', Val(self.rt(bsig[0], "i64", bvs), "int"), Val('0', "int"))
+        return Val(self.rt(bsig[0], rtt(bsig[1]), bvs), bsig[1])
     if name.startswith("__pys_mpz_"):
         # Only the shipped wrapper can create or consume these opaque pointers.
         # Using int for the handle would hide references from numeric containers.
@@ -255,6 +329,16 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         if not o.t.startswith("weakhandle["):
             self.err("_weakref.ref() prototype requires an internal weak handle")
         return Val(self.rt("pys_weakref_get", "ptr", [f"ptr {o.v}"]), o.t[11:-1])
+    if name.startswith("__pys_copy_") or name.startswith("__pys_deepcopy_"):
+        return self.copy_prim(name, args)  # (lib/copy.py's and lib/_pystachy_copy.py's: reflection.py)
+    if name == "__pys_enum_is":
+        return self.enum_is(args)  # (lib/enum.py's: reflection.py)
+    if name == "__pys_enum_own":
+        return self.enum_own_call(args)  # (lib/enum.py's: reflection.py)
+    if name == "__pys_enum_missing":
+        return self.enum_missing(args)  # (lib/enum.py's: reflection.py)
+    if name == "__pys_enum_new":
+        return self.enum_new(args)  # (lib/enum.py's: reflection.py)
     if name == "__pys_asdict" or name == "__pys_astuple" or name == "dataclasses.asdict" or name == "dataclasses.astuple" or name == "dataclasses.is_dataclass":
         return self.refl_dataclasses(name, args)  # (reflection.py)
     if name == "dataclasses.fields":

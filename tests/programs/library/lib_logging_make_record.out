@@ -1,0 +1,4 @@
+'message\nsaved traceback\nsaved stack'
+'5 T5 7 P7 task extra value message\nsaved traceback\nsaved stack'
+saved traceback saved stack None 5 7
+[exit 0]

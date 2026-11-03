@@ -233,7 +233,8 @@ class _local:
 
 
 class _ThreadHandle:
-    def __init__(self, ident: int) -> None:
+    # (threading's Thread makes one with no ident, 0 until it starts, as CPython's)
+    def __init__(self, ident: int = 0) -> None:
         self._ident = ident
         self._done = False
 

@@ -1,0 +1,9 @@
+False
+b'line1\n'
+b'line2\n'
+False
+b'line1\nline2\n'
+4
+b'one\n'
+b'one\n'
+[exit 0]

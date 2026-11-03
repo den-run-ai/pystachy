@@ -81,7 +81,7 @@ separate descriptors for both operands. Shared container identity is recognized;
 distinct cyclic structures eventually raise `RecursionError`. `repr()` uses
 cycle markers. Runtime representation and comparison follow at most 512
 recursive alias edges before raising `RecursionError`; the edges are counted
-independently of the JSON codec's 256-container budget, and other reprs (a
+independently of the JSON codec's bound on nesting, and other reprs (a
 class's own `__repr__`, say) remain limited by the recursion limit and the native stack's floor. Ordering
 requires narrowing, and so does `==` on a union that holds a
 recursive alias beside members holding objects or sets. These are bounded
@@ -136,8 +136,16 @@ Deliberate limits:
 - Typed `JSONValue` integer tokens must fit signed 64-bit storage; a larger integer
   raises `OverflowError`. Dynamic `Any` decoding promotes larger integers as described
   below. Floating-point tokens use native double precision.
-- Decoding and encoding permit at most 256 nested containers and raise
-  `RecursionError` beyond that budget. Circular serialization raises
+- Nesting is native recursion, which `sys.setrecursionlimit()` bounds (#1021): each decoded
+  container is two counted calls, each encoded one a single call (two for a dict of `Any`
+  values). At the default limit of 1,000, about 500 containers decode and 1,000 encode
+  (500 such dicts); deeper nesting raises `RecursionError: maximum recursion depth exceeded`.
+  Under a raised limit, a fixed bound of 2,000 containers keeps the codec within an 8 MiB
+  native stack in every measured configuration, and raises CPython's messages:
+  `RecursionError: maximum recursion depth exceeded while decoding a JSON array from a
+  unicode string` (or `object`), or `while encoding a JSON object`. CPython's C codec
+  accepts 9,998 containers on Linux at any recursion limit
+  ([deviation](../tests/deviations/json_limits.py)). Circular serialization raises
   `ValueError: Circular reference detected`.
 - Input is `str`; bytes/bytearray input, `load()`/`dump()`, configured `JSONDecoder` constructors,
   `JSONEncoder`, hooks, custom conversion functions, `default`, `skipkeys`,
