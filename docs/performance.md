@@ -12,34 +12,44 @@ Run `make bench` to compare CPython, JIT and AOT on your build. Each invocation 
 mode once; repeat it to obtain a median. The benchmark gate in `make verify` checks output
 agreement, without imposing timing thresholds.
 
-The following measurements were recorded in October 2026 on a 4-core x86-64 Linux VM with
-CPython 3.13.16 and LLVM 18, using the median of three warm runs. The source revision was not
-recorded, so these figures are examples of workload differences, not results for the latest build.
-JIT times include compilation and process startup; AOT times exclude compilation.
-The runtime compilation cache is primed first, and outputs are checked against CPython.
+The table gives v0.1.0-alpha.4's whole-process times on 3 November 2026: medians of five runs
+per mode, in rotating order, with every process pinned to one CPU of a shared 4-vCPU Intel Xeon
+@ 2.10 GHz VM, CPython 3.13.18 and LLVM 18.1.3. As in `make bench`, JIT times include
+compilation and process startup, AOT times exclude the build, and every output matched CPython's.
+The runtime compilation cache was primed first.
 
 | Workload | CPython | JIT | AOT | AOT speedup |
 |---|---:|---:|---:|---:|
-| `fib.py`: recursive calls | 0.80 s | 0.08 s | 0.04 s | 23× |
-| `mandel.py`: float loops | 1.26 s | 0.09 s | 0.04 s | 34× |
-| `nbody.py`: floats and objects | 1.82 s | 0.10 s | 0.03 s | 59× |
-| `spectral.py`: nested numeric loops | 1.07 s | 0.09 s | 0.02 s | 67× |
-| `sieve.py`: 4M-element list | 0.76 s | 0.21 s | 0.15 s | 5× |
-| `words.py`: strings and dicts | 0.17 s | 0.10 s | 0.05 s | 3× |
-| `dictlookup.py`: integer and string keys | 0.90 s | 0.47 s | 0.39 s | 2× |
-| `dictkeys.py`: adversarial keys | 0.50 s | 0.25 s | 0.16 s | 3× |
-| `setdisplay.py`: constant set displays | 0.40 s | 0.20 s | 0.12 s | 3× |
-| `itertools_loops.py`: `product`, `combinations`, `groupby`, `chain` | 0.65 s | 0.43 s | 0.17 s | 4× |
+| `spectral.py`: nested numeric loops | 1.511 s | 0.116 s | 0.020 s | 76× |
+| `nbody.py`: floats and objects | 2.129 s | 0.120 s | 0.038 s | 56× |
+| `listindex.py`: checked `list[int]` reads | 0.343 s | 0.066 s | 0.009 s | 37× |
+| `mandel.py`: float loops | 1.538 s | 0.106 s | 0.054 s | 29× |
+| `fib.py`: recursive calls | 1.067 s | 0.105 s | 0.054 s | 20× |
+| `sieve.py`: 4M-element list | 0.861 s | 0.234 s | 0.149 s | 5.8× |
+| `dictcount.py`: counting with repeated key lookups | 1.062 s | 0.238 s | 0.197 s | 5.4× |
+| `memo.py`: memoized recursion with `functools.cache` | 0.503 s | 0.202 s | 0.100 s | 5.0× |
+| `itertools_loops.py`: `product`, `combinations`, `groupby`, `chain` | 0.625 s | 0.396 s | 0.165 s | 3.8× |
+| `dictkeys.py`: adversarial keys | 0.624 s | 0.269 s | 0.175 s | 3.6× |
+| `setdisplay.py`: constant set displays | 0.516 s | 0.236 s | 0.166 s | 3.1× |
+| `dictlookup.py`: integer and string keys | 1.099 s | 0.513 s | 0.457 s | 2.4× |
+| `words.py`: strings and dicts | 0.234 s | 0.152 s | 0.099 s | 2.4× |
 
-The `itertools_loops.py` row uses five runs per mode on a shared 4-core VM on 2026-10-16,
-with `lib/_pystachy_itertools.py`'s generators. Speedups use unrounded timings.
+- **Speedups** divide the unrounded medians. A mode's slowest run took up to 1.6 times its
+  fastest, so the smaller ratios are approximate.
+- **Short programs favor AOT over the JIT**, which compiles on every run.
+- **`json_records.py`**, the other program `make bench` runs, is left out: its default run takes
+  26 ms under CPython, too short to time this way. See the [JSON benchmarks](json-benchmark.md).
+- **Data.** The [raw samples](../bench/results/bench-run-alpha4-2026-11-03.json) give every run's
+  time, CPU time and peak RSS, and the executables' hashes. The October 2026 table these replace,
+  whose revision was not recorded, is on
+  [this page as of alpha.4](https://github.com/den-run-ai/pystachy/blob/9c8bc74648aa7c7e6a1b9d8f9dbbfeb1f2908ad3/docs/performance.md#benchmarks).
 
 The [pyperformance results](pyperformance.md) compare alpha.3 and alpha.4 AOT instruction
 counts on the benchmarks adapted from pyperformance 1.14.0. These are comparisons on adapted
 sources, not official pyperformance scores. The [port notes](../bench/pyperformance/README.md)
 describe adaptations, unsupported benchmarks and how to time CPython, JIT and AOT.
 
-For numerical workloads, the [nanoGPT measurements](../examples/nanogpt/README.md#paired-measurement-after-the-array-and-blas-work)
+For numerical workloads, the [nanoGPT measurements](../examples/nanogpt/README.md#recorded-inference-performance)
 compare inference with CPython, NumPy and PyTorch. The
 [ndarray benchmark](../examples/ndarray/README.md#recorded-benchmark) compares elementwise
 operations, reductions and matrix products with NumPy. Both document inputs, threading,
@@ -190,11 +200,15 @@ generation. It can reduce large-program startup while slowing execution; benchma
 the complete workload. Unset or `2` retains the default ORC path. See [#430](https://github.com/den-run-ai/pystachy/issues/430)
 for the measured tradeoff; it is independent of `PYSTACHY_JIT_INLINE`.
 
-For `list(range(4194305))`, [#201](https://github.com/den-run-ai/pystachy/pull/201) recorded
-**169 MiB CPython versus 34.2 MiB AOT peak RSS**, approximately a 5× reduction. This used
-CPython 3.13, LLVM 18.1.3 and a shared 4-core VM; candidate `2ccb2a6` was tested against
-main `fa60123`. RSS was collected with `wait4`, with `PYSTACHY_GC=stats` for the AOT run.
-Managed-heap statistics measure a different quantity from process RSS.
+A program that builds `list(range(4194305))` peaks at **34.1 MiB RSS in v0.1.0-alpha.4's AOT
+executable, against 171.1 MiB in CPython 3.13.18**, a 5.0× reduction. The JIT's processes,
+which include LLVM's, peak at 88.5 MiB. These are medians of five runs per mode,
+from `wait4`, on the VM of the [benchmark table](#benchmarks)
+([raw data](../bench/results/range-list-rss-alpha4-2026-11-03.json)). With `PYSTACHY_GC=stats`,
+the AOT run reports two collections and a 33.0 MiB managed-heap peak; managed-heap statistics
+measure a different quantity from process RSS.
+[#201](https://github.com/den-run-ai/pystachy/pull/201) made `list(range())` allocate its list at
+its final length.
 
 Memory savings depend on object representation and lifetime. The router's streaming workload
 instead recorded higher AOT peak RSS because collection is deferred. Cached string hashes
