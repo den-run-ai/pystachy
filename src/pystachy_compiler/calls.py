@@ -130,6 +130,7 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
                 scan_args.append(("ptr " if j == 0 else "i64 ") + v.v)
             return Val(self.rt("pys_bytes_scan", "i64", scan_args), "int")
         if f.s in self.funcs:
+            self.copy_private(f.s)
             return self.call_fn(self.funcs[f.s], [], args, want, resultsoft=resultsoft)
         if f.s in self.aliases and f.s not in self.gtypes:
             return self.builtin(self.aliases[f.s], args, want, resultsoft)

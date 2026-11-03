@@ -312,6 +312,7 @@ from src.pystachy_compiler.reflection import (
     gen_copy_clone as reflection_copy_clone,
     gen_copy_fields as reflection_copy_fields,
     gen_copy_own as reflection_copy_own,
+    gen_copy_private as reflection_copy_private,
     gen_enum_alias as reflection_enum_alias,
     gen_enum_is as reflection_enum_is,
     gen_enum_is_static as reflection_enum_is_static,
@@ -2427,6 +2428,9 @@ class Gen:
 
     def copy_own(self, t: str, deep: bool) -> int:
         return reflection_copy_own(self, t, deep)
+
+    def copy_private(self, name: str) -> None:
+        return reflection_copy_private(self, name)
 
     def enum_view(self, c: str, line: int) -> Node:
         return reflection_enum_view(self, c, line)

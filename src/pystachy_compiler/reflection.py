@@ -2579,10 +2579,14 @@ def gen_copy_prim(self, name: str, args: list[Node]) -> Val:
     #     none changed, as CPython's _deepcopy_tuple gives it
     #   __pys_copy_addr(x), __pys_copy_ref(x), __pys_copy_unref(ref, like): the memo's key (an
     #     original's address), its reference as the memo keeps it (in a list the collector scans),
-    #     and that reference read back as like's type (lib/_pystachy_copy.py)
+    #     and that reference read back as like's type (lib/_pystachy_copy.py); __pys_copy_ref(y, x)
+    #     is y's, which must fit x's static type, as a copy that the memo holds for x does: x's
+    #     type, or for an object a class derived from x's (the memo's insertion check)
     memo_prims = ["__pys_copy_addr", "__pys_copy_ref", "__pys_copy_unref"]
     mod = "_pystachy_copy" if name in memo_prims else "copy"
     n = 2 if name in ["__pys_deepcopy_object", "__pys_deepcopy_tuple", "__pys_copy_unref"] else 1
+    if name == "__pys_copy_ref" and len(args) == 2:
+        n = 2
     if self.curfn.mod != mod or not lib_source(self.curfn.node.line, self.libdir, mod + ".py") or len(args) != n or any([a.kind in ["kw", "starred", "dstar"] for a in args]):
         self.err(f"name '{name}' is not defined")
     x = self.expr(args[0], "")
@@ -2593,6 +2597,10 @@ def gen_copy_prim(self, name: str, args: list[Node]) -> Val:
         if name == "__pys_copy_addr":
             return Val(self.scalar_cast('ptrtoint', Val(x.v, '%ptr'), 'int'), "int")
         if name == "__pys_copy_ref":
+            if n == 2:
+                o = unopt(self.expr(args[1], "").t)
+                if t != o and not (t in self.classes and o in self.classes and self.derives(t, o)):
+                    self.err(f"internal error: the memo's copy of a {typestr(o)} would be a {typestr(t)}")
             return Val(x.v, "str")
         like = self.expr(args[1], "")
         return Val(x.v, unopt(like.t))
@@ -2694,13 +2702,16 @@ def gen_copy_prim(self, name: str, args: list[Node]) -> Val:
         if name == "__pys_copy_object" and "__copy__" in ci.methods:
             r = self.protocol(ov, "__copy__", [])
         elif name == "__pys_deepcopy_object" and "__deepcopy__" in ci.methods:
-            r = self.protocol(ov, "__deepcopy__", [memo])
-            # (the memo holds the copy where it is not x itself, as CPython's deepcopy() holds it)
+            r = self.coerce(self.protocol(ov, "__deepcopy__", [memo]), t)
+            # (the memo holds the copy where it is not x itself, as CPython's deepcopy() holds it,
+            # as one of x's static type here: __deepcopy__() may return an object of x's class's
+            # base, which another view of x, of a class derived from that base, compiles as an
+            # error)
             put = self.label()
             done = self.label()
             self.cbr(self.ptr_cmp("!=", r, ov).v, put, done)
             self.place(put)
-            self.call_fn(self.funcs["_pystachy_copy$_memo_put"], [], [self.vnode(memo), self.vnode(ov), self.vnode(r)])
+            self.call_fn(self.funcs["_pystachy_copy$_memo_put"], [], [self.vnode(memo), self.vnode(Val(x.v, t)), self.vnode(r)])
             self.br(done)
             self.place(done)
         else:
@@ -2713,6 +2724,21 @@ def gen_copy_prim(self, name: str, args: list[Node]) -> Val:
         blocks2.append(self.cur)
         self.br(end2)
     return self.refl_phi(vals, blocks2, end2, what)
+
+
+def gen_copy_private(self, name: str) -> None:
+    # lib/_pystachy_copy.py's _memo_get() and _memo_put() read a memo's references back as the
+    # type of the original at hand, which is sound only as lib/copy.py uses them (see that
+    # module): another module's code may not call them or take them as values, by any name
+    # (from _pystachy_copy import _memo_put, copy._memo_put); the compiler's own copies call them
+    # directly (copy_prim)
+    if name != "_pystachy_copy$_memo_get" and name != "_pystachy_copy$_memo_put":
+        return
+    if self.libdir == "" or not lib_source(self.funcs[name].node.line, self.libdir, "_pystachy_copy.py"):
+        return  # (a program's own module of that name)
+    if (self.curfn.mod == "copy" or self.curfn.mod == "_pystachy_copy") and lib_source(self.curfn.node.line, self.libdir, self.curfn.mod + ".py"):
+        return
+    self.err(f"{short(name)}() is lib/copy.py's own: it reads a deep copy's memo back as the original's type, which only copy.deepcopy() keeps sound (CPython has no such function)")
 
 
 def gen_copy_own(self, t: str, deep: bool) -> int:

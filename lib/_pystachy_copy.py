@@ -7,6 +7,14 @@ address to the place of its copy in _keep, which holds the originals and the cop
 that the collector scans, whatever their types. Only _memo_get() and _memo_put() read and write
 them, through the compiler's private primitives of this module, each copy as the type of its
 original: the copy of an object has its original's class, of a container its original's type.
+
+That reading back is sound only as lib/copy.py and the compiler's copies use these functions, so
+the compiler makes any other call of them, or use as a value, an error (reflection.py's
+copy_private). _memo_put() checks, as the program compiles, that each copy fits its original's
+static type there (__pys_copy_ref(y, x)). A copy read back for another view of the same original
+fits that view too: a typed container has one static type (a list[int] never becomes a list[Any]
+or an Any value), and the copy of an object is either a new object of its exact class or what its
+class's __deepcopy__() returns, whose type the compiler checks against each view's type.
 Programs do not import this module; a program's __deepcopy__() gets the memo to pass on.
 """
 
@@ -31,4 +39,4 @@ def _memo_put(memo: _Memo, x, y) -> None:
     # remember y as the copy of x, and keep both alive
     memo._keep.append(__pys_copy_ref(x))
     memo._index[__pys_copy_addr(x)] = len(memo._keep)
-    memo._keep.append(__pys_copy_ref(y))
+    memo._keep.append(__pys_copy_ref(y, x))

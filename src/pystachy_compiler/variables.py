@@ -158,6 +158,7 @@ def gen_load_name(self, name: str) -> Val:
     if name in self.aliases:
         return self.modattr(self.aliases[name])
     if name in self.funcs:
+        self.copy_private(name)
         return self.fn_value(name)
     if name in self.classes and self.classes[name].exc != "":
         return self.exc_class_value(name)  # (an exception class: its class object)
