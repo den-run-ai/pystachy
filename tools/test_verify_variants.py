@@ -65,13 +65,15 @@ echo '1 passed, 0 failed'
             self.assertEqual({(row[left], row[right]) for row in rows},
                              {(False, False), (False, True), (True, False), (True, True)}, (left, right))
 
-    def test_pass_list_changes_trigger_variants_on_push_and_pull_request(self):
+    def test_exhaustive_variants_stay_off_pull_requests(self):
         workflow = (ROOT / ".github/workflows/variants.yml").read_text()
-        for event in ("push", "pull_request"):
-            with self.subTest(event=event):
-                block = re.search(rf"^  {event}:\n((?: {{4,}}.*\n|\n)+)", workflow, re.M)
-                self.assertIsNotNone(block)
-                self.assertIn("      - src/pystachy_compiler/specs.py\n", block.group(1))
+        block = re.search(r"^  push:\n((?: {4,}.*\n|\n)+)", workflow, re.M)
+        self.assertIsNotNone(block)
+        self.assertIn("      - src/pystachy_compiler/specs.py\n", block.group(1))
+        self.assertNotIn("  pull_request:", workflow)
+        # PRs exercise all configurations on a sample in two workers in CI.
+        ci = (ROOT / ".github/workflows/ci.yml").read_text()
+        self.assertIn("tools/pr_variants.py", ci)
 
 
 if __name__ == "__main__":

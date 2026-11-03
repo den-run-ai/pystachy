@@ -198,10 +198,11 @@ def one(case, root, overlay, temp, compiler, modes, timeout, allowed, gc_stress=
     return result
 
 
-def validate_report(report, root=ROOT):
-    """Independently validate a complete normal-GC JIT+AOT corpus shard.
+def validate_report(report, root=ROOT, *, expected_cases=None):
+    """Independently validate a normal-GC JIT+AOT shard or an explicit exact PR sample.
 
-    Development subsets, alternate Python versions and GC-focused runs cannot stand in
+    Development subsets are rejected unless the caller supplies an independently selected
+    expected_cases list. Alternate Python versions and GC-focused runs cannot stand in
     for this gate. The outer verification harness binds compiler_sha256 to its verified
     bootstrap binary; it must also check all shard indexes, not just each shard alone.
     """
@@ -216,8 +217,17 @@ def validate_report(report, root=ROOT):
     if index >= count:
         raise ValueError("python-int shard_index out of range")
     selected = corpus[index::count]
-    if not selected or report.get("cases") != selected or report.get("subset") is not False:
-        raise ValueError("python-int report does not cover exactly its full corpus shard")
+    if expected_cases is not None:
+        if (not isinstance(expected_cases, list) or not expected_cases or
+                not all(isinstance(case, str) for case in expected_cases) or
+                len(set(expected_cases)) != len(expected_cases)):
+            raise ValueError("invalid expected python-int sample")
+        selected = [case for case in selected if case in set(expected_cases)]
+        if selected != expected_cases:
+            raise ValueError("expected python-int sample must belong to its shard in corpus order")
+    if (not selected or report.get("cases") != selected or
+            report.get("subset") is not (expected_cases is not None)):
+        raise ValueError("python-int report does not cover exactly its expected corpus selection")
     if report.get("modes") != list(MODES) or report.get("gc_stress") is not False:
         raise ValueError("python-int report must execute normal-GC JIT and AOT")
     native = report.get("native_suite")

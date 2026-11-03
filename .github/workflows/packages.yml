@@ -3,10 +3,6 @@ name: Packages
 on:
   push:
     branches: [main]
-  pull_request:
-    paths-ignore:   # documentation-only pull requests
-      - '**.md'
-      - 'docs/**'
   workflow_dispatch:
 
 # One group per main commit, as in CI, Installation and Lint: the release gate requires each

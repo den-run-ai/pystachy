@@ -15,20 +15,25 @@ STAGE = (ROOT / "tests/verify.sh").read_text().split("# ---- dynany-optin:", 1)[
 
 
 class DynanyOptinStageTests(unittest.TestCase):
-    def run_stage(self, evidence, status=0, ci=True):
+    def run_stage(self, evidence, status=0, ci=True, profile="full", selected=()):
         # CI's groups (VERIFY_BOOTSTRAP_DIR) defer to tests-native; a local single group does not.
         mode = ({"VERIFY_BOOTSTRAP_DIR": "bundle", "GROUP": "dynany-optin-0", "MOCK_NATIVE": "--native-suite ",
                  "MOCK_ARGS": "17"} if ci else
                 {"VERIFY_BOOTSTRAP_DIR": "", "GROUP": "dynany-optin-0", "MOCK_NATIVE": "", "MOCK_ARGS": "16"})
+        mode.update(PROFILE=profile, OPTIN_SHARDS="1" if profile == "pr" else "3", MOCK_CASES="")
+        if profile == "pr":
+            mode.update(GROUP="opt-in", MOCK_CASES=" --cases " + " ".join(selected),
+                        MOCK_ARGS=str(int(mode["MOCK_ARGS"]) + 1 + len(selected)))
         with tempfile.TemporaryDirectory() as temp:
             directory = Path(temp)
             source = directory / "evidence.json"
             source.write_text(json.dumps(evidence))
+            (directory / "pr-programs.log").write_text("".join(case + "\n" for case in selected))
             wrapper = directory / "python-wrapper"
             wrapper.write_text('''#!/bin/sh
 if [ "$1" = tools/dynany_optin.py ]; then
   [ "$*" = "tools/dynany_optin.py --compiler $V/pystachy2 --modes jit aot $MOCK_NATIVE--jobs 2 \
---shard-index 0 --shard-count 3 --report $V/dynany-optin-0.json --keep $V/dynany-optin-0" ] &&
+--shard-index 0 --shard-count $OPTIN_SHARDS --report $V/dynany-optin-0.json --keep $V/dynany-optin-0$MOCK_CASES" ] &&
     [ "$#" = "$MOCK_ARGS" ] || exit 99
   cp "$MOCK_EVIDENCE" "$V/dynany-optin-0.json"
   exit "$MOCK_STATUS"
@@ -57,6 +62,19 @@ step() { printf '{"name":"%s", "result":"%s"%s}\n' "$1" "$2" "$5"; }
         local = {**copy.deepcopy(evidence), "native_suite": False}
         self.assertEqual(self.run_stage(local, ci=False)["result"], "pass")
         self.assertEqual(self.run_stage(local)["result"], "fail")
+
+    def test_pr_stage_passes_the_exact_cases_to_one_worker_and_keeps_full_evidence_distinct(self):
+        evidence = copy.deepcopy(optin_report(0))
+        selected = evidence["cases"][:2]
+        rows = evidence["results"][:4]
+        evidence.update(shard_count=1, subset=True, cases=selected, oracle_cases=2, expected_checks=4,
+                        completed_checks=4, passed_checks=sum(row["result"] == "pass" for row in rows),
+                        expected_failures=sum(row["result"] == "expected-failure" for row in rows), results=rows)
+        self.assertEqual(self.run_stage(evidence, profile="pr", selected=selected)["result"], "pass")
+        self.assertEqual(self.run_stage(evidence)["result"], "fail")
+        self.assertEqual(self.run_stage(evidence, profile="pr", selected=selected[:1])["result"], "fail")
+        evidence["subset"] = False
+        self.assertEqual(self.run_stage(evidence, profile="pr", selected=selected)["result"], "fail")
 
     def test_partial_wrong_mode_or_failed_runs_fail(self):
         valid = optin_report(0)

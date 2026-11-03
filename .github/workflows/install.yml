@@ -5,10 +5,6 @@ name: Installation
 on:
   push:
     branches: [main]
-  pull_request:
-    paths-ignore:   # documentation-only pull requests
-      - '**.md'
-      - 'docs/**'
   workflow_dispatch:
 
 concurrency:

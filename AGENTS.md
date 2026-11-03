@@ -113,10 +113,10 @@ Start focused, then broaden for the risk and required gates. `make test` is not 
 `tests/verify.sh` and `tools/merge_verification.py` define coverage: prove expected counts,
 source/toolchain identity and every stage, not just zero failures. Report both a timed-out
 stage and its later isolated pass; never relabel a partial matrix complete or disable gates.
-Jobs target under ten minutes within Lint-checked 15-minute limits
-(`tools/test_workflow_limits.py`); shard slow groups instead of raising limits
-([#562](https://github.com/den-run-ai/pystachy/pull/562),
-[#731](https://github.com/den-run-ai/pystachy/pull/731)). `gc-self` is one stressed
+PR CI: at most 20 jobs, two workers/group, 15 minutes/job (`tools/test_workflow_limits.py`).
+Keep native JIT/AOT and hosted IR coverage complete; sample alternate configurations with
+`VERIFY_PROFILE=pr`. Main/manual runs stay exhaustive. Compact slow PR groups instead of
+expanding matrices. `gc-self` is one stressed
 self-compilation with a ten-minute bound: fix compiler cost, not its timeout
 ([#581](https://github.com/den-run-ai/pystachy/pull/581)).
 
@@ -189,8 +189,8 @@ self-compilation with a ten-minute bound: fix compiler cost, not its timeout
   not prove a payload read is guarded by the matching tag; inspect control-flow proof
   and invalidation after mutations/calls when changing narrowing
   ([#768](https://github.com/den-run-ai/pystachy/issues/768)).
-- Every test also runs with a collection at every allocation, under UBSan, without
-  Python and unoptimized. Keep tests small and deterministic: no quadratic depth,
+- Full verification tests GC stress, UBSan, Python-free and unoptimized modes exhaustively;
+  PRs sample them. Keep tests small and deterministic: no quadratic depth,
   busy-wait timers, core-dump-dependent signal text or CPython's "Did you mean" hints.
   SIGINT cases must match `tests/run.sh`'s `kill -INT|KeyboardInterrupt` grep. Make
   comparison helpers fail closed: a tolerance check must reject NaN against a finite value,
