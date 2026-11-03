@@ -168,7 +168,7 @@ def cm_methods(n: Node, names: list[str]) -> None:
 
 # lib/enum.py's names a module may import, and the classes of them an enum class derives from
 ENUM_NAMES = ["Enum", "IntEnum", "StrEnum", "ReprEnum", "EnumType", "EnumMeta", "auto", "unique", "Flag", "IntFlag"]
-ENUM_BASES = ["Enum", "IntEnum", "StrEnum"]
+ENUM_BASES = ["Enum", "IntEnum", "StrEnum", "Flag", "IntFlag"]
 # the methods that make or look up enum members, which the compiler makes
 ENUM_HOOKS = ["__new__", "__init__", "_generate_next_value_", "__init_subclass__", "__set_name__", "_numeric_repr_"]
 
@@ -359,8 +359,8 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
         for b in st.kids[1:] if st.kind == "subclass" and mixin == "" else []:
             d = dotted(b)
             k = names.get(d, "")
-            if k == "Flag" or k == "IntFlag" or k == "ReprEnum":
-                fail(f"enum.{k} is not supported: Pystachy's enum classes derive from Enum, IntEnum or StrEnum", st.line)
+            if k == "ReprEnum":
+                fail(f"enum.{k} is not supported: Pystachy's enum classes derive from Enum, IntEnum, StrEnum, Flag or IntFlag", st.line)
             if k in ENUM_BASES or d in kinds:
                 kind = k if k in ENUM_BASES else kinds[d]
                 base = d
@@ -374,7 +374,7 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
         if base in full:
             fail(f"<enum {st.s!r}> cannot extend <enum {base!r}>", st.line)
         if len(st.kids) != 2:
-            fail(f"enum class {st.s} is not supported: an enum class derives from one class, Enum, IntEnum, StrEnum or an enum class of its module without members (no mixin type or keyword)", st.line)
+            fail(f"enum class {st.s} is not supported: an enum class derives from one class, Enum, IntEnum, StrEnum, Flag, IntFlag or an enum class of its module without members, or from str or int and Enum (no other mixin type, and no keyword such as boundary=)", st.line)
         c = st.kids[0]
         uniq = False
         for dn in c.kids[1:]:
@@ -400,6 +400,8 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
             if s.kind == "def":
                 if s.s in ENUM_HOOKS or s.s in canon:
                     fail(f"enum class {st.s}'s {s.s}() is not supported{' (a member of that name precedes it)' if s.s in canon else ': the compiler makes and looks up its members'}", s.line)
+                if s.s == "_missing_" and (kind == "Flag" or kind == "IntFlag"):
+                    fail(f"flag class {st.s}'s _missing_() is not supported: Flag's own makes its pseudo-members", s.line)
                 if s.s == "_missing_" and (len(s.kids) != 4 or s.kids[3].s != "classmethod" or len(s.kids[3].kids) != 0):
                     fail(f"enum class {st.s}'s _missing_() is supported as a class method (@classmethod), as EnumType calls it", s.line)
                 defs[s.s] = True
@@ -419,7 +421,15 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
                         fail("auto() with an argument is not supported", v.line)
                     if kind == "StrEnum" and mixin == "str":
                         fail("auto() in an enum class of str and Enum is not supported (CPython's is the str of Enum's next int)", v.line)
-                    if kind == "StrEnum":
+                    if (kind == "Flag" or kind == "IntFlag") and len(last) > 0:
+                        # (Flag's _generate_next_value_: the power of two past the greatest value)
+                        hb = 0
+                        while hb < 63 and (1 << hb) <= max(last):
+                            hb += 1
+                        if hb >= 63:
+                            fail("auto() past the 64-bit int range is not supported", v.line)
+                        v = mk("int", str(1 << hb), v.line, [])
+                    elif kind == "StrEnum":
                         v = mk("str", nm.lower(), v.line, [])
                     elif vtype != "" and vtype != "int":
                         fail(f"auto() after a member whose value is a {vtype} is not supported", v.line)
@@ -432,6 +442,8 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
                     v = enum_node(lit, v.line)  # (the value the class body computes)
                 if (kind == "IntEnum" and lit[0] != "int") or (kind == "StrEnum" and lit[0] != "str"):
                     fail(f"{kind} member {st.s}.{nm} must have an {'int' if kind == 'IntEnum' else 'str'} value", s.line)
+                if (kind == "Flag" or kind == "IntFlag") and (lit[0] != "int" or int(lit[1]) < 0):
+                    fail(f"{kind} member {st.s}.{nm} is not supported: Pystachy's flag members have int values of 0 or more", s.line)
                 if vtype != "" and lit[0] != vtype:
                     fail(f"enum class {st.s}'s members have values of two types, {vtype} and {lit[0]}: Pystachy's enum members' values have one type", s.line)
                 vtype = lit[0]
@@ -456,6 +468,22 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
         aliases = [m for m in mnames if canon[m] != m]
         if uniq and len(aliases) > 0:
             fail(f"duplicate values found in <enum {st.s!r}>: " + ", ".join([f"{m} -> {canon[m]}" for m in aliases]), st.line)
+        flag = kind == "Flag" or kind == "IntFlag"
+        fmask = 0
+        smask = 0
+        for m in mnames:
+            if flag and canon[m] == m:
+                x = int(texts[m])
+                fmask = fmask | x
+                if x != 0 and x & (x - 1) == 0:
+                    smask = smask | x
+        if flag and fmask != smask:
+            # (a multi-bit member's bit that no single-bit member has: CPython iterates such a
+            # value with None for that bit)
+            fail(f"flag class {st.s} is not supported: a member's bit {fmask & ~smask & -(fmask & ~smask)} is no single-bit member's", st.line)
+        if flag and len(mnames) > 0:
+            made = Parser(Lexer(f"def _flag_type_(self):\n    return _pys_enum_{st.s}\n", st.line).file()).module().kids
+            out = out + made
         if len(mnames) > 0 and kind == "Enum":
             src = f'_value_: {vtype}\n\n@property\ndef value(self) -> {vtype}:\n    """The value of the Enum member."""\n    return self._value_\n\ndef _value_repr_(self) -> str:\n    return repr(self._value_)\n'
             made = Parser(Lexer(src, st.line).file()).module().kids
@@ -464,7 +492,7 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
         ENUMCLASSES[st.line] = kind
         kinds[st.s] = kind
         if len(mnames) > 0 and not imported:
-            top.append(Parser(Lexer("from enum import EnumType as _pys_EnumType\n", st.line).file()).module().kids[0])
+            top.append(Parser(Lexer("from enum import EnumType as _pys_EnumType, _FlagType as _pys_FlagType\n", st.line).file()).module().kids[0])
             imported = True
         if mixin != "" and not mixed:
             top.append(Parser(Lexer("from enum import _StrMixin as _pys_StrMixin, _IntMixin as _pys_IntMixin\n", st.line).file()).module().kids[0])
@@ -474,7 +502,16 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
             full[st.s] = True
             ms = ", ".join([f"{st.s}.{m}" for m in mnames if canon[m] == m])
             mm = ", ".join([f"{m!r}: {st.s}.{canon[m]}" for m in mnames])
-            top.append(Parser(Lexer(f"_pys_enum_{st.s} = _pys_EnumType({st.s!r}, [{ms}], {{{mm}}})\n", st.line).file()).module().kids[0])
+            if flag:
+                # (the canonical members: single-bit, of distinct values, in definition order)
+                ones = ", ".join([f"{st.s}.{m}" for m in mnames if canon[m] == m and int(texts[m]) != 0 and int(texts[m]) & (int(texts[m]) - 1) == 0])
+                allb = fmask  # (_all_bits_: 2 ** fmask.bit_length() - 1, as every bit below the top one)
+                for sh in [1, 2, 4, 8, 16, 32]:
+                    allb = allb | (allb >> sh)
+                vm = ", ".join([f"{texts[m]}: {st.s}.{m}" for m in mnames if canon[m] == m])
+                top.append(Parser(Lexer(f"_pys_enum_{st.s} = _pys_FlagType({st.s!r}, [{ones}], {{{mm}}}, {{{vm}}}, {fmask}, {smask}, {allb}, {kind == 'IntFlag'})\n", st.line).file()).module().kids[0])
+            else:
+                top.append(Parser(Lexer(f"_pys_enum_{st.s} = _pys_EnumType({st.s!r}, [{ms}], {{{mm}}})\n", st.line).file()).module().kids[0])
     n.kids = top
 
 

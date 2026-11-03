@@ -11,7 +11,7 @@ from types import MappingProxyType
 
 __all__ = [
         'EnumType', 'EnumMeta',
-        'Enum', 'IntEnum', 'StrEnum', 'ReprEnum',
+        'Enum', 'IntEnum', 'StrEnum', 'Flag', 'IntFlag', 'ReprEnum',
         'auto', 'unique',
         ]
 
@@ -195,7 +195,7 @@ def _int_of(x, a, op: str):
     # an IntEnum member's value; else CPython's TypeError, once int's method and x's decline
     if isinstance(x, int) or isinstance(x, float):
         return x
-    if isinstance(x, IntEnum):
+    if isinstance(x, IntEnum) or isinstance(x, IntFlag):
         return x._value_
     if op in "< <= > >=":
         raise TypeError("'%s' not supported between instances of '%s' and '%s'" % (op, type(a).__name__, type(x).__name__))
@@ -228,7 +228,7 @@ class IntEnum(ReprEnum):
         return hash(self._value_)
 
     def __eq__(self, other: object) -> bool:
-        if isinstance(other, IntEnum):
+        if isinstance(other, IntEnum) or isinstance(other, IntFlag):
             return self._value_ == other._value_
         if isinstance(other, int) or isinstance(other, float):
             return self._value_ == other
@@ -418,6 +418,407 @@ class _StrMixin(StrEnum):
 
     def __format__(self, format_spec: str) -> str:
         return format(str(self), format_spec)
+
+
+def _bits(num: int) -> int:
+    # num.bit_length()
+    if num < 0:
+        num = -(num + 1) if num != -9223372036854775807 - 1 else 9223372036854775807
+        if num == 9223372036854775807:
+            return 64
+        num += 1
+    n = 0
+    while num:
+        num >>= 1
+        n += 1
+    return n
+
+
+def _bit_count(num: int) -> int:
+    # num.bit_count() of num >= 0
+    n = 0
+    while num:
+        num &= num - 1
+        n += 1
+    return n
+
+
+def _flag_bin(num: int, max_bits: int | None = None) -> str:
+    """
+    Like built-in bin(), except negative values are represented in
+    twos-complement, and the leading bit always indicates sign
+    (0=positive, 1=negative).
+
+    >>> bin(10)
+    '0b0 1010'
+    >>> bin(~10)   # ~10 is -11
+    '0b1 0101'
+    """
+    # (CPython's enum.bin(), which the module's name bin would hide the builtin for here)
+    k = _bits(num)
+    sign = "0b0" if num >= 0 else "0b1"
+    x = num if num >= 0 else ~num ^ ((1 << k) - 1)
+    digits = ""
+    for i in range(k - 1, -1, -1):
+        digits += "1" if (x >> i) & 1 else "0"
+    if max_bits is not None:
+        if len(digits) < max_bits:
+            digits = (sign[-1] * max_bits + digits)[-max_bits:]
+    return "%s %s" % (sign, digits)
+
+
+class _FlagType:
+    """
+    Metaclass for Enum
+    """
+    # (EnumType for a Flag or IntFlag class: the compiler makes one object of it for each flag
+    # class, with its name, its canonical members (single-bit) in definition order, its members by
+    # name, aliases included, its members by value, which the pseudo-members join as they are made,
+    # and CPython's _flag_mask_, _singles_mask_, _all_bits_ and boundary, STRICT for Flag and KEEP
+    # for IntFlag)
+
+    def __init__(self, name, members, member_map, value_map, flag_mask: int, singles_mask: int, all_bits: int, keep: bool):
+        self._cls_name_ = name
+        self._member_list_ = members
+        self._member_map_ = member_map
+        self._value2member_map_ = value_map
+        self._flag_mask_ = flag_mask
+        self._singles_mask_ = singles_mask
+        self._all_bits_ = all_bits
+        self._keep_ = keep
+
+    def __bool__(self) -> bool:
+        """
+        classes/types should always be True.
+        """
+        return True
+
+    def __call__(self, value):
+        """
+        Either returns an existing member, or creates a new enum class.
+        """
+        # (Enum.__new__'s lookup by value, then Flag._missing_'s pseudo-member)
+        members = self._member_list_
+        if __pys_enum_is(value, members):
+            return value
+        if not isinstance(value, int):
+            raise ValueError("%r is not a valid %s" % (value, self._cls_name_))
+        hit = self._value2member_map_.get(value)
+        if hit is not None:
+            return hit
+        return self._missing_(value)
+
+    def _missing_(self, value: int):
+        """
+        Create a composite member containing all canonical members present in `value`.
+
+        If non-member values are present, result depends on `_boundary_` setting.
+        """
+        # check boundaries
+        # - value must be in range (e.g. -16 <-> +15, i.e. ~15 <-> 15)
+        # - value must not include any skipped flags (e.g. if bit 2 is not
+        #   defined, then 0d10 is invalid)
+        flag_mask = self._flag_mask_
+        singles_mask = self._singles_mask_
+        all_bits = self._all_bits_
+        neg_value = 0
+        negative = False
+        if (
+                not ~all_bits <= value <= all_bits
+                or value & (all_bits ^ flag_mask)
+            ):
+            if not self._keep_:
+                max_bits = max(_bits(value), _bits(flag_mask))
+                raise ValueError(
+                        "%r invalid value %r\n    given %s\n  allowed %s" % (
+                            self, value, _flag_bin(value, max_bits), _flag_bin(flag_mask, max_bits),
+                            ))
+            if value < 0:
+                value = (
+                        max(all_bits+1, 2**(_bits(value)))
+                        + value
+                        )
+        if value < 0:
+            neg_value = value
+            negative = True
+            value = all_bits + 1 + value
+        # get members and unknown
+        unknown = value & ~flag_mask
+        aliases = value & ~singles_mask
+        member_value = value & singles_mask
+        if unknown and not self._keep_:
+            raise ValueError(
+                    '%s(%r) -->  unknown values %r [%s]'
+                    % (self._cls_name_, value, unknown, _flag_bin(unknown))
+                    )
+        name = ""
+        if member_value or aliases:
+            members = [m for m in self._member_list_ if m._value_ & member_value]
+            combined_value = 0
+            for m in members:
+                combined_value |= m._value_
+            if aliases:
+                value = member_value | aliases
+                for pm in self._member_map_.values():
+                    if pm not in members and pm._value_ and pm._value_ & value == pm._value_:
+                        members.append(pm)
+                        combined_value |= pm._value_
+            unknown = value ^ combined_value
+            name = '|'.join([m._name_ for m in members])
+            if not combined_value:
+                name = ""
+            elif unknown and not self._keep_:
+                raise ValueError('%r: no members with value %r' % (self, unknown))
+            elif unknown:
+                name += '|%s' % repr(unknown)
+        hit = self._value2member_map_.get(value)
+        if hit is None:
+            hit = __pys_enum_new(self._member_list_, name, value)
+            self._value2member_map_[value] = hit
+        if negative:
+            self._value2member_map_[neg_value] = hit
+        return hit
+
+    def __contains__(self, value) -> bool:
+        """Return True if `value` is in `cls`.
+
+        `value` is in `cls` if:
+        1) `value` is a member of `cls`, or
+        2) `value` is the value of one of the `cls`'s members.
+        3) `value` is a pseudo-member (flags)
+        """
+        if __pys_enum_is(value, self._member_list_):
+            return True
+        if isinstance(value, int):
+            try:
+                self(value)
+                return True
+            except ValueError:
+                pass
+        return False
+
+    def __getitem__(self, name: str):
+        """
+        Return the member matching `name`.
+        """
+        return self._member_map_[name]
+
+    def __iter__(self):
+        """
+        Return members in definition order.
+        """
+        return iter(self._member_list_)
+
+    def __len__(self) -> int:
+        """
+        Return the number of members (no aliases)
+        """
+        return len(self._member_list_)
+
+    def _members_view_(self):
+        """
+        Returns a mapping of member name->value.
+
+        This mapping lists all enum members, including aliases.  Note that
+        this is a read-only view of the internal mapping.
+        """
+        return MappingProxyType(self._member_map_)
+
+    def __repr__(self) -> str:
+        return "<flag %r>" % self._cls_name_
+
+    def _members_of_(self, value: int):
+        # (the canonical members in value, in definition order, as CPython's _iter_member_ gives
+        # them: by value where their values increase, else _iter_member_by_def_)
+        return [m for m in self._member_list_ if m._value_ & value]
+
+
+class Flag(Enum):
+    """
+    Support for flags
+    """
+    # (a flag class's members and pseudo-members are objects of its class; the compiler gives the
+    # class _flag_type_(), its _FlagType object, and a pseudo-member without members a _name_ of
+    # "", whose name is None)
+    _value_: int
+
+    @property
+    def value(self) -> int:
+        """The value of the Enum member."""
+        return self._value_
+
+    def _value_repr_(self) -> str:
+        return repr(self._value_)
+
+    @property
+    def name(self) -> str | None:
+        """The name of the Enum member."""
+        return self._name_ if self._name_ != "" else None
+
+    def __hash__(self) -> int:
+        return hash(self._name_) if self._name_ != "" else hash(None)
+
+    def __contains__(self, other) -> bool:
+        """
+        Returns True if self has at least the same flags set as other.
+        """
+        members = self._flag_type_()._member_list_
+        if not __pys_enum_is(other, members):
+            raise TypeError(
+                "unsupported operand type(s) for 'in': %r and %r" % (
+                    type(other).__qualname__, self.__class__.__qualname__))
+        return other._value_ & self._value_ == other._value_
+
+    def __iter__(self):
+        """
+        Returns flags in definition order.
+        """
+        return iter(self._flag_type_()._members_of_(self._value_))
+
+    def __len__(self) -> int:
+        return _bit_count(self._value_)
+
+    def __repr__(self) -> str:
+        cls_name = self.__class__.__name__
+        if self._name_ == "":
+            return "<%s: %s>" % (cls_name, self._value_repr_())
+        else:
+            return "<%s.%s: %s>" % (cls_name, self._name_, self._value_repr_())
+
+    def __str__(self) -> str:
+        cls_name = self.__class__.__name__
+        if self._name_ == "":
+            return '%s(%r)' % (cls_name, self._value_)
+        else:
+            return "%s.%s" % (cls_name, self._name_)
+
+    def __bool__(self) -> bool:
+        return self._value_ != 0
+
+    def _flag_of_(self, other, op: str) -> int:
+        # (Flag._get_value(): the value of a member of the class; else CPython's TypeError, once
+        # the methods of both operands decline; an int on the left is a compile-time error, as
+        # reflected operator methods are not supported)
+        members = self._flag_type_()._member_list_
+        if __pys_enum_is(other, members):
+            return other._value_
+        raise TypeError("unsupported operand type(s) for %s: '%s' and '%s'" % (op, type(self).__name__, type(other).__name__))
+
+    def __or__(self, other):
+        return self._flag_type_()(self._value_ | self._flag_of_(other, '|'))
+
+    def __and__(self, other):
+        return self._flag_type_()(self._value_ & self._flag_of_(other, '&'))
+
+    def __xor__(self, other):
+        return self._flag_type_()(self._value_ ^ self._flag_of_(other, '^'))
+
+    def __invert__(self):
+        return self._flag_type_()(self._flag_type_()._singles_mask_ & ~self._value_)
+
+
+def _intflag_of(x, a, op: str) -> int:
+    # an operand of IntFlag member a's |, & or ^, as Flag._get_value() takes it for a class of int:
+    # a member of a's class, or an int (also an int-like member); else CPython's TypeError
+    if isinstance(x, int):
+        return x
+    if isinstance(x, IntEnum) or isinstance(x, IntFlag):
+        return x._value_
+    raise TypeError("unsupported operand type(s) for %s: '%s' and '%s'" % (op, type(a).__name__, type(x).__name__))
+
+
+class IntFlag(Flag):
+    """
+    Support for integer-based Flags
+    """
+    # (CPython's IntFlag(int, ReprEnum, Flag, boundary=KEEP): a member is an object of its class
+    # with int's operations, str() and format(), as an IntEnum member is; |, & and ^ with an int
+    # keep the class, whose boundary KEEP keeps bits that no member has)
+
+    def __str__(self) -> str:
+        return repr(self._value_)
+
+    def __format__(self, format_spec: str) -> str:
+        return format(self._value_, format_spec)
+
+    def __hash__(self) -> int:
+        return hash(self._value_)
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, IntEnum) or isinstance(other, IntFlag):
+            return self._value_ == other._value_
+        if isinstance(other, int) or isinstance(other, float):
+            return self._value_ == other
+        return False
+
+    def __ne__(self, other: object) -> bool:
+        return not self == other
+
+    def __lt__(self, other):
+        return self._value_ < _int_of(other, self, '<')
+
+    def __le__(self, other):
+        return self._value_ <= _int_of(other, self, '<=')
+
+    def __gt__(self, other):
+        return self._value_ > _int_of(other, self, '>')
+
+    def __ge__(self, other):
+        return self._value_ >= _int_of(other, self, '>=')
+
+    def __add__(self, other):
+        return self._value_ + _int_of(other, self, '+')
+
+    def __sub__(self, other):
+        return self._value_ - _int_of(other, self, '-')
+
+    def __mul__(self, other):
+        return self._value_ * _int_of(other, self, '*')
+
+    def __truediv__(self, other):
+        return self._value_ / _int_of(other, self, '/')
+
+    def __floordiv__(self, other):
+        return self._value_ // _int_of(other, self, '//')
+
+    def __mod__(self, other):
+        return self._value_ % _int_of(other, self, '%')
+
+    def __lshift__(self, other):
+        return self._value_ << _int_of(other, self, '<<')
+
+    def __rshift__(self, other):
+        return self._value_ >> _int_of(other, self, '>>')
+
+    def __or__(self, other):
+        return self._flag_type_()(self._value_ | _intflag_of(other, self, '|'))
+
+    def __and__(self, other):
+        return self._flag_type_()(self._value_ & _intflag_of(other, self, '&'))
+
+    def __xor__(self, other):
+        return self._flag_type_()(self._value_ ^ _intflag_of(other, self, '^'))
+
+    def __invert__(self):
+        return self._flag_type_()(~self._value_)
+
+    def __neg__(self) -> int:
+        return -self._value_
+
+    def __pos__(self) -> int:
+        return self._value_
+
+    def __abs__(self) -> int:
+        return abs(self._value_)
+
+    def __int__(self) -> int:
+        return self._value_
+
+    def __index__(self) -> int:
+        return self._value_
+
+    def __float__(self) -> float:
+        return float(self._value_)
 
 
 def unique(enumeration):

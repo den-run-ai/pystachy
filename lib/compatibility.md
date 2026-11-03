@@ -726,7 +726,23 @@ as it makes dataclasses and `NamedTuple` classes ([test](../tests/programs/libra
   ([test](../tests/programs/library/lib_enum_missing.py)). One whose result may be of another
   type, for which CPython raises `TypeError`, is a compile-time error
   ([test](../tests/errors/library/lib_enum_missing_result.py)).
-- These are compile-time errors: `Flag`, `IntFlag` and `ReprEnum`; other mixin types
+- A `Flag` class's members have int values of 0 or more (`auto()` gives the power of two past the
+  greatest value before). Iterating over the class, and `len()` of it, give its single-bit
+  members; `|`, `&`, `^` and `~` give members, or pseudo-members made once for each value (their
+  names, `R|X`, are CPython's), with CPython's `ValueError` for bits that no member has (the
+  boundary `STRICT`); a flag's `in`, iteration, `len()`, `bool()`, `repr()` (`<P.R|X: 5>`,
+  `<P: 0>`), `str()`, `format()` and `hash()`, and a member of value 0, are CPython's, and the
+  name of a pseudo-member without members is `None`
+  ([test](../tests/programs/library/lib_enum_flag.py)). An `IntFlag` member has `int`'s
+  operations, `str()` and `format()`, as an `IntEnum` member does, and `|`, `&` and `^` with an
+  int keep its class, whose boundary `KEEP` keeps the bits no member has (`<I: 12>`,
+  `<I.A|12: 13>`); its members follow the int-like members' rules above, and `isinstance()` of
+  one and `ReprEnum`, which CPython's `IntFlag` derives from, is a compile-time error too
+  ([test](../tests/programs/library/lib_enum_intflag.py)). Also errors: a `boundary=` keyword, a
+  flag class's own `_missing_()`, a multi-bit member with a bit that no single-bit member has,
+  and an int on the left of a flag's `|`, `&` or `^`, as reflected operator methods are not
+  supported.
+- These are compile-time errors: `ReprEnum` as a base; other mixin types
   (`class C(float, Enum)`) and keywords; members of other values or types, `_ignore_`, `_order_`
   and private names; `__new__`, `__init__` and `_generate_next_value_`; an enum
   class that derives from an enum class of another module, or from one with members (CPython's

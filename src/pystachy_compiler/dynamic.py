@@ -293,13 +293,13 @@ def gen_dyn_boxable(self, t: str) -> str:
     if t in self.classes and t not in self.tmpl:
         if self.classes[t].exc != "":
             return f"an exception object ({typestr(t)}) as Any is not supported yet"
-        for kind in ["enum$IntEnum", "enum$StrEnum"]:
+        for kind in ["enum$IntEnum", "enum$StrEnum", "enum$IntFlag"]:
             # (CPython's IntEnum member is an int, a StrEnum member a str, as an Any value's
             # isinstance() would find: here an object of its class)
             ms = [k for k in self.refl_concrete(t) if k in self.classes and self.classes[k].node.line in ENUMCLASSES and self.derives(k, kind)] if kind in self.classes else []
             if len(ms) > 0:
                 what = f"a {short(t)} member" if self.derives(t, kind) else f"a {short(t)} value, which may be a {short(ms[0])} member,"
-                return f"{what} cannot become an Any value: {'an IntEnum' if kind == 'enum$IntEnum' else 'a StrEnum'} member is an object of its class, where CPython's is also {'an int' if kind == 'enum$IntEnum' else 'a str'}, which isinstance() of the Any value would find (give its .value)"
+                return f"{what} cannot become an Any value: {'a StrEnum' if kind == 'enum$StrEnum' else 'an IntEnum' if kind == 'enum$IntEnum' else 'an IntFlag'} member is an object of its class, where CPython's is also {'a str' if kind == 'enum$StrEnum' else 'an int'}, which isinstance() of the Any value would find (give its .value)"
         return ""
     if is_opt(t):
         return self.dyn_boxable(unopt(t))

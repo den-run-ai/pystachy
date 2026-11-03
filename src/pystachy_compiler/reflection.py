@@ -2953,3 +2953,21 @@ def gen_enum_missing(self, args: list[Node]) -> Val:
     if u != "None" and not (u in self.classes and (u == c or self.derives(u, c))):
         self.err(f"enum class {short(c)}'s _missing_() returns a {typestr(r.t)}: CPython's lookup raises TypeError for a result other than a member of the class or None, which Pystachy does not support")
     return self.coerce(r, self.optional(c))
+
+
+def gen_enum_new(self, args: list[Node]) -> Val:
+    # lib/enum.py's __pys_enum_new(members, name, value): a new pseudo-member of the flag class whose
+    # members list members holds, with that _name_ ("" for none) and _value_, as Flag._missing_
+    # makes one (enum_member makes the members the class body defines)
+    if self.curfn.mod != "enum" or not lib_source(self.curfn.node.line, self.libdir, "enum.py") or len(args) != 3 or any([a.kind in ["kw", "starred", "dstar"] for a in args]):
+        self.err("name '__pys_enum_new' is not defined")
+    ms = self.expr(args[0], "")
+    c = targs(ms.t)[0] if is_list(ms.t) else ""
+    if c not in self.classes or self.classes[c].node.line not in ENUMCLASSES:
+        self.err("internal error: __pys_enum_new of no enum class's members")
+    nm = self.coerce(self.expr(args[1], "str"), "str")
+    v = self.coerce(self.expr(args[2], "int"), "int")
+    o = self.new_obj(c)
+    self.setfield(o, self.field(o, "_name_"), "_name_", nm)
+    self.setfield(o, self.field(o, "_value_"), "_value_", v)
+    return o

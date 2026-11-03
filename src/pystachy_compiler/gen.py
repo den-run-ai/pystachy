@@ -321,6 +321,7 @@ from src.pystachy_compiler.reflection import (
     gen_enum_is_static as reflection_enum_is_static,
     gen_enum_member as reflection_enum_member,
     gen_enum_missing as reflection_enum_missing,
+    gen_enum_new as reflection_enum_new,
     gen_enum_view as reflection_enum_view,
     gen_refl_dir_names as reflection_refl_dir_names,
     gen_refl_dir as reflection_refl_dir,
@@ -767,6 +768,7 @@ from src.pystachy_compiler.expressions import (
     gen_exc_kinds as expressions_exc_kinds,
     gen_cmp_kinds as expressions_cmp_kinds,
     gen_cmp_pick as expressions_cmp_pick,
+    gen_enum_intlike as expressions_enum_intlike,
     gen_inherit_cmp as expressions_inherit_cmp,
     gen_cmp_alts as expressions_cmp_alts,
     gen_cmp_key as expressions_cmp_key,
@@ -2462,6 +2464,9 @@ class Gen:
 
     def enum_missing(self, args: list[Node]) -> Val:
         return reflection_enum_missing(self, args)
+
+    def enum_new(self, args: list[Node]) -> Val:
+        return reflection_enum_new(self, args)
 
     def refl_union_str(self, v: Val, m: str) -> Val:
         return reflection_refl_union_str(self, v, m)
@@ -4408,6 +4413,9 @@ class Gen:
 
     def cmp_kinds(self, t: str) -> list[str]:
         return expressions_cmp_kinds(self, t)
+
+    def enum_intlike(self, c: str) -> bool:
+        return expressions_enum_intlike(self, c)
 
     def cmp_pick(self, op: str, at: str, bt: str) -> list[str]:
         return expressions_cmp_pick(self, op, at, bt)
