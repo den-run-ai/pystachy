@@ -622,6 +622,42 @@ string literal is accepted; reading it, other uses of the function, subclassing 
 given `None` are rejected (see
 [compatibility](../docs/language/compatibility.md#classes-dataclasses-and-namedtuples)).
 
+### `copy`
+
+`copy` is Pystachy's own subset (`lib/copy.py`) of CPython 3.13.16's module. CPython's module
+dispatches on `type(x)` and copies other objects through the pickling protocol (`__reduce_ex__`,
+`copyreg`, `__dict__` updates), none of which a compiled program has at run time. Here the
+static type of the value selects its copy as the program compiles, with CPython's results
+([test](../tests/programs/library/lib_copy.py)):
+
+- A number, a str, bytes, `None`, a range and a function are their own copies; so is a tuple or
+  a frozenset for `copy()`, and a tuple of such values for `deepcopy()`. A list, a dict and a set
+  are copied item by item (`copy()` gives `x.copy()`), a deep copy of a frozenset is a new one, and
+  a deep copy of a tuple is a new tuple of its items' copies, or the tuple itself where no item
+  changed.
+- An object of a class of the program is copied through its `__copy__()` or `__deepcopy__(memo)`
+  where its class defines one; otherwise the copy is a new object of its exact class (no
+  `__init__()` call) whose fields hold the original's values, or their deep copies, and a field
+  that `__init__()` left unassigned stays so. A field of a base class's type copies the object of
+  the subclass that it holds, frozen dataclasses and `NamedTuple` classes included.
+- A deep copy keeps a memo, as CPython's does, so that objects shared within the value stay
+  shared in the copy and cycles are copied as cycles; the memo that `__deepcopy__(memo)` gets is
+  an opaque object that it can pass to `deepcopy()`. A dict cannot be given as `deepcopy()`'s
+  memo.
+- In a module compiled with [dynamic `Any`](../docs/dynamic-any.md), an `Any` value that holds a
+  number, a str, `None`, a list, a dict or a tuple is copied as above
+  ([test](../tests/programs/library/lib_copy_any.py)); one that holds an object, an iterator or
+  (for `deepcopy()`) a function raises `TypeError`, where CPython copies it
+  ([deviation](../tests/deviations/lib_copy_any_object.py)).
+- These are compile-time errors: copies of exceptions, of objects of the library's classes
+  (`StringIO`, `deque` and the others, which stand in for C types) and of classes that derive from
+  one with fields, of classes that define `__reduce__`, `__reduce_ex__`, `__getstate__`,
+  `__setstate__`, `__getnewargs__` or `__getnewargs_ex__`, of a union of classes, of iterators,
+  generators and files, and deep copies of bound methods and `Callable` values, which may hold a
+  bound method that CPython's deep copy binds to a copy of its object.
+- `copy.replace()` (new in CPython 3.13) is not provided; `dataclasses.replace()` and a
+  `NamedTuple`'s `_replace()` are.
+
 ### `heapq`
 
 Heap operations, including `_max` variants, and `nlargest`/`nsmallest` work.

@@ -244,6 +244,17 @@ def gen_static(self, n: Node) -> int:
         t = self.static_type(n.kids[1], True)
         r = self.isinst(t, n.kids[2]) if t != "" else -1
         return r if r >= 0 else (1 if r == -2 else 0) if r < -1 and self.knownobj(n.kids[1]) else -1
+    if k == "call" and n.kids[0].kind == "name" and n.kids[0].s in ["__pys_copy_is_object", "__pys_copy_is_own", "__pys_deepcopy_is_own"] and len(n.kids) == 2:
+        # (lib/copy.py's tests of x's static type, so that copy() and _deepcopy() compile only the
+        # copy of x's kind of value: whether x is its own copy, which only None and Any values
+        # test at run time (copy_own), and whether it is an object of a class or an Any value
+        # left to the copy of an object)
+        t = self.static_type(n.kids[1], True)
+        if t == "":
+            return -1
+        if n.kids[0].s != "__pys_copy_is_object":
+            return 1 if self.copy_own(t, n.kids[0].s == "__pys_deepcopy_is_own") == 1 else -1
+        return 1 if t == "dyn" or unopt(t) in self.classes else 0
     if k == "call" and n.kids[0].kind == "name" and n.kids[0].s == "callable" and not self.bound("callable") and len(n.kids) == 2:
         t = self.static_type(n.kids[1], True)
         r = self.callable_type(t) if t != "" and t != "dyn" else -1

@@ -54,7 +54,7 @@ STANDINS: dict[str, str] = {"binascii": "_pystachy_binascii", "_codecs": "_pysta
 # mapping proxy's, whose dict code given only the proxy must not reach): their classes' fields
 # are the module's own, which a program can neither read, assign, find by hasattr() nor reflect
 # over, and a call of __init__ on an object cannot initialize it again
-OPAQUE: dict[str, bool] = {"_weakref": True, "_pystachy_mappingproxy": True}
+OPAQUE: dict[str, bool] = {"_weakref": True, "_pystachy_mappingproxy": True, "_pystachy_copy": True}
 # the module that CPython's types of a stand-in name as theirs (__module__, reprs), where it is
 # not the module's own: weakref.ReferenceType, _io.StringIO (every class that lib's
 # io defines is the C module _io's in CPython), and mappingproxy, a builtin type
@@ -786,7 +786,7 @@ RUNTIME: dict[str, str] = {
     "dyn.big_unbox": "int+:%ptr|R|", "dyn.big_of": "int+:%ptr|R A|",
     "dyn.int_box_of": "%ptr:%ptr|R A|",
     "dyn.index_bound": "int:%ptr,int|R|",
-    "dyn.unbox": "int:%ptr,%ptr|R|", "dyn.isa": "bool:%ptr,%ptr||", "dyn.same_type": "bool:%ptr,%ptr||", "dyn.truth": "bool:%ptr|rL rD|",
+    "dyn.unbox": "int:%ptr,%ptr|R|", "dyn.isa": "bool:%ptr,%ptr||", "dyn.copy_is_own": "bool:%ptr,int||", "dyn.same_type": "bool:%ptr,%ptr||", "dyn.truth": "bool:%ptr|rL rD|",
     "dyn.repr": "str:%ptr|R A I U|", "dyn.str": "str:%ptr|R A I U|",
     "dyn.eq": "bool:%ptr,%ptr|R A I U|", "dyn.ne": "bool:%ptr,%ptr|R A I U|", "dyn.cmp": "bool:%ptr,%ptr,int|R A I U|", "dyn.hash": "int:%ptr|R A I U|",
     "dyn.binop": "%ptr:%ptr,%ptr,int|R A I U|", "dyn.inplace": "%ptr:%ptr,%ptr,int|R A I U|", "dyn.unary": "%ptr:%ptr,int|R A|",

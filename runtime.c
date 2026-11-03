@@ -4758,6 +4758,10 @@ static int derives(const DynType *a, const DynType *b) { for (; a; a = a->base) 
    class's values may be None). The program's @o.x.<class> uses this to retain the typed call
    when a concrete comparison-operand annotation matches. */
 I pys_dyn_isa(Dyn *x, const DynType *t) { return x->t == t || (t->kind == DK_INT && DKIND(x) == DK_INT) || (t->kind == DK_OBJ && (DKIND(x) == DK_NONE || derives(x->t, t))); }
+/* is box x its own copy (lib/copy.py's __pys_copy_is_own and __pys_deepcopy_is_own of an Any
+   value): None, a bool, an int, a float or a str, as CPython's copy gives it; for copy.copy()
+   (deep 0) also a tuple or a function */
+I pys_dyn_copy_is_own(Dyn *x, I deep) { int k = DKIND(x); return k <= DK_STR || (!deep && (k == DK_TUPLE || k == DK_FUNC)); }
 /* type(x) is type(y) of the boxes of DynTypes a and b (null where no box holds a value of that
    type). Generators, functions and builtin iterators can have distinct storage descriptors
    for one Python type. Only compiler-owned builtin iterator classes carry DF_ITER: a user

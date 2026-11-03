@@ -265,6 +265,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         if not o.t.startswith("weakhandle["):
             self.err("_weakref.ref() prototype requires an internal weak handle")
         return Val(self.rt("pys_weakref_get", "ptr", [f"ptr {o.v}"]), o.t[11:-1])
+    if name.startswith("__pys_copy_") or name.startswith("__pys_deepcopy_"):
+        return self.copy_prim(name, args)  # (lib/copy.py's and lib/_pystachy_copy.py's: reflection.py)
     if name == "__pys_asdict" or name == "__pys_astuple" or name == "dataclasses.asdict" or name == "dataclasses.astuple" or name == "dataclasses.is_dataclass":
         return self.refl_dataclasses(name, args)  # (reflection.py)
     if name == "dataclasses.fields":

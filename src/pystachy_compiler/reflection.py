@@ -11,14 +11,18 @@ that reach such a site, which LLVM's globaldce and llvm-link --only-needed drop 
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import dynamic_program, int_program, shown
 from src.pystachy_compiler.analysis import clean_doc, local_names
-from src.pystachy_compiler.ir import Data, FnInfo, Ins, Loop, Val
+from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Loop, Val
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.specs import BIG, BIGOPT, GLUE, HASATTR, ITERS, NONEVAR, OBJECTC, RANGEC, TYPEMODS, is_excname
 from src.pystachy_compiler.syntax import Node, mk
 from src.pystachy_compiler.utils import (
+    lib_file,
+    lib_source,
     opaque_class,
     targs,
+    is_callable,
     is_dict,
+    is_fn,
     is_kw,
     is_list,
     is_opt,
@@ -2484,3 +2488,248 @@ def refl_attr_fields(fmt: str) -> bool:
             continue
         i += 1
     return False
+
+
+# the special methods by which a class customizes pickling, which CPython's copy also follows
+# (__reduce_ex__ and __reduce__ through copyreg, __getstate__ and __setstate__ of the state):
+# copy_prim copies an object of a class that defines one of them only through its __copy__ or
+# __deepcopy__
+PICKLING = ["__reduce__", "__reduce_ex__", "__getstate__", "__setstate__", "__getnewargs__", "__getnewargs_ex__"]
+
+
+def gen_copy_check(self, ci: ClassInfo, what: str) -> None:
+    # an object of class ci can be copied slot by slot, as CPython copies an object of a Python
+    # class (a new object of its class, then its __dict__'s items): not an exception (whose
+    # attributes CPython copies through BaseException.__reduce__), an object of a class of the
+    # library (where it stands in for a C type, whose copy is its own: one without __copy__ and
+    # __deepcopy__ is not supported) or of a class that customizes pickling
+    if ci.exc != "":
+        self.err(f"{what} of an exception object is not supported")
+    if opaque_class(ci, self.libdir) or lib_file(ci.node.line, self.libdir):
+        self.err(f"{what} of a {short(ci.name)} object is not supported: its class is a library's, which defines no __copy__ or __deepcopy__ for it")
+    b = ci.base
+    while b in self.classes:
+        # (nor of a class that derives from such a class with fields, which may stand in for a C
+        # type's state, as a StringIO's buffer does, that CPython's copy copies another way)
+        bi = self.classes[b]
+        if (opaque_class(bi, self.libdir) or lib_file(bi.node.line, self.libdir)) and len([fl for fl in bi.fields if not fl.startswith(" ")]) > 0:
+            self.err(f"{what} of a {short(ci.name)} object is not supported: its class derives from {short(b)}, a library's class, which defines no __copy__ or __deepcopy__ for it")
+        b = bi.base
+    for m in PICKLING:
+        if m in ci.methods:
+            self.err(f"{what} of a {short(ci.name)} object is not supported: its class defines {m}, by which CPython's copy would copy it")
+
+
+def gen_copy_clone(self, o: Val) -> Val:
+    # a new object of o's exact class (o.t) whose slots hold o's: its fields, their "is assigned"
+    # flags and their identity boxes, as copy.copy() of an object of a Python class gives a new
+    # object with o's attributes (the same objects)
+    ci = self.classes[o.t]
+    self.fl_fields(ci)
+    y = self.alloc_fixed(o.t)
+    self.nn[y.v] = True
+    slots = [i for i in range(len(ci.fields))] + sorted(ci.fflag.values()) + sorted(ci.fbox.values())
+    for i in slots:
+        t = ci.ftypes[ci.fields[i]] if i < len(ci.fields) else "dyn" if i in ci.fbox.values() else "bool"
+        v = self.mem_load(Val(self.fgep(o, i), "*" + t))
+        self.mem_store(Val(self.fgep(y, i), "*" + t), v)
+    return y
+
+
+def gen_copy_fields(self, y: Val, memo: Val) -> None:
+    # y's fields, each the deep copy of its value (lib/copy.py's _deepcopy), as CPython copies an
+    # object's __dict__ after the memo holds the new object: the fields that hold a value (an
+    # unassigned one stays unassigned), in their order; a field of a type whose values are their
+    # own deep copies keeps its value
+    ci = self.classes[y.t]
+    for fl in ci.fields:
+        if fl.startswith(" "):
+            continue
+        t = ci.ftypes[fl]
+        if self.copy_own(t, True) == 1:
+            continue
+        end = ""
+        if fl in ci.fflag:
+            set_ = self.label()
+            end = self.label()
+            self.cbr(self.mem_load(Val(self.fgep(y, ci.fflag[fl]), "*bool")).v, set_, end)
+            self.place(set_)
+        p = self.fgep(y, ci.fpos[fl])
+        v = self.mem_load(Val(p, "*" + t))
+        c = self.call_fn(self.funcs["copy$_deepcopy"], [], [self.vnode(v), self.vnode(memo)])
+        self.mem_store(Val(self.fgep(y, ci.fpos[fl]), "*" + t), self.coerce(c, t))
+        if end != "":
+            self.br(end)
+            self.place(end)
+
+
+def gen_copy_prim(self, name: str, args: list[Node]) -> Val:
+    # lib/copy.py's and lib/_pystachy_copy.py's private primitives, by which copy.copy() and
+    # copy.deepcopy() copy a value by its static type (each only in the module that calls it):
+    #   __pys_copy_is_own(x), __pys_deepcopy_is_own(x): whether x is its own (shallow or deep)
+    #     copy, which static() decides as the program compiles but for an Any value (its kind) or
+    #     an optional value (whether it is None); a type that the copy does not support is an error
+    #   __pys_copy_is_object(x): whether x is an object of a class, or an Any value that the tests
+    #     before it left (static() decides it, so that the copy of an object is compiled only for
+    #     those)
+    #   __pys_copy_object(x): x's __copy__(), or a new object of its class with its slots
+    #   __pys_deepcopy_object(x, memo): x's __deepcopy__(memo), or a new object of its class,
+    #     which the memo holds before its fields become their deep copies
+    #   __pys_deepcopy_tuple(x, memo): a tuple of the deep copies of x's items, or x itself where
+    #     none changed, as CPython's _deepcopy_tuple gives it
+    #   __pys_copy_addr(x), __pys_copy_ref(x), __pys_copy_unref(ref, like): the memo's key (an
+    #     original's address), its reference as the memo keeps it (in a list the collector scans),
+    #     and that reference read back as like's type (lib/_pystachy_copy.py)
+    memo_prims = ["__pys_copy_addr", "__pys_copy_ref", "__pys_copy_unref"]
+    mod = "_pystachy_copy" if name in memo_prims else "copy"
+    n = 2 if name in ["__pys_deepcopy_object", "__pys_deepcopy_tuple", "__pys_copy_unref"] else 1
+    if self.curfn.mod != mod or not lib_source(self.curfn.node.line, self.libdir, mod + ".py") or len(args) != n or any([a.kind in ["kw", "starred", "dstar"] for a in args]):
+        self.err(f"name '{name}' is not defined")
+    x = self.expr(args[0], "")
+    t = unopt(x.t)
+    if name == "__pys_copy_addr" or name == "__pys_copy_ref" or name == "__pys_copy_unref":
+        if t == "dyn" or not (t in self.classes or is_list(t) or is_dict(t) or is_set(t) or is_tuple(t) or is_vtuple(t) or t == "frozenset" or t.startswith("frozenset[") or t == "str"):
+            self.err(f"internal error: {name} of a {typestr(x.t)}")
+        if name == "__pys_copy_addr":
+            return Val(self.scalar_cast('ptrtoint', Val(x.v, '%ptr'), 'int'), "int")
+        if name == "__pys_copy_ref":
+            return Val(x.v, "str")
+        like = self.expr(args[1], "")
+        return Val(x.v, unopt(like.t))
+    if name == "__pys_copy_is_own" or name == "__pys_deepcopy_is_own":
+        deep = name == "__pys_deepcopy_is_own"
+        own = self.copy_own(x.t, deep)
+        if own == 2:
+            what = "copy.deepcopy()" if deep else "copy.copy()"
+            if t.startswith("fn[m:"):
+                self.err(f"{what} of a bound method is not supported: CPython binds its copy to a copy of its object")
+            if is_callable(t):
+                self.err(f"{what} of a value of type {typestr(x.t)} is not supported: it may hold a bound method, which CPython's deep copy binds to a copy of its object")
+            self.err(f"{what} of a value of type {typestr(x.t)} is not supported")
+        if own == 1:
+            return Val("true", "bool")
+        if x.t == "dyn":
+            k = self.rt("pys_dyn_copy_is_own", "i64", [f"ptr {x.v}", f"i64 {1 if deep else 0}"])
+            return self.num_cmp("!=", Val(k, "int"), Val("0", "int"))
+        return self.ptr_cmp("==", x, Val("null", "None"))  # (None, where x is optional)
+    if name == "__pys_copy_is_object":
+        return Val("true" if x.t == "dyn" or t in self.classes else "false", "bool")
+    what = "copy.copy()" if name == "__pys_copy_object" else "copy.deepcopy()"
+    if name == "__pys_deepcopy_tuple" and t in self.classes:
+        name = "__pys_deepcopy_object"  # (a NamedTuple's object, which CPython copies as an object)
+    if name == "__pys_deepcopy_tuple":
+        memo = self.expr(args[1], "")
+        if is_vtuple(t):
+            if self.copy_own(targs(t)[0], True) == 1:
+                return x  # (each item is its own copy: the tuple is too)
+            return self.call_fn(self.funcs["copy$_deepcopy_items"], [], [self.vnode(x), self.vnode(memo)])
+        if not is_tuple(t):
+            self.err(f"internal error: {name} of a {typestr(x.t)}")
+        items = [self.tget(x, j) for j in range(len(targs(t)))]
+        if all([self.copy_own(it.t, True) == 1 for it in items]):
+            return x
+        copies: list[Val] = []
+        for it in items:
+            copies.append(self.coerce(self.call_fn(self.funcs["copy$_deepcopy"], [], [self.vnode(it), self.vnode(memo)]), it.t))
+        # the memo's copy, where an item's copy made one (CPython checks it after the items, as
+        # the tuple may hold mutable objects that hold it); else x where every copy is its item
+        hit = self.call_fn(self.funcs["_pystachy_copy$_memo_get"], [], [self.vnode(memo), self.vnode(x)])
+        found = self.label()
+        rest = self.label()
+        end = self.label()
+        start_vals: list[Val] = []
+        blocks: list[str] = []
+        self.cbr(self.ptr_cmp("!=", hit, Val("null", "None")).v, found, rest)
+        self.place(found)
+        start_vals.append(Val(hit.v, t))
+        blocks.append(self.cur)
+        self.br(end)
+        self.place(rest)
+        same = "true"
+        for j in range(len(items)):
+            if self.copy_own(items[j].t, True) != 1:
+                eq = self.ptr_cmp("==", copies[j], items[j]).v
+                same = self.scalar("and", [Val(same, "bool"), Val(eq, "bool")]) if same != "true" else eq
+        keep = self.label()
+        made = self.label()
+        self.cbr(same, keep, made)
+        self.place(keep)
+        start_vals.append(x)
+        blocks.append(self.cur)
+        self.br(end)
+        self.place(made)
+        y = self.tuple_(copies)
+        self.call_fn(self.funcs["_pystachy_copy$_memo_put"], [], [self.vnode(memo), self.vnode(x), self.vnode(y)])
+        start_vals.append(Val(y.v, t))
+        blocks.append(self.cur)
+        self.br(end)
+        return self.refl_phi(start_vals, blocks, end, what)
+    if x.t == "dyn":
+        # (an Any value that holds an object, an iterator or, for a deep copy, a function: copying
+        # it is not supported, as no static type selects its class's copy or shows a bound
+        # method, whose deep copy CPython binds to a copy of its object)
+        self.guard("true", f"TypeError: {what} of an object, iterator or function in an Any value is not supported" if name == "__pys_deepcopy_object" else f"TypeError: {what} of an object or iterator in an Any value is not supported")
+        return x
+    if t not in self.classes:
+        self.err(f"internal error: {name} of a {typestr(x.t)}")
+    memo = self.expr(args[1], "") if n == 2 else Val("", "")
+    vals: list[Val] = []
+    blocks2: list[str] = []
+    end2 = self.label()
+    if name == "__pys_deepcopy_object":
+        # (the memo's copy, where this deep copy has copied x already)
+        hit = self.call_fn(self.funcs["_pystachy_copy$_memo_get"], [], [self.vnode(memo), self.vnode(Val(x.v, t))])
+        found = self.label()
+        rest = self.label()
+        self.cbr(self.ptr_cmp("!=", hit, Val("null", "None")).v, found, rest)
+        self.place(found)
+        vals.append(Val(hit.v, t))
+        blocks2.append(self.cur)
+        self.br(end2)
+        self.place(rest)
+    for lf in self.refl_split(Val(x.v, t), True):
+        self.place(lf.label)
+        ci = self.classes[lf.c]
+        ov = Val(x.v, lf.c)
+        if name == "__pys_copy_object" and "__copy__" in ci.methods:
+            r = self.protocol(ov, "__copy__", [])
+        elif name == "__pys_deepcopy_object" and "__deepcopy__" in ci.methods:
+            r = self.protocol(ov, "__deepcopy__", [memo])
+            # (the memo holds the copy where it is not x itself, as CPython's deepcopy() holds it)
+            put = self.label()
+            done = self.label()
+            self.cbr(self.ptr_cmp("!=", r, ov).v, put, done)
+            self.place(put)
+            self.call_fn(self.funcs["_pystachy_copy$_memo_put"], [], [self.vnode(memo), self.vnode(ov), self.vnode(r)])
+            self.br(done)
+            self.place(done)
+        else:
+            self.copy_check(ci, what)
+            r = self.copy_clone(ov)
+            if name == "__pys_deepcopy_object":
+                self.call_fn(self.funcs["_pystachy_copy$_memo_put"], [], [self.vnode(memo), self.vnode(ov), self.vnode(r)])
+                self.copy_fields(r, memo)
+        vals.append(self.coerce(r, t))
+        blocks2.append(self.cur)
+        self.br(end2)
+    return self.refl_phi(vals, blocks2, end2, what)
+
+
+def gen_copy_own(self, t: str, deep: bool) -> int:
+    # 1 where a value of static type t is its own copy (deep: its deep copy), as CPython's
+    # _copy_immutable and _deepcopy_atomic give a number, a str, bytes, None, a range and a
+    # function, and _deepcopy_tuple a tuple of such values (copy.copy() any tuple, a frozenset or
+    # a function); 0 where lib/copy.py copies it (a list, a dict, a set, a frozenset, a tuple, an
+    # object of a class), or tests its kind at run time (an Any value), None aside; 2 where the
+    # copy does not support it: another type of the library's, a union of classes, and for a deep
+    # copy a bound method or a Callable, which may hold one
+    u = unopt(t)
+    if u in ["int", "float", "bool", "str", "bytes", "None", RANGEC, BIG] or t == BIGOPT or self.scalar_union(u):
+        return 1
+    if is_fn(u) or is_callable(u):
+        return 2 if deep and (is_callable(u) or u.startswith("fn[m:")) else 1
+    if is_tuple(u) or is_vtuple(u):
+        return 1 if not deep or all([self.copy_own(a, True) == 1 for a in targs(u)]) else 0
+    if u == "frozenset" or u.startswith("frozenset["):
+        return 0 if deep else 1
+    return 0 if is_list(u) or is_dict(u) or is_set(u) or u in self.classes or u == "dyn" else 2

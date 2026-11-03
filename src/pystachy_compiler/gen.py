@@ -307,6 +307,11 @@ from src.pystachy_compiler.reflection import (
     gen_refl_dc_type as reflection_refl_dc_type,
     gen_refl_dc_copy as reflection_refl_dc_copy,
     gen_refl_dataclasses as reflection_refl_dataclasses,
+    gen_copy_prim as reflection_copy_prim,
+    gen_copy_check as reflection_copy_check,
+    gen_copy_clone as reflection_copy_clone,
+    gen_copy_fields as reflection_copy_fields,
+    gen_copy_own as reflection_copy_own,
     gen_refl_dir_names as reflection_refl_dir_names,
     gen_refl_dir as reflection_refl_dir,
     gen_refl_dir_of as reflection_refl_dir_of,
@@ -2402,6 +2407,21 @@ class Gen:
 
     def refl_dataclasses(self, name: str, args: list[Node]) -> Val:
         return reflection_refl_dataclasses(self, name, args)
+
+    def copy_prim(self, name: str, args: list[Node]) -> Val:
+        return reflection_copy_prim(self, name, args)
+
+    def copy_check(self, ci: ClassInfo, what: str) -> None:
+        return reflection_copy_check(self, ci, what)
+
+    def copy_clone(self, o: Val) -> Val:
+        return reflection_copy_clone(self, o)
+
+    def copy_fields(self, y: Val, memo: Val) -> None:
+        return reflection_copy_fields(self, y, memo)
+
+    def copy_own(self, t: str, deep: bool) -> int:
+        return reflection_copy_own(self, t, deep)
 
     def refl_union_str(self, v: Val, m: str) -> Val:
         return reflection_refl_union_str(self, v, m)
