@@ -1078,36 +1078,47 @@ def gen_refl_dict_order(self, c: str) -> list[str]:
     ci = self.classes[c]
     if ci.slotlimit:
         self.err(f"'{short(c)}' object has no attribute '__dict__' (its class defines __slots__): vars() argument must have __dict__ attribute")
+    out, why = self.refl_order(c, True)
+    if why != "":
+        self.err(f"vars() of {short(c)}{why}")
+    return out
+
+
+def gen_refl_order(self, c: str, public: bool) -> tuple[list[str], str]:
+    # refl_dict_order's order, and "" where it is known, else the reason it is not (after the
+    # class's name in a message); public: the names checked as vars() reads them (refl_public)
+    ci = self.classes[c]
     out: list[str] = []
     maybe: dict[str, bool] = {}  # (those an object may lack after its __init__)
     if self.is_dc(c) and c not in self.nts and "no-init" not in ci.dcopts:
         for fl in self.dc_fields(ci):
             if "no-init" in ci.fopts[fl] and fl not in ci.fdefault and fl not in ci.factory:
-                self.err(f"vars() of {short(c)}, whose field {fl} its __init__ leaves unassigned, is not supported (#486)")
+                return out, f", whose field {fl} its __init__ leaves unassigned, is not supported (#486)"
             out.append(fl)
         if "__post_init__" in ci.methods:
             pi = ci.methods["__post_init__"]
             if not self.refl_init_order(c, pi, out, maybe):
-                self.err(f"vars() of {short(c)} is not supported: the order its __post_init__ assigns attributes in is not known at compile time (#486)")
+                return out, " is not supported: the order its __post_init__ assigns attributes in is not known at compile time (#486)"
     elif "__init__" in ci.methods and not self.refl_init_order(c, ci.methods["__init__"], out, maybe):
-        self.err(f"vars() of {short(c)} is not supported: the order its __init__ assigns attributes in is not known at compile time (an assignment in a branch, a loop or a property's setter) (#486)")
+        return out, " is not supported: the order its __init__ assigns attributes in is not known at compile time (an assignment in a branch, a loop or a property's setter) (#486)"
     for fl in out:
         if fl not in ci.ftypes:
-            self.err(f"vars() of {short(c)} is not supported: it assigns attribute {fl}, which is no field of its class (#486)")
-        self.refl_public(c, fl)
+            return out, f" is not supported: it assigns attribute {fl}, which is no field of its class (#486)"
+        if public:
+            self.refl_public(c, fl)
     # (a field __init__ may leave unassigned that other code may assign: inserted last then)
     late = [fl for fl in out if fl in maybe and self.refl_late(fl)]
     if len(late) > 1 or (len(late) == 1 and late[0] != out[-1]):
-        self.err(f"vars() of {short(c)} is not supported: its attribute {late[0]}, which its __init__ may leave unassigned, may be assigned later, which inserts it last in the __dict__ (#486)")
+        return out, f" is not supported: its attribute {late[0]}, which its __init__ may leave unassigned, may be assigned later, which inserts it last in the __dict__ (#486)"
     for fl in ci.ftypes:
         if fl.startswith(" ") or fl in out or fl in ci.fextra:
             continue
         if fl in ci.fdefault and (fl not in ci.fopts or c in self.nts):
             if self.refl_stored(fl):
-                self.err(f"vars() of {short(c)} is not supported: its class attribute {fl} may be assigned through an object, which then holds it in its __dict__ (#486)")
+                return out, f" is not supported: its class attribute {fl} may be assigned through an object, which then holds it in its __dict__ (#486)"
             continue  # (a class attribute: not in the object's __dict__)
-        self.err(f"vars() of {short(c)} is not supported: its attribute {fl} is assigned outside __init__, where the order of the __dict__ is not known at compile time (#486)")
-    return out
+        return out, f" is not supported: its attribute {fl} is assigned outside __init__, where the order of the __dict__ is not known at compile time (#486)"
+    return out, ""
 
 
 def refl_attr_stores(n: Node, out: dict[str, bool]) -> None:
@@ -2521,32 +2532,91 @@ def gen_copy_check(self, ci: ClassInfo, what: str) -> None:
 
 
 def gen_copy_clone(self, o: Val) -> Val:
-    # a new object of o's exact class (o.t) whose slots hold o's: its fields, their "is assigned"
-    # flags and their identity boxes, as copy.copy() of an object of a Python class gives a new
-    # object with o's attributes (the same objects)
+    # a new object of o's exact class (o.t) whose slots hold o's: its fields and their "is
+    # assigned" flags, as copy.copy() of an object of a Python class gives a new object with o's
+    # attributes, the same objects. A number's identity box is o's, which o gets now where it has
+    # none yet, as an assignment gives a binding's object to another (dyn_id_store: copying a
+    # null box would let the two objects' crossings into Any make two objects of one value)
     ci = self.classes[o.t]
     self.fl_fields(ci)
     y = self.alloc_fixed(o.t)
     self.nn[y.v] = True
+    numbox: dict[int, str] = {}
+    for fl in ci.fbox:
+        if numeric_identity(ci.ftypes[fl]):
+            numbox[ci.fbox[fl]] = fl
     slots = [i for i in range(len(ci.fields))] + sorted(ci.fflag.values()) + sorted(ci.fbox.values())
     for i in slots:
+        if i in numbox:
+            continue
         t = ci.ftypes[ci.fields[i]] if i < len(ci.fields) else "dyn" if i in ci.fbox.values() else "bool"
         v = self.mem_load(Val(self.fgep(o, i), "*" + t))
         self.mem_store(Val(self.fgep(y, i), "*" + t), v)
+    for i in sorted(numbox):
+        self.copy_share(o, y, numbox[i])
     return y
 
 
-def gen_copy_fields(self, y: Val, memo: Val) -> None:
-    # y's fields, each the deep copy of its value (lib/copy.py's _deepcopy), as CPython copies an
-    # object's __dict__ after the memo holds the new object: the fields that hold a value (an
-    # unassigned one stays unassigned), in their order; a field of a type whose values are their
-    # own deep copies keeps its value
+def gen_copy_share(self, o: Val, y: Val, fl: str) -> None:
+    # y.fl = o.fl, o's value as y's, sharing its identity box (copy_clone): the box o holds for
+    # the value, or one made now, which o then holds too; none where o holds no value
+    ci = self.classes[o.t]
+    t = ci.ftypes[fl]
+    end = ""
+    if fl in ci.fflag:
+        held = self.label()
+        end = self.label()
+        self.cbr(self.mem_load(Val(self.fgep(o, ci.fflag[fl]), "*bool")).v, held, end)
+        self.place(held)
+    v = self.mem_load(Val(self.fgep(o, ci.fpos[fl]), "*" + t))
+    self.mem_store(Val(self.fgep(y, ci.fpos[fl]), "*" + t), v)
+    if fl in ci.fbox and numeric_identity(t):
+        self.dyn_id_read(v, self.fgep(o, ci.fbox[fl]))
+        self.dyn_id_store(self.fgep(y, ci.fbox[fl]), v, t)
+    if end != "":
+        self.br(end)
+        self.place(end)
+
+
+def gen_copy_fields(self, y: Val, x: Val, memo: Val) -> None:
+    # y's fields, the deep copies of x's attributes, once the memo holds y (y is x's clone,
+    # copy_clone), as CPython's _reconstruct copies an object's state. Where no copy of a field
+    # may run code that could see or change x (copy_hooks), each field's value is its deep copy,
+    # in any order: an unassigned field stays unassigned, and a field of a type whose values are
+    # their own deep copies keeps its value. Otherwise CPython's order and reads: an object with
+    # a __dict__ gives its state as that dict itself (object.__getstate__), whose items
+    # _deepcopy_dict copies in their order (refl_order's, which must be known), each read from x
+    # as the copy gets to it, raising RuntimeError where one of those copies gave x another
+    # attribute; an object of __slots__ only gives a dict made first, of its assigned slots in
+    # copyreg._slotnames's order (the derived class's first), which y holds
     ci = self.classes[y.t]
-    for fl in ci.fields:
-        if fl.startswith(" "):
-            continue
+    fields = [fl for fl in ci.fields if not fl.startswith(" ")]
+    hooks = False
+    for fl in fields:
+        if self.copy_own(ci.ftypes[fl], True) != 1 and self.copy_hooks(ci.ftypes[fl], {}):
+            hooks = True
+    order = fields
+    live = False
+    if hooks and ci.slotlimit:
+        order = []
+        k = y.t
+        while k in self.classes:
+            kb = self.classes[k].base
+            inherited = len(self.classes[kb].slots) if kb in self.classes else 0
+            order = order + [fl for fl in self.classes[k].slots[inherited:] if fl in fields and fl not in order]
+            k = kb
+        order = order + [fl for fl in fields if fl not in order]
+    elif hooks:
+        order, why = self.refl_order(y.t, False)
+        if why != "":
+            self.err(f"copy.deepcopy() of a {short(y.t)} object is not supported: copying its attributes may run a __deepcopy__(), __hash__() or __eq__() method, which CPython runs in its __dict__'s order, and that order is not known as the program compiles, as for vars() (vars() of {short(y.t)}{why})")
+        order = order + [fl for fl in fields if fl not in order]
+        live = True
+    flagged = [fl for fl in order if fl in ci.fflag]
+    for fl in order:
         t = ci.ftypes[fl]
-        if self.copy_own(t, True) == 1:
+        own = self.copy_own(t, True) == 1
+        if own and not live:
             continue
         end = ""
         if fl in ci.fflag:
@@ -2554,14 +2624,53 @@ def gen_copy_fields(self, y: Val, memo: Val) -> None:
             end = self.label()
             self.cbr(self.mem_load(Val(self.fgep(y, ci.fflag[fl]), "*bool")).v, set_, end)
             self.place(set_)
-        p = self.fgep(y, ci.fpos[fl])
-        v = self.mem_load(Val(p, "*" + t))
-        c = self.call_fn(self.funcs["copy$_deepcopy"], [], [self.vnode(v), self.vnode(memo)])
-        self.mem_store(Val(self.fgep(y, ci.fpos[fl]), "*" + t), self.coerce(c, t))
+        if own:
+            self.copy_share(x, y, fl)  # (x's value now, which an earlier copy may have changed)
+        else:
+            v = self.mem_load(Val(self.fgep(x if live else y, ci.fpos[fl]), "*" + t))
+            c = self.call_fn(self.funcs["copy$_deepcopy"], [], [self.vnode(v), self.vnode(memo)])
+            self.mem_store(Val(self.fgep(y, ci.fpos[fl]), "*" + t), self.coerce(c, t))
         if end != "":
             self.br(end)
             self.place(end)
+        if live and len(flagged) > 0:
+            # (_deepcopy_dict's next step over x's __dict__: an attribute added since its start)
+            grown = "false"
+            for g in flagged:
+                a = self.mem_load(Val(self.fgep(x, ci.fflag[g]), "*bool"))
+                b = self.mem_load(Val(self.fgep(y, ci.fflag[g]), "*bool"))
+                d = self.scalar("xor", [a, b])
+                grown = d if grown == "false" else self.scalar("or", [Val(grown, "bool"), Val(d, "bool")])
+            self.guard(grown, "RuntimeError: dictionary changed size during iteration")
 
+
+def gen_copy_hooks(self, t: str, seen: dict[str, bool]) -> bool:
+    # may the deep copy of a value of static type t run a method that could see or change the
+    # object being copied: a class's __deepcopy__(), or a class's __hash__() or __eq__() by which
+    # the copy of a dict's keys or a set's items inserts them (an Any value's object is no copy:
+    # copy_prim raises for it)
+    u = unopt(t)
+    if self.copy_own(u, True) == 1 or u in seen or u == "dyn":
+        return False
+    seen[u] = True
+    hashed: list[str] = []
+    if is_dict(u) or is_set(u) or u.startswith("frozenset["):
+        hashed = umembers(unopt(targs(u)[0])) if is_union(unopt(targs(u)[0])) else [unopt(targs(u)[0])]
+    for h in hashed:
+        for c in self.refl_concrete(h) if h in self.classes else []:
+            if "__hash__" in self.classes[c].methods or "__eq__" in self.classes[c].methods:
+                return True
+    if is_dict(u) or is_set(u) or u.startswith("frozenset[") or is_list(u) or is_tuple(u) or is_vtuple(u):
+        return any([self.copy_hooks(a, seen) for a in targs(u)])
+    if u in self.classes:
+        for c in self.refl_concrete(u):
+            k = self.classes[c]
+            if "__deepcopy__" in k.methods:
+                return True
+            for fl in k.fields:
+                if not fl.startswith(" ") and self.copy_hooks(k.ftypes[fl], seen):
+                    return True
+    return False
 
 def gen_copy_prim(self, name: str, args: list[Node]) -> Val:
     # lib/copy.py's and lib/_pystachy_copy.py's private primitives, by which copy.copy() and
@@ -2719,7 +2828,7 @@ def gen_copy_prim(self, name: str, args: list[Node]) -> Val:
             r = self.copy_clone(ov)
             if name == "__pys_deepcopy_object":
                 self.call_fn(self.funcs["_pystachy_copy$_memo_put"], [], [self.vnode(memo), self.vnode(ov), self.vnode(r)])
-                self.copy_fields(r, memo)
+                self.copy_fields(r, ov, memo)
         vals.append(self.coerce(r, t))
         blocks2.append(self.cur)
         self.br(end2)

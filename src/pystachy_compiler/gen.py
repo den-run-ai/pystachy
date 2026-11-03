@@ -311,6 +311,9 @@ from src.pystachy_compiler.reflection import (
     gen_copy_check as reflection_copy_check,
     gen_copy_clone as reflection_copy_clone,
     gen_copy_fields as reflection_copy_fields,
+    gen_copy_hooks as reflection_copy_hooks,
+    gen_copy_share as reflection_copy_share,
+    gen_refl_order as reflection_refl_order,
     gen_copy_own as reflection_copy_own,
     gen_copy_private as reflection_copy_private,
     gen_enum_alias as reflection_enum_alias,
@@ -2336,6 +2339,9 @@ class Gen:
     def refl_dict_order(self, c: str) -> list[str]:
         return reflection_refl_dict_order(self, c)
 
+    def refl_order(self, c: str, public: bool) -> tuple[list[str], str]:
+        return reflection_refl_order(self, c, public)
+
     def refl_stored(self, name: str) -> bool:
         return reflection_refl_stored(self, name)
 
@@ -2423,8 +2429,14 @@ class Gen:
     def copy_clone(self, o: Val) -> Val:
         return reflection_copy_clone(self, o)
 
-    def copy_fields(self, y: Val, memo: Val) -> None:
-        return reflection_copy_fields(self, y, memo)
+    def copy_fields(self, y: Val, x: Val, memo: Val) -> None:
+        return reflection_copy_fields(self, y, x, memo)
+
+    def copy_share(self, o: Val, y: Val, fl: str) -> None:
+        return reflection_copy_share(self, o, y, fl)
+
+    def copy_hooks(self, t: str, seen: dict[str, bool]) -> bool:
+        return reflection_copy_hooks(self, t, seen)
 
     def copy_own(self, t: str, deep: bool) -> int:
         return reflection_copy_own(self, t, deep)

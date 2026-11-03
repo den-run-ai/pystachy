@@ -1,0 +1,7 @@
+hook first
+hook in list
+9 9 first in list
+hook derived
+hook base
+derived base
+[exit 0]

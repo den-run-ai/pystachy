@@ -639,7 +639,22 @@ static type of the value selects its copy as the program compiles, with CPython'
   where its class defines one; otherwise the copy is a new object of its exact class (no
   `__init__()` call) whose fields hold the original's values, or their deep copies, and a field
   that `__init__()` left unassigned stays so. A field of a base class's type copies the object of
-  the subclass that it holds, frozen dataclasses and `NamedTuple` classes included.
+  the subclass that it holds, frozen dataclasses and `NamedTuple` classes included. The copy's
+  numbers are the original's objects, as CPython's are: through `Any`, `copy.n is x.n`
+  ([test](../tests/programs/library/lib_copy_identity.py)).
+- Where the deep copy of an object's fields may run code that sees or changes the object (a
+  `__deepcopy__()`, or the `__hash__()` or `__eq__()` of a dict's keys or a set's items), it
+  follows CPython's order and reads: an object with a `__dict__` has its attributes copied in the
+  `__dict__`'s order, each read as the copy reaches it, so that a hook that changes a later
+  attribute gives the copy the new value, and one that adds an attribute raises CPython's
+  `RuntimeError` ([test](../tests/programs/library/lib_copy_deep_live.py)); an object of
+  `__slots__` only has the slots' values as they were when its copy began, the derived class's
+  first, as `copyreg` gives them ([test](../tests/programs/library/lib_copy_deep_slots.py)). Such
+  a copy of an object whose `__dict__` order is not known as the program compiles (as for
+  `vars()`: an attribute assigned in a branch, for one) is a compile-time error
+  ([test](../tests/errors/library/lib_copy_deep_order.py)). The copy has its attributes while it
+  is made, where CPython's gets them at the end, which only code that a cycle leads back to the
+  copy sees.
 - A deep copy keeps a memo, as CPython's does, so that objects shared within the value stay
   shared in the copy and cycles are copied as cycles; the memo that `__deepcopy__(memo)` gets is
   an opaque object that it can pass to `deepcopy()`. A dict cannot be given as `deepcopy()`'s
