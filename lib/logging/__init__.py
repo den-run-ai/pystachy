@@ -466,7 +466,14 @@ def makeLogRecord(dict):
         elif k == "created": rv.created = v
         elif k == "msecs": rv.msecs = v
         elif k == "relativeCreated": rv.relativeCreated = v
+        elif k == "exc_info": rv.exc_info = _given_exc_info(v)
+        elif k == "exc_text": rv.exc_text = v
+        elif k == "stack_info": rv.stack_info = v
+        elif k == "thread": rv.thread = v
         elif k == "threadName": rv.threadName = v
+        elif k == "processName": rv.processName = v
+        elif k == "process": rv.process = v
+        elif k == "taskName": rv.taskName = v
         else: rv._extra[k] = v
     return rv
 
@@ -500,6 +507,15 @@ def _exc_info(exc_info) -> tuple[type[BaseException], BaseException, None] | Non
     if cur is None:
         return None
     return (type(cur), cur, None)
+
+# Pystachy port: makeLogRecord()'s exc_info, which a record's __dict__ holds: None where it is false,
+# as in the dicts that SocketHandler and QueueHandler make (their exc_text holds the traceback's text);
+# an exception's (type, value, traceback) raises NotImplementedError, as the exception cannot be taken
+# out of an Any value (isinstance() of one takes no exception classes)
+def _given_exc_info(v) -> tuple[type[BaseException], BaseException, None] | None:
+    if not v:
+        return None
+    raise NotImplementedError("logging.makeLogRecord() of a dict whose exc_info is an exception is not supported (exc_text and stack_info are)")
 
 #---------------------------------------------------------------------------
 #   Formatter classes and functions

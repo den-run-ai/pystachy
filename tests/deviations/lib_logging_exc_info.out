@@ -1,0 +1,2 @@
+NotImplementedError logging.makeLogRecord() of a dict whose exc_info is an exception is not supported (exc_text and stack_info are)
+[exit 0]
