@@ -6,6 +6,57 @@ adapted files, and every JIT and AOT run must print exactly what CPython printed
 comparisons on that source, not pyperformance scores: some inputs, random number generators and data
 types differ from upstream.
 
+## alpha.3 to alpha.4 candidate instruction counts (2026-11-02)
+
+Each benchmark's adapted source at main `c3aaa068` was built with the v0.1.0-alpha.3
+compiler (`f5a09d42`) and with the candidate's, each with its own library and runtime,
+and run as AOT executables under Callgrind. Every output matched CPython 3.13.18.
+Across the 22 benchmarks both releases run, the candidate executes a geometric mean of
+**+2.35%** more whole-process instructions (15 regress by more than 0.5%, 6 improve).
+`pidigits` is not comparable: alpha.3 has no promoting ints and raises `OverflowError`.
+
+| Change | Benchmarks (instructions, candidate vs alpha.3) | Main cause |
+|---|---|---|
+| Largest regressions | scimark +22.1%, generators +13.3%, json_loads +9.9%, barnes_hut +9.0%, fannkuch +8.3%, go +6.9%, nqueens +5.9% | Recursion accounting (#996), list identity maintenance inlined into every list store (#888), JSON byte scanning (#1004) |
+| Largest improvements | raytrace −28.1%, chaos −4.1%, comprehensions −1.5% | Allocation removal (#1020) |
+
+A scratch build that drops only `pys_list_set`'s identity-companion line brings scimark to
+4.8% below alpha.3 and, over the 21 benchmarks other than `regex_v8`, which it did not
+rebuild, the geometric mean from +2.38% to +0.71%. Paired wall times on the
+shared host follow the larger changes only loosely (scimark 1.15×, barnes_hut 1.08×,
+fib 1.06×, raytrace 0.93×). Builds took 22% longer and executables are 12% larger
+(geometric means of single builds). The
+[counts, arguments, hashes, attribution and timings](../bench/pyperformance/results/alpha3-vs-candidate-2026-11-02.json)
+are retained.
+
+### Release candidate with the alpha.4 fixes
+
+The same comparison was repeated on the release candidate, main `ec442a20`: `c3aaa068` with
+#1025–#1029 and #1031. It used the same sources, arguments and oracles. The geometric mean
+across the 22 benchmarks is **+2.55%** against alpha.3 (+0.20% against `c3aaa068`), and every
+output matches CPython. The counts leave out a call that Valgrind alone makes: there, the
+runtime's stack-bounds lookup (#1026) can fall back to glibc's parse of `/proc/self/maps`,
+about 100,000 instructions once per process, which a native run never opens.
+
+| Benchmark | `c3aaa068` vs alpha.3 | Release candidate vs alpha.3 | What changed |
+|---|---:|---:|---|
+| json_loads | +9.9% | −0.3% | Short strings and keys skip the byte scanner (#1028) |
+| scimark | +22.1% | +3.5% | List companion upkeep only in opt-in programs (#1027); objects that hold lists are allocated again (#1025) |
+| fannkuch | +8.3% | +3.8% | #1027 |
+| raytrace | −28.1% | −0.2% | Allocation removal now skips objects that hold references (#1025) |
+| chaos | −4.1% | −4.5% | Keeps #1020's saving: its objects hold only numbers |
+| generators | +13.3% | +18.2% | The native stack check (#1026) on top of recursion accounting (#996) |
+| barnes_hut | +9.0% | +11.2% | Same |
+
+Outside the 22, `bench/fib.py` executes 37.9% more instructions than alpha.3, up from
+24.1%: its calls are almost all recursion guards. #1033, which folds the stack check into the
+depth comparison, brings fib back to +24.1% and generators to +13.3% (a +2.16% geometric
+mean). It was held for after alpha.4, because a recursion that uses more than 8 KiB of stack
+per level on average can crash under it where #1026 alone raises `RecursionError`.
+Executables remain 12% larger than alpha.3's. Single builds took 25% longer, on a shared
+host. The [counts, hashes and adjustment](../bench/pyperformance/results/alpha3-vs-release-candidate-2026-11-02.json)
+are retained.
+
 ## Coverage expansion (2026-11-02)
 
 `pidigits` is the first big-integer benchmark in the suite. Its module opts in to

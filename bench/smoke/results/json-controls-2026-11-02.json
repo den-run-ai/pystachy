@@ -1,0 +1,543 @@
+{
+ "schema": 1,
+ "measured_utc_date": "2026-11-02",
+ "scope": "Retained JSON decoder controls (bench/smoke/README.md#retained-json-decoder-controls): whole-process AOT instruction counts, release candidate versus the actual alpha.3 tag, plus a first-parent bisect of the broad control. Instruction counts, not wall-time claims.",
+ "revisions": {
+  "alpha3_tag": "f5a09d4223139d7255e31051be97fc509e1ca1fe (v0.1.0-alpha.3; its own natively bootstrapped compiler, library and runtime)",
+  "candidate": "c3aaa068574d440a7104599dc22f683cbae07481 (main; natively bootstrapped compiler at the 790,749-line fixed point, its own library and runtime)",
+  "inputs": "control scripts from the candidate checkout, built by both compilers"
+ },
+ "input_sha256": {
+  "bench/pyperformance/json_loads.py": "51d23d4d8dcc3dea512988ae424988be6bf17d70e9e6d2a09d908799b3319c77",
+  "bench/smoke/json_decode.py": "f863a322eec74cd9b9dfdc99035a1d82d1772be31614198a111a5c82b41564b5",
+  "bench/smoke/json_decode_any.py": "7fa30eb1401ee9ca7e3f2c54e99726fe1ef554f7e69da70ad88cdf70e7427dcd",
+  "bench/smoke/json_decode_any32.py": "72f7418d3079f81d0faf926a9a385eaba92488efe09dcfeb332a4c6441085d51"
+ },
+ "toolchain": {
+  "llvm": "18.1.3",
+  "valgrind": "3.22.0",
+  "cpython_oracle": "3.13.18",
+  "host": "shared 4-vCPU Linux x86-64 VM, Intel Xeon @ 2.10 GHz"
+ },
+ "environment": "Inherited PYSTACHY_*, PYTHONPATH and PYTHONHOME cleared; PYTHONHASHSEED=0, LC_ALL=C.UTF-8; each revision builds with PYSTACHY_HOME set to its own checkout and a private PYSTACHY_CACHE; valgrind --tool=callgrind pinned with taskset to one CPU; stdout compared with CPython byte for byte.",
+ "controls": [
+  {
+   "control": "broad",
+   "script": "bench/pyperformance/json_loads.py",
+   "args": [
+    "300"
+   ],
+   "alpha3_instructions": 1300394281,
+   "candidate_instructions": 1428523891,
+   "change_percent": 9.853,
+   "outputs_match_cpython": true,
+   "alpha3_binary_sha256": "61a3a680daf89e122b404dc6f73f33fd64afb7a6665fbff90a0edd43edfa878f",
+   "candidate_binary_sha256": "4f086575f1a27af6bb7138667ec0c78530561479cca8bc89220ae9ce88f4adc8"
+  },
+  {
+   "control": "typed-numeric",
+   "script": "bench/smoke/json_decode.py",
+   "args": [
+    "numeric",
+    "3000"
+   ],
+   "alpha3_instructions": 91467244,
+   "candidate_instructions": 93184801,
+   "change_percent": 1.878,
+   "outputs_match_cpython": true,
+   "alpha3_binary_sha256": "a3a9635cda261a7f42b26799b70c862b3c7a5c6466370ee7bdef42b8228682c5",
+   "candidate_binary_sha256": "d6908ffe1eaeb866cae289c441e4d1bd5bbb8fe8c318116ffddb2528601d0d7f"
+  },
+  {
+   "control": "typed-strings",
+   "script": "bench/smoke/json_decode.py",
+   "args": [
+    "strings",
+    "3000"
+   ],
+   "alpha3_instructions": 108710399,
+   "candidate_instructions": 113139545,
+   "change_percent": 4.074,
+   "outputs_match_cpython": true,
+   "alpha3_binary_sha256": "a3a9635cda261a7f42b26799b70c862b3c7a5c6466370ee7bdef42b8228682c5",
+   "candidate_binary_sha256": "d6908ffe1eaeb866cae289c441e4d1bd5bbb8fe8c318116ffddb2528601d0d7f"
+  },
+  {
+   "control": "typed-mixed",
+   "script": "bench/smoke/json_decode.py",
+   "args": [
+    "mixed",
+    "3000"
+   ],
+   "alpha3_instructions": 127365973,
+   "candidate_instructions": 130275075,
+   "change_percent": 2.284,
+   "outputs_match_cpython": true,
+   "alpha3_binary_sha256": "a3a9635cda261a7f42b26799b70c862b3c7a5c6466370ee7bdef42b8228682c5",
+   "candidate_binary_sha256": "d6908ffe1eaeb866cae289c441e4d1bd5bbb8fe8c318116ffddb2528601d0d7f"
+  },
+  {
+   "control": "any-short",
+   "script": "bench/smoke/json_decode_any.py",
+   "args": [
+    "2000"
+   ],
+   "alpha3_instructions": 30011329,
+   "candidate_instructions": 30518555,
+   "change_percent": 1.69,
+   "outputs_match_cpython": true,
+   "alpha3_binary_sha256": "e46ce55611af12443acb0a04706f966a42ca826accb9377b94a868c4267422e8",
+   "candidate_binary_sha256": "8a74440648f3d9dff0a90a02325a077a9dd2e5958a4a09fe3d770e77378acb08"
+  },
+  {
+   "control": "any32-numeric",
+   "script": "bench/smoke/json_decode_any32.py",
+   "args": [
+    "numeric",
+    "3000"
+   ],
+   "alpha3_instructions": 106837457,
+   "candidate_instructions": 105239179,
+   "change_percent": -1.496,
+   "outputs_match_cpython": true,
+   "alpha3_binary_sha256": "44c022bffc893199adffb252753105c4709deeaf4f759c4fdab3853d4dfff8c4",
+   "candidate_binary_sha256": "b8d9a4c999e9872764729a5a6229d9a06e5efc37f762216c00df9d98f405bb31"
+  },
+  {
+   "control": "any32-strings",
+   "script": "bench/smoke/json_decode_any32.py",
+   "args": [
+    "strings",
+    "3000"
+   ],
+   "alpha3_instructions": 116971927,
+   "candidate_instructions": 122722949,
+   "change_percent": 4.917,
+   "outputs_match_cpython": true,
+   "alpha3_binary_sha256": "44c022bffc893199adffb252753105c4709deeaf4f759c4fdab3853d4dfff8c4",
+   "candidate_binary_sha256": "b8d9a4c999e9872764729a5a6229d9a06e5efc37f762216c00df9d98f405bb31"
+  },
+  {
+   "control": "any32-mixed",
+   "script": "bench/smoke/json_decode_any32.py",
+   "args": [
+    "mixed",
+    "3000"
+   ],
+   "alpha3_instructions": 142771283,
+   "candidate_instructions": 144690941,
+   "change_percent": 1.345,
+   "outputs_match_cpython": true,
+   "alpha3_binary_sha256": "44c022bffc893199adffb252753105c4709deeaf4f759c4fdab3853d4dfff8c4",
+   "candidate_binary_sha256": "b8d9a4c999e9872764729a5a6229d9a06e5efc37f762216c00df9d98f405bb31"
+  }
+ ],
+ "bisect_broad_control": {
+  "method": "Each first-parent merge's own CPython-hosted compiler (python3.13 pystachy.py build) with its own library and runtime; the compiler's IR fixed point makes hosted and native builds equal. The candidate's native build counted 1,428,523,891 and #1004's hosted build 1,428,514,330.",
+  "alpha3_instructions": 1300394281,
+  "points": [
+   {
+    "main_commit": "b2eed893aa0e1e64b0acf32852ad93d0da1a006a",
+    "merge": "#987",
+    "instructions": 1298074910,
+    "stdout_matches_cpython": true,
+    "binary_sha256": "a835cf7a14ca3898bb41b47997f2c5802fb85ae8f95a461d5707b3067e0b6f77"
+   },
+   {
+    "main_commit": "06e3ad5d08514ba31fb231fe4636a962fe6578e3",
+    "merge": "#997",
+    "instructions": 1303097751,
+    "stdout_matches_cpython": true,
+    "binary_sha256": "832d22a7458081020be9c6fe5a0e15d6424ada993925bf71164d16194161eea5"
+   },
+   {
+    "main_commit": "07b26e02425d023288ed95a9d2a5077be5aeb45e",
+    "merge": "#1000",
+    "instructions": 1303097748,
+    "stdout_matches_cpython": true,
+    "binary_sha256": "c47f2d735a9bc8eee6d0c44bf549b2f96c37ed2146e0bd275168107261d04f7d"
+   },
+   {
+    "main_commit": "eac646137480a27467f5c933fd3a0507c39b6643",
+    "merge": "#996",
+    "instructions": 1307221265,
+    "stdout_matches_cpython": true,
+    "binary_sha256": "f47ca7251a688fafd0558d6e9647a70e49ea757cac3b2af1847d76e2edc22742"
+   },
+   {
+    "main_commit": "973c68e45cf8fcfa4a287ebb5a9286da3eed740c",
+    "merge": "#1019",
+    "instructions": 1302781635,
+    "stdout_matches_cpython": true,
+    "binary_sha256": "d2bb546cd988bafd6727767331f22995201081b82ea5726715b3292c1855a7b2"
+   },
+   {
+    "main_commit": "14d4eb15cb6782f3f5cc7dd31d9f39cfde46495f",
+    "merge": "#1002",
+    "instructions": 1303060415,
+    "stdout_matches_cpython": true,
+    "binary_sha256": "7946d189ba8ac11fc66cd8cef479287d4adc0466770ada49828d0d7fbc2798ee"
+   },
+   {
+    "main_commit": "c1bfb48ae81fcc839da208f8706dc67049fb9059",
+    "merge": "#1004",
+    "instructions": 1428514330,
+    "stdout_matches_cpython": true,
+    "binary_sha256": "5332ddb0676814c55298ddf0f27e6580eecaf30c156986cdbded07eb20dea3aa"
+   }
+  ]
+ },
+ "attribution_1004": {
+  "profiles": "callgrind_annotate --inclusive=no, main 14d4eb15 (#1002) versus c1bfb48a (#1004 merged)",
+  "self_instruction_changes": [
+   {
+    "function": "pys_bytes_scan",
+    "change": 87788629,
+    "before": 0,
+    "after": 87788629
+   },
+   {
+    "function": "m.json$_Parser.plain_rest",
+    "change": 27382563,
+    "before": 0,
+    "after": 27382563
+   },
+   {
+    "function": "m.json$_Parser.key",
+    "change": 21789631,
+    "before": 183702767,
+    "after": 205492398
+   },
+   {
+    "function": "m.json$_Parser.string",
+    "change": -11749958,
+    "before": 209734950,
+    "after": 197984992
+   },
+   {
+    "function": "__memset_avx2_unaligned_erms",
+    "change": 242952,
+    "before": 112258335,
+    "after": 112501287
+   },
+   {
+    "function": "gc_slow",
+    "change": 18242,
+    "before": 48540945,
+    "after": 48559187
+   }
+  ]
+ },
+ "wall_time_1004": {
+  "cpu": 2,
+  "pairs": 9,
+  "samples": [
+   {
+    "pair": 0,
+    "commit": "14d4eb15",
+    "loop_seconds": 0.15777780300004451,
+    "process_wall_seconds": 0.16266755300011937
+   },
+   {
+    "pair": 0,
+    "commit": "c1bfb48a",
+    "loop_seconds": 0.1351712089999637,
+    "process_wall_seconds": 0.13933179300011034
+   },
+   {
+    "pair": 1,
+    "commit": "c1bfb48a",
+    "loop_seconds": 0.1678980019996743,
+    "process_wall_seconds": 0.17195770099988295
+   },
+   {
+    "pair": 1,
+    "commit": "14d4eb15",
+    "loop_seconds": 0.13024927900005423,
+    "process_wall_seconds": 0.1349601619999703
+   },
+   {
+    "pair": 2,
+    "commit": "14d4eb15",
+    "loop_seconds": 0.21188175099996442,
+    "process_wall_seconds": 0.21628685400037284
+   },
+   {
+    "pair": 2,
+    "commit": "c1bfb48a",
+    "loop_seconds": 0.13124815499986653,
+    "process_wall_seconds": 0.13496483700009776
+   },
+   {
+    "pair": 3,
+    "commit": "c1bfb48a",
+    "loop_seconds": 0.1358661729996129,
+    "process_wall_seconds": 0.1398040679996484
+   },
+   {
+    "pair": 3,
+    "commit": "14d4eb15",
+    "loop_seconds": 0.12699134500007858,
+    "process_wall_seconds": 0.13114624900026683
+   },
+   {
+    "pair": 4,
+    "commit": "14d4eb15",
+    "loop_seconds": 0.12715341800003443,
+    "process_wall_seconds": 0.13117262300011134
+   },
+   {
+    "pair": 4,
+    "commit": "c1bfb48a",
+    "loop_seconds": 0.1381837019998784,
+    "process_wall_seconds": 0.14207574400006706
+   },
+   {
+    "pair": 5,
+    "commit": "c1bfb48a",
+    "loop_seconds": 0.15263090100006593,
+    "process_wall_seconds": 0.15694111299990254
+   },
+   {
+    "pair": 5,
+    "commit": "14d4eb15",
+    "loop_seconds": 0.16297294600008172,
+    "process_wall_seconds": 0.1682857270002387
+   },
+   {
+    "pair": 6,
+    "commit": "14d4eb15",
+    "loop_seconds": 0.14164565100008986,
+    "process_wall_seconds": 0.1458969220002473
+   },
+   {
+    "pair": 6,
+    "commit": "c1bfb48a",
+    "loop_seconds": 0.1335147589998087,
+    "process_wall_seconds": 0.13746113200022592
+   },
+   {
+    "pair": 7,
+    "commit": "c1bfb48a",
+    "loop_seconds": 0.14257156199983,
+    "process_wall_seconds": 0.14752422199990178
+   },
+   {
+    "pair": 7,
+    "commit": "14d4eb15",
+    "loop_seconds": 0.13742684999988342,
+    "process_wall_seconds": 0.14202636800018809
+   },
+   {
+    "pair": 8,
+    "commit": "14d4eb15",
+    "loop_seconds": 0.13870703600014167,
+    "process_wall_seconds": 0.14312784399999146
+   },
+   {
+    "pair": 8,
+    "commit": "c1bfb48a",
+    "loop_seconds": 0.14985795799975676,
+    "process_wall_seconds": 0.15387707199988654
+   }
+  ],
+  "summary": {
+   "14d4eb15": {
+    "median_loop_seconds": 0.13870703600014167,
+    "min": 0.12699134500007858,
+    "max": 0.21188175099996442
+   },
+   "c1bfb48a": {
+    "median_loop_seconds": 0.1381837019998784,
+    "min": 0.13124815499986653,
+    "max": 0.1678980019996743
+   },
+   "paired_ratio_median": 1.037436003226087,
+   "paired_ratios": [
+    0.8567187933268761,
+    1.2890512967799568,
+    0.6194405812697318,
+    1.0698852980849114,
+    1.0867478371666028,
+    0.9365413385850521,
+    0.9425969527276484,
+    1.037436003226087,
+    1.0803918987902221
+   ]
+  },
+  "note": "Internal timed loop of json_loads.py 300, nine alternating pairs on one CPU of a shared host; the ranges overlap and no wall-time difference is resolved."
+ },
+ "release_candidate": {
+  "revision": "main ec442a20 (c3aaa068 with #1025-#1029 and #1031), measured as the local merge 9496b00d, whose code is identical (see bench/pyperformance/results/alpha3-vs-release-candidate-2026-11-02.json)",
+  "method": "Each control script, from the measured checkout (unchanged: input_sha256), built by each revision's own compiler, library and runtime: the alpha.3 tag f5a09d42 and the release candidate. Whole-process AOT Callgrind instructions pinned to one CPU, stdout compared with CPython 3.13.18 byte for byte, in the settings the environment field lists. Each control records its script, arguments and both executables' SHA-256; the alpha.3 executables are the ones the controls list measured.",
+  "commands": {
+   "build": "cd $REV && PYSTACHY_HOME=$REV PYSTACHY_CACHE=$SCRATCH/cache-$REVNAME ./pystachy build $CHECKOUT/$SCRIPT -o $EXE (REV: the alpha.3 tag's checkout, or $CHECKOUT)",
+   "oracle": "python3.13 -s -P $CHECKOUT/$SCRIPT $ARGS > $CONTROL.oracle",
+   "count": "taskset -c 2 valgrind --tool=callgrind --error-exitcode=99 --callgrind-out-file=$CONTROL.$REVNAME.callgrind $EXE $ARGS > $CONTROL.$REVNAME.out",
+   "check": "cmp -s $CONTROL.oracle $CONTROL.$REVNAME.out; callgrind_total is the summary line of $CONTROL.$REVNAME.callgrind",
+   "adjustment": "callgrind_annotate --inclusive=yes --threshold=100 $CONTROL.$REVNAME.callgrind: valgrind_only_fallback_instructions is the inclusive count of glibc's pthread_getattr_np, and instructions = callgrind_total - valgrind_only_fallback_instructions"
+  },
+  "paths": "$CHECKOUT is the measured checkout and $SCRATCH a private scratch directory; executables are identified by hash and not retained.",
+  "valgrind_adjustment": "release_candidate instructions subtract the inclusive cost of glibc's pthread_getattr_np, which the runtime's stack-bounds lookup (#1026) calls only when Valgrind moves AT_EXECFN off its page boundary (a /proc/self/maps parse, about 110,000 instructions once per process; native runs never make it). Without the adjustment, the earlier merge c15dc6f8 read +0.11% on the short observed-Any control.",
+  "controls": {
+   "broad": {
+    "script": "bench/pyperformance/json_loads.py",
+    "args": [
+     "300"
+    ],
+    "alpha3": {
+     "instructions": 1300402961,
+     "stdout_matches_cpython": true,
+     "binary_sha256": "61a3a680daf89e122b404dc6f73f33fd64afb7a6665fbff90a0edd43edfa878f"
+    },
+    "release_candidate": {
+     "instructions": 1296236550,
+     "callgrind_total": 1296345127,
+     "valgrind_only_fallback_instructions": 108577,
+     "stdout_matches_cpython": true,
+     "binary_sha256": "f78000d760095d9c7abcebc2663565ae905af9fc1cdcc421fa68fcbfb17749ea"
+    },
+    "change_percent": -0.32
+   },
+   "typed-numeric": {
+    "script": "bench/smoke/json_decode.py",
+    "args": [
+     "numeric",
+     "3000"
+    ],
+    "alpha3": {
+     "instructions": 91471048,
+     "stdout_matches_cpython": true,
+     "binary_sha256": "a3a9635cda261a7f42b26799b70c862b3c7a5c6466370ee7bdef42b8228682c5"
+    },
+    "release_candidate": {
+     "instructions": 91042051,
+     "callgrind_total": 91152840,
+     "valgrind_only_fallback_instructions": 110789,
+     "stdout_matches_cpython": true,
+     "binary_sha256": "4fa6156034569c1640edf000187079bccd6d2b88f2a7f345b432876fa63ec093"
+    },
+    "change_percent": -0.47
+   },
+   "typed-strings": {
+    "script": "bench/smoke/json_decode.py",
+    "args": [
+     "strings",
+     "3000"
+    ],
+    "alpha3": {
+     "instructions": 108709893,
+     "stdout_matches_cpython": true,
+     "binary_sha256": "a3a9635cda261a7f42b26799b70c862b3c7a5c6466370ee7bdef42b8228682c5"
+    },
+    "release_candidate": {
+     "instructions": 107142798,
+     "callgrind_total": 107253587,
+     "valgrind_only_fallback_instructions": 110789,
+     "stdout_matches_cpython": true,
+     "binary_sha256": "4fa6156034569c1640edf000187079bccd6d2b88f2a7f345b432876fa63ec093"
+    },
+    "change_percent": -1.44
+   },
+   "typed-mixed": {
+    "script": "bench/smoke/json_decode.py",
+    "args": [
+     "mixed",
+     "3000"
+    ],
+    "alpha3": {
+     "instructions": 127365458,
+     "stdout_matches_cpython": true,
+     "binary_sha256": "a3a9635cda261a7f42b26799b70c862b3c7a5c6466370ee7bdef42b8228682c5"
+    },
+    "release_candidate": {
+     "instructions": 126834299,
+     "callgrind_total": 126945088,
+     "valgrind_only_fallback_instructions": 110789,
+     "stdout_matches_cpython": true,
+     "binary_sha256": "4fa6156034569c1640edf000187079bccd6d2b88f2a7f345b432876fa63ec093"
+    },
+    "change_percent": -0.42
+   },
+   "any-short": {
+    "script": "bench/smoke/json_decode_any.py",
+    "args": [
+     "2000"
+    ],
+    "alpha3": {
+     "instructions": 30010294,
+     "stdout_matches_cpython": true,
+     "binary_sha256": "e46ce55611af12443acb0a04706f966a42ca826accb9377b94a868c4267422e8"
+    },
+    "release_candidate": {
+     "instructions": 29923646,
+     "callgrind_total": 30034512,
+     "valgrind_only_fallback_instructions": 110866,
+     "stdout_matches_cpython": true,
+     "binary_sha256": "bc94ba84634e8ec0470c2c69967c5d53612a3f7553c1734e4d5fa817cc188d24"
+    },
+    "change_percent": -0.29
+   },
+   "any32-numeric": {
+    "script": "bench/smoke/json_decode_any32.py",
+    "args": [
+     "numeric",
+     "3000"
+    ],
+    "alpha3": {
+     "instructions": 106836428,
+     "stdout_matches_cpython": true,
+     "binary_sha256": "44c022bffc893199adffb252753105c4709deeaf4f759c4fdab3853d4dfff8c4"
+    },
+    "release_candidate": {
+     "instructions": 103099793,
+     "callgrind_total": 103210666,
+     "valgrind_only_fallback_instructions": 110873,
+     "stdout_matches_cpython": true,
+     "binary_sha256": "f2e2d91866861515025b534841e71475944d478834bb78e1dfc331c9ed5ae7c2"
+    },
+    "change_percent": -3.5
+   },
+   "any32-strings": {
+    "script": "bench/smoke/json_decode_any32.py",
+    "args": [
+     "strings",
+     "3000"
+    ],
+    "alpha3": {
+     "instructions": 116970899,
+     "stdout_matches_cpython": true,
+     "binary_sha256": "44c022bffc893199adffb252753105c4709deeaf4f759c4fdab3853d4dfff8c4"
+    },
+    "release_candidate": {
+     "instructions": 116650467,
+     "callgrind_total": 116761340,
+     "valgrind_only_fallback_instructions": 110873,
+     "stdout_matches_cpython": true,
+     "binary_sha256": "f2e2d91866861515025b534841e71475944d478834bb78e1dfc331c9ed5ae7c2"
+    },
+    "change_percent": -0.27
+   },
+   "any32-mixed": {
+    "script": "bench/smoke/json_decode_any32.py",
+    "args": [
+     "mixed",
+     "3000"
+    ],
+    "alpha3": {
+     "instructions": 142770271,
+     "stdout_matches_cpython": true,
+     "binary_sha256": "44c022bffc893199adffb252753105c4709deeaf4f759c4fdab3853d4dfff8c4"
+    },
+    "release_candidate": {
+     "instructions": 141137093,
+     "callgrind_total": 141247966,
+     "valgrind_only_fallback_instructions": 110873,
+     "stdout_matches_cpython": true,
+     "binary_sha256": "f2e2d91866861515025b534841e71475944d478834bb78e1dfc331c9ed5ae7c2"
+    },
+    "change_percent": -1.14
+   }
+  }
+ }
+}

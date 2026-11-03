@@ -8,8 +8,8 @@ the Docker image includes LLVM. Neither requires Python to run the compiler.
 
 Download the matching archive and `SHA256SUMS` from
 [GitHub Releases](https://github.com/den-run-ai/pystachy/releases). The current prerelease is
-[v0.1.0-alpha.3](https://github.com/den-run-ai/pystachy/releases/tag/v0.1.0-alpha.3); read its
-[known issues and workarounds](https://github.com/den-run-ai/pystachy/blob/v0.1.0-alpha.3/docs/releases/v0.1.0-alpha.3.md#known-issues-and-workarounds) before adoption.
+[v0.1.0-alpha.4](https://github.com/den-run-ai/pystachy/releases/tag/v0.1.0-alpha.4); read its
+[known issues and workarounds](https://github.com/den-run-ai/pystachy/blob/v0.1.0-alpha.4/docs/releases/v0.1.0-alpha.4.md#known-issues-and-workarounds) before adoption.
 
 | Package target | Requirements |
 |---|---|
@@ -18,10 +18,8 @@ Download the matching archive and `SHA256SUMS` from
 | `macos-arm64` | Apple Silicon, macOS 15+, Xcode Command Line Tools, LLVM 20 |
 | `macos-x86_64` | Intel, macOS 15+, Xcode Command Line Tools, LLVM 20 |
 
-Linux ARM64 archives and native Docker images are added for **alpha.4 preparation**;
-they are not part of the published alpha.3 release. Download them only once the
-matching release is published. The archive spelling is `aarch64`; Docker calls the
-same architecture `arm64`.
+Releases before alpha.4 have no Linux ARM64 archive. The archive spelling is `aarch64`;
+Docker calls the same architecture `arm64`.
 
 Install the toolchain once:
 
@@ -46,7 +44,7 @@ export PATH="$HOME/.local/bin:$PATH"
 pystachy run demo.py
 ```
 
-Replace `VERSION` with the release tag, such as `v0.1.0-alpha.3`, and use your
+Replace `VERSION` with the release tag, such as `v0.1.0-alpha.4`, and use your
 platform's archive name. Keep the complete extracted directory: it contains the
 runtime and libraries alongside the compiler. The directory can be moved, and its
 launcher resolves symlinks. `manifest.json` records the source commit and file hashes.
@@ -56,8 +54,8 @@ this command works without LLVM or Python.
 ## Docker
 
 Starting with alpha.4, the image targets **Linux amd64 and arm64**. Docker selects the
-host's architecture, including native Linux containers on Apple Silicon. The published
-alpha.3 image remains amd64-only and needs `--platform linux/amd64` on ARM hosts.
+host's architecture, including native Linux containers on Apple Silicon. Earlier images,
+such as alpha.3's, are amd64-only and need `--platform linux/amd64` on ARM hosts.
 Use the image name and published version from the release notes:
 
 ```sh

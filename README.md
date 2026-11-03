@@ -10,31 +10,30 @@
 [![Hosted compiler coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fden-run-ai%2Fpystachy%2Fbadges%2Fcoverage.json)](docs/testing.md#compiler-coverage)
 [![Native runtime coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fden-run-ai%2Fpystachy%2Fbadges%2Fruntime-coverage.json)](docs/testing.md#native-runtime-coverage)
 
-Pystachy compiles a statically typed subset of Python to native code, retaining Python
-readability and reusing existing CPython library code. It targets CPU-intensive workloads
-where Python's runtime overhead gets in the way.
+Pystachy compiles a statically typed subset of Python to native code through LLVM. It is
+aimed at CPU-bound code where CPython's interpreter overhead gets in the way, while keeping
+Python's readability and reusing existing Python library code.
 
-Write ordinary `.py` files, then use `pystachy run` for JIT execution or `pystachy build`
-for a standalone native executable. Python is needed at runtime only if you opt into
-the [embedded CPython bridge](docs/ffi.md#calling-cpython-libpyobjpy).
+Write ordinary `.py` files, then use `pystachy run` to compile and run them (JIT) or
+`pystachy build` to produce a standalone executable (AOT). Compiled programs need Python
+only if you opt into the [embedded CPython bridge](docs/ffi.md#calling-cpython-libpyobjpy).
 
-The self-hosting compiler and parts of the runtime are written in this same typed subset.
-Both compilation modes share a [fully typed instruction IR](docs/typed-ir.md) before LLVM lowering.
-The compiler runs under CPython and compiles itself; CI checks that successive builds
-produce byte-identical LLVM IR.
+The compiler and parts of the runtime are written in the same typed subset. The compiler
+compiles itself, and CI checks that successive self-builds produce byte-identical LLVM IR.
+Both modes share one [fully typed IR](docs/typed-ir.md).
 
 **Highlights:**
 
-- **Native machine learning:** an adapted microGPT trains and generates text with scalar
-  autograd, without a tensor library or embedded Python; measured AOT training is **16.9×
-  faster** than the original CPython program over 100 steps ([results](bench/microgpt/README.md)).
+- **Machine learning without a tensor library:** an adapted microGPT trains with scalar
+  autograd and no embedded Python; AOT training is **16.9× faster** than the original
+  CPython program over 100 steps ([results](bench/microgpt/README.md)).
 - **Native nanoGPT:** inference and training run without CPython, NumPy or PyTorch. On a small
-  108K-parameter float64 model with OpenBLAS on one thread, AOT inference is **faster than
-  CPython + NumPy and PyTorch** (0.5–0.7× and 0.8–0.9× their latency) and about 200× faster than
-  the same model in pure Python on CPython; results match PyTorch within 1.4e-14
+  108K-parameter float64 model with single-threaded OpenBLAS, AOT inference is **faster than
+  CPython + NumPy and PyTorch** (0.5–0.7× and 0.8–0.9× their latency) and about 200× faster
+  than the same model in pure Python; results match PyTorch within 1.4e-14
   ([example](examples/nanogpt/README.md#paired-measurement-after-the-array-and-blas-work)).
-- **1,600+ differential programs** checked against CPython, plus **1,700+ rejection tests**,
-  with JIT/AOT, self-hosting, sanitizer and garbage-collection stress coverage
+- **Checked against CPython:** 1,900+ differential programs and 1,700+ rejection tests, run in
+  JIT and AOT modes, with self-hosting, sanitizer and garbage-collection stress coverage
   ([verification](docs/testing.md)).
 - **Python and C interoperability:** call C libraries, build CPython extensions, or explicitly
   call existing Python packages through embedded CPython ([guide](docs/ffi.md)).
@@ -65,16 +64,14 @@ typed control loop, native tool calls and file edits in a standalone executable.
 
 ## Quick start
 
-Use a [native release package or Docker image](docs/install.md) to skip bootstrapping.
-The current prerelease is [v0.1.0-alpha.3](https://github.com/den-run-ai/pystachy/releases/tag/v0.1.0-alpha.3);
-its release page has changes, known issues and downloadable assets.
-Release packages require LLVM; the image includes it. Source `main` can contain newer changes.
-Source builds support Linux x86-64/ARM64 and macOS Apple Silicon/Intel. Linux ARM64
-release archives and native Docker images are part of alpha.4 preparation; alpha.3
-does not include them. For a source build:
+To skip bootstrapping, use a [native release archive or Docker image](docs/install.md).
+Archives require LLVM; the image includes it. The current prerelease is
+[v0.1.0-alpha.4](https://github.com/den-run-ai/pystachy/releases/tag/v0.1.0-alpha.4); its
+release page lists changes, known issues, supported platforms and downloads. Source `main`
+can contain newer changes.
 
-Install LLVM, **Python 3.11+** and `make` with your package manager.
-On Ubuntu 24.04:
+Source builds support Linux (x86-64 and ARM64) and macOS (Apple Silicon and Intel). Install
+LLVM, **Python 3.11+** and `make` with your package manager. On Ubuntu 24.04:
 
 ```sh
 sudo apt update
@@ -98,7 +95,7 @@ make install                          # installs to ~/.local; no sudo
 export PATH="$HOME/.local/bin:$PATH"   # add to your shell configuration once if needed
 ```
 
-Save the example above as `demo.py`, then run it with CPython, JIT or AOT:
+Save the example above as `demo.py`, then run it with CPython, the JIT or an AOT build:
 
 ```sh
 python3 demo.py
@@ -107,14 +104,12 @@ pystachy build demo.py -o demo
 ./demo
 ```
 
-You can also use `./pystachy` from the checkout without installing. Before bootstrapping,
-use `python3 -m pystachy run demo.py` with Python 3.11+ on Ubuntu, or
-`python3.13 -m pystachy run demo.py` with Homebrew.
-See [installation and setup](docs/install.md) for uv, custom prefixes and dependency checks,
-or [compiler commands and settings](docs/internals.md). Full verification uses Python 3.13
-on Linux x86-64 and ARM64, with independent bootstrap and verification artifacts.
+Without installing, use `./pystachy` from the checkout. Before the first `make`, run the
+compiler under CPython instead: `python3 -m pystachy run demo.py` (use `python3.13` with
+Homebrew). See [installation and setup](docs/install.md) for uv, custom prefixes and dependency
+checks, and [compiler commands and settings](docs/internals.md) for options.
 
-Continue with [your first compiled program](docs/getting-started.md) for a small
+Continue with [your first compiled program](docs/getting-started.md) for a short
 run–diagnose–fix walkthrough and a fair comparison of execution modes.
 
 ## Performance
@@ -125,79 +120,70 @@ run–diagnose–fix walkthrough and a fair comparison of execution modes.
 | microGPT, five generated names | 260.6 ms | 14.26 ms | **13.45 ms (19.4× faster)** |
 | [4M integer list, peak RSS](docs/performance.md#start-up-and-memory) | 169 MiB | Not recorded | 34.2 MiB |
 
-The microGPT timings measure training and inference, excluding startup and compilation.
-Parameters, losses and generated names are checked against the original CPython program;
-the adapted source also runs under CPython.
+The microGPT timings cover training and inference, excluding startup and compilation.
+Parameters, losses and generated names match the original CPython program, and the adapted
+source still runs under CPython.
 
-Performance depends on your workload. See the [23 adapted pyperformance benchmarks](docs/pyperformance.md)
-for more comparisons and the [performance guide](docs/performance.md) for startup, memory use
-and reproduction instructions. JIT compiles each run; AOT builds once.
-The [caching guide](docs/caching.md) covers regex and text processing.
+Performance depends on the workload: the JIT compiles on every run, while AOT builds once.
+See the [23 adapted pyperformance benchmarks](docs/pyperformance.md) for more comparisons, the
+[performance guide](docs/performance.md) for startup, memory use and reproduction, and the
+[caching guide](docs/caching.md) for regex and text processing.
 
 ## Libraries and compatibility
 
-Pystachy supports typed containers, classes and dataclasses, exceptions, functions as values,
-closures, decorators, generators (`send` / `throw` / `close`), context managers and generic typing.
-Unannotated functions and supported `Any` annotations specialize to concrete types;
-`Any` adds dynamically typed storage only in modules that opt in to the experimental
-[dynamic `Any`](docs/dynamic-any.md). See the
+**Language.** Pystachy supports typed containers, classes and dataclasses, exceptions,
+closures, decorators, functions as values, generators (`send` / `throw` / `close`), context
+managers and generic typing. Unannotated functions and supported `Any` annotations specialize
+to concrete types; modules that opt in to the experimental [dynamic `Any`](docs/dynamic-any.md)
+can also hold values whose type is known only at run time. See the
 [typing rules](docs/language/typing.md#function-and-method-templates).
 
-Some standard-library modules compile unchanged. Others, including `fnmatch`, `textwrap`,
-`difflib`, `statistics` and `random`, use localized adaptations marked `# Pystachy port:`.
-The adapted code remains valid Python and can be diffed against upstream.
-The library also includes `re`, `itertools`, Unicode normalization, a bounded native `json`,
-`tomllib.loads()`, `functools.cache` / `lru_cache`, `collections.namedtuple`, and in-memory
-binary I/O with `io.BytesIO`. Dynamic `Any` JSON decoding preserves integers beyond 64 bits;
-typed `JSONValue` decoding retains checked 64-bit storage.
-See [library coverage and port notes](lib/README.md) for supported APIs and remaining limits.
-The [CPython support map](docs/support-surface.md) diagrams the native core, bounded features
-and the compiler, runtime and IR costs of broader compatibility.
-There are also [14 third-party ports](ports/README.md), with scoped APIs and documented adaptations.
-The [historical compatibility audit](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/reports/compatibility-updates.md) records
-coverage and blockers at its evaluated revisions; use the library reference for current APIs.
+**Standard library.** Some modules compile unchanged. Others, such as `fnmatch`, `textwrap`,
+`difflib`, `statistics` and `random`, carry small adaptations marked `# Pystachy port:`; the
+adapted code remains valid Python and can be diffed against upstream. The library also
+provides `re`, `itertools`, Unicode normalization, a bounded native `json`, `tomllib.loads()`,
+`functools.cache` / `lru_cache`, `collections.namedtuple` and `io.BytesIO`. See
+[library coverage](lib/README.md) for supported APIs and limits, and the
+[CPython support map](docs/support-surface.md) for what broader compatibility would cost.
 
-For numerical work, the [float64 array example](examples/ndarray/README.md) provides
+**Third-party code.** [14 ported packages](ports/README.md) have scoped APIs and documented
+adaptations. Libraries ship as ordinary Python wheels: uv or pip installs them, and Pystachy
+compiles the installed `.py` sources. The [package tutorial](examples/package/README.md) shares
+one library between CPython and native apps; [packages and deployment](docs/packages.md) covers
+locked installs, the ports wheel and standalone executables.
+
+**Numerical work.** The [float64 array example](examples/ndarray/README.md) provides
 multidimensional views, broadcasting, fused expressions and optional BLAS matrix products.
-It is a focused native implementation; existing packages such as NumPy can instead run
-through the explicit CPython bridge, which requires Python and those packages at runtime.
-
-Reuse and ship libraries as ordinary Python wheels; uv/pip handles dependencies,
-and Pystachy compiles the installed `.py` sources. The [short package tutorial](examples/package/README.md)
-shares one library between CPython and native apps. See [packages and deployment](docs/packages.md)
-for locked installs, the ports wheel and standalone executables.
+It is a focused native implementation, not NumPy; NumPy itself can run through the explicit
+CPython bridge, which needs Python and NumPy at run time.
 
 ## Status and limitations
 
-Pystachy is experimental and supports a subset of Python. It is a good fit for typed,
-algorithmic code; broad compatibility with arbitrary PyPI packages is still limited.
+Pystachy is experimental and supports a subset of Python. It fits typed, algorithmic code
+best; most PyPI packages do not compile unchanged.
 
-- Ordinary single inheritance is supported; multiple inheritance, `async`, `match`,
-  native `bytearray` and binary filesystem I/O remain unsupported. `io.BytesIO` is supported.
-  See the [class rules](docs/language/typing.md#single-inheritance).
-- Dynamic `Any` remains experimental and opt-in. Unsupported cross-type comparison bodies
-  raise an explicit error when selected. Supported paths include
-  finite missing-field writes, known helper calls and escapes, operand rebinding, inferred
-  getters and nested container comparisons with user callbacks. They preserve effects,
-  native storage and aliases within the [comparison acceptance matrix](docs/dynamic-any.md#operations).
-  [Iteration through Any](docs/dynamic-any.md#iteration) supports custom iterators,
-  ranges and boxable generators, with lazy advancement and preserved aliases.
-  Numeric identity still has limitations at some typed storage boundaries. Read the
-  [dynamic contract and deviations](docs/dynamic-any.md#deviations) before enabling it.
-- Ordinary integers are checked 64-bit values; overflow raises `OverflowError`. A module that
-  opts in to the experimental [promoting ints](docs/python-int.md) gets CPython's `int` in its
-  variables, arguments, returns, fields, tuples and generators and in lists, dicts and sets of
-  ints and of tuples of ints, while other containers keep 64-bit ints. The explicit
-  experimental [`mpz`](docs/mpz.md) type provides arbitrary-precision integer arithmetic.
-- Strings store UTF-8 with code-point lengths, indexing, slicing and search offsets; Unicode case mapping remains incomplete.
-  Use the opt-in [Unicode porting audit](docs/language/compatibility.md#text-and-file-positions)
-  to flag byte-oriented operations on non-ASCII input.
-- Recursive native calls respect `sys.setrecursionlimit()`, raising catchable `RecursionError` in JIT
-  and AOT. Non-recursive frames do not count, so native depth differs from CPython, and a recursion
-  that the native stack cannot hold raises `RecursionError` before the stack runs out, even below a
-  raised limit; see the [recursion policy](docs/language/compatibility.md#errors-and-control-flow).
-- Many unsupported constructs produce compile-time diagnostics; this is not a complete
-  compatibility check. Known semantic differences are listed in
+- **Unsupported features:** multiple inheritance, `async`/`await`, `match`, native `bytearray`
+  and binary file I/O (`io.BytesIO` works). Single inheritance follows the
+  [class rules](docs/language/typing.md#single-inheritance).
+- **Integers** are checked 64-bit values; overflow raises `OverflowError`. A module can opt in
+  to experimental [promoting ints](docs/python-int.md), which behave like CPython's `int` in
+  variables, calls, fields, tuples, generators, and lists, dicts and sets of ints or of tuples
+  of ints; other containers keep 64-bit ints. The explicit experimental [`mpz`](docs/mpz.md)
+  type also provides arbitrary-precision arithmetic.
+- **Dynamic `Any`** is experimental and opt-in. It covers common operations,
+  [iteration](docs/dynamic-any.md#iteration) and comparisons, but some cross-type comparison
+  bodies raise an explicit error, and numeric identity can differ at typed storage boundaries.
+  Read the [contract and deviations](docs/dynamic-any.md#deviations) before enabling it.
+- **Strings** are stored as UTF-8 with code-point lengths, indexing, slicing and search
+  offsets; Unicode case mapping is incomplete. The opt-in
+  [Unicode porting audit](docs/language/compatibility.md#text-and-file-positions) flags
+  byte-oriented operations on non-ASCII input.
+- **Recursion** respects `sys.setrecursionlimit()` and raises a catchable `RecursionError`.
+  Only recursive calls count, so the reachable depth differs from CPython's, and recursion that
+  the native stack cannot hold raises `RecursionError` before the stack runs out, even below a
+  raised limit ([recursion policy](docs/language/compatibility.md#errors-and-control-flow)).
+- **Diagnostics** catch many unsupported constructs at compile time, but not all. Known
+  semantic differences are listed under
   [deviations from CPython](docs/language.md#deviations-from-cpython).
 
 The [language reference](docs/language.md) documents supported features and typing rules.
