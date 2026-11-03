@@ -1,0 +1,4 @@
+TypeError: copy.deepcopy() of an object, iterator or function in an Any value is not supported
+TypeError: copy.copy() of an object or iterator in an Any value is not supported
+[1, [2]]
+[exit 0]

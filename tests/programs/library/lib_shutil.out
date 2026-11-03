@@ -1,0 +1,12 @@
+dst.txt payload
+sub/src.txt payload
+SameFileError True
+FileNotFoundError True
+sub/dst.txt False
+Error True
+moved.txt ['moved.txt', 'src.txt', 'sub'] ['src.txt']
+['moved.txt', 'src.txt']
+FileNotFoundError True
+NotADirectoryError True
+False True True
+[exit 0]

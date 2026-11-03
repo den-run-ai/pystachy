@@ -1,0 +1,8 @@
+missing 99
+M.RED M.RED M.GREEN
+missing 5
+ValueError 5 is not a valid M
+<Color.RED: 'red'> <Color.BLUE: 'blue'> <Color.BLUE: 'blue'>
+ValueError 'green' is not a valid Color
+KeyError 7
+[exit 0]

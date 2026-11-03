@@ -40,6 +40,8 @@ observable contract.
 | `codecs` | `Lib/codecs.py` | `2f278497548b8313580b247a1097a0a304e5087a355ebb11a92ec685fa9e63ff` |
 | `weakref` | `Lib/weakref.py` | `56f8d313fb74019e53eb9287400702fbce788b7fe30e097b0b6e06296f3f080c` |
 | `warnings` | `Lib/warnings.py` | `e040f52be0199c69fa8c0d35428ba64e6f9b6412691a689ccbd7c23e07c6ed3f` |
+| `threading` | `Lib/threading.py` | `a979d5ab97993d7fbfd7601e928476c8dc90e1807df7c8c7d9f324e620331caa` |
+| `logging` | `Lib/logging/__init__.py` | `4106cc3aa4e722116bbf0a3ffae3a8c7bc4981468ca7998ca35ed201a5605519` |
 | `tomllib._parser` | `Lib/tomllib/_parser.py` | `82591be9349687b88926a7b1a28b0f892a132e4043cb249bd1bd1594bdd721e3` |
 | `tomllib._re` | `Lib/tomllib/_re.py` | `0bd8a54280babaa755456e0e4ceabd5f072558f19373698e29d2491e0fb7e4b4` |
 | `tomllib._types` | `Lib/tomllib/_types.py` | `f864c6d9552a929c7032ace654ee05ef26ca75d21b027b801d77e65907138b74` |
@@ -56,6 +58,9 @@ modules opt in to dynamic `Any` and carry the edits lib/compatibility.md lists. 
 test data of `tests/programs/upstream/upstream_tomllib_data.py` were taken from the
 `Python-3.13.16.tgz` release (SHA-256
 `cfac63bddf956deafb1172ca131ae5dcaafd6f95056086e233fca205593ed427`).
+`threading` and `logging` were committed unchanged from the `Python-3.13.16` release first, so the
+diff of the next commit to each is its port's edits; both opt in to dynamic `Any` and carry the
+edits lib/compatibility.md lists.
 `datetime` is `_pydatetime`, which CPython's `Lib/datetime.py` re-exports when its C
 accelerator is missing. Where CPython's accelerator behaves differently, the edits follow
 `Modules/_datetimemodule.c` (SHA-256
@@ -98,6 +103,13 @@ CPython runs the source.
 | `_thread` (`_pystachy_thread`) | `Modules/_threadmodule.c`, `Python/pytime.c` | Locks and reentrant locks for one thread, with `acquire()`'s checks of its arguments and the C module's errors and messages; thread identities and handles, `stack_size()`, `interrupt_main()`, `exit()`; their docstrings |
 | `unicodedata` (`_pystachy_unicodedata`) | `Modules/unicodedata.c`, `Tools/unicode/makeunicodedata.py` | Every function and `ucd_3_2_0`, with the C module's errors and messages, on the tables that `tools/unicodedata_tables.py` takes from CPython's `unicodedata`; their docstrings |
 | `itertools` (`_pystachy_itertools`) | `Doc/library/itertools.rst` (SHA-256 `1c100cdb246d6281ba452bc230a9b05f4bc4838be3080e3e3b7a17cec8d728b1`), `Modules/itertoolsmodule.c` (SHA-256 `41d82be144617b20c4ae75a171e8cb65ed6e00f43cc3994340eea06d21a8cf6e`) | Every function of the C module as a generator, following the documentation's pure-Python equivalents, with the C types' argument checks, messages, order of reads, and the module's docstring; `tee()`'s shared links and `groupby()`'s shared state as the C types keep them |
+| `copy` (`_pystachy_copy`) | `Lib/copy.py` (SHA-256 `d6b858961b91b48a4bf5a115b0420c890d677bdf058ab2323a8a75298eed47db`) | The module's docstring, `Error` and `error`; `copy()` and `deepcopy()` with the dispatch of `_copy_dispatch` and `_deepcopy_dispatch` by static type, `_deepcopy_tuple()`'s rules and the memo of `deepcopy()`, whose order of checks it keeps; objects are copied by the compiler's primitives (`reflection.py`) |
+| `enum` | `Lib/enum.py` (SHA-256 `e191c67b2e1e9bce063112e24b957fadf42960a2f633d4f77436074c18930fd6`) | `Enum`'s and the classes' docstrings and member methods (`repr()`, `str()`, `format()`, `hash()`, copies), `EnumType`'s lookups, iteration, containment and messages, `Flag`'s and `IntFlag`'s operators, pseudo-members (`Flag._missing_`, `bin()`) and boundary errors, `auto()`'s values (`_generate_next_value_`) and `unique()`'s message; the compiler makes the classes from their class statements (`Loader`'s `enum_classes`) |
+| `pathlib` | `Lib/pathlib/_local.py` (SHA-256 `0530b4186ec5845e000bedf5817ff1ac970b9a39a6891ba6789a1776abdea42b`), `Lib/pathlib/_abc.py` (SHA-256 `75e6bc728013d11446126d535f92b8907fb6dae7404df3d0268ac7b6865a2090`), `Lib/glob.py` | `PurePath`'s and `Path`'s methods for POSIX, with their docstrings and messages, `_PathParents`, and the `_Globber` selectors of `Path.glob()`, as functions of str paths |
+| `glob` | `Lib/glob.py` (SHA-256 `e6693972d5999ae0be42f49f6192e1c3d24f3f1e6eeca1f95dfa0b5dae74fe07`) | `glob()`, `iglob()`, `escape()` and their helpers (`_iglob`, `_glob0`, `_glob1`, `_glob2`, `_rlistdir`, ...), on `os.listdir()` |
+| `shutil` | `Lib/shutil.py` (SHA-256 `11c32fd568588e38463fdf281caa7ef0edbf3d64daf7961f0e7e68d779528731`) | `copyfileobj()`, `copyfile()`, `copymode()`, `copy()`, `move()`, `rmtree()` (`_rmtree_safe_fd`, as a primitive of the runtime) and the exception classes, with their docstrings and messages |
+| `traceback` | `Lib/traceback.py` (SHA-256 `d81f560ce5f09e217bc81a40cb9881d51720121661d1488834a7b2c72618a1a2`) | The exception-only formatting of `format_exception()` and its relatives, with causes, as `TracebackException` gives it for an exception whose `__traceback__` is `None`; empty stacks |
+| `_pystachy_percent` | `Objects/unicodeobject.c` (SHA-256 `68a5618c520f5b348e9e2abe1a77688c4b0c1f377d86f79e3399b41b445c24ab`) | `PyUnicode_Format()`, for `%` of a format string that only the run time knows, with its errors and messages |
 | `_pystachy_iterators` | `Objects/listobject.c`, `tupleobject.c`, `unicodeobject.c`, `rangeobject.c`, `dictobject.c`, `setobject.c` | Iterator classes of `iter()` over builtin containers, with CPython's exhaustion and size-change checks and messages |
 
 `re/_constants.py` retains upstream opcode/flag numbers. `tools/re_tables.py`

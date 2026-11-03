@@ -54,7 +54,7 @@ STANDINS: dict[str, str] = {"binascii": "_pystachy_binascii", "_codecs": "_pysta
 # mapping proxy's, whose dict code given only the proxy must not reach): their classes' fields
 # are the module's own, which a program can neither read, assign, find by hasattr() nor reflect
 # over, and a call of __init__ on an object cannot initialize it again
-OPAQUE: dict[str, bool] = {"_weakref": True, "_pystachy_mappingproxy": True}
+OPAQUE: dict[str, bool] = {"_weakref": True, "_pystachy_mappingproxy": True, "_pystachy_copy": True}
 # the module that CPython's types of a stand-in name as theirs (__module__, reprs), where it is
 # not the module's own: weakref.ReferenceType, _io.StringIO (every class that lib's
 # io defines is the C module _io's in CPython), and mappingproxy, a builtin type
@@ -115,11 +115,16 @@ CALLS: dict[str, str] = {
     "sum(list[bool],float)": "pys_sum_int_float:float", "any(list[bool])": "pys_any:bool",
     "all(list[bool])": "pys_all:bool", "any(list[int])": "pys_any:bool", "all(list[int])": "pys_all:bool",
     "os.system(str)": "pys_system:int", "os.execv(str,list[str])": "pys_execv:None",
-    "os.getpid()": "pys_getpid:int", "os.path.exists(str)": "pys_exists:bool", "os.path.realpath(str)": "pys_realpath:str",
+    "os.getpid()": "pys_getpid:int", "os.getcwd()": "pys_getcwd:str", "os.path.exists(str)": "pys_exists:bool", "os.path.realpath(str)": "pys_realpath:str",
     "os.path.getsize(str)": "pys_getsize:int", "os.path.getmtime(str)": "pys_getmtime:float", "os.path.getctime(str)": "pys_getctime:float",
     "os.getenv(str,str)": "pys_getenv:str", "ffi.string_at(int,int)": "pys_string_at:str",
     "ffi.untrack(int)": "pys_untrack:None", "ffi.collected()": "pys_collected:int",
     "os.remove(str)": "pys_remove:None", "os.rmdir(str)": "pys_rmdir:None", "tempfile.mkdtemp()": "pys_mkdtemp:str",
+    "os.unlink(str)": "pys_remove:None", "os.listdir()": "pys_listdir_cwd:list[str]", "os.listdir(str)": "pys_listdir:list[str]",
+    "os.mkdir(str)": "pys_mkdir_default:None", "os.mkdir(str,int)": "pys_mkdir:None",
+    "os.rename(str,str)": "pys_rename:None", "os.replace(str,str)": "pys_replace:None",
+    "os.path.isdir(str)": "pys_isdir:bool", "os.path.isfile(str)": "pys_isfile:bool", "os.path.islink(str)": "pys_islink:bool",
+    "os.path.lexists(str)": "pys_lexists:bool", "os.path.samefile(str,str)": "pys_samefile:bool",
     "math.floor(float)": "pys_floor:int", "math.ceil(float)": "pys_ceil:int", "math.trunc(float)": "pys_m_trunc:int",
     "math.gcd(int,int)": "pys_m_gcd:int", "math.lcm(int,int)": "pys_m_lcm:int", "math.isqrt(int)": "pys_m_isqrt:int",
     "math.factorial(int)": "pys_m_factorial:int", "math.comb(int,int)": "pys_m_comb:int", "math.perm(int,int)": "pys_m_perm:int",
@@ -786,7 +791,7 @@ RUNTIME: dict[str, str] = {
     "dyn.big_unbox": "int+:%ptr|R|", "dyn.big_of": "int+:%ptr|R A|",
     "dyn.int_box_of": "%ptr:%ptr|R A|",
     "dyn.index_bound": "int:%ptr,int|R|",
-    "dyn.unbox": "int:%ptr,%ptr|R|", "dyn.isa": "bool:%ptr,%ptr||", "dyn.same_type": "bool:%ptr,%ptr||", "dyn.truth": "bool:%ptr|rL rD|",
+    "dyn.unbox": "int:%ptr,%ptr|R|", "dyn.isa": "bool:%ptr,%ptr||", "dyn.copy_is_own": "bool:%ptr,int||", "dyn.same_type": "bool:%ptr,%ptr||", "dyn.truth": "bool:%ptr|rL rD|",
     "dyn.repr": "str:%ptr|R A I U|", "dyn.str": "str:%ptr|R A I U|",
     "dyn.eq": "bool:%ptr,%ptr|R A I U|", "dyn.ne": "bool:%ptr,%ptr|R A I U|", "dyn.cmp": "bool:%ptr,%ptr,int|R A I U|", "dyn.hash": "int:%ptr|R A I U|",
     "dyn.binop": "%ptr:%ptr,%ptr,int|R A I U|", "dyn.inplace": "%ptr:%ptr,%ptr,int|R A I U|", "dyn.unary": "%ptr:%ptr,int|R A|",
@@ -982,14 +987,18 @@ RUNTIME: dict[str, str] = {
     "repr_leave": "None:%ptr|I|", "alloc": "%ptr:int|A|", "new": "%ptr:int|A|", "gc_slow": "%ptr:int,int|A|", "on_stack": "int:%ptr|I|", "box": "%ptr:*T|A|", "ubox": "%ptr:int,*T|A|", "ubox_opt": "%ptr:int,%ptr,int|A|", "unpack_check": "None:int,int|R|", "unpack_ex_check": "None:int,int|R|",
     # errors and the process
     "raise": "None:str,str|R N|", "exit": "None:int|R N I|", "exit_msg": "None:str|R N I|", "argv": "list[str]:|I|", "warnoptions": "list[str]:|A I|",
-    "platform": "str:|A|", "errno": "int:str|R A|", "system": "int:str|R I|", "execv": "None:str,list[str]|R N A I rL|", "getpid": "int:|I|", "exists": "bool:str|I|",
+    "platform": "str:|A|", "errno": "int:str|R A|", "system": "int:str|R I|", "execv": "None:str,list[str]|R N A I rL|", "getpid": "int:|I|", "getcwd": "str:|R A I|", "exists": "bool:str|I|",
     "path_join": "str:str,str|A|", "realpath": "str:str|R A I|", "getenv": "opt[str]:str,opt[str]|A I|", "remove": "None:str|R A I|", "rmdir": "None:str|R A I|",
+    "listdir": "list[str]:str|R A I|", "listdir_cwd": "list[str]:|R A I|", "mkdir": "None:str,int|R A I|", "mkdir_default": "None:str|R A I|",
+    "rename": "None:str,str|R A I|", "replace": "None:str,str|R A I|", "isdir": "bool:str|I|", "isfile": "bool:str|I|",
+    "islink": "bool:str|I|", "lexists": "bool:str|I|", "samefile": "bool:str,str|R A I|", "stat_mode": "int:str,int|R A I|",
+    "touch": "None:str,int,int|R A I|", "copyfile": "None:str,str|R A I|", "copymode": "None:str,str|R A I|", "rmtree": "None:str,int|R A I|",
     "getsize": "int:str|R A I|", "getmtime": "float:str|R A I|", "getctime": "float:str|R A I|",
     "mkdtemp": "str:|R A I|", "time": "float:|I|", "time_ns": "int:|I|", "monotonic": "float:|I|", "monotonic_ns": "int:|I|",
     "process_time": "float:|I|", "process_time_ns": "int:|I|", "sleep": "None:float|R I|", "sleep_int": "None:int|R I|",
     "select": "tuple[list[int],list[int],list[int]]:list[int],list[int],list[int],float,int|R A I rL wL|",
     "setrecursionlimit": "None:int|R I|", "getrecursionlimit": "int:|I|",
-    "thread_stack_valid": "int:int|I|",
+    "thread_stack_valid": "int:int|I|", "strftime_at": "str:str,float,int|R A I|",
     "recursion.enter": "int:|R I|pys_recursion_enter", "recursion.leave": "None:|I|pys_recursion_leave",
     "recursion.resume": "int:%ptr|R I|pys_recursion_resume",
     "recursion.depth": "int:|I|pys_recursion_depth", "recursion.restore": "None:int|I|pys_recursion_restore",

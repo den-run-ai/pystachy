@@ -5,8 +5,10 @@
    Value model: every container slot is 8 bytes (int, float bits, bool, or pointer). */
 #define _GNU_SOURCE
 #include <ctype.h>
+#include <dirent.h>
 #include <dlfcn.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <langinfo.h>
 #include <locale.h>
 #include <pthread.h>
@@ -41,6 +43,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <unwind.h>
+#include <utime.h>
 
 /* A float's shortest round-trip digits: Ryu's d2s (ryu/, upstream commit 4c0618b; ryu/README.md),
    with its small tables. The driver's cached runtime is built from its files too, which RTPARTS
@@ -4758,6 +4761,10 @@ static int derives(const DynType *a, const DynType *b) { for (; a; a = a->base) 
    class's values may be None). The program's @o.x.<class> uses this to retain the typed call
    when a concrete comparison-operand annotation matches. */
 I pys_dyn_isa(Dyn *x, const DynType *t) { return x->t == t || (t->kind == DK_INT && DKIND(x) == DK_INT) || (t->kind == DK_OBJ && (DKIND(x) == DK_NONE || derives(x->t, t))); }
+/* is box x its own copy (lib/copy.py's __pys_copy_is_own and __pys_deepcopy_is_own of an Any
+   value): None, a bool, an int, a float or a str, as CPython's copy gives it; for copy.copy()
+   (deep 0) also a tuple or a function */
+I pys_dyn_copy_is_own(Dyn *x, I deep) { int k = DKIND(x); return k <= DK_STR || (!deep && (k == DK_TUPLE || k == DK_FUNC)); }
 /* type(x) is type(y) of the boxes of DynTypes a and b (null where no box holds a value of that
    type). Generators, functions and builtin iterators can have distinct storage descriptors
    for one Python type. Only compiler-owned builtin iterator classes carry DF_ITER: a user
@@ -6502,6 +6509,15 @@ _Noreturn void pys_execv(Str *path, List *args) {   /* os.execv: the process bec
   ioerr(errno);
 }
 I pys_getpid(void) { return getpid(); }
+Str *pys_getcwd(void) {          /* os.getcwd(): CPython's posix_getcwd(), whose buffer grows by 1024 bytes while getcwd() fails with ERANGE */
+  size_t size = 1024;
+  for (;;) {
+    char *b = pys_alloc_atomic(size);
+    if (getcwd(b, size)) return cstr(b);
+    if (errno != ERANGE) ioerr(errno);
+    size += 1024;
+  }
+}
 
 /* _thread.stack_size validates a requested setting even though this runtime
    creates no threads. PTHREAD_STACK_MIN can be a runtime sysconf query (larger
@@ -7156,6 +7172,47 @@ double pys_monotonic(void) { return ns_secs(clock_ns(CLOCK_MONOTONIC)); }
 I pys_monotonic_ns(void) { return clock_ns(CLOCK_MONOTONIC); }
 double pys_process_time(void) { return ns_secs(clock_ns(CLOCK_PROCESS_CPUTIME_ID)); }
 I pys_process_time_ns(void) { return clock_ns(CLOCK_PROCESS_CPUTIME_ID); }
+/* time.strftime(fmt, time.localtime(secs)), or of time.gmtime(secs) where utc, for
+   lib/_pystachy_time.py (logging's Formatter.formatTime()): what CPython 3.13 gives on Linux. The
+   time is floored to whole seconds, as time.localtime() floors it, and converted with
+   localtime_r() or gmtime_r(); then, as time_strftime() and time_strftime1() do, each run of
+   ASCII characters other than NUL goes to strftime(), whose buffer grows from 1024 bytes until the
+   result fits or the buffer reaches 256 times the run's length (an empty result), and the
+   characters from there up to the next '%' are copied as they are */
+Str *pys_strftime_at(Str *fmt, double secs, I utc) {
+  if (secs != secs) pys_fail("ValueError: Invalid value NaN (not a number)");
+  double f = floor(secs);
+  if (!(f >= -9223372036854775808.0 && f < 9223372036854775808.0)) pys_fail("OverflowError: timestamp out of range for platform time_t");
+  time_t t = (time_t)f;
+  struct tm tm;
+  errno = 0;
+  if ((utc ? gmtime_r(&t, &tm) : localtime_r(&t, &tm)) == NULL) ioerr(errno ? errno : EINVAL);
+  if (tm.tm_isdst < -1) tm.tm_isdst = -1;
+  else if (tm.tm_isdst > 1) tm.tm_isdst = 1;
+  Buf out = {0};
+  const char *s = fmt->s;
+  I n = fmt->len, i = 0;
+  size_t size = 1024;
+  char *buf = pys_alloc_atomic(size);
+  while (i < n) {
+    I a = i;
+    while (i < n && s[i] != 0 && (unsigned char)s[i] < 128) i++;
+    if (i > a) {
+      char *seg = pys_alloc_atomic(i - a + 1);
+      memcpy(seg, s + a, i - a); seg[i - a] = 0;
+      for (;;) {
+        size_t len = strftime(buf, size, seg, &tm);
+        if (len == 0 && size < 256 * (size_t)(i - a)) { size += size; buf = pys_alloc_atomic(size); continue; }
+        put(&out, buf, (I)len);
+        break;
+      }
+    }
+    I b = i;
+    while (i < n && s[i] != '%') i++;
+    if (i > b) put(&out, s + b, i - b);
+  }
+  return done(&out);
+}
 void pys_sleep(double s) {             /* time.sleep: resumes after a signal (PEP 475); Ctrl-C raises KeyboardInterrupt */
   if (s != s) pys_fail("ValueError: Invalid value NaN (not a number)");
   if (s < 0) pys_fail("ValueError: sleep length must be non-negative");
@@ -7531,6 +7588,219 @@ static _Noreturn void oserr(const char *path) {         /* raise CPython's OSErr
 }
 void pys_remove(Str *p) { if (nul(p)) pys_fail("ValueError: remove: embedded null character in path"); if (unlink(p->s)) oserr(p->s); }
 void pys_rmdir(Str *p) { if (nul(p)) pys_fail("ValueError: rmdir: embedded null character in path"); if (rmdir(p->s)) oserr(p->s); }
+/* os.listdir(p): the names in directory p but . and .., in the order readdir gives them, as
+   CPython's _posix_listdir lists them (os.listdir() lists ".") */
+List *pys_listdir(Str *p) {
+  if (nul(p)) pys_fail("ValueError: listdir: embedded null character in path");
+  DIR *d = opendir(p->s);
+  if (!d) oserr(p->s);
+  List *l = pys_list_new(0);
+  for (;;) {
+    errno = 0;
+    struct dirent *e = readdir(d);
+    if (!e) break;
+    const char *n = e->d_name;
+    if (n[0] == '.' && (n[1] == 0 || (n[1] == '.' && n[2] == 0))) continue;
+    pys_list_append(l, (I)pys_str(n, (I)strlen(n)));
+  }
+  int err = errno;
+  closedir(d);
+  if (err) { errno = err; oserr(p->s); }
+  return l;
+}
+List *pys_listdir_cwd(void) { return pys_listdir(pys_str(".", 1)); }
+/* os.mkdir(p, mode): CPython's posix_mkdir */
+void pys_mkdir(Str *p, I mode) { if (nul(p)) pys_fail("ValueError: mkdir: embedded null character in path"); if (mkdir(p->s, (mode_t)mode)) oserr(p->s); }
+void pys_mkdir_default(Str *p) { pys_mkdir(p, 0777); }
+static _Noreturn void oserr2(const char *a, const char *b) {   /* the OSError of a call of two paths: 'a' -> 'b' */
+  int e = errno; Buf bf = {0}; char t[32];
+  const char *k = errcls(e), *m = strerror(e);
+  put(&bf, k, strlen(k)); put(&bf, t, snprintf(t, sizeof t, ": [Errno %d] ", e)); put(&bf, m, strlen(m)); put(&bf, ": ", 2);
+  repr_str(&bf, cstr(a)); put(&bf, " -> ", 4); repr_str(&bf, cstr(b)); put(&bf, "", 1); pys_fail(bf.p);
+}
+/* os.rename(a, b) and os.replace(a, b), which POSIX's rename(2) both are */
+void pys_rename(Str *a, Str *b) { if (nul(a) || nul(b)) pys_fail("ValueError: rename: embedded null character in path"); if (rename(a->s, b->s)) oserr2(a->s, b->s); }
+void pys_replace(Str *a, Str *b) { if (nul(a) || nul(b)) pys_fail("ValueError: replace: embedded null character in path"); if (rename(a->s, b->s)) oserr2(a->s, b->s); }
+/* os.path.isdir, isfile, islink and lexists: genericpath's and posixpath's, false where stat() or lstat() fails */
+I pys_isdir(Str *p) { struct stat st; return !nul(p) && stat(p->s, &st) == 0 && S_ISDIR(st.st_mode); }
+I pys_isfile(Str *p) { struct stat st; return !nul(p) && stat(p->s, &st) == 0 && S_ISREG(st.st_mode); }
+I pys_islink(Str *p) { struct stat st; return !nul(p) && lstat(p->s, &st) == 0 && S_ISLNK(st.st_mode); }
+I pys_lexists(Str *p) { struct stat st; return !nul(p) && lstat(p->s, &st) == 0; }
+/* lib/pathlib.py's and lib/shutil.py's __pys_stat_mode(p, follow): the st_mode of os.stat(p) (of
+   os.lstat(p) where follow is 0), or -1 where pathlib ignores the error (ENOENT, ENOTDIR, EBADF and
+   ELOOP: _ignore_error) or for an embedded null character (ValueError); another error raises */
+I pys_stat_mode(Str *p, I follow) {
+  struct stat st;
+  if (nul(p)) return -1;
+  if ((follow ? stat(p->s, &st) : lstat(p->s, &st)) == 0) return st.st_mode;
+  if (errno == ENOENT || errno == ENOTDIR || errno == EBADF || errno == ELOOP) return -1;
+  oserr(p->s);
+}
+/* lib/pathlib.py's __pys_touch(p, mode, exist_ok): Path.touch(), the times of a file that exists
+   made now where exist_ok, else os.open(p, O_CREAT | O_WRONLY, mode), with O_EXCL unless exist_ok */
+void pys_touch(Str *p, I mode, I exist_ok) {
+  if (nul(p)) pys_fail("ValueError: open: embedded null character in path");
+  if (exist_ok && utime(p->s, NULL) == 0) return;
+  int fd = open(p->s, O_CREAT | O_WRONLY | (exist_ok ? 0 : O_EXCL), (mode_t)mode);
+  if (fd < 0) oserr(p->s);
+  close(fd);
+}
+/* lib/shutil.py's __pys_copyfile(a, b) and __pys_copymode(a, b): the bytes of file a written to
+   file b (CPython's copyfile once its checks pass), and a's permission bits given to b (chmod).
+   a is opened, and checked as CPython's FileIO checks it (open() of a directory succeeds on Linux,
+   then fstat() makes it IsADirectoryError), before b is opened, which truncates b */
+void pys_copyfile(Str *a, Str *b) {
+  if (nul(a) || nul(b)) pys_fail("ValueError: open: embedded null character in path");
+  FILE *in = fopen(a->s, "rb");
+  if (!in) oserr(a->s);
+  struct stat st;
+  if (fstat(fileno(in), &st) == 0 && S_ISDIR(st.st_mode)) { fclose(in); errno = EISDIR; oserr(a->s); }
+  FILE *out = fopen(b->s, "wb");
+  if (!out) { int e = errno; fclose(in); errno = e; oserr(b->s); }
+  char buf[65536];
+  size_t n;
+  while ((n = fread(buf, 1, sizeof buf, in)) > 0)
+    if (fwrite(buf, 1, n, out) != n) { int e = errno; fclose(in); fclose(out); errno = e; oserr(b->s); }
+  int rerr = ferror(in) ? errno : 0;
+  fclose(in);
+  if (fclose(out)) oserr(b->s);
+  if (rerr) { errno = rerr; oserr(a->s); }
+}
+void pys_copymode(Str *a, Str *b) {
+  struct stat st;
+  if (nul(a) || nul(b)) pys_fail("ValueError: stat: embedded null character in path");
+  if (stat(a->s, &st)) oserr(a->s);
+  if (chmod(b->s, st.st_mode & 07777)) oserr(b->s);
+}
+/* lib/shutil.py's __pys_rmtree(path, ignore_errors): rmtree() as CPython 3.13 runs it on Linux,
+   its _rmtree_safe_fd. Each directory is opened through its parent's descriptor, and fstat()
+   must find the device and inode that lstat() found before its entries are read and removed
+   through that descriptor, so that a directory replaced by a link meanwhile is not followed. The
+   steps, their order and their errors are CPython's: a stack of steps (lstat, open, check and
+   scan; close; rmdir), a directory's other entries unlinked as its scan meets them and its
+   subdirectories pushed, so walked last first. An error carries the path of the step that met
+   it (CPython sets err.filename = path), a link's is an OSError of no errno ("[Errno None] None:
+   'path'"), and FileNotFoundError is one only for the top directory and for a close. CPython's
+   onexc re-raises it once the descriptors left on the stack are closed, or, where ignore_errors,
+   passes over it: the step ends, but an entry's unlink error lets the scan go on. The walk's
+   paths and names are malloc'd: it allocates nothing the collector sees until it raises. */
+typedef struct { int op, dirfd, top; char *path, *name; } RmStep;   /* op: 0 lstat (then open, check, scan), 1 close, 2 rmdir */
+typedef struct {
+  RmStep *a; I n, cap, ignore;                     /* the steps to run */
+  RmStep cur;                                      /* the step running */
+  char **names; unsigned char *types; I nn, ncap;  /* its scan's entries, and their d_type */
+} RmWalk;
+static char *rm_dup(const char *s) { size_t n = strlen(s); char *p = malloc(n + 1); if (!p) oom(); memcpy(p, s, n + 1); return p; }
+static void rm_push(RmWalk *w, int op, int dirfd, int top, char *path, char *name) {   /* takes path and name */
+  if (w->n == w->cap) { I c = w->cap * 2 + 16; RmStep *a = realloc(w->a, c * sizeof(RmStep)); if (!a) oom(); w->a = a; w->cap = c; }
+  w->a[w->n++] = (RmStep){op, dirfd, top, path, name};
+}
+static void rm_entries_free(RmWalk *w) { for (I i = 0; i < w->nn; i++) free(w->names[i]); w->nn = 0; }
+static _Noreturn void rm_raise(RmWalk *w, int e) {   /* onexc's raise, then rmtree's finally: close what is open */
+  Buf b = {0};
+  if (e) {
+    char t[32]; const char *k = errcls(e), *m = strerror(e);
+    put(&b, k, strlen(k)); put(&b, t, snprintf(t, sizeof t, ": [Errno %d] ", e)); put(&b, m, strlen(m)); put(&b, ": ", 2);
+  } else put(&b, "OSError: [Errno None] None: ", 28);
+  repr_str(&b, cstr(w->cur.path)); put(&b, "", 1);
+  rm_entries_free(w); free(w->names); free(w->types);
+  free(w->cur.path); free(w->cur.name);
+  while (w->n > 0) { RmStep *s = &w->a[--w->n]; if (s->op == 1) close(s->dirfd); free(s->path); free(s->name); }
+  free(w->a);
+  pys_fail(b.p);
+}
+static void rm_scan(RmWalk *w, int fd) {   /* entries = list(os.scandir(fd)), then each entry's unlink or push */
+  RmStep *c = &w->cur;
+  int d = dup(fd);                         /* (os.scandir(fd) reads a duplicate of it) */
+  DIR *dp = d < 0 ? NULL : fdopendir(d);
+  if (!dp) {
+    int e = errno; if (d >= 0) close(d);
+    if (e != ENOENT || c->top) { if (!w->ignore) rm_raise(w, e); }
+    return;
+  }
+  for (;;) {
+    errno = 0;
+    struct dirent *de = readdir(dp);
+    if (!de) break;
+    const char *nm = de->d_name;
+    if (nm[0] == '.' && (nm[1] == 0 || (nm[1] == '.' && nm[2] == 0))) continue;
+    if (w->nn == w->ncap) {
+      I k = w->ncap * 2 + 16; char **a = realloc(w->names, k * sizeof(char *)); if (!a) oom(); w->names = a;
+      unsigned char *t = realloc(w->types, k); if (!t) oom(); w->types = t; w->ncap = k;
+    }
+    w->names[w->nn] = rm_dup(nm); w->types[w->nn++] = de->d_type;
+  }
+  int e = errno;
+  closedir(dp);
+  if (e) {
+    rm_entries_free(w);
+    if (e != ENOENT || c->top) { if (!w->ignore) rm_raise(w, e); }
+    return;
+  }
+  size_t pl = strlen(c->path);
+  for (I i = 0; i < w->nn; i++) {
+    const char *nm = w->names[i];
+    int isdir = w->types[i] == DT_DIR;     /* entry.is_dir(follow_symlinks=False): d_type, or an lstat */
+    if (w->types[i] == DT_UNKNOWN) {
+      struct stat es;
+      if (fstatat(fd, nm, &es, AT_SYMLINK_NOFOLLOW)) { if (errno == ENOENT) continue; }
+      else isdir = S_ISDIR(es.st_mode);
+    }
+    if (isdir) {                           /* fullname = os.path.join(path, name), walked later */
+      size_t nl = strlen(nm);
+      char *full = malloc(pl + nl + 2); if (!full) oom();
+      memcpy(full, c->path, pl); size_t k = pl;
+      if (pl && c->path[pl - 1] != '/') full[k++] = '/';
+      memcpy(full + k, nm, nl + 1);
+      rm_push(w, 0, fd, 0, full, rm_dup(nm));
+      continue;
+    }
+    if (unlinkat(fd, nm, 0) && errno != ENOENT && !w->ignore) rm_raise(w, errno);
+  }
+  rm_entries_free(w);
+}
+static void rm_step(RmWalk *w) {
+  RmStep *c = &w->cur;
+  *c = w->a[--w->n];
+  if (c->op == 1) {                        /* os.close(dirfd) */
+    if (close(c->dirfd) && !w->ignore) rm_raise(w, errno);
+  } else if (c->op == 2) {                 /* os.rmdir(name, dir_fd=dirfd) */
+    if ((c->top ? rmdir(c->name) : unlinkat(c->dirfd, c->name, AT_REMOVEDIR)) && (errno != ENOENT || c->top) && !w->ignore)
+      rm_raise(w, errno);
+  } else {
+    struct stat orig, now;
+    int r = c->top ? lstat(c->name, &orig) : fstatat(c->dirfd, c->name, &orig, AT_SYMLINK_NOFOLLOW);
+    int fd = r ? -1 : openat(c->top ? AT_FDCWD : c->dirfd, c->name, O_RDONLY | O_NONBLOCK | O_CLOEXEC);
+    if (fd < 0) {                          /* lstat's or open's error */
+      if ((errno != ENOENT || c->top) && !w->ignore) rm_raise(w, errno);
+    } else {
+      int ok = !fstat(fd, &now), e = errno;
+      int same = ok && now.st_dev == orig.st_dev && now.st_ino == orig.st_ino;
+      if (same) rm_push(w, 2, c->dirfd, c->top, rm_dup(c->path), rm_dup(c->name));
+      rm_push(w, 1, fd, c->top, rm_dup(c->path), rm_dup(c->name));
+      if (!same) {                         /* fstat's error, or a link: symlinks to directories are forbidden (GH-46010) */
+        if (!w->ignore) rm_raise(w, ok ? 0 : e);
+      } else rm_scan(w, fd);
+    }
+  }
+  free(c->path); free(c->name); c->path = c->name = NULL;
+}
+void pys_rmtree(Str *path, I ignore_errors) {
+  if (nul(path)) pys_fail("ValueError: lstat: embedded null character in path");
+  RmWalk w = {0};
+  w.ignore = ignore_errors;
+  rm_push(&w, 0, -1, 1, rm_dup(path->s), rm_dup(path->s));
+  while (w.n > 0) rm_step(&w);
+  free(w.a); free(w.names); free(w.types);
+}
+/* os.path.samefile(a, b): genericpath's, whether stat() finds one device and inode for both */
+I pys_samefile(Str *a, Str *b) {
+  struct stat x, y;
+  if (nul(a) || nul(b)) pys_fail("ValueError: stat: embedded null character in path");
+  if (stat(a->s, &x)) oserr(a->s);
+  if (stat(b->s, &y)) oserr(b->s);
+  return x.st_dev == y.st_dev && x.st_ino == y.st_ino;
+}
 typedef struct { Str **a; I n, cap; } Parts;            /* a stack of path components; NULL marks a resolved link */
 static void parts_push(Parts *p, Str *s) {
   if (p->n == p->cap) { I c = p->cap * 2 + 16; Str **a = pys_alloc(c * sizeof(Str *)); if (p->n) memcpy(a, p->a, p->n * sizeof(Str *)); p->a = a; p->cap = c; }

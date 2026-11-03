@@ -1,0 +1,17 @@
+tree removed
+['keep.txt'] kept
+ld OSError [Errno None] None: 'B/ld'
+lf OSError [Errno None] None: 'B/lf'
+dangling FileNotFoundError [Errno 2] No such file or directory: 'B/dangling'
+f NotADirectoryError [Errno 20] Not a directory: 'B/f'
+missing FileNotFoundError [Errno 2] No such file or directory: 'B/missing'
+ld ignored kept
+lf ignored kept
+dangling ignored kept
+f ignored kept
+missing ignored removed
+empty path FileNotFoundError [Errno 2] No such file or directory: ''
+trailing slash removed
+['dangling', 'f', 'ld', 'lf']
+False
+[exit 0]

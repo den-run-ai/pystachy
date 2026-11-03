@@ -1,0 +1,29 @@
+Point(1, 2, ['a', 'b']) Point(10, 2, ['a', 'b']) True
+Point(1, 2, ['a', 'b']) Point(1, 2, ['a', 'b', 'c']) False
+[[1, 2, 9], [3]] [[1, 2, 9], [3]] [[1, 2], [3]] True False
+True False
+{'a': [1], 'b': [2]} False True
+[1, 2, 3] False True
+[1, 2] True False
+{'k': [{'a': (1, [2, 3])}]} {'k': [{'a': (1, [2])}]}
+True True
+([1], [2]) False False True
+True False
+True True
+5 s None 2.5 b'b'
+4611686018427387904 True range(0, 3) range(0, 2)
+root ['a', 'b'] True True
+True True
+True True
+sub 3 True True
+[1, 2] True True
+1 10 True
+True 10
+True True 2
+Frozen(name='f', items=[1]) True True True True
+Pt(x=1, y=2) Pt(x=1, y=2) True True
+AttributeError 'Lazy' object has no attribute 'value'
+[1]
+True False
+Error True True
+[exit 0]

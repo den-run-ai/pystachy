@@ -622,6 +622,145 @@ string literal is accepted; reading it, other uses of the function, subclassing 
 given `None` are rejected (see
 [compatibility](../docs/language/compatibility.md#classes-dataclasses-and-namedtuples)).
 
+### `copy`
+
+`copy` is Pystachy's own subset (`lib/copy.py`) of CPython 3.13.16's module. CPython's module
+dispatches on `type(x)` and copies other objects through the pickling protocol (`__reduce_ex__`,
+`copyreg`, `__dict__` updates), none of which a compiled program has at run time. Here the
+static type of the value selects its copy as the program compiles, with CPython's results
+([test](../tests/programs/library/lib_copy.py)):
+
+- A number, a str, bytes, `None`, a range and a function are their own copies; so is a tuple or
+  a frozenset for `copy()`, and a tuple of such values for `deepcopy()`. A list, a dict and a set
+  are copied item by item (`copy()` gives `x.copy()`), a deep copy of a frozenset is a new one, and
+  a deep copy of a tuple is a new tuple of its items' copies, or the tuple itself where no item
+  changed.
+- An object of a class of the program is copied through its `__copy__()` or `__deepcopy__(memo)`
+  where its class defines one; otherwise the copy is a new object of its exact class (no
+  `__init__()` call) whose fields hold the original's values, or their deep copies, and a field
+  that `__init__()` left unassigned stays so. A field of a base class's type copies the object of
+  the subclass that it holds, frozen dataclasses and `NamedTuple` classes included. The copy's
+  numbers are the original's objects, as CPython's are: through `Any`, `copy.n is x.n`
+  ([test](../tests/programs/library/lib_copy_identity.py)).
+- Where the deep copy of an object's fields may run code that sees or changes the object (a
+  `__deepcopy__()`, or the `__hash__()` or `__eq__()` of a dict's keys or a set's items, also of
+  their tuples' items: [test](../tests/programs/library/lib_copy_deep_tuple_key.py)), it
+  follows CPython's order and reads: an object with a `__dict__` has its attributes copied in the
+  `__dict__`'s order, each read as the copy reaches it, so that a hook that changes a later
+  attribute gives the copy the new value, and one that adds an attribute raises CPython's
+  `RuntimeError` ([test](../tests/programs/library/lib_copy_deep_live.py)); an object of
+  `__slots__` only has the slots' values as they were when its copy began, the derived class's
+  first, as `copyreg` gives them ([test](../tests/programs/library/lib_copy_deep_slots.py)). Such
+  a copy of an object whose `__dict__` order is not known as the program compiles (as for
+  `vars()`: an attribute assigned in a branch, for one) is a compile-time error
+  ([test](../tests/errors/library/lib_copy_deep_order.py)). The copy has its attributes while it
+  is made, where CPython's gets them at the end, which only code that a cycle leads back to the
+  copy sees.
+- A deep copy keeps a memo, as CPython's does, so that objects shared within the value stay
+  shared in the copy and cycles are copied as cycles; the memo that `__deepcopy__(memo)` gets is
+  an opaque object that it can pass to `deepcopy()`. A dict cannot be given as `deepcopy()`'s
+  memo.
+- In a module compiled with [dynamic `Any`](../docs/dynamic-any.md), an `Any` value that holds a
+  number, a str, `None`, a list, a dict or a tuple is copied as above
+  ([test](../tests/programs/library/lib_copy_any.py)); one that holds an object, an iterator or
+  (for `deepcopy()`) a function raises `TypeError`, where CPython copies it
+  ([deviation](../tests/deviations/lib_copy_any_object.py)).
+- These are compile-time errors: copies of exceptions, of objects of the library's classes
+  (`StringIO`, `deque` and the others, which stand in for C types) and of classes that derive from
+  one with fields, of classes that define `__reduce__`, `__reduce_ex__`, `__getstate__`,
+  `__setstate__`, `__getnewargs__` or `__getnewargs_ex__`, of a union of classes, of iterators,
+  generators and files, and deep copies of bound methods and `Callable` values, which may hold a
+  bound method that CPython's deep copy binds to a copy of its object.
+- `copy.replace()` (new in CPython 3.13) is not provided; `dataclasses.replace()` and a
+  `NamedTuple`'s `_replace()` are.
+
+### `enum`
+
+`enum` is Pystachy's own subset (`lib/enum.py`) of CPython 3.13.16's module. CPython makes an
+enum class with its metaclass, `EnumType`, whose `__prepare__`, `__new__` and `__call__` have no
+form in a compiled program, so the compiler makes the class from its class statement instead,
+as it makes dataclasses and `NamedTuple` classes ([test](../tests/programs/library/lib_enum.py)):
+
+- A class statement of a module's body that derives from `Enum`, `IntEnum`, `StrEnum`, `Flag` or
+  `IntFlag` (as the body's import statements name them: `from enum import Enum`, or
+  `import enum`), from `str` or `int` and `Enum`, or from an enum class of its own module
+  without members, makes an enum class. Its members are its body's
+  `NAME = value` statements, whose values are literals (numbers, strs, bytes, `True`, `False`,
+  `None` and tuples of them) of one type, or `auto()`, which gives CPython's values: one more
+  than the greatest value before (from 1), or a `StrEnum` member's name in lower case. An int
+  or a str value may also be an expression that the class body computes, with `int`'s operators
+  and `str`'s `+` and `*`, of literals, of the members before it and of the module's constants
+  (names bound once, before the class statement): `B = 1 << 3`, `C = A | B`, `D = BASE + 1`,
+  within the 64-bit int range ([test](../tests/programs/library/lib_enum_values.py)). A member
+  whose value an earlier one has is its alias; `@unique` reports aliases as an error.
+- Members are objects of the class, with `name`, `value`, `_name_` and `_value_`, CPython's
+  `repr()`, `str()`, `format()` and `hash()`, identity equality, and copies that are the member
+  itself; the class's methods, properties and class methods work on them as on other objects.
+- The class as a value is an object of `EnumType`: `C(value)` finds the member with that value
+  (or returns a member it is given, also one held through a base class's type, such as `Enum` or
+  `Flag`: [test](../tests/programs/library/lib_enum_base_lookup.py),
+  [flags](../tests/programs/library/lib_flag_base_lookup.py)) and raises CPython's `ValueError` for another value,
+  `C[name]` raises `KeyError`, iteration and `list(C)` give the members without aliases in
+  definition order, and `len(C)`, `x in C` (a member, or a member's value), `C.__members__` (a
+  read-only mapping, aliases included) and `repr(C)` are CPython's. Enum classes of other modules
+  work where they are imported ([test](../tests/programs/library/lib_enum_import.py)), and so
+  do members in `Any` values ([test](../tests/programs/library/lib_enum_any.py)).
+- An `IntEnum` member is no `int` here, nor a `StrEnum` member a `str`: each is an object of its
+  class with `int`'s comparisons, arithmetic, `bool()` and `hash()`, or `str`'s comparisons,
+  `+`, `in`, `len()` and `upper()`, `lower()`, `startswith()`, `endswith()` and `encode()`,
+  whose results are ints and strs, and with CPython's `TypeError` for an operand of another
+  type. Compared with an object of another class, a member lets that object's reflected method
+  decide, or identity where it has none, as `int`'s and `str`'s methods return `NotImplemented`
+  ([test](../tests/programs/library/lib_enum_reflected.py)). One cannot be passed where an `int`
+  or `str` is typed, `int(member)` is not supported, and these are compile-time errors, as
+  CPython's member is an `int` or a `str`: `isinstance()` of one and `int` or `str`, also of a
+  value of a base class, such as `Enum`, that may hold one
+  ([test](../tests/errors/library/lib_enum_isinstance_base.py)), and a member as an `Any` value,
+  whose `isinstance()` would find no `int` or `str`
+  ([test](../tests/errors/library/lib_enum_any_strenum.py)): its `.value` can be one.
+- An enum class of `str` and `Enum`, or of `int` and `Enum` (`class C(str, Enum)`), is made as a
+  `StrEnum` or an `IntEnum` class with `Enum`'s `str()` and `format()` (`C.A`, where a
+  `StrEnum` member's is its value), as CPython 3.12 gives a mixed-in class
+  ([test](../tests/programs/library/lib_enum_mixin.py)). Its members follow the rules above, and
+  `isinstance()` of one and `IntEnum`, `StrEnum` or `ReprEnum`, which CPython answers `False`, is
+  a compile-time error ([test](../tests/errors/library/lib_enum_mixin_isinstance.py)), as is
+  `auto()` in a class of `str` and `Enum`, whose CPython value is the str of `Enum`'s next int.
+- A class method `_missing_(cls, value)` is called where a lookup by value finds no member, as
+  CPython's `EnumType` calls it: the lookup gives the member it returns, raises CPython's
+  `ValueError` where it returns `None`, and passes on what it raises
+  ([test](../tests/programs/library/lib_enum_missing.py)). One whose result may be of another
+  type, for which CPython raises `TypeError`, is a compile-time error
+  ([test](../tests/errors/library/lib_enum_missing_result.py)).
+- A `Flag` class's members have int values of 0 or more (`auto()` gives the power of two past the
+  greatest value before). Iterating over the class, and `len()` of it, give its single-bit
+  members; `|`, `&`, `^` and `~` give members, or pseudo-members made once for each value (their
+  names, `R|X`, are CPython's), with CPython's `ValueError` for bits that no member has (the
+  boundary `STRICT`); a flag's `in`, iteration, `len()`, `bool()`, `repr()` (`<P.R|X: 5>`,
+  `<P: 0>`), `str()`, `format()` and `hash()`, and a member of value 0, are CPython's, and the
+  name of a pseudo-member without members is `None`
+  ([test](../tests/programs/library/lib_enum_flag.py)). Lookup also accepts a non-int value
+  equal to a declared member's value, or an already cached pseudo-member's value, as CPython's
+  value map does; class containment tests declared values for non-ints
+  ([test](../tests/programs/library/lib_enum_flag_numeric_lookup.py)). An `IntFlag` member has `int`'s
+  operations, `str()` and `format()`, as an `IntEnum` member does, and `|`, `&` and `^` with an
+  int keep its class, whose boundary `KEEP` keeps the bits no member has (`<I: 12>`,
+  `<I.A|12: 13>`); its members follow the int-like members' rules above, and `isinstance()` of
+  one and `ReprEnum`, which CPython's `IntFlag` derives from, is a compile-time error too
+  ([test](../tests/programs/library/lib_enum_intflag.py)). Also errors: a `boundary=` keyword, a
+  flag class's own `_missing_()`, a multi-bit member with a bit that no single-bit member has,
+  and an int on the left of a flag's `|`, `&` or `^`, as reflected operator methods are not
+  supported.
+- These are compile-time errors: `ReprEnum` as a base; other mixin types
+  (`class C(float, Enum)`) and keywords; members of other values or types, `_ignore_`, `_order_`
+  and private names; `__new__`, `__init__` and `_generate_next_value_`; an enum
+  class that derives from an enum class of another module, or from one with members (CPython's
+  `TypeError`); a class statement in an `if` or `try` statement, or whose base is imported in
+  one ([test](../tests/errors/library/lib_enum_conditional.py),
+  [test](../tests/errors/library/lib_enum_try_import.py)); the functional API (`Enum("Color", "RED GREEN")`); reassigning a member
+  (CPython's `AttributeError`); `reversed()` of an enum class, and an enum class without
+  members as a value. `enum.property`, `member`, `nonmember`, `verify`, `global_enum` and the
+  other helpers are not provided.
+
 ### `heapq`
 
 Heap operations, including `_max` variants, and `nlargest`/`nsmallest` work.
@@ -1114,6 +1253,67 @@ outside this supported API set. Builtin `os.path` has its own documented APIs.
 
 `stat` supports constants, `S_IS*`, `S_IMODE` and `S_IFMT`, but not `filemode`.
 
+### `pathlib`
+
+`pathlib` is Pystachy's own subset (`lib/pathlib.py`) of CPython 3.13.16's package, for POSIX: its
+`PurePosixPath` and `PosixPath` classes, which `PurePath` and `Path` name, as CPython's
+`PurePath(...)` and `Path(...)` make them on POSIX, with CPython's code for their methods
+([test](../tests/programs/library/lib_pathlib.py)):
+
+- Pure paths: construction from strs and paths, `/` and `joinpath()`, `str()`, `repr()`,
+  `as_posix()`, `parts`, `drive`, `root`, `anchor`, `parent`, `parents` (indexing, `len()`,
+  `in`, iteration), `name`, `suffix`, `suffixes`, `stem`, `with_name()`, `with_stem()`,
+  `with_suffix()`, `relative_to()` (also `walk_up`), `is_relative_to()`, `is_absolute()`,
+  `match()`, equality, hashing and ordering, with CPython's errors.
+- Concrete paths: `exists()`, `is_dir()`, `is_file()`, `is_symlink()` (CPython's errors for
+  what they do not ignore), `open()`, `read_text()`, `write_text()`, `iterdir()`, `glob()` and
+  `rglob()` (CPython 3.13's selectors and order, hidden files included; given `case_sensitive`,
+  literal parts too match the directory's entries:
+  [test](../tests/programs/library/lib_pathlib_glob_case.py)), `mkdir()` (also
+  `parents` and `exist_ok`), `touch()`, `unlink()`, `rmdir()`, `rename()`, `replace()`,
+  `absolute()`, `resolve()`, `expanduser()`, `cwd()` and `home()`.
+- A path's constructor takes at most eight segments, as parameters, so that subclasses can
+  derive from the classes, and unpacking a list into it (`Path(*parts)`) is not supported; a
+  tuple's items are. Iterating over a `Path`'s `parents` gives its parents typed as `PurePath`
+  objects (indexing one gives a `Path`), so a `Path` method of an iterated parent is a
+  compile-time error.
+- Pystachy has no `os.PathLike` objects: `open()` and the `os` functions take `str(path)`,
+  and passing a path is a compile-time error; `path.open()` opens one.
+- `expanduser()` of `~user`, and `open()` with `buffering`, `errors` or `newline`, raise
+  `UnsupportedOperation` ([deviation](../tests/deviations/lib_pathlib_unsupported.py)).
+  Windows paths, `stat()`, `lstat()`, binary I/O (`read_bytes()`, `write_bytes()`), `walk()`,
+  `samefile()`, links, owners, `chmod()`, `as_uri()` and `full_match()` are not provided; a
+  subclass's derived paths are `PurePath` or `Path` objects.
+
+### `glob`
+
+`glob` is Pystachy's own subset (`lib/glob.py`) of CPython 3.13.16's module: `glob()` and
+`iglob()` with `root_dir`, `recursive` and `include_hidden`, `escape()` and `has_magic()`,
+with CPython's functions for them and their order of results
+([test](../tests/programs/library/lib_glob.py)). Directories are listed with `os.listdir()`
+and tested with `os.path.isdir()`, as CPython's `os.scandir()` entries would be. `dir_fd`
+raises `NotImplementedError`, and `translate()` is not provided.
+
+### `shutil`
+
+`shutil` is Pystachy's own subset (`lib/shutil.py`) of CPython 3.13.16's module, for str paths:
+`copyfileobj()`, `copyfile()`, `copymode()`, `copy()`, `move()` and `rmtree()`, with `Error`,
+`SameFileError` and `SpecialFileError` and CPython's checks and messages
+([test](../tests/programs/library/lib_shutil.py)). `copyfile()` copies a file's bytes through
+the runtime, as Pystachy has no binary files; it opens and checks the source before it truncates
+the destination, as CPython does ([test](../tests/programs/library/lib_shutil_copyfile_dir.py)).
+`rmtree()` is CPython 3.13's Linux `_rmtree_safe_fd`, in the runtime: it walks the tree through
+directory descriptors, and finds each directory by the device and inode that `lstat()` found,
+so a directory replaced by a link during the walk is not followed. Its steps, their order and
+its errors are CPython's, a link's included (`OSError: [Errno None] None: 'path'`), and
+`ignore_errors` passes over each ([test](../tests/programs/library/lib_shutil_rmtree.py)).
+`rmtree.avoids_symlink_attacks` is not provided. `rmtree()`'s `onerror`, `onexc` and `dir_fd`,
+and `copyfile()` of a link with `follow_symlinks=False`, raise `NotImplementedError`
+([deviation](../tests/deviations/lib_shutil_unsupported.py)). `move()` of a file to another
+file system copies it with `copy()` (CPython uses `copy2()`, which also copies its times), and
+of a directory raises the rename's `OSError`. `copytree()`, `copy2()`, `copystat()`, `which()`,
+`disk_usage()`, `get_terminal_size()` and the archive functions are not provided.
+
 ### `getopt`
 
 `getopt` and `gnu_getopt` support short and long options, unique long-option
@@ -1156,6 +1356,34 @@ class whose subclasses' `__init__` binds their fields.
   (Linux's signal numbers: those from 65 on are out of range).
 - `_excepthook()`, which reports an exception that a thread's `run()` raises, raises
   `NotImplementedError`: no thread but the main one runs.
+
+### `threading`
+
+CPython's `threading.py` on the one-thread `_thread` above, with marked edits, compiled with
+[dynamic `Any`](../docs/dynamic-any.md) for a thread's target, its arguments and its name. Locks,
+reentrant locks (`RLock()` is `_thread`'s; the Python `_RLock` works too), `Condition` (of either
+lock, or of an object with `acquire()` and `release()`), `Semaphore`, `BoundedSemaphore`, `Event`,
+`Barrier`, `Timer`, `local`, `current_thread()`, `main_thread()`, `enumerate()`,
+`active_count()`, `get_ident()`, `get_native_id()`, `stack_size()`, `TIMEOUT_MAX` and the main
+thread's `Thread` object (`MainThread`) work as in CPython where no other thread runs, and so do
+`Thread` subclasses and their objects, but for starting them
+([test](../tests/programs/library/lib_threading.py)).
+
+- `Thread.start()` (also of a `Timer`) raises `_thread`'s `NotImplementedError`, where CPython
+  runs the thread ([deviation](../tests/deviations/threading_start.py)); a wait that only another
+  thread could end raises `_thread`'s `RuntimeError: deadlock: ...`.
+- `run()` of a `Thread` (or a `Timer`) called directly calls its target without arguments, and
+  raises `NotImplementedError` where it has `args` or `kwargs` (an `Any` value is not unpacked
+  into a call's arguments). The target, its arguments and the name are `Any` values, so a list or
+  dict of typed items cannot be one of the arguments.
+- `Condition` calls its lock's `acquire()` and `release()`, which CPython binds as the condition's
+  own attributes, and its `__exit__()` releases the lock. `_release_save()`, `_acquire_restore()`
+  and `_is_owned()` are the lock's own where it is a reentrant lock; of any other lock they are
+  `Condition`'s.
+- A `Thread` keeps no copy of `sys.stderr` and no `_invoke_excepthook` (no started thread reports
+  an exception); `_dangling` is a set, which keeps its threads (no weak containers), and
+  `current_thread()` never makes a `_DummyThread`. There is no `register_at_fork()` (no
+  `os.fork()`), and the module does not `del _thread` (#612).
 
 ### `atexit`
 
@@ -1300,6 +1528,83 @@ Not supported, as compile-time errors:
   it with `functools.wraps()` ([error test](../tests/errors/library/lib_warnings_deprecated.py)).
 
 <a id="_weakref-prototype"></a>
+
+### `logging`
+
+CPython's `logging/__init__.py` (the package's own module: no `logging.config` or
+`logging.handlers`), with marked edits, compiled with [dynamic `Any`](../docs/dynamic-any.md): a
+record's message, its arguments, a level's name and the values that a format interpolates are
+`Any` values. Loggers and their hierarchy (`getLogger()`, `getChild()`, `getChildren()`,
+`propagate`, `disabled`), levels (`setLevel()` of a level or a name, `getLevelName()`,
+`addLevelName()`, `getLevelNamesMapping()`, `disable()`), the module's functions and `basicConfig()`,
+`Formatter` in its `%`, `{}` and `$` styles (also with `defaults`), `extra`, `exc_info` and
+`exception()`, `Filter` and filter functions, `Handler`, `StreamHandler`, `FileHandler`,
+`NullHandler`, the last resort handler, `Handler.handleError()`, `makeLogRecord()` (whose dict's
+keys that name a record's attributes, `exc_text` and `stack_info` among them, set them:
+[test](../tests/programs/library/lib_logging_make_record.py)), `shutdown()` at exit and the
+handlers' locks work
+([tests](../tests/programs/library/lib_logging.py), [configuration](../tests/programs/library/lib_logging_config.py),
+[stderr](../tests/programs/library/lib_logging_stderr.py)). `%`-style messages and formats are
+formatted by `_pystachy_percent` (`fmt % args` of a format string that only the run time knows),
+and `%(asctime)s` by `_pystachy_time`, as `time.strftime()` of `time.localtime()` formats it.
+
+- There are no frames: a record's caller is the one CPython gives where it has none,
+  `(unknown file)`, line 0, `(unknown function)` (`pathname`, `filename`, `module`, `lineno`,
+  `funcName`), and `stack_info` and `stacklevel` add nothing. `Handler.handleError()` shows
+  `Logged from file (unknown file), line 0` where CPython shows the caller's frames.
+- There are no tracebacks: a record's `exc_info` is `(type(e), e, None)`, and its text is the
+  exception's [traceback lines](#traceback), its causes' and its own last line, without CPython's
+  `Traceback (most recent call last):` and frames. `exc_info=True` (also `exception()`) outside
+  an `except` clause adds no text, where CPython's adds `NoneType: None`; a `(type, value,
+  traceback)` tuple is not supported, and `makeLogRecord()` of a dict whose `exc_info` is not
+  `None` raises `NotImplementedError` (as `SocketHandler`'s and `QueueHandler`'s dicts have it,
+  `None` works) ([test](../tests/deviations/lib_logging_exc_info.py)).
+- A message's arguments are `Any` values, so a list, dict or set of typed items cannot be one
+  (the compiler says so where it is passed: pass `str(x)`, or format the message first); a
+  mapping argument (`%(name)s` of a dict) is a `dict` of `Any` values. `extra` is a
+  `dict[str, Any]` (a dict display, at the call); its items are the record's for the formats,
+  which read them by name, but not attributes of the record (`record.user`).
+- The keyword arguments of the logging calls and of `basicConfig()` are parameters: an unknown
+  one is a compile-time error, where CPython raises `ValueError`; `stream` and `filename` count
+  as given where they are not `None`, and a `format` of `None` is the style's default. A stream
+  is a file or an `io.StringIO` (a [reference union](../docs/language/typing.md#native-reference-unions)),
+  and `StreamHandler`'s repr shows no stream name. `FileHandler` writes UTF-8: another encoding
+  raises `NotImplementedError`, and `errors` is not passed on.
+- `setLoggerClass()`, `getLoggerClass()`, `setLogRecordFactory()` and `getLogRecordFactory()`
+  raise `NotImplementedError` (a class is not a value): `Logger` makes the loggers and
+  `LogRecord` the records. `Formatter.converter` is not supported (times are local), nor is
+  `LoggerAdapter`, whose methods pass `**kwargs` of values of different types; `captureWarnings()`
+  needs `warnings.showwarning` to be replaceable, which [warnings](#warnings) does not support.
+- A filter that is an object of `Filter` or a subclass is asked through its `filter()`; any other
+  filter is called, so an object of another class with a `filter()` method raises `TypeError`.
+  `Filterer.filter()` gives `False` or the record, as in CPython.
+- Named handlers are kept in a dict (no weak containers), so that one stays registered until it
+  is closed, where CPython drops it once nothing else refers to it.
+- A record's `threadName` is `MainThread`, `processName` `MainProcess` and `taskName` `None`, as
+  for CPython's main thread outside asyncio; the module does not `del StrFormatter` (#612).
+
+### `traceback`
+
+`traceback` is Pystachy's own subset (`lib/traceback.py`) of CPython 3.13.16's module. Pystachy keeps
+no tracebacks and has no frames, so an exception formats as CPython formats one whose
+`__traceback__` is `None`: `format_exception()`, `print_exception()`, `format_exc()` and
+`print_exc()` give the exception-only lines of the exception's causes (`raise ... from`), each
+followed by CPython's `The above exception was the direct cause of the following exception:`,
+and then its own; `format_exception_only()` gives its last line, `Type: message` (or `Type` where
+the message is empty, `module.Type` for a class outside `__main__` and `builtins`). The legacy
+`(type, value, tb)` arguments work too ([test](../tests/programs/library/lib_traceback.py)). These
+are the lines whose last one an uncaught exception's report shows.
+
+- An exception that was raised shows no `Traceback (most recent call last):` and frames, and one
+  that another exception's handling caused (`__context__`) shows no `During handling of the above
+  exception, another exception occurred:` and earlier exception
+  ([deviation](../tests/deviations/lib_traceback_context.py)); `__notes__` and a `SyntaxError`'s
+  location are not shown.
+- The stack functions (`extract_stack()`, `format_stack()`, `print_stack()`, `extract_tb()`,
+  `format_tb()`, `print_tb()`, `format_list()`) give and print nothing. `TracebackException`,
+  `StackSummary`, `FrameSummary`, `walk_stack()`, `walk_tb()` and `print_last()` are not provided.
+- The legacy form with a value of `None` (`print_exception(ValueError, None, None)`) raises
+  `TypeError`, where CPython shows `NoneType: None`.
 
 ### `weakref` and `_weakref` (prototype)
 

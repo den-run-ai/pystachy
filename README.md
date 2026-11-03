@@ -144,7 +144,8 @@ can also hold values whose type is known only at run time. See the
 `difflib`, `statistics` and `random`, carry small adaptations marked `# Pystachy port:`; the
 adapted code remains valid Python and can be diffed against upstream. The library also
 provides `re`, `itertools`, Unicode normalization, a bounded native `json`, `tomllib.loads()`,
-`functools.cache` / `lru_cache`, `collections.namedtuple` and `io.BytesIO`. See
+`logging` and one-thread `threading`, `functools.cache` / `lru_cache`, `collections.namedtuple`
+and `io.BytesIO`. See
 [library support](docs/stdlib.md#library-support-at-a-glance) for each area's modules and gaps,
 and the [CPython support map](docs/support-surface.md) for what broader compatibility would cost.
 
