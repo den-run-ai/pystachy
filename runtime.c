@@ -126,7 +126,7 @@ static inline int opt_in(void) { if (pys_plain) opt_in_trap(); return 1; }
    since none of it can hold a pointer. Each (class, kind) has a free list. Memory is
    handed out zeroed: the sweep zeroes dead slots, so allocation pops a slot and clears its
    link word (inlined into callers for the classes up to 136 bytes; the JIT tier inlines its
-   own copy, driver.py's JITFAST). The atomic classes past 136 bytes are cleared as they are
+   own copy, lower_module.py's JITFAST). The atomic classes past 136 bytes are cleared as they are
    handed out instead, as much as the request asks for (LAZY), and not at all for gc_raw,
    whose caller writes every byte it reads (new strs): their dead slots are never scanned, so
    what they hold keeps nothing alive. A chunk's never-used
@@ -209,7 +209,7 @@ static const short csize[NK / 2] = {16, 24, 32, 40, 48, 56, 64, 72, 80, 88, 96, 
   2568, 3080, 3592, 4104, 5128, 6152, 7176, 8200};
 /* GC_NO_ROOT(pys_fl, sfl): allocator free lists; marking would retain dead objects. */
 W *pys_fl[NK];                         /* free list being allocated from: external, for the JIT tier's
-                                          inlined fast path (driver.py's JITFAST) */
+                                          inlined fast path (lower_module.py's JITFAST) */
 static W *sfl[NK];                     /* its stand-in under stress */
 /* GC_NO_ROOT(avail, chunks, bigs, hcache, pmap): allocator metadata, not strong references. */
 static Seg *avail[NK], *chunks, *bigs, *hcache, ***pmap;   /* hcache: freed mappings of large objects */
@@ -270,11 +270,10 @@ static I cls(I n) {                    /* size class for n bytes plus one byte o
   int e = 63 - __builtin_clzll(y - 1);   /* 2^e < y <= 2^(e+1); classes are (5..8) * 2^(e-2) + 8 */
   return 16 + (e - 7) * 4 + (I)((y + (1ULL << (e - 2)) - 1) >> (e - 2)) - 5;
 }
-__attribute__((noinline)) static void pmap_set(uintptr_t a, uintptr_t e, Seg *v, I bytes) {
-  if (e >> 48) oom();                  /* map the pages of [a, e) to v (or unmap), account bytes */
+__attribute__((noinline)) static void pmap_set(uintptr_t a, uintptr_t e, Seg *v) {
+  if (e >> 48) oom();                  /* map the pages of [a, e) to v (or unmap) */
   if (v && (!gc_hi || a < gc_lo)) gc_lo = a;
   if (v && e > gc_hi) gc_hi = e;
-  if ((gc_heap += bytes) > gc_peak) gc_peak = gc_heap;
   for (; a < e; a += PAGE) {
     Seg **m = pmap[a >> 30];
     if (!m && !(m = pmap[a >> 30] = calloc(1 << 18, sizeof *m))) oom();
@@ -521,7 +520,7 @@ static void str_trim(Seg *s) {
   uintptr_t a = ((uintptr_t)s->start + m + PAGE) & ~(uintptr_t)(PAGE - 1), e = (uintptr_t)s->start + s->size;
   I keep = (I)((a - (uintptr_t)s) / PAGE);
   s->size = s->lim = m + 1;
-  pmap_set(a, e, 0, 0);
+  pmap_set(a, e, 0);
   if (keep >= s->nobj) return;
   if (s->rg) {                         /* free pages of its region, purged */
     pages_give(s->rg, a, s->nobj - keep);
@@ -540,7 +539,7 @@ static void sweep(void) {
     I sz = s->size, m = s->nmark;
     if (!m) {                          /* empty: its pages go back to the page heap */
       *pp = s->next;
-      pmap_set((uintptr_t)s, (uintptr_t)s + CHUNK, 0, 0); pages_give(s->rg, (uintptr_t)s, CHUNK / PAGE);
+      pmap_set((uintptr_t)s, (uintptr_t)s + CHUNK, 0); pages_give(s->rg, (uintptr_t)s, CHUNK / PAGE);
       continue;
     }
     live += m * sz;
@@ -554,7 +553,7 @@ static void sweep(void) {
   for (Seg **pp = &bigs, *s; (s = *pp);) {
     if (s->mark[0]) { s->mark[0] = 0; if (s->used) str_trim(s); live += s->size; pp = &s->next; continue; }
     *pp = s->next;                     /* the header lives in its pages: unmap, then free them */
-    pmap_set((uintptr_t)s, (uintptr_t)s->start + s->size, 0, 0);
+    pmap_set((uintptr_t)s, (uintptr_t)s->start + s->size, 0);
     if (s->rg) pages_give(s->rg, (uintptr_t)s, s->nobj);
     else { s->next = freed; freed = s; }
   }
@@ -611,7 +610,7 @@ __attribute__((noinline)) static Seg *chunk_new(int k) {   /* a chunk from the p
   I sz = csize[k >> 1], hdr = ((I)sizeof(Seg) + (CHUNK / sz + 63) / 64 * 8 + 15) & ~15, rg;
   int dirty;
   Seg *s = (Seg *)pages_take(CHUNK / PAGE, &rg, &dirty);   /* dirty: old objects need zeroing */
-  pmap_set((uintptr_t)s, (uintptr_t)s + CHUNK, s, 0);
+  pmap_set((uintptr_t)s, (uintptr_t)s + CHUNK, s);
   memset(s, 0, hdr);
   s->rg = rg; s->k = k; s->size = sz; s->inv = ((1ULL << 40) + sz - 1) / sz; s->dirty = dirty;
   s->start = (char *)s + hdr; s->nobj = (CHUNK - hdr) / sz; s->free = ~(uintptr_t)0;
@@ -626,7 +625,11 @@ __attribute__((noinline)) static void *big_new(I n, int how) {
   if (np <= RPAGES) s = (Seg *)pages_take(np, &rg, &dirty);
   else {                               /* its own mapping: a freed one that fits, or a new one */
     for (Seg **pp = &hcache; (s = *pp); pp = &s->next)
-      if (s->nobj >= np && s->nobj - np <= np / 4) { *pp = s->next; np = s->nobj; mapped = s->nfree; break; }
+      if (s->nobj >= np && s->nobj - np <= np / 4) {
+        *pp = s->next; np = s->nobj; mapped = np * PAGE;
+        heap_add(mapped - s->nfree);   /* the pages str_trim purged count again: writing the object brings them back */
+        break;
+      }
     if (!s) {
       I page = os_page() ? os_page() : PAGE, bytes = (np * PAGE + page - 1) & ~(page - 1);
       s = (Seg *)map_pages(bytes); np = bytes / PAGE; mapped = bytes; dirty = 0; heap_add(bytes);
@@ -634,7 +637,7 @@ __attribute__((noinline)) static void *big_new(I n, int how) {
   }
   memset(s, 0, HB);
   s->rg = rg; s->nobj = np; s->nfree = mapped; s->large = 1; s->k = how & 1; s->size = s->lim = n + 1; s->start = (char *)s + HB;
-  pmap_set((uintptr_t)s, (uintptr_t)s->start + s->size, s, 0);
+  pmap_set((uintptr_t)s, (uintptr_t)s->start + s->size, s);
   if (how != 3 && dirty) { if (rg) zero_dirty(rg, s->start, s->start + n + 1); else memset(s->start, 0, n + 1); }
   s->next = bigs; bigs = s; gc_allocd += n; if (how & 1) gc_big += n;
   return s->start;
@@ -685,12 +688,12 @@ static inline __attribute__((always_inline)) void *gc_alloc(I n, int atomic) {
   }
   return gc_slow(n, atomic);
 }
+/* The slow path of the JIT tier's fast path (lower_module.py's JITFAST: a program it runs pops pys_fl
+   itself, as gc_alloc does, and calls this for the rest) */
+void *pys_gc_slow(I n, I atomic) { return gc_slow(n, (int)atomic); }
 /* atomic memory whose bytes may be those of an object that died: for a caller that writes every
    byte it (or anything) reads, as a new str's whose header, bytes and NUL it stores. The classes
    the fast path serves come clear anyway */
-/* The slow path of the JIT tier's fast path (driver.py's JITALLOC: a program it runs pops pys_fl
-   itself, as gc_alloc does, and calls this for the rest) */
-void *pys_gc_slow(I n, I atomic) { return gc_slow(n, (int)atomic); }
 static void *gc_raw(I n) { return (uint64_t)n < 136 ? gc_alloc(n, 1) : gc_slow(n, 3); }   /* (an allocator: check_runtime's ALLOC) */
 __attribute__((malloc, returns_nonnull)) void *pys_alloc(I n) { return gc_alloc(n, 0); }
 __attribute__((malloc, returns_nonnull)) void *pys_alloc_atomic(I n) { return gc_alloc(n, 1); }
@@ -778,7 +781,7 @@ static void gc_extern(I n) {           /* n malloc'd bytes more that heap object
                                           heap's own; whoever allocates them collects first, as gc_slow would */
   if (n > 0) gc_allocd += n;
   gc_ext += n;
-  if ((gc_heap += n) > gc_peak) gc_peak = gc_heap;
+  heap_add(n);
 }
 static I trk_report(I *ex);
 static void gc_report(void) {

@@ -58,8 +58,7 @@ int probe_madvise(void *address, size_t length, int advice) {
   advised_start = a; advised_end = end; calls++;
   return 0;
 }
-static void pmap_set(uintptr_t a, uintptr_t e, Seg *seg, I bytes) {
-  (void)bytes;
+static void pmap_set(uintptr_t a, uintptr_t e, Seg *seg) {
   if (seg || a % PAGE || a < live_end || e != map_end || a != map_start) bad("page-map trim changed");
 }
 #define sysconf probe_sysconf

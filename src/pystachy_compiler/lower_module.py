@@ -23,6 +23,55 @@ define internal void @pys.obj.hooks() {
 """
 
 
+# The JIT tier's allocations: runtime.c's fast path (gc_alloc), here in the program's module, since
+# the tier never inlines the shared runtime's code: a call of pys_alloc or pys_new pops a free list of
+# the runtime (pys_fl, a class's of 16 to 136 bytes, scanned) and calls pys_gc_slow for the rest.
+# Both stay calls (noinline) through the cleanup pipeline, so that pys_new's calls, which allocelide
+# marks, stay visible as allocations, which instcombine deletes where nothing keeps their objects,
+# and so that the inliner weighs the calls as before (inlined at once, pys_alloc's fast path made a
+# loop of #650's nodes 10% slower); the pipeline's last step inlines them, as LATE_INLINE does for
+# AOT builds (the driver's JITLATE)
+JITFAST = """ {
+  %s = icmp ult i64 %n, 136
+  br i1 %s, label %f, label %w
+f:
+  %b = add i64 %n, 8
+  %c = lshr i64 %b, 3
+  %d = shl i64 %c, 1
+  %e = add i64 %d, -4
+  %a = icmp ult i64 %n, 8
+  %k = select i1 %a, i64 0, i64 %e
+  %h = getelementptr ptr, ptr @pys_fl, i64 %k
+  %p = load ptr, ptr %h
+  %z = icmp eq ptr %p, null
+  br i1 %z, label %w, label %o
+o:
+  %l = load i64, ptr %p
+  %x = xor i64 %l, -1
+  %q = inttoptr i64 %x to ptr
+  store ptr %q, ptr %h
+  store i64 0, ptr %p
+  ret ptr %p
+w:
+  %r = call ptr @pys_gc_slow(i64 %n, i64 0)
+  ret ptr %r
+}
+"""
+
+
+def jit_alloc(ir: str) -> str:
+    # the program's IR with JITFAST in place of its declarations of pys_alloc and pys_new, and the
+    # runtime names that JITFAST uses declared unless the program declares them (a second
+    # declaration of pys_gc_slow, which specs.RUNTIME lists, would be invalid IR)
+    if "declare ptr @pys_alloc(i64)\n" not in ir and "declare ptr @pys_new(i64)\n" not in ir:
+        return ir
+    fl = "" if "@pys_fl = " in ir else "@pys_fl = external global [80 x ptr]\n"
+    slow = "" if "@pys_gc_slow(" in ir else "declare ptr @pys_gc_slow(i64, i64)\n"
+    ir = ir.replace("declare ptr @pys_alloc(i64)\n", "define internal ptr @pys_alloc(i64 %n) noinline" + JITFAST)
+    ir = ir.replace("declare ptr @pys_new(i64)\n", "define internal ptr @pys_new(i64 %n) noinline" + JITFAST)
+    return ir + fl + slow
+
+
 def address_runtime_ir(ir: str) -> str:
     # Attribute every generated definition, including internal helpers and those
     # with an exception personality. Clang's IR-input pipeline then runs ASan for

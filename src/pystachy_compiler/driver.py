@@ -9,7 +9,7 @@ from src.pystachy_compiler.diagnostics import MAXNEST, RAW, Rejoin, fail
 from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler.lexer import Lexer
 from src.pystachy_compiler.loader import Loader
-from src.pystachy_compiler.lower_module import OBJHOOKS, address_runtime_ir
+from src.pystachy_compiler.lower_module import OBJHOOKS, address_runtime_ir, jit_alloc
 from src.pystachy_compiler.names import RENAMED
 from src.pystachy_compiler.parser import Parser
 from src.pystachy_compiler.specs import JIT_INLINE, LIBS, LINKDL, MODULES, OPTS, PLATFORM
@@ -186,51 +186,11 @@ def sh(cmd: str) -> int:
 # the lines of /proc/cpuinfo that tell which CPU -march=native compiles for (x86-64's, AArch64's)
 CPUID: list[str] = ["vendor_id", "cpu family", "model", "model name", "stepping", "flags", "CPU implementer", "CPU architecture",
                     "CPU variant", "CPU part", "CPU revision", "Features"]
-# The JIT tier's allocations: runtime.c's fast path (gc_alloc), here in the program's module, since
-# the tier never inlines the shared runtime's code: a call of pys_alloc or pys_new pops a free list of
-# the runtime (pys_fl, a class's of 16 to 136 bytes, scanned) and calls pys_gc_slow for the rest.
-# Both stay calls (noinline) through the cleanup pipeline, so that pys_new's calls, which allocelide
-# marks, stay visible as allocations, which instcombine deletes where nothing keeps their objects,
-# and so that the inliner weighs the calls as before (inlined at once, pys_alloc's fast path made a
-# loop of #650's nodes 10% slower); the pipeline's last step inlines them, as LATE_INLINE does for
-# AOT builds (JITLATE)
-JITFAST = """ {
-  %s = icmp ult i64 %n, 136
-  br i1 %s, label %f, label %w
-f:
-  %b = add i64 %n, 8
-  %c = lshr i64 %b, 3
-  %d = shl i64 %c, 1
-  %e = add i64 %d, -4
-  %a = icmp ult i64 %n, 8
-  %k = select i1 %a, i64 0, i64 %e
-  %h = getelementptr ptr, ptr @pys_fl, i64 %k
-  %p = load ptr, ptr %h
-  %z = icmp eq ptr %p, null
-  br i1 %z, label %w, label %o
-o:
-  %l = load i64, ptr %p
-  %x = xor i64 %l, -1
-  %q = inttoptr i64 %x to ptr
-  store ptr %q, ptr %h
-  store i64 0, ptr %p
-  ret ptr %p
-w:
-  %r = call ptr @pys_gc_slow(i64 %n, i64 0)
-  ret ptr %r
-}
-"""
+# The JIT tier's allocations: the program's module carries the allocator's fast path for pys_alloc
+# and pys_new (lower_module's jit_alloc and JITFAST), both noinline through the cleanup pipeline,
+# whose last step inlines them, as LATE_INLINE does for AOT builds
 JITLATE = (" -force-remove-attribute=pys_new:noinline -force-attribute=pys_new:alwaysinline"
            " -force-remove-attribute=pys_alloc:noinline -force-attribute=pys_alloc:alwaysinline")
-
-
-def jit_alloc(ir: str) -> str:
-    # the program's IR with JITFAST in place of its declarations of pys_alloc and pys_new
-    if "declare ptr @pys_alloc(i64)\n" not in ir and "declare ptr @pys_new(i64)\n" not in ir:
-        return ir
-    ir = ir.replace("declare ptr @pys_alloc(i64)\n", "define internal ptr @pys_alloc(i64 %n) noinline" + JITFAST)
-    ir = ir.replace("declare ptr @pys_new(i64)\n", "define internal ptr @pys_new(i64 %n) noinline" + JITFAST)
-    return ir + "@pys_fl = external global [80 x ptr]\ndeclare ptr @pys_gc_slow(i64, i64)\n"
 
 
 # the files that runtime.c includes from beside it, each DIR/NAME (ryu/: Ryu's d2s, a float's shortest

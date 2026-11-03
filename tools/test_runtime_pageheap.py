@@ -1,15 +1,17 @@
 """Replay seeded random allocations and sweeps against runtime.c's page heap and a model of it.
 
 The probe compiles the page heap from runtime.c (pages_take, pages_give, pages_purge,
-pages_settle, zero_dirty and big_new, their helpers, and runtime.c's own Seg, Region and PRun)
-with a stand-in for the page map only. Each cycle allocates chunks and large objects, in regions
-and in mappings of their own, frees a random subset as a sweep does, and settles with a random
+pages_settle, str_trim, zero_dirty and big_new, their helpers, and runtime.c's own Seg, Region,
+PRun and Str) with a stand-in for the page map only. Each cycle allocates chunks and large
+objects, in regions and in mappings of their own, some of them strs that appends grew; it frees a
+random subset as a sweep does, trims the grown strs that live on, and settles with a random
 budget. A model of the object on each page checks, after every allocation and every sweep, that
 no two live objects share a page; that a zeroed allocation, a chunk taken as clean and a free
 page marked clean read zero; that live objects keep their bytes; that the used, dirty and idle
-bitmaps, the free runs and the heap count agree with the model; and that the free memory a sweep
-keeps fits its budget. Negative controls break the dirty marking of freed pages and the split of
-a free run, and expect the probe to fail.
+bitmaps, the free runs and the heap count agree with the model, a reused mapping counted in full;
+and that the free memory a sweep keeps fits its budget. Negative controls break the dirty marking
+of freed pages, the split of a free run and the count of a reused trimmed mapping, and expect the
+probe to fail.
 """
 import os
 from pathlib import Path
@@ -39,14 +41,15 @@ static I nregs, cregs, nbin[2][NBIN], cbin[2][NBIN];
 static Seg *hcache, *bigs;
 static I gc_heap, gc_peak, gc_allocd, gc_big;
 static _Noreturn void oom(void) { fputs("out of memory\n", stderr); exit(1); }
-static void pmap_set(uintptr_t a, uintptr_t e, Seg *s, I bytes) { (void)a; (void)e; (void)s; (void)bytes; }
+static void pmap_set(uintptr_t a, uintptr_t e, Seg *s) { (void)a; (void)e; (void)s; }
 """
 SUFFIX = r"""
 #define MAXR 64                        /* region slots the model follows */
 #define MAXO 4096                      /* live objects */
-typedef struct { char *p; Seg *s; I n, rg, np; int32_t id; int chunk; unsigned char tag; } Obj;   /* p: its n + 1 bytes */
+typedef struct { char *p; Seg *s; I n, rg, np, skip; int32_t id; int chunk, str; unsigned char tag; } Obj;   /* p: its n + 1 bytes */
 static Obj obj[MAXO];
 static int nobjs;
+static I trims, retrimmed;   /* strs trimmed; trimmed mappings that big_new reused */
 static int32_t ids, owner[MAXR][RPAGES];   /* the id of the live object on each page; 0: free */
 static uint64_t seed;
 static uint64_t rnd(void) { seed ^= seed << 13; seed ^= seed >> 7; seed ^= seed << 17; return seed; }
@@ -112,11 +115,16 @@ static void allocate(void) {
     x->s = (Seg *)x->p; x->n = CHUNK - 1; x->np = CHUNK / PAGE; x->chunk = 1;
     if (!dirty && !zero(x->p, CHUNK)) bad("a chunk taken as clean reads nonzero", x->rg, 0);
   } else {                             /* a large object (big_new): scanned, atomic or raw (gc_raw) */
-    I np = u < 75 ? pick(3, 16) : u < 91 ? pick(17, 128) : u < 96 ? pick(129, RPAGES) : RPAGES + 128 * pick(1, 4) - pick(0, 31);
-    int how = (int)pick(0, 2);
+    I np = u < 75 ? pick(3, 16) : u < 86 ? pick(17, 128) : u < 90 ? pick(129, RPAGES) : RPAGES + 128 * pick(1, 4) - pick(0, 31);
+    int how = (int)pick(0, 2), nt = 0;
+    Seg *trimmed[64];                  /* freed mappings whose str_trim purged part of them */
+    for (Seg *s = hcache; s && nt < 64; s = s->next) if (s->nfree < s->nobj * PAGE) trimmed[nt++] = s;
     x->n = np * PAGE - HB - 1 - pick(0, PAGE - 1);
     x->p = big_new(x->n, how == 2 ? 3 : how); bigs = 0;
     x->s = (Seg *)(x->p - HB); x->rg = x->s->rg; x->np = x->s->nobj;
+    for (int t = 0; t < nt; t++) retrimmed += trimmed[t] == x->s;
+    if (!x->rg && x->s->nfree != x->np * PAGE) bad("a reused mapping is not counted in full", x->s->nfree, x->np * PAGE);
+    x->str = pick(0, 1) == 1;          /* a str that appends grew (str_grow) */
     if ((uintptr_t)x->s % PAGE || x->s->start != x->p || x->s->size != x->n + 1) bad("a large object's header is wrong", x->n, x->np);
     if (how != 2 && !zero(x->p, x->n + 1)) bad("a zeroed allocation reads nonzero", x->rg, x->n);
     if (x->rg ? x->np != np : (x->np < np || x->np - np > np / 4)) bad("a large object holds the wrong number of pages", x->np, np);
@@ -137,6 +145,10 @@ static void allocate(void) {
   hold(x, 1);
   nobjs++;
   memset(x->p, x->tag, (size_t)(x->n + 1));
+  if (x->str) {                        /* its length leaves room unused, which str_trim gives back */
+    ((Str *)x->p)->len = pick(0, x->n - (I)sizeof(Str) - 1);
+    x->s->used = 1; x->skip = (I)sizeof(Str);
+  }
 }
 static void check_all(I keep) {
   I counted = 0, kept = 0, mapped = 0, cached = 0, ncached = 0;
@@ -156,7 +168,7 @@ static void check_all(I keep) {
   for (int o = 0; o < nobjs; o++) {    /* live objects keep their headers and bytes */
     const Obj *x = &obj[o];
     if (!x->chunk && (x->s->rg != x->rg || x->s->nobj != x->np || x->s->start != x->p)) bad("a live object's header changed", o, x->rg);
-    for (char *q = x->p, *e = x->p + x->n + 1; q < e;) {
+    for (char *q = x->p + x->skip, *e = x->p + x->n + 1; q < e;) {
       char *next = (char *)(((uintptr_t)q + PAGE) & ~(uintptr_t)(PAGE - 1)), *last = (next < e ? next : e) - 1;
       if ((unsigned char)*q != x->tag || (unsigned char)*last != x->tag) bad("a live object lost its bytes", o, q - x->p);
       q = next;
@@ -185,14 +197,27 @@ static void check_all(I keep) {
   if (os_page() == PAGE && kept * PAGE + cached > keep) bad("a sweep kept more free memory than its budget", kept * PAGE + cached, keep);
   check_runs(1);
 }
+static void trim(Obj *x) {            /* sweep's str_trim of a live str that appends grew */
+  I np = x->s->nobj, size = x->s->size;
+  str_trim(x->s);
+  trims += x->s->size != size;
+  if (x->rg) {                         /* the pages past it went back to its region */
+    I r = x->rg - 1, first = (I)(((char *)x->s - regs[r].base) / PAGE);
+    for (I i = first + x->s->nobj; i < first + np; i++) owner[r][i] = 0;
+  }
+  x->np = x->s->nobj; x->n = x->s->size - 1;
+}
 static void sweep_settle(I keep, int all) {   /* sweep's freeing of chunks and large objects, then pages_settle */
   Seg *freed = 0;
   I held = 0;
   for (int o = 0; o < nobjs; o++) held += obj[o].np;
   I p = all ? 100 : held > 6000 ? 80 : pick(10, 60);
   for (int o = nobjs - 1; o >= 0; o--) {
-    if (pick(0, 99) >= p) continue;
     Obj *x = &obj[o];
+    if (pick(0, 99) >= p) {
+      if (x->str) trim(x);
+      continue;
+    }
     hold(x, 0);
     if (x->rg) pages_give(x->rg, (uintptr_t)x->s, x->np);
     else { x->s->next = freed; freed = x->s; }
@@ -212,13 +237,15 @@ int main(int argc, char **argv) {
   }
   sweep_settle(0, 1);                  /* everything freed, nothing kept */
   if (gc_heap || hcache || nobjs) bad("memory is still counted after everything was freed", gc_heap, nobjs);
-  printf("page heap model passed: %lld cycles, %d objects\n", (long long)cycles, ids);
+  printf("page heap model passed: %lld cycles, %d objects, %lld trims, %lld trimmed mappings reused\n",
+         (long long)cycles, ids, (long long)trims, (long long)retrimmed);
   return 0;
 }
 """
 DEFINES = ["PAGE", "CHUNK", "REGION", "RPAGES", "NBIN"]
+SEEDS = (1, 2, 3)
 HELPERS = ["os_page", "heap_add", "map_pages", "purge", "bits", "nbits", "next_bit", "run_bin", "run_push",
-           "pages_take", "pages_give", "pages_purge", "zero_dirty", "pages_settle", "big_new"]
+           "pages_take", "pages_give", "pages_purge", "zero_dirty", "pages_settle", "str_trim", "big_new"]
 
 
 def function(source, name):
@@ -236,7 +263,8 @@ def probe_source(runtime):
         if match is None:
             raise AssertionError(f"missing runtime definition: {name}")
         parts.append(match[0])
-    for pattern in (r"^typedef uintptr_t __attribute__\(\(may_alias\)\) W;[^\n]*\n",
+    for pattern in (r"^typedef struct \{ I len; uint64_t dict_hash; I chars1; char s\[\]; \} Str;[^\n]*\n",
+                    r"^typedef uintptr_t __attribute__\(\(may_alias\)\) W;[^\n]*\n",
                     r"^typedef struct Seg Seg;\n.*?^#define HB [^\n]*\n"):   # Seg, Region, PRun and HB
         match = re.search(pattern, runtime, re.M | re.S)
         if match is None:
@@ -263,10 +291,18 @@ class RuntimePageHeap(unittest.TestCase):
                     for seed in seeds]
 
     def test_random_cycles_agree_with_the_model(self):
-        for seed, result in zip((1, 2, 3), self.replay(probe_source((ROOT / "runtime.c").read_text()), (1, 2, 3), 120)):
+        trims = reused = 0
+        for seed, result in zip(SEEDS, self.replay(probe_source((ROOT / "runtime.c").read_text()), SEEDS, 120)):
             with self.subTest(seed=seed):
                 self.assertEqual(result.returncode, 0, result.stderr)
-                self.assertRegex(result.stdout, r"^page heap model passed: 120 cycles, \d+ objects\n$")
+                match = re.fullmatch(r"page heap model passed: 120 cycles, \d+ objects, (\d+) trims, (\d+) trimmed mappings reused\n",
+                                     result.stdout)
+                self.assertIsNotNone(match, result.stdout)
+                trims += int(match[1])
+                reused += int(match[2])
+        # the cycles reach what the model is for: strs trimmed, and mappings reused after a trim
+        self.assertGreater(trims, 0)
+        self.assertGreater(reused, 0)
 
     def mutated(self, old, new):
         source = probe_source((ROOT / "runtime.c").read_text())
@@ -290,6 +326,14 @@ class RuntimePageHeap(unittest.TestCase):
         result = self.replay(source, (1,), 120)[0]
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("a free run covers a used page", result.stderr)
+
+    def test_a_reused_trimmed_mapping_counted_short_is_detected(self):
+        # the negative control: big_new that takes a freed mapping's count as it is, after str_trim
+        # purged part of it, leaves uncounted the pages that writing the new object brings back
+        source = self.mutated("mapped = np * PAGE;\n        heap_add(mapped - s->nfree);", "mapped = s->nfree;")
+        results = self.replay(source, SEEDS, 120)
+        self.assertTrue(any(r.returncode and "a reused mapping is not counted in full" in r.stderr for r in results),
+                        [r.stderr for r in results])
 
 
 if __name__ == "__main__":

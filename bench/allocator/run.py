@@ -115,7 +115,8 @@ def main() -> None:
         variants.append({"name": name, "compiler": comp, "home": os.path.abspath(home or ROOT), "preload": lib})
     tiers = a.tiers.split(",")
     pin = ["taskset", "-c", a.cpu] if a.cpu else []
-    base = {k: v for k, v in os.environ.items() if not k.startswith("PYSTACHY_") and k != "LD_PRELOAD"}
+    # the variants' settings only, but the LLVM that the user chose (as tests/verify.sh keeps it)
+    base = {k: v for k, v in os.environ.items() if (k == "PYSTACHY_LLVM" or not k.startswith("PYSTACHY_")) and k != "LD_PRELOAD"}
     exes: dict[tuple[str, str], str] = {}
     for v in variants:
         same = [u for u in variants if u is not v and u["compiler"] == v["compiler"] and u["home"] == v["home"]

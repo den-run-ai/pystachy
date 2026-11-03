@@ -64,6 +64,7 @@ per-CPU caches serve concurrent allocation, which Pystachy's single-threaded run
 ## 2. What the prototype changes
 
 All in [runtime.c](../../runtime.c)'s memory section, except the JIT fast path in
+[lower_module.py](../../src/pystachy_compiler/lower_module.py) and
 [driver.py](../../src/pystachy_compiler/driver.py).
 
 - **Page heap.** Chunks of small objects (64 KiB) and large objects take runs of whole pages from
@@ -74,7 +75,8 @@ All in [runtime.c](../../runtime.c)'s memory section, except the JIT fast path i
   fits, preferring runs with dirty pages (already resident) over clean ones (a page fault and the
   kernel's clearing each).
 - **Retention and purging.** A sweep keeps as many dirty free pages as the next cycle may need
-  (its allocation window and half again) and purges the rest with `MADV_DONTNEED` (elsewhere a
+  (its allocation window and half again; the window is the larger of 32 MiB and the live bytes,
+  so a large heap keeps correspondingly more) and purges the rest with `MADV_DONTNEED` (elsewhere a
   fresh mapping over them): pages idle for a whole cycle first, then regions that are all free
   (unmapped), then other runs. Freed own mappings count against the same budget, newest kept
   first, for a large object of up to a quarter fewer pages. `str_trim` gives a trimmed string's
@@ -86,7 +88,8 @@ All in [runtime.c](../../runtime.c)'s memory section, except the JIT fast path i
   allocation clears the bytes it asks for (`LAZY`). Scanned slots are still cleared by the
   sweep: a stale pointer in a dead slot that a conservative root reaches would retain garbage.
 - **JIT fast path.** The JIT tier never inlines the shared runtime, so every allocation was a call
-  into it. The driver now puts the allocator's fast path in the program's module (`JITFAST`):
+  into it. The driver now puts the allocator's fast path in the program's module (`JITFAST`, in
+  `lower_module.py`, where LLVM module templates belong):
   `pys_new` and `pys_alloc` stay `noinline` calls through the cleanup pipeline, so allocation
   elision still sees `pys_new`'s marked calls, and a last `forceattrs,always-inline` step inlines
   the calls left: a pop of the runtime's free list (`pys_fl`, a constant slot once inlined), and
@@ -187,12 +190,16 @@ are 3.13.16's):
 `tools/test_runtime_pages.py` now compiles the page heap's purge with simulated 4, 16 and 64 KiB
 kernel pages for a string in a region and in its own mapping; its negative control, a purge that
 rounds to the collector's 4 KiB pages, fails on 64 KiB pages. `tools/test_runtime_pageheap.py`
-replays seeded random cycles of chunks and large objects (in regions and in mappings of their own),
-sweeps and budgets through the page heap's own functions, against a model of the object on each
-page: no two live objects share a page; zeroed allocations, chunks taken as clean and free pages
-marked clean read zero; live objects keep their bytes; the bitmaps, free runs and heap count agree
-with the model; and the free memory a sweep keeps fits its budget. Its negative controls, freed
-pages left marked clean and a split run that overlaps its allocation, fail.
+replays seeded random cycles of chunks and large objects (in regions and in mappings of their own,
+some of them strs that `str_trim` trims), sweeps and budgets through the page heap's own
+functions, against a model of the object on each page: no two live objects share a page; zeroed
+allocations, chunks taken as clean and free pages marked clean read zero; live objects keep their
+bytes; the bitmaps, free runs and heap count agree with the model, a reused mapping counted in
+full; and the free memory a sweep keeps fits its budget. Its negative controls, freed pages left
+marked clean, a split run that overlaps its allocation and a reused trimmed mapping counted short,
+fail. `tools/test_runtime_jitfast.py` compiles `lower_module.py`'s `JITFAST` beside `runtime.c`'s own
+`gc_alloc` and `cls()` and checks, for every size up to 300 bytes, that both return the same slot
+or make the same slow call; its negative control shifts the size class by one.
 `tools/test_runtime_frames.py` compiles `runtime.c` with `-fstack-usage` and bounds the frames that
 marking scans (`gc_slow` with `refill` inlined, `collect`, `mark_roots`: 72, 120 and 24 bytes) at
 256 bytes; with `pages_settle` inlined, `collect`'s exceeds it. `tools/jitprobe.py` expects the
@@ -210,6 +217,16 @@ bootstrap on macOS.
 - **Pacing.** The window stays max(32 MiB, live). `PYSTACHY_GC_MIN` makes a larger one a
   setting; a pacer that widens the window while collections take a large share of run time
   (GOGC-like) would have to weigh the slower mutator and higher peak RSS measured above (#615).
+- **Retention on large heaps.** The budget follows the window, so a program with a large live set
+  keeps up to 1.5 times it in free pages after a sweep, where main returned dead large objects at
+  once. The next cycle allocates up to the window anyway, so the peak moves less (#615's 128 MiB
+  program peaked at 679 MiB against 681), but RSS stays near the peak between collections. A cap,
+  or a time-based decay as mimalloc's purge delay, would bound it; it needs a large-heap workload
+  to measure.
+- **Runtime globals in AOT builds.** `pys_fl` is exported for the JIT tier's fast path, so an AOT
+  build, which links the runtime without internalizing it, cannot prove that external calls leave
+  it unchanged. Internalizing the runtime's globals there would restore that for all of them; the
+  AOT results above include the cost.
 - **mimalloc** remains an option for the C allocator the runtime still uses (`malloc` for the
   page map, tables and file buffers), not for the heap, and only if a workload shows a cost there.
 
