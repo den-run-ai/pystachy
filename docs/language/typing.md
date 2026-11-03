@@ -962,7 +962,8 @@ that read.
 A `@dataclass` writes `__init__` (which calls `__post_init__`), `__repr__` and `__eq__` unless
 its `init`, `repr` or `eq` option is false, and with `order=True` the comparisons of the tuples
 of its fields. Its options are `init`, `repr`, `eq`, `order`, `unsafe_hash`, `frozen`,
-`match_args` and `kw_only`; `slots=True` is not supported. `dataclasses.field()` takes `default`, `default_factory`, `init`, `repr`,
+`match_args` and `kw_only`; `slots=True` is not supported.
+`dataclasses.field()` takes `default`, `default_factory`, `init`, `repr`,
 `compare`, `hash` and `kw_only`; a factory is a function, a class or a lambda without
 parameters, called for each object that is not given the field (after the call's arguments,
 in field order, also for `init=False` fields). `_: KW_ONLY` makes the
