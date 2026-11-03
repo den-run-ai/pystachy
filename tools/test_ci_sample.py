@@ -88,6 +88,62 @@ class SampleTests(unittest.TestCase):
         self.assertEqual(evidence["cases"], chosen)
         self.assertEqual(evidence["selector"], ci_sample.SELECTOR)
 
+    def test_deleted_sidecars_keep_surviving_cases_without_readding_deleted_programs(self):
+        for name in ("basic_a", "basic_b", "deleted"):
+            self.write(f"tests/programs/area/{name}.py")
+        affected = set()
+        sidecars = []
+        for suffix in (".out", ".err", ".in", ".full", ".path"):
+            case = self.write(f"tests/programs/area/changed_{suffix[1:]}.py")
+            affected.add(case)
+            sidecars.append(self.root / self.write(case.removesuffix(".py") + suffix, "fixture\n"))
+        self.write("tests/case_weights.txt", "default program 9000\n100 tests/programs/area/basic_a.py\n"
+                   "101 tests/programs/area/basic_b.py\n")
+        base = self.commit()
+        for path in sidecars:
+            path.unlink()
+        (self.root / "tests/programs/area/deleted.py").unlink()
+        self.assertEqual(ci_sample.changed_cases(self.root, ci_sample.corpus(self.root), base), affected)
+        chosen = ci_sample.select_cases(self.root, base)
+        self.assertTrue(affected.issubset(chosen))
+        self.assertNotIn("tests/programs/area/deleted.py", chosen)
+
+    def test_deleted_helpers_keep_their_direct_consumers(self):
+        for name in ("basic_a", "basic_b"):
+            self.write(f"tests/programs/area/{name}.py")
+        self.write("tests/programs/area/basic_a.path", "tests\n")
+        affected = set()
+        for name in ("helper", "helper_package"):
+            case = self.write(f"tests/programs/area/{name}_consumer.py", f"from {name} import value\n")
+            self.write(case.removesuffix(".py") + ".path", "tests\n")
+            affected.add(case)
+        helpers = [self.root / self.write(name, "value = 1\n")
+                   for name in ("tests/helper.py", "tests/helper_package/__init__.py")]
+        self.write("tests/case_weights.txt", "default program 9000\n100 tests/programs/area/basic_a.py\n"
+                   "101 tests/programs/area/basic_b.py\n")
+        base = self.commit()
+        self.assertTrue(affected.isdisjoint(ci_sample.select_cases(self.root, base)))
+        for path in helpers:
+            path.unlink()
+        self.assertEqual(ci_sample.changed_cases(self.root, ci_sample.corpus(self.root), base), affected)
+        self.assertTrue(affected.issubset(ci_sample.select_cases(self.root, base)))
+
+    def test_moved_sidecars_select_both_surviving_cases(self):
+        for name in ("basic_a", "basic_b", "old", "new"):
+            self.write(f"tests/programs/area/{name}.py")
+        old = "tests/programs/area/old.out"
+        new = "tests/programs/area/new.out"
+        self.write(old, "fixture\n")
+        self.write("tests/case_weights.txt", "default program 9000\n100 tests/programs/area/basic_a.py\n"
+                   "101 tests/programs/area/basic_b.py\n")
+        base = self.commit()
+        self.git("config", "diff.renames", "true")
+        self.git("mv", old, new)
+        self.assertEqual(self.git("diff", "--name-status", base), f"R100\t{old}\t{new}")
+        affected = {"tests/programs/area/old.py", "tests/programs/area/new.py"}
+        self.assertEqual(ci_sample.changed_cases(self.root, ci_sample.corpus(self.root), base), affected)
+        self.assertTrue(affected.issubset(ci_sample.select_cases(self.root, base)))
+
     def test_invalid_base_empty_corpus_and_duplicate_inventory_fail_closed(self):
         with self.assertRaisesRegex(ValueError, "nonempty"):
             ci_sample.select_cases(self.root)

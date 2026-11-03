@@ -97,8 +97,10 @@ def changed_cases(root, cases, base_commit):
     """Include changed fixtures, new local cases, and direct helper-package consumers."""
     if base_commit is None:
         return set()
+    # A moved fixture affects both paths; a removed fixture still affects its surviving case.
+    # Deleted programs themselves are excluded by the authoritative corpus membership below.
     tracked = subprocess.run(
-        ["git", "diff", "--name-only", "--diff-filter=ACMR", "-z", base_commit, "--", "tests"],
+        ["git", "diff", "--name-only", "--no-renames", "--diff-filter=ACDMR", "-z", base_commit, "--", "tests"],
         cwd=root, capture_output=True, check=True, timeout=30).stdout
     untracked = subprocess.run(
         ["git", "ls-files", "--others", "--exclude-standard", "-z", "--", "tests"],

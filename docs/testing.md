@@ -436,9 +436,10 @@ from the budget. Each test runner uses at most four processes within its worker.
 | Lint, performance, DCO | 3 | Existing checks; CPython port preservation is folded into Lint. |
 
 `VERIFY_PROFILE=pr tests/verify.sh GROUP` selects this plan; plain `make verify` stays exhaustive.
-`tools/ci_sample.py` selects deterministic representatives and changed/new cases. Workers and
-the gate use the same `CI_BASE_SHA` and independently validate the selected manifest. Secondary
-configurations are sampled; the normal native suite is not. PR reports explicitly identify the
+`tools/ci_sample.py` selects deterministic representatives and changed/new cases, including
+surviving cases affected by removed or moved fixtures. Workers and the gate use the same
+`CI_BASE_SHA` and independently validate the selected manifest. Secondary configurations are
+sampled; the normal native suite is not. PR reports explicitly identify the
 `pr` profile and cannot certify full verification.
 
 The two variant workers and Linux distribution job reuse the same verified bootstrap as the
@@ -480,10 +481,11 @@ merger checks that every input names the expected native machine. An x86 report 
 to look like an ARM artifact is rejected. Combined reports are `x86_64-verification` and
 `aarch64-verification`; download the corresponding `MACHINE-verification-*` artifacts
 and use `tools/merge_verification.py DIRECTORY --machine MACHINE -o REPORT.json` to
-reproduce either gate. Both architectures must pass for the CI workflow to succeed. On a
-pull request the ARM64 gate runs the merger with `--groups contracts,native-0,ubsan-0`: it
-requires exactly those groups and the bootstrap, and labels its combined report `subset`
-rather than `all`. Lint checks that this list matches the matrix's ARM64 `include` entries.
+reproduce either full gate. Main and manual runs require both architectures. PRs run the
+x86-64 aggregate, with ARM64 platform smoke checks in the ARM64 bootstrap job. To reproduce
+the PR aggregate, use `--profile pr --machine x86_64` and the same `CI_BASE_SHA` as the
+workflow run. Its combined report is labelled `pr` and requires every compact group. Lint
+checks that each profile's group list matches the workflow matrix.
 Reports and logs are uploaded as workflow artifacts, together with the generated dynamic-`Any`
 fuzzer programs. The gate requires its complete 3-program/540-case budget, including 90 typed/Any
 parity cases, all four execution modes, program GC interval 1 and zero mismatches.
