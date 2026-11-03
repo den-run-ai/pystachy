@@ -261,12 +261,12 @@ def enum_int_op(op: str, a: int, b: int) -> list[str]:
             return []
         if a == 0:
             return ["int", "0"]
-        r = a
+        w = a
         for _ in range(b):
-            if r > big // 2 or r < low // 2:
+            if w > big // 2 or w < low // 2:
                 return []
-            r = r * 2
-        return ["int", str(r)]
+            w = w * 2
+        return ["int", str(w)]
     if op == ">>":
         if b < 0:
             return []
