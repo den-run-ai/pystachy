@@ -444,9 +444,14 @@ def gen_isinst(self, t: str, c: Node) -> int:
         return -1
     if c.s == "object":
         return 1
-    if ((c.s == "int" and "enum$IntEnum" in self.classes and t in self.classes and self.derives(t, "enum$IntEnum")) or (c.s == "str" and "enum$StrEnum" in self.classes and t in self.classes and self.derives(t, "enum$StrEnum"))) and not lib_source(self.curfn.node.line, self.libdir, "enum.py"):
-        # (CPython's IntEnum member is an int, a StrEnum member a str: here an object of its class)
-        self.err(f"isinstance() of a {short(t)} member and {c.s} is not supported: an {'IntEnum' if c.s == 'int' else 'StrEnum'} member is an object of its class (in CPython also {'an int' if c.s == 'int' else 'a str'})")
+    kind = "enum$IntEnum" if c.s == "int" else "enum$StrEnum" if c.s == "str" else ""
+    if kind in self.classes and t in self.classes and not lib_source(self.curfn.node.line, self.libdir, "enum.py"):
+        # (CPython's IntEnum member is an int, a StrEnum member a str: here an object of its class,
+        # which a value of a class it derives from, Enum's, may hold too)
+        ms = [k for k in self.refl_concrete(t) if k != kind and self.derives(k, kind)]
+        if len(ms) > 0:
+            what = f"a {short(t)} member" if self.derives(t, kind) else f"a {short(t)} value, which may be a {short(ms[0])} member,"
+            self.err(f"isinstance() of {what} and {c.s} is not supported: {'an IntEnum' if c.s == 'int' else 'a StrEnum'} member is an object of its class (in CPython also {'an int' if c.s == 'int' else 'a str'})")
     if c.s == "int":
         return 1 if t == "int" or t == "bool" else 0
     if c.s == "bool" or c.s == "float" or c.s == "str" or c.s == "bytes":
@@ -3523,8 +3528,11 @@ def gen_cmp_pick(self, op: str, at: str, bt: str) -> list[str]:
                 inv = "!"
             if m in ms and ms[m].synthetic and self.is_dc(ms[m].cls) and lt != rt:
                 continue  # (what @dataclass writes returns NotImplemented for an object of another class)
-            if m in ms and rt == "None" and lib_source(ms[m].node.line, self.libdir, "enum.py"):
-                continue  # (and so do the int and str methods of an IntEnum's and a StrEnum's members for None)
+            if m in ms and lib_source(ms[m].node.line, self.libdir, "enum.py") and (rt == "None" or (rt in self.classes and not self.derives(rt, ms[m].cls))):
+                # (and so do the int and str methods of an IntEnum's and a StrEnum's members, as
+                # int's and str's return it for None and for an object of a class not derived from
+                # int or str: the other operand's method, else identity, decides)
+                continue
             if m in ms:
                 return [sides[i], m, inv]
     return []

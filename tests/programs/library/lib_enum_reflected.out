@@ -1,0 +1,13 @@
+Other.__eq__
+Other.__eq__
+Other.__eq__
+Other.__eq__
+True False True False
+Other.__gt__
+Other.__gt__
+True True
+False True False
+False False True
+True True True True
+TypeError: '<' not supported between instances of 'Number' and 'Plain'
+[exit 0]

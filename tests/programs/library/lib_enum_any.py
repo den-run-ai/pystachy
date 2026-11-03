@@ -19,7 +19,8 @@ def show(v: Any) -> str:
     return "other " + repr(v)
 
 
-items: list[Any] = [Color.RED, 3, "x", Color.GREEN, Num.ONE]
+# (an IntEnum member is no Any value, as it is an int in CPython: its value is)
+items: list[Any] = [Color.RED, 3, "x", Color.GREEN, Num.ONE.value]
 print([show(v) for v in items])
 print(items[0] == Color.RED, items[0] is Color.RED, items[3] != Color.RED)
 print(items)

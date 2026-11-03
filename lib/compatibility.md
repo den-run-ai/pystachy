@@ -700,8 +700,15 @@ as it makes dataclasses and `NamedTuple` classes ([test](../tests/programs/libra
   class with `int`'s comparisons, arithmetic, `bool()` and `hash()`, or `str`'s comparisons,
   `+`, `in`, `len()` and `upper()`, `lower()`, `startswith()`, `endswith()` and `encode()`,
   whose results are ints and strs, and with CPython's `TypeError` for an operand of another
-  type. One cannot be passed where an `int` or `str` is typed, `int(member)` is not supported,
-  and `isinstance()` of one and `int` or `str` is a compile-time error (CPython's is true).
+  type. Compared with an object of another class, a member lets that object's reflected method
+  decide, or identity where it has none, as `int`'s and `str`'s methods return `NotImplemented`
+  ([test](../tests/programs/library/lib_enum_reflected.py)). One cannot be passed where an `int`
+  or `str` is typed, `int(member)` is not supported, and these are compile-time errors, as
+  CPython's member is an `int` or a `str`: `isinstance()` of one and `int` or `str`, also of a
+  value of a base class, such as `Enum`, that may hold one
+  ([test](../tests/errors/library/lib_enum_isinstance_base.py)), and a member as an `Any` value,
+  whose `isinstance()` would find no `int` or `str`
+  ([test](../tests/errors/library/lib_enum_any_strenum.py)): its `.value` can be one.
 - These are compile-time errors: `Flag`, `IntFlag` and `ReprEnum`; mixin types
   (`class C(str, Enum)`) and keywords; members of other values or types, `_ignore_`, `_order_`
   and private names; `__new__`, `__init__`, `_missing_` and `_generate_next_value_`; an enum
