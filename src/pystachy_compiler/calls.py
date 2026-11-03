@@ -748,7 +748,13 @@ def gen_open_(self, args: list[Node]) -> Val:
     if "file" not in given:
         self.err("open() missing required argument 'file' (pos 1)")
     if "mode" in given and given["mode"].kind == "str" and given["mode"].s.find("b") >= 0:
-        # (the loader makes open() of a literal binary mode a binary file's: binary_opens)
+        # (the loader makes open() of a literal binary mode a binary file's, binary_opens, except with a
+        # buffering= that these files do not take, rejected here, where the program reaches the call)
+        b = given.get("buffering", mk("None", "", self.line, []))
+        if b.kind == "int" and b.s == "1":
+            self.err("open() of a binary mode with buffering=1 is not supported (CPython warns that line buffering isn't supported in binary mode, and buffers by the default size)")
+        if b.kind != "None" and b.kind != "int" and not (b.kind == "unary" and b.s == "-" and len(b.kids) == 1 and b.kids[0].kind == "int"):
+            self.err("open() of a binary mode is only supported with a literal int buffering=, as the class of the file it makes depends on it (FileIO for 0)")
         self.err("open() of a binary mode is only supported by that name, with a literal mode, in a module that binds no other open (this open() makes a text file)")
     e = given.get("errors", mk("None", "", self.line, []))
     if not (e.kind == "None" or (e.kind == "str" and e.s == "strict")):

@@ -205,7 +205,9 @@ def names_open(n: Node) -> bool:
 def binary_calls(n: Node, used: dict[str, int]) -> None:
     # (binary_opens) each call open(file, mode) in tree n whose mode is a literal with "b" made a call
     # of the BOPENS name for the class CPython's open() makes: FileIO for buffering=0, else as the
-    # mode's letters say. used: the names, each with the line of its first call
+    # mode's letters say. used: the names, each with the line of its first call. A call with arguments
+    # that these do not take stays open()'s, which gen_open_ rejects only where the program reaches it
+    # (code that is never compiled, as an if False: block, compiles as before)
     for k in n.kids:
         binary_calls(k, used)
     if n.kind != "call" or len(n.kids) == 0 or n.kids[0].kind != "name" or n.kids[0].s != "open":
@@ -230,13 +232,9 @@ def binary_calls(n: Node, used: dict[str, int]) -> None:
             other = other or pos > 6
     if mode.kind != "str" or mode.s.find("b") < 0:
         return
-    if other:
-        fail("open() supports only file, mode, buffering, encoding, errors and newline", n.line)
     neg = buf.kind == "unary" and buf.s == "-" and len(buf.kids) == 1 and buf.kids[0].kind == "int"
-    if buf.kind != "None" and buf.kind != "int" and not neg:
-        fail("open() of a binary mode is only supported with a literal int buffering=, as the class of the file it makes depends on it (FileIO for 0)", n.line)
-    if buf.kind == "int" and buf.s == "1":
-        fail("open() of a binary mode with buffering=1 is not supported (CPython warns that line buffering isn't supported in binary mode, and buffers by the default size)", n.line)
+    if other or (buf.kind != "None" and buf.kind != "int" and not neg) or (buf.kind == "int" and buf.s == "1"):
+        return
     m = mode.s
     raw = buf.kind == "int" and buf.s == "0"
     name = "_pys_bfile_raw" if raw else "_pys_bfile_random" if m.find("+") >= 0 else "_pys_bfile_writer" if m.find("w") >= 0 or m.find("a") >= 0 or m.find("x") >= 0 else "_pys_bfile_reader"
