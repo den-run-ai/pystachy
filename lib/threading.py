@@ -1,4 +1,10 @@
+# pystachy: dynamic-any
 """Thread module emulating a subset of Java's threading model."""
+# Pystachy port of CPython 3.13.16's Lib/threading.py (lib/provenance.md), on the one-thread _thread
+# (lib/_pystachy_thread.py): locks, conditions, semaphores, events, barriers and the main thread's
+# Thread object work as in CPython where no other thread runs; Thread.start() raises _thread's
+# NotImplementedError. The module opts in to dynamic Any (comment above) for a thread's target, its
+# arguments and its name, of whatever types its caller gives. Each change is marked "Pystachy port".
 
 import os as _os
 import sys as _sys
@@ -6,8 +12,15 @@ import _thread
 import warnings
 
 from time import monotonic as _time
-from _weakrefset import WeakSet
+# Pystachy port: no WeakSet (weak containers are not supported): _dangling is a set (see there)
 from itertools import count as _count
+from typing import Any  # Pystachy port: (Thread's target and arguments are Any values)
+
+
+# Pystachy port: id() of an object of a class, which its reprs show, of it as an Any value (id() of
+# an object is supported for Any values)
+def _addr(o: Any) -> int:
+    return id(o)
 try:
     from _collections import deque as _deque
 except ImportError:
@@ -49,12 +62,11 @@ try:
 except AttributeError:
     _HAVE_THREAD_NATIVE_ID = False
 ThreadError = _thread.error
-try:
-    _CRLock = _thread.RLock
-except AttributeError:
-    _CRLock = None
+# Pystachy port: _thread's RLock is imported by name rather than aliased (a class of another
+# module is not a value); this _thread always has it, so the Python _RLock is never the default
+from _thread import RLock as _CRLock
 TIMEOUT_MAX = _thread.TIMEOUT_MAX
-del _thread
+# Pystachy port: no del _thread: del of a module-level import is not supported (#612)
 
 # get thread-local implementation, either from the thread
 # module, or from the python fallback
@@ -134,9 +146,9 @@ def RLock(*args, **kwargs):
             DeprecationWarning,
             stacklevel=2,
         )
-    if _CRLock is None:
-        return _PyRLock(*args, **kwargs)
-    return _CRLock(*args, **kwargs)
+    # Pystachy port: _CRLock is _thread's RLock (see above), whose constructor ignores the
+    # deprecated arguments, as CPython's C rlock_new() does
+    return _CRLock()
 
 class _RLock:
     """This class implements reentrant lock objects.
@@ -149,8 +161,10 @@ class _RLock:
     """
 
     def __init__(self):
-        self._block = _allocate_lock()
-        self._owner = None
+        # Pystachy port: the fields are annotated (an alias's call does not type a field, and the
+        # owner is a thread's ident)
+        self._block: _LockType = _allocate_lock()
+        self._owner: int | None = None
         self._count = 0
 
     def __repr__(self):
@@ -159,13 +173,14 @@ class _RLock:
             owner = _active[owner].name
         except KeyError:
             pass
+        # Pystachy port: type(self)'s names (its class is not a value) and _addr(self) (id(), above)
         return "<%s %s.%s object owner=%r count=%d at %s>" % (
             "locked" if self._block.locked() else "unlocked",
-            self.__class__.__module__,
-            self.__class__.__qualname__,
+            type(self).__module__,
+            type(self).__qualname__,
             owner,
             self._count,
-            hex(id(self))
+            hex(_addr(self))
         )
 
     def _at_fork_reinit(self):
@@ -209,7 +224,10 @@ class _RLock:
             self._count = 1
         return rc
 
-    __enter__ = acquire
+    # Pystachy port: a method that calls acquire(), which a with statement calls without
+    # arguments (a class attribute cannot be bound to a method)
+    def __enter__(self):
+        return self.acquire()
 
     def release(self):
         """Release a lock, decrementing the recursion level.
@@ -278,23 +296,30 @@ class Condition:
 
     """
 
-    def __init__(self, lock=None):
+    # Pystachy port: the lock is an Any value (a Lock, an RLock, or an object with their methods),
+    # whose methods Condition calls rather than binds as attributes of its own (an object's
+    # attributes cannot replace its class's methods): acquire() and release() are methods that
+    # call the lock's, and _release_save(), _acquire_restore() and _is_owned() call the lock's own
+    # where it is a reentrant lock, which defines them (hasattr() of an Any value is not supported)
+    def __init__(self, lock: Any = None) -> None:
         if lock is None:
             lock = RLock()
-        self._lock = lock
-        # Export the lock's acquire() and release() methods
-        self.acquire = lock.acquire
-        self.release = lock.release
-        # If the lock defines _release_save() and/or _acquire_restore(),
-        # these override the default implementations (which just call
-        # release() and acquire() on the lock).  Ditto for _is_owned().
-        if hasattr(lock, '_release_save'):
-            self._release_save = lock._release_save
-        if hasattr(lock, '_acquire_restore'):
-            self._acquire_restore = lock._acquire_restore
-        if hasattr(lock, '_is_owned'):
-            self._is_owned = lock._is_owned
-        self._waiters = _deque()
+        self._lock: Any = lock
+        # Pystachy port: a list of the waiters' locks rather than a deque (an __init__ that makes a
+        # deque, a generic class, would make Condition a template of it); it has the deque's
+        # operations that Condition uses
+        self._waiters: list[_LockType] = []
+
+    # Pystachy port: (the lock's acquire() and release(), see __init__)
+    def acquire(self, blocking=True, timeout=-1):
+        return self._lock.acquire(blocking, timeout)
+
+    def release(self):
+        self._lock.release()
+
+    def _owns_methods(self):
+        # Pystachy port: (does the lock define _release_save(), _acquire_restore() and _is_owned()?)
+        return isinstance(self._lock, _CRLock) or isinstance(self._lock, _RLock)
 
     def _at_fork_reinit(self):
         self._lock._at_fork_reinit()
@@ -303,21 +328,30 @@ class Condition:
     def __enter__(self):
         return self._lock.__enter__()
 
-    def __exit__(self, *args):
-        return self._lock.__exit__(*args)
+    # Pystachy port: the lock is released as its __exit__() does, which returns None (an exception
+    # cannot be an Any value, which the lock's __exit__() would take)
+    def __exit__(self, exc_type, exc_value, traceback):
+        self._lock.release()
 
     def __repr__(self):
         return "<Condition(%s, %d)>" % (self._lock, len(self._waiters))
 
     def _release_save(self):
+        if self._owns_methods():
+            return self._lock._release_save()  # Pystachy port: (see __init__)
         self._lock.release()           # No state to save
 
     def _acquire_restore(self, x):
+        if self._owns_methods():
+            self._lock._acquire_restore(x)  # Pystachy port: (see __init__)
+            return
         self._lock.acquire()           # Ignore saved state
 
     def _is_owned(self):
         # Return True if lock is owned by current_thread.
         # This method is called only if _lock doesn't have _is_owned().
+        if self._owns_methods():
+            return self._lock._is_owned()  # Pystachy port: (see __init__)
         if self._lock.acquire(False):
             self._lock.release()
             return False
@@ -372,7 +406,9 @@ class Condition:
                 except ValueError:
                     pass
 
-    def wait_for(self, predicate, timeout=None):
+    # Pystachy port: the timeout is annotated (a float or None: endtime is computed where it is
+    # not None)
+    def wait_for(self, predicate, timeout: float | None = None):
         """Wait until a condition evaluates to True.
 
         predicate should be a callable which result will be interpreted as a
@@ -458,15 +494,17 @@ class Semaphore:
 
     # After Tim Peters' semaphore class, but not quite the same (no maximum)
 
-    def __init__(self, value=1):
+    # Pystachy port: annotated, so that BoundedSemaphore may derive from Semaphore (a class
+    # template's subclass is not supported)
+    def __init__(self, value: int = 1) -> None:
         if value < 0:
             raise ValueError("semaphore initial value must be >= 0")
         self._cond = Condition(Lock())
         self._value = value
 
+    # Pystachy port: (type(self)'s names and _addr(self), as _RLock.__repr__)
     def __repr__(self):
-        cls = self.__class__
-        return (f"<{cls.__module__}.{cls.__qualname__} at {id(self):#x}:"
+        return (f"<{type(self).__module__}.{type(self).__qualname__} at {_addr(self):#x}:"
                 f" value={self._value}>")
 
     def acquire(self, blocking=True, timeout=None):
@@ -514,7 +552,10 @@ class Semaphore:
                 rc = True
         return rc
 
-    __enter__ = acquire
+    # Pystachy port: a method that calls acquire(), which a with statement calls without
+    # arguments (a class attribute cannot be bound to a method)
+    def __enter__(self):
+        return self.acquire()
 
     def release(self, n=1):
         """Release a semaphore, incrementing the internal counter by one or more.
@@ -550,13 +591,15 @@ class BoundedSemaphore(Semaphore):
 
     """
 
-    def __init__(self, value=1):
+    # Pystachy port: annotated, so that BoundedSemaphore may derive from Semaphore (a class
+    # template's subclass is not supported)
+    def __init__(self, value: int = 1) -> None:
         super().__init__(value)
         self._initial_value = value
 
+    # Pystachy port: (type(self)'s names and _addr(self), as _RLock.__repr__)
     def __repr__(self):
-        cls = self.__class__
-        return (f"<{cls.__module__}.{cls.__qualname__} at {id(self):#x}:"
+        return (f"<{type(self).__module__}.{type(self).__qualname__} at {_addr(self):#x}:"
                 f" value={self._value}/{self._initial_value}>")
 
     def release(self, n=1):
@@ -593,10 +636,10 @@ class Event:
         self._cond = Condition(Lock())
         self._flag = False
 
+    # Pystachy port: (type(self)'s names and _addr(self), as _RLock.__repr__)
     def __repr__(self):
-        cls = self.__class__
         status = 'set' if self._flag else 'unset'
-        return f"<{cls.__module__}.{cls.__qualname__} at {id(self):#x}: {status}>"
+        return f"<{type(self).__module__}.{type(self).__qualname__} at {_addr(self):#x}: {status}>"
 
     def _at_fork_reinit(self):
         # Private method called by Thread._after_fork()
@@ -681,7 +724,9 @@ class Barrier:
 
     """
 
-    def __init__(self, parties, action=None, timeout=None):
+    # Pystachy port: annotated, so that an action of any type, or None, is called where it is set
+    # (see Thread.__init__)
+    def __init__(self, parties: int, action: Any = None, timeout: float | None = None) -> None:
         """Create a barrier, initialised to 'parties' threads.
 
         'action' is a callable which, when supplied, will be called by one of
@@ -699,11 +744,11 @@ class Barrier:
         self._state = 0  # 0 filling, 1 draining, -1 resetting, -2 broken
         self._count = 0
 
+    # Pystachy port: (type(self)'s names and _addr(self), as _RLock.__repr__)
     def __repr__(self):
-        cls = self.__class__
         if self.broken:
-            return f"<{cls.__module__}.{cls.__qualname__} at {id(self):#x}: broken>"
-        return (f"<{cls.__module__}.{cls.__qualname__} at {id(self):#x}:"
+            return f"<{type(self).__module__}.{type(self).__qualname__} at {_addr(self):#x}: broken>"
+        return (f"<{type(self).__module__}.{type(self).__qualname__} at {_addr(self):#x}:"
                 f" waiters={self.n_waiting}/{self.parties}>")
 
     def wait(self, timeout=None):
@@ -840,18 +885,25 @@ class BrokenBarrierError(RuntimeError):
 
 
 # Helper to generate new thread names
-_counter = _count(1).__next__
+# Pystachy port: the count is kept and next() steps it (a generator's method is not a value), and
+# the name's number replaces the template's one "%d" ("Thread-%d" or "Dummy-%d", as % gives it:
+# % formats a format string known only at run time in a module that opts in to dynamic Any)
+_counter_it = _count(1)
+def _counter():
+    return next(_counter_it)
 def _newname(name_template):
-    return name_template % _counter()
+    return name_template.replace("%d", str(_counter()), 1)
 
 # Active thread administration.
 #
 # bpo-44422: Use a reentrant lock to allow reentrant calls to functions like
 # threading.enumerate().
 _active_limbo_lock = RLock()
-_active = {}    # maps thread id to Thread object
-_limbo = {}
-_dangling = WeakSet()
+# Pystachy port: annotated (an empty dict's types)
+_active: dict[int, "Thread"] = {}    # maps thread id to Thread object
+_limbo: dict["Thread", "Thread"] = {}
+# Pystachy port: a set, which keeps its threads (no weak containers)
+_dangling: set["Thread"] = set()
 
 
 # Main class for threads
@@ -867,8 +919,11 @@ class Thread:
 
     _initialized = False
 
-    def __init__(self, group=None, target=None, name=None,
-                 args=(), kwargs=None, *, daemon=None):
+    # Pystachy port: annotated, so that Thread is a class rather than a template of its arguments'
+    # types, which _MainThread and _DummyThread could not derive from: a target, its arguments and
+    # a name may be of any type
+    def __init__(self, group: Any = None, target: Any = None, name: Any = None,
+                 args: Any = (), kwargs: Any = None, *, daemon: bool | None = None) -> None:
         """This constructor should always be called with keyword arguments. Arguments are:
 
         *group* should be None; reserved for future extension when a ThreadGroup
@@ -920,9 +975,8 @@ class Thread:
         self._handle = _ThreadHandle()
         self._started = Event()
         self._initialized = True
-        # Copy of sys.stderr used by self._invoke_excepthook()
-        self._stderr = _sys.stderr
-        self._invoke_excepthook = _make_invoke_excepthook()
+        # Pystachy port: no copy of sys.stderr and no _invoke_excepthook: they report an exception
+        # that a started thread's run() raises, and no thread starts (_thread runs one)
         # For debugging and _after_fork()
         _dangling.add(self)
 
@@ -992,11 +1046,19 @@ class Thread:
         """
         try:
             if self._target is not None:
-                self._target(*self._args, **self._kwargs)
+                # Pystachy port: a target is called without arguments (an Any value cannot be
+                # unpacked into a call's arguments); a thread's target is called this way only by a
+                # direct call of run(), as no thread starts
+                if self._args or self._kwargs:
+                    raise NotImplementedError("Thread.run() of a target with arguments is not supported")
+                self._target()
         finally:
             # Avoid a refcycle if the thread is running a function with
             # an argument that has a member that points to the thread.
-            del self._target, self._args, self._kwargs
+            # Pystachy port: the attributes are set to None (del of an attribute is not supported)
+            self._target = None
+            self._args = None
+            self._kwargs = None
 
     def _bootstrap(self):
         # Wrapper around the real bootstrap code that ignores
@@ -1021,9 +1083,10 @@ class Thread:
     def _set_ident(self):
         self._ident = get_ident()
 
-    if _HAVE_THREAD_NATIVE_ID:
-        def _set_native_id(self):
-            self._native_id = get_native_id()
+    # Pystachy port: defined unconditionally (a class body holds no if statement): this _thread
+    # has get_native_id(), so _HAVE_THREAD_NATIVE_ID is True
+    def _set_native_id(self):
+        self._native_id = get_native_id()
 
     def _bootstrap_inner(self):
         try:
@@ -1040,10 +1103,9 @@ class Thread:
             if _profile_hook:
                 _sys.setprofile(_profile_hook)
 
-            try:
-                self.run()
-            except:
-                self._invoke_excepthook(self)
+            # Pystachy port: run() is called as is (see __init__: no thread starts that would
+            # report its exception)
+            self.run()
         finally:
             self._delete()
 
@@ -1122,17 +1184,17 @@ class Thread:
         assert self._initialized, "Thread.__init__() not called"
         return self._ident
 
-    if _HAVE_THREAD_NATIVE_ID:
-        @property
-        def native_id(self):
-            """Native integral thread ID of this thread, or None if it has not been started.
+    # Pystachy port: (defined unconditionally, as _set_native_id)
+    @property
+    def native_id(self):
+        """Native integral thread ID of this thread, or None if it has not been started.
 
-            This is a non-negative integer. See the get_native_id() function.
-            This represents the Thread ID as reported by the kernel.
+        This is a non-negative integer. See the get_native_id() function.
+        This represents the Thread ID as reported by the kernel.
 
-            """
-            assert self._initialized, "Thread.__init__() not called"
-            return self._native_id
+        """
+        assert self._initialized, "Thread.__init__() not called"
+        return self._native_id
 
     def is_alive(self):
         """Return whether the thread is alive.
@@ -1327,7 +1389,8 @@ class Timer(Thread):
 
     """
 
-    def __init__(self, interval, function, args=None, kwargs=None):
+    # Pystachy port: annotated (see Thread.__init__)
+    def __init__(self, interval: float, function: Any, args: Any = None, kwargs: Any = None) -> None:
         Thread.__init__(self)
         self.interval = interval
         self.function = function
@@ -1342,7 +1405,10 @@ class Timer(Thread):
     def run(self):
         self.finished.wait(self.interval)
         if not self.finished.is_set():
-            self.function(*self.args, **self.kwargs)
+            # Pystachy port: (called as Thread.run() calls a target)
+            if self.args or self.kwargs:
+                raise NotImplementedError("Timer.run() of a function with arguments is not supported")
+            self.function()
         self.finished.set()
 
 
@@ -1353,12 +1419,14 @@ class _MainThread(Thread):
     def __init__(self):
         Thread.__init__(self, name="MainThread", daemon=False)
         self._started.set()
-        self._ident = _get_main_thread_ident()
-        self._handle = _make_thread_handle(self._ident)
+        # Pystachy port: (the ident is a local, as in _DummyThread.__init__)
+        ident = _get_main_thread_ident()
+        self._ident = ident
+        self._handle = _make_thread_handle(ident)
         if _HAVE_THREAD_NATIVE_ID:
             self._set_native_id()
         with _active_limbo_lock:
-            _active[self._ident] = self
+            _active[ident] = self
 
 
 # Helper thread-local instance to detect when a _DummyThread
@@ -1401,13 +1469,17 @@ class _DummyThread(Thread):
         Thread.__init__(self, name=_newname("Dummy-%d"),
                         daemon=_daemon_threads_allowed())
         self._started.set()
-        self._set_ident()
-        self._handle = _make_thread_handle(self._ident)
+        # Pystachy port: _set_ident()'s assignment, here, of a local that holds the int (a field of
+        # type int | None is not narrowed by an assignment)
+        ident = get_ident()
+        self._ident = ident
+        self._handle = _make_thread_handle(ident)
         if _HAVE_THREAD_NATIVE_ID:
             self._set_native_id()
         with _active_limbo_lock:
-            _active[self._ident] = self
-        _DeleteDummyThreadOnDel(self)
+            _active[ident] = self
+        # Pystachy port: no _DeleteDummyThreadOnDel(self), which removes the entry as the foreign
+        # thread ends: _thread runs one thread, so current_thread() never makes a dummy thread
 
     def is_alive(self):
         if not self._handle.is_done() and self._started.is_set():
@@ -1598,5 +1670,5 @@ def _after_fork():
         assert len(_active) == 1
 
 
-if hasattr(_os, "register_at_fork"):
-    _os.register_at_fork(after_in_child=_after_fork)
+# Pystachy port: the subset's os has no register_at_fork() (no os.fork()), which hasattr() of a
+# module does not test

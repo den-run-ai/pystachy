@@ -1,0 +1,3 @@
+NotImplementedError: _thread.start_joinable_thread() is not supported: a Pystachy program runs one thread
+False
+[exit 0]

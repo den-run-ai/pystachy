@@ -1,0 +1,32 @@
+reentrant True
+False True True
+True True False False
+False
+MainThread True False True
+True True
+1 ['MainThread']
+False False
+True True True
+False
+wait False True
+plain wait False
+True True False False
+in semaphore
+in bounded
+ValueError: Semaphore released too many times
+action
+1 0 False 0
+True
+BrokenBarrierError
+worker-3 False True None None
+run 3 worker-3 True
+renamed
+True False
+target ran
+named
+True
+_local
+True 0
+RuntimeError: cannot join current thread
+True
+[exit 0]

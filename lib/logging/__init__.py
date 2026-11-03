@@ -1,3 +1,4 @@
+# pystachy: dynamic-any
 # Copyright 2001-2022 by Vinay Sajip. All Rights Reserved.
 #
 # Permission to use, copy, modify, and distribute this software and its
@@ -23,7 +24,19 @@ Copyright (C) 2001-2022 Vinay Sajip. All Rights Reserved.
 To use, simply 'import logging' and log away!
 """
 
+# Pystachy port of CPython 3.13.16's Lib/logging/__init__.py (lib/provenance.md). The module opts
+# in to dynamic Any (the comment above): a record's message and arguments, a level's name and the
+# values a format interpolates have whatever types its caller gives. %-style messages and formats
+# are formatted by _pystachy_percent, as % formats a format string known only at run time. There
+# are no frames, so a record's caller is CPython's unknown one ("(unknown file)", 0,
+# "(unknown function)"), and no tracebacks (lib/traceback.py). Each change is marked "Pystachy
+# port"; lib/compatibility.md#logging lists the limits.
 import sys, os, time, io, re, traceback, warnings, weakref, collections.abc
+from typing import Any, TextIO  # Pystachy port: (Any values, see above; a stream's type)
+import posixpath  # Pystachy port: (os.path's functions that the subset's os.path lacks)
+import _thread  # Pystachy port: (the class of a handler's lock, _thread.RLock)
+from _pystachy_percent import percent_format as _percent_format  # Pystachy port: (see above)
+from _pystachy_time import strftime_at as _strftime_at  # Pystachy port: (see Formatter.formatTime)
 
 from types import GenericAlias
 from string import Template
@@ -126,7 +139,9 @@ _nameToLevel = {
 def getLevelNamesMapping():
     return _nameToLevel.copy()
 
-def getLevelName(level):
+# Pystachy port: annotated: a level or a level's name, whose name or level it gives, as an Any
+# value
+def getLevelName(level: Any) -> Any:
     """
     Return the textual or numeric representation of logging level 'level'.
 
@@ -145,12 +160,16 @@ def getLevelName(level):
     'Level %s' % level is returned.
     """
     # See Issues #22386, #27937 and #29220 for why it's this way
-    result = _levelToName.get(level)
-    if result is not None:
-        return result
-    result = _nameToLevel.get(level)
-    if result is not None:
-        return result
+    # Pystachy port: each dict is looked up only with a key of its keys' type, as a typed dict's
+    # lookup of an Any value of another type raises TypeError where CPython's finds nothing
+    if not isinstance(level, str):
+        name = _levelToName.get(level)
+        if name is not None:
+            return name
+    if isinstance(level, str):
+        number = _nameToLevel.get(level)
+        if number is not None:
+            return number
     return "Level %s" % level
 
 def addLevelName(level, levelName):
@@ -163,15 +182,12 @@ def addLevelName(level, levelName):
         _levelToName[level] = levelName
         _nameToLevel[levelName] = level
 
-if hasattr(sys, "_getframe"):
-    currentframe = lambda: sys._getframe(1)
-else: #pragma: no cover
-    def currentframe():
-        """Return the frame object for the caller's stack frame."""
-        try:
-            raise Exception
-        except Exception as exc:
-            return exc.__traceback__.tb_frame.f_back
+# Pystachy port: there are no frames (no sys._getframe(), which hasattr() of a module does not
+# test, and no tracebacks), so there is no caller's frame, as on CPython's implementations without
+# frames (findCaller() then gives the unknown caller)
+def currentframe():
+    """Return the frame object for the caller's stack frame."""
+    return None
 
 #
 # _srcfile is used when walking the stack to check when we've got the first
@@ -185,7 +201,9 @@ else: #pragma: no cover
 # (There's no particular reason for picking addLevelName.)
 #
 
-_srcfile = os.path.normcase(addLevelName.__code__.co_filename)
+# Pystachy port: None, which makes _log() give the unknown caller without calling findCaller():
+# there are no frames to compare with this file's name (and a function has no __code__)
+_srcfile: str | None = None
 
 # _srcfile is only used in conjunction with sys._getframe().
 # Setting _srcfile to None will prevent findCaller() from being called. This
@@ -202,10 +220,12 @@ def _is_internal_frame(frame):
     )
 
 
-def _checkLevel(level):
+# Pystachy port: annotated: a level is an int or a level's name, as an Any value
+def _checkLevel(level: Any) -> int:
     if isinstance(level, int):
-        rv = level
-    elif str(level) == level:
+        rv: int = level
+    elif isinstance(level, str):
+        # Pystachy port: (str(level) == level is a str's test, here isinstance())
         if level not in _nameToLevel:
             raise ValueError("Unknown level: %r" % level)
         rv = _nameToLevel[level]
@@ -253,30 +273,10 @@ def _afterFork():
 
 # Prevent a held logging lock from blocking a child from logging.
 
-if not hasattr(os, 'register_at_fork'):  # Windows and friends.
-    def _register_at_fork_reinit_lock(instance):
-        pass  # no-op when os.register_at_fork does not exist.
-else:
-    # A collection of instances with a _at_fork_reinit method (logging.Handler)
-    # to be called in the child after forking.  The weakref avoids us keeping
-    # discarded Handler instances alive.
-    _at_fork_reinit_lock_weakset = weakref.WeakSet()
-
-    def _register_at_fork_reinit_lock(instance):
-        with _lock:
-            _at_fork_reinit_lock_weakset.add(instance)
-
-    def _after_at_fork_child_reinit_locks():
-        for handler in _at_fork_reinit_lock_weakset:
-            handler._at_fork_reinit()
-
-        # _prepareFork() was called in the parent before forking.
-        # The lock is reinitialized to unlocked state.
-        _lock._at_fork_reinit()
-
-    os.register_at_fork(before=_prepareFork,
-                        after_in_child=_after_at_fork_child_reinit_locks,
-                        after_in_parent=_afterFork)
+# Pystachy port: the branch of platforms without os.register_at_fork(), which the subset's os
+# lacks (there is no os.fork()); hasattr() of a module does not test it
+def _register_at_fork_reinit_lock(instance):
+    pass  # no-op when os.register_at_fork does not exist.
 
 
 #---------------------------------------------------------------------------
@@ -295,8 +295,12 @@ class LogRecord(object):
     the source line where the logging call was made, and any exception
     information to be logged.
     """
-    def __init__(self, name, level, pathname, lineno,
-                 msg, args, exc_info, func=None, sinfo=None, **kwargs):
+    # Pystachy port: annotated: the message and its arguments are Any values, of whatever types the
+    # logger's caller gives; exc_info is an exception's (type, value, traceback), whose traceback is
+    # None (no tracebacks), or None; no **kwargs (of values of different types)
+    def __init__(self, name: str | None, level: Any, pathname: str, lineno: int,
+                 msg: Any, args: Any, exc_info: tuple[type[BaseException], BaseException, None] | None,
+                 func: str | None = None, sinfo: str | None = None) -> None:
         """
         Initialize a logging record with interesting information.
         """
@@ -321,68 +325,63 @@ class LogRecord(object):
         # formatting still seem to suggest a mapping object is required.
         # Thus, while not removing the isinstance check, it does now look
         # for collections.abc.Mapping rather than, as before, dict.
-        if (args and len(args) == 1 and isinstance(args[0], collections.abc.Mapping)
+        # Pystachy port: a dict is the mapping (an Any value's class is not a collections.abc class)
+        if (args and len(args) == 1 and isinstance(args[0], dict)
             and args[0]):
             args = args[0]
-        self.args = args
-        self.levelname = getLevelName(level)
-        self.levelno = level
+        self.args: Any = args
+        # Pystachy port: annotated (a level's name is an Any value, see getLevelName), and the
+        # file's names are posixpath's (see the imports)
+        self.levelname: Any = getLevelName(level)
+        self.levelno: Any = level
         self.pathname = pathname
+        self.filename: str = pathname
+        self.module: str = "Unknown module"
         try:
-            self.filename = os.path.basename(pathname)
-            self.module = os.path.splitext(self.filename)[0]
+            self.filename = posixpath.basename(pathname)
+            self.module = posixpath.splitext(self.filename)[0]
         except (TypeError, ValueError, AttributeError):
             self.filename = pathname
             self.module = "Unknown module"
         self.exc_info = exc_info
-        self.exc_text = None      # used to cache the traceback text
+        self.exc_text: str | None = None      # used to cache the traceback text
         self.stack_info = sinfo
-        self.lineno = lineno
-        self.funcName = func
-        self.created = ct / 1e9  # ns to float seconds
+        # Pystachy port: annotated (makeLogRecord() also assigns them)
+        self.lineno: int = lineno
+        self.funcName: str | None = func
+        self.created: float = ct / 1e9  # ns to float seconds
         # Get the number of whole milliseconds (0-999) in the fractional part of seconds.
         # Eg: 1_677_903_920_999_998_503 ns --> 999_998_503 ns--> 999 ms
         # Convert to float by adding 0.0 for historical reasons. See gh-89047
-        self.msecs = (ct % 1_000_000_000) // 1_000_000 + 0.0
+        self.msecs: float = (ct % 1_000_000_000) // 1_000_000 + 0.0
         if self.msecs == 999.0 and int(self.created) != ct // 1_000_000_000:
             # ns -> sec conversion can round up, e.g:
             # 1_677_903_920_999_999_900 ns --> 1_677_903_921.0 sec
             self.msecs = 0.0
 
-        self.relativeCreated = (ct - _startTime) / 1e6
+        self.relativeCreated: float = (ct - _startTime) / 1e6
+        # Pystachy port: the fields are annotated (each may be None)
+        self.thread: int | None = None
+        self.threadName: Any = None
         if logThreads:
             self.thread = threading.get_ident()
             self.threadName = threading.current_thread().name
-        else: # pragma: no cover
-            self.thread = None
-            self.threadName = None
-        if not logMultiprocessing: # pragma: no cover
-            self.processName = None
-        else:
+        # Pystachy port: the process is the main one: there is no multiprocessing (sys.modules),
+        # and os has getpid() (which hasattr() of a module does not test)
+        self.processName: str | None = None
+        if logMultiprocessing:
             self.processName = 'MainProcess'
-            mp = sys.modules.get('multiprocessing')
-            if mp is not None:
-                # Errors may occur if multiprocessing has not finished loading
-                # yet - e.g. if a custom import hook causes third-party code
-                # to run when multiprocessing calls import. See issue 8200
-                # for an example
-                try:
-                    self.processName = mp.current_process().name
-                except Exception: #pragma: no cover
-                    pass
-        if logProcesses and hasattr(os, 'getpid'):
+        self.process: int | None = None
+        if logProcesses:
             self.process = os.getpid()
-        else:
-            self.process = None
 
-        self.taskName = None
-        if logAsyncioTasks:
-            asyncio = sys.modules.get('asyncio')
-            if asyncio:
-                try:
-                    self.taskName = asyncio.current_task().get_name()
-                except Exception:
-                    pass
+        # Pystachy port: no task: there is no asyncio (sys.modules)
+        self.taskName: str | None = None
+        # Pystachy port: the attributes that the logger's extra gives, and those that Formatter
+        # sets, which CPython keeps in the record's __dict__ (an object's fields are fixed)
+        self._extra: dict[str, Any] = {}
+        self.message: str | None = None
+        self.asctime: str | None = None
 
     def __repr__(self):
         return '<LogRecord: %s, %s, %s, %s, "%s">'%(self.name, self.levelno,
@@ -397,14 +396,35 @@ class LogRecord(object):
         """
         msg = str(self.msg)
         if self.args:
-            msg = msg % self.args
+            msg = _percent_format(msg, self.args)  # Pystachy port: (% of a format known at run time)
         return msg
+
+    # Pystachy port: the record's attributes by name, as its __dict__ holds them, which % of a
+    # format's %(name)s reads: the fields that CPython's record has, then those of extra, and
+    # message and asctime once a Formatter has set them
+    def _attributes(self) -> dict[str, Any]:
+        d: dict[str, Any] = {
+            "name": self.name, "msg": self.msg, "args": self.args, "levelname": self.levelname,
+            "levelno": self.levelno, "pathname": self.pathname, "filename": self.filename,
+            "module": self.module, "exc_info": None if self.exc_info is None else str(self.exc_info[1]),
+            "exc_text": self.exc_text, "stack_info": self.stack_info, "lineno": self.lineno,
+            "funcName": self.funcName, "created": self.created, "msecs": self.msecs,
+            "relativeCreated": self.relativeCreated, "thread": self.thread,
+            "threadName": self.threadName, "processName": self.processName,
+            "process": self.process, "taskName": self.taskName}
+        for k in self._extra:
+            d[k] = self._extra[k]
+        if self.message is not None:
+            d["message"] = self.message
+        if self.asctime is not None:
+            d["asctime"] = self.asctime
+        return d
 
 #
 #   Determine which class to use when instantiating log records.
 #
-_logRecordFactory = LogRecord
-
+# Pystachy port: LogRecord is the factory, which makeRecord() and makeLogRecord() call (a class is
+# not a value): another factory is not supported
 def setLogRecordFactory(factory):
     """
     Set the factory to be used when instantiating a log record.
@@ -412,15 +432,14 @@ def setLogRecordFactory(factory):
     :param factory: A callable which will be called to instantiate
     a log record.
     """
-    global _logRecordFactory
-    _logRecordFactory = factory
+    raise NotImplementedError("logging.setLogRecordFactory() is not supported: LogRecord makes the records")
 
 def getLogRecordFactory():
     """
     Return the factory to be used when instantiating a log record.
     """
 
-    return _logRecordFactory
+    raise NotImplementedError("logging.getLogRecordFactory() is not supported: LogRecord makes the records (a class is not a value)")
 
 def makeLogRecord(dict):
     """
@@ -429,16 +448,64 @@ def makeLogRecord(dict):
     a socket connection (which is sent as a dictionary) into a LogRecord
     instance.
     """
-    rv = _logRecordFactory(None, None, "", 0, "", (), None, None)
-    rv.__dict__.update(dict)
+    # Pystachy port: (LogRecord makes it, see setLogRecordFactory); the dict's keys that name
+    # its fields set them, the others are as extra's (a record's fields are fixed)
+    rv = LogRecord(None, None, "", 0, "", (), None, None)
+    for k in dict:
+        v = dict[k]
+        if k == "name": rv.name = v
+        elif k == "msg": rv.msg = v
+        elif k == "args": rv.args = v
+        elif k == "levelname": rv.levelname = v
+        elif k == "levelno": rv.levelno = v
+        elif k == "pathname": rv.pathname = v
+        elif k == "filename": rv.filename = v
+        elif k == "module": rv.module = v
+        elif k == "lineno": rv.lineno = v
+        elif k == "funcName": rv.funcName = v
+        elif k == "created": rv.created = v
+        elif k == "msecs": rv.msecs = v
+        elif k == "relativeCreated": rv.relativeCreated = v
+        elif k == "threadName": rv.threadName = v
+        else: rv._extra[k] = v
     return rv
 
+
+# Pystachy port: the attributes that CPython's record has in its __dict__ once it is made, which
+# Logger.makeRecord()'s extra must not name
+_RECORD_ATTRS = ("name", "msg", "args", "levelname", "levelno", "pathname", "filename", "module",
+                 "exc_info", "exc_text", "stack_info", "lineno", "funcName", "created", "msecs",
+                 "relativeCreated", "thread", "threadName", "processName", "process", "taskName")
+
+# Pystachy port: an exception as a BaseException, also of a class of the program, whose objects
+# have only their class's fields: the one that catching it gives
+def _as_exc(value) -> BaseException:
+    try:
+        raise value
+    except BaseException as e:
+        return e
+
+# Pystachy port: a record's exc_info, of Logger._log()'s exc_info, which is of whatever type its
+# caller gives: None where it is false; an exception's (type(e), e, None) where it is one (there are
+# no tracebacks); otherwise that of sys.exception(), the exception being handled, as sys.exc_info()
+# gives it in CPython (the subset's sys has no exc_info()), and None where there is none (CPython's
+# record then holds (None, None, None), which shows as "NoneType: None"); a tuple is not supported
+def _exc_info(exc_info) -> tuple[type[BaseException], BaseException, None] | None:
+    if not exc_info:
+        return None
+    if isinstance(exc_info, BaseException):
+        e = _as_exc(exc_info)
+        return (type(e), e, None)
+    cur = sys.exception()
+    if cur is None:
+        return None
+    return (type(cur), cur, None)
 
 #---------------------------------------------------------------------------
 #   Formatter classes and functions
 #---------------------------------------------------------------------------
 _str_formatter = StrFormatter()
-del StrFormatter
+# Pystachy port: no del StrFormatter: del of a module-level import is not supported (#612)
 
 
 class PercentStyle(object):
@@ -448,8 +515,10 @@ class PercentStyle(object):
     asctime_search = '%(asctime)'
     validation_pattern = re.compile(r'%\(\w+\)[#0+ -]*(\*|\d+)?(\.(\*|\d+))?[diouxefgcrsa%]', re.I)
 
-    def __init__(self, fmt, *, defaults=None):
-        self._fmt = fmt or self.default_format
+    # Pystachy port: annotated (the defaults are Any values, as a record's attributes are), so
+    # that the styles derive from PercentStyle (a class template's subclass is not supported)
+    def __init__(self, fmt: str | None, *, defaults: dict[str, Any] | None = None) -> None:
+        self._fmt: str = fmt or self.default_format
         self._defaults = defaults
 
     def usesTime(self):
@@ -461,11 +530,13 @@ class PercentStyle(object):
             raise ValueError("Invalid format '%s' for '%s' style" % (self._fmt, self.default_format[0]))
 
     def _format(self, record):
+        # Pystachy port: the record's attributes are _attributes() (its __dict__ is not a dict),
+        # and % of the format, known only at run time, is _percent_format()'s
         if defaults := self._defaults:
-            values = defaults | record.__dict__
+            values = defaults | record._attributes()
         else:
-            values = record.__dict__
-        return self._fmt % values
+            values = record._attributes()
+        return _percent_format(self._fmt, values)
 
     def format(self, record):
         try:
@@ -483,11 +554,14 @@ class StrFormatStyle(PercentStyle):
     field_spec = re.compile(r'^(\d+|\w+)(\.\w+|\[[^]]+\])*$')
 
     def _format(self, record):
+        # Pystachy port: (the record's attributes, as PercentStyle's); str.format() of a format
+        # known only at run time is string.Formatter's vformat(), with the attributes as its
+        # keyword arguments
         if defaults := self._defaults:
-            values = defaults | record.__dict__
+            values = defaults | record._attributes()
         else:
-            values = record.__dict__
-        return self._fmt.format(**values)
+            values = record._attributes()
+        return _str_formatter.vformat(self._fmt, (), values)
 
     def validate(self):
         """Validate the input format, ensure it is the correct string formatting style"""
@@ -513,8 +587,9 @@ class StringTemplateStyle(PercentStyle):
     asctime_format = '${asctime}'
     asctime_search = '${asctime}'
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    # Pystachy port: (annotated, as PercentStyle's __init__)
+    def __init__(self, fmt: str | None, *, defaults: dict[str, Any] | None = None) -> None:
+        super().__init__(fmt, defaults=defaults)
         self._tpl = Template(self._fmt)
 
     def usesTime(self):
@@ -526,30 +601,45 @@ class StringTemplateStyle(PercentStyle):
         fields = set()
         for m in pattern.finditer(self._fmt):
             d = m.groupdict()
-            if d['named']:
-                fields.add(d['named'])
-            elif d['braced']:
-                fields.add(d['braced'])
+            # Pystachy port: a group's text is a name of its own, tested for None (a set's items
+            # cannot be None)
+            named = d['named']
+            braced = d['braced']
+            if named:
+                fields.add(named)
+            elif braced:
+                fields.add(braced)
             elif m.group(0) == '$':
                 raise ValueError('invalid format: bare \'$\' not allowed')
         if not fields:
             raise ValueError('invalid format: no fields')
 
     def _format(self, record):
+        # Pystachy port: (the record's attributes, as PercentStyle's), as the mapping of
+        # substitute() (rather than its keyword arguments)
         if defaults := self._defaults:
-            values = defaults | record.__dict__
+            values = defaults | record._attributes()
         else:
-            values = record.__dict__
-        return self._tpl.substitute(**values)
+            values = record._attributes()
+        return self._tpl.substitute(values)
 
 
 BASIC_FORMAT = "%(levelname)s:%(name)s:%(message)s"
 
+# Pystachy port: each style's default format; _make_style() makes its style object (a class is not
+# a value, as CPython's tuples of the class and the format hold it)
 _STYLES = {
-    '%': (PercentStyle, BASIC_FORMAT),
-    '{': (StrFormatStyle, '{levelname}:{name}:{message}'),
-    '$': (StringTemplateStyle, '${levelname}:${name}:${message}'),
+    '%': BASIC_FORMAT,
+    '{': '{levelname}:{name}:{message}',
+    '$': '${levelname}:${name}:${message}',
 }
+
+def _make_style(style, fmt, defaults) -> PercentStyle:
+    if style == '{':
+        return StrFormatStyle(fmt, defaults=defaults)
+    if style == '$':
+        return StringTemplateStyle(fmt, defaults=defaults)
+    return PercentStyle(fmt, defaults=defaults)
 
 class Formatter(object):
     """
@@ -596,10 +686,12 @@ class Formatter(object):
                         the record is emitted
     """
 
-    converter = time.localtime
+    # Pystachy port: no converter: a function is not a class attribute's value here, and the time
+    # module has no localtime(); formatTime() formats the local time, as converter's default does
 
-    def __init__(self, fmt=None, datefmt=None, style='%', validate=True, *,
-                 defaults=None):
+    # Pystachy port: annotated (the defaults are Any values, as a record's attributes are)
+    def __init__(self, fmt: str | None = None, datefmt: str | None = None, style: str = '%',
+                 validate: bool = True, *, defaults: dict[str, Any] | None = None) -> None:
         """
         Initialize the formatter with specified format strings.
 
@@ -618,11 +710,11 @@ class Formatter(object):
         if style not in _STYLES:
             raise ValueError('Style must be one of: %s' % ','.join(
                              _STYLES.keys()))
-        self._style = _STYLES[style][0](fmt, defaults=defaults)
+        self._style = _make_style(style, fmt, defaults)  # Pystachy port: (see _STYLES)
         if validate:
             self._style.validate()
 
-        self._fmt = self._style._fmt
+        self._fmt: str = self._style._fmt  # Pystachy port: (annotated)
         self.datefmt = datefmt
 
     default_time_format = '%Y-%m-%d %H:%M:%S'
@@ -646,13 +738,15 @@ class Formatter(object):
         formatters, for example if you want all logging times to be shown in GMT,
         set the 'converter' attribute in the Formatter class.
         """
-        ct = self.converter(record.created)
+        # Pystachy port: time.strftime() of time.localtime(record.created) is
+        # _pystachy_time.strftime_at()'s (see converter), and % of a format known only at run
+        # time is _percent_format()'s
         if datefmt:
-            s = time.strftime(datefmt, ct)
+            s = _strftime_at(datefmt, record.created)
         else:
-            s = time.strftime(self.default_time_format, ct)
+            s = _strftime_at(self.default_time_format, record.created)
             if self.default_msec_format:
-                s = self.default_msec_format % (s, record.msecs)
+                s = _percent_format(self.default_msec_format, (s, record.msecs))
         return s
 
     def formatException(self, ei):
@@ -786,7 +880,9 @@ class Filter(object):
     "A.B.C", "A.B.C.D", "A.B.D" etc. but not "A.BB", "B.A.B" etc. If
     initialized with the empty string, all events are passed.
     """
-    def __init__(self, name=''):
+    # Pystachy port: annotated, so that Filter is a class rather than a template (isinstance()
+    # of a filter tests it)
+    def __init__(self, name: str = '') -> None:
         """
         Initialize a filter.
 
@@ -821,7 +917,8 @@ class Filterer(object):
         """
         Initialize the list of filters to be an empty list.
         """
-        self.filters = []
+        # Pystachy port: Filter objects and callables, as Any values
+        self.filters: list[Any] = []
 
     def addFilter(self, filter):
         """
@@ -837,7 +934,8 @@ class Filterer(object):
         if filter in self.filters:
             self.filters.remove(filter)
 
-    def filter(self, record):
+    # Pystachy port: the result is an Any value: False, or a record (a function has one return type)
+    def filter(self, record) -> Any:
         """
         Determine if a record is loggable by consulting all the filters.
 
@@ -863,7 +961,9 @@ class Filterer(object):
            modifying it in place.
         """
         for f in self.filters:
-            if hasattr(f, 'filter'):
+            # Pystachy port: a Filter's object is one of Filter's class or a subclass's (hasattr() of
+            # an Any value is not supported); any other filter is called
+            if isinstance(f, Filter):
                 result = f.filter(record)
             else:
                 result = f(record) # assume callable - will raise if not
@@ -877,10 +977,14 @@ class Filterer(object):
 #   Handler classes and functions
 #---------------------------------------------------------------------------
 
-_handlers = weakref.WeakValueDictionary()  #map of handler names to handlers
-_handlerList = [] # added to allow handlers to be removed in reverse of order initialized
+# Pystachy port: a dict, which keeps its handlers (no weak containers): a named handler stays in
+# it until it is closed, where CPython's goes once nothing else refers to it; the list holds weak
+# references, as in CPython
+_handlers: dict[str, "Handler"] = {}  #map of handler names to handlers
+_handlerList: list["weakref.ref[Handler]"] = [] # added to allow handlers to be removed in reverse of order initialized
 
-def _removeHandlerRef(wr):
+# Pystachy port: (annotated: the references are of Handler objects)
+def _removeHandlerRef(wr: "weakref.ref[Handler]") -> None:
     """
     Remove a handler reference from the internal cleanup list.
     """
@@ -896,7 +1000,8 @@ def _removeHandlerRef(wr):
             except ValueError:
                 pass
 
-def _addHandlerRef(handler):
+# Pystachy port: (annotated, as _removeHandlerRef)
+def _addHandlerRef(handler: "Handler") -> None:
     """
     Add a handler to the internal cleanup list using a weak reference.
     """
@@ -928,16 +1033,19 @@ class Handler(Filterer):
     records as desired. By default, no formatter is specified; in this case,
     the 'raw' message as determined by record.message is logged.
     """
-    def __init__(self, level=NOTSET):
+    def __init__(self, level: Any = NOTSET) -> None:  # Pystachy port: (annotated, see _checkLevel)
         """
         Initializes the instance - basically setting the formatter to None
         and the filter list to empty.
         """
         Filterer.__init__(self)
-        self._name = None
+        self._name: str | None = None  # Pystachy port: (annotated)
         self.level = _checkLevel(level)
-        self.formatter = None
+        self.formatter: Formatter | None = None  # Pystachy port: (annotated)
         self._closed = False
+        # Pystachy port: the field that createLock() assigns, declared (a field's type is fixed
+        # where __init__ assigns it): a reentrant lock, or None (NullHandler's)
+        self.lock: _thread.RLock | None = None
         # Add the handler to the global _handlerList (for cleanup on shutdown)
         _addHandlerRef(self)
         self.createLock()
@@ -953,7 +1061,14 @@ class Handler(Filterer):
             if name:
                 _handlers[name] = self
 
-    name = property(get_name, set_name)
+    # Pystachy port: the property is decorated (property() called as a function is not supported)
+    @property
+    def name(self):
+        return self.get_name()
+
+    @name.setter
+    def name(self, name):
+        self.set_name(name)
 
     def createLock(self):
         """
@@ -979,7 +1094,7 @@ class Handler(Filterer):
         if self.lock:
             self.lock.release()
 
-    def setLevel(self, level):
+    def setLevel(self, level: Any) -> None:  # Pystachy port: (annotated, see _checkLevel)
         """
         Set the logging level of this handler.  level must be an int or a str.
         """
@@ -1077,16 +1192,10 @@ class Handler(Filterer):
                 sys.stderr.write('Call stack:\n')
                 # Walk the stack frame up until we're out of logging,
                 # so as to print the calling context.
-                frame = exc.__traceback__.tb_frame
-                while (frame and os.path.dirname(frame.f_code.co_filename) ==
-                       __path__[0]):
-                    frame = frame.f_back
-                if frame:
-                    traceback.print_stack(frame, file=sys.stderr)
-                else:
-                    # couldn't find the right stack frame, for some reason
-                    sys.stderr.write('Logged from file %s, line %s\n' % (
-                                     record.filename, record.lineno))
+                # Pystachy port: there are no frames (no tracebacks), so the record's file and line
+                # are shown, as CPython shows them where it finds no frame
+                sys.stderr.write('Logged from file %s, line %s\n' % (
+                                 record.filename, record.lineno))
                 # Issue 18671: output logging message and arguments
                 try:
                     sys.stderr.write('Message: %r\n'
@@ -1102,11 +1211,11 @@ class Handler(Filterer):
             except OSError: #pragma: no cover
                 pass    # see issue 5971
             finally:
-                del exc
+                pass  # Pystachy port: (no del exc: del of a local that a with or try may leave unbound)
 
     def __repr__(self):
         level = getLevelName(self.level)
-        return '<%s (%s)>' % (self.__class__.__name__, level)
+        return '<%s (%s)>' % (type(self).__name__, level)
 
 class StreamHandler(Handler):
     """
@@ -1117,24 +1226,29 @@ class StreamHandler(Handler):
 
     terminator = '\n'
 
-    def __init__(self, stream=None):
+    # Pystachy port: a stream is a file or an io.StringIO (a native reference union: an object of
+    # another class with write() and flush() is not supported)
+    def __init__(self, stream: TextIO | io.StringIO | None = None) -> None:
         """
         Initialize the handler.
 
         If stream is not specified, sys.stderr is used.
         """
         Handler.__init__(self)
+        self.stream: TextIO | io.StringIO | None = stream
         if stream is None:
-            stream = sys.stderr
-        self.stream = stream
+            self.stream = sys.stderr
 
     def flush(self):
         """
         Flushes the stream.
         """
         with self.lock:
-            if self.stream and hasattr(self.stream, "flush"):
-                self.stream.flush()
+            # Pystachy port: (a file and a StringIO have flush(); a union is tested for None, which
+            # a truth test of it is not)
+            stream = self.stream
+            if stream is not None:
+                stream.flush()
 
     def emit(self, record):
         """
@@ -1177,12 +1291,15 @@ class StreamHandler(Handler):
 
     def __repr__(self):
         level = getLevelName(self.level)
-        name = getattr(self.stream, 'name', '')
+        # Pystachy port: no stream name: a stream's union of a file and a StringIO is not narrowed to
+        # the file, whose name this would read (a StringIO has none); FileHandler's repr shows its
+        # file's
+        name = ''
         #  bpo-36015: name can be an int
         name = str(name)
         if name:
             name += ' '
-        return '<%s %s(%s)>' % (self.__class__.__name__, name, level)
+        return '<%s %s(%s)>' % (type(self).__name__, name, level)
 
     __class_getitem__ = classmethod(GenericAlias)
 
@@ -1191,7 +1308,9 @@ class FileHandler(StreamHandler):
     """
     A handler class which writes formatted logging records to disk files.
     """
-    def __init__(self, filename, mode='a', encoding=None, delay=False, errors=None):
+    # Pystachy port: annotated (a filename is a str)
+    def __init__(self, filename: str, mode: str = 'a', encoding: str | None = None,
+                 delay: bool = False, errors: str | None = None) -> None:
         """
         Open the specified file and use it as the stream for logging.
         """
@@ -1199,17 +1318,21 @@ class FileHandler(StreamHandler):
         filename = os.fspath(filename)
         #keep the absolute path, otherwise derived classes which use this
         #may come a cropper when the current directory changes
-        self.baseFilename = os.path.abspath(filename)
-        self.mode = mode
-        self.encoding = encoding
+        # Pystachy port: the fields are annotated: a FileHandler's methods may be compiled where the
+        # program makes none (shutdown() closes every handler); abspath() is posixpath's (see the
+        # imports)
+        self.baseFilename: str = posixpath.abspath(filename)
+        self.mode: str = mode
+        self.encoding: str | None = encoding
         if "b" not in mode:
             self.encoding = io.text_encoding(encoding)
-        self.errors = errors
-        self.delay = delay
+        self.errors: str | None = errors
+        self.delay: bool = delay
         # bpo-26789: FileHandler keeps a reference to the builtin open()
         # function to be able to open or reopen the file during Python
         # finalization.
-        self._builtin_open = open
+        # Pystachy port: no reference: _open() calls open() (a builtin function is not a field's
+        # value); a program's finalization does not unbind it
         if delay:
             #We don't open the stream, but we still need to call the
             #Handler constructor to set level, formatter, lock etc.
@@ -1224,13 +1347,14 @@ class FileHandler(StreamHandler):
         """
         with self.lock:
             try:
-                if self.stream:
+                if self.stream is not None:  # Pystachy port: (a union is tested for None)
                     try:
                         self.flush()
                     finally:
                         stream = self.stream
                         self.stream = None
-                        if hasattr(stream, "close"):
+                        # Pystachy port: (a file and a StringIO have close(), see flush())
+                        if stream is not None:
                             stream.close()
             finally:
                 # Issue #19523: call unconditionally to
@@ -1244,9 +1368,13 @@ class FileHandler(StreamHandler):
         Open the current base file with the (original) mode and encoding.
         Return the resulting stream.
         """
-        open_func = self._builtin_open
-        return open_func(self.baseFilename, self.mode,
-                         encoding=self.encoding, errors=self.errors)
+        # Pystachy port: open() itself (see __init__). Its files are UTF-8, and it takes no errors=
+        # (decoding errors are not checked), so an encoding other than UTF-8 (or the locale's,
+        # UTF-8 here) is not supported
+        enc = self.encoding
+        if enc is not None and enc.lower().replace("_", "-") not in ("utf-8", "utf8", "locale"):
+            raise NotImplementedError(f"logging.FileHandler with encoding {enc!r}: files are UTF-8")
+        return open(self.baseFilename, self.mode)
 
     def emit(self, record):
         """
@@ -1266,12 +1394,12 @@ class FileHandler(StreamHandler):
                 except Exception:
                     self.handleError(record)
                     return
-        if self.stream:
+        if self.stream is not None:  # Pystachy port: (a union is tested for None)
             StreamHandler.emit(self, record)
 
     def __repr__(self):
         level = getLevelName(self.level)
-        return '<%s %s (%s)>' % (self.__class__.__name__, self.baseFilename, level)
+        return '<%s %s (%s)>' % (type(self).__name__, self.baseFilename, level)
 
 
 class _StderrHandler(StreamHandler):
@@ -1280,15 +1408,14 @@ class _StderrHandler(StreamHandler):
     whatever sys.stderr is currently set to rather than the value of
     sys.stderr at handler construction time.
     """
-    def __init__(self, level=NOTSET):
+    def __init__(self, level: Any = NOTSET) -> None:  # Pystachy port: (annotated, see _checkLevel)
         """
         Initialize the handler.
         """
         Handler.__init__(self, level)
-
-    @property
-    def stream(self):
-        return sys.stderr
+        # Pystachy port: the stream is a field that holds sys.stderr, rather than a property that
+        # reads it: sys.stderr is not assignable here, so it stays the stream
+        self.stream = sys.stderr
 
 
 _defaultLastResort = _StderrHandler(WARNING)
@@ -1304,18 +1431,20 @@ class PlaceHolder(object):
     the place of nodes for which no loggers have been defined. This class is
     intended for internal use only and not as part of the public API.
     """
-    def __init__(self, alogger):
+    # Pystachy port: annotated (a PlaceHolder holds loggers), and the map's values are True
+    # (CPython's are None, which a dict's values cannot all be)
+    def __init__(self, alogger: "Logger") -> None:
         """
         Initialize with the specified logger being a child of this placeholder.
         """
-        self.loggerMap = { alogger : None }
+        self.loggerMap: dict[Logger, bool] = { alogger : True }
 
     def append(self, alogger):
         """
         Add the specified logger as a child of this placeholder.
         """
         if alogger not in self.loggerMap:
-            self.loggerMap[alogger] = None
+            self.loggerMap[alogger] = True
 
 #
 #   Determine which class to use when instantiating loggers.
@@ -1327,34 +1456,33 @@ def setLoggerClass(klass):
     define __init__() such that only a name argument is required, and the
     __init__() should call Logger.__init__()
     """
-    if klass != Logger:
-        if not issubclass(klass, Logger):
-            raise TypeError("logger not derived from logging.Logger: "
-                            + klass.__name__)
-    global _loggerClass
-    _loggerClass = klass
+    # Pystachy port: Logger makes the loggers (a class is not a value): another class is not
+    # supported
+    raise NotImplementedError("logging.setLoggerClass() is not supported: Logger makes the loggers")
 
 def getLoggerClass():
     """
     Return the class to be used when instantiating a logger.
     """
-    return _loggerClass
+    # Pystachy port: (see setLoggerClass)
+    raise NotImplementedError("logging.getLoggerClass() is not supported: Logger makes the loggers (a class is not a value)")
 
 class Manager(object):
     """
     There is [under normal circumstances] just one Manager instance, which
     holds the hierarchy of loggers.
     """
-    def __init__(self, rootnode):
+    # Pystachy port: annotated (the root is the root logger)
+    def __init__(self, rootnode: "RootLogger") -> None:
         """
         Initialize the manager with the root node of the logger hierarchy.
         """
         self.root = rootnode
         self.disable = 0
         self.emittedNoHandlerWarning = False
-        self.loggerDict = {}
-        self.loggerClass = None
-        self.logRecordFactory = None
+        # Pystachy port: the dict's values are typed, and there is no loggerClass or
+        # logRecordFactory (a class is not a value, see setLoggerClass and setLogRecordFactory)
+        self.loggerDict: dict[str, Logger | PlaceHolder] = {}
 
     @property
     def disable(self):
@@ -1364,7 +1492,7 @@ class Manager(object):
     def disable(self, value):
         self._disable = _checkLevel(value)
 
-    def getLogger(self, name):
+    def getLogger(self, name: str) -> "Logger":  # Pystachy port: (annotated)
         """
         Get a logger with the specified name (channel name), creating it
         if it doesn't yet exist. This name is a dot-separated hierarchical
@@ -1380,17 +1508,19 @@ class Manager(object):
             raise TypeError('A logger name must be a string')
         with _lock:
             if name in self.loggerDict:
-                rv = self.loggerDict[name]
-                if isinstance(rv, PlaceHolder):
-                    ph = rv
-                    rv = (self.loggerClass or _loggerClass)(name)
-                    rv.manager = self
+                # Pystachy port: the entry is a name of its own, a Logger or a PlaceHolder, and rv a
+                # Logger (a variable has one type)
+                found = self.loggerDict[name]
+                if isinstance(found, PlaceHolder):
+                    ph = found
+                    rv = Logger(name)  # Pystachy port: (see setLoggerClass; rv.manager is self)
                     self.loggerDict[name] = rv
                     self._fixupChildren(ph, rv)
                     self._fixupParents(rv)
+                else:
+                    rv = found
             else:
-                rv = (self.loggerClass or _loggerClass)(name)
-                rv.manager = self
+                rv = Logger(name)  # Pystachy port: (see setLoggerClass; rv.manager is self)
                 self.loggerDict[name] = rv
                 self._fixupParents(rv)
         return rv
@@ -1399,18 +1529,16 @@ class Manager(object):
         """
         Set the class to be used when instantiating a logger with this Manager.
         """
-        if klass != Logger:
-            if not issubclass(klass, Logger):
-                raise TypeError("logger not derived from logging.Logger: "
-                                + klass.__name__)
-        self.loggerClass = klass
+        # Pystachy port: (see the module's setLoggerClass)
+        raise NotImplementedError("Manager.setLoggerClass() is not supported: Logger makes the loggers")
 
     def setLogRecordFactory(self, factory):
         """
         Set the factory to be used when instantiating a log record with this
         Manager.
         """
-        self.logRecordFactory = factory
+        # Pystachy port: (see the module's setLogRecordFactory)
+        raise NotImplementedError("Manager.setLogRecordFactory() is not supported: LogRecord makes the records")
 
     def _fixupParents(self, alogger):
         """
@@ -1419,7 +1547,7 @@ class Manager(object):
         """
         name = alogger.name
         i = name.rfind(".")
-        rv = None
+        rv: Logger | None = None  # Pystachy port: (annotated: a logger, or the root)
         while (i > 0) and not rv:
             substr = name[:i]
             if substr not in self.loggerDict:
@@ -1480,27 +1608,47 @@ class Logger(Filterer):
     level, and "input.csv", "input.xls" and "input.gnu" for the sub-levels.
     There is no arbitrary limit to the depth of nesting.
     """
-    def __init__(self, name, level=NOTSET):
+    def __init__(self, name: str, level: Any = NOTSET) -> None:  # Pystachy port: (annotated, see _checkLevel)
         """
         Initialize the logger with a name and an optional level.
         """
         Filterer.__init__(self)
         self.name = name
         self.level = _checkLevel(level)
-        self.parent = None
         self.propagate = True
-        self.handlers = []
+        # Pystachy port: (annotated)
+        self.parent: Logger | None = None
+        self.handlers: list[Handler] = []
         self.disabled = False
-        self._cache = {}
+        self._cache: dict[int, bool] = {}
 
-    def setLevel(self, level):
+    # Pystachy port: the root logger and the manager are the module's (Logger.root and
+    # Logger.manager are class attributes that its code assigns in CPython, where a class
+    # attribute's value is an object of a class defined after it): a logger has these two, and the
+    # manager that Manager.getLogger() sets is the module's
+    @property
+    def root(self) -> "RootLogger":
+        return root
+
+    @property
+    def manager(self) -> "Manager":
+        return _manager
+
+    @manager.setter
+    def manager(self, value: "Manager") -> None:
+        if value is not _manager:
+            raise NotImplementedError("a logger's manager is the module's Logger.manager")
+
+    def setLevel(self, level: Any) -> None:  # Pystachy port: (annotated, see _checkLevel)
         """
         Set the logging level of this logger.  level must be an int or a str.
         """
         self.level = _checkLevel(level)
         self.manager._clear_cache()
 
-    def debug(self, msg, *args, **kwargs):
+    # Pystachy port: the keyword arguments that _log() takes are parameters (**kwargs of values of
+    # different types is not supported)
+    def debug(self, msg: Any, *args: Any, exc_info=None, extra=None, stack_info=False, stacklevel=1):
         """
         Log 'msg % args' with severity 'DEBUG'.
 
@@ -1510,9 +1658,11 @@ class Logger(Filterer):
         logger.debug("Houston, we have a %s", "thorny problem", exc_info=True)
         """
         if self.isEnabledFor(DEBUG):
-            self._log(DEBUG, msg, args, **kwargs)
+            self._log(DEBUG, msg, args, exc_info=exc_info, extra=extra, stack_info=stack_info, stacklevel=stacklevel)
 
-    def info(self, msg, *args, **kwargs):
+    # Pystachy port: the keyword arguments that _log() takes are parameters (**kwargs of values of
+    # different types is not supported)
+    def info(self, msg: Any, *args: Any, exc_info=None, extra=None, stack_info=False, stacklevel=1):
         """
         Log 'msg % args' with severity 'INFO'.
 
@@ -1522,9 +1672,11 @@ class Logger(Filterer):
         logger.info("Houston, we have a %s", "notable problem", exc_info=True)
         """
         if self.isEnabledFor(INFO):
-            self._log(INFO, msg, args, **kwargs)
+            self._log(INFO, msg, args, exc_info=exc_info, extra=extra, stack_info=stack_info, stacklevel=stacklevel)
 
-    def warning(self, msg, *args, **kwargs):
+    # Pystachy port: the keyword arguments that _log() takes are parameters (**kwargs of values of
+    # different types is not supported)
+    def warning(self, msg: Any, *args: Any, exc_info=None, extra=None, stack_info=False, stacklevel=1):
         """
         Log 'msg % args' with severity 'WARNING'.
 
@@ -1534,14 +1686,18 @@ class Logger(Filterer):
         logger.warning("Houston, we have a %s", "bit of a problem", exc_info=True)
         """
         if self.isEnabledFor(WARNING):
-            self._log(WARNING, msg, args, **kwargs)
+            self._log(WARNING, msg, args, exc_info=exc_info, extra=extra, stack_info=stack_info, stacklevel=stacklevel)
 
-    def warn(self, msg, *args, **kwargs):
+    # Pystachy port: the keyword arguments that _log() takes are parameters (**kwargs of values of
+    # different types is not supported)
+    def warn(self, msg: Any, *args: Any, exc_info=None, extra=None, stack_info=False, stacklevel=1):
         warnings.warn("The 'warn' method is deprecated, "
             "use 'warning' instead", DeprecationWarning, 2)
-        self.warning(msg, *args, **kwargs)
+        self.warning(msg, *args, exc_info=exc_info, extra=extra, stack_info=stack_info, stacklevel=stacklevel)
 
-    def error(self, msg, *args, **kwargs):
+    # Pystachy port: the keyword arguments that _log() takes are parameters (**kwargs of values of
+    # different types is not supported)
+    def error(self, msg: Any, *args: Any, exc_info=None, extra=None, stack_info=False, stacklevel=1):
         """
         Log 'msg % args' with severity 'ERROR'.
 
@@ -1551,15 +1707,19 @@ class Logger(Filterer):
         logger.error("Houston, we have a %s", "major problem", exc_info=True)
         """
         if self.isEnabledFor(ERROR):
-            self._log(ERROR, msg, args, **kwargs)
+            self._log(ERROR, msg, args, exc_info=exc_info, extra=extra, stack_info=stack_info, stacklevel=stacklevel)
 
-    def exception(self, msg, *args, exc_info=True, **kwargs):
+    # Pystachy port: the keyword arguments that _log() takes are parameters (**kwargs of values of
+    # different types is not supported)
+    def exception(self, msg: Any, *args: Any, exc_info=True, extra=None, stack_info=False, stacklevel=1):
         """
         Convenience method for logging an ERROR with exception information.
         """
-        self.error(msg, *args, exc_info=exc_info, **kwargs)
+        self.error(msg, *args, exc_info=exc_info, extra=extra, stack_info=stack_info, stacklevel=stacklevel)
 
-    def critical(self, msg, *args, **kwargs):
+    # Pystachy port: the keyword arguments that _log() takes are parameters (**kwargs of values of
+    # different types is not supported)
+    def critical(self, msg: Any, *args: Any, exc_info=None, extra=None, stack_info=False, stacklevel=1):
         """
         Log 'msg % args' with severity 'CRITICAL'.
 
@@ -1569,15 +1729,19 @@ class Logger(Filterer):
         logger.critical("Houston, we have a %s", "major disaster", exc_info=True)
         """
         if self.isEnabledFor(CRITICAL):
-            self._log(CRITICAL, msg, args, **kwargs)
+            self._log(CRITICAL, msg, args, exc_info=exc_info, extra=extra, stack_info=stack_info, stacklevel=stacklevel)
 
-    def fatal(self, msg, *args, **kwargs):
+    # Pystachy port: the keyword arguments that _log() takes are parameters (**kwargs of values of
+    # different types is not supported)
+    def fatal(self, msg: Any, *args: Any, exc_info=None, extra=None, stack_info=False, stacklevel=1):
         """
         Don't use this method, use critical() instead.
         """
-        self.critical(msg, *args, **kwargs)
+        self.critical(msg, *args, exc_info=exc_info, extra=extra, stack_info=stack_info, stacklevel=stacklevel)
 
-    def log(self, level, msg, *args, **kwargs):
+    # Pystachy port: the keyword arguments that _log() takes are parameters (**kwargs of values of
+    # different types is not supported)
+    def log(self, level, msg: Any, *args: Any, exc_info=None, extra=None, stack_info=False, stacklevel=1):
         """
         Log 'msg % args' with the integer severity 'level'.
 
@@ -1592,41 +1756,16 @@ class Logger(Filterer):
             else:
                 return
         if self.isEnabledFor(level):
-            self._log(level, msg, args, **kwargs)
+            self._log(level, msg, args, exc_info=exc_info, extra=extra, stack_info=stack_info, stacklevel=stacklevel)
 
     def findCaller(self, stack_info=False, stacklevel=1):
         """
         Find the stack frame of the caller so that we can note the source
         file name, line number and function name.
         """
-        f = currentframe()
-        #On some versions of IronPython, currentframe() returns None if
-        #IronPython isn't run with -X:Frames.
-        if f is None:
-            return "(unknown file)", 0, "(unknown function)", None
-        while stacklevel > 0:
-            next_f = f.f_back
-            if next_f is None:
-                ## We've got options here.
-                ## If we want to use the last (deepest) frame:
-                break
-                ## If we want to mimic the warnings module:
-                #return ("sys", 1, "(unknown function)", None)
-                ## If we want to be pedantic:
-                #raise ValueError("call stack is not deep enough")
-            f = next_f
-            if not _is_internal_frame(f):
-                stacklevel -= 1
-        co = f.f_code
-        sinfo = None
-        if stack_info:
-            with io.StringIO() as sio:
-                sio.write("Stack (most recent call last):\n")
-                traceback.print_stack(f, file=sio)
-                sinfo = sio.getvalue()
-                if sinfo[-1] == '\n':
-                    sinfo = sinfo[:-1]
-        return co.co_filename, f.f_lineno, co.co_name, sinfo
+        # Pystachy port: currentframe() is None (there are no frames), so the caller is the
+        # unknown one that CPython gives where it has no frames, and there is no stack to show
+        return "(unknown file)", 0, "(unknown function)", None
 
     def makeRecord(self, name, level, fn, lno, msg, args, exc_info,
                    func=None, extra=None, sinfo=None):
@@ -1634,13 +1773,16 @@ class Logger(Filterer):
         A factory method which can be overridden in subclasses to create
         specialized LogRecords.
         """
-        rv = _logRecordFactory(name, level, fn, lno, msg, args, exc_info, func,
-                             sinfo)
+        # Pystachy port: LogRecord makes the record (see setLogRecordFactory), and extra's items are
+        # its _extra (a record's fields are fixed), whose keys must not name the attributes that
+        # CPython's record has in its __dict__ (_RECORD_ATTRS)
+        rv = LogRecord(name, level, fn, lno, msg, args, exc_info, func,
+                       sinfo)
         if extra is not None:
             for key in extra:
-                if (key in ["message", "asctime"]) or (key in rv.__dict__):
+                if (key in ["message", "asctime"]) or (key in _RECORD_ATTRS) or (key in rv._extra):
                     raise KeyError("Attempt to overwrite %r in LogRecord" % key)
-                rv.__dict__[key] = extra[key]
+                rv._extra[key] = extra[key]
         return rv
 
     def _log(self, level, msg, args, exc_info=None, extra=None, stack_info=False,
@@ -1660,13 +1802,10 @@ class Logger(Filterer):
                 fn, lno, func = "(unknown file)", 0, "(unknown function)"
         else: # pragma: no cover
             fn, lno, func = "(unknown file)", 0, "(unknown function)"
-        if exc_info:
-            if isinstance(exc_info, BaseException):
-                exc_info = (type(exc_info), exc_info, exc_info.__traceback__)
-            elif not isinstance(exc_info, tuple):
-                exc_info = sys.exc_info()
+        # Pystachy port: the record's exc_info is _exc_info()'s, of whatever type exc_info is (see
+        # there)
         record = self.makeRecord(self.name, level, fn, lno, msg, args,
-                                 exc_info, func, extra, sinfo)
+                                 _exc_info(exc_info), func, extra, sinfo)
         self.handle(record)
 
     def handle(self, record):
@@ -1715,7 +1854,7 @@ class Logger(Filterer):
         attribute set to zero is found - that will be the last logger which
         is checked for the existence of handlers.
         """
-        c = self
+        c: Logger | None = self  # Pystachy port: (as getEffectiveLevel's)
         rv = False
         while c:
             if c.handlers:
@@ -1737,7 +1876,7 @@ class Logger(Filterer):
         logger with the "propagate" attribute set to zero is found - that
         will be the last logger whose handlers are called.
         """
-        c = self
+        c: Logger | None = self  # Pystachy port: (as getEffectiveLevel's)
         found = 0
         while c:
             for hdlr in c.handlers:
@@ -1764,7 +1903,7 @@ class Logger(Filterer):
         Loop through this logger and its parents in the logger hierarchy,
         looking for a non-zero logging level. Return the first one found.
         """
-        logger = self
+        logger: Logger | None = self  # Pystachy port: (annotated: a logger or its parents)
         while logger:
             if logger.level:
                 return logger.level
@@ -1827,7 +1966,7 @@ class Logger(Filterer):
 
     def __repr__(self):
         level = getLevelName(self.getEffectiveLevel())
-        return '<%s %s (%s)>' % (self.__class__.__name__, self.name, level)
+        return '<%s %s (%s)>' % (type(self).__name__, self.name, level)
 
     def __reduce__(self):
         if getLogger(self.name) is not self:
@@ -1842,7 +1981,7 @@ class RootLogger(Logger):
     it must have a logging level and there is only one instance of it in
     the hierarchy.
     """
-    def __init__(self, level):
+    def __init__(self, level: Any) -> None:  # Pystachy port: (annotated, see _checkLevel)
         """
         Initialize the logger with the name "root".
         """
@@ -1851,7 +1990,7 @@ class RootLogger(Logger):
     def __reduce__(self):
         return getLogger, ()
 
-_loggerClass = Logger
+# Pystachy port: no _loggerClass (see setLoggerClass)
 
 class LoggerAdapter(object):
     """
@@ -1933,7 +2072,7 @@ class LoggerAdapter(object):
         """
         self.log(ERROR, msg, *args, **kwargs)
 
-    def exception(self, msg, *args, exc_info=True, **kwargs):
+    def exception(self, msg: Any, *args: Any, exc_info=True, **kwargs):
         """
         Delegate an exception call to the underlying logger.
         """
@@ -1960,7 +2099,7 @@ class LoggerAdapter(object):
         """
         return self.logger.isEnabledFor(level)
 
-    def setLevel(self, level):
+    def setLevel(self, level: Any) -> None:  # Pystachy port: (annotated, see _checkLevel)
         """
         Set the specified level on the underlying logger.
         """
@@ -1999,19 +2138,28 @@ class LoggerAdapter(object):
     def __repr__(self):
         logger = self.logger
         level = getLevelName(logger.getEffectiveLevel())
-        return '<%s %s (%s)>' % (self.__class__.__name__, logger.name, level)
+        return '<%s %s (%s)>' % (type(self).__name__, logger.name, level)
 
     __class_getitem__ = classmethod(GenericAlias)
 
 root = RootLogger(WARNING)
-Logger.root = root
-Logger.manager = Manager(Logger.root)
+# Pystachy port: the manager is a module variable (see Logger.manager), and Logger.root is the
+# module's root
+_manager = Manager(root)
 
 #---------------------------------------------------------------------------
 # Configuration classes and functions
 #---------------------------------------------------------------------------
 
-def basicConfig(**kwargs):
+# Pystachy port: the keyword arguments are parameters (**kwargs of values of different types is
+# not supported, nor is changing it), so an unknown one is a compile-time error rather than
+# CPython's ValueError; "stream" and "filename" count as given where they are not None, and a
+# format of None is the style's default one
+def basicConfig(*, filename: str | None = None, filemode: str = 'a', format: str | None = None,
+                datefmt: str | None = None, style: str = '%', level: Any = None,
+                stream: TextIO | io.StringIO | None = None, handlers: list[Handler] | None = None,
+                force: bool = False, encoding: str | None = None,
+                errors: str | None = 'backslashreplace') -> None:
     """
     Do basic configuration for the logging system.
 
@@ -2082,61 +2230,50 @@ def basicConfig(**kwargs):
     # Add thread safety in case someone mistakenly calls
     # basicConfig() from multiple threads
     with _lock:
-        force = kwargs.pop('force', False)
-        encoding = kwargs.pop('encoding', None)
-        errors = kwargs.pop('errors', 'backslashreplace')
         if force:
             for h in root.handlers[:]:
                 root.removeHandler(h)
                 h.close()
         if len(root.handlers) == 0:
-            handlers = kwargs.pop("handlers", None)
             if handlers is None:
-                if "stream" in kwargs and "filename" in kwargs:
+                if stream is not None and filename is not None:
                     raise ValueError("'stream' and 'filename' should not be "
                                      "specified together")
             else:
-                if "stream" in kwargs or "filename" in kwargs:
+                if stream is not None or filename is not None:
                     raise ValueError("'stream' or 'filename' should not be "
                                      "specified together with 'handlers'")
             if handlers is None:
-                filename = kwargs.pop("filename", None)
-                mode = kwargs.pop("filemode", 'a')
+                mode = filemode
                 if filename:
                     if 'b' in mode:
                         errors = None
                     else:
                         encoding = io.text_encoding(encoding)
-                    h = FileHandler(filename, mode,
-                                    encoding=encoding, errors=errors)
+                    h: Handler = FileHandler(filename, mode,
+                                             encoding=encoding, errors=errors)
                 else:
-                    stream = kwargs.pop("stream", None)
                     h = StreamHandler(stream)
                 handlers = [h]
-            dfs = kwargs.pop("datefmt", None)
-            style = kwargs.pop("style", '%')
+            dfs = datefmt
             if style not in _STYLES:
                 raise ValueError('Style must be one of: %s' % ','.join(
                                  _STYLES.keys()))
-            fs = kwargs.pop("format", _STYLES[style][1])
+            fs = format if format is not None else _STYLES[style]
             fmt = Formatter(fs, dfs, style)
             for h in handlers:
                 if h.formatter is None:
                     h.setFormatter(fmt)
                 root.addHandler(h)
-            level = kwargs.pop("level", None)
             if level is not None:
                 root.setLevel(level)
-            if kwargs:
-                keys = ', '.join(kwargs.keys())
-                raise ValueError('Unrecognised argument(s): %s' % keys)
 
 #---------------------------------------------------------------------------
 # Utility functions at module level.
 # Basically delegate everything to the root logger.
 #---------------------------------------------------------------------------
 
-def getLogger(name=None):
+def getLogger(name: str | None = None) -> Logger:  # Pystachy port: (annotated)
     """
     Return a logger with the specified name, creating it if necessary.
 
@@ -2144,9 +2281,11 @@ def getLogger(name=None):
     """
     if not name or isinstance(name, str) and name == root.name:
         return root
-    return Logger.manager.getLogger(name)
+    return _manager.getLogger(name)  # Pystachy port: (see Logger.manager)
 
-def critical(msg, *args, **kwargs):
+# Pystachy port: the keyword arguments that Logger's methods take are parameters (**kwargs of
+# values of different types is not supported)
+def critical(msg: Any, *args: Any, exc_info=None, extra=None, stack_info=False, stacklevel=1):
     """
     Log a message with severity 'CRITICAL' on the root logger. If the logger
     has no handlers, call basicConfig() to add a console handler with a
@@ -2154,15 +2293,19 @@ def critical(msg, *args, **kwargs):
     """
     if len(root.handlers) == 0:
         basicConfig()
-    root.critical(msg, *args, **kwargs)
+    root.critical(msg, *args, exc_info=exc_info, extra=extra, stack_info=stack_info, stacklevel=stacklevel)
 
-def fatal(msg, *args, **kwargs):
+# Pystachy port: the keyword arguments that Logger's methods take are parameters (**kwargs of
+# values of different types is not supported)
+def fatal(msg: Any, *args: Any, exc_info=None, extra=None, stack_info=False, stacklevel=1):
     """
     Don't use this function, use critical() instead.
     """
-    critical(msg, *args, **kwargs)
+    critical(msg, *args, exc_info=exc_info, extra=extra, stack_info=stack_info, stacklevel=stacklevel)
 
-def error(msg, *args, **kwargs):
+# Pystachy port: the keyword arguments that Logger's methods take are parameters (**kwargs of
+# values of different types is not supported)
+def error(msg: Any, *args: Any, exc_info=None, extra=None, stack_info=False, stacklevel=1):
     """
     Log a message with severity 'ERROR' on the root logger. If the logger has
     no handlers, call basicConfig() to add a console handler with a pre-defined
@@ -2170,17 +2313,21 @@ def error(msg, *args, **kwargs):
     """
     if len(root.handlers) == 0:
         basicConfig()
-    root.error(msg, *args, **kwargs)
+    root.error(msg, *args, exc_info=exc_info, extra=extra, stack_info=stack_info, stacklevel=stacklevel)
 
-def exception(msg, *args, exc_info=True, **kwargs):
+# Pystachy port: the keyword arguments that Logger's methods take are parameters (**kwargs of
+# values of different types is not supported)
+def exception(msg: Any, *args: Any, exc_info=True, extra=None, stack_info=False, stacklevel=1):
     """
     Log a message with severity 'ERROR' on the root logger, with exception
     information. If the logger has no handlers, basicConfig() is called to add
     a console handler with a pre-defined format.
     """
-    error(msg, *args, exc_info=exc_info, **kwargs)
+    error(msg, *args, exc_info=exc_info, extra=extra, stack_info=stack_info, stacklevel=stacklevel)
 
-def warning(msg, *args, **kwargs):
+# Pystachy port: the keyword arguments that Logger's methods take are parameters (**kwargs of
+# values of different types is not supported)
+def warning(msg: Any, *args: Any, exc_info=None, extra=None, stack_info=False, stacklevel=1):
     """
     Log a message with severity 'WARNING' on the root logger. If the logger has
     no handlers, call basicConfig() to add a console handler with a pre-defined
@@ -2188,14 +2335,18 @@ def warning(msg, *args, **kwargs):
     """
     if len(root.handlers) == 0:
         basicConfig()
-    root.warning(msg, *args, **kwargs)
+    root.warning(msg, *args, exc_info=exc_info, extra=extra, stack_info=stack_info, stacklevel=stacklevel)
 
-def warn(msg, *args, **kwargs):
+# Pystachy port: the keyword arguments that Logger's methods take are parameters (**kwargs of
+# values of different types is not supported)
+def warn(msg: Any, *args: Any, exc_info=None, extra=None, stack_info=False, stacklevel=1):
     warnings.warn("The 'warn' function is deprecated, "
         "use 'warning' instead", DeprecationWarning, 2)
-    warning(msg, *args, **kwargs)
+    warning(msg, *args, exc_info=exc_info, extra=extra, stack_info=stack_info, stacklevel=stacklevel)
 
-def info(msg, *args, **kwargs):
+# Pystachy port: the keyword arguments that Logger's methods take are parameters (**kwargs of
+# values of different types is not supported)
+def info(msg: Any, *args: Any, exc_info=None, extra=None, stack_info=False, stacklevel=1):
     """
     Log a message with severity 'INFO' on the root logger. If the logger has
     no handlers, call basicConfig() to add a console handler with a pre-defined
@@ -2203,9 +2354,11 @@ def info(msg, *args, **kwargs):
     """
     if len(root.handlers) == 0:
         basicConfig()
-    root.info(msg, *args, **kwargs)
+    root.info(msg, *args, exc_info=exc_info, extra=extra, stack_info=stack_info, stacklevel=stacklevel)
 
-def debug(msg, *args, **kwargs):
+# Pystachy port: the keyword arguments that Logger's methods take are parameters (**kwargs of
+# values of different types is not supported)
+def debug(msg: Any, *args: Any, exc_info=None, extra=None, stack_info=False, stacklevel=1):
     """
     Log a message with severity 'DEBUG' on the root logger. If the logger has
     no handlers, call basicConfig() to add a console handler with a pre-defined
@@ -2213,9 +2366,11 @@ def debug(msg, *args, **kwargs):
     """
     if len(root.handlers) == 0:
         basicConfig()
-    root.debug(msg, *args, **kwargs)
+    root.debug(msg, *args, exc_info=exc_info, extra=extra, stack_info=stack_info, stacklevel=stacklevel)
 
-def log(level, msg, *args, **kwargs):
+# Pystachy port: the keyword arguments that Logger's methods take are parameters (**kwargs of
+# values of different types is not supported)
+def log(level, msg: Any, *args: Any, exc_info=None, extra=None, stack_info=False, stacklevel=1):
     """
     Log 'msg % args' with the integer severity 'level' on the root logger. If
     the logger has no handlers, call basicConfig() to add a console handler
@@ -2223,7 +2378,7 @@ def log(level, msg, *args, **kwargs):
     """
     if len(root.handlers) == 0:
         basicConfig()
-    root.log(level, msg, *args, **kwargs)
+    root.log(level, msg, *args, exc_info=exc_info, extra=extra, stack_info=stack_info, stacklevel=stacklevel)
 
 def disable(level=CRITICAL):
     """

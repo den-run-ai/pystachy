@@ -1044,6 +1044,34 @@ class whose subclasses' `__init__` binds their fields.
 - `_excepthook()`, which reports an exception that a thread's `run()` raises, raises
   `NotImplementedError`: no thread but the main one runs.
 
+## Threading
+
+CPython's `threading.py` on the one-thread `_thread` above, with marked edits, compiled with
+[dynamic `Any`](../docs/dynamic-any.md) for a thread's target, its arguments and its name. Locks,
+reentrant locks (`RLock()` is `_thread`'s; the Python `_RLock` works too), `Condition` (of either
+lock, or of an object with `acquire()` and `release()`), `Semaphore`, `BoundedSemaphore`, `Event`,
+`Barrier`, `Timer`, `local`, `current_thread()`, `main_thread()`, `enumerate()`,
+`active_count()`, `get_ident()`, `get_native_id()`, `stack_size()`, `TIMEOUT_MAX` and the main
+thread's `Thread` object (`MainThread`) work as in CPython where no other thread runs, and so do
+`Thread` subclasses and their objects, but for starting them
+([test](../tests/programs/library/lib_threading.py)).
+
+- `Thread.start()` (also of a `Timer`) raises `_thread`'s `NotImplementedError`, where CPython
+  runs the thread ([deviation](../tests/deviations/threading_start.py)); a wait that only another
+  thread could end raises `_thread`'s `RuntimeError: deadlock: ...`.
+- `run()` of a `Thread` (or a `Timer`) called directly calls its target without arguments, and
+  raises `NotImplementedError` where it has `args` or `kwargs` (an `Any` value is not unpacked
+  into a call's arguments). The target, its arguments and the name are `Any` values, so a list or
+  dict of typed items cannot be one of the arguments.
+- `Condition` calls its lock's `acquire()` and `release()`, which CPython binds as the condition's
+  own attributes, and its `__exit__()` releases the lock. `_release_save()`, `_acquire_restore()`
+  and `_is_owned()` are the lock's own where it is a reentrant lock; of any other lock they are
+  `Condition`'s.
+- A `Thread` keeps no copy of `sys.stderr` and no `_invoke_excepthook` (no started thread reports
+  an exception); `_dangling` is a set, which keeps its threads (no weak containers), and
+  `current_thread()` never makes a `_DummyThread`. There is no `register_at_fork()` (no
+  `os.fork()`), and the module does not `del _thread` (#612).
+
 ## Types
 
 `types` is Pystachy's own module for CPython's `Lib/types.py`, of which it has `TracebackType`,
@@ -1299,6 +1327,79 @@ Not supported, as compile-time errors:
   ([test](../tests/programs/library/lib_warnings_skip_prefixes.py)).
 - `deprecated`, which sets the attribute `__deprecated__` of the function it decorates and wraps
   it with `functools.wraps()` ([error test](../tests/errors/library/lib_warnings_deprecated.py)).
+
+## Logging
+
+CPython's `logging/__init__.py` (the package's own module: no `logging.config` or
+`logging.handlers`), with marked edits, compiled with [dynamic `Any`](../docs/dynamic-any.md): a
+record's message, its arguments, a level's name and the values that a format interpolates are
+`Any` values. Loggers and their hierarchy (`getLogger()`, `getChild()`, `getChildren()`,
+`propagate`, `disabled`), levels (`setLevel()` of a level or a name, `getLevelName()`,
+`addLevelName()`, `getLevelNamesMapping()`, `disable()`), the module's functions and `basicConfig()`,
+`Formatter` in its `%`, `{}` and `$` styles (also with `defaults`), `extra`, `exc_info` and
+`exception()`, `Filter` and filter functions, `Handler`, `StreamHandler`, `FileHandler`,
+`NullHandler`, the last resort handler, `Handler.handleError()`, `makeLogRecord()`, `shutdown()`
+at exit and the handlers' locks work
+([tests](../tests/programs/library/lib_logging.py), [configuration](../tests/programs/library/lib_logging_config.py),
+[stderr](../tests/programs/library/lib_logging_stderr.py)). `%`-style messages and formats are
+formatted by `_pystachy_percent` (`fmt % args` of a format string that only the run time knows),
+and `%(asctime)s` by `_pystachy_time`, as `time.strftime()` of `time.localtime()` formats it.
+
+- There are no frames: a record's caller is the one CPython gives where it has none,
+  `(unknown file)`, line 0, `(unknown function)` (`pathname`, `filename`, `module`, `lineno`,
+  `funcName`), and `stack_info` and `stacklevel` add nothing. `Handler.handleError()` shows
+  `Logged from file (unknown file), line 0` where CPython shows the caller's frames.
+- There are no tracebacks: a record's `exc_info` is `(type(e), e, None)`, and its text is the
+  exception's [traceback lines](#traceback), its causes' and its own last line, without CPython's
+  `Traceback (most recent call last):` and frames. `exc_info=True` (also `exception()`) outside
+  an `except` clause adds no text, where CPython's adds `NoneType: None`; a `(type, value,
+  traceback)` tuple is not supported.
+- A message's arguments are `Any` values, so a list, dict or set of typed items cannot be one
+  (the compiler says so where it is passed: pass `str(x)`, or format the message first); a
+  mapping argument (`%(name)s` of a dict) is a `dict` of `Any` values. `extra` is a
+  `dict[str, Any]` (a dict display, at the call); its items are the record's for the formats,
+  which read them by name, but not attributes of the record (`record.user`).
+- The keyword arguments of the logging calls and of `basicConfig()` are parameters: an unknown
+  one is a compile-time error, where CPython raises `ValueError`; `stream` and `filename` count
+  as given where they are not `None`, and a `format` of `None` is the style's default. A stream
+  is a file or an `io.StringIO` (a [reference union](../docs/language/typing.md#native-reference-unions)),
+  and `StreamHandler`'s repr shows no stream name. `FileHandler` writes UTF-8: another encoding
+  raises `NotImplementedError`, and `errors` is not passed on.
+- `setLoggerClass()`, `getLoggerClass()`, `setLogRecordFactory()` and `getLogRecordFactory()`
+  raise `NotImplementedError` (a class is not a value): `Logger` makes the loggers and
+  `LogRecord` the records. `Formatter.converter` is not supported (times are local), nor is
+  `LoggerAdapter`, whose methods pass `**kwargs` of values of different types; `captureWarnings()`
+  needs `warnings.showwarning` to be replaceable, which [warnings](#warnings) does not support.
+- A filter that is an object of `Filter` or a subclass is asked through its `filter()`; any other
+  filter is called, so an object of another class with a `filter()` method raises `TypeError`.
+  `Filterer.filter()` gives `False` or the record, as in CPython.
+- Named handlers are kept in a dict (no weak containers), so that one stays registered until it
+  is closed, where CPython drops it once nothing else refers to it.
+- A record's `threadName` is `MainThread`, `processName` `MainProcess` and `taskName` `None`, as
+  for CPython's main thread outside asyncio; the module does not `del StrFormatter` (#612).
+
+## Traceback
+
+`traceback` is Pystachy's own subset (`lib/traceback.py`) of CPython 3.13.16's module. Pystachy keeps
+no tracebacks and has no frames, so an exception formats as CPython formats one whose
+`__traceback__` is `None`: `format_exception()`, `print_exception()`, `format_exc()` and
+`print_exc()` give the exception-only lines of the exception's causes (`raise ... from`), each
+followed by CPython's `The above exception was the direct cause of the following exception:`,
+and then its own; `format_exception_only()` gives its last line, `Type: message` (or `Type` where
+the message is empty, `module.Type` for a class outside `__main__` and `builtins`). The legacy
+`(type, value, tb)` arguments work too ([test](../tests/programs/library/lib_traceback.py)). These
+are the lines whose last one an uncaught exception's report shows.
+
+- An exception that was raised shows no `Traceback (most recent call last):` and frames, and one
+  that another exception's handling caused (`__context__`) shows no `During handling of the above
+  exception, another exception occurred:` and earlier exception
+  ([deviation](../tests/deviations/lib_traceback_context.py)); `__notes__` and a `SyntaxError`'s
+  location are not shown.
+- The stack functions (`extract_stack()`, `format_stack()`, `print_stack()`, `extract_tb()`,
+  `format_tb()`, `print_tb()`, `format_list()`) give and print nothing. `TracebackException`,
+  `StackSummary`, `FrameSummary`, `walk_stack()`, `walk_tb()` and `print_last()` are not provided.
+- The legacy form with a value of `None` (`print_exception(ValueError, None, None)`) raises
+  `TypeError`, where CPython shows `NoneType: None`.
 
 ## Opcode
 
