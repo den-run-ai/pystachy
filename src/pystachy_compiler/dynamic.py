@@ -2424,6 +2424,17 @@ def gen_dyn_test(self, v: Val, ts: list[str]) -> str:
     t = Val(self.dyn_typeof(v), "dyntype")
     r = ""
     for m in ts:
+        if m in self.classes and m not in self.tmpl and self.classes[m].exc == "":
+            # an object of class m or of a subclass: pys_dyn_isa walks the box's bases as the
+            # program runs, so a subclass whose objects the program boxes only after this test is
+            # compiled passes it too, where the DynTypes of the classes boxed so far would miss it;
+            # None, which pys_dyn_isa takes as a class's optional object, does not
+            isa = self.rt("pys_dyn_isa", "i64", [f"ptr {v.v}", f"ptr {self.dyn_class_type(m)}"])
+            obj = self.num_cmp("!=", Val(isa, "int"), Val("0", "int")).v
+            notnone = self.ptr_cmp("!=", t, Val(self.dyn_type("None"), "dyntype")).v
+            x = self.scalar("and", [Val(obj, "bool"), Val(notnone, "bool")])
+            r = x if r == "" else self.scalar("or", [Val(r, "bool"), Val(x, "bool")])
+            continue
         for d in self.dyn_types_of(m):
             x = self.ptr_cmp("==", t, Val(d, "dyntype")).v
             r = x if r == "" else self.scalar("or", [Val(r, "bool"), Val(x, "bool")])
