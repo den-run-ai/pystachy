@@ -235,17 +235,20 @@ def _format_long(ctx: _Formatter, v: Any, ch: str) -> str:
         iv = 1 if v else 0
     else:
         iv = v
+    # the digits of the signed value, less its "-": the magnitude of the least int, -(-2**63),
+    # would not be an int of the range
     neg = iv < 0
-    mag: Any = -iv if neg else iv
     if ch == "o":
-        digits = format(mag, "o")
+        digits = format(iv, "o")
         prefix = "0o"
     elif ch == "x" or ch == "X":
-        digits = format(mag, "x")
+        digits = format(iv, "x")
         prefix = "0x"
     else:
-        digits = str(mag)
+        digits = str(iv)
         prefix = ""
+    if neg:
+        digits = digits[1:]
     if ctx.prec > len(digits):
         digits = "0" * (ctx.prec - len(digits)) + digits
     s = ("-" if neg else "") + (prefix if ctx.flags & _F_ALT else "") + digits
