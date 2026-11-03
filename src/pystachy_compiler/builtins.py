@@ -298,6 +298,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         return self.copy_prim(name, args)  # (lib/copy.py's and lib/_pystachy_copy.py's: reflection.py)
     if name == "__pys_enum_is":
         return self.enum_is(args)  # (lib/enum.py's: reflection.py)
+    if name == "__pys_enum_missing":
+        return self.enum_missing(args)  # (lib/enum.py's: reflection.py)
     if name == "__pys_asdict" or name == "__pys_astuple" or name == "dataclasses.asdict" or name == "dataclasses.astuple" or name == "dataclasses.is_dataclass":
         return self.refl_dataclasses(name, args)  # (reflection.py)
     if name == "dataclasses.fields":

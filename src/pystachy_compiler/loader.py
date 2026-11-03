@@ -170,7 +170,7 @@ def cm_methods(n: Node, names: list[str]) -> None:
 ENUM_NAMES = ["Enum", "IntEnum", "StrEnum", "ReprEnum", "EnumType", "EnumMeta", "auto", "unique", "Flag", "IntFlag"]
 ENUM_BASES = ["Enum", "IntEnum", "StrEnum"]
 # the methods that make or look up enum members, which the compiler makes
-ENUM_HOOKS = ["__new__", "__init__", "_missing_", "_generate_next_value_", "__init_subclass__", "__set_name__", "_numeric_repr_"]
+ENUM_HOOKS = ["__new__", "__init__", "_generate_next_value_", "__init_subclass__", "__set_name__", "_numeric_repr_"]
 
 
 def enum_names(body: Node) -> dict[str, str]:
@@ -400,6 +400,8 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
             if s.kind == "def":
                 if s.s in ENUM_HOOKS or s.s in canon:
                     fail(f"enum class {st.s}'s {s.s}() is not supported{' (a member of that name precedes it)' if s.s in canon else ': the compiler makes and looks up its members'}", s.line)
+                if s.s == "_missing_" and (len(s.kids) != 4 or s.kids[3].s != "classmethod" or len(s.kids[3].kids) != 0):
+                    fail(f"enum class {st.s}'s _missing_() is supported as a class method (@classmethod), as EnumType calls it", s.line)
                 defs[s.s] = True
                 if s.s in env:
                     del env[s.s]  # (the body's name is the function's)

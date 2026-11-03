@@ -320,6 +320,7 @@ from src.pystachy_compiler.reflection import (
     gen_enum_is as reflection_enum_is,
     gen_enum_is_static as reflection_enum_is_static,
     gen_enum_member as reflection_enum_member,
+    gen_enum_missing as reflection_enum_missing,
     gen_enum_view as reflection_enum_view,
     gen_refl_dir_names as reflection_refl_dir_names,
     gen_refl_dir as reflection_refl_dir,
@@ -2458,6 +2459,9 @@ class Gen:
 
     def enum_is(self, args: list[Node]) -> Val:
         return reflection_enum_is(self, args)
+
+    def enum_missing(self, args: list[Node]) -> Val:
+        return reflection_enum_missing(self, args)
 
     def refl_union_str(self, v: Val, m: str) -> Val:
         return reflection_refl_union_str(self, v, m)

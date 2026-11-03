@@ -720,9 +720,15 @@ as it makes dataclasses and `NamedTuple` classes ([test](../tests/programs/libra
   `isinstance()` of one and `IntEnum`, `StrEnum` or `ReprEnum`, which CPython answers `False`, is
   a compile-time error ([test](../tests/errors/library/lib_enum_mixin_isinstance.py)), as is
   `auto()` in a class of `str` and `Enum`, whose CPython value is the str of `Enum`'s next int.
+- A class method `_missing_(cls, value)` is called where a lookup by value finds no member, as
+  CPython's `EnumType` calls it: the lookup gives the member it returns, raises CPython's
+  `ValueError` where it returns `None`, and passes on what it raises
+  ([test](../tests/programs/library/lib_enum_missing.py)). One whose result may be of another
+  type, for which CPython raises `TypeError`, is a compile-time error
+  ([test](../tests/errors/library/lib_enum_missing_result.py)).
 - These are compile-time errors: `Flag`, `IntFlag` and `ReprEnum`; other mixin types
   (`class C(float, Enum)`) and keywords; members of other values or types, `_ignore_`, `_order_`
-  and private names; `__new__`, `__init__`, `_missing_` and `_generate_next_value_`; an enum
+  and private names; `__new__`, `__init__` and `_generate_next_value_`; an enum
   class that derives from an enum class of another module, or from one with members (CPython's
   `TypeError`); the functional API (`Enum("Color", "RED GREEN")`); reassigning a member
   (CPython's `AttributeError`); `reversed()` of an enum class, and an enum class without

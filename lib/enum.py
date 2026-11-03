@@ -47,6 +47,11 @@ class EnumType:
         for member in members:
             if member._value_ == value:
                 return member
+        # (the class's _missing_(value), where it defines one: a member, or None for the
+        # ValueError; CPython's TypeError for another result is a compile-time error here)
+        hit = __pys_enum_missing(members, value)
+        if hit is not None:
+            return hit
         raise ValueError("%r is not a valid %s" % (value, self._cls_name_))
 
     def __contains__(self, value) -> bool:
