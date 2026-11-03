@@ -72,8 +72,7 @@ next append copies it, where CPython copies only when another reference remains;
 quadratic. `"".join(parts)` stays linear. A str that appends keep growing past 8,200 bytes, the
 largest size class, gets room for as much again from its second copy on. After its length is
 unchanged across two consecutive sweeps, the collector trims excess capacity in place when
-more than a quarter of it is unused. On Linux, this also returns unused whole pages to the
-operating system; other platforms may retain those pages in RSS until the str is freed.
+more than a quarter of it is unused, and returns the unused whole pages to the operating system.
 
 Cross-function exceptions require stack unwinding and can be expensive in hot loops.
 Same-function handlers use branches. The [extended benchmark guide](extended-performance.md)
