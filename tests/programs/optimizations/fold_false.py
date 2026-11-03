@@ -29,7 +29,7 @@ if False:
     class Hidden(Unknown):
         pass
 if 0:
-    import pathlib
+    import sqlite3
 elif not False:
     print("not False")
 if TYPE_CHECKING:
@@ -43,7 +43,7 @@ else:
 if not TYPE_CHECKING:
     print("not TYPE_CHECKING", double(4))
 if note("a", True) and TYPE_CHECKING:
-    import pathlib
+    import sqlite3
 if TYPE_CHECKING or note("b", False):
     print("then b")
 else:

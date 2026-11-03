@@ -1,0 +1,17 @@
+['x.py']
+['x.py'] ['a', 'c', 'x.py', 'y.txt']
+['a/b/w.py', 'a/z.py', 'c/q.py', 'x.py']
+['a', 'a/b', 'a/b/w.py', 'a/z.py', 'c', 'c/q.py', 'x.py', 'y.txt']
+['a/', 'a/b/', 'c/']
+['a/z.py', 'c/q.py'] ['a/', 'c/']
+['.h.py', 'x.py'] ['.h.py', '.hid']
+['a/b', 'a/z.py'] [] ['x.py']
+True
+a[*]b[?][[]c] True False
+['.h.py', '.hid', 'a', 'c', 'x.py', 'y.txt'] True False
+True False False
+['a', 'c', 'x.py'] True
+FileNotFoundError True
+FileNotFoundError True
+False
+[exit 0]

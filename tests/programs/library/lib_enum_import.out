@@ -1,0 +1,6 @@
+Color.RED Color.GREEN red Color.GREEN
+['r', 'g'] 2 True True
+True 15 10 10
+Item(name='box', color=<Color.GREEN: 'g'>, weight=<Weight.HEAVY: 10>) True
+{<Color.RED: 'r'>: 2, <Color.GREEN: 'g'>: 0} [<Weight.LIGHT: 1>, <Weight.HEAVY: 10>]
+[exit 0]

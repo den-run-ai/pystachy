@@ -1,0 +1,4 @@
+UnsupportedOperation: Path.expanduser() of ~user is not supported
+UnsupportedOperation: Path.open() with buffering, errors or newline is not supported
+True
+[exit 0]

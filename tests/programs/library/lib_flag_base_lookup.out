@@ -1,0 +1,4 @@
+Perm.R|W
+True True
+TypeError unsupported operand type(s) for 'in': 'Color' and 'Perm'
+[exit 0]

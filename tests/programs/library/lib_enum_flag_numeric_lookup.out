@@ -1,0 +1,63 @@
+<flag 'F'> 1.0 True
+<F.A: 1>
+<flag 'F'> 3.0 True
+<F.ALL: 3>
+<flag 'F'> 0.0 True
+<F.NONE: 0>
+<flag 'F'> 4.0 False
+ValueError 4.0 is not a valid F
+<flag 'F'> -1.0 False
+ValueError -1.0 is not a valid F
+<flag 'F'> 1.5 False
+ValueError 1.5 is not a valid F
+<flag 'G'> 1.0 True
+<G.A: 1>
+<flag 'G'> 3.0 False
+ValueError 3.0 is not a valid G
+<flag 'G'> 0.0 False
+ValueError 0.0 is not a valid G
+<flag 'G'> 4.0 False
+ValueError 4.0 is not a valid G
+<flag 'G'> -1.0 False
+ValueError -1.0 is not a valid G
+<flag 'G'> 1.5 False
+ValueError 1.5 is not a valid G
+<G.A|B: 3> <G.A|B: 3>
+<flag 'G'> 1.0 True
+<G.A: 1>
+<flag 'G'> 3.0 False
+<G.A|B: 3>
+<flag 'G'> 0.0 False
+ValueError 0.0 is not a valid G
+<flag 'G'> 4.0 False
+ValueError 4.0 is not a valid G
+<flag 'G'> -1.0 False
+<G.A|B: 3>
+<flag 'G'> 1.5 False
+ValueError 1.5 is not a valid G
+<flag 'I'> 1.0 True
+<I.A: 1>
+<flag 'I'> 3.0 True
+<I.ALL: 3>
+<flag 'I'> 0.0 False
+ValueError 0.0 is not a valid I
+<flag 'I'> 4.0 False
+ValueError 4.0 is not a valid I
+<flag 'I'> -1.0 False
+ValueError -1.0 is not a valid I
+<flag 'I'> 1.5 False
+ValueError 1.5 is not a valid I
+<I: 4> <I.ALL: 3>
+<flag 'I'> 1.0 True
+<I.A: 1>
+<flag 'I'> 3.0 True
+<I.ALL: 3>
+<flag 'I'> 0.0 False
+ValueError 0.0 is not a valid I
+<flag 'I'> 4.0 False
+<I: 4>
+<flag 'I'> -1.0 False
+<I.ALL: 3>
+<flag 'I'> 1.5 False
+ValueError 1.5 is not a valid I
+[exit 0]

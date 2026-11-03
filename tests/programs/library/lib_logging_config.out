@@ -1,0 +1,14 @@
+DEBUG:app:debug 1
+INFO:app:info x and 'y'
+WARNING:app:warn
+ERROR:app.child:child error 3.14
+True 10 INFO
+CRITICAL:app:crit 5
+True False False
+INFO:root:root info 50%
+ERROR:root:logged at ERROR
+WARNING:root:still the first format
+forced 40 after force
+root|brace style
+app|propagated
+[exit 0]

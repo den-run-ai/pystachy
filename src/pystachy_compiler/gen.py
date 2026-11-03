@@ -307,6 +307,25 @@ from src.pystachy_compiler.reflection import (
     gen_refl_dc_type as reflection_refl_dc_type,
     gen_refl_dc_copy as reflection_refl_dc_copy,
     gen_refl_dataclasses as reflection_refl_dataclasses,
+    gen_copy_prim as reflection_copy_prim,
+    gen_copy_check as reflection_copy_check,
+    gen_copy_clone as reflection_copy_clone,
+    gen_copy_fields as reflection_copy_fields,
+    gen_copy_hooks as reflection_copy_hooks,
+    gen_copy_share as reflection_copy_share,
+    gen_refl_order as reflection_refl_order,
+    gen_copy_own as reflection_copy_own,
+    gen_copy_private as reflection_copy_private,
+    gen_enum_alias as reflection_enum_alias,
+    gen_enum_class_test as reflection_enum_class_test,
+    gen_enum_is as reflection_enum_is,
+    gen_enum_is_static as reflection_enum_is_static,
+    gen_enum_own as reflection_enum_own,
+    gen_enum_own_call as reflection_enum_own_call,
+    gen_enum_member as reflection_enum_member,
+    gen_enum_missing as reflection_enum_missing,
+    gen_enum_new as reflection_enum_new,
+    gen_enum_view as reflection_enum_view,
     gen_refl_dir_names as reflection_refl_dir_names,
     gen_refl_dir as reflection_refl_dir,
     gen_refl_dir_of as reflection_refl_dir_of,
@@ -752,6 +771,7 @@ from src.pystachy_compiler.expressions import (
     gen_exc_kinds as expressions_exc_kinds,
     gen_cmp_kinds as expressions_cmp_kinds,
     gen_cmp_pick as expressions_cmp_pick,
+    gen_enum_intlike as expressions_enum_intlike,
     gen_inherit_cmp as expressions_inherit_cmp,
     gen_cmp_alts as expressions_cmp_alts,
     gen_cmp_key as expressions_cmp_key,
@@ -2325,6 +2345,9 @@ class Gen:
     def refl_dict_order(self, c: str) -> list[str]:
         return reflection_refl_dict_order(self, c)
 
+    def refl_order(self, c: str, public: bool) -> tuple[list[str], str]:
+        return reflection_refl_order(self, c, public)
+
     def refl_stored(self, name: str) -> bool:
         return reflection_refl_stored(self, name)
 
@@ -2402,6 +2425,60 @@ class Gen:
 
     def refl_dataclasses(self, name: str, args: list[Node]) -> Val:
         return reflection_refl_dataclasses(self, name, args)
+
+    def copy_prim(self, name: str, args: list[Node]) -> Val:
+        return reflection_copy_prim(self, name, args)
+
+    def copy_check(self, ci: ClassInfo, what: str) -> None:
+        return reflection_copy_check(self, ci, what)
+
+    def copy_clone(self, o: Val) -> Val:
+        return reflection_copy_clone(self, o)
+
+    def copy_fields(self, y: Val, x: Val, memo: Val) -> None:
+        return reflection_copy_fields(self, y, x, memo)
+
+    def copy_share(self, o: Val, y: Val, fl: str) -> None:
+        return reflection_copy_share(self, o, y, fl)
+
+    def copy_hooks(self, t: str, seen: dict[str, bool]) -> bool:
+        return reflection_copy_hooks(self, t, seen)
+
+    def copy_own(self, t: str, deep: bool) -> int:
+        return reflection_copy_own(self, t, deep)
+
+    def copy_private(self, name: str) -> None:
+        return reflection_copy_private(self, name)
+
+    def enum_view(self, c: str, line: int) -> Node:
+        return reflection_enum_view(self, c, line)
+
+    def enum_member(self, n: Node, want: str) -> Val:
+        return reflection_enum_member(self, n, want)
+
+    def enum_alias(self, n: Node, want: str) -> Val:
+        return reflection_enum_alias(self, n, want)
+
+    def enum_is_static(self, t: str, ms: str) -> int:
+        return reflection_enum_is_static(self, t, ms)
+
+    def enum_is(self, args: list[Node]) -> Val:
+        return reflection_enum_is(self, args)
+
+    def enum_class_test(self, v: Val, c: str) -> str:
+        return reflection_enum_class_test(self, v, c)
+
+    def enum_own(self, v: Val, c: str) -> Val:
+        return reflection_enum_own(self, v, c)
+
+    def enum_own_call(self, args: list[Node]) -> Val:
+        return reflection_enum_own_call(self, args)
+
+    def enum_missing(self, args: list[Node]) -> Val:
+        return reflection_enum_missing(self, args)
+
+    def enum_new(self, args: list[Node]) -> Val:
+        return reflection_enum_new(self, args)
 
     def refl_union_str(self, v: Val, m: str) -> Val:
         return reflection_refl_union_str(self, v, m)
@@ -4348,6 +4425,9 @@ class Gen:
 
     def cmp_kinds(self, t: str) -> list[str]:
         return expressions_cmp_kinds(self, t)
+
+    def enum_intlike(self, c: str) -> bool:
+        return expressions_enum_intlike(self, c)
 
     def cmp_pick(self, op: str, at: str, bt: str) -> list[str]:
         return expressions_cmp_pick(self, op, at, bt)
