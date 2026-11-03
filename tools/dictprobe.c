@@ -211,11 +211,11 @@ static void any_keys(void) {
    freelists (gc_allocd alone counts batches and would miss such an allocation). */
 static I int_nobox(I value) {
   W *before[NK], *stress_before[NK];
-  memcpy(before, fl, sizeof before); memcpy(stress_before, sfl, sizeof stress_before);
+  memcpy(before, pys_fl, sizeof before); memcpy(stress_before, sfl, sizeof stress_before);
   I allocated = gc_allocd, collections = gc_n, ticks = gc_tick;
   Dict saved = *dict;
   I found = pys_dict_find_int_nobox(dict, value);
-  if (memcmp(before, fl, sizeof before) || memcmp(stress_before, sfl, sizeof stress_before) ||
+  if (memcmp(before, pys_fl, sizeof before) || memcmp(stress_before, sfl, sizeof stress_before) ||
       allocated != gc_allocd || collections != gc_n || ticks != gc_tick) any_bad("integer probe allocated");
   if (memcmp(&saved, dict, sizeof saved)) any_bad("integer probe mutated the table");
   return found;

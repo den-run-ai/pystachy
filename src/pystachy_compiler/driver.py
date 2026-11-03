@@ -9,7 +9,7 @@ from src.pystachy_compiler.diagnostics import MAXNEST, RAW, Rejoin, fail
 from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler.lexer import Lexer
 from src.pystachy_compiler.loader import Loader
-from src.pystachy_compiler.lower_module import OBJHOOKS, address_runtime_ir
+from src.pystachy_compiler.lower_module import OBJHOOKS, address_runtime_ir, jit_alloc
 from src.pystachy_compiler.names import RENAMED
 from src.pystachy_compiler.parser import Parser
 from src.pystachy_compiler.specs import JIT_INLINE, LIBS, LINKDL, MODULES, OPTS, PLATFORM
@@ -186,6 +186,13 @@ def sh(cmd: str) -> int:
 # the lines of /proc/cpuinfo that tell which CPU -march=native compiles for (x86-64's, AArch64's)
 CPUID: list[str] = ["vendor_id", "cpu family", "model", "model name", "stepping", "flags", "CPU implementer", "CPU architecture",
                     "CPU variant", "CPU part", "CPU revision", "Features"]
+# The JIT tier's allocations: the program's module carries the allocator's fast path for pys_alloc
+# and pys_new (lower_module's jit_alloc and JITFAST), both noinline through the cleanup pipeline,
+# whose last step inlines them, as LATE_INLINE does for AOT builds
+JITLATE = (" -force-remove-attribute=pys_new:noinline -force-attribute=pys_new:alwaysinline"
+           " -force-remove-attribute=pys_alloc:noinline -force-attribute=pys_alloc:alwaysinline")
+
+
 # the files that runtime.c includes from beside it, each DIR/NAME (ryu/: Ryu's d2s, a float's shortest
 # digits, ryu/README.md; mpz/: packed integer arithmetic): the runtime is built from their bytes too
 RTPARTS: list[str] = ["ryu/d2s.c", "ryu/ryu.h", "ryu/common.h", "ryu/digit_table.h", "ryu/d2s_intrinsics.h",
@@ -825,9 +832,10 @@ def main() -> None:
                             os.remove(tp)
                         except OSError:
                             pass
+        jir = jit_alloc(ir)  # (with the allocator's fast path: JITFAST)
         if code == 0:
             f = open(ll, "w", encoding=RAW)
-            f.write(layout + ir + (OBJHOOKS if useso != "" else ""))  # (the shared library's callbacks: RTSO)
+            f.write(layout + jir + (OBJHOOKS if useso != "" else ""))  # (the shared library's callbacks: RTSO)
             f.close()
         # JIT tier: discard unused internal functions before SSA cleanup and ORC's module-wide
         # code generation. The frontend still checks their bodies; external pys_obj_* dispatch
@@ -855,7 +863,8 @@ def main() -> None:
         # SSA promotion can leave unused feedback cycles (including numeric identity
         # generations). Remove those after inlining and coroutine lowering are complete;
         # instcombine alone does not eliminate cycles with no externally used result.
-        fast = f"{llvm}opt -passes='{passes},function(early-cse,adce)'"
+        late = ",forceattrs,always-inline" if jir != ir else ""
+        fast = f"{llvm}opt -passes='{passes},function(early-cse,adce){late}'" + (JITLATE if late != "" else "")
         if code == 0:
             # the cache's library may lie on a file system mounted noexec since it was made (or copied
             # there), from which lli could map nothing: the shell that runs opt first asks whether this
@@ -865,7 +874,7 @@ def main() -> None:
             if code == 3 and useso != "":
                 useso = ""
                 f = open(ll, "w", encoding=RAW)
-                f.write(layout + ir)
+                f.write(layout + jir)
                 f.close()
                 code = sh(f"{fast} {q(ll)} -o {q(bc)}")
         if code == 0:
