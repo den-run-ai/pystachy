@@ -170,8 +170,8 @@ next cycle may take (up to half as much again as its allocation window, which gr
 live bytes), reused before clean ones without page faults, and returns the rest to the system. Pointer-free slots of more than 136 bytes are cleared when they are handed out rather
 than when they die. `PYSTACHY_GC_MIN` sets the 32 MiB allocation window between collections
 ([#650](https://github.com/den-run-ai/pystachy/issues/650)). The
-[allocator report](reports/allocator-prototype.md) has the measurements. Unreachable
-files close during collection or at program exit. Supported Python operations are checked
+[2 November 2026 allocator evaluation](https://github.com/den-run-ai/pystachy/blob/a2cb8a3638d715577a7ab1cd1e4a0d6b01b6cdf2/docs/reports/allocator-prototype.md)
+records the measurements. Unreachable files close during collection or at program exit. Supported Python operations are checked
 against CPython; the [compatibility reference](language/compatibility.md) lists deviations.
 
 Runtime static pointer storage is classified beside its declaration with `GC_ROOT`,
@@ -505,9 +505,9 @@ a jump to the body: inlined, it would add a load and an argument to each caller,
 `bench/pyperformance/regex_effbot.py` was enough for clang `-O2` to keep `Pattern._search` out
 of `re.search`. Each frame counts at the same call as
 with the word, tail calls included, since the depth is an argument. A function returning a
-fixed tuple stays out, since `tupleret` may return its slots instead. Without the chain of
-stores and loads to one word, `bench/fib.py`'s executable runs about 5% slower than without
-guards instead of 34% ([report](reports/recursion-guard-policy.md)).
+fixed tuple stays out, since `tupleret` may return its slots instead. Passing the depth
+removes the repeated stores and loads of the shared word within the cycle; see the
+[1 November 2026 measurements](https://github.com/den-run-ai/pystachy/blob/a2cb8a3638d715577a7ab1cd1e4a0d6b01b6cdf2/docs/reports/recursion-guard-policy.md).
 
 For operations without exceptional successors, lowering emits `recursion.depth` and
 `recursion.restore` directly as a load and a store of the depth word. `recursion.enter`

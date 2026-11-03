@@ -215,6 +215,6 @@ freeze the compiler tree. Keep sources and compiler files unchanged during
 reproduction. The JSON schema and typed instruction format are experimental and
 identify their schema version.
 
-The [prototype evaluation](reports/compiler-inspection-prototype.md) records the
-bounded tasks and findings. More precise source spans, explicit rejection-reason
-events and a native inspection interface remain possible extensions.
+The [31 October 2026 evaluation](https://github.com/den-run-ai/pystachy/blob/a2cb8a3638d715577a7ab1cd1e4a0d6b01b6cdf2/docs/reports/compiler-inspection-prototype.md)
+records the bounded tasks and findings. More precise source spans, explicit
+rejection-reason events and a native inspection interface remain possible extensions.

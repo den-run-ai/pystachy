@@ -2,9 +2,8 @@
 
 Pystachy's largest measured gains are on compute-heavy loops. String processing, regex
 matching, allocation and exceptions have different costs, so measure the workload you intend
-to run.
-The [support-surface diagrams](support-surface.md) connect these costs to concrete storage,
-boxed unions, dynamic `Any`, generators and exceptions.
+to run. The [language guide](language.md#support-at-a-glance) summarizes supported features;
+the representation and operation determine their costs.
 
 ## Benchmarks
 
@@ -87,6 +86,53 @@ more than a quarter of it is unused, and returns the unused whole pages to the o
 Cross-function exceptions require stack unwinding and can be expensive in hot loops.
 Same-function handlers use branches. The [extended benchmark guide](extended-performance.md)
 measures these paths separately, along with object dispatch and allocation.
+
+## Representation costs
+
+Keep concrete storage for homogeneous hot data where its semantics fit. Mixed values,
+generators and exceptions remain useful; measure the paths the application actually uses.
+
+| Execution path | Costs to measure | Contract |
+|---|---|---|
+| Concrete scalars and homogeneous containers | Native storage avoids dynamic boxes; allocation, hashing and string scans still cost work. | [Types and inference](language/typing.md) |
+| Closed unions and recursive JSON | Numeric locals can use split tag/payload slots; union-valued container items can allocate boxes. Narrowing preserves the original container and its aliases. | [Mixed unions](language/typing.md#mixed-scalar-and-container-unions), [JSON ownership](json.md#values-and-ownership) |
+| Dynamic `Any` | Boxing, runtime dispatch and identity tracking; supported identity observations can also affect typed code in the same program. | [Typed/dynamic boundaries](dynamic-any.md#the-typeddynamic-contract), [identity scope](dynamic-any.md#identity-scope) |
+| Promoting integers | Inline arithmetic while values fit, then runtime calls and immutable digit storage; check conversions at 64-bit boundaries. | [Representation](python-int.md#representation), [boundaries](python-int.md#64-bit-boundaries) |
+| Generators and exceptions | Direct iteration can avoid suspended frames; stored generators need state. Local handlers use branches, while cross-function exceptions unwind. | [Generators](internals.md#generators), [extended benchmarks](extended-performance.md) |
+| Specialization and compilation | Frontend work, LLVM time and generated code size are separate from execution and heap costs. | [Compile time](#compile-time), [compiler inspection](compiler-inspection.md) |
+
+Crossing a typed/dynamic boundary must preserve aliases and identity. Measure outputs and
+effects before timing; keep execution, memory, compilation and generated-code size separate.
+The [historical support maps](https://github.com/den-run-ai/pystachy/blob/a2cb8a3638d715577a7ab1cd1e4a0d6b01b6cdf2/docs/support-surface.md)
+retain their checkpoint-specific classifications and measurements.
+
+### Measure union boxing
+
+`tools/union_values_bench.py` constructs and sums one million integers as `list[int]`
+or `list[int | str]`; the boxed scan narrows explicitly. Both print checksum `499999500000`.
+The [historical measurement](https://github.com/den-run-ai/pystachy/blob/a2cb8a3638d715577a7ab1cd1e4a0d6b01b6cdf2/docs/union-value-costs.md#boxing-measurement)
+at `2438e7e0` reports medians from seven alternating AOT process pairs, pinned to one core
+of a shared Intel Xeon 2.10 GHz Linux host with LLVM 18.1.3:
+
+| Storage | Construction CPU | Scan CPU | Peak managed heap |
+|---|---:|---:|---:|
+| `list[int]` | 9.197 ms | 0.775 ms | 13.0 MiB |
+| `list[int \| str]`, all integer payloads | 19.043 ms | 2.392 ms | 33.1 MiB |
+
+CPU times exclude startup. Heap peaks came from separate untimed runs; they are neither
+retained live memory nor RSS. List growth and GC thresholds affect the ratios, which are
+specific to this workload and revision. Rerun on the build being evaluated:
+
+```sh
+./pystachy build tools/union_values_bench.py -o build/union-values
+build/union-values typed 1000000
+build/union-values boxed 1000000
+PYSTACHY_GC=stats build/union-values typed 1000000
+PYSTACHY_GC=stats build/union-values boxed 1000000
+```
+
+Repeat the two ordinary executions seven times, alternating their order. Each prints the
+checksum, construction CPU nanoseconds and scan CPU nanoseconds. Keep GC-stat runs separate.
 
 ## Inspecting emitted LLVM calls
 

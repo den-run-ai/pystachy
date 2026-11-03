@@ -15,7 +15,7 @@ from CPython. The detailed references define each rule:
 | [Execution and expressions](language/semantics.md) | Statements, expressions, iterators, generators, protocols, reflection and exceptions |
 | [Modules and builtins](language/modules.md) | Module search, scope, compile-time branches, optional imports and builtin APIs |
 | [CPython compatibility](language/compatibility.md) | Semantic differences, compile-time restrictions and links to module/opt-in limits |
-| [Support surface](support-surface.md) | Representations, costs, measurements and engineering trade-offs |
+| [Performance](performance.md#representation-costs) | Representation costs, measurements and optimization guidance |
 
 The experimental [dynamic `Any`](dynamic-any.md) and [promoting ints](python-int.md) have
 their own contracts; [interoperability](ffi.md) covers C, embedded CPython and extension modules.
@@ -31,13 +31,11 @@ their own contracts; [interoperability](ffi.md) covers C, embedded CPython and e
 
 🔴 **Major gaps** are Python features that are not available; most are compile-time errors.
 🟠 **Minor gaps** are narrower forms or documented differences within a supported feature.
-The statuses correspond to the KEEP, BOUND, PROTO and OUT labels of the
-[support surface](support-surface.md#reading-the-colors).
 
 | Area | Status | Supported | 🔴 Major gaps | 🟠 Minor gaps |
 |---|---|---|---|---|
 | [Numbers](language/compatibility.md#numbers) | 🟢 Native<br>🧪 Big ints | Checked 64-bit `int`, `float` and `bool`; unbounded `int` with [promoting ints](python-int.md) or explicit [`mpz`](mpz.md) | `complex` | `int` overflow raises `OverflowError` unless the module opts in; a NaN has no identity |
-| [Text and bytes](language/compatibility.md#text-and-file-positions) | 🟡 Bounded | `str` with code-point lengths, indexing and slicing; `bytes`; f-strings, `%` and `str.format()`; UTF-8, Latin-1 and ASCII codecs | `bytearray`, `memoryview`, binary files | Incomplete Unicode case mapping; `%` and `str.format()` need a constant format; no `\N{...}` escapes |
+| [Text and bytes](language/compatibility.md#text-and-file-positions) | 🟡 Bounded | `str` with code-point lengths, indexing and slicing; `bytes`; f-strings, `%` and `str.format()`; UTF-8, Latin-1 and ASCII codecs; [binary files](../lib/compatibility.md#binary-files) | `bytearray`, `memoryview` | Incomplete Unicode case mapping; `%` and `str.format()` need a constant format; no `\N{...}` escapes |
 | [Containers](language/semantics.md#operators-and-containers) | 🟢 Native<br>🟡 Union items | `list`, `dict`, `set`, `frozenset`, fixed-shape and runtime-length `tuple`; displays, comprehensions, slices with steps, unpacking | Slice objects | Keys and set elements are ints, strs, bytes, objects or tuples (no floats); fixed tuples hold up to nine items; dict views are snapshots |
 | [Static typing](language/typing.md) | 🟢 Native<br>🟡 Unions | Inferred locals, returns and per-call specializations; closed unions; `T \| None` narrowing; `Callable`; generic functions and classes, including PEP 695; type aliases | General object unions | Mutable containers are invariant; empty containers need a type; recursive value aliases are a prototype |
 | [`Any` values](dynamic-any.md) | 🟢 Native<br>🧪 Dynamic | `Any` annotations specialize to concrete types; with `# pystachy: dynamic-any`, runtime-typed values with lazy iteration, comparisons and numeric protocols | Runtime-typed values in modules that do not opt in | Unsupported cross-type comparison bodies raise `TypeError`; some typed boundaries lose numeric identity |
@@ -52,8 +50,8 @@ The statuses correspond to the KEEP, BOUND, PROTO and OUT labels of the
 | [Memory and lifetime](language/compatibility.md#memory-and-resource-lifetime) | 🟡 Bounded | Automatic memory through a conservative, batched collector; `with` closes files; experimental `weakref.ref` | Finalizers: `__del__` never runs | A dropped file closes at a later collection; no weak containers |
 | [Interop and concurrency](ffi.md) | 🧪 Experimental | C calls (`ffi`); CPython embedded through `pyobj`; extension modules that CPython imports, also in [process pools](concurrency.md) | Native threads; `async` | `pyobj` converts scalars only; an extension runs only on the thread that imported it |
 
-The table describes v0.1.0-alpha.4; its [release notes](releases/v0.1.0-alpha.4.md) list what
-changed since alpha.3. [Unsupported features](#unsupported-features) and
+The table describes the current source tree; the [alpha.4 release notes](releases/v0.1.0-alpha.4.md)
+record that release's changes since alpha.3. [Unsupported features](#unsupported-features) and
 [deviations](#deviations-from-cpython) summarize the gaps below, and the
 [compatibility reference](language/compatibility.md) lists every known case.
 
@@ -64,24 +62,10 @@ is no interpreter fallback. The cost of a construct follows the representation i
 select, not its syntax: `a + b` on two `int` values is a checked machine addition, while on
 two dynamic `Any` values it dispatches on their run-time types.
 
-| Path | Python it covers | Run-time overhead | Compiler complexity | Compatibility payoff |
-|---|---|---|---|---|
-| Concrete typed code | Numeric loops, typed fields, `list[float]`, specialized helpers | ●○○ Low | ●○○ Low | Large |
-| Numeric unions in locals | `int \| float` locals in mixed numeric functions | ●○○ Low | ●●○ Medium | Medium |
-| Unions in containers | `list[int \| str]` and other mixed sequences | ●●● High | ●●○ Medium | Medium |
-| Suspended generators | Stored generators, `send()`, delegation | ●●○ Medium | ●●● High | Medium |
-| Exception handling that does not raise | `try` / `finally` and `with` around calls | ●○○ Low | ●●● High | Large |
-| Repeated raises across calls | Exceptions as control flow in hot loops | ●●● High | ●●● High | Large |
-| Recursive JSON values | `JSONValue` trees from [`json`](json.md) | ●●○ Medium | ●●● High | Large |
-| Dynamic `Any`, narrowed | Mixed data narrowed with `isinstance()` | ●●○ Medium | ●●● High | Large, potential |
-| Dynamic `Any`, generic | Arithmetic and dispatch on `Any` values | ●●● High | ●●● High | Large, potential |
-
-These are the ordinal estimates of the
-[support-surface map](support-surface.md#7-compatibility-payoff-correctness-and-evidence)
-(23 October 2026), not measurements. Overhead is relative to concrete native code, not to
-CPython: a high-overhead path can still beat CPython, and a low one can still run a slow
-algorithm. The [measured examples](support-surface.md#5-measured-examples-with-their-limits)
-record the evidence and its revisions. Beyond the map:
+The [performance guide](performance.md#representation-costs) explains the costs of tagged
+unions, generators, exceptions, recursive JSON values and dynamic `Any`. These costs are
+relative to concrete native code; performance against CPython depends on the workload.
+Additional costs and measurements:
 
 - **Promoting ints** keep checked-int64 speed while values fit in 64 bits; recorded
   big-value workloads ran at 0.83–1.31× CPython's speed ([measurements](python-int.md#measurements)).
@@ -93,7 +77,7 @@ record the evidence and its revisions. Beyond the map:
 - **Opt-ins are per module, but some policies are program-wide:** once a module opts in to
   dynamic `Any`, every typed dictionary in the program uses CPython's hash and probe scheme,
   while identity tracking stays in the modules that can observe it
-  ([costs](support-surface.md#4-where-compatibility-adds-cost)).
+  ([representation costs](performance.md#representation-costs)).
 - **Compile time** grows with each specialization of an unannotated function and with class
   hierarchies; JIT runs include it ([compile time](performance.md#compile-time)).
 
@@ -355,7 +339,7 @@ can avoid compiling unused branches that contain one. The main gaps:
 - **Object model:** multiple inheritance, subclasses of builtin types, general metaclasses and
   class decorators, dynamic attribute hooks, and attribute values looked up by names only the
   run time knows (their text and `hasattr()` are supported).
-- **Values:** `complex` numbers, `bytearray`, `memoryview`, binary files, slice objects and
+- **Values:** `complex` numbers, `bytearray`, `memoryview`, slice objects and
   general object unions; arbitrary-precision ints and dynamic `Any` values outside their opt-in
   prototypes ([promoting ints](python-int.md), [dynamic `Any`](dynamic-any.md)).
 - **Syntax and calls:** `match`, `async` / `await`, `except*` and unrestricted argument

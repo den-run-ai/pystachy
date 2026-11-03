@@ -63,9 +63,9 @@ Split trace records before repair and validate types and content afterward.
   preserving decoded structural characters without rescanning accumulated text.
 - Accumulate string content in bounded 64-code-point tails and immutable chunks;
   cache tail/regex whitespace metadata and flatten once at finalization. This
-  removes repeated growing-prefix copies. The [accumulator report](../../bench/json_repair/ACCUMULATOR.md)
-  records native wins, a warmed PyPy mixed-workload regression and higher CPython
-  peak memory; this remains an experimental port tradeoff.
+  removes repeated growing-prefix copies. [Historical measurements](../../bench/json_repair/README.md#historical-evidence)
+  record native wins, a warmed PyPy mixed-workload regression and higher CPython
+  peak memory; these experimental port tradeoffs were not remeasured for alpha.4.
 - Process ordinary repair text in spans between quotes, escapes and structural
   characters, retaining the existing heuristics at each boundary. Append source
   ranges in bounded chunks; the same storage helper serves decoded escapes and
@@ -130,8 +130,7 @@ make test FILES='tests/programs/apps/port_json_repair*.py tests/programs/library
 
 See the replay README for the complete corpus commands and original input provenance.
 
-See the [performance report](../../bench/json_repair/PROFILING.md) for historical typed-cache
-measurements, payload scaling and bottlenecks, and the
-[bounded-accumulator report](../../bench/json_repair/ACCUMULATOR.md) for the refreshed
-integrated baseline, copy-work evidence and current cross-engine tradeoffs. The [completion report](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/reports/json-repair-port.md)
+The [benchmark guide](../../bench/json_repair/README.md) contains current measurements,
+reproduction commands, deterministic copy-work checks and historical evidence.
+The [completion report](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/reports/json-repair-port.md)
 records validation and the minimal upstream contribution strategy.
