@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 from src.pystachy_compiler.analysis import (
     accel_try,
+    bind_count,
     binds,
     binds_first,
     bound_in,
@@ -23,6 +24,7 @@ from src.pystachy_compiler.analysis import (
     first_use,
     fn_globals,
     global_assigns,
+    globals_deep,
     globals_in,
     has_all,
     import_error,
@@ -205,8 +207,10 @@ def enum_literal(e: Node) -> list[str]:
         return ["int", str(-int(d) if neg else int(d))]
     if e.kind == "float":
         return ["float", repr(float(e.s.replace("_", "")))]
-    if e.kind == "str" or e.kind == "bytes":
-        return [e.kind, repr(e.s)]
+    if e.kind == "str":
+        return ["str", repr(e.s), e.s]
+    if e.kind == "bytes":
+        return ["bytes", repr(e.s)]
     if e.kind == "True" or e.kind == "False":
         return ["bool", e.kind]
     if e.kind == "None":
@@ -222,6 +226,98 @@ def enum_literal(e: Node) -> list[str]:
             ks.append(r[1])
         return ["tuple[" + ", ".join(ts) + "]", "(" + ", ".join(ks) + ")"]
     return []
+
+
+def enum_int_op(op: str, a: int, b: int) -> list[str]:
+    # a op b of two ints of the 64-bit range, as an enum_literal's [type, text]: [] where CPython's
+    # result is no int of that range (or op is none of these), which the compiler does not compute
+    big = 9223372036854775807
+    low = -big - 1
+    if op == "+":
+        return [] if (b > 0 and a > big - b) or (b < 0 and a < low - b) else ["int", str(a + b)]
+    if op == "-":
+        return [] if (b < 0 and a > big + b) or (b > 0 and a < low + b) else ["int", str(a - b)]
+    if op == "*":
+        if a == 0 or b == 0:
+            return ["int", "0"]
+        if a == low or b == low:
+            return ["int", str(a * b)] if a == 1 or b == 1 else []
+        return [] if (a if a > 0 else -a) > big // (b if b > 0 else -b) else ["int", str(a * b)]
+    if op == "//" or op == "%":
+        if b == 0 or (a == low and b == -1):
+            return []
+        return ["int", str(a // b if op == "//" else a % b)]
+    if op == "**":
+        if b < 0 or (b > 64 and a != 0 and a != 1 and a != -1):
+            return []  # (a float in CPython, or past 64 bits)
+        r = ["int", "1"]
+        for _ in range(b if b <= 64 else b % 2 + 2):
+            r = enum_int_op("*", int(r[1]), a)
+            if len(r) == 0:
+                return []
+        return r
+    if op == "<<":
+        if b < 0 or (b >= 64 and a != 0):
+            return []
+        if a == 0:
+            return ["int", "0"]
+        r = a
+        for _ in range(b):
+            if r > big // 2 or r < low // 2:
+                return []
+            r = r * 2
+        return ["int", str(r)]
+    if op == ">>":
+        if b < 0:
+            return []
+        return ["int", str(a >> b if b < 64 else (0 if a >= 0 else -1))]
+    if op == "|" or op == "&" or op == "^":
+        return ["int", str(a | b if op == "|" else a & b if op == "&" else a ^ b)]
+    return []
+
+
+def enum_fold(e: Node, env: dict[str, list[str]]) -> list[str]:
+    # an enum member's value e as the class body computes it, from literals (enum_literal), the
+    # members before it and the module's constants (env: their values, ints and strs), with int's
+    # operators and str's + and *: [its type, its text, a str's value], or []
+    lit = enum_literal(e)
+    if len(lit) > 0 or e.kind == "int":
+        return lit
+    if e.kind == "name":
+        return env.get(e.s, [])
+    if e.kind == "unary" and len(e.kids) == 1 and (e.s == "-" or e.s == "+" or e.s == "~"):
+        a = enum_fold(e.kids[0], env)
+        if len(a) == 0 or a[0] != "int":
+            return []
+        return a if e.s == "+" else ["int", str(~int(a[1]))] if e.s == "~" else enum_int_op("-", 0, int(a[1]))
+    if e.kind != "binop" or len(e.kids) != 2:
+        return []
+    a = enum_fold(e.kids[0], env)
+    b = enum_fold(e.kids[1], env)
+    if len(a) == 0 or len(b) == 0:
+        return []
+    if a[0] == "int" and b[0] == "int":
+        return enum_int_op(e.s, int(a[1]), int(b[1]))
+    if e.s == "+" and a[0] == "str" and b[0] == "str" and len(a[2]) + len(b[2]) <= 4096:
+        return ["str", repr(a[2] + b[2]), a[2] + b[2]]
+    if e.s == "*" and ((a[0] == "str" and b[0] == "int") or (a[0] == "int" and b[0] == "str")):
+        s = a[2] if a[0] == "str" else b[2]
+        k = int(b[1] if a[0] == "str" else a[1])
+        if len(s) * (k if k > 0 else 0) <= 4096:
+            return ["str", repr(s * k), s * k]
+    return []
+
+
+def enum_node(v: list[str], line: int) -> Node:
+    # the literal of enum_fold's int or str v, as a member's value
+    if v[0] == "str":
+        return mk("str", v[2], line, [])
+    x = int(v[1])
+    if x >= 0:
+        return mk("int", v[1], line, [])
+    if x == -9223372036854775807 - 1:
+        return mk("binop", "-", line, [mk("unary", "-", line, [mk("int", "9223372036854775807", line, [])]), mk("int", "1", line, [])])
+    return mk("unary", "-", line, [mk("int", str(-x), line, [])])
 
 
 def enum_classes(n: Node, names: dict[str, str]) -> None:
@@ -245,6 +341,10 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
     top: list[Node] = []
     imported = False
     mixed = False
+    rebound: dict[str, bool] = {}  # (the names a function may rebind, or a del statement unbind)
+    globals_deep(n.kids, rebound)
+    deleted(n.kids, rebound)
+    consts: dict[str, list[str]] = {}  # (the module's constants before: names bound once to an int or str)
     for st in n.kids:
         kind = ""
         base = ""
@@ -265,6 +365,10 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
                 kind = k if k in ENUM_BASES else kinds[d]
                 base = d
         if kind == "":
+            if st.kind == "assign" and len(st.kids) == 2 and st.kids[0].kind == "name" and st.kids[0].s not in rebound and bind_count(n.kids, st.kids[0].s) == 1:
+                cv = enum_fold(st.kids[1], consts)
+                if len(cv) > 0 and (cv[0] == "int" or cv[0] == "str"):
+                    consts[st.kids[0].s] = cv
             top.append(st)
             continue
         if base in full:
@@ -287,6 +391,9 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
         defs: dict[str, bool] = {}
         vtype = ""
         last: list[int] = []
+        env: dict[str, list[str]] = {}  # (the names a member's value may read: the module's constants, then the members before)
+        for k in consts:
+            env[k] = consts[k]
         for s in body.kids:
             nm = s.kids[0].s if s.kind == "assign" and len(s.kids) == 2 and s.kids[0].kind == "name" else ""
             dunder = len(nm) > 4 and nm.startswith("__") and nm.endswith("__")
@@ -294,6 +401,8 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
                 if s.s in ENUM_HOOKS or s.s in canon:
                     fail(f"enum class {st.s}'s {s.s}() is not supported{' (a member of that name precedes it)' if s.s in canon else ': the compiler makes and looks up its members'}", s.line)
                 defs[s.s] = True
+                if s.s in env:
+                    del env[s.s]  # (the body's name is the function's)
                 out.append(s)
             elif nm != "" and not dunder:
                 if (nm.startswith("_") and nm.endswith("_")) or nm.startswith("__"):
@@ -314,9 +423,11 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
                         fail(f"auto() after a member whose value is a {vtype} is not supported", v.line)
                     else:
                         v = mk("int", str(max(last) + 1 if len(last) > 0 else 1), v.line, [])
-                lit = enum_literal(v)
+                lit = enum_fold(v, env)
                 if len(lit) == 0:
-                    fail(f"enum member {st.s}.{nm} is not supported: the compiler makes an enum class's members from literal values (numbers, strs, bytes, True, False, None and tuples of them) and auto()", s.line)
+                    fail(f"enum member {st.s}.{nm} is not supported: the compiler makes an enum class's members from literal values (numbers, strs, bytes, True, False, None and tuples of them), auto(), and int or str expressions of them, of the members before and of the module's constants (names bound once)", s.line)
+                if len(enum_literal(v)) == 0:
+                    v = enum_node(lit, v.line)  # (the value the class body computes)
                 if (kind == "IntEnum" and lit[0] != "int") or (kind == "StrEnum" and lit[0] != "str"):
                     fail(f"{kind} member {st.s}.{nm} must have an {'int' if kind == 'IntEnum' else 'str'} value", s.line)
                 if vtype != "" and lit[0] != vtype:
@@ -324,6 +435,8 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
                 vtype = lit[0]
                 if vtype == "int":
                     last.append(int(lit[1]))
+                if vtype == "int" or vtype == "str":
+                    env[nm] = lit
                 mnames.append(nm)
                 texts[nm] = lit[1]
                 if lit[1] in keys:

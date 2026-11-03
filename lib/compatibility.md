@@ -684,7 +684,11 @@ as it makes dataclasses and `NamedTuple` classes ([test](../tests/programs/libra
   enum class of its own module without members, is an enum class. Its members are its body's
   `NAME = value` statements, whose values are literals (numbers, strs, bytes, `True`, `False`,
   `None` and tuples of them) of one type, or `auto()`, which gives CPython's values: one more
-  than the greatest value before (from 1), or a `StrEnum` member's name in lower case. A member
+  than the greatest value before (from 1), or a `StrEnum` member's name in lower case. An int
+  or a str value may also be an expression that the class body computes, with `int`'s operators
+  and `str`'s `+` and `*`, of literals, of the members before it and of the module's constants
+  (names bound once, before the class statement): `B = 1 << 3`, `C = A | B`, `D = BASE + 1`,
+  within the 64-bit int range ([test](../tests/programs/library/lib_enum_values.py)). A member
   whose value an earlier one has is its alias; `@unique` reports aliases as an error.
 - Members are objects of the class, with `name`, `value`, `_name_` and `_value_`, CPython's
   `repr()`, `str()`, `format()` and `hash()`, identity equality, and copies that are the member
