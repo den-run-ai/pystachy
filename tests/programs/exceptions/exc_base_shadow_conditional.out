@@ -1,0 +1,3 @@
+UnboundLocalError: cannot access local variable 'B' where it is not associated with a value
+(-5, 'd') E(-5, 'd') d
+[exit 0]

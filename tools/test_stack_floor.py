@@ -195,6 +195,44 @@ print(depth(int(sys.argv[1]), out), len(out))
 CAUGHT = f"caught recursion: {STACK_ERROR.split(': ', 1)[1]}\nfinally\n"
 
 
+def large_frame_program(count=1000, tuple_frame=False):
+    # Live values cross the recursive call so LLVM must keep a large native frame. A fixed
+    # bytes-per-level estimate can skip the floor until after these programs exhaust the stack.
+    if tuple_frame:
+        setup = "    values = (" + ", ".join(f"n + {i}.0" for i in range(count)) + ")"
+        result = f"values[n % {count}]"
+    else:
+        setup = "\n".join(f"    a{i} = xs[{i}]" for i in range(count))
+        result = " + ".join(f"a{i}" for i in range(count))
+    return f'''import sys
+
+reached: list[int] = [0]
+xs: list[float] = [float(j) for j in range({count})]
+
+
+def inflated(n: int) -> float:
+    reached[0] = n
+{setup}
+    xs[n % {count}] = float(n)
+    r = inflated(n + 1)
+    return r + {result}
+
+
+def shallow(n: int) -> int:
+    return 0 if n == 0 else shallow(n - 1) + 1
+
+
+sys.setrecursionlimit(2000000)
+try:
+    print(inflated(0))
+except RecursionError as error:
+    print(error)
+    print("before logical limit", 0 < reached[0] < 10000)
+sys.setrecursionlimit(100)
+print("recovered", shallow(10))
+'''
+
+
 def floor_source():
     source = (ROOT / "runtime.c").read_text()
     match = re.search(r"^#if defined\(__has_feature\)\n.*?^static void stack_floor\(void\) \{[^\n]*\}\n", source, re.M | re.S)
@@ -277,7 +315,10 @@ class StackFloorProgramTests(unittest.TestCase):
         cls.environment = {key: value for key, value in os.environ.items() if not key.startswith("PYSTACHY_")}
         cls.environment.update(PYSTACHY_LLVM=LLVM, PYSTACHY_CACHE=str(cls.work / "cache"), PYSTACHY_IRCHECK="1")
         cls.compiler = [sys.executable, str(ROOT / "pystachy.py")]
-        for name, text in (("deep", PROGRAM), ("bare", BARE)):
+        for name, text in (("deep", PROGRAM), ("bare", BARE),
+                           ("large_scalars", large_frame_program()),
+                           ("larger_scalars", large_frame_program(count=1500)),
+                           ("large_tuple", large_frame_program(tuple_frame=True))):
             (cls.work / f"{name}.py").write_text(text)
             build = subprocess.run([*cls.compiler, "build", str(cls.work / f"{name}.py"), "-o", str(cls.work / name)],
                                    cwd=ROOT, capture_output=True, text=True, env=cls.environment, timeout=600)
@@ -355,6 +396,21 @@ class StackFloorProgramTests(unittest.TestCase):
             self.assertEqual(result.returncode, 1, result.stderr)
             self.assertEqual(result.stdout, "output before the recursion is kept\n")
             self.assertEqual(result.stderr.splitlines()[-1:], [STACK_ERROR])
+
+    def test_large_live_frames_cannot_skip_the_floor(self):
+        # These shapes exceeded the old fixed per-level budget, including optimized JIT code.
+        # Catching the stack error, then recursing again, checks both protection and unwinding.
+        expected = STACK_ERROR.removeprefix("RecursionError: ") + "\nbefore logical limit True\nrecovered 10\n"
+        for name in ("large_scalars", "larger_scalars", "large_tuple"):
+            for mode in ("AOT", "JIT", "JIT -O0"):
+                with self.subTest(shape=name, mode=mode):
+                    if mode == "AOT":
+                        result = self.aot(name)
+                    elif mode == "JIT":
+                        result = self.jit(name)
+                    else:
+                        result = self.jit(name, PYSTACHY_JIT_CODEGEN="0")
+                    self.assertEqual((result.returncode, result.stderr, result.stdout), (0, "", expected))
 
 
 if __name__ == "__main__":
