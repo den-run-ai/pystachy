@@ -1123,9 +1123,15 @@ decoding or newline translation:
   operation on a closed file or one its mode does not have (`io.UnsupportedOperation`)
   ([test](../tests/programs/io/bfile_errors.py)).
 - A buffered file's writes reach the OS when CPython's do (its buffer has `st_blksize` bytes, or
-  those of `buffering=`), and its reads and writes are at its position. A file used in one
-  expression (`open(p, "wb").write(data)`) is closed right after it, as CPython's finalizer
-  closes it ([test](../tests/programs/io/bfile_temp.py)); one dropped otherwise is closed as a
+  those of `buffering=`), and its reads and writes are at its position; `truncate()` drops what it
+  read ahead, so reads see the file as it now is ([test](../tests/programs/io/bfile_truncate_read.py)).
+  A `FileIO`'s `read(n)` is one read of the OS, which a pipe or a terminal may end short
+  ([test](../tests/programs/io/bfile_fifo_raw.py)), and a read error raises CPython's `OSError`
+  ([test](../tests/programs/io/bfile_read_error.py)).
+- A file used in one expression (`open(p, "wb").write(data)`) is closed right after it, as
+  CPython's finalizer closes it ([test](../tests/programs/io/bfile_temp.py)), unless that call
+  returns the file, as `__iter__()` and `__enter__()` do
+  ([test](../tests/programs/io/bfile_temp_escape.py)); one dropped otherwise is closed as a
   text file is ([lifetime](../docs/language/compatibility.md#memory-and-resource-lifetime)).
 - Every binary file has one type, of a class the four derive from, so that one name holds files
   of different modes, as in CPython.
@@ -1135,7 +1141,9 @@ otherwise (a parameter, a `def`, an import or an assignment of that name), or ca
 `io.open()` ([test](../tests/errors/io/bfile_open_bound.py)); `buffering=1`, for which CPython
 warns that line buffering isn't supported in binary mode, and a `buffering=` that is not a
 literal int, since the class depends on it ([test](../tests/errors/io/bfile_buffering_var.py));
-`closefd=` and `opener=`; a `str` for `write()`, which CPython rejects with `TypeError`
+`closefd=` and `opener=` (these where the program reaches them: in code that is never compiled, such
+as an `if False:` block, they compile, [test](../tests/programs/io/bfile_open_dead.py)); a `str`
+for `write()`, which CPython rejects with `TypeError`
 ([test](../tests/errors/io/bfile_write_str.py)), and other buffer objects; `read1()`, `peek()`,
 `readinto()`, `detach()` and `raw`; and the classes as names (`io.FileIO`, `io.BufferedReader`)
 and `typing.BinaryIO`. Deviations:
