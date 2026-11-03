@@ -1,15 +1,15 @@
 ## Hosted compiler coverage
 
-Commit `5624ca0eb9db62fb9d1974d8ff154722b1201f6f`: statements **96.0%** (42469 of 44245) and branches **92.5%** (22267 of 24070); 94.8% together, coverage.py's total. 5 suites, 6713 processes measured.
+Commit `b89c33f5442bb83b81ddccfbe39c67d541c7d467`: statements **96.0%** (42469 of 44245) and branches **92.5%** (22267 of 24070); 94.8% together, coverage.py's total. 5 suites, 6713 processes measured.
 The statements and branches of `src/pystachy_compiler/`, run by CPython; not `runtime.c`, `runtime.py`, `lib/` or the compiled programs, which run as native code ([native runtime coverage](https://github.com/den-run-ai/pystachy/blob/badges/runtime-coverage.md)).
 
 | Suite | Runs | Checks | Processes | Time | Statements | Branches |
 |---|---|---|---:|---:|---:|---:|
-| corpus | `tests/run.sh`, JIT and AOT (8 shards) | 6447 passed, 0 failed | 6455 | 3507 s | 94.9% | 91.0% |
-| ffi | `tests/ffi/run.sh`, JIT and AOT | 149 passed, 0 failed; skipped: py_coerce (the CPython-hosted compiler's own locale coercion reaches the program) | 132 | 147 s | 36.5% | 28.1% |
-| cache | `tests/cache.sh` | 68 passed, 0 failed | 34 | 261 s | 27.9% | 18.5% |
-| unit | `tools/test_typed*.py`, `tools/test_function_summaries.py` | 160 tests, OK | 2 | 14 s | 48.0% | 40.5% |
-| ir | `tools/check_ir.sh`: `pystachy.py`, `runtime.py`, `bench/`, the `tests/ir/` contracts | the IR check and llvm-as accept the IR of 90 programs | 90 | 135 s | 58.0% | 50.8% |
+| corpus | `tests/run.sh`, JIT and AOT (8 shards) | 6447 passed, 0 failed | 6455 | 3625 s | 94.9% | 91.0% |
+| ffi | `tests/ffi/run.sh`, JIT and AOT | 149 passed, 0 failed; skipped: py_coerce (the CPython-hosted compiler's own locale coercion reaches the program) | 132 | 152 s | 36.5% | 28.1% |
+| cache | `tests/cache.sh` | 68 passed, 0 failed | 34 | 310 s | 27.9% | 18.5% |
+| unit | `tools/test_typed*.py`, `tools/test_function_summaries.py` | 160 tests, OK | 2 | 16 s | 48.0% | 40.5% |
+| ir | `tools/check_ir.sh`: `pystachy.py`, `runtime.py`, `bench/`, the `tests/ir/` contracts | the IR check and llvm-as accept the IR of 90 programs | 90 | 155 s | 58.0% | 50.8% |
 | **all** | | | **6713** | | **96.0%** | **92.5%** |
 
 The other suites run 483 statements and 354 branches that the corpus does not.
