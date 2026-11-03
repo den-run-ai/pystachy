@@ -7,7 +7,7 @@ from src.pystachy_compiler.diagnostics import Rejoin, int_lists, shown, where
 from src.pystachy_compiler.dynamic import comparison_record_write, comparison_storage_key
 from src.pystachy_compiler.ir import ClassInfo, FnInfo, Ins, Val
 from src.pystachy_compiler.module import Mod
-from src.pystachy_compiler.names import owner, short
+from src.pystachy_compiler.names import ENUMCLASSES, owner, short
 from src.pystachy_compiler.specs import (
     ANYUSE,
     BIG,
@@ -1655,6 +1655,8 @@ def gen_declare_fields(self, ci: ClassInfo) -> None:
             self.add_field(ci, name, self.vtype(st.kids[1]))
             if len(st.kids) == 3:
                 ci.fdefault[name] = st.kids[2]
+            if len(st.kids) == 3 and st.kids[2].kind in ["enummember", "enumalias"] and ci.node.line in ENUMCLASSES:
+                self.cvars[ci.name + "." + name] = True  # (an enum member: the class's, which no object holds)
             if ci.name in self.nts and len(st.kids) == 3:
                 last = name
             elif last != "" and ci.name in self.nts:

@@ -1,0 +1,8 @@
+3 3
+2 5
+b'abcde' 2
+1 5 b'Abcde'
+1 6
+b'Abcde!ABC'
+b'A'
+[exit 0]

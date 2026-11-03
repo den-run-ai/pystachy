@@ -1,0 +1,5 @@
+False RuntimeError: dictionary changed size during iteration
+False 5
+True copied 5
+True 5
+[exit 0]

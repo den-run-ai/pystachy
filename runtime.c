@@ -5,8 +5,10 @@
    Value model: every container slot is 8 bytes (int, float bits, bool, or pointer). */
 #define _GNU_SOURCE
 #include <ctype.h>
+#include <dirent.h>
 #include <dlfcn.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <langinfo.h>
 #include <locale.h>
 #include <pthread.h>
@@ -41,6 +43,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <unwind.h>
+#include <utime.h>
 
 /* A float's shortest round-trip digits: Ryu's d2s (ryu/, upstream commit 4c0618b; ryu/README.md),
    with its small tables. The driver's cached runtime is built from its files too, which RTPARTS
@@ -109,8 +112,10 @@ static inline int opt_in(void) { if (pys_plain) opt_in_trap(); return 1; }
    bytes: 16..136 in steps of 8, then four per power of two, each 8 bytes above a multiple
    of a power of two so that 2^k-byte arrays fit tightly. A box takes 16 bytes exactly
    (gc_box: code reads a box's two words and walks none). Small objects live in 64 KiB
-   chunks of one class each, carved from 1 MiB calloc'd arenas (big enough for malloc to map
-   fresh memory, which comes zeroed at no cost); larger objects get a calloc'd block each.
+   chunks of one class each; larger objects take whole pages each. Both come from the page
+   heap (below), which maps memory itself rather than through malloc, so that the pages a
+   collection frees serve the next cycle without page faults, and without zeroing where they
+   are clean or their new object's caller writes every byte (gc_raw).
    Every chunk and large object starts with a Seg header on a page boundary, and a two-level
    page map (48-bit addresses, 4 KiB pages) sends each of its pages to that header, so "is
    this word a pointer into the heap, and into which object" is a range check, two loads and
@@ -123,7 +128,11 @@ static inline int opt_in(void) { if (pys_plain) opt_in_trap(); return 1; }
    of ints, the merge buffers of sorts of ints and floats),
    since none of it can hold a pointer. Each (class, kind) has a free list. Memory is
    handed out zeroed: the sweep zeroes dead slots, so allocation pops a slot and clears its
-   link word (inlined into callers for the classes up to 136 bytes). A chunk's never-used
+   link word (inlined into callers for the classes up to 136 bytes; the JIT tier inlines its
+   own copy, lower_module.py's JITFAST). The atomic classes past 136 bytes are cleared as they are
+   handed out instead, as much as the request asks for (LAZY), and not at all for gc_raw,
+   whose caller writes every byte it reads (new strs): their dead slots are never scanned, so
+   what they hold keeps nothing alive. A chunk's never-used
    slots are linked about a page at a time, so memory the program has not needed stays
    untouched (only a recycled chunk's must be zeroed). Links are stored complemented, so a
    free slot never looks like a pointer, and accessed as may_alias words, so TBAA cannot
@@ -141,25 +150,27 @@ static inline int opt_in(void) { if (pys_plain) opt_in_trap(); return 1; }
    stays near twice the live set. A large allocation also runs one when the pointer-free
    large objects (numeric arrays and strs, which marking never scans) handed out since the
    last are at least half of those bytes and reach max(4 MiB, live bytes after it): each is a
-   calloc'd block that only a collection frees, so a program that mostly makes and drops big
-   arrays would otherwise go through 32 MiB of cold blocks, which calloc zeroes again,
-   between collections, and while little is live a collection costs little. Programs that
+   run of pages that only a collection frees, so a program that mostly makes and drops big
+   arrays would otherwise go through 32 MiB of cold pages between collections, and while
+   little is live a collection costs little. Programs that
    mostly make small objects or arrays of pointers keep the 32 MiB window and its timing:
    there, a collection that big arrays started would come mid-computation, when much more is
    live, or would scan a growing list again. A file open for writing holds malloc'd buffers,
    which count as heap bytes (gc_ext: handed out, live, in the heap) in the 32 MiB window as
    a large object's do, so files dropped without close() start collections too; a standard
-   stream's do not, as no collection frees them. Dead large objects go straight back to the C
-   allocator, and a live str that appends grew gives back the room they left (str_trim);
-   empty chunks are kept for the next cycle's allocations, and beyond that every arena whose
-   chunks are all empty is freed. A chunk that handed out nothing and lost nothing since the
-   last sweep keeps its free list as is.
+   stream's do not, as no collection frees them. Dead large objects and empty chunks go back
+   to the page heap, and a live str that appends grew gives back the room it left (str_trim);
+   the page heap keeps as many free pages as the next cycle may take and gives the rest back
+   to the system (pages_settle). PYSTACHY_GC_MIN=N sets N MiB for the 32 (#650). A chunk that
+   handed out nothing and lost nothing since the last sweep keeps its free list as is.
    The code is compact on purpose: under the JIT it is compiled again at every program start.
    Testing: PYSTACHY_GC_STRESS=N collects every N allocations, PYSTACHY_GC=off never
    collects, PYSTACHY_GC=stats prints a summary at exit. */
 #define PAGE 4096
 #define CHUNK 65536                    /* small-object chunk */
-#define ARENA 16                       /* chunks per calloc'd arena */
+#define REGION ((I)2 << 20)            /* the page heap maps memory 2 MiB at a time, so aligned */
+#define RPAGES ((int)(REGION / PAGE))  /* pages per region */
+#define NBIN 36                        /* free-run lists: 1..32 pages, then up to 64, 128, 256, 512 */
 #define SMALL 8200                     /* largest size class */
 #define MQ 16                          /* ranges marking prefetches before it scans them (a power of two) */
 #define NK 80                          /* free lists: 40 classes x {scanned, atomic} */
@@ -168,31 +179,50 @@ static inline int opt_in(void) { if (pys_plain) opt_in_trap(); return 1; }
 typedef uintptr_t __attribute__((may_alias)) W;   /* a heap or stack word: aliases every type */
 typedef struct Seg Seg;
 struct Seg {                           /* header on the first page of a chunk or large object */
-  Seg *next, *avail;                   /* chunk, pool or large-object list; chunks with free slots */
+  Seg *next, *avail;                   /* chunk or large-object list; chunks with free slots */
   char *start;                         /* first slot, or the large object */
-  I size, nobj, bump, lim;             /* slot size (large: bytes + 1) and count; slots [0, bump)
-                                          have been handed out; lim: bytes from start that can hold
-                                          objects (bump * size, large: size, pooled: 0) */
+  I size, nobj, bump, lim;             /* slot size (large: bytes + 1) and count (large: the pages of
+                                          its run or mapping); slots [0, bump) have been handed out;
+                                          lim: bytes from start that can hold objects (bump * size,
+                                          large: size) */
   I nfree, nlive, nmark;               /* slots in free; survivors of the last sweep (large: a str's
                                           length + 1 then, str_trim); marked now */
   uint64_t inv;                        /* ceil(2^40 / size): slot = offset * inv >> 40 */
   W free;                              /* complemented head of the free slots not yet handed out */
-  void *raw;                           /* calloc'd block: the large object's, or the arena's (its
-                                          first word counts the arena's chunks in use) */
+  I rg;                                /* the region whose pages it holds, plus one (0: a large
+                                          object's own mapping) */
   int k, large, used, dirty;           /* free list 2 * class + atomic (large: atomic); slots were
                                           handed out since the last sweep (large: a str that appends
                                           grew, str_grow); [bump, nobj) needs zeroing */
   uint64_t mark[];                     /* one bit per slot */
 };
+typedef struct {                       /* a region of the page heap: 2 MiB that it mapped */
+  char *base;                          /* its first page (NULL: an unmapped region's slot) */
+  uint64_t used[RPAGES / 64];          /* the pages that a chunk or large object holds */
+  uint64_t dirty[RPAGES / 64];         /* pages that may hold nonzero bytes: written since they
+                                          were mapped or purged */
+  uint64_t idle[RPAGES / 64];          /* dirty free pages that no allocation has taken since the
+                                          last sweep */
+  I nused;                             /* pages used */
+} Region;
+typedef struct { int32_t r, first, n; } PRun;   /* free pages [first, first + n) of region r */
 #define HB ((I)((sizeof(Seg) + 8 + 15) & ~(size_t)15))   /* large-object header: one mark word */
 static const short csize[NK / 2] = {16, 24, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120, 128,
   136, 168, 200, 232, 264, 328, 392, 456, 520, 648, 776, 904, 1032, 1288, 1544, 1800, 2056,
   2568, 3080, 3592, 4104, 5128, 6152, 7176, 8200};
-/* GC_NO_ROOT(fl, sfl): allocator free lists; marking would retain dead objects. */
-static W *fl[NK], *sfl[NK];            /* free list being allocated from; its stand-in under stress */
-/* GC_NO_ROOT(avail, chunks, pool, bigs, pmap): allocator metadata, not strong references. */
-static Seg *avail[NK], *chunks, *pool, *bigs, ***pmap;
+/* GC_NO_ROOT(pys_fl, sfl): allocator free lists; marking would retain dead objects. */
+W *pys_fl[NK];                         /* free list being allocated from: external, for the JIT tier's
+                                          inlined fast path (lower_module.py's JITFAST) */
+static W *sfl[NK];                     /* its stand-in under stress */
+/* GC_NO_ROOT(avail, chunks, bigs, hcache, pmap): allocator metadata, not strong references. */
+static Seg *avail[NK], *chunks, *bigs, *hcache, ***pmap;   /* hcache: freed mappings of large objects */
+/* GC_NO_ROOT(regs, bins): page-heap metadata, malloc'd, which holds no reference. */
+static Region *regs;                   /* the page heap's regions */
+static PRun *bins[2][NBIN];            /* its free runs, by length (rebuilt by each sweep): [0] those
+                                          with dirty pages, which allocation takes first, [1] clean */
+static I nregs, cregs, nbin[2][NBIN], cbin[2][NBIN];
 static uintptr_t gc_lo, gc_hi;         /* bounds of the pages in the page map */
+static I gc_min = GC_MIN;              /* GC_MIN, or PYSTACHY_GC_MIN's */
 static I gc_allocd, gc_limit = GC_MIN, gc_live, gc_heap, gc_peak, gc_n, gc_ns, gc_stress, gc_tick;
 static I gc_big, gc_big_limit = BIG_MIN;   /* pointer-free large-object bytes handed out since the last collection */
 static I gc_ext;                       /* malloc'd bytes that heap objects hold: open files' buffers (see I/O) */
@@ -243,11 +273,10 @@ static I cls(I n) {                    /* size class for n bytes plus one byte o
   int e = 63 - __builtin_clzll(y - 1);   /* 2^e < y <= 2^(e+1); classes are (5..8) * 2^(e-2) + 8 */
   return 16 + (e - 7) * 4 + (I)((y + (1ULL << (e - 2)) - 1) >> (e - 2)) - 5;
 }
-__attribute__((noinline)) static void pmap_set(uintptr_t a, uintptr_t e, Seg *v, I bytes) {
-  if (e >> 48) oom();                  /* map the pages of [a, e) to v (or unmap), account bytes */
+__attribute__((noinline)) static void pmap_set(uintptr_t a, uintptr_t e, Seg *v) {
+  if (e >> 48) oom();                  /* map the pages of [a, e) to v (or unmap) */
   if (v && (!gc_hi || a < gc_lo)) gc_lo = a;
   if (v && e > gc_hi) gc_hi = e;
-  if ((gc_heap += bytes) > gc_peak) gc_peak = gc_heap;
   for (; a < e; a += PAGE) {
     Seg **m = pmap[a >> 30];
     if (!m && !(m = pmap[a >> 30] = calloc(1 << 18, sizeof *m))) oom();
@@ -287,8 +316,13 @@ __attribute__((noinline, no_sanitize("address"))) static void mark_roots(void) {
     if (nunw) scan((const W *)unw, (const W *)(unw + nunw));   /* unw is NULL before the first */
   }
 }
+/* The atomic classes past the inlined ones (168 bytes and up): their dead slots are not cleared,
+   since gc_slow clears what an allocation asks for (gc_raw callers write every byte they read).
+   Nothing scans such a slot, so what a dead object left there keeps nothing alive */
+#define LAZY(k) ((k) & 1 && (k) >> 1 >= 16)
 __attribute__((noinline)) static void rebuild(Seg *s) {   /* free list of unmarked slots below bump */
   I n = s->bump, sz = s->size;
+  int z = !LAZY(s->k);
   W *tail = &s->free;
   s->nfree = n - s->nmark; s->nlive = s->nmark; s->used = 0;
   for (I i = 0, j; i < n; i = j) {     /* runs of equal mark bits, a mark word at a time */
@@ -296,45 +330,219 @@ __attribute__((noinline)) static void rebuild(Seg *s) {   /* free list of unmark
     j = r ? i + __builtin_ctzll(r) : (i | 63) + 1;
     if (j > n) j = n;
     if (w & 1) continue;               /* [i, j) survived */
-    memset(s->start + i * sz, 0, (j - i) * sz);   /* [i, j) is dead or free */
+    if (z) memset(s->start + i * sz, 0, (j - i) * sz);   /* [i, j) is dead or free */
 #pragma clang loop unroll(disable) vectorize(disable)
     for (I x = i; x < j; x++) { *tail = ~(uintptr_t)(s->start + x * sz); tail = (W *)(s->start + x * sz); }
   }
   *tail = ~(uintptr_t)0;
 }
-/* PAGE describes the collector's map, not the kernel: ARM64 can use 16/64 KiB pages.
-   madvise rounds its length up, so discard only whole OS pages inside [a, e). */
-static void discard_pages(uintptr_t a, uintptr_t e) {
+/* ---------- the page heap ----------
+   Chunks and large objects take runs of whole pages from regions of 2 MiB, which the runtime maps
+   itself, aligned to 2 MiB (no allocator header or spare page beside them); an object of more pages
+   than a region's gets a mapping of its own. A region's bitmaps tell its used pages and those that
+   may be dirty. A page mapped or purged since it was last written reads as zero, so a zeroed
+   allocation clears only the dirty pages it takes (it never faults a fresh page in), and one whose
+   caller writes every byte (gc_raw) clears none. Only a sweep frees pages, so it makes the free
+   runs again, coalesced, from the bitmaps; until the next, an allocation takes the shortest run
+   that fits, one with dirty pages before a clean one (lists by length, lowest addresses first),
+   and leaves the rest of it. Each sweep keeps as many dirty free pages as the next cycle may
+   take: their memory is reused without page faults or the kernel's zeroing. It purges the others
+   (MADV_DONTNEED; elsewhere a fresh mapping over them), those a whole cycle left idle first
+   (pages_settle). A large object's own mapping, once freed, is kept for one of as many pages or
+   up to a quarter fewer, within the same budget. PAGE describes the collector's map, not the kernel:
+   ARM64 can use 16 or 64 KiB pages, so purging takes whole system pages. Transparent huge pages
+   (MADV_HUGEPAGE on regions) were measured and left off: #615's program peaked at 932 MiB of
+   RSS instead of 679 MiB, and smaller heaps ran no faster */
+static I os_page(void) {               /* the system's page size; 0 if unusable */
   static long page;
   if (!page) page = sysconf(_SC_PAGESIZE);
-  if (page <= 0 || (page & (page - 1))) return;   /* no safe discard if the query failed */
-  uintptr_t mask = (uintptr_t)page - 1;
-  if (a > UINTPTR_MAX - mask) return;
-  a = (a + mask) & ~mask; e &= ~mask;
-  if (a < e) madvise((void *)a, e - a, MADV_DONTNEED);
+  return page > 0 && !(page & (page - 1)) && page <= REGION ? page : 0;
+}
+static void heap_add(I bytes) { if ((gc_heap += bytes) > gc_peak) gc_peak = gc_heap; }
+static char *map_pages(I bytes) {      /* bytes (whole system pages) of zero pages, aligned to REGION */
+  size_t len = (size_t)bytes + REGION;
+  char *p = mmap(0, len, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+  if (p == MAP_FAILED) oom();
+  uintptr_t a = ((uintptr_t)p + REGION - 1) & ~(uintptr_t)(REGION - 1), e = a + bytes;
+  if (a > (uintptr_t)p) munmap(p, a - (uintptr_t)p);
+  if ((uintptr_t)p + len > e) munmap((void *)e, (uintptr_t)p + len - e);
+  return (char *)a;
+}
+static I purge(uintptr_t a, uintptr_t e) {   /* the whole system pages in [a, e) back to the system,
+                                                zero when next read: their bytes (0: none) */
+  I page = os_page();
+  if (!page) return 0;
+  a = (a + page - 1) & ~(uintptr_t)(page - 1); e &= ~(uintptr_t)(page - 1);
+  if (a >= e) return 0;
+#ifdef __linux__
+  if (madvise((void *)a, e - a, MADV_DONTNEED)) return 0;
+#else
+  if (mmap((void *)a, e - a, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0) != (void *)a) oom();
+#endif
+  return (I)(e - a);
+}
+static void bits(uint64_t *m, I i, I n, int v) {   /* bits [i, i + n) of m, all v */
+  while (n > 0) {
+    I k = 64 - (i & 63) < n ? 64 - (i & 63) : n;
+    uint64_t f = (k == 64 ? ~0ULL : (1ULL << k) - 1) << (i & 63);
+    if (v) m[i >> 6] |= f; else m[i >> 6] &= ~f;
+    i += k; n -= k;
+  }
+}
+static I nbits(const uint64_t *m, I i, I n) {   /* the bits of [i, i + n) of m that are set */
+  I c = 0;
+  while (n > 0) {
+    I k = 64 - (i & 63) < n ? 64 - (i & 63) : n;
+    c += __builtin_popcountll(m[i >> 6] >> (i & 63) & (k == 64 ? ~0ULL : (1ULL << k) - 1));
+    i += k; n -= k;
+  }
+  return c;
+}
+static I next_bit(const uint64_t *m, I i, int v) {   /* the first bit at or past i that is v (RPAGES: none) */
+  for (; i < RPAGES; i = (i | 63) + 1) {
+    uint64_t w = (v ? m[i >> 6] : ~m[i >> 6]) >> (i & 63);
+    if (w) return i + __builtin_ctzll(w);
+  }
+  return RPAGES;
+}
+static int run_bin(I n) { return n <= 32 ? (int)n - 1 : 27 + (63 - __builtin_clzll((uint64_t)n - 1)); }
+__attribute__((noinline)) static void run_push(int c, I r, I first, I n) {   /* c: 1 for a clean run */
+  int b = run_bin(n);
+  if (nbin[c][b] == cbin[c][b] && !(bins[c][b] = realloc(bins[c][b], (cbin[c][b] = 2 * cbin[c][b] + 16) * sizeof(PRun)))) oom();
+  bins[c][b][nbin[c][b]++] = (PRun){(int32_t)r, (int32_t)first, (int32_t)n};
+}
+/* np pages (at most RPAGES) from the shortest free run that holds them, one with dirty pages if
+   any does (their memory is in use already: a clean page costs a page fault and the kernel's
+   zeroing), or from a new region: their address. *rg: their region plus one; *dirty: whether any
+   of them may be dirty. The heap counts the clean ones from now (it counts dirty free pages already) */
+static char *pages_take(I np, I *rg, int *dirty) {
+  I r = -1, first = 0;
+  for (int c = 0; c < 2 && r < 0; c++)
+    for (int b = run_bin(np); b < NBIN && r < 0; b++)
+      for (I j = nbin[c][b] - 1; j >= 0; j--) {
+        PRun u = bins[c][b][j];
+        if (u.n < np) continue;        /* (a list of runs of several lengths) */
+        bins[c][b][j] = bins[c][b][--nbin[c][b]];
+        if (u.n > np) run_push(c, u.r, u.first + np, u.n - np);
+        r = u.r; first = u.first;
+        break;
+      }
+  if (r < 0) {                         /* a new region, whose pages are all free and zero */
+    for (r = 0; r < nregs && regs[r].base; r++) {}
+    if (r == nregs && nregs++ == cregs && !(regs = realloc(regs, (cregs = 2 * cregs + 16) * sizeof *regs))) oom();
+    memset(&regs[r], 0, sizeof *regs);
+    regs[r].base = map_pages(REGION);
+    if (np < RPAGES) run_push(1, r, np, RPAGES - np);
+  }
+  Region *g = &regs[r];
+  I d = nbits(g->dirty, first, np);
+  bits(g->used, first, np, 1); bits(g->idle, first, np, 0); g->nused += np;
+  heap_add((np - d) * PAGE);
+  *rg = r + 1; *dirty = d != 0;
+  return g->base + first * PAGE;
+}
+static void pages_give(I rg, uintptr_t a, I np) {   /* in a sweep: the np pages from a are free (dirty) */
+  Region *g = &regs[rg - 1];
+  I first = (I)((a - (uintptr_t)g->base) / PAGE);
+  bits(g->used, first, np, 0); bits(g->dirty, first, np, 1); g->nused -= np;
+}
+static I pages_purge(Region *g, I first, I n) {   /* purge free pages [first, first + n): the dirty ones made clean */
+  uintptr_t a = (uintptr_t)g->base + first * PAGE, e = a + n * PAGE;
+  I page = os_page(), c;
+  if (!purge(a, e)) return 0;
+  a = (a + page - 1) & ~(uintptr_t)(page - 1); e &= ~(uintptr_t)(page - 1);   /* (what purge gave back) */
+  first = (I)((a - (uintptr_t)g->base) / PAGE); n = (I)((e - a) / PAGE);
+  c = nbits(g->dirty, first, n);
+  bits(g->dirty, first, n, 0);
+  heap_add(-c * PAGE);
+  return c;
+}
+static void zero_dirty(I rg, char *p, char *e) {   /* clear [p, e) where its pages may be dirty */
+  Region *g = &regs[rg - 1];
+  while (p < e) {
+    I i = (I)((p - g->base) / PAGE);
+    char *q = g->base + (i + 1) * PAGE < e ? g->base + (i + 1) * PAGE : e;
+    if (g->dirty[i >> 6] >> (i & 63) & 1) memset(p, 0, q - p);
+    p = q;
+  }
+}
+/* the end of a sweep: the free pages kept for the next cycle, then its free runs. It keeps keep
+   bytes of dirty free pages, the next cycle's allocation with half as much again for chunks and
+   page-rounded large objects that fit no free run, so a program whose heap stays as large purges
+   nothing. Past that, the oldest freed mappings go first (kept one cycle only, #650's nodes
+   program mapped a 2 MiB list array afresh, 513 page faults, each time its steps per cycle went
+   from three to four), then the pages that the last cycle left idle, then regions all free
+   (unmapped), then other free runs, the last regions' first. Out of line: inlined into collect, its array of runs would make
+   collect's frame 2 KiB larger, and marking scans that frame (stale words there retained dead
+   objects: microGPT's last collection kept 20.6 MiB instead of 14.7) */
+__attribute__((noinline)) static void pages_settle(Seg *freed, I keep) {
+  I d = 0;
+  for (I r = 0; r < nregs; r++)        /* the dirty free pages */
+    for (int w = 0; regs[r].base && w < RPAGES / 64; w++) d += __builtin_popcountll(regs[r].dirty[w] & ~regs[r].used[w]) * PAGE;
+  for (Seg *s = freed, *t; s; s = t) { t = s->next; s->next = hcache; hcache = s; }   /* (newest first) */
+  for (Seg **pp = &hcache, *s; (s = *pp);) {   /* freed mappings within keep, the newest first */
+    if (d + s->nfree > keep) { *pp = s->next; heap_add(-s->nfree); munmap(s, s->nobj * PAGE); continue; }
+    d += s->nfree; pp = &s->next;
+  }
+  for (I r = nregs - 1; r >= 0 && d > keep; r--)    /* the idle pages */
+    for (I i = 0, j; regs[r].base && d > keep && (i = next_bit(regs[r].idle, i, 1)) < RPAGES; i = j) {
+      j = next_bit(regs[r].idle, i, 0);
+      d -= pages_purge(&regs[r], i, j - i) * PAGE;
+    }
+  for (I r = nregs - 1; r >= 0 && d > keep; r--) {   /* regions all free: unmapped */
+    Region *g = &regs[r];
+    if (!g->base || g->nused) continue;
+    I c = nbits(g->dirty, 0, RPAGES) * PAGE;
+    munmap(g->base, REGION); g->base = 0; heap_add(-c); d -= c;
+  }
+  for (I r = nregs - 1; r >= 0 && d > keep; r--)    /* other free runs */
+    for (I i = 0, j; regs[r].base && d > keep && (i = next_bit(regs[r].used, i, 0)) < RPAGES; i = j) {
+      j = next_bit(regs[r].used, i, 1);
+      d -= pages_purge(&regs[r], i, j - i) * PAGE;
+    }
+  memset(nbin, 0, sizeof nbin);
+  for (I r = nregs - 1; r >= 0; r--) {   /* the runs, so that each list hands out its lowest first */
+    Region *g = &regs[r];
+    int32_t at[RPAGES + 1]; int n = 0;
+    for (int w = 0; g->base && w < RPAGES / 64; w++) g->idle[w] = g->dirty[w] & ~g->used[w];
+    for (I i = 0, j; g->base && (i = next_bit(g->used, i, 0)) < RPAGES; i = j) {
+      j = next_bit(g->used, i, 1); at[n++] = (int32_t)i; at[n++] = (int32_t)j;
+    }
+    while (n) { n -= 2; run_push(!nbits(g->dirty, at[n], at[n + 1] - at[n]), r, at[n], at[n + 1] - at[n]); }
+  }
 }
 /* s, a live large str that appends grew (str_grow), gives back the room past its length where
    more than a quarter of it is unused (the copy that made s left room for as much again), once it
    has not grown since the last sweep: a str that a loop is still appending to keeps its room, as
-   giving it back would only make the next append copy it. The block stays where it is, as the
-   str does; the whole pages past the str leave the page map and go back to the system, and the
-   heap counts the bytes no longer. Nothing wrote those pages, so they are zero for calloc */
+   giving it back would only make the next append copy it. The str stays where it is; the whole
+   pages past it leave the page map and go back to the system, and the heap counts them no longer */
 static void str_trim(Seg *s) {
   I len = ((Str *)s->start)->len, m = (I)sizeof(Str) + len + 1, n = s->size - 1;
   if (s->nlive != len + 1) { s->nlive = len + 1; return; }
   if (4 * (n - m) <= n) return;
   uintptr_t a = ((uintptr_t)s->start + m + PAGE) & ~(uintptr_t)(PAGE - 1), e = (uintptr_t)s->start + s->size;
+  I keep = (I)((a - (uintptr_t)s) / PAGE);
   s->size = s->lim = m + 1;
-  pmap_set(a, e, 0, m - n);
-  discard_pages(a, e);
+  pmap_set(a, e, 0);
+  if (keep >= s->nobj) return;
+  if (s->rg) {                         /* free pages of its region, purged */
+    pages_give(s->rg, a, s->nobj - keep);
+    pages_purge(&regs[s->rg - 1], keep + (I)(((uintptr_t)s - (uintptr_t)regs[s->rg - 1].base) / PAGE), s->nobj - keep);
+    s->nobj = keep;
+  } else {                             /* its own mapping keeps its length */
+    I c = purge(a, (uintptr_t)s + s->nobj * PAGE);
+    s->nfree -= c; heap_add(-c);
+  }
 }
 static void sweep(void) {
   I live = 0, spare = 0;
-  memset(fl, 0, sizeof fl); memset(sfl, 0, sizeof sfl); memset(avail, 0, sizeof avail);
+  Seg *freed = 0;                      /* large objects' own mappings freed now */
+  memset(pys_fl, 0, sizeof pys_fl); memset(sfl, 0, sizeof sfl); memset(avail, 0, sizeof avail);
   for (Seg **pp = &chunks, *s; (s = *pp);) {
     I sz = s->size, m = s->nmark;
-    if (!m) {                          /* empty: pool it */
-      *pp = s->next; s->lim = 0; s->next = pool; pool = s; --*(I *)s->raw;
+    if (!m) {                          /* empty: its pages go back to the page heap */
+      *pp = s->next;
+      pmap_set((uintptr_t)s, (uintptr_t)s + CHUNK, 0); pages_give(s->rg, (uintptr_t)s, CHUNK / PAGE);
       continue;
     }
     live += m * sz;
@@ -347,23 +555,15 @@ static void sweep(void) {
   }
   for (Seg **pp = &bigs, *s; (s = *pp);) {
     if (s->mark[0]) { s->mark[0] = 0; if (s->used) str_trim(s); live += s->size; pp = &s->next; continue; }
-    *pp = s->next;                     /* the header lives in the block: unmap, then free */
-    pmap_set((uintptr_t)s, (uintptr_t)s->start + s->size, 0, -(PAGE + HB + s->size - 1));
-    free(s->raw);
+    *pp = s->next;                     /* the header lives in its pages: unmap, then free them */
+    pmap_set((uintptr_t)s, (uintptr_t)s->start + s->size, 0);
+    if (s->rg) pages_give(s->rg, (uintptr_t)s, s->nobj);
+    else { s->next = freed; freed = s; }
   }
   live += gc_ext;                      /* the buffers of the files still open (files_sweep closed the others) */
-  gc_live = live; gc_allocd = 0; gc_limit = live > GC_MIN ? live : GC_MIN;
+  gc_live = live; gc_allocd = 0; gc_limit = live > gc_min ? live : gc_min;
   gc_big = 0; gc_big_limit = live > BIG_MIN ? live : BIG_MIN;
-  I pooled = 0;                        /* keep the empty chunks the next cycle may need; beyond */
-  for (Seg *s = pool; s; s = s->next) pooled += CHUNK;   /* that, free arenas with none in use */
-  for (Seg *s = pool; s && pooled > gc_limit - spare; s = s->next)
-    if (!*(I *)s->raw) { *(I *)s->raw = -1; pooled -= ARENA * CHUNK; }   /* -1: doomed */
-  for (Seg **pp = &pool, *s; (s = *pp);) {
-    I *a = s->raw;
-    if (*a >= 0) { pp = &s->next; continue; }
-    *pp = s->next; pmap_set((uintptr_t)s, (uintptr_t)s + CHUNK, 0, 0);
-    if (--*a < -ARENA) { gc_heap -= ARENA * CHUNK + PAGE; free(a); }   /* its last chunk */
-  }
+  pages_settle(freed, gc_limit + gc_limit / 2 - spare);   /* keep the free pages the next cycle may need */
 }
 static I nfiles;                       /* open files (see I/O): closed by the collector when unreachable */
 static void files_sweep(void);
@@ -406,72 +606,98 @@ __attribute__((noinline)) static void collect(void) {
     gc_ns += (t1.tv_sec - t0.tv_sec) * 1000000000 + t1.tv_nsec - t0.tv_nsec;
   }
 }
+/* The allocator's frames that a collection's caller holds are scanned as roots, words that no
+   one set included: the page heap's calls, whose results come back through memory, are made from
+   frames of their own (noinline) that exist only after the collection */
+__attribute__((noinline)) static Seg *chunk_new(int k) {   /* a chunk from the page heap; its slots come lazily */
+  I sz = csize[k >> 1], hdr = ((I)sizeof(Seg) + (CHUNK / sz + 63) / 64 * 8 + 15) & ~15, rg;
+  int dirty;
+  Seg *s = (Seg *)pages_take(CHUNK / PAGE, &rg, &dirty);   /* dirty: old objects need zeroing */
+  pmap_set((uintptr_t)s, (uintptr_t)s + CHUNK, s);
+  memset(s, 0, hdr);
+  s->rg = rg; s->k = k; s->size = sz; s->inv = ((1ULL << 40) + sz - 1) / sz; s->dirty = dirty;
+  s->start = (char *)s + hdr; s->nobj = (CHUNK - hdr) / sz; s->free = ~(uintptr_t)0;
+  s->next = chunks; chunks = s; avail[k] = s;
+  return s;
+}
+/* a large object of n bytes (how as gc_slow's): a header on its first page, then the object */
+__attribute__((noinline)) static void *big_new(I n, int how) {
+  I np = (HB + n + 1 + PAGE - 1) / PAGE, rg = 0, mapped = 0;
+  int dirty = 1;
+  Seg *s = 0;
+  if (np <= RPAGES) s = (Seg *)pages_take(np, &rg, &dirty);
+  else {                               /* its own mapping: a freed one that fits, or a new one */
+    for (Seg **pp = &hcache; (s = *pp); pp = &s->next)
+      if (s->nobj >= np && s->nobj - np <= np / 4) {
+        *pp = s->next; np = s->nobj; mapped = np * PAGE;
+        heap_add(mapped - s->nfree);   /* the pages str_trim purged count again: writing the object brings them back */
+        break;
+      }
+    if (!s) {
+      I page = os_page() ? os_page() : PAGE, bytes = (np * PAGE + page - 1) & ~(page - 1);
+      s = (Seg *)map_pages(bytes); np = bytes / PAGE; mapped = bytes; dirty = 0; heap_add(bytes);
+    }
+  }
+  memset(s, 0, HB);
+  s->rg = rg; s->nobj = np; s->nfree = mapped; s->large = 1; s->k = how & 1; s->size = s->lim = n + 1; s->start = (char *)s + HB;
+  pmap_set((uintptr_t)s, (uintptr_t)s->start + s->size, s);
+  if (how != 3 && dirty) { if (rg) zero_dirty(rg, s->start, s->start + n + 1); else memset(s->start, 0, n + 1); }
+  s->next = bigs; bigs = s; gc_allocd += n; if (how & 1) gc_big += n;
+  return s->start;
+}
 static void refill(int k) {            /* give free list k more free slots */
   Seg *s = avail[k];
   if (!s && !gc_off && gc_allocd >= gc_limit) { collect(); s = avail[k]; }
-  if (!s) {                            /* format a pooled chunk; its slots come lazily */
-    I sz = csize[k >> 1], hdr = ((I)sizeof(Seg) + (CHUNK / sz + 63) / 64 * 8 + 15) & ~15;
-    if (!pool) {                       /* a new arena: its chunks start out pooled and zero */
-      char *raw = calloc(1, ARENA * CHUNK + PAGE + 16), *c;
-      if (!raw) oom();
-      c = (char *)(((uintptr_t)raw + 16 + PAGE - 1) & ~(uintptr_t)(PAGE - 1));
-      for (int i = ARENA - 1; i >= 0; i--) {
-        s = (Seg *)(c + i * CHUNK); s->raw = raw; s->next = pool; pool = s;
-        pmap_set((uintptr_t)s, (uintptr_t)s + CHUNK, s, i ? 0 : ARENA * CHUNK + PAGE);
-      }
-    }
-    s = pool; pool = s->next;
-    void *raw = s->raw;
-    int dirty = s->size != 0;          /* formatted before: old objects need zeroing */
-    ++*(I *)raw;
-    memset(s, 0, hdr);
-    s->raw = raw; s->k = k; s->size = sz; s->inv = ((1ULL << 40) + sz - 1) / sz; s->dirty = dirty;
-    s->start = (char *)s + hdr; s->nobj = (CHUNK - hdr) / sz; s->free = ~(uintptr_t)0;
-    s->next = chunks; chunks = s; avail[k] = s;
-  }
+  if (!s) s = chunk_new(k);
   I sz = s->size;
   if (~s->free) {                      /* the slots the last sweep freed */
-    fl[k] = (W *)~s->free; s->free = ~(uintptr_t)0; gc_allocd += s->nfree * sz; s->nfree = 0;
+    pys_fl[k] = (W *)~s->free; s->free = ~(uintptr_t)0; gc_allocd += s->nfree * sz; s->nfree = 0;
   } else {                             /* about a page of never-used slots, so untouched memory stays so */
     I i = s->bump, j = i + (PAGE + sz - 1) / sz;
     if (j > s->nobj) j = s->nobj;
-    if (s->dirty) memset(s->start + i * sz, 0, (j - i) * sz);
+    if (s->dirty && !LAZY(k)) memset(s->start + i * sz, 0, (j - i) * sz);
 #pragma clang loop unroll(disable) vectorize(disable)
     for (I x = i; x < j; x++) *(W *)(s->start + x * sz) = ~(uintptr_t)(x + 1 < j ? s->start + (x + 1) * sz : 0);
-    fl[k] = (W *)(s->start + i * sz); s->bump = j; s->lim = j * sz; gc_allocd += (j - i) * sz;
+    pys_fl[k] = (W *)(s->start + i * sz); s->bump = j; s->lim = j * sz; gc_allocd += (j - i) * sz;
   }
   s->used = 1;
   if (s->bump == s->nobj) avail[k] = s->avail;   /* nothing left after this */
 }
-__attribute__((noinline)) static void *gc_slow(I n, int atomic) {
+/* how: 0, scanned memory; 1, atomic; 3, atomic whose every byte that is read the caller writes
+   first (gc_raw), which no class past the inlined ones (LAZY) nor large object clears */
+__attribute__((noinline)) static void *gc_slow(I n, int how) {
+  int atomic = how & 1;
   if ((uint64_t)n > (uint64_t)1 << 40) oom();
   if (gc_stress && ++gc_tick >= gc_stress) { gc_tick = 0; collect(); }
-  if (n >= SMALL) {                    /* large object: a page-aligned header in its own block */
+  if (n >= SMALL) {                    /* large object */
     if (!gc_off && (gc_allocd + n >= gc_limit ||
         (gc_big + (atomic ? n : 0) >= gc_big_limit && 2 * gc_big >= gc_allocd))) collect();
-    char *raw = calloc(1, PAGE + HB + n);
-    if (!raw) oom();
-    Seg *s = (Seg *)(((uintptr_t)raw + PAGE - 1) & ~(uintptr_t)(PAGE - 1));
-    s->raw = raw; s->large = 1; s->k = atomic; s->size = s->lim = n + 1; s->start = (char *)s + HB;
-    pmap_set((uintptr_t)s, (uintptr_t)s->start + s->size, s, PAGE + HB + n);
-    s->next = bigs; bigs = s; gc_allocd += n; if (atomic) gc_big += n;
-    return s->start;
+    return big_new(n, how);
   }
   int k = 2 * (int)cls(n) + atomic;
-  if (gc_stress) fl[k] = sfl[k];       /* under stress every allocation comes through here */
-  if (!fl[k]) refill(k);
-  W *p = fl[k];
-  fl[k] = (W *)~*p; *p = 0;
-  if (gc_stress) { sfl[k] = fl[k]; fl[k] = 0; }
+  if (gc_stress) pys_fl[k] = sfl[k];       /* under stress every allocation comes through here */
+  if (!pys_fl[k]) refill(k);
+  W *p = pys_fl[k];
+  pys_fl[k] = (W *)~*p;
+  if (!LAZY(k)) *p = 0;                /* the rest of its slot is clear */
+  else if (how != 3) memset(p, 0, n + 1);
+  if (gc_stress) { sfl[k] = pys_fl[k]; pys_fl[k] = 0; }
   return p;
 }
 static inline __attribute__((always_inline)) void *gc_alloc(I n, int atomic) {
   if ((uint64_t)n < 136) {             /* fast path, inlined: pop a zeroed slot of a class 16..136 */
-    W **h = &fl[2 * (n < 8 ? 0 : (n + 8) / 8 - 2) + atomic], *p = *h;
+    W **h = &pys_fl[2 * (n < 8 ? 0 : (n + 8) / 8 - 2) + atomic], *p = *h;
     if (__builtin_expect(p != 0, 1)) { *h = (W *)~*p; *p = 0; return p; }
   }
   return gc_slow(n, atomic);
 }
+/* The slow path of the JIT tier's fast path (lower_module.py's JITFAST: a program it runs pops pys_fl
+   itself, as gc_alloc does, and calls this for the rest) */
+void *pys_gc_slow(I n, I atomic) { return gc_slow(n, (int)atomic); }
+/* atomic memory whose bytes may be those of an object that died: for a caller that writes every
+   byte it (or anything) reads, as a new str's whose header, bytes and NUL it stores. The classes
+   the fast path serves come clear anyway */
+static void *gc_raw(I n) { return (uint64_t)n < 136 ? gc_alloc(n, 1) : gc_slow(n, 3); }   /* (an allocator: check_runtime's ALLOC) */
 __attribute__((malloc, returns_nonnull)) void *pys_alloc(I n) { return gc_alloc(n, 0); }
 __attribute__((malloc, returns_nonnull)) void *pys_alloc_atomic(I n) { return gc_alloc(n, 1); }
 /* Compiled code's own objects and fixed tuples (alloc.fixed) that hold no reference, only ints,
@@ -558,7 +784,7 @@ static void gc_extern(I n) {           /* n malloc'd bytes more that heap object
                                           heap's own; whoever allocates them collects first, as gc_slow would */
   if (n > 0) gc_allocd += n;
   gc_ext += n;
-  if ((gc_heap += n) > gc_peak) gc_peak = gc_heap;
+  heap_add(n);
 }
 static I trk_report(I *ex);
 static void gc_report(void) {
@@ -575,6 +801,9 @@ static void gc_init(char *sb, I **roots, I nroots) {
   gc_off = e && !strcmp(e, "off");
   gc_stats = e && !strcmp(e, "stats");
   if (!gc_off && (e = getenv("PYSTACHY_GC_STRESS")) && atoll(e) > 0) gc_stress = atoll(e);
+  /* PYSTACHY_GC_MIN=N: N MiB (1 to 2^20) of allocation between collections at least, for GC_MIN's 32
+     (#650): a program trades memory for fewer collections, or the reverse */
+  if ((e = getenv("PYSTACHY_GC_MIN")) && atoll(e) > 0 && atoll(e) <= (I)1 << 20) gc_limit = gc_min = (I)atoll(e) << 20;
 }
 
 /* errors end the program after flushing stdout; a flush that fails is reported at exit, as
@@ -631,7 +860,7 @@ _Noreturn void pys_exit_msg(Str *msg) {          /* sys.exit(msg): msg to stderr
 
 __attribute__((noinline)) static void put(Buf *b, const char *s, I n) {   /* not inlined: keeps repr small */
   if (b->n + n > b->cap) {
-    I c = b->cap * 2 + n + 64; char *p = pys_alloc_atomic(c);
+    I c = b->cap * 2 + n + 64; char *p = gc_raw(c);   /* (the bytes past b->n are never read) */
     if (b->n) memcpy(p, b->p, b->n);
     b->p = p; b->cap = c;
   }
@@ -639,7 +868,10 @@ __attribute__((noinline)) static void put(Buf *b, const char *s, I n) {   /* not
 }
 
 /* ---------- strings ---------- */
-Str *pys_str(const char *p, I n) { Str *s = pys_alloc_atomic(sizeof(Str) + n + 1); s->len = n; s->chars1 = n < 2 ? n + 1 : 0; if (n) memcpy(s->s, p, n); return s; }
+Str *pys_str(const char *p, I n) {
+  Str *s = gc_raw(sizeof(Str) + n + 1);   /* (every byte written: the header, the bytes and the NUL) */
+  s->len = n; s->dict_hash = 0; s->chars1 = n < 2 ? n + 1 : 0; if (n) memcpy(s->s, p, n); s->s[n] = 0; return s;
+}
 static Str *cstr(const char *p) { return pys_str(p, strlen(p)); }
 static Str *done(Buf *b) { return pys_str(b->p, b->n); }
 /* float text: CPython converts floats without the C locale (its own dtoa), so a Python that shares the
@@ -750,7 +982,7 @@ Str *pys_str_slice_step(Str *s, I lo, I hi, I st) {   /* s[lo:hi:st], over bytes
   if (st == 1 && n == s->len) return s;
   if (n < 2) return short_slice(s, lo, n);   /* (n = 0: lo, unread, may be past either end) */
   if (st == 1) return pys_str(s->s + lo, n);
-  Str *r = pys_alloc_atomic(sizeof(Str) + n + 1); r->len = n;
+  Str *r = gc_raw(sizeof(Str) + n + 1); r->len = n; r->dict_hash = 0; r->s[n] = 0;
   int ascii = 1;
   for (I i = 0; i < n; i++) {
     r->s[i] = s->s[lo + i * st];
@@ -947,9 +1179,9 @@ static I text_cat_count(I chars1, I len, Str *b) {
   return chars1 && b->chars1 && (b->s[0] & 0xC0) != 0x80 ? chars1 + b->chars1 - 1 : 0;
 }
 Str *pys_str_add(Str *a, Str *b) {
-  Str *s = pys_alloc_atomic(sizeof(Str) + a->len + b->len + 1);
-  s->len = a->len + b->len; s->chars1 = text_cat_count(a->chars1, a->len, b);
-  memcpy(s->s, a->s, a->len); memcpy(s->s + a->len, b->s, b->len); return s;
+  Str *s = gc_raw(sizeof(Str) + a->len + b->len + 1);
+  s->len = a->len + b->len; s->dict_hash = 0; s->chars1 = text_cat_count(a->chars1, a->len, b);
+  memcpy(s->s, a->s, a->len); memcpy(s->s + a->len, b->s, b->len); s->s[s->len] = 0; return s;
 }
 /* s += t of a str local (Gen.str_append). owned: an append made s and nothing else holds it (nor
    hashed it: dict_hash is 0), so t goes into s's own memory while it has room (gc_seg). Else a new
@@ -968,9 +1200,9 @@ Str *pys_str_add(Str *a, Str *b) {
 __attribute__((noinline)) static Str *str_grow(Str *s, I m, I owned) {   /* s in a new str of m bytes */
   Seg *g = gc_find(s);
   int big = g && g->large && g->used;
-  Str *r = pys_alloc_atomic(owned && big ? 2 * m : m);
+  Str *r = gc_raw(owned && big ? 2 * m : m);   /* (pys_str_iadd stores its chars1, bytes and NUL) */
   if (m >= SMALL && (owned || big)) gc_seg(r)->used = 1;
-  r->len = s->len; memcpy(r->s, s->s, s->len); return r;
+  r->len = s->len; r->dict_hash = 0; memcpy(r->s, s->s, s->len); return r;
 }
 Str *pys_str_iadd(Str *s, Str *t, I owned) {
   I n = s->len + t->len, m = (I)sizeof(Str) + n + 1, chars1 = text_cat_count(s->chars1, s->len, t);
@@ -987,10 +1219,10 @@ Str *pys_str_cat(I n, Str *a, Str *b, Str *c, Str *d, Str *e, Str *f, Str *g, St
   Str *p[8] = {a, b, c, d, e, f, g, h};
   I len = 0, chars1 = 1;
   for (int i = 0; i < 8; i++) if (i < n) { chars1 = text_cat_count(chars1, len, p[i]); len += p[i]->len; }
-  Str *s = pys_alloc_atomic(sizeof(Str) + len + 1); s->len = len; s->chars1 = chars1;
+  Str *s = gc_raw(sizeof(Str) + len + 1); s->len = len; s->dict_hash = 0; s->chars1 = chars1;
   char *w = s->s;
   for (int i = 0; i < 8; i++) if (i < n) { memcpy(w, p[i]->s, p[i]->len); w += p[i]->len; }
-  return s;
+  *w = 0; return s;
 }
 Str *pys_str_mul(Str *a, I n) {       /* as CPython's _PyBytes_Repeat: one byte is a memset, else the copied
                                          prefix doubles, log2(n) memcpys rather than n */
@@ -998,7 +1230,7 @@ Str *pys_str_mul(Str *a, I n) {       /* as CPython's _PyBytes_Repeat: one byte 
   if (n && a->len > INT64_MAX / n) pys_fail("OverflowError: repeated string is too long");
   if (a->len * n > INT64_MAX - 64) pys_fail("MemoryError");
   I m = a->len * n, k = a->len, c;
-  Str *s = pys_alloc_atomic(sizeof(Str) + m + 1); s->len = m;
+  Str *s = gc_raw(sizeof(Str) + m + 1); s->len = m; s->dict_hash = 0; s->s[m] = 0;
   s->chars1 = !n ? 1 : a->chars1 && (n == 1 || (a->s[0] & 0xC0) != 0x80) ? (a->chars1 - 1) * n + 1 : 0;
   if (k == 1) memset(s->s, a->s[0], m);
   else if (m) {
@@ -4529,6 +4761,10 @@ static int derives(const DynType *a, const DynType *b) { for (; a; a = a->base) 
    class's values may be None). The program's @o.x.<class> uses this to retain the typed call
    when a concrete comparison-operand annotation matches. */
 I pys_dyn_isa(Dyn *x, const DynType *t) { return x->t == t || (t->kind == DK_INT && DKIND(x) == DK_INT) || (t->kind == DK_OBJ && (DKIND(x) == DK_NONE || derives(x->t, t))); }
+/* is box x its own copy (lib/copy.py's __pys_copy_is_own and __pys_deepcopy_is_own of an Any
+   value): None, a bool, an int, a float or a str, as CPython's copy gives it; for copy.copy()
+   (deep 0) also a tuple or a function */
+I pys_dyn_copy_is_own(Dyn *x, I deep) { int k = DKIND(x); return k <= DK_STR || (!deep && (k == DK_TUPLE || k == DK_FUNC)); }
 /* type(x) is type(y) of the boxes of DynTypes a and b (null where no box holds a value of that
    type). Generators, functions and builtin iterators can have distinct storage descriptors
    for one Python type. Only compiler-owned builtin iterator classes carry DF_ITER: a user
@@ -5678,6 +5914,8 @@ typedef struct {
                                         (in pb) and buffered (in stdio's buffer, of bs bytes); errno of a failed
                                         write whose data CPython keeps (so writing it again fails again) */
   char *pb, *buf; dev_t dev; ino_t ino;   /* the two buffers (malloc'd); the file that was opened */
+  I bin;                               /* a binary file (see pys_bopen): CPython's BufferedReader 1, BufferedWriter 2,
+                                          BufferedRandom 3 or FileIO 4; 0 for text */
 } File;
 /* GC_NO_ROOT(std_in, std_out, std_err): static streams; names/modes are static and buffers malloc-backed. */
 static File std_in, std_out, std_err;
@@ -5767,7 +6005,7 @@ static int shut(File *f) {             /* close(): a flush, then the file is clo
   f->closed = 1; f->kept = 0;
   if (f->std) return e;                /* sys.stdout.close(): the stream stays open underneath */
   if (fclose(f->f) && !e) e = errno;
-  if (f->pb) gc_extern(-8192 - f->bs);   /* what setbuf1 counted */
+  if (f->pb) gc_extern(-(f->bin ? 0 : 8192) - f->bs);   /* what setbuf1 counted */
   free(f->pb); f->pb = f->buf = 0;
   return e;
 }
@@ -5803,9 +6041,16 @@ static void report(File *f, int e) {
   if (io_intr) return;                 /* the error is the EINTR of a Ctrl-C, which ends the program */
   EBuf o; char t[160]; const char *d = defenc();
   o.n = 0;
-  erepr(&o, "Exception ignored in: <_io.TextIOWrapper name=", f->name->s, f->name->len);
-  erepr(&o, " mode=", f->mode->s, f->mode->len);
-  erepr(&o, " encoding=", f->enc ? f->enc->s : d, f->enc ? f->enc->len : (I)strlen(d));
+  if (f->bin) {                        /* <_io.BufferedWriter name='p'>, <_io.FileIO name='p' mode='wb' closefd=True> */
+    const char *cls = f->bin == 1 ? "BufferedReader" : f->bin == 2 ? "BufferedWriter" : f->bin == 3 ? "BufferedRandom" : "FileIO";
+    snprintf(t, sizeof t, "Exception ignored in: <_io.%s name=", cls);
+    erepr(&o, t, f->name->s, f->name->len);
+    if (f->bin == 4) { erepr(&o, " mode=", f->mode->s, f->mode->len); eput(&o, " closefd=True", 13); }
+  } else {
+    erepr(&o, "Exception ignored in: <_io.TextIOWrapper name=", f->name->s, f->name->len);
+    erepr(&o, " mode=", f->mode->s, f->mode->len);
+    erepr(&o, " encoding=", f->enc ? f->enc->s : d, f->enc ? f->enc->len : (I)strlen(d));
+  }
   int n = snprintf(t, sizeof t, ">\n%s: [Errno %d] %s\n", errcls(e), e, strerror(e));
   eput(&o, t, n < (int)sizeof t ? n : (int)sizeof t - 1);
   fwrite(o.b, 1, o.n, stderr);
@@ -5894,11 +6139,13 @@ static void put1(File *f, const char *s, I n) {   /* write(): through CPython's 
   int e = f->emu ? wput(f, s, n) : (f == &std_err ? ewrite(s, n) : (void)fwrite(s, 1, n, f->f), ferror(f->f) ? osflush(f, 0) : 0);
   if (e) ioerr(e);
 }
-static void setbuf1(File *f, I bs) {   /* CPython's write layers: 8 KiB of pending text, then bs bytes buffered; a
-                                          file's (not a standard stream's) count as heap bytes (see memory) */
-  if (!(f->pb = malloc(8192 + bs))) oom();
-  if (!f->std) gc_extern(8192 + bs);
-  f->buf = f->pb + 8192; f->bs = bs; f->emu = 1;
+static void setbuf1(File *f, I bs) {   /* CPython's write layers: 8 KiB of pending text (none in a binary file), then
+                                          bs bytes buffered; a file's (not a standard stream's) count as heap bytes
+                                          (see memory) */
+  I pend = f->bin ? 0 : 8192;
+  if (!(f->pb = malloc(pend + bs))) oom();
+  if (!f->std) gc_extern(pend + bs);
+  f->buf = f->pb + pend; f->bs = bs; f->emu = 1;
   setvbuf(f->f, f->buf, _IOFBF, bs);
 }
 static int jit;                        /* pystachy run: the program runs in lli's process */
@@ -6018,7 +6265,7 @@ File *pys_open(Str *path, Str *mode, Str *enc, Str *nl, I buffering) {   /* CPyt
   }
   if (t && b) pys_fail("ValueError: can't have text and binary mode at once");
   if (x + r + w + a > 1) pys_fail("ValueError: must have exactly one of create/read/write/append mode");
-  if (b) pys_fail("NotImplementedError: binary mode is not supported (no bytes type)");
+  if (b) pys_fail("NotImplementedError: open() of a binary mode makes a binary file only where the mode is a literal (open(file, \"rb\")): this open() makes text files");   /* (loader.py's binary_opens) */
   if (nul(path)) pys_fail("ValueError: embedded null byte");
   if (!(x + r + w + a)) pys_fail("ValueError: Must have exactly one of create/read/write/append mode and at most one plus");
   io_in();
@@ -6075,7 +6322,21 @@ static void use(File *f, int rd) {     /* check a read (rd) or write, and reposi
   }
   f->last = rd ? 2 : 1;
 }
-static int get(File *f) { int c = getc_unlocked(f->f); f->rcons += c != EOF; return c; }
+/* stdio's EOF of a read: 0 at the end of the file. A read error raises CPython's OSError, and the file reads
+   again later (clearerr): CPython's error is no end of the file. The EINTR of a Ctrl-C raises KeyboardInterrupt
+   (pys_fail); another EINTR, of a signal a handler took, reads again: 1, as CPython retries (PEP 475) */
+static int again(File *f) {
+  if (!ferror(f->f)) return 0;
+  int e = errno ? errno : EIO;
+  clearerr(f->f);
+  if (e == EINTR && !io_intr) return 1;
+  ioerr(e);
+}
+static int get(File *f) {
+  int c;
+  while ((c = getc_unlocked(f->f)) == EOF && again(f)) {}
+  f->rcons += c != EOF; return c;
+}
 static void unget(File *f, int c) { ungetc(c, f->f); f->rcons--; }
 static int getnl(File *f, int c) {     /* newline=None reads "\r\n" and "\r" as "\n" */
   if (c == '\r' && !f->nl) { int d = get(f); if (d != '\n' && d != EOF) unget(f, d); c = '\n'; }
@@ -6095,8 +6356,12 @@ static Str *decode(File *f, Buf *b) {  /* the str of the bytes a read got: in a 
 static Str *read1(File *f, I n) {      /* n < 0: to the end; else n characters (in a Latin-1 file, n bytes) */
   use(f, 1); Buf b = {0};
   if (n < 0) {
-    char t[1 << 16]; size_t k;
-    while ((k = fread(t, 1, sizeof t, f->f)) > 0) { put(&b, t, k); f->rcons += k; }
+    char t[1 << 16];
+    for (;;) {
+      size_t k = fread(t, 1, sizeof t, f->f);
+      if (k) { put(&b, t, k); f->rcons += k; }
+      if (k < sizeof t && !again(f)) break;   /* the end (a read error raises) */
+    }
     I j = 0;
     if (!f->nl) for (I i = 0; i < b.n; i++) { char c = b.p[i]; if (c == '\r') { c = '\n'; i += i + 1 < b.n && b.p[i + 1] == '\n'; } b.p[j++] = c; }
     if (!f->nl) b.n = j;
@@ -6236,6 +6501,171 @@ I pys_file_fileno(File *f) {           /* the OS descriptor; a closed file raise
 }
 Str *pys_file_name(File *f) { return f->name ? f->name : cstr(f == &std_in ? "<stdin>" : f == &std_out ? "<stdout>" : "<stderr>"); }
 Str *pys_file_mode(File *f) { return f->mode ? f->mode : cstr(f == &std_in ? "r" : "w"); }
+/* Binary files: open() of a mode with "b", which lib/_pystachy_bfile.py's classes hold. CPython makes a FileIO
+   (buffering=0: bin 4), or a BufferedReader, BufferedWriter or BufferedRandom over one (bin 1, 2, 3), whose
+   bytes are read and written as they are. A buffered file's writes reach the OS as bput() says, and its
+   reads and writes are at its position, as CPython's BufferedRandom moves the OS file's position to its own
+   between them; a FileIO writes at once. open() checks its arguments in CPython's order (its encoding,
+   errors and newline are the program's, which must be None) */
+File *pys_bopen(Str *path, Str *mode, Str *enc, Str *errs, Str *nl, I buffering) {
+  int x = 0, r = 0, w = 0, a = 0, plus = 0, t = 0, b = 0;
+  if (nul(mode) || (enc && nul(enc)) || (errs && nul(errs)) || (nl && nul(nl))) pys_fail("ValueError: embedded null character");
+  for (I i = 0; i < mode->len; i++) {
+    char c = mode->s[i];
+    int *p = c == 'x' ? &x : c == 'r' ? &r : c == 'w' ? &w : c == 'a' ? &a : c == '+' ? &plus : c == 't' ? &t : c == 'b' ? &b : 0;
+    if (!p || *p) failf("ValueError: invalid mode: '%s'", mode->s);
+    *p = 1;
+  }
+  if (t && b) pys_fail("ValueError: can't have text and binary mode at once");
+  if (x + r + w + a > 1) pys_fail("ValueError: must have exactly one of create/read/write/append mode");
+  if (enc) pys_fail("ValueError: binary mode doesn't take an encoding argument");
+  if (errs) pys_fail("ValueError: binary mode doesn't take an errors argument");
+  if (nl) pys_fail("ValueError: binary mode doesn't take a newline argument");
+  if (nul(path)) pys_fail("ValueError: embedded null byte");
+  if (!(x + r + w + a)) pys_fail("ValueError: Must have exactly one of create/read/write/append mode and at most one plus");
+  io_in();
+  struct stat st;
+  if (nfiles && !gc_off && !stat(path->s, &st) && writing(st.st_dev, st.st_ino))   /* as pys_open: a writer to this */
+    collect();                         /* file that nothing refers to any more has been closed by CPython */
+  char m[4] = {x || w ? 'w' : r ? 'r' : 'a', plus ? '+' : 0, 0, 0};
+  if (x) m[plus ? 2 : 1] = 'x';        /* glibc: O_EXCL */
+  FILE *f = fopen(path->s, m);
+  if (!f && (errno == EMFILE || errno == ENFILE) && !gc_off) { collect(); f = fopen(path->s, m); }
+  if (!f) oserr(path->s);
+  if (fstat(fileno(f), &st)) memset(&st, 0, sizeof st);
+  else if (S_ISDIR(st.st_mode)) { fclose(f); errno = EISDIR; oserr(path->s); }
+  File *o = pys_alloc(sizeof(File));
+  o->f = f; o->name = path; o->rd = r || plus; o->wr = !r || plus; o->nl = 2;
+  o->mode = cstr(x ? (plus ? "xb+" : "xb") : a ? (plus ? "ab+" : "ab") : plus ? "rb+" : r ? "rb" : "wb");   /* FileIO's */
+  o->bin = !buffering ? 4 : plus ? 3 : r ? 1 : 2; o->dev = st.st_dev; o->ino = st.st_ino;
+  if (!buffering) setvbuf(f, 0, _IONBF, 0);
+  else {                               /* buffering=, when above 1, else st_blksize bytes (1 is the program's error) */
+    I bs = buffering > 1 ? buffering : st.st_blksize > 1 ? st.st_blksize : 8192;
+    if (!gc_off && gc_allocd + bs >= gc_limit) collect();   /* its buffer is heap bytes: as gc_slow */
+    setbuf1(o, bs);
+  }
+  if (a) fseeko(f, 0, SEEK_END);       /* FileIO starts an append file at its end */
+  if (nfiles == cfiles && !(files = realloc(files, (cfiles = 2 * cfiles + 16) * sizeof *files))) oom();
+  files[nfiles++] = o;
+  io_out();
+  return o;
+}
+static void buse(File *f, int rd) {    /* a binary file's read (rd) or write, at its position */
+  if (rd && feof(f->f)) clearerr(f->f);   /* CPython reads again after the end: the file may have grown */
+  if (f->last == (rd ? 2 : 1)) return;
+  if (rd && f->last == 1) { int e = flush1(f); if (e) ioerr(e); }   /* what was written reaches the file first */
+  else if (!rd && f->last == 2) fseeko(f->f, 0, SEEK_CUR);   /* (C stdio: a write after a read repositions) */
+  f->last = rd ? 2 : 1;
+}
+static void bsync(File *f) {          /* before a descriptor operation: rewind unread input and invalidate stdio's
+                                          cached offset. Purging alone lets glibc's fseeko reuse stale buffer bytes.
+                                          Flush BEFORE moving the descriptor, or it can rewind from the new offset. */
+  int e = osflush(f, 0); if (e) ioerr(e);
+  pys_fpurge(f->f);                   /* also discard BSD/macOS input buffers */
+}
+static void bposition(File *f) {      /* a raw OS read/write moved the descriptor; stdio learns its new position */
+  off_t at = lseek(fileno(f->f), 0, SEEK_CUR);
+  if (at >= 0 && fseeko(f->f, at, SEEK_SET)) ioerr(errno);   /* pipes and terminals need no position sync */
+}
+Str *pys_bfile_read(File *f, I n) {    /* read(n): n bytes, or what remains (n < 0: all of it). A read error raises */
+  io_in(); buse(f, 1);
+  Buf b = {0}; char t[1 << 16];
+  if (f->bin == 4 && n >= 0) {         /* FileIO's read(n) is one read of the OS, which ends short where a pipe or a
+                                          terminal has fewer bytes (fread waits for n) */
+    bsync(f);
+    char *p = n <= (I)sizeof t ? t : malloc(n);
+    ssize_t r;
+    if (!p) oom();
+    while ((r = read(fileno(f->f), p, n)) < 0 && errno == EINTR && !io_intr) {}
+    if (r < 0) { int e = errno; if (p != t) free(p); ioerr(e); }
+    if (r) put(&b, p, r);
+    if (p != t) free(p);
+    bposition(f);
+    io_out();
+    return done(&b);
+  }
+  for (I left = n; left;) {
+    size_t want = left < 0 || left > (I)sizeof t ? sizeof t : (size_t)left, k = fread(t, 1, want, f->f);
+    if (k) put(&b, t, k);
+    if (left > 0) left -= (I)k;
+    if (k < want && !again(f)) break;   /* the end */
+  }
+  io_out();
+  return done(&b);
+}
+Str *pys_bfile_readline(File *f, I limit) {   /* readline(limit): through b"\n", at most limit bytes (limit < 0: all) */
+  io_in(); buse(f, 1);
+  Buf b = {0}; int c; char t[256]; I k = 0;
+  for (I n = 0; n != limit; n++) {
+    while ((c = getc_unlocked(f->f)) == EOF && again(f)) {}
+    if (c == EOF) break;
+    t[k++] = (char)c;
+    if (k == (I)sizeof t) { put(&b, t, k); k = 0; }
+    if (c == '\n') break;
+  }
+  io_out();
+  if (b.n) put(&b, t, k);
+  else b = (Buf){t, k, k};             /* the line fit in t */
+  return done(&b);
+}
+I pys_bfile_write(File *f, Str *s) {   /* write(b): a raw file may accept fewer bytes than b holds */
+  io_in(); buse(f, 0);
+  if (f->bin == 4) {                 /* FileIO makes one write: fwrite retries a short write, losing its progress
+                                          if that retry fails (for example at the process's file-size limit) */
+    bsync(f);
+    ssize_t n;
+    while ((n = write(fileno(f->f), s->s, s->len)) < 0 && errno == EINTR && !io_intr) {}
+    if (n < 0) ioerr(errno);
+    bposition(f);
+    io_out();
+    return n;
+  }
+  int e = f->emu ? bput(f, s->s, s->len, "", 0) : ((void)fwrite(s->s, 1, s->len, f->f), ferror(f->f) ? osflush(f, 0) : 0);
+  if (e) ioerr(e);
+  io_out();
+  return s->len;
+}
+I pys_bfile_seek(File *f, I pos, I whence) {   /* seek(pos, whence): the new position, through the OS's lseek (whence
+                                                  3 and 4 are Linux's SEEK_DATA and SEEK_HOLE) */
+  io_in(); int e = flush1(f); if (e) ioerr(e);
+  off_t at = ftello(f->f), r, to = pos;   /* (where a read left the file, before stdio's read-ahead) */
+  if (at < 0) ioerr(errno);
+  if (whence == SEEK_CUR && __builtin_add_overflow(at, pos, &to)) ioerr(EINVAL);   /* (the OS's error for it) */
+  bsync(f);
+  r = lseek(fileno(f->f), to, whence == SEEK_CUR ? SEEK_SET : whence);
+  if (r < 0) {
+    e = errno;
+    (void)fseeko(f->f, at, SEEK_SET);   /* keep the logical position and the original seek error */
+    f->last = 0;
+    ioerr(e);
+  }
+  if (fseeko(f->f, r, SEEK_SET)) ioerr(errno);
+  f->last = 0;
+  io_out();
+  return r;
+}
+I pys_bfile_tell(File *f) {            /* tell(): the position, written bytes that are still buffered included */
+  off_t r = ftello(f->f);
+  if (r < 0) ioerr(errno);
+  return r;
+}
+I pys_bfile_isatty(File *f) { return isatty(fileno(f->f)); }
+I pys_bfile_seekable(File *f) { return lseek(fileno(f->f), 0, SEEK_CUR) >= 0; }   /* as FileIO's: the OS can seek it */
+I pys_bfile_truncate(File *f, I size) {   /* truncate(size): what was written reaches the file first, and a buffered
+                                             file's read-ahead is dropped, as BufferedRandom rewinds its raw file to
+                                             its position, which stays: reads go on from there, in the file as it is */
+  io_in(); int e = flush1(f); if (e) ioerr(e);
+  off_t at = f->bin != 4 ? ftello(f->f) : 0;   /* (a pipe's ESPIPE, as BufferedRandom's rewind raises it) */
+  if (at < 0) ioerr(errno);
+  if (f->bin != 4) bsync(f);          /* discard both read-ahead and its cached offset before changing the file */
+  if (ftruncate(fileno(f->f), size)) ioerr(errno);
+  if (f->bin != 4) {
+    if (fseeko(f->f, at, SEEK_SET)) ioerr(errno);   /* any new read-ahead sees the truncated file */
+    f->last = 0;
+  }
+  io_out();
+  return size;
+}
 /* lib/io.py's TextIOWrapper (_pystachy_io): the encoding of one made without encoding=, a file's (CPython's
    locale.getpreferredencoding(False)); the one encoding="locale" names, CPython's locale.getencoding(): the
    codeset of the LC_CTYPE locale the environment names, where CPython coerces the C locale to C.UTF-8 (PEP 538,
@@ -6273,6 +6703,15 @@ _Noreturn void pys_execv(Str *path, List *args) {   /* os.execv: the process bec
   ioerr(errno);
 }
 I pys_getpid(void) { return getpid(); }
+Str *pys_getcwd(void) {          /* os.getcwd(): CPython's posix_getcwd(), whose buffer grows by 1024 bytes while getcwd() fails with ERANGE */
+  size_t size = 1024;
+  for (;;) {
+    char *b = pys_alloc_atomic(size);
+    if (getcwd(b, size)) return cstr(b);
+    if (errno != ERANGE) ioerr(errno);
+    size += 1024;
+  }
+}
 
 /* _thread.stack_size validates a requested setting even though this runtime
    creates no threads. PTHREAD_STACK_MIN can be a runtime sysconf query (larger
@@ -6927,6 +7366,47 @@ double pys_monotonic(void) { return ns_secs(clock_ns(CLOCK_MONOTONIC)); }
 I pys_monotonic_ns(void) { return clock_ns(CLOCK_MONOTONIC); }
 double pys_process_time(void) { return ns_secs(clock_ns(CLOCK_PROCESS_CPUTIME_ID)); }
 I pys_process_time_ns(void) { return clock_ns(CLOCK_PROCESS_CPUTIME_ID); }
+/* time.strftime(fmt, time.localtime(secs)), or of time.gmtime(secs) where utc, for
+   lib/_pystachy_time.py (logging's Formatter.formatTime()): what CPython 3.13 gives on Linux. The
+   time is floored to whole seconds, as time.localtime() floors it, and converted with
+   localtime_r() or gmtime_r(); then, as time_strftime() and time_strftime1() do, each run of
+   ASCII characters other than NUL goes to strftime(), whose buffer grows from 1024 bytes until the
+   result fits or the buffer reaches 256 times the run's length (an empty result), and the
+   characters from there up to the next '%' are copied as they are */
+Str *pys_strftime_at(Str *fmt, double secs, I utc) {
+  if (secs != secs) pys_fail("ValueError: Invalid value NaN (not a number)");
+  double f = floor(secs);
+  if (!(f >= -9223372036854775808.0 && f < 9223372036854775808.0)) pys_fail("OverflowError: timestamp out of range for platform time_t");
+  time_t t = (time_t)f;
+  struct tm tm;
+  errno = 0;
+  if ((utc ? gmtime_r(&t, &tm) : localtime_r(&t, &tm)) == NULL) ioerr(errno ? errno : EINVAL);
+  if (tm.tm_isdst < -1) tm.tm_isdst = -1;
+  else if (tm.tm_isdst > 1) tm.tm_isdst = 1;
+  Buf out = {0};
+  const char *s = fmt->s;
+  I n = fmt->len, i = 0;
+  size_t size = 1024;
+  char *buf = pys_alloc_atomic(size);
+  while (i < n) {
+    I a = i;
+    while (i < n && s[i] != 0 && (unsigned char)s[i] < 128) i++;
+    if (i > a) {
+      char *seg = pys_alloc_atomic(i - a + 1);
+      memcpy(seg, s + a, i - a); seg[i - a] = 0;
+      for (;;) {
+        size_t len = strftime(buf, size, seg, &tm);
+        if (len == 0 && size < 256 * (size_t)(i - a)) { size += size; buf = pys_alloc_atomic(size); continue; }
+        put(&out, buf, (I)len);
+        break;
+      }
+    }
+    I b = i;
+    while (i < n && s[i] != '%') i++;
+    if (i > b) put(&out, s + b, i - b);
+  }
+  return done(&out);
+}
 void pys_sleep(double s) {             /* time.sleep: resumes after a signal (PEP 475); Ctrl-C raises KeyboardInterrupt */
   if (s != s) pys_fail("ValueError: Invalid value NaN (not a number)");
   if (s < 0) pys_fail("ValueError: sleep length must be non-negative");
@@ -7302,6 +7782,219 @@ static _Noreturn void oserr(const char *path) {         /* raise CPython's OSErr
 }
 void pys_remove(Str *p) { if (nul(p)) pys_fail("ValueError: remove: embedded null character in path"); if (unlink(p->s)) oserr(p->s); }
 void pys_rmdir(Str *p) { if (nul(p)) pys_fail("ValueError: rmdir: embedded null character in path"); if (rmdir(p->s)) oserr(p->s); }
+/* os.listdir(p): the names in directory p but . and .., in the order readdir gives them, as
+   CPython's _posix_listdir lists them (os.listdir() lists ".") */
+List *pys_listdir(Str *p) {
+  if (nul(p)) pys_fail("ValueError: listdir: embedded null character in path");
+  DIR *d = opendir(p->s);
+  if (!d) oserr(p->s);
+  List *l = pys_list_new(0);
+  for (;;) {
+    errno = 0;
+    struct dirent *e = readdir(d);
+    if (!e) break;
+    const char *n = e->d_name;
+    if (n[0] == '.' && (n[1] == 0 || (n[1] == '.' && n[2] == 0))) continue;
+    pys_list_append(l, (I)pys_str(n, (I)strlen(n)));
+  }
+  int err = errno;
+  closedir(d);
+  if (err) { errno = err; oserr(p->s); }
+  return l;
+}
+List *pys_listdir_cwd(void) { return pys_listdir(pys_str(".", 1)); }
+/* os.mkdir(p, mode): CPython's posix_mkdir */
+void pys_mkdir(Str *p, I mode) { if (nul(p)) pys_fail("ValueError: mkdir: embedded null character in path"); if (mkdir(p->s, (mode_t)mode)) oserr(p->s); }
+void pys_mkdir_default(Str *p) { pys_mkdir(p, 0777); }
+static _Noreturn void oserr2(const char *a, const char *b) {   /* the OSError of a call of two paths: 'a' -> 'b' */
+  int e = errno; Buf bf = {0}; char t[32];
+  const char *k = errcls(e), *m = strerror(e);
+  put(&bf, k, strlen(k)); put(&bf, t, snprintf(t, sizeof t, ": [Errno %d] ", e)); put(&bf, m, strlen(m)); put(&bf, ": ", 2);
+  repr_str(&bf, cstr(a)); put(&bf, " -> ", 4); repr_str(&bf, cstr(b)); put(&bf, "", 1); pys_fail(bf.p);
+}
+/* os.rename(a, b) and os.replace(a, b), which POSIX's rename(2) both are */
+void pys_rename(Str *a, Str *b) { if (nul(a) || nul(b)) pys_fail("ValueError: rename: embedded null character in path"); if (rename(a->s, b->s)) oserr2(a->s, b->s); }
+void pys_replace(Str *a, Str *b) { if (nul(a) || nul(b)) pys_fail("ValueError: replace: embedded null character in path"); if (rename(a->s, b->s)) oserr2(a->s, b->s); }
+/* os.path.isdir, isfile, islink and lexists: genericpath's and posixpath's, false where stat() or lstat() fails */
+I pys_isdir(Str *p) { struct stat st; return !nul(p) && stat(p->s, &st) == 0 && S_ISDIR(st.st_mode); }
+I pys_isfile(Str *p) { struct stat st; return !nul(p) && stat(p->s, &st) == 0 && S_ISREG(st.st_mode); }
+I pys_islink(Str *p) { struct stat st; return !nul(p) && lstat(p->s, &st) == 0 && S_ISLNK(st.st_mode); }
+I pys_lexists(Str *p) { struct stat st; return !nul(p) && lstat(p->s, &st) == 0; }
+/* lib/pathlib.py's and lib/shutil.py's __pys_stat_mode(p, follow): the st_mode of os.stat(p) (of
+   os.lstat(p) where follow is 0), or -1 where pathlib ignores the error (ENOENT, ENOTDIR, EBADF and
+   ELOOP: _ignore_error) or for an embedded null character (ValueError); another error raises */
+I pys_stat_mode(Str *p, I follow) {
+  struct stat st;
+  if (nul(p)) return -1;
+  if ((follow ? stat(p->s, &st) : lstat(p->s, &st)) == 0) return st.st_mode;
+  if (errno == ENOENT || errno == ENOTDIR || errno == EBADF || errno == ELOOP) return -1;
+  oserr(p->s);
+}
+/* lib/pathlib.py's __pys_touch(p, mode, exist_ok): Path.touch(), the times of a file that exists
+   made now where exist_ok, else os.open(p, O_CREAT | O_WRONLY, mode), with O_EXCL unless exist_ok */
+void pys_touch(Str *p, I mode, I exist_ok) {
+  if (nul(p)) pys_fail("ValueError: open: embedded null character in path");
+  if (exist_ok && utime(p->s, NULL) == 0) return;
+  int fd = open(p->s, O_CREAT | O_WRONLY | (exist_ok ? 0 : O_EXCL), (mode_t)mode);
+  if (fd < 0) oserr(p->s);
+  close(fd);
+}
+/* lib/shutil.py's __pys_copyfile(a, b) and __pys_copymode(a, b): the bytes of file a written to
+   file b (CPython's copyfile once its checks pass), and a's permission bits given to b (chmod).
+   a is opened, and checked as CPython's FileIO checks it (open() of a directory succeeds on Linux,
+   then fstat() makes it IsADirectoryError), before b is opened, which truncates b */
+void pys_copyfile(Str *a, Str *b) {
+  if (nul(a) || nul(b)) pys_fail("ValueError: open: embedded null character in path");
+  FILE *in = fopen(a->s, "rb");
+  if (!in) oserr(a->s);
+  struct stat st;
+  if (fstat(fileno(in), &st) == 0 && S_ISDIR(st.st_mode)) { fclose(in); errno = EISDIR; oserr(a->s); }
+  FILE *out = fopen(b->s, "wb");
+  if (!out) { int e = errno; fclose(in); errno = e; oserr(b->s); }
+  char buf[65536];
+  size_t n;
+  while ((n = fread(buf, 1, sizeof buf, in)) > 0)
+    if (fwrite(buf, 1, n, out) != n) { int e = errno; fclose(in); fclose(out); errno = e; oserr(b->s); }
+  int rerr = ferror(in) ? errno : 0;
+  fclose(in);
+  if (fclose(out)) oserr(b->s);
+  if (rerr) { errno = rerr; oserr(a->s); }
+}
+void pys_copymode(Str *a, Str *b) {
+  struct stat st;
+  if (nul(a) || nul(b)) pys_fail("ValueError: stat: embedded null character in path");
+  if (stat(a->s, &st)) oserr(a->s);
+  if (chmod(b->s, st.st_mode & 07777)) oserr(b->s);
+}
+/* lib/shutil.py's __pys_rmtree(path, ignore_errors): rmtree() as CPython 3.13 runs it on Linux,
+   its _rmtree_safe_fd. Each directory is opened through its parent's descriptor, and fstat()
+   must find the device and inode that lstat() found before its entries are read and removed
+   through that descriptor, so that a directory replaced by a link meanwhile is not followed. The
+   steps, their order and their errors are CPython's: a stack of steps (lstat, open, check and
+   scan; close; rmdir), a directory's other entries unlinked as its scan meets them and its
+   subdirectories pushed, so walked last first. An error carries the path of the step that met
+   it (CPython sets err.filename = path), a link's is an OSError of no errno ("[Errno None] None:
+   'path'"), and FileNotFoundError is one only for the top directory and for a close. CPython's
+   onexc re-raises it once the descriptors left on the stack are closed, or, where ignore_errors,
+   passes over it: the step ends, but an entry's unlink error lets the scan go on. The walk's
+   paths and names are malloc'd: it allocates nothing the collector sees until it raises. */
+typedef struct { int op, dirfd, top; char *path, *name; } RmStep;   /* op: 0 lstat (then open, check, scan), 1 close, 2 rmdir */
+typedef struct {
+  RmStep *a; I n, cap, ignore;                     /* the steps to run */
+  RmStep cur;                                      /* the step running */
+  char **names; unsigned char *types; I nn, ncap;  /* its scan's entries, and their d_type */
+} RmWalk;
+static char *rm_dup(const char *s) { size_t n = strlen(s); char *p = malloc(n + 1); if (!p) oom(); memcpy(p, s, n + 1); return p; }
+static void rm_push(RmWalk *w, int op, int dirfd, int top, char *path, char *name) {   /* takes path and name */
+  if (w->n == w->cap) { I c = w->cap * 2 + 16; RmStep *a = realloc(w->a, c * sizeof(RmStep)); if (!a) oom(); w->a = a; w->cap = c; }
+  w->a[w->n++] = (RmStep){op, dirfd, top, path, name};
+}
+static void rm_entries_free(RmWalk *w) { for (I i = 0; i < w->nn; i++) free(w->names[i]); w->nn = 0; }
+static _Noreturn void rm_raise(RmWalk *w, int e) {   /* onexc's raise, then rmtree's finally: close what is open */
+  Buf b = {0};
+  if (e) {
+    char t[32]; const char *k = errcls(e), *m = strerror(e);
+    put(&b, k, strlen(k)); put(&b, t, snprintf(t, sizeof t, ": [Errno %d] ", e)); put(&b, m, strlen(m)); put(&b, ": ", 2);
+  } else put(&b, "OSError: [Errno None] None: ", 28);
+  repr_str(&b, cstr(w->cur.path)); put(&b, "", 1);
+  rm_entries_free(w); free(w->names); free(w->types);
+  free(w->cur.path); free(w->cur.name);
+  while (w->n > 0) { RmStep *s = &w->a[--w->n]; if (s->op == 1) close(s->dirfd); free(s->path); free(s->name); }
+  free(w->a);
+  pys_fail(b.p);
+}
+static void rm_scan(RmWalk *w, int fd) {   /* entries = list(os.scandir(fd)), then each entry's unlink or push */
+  RmStep *c = &w->cur;
+  int d = dup(fd);                         /* (os.scandir(fd) reads a duplicate of it) */
+  DIR *dp = d < 0 ? NULL : fdopendir(d);
+  if (!dp) {
+    int e = errno; if (d >= 0) close(d);
+    if (e != ENOENT || c->top) { if (!w->ignore) rm_raise(w, e); }
+    return;
+  }
+  for (;;) {
+    errno = 0;
+    struct dirent *de = readdir(dp);
+    if (!de) break;
+    const char *nm = de->d_name;
+    if (nm[0] == '.' && (nm[1] == 0 || (nm[1] == '.' && nm[2] == 0))) continue;
+    if (w->nn == w->ncap) {
+      I k = w->ncap * 2 + 16; char **a = realloc(w->names, k * sizeof(char *)); if (!a) oom(); w->names = a;
+      unsigned char *t = realloc(w->types, k); if (!t) oom(); w->types = t; w->ncap = k;
+    }
+    w->names[w->nn] = rm_dup(nm); w->types[w->nn++] = de->d_type;
+  }
+  int e = errno;
+  closedir(dp);
+  if (e) {
+    rm_entries_free(w);
+    if (e != ENOENT || c->top) { if (!w->ignore) rm_raise(w, e); }
+    return;
+  }
+  size_t pl = strlen(c->path);
+  for (I i = 0; i < w->nn; i++) {
+    const char *nm = w->names[i];
+    int isdir = w->types[i] == DT_DIR;     /* entry.is_dir(follow_symlinks=False): d_type, or an lstat */
+    if (w->types[i] == DT_UNKNOWN) {
+      struct stat es;
+      if (fstatat(fd, nm, &es, AT_SYMLINK_NOFOLLOW)) { if (errno == ENOENT) continue; }
+      else isdir = S_ISDIR(es.st_mode);
+    }
+    if (isdir) {                           /* fullname = os.path.join(path, name), walked later */
+      size_t nl = strlen(nm);
+      char *full = malloc(pl + nl + 2); if (!full) oom();
+      memcpy(full, c->path, pl); size_t k = pl;
+      if (pl && c->path[pl - 1] != '/') full[k++] = '/';
+      memcpy(full + k, nm, nl + 1);
+      rm_push(w, 0, fd, 0, full, rm_dup(nm));
+      continue;
+    }
+    if (unlinkat(fd, nm, 0) && errno != ENOENT && !w->ignore) rm_raise(w, errno);
+  }
+  rm_entries_free(w);
+}
+static void rm_step(RmWalk *w) {
+  RmStep *c = &w->cur;
+  *c = w->a[--w->n];
+  if (c->op == 1) {                        /* os.close(dirfd) */
+    if (close(c->dirfd) && !w->ignore) rm_raise(w, errno);
+  } else if (c->op == 2) {                 /* os.rmdir(name, dir_fd=dirfd) */
+    if ((c->top ? rmdir(c->name) : unlinkat(c->dirfd, c->name, AT_REMOVEDIR)) && (errno != ENOENT || c->top) && !w->ignore)
+      rm_raise(w, errno);
+  } else {
+    struct stat orig, now;
+    int r = c->top ? lstat(c->name, &orig) : fstatat(c->dirfd, c->name, &orig, AT_SYMLINK_NOFOLLOW);
+    int fd = r ? -1 : openat(c->top ? AT_FDCWD : c->dirfd, c->name, O_RDONLY | O_NONBLOCK | O_CLOEXEC);
+    if (fd < 0) {                          /* lstat's or open's error */
+      if ((errno != ENOENT || c->top) && !w->ignore) rm_raise(w, errno);
+    } else {
+      int ok = !fstat(fd, &now), e = errno;
+      int same = ok && now.st_dev == orig.st_dev && now.st_ino == orig.st_ino;
+      if (same) rm_push(w, 2, c->dirfd, c->top, rm_dup(c->path), rm_dup(c->name));
+      rm_push(w, 1, fd, c->top, rm_dup(c->path), rm_dup(c->name));
+      if (!same) {                         /* fstat's error, or a link: symlinks to directories are forbidden (GH-46010) */
+        if (!w->ignore) rm_raise(w, ok ? 0 : e);
+      } else rm_scan(w, fd);
+    }
+  }
+  free(c->path); free(c->name); c->path = c->name = NULL;
+}
+void pys_rmtree(Str *path, I ignore_errors) {
+  if (nul(path)) pys_fail("ValueError: lstat: embedded null character in path");
+  RmWalk w = {0};
+  w.ignore = ignore_errors;
+  rm_push(&w, 0, -1, 1, rm_dup(path->s), rm_dup(path->s));
+  while (w.n > 0) rm_step(&w);
+  free(w.a); free(w.names); free(w.types);
+}
+/* os.path.samefile(a, b): genericpath's, whether stat() finds one device and inode for both */
+I pys_samefile(Str *a, Str *b) {
+  struct stat x, y;
+  if (nul(a) || nul(b)) pys_fail("ValueError: stat: embedded null character in path");
+  if (stat(a->s, &x)) oserr(a->s);
+  if (stat(b->s, &y)) oserr(b->s);
+  return x.st_dev == y.st_dev && x.st_ino == y.st_ino;
+}
 typedef struct { Str **a; I n, cap; } Parts;            /* a stack of path components; NULL marks a resolved link */
 static void parts_push(Parts *p, Str *s) {
   if (p->n == p->cap) { I c = p->cap * 2 + 16; Str **a = pys_alloc(c * sizeof(Str *)); if (p->n) memcpy(a, p->a, p->n * sizeof(Str *)); p->a = a; p->cap = c; }

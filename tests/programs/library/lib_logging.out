@@ -1,0 +1,23 @@
+DEBUG   |t.%48|a=1 b=two c=3.5|10
+INFO    |t.%48|plain|20
+WARNING |t.%48| 99.4%|30
+ERROR:t.{28:brace x
+CRITICAL dollar
+with extra [bob]
+True
+t.%20:n0
+t.%20:n2
+t.%20:m0
+t.%20:m1
+t.%20:m2
+t.%20:m4
+ERROR caught | ValueError: bad value
+KeyError: 'k'
+True True True
+40 False ERROR 20
+NOTICE Level 26
+<Logger p.c.d (ERROR)> <RootLogger root (WARNING)>
+'WARNING to file 7\n'
+CRITICAL|t.%48|enabled|50
+30 True
+[exit 0]

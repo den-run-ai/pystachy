@@ -40,14 +40,16 @@ code that their suite executes, not only named by a comment. The baseline is the
 | `select.select()` readiness on integer descriptors | native | `tests/programs/library/lib_select.py`, `tools/selectprobe.c` |
 | `_thread` locks, reentrant locks and thread identities, in the one thread | native | `tests/programs/library/lib_thread.py` |
 | `_thread.start_new_thread()` | refused: `NotImplementedError` | `tests/deviations/lib_thread_start.py` |
+| `threading`'s locks, conditions, semaphores, events, barriers, timers and `Thread` objects, in the one thread | native | `tests/programs/library/lib_threading.py` |
+| `threading.Thread.start()` | refused: `NotImplementedError` | `tests/deviations/threading_start.py` |
 | A lock `acquire()` or a `join()` that would wait forever | refused: `RuntimeError` | `tests/deviations/lib_thread_deadlock.py` |
 | `async def`, `await`, `async for`, `async with` | refused at compile time | `tests/errors/generators/gen_async.py` |
 
-A compiled program cannot import `threading`, `queue`, `asyncio`, `concurrent.futures`,
-`multiprocessing`, `subprocess`, `contextvars`, `selectors`, `socket` or `signal`: the compiler
-reports that the module is not supported. Of process control it has `os.system()` and
-`os.execv()`, with no `fork`, pipe or spawn. Importing a module is not functional support:
-`_thread` imports and runs one thread. An `abi3t` module refuses import under `PYTHON_GIL=0`;
+A compiled program cannot import `queue`, `asyncio`, `concurrent.futures`, `multiprocessing`,
+`subprocess`, `contextvars`, `selectors`, `socket` or `signal`: the compiler reports that the
+module is not supported. Of process control it has `os.system()` and `os.execv()`, with no
+`fork`, pipe or spawn. Importing a module is not functional support: `_thread` and `threading`
+import and run one thread, whose `Thread` objects do not start. An `abi3t` module refuses import under `PYTHON_GIL=0`;
 that check needs a free-threaded CPython 3.15, which CI does not run.
 
 `multiprocessing.Pool` replaces a worker that dies, but never completes the call that the worker

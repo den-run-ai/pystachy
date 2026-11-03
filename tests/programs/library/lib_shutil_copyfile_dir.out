@@ -1,0 +1,8 @@
+copyfile IsADirectoryError: [Errno 21] Is a directory: 'BASE/srcdir'
+copyfile 'keep me\n'
+copy IsADirectoryError: [Errno 21] Is a directory: 'BASE/srcdir'
+copy 'keep me\n'
+missing FileNotFoundError: [Errno 2] No such file or directory: 'BASE/missing'
+missing 'keep me\n'
+False
+[exit 0]

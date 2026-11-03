@@ -20,7 +20,7 @@ from src.pystachy_compiler.bigints import held
 from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, INTFILES, LINES, Rejoin, dynamic_file, dynamic_program, int_lists, int_program
 from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Val
 from src.pystachy_compiler.module import Mod
-from src.pystachy_compiler.names import owner, retoken, short
+from src.pystachy_compiler.names import ENUMCLASSES, owner, retoken, short
 from src.pystachy_compiler.specs import BIG, ITERS, JSONANY, METHODS, NONEVAR, RANGEC, RTDATA
 from src.pystachy_compiler.syntax import Node, has_kind, mk
 from src.pystachy_compiler.utils import builtin_key, disjoint_sets, elem, gelem, holds_dyn, identity_abi, is_callable, is_dict, is_fn, is_gen, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, numeric_identity, selem, takes_self, targs, tname, typestr, umembers, unopt
@@ -291,7 +291,16 @@ def gen_dyn_boxable(self, t: str) -> str:
     if t == DYN or t in BUILTIN or t == BIG or t == NONEVAR:
         return ""
     if t in self.classes and t not in self.tmpl:
-        return "" if self.classes[t].exc == "" else f"an exception object ({typestr(t)}) as Any is not supported yet"
+        if self.classes[t].exc != "":
+            return f"an exception object ({typestr(t)}) as Any is not supported yet"
+        for kind in ["enum$IntEnum", "enum$StrEnum", "enum$IntFlag"]:
+            # (CPython's IntEnum member is an int, a StrEnum member a str, as an Any value's
+            # isinstance() would find: here an object of its class)
+            ms = [k for k in self.refl_concrete(t) if k in self.classes and self.classes[k].node.line in ENUMCLASSES and self.derives(k, kind)] if kind in self.classes else []
+            if len(ms) > 0:
+                what = f"a {short(t)} member" if self.derives(t, kind) else f"a {short(t)} value, which may be a {short(ms[0])} member,"
+                return f"{what} cannot become an Any value: {'a StrEnum' if kind == 'enum$StrEnum' else 'an IntEnum' if kind == 'enum$IntEnum' else 'an IntFlag'} member is an object of its class, where CPython's is also {'a str' if kind == 'enum$StrEnum' else 'an int'}, which isinstance() of the Any value would find (give its .value)"
+        return ""
     if is_opt(t):
         return self.dyn_boxable(unopt(t))
     if is_union(t):
@@ -2424,6 +2433,17 @@ def gen_dyn_test(self, v: Val, ts: list[str]) -> str:
     t = Val(self.dyn_typeof(v), "dyntype")
     r = ""
     for m in ts:
+        if m in self.classes and m not in self.tmpl and self.classes[m].exc == "":
+            # an object of class m or of a subclass: pys_dyn_isa walks the box's bases as the
+            # program runs, so a subclass whose objects the program boxes only after this test is
+            # compiled passes it too, where the DynTypes of the classes boxed so far would miss it;
+            # None, which pys_dyn_isa takes as a class's optional object, does not
+            isa = self.rt("pys_dyn_isa", "i64", [f"ptr {v.v}", f"ptr {self.dyn_class_type(m)}"])
+            obj = self.num_cmp("!=", Val(isa, "int"), Val("0", "int")).v
+            notnone = self.ptr_cmp("!=", t, Val(self.dyn_type("None"), "dyntype")).v
+            x = self.scalar("and", [Val(obj, "bool"), Val(notnone, "bool")])
+            r = x if r == "" else self.scalar("or", [Val(r, "bool"), Val(x, "bool")])
+            continue
         for d in self.dyn_types_of(m):
             x = self.ptr_cmp("==", t, Val(d, "dyntype")).v
             r = x if r == "" else self.scalar("or", [Val(r, "bool"), Val(x, "bool")])

@@ -54,7 +54,7 @@ Record the Pystachy release/commit and LLVM toolchain alongside the lockfile.
 | AOT executable | Matching OS/architecture and system libraries; no Python, LLVM or source wheels |
 | CPython extension | Existing experimental [`pystachy ext`](ffi.md#building-a-cpython-extension) scalar export contract |
 
-Packaging does not expand the supported language or APIs. C extension imports,
+Packaging does not expand the [supported language](language.md#support-at-a-glance) or APIs. C extension imports,
 dynamic import hooks and arbitrary PyPI dependencies are not supported by native
 compilation. Wheels must contain the `.py` sources; a platform wheel is not evidence
 of compatibility. Test the public API under CPython and Pystachy JIT/AOT.

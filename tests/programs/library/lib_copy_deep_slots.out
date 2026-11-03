@@ -1,0 +1,4 @@
+hook first
+hook base
+9 1 first base
+[exit 0]
