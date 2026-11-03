@@ -2,7 +2,7 @@
 
 Pystachy is useful for CPU work expressed as typed Python loops, functions and
 containers. Start with a small part of your application whose output you can
-check with CPython. The [language](language.md) and [library](../lib/README.md)
+check with CPython. The [language](language.md#support-at-a-glance) and [library](../lib/README.md)
 references describe the supported subset; arbitrary Python packages may require
 adaptation or the explicit [CPython bridge](ffi.md#calling-cpython-libpyobjpy).
 
