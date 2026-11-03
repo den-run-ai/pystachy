@@ -125,10 +125,11 @@ origins are listed so that a license review can confirm that this suffices. See
 
 ## Adaptations
 
-Each edit is marked `# Pystachy port:` in the source. These describe the delivered files,
-including historical workarounds; newer compiler features make some unnecessary. In particular,
-generators, range values and slice assignment now work for the runner-only sources listed below.
-The runner adaptations follow these rules:
+Each edit is marked `# Pystachy port:` in the source. Some work around limits that later
+compilers removed, such as those on generators, range values and slice assignment. They stay
+because changing a port changes its timed work and checksums, which would then need new
+measurements; the [census](#census) shows what each upstream file needs today. The runner
+adaptations follow these rules:
 
 - `import pyperf` is removed. A main that reads the loop count and sizes from `sys.argv`
   replaces `pyperf.Runner` and prints the results, or a checksum.
@@ -140,8 +141,8 @@ The runner adaptations follow these rules:
   or a checksum when it discards its result. `TIMED_PART` in `tools/bench_pyperformance.py`
   records which function each port times; the unit tests check the ports against it, and
   `--census` checks it against the upstream files.
-- In older ports, `range_it = range(loops)` became a list because range values were not yet supported.
-  The newly added ports retain range values.
+- Older ports turn `range_it = range(loops)` into a list, from before range values were
+  supported; later ports keep the range.
 
 | Benchmark | Other adaptations |
 |---|---|
@@ -151,7 +152,7 @@ The runner adaptations follow these rules:
 | `generators` | The recursive `Tree`, `yield from`, range slicing and iteration are unchanged. A size argument limits smoke/GC runs to 100 nodes; the normal run keeps 100,000. The complete yielded sequence is checked outside the timer. |
 | `json_dumps` | Opt into dynamic `Any`; annotate the empty dict and the list of `(Any, range)` workload tuples. Preserve all four upstream payloads and counts by default; smoke uses one encode per case and a three-element HUGE list. Complete small encodings and the repeated huge encoding are checked outside the timer. |
 | `json_loads` | Opt into dynamic `Any` and annotate the fresh heterogeneous tuple. All keys in upstream `DICT` are strings, so `str(rand_val)` replaces the generic `type(key)(rand_val)` branch. Preserve `Random(5)`, all three payloads and the 20 unrolled loads per payload; decoded values are printed after timing. |
-| `fannkuch` | None besides the runner. The original reversing slice assignment is restored. |
+| `fannkuch` | None besides the runner. Upstream's reversing slice assignment replaced a copy-and-`reverse()` workaround on 31 October 2026 (`68f4ac9f`), which changed the timed work: timings of the earlier source, such as the [16 October snapshot](../../docs/benchmarks/pyperformance-2026-10-16-a74faae.json), are not comparable with later ones. |
 | `float` | `self.x = x = sin(i)` is split so that fields can be annotated, and so are `__init__` and `points`. |
 | `go` | The same generator replaces `random`, so the games differ from upstream. Fields set outside `__init__` are declared in the class body. `useful()` returns `bool(...)`, and `score()` counts in a float. `maxscore` starts as `-1.0`. The never-called `Board.check()`, whose sets hold `Square` objects, is commented out. |
 | `hexiom` | A class-body default `HIGHEST_VALUE_STRATEGY` becomes its value, `2`. Conditional `range` values become lists, and `[None] * n` replaces `n * [None]`. Fields and constructors are annotated. `main()` returns the solution. |
@@ -171,162 +172,108 @@ The runner adaptations follow these rules:
 The `random` substitutes produce 31-bit values, including `go`'s Zobrist hash strings.
 Results within a benchmark are checked against CPython, not against upstream pyperformance.
 
-Older Fannkuch timing records used a copy/`reverse()`/concatenation workaround. Restoring
-upstream's `perm[:k + 1] = perm[k::-1]` changes its allocations and timed work, so new
-measurements must use the restored source in every mode. Comparing an old timing with
-a new one does not isolate compiler performance.
-
 <a id="blocked"></a>
-
 <a id="current-runner-only-census"></a>
+<a id="refresh-2026-11-02"></a>
+<a id="runner-only-census-2026-10-22"></a>
 
-## Runner-only census (2026-10-22)
+## Census
 
-Refreshed against compiler sources on main `5f7ec761`, with CPython 3.13.16 and the
-pinned pyperformance 1.14.0 sdist. The census checks all 52 source hashes and replaces
-only pyperf's runner/import before asking for IR. No installed-stdlib or ports overlay
-is supplied: missing modules describe the shipped surface, not whether an explicitly
-supplied upstream module could compile.
+`--census` last ran on 3 November 2026 on main `5eaf5638`, whose compiler and library are
+v0.1.0-alpha.4's, with the compiler running under CPython 3.13.18
+(`--compiler "python3.13 -m pystachy"`). Every hash, port note and timed part matched. The
+census supplies no standard-library or ports overlay, so a missing module describes the
+shipped library, not whether the upstream module could compile.
 
-**Seven of 52 sources compile with runner replacement alone:** `fannkuch`, `generators`,
-`nbody`, `nqueens`, `regex_v8`, `spectral_norm` and `unpack_sequence`. This is one more
-than the 2026-10-17 census (`spectral_norm`). The other 45 have a compile error. An IR
-success is not an execution result. The delivered suite then had **22 adapted benchmarks**,
-including four additions: `comprehensions`, `generators`, `json_dumps` and `json_loads`.
-Their CPython, native JIT and AOT outputs are compared by the existing smoke runner;
-this does not execute the upstream pyperf harness or establish a speedup.
+**Seven upstream sources compile with only the runner replaced:** `fannkuch`, `generators`,
+`nbody`, `nqueens`, `regex_v8`, `spectral_norm` and `unpack_sequence`. Compiling to IR is not
+running them; the suite runs the ports and checks their output against CPython.
 
-The two JSON benchmarks now exercise boxed heterogeneous documents using the explicit
-experimental dynamic-`Any` opt-in; this does not change the feature's stability status.
-The JSON timings preserve upstream's timed operations and default data shapes; setup
-and new correctness checks remain outside those regions. `comprehensions` retains its
-nested comprehensions and tuple sorting with small enum/annotation adaptations, while
-`generators` needs no algorithm/type changes.
+<a id="sources-without-a-delivered-port"></a>
+<a id="scope-and-remaining-candidates"></a>
 
-### Scope and remaining candidates
+### Sources without a port
 
-- Defer async/event-loop, process/thread-pool, CPython GC/startup and external-database
-  workloads: `async_generators`, `async_tree`, `asyncio_tcp`, `coroutines`,
-  `concurrent_imap`, `gc_collect`, `gc_traversal`, `python_startup`, `2to3` and
-  `sqlite_synth`. Their dependencies are outside this expansion, not silently passed.
-- Keep arbitrary-precision/decimal workloads blocked: `decimal_factorial`, `decimal_pi`,
-  `telco` and the fractions-based `mdp`. Replacing their arithmetic with
-  fixed-width floats/ints would change what they test. `pidigits` is now ported with
-  [promoting ints](../../docs/python-int.md) instead, which keep CPython's `int` semantics.
-- Remaining core candidates need missing APIs or additional adapters: `argparse`,
-  `base64`, `bpe_tokeniser`, `deepcopy`, `logging`, `pathlib`, `pickle`, `pprint`,
-  `pyflate`, `regex_compile`, `tomli_loads`, `typing_runtime_protocols` and `xml_etree`.
-  JSON's progress does not imply general copy/pickle dispatch or runtime reflection.
-  `regex_compile` also captures and patches another module's regex calls; a list
-  annotation alone does not deliver its dependency fixtures and behavior. `tomli_loads`
-  still requires file/path setup, the pinned large TOML fixture and parser parity.
-- `crypto_pyaes` requires its separate package adaptation. The existing 21
-  third-party-package exclusions listed above are unchanged; `deltablue` remains
-  excluded for its license provenance. No new module-support claim follows from this census.
+A missing module is only the first blocker. The last column compiles each source again with
+CPython 3.13.18's standard library on `PYSTACHY_PATH`, less the modules that `lib/` replaces
+(the directory `tools/import_sweep.py --overlay` makes), and gives the next one. Such a
+compilation is a probe, not a port.
 
-The table records the first error, not all blockers. Related trackers:
+| Benchmark | First error | Next, with CPython's standard library |
+|---|---|---|
+| `2to3` | no `glob` module | `signal` imports the missing `_signal` |
+| `argparse` | no `argparse` module | a bare `list` annotation (`-> list`) |
+| `async_generators`, `coroutines` | `async def` | same |
+| `async_tree`, `asyncio_tcp` | no `asyncio` module | `socket` imports the missing `_socket` |
+| `base64` | no `base64` module | `random.randbytes()` needs `int.to_bytes()` |
+| `bpe_tokeniser` | no `pathlib` module | field `_decoder` needs a type annotation |
+| `concurrent_imap` | no `multiprocessing` module | `signal` imports the missing `_signal` |
+| `crypto_pyaes` | no `pyaes` module (third-party) | same |
+| `decimal_factorial`, `decimal_pi`, `telco` | no `decimal` module | `contextvars` imports the missing `_contextvars` |
+| `deepcopy` | no `copy` module | a bare `list` annotation (`lst: list`) |
+| `deltablue`, `typing_runtime_protocols` | unsupported base class | same |
+| `gc_collect`, `gc_traversal` | no `gc` module | same |
+| `logging` | no `logging` module | `threading` uses class `_thread.RLock` as a value |
+| `mdp` | no `fractions` module | `contextvars` imports the missing `_contextvars` |
+| `pathlib` | no `pathlib` module | `shutil` imports `bz2`, which imports the missing `_bz2` |
+| `pickle` | no `pickle` module | `copyreg` keys a dict by classes |
+| `pprint` | no `pprint` module | statements in the body of class `PrettyPrinter` |
+| `pyflate` | no `hashlib` module | inheritance with generic class templates |
+| `python_startup` | no `subprocess` module | `signal` imports the missing `_signal` |
+| `regex_compile` | global `regexes` needs a type annotation | same |
+| `sqlite_synth` | no `sqlite3` module | `sqlite3` imports the missing `_sqlite3` |
+| `tomli_loads` | no `pathlib` module | no `tomli` module (third-party) |
+| `xml_etree` | no `xml` module | `xml.etree.ElementTree` imports the missing `_elementtree` |
+
+What porting them would take:
+
+- **Out of scope for now:** async and event-loop, process-pool, CPython GC and startup, and
+  database workloads: `async_generators`, `async_tree`, `asyncio_tcp`, `coroutines`,
+  `concurrent_imap`, `gc_collect`, `gc_traversal`, `python_startup`, `2to3` and `sqlite_synth`.
+- **Arbitrary-precision arithmetic:** `decimal_factorial`, `decimal_pi`, `telco` and the
+  fractions-based `mdp` stay blocked, because fixed-width floats or ints would change what
+  they test. `pidigits` is ported with [promoting ints](../../docs/python-int.md) instead,
+  which keep CPython's `int` semantics.
+- **Missing APIs or adapters:** `argparse`, `base64`, `bpe_tokeniser`, `deepcopy`, `logging`,
+  `pathlib`, `pickle`, `pprint`, `pyflate`, `regex_compile`, `tomli_loads`,
+  `typing_runtime_protocols` and `xml_etree`. `regex_compile` also patches another module's
+  regex calls, so annotating its global is not enough. `tomli_loads` needs the third-party
+  `tomli`, whose standard-library twin `tomllib` is shipped, and a 16.8 MB fixture that is too
+  large to vendor.
+- **A third-party package or a licence:** `crypto_pyaes` needs `pyaes`, and `deltablue` is
+  excluded for its [licence provenance](#license).
+
+A source can have more blockers than the table shows. Related trackers:
 [#361](https://github.com/den-run-ai/pystachy/issues/361) (benchmark coverage),
 [#257](https://github.com/den-run-ai/pystachy/issues/257) (stdlib),
 [#783](https://github.com/den-run-ai/pystachy/issues/783) (TOML),
 [#805](https://github.com/den-run-ai/pystachy/issues/805) (copy/pickle dispatch),
 [#775](https://github.com/den-run-ai/pystachy/issues/775) (dynamic builtin values).
 
-<a id="refresh-2026-11-02"></a>
+<a id="sources-with-delivered-ports-before-their-adaptations"></a>
 
-### Refresh (2026-11-02)
+### Ported sources before their adaptations
 
-On main `973c68e4`, with CPython 3.13.16, the census is unchanged: the same seven sources
-compile with runner replacement alone, and every other source stops at the same construct or
-module as in the tables below (some messages now say more). `pidigits` is now ported, for
-23 adapted benchmarks.
+The census also compiles the upstream file of each port. Its first error is the first thing
+the port's adaptations had to change; "none" means that replacing the runner is enough.
 
-A missing module is only the first blocker. Compiling the 29 unported sources again with
-CPython 3.13.16's own standard library on `PYSTACHY_PATH` (the import sweep's overlay, less
-the modules `lib/` replaces) shows the next one:
-
-| Benchmark | First error with CPython's standard library available |
+| Benchmark | First error of the upstream file |
 |---|---|
-| `argparse`, `deepcopy` | `unsupported type annotation`: a bare `list` (`-> list`, `lst: list`) |
-| `base64` | `random.randbytes()` needs `int.to_bytes()` |
-| `bpe_tokeniser` | field `_decoder` needs a type annotation |
-| `logging` | `threading`: class `_thread.RLock` cannot be used as a value |
-| `pickle` | `copyreg`: a dict keyed by classes |
-| `pprint` | executable statements in the body of class `PrettyPrinter` |
-| `pyflate` | inheritance with generic class templates |
-| `decimal_factorial`, `decimal_pi`, `telco`, `mdp` | missing `_contextvars` (via `decimal` / `fractions`) |
-| `2to3`, `concurrent_imap`, `python_startup` / `async_tree`, `asyncio_tcp` | missing `_signal` / `_socket` |
-| `pathlib` | `shutil` imports `bz2`, whose `_bz2` is missing |
-| `xml_etree` / `sqlite_synth` / `gc_*` | missing `_elementtree` / `_sqlite3` / `gc` |
+| `barnes_hut` | field `particles` needs a type annotation |
+| `chaos` | class attribute `__rmul__` needs a type annotation |
+| `comprehensions` | no `enum` module |
+| `fannkuch`, `generators`, `nbody`, `nqueens`, `regex_v8`, `spectral_norm`, `unpack_sequence` | none |
+| `float` | field `x` needs a type annotation |
+| `go` | field `pos_child` needs a type annotation |
+| `hexiom` | class attribute `HIGHEST_VALUE_STRATEGY` used as a class-body default |
+| `json_dumps` | an empty dict needs a type annotation |
+| `json_loads` | `expected int, got str` (line 50) |
+| `meteor_contest` | `expected int, got float` (line 88) |
+| `pidigits` | `map()` outside a call that takes its items at once |
+| `raytrace`, `scimark` | no `array` module |
+| `regex_dna` | `bytearray()` |
+| `regex_effbot` | function attribute `bench_regex_effbot.data` |
+| `richards`, `richards_super` | inheritance with generic class templates |
 
-The other unported sources stop where the tables below say: `async_generators` and
-`coroutines` at `async def`, `crypto_pyaes` at the third-party `pyaes`, `deltablue` and
-`typing_runtime_protocols` at their base classes, `regex_compile` at its unannotated global.
-`tomli_loads` needs the third-party `tomli` (its stdlib twin `tomllib` is shipped, and
-parses the benchmark's 16.8 MB fixture to the same document in a JIT probe), but the fixture
-is too large to vendor, so it stays unported. The overlay probe is not a delivered port.
-
-### Sources without a delivered port
-
-| Benchmark | First compiler result |
-|---|---|
-| `2to3` | `bm_2to3.py:1: error: module 'glob' is not supported` |
-| `argparse` | `bm_argparse.py:9: error: module 'argparse' is not supported` |
-| `async_generators` | `bm_async_generators.py:21: error: async functions are not supported` |
-| `async_tree` | `bm_async_tree.py:20: error: module 'asyncio' is not supported` |
-| `asyncio_tcp` | `bm_asyncio_tcp.py:9: error: module 'asyncio' is not supported` |
-| `base64` | `bm_base64.py:10: error: module 'base64' is not supported` |
-| `bpe_tokeniser` | `bm_bpe_tokeniser.py:16: error: module 'pathlib' is not supported` |
-| `concurrent_imap` | `bm_concurrent_imap.py:6: error: module 'multiprocessing' is not supported` |
-| `coroutines` | `bm_coroutines.py:10: error: async functions are not supported` |
-| `crypto_pyaes` | `bm_crypto_pyaes.py:10: error: module 'pyaes' is not supported` |
-| `decimal_factorial` | `bm_decimal_factorial.py:17: error: module 'decimal' is not supported` |
-| `decimal_pi` | `bm_decimal_pi.py:19: error: module 'decimal' is not supported` |
-| `deepcopy` | `bm_deepcopy.py:9: error: module 'copy' is not supported` |
-| `deltablue` | `bm_deltablue.py:26: error: unsupported base class` |
-| `gc_collect` | `bm_gc_collect.py:2: error: module 'gc' is not supported` |
-| `gc_traversal` | `bm_gc_traversal.py:2: error: module 'gc' is not supported` |
-| `logging` | `bm_logging.py:18: error: module 'logging' is not supported` |
-| `mdp` | `bm_mdp.py:3: error: module 'fractions' is not supported` |
-| `pathlib` | `bm_pathlib.py:10: error: module 'pathlib' is not supported` |
-| `pickle` | `bm_pickle.py:253: error: module 'pickle' is not supported` |
-| `pprint` | `bm_pprint.py:9: error: module 'pprint' is not supported` |
-| `pyflate` | `bm_pyflate.py:19: error: module 'hashlib' is not supported` |
-| `python_startup` | `bm_python_startup.py:19: error: module 'subprocess' is not supported` |
-| `regex_compile` | `bm_regex_compile.py:23: error: cannot infer the type of 'regexes', which capture_compile() reads, where it is defined: annotate it (regexes: T = ...)` |
-| `sqlite_synth` | `bm_sqlite_synth.py:9: error: module 'sqlite3' is not supported` |
-| `telco` | `bm_telco.py:18: error: module 'decimal' is not supported` |
-| `tomli_loads` | `bm_tomli_loads.py:12: error: module 'pathlib' is not supported` |
-| `typing_runtime_protocols` | `bm_typing_runtime_protocols.py:38: error: unsupported base class` |
-| `xml_etree` | `bm_xml_etree.py:220: error: module 'xml' is not supported` |
-
-### Sources with delivered ports, before their adaptations
-
-Existing adaptations remain covered even where runner replacement now suffices.
-Removing historical workarounds or restoring different inputs needs separately refreshed
-checksums and timing records.
-
-| Benchmark | First compiler result |
-|---|---|
-| `barnes_hut` | `bm_barnes_hut.py:78: error: cannot infer the type of field 'particles'; annotate it (self.particles: T = ...) (QuadTree(Rectangle[float, float, float, float], int) for the call at bm_barnes_hut.py:318; compiling advance_system(list[Particle-1], float, float, int, int) for the call at bm_barnes_hut.py:350; compiling bench_quadtree_nbody(int, int, int, float) for the call at bm_barnes_hut.py:366)` |
-| `chaos` | `bm_chaos.py:46: error: cannot infer the type of class attribute '__rmul__'; annotate it (__rmul__: T = ...)` |
-| `comprehensions` | `bm_comprehensions.py:8: error: module 'enum' is not supported` |
-| `fannkuch` | Compiles after runner replacement |
-| `float` | `bm_float.py:16: error: cannot infer the type of field 'x'; annotate it (self.x: T = ...) (Point(int) for the call at bm_float.py:49; compiling benchmark(int) for the call at bm_float.py:58)` |
-| `generators` | Compiles after runner replacement |
-| `go` | `bm_go.py:326: error: cannot infer the type of field 'pos_child'; annotate it (self.pos_child: T = ...)` |
-| `hexiom` | `bm_hexiom.py:151: error: class attribute 'HIGHEST_VALUE_STRATEGY' of 'Done' used in a class-body default is not supported` |
-| `json_dumps` | `bm_json_dumps.py:7: error: cannot infer the type of an empty dict; add a type annotation (d: dict[K, V] = {}, or -> dict[K, V] on a function returning the dict)` |
-| `json_loads` | `bm_json_loads.py:50: error: expected int, got str` |
-| `meteor_contest` | `bm_meteor_contest.py:88: error: expected int, got float` |
-| `nbody` | Compiles after runner replacement |
-| `nqueens` | Compiles after runner replacement |
-| `pidigits` | `bm_pidigits.py:22: error: map() is supported as the argument of list(), tuple() (with scalar or optional scalar items), bytes(), sorted(), sum(), min(), max(), any(), all(), math.fsum(), math.prod(), str.join() and list.extend(), and as the value assigned to a list slice, which take its items at once; elsewhere use a list comprehension` |
-| `raytrace` | `bm_raytrace.py:11: error: module 'array' is not supported` |
-| `regex_dna` | `bm_regex_dna.py:135: error: unsupported call bytearray()` |
-| `regex_effbot` | `bm_regex_effbot.py:156: error: type <function bench_regex_effbot> has no attribute 'data'` |
-| `regex_v8` | Compiles after runner replacement |
-| `richards` | `bm_richards.py:176: error: inheritance with generic class templates is not supported: annotate __init__ parameters with concrete types (not Any or object)` |
-| `richards_super` | `bm_richards_super.py:177: error: inheritance with generic class templates is not supported: annotate __init__ parameters with concrete types (not Any or object)` |
-| `scimark` | `bm_scimark.py:1: error: module 'array' is not supported` |
-| `spectral_norm` | Compiles after runner replacement |
-| `unpack_sequence` | Compiles after runner replacement |
+`python3 tools/bench_pyperformance.py --census pyperformance-1.14.0.tar.gz` prints each first
+error in full.

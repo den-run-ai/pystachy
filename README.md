@@ -125,9 +125,9 @@ Parameters, losses and generated names match the original CPython program, and t
 source still runs under CPython.
 
 Performance depends on the workload: the JIT compiles on every run, while AOT builds once.
-See the [23 adapted pyperformance benchmarks](docs/pyperformance.md) for more comparisons, the
-[performance guide](docs/performance.md) for startup, memory use and reproduction, and the
-[caching guide](docs/caching.md) for regex and text processing.
+See the [pyperformance results](docs/pyperformance.md) for how alpha.4 compares with alpha.3 on
+22 adapted benchmarks, the [performance guide](docs/performance.md) for startup, memory use and
+reproduction, and the [caching guide](docs/caching.md) for regex and text processing.
 
 ## Libraries and compatibility
 
