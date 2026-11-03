@@ -66,40 +66,26 @@ The cached-fill probe warms 200 paragraphs outside timing with `maxsize=256`, th
 cache remains active. Interleave CPython and AOT processes and inspect raw rounds: CPU clocks
 exclude scheduling waits but do not eliminate shared-host variation.
 
+<a id="cpython-comparison-provisional-samples"></a>
+
 ## Recorded results
 
-The measurements below compare warmed operations with CPython. They describe the recorded
-builds and inputs; use the commands above to measure your own workload.
-
-### CPython comparison: provisional samples
-
 The [paired textwrap benchmark](https://github.com/den-run-ai/pystachy/pull/366), recorded at
-`ab12ee6` on 2026-10-13, uses 200 deterministic 80-word ASCII paragraphs at width 70. Each
-implementation runs twice for nine rounds, in CPython/AOT/AOT/CPython order. Values are medians
-of 18 round averages.
+`ab12ee6` on 13 October 2026, compares warmed operations with CPython on 200 deterministic
+80-word ASCII paragraphs at width 70. Each implementation runs twice for nine rounds, in
+CPython/AOT/AOT/CPython order; values are medians of 18 round averages and exclude cold-input
+costs. They describe that build and input: use the commands above to measure your own workload.
 
 | Operation | CPython 3.13.16 | AOT |
 |---|---:|---:|
-| `wrap`, paired probe | 171 µs | 186 µs |
-| `fill`, paired probe | 166 µs | 177 µs |
+| `wrap` | 171 µs | 186 µs |
+| `fill` | 166 µs | 177 µs |
 
 The second operation can reuse the regex decoded-subject cache; alternating order balances
-this advantage. These measurements exclude cold-input costs.
+this advantage. [#360](https://github.com/den-run-ai/pystachy/pull/360) has separate samples
+of `shorten`, `dedent`, `indent`, a cached `fill` hit and `fnmatchcase`, taken with another
+protocol at a revision it did not record.
 
-The following [separate-operation measurements](https://github.com/den-run-ai/pystachy/pull/360)
-use a different protocol: six interleaved processes, each taking a five-round median on a
-shared x86-64 host with CPython 3.13.16 and LLVM 18. The exact updated compiler revision was
-not recorded. These samples are not directly comparable to the paired table above, and small
-timing differences are inconclusive.
-
-| Operation | CPython 3.13.16 | AOT |
-|---|---:|---:|
-| `shorten` | 151 µs | 216 µs |
-| `dedent` | 18.7 µs | 26.1 µs |
-| `indent` | 3.88 µs | 2.19 µs |
-| Warm cached `fill` result hit | 98 ns | 35 ns |
-| Warm `fnmatchcase` pattern lookup and match | 329 ns | 338 ns |
-
-The cached `fill` result hit skips wrapping entirely. Measure cache hits and misses separately
+A cached `fill` result hit skips wrapping entirely. Measure cache hits and misses separately
 when deciding whether a cache helps your application. `make re-probe` checks deterministic
 matcher work; `make re-fuzz` checks bytecode and results against CPython.
