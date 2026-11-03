@@ -2655,7 +2655,17 @@ def gen_copy_hooks(self, t: str, seen: dict[str, bool]) -> bool:
     seen[u] = True
     hashed: list[str] = []
     if is_dict(u) or is_set(u) or u.startswith("frozenset["):
-        hashed = umembers(unopt(targs(u)[0])) if is_union(unopt(targs(u)[0])) else [unopt(targs(u)[0])]
+        # the classes whose __hash__() or __eq__() inserting a key or an item may run: its type's,
+        # a union's members', and a tuple's items' (a tuple's hash and == reach theirs)
+        todo = [targs(u)[0]]
+        while len(todo) > 0:
+            h = unopt(todo.pop())
+            if is_union(h):
+                todo.extend(umembers(h))
+            elif is_tuple(h) or is_vtuple(h):
+                todo.extend(targs(h))
+            else:
+                hashed.append(h)
     for h in hashed:
         for c in self.refl_concrete(h) if h in self.classes else []:
             if "__hash__" in self.classes[c].methods or "__eq__" in self.classes[c].methods:
