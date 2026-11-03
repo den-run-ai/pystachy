@@ -78,10 +78,12 @@ def _listdir(path: str) -> list[str]:
         return []
 
 
-def _select(path: str, parts: list[str], exists: bool, case_sensitive: bool):
+def _select(path: str, parts: list[str], exists: bool, case_sensitive: bool, pedantic: bool):
     # the paths that _Globber's selector for parts (reversed, as it pops them) selects from path,
     # in its order: a literal part (and those after it) is joined to the path, a wildcard part
-    # matches the directory's entries, and '**' selects the path and its subdirectories
+    # matches the directory's entries, and '**' selects the path and its subdirectories. Where
+    # glob() was given case_sensitive (pedantic, CPython's case_pedantic), a literal part also
+    # matches the entries, as the file system's case sensitivity is not known
     if len(parts) == 0:
         # (select_exists: an lstat() that raises OSError selects nothing)
         if exists or _ignore_oserror(path, False) >= 0:
@@ -94,7 +96,7 @@ def _select(path: str, parts: list[str], exists: bool, case_sensitive: bool):
             rest = rest[:-1]
         dir_only = len(rest) > 0
         top = _add_slash(path)
-        yield from _select(top, rest, exists, case_sensitive)
+        yield from _select(top, rest, exists, case_sensitive, pedantic)
         stack = [top]
         while len(stack) > 0:
             p = stack.pop()
@@ -103,18 +105,18 @@ def _select(path: str, parts: list[str], exists: bool, case_sensitive: bool):
                 is_dir = _isdir_mode(_ignore_oserror(entry, False))
                 if is_dir or not dir_only:
                     if dir_only:
-                        yield from _select(entry, rest, True, case_sensitive)
+                        yield from _select(entry, rest, True, case_sensitive, pedantic)
                     else:
                         yield entry
                     if is_dir:
                         stack.append(entry)
     elif part == '' or part == '.' or part == '..':
-        yield from _select(_add_slash(path) + part, rest, exists, case_sensitive)
-    elif not _is_magic(part):
+        yield from _select(_add_slash(path) + part, rest, exists, case_sensitive, pedantic)
+    elif not pedantic and not _is_magic(part):
         while len(rest) > 0 and not _is_magic(rest[-1]):
             part += '/' + rest[-1]
             rest = rest[:-1]
-        yield from _select(_add_slash(path) + part, rest, False, case_sensitive)
+        yield from _select(_add_slash(path) + part, rest, False, case_sensitive, pedantic)
     else:
         dir_only = len(rest) > 0
         pat = part if case_sensitive else part.lower()
@@ -124,7 +126,7 @@ def _select(path: str, parts: list[str], exists: bool, case_sensitive: bool):
                 if dir_only and not _isdir_mode(_ignore_oserror(entry, True)):
                     continue
                 if dir_only:
-                    yield from _select(entry, rest, True, case_sensitive)
+                    yield from _select(entry, rest, True, case_sensitive, pedantic)
                 else:
                     yield entry
 
@@ -595,7 +597,7 @@ class PosixPath(PurePosixPath):
             parts.append('')
         root = str(self)
         out = []
-        for p in _select(root, parts[::-1], False, True if case_sensitive is None else case_sensitive):
+        for p in _select(root, parts[::-1], False, True if case_sensitive is None else case_sensitive, case_sensitive is not None):
             if root == '.':
                 p = p[2:]
             if parts[-1] == '':
