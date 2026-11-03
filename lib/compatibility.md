@@ -680,8 +680,10 @@ enum class with its metaclass, `EnumType`, whose `__prepare__`, `__new__` and `_
 form in a compiled program, so the compiler makes the class from its class statement instead,
 as it makes dataclasses and `NamedTuple` classes ([test](../tests/programs/library/lib_enum.py)):
 
-- A class that derives from `Enum`, `IntEnum` or `StrEnum` (by any import of them), or from an
-  enum class of its own module without members, is an enum class. Its members are its body's
+- A class statement of a module's body that derives from `Enum`, `IntEnum`, `StrEnum`, `Flag` or
+  `IntFlag` (as the body's import statements name them: `from enum import Enum`, or
+  `import enum`), from `str` or `int` and `Enum`, or from an enum class of its own module
+  without members, makes an enum class. Its members are its body's
   `NAME = value` statements, whose values are literals (numbers, strs, bytes, `True`, `False`,
   `None` and tuples of them) of one type, or `auto()`, which gives CPython's values: one more
   than the greatest value before (from 1), or a `StrEnum` member's name in lower case. An int
@@ -746,7 +748,9 @@ as it makes dataclasses and `NamedTuple` classes ([test](../tests/programs/libra
   (`class C(float, Enum)`) and keywords; members of other values or types, `_ignore_`, `_order_`
   and private names; `__new__`, `__init__` and `_generate_next_value_`; an enum
   class that derives from an enum class of another module, or from one with members (CPython's
-  `TypeError`); the functional API (`Enum("Color", "RED GREEN")`); reassigning a member
+  `TypeError`); a class statement in an `if` or `try` statement, or whose base is imported in
+  one ([test](../tests/errors/library/lib_enum_conditional.py),
+  [test](../tests/errors/library/lib_enum_try_import.py)); the functional API (`Enum("Color", "RED GREEN")`); reassigning a member
   (CPython's `AttributeError`); `reversed()` of an enum class, and an enum class without
   members as a value. `enum.property`, `member`, `nonmember`, `verify`, `global_enum` and the
   other helpers are not provided.

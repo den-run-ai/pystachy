@@ -324,9 +324,13 @@ def gen_hoist_class(self, ci: ClassInfo) -> None:
     # (A class whose only problem is ci.hook still compiles here: CPython runs its body.)
     ci.bad = "" if ci.bad == ci.hook else ci.bad
     if "enum$Enum" in self.classes and self.derives(ci.name, "enum$Enum") and ci.node.line not in ENUMCLASSES and not lib_source(ci.node.line, self.libdir, "enum.py"):
-        # (a class whose base is an enum class of another module: the loader makes an enum class
-        # from its module's own class statements, and an enum class's members from its body)
-        self.err(f"enum class {short(ci.name)} is not supported: it derives from {short(ci.base)}, an enum class of another module (an enum class derives from Enum, IntEnum, StrEnum or an enum class of its own module)")
+        # (a class whose base is an enum class of another module, or lib/enum.py's own where the
+        # loader did not see the class: it makes an enum class from a class statement of its
+        # module's body whose base that body's import statements name, and its members from its body)
+        if ci.base in self.classes and lib_source(self.classes[ci.base].node.line, self.libdir, "enum.py"):
+            self.err(f"enum class {short(ci.name)} is not supported: the compiler makes enum classes from the class statements of a module's body (not of an if or try statement) whose base the body's import statements name (from enum import Enum, or import enum)")
+        else:
+            self.err(f"enum class {short(ci.name)} is not supported: it derives from {short(ci.base)}, an enum class of another module (an enum class derives from Enum, IntEnum, StrEnum, Flag, IntFlag, str or int and Enum, or an enum class of its own module)")
     for st in ci.node.kids[0].kids if ci.mod != "" and ci.bad == "" else []:
         if st.kind == "annassign" and len(st.kids) == 3 and st.kids[0].kind == "name":
             why = self.default_problem(st.kids[2], ci.ftypes[st.kids[0].s])
