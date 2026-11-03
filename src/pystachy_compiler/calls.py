@@ -201,7 +201,7 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
         o = self.expr(f.kids[0], self.default_want(f.kids[0], f.s, args, ""))
         self.mcall = n
         r = self.method(o, f.s, args, want, resultsoft)
-        if f.s != "close":
+        if f.s != "close" and r.t != BFILE:  # (__enter__() and __iter__() return the file: it stays open)
             self.close_temp(f.kids[0], o)
         return r
     if f.kind == "name":
@@ -719,8 +719,15 @@ def gen_close_temp(self, n: Node, v: Val) -> None:
     # of lib/_pystachy_bfile.py's open_writer() (loader.py's binary_opens), whose object holds the file
     if v.t == "file" and self.open_call(n):
         self.rt("pys_file_drop", "void", [f"ptr {v.v}"])
-    elif v.t == BFILE and n.kind == "call" and n.kids[0].kind == "name" and n.kids[0].s.startswith("_pystachy_bfile$open_"):
+    elif v.t == BFILE and bfile_temp(n):
         self.rt("pys_file_drop", "void", [f"ptr {self.getfield(v, self.field(v, '_raw'), '_raw').v}"])
+
+def bfile_temp(n: Node) -> bool:
+    # (gen_close_temp) n makes a binary file that nothing else refers to: open(file, mode) of a binary
+    # mode, or its __enter__() or __iter__(), which return the file itself (open(p, "wb").__enter__().write(b))
+    while n.kind == "call" and len(n.kids) == 1 and n.kids[0].kind == "attr" and (n.kids[0].s == "__enter__" or n.kids[0].s == "__iter__"):
+        n = n.kids[0].kids[0]
+    return n.kind == "call" and n.kids[0].kind == "name" and n.kids[0].s.startswith("_pystachy_bfile$open_")
 
 def gen_open_(self, args: list[Node]) -> Val:
     # open(file, mode="r", buffering=-1, encoding=None, errors=None, newline=None): text files
