@@ -46,6 +46,6 @@ def climb() -> float:
 @export
 def through(name: str, n: int) -> int:
     # (calls the client's function name with n, which may call this module again, from deeper in
-    # the stack; then a recursion of its own, which the inner call's lower bound must not stop)
+    # the stack; a later shallow recursion verifies that unwinding restored the active depth)
     r = import_module("__main__").attr(name).call([of_int(n)]).to_int()
     return r + _depth(10)

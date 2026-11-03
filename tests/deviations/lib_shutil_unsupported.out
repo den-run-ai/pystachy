@@ -1,0 +1,6 @@
+onexc NotImplementedError: shutil.rmtree() with onerror, onexc or dir_fd is not supported
+onerror NotImplementedError: shutil.rmtree() with onerror, onexc or dir_fd is not supported
+dir_fd NotImplementedError: shutil.rmtree() with onerror, onexc or dir_fd is not supported
+copyfile NotImplementedError: shutil.copyfile() of a symbolic link with follow_symlinks=False is not supported
+False
+[exit 0]

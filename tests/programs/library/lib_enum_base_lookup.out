@@ -1,0 +1,6 @@
+True
+True False
+Color.GREEN True
+ValueError <Shade.DARK: 1> is not a valid Color
+Size.SMALL small
+[exit 0]

@@ -15,19 +15,20 @@ PREFIX = "src.pystachy_compiler."
 # These are initialized when modules load, then reviewed as lookup tables. Adding
 # a container or a post-import writer requires an explicit ownership decision.
 LOOKUP = set("""
-analysis.BINDERS
+analysis.BINDERS builtins.FSPRIMS
 bigints.BIGOPS bigints.BKEY bigints.PROMOTES bigints.NUMOPS bigints.NUMCALLS
 driver.COMPILER_SOURCES driver.CPUID driver.RTPARTS
 dynamic.XCMP dynamic.XOPS dynamic.BINOPS dynamic.UNOPS dynamic.CMPOPS
 dynamic.BINDUNDERS dynamic.BUILTIN expressions.ORDERS
 ir.NONUMS ir.NOVALS ir.NOLABELS ircheck.RESULT_NUMBERS
 lexer.KEYWORDS lexer.OPS lexer.ESCAPES lexer.PREFIXES lexer.NONPRINT lexer.NOTID
+loader.ENUM_NAMES loader.ENUM_BASES loader.ENUM_HOOKS
 local_versions.UNVERSIONED parser.ATOMS
-reflection.BUILTIN_TYPES reflection.SLOT_WRAPPERS reflection.OBJ_BUILTINS reflection.TYPE_BUILTINS
+reflection.BUILTIN_TYPES reflection.SLOT_WRAPPERS reflection.OBJ_BUILTINS reflection.TYPE_BUILTINS reflection.PICKLING
 scalar_ir.SCALAR_INTS scalar_ir.SCALAR_BIN scalar_ir.SCALAR_FLOAT
 scalar_ir.SCALAR_ICMP scalar_ir.SCALAR_FCMP scalar_ir.SCALAR_CASTS scope.COMPNAMES
 specs.PYBUILTINS specs.MODNAMES specs.ANNKINDS specs.GENERICS specs.CBUILTIN
-specs.ABSTRACT_DECOS specs.STANDINS specs.OPAQUE specs.TYPEMODS specs.NOCALL
+specs.ABSTRACT_DECOS specs.STANDINS specs.OPAQUE specs.TYPEMODS specs.BOPENS specs.NOCALL
 specs.IOPS specs.CHECKED specs.IRT specs.FOPS specs.FRT specs.ICMP specs.FCMP
 specs.SPECIAL specs.UNCALLED specs.REFL specs.ORDOP specs.DUNDER specs.UNARY
 specs.CALLS specs.RTL specs.TBAA_SIZES specs.TBAA_NAMES specs.ERRNO specs.MODFUNCS
@@ -58,6 +59,7 @@ RESET = {
     "diagnostics.IDINERT": "loader rebuilds checked identity-inert hints with the file table on each load and retry",
     "diagnostics.INTFILES": "loader resets file-index python-int opt-ins with the file table",
     "diagnostics.INTSPANS": "loader resets the line spans of lib's promoting definitions with the file table",
+    "names.ENUMCLASSES": "loader resets the enum classes it makes, by their statements' lines, with the file table",
 }
 RETAINED = {
     "diagnostics.CAPTURED": "opt-in observer records; inspection worker clears before its request and exits after it, not compiler restart state",
@@ -78,6 +80,7 @@ WRITERS = {
     "diagnostics.INTSPANS": {"loader.Loader.program", "loader.Loader.int_spans"},
     "syntax.LAMBDAS": {"parser.Parser.test1", "driver.compile_program"},
     "names.RENAMED": {"program.gen_program", "driver.compile_program"},
+    "names.ENUMCLASSES": {"loader.Loader.program", "loader.enum_classes"},
     "specs.LIBS": {"lower_module.gen_cextern", "driver.compile_program", "driver.main"},
     "specs.LINKDL": {"lower_module.gen_cextern", "driver.compile_program"},
     "specs.GLUE": {"loader.Loader.load"},

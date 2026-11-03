@@ -26,9 +26,9 @@ reflect this checkpoint. No new timings were collected for this documentation up
 Identity scoping (#973) and compatible scalar dict-hash fast paths (#980) remain in place.
 The [latest recorded JSON acceptance report](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/reports/json-acceptance-controls-2026-10-29.md)
 supersedes the earlier residual instruction figures for its named workloads; it does not
-establish a general wall-time speedup. VERSION is v0.1.0-alpha.4; setting it does not
-publish a tag or release. Follow the
-[release tracker](https://github.com/den-run-ai/pystachy/issues/976) for publication status.
+establish a general wall-time speedup. Later, on 2 November 2026,
+[v0.1.0-alpha.4](https://github.com/den-run-ai/pystachy/releases/tag/v0.1.0-alpha.4) was
+published from main `9c8bc746`.
 
 ## Reading the colors
 
@@ -45,7 +45,8 @@ not mean a feature is experimental unless it says **PROTO**, and red does not me
 entire enclosing feature should be removed. The areas are schematic, not coverage percentages.
 Read **support status**, **representation** and **measured cost** separately. A yellow
 operation can outperform CPython; a green operation can still have high algorithmic cost.
-The red examples are not an exhaustive inventory of deviations.
+The red examples are not an exhaustive inventory of deviations. The
+[language guide](language.md#support-at-a-glance) applies the same statuses to feature areas.
 
 ## 1. The native subset to preserve
 
@@ -197,13 +198,12 @@ The linked reports give environment and validation details; sampling differs by 
 
 | Boundary | Recorded result | What it establishes |
 |---|---|---|
-| Useful concrete workload | At `d3fbfc6f`, adapted microGPT's 100-step training phase took **15.220 s in adapted CPython vs 0.896 s in AOT** (17.0×); AOT build was separately **1.802 s**. [Report](../bench/microgpt/README.md#measured-snapshot). | A concrete native consumer is worth protecting. This is an adapted application, a phase timing and a historical compiler, not unrestricted Python or end-to-end compile-plus-run speed. |
+| Useful concrete workload | With v0.1.0-alpha.4, adapted microGPT's 100-step training phase took **9.241 s in adapted CPython vs 0.933 s in AOT** (9.9×); AOT build was separately **2.47 s**. [Report](../bench/microgpt/README.md#measured-snapshot). | A concrete native consumer is worth protecting. This is an adapted application and a phase timing, not unrestricted Python or end-to-end compile-plus-run speed. |
 | Concrete vs union container | At `2438e7e0`, one million integers in `list[int]` vs `list[int \| str]`: construction **9.197 vs 19.043 ms**, scan **0.775 vs 2.392 ms** (process CPU, excluding startup); peak managed heap **13.0 vs 33.1 MiB** from separate runs. [Report](union-value-costs.md#boxing-measurement). | Identical integer payloads can incur extra allocation and indirection solely from storage. Heap peak is not retained live memory or RSS. |
 | Narrowed vs generic dynamic arithmetic | At `bc79f24c`, summing a million items took **1.1 ms typed**, **3.2 ms with narrowed Any items**, **17.8 ms with an Any accumulator** (processing CPU); CPython's generic case took **30.5 ms**. [Report](dynamic-any.md#measurements). | Yellow can beat CPython while remaining much slower than the native core. Payload narrowing avoids arithmetic dispatch without removing the container's boxes. Later boxing/identity changes mean these are not current-main ratios. |
 | Compiler work vs emitted IR | At `554f3d1 → 570eb4e`, the ordinary-class comparison with 30 subclasses and `other: object` went from **962 → 62 method instances**, **197,808 → 26,898 IR lines**, and AOT build **32.4 → 1.9 s**. [#792 measurements](https://github.com/den-run-ai/pystachy/pull/792). | Sharing specialization can preserve the feature while reducing compiler/backend cost. Quadratic frontend class-pair analysis remains ([#625](https://github.com/den-run-ai/pystachy/issues/625)); smaller IR alone proves no execution-speed gain. |
 | Typed code beside an opt-in import | At main `5bd492b3`, a 30-million-step typed `Counter` loop that also imports `tomllib` took **215.6 ms** AOT against alpha.3's **22.4 ms** (9.6×); with #974's changes **41.3 ms** (1.84×), with the then-draft #973 **22.4 ms** (medians of nine CPU-pinned runs). [Report](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/reports/identity-scope-performance-2026-10-28.md). | A program-wide policy taxes typed code that cannot observe it, and scoping it recovered that cost on this workload. #981 repairs the promoting-int correctness blocker recorded in that historical report. #973 is merged in this snapshot; its final combined-source results also overlap alpha.3's range. This is not a JSON, JIT start-up or application measurement. |
-| Earlier compatible-hash recovery in typed JSON | [#980](https://github.com/den-run-ai/pystachy/pull/980) at `86cedeec` and the combined [#973](https://github.com/den-run-ai/pystachy/pull/973) source at `9fd73f34` recorded **1,405.530M → 1,351.341M instructions** versus main `5b49dcfa`; alpha.3 recorded **1,300.339M** (300-loop callgrind workload). | That checkpoint removed **51.5%** of the excess and left **3.92%** above alpha.3. Separate paired timing medians were **+3.12% AOT / +5.68% warm JIT**, with overlapping shared-host ranges. These are prior results from the [combined report](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/reports/release-blocker-performance-2026-10-29.md); the next row supersedes the residual instruction result. |
-| Later JSON acceptance controls (#987) | The [29 October report](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/reports/json-acceptance-controls-2026-10-29.md) records **1,299.270M instructions** versus alpha.3's **1,300.358M** on the broad workload (**0.084% below**). All eight retained typed/observed-Any controls were below alpha.3. | The source-pinned replacement controls were accepted for [#969](https://github.com/den-run-ai/pystachy/issues/969)'s closure. The original 124M-instruction input remains unavailable. Paired wall-time ranges overlap; no wall-time speedup or fresh measurement on this guide's source checkpoint is claimed. |
+| Compatible hashing in typed JSON | Under alpha.4, the broad 300-loop Callgrind workload executes **1,296.2M instructions** against alpha.3's **1,300.4M** (**0.32% below**), and all eight retained typed and observed-`Any` controls are below alpha.3. [Counts](../bench/smoke/README.md#alpha3-to-alpha4). | With CPython-compatible dictionary hashes and probe order kept, typed JSON is back below alpha.3; an intermediate [#980](https://github.com/den-run-ai/pystachy/pull/980) and [#973](https://github.com/den-run-ai/pystachy/pull/973) checkpoint had left it **3.92%** above ([combined report](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/reports/release-blocker-performance-2026-10-29.md)). The replacement controls were accepted for [#969](https://github.com/den-run-ai/pystachy/issues/969)'s closure; the original 124M-instruction input remains unavailable. These are instruction counts: no wall-time speedup is claimed. |
 | Promoting ints at 64-bit width | Recorded 26 October 2026 with `bench/integers` (AOT, medians of five): `lcg32` took **0.005 s** with promoting ints and with checked int64 (151× and 152× CPython's speed); `cross64`, whose values cross 2⁶³, took **0.174 s** against `mpz`'s **0.419 s**. [Measurements](python-int.md#measurements). | The opt-in's inline paths keep 64-bit work at checked-int64 speed on these kernels. They do not measure programs that mix promoting ints with dynamic `Any` or cross many 64-bit boundaries. |
 | Runtime support that plain programs do not use | From `5bd492b3` to `9b0cedc9`, pruning unreachable promoting-int and dynamic-identity runtime paths shrank four plain executables by **12.6–29.3%** (`print(1)`: 41,416 → 29,264 bytes) and cut the `spectral` and `richards` builds by **19.3%** and **17.6%**. [Report](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/reports/aot-plain-runtime-2026-10-28.md). | Opt-in features need not cost programs that do not opt in. AOT still optimizes the runtime with each program ([#706](https://github.com/den-run-ai/pystachy/issues/706)); no execution regression was confirmed. |
 
@@ -329,7 +329,8 @@ a default switch with its own cost budget. This map makes neither promotion: cor
 gaps, corpus exceptions, whole-import-graph behavior and application/retained-memory
 acceptance still matter.
 
-When updating this page, change the affected SVG labels and tables together, recheck the
+When updating this page, change the affected SVG labels and tables together, including the
+language guide's [summary of the payoff map](language.md#performance-and-complexity), recheck the
 linked issue's remaining scope, and retain the distinction between an unavailable feature,
 an intentional restriction, a known accepted deviation and a measured cost. The SVGs are
 editable vector sources in [images/](images/); labels and the tables carry the meaning

@@ -8,7 +8,7 @@ from src.pystachy_compiler.diagnostics import fail, dynamic_program, int_lists
 from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Val
 from src.pystachy_compiler.llvm_abi import llstr
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.specs import CTYPES, DYNTYPE_LL, GENCLEAN, GENCMD, GENDONE, GENNAME, GENRUN, GENSTATE, GLUE, LIBS, LINKDL, OBJECTC, RANGEC, RECURSION_BRANCH, RTDATA, RTSYM, STR_HEADER_SIZE, STRLEN_RANGE, TBAA_BYTES, TBAA_DEPTH, TBAA_DEPTH_TYPE, TBAA_FIELDS, TBAA_FLOOR, TBAA_FLOOR_TYPE, TBAA_LEN, TBAA_LIMIT, TBAA_LIMIT_TYPE, TBAA_NAMES, TBAA_SIZES, TBAA_TRIP, TBAA_TRIP_TYPE
+from src.pystachy_compiler.specs import CTYPES, DYNTYPE_LL, GENCLEAN, GENCMD, GENDONE, GENNAME, GENRUN, GENSTATE, GLUE, LIBS, LINKDL, OBJECTC, RANGEC, RECURSION_BRANCH, RTDATA, RTSYM, STR_HEADER_SIZE, STRLEN_RANGE, TBAA_BYTES, TBAA_DEPTH, TBAA_DEPTH_TYPE, TBAA_FIELDS, TBAA_FLOOR, TBAA_FLOOR_TYPE, TBAA_LEN, TBAA_LIMIT, TBAA_LIMIT_TYPE, TBAA_NAMES, TBAA_SIZES
 from src.pystachy_compiler.utils import RtFn, lt, runtime_decl, typestr
 
 # pystachy run on Linux, which loads the runtime as a shared library (the driver's RTSO, #704): a
@@ -21,6 +21,55 @@ define internal void @pys.obj.hooks() {
 }
 @llvm.global_ctors = appending global [1 x { i32, ptr, ptr }] [{ i32, ptr, ptr } { i32 0, ptr @pys.obj.hooks, ptr null }]
 """
+
+
+# The JIT tier's allocations: runtime.c's fast path (gc_alloc), here in the program's module, since
+# the tier never inlines the shared runtime's code: a call of pys_alloc or pys_new pops a free list of
+# the runtime (pys_fl, a class's of 16 to 136 bytes, scanned) and calls pys_gc_slow for the rest.
+# Both stay calls (noinline) through the cleanup pipeline, so that pys_new's calls, which allocelide
+# marks, stay visible as allocations, which instcombine deletes where nothing keeps their objects,
+# and so that the inliner weighs the calls as before (inlined at once, pys_alloc's fast path made a
+# loop of #650's nodes 10% slower); the pipeline's last step inlines them, as LATE_INLINE does for
+# AOT builds (the driver's JITLATE)
+JITFAST = """ {
+  %s = icmp ult i64 %n, 136
+  br i1 %s, label %f, label %w
+f:
+  %b = add i64 %n, 8
+  %c = lshr i64 %b, 3
+  %d = shl i64 %c, 1
+  %e = add i64 %d, -4
+  %a = icmp ult i64 %n, 8
+  %k = select i1 %a, i64 0, i64 %e
+  %h = getelementptr ptr, ptr @pys_fl, i64 %k
+  %p = load ptr, ptr %h
+  %z = icmp eq ptr %p, null
+  br i1 %z, label %w, label %o
+o:
+  %l = load i64, ptr %p
+  %x = xor i64 %l, -1
+  %q = inttoptr i64 %x to ptr
+  store ptr %q, ptr %h
+  store i64 0, ptr %p
+  ret ptr %p
+w:
+  %r = call ptr @pys_gc_slow(i64 %n, i64 0)
+  ret ptr %r
+}
+"""
+
+
+def jit_alloc(ir: str) -> str:
+    # the program's IR with JITFAST in place of its declarations of pys_alloc and pys_new, and the
+    # runtime names that JITFAST uses declared unless the program declares them (a second
+    # declaration of pys_gc_slow, which specs.RUNTIME lists, would be invalid IR)
+    if "declare ptr @pys_alloc(i64)\n" not in ir and "declare ptr @pys_new(i64)\n" not in ir:
+        return ir
+    fl = "" if "@pys_fl = " in ir else "@pys_fl = external global [80 x ptr]\n"
+    slow = "" if "@pys_gc_slow(" in ir else "declare ptr @pys_gc_slow(i64, i64)\n"
+    ir = ir.replace("declare ptr @pys_alloc(i64)\n", "define internal ptr @pys_alloc(i64 %n) noinline" + JITFAST)
+    ir = ir.replace("declare ptr @pys_new(i64)\n", "define internal ptr @pys_new(i64 %n) noinline" + JITFAST)
+    return ir + fl + slow
 
 
 def address_runtime_ir(ir: str) -> str:
@@ -43,26 +92,18 @@ def struct_types(ci: ClassInfo) -> list[str]:
 
 
 def recursion_guard(depth: list[str], failed: list[str]) -> list[str]:
-    # An entry's checks, after the code that reads the active depth (%depth). Its one compare on
-    # the way in is with the trip, the state's second word: the lower of the limit and the depth
-    # the stack is known to hold (runtime.c's safe depth). An entry at or past it takes the cold
-    # path, which checks the limit, the third word, then the native stack's floor (#1015), the
-    # fourth, which the stack pointer must not be below (llvm.stacksave reads it without a frame
-    # pointer, and unlike an alloca's address it leaves the function's tail calls alone), and
-    # enters if both pass. Each failure has its cold call of the runtime, whose RecursionError
-    # names the stack when it is the floor's; failed: what both do first
+    # An entry's checks, after the code that reads the active depth (%depth): the limit, then the
+    # native stack's floor (#1015), the state's third word, which the stack pointer must not be
+    # below (llvm.stacksave reads it without a frame pointer, and unlike an alloca's address it
+    # leaves the function's tail calls alone). Each failure has its cold call of the runtime, whose
+    # RecursionError names the stack when it is the floor's; failed: what both do first
     return ["entry:"] + depth + [
-        "  %trip.addr = getelementptr [4 x i64], ptr @pys_recursion_state, i64 0, i64 1",
-        f"  %trip = load i64, ptr %trip.addr, !tbaa !{TBAA_TRIP}",
-        "  %past = icmp sge i64 %depth, %trip",
-        f"  br i1 %past, label %deep, label %entered, !prof !{RECURSION_BRANCH}",
-        "deep:",
-        "  %limit.addr = getelementptr [4 x i64], ptr @pys_recursion_state, i64 0, i64 2",
+        "  %limit.addr = getelementptr [3 x i64], ptr @pys_recursion_state, i64 0, i64 1",
         f"  %limit = load i64, ptr %limit.addr, !tbaa !{TBAA_LIMIT}",
         "  %full = icmp sge i64 %depth, %limit",
         f"  br i1 %full, label %overflow, label %stack, !prof !{RECURSION_BRANCH}",
         "stack:",
-        "  %floor.addr = getelementptr [4 x i64], ptr @pys_recursion_state, i64 0, i64 3",
+        "  %floor.addr = getelementptr [3 x i64], ptr @pys_recursion_state, i64 0, i64 2",
         f"  %floor = load i64, ptr %floor.addr, !tbaa !{TBAA_FLOOR}",
         "  %sp = call ptr @llvm.stacksave.p0()",
         "  %here = ptrtoint ptr %sp to i64",
@@ -80,19 +121,19 @@ def recursion_guard(depth: list[str], failed: list[str]) -> list[str]:
 
 def recursion_ir(keys: list[str], used: bool, root: int, fields: bool, check: bool) -> list[str]:
     # The native depth accounting (docs/internals.md#native-recursion-depth) works on runtime.c's
-    # mutable state, four I words: the active depth, the trip, the configured limit and the native
-    # stack's floor, which the program declares where it is used. The helpers keys names are the
-    # program's, even where the JIT runs the runtime as a separate library. An entry checks the
-    # trip, past it the limit and the floor (recursion_guard: the C RecursionErrors are its cold
-    # paths), and counts; LLVM's ordinary inliners take it (clang -O2 for build, the JIT's below
-    # its line limit), not mandatory inlining: LLVM 18's always-inline pass computes block
-    # frequencies of each caller, which costs a large JIT program's start-up more than the call
-    # saves. check: closed recursion's entry (Gen.recursionscope), which checks the depth its
-    # caller passed and returns its own, inlined alike. The scalar helpers, which only the
-    # hand-written pys.gen.drop.counted and extension entries call, are always inlined
+    # mutable state, three I words: the active depth, the configured limit and the native stack's
+    # floor, which the program declares where it is used. The helpers keys names are the program's,
+    # even where the JIT runs the runtime as a separate library. An entry checks the limit and the
+    # floor (recursion_guard: the C RecursionErrors are its cold paths) and counts; LLVM's ordinary
+    # inliners take it (clang -O2 for build, the JIT's below its line limit), not mandatory
+    # inlining: LLVM 18's always-inline pass computes block frequencies of each caller, which costs
+    # a large JIT program's start-up more than the call saves. check: closed recursion's entry
+    # (Gen.recursionscope), which checks the depth its caller passed and returns its own, inlined
+    # alike. The scalar helpers, which only the hand-written pys.gen.drop.counted and extension
+    # entries call, are always inlined
     if not used:
         return []
-    out = ["@pys_recursion_state = external global [4 x i64]"]
+    out = ["@pys_recursion_state = external global [3 x i64]"]
     if check or "recursion.enter" in keys or "recursion.resume" in keys:
         out.append("declare ptr @llvm.stacksave.p0()")
     if check:
@@ -141,11 +182,9 @@ def recursion_ir(keys: list[str], used: bool, root: int, fields: bool, check: bo
         f'!{TBAA_DEPTH_TYPE} = !{{!"recursion depth", !{root}, i64 0}}',
         f'!{TBAA_LIMIT_TYPE} = !{{!"recursion limit", !{root}, i64 0}}',
         f'!{TBAA_FLOOR_TYPE} = !{{!"stack floor", !{root}, i64 0}}',
-        f'!{TBAA_TRIP_TYPE} = !{{!"recursion trip", !{root}, i64 0}}',
         f"!{TBAA_DEPTH} = !{{!{TBAA_DEPTH_TYPE}, !{TBAA_DEPTH_TYPE}, i64 0}}",
         f"!{TBAA_LIMIT} = !{{!{TBAA_LIMIT_TYPE}, !{TBAA_LIMIT_TYPE}, i64 0}}",
         f"!{TBAA_FLOOR} = !{{!{TBAA_FLOOR_TYPE}, !{TBAA_FLOOR_TYPE}, i64 0}}",
-        f"!{TBAA_TRIP} = !{{!{TBAA_TRIP_TYPE}, !{TBAA_TRIP_TYPE}, i64 0}}",
         f'!{RECURSION_BRANCH} = !{{!"branch_weights", i32 1, i32 1048575}}',
     ])
     return out

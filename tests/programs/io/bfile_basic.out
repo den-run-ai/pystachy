@@ -1,0 +1,20 @@
+BufferedWriter wb False True
+True
+263 263
+True False True False
+True 263
+BufferedReader rb True
+b'\x00\x01\x02' 3
+True
+b'' b'' 263
+10 b'\n\x0b' 259 b'\nend' 257 b'\n\r'
+0 b'' b'\x00\x01\x02\x03'
+True False True
+4 b'\x08\t\n' b'end'
+b'\x00\x01\x02\x03' b'\x04\x05' b'\x0b\x0c\r'
+False
+263
+b'' b''
+True
+b'\xfa\xfb\xfc\xfd\xfe\xff\r\n\r\nend'
+[exit 0]

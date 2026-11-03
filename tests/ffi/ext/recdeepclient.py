@@ -1,17 +1,16 @@
-# An extension module that CPython calls from deeper in its thread's native stack than the import
-# was (#1015). A worker thread with a 1 MiB stack imports recdeep near the top of its stack, then
-# calls it from a C callback below 4 KiB frames (tests/ffi/ffitest.c's ffi_deep), placed by the
-# stack bounds that glibc reports, which runtime.c's floor uses too. Each call from Python computes
-# again, from its own frame, the depth that the stack holds (pys_enter), where the import's would
-# let about a hundred levels run unchecked: a call made below the floor raises the stack's
-# RecursionError at its first counted entry; an unbounded recursion entered just above the floor
-# raises it at the floor, before a limit of 2000; a call that recdeep makes back into Python, and
-# which calls recdeep again from below the floor, raises alike, and recdeep's own recursion after
-# it returns completes. CPython's twin has no native floor, its Python frames being on the heap:
-# there the same calls complete or reach the limit (a low one: freeing a long traceback takes C
-# stack in CPython 3.13). Each run checks what its own runtime must do; both print the same lines.
+# An extension imported near the top of a 1 MiB thread is called from deep native C frames,
+# directly and through a nested Python callback. Per-entry stack checks must reject calls below
+# the floor and stop unbounded recursion started just above it, then allow a shallow recovery.
+# CPython's Python frames live on the heap, so its twin uses a low logical limit and checks its
+# own expected behavior; both versions print the same summary.
 import ctypes
+import platform
+import sys
 import threading
+
+if sys.platform != "linux" or platform.libc_ver()[0] != "glibc":
+    print("native stack bounds require Linux/glibc")
+    raise SystemExit(0)
 
 KIB = 1024
 lib = ctypes.CDLL("libpystachy-ffitest.so")   # (tests/ffi/run.sh puts it on LD_LIBRARY_PATH)
@@ -108,9 +107,17 @@ def run() -> None:
     results.append(f"recovered {recdeep.depth(400)} {recdeep.get_limit()}")
 
 
+def worker_run() -> None:
+    try:
+        run()
+    except BaseException as error:
+        failures.append(f"worker failed: {type(error).__name__}: {error}")
+
+
 threading.stack_size(1024 * KIB)
-worker = threading.Thread(target=run)
+worker = threading.Thread(target=worker_run)
 worker.start()
 worker.join()
 print("\n".join(results))
 assert not failures, failures
+assert len(results) == 6, results

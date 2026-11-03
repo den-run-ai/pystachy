@@ -7,9 +7,7 @@ bounds, with negative controls. Live programs then run as subprocesses under a f
 (RLIMIT_STACK), without core dumps and with time limits, normally and with program GC stress:
 a recursion that fits matches CPython, and one that does not pins the documented deviation
 (docs/language/compatibility.md#errors-and-control-flow), where CPython, whose Python frames
-live on the heap, completes. Representative recursions with larger frames, run until the floor
-raises in AOT and in the JIT with either code generation, use well under runtime.c's STACK_LEVEL a
-counted level on average: the bound that entries below the trip rely on.
+live on the heap, completes.
 """
 
 import os
@@ -45,7 +43,7 @@ PREFIX = r"""
 #include <sys/resource.h>
 #include <unistd.h>
 typedef int64_t I;
-static I pys_recursion_state[4] = {1, 1000, 1000, 0};   /* (depth, trip, limit, floor) */
+static I pys_recursion_state[3];
 /* simulated: the main thread's file name (AT_EXECFN), its stack limit, the page size and the
    pthread bounds; got counts pthread_getattr_np calls, destroyed pthread_attr_destroy calls */
 static const char *execfn;
@@ -81,23 +79,11 @@ SUFFIX = r"""
 static _Alignas(4096) char page[2 * 4096];
 static void check(const char *what, uintptr_t here, uintptr_t expected, int pthread_calls, int destroys) {
   got = destroyed = 0;
-  pys_recursion_state[1] = pys_recursion_state[3] = -1;
+  pys_recursion_state[2] = -1;
   stack_floor_at(here);
-  if ((uintptr_t)pys_recursion_state[3] != expected || got != pthread_calls || destroyed != destroys) {
+  if ((uintptr_t)pys_recursion_state[2] != expected || got != pthread_calls || destroyed != destroys) {
     fprintf(stderr, "incorrect stack floor (%s): %#llx, expected %#llx (%d pthread calls)\n", what,
-            (unsigned long long)pys_recursion_state[3], (unsigned long long)expected, got);
-    exit(1);
-  }
-  if (!expected && pys_recursion_state[1] != pys_recursion_state[2]) {   /* (no floor: the limit) */
-    fprintf(stderr, "incorrect stack floor (%s): no floor, but a trip of %lld\n", what, (long long)pys_recursion_state[1]);
-    exit(1);
-  }
-}
-/* the trip, the state's second word: the limit, or the safe depth if it is lower */
-static void trip(const char *what, I expected) {
-  if (pys_recursion_state[1] != expected) {
-    fprintf(stderr, "incorrect stack floor (%s): a trip of %lld, expected %lld\n", what,
-            (long long)pys_recursion_state[1], (long long)expected);
+            (unsigned long long)pys_recursion_state[2], (unsigned long long)expected, got);
     exit(1);
   }
 }
@@ -110,37 +96,12 @@ int main(void) {
   execfn = name; limit = 8 * MiB;
   mock_lo = 0x100000; mock_size = 8 * MiB;   /* (pthread bounds the main thread's path must not use) */
   check("the main thread's 8 MiB: the full margin", here, end - 8 * MiB + 256 * KiB, 0, 0);
-  /* the safe depth: the depth (1), and a level for each STACK_LEVEL bytes from this frame to the floor */
-  I safe = 1 + (I)((8 * MiB - 64 * KiB - 256 * KiB) / STACK_LEVEL);
-  trip("8 MiB: the safe depth, below the default limit", safe);
-  pys_recursion_state[2] = 50; retrip();
-  trip("a limit below the safe depth", 50);
-  pys_recursion_state[2] = 300000; retrip();
-  trip("a limit above it", safe);
-  pys_recursion_state[2] = 1000; retrip();
-  /* an extension module's entries from the host (pys_enter): the outermost replaces the safe depth,
-     from its own frame and the depth then; a callback, while compiled frames are active, can only
-     lower it */
-  pys_recursion_state[0] = 3;
-  stack_rebase(here - 4 * MiB, 1);
-  trip("an outermost host entry 4 MiB deeper", 3 + (I)((4 * MiB - 64 * KiB - 256 * KiB) / STACK_LEVEL));
-  stack_rebase(here - MiB, 0);
-  trip("a callback from higher up keeps it", 3 + (I)((4 * MiB - 64 * KiB - 256 * KiB) / STACK_LEVEL));
-  stack_rebase(here - 7 * MiB, 0);
-  trip("a deeper callback lowers it", 3 + (I)((MiB - 64 * KiB - 256 * KiB) / STACK_LEVEL));
-  stack_rebase(here - 9 * MiB, 0);
-  trip("one below the floor: its first entry looks", 3);
-  stack_rebase(here, 1);
-  trip("the next outermost entry", safe + 2);
-  pys_recursion_state[0] = 1;
   limit = 1024 * MiB;
   check("the main thread's 1 GiB", here, end - 1024 * MiB + 256 * KiB, 0, 0);
-  trip("1 GiB: the limit", 1000);
   limit = 1001 * KiB;   /* (page-aligned up: 250 pages, of which an eighth) */
   check("the main thread's 1001 KiB: an eighth", here, end - 1000 * KiB + 125 * KiB, 0, 0);
   limit = 8 * MiB;
   check("a main thread frame within the margin: the floor", end - 8 * MiB + 100 * KiB, end - 8 * MiB + 256 * KiB, 0, 0);
-  trip("a frame within the margin: its safe depth is the depth, where every entry looks", 1);
   /* otherwise the thread's pthread bounds */
   mock_lo = here - 4 * MiB; mock_size = 8 * MiB;
   limit = RLIM_INFINITY;
@@ -157,16 +118,12 @@ int main(void) {
   check("another thread: its pthread bounds", thread, thread - 4 * MiB + 256 * KiB, 1, 1);
   mock_lo = thread - 256 * KiB; mock_size = 512 * KiB;
   check("a 512 KiB thread stack: an eighth of it", thread, thread - 256 * KiB + 64 * KiB, 1, 1);
-  trip("a 512 KiB thread stack: a small safe depth", 1 + (I)(192 * KiB / STACK_LEVEL));
   mock_lo = thread - 16 * MiB; mock_size = 8 * MiB;
   check("bounds below the frame (a switched stack): no floor", thread, 0, 1, 1);
-  stack_rebase(thread, 1);
-  trip("no floor: a host entry keeps the limit", 1000);
   mock_lo = thread + MiB;
   check("bounds above the frame: no floor", thread, 0, 1, 1);
   mock_lo = thread - 100 * KiB;
   check("a frame already within the margin: the floor", thread, thread - 100 * KiB + 256 * KiB, 1, 1);
-  trip("a thread frame within the margin: every entry looks", 1);
   mock_lo = thread - 4 * MiB; getattr_error = 1;
   check("no thread attributes: no floor", thread, 0, 1, 0);
   getattr_error = 0; getstack_error = 1;
@@ -176,8 +133,8 @@ int main(void) {
   execfn = 0; getstack_error = 0; mock_lo = frame - 4 * MiB; mock_size = 8 * MiB;
   got = destroyed = 0;
   stack_floor();
-  if ((uintptr_t)pys_recursion_state[3] != frame - 4 * MiB + 256 * KiB || got != 1) {
-    fprintf(stderr, "incorrect stack floor (this frame): %#llx\n", (unsigned long long)pys_recursion_state[3]);
+  if ((uintptr_t)pys_recursion_state[2] != frame - 4 * MiB + 256 * KiB || got != 1) {
+    fprintf(stderr, "incorrect stack floor (this frame): %#llx\n", (unsigned long long)pys_recursion_state[2]);
     exit(1);
   }
   puts("stack floor policy passed");
@@ -236,121 +193,49 @@ print("output before the recursion is kept")
 print(depth(int(sys.argv[1]), out), len(out))
 '''
 CAUGHT = f"caught recursion: {STACK_ERROR.split(': ', 1)[1]}\nfinally\n"
-# Representative recursions with larger frames, each run until the native stack's floor raises
-# RecursionError under a raised limit: each prints its shape, the deepest turn it reached and the
-# error. LEVELS: the counted levels a turn adds (a turn of walk is walk's frame and helper's).
-SHAPES = '''import sys
-from collections.abc import Iterator
+
+
+def large_frame_program(count=1000, tuple_frame=False):
+    # Live values cross the recursive call so LLVM must keep a large native frame. A fixed
+    # bytes-per-level estimate can skip the floor until after these programs exhaust the stack.
+    if tuple_frame:
+        setup = "    values = (" + ", ".join(f"n + {i}.0" for i in range(count)) + ")"
+        result = f"values[n % {count}]"
+    else:
+        setup = "\n".join(f"    a{i} = xs[{i}]" for i in range(count))
+        result = " + ".join(f"a{i}" for i in range(count))
+    return f'''import sys
 
 reached: list[int] = [0]
-finished: list[int] = [0]
-seen: list[float] = [0.0]
+xs: list[float] = [float(j) for j in range({count})]
 
 
-def wide(n: int, a: float, b: float, c: float, d: float, e: float, f: float, g: float, h: float,
-         i: int, j: int, k: int, m: int) -> float:
-    # (many floats and ints, arguments and locals, live across the call)
+def inflated(n: int) -> float:
     reached[0] = n
-    p = a * 1.5 + b
-    q = c * 2.5 + d
-    r = e * 3.5 + f
-    s = g * 4.5 + h
-    t = i * 3 + j
-    u = k * 5 + m
-    x = wide(n + 1, a + 1.0, b + 2.0, c + 3.0, d + 4.0, e + 5.0, f + 6.0, g + 7.0, h + 8.0, i + 1, j + 2, k + 3, m + 4)
-    seen[0] = x
-    return x + p + q + r + s + float(t * u) + a * b + c * d + e * f + g * h + float(i * j + k * m)
+{setup}
+    xs[n % {count}] = float(n)
+    r = inflated(n + 1)
+    return r + {result}
 
 
-def guarded(n: int) -> int:
-    # (a handler and a finally block in every frame)
-    try:
-        reached[0] = n
-        return guarded(n + 1) + 1
-    except ValueError:
-        return -1
-    finally:
-        finished[0] += 1
-
-
-def walk(n: int, xs: list[float]) -> float:
-    reached[0] = n
-    return helper(n, xs) * 0.5
-
-
-def helper(n: int, xs: list[float]) -> float:
-    # (the other half of each turn: a frame with sixteen floats live across the call)
-    a0 = xs[0] + 1.0
-    a1 = xs[1] + 2.0
-    a2 = xs[2] + 3.0
-    a3 = xs[3] + 4.0
-    a4 = xs[4] + 5.0
-    a5 = xs[5] + 6.0
-    a6 = xs[6] + 7.0
-    a7 = xs[7] + 8.0
-    a8 = xs[8] + 9.0
-    a9 = xs[9] + 10.0
-    a10 = xs[10] + 11.0
-    a11 = xs[11] + 12.0
-    a12 = xs[12] + 13.0
-    a13 = xs[13] + 14.0
-    a14 = xs[14] + 15.0
-    a15 = xs[15] + 16.0
-    r = walk(n + 1, xs)
-    return r + a0 * a1 + a2 * a3 + a4 * a5 + a6 * a7 + a8 * a9 + a10 * a11 + a12 * a13 + a14 * a15
-
-
-class Turn:
-    def __init__(self, n: int) -> None:
-        self.n = n
-
-    def __lt__(self, other: "Turn") -> bool:
-        # (each turn's call goes through the runtime, whose sort compares with __lt__)
-        reached[0] = self.n
-        return sorted([Turn(self.n + 1), Turn(self.n + 2)])[0].n < other.n
-
-
-def nest(n: int) -> Iterator[int]:
-    # (a chain of generators, each level resuming the next)
-    reached[0] = n
-    for v in nest(n + 1):
-        yield v + 1
-    yield 0
+def shallow(n: int) -> int:
+    return 0 if n == 0 else shallow(n - 1) + 1
 
 
 sys.setrecursionlimit(2000000)
-for shape in sys.argv[1].split(","):
-    reached[0] = 0
-    try:
-        if shape == "wide":
-            print(wide(0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0, 0, 0, 0))
-        elif shape == "guarded":
-            print(guarded(0))
-        elif shape == "helper":
-            print(walk(0, [float(k) for k in range(16)]))
-        elif shape == "compared":
-            print(sorted([Turn(0), Turn(1)])[0].n)
-        else:
-            print(sum(nest(0)))
-    except RecursionError as error:
-        print(shape, reached[0], error)
+try:
+    print(inflated(0))
+except RecursionError as error:
+    print(error)
+    print("before logical limit", 0 < reached[0] < 10000)
+sys.setrecursionlimit(100)
+print("recovered", shallow(10))
 '''
-LEVELS = {"wide": 1, "guarded": 1, "helper": 2, "compared": 1, "nest": 1}
-
-
-def stack_level():
-    # runtime.c's STACK_LEVEL outside ASan: the stack a counted level may use on average, which the
-    # safe depth assumes
-    source = (ROOT / "runtime.c").read_text()
-    match = re.search(r"^#else\n#define STACK_MARGIN .*\n#define STACK_LEVEL \(\(uintptr_t\)(\d+) << 10\)$", source, re.M)
-    if match is None:
-        raise AssertionError("runtime.c's STACK_LEVEL is missing")
-    return int(match[1]) * KIB
 
 
 def floor_source():
     source = (ROOT / "runtime.c").read_text()
-    match = re.search(r"^#if defined\(__has_feature\)\n.*?^static void stack_rebase\(.*?^\}\n", source, re.M | re.S)
+    match = re.search(r"^#if defined\(__has_feature\)\n.*?^static void stack_floor\(void\) \{[^\n]*\}\n", source, re.M | re.S)
     if match is None:
         raise AssertionError("runtime.c's stack_floor is missing")
     return match[0]
@@ -398,18 +283,6 @@ class StackFloorPolicyTests(unittest.TestCase):
             "AT_EXECFN not at a page boundary": ("if (end && page && !(end & (page - 1)) && here < end", "if (end && page && here < end"),
             "a frame outside the main thread's limit": (" && end - here < rl.rlim_cur) {", ") {"),
             "an unlimited stack": ("rl.rlim_cur < end - page && ", ""),
-            # (the trip: the lower of the limit and the safe depth)
-            "a trip that ignores the floor": ("pys_recursion_state[1] = pys_recursion_state[2] < stack_safe ? pys_recursion_state[2] : stack_safe;",
-                                              "pys_recursion_state[1] = pys_recursion_state[2];"),
-            "a trip that ignores the limit": ("pys_recursion_state[1] = pys_recursion_state[2] < stack_safe ? pys_recursion_state[2] : stack_safe;",
-                                              "pys_recursion_state[1] = stack_safe;"),
-            "a safe depth from depth 0": ("pys_recursion_state[0] + (here > floor", "(here > floor"),
-            "a safe depth from the stack's end": ("(here - floor) / STACK_LEVEL", "(here - floor + STACK_MARGIN) / STACK_LEVEL"),
-            "a floor that keeps the old safe depth": ("  stack_safe = safe_from(here);\n  retrip();\n}\nstatic void stack_floor(void)",
-                                                      "  retrip();\n}\nstatic void stack_floor(void)"),
-            "a callback that raises the safe depth": ("if (outermost || safe < stack_safe)", "if (outermost || safe != stack_safe)"),
-            "an outermost entry that keeps it": ("if (outermost || safe < stack_safe)",
-                                                 "if ((outermost && safe < stack_safe) || safe < stack_safe)"),
         }
         for name, (original, mutated) in mutations.items():
             with self.subTest(name):
@@ -442,7 +315,10 @@ class StackFloorProgramTests(unittest.TestCase):
         cls.environment = {key: value for key, value in os.environ.items() if not key.startswith("PYSTACHY_")}
         cls.environment.update(PYSTACHY_LLVM=LLVM, PYSTACHY_CACHE=str(cls.work / "cache"), PYSTACHY_IRCHECK="1")
         cls.compiler = [sys.executable, str(ROOT / "pystachy.py")]
-        for name, text in (("deep", PROGRAM), ("bare", BARE), ("shapes", SHAPES)):
+        for name, text in (("deep", PROGRAM), ("bare", BARE),
+                           ("large_scalars", large_frame_program()),
+                           ("larger_scalars", large_frame_program(count=1500)),
+                           ("large_tuple", large_frame_program(tuple_frame=True))):
             (cls.work / f"{name}.py").write_text(text)
             build = subprocess.run([*cls.compiler, "build", str(cls.work / f"{name}.py"), "-o", str(cls.work / name)],
                                    cwd=ROOT, capture_output=True, text=True, env=cls.environment, timeout=600)
@@ -521,32 +397,20 @@ class StackFloorProgramTests(unittest.TestCase):
             self.assertEqual(result.stdout, "output before the recursion is kept\n")
             self.assertEqual(result.stderr.splitlines()[-1:], [STACK_ERROR])
 
-    def level_averages(self, result):
-        # the stack a counted level of each shape used on average, from the depth it reached when
-        # the floor raised: the stack between the frame that set the floor and the floor (at most
-        # 8 MiB less the 256 KiB margin, the frames above that frame and main's being left out:
-        # this overstates the average) over the counted levels (the turns reached and the module's)
-        self.assertEqual((result.returncode, result.stderr), (0, ""))   # (no signal)
-        lines = [line.split(" ", 2) for line in result.stdout.splitlines()]
-        self.assertEqual([line[0] for line in lines], list(LEVELS))
-        averages = {}
-        for shape, turns, message in lines:
-            self.assertEqual(f"RecursionError: {message}", STACK_ERROR, shape)
-            averages[shape] = (8 * MIB - 256 * KIB) / (LEVELS[shape] * (int(turns) + 1) + 1)
-        return averages
-
-    def test_counted_levels_stay_well_inside_the_bound(self):
-        # Below the trip, the floor relies on counted levels that use at most STACK_LEVEL bytes of
-        # stack on average (runtime.c's safe depth). Representative larger frames, run until the floor
-        # raises, must stay within half of it in AOT and in the JIT with either code generation
-        # (PYSTACHY_JIT_CODEGEN=0's -O0 frames are the largest)
-        budget = stack_level() // 2
-        shapes = ",".join(LEVELS)
-        for label, result in (("AOT", self.aot("shapes", shapes)), ("JIT", self.jit("shapes", shapes)),
-                              ("JIT -O0", self.jit("shapes", shapes, PYSTACHY_JIT_CODEGEN="0"))):
-            with self.subTest(label):
-                for shape, average in self.level_averages(result).items():
-                    self.assertLessEqual(average, budget, f"{label} {shape}: {average:.0f} bytes a counted level, of {budget}")
+    def test_large_live_frames_cannot_skip_the_floor(self):
+        # These shapes exceeded the old fixed per-level budget, including optimized JIT code.
+        # Catching the stack error, then recursing again, checks both protection and unwinding.
+        expected = STACK_ERROR.removeprefix("RecursionError: ") + "\nbefore logical limit True\nrecovered 10\n"
+        for name in ("large_scalars", "larger_scalars", "large_tuple"):
+            for mode in ("AOT", "JIT", "JIT -O0"):
+                with self.subTest(shape=name, mode=mode):
+                    if mode == "AOT":
+                        result = self.aot(name)
+                    elif mode == "JIT":
+                        result = self.jit(name)
+                    else:
+                        result = self.jit(name, PYSTACHY_JIT_CODEGEN="0")
+                    self.assertEqual((result.returncode, result.stderr, result.stdout), (0, "", expected))
 
 
 if __name__ == "__main__":

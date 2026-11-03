@@ -161,7 +161,16 @@ do not by themselves make storage dynamic. Experimental opt-in `Any` uses the
 The collector is conservative, non-moving mark-and-sweep. It scans stack/register roots and
 registered program globals; buffers that cannot contain pointers are not scanned. Marking
 prefetches each object a few objects before it scans it (`MQ`), so the cache misses of a big
-heap overlap; the objects it marks do not depend on that order. Unreachable
+heap overlap; the objects it marks do not depend on that order. Its 64 KiB chunks of small
+objects and its large objects take whole pages from a page heap that the runtime maps itself
+in 2 MiB regions, not from `malloc`. A region's bitmaps record which pages are used and which
+may be dirty, so a zeroed allocation clears only dirty pages, and a new string's bytes, which
+its maker writes in full, are not cleared at all. Each sweep keeps as many free pages as the
+next cycle may take (up to half as much again as its allocation window, which grows with the
+live bytes), reused before clean ones without page faults, and returns the rest to the system. Pointer-free slots of more than 136 bytes are cleared when they are handed out rather
+than when they die. `PYSTACHY_GC_MIN` sets the 32 MiB allocation window between collections
+([#650](https://github.com/den-run-ai/pystachy/issues/650)). The
+[allocator report](reports/allocator-prototype.md) has the measurements. Unreachable
 files close during collection or at program exit. Supported Python operations are checked
 against CPython; the [compatibility reference](language/compatibility.md) lists deviations.
 
@@ -429,8 +438,8 @@ below). The precompiled runtime is not inlined into JIT code.
 `sys.setrecursionlimit()` bounds the native depth: one for module execution, plus each
 active call of a source function that recursion can repeat, plus each running generator
 body that it can repeat ([compatibility](language/compatibility.md#errors-and-control-flow)).
-The state is runtime.c's `pys_recursion_state`, four mutable words (active depth, the trip,
-the limit, then the native stack's floor, below) that the program's guards and the runtime's
+The state is runtime.c's `pys_recursion_state`, three mutable words (active depth, limit,
+then the native stack's floor, below) that the program's guards and the runtime's
 `sys.setrecursionlimit()` share; the program module defines the guard helpers itself, even
 when the JIT runs the runtime as a shared library.
 
@@ -504,30 +513,30 @@ For operations without exceptional successors, lowering emits `recursion.depth` 
 `recursion.restore` directly as a load and a store of the depth word. `recursion.enter`
 calls the module's `pys.recursion.enter`, or in closed recursion `pys.recursion.check`, and a
 resume's `recursion.resume` calls `pys.recursion.resume`, whose overflow edge first marks the
-generator finished; the module defines each only where something calls it. Each compares the
-depth with the trip alone (below), and only at or past it, on a cold path, checks the limit,
-then the stack's floor, and enters if both pass; their failure edges call the runtime's
-`pys_recursion_error` or `pys_recursion_stack_error`, and every branch to the cold path or out
-of it has cold weights. LLVM's ordinary inliners take those
+generator finished; the module defines each only where something calls it. Each checks the
+limit, then the stack's floor; their failure edges call the runtime's `pys_recursion_error`
+or `pys_recursion_stack_error` and have cold branch weights. LLVM's ordinary inliners take those
 helpers: clang `-O2` for `build`, and the JIT's inliner below its line threshold. They are
 not marked `alwaysinline`, because LLVM 18's mandatory inliner computes block frequencies
 for every caller it changes, which cost a large program's JIT start-up more than the call
 saves (24 counted functions of `bench/smoke/text.py` added 13.8% to `opt`). The scalar
 helpers, which only `pys.gen.drop.counted` and extension entries call by name, are
-`alwaysinline`. The state's accesses carry depth, trip, limit and floor TBAA tags under the
+`alwaysinline`. The state's accesses carry depth, limit and floor TBAA tags under the
 object-field root, so object field stores cannot alias it. Runtime compilation (`runtime.py`)
 has no recursion accounting.
 
 The native stack's floor ([#1015](https://github.com/den-run-ai/pystachy/issues/1015)) keeps a
 recursion that the thread's stack cannot hold, under a raised limit, from overflowing it: a
-counted entry or resume whose stack pointer lies below the state's fourth word raises
+counted entry or resume whose stack pointer lies below the state's third word raises
 `RecursionError` as one past the limit does (`maximum recursion depth exceeded (the native
 stack is nearly full)`), with the same unwinding, so `except` and `finally` run and buffered
 output survives. The check reads the stack pointer with `llvm.stacksave`: `llvm.frameaddress`
 would make every counted function set up a frame pointer, and an alloca's address would escape
 and so keep LLVM from marking the function's calls as tail calls, which tail-recursion
-elimination needs; on x86-64 the check is `cmp %rsp, floor(%rip)` and a branch to the error,
-on the cold path past the trip (below). `stack_floor` (runtime.c) sets the word from the thread's
+elimination needs; on x86-64 the check is `cmp %rsp, floor(%rip)` and a branch to the cold
+block. That is 11% more instructions for `bench/fib.py`, whose calls are all counted and tiny, 4%
+for `bench/pyperformance/generators.py` and 0.2% for `regex_effbot.py` (callgrind, AOT, against
+c3aaa068); uncounted calls pay nothing. `stack_floor` (runtime.c) sets the word from the thread's
 stack bounds. On Linux, exec
 copies the program's file name (`AT_EXECFN`) to the top of the main thread's stack mapping, just
 below its last word, and `RLIMIT_STACK` bounds the mapping's size: the bottom glibc's
@@ -554,59 +563,8 @@ below the floor (JIT and AOT, also with handlers or `finally` in every frame and
 generator resumes), and a `repr()` of 510 nested lists from the deepest frame (the runtime
 stops at 512) about 150 KiB; the rest covers non-recursive callees and a signal handler's
 frame. No signal handler is involved ([#988](https://github.com/den-run-ai/pystachy/issues/988)).
-
-The trip, the state's second word, keeps the floor's check off the hot path: an entry compares
-the depth with it alone, one compare and branch as with the limit alone (`cmp %rsi, trip(%rip)`
-and `jle` to the cold path in `bench/fib.py`'s closed recursion), and only an entry at or past it
-checks the limit and the floor. The trip is the lower of the limit and the safe depth: the depth
-to which the stack holds every counted entry without a look at the stack pointer, at
-`STACK_LEVEL` bytes (8 KiB; 32 KiB under ASan) a counted level, from a frame at a known depth
-down to the floor. That is about 990 levels of an 8 MiB main thread, so that a program which
-keeps the default limit takes the cold path only in its last ten levels; no floor (unknown
-bounds) leaves the limit alone, and a frame already within the margin gives the depth itself, so
-that every entry looks. `stack_floor` computes it from the frame that sets the floor (at depth
-1); `sys.setrecursionlimit()` keeps the trip the lower of the two; and each call from CPython into
-an extension module (`pys_enter`), which may come from deeper in the importing thread's stack than
-its import did, computes it again from its own frame and the depth then: the outermost call's
-replaces the last, and a callback's, while compiled frames above it keep their own, can only
-lower it. A level is a counted frame with the uncounted functions and the runtime's frames below
-it, up to the next counted entry. A stack probe (a call at every counted entry, measuring only)
-ran every program of the corpus that makes a counted entry (682, AOT), again the 398 of them that
-reach depth 2, and in the JIT the 37 that recurse at least 50 deep, also with its `-O0` code
-generation (`PYSTACHY_JIT_CODEGEN=0`). In optimized code (AOT and the JIT's default) the first
-level, from `main` to the first entry, used at most 2,992 bytes (`upstream_re_match.py`), any
-other at most 720, and the deep recursions under 420 bytes a level on average (`repr()` of 702
-nested objects, whose levels hold the runtime's frames, and a 1,000-deep JSON repair); `-O0` code
-generation used up to 9,664 bytes for a single level (tomllib's parser) but at most 986 bytes a
-level on average at depth 100 and more. `STACK_LEVEL` bounds the average, which matters where
-the stack runs low: that is eight times the largest seen, twenty times the largest of optimized
-code. Below the safe depth, the floor's protection relies on that bound: levels that use more
-than `STACK_LEVEL` on average, such as a long chain of non-recursive functions with large frames
-between recursive calls, can exhaust the stack before an entry looks, as they could before the
-floor. Past it, each entry takes the cold path, two compares and branches more than the limit
-alone: under a raised limit, recursions of 50,000 tiny frames run about 30% more instructions
-than without the floor (7% to 13% more than checking the floor at every entry did). Against
-c3aaa068's counts (callgrind, AOT), `bench/fib.py` and `bench/pyperformance/generators.py` run
-0.02% and 0.01% more instructions, `barnes_hut.py` and `go.py` 0.3% and 0.4% (the register
-allocator places copies differently once the cold path rejoins the body), where checking the
-floor at every entry added 11.1%, 4.3%, 2.1% and 2.0%. An out-of-line cold helper instead of
-the inline cold path cost as much on those but 1.5% on `generators.py`, and 37% to 87% more
-instructions in all past the safe depth.
-
-`tools/test_stack_floor.py` checks the floor's and the trip's policy against simulated bounds,
-with mutations, and runs deep recursion in JIT and AOT under a fixed `RLIMIT_STACK`. It also runs
-representative recursions with larger frames until the floor raises (floats and ints live across
-the call, a handler and `finally` in every frame, a helper with sixteen live floats, the
-runtime's sort calling `__lt__`, a chain of generators) and requires each to use at most half of
-`STACK_LEVEL` a counted level on average, counting 8 MiB less the margin over the depth reached
-(which overstates it): AOT, the JIT and its `-O0` code generation used at most 192, 144 and 337
-bytes for all but the sort's levels, which hold the runtime's frames (922, 938 and 986). A
-recursion whose frame holds a tuple of 1,000 floats used 6.8 KiB a level AOT and 8.1 KiB in the
-JIT, and with `-O0` code generation ran out of stack before reaching the trip: frames that large
-are outside the bound. `tests/ffi/ext/recdeepclient.py` calls an extension module from a C
-callback below the floor of a 1 MiB thread stack, directly and through a Python callback that the
-module makes itself: each call's first counted entry must raise there, where the import's safe
-depth, without `pys_enter`'s, would let about a hundred run unchecked.
+`tools/test_stack_floor.py` checks the floor's policy against simulated bounds and runs deep
+recursion in JIT and AOT under a fixed `RLIMIT_STACK`.
 
 `PYSTACHY_JIT_CODEGEN=0` selects MCJIT with `-O0` code generation. This can reduce
 startup for large programs, but the generated code can run slower. The default (`2`)
@@ -651,8 +609,12 @@ into the calls that are left. Its `forceattrs` pass first swaps `pys_new`'s `noi
 `optnone` of a runtime compiled at `-O0`) for `alwaysinline` (the driver's `LATE_INLINE`), then
 `always-inline` inlines it. Clang then compiles the module without optimizing it again.
 `ext` does the same between its `opt -O2` and its compilation. A module without `pys_new`
-keeps the single `clang -O2 -c` step. The JIT calls the shared runtime's `pys_new`, and
-its cleanup pipeline deletes what instcombine can prove unused. The runtime's own code
+keeps the single `clang -O2 -c` step. The JIT tier, which never inlines the shared runtime,
+puts its own copy of the fast path in the program's module (`lower_module.py`'s `JITFAST`): calls of
+`pys_new` and `pys_alloc` stay calls (`noinline`) through its cleanup pipeline, which deletes
+what instcombine can prove unused, and a last `forceattrs,always-inline` step then inlines the
+calls left. Each pops the runtime's free list of its class (`pys_fl`, a constant slot once
+inlined) and calls `pys_gc_slow` for everything else. The runtime's own code
 (`runtime.py`) and generator frames call `pys_alloc`. `make aotprobe` checks that
 objects that never escape compile to no allocation, that objects a list keeps do,
 that a build with `PYSTACHY_CFLAGS=-O0` still takes the late step, and that an object and
@@ -688,6 +650,7 @@ provide the broader behavior check. See [testing](testing.md) for the commands.
 | `PYSTACHY_GC_STRESS=N` | Collect every N allocations |
 | `PYSTACHY_GC_STRESS_PROGRAM=N` | Apply the stress interval to the program run by JIT or the test runner, separately from its compiler |
 | `PYSTACHY_GC` | `off` disables collection; `stats` prints a summary at exit |
+| `PYSTACHY_GC_MIN=N` | Make the allocation window between collections at least N MiB (1 to 2<sup>20</sup>) instead of 32: more memory for fewer collections, or the reverse ([#650](https://github.com/den-run-ai/pystachy/issues/650)). Pointer-free large objects can still start a collection sooner (see [start-up and memory](performance.md#start-up-and-memory)) |
 | `PYSTACHY_JOBS` | Parallelism for the test runner and IR tools |
 | `PYSTACHY_CASE_TIMES=FILE` | The test runner appends each case's milliseconds to `FILE`, from which `tools/case_weights.py` balances verification's shards; `tests/verify.sh` sets its own |
 

@@ -146,30 +146,12 @@ probes described in [testing](testing.md). Checksums do not replace differential
 The kernels are original implementations. Adapted upstream benchmarks, with pinned sources,
 licenses and documented adaptations, are measured separately in [pyperformance results](pyperformance.md).
 
-## Measured observations
+<a id="measured-observations"></a>
 
-Historical prototype snapshot at `3542d63`: Linux x86-64, LLVM 18.1.3, CPython 3.12.14,
-default N, three processes per mode and three timed calls per process. Raw samples were not
-retained in the repository. These shared-host diagnostics describe that revision only.
+## Earlier measurements
 
-| Case | CPython hot, ms | JIT hot, ms | AOT hot, ms |
-|---|---:|---:|---:|
-| `object_dispatch` | 128.7 | 3.95 | 2.68 |
-| `text_pipeline` | 129.9 | 49.76 | 52.30 |
-| `list_churn` | 124.0 | 15.57 | 10.83 |
-| `exception_local` | 149.0 | 11.46 | 5.40 |
-| `exception_unwind` | 217.4 | 249.09 | 172.06 |
-| `long_string_keys` | 9.94 | 498.38 | 512.96 |
-| `sort_records` | 137.0 | 19.97 | 14.17 |
-
-The long-key result predates the hash cache merged in
-[#99](https://github.com/den-run-ai/pystachy/pull/99). Its separate before/after experiment
-on candidate `5af35f4` recorded **498.420 → 1.825 ms AOT** and **497.959 → 1.771 ms JIT**
-for this kernel: five process medians per side/mode, CPU 0 affinity, LLVM 18.1.3, Linux
-Xeon Platinum 8573C. Those compare Pystachy revisions, rather than CPython. Fresh equal
-strings still need their own hash, and the extra hash field increases retained string memory.
-
-The historical cross-function exception row includes helper-call and generated-code costs;
-it does not isolate unwinding. The text pipeline's similar JIT/AOT times also need a profile
-before attributing the cost to GC or missing optimization. Run the suite on current revisions
-to make a new performance claim.
+No measurement of a current compiler is recorded here: run the suite on the revisions you
+compare. A prototype snapshot at `3542d63` (10 October 2026, CPython 3.12.14, raw samples not
+retained) is on [this page as of alpha.4](https://github.com/den-run-ai/pystachy/blob/9c8bc74648aa7c7e6a1b9d8f9dbbfeb1f2908ad3/docs/extended-performance.md#measured-observations).
+It predates, among other changes, the string-hash cache of
+[#99](https://github.com/den-run-ai/pystachy/pull/99), so its rows do not describe later builds.

@@ -20,22 +20,12 @@ GUARDS = FXBIT["R"] | FXBIT["I"]
 
 
 def assert_stack_floor(test, body, failed=""):
-    # An entry's one compare on its hot path: the depth with the trip, the state's second word, under
-    # its own TBAA tag. Its cold path checks the limit, the third word, then (#1015) the stack pointer
-    # (llvm.stacksave, no frame pointer and no escaping alloca) against the fourth, the native stack's
-    # floor, and enters where both pass; each failure has its cold runtime call, after what the
+    # An entry's second check (#1015): the stack pointer (llvm.stacksave, no frame pointer and no
+    # escaping alloca) against the state's third word, the native stack's floor, under its own TBAA
+    # tag; the depth check comes first, and each failure has its cold runtime call, after what the
     # helper does on both (failed)
-    test.assertIn("getelementptr [4 x i64], ptr @pys_recursion_state, i64 0, i64 1", body)
-    test.assertRegex(body, r"%trip = load i64, ptr %trip.addr, !tbaa !\d+")
-    test.assertIn("%past = icmp sge i64 %depth, %trip", body)
-    test.assertRegex(body, r"br i1 %past, label %deep, label %entered, !prof !\d+")
-    hot, cold = body.split("deep:", 1)
-    for word in ("%limit", "%floor", "stacksave", "call"):
-        test.assertNotIn(word, hot)
-    test.assertIn("getelementptr [4 x i64], ptr @pys_recursion_state, i64 0, i64 2", cold)
-    test.assertIn("getelementptr [4 x i64], ptr @pys_recursion_state, i64 0, i64 3", cold)
-    test.assertRegex(cold, r"%floor = load i64, ptr %floor.addr, !tbaa !\d+")
-    test.assertRegex(cold, r"br i1 %low, label %exhausted, label %entered, !prof !\d+")
+    test.assertIn("getelementptr [3 x i64], ptr @pys_recursion_state, i64 0, i64 2", body)
+    test.assertRegex(body, r"%floor = load i64, ptr %floor.addr, !tbaa !\d+")
     test.assertIn("%sp = call ptr @llvm.stacksave.p0()", body)
     test.assertIn("%low = icmp ult i64 %here, %floor", body)
     test.assertNotIn("alloca", body)
@@ -484,7 +474,7 @@ print(total(4), names(Tree(Tree(None, "a"), "b")))
                                "def count(n: int, f: Callable[[int], int]) -> int:\n"
                                "    return f(n) if n == 0 else count(n - 1, f)\n"
                                "print(count(1, lambda k: k))\n")
-        self.assertIn("@pys_recursion_state = external global [4 x i64]", ir)
+        self.assertIn("@pys_recursion_state = external global [3 x i64]", ir)
         self.assertEqual(ir.count("declare ptr @llvm.stacksave.p0()"), 1)
         helpers = dict(re.findall(r"^define internal [^@]*(@pys\.recursion\.[a-z]+)\([^\n]*\{\n(.*?)^}",
                                   ir, re.M | re.S))
@@ -502,7 +492,7 @@ print(total(4), names(Tree(Tree(None, "a"), "b")))
         self.assertIn("unreachable", body)
         self.assertIn("store i64 %next, ptr @pys_recursion_state", body)
         assert_stack_floor(self, body)
-        # (the depth is counted only once the checks pass)
+        # (the depth is counted only once both checks pass)
         self.assertNotIn("store", body.split("entered:", 1)[0])
         source_body = ir.split("define internal i64 @f.count(", 1)[1].split("\n}", 1)[0]
         self.assertIn("call i64 @pys.recursion.enter()", source_body)
@@ -555,21 +545,19 @@ print(Box(2).value(2))
 ''')
         nodes = dict(re.findall(r"^!(\d+) = (.*)$", ir, re.M))
         root = next(key for key, value in nodes.items() if value == '!{!"pystachy fields"}')
-        for name in ("recursion depth", "recursion trip", "recursion limit", "stack floor", "int"):
+        for name in ("recursion depth", "recursion limit", "stack floor", "int"):
             self.assertTrue(any(value == f'!{{!"{name}", !{root}, i64 0}}'
                                 for value in nodes.values()), name)
-        # (Box.value is closed recursion: its check reads the trip, then the limit and the floor, its
-        # symbol the depth)
+        # (Box.value is closed recursion: its check reads the limit, its symbol the depth)
         helper = ir.split("define internal i64 @pys.recursion.check(i64 %depth)", 1)[1].split("\n}", 1)[0]
         self.assertRegex(helper, r"load i64, ptr %limit.addr, !tbaa !\d+")
         self.assertRegex(ir, r"%rd = load i64, ptr @pys_recursion_state, !tbaa !\d+")
         self.assertRegex(helper, r"load i64, ptr %floor.addr, !tbaa !\d+")
-        tags = dict(re.findall(r"%(trip|limit|floor) = load i64, ptr %\w+.addr, !tbaa !(\d+)", helper))
-        self.assertEqual(len(set(tags.values())), 3)
-        for word, name in (("trip", "recursion trip"), ("limit", "recursion limit"), ("floor", "stack floor")):
-            node = nodes[tags[word]].split(",")[0].strip("!{")
-            self.assertEqual(nodes[node], f'!{{!"{name}", !{root}, i64 0}}')
-        for cold, then in (("deep", "entered"), ("overflow", "stack"), ("exhausted", "entered")):
+        tags = dict(re.findall(r"%(limit|floor) = load i64, ptr %\w+.addr, !tbaa !(\d+)", helper))
+        self.assertNotEqual(tags["limit"], tags["floor"])
+        floor_type = nodes[tags["floor"]].split(",")[0].strip("!{")
+        self.assertEqual(nodes[floor_type], f'!{{!"stack floor", !{root}, i64 0}}')
+        for cold, then in (("overflow", "stack"), ("exhausted", "entered")):
             profile = re.search(rf"br i1 %\w+, label %{cold}, label %{then}, !prof !(\d+)", helper)
             self.assertIsNotNone(profile, cold)
             self.assertEqual(nodes[profile.group(1)], '!{!"branch_weights", i32 1, i32 1048575}')

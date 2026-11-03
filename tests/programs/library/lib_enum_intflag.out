@@ -1,0 +1,7 @@
+3 [<P.R: 4>, <P.W: 2>, <P.X: 1>] P.NONE <P.NONE: 0> True NONE P.NONE RW R|X
+None <Q: 0> True
+<I.A|B: 3> 3 5 <I: 12> 2 3 <I.B: 2> <I.A|4: 5>
+<I.A|12: 13> True True [<I.A: 1>, <I.B: 2>] True True True 2 [<I.A: 1>, <I.B: 2>]
+True True 3 1
+A a
+[exit 0]

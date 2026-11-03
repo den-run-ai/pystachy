@@ -11,6 +11,9 @@ def owner(name: str) -> str:
 # the classes named otherwise than the name their statement binds, by their qualified names: those
 # namedtuple() makes, named by its typename (_Mismatch = namedtuple("Mismatch", ...)), see Gen.program
 RENAMED: dict[str, str] = {}
+# the enum classes the loader made (Loader's enum_classes), by the lines of their class statements:
+# the enum class each derives from (Enum, IntEnum or StrEnum)
+ENUMCLASSES: dict[int, str] = {}
 
 
 def short(name: str) -> str:

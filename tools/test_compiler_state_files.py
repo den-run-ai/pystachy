@@ -20,7 +20,7 @@ class FileStateTests(unittest.TestCase):
     # completed or rejected compilation's discoveries visible between calls.
     def setUp(self):
         self.roots = [diagnostics.FILES, diagnostics.DYNFILES, diagnostics.IDINERT, diagnostics.INTFILES, diagnostics.INTSPANS, LAMBDAS,
-                      driver.RENAMED, driver.LIBS, driver.LINKDL, GLUE, SPECSHOW]
+                      driver.RENAMED, driver.LIBS, driver.LINKDL, GLUE, SPECSHOW, loader.ENUMCLASSES]
         self.saved = [value.copy() for value in self.roots]
         self.source = diagnostics.SRC
         diagnostics.SRC = "hosted-context.py"
@@ -55,6 +55,8 @@ class FileStateTests(unittest.TestCase):
         diagnostics.INTFILES.clear()
         diagnostics.INTFILES.update({0: True, 1: True, 5: True})
         diagnostics.INTSPANS[:] = [[1, 9]]
+        loader.ENUMCLASSES.clear()
+        loader.ENUMCLASSES.update({1: "Enum", 5: "IntEnum"})
         instance = loader.Loader([])
         program(instance, "plain.py", "print(1)\n")
         self.assertEqual(diagnostics.FILES, ["plain.py"])
@@ -62,6 +64,7 @@ class FileStateTests(unittest.TestCase):
         self.assertEqual(diagnostics.INTFILES, {})
         self.assertEqual(diagnostics.INTSPANS, [])
         self.assertEqual(diagnostics.IDINERT, {})
+        self.assertEqual(loader.ENUMCLASSES, {})
         instance = loader.Loader([])
         program(instance, "dynamic.py", "# pystachy: dynamic-any\nprint(1)\n")
         self.assertEqual(diagnostics.FILES, ["dynamic.py"])
@@ -86,7 +89,7 @@ class FileStateTests(unittest.TestCase):
 
     def test_each_missing_reset_is_detected(self):
         source = textwrap.dedent(inspect.getsource(loader.Loader.program))
-        for reset in ("FILES.clear()", "DYNFILES.clear()", "IDINERT.clear()", "INTFILES.clear()", "INTSPANS.clear()"):
+        for reset in ("FILES.clear()", "DYNFILES.clear()", "IDINERT.clear()", "INTFILES.clear()", "INTSPANS.clear()", "ENUMCLASSES.clear()"):
             with self.subTest(reset=reset):
                 statement = "    " + reset + "\n"
                 self.assertEqual(source.count(statement), 1)

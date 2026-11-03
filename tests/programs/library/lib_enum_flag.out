@@ -1,0 +1,10 @@
+[<P.R: 4>, <P.W: 2>, <P.X: 1>] [<Q.A: 1>, <Q.B: 2>, <Q.C: 4>] Q.A 2 4
+<P.RW: 6> P.RW True RW 6 True False False <P: 0> [<P.R: 4>, <P.W: 2>] 2
+<P.R|X: 5> <P.W|X: 3> <P: 0> <P.W: 2> <P.R|W|X: 7> P.R|W|X
+ValueError <flag 'P'> invalid value 8
+    given 0b0 1000
+  allowed 0b0 0111
+3 <flag 'P'> True False True True True
+Q.A     Q.A|B| <Q.B|C: 6> <Q.C: 4> Q(0)
+TypeError unsupported operand type(s) for |: 'Q' and 'int'
+[exit 0]

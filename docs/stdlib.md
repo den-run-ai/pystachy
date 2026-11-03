@@ -1,56 +1,75 @@
 # Libraries and porting
 
-Pystachy reuses existing Python library code where it fits the typed subset. Some shipped
-modules are unchanged CPython sources, some have localized edits, and others are implemented
-in the subset. All remain valid Python. Importing a module does not imply that every API works.
+Pystachy ships part of Python's standard library in [`lib/`](../lib/README.md): unchanged
+CPython files, CPython modules with marked edits, and subset implementations of modules that
+CPython writes in C. All of them remain valid Python. A few modules, such as `sys`, `os` and
+`math`, are built into the compiler instead. Importing a module does not mean that every API in
+it works: each module supports its own subset, which compiles with the program that uses it.
 
-The [library reference](../lib/README.md) records supported APIs, provenance, upstream hashes,
-adaptations, deviations and tests. The [language guide](language.md) explains the subset;
-[imports and builtins](language/modules.md) covers module search and compiler-provided APIs.
+| Question | Reference |
+|---|---|
+| Which APIs of a module work? | [Module guide](../lib/README.md#module-guide) |
+| How does a module differ from CPython's? | [Library compatibility](../lib/compatibility.md) |
+| Which upstream files and checks back a module? | [Provenance](../lib/provenance.md) |
+| Which modules does the compiler provide, and how are imports found? | [Modules and builtins](language/modules.md#builtin-modules-and-files) |
+| Which third-party packages are adapted? | [Ports](../ports/README.md) |
+| How are upstream test suites run? | [Porting and upstream tests](porting.md) |
 
 <a id="the-standard-library-and-popular-packages-under-pystachy"></a>
 <a id="summary"></a>
 <a id="3-the-standard-library"></a>
 <a id="31-what-compiles-and-runs-unmodified"></a>
 
-## Shipped coverage
+## Library support at a glance
 
-| Approach | Modules and useful APIs |
+| Status | Meaning |
 |---|---|
-| Unchanged CPython sources | `bisect`, `colorsys`, `stat` constants and predicates, path-string helpers from `posixpath` / `genericpath`, `curses.ascii`, `this`, `struct`, on a port of `_struct` |
-| Localized CPython ports | `heapq` selection helpers, `difflib.SequenceMatcher`, `getopt`, `gettext` (its import, `NullTranslations`, `textdomain()` and `bindtextdomain()`), `fnmatch`, `textwrap`, `string.Template` / `Formatter`, selected `operator` functions and getters, selected `statistics` operations, `random`, `urllib.parse`, `html`, `keyword`, `token`, `shlex`, `datetime` (without the local time zone), `codecs` (without the codec registry), `warnings` (filters and `catch_warnings()`; `warn()` shows no location), `weakref` (its `ref`, without the weak containers), `contextlib` (`contextmanager`, `closing`, `nullcontext`, `suppress`), `tomllib` (`loads()`, compiled with [dynamic `Any`](dynamic-any.md) values; no binary-file `load()`) and the incremental `html.parser` probe |
-| Larger port | `re`: CPython's Python parser/compiler plus a matcher adapted from its C engine |
-| Subset implementations | `functools.cache` / `lru_cache` / `reduce` / `cmp_to_key` / `partial`, `collections` `deque` / `defaultdict` / `OrderedDict` / `Counter`, `io.StringIO` / `BytesIO` / `TextIOWrapper` / `IncrementalNewlineDecoder` (also as `_io`'s), `csv`, `json` (bounded native recursive values, including default `JSONDecoder` prefix decoding), `_string`'s format parsers, `_pyrandom`, the Mersenne Twister under `random`, `binascii`, `_codecs`, `atexit`, `_struct`, `_thread`, `unicodedata`, `itertools` (every function, on generators), which CPython builds in, `abc`, and `types` (`MappingProxyType`, a read-only view of a dict, and `GenericAlias`, for `__class_getitem__ = classmethod(GenericAlias)`) |
+| 🟢 **Native** | The module's public API compiles and matches CPython, apart from documented differences |
+| 🟡 **Bounded** | Selected APIs or argument types; the [module guide](../lib/README.md#module-guide) lists them |
+| 🧪 **Experimental** | Built on a prototype: recursive JSON values, [dynamic `Any`](dynamic-any.md), collector-backed weak references, explicit big integers or an embedded CPython |
+| 🔴 **Unsupported** | Not shipped: importing the module is a compile-time error |
 
-The non-stdlib [`mpz` module](mpz.md) offers explicit arbitrary-precision integers
-through a subset class and a packed-limb C backend. It does not change ordinary
-`int`, JSON parsing or native integer interfaces.
+🔴 **Major gaps** are modules or APIs that are not available. 🟠 **Minor gaps** are narrower
+argument types or documented differences within a supported API. The statuses match the
+[language guide's](language.md#support-at-a-glance).
 
-Separately, the dynamic `Any` JSON decoder promotes integer tokens beyond 64 bits
-through the ordinary promoting-integer runtime. The typed `JSONValue` decoder keeps
-its bounded integer storage; see [JSON scope](json.md).
+| Area | Status | Modules | 🔴 Major gaps | 🟠 Minor gaps |
+|---|---|---|---|---|
+| [Text](../lib/README.md#text) | 🟢 Native<br>🟡 `string`, `difflib`, `gettext` | `textwrap`, `unicodedata`, `shlex`, `keyword`, `token`, `curses.ascii`, `this`, `string`, `difflib`, `gettext` | `locale`, `pprint`; `difflib.ndiff()`, `Differ` and `HtmlDiff`; `gettext` translation catalogs | No `TextWrapper` or `Template` subclasses; most `Formatter` fields that read an attribute or item raise `ValueError`; `capwords()` capitalizes ASCII letters only |
+| [Regular expressions](../lib/README.md#regular-expressions) | 🟡 Bounded<br>🧪 Generated matchers | `re`, for CPython 3.13's syntax of `str` patterns, with optional [generated matchers](re-specialization.md); `fnmatch` | Bytes patterns; `findall()` with two or more groups raises `NotImplementedError` | `finditer()` returns a list; `split()` raises where an unmatched group would add `None`; no `Scanner`, `Match.regs` or `\N{...}` |
+| [Data formats and markup](../lib/README.md#data-formats-and-markup) | 🟡 Bounded<br>🧪 `json`, `tomllib` | [`json`](json.md), `tomllib`, `csv`, `html` with `html.entities`, `html.parser`, `urllib.parse` | `configparser`, `xml`, `email`, `pickle`; JSON files, hooks and indentation; `tomllib.load()`, which reads a binary file | Typed JSON integers are 64-bit, and nesting stays within the recursion limit and 2,000 containers; `csv` has no `Sniffer`; `urllib.parse` takes `str` only |
+| [Binary data and encodings](../lib/README.md#binary-data-and-encodings) | 🟡 Bounded | `struct`, `binascii`, `codecs` | `base64`, `hashlib`, `zlib`, `zipfile`, `array`; `bytearray` and `memoryview` buffers | `struct` formats must be known as the program compiles, and there is no `pack_into()`; `codecs` has UTF-8, Latin-1, ASCII and charmap, without `lookup()` |
+| [Collections and functional tools](../lib/README.md#collections-and-functional-tools) | 🟡 Bounded<br>🟢 `itertools`, `bisect` | `collections` (`deque`, `defaultdict`, `OrderedDict`, `Counter`, `namedtuple()`), `copy`, `enum` (`Enum`, `IntEnum`, `StrEnum`, `Flag`, `IntFlag`, `str`/`int` mixins), `heapq`, `bisect`, `itertools`, `functools`, `operator`, `contextlib` | `enum`'s functional API and `boundary=`; `copy.replace()`; `ChainMap` and the `User*` classes; `heapq.merge()`; `contextlib.ExitStack`; `functools.singledispatch()` and `total_ordering()` | A container's items share one type; the mappings are not `dict` subclasses; `itertools` iterators are generators; `lru_cache` keys cannot be floats; `copy` follows static types, so an object in an `Any` value is not copied; enum members' values are literals or constant expressions, and int-like members are no ints where those are typed |
+| [Numbers and randomness](../lib/README.md#numbers-and-randomness) | 🟡 Bounded<br>🧪 `mpz` | `math` (builtin), `random`, `statistics`, `colorsys`, [`mpz`](mpz.md) | `decimal`, `fractions`, `cmath`, `numbers`, `secrets`; `statistics.mean()`, `stdev()`, `variance()` and `NormalDist` | `getrandbits()` takes at most 63 bits; no `str` seeds, `randbytes()` or `SystemRandom`; no `math.sumprod()` |
+| [Dates and times](../lib/README.md#dates-and-times) | 🟡 Bounded | `datetime`; `time.time()`, `monotonic()`, `perf_counter()` and `sleep()` (builtin) | The local time zone (`date.today()`, `datetime.now()` without a zone); `strptime()`; `time.localtime()`, `gmtime()` and `strftime()`; `calendar`, `zoneinfo` | `2 * delta` and other reflected operators are rejected; `hash()` values differ from CPython's; `timedelta` arithmetic is 64-bit |
+| [Files, OS and command line](../lib/README.md#files-os-and-command-line) | 🟡 Bounded | `open()` of text and binary files; `io` (`StringIO`, `BytesIO`, `TextIOWrapper`); selected `sys`, `os` and `os.path` (builtin); `posixpath`, `stat`, `tempfile.mkdtemp()`, `errno`, [`select.select()`](select.md), `getopt`, `pathlib` (POSIX), `glob`, `shutil` (copies, `move()`, `rmtree()`) | `argparse`; `os.environ` and `os.stat()`; `shutil.copytree()` | `TextIOWrapper` decodes UTF-8, Latin-1 and ASCII, without `seek()`; a dropped file closes at a later collection; no `posixpath.relpath()`; `open()` and `os` take `str(path)`, not a path object |
+| [Processes and threads](../lib/README.md#processes-and-threads) | 🔴 Unsupported<br>🟡 `threading`, `_thread`, `atexit` | `threading` and `_thread` for the one thread a program runs, `atexit`; `os.system()` and `os.execv()` | Starting a thread; `multiprocessing`, `concurrent.futures`, `subprocess`, `asyncio`, `queue`, `signal` | `Thread.start()` raises `NotImplementedError`; `atexit.unregister()` raises `NotImplementedError`; a lock wait that would block for ever raises `RuntimeError` |
+| [Runtime services](../lib/README.md#runtime-services) | 🟡 Bounded<br>🧪 `weakref`, `logging` | `typing`, `dataclasses` and `collections.abc` (builtin); `abc`, `types`, `warnings`, [`weakref`](weakref.md), `logging` (compiled with [dynamic `Any`](dynamic-any.md)), `traceback` | `inspect`, `ast`, `dis`, `importlib`; `logging.config`, `logging.handlers` and `LoggerAdapter`; weak containers and `weakref.finalize` | `warnings.warn()` reports `<sys>:0`; a log record's caller is unknown and an exception's text has no frames (no frames or tracebacks); a typed list or dict cannot be a log message's argument; no virtual subclasses (`ABC.register()`); most other `types` names fail where used |
+| [C and CPython interop](../lib/README.md#c-and-cpython-interop) | 🧪 Experimental | `ffi` (builtin) for [C calls](ffi.md#calling-c); `pyobj` for an [embedded CPython](ffi.md#calling-cpython) | Native imports of CPython C extension modules, such as NumPy; `pyobj` reaches them as CPython objects | `pyobj` converts scalars only and needs `PYSTACHY_LIBPYTHON` |
 
-The library reference is the authority for each module's limits. For example, `difflib`
-supports matching strings and lists of strings, including `get_grouped_opcodes()`,
-`unified_diff()`, `context_diff()` and `restore()`; `ndiff()` and `HtmlDiff` still have
-blockers. `textwrap` supports its public operations with code-point widths and tab expansion.
+The table describes v0.1.0-alpha.4. Other modules are not shipped, apart from private helpers
+that the [module guide](../lib/README.md#module-guide) lists; [measuring
+coverage](#measuring-coverage) shows how to check whether CPython's own copy of one compiles.
+For parallel work today, CPython can run Pystachy-built extension modules in
+[process pools](concurrency.md#process-pools-today).
 
-The [October 22 core sweep](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/reports/stdlib-expansion-2026-10-22.md) separates selected
-import results from executed APIs and lists the remaining blockers and exclusions.
-Its [CPython-derived regression guide](../tests/upstream/core-sweep.md) records the
-new heterogeneous JSON, dictionary, deque and context-diff cases; these are selected
-adapted tests, not execution of CPython's complete test suite.
+<a id="shipped-coverage"></a>
 
-Selected APIs from `sys`, `os`, `math`, `time`, `errno`, `tempfile` and `select` are compiler builtins.
-`sys.setrecursionlimit()` and `sys.getrecursionlimit()` enforce the
-[native recursion depth policy](language/compatibility.md#errors-and-control-flow),
-with catchable `RecursionError` in JIT and AOT.
-`typing`, `collections.abc` (also imported as `_collections_abc`) and `dataclasses` also have
-compiler support; this does not provide
-the full dynamic `collections` package; its shipped subset provides `deque`, `defaultdict`,
-`OrderedDict`, `Counter` and `namedtuple()`, whose class the compiler makes from a module's
-top-level `NAME = namedtuple(...)` with literal arguments.
-See the [builtin module table](language/modules.md#builtin-modules-and-files).
+## Where shipped modules come from
+
+| Origin | Modules |
+|---|---|
+| Unchanged CPython 3.13.16 files | `bisect`, `colorsys`, `curses.ascii`, `this`, `stat`, `posixpath`, `genericpath`, `struct` (on a port of `_struct`) and `_weakrefset` |
+| CPython modules with marked edits | `codecs`, `contextlib`, `datetime`, `difflib`, `fnmatch`, `getopt`, `gettext`, `heapq`, `html`, `html.parser`, `keyword`, `operator`, `random`, `shlex`, `statistics`, `string`, `textwrap`, `token`, `tomllib`, `urllib.parse`, `warnings`, `weakref` |
+| Larger port | `re`: CPython's Python parser and compiler, plus a matcher adapted from its C engine |
+| Subset implementations | `abc`, `collections`, `csv`, `functools`, `io`, `json` and `types`; subset versions of the C modules `atexit`, `binascii`, `itertools`, `unicodedata`, `_codecs`, `_random`, `_string`, `_struct`, `_thread` and `_weakref` |
+| Compiler builtins | `sys`, `os`, `os.path`, `math`, `time`, `errno`, `tempfile`, `select`, `typing`, `collections.abc`, `dataclasses`, `builtins`, `__future__` and `ffi` |
+| Outside the standard library | [`mpz`](mpz.md), explicit arbitrary-precision integers on a packed-limb C backend; `pyobj`, objects of an [embedded CPython](ffi.md#calling-cpython) |
+
+`mpz` does not change ordinary `int`, JSON parsing or native integer interfaces. Modules that opt
+in to [promoting ints](python-int.md) get CPython's unbounded `int` instead, and the dynamic
+`Any` JSON decoder promotes integer tokens beyond 64 bits; the typed `JSONValue` decoder keeps
+64-bit integers (see [JSON scope](json.md)).
 
 <a id="1-the-changes"></a>
 
@@ -113,23 +132,16 @@ surface and changes. Application examples show these libraries in use; the
 
 ## Remaining limits
 
-Multiple/generic inheritance, arbitrary recursive value types, dynamic `Any` storage (an opt-in
-[prototype](dynamic-any.md) only), `bytearray` and binary files, dynamic reflection and
-unrestricted argument expansion still limit library coverage. Generator functions, resumable
-generator objects, bytes, bounded unions and per-call function/constructor specialization are
-already supported; their remaining restrictions depend on the operation and the concrete types
-involved. CPython extensions and import graphs through unavailable modules can block otherwise
-suitable pure-Python functions. The [compatibility reference](language/compatibility.md) lists
-the detailed restrictions.
-Opt-in comparisons support known helper/alias flows, native operand rebinding, inferred
-getters and recursive list/tuple/dict equality with user callbacks. Finite literal comparison
-writes can reserve native fields while preserving aliases; late-field `vars()`/`__dict__`
-still raises an explicit unsupported-operation error (#486), and existing native fields
-retain their storage types.
-For opt-in code, the [comparison acceptance matrix](dynamic-any.md#operations) distinguishes
-supported mixed-container and object operations from explicitly rejected cases.
-The [iteration contract](dynamic-any.md#iteration) covers custom iterators, ranges and
-boxable generators through `Any`; existing module/API coverage in the table is unchanged.
+Language features limit library coverage most: multiple inheritance and subclasses of generic
+(template) classes, arbitrary recursive value types, `bytearray` and `memoryview`, dynamic
+reflection and unrestricted argument expansion. Runtime-typed values exist only in modules that
+opt in to the [dynamic `Any` prototype](dynamic-any.md); its [operations](dynamic-any.md#operations)
+and [iteration](dynamic-any.md#iteration) contracts list what such ports can rely on.
+Generator functions, resumable generator objects, bytes, bounded unions and per-call
+function/constructor specialization already work; their remaining restrictions depend on the
+operation and the concrete types involved. CPython extensions and import graphs through
+unavailable modules can block otherwise suitable pure-Python functions. The
+[compatibility reference](language/compatibility.md) lists the detailed restrictions.
 
 Prioritize a small port when it offers a useful application without requiring a broad dynamic
 feature. Broader inference, generic typing, library coverage and optimizations remain areas of
@@ -141,12 +153,6 @@ have their own [FFI guide](ffi.md).
 <a id="7-reproducing"></a>
 
 ## Measuring coverage
-
-The [2026-10-17 compatibility audit](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/reports/compatibility-2026-10-17.md) records a
-pinned main revision, execution checks, package adaptations, suite boundaries and
-remaining blockers. Treat its measurements as a snapshot, and rerun them after
-compiler or library changes. Later checkpoints are in the
-[rolling log](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/reports/compatibility-updates.md).
 
 These tools answer different questions:
 
@@ -187,6 +193,17 @@ has (its functions raise `NotImplementedError`), and compiles with this checkout
 CPython-hosted compiler. Its report counts, for each stub, the modules that import with it and
 those that need no other stub: these would import once Pystachy had that module, as far as
 their imports go. `--only NAME,...` stubs just those modules.
+
+Earlier sweeps are dated snapshots; rerun them after compiler or library changes. The
+[2026-10-17 compatibility audit](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/reports/compatibility-2026-10-17.md)
+records a pinned main revision, execution checks, package adaptations, suite boundaries and
+remaining blockers, and later checkpoints are in the
+[rolling log](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/reports/compatibility-updates.md).
+The [October 22 core sweep](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/reports/stdlib-expansion-2026-10-22.md)
+separates selected import results from executed APIs and lists the remaining blockers and
+exclusions. Its [CPython-derived regression guide](../tests/upstream/core-sweep.md) records the
+new heterogeneous JSON, dictionary, deque and context-diff cases; these are selected adapted
+tests, not execution of CPython's complete test suite.
 
 The [development tools index](../tools/README.md) lists maintained checks and measurement
 entry points. Historical surveys and superseded tool implementations remain in Git history.

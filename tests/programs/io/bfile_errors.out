@@ -1,0 +1,101 @@
+tb ValueError can't have text and binary mode at once
+rbb ValueError invalid mode: 'rbb'
+rwb ValueError must have exactly one of create/read/write/append mode
+b ValueError Must have exactly one of create/read/write/append mode and at most one plus
++b ValueError Must have exactly one of create/read/write/append mode and at most one plus
+enc ValueError binary mode doesn't take an encoding argument
+errors ValueError binary mode doesn't take an errors argument
+newline ValueError binary mode doesn't take a newline argument
+both ValueError invalid mode: 'rbz'
+nul ValueError embedded null byte
+missing FileNotFoundError [Errno 2] No such file or directory: 'D/e.bin.no'
+dir IsADirectoryError [Errno 21] Is a directory: 'D'
+dirw IsADirectoryError [Errno 21] Is a directory: 'D'
+rb.write UnsupportedOperation write
+rb.truncate UnsupportedOperation truncate
+wb.read UnsupportedOperation read
+wb.readline UnsupportedOperation read
+raw rb.write UnsupportedOperation File not open for writing
+raw wb.read UnsupportedOperation File not open for reading
+raw rb.truncate UnsupportedOperation File not open for writing
+read(-2) ValueError read length must be non-negative or -1
+whence 5 ValueError whence value 5 unsupported
+whence -1 ValueError whence value -1 unsupported
+seek(-1) OSError [Errno 22] Invalid argument
+raw seek(-1) OSError [Errno 22] Invalid argument
+seek(max, 1) OSError [Errno 22] Invalid argument
+raw seek(min, 1) OSError [Errno 22] Invalid argument
+seek(-10, 1) OSError [Errno 22] Invalid argument
+BufferedReader closed True D/e.bin rb <_io.BufferedReader name='D/e.bin'>
+  read ValueError read of closed file
+  readline ValueError readline of closed file
+  readlines ValueError I/O operation on closed file.
+  write UnsupportedOperation write
+  writelines ValueError I/O operation on closed file.
+  flush ValueError I/O operation on closed file.
+  seek ValueError seek of closed file
+  tell ValueError I/O operation on closed file
+  truncate ValueError truncate of closed file
+  fileno ValueError I/O operation on closed file
+  isatty ValueError I/O operation on closed file
+  readable ValueError I/O operation on closed file
+  writable -> False
+  seekable ValueError I/O operation on closed file
+  iter ValueError I/O operation on closed file.
+  next ValueError readline of closed file
+  enter ValueError I/O operation on closed file.
+BufferedWriter closed True D/w.bin wb <_io.BufferedWriter name='D/w.bin'>
+  read UnsupportedOperation read
+  readline UnsupportedOperation read
+  readlines ValueError I/O operation on closed file.
+  write ValueError write to closed file
+  writelines ValueError I/O operation on closed file.
+  flush ValueError flush of closed file
+  seek ValueError seek of closed file
+  tell ValueError I/O operation on closed file
+  truncate ValueError truncate of closed file
+  fileno ValueError I/O operation on closed file
+  isatty ValueError I/O operation on closed file
+  readable -> False
+  writable ValueError I/O operation on closed file
+  seekable ValueError I/O operation on closed file
+  iter ValueError I/O operation on closed file.
+  next UnsupportedOperation read
+  enter ValueError I/O operation on closed file.
+FileIO closed True D/e.bin rb <_io.FileIO [closed]>
+  read ValueError I/O operation on closed file
+  readline ValueError I/O operation on closed file
+  readlines ValueError I/O operation on closed file.
+  write ValueError I/O operation on closed file
+  writelines ValueError I/O operation on closed file.
+  flush ValueError I/O operation on closed file.
+  seek ValueError I/O operation on closed file
+  tell ValueError I/O operation on closed file
+  truncate ValueError I/O operation on closed file
+  fileno ValueError I/O operation on closed file
+  isatty ValueError I/O operation on closed file
+  readable ValueError I/O operation on closed file
+  writable ValueError I/O operation on closed file
+  seekable ValueError I/O operation on closed file
+  iter ValueError I/O operation on closed file.
+  next ValueError I/O operation on closed file
+  enter ValueError I/O operation on closed file.
+FileIO closed True D/ww.bin wb <_io.FileIO [closed]>
+  read ValueError I/O operation on closed file
+  readline ValueError I/O operation on closed file
+  readlines ValueError I/O operation on closed file.
+  write ValueError I/O operation on closed file
+  writelines ValueError I/O operation on closed file.
+  flush ValueError I/O operation on closed file.
+  seek ValueError I/O operation on closed file
+  tell ValueError I/O operation on closed file
+  truncate ValueError I/O operation on closed file
+  fileno ValueError I/O operation on closed file
+  isatty ValueError I/O operation on closed file
+  readable ValueError I/O operation on closed file
+  writable ValueError I/O operation on closed file
+  seekable ValueError I/O operation on closed file
+  iter ValueError I/O operation on closed file.
+  next ValueError I/O operation on closed file
+  enter ValueError I/O operation on closed file.
+[exit 0]

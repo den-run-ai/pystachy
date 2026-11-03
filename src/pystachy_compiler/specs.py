@@ -54,11 +54,17 @@ STANDINS: dict[str, str] = {"binascii": "_pystachy_binascii", "_codecs": "_pysta
 # mapping proxy's, whose dict code given only the proxy must not reach): their classes' fields
 # are the module's own, which a program can neither read, assign, find by hasattr() nor reflect
 # over, and a call of __init__ on an object cannot initialize it again
-OPAQUE: dict[str, bool] = {"_weakref": True, "_pystachy_mappingproxy": True}
+OPAQUE: dict[str, bool] = {"_weakref": True, "_pystachy_mappingproxy": True, "_pystachy_copy": True}
 # the module that CPython's types of a stand-in name as theirs (__module__, reprs), where it is
 # not the module's own: weakref.ReferenceType, _io.StringIO (every class that lib's
-# io defines is the C module _io's in CPython), and mappingproxy, a builtin type
-TYPEMODS: dict[str, str] = {"_weakref": "weakref", "io": "_io", "_pystachy_mappingproxy": "builtins"}
+# io defines is the C module _io's in CPython, as are the binary files of _pystachy_bfile), and
+# mappingproxy, a builtin type
+TYPEMODS: dict[str, str] = {"_weakref": "weakref", "io": "_io", "_pystachy_mappingproxy": "builtins", "_pystachy_bfile": "_io"}
+# binary files (lib/_pystachy_bfile.py): the names the loader binds a module's open() of a literal binary
+# mode to (binary_opens), each to the factory of the class CPython's open() makes for that mode, and their type
+BOPENS: dict[str, str] = {"_pys_bfile_reader": "open_reader", "_pys_bfile_writer": "open_writer",
+                          "_pys_bfile_random": "open_random", "_pys_bfile_raw": "open_raw"}
+BFILE = "_pystachy_bfile$BinaryIO"  # (the type of each: its objects are of the class open() makes, which derives from it)
 
 
 # the kinds of nodes whose code calls no function or method of the program (Loader.raises_in())
@@ -115,11 +121,16 @@ CALLS: dict[str, str] = {
     "sum(list[bool],float)": "pys_sum_int_float:float", "any(list[bool])": "pys_any:bool",
     "all(list[bool])": "pys_all:bool", "any(list[int])": "pys_any:bool", "all(list[int])": "pys_all:bool",
     "os.system(str)": "pys_system:int", "os.execv(str,list[str])": "pys_execv:None",
-    "os.getpid()": "pys_getpid:int", "os.path.exists(str)": "pys_exists:bool", "os.path.realpath(str)": "pys_realpath:str",
+    "os.getpid()": "pys_getpid:int", "os.getcwd()": "pys_getcwd:str", "os.path.exists(str)": "pys_exists:bool", "os.path.realpath(str)": "pys_realpath:str",
     "os.path.getsize(str)": "pys_getsize:int", "os.path.getmtime(str)": "pys_getmtime:float", "os.path.getctime(str)": "pys_getctime:float",
     "os.getenv(str,str)": "pys_getenv:str", "ffi.string_at(int,int)": "pys_string_at:str",
     "ffi.untrack(int)": "pys_untrack:None", "ffi.collected()": "pys_collected:int",
     "os.remove(str)": "pys_remove:None", "os.rmdir(str)": "pys_rmdir:None", "tempfile.mkdtemp()": "pys_mkdtemp:str",
+    "os.unlink(str)": "pys_remove:None", "os.listdir()": "pys_listdir_cwd:list[str]", "os.listdir(str)": "pys_listdir:list[str]",
+    "os.mkdir(str)": "pys_mkdir_default:None", "os.mkdir(str,int)": "pys_mkdir:None",
+    "os.rename(str,str)": "pys_rename:None", "os.replace(str,str)": "pys_replace:None",
+    "os.path.isdir(str)": "pys_isdir:bool", "os.path.isfile(str)": "pys_isfile:bool", "os.path.islink(str)": "pys_islink:bool",
+    "os.path.lexists(str)": "pys_lexists:bool", "os.path.samefile(str,str)": "pys_samefile:bool",
     "math.floor(float)": "pys_floor:int", "math.ceil(float)": "pys_ceil:int", "math.trunc(float)": "pys_m_trunc:int",
     "math.gcd(int,int)": "pys_m_gcd:int", "math.lcm(int,int)": "pys_m_lcm:int", "math.isqrt(int)": "pys_m_isqrt:int",
     "math.factorial(int)": "pys_m_factorial:int", "math.comb(int,int)": "pys_m_comb:int", "math.perm(int,int)": "pys_m_perm:int",
@@ -165,10 +176,8 @@ TBAA_LIMIT = 7
 RECURSION_BRANCH = 8
 TBAA_DEPTH_TYPE = 9  # (the scalar type nodes of TBAA_DEPTH's and TBAA_LIMIT's tags)
 TBAA_LIMIT_TYPE = 10
-TBAA_FLOOR = 11  # the native stack's floor, the state's fourth word (#1015), and its type node
+TBAA_FLOOR = 11  # the native stack's floor, the state's third word (#1015), and its type node
 TBAA_FLOOR_TYPE = 12
-TBAA_TRIP = 13  # the trip, the state's second word, which every entry compares the depth with, and its type node
-TBAA_TRIP_TYPE = 14
 # a program's TBAA of object fields (fieldtbaa): its access tags are numbered from here, in the order
 # lowering first tags each field, and the type nodes they name follow them (lower_module); the
 # members a class's struct may have, each with its size, which is its alignment too, and the name
@@ -788,7 +797,7 @@ RUNTIME: dict[str, str] = {
     "dyn.big_unbox": "int+:%ptr|R|", "dyn.big_of": "int+:%ptr|R A|",
     "dyn.int_box_of": "%ptr:%ptr|R A|",
     "dyn.index_bound": "int:%ptr,int|R|",
-    "dyn.unbox": "int:%ptr,%ptr|R|", "dyn.isa": "bool:%ptr,%ptr||", "dyn.same_type": "bool:%ptr,%ptr||", "dyn.truth": "bool:%ptr|rL rD|",
+    "dyn.unbox": "int:%ptr,%ptr|R|", "dyn.isa": "bool:%ptr,%ptr||", "dyn.copy_is_own": "bool:%ptr,int||", "dyn.same_type": "bool:%ptr,%ptr||", "dyn.truth": "bool:%ptr|rL rD|",
     "dyn.repr": "str:%ptr|R A I U|", "dyn.str": "str:%ptr|R A I U|",
     "dyn.eq": "bool:%ptr,%ptr|R A I U|", "dyn.ne": "bool:%ptr,%ptr|R A I U|", "dyn.cmp": "bool:%ptr,%ptr,int|R A I U|", "dyn.hash": "int:%ptr|R A I U|",
     "dyn.binop": "%ptr:%ptr,%ptr,int|R A I U|", "dyn.inplace": "%ptr:%ptr,%ptr,int|R A I U|", "dyn.unary": "%ptr:%ptr,int|R A|",
@@ -981,17 +990,21 @@ RUNTIME: dict[str, str] = {
     "format": "str:*T,#,str|R A I rL rD U?|", "default_repr": "str:str,%ptr|A|", "repr_enter": "bool:%ptr|I|",
     # reflection records (reflection.py): a name's index in a record's name table, and repr(vars(o))
     "refl.find": "int:%ptr,str||", "refl.vars": "str:%ptr,%ptr|A I rO rL rD U|",
-    "repr_leave": "None:%ptr|I|", "alloc": "%ptr:int|A|", "new": "%ptr:int|A|", "on_stack": "int:%ptr|I|", "box": "%ptr:*T|A|", "ubox": "%ptr:int,*T|A|", "ubox_opt": "%ptr:int,%ptr,int|A|", "unpack_check": "None:int,int|R|", "unpack_ex_check": "None:int,int|R|",
+    "repr_leave": "None:%ptr|I|", "alloc": "%ptr:int|A|", "new": "%ptr:int|A|", "gc_slow": "%ptr:int,int|A|", "on_stack": "int:%ptr|I|", "box": "%ptr:*T|A|", "ubox": "%ptr:int,*T|A|", "ubox_opt": "%ptr:int,%ptr,int|A|", "unpack_check": "None:int,int|R|", "unpack_ex_check": "None:int,int|R|",
     # errors and the process
     "raise": "None:str,str|R N|", "exit": "None:int|R N I|", "exit_msg": "None:str|R N I|", "argv": "list[str]:|I|", "warnoptions": "list[str]:|A I|",
-    "platform": "str:|A|", "errno": "int:str|R A|", "system": "int:str|R I|", "execv": "None:str,list[str]|R N A I rL|", "getpid": "int:|I|", "exists": "bool:str|I|",
+    "platform": "str:|A|", "errno": "int:str|R A|", "system": "int:str|R I|", "execv": "None:str,list[str]|R N A I rL|", "getpid": "int:|I|", "getcwd": "str:|R A I|", "exists": "bool:str|I|",
     "path_join": "str:str,str|A|", "realpath": "str:str|R A I|", "getenv": "opt[str]:str,opt[str]|A I|", "remove": "None:str|R A I|", "rmdir": "None:str|R A I|",
+    "listdir": "list[str]:str|R A I|", "listdir_cwd": "list[str]:|R A I|", "mkdir": "None:str,int|R A I|", "mkdir_default": "None:str|R A I|",
+    "rename": "None:str,str|R A I|", "replace": "None:str,str|R A I|", "isdir": "bool:str|I|", "isfile": "bool:str|I|",
+    "islink": "bool:str|I|", "lexists": "bool:str|I|", "samefile": "bool:str,str|R A I|", "stat_mode": "int:str,int|R A I|",
+    "touch": "None:str,int,int|R A I|", "copyfile": "None:str,str|R A I|", "copymode": "None:str,str|R A I|", "rmtree": "None:str,int|R A I|",
     "getsize": "int:str|R A I|", "getmtime": "float:str|R A I|", "getctime": "float:str|R A I|",
     "mkdtemp": "str:|R A I|", "time": "float:|I|", "time_ns": "int:|I|", "monotonic": "float:|I|", "monotonic_ns": "int:|I|",
     "process_time": "float:|I|", "process_time_ns": "int:|I|", "sleep": "None:float|R I|", "sleep_int": "None:int|R I|",
     "select": "tuple[list[int],list[int],list[int]]:list[int],list[int],list[int],float,int|R A I rL wL|",
     "setrecursionlimit": "None:int|R I|", "getrecursionlimit": "int:|I|",
-    "thread_stack_valid": "int:int|I|",
+    "thread_stack_valid": "int:int|I|", "strftime_at": "str:str,float,int|R A I|",
     "recursion.enter": "int:|R I|pys_recursion_enter", "recursion.leave": "None:|I|pys_recursion_leave",
     "recursion.resume": "int:%ptr|R I|pys_recursion_resume",
     "recursion.depth": "int:|I|pys_recursion_depth", "recursion.restore": "None:int|I|pys_recursion_restore",
@@ -1024,6 +1037,11 @@ RUNTIME: dict[str, str] = {
     "file.writelines": "None:S,list[str]|R A I rL rF wF|",
     "file.flush": "None:S|R I rF wF|", "file.close": "None:S|R I rF wF|", "file.drop": "None:S|R I rF wF|",
     "file.closed": "bool:S|rF|", "file.name": "str:S|A rF|", "file.mode": "str:S|A rF|", "file.fileno": "int:S|R I rF|",
+    # lib/_pystachy_bfile.py's binary files (__pys_bfile_*): a file of a binary mode, its reads and writes of bytes
+    "bopen": "file:str,str,str,str,str,int|R A I rF|", "bfile.read": "bytes:file,int|R A I rF wF|",
+    "bfile.readline": "bytes:file,int|R A I rF wF|", "bfile.write": "int:file,bytes|R A I rF wF|",
+    "bfile.seek": "int:file,int,int|R A I rF wF|", "bfile.tell": "int:file|R A I rF wF|", "bfile.truncate": "int:file,int|R A I rF wF|",
+    "bfile.isatty": "int:file|I rF|", "bfile.seekable": "int:file|I rF|",
     # lib/io.py's TextIOWrapper (IOMOD): its default and "locale" encodings, io.UnsupportedOperation
     "io.defenc": "str:|A I|", "io.locenc": "str:|A I|", "io.unsupported": "None:str|R N|",
     # runtime mode's primitives (Gen.primitive): a new str's memory, and the C library's searches

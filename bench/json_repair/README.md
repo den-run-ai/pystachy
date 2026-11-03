@@ -6,11 +6,13 @@ every variant must print identical witnesses. Startup, compilation, input creati
 validation are not timed. The inputs model features of LLM output; they are not a sample
 of production failure frequencies.
 
-## Release-candidate measurements
+<a id="release-candidate-measurements"></a>
 
-Measured on 2 November 2026 on the release candidate, main `ec442a20` (`c3aaa068` with
-#1025–#1029 and #1031), against pristine upstream `ace9b23c`, on a shared 4-vCPU Linux
-x86-64 VM (Intel Xeon @ 2.10 GHz) with LLVM 18.1.3 and CPython 3.13.18.
+## alpha.4 measurements
+
+Measured on 2 November 2026 on main `ec442a20`, whose code the v0.1.0-alpha.4 tag shares,
+against pristine upstream `ace9b23c`, on a shared 4-vCPU Linux x86-64 VM (Intel Xeon @
+2.10 GHz) with LLVM 18.1.3 and CPython 3.13.18.
 `tools/json_repair_bench.py` ran five rotating process pairs per workload, with two warmup
 and five measured batches each, pinned to one CPU. Values are medians of process medians.
 [All 330 processes, commands and source manifests](results/release-candidate-2026-11-02.json)
@@ -41,12 +43,14 @@ scaling at both ends; values are AOT's speedup over upstream:
 - Upstream rebuilds brace state over the whole accumulated string after every escape, so
   its cost grows quadratically with escaped newlines. The port's incremental state alone
   is 44× faster on CPython at 2,000 escapes; AOT adds about 4×.
-- Non-ASCII malformed text gains 1.4–1.7×. At `c3aaa068` it gained nothing (0.91–1.01×):
-  41% of its instructions built the `JSONDecodeError` that the facade's first `json.loads()`
-  attempt raises and discards, mostly `repr()` of the whole document. #1031 stops formatting
+- Non-ASCII malformed text gains 1.4–1.7×. On an earlier alpha.4 candidate, `c3aaa068`, it
+  gained nothing (0.91–1.01×): 41% of its instructions built the `JSONDecodeError` that the
+  facade's first `json.loads()` attempt raises and discards, mostly `repr()` of the whole
+  document. [#1031](https://github.com/den-run-ai/pystachy/pull/1031) stops formatting
   arguments that an exception's `__init__` replaces, and steps UTF-8 faster when converting
-  the byte offset to a character position. The workload executes 42% fewer instructions.
-  `JSONDecodeError.__init__`'s line and column arithmetic on non-ASCII text remains.
+  the byte offset to a character position; alpha.4 executes 42% fewer instructions on this
+  workload than that candidate. `JSONDecodeError.__init__`'s line and column arithmetic on
+  non-ASCII text remains.
 - The adapted port is 1.3–1.4× slower than upstream under CPython on comma-dense text,
   and its accumulator has the PyPy and memory costs in the [accumulator report](ACCUMULATOR.md).
   CPython users should keep upstream.
@@ -55,40 +59,24 @@ scaling at both ends; values are AOT's speedup over upstream:
   46–57 ms. An AOT build of `facade.py` or `scaling.py` took about 7 s.
 - Whole-process RSS for CPython and AOT stayed at the runner's launch floor (about 47 MiB),
   so these runs establish no memory difference.
-- Whole-process AOT Callgrind counts of the same nine workloads against `c3aaa068`'s, with
-  identical output: non-ASCII −42.1%, logged repair −6.1%, mixed records −5.1%, escaped
-  newlines −5.0%, malformed objects −4.4% (serialized −4.0%), valid objects −1.6%,
-  comma-dense −1.0% and the long valid string +0.4%. Seven of the nine release-candidate
-  runs spent 110,000–113,000 instructions on the runtime's stack-bounds fallback, which only a
-  Valgrind run takes; the counts leave them out. The evidence file's `callgrind_counts` retains
-  both revisions' totals, arguments and executable hashes, and each subtraction.
 - The 645-case parity replay matches pristine upstream at this build on CPython and in AOT
   and JIT, normally and with collection at every allocation.
 
 To repeat the campaign, build the probes as in [Reproduce](#reproduce) and run
 `tools/json_repair_bench.py` with a variants file like the one in the
 [accumulator report](ACCUMULATOR.md#paired-timings). The evidence file lists every
-command, argument and source hash.
+command, argument and source hash. Its `callgrind_counts` also compare whole-process AOT
+instruction counts of the nine workloads with those of `c3aaa068`, less a stack-bounds
+fallback that only Valgrind triggers.
 
-## Earlier prototype measurement
+<a id="earlier-prototype-measurement"></a>
 
-At source `ce6aee5e1dc1a3c3d8e85e833746e642e2839c9a`, on a shared Linux x86-64
-AMD EPYC 9V74 host, CPython 3.13.16 and LLVM 18.1.3, this ten-record workload
-(three valid records and seven malformed inputs) measured:
+## Earlier measurement
 
-| Variant | Median seconds / 20,000 records | Relative to native AOT |
-|---|---:|---:|
-| Pristine json_repair 0.64.1 / CPython | 0.748 | 2.33× |
-| Adapted port / CPython | 0.690 | 2.15× |
-| Adapted port / Pystachy AOT | 0.321 | 1.00× |
-
-Seven samples per variant, interleaved in rotating order and pinned to CPU 0.
-[All samples and identities](results/prototype.json) are retained. The timed loop
-calls `repair_json(return_objects=True)` and a small result-weight function.
-Serialization, interpreter startup, JIT startup and AOT compilation are outside
-the timer. Output witnesses match exactly across all three variants; the checksum
-is 1,232,000 for 2,000 rounds. Results are advisory for this small repeated mix;
-no memory, production throughput or general library speed claim is established.
+The first prototype measurement, of the ten-record mix at `ce6aee5e`, is on
+[this page as of alpha.4](https://github.com/den-run-ai/pystachy/blob/9c8bc74648aa7c7e6a1b9d8f9dbbfeb1f2908ad3/bench/json_repair/README.md#earlier-prototype-measurement);
+[its samples and identities](results/prototype.json) are retained. It used CPython 3.13.16
+on another host, so it is not comparable with the table above.
 
 ## Reproduce
 

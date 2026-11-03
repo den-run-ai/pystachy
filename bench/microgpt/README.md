@@ -71,46 +71,47 @@ source/data hashes, compiler revision, settings, timings and validation failures
 
 ## Measured snapshot
 
-On 2026-10-17, compiler `d3fbfc6f5f6d5650f25ffc0d97be93b512f41a6f`,
-CPython 3.13.16 and LLVM 18.1.3, on an AMD EPYC 9V74 Linux x86-64 host
-(shared container, eight-core quota, 8 GiB memory limit). These are medians of
-three fresh processes per tier: **100 training steps / 744 training tokens**,
-then five generated names, with the original 1000-step learning-rate schedule.
+On 3 November 2026, with v0.1.0-alpha.4 (`9c8bc746`), CPython 3.13.18 and LLVM 18.1.3, on a
+shared 4-vCPU Intel Xeon @ 2.10 GHz VM, every process pinned to one CPU. These are medians of
+three fresh processes per tier: **100 training steps / 744 training tokens**, then five
+generated names, with the original 1000-step learning-rate schedule.
 
 | Tier | Training | Five-name inference | Process wall | Training speedup vs original CPython |
 |---|---:|---:|---:|---:|
-| Original CPython | 15.152 s | 260.6 ms | 15.640 s | 1.00x |
-| Adapted CPython | 15.220 s | 280.2 ms | 15.928 s | 1.00x |
-| Pystachy JIT | 0.908 s | 14.26 ms | 1.404 s | 16.69x |
-| Pystachy AOT | 0.896 s | 13.45 ms | 0.924 s | 16.91x |
+| Original CPython | 9.813 s | 246.0 ms | 10.228 s | 1.00x |
+| Adapted CPython | 9.241 s | 236.8 ms | 9.686 s | 1.06x |
+| Pystachy JIT | 1.035 s | 15.32 ms | 1.354 s | 9.48x |
+| Pystachy AOT | 0.933 s | 13.05 ms | 0.964 s | 10.51x |
 
-AOT is **16.99x** faster than the adapted CPython baseline for training and
-**19.38x** faster than original CPython for inference. AOT training ranged from
-0.884 to 0.945 seconds; its separately measured build took 1.802 seconds with
+AOT is **9.90x** faster than the adapted CPython baseline for training and
+**18.85x** faster than original CPython for inference. AOT training ranged from
+0.890 to 1.076 seconds; its separately measured build took 2.47 seconds with
 the runtime cache already available. JIT wall time includes its per-process
 compilation. Phase medians need not sum to the median total.
 
 All 12 processes passed elementwise checks of 25,252 floating-point values plus
-exact document, vocabulary, token-count and generated-name checks. Adapted
-CPython and JIT matched the original exactly; AOT's largest absolute difference
-was `8.881784197001252e-16`. Generated names were `eri`, `eren`, `slrian`,
-`deiyl`, `treiee`. A separate ten-step check on CPython 3.12.14 compared every
-gradient (58,698 floating-point values per tier), and a two-step CPython 3.13
-check passed with `PYSTACHY_GC_STRESS_PROGRAM=10000`.
+exact document, vocabulary, token-count and generated-name checks, and every tier
+matched the original program exactly. Generated names were `eri`, `eren`,
+`slrian`, `deiyl`, `treiee`. A separate ten-step check compared every gradient
+(58,698 floating-point values per tier), and a two-step check passed with
+`PYSTACHY_GC_STRESS_PROGRAM=10000`; both matched exactly as well.
 
-The [recorded results](results/linux-x86_64-cpython313.json) retain each run's
+The [recorded results](results/alpha4-linux-x86_64-2026-11-03.json) retain each run's
 phase totals, validation errors, provenance and reference digest. Rerunning the
 controller produces the full reference vectors and individual step timings.
 These are workload-prefix measurements, not a full 1000-step convergence claim.
-Backward propagation remains the largest AOT phase (0.498 s median, about 56%
-of training); forward computation takes 0.374 s and Adam 0.0255 s. No dedicated
+Backward propagation remains the largest AOT phase (0.503 s median, about 54%
+of training); forward computation takes 0.392 s and Adam 0.038 s. No dedicated
 profile yet attributes those costs to individual runtime operations.
 
-A separate AOT run with `PYSTACHY_GC=stats` reported 50 collections, a 58.0 MiB
-peak managed heap and 13.8 MiB live at the last collection, with the same
-numerical checks passing. These are runtime heap statistics, not process RSS.
-Its GC timing is retained only as a diagnostic because other compilation work
-was running concurrently.
+A separate AOT run with `PYSTACHY_GC=stats` reported 46 collections, a 57.2 MiB
+peak managed heap and 13.8 MiB live at the last collection. These are runtime
+heap statistics, not process RSS.
+
+The 17 October snapshot, at `d3fbfc6f` on another host with CPython 3.13.16, is on
+[this page as of alpha.4](https://github.com/den-run-ai/pystachy/blob/9c8bc74648aa7c7e6a1b9d8f9dbbfeb1f2908ad3/bench/microgpt/README.md#measured-snapshot),
+with [its results](results/linux-x86_64-cpython313.json). Its 16.9x training speedup is
+not comparable with this table: that host's CPython took 15.152 s for the same training.
 
 ## Adaptations and remaining gaps
 

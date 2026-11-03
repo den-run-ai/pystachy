@@ -25,13 +25,13 @@ Both modes share one [fully typed IR](docs/typed-ir.md).
 **Highlights:**
 
 - **Machine learning without a tensor library:** an adapted microGPT trains with scalar
-  autograd and no embedded Python; AOT training is **16.9× faster** than the original
+  autograd and no embedded Python; AOT training is **10.5× faster** than the original
   CPython program over 100 steps ([results](bench/microgpt/README.md)).
 - **Native nanoGPT:** inference and training run without CPython, NumPy or PyTorch. On a small
-  108K-parameter float64 model with single-threaded OpenBLAS, AOT inference is **faster than
-  CPython + NumPy and PyTorch** (0.5–0.7× and 0.8–0.9× their latency) and about 200× faster
-  than the same model in pure Python; results match PyTorch within 1.4e-14
-  ([example](examples/nanogpt/README.md#paired-measurement-after-the-array-and-blas-work)).
+  108K-parameter float64 model with single-threaded OpenBLAS, AOT inference takes **0.7× the
+  latency of CPython + NumPy** and 1.03–1.09× PyTorch's, and runs about 170× faster than the
+  same model in pure Python; results match PyTorch within 1.8e-14
+  ([example](examples/nanogpt/README.md#recorded-inference-performance)).
 - **Checked against CPython:** 1,900+ differential programs and 1,700+ rejection tests, run in
   JIT and AOT modes, with self-hosting, sanitizer and garbage-collection stress coverage
   ([verification](docs/testing.md)).
@@ -66,7 +66,7 @@ typed control loop, native tool calls and file edits in a standalone executable.
 
 To skip bootstrapping, use a [native release archive or Docker image](docs/install.md).
 Archives require LLVM; the image includes it. The current prerelease is
-[v0.1.0-alpha.3](https://github.com/den-run-ai/pystachy/releases/tag/v0.1.0-alpha.3); its
+[v0.1.0-alpha.4](https://github.com/den-run-ai/pystachy/releases/tag/v0.1.0-alpha.4); its
 release page lists changes, known issues, supported platforms and downloads. Source `main`
 can contain newer changes.
 
@@ -116,18 +116,20 @@ run–diagnose–fix walkthrough and a fair comparison of execution modes.
 
 | Measured workload | CPython | JIT (`run`) | AOT (built executable) |
 |---|---|---|---|
-| [microGPT, 100 training steps](bench/microgpt/README.md#measured-snapshot) | 15.152 s | 0.908 s | **0.896 s (16.9× faster)** |
-| microGPT, five generated names | 260.6 ms | 14.26 ms | **13.45 ms (19.4× faster)** |
-| [4M integer list, peak RSS](docs/performance.md#start-up-and-memory) | 169 MiB | Not recorded | 34.2 MiB |
+| [microGPT, 100 training steps](bench/microgpt/README.md#measured-snapshot) | 9.813 s | 1.035 s | **0.933 s (10.5× faster)** |
+| microGPT, five generated names | 246.0 ms | 15.32 ms | **13.05 ms (18.8× faster)** |
+| [4M integer list, peak RSS](docs/performance.md#start-up-and-memory) | 171.1 MiB | 88.5 MiB | **34.1 MiB (5.0× less)** |
 
-The microGPT timings cover training and inference, excluding startup and compilation.
-Parameters, losses and generated names match the original CPython program, and the adapted
-source still runs under CPython.
+These are v0.1.0-alpha.4's results on one CPU of a shared 4-vCPU VM, with CPython 3.13.18:
+medians of three processes for microGPT and five for the list. The microGPT timings cover
+training and inference, excluding startup and compilation. Parameters, losses and generated
+names match the original CPython program exactly, and the adapted source still runs under
+CPython.
 
 Performance depends on the workload: the JIT compiles on every run, while AOT builds once.
-See the [23 adapted pyperformance benchmarks](docs/pyperformance.md) for more comparisons, the
-[performance guide](docs/performance.md) for startup, memory use and reproduction, and the
-[caching guide](docs/caching.md) for regex and text processing.
+See the [pyperformance results](docs/pyperformance.md) for how alpha.4 compares with alpha.3 on
+22 adapted benchmarks, the [performance guide](docs/performance.md) for startup, memory use and
+reproduction, and the [caching guide](docs/caching.md) for regex and text processing.
 
 ## Libraries and compatibility
 
@@ -142,9 +144,10 @@ can also hold values whose type is known only at run time. See the
 `difflib`, `statistics` and `random`, carry small adaptations marked `# Pystachy port:`; the
 adapted code remains valid Python and can be diffed against upstream. The library also
 provides `re`, `itertools`, Unicode normalization, a bounded native `json`, `tomllib.loads()`,
-`functools.cache` / `lru_cache`, `collections.namedtuple` and `io.BytesIO`. See
-[library coverage](lib/README.md) for supported APIs and limits, and the
-[CPython support map](docs/support-surface.md) for what broader compatibility would cost.
+`logging` and one-thread `threading`, `functools.cache` / `lru_cache`, `collections.namedtuple`
+and `io.BytesIO`. See
+[library support](docs/stdlib.md#library-support-at-a-glance) for each area's modules and gaps,
+and the [CPython support map](docs/support-surface.md) for what broader compatibility would cost.
 
 **Third-party code.** [14 ported packages](ports/README.md) have scoped APIs and documented
 adaptations. Libraries ship as ordinary Python wheels: uv or pip installs them, and Pystachy
@@ -163,7 +166,7 @@ Pystachy is experimental and supports a subset of Python. It fits typed, algorit
 best; most PyPI packages do not compile unchanged.
 
 - **Unsupported features:** multiple inheritance, `async`/`await`, `match`, native `bytearray`
-  and binary file I/O (`io.BytesIO` works). Single inheritance follows the
+  and `memoryview` (binary files and `io.BytesIO` work). Single inheritance follows the
   [class rules](docs/language/typing.md#single-inheritance).
 - **Integers** are checked 64-bit values; overflow raises `OverflowError`. A module can opt in
   to experimental [promoting ints](docs/python-int.md), which behave like CPython's `int` in
@@ -186,7 +189,8 @@ best; most PyPI packages do not compile unchanged.
   semantic differences are listed under
   [deviations from CPython](docs/language.md#deviations-from-cpython).
 
-The [language reference](docs/language.md) documents supported features and typing rules.
+The [language guide](docs/language.md#support-at-a-glance) summarizes each feature area's
+status, gaps and costs, and links the detailed typing and compatibility rules.
 
 ## Roadmap
 
@@ -196,7 +200,7 @@ The next priorities are:
 - Broader library coverage, with localized ports checked against CPython.
 - Further compiler and runtime optimizations, backed by reproducible benchmarks.
 
-The [library survey](docs/stdlib.md) and
+The [library support table](docs/stdlib.md#library-support-at-a-glance) and
 [open issues](https://github.com/den-run-ai/pystachy/issues) track coverage gaps and planned work.
 
 ## Documentation
@@ -206,8 +210,8 @@ Start with the [documentation index](docs/README.md) for task-based navigation.
 | Guide | Covers |
 |---|---|
 | [Getting started](docs/getting-started.md) | One program, a compiler diagnostic, a fix and measurement basics |
-| [Language](docs/language.md) | Supported Python, typing rules and semantic differences |
-| [Libraries](lib/README.md) | Available modules, port adaptations and upstream tests |
+| [Language](docs/language.md) | Support by feature area, performance trade-offs, typing rules and CPython differences |
+| [Libraries](docs/stdlib.md) | Support and gaps by area, the [module guide](lib/README.md#module-guide), porting and upstream tests |
 | [Performance](docs/performance.md) | Speed, startup, memory and compile-time measurements |
 | [Caching](docs/caching.md) | Regex, text processing and memoization benchmarks |
 | [Testing](docs/testing.md) | Differential tests, bootstrap checks and CI |
