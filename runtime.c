@@ -6553,6 +6553,20 @@ static void buse(File *f, int rd) {    /* a binary file's read (rd) or write, at
 Str *pys_bfile_read(File *f, I n) {    /* read(n): n bytes, or what remains (n < 0: all of it). A read error raises */
   io_in(); buse(f, 1);
   Buf b = {0}; char t[1 << 16];
+  if (f->bin == 4 && n >= 0) {         /* FileIO's read(n) is one read of the OS, which ends short where a pipe or a
+                                          terminal has fewer bytes (fread waits for n) */
+    char *p = n <= (I)sizeof t ? t : malloc(n);
+    ssize_t r;
+    if (!p) oom();
+    while ((r = read(fileno(f->f), p, n)) < 0 && errno == EINTR && !io_intr) {}
+    if (r < 0) { int e = errno; if (p != t) free(p); ioerr(e); }
+    if (r) put(&b, p, r);
+    if (p != t) free(p);
+    off_t at = lseek(fileno(f->f), 0, SEEK_CUR);   /* stdio, which did not read it, learns the position */
+    if (at >= 0) fseeko(f->f, at, SEEK_SET);
+    io_out();
+    return done(&b);
+  }
   for (I left = n; left;) {
     size_t want = left < 0 || left > (I)sizeof t ? sizeof t : (size_t)left, k = fread(t, 1, want, f->f);
     if (k) put(&b, t, k);
