@@ -168,6 +168,16 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             self.err(f"name '{name}' is not defined")
         size = self.as_int(self.expr(args[0], "int"))
         return Val(self.rt("pys_thread_stack_valid", "i64", [f"i64 {size.v}"]), "int")
+    if name == "__pys_strftime_at":
+        # (lib/_pystachy_time.py's: time.strftime(fmt, time.localtime(secs)), or of gmtime() where
+        # utc, through runtime.c's pys_strftime_at)
+        if (self.curfn.mod != "_pystachy_time" or not lib_source(self.curfn.node.line, self.libdir, "_pystachy_time.py") or
+                len(args) != 3 or any([a.kind in ["kw", "starred", "dstar"] for a in args])):
+            self.err(f"name '{name}' is not defined")
+        fmt = self.expr(args[0], "str")
+        secs = self.as_float(self.expr(args[1], "float"))
+        utc = self.as_int(self.expr(args[2], "int"))
+        return Val(self.rt("pys_strftime_at", "ptr", [f"ptr {fmt.v}", f"double {secs.v}", f"i64 {utc.v}"]), "str")
     if name == "__pys_exc_repr":
         return self.exc_brepr(self.expr(args[0], ""))  # (exc_helpers)
     if name == "__pys_repr_enter" or name == "__pys_repr_leave":

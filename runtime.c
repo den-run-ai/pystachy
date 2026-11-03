@@ -6273,6 +6273,15 @@ _Noreturn void pys_execv(Str *path, List *args) {   /* os.execv: the process bec
   ioerr(errno);
 }
 I pys_getpid(void) { return getpid(); }
+Str *pys_getcwd(void) {          /* os.getcwd(): CPython's posix_getcwd(), whose buffer grows by 1024 bytes while getcwd() fails with ERANGE */
+  size_t size = 1024;
+  for (;;) {
+    char *b = pys_alloc_atomic(size);
+    if (getcwd(b, size)) return cstr(b);
+    if (errno != ERANGE) ioerr(errno);
+    size += 1024;
+  }
+}
 
 /* _thread.stack_size validates a requested setting even though this runtime
    creates no threads. PTHREAD_STACK_MIN can be a runtime sysconf query (larger
@@ -6927,6 +6936,47 @@ double pys_monotonic(void) { return ns_secs(clock_ns(CLOCK_MONOTONIC)); }
 I pys_monotonic_ns(void) { return clock_ns(CLOCK_MONOTONIC); }
 double pys_process_time(void) { return ns_secs(clock_ns(CLOCK_PROCESS_CPUTIME_ID)); }
 I pys_process_time_ns(void) { return clock_ns(CLOCK_PROCESS_CPUTIME_ID); }
+/* time.strftime(fmt, time.localtime(secs)), or of time.gmtime(secs) where utc, for
+   lib/_pystachy_time.py (logging's Formatter.formatTime()): what CPython 3.13 gives on Linux. The
+   time is floored to whole seconds, as time.localtime() floors it, and converted with
+   localtime_r() or gmtime_r(); then, as time_strftime() and time_strftime1() do, each run of
+   ASCII characters other than NUL goes to strftime(), whose buffer grows from 1024 bytes until the
+   result fits or the buffer reaches 256 times the run's length (an empty result), and the
+   characters from there up to the next '%' are copied as they are */
+Str *pys_strftime_at(Str *fmt, double secs, I utc) {
+  if (secs != secs) pys_fail("ValueError: Invalid value NaN (not a number)");
+  double f = floor(secs);
+  if (!(f >= -9223372036854775808.0 && f < 9223372036854775808.0)) pys_fail("OverflowError: timestamp out of range for platform time_t");
+  time_t t = (time_t)f;
+  struct tm tm;
+  errno = 0;
+  if ((utc ? gmtime_r(&t, &tm) : localtime_r(&t, &tm)) == NULL) ioerr(errno ? errno : EINVAL);
+  if (tm.tm_isdst < -1) tm.tm_isdst = -1;
+  else if (tm.tm_isdst > 1) tm.tm_isdst = 1;
+  Buf out = {0};
+  const char *s = fmt->s;
+  I n = fmt->len, i = 0;
+  size_t size = 1024;
+  char *buf = pys_alloc_atomic(size);
+  while (i < n) {
+    I a = i;
+    while (i < n && s[i] != 0 && (unsigned char)s[i] < 128) i++;
+    if (i > a) {
+      char *seg = pys_alloc_atomic(i - a + 1);
+      memcpy(seg, s + a, i - a); seg[i - a] = 0;
+      for (;;) {
+        size_t len = strftime(buf, size, seg, &tm);
+        if (len == 0 && size < 256 * (size_t)(i - a)) { size += size; buf = pys_alloc_atomic(size); continue; }
+        put(&out, buf, (I)len);
+        break;
+      }
+    }
+    I b = i;
+    while (i < n && s[i] != '%') i++;
+    if (i > b) put(&out, s + b, i - b);
+  }
+  return done(&out);
+}
 void pys_sleep(double s) {             /* time.sleep: resumes after a signal (PEP 475); Ctrl-C raises KeyboardInterrupt */
   if (s != s) pys_fail("ValueError: Invalid value NaN (not a number)");
   if (s < 0) pys_fail("ValueError: sleep length must be non-negative");
