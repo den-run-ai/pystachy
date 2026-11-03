@@ -1,10 +1,10 @@
-"""Extract, format and print information about Python stack traces.
+"""Extract, format and print information about Python stack traces."""
 
-Pystachy's subset implementation of CPython 3.13.16's Lib/traceback.py. Pystachy keeps no
-tracebacks and has no frames (lib/compatibility.md#traceback), so each exception formats as CPython
-formats one whose __traceback__ is None: its exception-only lines, after those of its cause
-(raise ... from), and each stack is empty. Its uncaught-exception report shows the same last line.
-"""
+# Pystachy's subset implementation of CPython 3.13.16's Lib/traceback.py. Pystachy keeps no
+# tracebacks and has no frames (lib/compatibility.md#traceback), so each exception formats as
+# CPython formats one whose __traceback__ is None: its exception-only lines, after those of its
+# cause (raise ... from), and each stack is empty. Its uncaught-exception report shows the same
+# last line.
 import sys
 
 __all__ = ['extract_stack', 'extract_tb', 'format_exception',
