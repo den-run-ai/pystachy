@@ -298,6 +298,10 @@ modes. Files provide `read`, `readline`, `readlines`, `write`, `writelines`, `fl
 [text encodings and positions](compatibility.md#text-and-file-positions) and
 [automatic closure](compatibility.md#memory-and-resource-lifetime).
 
+With a literal binary mode, `open()` returns a raw `FileIO` (`buffering=0`) or a buffered
+binary file supporting byte I/O, `seek()`, `tell()` and `truncate()`. See
+[binary files](../../lib/compatibility.md#binary-files) for the supported calls and limits.
+
 `math.fsum()`, `math.prod()` (including `start=`) and `math.dist()` follow CPython's algorithms.
 `fsum()` and `prod()` accept the iterables accepted by `sum()`; `fsum()` also accepts a tuple
 mixing ints and floats. `dist()` accepts two lists or tuples of numbers, NamedTuples, or objects

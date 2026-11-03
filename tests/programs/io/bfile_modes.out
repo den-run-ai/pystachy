@@ -1,0 +1,39 @@
+BufferedRandom rb+ <_io.BufferedRandom name='D/m.bin'>
+b'012' 3
+2 5
+b'012ab56789'
+2 2 b'b5' 6
+b'01__b56789'
+BufferedRandom rb+ <_io.BufferedRandom name='D/m.bin'>
+5 1 b'ello'
+BufferedWriter ab <_io.BufferedWriter name='D/m.bin'> 5
+11
+BufferedRandom ab+ <_io.BufferedRandom name='D/m.bin'> 11
+0 b'hello'
+b'hello world!'
+BufferedWriter xb <_io.BufferedWriter name='D/N'>
+FileExistsError [Errno 17] File exists: 'D/new.bin'
+BufferedRandom xb+ <_io.BufferedRandom name='D/N'>
+FileIO rb <_io.FileIO name='D/m.bin' mode='rb' closefd=True>
+  b'he' 2
+  <_io.FileIO [closed]> True
+FileIO rb+ <_io.FileIO name='D/m.bin' mode='rb+' closefd=True>
+  b'he' 2
+  1 3
+  <_io.FileIO [closed]> True
+FileIO wb <_io.FileIO name='D/m.bin' mode='wb' closefd=True>
+  1 1
+  <_io.FileIO [closed]> True
+FileIO ab <_io.FileIO name='D/m.bin' mode='ab' closefd=True>
+  1 2
+  <_io.FileIO [closed]> True
+FileIO ab+ <_io.FileIO name='D/m.bin' mode='ab+' closefd=True>
+  b'' 2
+  1 3
+  <_io.FileIO [closed]> True
+b'ZZZ' b'' b''
+b'ZZZ' []
+BufferedReader rb <_io.BufferedReader name='D/m.bin'> b'ZZZ'
+BufferedReader rb <_io.BufferedReader name='D/m.bin'> b'ZZZ'
+b'ZZZ' rb b'ZZ'
+[exit 0]

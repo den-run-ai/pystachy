@@ -166,7 +166,7 @@ Pystachy is experimental and supports a subset of Python. It fits typed, algorit
 best; most PyPI packages do not compile unchanged.
 
 - **Unsupported features:** multiple inheritance, `async`/`await`, `match`, native `bytearray`
-  and binary file I/O (`io.BytesIO` works). Single inheritance follows the
+  and `memoryview` (binary files and `io.BytesIO` work). Single inheritance follows the
   [class rules](docs/language/typing.md#single-inheritance).
 - **Integers** are checked 64-bit values; overflow raises `OverflowError`. A module can opt in
   to experimental [promoting ints](docs/python-int.md), which behave like CPython's `int` in

@@ -28,7 +28,7 @@ reflection.BUILTIN_TYPES reflection.SLOT_WRAPPERS reflection.OBJ_BUILTINS reflec
 scalar_ir.SCALAR_INTS scalar_ir.SCALAR_BIN scalar_ir.SCALAR_FLOAT
 scalar_ir.SCALAR_ICMP scalar_ir.SCALAR_FCMP scalar_ir.SCALAR_CASTS scope.COMPNAMES
 specs.PYBUILTINS specs.MODNAMES specs.ANNKINDS specs.GENERICS specs.CBUILTIN
-specs.ABSTRACT_DECOS specs.STANDINS specs.OPAQUE specs.TYPEMODS specs.NOCALL
+specs.ABSTRACT_DECOS specs.STANDINS specs.OPAQUE specs.TYPEMODS specs.BOPENS specs.NOCALL
 specs.IOPS specs.CHECKED specs.IRT specs.FOPS specs.FRT specs.ICMP specs.FCMP
 specs.SPECIAL specs.UNCALLED specs.REFL specs.ORDOP specs.DUNDER specs.UNARY
 specs.CALLS specs.RTL specs.TBAA_SIZES specs.TBAA_NAMES specs.ERRNO specs.MODFUNCS

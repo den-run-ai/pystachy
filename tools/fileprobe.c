@@ -86,6 +86,36 @@ static void tidy(void) {               /* at exit, a failed check's too: the tem
   for (I i = 0; i <= 3000; i++) { snprintf(b, sizeof b, "%s/%lld", dir->s, (long long)i); unlink(b); }
   rmdir(dir->s);
 }
+static void raw_write_count(void) {    /* FileIO.write makes one OS write and reports a short write's progress */
+  struct rlimit saved, low;
+  if (getrlimit(RLIMIT_FSIZE, &saved) || saved.rlim_cur < 8 || saved.rlim_max < 8)
+    bad("file-size limit cannot accommodate the raw-write probe");
+  cur = pys_bopen(name(2999), cstr("w+b"), 0, 0, 0, 0);
+  Str *data = cstr("abcdefgh");
+  struct sigaction ignored = {0}, old;
+  ignored.sa_handler = SIG_IGN;
+  if (sigemptyset(&ignored.sa_mask) || sigaction(SIGXFSZ, &ignored, &old)) bad("ignore SIGXFSZ");
+  low = saved; low.rlim_cur = 3;       /* lower only the soft limit, so the original always remains restorable */
+  if (setrlimit(RLIMIT_FSIZE, &low)) {
+    if (sigaction(SIGXFSZ, &old, 0)) bad("restore SIGXFSZ after setrlimit failure");
+    bad("set raw-write file-size limit");
+  }
+  I written = pys_bfile_write(cur, data);   /* write accepts three bytes; retrying the rest wrongly raises EFBIG */
+  int limit_error = setrlimit(RLIMIT_FSIZE, &saved), signal_error = sigaction(SIGXFSZ, &old, 0);
+  if (limit_error || signal_error) bad("restore raw-write process state");
+  struct stat st;
+  if (written != 3 || pys_bfile_tell(cur) != 3 || fstat(fileno(cur->f), &st) || st.st_size != 3)
+    bad("raw write does not report the OS's short write and position");
+  pys_bfile_seek(cur, 0, SEEK_SET);
+  Str *readback = pys_bfile_read(cur, -1);
+  if (readback->len != 3 || memcmp(readback->s, "abc", 3)) bad("raw short write changed the accepted bytes");
+  if (pys_bfile_write(cur, cstr("defgh")) != 5 || pys_bfile_tell(cur) != 8)
+    bad("raw write cannot continue from the short write's position");
+  pys_bfile_seek(cur, 0, SEEK_SET);
+  readback = pys_bfile_read(cur, -1);
+  if (readback->len != 8 || memcmp(readback->s, "abcdefgh", 8)) bad("raw write loses or repeats bytes after a short write");
+  pys_file_close(cur); cur = 0;
+}
 
 int main(int argc, char **argv) {
   if (argc > 1 && !strcmp(argv[1], "--lib")) { pys_enter(__builtin_frame_address(0)); pys_init_lib(roots, 3); }
@@ -176,7 +206,10 @@ int main(int argc, char **argv) {
   exits("PYSTACHY_GC=off: the exit's closes take back other than the files' buffers");
   gc_off = 0; gc_stress = stress;
 
-  /* 6. a buffer that cannot be allocated changes no counter (oom() ends the program, as always) */
+  /* 6. a raw write returns the accepted byte count, and later reads/writes use that position */
+  raw_write_count();
+
+  /* 7. a buffer that cannot be allocated changes no counter (oom() ends the program, as always) */
   fflush(stdout);
   pid_t p = fork();
   if (!p) {

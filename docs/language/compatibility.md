@@ -74,6 +74,10 @@ See [storage and indexing costs](../internals.md#values-and-runtime).
   ([large read](../../tests/deviations/io_rplus_big_read.py),
   [iteration](../../tests/deviations/io_iter_write_read.py)).
 
+- **Binary files:** `open()` supports literal binary modes. A computed binary mode
+  raises `NotImplementedError` at runtime. See [binary file limits](../../lib/compatibility.md#binary-files)
+  for argument/type restrictions and append buffering differences.
+
 #### Formatting limits
 
 - Width or precision above `10**8` raises
@@ -629,7 +633,7 @@ See [user exception classes](semantics.md#user-exception-classes) and
 - **Dict methods:** `update` with different key/value types, pair iterables beyond lists of
   matching tuples, or keyword arguments for nonstring keys; `fromkeys` with generators or
   implicit `None` values without a contextual type.
-- **Bytes:** `bytearray`, `memoryview`, binary files, `expandtabs`, `title`, `istitle`, `%`
+- **Bytes:** `bytearray`, `memoryview`, `expandtabs`, `title`, `istitle`, `%`
   formatting, integer search arguments, method keywords except `hex` / `translate`, and
   equality with strings.
 - **Formatting:** format strings beyond literals or uniquely bound module literals whose

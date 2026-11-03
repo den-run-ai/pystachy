@@ -1,0 +1,7 @@
+read(1) OSError [Errno 5] Input/output error
+read() OSError [Errno 5] Input/output error
+readline() OSError [Errno 5] Input/output error
+readlines() OSError [Errno 5] Input/output error
+iteration OSError [Errno 5] Input/output error
+closed True
+[exit 0]

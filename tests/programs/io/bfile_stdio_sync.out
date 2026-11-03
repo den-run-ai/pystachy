@@ -1,0 +1,46 @@
+prime 231 b'row 0: abcdefghij\n'
+tail 217 123 217 b'' 217
+start 0 b'row 0: abcd' 11
+failed seek True b'efghi'
+extend 217 231 217 b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+rewrite 110 8 118
+readback 110 b'changed\n' 118
+shrink 114 118 b''
+after shrink 110 b'chan'
+prime 231 b'row 0: abcdefghij\n'
+tail 217 123 217 b'' 217
+start 0 b'row 0: abcd' 11
+failed seek True b'efghi'
+extend 217 231 217 b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+rewrite 110 8 118
+readback 110 b'changed\n' 118
+shrink 114 118 b''
+after shrink 110 b'chan'
+prime 231 b'row 0: abcdefghij\n'
+tail 217 123 217 b'' 217
+start 0 b'row 0: abcd' 11
+failed seek True b'efghi'
+extend 217 231 217 b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+rewrite 110 8 118
+readback 110 b'changed\n' 118
+shrink 114 118 b''
+after shrink 110 b'chan'
+prime 231 b'row 0: abcdefghij\n'
+tail 217 123 217 b'' 217
+start 0 b'row 0: abcd' 11
+failed seek True b'efghi'
+extend 217 231 217 b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+rewrite 110 8 118
+readback 110 b'changed\n' 118
+shrink 114 118 b''
+after shrink 110 b'chan'
+prime 231 b'row 0: abcdefghij\n'
+tail 217 123 217 b'' 217
+start 0 b'row 0: abcd' 11
+failed seek True b'efghi'
+extend 217 231 217 b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+rewrite 110 8 118
+readback 110 b'changed\n' 118
+shrink 114 118 b''
+after shrink 110 b'chan'
+[exit 0]

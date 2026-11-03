@@ -236,6 +236,41 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         self.err(f"name '{name}' is not defined")
     if name.startswith("__pys_range_"):
         return self.range_prim(name, args)
+    if name.startswith("__pys_bfile_"):
+        # lib/_pystachy_bfile.py's binary files, in that module only: a file of a binary mode
+        # (runtime.c's pys_bopen), its reads and writes of bytes, and io.UnsupportedOperation
+        if self.curfn.mod != "_pystachy_bfile" or not lib_source(self.curfn.node.line, self.libdir, "_pystachy_bfile.py"):
+            self.err(f"name '{name}' is not defined")
+        bsigs: dict[str, str] = {
+            "__pys_bfile_open": "pys_bopen:file:str,str,opt[str],opt[str],opt[str],int",
+            "__pys_bfile_read": "pys_bfile_read:bytes:file,int", "__pys_bfile_readline": "pys_bfile_readline:bytes:file,int",
+            "__pys_bfile_write": "pys_bfile_write:int:file,bytes", "__pys_bfile_seek": "pys_bfile_seek:int:file,int,int",
+            "__pys_bfile_tell": "pys_bfile_tell:int:file", "__pys_bfile_truncate": "pys_bfile_truncate:int:file,int",
+            "__pys_bfile_isatty": "pys_bfile_isatty:bool:file", "__pys_bfile_seekable": "pys_bfile_seekable:bool:file",
+            "__pys_bfile_unsupported": "pys_io_unsupported:None:str",
+        }
+        if name not in bsigs or any([a.kind in ["kw", "starred", "dstar"] for a in args]):
+            self.err(f"name '{name}' is not defined")
+        bsig = bsigs[name].split(":")
+        bts = bsig[2].split(",")
+        if len(args) != len(bts):
+            self.err(f"invalid arguments to private binary file primitive {name}")
+        bvs: list[str] = []
+        for j in range(len(args)):
+            v = self.expr(args[j], bts[j])
+            if bts[j] == "int":
+                v = self.as_int(v)
+            elif bts[j] == "opt[str]" and (v.t == "None" or v.t == "str"):
+                v = Val(v.v, "opt[str]")
+            if v.t != bts[j]:
+                self.err(f"invalid argument to private binary file primitive {name}: expected {typestr(bts[j])}, got {typestr(v.t)}")
+            bvs.append(("i64 " if bts[j] == "int" else "ptr ") + v.v)
+        if bsig[1] == "None":
+            self.rt(bsig[0], "void", bvs)
+            return Val("null", "None")
+        if bsig[1] == "bool":
+            return self.num_cmp('!=', Val(self.rt(bsig[0], "i64", bvs), "int"), Val('0', "int"))
+        return Val(self.rt(bsig[0], rtt(bsig[1]), bvs), bsig[1])
     if name.startswith("__pys_mpz_"):
         # Only the shipped wrapper can create or consume these opaque pointers.
         # Using int for the handle would hide references from numeric containers.
