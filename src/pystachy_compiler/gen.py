@@ -312,6 +312,11 @@ from src.pystachy_compiler.reflection import (
     gen_copy_clone as reflection_copy_clone,
     gen_copy_fields as reflection_copy_fields,
     gen_copy_own as reflection_copy_own,
+    gen_enum_alias as reflection_enum_alias,
+    gen_enum_is as reflection_enum_is,
+    gen_enum_is_static as reflection_enum_is_static,
+    gen_enum_member as reflection_enum_member,
+    gen_enum_view as reflection_enum_view,
     gen_refl_dir_names as reflection_refl_dir_names,
     gen_refl_dir as reflection_refl_dir,
     gen_refl_dir_of as reflection_refl_dir_of,
@@ -2422,6 +2427,21 @@ class Gen:
 
     def copy_own(self, t: str, deep: bool) -> int:
         return reflection_copy_own(self, t, deep)
+
+    def enum_view(self, c: str, line: int) -> Node:
+        return reflection_enum_view(self, c, line)
+
+    def enum_member(self, n: Node, want: str) -> Val:
+        return reflection_enum_member(self, n, want)
+
+    def enum_alias(self, n: Node, want: str) -> Val:
+        return reflection_enum_alias(self, n, want)
+
+    def enum_is_static(self, t: str, ms: str) -> int:
+        return reflection_enum_is_static(self, t, ms)
+
+    def enum_is(self, args: list[Node]) -> Val:
+        return reflection_enum_is(self, args)
 
     def refl_union_str(self, v: Val, m: str) -> Val:
         return reflection_refl_union_str(self, v, m)

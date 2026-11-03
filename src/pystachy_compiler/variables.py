@@ -25,7 +25,7 @@ from src.pystachy_compiler.analysis import (
 from src.pystachy_compiler.diagnostics import FILES, LINES, MODDUNDERS, Rejoin, dynamic_program, where
 from src.pystachy_compiler.dynamic import XCMP, comparison_record_write, comparison_storage_key
 from src.pystachy_compiler.ir import Blk, Closure, FnInfo, Frame, Ins, IterArg, Val
-from src.pystachy_compiler.names import owner, short
+from src.pystachy_compiler.names import ENUMCLASSES, owner, short
 from src.pystachy_compiler.specs import BIG, BIGOPT, INERT_DECOS, NONE_ITEM, NONEVAR, OPTTYPES, PYBUILTINS, RANGEC, RANGES, UNSUPPORTED, is_excname
 from src.pystachy_compiler.syntax import NOKIDS, Node, comp_names, made_var, mk, name_targets, starred_target
 from src.pystachy_compiler.utils import (
@@ -161,6 +161,8 @@ def gen_load_name(self, name: str) -> Val:
         return self.fn_value(name)
     if name in self.classes and self.classes[name].exc != "":
         return self.exc_class_value(name)  # (an exception class: its class object)
+    if name in self.classes and self.classes[name].node.line in ENUMCLASSES:
+        return self.expr(self.enum_view(name, self.line), "")  # (an enum class: its EnumType object)
     if name in self.classes:
         self.err(f"class '{name}' cannot be used as a value (classes are not values: call it, or read an attribute, C.x)")
     if name in self.fglobals:

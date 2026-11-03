@@ -6,7 +6,7 @@ from src.pystachy_compiler.analysis import collect, comp_shared, comp_unbound, c
 from src.pystachy_compiler.diagnostics import LINES, dynamic_program, int_lists, shown
 from src.pystachy_compiler.dynamic import comparison_container_pair, comparison_invalid, comparison_property_type
 from src.pystachy_compiler.ir import ClassInfo, Data, FmtArgs, FnInfo, Ins, IterArg, Loop, Val
-from src.pystachy_compiler.names import short
+from src.pystachy_compiler.names import ENUMCLASSES, short
 from src.pystachy_compiler.reflection import VARS_USES, refl_annotated, refl_body, refl_fold, refl_reflective
 from src.pystachy_compiler.specs import (
     BIG,
@@ -67,6 +67,7 @@ from src.pystachy_compiler.utils import (
     is_vtuple,
     kw_names,
     kw_types,
+    lib_source,
     lt,
     nones,
     nonetest,
@@ -244,6 +245,12 @@ def gen_static(self, n: Node) -> int:
         t = self.static_type(n.kids[1], True)
         r = self.isinst(t, n.kids[2]) if t != "" else -1
         return r if r >= 0 else (1 if r == -2 else 0) if r < -1 and self.knownobj(n.kids[1]) else -1
+    if k == "call" and n.kids[0].kind == "name" and n.kids[0].s == "__pys_enum_is" and len(n.kids) == 3:
+        # (lib/enum.py's test of an enum class's member, decided by the static types but for an
+        # optional or Any value: enum_is_static)
+        t = self.static_type(n.kids[1], True)
+        ms = self.static_type(n.kids[2], True)
+        return self.enum_is_static(t, ms) if t != "" and ms != "" else -1
     if k == "call" and n.kids[0].kind == "name" and n.kids[0].s in ["__pys_copy_is_object", "__pys_copy_is_own", "__pys_deepcopy_is_own"] and len(n.kids) == 2:
         # (lib/copy.py's tests of x's static type, so that copy() and _deepcopy() compile only the
         # copy of x's kind of value: whether x is its own copy, which only None and Any values
@@ -437,6 +444,9 @@ def gen_isinst(self, t: str, c: Node) -> int:
         return -1
     if c.s == "object":
         return 1
+    if ((c.s == "int" and "enum$IntEnum" in self.classes and t in self.classes and self.derives(t, "enum$IntEnum")) or (c.s == "str" and "enum$StrEnum" in self.classes and t in self.classes and self.derives(t, "enum$StrEnum"))) and not lib_source(self.curfn.node.line, self.libdir, "enum.py"):
+        # (CPython's IntEnum member is an int, a StrEnum member a str: here an object of its class)
+        self.err(f"isinstance() of a {short(t)} member and {c.s} is not supported: an {'IntEnum' if c.s == 'int' else 'StrEnum'} member is an object of its class (in CPython also {'an int' if c.s == 'int' else 'a str'})")
     if c.s == "int":
         return 1 if t == "int" or t == "bool" else 0
     if c.s == "bool" or c.s == "float" or c.s == "str" or c.s == "bytes":
@@ -884,6 +894,10 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         return self.ifexp(n, want, resultsoft)
     if k == "call":
         return self.call(n, want, resultsoft)
+    if k == "enummember":
+        return self.enum_member(n, want)  # (an enum member, its class attribute's default: Loader's enum_classes)
+    if k == "enumalias":
+        return self.enum_alias(n, want)  # (an enum member's alias: the member whose value it has)
     if k == "attr":
         path = self.dotted(n)
         if path != "" and path[: path.rfind(".")] not in MODATTRS:
@@ -911,6 +925,9 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             self.xcls[c] = True
             cls = self.rt("pys_exc_proto", "ptr", [f"ptr {self.sconst(c)}", f"ptr @x.{c}"])
             return Val(self.rt("pys_exc_module", "ptr", [f"ptr {cls}"]), "str")
+        if c in self.classes and n.s == "__members__" and self.classes[c].node.line in ENUMCLASSES:
+            self.class_ready(n.kids[0])
+            return self.expr(mk("call", "", n.line, [mk("attr", "_members_view_", n.line, [self.enum_view(c, n.line)])]), "")  # (its EnumType object's)
         if c in self.classes and ((c in self.nts and (n.s == "_fields" or n.s == "_field_defaults")) or (c not in self.nts and n.s in self.classes[c].fdefault)):
             return self.class_attr(n.kids[0], n.s)
         if c in self.classes and n.s == "__name__":
@@ -1280,6 +1297,8 @@ def gen_cvar(self, cn: Node, a: str) -> ClassInfo:
     c = cn.s
     if self.is_dc(c):
         self.err(f"assigning to a class attribute of {'NamedTuple' if c in self.nts else 'dataclass'} {short(c)} ({short(c)}.{a} = ...) is not supported")
+    if c in self.classes and self.classes[c].node.line in ENUMCLASSES and a in self.classes[c].fdefault and self.classes[c].fdefault[a].kind in ["enummember", "enumalias"]:
+        self.err(f"cannot reassign member '{a}'")  # (CPython's AttributeError)
     if c + "." + a not in self.cvars:
         self.err(f"type object '{short(c)}' has no attribute '{a}': adding a class attribute by assigning it is not supported (declare it in the class body, {a}: T = ...)")
     # an exception class shares the class variables it inherits with its base (default_home):
@@ -3504,6 +3523,8 @@ def gen_cmp_pick(self, op: str, at: str, bt: str) -> list[str]:
                 inv = "!"
             if m in ms and ms[m].synthetic and self.is_dc(ms[m].cls) and lt != rt:
                 continue  # (what @dataclass writes returns NotImplemented for an object of another class)
+            if m in ms and rt == "None" and lib_source(ms[m].node.line, self.libdir, "enum.py"):
+                continue  # (and so do the int and str methods of an IntEnum's and a StrEnum's members for None)
             if m in ms:
                 return [sides[i], m, inv]
     return []

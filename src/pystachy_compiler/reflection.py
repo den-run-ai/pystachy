@@ -12,7 +12,7 @@ from __future__ import annotations
 from src.pystachy_compiler.diagnostics import dynamic_program, int_program, shown
 from src.pystachy_compiler.analysis import clean_doc, local_names
 from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Loop, Val
-from src.pystachy_compiler.names import short
+from src.pystachy_compiler.names import ENUMCLASSES, short
 from src.pystachy_compiler.specs import BIG, BIGOPT, GLUE, HASATTR, ITERS, NONEVAR, OBJECTC, RANGEC, TYPEMODS, is_excname
 from src.pystachy_compiler.syntax import Node, mk
 from src.pystachy_compiler.utils import (
@@ -2733,3 +2733,70 @@ def gen_copy_own(self, t: str, deep: bool) -> int:
     if u == "frozenset" or u.startswith("frozenset["):
         return 0 if deep else 1
     return 0 if is_list(u) or is_dict(u) or is_set(u) or u in self.classes or u == "dyn" else 2
+
+
+def gen_enum_view(self, c: str, line: int) -> Node:
+    # enum class c as a value: the EnumType object its module binds after the class statement
+    # (Loader's enum_classes), _pys_enum_C, a name node of it
+    if c not in self.classes or self.classes[c].node.line not in ENUMCLASSES:
+        self.err(f"internal error: {short(c)} is no enum class")
+    g = c[: c.rfind("$") + 1] + "_pys_enum_" + short(c)
+    if g not in self.gtypes and g not in self.mvars:
+        self.err(f"enum class {short(c)} without members cannot be used as a value (classes are not values: an enum class with members is its EnumType object)")
+    return mk("name", g, line, [])
+
+
+def gen_enum_member(self, n: Node, want: str) -> Val:
+    # an enum member (Loader's enum_classes), as its class attribute's default: a new object of its
+    # class, whose _name_ is the member's name and _value_ its value
+    c = unopt(want)
+    if c not in self.classes or self.classes[c].node.line not in ENUMCLASSES:
+        self.err("internal error: an enum member outside its class")
+    ci = self.classes[c]
+    v = self.coerce(self.expr(n.kids[0], ci.ftypes["_value_"]), ci.ftypes["_value_"])
+    o = self.new_obj(c)
+    self.setfield(o, self.field(o, "_name_"), "_name_", Val(self.sconst(n.s), "str"))
+    self.setfield(o, self.field(o, "_value_"), "_value_", v)
+    return o
+
+
+def gen_enum_alias(self, n: Node, want: str) -> Val:
+    # an enum member's alias (Loader's enum_classes), as its class attribute's default: the member
+    # n.s, whose class attribute the class statement has bound before (body order), read from its
+    # global, as the class's own name is not bound until the statement ends
+    ci = self.classes[unopt(want)]
+    self.class_default(ci, n.s)
+    t = ci.ftypes[n.s]
+    return Val(self.mload(t, ci.fglob[n.s]), t)
+
+
+def gen_enum_is_static(self, t: str, ms: str) -> int:
+    # lib/enum.py's __pys_enum_is(value, members) for value of static type t and members, a list of
+    # an enum class's members, of type ms: 1 where value is an object of the class (a member), 0
+    # where it cannot be one, -1 where its value decides (an optional or Any value)
+    c = targs(ms)[0] if is_list(ms) else ""
+    if c not in self.classes:
+        return 0
+    if t == "dyn":
+        return -1
+    u = unopt(t)
+    if u in self.classes and self.derives(u, c):
+        return 1 if u == t else -1
+    return 0
+
+
+def gen_enum_is(self, args: list[Node]) -> Val:
+    # lib/enum.py's __pys_enum_is(value, members): is value a member of the enum class whose
+    # members list members holds (static() decides it by their types, but for an optional value,
+    # which is one where it is not None, and an Any value, by its box's class)
+    if self.curfn.mod != "enum" or not lib_source(self.curfn.node.line, self.libdir, "enum.py") or len(args) != 2 or any([a.kind in ["kw", "starred", "dstar"] for a in args]):
+        self.err("name '__pys_enum_is' is not defined")
+    v = self.expr(args[0], "")
+    ms = self.expr(args[1], "")
+    r = self.enum_is_static(v.t, ms.t)
+    if r >= 0:
+        return Val("true" if r == 1 else "false", "bool")
+    if v.t == "dyn":
+        return Val(self.dyn_test(v, [targs(ms.t)[0]]), "bool")
+    return self.ptr_cmp("!=", v, Val("null", "None"))
+

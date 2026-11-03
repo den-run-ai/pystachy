@@ -5,7 +5,7 @@ from src.pystachy_compiler.bigints import converts
 from src.pystachy_compiler.diagnostics import dynamic_program, shown, where
 from src.pystachy_compiler.generators import fresh_yield_context
 from src.pystachy_compiler.ir import Data, FnInfo, Ins, Val
-from src.pystachy_compiler.names import short
+from src.pystachy_compiler.names import ENUMCLASSES, short
 from src.pystachy_compiler.reflection import VARS_USES, refl_attr_fields, refl_formatter
 from src.pystachy_compiler.specs import BIG, EXCEPTIONS, GLUE, HASATTR, MODATTRS, PYBUILTINS, RANGEC
 from src.pystachy_compiler.structs import STRUCT_FNS
@@ -136,6 +136,10 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
         if f.s in self.classes:
             if self.classes[f.s].exc != "":
                 return self.exc_object(f.s, args)
+            if self.classes[f.s].node.line in ENUMCLASSES:
+                # (an enum class's lookup by value: its EnumType object's __call__)
+                self.class_ready(f)
+                return self.obj_call(self.expr(self.enum_view(f.s, f.line), ""), args, want, resultsoft)
             if self.classes[f.s].bad != "":
                 self.err(self.classes[f.s].bad)
             if self.classes[f.s].mod in GLUE and self.curfn.mod != self.classes[f.s].mod:

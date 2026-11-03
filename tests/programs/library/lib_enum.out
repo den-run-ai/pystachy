@@ -1,0 +1,29 @@
+Color.RED <Color.RED: 1> RED 1 RED 1
+Color.GREEN Color.BLUE True Color.GREEN
+[<Color.RED: 1>, <Color.GREEN: 2>, <Color.BLUE: 3>] 3 True True False
+<enum 'Color'>
+RED is 1
+GREEN is 2
+BLUE is 3
+{'RED': <Color.RED: 1>, 'GREEN': <Color.GREEN: 2>, 'BLUE': <Color.BLUE: 3>, 'CRIMSON': <Color.RED: 1>}
+ValueError 7 is not a valid Color
+KeyError 'PURPLE'
+Color.GREEN  Color.GREEN| True Color.BLUE
+True False True True
+r [<Color.BLUE: 3>, <Color.GREEN: 2>, <Color.RED: 1>] [<Color.BLUE: 3>, <Color.GREEN: 2>, <Color.RED: 1>]
+True True
+True True Color
+[('A', 1), ('B', 5), ('C', 6), ('D', 3), ('E', 7)] Order.C
+<VENUS> 3.303e+23 Planet.VENUS Planet.MERCURY
+True ['MERCURY', 'VENUS']
+Level.HIGH 0.5 [<Level.LOW: 0.5>, <Level.HIGH: 2.5>]
+1 <Num.TWO: 2> 2 6 1 1 0.5
+True True True True 1 002
+False True -2 True [<Num.ZERO: 0>, <Num.TWO: 2>]
+TypeError unsupported operand type(s) for +: 'Num' and 'str'
+TypeError '<' not supported between instances of 'NoneType' and 'Num'
+read <Mode.WRITE: 'w'> True W read! 4
+[w] True True w True
+TypeError '<' not supported between instances of 'Mode' and 'int'
+Planet2.VENUS 2
+[exit 0]

@@ -658,6 +658,44 @@ static type of the value selects its copy as the program compiles, with CPython'
 - `copy.replace()` (new in CPython 3.13) is not provided; `dataclasses.replace()` and a
   `NamedTuple`'s `_replace()` are.
 
+### `enum`
+
+`enum` is Pystachy's own subset (`lib/enum.py`) of CPython 3.13.16's module. CPython makes an
+enum class with its metaclass, `EnumType`, whose `__prepare__`, `__new__` and `__call__` have no
+form in a compiled program, so the compiler makes the class from its class statement instead,
+as it makes dataclasses and `NamedTuple` classes ([test](../tests/programs/library/lib_enum.py)):
+
+- A class that derives from `Enum`, `IntEnum` or `StrEnum` (by any import of them), or from an
+  enum class of its own module without members, is an enum class. Its members are its body's
+  `NAME = value` statements, whose values are literals (numbers, strs, bytes, `True`, `False`,
+  `None` and tuples of them) of one type, or `auto()`, which gives CPython's values: one more
+  than the greatest value before (from 1), or a `StrEnum` member's name in lower case. A member
+  whose value an earlier one has is its alias; `@unique` reports aliases as an error.
+- Members are objects of the class, with `name`, `value`, `_name_` and `_value_`, CPython's
+  `repr()`, `str()`, `format()` and `hash()`, identity equality, and copies that are the member
+  itself; the class's methods, properties and class methods work on them as on other objects.
+- The class as a value is an object of `EnumType`: `C(value)` finds the member with that value
+  (or returns a member it is given) and raises CPython's `ValueError` for another value,
+  `C[name]` raises `KeyError`, iteration and `list(C)` give the members without aliases in
+  definition order, and `len(C)`, `x in C` (a member, or a member's value), `C.__members__` (a
+  read-only mapping, aliases included) and `repr(C)` are CPython's. Enum classes of other modules
+  work where they are imported ([test](../tests/programs/library/lib_enum_import.py)), and so
+  do members in `Any` values ([test](../tests/programs/library/lib_enum_any.py)).
+- An `IntEnum` member is no `int` here, nor a `StrEnum` member a `str`: each is an object of its
+  class with `int`'s comparisons, arithmetic, `bool()` and `hash()`, or `str`'s comparisons,
+  `+`, `in`, `len()` and `upper()`, `lower()`, `startswith()`, `endswith()` and `encode()`,
+  whose results are ints and strs, and with CPython's `TypeError` for an operand of another
+  type. One cannot be passed where an `int` or `str` is typed, `int(member)` is not supported,
+  and `isinstance()` of one and `int` or `str` is a compile-time error (CPython's is true).
+- These are compile-time errors: `Flag`, `IntFlag` and `ReprEnum`; mixin types
+  (`class C(str, Enum)`) and keywords; members of other values or types, `_ignore_`, `_order_`
+  and private names; `__new__`, `__init__`, `_missing_` and `_generate_next_value_`; an enum
+  class that derives from an enum class of another module, or from one with members (CPython's
+  `TypeError`); the functional API (`Enum("Color", "RED GREEN")`); reassigning a member
+  (CPython's `AttributeError`); `reversed()` of an enum class, and an enum class without
+  members as a value. `enum.property`, `member`, `nonmember`, `verify`, `global_enum` and the
+  other helpers are not provided.
+
 ### `heapq`
 
 Heap operations, including `_max` variants, and `nlargest`/`nsmallest` work.

@@ -1,0 +1,5 @@
+['color RED', 'other 3', "other 'x'", 'color GREEN', 'other <Num.ONE: 1>']
+True True True
+[<Color.RED: 1>, 3, 'x', <Color.GREEN: 2>, <Num.ONE: 1>]
+Color.GREEN
+[exit 0]

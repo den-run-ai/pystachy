@@ -52,7 +52,7 @@ from src.pystachy_compiler.analysis import (
 from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, IDPRAGMA, INTFILES, INTSPANS, LINES, MODDUNDERS, RAW, dynamic_pragma, fail, int_pragma, leading_pragma
 from src.pystachy_compiler.lexer import KEYWORDS, Lexer
 from src.pystachy_compiler.module import Mod
-from src.pystachy_compiler.names import owner, short
+from src.pystachy_compiler.names import ENUMCLASSES, owner, short
 from src.pystachy_compiler.parser import Parser
 from src.pystachy_compiler.specs import (
     ABCS,
@@ -161,6 +161,191 @@ def cm_methods(n: Node, names: list[str]) -> None:
                     kept.append(d)
             b.kids = kept
         top.append(st)
+    n.kids = top
+
+
+# lib/enum.py's names a module may import, and the classes of them an enum class derives from
+ENUM_NAMES = ["Enum", "IntEnum", "StrEnum", "ReprEnum", "EnumType", "EnumMeta", "auto", "unique", "Flag", "IntFlag"]
+ENUM_BASES = ["Enum", "IntEnum", "StrEnum"]
+# the methods that make or look up enum members, which the compiler makes
+ENUM_HOOKS = ["__new__", "__init__", "_missing_", "_generate_next_value_", "__init_subclass__", "__set_name__", "_numeric_repr_"]
+
+
+def enum_names(body: Node) -> dict[str, str]:
+    # the names module body binds lib/enum.py's names as (from enum import Enum, or as another
+    # name; import enum, or as e: enum.Enum), each to its name in enum
+    out: dict[str, str] = {}
+    for st in body.kids:
+        for a in st.kids if st.kind == "import" else []:
+            if a.kind == "alias" and len(a.kids) == 2 and st.s == "from" and a.kids[0].s.startswith("enum.") and a.kids[0].s[5:] in ENUM_NAMES:
+                out[a.s] = a.kids[0].s[5:]
+            elif a.kind == "alias" and len(a.kids) == 2 and a.kids[0].s == "enum" and st.s != "from":
+                for k in ENUM_NAMES:
+                    out[a.s + "." + k] = k
+    return out
+
+
+def dotted(n: Node) -> str:
+    # the dotted name expression n is (enum.Enum), or ""
+    if n.kind == "name":
+        return n.s
+    if n.kind == "attr" and len(n.kids) == 1 and dotted(n.kids[0]) != "":
+        return dotted(n.kids[0]) + "." + n.s
+    return ""
+
+
+def enum_literal(e: Node) -> list[str]:
+    # an enum member's value e, a literal: [its type, a text that equal values share], or [] for
+    # another expression
+    neg = e.kind == "unary" and e.s == "-" and len(e.kids) == 1 and e.kids[0].kind == "int"
+    if e.kind == "int" or neg:
+        d = e.kids[0].s if neg else e.s  # (decimal, as the lexer gives it)
+        if not int_fits(("-" if neg else "") + d) or (len(d) > 1 and d.startswith("0")):
+            return []  # (past 64 bits, or a literal that a module whose ints promote keeps: Parser)
+        return ["int", str(-int(d) if neg else int(d))]
+    if e.kind == "float":
+        return ["float", repr(float(e.s.replace("_", "")))]
+    if e.kind == "str" or e.kind == "bytes":
+        return [e.kind, repr(e.s)]
+    if e.kind == "True" or e.kind == "False":
+        return ["bool", e.kind]
+    if e.kind == "None":
+        return ["None", "None"]
+    if e.kind == "tuple" and len(e.kids) > 0:
+        ts: list[str] = []
+        ks: list[str] = []
+        for k in e.kids:
+            r = enum_literal(k)
+            if len(r) == 0:
+                return []
+            ts.append(r[0])
+            ks.append(r[1])
+        return ["tuple[" + ", ".join(ts) + "]", "(" + ", ".join(ks) + ")"]
+    return []
+
+
+def enum_classes(n: Node, names: dict[str, str]) -> None:
+    # (enum) each class statement of module body n that derives from enum's Enum, IntEnum or
+    # StrEnum (names: as the module imports them), or from an enum class of the module without
+    # members: an enum class, which CPython's EnumType makes from the class body, made here as a
+    # class whose members are class attributes, each an object of the class ("enummember", which
+    # Gen makes with its _name_ and _value_; an alias, "enumalias", is the member whose value it
+    # has). Their
+    # values are literals, or auto()'s, which _generate_next_value_'s rules give: one more than the
+    # greatest value before (from 1), a StrEnum member's name in lower case. An Enum's _value_ is a
+    # field of the type of its members' values, with the value property and _value_repr_();
+    # IntEnum's and StrEnum's are int and str. After the class statement the module binds
+    # _pys_enum_C to an EnumType object, which the class is as a value (iteration, len(), in,
+    # C(value), C[name], __members__, repr()). An enum class that CPython's EnumType would make
+    # otherwise (other members, bases, decorators and hooks) is an error
+    if len(names) == 0:
+        return
+    kinds: dict[str, str] = {}  # the module's enum classes so far: the class of enum they derive from
+    full: dict[str, bool] = {}  # (those with members, which no class may derive from)
+    top: list[Node] = []
+    imported = False
+    for st in n.kids:
+        kind = ""
+        base = ""
+        for b in st.kids[1:] if st.kind == "subclass" else []:
+            d = dotted(b)
+            k = names.get(d, "")
+            if k == "Flag" or k == "IntFlag" or k == "ReprEnum":
+                fail(f"enum.{k} is not supported: Pystachy's enum classes derive from Enum, IntEnum or StrEnum", st.line)
+            if k in ENUM_BASES or d in kinds:
+                kind = k if k in ENUM_BASES else kinds[d]
+                base = d
+        if kind == "":
+            top.append(st)
+            continue
+        if base in full:
+            fail(f"<enum {st.s!r}> cannot extend <enum {base!r}>", st.line)
+        if len(st.kids) != 2:
+            fail(f"enum class {st.s} is not supported: an enum class derives from one class, Enum, IntEnum, StrEnum or an enum class of its module without members (no mixin type or keyword)", st.line)
+        c = st.kids[0]
+        uniq = False
+        for dn in c.kids[1:]:
+            if names.get(dn.s, "") != "unique" or len(dn.kids) > 0:
+                fail(f"decorator @{dn.s} of an enum class is not supported (only @unique)", dn.line)
+            uniq = True
+        body = c.kids[0]
+        c.kids = [body]
+        out: list[Node] = []
+        mnames: list[str] = []  # the members' names, aliases included, in definition order
+        canon: dict[str, str] = {}  # each one's member: itself, or for an alias the member whose value it has
+        keys: dict[str, str] = {}  # the members by their values' texts
+        texts: dict[str, str] = {}  # the members' values' texts
+        defs: dict[str, bool] = {}
+        vtype = ""
+        last: list[int] = []
+        for s in body.kids:
+            nm = s.kids[0].s if s.kind == "assign" and len(s.kids) == 2 and s.kids[0].kind == "name" else ""
+            dunder = len(nm) > 4 and nm.startswith("__") and nm.endswith("__")
+            if s.kind == "def":
+                if s.s in ENUM_HOOKS or s.s in canon:
+                    fail(f"enum class {st.s}'s {s.s}() is not supported{' (a member of that name precedes it)' if s.s in canon else ': the compiler makes and looks up its members'}", s.line)
+                defs[s.s] = True
+                out.append(s)
+            elif nm != "" and not dunder:
+                if (nm.startswith("_") and nm.endswith("_")) or nm.startswith("__"):
+                    fail(f"enum class {st.s}'s {nm} is not supported", s.line)  # (_ignore_, _order_; a private name)
+                if nm in canon:
+                    fail(f"{nm!r} already defined as {texts[nm]}", s.line)
+                if nm in defs or nm == "name" or nm == "value":
+                    fail(f"enum member {st.s}.{nm} is not supported: the class has an attribute {nm}", s.line)
+                v = s.kids[1]
+                if v.kind == "call" and names.get(dotted(v.kids[0]), "") == "auto":
+                    if len(v.kids) > 1:
+                        fail("auto() with an argument is not supported", v.line)
+                    if kind == "StrEnum":
+                        v = mk("str", nm.lower(), v.line, [])
+                    elif vtype != "" and vtype != "int":
+                        fail(f"auto() after a member whose value is a {vtype} is not supported", v.line)
+                    else:
+                        v = mk("int", str(max(last) + 1 if len(last) > 0 else 1), v.line, [])
+                lit = enum_literal(v)
+                if len(lit) == 0:
+                    fail(f"enum member {st.s}.{nm} is not supported: the compiler makes an enum class's members from literal values (numbers, strs, bytes, True, False, None and tuples of them) and auto()", s.line)
+                if (kind == "IntEnum" and lit[0] != "int") or (kind == "StrEnum" and lit[0] != "str"):
+                    fail(f"{kind} member {st.s}.{nm} must have an {'int' if kind == 'IntEnum' else 'str'} value", s.line)
+                if vtype != "" and lit[0] != vtype:
+                    fail(f"enum class {st.s}'s members have values of two types, {vtype} and {lit[0]}: Pystachy's enum members' values have one type", s.line)
+                vtype = lit[0]
+                if vtype == "int":
+                    last.append(int(lit[1]))
+                mnames.append(nm)
+                texts[nm] = lit[1]
+                if lit[1] in keys:
+                    canon[nm] = keys[lit[1]]
+                    init = mk("enumalias", keys[lit[1]], s.line, [])
+                else:
+                    keys[lit[1]] = nm
+                    canon[nm] = nm
+                    init = mk("enummember", nm, s.line, [v])
+                out.append(mk("annassign", "", s.line, [mk("name", nm, s.line, []), mk("str", st.s, s.line, []), init]))
+            elif (s.kind == "assign" and dunder) or s.kind == "pass" or (s.kind == "expr" and s.kids[0].kind == "str"):
+                out.append(s)
+            else:
+                fail(f"enum class {st.s}'s body is not supported: an enum class has members (NAME = value), methods and a docstring", s.line)
+        aliases = [m for m in mnames if canon[m] != m]
+        if uniq and len(aliases) > 0:
+            fail(f"duplicate values found in <enum {st.s!r}>: " + ", ".join([f"{m} -> {canon[m]}" for m in aliases]), st.line)
+        if len(mnames) > 0 and kind == "Enum":
+            src = f'_value_: {vtype}\n\n@property\ndef value(self) -> {vtype}:\n    """The value of the Enum member."""\n    return self._value_\n\ndef _value_repr_(self) -> str:\n    return repr(self._value_)\n'
+            made = Parser(Lexer(src, st.line).file()).module().kids
+            out = made[:1] + out + made[1:]
+        body.kids = out if len(out) > 0 else [mk("pass", "", st.line, [])]
+        ENUMCLASSES[st.line] = kind
+        kinds[st.s] = kind
+        if len(mnames) > 0 and not imported:
+            top.append(Parser(Lexer("from enum import EnumType as _pys_EnumType\n", st.line).file()).module().kids[0])
+            imported = True
+        top.append(st)
+        if len(mnames) > 0:
+            full[st.s] = True
+            ms = ", ".join([f"{st.s}.{m}" for m in mnames if canon[m] == m])
+            mm = ", ".join([f"{m!r}: {st.s}.{canon[m]}" for m in mnames])
+            top.append(Parser(Lexer(f"_pys_enum_{st.s} = _pys_EnumType({st.s!r}, [{ms}], {{{mm}}})\n", st.line).file()).module().kids[0])
     n.kids = top
 
 
@@ -296,6 +481,7 @@ class Loader:
         # Rebuild both on every load (also runtime.py and restarted/hosted compilations):
         # the main parser starts at file zero, and old opt-ins must not apply to new files.
         FILES.clear()
+        ENUMCLASSES.clear()
         DYNFILES.clear()
         IDINERT.clear()
         INTFILES.clear()
@@ -306,6 +492,7 @@ class Loader:
         m.body = self.parse_source(src, 1)
         tb_import(m.body)
         cm_methods(m.body, cm_names(m.body))
+        enum_classes(m.body, enum_names(m.body))
         self.prescan(m)
         self.simplify(m, m.body, {})
         self.docstring(m)
@@ -664,6 +851,7 @@ class Loader:
         self.parsed[path] = self.parse_source(src, k * LINES + 1)
         tb_import(self.parsed[path])
         cm_methods(self.parsed[path], cm_names(self.parsed[path]))
+        enum_classes(self.parsed[path], enum_names(self.parsed[path]))
         return self.parsed[path]
 
     def pragmas(self, src: str, k: int, line: int) -> None:

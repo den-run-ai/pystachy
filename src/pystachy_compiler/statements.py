@@ -4,7 +4,7 @@ from src.pystachy_compiler.utils import identity_abi, identity_default, is_union
 from src.pystachy_compiler.analysis import appends_to, builtin_has, local_names, none_display
 from src.pystachy_compiler.diagnostics import shown
 from src.pystachy_compiler.ir import Blk, ClassInfo, Exit, FnInfo, Ins, IterArg, Loop, SeqStart, StopCatch, Val
-from src.pystachy_compiler.names import owner, short
+from src.pystachy_compiler.names import ENUMCLASSES, owner, short
 from src.pystachy_compiler.specs import (
     STR_HEADER_SIZE,
     ABCS,
@@ -48,6 +48,7 @@ from src.pystachy_compiler.utils import (
     is_sopt,
     is_tuple,
     is_vtuple,
+    lib_source,
     meet,
     numeric_identity,
     same_kind,
@@ -322,6 +323,10 @@ def gen_hoist_class(self, ci: ClassInfo) -> None:
     # and shared. Pystachy has no class scope: names bound earlier in the body are rejected.
     # (A class whose only problem is ci.hook still compiles here: CPython runs its body.)
     ci.bad = "" if ci.bad == ci.hook else ci.bad
+    if "enum$Enum" in self.classes and self.derives(ci.name, "enum$Enum") and ci.node.line not in ENUMCLASSES and not lib_source(ci.node.line, self.libdir, "enum.py"):
+        # (a class whose base is an enum class of another module: the loader makes an enum class
+        # from its module's own class statements, and an enum class's members from its body)
+        self.err(f"enum class {short(ci.name)} is not supported: it derives from {short(ci.base)}, an enum class of another module (an enum class derives from Enum, IntEnum, StrEnum or an enum class of its own module)")
     for st in ci.node.kids[0].kids if ci.mod != "" and ci.bad == "" else []:
         if st.kind == "annassign" and len(st.kids) == 3 and st.kids[0].kind == "name":
             why = self.default_problem(st.kids[2], ci.ftypes[st.kids[0].s])
