@@ -317,7 +317,7 @@ def main():
         "timing_scope": "timed initialization/forward/backward/Adam/inference; snapshots and progress output excluded; separate process wall and AOT build",
         "environment": {name: env.get(name) for name in (
             "PYSTACHY_OPT", "PYSTACHY_JIT_CODEGEN", "PYSTACHY_JIT_INLINE", "PYSTACHY_CFLAGS",
-            "PYSTACHY_GC", "PYSTACHY_GC_STRESS", "PYSTACHY_GC_STRESS_PROGRAM", "PYSTACHY_LLVM", "PYTHONHASHSEED",
+            "PYSTACHY_GC", "PYSTACHY_GC_MIN", "PYSTACHY_GC_STRESS", "PYSTACHY_GC_STRESS_PROGRAM", "PYSTACHY_LLVM", "PYTHONHASHSEED",
         )},
         "runs": {}, "errors": [],
     }
