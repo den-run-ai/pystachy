@@ -6617,9 +6617,18 @@ I pys_bfile_tell(File *f) {            /* tell(): the position, written bytes th
 }
 I pys_bfile_isatty(File *f) { return isatty(fileno(f->f)); }
 I pys_bfile_seekable(File *f) { return lseek(fileno(f->f), 0, SEEK_CUR) >= 0; }   /* as FileIO's: the OS can seek it */
-I pys_bfile_truncate(File *f, I size) {   /* truncate(size): what was written reaches the file first; the position stays */
+I pys_bfile_truncate(File *f, I size) {   /* truncate(size): what was written reaches the file first, and a buffered
+                                             file's read-ahead is dropped, as BufferedRandom rewinds its raw file to
+                                             its position, which stays: reads go on from there, in the file as it is */
   io_in(); int e = flush1(f); if (e) ioerr(e);
+  off_t at = f->bin != 4 ? ftello(f->f) : 0;   /* (a pipe's ESPIPE, as BufferedRandom's rewind raises it) */
+  if (at < 0) ioerr(errno);
   if (ftruncate(fileno(f->f), size)) ioerr(errno);
+  if (f->bin != 4) {                   /* then the read-ahead goes (flush1 wrote what stdio held): a seek within */
+    pys_fpurge(f->f);                  /* the buffer keeps it, and glibc's fseeko reads ahead again, from the */
+    if (fseeko(f->f, at, SEEK_SET)) ioerr(errno);   /* file as it is now */
+    f->last = 0;
+  }
   io_out();
   return size;
 }
