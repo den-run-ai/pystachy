@@ -643,7 +643,8 @@ static type of the value selects its copy as the program compiles, with CPython'
   numbers are the original's objects, as CPython's are: through `Any`, `copy.n is x.n`
   ([test](../tests/programs/library/lib_copy_identity.py)).
 - Where the deep copy of an object's fields may run code that sees or changes the object (a
-  `__deepcopy__()`, or the `__hash__()` or `__eq__()` of a dict's keys or a set's items), it
+  `__deepcopy__()`, or the `__hash__()` or `__eq__()` of a dict's keys or a set's items, also of
+  their tuples' items: [test](../tests/programs/library/lib_copy_deep_tuple_key.py)), it
   follows CPython's order and reads: an object with a `__dict__` has its attributes copied in the
   `__dict__`'s order, each read as the copy reaches it, so that a hook that changes a later
   attribute gives the copy the new value, and one that adds an attribute raises CPython's
@@ -696,7 +697,9 @@ as it makes dataclasses and `NamedTuple` classes ([test](../tests/programs/libra
   `repr()`, `str()`, `format()` and `hash()`, identity equality, and copies that are the member
   itself; the class's methods, properties and class methods work on them as on other objects.
 - The class as a value is an object of `EnumType`: `C(value)` finds the member with that value
-  (or returns a member it is given) and raises CPython's `ValueError` for another value,
+  (or returns a member it is given, also one held through a base class's type, such as `Enum` or
+  `Flag`: [test](../tests/programs/library/lib_enum_base_lookup.py),
+  [flags](../tests/programs/library/lib_flag_base_lookup.py)) and raises CPython's `ValueError` for another value,
   `C[name]` raises `KeyError`, iteration and `list(C)` give the members without aliases in
   definition order, and `len(C)`, `x in C` (a member, or a member's value), `C.__members__` (a
   read-only mapping, aliases included) and `repr(C)` are CPython's. Enum classes of other modules
@@ -1261,7 +1264,9 @@ outside this supported API set. Builtin `os.path` has its own documented APIs.
   `match()`, equality, hashing and ordering, with CPython's errors.
 - Concrete paths: `exists()`, `is_dir()`, `is_file()`, `is_symlink()` (CPython's errors for
   what they do not ignore), `open()`, `read_text()`, `write_text()`, `iterdir()`, `glob()` and
-  `rglob()` (CPython 3.13's selectors and order, hidden files included), `mkdir()` (also
+  `rglob()` (CPython 3.13's selectors and order, hidden files included; given `case_sensitive`,
+  literal parts too match the directory's entries:
+  [test](../tests/programs/library/lib_pathlib_glob_case.py)), `mkdir()` (also
   `parents` and `exist_ok`), `touch()`, `unlink()`, `rmdir()`, `rename()`, `replace()`,
   `absolute()`, `resolve()`, `expanduser()`, `cwd()` and `home()`.
 - A path's constructor takes at most eight segments, as parameters, so that subclasses can
@@ -1531,8 +1536,10 @@ record's message, its arguments, a level's name and the values that a format int
 `addLevelName()`, `getLevelNamesMapping()`, `disable()`), the module's functions and `basicConfig()`,
 `Formatter` in its `%`, `{}` and `$` styles (also with `defaults`), `extra`, `exc_info` and
 `exception()`, `Filter` and filter functions, `Handler`, `StreamHandler`, `FileHandler`,
-`NullHandler`, the last resort handler, `Handler.handleError()`, `makeLogRecord()`, `shutdown()`
-at exit and the handlers' locks work
+`NullHandler`, the last resort handler, `Handler.handleError()`, `makeLogRecord()` (whose dict's
+keys that name a record's attributes, `exc_text` and `stack_info` among them, set them:
+[test](../tests/programs/library/lib_logging_make_record.py)), `shutdown()` at exit and the
+handlers' locks work
 ([tests](../tests/programs/library/lib_logging.py), [configuration](../tests/programs/library/lib_logging_config.py),
 [stderr](../tests/programs/library/lib_logging_stderr.py)). `%`-style messages and formats are
 formatted by `_pystachy_percent` (`fmt % args` of a format string that only the run time knows),
@@ -1546,7 +1553,9 @@ and `%(asctime)s` by `_pystachy_time`, as `time.strftime()` of `time.localtime()
   exception's [traceback lines](#traceback), its causes' and its own last line, without CPython's
   `Traceback (most recent call last):` and frames. `exc_info=True` (also `exception()`) outside
   an `except` clause adds no text, where CPython's adds `NoneType: None`; a `(type, value,
-  traceback)` tuple is not supported.
+  traceback)` tuple is not supported, and `makeLogRecord()` of a dict whose `exc_info` is not
+  `None` raises `NotImplementedError` (as `SocketHandler`'s and `QueueHandler`'s dicts have it,
+  `None` works) ([test](../tests/deviations/lib_logging_exc_info.py)).
 - A message's arguments are `Any` values, so a list, dict or set of typed items cannot be one
   (the compiler says so where it is passed: pass `str(x)`, or format the message first); a
   mapping argument (`%(name)s` of a dict) is a `dict` of `Any` values. `extra` is a
