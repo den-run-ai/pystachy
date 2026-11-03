@@ -5907,6 +5907,8 @@ typedef struct {
                                         (in pb) and buffered (in stdio's buffer, of bs bytes); errno of a failed
                                         write whose data CPython keeps (so writing it again fails again) */
   char *pb, *buf; dev_t dev; ino_t ino;   /* the two buffers (malloc'd); the file that was opened */
+  I bin;                               /* a binary file (see pys_bopen): CPython's BufferedReader 1, BufferedWriter 2,
+                                          BufferedRandom 3 or FileIO 4; 0 for text */
 } File;
 /* GC_NO_ROOT(std_in, std_out, std_err): static streams; names/modes are static and buffers malloc-backed. */
 static File std_in, std_out, std_err;
@@ -5996,7 +5998,7 @@ static int shut(File *f) {             /* close(): a flush, then the file is clo
   f->closed = 1; f->kept = 0;
   if (f->std) return e;                /* sys.stdout.close(): the stream stays open underneath */
   if (fclose(f->f) && !e) e = errno;
-  if (f->pb) gc_extern(-8192 - f->bs);   /* what setbuf1 counted */
+  if (f->pb) gc_extern(-(f->bin ? 0 : 8192) - f->bs);   /* what setbuf1 counted */
   free(f->pb); f->pb = f->buf = 0;
   return e;
 }
@@ -6032,9 +6034,16 @@ static void report(File *f, int e) {
   if (io_intr) return;                 /* the error is the EINTR of a Ctrl-C, which ends the program */
   EBuf o; char t[160]; const char *d = defenc();
   o.n = 0;
-  erepr(&o, "Exception ignored in: <_io.TextIOWrapper name=", f->name->s, f->name->len);
-  erepr(&o, " mode=", f->mode->s, f->mode->len);
-  erepr(&o, " encoding=", f->enc ? f->enc->s : d, f->enc ? f->enc->len : (I)strlen(d));
+  if (f->bin) {                        /* <_io.BufferedWriter name='p'>, <_io.FileIO name='p' mode='wb' closefd=True> */
+    const char *cls = f->bin == 1 ? "BufferedReader" : f->bin == 2 ? "BufferedWriter" : f->bin == 3 ? "BufferedRandom" : "FileIO";
+    snprintf(t, sizeof t, "Exception ignored in: <_io.%s name=", cls);
+    erepr(&o, t, f->name->s, f->name->len);
+    if (f->bin == 4) { erepr(&o, " mode=", f->mode->s, f->mode->len); eput(&o, " closefd=True", 13); }
+  } else {
+    erepr(&o, "Exception ignored in: <_io.TextIOWrapper name=", f->name->s, f->name->len);
+    erepr(&o, " mode=", f->mode->s, f->mode->len);
+    erepr(&o, " encoding=", f->enc ? f->enc->s : d, f->enc ? f->enc->len : (I)strlen(d));
+  }
   int n = snprintf(t, sizeof t, ">\n%s: [Errno %d] %s\n", errcls(e), e, strerror(e));
   eput(&o, t, n < (int)sizeof t ? n : (int)sizeof t - 1);
   fwrite(o.b, 1, o.n, stderr);
@@ -6123,11 +6132,13 @@ static void put1(File *f, const char *s, I n) {   /* write(): through CPython's 
   int e = f->emu ? wput(f, s, n) : (f == &std_err ? ewrite(s, n) : (void)fwrite(s, 1, n, f->f), ferror(f->f) ? osflush(f, 0) : 0);
   if (e) ioerr(e);
 }
-static void setbuf1(File *f, I bs) {   /* CPython's write layers: 8 KiB of pending text, then bs bytes buffered; a
-                                          file's (not a standard stream's) count as heap bytes (see memory) */
-  if (!(f->pb = malloc(8192 + bs))) oom();
-  if (!f->std) gc_extern(8192 + bs);
-  f->buf = f->pb + 8192; f->bs = bs; f->emu = 1;
+static void setbuf1(File *f, I bs) {   /* CPython's write layers: 8 KiB of pending text (none in a binary file), then
+                                          bs bytes buffered; a file's (not a standard stream's) count as heap bytes
+                                          (see memory) */
+  I pend = f->bin ? 0 : 8192;
+  if (!(f->pb = malloc(pend + bs))) oom();
+  if (!f->std) gc_extern(pend + bs);
+  f->buf = f->pb + pend; f->bs = bs; f->emu = 1;
   setvbuf(f->f, f->buf, _IOFBF, bs);
 }
 static int jit;                        /* pystachy run: the program runs in lli's process */
@@ -6247,7 +6258,7 @@ File *pys_open(Str *path, Str *mode, Str *enc, Str *nl, I buffering) {   /* CPyt
   }
   if (t && b) pys_fail("ValueError: can't have text and binary mode at once");
   if (x + r + w + a > 1) pys_fail("ValueError: must have exactly one of create/read/write/append mode");
-  if (b) pys_fail("NotImplementedError: binary mode is not supported (no bytes type)");
+  if (b) pys_fail("NotImplementedError: open() of a binary mode makes a binary file only where the mode is a literal (open(file, \"rb\")): this open() makes text files");   /* (loader.py's binary_opens) */
   if (nul(path)) pys_fail("ValueError: embedded null byte");
   if (!(x + r + w + a)) pys_fail("ValueError: Must have exactly one of create/read/write/append mode and at most one plus");
   io_in();
@@ -6465,6 +6476,115 @@ I pys_file_fileno(File *f) {           /* the OS descriptor; a closed file raise
 }
 Str *pys_file_name(File *f) { return f->name ? f->name : cstr(f == &std_in ? "<stdin>" : f == &std_out ? "<stdout>" : "<stderr>"); }
 Str *pys_file_mode(File *f) { return f->mode ? f->mode : cstr(f == &std_in ? "r" : "w"); }
+/* Binary files: open() of a mode with "b", which lib/_pystachy_bfile.py's classes hold. CPython makes a FileIO
+   (buffering=0: bin 4), or a BufferedReader, BufferedWriter or BufferedRandom over one (bin 1, 2, 3), whose
+   bytes are read and written as they are. A buffered file's writes reach the OS as bput() says, and its
+   reads and writes are at its position, as CPython's BufferedRandom moves the OS file's position to its own
+   between them; a FileIO writes at once. open() checks its arguments in CPython's order (its encoding,
+   errors and newline are the program's, which must be None) */
+File *pys_bopen(Str *path, Str *mode, Str *enc, Str *errs, Str *nl, I buffering) {
+  int x = 0, r = 0, w = 0, a = 0, plus = 0, t = 0, b = 0;
+  if (nul(mode) || (enc && nul(enc)) || (errs && nul(errs)) || (nl && nul(nl))) pys_fail("ValueError: embedded null character");
+  for (I i = 0; i < mode->len; i++) {
+    char c = mode->s[i];
+    int *p = c == 'x' ? &x : c == 'r' ? &r : c == 'w' ? &w : c == 'a' ? &a : c == '+' ? &plus : c == 't' ? &t : c == 'b' ? &b : 0;
+    if (!p || *p) failf("ValueError: invalid mode: '%s'", mode->s);
+    *p = 1;
+  }
+  if (t && b) pys_fail("ValueError: can't have text and binary mode at once");
+  if (x + r + w + a > 1) pys_fail("ValueError: must have exactly one of create/read/write/append mode");
+  if (enc) pys_fail("ValueError: binary mode doesn't take an encoding argument");
+  if (errs) pys_fail("ValueError: binary mode doesn't take an errors argument");
+  if (nl) pys_fail("ValueError: binary mode doesn't take a newline argument");
+  if (nul(path)) pys_fail("ValueError: embedded null byte");
+  if (!(x + r + w + a)) pys_fail("ValueError: Must have exactly one of create/read/write/append mode and at most one plus");
+  io_in();
+  struct stat st;
+  if (nfiles && !gc_off && !stat(path->s, &st) && writing(st.st_dev, st.st_ino))   /* as pys_open: a writer to this */
+    collect();                         /* file that nothing refers to any more has been closed by CPython */
+  char m[4] = {x || w ? 'w' : r ? 'r' : 'a', plus ? '+' : 0, 0, 0};
+  if (x) m[plus ? 2 : 1] = 'x';        /* glibc: O_EXCL */
+  FILE *f = fopen(path->s, m);
+  if (!f && (errno == EMFILE || errno == ENFILE) && !gc_off) { collect(); f = fopen(path->s, m); }
+  if (!f) oserr(path->s);
+  if (fstat(fileno(f), &st)) memset(&st, 0, sizeof st);
+  else if (S_ISDIR(st.st_mode)) { fclose(f); errno = EISDIR; oserr(path->s); }
+  File *o = pys_alloc(sizeof(File));
+  o->f = f; o->name = path; o->rd = r || plus; o->wr = !r || plus; o->nl = 2;
+  o->mode = cstr(x ? (plus ? "xb+" : "xb") : a ? (plus ? "ab+" : "ab") : plus ? "rb+" : r ? "rb" : "wb");   /* FileIO's */
+  o->bin = !buffering ? 4 : plus ? 3 : r ? 1 : 2; o->dev = st.st_dev; o->ino = st.st_ino;
+  if (!buffering) setvbuf(f, 0, _IONBF, 0);
+  else {                               /* buffering=, when above 1, else st_blksize bytes (1 is the program's error) */
+    I bs = buffering > 1 ? buffering : st.st_blksize > 1 ? st.st_blksize : 8192;
+    if (!gc_off && gc_allocd + bs >= gc_limit) collect();   /* its buffer is heap bytes: as gc_slow */
+    setbuf1(o, bs);
+  }
+  if (a) fseeko(f, 0, SEEK_END);       /* FileIO starts an append file at its end */
+  if (nfiles == cfiles && !(files = realloc(files, (cfiles = 2 * cfiles + 16) * sizeof *files))) oom();
+  files[nfiles++] = o;
+  io_out();
+  return o;
+}
+static void buse(File *f, int rd) {    /* a binary file's read (rd) or write, at its position */
+  if (rd && feof(f->f)) clearerr(f->f);   /* CPython reads again after the end: the file may have grown */
+  if (f->last == (rd ? 2 : 1)) return;
+  if (rd && f->last == 1) { int e = flush1(f); if (e) ioerr(e); }   /* what was written reaches the file first */
+  else if (!rd && f->last == 2) fseeko(f->f, 0, SEEK_CUR);   /* (C stdio: a write after a read repositions) */
+  f->last = rd ? 2 : 1;
+}
+Str *pys_bfile_read(File *f, I n) {    /* read(n): n bytes, or what remains (n < 0: all of it) */
+  io_in(); buse(f, 1);
+  Buf b = {0}; char t[1 << 16]; size_t k;
+  for (I left = n; left && (k = fread(t, 1, left < 0 || left > (I)sizeof t ? sizeof t : (size_t)left, f->f)) > 0; left -= left < 0 ? 0 : (I)k)
+    put(&b, t, k);
+  io_out();
+  return done(&b);
+}
+Str *pys_bfile_readline(File *f, I limit) {   /* readline(limit): through b"\n", at most limit bytes (limit < 0: all) */
+  io_in(); buse(f, 1);
+  Buf b = {0}; int c; char t[256]; I k = 0;
+  for (I n = 0; n != limit && (c = getc_unlocked(f->f)) != EOF; n++) {
+    t[k++] = (char)c;
+    if (k == (I)sizeof t) { put(&b, t, k); k = 0; }
+    if (c == '\n') break;
+  }
+  io_out();
+  if (b.n) put(&b, t, k);
+  else b = (Buf){t, k, k};             /* the line fit in t */
+  return done(&b);
+}
+I pys_bfile_write(File *f, Str *s) {   /* write(b): its length, as CPython's buffered and regular files' writes give */
+  io_in(); buse(f, 0);
+  int e = f->emu ? bput(f, s->s, s->len, "", 0) : ((void)fwrite(s->s, 1, s->len, f->f), ferror(f->f) ? osflush(f, 0) : 0);
+  if (e) ioerr(e);
+  io_out();
+  return s->len;
+}
+I pys_bfile_seek(File *f, I pos, I whence) {   /* seek(pos, whence): the new position, through the OS's lseek (whence
+                                                  3 and 4 are Linux's SEEK_DATA and SEEK_HOLE) */
+  io_in(); int e = flush1(f); if (e) ioerr(e);
+  off_t at = ftello(f->f), r, to = pos;   /* (where a read left the file, before stdio's read-ahead) */
+  if (at < 0) ioerr(errno);
+  if (whence == SEEK_CUR && __builtin_add_overflow(at, pos, &to)) ioerr(EINVAL);   /* (the OS's error for it) */
+  if (fseeko(f->f, at, SEEK_SET) || (r = lseek(fileno(f->f), to, whence == SEEK_CUR ? SEEK_SET : whence)) < 0
+      || fseeko(f->f, r, SEEK_SET)) ioerr(errno);
+  f->last = 0;
+  io_out();
+  return r;
+}
+I pys_bfile_tell(File *f) {            /* tell(): the position, written bytes that are still buffered included */
+  off_t r = ftello(f->f);
+  if (r < 0) ioerr(errno);
+  return r;
+}
+I pys_bfile_isatty(File *f) { return isatty(fileno(f->f)); }
+I pys_bfile_seekable(File *f) { return lseek(fileno(f->f), 0, SEEK_CUR) >= 0; }   /* as FileIO's: the OS can seek it */
+I pys_bfile_truncate(File *f, I size) {   /* truncate(size): what was written reaches the file first; the position stays */
+  io_in(); int e = flush1(f); if (e) ioerr(e);
+  if (ftruncate(fileno(f->f), size)) ioerr(errno);
+  io_out();
+  return size;
+}
 /* lib/io.py's TextIOWrapper (_pystachy_io): the encoding of one made without encoding=, a file's (CPython's
    locale.getpreferredencoding(False)); the one encoding="locale" names, CPython's locale.getencoding(): the
    codeset of the LC_CTYPE locale the environment names, where CPython coerces the C locale to C.UTF-8 (PEP 538,

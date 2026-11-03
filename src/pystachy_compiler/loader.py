@@ -58,6 +58,7 @@ from src.pystachy_compiler.specs import (
     ABCS,
     ABSTRACT_DECOS,
     ANNKINDS,
+    BOPENS,
     CBUILTIN,
     CTYPES,
     GENERICS,
@@ -174,6 +175,95 @@ def tb_import(n: Node) -> None:
                 a.kids[1].s = "_pystachy_types"
         elif st.kind != "def" and st.kind != "class" and st.kind != "subclass":
             tb_import(st)
+
+def opens_bound(n: Node) -> bool:
+    # does tree n name open other than as the function a call calls (a def, a parameter, an import,
+    # an assignment, or a use as a value): then a call of open in its module may be another function.
+    # A class's method named open binds the name in the class's namespace, which its methods' code
+    # does not see: only the class body's other statements would find it
+    if n.kind == "call" and len(n.kids) > 0 and n.kids[0].kind == "name" and n.kids[0].s == "open":
+        return any([opens_bound(k) for k in n.kids[1:]])
+    if n.kind == "class" and len(n.kids) > 0 and n.kids[0].kind == "block" and any([st.kind == "def" and st.s == "open" for st in n.kids[0].kids]):
+        for st in n.kids[0].kids:
+            if st.kind == "def" and any([opens_bound(k) for k in st.kids]):
+                return True
+            if st.kind != "def" and (opens_bound(st) or names_open(st)):
+                return True
+        return any([opens_bound(k) for k in n.kids[1:]])
+    if n.s == "open" and n.kind != "attr" and n.kind != "str" and n.kind != "bytes" and n.kind != "kw":
+        return True
+    return any([opens_bound(k) for k in n.kids])
+
+
+def names_open(n: Node) -> bool:
+    # does tree n call open (opens_bound: a class body's statement, which finds the class's own)
+    if n.kind == "name" and n.s == "open":
+        return True
+    return any([names_open(k) for k in n.kids])
+
+
+def binary_calls(n: Node, used: dict[str, int]) -> None:
+    # (binary_opens) each call open(file, mode) in tree n whose mode is a literal with "b" made a call
+    # of the BOPENS name for the class CPython's open() makes: FileIO for buffering=0, else as the
+    # mode's letters say. used: the names, each with the line of its first call
+    for k in n.kids:
+        binary_calls(k, used)
+    if n.kind != "call" or len(n.kids) == 0 or n.kids[0].kind != "name" or n.kids[0].s != "open":
+        return
+    mode = mk("None", "", n.line, [])
+    buf = mk("None", "", n.line, [])
+    pos = 0
+    other = False
+    for a in n.kids[1:]:
+        if a.kind == "starred" or a.kind == "dstar":
+            return
+        if a.kind == "kw" and a.s == "mode":
+            mode = a.kids[0]
+        elif a.kind == "kw" and a.s == "buffering":
+            buf = a.kids[0]
+        elif a.kind == "kw":
+            other = other or a.s == "closefd" or a.s == "opener"
+        else:
+            pos += 1
+            mode = a if pos == 2 else mode
+            buf = a if pos == 3 else buf
+            other = other or pos > 6
+    if mode.kind != "str" or mode.s.find("b") < 0:
+        return
+    if other:
+        fail("open() supports only file, mode, buffering, encoding, errors and newline", n.line)
+    neg = buf.kind == "unary" and buf.s == "-" and len(buf.kids) == 1 and buf.kids[0].kind == "int"
+    if buf.kind != "None" and buf.kind != "int" and not neg:
+        fail("open() of a binary mode is only supported with a literal int buffering=, as the class of the file it makes depends on it (FileIO for 0)", n.line)
+    if buf.kind == "int" and buf.s == "1":
+        fail("open() of a binary mode with buffering=1 is not supported (CPython warns that line buffering isn't supported in binary mode, and buffers by the default size)", n.line)
+    m = mode.s
+    raw = buf.kind == "int" and buf.s == "0"
+    name = "_pys_bfile_raw" if raw else "_pys_bfile_random" if m.find("+") >= 0 else "_pys_bfile_writer" if m.find("w") >= 0 or m.find("a") >= 0 or m.find("x") >= 0 else "_pys_bfile_reader"
+    n.kids[0] = mk("name", name, n.kids[0].line, [])
+    if name not in used:
+        used[name] = n.line
+
+
+def binary_opens(n: Node) -> None:
+    # module body n's open(file, mode) of a literal binary mode, where nothing in the module binds
+    # open: CPython's open() makes a FileIO, or a BufferedReader, BufferedWriter or BufferedRandom
+    # over one, made here by lib/_pystachy_bfile.py's open_raw(), open_reader(), open_writer() or
+    # open_random(), which the call is made a call of (binary_calls), imported by the BOPENS names
+    # after the module's docstring and __future__ imports
+    if opens_bound(n):
+        return
+    used: dict[str, int] = {}
+    binary_calls(n, used)
+    if len(used) == 0:
+        return
+    at = 1 if len(n.kids) > 0 and n.kids[0].kind == "expr" and n.kids[0].kids[0].kind == "str" else 0
+    while at < len(n.kids) and n.kids[at].kind == "import" and n.kids[at].s == "from" and all([a.kind == "alias" and len(a.kids) == 2 and a.kids[0].s.startswith("__future__.") for a in n.kids[at].kids]):
+        at += 1
+    first = min([used[k] for k in used])
+    src = "from _pystachy_bfile import " + ", ".join([BOPENS[k] + " as " + k for k in BOPENS if k in used]) + "\n"
+    n.kids = n.kids[:at] + [Parser(Lexer(src, first).file()).module().kids[0]] + n.kids[at:]
+
 
 def ascii_ident(s: str) -> bool:
     # is ASCII string s an identifier, as str.isidentifier() tells
@@ -305,6 +395,7 @@ class Loader:
         FILES.append(path)
         m.body = self.parse_source(src, 1)
         tb_import(m.body)
+        binary_opens(m.body)
         cm_methods(m.body, cm_names(m.body))
         self.prescan(m)
         self.simplify(m, m.body, {})
@@ -663,6 +754,7 @@ class Loader:
         self.pragmas(src, k, k * LINES + 1)
         self.parsed[path] = self.parse_source(src, k * LINES + 1)
         tb_import(self.parsed[path])
+        binary_opens(self.parsed[path])
         cm_methods(self.parsed[path], cm_names(self.parsed[path]))
         return self.parsed[path]
 

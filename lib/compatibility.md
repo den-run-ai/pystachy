@@ -306,8 +306,9 @@ need no binary file, `decimal`, `copy` or `test.support`, are in the differentia
 ([data](../tests/programs/upstream/upstream_tomllib_data.py),
 [errors and limits](../tests/programs/upstream/upstream_tomllib_misc.py)).
 
-- `load(fp)` reads a binary file, which Pystachy does not have: its `BinaryIO` parameter is a
-  compile-time error. Read the file as text and call `loads(f.read())`, which CPython runs too.
+- `load(fp)` reads a binary file, whose `BinaryIO` annotation is a compile-time error (a
+  [binary file](#binary-files) of `open()` has no `typing` type here). Read the file as text and
+  call `loads(f.read())`, which CPython runs too.
 - The values have dynamic `Any`'s [deviations](../docs/dynamic-any.md#deviations): an
   annotation that receives a value of another type raises `TypeError`, and `keys()`, `values()`
   and `items()` give lists.
@@ -1097,12 +1098,55 @@ that its `io` is a layer over. It has CPython's docstring and `io`'s `StringIO`,
 `DEFAULT_BUFFER_SIZE` ([test](../tests/programs/library/lib_io_cmodule.py)). Its classes are `io`'s, and their module
 is `_io`, as CPython's are, through either module: `type(x).__module__` and an object's default
 `repr()` name `_io` ([test](../tests/programs/library/lib_io_type_module.py)). `FileIO`, the `Buffered*` classes and
-`open_code()` need binary files, which `open()` does not make
-([#493](https://github.com/den-run-ai/pystachy/issues/493)); the `_IOBase` classes, from which
+`open_code()` are not names of either: the [binary files](#binary-files) that `open()` makes are of
+classes of their own, which are not constructed by name; the `_IOBase` classes, from which
 `io`'s do not derive, and `UnsupportedOperation` are not there either. A use of any is a
 compile-time error ([error test](../tests/errors/library/lib_io_open_code.py),
 [another](../tests/errors/library/lib_io_fileio.py)). With `_io`, `importlib` stops next at the missing
 `_warnings`, and then needs `marshal` and CPython's runtime import machinery.
+
+### Binary files
+
+`open()` of a mode with `b` makes the object CPython 3.13.16's makes: a `BufferedReader`,
+`BufferedWriter` or `BufferedRandom`, or with `buffering=0` a `FileIO` (`lib/_pystachy_bfile.py`, over
+the runtime's files) ([test](../tests/programs/io/bfile_basic.py),
+[modes](../tests/programs/io/bfile_modes.py)). Their bytes are read and written as they are, without
+decoding or newline translation:
+
+- They have `read()`, `readline()`, `readlines()`, a `FileIO`'s `readall()`, iteration over their
+  lines, `write()`, `writelines()`, `seek()` (with Linux's `SEEK_DATA` and `SEEK_HOLE`), `tell()`,
+  `truncate()`, `flush()`, `close()`, `fileno()`, `isatty()`, `readable()`, `writable()`,
+  `seekable()`, `name`, `mode` (as `FileIO` names it: `w+b` is `rb+`), `closed` and `with`, and
+  `type()` and `repr()` name `_io`'s classes.
+- Errors are CPython's, in its order: `open()`'s checks of the mode, and of `encoding`, `errors`
+  and `newline`, which a binary mode refuses; the OS's errors; and each class's messages for an
+  operation on a closed file or one its mode does not have (`io.UnsupportedOperation`)
+  ([test](../tests/programs/io/bfile_errors.py)).
+- A buffered file's writes reach the OS when CPython's do (its buffer has `st_blksize` bytes, or
+  those of `buffering=`), and its reads and writes are at its position. A file used in one
+  expression (`open(p, "wb").write(data)`) is closed right after it, as CPython's finalizer
+  closes it ([test](../tests/programs/io/bfile_temp.py)); one dropped otherwise is closed as a
+  text file is ([lifetime](../docs/language/compatibility.md#memory-and-resource-lifetime)).
+- Every binary file has one type, of a class the four derive from, so that one name holds files
+  of different modes, as in CPython.
+
+These are compile-time errors: `open()` of a binary mode in a module where `open` is bound
+otherwise (a parameter, a `def`, an import or an assignment of that name), or called as
+`io.open()` ([test](../tests/errors/io/bfile_open_bound.py)); `buffering=1`, for which CPython
+warns that line buffering isn't supported in binary mode, and a `buffering=` that is not a
+literal int, since the class depends on it ([test](../tests/errors/io/bfile_buffering_var.py));
+`closefd=` and `opener=`; a `str` for `write()`, which CPython rejects with `TypeError`
+([test](../tests/errors/io/bfile_write_str.py)), and other buffer objects; `read1()`, `peek()`,
+`readinto()`, `detach()` and `raw`; and the classes as names (`io.FileIO`, `io.BufferedReader`)
+and `typing.BinaryIO`. Deviations:
+
+- `open()` of a binary mode that the program computes (`open(p, mode)`) makes a text file here,
+  whose open raises `NotImplementedError`, as the file's class must be known as the program
+  compiles ([test](../tests/deviations/bfile_mode_computed.py)).
+- In a file opened `a+b`, a write is at the file's end at once, as the OS appends it, so `tell()`
+  and reads before the next flush show the file as it will be. CPython's `BufferedRandom` keeps
+  the write in its buffer at the position where it was made until it flushes it
+  ([test](../tests/deviations/bfile_append_buffer.py)).
 
 ### Path modules
 

@@ -1,0 +1,2 @@
+NotImplementedError open() of a binary mode makes a binary file only where the mode is a literal (open(file, "rb")): this open() makes text files
+[exit 0]

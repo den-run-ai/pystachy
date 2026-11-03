@@ -108,7 +108,7 @@ which a file's `fileno()` gives; other `select` APIs remain unsupported.
 
 | Module | Origin | Supported APIs | Main limitation |
 |---|---|---|---|
-| 🟡 `io`, `_io` | Subset implementation; `_io` (`_pystachy__io`) gives its names under the C module's | `StringIO` and `BytesIO` (also in `with`), seek constants and `TextIOWrapper` over binary buffer objects, with CPython's chunked reads and writes; `IncrementalNewlineDecoder` of `str` input, `text_encoding()`, `open`, `BlockingIOError` and `DEFAULT_BUFFER_SIZE` | Lazy line iteration; no `getbuffer()` or `readinto()`; `TextIOWrapper` of UTF-8, Latin-1 and ASCII, without `seek`/`tell`/`detach`/`reconfigure`; no binary files, so no `FileIO`, `Buffered*` classes or `open_code()` |
+| 🟡 `io`, `_io` | Subset implementation; `_io` (`_pystachy__io`) gives its names under the C module's | `StringIO` and `BytesIO` (also in `with`), seek constants and `TextIOWrapper` over binary buffer objects, with CPython's chunked reads and writes; `IncrementalNewlineDecoder` of `str` input, `text_encoding()`, `open`, `BlockingIOError` and `DEFAULT_BUFFER_SIZE` | Lazy line iteration; no `getbuffer()` or `readinto()`; `TextIOWrapper` of UTF-8, Latin-1 and ASCII, without `seek`/`tell`/`detach`/`reconfigure`; `open()`'s [binary files](compatibility.md#binary-files) are `_io`'s `FileIO` and `Buffered*` classes, which are not names of `io`, and there is no `open_code()` |
 | 🟡 `stat`, `posixpath`, `genericpath` | Unchanged CPython | Mode tests and string path operations | Partial API coverage |
 | 🟢 `getopt` | Adapted CPython | `getopt`, `gnu_getopt`, `GetoptError` | `longopts` must be `list[str]`; untranslated messages |
 
@@ -200,7 +200,8 @@ files for `import binascii`, `import _codecs`, `import atexit`, `import _struct`
 `tools/unicodedata_tables.py` writes the tables of `unicodedata`, `_pystachy_unicodedata_db.py` and
 `_pystachy_unicodedata_names.py`, from CPython's own module.
 `_pystachy_abc.py` is `abc`, which CPython imports as it starts, so that a program's own `abc.py`
-is never imported there. `types.py` binds `TracebackType` from `_pystachy_types.py`, `MappingProxyType`
+is never imported there. `_pystachy_bfile.py` holds the binary files that `open()` of a binary mode makes
+(the compiler imports it where a module calls `open()` so: loader.py's `binary_opens`). `types.py` binds `TracebackType` from `_pystachy_types.py`, `MappingProxyType`
 from `_pystachy_mappingproxy.py` and CPython's other names of `types` from `_pystachy_typenames`, the
 compiler's, which only it may import. `_collections_abc` has no file here: it is the compiler's builtin
 `collections.abc`, as CPython's `collections` makes it `collections.abc`.

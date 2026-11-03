@@ -984,7 +984,8 @@ supported alternatives.
   keyword arguments where the keys are not `str`, and `dict.fromkeys()` of a generator, or without
   a value where no annotation gives the values a type that can be `None`
 - an `encoding=` constant other than UTF-8 and Latin-1
-- `bytearray`, `memoryview`, binary files (`open(..., "rb")`), `expandtabs()`, `title()` and
+- `bytearray`, `memoryview`, `open()` of a binary mode that is not a literal (a literal one makes a
+  [binary file](../../lib/compatibility.md#binary-files)), `expandtabs()`, `title()` and
   `istitle()`, `%` formatting of bytes (`b"%d" % 1`), a search of a bytes for an int
   (`b.find(97)`), keyword arguments to its methods (as to a str's) but `hex()`'s and
   `translate()`'s, and comparing a bytes with a str (`b"a" == "a"`, which CPython makes `False`)

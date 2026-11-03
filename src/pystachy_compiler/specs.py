@@ -57,8 +57,14 @@ STANDINS: dict[str, str] = {"binascii": "_pystachy_binascii", "_codecs": "_pysta
 OPAQUE: dict[str, bool] = {"_weakref": True, "_pystachy_mappingproxy": True}
 # the module that CPython's types of a stand-in name as theirs (__module__, reprs), where it is
 # not the module's own: weakref.ReferenceType, _io.StringIO (every class that lib's
-# io defines is the C module _io's in CPython), and mappingproxy, a builtin type
-TYPEMODS: dict[str, str] = {"_weakref": "weakref", "io": "_io", "_pystachy_mappingproxy": "builtins"}
+# io defines is the C module _io's in CPython, as are the binary files of _pystachy_bfile), and
+# mappingproxy, a builtin type
+TYPEMODS: dict[str, str] = {"_weakref": "weakref", "io": "_io", "_pystachy_mappingproxy": "builtins", "_pystachy_bfile": "_io"}
+# binary files (lib/_pystachy_bfile.py): the names the loader binds a module's open() of a literal binary
+# mode to (binary_opens), each to the factory of the class CPython's open() makes for that mode, and their type
+BOPENS: dict[str, str] = {"_pys_bfile_reader": "open_reader", "_pys_bfile_writer": "open_writer",
+                          "_pys_bfile_random": "open_random", "_pys_bfile_raw": "open_raw"}
+BFILE = "_pystachy_bfile$BinaryIO"  # (the type of each: its objects are of the class open() makes, which derives from it)
 
 
 # the kinds of nodes whose code calls no function or method of the program (Loader.raises_in())
@@ -1022,6 +1028,11 @@ RUNTIME: dict[str, str] = {
     "file.writelines": "None:S,list[str]|R A I rL rF wF|",
     "file.flush": "None:S|R I rF wF|", "file.close": "None:S|R I rF wF|", "file.drop": "None:S|R I rF wF|",
     "file.closed": "bool:S|rF|", "file.name": "str:S|A rF|", "file.mode": "str:S|A rF|", "file.fileno": "int:S|R I rF|",
+    # lib/_pystachy_bfile.py's binary files (__pys_bfile_*): a file of a binary mode, its reads and writes of bytes
+    "bopen": "file:str,str,str,str,str,int|R A I rF|", "bfile.read": "bytes:file,int|R A I rF wF|",
+    "bfile.readline": "bytes:file,int|R A I rF wF|", "bfile.write": "int:file,bytes|R A I rF wF|",
+    "bfile.seek": "int:file,int,int|R A I rF wF|", "bfile.tell": "int:file|R A I rF wF|", "bfile.truncate": "int:file,int|R A I rF wF|",
+    "bfile.isatty": "int:file|I rF|", "bfile.seekable": "int:file|I rF|",
     # lib/io.py's TextIOWrapper (IOMOD): its default and "locale" encodings, io.UnsupportedOperation
     "io.defenc": "str:|A I|", "io.locenc": "str:|A I|", "io.unsupported": "None:str|R N|",
     # runtime mode's primitives (Gen.primitive): a new str's memory, and the C library's searches
