@@ -604,7 +604,7 @@ See [user exception classes](semantics.md#user-exception-classes) and
   fields except same-type class defaults; reserved builtin fields (`args`, `SystemExit.code`,
   `OSError.errno/strerror/filename/filename2`, `ImportError.msg`). Fields set by builtin
   initialization (`StopIteration.value`, `AttributeError.name/obj`, `NameError.name`,
-  `ImportError.name/path`) must be assigned after it or given class-body defaults.
+  `ImportError.name/path/name_from`) must be assigned after it or given class-body defaults.
 - **Attributes:** exception metadata beyond `__cause__`; user-exception `__cause__` (catch as
   a builtin exception); absent builtin fields; BaseException methods beyond `__str__` /
   `__repr__`; derived fields after `isinstance`, which does not narrow exception values.
