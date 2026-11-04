@@ -355,11 +355,11 @@ class JSONParser:
         while -length <= self.index < length and self.json_str[self.index].isspace():
             self.index += 1
 
-    def skip_whitespace_and_comments(self) -> None:
+    def skip_whitespace_and_comments(self, skip_bare_slashes: bool = False) -> None:
         while True:
             self.skip_whitespaces()
             char = self.get_char_at()
-            if char != "#" and not (char == "/" and self.get_char_at(1) in ["/", "*"]):
+            if char != "#" and not (char == "/" and (skip_bare_slashes or self.get_char_at(1) in ["/", "*"])):
                 return
             _skip_comment(self)
 

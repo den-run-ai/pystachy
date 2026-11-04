@@ -111,7 +111,9 @@ python3.13 tests/upstream/json_repair/cli.py ./pystachy
   [0.64.3 comment fix](https://github.com/mangiucugna/json_repair/commit/58dfa5a1feeb1ad2991ae042edce6e2691e9ba69).
   Block comments find their closing delimiter directly. Line comments search
   bounded windows for the earliest context-dependent terminator. Log text is
-  sliced from the source only when requested. Top-level comments resume the
+  sliced from the source only when requested. As before, at the start of an
+  array item or object value the port skips a stray slash and recovers the
+  value that follows. Top-level comments resume the
   main parse loop so alternating comments and prose do not grow the native stack.
 
 The string-repair implementation remains upstream's roughly 900-line heuristic

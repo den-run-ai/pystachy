@@ -32,6 +32,12 @@ def main() -> None:
                 assert repair_json(text, strict=strict, skip_json_loads=skip) == expected
         print(repair_json(text))
 
+    # Preserve the port's recovery of values immediately after a stray slash.
+    for text, expected in [('[/1,2]', '[1, 2]'), ('[/abc]', '["abc"]'),
+                           ('{"k":/42}', '{"k": 42}'), ('{"k":/ /*x*/true}', '{"k": true}')]:
+        for strict in [False, True]:
+            assert repair_json(text, strict=strict) == expected
+
     # A comment without a value must not consume the next member or invent one.
     for text in ['{"a": /* c */, "b": 2}', '{"a": /* c */}',
                  '{"a": /* c */', '{"a": /* unclosed']:

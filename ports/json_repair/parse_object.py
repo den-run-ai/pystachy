@@ -193,7 +193,7 @@ def _parse_object_value(
 ) -> Any:
     self.context.set(ContextValues.OBJECT_VALUE)
     try:
-        self.skip_whitespace_and_comments()
+        self.skip_whitespace_and_comments(skip_bare_slashes=True)
         char = self.get_char_at()
         if char in [",", "}"]:
             self.log(

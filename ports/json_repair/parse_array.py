@@ -22,7 +22,7 @@ def parse_array(
     arr: list[Any] = []
     with self.context.enter(ContextValues.ARRAY):
         while True:
-            self.skip_whitespace_and_comments()
+            self.skip_whitespace_and_comments(skip_bare_slashes=True)
             char = self.get_char_at()
             if char is None or char in [closing_delimiter, "}"]:
                 break
