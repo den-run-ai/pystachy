@@ -71,6 +71,7 @@ class Reduce:
         # isf whether a float came (CPython's float phase, which comp compensates)
         self.facc = ""
         self.isf = ""
+        self.phase = ""  # dynamic sum: in-range int, compensated float, or generic addition
 
 
 class SetArg:
