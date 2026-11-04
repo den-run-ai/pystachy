@@ -741,9 +741,13 @@ as it makes dataclasses and `NamedTuple` classes ([test](../tests/programs/libra
   int keep its class, whose boundary `KEEP` keeps the bits no member has (`<I: 12>`,
   `<I.A|12: 13>`); its members follow the int-like members' rules above, and `isinstance()` of
   one and `ReprEnum`, which CPython's `IntFlag` derives from, is a compile-time error too
-  ([test](../tests/programs/library/lib_enum_intflag.py)). Also errors: a `boundary=` keyword, a
-  flag class's own `_missing_()`, a multi-bit member with a bit that no single-bit member has,
-  and an int on the left of a flag's `|`, `&` or `^`, as reflected operator methods are not
+  ([test](../tests/programs/library/lib_enum_intflag.py)). Bits that occur only in composite
+  members are supported when the single-bit members are declared in increasing value order.
+  Iteration looks up each bit as it advances: an unnamed bit yields `None` until a lookup of
+  that value has created a pseudo-member ([test](../tests/programs/library/lib_enum_flag_bits.py)).
+  Such bits with out-of-order single-bit members or a custom (including inherited)
+  `_iter_member_()` remain a compile-time error, as do a
+  `boundary=` keyword, a flag class's own `_missing_()`, and an int on the left of a flag's `|`, `&` or `^`, as reflected operator methods are not
   supported.
 - These are compile-time errors: `ReprEnum` as a base; other mixin types
   (`class C(float, Enum)`) and keywords; members of other values or types, `_ignore_`, `_order_`

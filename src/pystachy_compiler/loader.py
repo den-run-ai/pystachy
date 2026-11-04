@@ -341,6 +341,7 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
     kinds: dict[str, str] = {}  # the module's enum classes so far: the class of enum they derive from
     full: dict[str, bool] = {}  # (those with members, which no class may derive from)
     top: list[Node] = []
+    custom_flag_iter: dict[str, bool] = {}  # classes with a user-defined or inherited _iter_member_
     imported = False
     mixed = False
     rebound: dict[str, bool] = {}  # (the names a function may rebind, or a del statement unbind)
@@ -473,16 +474,24 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
         flag = kind == "Flag" or kind == "IntFlag"
         fmask = 0
         smask = 0
+        previous_single = 0
+        ordered_singles = True
         for m in mnames:
             if flag and canon[m] == m:
                 x = int(texts[m])
                 fmask = fmask | x
                 if x != 0 and x & (x - 1) == 0:
                     smask = smask | x
-        if flag and fmask != smask:
-            # (a multi-bit member's bit that no single-bit member has: CPython iterates such a
-            # value with None for that bit)
-            fail(f"flag class {st.s} is not supported: a member's bit {fmask & ~smask & -(fmask & ~smask)} is no single-bit member's", st.line)
+                    if x < previous_single:
+                        ordered_singles = False
+                    previous_single = x
+        if flag and ("_iter_member_" in defs or base in custom_flag_iter):
+            custom_flag_iter[st.s] = True
+            if fmask != smask:
+                fail(f"flag class {st.s} is not supported: unnamed bits with a custom _iter_member_()", st.line)
+        if fmask != smask and not ordered_singles:
+            # CPython sorts by definition order here, reading _sort_order_ even on unnamed bits.
+            fail(f"flag class {st.s} is not supported: unnamed bits with single-bit members out of value order", st.line)
         if flag and len(mnames) > 0:
             made = Parser(Lexer(f"def _flag_type_(self):\n    return _pys_enum_{st.s}\n", st.line).file()).module().kids
             out = out + made
@@ -507,11 +516,13 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
             if flag:
                 # (the canonical members: single-bit, of distinct values, in definition order)
                 ones = ", ".join([f"{st.s}.{m}" for m in mnames if canon[m] == m and int(texts[m]) != 0 and int(texts[m]) & (int(texts[m]) - 1) == 0])
+                # Even an empty canonical list needs the flag's element type for pseudo-members.
+                member_list = f"[{ones}]" if ones else f"[{st.s}.{mnames[0]}] * 0"
                 allb = fmask  # (_all_bits_: 2 ** fmask.bit_length() - 1, as every bit below the top one)
                 for sh in [1, 2, 4, 8, 16, 32]:
                     allb = allb | (allb >> sh)
                 vm = ", ".join([f"{texts[m]}: {st.s}.{m}" for m in mnames if canon[m] == m])
-                top.append(Parser(Lexer(f"_pys_enum_{st.s} = _pys_FlagType({st.s!r}, [{ones}], {{{mm}}}, {{{vm}}}, {fmask}, {smask}, {allb}, {kind == 'IntFlag'})\n", st.line).file()).module().kids[0])
+                top.append(Parser(Lexer(f"_pys_enum_{st.s} = _pys_FlagType({st.s!r}, {member_list}, {{{mm}}}, {{{vm}}}, {fmask}, {smask}, {allb}, {kind == 'IntFlag'})\n", st.line).file()).module().kids[0])
             else:
                 top.append(Parser(Lexer(f"_pys_enum_{st.s} = _pys_EnumType({st.s!r}, [{ms}], {{{mm}}})\n", st.line).file()).module().kids[0])
     n.kids = top
