@@ -55,6 +55,22 @@ from src.pystachy_compiler.utils import (
 )
 
 
+def role_body_uses_storage(n: Node, receiver: str, methods: list[str]) -> bool:
+    # Ordinary calls can use the role's public method contract without depending on
+    # the layout of the concrete receiver. Check the explicit arguments normally.
+    if n.kind == "name":
+        return n.s == receiver or n.s == "super"
+    kids = n.kids
+    if n.kind == "call" and kids[0].kind == "attr":
+        target = kids[0]
+        if target.s in methods and target.kids[0].kind == "name" and target.kids[0].s == receiver:
+            kids = kids[1:]
+    for child in kids:
+        if role_body_uses_storage(child, receiver, methods):
+            return True
+    return False
+
+
 def gen_subclass_problem(self, st: Node) -> str:
     # why class statement st, which names bases, cannot be compiled, or "": one ordinary
     # class declared before it, or one of the supported exception bases
@@ -85,12 +101,13 @@ def gen_subclass_problem(self, st: Node) -> str:
             ancestor = info.base
         if mentions(st.kids[0], ["super"]):
             return "super() in a class with a secondary base is not supported"
+        methods = [d.s for d in role.node.kids[0].kids if d.kind == "def"]
         for d in role.node.kids[0].kids:
             if d.kind == "pass" or (d.kind == "expr" and d.kids[0].kind == "str"):
                 continue
             if d.kind != "def" or d.s.startswith("__") or len(d.kids) != 3 or len(d.kids[0].kids) == 0:
                 return why
-            if mentions(d.kids[2], ["super", d.kids[0].kids[0].s]):
+            if role_body_uses_storage(d.kids[2], d.kids[0].kids[0].s, methods):
                 return "secondary base methods may not use super() or read or write the instance"
 
     if st.kids[1].kind == "name" and st.kids[1].s in self.classes and self.classes[st.kids[1].s].exc == "":
