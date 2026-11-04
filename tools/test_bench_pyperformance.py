@@ -52,6 +52,25 @@ class CensusTests(unittest.TestCase):
             report = json.loads(report_path.read_text())
             self.assertEqual(report["benchmarks"][0]["compile_status"], "compiled")
 
+    def test_extracted_census_pins_each_source_without_claiming_an_sdist_hash(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp) / "bm_new" / "run_benchmark.py"
+            source.parent.mkdir()
+            source.write_text(self.UPSTREAM)
+            hashed = bench.digest(source.read_bytes())
+            args = SimpleNamespace(census=tmp, timeout=1)
+            with mock.patch.dict(bench.UPSTREAM, {"new": hashed}, clear=True), \
+                    mock.patch.dict(bench.CENSUS_CALLS, {"new": "bench_x(1)"}, clear=True), \
+                    mock.patch.object(bench.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "", "")), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                report, valid = bench.census(args, ["compiler"], {})
+                self.assertTrue(valid)
+                self.assertIsNone(report["sdist_sha256"])
+                self.assertEqual(report["benchmarks"][0]["source_sha256"], hashed)
+                source.write_text(self.UPSTREAM + "# modified")
+                with self.assertRaisesRegex(RuntimeError, "SHA-256"):
+                    bench.census(args, ["compiler"], {})
+
     def test_runner_is_replaced_by_the_call_and_lines_are_kept(self):
         source = bench.census_source(self.UPSTREAM, "a = 1\nbench_x(a)")
         lines = source.split("\n")
@@ -106,7 +125,7 @@ class TimingTests(unittest.TestCase):
     """The seconds a port prints are for what pyperf would time (TIMED_PART)."""
 
     def port(self, name):
-        return (bench.BENCH / f"{name}.py").read_text()
+        return bench.port_path(name).read_text()
 
     def test_every_port_times_what_pyperf_times(self):
         self.assertEqual(set(bench.TIMED_PART), set(bench.BENCHMARKS))
@@ -261,12 +280,11 @@ class OutputTests(unittest.TestCase):
 
 class RecordTests(unittest.TestCase):
     def test_ports_tables_and_files_agree(self):
-        files = sorted(p.stem for p in bench.BENCH.glob("*.py"))
-        self.assertEqual(files, sorted(bench.BENCHMARKS))
+        self.assertEqual(set(bench.BENCH.glob("*.py")), {bench.port_path(n) for n in bench.BENCHMARKS})
         self.assertLessEqual(set(bench.BENCHMARKS), set(bench.UPSTREAM))
         self.assertEqual(set(bench.CENSUS_CALLS), set(bench.UPSTREAM))
-        for name in files:
-            text = (bench.BENCH / f"{name}.py").read_text()
+        for name in bench.BENCHMARKS:
+            text = bench.port_path(name).read_text()
             self.assertIn("Pystachy port: a deterministic main replaces pyperf.Runner", text, name)
             self.assertNotIn("import pyperf", text, name)
 

@@ -17,8 +17,11 @@ https://mail.python.org/pipermail/speed/2017-May/000576.html
 import io
 import logging
 
-# Third party imports
-import pyperf
+# Pystachy port: use the upstream clocks with the deterministic runner.
+import sys
+import time
+
+TIMED: list[float] = []
 
 # A simple format for parametered logging
 FORMAT = 'important: %s'
@@ -36,7 +39,7 @@ def bench_silent(loops, logger, stream):
     # micro-optimization: use fast local variables
     m = MESSAGE
     range_it = range(loops)
-    t0 = pyperf.perf_counter()
+    t0 = time.perf_counter()  # Pystachy port: pyperf's clock.
 
     for _ in range_it:
         # repeat 10 times
@@ -51,12 +54,12 @@ def bench_silent(loops, logger, stream):
         logger.debug(m)
         logger.debug(m)
 
-    dt = pyperf.perf_counter() - t0
+    dt = time.perf_counter() - t0  # Pystachy port: pyperf's clock.
 
     if len(stream.getvalue()) != 0:
         raise ValueError("stream is expected to be empty")
 
-    return dt
+    TIMED.append(dt)  # Pystachy port: retain each timed interval.
 
 
 def bench_simple_output(loops, logger, stream):
@@ -65,7 +68,7 @@ def bench_simple_output(loops, logger, stream):
     # micro-optimization: use fast local variables
     m = MESSAGE
     range_it = range(loops)
-    t0 = pyperf.perf_counter()
+    t0 = time.perf_counter()  # Pystachy port: pyperf's clock.
 
     for _ in range_it:
         # repeat 10 times
@@ -80,13 +83,13 @@ def bench_simple_output(loops, logger, stream):
         logger.warning(m)
         logger.warning(m)
 
-    dt = pyperf.perf_counter() - t0
+    dt = time.perf_counter() - t0  # Pystachy port: pyperf's clock.
 
     lines = stream.getvalue().splitlines()
     if len(lines) != loops * 10:
         raise ValueError("wrong number of lines")
 
-    return dt
+    TIMED.append(dt)  # Pystachy port: retain each timed interval.
 
 
 def bench_formatted_output(loops, logger, stream):
@@ -96,7 +99,7 @@ def bench_formatted_output(loops, logger, stream):
     fmt = FORMAT
     msg = MESSAGE
     range_it = range(loops)
-    t0 = pyperf.perf_counter()
+    t0 = time.perf_counter()  # Pystachy port: pyperf's clock.
 
     for _ in range_it:
         # repeat 10 times
@@ -111,54 +114,30 @@ def bench_formatted_output(loops, logger, stream):
         logger.warning(fmt, msg)
         logger.warning(fmt, msg)
 
-    dt = pyperf.perf_counter() - t0
+    dt = time.perf_counter() - t0  # Pystachy port: pyperf's clock.
 
     lines = stream.getvalue().splitlines()
     if len(lines) != loops * 10:
         raise ValueError("wrong number of lines")
 
-    return dt
+    TIMED.append(dt)  # Pystachy port: retain each timed interval.
 
 
-def add_cmdline_args(cmd, args):
-    if args.benchmark:
-        cmd.append(args.benchmark)
-
-
-BENCHMARKS = {
-    "silent": bench_silent,
-    "simple": bench_simple_output,
-    "format": bench_formatted_output,
-}
-
-
+# Pystachy port: a deterministic main replaces pyperf.Runner and its dispatch table.
 if __name__ == "__main__":
-    runner = pyperf.Runner(add_cmdline_args=add_cmdline_args)
-    runner.metadata['description'] = "Test the performance of logging."
-
-    parser = runner.argparser
-    parser.add_argument("benchmark", nargs='?', choices=sorted(BENCHMARKS))
-
-    options = runner.parse_args()
-
-    # NOTE: StringIO performance will impact the results...
+    loops = int(sys.argv[1]) if len(sys.argv) > 1 else 32
     stream = io.StringIO()
-
     handler = logging.StreamHandler(stream=stream)
     logger = logging.getLogger("benchlogger")
     logger.propagate = False
     logger.addHandler(handler)
     logger.setLevel(logging.WARNING)
 
-    if options.benchmark:
-        benchmarks = (options.benchmark,)
-    else:
-        benchmarks = sorted(BENCHMARKS)
-
-    for bench in benchmarks:
-        name = 'logging_%s' % bench
-        bench_func = BENCHMARKS[bench]
-
-        runner.bench_time_func(name, bench_func,
-                               logger, stream,
-                               inner_loops=10)
+    bench_silent(loops, logger, stream)
+    assert stream.getvalue() == ""
+    bench_simple_output(loops, logger, stream)
+    assert stream.getvalue() == (MESSAGE + "\n") * (10 * loops)
+    bench_formatted_output(loops, logger, stream)
+    assert stream.getvalue() == ((FORMAT % MESSAGE) + "\n") * (10 * loops)
+    print("seconds", sum(TIMED), file=sys.stderr)
+    print("logging", loops, len(stream.getvalue()))

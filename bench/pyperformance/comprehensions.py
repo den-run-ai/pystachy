@@ -5,7 +5,7 @@ Author: Carl Meyer
 """
 
 from dataclasses import dataclass
-# Pystachy port: use integer kind tags in place of the unavailable Enum module.
+from enum import Enum
 from typing import Iterable, List, Optional
 
 # Pystachy port: keep upstream timers, collecting seconds for the deterministic runner.
@@ -15,8 +15,7 @@ import sys
 TIMED: list[float] = []
 
 
-# Pystachy port: the benchmark only compares these two kind tags.
-class WidgetKind:
+class WidgetKind(Enum):
     BIG = 1
     SMALL = 2
 
@@ -26,7 +25,7 @@ class Widget:
     widget_id: int
     creator_id: int
     derived_widget_ids: List[int]
-    kind: int  # Pystachy port: integer kind tags replace Enum values.
+    kind: WidgetKind
     has_knob: bool
     has_spinner: bool
 
@@ -70,7 +69,7 @@ def make_some_widgets() -> List[Widget]:
     widget_id = 0
     widgets: List[Widget] = []  # Pystachy port: type storage before the first append.
     for creator_id in range(3):
-        for kind in [WidgetKind.BIG, WidgetKind.SMALL]:  # Pystachy port: the two enum members.
+        for kind in WidgetKind:
             for has_knob in [True, False]:
                 for has_spinner in [True, False]:
                     derived = [w.widget_id for w in widgets[::creator_id + 1]]

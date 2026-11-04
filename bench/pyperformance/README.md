@@ -1,6 +1,6 @@
 # pyperformance benchmarks
 
-These are 23 of the 52 benchmarks tried from [pyperformance](https://github.com/python/pyperformance)
+These are 24 of the 52 benchmarks tried from [pyperformance](https://github.com/python/pyperformance)
 1.14.0, adapted so that Pystachy compiles them. CPython runs the same adapted files, so each
 comparison runs identical source in CPython, the JIT and AOT. The adaptations and smaller
 inputs change the work, so these results are not comparable with published pyperformance numbers.
@@ -51,7 +51,9 @@ pyperformance 1.14.0 sdist, `pyperformance-1.14.0.tar.gz`, SHA-256
 `python3 tools/bench_pyperformance.py --census pyperformance-1.14.0.tar.gz` checks these hashes,
 checks that each changed hunk of a port carries a `# Pystachy port:` note and that each port
 times what pyperf times, and compiles each upstream file with only pyperf's runner replaced,
-reporting the first compiler error.
+reporting the first compiler error. An extracted `pyperformance/data-files/benchmarks`
+directory is also accepted. In that mode each source hash is verified and the archive
+hash is unmeasured (`null`).
 
 | Benchmark | Upstream SHA-256 | Status |
 |---|---|---|
@@ -81,7 +83,7 @@ reporting the first compiler error.
 | `hexiom` | `d7518220380d27449b8951bc9ca2e19593569d9bd9f5cb6d86867f354f22e115` | ported |
 | `json_dumps` | `023c991ff827fdcbfcfb2b7e3cadf023352a61d1903643d8af0ef302a0db1bf7` | ported |
 | `json_loads` | `16c41ff06bf3173d30158c767340d389c459a656e997e306719891d50f09646f` | ported |
-| `logging` | `6ff62fdc4c6b520b01475407b526ed609299402ed8ad8d344038b559a120159a` | blocked |
+| `logging` | `6ff62fdc4c6b520b01475407b526ed609299402ed8ad8d344038b559a120159a` | ported |
 | `mdp` | `3db5bfb8c9e2602f181cee809c24b2bd61e7c088e89e8e22867b8d46c4d0fcf1` | blocked |
 | `meteor_contest` | `b616f5f87e129a6b35650452951f40a7812cf22efff5a0777e51287da13c2f48` | ported |
 | `nbody` | `d1385e816d7cfea361b7915e2cf70138cd6b84f40df8bd5152638851f7bcac2b` | ported |
@@ -114,7 +116,7 @@ pyperformance is distributed under the MIT License; [LICENSE](LICENSE) and [AUTH
 are its `COPYING` and `AUTHORS` files. Each port keeps its upstream header. `regex_v8.py`'s
 header carries the V8 project's BSD license, and `raytrace.py`'s states the MIT License.
 `deltablue` is excluded pending a separate provenance decision: its upstream docstring
-says the JavaScript original was GPL-licensed. The other 23 benchmarks remain included.
+says the JavaScript original was GPL-licensed. The other 24 benchmarks remain included.
 `fannkuch.py`, `meteor_contest.py`, `nbody.py`, `pidigits.py`, `regex_dna.py` and `spectral_norm.py` say they
 come from The Computer Language Benchmarks Game, whose programs are published under the
 3-clause BSD License. `richards.py` and `richards_super.py` credit a Java version
@@ -148,7 +150,8 @@ adaptations follow these rules:
 |---|---|
 | `barnes_hut` | Integer zeros that become floats are float literals. Constructors, the particle list and the child nodes are annotated. |
 | `chaos` | A Park–Miller generator replaces `random.seed()` and `randrange()`, so the points differ from upstream. `GVector` has float parameters and defaults; `__rmul__ = __mul__` becomes a method; fields are annotated; loops replace two-clause comprehensions; `length` starts as `0.0`; `x` and `y` are converted to int in one assignment each; an impossible `type()` message is a literal. `main()` returns the game, whose `create_image_chaos()` the main times with the default arguments. |
-| `comprehensions` | Integer kind tags and an explicit two-kind list replace `Enum` and enum iteration; the widget list is annotated. Dataclasses, nested comprehensions, optional widget lookups and tuple sorting remain. The complete sorted widget order is checked. |
+| `comprehensions` | The empty widget list is annotated. The upstream `Enum` and enum iteration are restored. The complete sorted widget order is checked. |
+| `logging` | All three kernels run directly on the same `StringIO` stream. The driver checks every emitted line and verifies that disabled calls produce no output. |
 | `generators` | The recursive `Tree`, `yield from`, range slicing and iteration are unchanged. A size argument limits smoke/GC runs to 100 nodes; the normal run keeps 100,000. The complete yielded sequence is checked outside the timer. |
 | `json_dumps` | Opt into dynamic `Any`; annotate the empty dict and the list of `(Any, range)` workload tuples. Preserve all four upstream payloads and counts by default; smoke uses one encode per case and a three-element HUGE list. Complete small encodings and the repeated huge encoding are checked outside the timer. |
 | `json_loads` | Opt into dynamic `Any` and annotate the fresh heterogeneous tuple. All keys in upstream `DICT` are strings, so `str(rand_val)` replaces the generic `type(key)(rand_val)` branch. Preserve `Random(5)`, all three payloads and the 20 unrolled loads per payload; decoded values are printed after timing. |
@@ -179,13 +182,31 @@ Results within a benchmark are checked against CPython, not against upstream pyp
 
 ## Census
 
-The original sdist census ran on main `5eaf5638` with CPython 3.13.18. The
-argparse refresh at `20d49889` checked all 52 upstream file hashes, applied the
-same runner replacement, and attempted IR compilation with the shipped library
-and CPython 3.13.16 as the reference interpreter. Both
-runs compiled the same seven sources: `fannkuch`, `generators`, `nbody`, `nqueens`,
-`regex_v8`, `spectral_norm` and `unpack_sequence`. The 23 adapted workloads have
-separate execution checks.
+The same 52 upstream files were compiled on `8444af96` (before the stdlib additions)
+and `3aa7265a` (with the argparse adapter). With only the runner replaced, both
+compiled seven to IR: `fannkuch`, `generators`, `nbody`, `nqueens`, `regex_v8`,
+`spectral_norm` and `unpack_sequence`. The original sdist run on `5eaf5638` found
+the same seven. Eight of the other files advanced past a missing-module error:
+
+| Previously missing | Benchmarks and next blockers |
+|---|---|
+| `argparse` | `argparse`: bare `list` return annotation |
+| `copy` | `deepcopy`: bare `list` dataclass field |
+| `enum` | `comprehensions`: empty widget list needs an annotation |
+| `glob` | `2to3`: missing `subprocess` |
+| `logging` | `logging`: dispatch table containing distinct function types |
+| `pathlib` | `bpe_tokeniser`: decoder field needs an annotation; `pathlib`: missing `Path.stat()`; `tomli_loads`: missing `tomli` |
+
+Separate import programs for `argparse`, `copy`, `enum`, `logging` and `pathlib`
+executed in JIT. A separate pyperf 2.10.0 worker with psutil 7.2.2 ran under
+CPython 3.13.16. Compiling that worker with Pystachy stopped at the missing
+`sysconfig` import in pyperf.
+
+The adapted suite uses CPython's output as the oracle in JIT and AOT. Three extra
+samples also matched in both modes: BPE encoding with fixed ranks and materialized
+`zip` pairs, deepcopy of the benchmark dataclass with a `list[int]` field, and
+pathlib's eight-file setup followed by glob, binary reads and cleanup. These
+samples exclude BPE training, copy reduction hooks and `Path.stat()`, respectively.
 
 <a id="sources-without-a-delivered-port"></a>
 <a id="scope-and-remaining-candidates"></a>
@@ -210,7 +231,6 @@ historical run.
 | `deepcopy` | a bare `list` annotation (`lst: list`) | a bare `list` annotation (`lst: list`) |
 | `deltablue`, `typing_runtime_protocols` | unsupported base class | same |
 | `gc_collect`, `gc_traversal` | no `gc` module | same |
-| `logging` | dispatch table contains distinct function types | `threading` uses class `_thread.RLock` as a value |
 | `mdp` | no `fractions` module | `contextvars` imports the missing `_contextvars` |
 | `pathlib` | `Path.stat()` | `shutil` imports `bz2`, which imports the missing `_bz2` |
 | `pickle` | no `pickle` module | `copyreg` keys a dict by classes |
@@ -239,7 +259,7 @@ What porting them would take:
   fractions-based `mdp` stay blocked, because fixed-width floats or ints would change what
   they test. `pidigits` is ported with [promoting ints](../../docs/python-int.md) instead,
   which keep CPython's `int` semantics.
-- **Missing APIs or adapters:** `argparse`, `base64`, `bpe_tokeniser`, `deepcopy`, `logging`,
+- **Missing APIs or adapters:** `argparse`, `base64`, `bpe_tokeniser`, `deepcopy`,
   `pathlib`, `pickle`, `pprint`, `pyflate`, `regex_compile`, `tomli_loads`,
   `typing_runtime_protocols` and `xml_etree`. `regex_compile` also patches another module's
   regex calls, so annotating its global is not enough. `tomli_loads` needs the third-party
@@ -273,6 +293,7 @@ the port's adaptations had to change; "none" means that replacing the runner is 
 | `hexiom` | class attribute `HIGHEST_VALUE_STRATEGY` used as a class-body default |
 | `json_dumps` | an empty dict needs a type annotation |
 | `json_loads` | `expected int, got str` (line 50) |
+| `logging` | dispatch table contains distinct function types |
 | `meteor_contest` | `expected int, got float` (line 88) |
 | `pidigits` | `map()` outside a call that takes its items at once |
 | `raytrace`, `scimark` | no `array` module |
