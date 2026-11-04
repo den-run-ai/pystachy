@@ -1396,6 +1396,10 @@ print(args.filename, args.repeat, args.verbose)
 Results support field access, identity, representation, equality and
 `isinstance(result, argparse.Namespace)`. Each schema has its own native class,
 so `type(result) is argparse.Namespace` is false and its name is compiler-generated.
+Equality compares declared fields. A foreign operand returns false without
+reflected comparison. Distinct results sharing a NaN field can compare unequal
+under the native float identity rules.
+
 Parser declarations must stay in their owning scope. Runtime-defined schemas,
 groups, subparsers and custom actions or converters are outside this subset.
 The [JSON repair command](../ports/json_repair/PORT.md#file-and-pipe-command)

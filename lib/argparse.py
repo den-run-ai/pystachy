@@ -11,7 +11,19 @@ class Namespace:
     def __eq__(self, other) -> bool:
         if not isinstance(other, Namespace):
             return False
-        return dict(vars(self)) == dict(vars(other))
+        if self is other:
+            return True
+        # The compiler specializes a loop over field names. Each comparison
+        # retains its own field types, including the caller's promoting ints.
+        for name in vars(self):
+            if not hasattr(other, name):
+                return False
+            if getattr(self, name) != getattr(other, name, None):
+                return False
+        for name in vars(other):
+            if not hasattr(self, name):
+                return False
+        return True
 
     def __repr__(self) -> str:
         return 'Namespace()'
