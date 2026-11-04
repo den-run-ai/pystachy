@@ -30,3 +30,26 @@ except TypeError as exc:
     print(str(exc))
 
 print(ord(text[True]))
+
+
+def shadowed() -> int:
+    def ord(s: str) -> int:
+        return len(s)
+    return ord("xy")
+
+
+print(ord("/"), ord("\x00"), ord("é"), ord("中"), ord("🚀"), ord("\ud800"), shadowed())
+try:
+    ord("")
+except TypeError as exc:
+    print(str(exc))
+try:
+    ord("e\u0301")
+except TypeError as exc:
+    print(str(exc))
+
+pair = (2, 3)
+try:
+    print(pair[ord("/")])
+except IndexError as exc:
+    print(str(exc))

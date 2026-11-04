@@ -1,8 +1,10 @@
-@main.init: pys_list_new pys_list_append pys_str_int pys_write pys_write pys_str_int pys_write pys_write pys_str_int pys_write pys_write
+@main.init: pys_list_new pys_list_append pys_str_int pys_write pys_write pys_str_int pys_write pys_write pys_str_int pys_write pys_write pys_str_int pys_write pys_write pys_try_mark pys_exc_handled pys_exc_begin pys_exc_in pys_exc_restore pys_throw
 @f.codepoint: pys_text_ord_at
 @f.from_list: pys_list_get pys_ord
 @f.from_slice: pys_text_slice pys_ord pys_raise
+@f.separator:
+@f.invalid_literal: pys_ord
 @pys_obj_eq:
 @pys_obj_cmp:
 @pys_obj_repr:
-@main: pys_init pys_finish
+@main: pys_init pys_eh_on pys_finish

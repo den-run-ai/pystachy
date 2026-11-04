@@ -3,7 +3,7 @@ from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, umembers
 from src.pystachy_compiler.diagnostics import int_lists
 from src.pystachy_compiler.ir import Data, Ins, IterArg, Loop, Reduce, Val
-from src.pystachy_compiler.lexer import Lexer
+from src.pystachy_compiler.lexer import Lexer, codepoint, utf8len
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.parser import Parser
 from src.pystachy_compiler.reflection import VARS_USES
@@ -938,6 +938,14 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         # ffi.track(owner, value, size): the runtime hands value to ffi.collected() once a collection finds
         # owner dropped; the Python object counts as size more bytes allocated (see pys_track)
         return Val(self.rt("pys_track", "i64", [f"ptr {vals[0].v}", f"i64 {vals[1].v}", f"i64 {vals[2].v}"]), "int")
+    if key == "ord(str)" and not self.rtmode and vals[0].v.startswith("@s."):
+        literal = self.strvals[int(vals[0].v[3:])]
+        width = len(literal)
+        if 1 <= width <= 4 and utf8len(literal, 0, True) == width:
+            # Keep a call result opaque to frontend rules such as fixed-tuple indexing.
+            # LLVM folds this to the code point without materializing a character.
+            point = Val(str(codepoint(literal, 0, width)), "int")
+            return Val(self.scalar("add", [point, Val("0", "int")]), "int")
     if key in CALLS:
         spec = CALLS[key].split(":")
         r = spec[1] if spec[1] != "" else vals[0].t
