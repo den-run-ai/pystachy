@@ -28,6 +28,12 @@ sentinel. `loads` and `return_objects=True` return Python objects. Valid inputs
 to object-return calls use CPython's decoder directly unless `skip_json_loads`
 is set. Malformed inputs are repaired natively. Object and log results cross the
 extension boundary as JSON text, which the companion decodes in CPython.
+
+When a malformed document has an unquoted non-ASCII key or value, native repair
+can drop it. For example, `loads('{界:1}')` returns `{}`. Quoting the key as
+`loads('{"界":1}')` preserves it. This also affects the standalone native command.
+[Unicode classification is tracked in #120](https://github.com/den-run-ai/pystachy/issues/120).
+
 The native calls follow the [extension thread and GIL contract](../../docs/ffi.md#threading-and-host-lifetime).
 
 Check the built module against all 645 [recorded API cases](../../tests/upstream/json_repair/README.md).

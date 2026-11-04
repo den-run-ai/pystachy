@@ -43,6 +43,11 @@ Split trace records before repair and validate types and content afterward.
 
 For accelerated calls from CPython, build the [native companion module](../../examples/json_repair/README.md).
 
+Native character tests can drop unquoted non-ASCII keys and values during repair.
+For example, `loads('[é]')` returns `[]` in native modes and `['é']` in the port
+under CPython. Quoted strings preserve these characters.
+[Unicode classification is tracked in #120](https://github.com/den-run-ai/pystachy/issues/120).
+
 ## File and pipe command
 
 Run from the repository root.
