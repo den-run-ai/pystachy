@@ -3,7 +3,7 @@ from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, umembers
 from src.pystachy_compiler.diagnostics import int_lists
 from src.pystachy_compiler.ir import Data, Ins, IterArg, Loop, Reduce, Val
-from src.pystachy_compiler.lexer import Lexer
+from src.pystachy_compiler.lexer import Lexer, codepoint, utf8len
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.parser import Parser
 from src.pystachy_compiler.reflection import VARS_USES
@@ -662,6 +662,14 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         self.err(f"{name}() takes {'exactly one argument' if m == 1 else f'at most {m} arguments'} ({npos} given)")
     if len(args) == 0 and name in DEFAULTS:
         args = [self.parse_expr(DEFAULTS[name])]
+    if name == "ord" and len(args) == 1 and args[0].kind == "index" and not self.rtmode and not self.curfn.cmpops:
+        source, index = args[0].kids
+        if self.static_type(source) == "str":
+            # Read the string before the index, which may rebind its name.
+            # Runtime mode uses byte indexing and comparison methods have their own error path.
+            text = self.expr(source, "")
+            position = self.seq_index(index, "TypeError: string indices must be integers, not 'NoneType'")
+            return Val(self.rt("pys_text_ord_at", "i64", [f"ptr {text.v}", f"i64 {position.v}"]), "int")
     w = want if name == "list" or name == "sorted" or name == "dict" else ""
     fresh = False
     # key= and reverse= of sorted(), min() and max(), evaluated in the order written: after a
@@ -930,6 +938,14 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         # ffi.track(owner, value, size): the runtime hands value to ffi.collected() once a collection finds
         # owner dropped; the Python object counts as size more bytes allocated (see pys_track)
         return Val(self.rt("pys_track", "i64", [f"ptr {vals[0].v}", f"i64 {vals[1].v}", f"i64 {vals[2].v}"]), "int")
+    if key == "ord(str)" and not self.rtmode and vals[0].v.startswith("@s."):
+        literal = self.strvals[int(vals[0].v[3:])]
+        width = len(literal)
+        if 1 <= width <= 4 and utf8len(literal, 0, True) == width:
+            # Keep a call result opaque to frontend rules such as fixed-tuple indexing.
+            # LLVM folds this to the code point without materializing a character.
+            point = Val(str(codepoint(literal, 0, width)), "int")
+            return Val(self.scalar("add", [point, Val("0", "int")]), "int")
     if key in CALLS:
         spec = CALLS[key].split(":")
         r = spec[1] if spec[1] != "" else vals[0].t

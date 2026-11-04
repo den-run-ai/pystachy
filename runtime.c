@@ -1115,6 +1115,13 @@ Str *pys_text_get(Str *s, I i) {
   Str *r = k == 1 ? byte1((unsigned char)s->s[at]) : pys_str(s->s + at, k);
   r->chars1 = 2; return r;
 }
+I pys_text_ord_at(Str *s, I i) {
+  i = idx(i, pys_text_len(s), "IndexError: string index out of range");
+  if (s->chars1 == s->len + 1) return (unsigned char)s->s[i];
+  I at = text_offset(s, i), cp;
+  u8char(s->s + at, s->len - at, &cp);
+  return cp;
+}
 Str *pys_text_at(Str *s, I at) {   /* linear iteration's byte cursor, always at a character boundary */
   if (at < 0 || at >= s->len) pys_fail("IndexError: string index out of range");
   if ((unsigned char)s->s[at] < 128) return byte1((unsigned char)s->s[at]);

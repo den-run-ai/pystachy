@@ -1,0 +1,8 @@
+128640 after
+string indices must be integers, not 'NoneType'
+102
+47 0 233 20013 128640 55296 2
+ord() expected a character, but string of length 0 found
+ord() expected a character, but string of length 2 found
+tuple index out of range
+[exit 0]

@@ -927,7 +927,7 @@ RUNTIME: dict[str, str] = {
     "set.big_key": "%ptr:S,int|rD|", "set.big_pop": "int+:S|R rD wD|",
     # Public Unicode operations over UTF-8 storage, separate from runtime.py's raw byte helpers.
     "text.len": "int:str||", "text.chr": "str:int|R A|",
-    "text.get": "str:str,int|R A|", "text.at": "str:str,int|R A|",
+    "text.get": "str:str,int|R A|", "text.ord_at": "int:str,int|R|", "text.at": "str:str,int|R A|",
     "text.next": "int:str,int|R|", "text.prev": "int:str,int|R|",
     "text.slice": "str:str,int,int|A|", "text.slice_step": "str:str,int,int,int|R A|",
     "text.list": "list[str]:str|R A|",

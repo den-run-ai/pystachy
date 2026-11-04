@@ -24,16 +24,17 @@ def utf8(c: int) -> str:
     return chr(240 | (c >> 18)) + chr(128 | ((c >> 12) & 63)) + chr(128 | ((c >> 6) & 63)) + chr(128 | (c & 63))
 
 
-def utf8len(s: str, i: int) -> int:
+def utf8len(s: str, i: int, surrogatepass: bool = False) -> int:
     # the length of the UTF-8 sequence at s[i] (a character per byte), as CPython's valid_utf8
     # checks it (no overlong form, surrogate or code point past U+10FFFF); if it is not valid,
-    # minus the number of its bytes that are (0: not even the first)
+    # minus the number of its bytes that are (0: not even the first). A decoded literal may
+    # contain an escaped surrogate, which the runtime encodes as a three-byte sequence.
     c = ord(s[i])
     if c < 128:
         return 1
     n = 3 if c >= 240 and c < 245 else (2 if c >= 224 and c < 240 else (1 if c >= 194 and c < 224 else 0))
     lo = 160 if c == 224 else (144 if c == 240 else 128)
-    hi = 159 if c == 237 else (143 if c == 244 else 191)
+    hi = 159 if c == 237 and not surrogatepass else (143 if c == 244 else 191)
     for k in range(1, n + 1):
         d = ord(s[i + k]) if i + k < len(s) else 0
         if d < lo or d > hi:
@@ -57,10 +58,9 @@ def utf8_error(s: str) -> str:
     return ""
 
 
-def codepoint(s: str, i: int) -> int:
-    # the code point of the valid UTF-8 sequence at s[i]
+def codepoint(s: str, i: int, n: int) -> int:
+    # the code point of a validated n-byte sequence at s[i]
     c = ord(s[i])
-    n = utf8len(s, i)
     if n == 1:
         return c
     v = c & (31 if n == 2 else (15 if n == 3 else 7))
@@ -511,7 +511,7 @@ class Lexer:
             # CPython's error for the first character no identifier may hold; a non-ASCII letter
             # is a Pystachy limitation
             n = 1 if ord(w[k]) < 128 else utf8len(w, k)
-            cp = codepoint(w, k) if n > 1 else 0
+            cp = codepoint(w, k, n) if n > 1 else 0
             if among(cp, NONPRINT):
                 self.bad(f"invalid non-printable character U+{cp:04X}", self.line)
                 return
