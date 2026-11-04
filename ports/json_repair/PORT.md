@@ -81,10 +81,11 @@ python3.13 tests/upstream/json_repair/cli.py ./pystachy
 - Guard `log()` with the logging flag instead of replacing a bound method.
 - Spell literal-return annotations as `bool`/`str`, add optional-character
   narrowing, and spell the fixed delimiter tuple explicitly.
-- Encode ordered string targets with `repr(list_of_targets)` for cache keys:
-  boxing a variable-length typed tuple into `Any` is unsupported. The key remains
-  injective for these string lists; this adds allocations and is not a speed claim.
-  Cache values use `tuple[int, int | None]` instead of `Any`.
+- Cache lookahead by ordered delimiter content. A single character is its own
+  key. Lists of two or more single characters use a NUL prefix and the joined
+  characters. Other targets retain their list representation. Equivalent scalar
+  and singleton-list queries share an entry, including after list mutation.
+  Cache values use `tuple[int, int | None]`.
 - Use `str.find` for single-character lookahead with the same escape boundaries;
   retain the original scan for other targets and negative offsets.
 - Update brace/bracket state incrementally after replacing a trailing escape,

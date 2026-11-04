@@ -215,9 +215,18 @@ def _cached_skip_to_character(
     character: str | list[str],
     idx: int = 0,
 ) -> int:
-    # Pystachy port: an injective string key for the same ordered str targets;
-    # dynamic boxing does not yet accept variable-length typed tuples.
-    targets = repr([character]) if isinstance(character, str) else repr(character)
+    # A scalar and its singleton list represent the same ordered targets.
+    # Short keys avoid formatting a Python list on every cache hit. The three
+    # encodings are disjoint: one code point, NUL plus at least two code
+    # points, or the repr of a list (starts with '[' and has length >= 2).
+    if isinstance(character, str):
+        targets = character if len(character) == 1 else repr([character])
+    elif len(character) == 1 and len(character[0]) == 1:
+        targets = character[0]
+    elif len(character) > 1 and all(len(item) == 1 for item in character):
+        targets = "\0" + "".join(character)
+    else:
+        targets = repr(character)
     start_index = self.index + idx
     cached = state.lookahead_cache.get(targets)
     if cached is not None:
