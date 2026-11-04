@@ -13,15 +13,24 @@ def repair_json(json_str: str = "", return_objects: bool = False,
     parsed_json: Any = None
     repair_log: list[Any] = []
     is_valid_json = False
+    invalid_root = False
     if not skip_json_loads:
         try:
             parsed_json = json.loads(json_str)
             is_valid_json = True
-        except (json.JSONDecodeError, TypeError, ValueError):
+        except json.JSONDecodeError as error:
+            # Extra data can follow a valid initial value.
+            invalid_root = error.msg != "Extra data"
+        except (TypeError, ValueError):
             pass
     if not is_valid_json:
         parser = JSONParser(json_str, logging, stream_stable=stream_stable,
                             strict=strict, try_valid_json_suffix=True)
+        if type(json_str) is str and json_str.startswith(("{", "[")):
+            # A bare object key is also conclusive when validation was skipped.
+            if invalid_root or (json_str[0] == "{" and len(json_str) > 1 and json_str[1] not in '"} \t\r\n'):
+                # Object repair can replace the parser's source before a second root.
+                parser._deferred_initial_source = json_str
         parser.logger = repair_log
         try:
             parsed_json = parser.parse()
