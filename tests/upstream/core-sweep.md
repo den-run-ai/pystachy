@@ -206,3 +206,10 @@ python3.13 tools/cpython_test_methods.py triage --compiler "$compiler" -j 1 \
   "$out/triage.json" "$out/methods" "$cpy/Lib/test/test_copy.py" \
   "$cpy/Lib/test/test_glob.py" "$cpy/Lib/test/test_filecmp.py"
 ```
+
+The wider census also found all five methods of `LockContextTestCase` in
+`Lib/test/test_contextlib.py`. [The combined fixture](../programs/upstream/upstream_contextlib_locks.py)
+exercises single-thread lock, RLock, condition and semaphore state across
+normal exit and exception unwinding. It retains the upstream inputs and
+assertions and records the bounded and unbounded semaphore variants separately.
+The pre-stdlib compiler rejects the `threading` import.
