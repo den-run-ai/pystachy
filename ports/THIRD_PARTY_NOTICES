@@ -667,6 +667,7 @@ CPython's language and builtin regression tests (tests/programs/upstream/upstrea
 These differential tests and rejection fixtures adapt test methods of CPython 3.13.16's
 Lib/test/ at commit cbc944f4bc59639a444dd971c737788ba2283a91:
 
+- tests/programs/upstream/upstream_argparse_options.py: Lib/test/test_argparse.py
 - tests/programs/upstream/upstream_scope_*.py and tests/errors/upstream/upstream_scope_*.py: Lib/test/test_scope.py
 - tests/programs/upstream/upstream_decorators_*.py and tests/errors/upstream/upstream_decorators_*.py:
   Lib/test/test_decorators.py

@@ -1,0 +1,12 @@
+usage: read [-h] [-n NUMBER] [--mode {text,raw}] name
+
+Read a file.
+
+positional arguments:
+  name                 file to read
+
+options:
+  -h, --help           show this help message and exit
+  -n, --number NUMBER  number of lines
+  --mode {text,raw}    output format
+[exit 0]

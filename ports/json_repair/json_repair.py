@@ -1,6 +1,6 @@
 # pystachy: dynamic-any
 # Pystachy port: in-memory, schema-free facade; retain upstream's valid-JSON
-# fast path and parser options. File, CLI and schema APIs are not exposed.
+# fast path and parser options. File wrappers and schema APIs are excluded.
 import json
 from typing import Any
 from .json_parser import JSONParser

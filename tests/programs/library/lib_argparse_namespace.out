@@ -1,0 +1,6 @@
+True False
+True False True Namespace(number=-7, quiet=True, mode='exact', filename='-dash')
+-7 True exact -dash
+3 False fast None
+8 file ['--plugin', 'payload']
+[exit 0]

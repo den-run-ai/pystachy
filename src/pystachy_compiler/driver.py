@@ -31,6 +31,7 @@ COMPILER_SOURCES: list[str] = [
     'src/__init__.py',
     'src/pystachy_compiler/__init__.py',
     'src/pystachy_compiler/analysis.py',
+    'src/pystachy_compiler/argparse_schema.py',
     'src/pystachy_compiler/bigints.py',
     'src/pystachy_compiler/builtins.py',
     'src/pystachy_compiler/calls.py',
