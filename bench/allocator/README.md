@@ -2,8 +2,8 @@
 
 Small programs that stress the collector's allocator in the ways the issues below measured,
 and a controller that times them across runtime variants. The
-[allocator report](../../docs/reports/allocator-prototype.md) has the results and what they
-led to.
+[2 November 2026 evaluation](https://github.com/den-run-ai/pystachy/blob/a2cb8a3638d715577a7ab1cd1e4a0d6b01b6cdf2/docs/reports/allocator-prototype.md)
+records the measurements and allocator decisions.
 
 | Workload | Program | Stresses |
 |---|---|---|
@@ -40,3 +40,25 @@ A variant `NAME=COMPILER[:HOME][+LIB]` builds with that compiler against the
 and reuses the AOT builds of the variant before it. Every run's output must agree;
 the summary marks a row whose output differs. Results are advisory: shared hosts are
 noisy, and nothing here is a threshold.
+
+## Allocator tradeoffs
+
+The [runtime](../../docs/internals.md#values-and-runtime) manages its own heap. Its
+page reuse and selective clearing address the page faults and redundant zeroing
+identified by these workloads. Replacing the C allocator with mimalloc or jemalloc
+therefore affects auxiliary allocations such as the page map, tables and file
+buffers; it does not replace the collector's heap.
+
+Retaining dirty free pages avoids faults in the next allocation cycle, but can keep
+RSS near its peak between collections. Compare loop time, peak RSS and memory after
+the live set shrinks when changing collection pacing or retention budgets
+([#650](https://github.com/den-run-ai/pystachy/issues/650),
+[#615](https://github.com/den-run-ai/pystachy/issues/615)). A faster allocation path
+alone does not establish a better policy for every workload.
+
+The [evaluation's remaining candidates](https://github.com/den-run-ai/pystachy/blob/a2cb8a3638d715577a7ab1cd1e4a0d6b01b6cdf2/docs/reports/allocator-prototype.md#6-follow-ups)
+include avoiding a redundant clear for pointer-free arrays written in full and
+internalizing runtime globals in AOT builds. The first requires an audit of readers
+of spare list capacity; the second concerns AOT builds, where the JIT's exported
+fast-path globals constrain optimization. The historical measurements provide comparison cases, not
+performance thresholds.

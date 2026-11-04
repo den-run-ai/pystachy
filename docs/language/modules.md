@@ -207,7 +207,9 @@ restrictions and tests for each module.
 
 The adapted sources remain valid Python, but that does not imply every upstream API compiles.
 Common limitations include unsupported generator forms, ASCII-only case mapping, lack of
-`bytearray` and binary files, and homogeneous container types. Check the module's reference before choosing an API.
+`bytearray`, and homogeneous container types. Check the module's reference before choosing an
+API; [binary files](../../lib/compatibility.md#binary-files) have their own supported calls and
+limits.
 
 ## Builtins
 

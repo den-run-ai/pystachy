@@ -127,3 +127,31 @@ docker run --rm --user 10001:10001 --entrypoint pystachy-smoke pystachy:test
 Use `linux-aarch64` on Linux ARM64 or the matching macOS archive target on macOS. Builds use the pinned Python version and
 the platform's LLVM version. Archive metadata is normalized for reproducibility;
 `SOURCE_DATE_EPOCH` or `--epoch` can override the source commit timestamp.
+
+### Inspect Linux payloads
+
+[`tools/linux_abi.py`](../tools/linux_abi.py) inspects every ELF executable and shared
+library in an extracted release directory without running the payload. It records
+hashes, architectures, interpreters, direct dependencies, required symbol versions
+and library search paths. Install GNU `readelf` from binutils before running it:
+
+```sh
+python3 tools/linux_abi.py EXTRACTED_RELEASE \
+  --architecture x86_64 --max-glibc 2.39 --json build/linux-abi.json
+python3 -m unittest discover -s tools -p 'test_linux_abi.py'
+```
+
+Select `aarch64` for the Linux ARM64 artifact. The supplied root and entries beneath
+it must not be symlinks; aliases in the root's parent path are resolved normally.
+Malformed or unreadable ELF evidence fails inspection. Exit status is 0 when the
+requested architecture and symbol constraints pass, 1 for recorded violations,
+and 2 for invalid input or failed inspection.
+
+The report does not resolve external dependency trees or `dlopen` dependencies,
+check CPU instructions or kernel support, or certify manylinux compatibility.
+Generated AOT programs and external LLVM tools need their own audits and execution
+tests. Before lowering the release baseline, validate the complete payload and the
+advertised JIT/AOT, GC and FFI behavior on the oldest supported environment; see the
+[30 October 2026 assessment](https://github.com/den-run-ai/pystachy/blob/a2cb8a3638d715577a7ab1cd1e4a0d6b01b6cdf2/docs/reports/linux-portability.md)
+and the remaining portability work in
+[#998](https://github.com/den-run-ai/pystachy/issues/998).

@@ -73,7 +73,7 @@ def gen_lower(self, fn: IFn) -> None:
         # word's value, which the cycle leaves as it found it. It stays out of line (a load and a
         # jump to the body): inlined, it adds a load and an argument to every caller, which can
         # cost them their own inlining (clang kept the regex search's Pattern._search out of
-        # re.search, docs/reports/recursion-guard-policy.md)
+        # re.search; see the historical report linked from docs/internals.md#native-recursion-depth).
         o.append(f"define {'' if f.export else 'internal '}{lt(f.ret)} {f.ll}({', '.join(ps)}){cold or ' noinline'} {{")
         o.append("entry:")
         forwarded = [f'{lt(f.ptypes[j])} %a{j}' for j in fn.ps]

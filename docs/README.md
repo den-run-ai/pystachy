@@ -17,7 +17,7 @@ program you can also run under CPython, then check the APIs your application use
 | I want to… | Read |
 |---|---|
 | Understand types, inference or a rejected program | [Language](language.md), [typing](language/typing.md), [compatibility limits](language/compatibility.md) |
-| Choose an appropriate workload | [Costs by feature](language.md#performance-and-complexity), [support surface](support-surface.md), [application examples](../examples/) |
+| Choose an appropriate workload | [Costs by feature](language.md#performance-and-complexity), [representation costs](performance.md#representation-costs), [application examples](../examples/) |
 | Use a library or adapt a Python package | [Library support](stdlib.md#library-support-at-a-glance), [module guide](../lib/README.md#module-guide), [porting](stdlib.md#porting-a-library), [third-party ports](../ports/README.md) |
 | Read or write JSON | [Native JSON](json.md): API, recursive values, dynamic storage and limits |
 | Use mixed values or large integers | [Dynamic `Any`](dynamic-any.md), [promoting integers](python-int.md), [explicit `mpz`](mpz.md); these remain experimental |

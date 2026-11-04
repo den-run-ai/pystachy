@@ -230,9 +230,10 @@ resource files.
 
 The Linux archives retain a **glibc 2.39+** support baseline. `manylinux_2_28` is a
 feasible follow-up build target, not a compatibility tag for the current Ubuntu-built
-compiler. See the [Linux portability audit](reports/linux-portability.md) for measured
-symbol requirements and the older-sysroot/toolchain work still needed. Compiler
-wheels for `pip install` / `uv tool install` remain separate work; the existing wheel
+compiler. The [30 October 2026 portability audit](https://github.com/den-run-ai/pystachy/blob/a2cb8a3638d715577a7ab1cd1e4a0d6b01b6cdf2/docs/reports/linux-portability.md)
+records the alpha.3 artifact measurements and older-sysroot/toolchain requirements.
+An older baseline and compiler wheels for `pip install` / `uv tool install` are tracked
+in [#998](https://github.com/den-run-ai/pystachy/issues/998); the existing wheel
 instructions distribute Python source libraries, not the compiler itself.
 
 ## Custom and staged installations

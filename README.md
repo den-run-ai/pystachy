@@ -147,7 +147,7 @@ provides `re`, `itertools`, Unicode normalization, a bounded native `json`, `tom
 `logging` and one-thread `threading`, `functools.cache` / `lru_cache`, `collections.namedtuple`
 and `io.BytesIO`. See
 [library support](docs/stdlib.md#library-support-at-a-glance) for each area's modules and gaps,
-and the [CPython support map](docs/support-surface.md) for what broader compatibility would cost.
+and [representation costs](docs/performance.md#representation-costs) for the cost of broader compatibility.
 
 **Third-party code.** [14 ported packages](ports/README.md) have scoped APIs and documented
 adaptations. Libraries ship as ordinary Python wheels: uv or pip installs them, and Pystachy

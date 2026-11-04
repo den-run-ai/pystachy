@@ -1356,8 +1356,8 @@ raises `NotImplementedError`, and `translate()` is not provided.
 `copyfileobj()`, `copyfile()`, `copymode()`, `copy()`, `move()` and `rmtree()`, with `Error`,
 `SameFileError` and `SpecialFileError` and CPython's checks and messages
 ([test](../tests/programs/library/lib_shutil.py)). `copyfile()` copies a file's bytes through
-the runtime, as Pystachy has no binary files; it opens and checks the source before it truncates
-the destination, as CPython does ([test](../tests/programs/library/lib_shutil_copyfile_dir.py)).
+the runtime; it opens and checks the source before it truncates the destination, as CPython does
+([test](../tests/programs/library/lib_shutil_copyfile_dir.py)).
 `rmtree()` is CPython 3.13's Linux `_rmtree_safe_fd`, in the runtime: it walks the tree through
 directory descriptors, and finds each directory by the device and inode that `lstat()` found,
 so a directory replaced by a link during the walk is not followed. Its steps, their order and

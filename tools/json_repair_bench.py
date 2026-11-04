@@ -3,7 +3,7 @@
 The JSON config supplies variants (name, source, commands, optional env/identity)
 and cases (name, probe, args). Commands are arrays, never shell strings. Probe
 programs accept their normal arguments followed by BATCHES WARMUPS. Compilation
-is a separate explicit step. See bench/json_repair/ACCUMULATOR.md.
+is a separate explicit step. See bench/json_repair/README.md.
 """
 import argparse
 import hashlib

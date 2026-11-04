@@ -52,7 +52,8 @@ scaling at both ends; values are AOT's speedup over upstream:
   workload than that candidate. `JSONDecodeError.__init__`'s line and column arithmetic on
   non-ASCII text remains.
 - The adapted port is 1.3–1.4× slower than upstream under CPython on comma-dense text,
-  and its accumulator has the PyPy and memory costs in the [accumulator report](ACCUMULATOR.md).
+  and the accumulator has historical PyPy and memory costs recorded in
+  [Historical evidence](#historical-evidence).
   CPython users should keep upstream.
 - Each JIT process first compiles the package, about 1.2 s here. An AOT executable starts
   and repairs the ten records in 4–5 ms, where importing either version under CPython takes
@@ -63,20 +64,33 @@ scaling at both ends; values are AOT's speedup over upstream:
   and JIT, normally and with collection at every allocation.
 
 To repeat the campaign, build the probes as in [Reproduce](#reproduce) and run
-`tools/json_repair_bench.py` with a variants file like the one in the
-[accumulator report](ACCUMULATOR.md#paired-timings). The evidence file lists every
+`tools/json_repair_bench.py` with a variants file like the one in
+[Paired timings](#paired-timings). The evidence file lists every
 command, argument and source hash. Its `callgrind_counts` also compare whole-process AOT
 instruction counts of the nine workloads with those of `c3aaa068`, less a stack-bounds
 fallback that only Valgrind triggers.
 
 <a id="earlier-prototype-measurement"></a>
+<a id="earlier-measurement"></a>
 
-## Earlier measurement
+## Historical evidence
 
 The first prototype measurement, of the ten-record mix at `ce6aee5e`, is on
 [this page as of alpha.4](https://github.com/den-run-ai/pystachy/blob/9c8bc74648aa7c7e6a1b9d8f9dbbfeb1f2908ad3/bench/json_repair/README.md#earlier-prototype-measurement);
 [its samples and identities](results/prototype.json) are retained. It used CPython 3.13.16
 on another host, so it is not comparable with the table above.
+
+The [typing/scaling report](https://github.com/den-run-ai/pystachy/blob/a2cb8a3638d715577a7ab1cd1e4a0d6b01b6cdf2/bench/json_repair/PROFILING.md)
+and [28 October accumulator report](https://github.com/den-run-ai/pystachy/blob/a2cb8a3638d715577a7ab1cd1e4a0d6b01b6cdf2/bench/json_repair/ACCUMULATOR.md)
+are preserved in Git history. The latter measured a **65% PyPy mixed-workload slowdown**
+after 20 warmup batches, and a **40% increase in CPython `tracemalloc` peak bytes** at
+8,000 escaped fragments (35,083 → 49,234 bytes). Retained traced bytes were unchanged;
+this is not a native retained-heap measurement. These historical tradeoffs were not
+remeasured by the alpha.4 campaign. Raw evidence remains in
+[typing/scaling](results/typing-and-scaling.json),
+[incremental escape state](results/incremental-escape-state.json),
+[native escape state](results/native-incremental-escape-state.json) and
+[bounded accumulator](results/bounded-accumulator.json).
 
 ## Reproduce
 
@@ -90,24 +104,65 @@ PYTHONPATH=ports python3.13 bench/json_repair/bench.py 0
 /tmp/json_repair_bench 0
 ```
 
-Compare the `outputs` and `per_round` lines exactly before timing. Choose an
-allowed CPU from `os.sched_getaffinity(0)`. For each of seven rounds, run each
-variant once, rotating which runs first:
+Compare the `outputs` and `per_round` lines exactly before timing. A mixed run
+with 2,000 rounds must report `records 20000`, `per_round 616` and `checksum 1232000`.
+`scaling.py` covers larger valid, malformed, Unicode, logging and escaped strings:
 
 ```sh
-PYTHONPATH=/tmp/json_repair_upstream/src taskset -c 0 python3.13 bench/json_repair/bench.py 2000
-PYTHONPATH=ports taskset -c 0 python3.13 bench/json_repair/bench.py 2000
-taskset -c 0 /tmp/json_repair_bench 2000
+PYSTACHY_PATH=ports ./pystachy build bench/json_repair/scaling.py -o /tmp/json_repair_scaling
+/tmp/json_repair_scaling escaped 4000 5 5 6
+python3.13 -m unittest discover -s tools -p 'test_json_repair_accumulator.py'
 ```
 
-Use the median `seconds` for each variant. Each run must retain identical output
-witnesses, `records 20000`, `per_round 616` and `checksum 1232000`. Ensure GC stress
-is disabled and other builds/tests are not running before measuring. CPU pinning
-does not isolate a shared host.
+The [deterministic accumulator checks](../../tools/test_json_repair_accumulator.py)
+exercise N/2N/4N, Unicode and chunk boundaries, with negative controls for unbounded
+copying and scalar scanning. They count logical copied code points and parser calls,
+not native allocations or GC traffic; they do not prove every parser path is linear.
+The [port guide](../../ports/json_repair/PORT.md#adaptations) describes incremental
+escape state, bounded chunks and ordinary-text spans.
 
-The [typing and scaling report](PROFILING.md) adds larger valid, malformed,
-Unicode, logging and escaped-code-string workloads. It separates native code-size
-changes from inconclusive timing differences and identifies quadratic rescanning.
+### Paired timings
+
+Build the mixed and scaling probes separately in each checkout, using identical
+probe sources and, for port-only comparisons, the same compiler. Give the binaries
+distinct paths as below. Each probe accepts measured batches and discarded warmup
+batches as its final arguments; the runner appends those itself.
+Save a config like this to `/tmp/variants.json`, replacing the example paths:
+
+```json
+{
+  "variants": [
+    {"name": "before-aot", "source": "/path/to/baseline", "commands": {
+      "scaling": ["/tmp/before-scaling"], "mixed": ["/tmp/before-mixed"]}},
+    {"name": "after-aot", "source": "/path/to/candidate", "commands": {
+      "scaling": ["/tmp/after-scaling"], "mixed": ["/tmp/after-mixed"]}}
+  ],
+  "cases": [
+    {"name": "escaped-N", "probe": "scaling", "args": ["escaped", "1000", "5"]},
+    {"name": "escaped-2N", "probe": "scaling", "args": ["escaped", "2000", "5"]},
+    {"name": "escaped-4N", "probe": "scaling", "args": ["escaped", "4000", "5"]},
+    {"name": "mixed", "probe": "mixed", "args": ["200"]}
+  ]
+}
+```
+
+Choose an allowed CPU from `os.sched_getaffinity(0)` for `--cpu` (replace `0` below).
+Disable GC stress, stop other local builds/tests and leave sources/binaries unchanged:
+
+```sh
+python3.13 tools/json_repair_bench.py /tmp/variants.json --cpu 0 \
+  --pairs 5 --batches 5 --warmups 6 --output /tmp/json-repair-results.json
+```
+
+The runner rotates process order, requires identical complete-output witnesses and
+retains raw batches, commands and source/executable hashes. It reports medians of
+process medians and rejects changed sources, failed processes or invalid timings.
+Each `source` must be the checkout supplying the consumed sources. For CPython/PyPy,
+use absolute script paths and set `PYTHONPATH` to the parser path in the variant's `env`.
+Inherited `PYSTACHY_*` and Python import overrides are cleared, so required JIT LLVM/cache
+settings also belong there.
+Pinning does not isolate a shared host. Keep memory/instruction profiling separate
+from ordinary timings; see the historical reports for attribution commands.
 
 ## Separate decoder, repair and serialization controls
 
