@@ -16,7 +16,7 @@ from src.pystachy_compiler import optimizations
 from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler.ir import FnInfo, IFn, Ins, Val
 from src.pystachy_compiler.loader import Loader
-from src.pystachy_compiler.specs import FXALL, FXBIT
+from src.pystachy_compiler.specs import FXALL, FXBIT, RAWR
 from src.pystachy_compiler.syntax import Node
 
 
@@ -26,11 +26,9 @@ def empty_function():
     return fn
 
 
-def append_list_read(fn):
-    op = Ins("list.len", "int", "")
-    op.a = [Val("%a0", "list[int]")]
-    op.r = [1]
-    fn.n = 1
+def append_global_write(fn):
+    op = Ins("mem.store", "", "")
+    op.a = [Val("@probe", "*int"), Val("1", "int")]
     fn.blocks[0].code.insert(0, op)
 
 
@@ -68,16 +66,16 @@ print(accumulated([0.5, 1.5]), repeated(Box(3)), repeated(None))
 
 
 class PassContractTests(unittest.TestCase):
-    def test_effect_bounds_need_not_be_exact_or_solved(self):
+    def test_effect_safety_bounds_need_not_be_exact_or_solved(self):
         # FXALL is a sound bound even before EffectSummaries has been populated.
         # A stale, more precise upper bound also remains valid after an effect goes.
-        for effects, reads in ((FXALL, True), (FXBIT["rL"] | FXBIT["R"], True),
-                               (FXBIT["rL"], False)):
-            with self.subTest(effects=effects, reads=reads):
+        for effects, writes in ((FXALL, True), (FXBIT["wG"] | FXBIT["R"], True),
+                                (FXBIT["wG"], False)):
+            with self.subTest(effects=effects, writes=writes):
                 g, fn = Gen(), empty_function()
                 fn.fx = effects
-                if reads:
-                    append_list_read(fn)
+                if writes:
+                    append_global_write(fn)
                 with patch.dict(os.environ, {"PYSTACHY_IRCHECK": "1"}), \
                         patch.object(Gen, "verify") as verify:
                     self.assertEqual(g.optimize(fn, {"listget": True}), 0)
@@ -86,7 +84,7 @@ class PassContractTests(unittest.TestCase):
 
     def test_missing_effect_is_rejected_before_pass(self):
         g, fn = Gen(), empty_function()
-        append_list_read(fn)
+        append_global_write(fn)
         fn.fx = 0
         err = StringIO()
         with patch.dict(os.environ, {"PYSTACHY_IRCHECK": "1"}), \
@@ -94,7 +92,7 @@ class PassContractTests(unittest.TestCase):
                 self.assertRaises(SystemExit):
             g.optimize(fn, {"listget": True})
         run.assert_not_called()
-        self.assertIn("listget requires conservative effect bounds", err.getvalue())
+        self.assertIn("listget requires conservative effect safety bounds", err.getvalue())
 
     def test_entry_depth_snapshot_does_not_require_io_effect(self):
         g, fn = Gen(), empty_function()
@@ -129,11 +127,11 @@ class PassContractTests(unittest.TestCase):
             return 1
 
         def add_effect(gen, fn):
-            append_list_read(fn)
+            append_global_write(fn)
             return 1
 
         for rewrite, message in ((break_ir, "unknown op unknown.op"),
-                                 (add_effect, "conservative effect bounds")):
+                                 (add_effect, "conservative effect safety bounds")):
             with self.subTest(rewrite=rewrite.__name__):
                 g, fn = Gen(), empty_function()
                 fn.fx = 0
@@ -145,6 +143,68 @@ class PassContractTests(unittest.TestCase):
                     g.optimize(fn, {"dictfuse": True, "listget": True})
                 next_pass.assert_not_called()
                 self.assertIn(message, err.getvalue())
+
+    def test_unionslots_still_rejects_every_new_non_read_effect(self):
+        # Invalidate read summaries without admitting mutation, exceptions,
+        # callbacks, allocation/GC or runtime-state changes. A callee's summary
+        # can conservatively have any one of these bits; unknown callbacks have all.
+        for effect in ("R", "A", "U", "I", "wL", "wD", "wO", "wG", "wF"):
+            with self.subTest(effect=effect):
+                g, fn, callee = Gen(), empty_function(), empty_function()
+                fn.fx = 0
+                callee.f.ll = "@effect"
+                callee.fx = FXALL if effect == "U" else FXBIT[effect]
+                g.fll[callee.f.ll] = 0
+                g.fns.append(callee)
+
+                def add_call(gen, fn):
+                    fn.blocks[0].code.insert(0, Ins("call", "None", "@effect"))
+                    return 1
+
+                err = StringIO()
+                with patch.dict(os.environ, {"PYSTACHY_IRCHECK": "1"}), \
+                        patch.object(Gen, "unionslots", add_call), \
+                        patch.object(Gen, "nullcheck") as next_pass, \
+                        redirect_stderr(err), self.assertRaises(SystemExit):
+                    g.optimize(fn, {"unionslots": True, "nullcheck": True})
+                next_pass.assert_not_called()
+                self.assertIn("unionslots requires conservative effect safety bounds", err.getvalue())
+
+    def test_returned_union_boxes_can_introduce_read_effects(self):
+        # Decomposing the box returned by half() introduces union.tag/raw reads.
+        # Their conservative rL/rD/rO classification exceeds calls()'s original
+        # R/A summary, without changing the program's observable effects.
+        path = Path(__file__).resolve().parent.parent / "tests/programs/inference/union_slots.py"
+        source = path.read_text()
+        decomposed = []
+        original = Gen.unionslots
+
+        def observe(gen, fn):
+            changed = original(gen, fn)
+            if fn.f.ll == "@f.calls":
+                added, operations = 0, set()
+                for block in fn.blocks:
+                    for op in block.code:
+                        extra = gen.opfx(op, fn.fa) & ~fn.fx
+                        if extra:
+                            added |= extra
+                            operations.add(op.op)
+                decomposed.append((changed, added, operations))
+            return changed
+
+        with patch.dict(os.environ, {"PYSTACHY_IRCHECK": "1", "PYSTACHY_OPT": "",
+                                    "PYSTACHY_IRFX": "0"}), \
+                patch.object(Gen, "unionslots", observe):
+            checked_ir = Gen().program(Loader([]).program(str(path), source))
+        self.assertEqual(len(decomposed), 1)
+        changed, added, operations = decomposed[0]
+        self.assertGreater(changed, 0)
+        self.assertEqual(added, RAWR)
+        self.assertEqual(operations, {"union.tag", "union.raw"})
+        with patch.dict(os.environ, {"PYSTACHY_IRCHECK": "0", "PYSTACHY_OPT": "",
+                                    "PYSTACHY_IRFX": "0"}):
+            normal_ir = Gen().program(Loader([]).program(str(path), source))
+        self.assertEqual(checked_ir, normal_ir)
 
     def test_normal_dispatch_does_not_scan_contracts(self):
         g, fn = Gen(), empty_function()

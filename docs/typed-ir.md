@@ -386,11 +386,13 @@ storage. Existing inference holes, including the None-only `list[opt[?]]`, still
 belong to frontend refinement; this validator checks retained type agreement,
 not canonical type resolution. Other runtime families use their existing builders.
 
-`ListLayout` separates the semantic element from its stored value representation,
-packed slot, numeric identity capability and payload-array GC policy. It takes the
-program's promoting-integer policy explicitly: `list[int]` alone cannot establish
-whether its bigint companion is available. `atomic` describes only the payload
-array; bigint and identity companions remain scanned.
+`ListLayout` records the outer list's semantic element and packed slot, scalar
+promoting-integer capability, numeric identity capability and payload-array GC
+policy. It takes the program's promoting-integer policy explicitly: `list[int]`
+alone cannot establish whether its bigint companion is available. `atomic`
+describes only the payload array; bigint and identity companions remain scanned.
+Nested held-value layouts and the types returned by reads remain with the existing
+conversion helpers.
 
 | Store adapter | Required representation |
 |---|---|
@@ -413,20 +415,23 @@ This contract does not enable a native-list/Any crossing or cover every list mut
 are whole-function IR passes; the others select frontend or lowering choices.
 
 `PASS_CONTRACTS` declares their order, prerequisites, preserved facts and invalidation.
-All four require typed IR before exception lowering and conservative effect bounds.
+All four require typed IR before exception lowering and conservative bounds on
+raising, allocation, callbacks, runtime state and every write category.
 Each invocation owns its analyses; no range, alias or value proof is cached between
-passes. After a rewrite, exact effects need recomputation for reporting, while the
-previous conservative bounds remain safe for optimization and exception lowering.
+passes. These preserved effect bounds support mutation proofs and exception lowering.
+`unionslots` may introduce tag and payload reads when splitting a union box, so the
+old summary need not bound all reads. A consumer needing read-effect bounds must
+rerun `Gen.effects`; exact effect reporting already does so after a rewrite.
 
 | Pass | Analyses built locally | Additional invalidation after a rewrite |
 |---|---|---|
 | `listget` | Predecessors and loop bounds | Instruction-derived value, range and alias proofs |
 | `dictfuse` | Predecessors, values and lookup proofs | Instruction-derived value, range and alias proofs |
-| `unionslots` | Values, uses, aliases and reaching stores | Slot layout and instruction-derived proofs |
+| `unionslots` | Values, uses, aliases and reaching stores | Read-effect bounds, slot layout and instruction-derived proofs |
 | `nullcheck` | Predecessors, dominators, values and reaching stores | CFG, dominance and instruction-derived proofs |
 
 With `PYSTACHY_IRCHECK=1`, scheduling checks reject lowered exception edges or
-insufficient effect bounds, and every changed pass reruns typed-IR verification
+insufficient bounds on those preserved effects, and every changed pass reruns typed-IR verification
 before the next pass. Normal compilation does not add these verification scans.
 
 | Option | Implemented behavior |

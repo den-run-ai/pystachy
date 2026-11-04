@@ -8,18 +8,27 @@ from src.pystachy_compiler.specs import CANON_DEPTH, FXALL, FXBIT, LOOKUPS, RAWW
 from src.pystachy_compiler.utils import is_list, is_tuple, is_union, umembers
 
 
+# Every non-read summary effect: exceptions, allocation/GC, callbacks, runtime
+# state and writes must remain bounded for later optimizations and EH lowering.
+# Representation rewrites can introduce reads of immutable boxes, classified more
+# broadly by IROPS than the original local-slot reads. Read-sensitive consumers
+# must rerun effects() after those rewrites instead of using the old read bounds.
+PASS_SAFETY_EFFECTS = FXALL & ~(FXBIT["rL"] | FXBIT["rD"] | FXBIT["rO"] | FXBIT["rG"] | FXBIT["rF"])
+
+
 class PassContract:
     # Contracts for the existing pre-EH function passes. Analyses are owned by one
     # invocation of a pass: Values, predecessor maps and proofs never survive it.
     # "invalidates" describes snapshots a future consumer must rebuild, not a cache
-    # that exists today. Effect bounds remain sound even when they cease to be exact.
+    # that exists today. Non-read effect bounds remain sound even when a pass
+    # invalidates read bounds or exact effect summaries.
     def __init__(self, name: str, analyses: list[str], preserves: list[str], invalidates: list[str]):
         self.name = name
-        self.requires = ["typed-ir", "pre-eh", "effect-bounds"]
+        self.requires = ["typed-ir", "pre-eh", "effect-safety-bounds"]
         self.analyses = analyses
-        self.preserves = ["typed-ir", "pre-eh", "effect-bounds"] + preserves
+        self.preserves = ["typed-ir", "pre-eh", "effect-safety-bounds"] + preserves
         self.invalidates = invalidates
-        self.rerun = ["typed-ir", "pre-eh", "effect-bounds"]
+        self.rerun = ["typed-ir", "pre-eh", "effect-safety-bounds"]
 
 
 # Dispatch order is part of the contract: every local analysis sees the previous
@@ -33,7 +42,7 @@ PASS_CONTRACTS: list[PassContract] = [
                  ["values", "range-proofs", "alias-proofs", "exact-effects"]),
     PassContract("unionslots", ["values", "uses", "alias-proofs", "reaching-stores"],
                  ["cfg", "loop-shape"],
-                 ["values", "range-proofs", "alias-proofs", "slot-layout", "exact-effects"]),
+                 ["values", "range-proofs", "alias-proofs", "slot-layout", "read-effect-bounds", "exact-effects"]),
     PassContract("nullcheck", ["predecessors", "dominators", "values", "reaching-stores"],
                  ["loop-shape", "slot-layout"],
                  ["values", "range-proofs", "alias-proofs", "cfg", "dominators", "exact-effects"]),
@@ -57,10 +66,10 @@ def gen_pass_check(self, fn: IFn, contract: PassContract, after: bool) -> None:
             # Like effects(): an entry snapshot itself adds no observable effect.
             # recursionscope gives counted entries their real R/I effects instead.
             snapshot = b is fn.blocks[0] and i is b.code[0] and i.op == "rt" and i.s == "recursion.depth" and len(i.r) == 1 and f"%t{i.r[0]}" == fn.rdepth
-            if "effect-bounds" in checks and not snapshot:
-                actual |= self.opfx(i, fn.fa) & FXALL
-    if "effect-bounds" in checks and actual & ~fn.fx != 0:
-        fail(f"internal error: {contract.name} requires conservative effect bounds in {fn.f.ll}", 0)
+            if "effect-safety-bounds" in checks and not snapshot:
+                actual |= self.opfx(i, fn.fa) & PASS_SAFETY_EFFECTS
+    if "effect-safety-bounds" in checks and actual & ~fn.fx != 0:
+        fail(f"internal error: {contract.name} requires conservative effect safety bounds in {fn.f.ll}", 0)
 
 
 def recursion_cycles(calls: list[list[int]], comp: list[int]) -> list[bool]:
