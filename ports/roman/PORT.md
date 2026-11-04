@@ -18,7 +18,7 @@ print(fromRoman("mcmlxxxvii"))
 
 - `toRoman(int)`, `fromRoman(str, special_case: bool = True)`, numeral mapping and error classes.
 - ASCII upper/lowercase numerals, `N` for zero and upstream’s final-newline validation behavior.
-- The argparse-based CLI is outside the validated port coverage. `romanNumeralPattern` is upstream's compiled regular expression, matched by [`lib/re`](../../lib/README.md).
+- The CLI accepts a number and `-r`/`--reverse` for the reverse conversion. It uses the port's existing converters and upstream regular expression.
 
 <a id="deviations-it-hits"></a>
 
@@ -35,13 +35,13 @@ print(fromRoman("mcmlxxxvii"))
 From the repository root, after building the compiler:
 
 ```sh
-PYSTACHY_PATH=ports ./pystachy run tests/programs/apps/port_roman_convert.py
+PYSTACHY_PATH=ports ./pystachy run ports/roman/__init__.py -r mcmlxxxvii
 ./tests/run.sh ./pystachy "jit aot" tests/programs/apps/port_roman_convert.py tests/programs/apps/port_roman_validate.py
 ```
 
 The tests cover upstream examples/errors, every integer 1–4999 in both directions, lowercase forms, pattern boundaries and exceptions.
 
-Cases: [port_roman_convert.py](../../tests/programs/apps/port_roman_convert.py), [port_roman_validate.py](../../tests/programs/apps/port_roman_validate.py).
+Cases: [port_roman_cli.py](../../tests/programs/apps/port_roman_cli.py), [port_roman_convert.py](../../tests/programs/apps/port_roman_convert.py), [port_roman_validate.py](../../tests/programs/apps/port_roman_validate.py).
 
 <a id="speed"></a>
 

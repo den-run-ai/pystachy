@@ -1,0 +1,12 @@
+Namespace(v=False, version='latest')
+(Namespace(v=True, version='stable'), ['--later'])
+usage: tool [-v] [-V] [version]
+
+positional arguments:
+  version
+
+options:
+  -v
+  -V, --version  show program's version number and exit
+tool 1.2 (100%)
+[exit 0]

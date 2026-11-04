@@ -21,7 +21,7 @@ the [module guide](README.md#module-guide) summarizes what each module supports.
 | [Collections and functional tools](#collections-and-functional-tools) | [`collections`](#collections), [`copy`](#copy), [`enum`](#enum), [`heapq`](#heapq), [`itertools`](#itertools), [`functools`](#functools), [`operator`](#operator), [`contextlib`](#contextlib) |
 | [Numbers and randomness](#numbers-and-randomness) | [`random`](#random), [`statistics`](#statistics), [`mpz`](#mpz) |
 | [Dates and times](#dates-and-times) | [`datetime`](#datetime) |
-| [Files, OS and command line](#files-os-and-command-line) | [`io`](#io), [Binary files](#binary-files), [Path modules](#path-modules), [`pathlib`](#pathlib), [`glob`](#glob), [`shutil`](#shutil), [`getopt`](#getopt) |
+| [Files, OS and command line](#files-os-and-command-line) | [`io`](#io), [Binary files](#binary-files), [Path modules](#path-modules), [`pathlib`](#pathlib), [`glob`](#glob), [`shutil`](#shutil), [`argparse`](#argparse), [`getopt`](#getopt) |
 | [Processes and threads](#processes-and-threads) | [`_thread`](#_thread), [`threading`](#threading), [`atexit`](#atexit) |
 | [Runtime services](#runtime-services) | [`abc`](#abc), [`types`](#types), [`warnings`](#warnings), [`logging`](#logging), [`traceback`](#traceback), [`weakref` and `_weakref` (prototype)](#weakref-and-_weakref-prototype) |
 | [Removed modules](#removed-modules) | `_imp`, `_ast`, `opcode` |
@@ -170,10 +170,7 @@ also remain unsupported.
 ### `gettext`
 
 CPython's `gettext`, with marked edits. Its table of the plural forms' operators is the dict that
-CPython makes of a tuple bound to the same name first, as a module global has one type here. The
-module imports, as `argparse` needs at its start. `argparse` then imports too, but its
-`ArgumentParser` (two base classes), `Namespace` (a template base class) and `HelpFormatter`
-(statements in its class body) are compile-time errors where used. Its default locale directory
+CPython makes of a tuple bound to the same name first, as a module global has one type here. Its default locale directory
 is made of `sys.base_prefix` (the Pystachy home, see
 [sys](../docs/language/compatibility.md#modules-and-libraries)). `NullTranslations` and its
 methods `gettext()`, `pgettext()`, `add_fallback()`, `info()` and `charset()`, `textdomain()` and
@@ -1346,7 +1343,10 @@ outside this supported API set. Builtin `os.path` has its own documented APIs.
 `glob` is Pystachy's own subset (`lib/glob.py`) of CPython 3.13.16's module: `glob()` and
 `iglob()` with `root_dir`, `recursive` and `include_hidden`, `escape()` and `has_magic()`,
 with CPython's functions for them and their order of results
-([test](../tests/programs/library/lib_glob.py)). Directories are listed with `os.listdir()`
+([test](../tests/programs/library/lib_glob.py)). On POSIX, `escape()` and `has_magic()`
+accept both `str` and `bytes`. With no metacharacters, `escape()` returns its input by
+identity. `glob()` and `iglob()` take text paths
+([CPython-derived cases](../tests/programs/upstream/upstream_glob_escape.py)). Directories are listed with `os.listdir()`
 and tested with `os.path.isdir()`, as CPython's `os.scandir()` entries would be. `dir_fd`
 raises `NotImplementedError`, and `translate()` is not provided.
 
@@ -1369,6 +1369,44 @@ and `copyfile()` of a link with `follow_symlinks=False`, raise `NotImplementedEr
 file system copies it with `copy()` (CPython uses `copy2()`, which also copies its times), and
 of a directory raises the rename's `OSError`. `copytree()`, `copy2()`, `copystat()`, `which()`,
 `disk_usage()`, `get_terminal_size()` and the archive functions are not provided.
+
+### `argparse`
+
+Create a parser in the module body or a top-level function. Assign it to one
+name, then call `add_argument()` directly in the same block before parsing.
+The compiler gives each destination a field on a fresh Namespace. An optional
+integer without a default has type `int | None`. A required one has type `int`.
+
+```python
+import argparse
+
+parser = argparse.ArgumentParser(prog="scale")
+parser.add_argument("filename")
+parser.add_argument("-n", "--repeat", type=int, default=1)
+parser.add_argument("--verbose", action="store_true")
+args = parser.parse_args()
+print(args.filename, args.repeat, args.verbose)
+```
+
+| Form | Supported behavior |
+|---|---|
+| Declarations | Literal `prog`, `description`, `add_help`, and `allow_abbrev`. Positional names, short and long options, aliases, `dest`, `required`, `metavar`, and help text. |
+| Values | Builtin `str`, `int`, and `float`; homogeneous literal choices; scalar defaults of the result type or `None`; `store_true` and `store_false`. |
+| Positionals | One value, `nargs="?"`, or a final `"*"` / `"+"` positional. Repeated values form a typed list. |
+| Parsing | `parse_args()` and `parse_known_args()` take process arguments or an explicit `list[str]`. Each call returns independent values. Known-argument parsing also returns the remaining strings in order. |
+| Output | Help and options declared with `action="version", version="%(prog)s 1.0"` print to stdout and exit 0. Argument errors write usage and a diagnostic to stderr and exit 2. The English formatter uses `COLUMNS` or 80 columns. |
+
+Results support field access, identity, representation, equality and
+`isinstance(result, argparse.Namespace)`. Each schema has its own native class,
+so `type(result) is argparse.Namespace` is false and its name is compiler-generated.
+Equality compares declared fields. A foreign operand returns false without
+reflected comparison. Distinct results sharing a NaN field can compare unequal
+under the native float identity rules.
+
+Parser declarations must stay in their owning scope. Runtime-defined schemas,
+groups, subparsers and custom actions or converters are outside this subset.
+The [JSON repair command](../ports/json_repair/PORT.md#file-and-pipe-command)
+uses an optional filename, boolean switches and a named output file.
 
 ### `getopt`
 

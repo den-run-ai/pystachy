@@ -16,7 +16,9 @@ from src.pystachy_compiler.syntax import (
     expr_name,
     flat_del,
     has_kind,
+    made_var,
     mk,
+    private_name,
     start,
 )
 
@@ -71,6 +73,7 @@ class Parser:
         self.p = 0
         self.early = True  # only a docstring and from __future__ imports so far
         self.exact_ints = False  # a literal past 64 bits keeps its digits (a module whose ints promote)
+        self.libprims = False  # Loader identified the shipped library: its bare __pys_* calls are intrinsics
         self.loops = 0  # loops around the statement being parsed, in its function or class
         self.infn = False  # inside a def
         self.nest = 0  # the parser's own recursion: nested expressions and elif branches
@@ -307,11 +310,97 @@ class Parser:
         while self.peek() != "eof":
             if not self.eat("nl"):
                 self.stmt(body)
+        for n in body:
+            self.private_names(n, "", [])
         st = Symtable(self.errs, self.at)
         st.tparams = self.tparams
         st.tpx = self.tpx
         st.check(body, doc)
         return mk("block", "doc" if doc else "", 1, body)  # (with its docstring: Loader.docstring())
+
+    def private_types(self, line: int, cls: str, only: list[str]) -> None:
+        # Detached bounds, defaults and annotations belong to the same lexical context as the
+        # declaration. Keep their symbol-table names in step with the AST consumed by Loader.
+        if line in self.tparams:
+            names: list[str] = []
+            seen: dict[str, str] = {}
+            for name in self.tparams[line].split():
+                mangled = private_name(name, cls, only)
+                if mangled in seen and seen[mangled] != name:
+                    self.later(0, f"duplicate type parameter '{name}'", line)
+                seen[mangled] = name
+                names.append(mangled)
+            self.tparams[line] = " ".join(names)
+        for n in self.tpx.get(line, []):
+            self.private_names(n, cls, only)
+
+    def private_names(self, n: Node, cls: str, only: list[str]) -> None:
+        # Before symbol-table checking and import qualification: class bodies establish a new
+        # lexical context; functions, lambdas and comprehensions inherit it. Strings and call
+        # keyword labels are literal, even when a parameter of that spelling is mangled.
+        k = n.kind
+        if k == "class" or k == "subclass":
+            c = n if k == "class" else n.kids[0]
+            own = c.s
+            n.s = private_name(own, cls, only)
+            c.s = n.s
+            tps = self.tparams.get(n.line, "").split()
+            if any([private_name(t, own, []) != t for t in tps]):
+                c.tpsource = " ".join(tps)
+            for b in n.kids[1:] if k == "subclass" else []:
+                self.private_names(b, own if len(tps) > 0 else cls, tps if len(tps) > 0 else only)
+            self.private_types(n.line, own if len(tps) > 0 else cls, tps if len(tps) > 0 else only)
+            self.private_names(c.kids[0], own, [])
+            for d in c.kids[1:]:
+                self.private_names(d, cls, only)
+            return
+        if k == "def" or k == "typealias":
+            name = private_name(n.s, cls, only)
+            if k == "def" and name != n.s:
+                n.pyname = n.s
+            tps = self.tparams.get(n.line, "").split()
+            if k == "def" and any([private_name(t, cls, only) != t for t in tps]):
+                n.tpsource = " ".join(tps)
+            n.s = name
+            self.private_types(n.line, cls, only)
+            if k == "def":
+                n.kids[2].s = " ".join([private_name(t, cls, only) for t in n.kids[2].s.split()])
+        elif k == "params":
+            seen: dict[str, str] = {}
+            for p in n.kids:
+                name = private_name(p.s, cls, only)
+                if name in seen and seen[name] != p.s:
+                    self.later(0, f"duplicate argument '{p.s}' in function definition", p.line)
+                seen[name] = p.s
+        elif k == "import":
+            for a in n.kids:
+                path = a.kids[1].s
+                target = a.kids[0].s
+                source = private_name(path, cls, only)
+                if n.s == "":
+                    if "." not in path:
+                        target = source
+                else:
+                    item = target[len(path) + 1:] if path != "" else target
+                    target = (source + "." if source != "" else "") + private_name(item, cls, only)
+                a.s = private_name(a.s, cls, only)
+                a.kids[0].s = target
+                a.kids[1].s = source
+            return
+        elif k == "call" and self.libprims and n.kids[0].kind == "name" and n.kids[0].s.startswith("__pys_"):
+            # Compiler-owned library calls keep the intrinsic's spelling. This does not exempt
+            # user modules, attributes or bindings. Lowering's primitive ownership checks remain.
+            for child in n.kids[1:]:
+                self.private_names(child, cls, only)
+            return
+        elif (k == "name" and not n.made) or k == "attr" or k == "param" or k == "starparam" or k == "dstarparam" or k == "except" or k == "walrus":
+            n.s = private_name(n.s, cls, only)
+        elif k == "typeparams" or k == "noann" or k == "pattern":
+            n.s = " ".join([private_name(t, cls, only) for t in n.s.split()])
+        elif k == "deco":
+            n.s = ".".join([private_name(t, cls, only) for t in n.s.split(".")])
+        for child in n.kids:
+            self.private_names(child, cls, only)
 
     def scope(self, fn: bool) -> Node:
         # the body of a def (fn) or class: no loop around it
@@ -1053,7 +1142,7 @@ class Parser:
                     self.extra -= 7 if end == ":" else 0
                 elif kind == "param" and kwonly < 0 and len(params.kids) > 0 and params.kids[-1].kids[1].kind != "noann":
                     self.fail("parameter without a default follows parameter with a default", at)
-                params.kids.append(mk(kind, pname, line, [ann, dflt]))
+                params.kids.append(mk(kind, pname, at, [ann, dflt]))
                 if kind == "starparam":
                     kwonly = len(params.kids)
             if not self.eat(","):
@@ -2170,7 +2259,7 @@ class Parser:
             conv = ""
         if conv != "":
             fn = "__pys_repr" if conv == "r" else ("__pys_str" if conv == "s" else "__pys_ascii")
-            e = mk("call", "", line, [mk("name", fn, line, []), e])
+            e = mk("call", "", line, [made_var(fn, line), e])
         n.kids.append(mk("fmt", "", line, [e, spec]))
         return j + 1
 

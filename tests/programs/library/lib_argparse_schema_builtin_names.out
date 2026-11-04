@@ -1,0 +1,3 @@
+Namespace(quiet=True, names=['Ada', 'Jo'])
+app repr 17 27 37
+[exit 0]

@@ -23,7 +23,7 @@ dynamic.BINDUNDERS dynamic.BUILTIN expressions.ORDERS
 ir.NONUMS ir.NOVALS ir.NOLABELS ircheck.RESULT_NUMBERS
 lexer.KEYWORDS lexer.OPS lexer.ESCAPES lexer.PREFIXES lexer.NONPRINT lexer.NOTID
 loader.ENUM_NAMES loader.ENUM_BASES loader.ENUM_HOOKS
-local_versions.UNVERSIONED parser.ATOMS
+local_versions.UNVERSIONED optimizations.PASS_CONTRACTS parser.ATOMS
 reflection.BUILTIN_TYPES reflection.SLOT_WRAPPERS reflection.OBJ_BUILTINS reflection.TYPE_BUILTINS reflection.PICKLING
 scalar_ir.SCALAR_INTS scalar_ir.SCALAR_BIN scalar_ir.SCALAR_FLOAT
 scalar_ir.SCALAR_ICMP scalar_ir.SCALAR_FCMP scalar_ir.SCALAR_CASTS scope.COMPNAMES
@@ -38,7 +38,7 @@ specs.FUTURE specs.DEFAULTS specs.EXCEPTIONS specs.EXCBASES specs.EXCATTRS specs
 specs.EXCKW specs.HASATTR specs.NONEARG specs.OPTARG specs.NONERET specs.OPTCALLS
 specs.NOREF specs.UNSUPPORTED specs.INERT_DECOS specs.INERT specs.PURE specs.RAISERS
 specs.CODECS specs.ARITY specs.METHODS specs.TEXT_OPS specs.UNICODE_AUDIT
-specs.FSETMETHODS specs.SETMETHODS specs.IROPS specs.OPTS specs.VALUE_AT specs.FX
+specs.FSETMETHODS specs.SETMETHODS specs.IROPS specs.OPTS specs.VALUE_AT specs.FX specs.LIST_WRITES
 specs.FXBIT specs.RUNTIME specs.NARROWED specs.READ_HELPERS specs.INT_HELPERS specs.RTDATA specs.RTSYM
 structs.STRUCT_FNS structs.NATIVE_SIZES structs.STANDARD_SIZES
 syntax.DCOPTS syntax.EXPRNAMES syntax.STARTS syntax.CMPOPS syntax.AUGOPS syntax.BINOPS syntax.NOKIDS

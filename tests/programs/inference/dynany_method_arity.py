@@ -13,6 +13,9 @@ class C:
     def m(self, value: int) -> int:
         return self.v + value
 
+    def __private(self, __value: int) -> int:
+        return __value
+
     def two(self, a: int, b: int) -> int:
         return a * b
 
@@ -55,8 +58,13 @@ def attempt(x: Any, which: int) -> None:
         elif which == 7:
             f = x.m
             print(f(1, 2))
-        else:
+        elif which == 8:
             print(x.nope(side(9)))
+        elif which == 9:
+            print(x._C__private())
+        else:
+            bound = x._C__private
+            print(bound(1, 2))
     except TypeError as e:
         print("TypeError:", e)
     except AttributeError as e:
@@ -70,7 +78,7 @@ def main() -> None:
     print(x.m(G))
     print(x.opt(side(4)))
     print(x.st(side(6)), x.cm(side(7)))
-    for which in range(9):
+    for which in range(11):
         attempt(x, which)
 
 

@@ -10,6 +10,7 @@
    thresholds. Like dictprobe, this includes the real runtime and links runtime.py's IR.
    usage: make listprobe */
 #include "../runtime.c"
+#include <sys/wait.h>
 
 I pys_obj_eq(I c, I a, I b) { (void)c; return a == b; }
 enum { RAW_STORE_CLASS = 73 };
@@ -444,6 +445,112 @@ static void query_mutation(void) {
   if (pys_list_find_identity(l, (I)query, query, cstr("i"), cstr("A"), 1) != 1)
     bad("dynamic query does not observe callback raw store");
 }
+/* A native list crosses as the original object and array, with a scanned companion.
+   Fresh dynamic results are boxed lists. Check allocation kinds and dead slots
+   directly: allocation churn alone cannot prove that a stale pointer was cleared. */
+static void native_boundary(void) {
+  List *l = pys_list_new_atomic(4);
+  pys_list_append(l, 1000); pys_list_append(l, 2000);
+  I *original = l->a;
+  Dyn *o = pys_dyn_ref(&pys_dyntype_intlist, l);
+  buffers = pys_list_new(1); pys_list_append(buffers, (I)o);
+  if (o->v != (I)l || pys_dyn_id(o) != (I)l || l->a != original) bad("native boundary copies its object or backing");
+  kinds(l, 1);
+  if (atomic(o) || atomic(l->ids)) bad("native box/companion is not scanned");
+  Dyn *old = pys_dyn_getitem(o, pys_dyn_int(0)), *value = pys_dyn_int(3000);
+  pys_dyn_list_method(o, 0, value, NULL, NULL);
+  if (l->a != original || pys_list_get(l, 2) != 3000 || pys_dyn_getitem(o, pys_dyn_int(2)) != value)
+    bad("dynamic append lost native alias or item identity");
+  pys_list_set(l, 0, 7000);
+  Dyn *fresh = pys_dyn_getitem(o, pys_dyn_int(0));
+  if (fresh == old || fresh->v != 7000) bad("dynamic read retained a typed raw store's old box");
+  for (I i = 0; i < 64; i++) pys_dyn_list_method(o, 0, pys_dyn_int(4000 + i), NULL, NULL);
+  kinds(l, 1);
+  if (l->a == original || atomic(l->ids)) bad("dynamic native growth changed allocation kind");
+  Dyn *copy = pys_dyn_list_method(o, 7, NULL, NULL, NULL);
+  List *boxed = (List *)copy->v;
+  kinds(boxed, 0);
+  if (copy->t != &pys_dyntype_list || boxed->ids || boxed->a[0] != (I)fresh || boxed->a[2] != (I)value)
+    bad("dynamic copy does not contain original item boxes");
+  pys_dyn_list_method(copy, 0, (Dyn *)&pys_dyn_true_box, NULL, NULL);
+  if (boxed->len != l->len + 1 || boxed->a[boxed->len - 1] != (I)&pys_dyn_true_box)
+    bad("fresh dynamic copy inherited native store restriction");
+  Dyn *slice = pys_dyn_list_slice(o, NONE, NONE, -1);
+  kinds((List *)slice->v, 0);
+  if (pys_dyn_getitem(slice, pys_dyn_int(0)) != pys_dyn_getitem(o, pys_dyn_int(-1))) bad("dynamic slice loses item identity");
+  I n = l->len, *raw = l->a, *ids = l->ids;
+  pys_dyn_list_method(o, 8, NULL, NULL, NULL);
+  if (l->a != empty_atomic || l->ids != empty_identity_int) bad("dynamic clear loses native allocation kind");
+  for (I i = 0; i < n; i++) if (raw[i] || ids[i + 1]) bad("dynamic clear retains removed values or boxes");
+  pys_dyn_list_method(o, 0, value, NULL, NULL);
+  kinds(l, 1);
+  if (atomic(l->ids)) bad("dynamic refill companion is not scanned");
+  raw = l->a; ids = l->ids;
+  if (pys_dyn_list_method(o, 2, NULL, NULL, NULL) != value || raw[0] || ids[1]) bad("dynamic pop retains or changes removed identity");
+  check_empty(l);
+}
+__attribute__((noinline)) static void native_wide_boundary(void) {
+  List *l = pys_list_new_atomic(0);
+  Dyn *o = pys_dyn_ref(&pys_dyntype_biglist, l);
+  buffers = pys_list_new(1); pys_list_append(buffers, (I)o);
+  Mpz *digits = pys_mpz_from_str(cstr("1180591620717411303424"), 10);
+  Dyn *a = pys_dyn_big(0, digits), *b = pys_dyn_big(0, digits);
+  pys_dyn_list_method(o, 0, a, NULL, NULL);
+  pys_dyn_list_method(o, 1, pys_dyn_int(0), b, NULL);
+  pys_dyn_setitem(o, pys_dyn_int(1), a);
+  if (a == b || pys_dyn_getitem(o, pys_dyn_int(0)) != b || pys_dyn_getitem(o, pys_dyn_int(1)) != a ||
+      l->a[0] != INT64_MIN || l->a[1] != INT64_MIN || lbig(l, 0) != digits)
+    bad("dynamic wide stores do not preserve original boxes/digits");
+  kinds(l, 1);
+  if (atomic(l->ids) || atomic(a)) bad("dynamic wide roots are not scanned");
+  Dyn *copy = pys_dyn_list_method(o, 7, NULL, NULL, NULL);
+  kinds((List *)copy->v, 0);
+  if (pys_dyn_getitem(copy, pys_dyn_int(0)) != b || pys_dyn_getitem(copy, pys_dyn_int(1)) != a)
+    bad("dynamic wide copy changes item identity");
+  /* After this frame returns, only the native wrapper in buffers reaches these
+     boxes and digits. The copied result and its scanned backing are not retained. */
+}
+static void checked_boundary_unchanged(void) {
+  List *l = (List *)buffers->a[0];
+  if (l->len != 1 || l->a[0] != 1000 || l->a[1] || !l->ids || l->ids[2] ||
+      ((Dyn *)l->ids[1])->t != &pys_dyntype_int || ((Dyn *)l->ids[1])->v != 1000)
+    _exit(4);   /* run on the rejected store's exit, before the child disappears */
+}
+static void checked_boundary_rejection(void) {
+  /* A source program that produces wide integers also enables promoting list
+     storage globally. Exercise the checked descriptor explicitly to prove that
+     accepting native references does not silently widen its store contract. */
+  int fds[2];
+  if (pipe(fds)) bad("native rejection pipe");
+  pid_t child = fork();
+  if (child < 0) bad("native rejection fork");
+  if (!child) {
+    close(fds[0]);
+    if (dup2(fds[1], STDERR_FILENO) < 0) _exit(2);
+    close(fds[1]); std_out.closed = std_err.closed = 1;
+    List *l = pys_list_new_atomic(0);
+    pys_list_append(l, 1000);
+    Dyn *o = pys_dyn_ref(&pys_dyntype_intlist, l);
+    buffers = pys_list_new(1); pys_list_append(buffers, (I)l);
+    if (atexit(checked_boundary_unchanged)) _exit(2);
+    Dyn *wide = pys_dyn_big(0, pys_mpz_from_str(cstr("1180591620717411303424"), 10));
+    pys_dyn_list_method(o, 0, wide, NULL, NULL);
+    _exit(3);
+  }
+  close(fds[1]);
+  char output[256]; size_t n = 0;
+  while (n < sizeof output - 1) {
+    ssize_t got = read(fds[0], output + n, sizeof output - 1 - n);
+    if (got < 0 && errno == EINTR) continue;
+    if (got < 0) bad("native rejection read");
+    if (!got) break;
+    n += (size_t)got;
+  }
+  close(fds[0]); output[n] = 0;
+  int status;
+  if (waitpid(child, &status, 0) != child || !WIFEXITED(status) || WEXITSTATUS(status) != 1 || strcmp(output, NARROW "\n"))
+    bad("checked native store did not reject a wide int before modifying storage");
+}
 int main(void) {
   gc_init(__builtin_frame_address(0), roots, 1);
   budget_candidates();
@@ -459,7 +566,15 @@ int main(void) {
   identities();
   wide_identities();
   query_mutation();
+  native_boundary();
+  native_wide_boundary();
+  scrub_collect(); scrub_collect();
+  Dyn *wide_list = (Dyn *)buffers->a[0];
+  if (strcmp(pys_dyn_repr(wide_list)->s, "[1180591620717411303424, 1180591620717411303424]") ||
+      pys_dyn_getitem(wide_list, pys_dyn_int(0)) == pys_dyn_getitem(wide_list, pys_dyn_int(1)))
+    bad("native companion did not retain distinct wide boxes through collection");
+  checked_boundary_rejection();
   budgets();
-  puts("listprobe: empty-list reuse, range-list storage/mutation, pointer-free list kinds, numeric identity, promoting storage and large-object collections passed");
+  puts("listprobe: empty-list reuse, range-list storage/mutation, pointer-free list kinds, numeric identity, promoting storage, native Any boundaries and large-object collections passed");
   return 0;
 }

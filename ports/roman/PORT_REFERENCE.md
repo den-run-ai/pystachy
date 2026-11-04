@@ -16,15 +16,13 @@ Archive SHA-256: `275fe9f46290f7d0ffaea1c33251b92b8e463ace23660508ceef522e7587cb
 
 | file | upstream SHA-256 | edits |
 |---|---|---|
-| `__init__.py` | `7d8962ca4ed71a67e0d07d0f6e81deb0f0b177565375d5ff39be1b1dc50e16f5` | 2 regions, and the notice of change |
+| `__init__.py` | `7d8962ca4ed71a67e0d07d0f6e81deb0f0b177565375d5ff39be1b1dc50e16f5` | 1 region and the notice of change |
 
 ## Adaptation record
 
 - `romanNumeralPattern` is upstream's `re.VERBOSE` pattern, compiled by `lib/re`; until the
   re-baseline (#262) a hand-written scanner stood in for it.
-- `argparse` is imported lazily in `parse_args()`, whose annotation is quoted: Pystachy has no
-  `argparse` module.
-- Two edited regions and a dated change notice satisfy the ZPL modified-file requirement; conversion algorithms, numeral mappings and the validating pattern remain upstream’s.
+- `parse_args()` leaves its result annotation inferred so callers can read the two fields of its checked parser schema. The module-level `argparse` import and parser declarations are upstream’s.
 
 ## Validation snapshot
 

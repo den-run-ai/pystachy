@@ -1,0 +1,14 @@
+named True True True True False False
+class True True True list
+other layouts True True True True True True
+named True True True True False False
+class True True True list
+other layouts True True True True True True
+named False False False False True True
+class False False False str
+other layouts False False False False False False
+named False False False False True True
+class False False False NoneType
+other layouts False False False False False False
+class distinction False True False True
+[exit 0]

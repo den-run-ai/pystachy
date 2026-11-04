@@ -1,0 +1,5 @@
+4 4 (4, 'a') 2.5
+text ('text', 5)
+4 quoted
+8 ['nested']
+[exit 0]
