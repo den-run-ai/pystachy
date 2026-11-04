@@ -1,0 +1,53 @@
+cancel 1.0 1.0 1.0
+float start 1.0 1.0 1.0
+mixed 0.0 0.0 0.0
+float start 0.0 0.0 0.0
+bool 1.0 1.0 1.0
+float start 1.0 1.0 1.0
+int phase 13.0 13.0 13.0
+float start 12.0 12.0 12.0
+empty 0 0 0
+float start 0.0 0.0 0.0
+infinite inf inf inf
+float start inf inf inf
+nonfinite nan nan nan
+float start nan nan nan
+overflow inf inf inf
+float start inf inf inf
+empty identities False False True
+bool start 0.0
+signed zero -0.0 -0.0
+TypeError sum() can't sum strings [use ''.join(seq) instead]
+radd 0
+radd 0
+radd 0
+enter float 1.0 1.0 1.0
+radd 0.0
+radd 0.0
+radd 0.0
+float start 0.0 0.0 0.0
+radd 1.0
+radd 1.0
+radd 1.0
+leave float 0.0 0.0 0.0
+radd 1.0
+radd 1.0
+radd 1.0
+float start 0.0 0.0 0.0
+yield 1e+16
+yield 1.0
+yield -1e+16
+streamed 1.0
+start identity False
+start identity False
+start identity False
+callback start 1.0 1.0 1.0
+start identity False
+start identity False
+start identity False
+callback start 1.0 1.0 1.0
+start identity True
+start identity True
+start identity True
+callback start 1.0 1.0 1.0
+[exit 0]

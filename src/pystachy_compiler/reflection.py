@@ -980,16 +980,7 @@ def gen_refl_names(self, c: str) -> list[list[str]]:
     for fl in ci.slots:
         if fl not in out:
             out[fl] = "u"  # (a slot no code assigns: listed, but never set)
-    for n in out:
-        self.refl_public(c, n)
     return [[n, out[n]] for n in sorted(out.keys())]
-
-
-def gen_refl_public(self, c: str, n: str) -> None:
-    # attribute n of class c, whose name reflection shows, must not be private (__x): CPython's
-    # compiler mangles such a name in a class body (to _C__x), which Pystachy does not
-    if n.startswith("__") and not n.endswith("__") and "." not in n:
-        self.err(f"reflection over a {short(c)} object is not supported: CPython mangles the name of its private attribute {n} (to _ClassName{n}), which Pystachy does not (#486)")
 
 
 def gen_refl_listed(self, c: str, nk: list[str]) -> bool:
@@ -1078,15 +1069,15 @@ def gen_refl_dict_order(self, c: str) -> list[str]:
     ci = self.classes[c]
     if ci.slotlimit:
         self.err(f"'{short(c)}' object has no attribute '__dict__' (its class defines __slots__): vars() argument must have __dict__ attribute")
-    out, why = self.refl_order(c, True)
+    out, why = self.refl_order(c)
     if why != "":
         self.err(f"vars() of {short(c)}{why}")
     return out
 
 
-def gen_refl_order(self, c: str, public: bool) -> tuple[list[str], str]:
+def gen_refl_order(self, c: str) -> tuple[list[str], str]:
     # refl_dict_order's order, and "" where it is known, else the reason it is not (after the
-    # class's name in a message); public: the names checked as vars() reads them (refl_public)
+    # class's name in a message)
     ci = self.classes[c]
     out: list[str] = []
     maybe: dict[str, bool] = {}  # (those an object may lack after its __init__)
@@ -1104,8 +1095,6 @@ def gen_refl_order(self, c: str, public: bool) -> tuple[list[str], str]:
     for fl in out:
         if fl not in ci.ftypes:
             return out, f" is not supported: it assigns attribute {fl}, which is no field of its class (#486)"
-        if public:
-            self.refl_public(c, fl)
     # (a field __init__ may leave unassigned that other code may assign: inserted last then)
     late = [fl for fl in out if fl in maybe and self.refl_late(fl)]
     if len(late) > 1 or (len(late) == 1 and late[0] != out[-1]):
@@ -1780,8 +1769,6 @@ def gen_refl_dc_names(self, it: Node) -> list[str] | None:
     if c == "":
         c = self.refl_dc_check(self.expr(it.kids[1], "").t, "fields")
     ci = self.classes[c]
-    for fl in self.dc_fields(ci):
-        self.refl_public(c, fl)
     return [fl for fl in self.dc_fields(ci) if not fl.startswith(" ")]
 
 
@@ -1871,9 +1858,6 @@ def gen_refl_dc_type(self, t: str, what: str, seen: list[str]) -> str:
             if not self.is_dc(c):
                 self.err(f"{what}() of a {short(t)}, whose subclass {short(c)} is no dataclass, is not supported (#486)")
             fs = [fl for fl in self.dc_fields(ci) if not fl.startswith(" ")]
-            for fl in fs:
-                if what == "asdict":
-                    self.refl_public(c, fl)
             ts = [self.refl_dc_type(ci.ftypes[fl], what, seen + [t]) for fl in fs]
             if what == "astuple":
                 rs.append(Val("", self.ctype("tuple", ts)))
@@ -2607,7 +2591,7 @@ def gen_copy_fields(self, y: Val, x: Val, memo: Val) -> None:
             k = kb
         order = order + [fl for fl in fields if fl not in order]
     elif hooks:
-        order, why = self.refl_order(y.t, False)
+        order, why = self.refl_order(y.t)
         if why != "":
             self.err(f"copy.deepcopy() of a {short(y.t)} object is not supported: copying its attributes may run a __deepcopy__(), __hash__() or __eq__() method, which CPython runs in its __dict__'s order, and that order is not known as the program compiles, as for vars() (vars() of {short(y.t)}{why})")
         order = order + [fl for fl in fields if fl not in order]

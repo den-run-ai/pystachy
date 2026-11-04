@@ -132,14 +132,21 @@ else
       rm -f "$T/so/$n.py"
       if $PYS ext "$f" --abi $abi -o "$T/so/$n.$abi.so" 2> "$T/ext.$n.err"; then ok; else bad "pystachy ext $f"; head -5 "$T/ext.$n.err"; fi
     done
-    for c in client.py client2.py avclient.py reclient.py recguardclient.py recthreadclient.py recsmallclient.py recdeepclient.py pk3.py use3.py rdclient.py memclient.py wrclient.py fmclient.py bxclient.py pwclient.py aioclient.py; do
+    for c in client.py client2.py avclient.py reclient.py recguardclient.py recthreadclient.py recsmallclient.py recdeepclient.py recmapclient.py pk3.py use3.py rdclient.py memclient.py wrclient.py fmclient.py bxclient.py pwclient.py aioclient.py; do
       st=1; [ "$c" = memclient.py ] && st=0
       for d in src so; do
         tw=; [ $d = src ] && tw=$TW
         (cd "$T/$d" && PYTHONPATH=$tw PYSTACHY_GC_STRESS=$st "$PY" -W ignore "$c" a b < /dev/null > "$T/$c.$d" 2>&1; echo "[exit $?]" >> "$T/$c.$d")
         grep -v -e '^loaded ' -e '^gil ' "$T/$c.$d" > "$T/$c.$d.cmp"
       done
-      if cmp -s "$T/$c.src.cmp" "$T/$c.so.cmp" && [ "$(tail -1 "$T/$c.so.cmp")" = "[exit 0]" ]; then ok; else bad "ext client $c (CPython 3.$MINOR$FT, $abi)"; diff "$T/$c.src.cmp" "$T/$c.so.cmp" | head -10; tail -3 "$T/$c.so.cmp"; fi
+      if cmp -s "$T/$c.src.cmp" "$T/$c.so.cmp" && [ "$(tail -1 "$T/$c.so.cmp")" = "[exit 0]" ]; then
+        ok
+      elif [ "$c" = recmapclient.py ] && cmp -s "$T/$c.src.cmp" "$T/$c.so.cmp" &&
+           [ "$(tail -1 "$T/$c.so.cmp")" = "[exit 77]" ] && grep -q '^SKIP ' "$T/$c.so.cmp"; then
+        skipped="${skipped:+$skipped; }ext client $c ($(grep '^SKIP ' "$T/$c.so.cmp" | tr '\n' ';'))"
+      else
+        bad "ext client $c (CPython 3.$MINOR$FT, $abi)"; diff "$T/$c.src.cmp" "$T/$c.so.cmp" | head -10; tail -3 "$T/$c.so.cmp"
+      fi
     done
   fi
 fi

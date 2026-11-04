@@ -71,6 +71,22 @@ unannotated function parameters cause specialization at calls. Constructor-infer
 templates create ordinary compiled classes for their field types. The
 [typing reference](language/typing.md) describes the supported forms and limits.
 
+Class declarations own their prepared field metadata; specializations share those
+class attributes and infer their instance fields separately. Preparation waits until
+all own methods are registered, including properties and unsupported hooks. Earlier
+self-signature requests keep their provisional path. Explicit generics reserve
+a canonical request before scanning recursive members, using the constructor parameter
+types, bound type variables and literal arguments. Equal type-variable bindings alone
+do not prove equal storage. Signatures that still reference a pending specialization,
+or create another specialization while resolving, retain the existing inference path.
+
+Each specialization request owns its in-progress keys and borrows `selfcls`, source
+location, library mode and diagnostic context. These unwind on success, error and
+`Rejoin`. Completed semantic tables remain owned by the current `Gen`; an interrupted
+pass is discarded, not rolled back for reuse. Retries still create a fresh `Gen`, and
+inspection still uses fresh workers. Captured diagnostics belong to the observer and
+retain a copy of their context across internal retries.
+
 Ordinary single-inheritance hierarchies carry a class tag. Base-typed instance-method calls
 select a concrete implementation, then reuse method specialization for that receiver.
 A comparison tests both operands' classes (a `switch` on an ordinary tag), but compiles
@@ -553,18 +569,27 @@ are unknown (musl's `pthread_getattr_np` reports only the main thread's mapped p
 glibc's is used) or that do not contain the current frame leave the word 0, which no stack
 pointer is below; a frame that they contain but that already lies within the margin (an
 extension imported deep in its thread's stack) gets the floor, so that the next counted entry
-there raises and entries from higher frames are checked as usual. The main thread's bounds assume
-that its stack can grow to `RLIMIT_STACK`: the kernel maps nothing below it within the limit exec
-saw, but memory mapped there anyway, or a limit that a host raised in-process before importing
-an extension module, can stop it sooner, where the floor does not help (glibc's bounds then end
-at the mapping below, inside the kernel's guard gap). The margin is what the deepest counted frame may still use without an entry
+there raises and entries from higher frames are checked as usual. Extension initialization and
+glibc's fallback also read `/proc/self/maps` once to locate the mapping containing the current
+frame and its predecessor ([#1032](https://github.com/den-run-ai/pystachy/issues/1032)). They raise
+the lower bound to the preceding mapping's end, plus Linux's default 256-page `stack_guard_gap`
+when that mapping is accessible (read, write or execute). A `PROT_NONE` predecessor requires no
+additional gap. This is 1 MiB with 4 KiB pages and 16 MiB with 64 KiB pages; the already mapped
+stack remains usable even if the gap extends into it. Thus a host's raised stack limit or a
+mapping placed before extension import cannot make the floor assume growth through that barrier.
+Ordinary finite-limit program startup retains the `AT_EXECFN` path without reading maps. Failed
+mapping inspection retains the platform bounds. Custom kernel guard gaps, unavailable `/proc`,
+and mappings or stack-limit changes after initialization remain outside this protection. The
+margin is what the deepest counted frame may still use without an entry
 of its own: on Linux x86-64, raising the error and unwinding to a handler used under 5 KiB
 below the floor (JIT and AOT, also with handlers or `finally` in every frame and through
 generator resumes), and a `repr()` of 510 nested lists from the deepest frame (the runtime
 stops at 512) about 150 KiB; the rest covers non-recursive callees and a signal handler's
 frame. No signal handler is involved ([#988](https://github.com/den-run-ai/pystachy/issues/988)).
-`tools/test_stack_floor.py` checks the floor's policy against simulated bounds and runs deep
-recursion in JIT and AOT under a fixed `RLIMIT_STACK`.
+`tools/test_stack_floor.py` checks the floor's policy against simulated bounds and mappings,
+including 4 KiB and 64 KiB pages, and runs deep recursion in JIT and AOT under a fixed
+`RLIMIT_STACK`. Its extension probe also maps an obstacle before import and verifies catchable
+errors and recovery under finite and unlimited host limits, with program GC stress.
 
 `PYSTACHY_JIT_CODEGEN=0` selects MCJIT with `-O0` code generation. This can reduce
 startup for large programs, but the generated code can run slower. The default (`2`)

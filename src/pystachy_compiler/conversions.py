@@ -178,6 +178,10 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
         if v.t == t:
             return v
     if big_viewable(v.t, t):
+        # A loop may promote different positions on successive inference passes.
+        # Join the remaining int items before a partially promoting tuple is narrowed.
+        if self.join_hint(t, v.t):
+            return Val("undef", t)
         return self.big_tuple_view(v, t)  # (items that promote where t's do not, or the other way: the same tuple, bigints.py)
     if self.idhere() and v.lit and (v.t == "float" or (v.t == "int" and (int(v.v) < -5 or int(v.v) > 256))) and ((is_sopt(t) and unopt(t) == v.t) or (is_union(unopt(t)) and v.t in umembers(unopt(t)))):
         captured = Val(v.v, v.t).identity(v)

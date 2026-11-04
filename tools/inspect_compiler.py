@@ -218,7 +218,7 @@ class Observer:
         return decorate
 
     def parse_wrapper(self, original):
-        def wrapped(loader, source, line):
+        def wrapped(loader, source, line, *args, **kwargs):
             # RAW's hosted latin-1 round trip preserves source bytes apart from
             # universal newline conversion performed by the compiler's text read.
             path = self.location(line)["file"]
@@ -237,7 +237,7 @@ class Observer:
             })
             old = self.diagnostics.PHASE
             self.diagnostics.PHASE = "parse"
-            result = original(loader, source, line)
+            result = original(loader, source, line, *args, **kwargs)
             self.diagnostics.PHASE = old
             return result
         return wrapped

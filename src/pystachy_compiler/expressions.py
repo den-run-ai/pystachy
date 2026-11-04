@@ -986,17 +986,19 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                 return Val(self.sconst(fk[fk.find(".") + 1 :] if n.s == "__name__" else fk), "str")
             if o.t.startswith("fn[m:"):
                 mn = fk[fk.rfind(".") + 1 :]
-                if n.s == "__name__":
-                    return Val(self.sconst(mn), "str")
                 cn = fk[: fk.rfind(".")]
                 ci = self.classes[cn]
-                qn = self.sconst(short(ci.methods[mn].cls) + "." + mn)
+                f = ci.methods[mn]
+                name = f.node.pyname if f.node.pyname != "" else mn
+                qn = self.sconst(name if n.s == "__name__" else self.qualname(f))
                 if ci.tag > 0:
                     tag = self.mload('int', o.v)
                     for cc in self.classes.values():
                         if cc.tag > 0 and cc.name != cn and self.derives(cc.name, cn):
                             matches = self.num_cmp('==', Val(tag, "int"), Val(str(cc.tag), "int")).v
-                            subname = self.sconst(short(cc.methods[mn].cls) + "." + mn)
+                            f = cc.methods[mn]
+                            name = f.node.pyname if f.node.pyname != "" else mn
+                            subname = self.sconst(name if n.s == "__name__" else self.qualname(f))
                             qn = self.select(matches, Val(subname, '%ptr'), Val(qn, '%ptr'))
                 return Val(qn, "str")
             if o.t.startswith("fn[d:"):
