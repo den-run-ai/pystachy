@@ -84,6 +84,7 @@ class JSONParser:
         self.strict = strict
         self.try_valid_json_suffix = try_valid_json_suffix
         self.has_tried_valid_json_suffix = False
+        self._deferred_initial_source: str | None = None
         self._last_parse_found_value = False
 
     def parse(
@@ -140,15 +141,12 @@ class JSONParser:
             idx -= 1
         return idx >= 0 and self.json_str[idx] == ","
 
-    def _initial_container_has_non_comma_trailing_content(self) -> bool:
-        if self.index != 0 or not isinstance(self.json_str, str):
-            return True
-
+    def _initial_container_has_non_comma_trailing_content(self, source: str) -> bool:
         containers: list[str] = []
         in_string = False
         escaped = False
         closing_delimiters = {"{": "}", "[": "]"}
-        for index, char in enumerate(self.json_str):
+        for index, char in enumerate(source):
             if in_string:
                 if escaped:
                     escaped = False
@@ -167,9 +165,9 @@ class JSONParser:
                     return False
                 if not containers:
                     trailing_index = index + 1
-                    while trailing_index < len(self.json_str) and self.json_str[trailing_index].isspace():
+                    while trailing_index < len(source) and source[trailing_index].isspace():
                         trailing_index += 1
-                    return trailing_index < len(self.json_str) and self.json_str[trailing_index] != ","
+                    return trailing_index < len(source) and source[trailing_index] != ","
 
         return False
 
@@ -181,6 +179,18 @@ class JSONParser:
             or not isinstance(self.json_str, str)
         ):
             return False, ""
+
+        original = self._deferred_initial_source
+        if self.index == 0:
+            if original is not None or not self._initial_container_has_non_comma_trailing_content(self.json_str):
+                return False, ""
+        elif original is not None:
+            # Only a later root needs to know whether the invalid first root
+            # would have used the single raw-decode attempt.
+            self._deferred_initial_source = None
+            if self._initial_container_has_non_comma_trailing_content(original):
+                self.has_tried_valid_json_suffix = True
+                return False, ""
 
         self.has_tried_valid_json_suffix = True
         try:
@@ -255,11 +265,7 @@ class JSONParser:
             # None means that we are at the end of the string provided
             if char is None:
                 return ""
-            if (
-                self.try_valid_json_suffix
-                and char in ["{", "["]
-                and self._initial_container_has_non_comma_trailing_content()
-            ):
+            if self.try_valid_json_suffix and self.context.empty and char in ["{", "["]:
                 parsed_suffix, value = self._try_parse_valid_json_value()
                 if parsed_suffix:
                     return self._finalize_parsed_value(

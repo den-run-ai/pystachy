@@ -111,8 +111,13 @@ with 2,000 rounds must report `records 20000`, `per_round 616` and `checksum 123
 ```sh
 PYSTACHY_PATH=ports ./pystachy build bench/json_repair/scaling.py -o /tmp/json_repair_scaling
 /tmp/json_repair_scaling escaped 4000 5 5 6
+/tmp/json_repair_scaling bare-key 10000 100 3 1
 python3.13 -m unittest discover -s tools -p 'test_json_repair_accumulator.py'
 ```
+
+The `bare-key` case has one unquoted object key and a long valid string value.
+It isolates the cost of scanning the initial container after validation has
+already rejected the key.
 
 The [deterministic accumulator checks](../../tools/test_json_repair_accumulator.py)
 exercise N/2N/4N, Unicode and chunk boundaries, with negative controls for unbounded
