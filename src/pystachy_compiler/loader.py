@@ -341,6 +341,7 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
     kinds: dict[str, str] = {}  # the module's enum classes so far: the class of enum they derive from
     full: dict[str, bool] = {}  # (those with members, which no class may derive from)
     top: list[Node] = []
+    custom_flag_iter: dict[str, bool] = {}  # classes with a user-defined or inherited _iter_member_
     imported = False
     mixed = False
     rebound: dict[str, bool] = {}  # (the names a function may rebind, or a del statement unbind)
@@ -484,6 +485,10 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
                     if x < previous_single:
                         ordered_singles = False
                     previous_single = x
+        if flag and ("_iter_member_" in defs or base in custom_flag_iter):
+            custom_flag_iter[st.s] = True
+            if fmask != smask:
+                fail(f"flag class {st.s} is not supported: unnamed bits with a custom _iter_member_()", st.line)
         if fmask != smask and not ordered_singles:
             # CPython sorts by definition order here, reading _sort_order_ even on unnamed bits.
             fail(f"flag class {st.s} is not supported: unnamed bits with single-bit members out of value order", st.line)
