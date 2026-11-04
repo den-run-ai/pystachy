@@ -216,6 +216,8 @@ def escape(pathname):
         # POSIX has no drive prefix. Escape '[' first so newly inserted brackets stay literal.
         return pathname.replace(b'[', b'[[]').replace(b'*', b'[*]').replace(b'?', b'[?]')
     drive, rest = posixpath.splitdrive(pathname)
+    if not has_magic(rest):
+        return rest  # POSIX splitdrive preserves the original path.
     out = []
     for c in rest:
         out.append('[' + c + ']' if c == '*' or c == '?' or c == '[' else c)
