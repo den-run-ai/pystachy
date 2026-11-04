@@ -5,6 +5,10 @@ from typing import Callable
 from _argparse_help import ArgSpec, action_name, format_help, format_usage
 
 
+class ArgumentTypeError(Exception):
+    """Raised when an argument value cannot be converted."""
+
+
 class Namespace:
     """Base of the record type the compiler creates for each parser."""
 
