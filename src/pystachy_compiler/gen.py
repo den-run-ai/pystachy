@@ -570,6 +570,7 @@ from src.pystachy_compiler.declarations import (
     gen_ctype as declarations_ctype,
     gen_dc_methods as declarations_dc_methods,
     gen_declare_fields as declarations_declare_fields,
+    gen_class_fields as declarations_class_fields,
     gen_declare_fn as declarations_declare_fn,
     gen_exc_attr as declarations_exc_attr,
     gen_bad_class as declarations_bad_class,
@@ -2908,6 +2909,9 @@ class Gen:
 
     def declare_fields(self, ci: ClassInfo) -> None:
         return declarations_declare_fields(self, ci)
+
+    def class_fields(self, ci: ClassInfo) -> None:
+        return declarations_class_fields(self, ci)
 
     def nt_class(self, ci: ClassInfo) -> None:
         return declarations_nt_class(self, ci)

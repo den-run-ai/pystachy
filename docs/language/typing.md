@@ -821,6 +821,15 @@ A generic class without an `__init__` of its own, or a generic dataclass, binds 
 `C[int]` is `C`, and its methods' parameters annotated with its type variables take each
 call's types. Its fields cannot use the type variables.
 
+Recursive member annotations such as `self.next: Node[T] | None` share the
+specialization used by `Node(value)` when their constructor layouts agree. This also
+covers mutually referring members and members of another generic class. Completed
+declarations prepare their class attributes before specialization. Early self-signatures
+and recursive class attributes keep their provisional behavior. Equal type arguments can still have
+different layouts: storing an `Iterable[T]` argument directly can retain a list or a
+tuple. Recursive constructor parameter signatures remain on the existing inference
+path and can still reject otherwise compatible annotations.
+
 Constructor arguments bind first; the named specialization or surrounding annotation fills
 variables the arguments leave unbound. Thus `q: Stack[int] = Stack()` and
 `Stack[int]([])` can type empty containers, while `Box[float](1)` still infers `Box[int]`.
