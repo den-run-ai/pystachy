@@ -37,7 +37,7 @@ def pure_release(files):
             return {"status": "pure-wheel", "filename": name, "url": f["url"], "sha256": f["digests"]["sha256"],
                     "size": f["size"]}
     if wheels:
-        return {"status": "binary-only"}
+        return {"status": "no-eligible-pure-wheel"}
     if any(f["packagetype"] == "sdist" for f in live):
         return {"status": "sdist-only"}
     return {"status": "no-files"}
@@ -196,7 +196,7 @@ def compare(rows, before, after, workers, timeout):
     projects = []
     for row, deps in zip(rows, required, strict=True):
         item = {k: row[k] for k in ("rank", "project", "version", "sha256", "status", "parsed", "skipped", "profile_source") if k in row}
-        if "stdlib" in row and row.get("parsed", 1) > 0:
+        if "stdlib" in row and row.get("parsed", bool(row["stdlib"])) > 0:
             for key, report in (("before", old), ("after", new)):
                 item[key] = sorted(m for m in deps if report["modules"][m] != "OK")
             item["required_count"] = len(deps)
@@ -229,6 +229,10 @@ def main():
     if args.output.resolve() == args.input.resolve():
         parser.error("input and output must differ")
     rows = json.loads(args.input.read_bytes())
+    if args.action != "resolve":
+        for row in rows:
+            if row.get("status") == "binary-only":  # original resolver included Python 2 pure wheels here
+                row["status"] = "no-eligible-pure-wheel"
     if args.action == "compare":
         result = compare(rows, args.before, args.after, args.j, args.timeout)
         result["input_sha256"] = import_sweep.compiler_sha256(args.input)

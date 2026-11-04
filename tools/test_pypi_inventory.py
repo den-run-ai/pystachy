@@ -41,14 +41,20 @@ class InventoryTests(unittest.TestCase):
             {"rank": 1, "project": "stubs", "status": "no-source", "stdlib": [], "parsed": 0},
             {"rank": 2, "project": "simple", "status": "scanned", "stdlib": [], "parsed": 1},
             {"rank": 3, "project": "missing", "status": "missing"},
+            {"rank": 4, "project": "unqualified-archive", "stdlib": []},
         ]
         with mock.patch.object(census, "module_ir", return_value={"modules": {}}):
             result = census.compare(rows, "old", "new", 1, 1)["projects"]
         self.assertNotIn("after", result[0])
         self.assertEqual(result[1]["after"], [])
         self.assertNotIn("after", result[2])
+        self.assertNotIn("after", result[3])
 
-    def test_yanked_pure_wheel_does_not_hide_binary_only_release(self):
+    def test_yanked_pure_wheel_cannot_qualify_release(self):
         release = [{"yanked": True, "filename": "demo-1-py3-none-any.whl", "packagetype": "bdist_wheel"},
                    {"yanked": False, "filename": "demo-1-cp313-cp313-linux_x86_64.whl", "packagetype": "bdist_wheel"}]
-        self.assertEqual(census.pure_release(release), {"status": "binary-only"})
+        self.assertEqual(census.pure_release(release), {"status": "no-eligible-pure-wheel"})
+
+    def test_python_two_pure_wheel_has_no_eligible_python_three_tag(self):
+        release = [{"yanked": False, "filename": "demo-1-py2-none-any.whl", "packagetype": "bdist_wheel"}]
+        self.assertEqual(census.pure_release(release), {"status": "no-eligible-pure-wheel"})
