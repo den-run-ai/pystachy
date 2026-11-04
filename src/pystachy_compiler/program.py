@@ -1172,9 +1172,7 @@ def gen_program(self, mods: list[Mod]) -> str:
         changed = False
         for fn in self.fns:
             if self.optimize(fn, on) > 0:
-                changed = True
-                if chk:
-                    self.verify(fn, False)
+                changed = True  # optimize verifies each changed pass when checks are enabled
         if changed and dump:
             self.effects()  # (what the passes left: tests/ir/*.fx pin them)
     for fn in self.fns if self.eh else self.fns[:0]:

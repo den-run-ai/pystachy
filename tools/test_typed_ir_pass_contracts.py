@@ -218,7 +218,7 @@ class PassContractTests(unittest.TestCase):
         original_verify = Gen.verify
 
         def checked(gen, fn, eh):
-            events.append(("verify", fn.f.ll))
+            events.append(("verify-eh" if eh else "verify", fn.f.ll))
             return original_verify(gen, fn, eh)
 
         def observe(name, original):
@@ -236,9 +236,14 @@ class PassContractTests(unittest.TestCase):
                 patches.enter_context(patch.object(Gen, name, observe(name, getattr(Gen, name))))
             checked_ir = Gen().program(Loader([]).program("pass_contracts.py", SOURCE))
 
+        # program() verifies the original IR and each changed pass verifies its
+        # output. Two consecutive checks on the same function inspect the same IR.
+        for previous, current in zip(events, events[1:]):
+            if previous[0] == "verify":
+                self.assertNotEqual(previous, current)
         rewritten = set()
         for j, event in enumerate(events):
-            if event[0] != "verify" and event[2] > 0:
+            if event[0] not in ("verify", "verify-eh") and event[2] > 0:
                 rewritten.add(event[0])
                 self.assertEqual(events[j + 1], ("verify", event[1]))
         self.assertEqual(rewritten, {"listget", "dictfuse", "unionslots", "nullcheck"})

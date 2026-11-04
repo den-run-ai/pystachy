@@ -857,7 +857,18 @@ def list_write_error(i: Ins, promoting: bool) -> str:
     if i.x != "" or i.k != 0 or len(i.b) not in [0, 2]:
         return "native list write has invalid metadata"
     t = i.a[0].t
-    if not is_list(t) or not t.endswith("]") or t.count("[") != t.count("]") or len(targs(t)) != 1 or elem(t) == "":
+    element = elem(t)
+    if not is_list(t) or not t.endswith("]") or element == "":
+        return "native list write needs a concrete list receiver"
+    depth = 0
+    for c in element:
+        if c == "[":
+            depth += 1
+        elif c == "]":
+            depth -= 1
+        if depth < 0 or (c == "," and depth == 0):
+            return "native list write needs a concrete list receiver"
+    if depth != 0:
         return "native list write needs a concrete list receiver"
     layout = ListLayout(t, promoting)
     if layout.element == BIG or layout.element.startswith("%") or layout.element.startswith("*") or layout.element == "#":

@@ -58,6 +58,14 @@ def run() -> None:
         items.extend(mixed)
     except TypeError:
         print("typed extend prefix", items)
+    try:
+        items += mixed
+    except TypeError:
+        print("typed inplace prefix", items)
+    try:
+        items[1:2] = mixed
+    except TypeError:
+        print("typed slice unchanged", items)
 
 
 run()

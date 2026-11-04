@@ -12,6 +12,8 @@ boxed layout rejected [1, 2]
 late constraint rejected
 still unrestricted [1, 2, 'free']
 typed extend prefix [1, 2, 3]
+typed inplace prefix [1, 2, 3, 3]
+typed slice unchanged [1, 2, 3, 3]
 deepcopy shared True True
 deepcopy prefix [1, 2, 4] [1, 2]
 deepcopy slice [1, 2, 4]

@@ -23,4 +23,6 @@ TypeError: C.st() takes 1 positional argument but 2 were given
 TypeError: C.cm() takes 2 positional arguments but 3 were given
 TypeError: C.m() takes 2 positional arguments but 3 were given
 AttributeError: 'C' object has no attribute 'nope'
+TypeError: C.__private() missing 1 required positional argument: '_C__value'
+TypeError: C.__private() takes 2 positional arguments but 3 were given
 [exit 0]

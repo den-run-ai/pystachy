@@ -96,6 +96,16 @@ def run() -> None:
     native_items.extend(boxed_source)
     print("typed native extend", native_items, same(native_items[0], first))
 
+    native_items += boxed_source
+    print("typed inplace", native_items, same(native_items[-1], last))
+    tuple_source: Any = (last, first)
+    native_items[::2] = tuple_source
+    print("typed slice", native_items, same(native_items[0], last))
+    boxed_items += expose(native_items)
+    boxed_items[:] = tuple_source
+    boxed_items.append("free")
+    print("typed boxed mutations", boxed_items, boxed_items[0] is last)
+
     # Existing boxed lists remain unrestricted, including after a list test.
     unrestricted: Any = [1, 2]
     if isinstance(unrestricted, list):

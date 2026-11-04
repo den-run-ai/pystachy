@@ -101,7 +101,7 @@ def base_report(source: str, function: str) -> dict:
                      | {"PYSTACHY_IRCHECK": "1"},
                      "function_filter": function, "command": "ir", "executes_program": False,
                      "forced_environment": {"PYSTACHY_IRCHECK": "1"}},
-        "diagnostics": [], "attempts": [], "passes": [], "program_passes": [],
+        "diagnostics": [], "attempts": [], "passes": [], "pass_contracts": {}, "program_passes": [],
         "stages": [{"name": name, "status": "unavailable", "artifact": None}
                    for name in ("typed-before", "typed-after", "llvm")],
         "verification": {"requested": True, "calls": 0, "completed": False,
@@ -260,6 +260,20 @@ class Observer:
             else:
                 self.attempt["status"] = "completed"
                 return result
+            finally:
+                # specdone contains only completed requests. A fresh Gen owns
+                # each retry, so copy its aliases and fields before it is lost.
+                selected = {}
+                for key, identity in gen.specdone.items():
+                    if identity not in selected:
+                        cls = gen.classes[identity]
+                        selected[identity] = {
+                            "template": cls.origin, "bindings": dict(cls.tvars),
+                            "fields": {name: cls.ftypes[name] for name in cls.fields},
+                            "request_keys": [],
+                        }
+                    selected[identity]["request_keys"].append(key)
+                self.attempt["class_specializations"] = selected
         return wrapped
 
     def effects_wrapper(self, original):
@@ -392,6 +406,7 @@ class Observer:
         from src.pystachy_compiler.gen import Gen
         from src.pystachy_compiler.lexer import Lexer
         from src.pystachy_compiler.loader import Loader
+        from src.pystachy_compiler.optimizations import PASS_CONTRACTS
         from src.pystachy_compiler.parser import Parser
         self.wrap(Loader, "program", self.phase_wrapper("load"))
         self.wrap(Loader, "parse_source", self.parse_wrapper)
@@ -400,8 +415,12 @@ class Observer:
         self.wrap(Gen, "program", self.program_wrapper)
         self.wrap(Gen, "effects", self.effects_wrapper)
         self.wrap(Gen, "verify", self.verify_wrapper)
-        for name in ("listget", "dictfuse", "unionslots", "nullcheck"):
-            self.wrap(Gen, name, self.pass_wrapper(name))
+        for contract in PASS_CONTRACTS:
+            self.report["pass_contracts"][contract.name] = {
+                key: list(getattr(contract, key))
+                for key in ("requires", "analyses", "preserves", "invalidates", "rerun")
+            }
+            self.wrap(Gen, contract.name, self.pass_wrapper(contract.name))
         for name in PROGRAM_PASS_UNITS:
             self.wrap(Gen, name, self.program_pass_wrapper(name))
         self.wrap(Gen, "eh_ir", self.pass_wrapper("exceptions"))

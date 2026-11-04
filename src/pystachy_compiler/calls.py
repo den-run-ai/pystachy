@@ -1588,7 +1588,7 @@ def gen_fname(self, f: FnInfo) -> str:
     # NamedTuple's is P.__new__
     if f.name == "__init__" and f.cls in self.nts:
         return f"{short(f.cls)}.__new__"
-    return f"{short(f.cls)}.{f.name}" if f.cls != "" else short(f.name)
+    return self.qualname(f)
 
 def gen_arity(self, f: FnInfo, npre: int, args: list[Node]) -> None:
     # CPython's TypeError for a call of f whose arguments do not fit its parameters (arity_error)

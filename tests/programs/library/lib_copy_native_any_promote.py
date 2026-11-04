@@ -15,6 +15,12 @@ class Pair:
         self.native = values
 
 
+class NativeFirst:
+    def __init__(self, values: list[int]):
+        self.native = values
+        self.dynamic: Any = values
+
+
 def make() -> Pair:
     values: list[int] = [int("18446744073709551623")]
     return Pair(values)
@@ -28,3 +34,8 @@ cloned.dynamic.append(2**90)
 cloned.native.append(2**100)
 print(cloned.dynamic, original.dynamic)
 print(sum(cloned.native), sum(cloned.dynamic))
+
+# The typed-first traversal reads and copies the wide integer before the Any memo hit.
+other = copy.deepcopy(NativeFirst(original.native))
+print(other.native is other.dynamic, other.native is not original.native)
+print(other.native, same(other.native[0], original.native[0]))

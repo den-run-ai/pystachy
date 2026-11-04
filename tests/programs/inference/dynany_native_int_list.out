@@ -25,6 +25,9 @@ self extend [1000, 1000, 2000, 1000, 1000, 2000] True
 empty [] False True
 typed boxed extend [1000, 2000] True [1000, 2000]
 typed native extend [1000, 2000] True
+typed inplace [1000, 2000, 1000, 2000] True
+typed slice [2000, 2000, 1000, 2000] True
+typed boxed mutations [2000, 1000, 'free'] True
 boxed [1, 2, 'three']
 only Any owner [12345, 12345] True True
 [exit 0]

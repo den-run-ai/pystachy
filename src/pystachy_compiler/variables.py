@@ -2134,6 +2134,8 @@ def gen_slice_store(self, o: Val, bnd: list[str], v: Val) -> None:
     # CPython's PySequence_Fast takes them (a list as it is, which the runtime copies first where
     # it is o itself; any other iterable's by iterating it, see as_list) once the step is checked
     st = bnd[2]
+    if v.t == "dyn" and o.t in ["list[int]", "list[dyn]"]:
+        o = self.dyn_box(o)  # use checked slice replacement for an Any iterable
     if o.t == "dyn":
         self.slice_check(st)
         v = self.unwrap(v, "TypeError: must assign iterable to extended slice")
