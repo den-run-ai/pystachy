@@ -49,6 +49,25 @@ class ListLayoutTests(unittest.TestCase):
         self.assertTrue(checked.atomic and wide.atomic)
         self.assertEqual((checked.identity_kind, wide.identity_kind), (1, 1))
 
+    def test_dynamic_descriptor_uses_native_storage_policy(self):
+        for promoting in (False, True):
+            with patch.dict(diagnostics.INTFILES, {0: True} if promoting else {}, clear=True):
+                g = Gen()
+                for element in ("int", "dyn", "float", "str", "bool", "list[int]"):
+                    with self.subTest(promoting=promoting, element=element):
+                        t = f"list[{element}]"
+                        layout = ListLayout(t, promoting)
+                        if element in ("int", "dyn"):
+                            expected = "pys_dyntype_list" if element == "dyn" else "pys_dyntype_biglist" if promoting else "pys_dyntype_intlist"
+                            self.assertEqual(layout.dynamic_type, expected)
+                            self.assertEqual(g.dyn_type(t), "@" + expected)
+                            self.assertEqual(g.dyn_boxable(t), "")
+                            self.assertTrue(g.dyn_unboxable(t))
+                        else:
+                            self.assertEqual(layout.dynamic_type, "")
+                            self.assertNotEqual(g.dyn_boxable(t), "")
+                            self.assertFalse(g.dyn_unboxable(t))
+
     def test_reference_payloads_and_numeric_identity_are_independent(self):
         for element, atomic, identity in (("float", True, 2), ("bool", True, 0),
                                           ("str", False, 0), ("dyn", False, 0),

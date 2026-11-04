@@ -841,6 +841,9 @@ class ListLayout:
         self.value: str = BIG if self.wide else self.element
         self.atomic: bool = atomic_list(t)
         self.identity_kind: int = list_identity_kind(t)
+        # A Python list tag is not a proof of slot layout. Box/unbox/isa share
+        # the descriptor selected here with native writes' storage policy.
+        self.dynamic_type: str = "pys_dyntype_list" if self.element == "dyn" else ("pys_dyntype_biglist" if self.wide else "pys_dyntype_intlist") if self.element == "int" else ""
 
 
 def list_write_error(i: Ins, promoting: bool) -> str:

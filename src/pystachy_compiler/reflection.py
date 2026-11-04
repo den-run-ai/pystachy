@@ -317,8 +317,10 @@ def gen_refl_dyn_type_cmp(self, n: Node) -> Val:
                 self.err("a comparison of type(x) is supported with type(y), y.__class__, a class or a builtin type's name (#486); class objects as values are not (#7)")
             ts.append("null")
     neg = n.s == "is not" or n.s == "!="
-    if (not int_program() or "@pys_dyntype_int" not in ts) and (not ts[0].startswith("%") or not ts[1].startswith("%")):
-        # (a type named, or one no box holds, is no function's: its DynType is the only one)
+    variants = "@pys_dyntype_list" in ts or (int_program() and "@pys_dyntype_int" in ts)
+    if not variants and (not ts[0].startswith("%") or not ts[1].startswith("%")):
+        # Most named Python types have one DynType. Lists and promoting integers have
+        # several physical layouts, so their Python type identity uses same_type below.
         return self.ptr_cmp("!=" if neg else "==", Val(ts[0], "dyntype"), Val(ts[1], "dyntype"))
     r = self.rt("pys_dyn_same_type", "i64", [f"ptr {ts[0]}", f"ptr {ts[1]}"])
     return self.num_cmp("==" if neg else "!=", Val(r, "int"), Val("0", "int"))
@@ -2695,7 +2697,13 @@ def gen_copy_prim(self, name: str, args: list[Node]) -> Val:
     x = self.expr(args[0], "")
     t = unopt(x.t)
     if name == "__pys_copy_addr" or name == "__pys_copy_ref" or name == "__pys_copy_unref":
-        if t == "dyn" or not (t in self.classes or is_list(t) or is_dict(t) or is_set(t) or is_tuple(t) or is_vtuple(t) or t == "frozenset" or t.startswith("frozenset[") or t == "str"):
+        if t == "dyn" and name != "__pys_copy_unref":
+            like = self.expr(args[1], "") if n == 2 else x
+            if like.t != "dyn":
+                self.err(f"internal error: the memo's copy of a {typestr(like.t)} would be Any")
+            raw = self.rt("pys_dyn_copy_ref", "ptr", [f"ptr {x.v}", f"ptr {like.v}"])
+            return Val(self.scalar_cast('ptrtoint', Val(raw, '%ptr'), 'int'), "int") if name == "__pys_copy_addr" else Val(raw, "str")
+        if not (t in self.classes or is_list(t) or is_dict(t) or is_set(t) or is_tuple(t) or is_vtuple(t) or t == "frozenset" or t.startswith("frozenset[") or t == "str"):
             self.err(f"internal error: {name} of a {typestr(x.t)}")
         if name == "__pys_copy_addr":
             return Val(self.scalar_cast('ptrtoint', Val(x.v, '%ptr'), 'int'), "int")
@@ -2706,7 +2714,13 @@ def gen_copy_prim(self, name: str, args: list[Node]) -> Val:
                     self.err(f"internal error: the memo's copy of a {typestr(o)} would be a {typestr(t)}")
             return Val(x.v, "str")
         like = self.expr(args[1], "")
+        if like.t == "dyn":
+            return Val(self.rt("pys_dyn_copy_restore", "ptr", [f"ptr {x.v}", f"ptr {like.v}"]), "dyn")
         return Val(x.v, unopt(like.t))
+    if name == "__pys_deepcopy_list":
+        if t == "dyn":
+            return Val(self.rt("pys_dyn_copy_list", "ptr", [f"ptr {x.v}"]), "dyn")
+        return self.bmethod(x, "copy", [])
     if name == "__pys_copy_is_own" or name == "__pys_deepcopy_is_own":
         deep = name == "__pys_deepcopy_is_own"
         own = self.copy_own(x.t, deep)

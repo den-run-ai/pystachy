@@ -230,35 +230,44 @@ else:
         mark = f"VERIFY_CANCEL_MARK={os.getpid()}-{signum}-{to_group}-{time.monotonic_ns()}"
         env = {**self.env, "VERIFY_CANCEL_MARK": mark.split("=", 1)[1]}
 
-        def kill_survivors():
-            for pid in self.survivors(mark.encode()):
-                with contextlib.suppress(OSError):
-                    os.kill(pid, signal.SIGKILL)
-
-        self.addCleanup(kill_survivors)
         # (files, not pipes, which a surviving process would hold open; SIGINT as a terminal's shell
         # leaves it, whatever runs this test)
         with (self.root / "cancel.log").open("w") as log:
             process = subprocess.Popen(["sh", "tests/verify.sh", group], cwd=self.root, env=env, stdout=log,
                                        stderr=subprocess.STDOUT, start_new_session=True,
                                        preexec_fn=lambda: signal.signal(signal.SIGINT, signal.SIG_DFL))
-        self.addCleanup(lambda: process.poll() is not None or process.kill())
-        deadline = time.monotonic() + 60
-        while not all((self.root / f"hanging-{name}").exists() for name in hanging):
-            self.assertIsNone(process.poll(), (self.root / "cancel.log").read_text())
-            self.assertLess(time.monotonic(), deadline, "the hanging doubles did not start")
-            time.sleep(0.05)
-        started = [int(pid) for name in hanging for pid in (self.root / f"hanging-{name}").read_text().split()]
-        self.assertTrue(set(started) <= set(self.survivors(mark.encode())))
-        if to_group:
-            os.killpg(process.pid, signum)
-        else:
-            process.send_signal(signum)
-        self.assertEqual(process.wait(timeout=60), 130, (self.root / "cancel.log").read_text())
-        deadline = time.monotonic() + 10
-        while self.survivors(mark.encode()) and time.monotonic() < deadline:
-            time.sleep(0.05)
-        self.assertEqual(self.survivors(mark.encode()), [], "processes tests/verify.sh started survive it")
+        try:
+            deadline = time.monotonic() + 60
+            markers = [self.root / f"hanging-{name}" for name in hanging]
+            while True:
+                self.assertIsNone(process.poll(), (self.root / "cancel.log").read_text())
+                # A shell can publish its child's PID before exec exposes the child's environment.
+                started = set()
+                for marker in markers:
+                    if marker.exists():
+                        row = marker.read_text()
+                        pids = row.split()
+                        if row.endswith("\n") and len(pids) == 2:
+                            started.update(map(int, pids))
+                if len(started) == 2 * len(markers) and started <= set(self.survivors(mark.encode())):
+                    break
+                self.assertLess(time.monotonic(), deadline, "the hanging doubles and their children did not start")
+                time.sleep(0.05)
+            if to_group:
+                os.killpg(process.pid, signum)
+            else:
+                process.send_signal(signum)
+            self.assertEqual(process.wait(timeout=60), 130, (self.root / "cancel.log").read_text())
+            deadline = time.monotonic() + 10
+            while self.survivors(mark.encode()) and time.monotonic() < deadline:
+                time.sleep(0.05)
+            self.assertEqual(self.survivors(mark.encode()), [], "processes tests/verify.sh started survive it")
+        except BaseException:
+            # The doubles share this private process group. Reap this run before the next subtest.
+            with contextlib.suppress(ProcessLookupError):
+                os.killpg(process.pid, signal.SIGKILL)
+            process.wait()
+            raise
 
     def test_cancelling_leaves_no_lane_process_running(self):
         # (one hanging step in each background lane of the last phase; the shell's own lane ends)

@@ -387,8 +387,8 @@ belong to frontend refinement; this validator checks retained type agreement,
 not canonical type resolution. Other runtime families use their existing builders.
 
 `ListLayout` records the outer list's semantic element and packed slot, scalar
-promoting-integer capability, numeric identity capability and payload-array GC
-policy. It takes the program's promoting-integer policy explicitly: `list[int]`
+promoting-integer capability, numeric identity capability, payload-array GC policy
+and supported dynamic-layout descriptor. It takes the program's promoting-integer policy explicitly: `list[int]`
 alone cannot establish whether its bigint companion is available. `atomic`
 describes only the payload array; bigint and identity companions remain scanned.
 Nested held-value layouts and the types returned by reads remain with the existing
@@ -403,8 +403,12 @@ conversion helpers.
 The caller evaluates and coerces operands before construction. Identity stores keep
 the original value's box; they never reconstruct identity from packed bits.
 `Val.identity()` remains the representation-only identity transfer API.
-Runtime symbols, mutation order, exceptions and LLVM lowering are unchanged.
-This contract does not enable a native-list/Any crossing or cover every list mutator.
+Native write symbols, mutation order, exceptions and LLVM lowering are unchanged.
+Dynamic boxing, unboxing and layout tests also consume `ListLayout.dynamic_type`:
+boxed `list[Any]`, checked `list[int]` and promoting `list[int]` have different
+descriptors. A Python `list` tag does not establish any of these storage layouts.
+The shared IR constraints cover the nine registered native writers; runtime checks
+and focused alias, mutation and GC tests cover the exposed dynamic mutation paths.
 
 <a id="7-what-it-enables-next"></a>
 <a id="71-language-level-optimizations"></a>

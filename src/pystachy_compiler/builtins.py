@@ -1179,7 +1179,9 @@ def gen_keys_of(self, xs: Val, key: Val) -> Val:
     lp.idx = [i]
     self.cbr(self.num_cmp('<', Val(i, "int"), Val(self.mload('int', xs.v), "int")).v, lb, le)
     self.place(lb)
-    item = self.list_item(xs, Val(i, "int"))
+    # A dynamic key receives the stored integer object, including a wide value in
+    # a native list exposed through Any in a checked-integer caller.
+    item = self.list_item(xs, Val(i, "int"), key.t == "dyn")
     k = self.call_key(key, item)
     if "?" in k.t:
         self.err(f"the key function returns an empty container whose type is not known here ({typestr(k.t)})")
@@ -2495,6 +2497,12 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
             else:
                 v = self.consume(g, pt) if join or key == "list.extend" else self.expr(args[i], want_arg, resultsoft=key in ["list.count", "list.index", "list.remove", "vtuple.count", "vtuple.index"] and i == 0)
             self.stkkey = self.nokey
+            if key == "list.extend" and o.t in ["list[dyn]", "list[int]"] and v.t == "dyn":
+                # extend consumes its source; it does not require an aliased view
+                # with the receiver's physical layout. Check native stores as each
+                # dynamic item arrives, retaining a successful prefix on failure.
+                self.dyn_method(self.dyn_box(o), m, [self.vnode(v)])
+                return Val("null", "None")
             if base == "dict" and i == 0 and v.t == BIGOPT and self.dict_bigkey(o.t) and (m == "get" or m == "pop"):
                 kx = v  # (None is no key, else the promoting int it holds: nonekey's twin, keyed)
                 av.append("i64 0")  # (the key's place, where keyed puts its {lo, m})

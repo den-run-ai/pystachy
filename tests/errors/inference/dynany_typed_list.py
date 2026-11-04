@@ -1,10 +1,10 @@
-# error: a list[int] cannot become an Any value: its items are typed, and Any's containers hold Any items (make it a list[Any] from the start, or copy it)
+# error: a list[float] cannot become an Any value: its items are typed, and Any's containers hold Any items (make it a list[Any] from the start, or copy it)
 # pystachy: dynamic-any
-# An Any alias of a typed list would store boxes where the list's typed code reads ints (and
-# its items, which the collector does not scan): rejected where the list becomes an Any value.
+# Native integer lists have checked Any views. Other typed element layouts stay
+# rejected instead of reinterpreting their backing storage.
 from typing import Any
 
-xs = [1, 2]
+xs = [1.0, 2.0]
 v: Any = xs
 v.append("three")
 print(xs)

@@ -891,10 +891,20 @@ def gen_method(self, o: Val, m: str, args: list[Node], want: str = "", resultsof
 
 def gen_unbound_call(self, tn: str, m: str, args: list[Node], want: str = "") -> Val:
     # T.m(o, args) of builtin type T (str.lower(s), list.append(xs, x)): o.m(args), where o must
-    # be a T (CPython's TypeError otherwise: a compile error here, but for None)
+    # be a T (CPython's TypeError otherwise: a compile error here, but for None or an Any list)
     if len(args) == 0 or args[0].kind == "kw" or args[0].kind == "starred" or args[0].kind == "dstar":
         self.err(f"unbound method {tn}.{m}() needs an argument")
     o = self.expr(args[0], "str" if tn == "str" else "")
+    if tn == "list" and o.t == "dyn":
+        # The descriptor belongs to list; an object's same-named method cannot replace it.
+        # Evaluate and retain every argument before checking the receiver, as CPython does,
+        # then let the list dispatcher keep the receiver's boxed or native storage contract.
+        captured: list[Node] = []
+        for a in args[1:]:
+            v = self.vnode(self.dyn_box(self.expr(a.kids[0] if a.kind == "kw" else a, "dyn")))
+            captured.append(mk("kw", a.s, a.line, [v]) if a.kind == "kw" else v)
+        self.rt("pys_dyn_list_descriptor", "void", [f"ptr {o.v}", f"ptr {self.sconst(m)}"])
+        return self.method(o, m, captured)
     t = unopt(o.t)
     if ("list" if is_list(t) else "dict" if is_dict(t) else t) != tn:
         self.err(f"descriptor '{m}' for '{tn}' objects doesn't apply to a '{tname(t)}' object")

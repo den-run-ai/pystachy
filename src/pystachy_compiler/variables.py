@@ -23,7 +23,7 @@ from src.pystachy_compiler.analysis import (
     walrus_values,
 )
 from src.pystachy_compiler.diagnostics import FILES, LINES, MODDUNDERS, Rejoin, dynamic_program, where
-from src.pystachy_compiler.dynamic import XCMP, comparison_record_write, comparison_storage_key
+from src.pystachy_compiler.dynamic import XCMP, boxed_list_items, comparison_record_write, comparison_storage_key
 from src.pystachy_compiler.ir import Blk, Closure, FnInfo, Frame, Ins, IterArg, Val
 from src.pystachy_compiler.names import ENUMCLASSES, owner, short
 from src.pystachy_compiler.specs import BIG, BIGOPT, INERT_DECOS, NONE_ITEM, NONEVAR, OPTTYPES, PYBUILTINS, RANGEC, RANGES, UNSUPPORTED, is_excname
@@ -1831,7 +1831,7 @@ def gen_target_type(self, n: Node, base: bool = False) -> str:
         return self.ltype.get(n.s, self.gtypes.get(n.s, "") if self.is_global(n.s) else "")
     if n.kind == "slice":
         t = unopt(self.target_type(n.kids[0], True))
-        return t if is_list(t) else ""
+        return t if is_list(t) or t == "dyn" else ""
     if n.kind == "attr" or n.kind == "index":
         t = self.target_type(n.kids[0], True)
         if t == "dyn":
@@ -2087,12 +2087,27 @@ def gen_assign(self, t: Node, v: Val) -> None:
     else:
         self.err("cannot assign to this expression")
 
-def gen_slice_target(self, t: Node, bnd: list[str], nosub: str) -> Val:
+def gen_slice_target(self, t: Node, bnd: list[str], nosub: str, raw: list[str] | None = None, values: list[Val] | None = None) -> Val:
     # the list that slice t (xs[lo:hi:st]) assigns to or deletes from: xs, then the bounds (into
     # bnd: start, stop and step, see Gen.slice_bound), are evaluated, and xs being None raises
-    # nosub. Strs and tuples cannot change, and Pystachy has no slice objects for __setitem__
+    # nosub. A dynamic augmented assignment also keeps the evaluated bounds in raw/values:
+    # CPython converts them again at the store, after the RHS has run. Strs and tuples cannot
+    # change, and Pystachy has no slice objects for __setitem__
     o = self.expr(t.kids[0], "")
     dvs: list[Val] = []
+    if o.t == "dyn":
+        for j in range(3):
+            v = self.expr(t.kids[j + 1], "") if j + 1 < len(t.kids) and t.kids[j + 1].kind != "omit" else Val("null", "None")
+            dvs.append(self.dyn_box(v))
+            bnd.append(f"?{j}")
+        if raw is not None:
+            raw.extend(bnd)
+        if values is not None:
+            values.extend(dvs)
+        operation = 0 if "subscriptable" in nosub else 2 if "deletion" in nosub else 1
+        self.rt("pys_dyn_list_check", "void", [f"ptr {o.v}", f"i64 {operation}"])
+        self.slice_dyn(bnd, dvs)
+        return o
     bnd.append(self.slice_bound(t.kids[1], dvs))
     bnd.append(self.slice_bound(t.kids[2], dvs))
     bnd.append(self.slice_step(t.kids[3], dvs) if len(t.kids) == 4 else "1")
@@ -2119,6 +2134,26 @@ def gen_slice_store(self, o: Val, bnd: list[str], v: Val) -> None:
     # CPython's PySequence_Fast takes them (a list as it is, which the runtime copies first where
     # it is o itself; any other iterable's by iterating it, see as_list) once the step is checked
     st = bnd[2]
+    if v.t == "dyn" and o.t in ["list[int]", "list[dyn]"]:
+        o = self.dyn_box(o)  # use checked slice replacement for an Any iterable
+    if o.t == "dyn":
+        self.slice_check(st)
+        v = self.unwrap(v, "TypeError: must assign iterable to extended slice")
+        if self.dyn_boxable(v.t) != "":
+            if v.t == "bytes":
+                v = Val(self.rt("pys_bytes_list", "ptr", [f"ptr {v.v}"]), "list[int]")
+            elif not is_list(v.t):
+                v = self.as_list(v, "slice")
+            # Copy source slots, boxing each supported item with its own layout.
+            # An unsupported item still fails only when the source actually holds one.
+            if is_list(v.t) and self.dyn_boxable(self.rec_type(elem(v.t))) == "":
+                v = boxed_list_items(self, [v])
+            else:
+                v = self.dyn_fresh(v)
+        v = self.dyn_box(v)
+        v = self.dyn_call(self.dyn_dispatcher("slice_source", ["dyn"], "dyn", ""), [v])
+        self.rt("pys_dyn_list_set_slice", "void", [f"ptr {o.v}", f"i64 {bnd[0]}", f"i64 {bnd[1]}", f"i64 {st}", f"ptr {v.v}"])
+        return
     if not is_list(v.t):
         self.slice_check(st)  # (before None raises, __iter__ runs or a file is consumed)
     v = self.unwrap(v, "TypeError: must assign iterable to extended slice")  # (CPython 3.13's, for any step)

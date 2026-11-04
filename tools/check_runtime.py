@@ -30,7 +30,9 @@ disagrees with its entry is an internal error. This tool checks the table itself
     through getelementptr, load (the list's items array, an item), phi, select and casts,
     the locals they are stored in, and the parameters of the runtime functions they are passed
     to (from clang -O1, whose SSA form leaves few locals; a C library function other than
-    READS_ONLY counts as both, and user code as neither: that is U). Stores to Str.dict_hash
+    READS_ONLY counts as both, and user code as neither: that is U). The dynamic comparison
+    boundary of a descriptor A is treated the same way: Gen.opfx gives it every effect,
+    while the direct dyn.* entry's own memory accesses remain checked. Stores to Str.dict_hash
     and Str.chars1 alone are excluded: caching a hash or code-point count changes neither a
     string's value nor a container;
   - it has I if its call graph, outside a raise (R: the funnels, which end the program or
@@ -377,7 +379,13 @@ def derived(fns, eff, f, p):
             elif kind == "call":
                 g, args = ops
                 hit = [i for i, a in enumerate(args) if a in D or loc.get(a) in held]
-                if not hit or g in USER:
+                # A descriptor A is already a conditional user-code boundary: Gen.opfx
+                # expands it to every effect, including native-list identity materialization.
+                # Match the call-graph effect checks instead of attributing writes through
+                # a boxed descendant to every possible static container descriptor. This
+                # skips only calls across that boundary; each dyn.* body is still analyzed
+                # as a function of its own parameters below.
+                if not hit or g in USER or g in DYN_WALKS:
                     continue
                 if g.startswith("llvm."):
                     if g.startswith(("llvm.memcpy", "llvm.memmove", "llvm.memset")):

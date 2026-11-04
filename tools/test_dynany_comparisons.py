@@ -115,8 +115,10 @@ class ConcreteComparisonTests(unittest.TestCase):
         self.assertNotIn("cmpwrite:items", compiler.newhints)
 
     def test_irrelevant_classes_do_not_add_restarts(self):
-        small = self.compile(0)
-        large = self.compile(40)
+        # Native list[int] can now box directly. Float storage still requires the
+        # concrete adapter whose existence and retry budget this probe checks.
+        small = self.compile(0, fields="self.items = [3.0]", own_fields="self.items = [3.0]")
+        large = self.compile(40, fields="self.items = [3.0]", own_fields="self.items = [3.0]")
         self.assertIn("@dyn.cmp.Strict.__eq__", large[0])
         self.assertEqual(small[1], large[1])
         self.assertLessEqual(large[1], 3)
@@ -161,7 +163,7 @@ class ConcreteComparisonTests(unittest.TestCase):
         for fields in ["self.missing = [3]", "self.items = 'different type'", "self.items = ['x']",
                        "self.items = {1: 'x'}", "self.items = (1, 'x')"]:
             with self.subTest(fields=fields):
-                result = self.compile(20, fields=fields)
+                result = self.compile(20, fields=fields, own_fields="self.items = [3.0]")
                 self.assertLessEqual(result[1], 3)
                 self.assertFalse(any(":concrete:" in key for key in result[2].xnot))
                 self.assertTrue(result[2].dyn_supports("Peer", "cmp.Strict.__eq__", "__eq__", 1))
@@ -169,7 +171,7 @@ class ConcreteComparisonTests(unittest.TestCase):
     def test_unsupported_field_types_do_not_add_failed_restarts(self):
         for fields in ["self.items = b'x'", "self.items: set[int] = {3}", "self.items = object()"]:
             with self.subTest(fields=fields):
-                result = self.compile(20, fields=fields)
+                result = self.compile(20, fields=fields, own_fields="self.items = [3.0]")
                 self.assertLessEqual(result[1], 3)
                 self.assertFalse(any(":concrete:" in key for key in result[2].xnot))
                 self.assertFalse(result[2].dyn_supports("Peer", "cmp.Strict.__eq__", "__eq__", 1))
@@ -236,7 +238,7 @@ class ConcreteComparisonTests(unittest.TestCase):
         pairs = [
             ("self.items: tuple[int, ...] = (1, 2)", "self.items = ('1', '2')"),
             ("self.items = (1, 2)", "self.items: tuple[str, ...] = ('1', '2')"),
-            ("self.items: int | list[int] = [1]", "self.items = ('1', '2')"),
+            ("self.items: int | list[float] = [1.0]", "self.items = ('1', '2')"),
             ("self.items = (1, 2)", "self.items: str | list[str] = ['x']"),
         ]
         for own, peer in pairs:
@@ -267,7 +269,7 @@ class ConcreteComparisonTests(unittest.TestCase):
         ]
         for body in bodies:
             with self.subTest(body=body):
-                result = self.compile(0, body=body)
+                result = self.compile(0, body=body, fields="self.items = [3.0]", own_fields="self.items = [3.0]")
                 self.assertTrue("@dyn.cmp.Strict.__eq__" in result[0])
                 self.assertFalse(any(":concrete:" in key for key in result[2].xnot))
 
@@ -294,10 +296,10 @@ class ConcreteComparisonTests(unittest.TestCase):
 
     def test_property_uses_its_accessor(self):
         extra = ("class PropertyPeer:\n"
-                 "    @property\n    def items(self) -> list[int]:\n"
-                 "        print('getter ran')\n        return [3]\n"
+                 "    @property\n    def items(self) -> list[float]:\n"
+                 "        print('getter ran')\n        return [3.0]\n"
                  "property_peer: Any = PropertyPeer()\n")
-        result = self.compile(0, extra=extra)
+        result = self.compile(0, extra=extra, fields="self.items = [3.0]", own_fields="self.items = [3.0]")
         self.assertIn("@dyn.cmp.Strict.__eq__", result[0])
         self.assertTrue(result[2].dyn_supports("Peer", "cmp.Strict.__eq__", "__eq__", 1))
         self.assertTrue(result[2].dyn_supports("PropertyPeer", "cmp.Strict.__eq__", "__eq__", 1))
@@ -361,13 +363,17 @@ class ConcreteComparisonTests(unittest.TestCase):
 
     def test_nested_object_fields_preserve_bounded_restarts(self):
         source = (ROOT / "tests/programs/inference/dynany_cmp_nested_fields.py").read_text()
+        # Keep the differential fixture's newly boxable integer lists unchanged.
+        # This unit probe specifically requires an unboxable field to force the
+        # concrete adapter before nested objects are discovered by generic boxing.
+        source = source.replace("self.force = [1]", "self.force = [1.0]")
         counts = []
         for count in [1, 20]:
             extra = ""
             for index in range(count):
                 extra += (f"class NestedPeer{index}:\n"
                           "    def __init__(self):\n"
-                          "        self.force = [1]\n"
+                          "        self.force = [1.0]\n"
                           "        self.node = FloatLeaf()\n"
                           "        self.nodes = [self.node]\n"
                           "        self.lookup = {'node': self.node}\n"
@@ -421,7 +427,7 @@ class ConcreteComparisonTests(unittest.TestCase):
                   "def nested():\n    return self.items == other.items\nreturn nested()"]
         for body in bodies:
             with self.subTest(body=body):
-                result = self.compile(20, body=body, fields="self.missing = [3]")
+                result = self.compile(20, body=body, fields="self.missing = [3]", own_fields="self.items = [3.0]")
                 self.assertTrue(result[2].dyn_supports("Peer", "cmp.Strict.__eq__", "__eq__", 1))
                 self.assertFalse(any(":concrete:" in key for key in result[2].xnot))
 

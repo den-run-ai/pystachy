@@ -12,9 +12,10 @@ That reading back is sound only as lib/copy.py and the compiler's copies use the
 the compiler makes any other call of them, or use as a value, an error (reflection.py's
 copy_private). _memo_put() checks, as the program compiles, that each copy fits its original's
 static type there (__pys_copy_ref(y, x)). A copy read back for another view of the same original
-fits that view too: a typed container has one static type (a list[int] never becomes a list[Any]
-or an Any value), and the copy of an object is either a new object of its exact class or what its
-class's __deepcopy__() returns, whose type the compiler checks against each view's type.
+fits that view too: native list[int] and Any aliases retain one physical layout through a deep
+copy, and a dynamic list's memo entries retain its payload rather than its wrapper. Other typed
+containers have one static type. The copy of an object is either a new object of its exact class
+or what its class's __deepcopy__() returns, whose type the compiler checks against each view's type.
 Programs do not import this module; a program's __deepcopy__() gets the memo to pass on.
 """
 

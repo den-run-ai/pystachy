@@ -919,7 +919,7 @@ def gen_stmt_main(self, n: Node) -> None:
             if dt.kind == "slice":
                 bnd: list[str] = []
                 o = self.slice_target(dt, bnd, "TypeError: 'NoneType' object does not support item deletion")
-                self.rt("pys_list_del_slice", "void", [f"ptr {o.v}", f"i64 {bnd[0]}", f"i64 {bnd[1]}", f"i64 {bnd[2]}"])
+                self.rt("pys_dyn_list_del_slice" if o.t == "dyn" else "pys_list_del_slice", "void", [f"ptr {o.v}", f"i64 {bnd[0]}", f"i64 {bnd[1]}", f"i64 {bnd[2]}"])
                 continue
             o = self.expr(dt.kids[0], "") if dt.kind == "index" else Val("", "")
             nodel = "TypeError: 'NoneType' object does not support item deletion"
@@ -1275,7 +1275,16 @@ def gen_augassign(self, n: Node) -> None:
     elif t.kind == "slice":
         # xs[a:b] op= v: the slice (a new list, which += extends and *= repeats) stored back
         bnd: list[str] = []
-        o = self.slice_target(t, bnd, "TypeError: 'NoneType' object is not subscriptable")
+        raw: list[str] = []
+        values: list[Val] = []
+        o = self.slice_target(t, bnd, "TypeError: 'NoneType' object is not subscriptable", raw, values)
+        if o.t == "dyn":
+            cur = Val(self.rt("pys_dyn_list_slice", "ptr", [f"ptr {o.v}", f"i64 {bnd[0]}", f"i64 {bnd[1]}", f"i64 {bnd[2]}"]), "dyn")
+            value = self.inplace(op, cur, n.kids[1])
+            self.rt("pys_dyn_list_check", "void", [f"ptr {o.v}", "i64 1"])
+            self.slice_dyn(raw, values)
+            self.slice_store(o, raw, value)
+            return
         av = [f"ptr {o.v}", f"i64 {bnd[0]}", f"i64 {bnd[1]}"]
         if bnd[2] != "1":
             av.append(f"i64 {bnd[2]}")
@@ -1406,6 +1415,10 @@ def gen_inplace(self, op: str, cur: Val, rhs: Node) -> Val:
             self.none_operands(op, cur, b, "+=")
             cur = Val(cur.v, unopt(cur.t))
             b = Val(b.v, unopt(b.t))
+        if b.t == "dyn" and cur.t in ["list[int]", "list[dyn]"]:
+            # Consume the iterable through the checked list boundary. Unboxing the
+            # source as the receiver layout would reject a boxed list or tuple.
+            return self.coerce(self.dyn_arith(op, cur, b, True), cur.t)
         if is_list(b.t) and b.t != cur.t and self.widens_items(b.t, cur.t):
             b = Val(b.v, cur.t)  # (as extend: the items are copied)
         self.rt("pys_list_extend", "void", [f"ptr {cur.v}", f"ptr {self.coerce(b, cur.t).v}"])
