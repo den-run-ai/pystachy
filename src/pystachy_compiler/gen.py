@@ -209,6 +209,10 @@ from src.pystachy_compiler.dynamic import (
     gen_dyn_stores_ahead as dynamic_dyn_stores_ahead,
     gen_dyn_str as dynamic_dyn_str,
     gen_dyn_sum as dynamic_dyn_sum,
+    gen_dyn_sum_slots as dynamic_dyn_sum_slots,
+    gen_dyn_sum_start as dynamic_dyn_sum_start,
+    gen_dyn_sum_item as dynamic_dyn_sum_item,
+    gen_dyn_sum_end as dynamic_dyn_sum_end,
     gen_dyn_supports as dynamic_dyn_supports,
     gen_dyn_tagged_type as dynamic_dyn_tagged_type,
     gen_dyn_takes as dynamic_dyn_takes,
@@ -340,7 +344,6 @@ from src.pystachy_compiler.reflection import (
     gen_refl_defines as reflection_refl_defines,
     gen_refl_names as reflection_refl_names,
     gen_refl_listed as reflection_refl_listed,
-    gen_refl_public as reflection_refl_public,
     gen_refl_init_order as reflection_refl_init_order,
     gen_refl_dict_order as reflection_refl_dict_order,
     gen_refl_stored as reflection_refl_stored,
@@ -570,6 +573,7 @@ from src.pystachy_compiler.declarations import (
     gen_ctype as declarations_ctype,
     gen_dc_methods as declarations_dc_methods,
     gen_declare_fields as declarations_declare_fields,
+    gen_class_fields as declarations_class_fields,
     gen_declare_fn as declarations_declare_fn,
     gen_exc_attr as declarations_exc_attr,
     gen_bad_class as declarations_bad_class,
@@ -674,6 +678,7 @@ from src.pystachy_compiler.emission import (
     gen_ret_ as emission_ret_,
     gen_returned_none as emission_returned_none,
     gen_rt as emission_rt,
+    gen_list_write as emission_list_write,
     gen_runtime as emission_runtime,
     gen_save as emission_save,
     gen_sconst as emission_sconst,
@@ -2250,6 +2255,18 @@ class Gen:
     def dyn_sum(self, xs: Val, start: Val) -> Val:
         return dynamic_dyn_sum(self, xs, start)
 
+    def dyn_sum_slots(self, r: Reduce) -> None:
+        return dynamic_dyn_sum_slots(self, r)
+
+    def dyn_sum_start(self, r: Reduce, start: Val) -> None:
+        return dynamic_dyn_sum_start(self, r, start)
+
+    def dyn_sum_item(self, r: Reduce, value: Val) -> None:
+        return dynamic_dyn_sum_item(self, r, value)
+
+    def dyn_sum_end(self, r: Reduce) -> Val:
+        return dynamic_dyn_sum_end(self, r)
+
     # ---- end of dynamic values
     # ---- reflection (reflection.py)
     def refl_typeof(self, n: Node) -> Node | None:
@@ -2336,17 +2353,14 @@ class Gen:
     def refl_listed(self, c: str, nk: list[str]) -> bool:
         return reflection_refl_listed(self, c, nk)
 
-    def refl_public(self, c: str, n: str) -> None:
-        return reflection_refl_public(self, c, n)
-
     def refl_init_order(self, c: str, f: FnInfo, out: list[str], maybe: dict[str, bool]) -> bool:
         return reflection_refl_init_order(self, c, f, out, maybe)
 
     def refl_dict_order(self, c: str) -> list[str]:
         return reflection_refl_dict_order(self, c)
 
-    def refl_order(self, c: str, public: bool) -> tuple[list[str], str]:
-        return reflection_refl_order(self, c, public)
+    def refl_order(self, c: str) -> tuple[list[str], str]:
+        return reflection_refl_order(self, c)
 
     def refl_stored(self, name: str) -> bool:
         return reflection_refl_stored(self, name)
@@ -2614,6 +2628,9 @@ class Gen:
 
     def rt(self, name: str, ret: str, args: list[str], x: str = "") -> str:
         return emission_rt(self, name, ret, args, x)
+
+    def list_write(self, key: str, args: list[Val]) -> None:
+        emission_list_write(self, key, args)
 
     def alloc_fixed(self, t: str) -> Val:
         return emission_alloc_fixed(self, t)
@@ -2908,6 +2925,9 @@ class Gen:
 
     def declare_fields(self, ci: ClassInfo) -> None:
         return declarations_declare_fields(self, ci)
+
+    def class_fields(self, ci: ClassInfo) -> None:
+        return declarations_class_fields(self, ci)
 
     def nt_class(self, ci: ClassInfo) -> None:
         return declarations_nt_class(self, ci)
@@ -3296,8 +3316,8 @@ class Gen:
     def assign(self, t: Node, v: Val) -> None:
         return variables_assign(self, t, v)
 
-    def slice_target(self, t: Node, bnd: list[str], nosub: str) -> Val:
-        return variables_slice_target(self, t, bnd, nosub)
+    def slice_target(self, t: Node, bnd: list[str], nosub: str, raw: list[str] | None = None, values: list[Val] | None = None) -> Val:
+        return variables_slice_target(self, t, bnd, nosub, raw, values)
 
     def slice_check(self, step: str) -> None:
         return variables_slice_check(self, step)

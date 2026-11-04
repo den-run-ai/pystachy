@@ -101,7 +101,7 @@ def base_report(source: str, function: str) -> dict:
                      | {"PYSTACHY_IRCHECK": "1"},
                      "function_filter": function, "command": "ir", "executes_program": False,
                      "forced_environment": {"PYSTACHY_IRCHECK": "1"}},
-        "diagnostics": [], "attempts": [], "passes": [], "program_passes": [],
+        "diagnostics": [], "attempts": [], "passes": [], "pass_contracts": {}, "program_passes": [],
         "stages": [{"name": name, "status": "unavailable", "artifact": None}
                    for name in ("typed-before", "typed-after", "llvm")],
         "verification": {"requested": True, "calls": 0, "completed": False,
@@ -218,7 +218,7 @@ class Observer:
         return decorate
 
     def parse_wrapper(self, original):
-        def wrapped(loader, source, line):
+        def wrapped(loader, source, line, *args, **kwargs):
             # RAW's hosted latin-1 round trip preserves source bytes apart from
             # universal newline conversion performed by the compiler's text read.
             path = self.location(line)["file"]
@@ -237,14 +237,14 @@ class Observer:
             })
             old = self.diagnostics.PHASE
             self.diagnostics.PHASE = "parse"
-            result = original(loader, source, line)
+            result = original(loader, source, line, *args, **kwargs)
             self.diagnostics.PHASE = old
             return result
         return wrapped
 
     def program_wrapper(self, original):
         def wrapped(gen, *args, **kwargs):
-            from src.pystachy_compiler.diagnostics import Rejoin
+            from src.pystachy_compiler.diagnostics import NeedSliceEH, Rejoin
             self.before, self.after = [], []
             self.captured_before = False
             self.attempt = {"index": len(self.report["attempts"]) + 1, "status": "failed"}
@@ -252,14 +252,30 @@ class Observer:
             self.diagnostics.PHASE = "semantic"
             try:
                 result = original(gen, *args, **kwargs)
-            except Rejoin:
-                self.attempt.update(status="retry", reason="compiler requested a fresh semantic attempt",
+            except Rejoin as retry:
+                reason = ("dynamic slice iterator acquisition requires exception handling" if isinstance(retry, NeedSliceEH)
+                          else "compiler requested a fresh semantic attempt")
+                self.attempt.update(status="retry", reason=reason,
                                     new_type_hints=len(gen.newhints), declined_methods=len(gen.newx),
                                     identity_retry=bool(gen.idevent))
                 raise
             else:
                 self.attempt["status"] = "completed"
                 return result
+            finally:
+                # specdone contains only completed requests. A fresh Gen owns
+                # each retry, so copy its aliases and fields before it is lost.
+                selected = {}
+                for key, identity in gen.specdone.items():
+                    if identity not in selected:
+                        cls = gen.classes[identity]
+                        selected[identity] = {
+                            "template": cls.origin, "bindings": dict(cls.tvars),
+                            "fields": {name: cls.ftypes[name] for name in cls.fields},
+                            "request_keys": [],
+                        }
+                    selected[identity]["request_keys"].append(key)
+                self.attempt["class_specializations"] = selected
         return wrapped
 
     def effects_wrapper(self, original):
@@ -392,6 +408,7 @@ class Observer:
         from src.pystachy_compiler.gen import Gen
         from src.pystachy_compiler.lexer import Lexer
         from src.pystachy_compiler.loader import Loader
+        from src.pystachy_compiler.optimizations import PASS_CONTRACTS
         from src.pystachy_compiler.parser import Parser
         self.wrap(Loader, "program", self.phase_wrapper("load"))
         self.wrap(Loader, "parse_source", self.parse_wrapper)
@@ -400,8 +417,12 @@ class Observer:
         self.wrap(Gen, "program", self.program_wrapper)
         self.wrap(Gen, "effects", self.effects_wrapper)
         self.wrap(Gen, "verify", self.verify_wrapper)
-        for name in ("listget", "dictfuse", "unionslots", "nullcheck"):
-            self.wrap(Gen, name, self.pass_wrapper(name))
+        for contract in PASS_CONTRACTS:
+            self.report["pass_contracts"][contract.name] = {
+                key: list(getattr(contract, key))
+                for key in ("requires", "analyses", "preserves", "invalidates", "rerun")
+            }
+            self.wrap(Gen, contract.name, self.pass_wrapper(contract.name))
         for name in PROGRAM_PASS_UNITS:
             self.wrap(Gen, name, self.program_pass_wrapper(name))
         self.wrap(Gen, "eh_ir", self.pass_wrapper("exceptions"))

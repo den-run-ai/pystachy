@@ -1,6 +1,6 @@
 # pystachy: dynamic-any
-# A failed dynamic-body specialization must not suppress a supported typed call
-# to a method that compares typed container fields across unrelated classes.
+# Keep the supported typed call across unrelated classes when their native
+# integer-list fields can also be reached through an Any specialization.
 from typing import Any
 
 

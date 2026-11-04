@@ -1,0 +1,8 @@
+names first second
+reflection False True
+identity True True
+mutations [4, 5, 6, 1001, 3] [4, 5, 6, 1001, 3]
+sums 1019 1019 1019.5
+copy [4, 5, 6, 1001, 3, 'free'] [4, 5, 6, 1001, 3]
+retained True second [4, 5, 6, 1001, 3]
+[exit 0]

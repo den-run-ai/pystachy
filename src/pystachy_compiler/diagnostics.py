@@ -167,4 +167,10 @@ class Rejoin(Exception):
     pass
 
 
+class NeedSliceEH(Rejoin):
+    # A dynamic slice needs to catch an iterator callback's TypeError. Start
+    # a fresh compile with exception handling before lowering any function.
+    pass
+
+
 # ---------------------------------------------------------------- lexer

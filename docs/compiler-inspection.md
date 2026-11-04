@@ -79,6 +79,10 @@ A pass record's `rule` explains the pass's general safety contract. A zero
 optimization. The retained operations, effect summaries and source provide the
 evidence for this example's mutation barrier.
 
+`report.json` also includes the compiler's four registered `pass_contracts`,
+with their required and preserved facts, local analyses, invalidations and
+checks to rerun after a rewrite.
+
 ### Which imported specialization rejected the program?
 
 ```sh
@@ -93,6 +97,16 @@ The first command intentionally fails: the imported generic helper tries to add
 an integer to a string. Its diagnostic names the helper's source location and
 retains the specialization notes leading to that error. The repaired caller
 passes an integer; CPython prints `8`.
+
+For a class, inspect `attempts[].class_specializations`. Each class identity
+groups its completed compiler request keys, type-variable bindings and ordered
+field representations. For example, in
+[`generic_distinct_layouts.py`](../tests/programs/generics/generic_distinct_layouts.py),
+the recursive annotation and list constructor select the same `Collection`.
+The tuple constructor selects a different class with the same binding for `T`.
+These are cache keys, so repeated identical calls appear once. Identities are
+local to each attempt. On failure, the map contains only completed selections
+and the diagnostic context gives the rejected request when available.
 
 ## Reading the report accurately
 
