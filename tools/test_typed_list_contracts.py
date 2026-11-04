@@ -110,6 +110,12 @@ class ListWriteContractTests(unittest.TestCase):
             with self.subTest(receiver=receiver):
                 self.assert_rejected(i, "list receiver")
 
+        # Equal bracket counts alone do not make these single outer lists.
+        # Match the spurious slot too, so operand agreement cannot mask the bug.
+        for element in ("int][str", "int]][[str"):
+            with self.subTest(element=element):
+                self.assert_rejected(list_write(element=element), "list receiver")
+
         for element in ("%ptr", "int+"):
             with self.subTest(element=element):
                 self.assert_rejected(list_write(element=element), "semantic item type")
