@@ -1,0 +1,16 @@
+'first☆α☆🐍☆'
+'☆nul\x00'
+'first☆α'
+''
+''
+''
+''
+separator
+start
+stop
+'+nul\x00+last'
+['replacement']
+stop
+slice indices must be integers or None or have an __index__ method
+item-77|item-78|item-79 615
+[exit 0]
