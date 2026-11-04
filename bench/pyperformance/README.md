@@ -179,9 +179,10 @@ Results within a benchmark are checked against CPython, not against upstream pyp
 
 ## Census
 
-The original sdist census ran on main `5eaf5638` with CPython 3.13.18. A refresh
-with CPython 3.13.16 checked all 52 upstream file hashes above, applied the same
-runner replacement and compiled each source to IR with the shipped library. Both
+The original sdist census ran on main `5eaf5638` with CPython 3.13.18. The
+argparse refresh at `20d49889` checked all 52 upstream file hashes, applied the
+same runner replacement, and attempted IR compilation with the shipped library
+and CPython 3.13.16 as the reference interpreter. Both
 runs compiled the same seven sources: `fannkuch`, `generators`, `nbody`, `nqueens`,
 `regex_v8`, `spectral_norm` and `unpack_sequence`. The 23 adapted workloads have
 separate execution checks.
@@ -198,7 +199,7 @@ historical run.
 | Benchmark | First error with the shipped library | Historical overlay result |
 |---|---|---|
 | `2to3` | no `subprocess` module | `signal` imports the missing `_signal` |
-| `argparse` | unsupported `version=` for `action="version"` | a bare `list` annotation (`-> list`) |
+| `argparse` | bare `list` return annotation on `generate_arguments()` | a bare `list` annotation (`-> list`) |
 | `async_generators`, `coroutines` | `async def` | same |
 | `async_tree`, `asyncio_tcp` | no `asyncio` module | `socket` imports the missing `_socket` |
 | `base64` | no `base64` module | `random.randbytes()` needs `int.to_bytes()` |
@@ -221,7 +222,7 @@ historical run.
 | `tomli_loads` | no `tomli` module (third-party) | no `tomli` module (third-party) |
 | `xml_etree` | no `xml` module | `xml.etree.ElementTree` imports the missing `_elementtree` |
 
-The argparse kernel also registers subparsers, argument groups and 1,000 options
+The argparse kernel also registers a version action, subparsers, argument groups and 1,000 options
 whose names are built in a loop. These exceed the [static parser subset](../../lib/compatibility.md#argparse).
 To reproduce its result from the pinned sdist:
 
