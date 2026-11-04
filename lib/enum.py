@@ -459,10 +459,10 @@ def _flag_bin(num: int, max_bits: int | None = None) -> str:
     # (CPython's enum.bin(), which the module's name bin would hide the builtin for here)
     k = _bits(num)
     sign = "0b0" if num >= 0 else "0b1"
-    x = num if num >= 0 else ~num ^ ((1 << k) - 1)
+    # Reading the low k bits directly also works for negative values.
     digits = ""
     for i in range(k - 1, -1, -1):
-        digits += "1" if (x >> i) & 1 else "0"
+        digits += "1" if (num >> i) & 1 else "0"
     if max_bits is not None:
         if len(digits) < max_bits:
             digits = (sign[-1] * max_bits + digits)[-max_bits:]
@@ -542,14 +542,15 @@ class _FlagType:
                             self, value, _flag_bin(value, max_bits), _flag_bin(flag_mask, max_bits),
                             ))
             if value < 0:
-                value = (
-                        max(all_bits+1, 2**(_bits(value)))
-                        + value
-                        )
+                # Add the greater of the two powers of two to the negative value.
+                # Its half fits even when the power is 2**63, so form the signed
+                # result without first materializing an overflowing intermediate.
+                half = max((all_bits >> 1) + 1, 2**(_bits(value) - 1))
+                value = (value + half) + half
         if value < 0:
             neg_value = value
             negative = True
-            value = all_bits + 1 + value
+            value = (all_bits + value) + 1
         # get members and unknown
         unknown = value & ~flag_mask
         aliases = value & ~singles_mask
