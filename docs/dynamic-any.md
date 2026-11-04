@@ -430,10 +430,16 @@ modules and require unsafe cases to produce the same IR as compiling with hints 
   retains their full values. Typed aliases see successful dynamic mutations immediately.
   `extend` and `+=` retain the compatible prefix before an error. Slice assignment
   validates the collected replacement before changing target slots; callback effects
-  already performed remain. Copies, slices, `list()`, concatenation and repetition
-  through `Any` produce fresh unrestricted boxed lists, preserving item identities.
+  already performed remain. Shallow copies, slices, `list()`, concatenation and
+  repetition through `Any` produce fresh unrestricted boxed lists, preserving item
+  identities. `copy.deepcopy()` retains native storage and its checked store policy:
+  the same graph may reach a list through both typed and `Any` fields. Its memo keys
+  the shared list payload and returns the same copied list to both views, regardless
+  of traversal order; boxed-list cycles and aliases remain shared as well
+  (`lib_copy_native_any.py`, `lib_copy_native_any_promote.py`).
   `isinstance(value, list)` proves the Python type, so operations keep dispatching by
-  layout. An explicit `list[int]` receiver requires the native descriptor for the
+  layout. Boxing and unboxing select that descriptor through the same `ListLayout`
+  contract used by native IR writes. An explicit `list[int]` receiver requires the native descriptor for the
   program's checked or promoting container policy. A native list cannot become an aliased
   `list[Any]`, and an existing boxed list cannot gain a native constraint merely because
   its current items are ints. Those annotation crossings raise `TypeError`; conversion
@@ -545,6 +551,12 @@ results and errors: `int / int` and `2 ** -1` give floats, `True & False` is a b
 `int`/`float` comparisons are exact, and the error messages are CPython's
 (`TypeError: unsupported operand type(s) for +: 'int' and 'str'`,
 `TypeError: can only concatenate str (not "int") to str`, `KeyError: 'k'`, ...).
+
+`sum()` of dynamic items uses CPython 3.13's compensated float phase, including
+cancellation-sensitive inputs, mixed ints/floats and nonfinite values. Lists and
+streamed generators share the same reduction rules. A callback receives the
+compensated partial result; leaving the float phase resumes ordinary addition.
+Integer overflow follows the calling module's existing integer policy.
 
 `int()` and `float()` call a boxed object's `__int__` and `__float__`, respectively,
 falling back to `__index__` only when that method is absent. Return values are checked

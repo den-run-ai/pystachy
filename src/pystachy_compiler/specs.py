@@ -646,6 +646,14 @@ IROPS: dict[str, str] = {
     "gen.start": "T A", "gen.yield": "T U", "gen.ret": "T", "gen.promise": "", "gen.resume": "U",
     "gen.drop": "A I rL wL rD wD rO wO rG wG rF wF",
 }
+# Native list writes whose concrete receiver and packed item types survive in IR.
+# RUNTIME remains authoritative for their signatures, effects and LLVM symbols.
+# The variant selects the storage contract checked by builders and verifiers.
+LIST_WRITES: dict[str, str] = {
+    "list.append": "slot", "list.set": "slot", "list.insert": "slot",
+    "list.append_big": "big", "list.set_big": "big", "list.insert_big": "big",
+    "list.append_identity": "identity", "list.set_identity": "identity", "list.insert_identity": "identity",
+}
 # a generator's promise, five i64 slots: the value it yielded last, the value it returned, its
 # state and the command its consumer gives it, and its __qualname__ (a str, for the reports of
 # what closing it raises). State: suspended where closing it runs no code of its, suspended
@@ -797,6 +805,8 @@ RUNTIME: dict[str, str] = {
     "dyn.big_unbox": "int+:%ptr|R|", "dyn.big_of": "int+:%ptr|R A|",
     "dyn.int_box_of": "%ptr:%ptr|R A|",
     "dyn.index_bound": "int:%ptr,int|R|",
+    "dyn.copy_ref": "%ptr:%ptr,%ptr|R|", "dyn.copy_restore": "%ptr:%ptr,%ptr|R A rL wL|",
+    "dyn.copy_list": "%ptr:%ptr|R A rL wL|",
     "dyn.unbox": "int:%ptr,%ptr|R|", "dyn.isa": "bool:%ptr,%ptr||", "dyn.copy_is_own": "bool:%ptr,int||", "dyn.same_type": "bool:%ptr,%ptr||", "dyn.truth": "bool:%ptr|rL rD|",
     "dyn.repr": "str:%ptr|R A I U|", "dyn.str": "str:%ptr|R A I U|",
     "dyn.eq": "bool:%ptr,%ptr|R A I U|", "dyn.ne": "bool:%ptr,%ptr|R A I U|", "dyn.cmp": "bool:%ptr,%ptr,int|R A I U|", "dyn.hash": "int:%ptr|R A I U|",

@@ -1,0 +1,11 @@
+True True
+True
+[1000, 7, 8] [1000, 7, 8] [1000]
+True True
+True
+[1000, 7, 8] [1000, 7, 8] [1000]
+True True True
+True
+[1000, 9] [1000]
+[1000, 'free'] [1000] True
+[exit 0]

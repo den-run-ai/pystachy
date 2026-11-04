@@ -1508,6 +1508,33 @@ def gen_add_field(self, ci: ClassInfo, name: str, t: str) -> None:
     ci.ftypes[name] = t
 
 def gen_declare_fields(self, ci: ClassInfo) -> None:
+    # An annotation can request a specialization while signatures are still being
+    # declared. Prepare its template once before it copies the class attributes.
+    # Completed specializations inherit readiness and skip the shared syntax.
+    # A provisional request retains the normal final declaration pass, which
+    # supplies class attributes and checks metadata not available when it began.
+    if ci.fields_ready or ci.fields_preparing:
+        return
+    # A self annotation can arrive before later properties or hooks have been
+    # registered. Keep that request provisional until every own method is known.
+    # Walk in declaration order, stopping before any still-unregistered accessor.
+    for d in ci.node.kids[0].kids if ci.origin == "" else []:
+        if d.kind == "def":
+            key = d.s + self.accessor(ci, d)
+            if key not in ci.methods or ci.methods[key].node is not d:
+                return
+    line, cls = self.line, self.selfcls
+    self.selfcls = ci.name
+    ci.fields_preparing = True
+    try:
+        self.class_fields(ci)
+        ci.fields_ready = True
+    finally:
+        ci.fields_preparing = False
+        self.line, self.selfcls = line, cls
+
+
+def gen_class_fields(self, ci: ClassInfo) -> None:
     noann = mk("noann", "", ci.node.line, [])
     last = ""
     if ci.base in self.classes and self.classes[ci.base].excluded:

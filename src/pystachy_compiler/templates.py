@@ -69,118 +69,169 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
     t.nspec += 1
     name = f"{c}-{t.nspec}"
     self.specing[doing] = name
-    s = ClassInfo(name, t.node)
-    s.mod = t.mod
-    s.origin = c
-    s.speckey = doing
-    s.slots = t.slots
-    s.slotlimit = t.slotlimit
-    s.fields = [x for x in t.fields]  # (its class attributes, which its specializations share)
-    for x in t.fields:
-        s.fpos[x] = t.fpos[x]
-        s.ftypes[x] = t.ftypes[x]
-    if "__slots__" in t.ftypes:
-        s.ftypes["__slots__"] = t.ftypes["__slots__"]
-    s.fdefault = t.fdefault
-    s.fglob = t.fglob
-    self.classes[name] = s
-    fi = FnInfo("__init__", init.ll, init.node, name)
-    fi.params = init.params
-    fi.ptypes = [name] + ts
-    fi.mod = init.mod
-    args = ", ".join([typestr(x) for x in ts])
-    self.making.append(f"specializing {shown(c)}({args}) for the call at {where(self.line)}")
+    # Request-local context is borrowed, not semantic rollback. Completed
+    # classes belong to this Gen; a failed or restarted pass still discards it.
+    # Diagnostics copy making before this scope unwinds; observers own CAPTURED.
+    owned = [doing]
     sel = self.selfcls
-    self.selfcls = name  # (c names its specialization in its annotations, see ann)
     line = self.line
-    if c in self.tparams:
-        s.tvars = self.bind(c, ts, given)  # (before its fields, which its type variables may type)
-        if int_lists():
-            s.tvars = {x: promoted(s.tvars[x]) for x in s.tvars}  # (as above: an int that an item binds, list[T] of a list[int])
-    if named:
-        fi.ptypes = [name] + self.named_params(c, init.node)
-    elif c in self.tparams:
-        # (an argument whose type bind decided later, a lambda, builtin or unannotated def, is
-        # the Callable its parameter's annotation names, bound now, as call_fn passes it: also
-        # for a field that __init__ stores it in unannotated)
-        ps = init.node.kids[0].kids
-        for i in range(min(len(ts), len(ps) - 1)):
-            a = ps[i + 1].kids[0]
-            if ts[i].startswith("fn[") and self.fn_sig(ts[i])[0].startswith("!") and ps[i + 1].kind == "param" and a.kind != "noann" and self.names_tv(a, self.tparams[c]):
-                pt = self.named_param(a)
-                fi.ptypes[i + 1] = pt if not pt.startswith("!") else fi.ptypes[i + 1]
-    if c in self.cnts:
-        self.nts[name] = True  # (namedtuple()'s, whose objects are NamedTuples)
-    self.scan_fields(s, fi, init.node.kids[2].kids, {})
-    comparison_reserve_fields(self, s)  # late-created specialization, before layout
-    if len(lits) > 0:
-        s.lits = lits
-        self.const_fields(s, init)
-    self.line = line
-    # (a field that holds the specialization itself, self.next: Node | None, is the same in each)
-    key = ",".join([x + ":" + retoken(s.ftypes[x], name, "@") for x in s.fields])
-    key += "".join([f";{x}={retoken(s.tvars[x], name, '@')}" for x in self.tparams.get(c, [])])
-    key += "".join([f";{x}={lit_key(lits[x])}" for x in init.params if x in lits])  # (its __init__ reads them)
-    del self.specing[doing]
-    if key in t.specs:
-        del self.classes[name]
-        self.nts.pop(name, False)
+    lib = self.lib
+    depth = len(self.making)
+    instances = self.template_instances
+    canonical = ""
+    try:
+        s = ClassInfo(name, t.node)
+        s.mod = t.mod
+        s.origin = c
+        s.speckey = doing
+        # Readiness itself can resolve a recursive class-attribute annotation.
+        # Every active request must already name a nominal class at that point.
+        self.classes[name] = s
+        self.declare_fields(t)
+        s.fields_ready = t.fields_ready
+        s.slots = t.slots
+        s.slotlimit = t.slotlimit
+        s.fields = [x for x in t.fields]  # (its class attributes, which its specializations share)
+        for x in t.fields:
+            s.fpos[x] = t.fpos[x]
+            s.ftypes[x] = t.ftypes[x]
+        if "__slots__" in t.ftypes:
+            s.ftypes["__slots__"] = t.ftypes["__slots__"]
+        s.fdefault = t.fdefault
+        s.fglob = t.fglob
+        fi = FnInfo("__init__", init.ll, init.node, name)
+        fi.params = init.params
+        fi.ptypes = [name] + ts
+        fi.mod = init.mod
+        args = ", ".join([typestr(x) for x in ts])
+        self.making.append(f"specializing {shown(c)}({args}) for the call at {where(self.line)}")
+        self.selfcls = name  # (c names its specialization in its annotations, see ann)
+        if c in self.tparams:
+            s.tvars = self.bind(c, ts, given)  # (before its fields, which its type variables may type)
+            if int_lists():
+                s.tvars = {x: promoted(s.tvars[x]) for x in s.tvars}  # (as above: an int that an item binds, list[T] of a list[int])
+        if named:
+            fi.ptypes = [name] + self.named_params(c, init.node)
+        elif c in self.tparams:
+            # (an argument whose type bind decided later, a lambda, builtin or unannotated def, is
+            # the Callable its parameter's annotation names, bound now, as call_fn passes it: also
+            # for a field that __init__ stores it in unannotated)
+            ps = init.node.kids[0].kids
+            for i in range(min(len(ts), len(ps) - 1)):
+                a = ps[i + 1].kids[0]
+                if ts[i].startswith("fn[") and self.fn_sig(ts[i])[0].startswith("!") and ps[i + 1].kind == "param" and a.kind != "noann" and self.names_tv(a, self.tparams[c]):
+                    pt = self.named_param(a)
+                    fi.ptypes[i + 1] = pt if not pt.startswith("!") else fi.ptypes[i + 1]
+        # A call and an annotation must reserve the same identity before recursive
+        # member annotations are scanned. Bindings alone are not a layout key:
+        # Iterable[T] can retain a list or tuple, and other parameters can infer fields.
+        # Keep constructor types and literal arguments in this second request key.
+        if c in self.tparams and t.fields_ready and self.template_instances == instances:
+            parts = fi.ptypes[1:] + [s.tvars[x] for x in self.tparams[c]]
+            pending = False
+            for part in parts:
+                for active in self.specing.values():
+                    if retoken(part, active, "@") != part:
+                        pending = True
+            # Resolving a recursive constructor signature may publish a nested class
+            # that refers to this placeholder. Leave those requests on the original
+            # path; do not discard a placeholder that another specialization can hold.
+            if not pending:
+                canonical = c + "<" + ",".join(fi.ptypes[1:]) + ">"
+                canonical += "".join([f";{x}={s.tvars[x]}" for x in self.tparams[c]])
+                canonical += "".join([f";{x}={lit_key(lits[x])}" for x in init.params if x in lits])
+                found = self.specdone.get(canonical, self.specing.get(canonical, ""))
+                if found != "":
+                    del self.classes[name]
+                    if canonical in self.specdone:
+                        self.specdone[doing] = found
+                    return found
+                self.specing[canonical] = name
+                owned.append(canonical)
+        if c in self.cnts:
+            self.nts[name] = True  # (namedtuple()'s, whose objects are NamedTuples)
+        self.scan_fields(s, fi, init.node.kids[2].kids, {})
+        comparison_reserve_fields(self, s)  # late-created specialization, before layout
+        if len(lits) > 0:
+            s.lits = lits
+            self.const_fields(s, init)
+        self.line = line
+        # (a field that holds the specialization itself, self.next: Node | None, is the same in each)
+        key = ",".join([x + ":" + retoken(s.ftypes[x], name, "@") for x in s.fields])
+        key += "".join([f";{x}={retoken(s.tvars[x], name, '@')}" for x in self.tparams.get(c, [])])
+        key += "".join([f";{x}={lit_key(lits[x])}" for x in init.params if x in lits])  # (its __init__ reads them)
+        if key in t.specs:
+            del self.classes[name]
+            self.nts.pop(name, False)
+            # A matching layout can belong to an enclosing request whose methods
+            # are still being declared. Only its owner publishes completion.
+            if t.specs[key] not in self.specing.values():
+                self.specdone[doing] = t.specs[key]
+                if canonical != "":
+                    self.specdone[canonical] = t.specs[key]
+            return t.specs[key]
+        if s.bad != "":
+            self.err(s.bad)  # (an imported module's class: where the program makes an object of it)
+        if self.template_instances >= TEMPLATE_INSTANCES:
+            self.err(f"compilation needs more than {TEMPLATE_INSTANCES} template specializations; annotate template parameters or reduce type combinations")
+        self.template_instances += 1
+        t.specs[key] = name
+        shown_ts = [typestr(s.ftypes[x]) for x in s.fields if x not in t.ftypes and x not in s.fextra]
+        if c in self.tparams:
+            shown_ts = []  # (a generic class's: its type variables', C[int, str])
+            for x in self.tparams[c]:
+                shown_ts.extend([typestr(y) for y in targs(s.tvars[x])] if x in self.tvtuples else [typestr(s.tvars[x])])
+        SPECSHOW[name] = f"{short(c)}[{', '.join(shown_ts)}]"
+        if len(lits) > 0:
+            # (one of a class that specializes on literals: its arguments, or their types)
+            shown_args: list[str] = []
+            for j in range(1, len(init.params)):
+                x = init.params[j]
+                if j == init.vararg and x in lits:
+                    shown_args.extend([lit_text(y) for y in lits[x].kids])
+                elif j != init.kwarg and (j != init.vararg or ts[j - 1] != "tuple[]"):
+                    shown_args.append(lit_text(lits[x]) if x in lits else typestr(ts[j - 1]) if j - 1 < len(ts) else "...")
+            SPECSHOW[name] = f"{short(c)}({', '.join(shown_args)})"
+        for d in t.node.kids[0].kids:
+            if d.kind == "def":
+                self.line = d.line
+                self.lib = s.mod != ""
+                g = self.declare_fn(d, name)
+                self.lib = False
+                g.mod = s.mod
+                s.methods[g.name] = g  # (x.setter: a property's setter)
+        s.hook = t.hook
+        if c in self.cnts:
+            self.dc_methods(s)  # (its __repr__)
+        for f in s.methods.values():
+            self.check_special(f)
+        self.fl_fields(s)
+        if self.dyn_policy(s.node.line):
+            comparison_properties(s)
+        for f in s.methods.values():
+            # the special methods that are no templates, which Pystachy calls implicitly (its
+            # others are compiled where they are called, as templates are)
+            if not f.generic and f.bad == "" and f.ll not in self.compiled:
+                fr = self.save()
+                self.modlevel = False
+                self.lenient = False
+                try:
+                    self.function(f, f.node.kids[2].kids)
+                finally:
+                    self.restore(fr)
+        self.specdone[doing] = name
+        if canonical != "":
+            self.specdone[canonical] = name
+        return name
+    finally:
+        for request in owned:
+            self.specing.pop(request, "")
         self.selfcls = sel
-        self.making.pop()
-        self.specdone[doing] = t.specs[key]
-        return t.specs[key]
-    if s.bad != "":
-        self.err(s.bad)  # (an imported module's class: where the program makes an object of it)
-    if self.template_instances >= TEMPLATE_INSTANCES:
-        self.err(f"compilation needs more than {TEMPLATE_INSTANCES} template specializations; annotate template parameters or reduce type combinations")
-    self.template_instances += 1
-    t.specs[key] = name
-    self.specdone[doing] = name
-    shown_ts = [typestr(s.ftypes[x]) for x in s.fields if x not in t.ftypes and x not in s.fextra]
-    if c in self.tparams:
-        shown_ts = []  # (a generic class's: its type variables', C[int, str])
-        for x in self.tparams[c]:
-            shown_ts.extend([typestr(y) for y in targs(s.tvars[x])] if x in self.tvtuples else [typestr(s.tvars[x])])
-    SPECSHOW[name] = f"{short(c)}[{', '.join(shown_ts)}]"
-    if len(lits) > 0:
-        # (one of a class that specializes on literals: its arguments, or their types)
-        shown_args: list[str] = []
-        for j in range(1, len(init.params)):
-            x = init.params[j]
-            if j == init.vararg and x in lits:
-                shown_args.extend([lit_text(y) for y in lits[x].kids])
-            elif j != init.kwarg and (j != init.vararg or ts[j - 1] != "tuple[]"):
-                shown_args.append(lit_text(lits[x]) if x in lits else typestr(ts[j - 1]) if j - 1 < len(ts) else "...")
-        SPECSHOW[name] = f"{short(c)}({', '.join(shown_args)})"
-    for d in t.node.kids[0].kids:
-        if d.kind == "def":
-            self.line = d.line
-            self.lib = s.mod != ""
-            g = self.declare_fn(d, name)
-            self.lib = False
-            g.mod = s.mod
-            s.methods[g.name] = g  # (x.setter: a property's setter)
-    s.hook = t.hook
-    if c in self.cnts:
-        self.dc_methods(s)  # (its __repr__)
-    for f in s.methods.values():
-        self.check_special(f)
-    self.fl_fields(s)
-    if self.dyn_policy(s.node.line):
-        comparison_properties(s)
-    for f in s.methods.values():
-        # the special methods that are no templates, which Pystachy calls implicitly (its
-        # others are compiled where they are called, as templates are)
-        if not f.generic and f.bad == "" and f.ll not in self.compiled:
-            fr = self.save()
-            self.modlevel = False
-            self.lenient = False
-            self.function(f, f.node.kids[2].kids)
-            self.restore(fr)
-    self.line = line
-    self.selfcls = sel
-    self.making.pop()
-    return name
+        self.line = line
+        self.lib = lib
+        while len(self.making) > depth:
+            self.making.pop()
+
 
 def promoted(t: str) -> str:
     # what a type variable bound to t is, in a program whose containers hold promoting ints

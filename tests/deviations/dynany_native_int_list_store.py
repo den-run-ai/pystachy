@@ -1,6 +1,7 @@
 # pystachy: dynamic-any
 # Newly supported native int-list aliases check dynamic stores. CPython ignores
 # their annotations and accepts every incompatible value below.
+import copy
 from typing import Any
 
 
@@ -60,3 +61,27 @@ def run() -> None:
 
 
 run()
+
+
+class CopyPair:
+    def __init__(self, values: list[int]):
+        self.dynamic: Any = values
+        self.native = values
+
+
+original: list[int] = [1, 2]
+cloned = copy.deepcopy(CopyPair(original))
+print("deepcopy shared", cloned.dynamic is cloned.native, cloned.native is not original)
+try:
+    cloned.dynamic.extend([4, "bad", 5])
+except TypeError:
+    print("deepcopy prefix", cloned.native, original)
+try:
+    cloned.dynamic[0:1] = ["bad"]
+except TypeError:
+    print("deepcopy slice", cloned.native)
+try:
+    copied_boxes: list[Any] = cloned.dynamic
+    copied_boxes.append("bad")
+except TypeError:
+    print("deepcopy boxed layout rejected", cloned.native)

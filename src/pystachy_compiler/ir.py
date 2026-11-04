@@ -71,6 +71,7 @@ class Reduce:
         # isf whether a float came (CPython's float phase, which comp compensates)
         self.facc = ""
         self.isf = ""
+        self.phase = ""  # dynamic sum: in-range int, compensated float, or generic addition
 
 
 class SetArg:
@@ -524,6 +525,8 @@ class ClassInfo:
         self.name = name
         self.node = node
         self.fields: list[str] = []
+        self.fields_ready = False  # declare_fields prepared this declaration; specializations copy its fields
+        self.fields_preparing = False  # recursive class-attribute annotations retain their provisional path
         self.fpos: dict[str, int] = {}  # field -> its index in fields (and in the struct)
         self.ftypes: dict[str, str] = {}
         self.fdefault: dict[str, Node] = {}

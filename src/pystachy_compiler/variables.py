@@ -281,7 +281,8 @@ def gen_fn_names(self, t: str) -> list[str]:
         cn = fk[: fk.rfind(".")]
         if self.classes[cn].tag > 0:
             return []
-        return [mn, short(self.classes[cn].methods[mn].cls) + "." + mn]
+        f = self.classes[cn].methods[mn]
+        return [f.node.pyname if f.node.pyname != "" else mn, self.qualname(f)]
     if t.startswith("fn[d:"):
         mn = fk[: fk.find(":")]
         return [mn, tname(fk[fk.find(":") + 1 :]) + "." + mn]
@@ -384,7 +385,8 @@ def gen_qualname(self, f: FnInfo) -> str:
     # f's __qualname__: a method's is Class.name, a closure's outer.<locals>.name
     if f.clo >= 0:
         return self.closures[f.clo].qual
-    return f"{short(f.cls)}.{f.name}" if f.cls != "" else short(f.name)
+    name = f.node.pyname if f.node.pyname != "" else f.name
+    return f"{short(f.cls)}.{name}" if f.cls != "" else short(name)
 
 def gen_closure(self, n: Node) -> Val:
     # def or lambda n inside a function (or a lambda in module code): a new function value. Its
@@ -441,7 +443,7 @@ def gen_new_closure(self, n: Node, key: str) -> Closure:
     # the function that def or lambda n compiles to where this function defines it (closure)
     d = n if n.kind == "def" else lambda_def(n)
     outer = self.curfn
-    name = short(n.s) if n.kind == "def" else "<lambda>"
+    name = (n.pyname if n.pyname != "" else short(n.s)) if n.kind == "def" else "<lambda>"
     qual = name if self.modlevel else self.qualname(outer) + ".<locals>." + name
     idx = len(self.closures)
     f = self.declare_fn(mk("def", d.s, d.line, d.kids[:3]), "")  # (its decorators apply to the closure: decorate)
