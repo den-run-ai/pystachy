@@ -43,10 +43,6 @@ def literal_kind(n: Node) -> str:
     return "bool" if n.kind in ("True", "False") else n.kind
 
 
-def literal_text(n: Node) -> str:
-    return "-" + n.kids[0].s if n.kind == "unary" else n.s
-
-
 def keywords(call: Node, allowed: list[str]) -> dict[str, Node]:
     kws: dict[str, Node] = {}
     for a in call.kids[1:]:
@@ -58,9 +54,9 @@ def keywords(call: Node, allowed: list[str]) -> dict[str, Node]:
 
 
 class Argument:
-    def __init__(self, call: Node, shadowed: dict[str, bool]):
+    def __init__(self, call: Node, shadowed: dict[str, bool], prefix: str):
         line = call.line
-        kws = keywords(call, ["action", "type", "default", "dest", "nargs", "required", "choices", "metavar", "help"])
+        kws = keywords(call, ["action", "type", "default", "dest", "nargs", "required", "choices", "metavar", "help", "version"])
         names: list[str] = []
         for a in call.kids[1:]:
             if a.kind != "kw":
@@ -92,9 +88,18 @@ class Argument:
         if not identifier(self.dest):
             reject(call, "dest must be a plain ASCII field name")
         self.action: str = string_arg(kws, "action", "store")
-        if self.action not in ("store", "store_true", "store_false"):
+        if self.action not in ("store", "store_true", "store_false", "version"):
             reject(call, "unsupported action " + self.action)
-        flag = self.action != "store"
+        version = ""
+        if self.action == "version":
+            if not self.optional or "version" not in kws or any([k not in ("action", "version", "help") for k in kws]):
+                reject(call, "version action requires an option and literal version text with optional help")
+            version = string_arg(kws, "version", "")
+            if "%(prog)" in version and "%" in version.replace("%%", "").replace("%(prog)s", ""):
+                reject(call, "version formatting supports %% and %(prog)s")
+        elif "version" in kws:
+            reject(call, "version text requires the version action")
+        flag = self.action in ("store_true", "store_false")
         self.nargs: str = string_arg(kws, "nargs", "")
         if "nargs" in kws and (self.optional or self.nargs not in ("?", "+", "*")):
             reject(call, "nargs supports positional '?', '+' and '*'")
@@ -126,17 +131,14 @@ class Argument:
             for item in v.kids:
                 if literal_kind(item) != self.kind:
                     reject(item, "choices must match the converter")
-                # _Parser compares canonical values after conversion. Its usage formatter
-                # displays these same strings.
-                value = literal_text(item)
-                if self.kind == "float":
-                    value = repr(float(value))
-                elif self.kind == "int" and value == "-0":
-                    value = "0"
-                choices.append(mk("str", value, line, []))
+                # The caller's integer policy and the normal expression lowering
+                # determine the value, including wide and nondecimal literals.
+                choices.append(item if self.kind == "str" else mk("call", "", line, [
+                    mk("name", prefix + "_str", line, []), item
+                ]))
             if self.nargs == "?" and default.kind == "str" and default.s not in [x.s for x in choices]:
                 reject(default, "a string default for an optional positional must be one of its choices")
-        help_text = string_arg(kws, "help", "")
+        help_text = string_arg(kws, "help", "show program's version number and exit" if self.action == "version" else "")
         if "%" in help_text.replace("%%", "").replace("%(prog)s", ""):
             reject(call, "help supports %% and %(prog)s")
         metavar = string_arg(kws, "metavar", "")
@@ -147,7 +149,7 @@ class Argument:
         for s in [self.dest, self.action, self.kind, self.nargs]:
             call.kids.append(mk("str", s, line, []))
         call.kids += [mk("True" if self.required else "False", "", line, []), mk("list", "", line, choices),
-                      mk("str", help_text, line, []), mk("str", metavar, line, [])]
+                      mk("str", help_text, line, []), mk("str", metavar, line, []), mk("str", version, line, [])]
 
 
 class Schema:
@@ -158,15 +160,15 @@ class Schema:
         self.arguments: list[Argument] = []
         self.options: list[str] = []
         self.parsed = False
-        kws = keywords(constr, ["prog", "description", "add_help"])
+        kws = keywords(constr, ["prog", "description", "add_help", "allow_abbrev"])
         for arg in constr.kids[1:]:
             if arg.kind != "kw":
                 reject(arg, "ArgumentParser takes named literal options")
         for key in kws:
             v = kws[key]
-            if key == "add_help":
+            if key in ("add_help", "allow_abbrev"):
                 if v.kind not in ("True", "False"):
-                    reject(v, "add_help must be a literal bool")
+                    reject(v, key + " must be a literal bool")
             elif v.kind not in ("None", "str"):
                 reject(v, key + " must be a literal string or None")
             elif key == "description" and "%(prog)" in v.s and "%" in v.s.replace("%%", "").replace("%(prog)s", ""):
@@ -174,12 +176,12 @@ class Schema:
         if "add_help" not in kws or kws["add_help"].kind == "True":
             self.options = ["-h", "--help"]
 
-    def add(self, n: Node, shadowed: dict[str, bool]) -> None:
+    def add(self, n: Node, shadowed: dict[str, bool], prefix: str) -> None:
         if self.parsed:
             reject(n, "add_argument must precede parsing")
-        arg = Argument(n, shadowed)
+        arg = Argument(n, shadowed, prefix)
         for prev in self.arguments:
-            if prev.dest == arg.dest:
+            if prev.dest == arg.dest and prev.action != "version" and arg.action != "version":
                 reject(n, "duplicate destination " + arg.dest)
             if not arg.optional and prev.nargs in ("+", "*"):
                 reject(n, "a variadic positional must be last")
@@ -194,13 +196,18 @@ class Schema:
         # Literal defaults are spliced into the parsed AST so user text is never code.
         ns = self.generated
         src = f"class {ns}({prefix}.Namespace):\n    def __init__(self, raw: {prefix}._Result):\n"
-        for i in range(len(self.arguments)):
+        # Version actions exit during parsing and have no Namespace field.
+        fields = [i for i in range(len(self.arguments)) if self.arguments[i].action != "version"]
+        for i in fields:
             a = self.arguments[i]
-            typ = a.kind
+            # Explicit numeric converters have already been proven to be the
+            # caller's builtins. Implicit text/flag fields can exist even if
+            # that module shadows str or bool.
+            typ = prefix + "._Text" if a.kind == "str" else prefix + "._Flag" if a.kind == "bool" else a.kind
             v = f"raw.values[{i}][0]"
-            v = v if typ == "str" else f"{typ}({v})"
+            v = v if a.kind == "str" else f"{a.kind}({v})"
             if a.nargs in ("*", "+"):
-                typ = "list[" + typ + "]"
+                typ = prefix + "_list[" + typ + "]"
                 v = f"raw.values[{i}]" if a.kind == "str" else f"[{a.kind}(x) for x in raw.values[{i}]]"
             else:
                 if a.action != "store":
@@ -210,17 +217,18 @@ class Schema:
                         typ += " | None"
                     v += f" if raw.seen[{i}] else _pys_default"
             src += f"        self.{a.dest}: {typ} = {v}\n"
-        if len(self.arguments) == 0:
+        if len(fields) == 0:
             src += "        pass\n"
-        src += "    def __repr__(self) -> str:\n        fields: list[str] = []\n"
-        for a in self.arguments:
-            src += f"        fields.append('{a.dest}=' + repr(self.{a.dest}))\n"
+        src += f"    def __repr__(self) -> {prefix}._Text:\n        fields: {prefix}_list[{prefix}._Text] = []\n"
+        for i in fields:
+            a = self.arguments[i]
+            src += f"        fields.append('{a.dest}=' + {prefix}_repr(self.{a.dest}))\n"
         src += "        return 'Namespace(' + ', '.join(fields) + ')'\n"
         src += f"def {ns}_known(raw: {prefix}._Result):\n    return {ns}(raw), raw.extras\n"
         out = parsed(src, self.line)
         body = out[0].kids[0].kids[0].kids[0].kids[2]
-        for i in range(len(self.arguments)):
-            value = body.kids[i].kids[-1]
+        for field, i in enumerate(fields):
+            value = body.kids[field].kids[-1]
             if value.kind == "ifexp":
                 value.kids[2] = self.arguments[i].default
         return out
@@ -315,7 +323,7 @@ def lower_scope(body: list[Node], aliases: dict[str, int], shadowed: dict[str, b
             if fn.kind == "attr" and fn.s == "add_argument" and fn.kids[0].kind == "name" and fn.kids[0].s in schemas:
                 schema = schemas[fn.kids[0].s]
                 fn.kids[0].s = schema.name
-                schema.add(call, shadowed)
+                schema.add(call, shadowed, prefix)
                 continue
         if len(schemas) > 0:
             parse_uses(st, schemas)
@@ -378,8 +386,8 @@ def lower_argparse(body: Node) -> None:
                 # diagnostic on the function so an unused template stays dormant.
                 st.kids[2].kids = [mk("badimport", str(exc), exc.line, [])]
     if len(made) > 0:
-        for name in ["str", "int", "float", "bool", "list", "repr"]:
-            if name in bound:
-                fail("argparse schema: Namespace field types require unshadowed builtin " + name, body.kids[at].line)
         line = body.kids[at].line
-        body.kids = body.kids[:at + 1] + parsed(f"import argparse as {prefix}\ndef {prefix}_int(s: str) -> str:\n    return str(int(s))\n", line) + made + body.kids[at + 1:]
+        imports = f"import argparse as {prefix}\nfrom typing import List as {prefix}_list\n"
+        imports += f"from builtins import str as {prefix}_str, repr as {prefix}_repr, int as {prefix}_to_int\n"
+        helper = f"def {prefix}_int(s: {prefix}._Text) -> {prefix}._Text:\n    return {prefix}_str({prefix}_to_int(s))\n"
+        body.kids = body.kids[:at + 1] + parsed(imports + helper, line) + made + body.kids[at + 1:]

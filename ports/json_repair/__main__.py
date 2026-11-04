@@ -30,17 +30,21 @@ def cli(inline_args: list[str] | None = None) -> int:
 
     try:
         if filename is None:
-            text = sys.stdin.read()
+            # CPython's standard input can represent malformed bytes as surrogates.
+            raw = sys.stdin.read().encode("utf-8", "surrogateescape")
         else:
-            with open(filename, encoding="utf-8") as source:
-                text = source.read()
+            with open(filename, "rb") as source:
+                raw = source.read()
+        text = raw.decode("utf-8").replace("\r\n", "\n").replace("\r", "\n")
         result = loads(text, skip_json_loads=args.skip_json_loads, strict=args.strict)
         encoded = json.dumps(result, ensure_ascii=args.ensure_ascii)
+        # A JSON escape can decode to a lone surrogate. Check before truncating a file.
+        payload = encoded.encode("utf-8")
         if target is None:
             print(encoded)
         else:
-            with open(target, "w", encoding="utf-8") as output:
-                output.write(encoded)
+            with open(target, "wb") as output:
+                output.write(payload)
     except (OSError, TypeError, ValueError) as error:
         print(f"Error: {error}", file=sys.stderr)
         return 1

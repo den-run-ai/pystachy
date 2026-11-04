@@ -1387,11 +1387,11 @@ print(args.filename, args.repeat, args.verbose)
 
 | Form | Supported behavior |
 |---|---|
-| Declarations | Literal `prog`, `description`, `add_help`. Positional names, short and long options, aliases, `dest`, `required`, `metavar`, and help text. |
+| Declarations | Literal `prog`, `description`, `add_help`, and `allow_abbrev`. Positional names, short and long options, aliases, `dest`, `required`, `metavar`, and help text. |
 | Values | Builtin `str`, `int`, and `float`; homogeneous literal choices; scalar defaults of the result type or `None`; `store_true` and `store_false`. |
 | Positionals | One value, `nargs="?"`, or a final `"*"` / `"+"` positional. Repeated values form a typed list. |
 | Parsing | `parse_args()` and `parse_known_args()` take process arguments or an explicit `list[str]`. Each call returns independent values. Known-argument parsing also returns the remaining strings in order. |
-| Output | Help goes to stdout with status 0. Argument errors write usage and a diagnostic to stderr with status 2. The English formatter uses `COLUMNS` or 80 columns. |
+| Output | Help and options declared with `action="version", version="%(prog)s 1.0"` print to stdout and exit 0. Argument errors write usage and a diagnostic to stderr and exit 2. The English formatter uses `COLUMNS` or 80 columns. |
 
 Results support field access, identity, representation, equality and
 `isinstance(result, argparse.Namespace)`. Each schema has its own native class,

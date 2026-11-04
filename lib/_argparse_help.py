@@ -6,7 +6,7 @@ from textwrap import wrap
 
 class ArgSpec:
     def __init__(self, options: list[str], dest: str, action: str, converter: str,
-                 nargs: str, required: bool, choices: list[str], help_text: str, metavar: str):
+                 nargs: str, required: bool, choices: list[str], help_text: str, metavar: str, version: str):
         self.options = options
         self.dest = dest
         self.action = action
@@ -16,6 +16,7 @@ class ArgSpec:
         self.choices = choices
         self.help_text = help_text
         self.metavar = metavar
+        self.version = version
 
 
 def action_name(spec: ArgSpec) -> str:
@@ -151,13 +152,21 @@ def _entry(label: str, help_text: str, column: int, width: int) -> str:
     return header + ("\n" + " " * column).join(lines) + "\n"
 
 
+def _format_text(text: str, prog: str, width: int) -> str:
+    if "%(prog)" in text:
+        text = _expand(text, prog)
+    return "\n".join(_wrap(text, max(width, 11))) + "\n"
+
+
+def format_version(text: str, prog: str) -> str:
+    return _format_text(text, prog, _width())
+
+
 def format_help(prog: str, description: str, add_help: bool, specs: list[ArgSpec]) -> str:
     width = _width()
     text = _usage(prog, add_help, specs, width)
     if description.strip():
-        if "%(prog)" in description:
-            description = _expand(description, prog)
-        text += "\n" + "\n".join(_wrap(description, max(width, 11))) + "\n"
+        text += "\n" + _format_text(description, prog, width)
     longest = len("-h, --help") if add_help else 0
     for spec in specs:
         longest = max(longest, len(_invocation(spec)))

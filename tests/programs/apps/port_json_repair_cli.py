@@ -15,6 +15,11 @@ with open(target, encoding="utf-8") as f:
 print(cli(["--inline", source]))
 with open(source, encoding="utf-8") as f:
     print(f.read())
+with open(source, "wb") as f:
+    f.write(br'{"value":"\ud800"}')
+print(cli(["--inline", source]))
+with open(source, "rb") as f:
+    print(f.read())
 os.remove(target)
 os.remove(source)
 os.rmdir(directory)
