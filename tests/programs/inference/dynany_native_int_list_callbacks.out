@@ -20,4 +20,12 @@ source iter
 iterator iter
 iterator hint
 slice hint [1, 51, 52, 3]
+failed acquisition 1 ValueError first [7]
+failed acquisition 1 TypeError must assign iterable to extended slice [7]
+failed acquisition 2 IterError iterator [7]
+failed acquisition 2 IterError next [7]
+failed acquisition 1 ValueError first [7]
+failed acquisition 1 TypeError must assign iterable to extended slice [7]
+failed acquisition 2 IterError iterator [7]
+failed acquisition 2 IterError next [7]
 [exit 0]

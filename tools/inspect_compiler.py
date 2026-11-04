@@ -244,7 +244,7 @@ class Observer:
 
     def program_wrapper(self, original):
         def wrapped(gen, *args, **kwargs):
-            from src.pystachy_compiler.diagnostics import Rejoin
+            from src.pystachy_compiler.diagnostics import NeedSliceEH, Rejoin
             self.before, self.after = [], []
             self.captured_before = False
             self.attempt = {"index": len(self.report["attempts"]) + 1, "status": "failed"}
@@ -252,8 +252,10 @@ class Observer:
             self.diagnostics.PHASE = "semantic"
             try:
                 result = original(gen, *args, **kwargs)
-            except Rejoin:
-                self.attempt.update(status="retry", reason="compiler requested a fresh semantic attempt",
+            except Rejoin as retry:
+                reason = ("dynamic slice iterator acquisition requires exception handling" if isinstance(retry, NeedSliceEH)
+                          else "compiler requested a fresh semantic attempt")
+                self.attempt.update(status="retry", reason=reason,
                                     new_type_hints=len(gen.newhints), declined_methods=len(gen.newx),
                                     identity_retry=bool(gen.idevent))
                 raise

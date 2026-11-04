@@ -117,3 +117,38 @@ def run() -> None:
 
 
 run()
+
+
+class IterError(TypeError):
+    pass
+
+
+class FailingCursor:
+    def __init__(self, fail: int) -> None:
+        self.calls = 0
+        self.fail = fail
+
+    def __iter__(self) -> "FailingCursor":
+        self.calls += 1
+        if self.calls == self.fail:
+            raise IterError("iterator")
+        if self.fail == 0:
+            raise ValueError("first")
+        return self
+
+    def __next__(self) -> int:
+        raise IterError("next")
+
+
+def failed_source(target: Any) -> None:
+    for i in range(4):
+        source = FailingCursor(i)
+        try:
+            target[:] = source
+        except (ValueError, TypeError) as error:
+            print("failed acquisition", source.calls, type(error).__name__, str(error), target)
+
+
+native_target: list[int] = [7]
+failed_source(native_target)
+failed_source([7])

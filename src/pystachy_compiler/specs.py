@@ -819,6 +819,7 @@ RUNTIME: dict[str, str] = {
     "dyn.list_check": "None:%ptr,int|R|",
     "dyn.list_descriptor": "None:%ptr,str|R|",
     "dyn.list_slice": "%ptr:%ptr,int,int,int|R A rL wL|",
+    "dyn.slice_source": "%ptr:%ptr|R A I U rL rD|",
     "dyn.list_set_slice": "None:%ptr,int,int,int,%ptr|R A I U rL wL|",
     "dyn.list_del_slice": "None:%ptr,int,int,int|R rL wL|",
     "dyn.iter": "%ptr:%ptr|R A I U rL rD|", "dyn.next": "%ptr:%ptr|R A I U rL rD|",

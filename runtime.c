@@ -5502,13 +5502,17 @@ Dyn *pys_dyn_list_slice(Dyn *o, I lo, I hi, I st) {
   return dtuple(pys_vtuple_slice((VTuple *)o->v, lo, hi, st));
 }
 List *pys_dyn_list(Dyn *o);
+/* PySequence_Fast replaces TypeError only while obtaining the first iterator.
+   The compiler wraps this call when a user iterator may throw. Re-iteration,
+   the length hint and consumption of the items remain outside that handler. */
+Dyn *pys_dyn_slice_source(Dyn *value) {
+  if (!dyn_iterable(value)) pys_fail("TypeError: must assign iterable to extended slice");
+  return DKIND(value) == DK_LIST || DKIND(value) == DK_TUPLE ? value : pys_dyn_iter_box(value);
+}
 void pys_dyn_list_set_slice(Dyn *o, I lo, I hi, I st, Dyn *value) {
   pys_dyn_list_check(o, 1);
   if (!st) pys_fail("ValueError: slice step cannot be zero");
-  if (!dyn_iterable(value)) pys_fail("TypeError: must assign iterable to extended slice");
-  /* PySequence_Fast materializes an iterator, not the original iterable. In
-     particular, the second __iter__ and the length hint belong to that iterator. */
-  List *v = pys_dyn_list(DKIND(value) == DK_LIST || DKIND(value) == DK_TUPLE ? value : pys_dyn_iter_box(value));
+  List *v = pys_dyn_list(value);
   List *l = (List *)o->v;
   if (dyn_native_list(o)) {
     I first = lo, step = st, n = sspan(&first, hi, &step, l->len);

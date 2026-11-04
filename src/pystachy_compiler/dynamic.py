@@ -18,11 +18,11 @@ the program's classes, functions the compiler writes once every class that is bo
 from __future__ import annotations
 from src.pystachy_compiler.analysis import bind_count, comp_vars, deleted, globals_in, lazy_block, lazy_sites, local_names, name_bits, nonlocal_decls, targets, walrus_names
 from src.pystachy_compiler.bigints import held
-from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, INTFILES, LINES, Rejoin, dynamic_file, dynamic_program, int_lists, int_program
+from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, INTFILES, LINES, NeedSliceEH, Rejoin, dynamic_file, dynamic_program, int_lists, int_program
 from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Reduce, Val
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import ENUMCLASSES, owner, retoken, short
-from src.pystachy_compiler.specs import BIG, ITERS, JSONANY, METHODS, NONEVAR, RANGEC, RTDATA
+from src.pystachy_compiler.specs import BIG, ITERS, JSONANY, METHODS, NONEVAR, RANGEC, RANGES, RTDATA
 from src.pystachy_compiler.syntax import Node, has_kind, mk
 from src.pystachy_compiler.utils import ListLayout, builtin_key, disjoint_sets, elem, fbits, gelem, holds_dyn, identity_abi, is_callable, is_dict, is_fn, is_gen, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, numeric_identity, selem, takes_self, targs, tname, typestr, umembers, unopt
 
@@ -3804,6 +3804,32 @@ def gen_dyn_fallback(self, f: FnInfo, key: str, ps: list[Val]) -> None:
         self.ret_(Val(self.rt("pys_dyn_unary_promote" if promote else "pys_dyn_unary", "ptr", [f"ptr {o.v}", f"i64 {key[2:]}"]), DYN))
     elif key == "iter":
         self.ret_(Val(self.rt("pys_dyn_iter_box", "ptr", [f"ptr {o.v}"]), DYN))
+    elif key == "slice_source":
+        # Builtin sources need no exception region. Only the first __iter__ of
+        # a boxed user object can raise a TypeError requiring replacement.
+        if not any(self.classes[c].mod not in [ITERS, RANGES] and "__iter__" in self.classes[c].methods for c in self.dynclasses):
+            self.ret_(Val(self.rt("pys_dyn_slice_source", "ptr", [f"ptr {o.v}"]), DYN))
+            return
+        if not self.eh:
+            raise NeedSliceEH()
+        caught = self.stop_catch()
+        outer = self.handler
+        self.handler = caught.landing
+        caught.tr.body = self.label()
+        self.place(caught.tr.body)
+        it = Val(self.rt("pys_dyn_slice_source", "ptr", [f"ptr {o.v}"]), DYN)
+        self.handler = outer
+        self.ret_(it)
+        e = self.landing(caught.landing, caught.slot, caught.mark)
+        replace = self.label()
+        other = self.label()
+        self.cbr(self.exc_match(e, self.builtin_catch("TypeError")), replace, other)
+        self.place(other)
+        self.throw(e)
+        self.place(replace)
+        self.rt("pys_exc_restore", "void", [f"ptr {caught.old}"])
+        caught.tr.exit = replace
+        self.raise_("TypeError", self.sconst("must assign iterable to extended slice"))
     elif key == "reversed":
         self.ret_(Val(self.rt("pys_dyn_reversed", "ptr", [f"ptr {o.v}"]), DYN))
     elif key == "next" or key == "nextvalue":

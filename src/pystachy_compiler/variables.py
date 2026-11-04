@@ -2148,6 +2148,7 @@ def gen_slice_store(self, o: Val, bnd: list[str], v: Val) -> None:
             # an otherwise unboxable typed source without changing the source's aliases.
             v = self.dyn_fresh(v)
         v = self.dyn_box(v)
+        v = self.dyn_call(self.dyn_dispatcher("slice_source", ["dyn"], "dyn", ""), [v])
         self.rt("pys_dyn_list_set_slice", "void", [f"ptr {o.v}", f"i64 {bnd[0]}", f"i64 {bnd[1]}", f"i64 {st}", f"ptr {v.v}"])
         return
     if not is_list(v.t):
