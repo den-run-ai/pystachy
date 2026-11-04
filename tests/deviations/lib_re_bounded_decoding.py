@@ -35,3 +35,15 @@ for unit in ["a", "é", "𝔄"]:
     # (a subject whose bytes are its code points is read in place: the match leaves the cache that
     # _state made, which is still the state's)
     print("owned", state.s == codes, state.offs == offs, (state.s is re._last_codes) == (unit == "a"))
+
+# A failed required ASCII prefix needs no matcher state, even on a Unicode subject.
+# A matching prefix still leaves captures, bounds and case flags to the engine.
+directive = re.compile(r"(\.\.)(?i:class)")
+subject = ".é" * 100
+re.purge()
+before = re._decoded
+print("prefix miss", directive.match(subject) is None, re._decoded == before)
+hit = directive.match("..ClAsSé")
+print("prefix match", hit.group(1) if hit else "-", directive.match("..class", 0, 3) is None)
+offset = directive.match("é..class", 1)
+print("prefix offset", offset.span() if offset else (-1, -1))
