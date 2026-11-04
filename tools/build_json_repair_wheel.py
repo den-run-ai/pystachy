@@ -1,5 +1,6 @@
 """Build a host-local Linux wheel for the schema-free JSON repair example and CLI."""
 import argparse
+import importlib.util
 import os
 from pathlib import Path
 import shutil
@@ -19,6 +20,8 @@ TAG = "cp312-abi3-linux_x86_64"
 def build(out):
     if sysconfig.get_platform() != "linux-x86_64" or not os.confstr("CS_GNU_LIBC_VERSION"):
         raise SystemExit("build this example on Linux x86-64 with glibc")
+    if importlib.util.find_spec("wheel") is None:
+        raise SystemExit("install the wheel build tool with: python -m pip install -r tools/requirements-packaging.txt")
     out.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(dir=out) as temp:
         staging = Path(temp)
