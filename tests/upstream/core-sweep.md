@@ -113,6 +113,63 @@ templates (63), statements other than definitions in a class body (126), empty c
 whose type is not inferred (83), `str.format()` of a computed format string (49) and
 multiple inheritance (40).
 
+### Post-stdlib and checked argparse refresh
+
+The same 144 files yielded the same 10,329 method IDs and 6,015 successful
+CPython runs. The comparison uses the historical extractor at Git blob
+`852df469` on Linux x86-64, CPython 3.13.16 and LLVM 18.1.3.
+
+| Outcome | Historical `8563b854` | [Checked argparse tree](https://github.com/den-run-ai/pystachy/commit/c9272884e8fe3c3afff1c18c7437223935284666) |
+|---|---:|---:|
+| CPython qualification failed | 4,314 | 4,314 |
+| JIT matched in checked-integer mode | 374 | 392 |
+| Matched on promoting-integer retry | 7 | 6 |
+| Compile rejection, including unsuccessful retries | 5,617 | 5,600 |
+| Compiled but differed | 17 | 17 |
+
+Eighteen previously rejected methods matched: 12 from `test_copy`, five
+threading context managers from `test_contextlib`, and `test_copyreg.test_bool`.
+The same 17 methods still differed. A stricter audit of the 398 current matches
+retained **396**, with equal stdout, stderr and exit status and a reached
+completion marker. Two `RoundTestCase` methods carried a class-level
+`requires_IEEE_754` decorator excluded by that audit.
+
+The raw change from 381 to 398 includes one unstable historical pass.
+`MersenneTwister_TestBasicOps.test_randrange_bug_1590891` uses its own
+`random.Random()` instance. The extractor seeds only the module singleton.
+Repeating the same range and assertions with `random.Random(seed)` for
+seeds 0–31 passed all 32 on CPython. The pre-stdlib and refreshed compilers
+both passed seeds 10, 19 and 29 and raised checked-library `OverflowError`
+on the other draws. Excluding this method gives **380 → 398 of 6,014** with
+the historical qualification rules.
+
+All 20 qualified `test_argparse` methods still rejected on the updated parser.
+Nineteen require inferring a stored parser field and one requires a dynamic
+class attribute. All 1,038 eligible `test_enum` methods still rejected. The
+original sample omitted `test_glob`, `test_shutil`, `test_logging` and
+`test_threading`. These counts describe standalone extracted methods.
+
+### Repeat the 144-file census
+
+The [source manifest](core-methods.sha256) fixes the selection, including four files
+with no extracted methods. Use an unmodified CPython checkout at
+`cbc944f4bc59639a444dd971c737788ba2283a91` and a built Pystachy checkout.
+From the Pystachy root, run the following in Bash with `CPYTHON_SRC` set to the
+absolute path of the CPython checkout:
+
+```sh
+manifest="$PWD/tests/upstream/core-methods.sha256"
+(cd "$CPYTHON_SRC" && sha256sum -c "$manifest") || exit 1
+mapfile -t inputs < <(cut -d ' ' -f3- "$manifest")
+python3.13 tools/cpython_test_methods.py triage -j 2 build/core-methods.json \
+    build/core-methods "${inputs[@]/#/$CPYTHON_SRC/}"
+```
+
+The JSON has one record per extracted method. Compare by the relative upstream
+file and class/method name. Keep CPython qualification failures, JIT rejections,
+runtime differences and promoting-integer matches separate. Promote selected
+methods to the recorded corpus for AOT and GC verification.
+
 ### Delivered programs
 
 The corpus takes the passing methods of the 20 files that no earlier adaptation covers, one
