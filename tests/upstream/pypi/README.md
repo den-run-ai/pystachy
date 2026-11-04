@@ -35,3 +35,20 @@ sdist tests. The argparse-addons probe checks the integer converter directly and
 its log-level parser separately. Select one distribution with `--project NAME`.
 A failed CPython oracle aborts the run. An IR rejection leaves native execution
 untested. The timeout is per command and defaults to 120 seconds.
+
+## Root-wheel import compilation
+
+Replay either the historical argparse-first cohort or the rank sample in the census evidence
+with its JSONL manifest and local wheelhouse. Each row pins a rank, project, version, wheel
+filename, SHA-256 and public import name. Use one bootstrapped checkout per compiler.
+
+```sh
+python tools/pypi_import_ir.py cohort.jsonl wheels results.json \
+  pre=/path/to/pre-stdlib current=/path/to/current
+```
+
+Only that wheel's Python sources and the compiler's own library are visible. Resources and
+third-party dependencies are absent. An IR pass also requires that replacing the target
+module with invalid syntax makes the compiler reject that exact file. Missing, ambiguous and
+stdlib-colliding targets are excluded. The JSON retains each compiler's outcome, first-stage
+diagnostics, cohort hash and compiler identities. Package execution is measured separately above.
