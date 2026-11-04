@@ -119,7 +119,7 @@ and the diagnostic context gives the rejected request when available.
 - **Effects:** function summaries come from the compiler's last analysis and may
   remain conservative after rewrites. They are not a new post-optimization proof
   or ownership analysis.
-- **Passes:** `passes` records the function passes `listget`, `dictfuse`,
+- **Passes:** `passes` records the function passes `charslots`, `listget`, `dictfuse`,
   `unionslots`, `nullcheck` and exception lowering. `program_passes` separately
   observes the whole-program `recursionscope` call, the native recursion depth
   policy, which runs whatever `PYSTACHY_OPT` turns off. Other

@@ -29,6 +29,7 @@ import traceback
 ROOT = Path(__file__).resolve().parent.parent
 SCHEMA_VERSION = 1
 PASS_RULES = {
+    "charslots": "Replace a singly defined private character with its code point when every read compares it to an ASCII literal.",
     "listget": "Replace a checked sequence-loop list read only when its index is in bounds and no intervening effect can shorten the list or run user code.",
     "dictfuse": "Reuse a known dictionary entry only while control flow, key equality and intervening effects preserve the lookup; mutation or user callbacks can invalidate it.",
     "unionslots": "Split eligible local union slots into tag/payload storage and reconstruct boxes at uses that require them.",

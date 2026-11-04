@@ -1032,6 +1032,7 @@ from src.pystachy_compiler.optimizations import (
     gen_listget as optimizations_listget,
     gen_nullcheck as optimizations_nullcheck,
     gen_nullslot as optimizations_nullslot,
+    gen_charslots as optimizations_charslots,
     gen_optimize as optimizations_optimize,
     gen_preds as optimizations_preds,
     gen_reaching as optimizations_reaching,
@@ -3585,6 +3586,9 @@ class Gen:
 
     def dictfuse(self, fn: IFn) -> int:
         return optimizations_dictfuse(self, fn)
+
+    def charslots(self, fn: IFn) -> int:
+        return optimizations_charslots(self, fn)
 
     def unionslots(self, fn: IFn) -> int:
         return optimizations_unionslots(self, fn)
