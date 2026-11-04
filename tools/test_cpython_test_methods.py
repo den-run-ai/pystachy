@@ -318,6 +318,11 @@ class Active(unittest.TestCase):
         self.assertEqual(result["status"], "differs")
         self.assertIn("warning", result["detail"])
 
+    def test_native_preserves_crlf_and_non_utf8_output(self):
+        runner = [sys.executable, "-c", r"import os; os.write(1, b'\xff\r\n'); os.write(2, b'\xfe')"]
+        self.assertEqual(ctm.native(runner, "unused", (0, "\udcff\r\n", "\udcfe"), {})["status"], "match")
+        self.assertEqual(ctm.native(runner, "unused", (0, "\udcff\n", "\udcfe"), {})["status"], "differs")
+
     def test_triage_reports_files_it_cannot_read(self):
         out = self.dir / "triage.json"
         with self.assertRaises(SystemExit), open(os.devnull, "w") as null:

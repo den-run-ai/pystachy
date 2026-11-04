@@ -21,9 +21,9 @@ ROOT = corpus.ROOT
 MANIFEST = "tools/annotation_widening_exceptions.json"
 SCALARS = {"bool", "int", "float", "str"}
 # These programs observe aliasing during allocation under both integer policies.
-GC_CASES = {"tests/programs/inference/dynany_identity_call_returns.py",
-            "tests/programs/numbers/python_int_any_constants.py"}
 NATIVE_LIST_CASE = "tests/programs/inference/dynany_native_int_list.py"
+GC_CASES = {"tests/programs/inference/dynany_identity_call_returns.py",
+            "tests/programs/numbers/python_int_any_constants.py", NATIVE_LIST_CASE}
 PR_CASES = GC_CASES | {"tests/programs/inference/dynany_identity_call_edges.py"}
 MODES = ("jit", "aot")
 
@@ -111,11 +111,8 @@ def discover(root):
             candidates[case] = (source, functions)
         else:
             excluded[reason] += 1
-    required = set(PR_CASES)
-    if (root / NATIVE_LIST_CASE).exists():
-        required.add(NATIVE_LIST_CASE)
-    if not required <= candidates.keys():
-        raise ValueError(f"required widening cases no longer eligible: {sorted(required - candidates.keys())}")
+    if missing := PR_CASES - candidates.keys():
+        raise ValueError(f"required widening cases no longer eligible: {sorted(missing)}")
     return candidates, excluded
 
 
@@ -132,7 +129,7 @@ def record(tree, case, env, timeout):
 
 
 def lanes(case):
-    stress = (False, True) if case in GC_CASES or case == NATIVE_LIST_CASE else (False,)
+    stress = (False, True) if case in GC_CASES else (False,)
     return product(("original", "widened"), stress, MODES)
 
 
@@ -175,7 +172,7 @@ def execute(case, widened, trees, temp, compiler, allowed, timeout):
 
 
 def selected_cases(candidates, profile, index=0, count=1):
-    chosen = (PR_CASES | {NATIVE_LIST_CASE}) & candidates.keys() if profile == "pr" else candidates
+    chosen = PR_CASES if profile == "pr" else candidates
     return sorted(chosen)[index::count]
 
 

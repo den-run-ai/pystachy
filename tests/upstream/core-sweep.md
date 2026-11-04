@@ -174,7 +174,7 @@ All methods from three complete CPython 3.13.16 files were extracted at
 the stdlib merge (`8444af96`) with `6d9b1a3c`. Both use the same extractor,
 CPython, checked-integer policy and LLVM 18.1.3 on Linux x86-64. A CPython
 qualification requires the success marker and zero exit status. A JIT match
-also requires identical stdout and stderr. Class/method skip decorators exclude
+also requires byte-for-byte agreement on stdout and stderr, including line endings. Class/method skip decorators exclude
 cases up front, and reaching `skipTest()` excludes a case during qualification.
 
 | Source | Skipped by decorator | Extracted | CPython qualified | JIT matches before → after |

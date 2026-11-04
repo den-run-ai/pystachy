@@ -496,7 +496,8 @@ entries. It widens only the parameter and return annotations. It also recognizes
 markers, generic and generator signatures, decorated functions and indirect calls keep their
 annotations. Each pair must first produce the same successful output with empty stderr under
 pinned CPython. Both forms then run against their own recordings in JIT and AOT with the
-entry's integer policy. Identity cases run again with collection at every program allocation.
+entry's integer policy. Both profiles require the native-list alias fixture and run it
+and the scalar identity fixtures again with collection at every program allocation.
 The opt-in worker runs `--profile pr` for focused checks and the full profile on main and release.
 Reports give exclusion counts and every qualified function and native result. Expected compiler
 rejections require the exact case, mode, diagnostic, streams and status in

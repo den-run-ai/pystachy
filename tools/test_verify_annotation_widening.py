@@ -25,6 +25,17 @@ class AnnotationWideningTests(unittest.TestCase):
         self.assertEqual(functions, ["expose"])
         self.assertEqual(changed, source.replace(b"expose(items: list[int])", b"expose(items: Dynamic)"))
 
+    def test_missing_native_list_fixture_fails_discovery(self):
+        others = widen.PR_CASES - {widen.NATIVE_LIST_CASE}
+        with tempfile.TemporaryDirectory() as directory, mock.patch.object(widen.corpus, "programs", return_value=others):
+            root = Path(directory)
+            for case in others:
+                path = root / case
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(HEADER + b"def f(n: int) -> int: return n\nprint(f(1))\n")
+            with self.assertRaisesRegex(ValueError, widen.NATIVE_LIST_CASE):
+                widen.discover(root)
+
     def test_non_targets_and_shadowed_names_stay_intact(self):
         fn = b"def f(n: int) -> int:\n    return n\nprint(f(2))\n"
         for payload in (b"@extern\n" + fn, b"int = UserType\n" + fn, fn + b"Dynamic = object\n",

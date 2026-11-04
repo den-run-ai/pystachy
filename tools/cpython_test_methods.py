@@ -566,10 +566,11 @@ def extract(path, outdir, setup_init=True):
 
 def run(command, timeout, cwd=None, env=None):
     try:
-        p = subprocess.run(command, capture_output=True, text=True, timeout=timeout, cwd=cwd, env=env)
+        p = subprocess.run(command, capture_output=True, timeout=timeout, cwd=cwd, env=env)
     except subprocess.TimeoutExpired:
         return None, "", "timeout"
-    return p.returncode, p.stdout, p.stderr
+    # Keep original line endings and arbitrary bytes while retaining text diagnostics in JSON.
+    return p.returncode, p.stdout.decode(errors="surrogateescape"), p.stderr.decode(errors="surrogateescape")
 
 
 def first_error(err):
