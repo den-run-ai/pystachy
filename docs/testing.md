@@ -333,7 +333,7 @@ and AOT, in configurations that `make verify` does not test and that must change
 
 | Variant | Configuration |
 |---|---|
-| `opt-1` … `opt-5` | `PYSTACHY_OPT` turning off the IR passes that each row of a covering array of their pairs leaves off. Verification runs every pass on and all of them off (`-all`); with these five rows, every two passes run in each of their four on/off combinations. A pass added to `OPTS` gets a column of its own; the rows have room for ten, all of which `OPTS` now uses, so another pass needs a wider array (`tools/variants.sh`). |
+| `opt-1` … `opt-6` | `PYSTACHY_OPT` turning off the IR passes that each row of a covering array of their pairs leaves off. Verification runs every pass on and all of them off (`-all`); with these six rows, every two passes run in each of their four on/off combinations. A pass added to `OPTS` gets a column of its own; the rows have room for fifteen passes (`tools/variants.sh`). |
 | `cflags-O0` | `PYSTACHY_CFLAGS=-O0`: the runtime unoptimized, and with it an AOT program's whole module, whose IR then runs as the compiler emitted it. The runtime's frames keep every local in memory, which changes the dead words that the conservative collector scans as roots. |
 
 `make runtime-coverage` is another variant: clang's instrumentation changes the runtime's register
@@ -346,9 +346,9 @@ the corpus (`tools/shard_cases.sh`) and `MODES=jit` one tier. The script drops t
 settings that verification drops, builds each variant's runtime in a cache of its own and writes
 the logs to `build/variants/`, so run one at a time in a checkout. Each variant takes about as
 long as `make test`. The [Variants workflow](../.github/workflows/variants.yml) runs each one in
-four shards (24 jobs) daily, on demand and on relevant `main` pushes. PRs run the six
+four shards (24 jobs) daily, on demand and on relevant `main` pushes. Two rows share one build per shard. PRs run the seven
 configurations on representative and changed cases in **two workers**, reusing the verified
-bootstrap. Each worker runs three configurations with private runtime caches and records its
+bootstrap. Each worker runs three or four configurations with private runtime caches and records its
 exact cases and results. The PR aggregate requires both workers to pass.
 
 ## Continuous integration
@@ -430,7 +430,7 @@ from the budget. Each test runner uses at most four processes within its worker.
 | Contracts | 1 | Complete IR/runtime/FFI and behavioral contract checks. |
 | Cache and compiler GC | 1 | Cache invalidation plus stressed self-compilation. |
 | Benchmarks and scaling | 1 | Correctness, both scaling halves, BLAS and large upstream regex. |
-| Variants | 2 | Six configurations, three per worker, on the selected cases. |
+| Variants | 2 | Seven configurations, split across both workers, on the selected cases. |
 | Distribution | 2 | Linux x86-64 and macOS ARM64 installation; Linux source packages and native archive smoke. |
 | Aggregate | 1 | Required reports, profiles, selection manifests, counts and job results. |
 | Lint, performance, DCO | 3 | Existing checks; CPython port preservation is folded into Lint. |

@@ -59,14 +59,14 @@ done
             self.assertEqual(report["result"], "pass")
             self.assertEqual(report["bootstrap"]["bootstrap_bundle_id"], "verified")
             self.assertEqual(report["expected_checks_per_variant"], 5)
-            self.assertEqual(len(report["steps"]), 3)
+            self.assertEqual(len(report["steps"]), len(pr_variants.VARIANT_GROUPS[worker]))
             self.assertTrue(all(step["result"] == "pass" for step in report["steps"]))
             call = (self.root / "build/call").read_text().splitlines()
             self.assertEqual(call[:5], [str(self.root / "build/verify/pystachy2"), "jit aot",
                                        " ".join(pr_variants.VARIANT_GROUPS[worker]), "unset", "4"])
             self.assertEqual(call[5:], report["sample"]["cases"])
             seen.extend(report["variants"])
-        self.assertEqual(seen, ["opt-1", "opt-2", "opt-3", "opt-4", "opt-5", "cflags-O0"])
+        self.assertEqual(seen, ["opt-1", "opt-2", "opt-3", "opt-4", "opt-5", "opt-6", "cflags-O0"])
         self.assertEqual(self.restore.call_count, 2)
         self.restore.assert_called_with(self.root / "build/ci-bootstrap", self.root)
 
@@ -93,7 +93,7 @@ done
         self.runner(body="printf '%s\\n' '5 passed, 0 failed' > build/variants/opt-1.log\n")
         code, report = self.run_worker()
         self.assertEqual(code, 1)
-        self.assertEqual([step["result"] for step in report["steps"]], ["pass", "fail", "fail"])
+        self.assertEqual([step["result"] for step in report["steps"]], ["pass", "fail", "fail", "fail"])
 
     def test_bad_bootstrap_is_not_rebuilt_or_ignored_and_emits_failed_report(self):
         self.restore.side_effect = ValueError("bootstrap checkout identity differs")
