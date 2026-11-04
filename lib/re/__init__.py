@@ -1959,6 +1959,14 @@ class Pattern:
         self.groups = groups
         self.groupindex = groupindex
         self._code = code
+        # INFO records the mandatory literal prefix after handling inline flags and captures.
+        # Bound the extra work on hits. ASCII compares the same in all subject encodings.
+        self._match_prefix = ""
+        if len(code) > 7 and code[0] == INFO and code[2] & SRE_INFO_PREFIX:
+            for i in range(7, 7 + min(4, code[5])):
+                if code[i] >= 128:
+                    break
+                self._match_prefix += chr(code[i])
         # Classes are evaluated for ASCII only on first use. Their lifetime is this Pattern's,
         # so purge() or cache eviction can release them with the pattern. Integer offsets into
         # the flattened tables keep the warm lookup on the compiler's inline list[int] reads.
@@ -2039,6 +2047,8 @@ class Pattern:
 
     def match(self, string: str, pos: int = 0, endpos: int = _MAXSIZE) -> "Match | None":
         """Matches zero or more characters at the beginning of the string."""
+        if pos == 0 and self._match_prefix and not string.startswith(self._match_prefix):
+            return None
         if _flat(string):
             return self._match(string, self._view_state(string, pos, endpos), False)
         return self._match(string, self._state(string, pos, endpos), False)

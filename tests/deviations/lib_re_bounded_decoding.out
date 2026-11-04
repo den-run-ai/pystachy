@@ -31,4 +31,7 @@ owned True True True
 growing 𝔄 True
 full reuse True
 owned True True True
+prefix miss True True
+prefix match .. True
+prefix offset (1, 8)
 [exit 0]
