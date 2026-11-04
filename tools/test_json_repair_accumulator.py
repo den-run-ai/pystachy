@@ -116,6 +116,13 @@ class JsonRepairAccumulatorTests(unittest.TestCase):
                     self.assertLessEqual(counter.copied_chars, 2 * previous + 256)
                 previous = counter.copied_chars
 
+    def test_simple_control_runs_reach_the_accumulator_in_spans(self):
+        # A 2,000-escape run crosses several scan windows but needs only a
+        # handful of appends. A per-escape loop needs thousands.
+        with patch.object(parser, "_append_string_span", wraps=parser._append_string_span) as append:
+            self.measure(2000)
+        self.assertLess(append.call_count, 24)
+
     def test_unicode_and_surrogates_have_code_point_bounds(self):
         for fragment, expected in (("é🌲\\n", "é🌲\n"), ("\\ud800\\t", "\ud800\t")):
             with self.subTest(fragment=fragment):
@@ -134,9 +141,10 @@ class JsonRepairAccumulatorTests(unittest.TestCase):
 
     def test_unbounded_tail_negative_control_breaks_copy_budget(self):
         # This reproduces the old growing-prefix strategy inside the actual
-        # parser. The complete answer still matches, but the copy guard fails.
+        # parser. Unicode escapes take the scalar path even when adjacent;
+        # this isolates tail growth from simple-control batching.
         with patch.object(parser, "STRING_CHUNK_SIZE", 1 << 30):
-            counter, length = self.measure(512)
+            counter, length = self.measure(512, "x\\u0061", "xa")
         self.assertGreater(counter.largest_piece_copy, 64)
         self.assertGreater(counter.copied_chars, 256 * length)
         self.assertFalse(bounded_work(counter, length))

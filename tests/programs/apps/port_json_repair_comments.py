@@ -43,6 +43,21 @@ def main() -> None:
         else:
             raise AssertionError('strict mode accepted a missing value')
 
+    for comment in ['/* note */', '// note\n', '# note\n']:
+        raw = f'{{{comment} "a" {comment}: 1 {comment}, {comment} "b": 2 {comment}}}'
+        for strict in [False, True]:
+            parsed = loads(raw, strict=strict, logging=True)
+            assert parsed[0] == {'a': 1, 'b': 2}
+            assert len(parsed[1]) == 5
+        assert loads('{' + comment + '}', strict=True) == {}
+
+    try:
+        loads('{/* unclosed }', strict=True)
+    except ValueError as exc:
+        assert str(exc) == 'Parsed object is empty but contains extra characters in strict mode.'
+    else:
+        raise AssertionError('strict mode accepted an unclosed comment')
+
     # Large runs of comments use a loop, and comment logging remains present.
     assert repair_json('{"a":' + '/* c */' * 1200 + '1}') == '{"a": 1}'
     result = loads('{"a": /* one */ // two\n # three\n 1}', logging=True)
