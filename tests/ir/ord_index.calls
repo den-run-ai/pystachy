@@ -1,0 +1,8 @@
+@main.init: pys_list_new pys_list_append pys_str_int pys_write pys_write pys_str_int pys_write pys_write pys_str_int pys_write pys_write
+@f.codepoint: pys_text_ord_at
+@f.from_list: pys_list_get pys_ord
+@f.from_slice: pys_text_slice pys_ord pys_raise
+@pys_obj_eq:
+@pys_obj_cmp:
+@pys_obj_repr:
+@main: pys_init pys_finish
