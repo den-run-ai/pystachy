@@ -188,6 +188,14 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   method object; a def's box is a constant, whose payload is its DynType's address, and a
   closure's holds the env its def made for it, so different functions have different `id()`s
   (`tests/programs/inference/dynany_fn_identity.py`).
+- **Native integer lists** have distinct DynTypes for checked and promoting integer
+  storage. Both retain Python type `list`, but neither has `list[Any]`'s physical
+  layout. The box retains the original list; dynamic reads and writes use its layout
+  and existing item-identity companions. Typed aliases keep their native access path.
+  The list and its companion storage stay reachable through either view, including
+  when the `Any` box is the only remaining owner. First exposure may visit every
+  item and allocate missing identity boxes; preserving native backing does not make
+  this prototype boundary allocation-free.
 - **Identity**: two `Any` values are one object, for `is`, exactly where their `id()`s are equal
   (#797). `None`, a bool and a reference are their payload's object. An int, a float and a
   bound method are their box, as an int or float object is in CPython. An int from -5 to 256
@@ -412,14 +420,30 @@ modules and require unsafe cases to produce the same IR as compiling with hints 
 
 - **Into `Any`**: scalars, `None`, `str`, objects of the program's classes (boxed with their
   concrete class's DynType, chosen by the object's class tag in a hierarchy), containers of
-  `Any` items, tuples (made a tuple of boxes: only their identity differs), function values,
+  `Any` items, native `list[int]`, tuples (made a tuple of boxes: only their identity differs), function values,
   bound methods, closures and `Callable` objects, and unions of these (boxed as the member the
   value's tag selects).
-- **Mutable containers of typed items never become `Any` values** (a container whose items hold
-  `Any` values has `Any`'s layout: [above](#selecting-dynamic-storage)). A `list[int]` boxed into `Any` would
-  either read boxes as ints through its typed aliases, store boxes into memory the collector does
-  not scan, or have to be copied (breaking identity). The compiler rejects the crossing and says
-  to make the container a `list[Any]` from the start; a display that flows into `Any` storage is
+- **Native `list[int]` crossings** preserve the same list, backing storage and item
+  identities through parameters, returns and fields. Dynamic writes accept exact ints;
+  incompatible items, including bools, raise `TypeError` before that item is stored.
+  Checked storage also rejects wide integers with `OverflowError`; promoting storage
+  retains their full values. Typed aliases see successful dynamic mutations immediately.
+  `extend` and `+=` retain the compatible prefix before an error. Slice assignment
+  validates the collected replacement before changing target slots; callback effects
+  already performed remain. Copies, slices, `list()`, concatenation and repetition
+  through `Any` produce fresh unrestricted boxed lists, preserving item identities.
+  `isinstance(value, list)` proves the Python type, so operations keep dispatching by
+  layout. An explicit `list[int]` receiver requires the native descriptor for the
+  program's checked or promoting container policy. A native list cannot become an aliased
+  `list[Any]`, and an existing boxed list cannot gain a native constraint merely because
+  its current items are ints. Those annotation crossings raise `TypeError`; conversion
+  from `Any` to other concrete list types such as `list[float]` stays a compile-time rejection.
+  The focused fixtures are `dynany_native_int_list.py`,
+  `dynany_native_int_list_callbacks.py` and `dynany_native_int_list_promote.py`.
+- **Other mutable containers of typed items still cannot become `Any` values** (a container whose items hold
+  `Any` values has `Any`'s layout: [above](#selecting-dynamic-storage)). Reinterpreting their
+  slots could corrupt values or GC roots, while copying would break aliases. Make the
+  container a `list[Any]` from the start; a display that flows into `Any` storage is
   made one automatically, an empty one too: also one stored into an `Any` value's item or
   attribute (`cont[k] = {}`, `o.kids = [1, 2]`, and in a module that opts in `f()[k] = {}` where
   `f` is declared `-> Any`: `tests/programs/inference/dynany_store_display.py`), which a field or
@@ -452,14 +476,15 @@ modules and require unsafe cases to produce the same IR as compiling with hints 
   declared (`tuple[int, str]` returned as `tuple[int, Any]`), and an `Any` item is checked and
   unboxed where a typed one is, as below (`tests/programs/inference/dynany_tuple_items.py`).
 - **Out of `Any`**: `isinstance()` narrows an `Any` local or parameter to the payload's type for
-  the builtin types and classes. `isinstance(x, int)` keeps the box, since a `bool` passes it
+  the builtin types and classes. A list test keeps the layout-aware dynamic reference
+  described above. `isinstance(x, int)` keeps the box, since a `bool` passes it
   too, but proves that its payload is an int's or a bool's: arithmetic and comparisons on it
   read the payload as an int, whose results are a bool's too but for `&`, `|` and `^` of two
   bools and `**`, which stay dynamic (`tests/programs/inference/dynany_proven_int.py`). A concrete annotation that
   receives an `Any` value checks the box's type where it unboxes it (a union's: one of its
   members), raising
   `TypeError: expected int, got str` where CPython, which does not check annotations, would go
-  on: the one kind of runtime error that CPython never raises, a [deviation](#deviations).
+  on: an intentional [deviation](#deviations).
 
 ## Iteration
 
@@ -727,6 +752,14 @@ document into dicts and lists of `Any` values that programs which do not opt in 
   (CPython does not check annotations). `int` takes no `bool` and `float` no `int` this way,
   so that a typed variable never prints another value than CPython's. So does the storage that
   [keeps its first type](#selecting-dynamic-storage) when an `Any` value reaches it.
+- The newly supported native `list[int]`/`Any` boundary checks dynamic writes against
+  native storage. CPython accepts a str, float or bool in the annotated list; this
+  prototype raises `TypeError`, preserving aliases and the existing storage. `extend`
+  and `+=` may already have appended a compatible prefix; rejected slice replacements
+  leave target slots unchanged. An annotation cannot reinterpret native slots or constrain
+  an existing unrestricted boxed list (`tests/deviations/dynany_native_int_list_store.py`).
+  This is the bounded checked-store policy for these newly accepted crossings; other
+  concrete mutable layouts remain unsupported.
 - A comparison operand rebound across control flow keeps either object's native field
   storage. An executed store of `list[int]` into the original operand's `list[str]`
   field raises the typed-boundary `TypeError` after evaluating its value and target;
@@ -890,7 +923,7 @@ lines.
   unobservable, and float payloads unboxed across a loop.
 - **Widening**: a function that another function's call has taken the return type of, a
   closure's cell and a generator's frame, which would need their users compiled again too.
-- **Typed-container crossings**: the flow analysis that selects `list[Any]` storage at the
+- **Broader typed-container crossings**: the flow analysis that selects `list[Any]` storage at the
   allocation of every alias of a container that may flow into `Any` storage.
 - **Calls**: an `Any` value unpacked into a call's arguments, through a generic binding entry;
   builtin functions as values; `type(x)` as a class object.

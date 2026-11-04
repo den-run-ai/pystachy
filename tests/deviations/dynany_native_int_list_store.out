@@ -1,0 +1,15 @@
+blocked 0 [1, 2, 3] True
+blocked 1 [1, 2, 3] True
+blocked 2 [1, 2, 3] True
+blocked 3 [1, 2, 3, 4] True
+blocked 4 [1, 2, 3, 4] True
+blocked 5 [1, 2, 3] True
+blocked 6 [1, 2, 3] True
+blocked 7 [1, 2, 3] True
+blocked 8 [1, 2, 3] True
+blocked 9 [1, 2, 3] True
+boxed layout rejected [1, 2]
+late constraint rejected
+still unrestricted [1, 2, 'free']
+typed extend prefix [1, 2, 3]
+[exit 0]

@@ -1,5 +1,5 @@
-# error: boxed() yields Any, but yield from delegates to a generator that yields list[int]
 # pystachy: dynamic-any
+# Delegation boxes the original native list without changing its storage.
 from typing import Any, Iterator
 
 

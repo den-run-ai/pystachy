@@ -1,0 +1,23 @@
+source first
+source second 4
+extend source failed [1, 2, 90, 10, 20]
+source first
+source second 3
+slice source failed [1, 2, 90]
+index callback
+index 2 [11, 2]
+sort callback 0 0
+sort callback 1 1
+sort callback 1 1
+sort list modified during sort
+keys True True True
+restored [2000, 1000, 1000] True True True
+argument
+captured receiver [2000, 1000, 1000, 8] [7] True
+query callback 2000
+query mutation False []
+source iter
+iterator iter
+iterator hint
+slice hint [1, 51, 52, 3]
+[exit 0]

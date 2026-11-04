@@ -285,7 +285,13 @@ or generator/async initializers retain eager formatting
 
 `# pystachy: dynamic-any` enables runtime-typed boxes. Concrete annotations and
 native storage still impose checks: incompatible values raise `TypeError`, while
-CPython ignores annotations. Unsupported selected comparison bodies also raise
+CPython ignores annotations. A native `list[int]` can share its object and storage
+with `Any`; dynamic writes reject incompatible items before storing them. `extend`
+and `+=` retain a successful prefix, while slice replacement checks all its items
+before writing. The native descriptor also enforces the integer-container policy. Existing
+boxed lists stay unrestricted, and `isinstance(value, list)` does not prove their
+item layout. See the [native-list deviation](../../tests/deviations/dynany_native_int_list_store.py).
+Unsupported selected comparison bodies also raise
 `TypeError`; they do not silently fall back to identity or a lower-priority method.
 
 The prototype's [operation matrix](../dynamic-any.md#operations),
@@ -571,7 +577,8 @@ See [annotations](typing.md#annotations), [aliases](typing.md#type-aliases) and
   supported generic aliases, `Optional`, `Union`, `Callable`, `Tuple`, `Literal`, `Annotated`
   and single-type forms. Invalid forms (such as `Generic[T]` / `Concatenate[...]`) and invalid
   string expressions in `type` statements fail even when unused.
-- **Dynamic `Any`:** typed mutable containers becoming `Any`, unimplemented prototype operations,
+- **Dynamic `Any`:** typed mutable containers other than the supported native `list[int]`
+  boundary becoming `Any`, unimplemented prototype operations,
   call-argument unpacking of `Any`, or None-first storage that cannot select `Any` initially:
   generator/closure locals, function-assigned globals, fields assigned outside their class's
   methods, and all-`None` displays. See the [prototype contract](../dynamic-any.md).

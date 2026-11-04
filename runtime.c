@@ -4688,9 +4688,14 @@ I pys_hash_id(void *p) { return hptr((I)p); }        /* object.__hash__ */
    descriptor walks above read it, cls a class's O<id> and base its base class's DynType. v is
    the payload's slot: an int's, float's or bool's bits, or the original pointer of a str,
    list, dict, tuple or object, so that boxing never copies a container or gives an alias a
-   second layout. The containers a box may hold have boxes for items (list[Any] LA, dict[Any,
+   second layout. Most containers a box may hold have boxes for items (list[Any] LA, dict[Any,
    Any] DAA, tuple VA): descriptor A is such a slot, which the walks follow through its box's
-   DynType. None is the constant box pys_dyn_none_box and never null, which is an unbound
+   DynType. Native list[int] also crosses by reference, under a distinct descriptor: its
+   numeric backing stays atomic, its identity companion holds the item boxes, and every
+   dynamic store checks the native element contract before changing that slot. The checked
+   and promoting variants both have payload descriptor Li; their distinct DynTypes record
+   whether a dynamic store may keep a wide integer. None is the constant box pys_dyn_none_box
+   and never null, which is an unbound
    variable's; True, False and the ints from -5 to 256 are constant boxes too (as the program
    makes each int literal's), and other in-range numbers' boxes are atomic. A wide int keeps
    immutable Mpz digits through a scanned box, under the same Python kind with its own
@@ -4702,15 +4707,16 @@ enum { DF_EQ = 1, DF_CMP = 2, DF_HASH = 4, DF_BOXID = 8, DF_NE = 16, DF_X = 32, 
                                                                      the class's comparison methods take a value of any type (dobj) */
 #define DSTR(id, lit) static struct { I len; uint64_t h; I c1; char s[sizeof lit]; } id = {sizeof lit - 1, 0, sizeof lit, lit}
 DSTR(dd_none, "?s"); DSTR(dd_bool, "b"); DSTR(dd_int, "i"); DSTR(dd_bigint, "j"); DSTR(dd_float, "f"); DSTR(dd_str, "s");
-DSTR(dd_list, "LA"); DSTR(dd_dict, "DAA"); DSTR(dd_tuple, "VA");
+DSTR(dd_list, "LA"); DSTR(dd_intlist, "Li"); DSTR(dd_dict, "DAA"); DSTR(dd_tuple, "VA");
 DSTR(dn_none, "NoneType"); DSTR(dn_bool, "bool"); DSTR(dn_int, "int"); DSTR(dn_float, "float"); DSTR(dn_str, "str");
 DSTR(dn_list, "list"); DSTR(dn_dict, "dict"); DSTR(dn_tuple, "tuple");
-#define DTYPE(id, k, d, n) const DynType id = {k, (Str *)&d, (Str *)&n, -1, 0, 0, 0, 0, 0} /* GC_NO_ROOT(pys_dyntype_none, pys_dyntype_bool, pys_dyntype_int, pys_dyntype_float, pys_dyntype_str, pys_dyntype_list, pys_dyntype_dict, pys_dyntype_tuple): immutable descriptors reference only static strings. */
+#define DTYPE(id, k, d, n) const DynType id = {k, (Str *)&d, (Str *)&n, -1, 0, 0, 0, 0, 0} /* GC_NO_ROOT(pys_dyntype_none, pys_dyntype_bool, pys_dyntype_int, pys_dyntype_float, pys_dyntype_str, pys_dyntype_list, pys_dyntype_intlist, pys_dyntype_biglist, pys_dyntype_dict, pys_dyntype_tuple): immutable descriptors reference only static strings. */
 DTYPE(pys_dyntype_none, DK_NONE, dd_none, dn_none); DTYPE(pys_dyntype_bool, DK_BOOL, dd_bool, dn_bool);
 DTYPE(pys_dyntype_int, DK_INT, dd_int, dn_int); DTYPE(pys_dyntype_float, DK_FLOAT, dd_float, dn_float);
 /* GC_NO_ROOT(pys_dyntype_bigint): immutable descriptor references only static strings. */
 const DynType pys_dyntype_bigint = {DK_INT, (Str *)&dd_bigint, (Str *)&dn_int, -1, 0, DF_BIG | DF_BOXID, 0, 0, 0};
 DTYPE(pys_dyntype_str, DK_STR, dd_str, dn_str); DTYPE(pys_dyntype_list, DK_LIST, dd_list, dn_list);
+DTYPE(pys_dyntype_intlist, DK_LIST, dd_intlist, dn_list); DTYPE(pys_dyntype_biglist, DK_LIST, dd_intlist, dn_list);
 DTYPE(pys_dyntype_dict, DK_DICT, dd_dict, dn_dict); DTYPE(pys_dyntype_tuple, DK_TUPLE, dd_tuple, dn_tuple);
 const Dyn pys_dyn_none_box = {&pys_dyntype_none, 0}; /* GC_NO_ROOT(pys_dyn_none_box, pys_dyn_true_box, pys_dyn_false_box): immutable scalar boxes reference only static type descriptors. */
 const Dyn pys_dyn_true_box = {&pys_dyntype_bool, 1}, pys_dyn_false_box = {&pys_dyntype_bool, 0};
@@ -4725,6 +4731,8 @@ static const Dyn smallint[262] = {DI4(-5), DI(-1), DI64(0), DI64(64), DI64(128),
 #define DNAME(x) ((x)->t->name->s)
 static int dnum(const Dyn *x) { return DKIND(x) == DK_INT || DKIND(x) == DK_BOOL; }
 static int dwide(const Dyn *x) { return x->t == &pys_dyntype_bigint; }
+static int dyn_native_list_type(const DynType *t) { return t == &pys_dyntype_intlist || t == &pys_dyntype_biglist; }
+static int dyn_native_list(const Dyn *x) { return dyn_native_list_type(x->t); }
 static Big dbigint(const Dyn *x) { return dwide(x) ? (Big){0, (void *)x->v} : big_small(x->v); }
 void *pys_dyn_big_ptr(Dyn *x) { return dwide(x) ? (void *)x->v : NULL; }
 static I dsmall(const Dyn *x) { if (dwide(x)) pys_fail(NARROW); return x->v; }
@@ -4749,12 +4757,66 @@ static Dyn *dbool(I b) { return (Dyn *)(b ? &pys_dyn_true_box : &pys_dyn_false_b
 /* a reference of type t: None where it is null (an object of a class type may be None) */
 Dyn *pys_dyn_ref(const DynType *t, void *p) {
   if (!p) return DNONE;
+  if (dyn_native_list_type(t)) pys_list_identity((List *)p, 1);
   Dyn *d = gc_box(0); d->t = t; d->v = (I)p; return d;
 }
 static Dyn *dlist(List *l) { return pys_dyn_ref(&pys_dyntype_list, l); }
 static Dyn *dstr(Str *s) { return pys_dyn_ref(&pys_dyntype_str, s); }
 static Dyn *dtuple(VTuple *t) { return pys_dyn_ref(&pys_dyntype_tuple, t); }
 static Dyn *ddict(Dict *d) { return pys_dyn_ref(&pys_dyntype_dict, d); }
+/* A Python list tag is not a proof that its slots hold Dyn pointers. Keep every dynamic
+   list read/write behind the payload descriptor, including method calls and iterators.
+   The native companion gives reads the original integer box, even in a checked caller
+   reading a promoting list. Wide integers use the existing -2**63 slot sentinel. */
+static Dyn *dyn_list_at(Dyn *o, I i) {
+  return dyn_native_list(o) ? pys_list_get_identity((List *)o->v, i, 1) : (Dyn *)pys_list_get((List *)o->v, i);
+}
+static I dyn_list_slot(Dyn *o, Dyn *v) {
+  if (DKIND(v) != DK_INT) failf("TypeError: native list[int] requires int, got %s", DNAME(v));
+  if (dwide(v) && o->t == &pys_dyntype_intlist) pys_fail(NARROW);
+  return dwide(v) ? INT64_MIN : v->v;
+}
+static void dyn_list_store(Dyn *o, I i, Dyn *v, I method) {   /* 0 append, 1 insert, 2 item assignment */
+  List *l = (List *)o->v;
+  if (method == 2) i = idx(i, l->len, "IndexError: list assignment index out of range");
+  if (dyn_native_list(o)) {
+    I slot = dyn_list_slot(o, v);
+    if (method == 0) pys_list_append_identity(l, slot, v, 1);
+    else if (method == 1) pys_list_insert_identity(l, i, slot, v, 1);
+    else pys_list_set_identity(l, i, slot, v, 1);
+  } else {
+    if (method == 0) pys_list_append(l, (I)v);
+    else if (method == 1) pys_list_insert(l, i, (I)v);
+    else pys_list_set(l, i, (I)v);
+  }
+}
+/* A fresh dynamic list has unrestricted boxed storage; it inherits item identities,
+   never the native source's future store restriction. This is also copy()'s path. */
+static List *dyn_list_boxed_slice(Dyn *o, I lo, I hi, I st) {
+  List *l = (List *)o->v;
+  if (!dyn_native_list(o)) return st == 1 ? pys_list_slice(l, lo, hi) : pys_list_slice_step(l, lo, hi, st);
+  I n = sspan(&lo, hi, &st, l->len);
+  pys_list_identity(l, 1);
+  List *r = pys_list_new(n);
+  for (I i = 0; i < n; i++) r->a[i] = l->ids[lo + i * st + 1];
+  r->len = n; return r;
+}
+static void dyn_list_extend(Dyn *a, Dyn *b) {
+  if (DKIND(b) == DK_LIST) {
+    if (a->t == b->t) { pys_list_extend((List *)a->v, (List *)b->v); return; }
+    I n = ((List *)b->v)->len;   /* snapshot: even two wrappers of one list extend only its original items */
+    for (I i = 0; i < n; i++) dyn_list_store(a, 0, dyn_list_at(b, i), 0);
+    return;
+  }
+  if (DKIND(b) == DK_TUPLE) {
+    VTuple *t = (VTuple *)b->v;
+    for (I i = 0; i < t->len; i++) dyn_list_store(a, 0, (Dyn *)t->a[i], 0);
+    return;
+  }
+  DynIter *it = pys_dyn_iter(b);   /* consume and store each item before requesting the next */
+  if (b->t->len && dyn_user_len(b) > INT64_MAX / (I)sizeof(I)) pys_fail("MemoryError");
+  for (Dyn *v; (v = pys_dyn_next(it));) dyn_list_store(a, 0, v, 0);
+}
 static int derives(const DynType *a, const DynType *b) { for (; a; a = a->base) if (a == b) return 1; return 0; }
 /* does x have type t as a typed variable, argument or field of type t takes it (pys_dyn_unbox):
    x's type is t; or t is a class's, and x an object of a class that derives from it, or None (a
@@ -4773,6 +4835,7 @@ I pys_dyn_same_type(const DynType *a, const DynType *b) {
   if (a == b) return 1;
   if (!a || !b) return 0;
   if (a->kind == DK_INT && b->kind == DK_INT) return 1;
+  if (a->kind == DK_LIST && b->kind == DK_LIST) return 1;
   if (a->kind == DK_GEN && b->kind == DK_GEN) return 1;
   if (a->kind == DK_FUNC && b->kind == DK_FUNC) return strcmp(a->name->s, b->name->s) == 0;
   int ai = a->kind == DK_ITER || (a->kind == DK_OBJ && (a->flags & DF_ITER));
@@ -4784,6 +4847,11 @@ I pys_dyn_same_type(const DynType *a, const DynType *b) {
    (docs/dynamic-any.md) */
 I pys_dyn_unbox(Dyn *x, const DynType *t) {
   if (pys_dyn_isa(x, t)) return t->kind == DK_INT ? dsmall(x) : x->v;
+  if (t == &pys_dyntype_list && dyn_native_list(x)) pys_fail("TypeError: native list[int] cannot be used as list[Any]");
+  if (dyn_native_list_type(t) && DKIND(x) == DK_LIST) {
+    if (!dyn_native_list(x)) pys_fail("TypeError: boxed list[Any] cannot be used as native list[int]");
+    pys_fail("TypeError: native list[int] integer storage policies differ");
+  }
   failf("TypeError: expected %s, got %s", t->name->s, DNAME(x));
 }
 Big pys_dyn_big_unbox(Dyn *x) {
@@ -4832,6 +4900,25 @@ static I dobj(Dyn *a, Dyn *b, I k) {
   }
   return r;
 }
+/* Different list descriptors still denote the same Python type. Compare each payload
+   through its own item reader; decoding both with the left descriptor would reinterpret
+   integers as pointers (or pointers as integers). Keep the ordinary same-layout paths in
+   eqv/opv, including their existing treatment of nested dynamic graphs. A callback may
+   change either list, so lengths, and the ordering pair after equality, are read again. */
+static I dyn_list_compare(Dyn *a, Dyn *b, I op) {   /* op -1 ==, 0..3 ordering */
+  List *x = (List *)a->v, *y = (List *)b->v; I i = 0;
+  if (op < 0 && x->len != y->len) return 0;
+  while (i < x->len && i < y->len) {
+    Dyn *left = dyn_list_at(a, i), *right = dyn_list_at(b, i);
+    if (!dyn_eqitem(left, right)) break;
+    i++;
+  }
+  if (i >= x->len || i >= y->len)
+    return op < 0 ? x->len == y->len : cmpop((x->len > y->len) - (x->len < y->len), op);
+  if (op < 0) return 0;
+  Dyn *left = dyn_list_at(a, i), *right = dyn_list_at(b, i);
+  return pys_dyn_cmp(left, right, op);
+}
 I pys_dyn_eq(Dyn *a, Dyn *b) {
   int ka = DKIND(a), kb = DKIND(b);
   if (ka == DK_OBJ || kb == DK_OBJ) {
@@ -4854,6 +4941,7 @@ I pys_dyn_eq(Dyn *a, Dyn *b) {
   if (ka != kb) return 0;
   if (ka == DK_NONE) return 1;
   if (ka == DK_FUNC) return a->t == b->t && a->v == b->v;   /* the same function, and object or env */
+  if (ka == DK_LIST && a->t != b->t) return dyn_list_compare(a, b, -1);
   return eqv(a->v, b->v, a->t->desc->s);
 }
 /* a != b: where the class both objects are of (as for ==) or a subclass defines __ne__ (DF_NE),
@@ -4907,6 +4995,7 @@ I pys_dyn_cmp(Dyn *a, Dyn *b, I op) {   /* a OP b, op 0..3: < <= > >= */
     return c == 2 || c == -2 ? 0 : cmpop(c, op);   /* (a NaN: unordered, every comparison false) */
   }
   if (ka != kb || (ka != DK_STR && ka != DK_LIST && ka != DK_TUPLE)) dyn_noorder(a, b, op);
+  if (ka == DK_LIST && a->t != b->t) return dyn_list_compare(a, b, op);
   return opv(a->v, b->v, a->t->desc->s, op);
 }
 /* an Any key's hash (hkey): a str's cached one in one call, else pys_dyn_hash's, which is the same */
@@ -4956,7 +5045,14 @@ static Dyn *dyn_repeat(Dyn *seq, Dyn *n) {   /* seq * n, for a str, list or tupl
   if (dwide(n)) pys_fail("OverflowError: cannot fit 'int' into an index-sized integer");
   I k = n->v < 0 ? 0 : n->v;
   if (DKIND(seq) == DK_STR) return dstr(pys_str_mul((Str *)seq->v, k));
-  if (DKIND(seq) == DK_LIST) return dlist(pys_list_mul((List *)seq->v, k));
+  if (DKIND(seq) == DK_LIST) {
+    if (!dyn_native_list(seq)) return dlist(pys_list_mul((List *)seq->v, k));
+    I nitems = ((List *)seq->v)->len;
+    if (!k || !nitems) return dlist(pys_list_new(0));
+    if (nitems > (INT64_MAX >> 4) / k) pys_fail("MemoryError");
+    List *r = dyn_list_boxed_slice(seq, NONE, NONE, 1);
+    pys_list_imul(r, k); return dlist(r);
+  }
   VTuple *t = (VTuple *)seq->v;
   if (k == 1 || !t->len) return seq;   /* (CPython's tuple * 1 is the tuple itself) */
   if (!k) return dtuple(pys_alloc(sizeof(VTuple)));   /* (the empty tuple) */
@@ -5013,7 +5109,15 @@ static Dyn *dyn_binop(Dyn *a, Dyn *b, I op, int inplace, int promote) {   /* a O
   if (op == 0 && dseq(a)) {
     if (ka != kb) failf("TypeError: can only concatenate %s (not \"%s\") to %s", DNAME(a), DNAME(b), DNAME(a));
     if (ka == DK_STR) return dstr(pys_str_add((Str *)a->v, (Str *)b->v));
-    if (ka == DK_LIST) return dlist(pys_list_add((List *)a->v, (List *)b->v));
+    if (ka == DK_LIST) {
+      if (!dyn_native_list(a) && !dyn_native_list(b)) return dlist(pys_list_add((List *)a->v, (List *)b->v));
+      I na = ((List *)a->v)->len, nb = ((List *)b->v)->len;
+      if (na > INT64_MAX / (I)sizeof(I) - nb) pys_fail("MemoryError");
+      List *r = pys_list_new(na + nb);
+      for (I i = 0; i < na; i++) pys_list_append(r, (I)dyn_list_at(a, i));
+      for (I i = 0; i < nb; i++) pys_list_append(r, (I)dyn_list_at(b, i));
+      return dlist(r);
+    }
     VTuple *x = (VTuple *)a->v, *y = (VTuple *)b->v;
     if (!y->len) return a;
     if (!x->len) return b;
@@ -5045,12 +5149,7 @@ void pys_dyn_update(Dict *d, Dyn *x);
 static Dyn *dyn_inplace(Dyn *a, Dyn *b, I op, int promote) {
   if (DKIND(a) == DK_DICT && op == 10) { pys_dyn_update((Dict *)a->v, b); return a; }
   if (DKIND(a) == DK_LIST && op == 0) {
-    if (DKIND(b) == DK_LIST) { pys_list_extend((List *)a->v, (List *)b->v); return a; }
-    if (DKIND(b) == DK_TUPLE) { VTuple *t = (VTuple *)b->v; for (I i = 0; i < t->len; i++) pys_list_append((List *)a->v, t->a[i]); return a; }
-    DynIter *it = pys_dyn_iter(b);   /* list += iterable: consume each item before requesting the next */
-    if (b->t->len && dyn_user_len(b) > INT64_MAX / (I)sizeof(I)) pys_fail("MemoryError");   /* hint after __iter__, before any item */
-    for (Dyn *x; (x = pys_dyn_next(it));) pys_list_append((List *)a->v, (I)x);
-    return a;
+    dyn_list_extend(a, b); return a;
   }
   if (DKIND(a) == DK_LIST && op == 2) {
     if (!dnum(b)) failf("TypeError: can't multiply sequence by non-int of type '%s'", DNAME(b));
@@ -5110,7 +5209,7 @@ static I dindex(Dyn *o, Dyn *k) {   /* k as a sequence's index: an int or a bool
 }
 Dyn *pys_dyn_getitem(Dyn *o, Dyn *k) {
   switch (DKIND(o)) {
-  case DK_LIST: return (Dyn *)pys_list_get((List *)o->v, dindex(o, k));
+  case DK_LIST: return dyn_list_at(o, dindex(o, k));
   case DK_DICT: return (Dyn *)pys_dict_getitem((Dict *)o->v, (I)k);
   case DK_TUPLE: { VTuple *t = (VTuple *)o->v; return (Dyn *)t->a[idx(dindex(o, k), t->len, "IndexError: tuple index out of range")]; }
   case DK_STR: return dstr(pys_text_get((Str *)o->v, dindex(o, k)));
@@ -5118,7 +5217,7 @@ Dyn *pys_dyn_getitem(Dyn *o, Dyn *k) {
   failf("TypeError: '%s' object is not subscriptable", DNAME(o));
 }
 void pys_dyn_setitem(Dyn *o, Dyn *k, Dyn *v) {
-  if (DKIND(o) == DK_LIST) { pys_list_set((List *)o->v, dindex(o, k), (I)v); return; }
+  if (DKIND(o) == DK_LIST) { dyn_list_store(o, dindex(o, k), v, 2); return; }
   if (DKIND(o) == DK_DICT) { pys_dict_set((Dict *)o->v, (I)k, (I)v); return; }
   failf("TypeError: '%s' object does not support item assignment", DNAME(o));
 }
@@ -5131,7 +5230,7 @@ I pys_dyn_contains(Dyn *o, Dyn *k) {   /* k in o */
   switch (DKIND(o)) {
   case DK_LIST: {   /* (an __eq__ may change the list: re-read its length at every step) */
     List *l = (List *)o->v;
-    for (I i = 0; i < l->len; i++) if (dyn_eqitem((Dyn *)l->a[i], k)) return 1;
+    for (I i = 0; i < l->len; i++) if (dyn_eqitem(dyn_list_at(o, i), k)) return 1;
     return 0;
   }
   case DK_TUPLE: { VTuple *t = (VTuple *)o->v; for (I i = 0; i < t->len; i++) if (dyn_eqitem((Dyn *)t->a[i], k)) return 1; return 0; }
@@ -5221,7 +5320,7 @@ Dyn *pys_dyn_next(DynIter *it) {   /* the next item, or null at the end */
   case DK_LIST: {
     List *l = (List *)o->v;
     if (it->i >= 0 && it->i < l->len) {
-      Dyn *v = (Dyn *)l->a[it->i]; it->i += it->reverse ? -1 : 1; return v;
+      Dyn *v = dyn_list_at(o, it->i); it->i += it->reverse ? -1 : 1; return v;
     }
     break;
   }
@@ -5316,6 +5415,104 @@ static I dbound(Dyn *x, int bound) {
   return bound && x->v == NONE ? NONE + 1 : x->v;
 }
 I pys_dyn_index_bound(Dyn *x, I bound) { return dbound(x, bound != 0); }
+/* The compiler resolves a method argument's __index__ before this call, retaining
+   its integer box. insert/pop need Py_ssize_t, while index's bounds clamp wide ints. */
+static I dyn_list_method_index(Dyn *x) {
+  if (!dnum(x)) failf("TypeError: '%s' object cannot be interpreted as an integer", DNAME(x));
+  if (dwide(x)) pys_fail("OverflowError: Python int too large to convert to C ssize_t");
+  return x->v;
+}
+void pys_dyn_list_descriptor(Dyn *o, Str *method) {
+  if (DKIND(o) != DK_LIST)
+    failf("TypeError: descriptor '%s' for 'list' objects doesn't apply to a '%s' object", method->s, DNAME(o));
+}
+Dyn *pys_dyn_list_method(Dyn *o, I op, Dyn *a, Dyn *b, Dyn *c) {
+  /* Arity and keyword checks belong to the shared compiler binder. Missing optional
+     arguments are null, not None. Both boxed and native lists use these operations so
+     an Any source can extend either layout without an unchecked list[Any] payload. */
+  if (DKIND(o) != DK_LIST) failf("TypeError: expected list, got %s", DNAME(o));
+  List *l = (List *)o->v;
+  switch (op) {
+  case 0: dyn_list_store(o, 0, a, 0); return DNONE;   /* append */
+  case 1: dyn_list_store(o, dyn_list_method_index(a), b, 1); return DNONE;   /* insert */
+  case 2: {   /* pop: return the full stored integer, including its identity */
+    I i = a ? dyn_list_method_index(a) : -1;
+    return dyn_native_list(o) ? pys_list_pop_identity(l, i, 1) : (Dyn *)pys_list_pop(l, i);
+  }
+  case 3: dyn_list_extend(o, a); return DNONE;   /* extend: checked, incremental stores */
+  case 4: case 5: case 6: {   /* count, index, remove: queries need not be integers */
+    I start = 0, stop = INT64_MAX, count = 0;
+    if (op == 5) {
+      if ((b && !dnum(b)) || (c && !dnum(c))) pys_fail("TypeError: slice indices must be integers or have an __index__ method");
+      start = b ? dbound(b, 1) : 0; stop = c ? dbound(c, 1) : INT64_MAX;
+      if (start < 0 && (start += l->len) < 0) start = 0;
+      if (stop < 0 && (stop += l->len) < 0) stop = 0;
+    }
+    for (I i = start; i < stop && i < l->len; i++) {
+      if (!dyn_eqitem(dyn_list_at(o, i), a)) continue;
+      if (op == 4) { count++; continue; }
+      if (op == 5) return pys_dyn_int(i);
+      if (i < l->len) pys_list_del(l, i);   /* an equality callback may have removed this index */
+      return DNONE;
+    }
+    if (op == 4) return pys_dyn_int(count);
+    if (op == 5) not_in_list((I)a, "A");
+    pys_fail("ValueError: list.remove(x): x not in list");
+  }
+  case 7: return dlist(dyn_list_boxed_slice(o, NONE, NONE, 1));   /* copy */
+  case 8: pys_list_clear(l); return DNONE;
+  case 9: pys_list_reverse(l); return DNONE;
+  }
+  pys_fail("TypeError: unsupported dynamic list method");
+}
+/* Slice assignment uses the same explicit list-layout contract as item stores.
+   The compiler performs receiver checks before executing the bounds' __index__
+   methods, and supplies converted bounds here. Augmented assignment may read a str
+   or tuple slice before its eventual assignment is rejected. */
+void pys_dyn_list_check(Dyn *o, I operation) {   /* 0 read, 1 assignment, 2 deletion */
+  int k = DKIND(o);
+  if (k == DK_LIST || (!operation && (k == DK_STR || k == DK_TUPLE))) return;
+  if (!operation) failf("TypeError: '%s' object is not subscriptable", DNAME(o));
+  if (operation == 1) failf("TypeError: '%s' object does not support item assignment", DNAME(o));
+  failf("TypeError: '%s' object doesn't support item deletion", DNAME(o));
+}
+Dyn *pys_dyn_list_slice(Dyn *o, I lo, I hi, I st) {
+  pys_dyn_list_check(o, 0);
+  if (!st) pys_fail("ValueError: slice step cannot be zero");
+  if (DKIND(o) == DK_LIST) return dlist(dyn_list_boxed_slice(o, lo, hi, st));
+  if (DKIND(o) == DK_STR) return dstr(st == 1 ? pys_text_slice((Str *)o->v, lo, hi) : pys_text_slice_step((Str *)o->v, lo, hi, st));
+  return dtuple(pys_vtuple_slice((VTuple *)o->v, lo, hi, st));
+}
+List *pys_dyn_list(Dyn *o);
+void pys_dyn_list_set_slice(Dyn *o, I lo, I hi, I st, Dyn *value) {
+  pys_dyn_list_check(o, 1);
+  if (!st) pys_fail("ValueError: slice step cannot be zero");
+  if (!dyn_iterable(value)) pys_fail("TypeError: must assign iterable to extended slice");
+  /* PySequence_Fast materializes an iterator, not the original iterable. In
+     particular, the second __iter__ and the length hint belong to that iterator. */
+  List *v = pys_dyn_list(DKIND(value) == DK_LIST || DKIND(value) == DK_TUPLE ? value : pys_dyn_iter_box(value));
+  List *l = (List *)o->v;
+  if (dyn_native_list(o)) {
+    I first = lo, step = st, n = sspan(&first, hi, &step, l->len);
+    if (step != 1 && v->len != n)
+      failf("ValueError: attempt to assign sequence of size %lld to extended slice of size %lld", (long long)v->len, (long long)n);
+    /* Validate every replacement before modifying the target, while retaining
+       callbacks' effects during materialization. The scratch native list uses the
+       same numeric slots and scanned identity companion as the original. */
+    for (I i = 0; i < v->len; i++) dyn_list_slot(o, (Dyn *)v->a[i]);
+    List *native = pys_list_new_atomic(v->len);
+    for (I i = 0; i < v->len; i++) {
+      Dyn *item = (Dyn *)v->a[i];
+      pys_list_append_identity(native, dwide(item) ? INT64_MIN : item->v, item, 1);
+    }
+    v = native;
+  }
+  pys_list_set_slice(l, lo, hi, st, v);
+}
+void pys_dyn_list_del_slice(Dyn *o, I lo, I hi, I st) {
+  pys_dyn_list_check(o, 2);
+  pys_list_del_slice((List *)o->v, lo, hi, st);
+}
 /* o[lo:hi:st] of an Any value, with its bounds and step as Any values (None where omitted), as
    CPython's sequences take the slice: a str's, list's or tuple's items, a new value of its type (all
    of a str or tuple is itself), the step converted first, as PySlice_Unpack does; a dict's KeyError
@@ -5332,14 +5529,11 @@ Dyn *pys_dyn_slice(Dyn *o, Dyn *lo, Dyn *hi, Dyn *st) {
   I s = dbound(st, 0);
   if (!s) pys_fail("ValueError: slice step cannot be zero");
   I a = dbound(lo, 1), z = dbound(hi, 1);
-  if (k == DK_STR) return dstr(s == 1 ? pys_text_slice((Str *)o->v, a, z) : pys_text_slice_step((Str *)o->v, a, z, s));
-  if (k == DK_LIST) return dlist(s == 1 ? pys_list_slice((List *)o->v, a, z) : pys_list_slice_step((List *)o->v, a, z, s));
-  return dtuple(pys_vtuple_slice((VTuple *)o->v, a, z, s));
+  return pys_dyn_list_slice(o, a, z, s);
 }
 /* d.update(x) of a dict of Any values: another dict's items, else x's items, each an iterable of
    two, whose items it takes as CPython's dict.update does (a dict's are its keys), with its
    messages for one of another length, or no iterable */
-List *pys_dyn_list(Dyn *o);
 void pys_dyn_update(Dict *d, Dyn *x) {
   if (DKIND(x) == DK_DICT) { pys_dict_update(d, (Dict *)x->v); return; }
   DynIter *it = pys_dyn_iter(x);

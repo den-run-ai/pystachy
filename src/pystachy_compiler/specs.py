@@ -791,7 +791,7 @@ RUNTIME: dict[str, str] = {
     # any type, so that an operation on one may run the program's code (an object's __repr__,
     # __eq__, __lt__ or __hash__: U) and raise; boxing a number allocates (A), but the boxes of
     # -5..256 are constants
-    "dyn.int": "%ptr:int|A|", "dyn.float": "%ptr:float|A|", "dyn.ref": "%ptr:%ptr,%ptr|A|",
+    "dyn.int": "%ptr:int|A|", "dyn.float": "%ptr:float|A|", "dyn.ref": "%ptr:%ptr,%ptr|A rL wL|",
     "dyn.int_box": "%ptr:int,%ptr|A|", "dyn.float_box": "%ptr:float,%ptr|A|",
     "dyn.big": "%ptr:int,%ptr|A|", "dyn.big_box": "%ptr:int,%ptr,%ptr|A|",
     "dyn.big_unbox": "int+:%ptr|R|", "dyn.big_of": "int+:%ptr|R A|",
@@ -804,12 +804,18 @@ RUNTIME: dict[str, str] = {
     "dyn.binop_promote": "%ptr:%ptr,%ptr,int|R A I U|", "dyn.inplace_promote": "%ptr:%ptr,%ptr,int|R A I U|", "dyn.unary_promote": "%ptr:%ptr,int|R A|",
     "dyn.len": "int:%ptr|R rL rD|", "dyn.getitem": "%ptr:%ptr,%ptr|R A I U|", "dyn.setitem": "None:%ptr,%ptr,%ptr|R A I U|",
     "dyn.delitem": "None:%ptr,%ptr|R A I U|", "dyn.contains": "bool:%ptr,%ptr|R A I U|",
+    "dyn.list_method": "%ptr:%ptr,int,%ptr,%ptr,%ptr|R A I U rL wL|",
+    "dyn.list_check": "None:%ptr,int|R|",
+    "dyn.list_descriptor": "None:%ptr,str|R|",
+    "dyn.list_slice": "%ptr:%ptr,int,int,int|R A rL wL|",
+    "dyn.list_set_slice": "None:%ptr,int,int,int,%ptr|R A I U rL wL|",
+    "dyn.list_del_slice": "None:%ptr,int,int,int|R rL wL|",
     "dyn.iter": "%ptr:%ptr|R A I U rL rD|", "dyn.next": "%ptr:%ptr|R A I U rL rD|",
     "dyn.iter_box": "%ptr:%ptr|R A I U rL rD|", "dyn.next_box": "%ptr:%ptr|R A I U rL rD|", "dyn.iter_check": "%ptr:%ptr|R|",
     "dyn.reversed": "%ptr:%ptr|R A rL rD|", "dyn.range_iter": "%ptr:int,int,int,int|R A|",
     "dyn.int_of": "int:%ptr|R A|", "dyn.float_of": "float:%ptr|R A|", "dyn.unpack": "%ptr:%ptr,int|R A I U rL rD|",
     "dyn.slice": "%ptr:%ptr,%ptr,%ptr,%ptr|R A I U|", "dyn.update": "None:%ptr,%ptr|R A I U|",
-    "dyn.list_of": "%ptr:%ptr,%ptr|R A rL|", "dyn.list": "list[T]:%ptr|R A I U rL rD|", "dyn.strs": "list[str]:%ptr|R A I U rL rD|", "dyn.id": "int:%ptr||",
+    "dyn.list_of": "%ptr:%ptr,%ptr|R A rL wL|", "dyn.list": "list[T]:%ptr|R A I U rL rD|", "dyn.strs": "list[str]:%ptr|R A I U rL rD|", "dyn.id": "int:%ptr||",
     # weakref handles are atomic GC objects; reads depend on collections (I prevents CSE), as does
     # the queue of the fire functions of references whose referents a collection found dead
     "weakref.new": "%ptr:%ptr,%ptr|A I|", "weakref.get": "%ptr:%ptr|I|", "weakref.fired": "%ptr:|I|",
@@ -1057,7 +1063,7 @@ RUNTIME: dict[str, str] = {
 # it uses (Gen.rtdata), and tools/check_runtime.py checks that runtime.c defines them
 DYNTYPE_LL = "{i64, ptr, ptr, i64, ptr, i64, ptr, ptr, ptr}"
 RTDATA: dict[str, str] = {"pys_dyn_none_box": "{ptr, i64}", "pys_dyn_true_box": "{ptr, i64}", "pys_dyn_false_box": "{ptr, i64}"}
-for _k in "none bool int bigint float str list dict tuple".split():
+for _k in "none bool int bigint float str list intlist biglist dict tuple".split():
     RTDATA["pys_dyntype_" + _k] = DYNTYPE_LL
 RTSYM: dict[str, str] = {}
 for _k in RUNTIME:

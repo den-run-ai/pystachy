@@ -6,9 +6,10 @@ value is a pointer to an immutable box {DynType *, payload} (runtime.c's dynamic
 DynType tells its Python type and the payload's layout, and the payload is a number's bits or a
 reference's own pointer. Values are boxed where they flow into dyn storage (a variable, field,
 parameter, return value or item of that type) and keep their concrete types and layouts
-everywhere else. A box never holds a container whose items are typed: list[Any], dict[Any, Any]
-and tuples of boxes are the containers it may hold, and a display that flows into dyn storage is
-made so from the start, so that no alias of a container reads its slots with another layout.
+everywhere else. Containers of boxes and native list[int] have distinct layout descriptors:
+the latter retains its numeric backing and identity companion, with checked dynamic stores.
+A display that flows into dyn storage is made of boxes from the start. A Python list type
+test alone never proves which layout an alias uses.
 Narrowing (isinstance) reads the payload back; a concrete annotation that takes a dyn value checks
 its type where it unboxes it. Operations on dyn values call runtime.c's generic helpers, or, for
 the program's classes, functions the compiler writes once every class that is boxed is known
@@ -51,7 +52,7 @@ BINDUNDERS: dict[str, str] = {"+": "__add__", "-": "__sub__", "*": "__mul__", "/
                               "**": "__pow__", "<<": "__lshift__", ">>": "__rshift__", "&": "__and__", "|": "__or__", "^": "__xor__"}
 # the builtin types' DynTypes (RTDATA), by the static type of the payload
 BUILTIN: dict[str, str] = {"None": "pys_dyntype_none", "bool": "pys_dyntype_bool", "int": "pys_dyntype_int", "float": "pys_dyntype_float",
-                           "str": "pys_dyntype_str", "list[dyn]": "pys_dyntype_list", "dict[dyn,dyn]": "pys_dyntype_dict",
+                           "str": "pys_dyntype_str", "list[dyn]": "pys_dyntype_list", "list[int]": "pys_dyntype_intlist", "dict[dyn,dyn]": "pys_dyntype_dict",
                            "vtuple[dyn]": "pys_dyntype_tuple"}
 
 
@@ -314,7 +315,10 @@ def gen_dyn_boxable(self, t: str) -> str:
                 return self.dyn_boxable(x)
         return ""
     if is_vtuple(t):
-        return self.dyn_boxable(targs(t)[0])
+        # Only vtuple[dyn] (in BUILTIN) has a supported boxed representation.
+        # Match dyn_box here so a tentative comparison can choose its concrete
+        # adapter before a later attribute dispatcher encounters this layout.
+        return f"a {typestr(t)} as an Any value is not supported yet"
     if is_list(t) or is_dict(t) or is_set(t):
         # (an alias of a typed container would read its slots with another layout, or store a
         # box where its typed code reads a number: copying it would break its identity)
@@ -334,6 +338,10 @@ def gen_dyn_type(self, t: str) -> str:
     # the DynType operand of payloads of static type t (a class's: its own, dyn_class_type)
     if t == BIG:
         return self.rtdata("pys_dyntype_int")
+    if t == "list[int]":
+        # Integer list storage follows the whole program's existing container policy.
+        # Both use raw integer slots; only the promoting descriptor permits wide stores.
+        return self.rtdata("pys_dyntype_biglist" if int_lists() else "pys_dyntype_intlist")
     if t in BUILTIN:
         return self.rtdata(BUILTIN[t])
     if is_gen(t):
@@ -2345,8 +2353,8 @@ def gen_dyn_check(self, v: Val, ts: list[str], shown: str) -> None:
 
 
 def gen_dyn_unboxable(self, t: str) -> bool:
-    # can an Any value have static type t: does dyn_unbox compile for it (not for a list[int],
-    # whose items an Any list does not type, nor for a function)
+    # Can dyn_unbox prove t's physical layout? A native integer list requires its exact
+    # descriptor; checking the current items of an unrestricted boxed list proves nothing.
     if t == DYN or t == "None" or t == BIG or t in BUILTIN:
         return True
     if is_opt(t) and t != NONEVAR:
@@ -2483,7 +2491,7 @@ def gen_dyn_isinst_types(self, c: Node) -> list[str]:
         return [c.s]
     if self.bound(c.s):
         return [""]
-    m = {"int": ["int", "bool"], "bool": ["bool"], "float": ["float"], "str": ["str"], "list": ["list[dyn]"], "dict": ["dict[dyn,dyn]"],
+    m = {"int": ["int", "bool"], "bool": ["bool"], "float": ["float"], "str": ["str"], "list": ["list[dyn]", "list[int]"], "dict": ["dict[dyn,dyn]"],
          "tuple": ["vtuple[dyn]"], "object": ["*"]}
     if c.s in m:
         return m[c.s]
@@ -2510,6 +2518,8 @@ def gen_dyn_narrow_type(self, c: Node, truth: bool) -> str:
     ts = self.dyn_isinst_types(c)
     if len(ts) == 2 and ts[0] == "int" and ts[1] == "bool":
         return DYNINT
+    # A list's Python type does not establish boxed versus native integer storage.
+    # Keep its descriptor and use the layout-aware dynamic operations after the test.
     if len(ts) != 1 or ts[0] == "" or ts[0] == "*":
         return ""
     return ts[0]
@@ -3009,7 +3019,7 @@ def sequence_index(self, o: Val, k: Val) -> Val:
     end = self.label()
     ph = Ins("phi", DYN, "")
     self.incoming(ph, k.v, self.cur)
-    self.cbr(self.dyn_test(o, ["list[dyn]", "vtuple[dyn]", "str"]), hit, end)
+    self.cbr(self.dyn_test(o, ["list[dyn]", "list[int]", "vtuple[dyn]", "str"]), hit, end)
     self.place(hit)
     converted = index_value(self, k)
     self.incoming(ph, converted.v, self.cur)
@@ -3650,7 +3660,7 @@ def gen_dyn_builtin_methods(self, f: FnInfo, key: str, o: Val, args: list[Val]) 
     dup = dup_kw(key)
     t = Val(self.dyn_typeof(o), "dyntype")
     line = self.line
-    for bt in ["list[dyn]", "dict[dyn,dyn]", "str", "vtuple[dyn]", "int", "bool", "float"]:
+    for bt in ["list[dyn]", "list[int]", "dict[dyn,dyn]", "str", "vtuple[dyn]", "int", "bool", "float"]:
         # Attribute lookup finds a supported method independently of its call shape. Binding
         # fails only in call., after every argument has run (including for positional arity).
         if not self.dyn_builtin_takes(bt, m, -1):
@@ -3664,14 +3674,14 @@ def gen_dyn_builtin_methods(self, f: FnInfo, key: str, o: Val, args: list[Val]) 
             self.ret_(Val("null", DYN))  # (a method, which call.<m>.<shape> calls)
         elif dup >= 0:
             self.raise_("TypeError", self.sconst(f"{tname('int' if bt == 'bool' else bt)}.{m}() got multiple values for keyword argument '{ks[dup]}'"))
-        elif len(ks) > 0 and bt == "list[dyn]" and m == "sort" and n > 0:
+        elif len(ks) > 0 and is_list(bt) and m == "sort" and n > 0:
             self.raise_("TypeError", self.sconst("sort() takes no positional arguments"))  # (CPython's, before the keywords)
         elif len(ks) > 0 and bt == "dict[dyn,dyn]" and m == "update" and n > 1:
             self.raise_("TypeError", self.sconst(f"update expected at most 1 argument, got {n}"))
-        elif len(ks) > 0 and bt == "list[dyn]" and m == "sort" and len([k for k in ks if k != "key" and k != "reverse"]) > 0:
+        elif len(ks) > 0 and is_list(bt) and m == "sort" and len([k for k in ks if k != "key" and k != "reverse"]) > 0:
             kx = [k for k in ks if k != "key" and k != "reverse"][0]
             self.raise_("TypeError", self.sconst(f"sort() got an unexpected keyword argument '{kx}'"))  # (CPython's, as typed code's)
-        elif len(ks) > 0 and not (bt == "list[dyn]" and m == "sort") and not (bt == "dict[dyn,dyn]" and m == "update"):
+        elif len(ks) > 0 and not (is_list(bt) and m == "sort") and not (bt == "dict[dyn,dyn]" and m == "update"):
             # (keyword arguments, which typed code takes only for these two: its error, raised here)
             self.raise_("TypeError", self.sconst(f"keyword arguments to {tname(bt)}.{m}() are not supported; pass them by position"))
         elif len(ks) > 0 and m == "update":
@@ -3684,11 +3694,36 @@ def gen_dyn_builtin_methods(self, f: FnInfo, key: str, o: Val, args: list[Val]) 
             self.dyn_return(f, Val("null", "None"))
         elif not self.dyn_builtin_takes(bt, m, n):
             self.raise_("TypeError", self.sconst(builtin_arity(bt, m, n)))
+        elif is_list(bt) and m != "sort":
+            self.dyn_return(f, dynamic_list_method(self, o, m, args))
         else:
             x = self.dyn_payload(o, BIG if bt == "int" and int_program() else "int" if bt == "bool" else bt)
             r = self.expr(mk("call", "", line, [mk("attr", m, line, [self.vnode(x)])] + self.dyn_call_args(key, args)), "")
             self.dyn_return(f, self.dyn_fresh(r))
         self.place(nxt)
+
+
+def dynamic_list_method(self, o: Val, method: str, args: list[Val]) -> Val:
+    # Arity/keywords were checked by the shared builtin binder. Keep values boxed until
+    # the runtime validates each store; extend must not materialize before appending.
+    # Index protocols run after argument evaluation and before the operation's checks.
+    ops = {"append": 0, "insert": 1, "pop": 2, "extend": 3, "count": 4,
+           "index": 5, "remove": 6, "copy": 7, "clear": 8, "reverse": 9}
+    values: list[str] = []
+    for j in range(len(args)):
+        v = args[j]
+        if (method in ["insert", "pop"] and j == 0) or (method == "index" and j > 0):
+            v = index_value(self, v)
+            if method == "index":
+                # Argument Clinic validates start before asking stop for __index__.
+                # None is an invalid explicit index bound, unlike a slice's omission.
+                valid = self.dyn_test(v, ["int", "bool"])
+                self.guard(self.scalar("xor", [Val(valid, "bool"), Val("true", "bool")]),
+                           "TypeError: slice indices must be integers or have an __index__ method")
+        values.append(f"ptr {v.v}")
+    while len(values) < 3:
+        values.append("ptr null")
+    return Val(self.rt("pys_dyn_list_method", "ptr", [f"ptr {o.v}", f"i64 {ops[method]}"] + values), DYN)
 
 
 def builtin_limits(bt: str, m: str) -> list[int]:
@@ -3801,7 +3836,7 @@ def gen_dyn_fallback(self, f: FnInfo, key: str, ps: list[Val]) -> None:
     elif key == "slice":
         hit = self.label()
         rest = self.label()
-        self.cbr(self.dyn_test(o, ["list[dyn]", "vtuple[dyn]", "str"]), hit, rest)
+        self.cbr(self.dyn_test(o, ["list[dyn]", "list[int]", "vtuple[dyn]", "str"]), hit, rest)
         self.place(hit)
         # All expressions were evaluated by the caller. Convert the step first,
         # reject zero before either bound, then convert start and stop in order.
@@ -3860,9 +3895,9 @@ def gen_dyn_dispatchers(self) -> bool:
     # program calls this until it is False
     # Runtime consumers need callbacks even without an explicit iter()/next().
     # Resolve these after the main walk, using only existing program registries.
-    iterate = any(k in self.rtfns for k in ["dyn.iter", "dyn.list", "dyn.strs", "dyn.unpack", "dyn.update", "dyn.inplace", "dyn.inplace_promote", "dyn.contains"]) or "iter" in self.dynfns
+    iterate = any(k in self.rtfns for k in ["dyn.iter", "dyn.list", "dyn.strs", "dyn.unpack", "dyn.update", "dyn.inplace", "dyn.inplace_promote", "dyn.contains", "dyn.list_method", "dyn.list_set_slice"]) or "iter" in self.dynfns
     advance = iterate or "next" in self.dynfns or "nextvalue" in self.dynfns
-    length = any(k in self.rtfns for k in ["dyn.list", "dyn.strs", "dyn.update", "dyn.inplace", "dyn.inplace_promote"])
+    length = any(k in self.rtfns for k in ["dyn.list", "dyn.strs", "dyn.update", "dyn.inplace", "dyn.inplace_promote", "dyn.list_method", "dyn.list_set_slice"])
     for c in self.dynclasses:
         ms = self.classes[c].methods
         for key in ["iter", "next", "lengthhint"]:

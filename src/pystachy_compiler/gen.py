@@ -3296,8 +3296,8 @@ class Gen:
     def assign(self, t: Node, v: Val) -> None:
         return variables_assign(self, t, v)
 
-    def slice_target(self, t: Node, bnd: list[str], nosub: str) -> Val:
-        return variables_slice_target(self, t, bnd, nosub)
+    def slice_target(self, t: Node, bnd: list[str], nosub: str, raw: list[str] | None = None, values: list[Val] | None = None) -> Val:
+        return variables_slice_target(self, t, bnd, nosub, raw, values)
 
     def slice_check(self, step: str) -> None:
         return variables_slice_check(self, step)

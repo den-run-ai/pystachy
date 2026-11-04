@@ -1,0 +1,30 @@
+object True True True
+type True True True
+items True True False
+roundtrip True
+index error precedes store check [1000, 1000]
+both views [1000, 2000, 1000, 2000] [1000, 2000, 1000, 2000] True True
+narrowed True
+slice stores [1000, 1000, 1000, 2000, 1000, 2000, 1000, 2000]
+pop True
+inplace True [1000, 1000, 2000, 1000, 2000, 1000, 1000, 2000, 1000, 2000]
+ordered [1000, 1000, 1000, 1000, 1000, 1000, 2000, 2000, 2000, 2000] 6 6 False
+remove [1000, 1000, 1000, 1000, 1000, 1000, 2000, 2000, 2000]
+compare True True True
+fresh False free 10
+fresh False free 10
+fresh False free 10
+fresh False free 11
+fresh False free 19
+copy identity True True
+iter first True
+iter live True True
+iter exhausted None
+reverse iteration [2000, 1000, 1000]
+self extend [1000, 1000, 2000, 1000, 1000, 2000] True
+empty [] False True
+typed boxed extend [1000, 2000] True [1000, 2000]
+typed native extend [1000, 2000] True
+boxed [1, 2, 'three']
+only Any owner [12345, 12345] True True
+[exit 0]

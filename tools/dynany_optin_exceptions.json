@@ -44,20 +44,6 @@
       "issue": "https://github.com/den-run-ai/pystachy/issues/777"
     },
     {
-      "case": "tests/programs/inference/any_methods.py",
-      "mode": "jit",
-      "diagnostic": "tests/programs/inference/any_methods.py:41: error: a list[int] cannot become an Any value: its items are typed, and Any's containers hold Any items (make it a list[Any] from the start, or copy it)",
-      "reason": "A method combines its typed list[int] field with a dynamically accessed field, requiring unsupported typed-container boxing while preserving aliases.",
-      "issue": "https://github.com/den-run-ai/pystachy/issues/777"
-    },
-    {
-      "case": "tests/programs/inference/any_methods.py",
-      "mode": "aot",
-      "diagnostic": "tests/programs/inference/any_methods.py:41: error: a list[int] cannot become an Any value: its items are typed, and Any's containers hold Any items (make it a list[Any] from the start, or copy it)",
-      "reason": "A method combines its typed list[int] field with a dynamically accessed field, requiring unsupported typed-container boxing while preserving aliases.",
-      "issue": "https://github.com/den-run-ai/pystachy/issues/777"
-    },
-    {
       "case": "tests/programs/upstream/upstream_colorsys_extracted.py",
       "mode": "jit",
       "diagnostic": "tests/programs/upstream/upstream_colorsys_extracted.py:36: error: unpacking a Any into the arguments of colorsys.rgb_to_hsv() is not supported (a tuple's items are)",
