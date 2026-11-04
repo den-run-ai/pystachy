@@ -45,4 +45,6 @@ python3.13 -I tests/upstream/json_repair/extension.py build/json_repair
 PYSTACHY_GC_STRESS=1 python3.13 -I tests/upstream/json_repair/extension.py build/json_repair
 ```
 
+To install the companion and command into a virtual environment, [build a local wheel](../../docs/packages.md#install-native-json-repair-into-cpython).
+
 For use without a Python interpreter, build the [file and pipe command](../../ports/json_repair/PORT.md#file-and-pipe-command).
