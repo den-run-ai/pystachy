@@ -10,12 +10,12 @@ support for its complete upstream package or dependencies.
 |---|---|---|
 | [convertdate](convertdate/PORT.md) | 2.5.1 | Arithmetic calendar conversions and selected holidays |
 | [iniconfig](iniconfig/PORT.md) | 2.3.1 | INI parsing and configuration access with conversions |
-| [json_repair](json_repair/PORT.md) | 0.64.1 | In-memory, schema-free repair with dynamic `Any` and promoting integers |
+| [json_repair](json_repair/PORT.md) | 0.64.1 | Schema-free repair of strings, files and stdin with dynamic `Any` and promoting integers |
 | [jdcal](jdcal/PORT.md) | 1.4.1 | Gregorian/Julian ↔ split Julian dates |
 | [ordered-set](ordered_set/PORT.md) | 4.1.0 | Insertion-ordered sets of strings |
 | [pylev](pylev/PORT.md) | 1.4.0 | Edit distances for strings and typed sequences |
 | [qrcode](qrcode/PORT.md) | 8.2 | QR matrices and terminal text from strings |
-| [roman](roman/PORT.md) | 5.2 | Roman numeral conversions |
+| [roman](roman/PORT.md) | 5.2 | Roman numeral conversions and command line |
 | [sgp4](sgp4/PORT.md) | 2.27 | Pure-Python SGP4/SDP4 orbit propagation |
 | [snowballstemmer](snowballstemmer/PORT.md) | 3.1.1 | English Porter2 and Porter stemming |
 | [sortedcontainers](sortedcontainers/PORT.md) | 2.4.0 | Sorted integer lists |

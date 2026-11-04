@@ -4,7 +4,7 @@ from src.pystachy_compiler.utils import is_union, umembers
 from src.pystachy_compiler.bigints import TSLOT_BIG, big_tree, big_viewable, held, narrow_type, narrows, search_type
 from src.pystachy_compiler.analysis import collect, comp_shared, comp_unbound, comp_vars, deleted, key_reads, local_names, only_none, stack_aliases, stack_kept, walrus_names
 from src.pystachy_compiler.diagnostics import LINES, dynamic_program, int_lists, shown
-from src.pystachy_compiler.dynamic import comparison_container_pair, comparison_invalid, comparison_property_type
+from src.pystachy_compiler.dynamic import boxed_list_items, comparison_container_pair, comparison_invalid, comparison_property_type
 from src.pystachy_compiler.ir import ClassInfo, Data, FmtArgs, FnInfo, Ins, IterArg, Loop, Val
 from src.pystachy_compiler.names import ENUMCLASSES, short
 from src.pystachy_compiler.reflection import VARS_USES, refl_annotated, refl_body, refl_fold, refl_reflective
@@ -986,17 +986,19 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                 return Val(self.sconst(fk[fk.find(".") + 1 :] if n.s == "__name__" else fk), "str")
             if o.t.startswith("fn[m:"):
                 mn = fk[fk.rfind(".") + 1 :]
-                if n.s == "__name__":
-                    return Val(self.sconst(mn), "str")
                 cn = fk[: fk.rfind(".")]
                 ci = self.classes[cn]
-                qn = self.sconst(short(ci.methods[mn].cls) + "." + mn)
+                f = ci.methods[mn]
+                name = f.node.pyname if f.node.pyname != "" else mn
+                qn = self.sconst(name if n.s == "__name__" else self.qualname(f))
                 if ci.tag > 0:
                     tag = self.mload('int', o.v)
                     for cc in self.classes.values():
                         if cc.tag > 0 and cc.name != cn and self.derives(cc.name, cn):
                             matches = self.num_cmp('==', Val(tag, "int"), Val(str(cc.tag), "int")).v
-                            subname = self.sconst(short(cc.methods[mn].cls) + "." + mn)
+                            f = cc.methods[mn]
+                            name = f.node.pyname if f.node.pyname != "" else mn
+                            subname = self.sconst(name if n.s == "__name__" else self.qualname(f))
                             qn = self.select(matches, Val(subname, '%ptr'), Val(qn, '%ptr'))
                 return Val(qn, "str")
             if o.t.startswith("fn[d:"):
@@ -4174,23 +4176,7 @@ def gen_arith(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
             # though either source keeps its typed storage. Read each original
             # item through the normal identity-aware path; do not convert an
             # aliased source list or copy a mutable item into a different layout.
-            mixed_result = Val(self.rt("pys_list_new", "ptr", ["i64 0"]), "list[dyn]")
-            for source in [a, b]:
-                ctr = self.alloca("int", "")
-                self.mstore("int", "0", ctr)
-                head = self.label()
-                body = self.label()
-                end = self.label()
-                self.br(head)
-                self.place(head)
-                i = self.mload("int", ctr)
-                self.cbr(self.num_cmp("<", Val(i, "int"), Val(self.mload("int", source.v), "int")).v, body, end)
-                self.place(body)
-                self.list_store(mixed_result, self.dyn_box(self.list_item(source, Val(i, "int"))), "append")
-                self.mstore("int", self.scalar("add", [Val(i, "int"), Val("1", "int")]), ctr)
-                self.br(head)
-                self.place(end)
-            return mixed_result
+            return boxed_list_items(self, [a, b])
         self.err(f"unsupported operand types for +: {typestr(a.t)} and {typestr(b.t)} (a list holds items of one type)")
     if op == "|" and is_dict(a.t) and is_dict(b.t):
         # a | b: a copy of a, updated with b (dict_or: PyDict_Copy, then dict_update_arg)

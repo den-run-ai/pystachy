@@ -3,7 +3,8 @@
 A counted entry whose stack pointer is below the floor raises RecursionError before the thread's
 stack runs out, so that except and finally blocks run and buffered output survives, in JIT and
 AOT. The floor's policy (runtime.c's stack_floor) is checked natively against simulated pthread
-bounds, with negative controls. Live programs then run as subprocesses under a fixed stack limit
+and mapping bounds, with negative controls. Extensions place accessible and PROT_NONE mappings
+below the main stack before import, including a raised or unlimited host stack limit. Live programs then run as subprocesses under a fixed stack limit
 (RLIMIT_STACK), without core dumps and with time limits, normally and with program GC stress:
 a recursion that fits matches CPython, and one that does not pins the documented deviation
 (docs/language/compatibility.md#errors-and-control-flow), where CPython, whose Python frames
@@ -44,19 +45,20 @@ PREFIX = r"""
 #include <unistd.h>
 typedef int64_t I;
 static I pys_recursion_state[3];
-/* simulated: the main thread's file name (AT_EXECFN), its stack limit, the page size and the
-   pthread bounds; got counts pthread_getattr_np calls, destroyed pthread_attr_destroy calls */
-static const char *execfn;
+/* Simulated platform bounds and /proc/self/maps. Count both discovery paths: ordinary finite
+   program startup must not parse maps, extensions and glibc's fallback must inspect them once. */
+static const char *execfn, *mappings = "";
 static rlim_t limit;
-static int getattr_error, getstack_error, got, destroyed;
+static long pagesize = 4096;
+static int rlimit_error, getattr_error, getstack_error, got, destroyed, opened, maps_error;
 static uintptr_t mock_lo, mock_size;
 static unsigned long probe_getauxval(unsigned long type) { return type == AT_EXECFN ? (unsigned long)execfn : 0; }
 static int probe_getrlimit(int resource, struct rlimit *rl) {
   if (resource != RLIMIT_STACK) exit(4);
   rl->rlim_cur = limit; rl->rlim_max = RLIM_INFINITY;
-  return 0;
+  return rlimit_error;
 }
-static long probe_sysconf(int name) { return name == _SC_PAGESIZE ? 4096 : -1; }
+static long probe_sysconf(int name) { return name == _SC_PAGESIZE ? pagesize : -1; }
 static int probe_getattr(pthread_t thread, pthread_attr_t *attr) {
   (void)thread; (void)attr; got++;
   return getattr_error;
@@ -68,72 +70,144 @@ static int probe_getstack(const pthread_attr_t *attr, void **addr, size_t *size)
   return 0;
 }
 static int probe_destroy(pthread_attr_t *attr) { (void)attr; destroyed++; return 0; }
+static FILE *probe_maps(const char *path, const char *mode) {
+  if (strcmp(path, "/proc/self/maps") || strcmp(mode, "r")) exit(4);
+  opened++;
+  return maps_error == 1 ? NULL : fmemopen((void *)mappings, strlen(mappings), "r");
+}
+static int probe_ferror(FILE *f) { return maps_error == 2 || ferror(f); }
 #define getauxval probe_getauxval
 #define getrlimit probe_getrlimit
 #define sysconf probe_sysconf
 #define pthread_getattr_np probe_getattr
 #define pthread_attr_getstack probe_getstack
 #define pthread_attr_destroy probe_destroy
+#define fopen probe_maps
+#define ferror probe_ferror
 """
 SUFFIX = r"""
-static _Alignas(4096) char page[2 * 4096];
-static void check(const char *what, uintptr_t here, uintptr_t expected, int pthread_calls, int destroys) {
-  got = destroyed = 0;
+static _Alignas(65536) char page[2 * 65536];
+static char maptext[4096];
+static void check(const char *what, uintptr_t here, uintptr_t expected,
+                  int pthread_calls, int destroys, int maps_calls, int mapped) {
+  got = destroyed = opened = 0;
   pys_recursion_state[2] = -1;
-  stack_floor_at(here);
-  if ((uintptr_t)pys_recursion_state[2] != expected || got != pthread_calls || destroyed != destroys) {
-    fprintf(stderr, "incorrect stack floor (%s): %#llx, expected %#llx (%d pthread calls)\n", what,
-            (unsigned long long)pys_recursion_state[2], (unsigned long long)expected, got);
+  stack_floor_at(here, mapped);
+  if ((uintptr_t)pys_recursion_state[2] != expected || got != pthread_calls || destroyed != destroys || opened != maps_calls) {
+    fprintf(stderr, "incorrect stack floor (%s): %#llx, expected %#llx (%d pthread, %d maps calls)\n", what,
+            (unsigned long long)pys_recursion_state[2], (unsigned long long)expected, got, opened);
     exit(1);
   }
 }
+static void maps(uintptr_t previous, const char *perm, uintptr_t from, uintptr_t to) {
+  snprintf(maptext, sizeof maptext, "%lx-%lx %s 00000000 00:00 0\n%lx-%lx rw-p 00000000 00:00 0 [stack]\n",
+           (unsigned long)(previous - 4096), (unsigned long)previous, perm, (unsigned long)from, (unsigned long)to);
+  mappings = maptext;
+}
 int main(void) {
   uintptr_t KiB = 1024, MiB = 1024 * KiB;
-  /* the main thread's mapping ends where exec's copy of the file name and a word end: end */
+  /* The main thread's mapping ends where exec's copy of the file name and a word end: end. */
   char *name = page + 4096 - sizeof(void *) - 5;
   strcpy(name, "prog");
   uintptr_t end = (uintptr_t)page + 4096, here = end - 64 * KiB;
   execfn = name; limit = 8 * MiB;
-  mock_lo = 0x100000; mock_size = 8 * MiB;   /* (pthread bounds the main thread's path must not use) */
-  check("the main thread's 8 MiB: the full margin", here, end - 8 * MiB + 256 * KiB, 0, 0);
+  mock_lo = 0x100000; mock_size = 8 * MiB;
+  check("the main thread's 8 MiB: the full margin", here, end - 8 * MiB + 256 * KiB, 0, 0, 0, 0);
   limit = 1024 * MiB;
-  check("the main thread's 1 GiB", here, end - 1024 * MiB + 256 * KiB, 0, 0);
-  limit = 1001 * KiB;   /* (page-aligned up: 250 pages, of which an eighth) */
-  check("the main thread's 1001 KiB: an eighth", here, end - 1000 * KiB + 125 * KiB, 0, 0);
+  check("the main thread's 1 GiB", here, end - 1024 * MiB + 256 * KiB, 0, 0, 0, 0);
+  limit = 1001 * KiB;
+  check("the main thread's 1001 KiB: an eighth", here, end - 1000 * KiB + 125 * KiB, 0, 0, 0, 0);
   limit = 8 * MiB;
-  check("a main thread frame within the margin: the floor", end - 8 * MiB + 100 * KiB, end - 8 * MiB + 256 * KiB, 0, 0);
-  /* otherwise the thread's pthread bounds */
+  check("a main thread frame within the margin: the floor", end - 8 * MiB + 100 * KiB, end - 8 * MiB + 256 * KiB, 0, 0, 0, 0);
+  /* Otherwise the thread's pthread bounds; nonexistent mappings cannot change them. */
   mock_lo = here - 4 * MiB; mock_size = 8 * MiB;
   limit = RLIM_INFINITY;
-  check("an unlimited stack: the pthread bounds", here, here - 4 * MiB + 256 * KiB, 1, 1);
+  check("an unlimited stack: the pthread bounds", here, here - 4 * MiB + 256 * KiB, 1, 1, 1, 0);
   limit = 8 * MiB;
-  execfn = page + 100;   /* (ld.so ./prog: AT_EXECFN is an argument, no page boundary after it) */
+  execfn = page + 100;
   strcpy(page + 100, "./prog");
-  check("AT_EXECFN not at a mapping's end: the pthread bounds", here, here - 4 * MiB + 256 * KiB, 1, 1);
+  check("AT_EXECFN not at a mapping's end: the pthread bounds", here, here - 4 * MiB + 256 * KiB, 1, 1, 1, 0);
   execfn = 0;
-  check("no AT_EXECFN: the pthread bounds", here, here - 4 * MiB + 256 * KiB, 1, 1);
+  check("no AT_EXECFN: the pthread bounds", here, here - 4 * MiB + 256 * KiB, 1, 1, 1, 0);
   execfn = name;
-  uintptr_t thread = end - 64 * MiB;   /* (another thread's frame, outside the main thread's limit) */
+  uintptr_t thread = end - 64 * MiB;
   mock_lo = thread - 4 * MiB;
-  check("another thread: its pthread bounds", thread, thread - 4 * MiB + 256 * KiB, 1, 1);
+  check("another thread: its pthread bounds", thread, thread - 4 * MiB + 256 * KiB, 1, 1, 1, 0);
   mock_lo = thread - 256 * KiB; mock_size = 512 * KiB;
-  check("a 512 KiB thread stack: an eighth of it", thread, thread - 256 * KiB + 64 * KiB, 1, 1);
+  check("a 512 KiB thread stack: an eighth of it", thread, thread - 256 * KiB + 64 * KiB, 1, 1, 1, 0);
   mock_lo = thread - 16 * MiB; mock_size = 8 * MiB;
-  check("bounds below the frame (a switched stack): no floor", thread, 0, 1, 1);
+  check("bounds below the frame: no floor", thread, 0, 1, 1, 0, 0);
   mock_lo = thread + MiB;
-  check("bounds above the frame: no floor", thread, 0, 1, 1);
+  check("bounds above the frame: no floor", thread, 0, 1, 1, 0, 0);
   mock_lo = thread - 100 * KiB;
-  check("a frame already within the margin: the floor", thread, thread - 100 * KiB + 256 * KiB, 1, 1);
+  check("a frame already within the margin: the floor", thread, thread - 100 * KiB + 256 * KiB, 1, 1, 1, 0);
   mock_lo = thread - 4 * MiB; getattr_error = 1;
-  check("no thread attributes: no floor", thread, 0, 1, 0);
+  check("no thread attributes: no floor", thread, 0, 1, 0, 0, 0);
   getattr_error = 0; getstack_error = 1;
-  check("no stack in them: no floor", thread, 0, 1, 1);
-  /* stack_floor itself: this frame's own bounds */
+  check("no stack in them: no floor", thread, 0, 1, 1, 0, 0);
+  getstack_error = 0;
+  mock_lo = UINTPTR_MAX - 4096; mock_size = 8192;
+  check("overflowing pthread bounds: no floor", thread, 0, 1, 1, 0, 0);
+  mock_lo = here - 4 * MiB; mock_size = 8 * MiB;
+  rlimit_error = 1;
+  check("no stack limit: the pthread bounds", here, here - 4 * MiB + 256 * KiB, 1, 1, 1, 0);
+  rlimit_error = 0;
+  /* Mapping barriers: 256 pages above any accessible VMA, no extra gap above PROT_NONE. */
+  for (int i = 0; i < 3; i++) {
+    maps(here - 3 * MiB, i == 0 ? "r--p" : i == 1 ? "-w-p" : "--xp", here - 128 * KiB, end);
+    check("an accessible mapping before extension import", here, here - 2 * MiB + 256 * KiB, 0, 0, 1, 1);
+    check("ordinary program startup does not inspect maps", here, end - 8 * MiB + 256 * KiB, 0, 0, 0, 0);
+  }
+  limit = RLIM_INFINITY;
+  check("glibc fallback also leaves the guard gap", here, here - 2 * MiB + 256 * KiB, 1, 1, 1, 0);
+  limit = 8 * MiB;
+  maps(here - 3 * MiB, "---p", here - 128 * KiB, end);
+  check("PROT_NONE: no additional guard gap", here, here - 3 * MiB + 256 * KiB, 0, 0, 1, 1);
+  maps(here - 10 * MiB, "rw-p", here - 128 * KiB, end);
+  check("a mapping below the limit does not lower the floor", here, end - 8 * MiB + 256 * KiB, 0, 0, 1, 1);
+  snprintf(maptext, sizeof maptext, "%lx-%lx rw-p 00000000 00:00 0 [stack]\n", (unsigned long)(here - 128 * KiB), (unsigned long)end);
+  check("no preceding mapping", here, end - 8 * MiB + 256 * KiB, 0, 0, 1, 1);
+  maps(here - 512 * KiB, "rw-p", here - 128 * KiB, end);
+  check("a close mapping preserves already mapped stack", here, here - 128 * KiB + 24 * KiB, 0, 0, 1, 1);
+  maps(here - 512 * KiB, "rw-p", here, end);
+  check("a frame at the mapping bottom still has a floor", here, here + 8 * KiB, 0, 0, 1, 1);
+  /* Long file paths must not make the next fgets start inside a mapping's name. */
+  memset(maptext, 'a', sizeof maptext);
+  int n = snprintf(maptext, 100, "%lx-%lx rw-p 00000000 00:00 0 /", (unsigned long)(here - 3 * MiB - 4096), (unsigned long)(here - 3 * MiB));
+  memset(maptext + n, 'a', 1500 - n); maptext[1500] = '\n';
+  snprintf(maptext + 1501, sizeof maptext - 1501, "%lx-%lx rw-p 00000000 00:00 0 [stack]\n", (unsigned long)(here - 128 * KiB), (unsigned long)end);
+  check("a long mapping name", here, here - 2 * MiB + 256 * KiB, 0, 0, 1, 1);
+  maps_error = 1;
+  check("maps open failure retains platform bounds", here, end - 8 * MiB + 256 * KiB, 0, 0, 1, 1);
+  maps_error = 2;
+  check("maps read failure retains platform bounds", here, end - 8 * MiB + 256 * KiB, 0, 0, 1, 1);
+  maps_error = 0;
+  mappings = "not a mapping\n";
+  check("malformed maps retain platform bounds", here, end - 8 * MiB + 256 * KiB, 0, 0, 1, 1);
+  maps(here - 3 * MiB, "rw-p", here + KiB, end);
+  check("no mapping containing this frame", here, end - 8 * MiB + 256 * KiB, 0, 0, 1, 1);
+  /* 64 KiB pages require a 16 MiB guard gap, not a fixed 1 MiB. */
+  pagesize = 65536; name = page + 65536 - sizeof(void *) - 5; strcpy(name, "prog");
+  execfn = name; end = (uintptr_t)page + 65536; here = end - 64 * KiB; limit = 64 * MiB;
+  maps(here - 24 * MiB, "rw-p", here - 128 * KiB, end);
+  check("64 KiB pages: a 16 MiB guard gap", here, here - 8 * MiB + 256 * KiB, 0, 0, 1, 1);
+  check("64 KiB program startup remains fast", here, end - 64 * MiB + 256 * KiB, 0, 0, 0, 0);
+  /* Unknown page size or overflow must not wrap the boundary below an accessible mapping. */
+  mock_lo = here - 32 * MiB; mock_size = 64 * MiB;
+  for (int i = 0; i < 3; i++) {
+    pagesize = i == 0 ? -1 : i == 1 ? 0 : 3000;
+    check("unknown page size keeps the mapped portion", here, here - 128 * KiB + 256 * KiB, 1, 1, 1, 1);
+  }
+  pagesize = 4096; execfn = 0;
+  here = UINTPTR_MAX - 64 * KiB; mock_lo = UINTPTR_MAX - 16 * MiB; mock_size = 16 * MiB;
+  maps(UINTPTR_MAX - 512 * KiB, "rw-p", here - 32 * KiB, UINTPTR_MAX);
+  check("guard arithmetic overflow keeps the mapped portion", here, here - 32 * KiB + 12 * KiB, 1, 1, 1, 1);
+  /* stack_floor itself: this frame's own bounds. */
   uintptr_t frame = (uintptr_t)__builtin_frame_address(0);
-  execfn = 0; getstack_error = 0; mock_lo = frame - 4 * MiB; mock_size = 8 * MiB;
-  got = destroyed = 0;
-  stack_floor();
-  if ((uintptr_t)pys_recursion_state[2] != frame - 4 * MiB + 256 * KiB || got != 1) {
+  mappings = ""; mock_lo = frame - 4 * MiB; mock_size = 8 * MiB;
+  got = destroyed = opened = 0;
+  stack_floor(1);
+  if ((uintptr_t)pys_recursion_state[2] != frame - 4 * MiB + 256 * KiB || got != 1 || opened != 1) {
     fprintf(stderr, "incorrect stack floor (this frame): %#llx\n", (unsigned long long)pys_recursion_state[2]);
     exit(1);
   }
@@ -235,7 +309,7 @@ print("recovered", shallow(10))
 
 def floor_source():
     source = (ROOT / "runtime.c").read_text()
-    match = re.search(r"^#if defined\(__has_feature\)\n.*?^static void stack_floor\(void\) \{[^\n]*\}\n", source, re.M | re.S)
+    match = re.search(r"^#if defined\(__has_feature\)\n.*?^static void stack_floor\(int mapped\) \{[^\n]*\}\n", source, re.M | re.S)
     if match is None:
         raise AssertionError("runtime.c's stack_floor is missing")
     return match[0]
@@ -275,14 +349,23 @@ class StackFloorPolicyTests(unittest.TestCase):
     def test_mutations_are_detected(self):
         source = floor_source()
         mutations = {
-            "bounds that exclude the frame": ("lo && lo < here && here <= hi ?", "lo && here ?"),
-            "a frame within the margin left without a floor": ("lo && lo < here", "lo && lo + margin < here"),
+            "bounds that exclude the frame": ("lo && lo <= here && here <= hi ?", "lo && here ?"),
+            "a frame within the margin left without a floor": ("lo && lo <= here && here <= hi ?", "lo && lo + margin < here && here <= hi ?"),
             "a margin larger than a small stack": ("(hi - lo) / 8 < STACK_MARGIN ? (hi - lo) / 8 : STACK_MARGIN", "STACK_MARGIN"),
-            "a pthread failure ignored": ("if (!lo && !pthread_getattr_np(pthread_self(), &attr)) {",
-                                          "if (!lo && (pthread_getattr_np(pthread_self(), &attr), 1)) {"),
-            "AT_EXECFN not at a page boundary": ("if (end && page && !(end & (page - 1)) && here < end", "if (end && page && here < end"),
+            "a pthread failure ignored": ("if (!pthread_getattr_np(pthread_self(), &attr)) {",
+                                          "if ((pthread_getattr_np(pthread_self(), &attr), 1)) {"),
+            "AT_EXECFN not at a page boundary": ("if (end > page && page && !(end & (page - 1)) && here < end", "if (end > page && page && here < end"),
             "a frame outside the main thread's limit": (" && end - here < rl.rlim_cur) {", ") {"),
             "an unlimited stack": ("rl.rlim_cur < end - page && ", ""),
+            "a frame at the mapping bottom disables the floor": ("lo && lo <= here && here <= hi ?", "lo && lo < here && here <= hi ?"),
+            "a mapping barrier ignored": ("if (bottom > lo) lo = bottom;", "(void)bottom;"),
+            "the guard gap omitted": ("bottom + 256 * page : from", "bottom : from"),
+            "a fixed 1 MiB guard gap": ("bottom + 256 * page : from", "bottom + 1024 * 1024 : from"),
+            "PROT_NONE given a guard gap": ("if (bottom && accessible) {", "if (bottom && (accessible || 1)) {"),
+            "already mapped pages discarded": ("if (bottom > from) bottom = from;", "(void)from;"),
+            "maps parsed on every program start": ("if (mapped && lo", "if ((mapped || 1) && lo"),
+            "glibc fallback skips mapping discovery": ("mapped = 1;", "(void)mapped;"),
+            "mapping I/O failure ignored": ("if (ferror(f)) bottom = 0;", "(void)ferror(f);"),
         }
         for name, (original, mutated) in mutations.items():
             with self.subTest(name):
@@ -301,6 +384,39 @@ class StackFloorPolicyTests(unittest.TestCase):
                 self.assertEqual(result.stdout, "stack floor policy passed\n")
             else:
                 self.assertIn("incorrect stack floor", result.stderr)
+
+
+
+@unittest.skipUnless(HAVE_LLVM and GLIBC, "complete LLVM on Linux/glibc is required for extension mapping probes")
+class StackFloorExtensionTests(unittest.TestCase):
+    def test_mappings_present_before_import_bound_recursion(self):
+        hard = resource.getrlimit(resource.RLIMIT_STACK)[1]
+        if hard != resource.RLIM_INFINITY and hard < 64 * MIB:
+            self.skipTest("the hard stack limit is below 64 MiB")
+        with tempfile.TemporaryDirectory(prefix="pystachy-stack-maps-") as directory:
+            work = Path(directory)
+            environment = {key: value for key, value in os.environ.items() if not key.startswith("PYSTACHY_")}
+            environment.update(PYSTACHY_LLVM=LLVM, PYSTACHY_CACHE=str(work / "cache"), PYSTACHY_IRCHECK="1")
+            build = subprocess.run([sys.executable, str(ROOT / "pystachy.py"), "ext", str(ROOT / "tests/ffi/ext/recdeep.py"),
+                                    "-o", str(work / "recdeep.so")], cwd=ROOT, capture_output=True, text=True,
+                                   env=environment, timeout=600)
+            self.assertEqual((build.returncode, build.stderr), (0, ""))
+            client = ROOT / "tests/ffi/ext/recmapclient.py"
+            shutil.copyfile(client, work / client.name)
+            environment.update(PYTHONPATH=str(ROOT / "tools/rt_cpython"), PYSTACHY_GC_STRESS="1")
+            oracle = subprocess.run([sys.executable, str(client)], capture_output=True, text=True,
+                                    env=environment, preexec_fn=limited(8192), timeout=100)
+            if oracle.returncode == 77:
+                self.skipTest(oracle.stdout.strip())
+            self.assertEqual((oracle.returncode, oracle.stderr), (0, ""))
+            result = subprocess.run([sys.executable, str(work / client.name)], cwd=work, capture_output=True, text=True,
+                                    env=environment, preexec_fn=limited(8192), timeout=100)
+            if result.returncode == 77:
+                self.skipTest(result.stdout.strip())
+            self.assertEqual((result.returncode, result.stderr, result.stdout), (0, "", oracle.stdout))
+            self.assertIn("finite: RecursionError and recovery\nnone: RecursionError and recovery\n", result.stdout)
+            if hard == resource.RLIM_INFINITY:
+                self.assertIn("unlimited: RecursionError and recovery\n", result.stdout)
 
 
 @unittest.skipUnless(HAVE_LLVM and sys.platform.startswith("linux"), "complete LLVM on Linux is required for live JIT/AOT runs")

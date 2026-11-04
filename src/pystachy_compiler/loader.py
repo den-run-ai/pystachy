@@ -51,6 +51,7 @@ from src.pystachy_compiler.analysis import (
     top_bindings,
     walrus_names,
 )
+from src.pystachy_compiler.argparse_schema import lower_argparse, parser_import
 from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, IDPRAGMA, INTFILES, INTSPANS, LINES, MODDUNDERS, RAW, dynamic_pragma, fail, int_pragma, leading_pragma
 from src.pystachy_compiler.lexer import KEYWORDS, Lexer
 from src.pystachy_compiler.module import Mod
@@ -410,7 +411,7 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
                     del env[s.s]  # (the body's name is the function's)
                 out.append(s)
             elif nm != "" and not dunder:
-                if (nm.startswith("_") and nm.endswith("_")) or nm.startswith("__"):
+                if (nm.startswith("_") and nm.endswith("_")) or nm.startswith("__") or nm.startswith("_" + st.s.lstrip("_") + "__"):
                     fail(f"enum class {st.s}'s {nm} is not supported", s.line)  # (_ignore_, _order_; a private name)
                 if nm in canon:
                     fail(f"{nm!r} already defined as {texts[nm]}", s.line)
@@ -708,7 +709,8 @@ class Loader:
         self.qdef = False  # is qstmts() in a function
         # the type parameters of the generic classes and defs (class C[T], def f[T]) it is in, by
         # name: the names of their own that they are qualified to (<class's or def's name>$$T,
-        # unlike any other)
+        # unlike any other). A key prefixed by a space maps an original private spelling to its
+        # lexical name, only for quoted annotations; qexpr never consults these aliases.
         self.qren: dict[str, str] = {}
         # the function simplify() is in (own_specials()), and the names that its own imports which
         # special_import() recognizes have surely bound where simplify() is
@@ -748,6 +750,7 @@ class Loader:
         binary_opens(m.body)
         cm_methods(m.body, cm_names(m.body))
         enum_classes(m.body, enum_names(m.body))
+        self.argparse(m.body)
         self.prescan(m)
         self.simplify(m, m.body, {})
         self.docstring(m)
@@ -1103,12 +1106,17 @@ class Loader:
         k = len(FILES)
         FILES.append(path[2:] if path.startswith("./") else path)
         self.pragmas(src, k, k * LINES + 1)
-        self.parsed[path] = self.parse_source(src, k * LINES + 1)
+        self.parsed[path] = self.parse_source(src, k * LINES + 1, self.in_lib(path))
         tb_import(self.parsed[path])
         binary_opens(self.parsed[path])
         cm_methods(self.parsed[path], cm_names(self.parsed[path]))
         enum_classes(self.parsed[path], enum_names(self.parsed[path]))
+        self.argparse(self.parsed[path])
         return self.parsed[path]
+
+    def argparse(self, body: Node) -> None:
+        if any([parser_import(st) != "" for st in body.kids]) and len(self.dirs) > 0 and self.modpath("argparse") == self.dirs[-1] + "/argparse.py":
+            lower_argparse(body)
 
     def pragmas(self, src: str, k: int, line: int) -> None:
         # the opt-ins of file k, whose source is src: dynamic Any, and promoting ints
@@ -1119,11 +1127,12 @@ class Loader:
         if int_pragma(src):
             INTFILES[k] = True
 
-    def parse_source(self, src: str, line: int) -> Node:
+    def parse_source(self, src: str, line: int, libprims: bool = False) -> Node:
         # the module that source src, whose first line is line, holds; a module whose ints promote
         # keeps the digits of a literal past 64 bits (Parser.exact_ints)
         p = Parser(Lexer(src, line).file())
         p.exact_ints = (line // LINES) in INTFILES
+        p.libprims = libprims
         return p.module()
 
     def bindings(self, m: Mod) -> None:
@@ -3466,6 +3475,7 @@ class Loader:
         # to qualify the names in it
         if n.kind == "str":
             e = Parser(Lexer(n.s, n.line).run()).test()
+            self.quoted_types(e)
             n.kind = e.kind
             n.s = e.s
             n.kids = e.kids
@@ -3476,6 +3486,14 @@ class Loader:
             self.qexpr(m, n, loc)
             if n.chk and n.kind == "badattr" and " has no attribute " in n.s:
                 fail(n.s, n.line)  # (an evaluated annotation: see Loader.reads)
+
+    def quoted_types(self, n: Node) -> None:
+        # A private type parameter's source spelling still names it in a forward annotation.
+        # Other names inside the string are literal, including private-looking module names.
+        if n.kind == "name":
+            n.s = self.qren.get(" " + n.s, n.s)
+        for k in n.kids:
+            self.quoted_types(k)
 
     def fragile_chk(self, m: Mod, x: str, loc: dict[str, bool]) -> str:
         # the check (Node.mchk) of a read of name x in m, where an import in a try statement binds
@@ -3612,8 +3630,14 @@ class Loader:
                     m.deftps.append(self.qren[nm])
                     if nm not in own:
                         inner.pop(nm, False)
+                source = st.tpsource.split()
+                params = st.kids[2].s.split()
+                for i in range(len(source)):
+                    self.qren[" " + source[i]] = params[i]
                 for nm in decl:
                     self.qren.pop(nm, "")  # (global T in a method of class C[T]: the module's T)
+                    for raw in [x for x in self.qren if x.startswith(" ") and self.qren[x] == nm]:
+                        self.qren.pop(raw, "")
                 self.qstmts(m, st.kids[2].kids, inner, False)
                 self.qren = ren
                 self.qdef = indef
@@ -3630,6 +3654,9 @@ class Loader:
                 params = st.kids[1].s.split() if st.kids[1].kind == "typeparams" else []
                 for nm in params:
                     self.qren[nm] = self.qname(m, st.s, loc) + "$$" + nm
+                source = st.kids[0].tpsource.split()
+                for i in range(len(source)):
+                    self.qren[" " + source[i]] = params[i]
                 st.kids[1].s = " ".join([self.qren[nm] for nm in params]) if len(params) > 0 else st.kids[1].s
                 self.qstmts(m, [st.kids[0]], loc, cls)
                 st.s = st.kids[0].s

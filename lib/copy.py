@@ -140,7 +140,9 @@ def _deepcopy_list(x, memo: _Memo):
     hit = _memo_get(memo, x)
     if hit is not None:
         return hit
-    y = x.copy()
+    # Keep the native layout when x also has a typed alias: both views must
+    # retrieve the same copy from the memo, with the same physical slots.
+    y = __pys_deepcopy_list(x)
     y.clear()
     _memo_put(memo, x, y)
     for a in x:

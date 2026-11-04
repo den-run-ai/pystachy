@@ -2,7 +2,7 @@
 from __future__ import annotations
 import os
 from src.pystachy_compiler.diagnostics import FILES, LINES, dynamic_program, fail, where
-from src.pystachy_compiler.ir import ClassInfo, Closure, FnInfo
+from src.pystachy_compiler.ir import ClassInfo, Closure, FnInfo, Ins
 from src.pystachy_compiler.llvm_abi import llvm_decl
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.specs import (
@@ -15,6 +15,7 @@ from src.pystachy_compiler.specs import (
     FXBIT,
     HEX,
     INERT,
+    LIST_WRITES,
     METHODS,
     OPTS,
     OPAQUE,
@@ -822,6 +823,69 @@ def atomic_list(t: str) -> bool:
     return is_list(t) and elem(t) in ["int", "float", "bool"]
 
 
+def list_identity_kind(t: str) -> int:
+    # Capability only: whether the current function tracks identity is Gen's policy.
+    return 1 if t == "list[int]" else 2 if t == "list[float]" else 0
+
+
+class ListLayout:
+    # A native list's semantic item and encoded storage are different contracts.
+    # int+ is a value representation; list[int] keeps eight-byte slots with an
+    # optional scanned bigint companion under the program's explicit policy.
+    # atomic describes ONLY the payload array, never its companions. The numeric
+    # identity kind is a capability; Gen.list_id_kind decides whether to use it.
+    def __init__(self, t: str, promoting: bool):
+        self.element: str = elem(t)
+        self.slot: str = "*" + self.element
+        self.wide: bool = self.element == "int" and promoting
+        self.value: str = BIG if self.wide else self.element
+        self.atomic: bool = atomic_list(t)
+        self.identity_kind: int = list_identity_kind(t)
+        # A Python list tag is not a proof of slot layout. Box/unbox/isa share
+        # the descriptor selected here with native writes' storage policy.
+        self.dynamic_type: str = "pys_dyntype_list" if self.element == "dyn" else ("pys_dyntype_biglist" if self.wide else "pys_dyntype_intlist") if self.element == "int" else ""
+
+
+def list_write_error(i: Ins, promoting: bool) -> str:
+    # One contract for construction and post-pass verification. Packed operands
+    # retain their semantic item (*int versus *dyn), although both lower to i64.
+    if i.op != "rt" or i.s not in LIST_WRITES:
+        return "expected a registered native list write"
+    sig = rtsig(i.s)
+    if len(i.a) != len(sig) - 1 or i.t != sig[0] or len(i.r) != 0:
+        return "native list write has invalid operands or results"
+    if i.x != "" or i.k != 0 or len(i.b) not in [0, 2]:
+        return "native list write has invalid metadata"
+    t = i.a[0].t
+    element = elem(t)
+    if not is_list(t) or not t.endswith("]") or element == "":
+        return "native list write needs a concrete list receiver"
+    depth = 0
+    for c in element:
+        if c == "[":
+            depth += 1
+        elif c == "]":
+            depth -= 1
+        if depth < 0 or (c == "," and depth == 0):
+            return "native list write needs a concrete list receiver"
+    if depth != 0:
+        return "native list write needs a concrete list receiver"
+    layout = ListLayout(t, promoting)
+    if layout.element == BIG or layout.element.startswith("%") or layout.element.startswith("*") or layout.element == "#":
+        return "native list write needs a semantic item type, not a machine representation"
+    variant = LIST_WRITES[i.s]
+    if variant == "big" and not layout.wide:
+        return "big list write needs promoting list[int] storage"
+    if variant == "identity" and (layout.identity_kind == 0 or i.a[-1].v != str(layout.identity_kind)):
+        return "identity list write needs the receiver's numeric identity kind"
+    for j in range(len(i.a)):
+        want = sig[j + 1]
+        want = t if want == "S" else layout.slot if want == "*T" else want
+        if i.a[j].t != want:
+            return f"native list write operand {j} needs {want}, got {i.a[j].t}"
+    return ""
+
+
 def atomic_dict(t: str) -> bool:
     # is t a dict type whose values are never pointers, so that its value arrays may be memory
     # the collector does not scan (pys_dict_new_atomic; its keys' arrays have their own kind)
@@ -981,6 +1045,8 @@ def stack_keyed(f: FnInfo) -> bool:
 def clone(n: Node) -> Node:
     # a copy of tree n (a class method's def, compiled again for a class that inherits it)
     c = Node(n.kind, n.s, n.line, [clone(k) for k in n.kids])
+    c.pyname = n.pyname
+    c.tpsource = n.tpsource
     c.chk = n.chk
     c.mchk = n.mchk
     c.depth = n.depth

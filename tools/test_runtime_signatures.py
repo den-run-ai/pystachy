@@ -1,11 +1,11 @@
-"""Native C result ABI controls for the compiler's two-word promoting ints."""
+"""Native C result ABI and descriptor-boundary controls for the runtime checker."""
 import os
 from pathlib import Path
 import shutil
 import subprocess
 import unittest
 
-from check_runtime import BIG_ABI_PROBE, big_layout_errors, c_declaration, functions
+from check_runtime import BIG_ABI_PROBE, DYN_WALKS, USER, big_layout_errors, c_declaration, functions, params, reaches
 
 
 CLANG = shutil.which(str(Path(os.environ["PYSTACHY_LLVM"]) / "clang") if os.environ.get("PYSTACHY_LLVM") else "clang")
@@ -74,6 +74,59 @@ class RuntimeSignatures(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertEqual(functions(result.stdout)["check_big_abi"][0], "[2 x i64]")
                 self.assertTrue(big_layout_errors(result.stdout))
+
+
+class RuntimeDescriptorEffects(unittest.TestCase):
+    def test_dynamic_bridge_keeps_direct_body_and_ordinary_write_checks(self):
+        for bridge in sorted(DYN_WALKS):
+            with self.subTest(bridge=bridge):
+                ir = f"""define void @materialize(ptr %p) {{
+  %old = load i64, ptr %p
+  store i64 %old, ptr %p
+  ret void
+}}
+define void @{bridge}(ptr %p) {{
+  call void @materialize(ptr %p)
+  ret void
+}}
+define void @descriptor_walk(ptr %p) {{
+  call void @{bridge}(ptr %p)
+  ret void
+}}
+define void @ordinary_walk(ptr %p) {{
+  call void @materialize(ptr %p)
+  ret void
+}}
+define void @write_around_bridge(ptr %p) {{
+  call void @{bridge}(ptr %p)
+  store i64 7, ptr %p
+  ret void
+}}
+"""
+                effects = params(ir)
+                self.assertEqual(effects[bridge][0], [True, True, False])
+                self.assertEqual(effects["descriptor_walk"][0], [False, False, False])
+                self.assertEqual(effects["ordinary_walk"][0], [True, True, False])
+                self.assertTrue(effects["write_around_bridge"][0][1])
+                # Crossing this boundary still requires U/U? in the runtime table.
+                self.assertTrue(reaches(functions(ir), "descriptor_walk", USER | DYN_WALKS, set()))
+
+    def test_dynamic_descriptors_expand_to_all_compiler_effects(self):
+        from src.pystachy_compiler.gen import Gen
+        from src.pystachy_compiler.ir import Ins
+        from src.pystachy_compiler.specs import FXALL, RAWW
+        from src.pystachy_compiler.utils import RtFn
+
+        g = Gen()
+        for key in ("list.find", "dict.get", "set.has"):
+            with self.subTest(key=key):
+                g.rtfns[key] = RtFn(key)
+                op = Ins("rt", "int", "")
+                op.s = key
+                op.x = "A"
+                self.assertEqual(g.opfx(op, {}), FXALL)
+                op.x = "i"
+                self.assertFalse(g.opfx(op, {}) & RAWW)
 
 
 if __name__ == "__main__":

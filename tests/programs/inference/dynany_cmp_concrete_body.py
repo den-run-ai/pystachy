@@ -1,6 +1,6 @@
 # pystachy: dynamic-any
-# The Any specialization cannot box typed container fields. Guard the concrete
-# operand class and execute the original body with those fields still typed.
+# Native integer-list fields can share their storage with the Any specialization.
+# A concrete operand annotation must still allow an unrelated matching class.
 from typing import Any
 
 

@@ -333,11 +333,12 @@ ITERS = "_pystachy_iterators"  # lib's module of the iterator classes iter() mak
 # whose containers hold them (bigints.read_policy), though their own ints stay 64-bit
 READ_HELPERS: list[str] = [ITERS, "heapq", "bisect"]
 # lib's definitions that compile as if their module opted in to promoting ints, in a program where a
-# module does and none opts in to dynamic Any (bigints.int_policy, Loader.int_spans): Counter, whose
+# module does (bigints.int_policy, Loader.int_spans): Counter, whose
 # counts are ints of its own (its dict's values and its methods' parameters and results), the key by
 # which most_common() sorts them, and the function by which it counts an iterable's items, which
-# reads them (a Counter's keys are promoting ints where its type variable binds an int, specialize)
-INT_HELPERS: dict[str, list[str]] = {"collections": ["Counter", "_count", "_count_elements"]}
+# reads them (a Counter's keys are promoting ints where its type variable binds an int, specialize).
+# A deep copy of a typed list must also pass its original integers through without narrowing them.
+INT_HELPERS: dict[str, list[str]] = {"collections": ["Counter", "_count", "_count_elements"], "copy": ["_deepcopy_list"]}
 TEXTVIEW = "re"  # lib's regex engine, which reads a str whose every byte is a code point in place (__pys_text_bytes)
 RANGES = "_pystachy_range"  # lib's module of the class of range objects, range() as a value (Loader.program)
 RANGEC = "_pystachy_range$range"  # (that class)
@@ -646,6 +647,14 @@ IROPS: dict[str, str] = {
     "gen.start": "T A", "gen.yield": "T U", "gen.ret": "T", "gen.promise": "", "gen.resume": "U",
     "gen.drop": "A I rL wL rD wD rO wO rG wG rF wF",
 }
+# Native list writes whose concrete receiver and packed item types survive in IR.
+# RUNTIME remains authoritative for their signatures, effects and LLVM symbols.
+# The variant selects the storage contract checked by builders and verifiers.
+LIST_WRITES: dict[str, str] = {
+    "list.append": "slot", "list.set": "slot", "list.insert": "slot",
+    "list.append_big": "big", "list.set_big": "big", "list.insert_big": "big",
+    "list.append_identity": "identity", "list.set_identity": "identity", "list.insert_identity": "identity",
+}
 # a generator's promise, five i64 slots: the value it yielded last, the value it returned, its
 # state and the command its consumer gives it, and its __qualname__ (a str, for the reports of
 # what closing it raises). State: suspended where closing it runs no code of its, suspended
@@ -791,12 +800,14 @@ RUNTIME: dict[str, str] = {
     # any type, so that an operation on one may run the program's code (an object's __repr__,
     # __eq__, __lt__ or __hash__: U) and raise; boxing a number allocates (A), but the boxes of
     # -5..256 are constants
-    "dyn.int": "%ptr:int|A|", "dyn.float": "%ptr:float|A|", "dyn.ref": "%ptr:%ptr,%ptr|A|",
+    "dyn.int": "%ptr:int|A|", "dyn.float": "%ptr:float|A|", "dyn.ref": "%ptr:%ptr,%ptr|A rL wL|",
     "dyn.int_box": "%ptr:int,%ptr|A|", "dyn.float_box": "%ptr:float,%ptr|A|",
     "dyn.big": "%ptr:int,%ptr|A|", "dyn.big_box": "%ptr:int,%ptr,%ptr|A|",
     "dyn.big_unbox": "int+:%ptr|R|", "dyn.big_of": "int+:%ptr|R A|",
     "dyn.int_box_of": "%ptr:%ptr|R A|",
     "dyn.index_bound": "int:%ptr,int|R|",
+    "dyn.copy_ref": "%ptr:%ptr,%ptr|R|", "dyn.copy_restore": "%ptr:%ptr,%ptr|R A rL wL|",
+    "dyn.copy_list": "%ptr:%ptr|R A rL wL|",
     "dyn.unbox": "int:%ptr,%ptr|R|", "dyn.isa": "bool:%ptr,%ptr||", "dyn.copy_is_own": "bool:%ptr,int||", "dyn.same_type": "bool:%ptr,%ptr||", "dyn.truth": "bool:%ptr|rL rD|",
     "dyn.repr": "str:%ptr|R A I U|", "dyn.str": "str:%ptr|R A I U|",
     "dyn.eq": "bool:%ptr,%ptr|R A I U|", "dyn.ne": "bool:%ptr,%ptr|R A I U|", "dyn.cmp": "bool:%ptr,%ptr,int|R A I U|", "dyn.hash": "int:%ptr|R A I U|",
@@ -804,12 +815,19 @@ RUNTIME: dict[str, str] = {
     "dyn.binop_promote": "%ptr:%ptr,%ptr,int|R A I U|", "dyn.inplace_promote": "%ptr:%ptr,%ptr,int|R A I U|", "dyn.unary_promote": "%ptr:%ptr,int|R A|",
     "dyn.len": "int:%ptr|R rL rD|", "dyn.getitem": "%ptr:%ptr,%ptr|R A I U|", "dyn.setitem": "None:%ptr,%ptr,%ptr|R A I U|",
     "dyn.delitem": "None:%ptr,%ptr|R A I U|", "dyn.contains": "bool:%ptr,%ptr|R A I U|",
+    "dyn.list_method": "%ptr:%ptr,int,%ptr,%ptr,%ptr|R A I U rL wL|",
+    "dyn.list_check": "None:%ptr,int|R|",
+    "dyn.list_descriptor": "None:%ptr,str|R|",
+    "dyn.list_slice": "%ptr:%ptr,int,int,int|R A rL wL|",
+    "dyn.slice_source": "%ptr:%ptr|R A I U rL rD|",
+    "dyn.list_set_slice": "None:%ptr,int,int,int,%ptr|R A I U rL wL|",
+    "dyn.list_del_slice": "None:%ptr,int,int,int|R rL wL|",
     "dyn.iter": "%ptr:%ptr|R A I U rL rD|", "dyn.next": "%ptr:%ptr|R A I U rL rD|",
     "dyn.iter_box": "%ptr:%ptr|R A I U rL rD|", "dyn.next_box": "%ptr:%ptr|R A I U rL rD|", "dyn.iter_check": "%ptr:%ptr|R|",
     "dyn.reversed": "%ptr:%ptr|R A rL rD|", "dyn.range_iter": "%ptr:int,int,int,int|R A|",
     "dyn.int_of": "int:%ptr|R A|", "dyn.float_of": "float:%ptr|R A|", "dyn.unpack": "%ptr:%ptr,int|R A I U rL rD|",
     "dyn.slice": "%ptr:%ptr,%ptr,%ptr,%ptr|R A I U|", "dyn.update": "None:%ptr,%ptr|R A I U|",
-    "dyn.list_of": "%ptr:%ptr,%ptr|R A rL|", "dyn.list": "list[T]:%ptr|R A I U rL rD|", "dyn.strs": "list[str]:%ptr|R A I U rL rD|", "dyn.id": "int:%ptr||",
+    "dyn.list_of": "%ptr:%ptr,%ptr|R A rL wL|", "dyn.list": "list[T]:%ptr|R A I U rL rD|", "dyn.strs": "list[str]:%ptr|R A I U rL rD|", "dyn.id": "int:%ptr||",
     # weakref handles are atomic GC objects; reads depend on collections (I prevents CSE), as does
     # the queue of the fire functions of references whose referents a collection found dead
     "weakref.new": "%ptr:%ptr,%ptr|A I|", "weakref.get": "%ptr:%ptr|I|", "weakref.fired": "%ptr:|I|",
@@ -1057,7 +1075,7 @@ RUNTIME: dict[str, str] = {
 # it uses (Gen.rtdata), and tools/check_runtime.py checks that runtime.c defines them
 DYNTYPE_LL = "{i64, ptr, ptr, i64, ptr, i64, ptr, ptr, ptr}"
 RTDATA: dict[str, str] = {"pys_dyn_none_box": "{ptr, i64}", "pys_dyn_true_box": "{ptr, i64}", "pys_dyn_false_box": "{ptr, i64}"}
-for _k in "none bool int bigint float str list dict tuple".split():
+for _k in "none bool int bigint float str list intlist biglist dict tuple".split():
     RTDATA["pys_dyntype_" + _k] = DYNTYPE_LL
 RTSYM: dict[str, str] = {}
 for _k in RUNTIME:
