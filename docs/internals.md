@@ -71,6 +71,22 @@ unannotated function parameters cause specialization at calls. Constructor-infer
 templates create ordinary compiled classes for their field types. The
 [typing reference](language/typing.md) describes the supported forms and limits.
 
+Class declarations own their prepared field metadata; specializations share those
+class attributes and infer their instance fields separately. Preparation waits until
+all own methods are registered, including properties and unsupported hooks. Earlier
+self-signature requests keep their provisional path. Explicit generics reserve
+a canonical request before scanning recursive members, using the constructor parameter
+types, bound type variables and literal arguments. Equal type-variable bindings alone
+do not prove equal storage. Signatures that still reference a pending specialization,
+or create another specialization while resolving, retain the existing inference path.
+
+Each specialization request owns its in-progress keys and borrows `selfcls`, source
+location, library mode and diagnostic context. These unwind on success, error and
+`Rejoin`. Completed semantic tables remain owned by the current `Gen`; an interrupted
+pass is discarded, not rolled back for reuse. Retries still create a fresh `Gen`, and
+inspection still uses fresh workers. Captured diagnostics belong to the observer and
+retain a copy of their context across internal retries.
+
 Ordinary single-inheritance hierarchies carry a class tag. Base-typed instance-method calls
 select a concrete implementation, then reuse method specialization for that receiver.
 A comparison tests both operands' classes (a `switch` on an ordinary tag), but compiles
