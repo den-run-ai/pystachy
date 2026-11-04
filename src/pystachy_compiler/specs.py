@@ -808,7 +808,7 @@ RUNTIME: dict[str, str] = {
     "dyn.index_bound": "int:%ptr,int|R|",
     "dyn.copy_ref": "%ptr:%ptr,%ptr|R|", "dyn.copy_restore": "%ptr:%ptr,%ptr|R A rL wL|",
     "dyn.copy_list": "%ptr:%ptr|R A rL wL|",
-    "dyn.unbox": "int:%ptr,%ptr|R|", "dyn.isa": "bool:%ptr,%ptr||", "dyn.copy_is_own": "bool:%ptr,int||", "dyn.same_type": "bool:%ptr,%ptr||", "dyn.truth": "bool:%ptr|rL rD|",
+    "dyn.unbox": "int:%ptr,%ptr|R|", "dyn.isa": "bool:%ptr,%ptr||", "dyn.role_isa": "bool:%ptr,%ptr||", "dyn.copy_is_own": "bool:%ptr,int||", "dyn.same_type": "bool:%ptr,%ptr||", "dyn.truth": "bool:%ptr|rL rD|",
     "dyn.repr": "str:%ptr|R A I U|", "dyn.str": "str:%ptr|R A I U|",
     "dyn.eq": "bool:%ptr,%ptr|R A I U|", "dyn.ne": "bool:%ptr,%ptr|R A I U|", "dyn.cmp": "bool:%ptr,%ptr,int|R A I U|", "dyn.hash": "int:%ptr|R A I U|",
     "dyn.binop": "%ptr:%ptr,%ptr,int|R A I U|", "dyn.inplace": "%ptr:%ptr,%ptr,int|R A I U|", "dyn.unary": "%ptr:%ptr,int|R A|",

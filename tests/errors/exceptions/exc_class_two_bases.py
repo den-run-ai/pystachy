@@ -1,4 +1,4 @@
-# error: multiple inheritance is not supported: a class may have only one base
+# error: multiple inheritance requires an ordinary primary base and an independent method-only secondary base
 class Both(ValueError, KeyError):
     pass
 

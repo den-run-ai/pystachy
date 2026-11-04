@@ -149,7 +149,7 @@ def gen_union_type(self, ts: list[str]) -> str:
             return "!reference unions support at most four members"
         for a in refs:
             for b in refs:
-                if a != b and a in self.classes and b in self.classes and self.derives(a, b):
+                if a != b and a in self.classes and b in self.classes and (self.derives(a, b) or b in self.classes[a].overlaps):
                     return "!reference unions cannot contain overlapping class families"
     ms.sort()
     u = self.ctype("union", ms)
@@ -245,7 +245,7 @@ def gen_narrow_val(self, v: Val, nt: str) -> Val:
         return v
     if v.t == "dyn":
         return self.dyn_narrowed(v, nt)  # (a dynamic value's box, which a test proved holds an nt)
-    if v.t in self.classes and nt in self.classes and self.derives(nt, v.t):
+    if v.t in self.classes and nt in self.classes and (self.derives(nt, v.t) or nt in self.classes[v.t].overlaps):
         return Val(v.v, nt)
     if not is_union(unopt(v.t)):
         return self.deref(v)  # (an optional known not to be None)

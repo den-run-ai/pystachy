@@ -485,6 +485,9 @@ def gen_adapter(self, ft: str, t: str) -> str:
             family = cls
             while self.classes[family].base in self.classes and method in self.classes[self.classes[family].base].methods:
                 family = self.classes[family].base
+            role = self.classes[family].role
+            if role != "" and method in self.classes[role].methods:
+                family = role
             fits = True
             signature = targs(t)
             for ci in self.classes.values():

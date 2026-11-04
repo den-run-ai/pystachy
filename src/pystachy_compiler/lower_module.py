@@ -289,8 +289,12 @@ def lower_data(d: Data) -> str:
         it = r[3] if len(r) > 3 else "null"
         nxt = r[4] if len(r) > 4 else "null"
         length = r[5] if len(r) > 5 else "null"
-        return (f"{d.name} = internal constant {DYNTYPE_LL} {{i64 {d.items[0].v}, ptr {r[0]}, ptr {r[1]}, "
-                f"i64 {d.items[1].v}, ptr {r[2]}, i64 {d.items[2].v}, ptr {it}, ptr {nxt}, ptr {length}}}, align 8")
+        desc = (f"{DYNTYPE_LL} {{i64 {d.items[0].v}, ptr {r[0]}, ptr {r[1]}, "
+                f"i64 {d.items[1].v}, ptr {r[2]}, i64 {d.items[2].v}, ptr {it}, ptr {nxt}, ptr {length}}}")
+        if len(r) == 7:
+            # Only classes with a secondary role have this extra pointer.
+            desc = f"{{{DYNTYPE_LL}, ptr}} {{{desc}, ptr {r[6]}}}"
+        return f"{d.name} = internal constant {desc}, align 8"
     if d.kind == "dynbox":
         # a constant dynamic value (dynamic.py): its DynType and, as its payload, the address of its
         # last ref: a def's own DynType, or a str constant

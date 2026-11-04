@@ -4716,7 +4716,7 @@ I pys_hash_id(void *p) { return hptr((I)p); }        /* object.__hash__ */
    payload descriptor. An int's, a float's and a bound method's box is its
    identity for `is` and id() (pys_dyn_id), other values' their payload's (#797). */
 enum { DK_NONE, DK_BOOL, DK_INT, DK_FLOAT, DK_STR, DK_LIST, DK_DICT, DK_TUPLE, DK_OBJ, DK_FUNC, DK_ITER, DK_GEN };
-enum { DF_EQ = 1, DF_CMP = 2, DF_HASH = 4, DF_BOXID = 8, DF_NE = 16, DF_X = 32, DF_ITER = 64, DF_BIG = 128 };   /* a class's ==, ordering, hash and != run the program's
+enum { DF_EQ = 1, DF_CMP = 2, DF_HASH = 4, DF_BOXID = 8, DF_NE = 16, DF_X = 32, DF_ITER = 64, DF_BIG = 128, DF_ROLE = 256 };   /* a class's ==, ordering, hash and != run the program's
                                                                      helpers; a box of this type is its own identity (a bound method's);
                                                                      the class's comparison methods take a value of any type (dobj) */
 #define DSTR(id, lit) static struct { I len; uint64_t h; I c1; char s[sizeof lit]; } id = {sizeof lit - 1, 0, sizeof lit, lit}
@@ -4833,12 +4833,17 @@ static void dyn_list_extend(Dyn *a, Dyn *b) {
   if (b->t->len && dyn_user_len(b) > INT64_MAX / (I)sizeof(I)) pys_fail("MemoryError");
   for (Dyn *v; (v = pys_dyn_next(it));) dyn_list_store(a, 0, v, 0);
 }
+/* DF_ROLE descriptors extend the ordinary layout with one fieldless secondary base. */
+typedef struct { DynType type; const DynType *role; } DynRoleType;
 static int derives(const DynType *a, const DynType *b) { for (; a; a = a->base) if (a == b) return 1; return 0; }
 /* does x have type t as a typed variable, argument or field of type t takes it (pys_dyn_unbox):
    x's type is t; or t is a class's, and x an object of a class that derives from it, or None (a
    class's values may be None). The program's @o.x.<class> uses this to retain the typed call
    when a concrete comparison-operand annotation matches. */
 I pys_dyn_isa(Dyn *x, const DynType *t) { return x->t == t || (t->kind == DK_INT && DKIND(x) == DK_INT) || (t->kind == DK_OBJ && (DKIND(x) == DK_NONE || derives(x->t, t))); }
+I pys_dyn_role_isa(Dyn *x, const DynType *t) {
+  return pys_dyn_isa(x, t) || ((x->t->flags & DF_ROLE) && ((const DynRoleType *)x->t)->role == t);
+}
 /* is box x its own copy (lib/copy.py's __pys_copy_is_own and __pys_deepcopy_is_own of an Any
    value): None, a bool, an int, a float or a str, as CPython's copy gives it; for copy.copy()
    (deep 0) also a tuple or a function */
@@ -4878,7 +4883,7 @@ I pys_dyn_same_type(const DynType *a, const DynType *b) {
    type (pys_dyn_isa), else TypeError, where CPython would not check the annotation
    (docs/dynamic-any.md) */
 I pys_dyn_unbox(Dyn *x, const DynType *t) {
-  if (pys_dyn_isa(x, t)) return t->kind == DK_INT ? dsmall(x) : x->v;
+  if (pys_dyn_role_isa(x, t)) return t->kind == DK_INT ? dsmall(x) : x->v;
   if (t == &pys_dyntype_list && dyn_native_list(x)) pys_fail("TypeError: native list[int] cannot be used as list[Any]");
   if (dyn_native_list_type(t) && DKIND(x) == DK_LIST) {
     if (!dyn_native_list(x)) pys_fail("TypeError: boxed list[Any] cannot be used as native list[int]");
@@ -4916,7 +4921,7 @@ I pys_dyn_truth(Dyn *x) {
    body raises explicitly, rather than silently replacing the method with identity. */
 static const DynType *dhier(Dyn *a, Dyn *b) {
   if (DKIND(a) != DK_OBJ || DKIND(b) != DK_OBJ) return 0;
-  return derives(b->t, a->t) ? a->t : derives(a->t, b->t) ? b->t : 0;
+  return pys_dyn_role_isa(b, a->t) ? a->t : pys_dyn_role_isa(a, b->t) ? b->t : 0;
 }
 /* comparison k (0 ==, 1 !=, 2 <, 3 <=, 4 >, 5 >=) of the object a with b by a's class's own method,
    which the program's helper calls with b as an Any value (pys_obj_cmp(-1 - id, 1 + k, a, b)): 0 or 1,

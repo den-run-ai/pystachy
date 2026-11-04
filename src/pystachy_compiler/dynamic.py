@@ -41,6 +41,7 @@ DF_BOXID = 8
 DF_NE = 16
 DF_X = 32
 DF_ITER = 64
+DF_ROLE = 256
 # the comparisons the program's @o.x.<class> runs with any value, by their op codes (+ 1: dyn_xhelper)
 XCMP: list[str] = ["__eq__", "__ne__", "__lt__", "__le__", "__gt__", "__ge__"]
 XOPS: list[str] = ["==", "!=", "<", "<=", ">", ">="]
@@ -409,6 +410,9 @@ def gen_dyn_class_type(self, c: str) -> str:
     # Hooks are attached once an operation needs them (dyn_dispatchers), so
     # merely boxing an object does not compile its unused protocol bodies.
     dt.refs = [self.sconst(d), self.sconst(short(c)), base, "null", "null", "null"]
+    if ci.role != "":
+        flags |= DF_ROLE
+        dt.refs.append(self.dyn_class_type(ci.role))
     dt.items = [Val(str(DK_OBJ), "int"), Val(str(self.ocls[c]), "int"), Val(str(flags), "int")]
     self.consts.append(dt)
     self.dynclasses.append(c)
@@ -2243,12 +2247,13 @@ def gen_dyn_value_type(self, v: Val) -> str:
     return self.phi(ph)
 
 
-def gen_dyn_tagged_type(self, v: Val) -> str:
-    # the DynType of the object v of a class of a hierarchy: its concrete class's, by its tag
+def gen_dyn_tagged_type(self, v: Val, method: str = "") -> str:
+    # The concrete class's descriptor, or that of its bound method, selected by receiver tag.
     # (None, null, has no tag: pys_dyn_ref boxes it as None whatever DynType it is given)
     cs = [c for c in self.classes.values() if c.tag > 0 and self.derives(c.name, v.t) and not c.excluded and c.name not in self.tmpl]
+    r = self.dyn_fn_type(f"fn[m:{cs[-1].name}.{method}]") if method != "" else self.dyn_class_type(cs[-1].name)
     if len(cs) == 1:
-        return self.dyn_class_type(cs[0].name)
+        return r
     end = self.label()
     start = self.cur
     ph = Ins("phi", "dyntype", "")
@@ -2257,10 +2262,10 @@ def gen_dyn_tagged_type(self, v: Val) -> str:
     self.cbr(self.ptr_cmp("==", v, Val("null", "None")).v, end, some)
     self.place(some)
     tag = self.mload("int", v.v)
-    r = self.dyn_class_type(cs[-1].name)
     for c in cs[:-1]:
         hit = self.num_cmp("==", Val(tag, "int"), Val(str(c.tag), "int")).v
-        r = self.select(hit, Val(self.dyn_class_type(c.name), "dyntype"), Val(r, "dyntype"))
+        desc = self.dyn_fn_type(f"fn[m:{c.name}.{method}]") if method != "" else self.dyn_class_type(c.name)
+        r = self.select(hit, Val(desc, "dyntype"), Val(r, "dyntype"))
     self.incoming(ph, r, self.cur)
     self.br(end)
     self.place(end)
@@ -2385,7 +2390,8 @@ def gen_dyn_isa(self, v: Val, t: str) -> str:
     if t in self.classes and t not in self.tmpl and self.classes[t].exc == "":
         # (an object of t or a subclass, or None, as pys_dyn_unbox walks the box's bases: also of
         # a subclass that the program boxes after this test is compiled)
-        r = self.rt("pys_dyn_isa", "i64", [f"ptr {v.v}", f"ptr {self.dyn_class_type(t)}"])
+        isa = "pys_dyn_role_isa" if self.classes[t].isrole else "pys_dyn_isa"
+        r = self.rt(isa, "i64", [f"ptr {v.v}", f"ptr {self.dyn_class_type(t)}"])
         return self.num_cmp("!=", Val(r, "int"), Val("0", "int")).v
     if is_union(unopt(t)):
         return self.dyn_test(v, umembers(unopt(t)) + (["None"] if is_opt(t) or self.optional(unopt(t)) == unopt(t) else []))
@@ -2447,7 +2453,8 @@ def gen_dyn_test(self, v: Val, ts: list[str]) -> str:
             # program runs, so a subclass whose objects the program boxes only after this test is
             # compiled passes it too, where the DynTypes of the classes boxed so far would miss it;
             # None, which pys_dyn_isa takes as a class's optional object, does not
-            isa = self.rt("pys_dyn_isa", "i64", [f"ptr {v.v}", f"ptr {self.dyn_class_type(m)}"])
+            func = "pys_dyn_role_isa" if self.classes[m].isrole else "pys_dyn_isa"
+            isa = self.rt(func, "i64", [f"ptr {v.v}", f"ptr {self.dyn_class_type(m)}"])
             obj = self.num_cmp("!=", Val(isa, "int"), Val("0", "int")).v
             notnone = self.ptr_cmp("!=", t, Val(self.dyn_type("None"), "dyntype")).v
             x = self.scalar("and", [Val(obj, "bool"), Val(notnone, "bool")])
@@ -4248,6 +4255,14 @@ def gen_dyn_fn_box(self, v: Val) -> Val:
     # is a constant of its own, whose payload, the address of its DynType, tells it apart from
     # other functions; a closure's box holds its env, a bound method's its object, a Callable's
     # its {code, env} object
+    if v.t.startswith("fn[m:"):
+        dot = v.t.rfind(".")
+        cls = v.t[5:dot]
+        if self.classes[cls].tag > 0:
+            # A method read through either base compares equal and takes the concrete
+            # override's keywords/defaults. Keep the receiver as its box's payload.
+            t = gen_dyn_tagged_type(self, Val(v.v, cls), v.t[dot + 1 : -1])
+            return Val(self.rt("pys_dyn_ref", "ptr", [f"ptr {t}", f"ptr {v.v}"]), DYN)
     t = self.dyn_fn_type(v.t)
     if v.t.startswith("fn[f:"):
         g = "@dbx." + t[5:]

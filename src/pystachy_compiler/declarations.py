@@ -1604,6 +1604,9 @@ def gen_class_fields(self, ci: ClassInfo) -> None:
                 if ci.mod == "":
                     self.err(why)
                 ci.bad = ci.bad if ci.bad != "" else f"class {shown(ci.name)} is not supported: {why}"
+    if ci.role != "" and "__slots__" in ci.fdefault:
+        self.line = ci.node.line
+        self.bad_class(ci, "__slots__ in a hierarchy with a secondary base is not supported")
     if ci.base in self.classes:
         # an exception class's objects begin with its base's fields (and their flags, see fl_fields)
         b = self.classes[ci.base]
