@@ -2,7 +2,12 @@
 
 import sys
 from typing import Callable
-from _argparse_help import ArgSpec, action_name, format_help, format_usage
+from _argparse_help import ArgSpec, action_name, format_help, format_usage, format_version
+
+
+# Generated annotations keep these builtin types even when the client binds their names.
+_Text = str
+_Flag = bool
 
 
 class ArgumentTypeError(Exception):
@@ -50,6 +55,19 @@ class _Result:
             self.seen.append(False)
 
 
+def _decimal_digits(text: str) -> bool:
+    if text.isascii():
+        return text.isdecimal()
+    # Native int accepts a single Unicode decimal digit, including scripts
+    # outside the ASCII range supported by native str.isdecimal().
+    for char in text:
+        try:
+            int(char)
+        except ValueError:
+            return False
+    return True
+
+
 def _negative_number(word: str) -> bool:
     # argparse accepts negative decimal integers and decimals with a
     # fractional part as values wherever an option could occur.
@@ -59,8 +77,8 @@ def _negative_number(word: str) -> bool:
         word = word[:-1]  # The anchored decimal pattern also matches before a final newline.
     whole, dot, fraction = word[1:].partition('.')
     if dot:
-        return (not whole or whole.isdecimal()) and fraction.isdecimal()
-    return whole.isdecimal()
+        return (not whole or _decimal_digits(whole)) and _decimal_digits(fraction)
+    return _decimal_digits(whole)
 
 
 def _checked_integer(raw: str) -> str:
@@ -69,11 +87,12 @@ def _checked_integer(raw: str) -> str:
 
 class _Parser:
     def __init__(self, prog: str | None = None, description: str | None = None,
-                 add_help: bool = True,
+                 add_help: bool = True, allow_abbrev: bool = True,
                  _int_text: Callable[[str], str] = _checked_integer):
         self.prog: str = sys.argv[0].rsplit('/', 1)[-1] if prog is None else prog
         self.description: str = '' if description is None else description
         self.add_help = add_help
+        self.allow_abbrev = allow_abbrev
         self._int_text: Callable[[str], str] = _int_text
         self.specs: list[ArgSpec] = []
         self.options: dict[str, int] = {}
@@ -83,7 +102,7 @@ class _Parser:
             self.options['--help'] = -1
 
     def _add(self, names: list[str], dest: str, action: str, converter: str,
-             nargs: str, required: bool, choices: list[str], help_text: str, metavar: str):
+             nargs: str, required: bool, choices: list[str], help_text: str, metavar: str, version: str):
         index = len(self.specs)
         options: list[str] = []
         if names and names[0].startswith('-'):
@@ -93,7 +112,7 @@ class _Parser:
         else:
             self.positionals.append(index)
         self.specs.append(ArgSpec(options, dest, action, converter, nargs, required,
-                                  choices, help_text, metavar))
+                                  choices, help_text, metavar, version))
 
     def format_usage(self) -> str:
         return format_usage(self.prog, self.add_help, self.specs)
@@ -153,7 +172,7 @@ class _Parser:
             return word[:2] in self.options
         prefix = word.partition('=')[0]
         for name in self.options:
-            if name.startswith(prefix):
+            if name == prefix or (self.allow_abbrev and name.startswith(prefix)):
                 return True
         return False
 
@@ -161,7 +180,7 @@ class _Parser:
         word = argv[start]
         option, eq, attached = word.partition('=')
         if option not in self.options:
-            if word.startswith('--'):
+            if word.startswith('--') and self.allow_abbrev:
                 matches = [key for key in self.options if key.startswith(option)]
                 if len(matches) > 1:
                     self.error('ambiguous option: ' + word + ' could match ' + ', '.join(matches))
@@ -210,6 +229,9 @@ class _Parser:
         for flag in flags:
             if flag == -1:
                 self.print_help()
+                sys.exit(0)
+            if self.specs[flag].action == 'version':
+                print(format_version(self.specs[flag].version, self.prog), end='')
                 sys.exit(0)
             result.seen[flag] = True
         if not is_flag:

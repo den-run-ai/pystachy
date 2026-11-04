@@ -242,8 +242,8 @@ historical run.
 | `tomli_loads` | no `tomli` module (third-party) | no `tomli` module (third-party) |
 | `xml_etree` | no `xml` module | `xml.etree.ElementTree` imports the missing `_elementtree` |
 
-The argparse kernel also registers a version action, subparsers, argument groups and 1,000 options
-whose names are built in a loop. These exceed the [static parser subset](../../lib/compatibility.md#argparse).
+The argparse kernel also registers subparsers, argument groups and 1,000 options whose names
+are built in a loop. These exceed the [static parser subset](../../lib/compatibility.md#argparse).
 To reproduce its result from the pinned sdist:
 
 ```sh

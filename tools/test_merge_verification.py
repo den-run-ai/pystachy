@@ -199,6 +199,11 @@ def python_int_report(index):
             "failures": [], "results": rows}
 
 
+@lru_cache(maxsize=1)
+def widening_inventory():
+    return merge.annotation_widening.discover(merge.ROOT)
+
+
 def report(group, steps):
     checks = []
     for name in steps:
@@ -233,6 +238,8 @@ def report(group, steps):
         if name == "dynany-fuzz":
             step.update(programs=3, cases=540, parity_cases=90, modes=["jit", "aot", "jit-gc", "aot-gc"],
                         program_gc_interval=1, mismatches=0)
+        if name == "annotation-widening":
+            step["widening"] = merge.annotation_widening.expected_ci_report(merge.ROOT, "pr" if group == "opt-in" else "full")
         if name == "aot-dead-code":
             step.update(opt_in_symbols=12, programs=["plain", "python-int", "dynamic-any", "python-int-import", "dynamic-any-import"],
                         compilers=["CPython-hosted", "stage2"])
@@ -267,6 +274,7 @@ class ContractTests(unittest.TestCase):
         digest = merge.dynany_optin.corpus_digest(merge.ROOT, corpus)
         for module, name, value in ((merge.python_int_gate, "source_digest", "e" * 64),
                                     (merge.python_int_gate, "programs", corpus),
+                                    (merge.annotation_widening, "discover", widening_inventory()),
                                     (merge.dynany_optin, "programs", corpus),
                                     (merge.dynany_optin, "corpus_digest", digest)):
             patch = mock.patch.object(module, name, return_value=value)
@@ -299,7 +307,7 @@ class ContractTests(unittest.TestCase):
         contracts = groups["contracts"][1:]
         at = groups["all"].index(contracts[0])
         self.assertEqual(groups["all"][at:at + len(contracts)], contracts)
-        self.assertTrue(groups["all"][at - 1].startswith("python-int-optin-"))
+        self.assertEqual(groups["all"][at - 1], "annotation-widening")
         self.assertEqual(groups["all"][at + len(contracts):], groups["scaling"][1:])
         for group in ("all", "contracts"):
             self.assertIn("select-io", groups[group])
@@ -650,7 +658,8 @@ class ContractTests(unittest.TestCase):
         groups = merge.load_groups()
         for index in range(merge.PYTHON_INT_SHARDS):
             group = f"python-int-optin-{index}"
-            self.assertEqual(groups[group], ["bootstrap", group])
+            tail = ["annotation-widening"] if index == 2 else []
+            self.assertEqual(groups[group], ["bootstrap", group, *tail])
             valid = report(group, groups[group])
             merge.validate_report(valid, group, groups[group])
             mutations = [lambda d: d.update(shard_count=8),
@@ -672,7 +681,7 @@ class ContractTests(unittest.TestCase):
                          lambda d: d.update(failures=["incomplete"])]
             for mutate in mutations:
                 data = copy.deepcopy(valid)
-                mutate(data["steps"][-1]["python_int_optin"])
+                mutate(data["steps"][1]["python_int_optin"])
                 with self.subTest(group=group, mutation=mutate), self.assertRaises(ValueError):
                     merge.validate_report(data, group, groups[group])
 
@@ -1041,6 +1050,9 @@ class PullRequestProfileTests(unittest.TestCase):
         digest = mock.patch.object(merge.python_int_gate, "source_digest", return_value="e" * 64)
         digest.start()
         self.addCleanup(digest.stop)
+        discovery = mock.patch.object(merge.annotation_widening, "discover", return_value=widening_inventory())
+        discovery.start()
+        self.addCleanup(discovery.stop)
         self.groups = merge.load_groups("pr")
         self.selection = merge.pr_selection()
         self.temp = tempfile.TemporaryDirectory()
@@ -1148,7 +1160,8 @@ class PullRequestProfileTests(unittest.TestCase):
                 ("safety-1", lambda data: data["steps"][1].update(cflags="")),
                 ("safety-1", lambda data: data["steps"][2]["stressed_sample"].update(expected=1, passed=1)),
                 ("opt-in", lambda data: data["steps"][1]["optin"].update(subset=False)),
-                ("opt-in", lambda data: data["steps"][2]["python_int_optin"]["results"].pop())):
+                ("opt-in", lambda data: data["steps"][2]["python_int_optin"]["results"].pop()),
+                ("opt-in", lambda data: data["steps"][3]["widening"]["cases"].pop())):
             changed = copy.deepcopy(self.data[group])
             mutate(changed)
             self.write(group, changed)

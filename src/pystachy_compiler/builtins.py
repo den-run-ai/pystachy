@@ -757,6 +757,9 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             self.key_check(keyv, f"{name}()")
     if len(vals) == 1 and len(kws) == 0 and vals[0].t == "dyn" and name in ["len", "str", "repr", "int", "float", "bool", "id", "abs"]:
         return self.dyn_builtin(name, vals[0])  # (by its box's type: dynamic.py)
+    if name == "sum" and len(kws) == 0 and 1 <= len(vals) <= 2 and (vals[0].t == "dyn" or vals[0].t == "list[dyn]" or (len(vals) == 2 and vals[1].t == "dyn")):
+        # A boxed accumulator accepts a wide start without narrowing it to int64.
+        return self.dyn_sum(vals[0] if vals[0].t == "dyn" else self.as_list(vals[0], name), vals[1] if len(vals) == 2 else Val("0", "int"))
     if len([v for v in vals if v.t == BIG]) > 0 or ((name == "int" or name == "abs" or name == "pow" or name == "sum") and self.int_policy(self.line)):
         if name == "sum" and len(vals) == 2 and (vals[1].t == "int" or vals[1].t == BIG) and (is_tuple(vals[0].t) or is_dict(vals[0].t) or (vals[0].t in self.classes and not self.iter_object(vals[0].t))):
             vals[0] = self.as_list(vals[0], name)  # (as below: sum(o, start) iterates o once start is evaluated)
@@ -765,8 +768,6 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             return bv
         if not ((name == "min" or name == "max") and (keyv.t != "" or BIGOPT in [v.t for v in vals])):
             vals = [self.big_narrow(v) for v in vals]  # (keyed min/max and int | None compare their values as they are)
-    if name == "sum" and len(kws) == 0 and 1 <= len(vals) <= 2 and (vals[0].t == "dyn" or vals[0].t == "list[dyn]" or (len(vals) == 2 and vals[1].t == "dyn")):
-        return self.dyn_sum(vals[0] if vals[0].t == "dyn" else self.as_list(vals[0], name), vals[1] if len(vals) == 2 else Val("0", "int"))
     if (name == "sum" or name == "math.prod") and len(vals) == 2 and vals[1].t == "bool":
         self.err(f"{name}() with a bool start is not supported: it returns the bool for an empty iterable, else a number; use int(start) for a numeric result")
     if name == "sum" and len(vals) == 2 and (self.iter_object(vals[0].t) or is_gen(vals[0].t)) and (vals[1].t == "int" or vals[1].t == "float"):
@@ -901,7 +902,7 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             return Val(self.rt("fabs", "double", [f"double {self.as_float(vals[0]).v}"]), "float")
         xs = self.rt("pys_list_new", "ptr", [f"i64 {len(vals)}"])
         for v in vals:
-            self.rt("pys_list_append", "void", [f"ptr {xs}", "i64 " + self.to_slot(self.as_float(v))])
+            self.list_write("list.append", [Val(xs, "list[float]"), Val(self.to_slot(self.as_float(v)), "*float")])
         return Val(self.rt("pys_m_hypot_list", "double", [f"ptr {xs}"]), "float")
     if name == "math.prod" and len(vals) == 2 and is_list(vals[0].t) and (vals[1].t == "str" or is_list(vals[1].t) or is_dict(vals[1].t) or is_set(vals[1].t)):
         return self.prod_seq(vals[0], vals[1])
@@ -1178,7 +1179,9 @@ def gen_keys_of(self, xs: Val, key: Val) -> Val:
     lp.idx = [i]
     self.cbr(self.num_cmp('<', Val(i, "int"), Val(self.mload('int', xs.v), "int")).v, lb, le)
     self.place(lb)
-    item = self.list_item(xs, Val(i, "int"))
+    # A dynamic key receives the stored integer object, including a wide value in
+    # a native list exposed through Any in a checked-integer caller.
+    item = self.list_item(xs, Val(i, "int"), key.t == "dyn")
     k = self.call_key(key, item)
     if "?" in k.t:
         self.err(f"the key function returns an empty container whose type is not known here ({typestr(k.t)})")
@@ -1459,8 +1462,8 @@ def gen_reduce(self, name: str, args: list[Node], stt: str) -> Val:
         sv = self.expr(args[1], "") if len(args) == 2 else Val("0", "int")  # (an int: stream_start)
         self.mstore(BIG, self.to_big(sv).v, r.acc)
     elif name == "sum" and r.t == "dyn":
-        sv = self.big_narrow(self.expr(args[1], "")) if len(args) == 2 else Val("0", "int")  # (an int or a float: stream_start)
-        self.mem_store(Val(r.acc, "*dyn"), self.dyn_box(sv))
+        sv = self.expr(args[1], "") if len(args) == 2 else Val("0", "int")
+        self.dyn_sum_start(r, sv)
     elif name == "sum" and r.isf != "":
         # (an int start begins CPython's int phase, a float one its float phase)
         sv = self.big_narrow(self.expr(args[1], "")) if len(args) == 2 else Val("0", "int")
@@ -1502,7 +1505,7 @@ def gen_reduce(self, name: str, args: list[Node], stt: str) -> Val:
             result.idfrom = self.mload("dyn", r.identity)
         return result
     if r.t == "dyn":
-        return self.mem_load(Val(r.acc, "*dyn"))
+        return self.dyn_sum_end(r)
     if r.t == BIG:
         return Val(self.mload(BIG, r.acc), BIG)
     if r.isf != "":
@@ -1619,7 +1622,7 @@ def gen_reduce_item(self, r: Reduce, e: Node) -> None:
         elif r.name == "sum" and r.t == BIG:
             r.acc = self.alloca(BIG, "")
         elif r.name == "sum" and v.t == "dyn":
-            r.acc = self.alloca("dyn", "")  # (Any values: added as dynamic values, dyn_arith)
+            self.dyn_sum_slots(r)
         elif r.name == "sum" and self.num_union(v.t):
             r.acc = self.alloca("int", "")
             r.facc = self.alloca("float", "")
@@ -1667,7 +1670,7 @@ def gen_reduce_item(self, r: Reduce, e: Node) -> None:
         self.sum_union_item(r, v)
         return
     if r.t == "dyn":
-        self.mem_store(Val(r.acc, "*dyn"), self.dyn_arith("+", self.mem_load(Val(r.acc, "*dyn")), v))
+        self.dyn_sum_item(r, v)
         return
     if r.t == BIG:
         self.mstore(BIG, self.big_arith("+", Val(self.mload(BIG, r.acc), BIG), v).v, r.acc)
@@ -1911,7 +1914,7 @@ def gen_bytes_(self, args: list[Node]) -> Val:
         return v
     if v.t == "str":
         self.err("string argument without an encoding")
-    if v.t == "int" or v.t == "bool":
+    if v.t == "int" or v.t == "bool" or v.t == BIG:
         return Val(self.rt("pys_bytes_zeros", "ptr", [f"i64 {self.as_int(v).v}"]), "bytes")
     if v.t == "None" or is_opt(v.t):
         v = self.unwrap(v, "TypeError: cannot convert 'NoneType' object to bytes")
@@ -2494,6 +2497,12 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
             else:
                 v = self.consume(g, pt) if join or key == "list.extend" else self.expr(args[i], want_arg, resultsoft=key in ["list.count", "list.index", "list.remove", "vtuple.count", "vtuple.index"] and i == 0)
             self.stkkey = self.nokey
+            if key == "list.extend" and o.t in ["list[dyn]", "list[int]"] and v.t == "dyn":
+                # extend consumes its source; it does not require an aliased view
+                # with the receiver's physical layout. Check native stores as each
+                # dynamic item arrives, retaining a successful prefix on failure.
+                self.dyn_method(self.dyn_box(o), m, [self.vnode(v)])
+                return Val("null", "None")
             if base == "dict" and i == 0 and v.t == BIGOPT and self.dict_bigkey(o.t) and (m == "get" or m == "pop"):
                 kx = v  # (None is no key, else the promoting int it holds: nonekey's twin, keyed)
                 av.append("i64 0")  # (the key's place, where keyed puts its {lo, m})
@@ -2646,6 +2655,13 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
             return self.dyn_unbox(Val(box, "dyn"), T)
         if m in ["index", "count", "remove"] and idquery.t != "":
             return self.list_find(o, idquery, m, av[3][4:] if m == "index" else "", av[4][4:] if m == "index" else "")
+    if base == "list" and (m == "append" or m == "insert"):
+        operands = [o]
+        if m == "insert":
+            operands.append(Val(av[1][4:], "int"))
+        operands.append(Val(av[-1][4:], "*" + T))
+        self.list_write("list." + m, operands)
+        return Val("null", "None")
     if kx.t != "":
         res = self.nonekey(kx, av[2][4:] if m == "get" else "", fn, av, x)
     else:

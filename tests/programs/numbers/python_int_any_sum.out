@@ -1,0 +1,11 @@
+0.0 0.0 0.0
+0.0 0.0 0.0
+0.0 0.0 0.0
+1.1805916207174113e+21 1.1805916207174113e+21 1.1805916207174113e+21
+empty wide identity True
+wide start 1180591620717411303424 1180591620717411303424 1180591620717411303424
+wide callback identity True
+wide callback identity True
+wide callback identity True
+wide callback 1.0 1.0 1.0
+[exit 0]

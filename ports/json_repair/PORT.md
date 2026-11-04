@@ -56,7 +56,9 @@ The [adapted CLI](__main__.py) accepts a filename or stdin. It writes to stdout,
 `-o/--output TARGET`, or the input file with `-i/--inline`. It reads the full
 input before repair and serializes the result before opening the output file.
 `--skip-json-loads`, `--strict` and `--ensure_ascii` use the corresponding
-parser and encoder options. File I/O is UTF-8. Output is single-line JSON
+parser and encoder options. The command requires valid UTF-8 input and output.
+A lone surrogate in a JSON escape needs `--ensure_ascii`. A decoding or encoding
+error leaves the destination untouched. Output is single-line JSON
 with a trailing newline only on stdout. Upstream's indentation and schema
 options are excluded. Argument errors exit 2. File and repair errors exit 1.
 

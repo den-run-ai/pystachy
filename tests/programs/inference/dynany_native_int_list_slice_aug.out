@@ -1,0 +1,48 @@
+native
+bound start
+bound stop
+bound step
+index step 1
+index start 1
+index stop 1
+replacement
+index step 2
+index start 2
+index stop 2
+augmented [1000, 2000, 2000, 3000, 70, 80, 40] True
+repeat [1000, 2000, 2000, 2000, 3000, 70, 80, 40] True
+delete [1000, 2000, 3000, 70, 80, 40]
+empty replacement [1000, 3000, 70, 80, 40]
+boxed
+bound start
+bound stop
+bound step
+index step 1
+index start 1
+index stop 1
+replacement
+index step 2
+index start 2
+index stop 2
+augmented [1000, 2000, 2000, 3000, 70, 80, 40] True
+repeat [1000, 2000, 2000, 2000, 3000, 70, 80, 40] True
+delete [1000, 2000, 3000, 70, 80, 40]
+empty replacement [1000, 3000, 70, 80, 40]
+boxed types [1000, 'unrestricted', 3000, 70, 80, 40]
+bound unused start on store
+bound unused stop on store
+bound zero on store
+index zero on store 1
+index unused start on store 1
+index unused stop on store 1
+replacement
+index zero on store 2
+store error slice step cannot be zero [1000, 3000, 70, 80, 40]
+changed target [4, 5]
+captured receiver [1, 2, 6] [9] True
+replacement
+bound start
+bound stop
+bad receiver 'NoneType' object does not support item assignment
+bad replacement must assign iterable to extended slice [1000, 3000, 70, 80, 40]
+[exit 0]

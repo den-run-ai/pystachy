@@ -16,15 +16,16 @@ assertions; nothing is edited by hand:
   (the pure-Python module). A `fresh=[...]` C-accelerator variant is dropped with the test
   classes that use it, and a class attribute `module = X` is inlined: `self.module.f` -> `X.f`.
 - Test classes lose their unittest base (a mixin base of the file stays, so single
-  inheritance stays single). Methods decorated cpython_only, skip*, expectedFailure,
-  requires_* and the like are left out. unittest and test.support decorators are dropped.
+  inheritance stays single). Methods with a recognized skip decorator on the method or a test
+  class are left out. unittest and test.support decorators are dropped.
 - `setUp()` becomes `__init__()`, as unittest makes one instance per test and calls setUp()
   before it (`super().setUp()` becomes `super().__init__()`; --no-setup-init keeps setUp).
 - `self.assertX(...)` statements become `assert` statements of the same condition (also
   through an alias such as `eq = self.assertEqual`); assertRaises (call and `with` forms,
   `cm.exception` included) becomes try/except/else; `with self.subTest(...)` keeps its body;
-  `self.fail(m)` raises AssertionError(m); `self.skipTest()` returns. A method that needs
-  another unittest feature (assertWarns, addCleanup, ...) raises NotImplementedError instead.
+  `self.fail(m)` raises AssertionError(m); a reached `self.skipTest()` raises instead of
+  qualifying the test. Unsupported unittest features (assertWarns, addCleanup, ...) raise
+  NotImplementedError.
 - Each program keeps only the module-level definitions it uses and, in its test classes, only
   its own test method (a method that takes only self is compiled whether or not it is called,
   so another rejected test would reject the whole class). It runs the test on a fresh
@@ -33,7 +34,7 @@ assertions; nothing is edited by hand:
 
 `triage` extracts each file's methods into WORKDIR, runs every program under the running
 CPython and under the compiler's `run`, and writes one record per method: cpython-fail (the
-mechanical extraction does not pass on CPython; left out of the denominator), match,
+mechanical extraction fails or exits before its success marker; left out of the denominator), match,
 match-python-int (matches once `# pystachy: python-int` is prepended, for a 64-bit-overflow
 or wide-literal failure), compile-error, differs (compiled, other output or exit status:
 check for wrong results first) or timeout. Record expectations for corpus programs with the
@@ -73,6 +74,10 @@ def dotted(node):
     if isinstance(node, ast.Call):
         return dotted(node.func)
     return None
+
+
+def skip_decorated(node):
+    return any((dotted(d) or "").split(".")[-1] in SKIP_DECORATORS for d in node.decorator_list)
 
 
 def self_call(node, names):
@@ -215,7 +220,8 @@ class Rewriter(ast.NodeTransformer):
         elif m == "fail":
             new = ast.Raise(ast.Call(ast.Name("AssertionError", ast.Load()), args[:1], []))
         elif m == "skipTest":
-            new = ast.Return()
+            new = ast.Raise(ast.Call(ast.Name("NotImplementedError", ast.Load()),
+                                    [ast.Constant("test called skipTest")], []))
         elif m == "assertCountEqual":
             def counted(a):
                 return ast.Call(ast.Name("sorted", ast.Load()), [ast.Call(ast.Name("map", ast.Load()),
@@ -372,6 +378,14 @@ class TestFile:
                     seen.add(name)
                     inherited.setdefault(name, {}).update(self.table(c, attrs))
                     todo += [b.id for b in classes[name].bases if isinstance(b, ast.Name) and b.id in classes]
+        # Save class-level exclusions before transform strips unittest decorators. unittest
+        # also inherits class skips, so include bases declared in this test module.
+        def skipped_class(c, seen=()):
+            return skip_decorated(c) or any(
+                skipped_class(classes[b.id], seen + (c.name,)) for b in c.bases
+                if isinstance(b, ast.Name) and b.id in classes and b.id not in seen)
+
+        self.skipped_classes = {c.name for c in self.concrete if skipped_class(c)}
         self.original = {name: self.methods(c) for name, c in classes.items()}
         self.needs_re = set()
         out = []
@@ -455,7 +469,7 @@ class TestFile:
             for name in sorted(self.methods(c)):
                 if not name.startswith("test"):
                     continue
-                if any((dotted(d) or "").split(".")[-1] in SKIP_DECORATORS for d in original[name].decorator_list):
+                if c.name in self.skipped_classes or skip_decorated(original[name]):
                     left.append((c.name, name, "skip decorator"))
                 else:
                     out.append((c.name, name))
@@ -552,10 +566,11 @@ def extract(path, outdir, setup_init=True):
 
 def run(command, timeout, cwd=None, env=None):
     try:
-        p = subprocess.run(command, capture_output=True, text=True, timeout=timeout, cwd=cwd, env=env)
+        p = subprocess.run(command, capture_output=True, timeout=timeout, cwd=cwd, env=env)
     except subprocess.TimeoutExpired:
         return None, "", "timeout"
-    return p.returncode, p.stdout, p.stderr
+    # Keep original line endings and arbitrary bytes while retaining text diagnostics in JSON.
+    return p.returncode, p.stdout.decode(errors="surrogateescape"), p.stderr.decode(errors="surrogateescape")
 
 
 def first_error(err):
@@ -571,22 +586,24 @@ def native(compiler, prog, expected, env):
     n = run(compiler + ["run", prog], 300, cwd=ROOT, env=env)
     if n[0] is None:
         return {"status": "timeout"}
-    if n[0] == 0 and n[1] == expected:
+    if n == expected:
         return {"status": "match"}
     if n[0] != 0 and not n[1] and ": error: " in n[2]:
         return {"status": "compile-error", "detail": first_error(n[2])}
     return {"status": "differs", "exit": n[0], "detail": (n[1][-300:] + " | " + n[2][-500:]).strip()}
 
 
-def triage_one(compiler, prog, env):
+def triage_one(compiler, prog, env, test):
     c = run([sys.executable, "-I", prog], 120, cwd=os.path.dirname(prog))
     if c[0] != 0:
         return {"status": "cpython-fail", "detail": first_error(c[2])}
-    r = native(compiler, prog, c[1], env)
+    if c[1].splitlines()[-1:] != [f"ok {test}"]:
+        return {"status": "cpython-fail", "detail": "success marker not reached"}
+    r = native(compiler, prog, c, env)
     if r["status"] != "match" and "fit in 64 bits" in r.get("detail", ""):
         wide = prog[:-3] + "__python_int.py"
         Path(wide).write_text("# pystachy: python-int\n" + Path(prog).read_text())
-        retry = native(compiler, wide, c[1], env)
+        retry = native(compiler, wide, c, env)
         os.unlink(wide)
         r["python_int_retry"] = retry["status"]
         if retry["status"] == "match":
@@ -616,7 +633,7 @@ def triage(compiler, jobs, out, workdir, files):
         work += [(f, c, m, os.path.join(d, f"{c}__{m}.py")) for c, m in tests]
     records = []
     with concurrent.futures.ThreadPoolExecutor(jobs) as ex:
-        for (f, c, m, prog), r in zip(work, ex.map(lambda w: triage_one(compiler, w[3], env), work)):
+        for (f, c, m, prog), r in zip(work, ex.map(lambda w: triage_one(compiler, w[3], env, f"{w[1]}.{w[2]}"), work)):
             records.append({"file": f, "test": f"{c}.{m}", "program": prog} | r)
     with open(out, "w") as fh:
         json.dump({"python": sys.version, "compiler": compiler, "records": records, "left_out": left_out,

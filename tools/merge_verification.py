@@ -13,6 +13,7 @@ import re
 import subprocess
 import sys
 
+import annotation_widening
 import dynany_optin
 import python_int_gate
 
@@ -249,6 +250,8 @@ def validate_report(report, group, expected, profile="full", selection=None):
                     integer(step.get("program_gc_interval"), f"{label}.program_gc_interval") != 1 or
                     integer(step.get("mismatches"), f"{label}.mismatches") != 0):
                 raise ValueError(f"{label}: expected 3 programs, 540 cases including 90 parity cases, JIT/AOT with program GC stress, and no mismatches")
+        if step["name"] == "annotation-widening":
+            annotation_widening.validate_report(step.get("widening"), ROOT, profile)
         if step["name"] == "aot-dead-code":
             if (integer(step.get("opt_in_symbols"), f"{label}.opt_in_symbols") != 12 or
                     step.get("programs") != ["plain", "python-int", "dynamic-any", "python-int-import", "dynamic-any-import"] or

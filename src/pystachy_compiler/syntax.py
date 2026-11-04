@@ -7,6 +7,8 @@ class Node:
     def __init__(self, kind: str, s: str, line: int, kids: list[Node] | None = None):
         self.kind = kind
         self.s = s
+        self.pyname = ""  # a private def's source name, before its binding is mangled
+        self.tpsource = ""  # a def/class's type-parameter spellings, when lexical mangling changes them
         self.line = line
         self.kids: list[Node] = kids if kids is not None else []  # (mk's: no list made to replace)
         self.chk = False  # a variable read that may find the variable unassigned
@@ -17,7 +19,7 @@ class Node:
         # (Loader.trysubs); else ""
         self.mchk = ""
         self.depth = 1  # levels of nodes from this one down, as mk counted them
-        self.made = False  # the variable of a comprehension the compiler makes (made_var)
+        self.made = False  # a name the compiler makes (a comprehension's variable or f-string helper)
         self.memo = 0  # an item of a display: where Gen.dmemo remembers its dry-run type, + 1 (Gen.dyn_dry)
         # a tuple display that the source writes (the parser's, not one the compiler makes):
         # CPython's compiler makes one of literals a constant of its module (Gen.tuple_const)
@@ -27,6 +29,15 @@ class Node:
 # an empty list of nodes for a for loop to run over where a node has no kids to visit (for k in
 # n.kids if ... else NOKIDS), which no code changes: n.kids[:0] made a list at every visit
 NOKIDS: list[Node] = []
+
+
+def private_name(name: str, cls: str, only: list[str]) -> str:
+    # CPython's lexical mangling. A generic class's header mangles only its type parameters;
+    # other scopes pass no restriction. Dotted import paths and dunders keep their spelling.
+    if cls == "" or not name.startswith("__") or name.endswith("__") or "." in name or (len(only) > 0 and name not in only):
+        return name
+    prefix = cls.lstrip("_")
+    return "_" + prefix + name if prefix != "" else name
 
 
 def mk(kind: str, s: str, line: int, kids: list[Node]) -> Node:

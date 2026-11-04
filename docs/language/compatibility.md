@@ -132,8 +132,11 @@ no effect. The shared runtime cache is independent of this setting.
 
 ### Functions and object identity
 
-- **Private names:** no name mangling. `__field` and `__method` can collide with a
-  base class's names; use distinct names across the hierarchy.
+- **Private names:** supported classes use lexical name mangling: `__field` written
+  in class `C` names `_C__field`, including in inherited method bodies. String arguments
+  to reflection and call keyword labels retain their literal spelling. Direct reads of
+  statically missing attributes remain compile-time errors; private `__slots__` entries
+  remain unsupported.
 - **Tuple constants:** literal-only displays share a module constant; `()` is
   shared everywhere. CPython also folds operator expressions such as `(1 + 2, 3)`.
   Pystachy recreates those tuples, and tuples whose annotations retype/box items.
@@ -192,9 +195,11 @@ call; exact depths and messages differ
 Counted entries also check the native stack. A raised recursion limit can still
 produce `RecursionError` where CPython completes, because native frames use stack
 space ([deviation](../../tests/deviations/recursion_native_stack.py)). This is not
-protection for foreign code, exhausted guard margins, unknown/switched stacks,
-practically unlimited stacks, or mappings that obstruct Linux stack growth.
-Extensions use the importing thread's bounds. See [native recursion depth](../internals.md#native-recursion-depth)
+protection for foreign code, exhausted guard margins, unknown/switched stacks, custom Linux
+kernel guard gaps, or mappings and stack-limit changes after initialization. On Linux,
+extensions and glibc's bounds fallback inspect mappings once and allow the default 256-page
+guard gap above an accessible predecessor; failed `/proc/self/maps` inspection retains the
+platform bounds. Extensions use the importing thread's bounds. See [native recursion depth](../internals.md#native-recursion-depth)
 for margins, platform limits and implementation details. Recursive aliases retain
 a separate budget; JSON retains its 2,000-container cap (roughly 500 decoded or
 1,000 encoded containers at the default recursion limit).
@@ -285,7 +290,13 @@ or generator/async initializers retain eager formatting
 
 `# pystachy: dynamic-any` enables runtime-typed boxes. Concrete annotations and
 native storage still impose checks: incompatible values raise `TypeError`, while
-CPython ignores annotations. Unsupported selected comparison bodies also raise
+CPython ignores annotations. A native `list[int]` can share its object and storage
+with `Any`; dynamic writes reject incompatible items before storing them. `extend`
+and `+=` retain a successful prefix, while slice replacement checks all its items
+before writing. The native descriptor also enforces the integer-container policy. Existing
+boxed lists stay unrestricted, and `isinstance(value, list)` does not prove their
+item layout. See the [native-list deviation](../../tests/deviations/dynany_native_int_list_store.py).
+Unsupported selected comparison bodies also raise
 `TypeError`; they do not silently fall back to identity or a lower-priority method.
 
 The prototype's [operation matrix](../dynamic-any.md#operations),
@@ -571,7 +582,8 @@ See [annotations](typing.md#annotations), [aliases](typing.md#type-aliases) and
   supported generic aliases, `Optional`, `Union`, `Callable`, `Tuple`, `Literal`, `Annotated`
   and single-type forms. Invalid forms (such as `Generic[T]` / `Concatenate[...]`) and invalid
   string expressions in `type` statements fail even when unused.
-- **Dynamic `Any`:** typed mutable containers becoming `Any`, unimplemented prototype operations,
+- **Dynamic `Any`:** typed mutable containers other than the supported native `list[int]`
+  boundary becoming `Any`, unimplemented prototype operations,
   call-argument unpacking of `Any`, or None-first storage that cannot select `Any` initially:
   generator/closure locals, function-assigned globals, fields assigned outside their class's
   methods, and all-`None` displays. See the [prototype contract](../dynamic-any.md).
@@ -651,8 +663,7 @@ See [user exception classes](semantics.md#user-exception-classes) and
 See [reflection rules](semantics.md#reflection).
 
 - **Types:** `type(x)` as a runtime value except exception class objects; type names of
-  functions, files or callables; reflection on private attributes (`__x`, whose names are
-  not mangled here).
+  functions, files or callables.
 - **Runtime names:** retaining, passing, calling, comparing or sorting by a `getattr` result;
   formatting its text with a spec, or obtaining that text for dataclasses, generics, classes
   with annotated class attributes or builtins; `setattr` without slots, with values incompatible with any

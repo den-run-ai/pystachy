@@ -360,9 +360,10 @@ An object that is `None` when the operation executes raises the corresponding ru
 Reflection works on values whose possible classes the compiler knows: one class, an ordinary
 hierarchy (the object's class tag selects its class), or a reference union (its member tag,
 then the class tag). The program's own classes and dataclasses are supported, and so are the
-builtin types where noted; exception objects, NamedTuples and file objects are not, nor are
-classes with private attributes (`__x`), whose names CPython mangles and Pystachy does not
-(see [compatibility](compatibility.md#functions-and-object-identity)). What Pystachy cannot
+builtin types where noted; exception objects, NamedTuples and file objects are not.
+An identifier `__x` written inside class `C` uses the spelling `_C__x`, including in its
+methods. Reflection strings remain literal, so `getattr(c, "_C__x")` names
+that attribute and `getattr(c, "__x")` does not. What Pystachy cannot
 match is a compile-time error that names the missing feature: a value whose type only the run
 time knows (#487), names that need per-object storage (#489), or a class object as a value (#7). The compiler's side is described in [internals](../internals.md#reflection).
 

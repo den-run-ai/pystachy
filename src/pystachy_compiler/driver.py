@@ -5,7 +5,7 @@ import sys
 import tempfile
 import time
 from src.pystachy_compiler import diagnostics
-from src.pystachy_compiler.diagnostics import MAXNEST, RAW, Rejoin, fail
+from src.pystachy_compiler.diagnostics import MAXNEST, RAW, NeedSliceEH, Rejoin, fail
 from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler.lexer import Lexer
 from src.pystachy_compiler.loader import Loader
@@ -99,9 +99,11 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
     # start with every module tracking it (idfull), as if that split had never been tried.
     idfull = False
     idtry = True
+    slice_eh = False
     while True:
         g = Gen()
         g.ext = ext
+        g.eh = slice_eh
         g.libdir = dirs[-1] if len(dirs) > 0 else ""
         g.prefix = os.path.realpath(dirs[-1] + "/..") if len(dirs) > 0 else ""
         g.hints = hints
@@ -113,8 +115,10 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
         ld.ext = ext
         try:
             return g.program(ld.program(path, src))
-        except Rejoin:
-            if g.idevent != "" and not idfull:
+        except Rejoin as retry:
+            if isinstance(retry, NeedSliceEH):
+                slice_eh = True
+            elif g.idevent != "" and not idfull:
                 if idtry and len(g.idhint) > 0:
                     idtry = False  # retry today's dependency closure before full tracking
                 else:

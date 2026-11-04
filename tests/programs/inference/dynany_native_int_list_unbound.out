@@ -1,0 +1,53 @@
+native
+argument append
+argument stored append
+argument insert
+argument reverse
+methods [7, 6, 5, 4, 3, 2, 1]
+copy [7, 6, 5, 4, 3, 2, 1, 'unrestricted'] False
+boxed
+argument append
+argument stored append
+argument insert
+argument reverse
+methods [7, 6, 5, 4, 3, 2, 1]
+copy [7, 6, 5, 4, 3, 2, 1, 'unrestricted'] False
+argument receiver
+argument first
+argument second
+rejected descriptor 'append' for 'list' objects doesn't apply to a 'NoneType' object
+argument raises
+first error argument first
+argument receiver
+argument first
+argument second
+rejected descriptor 'append' for 'list' objects doesn't apply to a 'int' object
+argument raises
+first error argument first
+argument receiver
+argument first
+argument second
+rejected descriptor 'append' for 'list' objects doesn't apply to a 'Pretender' object
+argument raises
+first error argument first
+argument receiver
+argument first
+argument second
+rejected list.append() takes exactly one argument (2 given)
+argument raises
+first error argument first
+rebound receiver
+captured [1, 2] [9] True
+invalid start NoneType slice indices must be integers or have an __index__ method
+invalid start float slice indices must be integers or have an __index__ method
+invalid start str slice indices must be integers or have an __index__ method
+index start
+index stop
+valid bounds 1
+invalid start NoneType slice indices must be integers or have an __index__ method
+invalid start float slice indices must be integers or have an __index__ method
+invalid start str slice indices must be integers or have an __index__ method
+index start
+index stop
+valid bounds 1
+[exit 0]

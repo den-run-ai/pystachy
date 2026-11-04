@@ -1,10 +1,75 @@
 """Optimizations component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
+import os
 from src.pystachy_compiler.diagnostics import fail
 from src.pystachy_compiler.ir import IFn, Ins, Lookup, Val, Values
 from src.pystachy_compiler.ircheck import EffectSummaries
-from src.pystachy_compiler.specs import CANON_DEPTH, FXBIT, LOOKUPS, RAWW, REACH
+from src.pystachy_compiler.specs import CANON_DEPTH, FXALL, FXBIT, LOOKUPS, RAWW, REACH
 from src.pystachy_compiler.utils import is_list, is_tuple, is_union, umembers
+
+
+# Every non-read summary effect: exceptions, allocation/GC, callbacks, runtime
+# state and writes must remain bounded for later optimizations and EH lowering.
+# Representation rewrites can introduce reads of immutable boxes, classified more
+# broadly by IROPS than the original local-slot reads. Read-sensitive consumers
+# must rerun effects() after those rewrites instead of using the old read bounds.
+PASS_SAFETY_EFFECTS = FXALL & ~(FXBIT["rL"] | FXBIT["rD"] | FXBIT["rO"] | FXBIT["rG"] | FXBIT["rF"])
+
+
+class PassContract:
+    # Contracts for the existing pre-EH function passes. Analyses are owned by one
+    # invocation of a pass: Values, predecessor maps and proofs never survive it.
+    # "invalidates" describes snapshots a future consumer must rebuild, not a cache
+    # that exists today. Non-read effect bounds remain sound even when a pass
+    # invalidates read bounds or exact effect summaries.
+    def __init__(self, name: str, analyses: list[str], preserves: list[str], invalidates: list[str]):
+        self.name = name
+        self.requires = ["typed-ir", "pre-eh", "effect-safety-bounds"]
+        self.analyses = analyses
+        self.preserves = ["typed-ir", "pre-eh", "effect-safety-bounds"] + preserves
+        self.invalidates = invalidates
+        self.rerun = ["typed-ir", "pre-eh", "effect-safety-bounds"]
+
+
+# Dispatch order is part of the contract: every local analysis sees the previous
+# pass's rewritten IR, and nullcheck can change the CFG after the other passes.
+PASS_CONTRACTS: list[PassContract] = [
+    PassContract("listget", ["predecessors", "loop-ranges"],
+                 ["cfg", "loop-shape", "slot-layout"],
+                 ["values", "range-proofs", "alias-proofs", "exact-effects"]),
+    PassContract("dictfuse", ["predecessors", "values", "lookup-proofs"],
+                 ["cfg", "loop-shape", "slot-layout"],
+                 ["values", "range-proofs", "alias-proofs", "exact-effects"]),
+    PassContract("unionslots", ["values", "uses", "alias-proofs", "reaching-stores"],
+                 ["cfg", "loop-shape"],
+                 ["values", "range-proofs", "alias-proofs", "slot-layout", "read-effect-bounds", "exact-effects"]),
+    PassContract("nullcheck", ["predecessors", "dominators", "values", "reaching-stores"],
+                 ["loop-shape", "slot-layout"],
+                 ["values", "range-proofs", "alias-proofs", "cfg", "dominators", "exact-effects"]),
+]
+
+
+def gen_pass_check(self, fn: IFn, contract: PassContract, after: bool) -> None:
+    # Debug-only enforcement. program() verifies the initial typed IR; a changed
+    # pass reruns it before another pass can consume the result. No analysis of the
+    # function or effect recomputation is added to the normal compilation path.
+    checks = contract.rerun if after else contract.requires
+    if after and "typed-ir" in checks:
+        self.verify(fn, False)
+    if "pre-eh" in checks and fn.pads:
+        fail(f"internal error: {contract.name} requires pre-EH IR in {fn.f.ll}", 0)
+    actual = 0
+    for b in fn.blocks:
+        for i in b.code:
+            if "pre-eh" in checks and len(i.b) == 2 and (i.op == "rt" or i.op == "call" or i.op == "icall" or i.op == "init" or i.op == "gen.resume"):
+                fail(f"internal error: {contract.name} requires pre-EH IR in {fn.f.ll}", 0)
+            # Like effects(): an entry snapshot itself adds no observable effect.
+            # recursionscope gives counted entries their real R/I effects instead.
+            snapshot = b is fn.blocks[0] and i is b.code[0] and i.op == "rt" and i.s == "recursion.depth" and len(i.r) == 1 and f"%t{i.r[0]}" == fn.rdepth
+            if "effect-safety-bounds" in checks and not snapshot:
+                actual |= self.opfx(i, fn.fa) & PASS_SAFETY_EFFECTS
+    if "effect-safety-bounds" in checks and actual & ~fn.fx != 0:
+        fail(f"internal error: {contract.name} requires conservative effect safety bounds in {fn.f.ll}", 0)
 
 
 def recursion_cycles(calls: list[list[int]], comp: list[int]) -> list[bool]:
@@ -266,16 +331,32 @@ def gen_recursionscope(self) -> int:
 
 
 def gen_optimize(self, fn: IFn, on: dict[str, bool]) -> int:
-    # run the passes on fn that on turns on; how many ops they rewrote
+    # Run the registered passes in contract order; how many ops they rewrote.
+    chk = os.getenv("PYSTACHY_IRCHECK", "") == "1"
+    checked = False
     n = 0
-    if "listget" in on:
-        n += self.listget(fn)
-    if "dictfuse" in on:
-        n += self.dictfuse(fn)
-    if "unionslots" in on:
-        n += self.unionslots(fn)
-    if "nullcheck" in on:
-        n += self.nullcheck(fn)
+    for contract in PASS_CONTRACTS:
+        if contract.name not in on:
+            continue
+        # These passes share their entry requirements. Check them once, and only
+        # check again after a rewrite, while the previous checks still hold.
+        if chk and not checked:
+            gen_pass_check(self, fn, contract, False)
+            checked = True
+        changed = 0
+        if contract.name == "listget":
+            changed = self.listget(fn)
+        elif contract.name == "dictfuse":
+            changed = self.dictfuse(fn)
+        elif contract.name == "unionslots":
+            changed = self.unionslots(fn)
+        elif contract.name == "nullcheck":
+            changed = self.nullcheck(fn)
+        else:
+            fail(f"internal error: no implementation of IR pass {contract.name}", 0)
+        n += changed
+        if chk and changed > 0:
+            gen_pass_check(self, fn, contract, True)
     return n
 
 def gen_preds(self, fn: IFn) -> dict[str, list[int]]:

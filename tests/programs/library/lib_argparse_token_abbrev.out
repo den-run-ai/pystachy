@@ -1,0 +1,4 @@
+Namespace(quiet=True, output='one', files=['src', '--out=a b']) ['--qui', '--out=raw']
+Namespace(quiet=True, output='a b', files=['--out name=x'])
+Namespace(output='a b')
+[exit 0]
