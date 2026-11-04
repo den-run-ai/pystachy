@@ -1086,7 +1086,9 @@ Both views refer to the same object, including when boxed as `Any`. An `isinstan
 test between the base types checks the receiver's class tag.
 
 The secondary base must be a plain root class with ordinary instance methods. Its
-method bodies can return defaults, raise, or use arguments other than the receiver.
+methods may call another method declared on the same base, for example
+`self.write(data)`. These calls use the concrete receiver's override. Other uses
+of the receiver, including reading a field or capturing a bound method, are unsupported.
 The two bases must declare distinct method names. Overrides of secondary methods
 must keep their parameter and return types and may widen positional-only parameters
 to accept keywords. The primary hierarchy
