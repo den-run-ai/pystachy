@@ -360,7 +360,7 @@ Their checks and error messages are the comparison contract for native code;
 | C output | Foreign stdio and subset `print` interleave according to their separate buffers and flushes. |
 | Float text | Conversions use the C locale even if foreign code changes `setlocale`; format type `n` also uses the C locale. |
 | Extension integers | Arguments or results outside signed 64-bit raise `OverflowError`, as the export twin does. Internal arithmetic remains checked. |
-| Extension import exceptions | Custom exception classes leave as their nearest builtin base, rather than the source module's own class. |
+| Extension import exceptions | Custom exception classes leave as their nearest builtin base. With two builtin bases, the first is used, so a class declared with `(ValueError, IndexError)` reaches CPython as `ValueError`. |
 | Re-import | A second successful module load raises `ImportError`; source code can be run again by CPython. |
 | `sys.stdout = None` | Both `print` and `sys.stdout.write` do nothing in the extension; CPython's explicit `write` raises `AttributeError`. |
 | Late calls | Calls after the module's shutdown handler raise `RuntimeError`, including from earlier-registered host `atexit` handlers. |
