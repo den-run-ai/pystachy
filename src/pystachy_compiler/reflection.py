@@ -1538,11 +1538,11 @@ def gen_refl_dir(self, x: Node) -> Val:
                 no = self.label()
                 self.cbr(self.mem_load(Val(self.fgep(lf.v, self.classes[lf.c].fflag[nk[0]]), "*bool")).v, yes, no)
                 self.place(yes)
-                self.rt("pys_list_append", "void", [f"ptr {r}", "i64 " + self.to_slot(Val(self.sconst(nk[0]), "str"))])
+                self.list_write("list.append", [Val(r, "list[str]"), Val(self.to_slot(Val(self.sconst(nk[0]), "str")), "*str")])
                 self.br(no)
                 self.place(no)
             else:
-                self.rt("pys_list_append", "void", [f"ptr {r}", "i64 " + self.to_slot(Val(self.sconst(nk[0]), "str"))])
+                self.list_write("list.append", [Val(r, "list[str]"), Val(self.to_slot(Val(self.sconst(nk[0]), "str")), "*str")])
         vals.append(Val(r, "list[str]"))
         blocks.append(self.cur)
         self.br(end)

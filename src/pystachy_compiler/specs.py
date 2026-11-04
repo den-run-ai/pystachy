@@ -646,6 +646,14 @@ IROPS: dict[str, str] = {
     "gen.start": "T A", "gen.yield": "T U", "gen.ret": "T", "gen.promise": "", "gen.resume": "U",
     "gen.drop": "A I rL wL rD wD rO wO rG wG rF wF",
 }
+# Native list writes whose concrete receiver and packed item types survive in IR.
+# RUNTIME remains authoritative for their signatures, effects and LLVM symbols.
+# The variant selects the storage contract checked by builders and verifiers.
+LIST_WRITES: dict[str, str] = {
+    "list.append": "slot", "list.set": "slot", "list.insert": "slot",
+    "list.append_big": "big", "list.set_big": "big", "list.insert_big": "big",
+    "list.append_identity": "identity", "list.set_identity": "identity", "list.insert_identity": "identity",
+}
 # a generator's promise, five i64 slots: the value it yielded last, the value it returned, its
 # state and the command its consumer gives it, and its __qualname__ (a str, for the reports of
 # what closing it raises). State: suspended where closing it runs no code of its, suspended

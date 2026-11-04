@@ -375,6 +375,35 @@ Each `RUNTIME` entry has the form `result:params|effects|symbol`. Its type varia
 `pys_<key>` with dots replaced by underscores. Calls are checked against the entries;
 `tools/check_runtime.py` checks them against the C and subset runtime implementations.
 
+### Shared native-list write contract
+
+`LIST_WRITES` selects the append, indexed-assignment and insert adapters. Their
+signatures and effects remain in `RUNTIME`; `list_write_error` supplies the same
+operand, result and metadata checks to `Gen.list_write` and the IR verifier.
+These `rt` instructions retain the receiver's list type and the packed item's type
+(`*int`, `*dyn`, etc.). Equal LLVM pointer or slot widths do not establish compatible
+storage. Existing inference holes, including the None-only `list[opt[?]]`, still
+belong to frontend refinement; this validator checks retained type agreement,
+not canonical type resolution. Other runtime families use their existing builders.
+
+`ListLayout` separates the semantic element from its stored value representation,
+packed slot, numeric identity capability and payload-array GC policy. It takes the
+program's promoting-integer policy explicitly: `list[int]` alone cannot establish
+whether its bigint companion is available. `atomic` describes only the payload
+array; bigint and identity companions remain scanned.
+
+| Store adapter | Required representation |
+|---|---|
+| Ordinary | Receiver element and packed slot type agree; index is a native `int` |
+| Bigint | `list[int]` with promoting storage; payload is a bigint pointer |
+| Numeric identity | Native integer/float slots plus the original `dyn` box and matching identity kind |
+
+The caller evaluates and coerces operands before construction. Identity stores keep
+the original value's box; they never reconstruct identity from packed bits.
+`Val.identity()` remains the representation-only identity transfer API.
+Runtime symbols, mutation order, exceptions and LLVM lowering are unchanged.
+This contract does not enable a native-list/Any crossing or cover every list mutator.
+
 <a id="7-what-it-enables-next"></a>
 <a id="71-language-level-optimizations"></a>
 
@@ -382,6 +411,23 @@ Each `RUNTIME` entry has the form `result:params|effects|symbol`. Its type varia
 
 `OPTS` lists the available switches. Only `listget`, `dictfuse`, `unionslots` and `nullcheck`
 are whole-function IR passes; the others select frontend or lowering choices.
+
+`PASS_CONTRACTS` declares their order, prerequisites, preserved facts and invalidation.
+All four require typed IR before exception lowering and conservative effect bounds.
+Each invocation owns its analyses; no range, alias or value proof is cached between
+passes. After a rewrite, exact effects need recomputation for reporting, while the
+previous conservative bounds remain safe for optimization and exception lowering.
+
+| Pass | Analyses built locally | Additional invalidation after a rewrite |
+|---|---|---|
+| `listget` | Predecessors and loop bounds | Instruction-derived value, range and alias proofs |
+| `dictfuse` | Predecessors, values and lookup proofs | Instruction-derived value, range and alias proofs |
+| `unionslots` | Values, uses, aliases and reaching stores | Slot layout and instruction-derived proofs |
+| `nullcheck` | Predecessors, dominators, values and reaching stores | CFG, dominance and instruction-derived proofs |
+
+With `PYSTACHY_IRCHECK=1`, scheduling checks reject lowered exception edges or
+insufficient effect bounds, and every changed pass reruns typed-IR verification
+before the next pass. Normal compilation does not add these verification scans.
 
 | Option | Implemented behavior |
 |---|---|
