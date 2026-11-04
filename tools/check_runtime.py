@@ -828,6 +828,18 @@ def main():
             bad.append(f"EXCBASES: {k} is no builtin exception class of this Python")
         elif ",".join(b.__name__ for b in c.__bases__ if b is not object) != v:
             bad.append(f"EXCBASES gives {k} the bases {v or '(none)'}, this Python {', '.join(b.__name__ for b in c.__bases__)}")
+    # A second plain base only contributes ancestry. Catch CPython layout or method changes
+    # that would invalidate that assumption before admitting the pair to the native compiler.
+    from src.pystachy_compiler.specs import PLAIN_EXC_BASES
+    for k in PLAIN_EXC_BASES:
+        c = getattr(builtins, k)
+        if sys.implementation.name == "cpython" and (c.__basicsize__, c.__itemsize__) != (Exception.__basicsize__, Exception.__itemsize__):
+            bad.append(f"PLAIN_EXC_BASES: {k} changes the layout of Exception")
+        if c.__str__ is not Exception.__str__ or c.__repr__ is not Exception.__repr__:
+            bad.append(f"PLAIN_EXC_BASES: {k} changes the formatting of Exception")
+        for args in [(), ("one",), ("one", 2)]:
+            if c(*args).args != args or str(c(*args)) != str(Exception(*args)):
+                bad.append(f"PLAIN_EXC_BASES: {k} changes Exception arguments {args!r}")
     for n in dir(builtins):
         c = getattr(builtins, n)
         if isinstance(c, type) and issubclass(c, BaseException) and c.__name__ == n and not n.startswith("_") and n not in pys.EXCBASES:

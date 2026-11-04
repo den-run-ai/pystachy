@@ -536,8 +536,16 @@ and cleanup. Uncaught exceptions have abbreviated output. These are documented i
 
 ### User exception classes
 
-A user exception class has one base: a supported builtin exception class or another
-exception class in the program. It supports fields, constructors, class-body defaults,
+A user exception class can derive from one supported builtin exception or another
+exception class in the program. It can also derive directly from two independent builtin
+exceptions with ordinary `Exception` behavior, as in `class BadMonth(ValueError, IndexError)`.
+Catching either base or one of its ancestors (such as `LookupError`) catches the exception
+and its subclasses. The supported pairs use two of `ArithmeticError`, `FloatingPointError`,
+`OverflowError`, `ZeroDivisionError`, `AssertionError`, `BufferError`, `EOFError`,
+`LookupError`, `IndexError`, `ReferenceError`, `RuntimeError`, `NotImplementedError`,
+`RecursionError`, `TypeError` and `ValueError`; neither may derive from the other.
+Pairs involving e.g. `OSError` (additional fields) or `KeyError` (special string
+conversion) are not supported. Exception classes support fields, constructors, class-body defaults,
 methods, docstrings and custom `__str__` / `__repr__`.
 
 A subclass inherits fields and methods and can override `__init__`, `__str__` and

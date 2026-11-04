@@ -412,6 +412,13 @@ for _k in ("BaseExceptionGroup:BaseException GeneratorExit:BaseException Keyboar
            "ResourceWarning:Warning RuntimeWarning:Warning SyntaxWarning:Warning UnicodeWarning:Warning UserWarning:Warning "
            "io.UnsupportedOperation:OSError,ValueError dataclasses.FrozenInstanceError:AttributeError").split():
     EXCBASES[_k[: _k.find(":")]] = _k[_k.find(":") + 1 :]
+# Independent builtin bases with ordinary Exception layout, argument handling and string
+# conversion. In particular KeyError formats a sole argument specially, and OSError and
+# AttributeError carry additional state; their names alone cannot model their behavior.
+PLAIN_EXC_BASES = ["ArithmeticError", "FloatingPointError", "OverflowError", "ZeroDivisionError",
+                   "AssertionError", "BufferError", "EOFError", "LookupError", "IndexError",
+                   "ReferenceError", "RuntimeError", "NotImplementedError", "RecursionError",
+                   "TypeError", "ValueError"]
 # what assigning a field of a @dataclass(frozen=True) object raises (an except clause lists it
 # only in a program that has such a class: Gen.hasfrozen)
 FROZENERR = "dataclasses.FrozenInstanceError"

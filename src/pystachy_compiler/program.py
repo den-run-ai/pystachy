@@ -14,6 +14,7 @@ from src.pystachy_compiler.specs import (
     ABSTRACT_DECOS,
     EXCBASES,
     EXCEPTIONS,
+    PLAIN_EXC_BASES,
     exc_derives,
     GALIAS,
     INERT,
@@ -82,7 +83,17 @@ def gen_subclass_problem(self, st: Node) -> str:
         return "a generic class's one base is Generic[...] of its TypeVars, and at most one TypeVarTuple, unpacked (Generic[T, *Ts]), each once" if len(st.kids) == 2 else "a generic class with another base than Generic[...] is not supported"
     if len(st.kids) > 2:
         why = "multiple inheritance requires an ordinary primary base and an independent method-only secondary base"
-        if len(st.kids) != 3 or st.kids[1].kind != "name" or st.kids[2].kind != "name":
+        if len(st.kids) != 3:
+            return why
+        first = self.exc_base(st.kids[1])
+        second = self.exc_base(st.kids[2])
+        if first in EXCBASES and first not in self.classes and second in EXCBASES and second not in self.classes:
+            if first not in PLAIN_EXC_BASES or second not in PLAIN_EXC_BASES or exc_derives(first, second) or exc_derives(second, first):
+                return "two builtin exception bases must be independent and have ordinary Exception behavior"
+            if len(st.kids[0].kids) > 1:
+                return "an exception class with a decorator is not supported"
+            return ""
+        if st.kids[1].kind != "name" or st.kids[2].kind != "name":
             return why
         primary = st.kids[1].s
         secondary = st.kids[2].s
@@ -277,6 +288,8 @@ def gen_derives(self, c: str, base: str) -> bool:
             return True
         info = self.classes[c]
         if info.role != "" and info.role == base:
+            return True
+        if info.excsecond != "" and exc_derives(info.excsecond, base):
             return True
         c = info.base
     return c in EXCBASES and exc_derives(c, base)
@@ -902,8 +915,11 @@ def gen_program(self, mods: list[Mod]) -> str:
                 ci = ClassInfo(st.s, st.kids[0])
                 ci.mod = m.name
                 ci.base = st.kids[1].s if st.kids[1].kind == "name" and st.kids[1].s in self.classes else self.exc_base(st.kids[1])
-                ci.role = st.kids[2].s if len(st.kids) == 3 else self.classes[ci.base].role if ci.base in self.classes else ""
                 ci.exc = self.classes[ci.base].exc if ci.base in self.classes else ci.base
+                if ci.exc == "":
+                    ci.role = st.kids[2].s if len(st.kids) == 3 else self.classes[ci.base].role
+                elif len(st.kids) == 3:
+                    ci.excsecond = self.exc_base(st.kids[2])
                 self.classes[st.s] = ci
                 if self.is_dc(st.s):
                     # a dataclass deriving from another (subclass_problem): frozen as its base is
