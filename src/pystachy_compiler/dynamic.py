@@ -18,12 +18,12 @@ from __future__ import annotations
 from src.pystachy_compiler.analysis import bind_count, comp_vars, deleted, globals_in, lazy_block, lazy_sites, local_names, name_bits, nonlocal_decls, targets, walrus_names
 from src.pystachy_compiler.bigints import held
 from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, INTFILES, LINES, Rejoin, dynamic_file, dynamic_program, int_lists, int_program
-from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Val
+from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Reduce, Val
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import ENUMCLASSES, owner, retoken, short
 from src.pystachy_compiler.specs import BIG, ITERS, JSONANY, METHODS, NONEVAR, RANGEC, RTDATA
 from src.pystachy_compiler.syntax import Node, has_kind, mk
-from src.pystachy_compiler.utils import builtin_key, disjoint_sets, elem, gelem, holds_dyn, identity_abi, is_callable, is_dict, is_fn, is_gen, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, numeric_identity, selem, takes_self, targs, tname, typestr, umembers, unopt
+from src.pystachy_compiler.utils import builtin_key, disjoint_sets, elem, fbits, gelem, holds_dyn, identity_abi, is_callable, is_dict, is_fn, is_gen, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, numeric_identity, selem, takes_self, targs, tname, typestr, umembers, unopt
 
 DYN = "dyn"
 # what isinstance(x, int) narrows a dyn local to: still the box (a bool passes the test too),
@@ -4217,16 +4217,131 @@ def gen_dyn_fn_takes(self, ft: str, key: str, an: list[Node]) -> str:
 
 
 
+def gen_dyn_sum_slots(self, r: Reduce) -> None:
+    # Shared by list/Any iteration and streaming generators. These are this reduction's
+    # local slots, not speculative compiler state. The boxed accumulator keeps GC roots.
+    r.acc = self.alloca(DYN, "")
+    r.facc = self.alloca("float", "")
+    r.comp = self.alloca("float", "")
+    r.phase = self.alloca("int", "")
+
+
+def gen_dyn_sum_start(self, r: Reduce, start: Val) -> None:
+    # CPython 3.13 sums in three phases: small ints, compensated floats, then generic
+    # addition. Leaving a phase is permanent, including overflow or a user callback.
+    value = self.dyn_box(start)
+    self.guard(self.dyn_test(value, ["str"]), "TypeError: sum() can't sum strings [use ''.join(seq) instead]")
+    self.mem_store(Val(r.acc, "*dyn"), value)
+    self.mstore("float", fbits("0.0"), r.facc)
+    self.mstore("float", fbits("0.0"), r.comp)
+    kind = Val(self.dyn_typeof(value), "dyntype")
+    small = self.ptr_cmp("==", kind, Val(self.dyn_type("int"), "dyntype")).v
+    self.mstore("int", self.select(small, Val("0", "int"), Val("2", "int")), r.phase)
+    ints = self.label()
+    nonint = self.label()
+    floats = self.label()
+    end = self.label()
+    self.cbr(small, ints, nonint)
+    self.place(ints)
+    # CPython unboxes an integer start; a callback must see a new box when that
+    # phase ends, even when it is the first item. Preserve other starts' identity.
+    n = self.dyn_payload(value, "int")
+    self.mem_store(Val(r.acc, "*dyn"), Val(self.rt("pys_dyn_int", "ptr", [f"i64 {n.v}"]), DYN))
+    self.br(end)
+    self.place(nonint)
+    self.cbr(self.ptr_cmp("==", kind, Val(self.dyn_type("float"), "dyntype")).v, floats, end)
+    self.place(floats)
+    self.mstore("float", self.dyn_payload(value, "float").v, r.facc)
+    self.mstore("int", "1", r.phase)
+    self.br(end)
+    self.place(end)
+
+
+def gen_dyn_sum_item(self, r: Reduce, value: Val) -> None:
+    item = self.dyn_box(value)
+    kind = Val(self.dyn_typeof(item), "dyntype")
+    small = self.ptr_cmp("==", kind, Val(self.dyn_type("int"), "dyntype")).v
+    boolean = self.ptr_cmp("==", kind, Val(self.dyn_type("bool"), "dyntype")).v
+    integer = self.scalar("or", [Val(small, "bool"), Val(boolean, "bool")])
+    phase = Val(self.mload("int", r.phase), "int")
+    floats = self.label()
+    others = self.label()
+    end = self.label()
+    self.cbr(self.num_cmp("==", phase, Val("1", "int")).v, floats, others)
+    self.place(others)
+    total = self.dyn_arith("+", self.mem_load(Val(r.acc, "*dyn")), item)
+    self.mem_store(Val(r.acc, "*dyn"), total)
+    ints = self.label()
+    self.cbr(self.num_cmp("==", phase, Val("0", "int")).v, ints, end)
+    self.place(ints)
+    resultkind = Val(self.dyn_typeof(total), "dyntype")
+    stillsmall = self.ptr_cmp("==", resultkind, Val(self.dyn_type("int"), "dyntype")).v
+    keep = self.scalar("and", [Val(integer, "bool"), Val(stillsmall, "bool")])
+    self.mstore("int", self.select(keep, Val("0", "int"), Val("2", "int")), r.phase)
+    enter = self.label()
+    self.cbr(self.ptr_cmp("==", resultkind, Val(self.dyn_type("float"), "dyntype")).v, enter, end)
+    self.place(enter)
+    self.mstore("float", self.dyn_payload(total, "float").v, r.facc)
+    self.mstore("int", "1", r.phase)
+    self.br(end)
+    self.place(floats)
+    compensate = self.label()
+    nonfloat = self.label()
+    self.cbr(self.ptr_cmp("==", kind, Val(self.dyn_type("float"), "dyntype")).v, compensate, nonfloat)
+    self.place(compensate)
+    self.neumaier(r.facc, r.comp, self.dyn_payload(item, "float").v)
+    self.br(end)
+    self.place(nonfloat)
+    plain = self.label()
+    generic = self.label()
+    self.cbr(integer, plain, generic)
+    self.place(plain)
+    # Bool and in-range int payloads share their numeric bits. Ints added during
+    # the float phase are deliberately not compensated, as in the typed path.
+    x = self.as_float(self.dyn_payload(item, "int"))
+    self.mstore("float", self.scalar("fadd", [Val(self.mload("float", r.facc), "float"), x]), r.facc)
+    self.br(end)
+    self.place(generic)
+    # Flush the compensation before calling user code; never re-enter the float
+    # phase even if that callback returns a float. Wide ints also take this path.
+    partial = Val(self.comp_end(r.facc, r.comp), "float")
+    self.mem_store(Val(r.acc, "*dyn"), self.dyn_arith("+", partial, item))
+    self.mstore("int", "2", r.phase)
+    self.br(end)
+    self.place(end)
+
+
+def gen_dyn_sum_end(self, r: Reduce) -> Val:
+    phase = Val(self.mload("int", r.phase), "int")
+    floats = self.label()
+    others = self.label()
+    ints = self.label()
+    end = self.label()
+    self.cbr(self.num_cmp("==", phase, Val("1", "int")).v, floats, others)
+    self.place(floats)
+    self.mem_store(Val(r.acc, "*dyn"), self.dyn_box(Val(self.comp_end(r.facc, r.comp), "float")))
+    self.br(end)
+    self.place(others)
+    self.cbr(self.num_cmp("==", phase, Val("0", "int")).v, ints, end)
+    self.place(ints)
+    # Even an empty small-int sum returns a freshly boxed result (subject to the
+    # runtime's small-int cache); bool/wide/custom starts retain their identity.
+    n = self.dyn_payload(self.mem_load(Val(r.acc, "*dyn")), "int")
+    self.mem_store(Val(r.acc, "*dyn"), Val(self.rt("pys_dyn_int", "ptr", [f"i64 {n.v}"]), DYN))
+    self.br(end)
+    self.place(end)
+    return self.mem_load(Val(r.acc, "*dyn"))
+
+
 def gen_dyn_sum(self, xs: Val, start: Val) -> Val:
-    # sum(xs, start) of a list (of a dynamic value's items, or of dynamic values): start + each
-    # item in turn, as dynamic additions (dyn_arith), the list's length read at every step as
-    # CPython's iterator reads it
+    # The list's length is reread after each addition, including user callbacks.
     if xs.t != DYN and not is_list(xs.t):
         self.err(f"sum() of {typestr(xs.t)} is not supported")
     it = self.iterable(xs) if xs.t == DYN else xs
-    acc = self.alloca(DYN, "")
+    r = Reduce("sum", start.t)
+    self.dyn_sum_slots(r)
     ctr = self.alloca("int", "")
-    self.mem_store(Val(acc, "*dyn"), self.dyn_box(start))
+    self.dyn_sum_start(r, start)
     self.mstore("int", "0", ctr)
     head = self.label()
     body = self.label()
@@ -4243,12 +4358,11 @@ def gen_dyn_sum(self, xs: Val, start: Val) -> Val:
     self.place(body)
     if xs.t != DYN:
         item = self.list_item(xs, Val(i, "int"))
-    total = self.dyn_arith("+", self.mem_load(Val(acc, "*dyn")), item)
-    self.mem_store(Val(acc, "*dyn"), total)
+    self.dyn_sum_item(r, item)
     self.mstore("int", self.scalar("add", [Val(i, "int"), Val("1", "int")]), ctr)
     self.br(head)
     self.place(end)
-    return self.mem_load(Val(acc, "*dyn"))
+    return self.dyn_sum_end(r)
 
 
 def gen_json_any(self, name: str, args: list[Node], want: str, resultsoft: bool) -> Val | None:

@@ -91,6 +91,17 @@ class InspectionTests(unittest.TestCase):
         self.assertGreater(report["verification"]["calls"], 0)
         self.assertEqual(report["input"]["sha256"], hashlib.sha256(program.read_bytes()).hexdigest())
 
+    def test_library_intrinsics_keep_exact_llvm_when_observed(self):
+        # The imported range adapter needs Loader's library-primitive parse context.
+        # An observer must forward it as well as recording the source bytes.
+        program = self.source("value = range(2, 11, 3)\nprint(len(value), value[1])\n")
+        ordinary = self.ordinary_ir(program)
+        self.assertEqual(ordinary.returncode, 0, ordinary.stderr)
+        completed, destination = self.inspect(program)
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertEqual((destination / "llvm.ll").read_bytes(), ordinary.stdout)
+        self.assertEqual(self.report(destination)["status"], "ok")
+
     def test_same_operation_count_rewrite_has_immutable_snapshots_and_real_diff(self):
         program = self.source(LOOP)
         completed, destination = self.inspect(program, args=("--function", "total"))

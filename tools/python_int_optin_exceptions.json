@@ -562,22 +562,6 @@
       "issue": "https://github.com/den-run-ai/pystachy/issues/907"
     },
     {
-      "case": "tests/programs/upstream/upstream_bytes_extracted.py",
-      "mode": "jit",
-      "category": "unsupported-builtin",
-      "diagnostic": "tests/programs/upstream/upstream_bytes_extracted.py:53: error: cannot convert 'int' object to bytes (compiling BaseBytesTest.test_from_ssize() for the call at tests/programs/upstream/upstream_bytes_extracted.py:251)",
-      "reason": "bytes() takes a fixed 64-bit int size but rejects a promoting int during compilation, here test_from_ssize's bytes(sys.maxsize + 1), where CPython raises OverflowError.",
-      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
-    },
-    {
-      "case": "tests/programs/upstream/upstream_bytes_extracted.py",
-      "mode": "aot",
-      "category": "unsupported-builtin",
-      "diagnostic": "tests/programs/upstream/upstream_bytes_extracted.py:53: error: cannot convert 'int' object to bytes (compiling BaseBytesTest.test_from_ssize() for the call at tests/programs/upstream/upstream_bytes_extracted.py:251)",
-      "reason": "bytes() takes a fixed 64-bit int size but rejects a promoting int during compilation, here test_from_ssize's bytes(sys.maxsize + 1), where CPython raises OverflowError.",
-      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
-    },
-    {
       "case": "tests/programs/upstream/upstream_iter_classes.py",
       "mode": "jit",
       "category": "unsupported-identity",
