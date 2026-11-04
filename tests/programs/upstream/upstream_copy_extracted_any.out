@@ -1,0 +1,3 @@
+ok TestCopy.test_deepcopy_list
+ok TestCopy.test_deepcopy_dict
+[exit 0]

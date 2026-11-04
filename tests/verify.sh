@@ -53,6 +53,7 @@
 #                  strs and on Pystachy's UTF-8 ones, and so do test_re's cases too big for gc-stress
 #   dynany-fuzz    tools/dynany_fuzz.py: 3 seeded programs, each with 150 random + 30 typed/Any
 #                  parity cases; JIT/AOT, normal and program GC-stressed (sources kept on failure)
+#   annotation-widening  CPython-qualified concrete/Any source pairs, both native modes and focused program GC
 #   dynany-optin-0/-1/-2 tests/programs corpus with dynamic Any enabled, fresh CPython
 #                  oracle and JIT/AOT; three disjoint shards, exact reviewed exceptions only
 #   python-int-optin-0/-1/-2 tests/programs corpus with promoting ints enabled, fresh
@@ -141,10 +142,10 @@ esac
 plan() {
   if [ "$PROFILE" = pr ]; then
     case $1 in
-      all) echo 'bootstrap tests-cpython tests-native-0 tests-native-1 tests-opt-off-0 runtime-cache python-free-0 ubsan-0 gc-self gc-jit-0 gc-aot-0 benchmarks dynany-optin-0 python-int-optin-0 check-ir runtime-table rtcheck re-fuzz dynany-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code aot-dead-code unicode-audit scaling-0 scaling-1'; return ;;
+      all) echo 'bootstrap tests-cpython tests-native-0 tests-native-1 tests-opt-off-0 runtime-cache python-free-0 ubsan-0 gc-self gc-jit-0 gc-aot-0 benchmarks dynany-optin-0 python-int-optin-0 annotation-widening check-ir runtime-table rtcheck re-fuzz dynany-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code aot-dead-code unicode-audit scaling-0 scaling-1'; return ;;
       safety-0) echo 'bootstrap tests-opt-off-0 python-free-0 gc-jit-0'; return ;;
       safety-1) echo 'bootstrap ubsan-0 gc-aot-0'; return ;;
-      opt-in) echo 'bootstrap dynany-optin-0 python-int-optin-0'; return ;;
+      opt-in) echo 'bootstrap dynany-optin-0 python-int-optin-0 annotation-widening'; return ;;
       cache-gc) echo 'bootstrap runtime-cache gc-self'; return ;;
       benchmarks) echo 'bootstrap benchmarks scaling-0 scaling-1'; return ;;
       bootstrap|hosted|native-0|native-1|contracts) ;; # shared names and steps below
@@ -155,7 +156,7 @@ plan() {
     bootstrap) echo 'bootstrap' ;;
     # (in the order a run of all records them: the contracts' steps, as their lanes report them, after
     # the opt-in sweeps)
-    all) echo 'bootstrap tests-cpython tests-native-0 tests-native-1 tests-native-2 tests-opt-off-0 tests-opt-off-1 tests-opt-off-2 runtime-cache python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 ubsan-3 gc-self gc-ir-0 gc-ir-1 gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 benchmarks dynany-optin-0 dynany-optin-1 dynany-optin-2 python-int-optin-0 python-int-optin-1 python-int-optin-2 check-ir runtime-table rtcheck re-fuzz dynany-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code aot-dead-code unicode-audit scaling-0 scaling-1' ;;
+    all) echo 'bootstrap tests-cpython tests-native-0 tests-native-1 tests-native-2 tests-opt-off-0 tests-opt-off-1 tests-opt-off-2 runtime-cache python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 ubsan-3 gc-self gc-ir-0 gc-ir-1 gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 benchmarks dynany-optin-0 dynany-optin-1 dynany-optin-2 python-int-optin-0 python-int-optin-1 python-int-optin-2 annotation-widening check-ir runtime-table rtcheck re-fuzz dynany-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code aot-dead-code unicode-audit scaling-0 scaling-1' ;;
     hosted) echo 'bootstrap tests-cpython' ;;
     native-0) echo 'bootstrap tests-native-0' ;;
     native-1) echo 'bootstrap tests-native-1' ;;
@@ -187,7 +188,8 @@ plan() {
     runtime-cache) echo 'bootstrap runtime-cache' ;;
     dynany-optin-0|dynany-optin-1|dynany-optin-2) echo "bootstrap $1" ;;
     dynany-optin) echo 'bootstrap dynany-optin-0 dynany-optin-1 dynany-optin-2' ;; # local alias
-    python-int-optin-0|python-int-optin-1|python-int-optin-2) echo "bootstrap $1" ;;
+    python-int-optin-0|python-int-optin-1) echo "bootstrap $1" ;;
+    python-int-optin-2) echo "bootstrap $1 annotation-widening" ;;
     python-int-optin) echo 'bootstrap python-int-optin-0 python-int-optin-1 python-int-optin-2' ;; # local alias
     contracts) echo 'bootstrap check-ir runtime-table rtcheck re-fuzz dynany-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code aot-dead-code unicode-audit' ;;
     benchmarks) echo 'bootstrap benchmarks' ;;
@@ -920,6 +922,18 @@ fi
 step "$intoptin_name" "$r" "$s" "$L" "$intoptin_fields"
 fi
 done
+
+# ---- annotation-widening: one existing opt-in worker; PR selection or all eligible pairs
+if want annotation-widening; then
+L=$V/annotation-widening.log; s=$(now); r=fail; fields=
+if rm -f "$V/annotation-widening.json" &&
+    $PY tools/annotation_widening.py --compiler "$V/pystachy2" --profile "$PROFILE" \
+    --report "$V/annotation-widening.json" > "$L" 2>&1 && [ -s "$V/annotation-widening.json" ]; then
+  fields=", \"widening\": $(cat "$V/annotation-widening.json")"
+  r=pass
+fi
+step annotation-widening "$r" "$s" "$L" "$fields"
+fi
 
 # The contracts group's steps share no output file and read only the bootstrap's files, so on CI's
 # four vCPUs (two cores, two threads each) they run side by side, in three phases (run below, after

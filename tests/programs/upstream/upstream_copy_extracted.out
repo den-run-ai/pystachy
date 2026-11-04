@@ -1,0 +1,13 @@
+ok TestCopy.test_copy_basic
+ok TestCopy.test_copy_dict
+ok TestCopy.test_copy_frozenset
+ok TestCopy.test_copy_function
+ok TestCopy.test_copy_list
+ok TestCopy.test_copy_set
+ok TestCopy.test_deepcopy_basic
+ok TestCopy.test_deepcopy_empty_tuple
+ok TestCopy.test_deepcopy_function
+ok TestCopy.test_deepcopy_tuple
+ok TestCopy.test_deepcopy_tuple_of_immutables
+ok TestCopy.test_exceptions
+[exit 0]

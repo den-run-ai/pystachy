@@ -166,3 +166,50 @@ PYSTACHY_JOBS=2 tests/run.sh ./pystachy 'jit aot' tests/programs/upstream/upstre
 ```
 
 `combine` writes the program without the provenance header the delivered files carry.
+
+## Post-stdlib sample for v0.2.0
+
+All methods from three complete CPython 3.13.16 files were extracted at
+`cbc944f4bc59639a444dd971c737788ba2283a91`. The table compares the parent of
+the stdlib merge (`8444af96`) with `6d9b1a3c`. Both use the same extractor,
+CPython, checked-integer policy and LLVM 18.1.3 on Linux x86-64. A CPython
+qualification requires the success marker and zero exit status. A JIT match
+also requires byte-for-byte agreement on stdout and stderr, including line endings. Class/method skip decorators exclude
+cases up front, and reaching `skipTest()` excludes a case during qualification.
+
+| Source | Skipped by decorator | Extracted | CPython qualified | JIT matches before → after |
+|---|---:|---:|---:|---:|
+| `test_copy.py` | 0 | 81 | 76 | 0 → 12 |
+| `test_glob.py` | 5 | 20 | 0 | — |
+| `test_filecmp.py` | 0 | 16 | 6 | 0 → 0 |
+
+The 12 gains executed shallow/deep-copy and exception assertions. The old
+compiler rejected all 12 on the missing `copy` import. Remaining eligible copy
+methods encounter nested classes, untyped empty containers and unsupported
+APIs. The `glob` methods need the discarded `test.support` filesystem fixture.
+The six eligible `filecmp` methods still encounter a missing module.
+
+The new corpus programs are `upstream_copy_extracted` (all 12 default-policy
+matches) and `upstream_copy_extracted_any` (two additional methods with
+heterogeneous lists/dicts under explicit dynamic Any). Both pass JIT and AOT,
+normally and with `PYSTACHY_GC_STRESS_PROGRAM=1`. The dynamic tests assert
+identity as well as equality of nested copies. The matched method IDs and order
+are in their CPython-recorded `.out` files.
+
+To repeat on each compiler checkout, run this extractor with its absolute
+`--compiler` command, set `PYSTACHY_HOME` to that checkout, and use separate
+work/output directories. Use one worker and a private `TMPDIR` because some
+`filecmp` tests use fixed names under the temporary directory.
+
+```sh
+python3.13 tools/cpython_test_methods.py triage --compiler "$compiler" -j 1 \
+  "$out/triage.json" "$out/methods" "$cpy/Lib/test/test_copy.py" \
+  "$cpy/Lib/test/test_glob.py" "$cpy/Lib/test/test_filecmp.py"
+```
+
+The wider census also found all five methods of `LockContextTestCase` in
+`Lib/test/test_contextlib.py`. [The combined fixture](../programs/upstream/upstream_contextlib_locks.py)
+exercises single-thread lock, RLock, condition and semaphore state across
+normal exit and exception unwinding. It retains the upstream inputs and
+assertions and records the bounded and unbounded semaphore variants separately.
+The pre-stdlib compiler rejects the `threading` import.

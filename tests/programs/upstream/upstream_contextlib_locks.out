@@ -1,0 +1,6 @@
+ok LockContextTestCase.testWithLock
+ok LockContextTestCase.testWithRLock
+ok LockContextTestCase.testWithCondition
+ok LockContextTestCase.testWithSemaphore
+ok LockContextTestCase.testWithBoundedSemaphore
+[exit 0]
