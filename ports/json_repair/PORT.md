@@ -1,4 +1,4 @@
-# json_repair: in-memory repair
+# json_repair
 
 Adapted from [json_repair v0.64.1](https://github.com/mangiucugna/json_repair/tree/v0.64.1),
 commit `ace9b23cb7fc6757775d5fafbfaaa9a88363a573`, by Stefano Baccianella and contributors
@@ -27,8 +27,8 @@ Set `PYSTACHY_PATH=ports` for JIT/AOT and `PYTHONPATH=ports` for CPython.
 `stream_stable`, `strict` and `ensure_ascii`. Its last three options are keyword-only:
 upstream's intervening file arguments are excluded, so positional calls cannot
 silently change meaning. `loads` supports the corresponding parsing options.
-Schema/Pydantic, file wrappers, CLI, other `json.dumps` options and the
-`JSONReturnType` export are outside this subset and are not advertised as supported.
+The package API excludes schema/Pydantic, file wrappers, additional `json.dumps`
+options and the `JSONReturnType` export.
 
 The default valid-JSON fast path is retained, including wide integer tokens, decoded
 surrogate pairs and CPython's nonfinite-number extensions. This port preserves most
@@ -41,10 +41,38 @@ valid scalar documents. Comments inside arrays and between an object colon and i
 value are consumed before parsing the actual value, fixing upstream value loss.
 Split trace records before repair and validate types and content afterward.
 
+## File and pipe command
+
+Run from the repository root.
+
+```sh
+PYSTACHY_PATH=ports ./pystachy build examples/json_repair/repair.py -o /tmp/json_repair
+/tmp/json_repair input.json --output repaired.json
+printf '{name: "café",}' | /tmp/json_repair --ensure_ascii
+PYTHONPATH=ports python3 -m json_repair --help
+```
+
+The [adapted CLI](__main__.py) accepts a filename or stdin. It writes to stdout,
+`-o/--output TARGET`, or the input file with `-i/--inline`. It reads the full
+input before repair and serializes the result before opening the output file.
+`--skip-json-loads`, `--strict` and `--ensure_ascii` use the corresponding
+parser and encoder options. The command requires valid UTF-8 input and output.
+A lone surrogate in a JSON escape needs `--ensure_ascii`. A decoding or encoding
+error leaves the destination untouched. Output is single-line JSON
+with a trailing newline only on stdout. Upstream's indentation and schema
+options are excluded. Argument errors exit 2. File and repair errors exit 1.
+
+Run the process-level [CLI check](../../tests/upstream/json_repair/cli.py) from
+the repo root with pinned CPython and a built compiler.
+
+```sh
+python3.13 tests/upstream/json_repair/cli.py ./pystachy
+```
+
 ## Adaptations
 
-- Remove schema-only branches and file/CLI interfaces. Preserve in-memory parsing
-  branches and upstream repair rules.
+- Remove schema-only branches and file-wrapper APIs. The CLI uses the same
+  in-memory parser and repair rules as the Python API.
 - Use explicit `Any`, `list[Any]` and dynamic dictionaries instead of the imported
   recursive alias; omit forward parser annotations so helper functions specialize
   on their concrete parser argument.

@@ -179,51 +179,56 @@ Results within a benchmark are checked against CPython, not against upstream pyp
 
 ## Census
 
-`--census` last ran on 3 November 2026 on main `5eaf5638`, whose compiler and library are
-v0.1.0-alpha.4's, with the compiler running under CPython 3.13.18
-(`--compiler "python3.13 -m pystachy"`). Every hash, port note and timed part matched. The
-census supplies no standard-library or ports overlay, so a missing module describes the
-shipped library, not whether the upstream module could compile.
-
-**Seven upstream sources compile with only the runner replaced:** `fannkuch`, `generators`,
-`nbody`, `nqueens`, `regex_v8`, `spectral_norm` and `unpack_sequence`. Compiling to IR is not
-running them; the suite runs the ports and checks their output against CPython.
+The original sdist census ran on main `5eaf5638` with CPython 3.13.18. The
+argparse refresh at `20d49889` checked all 52 upstream file hashes, applied the
+same runner replacement, and attempted IR compilation with the shipped library
+and CPython 3.13.16 as the reference interpreter. Both
+runs compiled the same seven sources: `fannkuch`, `generators`, `nbody`, `nqueens`,
+`regex_v8`, `spectral_norm` and `unpack_sequence`. The 23 adapted workloads have
+separate execution checks.
 
 <a id="sources-without-a-delivered-port"></a>
 <a id="scope-and-remaining-candidates"></a>
 
 ### Sources without a port
 
-A missing module is only the first blocker. The last column compiles each source again with
-CPython 3.13.18's standard library on `PYSTACHY_PATH`, less the modules that `lib/` replaces
-(the directory `tools/import_sweep.py --overlay` makes), and gives the next one. Such a
-compilation is a probe, not a port.
+The middle column uses the shipped library. The last column records the original
+`5eaf5638` probe with a CPython 3.13.18 stdlib overlay. “Same” describes that
+historical run.
 
-| Benchmark | First error | Next, with CPython's standard library |
+| Benchmark | First error with the shipped library | Historical overlay result |
 |---|---|---|
-| `2to3` | no `glob` module | `signal` imports the missing `_signal` |
-| `argparse` | no `argparse` module | a bare `list` annotation (`-> list`) |
+| `2to3` | no `subprocess` module | `signal` imports the missing `_signal` |
+| `argparse` | bare `list` return annotation on `generate_arguments()` | a bare `list` annotation (`-> list`) |
 | `async_generators`, `coroutines` | `async def` | same |
 | `async_tree`, `asyncio_tcp` | no `asyncio` module | `socket` imports the missing `_socket` |
 | `base64` | no `base64` module | `random.randbytes()` needs `int.to_bytes()` |
-| `bpe_tokeniser` | no `pathlib` module | field `_decoder` needs a type annotation |
+| `bpe_tokeniser` | field `_decoder` needs a type annotation | field `_decoder` needs a type annotation |
 | `concurrent_imap` | no `multiprocessing` module | `signal` imports the missing `_signal` |
 | `crypto_pyaes` | no `pyaes` module (third-party) | same |
 | `decimal_factorial`, `decimal_pi`, `telco` | no `decimal` module | `contextvars` imports the missing `_contextvars` |
-| `deepcopy` | no `copy` module | a bare `list` annotation (`lst: list`) |
+| `deepcopy` | a bare `list` annotation (`lst: list`) | a bare `list` annotation (`lst: list`) |
 | `deltablue`, `typing_runtime_protocols` | unsupported base class | same |
 | `gc_collect`, `gc_traversal` | no `gc` module | same |
-| `logging` | no `logging` module | `threading` uses class `_thread.RLock` as a value |
+| `logging` | dispatch table contains distinct function types | `threading` uses class `_thread.RLock` as a value |
 | `mdp` | no `fractions` module | `contextvars` imports the missing `_contextvars` |
-| `pathlib` | no `pathlib` module | `shutil` imports `bz2`, which imports the missing `_bz2` |
+| `pathlib` | `Path.stat()` | `shutil` imports `bz2`, which imports the missing `_bz2` |
 | `pickle` | no `pickle` module | `copyreg` keys a dict by classes |
 | `pprint` | no `pprint` module | statements in the body of class `PrettyPrinter` |
 | `pyflate` | no `hashlib` module | inheritance with generic class templates |
 | `python_startup` | no `subprocess` module | `signal` imports the missing `_signal` |
 | `regex_compile` | global `regexes` needs a type annotation | same |
 | `sqlite_synth` | no `sqlite3` module | `sqlite3` imports the missing `_sqlite3` |
-| `tomli_loads` | no `pathlib` module | no `tomli` module (third-party) |
+| `tomli_loads` | no `tomli` module (third-party) | no `tomli` module (third-party) |
 | `xml_etree` | no `xml` module | `xml.etree.ElementTree` imports the missing `_elementtree` |
+
+The argparse kernel also registers subparsers, argument groups and 1,000 options whose names
+are built in a loop. These exceed the [static parser subset](../../lib/compatibility.md#argparse).
+To reproduce its result from the pinned sdist:
+
+```sh
+python3 tools/bench_pyperformance.py --census pyperformance-1.14.0.tar.gz | grep -F '| `argparse` |'
+```
 
 What porting them would take:
 
@@ -261,7 +266,7 @@ the port's adaptations had to change; "none" means that replacing the runner is 
 |---|---|
 | `barnes_hut` | field `particles` needs a type annotation |
 | `chaos` | class attribute `__rmul__` needs a type annotation |
-| `comprehensions` | no `enum` module |
+| `comprehensions` | empty `widgets` list needs a type annotation |
 | `fannkuch`, `generators`, `nbody`, `nqueens`, `regex_v8`, `spectral_norm`, `unpack_sequence` | none |
 | `float` | field `x` needs a type annotation |
 | `go` | field `pos_child` needs a type annotation |

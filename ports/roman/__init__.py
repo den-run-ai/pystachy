@@ -11,7 +11,7 @@
 # FOR A PARTICULAR PURPOSE.
 #
 ##############################################################################
-# Pystachy port: changed for Pystachy on 2026-10-11 (ZPL clause 5); each
+# Pystachy port: changed for Pystachy on 2026-11-03 (ZPL clause 5); each
 # change is marked "Pystachy port:", and ports/roman/PORT.md lists them.
 """Convert to and from Roman numerals"""
 
@@ -23,8 +23,7 @@ experienced programmers.  Visit http://diveintopython.org/ for the
 latest version.
 """
 
-# Pystachy port: `import argparse` moved into parse_args(), its only user:
-# Pystachy has no argparse module (#11).
+import argparse
 import re
 import sys
 
@@ -132,8 +131,7 @@ def fromRoman(s: str, special_case: bool = True) -> int:
     return result
 
 
-def parse_args() -> "argparse.Namespace":  # Pystachy port: quoted
-    import argparse  # Pystachy port: moved from the module level
+def parse_args():  # Pystachy port: infer the Namespace with this parser's fields.
     parser = argparse.ArgumentParser(
         prog='roman',
         description='convert between roman and arabic numerals'
