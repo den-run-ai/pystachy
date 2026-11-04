@@ -558,6 +558,7 @@ class ClassInfo:
         self.isrole = False  # some class names this root as its secondary base
         self.overlaps: list[str] = []  # unrelated bases with a common concrete subclass
         self.exc = ""
+        self.excsecond = ""  # additional builtin exception ancestry; no fields or methods
         self.tag = 0  # ordinary inheritance: the object's concrete class; zero outside a hierarchy
         self.nflag = 0  # the "is assigned" flags at the end of its struct (its own fields')
         self.leak = False  # its __init__ lets self escape before it ends

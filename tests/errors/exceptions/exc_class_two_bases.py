@@ -1,4 +1,4 @@
-# error: multiple inheritance requires an ordinary primary base and an independent method-only secondary base
+# error: two builtin exception bases must be independent and have ordinary Exception behavior
 class Both(ValueError, KeyError):
     pass
 

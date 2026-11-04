@@ -1,0 +1,23 @@
+True True
+True True
+True True
+True True
+True True
+False False
+MonthError bad month 0 MonthError(0)
+MonthError True
+True True
+True True
+True True
+True True
+True True
+False False
+Child bad month 13 Child(13)
+Child True
+Reverse('month', 13) ('month', 13) True
+caught by the other branch
+True
+True True
+False
+False False
+[exit 0]
