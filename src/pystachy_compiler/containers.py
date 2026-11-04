@@ -8,6 +8,7 @@ from src.pystachy_compiler.names import short
 from src.pystachy_compiler.specs import BIG, BIGOPT, ITERS, NONE_ITEM, NONEVAR, OBJECTC, OPTTYPES, TYPEMODS
 from src.pystachy_compiler.syntax import Node, made_var, mentions, mk
 from src.pystachy_compiler.utils import (
+    ListLayout,
     atomic_list,
     bool_for_int,
     elem,
@@ -25,6 +26,7 @@ from src.pystachy_compiler.utils import (
     is_union,
     is_vtuple,
     key_problem,
+    list_identity_kind,
     literal,
     lookable,
     selem,
@@ -46,7 +48,7 @@ def gen_list_id_kind(self, t: str) -> int:
         self.identity_event("numeric list in an identity-inert module")
     if self.rtmode or not self.idhere():
         return 0
-    return 1 if t == "list[int]" else 2 if t == "list[float]" else 0
+    return list_identity_kind(t)
 
 
 def gen_list_identity(self, v: Val) -> Val:
@@ -82,16 +84,15 @@ def gen_list_store(self, o: Val, v: Val, method: str, index: str = "") -> None:
     if v.t == BIG and elem(o.t) == "int" and int_lists() and k == 0:
         self.big_list_store(o, v, method, index)
         return
-    args = [f"ptr {o.v}"]
+    layout = ListLayout(o.t, int_lists())
+    args = [o]
     if index != "":
-        args.append(f"i64 {index}")
+        args.append(Val(index, "int"))
     raw = self.select(self.big_fits([v]), self.big_lo(v), Val("-9223372036854775808", "int")) if v.t == BIG else self.to_slot(v)
-    args.append("i64 " + raw)
+    args.append(Val(raw, layout.slot))
     if k != 0:
-        args.extend([f"ptr {self.dyn_box(v).v}", f"i64 {k}"])
-    symbols = {"append": "pys_list_append", "set": "pys_list_set", "insert": "pys_list_insert"}
-    identities = {"append": "pys_list_append_identity", "set": "pys_list_set_identity", "insert": "pys_list_insert_identity"}
-    self.rt(identities[method] if k != 0 else symbols[method], "void", args)
+        args.extend([self.dyn_box(v), Val(str(k), "int")])
+    self.list_write("list." + method + ("_identity" if k != 0 else ""), args)
 
 
 def gen_list_minmax(self, o: Val, desc: str, maximum: bool) -> Val:
@@ -145,9 +146,10 @@ def gen_none_container(self, e: Node) -> Val:
         return Val(self.rt("pys_list_mul", "ptr", [f"ptr {xs.v}", f"i64 {n.v}"]), xs.t)
     if e.kind == "list":
         r = self.rt("pys_list_new", "ptr", [f"i64 {len(e.kids)}"])
+        t = self.ctype("list", [NONE_ITEM])
         for _ in e.kids:
-            self.rt("pys_list_append", "void", [f"ptr {r}", "i64 0"])
-        return Val(r, self.ctype("list", [NONE_ITEM]))
+            self.list_write("list.append", [Val(r, t), Val("0", "*" + NONE_ITEM)])
+        return Val(r, t)
     ks: list[Val] = []
     kt = ""
     for i in range(0, len(e.kids), 2):

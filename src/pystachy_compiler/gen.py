@@ -678,6 +678,7 @@ from src.pystachy_compiler.emission import (
     gen_ret_ as emission_ret_,
     gen_returned_none as emission_returned_none,
     gen_rt as emission_rt,
+    gen_list_write as emission_list_write,
     gen_runtime as emission_runtime,
     gen_save as emission_save,
     gen_sconst as emission_sconst,
@@ -2627,6 +2628,9 @@ class Gen:
 
     def rt(self, name: str, ret: str, args: list[str], x: str = "") -> str:
         return emission_rt(self, name, ret, args, x)
+
+    def list_write(self, key: str, args: list[Val]) -> None:
+        emission_list_write(self, key, args)
 
     def alloc_fixed(self, t: str) -> Val:
         return emission_alloc_fixed(self, t)

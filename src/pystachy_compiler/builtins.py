@@ -902,7 +902,7 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             return Val(self.rt("fabs", "double", [f"double {self.as_float(vals[0]).v}"]), "float")
         xs = self.rt("pys_list_new", "ptr", [f"i64 {len(vals)}"])
         for v in vals:
-            self.rt("pys_list_append", "void", [f"ptr {xs}", "i64 " + self.to_slot(self.as_float(v))])
+            self.list_write("list.append", [Val(xs, "list[float]"), Val(self.to_slot(self.as_float(v)), "*float")])
         return Val(self.rt("pys_m_hypot_list", "double", [f"ptr {xs}"]), "float")
     if name == "math.prod" and len(vals) == 2 and is_list(vals[0].t) and (vals[1].t == "str" or is_list(vals[1].t) or is_dict(vals[1].t) or is_set(vals[1].t)):
         return self.prod_seq(vals[0], vals[1])
@@ -2647,6 +2647,13 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
             return self.dyn_unbox(Val(box, "dyn"), T)
         if m in ["index", "count", "remove"] and idquery.t != "":
             return self.list_find(o, idquery, m, av[3][4:] if m == "index" else "", av[4][4:] if m == "index" else "")
+    if base == "list" and (m == "append" or m == "insert"):
+        operands = [o]
+        if m == "insert":
+            operands.append(Val(av[1][4:], "int"))
+        operands.append(Val(av[-1][4:], "*" + T))
+        self.list_write("list." + m, operands)
+        return Val("null", "None")
     if kx.t != "":
         res = self.nonekey(kx, av[2][4:] if m == "get" else "", fn, av, x)
     else:

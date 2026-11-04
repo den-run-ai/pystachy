@@ -7,7 +7,7 @@ disagrees with its entry is an internal error. This tool checks the table itself
   - signatures: each entry's declare line has the result and parameter types of the function
     clang compiles runtime.c to (LLVM IR at -O0); a C library function (fabs) is taken from a
     file that includes <math.h>, and llvm-as checks the LLVM intrinsics (llvm.*);
-  - coverage: every runtime function compiler source names (METHODS, CALLS, IRT, FRT, the "pys_..."
+  - coverage: every runtime function compiler source names (METHODS, CALLS, IRT, FRT, LIST_WRITES, the "pys_..."
     strings of its source, the file attributes Gen.expr names as pys_file_<attribute> and the
     __pys_repr_enter/leave builtins) has an entry, and every entry is named;
   - exceptions: the builtin exception classes the compiler knows (EXCBASES) are this Python's,
@@ -634,6 +634,7 @@ assert cycle({"h": {"rt:g"}, "rt:g": {"g"}, "g": {"h"}}, "g", {"rt:g"}) == ["g",
 def main():
     verbose = "-v" in sys.argv[1:]
     pys = load_compiler()
+    from src.pystachy_compiler.specs import LIST_WRITES
     rt = pys.RUNTIME
     bad = []
     note = []
@@ -771,6 +772,12 @@ def main():
     named = set()
     for key in pys.METHODS:
         named.add("pys_" + key.replace(".", "_"))
+    # Typed list-write builders select registry keys instead of spelling symbols.
+    for key in LIST_WRITES:
+        if key not in rt:
+            bad.append(f"{key}: LIST_WRITES has no RUNTIME signature")
+        else:
+            named.add(pys.rtsym(key))
     for spec in pys.CALLS.values():
         named.add(spec.split(":")[0])
     named.update(pys.IRT.values())

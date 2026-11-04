@@ -220,6 +220,38 @@ print(kernel(3))
         self.assertEqual(ordinary.returncode, 0, ordinary.stderr)
         self.assertEqual((destination / "llvm.ll").read_bytes(), ordinary.stdout)
 
+    def test_recursive_requests_share_identity_only_for_matching_layouts(self):
+        program = ROOT / "tests/programs/generics/generic_distinct_layouts.py"
+        completed, destination = self.inspect(program, args=("--function", "no_such_function"))
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        report = self.report(destination)
+        selected = report["attempts"][-1]["class_specializations"]
+        layouts = {cls["fields"]["values"]: (identity, cls) for identity, cls in selected.items()
+                   if cls["template"] == "Collection"}
+        self.assertEqual(set(layouts), {"list[int]", "tuple[int,int]"})
+        identity, native_list = layouts["list[int]"]
+        self.assertEqual(native_list["fields"]["next"], identity)
+        self.assertEqual(native_list["bindings"], {"T": "int"})
+        self.assertEqual(layouts["tuple[int,int]"][1]["bindings"], native_list["bindings"])
+        self.assertCountEqual(native_list["request_keys"],
+                              ["Collection(list[int])", "Collection[);T=int", "Collection<list[int]>;T=int"])
+        self.assertEqual(set(report["pass_contracts"]), {"listget", "dictfuse", "unionslots", "nullcheck"})
+        self.assertIn("read-effect-bounds", report["pass_contracts"]["unionslots"]["invalidates"])
+
+    def test_rejected_class_is_explained_without_publishing_its_tentative_key(self):
+        program = self.source("class Kept:\n    def __init__(self, value):\n        self.value = value\n"
+                              "class Broken:\n    def __init__(self, value):\n        self.value = missing\n"
+                              "x = Kept('yes')\ny = Broken(1)\n")
+        ordinary = self.ordinary_ir(program)
+        completed, destination = self.inspect(program)
+        self.assertEqual((ordinary.returncode, completed.returncode), (1, 1))
+        self.assertEqual((destination / "compiler.stderr").read_bytes(), ordinary.stderr)
+        report = self.report(destination)
+        self.assertIn("specializing Broken(int)", report["diagnostics"][0]["context"][-1])
+        attempt = report["attempts"][-1]
+        self.assertEqual(attempt["status"], "failed")
+        self.assertEqual([cls["template"] for cls in attempt["class_specializations"].values()], ["Kept"])
+
     def test_semantic_rejection_links_imported_specialization_without_parsing_paths(self):
         support = self.source("def add(value):\n    return value + 'x'\n", "folder:é/worker_support.py")
         program = self.source("import worker_support\nprint(worker_support.add(1))\n", "folder:é/program.py")
@@ -267,9 +299,11 @@ print(kernel(3))
         self.assertFalse((destination / "llvm.ll").exists())
 
     def test_retries_are_observed_without_transient_diagnostics_or_duplicate_functions(self):
-        program = self.source("# pystachy: dynamic-any\ndef pick(flag: bool):\n"
+        program = self.source("# pystachy: dynamic-any\nclass Box:\n"
+                              "    def __init__(self, payload):\n        self.payload = payload\n"
+                              "def pick(flag: bool):\n"
                               "    value = 300\n    if flag:\n        value = 2.5\n"
-                              "    return value\nprint(pick(True))\n")
+                              "    return Box(value)\nprint(pick(True).payload)\n")
         completed, destination = self.inspect(program, args=("--function", "pick"))
         self.assertEqual(completed.returncode, 0, completed.stderr)
         report = self.report(destination)
@@ -277,6 +311,12 @@ print(kernel(3))
         self.assertGreaterEqual(len(report["attempts"]), 2)
         self.assertTrue(any(attempt["status"] == "retry" for attempt in report["attempts"]))
         self.assertEqual(report["attempts"][-1]["status"], "completed")
+        earlier, final = (attempt["class_specializations"] for attempt in
+                          (report["attempts"][0], report["attempts"][-1]))
+        self.assertEqual(set(earlier), set(final))
+        identity, = earlier
+        self.assertEqual(earlier[identity]["fields"], {"payload": "int"})
+        self.assertEqual(final[identity]["fields"], {"payload": "union[float,int]"})
         self.named_function(self.snapshot(destination, "typed-before"), "pick")
         self.named_function(self.snapshot(destination, "typed-after"), "pick")
         ordinary = self.ordinary_ir(program)
