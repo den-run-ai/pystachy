@@ -284,6 +284,40 @@ class ExtractTests(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertEqual(r.stdout, "ok SampleTests.test_asserts\nok OtherTests.test_other\n")
 
+    def test_skipped_and_incomplete_methods_cannot_qualify(self):
+        self.src.write_text("""
+import unittest
+@unittest.skip("no backend")
+class Disabled(unittest.TestCase):
+    def test_disabled(self):
+        pass
+
+class Child(Disabled):
+    def test_child(self):
+        pass
+
+class Active(unittest.TestCase):
+    def test_runtime_skip(self):
+        self.skipTest("no backend")
+    def test_early_exit(self):
+        raise SystemExit(0)
+""")
+        tests, left = ctm.extract(str(self.src), str(self.out))
+        self.assertEqual({(c, m) for c, m, _ in left},
+                         {("Disabled", "test_disabled"), ("Child", "test_disabled"), ("Child", "test_child")})
+        for c, m in tests:
+            prog = str(self.program(f"{c}__{m}"))
+            result = ctm.triage_one([], prog, {}, f"{c}.{m}")
+            self.assertEqual(result["status"], "cpython-fail")
+            self.assertIn("skipTest" if m == "test_runtime_skip" else "success marker", result["detail"])
+
+    def test_triage_requires_matching_stderr(self):
+        # Stand in for 'compiler run program' and emit the expected stdout plus a spurious warning.
+        runner = [sys.executable, "-c", "import sys; print('ok A.test'); print('warning', file=sys.stderr)"]
+        result = ctm.native(runner, "unused", (0, "ok A.test\n", ""), {})
+        self.assertEqual(result["status"], "differs")
+        self.assertIn("warning", result["detail"])
+
     def test_triage_reports_files_it_cannot_read(self):
         out = self.dir / "triage.json"
         with self.assertRaises(SystemExit), open(os.devnull, "w") as null:
