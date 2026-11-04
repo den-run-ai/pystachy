@@ -2698,6 +2698,16 @@ def gen_tput(self, v: Val, index: int, x: Val) -> None:
         return
     self.tstore(v, index, self.to_slot(x, BIG in targs(v.t)[index]))  # (a tuple of promoting ints, as its type's item: kept)
 
+def gen_indexed_ord(self, n: Node) -> Val | None:
+    # Code point of an indexed str. Runtime mode indexes bytes, and comparison
+    # methods have their own error path for invalid indexing.
+    source, index = n.kids
+    if self.rtmode or self.curfn.cmpops or self.static_type(source) != "str":
+        return None
+    text = self.expr(source, "")  # the index may rebind the string
+    position = self.seq_index(index, "TypeError: string indices must be integers, not 'NoneType'")
+    return Val(self.rt("pys_text_ord_at", "i64", [f"ptr {text.v}", f"i64 {position.v}"]), "int")
+
 def gen_index(self, n: Node, want: str = "") -> Val:
     c = n.kids[0]
     if c.kind == "name" and c.s in self.galias and c.s not in self.ltype:
@@ -4213,6 +4223,18 @@ def gen_compare(self, n: Node) -> Val:
     tc = self.refl_type_cmp(n)  # (type(a) is C, type(a) == type(b): reflection.py)
     if tc is not None:
         return tc
+    if n.s == "==" or n.s == "!=":
+        indexed = n.kids[0]
+        literal = n.kids[1]
+        if literal.kind == "index":
+            indexed = n.kids[1]
+            literal = n.kids[0]
+        # An ASCII character has exactly one encoding even in a string with raw
+        # invalid bytes. A literal with an import guard must still run in order.
+        if indexed.kind == "index" and literal.kind == "str" and literal.mchk == "" and len(literal.s) == 1 and ord(literal.s) < 128:
+            point_at = self.indexed_ord(indexed)
+            if point_at is not None:
+                return self.num_cmp(n.s, point_at, Val(str(ord(literal.s)), "int"))
     ops = n.s.split(",")
     if len(ops) == 1 and (n.kids[0].kind == "list" or n.kids[0].kind == "dict") and (len(n.kids[0].kids) == 0 or nones(n.kids[0])):
         # [] == xs, {} in ds, [None] == xs: an empty display, or one of None, takes its type

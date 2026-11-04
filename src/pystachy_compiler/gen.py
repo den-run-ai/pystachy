@@ -821,6 +821,7 @@ from src.pystachy_compiler.expressions import (
     gen_ifexp as expressions_ifexp,
     gen_numeric_phi as expressions_numeric_phi,
     gen_index as expressions_index,
+    gen_indexed_ord as expressions_indexed_ord,
     gen_isinst as expressions_isinst,
     gen_class_matches as expressions_class_matches,
     gen_obj_isinst as expressions_obj_isinst,
@@ -4358,6 +4359,9 @@ class Gen:
 
     def tslot(self, v: Val, k: int) -> Val:
         return expressions_tslot(self, v, k)
+
+    def indexed_ord(self, n: Node) -> Val | None:
+        return expressions_indexed_ord(self, n)
 
     def index(self, n: Node, want: str = "") -> Val:
         return expressions_index(self, n, want)
