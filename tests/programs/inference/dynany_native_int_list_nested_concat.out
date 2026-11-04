@@ -4,4 +4,8 @@ roundtrip True True
 shared mutation [[1000, 2000]] [[1000, 2000], 'word'] ['word', [1000, 2000]] True True
 dynamic store [1000, 1000] True
 independent outer [[1000, 1000], [2000]] ['replaced', 'word', False] ['word', [1000, 1000]] True
+slice aliases True True True
+slice mutation [[1000, 1000, 2000], [2000]] [[1000, 1000, 2000], 0, [2000]]
+tuple inner True True
+objects True 9 True
 [exit 0]

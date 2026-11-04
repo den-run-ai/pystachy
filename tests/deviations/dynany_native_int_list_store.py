@@ -93,3 +93,22 @@ try:
     copied_boxes.append("bad")
 except TypeError:
     print("deepcopy boxed layout rejected", cloned.native)
+
+
+# A native receiver still checks the replacement slots. Unsupported deeper
+# containers cannot cross by alias; an empty input copies no such item.
+nested: list[list[int]] = [original]
+checked: Any = original
+try:
+    checked[:] = nested
+except TypeError:
+    print("native rejects nested", original)
+deep: list[list[list[int]]] = []
+target: Any = [4]
+target[:] = deep
+print("empty deep source", target)
+deep.append(nested)
+try:
+    target[:] = deep
+except TypeError:
+    print("deep crossing rejected", target)

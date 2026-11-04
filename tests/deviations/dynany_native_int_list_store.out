@@ -18,4 +18,7 @@ deepcopy shared True True
 deepcopy prefix [1, 2, 4] [1, 2]
 deepcopy slice [1, 2, 4]
 deepcopy boxed layout rejected [1, 2, 4]
+native rejects nested [1, 2]
+empty deep source []
+deep crossing rejected []
 [exit 0]

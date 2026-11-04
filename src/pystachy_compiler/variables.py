@@ -23,7 +23,7 @@ from src.pystachy_compiler.analysis import (
     walrus_values,
 )
 from src.pystachy_compiler.diagnostics import FILES, LINES, MODDUNDERS, Rejoin, dynamic_program, where
-from src.pystachy_compiler.dynamic import XCMP, comparison_record_write, comparison_storage_key
+from src.pystachy_compiler.dynamic import XCMP, boxed_list_items, comparison_record_write, comparison_storage_key
 from src.pystachy_compiler.ir import Blk, Closure, FnInfo, Frame, Ins, IterArg, Val
 from src.pystachy_compiler.names import ENUMCLASSES, owner, short
 from src.pystachy_compiler.specs import BIG, BIGOPT, INERT_DECOS, NONE_ITEM, NONEVAR, OPTTYPES, PYBUILTINS, RANGEC, RANGES, UNSUPPORTED, is_excname
@@ -2144,9 +2144,12 @@ def gen_slice_store(self, o: Val, bnd: list[str], v: Val) -> None:
                 v = Val(self.rt("pys_bytes_list", "ptr", [f"ptr {v.v}"]), "list[int]")
             elif not is_list(v.t):
                 v = self.as_list(v, "slice")
-            # Slice assignment copies the source items, so a temporary boxed list may carry
-            # an otherwise unboxable typed source without changing the source's aliases.
-            v = self.dyn_fresh(v)
+            # Copy source slots, boxing each supported item with its own layout.
+            # An unsupported item still fails only when the source actually holds one.
+            if is_list(v.t) and self.dyn_boxable(self.rec_type(elem(v.t))) == "":
+                v = boxed_list_items(self, [v])
+            else:
+                v = self.dyn_fresh(v)
         v = self.dyn_box(v)
         v = self.dyn_call(self.dyn_dispatcher("slice_source", ["dyn"], "dyn", ""), [v])
         self.rt("pys_dyn_list_set_slice", "void", [f"ptr {o.v}", f"i64 {bnd[0]}", f"i64 {bnd[1]}", f"i64 {st}", f"ptr {v.v}"])

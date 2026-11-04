@@ -3773,6 +3773,28 @@ def builtin_arity(bt: str, m: str, n: int) -> str:
     return f"{m} expected {bound}{count} argument{'s' if count != 1 else ''}, got {n}"
 
 
+def boxed_list_items(self, sources: list[Val]) -> Val:
+    # A fresh outer list holds boxes of the original items. Read native
+    # layouts with their identity/wide companions, even in a checked caller.
+    result = Val(self.rt("pys_list_new", "ptr", ["i64 0"]), "list[dyn]")
+    for source in sources:
+        ctr = self.alloca("int", "")
+        self.mstore("int", "0", ctr)
+        head = self.label()
+        body = self.label()
+        end = self.label()
+        self.br(head)
+        self.place(head)
+        i = self.mload("int", ctr)
+        self.cbr(self.num_cmp("<", Val(i, "int"), Val(self.mload("int", source.v), "int")).v, body, end)
+        self.place(body)
+        self.list_store(result, self.dyn_box(self.list_item(source, Val(i, "int"), True)), "append")
+        self.mstore("int", self.scalar("add", [Val(i, "int"), Val("1", "int")]), ctr)
+        self.br(head)
+        self.place(end)
+    return result
+
+
 def gen_dyn_fresh(self, v: Val) -> Val:
     # v, which a builtin method made just now, as a value a box can hold: a list of typed items a
     # list of their boxes (nothing else refers to it yet: pys_dyn_list_of), anything else as it is

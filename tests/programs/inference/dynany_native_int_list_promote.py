@@ -46,6 +46,14 @@ def run() -> None:
     copied: Any = value.copy()
     copied.append("free")
     print("wide copy", copied, copied[0] is number)
+    source: list[list[int]] = [items, items]
+    outer: Any = []
+    outer[:] = source
+    source.clear()
+    churn()
+    print("wide slice", outer[0] is items, outer[1] is outer[0], outer[0][0] is number)
+    outer[1].append(number)
+    print("wide slice write", items, outer[0][1] is number)
 
 
 run()
