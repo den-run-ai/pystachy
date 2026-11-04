@@ -45,7 +45,7 @@ echo '1 passed, 0 failed'
         workflow = (ROOT / ".github/workflows/variants.yml").read_text()
         matrix = re.search(r"^\s+variant: \[([^\]]+)\]", workflow, re.M)
         self.assertIsNotNone(matrix)
-        variants = [name.strip() for name in matrix.group(1).split(",")]
+        variants = matrix.group(1).replace(",", " ").split()
         self.assertEqual([cache.removeprefix("cache-") for cache, _, _ in calls], variants)
         self.assertEqual(len(set(variants)), len(variants))
         rows = [{name: True for name in OPTS}]  # default all-on row, run by verification

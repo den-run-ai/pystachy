@@ -43,6 +43,10 @@ def summed(xs: list[float]) -> float:
         total += x
     return total
 
+def is_colon(text: str, pos: int) -> bool:
+    c = text[pos]
+    return c == ":"
+
 def looked_up(d: dict[str, int], key: str) -> int:
     if key in d:
         return d[key]
@@ -60,7 +64,7 @@ def repeated(box: Box | None) -> int:
     except AttributeError:
         return -1
 
-print(summed([0.5, 1.5]), looked_up({"x": 2}, "x"))
+print(summed([0.5, 1.5]), looked_up({"x": 2}, "x"), is_colon(":", 0))
 print(accumulated([0.5, 1.5]), repeated(Box(3)), repeated(None))
 """
 
@@ -213,6 +217,31 @@ class PassContractTests(unittest.TestCase):
             self.assertEqual(g.optimize(fn, {"listget": True}), 0)
         check.assert_not_called()
 
+    def test_private_character_keeps_only_its_indexed_read_and_ascii_predicates(self):
+        source = Path(__file__).resolve().parents[1] / "tests/programs/optimizations/opt_charslots.py"
+        shapes = {}
+        charslots = Gen.charslots
+
+        def observe(gen, fn):
+            changed = charslots(gen, fn)
+            ops = [op for block in fn.blocks for op in block.code]
+            points = {f"%t{op.r[0]}" for op in ops if op.op == "rt" and op.s == "text.ord_at"}
+            shapes[fn.f.name] = (
+                changed,
+                [op.s for op in ops if op.op == "rt" and op.s in ("text.get", "text.ord_at")],
+                {op.a[1].v for op in ops if op.op == "num.cmp" and op.s == "==" and op.a[0].v in points},
+            )
+            return changed
+
+        with patch.dict(os.environ, {"PYSTACHY_IRCHECK": "1", "PYSTACHY_OPT": ""}), \
+                patch.object(Gen, "charslots", observe):
+            Gen().program(Loader([]).program(str(source), source.read_bytes().decode("latin1")))
+        self.assertEqual(shapes["classify"], (1, ["text.ord_at"], {"0", "58"}))
+        self.assertEqual(shapes["ordered"][:2], (1, ["text.ord_at"]))
+        for name in ("returned", "boxed", "same_object", "nonascii", "assigned_twice", "conditional"):
+            with self.subTest(name=name):
+                self.assertEqual(shapes[name][:2], (0, ["text.get"]))
+
     def test_real_rewrites_are_verified_and_llvm_is_unchanged(self):
         events = []
         original_verify = Gen.verify
@@ -246,7 +275,7 @@ class PassContractTests(unittest.TestCase):
             if event[0] not in ("verify", "verify-eh") and event[2] > 0:
                 rewritten.add(event[0])
                 self.assertEqual(events[j + 1], ("verify", event[1]))
-        self.assertEqual(rewritten, {"listget", "dictfuse", "unionslots", "nullcheck"})
+        self.assertEqual(rewritten, {"charslots", "listget", "dictfuse", "unionslots", "nullcheck"})
         with patch.dict(os.environ, {"PYSTACHY_IRCHECK": "0", "PYSTACHY_OPT": "",
                                     "PYSTACHY_IRFX": "0"}):
             normal_ir = Gen().program(Loader([]).program("pass_contracts.py", SOURCE))

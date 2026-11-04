@@ -34,6 +34,9 @@ class PassContract:
 # Dispatch order is part of the contract: every local analysis sees the previous
 # pass's rewritten IR, and nullcheck can change the CFG after the other passes.
 PASS_CONTRACTS: list[PassContract] = [
+    PassContract("charslots", ["uses", "predecessors", "reaching-stores"],
+                 ["cfg", "loop-shape"],
+                 ["values", "range-proofs", "alias-proofs", "slot-layout", "exact-effects"]),
     PassContract("listget", ["predecessors", "loop-ranges"],
                  ["cfg", "loop-shape", "slot-layout"],
                  ["values", "range-proofs", "alias-proofs", "exact-effects"]),
@@ -344,7 +347,9 @@ def gen_optimize(self, fn: IFn, on: dict[str, bool]) -> int:
             gen_pass_check(self, fn, contract, False)
             checked = True
         changed = 0
-        if contract.name == "listget":
+        if contract.name == "charslots":
+            changed = self.charslots(fn)
+        elif contract.name == "listget":
             changed = self.listget(fn)
         elif contract.name == "dictfuse":
             changed = self.dictfuse(fn)
@@ -377,6 +382,124 @@ def gen_preds(self, fn: IFn) -> dict[str, list[int]]:
         if h != "" and h in pl and j not in pl[h]:
             pl[h].append(j)
     return pl
+
+def ascii_char_test(code: list[Ins], x: int, counts: dict[str, int], literals: list[str]) -> int:
+    # The typed lowering of local == ASCII literal, returning the literal or -1.
+    # Every temporary that goes away must have exactly its one use here.
+    if x + 4 >= len(code):
+        return -1
+    load, pack, literal, eq, truth = code[x], code[x + 1], code[x + 2], code[x + 3], code[x + 4]
+    if pack.op != "slot.pack" or literal.op != "slot.pack" or eq.op != "rt" or eq.s != "eq" or eq.x != "s":
+        return -1
+    if pack.a[0].v != f"%t{load.r[0]}" or eq.a[0].v != f"%t{pack.r[0]}" or eq.a[1].v != f"%t{literal.r[0]}":
+        return -1
+    if literal.a[0].t != "str" or not literal.a[0].v.startswith("@s."):
+        return -1
+    # sconst assigns these symbols in literal-table order. Non-ASCII raw bytes
+    # can have the same ordinal as a different UTF-8 encoding of the character.
+    raw = literals[int(literal.a[0].v[3:])]
+    if len(raw) != 1 or ord(raw) >= 128:
+        return -1
+    if truth.op != "num.cmp" or truth.s != "!=" or truth.a[0].t != "int" or truth.a[0].v != f"%t{eq.r[0]}" or truth.a[1].v != "0":
+        return -1
+    for intermediate in [load, pack, literal, eq]:
+        if counts[f"%t{intermediate.r[0]}"] != 1:
+            return -1
+    return ord(raw)
+
+def gen_charslots(self, fn: IFn) -> int:
+    # Try one private slot whose sole store immediately follows text.get. Bound
+    # the work per function and skip suspendable frames and exception regions.
+    if self.rtmode or fn.coro or fn.f.cmpops or fn.tries or fn.n > 512 or len(fn.blocks) > 128:
+        return 0
+    slots = {f"%{s.s or 'h'}.{s.r[0]}": s for s in fn.slots if s.k == 0 and s.t == "str"}
+    if not slots:
+        return 0
+    size = 0
+    for block in fn.blocks:
+        size += len(block.code)
+        if size > 1024:
+            return 0
+    addr = ""
+    storeblock = 0
+    storepos = 0
+    for j in range(len(fn.blocks)):
+        code = fn.blocks[j].code
+        for x in range(1, len(code)):
+            i = code[x]
+            if i.op == "mem.store" and i.a[0].v in slots:
+                index = code[x - 1]
+                if index.op == "rt" and index.s == "text.get" and i.a[1].v == f"%t{index.r[0]}":
+                    storeblock, storepos, addr = j, x, i.a[0].v
+                    break
+        if addr != "":
+            break
+    if addr == "":
+        return 0
+
+    # All uses, including address-taking, boxing, phi operands and reads that
+    # escape. Accept only the exact equality lowering, with private temporaries.
+    counts: dict[str, int] = {}
+    reads: list[list[int]] = []
+    operands = 0
+    for j in range(len(fn.blocks)):
+        for x in range(len(fn.blocks[j].code)):
+            i = fn.blocks[j].code[x]
+            operands += len(i.a)
+            if operands > 4096:
+                return 0
+            for k in range(len(i.a)):
+                v = i.a[k].v
+                counts[v] = counts.get(v, 0) + 1
+                if v == addr:
+                    if k == 0 and i.op == "mem.load" and i.t == "str":
+                        reads.append([j, x])
+                    elif k != 0 or j != storeblock or x != storepos:
+                        return 0
+    index = fn.blocks[storeblock].code[storepos - 1]
+    point = f"%t{index.r[0]}"
+    if counts[point] != 1 or not reads:
+        return 0
+
+    for read in reads:
+        ch = ascii_char_test(fn.blocks[read[0]].code, read[1], counts, self.strvals)
+        if ch < 0:
+            return 0
+        read.append(ch)
+
+    # A path reaching any read without passing the store would observe an
+    # uninitialized local. Stop the backwards search at the defining block.
+    preds = self.preds(fn)
+    seen: dict[int, bool] = {}
+    pending: list[int] = []
+    for read in reads:
+        if read[0] == storeblock and read[1] <= storepos:
+            return 0
+        pending.append(read[0])
+    while pending:
+        j = pending.pop()
+        if j != storeblock and j not in seen:
+            if j == 0:
+                return 0
+            seen[j] = True
+            for pred in preds[fn.blocks[j].label]:
+                pending.append(pred)
+
+    # The original potentially raising read executes once, in place. Keep its
+    # SSA name and the final predicate's name; all other replaced values are private.
+    index.t = "int"
+    index.s = self.runtime("pys_text_ord_at")
+    for read in reversed(reads):
+        code = fn.blocks[read[0]].code
+        x = read[1]
+        truth = code[x + 4]
+        truth.s = "=="
+        truth.a = [Val(point, "int"), Val(str(read[2]), "int")]
+        for _ in range(4):
+            code.pop(x)
+    del fn.blocks[storeblock].code[storepos]
+    fn.slots = [s for s in fn.slots if s is not slots[addr]]
+    return 1
 
 def gen_listget(self, fn: IFn) -> int:
     # Unchecked list reads in sequence loops. The test a seq loop makes of a list leads to a

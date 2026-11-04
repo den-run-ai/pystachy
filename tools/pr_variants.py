@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Run six sparse PR configurations in two workers, with validated bootstrap reuse.
+"""Run seven sparse PR configurations in two workers, with validated bootstrap reuse.
 
-Each worker runs three configurations in sequence; tests/run.sh parallelizes the
+Each worker runs its configurations in sequence; tests/run.sh parallelizes the
 cases in the foreground, preserving the SIGINT driver's semantics. variants.sh
 keeps its independent runtime cache for each configuration. This report describes
 sampled PR evidence and cannot be used as full release verification.
@@ -19,7 +19,7 @@ import time
 from ci_sample import ROOT, expected_checks, manifest
 from verification_bootstrap import restore_bundle
 
-VARIANT_GROUPS = (("opt-1", "opt-2", "opt-3"), ("opt-4", "opt-5", "cflags-O0"))
+VARIANT_GROUPS = (("opt-1", "opt-2", "opt-3", "opt-4"), ("opt-5", "opt-6", "cflags-O0"))
 MAX_CASE_WORKERS = 4
 SUMMARY = re.compile(r"^([0-9]+) passed, ([0-9]+) failed$")
 

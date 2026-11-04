@@ -144,7 +144,7 @@ class InspectionTests(unittest.TestCase):
         self.assertEqual(before_ops, self.operations(after))
         self.assertEqual([event["name"] for event in self.report(destination)["program_passes"]], ["recursionscope"])
         passes = self.report(destination)["passes"]
-        self.assertFalse(any(event["name"] in {"listget", "dictfuse", "unionslots", "nullcheck"}
+        self.assertFalse(any(event["name"] in {"charslots", "listget", "dictfuse", "unionslots", "nullcheck"}
                              for event in passes), "disabled pass was reported as executed")
         ordinary = self.ordinary_ir(program, env=env)
         self.assertEqual(ordinary.returncode, 0, ordinary.stderr)
@@ -235,7 +235,7 @@ print(kernel(3))
         self.assertEqual(layouts["tuple[int,int]"][1]["bindings"], native_list["bindings"])
         self.assertCountEqual(native_list["request_keys"],
                               ["Collection(list[int])", "Collection[);T=int", "Collection<list[int]>;T=int"])
-        self.assertEqual(set(report["pass_contracts"]), {"listget", "dictfuse", "unionslots", "nullcheck"})
+        self.assertEqual(set(report["pass_contracts"]), {"charslots", "listget", "dictfuse", "unionslots", "nullcheck"})
         self.assertIn("read-effect-bounds", report["pass_contracts"]["unionslots"]["invalidates"])
 
     def test_rejected_class_is_explained_without_publishing_its_tentative_key(self):

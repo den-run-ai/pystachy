@@ -415,11 +415,11 @@ and focused alias, mutation and GC tests cover the exposed dynamic mutation path
 
 ## Optimizations
 
-`OPTS` lists the available switches. Only `listget`, `dictfuse`, `unionslots` and `nullcheck`
+`OPTS` lists the available switches. `charslots`, `listget`, `dictfuse`, `unionslots` and `nullcheck`
 are whole-function IR passes; the others select frontend or lowering choices.
 
 `PASS_CONTRACTS` declares their order, prerequisites, preserved facts and invalidation.
-All four require typed IR before exception lowering and conservative bounds on
+They require typed IR before exception lowering and conservative bounds on
 raising, allocation, callbacks, runtime state and every write category.
 Each invocation owns its analyses; no range, alias or value proof is cached between
 passes. These preserved effect bounds support mutation proofs and exception lowering.
@@ -429,6 +429,7 @@ rerun `Gen.effects`; exact effect reporting already does so after a rewrite.
 
 | Pass | Analyses built locally | Additional invalidation after a rewrite |
 |---|---|---|
+| `charslots` | Use counts, private slot accesses and predecessor reachability | Slot layout and instruction-derived proofs |
 | `listget` | Predecessors and loop bounds | Instruction-derived value, range and alias proofs |
 | `dictfuse` | Predecessors, values and lookup proofs | Instruction-derived value, range and alias proofs |
 | `unionslots` | Values, uses, aliases and reaching stores | Read-effect bounds, slot layout and instruction-derived proofs |
@@ -440,6 +441,7 @@ before the next pass. Normal compilation does not add these verification scans.
 
 | Option | Implemented behavior |
 |---|---|
+| `charslots` | For a private local assigned once in the IR from a string index, keep the indexed code point if the store dominates every read and each read only compares it to a one-byte ASCII string literal. Indexing and its exceptions stay at the assignment. |
 | `listget` | Replace a sequence loop's list read with an unchecked load when the loop test proves the index valid and no intervening effect can shorten the list; a loop over a `bytes`, which never changes in place, reads each byte inline as it is lowered |
 | `dictfuse` | Reuse a known dictionary entry across membership tests, reads and updates of the same dictionary/key, until a mutation or user-code effect invalidates it |
 | `tupleiter` | Traverse tuple slots directly instead of materializing a list |

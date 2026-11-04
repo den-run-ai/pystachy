@@ -1,12 +1,9 @@
 # Advisory configuration variants (docs/testing.md#configuration-variants): make variants, the corpus
 # JIT and AOT in configurations that CI's verification does not test and that must change no result:
 # the IR passes off in the rows of a covering array of their pairs (PYSTACHY_OPT), and the runtime and
-# AOT programs built at -O0 (PYSTACHY_CFLAGS). Each variant runs in four shards of the corpus, each in a
-# job of its own, as CI's groups do: under ten minutes of work, within a 15-minute limit (Lint's
-# tools/test_workflow_limits.py). A failed test fails a run; nothing waits for it. Daily and on demand,
-# and on pushes to main that change it. PRs run sampled configurations in two CI workers.
-# The matrix lists tools/variants.sh's
-# variants, which rejects a name it lacks.
+# AOT programs built at -O0 (PYSTACHY_CFLAGS). Each variant runs in four corpus shards.
+# Two optimizer rows share a build per shard. PRs use two workers with sampled cases.
+# The full matrix runs daily, on demand and on relevant pushes to main.
 name: Variants
 
 on:
@@ -38,7 +35,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        variant: [opt-1, opt-2, opt-3, opt-4, opt-5, cflags-O0]
+        variant: [opt-1, opt-2, opt-3, opt-4, opt-5 opt-6, cflags-O0]
         shard: [0/4, 1/4, 2/4, 3/4]
     env:
       PYSTACHY_LLVM: /usr/lib/llvm-18/bin
