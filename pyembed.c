@@ -57,6 +57,7 @@ PyObject *PyObject_GetAttrString(PyObject *, const char *);
 PyObject *PyObject_Vectorcall(PyObject *, PyObject *const *, size_t, PyObject *);
 PyObject *PyObject_VectorcallMethod(PyObject *, PyObject *const *, size_t, PyObject *);
 PyObject *PyUnicode_FromString(const char *);
+Py_ssize_t PyUnicode_GetLength(PyObject *);
 PyObject *PyUnicode_DecodeUTF8(const char *, Py_ssize_t, const char *);
 const char *PyUnicode_AsUTF8AndSize(PyObject *, Py_ssize_t *);
 PyObject *PyUnicode_AsEncodedString(PyObject *, const char *, const char *);
@@ -104,13 +105,25 @@ Str *pye_to_str(PyObject *o) {         /* a Python str as Pystachy's (UTF-8, lon
     if (!PyErr_Occurred()) PyErr_SetString(PyExc_TypeError, "expected str");
     return 0;
   }
+  PyObject *encoded = 0;
   const char *p = PyUnicode_AsUTF8AndSize(o, &n);
-  if (p) return pys_str(p, n);
-  PyErr_Clear();
-  PyObject *b = PyUnicode_AsEncodedString(o, "utf-8", "surrogatepass");
-  if (!b) return 0;
-  PyBytes_AsStringAndSize(b, &q, &n);
-  Str *s = pys_str(q, n); Py_DecRef(b); return s;
+  if (!p) {
+    PyErr_Clear();
+    encoded = PyUnicode_AsEncodedString(o, "utf-8", "surrogatepass");
+    if (!encoded) return 0;
+    if (PyBytes_AsStringAndSize(encoded, &q, &n) < 0) { Py_DecRef(encoded); return 0; }
+    p = q;
+  }
+  Str *s = pys_str(p, n);
+  if (encoded) Py_DecRef(encoded);
+  /* CPython stores the code-point count. Seed the native length cache before a
+     substantial input needs a second scan, including text encoded with surrogatepass. */
+  if (n >= 64) {
+    Py_ssize_t chars = PyUnicode_GetLength(o);
+    if (chars < 0) return 0;
+    s->chars1 = chars + 1;
+  }
+  return s;
 }
 PyObject *pye_text(Str *s) { return PyUnicode_DecodeUTF8(s->s, s->len, "surrogatepass"); }
 

@@ -21,3 +21,15 @@ try:
     m.empty()
 except ValueError as e:
     print("empty()", repr(e), e.args)
+
+
+class WrongLength(str):
+    def __len__(self):
+        return 1
+
+
+# Embedded NUL and surrogate pairs must retain their individual code points.
+for tail in ("", "é\0界😀", "\ud800\udfff"):
+    for size in (63, 64, 65):
+        text = "a" * (size - len(tail.encode("utf-8", "surrogatepass"))) + tail
+        assert m.width(WrongLength(text)) == len(text)
