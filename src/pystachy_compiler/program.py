@@ -30,7 +30,7 @@ from src.pystachy_compiler.specs import (
     TYPING,
     UNSUPPORTED,
 )
-from src.pystachy_compiler.syntax import Node, dc_args, has_kind, mk, names_in
+from src.pystachy_compiler.syntax import Node, dc_args, has_kind, mentions, mk, names_in
 from src.pystachy_compiler.utils import (
     RtFn,
     clone,
@@ -65,7 +65,34 @@ def gen_subclass_problem(self, st: Node) -> str:
     if st.kids[1].kind == "index" and self.imported_ref(st.kids[1].kids[0]) == "typing.Generic":
         return "a generic class's one base is Generic[...] of its TypeVars, and at most one TypeVarTuple, unpacked (Generic[T, *Ts]), each once" if len(st.kids) == 2 else "a generic class with another base than Generic[...] is not supported"
     if len(st.kids) > 2:
-        return "multiple inheritance is not supported: a class may have only one base"
+        why = "multiple inheritance requires an ordinary primary base and an independent method-only secondary base"
+        if len(st.kids) != 3 or st.kids[1].kind != "name" or st.kids[2].kind != "name":
+            return why
+        primary = st.kids[1].s
+        secondary = st.kids[2].s
+        if primary not in self.classes or secondary not in self.classes or self.derives(primary, secondary):
+            return why
+        role = self.classes[secondary]
+        if role.base != "" or len(role.node.kids) != 1 or secondary in self.tparams or secondary in self.nts:
+            return why
+        if self.abc_class(primary) or self.abc_class(secondary) or self.classes[primary].exc != "" or self.is_dc(primary) or len(st.kids[0].kids) != 1:
+            return why
+        ancestor = primary
+        while ancestor in self.classes:
+            info = self.classes[ancestor]
+            if info.role != "" or mentions(info.node, ["super"]):
+                return "a primary hierarchy with another secondary base or super() is not supported"
+            ancestor = info.base
+        if mentions(st.kids[0], ["super"]):
+            return "super() in a class with a secondary base is not supported"
+        for d in role.node.kids[0].kids:
+            if d.kind == "pass" or (d.kind == "expr" and d.kids[0].kind == "str"):
+                continue
+            if d.kind != "def" or d.s.startswith("__") or len(d.kids) != 3 or len(d.kids[0].kids) == 0:
+                return why
+            if mentions(d.kids[2], ["super", d.kids[0].kids[0].s]):
+                return "secondary base methods may not use super() or read or write the instance"
+
     if st.kids[1].kind == "name" and st.kids[1].s in self.classes and self.classes[st.kids[1].s].exc == "":
         base_ci = self.classes[st.kids[1].s]
         dc = len(st.kids[0].kids) == 2 and self.imported(st.kids[0].kids[1].s) == "dataclasses.dataclass"
@@ -152,6 +179,24 @@ def gen_inherit(self, ci: ClassInfo) -> None:
         elif ci.exc != "" and m != "__init__" and m != "__str__" and m != "__repr__":
             self.line = ci.methods[m].node.line
             self.err(f"method '{m}' of '{short(ci.name)}' overrides that of '{short(b.methods[m].cls)}': only __init__, __str__ and __repr__ may be overridden")
+    if ci.role != "":
+        role = self.classes[ci.role]
+        for method in role.methods:
+            original = role.methods[method]
+            if ci.role != b.role:
+                if method in b.methods:
+                    self.line = ci.node.line
+                    self.bad_class(ci, f"both bases declare method '{method}'")
+                elif method not in ci.methods:
+                    ci.methods[method] = original
+            fn = ci.methods[method]
+            if fn.cls == ci.name and (
+                fn.deco != "" or fn.prop or fn.ptypes[1:] != original.ptypes[1:] or fn.ret != original.ret
+                or fn.posonly > original.posonly or fn.npos != original.npos
+                or fn.kwarg != original.kwarg or fn.vararg != original.vararg
+            ):
+                self.line = fn.node.line
+                self.bad_class(ci, f"secondary base method '{method}' needs a matching instance method signature")
     for m in ci.methods:
         f = ci.methods[m]
         if f.cls == ci.name and f.acc != "" and short(f.accof) != f.node.s:
@@ -213,7 +258,10 @@ def gen_derives(self, c: str, base: str) -> bool:
     while c in self.classes:
         if c == base:
             return True
-        c = self.classes[c].base
+        info = self.classes[c]
+        if info.role != "" and info.role == base:
+            return True
+        c = info.base
     return c in EXCBASES and exc_derives(c, base)
 
 def gen_init_template(self, st: Node) -> bool:
@@ -837,6 +885,7 @@ def gen_program(self, mods: list[Mod]) -> str:
                 ci = ClassInfo(st.s, st.kids[0])
                 ci.mod = m.name
                 ci.base = st.kids[1].s if st.kids[1].kind == "name" and st.kids[1].s in self.classes else self.exc_base(st.kids[1])
+                ci.role = st.kids[2].s if len(st.kids) == 3 else self.classes[ci.base].role if ci.base in self.classes else ""
                 ci.exc = self.classes[ci.base].exc if ci.base in self.classes else ci.base
                 self.classes[st.s] = ci
                 if self.is_dc(st.s):
@@ -860,6 +909,16 @@ def gen_program(self, mods: list[Mod]) -> str:
         if ci.exc == "" and ci.base in self.classes:
             ci.tag = 1
             self.classes[ci.base].tag = 1
+            if ci.role != "" and ci.role != self.classes[ci.base].role:
+                self.classes[ci.role].tag = 1
+                self.classes[ci.role].isrole = True
+                # These unrelated static types can now denote the same instance.
+                ancestor = ci.base
+                while ancestor in self.classes:
+                    if ci.role not in self.classes[ancestor].overlaps:
+                        self.classes[ancestor].overlaps.append(ci.role)
+                        self.classes[ci.role].overlaps.append(ancestor)
+                    ancestor = self.classes[ancestor].base
     tag = 0
     for ci in self.classes.values():
         if ci.tag != 0:

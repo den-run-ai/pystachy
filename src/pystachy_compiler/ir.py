@@ -554,6 +554,9 @@ class ClassInfo:
         # its single base (a class of the program or a builtin exception class), and the
         # builtin exception class it derives from through it ("" for an ordinary class)
         self.base = ""
+        self.role = ""  # a fieldless secondary base, inherited along the primary chain
+        self.isrole = False  # some class names this root as its secondary base
+        self.overlaps: list[str] = []  # unrelated bases with a common concrete subclass
         self.exc = ""
         self.tag = 0  # ordinary inheritance: the object's concrete class; zero outside a hierarchy
         self.nflag = 0  # the "is assigned" flags at the end of its struct (its own fields')

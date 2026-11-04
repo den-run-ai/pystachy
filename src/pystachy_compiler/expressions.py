@@ -125,7 +125,7 @@ def gen_narrows(self, n: Node, truth: bool, out: dict[str, str]) -> None:
             nt = self.dyn_narrow_type(n.kids[2], truth)  # (its box's payload, read as that type: dynamic.py)
             if nt != "":
                 out[nm] = nt
-        elif truth and t in self.classes and self.classes[t].tag > 0 and n.kids[2].kind == "name" and n.kids[2].s in self.classes and self.derives(n.kids[2].s, t):
+        elif truth and t in self.classes and self.classes[t].tag > 0 and n.kids[2].kind == "name" and n.kids[2].s in self.classes and (self.derives(n.kids[2].s, t) or n.kids[2].s in self.classes[t].overlaps):
             # The runtime class check proved this pointer has the derived layout. Keep
             # the declared storage type, and refine only reads on this control-flow path.
             out[nm] = n.kids[2].s
@@ -447,7 +447,9 @@ def gen_isinst(self, t: str, c: Node) -> int:
                 what = f"a {short(t)} member" if t == mx[0] else f"a {short(t)} value, which may be a {short(mx[0])} member,"
                 self.err(f"isinstance() of {what} and {short(c.s)} is not supported: an enum class of {'int' if self.derives(mx[0], 'enum$_IntMixin') else 'str'} and Enum derives from {'IntEnum' if self.derives(mx[0], 'enum$_IntMixin') else 'StrEnum'} here, where CPython's derives from Enum only")
         if t in self.classes and self.classes[t].tag > 0:
-            return -2 if self.derives(t, c.s) else -1 if self.derives(c.s, t) else 0
+            if self.derives(t, c.s):
+                return -2
+            return -1 if self.derives(c.s, t) or c.s in self.classes[t].overlaps else 0
         # (an exception of class t, or of a builtin one, may be an object of a class deriving from t)
         xc = self.classes[c.s].exc != "" and (t == "exc" or (t in self.classes and (self.derives(t, c.s) or self.derives(c.s, t))))
         return -2 if t == c.s or (t in self.classes and self.classes[t].origin == c.s) else -1 if xc else 0

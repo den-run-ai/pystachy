@@ -1071,8 +1071,27 @@ inherited ones, and the comparisons it writes decline (return `NotImplemented` f
 of another class, so `Base(1) == Derived(1)` is false. `replace()` of a base-typed object
 makes an object of its own class.
 
-Multiple inheritance, builtin subclasses, NamedTuple inheritance, inheritance between a
+Builtin subclasses, NamedTuple inheritance, inheritance between a
 dataclass and a class that is not one, other decorated subclasses, field/method name
 collisions, and overriding a method with another kind of method are unsupported. Inherited
 class methods using `cls` retain restrictions on default values, imports and calls through a
 base-typed object. Exception classes follow the [exception rules](semantics.md#user-exception-classes).
+
+### A method-only secondary base
+
+An ordinary class can also name one independent, fieldless base second, as in
+`class IRVisitor(ExpressionVisitor, StatementVisitor)`. Instance fields use the first
+base's layout. A call through either base uses the concrete receiver's implementation.
+Both views refer to the same object, including when boxed as `Any`. An `isinstance`
+test between the base types checks the receiver's class tag.
+
+The secondary base must be a plain root class with ordinary instance methods. Its
+method bodies can return defaults, raise, or use arguments other than the receiver.
+The two bases must declare distinct method names. Overrides of secondary methods
+must keep their parameter and return types and may widen positional-only parameters
+to accept keywords. The primary hierarchy
+and the class that combines the bases cannot use `super()`. Generic and abstract
+base classes, `__slots__` in the combined hierarchy, a second secondary base along
+the same primary chain, and secondary bases with fields, properties, constructors
+or other special methods are outside
+this subset. Single inheritance from the combined class works.

@@ -1,10 +1,10 @@
-# error: multiple inheritance is not supported: a class may have only one base
+# error: multiple inheritance requires an ordinary primary base and an independent method-only secondary base
 class A:
-    pass
+    field: int = 0
 
 
 class B:
-    pass
+    other: int = 1
 
 
 class C(A, B):
