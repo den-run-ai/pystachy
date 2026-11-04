@@ -148,6 +148,17 @@ else
         bad "ext client $c (CPython 3.$MINOR$FT, $abi)"; diff "$T/$c.src.cmp" "$T/$c.so.cmp" | head -10; tail -3 "$T/$c.so.cmp"
       fi
     done
+    # Replay the recorded schema-free corpus through the actual imported module.
+    if [ "$abi" = abi3 ] && [ "$("$PY" -c 'import platform; print(platform.python_version())')" = "$(cat .python-version)" ]; then
+      pkg="$T/repair/pystachy_json_repair"
+      if mkdir -p "$pkg" && cp examples/json_repair/pystachy_json_repair/__init__.py "$pkg/" &&
+         PYSTACHY_PATH=ports $PYS ext examples/json_repair/_native.py -o "$pkg/_native.abi3.so" &&
+         PYSTACHY_GC_STRESS=1 "$PY" -I tests/upstream/json_repair/extension.py "$T/repair"; then
+        ok
+      else
+        bad "CPython JSON repair extension replay"
+      fi
+    fi
   fi
 fi
 echo "$pass passed, $fail failed${skipped:+; skipped: $skipped}"

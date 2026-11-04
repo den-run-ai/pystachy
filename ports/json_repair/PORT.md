@@ -41,6 +41,8 @@ valid scalar documents. Comments inside arrays and between an object colon and i
 value are consumed before parsing the actual value, fixing upstream value loss.
 Split trace records before repair and validate types and content afterward.
 
+For accelerated calls from CPython, build the [native companion module](../../examples/json_repair/README.md).
+
 ## File and pipe command
 
 Run from the repository root.
