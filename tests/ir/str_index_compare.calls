@@ -1,0 +1,10 @@
+@main.init: pys_list_new pys_list_append pys_write pys_write pys_write pys_write pys_write pys_write pys_write pys_write pys_write pys_write
+@f.direct: pys_text_ord_at pys_text_ord_at
+@f.nonascii: pys_text_get pys_eq
+@f.several: pys_text_get pys_eq
+@f.chained: pys_text_get pys_eq pys_eq
+@f.from_list: pys_list_get pys_eq
+@pys_obj_eq:
+@pys_obj_cmp:
+@pys_obj_repr:
+@main: pys_init pys_finish

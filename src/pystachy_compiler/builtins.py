@@ -662,14 +662,10 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         self.err(f"{name}() takes {'exactly one argument' if m == 1 else f'at most {m} arguments'} ({npos} given)")
     if len(args) == 0 and name in DEFAULTS:
         args = [self.parse_expr(DEFAULTS[name])]
-    if name == "ord" and len(args) == 1 and args[0].kind == "index" and not self.rtmode and not self.curfn.cmpops:
-        source, index = args[0].kids
-        if self.static_type(source) == "str":
-            # Read the string before the index, which may rebind its name.
-            # Runtime mode uses byte indexing and comparison methods have their own error path.
-            text = self.expr(source, "")
-            position = self.seq_index(index, "TypeError: string indices must be integers, not 'NoneType'")
-            return Val(self.rt("pys_text_ord_at", "i64", [f"ptr {text.v}", f"i64 {position.v}"]), "int")
+    if name == "ord" and len(args) == 1 and args[0].kind == "index":
+        point_at = self.indexed_ord(args[0])
+        if point_at is not None:
+            return point_at
     w = want if name == "list" or name == "sorted" or name == "dict" else ""
     fresh = False
     # key= and reverse= of sorted(), min() and max(), evaluated in the order written: after a
