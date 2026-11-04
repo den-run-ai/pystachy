@@ -1403,6 +1403,7 @@ Equality compares declared fields. A foreign operand returns false without
 reflected comparison. Distinct results sharing a NaN field can compare unequal
 under the native float identity rules.
 
+Code can raise and catch `argparse.ArgumentTypeError` when validating values.
 Parser declarations must stay in their owning scope. Runtime-defined schemas,
 groups, subparsers and custom actions or converters are outside this subset.
 The [JSON repair command](../ports/json_repair/PORT.md#file-and-pipe-command)

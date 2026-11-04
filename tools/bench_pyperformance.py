@@ -3,7 +3,7 @@
 The controller runs on CPython. Each benchmark is an adapted upstream file whose main prints
 deterministic results to stdout and, to stderr, the seconds of the part that pyperf would time
 (TIMED_PART). Every JIT and AOT run must print exactly what CPython printed, or the run fails.
-Timings are advisory: there are no thresholds. --census reads the pinned sdist, replaces each
+Timings are advisory: there are no thresholds. --census reads hash-pinned sources, replaces each
 upstream file's pyperf runner with a direct call of its benchmark, reports the first compiler
 error, and checks each port's notes and timed part against the upstream file.
 """
@@ -46,6 +46,7 @@ BENCHMARKS = {
     "hexiom": (["100"], ["1"]),
     "json_dumps": (["20"], ["1", "smoke"]),
     "json_loads": (["2000"], ["1"]),
+    "logging": (["32"], ["1"]),
     "meteor_contest": (["6"], ["1"]),
     "nbody": (["10"], ["1", "100"]),
     "nqueens": (["10"], ["1", "6"]),
@@ -206,6 +207,7 @@ TIMED_PART = {
     "hexiom": ["main"],
     "json_dumps": "bench_json_dumps",
     "json_loads": "bench_json_loads",
+    "logging": ["bench_formatted_output", "bench_silent", "bench_simple_output"],
     "meteor_contest": ["bench_meteor_contest"],
     "nbody": ["bench_nbody"],
     "nqueens": "bench_n_queens",
@@ -220,6 +222,11 @@ TIMED_PART = {
     "spectral_norm": ["bench_spectral_norm"],
     "unpack_sequence": ["do_unpacking"],
 }
+
+
+def port_path(name):
+    # A logging.py alongside the other entry points would shadow the standard library.
+    return BENCH / ("bm_logging.py" if name == "logging" else f"{name}.py")
 
 
 def digest(data):
@@ -328,30 +335,41 @@ def timing_errors(name, text):
     return errors
 
 
+def upstream_files(path):
+    """Read the census sources from the pinned sdist or its extracted benchmarks directory."""
+    if path.is_dir():
+        return {name: (path / f"bm_{name}" / "run_benchmark.py").read_bytes() for name in UPSTREAM}
+    checksum = digest(path.read_bytes())
+    if checksum != SDIST_SHA256:
+        raise ValueError(f"{path}: SHA-256 {checksum}, expected {SDIST_SHA256}")
+    with tarfile.open(path) as tar:
+        return {name: tar.extractfile(SDIST_DIR + f"bm_{name}/run_benchmark.py").read() for name in UPSTREAM}
+
+
 def census(args, compiler, env):
-    data = Path(args.census).read_bytes()
-    if digest(data) != SDIST_SHA256:
-        raise RuntimeError(f"{args.census}: SHA-256 {digest(data)}, expected {SDIST_SHA256}")
+    input_path = Path(args.census)
+    sources = upstream_files(input_path)
     rows = []
-    with tarfile.open(args.census) as tar, tempfile.TemporaryDirectory(prefix="pyperformance-census-") as tmp:
-        for name in sorted(UPSTREAM):
-            text = tar.extractfile(SDIST_DIR + f"bm_{name}/run_benchmark.py").read()
+    with tempfile.TemporaryDirectory(prefix="pyperformance-census-") as tmp:
+        for name, text in sorted(sources.items()):
             if digest(text) != UPSTREAM[name]:
                 raise RuntimeError(f"bm_{name}/run_benchmark.py: SHA-256 {digest(text)}, expected {UPSTREAM[name]}")
             source = text.decode("utf-8")
-            path = Path(tmp) / f"bm_{name}.py"
+            # Keep generated entry points out of each other's import path.
+            path = Path(tmp) / name / f"bm_{name}.py"
+            path.parent.mkdir()
             path.write_text(census_source(source, CENSUS_CALLS[name]))
             # (from the root, as tests/run.sh runs a compiler: "python3 -m pystachy" works too)
             result = subprocess.run(compiler + ["ir", str(path), "-o", os.devnull], cwd=ROOT, env=env,
                                     capture_output=True, text=True, timeout=args.timeout)
             output = (result.stdout + result.stderr).replace(str(path.parent) + os.sep, "")
-            row = {"name": name, "ported": name in BENCHMARKS,
+            row = {"name": name, "source_sha256": UPSTREAM[name], "ported": name in BENCHMARKS,
                    "deferred": DEFERRED.get(name, ""),
                    "compile_status": "compiled" if result.returncode == 0 else "error",
                    "first_error": first_error(output) if result.returncode else "",
                    "returncode": result.returncode}
             if name in BENCHMARKS:
-                port = (BENCH / f"{name}.py").read_text()
+                port = port_path(name).read_text()
                 row["unmarked_hunks"] = unmarked_hunks(source, port)
                 spec, problems = upstream_timed_part(source)
                 if spec != TIMED_PART[name]:
@@ -370,7 +388,7 @@ def census(args, compiler, env):
     failures += [f"{r['name']}: {problem}" for r in rows for problem in r.get("timing", [])]
     for failure in failures:
         print(failure, file=sys.stderr)
-    return {"sdist_sha256": SDIST_SHA256, "benchmarks": rows}, not failures
+    return {"sdist_sha256": None if input_path.is_dir() else SDIST_SHA256, "benchmarks": rows}, not failures
 
 
 def seconds(stderr):
@@ -422,7 +440,7 @@ def metadata(compiler, env, timeout):
 
 
 def measure(name, arguments, args, compiler, env, directory):
-    source = str(BENCH / f"{name}.py")
+    source = str(port_path(name))
     exe = str(directory / name)
     commands = {"cpython": [sys.executable, source] + arguments,
                 "jit": compiler + ["run", source] + arguments,
@@ -475,7 +493,7 @@ def main(argv=None):
     parser.add_argument("--benchmarks", nargs="+", choices=sorted(BENCHMARKS), default=sorted(BENCHMARKS))
     parser.add_argument("--runs", type=positive, default=5, help="processes per mode and benchmark")
     parser.add_argument("--smoke", action="store_true", help="small sizes, one run: correctness only")
-    parser.add_argument("--census", metavar="SDIST", help="pyperformance-1.14.0.tar.gz: first errors of the upstream files")
+    parser.add_argument("--census", metavar="SOURCES", help="pinned sdist or extracted benchmarks directory: first errors")
     parser.add_argument("--timeout", type=float, default=300.0, help="seconds per command, including LLVM children")
     parser.add_argument("--json", type=Path, help="report (default build/pyperformance.json, or -smoke/-census)")
     args = parser.parse_args(argv)

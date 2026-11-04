@@ -520,7 +520,7 @@ Kuhn's code that wcwidth derives from.
 pyperformance (bench/pyperformance/)
 ------------------------------------
 
-The Python files in bench/pyperformance/ are the run_benchmark.py files of 22 benchmarks from
+The Python files in bench/pyperformance/ are the run_benchmark.py files of 24 benchmarks from
 pyperformance 1.14.0 (https://github.com/python/pyperformance), edited where
 bench/pyperformance/README.md lists (each edit is marked "Pystachy port:"); that README records
 the sdist's and each file's SHA-256. pyperformance is used under the MIT License, whose text is in
@@ -529,7 +529,7 @@ keeps its upstream header: regex_v8.py's holds the V8 project's BSD license ("Co
 V8 project authors"), and raytrace.py's says it may be redistributed under the MIT License
 ("Copyright Callum and Tony Garnock-Jones, 2008"). deltablue is excluded from the delivered suite
 pending a separate provenance decision. fannkuch.py, meteor_contest.py,
-nbody.py, regex_dna.py and spectral_norm.py say they come from The Computer Language Benchmarks
+nbody.py, pidigits.py, regex_dna.py and spectral_norm.py say they come from The Computer Language Benchmarks
 Game, whose programs are published under the 3-clause BSD License; richards.py and
 richards_super.py credit a Java version "Copyright (C) 1995 Sun Microsystems, Inc."; chaos.py says
 "Copyright (C) 2005 Carl Friedrich Bolz". pyperformance distributes all of these files under its
