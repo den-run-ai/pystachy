@@ -209,6 +209,10 @@ from src.pystachy_compiler.dynamic import (
     gen_dyn_stores_ahead as dynamic_dyn_stores_ahead,
     gen_dyn_str as dynamic_dyn_str,
     gen_dyn_sum as dynamic_dyn_sum,
+    gen_dyn_sum_slots as dynamic_dyn_sum_slots,
+    gen_dyn_sum_start as dynamic_dyn_sum_start,
+    gen_dyn_sum_item as dynamic_dyn_sum_item,
+    gen_dyn_sum_end as dynamic_dyn_sum_end,
     gen_dyn_supports as dynamic_dyn_supports,
     gen_dyn_tagged_type as dynamic_dyn_tagged_type,
     gen_dyn_takes as dynamic_dyn_takes,
@@ -340,7 +344,6 @@ from src.pystachy_compiler.reflection import (
     gen_refl_defines as reflection_refl_defines,
     gen_refl_names as reflection_refl_names,
     gen_refl_listed as reflection_refl_listed,
-    gen_refl_public as reflection_refl_public,
     gen_refl_init_order as reflection_refl_init_order,
     gen_refl_dict_order as reflection_refl_dict_order,
     gen_refl_stored as reflection_refl_stored,
@@ -2251,6 +2254,18 @@ class Gen:
     def dyn_sum(self, xs: Val, start: Val) -> Val:
         return dynamic_dyn_sum(self, xs, start)
 
+    def dyn_sum_slots(self, r: Reduce) -> None:
+        return dynamic_dyn_sum_slots(self, r)
+
+    def dyn_sum_start(self, r: Reduce, start: Val) -> None:
+        return dynamic_dyn_sum_start(self, r, start)
+
+    def dyn_sum_item(self, r: Reduce, value: Val) -> None:
+        return dynamic_dyn_sum_item(self, r, value)
+
+    def dyn_sum_end(self, r: Reduce) -> Val:
+        return dynamic_dyn_sum_end(self, r)
+
     # ---- end of dynamic values
     # ---- reflection (reflection.py)
     def refl_typeof(self, n: Node) -> Node | None:
@@ -2337,17 +2352,14 @@ class Gen:
     def refl_listed(self, c: str, nk: list[str]) -> bool:
         return reflection_refl_listed(self, c, nk)
 
-    def refl_public(self, c: str, n: str) -> None:
-        return reflection_refl_public(self, c, n)
-
     def refl_init_order(self, c: str, f: FnInfo, out: list[str], maybe: dict[str, bool]) -> bool:
         return reflection_refl_init_order(self, c, f, out, maybe)
 
     def refl_dict_order(self, c: str) -> list[str]:
         return reflection_refl_dict_order(self, c)
 
-    def refl_order(self, c: str, public: bool) -> tuple[list[str], str]:
-        return reflection_refl_order(self, c, public)
+    def refl_order(self, c: str) -> tuple[list[str], str]:
+        return reflection_refl_order(self, c)
 
     def refl_stored(self, name: str) -> bool:
         return reflection_refl_stored(self, name)

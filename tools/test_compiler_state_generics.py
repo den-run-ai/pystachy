@@ -10,7 +10,7 @@ from compiler_state_probe import ROOT
 from src.pystachy_compiler import declarations, diagnostics, driver, loader, templates
 from src.pystachy_compiler.diagnostics import Rejoin
 from src.pystachy_compiler.gen import Gen
-from src.pystachy_compiler.specs import GLUE, SPECSHOW
+from src.pystachy_compiler.specs import BIG, GLUE, SPECSHOW
 from src.pystachy_compiler.syntax import LAMBDAS
 
 
@@ -116,6 +116,100 @@ class GenericStateTests(unittest.TestCase):
         self.assertEqual([cls.tvars for cls in instances], [{"T": "int"}] * 2)
         self.assertEqual({cls.ftypes["other"] for cls in instances}, {"int", "str"})
         self.assertNotEqual(instances[0].name, instances[1].name)
+
+    def test_private_recursive_specialization_survives_failed_then_valid_requests(self):
+        source = '''\
+        from __future__ import annotations
+        class Chain[__T]:
+            def __init__(self, value: __T) -> None:
+                self.__value = value
+                self.__next: Chain[__T] | None = None
+            def link(self, other: Chain[__T]) -> None:
+                self.__next = other
+            def value(self) -> __T:
+                return self.__value
+        first: Chain[int] = Chain(1)
+        first.link(Chain(2))
+        text: Chain[str] = Chain("a")
+        text.link(Chain("b"))
+        print(first.value(), text.value())
+        '''
+        source = textwrap.dedent(source)
+        expected = self.compile(source)[:3]
+        self.assertEqual(expected[0], 0, expected[2])
+        failed = source.replace("self.__value = value", "self.__value = __missing")
+        failure = self.compile(failed)
+        self.assertEqual(failure[0], 1)
+        self.assertEqual(failure[-1][-1].specing, {})
+        retained = list(diagnostics.CAPTURED)
+        self.assertEqual(len(retained), 1)
+        self.assertIn("field '_Chain__value'", failure[2])
+        for policy, integer_type in (("", "int"), ("# pystachy: python-int\n", BIG)):
+            with self.subTest(policy=policy):
+                status, _, messages, generations = self.compile(policy + source)
+                self.assertEqual(status, 0, messages)
+                generator = generations[-1]
+                instances = [cls for cls in generator.classes.values() if cls.origin == "Chain"]
+                self.assertEqual(len(instances), 2)
+                self.assertEqual({cls.ftypes["_Chain__value"] for cls in instances},
+                                 {integer_type, "str"})
+                for cls in instances:
+                    self.assertEqual(cls.ftypes["_Chain__next"], generator.optional(cls.name))
+                    self.assertEqual(cls.tvars, {"Chain$$_Chain__T": cls.ftypes["_Chain__value"]})
+                self.assertEqual(set(generator.specdone.values()), {cls.name for cls in instances})
+                self.assertEqual(generator.specing, {})
+                self.assertEqual(diagnostics.CAPTURED, retained)
+        self.assertEqual(self.compile(source)[:3], expected)
+        self.assertEqual(self.compile(failed)[:3], failure[:3])
+        self.assertEqual(diagnostics.CAPTURED[1].context, retained[0].context)
+
+    def test_private_generic_keeps_native_and_boxed_list_layouts_distinct(self):
+        source = '''\
+        # pystachy: dynamic-any
+        from typing import Any
+        class Mixed[__T]:
+            def __init__(self, value: __T, other):
+                self.__value = value
+                self.other = other
+        native: list[int] = [2, 3]
+        boxed: list[Any] = [2, "three"]
+        a = Mixed(1, native)
+        b = Mixed(1, boxed)
+        print(a.other, b.other)
+        '''
+        status, _, messages, generations = self.compile(source)
+        self.assertEqual(status, 0, messages)
+        generator = generations[-1]
+        instances = [cls for cls in generator.classes.values() if cls.origin == "Mixed"]
+        self.assertEqual(len(instances), 2)
+        self.assertEqual([cls.tvars for cls in instances], [{"Mixed$$_Mixed__T": "int"}] * 2)
+        self.assertEqual({cls.ftypes["other"] for cls in instances}, {"list[int]", "list[dyn]"})
+        self.assertEqual({cls.ftypes["_Mixed__value"] for cls in instances}, {"int"})
+        self.assertEqual(set(generator.specdone.values()), {cls.name for cls in instances})
+        self.assertEqual(generator.specing, {})
+
+    def test_repeated_private_recursive_requests_do_not_grow_specialization_caches(self):
+        declaration = '''\
+        from __future__ import annotations
+        class Cell[__T]:
+            def __init__(self, value: __T) -> None:
+                self.__value = value
+                self.__next: Cell[__T] | None = None
+        '''
+        retained = []
+        for count in (1, 64):
+            source = textwrap.dedent(declaration) + "".join(f"value{i} = Cell(1)\n" for i in range(count))
+            status, _, messages, generations = self.compile(source)
+            self.assertEqual(status, 0, messages)
+            generator = generations[-1]
+            instances = [cls for cls in generator.classes.values() if cls.origin == "Cell"]
+            self.assertEqual(len(instances), 1)
+            self.assertEqual(generator.specing, {})
+            retained.append((generator.template_instances, generator.template_retained,
+                             dict(generator.specdone), dict(generator.classes["Cell"].specs)))
+        # Repeated same-layout calls retain no additional request aliases, layout
+        # keys or function signatures. This does not bound distinct/deep keys.
+        self.assertEqual(retained[0], retained[1])
 
     def test_dormant_template_and_unselected_branch_stay_lazy(self):
         source = '''\

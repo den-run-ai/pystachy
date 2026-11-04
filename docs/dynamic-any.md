@@ -521,6 +521,12 @@ results and errors: `int / int` and `2 ** -1` give floats, `True & False` is a b
 (`TypeError: unsupported operand type(s) for +: 'int' and 'str'`,
 `TypeError: can only concatenate str (not "int") to str`, `KeyError: 'k'`, ...).
 
+`sum()` of dynamic items uses CPython 3.13's compensated float phase, including
+cancellation-sensitive inputs, mixed ints/floats and nonfinite values. Lists and
+streamed generators share the same reduction rules. A callback receives the
+compensated partial result; leaving the float phase resumes ordinary addition.
+Integer overflow follows the calling module's existing integer policy.
+
 `int()` and `float()` call a boxed object's `__int__` and `__float__`, respectively,
 falling back to `__index__` only when that method is absent. Return values are checked
 before use, and exceptions propagate without trying the fallback. Builtin list, tuple and
