@@ -38,10 +38,23 @@ class ProbeTests(unittest.TestCase):
     def test_ir_rejection_blocks_execution_but_retains_qualified_oracle(self):
         with tempfile.TemporaryDirectory() as directory, patch.object(probe, "command") as run:
             work = Path(directory)
-            run.side_effect = [{"exit": 0, "stdout": "qualified", "stderr": ""},
-                               {"exit": 1, "stdout": "", "stderr": f"{work}/pkg.py: rejected"}]
-            row = probe.probe("api", "pass", [], work, work, work / "compiler", {}, 2)
-            self.assertEqual(row["cpython"]["stdout"], "qualified")
-            self.assertEqual(row["ir"], {"exit": 1, "diagnostic": "SITE/pkg.py: rejected"})
-            self.assertEqual([row[k] for k in ("jit", "build", "aot")], ["not run"] * 3)
-            self.assertEqual(run.call_count, 2)
+            run.return_value = {"exit": 0, "stdout": "qualified", "stderr": ""}
+            for ir in ({"status": "rejected", "exit": 1, "diagnostic": "WHEEL/pkg.py: rejected"},
+                       {"status": "unattributed", "control": {"status": "ir"}}):
+                with patch.object(probe, "attributed_ir", return_value=ir):
+                    row = probe.probe("api", "pass", [], work, work / "pkg.py", work / "compiler", {}, 2)
+                self.assertEqual(row["cpython"]["stdout"], "qualified")
+                self.assertEqual(row["ir"], ir)
+                self.assertEqual([row[k] for k in ("jit", "build", "aot")], ["not run"] * 3)
+            self.assertEqual(run.call_count, 2)  # Only the two CPython executions.
+
+    def test_empty_build_blocks_aot_execution(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(probe, "command") as run, \
+                patch.object(probe, "attributed_ir", return_value={"status": "ir"}):
+            work = Path(directory)
+            run.return_value = {"exit": 0, "stdout": "", "stderr": ""}
+            row = probe.probe("api", "pass", [], work, work / "pkg.py", work / "compiler",
+                              {"PYSTACHY_PATH": str(work)}, 2)
+            self.assertEqual(row["jit"], "pass")
+            self.assertIn("executable", row["build"]["diagnostic"])
+            self.assertEqual(row["aot"], "not run")

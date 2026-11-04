@@ -17,6 +17,7 @@ import tarfile
 import tempfile
 
 from import_sweep import compiler_sha256
+from pypi_import_ir import attributed_ir
 
 ROOT = Path(__file__).resolve().parents[1]
 LOCK = ROOT / "tests/upstream/pypi/requirements.txt"
@@ -126,24 +127,28 @@ def stage(result, reference=None, replacements=()):
     return {"exit": result["exit"], "diagnostic": diagnostic}
 
 
-def probe(kind, program, args, work, site, compiler, env, timeout):
-    (work / "probe.py").write_text(program)
+def probe(kind, program, args, work, target, compiler, env, timeout):
+    driver = work / "probe.py"
+    driver.write_text(program)
     file_workflow = kind == "file_workflow"
     reference = execute([sys.executable, "-BS", "probe.py", *args], env, work, timeout, file_workflow)
     if reference.get("exit") != 0 or (file_workflow and reference["output_file_hex"] is None):
         raise RuntimeError(f"{kind}: CPython oracle failed: {reference}")
     run = {"cpython": reference, "ir": None, "jit": "not run", "build": "not run", "aot": "not run"}
-    replacements = [(site, "SITE"), (work, "WORK"), (compiler.parent, "COMPILER")]
-    run["ir"] = stage(command([compiler, "ir", "probe.py", "-o", os.devnull], env, work, timeout),
-                      replacements=replacements)
-    if run["ir"] != "pass":
+    ir = attributed_ir(compiler, env, driver, target, timeout)
+    if ir["status"] != "ir":
+        run["ir"] = ir
         return run
+    run["ir"] = "pass"
+    replacements = [(env["PYSTACHY_PATH"], "SITE"), (work, "WORK"), (compiler.parent, "COMPILER")]
     jit = execute([compiler, "run", "probe.py", *args], env, work, timeout, file_workflow)
     run["jit"] = stage(jit, reference, replacements)
     exe = work / "probe-bin"
     exe.unlink(missing_ok=True)
     run["build"] = stage(command([compiler, "build", "probe.py", "-o", exe], env, work, timeout),
                          replacements=replacements)
+    if run["build"] == "pass" and not exe.is_file():
+        run["build"] = {"exit": 0, "diagnostic": "compiler did not produce an executable"}
     if run["build"] == "pass":
         run["aot"] = stage(execute([exe, *args], env, work, timeout, file_workflow), reference, replacements)
     return run
@@ -198,17 +203,18 @@ def main():
             # Verify the public import is provided by this wheel, even if a
             # similarly named module exists on the machine running the probe.
             origin_check = ("import importlib.util, pathlib, sys; "
-                            "p = pathlib.Path(importlib.util.find_spec(sys.argv[1]).origin); "
-                            "assert p.resolve().is_relative_to(pathlib.Path(sys.argv[2]))")
-            subprocess.run([sys.executable, "-BS", "-c", origin_check, APIS[project][0], str(site)],
-                           cwd=base, env=env, check=True, timeout=args.timeout)
+                            "print(pathlib.Path(importlib.util.find_spec(sys.argv[1]).origin).resolve())")
+            target = Path(subprocess.check_output([sys.executable, "-BS", "-c", origin_check, APIS[project][0]],
+                          cwd=base, env=env, text=True, timeout=args.timeout).strip())
+            if not target.is_relative_to(site) or target.suffix != ".py" or not target.is_file():
+                raise ValueError(f"{project}: expected a Python source file inside its wheel installation")
             result = {}
             for kind, program, extra in cases(project, site, wheels):
                 work = site.parent / kind
                 work.mkdir()
                 (work / "input.txt").write_text("mcmxcix\n")
                 (work / "os-release").write_text('ID=example\nNAME="Fixture OS"\n')
-                result[kind] = probe(kind, program, extra, work, site, compiler, env, args.timeout)
+                result[kind] = probe(kind, program, extra, work, target, compiler, env, args.timeout)
             report["projects"][project] = {"wheel": wheel.name, "sha256": sha, "cases": result}
             print(project, {k: v["aot"] for k, v in result.items()}, flush=True)
     args.output.write_text(json.dumps(report, indent=2) + "\n")

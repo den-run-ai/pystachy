@@ -50,6 +50,16 @@ class WheelImportTests(unittest.TestCase):
                 results = ir.probe(row, Path(tmp), builds, 1)["outcomes"]
             self.assertEqual([r["status"] for r in results.values()], ["ir", "unattributed", "unattributed", "ir"])
 
+    def test_successful_process_without_fresh_ir_is_not_a_pass(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            driver = root / "probe.py"
+            driver.with_suffix(".ll").write_text("old IR")
+            env = {"PYSTACHY_PATH": str(root / "wheel"), "PYSTACHY_HOME": str(root / "compiler")}
+            result = ir.compile_ir("/bin/true", env, driver, 2)
+            self.assertEqual(result["status"], "process-error")
+            self.assertIn("nonempty IR", result["diagnostic"])
+
 
 if __name__ == "__main__":
     unittest.main()

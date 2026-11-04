@@ -67,7 +67,25 @@ def compile_ir(compiler, env, driver, timeout):
     diagnostic = diagnostic.replace(env["PYSTACHY_PATH"], "WHEEL").replace(env["PYSTACHY_HOME"], "COMPILER")
     diagnostic = diagnostic.replace(str(driver.parent), "WORK")
     status = "rejected" if proc.returncode == 1 and ": error: " in diagnostic and not proc.stdout else "process-error"
+    if proc.returncode == 0 and not diagnostic:
+        diagnostic = "compiler did not emit nonempty IR"
     return {"status": status, "exit": proc.returncode, "diagnostic": diagnostic}
+
+
+def attributed_ir(compiler, env, driver, target, timeout):
+    result = compile_ir(compiler, env, driver, timeout)
+    if result["status"] != "ir":
+        return result
+    # A builtin or another source can win resolution even when a wheel file is present.
+    original = target.read_bytes()
+    try:
+        target.write_bytes(b"if :\n")
+        control = compile_ir(compiler, env, driver, timeout)
+    finally:
+        target.write_bytes(original)
+    relative = target.relative_to(env["PYSTACHY_PATH"]).as_posix()
+    expected = {"status": "rejected", "exit": 1, "diagnostic": f"WHEEL/{relative}:1: error: invalid syntax"}
+    return result if control == expected else {"status": "unattributed", "control": control}
 
 
 def probe(row, wheelhouse, builds, timeout):
@@ -90,20 +108,7 @@ def probe(row, wheelhouse, builds, timeout):
         outcomes = {}
         for label, (compiler, env) in builds.items():
             env = env | {"PYSTACHY_PATH": str(site)}
-            result = compile_ir(compiler, env, driver, timeout)
-            if result["status"] == "ir":
-                # A builtin or another source may win resolution despite an installed wheel file.
-                # Require the same import to reach the pinned target; restore it before the next build.
-                original = target.read_bytes()
-                try:
-                    target.write_bytes(b"if :\n")
-                    control = compile_ir(compiler, env, driver, timeout)
-                finally:
-                    target.write_bytes(original)
-                expected = f"WHEEL/{target.relative_to(site).as_posix()}:1: error: invalid syntax"
-                if control != {"status": "rejected", "exit": 1, "diagnostic": expected}:
-                    result = {"status": "unattributed", "control": control}
-            outcomes[label] = result
+            outcomes[label] = attributed_ir(compiler, env, driver, target, timeout)
         return row | {"outcomes": outcomes}
 
 
