@@ -15,11 +15,11 @@ with open(target, encoding="utf-8") as f:
 print(cli(["--inline", source]))
 with open(source, encoding="utf-8") as f:
     print(f.read())
-with open(source, "wb") as f:
-    f.write(br'{"value":"\ud800"}')
+with open(source, "wb") as binary_output:
+    binary_output.write(br'{"value":"\ud800"}')
 print(cli(["--inline", source]))
-with open(source, "rb") as f:
-    print(f.read())
+with open(source, "rb") as binary_input:
+    print(binary_input.read())
 os.remove(target)
 os.remove(source)
 os.rmdir(directory)
