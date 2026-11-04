@@ -1346,7 +1346,9 @@ outside this supported API set. Builtin `os.path` has its own documented APIs.
 `glob` is Pystachy's own subset (`lib/glob.py`) of CPython 3.13.16's module: `glob()` and
 `iglob()` with `root_dir`, `recursive` and `include_hidden`, `escape()` and `has_magic()`,
 with CPython's functions for them and their order of results
-([test](../tests/programs/library/lib_glob.py)). Directories are listed with `os.listdir()`
+([test](../tests/programs/library/lib_glob.py)). On POSIX, `escape()` and `has_magic()`
+also accept byte strings containing arbitrary bytes
+([CPython-derived cases](../tests/programs/upstream/upstream_glob_escape.py)). Directories are listed with `os.listdir()`
 and tested with `os.path.isdir()`, as CPython's `os.scandir()` entries would be. `dir_fd`
 raises `NotImplementedError`, and `translate()` is not provided.
 

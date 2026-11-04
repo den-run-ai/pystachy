@@ -190,8 +190,11 @@ def _join(dirname: str, basename: str) -> str:
     return os.path.join(dirname, basename)
 
 
-def has_magic(s: str) -> bool:
-    return '*' in s or '?' in s or '[' in s
+def has_magic(s) -> bool:
+    if isinstance(s, bytes):
+        return b'*' in s or b'?' in s or b'[' in s
+    text: str = s
+    return '*' in text or '?' in text or '[' in text
 
 
 def _ishidden(path: str) -> bool:
@@ -202,11 +205,16 @@ def _isrecursive(pattern: str) -> bool:
     return pattern == '**'
 
 
-def escape(pathname: str) -> str:
+def escape(pathname):
     """Escape all special characters.
     """
     # Escaping is done by wrapping any of "*?[" between square brackets.
     # Metacharacters do not work in the drive part and shouldn't be escaped.
+    if isinstance(pathname, bytes):
+        if not has_magic(pathname):
+            return pathname
+        # POSIX has no drive prefix. Escape '[' first so newly inserted brackets stay literal.
+        return pathname.replace(b'[', b'[[]').replace(b'*', b'[*]').replace(b'?', b'[?]')
     drive, rest = posixpath.splitdrive(pathname)
     out = []
     for c in rest:
