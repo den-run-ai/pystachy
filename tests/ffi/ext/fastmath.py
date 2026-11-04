@@ -97,3 +97,8 @@ def quit_none(n: int) -> None:
 @export
 def scale(x: float, neg: bool) -> float:
     return -x if neg else x * 2
+
+
+@export
+def width(text: str) -> int:
+    return len(text)
