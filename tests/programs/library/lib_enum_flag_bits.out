@@ -1,0 +1,18 @@
+[<Strict.A: 1>, <Strict.B: 2>] 2 True
+[<Strict.A: 1>, None] 2 True
+True
+None <Strict: 4> True [<Strict.A: 1>, <Strict: 4>] True
+<Strict.A|B|AC: 7> <Strict.A: 1>
+<flag 'Strict'>: no members with value 4
+<flag 'Strict'> invalid value 8
+    given 0b0 1000
+  allowed 0b0 0111
+9 AD <Keep.AD: 9> [<Keep.A: 1>, None] 2
+11 A|B|AD <Keep.A|B|AD: 11> [<Keep.A: 1>, <Keep.B: 2>, None] 3
+8 None <Keep: 8> [<Keep: 8>] 1
+12 None <Keep: 12> [<Keep: 8>] 2
+16 None <Keep: 16> [] 1
+15 A|B|AD|4 <Keep.A|B|AD|4: 15> [<Keep.A: 1>, <Keep.B: 2>, <Keep: 8>] 4
+[] 0 [None, None]
+None None [<CompositeOnly: 1>, <CompositeOnly: 2>]
+[exit 0]

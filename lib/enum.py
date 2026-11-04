@@ -640,11 +640,6 @@ class _FlagType:
     def __repr__(self) -> str:
         return "<flag %r>" % self._cls_name_
 
-    def _members_of_(self, value: int):
-        # (the canonical members in value, in definition order, as CPython's _iter_member_ gives
-        # them: by value where their values increase, else _iter_member_by_def_)
-        return [m for m in self._member_list_ if m._value_ & value]
-
 
 class Flag(Enum):
     """
@@ -686,7 +681,22 @@ class Flag(Enum):
         """
         Returns flags in definition order.
         """
-        return iter(self._flag_type_()._members_of_(self._value_))
+        ft = self._flag_type_()
+        value = self._value_
+        if ft._flag_mask_ == ft._singles_mask_:
+            # Canonical members, already in definition order.
+            for member in ft._member_list_:
+                if member._value_ & value:
+                    yield member
+        else:
+            # The loader accepts unnamed bits only in value order. CPython looks
+            # up each bit as iteration advances, so an intervening Flag(bit)
+            # can change its result from None to a cached pseudo-member.
+            bits = value & ft._flag_mask_
+            while bits:
+                bit = bits & -bits
+                bits ^= bit
+                yield ft._value2member_map_.get(bit)
 
     def __len__(self) -> int:
         return _bit_count(self._value_)
