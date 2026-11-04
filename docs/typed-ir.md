@@ -456,6 +456,12 @@ before the next pass. Normal compilation does not add these verification scans.
 Disable one with `PYSTACHY_OPT=-dictfuse`, several with a comma-separated list, or all with
 `PYSTACHY_OPT=-all`. Differential runs check that the choices preserve behavior.
 
+For a statically known string variable `s`, the frontend can lower `ord(s[i])` and
+comparisons such as `s[i] == ":"` directly to `text.ord_at`. The comparison accepts
+`==` or `!=` with a single ASCII literal on either side. The indexed read evaluates
+at its original position and raises the usual indexing errors. The separate `charslots`
+pass above handles the case where a local holds the character between the read and comparison.
+
 The native recursion depth policy is not an option: `Gen.recursionscope` decides which
 source functions count toward `sys.setrecursionlimit()` once the whole program is built
 and summarized, before these passes, and gives exactly those functions a checked

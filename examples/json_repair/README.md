@@ -34,6 +34,10 @@ can drop it. For example, `loads('{界:1}')` returns `{}`. Quoting the key as
 `loads('{"界":1}')` preserves it. This also affects the standalone native command.
 [Unicode classification is tracked in #120](https://github.com/den-run-ai/pystachy/issues/120).
 
+The native integer parser uses CPython’s default limit of 4,300 decimal digits.
+If the host changes `sys.set_int_max_str_digits()`, large numbers can produce
+different results or a `ValueError` when CPython decodes a native result.
+
 The native calls follow the [extension thread and GIL contract](../../docs/ffi.md#threading-and-host-lifetime).
 
 Check the built module against all 645 [recorded API cases](../../tests/upstream/json_repair/README.md).
