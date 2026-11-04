@@ -1,0 +1,8 @@
+@main.init: pys_list_new pys_list_append pys_list_append pys_list_append pys_write pys_write pys_write pys_write pys_write pys_write
+@f.joined: pys_str_join_slice
+@f.stepped: pys_list_slice_step pys_str_join
+@f.saved: pys_list_slice pys_list_clear pys_str_join
+@pys_obj_eq:
+@pys_obj_cmp:
+@pys_obj_repr:
+@main: pys_init pys_finish

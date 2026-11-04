@@ -2417,6 +2417,16 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
         self.err(f"BaseException.{m}() is not supported (of a builtin exception, str(e), repr(e) and formatting are)")
     if key not in METHODS:
         self.err(f"'{tname(o.t) if o.t == BIG else o.t}' has no method '{m}'")
+    if key == "str.join" and len(args) == 1 and args[0].kind == "slice" and len(args[0].kids) == 3:
+        source, start, stop = args[0].kids
+        if self.static_type(source) == "list[str]":
+            # Evaluate the list before its bounds. Either bound may resize it or rebind its name.
+            items = self.expr(source, "")
+            dyn_bounds: list[Val] = []
+            bounds = [self.slice_bound(start, dyn_bounds), self.slice_bound(stop, dyn_bounds), "1"]
+            self.slice_dyn(bounds, dyn_bounds)
+            return Val(self.rt("pys_str_join_slice", "ptr", [f"ptr {o.v}", f"ptr {items.v}",
+                                                             f"i64 {bounds[0]}", f"i64 {bounds[1]}"]), "str")
     if key == "dict.get" and (len(args) == 0 or len(args) > 2):
         # (CPython's TypeError; not left to the arity check below, as d.get(k, d2, None) would
         # read as d.get(k, None))

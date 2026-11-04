@@ -3255,6 +3255,13 @@ List *pys_list_slice(List *l, I lo, I hi) {
   if (l->ids && opt_in()) { pys_list_identity(r, l->ids[0]); memcpy(r->ids + 1, l->ids + lo + 1, (hi - lo) * 8); }
   memcpy(r->a, l->a + lo, (hi - lo) * 8); r->len = hi - lo; return r;
 }
+Str *pys_str_join_slice(Str *sep, List *l, I lo, I hi) {
+  span(&lo, &hi, l->len);
+  /* join only reads this view and calls no user code. Its interior pointer keeps the
+     scanned item storage alive across the result allocation (see the collector). */
+  List view = {.len = hi - lo, .cap = hi - lo, .a = lo < hi ? l->a + lo : NULL};
+  return pys_str_join(sep, &view);
+}
 List *pys_list_copy(List *l) { return pys_list_slice(l, NONE, NONE); }
 void pys_list_clear(List *l) { memset(l->a, 0, l->len * 8); if (l->ids && opt_in()) memset(l->ids + 1, 0, l->len * 8); l->len = 0; empty(l); }
 List *pys_list_slice_step(List *l, I lo, I hi, I st) {
