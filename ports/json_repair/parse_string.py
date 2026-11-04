@@ -366,6 +366,37 @@ def _normalize_escape_sequence(
         _pop_low_smart_quote_span(state)
         self.index += 1
         return True, self.get_char_at()
+    if (char in "nrtb" and not self.logging and not state.missing_quotes
+            and state.regex_character_class_start is None):
+        # End on a complete control escape. Everything between escapes is
+        # ordinary string content with no quote, brace or bracket side effects.
+        source = self.json_str
+        pos = self.index + 1
+        limit = min(len(source), pos + 2048)
+        last = self.index
+        # Probe a short window first. A sparse or complex next escape uses
+        # the scalar path without a second scan over ordinary characters.
+        next_escape = source.find("\\", pos, min(limit, pos + 64))
+        if next_escape < 0 or next_escape + 1 >= limit or source[next_escape + 1] not in "nrtb":
+            limit = pos
+        while pos < limit:
+            current = source[pos]
+            if current == "\\":
+                if pos + 1 >= limit or source[pos + 1] not in "nrtb":
+                    break
+                last = pos + 1
+                pos += 2
+            elif current in "\"'“”„{}[](),:":
+                break
+            else:
+                pos += 1
+        if last > self.index:
+            run = source[self.index - 1:last + 1]
+            decoded = run.replace("\\n", "\n").replace("\\r", "\r").replace("\\t", "\t").replace("\\b", "\b")
+            _remove_trailing_backslash(state)
+            _append_string_span(state, decoded, 0, len(decoded))
+            self.index = last + 1
+            return True, self.get_char_at()
     if char == "\\":
         run_start = self.index - 1
         run_end = self.index + 1

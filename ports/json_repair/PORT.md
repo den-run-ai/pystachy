@@ -37,8 +37,8 @@ repeated top-level objects can replace earlier objects; duplicate keys can use
 the last value; malformed escaped emoji can remain two surrogate characters.
 Forced repair (`skip_json_loads=True`) can discard standalone primitive roots, as
 can a primitive surrounded by comments/prose. Keep the default decoder path for
-valid scalar documents. Comments inside arrays and between an object colon and its
-value are consumed before parsing the actual value, fixing upstream value loss.
+valid scalar documents. Comments at array and object boundaries are consumed
+before parsing the next key or value, matching the upstream 0.64.3 comment fix.
 Split trace records before repair and validate types and content afterward.
 
 For accelerated calls from CPython, build the [native companion module](../../examples/json_repair/README.md).
@@ -97,6 +97,9 @@ python3.13 tests/upstream/json_repair/cli.py ./pystachy
   retain the original scan for other targets and negative offsets.
 - Update brace/bracket state incrementally after replacing a trailing escape,
   preserving decoded structural characters without rescanning accumulated text.
+  With logging off, a nearby second simple control escape lets the parser decode
+  a bounded run in one pass. Ambiguous escapes and quoted character classes
+  retain the original handling.
 - Accumulate string content in bounded 64-code-point tails and immutable chunks;
   cache tail/regex whitespace metadata and flatten once at finalization. This
   removes repeated growing-prefix copies. [Historical measurements](../../bench/json_repair/README.md#historical-evidence)
@@ -111,10 +114,15 @@ python3.13 tests/upstream/json_repair/cli.py ./pystachy
 - Use the native `json._raw_decode` adapter at two call sites, with a guarded
   import falling back to CPython’s `JSONDecoder`. The public decoder keeps its
   class identity; see the [JSON API notes](../../docs/json.md).
-- Skip comments while still expecting an array item or object member value,
-  without recursive calls for consecutive comments. Top-level comments resume
-  the main parse loop, so alternating comments and discarded prose do not grow
-  the native stack either.
+- Treat comments as whitespace at array and object boundaries, including around
+  keys, separators and closing delimiters. This follows the
+  [0.64.3 comment fix](https://github.com/mangiucugna/json_repair/commit/58dfa5a1feeb1ad2991ae042edce6e2691e9ba69).
+  Block comments find their closing delimiter directly. Line comments search
+  bounded windows for the earliest context-dependent terminator. Log text is
+  sliced from the source only when requested. As before, at the start of an
+  array item or object value the port skips a stray slash and recovers the
+  value that follows. Top-level comments resume the
+  main parse loop so alternating comments and prose do not grow the native stack.
 
 The string-repair implementation remains upstream's roughly 900-line heuristic
 parser. Changes are marked with `Pystachy port` comments or described above.

@@ -21,16 +21,13 @@ def parse_array(
 
     arr: list[Any] = []
     with self.context.enter(ContextValues.ARRAY):
-        self.skip_whitespaces()
-        char = self.get_char_at()
-        while char and char not in [closing_delimiter, "}"]:
-            # Pystachy port: comments are not empty array items. In particular,
-            # the empty-value recovery below must not skip the next value's
-            # first character when it immediately follows a block comment.
-            if char in ["#", "/"]:
-                self.parse_comment()
-                self.skip_whitespaces()
-                char = self.get_char_at()
+        while True:
+            self.skip_whitespace_and_comments(skip_bare_slashes=True)
+            char = self.get_char_at()
+            if char is None or char in [closing_delimiter, "}"]:
+                break
+            if char == ",":
+                self.index += 1
                 continue
             if char is not None and char in STRING_DELIMITERS:
                 # A string followed by ':' is often a missing object start; treat it as an object.
@@ -56,11 +53,6 @@ def parse_array(
                 )
             else:
                 arr.append(value)
-
-            char = self.get_char_at()
-            while char and char != closing_delimiter and (char.isspace() or char == ","):
-                self.index += 1
-                char = self.get_char_at()
 
         if char != closing_delimiter:
             self.log(

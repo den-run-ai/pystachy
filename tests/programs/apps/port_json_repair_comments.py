@@ -32,6 +32,12 @@ def main() -> None:
                 assert repair_json(text, strict=strict, skip_json_loads=skip) == expected
         print(repair_json(text))
 
+    # Preserve the port's recovery of values immediately after a stray slash.
+    for text, expected in [('[/1,2]', '[1, 2]'), ('[/abc]', '["abc"]'),
+                           ('{"k":/42}', '{"k": 42}'), ('{"k":/ /*x*/true}', '{"k": true}')]:
+        for strict in [False, True]:
+            assert repair_json(text, strict=strict) == expected
+
     # A comment without a value must not consume the next member or invent one.
     for text in ['{"a": /* c */, "b": 2}', '{"a": /* c */}',
                  '{"a": /* c */', '{"a": /* unclosed']:
@@ -42,6 +48,21 @@ def main() -> None:
             print('missing value')
         else:
             raise AssertionError('strict mode accepted a missing value')
+
+    for comment in ['/* note */', '// note\n', '# note\n']:
+        raw = f'{{{comment} "a" {comment}: 1 {comment}, {comment} "b": 2 {comment}}}'
+        for strict in [False, True]:
+            parsed = loads(raw, strict=strict, logging=True)
+            assert parsed[0] == {'a': 1, 'b': 2}
+            assert len(parsed[1]) == 5
+        assert loads('{' + comment + '}', strict=True) == {}
+
+    try:
+        loads('{/* unclosed }', strict=True)
+    except ValueError as exc:
+        assert str(exc) == 'Parsed object is empty but contains extra characters in strict mode.'
+    else:
+        raise AssertionError('strict mode accepted an unclosed comment')
 
     # Large runs of comments use a loop, and comment logging remains present.
     assert repair_json('{"a":' + '/* c */' * 1200 + '1}') == '{"a": 1}'

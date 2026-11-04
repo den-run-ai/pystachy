@@ -54,3 +54,14 @@ for _ in range(20):
     repair_json('{"a":"' + "x\\n" * 70 + 'end",}', return_objects=True)
 assert first == {"a": "x\nend"}
 print("public snapshot retained")
+
+# Compare batched control runs with json's independent encoder. Chunk ends,
+# scan windows, Unicode and ambiguous escapes must preserve the same value.
+for width in [63, 64, 65, 2047, 2048, 2049]:
+    value = "é\n\t" * 23 + "x" * width + "\b\r\n\\n" + ' [{}]”'
+    broken = '{"a":' + json.dumps(value, ensure_ascii=False) + ',}'
+    for stable in [False, True]:
+        assert repair_json(broken, return_objects=True, stream_stable=stable) == {"a": value}
+        logged = repair_json(broken, logging=True, stream_stable=stable)
+        assert logged[0] == {"a": value}
+        assert len(logged[1]) >= 48

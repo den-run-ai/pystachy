@@ -13,6 +13,7 @@ except ImportError:
 
 from .parse_array import parse_array as _parse_array
 from .parse_comment import parse_comment as _parse_comment
+from .parse_comment import skip_comment as _skip_comment
 from .parse_number import parse_number as _parse_number
 from .parse_object import parse_object as _parse_object
 from .parse_string import parse_string as _parse_string
@@ -359,6 +360,14 @@ class JSONParser:
         length = len(self.json_str)
         while -length <= self.index < length and self.json_str[self.index].isspace():
             self.index += 1
+
+    def skip_whitespace_and_comments(self, skip_bare_slashes: bool = False) -> None:
+        while True:
+            self.skip_whitespaces()
+            char = self.get_char_at()
+            if char != "#" and not (char == "/" and (skip_bare_slashes or self.get_char_at(1) in ["/", "*"])):
+                return
+            _skip_comment(self)
 
     def scroll_whitespaces(self, idx: int = 0, *, backwards: bool = False) -> int:
         """
