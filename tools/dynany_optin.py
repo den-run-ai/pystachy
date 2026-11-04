@@ -337,8 +337,13 @@ def positive_int(value, label, minimum=0):
     return value
 
 
-def validate_report(report, root=ROOT):
-    """Reject partial, stale, duplicated, fabricated-success or development-only reports."""
+def validate_report(report, root=ROOT, *, expected_cases=None):
+    """Validate a full shard, or an independently selected PR sample when explicitly supplied.
+
+    The default continues to reject development subsets. A caller validating a sparse profile
+    must provide its exact expected cases, derived from the checkout rather than from the report.
+    Every identity, oracle, mode, exception and result check below applies to either scope.
+    """
     if not isinstance(report, dict):
         raise ValueError("opt-in report must be an object")
     corpus = programs(root)
@@ -350,8 +355,17 @@ def validate_report(report, root=ROOT):
     if index >= count:
         raise ValueError("shard_index out of range")
     selected = corpus[index::count]
-    if not selected or report.get("cases") != selected or report.get("subset") is not False:
-        raise ValueError("opt-in report does not cover exactly its full corpus shard")
+    if expected_cases is not None:
+        if (not isinstance(expected_cases, list) or not expected_cases or
+                not all(isinstance(case, str) for case in expected_cases) or
+                len(set(expected_cases)) != len(expected_cases)):
+            raise ValueError("invalid expected opt-in sample")
+        selected = [case for case in selected if case in set(expected_cases)]
+        if selected != expected_cases:
+            raise ValueError("expected opt-in sample must belong to its shard in corpus order")
+    if (not selected or report.get("cases") != selected or
+            report.get("subset") is not (expected_cases is not None)):
+        raise ValueError("opt-in report does not cover exactly its expected corpus selection")
     if report.get("modes") != list(MODES):
         raise ValueError("opt-in report must execute JIT and AOT")
     native = report.get("native_suite")

@@ -20,3 +20,12 @@ void ffi_iota(int64_t *x, size_t n, int64_t start) { for (size_t i = 0; i < n; i
 double ffi_widen(float x) { return x; }
 float ffi_narrow(double x) { return (float)x; }
 float ffi_fmul(float a, float b) { return a * b; }
+
+/* tests/ffi/ext/recdeepclient.py's native stack, through ctypes: n frames of 4 KiB below its caller, then
+   cb(n, the address of the deepest frame's buffer); not a tail call (each frame's buffer is read after it) */
+long ffi_deep(long n, long (*cb)(long, long)) {
+  volatile char buf[4096];
+  buf[0] = (char)n;
+  long r = n > 0 ? ffi_deep(n - 1, cb) : cb(n, (long)(intptr_t)buf);
+  return r + buf[0] - (char)n;
+}

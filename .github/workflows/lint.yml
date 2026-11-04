@@ -26,7 +26,7 @@ jobs:
   lint:
     name: make lint (ruff, shellcheck, clang -Wall -Wextra)
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 15
     env:
       PYSTACHY_LLVM: /usr/lib/llvm-18/bin
     steps:
@@ -62,6 +62,14 @@ jobs:
 
       - name: CI verification harness and report gate tests
         run: python3 -m unittest discover -s tools -p 'test_*verif*.py'
+
+      - name: Compact CI sampling and variant controls
+        run: |
+          python3 -m unittest discover -s tools -p 'test_ci_*.py'
+          python3 -m unittest discover -s tools -p 'test_pr_*.py'
+
+      - name: Upstream port preservation (CPython)
+        run: make port-check
 
       - name: Router benchmark validation tests
         run: python3 -m unittest discover -s tools -p test_route_bench.py
@@ -126,7 +134,7 @@ jobs:
       - name: Coverage report checks tests
         run: python3 -m unittest discover -s tools -p test_coverage_report.py
 
-      - name: Workflow job time limits (at most 15 minutes)
+      - name: PR job budget (20 jobs, two workers per group, 15 minutes each)
         run: python3 -m unittest discover -s tools -p test_workflow_limits.py
 
       - name: Linux ELF compatibility audit controls

@@ -4,6 +4,7 @@
 # import. For development and CI only (Pystachy needs none of them to build or run):
 #   python3 -m pip install -r tools/requirements-dev.txt
 coverage==7.17.0
+PyYAML==6.0.3
 mypy==2.4.0
 ruff==0.17.2
 shellcheck-py==0.11.0.1

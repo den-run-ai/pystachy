@@ -4,7 +4,8 @@
 # AOT programs built at -O0 (PYSTACHY_CFLAGS). Each variant runs in four shards of the corpus, each in a
 # job of its own, as CI's groups do: under ten minutes of work, within a 15-minute limit (Lint's
 # tools/test_workflow_limits.py). A failed test fails a run; nothing waits for it. Daily and on demand,
-# and on the pull requests and pushes to main that change it. The matrix lists tools/variants.sh's
+# and on pushes to main that change it. PRs run sampled configurations in two CI workers.
+# The matrix lists tools/variants.sh's
 # variants, which rejects a name it lacks.
 name: Variants
 
@@ -21,15 +22,6 @@ on:
       - tests/run.sh
       - tools/shard_cases.sh
       - tools/variants.sh
-  pull_request:
-    paths:
-      - .github/workflows/variants.yml
-      - src/pystachy_compiler/specs.py
-      - tests/corpus.sh
-      - tests/run.sh
-      - tools/shard_cases.sh
-      - tools/variants.sh
-
 concurrency:
   group: variants-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || github.ref }}
   cancel-in-progress: true

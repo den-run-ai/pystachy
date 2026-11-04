@@ -362,6 +362,26 @@ class ReportTests(unittest.TestCase):
         self.assertEqual(sweep.programs(self.root), self.paths)
         self.assertEqual(sum(len(self.paths[i::3]) for i in range(3)), 4)
 
+    def test_pr_sample_requires_explicit_exact_selection_and_keeps_full_gate_strict(self):
+        selected = self.paths[1:2]
+        focused = copy.deepcopy(self.report)
+        focused.update(cases=selected, subset=True, oracle_cases=1, expected_checks=2,
+                       completed_checks=2, passed_checks=2, results=focused["results"][:2])
+        sweep.validate_report(focused, self.root, expected_cases=selected)
+        with self.assertRaises(ValueError):
+            sweep.validate_report(focused, self.root)
+        for expected in ([], self.paths[:1], self.paths[3:], selected * 2, tuple(selected)):
+            with self.subTest(expected=expected), self.assertRaises(ValueError):
+                sweep.validate_report(focused, self.root, expected_cases=expected)
+        for mutate in (lambda data: data.update(subset=False),
+                       lambda data: data.update(results=data["results"][:-1]),
+                       lambda data: data.update(corpus_sha256="0" * 64),
+                       lambda data: data["results"][0].update(result="fail")):
+            changed = copy.deepcopy(focused)
+            mutate(changed)
+            with self.subTest(mutate=mutate), self.assertRaises(ValueError):
+                sweep.validate_report(changed, self.root, expected_cases=selected)
+
     def test_partial_duplicate_stale_and_false_success_reports_fail(self):
         mutations = [lambda r: r.update(cases=r["cases"][:-1]),
                      lambda r: r.update(results=r["results"][:-1]),

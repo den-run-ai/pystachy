@@ -178,7 +178,7 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
         return self.builtin(f.s, args, want, resultsoft)
     if f.kind == "attr":
         c = self.curfn.cls
-        if c != "" and self.classes[c].exc != "" and f.kids[0].kind == "name" and self.derives(c, f.kids[0].s) and f.kids[0].s != c and len(args) > 0 and args[0].kind == "name" and len(self.curfn.params) > 0 and args[0].s == self.curfn.params[0] and (f.kids[0].s in self.classes or not self.bound(f.kids[0].s)):
+        if c != "" and self.classes[c].exc != "" and f.kids[0].kind == "name" and f.kids[0].s not in self.ltype and self.derives(c, f.kids[0].s) and f.kids[0].s != c and len(args) > 0 and args[0].kind == "name" and len(self.curfn.params) > 0 and args[0].s == self.curfn.params[0] and (f.kids[0].s in self.classes or not self.bound(f.kids[0].s)):
             # Base.m(self, args) in a method of an exception class: super().m(args) for its base
             self.class_ahead(f.kids[0].s)
             if f.kids[0].s != self.classes[c].base and not (self.classes[c].base == "OSError" and (f.kids[0].s == "IOError" or f.kids[0].s == "EnvironmentError")):
@@ -819,8 +819,8 @@ def gen_method(self, o: Val, m: str, args: list[Node], want: str = "", resultsof
         o = self.unwrap(o, f"AttributeError: 'NoneType' object has no attribute '{m}'")
     if is_union(o.t):
         return self.umethod(o, m, args)
-    if (o.t in self.nts or self.literal_class(o.t)) and m == "__init__":
-        # p.__init__(args) of a NamedTuple or operator getter (also as a value): object.__init__,
+    if (o.t in ["int", "bool", BIG] or o.t in self.nts or self.literal_class(o.t)) and m == "__init__":
+        # p.__init__(args) of an int, NamedTuple or operator getter: object.__init__,
         # as tuple.__new__ set the fields. It takes any arguments where the class has a __new__
         # of its own, and does nothing, also on None. The __init__ that makes the object is the
         # compiler's (see nt_class), which only construction and _replace() call. Operator's

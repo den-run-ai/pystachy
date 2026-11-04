@@ -160,6 +160,26 @@ class ReportTests(unittest.TestCase):
             for index, count in ((0, 1), (0, 2), (1, 2)):
                 gate.validate_report(report(root, index, count), root)
 
+    def test_pr_sample_is_exact_and_never_satisfies_the_default_full_gate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            fixture(root, [manifest_row()])
+            good = report(root)
+            focused = {**good, "cases": [A], "subset": True, "oracle_cases": 1,
+                       "expected_checks": 2, "completed_checks": 2, "passed_checks": 1,
+                       "results": good["results"][:2]}
+            gate.validate_report(focused, root, expected_cases=[A])
+            with self.assertRaises(ValueError):
+                gate.validate_report(focused, root)
+            for expected in ([], [B], [A, A], [A, B], (A,)):
+                with self.subTest(expected=expected), self.assertRaises(ValueError):
+                    gate.validate_report(focused, root, expected_cases=expected)
+            for changed in ({"subset": False}, {"source_sha256": "0" * 64},
+                            {"gc_stress": True}, {"results": focused["results"][:-1]},
+                            {"results": [{**focused["results"][0], "result": "pass"}, focused["results"][1]]}):
+                with self.subTest(changed=changed), self.assertRaises(ValueError):
+                    gate.validate_report({**focused, **changed}, root, expected_cases=[A])
+
     def test_rejects_incomplete_stale_or_fabricated_success(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

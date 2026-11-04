@@ -1,17 +1,6 @@
 name: Release
 
 on:
-  pull_request:
-    paths:
-      - .github/workflows/release.yml
-      - Dockerfile
-      - .dockerignore
-      - tools/release*.py
-      - tools/test_release*.py
-      - tools/linux_abi.py
-      - tools/test_linux_abi.py
-      - tools/docker_smoke.sh
-      - VERSION
   push:
     tags: [v*]
   workflow_dispatch:
@@ -22,8 +11,8 @@ on:
         type: string
 
 concurrency:
-  group: release-${{ github.event.pull_request.number || inputs.version || github.ref_name }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: release-${{ inputs.version || github.ref_name }}
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -31,7 +20,7 @@ permissions:
 jobs:
   prepare:
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 15
     permissions:
       contents: read
       actions: read
@@ -65,7 +54,7 @@ jobs:
           declared = Path('VERSION').read_text().strip()
           if not re.fullmatch(semver, declared):
               raise SystemExit('VERSION must be a v-prefixed semantic version')
-          # A version bump carries its curated notes, which publication uses; pull requests check them too.
+          # A version bump carries its curated notes; the compact PR distribution check validates them too.
           if not Path('docs/releases', declared + '.md').is_file():
               raise SystemExit(f'Add release notes for {declared} as docs/releases/{declared}.md')
           if publish:
@@ -91,13 +80,13 @@ jobs:
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
         run: |
           python3 tools/release_gate.py --repository "$GITHUB_REPOSITORY" \
-            --commit "$RELEASE_COMMIT" --version "$RELEASE_VERSION" --wait-seconds 1200
+            --commit "$RELEASE_COMMIT" --version "$RELEASE_VERSION" --wait-seconds 600
 
   binaries:
     needs: prepare
     name: Binary (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 25
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -173,7 +162,7 @@ jobs:
     needs: [prepare, binaries]
     name: Container (linux/${{ matrix.arch }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 25
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -262,7 +251,7 @@ jobs:
     if: needs.prepare.outputs.publish == 'true'
     needs: [prepare, binaries, container]
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 15
     concurrency:
       group: release-publication
       cancel-in-progress: false

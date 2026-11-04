@@ -1,0 +1,8 @@
+no m I('no m') x
+no m M('no m') y
+keyword evaluated
+ImportError('msg')
+ModuleNotFoundError('msg')
+Inherited('msg')
+ModuleInherited('msg')
+[exit 0]

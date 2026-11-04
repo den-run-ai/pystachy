@@ -2,9 +2,9 @@
 
 The [Release workflow](../.github/workflows/release.yml) builds native compiler archives
 for Linux x86-64/AArch64 and macOS arm64/x86-64, and native Docker images for Linux
-amd64/arm64. Linux ARM64 builds use `ubuntu-24.04-arm`, without emulation. Pull requests
-changing packaging run the same builds and smoke tests without publishing or Docker
-credentials. Artifacts are retained for 14 days. Published Docker version tags select
+amd64/arm64. Linux ARM64 builds use `ubuntu-24.04-arm`, without emulation. PRs run
+release unit tests and one Linux archive smoke in the compact distribution job. Full
+archive and container matrices run only for release tags/dispatch. Artifacts are retained for 14 days. Published Docker version tags select
 the native image through a manifest containing both architectures.
 
 ## Prepare publishing
@@ -30,21 +30,21 @@ only build inputs and excludes environment files, keys and caches.
 2. Wait for **CI**, **Installation**, **Lint** and **Packages** to succeed on the exact
    `main` commit. CI on a `main` push includes the complete Linux x86-64 and Linux ARM64
    verification matrices; a success on only one architecture does not satisfy this gate.
-   A pull request's ARM64 smoke subset is not release evidence.
+   The sampled PR profile is not release evidence.
 3. Run **Release** manually from `main`, with a new tag matching `VERSION`.
    Alternatively, push that tag pointing to a verified commit on `main`.
 4. Download an archive and `SHA256SUMS` from the release, check the archive's hash, and
    confirm that its `bin/pystachy --version` and `docker run --rm IMAGE:VERSION --version`
    report the new version and the release commit.
 
-The workflow verifies that the source commit belongs to `main` and waits up to 20
+The workflow verifies that the source commit belongs to `main` and waits up to ten
 minutes for all four verification workflows on that commit. A failure or cancellation
 blocks publication. A published version cannot be replaced, and an existing tag must
 resolve to the selected commit. Create a new version for changed code.
 
 The release notes are the version's file under `docs/releases/`, followed by the
 generated asset list, Docker image, installation link and source commit. Every Release
-run, including a pull request's, fails if `VERSION` has no notes file. GitHub shows the
+run and PR distribution check fails if `VERSION` has no notes file. GitHub shows the
 notes outside the repository, so they use absolute links and no top-level title; the
 release is titled "Pystachy VERSION". A retried publication keeps an existing draft's notes.
 

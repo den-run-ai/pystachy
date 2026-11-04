@@ -306,12 +306,13 @@ What a change adds is reviewed where it is: with `COVERAGE_BASE=REF` (for exampl
 `make coverage COVERAGE_BASE=origin/main`), either summary also lists the code changed since the
 merge base of `REF` and `HEAD`, uncommitted changes included, that no suite ran: its statements or
 lines not run and its branches not taken. Review those before any threshold on the total. The
-Coverage workflow lists them for a pull request that runs it and for a run by hand on a branch
+Coverage workflow lists them for a manual run on a branch
 (its `base` input, `origin/main` by default). A selection (`FILES=...`) runs less of the suites, so
 it lists more.
 
 The [Coverage workflow](../.github/workflows/coverage.yml) runs both measurements daily and on
-demand, and on pull requests and pushes to `main` that change its setup or the suites' runners.
+demand, and on pushes to `main` that change its setup or the suites' runners. PRs do not launch
+this exhaustive matrix; run it manually on a PR branch when coverage detail is needed.
 The compiler's coverage runs in ten parallel jobs (the corpus in eight shards, the FFI and IR
 suites in one, the runtime-cache and unit suites in another) and the runtime's in seven (the
 corpus in six shards, each after building the native compiler, and the FFI suite); a report job
@@ -345,16 +346,18 @@ the corpus (`tools/shard_cases.sh`) and `MODES=jit` one tier. The script drops t
 settings that verification drops, builds each variant's runtime in a cache of its own and writes
 the logs to `build/variants/`, so run one at a time in a checkout. Each variant takes about as
 long as `make test`. The [Variants workflow](../.github/workflows/variants.yml) runs each one in
-four shards, each in a job of its own (24 jobs, each about five minutes after the compiler's
-build), daily, on demand and when the pass list, script or workflow changes; no check requires it.
+four shards (24 jobs) daily, on demand and on relevant `main` pushes. PRs run the six
+configurations on representative and changed cases in **two workers**, reusing the verified
+bootstrap. Each worker runs three configurations with private runtime caches and records its
+exact cases and results. The PR aggregate requires both workers to pass.
 
 ## Continuous integration
 
 The [CI workflow](../.github/workflows/ci.yml) runs on pull requests (including forks), pushes
 to `main` and manual dispatch. Pull requests test the branch merged with the then-current
 `main`. A newer PR push cancels its previous run; commits on `main` run to completion.
-A pull request that changes only Markdown files or `docs/` skips the CI, Installation and
-Packages workflows; Lint and the DCO check still run, and pushes to `main` run the full matrix.
+Markdown/docs-only PRs run Lint and DCO. Other PRs use the compact profile below;
+`main` pushes and manual CI runs retain complete verification for the release gate.
 The toolchain is Ubuntu 24.04, LLVM 18 and the CPython version pinned in `.python-version`.
 
 The `benchmarks` group also runs `make bench-pyperformance-check` with that run's verified
@@ -410,21 +413,46 @@ AOT workloads had over 20% within-revision wall-time spread (excluding removed `
 and optimized-away `unpack_sequence`). This small monitor does not cover memory, full models,
 end-to-end json_repair or all examples; broader benchmark history remains under #45.
 
-A native bootstrap job on each of **Linux x86-64 and ARM64** checks compiler and runtime
-IR fixed points once, then groups run in parallel using that architecture's verified
-compiler. Pushes to `main` (the release gate's per-commit CI) and manual runs execute all
-thirty groups on both architectures, and the upstream large-regex check on both. To keep
-pull-request CI near its single-architecture size, a pull request runs all thirty x86-64
-groups but an ARM64 smoke subset: the bootstrap, `contracts` (FFI, ABI, thread and native stack
-floor controls),
-`native-0` and `ubsan-0` (sanitized compiler-rt linkage). An ARM64-only failure in another
-group therefore appears on `main` after merge. Runners are `ubuntu-24.04` and `ubuntu-24.04-arm`, both
-with LLVM 18 and the pinned Python 3.13. Each group checks the same-run bundle's file hashes,
-complete tracked source identity, commit, architecture and toolchain before using it. No runtime cache is
-shared; Python-free and sanitizer rebuilds, GC stress and cache invalidation checks remain
-independent. Local `make verify` and group runs still build their own bootstrap.
-The target is under ten minutes of work per group; the 15-minute job limit leaves room for
-runner variation:
+### PR budget
+
+Every PR has at most **19 check rows**, including the conditional DCO check. Lint enforces a
+hard ceiling of **20 across all workflows**, no more than **two workers per task group**,
+and **15 minutes per job** (`tools/test_workflow_limits.py`). Path filters cannot hide a matrix
+from the budget. Each test runner uses at most four processes within its worker.
+
+| PR work | Jobs | Coverage |
+|---|---:|---|
+| Linux bootstrap | 2 | x86-64 and ARM64 compiler/runtime fixed points; ARM64 installer, FFI, thread, stack and sanitizer linkage smoke. |
+| Hosted | 1 | Every corpus case: hosted/native IR, diagnostics and check parity; hosted driver end-to-end strata. |
+| Native | 2 | Disjoint halves of the **complete** corpus, JIT and AOT. |
+| Safety | 2 | Representative and changed cases: optimizer off, Python-free rebuild, UBSan rebuild, JIT/AOT GC stress. |
+| Opt-in compatibility | 1 | Selected programs with dynamic `Any` and promoting ints, against fresh CPython oracles. |
+| Contracts | 1 | Complete IR/runtime/FFI and behavioral contract checks. |
+| Cache and compiler GC | 1 | Cache invalidation plus stressed self-compilation. |
+| Benchmarks and scaling | 1 | Correctness, both scaling halves, BLAS and large upstream regex. |
+| Variants | 2 | Six configurations, three per worker, on the selected cases. |
+| Distribution | 2 | Linux x86-64 and macOS ARM64 installation; Linux source packages and native archive smoke. |
+| Aggregate | 1 | Required reports, profiles, selection manifests, counts and job results. |
+| Lint, performance, DCO | 3 | Existing checks; CPython port preservation is folded into Lint. |
+
+`VERIFY_PROFILE=pr tests/verify.sh GROUP` selects this plan; plain `make verify` stays exhaustive.
+`tools/ci_sample.py` selects deterministic representatives and changed/new cases, including
+surviving cases affected by removed or moved fixtures. Workers and the gate use the same
+`CI_BASE_SHA` and independently validate the selected manifest. Secondary configurations are
+sampled; the normal native suite is not. PR reports explicitly identify the
+`pr` profile and cannot certify full verification.
+
+The two variant workers and Linux distribution job reuse the same verified bootstrap as the
+verification groups. Every consumer checks source bytes, commit, architecture, toolchain,
+workflow run and artifact hashes. Runtime caches stay private; Python-free and sanitized builds
+remain independent. Pip downloads are cached by the pinned dependency files.
+
+### Full verification
+
+Pushes to `main` and manual runs execute all thirty verification groups on both Linux
+architectures. They provide the exact-commit evidence required for releases. Local groups build
+their own bootstrap; CI builds it once per architecture. Large upstream regex runs alongside
+benchmark correctness, and Lint checks CPython port preservation. The full groups are:
 
 | Group | Work after bootstrap |
 |---|---|
@@ -453,10 +481,11 @@ merger checks that every input names the expected native machine. An x86 report 
 to look like an ARM artifact is rejected. Combined reports are `x86_64-verification` and
 `aarch64-verification`; download the corresponding `MACHINE-verification-*` artifacts
 and use `tools/merge_verification.py DIRECTORY --machine MACHINE -o REPORT.json` to
-reproduce either gate. Both architectures must pass for the CI workflow to succeed. On a
-pull request the ARM64 gate runs the merger with `--groups contracts,native-0,ubsan-0`: it
-requires exactly those groups and the bootstrap, and labels its combined report `subset`
-rather than `all`. Lint checks that this list matches the matrix's ARM64 `include` entries.
+reproduce either full gate. Main and manual runs require both architectures. PRs run the
+x86-64 aggregate, with ARM64 platform smoke checks in the ARM64 bootstrap job. To reproduce
+the PR aggregate, use `--profile pr --machine x86_64` and the same `CI_BASE_SHA` as the
+workflow run. Its combined report is labelled `pr` and requires every compact group. Lint
+checks that each profile's group list matches the workflow matrix.
 Reports and logs are uploaded as workflow artifacts, together with the generated dynamic-`Any`
 fuzzer programs. The gate requires its complete 3-program/540-case budget, including 90 typed/Any
 parity cases, all four execution modes, program GC interval 1 and zero mismatches.
@@ -722,25 +751,24 @@ just for mypy. The initial gate excludes development tools, vendored/ported modu
 test programs (many intentionally invalid), and `runtime.py`'s compiler-only `_rt`
 intrinsics. It does not replace bootstrap, IR parity or runtime verification.
 
-The [Installation workflow](../.github/workflows/install.yml) builds and installs from source
-on Ubuntu 24.04 x86-64/ARM64, macOS 15 arm64 and macOS 15 x86-64, then runs hosted and native JIT/AOT smoke
-tests (`tools/install_smoke.py`). The [Packages workflow](../.github/workflows/packages.yml)
+On `main` and manual dispatch, the [Installation workflow](../.github/workflows/install.yml)
+builds on Ubuntu x86-64/ARM64 and macOS ARM64/x86-64, then runs hosted/native JIT/AOT
+installation smoke (`tools/install_smoke.py`). PR distribution checks cover the primary paths above. The [Packages workflow](../.github/workflows/packages.yml)
 builds the example and ports source wheels and runs them under CPython, JIT and AOT
-(`tools/package_smoke.py`). The [Release workflow](../.github/workflows/release.yml) runs its
-archive and Docker builds and smoke tests on pull requests that change packaging; publishing a
-version requires CI, Installation, Lint and Packages to succeed on the release commit
+(`tools/package_smoke.py`) on `main` and manual dispatch. PRs run these checks, release unit
+tests and one native archive smoke in the Linux distribution job. The
+[Release workflow](../.github/workflows/release.yml) reserves its full archive/container matrix
+for tags and release dispatch; publishing requires CI, Installation, Lint and Packages on the exact release commit
 ([releases](releasing.md)).
 
-The [Coverage workflow](../.github/workflows/coverage.yml) runs apart from CI, daily and when its
-setup changes, and no check requires it; [reading coverage](#reading-coverage) describes it. So
+The [Coverage workflow](../.github/workflows/coverage.yml) runs apart from PR CI, daily, manually
+and on relevant `main` pushes; no check requires it; [reading coverage](#reading-coverage) describes it. So
 does the [Variants workflow](../.github/workflows/variants.yml), which
 [configuration variants](#configuration-variants) describes.
 
-Every job of every workflow has a time limit of at most 15 minutes, which Lint checks
-(`tools/test_workflow_limits.py`): as for CI's groups, the target is under ten minutes of work,
-and a job that needs more is sharded rather than given a longer limit. Only the release
-workflow's jobs keep longer limits, which the check holds them to: its `prepare` job waits up to
-20 minutes for CI on the release commit.
+Every job, including release jobs, has a time limit of at most 15 minutes. Release preparation
+waits at most ten minutes for its exact-commit CI evidence. Expensive new checks must fit the
+existing PR budget or run in the full matrix; raising limits or adding matrix axes is not a fix.
 
 The [DCO workflow](../.github/workflows/dco.yml) checks that the author of a pull request from a
 fork is listed in `.github/dco-signers.txt`, on main or in the pull request; pull requests from

@@ -7,9 +7,8 @@
 # of its own, as CI's groups do: under ten minutes of work, within a 15-minute limit (Lint's
 # tools/test_workflow_limits.py); a report job for each combines them. A failed test, or a process that
 # left no data, fails a run; no percentage does, and nothing waits for it. Daily and on demand, and on
-# the pull requests and pushes to main that change its setup or the suites' runners. A pull request's
-# run, and one run by hand (input base, by default origin/main), also lists the changed code that no
-# suite ran (COVERAGE_BASE), for review.
+# pushes to main that change its setup or the suites' runners. Manual runs (input base, by default
+# origin/main) list changed code that no suite ran (COVERAGE_BASE). PRs use the compact CI profile.
 # Each run on main also commits its results to the badges branch, which the README's badges read
 # (coverage.json and coverage.md, runtime-coverage.json and runtime-coverage.md), from a job of its
 # own, which may write and runs no test.
@@ -38,20 +37,6 @@ on:
       - tools/requirements-dev.txt
       - tools/runtime_coverage.sh
       - tools/shard_cases.sh
-  pull_request:
-    paths:
-      - .coveragerc
-      - .github/workflows/coverage.yml
-      - tests/cache.sh
-      - tests/corpus.sh
-      - tests/ffi/run.sh
-      - tests/run.sh
-      - tools/coverage.sh
-      - tools/coverage_report.py
-      - tools/requirements-dev.txt
-      - tools/runtime_coverage.sh
-      - tools/shard_cases.sh
-
 concurrency:
   group: coverage-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || github.ref }}
   cancel-in-progress: true

@@ -127,9 +127,30 @@ cd "$(dirname "$0")/.." || exit 1
 # shellcheck disable=SC3045 # (ulimit -c is not POSIX, but dash, bash, ksh and busybox have it)
 ulimit -c 0 2> /dev/null  # (no core file of a crashing compiler or test program in the tree)
 ROOT=$(pwd)
+# PRs keep the complete native corpus in two workers and sample the alternate configurations.
+# Full verification remains the default for main, releases and local runs. The report gate binds
+# this explicit profile and the independently reproduced sample; a PR report is never full evidence.
+PROFILE=${VERIFY_PROFILE:-full}
+case $PROFILE in
+  full) NATIVE_SHARDS=3; CONFIG_SHARDS=3; UBSAN_SHARDS=4; OPTIN_SHARDS=3 ;;
+  pr) NATIVE_SHARDS=2; CONFIG_SHARDS=1; UBSAN_SHARDS=1; OPTIN_SHARDS=1 ;;
+  *) echo "verify: unknown profile: $PROFILE" >&2; exit 2 ;;
+esac
 # CI selects independent groups; a local run without arguments still runs every check.
 # --list exposes the same plan to the final CI report gate, which rejects missing groups/steps.
 plan() {
+  if [ "$PROFILE" = pr ]; then
+    case $1 in
+      all) echo 'bootstrap tests-cpython tests-native-0 tests-native-1 tests-opt-off-0 runtime-cache python-free-0 ubsan-0 gc-self gc-jit-0 gc-aot-0 benchmarks dynany-optin-0 python-int-optin-0 check-ir runtime-table rtcheck re-fuzz dynany-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code aot-dead-code unicode-audit scaling-0 scaling-1'; return ;;
+      safety-0) echo 'bootstrap tests-opt-off-0 python-free-0 gc-jit-0'; return ;;
+      safety-1) echo 'bootstrap ubsan-0 gc-aot-0'; return ;;
+      opt-in) echo 'bootstrap dynany-optin-0 python-int-optin-0'; return ;;
+      cache-gc) echo 'bootstrap runtime-cache gc-self'; return ;;
+      benchmarks) echo 'bootstrap benchmarks scaling-0 scaling-1'; return ;;
+      bootstrap|hosted|native-0|native-1|contracts) ;; # shared names and steps below
+      *) echo "verify: unknown PR group: $1" >&2; return 2 ;;
+    esac
+  fi
   case $1 in
     bootstrap) echo 'bootstrap' ;;
     # (in the order a run of all records them: the contracts' steps, as their lanes report them, after
@@ -177,7 +198,9 @@ plan() {
 [ $# -le 1 ] || { echo 'usage: tests/verify.sh [all|hosted|native-0|native-1|native-2|native|opt-off-0|opt-off-1|opt-off-2|opt-off|python-free-0|python-free-1|python-free-2|python-free|ubsan-0|ubsan-1|ubsan-2|ubsan-3|ubsan|gc-self|gc-ir|gc-jit-0|gc-jit-1|gc-jit|gc-aot-0|gc-aot-1|gc-aot-2|gc-aot|gc-stress|runtime-cache|dynany-optin-0|dynany-optin-1|dynany-optin-2|dynany-optin|python-int-optin-0|python-int-optin-1|python-int-optin-2|python-int-optin|contracts|benchmarks|scaling|--list]' >&2; exit 2; }
 GROUP=${1:-all}
 if [ "$GROUP" = --list ]; then
-  for g in all bootstrap hosted native-0 native-1 native-2 opt-off-0 opt-off-1 opt-off-2 python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 ubsan-3 gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 runtime-cache dynany-optin-0 dynany-optin-1 dynany-optin-2 python-int-optin-0 python-int-optin-1 python-int-optin-2 contracts benchmarks scaling; do
+  groups='all bootstrap hosted native-0 native-1 native-2 opt-off-0 opt-off-1 opt-off-2 python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 ubsan-3 gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 runtime-cache dynany-optin-0 dynany-optin-1 dynany-optin-2 python-int-optin-0 python-int-optin-1 python-int-optin-2 contracts benchmarks scaling'
+  [ "$PROFILE" != pr ] || groups='all bootstrap hosted native-0 native-1 safety-0 safety-1 opt-in contracts cache-gc benchmarks'
+  for g in $groups; do
     printf '%s %s\n' "$g" "$(plan "$g")"
   done
   exit 0
@@ -197,6 +220,14 @@ V=$ROOT/build/verify
 OUT=$ROOT/build/verification.json
 rm -rf "$V" "$OUT"
 mkdir -p "$V/home" "$V/ubsan-home"
+if [ "$PROFILE" = pr ]; then
+  # Fail closed before the bootstrap/build when a PR base is unavailable or the selection is empty.
+  # The common sampler includes new/changed cases and representatives of every corpus area.
+  $PY tools/ci_sample.py ${CI_BASE_SHA:+--base "$CI_BASE_SHA"} --manifest "$V/pr-selection.json" > "$V/pr-cases.log" || exit 2
+  [ -s "$V/pr-cases.log" ] || { echo 'verify: empty PR sample' >&2; exit 2; }
+  grep '^tests/programs/' "$V/pr-cases.log" > "$V/pr-programs.log"
+  [ -s "$V/pr-programs.log" ] || { echo 'verify: empty PR program sample' >&2; exit 2; }
+fi
 cp runtime.c runtime.py "$V/home/"
 cp runtime.c runtime.py "$V/ubsan-home/"
 cp -R lib ryu mpz "$V/home/"
@@ -270,6 +301,15 @@ ALL=$(checks "jit aot")
 # change which shard runs a case but never whether one does. The C locale is local to the selection;
 # programs keep theirs.
 shard_cases() { corpus_shard "$1" "$2" > "$3"; }
+# Alternate configurations share the deterministic PR sample; full runs still cover every shard.
+configuration_cases() {
+  if [ "$PROFILE" = pr ]; then cp "$V/pr-cases.log" "$3"
+  else shard_cases "$1" "$2" "$3"; fi
+}
+case_fields() {
+  [ "$PROFILE" = pr ] || return 0
+  $PY -c 'import json,sys; print(", \"selected_cases\": " + json.dumps(open(sys.argv[1]).read().splitlines()))' "$1"
+}
 # sample_cases I N OUT: write to OUT the cases whose position in C order is I modulo N, spread evenly
 # over the areas (tests-cpython's end-to-end sample)
 sample_cases() {
@@ -506,19 +546,19 @@ fi
 for shard in 0 1 2; do
   want tests-native-$shard || continue
   L=$V/tests-native-$shard.log; s=$(now); r=fail
-  shard_cases $shard 3 "$V/tests-native-$shard-cases.log"
+  shard_cases $shard "$NATIVE_SHARDS" "$V/tests-native-$shard-cases.log"
   set --
   while IFS= read -r f; do set -- "$@" "$f"; done < "$V/tests-native-$shard-cases.log"
   # An empty shard must not silently invoke run.sh's whole-suite default.
   [ $# != 0 ] || { echo 'empty native shard' > "$L"; step tests-native-$shard fail "$s" "$L" ""; continue; }
   PYSTACHY_CASE_TIMES="$V/tests-native-$shard-times.log" tests/run.sh "$V/pystachy2" "jit aot" "$@" > "$L" 2>&1
   x=$(tests "$(checks "jit aot" "$@")" "$L" 2>> "$L") && r=pass
-  step tests-native-$shard $r "$s" "$L" ', "compiler": "stage2", "modes": ["jit", "aot"], "shard_index": '"$shard"', "shard_count": 3'"$x"
+  step tests-native-$shard $r "$s" "$L" ', "compiler": "stage2", "modes": ["jit", "aot"], "shard_index": '"$shard"', "shard_count": '"$NATIVE_SHARDS$x$(case_fields "$V/tests-native-$shard-cases.log")"
 done
 for shard in 0 1 2; do
   want tests-opt-off-$shard || continue
   L=$V/tests-opt-off-$shard.log; s=$(now); logs=""; offs=""; nl=0
-  shard_cases $shard 3 "$V/tests-opt-off-$shard-cases.log"
+  configuration_cases $shard "$CONFIG_SHARDS" "$V/tests-opt-off-$shard-cases.log"
   set --
   while IFS= read -r f; do set -- "$@" "$f"; done < "$V/tests-opt-off-$shard-cases.log"
   # An empty shard must not silently invoke run.sh's whole-suite default.
@@ -531,7 +571,7 @@ for shard in 0 1 2; do
   done
   for l in $logs; do echo "== $(basename "$l")"; cat "$l"; done > "$L"
   x=$(tests $((nl * $(checks "jit aot" "$@"))) $logs 2>> "$L") && r=pass || r=fail
-  step tests-opt-off-$shard $r "$s" "$L" ', "compiler": "stage2", "modes": ["jit", "aot"], "PYSTACHY_OPT": ['"${offs#, }"'], "shard_index": '"$shard"', "shard_count": 3'"$x"
+  step tests-opt-off-$shard $r "$s" "$L" ', "compiler": "stage2", "modes": ["jit", "aot"], "PYSTACHY_OPT": ['"${offs#, }"'], "shard_index": '"$shard"', "shard_count": '"$CONFIG_SHARDS$x$(case_fields "$V/tests-opt-off-$shard-cases.log")"
 done
 
 # ---- runtime-cache: the cached runtime's rules, each compiler with a private home (tests/cache.sh,
@@ -566,7 +606,7 @@ tool() { # tool NAME [DIR]: symlink NAME into $NP, from DIR if given, else from 
   done
   echo "tool not found: $1"; return 1
 }
-nopy() { env -i PATH="$NP" TMPDIR="${TMPDIR:-/tmp}" PYSTACHY_HOME="$V/home" ${PYSTACHY_LLVM:+PYSTACHY_LLVM="$PYSTACHY_LLVM"} "$@"; }
+nopy() { env -i PATH="$NP" TMPDIR="${TMPDIR:-/tmp}" PYSTACHY_HOME="$V/home" ${PYSTACHY_LLVM:+PYSTACHY_LLVM="$PYSTACHY_LLVM"} ${PYSTACHY_JOBS:+PYSTACHY_JOBS="$PYSTACHY_JOBS"} "$@"; }
 {
   ok=1
   for t in clang opt lli llvm-link llvm-as; do tool $t "$PYSTACHY_LLVM" || ok=0; done
@@ -589,7 +629,7 @@ for shard in 0 1 2; do
   want python-free-$shard || continue
   # (the first shard's time includes the rebuild)
   L=$V/python-free-$shard.log; s=${pfs:-$(now)}; pfs=; r=fail; suite_ok=0
-  shard_cases $shard 3 "$V/python-free-$shard-cases.log"
+  configuration_cases $shard "$CONFIG_SHARDS" "$V/python-free-$shard-cases.log"
   set --
   while IFS= read -r f; do set -- "$@" "$f"; done < "$V/python-free-$shard-cases.log"
   {
@@ -602,8 +642,8 @@ for shard in 0 1 2; do
   } > "$L" 2>&1
   x=""
   [ $# = 0 ] || x=$(tests "$(checks "jit aot" "$@")" "$L" 2>> "$L") && [ $suite_ok = 1 ] && r=pass
-  step python-free-$shard $r "$s" "$L" "$(printf ', "python_on_path": %s, "path_tools": [%s], "ir_identical": %s, "shard_index": %s, "shard_count": 3' \
-    "$py" "$pft" "$(same "$V/stage1.ll" "$V/stage-nopy.ll")" "$shard")$x"
+  step python-free-$shard $r "$s" "$L" "$(printf ', "python_on_path": %s, "path_tools": [%s], "ir_identical": %s, "shard_index": %s, "shard_count": %s' \
+    "$py" "$pft" "$(same "$V/stage1.ll" "$V/stage-nopy.ll")" "$shard" "$CONFIG_SHARDS")$x$(case_fields "$V/python-free-$shard-cases.log")"
 done
 rm -rf "$NP"
 fi
@@ -626,7 +666,7 @@ for shard in 0 1 2 3; do
   want ubsan-$shard || continue
   # (the first shard's time includes the sanitized build)
   L=$V/ubsan-$shard.log; s=${ubs:-$(now)}; ubs=; r=fail
-  shard_cases $shard 4 "$V/ubsan-$shard-cases.log"
+  configuration_cases $shard "$UBSAN_SHARDS" "$V/ubsan-$shard-cases.log"
   set --
   while IFS= read -r f; do set -- "$@" "$f"; done < "$V/ubsan-$shard-cases.log"
   {
@@ -647,7 +687,7 @@ for shard in 0 1 2 3; do
   x=""
   [ $# = 0 ] || x=$(tests $(($(checks aot "$@") + $(checks jit "$@"))) "$V/ubsan-$shard-aot.log" "$V/ubsan-$shard-jit.log" 2>> "$L") &&
     [ $built = 1 ] && [ $# != 0 ] && r=pass
-  step ubsan-$shard $r "$s" "$L" ", \"cflags\": $(js "$UBSAN"), \"modes\": [\"aot\", \"jit\"], \"jit_preload\": $(js "$UBSO"), \"ir_identical\": $(same "$V/stage1.ll" "$V/stage-ubsan.ll"), \"shard_index\": $shard, \"shard_count\": 4$x"
+  step ubsan-$shard $r "$s" "$L" ", \"cflags\": $(js "$UBSAN"), \"modes\": [\"aot\", \"jit\"], \"jit_preload\": $(js "$UBSO"), \"ir_identical\": $(same "$V/stage1.ll" "$V/stage-ubsan.ll"), \"shard_index\": $shard, \"shard_count\": $UBSAN_SHARDS$x$(case_fields "$V/ubsan-$shard-cases.log")"
 done
 fi
 
@@ -747,7 +787,8 @@ for gc_group in gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2; do
   L=$V/$gc_group.log; s=$(now); r=fail; mode=jit; gc_shards=2; offset=$GC_JIT_SAMPLE_OFFSET; shard=${gc_group##*-}
   sample_ok=0; y=""
   case $gc_group in gc-aot-*) mode=aot; gc_shards=3; offset=$GC_AOT_SAMPLE_OFFSET ;; esac
-  shard_cases "$shard" "$gc_shards" "$V/$gc_group-shard.log"
+  [ "$PROFILE" != pr ] || gc_shards=1
+  configuration_cases "$shard" "$gc_shards" "$V/$gc_group-shard.log"
   shard_n=$(lines "$V/$gc_group-shard.log")
   # (in one pass over the shard, each case to exactly one of the two: the sample, or the others)
   : > "$V/$gc_group-sample-cases.log"
@@ -774,7 +815,7 @@ for gc_group in gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2; do
   suite_status=$?
   cat "$V/$gc_group-suite.log" >> "$L"
   x=$(tests "$(checks "$mode" "$@")" "$V/$gc_group-suite.log" 2>> "$L") && [ "$suite_status" = 0 ] && [ $sample_ok = 1 ] && r=pass
-  step "$gc_group" $r "$s" "$L" ", \"tests_interval\": 1, \"tests_compiler_interval\": 0, \"modes\": [\"$mode\"], \"shard_index\": $shard, \"shard_count\": $gc_shards, \"shard_cases\": $shard_n, \"cases\": $#$x, \"stressed_sample\": {\"every\": $GC_SAMPLE_EVERY, \"offset\": $offset, \"cases\": $sample_n, \"tests_interval\": 1, \"tests_compiler_interval\": $GC_COMPILER_INTERVAL$y}"
+  step "$gc_group" $r "$s" "$L" ", \"tests_interval\": 1, \"tests_compiler_interval\": 0, \"modes\": [\"$mode\"], \"shard_index\": $shard, \"shard_count\": $gc_shards, \"shard_cases\": $shard_n, \"cases\": $#$x, \"stressed_sample\": {\"every\": $GC_SAMPLE_EVERY, \"offset\": $offset, \"cases\": $sample_n, \"tests_interval\": 1, \"tests_compiler_interval\": $GC_COMPILER_INTERVAL$y}$(case_fields "$V/$gc_group-shard.log")"
 done
 
 # ---- benchmarks: same output as CPython, JIT and AOT
@@ -808,19 +849,26 @@ L=$V/$optin_name.log; s=$(now); r=fail; optin_fields=
 optin_jobs=${PYSTACHY_JOBS:-$( (nproc || getconf _NPROCESSORS_ONLN) 2> /dev/null)}
 case $optin_jobs in '' | *[!0-9]* | 0) optin_jobs=1 ;; esac
 optin_native=; [ -z "${VERIFY_BOOTSTRAP_DIR:-}" ] && [ "$GROUP" != all ] || optin_native=--native-suite
+set --
+if [ "$PROFILE" = pr ]; then
+  set -- --cases
+  while IFS= read -r f; do set -- "$@" "$f"; done < "$V/pr-programs.log"
+fi
 if $PY tools/dynany_optin.py --compiler "$V/pystachy2" --modes jit aot ${optin_native:+"$optin_native"} \
-    --jobs "$optin_jobs" --shard-index "$optin_index" --shard-count 3 \
-    --report "$V/$optin_name.json" --keep "$V/$optin_name" > "$L" 2>&1; then
-  if optin_fields=$($PY - "$V/$optin_name.json" "$optin_index" "$optin_native" <<'PYOPTIN'
+    --jobs "$optin_jobs" --shard-index "$optin_index" --shard-count "$OPTIN_SHARDS" \
+    --report "$V/$optin_name.json" --keep "$V/$optin_name" "$@" > "$L" 2>&1; then
+  if optin_fields=$($PY - "$V/$optin_name.json" "$optin_index" "$optin_native" "$OPTIN_SHARDS" "$PROFILE" "$V/pr-programs.log" <<'PYOPTIN'
 import json
+from pathlib import Path
 import sys
 sys.path.insert(0, "tools")
 import dynany_optin
 from merge_verification import unique_object, invalid_constant
 with open(sys.argv[1]) as stream:
     report = json.load(stream, object_pairs_hook=unique_object, parse_constant=invalid_constant)
-dynany_optin.validate_report(report)
-if (report["shard_index"] != int(sys.argv[2]) or report["shard_count"] != 3 or report["modes"] != ["jit", "aot"] or
+selected = Path(sys.argv[6]).read_text().splitlines() if sys.argv[5] == "pr" else None
+dynany_optin.validate_report(report, expected_cases=selected)
+if (report["shard_index"] != int(sys.argv[2]) or report["shard_count"] != int(sys.argv[4]) or report["modes"] != ["jit", "aot"] or
         report["native_suite"] is not (sys.argv[3] == "--native-suite")):
     raise ValueError("dynamic Any sweep: wrong shard, execution modes or tests-native deferral")
 print(', "optin": ' + json.dumps(report, sort_keys=True))
@@ -840,10 +888,15 @@ L=$V/$intoptin_name.log; s=$(now); r=fail; intoptin_fields=
 intoptin_jobs=${PYSTACHY_JOBS:-$( (nproc || getconf _NPROCESSORS_ONLN) 2> /dev/null)}
 case $intoptin_jobs in '' | *[!0-9]* | 0) intoptin_jobs=1 ;; esac
 intoptin_native=; [ -z "${VERIFY_BOOTSTRAP_DIR:-}" ] && [ "$GROUP" != all ] || intoptin_native=--native-suite
+set --
+if [ "$PROFILE" = pr ]; then
+  set -- --cases
+  while IFS= read -r f; do set -- "$@" "$f"; done < "$V/pr-programs.log"
+fi
 if $PY tools/python_int_gate.py --compiler "$V/pystachy2" --modes jit aot ${intoptin_native:+"$intoptin_native"} \
-    --jobs "$intoptin_jobs" --shard-index "$intoptin_index" --shard-count 3 \
-    --report "$V/$intoptin_name.json" --keep "$V/$intoptin_name" > "$L" 2>&1; then
-  if intoptin_fields=$($PY - "$V/$intoptin_name.json" "$intoptin_index" "$V/pystachy2" "$intoptin_native" <<'PYINTOPTIN'
+    --jobs "$intoptin_jobs" --shard-index "$intoptin_index" --shard-count "$OPTIN_SHARDS" \
+    --report "$V/$intoptin_name.json" --keep "$V/$intoptin_name" "$@" > "$L" 2>&1; then
+  if intoptin_fields=$($PY - "$V/$intoptin_name.json" "$intoptin_index" "$V/pystachy2" "$intoptin_native" "$OPTIN_SHARDS" "$PROFILE" "$V/pr-programs.log" <<'PYINTOPTIN'
 import hashlib
 import json
 from pathlib import Path
@@ -853,8 +906,9 @@ import python_int_gate
 from merge_verification import unique_object, invalid_constant
 with open(sys.argv[1]) as stream:
     report = json.load(stream, object_pairs_hook=unique_object, parse_constant=invalid_constant)
-python_int_gate.validate_report(report)
-if (report["shard_index"] != int(sys.argv[2]) or report["shard_count"] != 3 or
+selected = Path(sys.argv[7]).read_text().splitlines() if sys.argv[6] == "pr" else None
+python_int_gate.validate_report(report, expected_cases=selected)
+if (report["shard_index"] != int(sys.argv[2]) or report["shard_count"] != int(sys.argv[5]) or
         report["modes"] != ["jit", "aot"] or report["gc_stress"] is not False or
         report["native_suite"] is not (sys.argv[4] == "--native-suite") or
         report["compiler_sha256"] != hashlib.sha256(Path(sys.argv[3]).read_bytes()).hexdigest()):
@@ -1153,6 +1207,10 @@ ver() { "$@" 2>&1 | head -1; }
 {
   printf '{\n  "project": "Pystachy",\n  "result": "%s",\n' "$([ $nfail = 0 ] && [ "$complete" = true ] && echo pass || echo fail)"
   printf '  "group": %s,\n' "$(js "$GROUP")"
+  printf '  "profile": %s,\n' "$(js "$PROFILE")"
+  if [ "$PROFILE" = pr ]; then
+    printf '  "selection": '; cat "$V/pr-selection.json"; printf ',\n'
+  fi
   printf '  "summary": {"steps": %s, "passed": %s, "failed": %s, "seconds": %s},\n' $nsteps $((nsteps - nfail)) $nfail "$(secs "$start" "$(now)")"
   printf '  "timestamp_utc": "%s",\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   if c=$(git rev-parse HEAD 2>/dev/null); then d=$([ -z "$(git status --porcelain)" ] && echo false || echo true); else c=unknown; d=null; fi
