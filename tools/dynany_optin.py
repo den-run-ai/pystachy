@@ -88,8 +88,8 @@ def check_inputs(root, cases, digest, manifest_digest):
         raise ValueError("opt-in inputs changed during execution")
 
 
-def exceptions(root, cases):
-    data = load_json(root / MANIFEST)
+def exceptions(root, cases, manifest=MANIFEST):
+    data = load_json(root / manifest)
     if not isinstance(data, dict) or set(data) != {"schema", "exceptions"} or type(data["schema"]) is not int or data["schema"] != 1:
         raise ValueError("invalid opt-in exception manifest")
     if not isinstance(data["exceptions"], list):

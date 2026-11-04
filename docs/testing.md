@@ -489,6 +489,19 @@ checks that each profile's group list matches the workflow matrix.
 Reports and logs are uploaded as workflow artifacts, together with the generated dynamic-`Any`
 fuzzer programs. The gate requires its complete 3-program/540-case budget, including 90 typed/Any
 parity cases, all four execution modes, program GC interval 1 and zero mismatches.
+`python3 tools/annotation_widening.py --report widening.json` discovers directly called,
+undecorated module functions with one return and concrete scalar signatures in dynamic-`Any`
+entries. It widens only the parameter and return annotations. It also recognizes the
+`list[int] -> Any` boundary and widens its parameter. Imported support modules, declaration
+markers, generic and generator signatures, decorated functions and indirect calls keep their
+annotations. Each pair must first produce the same successful output with empty stderr under
+pinned CPython. Both forms then run against their own recordings in JIT and AOT with the
+entry's integer policy. Identity cases run again with collection at every program allocation.
+The opt-in worker runs `--profile pr` for focused checks and the full profile on main and release.
+Reports give exclusion counts and every qualified function and native result. Expected compiler
+rejections require the exact case, mode, diagnostic, streams and status in
+`tools/annotation_widening_exceptions.json`. Local shards use `--shard-index` and `--shard-count`.
+
 The dynamic-`Any` opt-in sweep copies the test fixtures into an isolated directory, adds the
 opt-in pragma to each selected program and records CPython's output on that same source.
 It reuses the ordinary harness's stdin, import-path, `/dev/full`, signal and diagnostic handling.
