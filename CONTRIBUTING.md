@@ -16,8 +16,31 @@ workflow and regression-prevention guidance.
    [development environment](docs/install.md#python-and-development-tools-with-uv).
    Use the Python version in [`.python-version`](.python-version) for test recordings
    and full verification. The [source map](src/README.md) explains where code lives.
-4. Open a draft if work or validation is incomplete. Fill in the PR template with
-   actual evidence, including failures, timeouts and checks you could not run.
+4. Open a draft if work or validation is incomplete. Use the short template below.
+
+## Issues and pull requests
+
+Tell one story: what is difficult, what should change, and how we know it is done.
+Use a specific title of **64 characters or fewer** and a complete body of **200 words
+or fewer**, including code and tables (maximum 6,000 characters). Link larger repros,
+logs, designs and results. Keep historical updates in comments or linked evidence.
+
+| Submission | Three required sections |
+|---|---|
+| Bug, feature or gap | Problem; Scope (small repro/example and limits); Done when |
+| Pull request | Problem; Change (result and limits); Validation (commands/results) |
+
+Fill each section; no checklist or title prefix is required. Trackers link child
+issues instead of repeating them. For example: `Preserve list aliases across Any`.
+Include provenance/AI assistance in Change and failed, timed-out or unrun checks in
+Validation. Use `Refs #N` for partial work; closing keywords are for completed scope.
+
+The metadata workflow flags incomplete issues with `needs-description` and removes
+it after correction. PRs receive a `Submission format` commit status, refreshed on
+edits and pushes without rerunning compiler tests. Maintainers must require that
+status in branch protection/rulesets to block merges. Issues cannot be blocked at
+creation; API-created issues use the same check as the web templates. The workflow
+starts after it lands on the default branch; it does not audit untouched older items.
 
 ## Repository contents
 

@@ -37,6 +37,10 @@ compatibility tests: compile and execute the API your application uses. See
 [measuring coverage](../docs/stdlib.md#measuring-coverage) for overlays, diagnostic
 stubs and the limits of each measurement.
 
+The metadata-only [submission check](check_submission.py) enforces the
+[issue/PR format](../CONTRIBUTING.md#issues-and-pull-requests) without running PR
+code. Its format/API controls run in Lint (`test_submission.py`).
+
 ## Focused checks and measurements
 
 The remaining tools support narrower contracts: runtime allocation/GC probes,
