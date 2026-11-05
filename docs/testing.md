@@ -555,6 +555,13 @@ execution partition, order and sample unchanged. Each partition covers the full
 corpus; the aggregate requires both identity halves and every execution shard.
 The PR profile retains its sparse selection. Weight changes affect placement and
 order, never coverage or stress intervals.
+The GC table's `reserve W0 W1` row reserves the JIT work already assigned to each
+combined job before balancing identity cases. Its values use the table's weight
+units; a missing table or reserve row means zero reserve. The initial 20,736,500-unit
+reserve for job 0 comes from the unchanged JIT phases in full x86-64 run
+`41959892750`, normalized by each runner's identity time per weight. This accounts
+for job 0's heavier execution work without assigning the runner's speed difference
+to the workload. The table records the calculation and compiler revision.
 The initial GC table profiles all 4,144 cases at `99f3451e` with the native compiler,
 collection every 1,000 allocations and `PYSTACHY_IRCHECK=1`. It uses CPU time from
 one stressed compilation per case, scaled to the median corpus program; its header
@@ -565,6 +572,9 @@ unstressed and stressed compilations and their comparison.
 Refresh GC weights with `tools/case_weights.py -o tests/gc_case_weights.txt` and
 both halves' `gc-ir-N-times.log` files from one completed run; runtime, syntax and
 execution timings describe different work and should not be mixed into that table.
+Recalibrate and record the reserve after refreshing: `tools/case_weights.py` writes
+case weights only, so it does not carry a reserve into potentially different units.
+Check combined job times as well as identity balance before adopting the refresh.
 
 GC self-compilation collects every 5,000 allocations and has a separate ten-minute bound.
 At the former interval of 1,000, it spent 23 minutes on 15,543 full-heap collections;

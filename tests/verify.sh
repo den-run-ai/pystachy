@@ -308,8 +308,22 @@ shard_cases() { corpus_shard "$1" "$2" > "$3"; }
 # identity schedule must not replace that sample with more expensive compiler work.
 gc_shard_cases() (
   weights=tests/gc_case_weights.txt
-  [ -f "$weights" ] || weights=tests/case_weights.txt
-  corpus_shard "$1" "$2" "$weights" > "$3"
+  initial=
+  if [ -f "$weights" ]; then
+    # The table owns the reserve and its units. Without a valid row, reserve no work.
+    initial=$(awk -v shards="$2" '
+      $1 == "reserve" && NF == shards + 1 {
+        values = ""
+        for (i = 2; i <= NF; i++) {
+          if ($i !~ /^[0-9]+$/ || length($i) > 9) next
+          values = values (i == 2 ? "" : ",") $i
+        }
+        print values; exit
+      }' "$weights")
+  else
+    weights=tests/case_weights.txt
+  fi
+  corpus_shard "$1" "$2" "$weights" "$initial" > "$3"
 )
 # Alternate configurations share the deterministic PR sample; full runs still cover every shard.
 configuration_cases() {

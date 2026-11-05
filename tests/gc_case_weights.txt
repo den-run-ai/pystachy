@@ -12,6 +12,14 @@
 # This baseline table measures stressed compilation, not combined CI job duration.
 # Refresh from both gc-ir-N-times.log files with tools/case_weights.py; those wall
 # times include the unstressed/stressed compiler pair and comparison. See docs/testing.md.
+# Reserve calibration: 9be880f10084cc3f08359264408f09c3f8b170a2, full x86-64 CI run 41959892750
+# The unchanged JIT phases took 229.472s / 118.215s. Dividing four times each
+# duration by its IR pair-time sum per weight gives reserves 70.945M / 50.208M,
+# normalizing by each runner's identity cost per weight. Their difference is rounded
+# to the nearest weight unit: 20,736,500.
+# Reserve that extra execution work on shard 0 before assigning identity cases.
+# Recalibrate this row with every weight refresh; absence means zero reserve.
+reserve 20736500 0
 default program 1006
 default rejection 222
 8794 tests/deviations/bfile_append_buffer.py

@@ -32,6 +32,7 @@ WEIGHTS = {"tests/programs/x/example.py": 2600, "tests/deviations/example.py": 1
            **{case: 300 + index * 397 % 1700 for index, case in enumerate(FILLERS)}}
 # Stressed compilation has a different cost distribution from native JIT/AOT execution.
 GC_WEIGHTS = {case: 100 + index * 769 % 3100 for index, case in enumerate(CASES)}
+GC_RESERVE = [10000, 0]
 
 
 def checks(case):
@@ -41,7 +42,8 @@ def checks(case):
 
 def shards(count, gc=False):
     """corpus_shard's shards of the fixture's corpus, each heaviest first."""
-    return reference_shards(CASES, GC_WEIGHTS if gc else WEIGHTS, DEFAULTS, count)[0]
+    return reference_shards(CASES, GC_WEIGHTS if gc else WEIGHTS, DEFAULTS, count,
+                            GC_RESERVE if gc else None)[0]
 
 
 def split(group):
@@ -88,7 +90,8 @@ class GCVerificationTests(unittest.TestCase):
             "# fixture\n" + "".join(f"default {kind} {weight}\n" for kind, weight in DEFAULTS.items()) +
             "".join(f"{weight} {case}\n" for case, weight in WEIGHTS.items()))
         (self.root / "tests/gc_case_weights.txt").write_text(
-            "# GC fixture\n" + "".join(f"default {kind} {weight}\n" for kind, weight in DEFAULTS.items()) +
+            "# GC fixture\nreserve " + " ".join(map(str, GC_RESERVE)) + "\n" +
+            "".join(f"default {kind} {weight}\n" for kind, weight in DEFAULTS.items()) +
             "".join(f"{weight} {case}\n" for case, weight in GC_WEIGHTS.items()))
         compiler = self.root / "bin/compiler"
         compiler.write_text(f"#!{sys.executable}\n" + '''import os
@@ -272,6 +275,18 @@ os.execv({TIMEOUT!r}, [{TIMEOUT!r}, "--verbose", "--kill-after=0.2s", limit, *sy
         sample, rest = (cases for _, _, cases in self.runs())
         self.assertEqual(sample, expected[merge.GC_SAMPLE_OFFSETS["jit"]::merge.GC_SAMPLE_EVERY])
         self.assertCountEqual(sample + rest, expected)
+
+    def test_missing_gc_reserve_balances_identity_without_changing_jit(self):
+        path = self.root / "tests/gc_case_weights.txt"
+        path.write_text("\n".join(line for line in path.read_text().splitlines() if not line.startswith("reserve ")) + "\n")
+        result, report, _ = self.run_group("gc-jit-0")
+        self.assertEqual((result.returncode, report["result"]), (0, "pass"), result.stdout + result.stderr)
+        expected = reference_shards(CASES, GC_WEIGHTS, DEFAULTS, 2)[0][0]
+        compiled = [case for command, case, stress in self.compiles() if command == "ir" and stress == "1000"]
+        self.assertCountEqual(compiled, expected)
+        self.assertNotEqual(set(compiled), set(shards(2, gc=True)[0]))
+        _, _, sample, rest = split("gc-jit-0")
+        self.assertEqual(self.runs(), [("jit", "sample", sample), ("jit", "suite", rest)])
 
     def test_self_compile_preserves_ir_stress_and_gc_diagnostics(self):
         result, report, logs = self.run_group("gc-self")
