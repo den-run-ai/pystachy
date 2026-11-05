@@ -7,19 +7,18 @@ the Docker image includes LLVM. Neither requires Python to run the compiler.
 ## Native release packages
 
 Download the matching archive and `SHA256SUMS` from
-[GitHub Releases](https://github.com/den-run-ai/pystachy/releases). The current prerelease is
-[v0.1.0-alpha.4](https://github.com/den-run-ai/pystachy/releases/tag/v0.1.0-alpha.4); read its
-[known issues and workarounds](https://github.com/den-run-ai/pystachy/blob/v0.1.0-alpha.4/docs/releases/v0.1.0-alpha.4.md#known-issues-and-workarounds) before adoption.
+[GitHub Releases](https://github.com/den-run-ai/pystachy/releases). Check that
+version's notes for known issues and platform-specific requirements.
 
 | Package target | Requirements |
 |---|---|
 | `linux-x86_64` | Ubuntu 24.04 or compatible Linux with glibc 2.39+, LLVM 18 |
-| `linux-aarch64` | 64-bit little-endian ARM Linux, Ubuntu 24.04 or compatible glibc 2.39+, LLVM 18; starts with alpha.4 |
+| `linux-aarch64` | 64-bit little-endian ARM Linux, Ubuntu 24.04 or compatible glibc 2.39+, LLVM 18 |
 | `macos-arm64` | Apple Silicon, macOS 15+, Xcode Command Line Tools, LLVM 20 |
 | `macos-x86_64` | Intel, macOS 15+, Xcode Command Line Tools, LLVM 20 |
 
-Releases before alpha.4 have no Linux ARM64 archive. The archive spelling is `aarch64`;
-Docker calls the same architecture `arm64`.
+The Linux ARM64 archive uses the spelling `aarch64`; Docker calls the same
+architecture `arm64`.
 
 Install the toolchain once:
 
@@ -44,8 +43,8 @@ export PATH="$HOME/.local/bin:$PATH"
 pystachy run demo.py
 ```
 
-Replace `VERSION` with the release tag, such as `v0.1.0-alpha.4`, and use your
-platform's archive name. Keep the complete extracted directory: it contains the
+Replace `VERSION` with the release tag and use your platform's archive name.
+Keep the complete extracted directory: it contains the
 runtime and libraries alongside the compiler. The directory can be moved, and its
 launcher resolves symlinks. `manifest.json` records the source commit and file hashes.
 Check the installed release and commit with `pystachy --version` or `pystachy -V`;
@@ -53,10 +52,9 @@ this command works without LLVM or Python.
 
 ## Docker
 
-Starting with alpha.4, the image targets **Linux amd64 and arm64**. Docker selects the
-host's architecture, including native Linux containers on Apple Silicon. Earlier images,
-such as alpha.3's, are amd64-only and need `--platform linux/amd64` on ARM hosts.
-Use the image name and published version from the release notes:
+The multiarchitecture image targets **Linux amd64 and arm64**. Docker selects the
+host's architecture, including native Linux containers on Apple Silicon. Use the
+image name and published version from the release notes:
 
 ```sh
 IMAGE=DOCKERHUB_NAMESPACE/pystachy:VERSION

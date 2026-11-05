@@ -25,8 +25,8 @@ support for its complete upstream package or dependencies.
 
 ## Compile and run
 
-Build Pystachy using the [quick start](../README.md#quick-start). Add `ports` to the module
-path for a program that imports one of these packages:
+Build Pystachy using the [source build guide](../docs/install.md#build-from-source).
+Set the module path to `ports` for a program that imports one of these packages.
 
 ```sh
 PYSTACHY_PATH=ports ./pystachy run program.py

@@ -53,6 +53,49 @@ full-size batch per kernel. The report records source/binary hashes, command,
 CPU affinity/quota and host load. Other `PYSTACHY_*` overrides are cleared except
 `PYSTACHY_LLVM`. Shared-host results need repetition before drawing conclusions.
 
+## Recorded result
+
+[Linux x86-64 samples](results/linux-x86_64.json), measured source
+[`afa9529`](https://github.com/den-run-ai/pystachy/commit/afa952955c2c39326aa2800d0dd4f56225e35994):
+AMD EPYC 9V74, eight-CPU cgroup quota, LLVM 18.1.3 and CPython 3.13.16.
+262,144 values, five interleaved process samples, three timed batches after one
+warmup. All outputs matched the CPython oracle; JIT and AOT both passed.
+
+| Workload | Native for loop | Map 1 | Map 2 | Map 4 | Map 8 |
+|---|---:|---:|---:|---:|---:|
+| Polynomial scoring | 5.742 ms | 2.879 ms | 1.904 ms | 1.053 ms | 0.826 ms |
+| Cheap affine control | 0.797 ms | 0.111 ms | 0.217 ms | 0.248 ms | 0.352 ms |
+
+Scoring gained **2.73x at four workers**, **3.48x at eight**, relative to the same
+native map at one worker. The affine map became slower with more workers: dispatch
+and memory costs dominate. This supports explicit worker selection and a serial
+default. The serial-loop/map1 difference includes direct-call specialization and
+preallocation; it is not threading speedup. These are synthetic kernel results,
+not a compiler or production application speedup.
+
+Cold AOT build including the runtime cache was 8.479 s. The first JIT process
+took 5.465 s while materializing its native runtime; four later empty-input
+processes took 0.130-0.151 s. Every JIT process still compiles the source.
+
+Local safety evidence: 22 proof/driver tests; six native JIT/AOT differential
+checks, repeated with per-allocation GC; 34 C probe maps including real concurrent
+entry, partial launch failures and GC; SIGINT delivered after all joins;
+ThreadSanitizer clean for the C probe and the four actual generated worker kernels
+with per-allocation GC. The compiler/runtime table also passed its 645-entry
+ABI/effect check. Three-stage self-hosting reached identical compiler IR (835,422
+lines) and runtime IR (18,805 lines); both new IR probes passed the verifier and
+LLVM assembler. Mypy accepted all 50 compiler source files.
+
+All 4,247 existing corpus inputs produced identical IR, diagnostics and exit status
+against baseline `45fda27`. Both compilers used one library path after checking
+that pre-existing library sources were unchanged. An initial separate-checkout run
+reported 261 differences from embedded absolute library paths. The compiler's
+changed own source and the new fixtures were validated separately as described above.
+
+Run `make parallelprobe` and
+`python3 -m unittest discover -s tools -p test_parallel.py` for the focused controls.
+Full execution verification and macOS testing remain requirements before merging.
+
 ## Related implementations
 
 | Project | Relevant practice or pitfall |

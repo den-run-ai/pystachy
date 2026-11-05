@@ -115,8 +115,9 @@ def metadata(command, env):
     # The digest includes untracked compiler/library sources used by a prototype.
     paths = set((ROOT / "src/pystachy_compiler").rglob("*.py"))
     paths.update((ROOT / "lib").rglob("*.py"))
-    paths.update((ROOT / "runtime").rglob("*.c"))
-    paths.update((ROOT / "runtime").rglob("*.h"))
+    for directory in ("ryu", "mpz"):
+        paths.update((ROOT / directory).rglob("*.c"))
+        paths.update((ROOT / directory).rglob("*.h"))
     paths.update(ROOT / name for name in ("pystachy.py", "runtime.py", "runtime.c"))
     paths.update(HERE.glob("*.py"))
     hashes = {str(p.relative_to(ROOT)): file_hash(p) for p in sorted(paths) if p.is_file()}
@@ -216,13 +217,16 @@ def main():
             if args.jit:
                 jit_command = compiler + ["run", str(SOURCE)]
                 empty_reference = measure(python_command, base, args.timeout, "score", 1, 0, 0, 0)
+                first = measure(jit_command, env, args.timeout, "score", 1, 0, 0, 0)
+                agrees(first, empty_reference)
                 startup = []
                 for _ in range(samples):
                     result = measure(jit_command, env, args.timeout, "score", 1, 0, 0, 0)
                     agrees(result, empty_reference)
                     startup.append(result["process_wall_s"])
-                report["jit"] = {"empty_input_wall_s": startup,
-                                 "runtime_cache": "warmed by the AOT build; every JIT process recompiles the program"}
+                report["jit"] = {"first_process_wall_s": first["process_wall_s"],
+                                 "subsequent_empty_input_wall_s": startup,
+                                 "runtime_cache": "AOT warms bitcode; the first JIT also materializes its runtime object/shared library. Every JIT process recompiles the program."}
                 for kind in KINDS:
                     result = measure(jit_command, env, args.timeout, kind, workers[-1], n, 1, warmups)
                     agrees(result, report["reference"][kind])

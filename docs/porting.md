@@ -96,11 +96,25 @@ assertion is omitted; elapsed times are informational. The smaller versions cont
 to exercise the collect-at-every-allocation configuration in the regular corpus.
 These four cases are a separate explicit selection, not a complete regex inventory.
 
-CI runs `port-check` and `port-check-large` as independent jobs beside the existing
-verification groups; the compiled subset belongs to those groups' normal corpus.
-The existing required verification gate also requires both jobs to succeed. The
-large fixture lives under `tests/upstream/` so the regular `tests/programs/*/*.py` glob does not
-multiply these inputs through every stress configuration.
+Lint runs `port-check`. Native verification runs `port-check-large` after bootstrap,
+and its normal corpus covers the compiled subset. The large fixture lives under
+`tests/upstream/` to keep those inputs out of every stress configuration.
+
+## Port one application component at a time
+
+Choose a component with a small interface and output you can compare byte for byte.
+The [JSON repair companion](../examples/json_repair/README.md) shows how to keep
+a CPython host and verify the actual native extension against upstream results.
+
+Experiments with mypy and mypyc illustrate two ways to choose that boundary.
+
+| Component | What the experiment checked |
+|---|---|
+| [mypy `stubgen` documentation parser](https://github.com/den-run-ai/mypy/commit/020c4327eda82b02eaf56c630b799b3c74f8eb0f) | CPython ran the CLI with an adapted parser. The native extension and the AOT and JIT workers produced the same four `.pyi` files as the CPython reference. The linked fork patch reuses the documentation index across modules and can run entirely on CPython. |
+| [mypyc `NameGenerator`](https://github.com/python/mypy/blob/1231cf158a9cab0c41f613f3d8070c1332632f29/mypyc/namegen.py) | The upstream module compiled in isolation. A separate two-module build using an extension for name generation preserved generated C, headers and IR. |
+
+These are component prototypes. The supported ports and their test commands are
+listed in the [ports catalog](../ports/README.md).
 
 ## Checklist for extending a port
 
