@@ -113,6 +113,58 @@ case $2 in */one.py) echo 1 ;; */two.py) echo 2 ;; esac
         self.assertTrue(calls[0].endswith("/warm.py"))
         self.assertCountEqual(calls[1:], ["run tests/programs/a/one.py", "run tests/programs/b/two.py"])
 
+    def test_run_reports_failures_without_spawning_cat_for_empty_success_logs(self):
+        self.write("compiler", """#!/bin/sh
+case $2 in */warm.py) exit 0 ;; */one.py) echo 1 ;; */two.py) echo 999 ;; esac
+""")
+        self.write("bin/cat", """#!/bin/sh
+case $1 in */[0-9]*.log) printf '%s\\n' "$1" >> "$CAT_CALLS" ;; esac
+exec /bin/cat "$@"
+""")
+        for name in ("compiler", "bin/cat"):
+            (self.root / name).chmod(0o755)
+        calls = self.root / "cat-calls"
+        result = self.run_script("tests/run.sh", "./compiler", "jit",
+                                 "tests/programs/a/one.py", "tests/programs/b/two.py", PYSTACHY_JOBS="2",
+                                 PATH=f"{self.root / 'bin'}:/usr/bin:/bin", CAT_CALLS=str(calls))
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("FAIL two (jit)", result.stdout)
+        self.assertIn("> 999", result.stdout)
+        self.assertIn("1 passed, 1 failed", result.stdout)
+        self.assertEqual([Path(line).name for line in calls.read_text().splitlines()], ["1.log"])
+
+    def test_run_preserves_missing_log_and_missing_worker_result_diagnostics(self):
+        self.write("compiler", """#!/bin/sh
+case $2 in
+  */warm.py) printf '%s\\n' "${2%/*}" > "$TMP_RECORD"; exit 0 ;;
+  */one.py)
+    if [ "$DROP_LOG" = 1 ]; then IFS= read -r tmp < "$TMP_RECORD"; rm "$tmp/0.log"; fi
+    echo 1 ;;
+  */two.py) echo 2 ;;
+esac
+""")
+        self.write("bin/mkdir", """#!/bin/sh
+/bin/mkdir "$@" || exit
+# Claiming a case without finishing its worker leaves no count file.
+case $1 in */c.1) [ "$DROP_COUNTS" != 1 ] ;; esac
+""")
+        for name in ("compiler", "bin/mkdir"):
+            (self.root / name).chmod(0o755)
+        for missing in ("log", "counts"):
+            with self.subTest(missing=missing):
+                result = self.run_script("tests/run.sh", "./compiler", "jit",
+                                         "tests/programs/a/one.py", "tests/programs/b/two.py", PYSTACHY_JOBS="2",
+                                         PATH=f"{self.root / 'bin'}:/usr/bin:/bin", TMP_RECORD=str(self.root / "tmp-record"),
+                                         DROP_LOG="1" if missing == "log" else "0",
+                                         DROP_COUNTS="1" if missing == "counts" else "0")
+                if missing == "log":
+                    self.assertIn("/0.log", result.stderr)
+                    self.assertIn("No such file", result.stderr)
+                else:
+                    self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                    self.assertIn("FAIL tests/programs/b/two.py: no result (its worker died)", result.stdout)
+                    self.assertIn("1 passed, 1 failed", result.stdout)
+
     def test_closure_helper_uses_a_temporary_bracket_path_in_both_modes(self):
         for name in ("tests/programs/language/closure_paths.py",
                      "tests/programs/language/closure_paths.path",

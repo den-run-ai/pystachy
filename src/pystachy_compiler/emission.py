@@ -333,7 +333,7 @@ def gen_list_write(self, key: str, args: list[Val]) -> None:
     # order. Preserve the original identity box alongside its packed payload.
     i = Ins("rt", "None", key)
     i.a = args
-    error = list_write_error(i, int_lists())
+    error = list_write_error(i, int_lists(), self.rtfns[key].sig if key in self.rtfns else None)
     if error != "":
         fail(f"internal error: {key}: {error}", 0)
     name = rtsym(key)

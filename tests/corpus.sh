@@ -20,7 +20,7 @@ corpus() {
   return 0
 }
 
-# corpus_shard I N [WEIGHTS]: the cases of shard I of N (0 <= I < N), one a line, heaviest first, so
+# corpus_shard I N [WEIGHTS [INITIAL_LOADS]]: shard I of N (0 <= I < N), heaviest first, so
 # that tests/run.sh's workers do not end on a long case. The cases are taken in order of their weight
 # in WEIGHTS (default tests/case_weights.txt, which tools/case_weights.py writes from measured times),
 # heaviest first and then in C order, and each joins the shard whose weight is least so far (the first
@@ -28,7 +28,9 @@ corpus() {
 # WEIGHTS holds: a case it lacks weighs its kind's default ("default program W" for programs and
 # deviations, "default rejection W"; 1000 without one), and a malformed line, a weight of more than
 # nine digits or a path outside the corpus counts for nothing, so a stale or missing table costs
-# balance, never coverage. Integers and the C locale give the same shards on every runner.
+# balance, never coverage. INITIAL_LOADS optionally reserves work already assigned to each shard:
+# N comma-separated nonnegative integers in the same units as WEIGHTS (at most nine digits each).
+# It defaults to zero for every shard. Integers and the C locale give the same shards on every runner.
 corpus_shard() {
   (
     export LC_ALL=C
@@ -44,8 +46,20 @@ corpus_shard() {
       }
       { print (($0 in w) ? w[$0] : def[$0 ~ /^tests\/errors\// ? "rejection" : "program"]), $0 }' |
       sort -k1,1nr -k2 |
-      awk -v shard="$1" -v shards="$2" '
-        BEGIN { for (s = 0; s < shards; s++) load[s] = 0 }
+      awk -v shard="$1" -v shards="$2" -v initial="${4:-}" '
+        BEGIN {
+          n = split(initial, reserved, ",")
+          if (initial != "" && n != shards) {
+            print "corpus_shard: initial loads must have one value per shard" > "/dev/stderr"; exit 2
+          }
+          for (s = 0; s < shards; s++) {
+            if (initial != "" && (reserved[s + 1] !~ /^[0-9]+$/ || length(reserved[s + 1]) > 9)) {
+              print "corpus_shard: initial loads must be nonnegative integers of at most nine digits" > "/dev/stderr"
+              exit 2
+            }
+            load[s] = initial == "" ? 0 : reserved[s + 1] + 0
+          }
+        }
         { least = 0
           for (s = 1; s < shards; s++) if (load[s] < load[least]) least = s
           load[least] += $1

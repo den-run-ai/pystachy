@@ -36,10 +36,10 @@
 #                  function of runtime.py reaches itself through runtime.c
 #   gc-self        the native compiler collecting every 5000 allocations reproduces the IR
 #   gc-ir-0/-1     the stage-2 compiler collecting every 1000 allocations compiles each case of one of
-#                  two disjoint halves of the corpus (shard_cases), and runtime.py, exactly as stage 2
+#                  two disjoint halves of the corpus (gc_shard_cases), and runtime.py, exactly as stage 2
 #                  does unstressed (tools/irsame.sh: the same IR, messages and exit status, byte for
 #                  byte), and `check`s each syntax_*.py alike (tools/irsame.sh --check)
-#   gc-jit-0/-1, gc-aot-0/-1/-2 every test of the shard passes, JIT (the same halves) or AOT (three
+#   gc-jit-0/-1, gc-aot-0/-1/-2 every test of the shard passes, JIT (two halves) or AOT (three
 #                  thirds), with a collection at every program allocation (PYSTACHY_GC_STRESS_PROGRAM=1);
 #                  one case in GC_SAMPLE_EVERY of the shard, heaviest first (from an offset of each
 #                  mode's), runs with the compiler collecting every 1000 too (first, so it builds the
@@ -303,6 +303,28 @@ ALL=$(checks "jit aot")
 # change which shard runs a case but never whether one does. The C locale is local to the selection;
 # programs keep theirs.
 shard_cases() { corpus_shard "$1" "$2" > "$3"; }
+# GC identity uses stressed compiler weights: native JIT/AOT weights underestimate import-heavy
+# compilation. Execution keeps its own weights and deterministic stressed sample; changing the
+# identity schedule must not replace that sample with more expensive compiler work.
+gc_shard_cases() (
+  weights=tests/gc_case_weights.txt
+  initial=
+  if [ -f "$weights" ]; then
+    # The table owns the reserve and its units. Without a valid row, reserve no work.
+    initial=$(awk -v shards="$2" '
+      $1 == "reserve" && NF == shards + 1 {
+        values = ""
+        for (i = 2; i <= NF; i++) {
+          if ($i !~ /^[0-9]+$/ || length($i) > 9) next
+          values = values (i == 2 ? "" : ",") $i
+        }
+        print values; exit
+      }' "$weights")
+  else
+    weights=tests/case_weights.txt
+  fi
+  corpus_shard "$1" "$2" "$weights" "$initial" > "$3"
+)
 # Alternate configurations share the deterministic PR sample; full runs still cover every shard.
 configuration_cases() {
   if [ "$PROFILE" = pr ]; then cp "$V/pr-cases.log" "$3"
@@ -716,12 +738,13 @@ fi
 
 # ---- GC stress: the stressed compiler's output, then the corpus in both modes, on independent CI runners
 # gc-ir-0/-1: stage 2 collecting every GC_COMPILER_INTERVAL allocations must compile each case of one
-# of two disjoint halves of the corpus (shard_cases) exactly as stage 2 does unstressed (tools/irsame.sh:
+# of two disjoint halves of the corpus (gc_shard_cases) exactly as stage 2 does unstressed (tools/irsame.sh:
 # `ir`, or `rt` for rtmode_*, with the IR check on as tests/run.sh has it; the IR byte for byte, every
 # message and the exit status), runtime.py too (`rt`), and `check` each syntax_*.py alike
 # (tools/irsame.sh --check): the two halves compile every case once a run with the stressed compiler.
-# Where the IR is the same, the LLVM tools build the same program from it, so gc-jit-0/-1 (the same
-# halves, JIT) and gc-aot-0/-1/-2 (three thirds, AOT) run their shard's cases with a collection at every
+# The full gate requires both identity halves. Execution uses its own complete partition, balanced
+# by native JIT/AOT weights: gc-jit-0/-1 (two halves, JIT) and gc-aot-0/-1/-2 (three thirds, AOT).
+# Where the IR is the same, the LLVM tools build the same program, so they collect at every
 # program allocation (PYSTACHY_GC_STRESS_PROGRAM=1), compiled by stage 2 unstressed: compiling each case
 # under stress again for each mode added nothing but time. A sample of each shard runs end to end with
 # the compiler stressed too, so that the driver's paths after the IR run under stress: the runtime's
@@ -730,14 +753,12 @@ fi
 # and the link (AOT); the program-stressed run takes the shard's other cases, so each case runs exactly
 # once in each mode.
 # The sample is the cases at positions GC_JIT_SAMPLE_OFFSET (JIT) or GC_AOT_SAMPLE_OFFSET (AOT) modulo
-# GC_SAMPLE_EVERY of the shard as shard_cases lists it, heaviest first: drawn from the job's own shard,
-# it lies in that shard whatever tests/case_weights.txt does to the shards, and it is the same on every
-# runner, as the shard is (corpus_shard: integer weights, the C locale). Every 16th case in weight order
-# gives each job's sample about a sixteenth of its shard's weight (0.94-1.03 of it at offsets 4 to 12
-# on the measured weights, where every 16th case in C order gave 0.68-1.47), so the stressed compiler's
-# cost does not depend on which heavy cases a sample happens to draw. Offset 0 would put each shard's
-# heaviest case in every sample; JIT's and AOT's offsets lie half a period apart, so that the modes,
-# whose shards differ, stress different cases where their orders agree.
+# GC_SAMPLE_EVERY of the shard in weight order: drawn from the job's own shard, it stays there when
+# the execution weights change, and is the same on every runner (integer weights, the C locale).
+# Sampling positions does not guarantee a proportional share of work: the per-case timing logs
+# expose the sample's actual cost. Offset 0 would put each shard's heaviest case in every sample;
+# JIT's and AOT's offsets lie half a period apart, so that the modes, whose shards differ, stress
+# different cases where their orders agree.
 GC_COMPILER_INTERVAL=1000
 GC_SAMPLE_EVERY=16
 GC_JIT_SAMPLE_OFFSET=4
@@ -745,7 +766,7 @@ GC_AOT_SAMPLE_OFFSET=12
 for shard in 0 1; do
   want gc-ir-$shard || continue
   L=$V/gc-ir-$shard.log; s=$(now); r=fail; ir_ok=false; ir_n=0; rt_ok=false; chk_ok=false
-  shard_cases $shard 2 "$V/gc-ir-$shard-cases.log"
+  gc_shard_cases $shard 2 "$V/gc-ir-$shard-cases.log"
   grep '/syntax_[^/]*\.py$' "$V/gc-ir-$shard-cases.log" > "$V/gc-ir-$shard-syntax.log"
   chk_n=$(lines "$V/gc-ir-$shard-syntax.log")
   set --
@@ -755,12 +776,14 @@ for shard in 0 1; do
     # An empty shard must not silently invoke irsame's whole-corpus default.
     if [ "$cases" != 0 ]; then
       echo "== runtime.py: stage 2, then stage 2 collecting every $GC_COMPILER_INTERVAL allocations (tools/irsame.sh)"
-      PYSTACHY_IRCHECK=1 tools/irsame.sh "$V/pystachy2" "env PYSTACHY_GC_STRESS=$GC_COMPILER_INTERVAL $V/pystachy2" runtime.py \
+      PYSTACHY_IRCHECK=1 PYSTACHY_CASE_TIMES="$V/gc-ir-$shard-runtime-times.log" \
+        tools/irsame.sh "$V/pystachy2" "env PYSTACHY_GC_STRESS=$GC_COMPILER_INTERVAL $V/pystachy2" runtime.py \
         > "$V/gc-ir-$shard-rt.log" 2>&1
       st=$?; cat "$V/gc-ir-$shard-rt.log"
       [ $st = 0 ] && [ "$(tail -1 "$V/gc-ir-$shard-rt.log")" = '1 programs identical' ] && rt_ok=true
       echo "== IR, messages and exit status of $cases cases: stage 2, then stressed (tools/irsame.sh)"
-      PYSTACHY_IRCHECK=1 tools/irsame.sh "$V/pystachy2" "env PYSTACHY_GC_STRESS=$GC_COMPILER_INTERVAL $V/pystachy2" "$@" \
+      PYSTACHY_IRCHECK=1 PYSTACHY_CASE_TIMES="$V/gc-ir-$shard-times.log" \
+        tools/irsame.sh "$V/pystachy2" "env PYSTACHY_GC_STRESS=$GC_COMPILER_INTERVAL $V/pystachy2" "$@" \
         > "$V/gc-ir-$shard-ir.log" 2>&1
       st=$?; cat "$V/gc-ir-$shard-ir.log"
       ir_n=$(tail -1 "$V/gc-ir-$shard-ir.log" | sed -n 's/^\([0-9]*\) programs identical$/\1/p')
@@ -769,7 +792,8 @@ for shard in 0 1; do
       while IFS= read -r f; do set -- "$@" "$f"; done < "$V/gc-ir-$shard-syntax.log"
       if [ $# != 0 ]; then
         echo "== check of the $# syntax_*.py cases: stage 2, then stressed (tools/irsame.sh --check)"
-        tools/irsame.sh --check "$V/pystachy2" "env PYSTACHY_GC_STRESS=$GC_COMPILER_INTERVAL $V/pystachy2" "$@" \
+        PYSTACHY_CASE_TIMES="$V/gc-ir-$shard-check-times.log" \
+          tools/irsame.sh --check "$V/pystachy2" "env PYSTACHY_GC_STRESS=$GC_COMPILER_INTERVAL $V/pystachy2" "$@" \
           > "$V/gc-ir-$shard-check.log" 2>&1
         st=$?; cat "$V/gc-ir-$shard-check.log"
         n=$(tail -1 "$V/gc-ir-$shard-check.log" | sed -n 's/^\([0-9]*\) programs identical$/\1/p')
@@ -802,6 +826,7 @@ for gc_group in gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2; do
   # Empty selections must not silently invoke run.sh's whole-suite default.
   if [ $# != 0 ]; then
     PYSTACHY_CACHE="$V/gc-cache" PYSTACHY_GC_STRESS=$GC_COMPILER_INTERVAL PYSTACHY_GC_STRESS_PROGRAM=1 \
+      PYSTACHY_CASE_TIMES="$V/$gc_group-sample-times.log" \
       tests/run.sh "$V/pystachy2" "$mode" "$@" > "$V/$gc_group-sample.log" 2>&1 && sample_ok=1
     y=$(tests "$(checks "$mode" "$@")" "$V/$gc_group-sample.log" 2>> "$V/$gc_group-sample.log") || sample_ok=0
   else
@@ -813,7 +838,8 @@ for gc_group in gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2; do
   while IFS= read -r f; do set -- "$@" "$f"; done < "$V/$gc_group-cases.log"
   [ $# != 0 ] || { echo 'empty GC shard' >> "$L"; step "$gc_group" fail "$s" "$L" ""; continue; }
   echo "== $mode, program GC-stressed: the shard's other $# cases" >> "$L"
-  PYSTACHY_CACHE="$V/gc-cache" PYSTACHY_GC_STRESS_PROGRAM=1 tests/run.sh "$V/pystachy2" "$mode" "$@" > "$V/$gc_group-suite.log" 2>&1
+  PYSTACHY_CACHE="$V/gc-cache" PYSTACHY_GC_STRESS_PROGRAM=1 PYSTACHY_CASE_TIMES="$V/$gc_group-suite-times.log" \
+    tests/run.sh "$V/pystachy2" "$mode" "$@" > "$V/$gc_group-suite.log" 2>&1
   suite_status=$?
   cat "$V/$gc_group-suite.log" >> "$L"
   x=$(tests "$(checks "$mode" "$@")" "$V/$gc_group-suite.log" 2>> "$L") && [ "$suite_status" = 0 ] && [ $sample_ok = 1 ] && r=pass

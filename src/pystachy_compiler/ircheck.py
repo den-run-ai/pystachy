@@ -187,7 +187,7 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                 if i.s not in self.rtfns:
                     self.bad_ir(fn, b, f"no RUNTIME entry for {i.s}" if i.s not in RUNTIME else f"{i.s}, which runtime() did not declare")
                 if i.s in LIST_WRITES:
-                    error = list_write_error(i, int_lists())
+                    error = list_write_error(i, int_lists(), self.rtfns[i.s].sig)
                     if error != "":
                         self.bad_ir(fn, b, error)
             if i.op == "empty.kind":

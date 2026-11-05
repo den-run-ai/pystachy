@@ -13,14 +13,15 @@ import case_weights
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def reference_shards(cases, weights, defaults, shards):
+def reference_shards(cases, weights, defaults, shards, initial_loads=None):
     """corpus_shard's assignment, independently: greedy longest-processing-time, heaviest first."""
     def weight(case):
         if case in weights:
             return weights[case]
         return defaults["rejection" if case.startswith("tests/errors/") else "program"]
     order = sorted(cases, key=lambda case: (-weight(case), case.encode()))
-    loads, parts = [0] * shards, [[] for _ in range(shards)]
+    loads = list(initial_loads) if initial_loads is not None else [0] * shards
+    parts = [[] for _ in range(shards)]
     for case in order:
         least = min(range(shards), key=lambda index: (loads[index], index))
         loads[least] += weight(case)
@@ -57,12 +58,35 @@ class CorpusShardTests(unittest.TestCase):
         self.write("tests/case_weights.txt", "# comment line\ndefault program 1500\ndefault rejection 20\n" +
                    "\n".join(lines) + "\n" + extra)
 
-    def shard(self, index, count, table=None):
-        command = f'. tests/corpus.sh; corpus_shard {index} {count}' + (f' "{table}"' if table else "")
+    def shard(self, index, count, table=None, initial_loads=""):
+        command = '. tests/corpus.sh; corpus_shard "$1" "$2" "$3" "$4"'
         # (the caller's locale must not change the shards: corpus_shard sets C itself)
-        result = subprocess.run(["sh", "-c", command], cwd=self.root, text=True, capture_output=True,
+        result = subprocess.run(["sh", "-c", command, "sh", str(index), str(count), str(table or ""), initial_loads],
+                                cwd=self.root, text=True, capture_output=True,
                                 env={"PATH": "/usr/bin:/bin", "LC_ALL": "en_US.UTF-8"}, check=True, timeout=30)
         return result.stdout.splitlines()
+
+    def test_initial_loads_preserve_coverage_and_balance_assigned_work(self):
+        self.write_table()
+        defaults = {"program": 1500, "rejection": 20}
+        for initial in ([0, 0], [45000, 0], [45000, 12000, 0]):
+            with self.subTest(initial=initial):
+                count = len(initial)
+                parts = [self.shard(index, count, initial_loads=",".join(map(str, initial)))
+                         for index in range(count)]
+                expected, _ = reference_shards(self.cases, self.weights, defaults, count, initial)
+                self.assertEqual(parts, expected)
+                every = [case for part in parts for case in part]
+                self.assertEqual(len(every), len(set(every)))
+                self.assertCountEqual(every, self.cases)
+                if not any(initial):
+                    self.assertEqual(parts, [self.shard(index, count) for index in range(count)])
+                else:
+                    self.assertNotEqual(parts, [self.shard(index, count) for index in range(count)])
+        for initial in ("1", "1,2,3", "-1,0", "1.5,0", "1000000000,0", "x,0", ",0"):
+            with self.subTest(invalid=initial), self.assertRaises(subprocess.CalledProcessError) as error:
+                self.shard(0, 2, initial_loads=initial)
+            self.assertEqual(error.exception.returncode, 2)
 
     def test_shards_are_the_reference_assignment_disjoint_and_complete(self):
         self.write_table()
@@ -123,12 +147,31 @@ class CorpusShardTests(unittest.TestCase):
     def test_the_repository_table_shards_the_whole_corpus(self):
         # (an entry of a case since removed only costs balance, until tools/case_weights.py refreshes it)
         cases = case_weights.corpus()
-        weights, defaults = case_weights.read_table(ROOT / case_weights.TABLE)
-        self.assertEqual(set(defaults), {"program", "rejection"})
-        self.assertGreater(len(set(weights) & set(cases)), len(cases) // 2)
-        result = subprocess.run(["sh", "-c", ". tests/corpus.sh; corpus_shard 0 2; corpus_shard 1 2"], cwd=ROOT,
-                                text=True, capture_output=True, check=True, timeout=60)
-        self.assertCountEqual(result.stdout.splitlines(), cases)
+        for table in (case_weights.TABLE, "tests/gc_case_weights.txt"):
+            with self.subTest(table=table):
+                weights, defaults = case_weights.read_table(ROOT / table)
+                self.assertEqual(set(defaults), {"program", "rejection"})
+                self.assertGreater(len(set(weights) & set(cases)), len(cases) // 2)
+                reserve = next((line.split()[1:] for line in (ROOT / table).read_text().splitlines()
+                                if line.startswith("reserve ")), [])
+                result = subprocess.run(["sh", "-c", '. tests/corpus.sh; corpus_shard 0 2 "$1"; '
+                                         'corpus_shard 1 2 "$1"', "sh", table], cwd=ROOT,
+                                        text=True, capture_output=True, check=True, timeout=60)
+                self.assertCountEqual(result.stdout.splitlines(), cases)
+                if reserve:
+                    result = subprocess.run(["sh", "-c", '. tests/corpus.sh; corpus_shard 0 2 "$1" "$2"; '
+                                             'corpus_shard 1 2 "$1" "$2"', "sh", table, ",".join(reserve)], cwd=ROOT,
+                                            text=True, capture_output=True, check=True, timeout=60)
+                    self.assertCountEqual(result.stdout.splitlines(), cases)
+
+    def test_gc_reserve_has_valid_units_and_calibration_provenance(self):
+        text = (ROOT / "tests/gc_case_weights.txt").read_text()
+        rows = [line.split()[1:] for line in text.splitlines() if line.startswith("reserve ")]
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(len(rows[0]), 2)
+        self.assertTrue(all(value.isascii() and value.isdigit() and len(value) <= 9 for value in rows[0]))
+        self.assertTrue(any(map(int, rows[0])))
+        self.assertRegex(text, r"(?m)^# Reserve calibration: [0-9a-f]{40}, full x86-64 CI run [0-9]+$")
 
 
 class CaseWeightsToolTests(unittest.TestCase):
