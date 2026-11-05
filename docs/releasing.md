@@ -58,8 +58,8 @@ Docker version tag and OCI labels. `pystachy --version` (or `-V`) reports the re
 version and exact source commit from adjacent metadata, without starting LLVM or Python.
 Ordinary source builds report the declared version; a commit may be `unknown` before
 installation. Increment the patch version for fixes, the minor version for new features,
-and the major version for incompatible changes. Use a prerelease suffix while the
-compiler is experimental.
+and the major version for incompatible changes. Use a prerelease suffix for alpha,
+beta and release-candidate builds. A plain pre-1.0 version publishes as a normal release.
 
 Every platform rebuilds the compiler to its bootstrap fixed point. Archives include a
 relative launcher, runtime sources, libraries, licenses, source metadata and checksums.
