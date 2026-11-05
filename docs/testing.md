@@ -537,6 +537,32 @@ The combined report's duration is bootstrap work plus the longest consumer group
 `ci.runner_seconds` measures aggregate work. Queueing, setup and other steps add to elapsed
 workflow time. The 15-minute limit applies to each verification job.
 
+GC artifacts retain per-case wall times in `verify/gc-ir-N-times.log` (both compiler
+invocations and their comparison), with runtime and syntax checks in separate
+`gc-ir-N-runtime-times.log` and `gc-ir-N-check-times.log` files. Execution samples
+and remaining cases have `gc-jit-N-sample-times.log` and `gc-jit-N-suite-times.log`,
+and corresponding `gc-aot` files. Each line is `MILLISECONDS CASE`; timings require
+GNU `date` and do not affect the comparison or test verdict.
+Identity timings are appended as cases finish, retaining completed work if a later
+case reaches the job limit. Their row order can differ between runs.
+
+The full GC identity and JIT halves use `tests/gc_case_weights.txt` when present,
+falling back to the ordinary case weights otherwise. Both phases select the same
+halves in the same order. GC weights measure stressed compiler work, which can be
+large for imports whose programs run quickly. The AOT thirds retain ordinary
+JIT/AOT weights; the PR profile retains its sparse selection. Weight changes
+affect placement and order, never coverage or stress intervals.
+The initial GC table profiles all 4,144 cases at `99f3451e` with the native compiler,
+collection every 1,000 allocations and `PYSTACHY_IRCHECK=1`. It uses CPU time from
+one stressed compilation per case, scaled to the median corpus program; its header
+records the compiler and profile hashes. These baseline costs guide placement;
+they do not measure combined CI job duration, and JIT samples run without the IR
+checker. Subsequent refreshes use the oracle's measured wall times, including both
+unstressed and stressed compilations and their comparison.
+Refresh GC weights with `tools/case_weights.py -o tests/gc_case_weights.txt` and
+both halves' `gc-ir-N-times.log` files from one completed run; runtime, syntax and
+execution timings describe different work and should not be mixed into that table.
+
 GC self-compilation collects every 5,000 allocations and has a separate ten-minute bound.
 At the former interval of 1,000, it spent 23 minutes on 15,543 full-heap collections;
 the wider interval still exercises thousands of collections without dominating CI.
@@ -554,12 +580,11 @@ build the same program from it, so the second compilation only repeated what one
 shows, at about twelve times the unstressed frontend's cost (on one case in ten of the corpus, on
 one core, the stressed frontend took 62% of a GC JIT run and 28% of a GC AOT run). One case in 16
 of each job's shard still runs end to end with the compiler stressed too: the cases at positions
-4 (JIT) or 12 (AOT) modulo 16 of the shard as `shard_cases` lists it, heaviest first. Drawn from
-the job's own shard, the sample lies in it whatever `tests/case_weights.txt` does to the shards,
-and is the same on every runner. Taken in weight order, it holds about a sixteenth of the shard's
-weight (0.94 to 1.03 of it at offsets 4 to 12 with the committed weights, where every 16th case in
-C order held 0.68 to 1.47), so a job's time does not depend on which heavy cases its sample
-draws; offset 0 would put each shard's heaviest case in every sample, and the two modes' offsets
+4 (JIT) or 12 (AOT) modulo 16 of the shard in weight order, heaviest first. Drawn from
+the job's own shard, the sample stays in it when either weight table changes and is
+the same on every runner. Its positions do not guarantee a proportional share of
+work; the per-case timing logs show its actual cost. Offset 0 would put each shard's
+heaviest case in every sample, and the two modes' offsets
 differ, so that they stress different cases where their shards' orders agree. The sample runs
 first, in a runtime cache of the GC steps' own (`build/verify/gc-cache`, which each run starts
 empty), so the stressed compiler builds the runtime that the job's GC tests use, and the driver's

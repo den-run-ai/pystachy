@@ -123,12 +123,15 @@ class CorpusShardTests(unittest.TestCase):
     def test_the_repository_table_shards_the_whole_corpus(self):
         # (an entry of a case since removed only costs balance, until tools/case_weights.py refreshes it)
         cases = case_weights.corpus()
-        weights, defaults = case_weights.read_table(ROOT / case_weights.TABLE)
-        self.assertEqual(set(defaults), {"program", "rejection"})
-        self.assertGreater(len(set(weights) & set(cases)), len(cases) // 2)
-        result = subprocess.run(["sh", "-c", ". tests/corpus.sh; corpus_shard 0 2; corpus_shard 1 2"], cwd=ROOT,
-                                text=True, capture_output=True, check=True, timeout=60)
-        self.assertCountEqual(result.stdout.splitlines(), cases)
+        for table in (case_weights.TABLE, "tests/gc_case_weights.txt"):
+            with self.subTest(table=table):
+                weights, defaults = case_weights.read_table(ROOT / table)
+                self.assertEqual(set(defaults), {"program", "rejection"})
+                self.assertGreater(len(set(weights) & set(cases)), len(cases) // 2)
+                result = subprocess.run(["sh", "-c", '. tests/corpus.sh; corpus_shard 0 2 "$1"; '
+                                         'corpus_shard 1 2 "$1"', "sh", table], cwd=ROOT,
+                                        text=True, capture_output=True, check=True, timeout=60)
+                self.assertCountEqual(result.stdout.splitlines(), cases)
 
 
 class CaseWeightsToolTests(unittest.TestCase):

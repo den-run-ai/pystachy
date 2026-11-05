@@ -124,6 +124,8 @@ def cm_methods(n: Node, names: list[str]) -> None:
     # taken as an object of the class that first defines NAME so, so that NAME returns one type
     # whatever subclass self is. A generic class keeps contextmanager(self._pys_cm_NAME) (C alone
     # names no type there)
+    if len(names) == 0:
+        return
     bases: dict[str, list[str]] = {}
     for st in n.kids:
         if st.kind == "subclass":
@@ -545,24 +547,44 @@ def opens_bound(n: Node) -> bool:
     # A class's method named open binds the name in the class's namespace, which its methods' code
     # does not see: only the class body's other statements would find it
     if n.kind == "call" and len(n.kids) > 0 and n.kids[0].kind == "name" and n.kids[0].s == "open":
-        return any([opens_bound(k) for k in n.kids[1:]])
-    if n.kind == "class" and len(n.kids) > 0 and n.kids[0].kind == "block" and any([st.kind == "def" and st.s == "open" for st in n.kids[0].kids]):
-        for st in n.kids[0].kids:
-            if st.kind == "def" and any([opens_bound(k) for k in st.kids]):
+        for j in range(1, len(n.kids)):
+            if opens_bound(n.kids[j]):
                 return True
+        return False
+    method = False
+    if n.kind == "class" and len(n.kids) > 0 and n.kids[0].kind == "block":
+        for st in n.kids[0].kids:
+            if st.kind == "def" and st.s == "open":
+                method = True
+                break
+    if method:
+        for st in n.kids[0].kids:
+            if st.kind == "def":
+                for k in st.kids:
+                    if opens_bound(k):
+                        return True
             if st.kind != "def" and (opens_bound(st) or names_open(st)):
                 return True
-        return any([opens_bound(k) for k in n.kids[1:]])
+        for j in range(1, len(n.kids)):
+            if opens_bound(n.kids[j]):
+                return True
+        return False
     if n.s == "open" and n.kind != "attr" and n.kind != "str" and n.kind != "bytes" and n.kind != "kw":
         return True
-    return any([opens_bound(k) for k in n.kids])
+    for k in n.kids:
+        if opens_bound(k):
+            return True
+    return False
 
 
 def names_open(n: Node) -> bool:
     # does tree n call open (opens_bound: a class body's statement, which finds the class's own)
     if n.kind == "name" and n.s == "open":
         return True
-    return any([names_open(k) for k in n.kids])
+    for k in n.kids:
+        if names_open(k):
+            return True
+    return False
 
 
 def binary_calls(n: Node, used: dict[str, int]) -> None:

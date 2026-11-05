@@ -30,6 +30,8 @@ CASES = NAMED + FILLERS
 DEFAULTS = {"program": 1000, "rejection": 4}
 WEIGHTS = {"tests/programs/x/example.py": 2600, "tests/deviations/example.py": 1500, "tests/errors/x/example.py": 7,
            **{case: 300 + index * 397 % 1700 for index, case in enumerate(FILLERS)}}
+# Stressed compilation has a different cost distribution from native JIT/AOT execution.
+GC_WEIGHTS = {case: 100 + index * 769 % 3100 for index, case in enumerate(CASES)}
 
 
 def checks(case):
@@ -37,16 +39,16 @@ def checks(case):
     return 2 if case.rsplit("/", 1)[1].startswith("syntax_") else 1
 
 
-def shards(count):
+def shards(count, gc=False):
     """corpus_shard's shards of the fixture's corpus, each heaviest first."""
-    return reference_shards(CASES, WEIGHTS, DEFAULTS, count)[0]
+    return reference_shards(CASES, GC_WEIGHTS if gc else WEIGHTS, DEFAULTS, count)[0]
 
 
 def split(group):
     """GC suite GROUP's mode, shard, stressed sample and program-stressed rest, as tests/verify.sh means
     to select them: the shard's cases at positions OFFSET modulo EVERY, and its others, in its order."""
     mode = "aot" if group.startswith("gc-aot") else "jit"
-    shard = shards(merge.SHARDED_STEPS[group])[int(group[-1])]
+    shard = shards(merge.SHARDED_STEPS[group], gc=mode == "jit")[int(group[-1])]
     offset, every = merge.GC_SAMPLE_OFFSETS[mode], merge.GC_SAMPLE_EVERY
     return (mode, shard, [case for i, case in enumerate(shard) if i % every == offset],
             [case for i, case in enumerate(shard) if i % every != offset])
@@ -54,7 +56,7 @@ def split(group):
 
 def half(case):
     """The gc-ir half that compiles CASE."""
-    return next(index for index, shard in enumerate(shards(2)) if case in shard)
+    return next(index for index, shard in enumerate(shards(2, gc=True)) if case in shard)
 
 
 GC_STEPS = ["gc-self", "gc-ir-0", "gc-ir-1", "gc-jit-0", "gc-jit-1", "gc-aot-0", "gc-aot-1", "gc-aot-2"]
@@ -85,6 +87,9 @@ class GCVerificationTests(unittest.TestCase):
         (self.root / "tests/case_weights.txt").write_text(
             "# fixture\n" + "".join(f"default {kind} {weight}\n" for kind, weight in DEFAULTS.items()) +
             "".join(f"{weight} {case}\n" for case, weight in WEIGHTS.items()))
+        (self.root / "tests/gc_case_weights.txt").write_text(
+            "# GC fixture\n" + "".join(f"default {kind} {weight}\n" for kind, weight in DEFAULTS.items()) +
+            "".join(f"{weight} {case}\n" for case, weight in GC_WEIGHTS.items()))
         compiler = self.root / "bin/compiler"
         compiler.write_text(f"#!{sys.executable}\n" + '''import os
 import signal
@@ -168,6 +173,7 @@ echo "$mode $kind $*" >> runs.log
 checks=0
 for file; do
   echo "selected: $file"
+  [ -z "$PYSTACHY_CASE_TIMES" ] || printf '7 %s\\n' "$file" >> "$PYSTACHY_CASE_TIMES"
   case "$file" in
     tests/programs/x/syntax_example.py|tests/errors/x/syntax_example.py) checks=$((checks + 2)) ;;
     tests/programs/x/*.py|tests/deviations/example.py|tests/errors/x/example.py) checks=$((checks + 1)) ;;
@@ -243,10 +249,22 @@ os.execv({TIMEOUT!r}, [{TIMEOUT!r}, "--verbose", "--kill-after=0.2s", limit, *sy
 
     def test_fixture_shards_hold_samples_in_their_own_order(self):
         # (the preconditions of the tests below: each shard's sample has a case, and is not its C order)
+        self.assertNotEqual(shards(2, gc=True), shards(2))
         for group, _, _ in SUITES:
             mode, shard, sample, rest = split(group)
             self.assertTrue(sample and rest, group)
             self.assertNotEqual(shard, sorted(shard), group)
+
+    def test_missing_gc_weights_reuses_the_ordinary_half_for_both_phases(self):
+        (self.root / "tests/gc_case_weights.txt").unlink()
+        result, report, _ = self.run_group("gc-jit-0")
+        self.assertEqual((result.returncode, report["result"]), (0, "pass"), result.stdout + result.stderr)
+        expected = shards(2)[0]
+        compiled = [case for command, case, stress in self.compiles() if command == "ir" and stress == "1000"]
+        self.assertCountEqual(compiled, expected)
+        sample, rest = (cases for _, _, cases in self.runs())
+        self.assertEqual(sample, expected[merge.GC_SAMPLE_OFFSETS["jit"]::merge.GC_SAMPLE_EVERY])
+        self.assertCountEqual(sample + rest, expected)
 
     def test_self_compile_preserves_ir_stress_and_gc_diagnostics(self):
         result, report, logs = self.run_group("gc-self")
@@ -279,6 +297,9 @@ os.execv({TIMEOUT!r}, [{TIMEOUT!r}, "--verbose", "--kill-after=0.2s", limit, *sy
                 stressed, rest = self.runs()[0][2], self.runs()[1][2]
                 _, shard, sample, others = split(group)
                 self.assertEqual((stressed, rest), (sample, others))
+                for kind, selected in (("sample", sample), ("suite", others)):
+                    timing = self.root / "build/verify" / f"{group}-{kind}-times.log"
+                    self.assertEqual(timing.read_text().splitlines(), [f"7 {case}" for case in selected])
                 # (in the shard, each of its cases once: in the sample or in the rest)
                 self.assertLessEqual(set(stressed), set(shard))
                 self.assertEqual(Counter(stressed + rest), Counter(shard))
@@ -339,7 +360,7 @@ os.execv({TIMEOUT!r}, [{TIMEOUT!r}, "--verbose", "--kill-after=0.2s", limit, *sy
                 result, report, logs = self.run_group(group)
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 step = report["steps"][1]
-                cases = shards(2)[index]
+                cases = shards(2, gc=True)[index]
                 syntax = [case for case in cases if "/syntax_" in case]
                 self.assertEqual(step["name"], f"gc-ir-{index}")
                 self.assertEqual((step["ir_cases"], step["ir_identical"], step["runtime_identical"]),
@@ -352,6 +373,12 @@ os.execv({TIMEOUT!r}, [{TIMEOUT!r}, "--verbose", "--kill-after=0.2s", limit, *sy
                 self.assertIn("1 programs identical", logs[f"gc-ir-{index}"])   # (runtime.py)
                 if syntax:
                     self.assertIn(f"== check of the {len(syntax)} syntax_*.py cases", logs[f"gc-ir-{index}"])
+                for kind, selected in (("", cases), ("-runtime", ["runtime.py"]), ("-check", syntax)):
+                    timing = self.root / "build/verify" / f"gc-ir-{index}{kind}-times.log"
+                    if selected:
+                        rows = [line.split(" ", 1) for line in timing.read_text().splitlines()]
+                        self.assertCountEqual([case for _, case in rows], selected)
+                        self.assertTrue(all(ms.isascii() and ms.isdigit() for ms, _ in rows))
                 # each case of the half by both compilers (rt for runtime.py), syntax cases checked by both
                 calls = self.compiles()
                 for case in cases:
@@ -374,7 +401,7 @@ os.execv({TIMEOUT!r}, [{TIMEOUT!r}, "--verbose", "--kill-after=0.2s", limit, *sy
                 ("gc-ir-missing", None, "ir_identical", "programs identical")):
             with self.subTest(mode=mode):
                 index = half(target) if target else 1
-                group, cases = f"gc-jit-{index}", shards(2)[index]
+                group, cases = f"gc-jit-{index}", shards(2, gc=True)[index]
                 irsame = self.root / "tools/irsame.sh"
                 if mode == "gc-ir-missing":   # irsame drops the half's last case and finds the others identical
                     irsame.rename(self.root / "tools/irsame-real.sh")

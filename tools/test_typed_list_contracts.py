@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.pystachy_compiler import diagnostics
+from src.pystachy_compiler import diagnostics, utils
 from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler.ir import FnInfo, IFn, Ins, Val
 from src.pystachy_compiler.loader import Loader
@@ -81,6 +81,22 @@ class ListLayoutTests(unittest.TestCase):
 
 
 class ListWriteContractTests(unittest.TestCase):
+    def test_repeated_writes_and_verification_reuse_declared_runtime_signature(self):
+        # Verifying a large live function must not parse identical runtime metadata
+        # for every write and pass. This allocation cost is amplified by GC stress.
+        g = Gen()
+        writes = [list_write(element="list[int]") for _ in range(16)]
+        with patch.object(utils, "rtsig", wraps=utils.rtsig) as parsed:
+            for i in writes:
+                g.list_write(i.s, i.a)
+            fn = function_with(writes[0])
+            fn.blocks[0].code = writes + [Ins("ret.none", "", "")]
+            signature = tuple(g.rtfns["list.append"].sig)
+            for _ in range(3):
+                g.verify(fn, False)
+            self.assertLessEqual(parsed.call_count, 2)  # first construction and declaration
+            self.assertEqual(tuple(g.rtfns["list.append"].sig), signature)
+
     def assert_rejected(self, i, fragment, promoting=False, builder=True):
         with patch.dict(diagnostics.INTFILES, {0: True} if promoting else {}, clear=True):
             error = list_write_error(i, promoting)

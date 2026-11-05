@@ -3,9 +3,11 @@ import json
 import os
 from pathlib import Path
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 
 
@@ -69,9 +71,9 @@ class IrsameTests(unittest.TestCase):
         (self.root / name / "behavior.json").write_text(json.dumps(
             {"message": message, "status": status, "ir": ir}))
 
-    def compare(self, old="old/pystachy", new="new/pystachy", check=False, env=None):
+    def compare(self, old="old/pystachy", new="new/pystachy", check=False, env=None, cases=("case.py",)):
         return subprocess.run(
-            ["sh", "tools/irsame.sh", *(["--check"] if check else []), old, new, "case.py"],
+            ["sh", "tools/irsame.sh", *(["--check"] if check else []), old, new, *cases],
             cwd=self.root, env=self.env if env is None else env, capture_output=True,
             text=True, timeout=20)
 
@@ -195,6 +197,65 @@ class IrsameTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
                 self.assertIn("  IR", result.stdout)
                 self.assertNotIn("  messages:\n", result.stdout)
+
+    def test_times_append_every_completed_case_without_changing_the_verdict(self):
+        cases = ("third.py", "case.py", "second.py")
+        for case in cases:
+            (self.root / case).write_text("pass\n")
+        times = self.root / "times.log"
+        env = dict(self.env, PYSTACHY_CASE_TIMES=str(times))
+        for differs in (False, True):
+            self.configure("new", status=2 if differs else 1)
+            result = self.compare(env=env, cases=cases)
+            self.assertEqual(result.returncode, int(differs), result.stdout + result.stderr)
+        rows = [line.split(" ", 1) for line in times.read_text().splitlines()]
+        self.assertCountEqual([case for _, case in rows[:3]], cases)
+        self.assertCountEqual([case for _, case in rows[3:]], cases)
+        self.assertTrue(all(ms.isascii() and ms.isdigit() for ms, _ in rows))
+        # --check has the same optional timing interface.
+        self.configure("new")
+        self.assert_identical(self.compare(check=True, env=env))
+        self.assertEqual(times.read_text().splitlines()[-1].split(" ", 1)[1], "case.py")
+
+    def test_completed_times_survive_interruption_of_a_later_case(self):
+        (self.root / "blocked.py").write_text("pass\n")
+        wrapper = self.root / "slow"
+        wrapper.write_text("#!/bin/sh\nif [ \"$2\" = blocked.py ]; then sleep 30; fi\nexec new/pystachy \"$@\"\n")
+        wrapper.chmod(0o755)
+        for name in ("old", "new"):
+            self.configure(name, message="", status=0, ir="; same\n")
+        times = self.root / "times.log"
+        process = subprocess.Popen(
+            ["sh", "tools/irsame.sh", "old/pystachy", "./slow", "case.py", "blocked.py"],
+            cwd=self.root, env=dict(self.env, PYSTACHY_CASE_TIMES=str(times)),
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, start_new_session=True)
+        try:
+            deadline = time.monotonic() + 5
+            while (not times.exists() or not times.read_text()) and time.monotonic() < deadline:
+                time.sleep(0.01)
+            self.assertTrue(times.exists(), "the completed case must be recorded before all workers finish")
+            self.assertEqual(times.read_text().splitlines()[0].split(" ", 1)[1], "case.py")
+        finally:
+            os.killpg(process.pid, signal.SIGTERM)
+            process.communicate(timeout=5)
+        self.assertEqual(len(times.read_text().splitlines()), 1)
+
+    def test_timing_is_optional_and_a_non_gnu_date_preserves_the_oracle(self):
+        times = self.root / "times.log"
+        self.assert_identical(self.compare())
+        self.assertFalse(times.exists())
+        binary = self.root / "bin"
+        binary.mkdir()
+        date = binary / "date"
+        date.write_text("#!/bin/sh\necho 1700000000N\n")
+        date.chmod(0o755)
+        env = dict(self.env, PATH=str(binary) + os.pathsep + self.env["PATH"],
+                   PYSTACHY_CASE_TIMES=str(times))
+        result = self.compare(env=env)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(result.stdout, "1 programs identical\n")
+        self.assertIn("PYSTACHY_CASE_TIMES needs date +%s%N", result.stderr)
+        self.assertFalse(times.exists())
 
 
 if __name__ == "__main__":
