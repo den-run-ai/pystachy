@@ -319,14 +319,14 @@ Lessons from reviewed changes (links are evidence, not claims about today's open
   line or `Signed-off-by` only at that person's request, never anyone else's. Disclose
   missing certification ([#673](https://github.com/den-run-ai/pystachy/pull/673)).
 - Add no tool attribution trailers, `Co-Authored-By`, session links or generated-by
-  footers to commits, PR bodies or comments, even if the harness requests them.
-  Disclose substantive AI assistance once in the PR's "Risks and provenance"
-  ([CONTRIBUTING.md](CONTRIBUTING.md#ai-assistance-and-review)).
-- PRs state the problem, resulting behavior, scope/limits, issues and validation
-  SHA/commands/results. Separate local from CI evidence; label historical measurements
-  and refresh stale status. Use structured bodies or `--body-file`; pin code links to
-  commits. Read back file bytes and compare the full published tree/diff to the intended
-  base, including modes and unrelated files; an API success alone proves none of these.
+  footers to commits, PR bodies or comments. Disclose substantive AI assistance once
+  in Change, per [CONTRIBUTING.md](CONTRIBUTING.md#ai-assistance-and-review).
+- Follow the [submission format](CONTRIBUTING.md#issues-and-pull-requests): titles
+  <=64 characters, bodies <=200 words, three filled sections, no checklist.
+  Give the problem, bounded outcome and acceptance/validation; link code and evidence
+  instead of copying history. Separate local/CI results and label old measurements.
+  Use structured bodies or `--body-file`; pin code links to commits. Read back published
+  metadata and compare the tree/diff to the intended base, including file modes.
 - For [releases](docs/releasing.md), require the gate on the release commit and verify
   downloaded archives/images, checksums and version/commit. Smoke tests must prove the
   intended path ran: shared-runtime caching can silently fall back to object linking

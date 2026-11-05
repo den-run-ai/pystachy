@@ -1,26 +1,18 @@
-<!-- First PR? Read https://github.com/den-run-ai/pystachy/blob/main/CONTRIBUTING.md.
-The same checklist applies to everyone. Use "not applicable" with a reason where needed. -->
+<!-- Title <=64 characters. Whole body <=200 words, including code/tables.
+Read CONTRIBUTING.md. Link code, results and background instead of copying them. -->
 
-## Problem and change
+## Problem
 
-<!-- Link an issue or give a minimal reproducer. Explain the cause, fix and resulting behavior.
-Use "Refs #..." for partial work; use "Fixes #..." only when the issue's scope is complete. -->
+<!-- What fails or is difficult today? Link the issue or give one small example. -->
+
+## Change
+
+<!-- What happens now, and why? State scope/limits and dependencies.
+Use Refs #N for partial work. Use Fixes #N only for completed issue scope.
+Mention adapted sources/licenses and substantive AI assistance/tools, or "none". -->
 
 ## Validation
 
-<!-- Give the tested revision, platform/toolchain, exact commands and actual results.
-For behavior changes, include the regression and CPython/JIT/AOT evidence where relevant.
-Separate local results from CI; list failed, timed-out or unrun checks. -->
-
-## Risks and provenance
-
-<!-- Note limitations, compatibility/performance effects and related or dependent PRs.
-Identify adapted sources/licenses and substantive AI assistance/tools, or state "none". -->
-
-## Checklist
-
-- [ ] I reviewed and can explain the complete change.
-- [ ] I added regression coverage, or explained why it is not applicable.
-- [ ] The diff contains no raw research, transient handoffs or unapplied prototype patches; reusable checks and fixtures are in maintained locations.
-- [ ] I have the right to contribute this work and preserved applicable license notices.
-- [ ] For a PR from a fork: my account is in `.github/dco-signers.txt`, or this PR adds my line.
+<!-- Tested revision, platform/toolchain, commands and actual results.
+Separate local from CI; say which checks failed, timed out or were not run.
+Use a small table or link detailed evidence. No checklist needed. -->
