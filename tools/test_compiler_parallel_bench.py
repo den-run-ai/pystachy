@@ -5,7 +5,11 @@ the hosted sandbox's mismatched PID namespaces, which otherwise sample unrelated
 processes and report plausible but incorrect memory figures.
 """
 import importlib.util
+import os
 from pathlib import Path
+import shlex
+import subprocess
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -171,6 +175,34 @@ class GeneratedInputIdentity(unittest.TestCase):
                 warmup.write_text('print("changed")\n')
                 after = bench.identify_sources([], (warmup,))
             self.assertNotEqual(before["sha256"], after["sha256"])
+
+
+class WorkloadEnvironment(unittest.TestCase):
+    def test_json_repair_oracle_imports_the_bundled_package_and_runs(self):
+        with tempfile.TemporaryDirectory() as directory:
+            workload = bench.choose_workloads(["json-repair"], Path(directory))[0]
+            env = bench.runtime_environment(dict(os.environ), workload)
+            probe = subprocess.run([sys.executable, str(workload["source"]), "0"],
+                                   cwd=ROOT, env=env, capture_output=True, text=True, timeout=30)
+            self.assertEqual(probe.returncode, 0, probe.stderr)
+            self.assertIn("outputs ", probe.stdout)
+            self.assertIn("checksum 0\n", probe.stdout)
+            imported = subprocess.run([sys.executable, "-c", "import json_repair; print(json_repair.__file__)"],
+                                      cwd=ROOT, env=env, capture_output=True, text=True, timeout=30)
+            self.assertEqual(imported.returncode, 0, imported.stderr)
+            self.assertEqual(Path(imported.stdout.strip()), ROOT / "ports/json_repair/__init__.py")
+            self.assertEqual(env["PYSTACHY_PATH"], env["PYTHONPATH"])
+
+    def test_resolving_an_interpreter_preserves_its_virtualenv_symlink(self):
+        with tempfile.TemporaryDirectory() as directory:
+            executable = Path(directory) / "venv/bin/python"
+            executable.parent.mkdir(parents=True)
+            executable.symlink_to(sys.executable)
+            command = bench.resolve_command(shlex.quote(str(executable)) + " -m pystachy")
+            self.assertEqual(command, [str(executable), "-m", "pystachy"])
+            # Content identity can still use the target's bytes.
+            self.assertEqual(bench.command_identity([str(executable)]),
+                             bench.command_identity([str(executable.resolve())]))
 
 
 if __name__ == "__main__":

@@ -277,7 +277,9 @@ def resolve_command(command: str) -> list[str]:
     parts = shlex.split(command)
     if not parts or not shutil.which(parts[0]):
         raise ValueError(f"command not found: {command}")
-    resolved = [str(Path(shutil.which(parts[0])).resolve())]
+    # Keep a venv interpreter's invocation path: following its symlink selects
+    # the base interpreter and silently changes installed-package resolution.
+    resolved = [os.path.abspath(shutil.which(parts[0]))]
     for index, arg in enumerate(parts[1:], 1):
         is_path = parts[index - 1] != "-m" and ("/" in arg or arg.endswith(".py")) and Path(arg).is_file()
         resolved.append(str(Path(arg).resolve()) if is_path else arg)
@@ -316,7 +318,7 @@ def choose_workloads(specs: list[str], work: Path) -> list[dict]:
     tiny.write_text('print("tiny", sum([1, 2, 3, 4]))\n')
     definitions = {
         "tiny": (tiny, [], []),
-        "json-repair": (ROOT / "bench/json_repair/bench.py", ["500"], [ROOT / "ports/json_repair"]),
+        "json-repair": (ROOT / "bench/json_repair/bench.py", ["500"], [ROOT / "ports"]),
         "self": (ROOT / "pystachy.py", [], []),
     }
     workloads = []
