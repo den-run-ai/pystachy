@@ -1,4 +1,5 @@
 """Black-box controls for irsame's diagnostic, exit-status and IR oracle."""
+from collections import Counter
 import json
 import os
 from pathlib import Path
@@ -23,6 +24,10 @@ import sys
 if len(sys.argv) == 1:
     print("usage: pystachy rt PROGRAM")
     sys.exit(2)
+calls = os.getenv("IRSAME_CALL_LOG")
+if calls:
+    with open(calls, "a") as log:
+        log.write(f"{Path(__file__).parent.name} {sys.argv[1]} {sys.argv[2]}\\n")
 home = os.getenv("PYSTACHY_HOME", "")
 if not home:
     home = os.path.dirname(sys.argv[0]) or "."
@@ -216,6 +221,32 @@ class IrsameTests(unittest.TestCase):
         self.configure("new")
         self.assert_identical(self.compare(check=True, env=env))
         self.assertEqual(times.read_text().splitlines()[-1].split(" ", 1)[1], "case.py")
+
+    def test_parallel_claims_compile_each_case_once_per_compiler(self):
+        cases = [f"case{index}.py" for index in range(20)]
+        for case in cases:
+            (self.root / case).write_text("pass\n")
+        calls = self.root / "calls.log"
+        env = dict(self.env, PYSTACHY_JOBS="4", IRSAME_CALL_LOG=str(calls))
+        result = self.compare(env=env, cases=cases)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(result.stdout, "20 programs identical\n")
+        self.assertEqual(Counter(calls.read_text().splitlines()),
+                         Counter(f"{compiler} ir {case}" for compiler in ("old", "new") for case in cases))
+
+    def test_claimed_case_without_a_completed_report_fails(self):
+        (self.root / "second.py").write_text("pass\n")
+        binary = self.root / "bin"
+        binary.mkdir()
+        mkdir = binary / "mkdir"
+        mkdir.write_text("#!/bin/sh\n" +
+                         'case ${1##*/} in 2) /bin/mkdir "$@" 2>/dev/null; exit 1 ;; esac\n' +
+                         'exec /bin/mkdir "$@"\n')
+        mkdir.chmod(0o755)
+        env = dict(self.env, PATH=str(binary) + os.pathsep + self.env["PATH"], PYSTACHY_JOBS="4")
+        result = self.compare(env=env, cases=("case.py", "second.py"))
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertEqual(result.stdout, "DIFF second.py\n  no result (its worker died)\n1 of 2 differ\n")
 
     def test_completed_times_survive_interruption_of_a_later_case(self):
         (self.root / "blocked.py").write_text("pass\n")

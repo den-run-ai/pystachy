@@ -179,7 +179,7 @@ worker() {
   i=0
   for f; do
     i=$((i + 1))
-    if mkdir "$T/$i" 2> /dev/null; then
+    if [ ! -d "$T/$i" ] && mkdir "$T/$i" 2> /dev/null; then
       [ -z "$TIMES" ] || t0=$(date +%s%N)
       same "$f" "$T/$i"
       # One append per completed case; workers never rewrite another worker's row.

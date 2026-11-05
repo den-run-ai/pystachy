@@ -201,7 +201,8 @@ wait
 pass=0; fail=0; i=0
 for t; do
   if [ -f "$T/$i.n" ]; then
-    cat "$T/$i.log"
+    # Successful cases normally have empty logs; keep missing-file diagnostics and failure output.
+    if [ ! -f "$T/$i.log" ] || [ -s "$T/$i.log" ]; then cat "$T/$i.log"; fi
     read -r p f < "$T/$i.n"
     pass=$((pass + p)); fail=$((fail + f))
     if [ -n "$TIMES" ] && [ -f "$T/$i.ms" ] && read -r ms < "$T/$i.ms"; then printf '%s %s\n' "$ms" "$t" >> "$TIMES"; fi

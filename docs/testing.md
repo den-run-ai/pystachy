@@ -566,9 +566,10 @@ The initial GC table profiles all 4,144 cases at `99f3451e` with the native comp
 collection every 1,000 allocations and `PYSTACHY_IRCHECK=1`. It uses CPU time from
 one stressed compilation per case, scaled to the median corpus program; its header
 records the compiler and profile hashes. These baseline costs guide placement;
-they do not measure combined CI job duration, and JIT samples run without the IR
-checker. Subsequent refreshes use the oracle's measured wall times, including both
-unstressed and stressed compilations and their comparison.
+they do not measure combined CI job duration. JIT samples also enable the IR
+checker through `tests/run.sh`'s default. Subsequent refreshes use the oracle's
+measured wall times, including both unstressed and stressed compilations and their
+comparison.
 Refresh GC weights with `tools/case_weights.py -o tests/gc_case_weights.txt` and
 both halves' `gc-ir-N-times.log` files from one completed run; runtime, syntax and
 execution timings describe different work and should not be mixed into that table.

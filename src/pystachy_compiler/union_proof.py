@@ -261,16 +261,33 @@ class UnionProof:
         self.badblocks: list[str] = []
         self.visits = 0
         wanted: dict[str, bool] = {}
+        # Storage facts can be read only at addresses named by this function.
+        # Include every block, even unreachable ones and later phi operands.
+        # Keep named globals separate so unused names need no prefixed strings.
+        references: dict[str, bool] = {}
+        named: dict[str, bool] = {}
+        for b in fn.blocks:
+            for i in b.code:
+                for a in i.a:
+                    references[a.v] = True
+                    if a.v.startswith("@g."):
+                        named[a.v[3:]] = True
         if globals is not None:
             for v in globals:
-                self.typebase("MU:@g." + v, globals[v])
-                self.memtypes["@g." + v] = globals[v]
+                if v in named:
+                    self.typebase("MU:@g." + v, globals[v])
+                    self.memtypes["@g." + v] = globals[v]
+                else:
+                    self.type_domain(globals[v])
         if declarations is not None:
             # Hidden defaults and class storage have the same declared native types
             # as named globals. A call can change their values, not their layouts.
             for declaration in declarations:
-                self.typebase("MU:" + declaration.v, declaration.t)
-                self.memtypes[declaration.v] = declaration.t
+                if declaration.v in references:
+                    self.typebase("MU:" + declaration.v, declaration.t)
+                    self.memtypes[declaration.v] = declaration.t
+                else:
+                    self.type_domain(declaration.t)
         for n in range(len(fn.f.ptypes)):
             t = fn.f.ptypes[n]
             v = "%a" + str(n)
@@ -475,10 +492,15 @@ class UnionProof:
         return t
 
     def typebase(self, k: str, t: str) -> None:
+        ts = self.type_domain(t)
+        if len(ts) > 0:
+            self.base[k] = ts
+
+    def type_domain(self, t: str) -> list[str]:
+        # Unreferenced declarations still contribute every member to the fallback
+        # universe. Omitting their types could turn unknown facts into a proof.
         if t in self.domains:
-            if len(self.domains[t]) > 0:
-                self.base[k] = self.domains[t]
-            return
+            return self.domains[t]
         u = t[4:-1] if is_opt(t) else t
         ts: list[str] = []
         if is_union(u):
@@ -489,12 +511,12 @@ class UnionProof:
             if is_opt(t) and "None" not in ts:
                 ts.append("None")
             ts.sort()
-            self.base[k] = ts
             for v in ts:
                 if v not in self.full:
                     self.full.append(v)
             self.full.sort()
         self.domains[t] = ts
+        return ts
 
     def box(self, s: UnionState, v: str) -> str:
         k = "U:" + v
