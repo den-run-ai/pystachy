@@ -33,8 +33,8 @@ SHARDED_STEPS = {f"{suite}-{index}": count for suite, count in
 PR_SHARDED_STEPS = {"tests-native-0": 2, "tests-native-1": 2, "tests-opt-off-0": 1,
                     "python-free-0": 1, "ubsan-0": 1, "gc-jit-0": 1, "gc-aot-0": 1}
 # The GC suites run their shards (halves in JIT, thirds in AOT) with program stress alone, compiled by
-# stage 2 unstressed, after the gc-ir halves have shown the stage-2 compiler collecting every
-# GC_COMPILER_INTERVAL allocations to compile every case to the same IR, messages and status. Each
+# stage 2 unstressed. The aggregate also requires the independent gc-ir halves to show the stage-2
+# compiler collecting every GC_COMPILER_INTERVAL allocations emits identical IR, messages and status. Each
 # runs a sample of its shard end to end with the compiler stressed too, first: the cases at positions
 # GC_SAMPLE_OFFSETS[mode] modulo GC_SAMPLE_EVERY of the shard as shard_cases lists it (tests/verify.sh)
 GC_STEPS = {"gc-jit-0", "gc-jit-1", "gc-aot-0", "gc-aot-1", "gc-aot-2"}

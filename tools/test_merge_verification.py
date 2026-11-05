@@ -289,10 +289,11 @@ class ContractTests(unittest.TestCase):
         for group in ("gc-self", "gc-aot-0", "gc-aot-1", "gc-aot-2", "ubsan-0", "ubsan-1",
                       "ubsan-2", "ubsan-3", "python-free-0", "python-free-1", "python-free-2", "runtime-cache"):
             self.assertEqual(groups[group], ["bootstrap", group])
-        # the stressed compiler's identity, half by half, in the JIT jobs; AOT in three thirds
+        # Identity and JIT execution each have two independent jobs; AOT keeps three thirds.
         for shard in ("0", "1"):
-            self.assertEqual(groups["gc-jit-" + shard], ["bootstrap", "gc-ir-" + shard, "gc-jit-" + shard])
-        for gone in ("gc-aot-3", "gc-ir-0", "gc-ir-1"):
+            self.assertEqual(groups["gc-ir-" + shard], ["bootstrap", "gc-ir-" + shard])
+            self.assertEqual(groups["gc-jit-" + shard], ["bootstrap", "gc-jit-" + shard])
+        for gone in ("gc-aot-3", "gc-ir-2", "gc-jit-2"):
             self.assertNotIn(gone, groups)
         self.assertEqual(groups["hosted"], ["bootstrap", "tests-cpython"])  # one job: the IR oracle and its sample
         for shard in ("0", "1", "2"):
@@ -324,7 +325,8 @@ class ContractTests(unittest.TestCase):
                 path.write_text(json.dumps(report(group, steps)))
             result = merge.merge_reports(directory, groups, COMMIT)
             self.assertEqual([step["name"] for step in result["steps"]], groups["all"])
-            for group in ("opt-off-0", "opt-off-1", "opt-off-2", "gc-self", "gc-jit-0", "gc-jit-1", "gc-aot-0", "gc-aot-1", "gc-aot-2",
+            for group in ("opt-off-0", "opt-off-1", "opt-off-2", "gc-self", "gc-ir-0", "gc-ir-1",
+                          "gc-jit-0", "gc-jit-1", "gc-aot-0", "gc-aot-1", "gc-aot-2",
                           "hosted", "native-0", "native-1", "native-2", "python-free-0", "python-free-1",
                           "python-free-2", "ubsan-0", "ubsan-1", "ubsan-2", "ubsan-3", "runtime-cache", "contracts", "benchmarks",
                           "scaling", "dynany-optin-0", "dynany-optin-1", "dynany-optin-2",
@@ -392,10 +394,10 @@ class ContractTests(unittest.TestCase):
             # case (sources.syntax_cases); a GC suite's stressed sample counts toward its mode's checks,
             # and its shards hold every corpus case between them
             for group, mutate, error in (
-                    ("gc-jit-0", lambda data: data["steps"][1].update(ir_cases=CORPUS_CASES // 2 - 1), "gc-ir halves"),
-                    ("gc-jit-1", lambda data: data["steps"][1].update(ir_cases=CORPUS_CASES // 2 + 1), "gc-ir halves"),
-                    ("gc-jit-1", lambda data: data["steps"][1].update(check_cases=0), "gc-ir halves"),
-                    ("gc-jit-0", lambda data: data["steps"][1].update(check_cases=2), "gc-ir halves"),
+                    ("gc-ir-0", lambda data: data["steps"][1].update(ir_cases=CORPUS_CASES // 2 - 1), "gc-ir halves"),
+                    ("gc-ir-1", lambda data: data["steps"][1].update(ir_cases=CORPUS_CASES // 2 + 1), "gc-ir halves"),
+                    ("gc-ir-1", lambda data: data["steps"][1].update(check_cases=0), "gc-ir halves"),
+                    ("gc-ir-0", lambda data: data["steps"][1].update(check_cases=2), "gc-ir halves"),
                     ("gc-jit-0", lambda data: data["steps"][-1]["stressed_sample"].update(passed=2, expected=2),
                      "GC JIT shards must cover"),
                     ("gc-aot-1", lambda data: data["steps"][-1]["stressed_sample"].update(passed=2, expected=2),
@@ -544,10 +546,10 @@ class ContractTests(unittest.TestCase):
             mutate(data["steps"][1])
             with self.subTest(step="scaling-0", mutation=index), self.assertRaises(ValueError):
                 merge.validate_report(data, "scaling", groups["scaling"])
-        # each JIT job's first step is its gc-ir half
-        for group in ("gc-jit-0", "gc-jit-1"):
+        # Each identity job holds exactly its own gc-ir half.
+        for group in ("gc-ir-0", "gc-ir-1"):
             valid = report(group, groups[group])
-            self.assertEqual(valid["steps"][1]["name"], "gc-ir-" + group[-1])
+            self.assertEqual([step["name"] for step in valid["steps"]], ["bootstrap", group])
             for index, mutate in enumerate(GC_IR_MUTATIONS):
                 data = copy.deepcopy(valid)
                 mutate(data["steps"][1])
@@ -559,12 +561,14 @@ class ContractTests(unittest.TestCase):
         # halves, or with one of them, cannot drop the stressed compiler's identity.
         aot = "gc-aot-0 bootstrap gc-aot-0\ngc-aot-1 bootstrap gc-aot-1\ngc-aot-2 bootstrap gc-aot-2\n"
         full = merge.parse_groups("all bootstrap gc-ir-0 gc-ir-1 gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2\n"
-                                  "gc-jit-0 bootstrap gc-ir-0 gc-jit-0\ngc-jit-1 bootstrap gc-ir-1 gc-jit-1\n" + aot)
+                                  "gc-ir-0 bootstrap gc-ir-0\ngc-ir-1 bootstrap gc-ir-1\n"
+                                  "gc-jit-0 bootstrap gc-jit-0\ngc-jit-1 bootstrap gc-jit-1\n" + aot)
         without = merge.parse_groups("all bootstrap gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2\n"
                                      "gc-jit-0 bootstrap gc-jit-0\ngc-jit-1 bootstrap gc-jit-1\n" + aot)
         half = merge.parse_groups("all bootstrap gc-ir-0 gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2\n"
-                                  "gc-jit-0 bootstrap gc-ir-0 gc-jit-0\ngc-jit-1 bootstrap gc-jit-1\n" + aot)
-        alone = merge.parse_groups("all bootstrap gc-ir-0\ngc-jit-0 bootstrap gc-ir-0\n")
+                                  "gc-ir-0 bootstrap gc-ir-0\n"
+                                  "gc-jit-0 bootstrap gc-jit-0\ngc-jit-1 bootstrap gc-jit-1\n" + aot)
+        alone = merge.parse_groups("all bootstrap gc-ir-0\ngc-ir-0 bootstrap gc-ir-0\n")
         for groups, error in ((full, None), (without, "gc-ir halves"), (half, "gc-ir halves"),
                               (alone, "gc-ir halves")):
             with self.subTest(groups=groups), tempfile.TemporaryDirectory() as tmp:

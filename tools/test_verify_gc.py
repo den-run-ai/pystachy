@@ -59,10 +59,11 @@ def half(case):
 
 GC_STEPS = ["gc-self", "gc-ir-0", "gc-ir-1", "gc-jit-0", "gc-jit-1", "gc-aot-0", "gc-aot-1", "gc-aot-2"]
 # group, mode and its steps after bootstrap
-SUITES = [("gc-jit-0", "jit", ["gc-ir-0", "gc-jit-0"]), ("gc-jit-1", "jit", ["gc-ir-1", "gc-jit-1"]),
+SUITES = [("gc-jit-0", "jit", ["gc-jit-0"]), ("gc-jit-1", "jit", ["gc-jit-1"]),
           ("gc-aot-0", "aot", ["gc-aot-0"]), ("gc-aot-1", "aot", ["gc-aot-1"]), ("gc-aot-2", "aot", ["gc-aot-2"])]
 # The gate's contract for these groups alone (tests/verify.sh --list's, without the other groups)
-CONTRACT = ("all bootstrap gc-ir-0 gc-ir-1 gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2\n" +
+CONTRACT = ("all bootstrap gc-ir-0 gc-ir-1 gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2\n"
+            "gc-ir-0 bootstrap gc-ir-0\ngc-ir-1 bootstrap gc-ir-1\n" +
             "".join(f"{group} bootstrap {' '.join(steps)}\n" for group, _, steps in SUITES))
 
 
@@ -268,6 +269,7 @@ os.execv({TIMEOUT!r}, [{TIMEOUT!r}, "--verbose", "--kill-after=0.2s", limit, *sy
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 self.assertEqual(report["result"], "pass")
                 self.assertEqual([step["name"] for step in report["steps"]], ["bootstrap", *steps])
+                self.assertEqual(self.compiles(), [])  # Execution jobs do not run gc-ir.
                 step = report["steps"][-1]
                 self.assertEqual(step["modes"], [mode])
                 self.assertEqual((step["tests_compiler_interval"], step["tests_interval"]), (0, 1))
@@ -300,7 +302,10 @@ os.execv({TIMEOUT!r}, [{TIMEOUT!r}, "--verbose", "--kill-after=0.2s", limit, *sy
         for mode, cases in observed.items():  # each case once in each mode
             self.assertEqual(Counter(cases), Counter(CASES), mode)
         self.assertFalse(samples["jit"] & samples["aot"])   # (the modes stress different cases here)
-        self.gate(reports)   # the reports together pass the CI gate
+        for group in ("gc-ir-0", "gc-ir-1"):
+            result, reports[group], _ = self.run_group(group)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.gate(reports)   # Independent identity and execution reports pass the CI gate.
 
     def test_negative_controls_a_sample_outside_its_shard_or_a_case_run_twice_or_never(self):
         # tests/verify.sh's selection broken three ways: the sample drawn from another shard (as the
@@ -334,7 +339,7 @@ os.execv({TIMEOUT!r}, [{TIMEOUT!r}, "--verbose", "--kill-after=0.2s", limit, *sy
 
     def test_gc_ir_halves_compile_every_case_once_stressed_as_stage2_does(self):
         compiled = []
-        for group, index in (("gc-jit-0", 0), ("gc-jit-1", 1)):
+        for group, index in (("gc-ir-0", 0), ("gc-ir-1", 1)):
             with self.subTest(group=group):
                 result, report, logs = self.run_group(group)
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
@@ -374,7 +379,7 @@ os.execv({TIMEOUT!r}, [{TIMEOUT!r}, "--verbose", "--kill-after=0.2s", limit, *sy
                 ("gc-ir-missing", None, "ir_identical", "programs identical")):
             with self.subTest(mode=mode):
                 index = half(target) if target else 1
-                group, cases = f"gc-jit-{index}", shards(2)[index]
+                group, cases = f"gc-ir-{index}", shards(2)[index]
                 irsame = self.root / "tools/irsame.sh"
                 if mode == "gc-ir-missing":   # irsame drops the half's last case and finds the others identical
                     irsame.rename(self.root / "tools/irsame-real.sh")
@@ -396,7 +401,7 @@ os.execv({TIMEOUT!r}, [{TIMEOUT!r}, "--verbose", "--kill-after=0.2s", limit, *sy
                     self.assertIn(f"{len(cases) - 1} programs identical", logs[step["name"]])
                     self.assertEqual(sum(1 for command, _, stress in self.compiles()
                                          if command == "ir" and stress == "1000"), len(cases) - 1)
-                self.assertEqual(report["steps"][-1]["result"], "pass")   # (the suite still runs)
+                self.assertEqual([item["name"] for item in report["steps"]], ["bootstrap", group])
 
     def test_local_aliases_run_all_selected_gc_checks(self):
         for group, expected in (("gc-stress", GC_STEPS), ("gc-ir", GC_STEPS[1:3]), ("gc-jit", GC_STEPS[1:5]),

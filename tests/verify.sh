@@ -176,8 +176,7 @@ plan() {
     ubsan-3) echo 'bootstrap ubsan-3' ;;
     ubsan) echo 'bootstrap ubsan-0 ubsan-1 ubsan-2 ubsan-3' ;; # local alias (one sanitized build for the four quarters)
     gc-self) echo 'bootstrap gc-self' ;;
-    gc-jit-0) echo 'bootstrap gc-ir-0 gc-jit-0' ;;
-    gc-jit-1) echo 'bootstrap gc-ir-1 gc-jit-1' ;;
+    gc-ir-0|gc-ir-1|gc-jit-0|gc-jit-1) echo "bootstrap $1" ;;
     gc-aot-0) echo 'bootstrap gc-aot-0' ;;
     gc-aot-1) echo 'bootstrap gc-aot-1' ;;
     gc-aot-2) echo 'bootstrap gc-aot-2' ;;
@@ -197,10 +196,10 @@ plan() {
     *) echo "verify: unknown group: $1" >&2; return 2 ;;
   esac
 }
-[ $# -le 1 ] || { echo 'usage: tests/verify.sh [all|hosted|native-0|native-1|native-2|native|opt-off-0|opt-off-1|opt-off-2|opt-off|python-free-0|python-free-1|python-free-2|python-free|ubsan-0|ubsan-1|ubsan-2|ubsan-3|ubsan|gc-self|gc-ir|gc-jit-0|gc-jit-1|gc-jit|gc-aot-0|gc-aot-1|gc-aot-2|gc-aot|gc-stress|runtime-cache|dynany-optin-0|dynany-optin-1|dynany-optin-2|dynany-optin|python-int-optin-0|python-int-optin-1|python-int-optin-2|python-int-optin|contracts|benchmarks|scaling|--list]' >&2; exit 2; }
+[ $# -le 1 ] || { echo 'usage: tests/verify.sh [all|hosted|native-0|native-1|native-2|native|opt-off-0|opt-off-1|opt-off-2|opt-off|python-free-0|python-free-1|python-free-2|python-free|ubsan-0|ubsan-1|ubsan-2|ubsan-3|ubsan|gc-self|gc-ir-0|gc-ir-1|gc-ir|gc-jit-0|gc-jit-1|gc-jit|gc-aot-0|gc-aot-1|gc-aot-2|gc-aot|gc-stress|runtime-cache|dynany-optin-0|dynany-optin-1|dynany-optin-2|dynany-optin|python-int-optin-0|python-int-optin-1|python-int-optin-2|python-int-optin|contracts|benchmarks|scaling|--list]' >&2; exit 2; }
 GROUP=${1:-all}
 if [ "$GROUP" = --list ]; then
-  groups='all bootstrap hosted native-0 native-1 native-2 opt-off-0 opt-off-1 opt-off-2 python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 ubsan-3 gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 runtime-cache dynany-optin-0 dynany-optin-1 dynany-optin-2 python-int-optin-0 python-int-optin-1 python-int-optin-2 contracts benchmarks scaling'
+  groups='all bootstrap hosted native-0 native-1 native-2 opt-off-0 opt-off-1 opt-off-2 python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 ubsan-3 gc-self gc-ir-0 gc-ir-1 gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 runtime-cache dynany-optin-0 dynany-optin-1 dynany-optin-2 python-int-optin-0 python-int-optin-1 python-int-optin-2 contracts benchmarks scaling'
   [ "$PROFILE" != pr ] || groups='all bootstrap hosted native-0 native-1 safety-0 safety-1 opt-in contracts cache-gc benchmarks'
   for g in $groups; do
     printf '%s %s\n' "$g" "$(plan "$g")"

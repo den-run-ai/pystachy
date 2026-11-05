@@ -462,7 +462,8 @@ benchmark correctness, and Lint checks CPython port preservation. The full group
 | `python-free-0`, `python-free-1`, `python-free-2` | Rebuild with no Python on `PATH`; three disjoint thirds of the suite with that compiler. |
 | `ubsan-0`, `ubsan-1`, `ubsan-2`, `ubsan-3` | Sanitized compiler/runtime; four disjoint quarters of the JIT/AOT suite. |
 | `gc-self` | Collector-stressed self-compilation and identical-IR check. |
-| `gc-jit-0`, `gc-jit-1` | Two disjoint halves of the corpus: the compiler collecting every 1,000 allocations gives stage 2's IR, messages and exit status for every case and stage 2's `check` results (`gc-ir-0`, `gc-ir-1`); then the half's JIT suite with program GC stress, one case in 16 of the half with the compiler stressed too. |
+| `gc-ir-0`, `gc-ir-1` | Two disjoint halves of the corpus. The compiler collecting every 1,000 allocations gives stage 2's IR, messages and exit status for every case, plus `check` results for syntax cases. |
+| `gc-jit-0`, `gc-jit-1` | Two disjoint halves of the JIT suite with program GC stress, one case in 16 of each half with the compiler stressed too. |
 | `gc-aot-0`, `gc-aot-1`, `gc-aot-2` | Three disjoint thirds of the AOT suite with program GC stress, one case in 16 of each third with the compiler stressed too. |
 | `dynany-optin-0` through `dynany-optin-2` | Three disjoint thirds of `tests/programs/`, opted into dynamic `Any`, compared with a fresh pinned-CPython oracle in JIT and AOT. |
 | `python-int-optin-0` through `python-int-optin-2` | Three disjoint thirds of `tests/programs/`, opted into promoting ints, with a fresh pinned-CPython oracle in JIT and AOT and exact reviewed limitations. |
@@ -470,6 +471,10 @@ benchmark correctness, and Lint checks CPython port preservation. The full group
 | `contracts` | Runtime, IR, library and resource-bound checks, including 540 seeded dynamic-`Any` cases (90 typed/Any pairs) in JIT/AOT, normally and with program GC stress; independent steps run side by side. |
 | `benchmarks` | Benchmark correctness/timings; extended correctness checks reuse the verified compiler. |
 | `scaling` | Every compiler-scaling shape, in two steps, shapes measured side by side. |
+
+The two GC identity groups add four jobs across the two architectures to full main/manual
+verification. Each GC identity and JIT task retains two shards and a 15-minute job limit.
+The PR profile keeps its existing 19 check rows and 20-job ceiling.
 
 A failed group leaves the others running. The existing required check remains
 `make verify (Linux x86-64, LLVM 18, Python 3.13)`, alongside
@@ -541,12 +546,12 @@ GC self-compilation collects every 5,000 allocations and has a separate ten-minu
 At the former interval of 1,000, it spent 23 minutes on 15,543 full-heap collections;
 the wider interval still exercises thousands of collections without dominating CI.
 The compiler collecting every 1,000 allocations is checked by identity, once a run: `gc-ir-0`
-and `gc-ir-1` (in `gc-jit-0` and `gc-jit-1`) compile the cases of two disjoint halves of the
-corpus (`shard_cases`, balanced as below) with it and with stage 2 unstressed, through
+and `gc-ir-1` run in separate jobs from the JIT execution halves. They compile the cases of
+two disjoint halves of the corpus (`shard_cases`, balanced as below) with it and with stage 2 unstressed, through
 `tools/irsame.sh` (`rt` for `rtmode_*` cases, with the IR check on), and require the same IR byte
 for byte, the same messages and the same exit status for every case, the same IR of `runtime.py`,
-and the same `check` output and status for every `syntax_*` case (`tools/irsame.sh --check`). The
-GC suites then collect at **every program allocation** (`PYSTACHY_GC_STRESS_PROGRAM=1`) and run
+and the same `check` output and status for every `syntax_*` case (`tools/irsame.sh --check`). The independent
+GC execution suites collect at **every program allocation** (`PYSTACHY_GC_STRESS_PROGRAM=1`) and run
 every case of the corpus once in each mode, rejection and syntax checks included, compiled by
 stage 2 unstressed: JIT in the same two halves, AOT in three thirds. Each suite used to compile
 every case with the stressed compiler, in each mode; where the IR is the same, the LLVM tools
@@ -567,7 +572,7 @@ cache, `opt`/`lli` and `clang`/link paths after the IR run under stress; the pro
 takes the shard's other cases. AOT keeps three jobs: projected from the same measurements, two
 would each take about 11.2 minutes of work, over the ten-minute target, and three take about 7.7.
 Self-compilation and the five suites use separate runners and report their own durations.
-The final gate requires all six groups, both execution modes, the intervals (1,000 for `gc-ir`
+The final gate requires all eight GC groups, both execution modes, the intervals (1,000 for `gc-ir`
 and the samples' compiler, 0 for the program-stressed runs' compiler, 1 for every program),
 distinct shard identities, each sample's identity (its period and its mode's offset, as many
 cases as its shard has positions at that offset, and with the program-stressed run's cases as
