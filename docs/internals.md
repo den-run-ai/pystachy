@@ -649,6 +649,55 @@ Cached runtime artifacts depend on the runtime sources, included Ryu files, comp
 LLVM tools and compilation flags. Changes invalidate the relevant cache. Builds use private
 temporary files and publish reusable artifacts only after checking their inputs stayed stable.
 
+### Experimental build parallelism and timings
+
+`PYSTACHY_BUILD_JOBS` gives one compiler invocation a build budget from 1 to 64
+(default 1). At 2 or more, a missing runtime bitcode cache entry can overlap
+`runtime.c` compilation with `runtime.py` IR generation in a separate compiler
+process. The private `rt-cache` worker reads the captured runtime source and keeps
+its original diagnostic filename. The driver uses this path only when it can
+identify the unchanged compiler and `PYSTACHY_CFLAGS` is empty; otherwise it retains
+the serial path, including the existing sanitizer ordering. Warm
+runtime cache hits need neither job. Both workers finish before the driver links
+or reports failure; handled cancellation also waits for both. Captured stderr is
+replayed in the existing serial order. Publication still requires successful
+work and unchanged inputs.
+
+For `build`, `PYSTACHY_LTO_PARTITIONS=N` enables an experimental full-LTO codegen
+path when `N` is between 1 and `PYSTACHY_BUILD_JOBS`; 0 (default) keeps the existing
+object path. This prototype requires Linux, matching LLVM 18 clang and LLD in the
+LLVM tool directory, and empty `PYSTACHY_CFLAGS`. It performs the existing
+whole-program optimization and late allocator inlining first, then gives the
+resulting bitcode to LLD with a verification-only LTO pass pipeline and N codegen
+partitions. LLVM optimization stays serial. Both the LLD thread count and the
+partition count use the invocation's budget. When an external runner starts
+several compilers, divide the machine's budget among them: `PYSTACHY_JOBS` controls
+the test runner separately.
+
+`PYSTACHY_TIMING=1` emits optional tab-separated stderr records:
+
+```text
+pystachy-timing<TAB>stage<TAB>elapsed-seconds
+```
+
+Durations use a monotonic clock and nine decimal places. Program/runtime frontend
+phases are `load`, `prepare`, `discover`, `analysis`, `optimize`, `finalize`, and
+`lower`, prefixed with `program.` or `runtime.`. The driver also measures retry
+attempts, frontend totals, runtime cache lookup, runtime work, LLVM steps and
+linking. These are nested timings: `program.attempt` contains its completed
+frontend phases and `program.frontend` contains all attempts. `runtime.parallel`
+contains the worker interval, including the child's `driver.runtime_worker`;
+`driver.total` contains the parent build. Do not add overlapping records together.
+Retries repeat phase names; a failure can omit an unfinished phase. Timings do not
+change stdout IR, and absence of a stage can also mean its artifact was cached.
+
+This prototype keeps frontend inference and typed-IR passes serial. Same-key
+runtime build deduplication and prewarming remain
+[#105](https://github.com/den-run-ai/pystachy/issues/105); complete native-program
+caching remains [#104](https://github.com/den-run-ai/pystachy/issues/104). See the
+[compiler parallelism benchmark](../bench/compiler_parallel/README.md) for the
+cold/warm protocol, stage interpretation and current limits.
+
 <a id="bootstrap"></a>
 
 ## Bootstrap validation
@@ -667,6 +716,9 @@ provide the broader behavior check. See [testing](testing.md) for the commands.
 | `PYSTACHY_CACHE` | Runtime cache directory; checkout default is `build/`, installed default is `${XDG_CACHE_HOME:-$HOME/.cache}/pystachy` |
 | `PYSTACHY_PATH` | Additional import directories, separated by `:` |
 | `PYSTACHY_CFLAGS` | Extra clang flags for runtime compilation and AOT linking; part of the cache key |
+| `PYSTACHY_BUILD_JOBS` | Per-invocation build budget, 1–64 (default 1); 2 or more permits isolated cold-runtime jobs; see [build parallelism](#experimental-build-parallelism-and-timings) |
+| `PYSTACHY_LTO_PARTITIONS` | Experimental AOT full-LTO codegen partitions, 0–`PYSTACHY_BUILD_JOBS` (default 0/off); Linux LLVM 18 clang/LLD and default `PYSTACHY_CFLAGS` only |
+| `PYSTACHY_TIMING=1` | Print monotonic stage durations to stderr; nested totals and worker intervals overlap |
 | `PYSTACHY_IRCHECK=1` | Verify typed IR before lowering and after transforming passes |
 | `PYSTACHY_IRFX=1` | Print function effect summaries to stderr |
 | `PYSTACHY_OPT` | Disable named optimizations with `-name`, comma-separated, or all with `-all`; see [IR passes](typed-ir.md#optimizations) |

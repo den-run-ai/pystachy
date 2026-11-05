@@ -52,6 +52,8 @@ from src.pystachy_compiler.utils import (
     short_ascii,
     targs,
     template_ok,
+    timing_end,
+    timing_start,
     typestr,
 )
 
@@ -800,6 +802,8 @@ def gen_abc_class(self, c: str) -> bool:
     return False
 
 def gen_program(self, mods: list[Mod]) -> str:
+    started = timing_start()
+    phase = "runtime" if self.rtmode else "program"
     self.opts = optimizations()
     self.identity_modules(mods)  # (which modules' code tracks numeric identity: dynamic.py)
     # (lib's modules of range objects and of object()'s bind no global of another module: the
@@ -1110,6 +1114,8 @@ def gen_program(self, mods: list[Mod]) -> str:
                     self.declare(st.kids[0].s, "bool")
     for m in mods:
         self.mfile[m.name] = m.path[2:] if m.path.startswith("./") else m.path
+    timing_end(phase + ".prepare", started)
+    started = timing_start()
     self.compiling = True
     self.modlevel = True
     for m in mods:
@@ -1232,10 +1238,12 @@ def gen_program(self, mods: list[Mod]) -> str:
     for nm in self.flagged:
         if nm not in self.gtypes and nm not in self.funcs and nm not in self.classes:
             self.global_var(f"@g.{nm}.def", "bool")  # (a variable no compiled code assigns)
+    timing_end(phase + ".discover", started)
     # Finite comparison field discoveries only grow (incompatible joins are
     # terminal). Finish these even if earlier fields used the ordinary join budget.
     if len(self.newhints) > 0 and (not self.final or any(k.startswith("cmpfield:") or k.startswith("cmpwrite:") for k in self.newhints)):
         raise Rejoin()  # (joins found wider types: the next pass compiles them, see join_hint)
+    started = timing_start()
     # the whole program is built: its functions are printed in the order they were completed
     for j in range(len(self.fns)):
         self.fll[self.fns[j].f.ll] = j
@@ -1258,6 +1266,8 @@ def gen_program(self, mods: list[Mod]) -> str:
         # storage facts, so the first verification uses complete effect summaries too.
         for fn in self.fns:
             self.verify(fn, False)
+    timing_end(phase + ".analysis", started)
+    started = timing_start()
     if len(on) > 0:
         # (before eh_ir: a block that a try statement covers keeps its exception edge to the
         # landing block, Blk.handler, which the passes count, see preds)
@@ -1267,6 +1277,8 @@ def gen_program(self, mods: list[Mod]) -> str:
                 changed = True  # optimize verifies each changed pass when checks are enabled
         if changed and dump:
             self.effects()  # (what the passes left: tests/ir/*.fx pin them)
+    timing_end(phase + ".optimize", started)
+    started = timing_start()
     for fn in self.fns if self.eh else self.fns[:0]:
         if len(fn.tries) > 0:
             self.eh_ir(fn)
@@ -1277,6 +1289,8 @@ def gen_program(self, mods: list[Mod]) -> str:
             print(f"{fn.f.ll}: {fxs(fn.fx)}".rstrip(), file=sys.stderr)
     if "tupleret" in on:
         self.tuple_rets()  # (which functions return their tuples' slots by value: lowering reads it)
+    timing_end(phase + ".finalize", started)
+    started = timing_start()
     for fn in self.fns:
         self.lower(fn)
         # its LLVM text is all that is left to print: its IR goes (its summary, IFn.fx, stays)
@@ -1288,6 +1302,7 @@ def gen_program(self, mods: list[Mod]) -> str:
     for op in ["eq", "cmp", "repr"] if not self.rtmode else []:
         self.dispatch(op)  # (each program defines them: runtime.py calls them like runtime.c)
     ir = self.lower_module()
+    timing_end(phase + ".lower", started)
     RENAMED.clear()  # (the program's classes': runtime.py, which the driver may compile next, has none)
     return ir
 
