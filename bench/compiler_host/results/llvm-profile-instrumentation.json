@@ -1,0 +1,154 @@
+{
+  "complete": false,
+  "input_sha256": "3126c90b8bb6e2f841e1752ce7e1d786f3b7ddc40f160a07a4cf080789fbcdb1",
+  "input_unchanged": true,
+  "ir_sizes": {
+    "late": {
+      "bitcode_bytes": 14657928,
+      "functions": 2201,
+      "instructions_approx": 886036,
+      "lines": 1306239,
+      "text_bytes": 67152896
+    },
+    "linked": {
+      "bitcode_bytes": 11651756,
+      "functions": 3671,
+      "instructions_approx": 709659,
+      "lines": 1030604,
+      "text_bytes": 44389575
+    },
+    "optimized": {
+      "bitcode_bytes": 14657944,
+      "functions": 2201,
+      "instructions_approx": 886036,
+      "lines": 1306239,
+      "text_bytes": 67152901
+    }
+  },
+  "output_object_sha256": "89ac15a2a3ef7cd496c843cd791c0280faea9d473dc1b37017e3bf077ef45dd4",
+  "stages": {
+    "codegen": {
+      "command": [
+        "/workspace/scratch/3e98002bc0e0/toolchain/usr/lib/llvm-18/bin/clang",
+        "-O2",
+        "-c",
+        "-Xclang",
+        "-disable-llvm-passes",
+        "/workspace/scratch/e5816a16ad37/backend-profile/late.bc",
+        "-o",
+        "/workspace/scratch/e5816a16ad37/backend-profile/output.o",
+        "-mllvm",
+        "-time-passes"
+      ],
+      "cpu_s": 30.765881,
+      "exit_code": 0,
+      "load_after": [
+        1.51171875,
+        1.55419921875,
+        1.4521484375
+      ],
+      "load_before": [
+        1.53466796875,
+        1.5615234375,
+        1.45068359375
+      ],
+      "passes": [
+        {
+          "cpu_s": 1.1258,
+          "name": "Parse IR",
+          "section": "unknown",
+          "wall_s": 1.1258
+        }
+      ],
+      "proc_pid_resolved": true,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 549244,
+      "stderr": "===-------------------------------------------------------------------------===\n                                LLVM IR Parsing\n===-------------------------------------------------------------------------===\n  Total Execution Time: 1.1258 seconds (1.1258 wall clock)\n\n   ---User Time---   --System Time--   --User+System--   ---Wall Time---  --- Name ---\n   1.0584 (100.0%)   0.0674 (100.0%)   1.1258 (100.0%)   1.1258 (100.0%)  Parse IR\n   1.0584 (100.0%)   0.0674 (100.0%)   1.1258 (100.0%)   1.1258 (100.0%)  Total\n\n",
+      "stderr_sha256": "53a0bb20cf19dd7ba4129cc9b568e0a511c18743c507b4e3bc96fb97036e1a47",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 549244,
+      "wall_s": 30.768253111000377
+    },
+    "late_inline": {
+      "command": [
+        "/workspace/scratch/3e98002bc0e0/toolchain/usr/lib/llvm-18/bin/opt",
+        "-passes=forceattrs,always-inline",
+        "-force-remove-attribute=pys_new:noinline",
+        "-force-remove-attribute=pys_new:optnone",
+        "-force-attribute=pys_new:alwaysinline",
+        "/workspace/scratch/e5816a16ad37/backend-profile/optimized.bc",
+        "-o",
+        "/workspace/scratch/e5816a16ad37/backend-profile/late.bc"
+      ],
+      "cpu_s": 3.84577,
+      "exit_code": 0,
+      "load_after": [
+        1.53466796875,
+        1.5615234375,
+        1.45068359375
+      ],
+      "load_before": [
+        1.494140625,
+        1.5537109375,
+        1.447265625
+      ],
+      "passes": [],
+      "proc_pid_resolved": true,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 363540,
+      "stderr": "",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 363540,
+      "wall_s": 3.8474325980023423
+    },
+    "optimize": {
+      "command": [
+        "/workspace/scratch/3e98002bc0e0/toolchain/usr/lib/llvm-18/bin/clang",
+        "-O2",
+        "-c",
+        "-emit-llvm",
+        "/workspace/scratch/e5816a16ad37/pipeline-final/linked.bc",
+        "-o",
+        "/workspace/scratch/e5816a16ad37/backend-profile/optimized.bc",
+        "-mllvm",
+        "-time-passes"
+      ],
+      "cpu_s": 39.81299,
+      "exit_code": 0,
+      "load_after": [
+        1.494140625,
+        1.5537109375,
+        1.447265625
+      ],
+      "load_before": [
+        1.64501953125,
+        1.58056640625,
+        1.4501953125
+      ],
+      "passes": [
+        {
+          "cpu_s": 0.7199,
+          "name": "Parse IR",
+          "section": "unknown",
+          "wall_s": 0.7199
+        }
+      ],
+      "proc_pid_resolved": true,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 510096,
+      "stderr": "===-------------------------------------------------------------------------===\n                                LLVM IR Parsing\n===-------------------------------------------------------------------------===\n  Total Execution Time: 0.7199 seconds (0.7199 wall clock)\n\n   ---User Time---   --System Time--   --User+System--   ---Wall Time---  --- Name ---\n   0.6138 (100.0%)   0.1060 (100.0%)   0.7199 (100.0%)   0.7199 (100.0%)  Parse IR\n   0.6138 (100.0%)   0.1060 (100.0%)   0.7199 (100.0%)   0.7199 (100.0%)  Total\n\n",
+      "stderr_sha256": "5bbba907c6870e8eeab1e617c496ddfb5868759325bb88f2b0ec90f1b4043375",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 510864,
+      "wall_s": 39.81707033899875
+    }
+  },
+  "instrumentation_error": "Clang -mllvm -time-passes only reported IR parsing; no pass timings. Superseded by -ftime-report rerun."
+}

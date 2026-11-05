@@ -1,0 +1,284 @@
+{
+  "compiler_subprocesses_attempted": [],
+  "complete": true,
+  "llvm": "/workspace/scratch/3e98002bc0e0/toolchain/usr/lib/llvm-18/bin",
+  "negative_controls": {
+    "altered_output": {
+      "error": "incomplete or altered worker output",
+      "passed": true
+    },
+    "stale_result": {
+      "error": "worker result/job identity mismatch",
+      "passed": true
+    },
+    "valid_result": {
+      "passed": true
+    },
+    "wrong_expected_job": {
+      "error": "worker result/job identity mismatch",
+      "passed": true
+    },
+    "wrong_input": {
+      "error": "worker input/version mismatch",
+      "no_published_output": true,
+      "passed": true
+    },
+    "wrong_tool": {
+      "error": "worker toolchain/options mismatch",
+      "no_published_output": true,
+      "passed": true
+    }
+  },
+  "records": [
+    {
+      "directory": "lto4-0/worker-0",
+      "input_sha256": "3126c90b8bb6e2f841e1752ce7e1d786f3b7ddc40f160a07a4cf080789fbcdb1",
+      "job_sha256": "7c123a900e5e980e0e55f5e2b074c9f6841e78206673ce42c95a9d094eb1a0da",
+      "output_bytes": 14657928,
+      "output_sha256": "934eb233e9a0f7c43bc65eb941ef3e1dda7bc73e45ece00eb6e7b92e745c22d8",
+      "passed": true
+    },
+    {
+      "directory": "lto4-1/worker-0",
+      "input_sha256": "3126c90b8bb6e2f841e1752ce7e1d786f3b7ddc40f160a07a4cf080789fbcdb1",
+      "job_sha256": "7c123a900e5e980e0e55f5e2b074c9f6841e78206673ce42c95a9d094eb1a0da",
+      "output_bytes": 14657928,
+      "output_sha256": "934eb233e9a0f7c43bc65eb941ef3e1dda7bc73e45ece00eb6e7b92e745c22d8",
+      "passed": true
+    },
+    {
+      "directory": "lto4-2/worker-0",
+      "input_sha256": "3126c90b8bb6e2f841e1752ce7e1d786f3b7ddc40f160a07a4cf080789fbcdb1",
+      "job_sha256": "7c123a900e5e980e0e55f5e2b074c9f6841e78206673ce42c95a9d094eb1a0da",
+      "output_bytes": 14657928,
+      "output_sha256": "934eb233e9a0f7c43bc65eb941ef3e1dda7bc73e45ece00eb6e7b92e745c22d8",
+      "passed": true
+    },
+    {
+      "directory": "split4-parallel-0/worker-0",
+      "input_sha256": "bdffe5d08bcda0a3817c4a2748df2cc86143c1890ab75a172a67d8ed0faee915",
+      "job_sha256": "ff83c0650c69c9264a1c2d9c53aa4199d8a7b60c80e19c51bf864bb7b86ed775",
+      "output_bytes": 2934128,
+      "output_sha256": "01d091b9d7e835f617b50a35ce2aa16ddb0552ade5083b945e1b30486fecae90",
+      "passed": true
+    },
+    {
+      "directory": "split4-parallel-0/worker-1",
+      "input_sha256": "d53f1379b61869553da363443b3abe5b7222f83e7c75de91877d0160a5d9aee9",
+      "job_sha256": "8f5f5061e7a32c59b01ec41d9cc33bfbb38dcf731b9727418b5cd68caef483c3",
+      "output_bytes": 2635192,
+      "output_sha256": "89b0572dedf4f7ae176c2820ed8cbf6de5501ff19547ccbf2bbfde6844eb4f70",
+      "passed": true
+    },
+    {
+      "directory": "split4-parallel-0/worker-2",
+      "input_sha256": "282a747548d39d2c9009393d68963bf28eae7bb0c6da4ddd20ac4854076b90cb",
+      "job_sha256": "4057120788f6d67539986dcc84eccf6266d467fda4e5b4dd71a931de56752d26",
+      "output_bytes": 3079096,
+      "output_sha256": "7c29b93c44b8a61971ce60df88427bcd3e536c1663421b12bee8b6f93fda210a",
+      "passed": true
+    },
+    {
+      "directory": "split4-parallel-0/worker-3",
+      "input_sha256": "7a23956b6d04aa40fa2cbc2ce6dad312659cce962bb5dc3b25d824bb21bbca8d",
+      "job_sha256": "76caf590ebcd9aaaad93a9a5aa9c45499ff654e2569b5f884362a87d68b090a6",
+      "output_bytes": 2572136,
+      "output_sha256": "6ad3ef3ee3c6ca978e00f747dec14d2f4049adbea8bf33e4c0c0617183cc9012",
+      "passed": true
+    },
+    {
+      "directory": "split4-parallel-1/worker-0",
+      "input_sha256": "bdffe5d08bcda0a3817c4a2748df2cc86143c1890ab75a172a67d8ed0faee915",
+      "job_sha256": "ff83c0650c69c9264a1c2d9c53aa4199d8a7b60c80e19c51bf864bb7b86ed775",
+      "output_bytes": 2934128,
+      "output_sha256": "01d091b9d7e835f617b50a35ce2aa16ddb0552ade5083b945e1b30486fecae90",
+      "passed": true
+    },
+    {
+      "directory": "split4-parallel-1/worker-1",
+      "input_sha256": "d53f1379b61869553da363443b3abe5b7222f83e7c75de91877d0160a5d9aee9",
+      "job_sha256": "8f5f5061e7a32c59b01ec41d9cc33bfbb38dcf731b9727418b5cd68caef483c3",
+      "output_bytes": 2635192,
+      "output_sha256": "89b0572dedf4f7ae176c2820ed8cbf6de5501ff19547ccbf2bbfde6844eb4f70",
+      "passed": true
+    },
+    {
+      "directory": "split4-parallel-1/worker-2",
+      "input_sha256": "282a747548d39d2c9009393d68963bf28eae7bb0c6da4ddd20ac4854076b90cb",
+      "job_sha256": "4057120788f6d67539986dcc84eccf6266d467fda4e5b4dd71a931de56752d26",
+      "output_bytes": 3079096,
+      "output_sha256": "7c29b93c44b8a61971ce60df88427bcd3e536c1663421b12bee8b6f93fda210a",
+      "passed": true
+    },
+    {
+      "directory": "split4-parallel-1/worker-3",
+      "input_sha256": "7a23956b6d04aa40fa2cbc2ce6dad312659cce962bb5dc3b25d824bb21bbca8d",
+      "job_sha256": "76caf590ebcd9aaaad93a9a5aa9c45499ff654e2569b5f884362a87d68b090a6",
+      "output_bytes": 2572136,
+      "output_sha256": "6ad3ef3ee3c6ca978e00f747dec14d2f4049adbea8bf33e4c0c0617183cc9012",
+      "passed": true
+    },
+    {
+      "directory": "split4-parallel-2/worker-0",
+      "input_sha256": "bdffe5d08bcda0a3817c4a2748df2cc86143c1890ab75a172a67d8ed0faee915",
+      "job_sha256": "ff83c0650c69c9264a1c2d9c53aa4199d8a7b60c80e19c51bf864bb7b86ed775",
+      "output_bytes": 2934128,
+      "output_sha256": "01d091b9d7e835f617b50a35ce2aa16ddb0552ade5083b945e1b30486fecae90",
+      "passed": true
+    },
+    {
+      "directory": "split4-parallel-2/worker-1",
+      "input_sha256": "d53f1379b61869553da363443b3abe5b7222f83e7c75de91877d0160a5d9aee9",
+      "job_sha256": "8f5f5061e7a32c59b01ec41d9cc33bfbb38dcf731b9727418b5cd68caef483c3",
+      "output_bytes": 2635192,
+      "output_sha256": "89b0572dedf4f7ae176c2820ed8cbf6de5501ff19547ccbf2bbfde6844eb4f70",
+      "passed": true
+    },
+    {
+      "directory": "split4-parallel-2/worker-2",
+      "input_sha256": "282a747548d39d2c9009393d68963bf28eae7bb0c6da4ddd20ac4854076b90cb",
+      "job_sha256": "4057120788f6d67539986dcc84eccf6266d467fda4e5b4dd71a931de56752d26",
+      "output_bytes": 3079096,
+      "output_sha256": "7c29b93c44b8a61971ce60df88427bcd3e536c1663421b12bee8b6f93fda210a",
+      "passed": true
+    },
+    {
+      "directory": "split4-parallel-2/worker-3",
+      "input_sha256": "7a23956b6d04aa40fa2cbc2ce6dad312659cce962bb5dc3b25d824bb21bbca8d",
+      "job_sha256": "76caf590ebcd9aaaad93a9a5aa9c45499ff654e2569b5f884362a87d68b090a6",
+      "output_bytes": 2572136,
+      "output_sha256": "6ad3ef3ee3c6ca978e00f747dec14d2f4049adbea8bf33e4c0c0617183cc9012",
+      "passed": true
+    },
+    {
+      "directory": "split4-serial-0/worker-0",
+      "input_sha256": "bdffe5d08bcda0a3817c4a2748df2cc86143c1890ab75a172a67d8ed0faee915",
+      "job_sha256": "ff83c0650c69c9264a1c2d9c53aa4199d8a7b60c80e19c51bf864bb7b86ed775",
+      "output_bytes": 2934128,
+      "output_sha256": "01d091b9d7e835f617b50a35ce2aa16ddb0552ade5083b945e1b30486fecae90",
+      "passed": true
+    },
+    {
+      "directory": "split4-serial-0/worker-1",
+      "input_sha256": "d53f1379b61869553da363443b3abe5b7222f83e7c75de91877d0160a5d9aee9",
+      "job_sha256": "8f5f5061e7a32c59b01ec41d9cc33bfbb38dcf731b9727418b5cd68caef483c3",
+      "output_bytes": 2635192,
+      "output_sha256": "89b0572dedf4f7ae176c2820ed8cbf6de5501ff19547ccbf2bbfde6844eb4f70",
+      "passed": true
+    },
+    {
+      "directory": "split4-serial-0/worker-2",
+      "input_sha256": "282a747548d39d2c9009393d68963bf28eae7bb0c6da4ddd20ac4854076b90cb",
+      "job_sha256": "4057120788f6d67539986dcc84eccf6266d467fda4e5b4dd71a931de56752d26",
+      "output_bytes": 3079096,
+      "output_sha256": "7c29b93c44b8a61971ce60df88427bcd3e536c1663421b12bee8b6f93fda210a",
+      "passed": true
+    },
+    {
+      "directory": "split4-serial-0/worker-3",
+      "input_sha256": "7a23956b6d04aa40fa2cbc2ce6dad312659cce962bb5dc3b25d824bb21bbca8d",
+      "job_sha256": "76caf590ebcd9aaaad93a9a5aa9c45499ff654e2569b5f884362a87d68b090a6",
+      "output_bytes": 2572136,
+      "output_sha256": "6ad3ef3ee3c6ca978e00f747dec14d2f4049adbea8bf33e4c0c0617183cc9012",
+      "passed": true
+    },
+    {
+      "directory": "split4-serial-1/worker-0",
+      "input_sha256": "bdffe5d08bcda0a3817c4a2748df2cc86143c1890ab75a172a67d8ed0faee915",
+      "job_sha256": "ff83c0650c69c9264a1c2d9c53aa4199d8a7b60c80e19c51bf864bb7b86ed775",
+      "output_bytes": 2934128,
+      "output_sha256": "01d091b9d7e835f617b50a35ce2aa16ddb0552ade5083b945e1b30486fecae90",
+      "passed": true
+    },
+    {
+      "directory": "split4-serial-1/worker-1",
+      "input_sha256": "d53f1379b61869553da363443b3abe5b7222f83e7c75de91877d0160a5d9aee9",
+      "job_sha256": "8f5f5061e7a32c59b01ec41d9cc33bfbb38dcf731b9727418b5cd68caef483c3",
+      "output_bytes": 2635192,
+      "output_sha256": "89b0572dedf4f7ae176c2820ed8cbf6de5501ff19547ccbf2bbfde6844eb4f70",
+      "passed": true
+    },
+    {
+      "directory": "split4-serial-1/worker-2",
+      "input_sha256": "282a747548d39d2c9009393d68963bf28eae7bb0c6da4ddd20ac4854076b90cb",
+      "job_sha256": "4057120788f6d67539986dcc84eccf6266d467fda4e5b4dd71a931de56752d26",
+      "output_bytes": 3079096,
+      "output_sha256": "7c29b93c44b8a61971ce60df88427bcd3e536c1663421b12bee8b6f93fda210a",
+      "passed": true
+    },
+    {
+      "directory": "split4-serial-1/worker-3",
+      "input_sha256": "7a23956b6d04aa40fa2cbc2ce6dad312659cce962bb5dc3b25d824bb21bbca8d",
+      "job_sha256": "76caf590ebcd9aaaad93a9a5aa9c45499ff654e2569b5f884362a87d68b090a6",
+      "output_bytes": 2572136,
+      "output_sha256": "6ad3ef3ee3c6ca978e00f747dec14d2f4049adbea8bf33e4c0c0617183cc9012",
+      "passed": true
+    },
+    {
+      "directory": "split4-serial-2/worker-0",
+      "input_sha256": "bdffe5d08bcda0a3817c4a2748df2cc86143c1890ab75a172a67d8ed0faee915",
+      "job_sha256": "ff83c0650c69c9264a1c2d9c53aa4199d8a7b60c80e19c51bf864bb7b86ed775",
+      "output_bytes": 2934128,
+      "output_sha256": "01d091b9d7e835f617b50a35ce2aa16ddb0552ade5083b945e1b30486fecae90",
+      "passed": true
+    },
+    {
+      "directory": "split4-serial-2/worker-1",
+      "input_sha256": "d53f1379b61869553da363443b3abe5b7222f83e7c75de91877d0160a5d9aee9",
+      "job_sha256": "8f5f5061e7a32c59b01ec41d9cc33bfbb38dcf731b9727418b5cd68caef483c3",
+      "output_bytes": 2635192,
+      "output_sha256": "89b0572dedf4f7ae176c2820ed8cbf6de5501ff19547ccbf2bbfde6844eb4f70",
+      "passed": true
+    },
+    {
+      "directory": "split4-serial-2/worker-2",
+      "input_sha256": "282a747548d39d2c9009393d68963bf28eae7bb0c6da4ddd20ac4854076b90cb",
+      "job_sha256": "4057120788f6d67539986dcc84eccf6266d467fda4e5b4dd71a931de56752d26",
+      "output_bytes": 3079096,
+      "output_sha256": "7c29b93c44b8a61971ce60df88427bcd3e536c1663421b12bee8b6f93fda210a",
+      "passed": true
+    },
+    {
+      "directory": "split4-serial-2/worker-3",
+      "input_sha256": "7a23956b6d04aa40fa2cbc2ce6dad312659cce962bb5dc3b25d824bb21bbca8d",
+      "job_sha256": "76caf590ebcd9aaaad93a9a5aa9c45499ff654e2569b5f884362a87d68b090a6",
+      "output_bytes": 2572136,
+      "output_sha256": "6ad3ef3ee3c6ca978e00f747dec14d2f4049adbea8bf33e4c0c0617183cc9012",
+      "passed": true
+    },
+    {
+      "directory": "whole-0/worker-0",
+      "input_sha256": "3126c90b8bb6e2f841e1752ce7e1d786f3b7ddc40f160a07a4cf080789fbcdb1",
+      "job_sha256": "681799ec3153ba38e1b7eee41985acb3f9ed1f570fa22284184902992de98799",
+      "output_bytes": 9642024,
+      "output_sha256": "89ac15a2a3ef7cd496c843cd791c0280faea9d473dc1b37017e3bf077ef45dd4",
+      "passed": true
+    },
+    {
+      "directory": "whole-1/worker-0",
+      "input_sha256": "3126c90b8bb6e2f841e1752ce7e1d786f3b7ddc40f160a07a4cf080789fbcdb1",
+      "job_sha256": "681799ec3153ba38e1b7eee41985acb3f9ed1f570fa22284184902992de98799",
+      "output_bytes": 9642024,
+      "output_sha256": "89ac15a2a3ef7cd496c843cd791c0280faea9d473dc1b37017e3bf077ef45dd4",
+      "passed": true
+    },
+    {
+      "directory": "whole-2/worker-0",
+      "input_sha256": "3126c90b8bb6e2f841e1752ce7e1d786f3b7ddc40f160a07a4cf080789fbcdb1",
+      "job_sha256": "681799ec3153ba38e1b7eee41985acb3f9ed1f570fa22284184902992de98799",
+      "output_bytes": 9642024,
+      "output_sha256": "89ac15a2a3ef7cd496c843cd791c0280faea9d473dc1b37017e3bf077ef45dd4",
+      "passed": true
+    }
+  ],
+  "result_validator_available": true,
+  "successful_jobs": 30,
+  "tool_sha256": {
+    "clang": "8ef402d453d1ba4902e4ee0f0f847f6cfa01400c95aa43c24e97818b9c0e3f45",
+    "ld.lld": "7ad9a0e8fe6d0e79b71172d731e33872c0274e49fceb7b516d774876d5a58ade",
+    "opt": "67ebe8635087b5ebe22d8f085d5e5857e431f86be9ed76576e59b86b9743c0fb"
+  },
+  "validation_script_sha256": "61b6cfbc035cec53d9b16eb9c28e34649345ff2443c54b1a34ba56ffc3ec4cb8",
+  "work": "/workspace/scratch/e5816a16ad37/backend-runs",
+  "worker_script_sha256": "b4b690519984af985260b06a9071bd54a8eba8b0539da248ac778763c5f25c4e"
+}

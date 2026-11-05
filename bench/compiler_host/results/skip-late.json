@@ -1,0 +1,78 @@
+{
+  "compiler_matches": true,
+  "compiler_sha256": "f22ac677341a10eecda4356b66329d51277ec9eea17cd4bf06e8c2c29d689502",
+  "complete": true,
+  "input_sha256": "877200b18a3b01f0e5deefd1e62c82648a9398d01924729e4990c273ddda7574",
+  "notes": [
+    "Correctness-only run concurrent with a two-worker corpus check; these durations are not performance measurements."
+  ],
+  "object_matches": true,
+  "object_sha256": "89ac15a2a3ef7cd496c843cd791c0280faea9d473dc1b37017e3bf077ef45dd4",
+  "steps": {
+    "codegen": {
+      "command": [
+        "/workspace/scratch/3e98002bc0e0/toolchain/usr/lib/llvm-18/bin/clang",
+        "-O2",
+        "-c",
+        "-Xclang",
+        "-disable-llvm-passes",
+        "/workspace/scratch/e5816a16ad37/backend-profile-final/optimized.bc",
+        "-o",
+        "/workspace/scratch/e5816a16ad37/skip-late/output.o"
+      ],
+      "cpu_s": 29.545091,
+      "exit_code": 0,
+      "load_after": [
+        1.818359375,
+        2.05712890625,
+        1.7431640625
+      ],
+      "load_before": [
+        0.72607421875,
+        1.9033203125,
+        1.68359375
+      ],
+      "proc_pid_resolved": true,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 548808,
+      "stderr": "",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 548808,
+      "wall_s": 29.55142407599851
+    },
+    "link": {
+      "command": [
+        "/workspace/scratch/3e98002bc0e0/toolchain/usr/lib/llvm-18/bin/clang",
+        "/workspace/scratch/e5816a16ad37/skip-late/output.o",
+        "-o",
+        "/workspace/scratch/e5816a16ad37/skip-late/compiler",
+        "-lm"
+      ],
+      "cpu_s": 0.068578,
+      "exit_code": 0,
+      "load_after": [
+        1.818359375,
+        2.05712890625,
+        1.7431640625
+      ],
+      "load_before": [
+        1.818359375,
+        2.05712890625,
+        1.7431640625
+      ],
+      "proc_pid_resolved": true,
+      "sampled_max_processes": 2,
+      "sampled_process_tree_peak_rss_kib": 84308,
+      "stderr": "",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 67228,
+      "wall_s": 0.06942739999794867
+    }
+  }
+}
