@@ -356,8 +356,9 @@ exact cases and results. The PR aggregate requires both workers to pass.
 The [CI workflow](../.github/workflows/ci.yml) runs on pull requests (including forks), pushes
 to `main` and manual dispatch. Pull requests test the branch merged with the then-current
 `main`. A newer PR push cancels its previous run; commits on `main` run to completion.
-Markdown/docs-only PRs run Lint and DCO. Other PRs use the compact profile below;
-`main` pushes and manual CI runs retain complete verification for the release gate.
+Markdown/docs-only PRs run Lint, submission format checks and fork DCO when applicable.
+Other PRs use the compact profile below. Pushes to `main` and manual CI runs retain
+complete verification for the release gate.
 The toolchain is Ubuntu 24.04, LLVM 18 and the CPython version pinned in `.python-version`.
 
 The `benchmarks` group also runs `make bench-pyperformance-check` with that run's verified
@@ -415,8 +416,9 @@ end-to-end json_repair or all examples; broader benchmark history remains under 
 
 ### PR budget
 
-Every PR has at most **19 check rows**, including the conditional DCO check. Lint enforces a
-hard ceiling of **20 across all workflows**, no more than **two workers per task group**,
+A code PR can create **20 workflow job rows**, including the conditional DCO job and the
+submission format job. Its separate `Submission format` commit status uses no runner.
+Lint enforces at most **20 jobs across all workflows**, **two workers per task group**,
 and **15 minutes per job** (`tools/test_workflow_limits.py`). Path filters cannot hide a matrix
 from the budget. Each test runner uses at most four processes within its worker.
 
@@ -433,7 +435,7 @@ from the budget. Each test runner uses at most four processes within its worker.
 | Variants | 2 | Seven configurations, split across both workers, on the selected cases. |
 | Distribution | 2 | Linux x86-64 and macOS ARM64 installation; Linux source packages and native archive smoke. |
 | Aggregate | 1 | Required reports, profiles, selection manifests, counts and job results. |
-| Lint, performance, DCO | 3 | Existing checks; CPython port preservation is folded into Lint. |
+| Lint, performance, DCO and submission format | 4 | Lint includes CPython port preservation. DCO applies to forks. Submission format validates PR metadata. |
 
 `VERIFY_PROFILE=pr tests/verify.sh GROUP` selects this plan; plain `make verify` stays exhaustive.
 `tools/ci_sample.py` selects deterministic representatives and changed/new cases, including
@@ -471,11 +473,14 @@ benchmark correctness, and Lint checks CPython port preservation. The full group
 | `benchmarks` | Benchmark correctness/timings; extended correctness checks reuse the verified compiler. |
 | `scaling` | Every compiler-scaling shape, in two steps, shapes measured side by side. |
 
-A failed group leaves the others running. The existing required check remains
-`make verify (Linux x86-64, LLVM 18, Python 3.13)`, alongside
-`make verify (Linux ARM64, LLVM 18, Python 3.13)`. Each report gate requires every group to
-succeed and rejects missing/unexpected stages, inconsistent source revisions/hashes or
-toolchains, different bootstrap IR, and missing or inconsistent bootstrap provenance.
+A failed group leaves the others running. The aggregate checks are
+`make verify (Linux x86-64, LLVM 18, Python 3.13)` and
+`make verify (Linux ARM64, LLVM 18, Python 3.13)`. Maintainers verify CI and Lint before
+merging. GitHub branch protection currently requires fork DCO for non-admin merges.
+[Issue #766](https://github.com/den-run-ai/pystachy/issues/766) tracks enforcing CI and Lint.
+Each report gate requires every group to succeed. It rejects missing or unexpected stages,
+inconsistent source revisions or toolchains, different bootstrap IR, and missing or
+inconsistent bootstrap provenance.
 Bootstrap and report artifact names include `x86_64` or `aarch64`; the final report
 merger checks that every input names the expected native machine. An x86 report renamed
 to look like an ARM artifact is rejected. Combined reports are `x86_64-verification` and
