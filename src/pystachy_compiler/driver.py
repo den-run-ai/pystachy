@@ -9,7 +9,7 @@ from src.pystachy_compiler.diagnostics import MAXNEST, RAW, NeedSliceEH, Rejoin,
 from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler.lexer import Lexer
 from src.pystachy_compiler.loader import Loader
-from src.pystachy_compiler.lower_module import OBJHOOKS, address_runtime_ir, jit_alloc
+from src.pystachy_compiler.lower_module import OBJHOOKS, address_runtime_ir, jit_alloc, uses_parallel_runtime
 from src.pystachy_compiler.names import RENAMED
 from src.pystachy_compiler.parser import Parser
 from src.pystachy_compiler.specs import JIT_INLINE, LIBS, LINKDL, MODULES, OPTS, PLATFORM
@@ -455,7 +455,7 @@ def main() -> None:
     flags = os.getenv("PYSTACHY_CFLAGS", "").split()
     # Optional backend: ordinary programs keep their existing runtime and link
     # flags. Include these flags before forming the runtime-cache identity.
-    if "\ndeclare ptr @pys_parallel_map_f64(" in ir:
+    if uses_parallel_runtime(ir):
         flags = flags + ["-DPYSTACHY_PARALLEL", "-pthread"]
     asan = address_sanitized(flags)
     on = optimizations()

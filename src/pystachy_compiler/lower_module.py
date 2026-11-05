@@ -85,6 +85,45 @@ def address_runtime_ir(ir: str) -> str:
     return "\n".join(lines)
 
 
+def uses_parallel_runtime(ir: str) -> bool:
+    # The generated module declares used runtime functions on their own lines.
+    # Symbol text in a string constant (including the compiler's own source)
+    # must not opt into the native worker backend or change its cache identity.
+    return "\ndeclare ptr @pys_parallel_map_f64(" in ir
+
+
+def gen_lower_comments(self, notes: list[str]) -> None:
+    for note in notes:
+        self.out.append("; " + note)
+
+
+def gen_parallel_kernels(self, kernels: list[str]) -> None:
+    # The runtime owns the two buffers and proves 0 <= begin <= end <= length.
+    # Every output index has exactly one writer. No fast-math, reduction, runtime
+    # callback, allocation, exception or GC operation is introduced in workers.
+    for target in kernels:
+        self.out.extend([
+            f"define internal void @pys.parallel.{target[1:]}(ptr %src, ptr %dst, i64 %begin, i64 %end) nounwind {{",
+            "entry:",
+            "  br label %test",
+            "test:",
+            "  %i = phi i64 [ %begin, %entry ], [ %next, %body ]",
+            "  %more = icmp slt i64 %i, %end",
+            "  br i1 %more, label %body, label %done",
+            "body:",
+            "  %in = getelementptr double, ptr %src, i64 %i",
+            "  %x = load double, ptr %in, align 8",
+            f"  %y = call double {target}(double %x)",
+            "  %out = getelementptr double, ptr %dst, i64 %i",
+            "  store double %y, ptr %out, align 8",
+            "  %next = add i64 %i, 1",
+            "  br label %test",
+            "done:",
+            "  ret void",
+            "}",
+        ])
+
+
 def struct_types(ci: ClassInfo) -> list[str]:
     # the LLVM types of the members of class ci's struct, %C.<name>: its fields', then its "is
     # assigned" flags and numeric identity companions

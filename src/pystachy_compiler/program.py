@@ -10,7 +10,6 @@ from src.pystachy_compiler.generators import reads_cause, reads_handled, uses_pr
 from src.pystachy_compiler.ir import Val, ClassInfo, FnInfo, NOLABELS, NONUMS, NOVALS
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import RENAMED, short
-from src.pystachy_compiler.parallel import parallel_kernel_ir
 from src.pystachy_compiler.specs import (
     ABSTRACT_DECOS,
     EXCBASES,
@@ -1270,7 +1269,8 @@ def gen_program(self, mods: list[Mod]) -> str:
             self.effects()  # (what the passes left: tests/ir/*.fx pin them)
     # Prove worker safety on the completed, optimized IR, after recursion policy
     # has removed leaf-function accounting. Failed proofs retain ordinary calls.
-    kernels = self.parallel_maps()
+    kernels, notes = self.parallel_maps()
+    self.lower_comments(notes)
     if len(kernels) > 0:
         self.effects()
         if chk:
@@ -1294,7 +1294,7 @@ def gen_program(self, mods: list[Mod]) -> str:
         fn.loops = []
         fn.cold = {}
         fn.fa = {}
-    self.out.extend(parallel_kernel_ir(kernels))
+    self.parallel_kernels(kernels)
     for op in ["eq", "cmp", "repr"] if not self.rtmode else []:
         self.dispatch(op)  # (each program defines them: runtime.py calls them like runtime.c)
     ir = self.lower_module()

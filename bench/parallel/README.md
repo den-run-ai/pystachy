@@ -82,15 +82,22 @@ checks, repeated with per-allocation GC; 34 C probe maps including real concurre
 entry, partial launch failures and GC; SIGINT delivered after all joins;
 ThreadSanitizer clean for the C probe and the four actual generated worker kernels
 with per-allocation GC. The compiler/runtime table also passed its 645-entry
-ABI/effect check. Three-stage self-hosting reached identical compiler IR (835,422
-lines) and runtime IR (18,805 lines); both new IR probes passed the verifier and
-LLVM assembler. Mypy accepted all 50 compiler source files.
+ABI/effect check. Three-stage self-hosting reached identical compiler and runtime
+IR; both new IR probes passed the verifier and LLVM assembler. Mypy accepted all
+50 compiler source files.
 
 All 4,247 existing corpus inputs produced identical IR, diagnostics and exit status
 against baseline `45fda27`. Both compilers used one library path after checking
 that pre-existing library sources were unchanged. An initial separate-checkout run
 reported 261 differences from embedded absolute library paths. The compiler's
 changed own source and the new fixtures were validated separately as described above.
+
+The first CI run caught module-layering violations: worker ABI text and the
+runtime-declaration predicate lived outside the backend. They now live in
+`lower_module.py`; the typed proof returns kernel symbols and diagnostic messages.
+All 182 typed-IR tests and the remaining fast unit suites pass. Eight representative
+programs, including this benchmark, retain byte-identical IR after that relocation.
+The measurements above remain pinned to their original source commit.
 
 Run `make parallelprobe` and
 `python3 -m unittest discover -s tools -p test_parallel.py` for the focused controls.

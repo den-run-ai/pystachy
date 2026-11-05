@@ -85,20 +85,19 @@ def kernel_reason(fn: IFn) -> str:
     return ""
 
 
-def gen_parallel_maps(self) -> list[str]:
+def gen_parallel_maps(self) -> tuple[list[str], list[str]]:
     # The normal frontend has already evaluated/captured the callable and all
     # arguments, including keyword/default handling. Match its immutable callable
     # constant, never the source name of an argument that may have been rebound.
     # This pass owns all its state; nothing survives a retry or compilation.
     name = "parallel$map_float"
     if self.rtmode or name not in self.funcs:
-        return []
+        return [], []
     lib = self.funcs[name]
     if not lib_source(lib.node.line, self.libdir, "parallel.py"):
-        return []
+        return [], []
     if dynamic_program():
-        self.out.append("; parallel.map_float: serial (numeric identity program)")
-        return []
+        return [], ["parallel.map_float: serial (numeric identity program)"]
     targets: dict[str, str] = {}
     for key in self.adapters:
         suffix = "] callable[float,float]"
@@ -107,6 +106,7 @@ def gen_parallel_maps(self) -> list[str]:
             if target in self.funcs:
                 targets["@cvo." + self.adapters[key][4:]] = self.funcs[target].ll
     kernels: list[str] = []
+    notes: list[str] = []
     for fn in self.fns:
         for b in fn.blocks:
             for i in b.code:
@@ -116,14 +116,14 @@ def gen_parallel_maps(self) -> list[str]:
                     continue
                 value = i.a[0].v
                 if value not in targets or targets[value] not in self.fll:
-                    self.out.append("; parallel.map_float: serial in " + fn.f.ll + " (unknown callable)")
+                    notes.append("parallel.map_float: serial in " + fn.f.ll + " (unknown callable)")
                     continue
                 target = targets[value]
                 reason = kernel_reason(self.fns[self.fll[target]])
                 if reason != "":
-                    self.out.append("; parallel.map_float: serial " + target + " (" + reason + ")")
+                    notes.append("parallel.map_float: serial " + target + " (" + reason + ")")
                     continue
-                self.out.append("; parallel.map_float: native " + target)
+                notes.append("parallel.map_float: native " + target)
                 if target not in kernels:
                     kernels.append(target)
                 # The typed runtime operation retains both list and count types;
@@ -131,33 +131,4 @@ def gen_parallel_maps(self) -> list[str]:
                 i.op = "rt"
                 i.s = self.runtime("pys_parallel_map_f64")
                 i.a = [i.a[1], i.a[2], Val("@pys.parallel." + target[1:], "%ptr")]
-    return kernels
-
-
-def parallel_kernel_ir(kernels: list[str]) -> list[str]:
-    # The runtime owns the two buffers and proves 0 <= begin <= end <= length.
-    # Every output index has exactly one writer. No fast-math, reduction, runtime
-    # callback, allocation, exception or GC operation is introduced in workers.
-    out: list[str] = []
-    for target in kernels:
-        out.extend([
-            f"define internal void @pys.parallel.{target[1:]}(ptr %src, ptr %dst, i64 %begin, i64 %end) nounwind {{",
-            "entry:",
-            "  br label %test",
-            "test:",
-            "  %i = phi i64 [ %begin, %entry ], [ %next, %body ]",
-            "  %more = icmp slt i64 %i, %end",
-            "  br i1 %more, label %body, label %done",
-            "body:",
-            "  %in = getelementptr double, ptr %src, i64 %i",
-            "  %x = load double, ptr %in, align 8",
-            f"  %y = call double {target}(double %x)",
-            "  %out = getelementptr double, ptr %dst, i64 %i",
-            "  store double %y, ptr %out, align 8",
-            "  %next = add i64 %i, 1",
-            "  br label %test",
-            "done:",
-            "  ret void",
-            "}",
-        ])
-    return out
+    return kernels, notes
