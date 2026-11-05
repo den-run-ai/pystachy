@@ -328,6 +328,22 @@ verifier checks these invariants and number bounds.
 <a id="37-effects"></a>
 <a id="45-effects"></a>
 
+### Experimental parallel float map
+
+After local optimization and recursion classification, `parallel.py` recognizes calls
+to the shipped `parallel.map_float` with an immutable, known float callable. It checks
+the completed kernel IR against a separate worker-safety allowlist. A failed proof
+leaves the ordinary call and all argument evaluation intact.
+
+Successful sites become `rt parallel.map_f64(list[float], int, %ptr) -> list[float]`,
+with conservative `R A I rL wL` effects (the C checker treats raw callbacks as
+possible writes; the kernel proof keeps the input read-only). The pointer names a generated thunk for the verified kernel;
+the IR verifier checks that provenance and repeats the proof. Effects are recomputed
+before exception lowering. The thunk lowers to an LLVM index loop, loads/stores and a
+direct scalar call, without fast-math flags. The runtime owns allocation, partitions
+disjoint result slots and joins before returning. Its pthread backend is linked only
+when a proven site exists. See the [execution contract](concurrency.md#experimental-float-map).
+
 ## Effects
 
 `IROPS` defines fixed operation effects. `RUNTIME` defines runtime signatures and effects;

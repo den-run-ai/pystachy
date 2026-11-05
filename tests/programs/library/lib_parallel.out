@@ -1,0 +1,24 @@
+sizes 0 True
+sizes 1 True
+sizes 31 True
+sizes 4097 True
+sizes 32769 True
+sizes 65539 True
+default [0.125, 0.625, -0.875]
+alias [0.125, 0.625, -0.875]
+special -1.0 1.0 -inf inf True
+special -1.0 1.0 -inf inf True
+special -1.0 1.0 -inf inf True
+special -1.0 1.0 -inf inf True
+rounding True
+no-fma True
+native-invalid-workers -1 0 workers must be between 1 and 64
+native-invalid-workers -1 1 workers must be between 1 and 64
+native-invalid-workers 0 0 workers must be between 1 and 64
+native-invalid-workers 0 1 workers must be between 1 and 64
+native-invalid-workers 65 0 workers must be between 1 and 64
+native-invalid-workers 65 1 workers must be between 1 and 64
+native-invalid-workers 9223372036854775807 0 workers must be between 1 and 64
+native-invalid-workers 9223372036854775807 1 workers must be between 1 and 64
+maximum-workers []
+[exit 0]

@@ -781,6 +781,11 @@ NARROWED: list[str] = [
     "dict.pop_default", "dict.setdefault", "m.floats", "m.prod_int", "sum.int_float",
 ]
 RUNTIME: dict[str, str] = {
+    # Only the verified float-map pass supplies the raw worker function. Its
+    # allocation/validation/synchronization runs on the runtime's owner thread.
+    # wL conservatively covers the raw callback's pointer arguments in the C
+    # checker; the dedicated kernel proof and fresh output keep src read-only.
+    "parallel.map_f64": "list[float]:list[float],int,%ptr|R A I rL wL|",
     # Explicit arbitrary-precision integers. Handles are immutable atomic objects;
     # the library's scanned wrapper keeps their pointer alive.
     "mpz.from_int": "%ptr:int|R A|", "mpz.from_str": "%ptr:str,int|R A|",

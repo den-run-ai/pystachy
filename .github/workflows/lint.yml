@@ -151,4 +151,9 @@ jobs:
       - name: Concurrency contract probes (docs/concurrency.md)
         run: python3 -m unittest discover -s tools -p test_concurrency_contract.py
 
+      - name: Parallel kernel proof controls
+        run: |
+          python3 -m unittest discover -s tools -p test_parallel.py
+          make parallelprobe
+
       - run: make check-recordings

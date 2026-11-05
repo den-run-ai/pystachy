@@ -2,6 +2,7 @@
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import fail, int_lists, int_program
 from src.pystachy_compiler.ir import Blk, IFn, Ins, NOLABELS
+from src.pystachy_compiler.parallel import kernel_reason
 from src.pystachy_compiler.union_proof import UnionProof, simple_union_proof
 from src.pystachy_compiler.specs import BIG, FX, FXALL, FXBIT, ICMP, IROPS, LIST_WRITES, NONEVAR, RAWR, RAWW, RUNTIME
 from src.pystachy_compiler.utils import is_dict, is_gen, is_opt, is_set, is_tuple, is_union, list_write_error, lt, same_kind, targs, tslots, umembers
@@ -190,6 +191,17 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                     error = list_write_error(i, int_lists(), self.rtfns[i.s].sig)
                     if error != "":
                         self.bad_ir(fn, b, error)
+                if i.s == "parallel.map_f64":
+                    if i.t != "list[float]" or [a.t for a in i.a] != ["list[float]", "int", "%ptr"] or len(i.r) != 1 or i.k != 0 or i.x != "" or len(i.b) not in [0, 2]:
+                        self.bad_ir(fn, b, "parallel.map_f64 needs a float list, worker count and proven kernel pointer")
+                    pointer = i.a[2].v
+                    prefix = "@pys.parallel."
+                    target = "@" + pointer[len(prefix):]
+                    if not pointer.startswith(prefix) or target not in self.fll:
+                        self.bad_ir(fn, b, "parallel.map_f64 needs a compiled kernel thunk")
+                    error = kernel_reason(self.fns[self.fll[target]])
+                    if error != "":
+                        self.bad_ir(fn, b, "parallel.map_f64 unsafe kernel: " + error)
             if i.op == "empty.kind":
                 if len(i.a) != 1 or i.t != "" or i.s != "" or i.x != "" or len(i.b) != 0 or i.k < 0 or i.k >= len(self.holes):
                     self.bad_ir(fn, b, "empty.kind needs one empty dict/set and a valid type hole")

@@ -6197,6 +6197,72 @@ static _Noreturn void die_sigint(void) {   /* CPython's exit_sigint: killed by S
   signal(SIGINT, SIG_DFL); raise(SIGINT); exit(130);
 }
 
+#ifdef PYSTACHY_PARALLEL
+/* An optional, synchronous backend for a compiler-proven float map. Only the owner
+   allocates or touches list metadata, GC, exceptions and signal state. The callback
+   accepts raw arrays and a disjoint half-open interval; its generated code may not
+   allocate, raise, access globals or call the runtime. The result is fresh, so an
+   input alias cannot overlap a write. No collector runs between launching and
+   joining: the owner's live source/result references suffice, without registering
+   worker stacks or making the managed heap concurrent. */
+typedef void ParallelFloatKernel(const double *, double *, I, I);
+typedef struct {
+  const double *src; double *dst; I lo, hi; ParallelFloatKernel *kernel;
+} ParallelFloatTask;
+static void *parallel_float_thread(void *arg) {
+  ParallelFloatTask *t = arg;
+  t->kernel(t->src, t->dst, t->lo, t->hi);
+  return 0;
+}
+static __attribute__((noinline)) void parallel_float_run(
+    const double *src, double *dst, I n, I count, ParallelFloatKernel *kernel) {
+  ParallelFloatTask tasks[64];
+  pthread_t threads[63];
+  I each = n / count, extra = n % count;
+  for (I i = 0; i < count; i++) {
+    I lo = i * each + (i < extra ? i : extra);
+    tasks[i] = (ParallelFloatTask){src, dst, lo, lo + each + (i < extra), kernel};
+  }
+  /* Workers inherit blocked signals, so the owner's handler alone sees SIGINT.
+     io_in/io_out defer it until every worker has joined. No cancellation flag is
+     shared with workers: interruption is delivered after this finite map ends. */
+  sigset_t previous, blocked;
+  sigfillset(&blocked);
+  if (pthread_sigmask(SIG_BLOCK, &blocked, &previous)) {
+    kernel(src, dst, 0, n);
+    return;
+  }
+  I started = 0;
+  for (I i = 1; i < count; i++) {
+    if (pthread_create(&threads[started], 0, parallel_float_thread, &tasks[i])) break;
+    started++;
+  }
+  if (pthread_sigmask(SIG_SETMASK, &previous, 0)) abort();
+  /* Thread creation can fail under a resource limit. Compute only the chunks
+     that were not launched, rather than replaying work already in progress. */
+  kernel(src, dst, tasks[0].lo, tasks[0].hi);
+  for (I i = started + 1; i < count; i++) kernel(src, dst, tasks[i].lo, tasks[i].hi);
+  for (I i = 0; i < started; i++) {
+    /* With these private joinable handles this cannot fail. Returning anyway
+       would release stack task records and managed roots still used by a worker. */
+    if (pthread_join(threads[i], 0)) abort();
+  }
+}
+List *pys_parallel_map_f64(List *src, I workers, ParallelFloatKernel *kernel) {
+  if (workers < 1 || workers > 64) pys_fail("ValueError: workers must be between 1 and 64");
+  List *dst = pys_list_new_atomic(src->len);
+  I n = src->len;
+  dst->len = n;
+  I count = n / 16384;                 /* at least 16K elements per participating thread */
+  if (count > workers) count = workers;
+  io_in();
+  if (count < 2) kernel((const double *)src->a, (double *)dst->a, 0, n);
+  else parallel_float_run((const double *)src->a, (double *)dst->a, n, count, kernel);
+  io_out();                          /* joins publish every write before signals or user code resume */
+  return dst;
+}
+#endif
+
 /* the write layers (see above): pn bytes pending in the text layer, bn in the buffered layer */
 static int osflush(File *f, int keep) {   /* stdio writes what it holds: 0, or the errno of a failure; stdio then
                                              drops the data, which CPython keeps when keep */

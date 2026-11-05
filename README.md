@@ -65,6 +65,9 @@ adaptations like the [maintained ports](ports/README.md). The optional
 [CPython bridge](docs/ffi.md#calling-cpython) lets native code call
 packages that need CPython at runtime.
 
+An experimental [parallel float map](docs/concurrency.md#experimental-float-map) runs
+proven scalar kernels on explicitly requested native workers, with serial fallback.
+
 ## Roadmap
 
 Pystachy is focused on stronger type inference, broader library support backed by

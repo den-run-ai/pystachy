@@ -120,11 +120,12 @@ which a file's `fileno()` gives; other `select` APIs remain unsupported.
 
 ### Processes and threads
 
-`multiprocessing`, `subprocess` and `asyncio` are not shipped; a program runs on one thread,
-which `threading` and `_thread` describe.
+`multiprocessing`, `subprocess` and `asyncio` are not shipped. One thread owns the runtime;
+`parallel` can dispatch a proven numeric kernel without sharing managed runtime state.
 
 | Module | Origin | Supported APIs | Main limitation |
 |---|---|---|---|
+| 🧪 `parallel` | Pystachy extension, valid sequential Python | `map_float(fn, values, workers=1)` | Proven float kernels only; otherwise serial. See the [contract](../docs/concurrency.md#experimental-float-map) |
 | 🟡 `_thread` | Subset port of CPython's C module for one thread (`_pystachy_thread`) | `allocate_lock`, `LockType`, `RLock` (with `_is_owned`, `_release_save`, `_acquire_restore`), `get_ident`, `get_native_id`, `stack_size`, `interrupt_main`, `exit`, `TIMEOUT_MAX`, `error`, `_local` as a base class | One thread: `start_new_thread()` raises `NotImplementedError`, and an acquire that would wait for ever raises `RuntimeError` |
 | 🟡 `threading` | Adapted CPython on the one-thread `_thread`, compiled with [dynamic `Any`](../docs/dynamic-any.md) | Locks, reentrant locks, `Condition`, semaphores, `Event`, `Barrier`, `Timer`, `local`, `current_thread()`, `main_thread()`, `enumerate()` and `Thread` objects and subclasses, as in CPython where no other thread runs | `Thread.start()` raises `NotImplementedError`; see [limits](compatibility.md#threading) |
 | 🟡 `atexit` | Subset port of CPython's C module (`_pystachy_atexit`) | `register` (also as a decorator, with arguments), callbacks run at the end of the program, also after `sys.exit()` or an uncaught exception; `_run_exitfuncs`, `_clear`, `_ncallbacks` | No `unregister`; a failing callback's report shows the exception's last line |

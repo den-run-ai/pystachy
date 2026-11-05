@@ -1019,11 +1019,14 @@ from src.pystachy_compiler.lower_module import (
     gen_dispatch as lower_module_dispatch,
     gen_extern_decl as lower_module_extern_decl,
     gen_gen_module as lower_module_gen_module,
+    gen_lower_comments as lower_module_lower_comments,
     gen_lower_module as lower_module_lower_module,
+    gen_parallel_kernels as lower_module_parallel_kernels,
     gen_pyext as lower_module_pyext,
     gen_tbaa_nodes as lower_module_tbaa_nodes,
 )
 from src.pystachy_compiler.module import Mod
+from src.pystachy_compiler.parallel import gen_parallel_maps as parallel_maps
 from src.pystachy_compiler.optimizations import (
     gen_addr as optimizations_addr,
     gen_canon as optimizations_canon,
@@ -3530,6 +3533,12 @@ class Gen:
     def lower_module(self) -> str:
         return lower_module_lower_module(self)
 
+    def lower_comments(self, notes: list[str]) -> None:
+        return lower_module_lower_comments(self, notes)
+
+    def parallel_kernels(self, kernels: list[str]) -> None:
+        return lower_module_parallel_kernels(self, kernels)
+
     def gen_module(self) -> list[str]:
         return lower_module_gen_module(self)
 
@@ -3577,6 +3586,9 @@ class Gen:
 
     def recursionscope(self) -> int:
         return optimizations_recursionscope(self)
+
+    def parallel_maps(self) -> tuple[list[str], list[str]]:
+        return parallel_maps(self)
 
     def preds(self, fn: IFn) -> dict[str, list[int]]:
         return optimizations_preds(self, fn)

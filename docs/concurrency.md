@@ -2,10 +2,11 @@
 
 This page is the execution contract for concurrency: what holds today, the guarantees that
 later features must keep, and the probes that check them. It specifies observable behavior;
-schedulers, threading backends and object representations remain free to change. Today each
-runtime runs on one thread, and parallel work runs in separate processes that CPython starts
-and that import [extension modules](ffi.md#extension-modules) compiled by
-`pystachy ext`. Native parallel loops ([#714](https://github.com/den-run-ai/pystachy/issues/714))
+schedulers, threading backends and object representations remain free to change. One thread
+owns each runtime. The experimental float map below can run verified scalar kernels on
+native workers; CPython can also start separate processes that import
+[extension modules](ffi.md#extension-modules) compiled by `pystachy ext`.
+General native parallel loops ([#714](https://github.com/den-run-ai/pystachy/issues/714))
 and `async def` ([#12](https://github.com/den-run-ai/pystachy/issues/12)) are proposals, not
 features. [#754](https://github.com/den-run-ai/pystachy/issues/754) records the evidence behind
 this contract and tracks its plan.
@@ -29,6 +30,7 @@ code that their suite executes, not only named by a comment. The baseline is the
 
 | Capability | Status | Probes |
 |---|---|---|
+| `parallel.map_float(fn, values, workers=1)` | experimental native JIT/AOT for proven kernels; otherwise serial | `tests/programs/library/lib_parallel.py`, `tests/programs/library/lib_parallel_fallback.py`, `tests/programs/inference/dynany_parallel.py` |
 | Calls into an extension module from the thread that imported it | native | `tests/ffi/ext/client.py`, `tests/ffi/ext/pwclient.py` |
 | Calls from any other thread: `threading.Thread`, `ThreadPoolExecutor`, `asyncio.to_thread()`, `loop.run_in_executor(None, ...)` | refused: `RuntimeError` before the call converts an argument; the owner's next call works | `tests/ffi/ext/client.py`, `tests/ffi/ext/pwclient.py`, `tests/ffi/ext/aioclient.py` |
 | `multiprocessing.Pool` (spawn) mapping an export | hosted | `tests/ffi/ext/pk3.py` |
@@ -66,6 +68,51 @@ Proposed capabilities, each to add a row above with the probes listed here:
 | A `selectors` subset, nonblocking pipes and sockets | with native I/O | a producer and a consumer driven by readiness, never blocking the loop |
 | Threads that share one heap: `threading`, `queue`, `ThreadPoolExecutor`, subinterpreters | later, for a concrete workload | registered stacks and roots, per-thread exception state, synchronized allocation, every container and cache audited |
 
+## Experimental float map
+
+```python
+from parallel import map_float
+
+def score(x: float) -> float:
+    y = x * x + 0.5
+    return y * 0.25 - x
+
+scores = map_float(score, [0.25, 0.5, 0.75], workers=4)
+```
+
+This is an experimental Pystachy library API, with ordinary Python syntax. The
+shipped `lib/parallel.py` runs sequentially under CPython and preserves input order.
+It returns a fresh list, validates `1 <= workers <= 64` before calling the kernel,
+and defaults to one worker. Small lists stay serial: each participating thread
+needs at least 16,384 items, so the example above starts no worker.
+
+The compiler accepts only a statically known `float -> float` kernel whose final
+typed IR contains float addition, subtraction, multiplication, negation, comparisons,
+acyclic branches and private scalar locals. There are no worker calls to helpers,
+globals, allocation, exceptions, CPython or managed runtime state. Loops, division,
+unknown callables, captures, recursion and dynamic-Any program graphs retain the
+ordinary serial implementation. Failed eligibility does not reject a program.
+`pystachy ir` includes `parallel.map_float` comments naming native kernels or the
+first reason a candidate stays serial.
+The fallback iterates the live input, preserving callback mutations and first-error
+order. Float arithmetic keeps its original grouping, signed zeros and NaNs; there
+are no reductions, fast-math flags or automatic parallelization of ordinary loops.
+
+The owner allocates the result, keeps both buffers alive and divides disjoint output
+ranges. pthread creation/join publishes inputs/results; workers need neither managed
+GC roots nor atomics. If thread creation fails, only unlaunched ranges run on the
+owner. All started threads join before it returns or raises `KeyboardInterrupt`.
+SIGINT waits for the finite map to finish; cooperative early cancellation is deferred.
+The backend is compiled and linked only for proven sites, with its flags included in
+the runtime cache identity. Programs without such sites keep their ordinary runtime.
+
+**No `nogil` switch is needed for these native kernels:** they do not use CPython.
+This does not make shared objects, the compiler frontend, or extension entrypoints
+thread-safe. CPython extension calls still obey their owner-thread contract and keep
+the host GIL. General threading, a persistent worker pool, process-wide BLAS budgeting,
+compiler parallelization, reductions and broader kernels remain separate work.
+See the [reproducer and measurements](../bench/parallel/README.md).
+
 ## Guarantees
 
 ### Ownership
@@ -75,7 +122,7 @@ Proposed capabilities, each to add a row above with the probes listed here:
   any of the module's code, and the owner's later calls work.
 - Each process, and each extension module in a process, has its own runtime and heap. Values
   cross between them only as copies: Python objects, or serialized bytes between processes.
-- The native workers of a parallel region (proposed) read and write only validated numeric
+- The native workers of a parallel region read and write only validated numeric
   buffers that the owner keeps alive until the join. They do not allocate, collect, raise, do I/O
   or call user code.
 - Ownership extends to other threads only through audited synchronization of everything that a
@@ -127,7 +174,8 @@ Proposed capabilities, each to add a row above with the probes listed here:
 
 ### Atomics
 
-- The runtime has no inter-thread atomics today. Its signal flags are `volatile sig_atomic_t`,
+- The float map uses pthread create/join synchronization, with no shared counters.
+  The runtime has no inter-thread atomics today. Its signal flags are `volatile sig_atomic_t`,
   correct for a handler on the thread it interrupts and for nothing else.
 - Atomics start inside the runtime, for the parallel runtime's counters and flags: C11 atomics
   compiled by LLVM, sequentially consistent until a weaker order is measured and reviewed, and
