@@ -65,6 +65,11 @@ adaptations like the [maintained ports](ports/README.md). The optional
 [CPython bridge](docs/ffi.md#calling-cpython) lets native code call
 packages that need CPython at runtime.
 
+## Roadmap
+
+Pystachy is focused on stronger type inference, broader library support backed by
+CPython comparisons, and lower compilation and execution costs.
+
 ## Learn more
 
 - [Documentation](docs/README.md) covers installation, packaging, interoperability and compiler internals.
