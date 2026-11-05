@@ -45,3 +45,11 @@ jobs:
 
       - name: Hosted and native JIT/AOT smoke
         run: python3 tools/install_smoke.py
+
+      - name: Install the compiler from Git with pip and uv
+        if: matrix.os != 'macos-15-intel'
+        run: |
+          python3 -m pip install -r tools/requirements-packaging.txt
+          python3 tools/compiler_install_smoke.py \
+            --source "pystachy @ git+${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git@${GITHUB_SHA}" \
+            --revision "$GITHUB_SHA"

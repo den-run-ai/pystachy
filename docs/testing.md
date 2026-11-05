@@ -433,7 +433,7 @@ from the budget. Each test runner uses at most four processes within its worker.
 | Cache and compiler GC | 1 | Cache invalidation plus stressed self-compilation. |
 | Benchmarks and scaling | 1 | Correctness, both scaling halves, BLAS and large upstream regex. |
 | Variants | 2 | Seven configurations, split across both workers, on the selected cases. |
-| Distribution | 2 | Linux x86-64 and macOS ARM64 installation; Linux source packages and native archive smoke. |
+| Distribution | 2 | Linux x86-64 and macOS ARM64 installation, including pip/uv; Linux source packages and native archive smoke. |
 | Aggregate | 1 | Required reports, profiles, selection manifests, counts and job results. |
 | Lint, performance, DCO and submission format | 4 | Lint includes CPython port preservation. DCO applies to forks. Submission format validates PR metadata. |
 
@@ -811,8 +811,10 @@ intrinsics. It does not replace bootstrap, IR parity or runtime verification.
 
 On `main` and manual dispatch, the [Installation workflow](../.github/workflows/install.yml)
 builds on Ubuntu x86-64/ARM64 and macOS ARM64/x86-64, then runs hosted/native JIT/AOT
-installation smoke (`tools/install_smoke.py`). PR distribution checks cover the primary paths above. The [Packages workflow](../.github/workflows/packages.yml)
-builds the example and ports source wheels and runs them under CPython, JIT and AOT
+installation smoke (`tools/install_smoke.py`). The three primary platforms also install the
+compiler with pip and uv from the exact GitHub commit and verify JIT/AOT outside the checkout
+(`tools/compiler_install_smoke.py`). PR distribution checks exercise pip and uv against the
+checked-out source. The [Packages workflow](../.github/workflows/packages.yml) builds the example and ports source wheels and runs them under CPython, JIT and AOT
 (`tools/package_smoke.py`) on `main` and manual dispatch. PRs run these checks, release unit
 tests and one native archive smoke in the Linux distribution job. The
 [Release workflow](../.github/workflows/release.yml) reserves its full archive/container matrix

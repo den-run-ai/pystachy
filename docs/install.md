@@ -1,8 +1,9 @@
 # Installation
 
-Choose a native release package, the Docker image, or a source build.
-Native packages need **LLVM 18 on Linux / LLVM 20 on macOS** to compile programs;
-the Docker image includes LLVM. Neither requires Python to run the compiler.
+Choose a native release package, the Docker image, a GitHub source install with
+pip or uv, or a manual source build. Installations outside Docker need
+**LLVM 18 on Linux / LLVM 20 on macOS** to compile programs. The native release
+package and Docker image run the compiler without Python.
 
 ## Native release packages
 
@@ -73,6 +74,45 @@ docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/work" --entrypoint /work/de
 The image includes LLVM 18, the native compiler and its libraries; runtime caches go
 to `/tmp` unless `PYSTACHY_CACHE` is overridden. Release tags identify a tested source
 commit. `latest` advances only for stable releases; prereleases use explicit version tags.
+
+## Install from GitHub with pip or uv
+
+Installing from GitHub requires Git and Python 3.11+. The installed command runs
+the compiler under Python. To compile programs, install the
+[host LLVM toolchain](#native-release-packages) and use the usual
+[LLVM discovery](#check-or-prepare-dependencies). Ordinary AOT executables run
+without Python or LLVM.
+
+Choose a GitHub tag or a full commit SHA that includes the source package.
+The GitHub URL is the package source for both commands.
+
+```sh
+PYSTACHY_REF=TAG_OR_COMMIT
+PYSTACHY_SOURCE="pystachy @ git+https://github.com/den-run-ai/pystachy.git@${PYSTACHY_REF}"
+```
+
+With pip, use a virtual environment. On Ubuntu, install `python3-venv` if the
+`venv` module is unavailable.
+
+```sh
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install "$PYSTACHY_SOURCE"
+pystachy --version
+```
+
+With uv, install the command into an isolated tool environment.
+
+```sh
+uv tool install "$PYSTACHY_SOURCE"
+pystachy --version
+```
+
+If uv's command directory is missing from `PATH`, run `uv tool update-shell`
+and open a new shell. To change the installed revision, rerun the first block
+with the new tag or commit. Repeat the install command with `--force-reinstall`
+for pip or `--reinstall` for uv. Remove the command with
+`python -m pip uninstall pystachy` in the pip environment or `uv tool uninstall pystachy`.
 
 ## Build from source
 
@@ -230,9 +270,8 @@ The Linux archives retain a **glibc 2.39+** support baseline. `manylinux_2_28` i
 feasible follow-up build target, not a compatibility tag for the current Ubuntu-built
 compiler. The [30 October 2026 portability audit](https://github.com/den-run-ai/pystachy/blob/a2cb8a3638d715577a7ab1cd1e4a0d6b01b6cdf2/docs/reports/linux-portability.md)
 records the alpha.3 artifact measurements and older-sysroot/toolchain requirements.
-An older baseline and compiler wheels for `pip install` / `uv tool install` are tracked
-in [#998](https://github.com/den-run-ai/pystachy/issues/998); the existing wheel
-instructions distribute Python source libraries, not the compiler itself.
+An older native baseline and compiler packages with a pinned toolchain are tracked
+in [#998](https://github.com/den-run-ai/pystachy/issues/998).
 
 ## Custom and staged installations
 
