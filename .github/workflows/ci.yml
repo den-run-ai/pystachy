@@ -303,10 +303,13 @@ jobs:
           tools/setup.sh --check
           make test-install
           python3 tools/install_smoke.py
+      - name: Install the compiler with pip and uv
+        run: |
+          python3 -m pip install -r tools/requirements-packaging.txt
+          python3 tools/compiler_install_smoke.py
       - name: Source packages and native release archive smoke
         if: runner.os == 'Linux'
         run: |
-          python3 -m pip install -r tools/requirements-packaging.txt
           python3 tools/package_smoke.py --no-build-isolation
           python3 tools/package_smoke.py --no-build-isolation --compiler 'python3 pystachy.py'
           python3 -m unittest discover -s tools -p 'test_release*.py'

@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools==84.2.1"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pystachy"
+dynamic = ["version"]
+description = "Compile a typed subset of Python to native code through LLVM"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE", "THIRD_PARTY_NOTICES", "ryu/LICENSE-Boost"]
+
+[project.scripts]
+pystachy = "_pystachy_source.pystachy_cli:main"
+
+[project.urls]
+Source = "https://github.com/den-run-ai/pystachy"
+
+[tool.setuptools]
+# Keep the checkout layout for hosted compiler imports and cache input paths.
+# Avoid installing generic top-level modules such as src or runtime.
+packages = ["_pystachy_source"]
+package-dir = { _pystachy_source = "." }
+include-package-data = false
+
+[tool.setuptools.dynamic]
+version = { file = "VERSION" }
+
+[tool.setuptools.package-data]
+_pystachy_source = [
+    "VERSION", "runtime.c", "pyext.c", "pyembed.c",
+    "src/__init__.py", "src/pystachy_compiler/*.py",
+    "lib/**/*.py", "lib/*.py", "mpz/*.c", "mpz/*.h", "ryu/*.c", "ryu/*.h",
+]
