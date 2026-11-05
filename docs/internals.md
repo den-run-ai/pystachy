@@ -707,6 +707,25 @@ The bootstrap checks that all three emit identical LLVM IR for the compiler and 
 This fixed point catches disagreements that affect self-compilation; differential tests
 provide the broader behavior check. See [testing](testing.md) for the commands.
 
+The opt-in `make bootstrap-pipeline` research controller retains the raw program IR
+from its first two builds using `build FILE.py --emit-ir FILE.ll`, then independently
+emits the third witness. It still builds both native executables and checks three
+compiler and three runtime IR outputs. A sidecar is published only after a successful
+build and excludes the build-only `pys_plain` definition. It cannot alias the source
+or executable destination. The normal `make` and CI bootstrap remain unchanged.
+
+`tools/bootstrap_pipeline.py --help` describes serial and dependency-graph variants,
+the shared worker budget, private output directories and measurement reports. The
+temporary first compiler can use `--stage1-opt 0` or `1`; the final compiler stays at
+level 2. A lower tier can slow the next stage, so compare complete bootstrap times.
+See [the experiment](../bench/bootstrap/README.md) for measured results and limits.
+
+`PYSTACHY_RUNTIME_C_CACHE=1` separately caches the C runtime's bitcode across compiler
+identities. It hashes a captured preprocessed input, including headers and target
+macros, and the toolchain/command identity. The compiler-dependent subset runtime
+and its bootstrap witnesses are still regenerated. Custom C flags and sanitizers
+retain the ordinary path; this experiment does not deduplicate simultaneous misses.
+
 ## Environment variables
 
 | Variable | Effect |
@@ -718,6 +737,8 @@ provide the broader behavior check. See [testing](testing.md) for the commands.
 | `PYSTACHY_CFLAGS` | Extra clang flags for runtime compilation and AOT linking; part of the cache key |
 | `PYSTACHY_BUILD_JOBS` | Per-invocation build budget, 1–64 (default 1); 2 or more permits isolated cold-runtime jobs; see [build parallelism](#experimental-build-parallelism-and-timings) |
 | `PYSTACHY_LTO_PARTITIONS` | Experimental AOT full-LTO codegen partitions, 0–`PYSTACHY_BUILD_JOBS` (default 0/off); Linux LLVM 18 clang/LLD and default `PYSTACHY_CFLAGS` only |
+| `PYSTACHY_AOT_OPT` | Experimental program optimization/codegen tier for `build`: 0, 1, or 2 (default 2); runtime compilation and `ext` retain their existing tier |
+| `PYSTACHY_RUNTIME_C_CACHE` | Opt-in compiler-independent C-runtime bitcode cache: 0 (default) or 1; default C flags only |
 | `PYSTACHY_TIMING=1` | Print monotonic stage durations to stderr; nested totals and worker intervals overlap |
 | `PYSTACHY_IRCHECK=1` | Verify typed IR before lowering and after transforming passes |
 | `PYSTACHY_IRFX=1` | Print function effect summaries to stderr |

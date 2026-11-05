@@ -81,6 +81,12 @@ bench-extended-check: $(BENCH_COMPILER)
 compiler-parallel-check: $(BENCH_COMPILER)
 	$(PY) tools/check_compiler_parallel.py --compiler "$(BENCH_COMPILER)" $(BENCH_ARGS)
 
+# Research bootstrap; private outputs, two real native builds and six IR witnesses.
+# BOOTSTRAP_ARGS can select the serial baseline or the bounded dependency graph.
+BOOTSTRAP_ARGS ?= --variant retained-ir --output build/bootstrap-pipeline
+bootstrap-pipeline:
+	$(PY) tools/bootstrap_pipeline.py $(BOOTSTRAP_ARGS)
+
 # Ported pyperformance benchmarks (bench/pyperformance/README.md): CPython, JIT and AOT wall times,
 # each run's output compared with CPython's; advisory, no thresholds. The check runs small inputs
 # once (correctness only); --census needs the pinned sdist.
@@ -371,6 +377,9 @@ check-fast: lint-python typecheck check-repository
 	$(PY) -m unittest discover -s tools -p test_loader_preprocessing.py
 	$(PY) -m unittest discover -s tools -p test_parser_allocations.py
 	$(PY) -m unittest discover -s tools -p test_inspect_compiler.py
+	$(PY) -m unittest discover -s tools -p test_bootstrap_pipeline.py
+	$(PY) -m unittest discover -s tools -p test_self_build_driver.py
+	$(PY) -m unittest discover -s tools -p test_runtime_c_cache.py
 
 check-repository:
 	$(PY) tools/check_repository_hygiene.py
@@ -398,4 +407,4 @@ uninstall:
 test-install:
 	$(PY) -m unittest discover -s tools -p test_install.py
 
-.PHONY: test test-py coverage runtime-coverage variants test-cache test-ffi bench bench-extended bench-extended-check compiler-parallel-check blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe boxprobe streamprobe jitprobe aotprobe unicode-audit unicodeprobe bytescanprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz dynany-fuzz dynany-optin python-int-optin python-int-gate re-probe re-specialize-check typecheck lint-python check-repository check-fast lint clean install uninstall test-install
+.PHONY: bootstrap-pipeline test test-py coverage runtime-coverage variants test-cache test-ffi bench bench-extended bench-extended-check compiler-parallel-check blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe boxprobe streamprobe jitprobe aotprobe unicode-audit unicodeprobe bytescanprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz dynany-fuzz dynany-optin python-int-optin python-int-gate re-probe re-specialize-check typecheck lint-python check-repository check-fast lint clean install uninstall test-install
