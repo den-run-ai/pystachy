@@ -175,7 +175,7 @@ def load_compiler():
 
 def llvm_ir(src, name, opt="-O0", all_decls=False):
     # the LLVM IR clang compiles C source file src to, unoptimized (or at level opt)
-    out = subprocess.run([TOOL + "clang", "-S", "-emit-llvm", opt, "-o", "-", src] +
+    out = subprocess.run([TOOL + "clang", "-S", "-emit-llvm", opt, "-o", "-", src, "-DPYSTACHY_PARALLEL", "-pthread"] +
                          (["-femit-all-decls"] if all_decls else []), capture_output=True, text=True)
     if out.returncode != 0:
         sys.exit(f"check_runtime: clang cannot compile {name}:\n{out.stderr}")
@@ -545,7 +545,7 @@ def linked(rpy_ir, tmp):
     with open(rpy, "w", encoding="latin-1") as f:
         f.write(rpy_ir)
     rc = os.path.join(tmp, "runtime-c.ll")
-    out = subprocess.run([TOOL + "clang", "-O2", "-S", "-emit-llvm", os.path.join(ROOT, "runtime.c"), "-o", rc, "-fexceptions"], capture_output=True, text=True)
+    out = subprocess.run([TOOL + "clang", "-O2", "-S", "-emit-llvm", os.path.join(ROOT, "runtime.c"), "-o", rc, "-fexceptions", "-DPYSTACHY_PARALLEL", "-pthread"], capture_output=True, text=True)
     if out.returncode != 0:
         sys.exit(f"check_runtime: clang cannot compile runtime.c:\n{out.stderr}")
     with open(rc, encoding="latin-1") as f:

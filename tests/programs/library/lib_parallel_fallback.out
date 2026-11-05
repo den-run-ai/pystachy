@@ -1,0 +1,23 @@
+ordered [4.0, 2.0, 3.0] [3.0, 1.0, 2.0]
+first-error second [1.0, 2.0]
+grow [2.0, 3.0, 4.0, 5.0] [1.0, 2.0, 3.0, 4.0]
+shrink [2.0, 3.0] [1.0, 2.0]
+global [2.0, 4.0]
+helper [1.5, 4.5]
+division ZeroDivisionError
+nested [6.0, 14.0]
+indirect [1.5, 4.5]
+closure [4.0, 5.0]
+keyword [1.5, 4.5]
+evaluation [1.5, 4.5] ['values', 'workers']
+keyword-order [1.5, 4.5] ['workers', 'values']
+validation-order ['values', 'invalid-workers']
+captured-callback [1.5, 4.5]
+replaced-callback [2.0, 4.0]
+invalid-workers -1 0 0
+invalid-workers -1 1 0
+invalid-workers 0 0 0
+invalid-workers 0 1 0
+invalid-workers 65 0 0
+invalid-workers 65 1 0
+[exit 0]

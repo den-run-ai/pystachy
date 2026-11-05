@@ -50,8 +50,9 @@ argument types or documented differences within a supported API. The statuses ma
 The table describes the current source tree. Other modules are not shipped, apart from private helpers
 that the [module guide](../lib/README.md#module-guide) lists; [measuring
 coverage](#measuring-coverage) shows how to check whether CPython's own copy of one compiles.
-For parallel work today, CPython can run Pystachy-built extension modules in
-[process pools](concurrency.md#process-pools-today).
+For parallel work, the experimental [`parallel.map_float`](concurrency.md#experimental-float-map)
+handles proven native scalar kernels. CPython can also run Pystachy-built extension modules
+in [process pools](concurrency.md#process-pools-today).
 
 <a id="shipped-coverage"></a>
 

@@ -25,6 +25,7 @@ remain valid Python and compile together through Pystachy's existing loader.
 | Typed IR | [ir](pystachy_compiler/ir.py), [emission](pystachy_compiler/emission.py), [scalar_ir](pystachy_compiler/scalar_ir.py), [memory_ir](pystachy_compiler/memory_ir.py): records, instruction building, typed machine scalars and memory addresses, and function-state save/restore. |
 | Backend | [ircheck](pystachy_compiler/ircheck.py), [optimizations](pystachy_compiler/optimizations.py), [lowering](pystachy_compiler/lowering.py), [lower_module](pystachy_compiler/lower_module.py), [llvm_abi](pystachy_compiler/llvm_abi.py): verification, effects, IR passes, and LLVM lowering of functions, modules and native ABI declarations. |
 | Union proofs | [union_proof](pystachy_compiler/union_proof.py), [union_state](pystachy_compiler/union_state.py): control-flow tag proofs and raw payload provenance for closed unions under `PYSTACHY_IRCHECK=1`. |
+| Parallel kernels | [parallel](pystachy_compiler/parallel.py): worker-safety proof for the experimental float map, serial fallback and LLVM worker thunks. |
 | Shared support | [specs](pystachy_compiler/specs.py), [diagnostics](pystachy_compiler/diagnostics.py), [names](pystachy_compiler/names.py), [utils](pystachy_compiler/utils.py): operation tables, source locations, names and type helpers. |
 | CLI | [driver](pystachy_compiler/driver.py): JIT, AOT, extensions, LLVM tools and runtime caching. |
 

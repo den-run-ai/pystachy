@@ -1024,6 +1024,7 @@ from src.pystachy_compiler.lower_module import (
     gen_tbaa_nodes as lower_module_tbaa_nodes,
 )
 from src.pystachy_compiler.module import Mod
+from src.pystachy_compiler.parallel import gen_parallel_maps as parallel_maps
 from src.pystachy_compiler.optimizations import (
     gen_addr as optimizations_addr,
     gen_canon as optimizations_canon,
@@ -3577,6 +3578,9 @@ class Gen:
 
     def recursionscope(self) -> int:
         return optimizations_recursionscope(self)
+
+    def parallel_maps(self) -> list[str]:
+        return parallel_maps(self)
 
     def preds(self, fn: IFn) -> dict[str, list[int]]:
         return optimizations_preds(self, fn)

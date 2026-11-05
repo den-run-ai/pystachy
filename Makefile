@@ -272,6 +272,16 @@ check-ir: pystachy
 check-runtime:
 	$(PY) tools/check_runtime.py
 
+# Optional float-map scheduler: real concurrent entry, exact-once ranges, failed
+# thread launches, signal masks and owner-held roots under allocation-time GC.
+parallelprobe: tools/parallelprobe.c runtime.c runtime.py $(COMPILER_SOURCES)
+	mkdir -p build
+	$(PY) pystachy.py rt runtime.py -o build/parallelprobe-rt.ll
+	$(LLVMBIN)clang -O2 -pthread -S -emit-llvm tools/parallelprobe.c -o build/parallelprobe.ll
+	$(LLVMBIN)llvm-link build/parallelprobe-rt.ll build/parallelprobe.ll -o build/parallelprobe.bc
+	$(LLVMBIN)clang -O2 -pthread build/parallelprobe.bc -o build/parallelprobe -lm
+	build/parallelprobe
+
 # every recording of a differential test must be what CPython (of .python-version) prints, every
 # deviation still deviate, lib/'s copies be CPython's files, and no *.rej, *.orig or core file lie in
 # the tree (tests/record.sh --check; CI's Lint workflow runs it)
@@ -366,6 +376,7 @@ check-fast: lint-python typecheck check-repository
 	$(PY) -m unittest discover -s tools -p test_loader_preprocessing.py
 	$(PY) -m unittest discover -s tools -p test_parser_allocations.py
 	$(PY) -m unittest discover -s tools -p test_inspect_compiler.py
+	$(PY) -m unittest discover -s tools -p test_parallel.py
 
 check-repository:
 	$(PY) tools/check_repository_hygiene.py
@@ -376,7 +387,7 @@ check-repository:
 lint: lint-python
 	$(PY) tools/runtime_roots.py
 	shellcheck -s sh -S warning $(wildcard tests/*.sh tests/ffi/*.sh tools/*.sh bench/*.sh)
-	$(LLVMBIN)clang -fsyntax-only -Wall -Wextra -Werror runtime.c tools/dictprobe.c tools/listprobe.c tools/eqprobe.c tools/fileprobe.c tools/selectprobe.c tools/weakrefprobe.c tools/boxprobe.c tools/unicodeprobe.c tools/bytescanprobe.c pyext.c pyembed.c
+	$(LLVMBIN)clang -fsyntax-only -Wall -Wextra -Werror runtime.c tools/dictprobe.c tools/listprobe.c tools/eqprobe.c tools/fileprobe.c tools/selectprobe.c tools/weakrefprobe.c tools/boxprobe.c tools/unicodeprobe.c tools/bytescanprobe.c tools/parallelprobe.c pyext.c pyembed.c
 	$(LLVMBIN)clang -fsyntax-only -Wall -Wextra -Werror -DPYX_ABI3T pyext.c
 
 clean:
@@ -393,4 +404,4 @@ uninstall:
 test-install:
 	$(PY) -m unittest discover -s tools -p test_install.py
 
-.PHONY: test test-py coverage runtime-coverage variants test-cache test-ffi bench bench-extended bench-extended-check blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe boxprobe streamprobe jitprobe aotprobe unicode-audit unicodeprobe bytescanprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz dynany-fuzz dynany-optin python-int-optin python-int-gate re-probe re-specialize-check typecheck lint-python check-repository check-fast lint clean install uninstall test-install
+.PHONY: test test-py coverage runtime-coverage variants test-cache test-ffi bench bench-extended bench-extended-check blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe boxprobe streamprobe jitprobe aotprobe unicode-audit unicodeprobe bytescanprobe parallelprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz dynany-fuzz dynany-optin python-int-optin python-int-gate re-probe re-specialize-check typecheck lint-python check-repository check-fast lint clean install uninstall test-install

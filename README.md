@@ -159,6 +159,8 @@ locked installs, the ports wheel and standalone executables.
 multidimensional views, broadcasting, fused expressions and optional BLAS matrix products.
 It is a focused native implementation, not NumPy; NumPy itself can run through the explicit
 CPython bridge, which needs Python and NumPy at run time.
+An experimental [parallel float map](docs/concurrency.md#experimental-float-map) runs
+proven scalar kernels on explicitly requested native workers, with serial fallback.
 
 ## Status and limitations
 

@@ -60,6 +60,7 @@ COMPILER_SOURCES: list[str] = [
     'src/pystachy_compiler/module.py',
     'src/pystachy_compiler/names.py',
     'src/pystachy_compiler/optimizations.py',
+    'src/pystachy_compiler/parallel.py',
     'src/pystachy_compiler/parser.py',
     'src/pystachy_compiler/program.py',
     'src/pystachy_compiler/reflection.py',
@@ -452,6 +453,10 @@ def main() -> None:
     # if clang marked them nounwind. runtime.py goes through the optimizations on the IR as programs
     # do, so the ones PYSTACHY_OPT turns off count too: the cached runtime's key (below) has both
     flags = os.getenv("PYSTACHY_CFLAGS", "").split()
+    # Optional backend: ordinary programs keep their existing runtime and link
+    # flags. Include these flags before forming the runtime-cache identity.
+    if "\ndeclare ptr @pys_parallel_map_f64(" in ir:
+        flags = flags + ["-DPYSTACHY_PARALLEL", "-pthread"]
     asan = address_sanitized(flags)
     on = optimizations()
     off = [o for o in OPTS if o not in on]
