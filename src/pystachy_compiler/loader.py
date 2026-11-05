@@ -2666,7 +2666,7 @@ class Loader:
         r = self.platform_test(m, e, scope)
         if r >= 0:
             return r
-        if e.kind == "cmp" and e.s in ["<", "<=", ">", ">=", "==", "!="] and (self.version(m, e.kids[0], scope, True) != [] or self.version(m, e.kids[1], scope, True) != []):
+        if e.kind == "cmp" and e.s in ["<", "<=", ">", ">=", "==", "!="] and (len(self.version(m, e.kids[0], scope, True)) > 0 or len(self.version(m, e.kids[1], scope, True)) > 0):
             return self.version_cmp(e.s, self.version(m, e.kids[0], scope, False), self.version(m, e.kids[1], scope, False))
         return -1
 
@@ -2748,13 +2748,14 @@ class Loader:
         # the constant that e is, if it is sys.version_info, a slice, an item or an attribute of it
         # (also, unless own, a literal int or str, or a tuple of those): its items, ints in decimal
         # and strs after a "'", after a "(" for a tuple; [] for anything else
-        v = ["("]
-        for c in VERSIONINFO.values():
-            v.append(c[:-1] if c.startswith("'") else c)
-        if self.is_version(m, e, scope):
-            return v
+        whole = self.is_version(m, e, scope)
         b = e.kids[0] if e.kind == "attr" or e.kind == "index" or e.kind == "slice" else e
-        if self.is_version(m, b, scope):
+        if whole or self.is_version(m, b, scope):
+            v = ["("]
+            for c in VERSIONINFO.values():
+                v.append(c[:-1] if c.startswith("'") else c)
+            if whole:
+                return v
             fields = ["major", "minor", "micro", "releaselevel", "serial"]
             if e.kind == "attr" and e.s in fields:
                 return [v[fields.index(e.s) + 1]]

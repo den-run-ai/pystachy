@@ -36,10 +36,10 @@
 #                  function of runtime.py reaches itself through runtime.c
 #   gc-self        the native compiler collecting every 5000 allocations reproduces the IR
 #   gc-ir-0/-1     the stage-2 compiler collecting every 1000 allocations compiles each case of one of
-#                  two disjoint halves of the corpus (shard_cases), and runtime.py, exactly as stage 2
+#                  two disjoint halves of the corpus (gc_shard_cases), and runtime.py, exactly as stage 2
 #                  does unstressed (tools/irsame.sh: the same IR, messages and exit status, byte for
 #                  byte), and `check`s each syntax_*.py alike (tools/irsame.sh --check)
-#   gc-jit-0/-1, gc-aot-0/-1/-2 every test of the shard passes, JIT (the same halves) or AOT (three
+#   gc-jit-0/-1, gc-aot-0/-1/-2 every test of the shard passes, JIT (two halves) or AOT (three
 #                  thirds), with a collection at every program allocation (PYSTACHY_GC_STRESS_PROGRAM=1);
 #                  one case in GC_SAMPLE_EVERY of the shard, heaviest first (from an offset of each
 #                  mode's), runs with the compiler collecting every 1000 too (first, so it builds the
@@ -303,8 +303,9 @@ ALL=$(checks "jit aot")
 # change which shard runs a case but never whether one does. The C locale is local to the selection;
 # programs keep theirs.
 shard_cases() { corpus_shard "$1" "$2" > "$3"; }
-# GC identity and its JIT half share weights measured with the compiler stressed. Native JIT/AOT
-# weights underestimate import-heavy compilation and can put a long new case near the end.
+# GC identity uses stressed compiler weights: native JIT/AOT weights underestimate import-heavy
+# compilation. Execution keeps its own weights and deterministic stressed sample; changing the
+# identity schedule must not replace that sample with more expensive compiler work.
 gc_shard_cases() (
   weights=tests/gc_case_weights.txt
   [ -f "$weights" ] || weights=tests/case_weights.txt
@@ -723,12 +724,13 @@ fi
 
 # ---- GC stress: the stressed compiler's output, then the corpus in both modes, on independent CI runners
 # gc-ir-0/-1: stage 2 collecting every GC_COMPILER_INTERVAL allocations must compile each case of one
-# of two disjoint halves of the corpus (shard_cases) exactly as stage 2 does unstressed (tools/irsame.sh:
+# of two disjoint halves of the corpus (gc_shard_cases) exactly as stage 2 does unstressed (tools/irsame.sh:
 # `ir`, or `rt` for rtmode_*, with the IR check on as tests/run.sh has it; the IR byte for byte, every
 # message and the exit status), runtime.py too (`rt`), and `check` each syntax_*.py alike
 # (tools/irsame.sh --check): the two halves compile every case once a run with the stressed compiler.
-# Where the IR is the same, the LLVM tools build the same program from it, so gc-jit-0/-1 (the same
-# halves, JIT) and gc-aot-0/-1/-2 (three thirds, AOT) run their shard's cases with a collection at every
+# The full gate requires both identity halves. Execution uses its own complete partition, balanced
+# by native JIT/AOT weights: gc-jit-0/-1 (two halves, JIT) and gc-aot-0/-1/-2 (three thirds, AOT).
+# Where the IR is the same, the LLVM tools build the same program, so they collect at every
 # program allocation (PYSTACHY_GC_STRESS_PROGRAM=1), compiled by stage 2 unstressed: compiling each case
 # under stress again for each mode added nothing but time. A sample of each shard runs end to end with
 # the compiler stressed too, so that the driver's paths after the IR run under stress: the runtime's
@@ -738,7 +740,7 @@ fi
 # once in each mode.
 # The sample is the cases at positions GC_JIT_SAMPLE_OFFSET (JIT) or GC_AOT_SAMPLE_OFFSET (AOT) modulo
 # GC_SAMPLE_EVERY of the shard in weight order: drawn from the job's own shard, it stays there when
-# either weight table changes, and is the same on every runner (integer weights, the C locale).
+# the execution weights change, and is the same on every runner (integer weights, the C locale).
 # Sampling positions does not guarantee a proportional share of work: the per-case timing logs
 # expose the sample's actual cost. Offset 0 would put each shard's heaviest case in every sample;
 # JIT's and AOT's offsets lie half a period apart, so that the modes, whose shards differ, stress
@@ -798,11 +800,7 @@ for gc_group in gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2; do
   sample_ok=0; y=""
   case $gc_group in gc-aot-*) mode=aot; gc_shards=3; offset=$GC_AOT_SAMPLE_OFFSET ;; esac
   [ "$PROFILE" != pr ] || gc_shards=1
-  if [ "$PROFILE" = full ] && [ "$mode" = jit ]; then
-    gc_shard_cases "$shard" "$gc_shards" "$V/$gc_group-shard.log"
-  else
-    configuration_cases "$shard" "$gc_shards" "$V/$gc_group-shard.log"
-  fi
+  configuration_cases "$shard" "$gc_shards" "$V/$gc_group-shard.log"
   shard_n=$(lines "$V/$gc_group-shard.log")
   # (in one pass over the shard, each case to exactly one of the two: the sample, or the others)
   : > "$V/$gc_group-sample-cases.log"

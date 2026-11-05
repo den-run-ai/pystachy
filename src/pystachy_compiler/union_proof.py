@@ -241,6 +241,9 @@ class UnionProof:
                 self.full.append(t)
         self.full.sort()
         self.base: dict[str, list[str]] = {}
+        # Finalized domains are immutable, as in UnionState. Many declarations
+        # have the same type; share its domain only within this proof invocation.
+        self.domains: dict[str, list[str]] = {}
         self.native: dict[str, str] = {}
         self.memtypes: dict[str, str] = {}
         self.defs: dict[str, Ins] = {}
@@ -472,6 +475,10 @@ class UnionProof:
         return t
 
     def typebase(self, k: str, t: str) -> None:
+        if t in self.domains:
+            if len(self.domains[t]) > 0:
+                self.base[k] = self.domains[t]
+            return
         u = t[4:-1] if is_opt(t) else t
         ts: list[str] = []
         if is_union(u):
@@ -487,6 +494,7 @@ class UnionProof:
                 if v not in self.full:
                     self.full.append(v)
             self.full.sort()
+        self.domains[t] = ts
 
     def box(self, s: UnionState, v: str) -> str:
         k = "U:" + v

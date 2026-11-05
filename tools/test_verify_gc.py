@@ -48,7 +48,7 @@ def split(group):
     """GC suite GROUP's mode, shard, stressed sample and program-stressed rest, as tests/verify.sh means
     to select them: the shard's cases at positions OFFSET modulo EVERY, and its others, in its order."""
     mode = "aot" if group.startswith("gc-aot") else "jit"
-    shard = shards(merge.SHARDED_STEPS[group], gc=mode == "jit")[int(group[-1])]
+    shard = shards(merge.SHARDED_STEPS[group])[int(group[-1])]
     offset, every = merge.GC_SAMPLE_OFFSETS[mode], merge.GC_SAMPLE_EVERY
     return (mode, shard, [case for i, case in enumerate(shard) if i % every == offset],
             [case for i, case in enumerate(shard) if i % every != offset])
@@ -255,13 +255,20 @@ os.execv({TIMEOUT!r}, [{TIMEOUT!r}, "--verbose", "--kill-after=0.2s", limit, *sy
             self.assertTrue(sample and rest, group)
             self.assertNotEqual(shard, sorted(shard), group)
 
-    def test_missing_gc_weights_reuses_the_ordinary_half_for_both_phases(self):
+    def test_gc_weights_change_identity_placement_but_preserve_jit_partition_and_sample(self):
+        result, report, _ = self.run_group("gc-jit-0")
+        self.assertEqual((result.returncode, report["result"]), (0, "pass"), result.stdout + result.stderr)
+        compiled = [case for command, case, stress in self.compiles() if command == "ir" and stress == "1000"]
+        self.assertCountEqual(compiled, shards(2, gc=True)[0])
+        self.assertNotEqual(set(compiled), set(shards(2)[0]))
+        weighted_runs = self.runs()
         (self.root / "tests/gc_case_weights.txt").unlink()
         result, report, _ = self.run_group("gc-jit-0")
         self.assertEqual((result.returncode, report["result"]), (0, "pass"), result.stdout + result.stderr)
         expected = shards(2)[0]
         compiled = [case for command, case, stress in self.compiles() if command == "ir" and stress == "1000"]
         self.assertCountEqual(compiled, expected)
+        self.assertEqual(self.runs(), weighted_runs)
         sample, rest = (cases for _, _, cases in self.runs())
         self.assertEqual(sample, expected[merge.GC_SAMPLE_OFFSETS["jit"]::merge.GC_SAMPLE_EVERY])
         self.assertCountEqual(sample + rest, expected)

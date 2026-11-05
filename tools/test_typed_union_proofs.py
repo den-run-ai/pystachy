@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src.pystachy_compiler.gen import Gen
-from src.pystachy_compiler import ircheck
+from src.pystachy_compiler import ircheck, union_proof
 from src.pystachy_compiler.ir import Blk, ClassInfo, FnInfo, IFn, Ins, NOLABELS, Val
 from src.pystachy_compiler.syntax import Node
 from src.pystachy_compiler.specs import IROPS
@@ -327,6 +327,50 @@ if "union.raw" in IROPS:
 
 
 class UnionProofTests(unittest.TestCase):
+    def test_repeated_declarations_parse_each_type_once_per_proof(self):
+        c = basic("repeated_global_domains", "good")
+        globals = {"g" + str(n): U for n in range(256)}
+        globals["optional"] = "opt[" + U + "]"
+        globals["unreferenced"] = "NeverRead"
+        with patch.object(union_proof, "umembers", wraps=union_proof.umembers) as parsed:
+            proof = UnionProof(c.fn, c.g.utags, globals=globals)
+            proof.run()
+            self.assertEqual(proof.bad, [])
+            self.assertLessEqual(parsed.call_count, 2)
+        self.assertIn("NeverRead", proof.full)
+        self.assertEqual(proof.base["MU:@g.optional"], ["None", "float", "int"])
+        # A new proof must use changed declarations, including newly added members.
+        globals["g0"] = W
+        fresh = UnionProof(c.fn, c.g.utags, globals=globals)
+        self.assertEqual(fresh.base["MU:@g.g0"], ["float", "int", "str"])
+        self.assertEqual(proof.base["MU:@g.g0"], ["float", "int"])
+
+    def test_shared_type_domains_survive_narrowing_and_optional_boxing(self):
+        c = Case("shared_global_domains", ["int"])
+        c.g.runtime("pys_ubox_opt")
+        result = c.op("rt", "%ptr", "ubox_opt", [("%a0", "int")])
+        box = c.b.code[-1]
+        c.ret()
+        proof = UnionProof(c.fn, c.g.utags, globals={"first": U, "second": U})
+        first, second = "MU:@g.first", "MU:@g.second"
+        state = UnionState(proof.base, proof.full)
+        other = state.clone()
+        state.narrow(first, ["int"])
+        self.assertEqual(state.dom(first), ["int"])
+        self.assertEqual(state.dom(second), ["float", "int"])
+        self.assertEqual(other.dom(first), ["float", "int"])
+        state.set("T:%a0", proof.base[second])
+        proof.transfer(state, box, "entry", False)
+        self.assertEqual(state.dom("U:" + result), ["None", "float", "int"])
+        self.assertEqual(state.dom("T:%a0"), ["float", "int"])
+        self.assertEqual(proof.base[first], ["float", "int"])
+        self.assertEqual(proof.base[second], ["float", "int"])
+        # An untracked machine type never replaces an earlier native domain,
+        # including when its empty result has already been cached.
+        proof.typebase(first, "%ptr")
+        proof.typebase(first, "%ptr")
+        self.assertEqual(proof.base[first], ["float", "int"])
+
     def test_switch_cases_and_default_refine_union_members(self):
         for typ, members in ((U, ("int", "float")), (W, ("int", "float", "str"))):
             for wrong in (False, True):

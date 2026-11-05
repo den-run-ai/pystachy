@@ -1,4 +1,4 @@
-# GC compiler weights for the full identity and JIT halves (tests/verify.sh).
+# GC compiler weights for the full identity halves (tests/verify.sh).
 # Each weight is stressed native compiler CPU time in thousandths of the median
 # corpus program; placement and order change, coverage and stress intervals do not.
 # Initial profile: all 4144 cases at 99f3451e0baacbb04cd7834314710b5fb64290cb,
