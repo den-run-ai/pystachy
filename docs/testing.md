@@ -537,29 +537,68 @@ The combined report's duration is bootstrap work plus the longest consumer group
 `ci.runner_seconds` measures aggregate work. Queueing, setup and other steps add to elapsed
 workflow time. The 15-minute limit applies to each verification job.
 
+GC artifacts retain per-case wall times in `verify/gc-ir-N-times.log` (both compiler
+invocations and their comparison), with runtime and syntax checks in separate
+`gc-ir-N-runtime-times.log` and `gc-ir-N-check-times.log` files. Execution samples
+and remaining cases have `gc-jit-N-sample-times.log` and `gc-jit-N-suite-times.log`,
+and corresponding `gc-aot` files. Each line is `MILLISECONDS CASE`; timings require
+GNU `date` and do not affect the comparison or test verdict.
+Identity timings are appended as cases finish, retaining completed work if a later
+case reaches the job limit. Their row order can differ between runs.
+
+The full GC identity halves use `tests/gc_case_weights.txt` when present, falling
+back to the ordinary case weights otherwise. GC weights measure stressed compiler
+work, which can be large for imports whose programs run quickly. JIT halves and
+AOT thirds use ordinary JIT/AOT weights for execution and its deterministic
+compiler-stressed sample. Changing the identity weights therefore leaves the
+execution partition, order and sample unchanged. Each partition covers the full
+corpus; the aggregate requires both identity halves and every execution shard.
+The PR profile retains its sparse selection. Weight changes affect placement and
+order, never coverage or stress intervals.
+The GC table's `reserve W0 W1` row reserves the JIT work already assigned to each
+combined job before balancing identity cases. Its values use the table's weight
+units; a missing table or reserve row means zero reserve. The initial 20,736,500-unit
+reserve for job 0 comes from the unchanged JIT phases in full x86-64 run
+`41959892750`, normalized by each runner's identity time per weight. This accounts
+for job 0's heavier execution work without assigning the runner's speed difference
+to the workload. The table records the calculation and compiler revision.
+The initial GC table profiles all 4,144 cases at `99f3451e` with the native compiler,
+collection every 1,000 allocations and `PYSTACHY_IRCHECK=1`. It uses CPU time from
+one stressed compilation per case, scaled to the median corpus program; its header
+records the compiler and profile hashes. These baseline costs guide placement;
+they do not measure combined CI job duration. JIT samples also enable the IR
+checker through `tests/run.sh`'s default. Subsequent refreshes use the oracle's
+measured wall times, including both unstressed and stressed compilations and their
+comparison.
+Refresh GC weights with `tools/case_weights.py -o tests/gc_case_weights.txt` and
+both halves' `gc-ir-N-times.log` files from one completed run; runtime, syntax and
+execution timings describe different work and should not be mixed into that table.
+Recalibrate and record the reserve after refreshing: `tools/case_weights.py` writes
+case weights only, so it does not carry a reserve into potentially different units.
+Check combined job times as well as identity balance before adopting the refresh.
+
 GC self-compilation collects every 5,000 allocations and has a separate ten-minute bound.
 At the former interval of 1,000, it spent 23 minutes on 15,543 full-heap collections;
 the wider interval still exercises thousands of collections without dominating CI.
 The compiler collecting every 1,000 allocations is checked by identity, once a run: `gc-ir-0`
 and `gc-ir-1` (in `gc-jit-0` and `gc-jit-1`) compile the cases of two disjoint halves of the
-corpus (`shard_cases`, balanced as below) with it and with stage 2 unstressed, through
+corpus (`gc_shard_cases`, balanced as above) with it and with stage 2 unstressed, through
 `tools/irsame.sh` (`rt` for `rtmode_*` cases, with the IR check on), and require the same IR byte
 for byte, the same messages and the same exit status for every case, the same IR of `runtime.py`,
 and the same `check` output and status for every `syntax_*` case (`tools/irsame.sh --check`). The
 GC suites then collect at **every program allocation** (`PYSTACHY_GC_STRESS_PROGRAM=1`) and run
 every case of the corpus once in each mode, rejection and syntax checks included, compiled by
-stage 2 unstressed: JIT in the same two halves, AOT in three thirds. Each suite used to compile
-every case with the stressed compiler, in each mode; where the IR is the same, the LLVM tools
+stage 2 unstressed: JIT in two halves balanced for execution, AOT in three thirds. Each suite used to
+compile every case with the stressed compiler, in each mode; where the IR is the same, the LLVM tools
 build the same program from it, so the second compilation only repeated what one identity check
 shows, at about twelve times the unstressed frontend's cost (on one case in ten of the corpus, on
 one core, the stressed frontend took 62% of a GC JIT run and 28% of a GC AOT run). One case in 16
 of each job's shard still runs end to end with the compiler stressed too: the cases at positions
-4 (JIT) or 12 (AOT) modulo 16 of the shard as `shard_cases` lists it, heaviest first. Drawn from
-the job's own shard, the sample lies in it whatever `tests/case_weights.txt` does to the shards,
-and is the same on every runner. Taken in weight order, it holds about a sixteenth of the shard's
-weight (0.94 to 1.03 of it at offsets 4 to 12 with the committed weights, where every 16th case in
-C order held 0.68 to 1.47), so a job's time does not depend on which heavy cases its sample
-draws; offset 0 would put each shard's heaviest case in every sample, and the two modes' offsets
+4 (JIT) or 12 (AOT) modulo 16 of the shard in weight order, heaviest first. Drawn from
+the job's own shard, the sample stays in it when the execution weights change and is
+the same on every runner. Its positions do not guarantee a proportional share of
+work; the per-case timing logs show its actual cost. Offset 0 would put each shard's
+heaviest case in every sample, and the two modes' offsets
 differ, so that they stress different cases where their shards' orders agree. The sample runs
 first, in a runtime cache of the GC steps' own (`build/verify/gc-cache`, which each run starts
 empty), so the stressed compiler builds the runtime that the job's GC tests use, and the driver's

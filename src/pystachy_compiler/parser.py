@@ -1668,6 +1668,9 @@ class Parser:
     def comparison(self) -> Node:
         line = self.line()
         e = self.binary(0)
+        k = self.peek()
+        if k not in CMPOPS and k != "is" and not (k == "not" and self.ahead() == "in"):
+            return e
         ops: list[str] = []
         kids = [e]
         while True:
@@ -2352,6 +2355,8 @@ class Parser:
         # decode the backslash escapes of a string literal's source text. CPython's error for an
         # invalid one gives its position in what CPython decodes, where a non-ASCII character is
         # a \U escape of 10 characters (and a backslash before one is \u005c)
+        if "\\" not in s:
+            return s
         out: list[str] = []
         i = 0
         at = 0  # (CPython's position of s[i])

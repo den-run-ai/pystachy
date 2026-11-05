@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src.pystachy_compiler.gen import Gen
-from src.pystachy_compiler import ircheck
+from src.pystachy_compiler import ircheck, union_proof
 from src.pystachy_compiler.ir import Blk, ClassInfo, FnInfo, IFn, Ins, NOLABELS, Val
 from src.pystachy_compiler.syntax import Node
 from src.pystachy_compiler.specs import IROPS
@@ -327,6 +327,91 @@ if "union.raw" in IROPS:
 
 
 class UnionProofTests(unittest.TestCase):
+    def test_repeated_declarations_parse_each_type_once_per_proof(self):
+        c = Case("repeated_global_domains")
+        c.op("mem.load", U, a=[("@g.g0", "*" + U)])
+        c.op("mem.load", "opt[" + U + "]", a=[("@g.optional", "*opt[" + U + "]")])
+        c.guard()
+        c.block("hit")
+        c.payload()
+        c.finish_pair()
+        globals = {"g" + str(n): U for n in range(256)}
+        globals["optional"] = "opt[" + U + "]"
+        globals["unreferenced"] = "NeverRead"
+        with patch.object(union_proof, "umembers", wraps=union_proof.umembers) as parsed:
+            proof = UnionProof(c.fn, c.g.utags, globals=globals)
+            proof.run()
+            self.assertEqual(proof.bad, [])
+            self.assertLessEqual(parsed.call_count, 2)
+        self.assertIn("NeverRead", proof.full)
+        self.assertEqual(proof.base["MU:@g.optional"], ["None", "float", "int"])
+        # A new proof must use changed declarations, including newly added members.
+        globals["g0"] = W
+        fresh = UnionProof(c.fn, c.g.utags, globals=globals)
+        self.assertEqual(fresh.base["MU:@g.g0"], ["float", "int", "str"])
+        self.assertEqual(proof.base["MU:@g.g0"], ["float", "int"])
+
+    def test_shared_type_domains_survive_narrowing_and_optional_boxing(self):
+        c = Case("shared_global_domains", ["int"])
+        c.g.runtime("pys_ubox_opt")
+        c.op("mem.load", U, a=[("@g.first", "*" + U)])
+        c.op("mem.load", U, a=[("@g.second", "*" + U)])
+        result = c.op("rt", "%ptr", "ubox_opt", [("%a0", "int")])
+        box = c.b.code[-1]
+        c.ret()
+        proof = UnionProof(c.fn, c.g.utags, globals={"first": U, "second": U})
+        first, second = "MU:@g.first", "MU:@g.second"
+        state = UnionState(proof.base, proof.full)
+        other = state.clone()
+        state.narrow(first, ["int"])
+        self.assertEqual(state.dom(first), ["int"])
+        self.assertEqual(state.dom(second), ["float", "int"])
+        self.assertEqual(other.dom(first), ["float", "int"])
+        state.set("T:%a0", proof.base[second])
+        proof.transfer(state, box, "entry", False)
+        self.assertEqual(state.dom("U:" + result), ["None", "float", "int"])
+        self.assertEqual(state.dom("T:%a0"), ["float", "int"])
+        self.assertEqual(proof.base[first], ["float", "int"])
+        self.assertEqual(proof.base[second], ["float", "int"])
+        # An untracked machine type never replaces an earlier native domain,
+        # including when its empty result has already been cached.
+        proof.typebase(first, "%ptr")
+        proof.typebase(first, "%ptr")
+        self.assertEqual(proof.base[first], ["float", "int"])
+
+    def test_global_storage_seeding_uses_all_operands_without_losing_types(self):
+        for tag in ("int", "float"):
+            with self.subTest(tag=tag):
+                c = Case("referenced_global_storage", ["%ptr"])
+                c.g.runtime("pys_ubox")
+                c.op("br", b=["late"])
+                c.block("unreachable")
+                c.op("mach.load", "int", a=[("@d.unreachable", "%ptr")])
+                c.ret()
+                c.block("late")
+                c.op("phi", "%ptr", a=[("@d.phi", "%ptr")], b=["entry"])
+                c.op("icall", "None", a=[("%a0", "%ptr")])
+                for address in ("@g.named", "@d.hidden"):
+                    value = c.op("mach.load", "int", a=[(address, "%ptr")])
+                    c.op("rt", "%ptr", "ubox", [(str(c.g.utags[tag]), "int"), (value, "*T")])
+                c.ret()
+                globals = {"named": "float", "named_extra": "str", "unused": "NeverRead"}
+                declarations = [Val("@d.unused" + str(n), U) for n in range(256)]
+                # Hidden declarations retain their original override order.
+                declarations.extend([Val("@g.named", "int"), Val("@d.hidden", "int"),
+                                     Val("@d.unreachable", "bool"), Val("@d.phi", "int")])
+                proof = UnionProof(c.fn, c.g.utags, globals=globals, declarations=declarations)
+                self.assertEqual(proof.memtypes, {"@g.named": "int", "@d.hidden": "int",
+                                                 "@d.unreachable": "bool", "@d.phi": "int"})
+                self.assertIn("NeverRead", proof.full)
+                proof.run()
+                if tag == "int":
+                    self.assertEqual(proof.bad, [])
+                else:
+                    self.assertTrue(proof.bad)
+                    self.assertTrue(all("ubox needs matching tag and payload provenance" in error
+                                        for error in proof.bad))
+
     def test_switch_cases_and_default_refine_union_members(self):
         for typ, members in ((U, ("int", "float")), (W, ("int", "float", "str"))):
             for wrong in (False, True):

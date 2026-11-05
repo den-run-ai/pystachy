@@ -128,10 +128,11 @@ def numeric_return_names(body: list[Node]) -> dict[str, bool]:
 
 def target_names(t: Node, out: dict[str, bool]) -> None:
     # the names target t binds, into a dict (names_in)
-    ns: list[str] = []
-    names_in(t, ns)
-    for nm in ns:
-        out[nm] = True
+    if t.kind == "name":
+        out[t.s] = True
+    elif t.kind == "tuple" or t.kind == "list" or t.kind == "starred":
+        for k in t.kids:
+            target_names(k, out)
 
 
 def walrus_names(e: Node, out: dict[str, bool]) -> None:
@@ -749,15 +750,12 @@ def targets(st: Node, out: dict[str, bool], walrus: bool = True) -> None:
     # the names statement st assigns itself (not in its blocks), with walrus those its := bind
     k = st.kind
     if k == "assign" or k == "annassign" or k == "augassign" or k == "for" or k == "compfor" or k == "with":
-        names: list[str] = []
         if k == "with":
             for it in st.kids[:-1]:
                 if len(it.kids) == 2:
-                    names_in(it.kids[1], names)
+                    target_names(it.kids[1], out)
         for i in range(len(st.kids) - 1 if k == "assign" else 0 if k == "with" else 1):
-            names_in(st.kids[i], names)
-        for nm in names:
-            out[nm] = True
+            target_names(st.kids[i], out)
     if walrus:
         stmt_walrus(st, out)
 

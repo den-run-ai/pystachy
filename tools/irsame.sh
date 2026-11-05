@@ -22,6 +22,9 @@
 # With --check, they run `check` (which only parses) instead, as tests/run.sh runs it (no NAME.path,
 # no IR), and must print the same messages with the same exit status (tests/verify.sh's tests-cpython,
 # on the syntax_*.py cases).
+# PYSTACHY_CASE_TIMES=FILE appends "MILLISECONDS CASE" as each worker finishes, timing both
+# compilers and the comparison together. Completed timings survive interruption; GNU date's %N
+# is required, as in tests/run.sh. The report itself stays in input order.
 # usage: tools/irsame.sh [--check] OLD NEW [FILE...]   (compiler commands, e.g. build/ref/pystachy
 #        ./pystachy or "python3 pystachy.py"; make irsame REF=<commit> runs it against that commit's compiler)
 cd "$(dirname "$0")/.." || exit 1
@@ -117,6 +120,12 @@ if [ $# = 0 ]; then
 fi
 JOBS=${PYSTACHY_JOBS:-$( (nproc || getconf _NPROCESSORS_ONLN) 2> /dev/null)}
 case $JOBS in '' | *[!0-9]* | 0) JOBS=1 ;; esac
+TIMES=${PYSTACHY_CASE_TIMES:-}
+if [ -n "$TIMES" ]; then
+  case $(date +%s%N) in
+    '' | *[!0-9]*) echo "tools/irsame.sh: no case times (PYSTACHY_CASE_TIMES needs date +%s%N, GNU date's)" >&2; TIMES= ;;
+  esac
+fi
 SHOW=3
 T=$(mktemp -d "${TMPDIR:-/tmp}/pystachy-irsame.XXXXXX") || exit 1
 trap 'rm -rf "$T"' EXIT
@@ -170,7 +179,12 @@ worker() {
   i=0
   for f; do
     i=$((i + 1))
-    if mkdir "$T/$i" 2> /dev/null; then same "$f" "$T/$i"; fi
+    if [ ! -d "$T/$i" ] && mkdir "$T/$i" 2> /dev/null; then
+      [ -z "$TIMES" ] || t0=$(date +%s%N)
+      same "$f" "$T/$i"
+      # One append per completed case; workers never rewrite another worker's row.
+      [ -z "$TIMES" ] || printf '%s %s\n' "$((($(date +%s%N) - t0) / 1000000))" "$f" >> "$TIMES"
+    fi
   done
 }
 k=1

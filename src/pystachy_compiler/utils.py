@@ -846,15 +846,18 @@ class ListLayout:
         self.dynamic_type: str = "pys_dyntype_list" if self.element == "dyn" else ("pys_dyntype_biglist" if self.wide else "pys_dyntype_intlist") if self.element == "int" else ""
 
 
-def list_write_error(i: Ins, promoting: bool) -> str:
+def list_write_error(i: Ins, promoting: bool, sig: list[str] | None = None) -> str:
     # One contract for construction and post-pass verification. Packed operands
     # retain their semantic item (*int versus *dyn), although both lower to i64.
+    # A Gen's declared RtFn already owns the parsed RUNTIME signature. Borrow it
+    # for repeated checks; standalone callers still read the authoritative entry.
     if i.op != "rt" or i.s not in LIST_WRITES:
         return "expected a registered native list write"
-    sig = rtsig(i.s)
+    if sig is None:
+        sig = rtsig(i.s)
     if len(i.a) != len(sig) - 1 or i.t != sig[0] or len(i.r) != 0:
         return "native list write has invalid operands or results"
-    if i.x != "" or i.k != 0 or len(i.b) not in [0, 2]:
+    if i.x != "" or i.k != 0 or (len(i.b) != 0 and len(i.b) != 2):
         return "native list write has invalid metadata"
     t = i.a[0].t
     element = elem(t)
@@ -870,17 +873,18 @@ def list_write_error(i: Ins, promoting: bool) -> str:
             return "native list write needs a concrete list receiver"
     if depth != 0:
         return "native list write needs a concrete list receiver"
-    layout = ListLayout(t, promoting)
-    if layout.element == BIG or layout.element.startswith("%") or layout.element.startswith("*") or layout.element == "#":
+    if element == BIG or element.startswith("%") or element.startswith("*") or element == "#":
         return "native list write needs a semantic item type, not a machine representation"
     variant = LIST_WRITES[i.s]
-    if variant == "big" and not layout.wide:
+    if variant == "big" and not (element == "int" and promoting):
         return "big list write needs promoting list[int] storage"
-    if variant == "identity" and (layout.identity_kind == 0 or i.a[-1].v != str(layout.identity_kind)):
-        return "identity list write needs the receiver's numeric identity kind"
+    if variant == "identity":
+        identity = list_identity_kind(t)
+        if identity == 0 or i.a[-1].v != str(identity):
+            return "identity list write needs the receiver's numeric identity kind"
     for j in range(len(i.a)):
         want = sig[j + 1]
-        want = t if want == "S" else layout.slot if want == "*T" else want
+        want = t if want == "S" else "*" + element if want == "*T" else want
         if i.a[j].t != want:
             return f"native list write operand {j} needs {want}, got {i.a[j].t}"
     return ""
