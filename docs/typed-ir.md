@@ -460,7 +460,8 @@ Disable one with `PYSTACHY_OPT=-dictfuse`, several with a comma-separated list, 
 allocates a closed union's box without scanning its payload when lowering sees a
 literal program-wide tag for a native `int`, `float` or `bool`. Typed `ubox` operations,
 their tag/payload provenance checks and `unionslots` rewrites stay unchanged. Runtime
-tags, optional conversions, references and promoting-int boxes keep scanned storage.
+tags, optional conversions, references and boxes carrying a promoting integer's `Mpz`
+keep scanned storage.
 This does not add allocation-elision attributes or change object layouts. Disable it
 with `-atomicunion` or `-all`; tokens apply in order, so `-all,+atomicunion` enables
 this experiment alone. Enabled experiments are part of the runtime cache identity.
