@@ -5,6 +5,11 @@ vocabulary from UTF-8 text, encodes text as integer token IDs, and decodes those
 back to the original text. The vocabulary starts with all 256 byte values, so unseen
 Unicode text remains encodable. Training, encoding and decoding run natively.
 
+The [6 November measurements](results/README.md) show **4.3× faster training,
+2.9× encoding and 3.1× decoding** versus the original CPython kernels on the
+31.2 KB corpus. That report retains raw samples, memory/startup measurements and
+the separate program-cache experiment; speedups describe that measured workload.
+
 The implementation is Shantanu Jain's
 [pyperformance 1.14.0 byte-BPE benchmark](https://github.com/python/pyperformance/blob/2ab96f98f98274d07ebfdfd66e4f021723179706/pyperformance/data-files/benchmarks/bm_bpe_tokeniser/run_benchmark.py),
 derived from OpenAI's educational tiktoken code. It is a useful companion to

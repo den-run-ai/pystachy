@@ -1,0 +1,281 @@
+{
+  "passed": true,
+  "cases": 9,
+  "mode_checks": 27,
+  "records": [
+    {
+      "case": "default-unicode",
+      "mode": "cpython",
+      "status": 0,
+      "stdout": "Vocabulary: 260\nUTF-8 bytes: 69\nTokens: [72, 101, 108, 108, 111, 44, 32, 83, 101, 98, 97, 115, 116, 105, 256, 33, 32, 66, 121, 116, 101, 32, 66, 80, 69, 32, 112, 114, 101, 115, 101, 114, 118, 101, 115, 32, 230, 151, 165, 230, 156, 172, 232, 170, 158, 44, 32, 240, 159, 166, 137, 32, 256, 100, 9, 119, 104, 105, 116, 101, 115, 112, 97, 99, 101, 46, 10]\nDecoded: 'Hello, Sebastian! Byte BPE preserves \u65e5\u672c\u8a9e, \ud83e\udd89 and\\twhitespace.\\n'\nExact round trip: True\n",
+      "stderr": ""
+    },
+    {
+      "case": "default-unicode",
+      "mode": "jit",
+      "status": 0,
+      "stdout": "Vocabulary: 260\nUTF-8 bytes: 69\nTokens: [72, 101, 108, 108, 111, 44, 32, 83, 101, 98, 97, 115, 116, 105, 256, 33, 32, 66, 121, 116, 101, 32, 66, 80, 69, 32, 112, 114, 101, 115, 101, 114, 118, 101, 115, 32, 230, 151, 165, 230, 156, 172, 232, 170, 158, 44, 32, 240, 159, 166, 137, 32, 256, 100, 9, 119, 104, 105, 116, 101, 115, 112, 97, 99, 101, 46, 10]\nDecoded: 'Hello, Sebastian! Byte BPE preserves \u65e5\u672c\u8a9e, \ud83e\udd89 and\\twhitespace.\\n'\nExact round trip: True\n",
+      "stderr": ""
+    },
+    {
+      "case": "default-unicode",
+      "mode": "aot",
+      "status": 0,
+      "stdout": "Vocabulary: 260\nUTF-8 bytes: 69\nTokens: [72, 101, 108, 108, 111, 44, 32, 83, 101, 98, 97, 115, 116, 105, 256, 33, 32, 66, 121, 116, 101, 32, 66, 80, 69, 32, 112, 114, 101, 115, 101, 114, 118, 101, 115, 32, 230, 151, 165, 230, 156, 172, 232, 170, 158, 44, 32, 240, 159, 166, 137, 32, 256, 100, 9, 119, 104, 105, 116, 101, 115, 112, 97, 99, 101, 46, 10]\nDecoded: 'Hello, Sebastian! Byte BPE preserves \u65e5\u672c\u8a9e, \ud83e\udd89 and\\twhitespace.\\n'\nExact round trip: True\n",
+      "stderr": ""
+    },
+    {
+      "case": "empty-corpus",
+      "mode": "cpython",
+      "status": 0,
+      "stdout": "Vocabulary: 256\nUTF-8 bytes: 0\nTokens: []\nDecoded: ''\nExact round trip: True\n",
+      "stderr": ""
+    },
+    {
+      "case": "empty-corpus",
+      "mode": "jit",
+      "status": 0,
+      "stdout": "Vocabulary: 256\nUTF-8 bytes: 0\nTokens: []\nDecoded: ''\nExact round trip: True\n",
+      "stderr": ""
+    },
+    {
+      "case": "empty-corpus",
+      "mode": "aot",
+      "status": 0,
+      "stdout": "Vocabulary: 256\nUTF-8 bytes: 0\nTokens: []\nDecoded: ''\nExact round trip: True\n",
+      "stderr": ""
+    },
+    {
+      "case": "explicit-whitespace",
+      "mode": "cpython",
+      "status": 0,
+      "stdout": "Vocabulary: 260\nUTF-8 bytes: 27\nTokens: [32, 9, 230, 151, 165, 230, 156, 172, 232, 170, 158, 13, 10, 195, 134, 32, 195, 137, 32, 196, 160, 32, 240, 159, 166, 137, 32]\nDecoded: ' \\t\u65e5\u672c\u8a9e\\r\\n\u00c6 \u00c9 \u0120 \ud83e\udd89 '\nExact round trip: True\n",
+      "stderr": ""
+    },
+    {
+      "case": "explicit-whitespace",
+      "mode": "jit",
+      "status": 0,
+      "stdout": "Vocabulary: 260\nUTF-8 bytes: 27\nTokens: [32, 9, 230, 151, 165, 230, 156, 172, 232, 170, 158, 13, 10, 195, 134, 32, 195, 137, 32, 196, 160, 32, 240, 159, 166, 137, 32]\nDecoded: ' \\t\u65e5\u672c\u8a9e\\r\\n\u00c6 \u00c9 \u0120 \ud83e\udd89 '\nExact round trip: True\n",
+      "stderr": ""
+    },
+    {
+      "case": "explicit-whitespace",
+      "mode": "aot",
+      "status": 0,
+      "stdout": "Vocabulary: 260\nUTF-8 bytes: 27\nTokens: [32, 9, 230, 151, 165, 230, 156, 172, 232, 170, 158, 13, 10, 195, 134, 32, 195, 137, 32, 196, 160, 32, 240, 159, 166, 137, 32]\nDecoded: ' \\t\u65e5\u672c\u8a9e\\r\\n\u00c6 \u00c9 \u0120 \ud83e\udd89 '\nExact round trip: True\n",
+      "stderr": ""
+    },
+    {
+      "case": "usage",
+      "mode": "cpython",
+      "status": 2,
+      "stdout": "",
+      "stderr": "usage: byte-bpe CORPUS [VOCAB_SIZE [TEXT]]\n"
+    },
+    {
+      "case": "usage",
+      "mode": "jit",
+      "status": 2,
+      "stdout": "",
+      "stderr": "usage: byte-bpe CORPUS [VOCAB_SIZE [TEXT]]\n"
+    },
+    {
+      "case": "usage",
+      "mode": "aot",
+      "status": 2,
+      "stdout": "",
+      "stderr": "usage: byte-bpe CORPUS [VOCAB_SIZE [TEXT]]\n"
+    },
+    {
+      "case": "too-many",
+      "mode": "cpython",
+      "status": 2,
+      "stdout": "",
+      "stderr": "usage: byte-bpe CORPUS [VOCAB_SIZE [TEXT]]\n"
+    },
+    {
+      "case": "too-many",
+      "mode": "jit",
+      "status": 2,
+      "stdout": "",
+      "stderr": "usage: byte-bpe CORPUS [VOCAB_SIZE [TEXT]]\n"
+    },
+    {
+      "case": "too-many",
+      "mode": "aot",
+      "status": 2,
+      "stdout": "",
+      "stderr": "usage: byte-bpe CORPUS [VOCAB_SIZE [TEXT]]\n"
+    },
+    {
+      "case": "small-vocab",
+      "mode": "cpython",
+      "status": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/workspace/scratch/f9842d382b6c/pystachy/examples/byte_bpe/demo.py\", line 32, in <module>\n    sys.exit(main())\n             ~~~~^^\n  File \"/workspace/scratch/f9842d382b6c/pystachy/examples/byte_bpe/demo.py\", line 19, in main\n    tokenizer = SimpleBytePairEncoding.train(training_data, vocab_size, BPE_PATTERN)\n  File \"/workspace/scratch/f9842d382b6c/pystachy/bench/pyperformance/bpe_tokeniser.py\", line 53, in train\n    mergeable_ranks = bpe_train(data=training_data, vocab_size=vocab_size, pat_str=pat_str)\n  File \"/workspace/scratch/f9842d382b6c/pystachy/bench/pyperformance/bpe_tokeniser.py\", line 86, in bpe_train\n    raise ValueError(\"vocab_size must be at least 256, so we can encode all bytes\")\nValueError: vocab_size must be at least 256, so we can encode all bytes\n"
+    },
+    {
+      "case": "small-vocab",
+      "mode": "jit",
+      "status": 1,
+      "stdout": "",
+      "stderr": "ValueError: vocab_size must be at least 256, so we can encode all bytes\n"
+    },
+    {
+      "case": "small-vocab",
+      "mode": "aot",
+      "status": 1,
+      "stdout": "",
+      "stderr": "ValueError: vocab_size must be at least 256, so we can encode all bytes\n"
+    },
+    {
+      "case": "exhausted",
+      "mode": "cpython",
+      "status": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/workspace/scratch/f9842d382b6c/pystachy/examples/byte_bpe/demo.py\", line 32, in <module>\n    sys.exit(main())\n             ~~~~^^\n  File \"/workspace/scratch/f9842d382b6c/pystachy/examples/byte_bpe/demo.py\", line 19, in main\n    tokenizer = SimpleBytePairEncoding.train(training_data, vocab_size, BPE_PATTERN)\n  File \"/workspace/scratch/f9842d382b6c/pystachy/bench/pyperformance/bpe_tokeniser.py\", line 53, in train\n    mergeable_ranks = bpe_train(data=training_data, vocab_size=vocab_size, pat_str=pat_str)\n  File \"/workspace/scratch/f9842d382b6c/pystachy/bench/pyperformance/bpe_tokeniser.py\", line 110, in bpe_train\n    most_common_pair = max(stats, key=lambda x: stats[x])\nValueError: max() iterable argument is empty\n"
+    },
+    {
+      "case": "exhausted",
+      "mode": "jit",
+      "status": 1,
+      "stdout": "",
+      "stderr": "ValueError: max() iterable argument is empty\n"
+    },
+    {
+      "case": "exhausted",
+      "mode": "aot",
+      "status": 1,
+      "stdout": "",
+      "stderr": "ValueError: max() iterable argument is empty\n"
+    },
+    {
+      "case": "bad-vocab",
+      "mode": "cpython",
+      "status": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/workspace/scratch/f9842d382b6c/pystachy/examples/byte_bpe/demo.py\", line 32, in <module>\n    sys.exit(main())\n             ~~~~^^\n  File \"/workspace/scratch/f9842d382b6c/pystachy/examples/byte_bpe/demo.py\", line 13, in main\n    vocab_size = int(sys.argv[2])\nValueError: invalid literal for int() with base 10: 'oops'\n"
+    },
+    {
+      "case": "bad-vocab",
+      "mode": "jit",
+      "status": 1,
+      "stdout": "",
+      "stderr": "ValueError: invalid literal for int() with base 10: 'oops'\n"
+    },
+    {
+      "case": "bad-vocab",
+      "mode": "aot",
+      "status": 1,
+      "stdout": "",
+      "stderr": "ValueError: invalid literal for int() with base 10: 'oops'\n"
+    },
+    {
+      "case": "missing-file",
+      "mode": "cpython",
+      "status": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/workspace/scratch/f9842d382b6c/pystachy/examples/byte_bpe/demo.py\", line 32, in <module>\n    sys.exit(main())\n             ~~~~^^\n  File \"/workspace/scratch/f9842d382b6c/pystachy/examples/byte_bpe/demo.py\", line 17, in main\n    with open(sys.argv[1], \"r\", encoding=\"utf-8\") as stream:\n         ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nFileNotFoundError: [Errno 2] No such file or directory: '/tmp/bpe-cli-1kb543e_/absent'\n"
+    },
+    {
+      "case": "missing-file",
+      "mode": "jit",
+      "status": 1,
+      "stdout": "",
+      "stderr": "FileNotFoundError: [Errno 2] No such file or directory: '/tmp/bpe-cli-1kb543e_/absent'\n"
+    },
+    {
+      "case": "missing-file",
+      "mode": "aot",
+      "status": 1,
+      "stdout": "",
+      "stderr": "FileNotFoundError: [Errno 2] No such file or directory: '/tmp/bpe-cli-1kb543e_/absent'\n"
+    }
+  ],
+  "compiler_source_revision": "f7103067545b43cdcd8ce20dc66b1571425b3a8d",
+  "compiler_binary_sha256": "3b59b4e875a89f15777395f5993ccf2e6d51e934dbc7a4e45228d622c7f1cff7",
+  "source_revision": "72f5291204afac933597cbe42c897a902cb97e2a",
+  "demo_source_sha256": "29edcd9b25c507a0380cdf21323aa5d71b1cd22fa383f617d273b8d9e00eb5da",
+  "kernel_source_sha256": "9775aff77bb52efc6fb9828517ead0584552b1cba5afe73ef4d93e13972ca7de",
+  "corpora": {
+    "small": "banana bandana banana\n",
+    "empty": ""
+  },
+  "cases_inputs": [
+    [
+      "default-unicode",
+      [
+        "small",
+        "260"
+      ],
+      0
+    ],
+    [
+      "empty-corpus",
+      [
+        "empty",
+        "256",
+        ""
+      ],
+      0
+    ],
+    [
+      "explicit-whitespace",
+      [
+        "small",
+        "260",
+        " \t\u65e5\u672c\u8a9e\r\n\u00c6 \u00c9 \u0120 \ud83e\udd89 "
+      ],
+      0
+    ],
+    [
+      "usage",
+      [],
+      2
+    ],
+    [
+      "too-many",
+      [
+        "small",
+        "256",
+        "x",
+        "extra"
+      ],
+      2
+    ],
+    [
+      "small-vocab",
+      [
+        "small",
+        "255"
+      ],
+      1
+    ],
+    [
+      "exhausted",
+      [
+        "empty",
+        "257"
+      ],
+      1
+    ],
+    [
+      "bad-vocab",
+      [
+        "small",
+        "oops"
+      ],
+      1
+    ],
+    [
+      "missing-file",
+      [
+        "absent",
+        "256"
+      ],
+      1
+    ]
+  ],
+  "reproduction": "Create corpus files from corpora, substitute their paths in cases_inputs, and invoke examples/byte_bpe/demo.py under CPython, native JIT and its fresh AOT binary. Compare stdout and exit status across modes; require empty stderr on successes. Errors retain runtime-specific traceback formatting."
+}
