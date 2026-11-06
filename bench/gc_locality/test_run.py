@@ -10,6 +10,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 HERE = Path(__file__).resolve().parent
 SPEC = importlib.util.spec_from_file_location("gc_locality_run", HERE / "run.py")
@@ -22,6 +23,24 @@ WORK = "gc work: root words 21; heap words 12345678901; scanned objects 7; range
 
 
 class DiagnosticTests(unittest.TestCase):
+    def test_native_and_optional_gc_environment_is_explicit(self):
+        inherited = {"PYSTACHY_GC": "off", "GC_DONT_GC": "1", "GC_INITIAL_HEAP_SIZE": "999999999",
+                     "LD_PRELOAD": "bad", "PYTHONPATH": "bad", "PYTHONHOME": "bad", "PATH": "/bin"}
+        with patch.dict(os.environ, inherited, clear=True):
+            self.assertEqual(RUN.environment({"GC_INITIAL_HEAP_SIZE": "1048576"}),
+                             {"PATH": "/bin", "GC_INITIAL_HEAP_SIZE": "1048576"})
+
+    def test_changed_validated_executable_is_rejected_before_measurement(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            executable = Path(tmp, "program")
+            executable.write_bytes(b"original executable")
+            expected = RUN.digest(executable)
+            variant = {"name": "a", "argv": [str(executable)], "validated_executable_sha256": expected}
+            self.assertEqual(RUN.describe(variant, {})["executable_sha256"], expected)
+            executable.write_bytes(b"replaced executable")
+            with self.assertRaisesRegex(ValueError, "differs from validated build"):
+                RUN.describe(variant, {})
+
     def test_address_space_limit_requires_a_positive_integer(self):
         variant = {"name": "a", "argv": [sys.executable]}
         for limit in (0, -1, True, "2048", 1.5, None):

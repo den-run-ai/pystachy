@@ -49,7 +49,7 @@ def environment(extra):
     # Explicit config values override this sanitized environment. In particular,
     # inherited stress/GC/cache/optimization settings cannot pollute a comparison.
     base = {k: v for k, v in os.environ.items()
-            if not k.startswith("PYSTACHY_") and k not in ("LD_PRELOAD", "PYTHONPATH", "PYTHONHOME")}
+            if not k.startswith(("PYSTACHY_", "GC_")) and k not in ("LD_PRELOAD", "PYTHONPATH", "PYTHONHOME")}
     base.update(extra)
     return base
 
@@ -72,12 +72,16 @@ def describe(variant, common):
     if resolved is None:
         raise FileNotFoundError(f"cannot resolve {exe!r} in variant {variant['name']!r}'s PATH")
     candidate = Path(resolved)
+    actual_hash = digest(candidate)
+    expected_hash = variant.get("validated_executable_sha256")
+    if expected_hash is not None and actual_hash != expected_hash:
+        raise ValueError(f"{variant['name']}: executable differs from validated build")
     files = {}
     for name in common.get("inputs", []) + variant.get("inputs", []):
         path = Path(cwd, name).resolve()
         files[str(path)] = digest(path)
     return dict(variant, cwd=cwd, env=env, address_space_mib=limit, inputs_sha256=files,
-                executable_path=str(candidate.resolve()), executable_sha256=digest(candidate),
+                executable_path=str(candidate.resolve()), executable_sha256=actual_hash,
                 checkout=git_info(cwd))
 
 

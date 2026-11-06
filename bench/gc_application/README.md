@@ -24,7 +24,7 @@ creates application-level survival without artificial reachability or forced col
 
 `repair_traces.py` uses the existing `ports/json_repair` adaptation of json_repair
 0.64.1, upstream commit `ace9b23cb7fc6757775d5fafbfaaa9a88363a573` (MIT; see the
-[port README](../../ports/json_repair/README.md) and its upstream notices). It repairs
+[port notes](../../ports/json_repair/PORT.md) and its upstream notices). It repairs
 each trace to objects and serializes normalized JSON. It consumes ten mixed trace
 features from `bench/json_repair/bench.py`: valid JSON, trailing commas, bare keys,
 single quotes, fenced text, missing commas, escaped/raw code, nested JSON text and

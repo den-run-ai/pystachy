@@ -48,7 +48,9 @@ def main() -> None:
             total += len(encoded)
     if output != expected or total != rounds * per_round:
         raise ValueError("normalized records changed")
-    print("outputs", json.dumps(output, ensure_ascii=True))
+    print("outputs")
+    for encoded in output:
+        print(encoded)
     print("records", rounds * len(sources))
     print("normalized_chars", total)
 
