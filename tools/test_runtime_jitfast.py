@@ -5,10 +5,11 @@ IR: the 136-byte cutoff, the size class's free list in pys_fl, the complemented 
 call. The test compiles the module that lower_module.jit_alloc makes of a small program (JITFAST in place
 of pys_alloc's and pys_new's declarations) beside a harness built from runtime.c's own gc_alloc,
 cls() and size classes. For every size up to 300 bytes, with full and with empty free lists, it
-checks that JITFAST returns the slot gc_alloc returns, from cls()'s list, whose slots have room for
-the size, or calls the slow path with the same size and kind, and that it leaves the same lists
-behind. It also checks that jit_alloc declares pys_gc_slow once when the program declares it
-already. The negative control shifts JITFAST's class by one and expects the comparison to fail.
+checks that JITFAST returns the slot gc_alloc returns, from cls()'s scanned or atomic list, whose
+slots have room for the size, or calls the slow path with the same size and kind, and that it
+leaves the same lists behind. It also checks that jit_alloc declares pys_gc_slow once when the
+program declares it already. Negative controls shift JITFAST's class or restore scanned scalar
+storage, and expect the comparison to fail.
 """
 import os
 from pathlib import Path
@@ -75,12 +76,12 @@ int main(void) {
     for (I n = 0; n <= 300; n++)
       for (int f = 0; f < 2; f++) {
         lists(full);
-        void *want = gc_alloc(n, 0);
+        void *want = gc_alloc(n, f);   /* pys_new's proven scalar storage must stay atomic */
         I want_n = slow_n, want_how = slow_how;
         memcpy(lists_after, pys_fl, sizeof lists_after); memcpy(cells_after, cells, sizeof cells_after);
         if (full && n < 136) {         /* gc_alloc pops cls()'s list, whose slots hold n bytes and the slack byte */
           I k = (W *)want - &cells[0][0];
-          if (k < 0 || k % 2 || k / 2 >= NK || k / 2 != 2 * cls(n) || csize[cls(n)] < n + 1) bad("gc_alloc", "pops a list without room", n, full);
+          if (k < 0 || k % 2 || k / 2 >= NK || k / 2 != 2 * cls(n) + f || csize[cls(n)] < n + 1) bad("gc_alloc", "pops a list without room", n, full);
         }
         lists(full);
         void *got = jit[f](n);
@@ -140,6 +141,13 @@ class RuntimeJitFast(unittest.TestCase):
             result = self.compare()
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("returns another slot than gc_alloc", result.stdout)
+
+    def test_a_scanned_scalar_fast_path_is_detected(self):
+        # Same sizes and allocator, but the old kind accidentally scans numeric words.
+        with patch.object(lower_module, "JITFAST", lower_module.JITFAST.replace("ATOMIC", "0")):
+            result = self.compare()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("pys_new's JIT fast path", result.stdout)
 
     def test_a_program_that_declares_the_slow_path_keeps_one_declaration(self):
         ir = lower_module.jit_alloc(PROGRAM + "declare ptr @pys_gc_slow(i64, i64)\n")

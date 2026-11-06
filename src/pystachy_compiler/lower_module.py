@@ -25,7 +25,8 @@ define internal void @pys.obj.hooks() {
 
 # The JIT tier's allocations: runtime.c's fast path (gc_alloc), here in the program's module, since
 # the tier never inlines the shared runtime's code: a call of pys_alloc or pys_new pops a free list of
-# the runtime (pys_fl, a class's of 16 to 136 bytes, scanned) and calls pys_gc_slow for the rest.
+# the runtime (pys_fl, a class's of 16 to 136 bytes) and calls pys_gc_slow for the rest. ATOMIC is
+# 0 for pys_alloc and 1 for pys_new: lowering's ref_free proof also permits skipping their scan.
 # Both stay calls (noinline) through the cleanup pipeline, so that pys_new's calls, which allocelide
 # marks, stay visible as allocations, which instcombine deletes where nothing keeps their objects,
 # and so that the inliner weighs the calls as before (inlined at once, pys_alloc's fast path made a
@@ -40,7 +41,8 @@ f:
   %d = shl i64 %c, 1
   %e = add i64 %d, -4
   %a = icmp ult i64 %n, 8
-  %k = select i1 %a, i64 0, i64 %e
+  %k0 = select i1 %a, i64 0, i64 %e
+  %k = add i64 %k0, ATOMIC
   %h = getelementptr ptr, ptr @pys_fl, i64 %k
   %p = load ptr, ptr %h
   %z = icmp eq ptr %p, null
@@ -53,7 +55,7 @@ o:
   store i64 0, ptr %p
   ret ptr %p
 w:
-  %r = call ptr @pys_gc_slow(i64 %n, i64 0)
+  %r = call ptr @pys_gc_slow(i64 %n, i64 ATOMIC)
   ret ptr %r
 }
 """
@@ -67,8 +69,8 @@ def jit_alloc(ir: str) -> str:
         return ir
     fl = "" if "@pys_fl = " in ir else "@pys_fl = external global [80 x ptr]\n"
     slow = "" if "@pys_gc_slow(" in ir else "declare ptr @pys_gc_slow(i64, i64)\n"
-    ir = ir.replace("declare ptr @pys_alloc(i64)\n", "define internal ptr @pys_alloc(i64 %n) noinline" + JITFAST)
-    ir = ir.replace("declare ptr @pys_new(i64)\n", "define internal ptr @pys_new(i64 %n) noinline" + JITFAST)
+    ir = ir.replace("declare ptr @pys_alloc(i64)\n", "define internal ptr @pys_alloc(i64 %n) noinline" + JITFAST.replace("ATOMIC", "0"))
+    ir = ir.replace("declare ptr @pys_new(i64)\n", "define internal ptr @pys_new(i64 %n) noinline" + JITFAST.replace("ATOMIC", "1"))
     return ir + fl + slow
 
 

@@ -154,13 +154,51 @@ __attribute__((noinline)) static void exercise(void) {
   refs = NULL;
 }
 
+/* An integer whose bits equal an address is not a strong edge in a proven scalar
+   object. The same bytes in ordinary scanned storage are a conservative edge.
+   Keep the holder and weak handle rooted, then leave the allocation frame before
+   collecting so the target can be retained only by the holder's allocation kind. */
+__attribute__((noinline)) static void scalar_holder(I size, int atomic) {
+  refs = pys_list_new(1);
+  I *target = pys_alloc(16);
+  target[0] = 321;
+  I *holder = atomic ? pys_new(size) : pys_alloc(size);
+  if ((gc_seg(holder)->k & 1) != atomic) bad("scalar holder has the wrong allocation kind");
+  for (I i = 0; i < size; i++) if (((unsigned char *)holder)[i]) bad("new scalar storage is not zeroed");
+  holder[0] = (I)target;
+  strong = holder;
+  WeakRef *ref = pys_weakref_new(target, NULL);
+  pys_list_append(refs, (I)ref);
+}
+
+__attribute__((noinline)) static void check_scalar_holder(int atomic) {
+  I *target = pys_weakref_get((WeakRef *)refs->a[0]);
+  if (atomic ? target != NULL : !target || target[0] != 321)
+    bad("numeric address retained a target, or a scanned holder lost one");
+}
+
+static void scalars(void) {
+  I sizes[] = {8, 24, 128, 136, 200, 8199, 8200, 16384};
+  for (I j = 0; j < (I)(sizeof sizes / sizeof sizes[0]); j++)
+    for (int atomic = 0; atomic <= 1; atomic++) {
+      scalar_holder(sizes[j], atomic);
+      scrub_collect();
+      check_scalar_holder(atomic);
+      strong = NULL;
+      scrub_collect();
+      check_scalar_holder(1);
+      refs = NULL;
+    }
+}
+
 int main(void) {
   gc_init(__builtin_frame_address(0), roots, 4);
   exercise();
   fired();
   orphaned();
+  scalars();
   scrub_collect(); scrub_collect();
   if (registry_size() != 0) bad("registry not empty after dropping all references");
-  puts("weakrefprobe: live targets, dead cycles, large objects, reuse, registry pruning, tracked owners, callbacks and orphaned handles passed");
+  puts("weakrefprobe: live targets, dead cycles, large objects, reuse, registry pruning, tracked owners, callbacks, orphaned handles and atomic scalars passed");
   return 0;
 }

@@ -616,6 +616,8 @@ whose every word is a 64-bit `int`, a `float` or a `bool` by the compiler's type
 fields, inherited and hidden ones included, and a tuple's items; lowering's `alloc_call`). A
 class attribute that the class body declares takes a slot of its type in each object, so
 `ZERO: "Vector" = None` makes a vector of floats hold a reference.
+The same proof makes surviving `pys_new` allocations pointer-free: AOT and JIT use atomic
+storage, so collecting skips their numeric words and address-like integers retain no objects.
 Each call is marked `allockind("alloc,zeroed") allocsize(0)`, so LLVM deletes an allocation
 whose object nothing keeps, after inlining has shown that. Every other object and tuple comes
 from `pys_alloc`, as without `allocelide`: one that holds a reference, a promoting int's `Mpz`

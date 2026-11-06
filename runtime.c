@@ -707,8 +707,10 @@ __attribute__((malloc, returns_nonnull)) void *pys_alloc_atomic(I n) { return gc
    address of such a marked object dead while the program still reads its fields, and the
    collector would then not see what it holds. Once that optimization has run, an AOT build
    inlines pys_new, the fast path, into the calls that remain (driver.py's LATE_INLINE). It is
-   gc_alloc, whose slots come zeroed */
-__attribute__((noinline, malloc, returns_nonnull)) void *pys_new(I n) { return gc_alloc(n, 0); }
+   gc_alloc, whose slots come zeroed. The same reference-free proof makes its surviving objects
+   atomic: scanning their numeric words would only retain false pointers. The JIT's own fast
+   path (lower_module.py's JITFAST) uses the atomic free lists too */
+__attribute__((noinline, malloc, returns_nonnull)) void *pys_new(I n) { return gc_alloc(n, 1); }
 /* A box, a dynamic value's DynType and payload or a closed union's tag and payload: 16 bytes in a
    16-byte slot (the class for 15 bytes and the byte of slack). The slack keeps an object alive
    through a pointer one past its end, which code walking the object leaves; code reads a box's two
