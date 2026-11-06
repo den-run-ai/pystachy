@@ -24,7 +24,7 @@
 #     not executable, and through a symbolic link; a script run by CPython is opened as named, in the
 #     current directory, not looked for in PATH.
 # usage: tests/cache.sh [COMPILER]   (default ./pystachy; "python3 -m pystachy" tests the CPython-hosted
-#        compiler, from a copy of pystachy.py and src/). $PY (default python3) loads the extension modules;
+#        compiler, from a copy of pystachy.py, src/ and the private cache helper). $PY (default python3) loads the extension modules;
 #        for the hosted compiler, the CPython that runs it does unless $PY is set (tools/coverage.sh runs
 #        it through a launcher, which only runs scripts)
 cd "$(dirname "$0")/.." || exit 1
@@ -45,7 +45,9 @@ trap 'rm -rf "$T"' EXIT
 H=$T/home
 B=$H/build
 cp runtime.c runtime.py pyembed.c pyext.c "$H/" && cp -R lib ryu mpz "$H/" && cp "$from" "$T/bin/$me" && cp "$from" "$T/base" || exit 1
-if [ -n "$PY" ] && [ -d src ]; then cp -R src "$T/bin/" || exit 1; fi
+if [ -n "$PY" ] && [ -d src ]; then
+  cp -R src "$T/bin/" && mkdir -p "$T/bin/lib" && cp lib/_pystachy_cache.py "$T/bin/lib/" || exit 1
+fi
 # the runs start in $T: a runtime.c that took its includes from there would not compile
 printf '#error "ryu/d2s.c of the current directory"\n' > "$T/ryu/d2s.c" || exit 1
 printf '#error "mpz/mpz.c of the current directory"\n' > "$T/mpz/mpz.c" || exit 1
