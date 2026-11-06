@@ -769,6 +769,15 @@ compiler-source inventory, and does not establish safe in-process session reuse.
 The capture tests preserve legacy rejection output, and inspection tests exercise a
 failed request followed by a repaired import in another worker. Inventory controls
 reject an added capture writer or a stale declaration of the existing writer.
+`program_cache` owns state for a CLI cache attempt, retained across inference retries.
+`start()` clears its source, import-probe and static input snapshots, resets validity
+and enables tracking; `stop()` only disables tracking. A conflicting snapshot stays
+invalid through every retry. The settled static hash memo and its last-loaded cache
+root persist across attempts in the process; hashes can also be loaded from or
+published to the private disk memo. The inventory checks direct resets and flag/memo
+writers. Snapshot insertion through `_record(table, ...)` is a parameter-mediated
+effect outside this scanner; the cache tests cover capture, conflicting retries and
+publication. This state does not provide concurrent in-process compilation isolation.
 `GLUE` and `SPECSHOW` currently retain discoveries across restarts; the inventory records
 that behavior without certifying its safety. This is a hosted drift check, not a
 whole-program effect analysis: arbitrary helper calls, object-attribute aliases,

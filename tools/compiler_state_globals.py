@@ -17,6 +17,7 @@ PREFIX = "src.pystachy_compiler."
 LOOKUP = set("""
 analysis.BINDERS builtins.FSPRIMS
 bigints.BIGOPS bigints.BKEY bigints.PROMOTES bigints.NUMOPS bigints.NUMCALLS
+cached_run.BUILD_ENV cached_run.CPU_FIELDS
 driver.COMPILER_SOURCES driver.CPUID driver.RTPARTS
 dynamic.XCMP dynamic.XOPS dynamic.BINOPS dynamic.UNOPS dynamic.CMPOPS
 dynamic.BINDUNDERS dynamic.BUILTIN expressions.ORDERS
@@ -63,6 +64,15 @@ RESET = {
 }
 RETAINED = {
     "diagnostics.CAPTURED": "opt-in observer records; inspection worker clears before its request and exits after it, not compiler restart state",
+    # CLI cache-attempt state survives inference retries. Only start begins a new
+    # attempt; loader resets must not discard dependencies or an invalid snapshot.
+    "program_cache.ACTIVE": "start enables tracking; stop disables it without discarding the attempt's snapshots",
+    "program_cache.VALID": "start resets validity; conflicting or unreadable inputs invalidate the whole attempt across retries",
+    "program_cache.SOURCES": "consumed source snapshots retained across retries; start clears them for a new cache attempt",
+    "program_cache.PROBES": "import-resolution probes including misses retained across retries; start clears them for a new cache attempt",
+    "program_cache.STATICS": "toolchain and link-input snapshots retained across retries; start clears them for a new cache attempt",
+    "program_cache.STATIC_MEMO": "settled static hashes retained across attempts in the process, also loaded from and saved to a private disk memo",
+    "program_cache.MEMO_ROOT": "last cache root whose static memo was loaded in this process; retained across cache attempts",
     "specs.GLUE": "loader public-name discoveries; currently retained across restarts",
     "specs.SPECSHOW": "specialization display names; currently retained across restarts",
     "specs.MODULES": "driver builtin-module configuration; runtime_ir restores its temporary _rt entry on every exit",
@@ -81,6 +91,17 @@ WRITERS = {
     "syntax.LAMBDAS": {"parser.Parser.test1", "driver.compile_program"},
     "names.RENAMED": {"program.gen_program", "driver.compile_program"},
     "names.ENUMCLASSES": {"loader.Loader.program", "loader.enum_classes"},
+    "program_cache.ACTIVE": {"program_cache.start", "program_cache.stop"},
+    "program_cache.VALID": {"program_cache.start", "program_cache._record", "program_cache.tracked_exists",
+                            "program_cache.track_source", "program_cache.track_static"},
+    # _record(table, ...) also inserts snapshots into these three tables. That
+    # parameter-mediated effect is outside this scan; register only the observed
+    # direct resets, not stale writer exceptions. Cache tests cover the recorder.
+    "program_cache.SOURCES": {"program_cache.start"},
+    "program_cache.PROBES": {"program_cache.start"},
+    "program_cache.STATICS": {"program_cache.start"},
+    "program_cache.STATIC_MEMO": {"program_cache.track_static", "program_cache._load_memo"},
+    "program_cache.MEMO_ROOT": {"program_cache._load_memo"},
     "specs.LIBS": {"lower_module.gen_cextern", "driver.compile_program", "driver.main"},
     "specs.LINKDL": {"lower_module.gen_cextern", "driver.compile_program"},
     "specs.GLUE": {"loader.Loader.load"},

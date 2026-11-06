@@ -139,6 +139,8 @@ source/input validation and executable checksumming.
 | Existing runtime-cache suite, native | 66 passed |
 | Existing runtime-cache suite, hosted | 68 passed (134 native + hosted checks total) |
 | Static checks | Full `make lint` and runtime contract checker passed; mypy checked 51 source files |
+| Compiler-state ownership and restart controls | 121 passed after the CI integration correction below |
+| Pinned CPython recordings | 2,142 recordings, 122 deviations and 11 library files checked; zero failures |
 | Local full verification matrix | Not run; the PR CI matrix is a separate gate from the local evidence here |
 
 The native probe covers reuse, source and import invalidation, runtime effects,
@@ -162,6 +164,22 @@ The unchanged-default corpus result establishes that leaving the option unset
 preserves the checked compiler outputs; it is not a claim that every corpus
 program was executed through a cache hit. The enabled-cache execution evidence
 is the focused native suite and the output-checked benchmark workloads.
+
+### CI integration correction
+
+The [initial Lint attempt](https://github.com/den-run-ai/pystachy/actions/runs/42281206336/job/128110320421)
+at PR head `a5d637dba744f4f1064fab37d81cdd7d6ceca1ca` failed 11 of 121
+compiler-state controls: the new cache globals had not been registered in the
+ownership inventory, producing 22 diagnostics. The follow-up classifies two
+read-only tables and seven retained cache-state containers, registers their 13
+observed direct writers, and documents the attempt/retry lifecycle. The checker
+and its negative controls are unchanged.
+
+All 121 compiler-state controls then passed locally in 105.388 s. The pinned
+CPython recording check also passed with the counts above. This correction
+changes only the ownership inventory, its documentation and this validation
+record; the measured compiler, cache and benchmark sources are unchanged. PR
+CI remains a separately reported gate on the current head.
 
 ## Reproduce
 
