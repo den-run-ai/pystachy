@@ -166,6 +166,8 @@ def run_pipeline(args):
             if args.backend == "thinlto":
                 job_path = partition_import.prepare_backend_job(linked, llvm, work / "backend",
                                                                args.partitions, args.jobs)
+                expected_job_sha256 = sha(job_path)
+                report["expected_job_sha256"] = expected_job_sha256
                 report["thinlto_job"] = json.loads(job_path.read_text())
                 command = partition_import.backend_command(job_path, inherited_group=True)
                 backend_report = job_path.parent / "build.json"
@@ -184,7 +186,7 @@ def run_pipeline(args):
             measure.successful(result)
             built = work / "backend/compiler"
             if args.backend == "thinlto":
-                built = partition_import.validate_backend_result(job_path, report["backend"])
+                built = partition_import.validate_backend_result(job_path, report["backend"], expected_job_sha256)
             report["witnesses"] = {}
             for mode, file in (() if args.caller_witnesses else (("ir", "pystachy.py"), ("rt", "runtime.py"))):
                 output = work / f"built-{mode}.ll"
@@ -203,7 +205,7 @@ def run_pipeline(args):
             report["source_unchanged"] = source == bootstrap.source_identity(root)
             report["producer_unchanged"] = report["producer_sha256"] == {p: sha(p) for p in compiler}
             if args.backend == "thinlto":
-                partition_import.validate_backend_result(job_path, report["backend"])
+                partition_import.validate_backend_result(job_path, report["backend"], expected_job_sha256)
             report["complete"] = report["source_unchanged"] and report["producer_unchanged"] and (args.caller_witnesses or all(
                 report["witnesses"][mode]["matches"] for mode in ("ir", "rt")))
             if report["complete"]:

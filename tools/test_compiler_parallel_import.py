@@ -205,6 +205,7 @@ class InputTests(unittest.TestCase):
         with patch.object(imports, "tool_identity", return_value={}), \
                 patch.object(imports, "harness_identity", return_value={"identity": "unchanged"}):
             job = imports.prepare_backend_job(source, self.directory, work, 4, 2)
+            expected_job_sha256 = imports.sha(job)
             config = json.loads(job.read_text())
             self.assertEqual((config["partitions"], config["jobs"], config["prelink"]), (4, 2, "summary"))
             self.assertIn("--inherited-group", imports.backend_command(job, inherited_group=True))
@@ -213,14 +214,23 @@ class InputTests(unittest.TestCase):
             compiler.write_bytes(b"complete compiler")
             result = {"complete": True, "job_sha256": imports.sha(job),
                       "compiler_sha256": imports.sha(compiler), "compiler_bytes": compiler.stat().st_size}
-            self.assertEqual(imports.validate_backend_result(job, result), compiler)
+            self.assertEqual(imports.validate_backend_result(job, result, expected_job_sha256), compiler)
             for changed in (dict(result, complete=False), dict(result, job_sha256="wrong"),
                             dict(result, compiler_sha256="wrong"), dict(result, compiler_bytes=1)):
                 with self.subTest(changed=changed), self.assertRaises(RuntimeError):
-                    imports.validate_backend_result(job, changed)
+                    imports.validate_backend_result(job, changed, expected_job_sha256)
             source.write_bytes(b"changed linked module")
             with self.assertRaisesRegex(RuntimeError, "changed"):
-                imports.validate_backend_result(job, result)
+                imports.validate_backend_result(job, result, expected_job_sha256)
+            source.write_bytes(b"frozen linked module")
+            # Even an internally consistent replacement cannot change the
+            # coordinator's accepted scheduling/optimization settings.
+            config["jobs"] = 1
+            config["prelink"] = "o2"
+            imports.atomic_json(job, config)
+            result["job_sha256"] = imports.sha(job)
+            with self.assertRaisesRegex(RuntimeError, "job identity changed"):
+                imports.validate_backend_result(job, result, expected_job_sha256)
 
 
 @unittest.skipUnless(os.getenv("PYSTACHY_TEST_LLVM"), "set PYSTACHY_TEST_LLVM for LLVM 18 importing checks")

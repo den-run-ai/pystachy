@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import argparse
 from collections import Counter, defaultdict
+import hashlib
 import json
 import math
 import os
@@ -272,11 +273,14 @@ def backend_command(job_path, inherited_group=False):
     return command + (["--inherited-group"] if inherited_group else [])
 
 
-def validate_backend_result(job_path, result):
+def validate_backend_result(job_path, result, expected_job_sha256):
     """Require the bound executable and unchanged inputs before publication."""
-    job = json.loads(job_path.read_text())
-    if result.get("complete") is not True or result.get("job_sha256") != sha(job_path):
+    raw_job = job_path.read_bytes()
+    if hashlib.sha256(raw_job).hexdigest() != expected_job_sha256:
+        raise RuntimeError("backend job identity changed after submission")
+    if result.get("complete") is not True or result.get("job_sha256") != expected_job_sha256:
         raise RuntimeError("backend publication does not match its job")
+    job = json.loads(raw_job)
     if (job["input_sha256"] != sha(job["input"]) or job["tools"] != tool_identity(Path(job["llvm"]))
             or job["harness"] != harness_identity()):
         raise RuntimeError("backend input, tools or harness changed")
@@ -418,10 +422,12 @@ def main(argv=None):
     backend = work / "backend"
     job_path = prepare_backend_job(snapshot / "linked.bc", llvm, backend, args.partitions, args.jobs,
                                    args.prelink, args.timeout)
+    expected_job_sha256 = sha(job_path)
     job = json.loads(job_path.read_text())
     tools, harness = job["tools"], job["harness"]
     report = {"schema_version": 2, "source": source, "source_root": str(root), "inputs": inputs,
               "tools": tools, "harness": harness, "host": bootstrap.host_state(),
+              "expected_job_sha256": expected_job_sha256,
               "harness_sha256": sha(Path(__file__)),
               "settings": {key: getattr(args, key) for key in
                            ("partitions", "jobs", "prelink", "timeout", "cpu", "execution_samples")},
@@ -436,7 +442,7 @@ def main(argv=None):
                 report["build"] = json.loads((backend / "build.json").read_text())
             atomic_json(destination, report)
             measure.successful(result)
-            validate_backend_result(job_path, report["build"])
+            validate_backend_result(job_path, report["build"], expected_job_sha256)
             for path in sorted(backend.glob("thin.o.*.bc")):
                 # Saved import/opt IR quantifies the extra scope and emitted size.
                 output = path.with_suffix(".ll")
@@ -472,6 +478,7 @@ def main(argv=None):
             report["inputs_unchanged"] = inputs == {name: sha(snapshot / name) for name in INPUTS}
             report["tools_unchanged"] = tools == tool_identity(llvm)
             report["harness_unchanged"] = harness == harness_identity()
+            validate_backend_result(job_path, report["build"], expected_job_sha256)
             values = [r["wall_s"] for r in report["execution"]]
             report["execution_wall_s"] = ({"median": statistics.median(values), "min": min(values), "max": max(values)}
                                           if values else None)
