@@ -7,9 +7,6 @@ on:
   push:
     branches: [main]
   pull_request:
-    paths-ignore:   # documentation-only pull requests
-      - '**.md'
-      - 'docs/**'
   workflow_dispatch:
 
 concurrency:
@@ -28,6 +25,10 @@ jobs:
     name: verify (bootstrap, ${{ matrix.machine }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
+    # Each matrix row publishes a distinct output so the aggregate can check agreement.
+    outputs:
+      plan_x86_64: ${{ steps.plan.outputs.plan_x86_64 }}
+      plan_aarch64: ${{ steps.plan.outputs.plan_aarch64 }}
     strategy:
       fail-fast: false
       matrix:
@@ -43,15 +44,26 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 2
+      - name: Select documentation or code verification
+        id: plan
+        env:
+          CI_MACHINE: ${{ matrix.machine }}
+        run: |
+          plan=$(python3 tools/ci_gate.py plan "$GITHUB_EVENT_NAME" "$CI_BASE_SHA")
+          printf 'kind=%s\nplan_%s=%s\n' "$plan" "$CI_MACHINE" "$plan" >> "$GITHUB_OUTPUT"
+          printf 'Verification plan: %s\n' "$plan"
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        if: steps.plan.outputs.kind == 'code'
         with:
           python-version-file: .python-version
       - name: LLVM toolchain
+        if: steps.plan.outputs.kind == 'code'
         env:
           ARM_PR: ${{ github.event_name == 'pull_request' && matrix.machine == 'aarch64' }}
         run: |
           if [ "$ARM_PR" = true ]; then tools/setup.sh --verify; else tools/setup.sh --minimal; fi
       - name: Record native Linux ABI
+        if: steps.plan.outputs.kind == 'code'
         env:
           VERIFY_MACHINE: ${{ matrix.machine }}
         run: |
@@ -59,10 +71,13 @@ jobs:
           getconf PAGESIZE
           getconf GNU_LIBC_VERSION
       - name: Verify compiler and runtime fixed points
+        if: steps.plan.outputs.kind == 'code'
         run: tests/verify.sh bootstrap
       - name: Package verified bootstrap
+        if: steps.plan.outputs.kind == 'code'
         run: python3 tools/verification_bootstrap.py export build/ci-bootstrap
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        if: steps.plan.outputs.kind == 'code'
         with:
           name: verified-bootstrap-${{ matrix.machine }}
           path: build/ci-bootstrap/
@@ -70,7 +85,7 @@ jobs:
           retention-days: 7
           overwrite: true  # allow a producer rerun; consumers still validate this run and commit
       - name: ARM64 installation, FFI and ABI smoke
-        if: github.event_name == 'pull_request' && matrix.machine == 'aarch64'
+        if: steps.plan.outputs.kind == 'code' && github.event_name == 'pull_request' && matrix.machine == 'aarch64'
         run: |
           cp build/verify/pystachy2 pystachy
           make test-install
@@ -83,7 +98,7 @@ jobs:
           python3 -m unittest discover -s tools -p test_runtime_signatures.py
           python3 -m unittest discover -s tools -p test_runtime_ubsan.py
       - name: Upload bootstrap report
-        if: always()
+        if: ${{ !cancelled() && steps.plan.outputs.kind == 'code' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: ${{ matrix.machine }}-verification-bootstrap
@@ -98,6 +113,7 @@ jobs:
   verification:
     name: verify (${{ matrix.group }}, ${{ matrix.machine }})
     needs: bootstrap
+    if: needs.bootstrap.outputs.plan_x86_64 == 'code' && needs.bootstrap.outputs.plan_aarch64 == 'code'
     runs-on: ${{ matrix.machine == 'aarch64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
     # Target <10 minutes of work per group; retain headroom for runner variation
     # and failure diagnostics. GC self-compilation has its own 10-minute bound.
@@ -226,7 +242,7 @@ jobs:
 
   pr-variants:
     name: variants (worker ${{ matrix.worker }})
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && needs.bootstrap.outputs.plan_x86_64 == 'code' && needs.bootstrap.outputs.plan_aarch64 == 'code'
     needs: bootstrap
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -265,7 +281,7 @@ jobs:
 
   distribution:
     name: distribution (${{ matrix.os }})
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && needs.bootstrap.outputs.plan_x86_64 == 'code' && needs.bootstrap.outputs.plan_aarch64 == 'code'
     needs: bootstrap
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
@@ -303,10 +319,15 @@ jobs:
           tools/setup.sh --check
           make test-install
           python3 tools/install_smoke.py
+      - name: Install the compiler with pip and uv
+        env:
+          PYSTACHY_LLVM: ${{ runner.os == 'macOS' && '/opt/homebrew/opt/llvm@20/bin' || '/usr/lib/llvm-18/bin' }}
+        run: |
+          python3 -m pip install -r tools/requirements-packaging.txt
+          python3 tools/compiler_install_smoke.py
       - name: Source packages and native release archive smoke
         if: runner.os == 'Linux'
         run: |
-          python3 -m pip install -r tools/requirements-packaging.txt
           python3 tools/package_smoke.py --no-build-isolation
           python3 tools/package_smoke.py --no-build-isolation --compiler 'python3 pystachy.py'
           python3 -m unittest discover -s tools -p 'test_release*.py'
@@ -316,7 +337,7 @@ jobs:
           python3 tools/release_smoke.py "build/release-smoke/pystachy-$release_version-linux-x86_64.tar.gz"
 
   verify:
-    name: make verify (Linux ${{ matrix.machine == 'aarch64' && 'ARM64' || 'x86-64' }}, LLVM 18, Python 3.13)
+    name: ${{ github.event_name == 'pull_request' && 'Verification' || format('make verify (Linux {0}, LLVM 18, Python 3.13)', matrix.machine == 'aarch64' && 'ARM64' || 'x86-64') }}
     # Report dependency failures, but release the PR concurrency slot on cancellation.
     # always() keeps obsolete summary jobs queued and blocks the replacement run.
     if: ${{ !cancelled() }}
@@ -335,17 +356,18 @@ jobs:
           fetch-depth: 2
 
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        if: needs.bootstrap.outputs.plan_x86_64 == 'code' && needs.bootstrap.outputs.plan_aarch64 == 'code'
         with:
           python-version-file: .python-version
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8
-        if: always()
+        if: ${{ !cancelled() && needs.bootstrap.outputs.plan_x86_64 == 'code' && needs.bootstrap.outputs.plan_aarch64 == 'code' }}
         with:
           pattern: ${{ matrix.machine }}-verification-*
           path: build/ci-reports
 
       - name: Require complete verification reports
-        if: always()
+        if: ${{ !cancelled() && needs.bootstrap.outputs.plan_x86_64 == 'code' && needs.bootstrap.outputs.plan_aarch64 == 'code' }}
         env:
           VERIFY_MACHINE: ${{ matrix.machine }}
           VERIFY_PROFILE: ${{ github.event_name == 'pull_request' && 'pr' || 'full' }}
@@ -354,26 +376,20 @@ jobs:
             --profile "$VERIFY_PROFILE" -o build/verification.json
 
       - name: Require every verification group
-        if: always()
+        if: ${{ !cancelled() }}
         env:
+          X86_PLAN: ${{ needs.bootstrap.outputs.plan_x86_64 }}
+          ARM_PLAN: ${{ needs.bootstrap.outputs.plan_aarch64 }}
           BOOTSTRAP_RESULT: ${{ needs.bootstrap.result }}
           GROUP_RESULT: ${{ needs.verification.result }}
           VARIANTS_RESULT: ${{ needs.pr-variants.result }}
           DISTRIBUTION_RESULT: ${{ needs.distribution.result }}
-          PR: ${{ github.event_name == 'pull_request' }}
         run: |
-          test "$BOOTSTRAP_RESULT" = success
-          test "$GROUP_RESULT" = success
-          if [ "$PR" = true ]; then
-            test "$VARIANTS_RESULT" = success
-            test "$DISTRIBUTION_RESULT" = success
-          else
-            test "$VARIANTS_RESULT" = skipped
-            test "$DISTRIBUTION_RESULT" = skipped
-          fi
+          python3 tools/ci_gate.py require-jobs "$GITHUB_EVENT_NAME" "$X86_PLAN" "$ARM_PLAN" \
+            "$BOOTSTRAP_RESULT" "$GROUP_RESULT" "$VARIANTS_RESULT" "$DISTRIBUTION_RESULT"
 
       - name: Upload combined verification report
-        if: always()
+        if: ${{ !cancelled() && needs.bootstrap.outputs.plan_x86_64 == 'code' && needs.bootstrap.outputs.plan_aarch64 == 'code' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: ${{ matrix.machine }}-verification

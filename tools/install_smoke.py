@@ -64,9 +64,9 @@ print("removed", not os.path.exists(directory))
 '''
 
 
-def execute(command, directory, environment):
+def execute(command, directory, environment, *, timeout=180):
     result = subprocess.run(command, cwd=directory, env=environment, capture_output=True,
-                            text=True, timeout=180)
+                            text=True, timeout=timeout)
     if result.returncode or result.stderr:
         raise RuntimeError(f"{shlex.join(command)}: exit {result.returncode}\n{result.stdout}{result.stderr}")
     return result.stdout

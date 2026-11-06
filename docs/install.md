@@ -1,25 +1,26 @@
 # Installation
 
-Choose a native release package, the Docker image, or a source build.
-Native packages need **LLVM 18 on Linux / LLVM 20 on macOS** to compile programs;
-the Docker image includes LLVM. Neither requires Python to run the compiler.
+Choose a native release package, the Docker image, a GitHub source install with
+pip or uv, or a manual source build. The compiler uses **LLVM 18 on Linux /
+LLVM 20 on macOS**. Docker includes LLVM, and GitHub source installs can fetch
+it on first use. The native release package and Docker image run the compiler
+without Python.
 
 ## Native release packages
 
 Download the matching archive and `SHA256SUMS` from
-[GitHub Releases](https://github.com/den-run-ai/pystachy/releases). The current prerelease is
-[v0.1.0-alpha.4](https://github.com/den-run-ai/pystachy/releases/tag/v0.1.0-alpha.4); read its
-[known issues and workarounds](https://github.com/den-run-ai/pystachy/blob/v0.1.0-alpha.4/docs/releases/v0.1.0-alpha.4.md#known-issues-and-workarounds) before adoption.
+[GitHub Releases](https://github.com/den-run-ai/pystachy/releases). Check that
+version's notes for known issues and platform-specific requirements.
 
 | Package target | Requirements |
 |---|---|
 | `linux-x86_64` | Ubuntu 24.04 or compatible Linux with glibc 2.39+, LLVM 18 |
-| `linux-aarch64` | 64-bit little-endian ARM Linux, Ubuntu 24.04 or compatible glibc 2.39+, LLVM 18; starts with alpha.4 |
+| `linux-aarch64` | 64-bit little-endian ARM Linux, Ubuntu 24.04 or compatible glibc 2.39+, LLVM 18 |
 | `macos-arm64` | Apple Silicon, macOS 15+, Xcode Command Line Tools, LLVM 20 |
 | `macos-x86_64` | Intel, macOS 15+, Xcode Command Line Tools, LLVM 20 |
 
-Releases before alpha.4 have no Linux ARM64 archive. The archive spelling is `aarch64`;
-Docker calls the same architecture `arm64`.
+The Linux ARM64 archive uses the spelling `aarch64`; Docker calls the same
+architecture `arm64`.
 
 Install the toolchain once:
 
@@ -44,8 +45,8 @@ export PATH="$HOME/.local/bin:$PATH"
 pystachy run demo.py
 ```
 
-Replace `VERSION` with the release tag, such as `v0.1.0-alpha.4`, and use your
-platform's archive name. Keep the complete extracted directory: it contains the
+Replace `VERSION` with the release tag and use your platform's archive name.
+Keep the complete extracted directory: it contains the
 runtime and libraries alongside the compiler. The directory can be moved, and its
 launcher resolves symlinks. `manifest.json` records the source commit and file hashes.
 Check the installed release and commit with `pystachy --version` or `pystachy -V`;
@@ -53,10 +54,9 @@ this command works without LLVM or Python.
 
 ## Docker
 
-Starting with alpha.4, the image targets **Linux amd64 and arm64**. Docker selects the
-host's architecture, including native Linux containers on Apple Silicon. Earlier images,
-such as alpha.3's, are amd64-only and need `--platform linux/amd64` on ARM hosts.
-Use the image name and published version from the release notes:
+The multiarchitecture image targets **Linux amd64 and arm64**. Docker selects the
+host's architecture, including native Linux containers on Apple Silicon. Use the
+image name and published version from the release notes:
 
 ```sh
 IMAGE=DOCKERHUB_NAMESPACE/pystachy:VERSION
@@ -75,6 +75,55 @@ docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/work" --entrypoint /work/de
 The image includes LLVM 18, the native compiler and its libraries; runtime caches go
 to `/tmp` unless `PYSTACHY_CACHE` is overridden. Release tags identify a tested source
 commit. `latest` advances only for stable releases; prereleases use explicit version tags.
+
+## Install from GitHub with pip or uv
+
+Installing from GitHub requires Git and Python 3.11+. The installed command runs
+the compiler under Python. On Ubuntu 24.04 x86-64/ARM64 and macOS 15+
+Apple Silicon, the first compile downloads and verifies a pinned LLVM toolchain
+without administrator access. Ubuntu uses LLVM 18.1.3 from the Ubuntu
+snapshot archive (about 70 MB). macOS uses LLVM 20.1.8 from the LLVM release
+archive (about 1.45 GB). Ubuntu needs the host C toolchain (`build-essential`)
+and shared libraries (`libedit2`, `libffi8`, `libxml2`). macOS needs the Xcode
+Command Line Tools.
+
+The download is shared across pip and uv in `$XDG_CACHE_HOME/pystachy/toolchains`
+(default `~/.cache/pystachy/toolchains`). Use `PYSTACHY_LLVM_CACHE` to select a
+different cache. Set `PYSTACHY_LLVM` to an existing LLVM `bin` directory to
+use a host toolchain or work offline. Other platforms use the usual
+[LLVM discovery](#check-or-prepare-dependencies). Ordinary AOT executables run
+without Python or LLVM.
+
+Choose a GitHub tag or a full commit SHA that includes the source package.
+The GitHub URL is the package source for both commands.
+
+```sh
+PYSTACHY_REF=TAG_OR_COMMIT
+PYSTACHY_SOURCE="pystachy @ git+https://github.com/den-run-ai/pystachy.git@${PYSTACHY_REF}"
+```
+
+With pip, use a virtual environment. On Ubuntu, install `python3-venv` if the
+`venv` module is unavailable.
+
+```sh
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install "$PYSTACHY_SOURCE"
+pystachy --version
+```
+
+With uv, install the command into an isolated tool environment.
+
+```sh
+uv tool install "$PYSTACHY_SOURCE"
+pystachy --version
+```
+
+If uv's command directory is missing from `PATH`, run `uv tool update-shell`
+and open a new shell. To change the installed revision, rerun the first block
+with the new tag or commit. Repeat the install command with `--force-reinstall`
+for pip or `--reinstall` for uv. Remove the command with
+`python -m pip uninstall pystachy` in the pip environment or `uv tool uninstall pystachy`.
 
 ## Build from source
 
@@ -232,9 +281,8 @@ The Linux archives retain a **glibc 2.39+** support baseline. `manylinux_2_28` i
 feasible follow-up build target, not a compatibility tag for the current Ubuntu-built
 compiler. The [30 October 2026 portability audit](https://github.com/den-run-ai/pystachy/blob/a2cb8a3638d715577a7ab1cd1e4a0d6b01b6cdf2/docs/reports/linux-portability.md)
 records the alpha.3 artifact measurements and older-sysroot/toolchain requirements.
-An older baseline and compiler wheels for `pip install` / `uv tool install` are tracked
-in [#998](https://github.com/den-run-ai/pystachy/issues/998); the existing wheel
-instructions distribute Python source libraries, not the compiler itself.
+An older native baseline and compiler packages with a pinned toolchain are tracked
+in [#998](https://github.com/den-run-ai/pystachy/issues/998).
 
 ## Custom and staged installations
 
