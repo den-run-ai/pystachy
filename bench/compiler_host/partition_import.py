@@ -49,6 +49,9 @@ from run import ROOT, atomic_json, bootstrap, measure, sha
 
 TOOLS = ("clang", "opt", "llvm-split", "llvm-lto2", "llvm-dis")
 INPUTS = ("linked.bc", "raw.ll", "seed-rt.ll")
+HARNESS_FILES = ("bench/compiler_host/partition_import.py", "bench/compiler_host/backend_workers.py",
+                 "bench/compiler_host/run.py", "bench/compiler_parallel/llvm_partitions.py",
+                 "tools/bootstrap_pipeline.py")
 FLAGS = re.compile(r"([DHP][U-][C-][W-][I-][O-][T-][X-]) (.+)")
 QUOTED = re.compile(r'"(?:[^"\\]|\\.)*"')
 LINKONCE = re.compile(r'^(define\s+|@(?:[-a-zA-Z$._0-9]+|"(?:[^"\\]|\\.)*")\s*=\s*)'
@@ -218,6 +221,12 @@ def tool_identity(llvm):
             for name in TOOLS}
 
 
+def harness_identity():
+    python = Path(sys.executable).resolve()
+    return {"files": {name: sha(ROOT / name) for name in HARNESS_FILES},
+            "python": {"path": str(python), "sha256": sha(python)}}
+
+
 def validate_paths(snapshot, root, work, report):
     if work.exists() or work.is_symlink():
         raise ValueError("work directory must be new")
@@ -249,13 +258,15 @@ def backend_job(job_path, inherited_group=False):
     job = json.loads(job_path.read_text())
     work, llvm, source = job_path.parent, Path(job["llvm"]), Path(job["input"])
     validate_settings(job["partitions"], job["jobs"], job["prelink"], job["timeout"])
-    if job["version"] != 1 or sha(source) != job["input_sha256"]:
+    if job["version"] != 2 or sha(source) != job["input_sha256"]:
         raise ValueError("backend input or job version mismatch")
     if tool_identity(llvm) != job["tools"]:
         raise ValueError("backend tool identity mismatch")
+    if harness_identity() != job["harness"]:
+        raise ValueError("backend harness identity mismatch")
     if set(work.iterdir()) != {job_path}:
         raise ValueError("backend job directory must contain only the new job")
-    report = {"version": 1, "job_sha256": sha(job_path), "steps": [], "complete": False}
+    report = {"version": 2, "job_sha256": sha(job_path), "steps": [], "complete": False}
     runner = Commands(measure, owns_group=not inherited_group)
     env = dict(os.environ, LC_ALL="C")
     report_path = work / "build.json"
@@ -367,19 +378,20 @@ def main(argv=None):
     except ValueError as exc:
         parser.error(str(exc))
     source, inputs = bootstrap.source_identity(root), {name: sha(snapshot / name) for name in INPUTS}
-    tools = tool_identity(llvm)
+    tools, harness = tool_identity(llvm), harness_identity()
     env = {key: value for key, value in os.environ.items() if not key.startswith("PYSTACHY_")}
     env.update(PYSTACHY_HOME=str(root), PYSTACHY_LLVM=str(llvm), PYTHONHASHSEED="0", LC_ALL="C")
     work.mkdir(parents=True, exist_ok=False)
     backend = work / "backend"
     backend.mkdir()
     job_path = backend / "job.json"
-    atomic_json(job_path, {"version": 1, "llvm": str(llvm), "tools": tools,
+    atomic_json(job_path, {"version": 2, "llvm": str(llvm), "tools": tools, "harness": harness,
                           "input": str(snapshot / "linked.bc"), "input_sha256": inputs["linked.bc"],
                           "partitions": args.partitions, "jobs": args.jobs,
                           "prelink": args.prelink, "timeout": args.timeout})
-    report = {"schema_version": 1, "source": source, "source_root": str(root), "inputs": inputs,
-              "tools": tools, "host": bootstrap.host_state(), "harness_sha256": sha(Path(__file__)),
+    report = {"schema_version": 2, "source": source, "source_root": str(root), "inputs": inputs,
+              "tools": tools, "harness": harness, "host": bootstrap.host_state(),
+              "harness_sha256": sha(Path(__file__)),
               "settings": {key: getattr(args, key) for key in
                            ("partitions", "jobs", "prelink", "timeout", "cpu", "execution_samples")},
               "witnesses": {}, "execution": [], "inspection": [], "complete": False}
@@ -432,10 +444,12 @@ def main(argv=None):
             report["source_unchanged"] = source == bootstrap.source_identity(root)
             report["inputs_unchanged"] = inputs == {name: sha(snapshot / name) for name in INPUTS}
             report["tools_unchanged"] = tools == tool_identity(llvm)
+            report["harness_unchanged"] = harness == harness_identity()
             values = [r["wall_s"] for r in report["execution"]]
             report["execution_wall_s"] = ({"median": statistics.median(values), "min": min(values), "max": max(values)}
                                           if values else None)
-            report["complete"] = all(report[key] for key in ("source_unchanged", "inputs_unchanged", "tools_unchanged"))
+            report["complete"] = all(report[key] for key in
+                                     ("source_unchanged", "inputs_unchanged", "tools_unchanged", "harness_unchanged"))
     except BaseException as exc:
         report["error"] = str(exc)
         raise
