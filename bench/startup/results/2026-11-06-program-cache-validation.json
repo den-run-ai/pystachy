@@ -1,0 +1,92 @@
+{
+  "schema": "pystachy-program-cache-validation-v1",
+  "date_utc": "2026-11-06",
+  "source_commit": "37fb87fbd1034de785dc26917bb151a8dafc2d61",
+  "base_commit": "f7103067545b43cdcd8ce20dc66b1571425b3a8d",
+  "compiler_sha256": "df000379236b3b920463c1c1960e4a73bef5672aeefb46bb580664b944d3643b",
+  "host": {
+    "source_commit": "6a15d6e1386547cd8eaaae182bb15db4fd3f2fea",
+    "base_commit": "f7103067545b43cdcd8ce20dc66b1571425b3a8d",
+    "platform": "Linux-6.18.57-x86_64-with-glibc2.39",
+    "machine": "x86_64",
+    "affinity_before_pin": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
+    ],
+    "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+    "cpu.max": "800000 100000",
+    "memory.max": "8589934592"
+  },
+  "build_fixedpoints": {
+    "compiler_ir_lines": 839506,
+    "runtime_ir_lines": 18805
+  },
+  "default_off_ir_comparison": {
+    "cases": 4238,
+    "identical": [
+      "IR",
+      "diagnostics",
+      "exit_status"
+    ],
+    "common_home_inputs_confirmed_identical_to_base": [
+      "lib",
+      "runtime.c",
+      "runtime.py",
+      "ryu",
+      "mpz"
+    ]
+  },
+  "focused_units": {
+    "test_program_cache.py": 34,
+    "test_cached_run.py": 14,
+    "test_program_cache_publication.py": 6
+  },
+  "program_cache_probe": {
+    "groups": 14,
+    "assertions": 458,
+    "passed": true,
+    "evidence": "2026-11-06-program-cache-checks.json"
+  },
+  "benchmark_probe": {
+    "workloads": 4,
+    "rounds": 5,
+    "cpu_affinity": [
+      0
+    ],
+    "assertions": 316,
+    "hits_without_frontend_or_llvm": 20,
+    "evidence": "2026-11-06-program-cache-times.json"
+  },
+  "existing_runtime_cache_checks": {
+    "native": 66,
+    "hosted": 68,
+    "failed": 0
+  },
+  "other_checks": {
+    "mypy_source_files": 51,
+    "lint": "passed",
+    "runtime_contract": "passed: 644 runtime entries, 70 exception classes, 172 subset-runtime functions/signatures/effects",
+    "workflow_budget_unit_tests": 14,
+    "repository_hygiene": "passed"
+  },
+  "full_local_make_verify": "not run; PR CI is a separate gate",
+  "logs": {
+    "candidate_fixedpoint": "mkdir -p build\n/workspace/scratch/e98dc1e3e6cd/dev/bin/python pystachy.py build pystachy.py -o build/pystachy1\nbuild/pystachy1 build pystachy.py -o build/pystachy2\n/workspace/scratch/e98dc1e3e6cd/dev/bin/python pystachy.py ir pystachy.py -o build/stage1.ll\nbuild/pystachy1 ir pystachy.py -o build/stage2.ll\nbuild/pystachy2 ir pystachy.py -o build/stage3.ll\ncmp build/stage1.ll build/stage2.ll && cmp build/stage2.ll build/stage3.ll\nfixed point: stage1 == stage2 == stage3 (839506 lines of IR)\n/workspace/scratch/e98dc1e3e6cd/dev/bin/python pystachy.py rt runtime.py -o build/rt1.ll\nbuild/pystachy1 rt runtime.py -o build/rt2.ll\nbuild/pystachy2 rt runtime.py -o build/rt3.ll\ncmp build/rt1.ll build/rt2.ll && cmp build/rt2.ll build/rt3.ll\nfixed point: runtime.py's IR, rt1 == rt2 == rt3 (18805 lines)\ncp build/pystachy2 pystachy\n",
+    "base_fixedpoint": "mkdir -p build\n/workspace/scratch/e98dc1e3e6cd/dev/bin/python pystachy.py build pystachy.py -o build/pystachy1\nbuild/pystachy1 build pystachy.py -o build/pystachy2\n/workspace/scratch/e98dc1e3e6cd/dev/bin/python pystachy.py ir pystachy.py -o build/stage1.ll\nbuild/pystachy1 ir pystachy.py -o build/stage2.ll\nbuild/pystachy2 ir pystachy.py -o build/stage3.ll\ncmp build/stage1.ll build/stage2.ll && cmp build/stage2.ll build/stage3.ll\nfixed point: stage1 == stage2 == stage3 (832277 lines of IR)\n/workspace/scratch/e98dc1e3e6cd/dev/bin/python pystachy.py rt runtime.py -o build/rt1.ll\nbuild/pystachy1 rt runtime.py -o build/rt2.ll\nbuild/pystachy2 rt runtime.py -o build/rt3.ll\ncmp build/rt1.ll build/rt2.ll && cmp build/rt2.ll build/rt3.ll\nfixed point: runtime.py's IR, rt1 == rt2 == rt3 (18805 lines)\ncp build/pystachy2 pystachy\n",
+    "default_off_ir_comparison": "4238 programs identical\n",
+    "runtime_cache": "PY=\"/workspace/scratch/e98dc1e3e6cd/dev/bin/python\" tests/cache.sh ./pystachy\n-- the compiler: ./pystachy\nok   a first run builds the runtime\nok   one entry: a .bc and its .o\nok   no partial or temporary file is left\nok   the shared library is cached beside the .o\nok   and lli loads it\nok   a run that finds no shared library makes it from the .o, and builds no runtime\nok   and caches it\nok   a run that may not execute the cached library builds no runtime\nok   and lli links the .o instead\nok   nothing changed: the cache is used\nok   the same entry, not written again\nok   the hashes of settled files are kept\nok   the AOT tier uses the cache\nok   the AOT tier writes no entry\nok   the same tools through another path (a symbolic link): the cache is used\nok   the same entry\nok   an edit of runtime.py of the same size, its mtime set back: built again\nok   the new entry replaces the old\nok   and its shared library the old one's\nok   an edit of runtime.c: built again\nok   an edit of ryu/common.h, which runtime.c includes: built again, from the home's ryu/\nok   an edit of mpz/mpz.c, which runtime.c includes: built again, from the home's mpz/\nok   and used then\nok   runtime.py and runtime.c edited while the runtime is built: it holds what was read\nok   the next run builds the edited sources\nok   and the run after it uses them\nok   a failed llvm-link fails the run\nok   a failed build leaves no entry\nok   nor a partial or temporary file\nok   the same flags then build the runtime\nok   PYSTACHY_CFLAGS: an entry of their own\nok   PYSTACHY_OPT=-all: built\nok   PYSTACHY_OPT: an entry of its own\nok   the same passes turned off by name: the same entry\nok   without them, the first entry is used\nok   opt changed: built again\nok   the new entry replaces the one of the old opt\nok   and used then\nok   the compiler changed: built again\nok   the compiler edited, the same size, its mtime set back: built again\nok   the new entry replaces the old compiler's\nok   run by name through PATH, past a directory and a file that is not executable: the cache is used\nok   run by name through a symbolic link: the cache is used\nok   the same entries\nok   the tools found through PATH, past a directory named clang: built with them\nok   an entry of their own\nok   and used then\nok   the same entries\nok   no partial or temporary file is left\nok   pystachy ext builds pyembed.c and pyext.c once, beside the cached runtime\nok   and /workspace/scratch/e98dc1e3e6cd/dev/bin/python loads the module\nok   and uses them then\nok   the runtime's entries are the same\nok   no partial or temporary file is left\nok   a tool not settled: a run builds a runtime of its own\nok   and publishes nothing\nok   and leaves nothing\nok   pystachy ext builds a runtime and glue of its own\nok   and /workspace/scratch/e98dc1e3e6cd/dev/bin/python loads the module\nok   and publishes no runtime\nok   nor glue\nok   and leaves nothing\nok   a build killed after opt ends the run\nok   and writes no entry\nok   the next run builds the runtime\nok   and its entry replaces the old\n66 passed, 0 failed\ntests/cache.sh \"/workspace/scratch/e98dc1e3e6cd/dev/bin/python -m pystachy\"\n-- the compiler: /workspace/scratch/e98dc1e3e6cd/dev/bin/python -m pystachy\nok   a first run builds the runtime\nok   one entry: a .bc and its .o\nok   no partial or temporary file is left\nok   the shared library is cached beside the .o\nok   and lli loads it\nok   a run that finds no shared library makes it from the .o, and builds no runtime\nok   and caches it\nok   a run that may not execute the cached library builds no runtime\nok   and lli links the .o instead\nok   nothing changed: the cache is used\nok   the same entry, not written again\nok   the hashes of settled files are kept\nok   the AOT tier uses the cache\nok   the AOT tier writes no entry\nok   the same tools through another path (a symbolic link): the cache is used\nok   the same entry\nok   an edit of runtime.py of the same size, its mtime set back: built again\nok   the new entry replaces the old\nok   and its shared library the old one's\nok   an edit of runtime.c: built again\nok   an edit of ryu/common.h, which runtime.c includes: built again, from the home's ryu/\nok   an edit of mpz/mpz.c, which runtime.c includes: built again, from the home's mpz/\nok   and used then\nok   runtime.py and runtime.c edited while the runtime is built: it holds what was read\nok   the next run builds the edited sources\nok   and the run after it uses them\nok   a failed llvm-link fails the run\nok   a failed build leaves no entry\nok   nor a partial or temporary file\nok   the same flags then build the runtime\nok   PYSTACHY_CFLAGS: an entry of their own\nok   PYSTACHY_OPT=-all: built\nok   PYSTACHY_OPT: an entry of its own\nok   the same passes turned off by name: the same entry\nok   without them, the first entry is used\nok   opt changed: built again\nok   the new entry replaces the one of the old opt\nok   and used then\nok   the compiler changed: built again\nok   the compiler edited, the same size, its mtime set back: built again\nok   the new entry replaces the old compiler's\nok   a compiler component changed: built again\nok   a component edited, the same size, its mtime set back: built again\nok   the new entry replaces the old component's\nok   python3 pystachy.py opens ./pystachy.py, not the one on PATH: the cache is used\nok   the same entries\nok   the tools found through PATH, past a directory named clang: built with them\nok   an entry of their own\nok   and used then\nok   the same entries\nok   no partial or temporary file is left\nok   pystachy ext builds pyembed.c and pyext.c once, beside the cached runtime\nok   and /workspace/scratch/e98dc1e3e6cd/dev/bin/python loads the module\nok   and uses them then\nok   the runtime's entries are the same\nok   no partial or temporary file is left\nok   a tool not settled: a run builds a runtime of its own\nok   and publishes nothing\nok   and leaves nothing\nok   pystachy ext builds a runtime and glue of its own\nok   and /workspace/scratch/e98dc1e3e6cd/dev/bin/python loads the module\nok   and publishes no runtime\nok   nor glue\nok   and leaves nothing\nok   a build killed after opt ends the run\nok   and writes no entry\nok   the next run builds the runtime\nok   and its entry replaces the old\n68 passed, 0 failed\n",
+    "lint": "ruff check\nAll checks passed!\n/workspace/scratch/e98dc1e3e6cd/dev/bin/python tools/runtime_roots.py\n67 static pointer stores: 0 GC root problems\nshellcheck -s sh -S warning tests/cache.sh tests/corpus.sh tests/prepare_path.sh tests/record.sh tests/run.sh tests/verify.sh tests/ffi/run.sh tools/abi_check.sh tools/check_ir.sh tools/coverage.sh tools/docker_smoke.sh tools/irsame.sh tools/runtime_coverage.sh tools/setup.sh tools/shard_cases.sh tools/variants.sh bench/run.sh\n\"/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/\"clang -fsyntax-only -Wall -Wextra -Werror runtime.c tools/dictprobe.c tools/listprobe.c tools/eqprobe.c tools/fileprobe.c tools/selectprobe.c tools/weakrefprobe.c tools/boxprobe.c tools/unicodeprobe.c tools/bytescanprobe.c pyext.c pyembed.c\n\"/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/\"clang -fsyntax-only -Wall -Wextra -Werror -DPYX_ABI3T pyext.c\n",
+    "program_cache_probe": "PASS reuse\nPASS source\nPASS imports\nPASS semantics\nPASS corruption\nPASS bypass\nPASS tool\nPASS compiler\nPASS runtime\nPASS failures\nPASS concurrency\nPASS signals\nPASS source-race\nPASS interruption\nPASS: 458 assertions; build/program-cache-checks-final.json\n",
+    "benchmark_probe": "BENCH tiny: {'uncached-run': 0.03513137099798769, 'cold-program': 0.211119558000064, 'cache-hit': 0.02213650200064876, 'prebuilt-aot': 0.002088677003484918}\nBENCH padded-helper: {'uncached-run': 0.07091263799884473, 'cold-program': 0.22969951699997182, 'cache-hit': 0.0217677860018739, 'prebuilt-aot': 0.001957283002411714}\nBENCH import-heavy: {'uncached-run': 1.6160382649977691, 'cold-program': 1.791226518998883, 'cache-hit': 0.033715616998961195, 'prebuilt-aot': 0.0024362609983654693}\nBENCH router-1000-events: {'uncached-run': 1.2674566399982723, 'cold-program': 1.4293958849993942, 'cache-hit': 0.029960173000290524, 'prebuilt-aot': 0.002522517999750562}\nPASS: 316 assertions; build/program-cache-times.json\n"
+  },
+  "originally_tested_source_commit": "6a15d6e1386547cd8eaaae182bb15db4fd3f2fea",
+  "source_tree": "8b3d7c2b13831c7c7ba00c3c0392b17e7110dba4",
+  "publication": "GitHub app commit; tree SHA equals originally tested local commit. Implementation unchanged."
+}
