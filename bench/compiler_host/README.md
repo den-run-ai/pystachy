@@ -1,5 +1,9 @@
 # Compiler hosts, LLVM workers, and scaling limits
 
+**Latest continuation:** [memory, inlining and imported-partition experiments](CONTINUATION.md)
+add controlled complete bootstraps, resulting-compiler comparisons and retained
+raw evidence. Each report keeps its source and measurement cohort separate.
+
 **Follow-up:** [implemented optimizations and complete-bootstrap evidence](OPTIMIZATIONS.md)
 correct the allocator-routing false positive, provide a natively compatible
 receiver overlay, and extend worker cleanup and bootstrap scheduling. The results

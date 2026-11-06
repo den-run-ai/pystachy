@@ -1,0 +1,70 @@
+-- the compiler: /workspace/scratch/a009f956ecf0/venv/bin/python -m pystachy
+ok   a first run builds the runtime
+ok   one entry: a .bc and its .o
+ok   no partial or temporary file is left
+ok   the shared library is cached beside the .o
+ok   and lli loads it
+ok   a run that finds no shared library makes it from the .o, and builds no runtime
+ok   and caches it
+ok   a run that may not execute the cached library builds no runtime
+ok   and lli links the .o instead
+ok   nothing changed: the cache is used
+ok   the same entry, not written again
+ok   the hashes of settled files are kept
+ok   the AOT tier uses the cache
+ok   the AOT tier writes no entry
+ok   the same tools through another path (a symbolic link): the cache is used
+ok   the same entry
+ok   an edit of runtime.py of the same size, its mtime set back: built again
+ok   the new entry replaces the old
+ok   and its shared library the old one's
+ok   an edit of runtime.c: built again
+ok   an edit of ryu/common.h, which runtime.c includes: built again, from the home's ryu/
+ok   an edit of mpz/mpz.c, which runtime.c includes: built again, from the home's mpz/
+ok   and used then
+ok   runtime.py and runtime.c edited while the runtime is built: it holds what was read
+ok   the next run builds the edited sources
+ok   and the run after it uses them
+ok   a failed llvm-link fails the run
+ok   a failed build leaves no entry
+ok   nor a partial or temporary file
+ok   the same flags then build the runtime
+ok   PYSTACHY_CFLAGS: an entry of their own
+ok   PYSTACHY_OPT=-all: built
+ok   PYSTACHY_OPT: an entry of its own
+ok   the same passes turned off by name: the same entry
+ok   without them, the first entry is used
+ok   opt changed: built again
+ok   the new entry replaces the one of the old opt
+ok   and used then
+ok   the compiler changed: built again
+ok   the compiler edited, the same size, its mtime set back: built again
+ok   the new entry replaces the old compiler's
+ok   a compiler component changed: built again
+ok   a component edited, the same size, its mtime set back: built again
+ok   the new entry replaces the old component's
+ok   python3 pystachy.py opens ./pystachy.py, not the one on PATH: the cache is used
+ok   the same entries
+ok   the tools found through PATH, past a directory named clang: built with them
+ok   an entry of their own
+ok   and used then
+ok   the same entries
+ok   no partial or temporary file is left
+ok   pystachy ext builds pyembed.c and pyext.c once, beside the cached runtime
+ok   and /workspace/scratch/a009f956ecf0/venv/bin/python loads the module
+ok   and uses them then
+ok   the runtime's entries are the same
+ok   no partial or temporary file is left
+ok   a tool not settled: a run builds a runtime of its own
+ok   and publishes nothing
+ok   and leaves nothing
+ok   pystachy ext builds a runtime and glue of its own
+ok   and /workspace/scratch/a009f956ecf0/venv/bin/python loads the module
+ok   and publishes no runtime
+ok   nor glue
+ok   and leaves nothing
+ok   a build killed after opt ends the run
+ok   and writes no entry
+ok   the next run builds the runtime
+ok   and its entry replaces the old
+68 passed, 0 failed

@@ -1,0 +1,3 @@
+{"pid": 7, "ppid": 2, "proc_self_stat": "453375 (python) R 453370 453369 453369 0 -1 4194304 2002 0 0 0 2 0 0 0 20 0 1 0 6189316 42749952 3182 18446744073709551615 4329472 35532488 140729085703904 0 0 0 0 16781312 2 0 0 0 17 3 0 0 0 0 0 25165824 35532488 1081929728 140729085707925 140729085708411 140729085708411 140729085714376 0\n"}
+{"command": ["/bin/ps", "-o", "comm=", "-p", "7"], "exit_code": 1, "stdout": "", "stderr": "fatal library error, lookup self\n"}
+{"command": ["/bin/ps", "-o", "ppid=", "-p", "7"], "exit_code": 1, "stdout": "", "stderr": "fatal library error, lookup self\n"}

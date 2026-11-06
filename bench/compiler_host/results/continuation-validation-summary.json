@@ -1,0 +1,148 @@
+{
+  "version": 1,
+  "purpose": "correctness validation; elapsed times are not performance comparisons",
+  "cpu_affinity": [
+    2,
+    3
+  ],
+  "requested_build_jobs": 2,
+  "repository_head": "9b75dd6288e00a8290f3cb6b8190b8740ed54070",
+  "checks": [
+    {
+      "key": "01-driver-inline-allocator",
+      "kind": "python_tests",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0,
+      "wall_s": 12.167451870001969,
+      "command": [
+        "taskset",
+        "-c",
+        "2-3",
+        "/workspace/scratch/a009f956ecf0/venv/bin/python",
+        "-m",
+        "unittest",
+        "test_self_build_driver.RealBuilds.test_inline_policy_preserves_ir_behavior_and_runtime_cache",
+        "test_self_build_driver.RealAllocatorRouting",
+        "-v"
+      ],
+      "status_file": "/workspace/scratch/685873f30dd6/continuation-validation-inline/01-driver-inline-allocator.json",
+      "status_sha256": "cb88030bbd54bfa267a06e4bdaee2f142f100fd9638f499df3b1ba6c47542e67",
+      "log_file": "/workspace/scratch/685873f30dd6/continuation-validation-inline/01-driver-inline-allocator.log",
+      "log_sha256": "d1c7fa8234059b2e26205da6691e7078a4e2aa373297da746d945b8a8fe5f057",
+      "source_unchanged": true,
+      "native_unchanged": true
+    },
+    {
+      "key": "02-runtime-c-cache",
+      "kind": "python_tests",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "wall_s": 33.348663273995044,
+      "command": [
+        "taskset",
+        "-c",
+        "2-3",
+        "/workspace/scratch/a009f956ecf0/venv/bin/python",
+        "-m",
+        "unittest",
+        "test_runtime_c_cache",
+        "-v"
+      ],
+      "status_file": "/workspace/scratch/685873f30dd6/continuation-validation-inline/02-runtime-c-cache.json",
+      "status_sha256": "3359853f884bd30555a3e8c3145726d4aa57feb9b4d652d2cfb8edfeae4946c0",
+      "log_file": "/workspace/scratch/685873f30dd6/continuation-validation-inline/02-runtime-c-cache.log",
+      "log_sha256": "be6736748c65089ee6c2e4ca8f58f3332b96d0a11ef9ca7f3670641e4051580d",
+      "source_unchanged": true,
+      "native_unchanged": true
+    },
+    {
+      "key": "03-compiler-parallel",
+      "kind": "python_tests",
+      "passed": 90,
+      "failed": 0,
+      "skipped": 0,
+      "wall_s": 11.34361232000083,
+      "command": [
+        "taskset",
+        "-c",
+        "2-3",
+        "/workspace/scratch/a009f956ecf0/venv/bin/python",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools",
+        "-p",
+        "test_compiler_parallel*.py",
+        "-v"
+      ],
+      "status_file": "/workspace/scratch/685873f30dd6/continuation-validation-inline/03-compiler-parallel.json",
+      "status_sha256": "a5cdd6503ca501e19e16e6a9aae99a6988070aa63cb7b6a54d1bc8ba1a71c65a",
+      "log_file": "/workspace/scratch/685873f30dd6/continuation-validation-inline/03-compiler-parallel.log",
+      "log_sha256": "aac4c7d93de22468ea0ddf45cbdc59421f1f7ce89f216a53b72c55e53967db16",
+      "source_unchanged": true,
+      "native_unchanged": true
+    },
+    {
+      "key": "04-cache-native",
+      "kind": "shell_assertions",
+      "passed": 66,
+      "failed": 0,
+      "skipped": 0,
+      "wall_s": 198.7623304009976,
+      "command": [
+        "taskset",
+        "-c",
+        "2-3",
+        "sh",
+        "tests/cache.sh",
+        "/workspace/scratch/685873f30dd6/continuation-bootstrap/driver-o0-0/optimized-o03u4cpr/pystachy2"
+      ],
+      "status_file": "/workspace/scratch/685873f30dd6/continuation-validation-inline/04-cache-native.json",
+      "status_sha256": "c70cbc9cb7f9a37422e4488fade23e44db0e4b011d8c4febfb6a9109c70ad571",
+      "log_file": "/workspace/scratch/685873f30dd6/continuation-validation-inline/04-cache-native.log",
+      "log_sha256": "4049af2dc5dd50540b531524fa777b570d04563c5f5be8666c64ee4c1d1e7911",
+      "source_unchanged": true,
+      "native_unchanged": true
+    },
+    {
+      "key": "05-cache-hosted",
+      "kind": "shell_assertions",
+      "passed": 68,
+      "failed": 0,
+      "skipped": 0,
+      "wall_s": 230.63848715999484,
+      "command": [
+        "taskset",
+        "-c",
+        "2-3",
+        "sh",
+        "tests/cache.sh",
+        "/workspace/scratch/a009f956ecf0/venv/bin/python -m pystachy"
+      ],
+      "status_file": "/workspace/scratch/685873f30dd6/continuation-validation-inline/05-cache-hosted.json",
+      "status_sha256": "c32f267224bedb657af91bd3b5f59c54474ff9f62eecd2ab79f0d4657be5db8f",
+      "log_file": "/workspace/scratch/685873f30dd6/continuation-validation-inline/05-cache-hosted.log",
+      "log_sha256": "beb307658402f4d2f57f7a249d914800ed316c8c8354e3c13305c5e27607880f",
+      "source_unchanged": true,
+      "native_unchanged": true
+    }
+  ],
+  "native_path": "/workspace/scratch/685873f30dd6/continuation-bootstrap/driver-o0-0/optimized-o03u4cpr/pystachy2",
+  "native_sha256": "89afd61f94c64cf1058a9cddd22f465be04b69a1a9774efddcd2d3e06b326fd0",
+  "python_tests_passed": 97,
+  "shell_assertions_passed": 134,
+  "all_requested_checks_passed": true,
+  "namespace_ps_probe": {
+    "log_file": "/workspace/scratch/685873f30dd6/continuation-validation-inline/04b-ps-namespace.log",
+    "status_file": "/workspace/scratch/685873f30dd6/continuation-validation-inline/04b-ps-namespace.json",
+    "finding": "/bin/ps comm=/ppid= lookups exit 1 with fatal library error, lookup self; /proc exposes the outer PID namespace",
+    "original_cache_scripts_passed_without_substitution": true,
+    "helper_created": false,
+    "helper_used": false
+  },
+  "runner_source": "/workspace/scratch/685873f30dd6/continuation-validation-inline/run_validation.py",
+  "runner_sha256": "3fba2241177431b03140dc8041d724502ac24af65ec37b72b3c7bc6b5d5c76e6"
+}

@@ -1,0 +1,10 @@
+test_default_off_and_custom_flags_use_original_path (test_runtime_c_cache.CacheIdentity.test_default_off_and_custom_flags_use_original_path) ... ok
+test_generated_directory_is_not_in_identity (test_runtime_c_cache.CacheIdentity.test_generated_directory_is_not_in_identity) ... ok
+test_header_content_tools_and_recipe_change_identity (test_runtime_c_cache.CacheIdentity.test_header_content_tools_and_recipe_change_identity) ... ok
+test_semantic_file_name_uses_uncached_fallback (test_runtime_c_cache.CacheIdentity.test_semantic_file_name_uses_uncached_fallback) ... ok
+test_reuse_invalidation_fallback_and_failed_publish (test_runtime_c_cache.RealDriverCache.test_reuse_invalidation_fallback_and_failed_publish) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 33.233s
+
+OK

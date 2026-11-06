@@ -1,0 +1,1399 @@
+{
+  "backend": {
+    "commands": [
+      {
+        "cancelled": false,
+        "command": [
+          "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/llvm-dis",
+          "/workspace/scratch/685873f30dd6/continuation-bootstrap/driver-thinlto4-0/optimized-ox_qnlq8/stage2-pipeline/linked.bc",
+          "-o",
+          "input.ll"
+        ],
+        "cpu_s": 1.573083,
+        "exit_code": 0,
+        "key": 0,
+        "load_after": [
+          1.44873046875,
+          1.24658203125,
+          1.21337890625
+        ],
+        "load_before": [
+          1.400390625,
+          1.2333984375,
+          1.208984375
+        ],
+        "proc_pid_resolved": true,
+        "sampled_max_processes": 1,
+        "sampled_process_tree_peak_rss_kib": 240720,
+        "stage": "preflight",
+        "stderr": "",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout": "",
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "timed_out": false,
+        "wait4_max_process_rss_kib": 240720,
+        "wall_s": 1.576013833997422
+      },
+      {
+        "cancelled": false,
+        "command": [
+          "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/llvm-split",
+          "/workspace/scratch/685873f30dd6/continuation-bootstrap/driver-thinlto4-0/optimized-ox_qnlq8/stage2-pipeline/linked.bc",
+          "-j",
+          "4",
+          "-o",
+          "raw-part-"
+        ],
+        "cpu_s": 3.501073,
+        "exit_code": 0,
+        "key": 0,
+        "load_after": [
+          1.44873046875,
+          1.24658203125,
+          1.21337890625
+        ],
+        "load_before": [
+          1.44873046875,
+          1.24658203125,
+          1.21337890625
+        ],
+        "proc_pid_resolved": true,
+        "sampled_max_processes": 1,
+        "sampled_process_tree_peak_rss_kib": 356984,
+        "stage": "split",
+        "stderr": "",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout": "",
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "timed_out": false,
+        "wait4_max_process_rss_kib": 356984,
+        "wall_s": 3.5071706640010234
+      },
+      {
+        "cancelled": false,
+        "command": [
+          "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/opt",
+          "-passes=verify",
+          "-module-summary",
+          "raw-part-1",
+          "-o",
+          "part-1.bc"
+        ],
+        "cpu_s": 0.6733339999999999,
+        "exit_code": 0,
+        "key": 1,
+        "load_after": [
+          1.44873046875,
+          1.24658203125,
+          1.21337890625
+        ],
+        "load_before": [
+          1.44873046875,
+          1.24658203125,
+          1.21337890625
+        ],
+        "proc_pid_resolved": true,
+        "sampled_max_processes": 1,
+        "sampled_process_tree_peak_rss_kib": 140852,
+        "stage": "summary",
+        "stderr": "",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout": "",
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "timed_out": false,
+        "wait4_max_process_rss_kib": 140852,
+        "wall_s": 0.7448625100005302
+      },
+      {
+        "cancelled": false,
+        "command": [
+          "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/opt",
+          "-passes=verify",
+          "-module-summary",
+          "raw-part-0",
+          "-o",
+          "part-0.bc"
+        ],
+        "cpu_s": 0.8483809999999999,
+        "exit_code": 0,
+        "key": 0,
+        "load_after": [
+          1.44873046875,
+          1.24658203125,
+          1.21337890625
+        ],
+        "load_before": [
+          1.44873046875,
+          1.24658203125,
+          1.21337890625
+        ],
+        "proc_pid_resolved": true,
+        "sampled_max_processes": 1,
+        "sampled_process_tree_peak_rss_kib": 148416,
+        "stage": "summary",
+        "stderr": "",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout": "",
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "timed_out": false,
+        "wait4_max_process_rss_kib": 148416,
+        "wall_s": 0.852982147000148
+      },
+      {
+        "cancelled": false,
+        "command": [
+          "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/opt",
+          "-passes=verify",
+          "-module-summary",
+          "raw-part-2",
+          "-o",
+          "part-2.bc"
+        ],
+        "cpu_s": 0.776765,
+        "exit_code": 0,
+        "key": 2,
+        "load_after": [
+          1.44873046875,
+          1.24658203125,
+          1.21337890625
+        ],
+        "load_before": [
+          1.44873046875,
+          1.24658203125,
+          1.21337890625
+        ],
+        "proc_pid_resolved": true,
+        "sampled_max_processes": 1,
+        "sampled_process_tree_peak_rss_kib": 146792,
+        "stage": "summary",
+        "stderr": "",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout": "",
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "timed_out": false,
+        "wait4_max_process_rss_kib": 146792,
+        "wall_s": 0.8681544490027591
+      },
+      {
+        "cancelled": false,
+        "command": [
+          "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/opt",
+          "-passes=verify",
+          "-module-summary",
+          "raw-part-3",
+          "-o",
+          "part-3.bc"
+        ],
+        "cpu_s": 0.7523279999999999,
+        "exit_code": 0,
+        "key": 3,
+        "load_after": [
+          1.44873046875,
+          1.24658203125,
+          1.21337890625
+        ],
+        "load_before": [
+          1.44873046875,
+          1.24658203125,
+          1.21337890625
+        ],
+        "proc_pid_resolved": true,
+        "sampled_max_processes": 1,
+        "sampled_process_tree_peak_rss_kib": 145736,
+        "stage": "summary",
+        "stderr": "",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout": "",
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "timed_out": false,
+        "wait4_max_process_rss_kib": 145736,
+        "wall_s": 0.9560786279980675
+      },
+      {
+        "cancelled": false,
+        "command": [
+          "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/llvm-lto2",
+          "dump-symtab",
+          "part-0.bc"
+        ],
+        "cpu_s": 0.01359,
+        "exit_code": 0,
+        "key": 0,
+        "load_after": [
+          1.44873046875,
+          1.24658203125,
+          1.21337890625
+        ],
+        "load_before": [
+          1.44873046875,
+          1.24658203125,
+          1.21337890625
+        ],
+        "proc_pid_resolved": true,
+        "sampled_max_processes": 1,
+        "sampled_process_tree_peak_rss_kib": 19048,
+        "stage": "symbols",
+        "stderr": "",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout": "",
+        "stdout_file": "/workspace/scratch/685873f30dd6/continuation-bootstrap/driver-thinlto4-0/optimized-ox_qnlq8/stage2-pipeline/backend/part-0.symbols.txt",
+        "stdout_sha256": "59c99b23f0c21529c47bb6a872efffe165b6004d5cf48180d0c92faf2014720c",
+        "timed_out": false,
+        "wait4_max_process_rss_kib": 53632,
+        "wall_s": 0.01820283599954564
+      },
+      {
+        "cancelled": false,
+        "command": [
+          "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/llvm-lto2",
+          "dump-symtab",
+          "part-1.bc"
+        ],
+        "cpu_s": 0.015068999999999999,
+        "exit_code": 0,
+        "key": 0,
+        "load_after": [
+          1.44873046875,
+          1.24658203125,
+          1.21337890625
+        ],
+        "load_before": [
+          1.44873046875,
+          1.24658203125,
+          1.21337890625
+        ],
+        "proc_pid_resolved": true,
+        "sampled_max_processes": 1,
+        "sampled_process_tree_peak_rss_kib": 17984,
+        "stage": "symbols",
+        "stderr": "",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout": "",
+        "stdout_file": "/workspace/scratch/685873f30dd6/continuation-bootstrap/driver-thinlto4-0/optimized-ox_qnlq8/stage2-pipeline/backend/part-1.symbols.txt",
+        "stdout_sha256": "002f46f44efa296fef020953c5f924887cdd8860f8229799273ef54f33114768",
+        "timed_out": false,
+        "wait4_max_process_rss_kib": 54300,
+        "wall_s": 0.01781413099524798
+      },
+      {
+        "cancelled": false,
+        "command": [
+          "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/llvm-lto2",
+          "dump-symtab",
+          "part-2.bc"
+        ],
+        "cpu_s": 0.016395,
+        "exit_code": 0,
+        "key": 0,
+        "load_after": [
+          1.44873046875,
+          1.24658203125,
+          1.21337890625
+        ],
+        "load_before": [
+          1.44873046875,
+          1.24658203125,
+          1.21337890625
+        ],
+        "proc_pid_resolved": true,
+        "sampled_max_processes": 1,
+        "sampled_process_tree_peak_rss_kib": 14084,
+        "stage": "symbols",
+        "stderr": "",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout": "",
+        "stdout_file": "/workspace/scratch/685873f30dd6/continuation-bootstrap/driver-thinlto4-0/optimized-ox_qnlq8/stage2-pipeline/backend/part-2.symbols.txt",
+        "stdout_sha256": "7f8c4d4c9e1cb768de6deed6e6075f98772b665bfefeb35a0f540fe79c291bad",
+        "timed_out": false,
+        "wait4_max_process_rss_kib": 53760,
+        "wall_s": 0.01796555899636587
+      },
+      {
+        "cancelled": false,
+        "command": [
+          "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/llvm-lto2",
+          "dump-symtab",
+          "part-3.bc"
+        ],
+        "cpu_s": 0.016628999999999998,
+        "exit_code": 0,
+        "key": 0,
+        "load_after": [
+          1.44873046875,
+          1.24658203125,
+          1.21337890625
+        ],
+        "load_before": [
+          1.44873046875,
+          1.24658203125,
+          1.21337890625
+        ],
+        "proc_pid_resolved": true,
+        "sampled_max_processes": 1,
+        "sampled_process_tree_peak_rss_kib": 18192,
+        "stage": "symbols",
+        "stderr": "",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout": "",
+        "stdout_file": "/workspace/scratch/685873f30dd6/continuation-bootstrap/driver-thinlto4-0/optimized-ox_qnlq8/stage2-pipeline/backend/part-3.symbols.txt",
+        "stdout_sha256": "7980bf0d304c0367dc01b85fe4c9c9a88b5427154c62fd62b0fc6d70e427d252",
+        "timed_out": false,
+        "wait4_max_process_rss_kib": 54716,
+        "wall_s": 0.018245401995955035
+      },
+      {
+        "cancelled": false,
+        "command": [
+          "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/llvm-lto2",
+          "run",
+          "@thin.rsp"
+        ],
+        "cpu_s": 71.976703,
+        "exit_code": 0,
+        "key": 0,
+        "load_after": [
+          2.32373046875,
+          1.46875,
+          1.28857421875
+        ],
+        "load_before": [
+          1.4931640625,
+          1.25927734375,
+          1.2177734375
+        ],
+        "proc_pid_resolved": true,
+        "sampled_max_processes": 1,
+        "sampled_process_tree_peak_rss_kib": 658424,
+        "stage": "thinlto",
+        "stderr": "",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout": "",
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "timed_out": false,
+        "wait4_max_process_rss_kib": 658424,
+        "wall_s": 20.67768295800488
+      },
+      {
+        "cancelled": false,
+        "command": [
+          "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/clang",
+          "thin.o.1",
+          "thin.o.2",
+          "thin.o.3",
+          "thin.o.4",
+          "-o",
+          "compiler",
+          "-lm"
+        ],
+        "cpu_s": 0.121838,
+        "exit_code": 0,
+        "key": 0,
+        "load_after": [
+          2.32373046875,
+          1.46875,
+          1.28857421875
+        ],
+        "load_before": [
+          2.32373046875,
+          1.46875,
+          1.28857421875
+        ],
+        "proc_pid_resolved": true,
+        "sampled_max_processes": 2,
+        "sampled_process_tree_peak_rss_kib": 93336,
+        "stage": "link",
+        "stderr": "",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout": "",
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "timed_out": false,
+        "wait4_max_process_rss_kib": 67328,
+        "wall_s": 0.12349418499798048
+      }
+    ],
+    "compiler_bytes": 6187432,
+    "compiler_sha256": "19246a0fcedc40e94edd7cf309f8cf5699fa741608e8e8c0fa0cb5a388876617",
+    "complete": true,
+    "input_ir": {
+      "available_externally_definitions": 0,
+      "bytes": 44411741,
+      "empty_pointer_barriers": 2,
+      "function_definitions": 3675,
+      "linkonce_definitions": 0
+    },
+    "job_sha256": "79b82c5e9d6a56bfddef0cd2010f709b98a57158e893ad23d21888feb5786097",
+    "objects": [
+      {
+        "bytes": 3664888,
+        "file": "thin.o.1",
+        "sha256": "58c958617ecff7a6a53016863ee3550dc311c28812debb892eb501b6fa8f77f6"
+      },
+      {
+        "bytes": 3260888,
+        "file": "thin.o.2",
+        "sha256": "b56900e1b4179cd9e628d582dec7d5f7e8539b95743238ba7fdb5e64447a1ee9"
+      },
+      {
+        "bytes": 3682728,
+        "file": "thin.o.3",
+        "sha256": "08d2174340cf13c6b7528776aba0f786b1cd6314eef1ad3029eb1bd6b2bc0f16"
+      },
+      {
+        "bytes": 3316800,
+        "file": "thin.o.4",
+        "sha256": "53339747048e4cbf782c11916d60a3f6770e2e37f8d0f52a60a097c6cfa072f7"
+      }
+    ],
+    "resolution_counts": {
+      "external_symbols": 102,
+      "hidden_definitions": 16664,
+      "visible_definitions": 177,
+      "weak_definitions": 0
+    },
+    "response_sha256": "d531641d16340acd3a001aa74ce059110a317b632f4441d37b185f135c5ba06c",
+    "steps": [
+      {
+        "cancelled": false,
+        "command": [
+          "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/llvm-dis",
+          "/workspace/scratch/685873f30dd6/continuation-bootstrap/driver-thinlto4-0/optimized-ox_qnlq8/stage2-pipeline/linked.bc",
+          "-o",
+          "input.ll"
+        ],
+        "cpu_s": 1.573083,
+        "exit_code": 0,
+        "key": 0,
+        "load_after": [
+          1.44873046875,
+          1.24658203125,
+          1.21337890625
+        ],
+        "load_before": [
+          1.400390625,
+          1.2333984375,
+          1.208984375
+        ],
+        "proc_pid_resolved": true,
+        "sampled_max_processes": 1,
+        "sampled_process_tree_peak_rss_kib": 240720,
+        "stage": "preflight",
+        "stderr": "",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout": "",
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "timed_out": false,
+        "wait4_max_process_rss_kib": 240720,
+        "wall_s": 1.576013833997422
+      },
+      {
+        "cancelled": false,
+        "command": [
+          "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/llvm-split",
+          "/workspace/scratch/685873f30dd6/continuation-bootstrap/driver-thinlto4-0/optimized-ox_qnlq8/stage2-pipeline/linked.bc",
+          "-j",
+          "4",
+          "-o",
+          "raw-part-"
+        ],
+        "cpu_s": 3.501073,
+        "exit_code": 0,
+        "key": 0,
+        "load_after": [
+          1.44873046875,
+          1.24658203125,
+          1.21337890625
+        ],
+        "load_before": [
+          1.44873046875,
+          1.24658203125,
+          1.21337890625
+        ],
+        "proc_pid_resolved": true,
+        "sampled_max_processes": 1,
+        "sampled_process_tree_peak_rss_kib": 356984,
+        "stage": "split",
+        "stderr": "",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout": "",
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "timed_out": false,
+        "wait4_max_process_rss_kib": 356984,
+        "wall_s": 3.5071706640010234
+      },
+      {
+        "cancelled": false,
+        "command": [
+          "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/opt",
+          "-passes=verify",
+          "-module-summary",
+          "raw-part-1",
+          "-o",
+          "part-1.bc"
+        ],
+        "cpu_s": 0.6733339999999999,
+        "exit_code": 0,
+        "key": 1,
+        "load_after": [
+          1.44873046875,
+          1.24658203125,
+          1.21337890625
+        ],
+        "load_before": [
+          1.44873046875,
+          1.24658203125,
+          1.21337890625
+        ],
+        "proc_pid_resolved": true,
+        "sampled_max_processes": 1,
+        "sampled_process_tree_peak_rss_kib": 140852,
+        "stage": "summary",
+        "stderr": "",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout": "",
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "timed_out": false,
+        "wait4_max_process_rss_kib": 140852,
+        "wall_s": 0.7448625100005302
+      },
+      {
+        "cancelled": false,
+        "command": [
+          "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/opt",
+          "-passes=verify",
+          "-module-summary",
+          "raw-part-0",
+          "-o",
+          "part-0.bc"
+        ],
+        "cpu_s": 0.8483809999999999,
+        "exit_code": 0,
+        "key": 0,
+        "load_after": [
+          1.44873046875,
+          1.24658203125,
+          1.21337890625
+        ],
+        "load_before": [
+          1.44873046875,
+          1.24658203125,
+          1.21337890625
+        ],
+        "proc_pid_resolved": true,
+        "sampled_max_processes": 1,
+        "sampled_process_tree_peak_rss_kib": 148416,
+        "stage": "summary",
+        "stderr": "",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout": "",
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "timed_out": false,
+        "wait4_max_process_rss_kib": 148416,
+        "wall_s": 0.852982147000148
+      },
+      {
+        "cancelled": false,
+        "command": [
+          "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/opt",
+          "-passes=verify",
+          "-module-summary",
+          "raw-part-2",
+          "-o",
+          "part-2.bc"
+        ],
+        "cpu_s": 0.776765,
+        "exit_code": 0,
+        "key": 2,
+        "load_after": [
+          1.44873046875,
+          1.24658203125,
+          1.21337890625
+        ],
+        "load_before": [
+          1.44873046875,
+          1.24658203125,
+          1.21337890625
+        ],
+        "proc_pid_resolved": true,
+        "sampled_max_processes": 1,
+        "sampled_process_tree_peak_rss_kib": 146792,
+        "stage": "summary",
+        "stderr": "",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout": "",
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "timed_out": false,
+        "wait4_max_process_rss_kib": 146792,
+        "wall_s": 0.8681544490027591
+      },
+      {
+        "cancelled": false,
+        "command": [
+          "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/opt",
+          "-passes=verify",
+          "-module-summary",
+          "raw-part-3",
+          "-o",
+          "part-3.bc"
+        ],
+        "cpu_s": 0.7523279999999999,
+        "exit_code": 0,
+        "key": 3,
+        "load_after": [
+          1.44873046875,
+          1.24658203125,
+          1.21337890625
+        ],
+        "load_before": [
+          1.44873046875,
+          1.24658203125,
+          1.21337890625
+        ],
+        "proc_pid_resolved": true,
+        "sampled_max_processes": 1,
+        "sampled_process_tree_peak_rss_kib": 145736,
+        "stage": "summary",
+        "stderr": "",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout": "",
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "timed_out": false,
+        "wait4_max_process_rss_kib": 145736,
+        "wall_s": 0.9560786279980675
+      },
+      {
+        "cancelled": false,
+        "command": [
+          "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/llvm-lto2",
+          "dump-symtab",
+          "part-0.bc"
+        ],
+        "cpu_s": 0.01359,
+        "exit_code": 0,
+        "key": 0,
+        "load_after": [
+          1.44873046875,
+          1.24658203125,
+          1.21337890625
+        ],
+        "load_before": [
+          1.44873046875,
+          1.24658203125,
+          1.21337890625
+        ],
+        "proc_pid_resolved": true,
+        "sampled_max_processes": 1,
+        "sampled_process_tree_peak_rss_kib": 19048,
+        "stage": "symbols",
+        "stderr": "",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout": "",
+        "stdout_file": "/workspace/scratch/685873f30dd6/continuation-bootstrap/driver-thinlto4-0/optimized-ox_qnlq8/stage2-pipeline/backend/part-0.symbols.txt",
+        "stdout_sha256": "59c99b23f0c21529c47bb6a872efffe165b6004d5cf48180d0c92faf2014720c",
+        "timed_out": false,
+        "wait4_max_process_rss_kib": 53632,
+        "wall_s": 0.01820283599954564
+      },
+      {
+        "cancelled": false,
+        "command": [
+          "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/llvm-lto2",
+          "dump-symtab",
+          "part-1.bc"
+        ],
+        "cpu_s": 0.015068999999999999,
+        "exit_code": 0,
+        "key": 0,
+        "load_after": [
+          1.44873046875,
+          1.24658203125,
+          1.21337890625
+        ],
+        "load_before": [
+          1.44873046875,
+          1.24658203125,
+          1.21337890625
+        ],
+        "proc_pid_resolved": true,
+        "sampled_max_processes": 1,
+        "sampled_process_tree_peak_rss_kib": 17984,
+        "stage": "symbols",
+        "stderr": "",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout": "",
+        "stdout_file": "/workspace/scratch/685873f30dd6/continuation-bootstrap/driver-thinlto4-0/optimized-ox_qnlq8/stage2-pipeline/backend/part-1.symbols.txt",
+        "stdout_sha256": "002f46f44efa296fef020953c5f924887cdd8860f8229799273ef54f33114768",
+        "timed_out": false,
+        "wait4_max_process_rss_kib": 54300,
+        "wall_s": 0.01781413099524798
+      },
+      {
+        "cancelled": false,
+        "command": [
+          "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/llvm-lto2",
+          "dump-symtab",
+          "part-2.bc"
+        ],
+        "cpu_s": 0.016395,
+        "exit_code": 0,
+        "key": 0,
+        "load_after": [
+          1.44873046875,
+          1.24658203125,
+          1.21337890625
+        ],
+        "load_before": [
+          1.44873046875,
+          1.24658203125,
+          1.21337890625
+        ],
+        "proc_pid_resolved": true,
+        "sampled_max_processes": 1,
+        "sampled_process_tree_peak_rss_kib": 14084,
+        "stage": "symbols",
+        "stderr": "",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout": "",
+        "stdout_file": "/workspace/scratch/685873f30dd6/continuation-bootstrap/driver-thinlto4-0/optimized-ox_qnlq8/stage2-pipeline/backend/part-2.symbols.txt",
+        "stdout_sha256": "7f8c4d4c9e1cb768de6deed6e6075f98772b665bfefeb35a0f540fe79c291bad",
+        "timed_out": false,
+        "wait4_max_process_rss_kib": 53760,
+        "wall_s": 0.01796555899636587
+      },
+      {
+        "cancelled": false,
+        "command": [
+          "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/llvm-lto2",
+          "dump-symtab",
+          "part-3.bc"
+        ],
+        "cpu_s": 0.016628999999999998,
+        "exit_code": 0,
+        "key": 0,
+        "load_after": [
+          1.44873046875,
+          1.24658203125,
+          1.21337890625
+        ],
+        "load_before": [
+          1.44873046875,
+          1.24658203125,
+          1.21337890625
+        ],
+        "proc_pid_resolved": true,
+        "sampled_max_processes": 1,
+        "sampled_process_tree_peak_rss_kib": 18192,
+        "stage": "symbols",
+        "stderr": "",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout": "",
+        "stdout_file": "/workspace/scratch/685873f30dd6/continuation-bootstrap/driver-thinlto4-0/optimized-ox_qnlq8/stage2-pipeline/backend/part-3.symbols.txt",
+        "stdout_sha256": "7980bf0d304c0367dc01b85fe4c9c9a88b5427154c62fd62b0fc6d70e427d252",
+        "timed_out": false,
+        "wait4_max_process_rss_kib": 54716,
+        "wall_s": 0.018245401995955035
+      },
+      {
+        "cancelled": false,
+        "command": [
+          "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/llvm-lto2",
+          "run",
+          "@thin.rsp"
+        ],
+        "cpu_s": 71.976703,
+        "exit_code": 0,
+        "key": 0,
+        "load_after": [
+          2.32373046875,
+          1.46875,
+          1.28857421875
+        ],
+        "load_before": [
+          1.4931640625,
+          1.25927734375,
+          1.2177734375
+        ],
+        "proc_pid_resolved": true,
+        "sampled_max_processes": 1,
+        "sampled_process_tree_peak_rss_kib": 658424,
+        "stage": "thinlto",
+        "stderr": "",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout": "",
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "timed_out": false,
+        "wait4_max_process_rss_kib": 658424,
+        "wall_s": 20.67768295800488
+      },
+      {
+        "cancelled": false,
+        "command": [
+          "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/clang",
+          "thin.o.1",
+          "thin.o.2",
+          "thin.o.3",
+          "thin.o.4",
+          "-o",
+          "compiler",
+          "-lm"
+        ],
+        "cpu_s": 0.121838,
+        "exit_code": 0,
+        "key": 0,
+        "load_after": [
+          2.32373046875,
+          1.46875,
+          1.28857421875
+        ],
+        "load_before": [
+          2.32373046875,
+          1.46875,
+          1.28857421875
+        ],
+        "proc_pid_resolved": true,
+        "sampled_max_processes": 2,
+        "sampled_process_tree_peak_rss_kib": 93336,
+        "stage": "link",
+        "stderr": "",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout": "",
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "timed_out": false,
+        "wait4_max_process_rss_kib": 67328,
+        "wall_s": 0.12349418499798048
+      }
+    ],
+    "version": 2
+  },
+  "backend_policy": "thinlto",
+  "build_wall_s": 43.21436774700123,
+  "cache_trust_wait_s": 1.8231070919937338,
+  "caller_witnesses": true,
+  "command_history": [
+    {
+      "cancelled": false,
+      "command": [
+        "/workspace/scratch/685873f30dd6/continuation-bootstrap/driver-thinlto4-0/optimized-ox_qnlq8/pystachy1",
+        "build",
+        "/workspace/scratch/685873f30dd6/continuation-bootstrap/driver-thinlto4-0/optimized-ox_qnlq8/stage2-pipeline/tiny.py",
+        "-o",
+        "/workspace/scratch/685873f30dd6/continuation-bootstrap/driver-thinlto4-0/optimized-ox_qnlq8/stage2-pipeline/tiny"
+      ],
+      "cpu_s": 4.006385,
+      "exit_code": 0,
+      "key": "runtime_prewarm",
+      "load_after": [
+        1.28369140625,
+        1.20703125,
+        1.20068359375
+      ],
+      "load_before": [
+        1.13427734375,
+        1.1767578125,
+        1.19091796875
+      ],
+      "proc_pid_resolved": true,
+      "sampled_max_processes": 4,
+      "sampled_process_tree_peak_rss_kib": 158616,
+      "stderr": "pystachy-timing\tprogram.load\t0.000100932\npystachy-timing\tprogram.prepare\t0.000044667\npystachy-timing\tprogram.discover\t0.000145870\npystachy-timing\tprogram.analysis\t0.000015353\npystachy-timing\tprogram.optimize\t0.000005358\npystachy-timing\tprogram.finalize\t0.000004347\npystachy-timing\tprogram.lower\t0.000055955\npystachy-timing\tprogram.attempt\t0.000505731\npystachy-timing\tprogram.frontend\t0.000529417\npystachy-timing\truntime.cache_lookup\t0.315010041\npystachy-timing\truntime.load\t0.090429287\npystachy-timing\truntime.prepare\t0.022198694\npystachy-timing\truntime.discover\t0.033200073\npystachy-timing\truntime.analysis\t0.004881222\npystachy-timing\truntime.optimize\t0.005642528\npystachy-timing\truntime.finalize\t0.011306459\npystachy-timing\truntime.lower\t0.008118558\npystachy-timing\truntime.frontend\t0.176100036\npystachy-timing\truntime.c_preprocess\t0.086923982\npystachy-timing\truntime.c_cache_hit\t0.003768636\npystachy-timing\truntime.link\t0.214904847\npystachy-timing\truntime.llvm_optimize\t2.908820094\npystachy-timing\tprogram.llvm_link\t0.038943233\npystachy-timing\tprogram.optimize_codegen\t0.253646078\npystachy-timing\tprogram.link\t0.044989960\npystachy-timing\tdriver.total\t4.112499120\n",
+      "stderr_sha256": "6fa8612b73114f6c6964f236e9cf61364439cb23ad1484ecedf91d0a23f4821f",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 94364,
+      "wall_s": 4.11872651399608
+    },
+    {
+      "cancelled": false,
+      "command": [
+        "/workspace/scratch/685873f30dd6/continuation-bootstrap/driver-thinlto4-0/optimized-ox_qnlq8/pystachy1",
+        "ir",
+        "/workspace/scratch/685873f30dd6/continuation-frozen/pystachy.py",
+        "-o",
+        "/workspace/scratch/685873f30dd6/continuation-bootstrap/driver-thinlto4-0/optimized-ox_qnlq8/stage2-pipeline/raw.ll"
+      ],
+      "cpu_s": 10.33259,
+      "exit_code": 0,
+      "key": "frontend",
+      "load_after": [
+        1.2607421875,
+        1.203125,
+        1.19921875
+      ],
+      "load_before": [
+        1.13427734375,
+        1.1767578125,
+        1.19091796875
+      ],
+      "proc_pid_resolved": true,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 924680,
+      "stderr": "pystachy-timing\tprogram.load\t3.636043713\npystachy-timing\tprogram.prepare\t1.199134402\npystachy-timing\tprogram.discover\t2.104773099\npystachy-timing\tprogram.analysis\t0.658409323\npystachy-timing\tprogram.optimize\t0.888058158\npystachy-timing\tprogram.finalize\t0.289426391\npystachy-timing\tprogram.lower\t1.257824000\npystachy-timing\tprogram.attempt\t10.034258605\npystachy-timing\tprogram.frontend\t10.034299377\npystachy-timing\tdriver.total\t10.309826743\n",
+      "stderr_sha256": "7d195e3da97a45a071dd53d1a978483a9406003feb11462c9e2acd442611efa0",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 924680,
+      "wall_s": 10.355607409001095
+    },
+    {
+      "cancelled": false,
+      "command": [
+        "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/llvm-link",
+        "--only-needed",
+        "/workspace/scratch/685873f30dd6/continuation-bootstrap/driver-thinlto4-0/optimized-ox_qnlq8/stage2-pipeline/program.ll",
+        "/workspace/scratch/685873f30dd6/continuation-bootstrap/driver-thinlto4-0/optimized-ox_qnlq8/cache/runtime-py-a8c88d34-8d27f1ce9dd553be.bc",
+        "-o",
+        "/workspace/scratch/685873f30dd6/continuation-bootstrap/driver-thinlto4-0/optimized-ox_qnlq8/stage2-pipeline/linked.bc"
+      ],
+      "cpu_s": 3.222165,
+      "exit_code": 0,
+      "key": 0,
+      "load_after": [
+        1.400390625,
+        1.2333984375,
+        1.208984375
+      ],
+      "load_before": [
+        1.400390625,
+        1.2333984375,
+        1.208984375
+      ],
+      "proc_pid_resolved": true,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 307808,
+      "stderr": "",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 309344,
+      "wall_s": 3.2277900549961487
+    },
+    {
+      "cancelled": false,
+      "command": [
+        "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+        "/workspace/scratch/685873f30dd6/continuation-frozen/bench/compiler_host/partition_import.py",
+        "--backend-job",
+        "/workspace/scratch/685873f30dd6/continuation-bootstrap/driver-thinlto4-0/optimized-ox_qnlq8/stage2-pipeline/backend/job.json",
+        "--inherited-group"
+      ],
+      "cpu_s": 83.33401500000001,
+      "exit_code": 0,
+      "key": 0,
+      "load_after": [
+        2.32373046875,
+        1.46875,
+        1.28857421875
+      ],
+      "load_before": [
+        1.400390625,
+        1.2333984375,
+        1.208984375
+      ],
+      "proc_pid_resolved": true,
+      "sampled_max_processes": 5,
+      "sampled_process_tree_peak_rss_kib": 719880,
+      "stderr": "",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 658424,
+      "wall_s": 27.557090822003374
+    }
+  ],
+  "compiler": [
+    "/workspace/scratch/685873f30dd6/continuation-bootstrap/driver-thinlto4-0/optimized-ox_qnlq8/pystachy1"
+  ],
+  "complete": true,
+  "expected_job_sha256": "79b82c5e9d6a56bfddef0cd2010f709b98a57158e893ad23d21888feb5786097",
+  "frontend_runtime_wall_s": 12.180521774003864,
+  "harness_sha256": "936e6cb1c08cdd65e976e8ac2b1eac8311eca06d710f2eaefbdeec250181058b",
+  "host": {
+    "affinity_cpus": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "cpu": "AMD EPYC 9V74 80-Core Processor",
+    "cpu_quota": "800000 100000",
+    "load_average": [
+      1.13427734375,
+      1.1767578125,
+      1.19091796875
+    ],
+    "logical_cpus": 9,
+    "memory": "MemTotal:       10206472 kB\nMemAvailable:    9391256 kB",
+    "memory_limit": "8589934592"
+  },
+  "inline_threshold": null,
+  "jobs": 4,
+  "llvm": {
+    "clang": {
+      "path": "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/clang",
+      "sha256": "8ef402d453d1ba4902e4ee0f0f847f6cfa01400c95aa43c24e97818b9c0e3f45"
+    },
+    "ld.lld": null,
+    "llvm-as": {
+      "path": "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/llvm-as",
+      "sha256": "8e7460eff4ba4e22d8ae881404bb24c5fc346996264e883ba26d41da4188215d"
+    },
+    "llvm-link": {
+      "path": "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/llvm-link",
+      "sha256": "e340363ed9e5346f0d6dc4441f4953c5f516ff73fa0a03e1955c1adaad68b651"
+    },
+    "opt": {
+      "path": "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/opt",
+      "sha256": "67ebe8635087b5ebe22d8f085d5e5857e431f86be9ed76576e59b86b9743c0fb"
+    },
+    "python": {
+      "path": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+      "sha256": "6e9b7d27499f26dbec3c8687728f3a0500b9b61688664f03678242744567c461"
+    }
+  },
+  "opt": 2,
+  "overlap": true,
+  "partitions": 4,
+  "producer_sha256": {
+    "/workspace/scratch/685873f30dd6/continuation-bootstrap/driver-thinlto4-0/optimized-ox_qnlq8/pystachy1": "ce4f4a0122f8a60c33951bb6f3676156630734df1e08095ffe4ede7a42ea937f"
+  },
+  "producer_unchanged": true,
+  "raw_ir_sha256": "abe74425a180ae7243b56ebe5c35224b07f296ef17001b01dc8fa30bba870dd3",
+  "runtime_bc_path": "/workspace/scratch/685873f30dd6/continuation-bootstrap/driver-thinlto4-0/optimized-ox_qnlq8/cache/runtime-py-a8c88d34-8d27f1ce9dd553be.bc",
+  "runtime_bc_sha256": "9240b5f9e2b1ad3a2b0ebae4ae0955b1942b78b718cd3fd116c25dfd3324207c",
+  "source": {
+    "files": {
+      "lib/_argparse_help.py": "71230160d94bdca256c1ec51df652634e56a663edb1934d8b15a3b45c8da0a42",
+      "lib/_markupbase.py": "6a294b294582f55905d310b8df054019e94f37b17eba3414be4e2cb61d5851d1",
+      "lib/_pyrandom.py": "5b37918369c0e4becdac2d012ffe9e40e314a330ee9f7b3fe2ce4cd3a926ff09",
+      "lib/_pystachy__io.py": "77ee03b3a67f79f49c3fe30666f4f5077bd41069797c727529a230c4caa0a117",
+      "lib/_pystachy_abc.py": "9f6f717c077b2dbac22e8dc9793373b939615a33f2698aaddd81ed905e5a48f8",
+      "lib/_pystachy_atexit.py": "a5ff97e421a4a8fd782e08a0124bac6a7b27486fc279cb4384655bc4b208d60c",
+      "lib/_pystachy_bfile.py": "3ae9d3ed7e23e4bd0712b097a73db93f14aa7321bf1e4c5585c8cd2774999826",
+      "lib/_pystachy_binascii.py": "c8ca70973dc409011ba89749878a2a205780fdc907437bc08521be0e3d07f848",
+      "lib/_pystachy_bytescan.py": "9d67b07a3bbcdf944454abbf138f3c588ffba4a5787d43ba148e5f918a3c8f63",
+      "lib/_pystachy_codecs.py": "fe8380d756e383192028c6a65d652047e9abb9c08b51e15aba5b35e8cf678acf",
+      "lib/_pystachy_copy.py": "27d374af0fc595f85da5e4d19dd9f235b0ed3212dd926695ee4c696b0f5b4d3f",
+      "lib/_pystachy_iterators.py": "61894584c1fda85936a740d4dafa2c5d631f9b05f5022fca8913e4ad0a84b27e",
+      "lib/_pystachy_itertools.py": "14f451cf7647016ad8105aa988b9cbabe4fe3f5a08f2710f6ed2db5d81a00566",
+      "lib/_pystachy_json_any.py": "9d4bf30d0a11b50d013de9b62f7c9b75269a66c26cbce1dcc67b6504428ea7af",
+      "lib/_pystachy_json_int.py": "dde398779410ac2476e4205468df5477af8e56a59809e8c12068a1938a19adb0",
+      "lib/_pystachy_mappingproxy.py": "e1d04e45f0b12e0e29fba497adf16f77864154c9e175a40065d2fd73654be70c",
+      "lib/_pystachy_object.py": "6a21df25fa11b3c80a70d95f310760d86adaeecd4a63e767bde5b9ecde63ca9c",
+      "lib/_pystachy_percent.py": "38119feeb5bff2d50d8d5d48e8c23e853bfe5ca92c6df99163b82a8699eda0e3",
+      "lib/_pystachy_range.py": "50df392f248e25a79896007a3b0a23741f8f5f56622e7c56060ba9612292f8b2",
+      "lib/_pystachy_re_specialized.py": "d09604c416700c3a7acd3a9f8c6f7536289c895b2e72393a9875e68ed92e45bf",
+      "lib/_pystachy_string.py": "2e87bb96489d12051446c1b59c2e4ee65543a14f15d8eff3465a43f2e1f51434",
+      "lib/_pystachy_struct.py": "2f224f07dd5a8db374dc2604257cc7c41a4caa7140c5d2ddf30a34bc8f88f1d6",
+      "lib/_pystachy_thread.py": "db3920b84b5b801ede68b2facab9ef2bc21f1f714dcc767625e66f1f4bf936cc",
+      "lib/_pystachy_time.py": "21470e0d9af8a1fb86b34f9977c4e5049a3b6785bb0db3f23198546665a9fa39",
+      "lib/_pystachy_types.py": "221d41e2f90c40493b3d712fb99cf39fb5a25c2306e63de7a89358e66cfcfe70",
+      "lib/_pystachy_unicodedata.py": "f1c877238f94279dfdb5a5f77396d9d25f504c409f34b78099613c6c3f71c7d0",
+      "lib/_pystachy_unicodedata_db.py": "d511e3c104f697e9e9ce150b97119ceb1fcaf00ebcdd3be21cf52c88337608b2",
+      "lib/_pystachy_unicodedata_names.py": "9b18f9e4aecb03f28672fdecce4fcf9d0ece0a1c565c7e9e0ce504fe4fc2bb28",
+      "lib/_pystachy_weakref.py": "961b272cf9e756d3829f57ad7325b123e5329a06dfb64519a50c8132728cb3cb",
+      "lib/_weakrefset.py": "91895a451d06e9f521a1171b31b9b19bc9740f35af00d4fa106338ab7167c9ac",
+      "lib/argparse.py": "7badc6e5fd7d0cd32884ee819a2c2875614ae49b0d17ccc46cf80a5910066936",
+      "lib/bisect.py": "f1cf7b85fc36b5da249813fc5ab97d9464f8cc1bc817f7146206fa2713e35999",
+      "lib/codecs.py": "feafe30244cc2ac23a8f03ca6c8b106ef82dede1630aac103126767e123a3c42",
+      "lib/collections/__init__.py": "8a6533ddf04c4823e1c1da10925028613420cc4e5cb6264e6066fdd3739b4852",
+      "lib/colorsys.py": "65e3dfbf7bad61d4d7d7731a69dd7e75a347fd350d91327a51010a94e6fd2f1d",
+      "lib/contextlib.py": "08bf5d132ae0aceafcd94c72396e21fd45fc9cd1ba6e74807ce1e39f22d0d665",
+      "lib/copy.py": "360bbbd25d50a8f6292487aadfaa43291619d09b26d90596a9a0cf36c727c969",
+      "lib/csv.py": "29676a25a82679e93c6d0eb771a3f60890aedf49941206c0387ce59696b7c3c4",
+      "lib/curses/__init__.py": "91156d2c9afdc168cee4bb7085c8b16936ca7079fa4035ac4d7908712d86f394",
+      "lib/curses/ascii.py": "780dd8bbaf0ee7e832f164c1772953e694a9cd1031d1ab1471af65344d3645e6",
+      "lib/datetime.py": "d269c51c55e7668b988c8194a7a2e643a39aa3a2770a727c178a5c898b91c239",
+      "lib/difflib.py": "4d33db46d2f0748bd674b5ae2f52c59ab0cab0865c465a99ea9521d8751aea0f",
+      "lib/enum.py": "5966e540800846a58328cfcf50029b5c6b79c27194ed01f30a432d45a81401ed",
+      "lib/fnmatch.py": "fd1da199d0eeabc34ec9796d5a0790da6300fff4d15e16ee2d8ca26e6885eec5",
+      "lib/functools.py": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703",
+      "lib/genericpath.py": "cdac5a68dd738051e0d66fc81d5947d6a1776248fc6fe862253477608d870ec4",
+      "lib/getopt.py": "0d152bede49816f2924ffb944d86369099bea3b68ec1ee6f0c84c56251670241",
+      "lib/gettext.py": "97b7fa3d8112826dae4d021a6445fe791521524bd4b06e729d0497ed59a85e63",
+      "lib/glob.py": "3ff5a1497ed62460e45f6031f1c9b921849a5e73b8ff6ea35fe25635a4106b78",
+      "lib/heapq.py": "89bfee37cf47aecdf2a5ae8706b9805f1b1789d6e2edb7e3556fe8b42c5ecba3",
+      "lib/html/__init__.py": "067cf63fe3eee1bece807caba82a83d0307010bf1c30d9974e56ea704ddea893",
+      "lib/html/entities.py": "6fbeb0318e22905269b414b7d045574b8a98767f194310071b9177fadc738a2f",
+      "lib/html/parser.py": "f3ab8871f5342562328cd3ff8e65d5667c79d27189c7a0401982a193de7b4e90",
+      "lib/io.py": "31f5102c549e7051190c81838928db3f5c21863ac9cf63e7a493352e767fa71f",
+      "lib/json.py": "b217485992131dd49d083a0fcff14fe56e6507933b4d7e3d5e09071be071dd39",
+      "lib/keyword.py": "833eb8e01577a8330f473ed49403fae4b5e6c95a66a81254405deb5c7ea7efb9",
+      "lib/logging/__init__.py": "73ce5de4a0780ba93deb120274a7aebba5f629a6a0ee48b81757f0770b12d6e3",
+      "lib/mpz.py": "754e4844ff8425e92ee8cde26b1e84a4ad318312d1ca17d10ea724a6c4c46a45",
+      "lib/operator.py": "7d42396ef02c03aa69eb86643769cdb889ab9fc66ffd140bc0efa0896fc94c99",
+      "lib/pathlib.py": "e489f1ddacdd4076b3f54b81e89e1d9a20e63d1e651a25f0c5b135398918cba2",
+      "lib/posixpath.py": "69acb9e294987cd6056a2237048373cf8d6201faf1e43a49c38889b47d2fb28e",
+      "lib/pyobj.py": "2d673d060a386ceae11b381ca94ce71a4ec43be89e7c1c59651c936ffea9054e",
+      "lib/random.py": "91e7fa770bfc1affb76a6441a10e1913af8993d8c657c12ffe6cbadc3e3add1e",
+      "lib/re/__init__.py": "62ebb86b1d7c3cabca75918d374c48eece358fd03bfe96f3ef486bb651b4c412",
+      "lib/re/_constants.py": "d8c63d4b91920ceb02d7c00073a062504c349b3e0de83ba480c3f4d1bca442fe",
+      "lib/re/_sre.py": "c7e98ec21fe209e8d3833516f408a5b219002e26a2f630cceb933b3e12cca3c5",
+      "lib/re/_unicode.py": "61f1343780ef2537ff83813b7a2097a55482a51a23b172a609a6836af4197ea2",
+      "lib/shlex.py": "7392b7c738fe818c43a8031820bef96db0b9f598d354a9fac0b771546a4fdba4",
+      "lib/shutil.py": "6f2ece466c6ebbd609758a22312842d61f8fba24bac5fefccbd9918a08d224c1",
+      "lib/stat.py": "07217986d9b2172b509dab3578d18ac05ba768b418e1f1e8c90e38a8f7c2b3c6",
+      "lib/statistics.py": "05a091943eb6a01272f95c190e99bab0d33c72a108aef45261c838842301991b",
+      "lib/string.py": "5a6ea720721a70a9d76d30135697ea612b9cb6610366b38d8c1d997043508b27",
+      "lib/struct.py": "9c231f9497caf513a22dee8f790b07f969b0e45854a0bdd6dd84b492e08c2856",
+      "lib/textwrap.py": "5102b1deb8905ad1b31a2830f7ac5a980229e55f3bbce06fd64baa9930159c1b",
+      "lib/this.py": "481d0cb3de511eae0b5713dad18542b07eafd9c013bb7690f7497bad49923a71",
+      "lib/threading.py": "b213b086e74428f910b7a469be2dd98108ae9041156851e8bc892f04a6bd62f9",
+      "lib/token.py": "1d81391050d5389c41f319ba4d42159c6247777400e48c27f2d28cac8ca4e6e2",
+      "lib/tomllib/__init__.py": "71f67036895f4c5acab942618af0cbd3d814451ba61e967f358d0f341a5b8f51",
+      "lib/tomllib/_parser.py": "11d40d79772967ebf81f5a0cf8dfa99608413b3ba6144d4beadae99baa28f279",
+      "lib/tomllib/_re.py": "17ec24dabd4e7089df6f04acacb331c85c437addbd2ab98bdfefcb18671ba056",
+      "lib/tomllib/_types.py": "e018cf69245202408dd97664cf76618e8cbb5efb6f43b134d29efd1d9221a6c0",
+      "lib/traceback.py": "0019cd354b5261be3496db20445c3f36f2e642cdee711fc1af51c7650e1625c1",
+      "lib/types.py": "d4215ea3abc258bdde763cc21ec4b0759f0c44e874b2483851c5681ae93f45e2",
+      "lib/urllib/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "lib/urllib/parse.py": "f5914562f9903ab7dde287fcb8bc0b1667a812f82e7e7c4419fed0493bfd0148",
+      "lib/warnings.py": "be4467c02d67040c87e31ede6787740815085298a880f2aa126b02fbabc0f133",
+      "lib/weakref.py": "4a08091ebed64fcd1d2368e97381009eab49669e40cdbddaaefd64d525e46e7a",
+      "mpz/mpz.c": "2d648cec5de20c6bb7d4882a364cfc9fa1d355395255c1d0e82e4389bde03afa",
+      "pystachy.py": "a413782632f88d4746a81fd7cfb529d695ab36a35618522a83be1e25e1e31f29",
+      "runtime.c": "1a6c77b09d5739d0d2ac263b8c86e7aa640c9b5bdf1cdafe369e84d1d7a0bb0c",
+      "runtime.py": "c45138f44a7aa25828b351b6d627e1a4f9fad69dc8a88532d053fb90e84beefb",
+      "ryu/common.h": "0bbd71d26da6193e678d0776cf418f43f287c73d6fd6725353df0aadf70f2a19",
+      "ryu/d2s.c": "c6357b5d53ac1ba7f4984847d3a76f0803e0a931b7d0b02680656576829cf1d2",
+      "ryu/d2s_intrinsics.h": "01d9bdaada67b42f2d1bbdebb3765867e6c44e3a181b806c1d7e851b93f9cc21",
+      "ryu/d2s_small_table.h": "01f3d8a3ff739a26ecbddc2caae44c91574592b1de7c01fec67bc2d06672b606",
+      "ryu/digit_table.h": "8b782573abc0b8554d74163ae6c02f0beb5c30d1e63eaebdb0ddf2c98d817e01",
+      "ryu/ryu.h": "b7feab0ba1df5e9ef3d602f386592ad152491405e49b408fb21c0e0e9e6bfb16",
+      "src/__init__.py": "c443ed6062edae246598189fb20f12799a5e87a04049acb855894652e3875af7",
+      "src/pystachy_compiler/__init__.py": "f60cd281f8ed4fd35776c9f4d40d6a1313c49a3cae5df61841028f711b9f13c8",
+      "src/pystachy_compiler/analysis.py": "0ed995ce65b1e1f364ba5a91a6650d067f5802871f86f96cf1ea08c14599a41e",
+      "src/pystachy_compiler/argparse_schema.py": "8cfb408e9066ddb51d89be371cab2c4b769c1108da3d1554391bc799a83082a5",
+      "src/pystachy_compiler/bigints.py": "1d00ba32bc6052944e552864375e2a0b390ba1ddb001208167056d87199bab61",
+      "src/pystachy_compiler/builtins.py": "16ef3fdc37e154e1b3d928b02c0e15d2335eb3ae1d1d935b981bfb72c61fea67",
+      "src/pystachy_compiler/calls.py": "6efdf96768d973faf8eeeb9bfd3faea0009d3b2d2516f7ea4b337fb3da39f71b",
+      "src/pystachy_compiler/containers.py": "0a75f833f7916fd05d5076c1a88393a203c97166ebc77d1048028fdac5716b50",
+      "src/pystachy_compiler/conversions.py": "79aed0912984999deb696242db22d39e3af32c4e74a7021d5794f662dcf6ddf2",
+      "src/pystachy_compiler/declarations.py": "195b04cf677118403e86c64b5d8e50d3bb1e738120c08ee796be1094b9fb1372",
+      "src/pystachy_compiler/diagnostics.py": "529f5423decb512a61505a289bf3a5fb9b59c3bb1bfaf512b8059893fd79b131",
+      "src/pystachy_compiler/driver.py": "6d6c1098ef5ad46819a876fbf64606934b0a66dbab96fdfd19a32517f34350dc",
+      "src/pystachy_compiler/dynamic.py": "7dc56b48f92da70aacb87c1236822f6df21fd079b5f1f59cd0c26f396f67072e",
+      "src/pystachy_compiler/emission.py": "de4f8c78b0d86b96f6c32a13186738e86ddfa3b55000ef9f4b8ff1aeffd0b8d4",
+      "src/pystachy_compiler/exceptions.py": "3fce23a767a24651c5658b48759e44ee66817fa931dd2251011c44b1b33d26d3",
+      "src/pystachy_compiler/expressions.py": "1e2ec3721e8ba3c5cd930f74a0790933b0c393089304f546d88dc26c853cbf5d",
+      "src/pystachy_compiler/flow.py": "cb6238905238d5dcd042b568f56243e9b407723a6e047d5f0cad478b060439c9",
+      "src/pystachy_compiler/functions.py": "3743e405f03039b4d5d0fb98a31473bb2f203857624d188e350f2700b23f28c2",
+      "src/pystachy_compiler/gen.py": "c1a6a5d86587896376cc3d55eb79911c492a377bea2fc718aa60a7ef02ed4dd0",
+      "src/pystachy_compiler/generators.py": "e6dde0b55178adeca943b596f8f108915e652726954c9675aae04ea1454bc96c",
+      "src/pystachy_compiler/ir.py": "c3e499869f2bc7487d1a5466fc299a0d15f1939d3176dd5b2f0990a2a9d0b75c",
+      "src/pystachy_compiler/ircheck.py": "127dc1eb765afee724446f00c481b53ed80af396f064dd9112c1f189482be514",
+      "src/pystachy_compiler/lexer.py": "5d727507498549788d7d428b067e4bf794dbe49199286577cd1cd2d47d0b16f7",
+      "src/pystachy_compiler/llvm_abi.py": "7485f63097d4abac3de8b1fbfb782944ff7e3b68989d2fb266e40ebb8f8889ae",
+      "src/pystachy_compiler/loader.py": "270afd42d89c59fee9af0eaf16ff8f7d5166c9429ef026258dabc24097724d06",
+      "src/pystachy_compiler/local_versions.py": "10bb0f2f0fb57c442af0807b5b4af6c95e8b950a97430161c97f766a3dc4b375",
+      "src/pystachy_compiler/lower_module.py": "d481906ccfc27037cdbb41393d5fa24c84ae75597a62cfec540aba7d832f421e",
+      "src/pystachy_compiler/lowering.py": "e67c3d22f25c61d2455f46671b6c0488e356ac87f286d2475e2d5d983a20edf7",
+      "src/pystachy_compiler/memory_ir.py": "c2544eda0bdb89ccb99ac1330c95d99974983cc7bdfa0d3a2b39a993c9f62bc1",
+      "src/pystachy_compiler/module.py": "3349556dee4dcda00013d770743f27d5dc3525b76cbd5e2ab312b14506e1f601",
+      "src/pystachy_compiler/names.py": "1b114c50d950b971dc4e72afd87fa0daa3e71c653101747733ceb89777d07e1c",
+      "src/pystachy_compiler/optimizations.py": "8b922ea6e743908cd6c59983838ac2392df36fd3502bdc0a226a31092dc8be8e",
+      "src/pystachy_compiler/parser.py": "0ebba19e45b2d0396ce427894463c61fc41834aca13ba8e8383efa6ec634d6bc",
+      "src/pystachy_compiler/program.py": "666f3ca695805ddab1d499ef6e24064930b389a369a8389af6426a4bfd9f03ac",
+      "src/pystachy_compiler/reflection.py": "8628b10c2fd1fbe5b1751724d5ae5ffdaf28e72696677a87860d29efd53981cc",
+      "src/pystachy_compiler/scalar_ir.py": "14bc0ce71b4cbf066e8a4cab2ea0bb5c0a53880997484d74f5ea3e9a6d30c05a",
+      "src/pystachy_compiler/scope.py": "d9af25da84ba62a17a6a1a0b7d48d078977dd364528c8ec8e4135cc438f10a97",
+      "src/pystachy_compiler/specs.py": "d142ea175c11adde4a99126cb9fa173b6413a8c010a34cb93598c86e17b37af6",
+      "src/pystachy_compiler/statements.py": "36aa56f0e46156072be24236e242cf83825dc2feee4c77d6cdfee4ffc1deeffd",
+      "src/pystachy_compiler/structs.py": "e873fd6a6aeaebf39f740de2859a5de9a2da316d7a8993c728889677125c3090",
+      "src/pystachy_compiler/syntax.py": "9d4da3abe7447fa31031ba44936be765240dc60ab51d74728a9ed80c9a7674c3",
+      "src/pystachy_compiler/templates.py": "7e4b9422752d4a5ad1757a06d97ab4a8e39bb1f388a32ca49b5cc40628fc2f01",
+      "src/pystachy_compiler/union_arithmetic.py": "6d6892c0d97667d7e8ffeb5293ccbbe24c76529328e4761ffec6831229c416dd",
+      "src/pystachy_compiler/union_proof.py": "85e40039059975749ffe64f21e5c116ca7e3e6a26f6e0ce22ade4f398c74e568",
+      "src/pystachy_compiler/union_state.py": "b845af16073f24e1e1245bdcb00d4324dbf1d657874604cb4b991d852a07b026",
+      "src/pystachy_compiler/unions.py": "64d737b7405bec833d453f9b25211f947dab82cb1da54e3012f1dde61acf0e28",
+      "src/pystachy_compiler/utils.py": "c439c8cdf5516c630514980e9b6af5c43bff02991c2f1ec6c12964206597545a",
+      "src/pystachy_compiler/variables.py": "0a25bf8b786471a1c51f54bf92998489f5c8215c391e7f446615b9b11f12f670"
+    },
+    "sha256": "ed4b4d2c0ccaba398a31b93a5a2c862ed7d191a0e574a1fba56b0bc6aacbffe1"
+  },
+  "source_unchanged": true,
+  "stages": {
+    "backend": {
+      "cancelled": false,
+      "command": [
+        "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+        "/workspace/scratch/685873f30dd6/continuation-frozen/bench/compiler_host/partition_import.py",
+        "--backend-job",
+        "/workspace/scratch/685873f30dd6/continuation-bootstrap/driver-thinlto4-0/optimized-ox_qnlq8/stage2-pipeline/backend/job.json",
+        "--inherited-group"
+      ],
+      "cpu_s": 83.33401500000001,
+      "exit_code": 0,
+      "key": 0,
+      "load_after": [
+        2.32373046875,
+        1.46875,
+        1.28857421875
+      ],
+      "load_before": [
+        1.400390625,
+        1.2333984375,
+        1.208984375
+      ],
+      "proc_pid_resolved": true,
+      "sampled_max_processes": 5,
+      "sampled_process_tree_peak_rss_kib": 719880,
+      "stderr": "",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 658424,
+      "wall_s": 27.557090822003374
+    },
+    "frontend": {
+      "cancelled": false,
+      "command": [
+        "/workspace/scratch/685873f30dd6/continuation-bootstrap/driver-thinlto4-0/optimized-ox_qnlq8/pystachy1",
+        "ir",
+        "/workspace/scratch/685873f30dd6/continuation-frozen/pystachy.py",
+        "-o",
+        "/workspace/scratch/685873f30dd6/continuation-bootstrap/driver-thinlto4-0/optimized-ox_qnlq8/stage2-pipeline/raw.ll"
+      ],
+      "cpu_s": 10.33259,
+      "exit_code": 0,
+      "key": "frontend",
+      "load_after": [
+        1.2607421875,
+        1.203125,
+        1.19921875
+      ],
+      "load_before": [
+        1.13427734375,
+        1.1767578125,
+        1.19091796875
+      ],
+      "proc_pid_resolved": true,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 924680,
+      "stderr": "pystachy-timing\tprogram.load\t3.636043713\npystachy-timing\tprogram.prepare\t1.199134402\npystachy-timing\tprogram.discover\t2.104773099\npystachy-timing\tprogram.analysis\t0.658409323\npystachy-timing\tprogram.optimize\t0.888058158\npystachy-timing\tprogram.finalize\t0.289426391\npystachy-timing\tprogram.lower\t1.257824000\npystachy-timing\tprogram.attempt\t10.034258605\npystachy-timing\tprogram.frontend\t10.034299377\npystachy-timing\tdriver.total\t10.309826743\n",
+      "stderr_sha256": "7d195e3da97a45a071dd53d1a978483a9406003feb11462c9e2acd442611efa0",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 924680,
+      "wall_s": 10.355607409001095
+    },
+    "link_ir": {
+      "cancelled": false,
+      "command": [
+        "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/llvm-link",
+        "--only-needed",
+        "/workspace/scratch/685873f30dd6/continuation-bootstrap/driver-thinlto4-0/optimized-ox_qnlq8/stage2-pipeline/program.ll",
+        "/workspace/scratch/685873f30dd6/continuation-bootstrap/driver-thinlto4-0/optimized-ox_qnlq8/cache/runtime-py-a8c88d34-8d27f1ce9dd553be.bc",
+        "-o",
+        "/workspace/scratch/685873f30dd6/continuation-bootstrap/driver-thinlto4-0/optimized-ox_qnlq8/stage2-pipeline/linked.bc"
+      ],
+      "cpu_s": 3.222165,
+      "exit_code": 0,
+      "key": 0,
+      "load_after": [
+        1.400390625,
+        1.2333984375,
+        1.208984375
+      ],
+      "load_before": [
+        1.400390625,
+        1.2333984375,
+        1.208984375
+      ],
+      "proc_pid_resolved": true,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 307808,
+      "stderr": "",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 309344,
+      "wall_s": 3.2277900549961487
+    },
+    "runtime_prewarm": {
+      "cancelled": false,
+      "command": [
+        "/workspace/scratch/685873f30dd6/continuation-bootstrap/driver-thinlto4-0/optimized-ox_qnlq8/pystachy1",
+        "build",
+        "/workspace/scratch/685873f30dd6/continuation-bootstrap/driver-thinlto4-0/optimized-ox_qnlq8/stage2-pipeline/tiny.py",
+        "-o",
+        "/workspace/scratch/685873f30dd6/continuation-bootstrap/driver-thinlto4-0/optimized-ox_qnlq8/stage2-pipeline/tiny"
+      ],
+      "cpu_s": 4.006385,
+      "exit_code": 0,
+      "key": "runtime_prewarm",
+      "load_after": [
+        1.28369140625,
+        1.20703125,
+        1.20068359375
+      ],
+      "load_before": [
+        1.13427734375,
+        1.1767578125,
+        1.19091796875
+      ],
+      "proc_pid_resolved": true,
+      "sampled_max_processes": 4,
+      "sampled_process_tree_peak_rss_kib": 158616,
+      "stderr": "pystachy-timing\tprogram.load\t0.000100932\npystachy-timing\tprogram.prepare\t0.000044667\npystachy-timing\tprogram.discover\t0.000145870\npystachy-timing\tprogram.analysis\t0.000015353\npystachy-timing\tprogram.optimize\t0.000005358\npystachy-timing\tprogram.finalize\t0.000004347\npystachy-timing\tprogram.lower\t0.000055955\npystachy-timing\tprogram.attempt\t0.000505731\npystachy-timing\tprogram.frontend\t0.000529417\npystachy-timing\truntime.cache_lookup\t0.315010041\npystachy-timing\truntime.load\t0.090429287\npystachy-timing\truntime.prepare\t0.022198694\npystachy-timing\truntime.discover\t0.033200073\npystachy-timing\truntime.analysis\t0.004881222\npystachy-timing\truntime.optimize\t0.005642528\npystachy-timing\truntime.finalize\t0.011306459\npystachy-timing\truntime.lower\t0.008118558\npystachy-timing\truntime.frontend\t0.176100036\npystachy-timing\truntime.c_preprocess\t0.086923982\npystachy-timing\truntime.c_cache_hit\t0.003768636\npystachy-timing\truntime.link\t0.214904847\npystachy-timing\truntime.llvm_optimize\t2.908820094\npystachy-timing\tprogram.llvm_link\t0.038943233\npystachy-timing\tprogram.optimize_codegen\t0.253646078\npystachy-timing\tprogram.link\t0.044989960\npystachy-timing\tdriver.total\t4.112499120\n",
+      "stderr_sha256": "6fa8612b73114f6c6964f236e9cf61364439cb23ad1484ecedf91d0a23f4821f",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 94364,
+      "wall_s": 4.11872651399608
+    }
+  },
+  "thinlto_job": {
+    "harness": {
+      "files": {
+        "bench/compiler_host/backend_workers.py": "0afa21e4079ce7d2931bb5bd7bcc871718cd23582c60442e0af8bd655f65d18e",
+        "bench/compiler_host/partition_import.py": "606ffc142fd108b1a4f382cfee59a030cb23ace0a457a588d4b381d73d371107",
+        "bench/compiler_host/run.py": "ed87b202ae3b0e68fa5c0e54b87f9d96431813327215331d917c194bcad627f2",
+        "bench/compiler_host/self_pipeline.py": "936e6cb1c08cdd65e976e8ac2b1eac8311eca06d710f2eaefbdeec250181058b",
+        "bench/compiler_parallel/llvm_partitions.py": "9a42ac2a606a21a51d9d6fb4a10ab9125a1447ed286056a5dec049d8476a73d8",
+        "tools/bootstrap_pipeline.py": "378680a0c72f319ee479fb38a2f73c52420a5516e2a4ba486a901de685918375"
+      },
+      "python": {
+        "path": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+        "sha256": "6e9b7d27499f26dbec3c8687728f3a0500b9b61688664f03678242744567c461"
+      }
+    },
+    "input": "/workspace/scratch/685873f30dd6/continuation-bootstrap/driver-thinlto4-0/optimized-ox_qnlq8/stage2-pipeline/linked.bc",
+    "input_sha256": "4bd8da57eabab1c18cbd8af9c371ca7da67e835d9739f2d6d9e371a40709fa01",
+    "jobs": 4,
+    "llvm": "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin",
+    "partitions": 4,
+    "prelink": "summary",
+    "timeout": 600,
+    "tools": {
+      "clang": {
+        "path": "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/clang",
+        "sha256": "8ef402d453d1ba4902e4ee0f0f847f6cfa01400c95aa43c24e97818b9c0e3f45"
+      },
+      "llvm-dis": {
+        "path": "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/llvm-dis",
+        "sha256": "d06db012b9ad15ecce7dafaf5a7d78e8ef6e3fad8402b4eed3745259f1b3df7b"
+      },
+      "llvm-lto2": {
+        "path": "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/llvm-lto2",
+        "sha256": "3da33f349ba3232bb336a2cf828b8fe2e60b62ecf6201ec05c438338e90639c4"
+      },
+      "llvm-split": {
+        "path": "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/llvm-split",
+        "sha256": "2ee4b2026153dc2353d0d2dce6b6d746b65627d7cef403dca2bc3f6bf69074f6"
+      },
+      "opt": {
+        "path": "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/opt",
+        "sha256": "67ebe8635087b5ebe22d8f085d5e5857e431f86be9ed76576e59b86b9743c0fb"
+      }
+    },
+    "version": 2
+  },
+  "witnesses": {}
+}

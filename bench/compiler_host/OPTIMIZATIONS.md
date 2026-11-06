@@ -1,5 +1,9 @@
 # Compiler optimization follow-up
 
+**Next experiments:** [memory, inlining and imported partitions](CONTINUATION.md)
+record the subsequent implementation and measurements. The results below remain
+the earlier frozen-source cohort.
+
 Linux x86-64, 2026-11-06. This continues the [original host and worker experiment](README.md)
 in draft PR #1091. It implements the allocator-routing fix, makes the receiver
 overlay portable between mypyc and native Pystachy, and measures complete

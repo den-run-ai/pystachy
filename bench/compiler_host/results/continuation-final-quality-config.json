@@ -1,0 +1,65 @@
+{
+  "hosts": [
+    {
+      "name": "ordinary-fa9",
+      "command": [
+        "/workspace/scratch/685873f30dd6/inline-screen/o2-0/compiler"
+      ]
+    },
+    {
+      "name": "ordinary-current",
+      "command": [
+        "/workspace/scratch/685873f30dd6/continuation-bootstrap/driver-o0-0/optimized-o03u4cpr/pystachy2"
+      ]
+    },
+    {
+      "name": "inline75-current",
+      "command": [
+        "/workspace/scratch/685873f30dd6/continuation-bootstrap/driver-inline75-0/optimized-66420151/pystachy2"
+      ]
+    },
+    {
+      "name": "thinlto4-current",
+      "command": [
+        "/workspace/scratch/685873f30dd6/continuation-bootstrap/driver-thinlto4-0/optimized-ox_qnlq8/pystachy2"
+      ]
+    },
+    {
+      "name": "mypyc-compatible",
+      "command": [
+        "/workspace/scratch/a009f956ecf0/venv/bin/python",
+        "/workspace/scratch/7739746361cc/final-compatible-mypyc/pystachy.py"
+      ],
+      "artifact_root": "/workspace/scratch/7739746361cc/final-compatible-mypyc",
+      "compiled": true
+    }
+  ],
+  "inputs": [
+    {
+      "name": "self",
+      "path": "/workspace/scratch/685873f30dd6/frozen-fa9/pystachy.py"
+    },
+    {
+      "name": "json-repair",
+      "path": "/workspace/scratch/685873f30dd6/frozen-fa9/bench/json_repair/bench.py",
+      "import_path": "/workspace/scratch/685873f30dd6/frozen-fa9/ports"
+    },
+    {
+      "name": "runtime",
+      "path": "/workspace/scratch/685873f30dd6/frozen-fa9/runtime.py",
+      "mode": "rt"
+    },
+    {
+      "name": "namegen",
+      "path": "/workspace/scratch/685873f30dd6/frozen-fa9/bench/compiler_parallel/namegen_probe.py",
+      "import_path": "/workspace/scratch/685873f30dd6/frozen-namegen"
+    },
+    {
+      "name": "pidigits",
+      "path": "/workspace/scratch/685873f30dd6/frozen-fa9/bench/pyperformance/pidigits.py"
+    }
+  ],
+  "environment": {
+    "PYSTACHY_HOME": "/workspace/scratch/685873f30dd6/frozen-fa9"
+  }
+}
