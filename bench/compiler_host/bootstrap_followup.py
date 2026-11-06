@@ -1,9 +1,9 @@
 """Interleave complete bootstraps while changing LLVM build policies.
 
 Every run builds two compilers and verifies three compiler and three runtime IR
-witnesses. Runtime caches are fresh; the final compiler uses ordinary O2 unless
-split-both or driver-inline75 is explicitly selected. Both can change generated-code quality. The
-outer measurement includes the controller and samples its whole process tree.
+witnesses. Runtime caches are fresh; final-compiler splitting, ThinLTO and reduced
+inlining are explicit policies that can change generated-code quality. The outer
+measurement includes the controller and samples its whole process tree.
 """
 from __future__ import annotations
 
@@ -24,6 +24,8 @@ POLICIES = {
     "driver-o0": ["--jobs", "2", "--build-jobs", "1", "--stage1-opt", "0"],
     "driver-inline75": ["--jobs", "2", "--build-jobs", "1", "--stage1-opt", "0",
                         "--stage2-inline-threshold", "75"],
+    "driver-thinlto4": ["--jobs", "4", "--build-jobs", "4", "--stage1-opt", "0",
+                       "--stage2-thinlto", "4", "--runtime-overlap"],
     "split-o0": ["--jobs", "4", "--build-jobs", "4", "--stage1-opt", "0",
                  "--stage1-split", "4", "--runtime-overlap"],
     "split-o1": ["--jobs", "4", "--build-jobs", "4", "--stage1-opt", "1",
@@ -33,7 +35,7 @@ POLICIES = {
     "split-both": ["--jobs", "4", "--build-jobs", "4", "--stage1-opt", "0",
                    "--stage1-split", "4", "--stage2-split", "4", "--runtime-overlap"],
 }
-CHANGED_FINAL = {"split-both", "driver-inline75"}
+CHANGED_FINAL = {"split-both", "driver-inline75", "driver-thinlto4"}
 
 
 def require_inline_support(root, policies):
@@ -63,10 +65,10 @@ def compiler_identity(runs, policies):
     final = {r["bootstrap"]["binaries"]["pystachy2"]["sha256"] for r in runs}
     ordinary = {r["bootstrap"]["binaries"]["pystachy2"]["sha256"]
                 for r in runs if r["policy"] not in CHANGED_FINAL}
-    pair = {"driver-o0", "driver-inline75"}
+    pair = {"driver-o0", "driver-inline75", "driver-thinlto4"} & set(policies)
     stage1 = {policy: sorted({r["bootstrap"]["binaries"]["pystachy1"]["sha256"]
                              for r in runs if r["policy"] == policy}) for policy in sorted(pair & set(policies))}
-    pair_required = pair <= set(policies)
+    pair_required = len(pair) > 1
     pair_identical = (all(stage1.values()) and len({value for hashes in stage1.values() for value in hashes}) == 1
                       if pair_required else None)
     result = {"final_compiler_identical": len(final) == 1,

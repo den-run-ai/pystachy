@@ -248,6 +248,16 @@ class BootstrapPolicyControls(unittest.TestCase):
         self.assertFalse(checked["compiler_identity_passed"])
         self.assertFalse(checked["ordinary_final_compilers_identical"])
 
+    def test_thinlto_comparison_keeps_the_same_temporary_compiler(self):
+        runs = [self.run_identity("driver-o0"), self.run_identity("driver-inline75", final="inline"),
+                self.run_identity("driver-thinlto4", final="thinlto")]
+        policies = [run["policy"] for run in runs]
+        checked = followup.compiler_identity(runs, policies)
+        self.assertTrue(checked["compiler_identity_passed"])
+        self.assertTrue(checked["driver_stage1_compilers_identical"])
+        runs[-1] = self.run_identity("driver-thinlto4", first="changed", final="thinlto")
+        self.assertFalse(followup.compiler_identity(runs, policies)["compiler_identity_passed"])
+
     def test_future_explicit_backend_can_change_final_without_inline_gate(self):
         future = "driver-future-backend"
         with patch.dict(followup.POLICIES, {future: ["--future-backend", "4"]}), \
