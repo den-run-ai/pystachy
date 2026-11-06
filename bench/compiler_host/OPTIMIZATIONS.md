@@ -5,6 +5,9 @@ in draft PR #1091. It implements the allocator-routing fix, makes the receiver
 overlay portable between mypyc and native Pystachy, and measures complete
 bootstraps with bounded LLVM workers. Early splitting remains opt-in.
 
+[Published revision equivalents](PUBLISHED_REVISIONS.md) map the local commit
+IDs retained in the measurements to publicly checkable commits with identical trees.
+
 ## Decisions
 
 - Use an actual allocator declaration to select the allocator-specific backend.
