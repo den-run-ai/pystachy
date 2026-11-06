@@ -86,6 +86,16 @@ adapt selected cases of that commit's Lib/test/test_contextlib.py and
 Lib/test/test_generators.py. They preserve the upstream assertions for the supported
 cases and disclose adaptations and exclusions; the same PSF license applies.
 
+CPython's selected copyreg registration functions
+------------------------------------------------
+
+tests/registrymods/copyreg_slice.py extracts pickle() and constructor() from
+CPython 3.13.16's Lib/copyreg.py. Their bodies are unchanged. The marked
+adaptations add the dynamic-Any opt-in and a type annotation for dispatch_table.
+The fixture exercises registration and reducer dispatch, not the complete
+copyreg module or pickle protocols. It uses the Python Software Foundation
+License Version 2, retained in tests/upstream/CPYTHON-LICENSE.txt.
+
 CPython's dynamic core regression cases
 --------------------------------------
 

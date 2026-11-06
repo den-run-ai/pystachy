@@ -1,0 +1,3 @@
+True
+calling a class held as an Any value is not supported
+[exit 0]

@@ -1083,7 +1083,7 @@ RUNTIME: dict[str, str] = {
 # it uses (Gen.rtdata), and tools/check_runtime.py checks that runtime.c defines them
 DYNTYPE_LL = "{i64, ptr, ptr, i64, ptr, i64, ptr, ptr, ptr}"
 RTDATA: dict[str, str] = {"pys_dyn_none_box": "{ptr, i64}", "pys_dyn_true_box": "{ptr, i64}", "pys_dyn_false_box": "{ptr, i64}"}
-for _k in "none bool int bigint float str list intlist biglist dict tuple".split():
+for _k in "none bool int bigint float str list intlist biglist dict tuple type".split():
     RTDATA["pys_dyntype_" + _k] = DYNTYPE_LL
 RTSYM: dict[str, str] = {}
 for _k in RUNTIME:

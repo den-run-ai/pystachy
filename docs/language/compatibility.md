@@ -662,8 +662,10 @@ See [user exception classes](semantics.md#user-exception-classes) and
 
 See [reflection rules](semantics.md#reflection).
 
-- **Types:** `type(x)` as a runtime value except exception class objects; type names of
-  functions, files or callables.
+- **Types:** stored `type(x)` values outside the
+  [dynamic-Any class registry prototype](../dynamic-any.md#class-values-and-type-keyed-registries)
+  and exception class objects; calls through dynamic class values, runtime class
+  creation and metaclasses. Type names of files remain unsupported.
 - **Runtime names:** retaining, passing, calling, comparing or sorting by a `getattr` result;
   formatting its text with a spec, or obtaining that text for dataclasses, generics, classes
   with annotated class attributes or builtins; `setattr` without slots, with values incompatible with any

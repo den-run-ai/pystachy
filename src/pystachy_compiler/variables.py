@@ -165,6 +165,8 @@ def gen_load_name(self, name: str) -> Val:
     if name in self.classes and self.classes[name].node.line in ENUMCLASSES:
         return self.expr(self.enum_view(name, self.line), "")  # (an enum class: its EnumType object)
     if name in self.classes:
+        if self.dyn_policy(self.line):
+            return self.refl_class_value(name)
         self.err(f"class '{name}' cannot be used as a value (classes are not values: call it, or read an attribute, C.x)")
     if name in self.fglobals:
         self.err(f"name '{name}' is not defined yet here: a function assigns it, so declare it at module level{self.where_def(name)} first ({short(name)}: T)")
@@ -751,8 +753,8 @@ def gen_read(self, n: Node) -> Val:
         if name in self.gidbox and self.idhere():
             self.dyn_id_read(val, self.gidbox[name])  # (its binding's object, as an Any value: dyn_box)
         return val
-    if name not in self.ltype and name not in self.gtypes and name not in self.funcs and name not in self.aliases and name in self.classes and self.classes[name].exc != "":
-        self.class_ready(n)  # (an exception class as a value, where its class statement may not have run yet)
+    if name not in self.ltype and name not in self.gtypes and name not in self.funcs and name not in self.aliases and name in self.classes and (self.classes[name].exc != "" or self.dyn_policy(n.line)):
+        self.class_ready(n)  # (a class value is unbound before its class statement runs)
     return self.load_name(name)
 
 def gen_modchk(self, n: Node) -> None:

@@ -34,6 +34,7 @@ DYNINT = "dyn[int]"
 DK_OBJ = 8
 DK_FUNC = 9
 DK_GEN = 11
+DK_TYPE = 12
 DF_EQ = 1
 DF_CMP = 2
 DF_HASH = 4
@@ -294,7 +295,7 @@ def gen_dyn_boxable(self, t: str) -> str:
     # why a value of static type t cannot become a dyn value, or "": a scalar, None, a str, an
     # object of the program's classes, a container of boxes, a tuple (made one of boxes), a union
     # of these, and dyn
-    if t == DYN or dyn_builtin_type(t) != "" or t == BIG or t == NONEVAR:
+    if t == DYN or dyn_builtin_type(t) != "" or t == BIG or t == NONEVAR or self.refl_builtin_class(t) != "":
         return ""
     if t in self.classes and t not in self.tmpl:
         if self.classes[t].exc != "":
@@ -1417,6 +1418,9 @@ def gen_dyn_box(self, v: Val) -> Val:
         return box_big(self, v)
     if t == DYN:
         return v
+    builtin_class = self.refl_builtin_class(t)
+    if builtin_class != "":
+        return self.refl_class_value(builtin_class)
     if len(self.idoff) > 0:
         self.identity_box(v, t)  # (where a module's code does not track numeric identity)
     if t == "None" or t == NONEVAR or (is_opt(t) and v.v == "null"):
@@ -2469,6 +2473,8 @@ def gen_dyn_test(self, v: Val, ts: list[str]) -> str:
 def gen_dyn_types_of(self, t: str) -> list[str]:
     # the DynTypes of the boxes that hold values of static type t: a class's and its subclasses'
     # of those boxed (a subclass boxed later is a case the program tests too: see dyn_dispatchers)
+    if t == "%class:type":
+        return [self.rtdata("pys_dyntype_type")]
     if (t == "int" or t == BIG) and int_program():
         return [self.rtdata("pys_dyntype_int"), self.rtdata("pys_dyntype_bigint")]
     if dyn_builtin_type(t) != "":
@@ -2500,7 +2506,7 @@ def gen_dyn_isinst_types(self, c: Node) -> list[str]:
     if self.bound(c.s):
         return [""]
     m = {"int": ["int", "bool"], "bool": ["bool"], "float": ["float"], "str": ["str"], "list": ["list[dyn]", "list[int]"], "dict": ["dict[dyn,dyn]"],
-         "tuple": ["vtuple[dyn]"], "object": ["*"]}
+         "tuple": ["vtuple[dyn]"], "object": ["*"], "type": ["%class:type"]}
     if c.s in m:
         return m[c.s]
     if c.s in "set frozenset bytes bytearray complex range type memoryview slice".split():
@@ -2528,7 +2534,7 @@ def gen_dyn_narrow_type(self, c: Node, truth: bool) -> str:
         return DYNINT
     # A list's Python type does not establish boxed versus native integer storage.
     # Keep its descriptor and use the layout-aware dynamic operations after the test.
-    if len(ts) != 1 or ts[0] == "" or ts[0] == "*":
+    if len(ts) != 1 or ts[0] == "" or ts[0] == "*" or ts[0] == "%class:type":
         return ""
     return ts[0]
 
@@ -3120,6 +3126,9 @@ def gen_dyn_body(self, key: str) -> None:
     ps = [self.read(mk("name", p, line, [])) for p in f.params]
     o = ps[0]
     dunder = self.dynkeys[key]
+    if key == "typevalue":
+        self.refl_dynamic_type(o)
+        return
     if key.startswith("pairkey."):
         # Each raw key slot travels with its wide-int companion. The callback
         # receives the stored target key first, as dict equality does, and keeps
@@ -3143,6 +3152,18 @@ def gen_dyn_body(self, key: str) -> None:
         self.ret_(Val("1", "int"))
         return
     t = Val(self.dyn_typeof(o), "dyntype")
+    if key in ["get.__name__", "get.__qualname__", "get.__module__"]:
+        hit = self.label()
+        miss = self.label()
+        self.cbr(self.ptr_cmp("==", t, Val(self.rtdata("pys_dyntype_type"), "dyntype")).v, hit, miss)
+        self.place(hit)
+        # This metatype's payload is an internal record pointer, not a native
+        # Python value type for dyn.payload. Read its proven pointer slot with
+        # the ordinary typed-memory operation instead.
+        rec = Val(self.mload("%ptr", self.maddr("%ptr", o.v, "1")), "%ptr")
+        word = "0" if key == "get.__name__" else "1" if key == "get.__qualname__" else "2"
+        self.ret_(self.dyn_box(Val(self.mload("str", self.maddr("%ptr", rec.v, word)), "str")))
+        self.place(miss)
     arith = (key.startswith("op") or key.startswith("iop")) and dunder != ""
     r = "__r" + dunder[2:] if arith else ""
     # the case of the receiver's class, by one switch on its DynType's class id (word 3: a class's
@@ -3325,8 +3346,10 @@ def gen_dyn_supports(self, c: str, key: str, dunder: str, nargs: int) -> bool:
         return "__call__" in ci.methods and ci.methods["__call__"].bad == ""
     if key == "reversed" and c == RANGEC:
         return True
-    if key == "module":
+    if key == "module" or key == "qualname":
         return True
+    if key == "callable":
+        return "__call__" in ci.methods
     if key == "truth":
         return "__bool__" in ci.methods or "__len__" in ci.methods
     if key == "str":
@@ -3487,8 +3510,10 @@ def gen_dyn_arm(self, f: FnInfo, key: str, dunder: str, x: Val, args: list[Val])
             self.raise_("TypeError", self.sconst(bad))
             return
         r = self.expr(mk("call", "", line, [mk("attr", key[5 : key.rfind(".")], line, [xn])] + an), "")
-    elif key == "module":
-        r = Val(self.sconst(self.refl_type_name(x.t, "__module__")), "str")
+    elif key == "module" or key == "qualname":
+        r = Val(self.sconst(self.refl_type_name(x.t, "__module__" if key == "module" else "__qualname__")), "str")
+    elif key == "callable":
+        r = Val("true", "bool")
     elif key == "slice":
         self.raise_("TypeError", self.sconst(f"slicing an object is not supported: {short(x.t)}.__getitem__ would take a slice object, which Pystachy does not have"))
         return
@@ -3889,6 +3914,16 @@ def gen_dyn_fallback(self, f: FnInfo, key: str, ps: list[Val]) -> None:
         self.ret_(o)
     elif key == "module":
         self.ret_(Val(self.sconst("builtins"), "str"))
+    elif key == "qualname":
+        self.ret_(self.dyn_type_name(o))
+    elif key == "callable":
+        kind = Val(self.mload("int", self.dyn_typeof(o)), "int")
+        self.ret_(Val(self.scalar("or", [self.num_cmp("==", kind, Val(str(DK_FUNC), "int")),
+                                        self.num_cmp("==", kind, Val(str(DK_TYPE), "int"))]), "bool"))
+    elif key == "get.__class__":
+        # Declared fields and properties have already run in the user-class
+        # arms. Only an unshadowed object.__class__ falls back to type(o).
+        self.ret_(self.refl_type_value(o))
     elif key == "slice":
         hit = self.label()
         rest = self.label()
@@ -3930,6 +3965,12 @@ def gen_dyn_fallback(self, f: FnInfo, key: str, ps: list[Val]) -> None:
     elif key == "contains":
         self.ret_(self.num_cmp("!=", Val(self.rt("pys_dyn_contains", "i64", [f"ptr {o.v}", f"ptr {ps[1].v}"]), "int"), Val("0", "int")))
     elif key.startswith("callv."):
+        unsupported = self.label()
+        other = self.label()
+        self.cbr(self.ptr_cmp("==", Val(self.dyn_typeof(o), "dyntype"), Val(self.rtdata("pys_dyntype_type"), "dyntype")).v, unsupported, other)
+        self.place(unsupported)
+        self.raise_("NotImplementedError", self.sconst("calling a class held as an Any value is not supported"))
+        self.place(other)
         dup = dup_kw(key)
         if dup >= 0:
             # Duplicate keywords fail during the merge, before checking whether o is callable.

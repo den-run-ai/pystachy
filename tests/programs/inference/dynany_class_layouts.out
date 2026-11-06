@@ -1,0 +1,11 @@
+True True True
+True True
+True True
+list list 1
+updated 1
+list updated True
+list updated True
+str missing False
+int missing False
+NoneType missing False
+[exit 0]

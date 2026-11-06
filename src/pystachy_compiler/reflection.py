@@ -23,6 +23,7 @@ from src.pystachy_compiler.utils import (
     is_callable,
     is_dict,
     is_fn,
+    is_gen,
     is_kw,
     is_list,
     is_opt,
@@ -31,6 +32,7 @@ from src.pystachy_compiler.utils import (
     is_union,
     is_vtuple,
     numeric_identity,
+    tname,
     typestr,
     umembers,
     unopt,
@@ -46,6 +48,9 @@ RF_BUILTIN = 16
 
 # the builtin types type(x) names for a statically typed value, by the start of its type
 BUILTIN_TYPES: list[str] = ["int", "float", "bool", "str", "bytes", "None"]
+# Builtin class names still use fn[b:...] for statically resolved constructor calls.
+# At an Any boundary they denote class objects, not builtin function objects.
+CLASS_BUILTINS: list[str] = "bool bytearray bytes classmethod complex dict enumerate filter float frozenset int list map memoryview object property range reversed set slice staticmethod str super tuple type zip".split()
 
 
 class RLeaf:
@@ -66,6 +71,10 @@ def gen_refl_typeof(self, n: Node) -> Node | None:
         x = n.kids[0]
         if x.kind == "name" and x.s in self.classes and x.s not in self.ltype:
             return None  # (C.__class__: the class's metaclass, type)
+        if self.dyn_policy(n.line):
+            t = self.dry(x)
+            if t == "dyn" or any(c in self.classes and ("__class__" in self.classes[c].ftypes or "__class__" in self.classes[c].methods) for c in self.refl_concrete(t)):
+                return None  # (an ordinary attribute may shadow object.__class__)
         return x
     return None
 
@@ -162,6 +171,12 @@ def gen_refl_split_class(self, v: Val) -> list[RLeaf]:
 def gen_refl_type_name(self, c: str, what: str) -> str:
     # what type(x).<what> is (__name__, __qualname__ or __module__) for a value of exact type c,
     # or "" where Pystachy does not know it
+    if c.startswith("%class:"):
+        return "builtins" if what == "__module__" else c[7:]
+    if dynamic_program() and self.refl_builtin_class(c) != "":
+        return "builtins" if what == "__module__" else "type"
+    if dynamic_program() and (is_fn(c) or is_gen(c)):
+        return "builtins" if what == "__module__" else tname(c)
     if c == BIG:
         c = "int"  # (a promoting int's class is int: bigints.py)
     if c == "None" or c in BUILTIN_TYPES or is_list(c) or is_dict(c) or is_tuple(c) or is_vtuple(c) or is_set(c) or is_kw(c):
@@ -172,6 +187,9 @@ def gen_refl_type_name(self, c: str, what: str) -> str:
         q = shown(ci.origin if ci.origin != "" else c)
         if c.startswith("_pystachy_iterators$") or c == RANGEC or c == OBJECTC:
             return "builtins" if what == "__module__" else short(c)
+        own = self.classes[ci.origin] if ci.origin != "" else ci
+        if dynamic_program() and what in ["__module__", "__qualname__"] and what in own.fdefault and self.default_home(own, what) is own and own.fdefault[what].kind == "str":
+            return own.fdefault[what].s
         mod = q[: q.rfind(".")] if "." in q else "__main__"
         mod = TYPEMODS.get(mod, mod)  # (_weakref's ReferenceType is CPython's weakref.ReferenceType)
         o = ci.origin if ci.origin != "" else c
@@ -189,7 +207,8 @@ def gen_refl_record(self, c: str) -> str:
     # the field table (names in __dict__ order, descriptors, offsets: null until needed)
     if c in self.classes and self.classes[c].origin != "":
         c = self.classes[c].origin
-    key = ("c." + c) if c in self.classes else ("b." + self.refl_type_name(c, "__name__"))
+    builtin = c not in self.classes or (dynamic_program() and (c == OBJECTC or c == RANGEC or c.startswith(ITERS + "$")))
+    key = ("b." + self.refl_type_name(c, "__name__")) if builtin else ("c." + c)
     name = "@pys.refl." + key
     if name in self.reflrecs:
         return name
@@ -206,6 +225,131 @@ def gen_refl_record(self, c: str) -> str:
     self.consts.append(d)
     self.reflrecs[name] = d
     return name
+
+
+def gen_refl_builtin_class(self, t: str) -> str:
+    # The Python class a statically resolved builtin constructor denotes. The
+    # prefix distinguishes a builtin's record request from a user class name.
+    return "%class:" + t[5:-1] if t.startswith("fn[b:") and t[5:-1] in CLASS_BUILTINS else ""
+
+
+def gen_refl_class_problem(self, c: str) -> str:
+    # The prototype's canonical record is immutable. A class's own literal
+    # metadata is safe; inherited defaults do not replace its automatic names.
+    # Runtime metadata would require a live class namespace, not a snapshot.
+    if c not in self.classes:
+        return ""
+    ci = self.classes[c]
+    if ci.origin != "":
+        ci = self.classes[ci.origin]
+    # A body entry named __name__ does not rename a Python class, but a later
+    # class assignment does. The immutable record cannot follow that mutation.
+    if ci.name + ".__name__" in self.cvars:
+        return f"class values with mutable {short(ci.name)}.__name__ are not supported"
+    for a in ["__module__", "__qualname__"]:
+        if a in ci.methods and ci.methods[a].cls == ci.name:
+            return f"class values with nonliteral {short(ci.name)}.{a} are not supported"
+        if a in ci.fdefault and self.default_home(ci, a) is ci:
+            if ci.fdefault[a].kind != "str":
+                return f"class values with nonliteral {short(ci.name)}.{a} are not supported"
+            if ci.name + "." + a in self.cvars:
+                return f"class values with mutable {short(ci.name)}.{a} are not supported"
+    return ""
+
+
+def gen_refl_class_value(self, c: str) -> Val:
+    # An immutable class object: the outer DynType is type, never the instance
+    # type, and its identity/hash payload is the canonical reflection record.
+    # Constants refer only to other constants, so need no collector root.
+    if self.refl_type_name(c, "__name__") == "":
+        self.err(f"a class value for {typestr(c)} is not supported")
+    problem = self.refl_class_problem(c)
+    if problem != "":
+        self.err(problem)
+    rec = self.refl_record(c)
+    name = "@dbc." + rec[1:]
+    if name not in self.dynboxes:
+        self.dynboxes[name] = True
+        box = Data("dynbox", name)
+        box.refs = [self.rtdata("pys_dyntype_type"), rec]
+        self.consts.append(box)
+    return Val(name, "dyn")
+
+
+def gen_refl_type_value(self, v: Val) -> Val:
+    # Stored type(v), with the same record for every physical layout of a
+    # Python type. Taking a type never boxes or copies a typed container.
+    if v.t == "dyn":
+        return self.dyn_call(self.dyn_dispatcher("typevalue", ["dyn"], "dyn", ""), [v])
+    if is_callable(unopt(v.t)):
+        self.err("type() of a Callable value is not supported: its Python callable identity was erased")
+    if self.refl_builtin_class(v.t) != "" or unopt(v.t) == "exctype":
+        if is_opt(v.t):
+            return Val(self.select(self.ptr_cmp("==", v, Val("null", "None")).v,
+                                   self.refl_class_value("None"), self.refl_class_value("%class:type")), "dyn")
+        return self.refl_class_value("%class:type")
+    known = v.v in self.nn
+    cs = self.refl_type_of(v, "__name__", known)
+    if len(cs) == 1:
+        return self.refl_class_value(cs[0].c)
+    for leaf in cs:
+        problem = self.refl_class_problem(leaf.c)
+        if problem != "":
+            self.err(problem)
+    rec = self.refl_class_of(v, known)
+    return Val(self.rt("pys_dyn_ref", "ptr", [f"ptr {self.rtdata('pys_dyntype_type')}", f"ptr {rec.v}"]), "dyn")
+
+
+def gen_refl_dynamic_type(self, v: Val) -> None:
+    # Body of the typevalue dispatcher. This uses the existing dispatcher
+    # fixed point, so classes discovered while compiling another arm are
+    # included without another compiler-state registry or a DynType ABI change.
+    typ = Val(self.dyn_typeof(v), "dyntype")
+    kind = Val(self.mload("int", typ.v), "int")
+    builtin = ["None", "bool", "int", "float", "str", "list[int]", "dict[int,int]", "tuple[int]"]
+    labels = [self.label() for _ in builtin]
+    meta = self.label()
+    other = self.label()
+    self.switch(kind, [str(i) for i in range(len(builtin))] + ["12"], labels + [meta], other)
+    for i in range(len(builtin)):
+        self.place(labels[i])
+        self.ret_(self.refl_class_value(builtin[i]))
+    self.place(meta)
+    self.ret_(self.refl_class_value("%class:type"))
+    self.place(other)
+    classes = [c for c in self.dynclasses]
+    arms = [self.label() for _ in classes]
+    rest = self.label()
+    if len(classes) > 0:
+        cid = Val(self.mload("int", self.maddr("int", typ.v, "3")), "int")
+        self.switch(cid, [str(self.ocls[c]) for c in classes], arms, rest)
+    for j in range(len(classes)):
+        self.place(arms[j])
+        problem = self.refl_class_problem(classes[j])
+        if problem != "":
+            self.raise_("NotImplementedError", self.sconst(problem))
+        else:
+            self.ret_(self.refl_class_value(classes[j]))
+    self.place(rest)
+    for ft in [t for t in self.dynfuncs if is_callable(t)]:
+        hit = self.label()
+        miss = self.label()
+        self.cbr(self.ptr_cmp("==", typ, Val(self.dynfnt[ft], "dyntype")).v, hit, miss)
+        self.place(hit)
+        self.raise_("NotImplementedError", self.sconst("type() of a Callable value is not supported: its Python callable identity was erased"))
+        self.place(miss)
+    # Function, generator and builtin iterator layouts have canonical Python
+    # names. User classes were tested by their dense class IDs above, never name.
+    names = "function method generator list_iterator tuple_iterator dict_keyiterator str_ascii_iterator list_reverseiterator dict_reversekeyiterator reversed range_iterator".split()
+    name = self.dyn_type_name(v)
+    for n in names:
+        hit = self.label()
+        miss = self.label()
+        self.cbr(self.cmp2("==", name, Val(self.sconst(n), "str")).v, hit, miss)
+        self.place(hit)
+        self.ret_(self.refl_class_value("%class:" + n))
+        self.place(miss)
+    self.raise_("NotImplementedError", self.sconst("type() of this dynamic value is not supported"))
 
 
 def gen_refl_type_of(self, v: Val, what: str, nonnull: bool = False) -> list[RLeaf]:
@@ -243,7 +387,9 @@ def gen_refl_type_attr(self, x: Node, what: str) -> Val:
     # type decides it, else the name in the record of its exact class (refl_class_of)
     v = self.expr(x, "")
     known = self.knownobj(x)
-    if v.t == "dyn" and (what == "__name__" or what == "__qualname__"):
+    if v.t == "dyn" and what == "__qualname__":
+        return self.dyn_call(self.dyn_dispatcher("qualname", ["dyn"], "str", "__qualname__"), [v])
+    if v.t == "dyn" and what == "__name__":
         return self.dyn_type_name(v)  # (its box's DynType's, as refl_type_name gives a class's: dynamic.py)
     if v.t == "dyn":
         return self.dyn_type_module(v)
@@ -355,6 +501,19 @@ def gen_refl_type_cmp(self, n: Node) -> Val | None:
         return None
     if self.refl_typeof(n.kids[0]) is None and self.refl_typeof(n.kids[1]) is None:
         return None
+    if self.dyn_policy(self.line):
+        # Ordinary class values and type() results share the same canonical
+        # representation, so the normal value comparison preserves aliases.
+        # Keep legacy exception-class comparisons on their established path:
+        # exception class objects do not cross into Any in this prototype.
+        legacy = False
+        for k in n.kids:
+            x = self.refl_typeof(k)
+            t = self.dry(x if x is not None else k, "")
+            if (x is not None and (t == "exc" or t == "opt[exc]" or (t in self.classes and self.classes[t].exc != ""))) or (x is None and unopt(t) == "exctype"):
+                legacy = True
+        if not legacy:
+            return None
     for k in n.kids:
         x = self.refl_typeof(k)
         if x is not None and dynamic_program() and self.dry(x, "") == "dyn":

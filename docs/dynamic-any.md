@@ -147,6 +147,54 @@ value too is `Any` instead, and a union's value becomes an `Any` value by the me
 selects (`tests/programs/inference/dynany_unions.py`). A display of items of several types (`[1, 2.5]`) is still a
 container of `Any` values, as above, which any later store fits.
 
+## Class values and type-keyed registries
+
+In an opted-in module, ordinary user classes and builtin classes can be stored in
+`Any`, passed to functions, and used as dictionary keys. `type(value)` returns a
+canonical class value; `value.__class__` does likewise unless an explicit
+attribute overrides it. For example:
+
+```python
+# pystachy: dynamic-any
+from typing import Any
+
+reducers: dict[Any, Any] = {}
+
+def register(cls: Any, reducer: Any) -> None:
+    reducers[cls] = reducer
+
+def encode_int(value: int) -> str:
+    return str(value)
+
+register(int, encode_int)
+value: Any = 42
+print(reducers[type(value)](value))
+```
+
+Lookup uses exact Python type: `bool` and `int` have different keys, as do a base
+class and a subclass. Checked and promoting integers share the `int` key;
+native `list[int]` and `list[Any]` share the `list` key without changing their
+storage. Class objects retain identity and identity hashing, report metatype
+`type`, and expose `__name__`, `__qualname__` and `__module__`. An instance's
+`__eq__` or `__hash__` does not become the class object's operation; reflected
+instance equality still runs when a class is compared with an instance.
+
+This is a bounded registry prototype. Calls through a class held as `Any` raise
+`NotImplementedError`; ordinary statically resolved constructor calls still
+work. Runtime class creation, metaclasses, writable class dictionaries and
+classes held as the second argument of `isinstance` remain unsupported.
+Overrides of `__module__` and `__qualname__` must be fixed literal strings.
+Computed overrides or later writes to `__name__`, `__qualname__` or `__module__`
+are rejected for a stored class value, or raise `NotImplementedError` when
+reached through a dynamic type query.
+Exception class values keep their existing typed representation and cannot
+cross into `Any`. Fixed-signature `Callable` adapters erase whether their source
+was a function, bound method or builtin class; new stored-type queries reject
+that representation or raise `NotImplementedError` when it is held in `Any`.
+Keep registry class values in `Any` directly. The `copyreg` test uses two unchanged upstream registration
+functions and a fixed-arity reconstruction step; it does not establish full
+`copyreg` or `pickle` support.
+
 ## Representation
 
 A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
@@ -196,6 +244,11 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   when the `Any` box is the only remaining owner. First exposure may visit every
   item and allocate missing identity boxes; preserving native backing does not make
   this prototype boundary allocation-free.
+- **Class objects** use a distinct `DK_TYPE` and descriptor `Y`. Their payload is
+  the existing immutable reflection record, shared by every representation of
+  the same Python class. Their outer type is the metatype, never an instance's
+  layout descriptor. Class boxes and records reference only static constants;
+  the runtime layout of `DynType` is unchanged.
 - **Identity**: two `Any` values are one object, for `is`, exactly where their `id()`s are equal
   (#797). `None`, a bool and a reference are their payload's object. An int, a float and a
   bound method are their box, as an int or float object is in CPython. An int from -5 to 256
@@ -746,13 +799,19 @@ allocation), `tests/errors/inference/dynany_*.py` and `tests/deviations/dynany_*
 object graph. One memo, keyed by `id()`, holds lists, dicts, tuples, scalars and objects of six
 unrelated classes; the graph has repeated references (a shared list in three places), cycles
 (parents, a registry that holds itself), a field whose type changes (an `int`, then a `float`,
-then a `str`), and a copier chosen at run time by `type(x).__name__` from a dict of
-`Callable[[Any, dict[int, Any]], Any]`. The copy preserves sharing and cycles and is independent
+then a `str`), and a copier registered through a function parameter and chosen at
+run time by `type(x)` from a class-keyed dictionary. The copy preserves sharing and cycles and is independent
 of the original, as CPython's is.
 
-This is not `copy.deepcopy` itself. Running the unchanged module still needs `type(x)` as a
-value with class objects as dict keys (#7), `getattr(x, "__deepcopy__", None)` and
+This is not `copy.deepcopy` itself. Running the unchanged module still needs
+`getattr(x, "__deepcopy__", None)` and
 `__reduce_ex__` by run-time names (#489), `cls.__new__(cls)`, and `object.__dict__` updates.
+
+`tests/programs/upstream/upstream_copyreg_registry.py` uses CPython 3.13.16's
+`copyreg.pickle` and `constructor` function bodies unchanged. Its helper adds the
+dynamic opt-in and an annotation for the empty registry. It checks exact-type
+reducer lookup, callback replacement, validation order and reconstruction from
+reduction tuples with one argument.
 
 `lib/tomllib` is a library compiled this way: CPython's `tomllib`, whose modules opt in, parses a
 document into dicts and lists of `Any` values that programs which do not opt in read
@@ -760,6 +819,14 @@ document into dicts and lists of `Any` values that programs which do not opt in 
 
 ## Deviations
 
+- Calling a class stored in `Any` raises `NotImplementedError`, although
+  `callable()` correctly reports that it is a class. Registry values can be
+  ordinary functions, closures and bound methods. This prototype boundary is
+  covered by `tests/deviations/dynany_class_constructor.py`.
+- Stored `type()` of an erased `Callable` held in `Any` raises
+  `NotImplementedError`; its existing supported calls still work
+  (`tests/deviations/dynany_class_callable.py`). Restoring the original callable's
+  identity is a separate boundary tracked by #858.
 - A concrete annotation that receives an `Any` value raises `TypeError` where its type differs
   (CPython does not check annotations). `int` takes no `bool` and `float` no `int` this way,
   so that a typed variable never prints another value than CPython's. So does the storage that
@@ -938,7 +1005,7 @@ lines.
 - **Broader typed-container crossings**: the flow analysis that selects `list[Any]` storage at the
   allocation of every alias of a container that may flow into `Any` storage.
 - **Calls**: an `Any` value unpacked into a call's arguments, through a generic binding entry;
-  builtin functions as values; `type(x)` as a class object.
+  builtin functions as values; construction through stored class objects.
 - **Protocols**: legacy sequence iteration through `__getitem__`, reverse iteration through
   `__len__`/`__getitem__`, `__length_hint__`, and the
   builtins listed under [deviations](#deviations) that do not take `Any` values yet.

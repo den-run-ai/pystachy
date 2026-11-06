@@ -1,0 +1,6 @@
+old:7
+new:8
+['argument', 'original', 'replacement']
+missing before argument ['argument', 'original', 'replacement']
+arguments before arity ['argument', 'original', 'replacement', 'argument', 'argument']
+[exit 0]

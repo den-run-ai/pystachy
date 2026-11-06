@@ -62,7 +62,8 @@ Pystachy is experimental. It supports typed containers, classes, generators and
 other common Python constructs. General multiple inheritance, `async` and
 `match` are outside the supported subset. Integers are checked 64-bit values by
 default. [Promoting integers](docs/python-int.md) and [dynamic `Any`](docs/dynamic-any.md)
-are opt-in.
+are opt-in. Dynamic `Any` includes a bounded prototype for
+[class values and type-keyed callback registries](docs/dynamic-any.md#class-values-and-type-keyed-registries).
 
 Check the [language guide](docs/language.md#support-at-a-glance) and
 [library support table](docs/stdlib.md#library-support-at-a-glance) for the

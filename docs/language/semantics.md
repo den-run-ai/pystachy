@@ -365,7 +365,9 @@ An identifier `__x` written inside class `C` uses the spelling `_C__x`, includin
 methods. Reflection strings remain literal, so `getattr(c, "_C__x")` names
 that attribute and `getattr(c, "__x")` does not. What Pystachy cannot
 match is a compile-time error that names the missing feature: a value whose type only the run
-time knows (#487), names that need per-object storage (#489), or a class object as a value (#7). The compiler's side is described in [internals](../internals.md#reflection).
+time knows (#487) or names that need per-object storage (#489). Opted-in modules
+also support [class values and type-keyed registries](../dynamic-any.md#class-values-and-type-keyed-registries).
+The compiler's side is described in [internals](../internals.md#reflection).
 
 ### Types and their names
 
@@ -374,9 +376,11 @@ time knows (#487), names that need per-object storage (#489), or a class object 
 `str`, `bytes`, `list`, `NoneType`, ... for builtin values, and `builtins` as their module. Inside an
 expression, `type(a) is C`, `type(a) == type(b)`, their negations and `x.__class__ is C` compare
 the exact classes (`type(True) is bool`, `type(True) is int` is false). `str()` and `repr()` of a
-reference union print each object as its own class prints it. `type(x)` as a value (a class
-object) is unsupported, but for an exception ([exception classes as
-values](#exception-classes-as-values)).
+reference union print each object as its own class prints it. Stored `type(x)` values
+and class-keyed dictionaries are supported in the
+[dynamic-Any prototype](../dynamic-any.md#class-values-and-type-keyed-registries),
+with construction through stored classes still unsupported. Without the opt-in,
+class values are limited to [exception classes](#exception-classes-as-values).
 
 ### Attribute names the compiler knows
 

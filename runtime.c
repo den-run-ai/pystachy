@@ -2362,7 +2362,8 @@ I pys_ceil(double d) { return pys_f2i(ceil(d)); }
    U<n>:<tag>:<e>... a tagged union, n program-wide tags and their member descriptors;
    R<n>: a recursive alias edge, n bytes backwards from R to an enclosing descriptor;
    A a dynamic value's box (see dynamic values), walked by its DynType's descriptor, Z the
-   function a box holds, which compares and hashes by identity; J a promoting int (a fixed
+   function a box holds, which compares and hashes by identity; Y a class object's canonical
+   reflection record (distinct from its instances); J a promoting int (a fixed
    tuple's item, the box of an int | None of a module that opts in, a field), its two words
    (jbig).
    skip treats R as a leaf; value operations follow it without changing the slot layout.
@@ -2574,6 +2575,12 @@ static const char *repr_depth(Buf *b, I v, const char *d, I depth) {
   case 'G': put(b, "<generator object>", 18); return d;
   case 'Q': put(b, "<iterator object>", 17); return d;
   case 'Z': put(b, "<function>", 10); return d;   /* (a dynamic value's function: by identity, unnamed) */
+  case 'Y': {   /* a class value: ReflRec's first words are name, qualname and module */
+    Str **r = (Str **)v;
+    put(b, "<class '", 8);
+    if (strcmp(r[2]->s, "builtins")) { put(b, r[2]->s, r[2]->len); put(b, ".", 1); }
+    put(b, r[1]->s, r[1]->len); put(b, "'>", 2); return d;
+  }
   case 'i': { char t[32]; put(b, t, snprintf(t, 32, "%lld", (long long)v)); return d; }
   case 'J': {                                       /* a promoting int's two words (jbig) */
     opt_in(); Big x = jbig(v);
@@ -2765,7 +2772,7 @@ static int eqv(I a, I b, const char *d) {
   }
   case 'S': case 'F': return pys_set_cmp((Set *)a, (Set *)b, 4);   /* (a set equals a frozenset of its elements) */
   case 'O': case 'H': return a == b || pys_obj_eq(ocls(d + 1), a, b);   /* identity first, like CPython */
-  case 'P': case 'C': return a == b;
+  case 'P': case 'C': case 'Y': return a == b;
   case '?': return a && b ? eqv(unbox(a, d + 1), unbox(b, d + 1), d + 1) : a == b;   /* None equals only None */
   case 'E': return pys_exc_id((Exc *)a) == pys_exc_id((Exc *)b);
   }
@@ -2929,7 +2936,7 @@ static int opv(I a, I b, const char *d, I op) {
     if (a && b) return opv(unbox(a, d + 1), unbox(b, d + 1), d + 1, op);
     failf("TypeError: '%s' not supported between instances of '%s' and '%s'", op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=",
           a ? vtyname(a, d + 1) : "NoneType", b ? vtyname(b, d + 1) : "NoneType");
-  case 'C': failf("TypeError: '%s' not supported between instances of 'type' and 'type'", op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=");
+  case 'C': case 'Y': failf("TypeError: '%s' not supported between instances of 'type' and 'type'", op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=");
   case 'E': {
     int m, n; const char *x = exc_name((Exc *)a, &m), *y = exc_name((Exc *)b, &n);
     failf("TypeError: '%s' not supported between instances of '%.*s' and '%.*s'", op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=", m, x, n, y);
@@ -4667,7 +4674,7 @@ static I hitem(I k, const char *d) {                 /* the hash of a value k (a
   case 'f': return hdbl(dbl(k));
   case 'T': return htuple((I *)k, d[1] - '0', d + 2, 1);
   case 'V': return htuple(((VTuple *)k)->a, ((VTuple *)k)->len, d + 1, 0);
-  case 'P': case 'C': return hptr(k);   /* (an exception class's class object: by identity, as object's) */
+  case 'P': case 'C': case 'Y': return hptr(k);   /* (class objects: by identity, as object's) */
   case 'H': return ohash(k, d);
   case 'A': return pys_dyn_hash((Dyn *)k);
   case 'J': { opt_in(); Big x = jbig(k); return x.hi ? pys_mpz_hash(x.hi) : hint(x.lo); }   /* (a promoting int's two words) */
@@ -4715,13 +4722,14 @@ I pys_hash_id(void *p) { return hptr((I)p); }        /* object.__hash__ */
    immutable Mpz digits through a scanned box, under the same Python kind with its own
    payload descriptor. An int's, a float's and a bound method's box is its
    identity for `is` and id() (pys_dyn_id), other values' their payload's (#797). */
-enum { DK_NONE, DK_BOOL, DK_INT, DK_FLOAT, DK_STR, DK_LIST, DK_DICT, DK_TUPLE, DK_OBJ, DK_FUNC, DK_ITER, DK_GEN };
+enum { DK_NONE, DK_BOOL, DK_INT, DK_FLOAT, DK_STR, DK_LIST, DK_DICT, DK_TUPLE, DK_OBJ, DK_FUNC, DK_ITER, DK_GEN, DK_TYPE };
 enum { DF_EQ = 1, DF_CMP = 2, DF_HASH = 4, DF_BOXID = 8, DF_NE = 16, DF_X = 32, DF_ITER = 64, DF_BIG = 128, DF_ROLE = 256 };   /* a class's ==, ordering, hash and != run the program's
                                                                      helpers; a box of this type is its own identity (a bound method's);
                                                                      the class's comparison methods take a value of any type (dobj) */
 #define DSTR(id, lit) static struct { I len; uint64_t h; I c1; char s[sizeof lit]; } id = {sizeof lit - 1, 0, sizeof lit, lit}
 DSTR(dd_none, "?s"); DSTR(dd_bool, "b"); DSTR(dd_int, "i"); DSTR(dd_bigint, "j"); DSTR(dd_float, "f"); DSTR(dd_str, "s");
 DSTR(dd_list, "LA"); DSTR(dd_intlist, "Li"); DSTR(dd_dict, "DAA"); DSTR(dd_tuple, "VA");
+DSTR(dd_type, "Y"); DSTR(dn_type, "type");
 DSTR(dn_none, "NoneType"); DSTR(dn_bool, "bool"); DSTR(dn_int, "int"); DSTR(dn_float, "float"); DSTR(dn_str, "str");
 DSTR(dn_list, "list"); DSTR(dn_dict, "dict"); DSTR(dn_tuple, "tuple");
 #define DTYPE(id, k, d, n) const DynType id = {k, (Str *)&d, (Str *)&n, -1, 0, 0, 0, 0, 0} /* GC_NO_ROOT(pys_dyntype_none, pys_dyntype_bool, pys_dyntype_int, pys_dyntype_float, pys_dyntype_str, pys_dyntype_list, pys_dyntype_intlist, pys_dyntype_biglist, pys_dyntype_dict, pys_dyntype_tuple): immutable descriptors reference only static strings. */
@@ -4732,6 +4740,8 @@ const DynType pys_dyntype_bigint = {DK_INT, (Str *)&dd_bigint, (Str *)&dn_int, -
 DTYPE(pys_dyntype_str, DK_STR, dd_str, dn_str); DTYPE(pys_dyntype_list, DK_LIST, dd_list, dn_list);
 DTYPE(pys_dyntype_intlist, DK_LIST, dd_intlist, dn_list); DTYPE(pys_dyntype_biglist, DK_LIST, dd_intlist, dn_list);
 DTYPE(pys_dyntype_dict, DK_DICT, dd_dict, dn_dict); DTYPE(pys_dyntype_tuple, DK_TUPLE, dd_tuple, dn_tuple);
+/* GC_NO_ROOT(pys_dyntype_type): immutable descriptor references only static strings. */
+DTYPE(pys_dyntype_type, DK_TYPE, dd_type, dn_type);
 const Dyn pys_dyn_none_box = {&pys_dyntype_none, 0}; /* GC_NO_ROOT(pys_dyn_none_box, pys_dyn_true_box, pys_dyn_false_box): immutable scalar boxes reference only static type descriptors. */
 const Dyn pys_dyn_true_box = {&pys_dyntype_bool, 1}, pys_dyn_false_box = {&pys_dyntype_bool, 0};
 #define DI(v) {&pys_dyntype_int, v}
@@ -4847,7 +4857,7 @@ I pys_dyn_role_isa(Dyn *x, const DynType *t) {
 /* is box x its own copy (lib/copy.py's __pys_copy_is_own and __pys_deepcopy_is_own of an Any
    value): None, a bool, an int, a float or a str, as CPython's copy gives it; for copy.copy()
    (deep 0) also a tuple or a function */
-I pys_dyn_copy_is_own(Dyn *x, I deep) { int k = DKIND(x); return k <= DK_STR || (!deep && (k == DK_TUPLE || k == DK_FUNC)); }
+I pys_dyn_copy_is_own(Dyn *x, I deep) { int k = DKIND(x); return k <= DK_STR || k == DK_TYPE || (!deep && (k == DK_TUPLE || k == DK_FUNC)); }
 /* lib/copy.py's memo retains the payload, so typed and Any aliases have one key and
    one copy. A deep list copy preserves its original physical layout; reboxing a
    memo hit uses that descriptor. Shallow dynamic copy() remains unrestricted. */
@@ -5045,7 +5055,7 @@ I pys_dyn_hash(Dyn *x) {
   case DK_STR: return hstr((Str *)x->v);
   case DK_TUPLE: return htuple(((VTuple *)x->v)->a, ((VTuple *)x->v)->len, "A", 0);
   case DK_OBJ: return x->t->flags & DF_HASH ? pys_obj_eq(-1 - x->t->cls, x->v, 0) : hptr(x->v);
-  case DK_FUNC: case DK_ITER: case DK_GEN: return hptr(x->v);
+  case DK_FUNC: case DK_ITER: case DK_GEN: case DK_TYPE: return hptr(x->v);
   }
   failf("TypeError: unhashable type: '%s'", DNAME(x));
 }
@@ -6059,7 +6069,7 @@ static I u8enc(char *o, I c) {
   o[0] = 0xF0 | c >> 18; o[1] = 0x80 | (c >> 12 & 63); o[2] = 0x80 | (c >> 6 & 63); o[3] = 0x80 | (c & 63); return 4;
 }
 static const char *tyname(char d) {
-  return d == 'i' || d == 'J' ? "int" : d == 'b' ? "bool" : d == 'f' ? "float" : d == 's' ? "str" : d == 'L' ? "list" : d == 'D' ? "dict" : d == 'T' || d == 'V' ? "tuple" : d == 'S' ? "set" : d == 'F' ? "frozenset" : d == 'C' ? "type" : "object";
+  return d == 'i' || d == 'J' ? "int" : d == 'b' ? "bool" : d == 'f' ? "float" : d == 's' ? "str" : d == 'L' ? "list" : d == 'D' ? "dict" : d == 'T' || d == 'V' ? "tuple" : d == 'S' ? "set" : d == 'F' ? "frozenset" : d == 'C' || d == 'Y' ? "type" : "object";
 }
 /* The mini-language itself is in runtime.py (pys_format_str, _int, _float); pys_format picks one
    by the descriptor, and pys_fmt_float writes the digits of a float for a presentation type with
@@ -6071,7 +6081,7 @@ Str *pys_format(I v, Str *desc, Str *spec) {
   const char *ds = desc->s;
   if (*ds == 'A') {   /* (a dynamic value: its own; an object's or a function's with a spec: object.__format__'s error) */
     Dyn *x = (Dyn *)v;
-    if ((DKIND(x) == DK_OBJ || DKIND(x) == DK_FUNC || DKIND(x) == DK_ITER || DKIND(x) == DK_GEN) && spec->len) failf("TypeError: unsupported format string passed to %s.__format__", DNAME(x));
+    if ((DKIND(x) == DK_OBJ || DKIND(x) == DK_FUNC || DKIND(x) == DK_ITER || DKIND(x) == DK_GEN || DKIND(x) == DK_TYPE) && spec->len) failf("TypeError: unsupported format string passed to %s.__format__", DNAME(x));
     v = x->v; ds = x->t->desc->s;
   }
   if (*ds == '?') {                            /* None or a value */

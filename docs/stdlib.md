@@ -137,6 +137,9 @@ Language features limit library coverage most: general multiple inheritance and 
 reflection and unrestricted argument expansion. Runtime-typed values exist only in modules that
 opt in to the [dynamic `Any` prototype](dynamic-any.md); its [operations](dynamic-any.md#operations)
 and [iteration](dynamic-any.md#iteration) contracts list what such ports can rely on.
+Its bounded [class-value prototype](dynamic-any.md#class-values-and-type-keyed-registries)
+supports exact-type callback registries. The selected `copyreg` registration functions
+are exercised by a differential consumer; full `copyreg` and `pickle` remain unsupported.
 Generator functions, resumable generator objects, bytes, bounded unions and per-call
 function/constructor specialization already work; their remaining restrictions depend on the
 operation and the concrete types involved. CPython extensions and import graphs through
