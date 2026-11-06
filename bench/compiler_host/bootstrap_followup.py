@@ -8,6 +8,7 @@ outer measurement includes the controller and samples its whole process tree.
 from __future__ import annotations
 
 import argparse
+import ast
 import json
 import os
 from pathlib import Path
@@ -35,6 +36,50 @@ POLICIES = {
 CHANGED_FINAL = {"split-both", "driver-inline75"}
 
 
+def require_inline_support(root, policies):
+    """Recognize the driver contract this experiment needs, without importing it."""
+    flags = {"--stage1-inline-threshold", "--stage2-inline-threshold"}
+    if not any(arg.split("=", 1)[0] in flags for policy in policies for arg in POLICIES[policy]):
+        return
+    driver = root / "src/pystachy_compiler/driver.py"
+    message = f"inline bootstrap policy requires PYSTACHY_AOT_INLINE_THRESHOLD support in {driver}"
+    try:
+        tree = ast.parse(driver.read_text(), filename=str(driver))
+    except (OSError, SyntaxError) as exc:
+        raise ValueError(message) from exc
+    functions = {node.name: node for node in tree.body if isinstance(node, ast.FunctionDef)}
+    if "aot_inline_flags" not in functions or "main" not in functions:
+        raise ValueError(message)
+    strings = [node.value for node in ast.walk(functions["aot_inline_flags"])
+               if isinstance(node, ast.Constant) and isinstance(node.value, str)]
+    if ("PYSTACHY_AOT_INLINE_THRESHOLD" not in strings
+            or not any("-inline-threshold=" in value for value in strings)
+            or not any(isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+                       and node.func.id == "aot_inline_flags" for node in ast.walk(functions["main"]))):
+        raise ValueError(message)
+
+
+def compiler_identity(runs, policies):
+    final = {r["bootstrap"]["binaries"]["pystachy2"]["sha256"] for r in runs}
+    ordinary = {r["bootstrap"]["binaries"]["pystachy2"]["sha256"]
+                for r in runs if r["policy"] not in CHANGED_FINAL}
+    pair = {"driver-o0", "driver-inline75"}
+    stage1 = {policy: sorted({r["bootstrap"]["binaries"]["pystachy1"]["sha256"]
+                             for r in runs if r["policy"] == policy}) for policy in sorted(pair & set(policies))}
+    pair_required = pair <= set(policies)
+    pair_identical = (all(stage1.values()) and len({value for hashes in stage1.values() for value in hashes}) == 1
+                      if pair_required else None)
+    result = {"final_compiler_identical": len(final) == 1,
+              "final_identity_required": not any(policy in CHANGED_FINAL for policy in policies),
+              "ordinary_final_compilers_identical": len(ordinary) <= 1,
+              "driver_stage1_identity_required": pair_required,
+              "driver_stage1_sha256": stage1, "driver_stage1_compilers_identical": pair_identical}
+    result["compiler_identity_passed"] = (
+        bool(final) and (result["final_compiler_identical"] or not result["final_identity_required"])
+        and result["ordinary_final_compilers_identical"] and (not pair_required or pair_identical))
+    return result
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=ROOT)
@@ -49,6 +94,10 @@ def main():
     if args.samples < 1 or len(set(policies)) != len(policies):
         parser.error("need positive samples and unique policies")
     root, work, llvm = args.root.resolve(), args.work.resolve(), args.llvm.resolve()
+    try:
+        require_inline_support(root, policies)
+    except ValueError as exc:
+        parser.error(str(exc))
     work.mkdir(parents=True, exist_ok=False)
     env = {k: v for k, v in os.environ.items() if not k.startswith("PYSTACHY_")}
     source = bootstrap.source_identity(root)
@@ -79,15 +128,8 @@ def main():
                     if result.get("bootstrap", {}).get("status") != "passed":
                         raise RuntimeError("bootstrap did not publish a passing report")
                     print(f"{policy} {sample}: {result['wall_s']:.3f}s; six witnesses passed", flush=True)
-            final_hashes = {r["bootstrap"]["binaries"]["pystachy2"]["sha256"] for r in report["runs"]}
             ir_hashes = {r["bootstrap"]["fixed_points"]["stage"]["sha256"][0] for r in report["runs"]}
-            report["final_compiler_identical"] = len(final_hashes) == 1
-            report["final_identity_required"] = not any(policy in CHANGED_FINAL for policy in policies)
-            ordinary_final_hashes = {
-                r["bootstrap"]["binaries"]["pystachy2"]["sha256"]
-                for r in report["runs"] if r["policy"] not in CHANGED_FINAL
-            }
-            report["ordinary_final_compilers_identical"] = len(ordinary_final_hashes) <= 1
+            report.update(compiler_identity(report["runs"], policies))
             report["raw_compiler_ir_identical"] = len(ir_hashes) == 1
             report["source_unchanged"] = source == bootstrap.source_identity(root)
             report["summary"] = []
@@ -102,9 +144,8 @@ def main():
                         raise RuntimeError("missing whole-process-tree measurement")
                     summary[key] = {"median": statistics.median(values), "min": min(values), "max": max(values)}
                 report["summary"].append(summary)
-            report["complete"] = ((report["final_compiler_identical"] or not report["final_identity_required"])
-                                  and report["ordinary_final_compilers_identical"]
-                                  and report["raw_compiler_ir_identical"] and report["source_unchanged"]
+            report["complete"] = (report["compiler_identity_passed"] and report["raw_compiler_ir_identical"]
+                                  and report["source_unchanged"]
                                   and all(s["repeated_compilers_identical"] for s in report["summary"]))
     except BaseException as exc:
         report["error"] = str(exc)
