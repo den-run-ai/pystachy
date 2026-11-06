@@ -51,6 +51,32 @@ def publish(source, destination):
         Path(temporary).unlink(missing_ok=True)
 
 
+def wait_for_settled(paths):
+    # The driver's cache deliberately refuses files changed within two seconds.
+    # Honor that trust window before relying on its exported runtime artifact.
+    started = time.monotonic()
+    while True:
+        latest = max(max(p.stat().st_mtime, p.stat().st_ctime) for p in paths)
+        remaining = latest + 2.01 - time.time()
+        if remaining <= 0:
+            return time.monotonic() - started
+        if time.monotonic() - started > 3:
+            raise RuntimeError("compiler/tool inputs did not settle for runtime-cache publication")
+        time.sleep(min(0.05, remaining))
+
+
+def prepared_runtime(cache, prior, stderr):
+    bitcode = sorted(cache.glob("runtime-py-*.bc"))
+    fresh = [p for p in bitcode if p not in prior or sha(p) != prior[p]]
+    if len(fresh) == 1:
+        return fresh[0]
+    rebuilt = any(marker in stderr for marker in (
+        "pystachy-timing\truntime.frontend\t", "pystachy-timing\truntime.parallel\t"))
+    if not fresh and len(bitcode) == 1 and not rebuilt:
+        return bitcode[0]
+    raise RuntimeError(f"cannot identify the prepared runtime artifact: fresh={fresh}, all={bitcode}")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     producer = parser.add_mutually_exclusive_group(required=True)
@@ -100,6 +126,10 @@ def run_pipeline(args):
     try:
         with runner:
             start = time.monotonic()
+            inputs = [root / p for p in source["files"]] + [Path(p) for p in compiler]
+            inputs += [llvm / name for name in ("clang", "llvm-as", "llvm-link", "opt")]
+            report["cache_trust_wait_s"] = wait_for_settled(inputs)
+            prior_runtime = {p: sha(p) for p in cache.glob("runtime-py-*.bc")}
 
             for result in runner.run(list(commands.items()), env, 300, jobs=2 if args.overlap else 1):
                 report["stages"][result["key"]] = result
@@ -107,17 +137,18 @@ def run_pipeline(args):
                 measure.successful(result)
             report["frontend_runtime_wall_s"] = time.monotonic() - start
             report["raw_ir_sha256"] = sha(work / "raw.ll")
-            bitcode = sorted(cache.glob("runtime-py-*.bc"))
-            if len(bitcode) != 1:
-                raise RuntimeError(f"expected exactly one runtime bitcode artifact, got {bitcode}")
-            report["runtime_bc_sha256"] = sha(bitcode[0])
+            # A private bootstrap cache may also contain an earlier producer's
+            # runtime. Select the artifact this prewarm actually published.
+            runtime = prepared_runtime(cache, prior_runtime, report["stages"]["runtime_prewarm"]["stderr"])
+            report["runtime_bc_path"] = str(runtime)
+            report["runtime_bc_sha256"] = sha(runtime)
             # The compiler source does not opt into dynamic Any or promoting int.
             raw = (work / "raw.ll").read_bytes()
             if any(line.startswith(b"@pys_plain =") for line in raw.splitlines()):
                 raise RuntimeError("unexpected pys_plain definition in raw compiler IR")
             (work / "program.ll").write_bytes(raw + b"@pys_plain = constant i64 1\n")
             linked = work / "linked.bc"
-            result = runner.execute([str(llvm / "llvm-link"), "--only-needed", str(work / "program.ll"), str(bitcode[0]), "-o", str(linked)], env, 120)
+            result = runner.execute([str(llvm / "llvm-link"), "--only-needed", str(work / "program.ll"), str(runtime), "-o", str(linked)], env, 120)
             measure.successful(result)
             report["stages"]["link_ir"] = result
             backend_report = work / "backend.json"

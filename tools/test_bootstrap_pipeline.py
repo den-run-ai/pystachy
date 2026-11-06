@@ -142,24 +142,28 @@ def value(flag):
     return args[args.index(flag) + 1]
 root = pathlib.Path(value("--root"))
 (root / "pipeline-arguments.json").write_text(json.dumps(args))
-subprocess.run([sys.executable, str(root / "pystachy.py"), "build", "pystachy.py",
-                "-o", value("--output"), "--emit-ir", value("--emit-ir")], check=True)
+producer = [value("--compiler")] if "--compiler" in args else [sys.executable, str(root / "pystachy.py")]
+subprocess.run(producer + ["build", "pystachy.py", "-o", value("--output"),
+                           "--emit-ir", value("--emit-ir")], check=True)
 ''')
-        code, report, events = self.run_case("optimized", (
-            "--jobs", "4", "--build-jobs", "4", "--stage1-opt", "0",
-            "--stage1-split", "4", "--runtime-overlap", "--runtime-c-cache"))
-        self.assertEqual(code, 0)
-        builds = [e for e in events if e["kind"] == "build"]
-        self.assertEqual([e["producer"] for e in builds], ["pystachy.py", "pystachy1"])
-        self.assertEqual([e["opt"] for e in builds], ["0", "2"])
-        self.assertTrue(all(e["partitions"] == 0 for e in builds))
-        self.assertCountEqual([e["producer"] for e in events if e["kind"] == "rt"],
-                              ["pystachy.py", "pystachy1", "pystachy2"])
-        self.assertTrue(all(v["identical"] for v in report["fixed_points"].values()))
-        self.assertEqual(sum(e["kind"] == "ir" for e in events), 1)
-        arguments = json.loads((self.root / "pipeline-arguments.json").read_text())
-        self.assertIn("--overlap", arguments)
-        self.assertIn("--caller-witnesses", arguments)
+        for final_split in (0, 4):
+            (self.root / "events.jsonl").unlink(missing_ok=True)
+            code, report, events = self.run_case("optimized", (
+                "--jobs", "4", "--build-jobs", "4", "--stage1-opt", "0",
+                "--stage1-split", "4", "--stage2-split", str(final_split),
+                "--runtime-overlap", "--runtime-c-cache"))
+            self.assertEqual(code, 0)
+            builds = [e for e in events if e["kind"] == "build"]
+            self.assertEqual([e["producer"] for e in builds], ["pystachy.py", "pystachy1"])
+            self.assertEqual([e["opt"] for e in builds], ["0", "2"])
+            self.assertTrue(all(e["partitions"] == 0 for e in builds))
+            self.assertCountEqual([e["producer"] for e in events if e["kind"] == "rt"],
+                                  ["pystachy.py", "pystachy1", "pystachy2"])
+            self.assertTrue(all(v["identical"] for v in report["fixed_points"].values()))
+            self.assertEqual(sum(e["kind"] == "ir" for e in events), 1)
+            arguments = json.loads((self.root / "pipeline-arguments.json").read_text())
+            self.assertIn("--overlap", arguments)
+            self.assertIn("--caller-witnesses", arguments)
 
     def test_split_policy_rejects_unaccounted_work_and_missing_witnesses(self):
         for extra in (("--stage1-split", "9", "--runtime-c-cache"),
@@ -241,11 +245,13 @@ subprocess.run([sys.executable, str(root / "pystachy.py"), "build", "pystachy.py
         self.assert_descendant_dead()
 
     def assert_descendant_dead(self):
+        from test_compiler_parallel_workers import living
+
         pid = int((self.root / "child.pid").read_text())
-        # An orphaned zombie awaiting init's reap cannot execute; PID alone is insufficient.
-        path = Path(f"/proc/{pid}/stat")
+        # /proc may expose an outer PID namespace. Check the recorded child's
+        # own namespace, and distinguish a live child from an unreaped zombie.
         for _ in range(100):
-            if not path.exists() or path.read_text().split(")", 1)[1].split()[0] == "Z":
+            if not living(pid):
                 return
             time.sleep(0.01)
         self.fail("owned descendant survived cleanup")

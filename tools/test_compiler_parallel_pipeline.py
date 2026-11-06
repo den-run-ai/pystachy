@@ -63,5 +63,24 @@ class PublicationTests(unittest.TestCase):
         self.assertEqual(unrelated.read_text(), "another invocation\n")
 
 
+class RuntimeSelectionTests(unittest.TestCase):
+    def test_each_producer_uses_its_own_new_artifact_and_ambiguity_fails(self):
+        with tempfile.TemporaryDirectory() as directory:
+            cache = Path(directory)
+            first = cache / "runtime-py-first.bc"
+            second = cache / "runtime-py-second.bc"
+            first.write_bytes(b"first producer")
+            before = {first: pipeline.sha(first)}
+            self.assertEqual(pipeline.prepared_runtime(cache, before, "cache hit"), first)
+            with self.assertRaises(RuntimeError):
+                pipeline.prepared_runtime(cache, before, "pystachy-timing\truntime.frontend\t1\n")
+            second.write_bytes(b"second producer")
+            self.assertEqual(pipeline.prepared_runtime(cache, before, ""), second)
+            with self.assertRaises(RuntimeError):
+                pipeline.prepared_runtime(cache, {}, "")
+            with self.assertRaises(RuntimeError):
+                pipeline.prepared_runtime(cache, {p: pipeline.sha(p) for p in (first, second)}, "cache hit")
+
+
 if __name__ == "__main__":
     unittest.main()

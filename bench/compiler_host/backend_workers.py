@@ -98,9 +98,12 @@ class Commands:
     terminates/reaps siblings before returning and never starts queued work.
     """
 
-    def __init__(self, measure=None, owns_group=True):
+    def __init__(self, measure=None, owns_group=True, cleanup_grace=0.25):
+        if not math.isfinite(cleanup_grace) or not 0 <= cleanup_grace <= 5:
+            raise ValueError("cleanup grace must be finite and from 0 to 5 seconds")
         self.measure = measure
         self.owns_group = owns_group
+        self.cleanup_grace = cleanup_grace
         self.running = {}
         self.results = []
         self.interrupted = 0
@@ -223,7 +226,7 @@ class Commands:
                     except ProcessLookupError:
                         pass
             if members:
-                deadline = time.monotonic() + 0.25
+                deadline = time.monotonic() + self.cleanup_grace
                 while members and time.monotonic() < deadline:
                     time.sleep(0.01)
                     if self.owns_group:

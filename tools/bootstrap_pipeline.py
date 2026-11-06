@@ -84,14 +84,16 @@ def plan(args, work):
         command = compilers[i - 1] + ["build", "pystachy.py", "-o", str(work / f"pystachy{i}")]
         if args.variant != "baseline":
             command += ["--emit-ir", str(work / f"stage{i}.ll")]
-        if i == 1 and args.stage1_split:
+        split = args.stage1_split if i == 1 else args.stage2_split
+        if split:
             command = [args.python, str(args.root / "bench/compiler_host/self_pipeline.py"),
-                       "--hosted", "--root", str(args.root), "--llvm", args.llvm,
-                       "--work", str(work / "stage1-pipeline"), "--report", str(work / "stage1-pipeline.json"),
-                       "--jobs", str(args.build_jobs), "--partitions", str(args.stage1_split),
-                       "--opt", str(args.stage1_opt), "--cache", str(work / "cache"),
-                       "--output", str(work / "pystachy1"), "--emit-ir", str(work / "stage1.ll"),
+                       "--root", str(args.root), "--llvm", args.llvm,
+                       "--work", str(work / f"stage{i}-pipeline"), "--report", str(work / f"stage{i}-pipeline.json"),
+                       "--jobs", str(args.build_jobs), "--partitions", str(split),
+                       "--opt", str(args.stage1_opt if i == 1 else 2), "--cache", str(work / "cache"),
+                       "--output", str(work / f"pystachy{i}"), "--emit-ir", str(work / f"stage{i}.ll"),
                        "--caller-witnesses"]
+            command += ["--hosted"] if i == 1 else ["--compiler", compilers[i - 1][0]]
             if args.runtime_overlap:
                 command.append("--overlap")
         add(f"build{i}", command, ["build1"] if i == 2 else [], args.build_jobs,
@@ -220,8 +222,10 @@ def main(argv=None):
     parser.add_argument("--stage1-opt", type=int, choices=(0, 1, 2), default=2)
     parser.add_argument("--stage1-split", type=int, default=0,
                         help="research: early-split temporary self-build, final build retains the driver")
+    parser.add_argument("--stage2-split", type=int, default=0,
+                        help="research: early-split final compiler too; generated-code quality changes")
     parser.add_argument("--runtime-overlap", action="store_true",
-                        help="research: overlap whole cold runtime and hosted frontend in the split first stage")
+                        help="research: overlap whole runtime and frontend in each split stage")
     parser.add_argument("--runtime-c-cache", action="store_true", help="enable the independent runtime C bitcode cache")
     parser.add_argument("--timing", action="store_true", help="retain driver stage timings in each command log")
     parser.add_argument("--timeout", type=float, default=900, help="seconds per command")
@@ -229,11 +233,13 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if not 1 <= args.build_jobs <= args.jobs <= 64 or not 0 <= args.partitions <= args.build_jobs or args.timeout <= 0:
         parser.error("require 1 <= build-jobs <= jobs <= 64, 0 <= partitions <= build-jobs, timeout > 0")
-    if args.stage1_split and (not 1 <= args.stage1_split <= 8 or args.build_jobs > 8
-                              or args.variant == "baseline" or not args.runtime_c_cache):
-        parser.error("stage1-split needs retained witnesses, runtime-c-cache, 1..8 partitions and at most 8 build jobs")
-    if args.runtime_overlap and (not args.stage1_split or args.build_jobs < 2):
-        parser.error("runtime-overlap needs stage1-split and at least two build jobs")
+    if not 0 <= args.stage1_split <= 8 or not 0 <= args.stage2_split <= 8:
+        parser.error("split counts must be from 0 to 8")
+    if (args.stage1_split or args.stage2_split) and (args.build_jobs > 8
+                                                   or args.variant == "baseline" or not args.runtime_c_cache):
+        parser.error("split builds need retained witnesses, runtime-c-cache and at most 8 build jobs")
+    if args.runtime_overlap and (not (args.stage1_split or args.stage2_split) or args.build_jobs < 2):
+        parser.error("runtime-overlap needs a split build and at least two build jobs")
     args.root = args.root.resolve()
     args.python = str(Path(shutil.which(args.python) or args.python).resolve())
     if not args.llvm:
@@ -259,6 +265,7 @@ def main(argv=None):
               "options": {k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()},
               "platform": platform.platform(), "host_before": host_state(), "steps": nodes, "fixed_points": {},
               "planned_work": {"native_builds": 2, "compiler_frontend_emissions": 5 if args.variant == "baseline" else 3,
+                               "runtime_prewarm_tiny_builds": int(bool(args.stage1_split)) + int(bool(args.stage2_split)),
                                "compiler_fixed_point_witnesses": 3, "runtime_fixed_point_witnesses": 3}}
     start = time.monotonic()
     code = 1

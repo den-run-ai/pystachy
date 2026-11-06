@@ -1,7 +1,8 @@
 """Interleave complete bootstraps while changing only the temporary build policy.
 
 Every run builds two compilers and verifies three compiler and three runtime IR
-witnesses. Runtime caches are fresh; the final compiler uses ordinary O2. The
+witnesses. Runtime caches are fresh; the final compiler uses ordinary O2 unless split-both
+is explicitly selected, which changes generated-code quality. The
 outer measurement includes the controller and samples its whole process tree.
 """
 from __future__ import annotations
@@ -15,6 +16,7 @@ import statistics
 import sys
 
 from run import ROOT, atomic_json, bootstrap, measure, sha
+from backend_workers import Commands
 
 
 POLICIES = {
@@ -25,6 +27,8 @@ POLICIES = {
                  "--stage1-split", "4", "--runtime-overlap"],
     "split-o2": ["--jobs", "4", "--build-jobs", "4", "--stage1-opt", "2",
                  "--stage1-split", "4", "--runtime-overlap"],
+    "split-both": ["--jobs", "4", "--build-jobs", "4", "--stage1-opt", "0",
+                   "--stage1-split", "4", "--stage2-split", "4", "--runtime-overlap"],
 }
 
 
@@ -50,48 +54,57 @@ def main():
               "policies": policies, "requested_samples": args.samples,
               "runs": [], "complete": False}
     rng = random.Random(20261106)
+    # The bootstrap owns node groups and drains them within 0.75 s.
+    runner = Commands(measure, cleanup_grace=1.5)
     try:
-        for sample in range(args.samples):
-            order = list(policies)
-            rng.shuffle(order)
-            for policy in order:
-                command = ["taskset", "-c", args.cpus, sys.executable,
-                           str(ROOT / "tools/bootstrap_pipeline.py"), "--root", str(root),
-                           "--llvm", str(llvm), "--variant", "optimized", "--runtime-c-cache",
-                           "--timing", "--output", str(work / f"{policy}-{sample}"), *POLICIES[policy]]
-                result = measure.execute(command, env, 900)
-                result.update(policy=policy, sample=sample)
-                report["runs"].append(result)
-                atomic_json(args.report, report)
-                lines = result["stdout"].splitlines()
-                if lines and Path(lines[-1]).is_file():
-                    result["bootstrap"] = json.loads(Path(lines[-1]).read_text())
-                atomic_json(args.report, report)
-                measure.successful(result)
-                if result.get("bootstrap", {}).get("status") != "passed":
-                    raise RuntimeError("bootstrap did not publish a passing report")
-                print(f"{policy} {sample}: {result['wall_s']:.3f}s; six witnesses passed", flush=True)
-        final_hashes = {r["bootstrap"]["binaries"]["pystachy2"]["sha256"] for r in report["runs"]}
-        ir_hashes = {r["bootstrap"]["fixed_points"]["stage"]["sha256"][0] for r in report["runs"]}
-        report["final_compiler_identical"] = len(final_hashes) == 1
-        report["raw_compiler_ir_identical"] = len(ir_hashes) == 1
-        report["source_unchanged"] = source == bootstrap.source_identity(root)
-        report["summary"] = []
-        for policy in policies:
-            runs = [r for r in report["runs"] if r["policy"] == policy]
-            summary = {"policy": policy, "n": len(runs)}
-            for key in ("wall_s", "cpu_s", "sampled_process_tree_peak_rss_kib"):
-                values = [r[key] for r in runs]
-                if any(v is None for v in values):
-                    raise RuntimeError("missing whole-process-tree measurement")
-                summary[key] = {"median": statistics.median(values), "min": min(values), "max": max(values)}
-            report["summary"].append(summary)
-        report["complete"] = (report["final_compiler_identical"] and report["raw_compiler_ir_identical"]
-                              and report["source_unchanged"])
+        with runner:
+            for sample in range(args.samples):
+                order = list(policies)
+                rng.shuffle(order)
+                for policy in order:
+                    command = ["taskset", "-c", args.cpus, sys.executable,
+                               str(ROOT / "tools/bootstrap_pipeline.py"), "--root", str(root),
+                               "--llvm", str(llvm), "--variant", "optimized", "--runtime-c-cache",
+                               "--timing", "--output", str(work / f"{policy}-{sample}"), *POLICIES[policy]]
+                    result = runner.execute(command, env, 900)
+                    result.update(policy=policy, sample=sample)
+                    report["runs"].append(result)
+                    atomic_json(args.report, report)
+                    lines = result["stdout"].splitlines()
+                    if lines and Path(lines[-1]).is_file():
+                        result["bootstrap"] = json.loads(Path(lines[-1]).read_text())
+                    atomic_json(args.report, report)
+                    measure.successful(result)
+                    if result.get("bootstrap", {}).get("status") != "passed":
+                        raise RuntimeError("bootstrap did not publish a passing report")
+                    print(f"{policy} {sample}: {result['wall_s']:.3f}s; six witnesses passed", flush=True)
+            final_hashes = {r["bootstrap"]["binaries"]["pystachy2"]["sha256"] for r in report["runs"]}
+            ir_hashes = {r["bootstrap"]["fixed_points"]["stage"]["sha256"][0] for r in report["runs"]}
+            report["final_compiler_identical"] = len(final_hashes) == 1
+            report["final_identity_required"] = "split-both" not in policies
+            report["raw_compiler_ir_identical"] = len(ir_hashes) == 1
+            report["source_unchanged"] = source == bootstrap.source_identity(root)
+            report["summary"] = []
+            for policy in policies:
+                runs = [r for r in report["runs"] if r["policy"] == policy]
+                summary = {"policy": policy, "n": len(runs)}
+                summary["repeated_compilers_identical"] = len({
+                    r["bootstrap"]["binaries"]["pystachy2"]["sha256"] for r in runs}) == 1
+                for key in ("wall_s", "cpu_s", "sampled_process_tree_peak_rss_kib"):
+                    values = [r[key] for r in runs]
+                    if any(v is None for v in values):
+                        raise RuntimeError("missing whole-process-tree measurement")
+                    summary[key] = {"median": statistics.median(values), "min": min(values), "max": max(values)}
+                report["summary"].append(summary)
+            report["complete"] = ((report["final_compiler_identical"] or not report["final_identity_required"])
+                                  and report["raw_compiler_ir_identical"] and report["source_unchanged"]
+                                  and all(s["repeated_compilers_identical"] for s in report["summary"]))
     except BaseException as exc:
         report["error"] = str(exc)
         raise
     finally:
+        if "error" in report:
+            report["commands"] = runner.results
         atomic_json(args.report, report)
     print(json.dumps(report["summary"], indent=2), flush=True)
     return 0 if report["complete"] else 1

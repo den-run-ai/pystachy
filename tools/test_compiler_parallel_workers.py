@@ -288,6 +288,8 @@ class OwnershipTests(unittest.TestCase):
         proc, report = self.launch([("signal", self.command(BLOCK, pid))])
         self.wait_file(Path(str(pid) + ".ready"), proc)
         self.assertEqual(int(Path(str(pid) + ".ready").read_text()), proc.pid)
+        self.assertTrue(living(int(pid.read_text())))
+        self.assertTrue(living(int(Path(str(pid) + ".child").read_text())))
         proc.send_signal(signal.SIGTERM)
         data = self.collect(proc, report)
         self.assertIn("signal 15", data["error"])
