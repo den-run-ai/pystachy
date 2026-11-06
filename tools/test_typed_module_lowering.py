@@ -3,11 +3,13 @@ import ast
 from pathlib import Path
 import re
 import unittest
+from unittest.mock import patch
 
 from src.pystachy_compiler.gen import Gen
-from src.pystachy_compiler.ir import Data, Val
+from src.pystachy_compiler.ir import Data, FnInfo, IFn, Ins, Val
 from src.pystachy_compiler.loader import Loader
 from src.pystachy_compiler.lower_module import lower_data
+from src.pystachy_compiler.syntax import Node
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -15,6 +17,43 @@ BACKENDS = {"lowering.py", "lower_module.py", "llvm_abi.py"}
 
 
 class ModuleLoweringTests(unittest.TestCase):
+    def test_completed_functions_keep_one_output_chunk_without_rewriting_prior_output(self):
+        g = Gen()
+        output = g.out
+        output.append("; earlier output\n; preserved in order")
+        expected = output.copy()
+        for name in ("first", "second"):
+            fn = IFn(FnInfo(name, "@" + name, Node("def", name, 1), ""))
+            fn.f.ret = "None"
+            fn.blocks[0].code = [Ins("ret.none", "", "")]
+            g.lower(fn)
+            expected.append(f"define internal void @{name}() {{\nentry:\n  ret void\n}}")
+            self.assertIs(g.out, output)
+            self.assertEqual(output, expected)
+        llvm = g.lower_module()
+        self.assertIn("\n".join(expected) + "\n", llvm)
+
+    def test_module_assembly_keeps_body_and_final_newline_in_each_mode(self):
+        body = ["define void @body() {", "entry:", "  ret void", "}"]
+        extension = ["define ptr @PyInit_probe() {", "  ret ptr null", "}"]
+        for mode in ("program", "runtime", "extension"):
+            with self.subTest(mode=mode):
+                g = Gen()
+                g.rtmode = mode == "runtime"
+                g.ext = "probe" if mode == "extension" else ""
+                g.out = body.copy()
+                with patch.object(Gen, "pyext", return_value=extension):
+                    llvm = g.lower_module()
+                    self.assertEqual(g.lower_module(), llvm)
+                self.assertEqual(g.out, body)
+                self.assertEqual(llvm.count("\n".join(body) + "\n"), 1)
+                self.assertTrue(llvm.endswith("\n"))
+                self.assertFalse(llvm.endswith("\n\n"))
+                if mode == "extension":
+                    self.assertTrue(llvm.endswith("\n".join(extension) + "\n"))
+                elif mode == "program":
+                    self.assertTrue(llvm.endswith("  ret i32 0\n}\n"))
+
     def test_string_literal_header_matches_runtime_caches(self):
         for text, chars1 in [("", 1), ("ascii", 6), ("a\x00b", 4), ("\xc3\xa9", 0), ("\xf0\x9f\x98\x80", 0)]:
             with self.subTest(text=text):
