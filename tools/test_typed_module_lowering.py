@@ -6,9 +6,10 @@ import unittest
 from unittest.mock import patch
 
 from src.pystachy_compiler.gen import Gen
-from src.pystachy_compiler.ir import Data, Val
+from src.pystachy_compiler.ir import Data, FnInfo, IFn, Ins, Val
 from src.pystachy_compiler.loader import Loader
 from src.pystachy_compiler.lower_module import lower_data
+from src.pystachy_compiler.syntax import Node
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -16,6 +17,22 @@ BACKENDS = {"lowering.py", "lower_module.py", "llvm_abi.py"}
 
 
 class ModuleLoweringTests(unittest.TestCase):
+    def test_completed_functions_keep_one_output_chunk_without_rewriting_prior_output(self):
+        g = Gen()
+        output = g.out
+        output.append("; earlier output\n; preserved in order")
+        expected = output.copy()
+        for name in ("first", "second"):
+            fn = IFn(FnInfo(name, "@" + name, Node("def", name, 1), ""))
+            fn.f.ret = "None"
+            fn.blocks[0].code = [Ins("ret.none", "", "")]
+            g.lower(fn)
+            expected.append(f"define internal void @{name}() {{\nentry:\n  ret void\n}}")
+            self.assertIs(g.out, output)
+            self.assertEqual(output, expected)
+        llvm = g.lower_module()
+        self.assertIn("\n".join(expected) + "\n", llvm)
+
     def test_module_assembly_keeps_body_and_final_newline_in_each_mode(self):
         body = ["define void @body() {", "entry:", "  ret void", "}"]
         extension = ["define ptr @PyInit_probe() {", "  ret ptr null", "}"]
