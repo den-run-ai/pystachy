@@ -596,6 +596,10 @@ startup for large programs, but the generated code can run slower. The default (
 keeps ORC and its normal code generation. This choice does not change the IR cleanup
 or inlining pipeline, and does not affect `build` or `ext`.
 
+`PYSTACHY_PROGRAM_CACHE=1` enables the [native program cache prototype](program-cache.md)
+for the native Linux CLI's default JIT configuration. Validated hits execute a
+previously linked JIT-tier program without rerunning the frontend or LLVM.
+
 `build` links the runtime bitcode with the program and applies clang's `-O2` optimization
 pipeline, allowing optimization across that boundary. The program's module also defines
 `pys_plain`: 1 when no module opts in to dynamic `Any` or promoting ints, else 0. The runtime
@@ -672,6 +676,9 @@ provide the broader behavior check. See [testing](testing.md) for the commands.
 | `PYSTACHY_OPT` | Disable named optimizations with `-name`, comma-separated, or all with `-all`; see [IR passes](typed-ir.md#optimizations) |
 | `PYSTACHY_JIT_INLINE=N` | IR-line threshold for JIT user-function inlining, including the recursion entry helper; `0` disables it (the scalar recursion helpers remain inlined) |
 | `PYSTACHY_JIT_CODEGEN=0\|2` | `0` selects MCJIT `-O0`; `2` (default) keeps ORC code generation |
+| `PYSTACHY_PROGRAM_CACHE=1` | Opt into the Linux native [program cache](program-cache.md); unset or `0` keeps normal compilation |
+| `PYSTACHY_PROGRAM_CACHE_TRACE=1` | Print cache decisions and frontend entry to stderr |
+| `PYSTACHY_PROGRAM_CACHE_INPUTS` | Additional files whose changes invalidate the program cache, separated by `:` |
 | `PYSTACHY_GC_STRESS=N` | Collect every N allocations |
 | `PYSTACHY_GC_STRESS_PROGRAM=N` | Apply the stress interval to the program run by JIT or the test runner, separately from its compiler |
 | `PYSTACHY_GC` | `off` disables collection; `stats` prints a summary at exit |

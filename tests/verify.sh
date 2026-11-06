@@ -238,7 +238,7 @@ export PYSTACHY_HOME="$ROOT"
 # The steps set the knobs they test themselves: one left in the caller's environment would weaken a
 # step (PYSTACHY_GC=off: gc-stress collects nothing) or fail it falsely (PYSTACHY_OPT=-all), so they
 # are dropped, and the report lists them (PYSTACHY_LLVM and PYSTACHY_JOBS are kept)
-ign=$(env | sed -nE 's/^(PYSTACHY_(PATH|CFLAGS|GC|GC_MIN|GC_STRESS|GC_STRESS_PROGRAM|IRCHECK|IRFX|OPT|JIT_INLINE|JIT_CODEGEN|UNICODE_AUDIT|ARGV0|CASE_TIMES))=.*$/\1/p' | sort -u)
+ign=$(env | sed -nE 's/^(PYSTACHY_(PATH|CFLAGS|GC|GC_MIN|GC_STRESS|GC_STRESS_PROGRAM|IRCHECK|IRFX|OPT|JIT_INLINE|JIT_CODEGEN|PROGRAM_CACHE|PROGRAM_CACHE_TRACE|PROGRAM_CACHE_INPUTS|UNICODE_AUDIT|ARGV0|CASE_TIMES))=.*$/\1/p' | sort -u)
 for e in $ign; do echo "verify: ignoring $e=$(printenv "$e")"; unset "$e"; done
 LLVM=${PYSTACHY_LLVM:+${PYSTACHY_LLVM%/}/}
 
@@ -637,7 +637,7 @@ nopy() { env -i PATH="$NP" TMPDIR="${TMPDIR:-/tmp}" PYSTACHY_HOME="$V/home" ${PY
   # clang's system linker; the driver's shell commands (pystachy run's rmdir too); tests/run.sh; the rm,
   # mkfifo, sleep and ln (shutil's symbolic links) test programs run; the native-agent example's permission
   # preservation and bounded visible check use chmod and timeout.
-  for t in ld sh mkdir mktemp sed mv chmod timeout rm rmdir test cat cmp diff head tail grep dirname basename mkfifo sleep ln nproc; do tool $t || ok=0; done
+  for t in ld sh mkdir mktemp sed mv chmod timeout rm rmdir test cat cmp diff head tail grep dirname basename mkfifo sleep ln nproc stat cp ldd; do tool $t || ok=0; done
   echo "PATH=$NP"; ls -l "$NP" | sed 1d
   if nopy sh -c 'command -v python3 || command -v python'; then ok=0; echo "python is reachable"
   else py=false; echo "python3, python: not found on PATH"; fi

@@ -35,6 +35,7 @@ case $PYS in
   *) PY=; CPY=${CPY:-python3}; me=pystachy; from=$PYS ;;
 esac
 unset PYSTACHY_CFLAGS PYSTACHY_OPT PYSTACHY_PATH PYSTACHY_GC PYSTACHY_GC_STRESS PYSTACHY_IRFX PYSTACHY_CACHE
+unset PYSTACHY_PROGRAM_CACHE PYSTACHY_PROGRAM_CACHE_TRACE PYSTACHY_PROGRAM_CACHE_INPUTS
 T=${TMPDIR:-/tmp}/pystachy-cache.$$
 rm -rf "$T"
 mkdir -p "$T/home" "$T/bin" "$T/llvm" "$T/tmp" "$T/d1/pystachy" "$T/d1/clang" "$T/d2" "$T/d3" "$T/d4" "$T/ryu" "$T/mpz" || exit 1

@@ -151,4 +151,10 @@ jobs:
       - name: Concurrency contract probes (docs/concurrency.md)
         run: python3 -m unittest discover -s tools -p test_concurrency_contract.py
 
+      - name: Native program cache manifests and tool inputs
+        run: |
+          python3 -m unittest discover -s tools -p test_program_cache.py
+          python3 -m unittest discover -s tools -p test_program_cache_publication.py
+          python3 -m unittest discover -s tools -p test_cached_run.py
+
       - run: make check-recordings

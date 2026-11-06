@@ -1,0 +1,187 @@
+"""Fail-closed input collection and request identity for cached native runs."""
+from contextlib import ExitStack
+import os
+from pathlib import Path
+import shlex
+import sys
+import tempfile
+import unittest
+from unittest.mock import patch
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from src.pystachy_compiler import cached_run
+
+
+class DependencyInputsTests(unittest.TestCase):
+    def test_make_escaped_prerequisites(self):
+        # Clang -M -MT cache, including a wrapped line and the Make spelling of
+        # literal dollars/hash/whitespace. No shell evaluates these paths.
+        text = ("cache: /src/a\\ b.c \\\n"
+                " /usr/include/stdio.h /inc/a\\#b.h /inc/c$$d.h "
+                "/inc/slash\\\\name.h /inc/tab\\\tname.h /inc/colon:name.h\n")
+        self.assertEqual(cached_run.dep_paths(text), [
+            "/src/a b.c", "/usr/include/stdio.h", "/inc/a#b.h", "/inc/c$d.h",
+            "/inc/slash\\name.h", "/inc/tab\tname.h", "/inc/colon:name.h",
+        ])
+
+    def test_bad_target_or_unterminated_escape_does_not_supply_inputs(self):
+        for text in ("", "notcache: /x\n", "cache:", "cache: /x\\", "cache: \\\n"):
+            with self.subTest(text=text):
+                self.assertEqual(cached_run.dep_paths(text), [])
+
+    def test_link_trace_keeps_opened_inputs_and_excludes_ephemeral_objects(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            paths = [base / name for name in ("program.o", "runtime.o", "crt.o", "lib m.so")]
+            for path in paths:
+                path.touch()
+            log = base / "link-inputs"
+            log.write_text("\n".join(str(p) for p in paths) + "\n")
+            with patch.object(cached_run.pc, "track_static") as track:
+                self.assertTrue(cached_run.link_inputs(str(log), str(paths[0]), str(paths[1])))
+            self.assertEqual([x.args[0] for x in track.call_args_list], [str(p) for p in paths[2:]])
+
+    def test_incomplete_or_unsupported_link_trace_cannot_validate(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            obj, runtime = str(base / "program.o"), str(base / "runtime.o")
+            log = base / "link-inputs"
+            for text in ("", obj + "\n" + runtime + "\n", "relative.so\n",
+                         str(base / "missing.so") + "\n", "(archive.a)member.o\n"):
+                with self.subTest(text=text), patch.object(cached_run.pc, "track_static"):
+                    log.write_text(text)
+                    self.assertFalse(cached_run.link_inputs(str(log), obj, runtime))
+
+
+class EligibilityTests(unittest.TestCase):
+    def setUp(self):
+        self.stack = ExitStack()
+        self.addCleanup(self.stack.close)
+        self.stack.enter_context(patch.dict(os.environ, {
+            "PYSTACHY_PROGRAM_CACHE": "1", "PYSTACHY_CACHE": "/private/cache",
+        }, clear=True))
+        self.stack.enter_context(patch.object(cached_run, "PLATFORM", "linux"))
+        self.native = self.stack.enter_context(patch.object(cached_run, "native_compiler", return_value=True))
+        self.stack.enter_context(patch.object(cached_run.os.path, "exists", return_value=True))
+        self.stack.enter_context(patch.object(cached_run.os.path, "isfile", return_value=True))
+        self.stack.enter_context(patch.object(cached_run.os.path, "realpath", side_effect=lambda p: p))
+        self.listdir = self.stack.enter_context(patch.object(cached_run.os, "listdir", return_value=[]))
+        self.cwd = self.stack.enter_context(patch.object(cached_run.os, "getcwd", return_value="/work"))
+        self.read = self.stack.enter_context(patch.object(cached_run, "read_raw", return_value="vendor_id: test\nflags: one two\n"))
+        self.stop = self.stack.enter_context(patch.object(cached_run.pc, "stop"))
+        self.start = self.stack.enter_context(patch.object(cached_run.pc, "start"))
+        self.lookup = self.stack.enter_context(patch.object(cached_run.pc, "lookup", return_value="/cache/native.exe"))
+        self.inputs = self.stack.enter_context(patch.object(cached_run, "tool_inputs", return_value=True))
+        self.trace = self.stack.enter_context(patch.object(cached_run, "trace"))
+
+    @staticmethod
+    def prepare(cmd="run", source="main.py", dirs=None, llvm="/llvm/bin"):
+        return cached_run.prepare(cmd, source, "/compiler/pystachy", "/compiler",
+                                  [".", "/compiler/lib"] if dirs is None else dirs,
+                                  llvm, ["mpz/mpz.c"])
+
+    def test_default_and_other_commands_never_look_up_or_collect(self):
+        for command in ("build", "ext", "ir", "check", "rt"):
+            self.assertEqual(self.prepare(cmd=command), ("", "", ""))
+        for flag in ("", "0", "unexpected"):
+            with patch.dict(os.environ, {"PYSTACHY_PROGRAM_CACHE": flag}):
+                self.assertEqual(self.prepare(), ("", "", ""))
+        self.lookup.assert_not_called()
+        self.inputs.assert_not_called()
+
+    def test_nondefault_settings_fail_closed(self):
+        variants = [
+            ("PYSTACHY_CFLAGS", "-fsanitize=address"), ("PYSTACHY_JIT_CODEGEN", "0"),
+            ("PYSTACHY_IRCHECK", "1"), ("PYSTACHY_IRFX", "1"),
+            ("PYSTACHY_UNICODE_AUDIT", "1"),
+        ] + [(key, "/external/input") for key in cached_run.BUILD_ENV]
+        for key, value in variants:
+            with self.subTest(key=key), patch.dict(os.environ, {key: value}):
+                self.assertEqual(self.prepare(), ("", "", ""))
+        self.lookup.assert_not_called()
+        self.inputs.assert_not_called()
+
+    def test_platform_hosted_relative_tools_and_configurations_bypass(self):
+        with patch.object(cached_run, "PLATFORM", "darwin"):
+            self.assertEqual(self.prepare(), ("", "", ""))
+        self.native.return_value = False
+        self.assertEqual(self.prepare(), ("", "", ""))
+        self.native.return_value = True
+        self.assertEqual(self.prepare(llvm="relative/bin"), ("", "", ""))
+        self.listdir.return_value = ["clang.cfg"]
+        self.assertEqual(self.prepare(), ("", "", ""))
+        self.lookup.assert_not_called()
+
+    def test_unavailable_cpu_identity_bypasses(self):
+        self.read.return_value = "processor: 0\n"
+        self.assertEqual(self.prepare(), ("", "", ""))
+        self.read.side_effect = OSError("unreadable")
+        self.assertEqual(self.prepare(), ("", "", ""))
+        self.lookup.assert_not_called()
+
+    def test_hit_needs_no_llvm_collection_or_frontend_state(self):
+        root, context, executable = self.prepare()
+        self.assertEqual((root, executable), ("/private/cache", "/cache/native.exe"))
+        self.assertTrue(context)
+        self.start.assert_not_called()
+        self.inputs.assert_not_called()
+        self.trace.assert_called_once_with("hit")
+
+    def test_miss_collects_actual_inputs_and_collection_failure_bypasses(self):
+        self.lookup.return_value = ""
+        root, context, executable = self.prepare()
+        self.assertEqual((root, executable), ("/private/cache", ""))
+        self.assertTrue(context)
+        self.start.assert_called_once_with()
+        self.inputs.assert_called_once_with("/compiler", "/llvm/bin", "/compiler/pystachy", ["/compiler/mpz/mpz.c"])
+        self.inputs.return_value = False
+        self.assertEqual(self.prepare(), ("", "", ""))
+        self.trace.assert_called_with("bypass toolchain inputs unavailable")
+
+    def test_runtime_inputs_do_not_change_identity(self):
+        before = self.prepare()[1]
+        with patch.dict(os.environ, {"APPLICATION_VALUE": "new", "PYSTACHY_GC_STRESS_PROGRAM": "1"}):
+            after = self.prepare()[1]
+        self.assertEqual(before, after)
+
+    def test_source_spelling_directory_order_flags_and_generated_inputs_change_identity(self):
+        baseline = self.prepare()[1]
+        self.assertNotEqual(baseline, self.prepare(source="./main.py")[1])
+        self.assertNotEqual(baseline, self.prepare(dirs=["/compiler/lib", "."])[1])
+        self.cwd.return_value = "/other"
+        self.assertNotEqual(baseline, self.prepare()[1])
+        self.cwd.return_value = "/work"
+        for key, value in [("PYSTACHY_OPT", "-all"), ("PYSTACHY_JIT_INLINE", "0"),
+                           ("PYSTACHY_PROGRAM_CACHE_INPUTS", "/generated/config.json"),
+                           ("PYSTACHY_PATH", "/new/imports"), ("PATH", "/different/tools")]:
+            with self.subTest(key=key), patch.dict(os.environ, {key: value}):
+                self.assertNotEqual(baseline, self.prepare()[1])
+
+
+class ProcessTests(unittest.TestCase):
+    def test_native_identity_requires_the_running_file(self):
+        with patch.object(cached_run.os.path, "samefile", return_value=True) as same:
+            self.assertTrue(cached_run.native_compiler("/bin/pystachy"))
+            same.assert_called_once_with("/bin/pystachy", "/proc/self/exe")
+        with patch.object(cached_run.os.path, "samefile", side_effect=AssertionError("must not inspect")):
+            self.assertFalse(cached_run.native_compiler("pystachy"))
+            self.assertFalse(cached_run.native_compiler("/compiler/pystachy.py"))
+        with patch.object(cached_run.os.path, "samefile", side_effect=OSError("unavailable")):
+            self.assertFalse(cached_run.native_compiler("/bin/pystachy"))
+
+    def test_execution_keeps_shell_metacharacters_as_data_and_maps_program_gc(self):
+        source = "/path/a '$`\n.py"
+        args = ["space here", "$(touch should-not-exist)", "a'b", "line\nbreak", ""]
+        with patch.dict(os.environ, {"PYSTACHY_GC_STRESS_PROGRAM": "1"}, clear=True), \
+                patch.object(cached_run.os, "execv") as execute:
+            cached_run.execute("/cache/a b.exe", source, args)
+        path, argv = execute.call_args.args
+        self.assertEqual(path, "/bin/sh")
+        self.assertEqual(argv[:2], ["sh", "-c"])
+        self.assertEqual(shlex.split(argv[2]), ["PYSTACHY_GC_STRESS=1", "PYSTACHY_ARGV0=" + source,
+                                               "exec", "/cache/a b.exe", *args])
+
+
+if __name__ == "__main__":
+    unittest.main()

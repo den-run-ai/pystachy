@@ -1,6 +1,6 @@
 """Loader component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
-import os
+from src.pystachy_compiler import program_cache
 from src.pystachy_compiler.analysis import (
     accel_try,
     bind_count,
@@ -769,6 +769,7 @@ class Loader:
         # A program owns one file-index space, including its dynamic-Any opt-ins.
         # Rebuild both on every load (also runtime.py and restarted/hosted compilations):
         # the main parser starts at file zero, and old opt-ins must not apply to new files.
+        program_cache.track_source(path, src)
         FILES.clear()
         ENUMCLASSES.clear()
         DYNFILES.clear()
@@ -1038,13 +1039,13 @@ class Loader:
             base = name[dot + 1 :]
         for d in dirs:
             p = d + "/" + base
-            if os.path.exists(p + "/__init__.py"):
+            if program_cache.tracked_exists(p + "/__init__.py"):
                 return p + "/__init__.py"
-            if os.path.exists(p + ".py"):
+            if program_cache.tracked_exists(p + ".py"):
                 return p + ".py"
         found: list[str] = []
         for d in dirs:
-            if os.path.exists(d + "/" + base):
+            if program_cache.tracked_exists(d + "/" + base):
                 found.append(d + "/" + base)
         return ":".join(found)
 
@@ -1136,6 +1137,7 @@ class Loader:
         f = open(path, "r", encoding=RAW)
         src = f.read()
         f.close()
+        program_cache.track_source(path, src)
         k = len(FILES)
         FILES.append(path[2:] if path.startswith("./") else path)
         self.pragmas(src, k, k * LINES + 1)

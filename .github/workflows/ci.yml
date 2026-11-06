@@ -188,6 +188,12 @@ jobs:
         if: matrix.group == 'ubsan-0' || matrix.group == 'safety-1'
         run: python3 -m unittest discover -s tools -p test_runtime_ubsan.py
 
+      - name: Native program cache invalidation and execution
+        if: matrix.group == 'cache-gc' || matrix.group == 'runtime-cache'
+        env:
+          PYSTACHY_HOME: ${{ github.workspace }}
+        run: make test-program-cache PROGRAM_CACHE_COMPILER=build/verify/pystachy2
+
       - name: Extended subset benchmark correctness
         if: matrix.group == 'benchmarks'
         env:
@@ -229,6 +235,7 @@ jobs:
             build/pyperformance-smoke.json
             build/verification.json
             build/extended-smoke.json
+            build/program-cache-checks.json
             build/verify/*.log
             build/verify/dynany-fuzz/*.py
             build/verify/dynany-optin-*.json

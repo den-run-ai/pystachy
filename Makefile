@@ -56,6 +56,14 @@ test-cache: pystachy
 	PY="$(PY)" tests/cache.sh ./pystachy
 	tests/cache.sh "$(PY) -m pystachy"
 
+# Linux-only opt-in program cache: invalidation, effects, failures and skipped work.
+PROGRAM_CACHE_COMPILER ?= ./pystachy
+test-program-cache: $(PROGRAM_CACHE_COMPILER)
+	$(PY) -m unittest discover -s tools -p test_program_cache.py
+	$(PY) -m unittest discover -s tools -p test_program_cache_publication.py
+	$(PY) -m unittest discover -s tools -p test_cached_run.py
+	$(PY) tools/program_cache_probe.py --compiler "$(PROGRAM_CACHE_COMPILER)" --llvm "$(PYSTACHY_LLVM)" --output build/program-cache-checks.json
+
 # the FFI's tests (docs/ffi.md): C calls, and with $(PY)'s libpython, CPython embedded and extension modules
 test-ffi: pystachy
 	PY="$(PY)" tests/ffi/run.sh ./pystachy "jit aot"
@@ -394,4 +402,4 @@ uninstall:
 test-install:
 	$(PY) -m unittest discover -s tools -p test_install.py
 
-.PHONY: test test-py coverage runtime-coverage variants test-cache test-ffi bench bench-extended bench-extended-check blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe boxprobe streamprobe jitprobe aotprobe unicode-audit unicodeprobe bytescanprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz dynany-fuzz dynany-optin python-int-optin python-int-gate re-probe re-specialize-check typecheck lint-python check-repository check-fast lint clean install uninstall test-install
+.PHONY: test test-py coverage runtime-coverage variants test-cache test-program-cache test-ffi bench bench-extended bench-extended-check blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe boxprobe streamprobe jitprobe aotprobe unicode-audit unicodeprobe bytescanprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz dynany-fuzz dynany-optin python-int-optin python-int-gate re-probe re-specialize-check typecheck lint-python check-repository check-fast lint clean install uninstall test-install
