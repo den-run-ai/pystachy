@@ -702,17 +702,20 @@ def gen_dictfuse(self, fn: IFn) -> int:
         if i.s == "dict.has":
             self.runtime("pys_dict_find")
             fi = Ins("rt", "int", "dict.find")
+            fi.line = i.line
             fi.a = [i.a[0], i.a[1]]
             fi.x = i.x
             fi.r = [f.e]
             code[x] = fi
             ad = Ins("scalar.bin", "int", "add")
+            ad.line = i.line
             ad.a = [Val(f"%t{f.e}", "int"), Val("1", "int")]
             ad.r = [i.r[0]]
             code.insert(x + 1, ad)
         else:
             self.runtime("pys_dict_entry")
             en = Ins("rt", "int", "dict.entry")
+            en.line = i.line
             en.a = [i.a[0], i.a[1]]
             en.x = i.x
             en.r = [f.e]
@@ -805,6 +808,7 @@ def gen_unionslots(self, fn: IFn) -> int:
             for half in halves[addr]:
                 fn.n += 1
                 ld = Ins("mem.load", "int", "")
+                ld.line = i.line
                 ld.a = [Val(half, "*int")]
                 ld.r = [fn.n]
                 ops.append(ld)
@@ -816,12 +820,14 @@ def gen_unionslots(self, fn: IFn) -> int:
                     repl[f"{w[0]}:{w[1]}"] = []
                 elif o.op == "union.payload" or o.op == "union.raw":
                     p = Ins("slot.pack", "%slot", "")
+                    p.line = o.line
                     p.a = [Val(parts[v][1], "int")]
                     p.r = [o.r[1]]
                     repl[f"{w[0]}:{w[1]}"] = [p]
             if self.uleaves(fn, uses, i, split):  # (a copy to a slot that splits stores the parts)
                 # (the box that leaves, as the value it replaces)
                 box = Ins("rt", "%ptr", "ubox")
+                box.line = i.line
                 box.a = [Val(parts[v][0], "int"), Val(parts[v][1], "*T")]
                 box.r = [i.r[0]]
                 ops.append(box)
@@ -835,6 +841,7 @@ def gen_unionslots(self, fn: IFn) -> int:
             ops = []
             for k in range(2):
                 st = Ins("mem.store", "", "")
+                st.line = i.line
                 st.a = [Val(halves[addr][k], "*int"), Val(q[k], "int")]
                 ops.append(st)
             repl[f"{u[0]}:{u[1]}"] = ops
@@ -918,6 +925,7 @@ def gen_uparts(self, fn: IFn, defs: dict[str, list[int]], v: str, t: str, parts:
         for k in range(2):
             fn.n += 1
             p = Ins("phi", "int", "")
+            p.line = i.line
             p.r = [fn.n]
             p.a = []
             p.b = []
@@ -934,9 +942,11 @@ def gen_uparts(self, fn: IFn, defs: dict[str, list[int]], v: str, t: str, parts:
         return parts[v]
     fn.n += 1
     tg = Ins("union.tag", "int", "")
+    tg.line = i.line
     tg.a = [Val(v, t)]
     tg.r = [fn.n]
     pl = Ins("union.raw", "%slot", "")
+    pl.line = i.line
     pl.a = [Val(v, t)]
     pl.r = [fn.n + 1, fn.n + 2]
     fn.n += 2
@@ -1360,6 +1370,7 @@ def gen_nullcheck(self, fn: IFn) -> int:
         code = fn.blocks[j].code
         t = code[len(code) - 1]
         br = Ins("br", "", "")
+        br.line = t.line
         br.b = [t.b[0]]
         code[len(code) - 1] = br
         brs[j] = True

@@ -45,6 +45,35 @@
 #include <unwind.h>
 #include <utime.h>
 
+/* Research counters are compiled out of ordinary runtimes. These count requests
+   through C helpers, not physical memory traffic: generated LLVM/runtime.py copy
+   intrinsics, scalar stores, libc internals and foreign allocations are excluded.
+   Relaxed atomics keep callbacks on foreign threads free of counter data races. */
+#ifdef PYSTACHY_PROFILE_DATA
+static _Atomic uint64_t profile_alloc_calls, profile_alloc_bytes;
+static _Atomic uint64_t profile_memcpy_calls, profile_memcpy_bytes;
+static _Atomic uint64_t profile_memmove_calls, profile_memmove_bytes;
+static inline void profile_alloc(size_t n) {
+  atomic_fetch_add_explicit(&profile_alloc_calls, 1, memory_order_relaxed);
+  atomic_fetch_add_explicit(&profile_alloc_bytes, n, memory_order_relaxed);
+}
+static inline void *profile_copy(void *dst, const void *src, size_t n) {
+  atomic_fetch_add_explicit(&profile_memcpy_calls, 1, memory_order_relaxed);
+  atomic_fetch_add_explicit(&profile_memcpy_bytes, n, memory_order_relaxed);
+  return memcpy(dst, src, n);
+}
+static inline void *profile_move(void *dst, const void *src, size_t n) {
+  atomic_fetch_add_explicit(&profile_memmove_calls, 1, memory_order_relaxed);
+  atomic_fetch_add_explicit(&profile_memmove_bytes, n, memory_order_relaxed);
+  return memmove(dst, src, n);
+}
+#define memcpy(dst, src, n) profile_copy((dst), (src), (n))
+#define memmove(dst, src, n) profile_move((dst), (src), (n))
+#define PROFILE_ALLOC(n) profile_alloc((size_t)(n))
+#else
+#define PROFILE_ALLOC(n) ((void)0)
+#endif
+
 /* A float's shortest round-trip digits: Ryu's d2s (ryu/, upstream commit 4c0618b; ryu/README.md),
    with its small tables. The driver's cached runtime is built from its files too, which RTPARTS
    (pystachy.py) lists. Its functions are made static, so that no symbol of it leaves the runtime
@@ -685,6 +714,7 @@ __attribute__((noinline)) static void *gc_slow(I n, int how) {
   return p;
 }
 static inline __attribute__((always_inline)) void *gc_alloc(I n, int atomic) {
+  PROFILE_ALLOC(n);
   if ((uint64_t)n < 136) {             /* fast path, inlined: pop a zeroed slot of a class 16..136 */
     W **h = &pys_fl[2 * (n < 8 ? 0 : (n + 8) / 8 - 2) + atomic], *p = *h;
     if (__builtin_expect(p != 0, 1)) { *h = (W *)~*p; *p = 0; return p; }
@@ -693,11 +723,15 @@ static inline __attribute__((always_inline)) void *gc_alloc(I n, int atomic) {
 }
 /* The slow path of the JIT tier's fast path (lower_module.py's JITFAST: a program it runs pops pys_fl
    itself, as gc_alloc does, and calls this for the rest) */
-void *pys_gc_slow(I n, I atomic) { return gc_slow(n, (int)atomic); }
+void *pys_gc_slow(I n, I atomic) { PROFILE_ALLOC(n); return gc_slow(n, (int)atomic); }
 /* atomic memory whose bytes may be those of an object that died: for a caller that writes every
    byte it (or anything) reads, as a new str's whose header, bytes and NUL it stores. The classes
    the fast path serves come clear anyway */
-static void *gc_raw(I n) { return (uint64_t)n < 136 ? gc_alloc(n, 1) : gc_slow(n, 3); }   /* (an allocator: check_runtime's ALLOC) */
+static void *gc_raw(I n) {
+  if ((uint64_t)n < 136) return gc_alloc(n, 1);
+  PROFILE_ALLOC(n);
+  return gc_slow(n, 3);
+}   /* (an allocator: check_runtime's ALLOC) */
 __attribute__((malloc, returns_nonnull)) void *pys_alloc(I n) { return gc_alloc(n, 0); }
 __attribute__((malloc, returns_nonnull)) void *pys_alloc_atomic(I n) { return gc_alloc(n, 1); }
 /* Compiled code's own objects and fixed tuples (alloc.fixed) that hold no reference, only ints,
@@ -6333,6 +6367,18 @@ void pys_finish(void) {                /* at exit, what CPython's shows of its e
   int bad = finish_hook ? finish_hook() : 0, e;   /* an embedded CPython's end (pyembed.c), after the program's
                                                     output and its atexit callbacks */
   if (gc_stats) gc_report();
+#ifdef PYSTACHY_PROFILE_DATA
+  fprintf(stderr, "pystachy-data: {\"schema\":1,\"c_gc_alloc_calls\":%llu,\"c_gc_requested_bytes\":%llu,"
+          "\"c_memcpy_calls\":%llu,\"c_memcpy_requested_bytes\":%llu,\"c_memmove_calls\":%llu,"
+          "\"c_memmove_requested_bytes\":%llu,\"gc_collections\":%lld,\"gc_peak_heap_bytes\":%lld}\n",
+          (unsigned long long)atomic_load_explicit(&profile_alloc_calls, memory_order_relaxed),
+          (unsigned long long)atomic_load_explicit(&profile_alloc_bytes, memory_order_relaxed),
+          (unsigned long long)atomic_load_explicit(&profile_memcpy_calls, memory_order_relaxed),
+          (unsigned long long)atomic_load_explicit(&profile_memcpy_bytes, memory_order_relaxed),
+          (unsigned long long)atomic_load_explicit(&profile_memmove_calls, memory_order_relaxed),
+          (unsigned long long)atomic_load_explicit(&profile_memmove_bytes, memory_order_relaxed),
+          (long long)gc_n, (long long)gc_peak);
+#endif
   if (!std_out.closed && (e = flush1(&std_out))) {
     fprintf(stderr, "Exception ignored on flushing sys.stdout:\n%s: [Errno %d] %s\n", errcls(e), e, strerror(e));
     bad = 1;

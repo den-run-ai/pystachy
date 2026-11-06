@@ -167,6 +167,8 @@ def gen_add(self, i: Ins) -> None:
     # code after a terminator (dead code) goes to a block of its own
     if self.term:
         self.place(self.label())
+    if self.source_lines.enabled:
+        i.line = self.line
     self.blk.code.append(i)
 
 def gen_put(self, i: Ins, k: int) -> None:

@@ -716,7 +716,7 @@ def gen_lower_module(self) -> str:
         hdr.append(f"!{TBAA_LEN} = !{{!{TBAA_LEN - 2}, !{TBAA_LEN - 2}, i64 0}}")
         hdr.append(f"!{TBAA_BYTES} = !{{!{TBAA_LEN - 1}, !{TBAA_LEN - 1}, i64 0}}")
         hdr.append(f"!{STRLEN_RANGE} = !{{i64 0, i64 9223372036854775791}}")
-        return "\n".join(hdr) + "\n"
+        return self.source_lines.finish(hdr)
     recursion = [key for key in self.rtfns if key.startswith("recursion.")]
     # (lowering stores and loads the depth itself: only the extension's entries and pys.gen.drop.counted
     # call those helpers by name)
@@ -728,7 +728,7 @@ def gen_lower_module(self) -> str:
             recursion.append(key)
     hdr.extend(recursion_ir([key for key in recursion if key in named], len(recursion) > 0, TBAA_FIELDS + len(self.tbaa), len(self.tbaa) > 0, len(self.rdpass) > 0))
     if self.ext != "":
-        return "\n".join(hdr + self.pyext()) + "\n"
+        return self.source_lines.finish(hdr + self.pyext())
     # pys_init gets the GC roots: main's frame address bounds the stack scan (it also
     # covers @main.init if inlined here) and the table of pointer-typed globals
     hdr.append(runtime_decl("init"))
@@ -751,4 +751,4 @@ def gen_lower_module(self) -> str:
     hdr.append("  call void @pys_finish()")
     hdr.append("  ret i32 0")
     hdr.append("}")
-    return "\n".join(hdr) + "\n"
+    return self.source_lines.finish(hdr)

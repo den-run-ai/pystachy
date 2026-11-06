@@ -65,6 +65,7 @@ COMPILER_SOURCES: list[str] = [
     'src/pystachy_compiler/reflection.py',
     'src/pystachy_compiler/scalar_ir.py',
     'src/pystachy_compiler/scope.py',
+    'src/pystachy_compiler/source_lines.py',
     'src/pystachy_compiler/specs.py',
     'src/pystachy_compiler/statements.py',
     'src/pystachy_compiler/structs.py',
@@ -456,6 +457,8 @@ def main() -> None:
     on = optimizations()
     off = [o for o in OPTS if o not in on]
     keyed = flags + ["-fexceptions"]
+    if os.getenv("PYSTACHY_DEBUG_LINES", "") == "1":
+        keyed = keyed + ["PYSTACHY_DEBUG_LINES=1"]
     if len(off) > 0:
         keyed = keyed + ["PYSTACHY_OPT=-" + ",-".join(off)]
     cflags = "".join([" " + q(a) for a in flags])
@@ -851,7 +854,7 @@ def main() -> None:
         if not lim.isdigit():
             fail(f"PYSTACHY_JIT_INLINE: {lim} is no number of lines (0 turns the JIT's inliner off)", 0)
         clean = "function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg)"
-        if ir.count("\n") <= int(lim):
+        if ir.split("; pystachy source locations\n")[0].count("\n") <= int(lim):
             clean = f"cgscc(inline,{clean})"
         # Recursion accounting helpers belong to the program module, even when the
         # runtime is a separate library. Inline only those explicitly marked helpers
