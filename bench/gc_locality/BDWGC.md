@@ -88,9 +88,12 @@ Use the manifest's `PYSTACHY_HOME`, `PYSTACHY_CACHE`, and `PYSTACHY_CFLAGS` valu
 when building. Do not use `pystachy run`: build AOT executables and launch them in
 fresh processes. Sanitize inherited `PYSTACHY_*` and `GC_*` variables before
 applying each explicitly recorded configuration. Keep native-only policy variables
-out of the BDWGC variants. A library filename in `PYSTACHY_CFLAGS` can produce a
-harmless unused-linker-input warning during the C-to-IR compilation; the same flag
-is needed by the final AOT link.
+out of the BDWGC variants. The generator forwards the exact library filename with
+`-Xlinker`, so the driver's explicit `-x c` runtime compilation does not mistake
+the archive for another C source. It includes `-pthread` and, on Linux, `-ldl`,
+matching the supplied package's link dependencies. Shared-library rpaths use
+separate `-Xlinker` arguments so directory names containing commas remain intact.
+The overlay tests check static-library forwarding and shared-library rpath flags.
 
 ## Collector policies and capability checks
 

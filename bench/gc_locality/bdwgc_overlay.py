@@ -10,6 +10,7 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import sys
 
 HERE = Path(__file__).resolve().parent
 
@@ -111,9 +112,13 @@ def main():
         if entry.name not in {"runtime.c", "build", ".git"}:
             (output / entry.name).symlink_to(entry, target_is_directory=entry.is_dir())
     (output / "runtime.c").write_text(code)
-    flags = f"-I{include} {library}"
+    # The driver compiles runtime.c with -x c: a bare archive would become a
+    # second C input. Forward exact dependency paths only to the linker.
+    flags = f"-I{include} -pthread -Xlinker {library}"
+    if sys.platform.startswith("linux"):
+        flags += " -ldl"
     if library.suffix != ".a":
-        flags += f" -Wl,-rpath,{library.parent}"
+        flags += f" -Xlinker -rpath -Xlinker {library.parent}"
     manifest = {"schema": 1, "backend": "bdwgc-restricted-aot", "inputs": identity,
                 "source": str(source), "include": str(include), "library": str(library),
                 "overlay": str(output), "overlay_runtime_sha256": digest(output / "runtime.c"),

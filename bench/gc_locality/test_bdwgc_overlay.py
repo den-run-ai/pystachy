@@ -1,4 +1,4 @@
-"""Overlay filesystem isolation checks; no compiler or BDWGC dependency needed."""
+"""Overlay path and link-flag checks; no compiler or BDWGC dependency needed."""
 import json
 from pathlib import Path
 import subprocess
@@ -55,9 +55,25 @@ class OverlayPathTests(unittest.TestCase):
         output = destination / "overlay"
         self.assertEqual(manifest["overlay"], str(output))
         self.assertEqual(manifest["environment"]["PYSTACHY_HOME"], str(output))
+        flags = manifest["environment"]["PYSTACHY_CFLAGS"].split()
+        self.assertEqual(flags[flags.index(str(self.library)) - 1], "-Xlinker")
+        self.assertIn("-pthread", flags)
+        if sys.platform.startswith("linux"):
+            self.assertIn("-ldl", flags)
         self.assertEqual(json.loads((output / "bdwgc-manifest.json").read_text()), manifest)
         self.assertEqual(list(self.source.iterdir()), [self.source / "runtime.c"])
         self.assertEqual((self.source / "runtime.c").read_bytes(), self.runtime)
+
+    def test_shared_library_rpath_with_commas_is_forwarded_separately(self):
+        folder = self.work / "shared,libs"
+        folder.mkdir()
+        self.library = folder / "libgc.so.1"
+        self.library.write_bytes(b"fixture shared library")
+        result = self.invoke(self.work / "overlay")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        flags = json.loads(result.stdout)["environment"]["PYSTACHY_CFLAGS"].split()
+        forwarded = [flags[i + 1] for i, flag in enumerate(flags) if flag == "-Xlinker"]
+        self.assertEqual(forwarded, [str(self.library), "-rpath", str(folder)])
 
     def test_existing_output_and_dangling_link_are_not_reused(self):
         existing = self.work / "existing"
