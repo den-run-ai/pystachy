@@ -19,6 +19,9 @@ sys.path.insert(0, str(BENCH))
 SPEC = importlib.util.spec_from_file_location("pgo_experiment", BENCH / "profile_guided.py")
 pgo = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(pgo)
+SPEC = importlib.util.spec_from_file_location("bootstrap_policies", BENCH / "bootstrap_followup.py")
+followup = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(followup)
 
 
 class FakeCommands:
@@ -191,6 +194,70 @@ class ScheduleControls(unittest.TestCase):
                 self.assertEqual(Counter(order[position] for order in orders), Counter({p: 2 for p in policies}))
             neighbors = Counter(pair for order in orders for pair in zip(order, order[1:]))
             self.assertTrue(all(amount == neighbors[b, a] for (a, b), amount in neighbors.items()))
+
+
+class BootstrapPolicyControls(unittest.TestCase):
+    def test_inline_policy_requires_supported_source_before_starting_work(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            driver = root / "src/pystachy_compiler/driver.py"
+            driver.parent.mkdir(parents=True)
+            # A marker in old source is not an implemented driver option.
+            driver.write_text('# PYSTACHY_AOT_INLINE_THRESHOLD -inline-threshold=\ndef main():\n    pass\n')
+            argv = ["bootstrap_followup.py", "--root", str(root), "--llvm", str(root / "llvm"),
+                    "--work", str(root / "work"), "--report", str(root / "report.json"),
+                    "--variant", "driver-o0", "--variant", "driver-inline75"]
+            with patch.object(sys, "argv", argv), patch.object(followup, "Commands") as commands, \
+                 contextlib.redirect_stderr(io.StringIO()) as error, self.assertRaises(SystemExit) as failure:
+                followup.main()
+            self.assertEqual(failure.exception.code, 2)
+            self.assertIn("PYSTACHY_AOT_INLINE_THRESHOLD", error.getvalue())
+            commands.assert_not_called()
+            self.assertFalse((root / "work").exists())
+            followup.require_inline_support(root, ["driver-o0"])
+            driver.write_text('def aot_inline_flags():\n    value = "PYSTACHY_AOT_INLINE_THRESHOLD"\n'
+                              '    return " -mllvm -inline-threshold=" + value\ndef main():\n    pass\n')
+            with self.assertRaises(ValueError):
+                followup.require_inline_support(root, ["driver-inline75"])
+        followup.require_inline_support(BENCH.parents[1], ["driver-inline75"])
+
+    @staticmethod
+    def run_identity(policy, first="temporary", final="ordinary"):
+        return {"policy": policy, "bootstrap": {"binaries": {
+            "pystachy1": {"sha256": first}, "pystachy2": {"sha256": final}}}}
+
+    def test_inline_pair_requires_identical_temporary_compilers(self):
+        policies = ["driver-o0", "driver-inline75"]
+        baseline = self.run_identity(policies[0])
+        candidate = self.run_identity(policies[1], final="different-final")
+        checked = followup.compiler_identity([baseline, candidate], policies)
+        self.assertTrue(checked["compiler_identity_passed"])
+        self.assertTrue(checked["driver_stage1_identity_required"])
+        self.assertTrue(checked["driver_stage1_compilers_identical"])
+        self.assertEqual(checked["driver_stage1_sha256"], {policy: ["temporary"] for policy in policies})
+        candidate["bootstrap"]["binaries"]["pystachy1"]["sha256"] = "changed-temporary"
+        checked = followup.compiler_identity([baseline, candidate], policies)
+        self.assertFalse(checked["compiler_identity_passed"])
+        self.assertFalse(checked["driver_stage1_compilers_identical"])
+        self.assertFalse(followup.compiler_identity([baseline], policies)["compiler_identity_passed"])
+
+    def test_changed_final_does_not_waive_ordinary_final_identity(self):
+        runs = [self.run_identity("driver-o0"), self.run_identity("split-o0", final="changed-ordinary"),
+                self.run_identity("driver-inline75", final="opt-in-final")]
+        checked = followup.compiler_identity(runs, [run["policy"] for run in runs])
+        self.assertFalse(checked["compiler_identity_passed"])
+        self.assertFalse(checked["ordinary_final_compilers_identical"])
+
+    def test_future_explicit_backend_can_change_final_without_inline_gate(self):
+        future = "driver-future-backend"
+        with patch.dict(followup.POLICIES, {future: ["--future-backend", "4"]}), \
+             patch.object(followup, "CHANGED_FINAL", followup.CHANGED_FINAL | {future}):
+            followup.require_inline_support(Path("/unused/source"), [future])
+            runs = [self.run_identity("driver-o0"), self.run_identity(future, "other-stage1", "other-final")]
+            checked = followup.compiler_identity(runs, ["driver-o0", future])
+        self.assertTrue(checked["compiler_identity_passed"])
+        self.assertFalse(checked["driver_stage1_identity_required"])
+        self.assertIsNone(checked["driver_stage1_compilers_identical"])
 
 
 @unittest.skipUnless(os.environ.get("PYSTACHY_TEST_LLVM"), "set PYSTACHY_TEST_LLVM for IR-PGO diagnostics")
