@@ -6,41 +6,50 @@ as in the rows above them.
 
 usage: python3 -I bench.py PYSTACHY [N [REPS]]
 The executable goes to build/ndarray/ of the checkout.
+CPython checks the same N and REPS before the native comparisons are reported.
 """
+import math
 import os
-import subprocess
+from pathlib import Path
 import sys
 import time
 
-os.environ["OPENBLAS_NUM_THREADS"] = "1"
-pys = sys.argv[1]
-n = sys.argv[2] if len(sys.argv) > 2 else "4000000"
-reps = sys.argv[3] if len(sys.argv) > 3 else "5"
-here = os.path.dirname(os.path.abspath(__file__))
-out = os.path.join(here, "..", "..", "build", "ndarray")
-os.makedirs(out, exist_ok=True)
-prog = os.path.join(here, "workloads.py")
-exe = os.path.join(out, "workloads_aot")
-t = time.perf_counter()
-subprocess.run([pys, "build", prog, "-o", exe], check=True)
-print(f"pystachy build workloads.py: {time.perf_counter() - t:.2f} s")
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
+from example_bench import number, positive_int, run
+
+# The complete workload report is required, including rows without a NumPy twin.
+LABELS = (
+    "a + b", "a + b, into out", "a * 1.5", "a * b + a", "a * b + a, into out",
+    "a * b + a, lazy", "a * b + a, lazy into out", "sum(a)",
+    "sum((a - b) * (a - b))", "sum((a - b) * (a - b)), lazy",
+    "sum((a - b) * (a - b)), loop", "m + row, 1000x1000", "m.T + m, 1000x1000",
+    "sum(m, axis=0), 1000x1000", "p @ q, 256x256",
+)
 
 
-def timings(cmd: list[str]) -> tuple[dict[str, str], str]:
-    # each workload's milliseconds, and the checksum line
-    p = subprocess.run(cmd, capture_output=True, text=True, check=True)
+def timings(cmd: list[str], expected: str | None = None) -> tuple[dict[str, str], str]:
+    lines = run(cmd).stdout.decode().splitlines()
+    if len(lines) != len(LABELS) + 1:
+        raise ValueError("incomplete ndarray timing report")
     ms = {}
-    check = ""
-    for line in p.stdout.splitlines():
-        label, value = line.split("\t")
-        if label == "checksum":
-            check = value
-        else:
-            ms[label] = value
+    for line, label in zip(lines[:-1], LABELS):
+        fields = line.split("\t")
+        if len(fields) != 2 or fields[0] != label:
+            raise ValueError(f"invalid ndarray workload row: {line!r}, expected {label!r}")
+        number(fields[1], f"{label} time")
+        ms[label] = fields[1]
+    fields = lines[-1].split("\t")
+    if len(fields) != 2 or fields[0] != "checksum" or not math.isfinite(float(fields[1])):
+        raise ValueError(f"invalid ndarray checksum: {lines[-1]!r}")
+    check = fields[1]
+    if expected is not None and check != expected:
+        raise ValueError(f"ndarray checksum differs from CPython: {check}, expected {expected}")
     return ms, check
 
 
 def numpy_timings(count: int, times: int) -> dict[str, str]:
+    count = positive_int(count, "N")
+    times = positive_int(times, "REPS")
     try:
         import numpy as np
     except ImportError:
@@ -77,15 +86,37 @@ def numpy_timings(count: int, times: int) -> dict[str, str]:
         for _ in range(times):
             t = time.perf_counter()
             f()
-            best = min(best, time.perf_counter() - t)
+            best = min(best, number(time.perf_counter() - t, f"NumPy {label} time"))
         ms[label] = f"{best * 1000.0:.3f}"
     return ms
 
 
-aot, aot_check = timings([exe, n, reps])
-jit, jit_check = timings([pys, "run", prog, n, reps])
-npy = numpy_timings(int(n), int(reps))
-print(f"{'workload':30} {'AOT ms':>10} {'JIT ms':>10} {'NumPy ms':>10}")
-for label in aot:
-    print(f"{label:30} {aot[label]:>10} {jit[label]:>10} {npy.get(label, '-'):>10}")
-print("AOT and JIT checksums", "agree" if aot_check == jit_check else f"DIFFER: {aot_check} {jit_check}")
+
+def main() -> None:
+    os.environ["OPENBLAS_NUM_THREADS"] = "1"
+    pys = sys.argv[1]
+    n = positive_int(sys.argv[2], "N") if len(sys.argv) > 2 else 4000000
+    reps = positive_int(sys.argv[3], "REPS") if len(sys.argv) > 3 else 5
+    if n < 2:
+        raise ValueError("N must be at least 2 for the workload checksums")
+    here = os.path.dirname(os.path.abspath(__file__))
+    out = os.path.join(here, "..", "..", "build", "ndarray")
+    os.makedirs(out, exist_ok=True)
+    prog = os.path.join(here, "workloads.py")
+    exe = os.path.join(out, "workloads_aot")
+    # -I deliberately omits the script directory; add only this example's imports.
+    launch = "import runpy, sys; sys.path.insert(0, sys.argv[1]); sys.argv = sys.argv[2:]; runpy.run_path(sys.argv[0], run_name='__main__')"
+    _, expected = timings([sys.executable, "-I", "-c", launch, here, prog, str(n), str(reps)])
+    build = run([pys, "build", prog, "-o", exe])
+    print(f"pystachy build workloads.py: {build.wall_s:.2f} s")
+    aot, _ = timings([exe, str(n), str(reps)], expected)
+    jit, _ = timings([pys, "run", prog, str(n), str(reps)], expected)
+    npy = numpy_timings(n, reps)
+    print(f"{'workload':30} {'AOT ms':>10} {'JIT ms':>10} {'NumPy ms':>10}")
+    for label in LABELS:
+        print(f"{label:30} {aot[label]:>10} {jit[label]:>10} {npy.get(label, '-'):>10}")
+    print("AOT and JIT checksums agree")
+
+
+if __name__ == "__main__":
+    main()

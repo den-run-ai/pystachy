@@ -74,6 +74,12 @@ jobs:
       - name: Router benchmark validation tests
         run: python3 -m unittest discover -s tools -p test_route_bench.py
 
+      - name: Example benchmark validation tests
+        run: python3 -m unittest discover -s tools -p test_example_bench.py
+
+      - name: Example CLI smoke contract tests
+        run: python3 -m unittest discover -s tools -p test_check_example_cli.py
+
       - name: Install sanitizer runtime for generated-code controls
         run: sudo apt-get update && sudo apt-get install -y libclang-rt-18-dev
 

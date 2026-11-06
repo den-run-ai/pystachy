@@ -10,6 +10,7 @@ and "loop" is the reduction written by hand as one loop over the lists. Their it
 and the like, are the same in bench.py's NumPy run. The last line, a checksum of the results, is the
 same in every run.
 """
+import math
 import sys
 import time
 
@@ -86,6 +87,8 @@ def run(w: int, a: NDArray, b: NDArray, c: NDArray, m: NDArray, r: NDArray, p: N
 def main() -> None:
     n = int(sys.argv[1]) if len(sys.argv) > 1 else 4000000
     reps = int(sys.argv[2]) if len(sys.argv) > 2 else 5
+    if n < 2 or reps < 1:
+        raise ValueError("N must be at least 2 and REPS must be positive")
     a = NDArray(items(n, 7919, 10007), [n], [1], 0)
     b = NDArray(items(n, 104729, 10009), [n], [1], 0)
     m = NDArray(items(1000000, 7919, 10007), [1000, 1000], [1000, 1], 0)
@@ -99,9 +102,13 @@ def main() -> None:
         for _ in range(reps):
             t = time.perf_counter()
             check += run(w, a, b, c, m, r, p, q)
-            best = min(best, time.perf_counter() - t)
+            elapsed = time.perf_counter() - t
+            if not math.isfinite(elapsed) or elapsed <= 0:
+                raise ValueError("workload timing must be finite and positive")
+            best = min(best, elapsed)
         print(f"{LABELS[w]}\t{best * 1000.0:.3f}")
     print(f"checksum\t{check!r}")
 
 
-main()
+if __name__ == "__main__":
+    main()

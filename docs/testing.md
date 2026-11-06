@@ -30,6 +30,7 @@ Run these from the repository root:
 | `make irsame REF=<commit>` | Compare IR, diagnostics and exit status with a reference compiler for a refactor. |
 | `make bench-extended-check` | Check the extended benchmark runner and CPython/JIT/AOT checksums; no timing thresholds. |
 | `make bench-pyperformance-check` | Check the pyperformance runner and the ported benchmarks' CPython/JIT/AOT output; no timing thresholds. |
+| `make example-cli-check` | Check real example command lines against pinned CPython, JIT and AOT, plus JSON repair process cases and the agent's loopback HTTP transport. |
 | `make blas-check` | Check the optional `cblas_dgemm` adapter (`examples/ndarray`) against NumPy and nanoGPT's BLAS backend against its scalar one, under CPython, JIT, AOT and GC stress; needs an LP64 `libblas.so.3` and NumPy. `LD_LIBRARY_PATH` selects the provider; CI checks OpenBLAS and the reference BLAS. |
 
 For quick local feedback, activate the environment with the dependencies from
@@ -365,11 +366,44 @@ Other PRs use the compact profile below. Pushes to `main` and manual CI runs ret
 complete verification for the release gate.
 The toolchain is Ubuntu 24.04, LLVM 18 and the CPython version pinned in `.python-version`.
 
+The top-level `bench/*.py` step requires successful CPython, JIT and AOT runs with
+identical stdout and stderr. AOT builds must succeed silently and produce a fresh
+executable. The aggregate independently requires every benchmark in the checkout
+exactly once, matching program/parity counts and finite positive timings for all four
+phases; these are evidence checks, with no speed threshold.
+
 The `benchmarks` group also runs `make bench-pyperformance-check` with that run's verified
 native compiler. Every delivered adaptation must match CPython stdout in JIT and AOT on
 bounded smoke inputs; a mismatch or failed build fails the group and aggregate gate.
 The group's artifact includes `pyperformance-smoke.json`. This is correctness coverage,
 with no timing thresholds or claim to run the upstream pyperf harness.
+
+The `example-cli` verification step runs in the `benchmarks` group: on x86-64 in
+PR CI and on both architectures in full CI. `tools/check_example_cli.py` runs 24 tiny cases through
+the actual `csvstat`, `latency`, `mailmerge`, `topk`, `urlstats` and `route` entry points.
+These cover file loading, successful options, usage errors and rejected inputs;
+every exit status, stdout byte and stderr byte must match the fresh pinned-CPython
+oracle in JIT and AOT. The input fixtures must remain unchanged. Options that print
+elapsed time are excluded, apart from the router's empty in-memory batch with its
+defined zero-time report.
+
+The step also invokes the existing `tests/upstream/json_repair/cli.py` checks (20
+process cases, including output-file effects, compared with CPython in JIT and AOT)
+and `examples/agent/http_smoke.py` with CPython, JIT and AOT launchers. The latter
+validates five requests against a local HTTP server, the response transcript and
+the resulting workspace repair; it needs `curl` but no model service or credentials.
+This is deterministic transport and execution coverage, with no performance threshold.
+Each command has a timeout that terminates its process group, including children.
+Failures identify the case, execution phase, command, timeout, exit status and both
+output streams. `build/verify/example-cli.json` records completed case identities
+and integration modes; verification and the aggregate gate reject missing or
+duplicated work even if the enclosing step claims success.
+
+For the same check locally, use `make example-cli-check` with `PY` set to the pinned
+interpreter. `BENCH_COMPILER=build/verify/pystachy2` reuses a compiler verified from
+the current tree. The runner uses a private temporary fixture directory, clears
+inherited compiler options and shares its runtime cache across its small commands;
+`--cache` can select an isolated cache for concurrent work.
 
 The independent [Performance smoke workflow](../.github/workflows/performance.yml) runs on
 the same events (excluding documentation-only PRs). One job measures eleven small workloads:
@@ -474,7 +508,7 @@ benchmark correctness, and Lint checks CPython port preservation. The full group
 | `python-int-optin-0` through `python-int-optin-2` | Three disjoint thirds of `tests/programs/`, opted into promoting ints, with a fresh pinned-CPython oracle in JIT and AOT and exact reviewed limitations. |
 | `runtime-cache` | The cached runtime's rules with both compilers, the two runs side by side. |
 | `contracts` | Runtime, IR, library and resource-bound checks, including 540 seeded dynamic-`Any` cases (90 typed/Any pairs) in JIT/AOT, normally and with program GC stress; independent steps run side by side. |
-| `benchmarks` | Benchmark correctness/timings; extended correctness checks reuse the verified compiler. |
+| `benchmarks` | Benchmark correctness/timings, real example CLI parity, JSON repair process cases and agent loopback HTTP; extended correctness checks reuse the verified compiler. |
 | `scaling` | Every compiler-scaling shape, in two steps, shapes measured side by side. |
 
 A failed group leaves the others running. The aggregate checks are

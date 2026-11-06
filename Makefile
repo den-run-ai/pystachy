@@ -68,6 +68,12 @@ bench: pystachy
 # bootstrapping ./pystachy again. The default still builds the normal compiler.
 BENCH_COMPILER ?= ./pystachy
 BENCH_ARGS ?=
+
+# Tiny fixtures through the real CLIs, plus JSON repair and agent loopback HTTP.
+example-cli-check: $(BENCH_COMPILER)
+	$(PY) -m unittest discover -s tools -p test_check_example_cli.py
+	$(PY) tools/check_example_cli.py --compiler "$(BENCH_COMPILER)" --json build/example-cli-smoke.json
+
 bench-extended: $(BENCH_COMPILER)
 	$(PY) tools/bench_extended.py --compiler "$(BENCH_COMPILER)" $(BENCH_ARGS)
 
@@ -394,4 +400,4 @@ uninstall:
 test-install:
 	$(PY) -m unittest discover -s tools -p test_install.py
 
-.PHONY: test test-py coverage runtime-coverage variants test-cache test-ffi bench bench-extended bench-extended-check blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe boxprobe streamprobe jitprobe aotprobe unicode-audit unicodeprobe bytescanprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz dynany-fuzz dynany-optin python-int-optin python-int-gate re-probe re-specialize-check typecheck lint-python check-repository check-fast lint clean install uninstall test-install
+.PHONY: test test-py coverage runtime-coverage variants test-cache test-ffi bench bench-extended bench-extended-check example-cli-check blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe boxprobe streamprobe jitprobe aotprobe unicode-audit unicodeprobe bytescanprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz dynany-fuzz dynany-optin python-int-optin python-int-gate re-probe re-specialize-check typecheck lint-python check-repository check-fast lint clean install uninstall test-install

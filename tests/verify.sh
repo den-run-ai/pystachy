@@ -46,6 +46,8 @@
 #                  runtime the step's tests use), the shard's other cases compiled by stage 2
 #                  unstressed, whose IR gc-ir shows to be the stressed compiler's
 #   benchmarks     bench/*.py print exactly what CPython prints, JIT and AOT; timings recorded
+#   example-cli    real example command lines match CPython's status/stdout/stderr, JIT and AOT;
+#                  existing JSON repair process cases and agent loopback-HTTP checks also pass
 #   rtcheck        tools/rtcheck.py: runtime.py, run by CPython, gives what CPython's str methods and
 #                  math functions give on random inputs
 #   re-fuzz        tools/re_fuzz.py: lib/re, run by CPython, compiles random patterns to the code and
@@ -142,12 +144,12 @@ esac
 plan() {
   if [ "$PROFILE" = pr ]; then
     case $1 in
-      all) echo 'bootstrap tests-cpython tests-native-0 tests-native-1 tests-opt-off-0 runtime-cache python-free-0 ubsan-0 gc-self gc-jit-0 gc-aot-0 benchmarks dynany-optin-0 python-int-optin-0 annotation-widening check-ir runtime-table rtcheck re-fuzz dynany-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code aot-dead-code unicode-audit scaling-0 scaling-1'; return ;;
+      all) echo 'bootstrap tests-cpython tests-native-0 tests-native-1 tests-opt-off-0 runtime-cache python-free-0 ubsan-0 gc-self gc-jit-0 gc-aot-0 benchmarks example-cli dynany-optin-0 python-int-optin-0 annotation-widening check-ir runtime-table rtcheck re-fuzz dynany-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code aot-dead-code unicode-audit scaling-0 scaling-1'; return ;;
       safety-0) echo 'bootstrap tests-opt-off-0 python-free-0 gc-jit-0'; return ;;
       safety-1) echo 'bootstrap ubsan-0 gc-aot-0'; return ;;
       opt-in) echo 'bootstrap dynany-optin-0 python-int-optin-0 annotation-widening'; return ;;
       cache-gc) echo 'bootstrap runtime-cache gc-self'; return ;;
-      benchmarks) echo 'bootstrap benchmarks scaling-0 scaling-1'; return ;;
+      benchmarks) echo 'bootstrap benchmarks example-cli scaling-0 scaling-1'; return ;;
       bootstrap|hosted|native-0|native-1|contracts) ;; # shared names and steps below
       *) echo "verify: unknown PR group: $1" >&2; return 2 ;;
     esac
@@ -156,7 +158,7 @@ plan() {
     bootstrap) echo 'bootstrap' ;;
     # (in the order a run of all records them: the contracts' steps, as their lanes report them, after
     # the opt-in sweeps)
-    all) echo 'bootstrap tests-cpython tests-native-0 tests-native-1 tests-native-2 tests-opt-off-0 tests-opt-off-1 tests-opt-off-2 runtime-cache python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 ubsan-3 gc-self gc-ir-0 gc-ir-1 gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 benchmarks dynany-optin-0 dynany-optin-1 dynany-optin-2 python-int-optin-0 python-int-optin-1 python-int-optin-2 annotation-widening check-ir runtime-table rtcheck re-fuzz dynany-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code aot-dead-code unicode-audit scaling-0 scaling-1' ;;
+    all) echo 'bootstrap tests-cpython tests-native-0 tests-native-1 tests-native-2 tests-opt-off-0 tests-opt-off-1 tests-opt-off-2 runtime-cache python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 ubsan-3 gc-self gc-ir-0 gc-ir-1 gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 benchmarks example-cli dynany-optin-0 dynany-optin-1 dynany-optin-2 python-int-optin-0 python-int-optin-1 python-int-optin-2 annotation-widening check-ir runtime-table rtcheck re-fuzz dynany-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code aot-dead-code unicode-audit scaling-0 scaling-1' ;;
     hosted) echo 'bootstrap tests-cpython' ;;
     native-0) echo 'bootstrap tests-native-0' ;;
     native-1) echo 'bootstrap tests-native-1' ;;
@@ -192,7 +194,7 @@ plan() {
     python-int-optin-2) echo "bootstrap $1 annotation-widening" ;;
     python-int-optin) echo 'bootstrap python-int-optin-0 python-int-optin-1 python-int-optin-2' ;; # local alias
     contracts) echo 'bootstrap check-ir runtime-table rtcheck re-fuzz dynany-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code aot-dead-code unicode-audit' ;;
-    benchmarks) echo 'bootstrap benchmarks' ;;
+    benchmarks) echo 'bootstrap benchmarks example-cli' ;;
     scaling) echo 'bootstrap scaling-0 scaling-1' ;;
     *) echo "verify: unknown group: $1" >&2; return 2 ;;
   esac
@@ -852,17 +854,56 @@ L=$V/benchmarks.log; s=$(now); r=pass; x=""; n=0; ok=0
 : > "$L"
 for b in bench/*.py; do
   k=$(basename "$b" .py); n=$((n + 1)); B=$V/bench-$k
-  t0=$(now); ($PY "$b"; echo "[exit $?]") > "$B.ref" 2>> "$L"
-  t1=$(now); ("$V/pystachy2" run "$b"; echo "[exit $?]") > "$B.jit" 2>> "$L"
-  t2=$(now); "$V/pystachy2" build "$b" -o "$B.exe" >> "$L" 2>&1
-  t3=$(now); ("$B.exe"; echo "[exit $?]") > "$B.aot" 2>> "$L"
+  t0=$(now); $PY "$b" > "$B.ref" 2> "$B.ref.err"; ref_status=$?
+  t1=$(now); "$V/pystachy2" run "$b" > "$B.jit" 2> "$B.jit.err"; jit_status=$?
+  t2=$(now); build_status=0
+  # A failed/no-output build must not execute a previous run's binary.
+  rm -f "$B.exe" > "$B.build" 2>&1 || build_status=$?
+  if [ "$build_status" = 0 ]; then
+    "$V/pystachy2" build "$b" -o "$B.exe" >> "$B.build" 2>&1; build_status=$?
+  fi
+  t3=$(now); aot_status=not-run; : > "$B.aot"; : > "$B.aot.err"
+  if [ "$build_status" = 0 ] && [ ! -s "$B.build" ] && [ -x "$B.exe" ]; then
+    "$B.exe" > "$B.aot" 2> "$B.aot.err"; aot_status=$?
+  fi
   t4=$(now)
-  if cmp -s "$B.ref" "$B.jit" && cmp -s "$B.ref" "$B.aot" && grep -q '^\[exit 0\]$' "$B.ref"; then i=true; ok=$((ok + 1)); echo "ok $k"
-  else i=false; r=fail; echo "FAIL $k"; diff "$B.ref" "$B.jit"; diff "$B.ref" "$B.aot"; fi >> "$L"
+  if [ "$ref_status" = 0 ] && [ "$jit_status" = 0 ] && [ "$build_status" = 0 ] && [ "$aot_status" = 0 ] &&
+      cmp -s "$B.ref" "$B.jit" && cmp -s "$B.ref" "$B.aot" &&
+      cmp -s "$B.ref.err" "$B.jit.err" && cmp -s "$B.ref.err" "$B.aot.err"; then
+    i=true; ok=$((ok + 1)); echo "ok $k"
+  else
+    i=false; r=fail
+    echo "FAIL $k: CPython=$ref_status JIT=$jit_status build=$build_status AOT=$aot_status"
+    echo 'build diagnostics:'; cat "$B.build"
+    for mode in ref jit aot; do
+      echo "$mode stdout:"; cat "$B.$mode"
+      echo "$mode stderr:"; cat "$B.$mode.err"
+    done
+  fi >> "$L"
   x="$x$(printf '%s\n        {"name": "%s", "identical": %s, "cpython_seconds": %s, "jit_seconds": %s, "aot_build_seconds": %s, "aot_seconds": %s}' \
     "${x:+,}" "$k" $i "$(secs "$t0" "$t1")" "$(secs "$t1" "$t2")" "$(secs "$t2" "$t3")" "$(secs "$t3" "$t4")")"
 done
 step benchmarks $r "$s" "$L" ", \"programs\": $n, \"identical\": $ok, \"timings\": [$x]"
+fi
+
+# ---- example-cli: tiny inputs through real mains, plus existing process/HTTP checks
+if want example-cli; then
+L=$V/example-cli.log; s=$(now); r=fail; cli_fields=
+if $PY tools/check_example_cli.py --compiler "$V/pystachy2" --json "$V/example-cli.json" > "$L" 2>&1; then
+  if cli_fields=$($PY - "$V/example-cli.json" 2>> "$L" <<'PYCLI'
+import json
+import sys
+sys.path.insert(0, "tools")
+import check_example_cli
+from merge_verification import unique_object, invalid_constant
+with open(sys.argv[1]) as stream:
+    report = json.load(stream, object_pairs_hook=unique_object, parse_constant=invalid_constant)
+check_example_cli.validate_report(report)
+print(', "example_cli": ' + json.dumps(report, sort_keys=True))
+PYCLI
+  ); then r=pass; fi
+fi
+step example-cli "$r" "$s" "$L" "$cli_fields"
 fi
 
 # ---- dynany-optin: full program corpus opts into dynamic Any in three disjoint shards
