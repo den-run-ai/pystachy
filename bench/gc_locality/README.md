@@ -20,6 +20,53 @@ is not a proof of false retention or an actual interior-pointer correctness test
 Use the runtime probes for those properties. The workloads do not measure pause
 percentiles or prove a win for application workloads.
 
+The [2026-11-06 evaluation](results/2026-11-06.md) includes an isolated scalar
+allocation control, the combined experimental runtime, negative results, raw
+samples and source/binary identities. The isolated change is promising on the
+scalar workloads; these experiments establish no self-compilation speedup.
+
+## What the runtime experiments change
+
+`pys_new` already requires the compiler's `ref_free` proof: fixed tuples or class
+layouts containing only native `int`, `float` and `bool`, without hidden reference
+fields. This branch routes surviving allocations through existing atomic storage
+in both JIT and AOT. It does not broaden that proof. Large scalar allocations also
+enter the existing atomic-large pressure accounting; workloads using them can
+change collection cadence as well as scanning cost. The scalar benchmark's records
+are small, and the matched runs had equal collection counts.
+
+`PYSTACHY_GC_MARK=block` instead experiments with tracing order. It queues scanned
+small-object chunks, records pending slots in a bitmap with a word summary, and
+scans discovered runs in address order. It never scans unmarked neighboring
+objects. Backward discoveries and edges to an already-drained chunk create more
+work until the queue reaches a fixed point. Large arrays retain sliced tracing.
+This is a nonmoving, stop-the-world experiment. The default object mode still
+contains shared dispatch/profile checks: it is **not** an isolated scalar patch.
+Keep that distinction when interpreting results or choosing changes to promote.
+
+Pystachy's existing collector already has allocation pools, atomic classes, page
+reuse, interior-pointer recognition and tracing prefetches. The chunk worklist is
+an independently written implementation inspired by the locality argument in
+[Go's Green Tea article](https://go.dev/blog/greenteagc), not a port or measurement
+of Go's collector. Its queue and bitmap costs can outweigh locality gains.
+
+[Julia's sticky generations](https://docs.julialang.org/en/v1.14-dev/devdocs/gc/)
+offer another way to avoid repeated tracing, but need complete old-to-young write
+barriers across generated field stores, runtime containers and bulk copies.
+[MMTk's plan matrix](https://www.mmtk.io/status) and
+[Julia's binding](https://docs.julialang.org/en/v1.14-dev/devdocs/gc-mmtk/) illustrate
+the integration work: roots, object boundaries, interior pointers, FFI ownership,
+weak references and safepoints need explicit contracts. Moving plans additionally
+need reference updates or suitable pinning. Immix/StickyImmix, LXR and
+[Whippet](https://github.com/wingo/whippet) were not benchmarked in this experiment;
+these results do not rank them.
+
+For phase arenas, the compiler already clears each function's typed-IR blocks and
+auxiliary containers immediately after lowering (`src/pystachy_compiler/program.py`),
+while retaining emitted LLVM text and effect summaries. That drops references; it
+does not prove immediate reclamation or ownership of shared metadata. An arena
+experiment needs a demonstrable additional lifetime benefit.
+
 ## Build first, measure separately
 
 Build each compiler and each AOT workload outside the measurement run. Record the

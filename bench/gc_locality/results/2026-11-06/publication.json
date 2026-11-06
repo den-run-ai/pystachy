@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "repository": "den-run-ai/pystachy",
+  "method": "GitHub Git Data API; local shell Git transport had no write credentials",
+  "verification": "Every uploaded blob SHA and complete source root-tree SHA matched local Git objects; commit metadata and history were assigned by the API. Raw results retain measured local source IDs.",
+  "sources": [
+    {
+      "variant": "atomic_only",
+      "local_commit": "79fa9108180a6411b4064d811cffb978aef45833",
+      "published_commit": "9deeacab9119252f257c5ad43d9eca8e6d2b5f8d",
+      "tree_sha": "c079807e551f3bf2997182fd81d4994b7b9f7af0",
+      "published_parent": "e7513fd5b7604a0a35b6aa87875dd8cad9c31141",
+      "branch": "research/gc-atomic-control-20261106"
+    },
+    {
+      "variant": "combined",
+      "local_commit": "a533aa2b6c75b464ce01002208951087b384fed8",
+      "published_commit": "76a162b1e5c1c1da44d97815b9ceec37e2b69ec2",
+      "tree_sha": "6ea4a86aa0882aceb50563dd49230f2b72a3ae5c",
+      "published_parent": "9deeacab9119252f257c5ad43d9eca8e6d2b5f8d"
+    }
+  ]
+}

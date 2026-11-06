@@ -1,0 +1,114 @@
+[
+  {
+    "label": "main",
+    "workload": "graph",
+    "argv": [
+      "/workspace/scratch/8b5d64b08ada/baseline/pystachy",
+      "build",
+      "/workspace/scratch/8b5d64b08ada/pystachy/bench/gc_locality/graph.py",
+      "-o",
+      "/workspace/scratch/8b5d64b08ada/bench-bin/main-graph"
+    ],
+    "source_sha256": "5a879fedb4bd9cc52cad5a6e12cb2fbbbd088ce93b08dcabaea6f8548e554b07",
+    "binary_sha256": "f3901073914000b3b7aa3eb07b0b6a783b7b7db575bcf829e0494d011579a541",
+    "oracle": "graph 3 32 9216"
+  },
+  {
+    "label": "main",
+    "workload": "scalars",
+    "argv": [
+      "/workspace/scratch/8b5d64b08ada/baseline/pystachy",
+      "build",
+      "/workspace/scratch/8b5d64b08ada/pystachy/bench/gc_locality/scalars.py",
+      "-o",
+      "/workspace/scratch/8b5d64b08ada/bench-bin/main-scalars"
+    ],
+    "source_sha256": "5faa30b04f355feebb1e6a8458ed11af4bdb24a53ffa2f5261a63b49c75e50f7",
+    "binary_sha256": "40afba9bc9cfc560a18deafbea1e9ea8467632af9da3b74ddb00bbde3b7b8459",
+    "oracle": "scalars 3 32 aligned 424704 3"
+  },
+  {
+    "label": "main",
+    "workload": "stores",
+    "argv": [
+      "/workspace/scratch/8b5d64b08ada/baseline/pystachy",
+      "build",
+      "/workspace/scratch/8b5d64b08ada/pystachy/bench/gc_locality/stores.py",
+      "-o",
+      "/workspace/scratch/8b5d64b08ada/bench-bin/main-stores"
+    ],
+    "source_sha256": "57128be65ca97022d6055a1723239150ad6d946c389244694376a70a4c03025c",
+    "binary_sha256": "33c6aa6ba871b604277d385c9a8d49d5b1fde46c0ccc4a9f9f482956d998c36a",
+    "oracle": "stores 3 32 862 32 3"
+  },
+  {
+    "label": "main",
+    "workload": "reverse_chain",
+    "argv": [
+      "/workspace/scratch/8b5d64b08ada/baseline/pystachy",
+      "build",
+      "/workspace/scratch/8b5d64b08ada/pystachy/bench/gc_locality/reverse_chain.py",
+      "-o",
+      "/workspace/scratch/8b5d64b08ada/bench-bin/main-reverse_chain"
+    ],
+    "source_sha256": "8510653ff6c52fcb9be2b8df153043a967a21015f68a489fee169c0e2f35d256",
+    "binary_sha256": "0db1e012ac4906a139ceec45e46df777d6470ff168141cbdb1bcb4e324be9d61",
+    "oracle": "chain 3 32 reverse 22608"
+  },
+  {
+    "label": "candidate",
+    "workload": "graph",
+    "argv": [
+      "/workspace/scratch/8b5d64b08ada/pystachy/pystachy",
+      "build",
+      "/workspace/scratch/8b5d64b08ada/pystachy/bench/gc_locality/graph.py",
+      "-o",
+      "/workspace/scratch/8b5d64b08ada/bench-bin/candidate-graph"
+    ],
+    "source_sha256": "5a879fedb4bd9cc52cad5a6e12cb2fbbbd088ce93b08dcabaea6f8548e554b07",
+    "binary_sha256": "e1373c94520977cb250110fcf2915198679fbedac9f8aac7b4199057878e000a",
+    "oracle": "graph 3 32 9216"
+  },
+  {
+    "label": "candidate",
+    "workload": "scalars",
+    "argv": [
+      "/workspace/scratch/8b5d64b08ada/pystachy/pystachy",
+      "build",
+      "/workspace/scratch/8b5d64b08ada/pystachy/bench/gc_locality/scalars.py",
+      "-o",
+      "/workspace/scratch/8b5d64b08ada/bench-bin/candidate-scalars"
+    ],
+    "source_sha256": "5faa30b04f355feebb1e6a8458ed11af4bdb24a53ffa2f5261a63b49c75e50f7",
+    "binary_sha256": "cee10de5ed72f7391eb6693392760cf7a44e95f6f62b0bdda718519729a9c4fe",
+    "oracle": "scalars 3 32 aligned 424704 3"
+  },
+  {
+    "label": "candidate",
+    "workload": "stores",
+    "argv": [
+      "/workspace/scratch/8b5d64b08ada/pystachy/pystachy",
+      "build",
+      "/workspace/scratch/8b5d64b08ada/pystachy/bench/gc_locality/stores.py",
+      "-o",
+      "/workspace/scratch/8b5d64b08ada/bench-bin/candidate-stores"
+    ],
+    "source_sha256": "57128be65ca97022d6055a1723239150ad6d946c389244694376a70a4c03025c",
+    "binary_sha256": "21d333dd7d460ba7afc5eb6679648ad0bad7995aacc0b78d1f340756c506a267",
+    "oracle": "stores 3 32 862 32 3"
+  },
+  {
+    "label": "candidate",
+    "workload": "reverse_chain",
+    "argv": [
+      "/workspace/scratch/8b5d64b08ada/pystachy/pystachy",
+      "build",
+      "/workspace/scratch/8b5d64b08ada/pystachy/bench/gc_locality/reverse_chain.py",
+      "-o",
+      "/workspace/scratch/8b5d64b08ada/bench-bin/candidate-reverse_chain"
+    ],
+    "source_sha256": "8510653ff6c52fcb9be2b8df153043a967a21015f68a489fee169c0e2f35d256",
+    "binary_sha256": "f5b783a1dac851ed12a14784f6060967c646805369ea3b25a02fe6e16b98ab14",
+    "oracle": "chain 3 32 reverse 22608"
+  }
+]

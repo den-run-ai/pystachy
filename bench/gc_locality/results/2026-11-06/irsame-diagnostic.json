@@ -1,0 +1,581 @@
+{
+  "initial_failed_log_sha256": "d9aeea8a8ca84d7e95fd75622183bcc82873892b797c18eebf7bc2855087e0d0",
+  "original_oracle_sha256": "7baa4d09a86103485f6b6c87a739162347b97542051d80b6cfb57c8a108587d5",
+  "cases": [
+    "tests/programs/runtime/gc_churn.py",
+    "tests/programs/runtime/gc_dict_values.py",
+    "tests/programs/runtime/gc_list_kinds.py",
+    "tests/programs/runtime/gc_template_empty_kind.py",
+    "tests/programs/library/lib_weakref.py",
+    "tests/programs/library/lib_weakref_dead.py",
+    "tests/programs/library/lib_weakref_transition.py",
+    "tests/programs/library/lib_weakref_callback.py",
+    "tests/programs/library/lib_weakref_callback_nested.py",
+    "tests/programs/library/lib_weakref_callback_dead_ref.py",
+    "tests/programs/optimizations/opt_alloc_held_fields.py",
+    "tests/programs/optimizations/opt_alloc_held_tuple.py",
+    "tests/programs/optimizations/opt_alloc_held_cohort.py",
+    "tests/programs/optimizations/opt_scalars.py",
+    "tests/programs/optimizations/opt_tupleiter.py",
+    "tests/programs/inference/dynany_identity_fields.py",
+    "tests/programs/inference/dynany_identity_field_defaults.py",
+    "tests/programs/inference/dynany_identity_field_kinds.py",
+    "tests/programs/inference/dynany_identity_scope_fields.py",
+    "tests/programs/inference/dynany_identity_cells.py",
+    "tests/programs/inference/dynany_identity_joined_cells.py",
+    "tests/programs/inference/dynany_identity_field_retired.py",
+    "tests/programs/inference/dynany_identity_expression_lifetime.py",
+    "tests/programs/inference/dynany_layout_forms.py",
+    "tests/programs/inference/dynany_layout_records.py",
+    "tests/programs/inference/dynany_forward_cycle_dict.py",
+    "tests/programs/language/closures_scopes.py",
+    "tests/programs/language/closures_more.py",
+    "tests/programs/language/closure_paths.py",
+    "tests/programs/generators/gen_gc.py",
+    "tests/programs/generators/gen_protocol_gc.py",
+    "tests/programs/generators/gen_cm_gc.py",
+    "tests/programs/inference/dynany_generator_boxing.py",
+    "tests/programs/inference/dynany_generator_context_protocol.py",
+    "tests/programs/numbers/python_int_generators.py",
+    "tests/programs/numbers/python_int_tuples.py",
+    "tests/programs/numbers/python_int_class_defaults.py",
+    "tests/programs/numbers/python_int_dataclass_copy.py",
+    "tests/programs/inference/dynany_identity_inert_fields.py",
+    "tests/programs/inference/dynany_identity_promote_wide.py",
+    "tests/programs/inference/dynany_identity_promote_return.py",
+    "tests/programs/inference/dynany_identity_promote_list.py",
+    "tests/programs/inference/dynany_identity_display_lifetime.py",
+    "tests/programs/numbers/python_int_any_identity.py",
+    "tests/ir/alloc_refs.py",
+    "tests/ir/alloc_refs_dyn.py",
+    "tests/ir/alloc_refs_big.py",
+    "runtime.py"
+  ],
+  "own_home": {
+    "argv": [
+      "sh",
+      "/workspace/scratch/8b5d64b08ada/irsame-diagnostic/irsame-show-all.sh",
+      "/workspace/scratch/8b5d64b08ada/baseline/pystachy",
+      "./pystachy",
+      "tests/programs/runtime/gc_churn.py",
+      "tests/programs/runtime/gc_dict_values.py",
+      "tests/programs/runtime/gc_list_kinds.py",
+      "tests/programs/runtime/gc_template_empty_kind.py",
+      "tests/programs/library/lib_weakref.py",
+      "tests/programs/library/lib_weakref_dead.py",
+      "tests/programs/library/lib_weakref_transition.py",
+      "tests/programs/library/lib_weakref_callback.py",
+      "tests/programs/library/lib_weakref_callback_nested.py",
+      "tests/programs/library/lib_weakref_callback_dead_ref.py",
+      "tests/programs/optimizations/opt_alloc_held_fields.py",
+      "tests/programs/optimizations/opt_alloc_held_tuple.py",
+      "tests/programs/optimizations/opt_alloc_held_cohort.py",
+      "tests/programs/optimizations/opt_scalars.py",
+      "tests/programs/optimizations/opt_tupleiter.py",
+      "tests/programs/inference/dynany_identity_fields.py",
+      "tests/programs/inference/dynany_identity_field_defaults.py",
+      "tests/programs/inference/dynany_identity_field_kinds.py",
+      "tests/programs/inference/dynany_identity_scope_fields.py",
+      "tests/programs/inference/dynany_identity_cells.py",
+      "tests/programs/inference/dynany_identity_joined_cells.py",
+      "tests/programs/inference/dynany_identity_field_retired.py",
+      "tests/programs/inference/dynany_identity_expression_lifetime.py",
+      "tests/programs/inference/dynany_layout_forms.py",
+      "tests/programs/inference/dynany_layout_records.py",
+      "tests/programs/inference/dynany_forward_cycle_dict.py",
+      "tests/programs/language/closures_scopes.py",
+      "tests/programs/language/closures_more.py",
+      "tests/programs/language/closure_paths.py",
+      "tests/programs/generators/gen_gc.py",
+      "tests/programs/generators/gen_protocol_gc.py",
+      "tests/programs/generators/gen_cm_gc.py",
+      "tests/programs/inference/dynany_generator_boxing.py",
+      "tests/programs/inference/dynany_generator_context_protocol.py",
+      "tests/programs/numbers/python_int_generators.py",
+      "tests/programs/numbers/python_int_tuples.py",
+      "tests/programs/numbers/python_int_class_defaults.py",
+      "tests/programs/numbers/python_int_dataclass_copy.py",
+      "tests/programs/inference/dynany_identity_inert_fields.py",
+      "tests/programs/inference/dynany_identity_promote_wide.py",
+      "tests/programs/inference/dynany_identity_promote_return.py",
+      "tests/programs/inference/dynany_identity_promote_list.py",
+      "tests/programs/inference/dynany_identity_display_lifetime.py",
+      "tests/programs/numbers/python_int_any_identity.py",
+      "tests/ir/alloc_refs.py",
+      "tests/ir/alloc_refs_dyn.py",
+      "tests/ir/alloc_refs_big.py",
+      "runtime.py"
+    ],
+    "PYSTACHY_HOME": "",
+    "returncode": 1,
+    "elapsed_seconds": 0.8699479730057647,
+    "log": "/workspace/scratch/8b5d64b08ada/irsame-diagnostic/own-home-all.log"
+  },
+  "lib_identity_report": "/workspace/scratch/8b5d64b08ada/irsame-lib-identity.json",
+  "own_home_differences": [
+    {
+      "case": "tests/programs/library/lib_weakref.py",
+      "compilers": [
+        {
+          "label": "old",
+          "argv": [
+            "/workspace/scratch/8b5d64b08ada/baseline/pystachy",
+            "ir",
+            "tests/programs/library/lib_weakref.py",
+            "-o",
+            "/workspace/scratch/8b5d64b08ada/irsame-diagnostic/lib_weakref.old.ll"
+          ],
+          "PYSTACHY_HOME": "",
+          "returncode": 0,
+          "ir": "/workspace/scratch/8b5d64b08ada/irsame-diagnostic/lib_weakref.old.ll",
+          "bytes": 33067,
+          "sha256": "7dc4c12b9e65fcc4feb17b3abc84d9f51857025e956be82e34ede8e385790c7b",
+          "stdout_bytes": 0,
+          "stderr_bytes": 0
+        },
+        {
+          "label": "new",
+          "argv": [
+            "./pystachy",
+            "ir",
+            "tests/programs/library/lib_weakref.py",
+            "-o",
+            "/workspace/scratch/8b5d64b08ada/irsame-diagnostic/lib_weakref.new.ll"
+          ],
+          "PYSTACHY_HOME": "",
+          "returncode": 0,
+          "ir": "/workspace/scratch/8b5d64b08ada/irsame-diagnostic/lib_weakref.new.ll",
+          "bytes": 33067,
+          "sha256": "dc7ae34a5700785d5402a0f677faebb21427fa10a44cf2ac622e17e1664499f5",
+          "stdout_bytes": 0,
+          "stderr_bytes": 0
+        }
+      ],
+      "changed_line_count": 1,
+      "line": 34,
+      "old_line": "@s.17 = private unnamed_addr global {i64, i64, i64, [109 x i8]} {i64 108, i64 0, i64 109, [109 x i8] c\"cannot import name 'ref' from '_weakref' (/workspace/scratch/8b5d64b08ada/baseline/lib/_pystachy_weakref.py)\\00\"}, align 8",
+      "new_line": "@s.17 = private unnamed_addr global {i64, i64, i64, [109 x i8]} {i64 108, i64 0, i64 109, [109 x i8] c\"cannot import name 'ref' from '_weakref' (/workspace/scratch/8b5d64b08ada/pystachy/lib/_pystachy_weakref.py)\\00\"}, align 8",
+      "diagnosis": "The sole changed line is the embedded ImportError string literal naming the compiler home library file; no other IR bytes or diagnostics differ."
+    },
+    {
+      "case": "tests/programs/library/lib_weakref_dead.py",
+      "compilers": [
+        {
+          "label": "old",
+          "argv": [
+            "/workspace/scratch/8b5d64b08ada/baseline/pystachy",
+            "ir",
+            "tests/programs/library/lib_weakref_dead.py",
+            "-o",
+            "/workspace/scratch/8b5d64b08ada/irsame-diagnostic/lib_weakref_dead.old.ll"
+          ],
+          "PYSTACHY_HOME": "",
+          "returncode": 0,
+          "ir": "/workspace/scratch/8b5d64b08ada/irsame-diagnostic/lib_weakref_dead.old.ll",
+          "bytes": 23488,
+          "sha256": "d7e2d95acc0422403700adbac5164aeb979468cb34f03e0e78f49e11570e6525",
+          "stdout_bytes": 0,
+          "stderr_bytes": 0
+        },
+        {
+          "label": "new",
+          "argv": [
+            "./pystachy",
+            "ir",
+            "tests/programs/library/lib_weakref_dead.py",
+            "-o",
+            "/workspace/scratch/8b5d64b08ada/irsame-diagnostic/lib_weakref_dead.new.ll"
+          ],
+          "PYSTACHY_HOME": "",
+          "returncode": 0,
+          "ir": "/workspace/scratch/8b5d64b08ada/irsame-diagnostic/lib_weakref_dead.new.ll",
+          "bytes": 23488,
+          "sha256": "f1a2582bee964cc8b092cd741c4928580333973153fc4bcc656ece920a78497a",
+          "stdout_bytes": 0,
+          "stderr_bytes": 0
+        }
+      ],
+      "changed_line_count": 1,
+      "line": 44,
+      "old_line": "@s.25 = private unnamed_addr global {i64, i64, i64, [109 x i8]} {i64 108, i64 0, i64 109, [109 x i8] c\"cannot import name 'ref' from '_weakref' (/workspace/scratch/8b5d64b08ada/baseline/lib/_pystachy_weakref.py)\\00\"}, align 8",
+      "new_line": "@s.25 = private unnamed_addr global {i64, i64, i64, [109 x i8]} {i64 108, i64 0, i64 109, [109 x i8] c\"cannot import name 'ref' from '_weakref' (/workspace/scratch/8b5d64b08ada/pystachy/lib/_pystachy_weakref.py)\\00\"}, align 8",
+      "diagnosis": "The sole changed line is the embedded ImportError string literal naming the compiler home library file; no other IR bytes or diagnostics differ."
+    },
+    {
+      "case": "tests/programs/library/lib_weakref_transition.py",
+      "compilers": [
+        {
+          "label": "old",
+          "argv": [
+            "/workspace/scratch/8b5d64b08ada/baseline/pystachy",
+            "ir",
+            "tests/programs/library/lib_weakref_transition.py",
+            "-o",
+            "/workspace/scratch/8b5d64b08ada/irsame-diagnostic/lib_weakref_transition.old.ll"
+          ],
+          "PYSTACHY_HOME": "",
+          "returncode": 0,
+          "ir": "/workspace/scratch/8b5d64b08ada/irsame-diagnostic/lib_weakref_transition.old.ll",
+          "bytes": 27679,
+          "sha256": "7814f3ccd2eee04feea21b41b5b49fc8443a6b11d9e8b63e2a465468fb7ad8ee",
+          "stdout_bytes": 0,
+          "stderr_bytes": 0
+        },
+        {
+          "label": "new",
+          "argv": [
+            "./pystachy",
+            "ir",
+            "tests/programs/library/lib_weakref_transition.py",
+            "-o",
+            "/workspace/scratch/8b5d64b08ada/irsame-diagnostic/lib_weakref_transition.new.ll"
+          ],
+          "PYSTACHY_HOME": "",
+          "returncode": 0,
+          "ir": "/workspace/scratch/8b5d64b08ada/irsame-diagnostic/lib_weakref_transition.new.ll",
+          "bytes": 27679,
+          "sha256": "ceece139a93752f199bc59422dea19ed2d357bbcf8a438ac0c0520064af8fc62",
+          "stdout_bytes": 0,
+          "stderr_bytes": 0
+        }
+      ],
+      "changed_line_count": 1,
+      "line": 47,
+      "old_line": "@s.26 = private unnamed_addr global {i64, i64, i64, [109 x i8]} {i64 108, i64 0, i64 109, [109 x i8] c\"cannot import name 'ref' from '_weakref' (/workspace/scratch/8b5d64b08ada/baseline/lib/_pystachy_weakref.py)\\00\"}, align 8",
+      "new_line": "@s.26 = private unnamed_addr global {i64, i64, i64, [109 x i8]} {i64 108, i64 0, i64 109, [109 x i8] c\"cannot import name 'ref' from '_weakref' (/workspace/scratch/8b5d64b08ada/pystachy/lib/_pystachy_weakref.py)\\00\"}, align 8",
+      "diagnosis": "The sole changed line is the embedded ImportError string literal naming the compiler home library file; no other IR bytes or diagnostics differ."
+    },
+    {
+      "case": "tests/programs/library/lib_weakref_callback.py",
+      "compilers": [
+        {
+          "label": "old",
+          "argv": [
+            "/workspace/scratch/8b5d64b08ada/baseline/pystachy",
+            "ir",
+            "tests/programs/library/lib_weakref_callback.py",
+            "-o",
+            "/workspace/scratch/8b5d64b08ada/irsame-diagnostic/lib_weakref_callback.old.ll"
+          ],
+          "PYSTACHY_HOME": "",
+          "returncode": 0,
+          "ir": "/workspace/scratch/8b5d64b08ada/irsame-diagnostic/lib_weakref_callback.old.ll",
+          "bytes": 47195,
+          "sha256": "90e641b8e00f06dfc7f294fdc58ac27cb055ccc1a65cfd3a10cc343ded04ee8a",
+          "stdout_bytes": 0,
+          "stderr_bytes": 0
+        },
+        {
+          "label": "new",
+          "argv": [
+            "./pystachy",
+            "ir",
+            "tests/programs/library/lib_weakref_callback.py",
+            "-o",
+            "/workspace/scratch/8b5d64b08ada/irsame-diagnostic/lib_weakref_callback.new.ll"
+          ],
+          "PYSTACHY_HOME": "",
+          "returncode": 0,
+          "ir": "/workspace/scratch/8b5d64b08ada/irsame-diagnostic/lib_weakref_callback.new.ll",
+          "bytes": 47195,
+          "sha256": "5dd042dc8a5fa3ae4acb05b854fcf5268940fb4bee6c128fd3e689dabe61b15c",
+          "stdout_bytes": 0,
+          "stderr_bytes": 0
+        }
+      ],
+      "changed_line_count": 1,
+      "line": 50,
+      "old_line": "@s.25 = private unnamed_addr global {i64, i64, i64, [109 x i8]} {i64 108, i64 0, i64 109, [109 x i8] c\"cannot import name 'ref' from '_weakref' (/workspace/scratch/8b5d64b08ada/baseline/lib/_pystachy_weakref.py)\\00\"}, align 8",
+      "new_line": "@s.25 = private unnamed_addr global {i64, i64, i64, [109 x i8]} {i64 108, i64 0, i64 109, [109 x i8] c\"cannot import name 'ref' from '_weakref' (/workspace/scratch/8b5d64b08ada/pystachy/lib/_pystachy_weakref.py)\\00\"}, align 8",
+      "diagnosis": "The sole changed line is the embedded ImportError string literal naming the compiler home library file; no other IR bytes or diagnostics differ."
+    },
+    {
+      "case": "tests/programs/library/lib_weakref_callback_nested.py",
+      "compilers": [
+        {
+          "label": "old",
+          "argv": [
+            "/workspace/scratch/8b5d64b08ada/baseline/pystachy",
+            "ir",
+            "tests/programs/library/lib_weakref_callback_nested.py",
+            "-o",
+            "/workspace/scratch/8b5d64b08ada/irsame-diagnostic/lib_weakref_callback_nested.old.ll"
+          ],
+          "PYSTACHY_HOME": "",
+          "returncode": 0,
+          "ir": "/workspace/scratch/8b5d64b08ada/irsame-diagnostic/lib_weakref_callback_nested.old.ll",
+          "bytes": 42631,
+          "sha256": "d5f202dc83da4c48a927c825b94992ae51f2c96b91870fdf5930880857268c14",
+          "stdout_bytes": 0,
+          "stderr_bytes": 0
+        },
+        {
+          "label": "new",
+          "argv": [
+            "./pystachy",
+            "ir",
+            "tests/programs/library/lib_weakref_callback_nested.py",
+            "-o",
+            "/workspace/scratch/8b5d64b08ada/irsame-diagnostic/lib_weakref_callback_nested.new.ll"
+          ],
+          "PYSTACHY_HOME": "",
+          "returncode": 0,
+          "ir": "/workspace/scratch/8b5d64b08ada/irsame-diagnostic/lib_weakref_callback_nested.new.ll",
+          "bytes": 42631,
+          "sha256": "8d0733d591278146bcb654980af4f86dd40e16e61b3cf58039f53bda46803878",
+          "stdout_bytes": 0,
+          "stderr_bytes": 0
+        }
+      ],
+      "changed_line_count": 1,
+      "line": 56,
+      "old_line": "@s.28 = private unnamed_addr global {i64, i64, i64, [109 x i8]} {i64 108, i64 0, i64 109, [109 x i8] c\"cannot import name 'ref' from '_weakref' (/workspace/scratch/8b5d64b08ada/baseline/lib/_pystachy_weakref.py)\\00\"}, align 8",
+      "new_line": "@s.28 = private unnamed_addr global {i64, i64, i64, [109 x i8]} {i64 108, i64 0, i64 109, [109 x i8] c\"cannot import name 'ref' from '_weakref' (/workspace/scratch/8b5d64b08ada/pystachy/lib/_pystachy_weakref.py)\\00\"}, align 8",
+      "diagnosis": "The sole changed line is the embedded ImportError string literal naming the compiler home library file; no other IR bytes or diagnostics differ."
+    },
+    {
+      "case": "tests/programs/library/lib_weakref_callback_dead_ref.py",
+      "compilers": [
+        {
+          "label": "old",
+          "argv": [
+            "/workspace/scratch/8b5d64b08ada/baseline/pystachy",
+            "ir",
+            "tests/programs/library/lib_weakref_callback_dead_ref.py",
+            "-o",
+            "/workspace/scratch/8b5d64b08ada/irsame-diagnostic/lib_weakref_callback_dead_ref.old.ll"
+          ],
+          "PYSTACHY_HOME": "",
+          "returncode": 0,
+          "ir": "/workspace/scratch/8b5d64b08ada/irsame-diagnostic/lib_weakref_callback_dead_ref.old.ll",
+          "bytes": 31848,
+          "sha256": "47e47641a7599a4811f3dc16d0c874d6082ccd98879b88e155d7386faf02842c",
+          "stdout_bytes": 0,
+          "stderr_bytes": 0
+        },
+        {
+          "label": "new",
+          "argv": [
+            "./pystachy",
+            "ir",
+            "tests/programs/library/lib_weakref_callback_dead_ref.py",
+            "-o",
+            "/workspace/scratch/8b5d64b08ada/irsame-diagnostic/lib_weakref_callback_dead_ref.new.ll"
+          ],
+          "PYSTACHY_HOME": "",
+          "returncode": 0,
+          "ir": "/workspace/scratch/8b5d64b08ada/irsame-diagnostic/lib_weakref_callback_dead_ref.new.ll",
+          "bytes": 31848,
+          "sha256": "7b908bcc45a5fa61c2500e3361511c7767b115161bd600500257ddbf03e1bafa",
+          "stdout_bytes": 0,
+          "stderr_bytes": 0
+        }
+      ],
+      "changed_line_count": 1,
+      "line": 37,
+      "old_line": "@s.21 = private unnamed_addr global {i64, i64, i64, [109 x i8]} {i64 108, i64 0, i64 109, [109 x i8] c\"cannot import name 'ref' from '_weakref' (/workspace/scratch/8b5d64b08ada/baseline/lib/_pystachy_weakref.py)\\00\"}, align 8",
+      "new_line": "@s.21 = private unnamed_addr global {i64, i64, i64, [109 x i8]} {i64 108, i64 0, i64 109, [109 x i8] c\"cannot import name 'ref' from '_weakref' (/workspace/scratch/8b5d64b08ada/pystachy/lib/_pystachy_weakref.py)\\00\"}, align 8",
+      "diagnosis": "The sole changed line is the embedded ImportError string literal naming the compiler home library file; no other IR bytes or diagnostics differ."
+    },
+    {
+      "case": "tests/programs/optimizations/opt_alloc_held_fields.py",
+      "compilers": [
+        {
+          "label": "old",
+          "argv": [
+            "/workspace/scratch/8b5d64b08ada/baseline/pystachy",
+            "ir",
+            "tests/programs/optimizations/opt_alloc_held_fields.py",
+            "-o",
+            "/workspace/scratch/8b5d64b08ada/irsame-diagnostic/opt_alloc_held_fields.old.ll"
+          ],
+          "PYSTACHY_HOME": "",
+          "returncode": 0,
+          "ir": "/workspace/scratch/8b5d64b08ada/irsame-diagnostic/opt_alloc_held_fields.old.ll",
+          "bytes": 34064,
+          "sha256": "f19823841f19115fdf56189f215dbc65f2bedaf0b7a84e7d604f47b8124c5f1d",
+          "stdout_bytes": 0,
+          "stderr_bytes": 0
+        },
+        {
+          "label": "new",
+          "argv": [
+            "./pystachy",
+            "ir",
+            "tests/programs/optimizations/opt_alloc_held_fields.py",
+            "-o",
+            "/workspace/scratch/8b5d64b08ada/irsame-diagnostic/opt_alloc_held_fields.new.ll"
+          ],
+          "PYSTACHY_HOME": "",
+          "returncode": 0,
+          "ir": "/workspace/scratch/8b5d64b08ada/irsame-diagnostic/opt_alloc_held_fields.new.ll",
+          "bytes": 34064,
+          "sha256": "b775b13a54dbe92ffa03bddb79483fa0ef2b82271790b3b329fa322bf4267634",
+          "stdout_bytes": 0,
+          "stderr_bytes": 0
+        }
+      ],
+      "changed_line_count": 1,
+      "line": 14,
+      "old_line": "@s.0 = private unnamed_addr global {i64, i64, i64, [109 x i8]} {i64 108, i64 0, i64 109, [109 x i8] c\"cannot import name 'ref' from '_weakref' (/workspace/scratch/8b5d64b08ada/baseline/lib/_pystachy_weakref.py)\\00\"}, align 8",
+      "new_line": "@s.0 = private unnamed_addr global {i64, i64, i64, [109 x i8]} {i64 108, i64 0, i64 109, [109 x i8] c\"cannot import name 'ref' from '_weakref' (/workspace/scratch/8b5d64b08ada/pystachy/lib/_pystachy_weakref.py)\\00\"}, align 8",
+      "diagnosis": "The sole changed line is the embedded ImportError string literal naming the compiler home library file; no other IR bytes or diagnostics differ."
+    },
+    {
+      "case": "tests/programs/optimizations/opt_alloc_held_tuple.py",
+      "compilers": [
+        {
+          "label": "old",
+          "argv": [
+            "/workspace/scratch/8b5d64b08ada/baseline/pystachy",
+            "ir",
+            "tests/programs/optimizations/opt_alloc_held_tuple.py",
+            "-o",
+            "/workspace/scratch/8b5d64b08ada/irsame-diagnostic/opt_alloc_held_tuple.old.ll"
+          ],
+          "PYSTACHY_HOME": "",
+          "returncode": 0,
+          "ir": "/workspace/scratch/8b5d64b08ada/irsame-diagnostic/opt_alloc_held_tuple.old.ll",
+          "bytes": 22235,
+          "sha256": "2ea28062588c02aa15faf60ed83e1e9df33d856417660a75c5e90a096bc0cceb",
+          "stdout_bytes": 0,
+          "stderr_bytes": 0
+        },
+        {
+          "label": "new",
+          "argv": [
+            "./pystachy",
+            "ir",
+            "tests/programs/optimizations/opt_alloc_held_tuple.py",
+            "-o",
+            "/workspace/scratch/8b5d64b08ada/irsame-diagnostic/opt_alloc_held_tuple.new.ll"
+          ],
+          "PYSTACHY_HOME": "",
+          "returncode": 0,
+          "ir": "/workspace/scratch/8b5d64b08ada/irsame-diagnostic/opt_alloc_held_tuple.new.ll",
+          "bytes": 22235,
+          "sha256": "0f4dd6f129f1ff477b1ce383738c82253b54fbb30fc827128194226e1412dbb7",
+          "stdout_bytes": 0,
+          "stderr_bytes": 0
+        }
+      ],
+      "changed_line_count": 1,
+      "line": 13,
+      "old_line": "@s.0 = private unnamed_addr global {i64, i64, i64, [109 x i8]} {i64 108, i64 0, i64 109, [109 x i8] c\"cannot import name 'ref' from '_weakref' (/workspace/scratch/8b5d64b08ada/baseline/lib/_pystachy_weakref.py)\\00\"}, align 8",
+      "new_line": "@s.0 = private unnamed_addr global {i64, i64, i64, [109 x i8]} {i64 108, i64 0, i64 109, [109 x i8] c\"cannot import name 'ref' from '_weakref' (/workspace/scratch/8b5d64b08ada/pystachy/lib/_pystachy_weakref.py)\\00\"}, align 8",
+      "diagnosis": "The sole changed line is the embedded ImportError string literal naming the compiler home library file; no other IR bytes or diagnostics differ."
+    },
+    {
+      "case": "tests/programs/optimizations/opt_alloc_held_cohort.py",
+      "compilers": [
+        {
+          "label": "old",
+          "argv": [
+            "/workspace/scratch/8b5d64b08ada/baseline/pystachy",
+            "ir",
+            "tests/programs/optimizations/opt_alloc_held_cohort.py",
+            "-o",
+            "/workspace/scratch/8b5d64b08ada/irsame-diagnostic/opt_alloc_held_cohort.old.ll"
+          ],
+          "PYSTACHY_HOME": "",
+          "returncode": 0,
+          "ir": "/workspace/scratch/8b5d64b08ada/irsame-diagnostic/opt_alloc_held_cohort.old.ll",
+          "bytes": 42194,
+          "sha256": "f2a282c6b97b07eb80ce5bd91748c516f970467f47a6456a0f1a4bac52f50454",
+          "stdout_bytes": 0,
+          "stderr_bytes": 0
+        },
+        {
+          "label": "new",
+          "argv": [
+            "./pystachy",
+            "ir",
+            "tests/programs/optimizations/opt_alloc_held_cohort.py",
+            "-o",
+            "/workspace/scratch/8b5d64b08ada/irsame-diagnostic/opt_alloc_held_cohort.new.ll"
+          ],
+          "PYSTACHY_HOME": "",
+          "returncode": 0,
+          "ir": "/workspace/scratch/8b5d64b08ada/irsame-diagnostic/opt_alloc_held_cohort.new.ll",
+          "bytes": 42194,
+          "sha256": "9f7621bfec760604650693458970cf8d4cf9d94b02786913c106046eefa80fa5",
+          "stdout_bytes": 0,
+          "stderr_bytes": 0
+        }
+      ],
+      "changed_line_count": 1,
+      "line": 16,
+      "old_line": "@s.2 = private unnamed_addr global {i64, i64, i64, [109 x i8]} {i64 108, i64 0, i64 109, [109 x i8] c\"cannot import name 'ref' from '_weakref' (/workspace/scratch/8b5d64b08ada/baseline/lib/_pystachy_weakref.py)\\00\"}, align 8",
+      "new_line": "@s.2 = private unnamed_addr global {i64, i64, i64, [109 x i8]} {i64 108, i64 0, i64 109, [109 x i8] c\"cannot import name 'ref' from '_weakref' (/workspace/scratch/8b5d64b08ada/pystachy/lib/_pystachy_weakref.py)\\00\"}, align 8",
+      "diagnosis": "The sole changed line is the embedded ImportError string literal naming the compiler home library file; no other IR bytes or diagnostics differ."
+    }
+  ],
+  "own_home_summary": {
+    "identical_programs": 39,
+    "differing_programs": 9,
+    "sole_difference_in_each": "One embedded ImportError string literal changes baseline/lib/_pystachy_weakref.py to pystachy/lib/_pystachy_weakref.py. Compiler status and diagnostic streams match."
+  },
+  "shared_home": {
+    "argv": [
+      "sh",
+      "tools/irsame.sh",
+      "/workspace/scratch/8b5d64b08ada/baseline/pystachy",
+      "./pystachy",
+      "tests/programs/runtime/gc_churn.py",
+      "tests/programs/runtime/gc_dict_values.py",
+      "tests/programs/runtime/gc_list_kinds.py",
+      "tests/programs/runtime/gc_template_empty_kind.py",
+      "tests/programs/library/lib_weakref.py",
+      "tests/programs/library/lib_weakref_dead.py",
+      "tests/programs/library/lib_weakref_transition.py",
+      "tests/programs/library/lib_weakref_callback.py",
+      "tests/programs/library/lib_weakref_callback_nested.py",
+      "tests/programs/library/lib_weakref_callback_dead_ref.py",
+      "tests/programs/optimizations/opt_alloc_held_fields.py",
+      "tests/programs/optimizations/opt_alloc_held_tuple.py",
+      "tests/programs/optimizations/opt_alloc_held_cohort.py",
+      "tests/programs/optimizations/opt_scalars.py",
+      "tests/programs/optimizations/opt_tupleiter.py",
+      "tests/programs/inference/dynany_identity_fields.py",
+      "tests/programs/inference/dynany_identity_field_defaults.py",
+      "tests/programs/inference/dynany_identity_field_kinds.py",
+      "tests/programs/inference/dynany_identity_scope_fields.py",
+      "tests/programs/inference/dynany_identity_cells.py",
+      "tests/programs/inference/dynany_identity_joined_cells.py",
+      "tests/programs/inference/dynany_identity_field_retired.py",
+      "tests/programs/inference/dynany_identity_expression_lifetime.py",
+      "tests/programs/inference/dynany_layout_forms.py",
+      "tests/programs/inference/dynany_layout_records.py",
+      "tests/programs/inference/dynany_forward_cycle_dict.py",
+      "tests/programs/language/closures_scopes.py",
+      "tests/programs/language/closures_more.py",
+      "tests/programs/language/closure_paths.py",
+      "tests/programs/generators/gen_gc.py",
+      "tests/programs/generators/gen_protocol_gc.py",
+      "tests/programs/generators/gen_cm_gc.py",
+      "tests/programs/inference/dynany_generator_boxing.py",
+      "tests/programs/inference/dynany_generator_context_protocol.py",
+      "tests/programs/numbers/python_int_generators.py",
+      "tests/programs/numbers/python_int_tuples.py",
+      "tests/programs/numbers/python_int_class_defaults.py",
+      "tests/programs/numbers/python_int_dataclass_copy.py",
+      "tests/programs/inference/dynany_identity_inert_fields.py",
+      "tests/programs/inference/dynany_identity_promote_wide.py",
+      "tests/programs/inference/dynany_identity_promote_return.py",
+      "tests/programs/inference/dynany_identity_promote_list.py",
+      "tests/programs/inference/dynany_identity_display_lifetime.py",
+      "tests/programs/numbers/python_int_any_identity.py",
+      "tests/ir/alloc_refs.py",
+      "tests/ir/alloc_refs_dyn.py",
+      "tests/ir/alloc_refs_big.py",
+      "runtime.py"
+    ],
+    "PYSTACHY_HOME": "/workspace/scratch/8b5d64b08ada/pystachy",
+    "returncode": 0,
+    "elapsed_seconds": 0.7515363569982583,
+    "log": "/workspace/scratch/8b5d64b08ada/irsame-diagnostic/shared-home-original.log",
+    "output": "48 programs identical\n"
+  },
+  "original_failed_log_unchanged": true,
+  "original_oracle_unchanged": true
+}

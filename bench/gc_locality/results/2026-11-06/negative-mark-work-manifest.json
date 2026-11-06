@@ -1,0 +1,18 @@
+{
+  "source_commit": "a533aa2b6c75b464ce01002208951087b384fed8",
+  "repo_status": "",
+  "source_sha256": {
+    "runtime.c": "b8d65bb367168f45233c63bbfae8dd34f605bc4d0796b0858d509859a71a2690",
+    "tools/gcmarkprobe.c": "710e9f83280e6023ec6b7f4117b70591fd19aa8b37e2acce1bec43ad991dcf04",
+    "runtime.py": "c45138f44a7aa25828b351b6d627e1a4f9fad69dc8a88532d053fb90e84beefb"
+  },
+  "subset_ir": {
+    "origin": "/workspace/scratch/8b5d64b08ada/pystachy/build/gcmarkprobe-rt.ll",
+    "sha256": "940a694da5ea93214d1308a8eb635b47d8d0a9d4256c63d084c24f5099f8aa5f"
+  },
+  "mutation": "The single while (todo[0]) { is replaced by if (todo[0]) { in a scratch runtime copy. Probe includes are redirected to the corresponding frozen runtime copy; no other source changes.",
+  "scratch": "/workspace/scratch/8b5d64b08ada/gcmark-negative-d6_gxu1h",
+  "clang_version": "Ubuntu clang version 18.1.3 (1ubuntu1)\nTarget: x86_64-pc-linux-gnu\nThread model: posix\nInstalledDir: /workspace/scratch/3e98002bc0e0/toolchain/usr/lib/llvm-18/bin\n",
+  "negative_runtime_sha256": "8edc0a80b6a0757c4b46511898db71cc2131b19ed5ca937bfc2310ed7e21089a",
+  "status_after": ""
+}

@@ -1,0 +1,220 @@
+{
+  "schema_version": 1,
+  "workload": "profile-scalars-aligned",
+  "started_utc": "2026-11-06T03:35:04.449117+00:00",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.39",
+  "python": "3.13.16 (main, Oct 14 2026, 01:04:01) [Clang 23.1.3 ]",
+  "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+  "cpu": 3,
+  "allowed_cpus": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+  ],
+  "logical_cpus": 9,
+  "loadavg_before": [
+    0.91455078125,
+    0.97412109375,
+    0.787109375
+  ],
+  "rounds": 1,
+  "warmups": 0,
+  "variants": [
+    {
+      "name": "combined_object",
+      "argv": [
+        "/workspace/scratch/8b5d64b08ada/bench-bin/candidate-scalars",
+        "600",
+        "200000",
+        "aligned"
+      ],
+      "source_revision": "a533aa2b6c75b464ce01002208951087b384fed8",
+      "env": {
+        "PYSTACHY_GC": "profile",
+        "PYSTACHY_GC_MIN": "32",
+        "PYSTACHY_GC_MARK": "object"
+      },
+      "cwd": "/workspace/scratch/8b5d64b08ada/pystachy",
+      "address_space_mib": 2048,
+      "inputs_sha256": {
+        "/workspace/scratch/8b5d64b08ada/pystachy/bench/gc_locality/scalars.py": "5faa30b04f355feebb1e6a8458ed11af4bdb24a53ffa2f5261a63b49c75e50f7"
+      },
+      "executable_path": "/workspace/scratch/8b5d64b08ada/bench-bin/candidate-scalars",
+      "executable_sha256": "cee10de5ed72f7391eb6693392760cf7a44e95f6f62b0bdda718519729a9c4fe",
+      "checkout": {
+        "revision": "a533aa2b6c75b464ce01002208951087b384fed8",
+        "status": ""
+      }
+    },
+    {
+      "name": "combined_block",
+      "argv": [
+        "/workspace/scratch/8b5d64b08ada/bench-bin/candidate-scalars",
+        "600",
+        "200000",
+        "aligned"
+      ],
+      "source_revision": "a533aa2b6c75b464ce01002208951087b384fed8",
+      "env": {
+        "PYSTACHY_GC": "profile",
+        "PYSTACHY_GC_MIN": "32",
+        "PYSTACHY_GC_MARK": "block"
+      },
+      "cwd": "/workspace/scratch/8b5d64b08ada/pystachy",
+      "address_space_mib": 2048,
+      "inputs_sha256": {
+        "/workspace/scratch/8b5d64b08ada/pystachy/bench/gc_locality/scalars.py": "5faa30b04f355feebb1e6a8458ed11af4bdb24a53ffa2f5261a63b49c75e50f7"
+      },
+      "executable_path": "/workspace/scratch/8b5d64b08ada/bench-bin/candidate-scalars",
+      "executable_sha256": "cee10de5ed72f7391eb6693392760cf7a44e95f6f62b0bdda718519729a9c4fe",
+      "checkout": {
+        "revision": "a533aa2b6c75b464ce01002208951087b384fed8",
+        "status": ""
+      }
+    }
+  ],
+  "notes": "AOT execution only. Same source, 2 GiB address-space cap, GC minimum allocation window 32 MiB, single pinned CPU. Build metadata in builds.json. Atomic changes only reference-free object allocation; block is opt-in. Separate one-run diagnostic with hot-path profile counters enabled; do not use for headline throughput.",
+  "samples": [
+    {
+      "variant": "combined_object",
+      "phase": "measure",
+      "round": 0,
+      "returncode": 0,
+      "wall_s": 2.2289665040007094,
+      "user_s": 2.19802,
+      "system_s": 0.025254,
+      "peak_rss_kib": 49920,
+      "minor_faults": 13030,
+      "major_faults": 0,
+      "stdout_sha256": "bc1e990c253ba353e8c0470bc6dbaecc146f938b532b432dc0fa921b929f2333",
+      "stdout_bytes": 46,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 333,
+          "elapsed_ms": 451.6,
+          "heap_peak_mib": 47.9,
+          "last_live_mib": 6.6
+        }
+      ],
+      "gc_lines": [
+        "gc: 333 collections, 451.6 ms; heap peak 47.9 MiB; live 6.6 MiB at the last",
+        "gc phases: roots 0.653 ms; trace 120.485 ms; sweep 330.498 ms",
+        "gc work: root words 99630; heap words 40142322; scanned objects 1998; range pushes 1998; chunk visits 0"
+      ],
+      "gc_profile": {
+        "phases": [
+          {
+            "roots_ms": 0.653,
+            "trace_ms": 120.485,
+            "sweep_ms": 330.498
+          }
+        ],
+        "work": [
+          {
+            "root_words": 99630,
+            "heap_words": 40142322,
+            "scanned_objects": 1998,
+            "range_pushes": 1998,
+            "chunk_visits": 0
+          }
+        ]
+      },
+      "stderr_tail": "gc: 333 collections, 451.6 ms; heap peak 47.9 MiB; live 6.6 MiB at the last\ngc phases: roots 0.653 ms; trace 120.485 ms; sweep 330.498 ms\ngc work: root words 99630; heap words 40142322; scanned objects 1998; range pushes 1998; chunk visits 0\n",
+      "output_matches": true
+    },
+    {
+      "variant": "combined_block",
+      "phase": "measure",
+      "round": 0,
+      "returncode": 0,
+      "wall_s": 2.2613527170033194,
+      "user_s": 2.245343,
+      "system_s": 0.013451,
+      "peak_rss_kib": 49920,
+      "minor_faults": 13032,
+      "major_faults": 0,
+      "stdout_sha256": "bc1e990c253ba353e8c0470bc6dbaecc146f938b532b432dc0fa921b929f2333",
+      "stdout_bytes": 46,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 333,
+          "elapsed_ms": 431.9,
+          "heap_peak_mib": 47.9,
+          "last_live_mib": 6.6
+        }
+      ],
+      "gc_lines": [
+        "gc: 333 collections, 431.9 ms; heap peak 47.9 MiB; live 6.6 MiB at the last",
+        "gc phases: roots 0.627 ms; trace 129.014 ms; sweep 302.258 ms",
+        "gc work: root words 99630; heap words 40142322; scanned objects 1998; range pushes 333; chunk visits 997"
+      ],
+      "gc_profile": {
+        "phases": [
+          {
+            "roots_ms": 0.627,
+            "trace_ms": 129.014,
+            "sweep_ms": 302.258
+          }
+        ],
+        "work": [
+          {
+            "root_words": 99630,
+            "heap_words": 40142322,
+            "scanned_objects": 1998,
+            "range_pushes": 333,
+            "chunk_visits": 997
+          }
+        ]
+      },
+      "stderr_tail": "gc: 333 collections, 431.9 ms; heap peak 47.9 MiB; live 6.6 MiB at the last\ngc phases: roots 0.627 ms; trace 129.014 ms; sweep 302.258 ms\ngc work: root words 99630; heap words 40142322; scanned objects 1998; range pushes 333; chunk visits 997\n",
+      "output_matches": true
+    }
+  ],
+  "complete": true,
+  "loadavg_after": [
+    1.001953125,
+    0.9912109375,
+    0.7939453125
+  ],
+  "summary": {
+    "combined_object": {
+      "wall_s": 2.2289665040007094,
+      "user_s": 2.19802,
+      "system_s": 0.025254,
+      "peak_rss_kib": 49920,
+      "minor_faults": 13030,
+      "major_faults": 0,
+      "samples": 1,
+      "all_outputs_match": true,
+      "gc_collections": 333,
+      "gc_elapsed_ms": 451.6,
+      "gc_heap_peak_mib": 47.9,
+      "gc_last_live_mib": 6.6
+    },
+    "combined_block": {
+      "wall_s": 2.2613527170033194,
+      "user_s": 2.245343,
+      "system_s": 0.013451,
+      "peak_rss_kib": 49920,
+      "minor_faults": 13032,
+      "major_faults": 0,
+      "samples": 1,
+      "all_outputs_match": true,
+      "gc_collections": 333,
+      "gc_elapsed_ms": 431.9,
+      "gc_heap_peak_mib": 47.9,
+      "gc_last_live_mib": 6.6
+    }
+  },
+  "all_outputs_match": true
+}
