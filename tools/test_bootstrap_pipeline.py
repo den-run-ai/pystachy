@@ -194,11 +194,11 @@ subprocess.run(producer + ["build", "pystachy.py", "-o", value("--output"),
             arguments = json.loads((self.root / "pipeline-arguments.json").read_text())
             self.assertIn("--overlap", arguments)
             self.assertIn("--caller-witnesses", arguments)
-            self.assertEqual(arguments[arguments.index("--inline-threshold") + 1], "75" if final_split else "0")
+            self.assertEqual(arguments[arguments.index("--inline-threshold") + 1], "75")
             self.assertEqual([e["inline_threshold"] for e in builds], ["0", "75"])
             self.assertTrue(all(e["inline_threshold"] is None for e in events if e["kind"] != "build"))
 
-    def test_thinlto_final_keeps_ordinary_stage1_and_all_six_witnesses(self):
+    def test_thinlto_final_overlaps_ordinary_stage1_and_keeps_all_six_witnesses(self):
         self.install_pipeline()
         extra = ("--jobs", "4", "--build-jobs", "4", "--stage1-opt", "0",
                  "--stage2-thinlto", "4", "--runtime-overlap", "--runtime-c-cache")
@@ -210,7 +210,10 @@ subprocess.run(producer + ["build", "pystachy.py", "-o", value("--output"),
             self.assertEqual([event["producer"] for event in builds], ["pystachy.py", "pystachy1"])
             self.assertEqual([event["opt"] for event in builds], ["0", "2"])
             steps = {node["name"]: node for node in report["steps"]}
-            self.assertNotIn("self_pipeline.py", " ".join(steps["build1"]["command"]))
+            first = steps["build1"]["command"]
+            self.assertIn("self_pipeline.py", " ".join(first))
+            self.assertEqual(first[first.index("--backend") + 1], "ordinary")
+            self.assertIn("--overlap", first)
             self.assertIn("self_pipeline.py", " ".join(steps["build2"]["command"]))
             self.assertEqual(steps["build2"]["slots"], 4)
             arguments = json.loads((self.root / "pipeline-arguments.json").read_text())
@@ -222,9 +225,27 @@ subprocess.run(producer + ["build", "pystachy.py", "-o", value("--output"),
             self.assertEqual(sum(event["kind"] == "ir" for event in events), 1)
             self.assertCountEqual([event["producer"] for event in events if event["kind"] == "rt"],
                                   ["pystachy.py", "pystachy1", "pystachy2"])
-            self.assertEqual(report["planned_work"]["runtime_prewarm_tiny_builds"], 1)
+            self.assertEqual(report["planned_work"]["runtime_prewarm_tiny_builds"], 2)
             self.assertEqual(report["fixed_points"]["rt"]["identical"], not mismatch)
             self.assertTrue(report["fixed_points"]["stage"]["identical"])
+
+    def test_ordinary_overlap_retains_six_witnesses_and_whole_module_policy(self):
+        self.install_pipeline()
+        code, report, events = self.run_case("optimized", (
+            "--jobs", "2", "--build-jobs", "2", "--stage1-opt", "0",
+            "--runtime-overlap", "--runtime-c-cache"))
+        self.assertEqual(code, 0)
+        self.assertEqual(report["planned_work"]["runtime_prewarm_tiny_builds"], 2)
+        for node in report["steps"][:2]:
+            command = node["command"]
+            self.assertEqual(command[command.index("--backend") + 1], "ordinary")
+            self.assertEqual(command[command.index("--partitions") + 1], "1")
+            self.assertIn("--overlap", command)
+        self.assertEqual([e["producer"] for e in events if e["kind"] == "build"], ["pystachy.py", "pystachy1"])
+        self.assertEqual(sum(e["kind"] == "ir" for e in events), 1)
+        self.assertCountEqual([e["producer"] for e in events if e["kind"] == "rt"],
+                              ["pystachy.py", "pystachy1", "pystachy2"])
+        self.assertTrue(all(v["identical"] for v in report["fixed_points"].values()))
 
     def test_thinlto_rejects_conflicting_policies_before_work(self):
         for extra in (("--stage2-thinlto", "9", "--runtime-c-cache"),
@@ -252,6 +273,17 @@ subprocess.run(producer + ["build", "pystachy.py", "-o", value("--output"),
                 self.assertEqual(caught.exception.code, 2)
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             pipeline.main(self.argv("baseline", "--stage1-split", "1", "--runtime-c-cache"))
+
+    def test_ordinary_overlap_rejects_unaccounted_work_before_creating_outputs(self):
+        for extra in (("--jobs", "2", "--build-jobs", "2"),
+                      ("--runtime-c-cache",),
+                      ("--runtime-c-cache", "--jobs", "9", "--build-jobs", "9"),
+                      ("--runtime-c-cache", "--jobs", "2", "--build-jobs", "2", "--partitions", "1")):
+            with self.subTest(extra=extra), contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                pipeline.main(self.argv("optimized", "--runtime-overlap", *extra))
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            pipeline.main(self.argv("baseline", "--runtime-overlap", "--runtime-c-cache", "--jobs", "2", "--build-jobs", "2"))
+        self.assertFalse(self.output.exists())
 
     def test_failed_build_blocks_dependents_and_reports_diagnostics(self):
         code, report, events = self.run_case("optimized", ("--jobs", "2"), FAIL_NODE="pystachy1")

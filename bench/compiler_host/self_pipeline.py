@@ -3,8 +3,9 @@
 This self-build-only controller measures whole-runtime overlap. The tiny build
 prepares runtime bitcode through the unchanged driver (and has its own measured
 small overhead). It does not silently replace arbitrary-program driver behavior.
---backend thinlto uses the bounded summaries-only LLVM 18 experiment at O2;
-the ordinary isolated-worker backend remains the default. Full bootstraps use
+--backend ordinary keeps the driver's whole-module AOT pass order; --backend
+thinlto uses the bounded summaries-only LLVM 18 experiment at O2. Isolated
+workers remain the default. Full bootstraps use
 --caller-witnesses only when their parent validates all six IR witnesses.
 """
 from __future__ import annotations
@@ -19,8 +20,43 @@ import tempfile
 import time
 
 from run import ROOT, atomic_json, bootstrap, measure, sha
-from backend_workers import Commands
+from backend_workers import Commands, LATE
 import partition_import
+
+sys.path.insert(0, str(ROOT))
+from src.pystachy_compiler.lower_module import uses_new_allocator
+
+
+def ordinary_backend(args, runner, env, linked, raw):
+    """Keep whole-module optimization and the driver's late-allocator contract."""
+    directory = linked.parent / "backend"
+    directory.mkdir()
+    clang, opt = str(args.llvm.resolve() / "clang"), str(args.llvm.resolve() / "opt")
+    level = "-O" + str(args.opt)
+    inline = [] if args.inline_threshold is None else ["-mllvm", "-inline-threshold=" + str(args.inline_threshold)]
+    allocator = uses_new_allocator(raw.decode("utf-8", errors="surrogateescape"))
+    ready = linked
+    steps = []
+    if allocator:
+        optimized, ready = directory / "optimized.bc", directory / "late.bc"
+        steps += [("optimize", [clang, level, *inline, "-c", "-emit-llvm", str(linked), "-o", str(optimized)]),
+                  ("late_inline", [opt, "-passes=forceattrs,always-inline", *LATE, str(optimized), "-o", str(ready)])]
+    object_file, built = directory / "program.o", directory / "compiler"
+    steps += [("codegen" if allocator else "optimize_codegen",
+               [clang, level, "-c", *(["-Xclang", "-disable-llvm-passes"] if allocator else inline),
+                str(ready), "-o", str(object_file), "-Wno-unused-command-line-argument"]),
+              ("link", [clang, str(object_file), "-o", str(built), "-lm"])]
+    report = {"complete": False, "allocator": allocator, "steps": []}
+    for name, command in steps:
+        result = runner.execute(command, env, 600)
+        result["name"] = name
+        report["steps"].append(result)
+        atomic_json(linked.parent / "backend.json", report)
+        measure.successful(result)
+    report.update(complete=True, compiler_sha256=sha(built), compiler_bytes=built.stat().st_size,
+                  object_sha256=sha(object_file))
+    atomic_json(linked.parent / "backend.json", report)
+    return report
 
 
 def same_file(first, second):
@@ -93,7 +129,7 @@ def main():
     parser.add_argument("--overlap", action="store_true")
     parser.add_argument("--jobs", type=int, default=1)
     parser.add_argument("--partitions", type=int, default=1)
-    parser.add_argument("--backend", choices=("workers", "thinlto"), default="workers")
+    parser.add_argument("--backend", choices=("workers", "thinlto", "ordinary"), default="workers")
     parser.add_argument("--opt", type=int, choices=(0, 1, 2), default=2)
     parser.add_argument("--inline-threshold", type=int, help="research: backend optimizer inlining threshold (0..10000)")
     parser.add_argument("--cache", type=Path, help="private bootstrap cache shared with the next stage")
@@ -107,6 +143,8 @@ def main():
         parser.error("inlining threshold must be from 0 to 10000")
     if args.backend == "thinlto" and (args.opt != 2 or args.inline_threshold is not None):
         parser.error("ThinLTO self-builds require O2 and the default LLVM inlining policy")
+    if args.backend == "ordinary" and args.partitions != 1:
+        parser.error("ordinary self-builds keep one whole module")
     return run_pipeline(args)
 
 
@@ -171,19 +209,22 @@ def run_pipeline(args):
                 report["thinlto_job"] = json.loads(job_path.read_text())
                 command = partition_import.backend_command(job_path, inherited_group=True)
                 backend_report = job_path.parent / "build.json"
-            else:
+            elif args.backend == "workers":
                 command = [sys.executable, str(ROOT / "bench/compiler_host/backend_workers.py"), "--input", str(linked),
                            "--llvm", str(llvm), "--partitions", str(args.partitions), "--jobs", str(args.jobs),
                            "--opt", str(args.opt), "--inherited-group", "--work", str(work / "backend"), "--report", str(backend_report)]
                 if args.inline_threshold is not None:
                     command += ["--inline-threshold", str(args.inline_threshold)]
-            result = runner.execute(command, env, 600)
-            report["stages"]["backend"] = result
+            if args.backend == "ordinary":
+                report["backend"] = ordinary_backend(args, runner, env, linked, raw)
+            else:
+                result = runner.execute(command, env, 600)
+                report["stages"]["backend"] = result
+                if backend_report.exists():
+                    report["backend"] = json.loads(backend_report.read_text())
+                measure.successful(result)
             report["build_wall_s"] = time.monotonic() - start
-            if backend_report.exists():
-                report["backend"] = json.loads(backend_report.read_text())
             atomic_json(args.report, report)
-            measure.successful(result)
             built = work / "backend/compiler"
             if args.backend == "thinlto":
                 built = partition_import.validate_backend_result(job_path, report["backend"], expected_job_sha256)
