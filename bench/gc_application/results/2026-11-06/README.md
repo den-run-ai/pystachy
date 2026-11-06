@@ -1,10 +1,13 @@
 # GC application evidence: 2026-11-06
 
 This directory preserves completed application measurements and preparation
-records. [evidence-manifest.json](evidence-manifest.json) maps every file in this
-application-evidence bundle to its original path, byte count and SHA-256. The
-source files were copied without reserialization or normalization. Absolute
-paths inside them identify the original run environment.
+records. Read the [evaluation](../2026-11-06.md) for conclusions and limitations.
+[evidence-manifest.json](evidence-manifest.json) maps the original native/preparation
+bundle to original paths, byte counts and SHA-256 values.
+[additional-evidence-manifest.json](additional-evidence-manifest.json) covers the later
+raw measurements, command snapshots and audits. Copied raw records are not reserialized
+or normalized; absolute paths identify their original run environment. Generated
+summaries record the hashes of the raw files they analyze.
 
 ## Completed preparation
 
@@ -40,8 +43,24 @@ The nine JSON files in `native/` cover `float`, `chaos`, `raytrace`, `json_loads
 runner summaries are preserved. Performance interpretation belongs to the
 separate evaluation report.
 
-Optional-backend timing, sensitivity measurements and profiles were still being
-handled separately when this bundle was made and are not part of this manifest.
+The [optional](optional/), [sensitivity](sensitivity/) and [profile](profile/) records
+are now complete in the additional evidence bundle. There are 23 primary/follow-up
+result files with 741 samples (626 measured and 115 warmups), plus three separately
+instrumented profiling samples. The [CPython output audit](audits/cpython-output-audit.json)
+checks all 744. The [local validation receipt](audits/local-validation.json) distinguishes
+hosted checks, native correctness runs and unrun integrated suites.
+
+| Result group | Human-readable summary | Structured summary / raw records |
+|---|---|---|
+| Native allocation/marking | [Native comparisons](native-summary.md) | [Summary](native-summary.json), [raw](native/) |
+| Optional BDWGC policies | [Optional comparisons](optional-summary.md) | [Summary](optional-summary.json), [raw](optional/) |
+| Pacing and longer union run | [Follow-up comparisons](sensitivity-summary.md) | [Summary](sensitivity-summary.json), [raw/configs](sensitivity/) |
+| Instrumented tracing / emitted IR sites | [Evaluation](../2026-11-06.md#compiler-assisted-scalar-union-allocation) | [Counters](profile/json_retained.json), [IR sites](profile/ir-sites.json) |
+
+[Code publication](code-publication.json) maps local source commits to published commits
+with identical complete trees. The historical command snapshots in `commands/` use the
+original absolute paths; the final preparation specifications are authoritative for
+the corrected flags and paths.
 
 ## Inputs and optional backend provenance
 

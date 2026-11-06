@@ -1,0 +1,25 @@
+{
+  "result": "/workspace/scratch/a009f956ecf0/sensitivity-results/union_retained_80.json",
+  "result_sha256": "65d5dd5959a562a303e6c61b721ef23c804be341c47a9a6843b7eb3a7ac1e021",
+  "oracle": {
+    "stdout": {
+      "path": "/workspace/scratch/a009f956ecf0/sensitivity-results/union80-oracle.stdout",
+      "sha256": "fbd05ceb23c2498eb6866862803311d82453f69ca0ac946b42d304c4841c8046",
+      "bytes": 113
+    },
+    "artifact": {
+      "path": "/workspace/scratch/a009f956ecf0/sensitivity-results/union80-oracle.artifact",
+      "sha256": "7c99eb08f43b56ec92057c995089d72081631269c3e93f3b775489c476ae8ed3",
+      "bytes": 2670461
+    }
+  },
+  "checked_samples": 21,
+  "checked_variants": [
+    "atomic_union",
+    "default",
+    "default_aa"
+  ],
+  "warmups": 3,
+  "measured": 18,
+  "all_match": true
+}

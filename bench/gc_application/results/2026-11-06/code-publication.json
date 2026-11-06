@@ -1,0 +1,104 @@
+{
+  "repository": "den-run-ai/pystachy",
+  "base_commit": "d36140acf551abbb6a7587d821c35442b11aed80",
+  "method": "Git objects published through the authenticated GitHub Git Data API. Every blob and root tree SHA matched its local source before commit creation. Commit IDs differ; paired commits have exactly equal complete root trees.",
+  "scope": "Source and compiler validation commits through the finalized analysis tool; subsequent evidence/report commits are intentionally outside this mapping.",
+  "commits": [
+    {
+      "local_commit_sha": "950a09832e5b7334e94480411e6bc3e98df00574",
+      "published_commit_sha": "4a9c7b4e6e08b4976815d09b5ed06cf176692247",
+      "tree_sha": "c2ba90897440c73c4d0f7ff6aa95233ee6f9e332",
+      "message": "Add reproducible GC application workload drivers"
+    },
+    {
+      "local_commit_sha": "a2615f3227b52ebeee14a084c568df49ae2b0401",
+      "published_commit_sha": "30ec6f1e3593d63ec66666ba8c165ea21cbbc89f",
+      "tree_sha": "b604d441456f87af8730b9c7ecd9d3a40b175321",
+      "message": "Experiment with compiler-proved atomic scalar union boxes"
+    },
+    {
+      "local_commit_sha": "5449ff3528d7f405fa2c065d35e53aa7d8c7bf75",
+      "published_commit_sha": "54768b46666556e4cf3097a6895e0712925f7447",
+      "tree_sha": "5396743f213248e9320d6c30979512a399440173",
+      "message": "Validate application GC builds and runtime evidence"
+    },
+    {
+      "local_commit_sha": "651194c91d26a26cef7a1e1938513ff7777e159f",
+      "published_commit_sha": "dcb49556c13f61003117f946801fc73fe0bda389",
+      "tree_sha": "1ce132f4ea3562c8972e989fa094ed133349b7d4",
+      "message": "Use representable native bounds in union GC fixture"
+    },
+    {
+      "local_commit_sha": "84b27481a3d0761e6ef869272255f7f643913e0a",
+      "published_commit_sha": "338026041fd68ec17f30541a87eda9379637556f",
+      "tree_sha": "015e79761e2ffb4950668961f138007c07657eab",
+      "message": "Qualify wide integer ownership in GC experiment docs"
+    },
+    {
+      "local_commit_sha": "745bd4500cf27d21f2cb858bf25dbb57bde1f7af",
+      "published_commit_sha": "1069e8a825e0e9b57e7e72997e73dad55c2a81d3",
+      "tree_sha": "d3ce99728d51bcf17ff48612647daf6ad97cd3cd",
+      "message": "Add restricted BDWGC application-runtime experiment"
+    },
+    {
+      "local_commit_sha": "4c339081dc3ee138968e4348f191d6c2ed697b20",
+      "published_commit_sha": "f0b11a784c0d7341435016ee99c5cd0cec1a5a5f",
+      "tree_sha": "f3aa7d2fd6389b7a62559e7dc7013f6d229f2901",
+      "message": "Resolve GC overlay paths before checking isolation"
+    },
+    {
+      "local_commit_sha": "648688d6a96cfbc1c7f2827527a82f97e7d7b0f2",
+      "published_commit_sha": "6f5852dec00595a0dd683864c019c8d0706ad168",
+      "tree_sha": "2615c9bbfc99c42cd0d3005e043bfb68c5060eaf",
+      "message": "Run optional GC overlay regression checks in existing lint job"
+    },
+    {
+      "local_commit_sha": "647821912a5301b6c9321442794b0b6a22249203",
+      "published_commit_sha": "07d3c1d9e23c64e69dd4122bbc1139cbead2fb53",
+      "tree_sha": "7ec0ed49a6671f2a370070ea95b8e94e6cdd9867",
+      "message": "Disable manual BDWGC tracking without write barriers"
+    },
+    {
+      "local_commit_sha": "425ad3603e370f04c99412bc5114fa767f94013c",
+      "published_commit_sha": "f9d00d993ee87bd7cac5876afe9e08e38c078020",
+      "tree_sha": "e0d3d4a81d5d01e1ad5e1ad22530ac3ded591f4c",
+      "message": "Add retained JSON workload without managed file resources"
+    },
+    {
+      "local_commit_sha": "14e6db69acc2ac48f0486f388db00f7650b27f4f",
+      "published_commit_sha": "bbc09cd5b7cf8e93a0012d9b3c2917ef2f196c3c",
+      "tree_sha": "f6676ab03be333ede0bc041b7f252b3575dbe86c",
+      "message": "Archive scalar-union compiler validation evidence"
+    },
+    {
+      "local_commit_sha": "45e043904a050d1f25b8a099ed37f42fca45050e",
+      "published_commit_sha": "e35b96e22e39157b036e5255ba58fcb178f19746",
+      "tree_sha": "b26ddd4ccb2c5e4d17001f6ef67b80e91146a4c0",
+      "message": "Summarize paired GC application results with A-A controls"
+    },
+    {
+      "local_commit_sha": "4efb41c7af41d7c6e72189d9e1a69dceaff2bcfd",
+      "published_commit_sha": "0657e7c720756d17f64b285a8a5ed740523c2f24",
+      "tree_sha": "63b254affbf916671c6486eb0d2e33374eae8105",
+      "message": "Identify unchanged-binary observations in GC summaries"
+    },
+    {
+      "local_commit_sha": "41df40ec4b068723fc69a07390655553a1ff6bb5",
+      "published_commit_sha": "85d1fd84ea49c85ca85487bbda594b20dc94e0e5",
+      "tree_sha": "359b8f71a13752c7723317375b388df310c58027",
+      "message": "Exercise paired measurement validation in existing lint job"
+    },
+    {
+      "local_commit_sha": "2dd4036c4f7704f0d5497e16d09cb5b465708eb0",
+      "published_commit_sha": "6688759f627afb0f545addd1278947c3d723ec20",
+      "tree_sha": "69a4ca6338deab08be1324fa8a108a1773584ca1",
+      "message": "Forward optional GC libraries only to the linker"
+    },
+    {
+      "local_commit_sha": "8afcb804b263e7303f9f746ee55332cf40ddbff6",
+      "published_commit_sha": "3731cc26d39cf33cdf67a19e1aa128cc36362bcb",
+      "tree_sha": "5d5c65de364cd7eb8370e414938da49e9aad04a8",
+      "message": "Keep BDWGC pause diagnostics separate in application summaries"
+    }
+  ]
+}

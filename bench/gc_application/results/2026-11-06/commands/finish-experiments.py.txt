@@ -1,0 +1,29 @@
+from pathlib import Path
+import copy, datetime, hashlib, json, os, subprocess
+r=Path('/workspace/scratch/a009f956ecf0'); repo=r/'pystachy'; py=str(r/'venv/bin/python'); out=r/'sensitivity-results'
+name='json_dumps'
+cfg=json.loads((r/'native-build'/(name+'.json')).read_text()); base=next(v for v in cfg['variants'] if v['name']=='default'); cfg['variants']=[]
+for minimum in [8,32,128]:
+ v=copy.deepcopy(base);v['name']='min'+str(minimum);v['env']['PYSTACHY_GC_MIN']=str(minimum);cfg['variants'].append(v)
+other=json.loads((r/'optional-aot-build'/(name+'.json')).read_text());cfg['variants'].append(next(v for v in other['variants'] if v['name']=='bdw'));cfg['inputs'].append(str(r/'optional-aot-build/builds.json'));cfg['name']='pacing_json_dumps';cfg['notes']='Exploratory follow-up after optional JSON serialization showed near elapsed parity and lower RSS. Compare native MIN8/32/128 and existing BDW default in one batch; four rotated rounds plus one warmup, CPU3, same2048MiB RLIMIT_AS. Same full args and already CPython-validated outputs. No default policy changed.'
+cp=out/'pacing_json_dumps.config.json'; cp.write_text(json.dumps(cfg,indent=2)+'\n')
+with (out/'pacing_json_dumps.log').open('w') as log:subprocess.run([py,'-I',str(repo/'bench/gc_locality/run.py'),'--config',str(cp),'--cpu','3','--rounds','4','--warmups','1','--json',str(out/'pacing_json_dumps.json')],stdout=log,stderr=subprocess.STDOUT,cwd=repo,check=True)
+print('pacing_json_dumps complete',flush=True)
+pout=r/'profile-results';pout.mkdir(exist_ok=True)
+cfg=json.loads((r/'native-build/json_retained.json').read_text());cfg['variants']=[v for v in cfg['variants'] if v['name'] in ['default','atomic_union','block']]
+for v in cfg['variants']:v['env']['PYSTACHY_GC']='profile'
+cfg['env']['PYSTACHY_GC']='profile';cfg['name']='json_retained_profile';cfg['notes']='Separate instrumentation run for structural trace counters; one round, no warmup. Do not use instrumented timings as headline throughput or pool with stats samples.'
+cp=pout/'json_retained.config.json';cp.write_text(json.dumps(cfg,indent=2)+'\n')
+with (pout/'json_retained.log').open('w') as log:subprocess.run([py,'-I',str(repo/'bench/gc_locality/run.py'),'--config',str(cp),'--cpu','3','--rounds','1','--warmups','0','--json',str(pout/'json_retained.json')],stdout=log,stderr=subprocess.STDOUT,cwd=repo,check=True)
+print('profile complete',flush=True)
+env={k:v for k,v in os.environ.items() if not k.startswith(('PYSTACHY_','GC_')) and k not in ('PYTHONPATH','PYTHONHOME','LD_PRELOAD')};env.update(PYSTACHY_HOME=str(repo),PYSTACHY_PATH=str(repo/'bench'))
+records={}
+for opt in ['default','atomic_union']:
+ target=pout/(opt+'.ll');e=dict(env)
+ if opt=='atomic_union':e['PYSTACHY_OPT']='+atomicunion'
+ command=[str(r/'compiler-gc/pystachy'),'ir',str(repo/'bench/gc_application/json_retained.py'),'-o',str(target)]
+ subprocess.run(command,env=e,cwd=repo,check=True)
+ data=target.read_bytes();lines=data.decode().splitlines();calls=[line.strip() for line in lines if 'call ' in line and ('@pys_ubox(' in line or '@pys_ubox_atomic(' in line)]
+ records[opt]={'command':command,'env':{k:v for k,v in e.items() if k.startswith('PYSTACHY_')},'ir_sha256':hashlib.sha256(data).hexdigest(),'bytes':len(data),'scanned_union_call_sites':sum('@pys_ubox(' in x for x in calls),'atomic_union_call_sites':sum('@pys_ubox_atomic(' in x for x in calls),'union_calls':calls}
+(pout/'ir-sites.json').write_text(json.dumps(records,indent=2)+'\n')
+print('IR sites complete',flush=True)

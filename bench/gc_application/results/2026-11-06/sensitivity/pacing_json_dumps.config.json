@@ -1,0 +1,64 @@
+{
+  "name": "pacing_json_dumps",
+  "cwd": "/workspace/scratch/a009f956ecf0/pystachy",
+  "inputs": [
+    "/workspace/scratch/a009f956ecf0/pystachy/bench/pyperformance/json_dumps.py",
+    "/workspace/scratch/a009f956ecf0/native-build/builds.json",
+    "/workspace/scratch/a009f956ecf0/optional-aot-build/builds.json"
+  ],
+  "address_space_mib": 2048,
+  "env": {
+    "PYSTACHY_GC": "stats"
+  },
+  "notes": "Exploratory follow-up after optional JSON serialization showed near elapsed parity and lower RSS. Compare native MIN8/32/128 and existing BDW default in one batch; four rotated rounds plus one warmup, CPU3, same2048MiB RLIMIT_AS. Same full args and already CPython-validated outputs. No default policy changed.",
+  "variants": [
+    {
+      "name": "min8",
+      "argv": [
+        "/workspace/scratch/a009f956ecf0/native-build/default-json_dumps",
+        "240"
+      ],
+      "env": {
+        "PYSTACHY_GC": "stats",
+        "PYSTACHY_GC_MIN": "8"
+      },
+      "validated_executable_sha256": "aba234ec0da49eead643b57d0299a1de1e7af8bcffb555433dcc378d2e2ee1eb"
+    },
+    {
+      "name": "min32",
+      "argv": [
+        "/workspace/scratch/a009f956ecf0/native-build/default-json_dumps",
+        "240"
+      ],
+      "env": {
+        "PYSTACHY_GC": "stats",
+        "PYSTACHY_GC_MIN": "32"
+      },
+      "validated_executable_sha256": "aba234ec0da49eead643b57d0299a1de1e7af8bcffb555433dcc378d2e2ee1eb"
+    },
+    {
+      "name": "min128",
+      "argv": [
+        "/workspace/scratch/a009f956ecf0/native-build/default-json_dumps",
+        "240"
+      ],
+      "env": {
+        "PYSTACHY_GC": "stats",
+        "PYSTACHY_GC_MIN": "128"
+      },
+      "validated_executable_sha256": "aba234ec0da49eead643b57d0299a1de1e7af8bcffb555433dcc378d2e2ee1eb"
+    },
+    {
+      "name": "bdw",
+      "argv": [
+        "/workspace/scratch/a009f956ecf0/optional-aot-build/bdw-json_dumps",
+        "240"
+      ],
+      "env": {
+        "PYSTACHY_GC": "stats",
+        "PYSTACHY_BDWGC_MODE": "default"
+      },
+      "validated_executable_sha256": "a165a07aa612d1a879b9c5d2e66fffcc72a05a4a88e8450d9b8f7c8a6b092d8b"
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "source_code_commit": "8afcb804b263e7303f9f746ee55332cf40ddbff6",
+  "note": "Subsequent local changes before this receipt are result archives, documentation, and generated summaries only; compiler/runtime/library/controller code is unchanged. Full make verify and check-recordings are not claimed by these local checks.",
+  "checks": [
+    {
+      "command": "env PATH=<pinned-dev-venv>:$PATH PYSTACHY_LLVM=<LLVM18>/bin make check-fast lint check-runtime PY=<CPython3.13.16>",
+      "exit_code": 0,
+      "hosted_unit_checks": 416,
+      "log": "integrated-checks.log",
+      "sha256": "7d7868ec44352724deac33097406ed5ee5f3de5b5cfb60f6267af18d02129f0c"
+    },
+    {
+      "command": "python -m unittest discover -s bench/gc_locality -p 'test_*.py'",
+      "result": "OK",
+      "checks": 16
+    },
+    {
+      "command": "python -m unittest discover -s bench/gc_application -p 'test_*.py'",
+      "result": "OK",
+      "checks": 11
+    },
+    {
+      "command": "python -m unittest discover -s tools -p test_workflow_limits.py",
+      "result": "OK",
+      "checks": 14
+    }
+  ],
+  "unit_log": {
+    "path": "benchmark-control-tests.log",
+    "sha256": "380546718019701a6895908a8ab6b99a0d5bacf534c339a8a30d81f3cd8d32e1"
+  },
+  "native_application_preparation": 162,
+  "optional_application_preparation": 120,
+  "targeted_native_compiler_checks": 94,
+  "cross_oracle_timed_samples": 744,
+  "receipt_checkout": "2f8bd16a72fe65e45685548cbc82a958f2260bb7",
+  "checked_checkout": "c3c04bb2f474085925cb1216b58fe024461282b5"
+}

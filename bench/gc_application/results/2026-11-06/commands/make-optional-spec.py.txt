@@ -1,0 +1,14 @@
+import json
+from pathlib import Path
+r=Path('/workspace/scratch/a009f956ecf0')
+s=json.loads((r/'native-spec.json').read_text())
+s['cases']=[dict(name='json_retained_memory',source='bench/gc_application/json_retained_memory.py',args=['full','40','4'],smoke_args=['smoke','5','3'],python_path=['bench',str(r/'embedded-json')],inputs=['bench/json_records.py',str(r/'embedded-json/gc_json_fixture.py'),str(r/'embedded-json/gc_json_fixture.manifest.json')])]+s['cases'][:7]
+compiler=str(r/'compiler-gc/pystachy')
+s['variants']=[
+ dict(name='native',compiler=compiler,home=str(r/'pystachy'),run_env={'PYSTACHY_GC_MIN':'32'}),
+ dict(name='bdw',compiler=compiler,home=str(r/'bdwgc-final-overlay'),build_env={'PYSTACHY_CFLAGS':f'-I{r}/bdwgc/usr/include {r}/bdwgc/usr/lib/x86_64-linux-gnu/libgc.a'},build_inputs=[str(r/'bdwgc/usr/include'),str(r/'bdwgc/usr/lib/x86_64-linux-gnu/libgc.a'),str(r/'bdwgc-final-overlay/bdwgc-manifest.json')],run_env={'PYSTACHY_BDWGC_MODE':'default'}),
+ dict(name='bdw_32m',build_from='bdw',run_env={'PYSTACHY_BDWGC_MODE':'default','GC_INITIAL_HEAP_SIZE':'33554432'}),
+ dict(name='bdw_incremental',build_from='bdw',run_env={'PYSTACHY_BDWGC_MODE':'incremental','GC_USE_GETWRITEWATCH':'0'}),
+ dict(name='bdw_generational',build_from='bdw',run_env={'PYSTACHY_BDWGC_MODE':'generational','GC_USE_GETWRITEWATCH':'0'})]
+s['notes']='Prebuilt AOT applications with one mutator/marker; exact full-scale CPython stdout checks precede measurement. Native uses GC_MIN32MiB; BDW defaults and initial32MiB are DISTINCT policies, not matched heap caps. Incremental/generational explicitly use documented page protection, not unavailable soft-dirty mode. Same2048MiB RLIMIT_AS, observedRSS. Five rotated measured rounds and oneexcludedwarmup, CPU3, noownedheavyconcurrentwork. In-memory JSON is a separate workload using exactstaticliteral input and complete stdout. BDW stopped_world_ms is not totalGC CPU orelapsed.'
+(r/'optional-spec.json').write_text(json.dumps(s,indent=2)+'\n')

@@ -1,0 +1,15 @@
+from pathlib import Path
+import json
+import subprocess
+r=Path('/workspace/scratch/a009f956ecf0');repo=r/'pystachy';py=str(r/'venv/bin/python')
+assert json.loads((r/'optional-aot-build/builds.json').read_text())['complete']
+subprocess.run([py,str(r/'run-native.py'),'chaos','raytrace','json_loads','json_dumps','richards','nbody'],check=True)
+out=r/'optional-results';out.mkdir(exist_ok=True)
+for name in ['json_retained_memory','float','chaos','raytrace','json_loads','json_dumps','richards','nbody']:
+    dest=out/(name+'.json')
+    if dest.exists():raise SystemExit('Refusing overwrite: '+str(dest))
+    print('BEGIN optional',name,flush=True)
+    with (out/(name+'.log')).open('w') as log:
+        subprocess.run([py,'-I',str(repo/'bench/gc_locality/run.py'),'--config',str(r/'optional-aot-build'/(name+'.json')),'--cpu','3','--rounds','5','--warmups','1','--json',str(dest)],cwd=repo,stdout=log,stderr=subprocess.STDOUT,check=True)
+    print('END optional',name,flush=True)
+subprocess.run([py,str(r/'run-followups.py')],check=True)

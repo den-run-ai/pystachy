@@ -4,6 +4,12 @@ These workloads measure application execution. Build binaries before the measure
 window. Keep compilation time out of runtime comparisons. No driver explicitly calls
 `gc.collect()` or makes a claim about the input representing a production distribution.
 
+The [2026-11-06 evaluation](results/2026-11-06.md) compares compiler-proven atomic
+allocations, chunk marking, native pacing, and an optional BDWGC backend. It preserves
+all primary results, unchanged-binary controls, follow-ups, unsuccessful preparation
+and exact input/source identities. New union allocation stays opt-in; the optional
+backend is a restricted research adapter.
+
 Use the unchanged adaptations in `bench/pyperformance/` for float, chaos, raytrace,
 JSON loads/dumps, Richards and n-body. Their provenance and adaptation limits are in
 [the pyperformance README](../pyperformance/README.md). N-body is a useful compute
@@ -92,3 +98,61 @@ byte-identical baseline control to establish local measurement variability. Use 
 stats for headline timing and separate detailed profiling to explain time, allocations
 and scanned words. Report runtime, collection time and memory together; lower GC time
 alone does not establish an application win.
+
+## Build and measure a recorded matrix
+
+`build.py` consumes a JSON specification, builds AOT executables and compares each
+configuration with pinned CPython before it writes measurement configurations. Each
+case runs a small input, that input with collection at every allocation, and its full
+timing input. It compares complete stdout and any `{output}` artifact. Compiler,
+runtime, import and explicit dependency files are hashed and held unchanged throughout
+preparation; inherited `PYSTACHY_*` and `GC_*` settings are cleared.
+
+The recorded [native specification](results/2026-11-06/preparation/native-spec.json)
+and [optional specification](results/2026-11-06/preparation/optional-spec.json) contain
+the actual cases, arguments, variants and environments. Their absolute paths identify
+the original checkouts: replace them with separate local checkouts/compilers for the
+recorded source revisions. Preserve the input sizes, settings and variant definitions
+when reproducing that comparison. The published/local source mapping is in the
+[source identity record](results/2026-11-06/code-publication.json).
+
+```sh
+# Exact input sizes used by the recorded evaluation.
+python3.13 bench/gc_application/prepare.py --out /tmp/gc-app-smoke --records 16 --customers 20
+python3.13 bench/gc_application/prepare.py --out /tmp/gc-app-full --records 20000 --customers 10000
+
+# Use an adapted spec and a fresh empty output directory.
+python3.13 -I bench/gc_application/build.py --spec /tmp/native-spec.json --out /tmp/native-build
+python3.13 -I bench/gc_locality/run.py --config /tmp/native-build/float.json \
+  --cpu 3 --rounds 6 --warmups 1 --json /tmp/float-results.json
+python3.13 -I bench/gc_application/summarize.py /tmp/float-results.json
+```
+
+The specified CPU must be available to the process. `build_from` aliases an earlier
+variant's exact executable; use it for identical-code controls and runtime-only policy
+changes. `build_env` contains compilation choices such as `PYSTACHY_OPT=+atomicunion`;
+`run_env` contains collection settings. `build_inputs` pins headers, archives or other
+dependencies outside the normal runtime/import trees. The controller verifies the
+executable hash again before timing and rejects output mismatches.
+
+For BDWGC, follow the [optional adapter contract and dependency instructions](../gc_locality/BDWGC.md).
+Take `PYSTACHY_CFLAGS` from the generated overlay manifest: its linker forwarding is
+required by the normal AOT driver. Supply native pacing only to native variants.
+The optional matrix embeds the exact JSON input with:
+
+```sh
+python3.13 bench/gc_application/embed_fixture.py \
+  --small /tmp/gc-app-smoke/records.json --full /tmp/gc-app-full/records.json \
+  --out-dir /tmp/gc-app-embedded
+```
+
+Set the in-memory case's import paths to `bench` and that generated directory. Its
+`smoke|full ROUNDS WINDOW` interface and complete stdout differ from the file-backed
+wrapper; label it separately and apply the same wrapper to every collector. The recorded
+primary runs use 40 iterations/window 4; the longer native union follow-up uses 80.
+
+Raw follow-up configurations and historical orchestration snapshots are preserved in
+the dated result directory. `summarize.py --pair CANDIDATE/CONTROL` selects explicit
+contrasts for pacing or optional backends. It rejects incomplete/mismatching samples,
+reports paired ratios and observed ranges, identifies exact-binary controls, and keeps
+BDWGC stopped-world counters separate from native collection elapsed time.

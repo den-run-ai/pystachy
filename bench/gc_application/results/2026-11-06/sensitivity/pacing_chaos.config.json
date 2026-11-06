@@ -1,0 +1,68 @@
+{
+  "name": "pacing_chaos",
+  "cwd": "/workspace/scratch/a009f956ecf0/pystachy",
+  "inputs": [
+    "/workspace/scratch/a009f956ecf0/pystachy/bench/pyperformance/chaos.py",
+    "/workspace/scratch/a009f956ecf0/native-build/builds.json",
+    "/workspace/scratch/a009f956ecf0/optional-aot-build/builds.json"
+  ],
+  "address_space_mib": 2048,
+  "env": {
+    "PYSTACHY_GC": "stats"
+  },
+  "notes": "Native pacing sensitivity; same already-validated executable and full inputs. GC_MIN is a pacing floor, not heap cap. Six rotated rounds with one excluded warmup, CPU 3; identical 2048 MiB address-space limit. Actual RSS reported. Prespecified policies 8/32/128 MiB applied equally. For this small-live-set follow-up, add the existing BDW default executable as a direct comparator to native MIN8. Four variants, four rotated measured rounds instead of six, plus one excluded warmup.",
+  "variants": [
+    {
+      "name": "min8",
+      "argv": [
+        "/workspace/scratch/a009f956ecf0/native-build/default-chaos",
+        "500",
+        "5000"
+      ],
+      "env": {
+        "PYSTACHY_GC": "stats",
+        "PYSTACHY_GC_MIN": "8"
+      },
+      "validated_executable_sha256": "92ab3e383f4f13be3281d4a44bb13ad8b422463ccca1061f7113ad3e85652a12"
+    },
+    {
+      "name": "min32",
+      "argv": [
+        "/workspace/scratch/a009f956ecf0/native-build/default-chaos",
+        "500",
+        "5000"
+      ],
+      "env": {
+        "PYSTACHY_GC": "stats",
+        "PYSTACHY_GC_MIN": "32"
+      },
+      "validated_executable_sha256": "92ab3e383f4f13be3281d4a44bb13ad8b422463ccca1061f7113ad3e85652a12"
+    },
+    {
+      "name": "min128",
+      "argv": [
+        "/workspace/scratch/a009f956ecf0/native-build/default-chaos",
+        "500",
+        "5000"
+      ],
+      "env": {
+        "PYSTACHY_GC": "stats",
+        "PYSTACHY_GC_MIN": "128"
+      },
+      "validated_executable_sha256": "92ab3e383f4f13be3281d4a44bb13ad8b422463ccca1061f7113ad3e85652a12"
+    },
+    {
+      "name": "bdw",
+      "argv": [
+        "/workspace/scratch/a009f956ecf0/optional-aot-build/bdw-chaos",
+        "500",
+        "5000"
+      ],
+      "env": {
+        "PYSTACHY_GC": "stats",
+        "PYSTACHY_BDWGC_MODE": "default"
+      },
+      "validated_executable_sha256": "fb6f37d920e544e13a3c759cf4135da7d20f79863fb4ed85b537d82288e60849"
+    }
+  ]
+}
