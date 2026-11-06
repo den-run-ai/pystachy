@@ -1,9 +1,10 @@
 # Installation
 
 Choose a native release package, the Docker image, a GitHub source install with
-pip or uv, or a manual source build. Installations outside Docker need
-**LLVM 18 on Linux / LLVM 20 on macOS** to compile programs. The native release
-package and Docker image run the compiler without Python.
+pip or uv, or a manual source build. The compiler uses **LLVM 18 on Linux /
+LLVM 20 on macOS**. Docker includes LLVM, and GitHub source installs can fetch
+it on first use. The native release package and Docker image run the compiler
+without Python.
 
 ## Native release packages
 
@@ -78,8 +79,18 @@ commit. `latest` advances only for stable releases; prereleases use explicit ver
 ## Install from GitHub with pip or uv
 
 Installing from GitHub requires Git and Python 3.11+. The installed command runs
-the compiler under Python. To compile programs, install the
-[host LLVM toolchain](#native-release-packages) and use the usual
+the compiler under Python. On Ubuntu 24.04 x86-64/ARM64 and macOS 15+
+Apple Silicon, the first compile downloads and verifies a pinned LLVM toolchain
+without administrator access. Ubuntu uses LLVM 18.1.3 from the Ubuntu
+snapshot archive (about 70 MB). macOS uses LLVM 20.1.8 from the LLVM release
+archive (about 1.45 GB). Ubuntu needs the host C toolchain (`build-essential`)
+and shared libraries (`libedit2`, `libffi8`, `libxml2`). macOS needs the Xcode
+Command Line Tools.
+
+The download is shared across pip and uv in `$XDG_CACHE_HOME/pystachy/toolchains`
+(default `~/.cache/pystachy/toolchains`). Use `PYSTACHY_LLVM_CACHE` to select a
+different cache. Set `PYSTACHY_LLVM` to an existing LLVM `bin` directory to
+use a host toolchain or work offline. Other platforms use the usual
 [LLVM discovery](#check-or-prepare-dependencies). Ordinary AOT executables run
 without Python or LLVM.
 

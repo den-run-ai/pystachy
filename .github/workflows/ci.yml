@@ -320,6 +320,8 @@ jobs:
           make test-install
           python3 tools/install_smoke.py
       - name: Install the compiler with pip and uv
+        env:
+          PYSTACHY_LLVM: ${{ runner.os == 'macOS' && '/opt/homebrew/opt/llvm@20/bin' || '/usr/lib/llvm-18/bin' }}
         run: |
           python3 -m pip install -r tools/requirements-packaging.txt
           python3 tools/compiler_install_smoke.py
