@@ -1,0 +1,6 @@
+u_tomllib                          cpy_rc=0 jit=PASS aot=PASS
+u_tomllib_full                     cpy_rc=0 jit=PASS aot=PASS
+u_tomllib_errors                   cpy_rc=0 jit=PASS aot=PASS
+u_roundtrip                        cpy_rc=0 jit=PASS aot=PASS
+u_tomllib_compliance               cpy_rc=0 jit=PASS aot=PASS
+done

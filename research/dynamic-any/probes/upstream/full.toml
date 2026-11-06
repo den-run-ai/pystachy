@@ -1,0 +1,38 @@
+# comment
+int1 = +99
+int2 = 1_000
+hex = 0xDEADBEEF
+oct = 0o755
+bin = 0b1101
+flt = -3.1415e-2
+pinf = inf
+nnan = nan
+str1 = "tab\there \u00e9 \"q\""
+lit = 'C:\Users\x'
+ml = """
+Roses are red
+  Violets are blue"""
+mll = '''
+raw \n text'''
+odt = 1979-05-27T07:32:00-08:00
+zdt = 1979-05-27T07:32:00.999Z
+ldt = 1979-05-27T07:32:00
+ld = 1979-05-27
+lt = 07:32:00.5
+a.b.c = 1
+a.d = "x"
+points = [ { x = 1, y = 2 }, { x = 7.5, y = "z" } ]
+nested = [[1, 2], ["a", "b"], []]
+empty = {}
+
+[server."alpha"]
+ip = "10.0.0.1"
+
+[[fruits]]
+name = "apple"
+[fruits.physical]
+color = "red"
+[[fruits.varieties]]
+name = "red delicious"
+[[fruits]]
+name = "banana"

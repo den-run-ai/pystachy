@@ -1,0 +1,136 @@
+diff -ruN a/tomli_w/__init__.py b/tomli_w/__init__.py
+--- a/tomli_w/__init__.py
++++ b/tomli_w/__init__.py
+@@ -1,3 +1,4 @@
++# pystachy: dynamic-any
+ __all__ = ("dumps", "dump")
+ __version__ = "1.2.0"  # DO NOT EDIT THIS LINE MANUALLY. LET bump2version UTILITY DO IT
+
+diff -ruN a/tomli_w/_writer.py b/tomli_w/_writer.py
+--- a/tomli_w/_writer.py
++++ b/tomli_w/_writer.py
+@@ -1,8 +1,9 @@
++# pystachy: dynamic-any
+ from __future__ import annotations
+
+ from collections.abc import Mapping
+ from datetime import date, datetime, time
+-from types import MappingProxyType
++# EDIT 1: no types.MappingProxyType
+
+ TYPE_CHECKING = False
+ if TYPE_CHECKING:
+@@ -18,7 +19,7 @@
+ ARRAY_TYPES = (list, tuple)
+ MAX_LINE_LENGTH = 100
+
+-COMPACT_ESCAPES = MappingProxyType(
++COMPACT_ESCAPES = (  # EDIT 1
+     {
+         "\u0008": "\\b",  # backspace
+         "\u000A": "\\n",  # linefeed
+@@ -41,7 +42,7 @@
+
+
+ def dump(
+-    obj: Mapping[str, Any],
++    obj: Any,  # EDIT 4
+     fp: IO[bytes],
+     /,
+     *,
+@@ -54,14 +55,14 @@
+
+
+ def dumps(
+-    obj: Mapping[str, Any], /, *, multiline_strings: bool = False, indent: int = 4
++    obj: Any, /, *, multiline_strings: bool = False, indent: int = 4
+ ) -> str:
+     ctx = Context(multiline_strings, indent)
+     return "".join(gen_table_chunks(obj, ctx, name=""))
+
+
+ def gen_table_chunks(
+-    table: Mapping[str, Any],
++    table: Any,  # EDIT 4
+     ctx: Context,
+     *,
+     name: str,
+@@ -69,9 +70,9 @@
+ ) -> Generator[str, None, None]:
+     yielded = False
+     literals = []
+-    tables: list[tuple[str, Any, bool]] = []  # => [(key, value, inside_aot)]
++    tables: list[tuple[Any, Any, bool]] = []  # EDIT 5  # => [(key, value, inside_aot)]
+     for k, v in table.items():
+-        if isinstance(v, Mapping):
++        if isinstance(v, dict):
+             tables.append((k, v, False))
+         elif is_aot(v) and not all(is_suitable_inline_table(t, ctx) for t in v):
+             tables.extend((k, t, True) for t in v)
+@@ -97,7 +98,7 @@
+         yield from gen_table_chunks(v, ctx, name=display_name, inside_aot=in_aot)
+
+
+-def format_literal(obj: object, ctx: Context, *, nest_level: int = 0) -> str:
++def format_literal(obj: Any, ctx: Context, *, nest_level: int = 0) -> str:
+     if isinstance(obj, bool):
+         return "true" if obj else "false"
+     if isinstance(obj, (int, float, date, datetime)):
+@@ -108,18 +109,14 @@
+         return str(obj)
+     if isinstance(obj, str):
+         return format_string(obj, allow_multiline=ctx.allow_multiline)
+-    if isinstance(obj, ARRAY_TYPES):
++    if isinstance(obj, (list, tuple)):
+         return format_inline_array(obj, ctx, nest_level)
+-    if isinstance(obj, Mapping):
++    if isinstance(obj, dict):
+         return format_inline_table(obj, ctx)
+
+-    # Lazy import to improve module import time
+-    from decimal import Decimal
+-
+-    if isinstance(obj, Decimal):
+-        return format_decimal(obj)
++    # EDIT 7: no decimal module (lazy import), type(obj).__name__ for __qualname__
+     raise TypeError(
+-        f"Object of type '{type(obj).__qualname__}' is not TOML serializable"
++        f"Object of type '{type(obj).__name__}' is not TOML serializable"
+     )
+
+
+@@ -132,7 +129,7 @@
+     return dec_str if "." in dec_str or "e" in dec_str else dec_str + ".0"
+
+
+-def format_inline_table(obj: Mapping, ctx: Context) -> str:
++def format_inline_table(obj: Any, ctx: Context) -> str:
+     # check cache first
+     obj_id = id(obj)
+     if obj_id in ctx.inline_table_cache:
+@@ -153,7 +150,7 @@
+     return rendered
+
+
+-def format_inline_array(obj: tuple | list, ctx: Context, nest_level: int) -> str:
++def format_inline_array(obj: Any, ctx: Context, nest_level: int) -> str:
+     if not obj:
+         return "[]"
+     item_indent = ctx.indent_str * (1 + nest_level)
+@@ -216,13 +213,13 @@
+     """Decides if an object behaves as an array of tables (i.e. a nonempty list
+     of dicts)."""
+     return bool(
+-        isinstance(obj, ARRAY_TYPES)
++        isinstance(obj, (list, tuple))
+         and obj
+-        and all(isinstance(v, Mapping) for v in obj)
++        and all(isinstance(v, dict) for v in obj)
+     )
+
+
+-def is_suitable_inline_table(obj: Mapping, ctx: Context) -> bool:
++def is_suitable_inline_table(obj: Any, ctx: Context) -> bool:
+     """Use heuristics to decide if the inline-style representation is a good
+     choice for a given table."""
+     rendered_inline = f"{ctx.indent_str}{format_inline_table(obj, ctx)},"

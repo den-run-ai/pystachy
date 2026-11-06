@@ -1,0 +1,14 @@
+--- a/runtime.c
++++ b/runtime.c
+@@ -2881,6 +2881,11 @@
+     else if (d->hs[e - 1] == h) {
+       I x = d->keys[e - 1];
+       if (x == k || (d->kind == 1 && pys_str_eq((Str *)x, (Str *)k))) return i;
++      /* EXPERIMENT: two boxed strs in an Any-keyed dict compare as strs, without the generic walk */
++      if (objs == 2 && *kdesc(d->kind) == 'A' && ((Dyn *)x)->t->kind == 4 && ((Dyn *)k)->t->kind == 4) {
++        if (((Dyn *)x)->v == ((Dyn *)k)->v || pys_str_eq((Str *)((Dyn *)x)->v, (Str *)((Dyn *)k)->v)) return i;
++        continue;
++      }
+       if (objs && d->kind > 1) {
+         const char *s = kdesc(d->kind);
+         int eq = *s == 'T' ? keq(x, k, s, 1) : 2;
