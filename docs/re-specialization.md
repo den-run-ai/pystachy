@@ -1,25 +1,21 @@
 # Regex matchers generated from a profile (prototype)
 
-`lib/re` compiles each pattern to the bytecode CPython's compiler makes, then interprets it in
-`lib/re/_sre.py`, a port of CPython's C engine. A program usually compiles a handful of patterns and
-runs each one many times, so the interpreter decodes the same code again and again.
-`tools/re_specialize.py` removes that work. It records which patterns a program uses, then writes
-Python functions that each match one pattern. They are compiled with the program, and `lib/re`
-runs them instead of the interpreter.
+Generate a matcher for each frequently used regex to avoid repeatedly decoding
+its bytecode. The prototype in [`tools/re_specialize.py`](../tools/re_specialize.py)
+records a program's patterns under CPython and generates Python functions that
+Pystachy compiles with the program. `lib/re` uses a generated matcher when the
+pattern and subject are supported, and otherwise keeps its bytecode interpreter.
 
-This is value specialization, keyed on the pattern rather than on a type. Pystachy's templates
-already specialize code by type at build time. The evidence for keying on values instead is in
-[#392](https://github.com/den-run-ai/pystachy/issues/392) and its follow-up discussion: the two
-measured wins of skewed-type experiments came from a fixed callback and a fixed regex. A `Pattern`
-object always runs the same code. The matchers are generated ahead of time from a profile, as
-profile-guided AOT. Online tier-up, as V8 does for regexps, would need in-process code loading
-([#707](https://github.com/den-run-ai/pystachy/issues/707),
-[#704](https://github.com/den-run-ai/pystachy/issues/704)) and a code cache
-([#104](https://github.com/den-run-ai/pystachy/issues/104)).
+The workflow is profile-guided AOT. Generated code can reduce matching time, but
+adds build time and executable size; the [recorded measurements](#measurements)
+show both costs.
 
 ## Use
 
-Record, generate, build:
+### Record, generate and build
+
+Run these commands from the repository root, replacing `prog.py` and `ARGS...`
+with the program and its arguments:
 
 ```sh
 python3.13 tools/re_specialize.py record -o build/prog-re.json prog.py ARGS...
@@ -27,73 +23,110 @@ python3.13 tools/re_specialize.py generate -o build/prog-re/_pystachy_re_special
 PYSTACHY_PATH=build/prog-re ./pystachy build prog.py -o prog
 ```
 
-`record` runs the program under CPython, with `runpy.run_path()`, as `python3.13 PROGRAM` would:
-it imports from the program's directory and ends with the program's status and messages. The paths
-runpy gives keep the spelling of PROGRAM, so a relative PROGRAM has a relative `__file__` (and, for
-a directory or zip file, a relative first entry of `sys.path`). It uses `sys.monitoring` to count
-the matching calls made on each compiled pattern: `match`, `fullmatch`, `search`, `findall`,
-`finditer`, `split`, `sub`, `subn` and `scanner`, wherever they are called (also through bound
-methods, as `fnmatch` makes them). A program that does not start writes no profile. The program
-shares the tool's interpreter: the modules the tool imports, such as `re` and `json`, are already
-imported, and the tool holds one `sys.monitoring` tool id (4, or the first one free). `generate` writes one matcher for each pattern called at least `--min-calls` times
-(default 1), counting the calls of all the profiles it reads. It also takes `--pattern P [--flags F]`.
-The module's docstring lists the patterns it could not generate, with the reason.
+`record` uses `sys.monitoring` to count calls to each compiled pattern's
+`match`, `fullmatch`, `search`, `findall`, `finditer`, `split`, `sub`, `subn` and
+`scanner` methods. It also sees bound-method calls, such as those from `fnmatch`.
 
-Imports find the generated module before `lib/_pystachy_re_specialized.py`, which has no matchers.
-That holds when the module is on `PYSTACHY_PATH` or in the program's own directory, which comes
-first. A stale profile is harmless: a pattern it lacks keeps the interpreter. The name is reserved
-for this module: `lib/re` imports whichever `_pystachy_re_specialized.py` comes first, so a
-program's own module of that name must be one the tool wrote.
+`generate` writes one matcher per eligible pattern. Its module docstring lists
+patterns it could not generate and the reasons.
+
+| Generation input | Behavior |
+|---|---|
+| One or more profile files | Sum each pattern's calls across the supplied profiles. |
+| `--min-calls N` | Generate patterns called at least `N` times; the default is 1. |
+| `--pattern P [--flags F]` | Generate a matcher directly, without recording a program. |
+
+### Make the generated module available
+
+Place `_pystachy_re_specialized.py` on `PYSTACHY_PATH` or in the program's own
+directory. The program directory takes precedence. Either location lets imports
+find it before [`lib/_pystachy_re_specialized.py`](../lib/_pystachy_re_specialized.py),
+the fallback module with no matchers.
+
+The module name is reserved: `lib/re` imports the first module with that name,
+so a program-local copy must be one the generator wrote. A missing pattern or
+stale profile safely leaves that pattern on the interpreter.
+
+### Recorder behavior
+
+`record` runs the program with `runpy.run_path()`, preserving its exit status and
+messages and importing from its directory. A program that never starts writes
+no profile. Paths retain the spelling of `PROGRAM`: a relative path gives a
+relative `__file__`, and a directory or zip file gives a relative first
+`sys.path` entry.
+
+The program shares the tool's interpreter. Modules the tool imports, including
+`re` and `json`, are already loaded, and recording occupies one `sys.monitoring`
+tool ID: 4 if available, otherwise the first free ID.
 
 ## How a matcher is used
 
-When `re` compiles a pattern, `Pattern` calls `lookup(pattern, flags, code)`. The lookup matches on
-the source and flags, then compares the bytecode the pattern compiled to with the bytecode the
-matcher was generated from. Any difference means no matcher.
+When `re` compiles a pattern, `Pattern` calls `lookup(pattern, flags, code)`.
+Lookup checks the source, flags and exact compiled bytecode against those used
+to generate the matcher. Any mismatch falls back to the interpreter.
 
-A matcher runs only on a subject that `lib/re` reads in place: an ASCII `str`, or a file's bytes
-that are not UTF-8, which Pystachy reads as code points 0 to 255. A decoded subject keeps the
-interpreter. There are two entry points:
+Matchers support subjects that `lib/re` reads in place: ASCII `str` values and
+file bytes that are not UTF-8, which Pystachy reads as code points 0–255.
+Decoded subjects use the interpreter.
 
-- `match()` serves `Pattern.match()` and `fullmatch()`.
-- `attempt()` runs at each position a search tries. The search loop is still `_sre.sre_search()`,
-  with all of its prefilters: literal prefixes, set scans, the bit-parallel alternative filter and
-  literal finds. Only the work at each candidate position changes.
+| Entry point | Responsibility |
+|---|---|
+| `match()` | Serve `Pattern.match()` and `Pattern.fullmatch()`. |
+| `attempt()` | Match at a candidate search position. `_sre.sre_search()` still chooses positions using literal prefixes, set scans, the bit-parallel alternative filter and literal finds. |
 
-A matcher declines a match that would nest more than 1,000 group-repeat iterations. Each iteration
-is a native call, and the interpreter's explicit stack has no such limit. Declining leaves the state
-as the caller set it up, and `sre_match()` runs that attempt.
+A generated matcher uses one native call per nested group-repeat iteration. If
+an attempt would exceed 1,000 such iterations, it declines without changing the
+caller's initial state. `sre_match()` then runs that attempt using the
+interpreter's explicit stack, which has no corresponding limit.
 
 ## What a matcher is
 
-The generator parses the bytecode into nodes. It writes one function per point where the
-interpreter would push a context, which is continuation-passing style. Each opcode does what
-CPython's `sre_lib.h` does, in the same order:
+Normally, `lib/re` compiles a pattern to CPython-compatible bytecode and
+interprets it in [`lib/re/_sre.py`](../lib/re/_sre.py), a port of CPython's C
+engine. The generator parses that bytecode into nodes and writes a function for
+each point where the interpreter would push a context. These functions pass
+continuations to preserve CPython's `sre_lib.h` operation order:
 
-- marks are set, and the marks between them cleared;
-- `lastmark` and `lastindex` are saved and restored at alternatives and repeats;
-- the data stack keeps mark values inside group repeats, as `MARK_PUSH` and `MARK_POP` do;
-- greedy single-character repeats give characters back, with CPython's literal-tail skip;
-- lazy repeats take one more each time;
-- group repeats stop after an empty iteration, by `last_ptr`;
-- lookaround and atomic bodies are separate submatches;
-- `must_advance` and `match_all` are checked at the top-level `SUCCESS`.
+- Set capture marks and clear gaps between them.
+- Save and restore `lastmark` and `lastindex` at alternatives and repeats.
+- Preserve marks inside group repeats, as `MARK_PUSH` and `MARK_POP` do.
+- Backtrack greedy single-character repeats with CPython's literal-tail skip;
+  grow lazy repeats one character at a time.
+- Stop group repeats after an empty iteration using `last_ptr`.
+- Run lookaround and atomic bodies as separate submatches.
+- Check `must_advance` and `match_all` at the top-level `SUCCESS`.
 
-Character tests are tables of 256 entries. They are computed by `lib/re`'s own functions (`charset`,
-`category`, case folding and word tests) for every code point an in-place subject can hold, so they
-agree with the interpreter by construction.
+Character tests use 256-entry tables computed by `lib/re`'s own charset,
+category, case-folding and word tests. They cover every code point an in-place
+subject can hold and agree with the interpreter by construction.
 
-The generator writes every opcode `lib/re` emits for `str` patterns except `GROUPREF_EXISTS`
-(`(?(1)a|b)`). Patterns that use it keep the interpreter. A pattern whose matcher would exceed
-4,000 lines does too.
+The generator supports the opcodes `lib/re` emits for `str` patterns except
+`GROUPREF_EXISTS`, used by conditionals such as `(?(1)a|b)`. Those patterns stay
+on the interpreter, as do patterns whose generated matcher would exceed
+4,000 lines.
+
+This specializes on a pattern value, whereas Pystachy's existing templates
+specialize on types. The motivation and earlier fixed-callback and fixed-regex
+measurements are discussed in
+[#392](https://github.com/den-run-ai/pystachy/issues/392).
 
 ## Measurements
 
-Main `681bdd1` plus this branch, on a shared 4-vCPU Xeon VM at 2.80 GHz, with CPython 3.13.16 and
-LLVM 18.1.3. Each workload was profiled under CPython with the arguments shown, then built twice
-with `pystachy build`, with and without its matchers. The table gives medians of five rounds of
-the timed part, pinned to one core, with the three modes interleaved. Every output matched
-CPython's.
+### Setup and provenance
+
+These are recorded prototype results against main
+[`681bdd1`](https://github.com/den-run-ai/pystachy/commit/681bdd1) plus the matcher
+changes. The original record identifies the changes as “this branch” without
+pinning their revision; these numbers are historical evidence, not a benchmark
+of current main.
+
+The host was a shared 4-vCPU Xeon VM at 2.80 GHz, using CPython 3.13.16 and
+LLVM 18.1.3. Each workload was profiled under CPython with the arguments below,
+then built with and without matchers using `pystachy build`. Timings are medians
+of five interleaved rounds, pinned to one core, for the timed workload only.
+Every output matched CPython's. Speedup compares AOT without and with matchers.
+
+### Matching time
 
 | Workload | Matchers | CPython | AOT | AOT with matchers | Speedup |
 |---|---:|---:|---:|---:|---:|
@@ -107,8 +140,11 @@ CPython's.
 | pyperformance `regex_effbot`, 20 loops | 17 | 623.1 ms | 329.0 ms | 269.7 ms | 1.22× |
 | pyperformance `regex_dna`, 4 loops | 21 | 869.3 ms | 296.7 ms | 288.0 ms | 1.03× |
 
-Callgrind counts the same work without the host's noise. These are per-loop differences between
-runs of one and two loops:
+### Instruction counts and remaining costs
+
+Callgrind counts measure the same work without wall-clock timing noise. The
+values below are millions of instructions per loop, calculated as the difference
+between runs of one and two loops.
 
 | Workload | AOT | AOT with matchers |
 |---|---:|---:|
@@ -121,82 +157,119 @@ runs of one and two loops:
 | `regex_effbot` | 163M | 123M |
 | `regex_dna` | 518M | 501M |
 
-- **Remaining costs.** Allocating the state and match objects is still per call. That is most of
-  what remains in the `[&<]` loop. `regex_dna` spends its time in decoding, substitutions and the
-  alternative filter, which the matchers leave unchanged.
-- **First version.** An earlier version of this prototype generated a search loop per pattern,
-  with a first-character filter in place of the interpreter's prefilters. It ran the date pattern
-  3.0× faster but made `regex_dna` 0.66× as fast, so the interpreter's search loop now calls the
-  matchers.
-- **Without matchers.** Programs keep the interpreter's cost: callgrind counts per loop changed by
-  −0.7% (`regex_v8`), +0.5% (`regex_effbot`) and +0.06% (`regex_dna`) against main's `lib/re`. The
-  IR of `tests/programs/library/lib_re.py` grows by 0.9%.
-- **Build size.** Generated code costs build time and binary size, roughly in proportion to the
-  number of matchers:
+State and match objects are still allocated per call; they account for most of
+the remaining cost in the `[&<]` loop. `regex_dna` instead spends much of its
+time in decoding, substitutions and the alternative filter, which matchers
+leave unchanged.
 
-  | Workload | Matchers | AOT build | Executable |
-  |---|---:|---:|---:|
-  | HTMLParser | 10 | 7.8 → 9.7 s | 593 → 671 KB |
-  | `regex_v8` | 231 (19,144 lines) | 12.9 → 53.2 s | 0.58 → 1.60 MB |
-  | `regex_v8`, `--min-calls 1000` | 65 (5,918 lines) | 20.0 s | 0.86 MB |
+An earlier prototype generated its own search loop with a first-character
+filter. It made the date pattern 3.0× faster but reduced `regex_dna` to 0.66×
+its previous speed. The current design therefore retains the interpreter's
+search loop and prefilters.
 
-  The 65 matchers keep most of the gain: 243.5 ms against 232.3 ms with all 231, and 359.4 ms with
-  none, in one paired run.
-- **The JIT.** `pystachy run` compiles the matchers on every run, since there is no
-  compiled-program cache yet ([#104](https://github.com/den-run-ai/pystachy/issues/104)).
-  Medians of three runs:
+Without any generated matchers, Callgrind counts per loop changed by −0.7%
+(`regex_v8`), +0.5% (`regex_effbot`) and +0.06% (`regex_dna`) relative to the
+recorded main baseline. The IR for `tests/programs/library/lib_re.py` grew 0.9%.
 
-  | Workload | Whole process, without → with | Timed part, without → with |
-  |---|---:|---:|
-  | HTMLParser | 2.99 → 3.38 s | 553 → 311 ms |
-  | `regex_v8`, 65 matchers | 5.09 → 7.31 s | 450 → 318 ms |
-  | `regex_v8`, all 231 | 5.09 → 12.08 s | 460 → 279 ms |
+### Build time and executable size
+
+More generated matchers cost build time and binary size:
+
+| Workload | Matchers | AOT build | Executable |
+|---|---:|---:|---:|
+| HTMLParser | 10 | 7.8 → 9.7 s | 593 → 671 KB |
+| `regex_v8` | 231 (19,144 lines) | 12.9 → 53.2 s | 0.58 → 1.60 MB |
+| `regex_v8`, `--min-calls 1000` | 65 (5,918 lines) | 20.0 s | 0.86 MB |
+
+The 65 matchers selected by `--min-calls 1000` retained most of the runtime gain.
+In a separate paired run, they took 243.5 ms, compared with 232.3 ms for all
+231 matchers and 359.4 ms with none. These are single-run results, distinct from
+the five-round medians above.
+
+### JIT startup cost
+
+`pystachy run` recompiles the matchers on every run because there is no
+compiled-program cache yet
+([#104](https://github.com/den-run-ai/pystachy/issues/104)). The recorded medians
+of three runs show faster matching but a slower whole process:
+
+| Workload | Whole process, without → with | Timed part, without → with |
+|---|---:|---:|
+| HTMLParser | 2.99 → 3.38 s | 553 → 311 ms |
+| `regex_v8`, 65 matchers | 5.09 → 7.31 s | 450 → 318 ms |
+| `regex_v8`, all 231 | 5.09 → 12.08 s | 460 → 279 ms |
 
 ## Validation
 
-- `tools/test_re_specialize.py`, which Lint runs, generates matchers for 300 random patterns and 38
-  hand-picked ones. The random patterns cover every construct the generator writes, with flags.
-  The hand-picked ones exercise the subtler mark rules: restores inside repeats, cleared gaps, stale
-  groups kept, empty iterations, lookaround groups and backreferences. Each runs inside
-  CPython-hosted `lib/re` on random subjects and is compared with CPython's `re`: the spans, groups,
-  `lastindex` and `lastgroup` of `search`, `match`, `fullmatch` (also with `pos` and `endpos`),
-  `finditer`, `findall`, `split` and `subn`. The same patterns also run on in-place subjects of all
-  256 byte values, against CPython's `re` on their Latin-1 decoding.
-- The same test checks six more properties:
-  - `html.parser`'s own patterns, as CPython compiles them, give CPython's results on HTML;
-  - deep repeats decline and still match as CPython does;
-  - empty iterations end a repeat;
-  - a lookup with other code, flags or source finds no matcher;
-  - `generate --pattern P --flags F` keys the matcher by `P` and the flags its `Pattern` has;
-  - the recorder counts calls, running the program as `python3.13 PROGRAM` does, and the checked-in
-    matchers of the native test are what the tool writes.
-- `make re-specialize-check` runs more patterns. With 2,000 patterns on each of seeds 1, 2 and 3,
-  1,937, 1,957 and 1,949 matchers were generated, and all agreed with CPython in about 1.9M matcher
-  answers.
-- Fifteen deliberate generator bugs each fail the check, never finish, or (an empty iteration that
-  does not end its repeat, which the depth limit hides from the results) fail the unit test. They
-  cover mark restores, repeat backtracking, lookbehind width, the INFO minimum, case folding,
-  possessive and atomic groups, `must_advance`, the attempt's start and mark gaps.
-- `tests/programs/library/re_specialize.py` is the native differential test. Its `.path` file finds the 29 matchers
-  generated from its own CPython profile. It covers the probe patterns, mark cases, `fnmatch` globs,
-  non-ASCII subjects and a repeat deeper than the limit. It passes in JIT and AOT, and with a
-  collection at every allocation. It leaves out HTMLParser to keep CI's GC groups short. There the
-  compiler collects every 1,000 allocations: with HTMLParser and its matchers, the test's AOT build
-  took 112 s (50 s without matchers); without HTMLParser, it takes 49 s.
-- The existing `lib/re`, `fnmatch`, `textwrap`, `html.parser` and router tests pass in JIT and AOT:
-  45 cases, 90 runs. `make re-fuzz`, `make re-probe` (its counts unchanged) and
-  `make check-recordings` pass too.
+### Run the checks
+
+From the repository root, use the unit tests or the larger differential check:
+
+```sh
+python3.13 -m unittest discover -s tools -p test_re_specialize.py
+make re-specialize-check
+make re-specialize-check RE_SPECIALIZE="2000 1"
+```
+
+The default differential check uses 400 patterns and seed 1. `RE_SPECIALIZE`
+sets the pattern count and seed; the last command requests 2,000 patterns.
+
+### What the tests cover
+
+[`tools/test_re_specialize.py`](../tools/test_re_specialize.py), also run by
+Lint, generates matchers for 300 random patterns and 38 hand-picked patterns.
+Random cases cover supported constructs and flags. Hand-picked cases exercise
+mark restoration in repeats, cleared gaps, stale groups, empty iterations,
+lookaround captures and backreferences.
+
+The matchers run in CPython-hosted `lib/re` and are compared with CPython's `re`.
+Checks cover spans, groups, `lastindex` and `lastgroup` for `search`, `match`,
+`fullmatch` (including `pos` and `endpos`), `finditer`, `findall`, `split` and
+`subn`. In-place subjects containing all 256 byte values are compared against
+CPython matching their Latin-1 decoding.
+
+The same suite checks:
+
+- CPython-compiled `html.parser` patterns on HTML.
+- Deep-repeat fallback and termination after empty iterations.
+- Rejection of mismatched source, flags or bytecode at lookup.
+- Correct pattern and effective flags for `generate --pattern P --flags F`.
+- Recorder call counts and program-running behavior.
+- Agreement between generated output and the native test's checked-in matchers.
+
+The [native differential test](../tests/programs/library/re_specialize.py) uses
+its `.path` file to load 29 matchers generated from its own CPython profile. It
+covers probe patterns, capture marks, `fnmatch` globs, non-ASCII subjects and a
+repeat deeper than the generated-matcher limit, in JIT, AOT and GC-stress modes.
+
+### Recorded validation results
+
+The prototype validation recorded the following results; they are not fresh
+runs against current main:
+
+- With 2,000 patterns on each of seeds 1, 2 and 3, the differential check generated
+  1,937, 1,957 and 1,949 matchers. About 1.9 million matcher answers agreed with
+  CPython.
+- Fifteen deliberate generator bugs failed a check, prevented termination or
+  failed a unit test. They covered mark restores and gaps, repeat backtracking,
+  lookbehind width, the INFO minimum, case folding, possessive and atomic groups,
+  `must_advance` and the attempt's start. The unit test also caught an empty
+  iteration that failed to end its repeat, although the depth limit hid it from
+  result comparisons.
+- The native test passed in JIT, AOT and with collection at every allocation.
+  HTMLParser was excluded to keep CI's GC groups short. In the compiler's
+  collect-every-1,000-allocations mode, its AOT build took 112 s with HTMLParser
+  and matchers, 50 s with HTMLParser but no matchers, and 49 s without HTMLParser.
+- Existing `lib/re`, `fnmatch`, `textwrap`, `html.parser` and router coverage
+  passed 45 cases in JIT and AOT, for 90 runs. `make re-fuzz`, `make re-probe`
+  (with unchanged counts) and `make check-recordings` also passed.
 
 ## Limits and next steps
 
-- **Profile only.** Matchers come from a profile or from `--pattern`. A pattern built at run time
-  from data the profile did not see keeps the interpreter.
-- **In-place subjects only.** Decoded subjects, which hold characters of several bytes, keep the
-  interpreter ([#589](https://github.com/den-run-ai/pystachy/issues/589)).
-- **Caller fusion.** Fusing a matcher into its caller would remove the `Match` objects and the
-  per-call state, as "specializing higher up the call stack" would.
-- **Glob literals.** Literal prefixes and suffixes of `fnmatch` globs can be tested without any
-  generated code. In the router that analysis alone measured 9.9× (327 against 3,248 ns per event).
-  That is separate work.
-- **Online tier-up.** Compiling matchers at run time, for patterns the profile missed, needs
-  in-process code loading and a cache.
+| Boundary | Current behavior or next step |
+|---|---|
+| Unseen patterns | A pattern needs a profile entry or `--pattern`; patterns constructed from unseen run-time data use the interpreter. |
+| Decoded subjects | Multi-byte decoded characters use the interpreter; see [#589](https://github.com/den-run-ai/pystachy/issues/589). |
+| Caller fusion | Integrating a matcher into its caller could remove `Match` objects and per-call state. |
+| Glob literals | Testing literal prefixes and suffixes of `fnmatch` globs needs no generated code. Separate router work measured 9.9×: 327 versus 3,248 ns per event. |
+| Online compilation | Compiling newly observed patterns at run time needs in-process code loading ([#707](https://github.com/den-run-ai/pystachy/issues/707), [#704](https://github.com/den-run-ai/pystachy/issues/704)) and a code cache ([#104](https://github.com/den-run-ai/pystachy/issues/104)). |
