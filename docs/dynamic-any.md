@@ -179,10 +179,43 @@ storage. Class objects retain identity and identity hashing, report metatype
 `__eq__` or `__hash__` does not become the class object's operation; reflected
 instance equality still runs when a class is compared with an instance.
 
-This is a bounded registry prototype. Calls through a class held as `Any` raise
-`NotImplementedError`; ordinary statically resolved constructor calls still
-work. Runtime class creation, metaclasses, writable class dictionaries and
-classes held as the second argument of `isinstance` remain unsupported.
+Stored class values can reconstruct ordinary user classes whose boxed instance
+adapters and matching initializers have already been compiled by the program:
+
+```python
+class Record:
+    def __init__(self, value: int):
+        self.value = value
+
+original: Any = Record(7)
+factory = type(original)
+restored = factory(value=original.value)
+print(type(restored) is Record, restored is original)  # True False
+```
+
+Boxing the original instance establishes its native adapter during compilation.
+The constructor reuses its compiled initializer, including an existing
+class-specific specialization for inherited `__init__`. Explicit positional and
+keyword arguments and supported static unpacking use the ordinary binder.
+For supplied arguments, parameter layouts containing user classes require
+existing boxed adapters for those classes, including optional, union and tuple
+members. Omitted defaults
+reuse an already prepared value or a compatible `None`, boolean, integer, float
+or string literal; this path does not compile additional default expressions.
+Arguments run once, after capturing the class and before binding errors;
+initializer exceptions and non-`None` returns retain their ordinary behavior.
+Mutable arguments retain their aliases.
+
+This is bounded reconstruction. A class used only as a key does not establish
+an instance adapter. An uncompiled imported initializer, a new nominal argument
+layout, or a default that cannot bind raises `NotImplementedError` if selected.
+Constructor arms do not speculatively compile unused bodies or boxing helpers.
+Builtin classes, class templates, dataclasses, NamedTuples, decorated or variadic
+initializers, `__init__` stored as class data, and custom `__new__` remain outside
+this construction path.
+Runtime-sized argument unpacking, runtime class creation, metaclasses, writable
+class dictionaries and classes held as the second argument of `isinstance`
+also remain unsupported.
 Overrides of `__module__` and `__qualname__` must be fixed literal strings.
 Computed overrides or later writes to `__name__`, `__qualname__` or `__module__`
 are rejected for a stored class value, or raise `NotImplementedError` when
@@ -191,8 +224,9 @@ Exception class values keep their existing typed representation and cannot
 cross into `Any`. Fixed-signature `Callable` adapters erase whether their source
 was a function, bound method or builtin class; new stored-type queries reject
 that representation or raise `NotImplementedError` when it is held in `Any`.
-Keep registry class values in `Any` directly. The `copyreg` test uses two unchanged upstream registration
-functions and a fixed-arity reconstruction step; it does not establish full
+Keep registry class values in `Any` directly. The `copyreg` tests use two
+unchanged upstream registration functions and bounded reconstruction steps;
+they do not establish full
 `copyreg` or `pickle` support.
 
 ## Representation
@@ -812,6 +846,11 @@ This is not `copy.deepcopy` itself. Running the unchanged module still needs
 dynamic opt-in and an annotation for the empty registry. It checks exact-type
 reducer lookup, callback replacement, validation order and reconstruction from
 reduction tuples with one argument.
+`tests/programs/upstream/upstream_copyreg_construct.py` returns actual class
+values from reducers and reconstructs base/subclass instances with two arguments.
+It checks exact type, fresh identity and shared mutable payloads. Full `copyreg`
+still stops at runtime `int | str`; omitting that registration reaches the
+unsupported builtin method value `int.__new__`.
 
 `lib/tomllib` is a library compiled this way: CPython's `tomllib`, whose modules opt in, parses a
 document into dicts and lists of `Any` values that programs which do not opt in read
@@ -819,10 +858,14 @@ document into dicts and lists of `Any` values that programs which do not opt in 
 
 ## Deviations
 
-- Calling a class stored in `Any` raises `NotImplementedError`, although
-  `callable()` correctly reports that it is a class. Registry values can be
-  ordinary functions, closures and bound methods. This prototype boundary is
-  covered by `tests/deviations/dynany_class_constructor.py`.
+- Calls through stored classes outside the
+  [bounded reconstruction contract](#class-values-and-type-keyed-registries)
+  raise `NotImplementedError`, although `callable()` reports true. This includes
+  a class without an existing boxed adapter
+  (`tests/deviations/dynany_class_constructor.py`), an uncompiled imported
+  initializer (`tests/deviations/dynany_class_construct_deferred.py`), and
+  `__init__` stored as class data
+  (`tests/deviations/dynany_class_construct_field.py`).
 - Stored `type()` of an erased `Callable` held in `Any` raises
   `NotImplementedError`; its existing supported calls still work
   (`tests/deviations/dynany_class_callable.py`). Restoring the original callable's
@@ -1005,7 +1048,8 @@ lines.
 - **Broader typed-container crossings**: the flow analysis that selects `list[Any]` storage at the
   allocation of every alias of a container that may flow into `Any` storage.
 - **Calls**: an `Any` value unpacked into a call's arguments, through a generic binding entry;
-  builtin functions as values; construction through stored class objects.
+  builtin functions as values; stored-class construction beyond precompiled
+  ordinary instance adapters and initializers.
 - **Protocols**: legacy sequence iteration through `__getitem__`, reverse iteration through
   `__len__`/`__getitem__`, `__length_hint__`, and the
   builtins listed under [deviations](#deviations) that do not take `Any` values yet.

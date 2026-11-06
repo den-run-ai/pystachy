@@ -379,8 +379,9 @@ the exact classes (`type(True) is bool`, `type(True) is int` is false). `str()` 
 reference union print each object as its own class prints it. Stored `type(x)` values
 and class-keyed dictionaries are supported in the
 [dynamic-Any prototype](../dynamic-any.md#class-values-and-type-keyed-registries),
-with construction through stored classes still unsupported. Without the opt-in,
-class values are limited to [exception classes](#exception-classes-as-values).
+including bounded reconstruction through existing boxed instance adapters and
+compiled initializers. Without the opt-in, class values are limited to
+[exception classes](#exception-classes-as-values).
 
 ### Attribute names the compiler knows
 

@@ -1,3 +1,3 @@
 True
-calling a class held as an Any value is not supported
+Record() through Any requires an existing boxed instance layout
 [exit 0]

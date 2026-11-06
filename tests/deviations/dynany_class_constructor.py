@@ -1,5 +1,5 @@
 # pystachy: dynamic-any
-# Class values support registry keys; calls through them remain a prototype gap.
+# A class used only as a value has no existing boxed instance adapter to reuse.
 from typing import Any
 
 

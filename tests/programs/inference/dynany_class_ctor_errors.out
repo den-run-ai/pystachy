@@ -1,0 +1,24 @@
+defaulted init 0 True
+required init 0 seed
+defaulted init 5 True
+made Defaulted
+binding Required.__init__() missing 1 required positional argument: 'label'
+defaulted init 4 False
+defaults 4 False
+extra positional Defaulted.__init__() takes from 1 to 2 positional arguments but 3 were given
+duplicate argument Defaulted.__init__() got multiple values for argument 'value'
+unknown keyword Defaulted.__init__() got an unexpected keyword argument 'unknown'
+missing both Required.__init__() missing 2 required positional arguments: 'value' and 'label'
+missing one Required.__init__() missing 1 required positional argument: 'value'
+required init 6 ok
+after errors 6 ok
+result init 0
+result init 0
+result made True
+result init 1
+result error __init__() should return None, not 'int'
+result init 2
+result error __init__() should return None, not 'str'
+raising init initializer first
+raised initializer first
+[exit 0]

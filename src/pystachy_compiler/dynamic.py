@@ -22,9 +22,9 @@ from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, INTFILES
 from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Reduce, Val
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import ENUMCLASSES, owner, retoken, short
-from src.pystachy_compiler.specs import BIG, ITERS, JSONANY, METHODS, NONEVAR, RANGEC, RANGES, RTDATA
+from src.pystachy_compiler.specs import BIG, GLUE, ITERS, JSONANY, METHODS, NONEVAR, RANGEC, RANGES, RTDATA
 from src.pystachy_compiler.syntax import Node, has_kind, mk
-from src.pystachy_compiler.utils import ListLayout, builtin_key, disjoint_sets, elem, fbits, gelem, holds_dyn, identity_abi, is_callable, is_dict, is_fn, is_gen, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, numeric_identity, selem, takes_self, targs, tname, typestr, umembers, unopt
+from src.pystachy_compiler.utils import ListLayout, builtin_key, disjoint_sets, elem, fbits, gelem, holds_dyn, identity_abi, int_fits, int_lit, is_callable, is_dict, is_fn, is_gen, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, numeric_identity, selem, takes_self, targs, tname, typestr, umembers, unopt
 
 DYN = "dyn"
 # what isinstance(x, int) narrows a dyn local to: still the box (a bool passes the test too),
@@ -3837,6 +3837,112 @@ def gen_dyn_fresh(self, v: Val) -> Val:
     return Val(self.rt("pys_dyn_list_of", "ptr", [f"ptr {v.v}", f"ptr {self.sconst(d)}"]), "list[dyn]")
 
 
+def dyn_class_initializer(self, c: str) -> FnInfo | None:
+    # Inheritance makes self a template parameter even with fully annotated
+    # arguments. Reuse an existing concrete instance; never infer another one.
+    if "__init__" not in self.classes[c].methods:
+        return None
+    f = self.classes[c].methods["__init__"]
+    if not f.generic:
+        return f if f.ll in self.compiled else None
+    ts = [c] + f.ptypes[1:]
+    for g in f.insts.values():
+        if g.ptypes == ts and g.ll in self.compiled and not g.cmpops and g.cmpfields == "" and len(g.cmptypes) == 0 and all(p == g.params[0] for p in g.nnp):
+            return g
+    return None
+
+
+def dyn_class_argument(self, t: str) -> bool:
+    # Unboxing must not introduce a previously unused class's repr/hash helpers
+    # or dynamic attribute arms. Check nominal leaves before requesting DynTypes.
+    if not self.dyn_unboxable(t):
+        return False
+    if is_opt(t):
+        return dyn_class_argument(self, unopt(t))
+    if is_union(t):
+        return all(dyn_class_argument(self, m) for m in umembers(t))
+    if is_tuple(t):
+        return all(dyn_class_argument(self, m) for m in targs(t))
+    return t not in self.classes or t in self.dynclasses
+
+
+def dyn_class_defaults(self, f: FnInfo, supplied: list[int]) -> bool:
+    # A compiled body does not prove that an omitted default can bind: an unused
+    # int parameter may have a str literal default. Inspect existing globals or
+    # inert literals without dry compilation, diagnostics or inference effects.
+    df = self.dflt_fn(f)
+    for j in range(1, len(f.params)):
+        if j in supplied:
+            continue
+        if df.dglob[j].startswith("!") or df.dglob[j] == "()" or df.dglob[j].startswith("&"):
+            return False
+        if df.dglob[j] != "" and df.dglob[j] != "=None":
+            continue
+        e = f.defaults[j]
+        literal = int_lit(e)
+        if literal != "" and not self.int_policy(e.line) and not int_fits(literal):
+            return False
+        if e.kind == "unary" and e.s == "-":
+            e = e.kids[0]
+        t = "bool" if e.kind in ["True", "False"] else e.kind
+        if t not in ["None", "int", "float", "str", "bool"]:
+            return False
+        if not (self.widens(t, f.ptypes[j]) or self.boxes(t, f.ptypes[j]) or (t == "int" and f.ptypes[j] == BIG)):
+            return False
+    return True
+
+
+def dyn_class_calls(self, key: str, o: Val, args: list[Val]) -> None:
+    # A class box identifies its canonical record, not one instance layout.
+    # Reuse proven instance adapters and initializers: trying every unused
+    # registry class could reject an accepted program or retain speculative
+    # inference effects. No constructor body or boxing layout is attempted.
+    rec = Val(self.mload("%ptr", self.maddr("%ptr", o.v, "1")), "%ptr")
+    an = self.dyn_call_args(key, args)
+    classes = [c for c in self.classes if "@pys.refl.c." + c in self.reflrecs and self.classes[c].origin == "" and "__init__" in self.classes[c].methods]
+    for c in classes:
+        hit = self.label()
+        rest = self.label()
+        self.cbr(self.scalar_cmp("eq", rec, Val(self.refl_record(c), "%ptr")), hit, rest)
+        self.place(hit)
+        ci = self.classes[c]
+        declaration = ci.methods["__init__"]
+        fm = dyn_class_initializer(self, c)
+        dup = dup_kw(key)
+        if dup >= 0:
+            name = self.refl_type_name(c, "__module__") + "." + self.refl_type_name(c, "__qualname__")
+            self.raise_("TypeError", self.sconst(f"{name}() got multiple values for keyword argument '{shape_kws(key)[dup]}'"))
+        elif c in self.tmpl or ci.bad != "" or ci.mod in GLUE or ci.node.line in ENUMCLASSES or c in self.nts or self.is_dc(c) or "__init__" in ci.ftypes or "__init__" in ci.fdefault or declaration.prop or declaration.deco != "" or declaration.vararg >= 0 or declaration.kwarg >= 0:
+            self.raise_("NotImplementedError", self.sconst(f"{short(c)}() through Any requires an ordinary class with a fixed initializer"))
+        elif fm is None:
+            self.raise_("NotImplementedError", self.sconst(f"{short(c)}() through Any requires a statically compiled initializer"))
+        elif c not in self.dynclasses:
+            self.raise_("NotImplementedError", self.sconst(f"{short(c)}() through Any requires an existing boxed instance layout"))
+        else:
+            abstract = self.abstract_of(c)
+            bad = self.arity_error(fm, 1, an)
+            if len(abstract) > 0:
+                names = ", ".join([f"'{n}'" for n in abstract])
+                self.raise_("TypeError", self.sconst(f"Can't instantiate abstract class {short(c)} without an implementation for abstract method{'s' if len(abstract) > 1 else ''} {names}"))
+            elif bad != "":
+                self.raise_("TypeError", self.sconst(bad))
+            else:
+                # Defaults stay in the ordinary binder. Only supplied values
+                # cross from Any; never copy/reinterpret a typed container.
+                supplied = list(range(1, 1 + shape_npos(key))) + [fm.params.index(a.s) for a in an if a.kind == "kw"]
+                if any(not dyn_class_argument(self, fm.ptypes[j]) for j in supplied):
+                    self.raise_("NotImplementedError", self.sconst(f"{short(c)}() through Any cannot receive this parameter layout"))
+                elif not dyn_class_defaults(self, fm, supplied):
+                    self.raise_("NotImplementedError", self.sconst(f"{short(c)}() through Any cannot bind this default value"))
+                else:
+                    value = self.new_obj(c)
+                    self.init_result(self.call_fn(fm, [value], an, direct=True))
+                    if not self.term:
+                        self.ret_(self.dyn_box(value))
+        self.place(rest)
+    self.raise_("NotImplementedError", self.sconst("calling a class held as an Any value is not supported"))
+
+
 def gen_dyn_fallback(self, f: FnInfo, key: str, ps: list[Val]) -> None:
     # what dispatcher key does for the builtin types: runtime.c's helper, or an AttributeError
     if self.term:
@@ -3969,7 +4075,7 @@ def gen_dyn_fallback(self, f: FnInfo, key: str, ps: list[Val]) -> None:
         other = self.label()
         self.cbr(self.ptr_cmp("==", Val(self.dyn_typeof(o), "dyntype"), Val(self.rtdata("pys_dyntype_type"), "dyntype")).v, unsupported, other)
         self.place(unsupported)
-        self.raise_("NotImplementedError", self.sconst("calling a class held as an Any value is not supported"))
+        dyn_class_calls(self, key, o, ps[1:])
         self.place(other)
         dup = dup_kw(key)
         if dup >= 0:
@@ -4006,7 +4112,11 @@ def gen_dyn_dispatchers(self) -> bool:
                 for d in self.consts:
                     if d.name == self.dyntypes[c]:
                         d.refs[3 if key == "iter" else 4 if key == "next" else 5] = f.ll
-    sig = f"{len(self.dynclasses)} {len(self.dynfns)} {len(self.dynfuncs)} {len(self.dyntypes)}"
+    # Class values need no boxed instance. A later typevalue arm can expose a
+    # record, and a later ordinary call can compile an imported initializer.
+    # Revisit construction arms for both changes without retaining new state.
+    constructors = len([c for c in self.classes if "@pys.refl.c." + c in self.reflrecs and dyn_class_initializer(self, c) is not None])
+    sig = f"{len(self.dynclasses)} {len(self.dynfns)} {len(self.dynfuncs)} {len(self.dyntypes)} {len(self.reflrecs)} {constructors}"
     if sig == self.dynsig:
         return False
     self.dynsig = sig
