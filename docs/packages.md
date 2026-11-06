@@ -52,9 +52,12 @@ The optional companion wheel packages the [schema-free repair example](../exampl
 as `pystachy_json_repair` and installs its AOT executable as `json-repair-native`.
 The distinct names let an application also install upstream `json-repair` for schema or file APIs.
 
-From the checkout on Linux x86-64 with glibc, install Pystachy's LLVM prerequisites
-and use a Python environment with the pinned [wheel tool](../tools/requirements-packaging.txt).
-The builder runs the source compiler under Python. In a GIL-enabled CPython 3.12+ environment:
+Build on a native glibc Linux x86-64 or aarch64 host, using GIL-enabled CPython 3.12+
+with `venv`/`ensurepip`, GNU `readelf` (binutils), Pystachy's LLVM prerequisites and
+the pinned [packaging tools](../tools/requirements-packaging.txt). The builder runs
+the source compiler under Python. PyPy, free-threaded CPython, other architectures,
+cross-compilation and macOS are unsupported by this builder; the current extension
+linker targets Linux.
 
 ```sh
 python -m pip install -r tools/requirements-packaging.txt
@@ -65,11 +68,37 @@ printf '%s' '{answer:42,}' | json-repair-native
 python -I tests/upstream/json_repair/extension.py
 ```
 
-The wheel uses the local platform tag `cp312-abi3-linux_x86_64`. Use it on the build
-host or a compatible system. Its required glibc and system libraries depend on the build
-environment. The wheel contains both compiled binaries and their licenses. The executable
-runs without Python or LLVM. The [extension threading contract](ffi.md#threading-and-host-lifetime)
-applies to calls from CPython.
+The builder checks both binaries' ELF architectures and uses the host tag
+`cp312-abi3-linux_x86_64` or `cp312-abi3-linux_aarch64`. These are local platform
+wheels. Required glibc symbol versions and system libraries depend on the build
+environment; the ELF report is a diagnostic, not a manylinux certification or a
+guarantee of compatibility with every system of that architecture. It is retained
+as `native-abi.json` in the wheel's `.dist-info` directory and in the adjacent
+`.validation.json` report, which also records the wheel hash and test results.
+
+Before publishing a wheel into the output directory, the builder installs it
+offline into a temporary virtual environment outside the checkout. It checks the
+real extension and its installed file hashes, replays the complete maintained API
+corpus normally and with forced GC, and runs the CLI cases with an empty `PATH`.
+The checks cover stdin, files and preservation of destinations on errors. They also
+verify two independent spawned process workers and rejection of native calls from
+a thread other than the importing thread. A failed check leaves any previous wheel
+unchanged. To repeat the check on another compatible host or CPython version:
+
+```sh
+python tools/json_repair_wheel_smoke.py ./build/json-repair-wheel/*.whl --json wheel-check.json
+```
+
+The [2026-11-06 evaluation](../bench/json_repair/results/installed-api-2026-11-06.md)
+validates the same Linux x86-64 wheel on CPython 3.12.14 and 3.13.16, including all
+837 API cases in normal and forced-GC modes, 20 CLI cases, spawned workers and
+foreign-thread rejection. Its required glibc symbol floor is 2.38; it was run on
+glibc 2.39. The aarch64 build and
+tag selection are supported, but an ARM wheel still needs this validation on an ARM
+host before distribution. The wheel contains the two compiled binaries and their
+licenses. The executable runs without Python or LLVM. Calls from CPython retain
+the [extension threading contract](ffi.md#threading-and-host-lifetime); use process
+workers that each import the module for parallel repair.
 
 ## What gets shipped
 

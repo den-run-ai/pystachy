@@ -1,0 +1,36 @@
+{
+  "cli_cases": 20,
+  "corpus": {
+    "forced_gc": {
+      "cases": 837,
+      "matched": 837,
+      "problems": 0
+    },
+    "normal": {
+      "cases": 837,
+      "matched": 837,
+      "problems": 0
+    }
+  },
+  "installation": {
+    "extension_origin": "/tmp/pystachy-json-repair-wheel-ghrm5chw/venv/lib/python3.12/site-packages/pystachy_json_repair/_native.abi3.so",
+    "extension_sha256": "3117193ceb7996de2d1d7b05f482806981bf4ed4b3eaea7ce7050910df8bba70",
+    "implementation": "cpython",
+    "package_origin": "/tmp/pystachy-json-repair-wheel-ghrm5chw/venv/lib/python3.12/site-packages/pystachy_json_repair/__init__.py",
+    "package_version": "0.1.0.dev3",
+    "python": "3.12.14",
+    "spawned_processes": 2,
+    "thread_rejections": 2
+  },
+  "schema_version": 1,
+  "validation_inputs": {
+    "tests/upstream/json_repair/cases.json": "9ecdf79b7070eda3673bd8c9884da6c4720976128b1652df9d88eb06e163b05e",
+    "tests/upstream/json_repair/cli.py": "5f0a9cac4ac11d6a998f091f7d7f11deb3965f7b1df40f09b9f2d5de7453bf8c",
+    "tests/upstream/json_repair/extension.py": "f5dd16677a879947ebf1995e1f7aea5e46a246194ba8b7ebe4d2234975db3029",
+    "tests/upstream/json_repair/replay.py": "3092639a646b62feab7f8175f62474952c7dcfb7fd96fa388e471df8bdaa7f7d",
+    "tools/json_repair_parity.py": "3f8bdeb4509faaea297af15d3e8e03ea2ac91fc0b1cc045e1f6f0b4cd75225a7",
+    "tools/json_repair_wheel_smoke.py": "4ae036709b847be91163cabd3c74cb1266049b355e1a595a7c0cfe054126695b"
+  },
+  "wheel": "pystachy_json_repair-0.1.0.dev3-cp312-abi3-linux_x86_64.whl",
+  "wheel_sha256": "13561e9d88f9ad6b31ab2d9ca8077c36041abb0c4f1cb169b3a4d7a447779976"
+}
