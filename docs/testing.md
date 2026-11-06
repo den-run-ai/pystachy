@@ -356,7 +356,11 @@ exact cases and results. The PR aggregate requires both workers to pass.
 The [CI workflow](../.github/workflows/ci.yml) runs on pull requests (including forks), pushes
 to `main` and manual dispatch. Pull requests test the branch merged with the then-current
 `main`. A newer PR push cancels its previous run; commits on `main` run to completion.
-Markdown/docs-only PRs run Lint, submission format checks and fork DCO when applicable.
+Markdown/docs-only PRs run Lint, submission format checks, fork DCO when applicable,
+and a lightweight `Verification` check. Both bootstrap workers classify the tested
+merge commit's changes against its base. When both select the documentation plan,
+they skip toolchain setup and builds, and CI skips the verification, variant and
+distribution jobs. Renaming a source file into `docs/` still selects code verification.
 Other PRs use the compact profile below. Pushes to `main` and manual CI runs retain
 complete verification for the release gate.
 The toolchain is Ubuntu 24.04, LLVM 18 and the CPython version pinned in `.python-version`.
@@ -434,7 +438,7 @@ from the budget. Each test runner uses at most four processes within its worker.
 | Benchmarks and scaling | 1 | Correctness, both scaling halves, BLAS and large upstream regex. |
 | Variants | 2 | Seven configurations, split across both workers, on the selected cases. |
 | Distribution | 2 | Linux x86-64 and macOS ARM64 installation, including pip/uv; Linux source packages and native archive smoke. |
-| Aggregate | 1 | Required reports, profiles, selection manifests, counts and job results. |
+| `Verification` | 1 | Confirms the selected plan. For code PRs, checks reports, profiles, selection manifests, counts and job results. |
 | Lint, performance, DCO and submission format | 4 | Lint includes CPython port preservation. DCO applies to forks. Submission format validates PR metadata. |
 
 `VERIFY_PROFILE=pr tests/verify.sh GROUP` selects this plan; plain `make verify` stays exhaustive.
@@ -475,9 +479,10 @@ benchmark correctness, and Lint checks CPython port preservation. The full group
 
 A failed group leaves the others running. The aggregate checks are
 `make verify (Linux x86-64, LLVM 18, Python 3.13)` and
-`make verify (Linux ARM64, LLVM 18, Python 3.13)`. Maintainers verify CI and Lint before
-merging. GitHub branch protection currently requires fork DCO for non-admin merges.
-[Issue #766](https://github.com/den-run-ai/pystachy/issues/766) tracks enforcing CI and Lint.
+`make verify (Linux ARM64, LLVM 18, Python 3.13)`. For pull requests, maintainers
+verify `Verification` and `make lint (ruff, shellcheck, clang -Wall -Wextra)` on the
+current revision before merging. [Issue #766](https://github.com/den-run-ai/pystachy/issues/766)
+tracks requiring both checks for all merge credentials in GitHub branch protection.
 Each report gate requires every group to succeed. It rejects missing or unexpected stages,
 inconsistent source revisions or toolchains, different bootstrap IR, and missing or
 inconsistent bootstrap provenance.

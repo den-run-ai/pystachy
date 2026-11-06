@@ -99,7 +99,7 @@ make lint check-recordings
 | Harness/workflows/tools | Register unit tests in `lint.yml` or a CI-run make target; Lint runs `python3 -m unittest discover -s tools -p 'test_*verif*.py'` and other patterns. Update verify plans, CI matrix, `merge_verification.py` and [CI docs](docs/testing.md#continuous-integration) together; confirm steps ran. Pin actions by SHA; keep `persist-credentials: false` |
 | Syntax/diagnostics | `python3.13 -I tools/syntax_sweep.py --compiler ./pystachy <paths>`; valid boundaries and rejections |
 | Ports/performance | `make port-check` or affected checks; benchmark correctness before timings. Commit pristine upstream before marked edits; `ports/THIRD_PARTY_NOTICES` must equal the root copy |
-| Docs only | Check links, commands, byte budget and `git diff --check`. Docs-only PRs run Lint, submission format and fork DCO. Disclose unrun runtime suites. |
+| Docs only | Check links, commands, byte budget and `git diff --check`. Docs-only PRs run Verification, Lint, submission format and fork DCO. Disclose unrun runtime suites. |
 
 Coverage records execution, not correctness. Separate hosted compiler statements/branches
 from native C runtime coverage; neither measures `runtime.py` or every native compiler
