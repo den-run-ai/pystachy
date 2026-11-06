@@ -117,6 +117,9 @@ def summarize(report, pairs=None):
             result["aa"] = {"geometric_mean_ratio": comparison["wall"]["geometric_mean"],
                             "median_absolute_paired_pct": statistics.median(deviations),
                             "max_absolute_paired_pct": max(deviations)}
+        if meta["same_executable"] and not meta["environment_differences"] and candidate != "main_aa":
+            result["notes"].append(f"{candidate}/{control}: identical executable bytes and settings; "
+                                   "timing differences are control observations, not an optimization effect")
         if candidate == "block" and control == "default" and not meta["same_executable"]:
             result["notes"].append("block/default do not share executable bytes; tracing-order isolation is absent")
         result["comparisons"].append(comparison)
