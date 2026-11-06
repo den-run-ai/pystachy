@@ -106,7 +106,8 @@ def main() -> None:
             if not math.isfinite(elapsed) or elapsed <= 0:
                 raise ValueError("workload timing must be finite and positive")
             best = min(best, elapsed)
-        print(f"{LABELS[w]}\t{best * 1000.0:.3f}")
+        # Preserve positive sub-microsecond samples when N is small.
+        print(f"{LABELS[w]}\t{best * 1000.0:.9g}")
     print(f"checksum\t{check!r}")
 
 

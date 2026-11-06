@@ -87,7 +87,7 @@ def numpy_timings(count: int, times: int) -> dict[str, str]:
             t = time.perf_counter()
             f()
             best = min(best, number(time.perf_counter() - t, f"NumPy {label} time"))
-        ms[label] = f"{best * 1000.0:.3f}"
+        ms[label] = f"{best * 1000.0:.9g}"
     return ms
 
 

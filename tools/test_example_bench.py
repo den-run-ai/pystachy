@@ -426,6 +426,31 @@ class NdarraySampleTests(unittest.TestCase):
             with self.subTest(n=n, reps=reps), self.assertRaisesRegex(ValueError, "N must be at least 2"):
                 self.invoke([], n, reps)
 
+    def test_tiny_positive_samples_survive_the_producer_and_consumer(self):
+        consumer = load_example("ndarray")
+        count = len(self.module.LABELS)
+        for elapsed in (1e-7, 1e-9, 1e-12):
+            with self.subTest(elapsed=elapsed):
+                output, calls = self.invoke([value for _ in range(count) for value in (0.0, elapsed)], reps=1)
+                self.assertEqual(calls, count)
+                with mock.patch.object(bench, "execute", return_value=response([], output.encode())):
+                    timings, checksum = consumer.timings(["aot"], "15.0")
+                self.assertEqual(checksum, "15.0")
+                self.assertEqual(len(timings), count)
+                for value in timings.values():
+                    self.assertGreater(float(value), 0)
+                    self.assertAlmostEqual(float(value) / (elapsed * 1000), 1.0)
+
+    def test_numpy_display_also_preserves_tiny_positive_samples(self):
+        consumer = load_example("ndarray")
+        with mock.patch.dict(sys.modules, {"numpy": mock.MagicMock()}), \
+                mock.patch.object(consumer.time, "perf_counter", side_effect=[0.0, 1e-9] * 11):
+            timings = consumer.numpy_timings(2, 1)
+        self.assertEqual(len(timings), 11)
+        for value in timings.values():
+            self.assertGreater(float(value), 0)
+            self.assertAlmostEqual(float(value) / 1e-6, 1.0)
+
 
 if __name__ == "__main__":
     unittest.main()
