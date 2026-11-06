@@ -275,14 +275,23 @@ def worker(work, llvm):
     for name in ("result.json", "output.o", "output.tmp.o"):
         (work / name).unlink(missing_ok=True)
     job = json.loads((work / "job.json").read_text())
-    if job["version"] != 1 or job["input_sha256"] != digest(work / "input.bc"):
+    if job["version"] not in (1, 2) or job["input_sha256"] != digest(work / "input.bc"):
         raise RuntimeError("worker input/version mismatch")
     if (job["tool_sha256"] != identity(llvm) or job["opt"] not in (0, 1, 2, 3)
             or job["emit"] not in ("object", "bitcode")):
         raise RuntimeError("worker toolchain/options mismatch")
+    # Version 2 binds the optimizer policy. Version 1 remains replayable only
+    # without that field; old worker scripts must reject new policy-bearing jobs.
+    inline_threshold = job.get("inline_threshold")
+    if ((job["version"] == 1 and "inline_threshold" in job)
+            or (job["version"] == 2 and "inline_threshold" not in job)
+            or (inline_threshold is not None
+                and (type(inline_threshold) is not int or not 0 <= inline_threshold <= 10000))):
+        raise RuntimeError("worker inlining policy/version mismatch")
+    inline_flags = [] if inline_threshold is None else ["-mllvm", "-inline-threshold=" + str(inline_threshold)]
     clang, opt, level = str(llvm / "clang"), str(llvm / "opt"), "-O" + str(job["opt"])
     steps = [
-        ("optimize", [clang, level, "-c", "-emit-llvm", "input.bc", "-o", "optimized.bc"]),
+        ("optimize", [clang, level, *inline_flags, "-c", "-emit-llvm", "input.bc", "-o", "optimized.bc"]),
         ("late_inline", [opt, "-passes=forceattrs,always-inline", *LATE, "optimized.bc", "-o", "late.bc"]),
     ]
     if job["emit"] == "object":
@@ -317,6 +326,7 @@ def main():
     parser.add_argument("--jobs", type=int, default=1)
     parser.add_argument("--lto-partitions", type=int, default=0)
     parser.add_argument("--opt", type=int, choices=(0, 1, 2, 3), default=2)
+    parser.add_argument("--inline-threshold", type=int, help="research: optimizer inlining threshold (0..10000); default uses LLVM policy")
     parser.add_argument("--timeout", type=float, default=600, help="seconds per worker or tool command")
     parser.add_argument("--inherited-group", action="store_true",
                         help="run inside an outer controller's owned process group")
@@ -326,7 +336,11 @@ def main():
     args = parser.parse_args()
     if not math.isfinite(args.timeout) or args.timeout <= 0:
         parser.error("timeout must be a positive finite number")
+    if args.inline_threshold is not None and not 0 <= args.inline_threshold <= 10000:
+        parser.error("inlining threshold must be from 0 to 10000")
     if args.worker:
+        if args.inline_threshold is not None:
+            parser.error("worker replay takes its inlining policy from job.json")
         if args.managed_worker:
             worker(args.worker, args.llvm)
         else:
@@ -356,7 +370,8 @@ def main():
     env = dict(os.environ)
     start = time.monotonic()
     report = {"input_sha256": digest(source), "partitions": args.partitions, "jobs": args.jobs,
-              "lto_partitions": args.lto_partitions, "opt": args.opt, "timeout_s": args.timeout,
+              "lto_partitions": args.lto_partitions, "opt": args.opt, "inline_threshold": args.inline_threshold,
+              "timeout_s": args.timeout,
               "input_bytes": source.stat().st_size, "tool_sha256": identity(llvm),
               "worker_script_sha256": digest(__file__), "workers": [], "complete": False}
     write_json(args.report, report)
@@ -377,8 +392,8 @@ def main():
                 directory = work / f"worker-{i}"
                 directory.mkdir()
                 shutil.copyfile(part, directory / "input.bc")
-                job = {"version": 1, "input_sha256": digest(part), "tool_sha256": report["tool_sha256"], "opt": args.opt,
-                       "emit": "bitcode" if args.lto_partitions else "object"}
+                job = {"version": 2, "input_sha256": digest(part), "tool_sha256": report["tool_sha256"], "opt": args.opt,
+                       "inline_threshold": args.inline_threshold, "emit": "bitcode" if args.lto_partitions else "object"}
                 write_json(directory / "job.json", job)
                 expected_jobs[directory] = digest(directory / "job.json")
                 jobs.append(directory)

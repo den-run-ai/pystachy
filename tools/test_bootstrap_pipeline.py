@@ -28,7 +28,8 @@ out = pathlib.Path(argv[argv.index("-o") + 1])
 name = out.stem
 event = {"kind": kind, "name": name, "producer": pathlib.Path(sys.argv[0]).name,
          "opt": os.environ["PYSTACHY_AOT_OPT"], "jobs": int(os.environ["PYSTACHY_BUILD_JOBS"]),
-         "partitions": int(os.environ["PYSTACHY_LTO_PARTITIONS"]), "begin": time.monotonic()}
+         "partitions": int(os.environ["PYSTACHY_LTO_PARTITIONS"]),
+         "inline_threshold": os.getenv("PYSTACHY_AOT_INLINE_THRESHOLD"), "begin": time.monotonic()}
 with (root / "events.jsonl").open("a") as f:
     f.write(json.dumps(event) + "\n")
 if os.getenv("RENDEZVOUS") == "1" and name in ("pystachy1", "rt1"):
@@ -101,6 +102,7 @@ class PipelineTests(unittest.TestCase):
                 self.assertTrue(all(p["identical"] for p in report["fixed_points"].values()))
                 self.assertTrue(all(n["status"] == "passed" for n in report["steps"]))
                 self.assertGreater(report["cpu_seconds"], 0)
+                self.assertTrue(all(e["inline_threshold"] is None for e in events))
 
     def test_dag_overlaps_witnesses_and_respects_nested_worker_budget(self):
         code, report, events = self.run_case("optimized", ("--jobs", "3", "--build-jobs", "2", "--partitions", "2", "--stage1-opt", "1", "--runtime-c-cache", "--timing"), RENDEZVOUS="1")
@@ -120,6 +122,30 @@ class PipelineTests(unittest.TestCase):
         self.assertTrue(all(e["partitions"] == 0 and e["jobs"] == 1 for e in events if e["kind"] != "build"))
         self.assertTrue(all(n["environment"]["PYSTACHY_RUNTIME_C_CACHE"] == "1" and
                             n["environment"]["PYSTACHY_TIMING"] == "1" for n in steps.values()))
+
+    def test_inlining_thresholds_are_explicit_per_build_and_not_inherited(self):
+        cases = (((), [None, None]),
+                 (("--stage1-inline-threshold", "0"), ["0", None]),
+                 (("--stage2-inline-threshold", "75"), [None, "75"]),
+                 (("--stage1-inline-threshold", "75", "--stage2-inline-threshold", "10000"), ["75", "10000"]))
+        for extra, expected in cases:
+            with self.subTest(extra=extra):
+                (self.root / "events.jsonl").unlink(missing_ok=True)
+                code, report, events = self.run_case("optimized", extra, PYSTACHY_AOT_INLINE_THRESHOLD="999")
+                self.assertEqual(code, 0)
+                self.assertEqual([e["inline_threshold"] for e in events if e["kind"] == "build"], expected)
+                self.assertTrue(all(e["inline_threshold"] is None for e in events if e["kind"] != "build"))
+                self.assertEqual([n["inline_threshold"] for n in report["steps"] if n["name"].startswith("build")],
+                                 [int(value) if value is not None else None for value in expected])
+
+    def test_inlining_threshold_boundaries_reject_before_bootstrap(self):
+        for flag in ("--stage1-inline-threshold", "--stage2-inline-threshold"):
+            for value in ("-1", "10001", "invalid"):
+                with self.subTest(flag=flag, value=value), contextlib.redirect_stderr(io.StringIO()), \
+                     self.assertRaises(SystemExit) as caught:
+                    pipeline.main(self.argv("optimized", flag, value))
+                self.assertEqual(caught.exception.code, 2)
+                self.assertFalse(self.output.exists())
 
     def test_rendezvous_rejects_sequential_scheduling(self):
         # setUp supplies a fresh root, so readiness from the positive control
@@ -151,7 +177,8 @@ subprocess.run(producer + ["build", "pystachy.py", "-o", value("--output"),
             code, report, events = self.run_case("optimized", (
                 "--jobs", "4", "--build-jobs", "4", "--stage1-opt", "0",
                 "--stage1-split", "4", "--stage2-split", str(final_split),
-                "--runtime-overlap", "--runtime-c-cache"))
+                "--runtime-overlap", "--runtime-c-cache",
+                "--stage1-inline-threshold", "0", "--stage2-inline-threshold", "75"))
             self.assertEqual(code, 0)
             builds = [e for e in events if e["kind"] == "build"]
             self.assertEqual([e["producer"] for e in builds], ["pystachy.py", "pystachy1"])
@@ -164,6 +191,9 @@ subprocess.run(producer + ["build", "pystachy.py", "-o", value("--output"),
             arguments = json.loads((self.root / "pipeline-arguments.json").read_text())
             self.assertIn("--overlap", arguments)
             self.assertIn("--caller-witnesses", arguments)
+            self.assertEqual(arguments[arguments.index("--inline-threshold") + 1], "75" if final_split else "0")
+            self.assertEqual([e["inline_threshold"] for e in builds], ["0", "75"])
+            self.assertTrue(all(e["inline_threshold"] is None for e in events if e["kind"] != "build"))
 
     def test_split_policy_rejects_unaccounted_work_and_missing_witnesses(self):
         for extra in (("--stage1-split", "9", "--runtime-c-cache"),
