@@ -73,7 +73,7 @@ def retained() -> None:
     print(old, mixed)
 
 
-print(int_member(-(2**63)), int_member(2**63 - 1))
+print(int_member(-9223372036854775808), int_member(9223372036854775807))
 print(float_member(-0.0), float_member(1.25), bool_member(True), bool_member(False))
 print(optional_member(None), optional_member(1234))
 print(runtime_member([]), runtime_member([0.25, 1.5]))

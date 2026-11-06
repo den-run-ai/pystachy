@@ -103,7 +103,7 @@ print(optional_big(2**80), native_union(17))
         # A promoting input can enter a native-int union only after the existing
         # checked conversion establishes that it fits. A wide input still raises.
         native = bodies["f.native_union"]
-        self.assertIn("extractvalue {i64, ptr} %t3, 1", native)
+        self.assertRegex(native, r"extractvalue \{i64, ptr\} %t[0-9]+, 1")
         self.assertIn("br i1", native)
         self.assertIn("@pys_raise(", native)
         self.assertIn("@pys_ubox_atomic(", native)
