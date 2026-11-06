@@ -15,6 +15,7 @@ which checks each kind of change needs.
 | Compare a program with CPython | `make test FILES="tests/programs/AREA/CASE.py"` | JIT/AOT output and status agree with the recorded CPython reference. Use `make test-py` for the hosted compiler. |
 | Compare compiler revisions | `make irsame REF=<base-sha>` | Corpus LLVM, diagnostics and exit status, with each compiler's own library/runtime inputs. |
 | Check runtime declarations and ABI | `make check-runtime` | Runtime signatures, effects, implementation inventory and recursion through runtime calls. The verification plan also runs native ABI probes. |
+| Check GC tracing reachability | `make gcmarkprobe` | Exact reachable sets under object/block tracing, with an independent graph model and recycled-chunk checks. |
 | Measure standard-library import coverage | [import_sweep.py](import_sweep.py) | Actual compilation of one import per module; import success does not establish API behavior. |
 | Refresh the top-PyPI inventory | [pypi_inventory.py](pypi_inventory.py) | Resolve ranked releases, scan pinned wheels and replay the same stdlib dependencies against two compiler builds ([method](../tests/upstream/pypi/inventory.md)). |
 | Grow the CPython-derived corpus | [cpython_test_methods.py](cpython_test_methods.py) | Which unittest methods of a `Lib/test` file pass natively once their scaffolding is rewritten by fixed rules, and one program of the passing ones; record its output with `tests/record.sh` ([guide](../tests/upstream/core-sweep.md#mechanical-method-extraction-2026-11-02)). |

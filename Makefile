@@ -191,6 +191,16 @@ boxprobe: tools/boxprobe.c runtime.c runtime.py pystachy
 	build/boxprobe
 	PYSTACHY_GC_STRESS=1 build/boxprobe
 
+# Exact mark sets against an independent graph oracle, with both tracing orders.
+gcmarkprobe: tools/gcmarkprobe.c runtime.c runtime.py pystachy
+	mkdir -p build
+	./pystachy rt runtime.py -o build/gcmarkprobe-rt.ll
+	$(LLVMBIN)clang -O2 -S -emit-llvm tools/gcmarkprobe.c -o build/gcmarkprobe.ll
+	$(LLVMBIN)llvm-link build/gcmarkprobe-rt.ll build/gcmarkprobe.ll -o build/gcmarkprobe.bc
+	$(LLVMBIN)clang -O2 build/gcmarkprobe.bc -o build/gcmarkprobe -lm
+	build/gcmarkprobe
+	PYSTACHY_GC_MARK=block build/gcmarkprobe
+
 # sum(), min() and max() of generators and range() stream: 10^8 items in 64 MiB (AOT).
 streamprobe: pystachy
 	$(PY) tools/streamprobe.py
@@ -377,7 +387,7 @@ check-repository:
 lint: lint-python
 	$(PY) tools/runtime_roots.py
 	shellcheck -s sh -S warning $(wildcard tests/*.sh tests/ffi/*.sh tools/*.sh bench/*.sh)
-	$(LLVMBIN)clang -fsyntax-only -Wall -Wextra -Werror runtime.c tools/dictprobe.c tools/listprobe.c tools/eqprobe.c tools/fileprobe.c tools/selectprobe.c tools/weakrefprobe.c tools/boxprobe.c tools/unicodeprobe.c tools/bytescanprobe.c pyext.c pyembed.c
+	$(LLVMBIN)clang -fsyntax-only -Wall -Wextra -Werror runtime.c tools/dictprobe.c tools/listprobe.c tools/eqprobe.c tools/fileprobe.c tools/selectprobe.c tools/weakrefprobe.c tools/boxprobe.c tools/gcmarkprobe.c tools/unicodeprobe.c tools/bytescanprobe.c pyext.c pyembed.c
 	$(LLVMBIN)clang -fsyntax-only -Wall -Wextra -Werror -DPYX_ABI3T pyext.c
 
 clean:
@@ -394,4 +404,4 @@ uninstall:
 test-install:
 	$(PY) -m unittest discover -s tools -p test_install.py
 
-.PHONY: test test-py coverage runtime-coverage variants test-cache test-ffi bench bench-extended bench-extended-check blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe boxprobe streamprobe jitprobe aotprobe unicode-audit unicodeprobe bytescanprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz dynany-fuzz dynany-optin python-int-optin python-int-gate re-probe re-specialize-check typecheck lint-python check-repository check-fast lint clean install uninstall test-install
+.PHONY: test test-py coverage runtime-coverage variants test-cache test-ffi bench bench-extended bench-extended-check blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe boxprobe gcmarkprobe streamprobe jitprobe aotprobe unicode-audit unicodeprobe bytescanprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz dynany-fuzz dynany-optin python-int-optin python-int-gate re-probe re-specialize-check typecheck lint-python check-repository check-fast lint clean install uninstall test-install

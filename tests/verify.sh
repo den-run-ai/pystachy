@@ -238,7 +238,7 @@ export PYSTACHY_HOME="$ROOT"
 # The steps set the knobs they test themselves: one left in the caller's environment would weaken a
 # step (PYSTACHY_GC=off: gc-stress collects nothing) or fail it falsely (PYSTACHY_OPT=-all), so they
 # are dropped, and the report lists them (PYSTACHY_LLVM and PYSTACHY_JOBS are kept)
-ign=$(env | sed -nE 's/^(PYSTACHY_(PATH|CFLAGS|GC|GC_MIN|GC_STRESS|GC_STRESS_PROGRAM|IRCHECK|IRFX|OPT|JIT_INLINE|JIT_CODEGEN|UNICODE_AUDIT|ARGV0|CASE_TIMES))=.*$/\1/p' | sort -u)
+ign=$(env | sed -nE 's/^(PYSTACHY_(PATH|CFLAGS|GC|GC_MIN|GC_MARK|GC_STRESS|GC_STRESS_PROGRAM|IRCHECK|IRFX|OPT|JIT_INLINE|JIT_CODEGEN|UNICODE_AUDIT|ARGV0|CASE_TIMES))=.*$/\1/p' | sort -u)
 for e in $ign; do echo "verify: ignoring $e=$(printenv "$e")"; unset "$e"; done
 LLVM=${PYSTACHY_LLVM:+${PYSTACHY_LLVM%/}/}
 
@@ -1107,7 +1107,9 @@ L=$V/weakrefs.log; s=$(now); r=fail
 { "${LLVM}clang" -O2 -S -emit-llvm tools/weakrefprobe.c -o "$V/weakrefprobe.ll" &&
   "${LLVM}llvm-link" "$V/rt1.ll" "$V/weakrefprobe.ll" -o "$V/weakrefprobe.bc" &&
   "${LLVM}clang" -O2 "$V/weakrefprobe.bc" -o "$V/weakrefprobe" -lm &&
-  "$V/weakrefprobe" && PYSTACHY_GC_STRESS=1 "$V/weakrefprobe" && r=pass; } > "$L" 2>&1
+  "$V/weakrefprobe" && PYSTACHY_GC_STRESS=1 "$V/weakrefprobe" &&
+  PYSTACHY_GC_MARK=block "$V/weakrefprobe" &&
+  PYSTACHY_GC_MARK=block PYSTACHY_GC_STRESS=1 "$V/weakrefprobe" && r=pass; } > "$L" 2>&1
 step weakrefs $r "$s" "$L" ', "referents": 2, "churned_handles": 1000'
 fi
 
@@ -1141,14 +1143,20 @@ L=$V/select-io.log; s=$(now); r=fail
 step select-io $r "$s" "$L" ''
 fi
 
-# ---- box-slots: boxes take 16-byte slots; a payload pointer keeps a box, one past its end does not
+# ---- box-slots: box interior roots, plus exact mark sets under both tracing orders
 if want box-slots; then
 L=$V/box-slots.log; s=$(now); r=fail
 { "${LLVM}clang" -O2 -S -emit-llvm tools/boxprobe.c -o "$V/boxprobe.ll" &&
   "${LLVM}llvm-link" "$V/rt1.ll" "$V/boxprobe.ll" -o "$V/boxprobe.bc" &&
   "${LLVM}clang" -O2 "$V/boxprobe.bc" -o "$V/boxprobe" -lm &&
-  "$V/boxprobe" && PYSTACHY_GC_STRESS=1 "$V/boxprobe" && r=pass; } > "$L" 2>&1
-step box-slots $r "$s" "$L" ', "box_bytes": 16'
+  "$V/boxprobe" && PYSTACHY_GC_STRESS=1 "$V/boxprobe" &&
+  PYSTACHY_GC_MARK=block "$V/boxprobe" &&
+  PYSTACHY_GC_MARK=block PYSTACHY_GC_STRESS=1 "$V/boxprobe" &&
+  "${LLVM}clang" -O2 -S -emit-llvm tools/gcmarkprobe.c -o "$V/gcmarkprobe.ll" &&
+  "${LLVM}llvm-link" "$V/rt1.ll" "$V/gcmarkprobe.ll" -o "$V/gcmarkprobe.bc" &&
+  "${LLVM}clang" -O2 "$V/gcmarkprobe.bc" -o "$V/gcmarkprobe" -lm &&
+  "$V/gcmarkprobe" && PYSTACHY_GC_MARK=block "$V/gcmarkprobe" && r=pass; } > "$L" 2>&1
+step box-slots $r "$s" "$L" ', "box_bytes": 16, "mark_oracle_objects": 6000, "mark_oracle_roots_per_mode": 16'
 fi
 }
 
