@@ -1,0 +1,248 @@
+{
+  "schema_version": 1,
+  "archive_root": "bench/gc_application/results/2026-11-06",
+  "original_workspace": "/workspace/scratch/a009f956ecf0",
+  "captured_utc": "2026-11-06T05:40:08.753594+00:00",
+  "scope": "Completed native timing JSON and native/optional preparation only. Compiler validation has its own manifest. Optional/sensitivity timing and profiles are not part of this copy.",
+  "byte_policy": "Source file bytes preserved without reserialization or normalization.",
+  "preparation_validation": {
+    "native": {
+      "complete": true,
+      "cases": 9,
+      "configurations": 6,
+      "checks_per_configuration": [
+        "smoke",
+        "smoke-with-program-GC-stress",
+        "full-CPython-oracle"
+      ],
+      "validation_runs": 162,
+      "compiled_executables": 36,
+      "configuration_names": [
+        "main",
+        "main_aa",
+        "scalar",
+        "default",
+        "atomic_union",
+        "block"
+      ],
+      "workload_names": [
+        "float",
+        "chaos",
+        "raytrace",
+        "json_loads",
+        "json_dumps",
+        "richards",
+        "nbody",
+        "json_retained",
+        "repair_traces"
+      ]
+    },
+    "optional": {
+      "complete": true,
+      "cases": 8,
+      "configurations": 5,
+      "checks_per_configuration": [
+        "smoke",
+        "smoke-with-program-GC-stress",
+        "full-CPython-oracle"
+      ],
+      "validation_runs": 120,
+      "compiled_executables": 16,
+      "configuration_names": [
+        "native",
+        "bdw",
+        "bdw_32m",
+        "bdw_incremental",
+        "bdw_generational"
+      ],
+      "workload_names": [
+        "json_retained_memory",
+        "float",
+        "chaos",
+        "raytrace",
+        "json_loads",
+        "json_dumps",
+        "richards",
+        "nbody"
+      ]
+    }
+  },
+  "native_measurement_files": 9,
+  "files": [
+    {
+      "path": "native/chaos.json",
+      "original_path": "/workspace/scratch/a009f956ecf0/native-results/chaos.json",
+      "bytes": 50649,
+      "sha256": "09cdf729d592de0452097abf87909afd7e0076f41d1bf887a199cb21549d1a0f",
+      "role": "completed-native-measurement"
+    },
+    {
+      "path": "native/float.json",
+      "original_path": "/workspace/scratch/a009f956ecf0/native-results/float.json",
+      "bytes": 51163,
+      "sha256": "9169d64eca3a0f892fe8d3c8a2595acaa4b1255c34e338aee95ede07d76af11c",
+      "role": "completed-native-measurement"
+    },
+    {
+      "path": "native/json_dumps.json",
+      "original_path": "/workspace/scratch/a009f956ecf0/native-results/json_dumps.json",
+      "bytes": 50914,
+      "sha256": "f883d63ff6013a49be935ecfffa22adcc4c708211d040cd6a68f4324a955122c",
+      "role": "completed-native-measurement"
+    },
+    {
+      "path": "native/json_loads.json",
+      "original_path": "/workspace/scratch/a009f956ecf0/native-results/json_loads.json",
+      "bytes": 50948,
+      "sha256": "0cfa417a3345f81bed3c2f54c1ee119658afb317e9d809352abe0472730b3881",
+      "role": "completed-native-measurement"
+    },
+    {
+      "path": "native/json_retained.json",
+      "original_path": "/workspace/scratch/a009f956ecf0/native-results/json_retained.json",
+      "bytes": 57655,
+      "sha256": "2cd13078b459e5a94fe242d0a8111a5c8fd62f0d18109d731dbf455804090403",
+      "role": "completed-native-measurement"
+    },
+    {
+      "path": "native/nbody.json",
+      "original_path": "/workspace/scratch/a009f956ecf0/native-results/nbody.json",
+      "bytes": 50153,
+      "sha256": "befb32b6a5626d37da032f1d1739b83a5bc612dd7a92e841ac014b592471ce0a",
+      "role": "completed-native-measurement"
+    },
+    {
+      "path": "native/raytrace.json",
+      "original_path": "/workspace/scratch/a009f956ecf0/native-results/raytrace.json",
+      "bytes": 51021,
+      "sha256": "7b4edc48b74d1886f3848b0d7ac9c65bf87ca2e2ea87f4a50198ccb71a8946fc",
+      "role": "completed-native-measurement"
+    },
+    {
+      "path": "native/repair_traces.json",
+      "original_path": "/workspace/scratch/a009f956ecf0/native-results/repair_traces.json",
+      "bytes": 70128,
+      "sha256": "b461ca7f320d4bdafdd02e3df0775b94fbe8b8f8585ba7cf4f3e2a3c34528ad7",
+      "role": "completed-native-measurement"
+    },
+    {
+      "path": "native/richards.json",
+      "original_path": "/workspace/scratch/a009f956ecf0/native-results/richards.json",
+      "bytes": 50358,
+      "sha256": "f5462de77700290b397919ab57c7cc127353ca1f4ddd370e054708b9000944b4",
+      "role": "completed-native-measurement"
+    },
+    {
+      "path": "preparation/native-builds.json",
+      "original_path": "/workspace/scratch/a009f956ecf0/native-build/builds.json",
+      "bytes": 168974,
+      "sha256": "11b6fc1ffd6b1e4ed0411c2e40e1d287da0906a68635468b319817c55edeff2c",
+      "role": "completed-preparation"
+    },
+    {
+      "path": "preparation/native-build.log",
+      "original_path": "/workspace/scratch/a009f956ecf0/native-build.log",
+      "bytes": 3921,
+      "sha256": "55f8d0bf3a186dc36ff74c64914e205916100c8e347f3fae0329de7874897329",
+      "role": "completed-preparation"
+    },
+    {
+      "path": "preparation/native-spec.json",
+      "original_path": "/workspace/scratch/a009f956ecf0/native-spec.json",
+      "bytes": 5454,
+      "sha256": "f535d0b1a8289aa450e23912e0ef5dc4a1bac4a37b3dfcec6ce6878f3b2d2c0a",
+      "role": "completed-preparation"
+    },
+    {
+      "path": "preparation/optional-builds.json",
+      "original_path": "/workspace/scratch/a009f956ecf0/optional-aot-build/builds.json",
+      "bytes": 107527,
+      "sha256": "ccee9b074ef02e901e9511d22d9e78c83f033852a5592604da99c65209867e11",
+      "role": "completed-preparation"
+    },
+    {
+      "path": "preparation/optional-build.log",
+      "original_path": "/workspace/scratch/a009f956ecf0/optional-aot-build.log",
+      "bytes": 2791,
+      "sha256": "79324004a2e1520de867f9648a606c73e9a94210176ef0bda6b130db4b298280",
+      "role": "completed-preparation"
+    },
+    {
+      "path": "preparation/optional-spec.json",
+      "original_path": "/workspace/scratch/a009f956ecf0/optional-aot-spec.json",
+      "bytes": 4415,
+      "sha256": "35b2b06c72a849ecd12145833316230880fd26fff9c2fa0142b2fb245399ad3a",
+      "role": "completed-preparation"
+    },
+    {
+      "path": "preparation/failed-link-builds.json",
+      "original_path": "/workspace/scratch/a009f956ecf0/optional-build/builds.json",
+      "bytes": 75031,
+      "sha256": "9d602594c2deee087e8f46d90aceb7fed0c82760b9354b9f7ef5f2e092b1ee6e",
+      "role": "failed-preparation"
+    },
+    {
+      "path": "preparation/failed-link-build.log",
+      "original_path": "/workspace/scratch/a009f956ecf0/optional-build.log",
+      "bytes": 953,
+      "sha256": "0cd8d13ad46659da08cf6112cb93ccf7d1fc0561ba645a5eef9fc5b4b202f930",
+      "role": "failed-preparation"
+    },
+    {
+      "path": "preparation/failed-link-build.stderr",
+      "original_path": "/workspace/scratch/a009f956ecf0/optional-build/bdw-json_retained_memory-build.stderr",
+      "bytes": 274,
+      "sha256": "1fabb989d5abe4807d5a710ea85ae7d250676f9a993f8214a89dd73684254931",
+      "role": "failed-preparation"
+    },
+    {
+      "path": "preparation/failed-link-spec.json",
+      "original_path": "/workspace/scratch/a009f956ecf0/optional-spec.json",
+      "bytes": 4396,
+      "sha256": "3ef7cd90fbaaf2f83b587b82f85a9855c1d3371acd849a294c99f374c3560c73",
+      "role": "failed-preparation"
+    },
+    {
+      "path": "preparation/inputs-full-manifest.json",
+      "original_path": "/workspace/scratch/a009f956ecf0/inputs-full/manifest.json",
+      "bytes": 1000,
+      "sha256": "8a30f5c4931182c27f28843bfcf8815184c9a6048bd1363d5072733a78b4d1a3",
+      "role": "completed-preparation"
+    },
+    {
+      "path": "preparation/inputs-smoke-manifest.json",
+      "original_path": "/workspace/scratch/a009f956ecf0/inputs-smoke/manifest.json",
+      "bytes": 989,
+      "sha256": "605795cebee8a55d246c931d32bac00a501ce17357a87db7edf8cc4d0c8af783",
+      "role": "completed-preparation"
+    },
+    {
+      "path": "preparation/embedded-fixture-manifest.json",
+      "original_path": "/workspace/scratch/a009f956ecf0/embedded-json/gc_json_fixture.manifest.json",
+      "bytes": 796,
+      "sha256": "dda3f47d573cdd7a9f7505291ad9e2fee5410d9bb71b79ac4f3b2e4abe5ceb99",
+      "role": "completed-preparation"
+    },
+    {
+      "path": "preparation/bdwgc-aot-overlay-manifest.json",
+      "original_path": "/workspace/scratch/a009f956ecf0/bdwgc-aot-overlay/bdwgc-manifest.json",
+      "bytes": 3013,
+      "sha256": "f13f4f5fdfd847bafa2960475d5ddaf5d3a5d8639a0700519a5ece115777240d",
+      "role": "completed-preparation"
+    },
+    {
+      "path": "preparation/bdwgc-link-flags-check.json",
+      "original_path": "/workspace/scratch/a009f956ecf0/bdwgc-link-flags-check.json",
+      "bytes": 2383,
+      "sha256": "df37a93a34e5ef9997bb95d357299fb60f99da739f9d8b4bf17d0d5e0114eab8",
+      "role": "completed-preparation"
+    },
+    {
+      "path": "preparation/pilot-preflight-apps.log",
+      "original_path": "/workspace/scratch/a009f956ecf0/preflight-apps.log",
+      "bytes": 1392,
+      "sha256": "32747068abe0a6e8c0e36e7b984dbbdb06f1f391a163c28856b90caf34e2a95c",
+      "role": "pilot-nonheadline"
+    }
+  ]
+}

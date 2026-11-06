@@ -1,0 +1,27 @@
+{
+  "records": 16,
+  "record_profile": "changing",
+  "record_text": "utf8",
+  "customers": 20,
+  "repair_sources": 10,
+  "generator_sources_sha256": {
+    "bench/gc_application/prepare.py": "887c9293e416c0f7b41f1152dbc31c75d26099e3c191b3a34f07898610224ac4",
+    "tools/bench_json.py": "53832bdabebe095a6b2869a022308d088b547fb41fd21c0e9b6e3af8654e5ef8",
+    "bench/json_repair/bench.py": "cb00324211f2841fa14b7483b8378da07f0704f07b43c430a39decac3de183a6",
+    "examples/mailmerge/gendata.py": "15a3188935592244aa3cb032539987f9fc1bbe4ccd151ed2e812ece767ceb273"
+  },
+  "inputs": {
+    "records.json": {
+      "sha256": "ce249a9858ba1824214ef9ae778e8ad1c3e956a2e08d4636eedbe41a5f048c14",
+      "bytes": 1506
+    },
+    "repair-inputs.jsonl": {
+      "sha256": "c86fc0e29254de24ff642a11704713bc08d987d8b2b707e489224400212e0347",
+      "bytes": 843
+    },
+    "customers.tsv": {
+      "sha256": "a8b069e693afa93b500a7417344d50aa83f6426a4f8902715408ca393bac0cc7",
+      "bytes": 1611
+    }
+  }
+}

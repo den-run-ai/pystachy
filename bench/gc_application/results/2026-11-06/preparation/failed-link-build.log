@@ -1,0 +1,15 @@
+ORACLE json_retained_memory smoke
+ORACLE json_retained_memory full
+BUILD native json_retained_memory
+PASS native json_retained_memory smoke, stress, full oracle
+BUILD bdw json_retained_memory
+Traceback (most recent call last):
+  File "/workspace/scratch/a009f956ecf0/pystachy/bench/gc_application/build.py", line 242, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/workspace/scratch/a009f956ecf0/pystachy/bench/gc_application/build.py", line 208, in main
+    run(command, clean_environment(extra), label + "-" + name + "-build")
+    ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/a009f956ecf0/pystachy/bench/gc_application/build.py", line 141, in run
+    raise RuntimeError(f"{label}: exit {result.returncode}; see {out / (label + '.stderr')}")
+RuntimeError: bdw-json_retained_memory-build: exit 1; see /workspace/scratch/a009f956ecf0/optional-build/bdw-json_retained_memory-build.stderr

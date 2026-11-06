@@ -1,0 +1,21 @@
+BUILD main json_retained
+BUILD scalar json_retained
+BUILD combined json_retained
+PROFILE json_retained
+RESULT json_retained 1.043 0 ingested_records 600000
+rollup 187290645900
+retained_batches 4
+retained_rollup 24972086120
+output_chars 2670460
+ gc: 11 collections, 343.7 ms; heap peak 224.8 MiB; live 90.0 MiB at the last
+gc phases: roots 0.060 ms; trace 283.525 ms; sweep 60.121 ms
+gc work: root words 12228; heap words 63877828; scanned objects 13822980; range pushes 13822980; chunk visits 0
+
+BUILD main repair_traces
+/workspace/scratch/a009f956ecf0/pystachy/bench/gc_application/repair_traces.py:51: error: expected bool | dict[str,JSONValue] | float | int | list[JSONValue] | str | None, got list[str]
+Traceback (most recent call last):
+  File "/workspace/scratch/a009f956ecf0/preflight-apps.py", line 13, in <module>
+    subprocess.run([str(home/'pystachy'),'build',str(source),'-o',str(exe)],env=e,cwd=repo,check=True,timeout=180)
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['/workspace/scratch/8b5d64b08ada/baseline/pystachy', 'build', '/workspace/scratch/a009f956ecf0/pystachy/bench/gc_application/repair_traces.py', '-o', '/workspace/scratch/a009f956ecf0/bins/main-repair_traces']' returned non-zero exit status 1.

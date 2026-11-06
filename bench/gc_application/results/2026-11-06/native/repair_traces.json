@@ -1,0 +1,1789 @@
+{
+  "schema_version": 1,
+  "workload": "repair_traces",
+  "started_utc": "2026-11-06T05:08:24.349962+00:00",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.39",
+  "python": "3.13.16 (main, Oct 14 2026, 01:04:01) [Clang 23.1.3 ]",
+  "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+  "cpu": 3,
+  "allowed_cpus": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+  ],
+  "logical_cpus": 9,
+  "loadavg_before": [
+    0.9541015625,
+    0.85302734375,
+    0.7763671875
+  ],
+  "rounds": 6,
+  "warmups": 1,
+  "variants": [
+    {
+      "name": "main",
+      "argv": [
+        "/workspace/scratch/a009f956ecf0/native-build/main-repair_traces",
+        "/workspace/scratch/a009f956ecf0/inputs-full/repair-inputs.jsonl",
+        "10000"
+      ],
+      "env": {
+        "PYSTACHY_GC": "stats",
+        "PYSTACHY_GC_MIN": "32"
+      },
+      "validated_executable_sha256": "01fafc8e84c935c9c81995ebe6ad4d818c1bff9e37c90dc0d4d8257ad5f997b7",
+      "cwd": "/workspace/scratch/a009f956ecf0/pystachy",
+      "address_space_mib": 2048,
+      "inputs_sha256": {
+        "/workspace/scratch/a009f956ecf0/inputs-full/manifest.json": "8a30f5c4931182c27f28843bfcf8815184c9a6048bd1363d5072733a78b4d1a3",
+        "/workspace/scratch/a009f956ecf0/inputs-full/repair-inputs.jsonl": "c86fc0e29254de24ff642a11704713bc08d987d8b2b707e489224400212e0347",
+        "/workspace/scratch/a009f956ecf0/inputs-smoke/repair-inputs.jsonl": "c86fc0e29254de24ff642a11704713bc08d987d8b2b707e489224400212e0347",
+        "/workspace/scratch/a009f956ecf0/pystachy/bench/gc_application/repair_traces.py": "9212fbe40fce2ba6a989bf670fd30b2ac5577961cf35d45821cbfb284f7042ef",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/__init__.py": "deddc9953db96ba6a1cb1e746b7192be1473d10d794341746fd53a30387a459a",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/__main__.py": "b0993590a3edb2484bbdbf5da3f766d598736a0d0a12839eb0ad876381c82698",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/json_parser.py": "d87f6e025b12f73bfcb6bac2b0b6876aa9906718f97aea59c24d823c4972e16d",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/json_repair.py": "e77c02623aeac49798a65c8999955af3e42ea7176d3fe920fb03a1f521edf9ef",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_array.py": "176e5b609f499bcd5ee8fece5b1b808af780f1dde9b5ab2ab558eb5dfa186a36",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_comment.py": "16dc04e6907711cf39a8f0ffc90fb6db3d0d98513f9af44df9d2ff8333af380f",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_number.py": "76dd529dda1d707cde65d0451dd46c4413f023cb024caf33d21df5789fedf6fa",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_object.py": "38af981b1b59b3a06408ae6c59c06c2ceb31b37bc903e7c76447cdcb3bae1557",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_string.py": "7feae0a451f350b0f5a1fd950a3eb19cd0f67cd9934442986415d387d4aa67d1",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_string_helpers/__init__.py": "80495d283364a02756b0412700c6f427ba59cdc8e2cc47d8444a2dcb5743376b",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_string_helpers/object_value_context.py": "4bc9b19ec4e30a879fead92cc16190ee4af6b4bd97477209018916b7b101eb7c",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_string_helpers/parse_boolean_or_null.py": "47ee308c3fd48ab02e930d7db8482da3523a4f5cf6f45996f163af173bd4e6b2",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_string_helpers/parse_json_llm_block.py": "3664c2a861bcdcdfdd44d406ea5c342ea19a144f93ddf4125b273b3659b271ae",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parser_parenthesized.py": "7510aea0ba96d2a530b6b8cf4adfacf0e21a0f89926ce6380f5304b6e0d22955",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/utils/__init__.py": "c22cc24de539293ce30af6057e9a8e4b1796de6a83657eb47f9b3be4a427e305",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/utils/constants.py": "a71043131270e50a28a2b9d14a6e60c79c7dae502223da19a4434923388a9889",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/utils/json_context.py": "84a8016d4167ac042ef8289b3c49b4e32cfe43a232ba9fc9dfed86a98e88424c",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/utils/object_comparer.py": "eb4f926a48f689fa3bbbb581858ab8a0507d029b0bcc154eb32ebcab65588ded",
+        "/workspace/scratch/a009f956ecf0/native-build/builds.json": "11b6fc1ffd6b1e4ed0411c2e40e1d287da0906a68635468b319817c55edeff2c"
+      },
+      "executable_path": "/workspace/scratch/a009f956ecf0/native-build/main-repair_traces",
+      "executable_sha256": "01fafc8e84c935c9c81995ebe6ad4d818c1bff9e37c90dc0d4d8257ad5f997b7",
+      "checkout": {
+        "revision": "425ad3603e370f04c99412bc5114fa767f94013c",
+        "status": ""
+      }
+    },
+    {
+      "name": "main_aa",
+      "argv": [
+        "/workspace/scratch/a009f956ecf0/native-build/main-repair_traces",
+        "/workspace/scratch/a009f956ecf0/inputs-full/repair-inputs.jsonl",
+        "10000"
+      ],
+      "env": {
+        "PYSTACHY_GC": "stats",
+        "PYSTACHY_GC_MIN": "32"
+      },
+      "validated_executable_sha256": "01fafc8e84c935c9c81995ebe6ad4d818c1bff9e37c90dc0d4d8257ad5f997b7",
+      "cwd": "/workspace/scratch/a009f956ecf0/pystachy",
+      "address_space_mib": 2048,
+      "inputs_sha256": {
+        "/workspace/scratch/a009f956ecf0/inputs-full/manifest.json": "8a30f5c4931182c27f28843bfcf8815184c9a6048bd1363d5072733a78b4d1a3",
+        "/workspace/scratch/a009f956ecf0/inputs-full/repair-inputs.jsonl": "c86fc0e29254de24ff642a11704713bc08d987d8b2b707e489224400212e0347",
+        "/workspace/scratch/a009f956ecf0/inputs-smoke/repair-inputs.jsonl": "c86fc0e29254de24ff642a11704713bc08d987d8b2b707e489224400212e0347",
+        "/workspace/scratch/a009f956ecf0/pystachy/bench/gc_application/repair_traces.py": "9212fbe40fce2ba6a989bf670fd30b2ac5577961cf35d45821cbfb284f7042ef",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/__init__.py": "deddc9953db96ba6a1cb1e746b7192be1473d10d794341746fd53a30387a459a",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/__main__.py": "b0993590a3edb2484bbdbf5da3f766d598736a0d0a12839eb0ad876381c82698",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/json_parser.py": "d87f6e025b12f73bfcb6bac2b0b6876aa9906718f97aea59c24d823c4972e16d",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/json_repair.py": "e77c02623aeac49798a65c8999955af3e42ea7176d3fe920fb03a1f521edf9ef",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_array.py": "176e5b609f499bcd5ee8fece5b1b808af780f1dde9b5ab2ab558eb5dfa186a36",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_comment.py": "16dc04e6907711cf39a8f0ffc90fb6db3d0d98513f9af44df9d2ff8333af380f",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_number.py": "76dd529dda1d707cde65d0451dd46c4413f023cb024caf33d21df5789fedf6fa",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_object.py": "38af981b1b59b3a06408ae6c59c06c2ceb31b37bc903e7c76447cdcb3bae1557",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_string.py": "7feae0a451f350b0f5a1fd950a3eb19cd0f67cd9934442986415d387d4aa67d1",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_string_helpers/__init__.py": "80495d283364a02756b0412700c6f427ba59cdc8e2cc47d8444a2dcb5743376b",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_string_helpers/object_value_context.py": "4bc9b19ec4e30a879fead92cc16190ee4af6b4bd97477209018916b7b101eb7c",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_string_helpers/parse_boolean_or_null.py": "47ee308c3fd48ab02e930d7db8482da3523a4f5cf6f45996f163af173bd4e6b2",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_string_helpers/parse_json_llm_block.py": "3664c2a861bcdcdfdd44d406ea5c342ea19a144f93ddf4125b273b3659b271ae",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parser_parenthesized.py": "7510aea0ba96d2a530b6b8cf4adfacf0e21a0f89926ce6380f5304b6e0d22955",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/utils/__init__.py": "c22cc24de539293ce30af6057e9a8e4b1796de6a83657eb47f9b3be4a427e305",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/utils/constants.py": "a71043131270e50a28a2b9d14a6e60c79c7dae502223da19a4434923388a9889",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/utils/json_context.py": "84a8016d4167ac042ef8289b3c49b4e32cfe43a232ba9fc9dfed86a98e88424c",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/utils/object_comparer.py": "eb4f926a48f689fa3bbbb581858ab8a0507d029b0bcc154eb32ebcab65588ded",
+        "/workspace/scratch/a009f956ecf0/native-build/builds.json": "11b6fc1ffd6b1e4ed0411c2e40e1d287da0906a68635468b319817c55edeff2c"
+      },
+      "executable_path": "/workspace/scratch/a009f956ecf0/native-build/main-repair_traces",
+      "executable_sha256": "01fafc8e84c935c9c81995ebe6ad4d818c1bff9e37c90dc0d4d8257ad5f997b7",
+      "checkout": {
+        "revision": "425ad3603e370f04c99412bc5114fa767f94013c",
+        "status": ""
+      }
+    },
+    {
+      "name": "scalar",
+      "argv": [
+        "/workspace/scratch/a009f956ecf0/native-build/scalar-repair_traces",
+        "/workspace/scratch/a009f956ecf0/inputs-full/repair-inputs.jsonl",
+        "10000"
+      ],
+      "env": {
+        "PYSTACHY_GC": "stats",
+        "PYSTACHY_GC_MIN": "32"
+      },
+      "validated_executable_sha256": "b00f6b0cff304d0edbdb7370d9eba27de4de2032141f825d7b98688ac83c414d",
+      "cwd": "/workspace/scratch/a009f956ecf0/pystachy",
+      "address_space_mib": 2048,
+      "inputs_sha256": {
+        "/workspace/scratch/a009f956ecf0/inputs-full/manifest.json": "8a30f5c4931182c27f28843bfcf8815184c9a6048bd1363d5072733a78b4d1a3",
+        "/workspace/scratch/a009f956ecf0/inputs-full/repair-inputs.jsonl": "c86fc0e29254de24ff642a11704713bc08d987d8b2b707e489224400212e0347",
+        "/workspace/scratch/a009f956ecf0/inputs-smoke/repair-inputs.jsonl": "c86fc0e29254de24ff642a11704713bc08d987d8b2b707e489224400212e0347",
+        "/workspace/scratch/a009f956ecf0/pystachy/bench/gc_application/repair_traces.py": "9212fbe40fce2ba6a989bf670fd30b2ac5577961cf35d45821cbfb284f7042ef",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/__init__.py": "deddc9953db96ba6a1cb1e746b7192be1473d10d794341746fd53a30387a459a",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/__main__.py": "b0993590a3edb2484bbdbf5da3f766d598736a0d0a12839eb0ad876381c82698",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/json_parser.py": "d87f6e025b12f73bfcb6bac2b0b6876aa9906718f97aea59c24d823c4972e16d",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/json_repair.py": "e77c02623aeac49798a65c8999955af3e42ea7176d3fe920fb03a1f521edf9ef",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_array.py": "176e5b609f499bcd5ee8fece5b1b808af780f1dde9b5ab2ab558eb5dfa186a36",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_comment.py": "16dc04e6907711cf39a8f0ffc90fb6db3d0d98513f9af44df9d2ff8333af380f",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_number.py": "76dd529dda1d707cde65d0451dd46c4413f023cb024caf33d21df5789fedf6fa",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_object.py": "38af981b1b59b3a06408ae6c59c06c2ceb31b37bc903e7c76447cdcb3bae1557",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_string.py": "7feae0a451f350b0f5a1fd950a3eb19cd0f67cd9934442986415d387d4aa67d1",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_string_helpers/__init__.py": "80495d283364a02756b0412700c6f427ba59cdc8e2cc47d8444a2dcb5743376b",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_string_helpers/object_value_context.py": "4bc9b19ec4e30a879fead92cc16190ee4af6b4bd97477209018916b7b101eb7c",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_string_helpers/parse_boolean_or_null.py": "47ee308c3fd48ab02e930d7db8482da3523a4f5cf6f45996f163af173bd4e6b2",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_string_helpers/parse_json_llm_block.py": "3664c2a861bcdcdfdd44d406ea5c342ea19a144f93ddf4125b273b3659b271ae",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parser_parenthesized.py": "7510aea0ba96d2a530b6b8cf4adfacf0e21a0f89926ce6380f5304b6e0d22955",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/utils/__init__.py": "c22cc24de539293ce30af6057e9a8e4b1796de6a83657eb47f9b3be4a427e305",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/utils/constants.py": "a71043131270e50a28a2b9d14a6e60c79c7dae502223da19a4434923388a9889",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/utils/json_context.py": "84a8016d4167ac042ef8289b3c49b4e32cfe43a232ba9fc9dfed86a98e88424c",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/utils/object_comparer.py": "eb4f926a48f689fa3bbbb581858ab8a0507d029b0bcc154eb32ebcab65588ded",
+        "/workspace/scratch/a009f956ecf0/native-build/builds.json": "11b6fc1ffd6b1e4ed0411c2e40e1d287da0906a68635468b319817c55edeff2c"
+      },
+      "executable_path": "/workspace/scratch/a009f956ecf0/native-build/scalar-repair_traces",
+      "executable_sha256": "b00f6b0cff304d0edbdb7370d9eba27de4de2032141f825d7b98688ac83c414d",
+      "checkout": {
+        "revision": "425ad3603e370f04c99412bc5114fa767f94013c",
+        "status": ""
+      }
+    },
+    {
+      "name": "default",
+      "argv": [
+        "/workspace/scratch/a009f956ecf0/native-build/default-repair_traces",
+        "/workspace/scratch/a009f956ecf0/inputs-full/repair-inputs.jsonl",
+        "10000"
+      ],
+      "env": {
+        "PYSTACHY_GC": "stats",
+        "PYSTACHY_GC_MIN": "32"
+      },
+      "validated_executable_sha256": "610f3b8b6d2d5d561c8ae91d80904d426c73983f8269d92a19919c77bd3c80b2",
+      "cwd": "/workspace/scratch/a009f956ecf0/pystachy",
+      "address_space_mib": 2048,
+      "inputs_sha256": {
+        "/workspace/scratch/a009f956ecf0/inputs-full/manifest.json": "8a30f5c4931182c27f28843bfcf8815184c9a6048bd1363d5072733a78b4d1a3",
+        "/workspace/scratch/a009f956ecf0/inputs-full/repair-inputs.jsonl": "c86fc0e29254de24ff642a11704713bc08d987d8b2b707e489224400212e0347",
+        "/workspace/scratch/a009f956ecf0/inputs-smoke/repair-inputs.jsonl": "c86fc0e29254de24ff642a11704713bc08d987d8b2b707e489224400212e0347",
+        "/workspace/scratch/a009f956ecf0/pystachy/bench/gc_application/repair_traces.py": "9212fbe40fce2ba6a989bf670fd30b2ac5577961cf35d45821cbfb284f7042ef",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/__init__.py": "deddc9953db96ba6a1cb1e746b7192be1473d10d794341746fd53a30387a459a",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/__main__.py": "b0993590a3edb2484bbdbf5da3f766d598736a0d0a12839eb0ad876381c82698",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/json_parser.py": "d87f6e025b12f73bfcb6bac2b0b6876aa9906718f97aea59c24d823c4972e16d",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/json_repair.py": "e77c02623aeac49798a65c8999955af3e42ea7176d3fe920fb03a1f521edf9ef",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_array.py": "176e5b609f499bcd5ee8fece5b1b808af780f1dde9b5ab2ab558eb5dfa186a36",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_comment.py": "16dc04e6907711cf39a8f0ffc90fb6db3d0d98513f9af44df9d2ff8333af380f",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_number.py": "76dd529dda1d707cde65d0451dd46c4413f023cb024caf33d21df5789fedf6fa",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_object.py": "38af981b1b59b3a06408ae6c59c06c2ceb31b37bc903e7c76447cdcb3bae1557",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_string.py": "7feae0a451f350b0f5a1fd950a3eb19cd0f67cd9934442986415d387d4aa67d1",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_string_helpers/__init__.py": "80495d283364a02756b0412700c6f427ba59cdc8e2cc47d8444a2dcb5743376b",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_string_helpers/object_value_context.py": "4bc9b19ec4e30a879fead92cc16190ee4af6b4bd97477209018916b7b101eb7c",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_string_helpers/parse_boolean_or_null.py": "47ee308c3fd48ab02e930d7db8482da3523a4f5cf6f45996f163af173bd4e6b2",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_string_helpers/parse_json_llm_block.py": "3664c2a861bcdcdfdd44d406ea5c342ea19a144f93ddf4125b273b3659b271ae",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parser_parenthesized.py": "7510aea0ba96d2a530b6b8cf4adfacf0e21a0f89926ce6380f5304b6e0d22955",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/utils/__init__.py": "c22cc24de539293ce30af6057e9a8e4b1796de6a83657eb47f9b3be4a427e305",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/utils/constants.py": "a71043131270e50a28a2b9d14a6e60c79c7dae502223da19a4434923388a9889",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/utils/json_context.py": "84a8016d4167ac042ef8289b3c49b4e32cfe43a232ba9fc9dfed86a98e88424c",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/utils/object_comparer.py": "eb4f926a48f689fa3bbbb581858ab8a0507d029b0bcc154eb32ebcab65588ded",
+        "/workspace/scratch/a009f956ecf0/native-build/builds.json": "11b6fc1ffd6b1e4ed0411c2e40e1d287da0906a68635468b319817c55edeff2c"
+      },
+      "executable_path": "/workspace/scratch/a009f956ecf0/native-build/default-repair_traces",
+      "executable_sha256": "610f3b8b6d2d5d561c8ae91d80904d426c73983f8269d92a19919c77bd3c80b2",
+      "checkout": {
+        "revision": "425ad3603e370f04c99412bc5114fa767f94013c",
+        "status": ""
+      }
+    },
+    {
+      "name": "atomic_union",
+      "argv": [
+        "/workspace/scratch/a009f956ecf0/native-build/atomic_union-repair_traces",
+        "/workspace/scratch/a009f956ecf0/inputs-full/repair-inputs.jsonl",
+        "10000"
+      ],
+      "env": {
+        "PYSTACHY_GC": "stats",
+        "PYSTACHY_GC_MIN": "32"
+      },
+      "validated_executable_sha256": "1578f349f3a7f7d4f5bb9de2457948f4d4cc7d8e575770c768917c60c339e3ca",
+      "cwd": "/workspace/scratch/a009f956ecf0/pystachy",
+      "address_space_mib": 2048,
+      "inputs_sha256": {
+        "/workspace/scratch/a009f956ecf0/inputs-full/manifest.json": "8a30f5c4931182c27f28843bfcf8815184c9a6048bd1363d5072733a78b4d1a3",
+        "/workspace/scratch/a009f956ecf0/inputs-full/repair-inputs.jsonl": "c86fc0e29254de24ff642a11704713bc08d987d8b2b707e489224400212e0347",
+        "/workspace/scratch/a009f956ecf0/inputs-smoke/repair-inputs.jsonl": "c86fc0e29254de24ff642a11704713bc08d987d8b2b707e489224400212e0347",
+        "/workspace/scratch/a009f956ecf0/pystachy/bench/gc_application/repair_traces.py": "9212fbe40fce2ba6a989bf670fd30b2ac5577961cf35d45821cbfb284f7042ef",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/__init__.py": "deddc9953db96ba6a1cb1e746b7192be1473d10d794341746fd53a30387a459a",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/__main__.py": "b0993590a3edb2484bbdbf5da3f766d598736a0d0a12839eb0ad876381c82698",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/json_parser.py": "d87f6e025b12f73bfcb6bac2b0b6876aa9906718f97aea59c24d823c4972e16d",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/json_repair.py": "e77c02623aeac49798a65c8999955af3e42ea7176d3fe920fb03a1f521edf9ef",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_array.py": "176e5b609f499bcd5ee8fece5b1b808af780f1dde9b5ab2ab558eb5dfa186a36",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_comment.py": "16dc04e6907711cf39a8f0ffc90fb6db3d0d98513f9af44df9d2ff8333af380f",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_number.py": "76dd529dda1d707cde65d0451dd46c4413f023cb024caf33d21df5789fedf6fa",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_object.py": "38af981b1b59b3a06408ae6c59c06c2ceb31b37bc903e7c76447cdcb3bae1557",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_string.py": "7feae0a451f350b0f5a1fd950a3eb19cd0f67cd9934442986415d387d4aa67d1",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_string_helpers/__init__.py": "80495d283364a02756b0412700c6f427ba59cdc8e2cc47d8444a2dcb5743376b",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_string_helpers/object_value_context.py": "4bc9b19ec4e30a879fead92cc16190ee4af6b4bd97477209018916b7b101eb7c",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_string_helpers/parse_boolean_or_null.py": "47ee308c3fd48ab02e930d7db8482da3523a4f5cf6f45996f163af173bd4e6b2",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_string_helpers/parse_json_llm_block.py": "3664c2a861bcdcdfdd44d406ea5c342ea19a144f93ddf4125b273b3659b271ae",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parser_parenthesized.py": "7510aea0ba96d2a530b6b8cf4adfacf0e21a0f89926ce6380f5304b6e0d22955",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/utils/__init__.py": "c22cc24de539293ce30af6057e9a8e4b1796de6a83657eb47f9b3be4a427e305",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/utils/constants.py": "a71043131270e50a28a2b9d14a6e60c79c7dae502223da19a4434923388a9889",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/utils/json_context.py": "84a8016d4167ac042ef8289b3c49b4e32cfe43a232ba9fc9dfed86a98e88424c",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/utils/object_comparer.py": "eb4f926a48f689fa3bbbb581858ab8a0507d029b0bcc154eb32ebcab65588ded",
+        "/workspace/scratch/a009f956ecf0/native-build/builds.json": "11b6fc1ffd6b1e4ed0411c2e40e1d287da0906a68635468b319817c55edeff2c"
+      },
+      "executable_path": "/workspace/scratch/a009f956ecf0/native-build/atomic_union-repair_traces",
+      "executable_sha256": "1578f349f3a7f7d4f5bb9de2457948f4d4cc7d8e575770c768917c60c339e3ca",
+      "checkout": {
+        "revision": "425ad3603e370f04c99412bc5114fa767f94013c",
+        "status": ""
+      }
+    },
+    {
+      "name": "block",
+      "argv": [
+        "/workspace/scratch/a009f956ecf0/native-build/default-repair_traces",
+        "/workspace/scratch/a009f956ecf0/inputs-full/repair-inputs.jsonl",
+        "10000"
+      ],
+      "env": {
+        "PYSTACHY_GC": "stats",
+        "PYSTACHY_GC_MIN": "32",
+        "PYSTACHY_GC_MARK": "block"
+      },
+      "validated_executable_sha256": "610f3b8b6d2d5d561c8ae91d80904d426c73983f8269d92a19919c77bd3c80b2",
+      "cwd": "/workspace/scratch/a009f956ecf0/pystachy",
+      "address_space_mib": 2048,
+      "inputs_sha256": {
+        "/workspace/scratch/a009f956ecf0/inputs-full/manifest.json": "8a30f5c4931182c27f28843bfcf8815184c9a6048bd1363d5072733a78b4d1a3",
+        "/workspace/scratch/a009f956ecf0/inputs-full/repair-inputs.jsonl": "c86fc0e29254de24ff642a11704713bc08d987d8b2b707e489224400212e0347",
+        "/workspace/scratch/a009f956ecf0/inputs-smoke/repair-inputs.jsonl": "c86fc0e29254de24ff642a11704713bc08d987d8b2b707e489224400212e0347",
+        "/workspace/scratch/a009f956ecf0/pystachy/bench/gc_application/repair_traces.py": "9212fbe40fce2ba6a989bf670fd30b2ac5577961cf35d45821cbfb284f7042ef",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/__init__.py": "deddc9953db96ba6a1cb1e746b7192be1473d10d794341746fd53a30387a459a",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/__main__.py": "b0993590a3edb2484bbdbf5da3f766d598736a0d0a12839eb0ad876381c82698",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/json_parser.py": "d87f6e025b12f73bfcb6bac2b0b6876aa9906718f97aea59c24d823c4972e16d",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/json_repair.py": "e77c02623aeac49798a65c8999955af3e42ea7176d3fe920fb03a1f521edf9ef",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_array.py": "176e5b609f499bcd5ee8fece5b1b808af780f1dde9b5ab2ab558eb5dfa186a36",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_comment.py": "16dc04e6907711cf39a8f0ffc90fb6db3d0d98513f9af44df9d2ff8333af380f",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_number.py": "76dd529dda1d707cde65d0451dd46c4413f023cb024caf33d21df5789fedf6fa",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_object.py": "38af981b1b59b3a06408ae6c59c06c2ceb31b37bc903e7c76447cdcb3bae1557",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_string.py": "7feae0a451f350b0f5a1fd950a3eb19cd0f67cd9934442986415d387d4aa67d1",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_string_helpers/__init__.py": "80495d283364a02756b0412700c6f427ba59cdc8e2cc47d8444a2dcb5743376b",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_string_helpers/object_value_context.py": "4bc9b19ec4e30a879fead92cc16190ee4af6b4bd97477209018916b7b101eb7c",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_string_helpers/parse_boolean_or_null.py": "47ee308c3fd48ab02e930d7db8482da3523a4f5cf6f45996f163af173bd4e6b2",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parse_string_helpers/parse_json_llm_block.py": "3664c2a861bcdcdfdd44d406ea5c342ea19a144f93ddf4125b273b3659b271ae",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/parser_parenthesized.py": "7510aea0ba96d2a530b6b8cf4adfacf0e21a0f89926ce6380f5304b6e0d22955",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/utils/__init__.py": "c22cc24de539293ce30af6057e9a8e4b1796de6a83657eb47f9b3be4a427e305",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/utils/constants.py": "a71043131270e50a28a2b9d14a6e60c79c7dae502223da19a4434923388a9889",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/utils/json_context.py": "84a8016d4167ac042ef8289b3c49b4e32cfe43a232ba9fc9dfed86a98e88424c",
+        "/workspace/scratch/a009f956ecf0/pystachy/ports/json_repair/utils/object_comparer.py": "eb4f926a48f689fa3bbbb581858ab8a0507d029b0bcc154eb32ebcab65588ded",
+        "/workspace/scratch/a009f956ecf0/native-build/builds.json": "11b6fc1ffd6b1e4ed0411c2e40e1d287da0906a68635468b319817c55edeff2c"
+      },
+      "executable_path": "/workspace/scratch/a009f956ecf0/native-build/default-repair_traces",
+      "executable_sha256": "610f3b8b6d2d5d561c8ae91d80904d426c73983f8269d92a19919c77bd3c80b2",
+      "checkout": {
+        "revision": "425ad3603e370f04c99412bc5114fa767f94013c",
+        "status": ""
+      }
+    }
+  ],
+  "notes": "Prebuilt AOT application processes only; exact full-scale CPython stdout/artifact checks precede measurement. Native GC minimum32MiB, no forced collection. 2048MiB RLIMIT_AS is virtual address-space limit, not heap/RSS budget. Six rotated rounds plus one excluded warmup; main_aa is the identical executable. Shared machine, pinned CPU3; no owned concurrent heavy work.",
+  "samples": [
+    {
+      "variant": "main",
+      "phase": "warmup",
+      "round": 0,
+      "returncode": 0,
+      "wall_s": 0.6875143889992614,
+      "user_s": 0.668746,
+      "system_s": 0.017802,
+      "peak_rss_kib": 36072,
+      "minor_faults": 9161,
+      "major_faults": 0,
+      "stdout_sha256": "c64cd763b227281380bed142c14c9f1d85915b73a81374f3d00fc2f9bf3ac031",
+      "stdout_bytes": 794,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 20,
+          "elapsed_ms": 3.3,
+          "heap_peak_mib": 34.0,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 20 collections, 3.3 ms; heap peak 34.0 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 20 collections, 3.3 ms; heap peak 34.0 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "main_aa",
+      "phase": "warmup",
+      "round": 0,
+      "returncode": 0,
+      "wall_s": 0.7599807689985028,
+      "user_s": 0.728978,
+      "system_s": 0.029734999999999998,
+      "peak_rss_kib": 35956,
+      "minor_faults": 9162,
+      "major_faults": 0,
+      "stdout_sha256": "c64cd763b227281380bed142c14c9f1d85915b73a81374f3d00fc2f9bf3ac031",
+      "stdout_bytes": 794,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 20,
+          "elapsed_ms": 4.6,
+          "heap_peak_mib": 34.0,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 20 collections, 4.6 ms; heap peak 34.0 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 20 collections, 4.6 ms; heap peak 34.0 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "scalar",
+      "phase": "warmup",
+      "round": 0,
+      "returncode": 0,
+      "wall_s": 0.7899032380009885,
+      "user_s": 0.772498,
+      "system_s": 0.016606,
+      "peak_rss_kib": 35956,
+      "minor_faults": 9161,
+      "major_faults": 0,
+      "stdout_sha256": "c64cd763b227281380bed142c14c9f1d85915b73a81374f3d00fc2f9bf3ac031",
+      "stdout_bytes": 794,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 20,
+          "elapsed_ms": 3.7,
+          "heap_peak_mib": 34.0,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 20 collections, 3.7 ms; heap peak 34.0 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 20 collections, 3.7 ms; heap peak 34.0 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "default",
+      "phase": "warmup",
+      "round": 0,
+      "returncode": 0,
+      "wall_s": 0.6940729729976738,
+      "user_s": 0.681294,
+      "system_s": 0.012001,
+      "peak_rss_kib": 36028,
+      "minor_faults": 9159,
+      "major_faults": 0,
+      "stdout_sha256": "c64cd763b227281380bed142c14c9f1d85915b73a81374f3d00fc2f9bf3ac031",
+      "stdout_bytes": 794,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 20,
+          "elapsed_ms": 2.8,
+          "heap_peak_mib": 34.0,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 20 collections, 2.8 ms; heap peak 34.0 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 20 collections, 2.8 ms; heap peak 34.0 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "atomic_union",
+      "phase": "warmup",
+      "round": 0,
+      "returncode": 0,
+      "wall_s": 0.6650971150011173,
+      "user_s": 0.6403289999999999,
+      "system_s": 0.023776,
+      "peak_rss_kib": 36052,
+      "minor_faults": 9161,
+      "major_faults": 0,
+      "stdout_sha256": "c64cd763b227281380bed142c14c9f1d85915b73a81374f3d00fc2f9bf3ac031",
+      "stdout_bytes": 794,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 20,
+          "elapsed_ms": 2.8,
+          "heap_peak_mib": 34.0,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 20 collections, 2.8 ms; heap peak 34.0 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 20 collections, 2.8 ms; heap peak 34.0 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "block",
+      "phase": "warmup",
+      "round": 0,
+      "returncode": 0,
+      "wall_s": 0.6383644599991385,
+      "user_s": 0.6251909999999999,
+      "system_s": 0.012197999999999999,
+      "peak_rss_kib": 35828,
+      "minor_faults": 9148,
+      "major_faults": 0,
+      "stdout_sha256": "c64cd763b227281380bed142c14c9f1d85915b73a81374f3d00fc2f9bf3ac031",
+      "stdout_bytes": 794,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 20,
+          "elapsed_ms": 2.8,
+          "heap_peak_mib": 34.0,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 20 collections, 2.8 ms; heap peak 34.0 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 20 collections, 2.8 ms; heap peak 34.0 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "main",
+      "phase": "measure",
+      "round": 0,
+      "returncode": 0,
+      "wall_s": 0.6409749829981592,
+      "user_s": 0.6236809999999999,
+      "system_s": 0.016495,
+      "peak_rss_kib": 35952,
+      "minor_faults": 9163,
+      "major_faults": 0,
+      "stdout_sha256": "c64cd763b227281380bed142c14c9f1d85915b73a81374f3d00fc2f9bf3ac031",
+      "stdout_bytes": 794,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 20,
+          "elapsed_ms": 4.3,
+          "heap_peak_mib": 34.0,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 20 collections, 4.3 ms; heap peak 34.0 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 20 collections, 4.3 ms; heap peak 34.0 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "main_aa",
+      "phase": "measure",
+      "round": 0,
+      "returncode": 0,
+      "wall_s": 0.6210324249987025,
+      "user_s": 0.6077119999999999,
+      "system_s": 0.012214,
+      "peak_rss_kib": 35956,
+      "minor_faults": 9162,
+      "major_faults": 0,
+      "stdout_sha256": "c64cd763b227281380bed142c14c9f1d85915b73a81374f3d00fc2f9bf3ac031",
+      "stdout_bytes": 794,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 20,
+          "elapsed_ms": 3.2,
+          "heap_peak_mib": 34.0,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 20 collections, 3.2 ms; heap peak 34.0 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 20 collections, 3.2 ms; heap peak 34.0 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "scalar",
+      "phase": "measure",
+      "round": 0,
+      "returncode": 0,
+      "wall_s": 0.6260997479985235,
+      "user_s": 0.6091909999999999,
+      "system_s": 0.01607,
+      "peak_rss_kib": 35956,
+      "minor_faults": 9161,
+      "major_faults": 0,
+      "stdout_sha256": "c64cd763b227281380bed142c14c9f1d85915b73a81374f3d00fc2f9bf3ac031",
+      "stdout_bytes": 794,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 20,
+          "elapsed_ms": 2.9,
+          "heap_peak_mib": 34.0,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 20 collections, 2.9 ms; heap peak 34.0 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 20 collections, 2.9 ms; heap peak 34.0 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "default",
+      "phase": "measure",
+      "round": 0,
+      "returncode": 0,
+      "wall_s": 0.6404513730012695,
+      "user_s": 0.619533,
+      "system_s": 0.019944,
+      "peak_rss_kib": 36072,
+      "minor_faults": 9161,
+      "major_faults": 0,
+      "stdout_sha256": "c64cd763b227281380bed142c14c9f1d85915b73a81374f3d00fc2f9bf3ac031",
+      "stdout_bytes": 794,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 20,
+          "elapsed_ms": 2.8,
+          "heap_peak_mib": 34.0,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 20 collections, 2.8 ms; heap peak 34.0 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 20 collections, 2.8 ms; heap peak 34.0 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "atomic_union",
+      "phase": "measure",
+      "round": 0,
+      "returncode": 0,
+      "wall_s": 0.628765380999539,
+      "user_s": 0.624185,
+      "system_s": 0.00363,
+      "peak_rss_kib": 35956,
+      "minor_faults": 9160,
+      "major_faults": 0,
+      "stdout_sha256": "c64cd763b227281380bed142c14c9f1d85915b73a81374f3d00fc2f9bf3ac031",
+      "stdout_bytes": 794,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 20,
+          "elapsed_ms": 2.6,
+          "heap_peak_mib": 34.0,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 20 collections, 2.6 ms; heap peak 34.0 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 20 collections, 2.6 ms; heap peak 34.0 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "block",
+      "phase": "measure",
+      "round": 0,
+      "returncode": 0,
+      "wall_s": 0.6252817549975589,
+      "user_s": 0.6163879999999999,
+      "system_s": 0.008104,
+      "peak_rss_kib": 35840,
+      "minor_faults": 9146,
+      "major_faults": 0,
+      "stdout_sha256": "c64cd763b227281380bed142c14c9f1d85915b73a81374f3d00fc2f9bf3ac031",
+      "stdout_bytes": 794,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 20,
+          "elapsed_ms": 2.8,
+          "heap_peak_mib": 34.0,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 20 collections, 2.8 ms; heap peak 34.0 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 20 collections, 2.8 ms; heap peak 34.0 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "main_aa",
+      "phase": "measure",
+      "round": 1,
+      "returncode": 0,
+      "wall_s": 0.6138612829963677,
+      "user_s": 0.593167,
+      "system_s": 0.01979,
+      "peak_rss_kib": 36076,
+      "minor_faults": 9163,
+      "major_faults": 0,
+      "stdout_sha256": "c64cd763b227281380bed142c14c9f1d85915b73a81374f3d00fc2f9bf3ac031",
+      "stdout_bytes": 794,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 20,
+          "elapsed_ms": 2.8,
+          "heap_peak_mib": 34.0,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 20 collections, 2.8 ms; heap peak 34.0 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 20 collections, 2.8 ms; heap peak 34.0 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "scalar",
+      "phase": "measure",
+      "round": 1,
+      "returncode": 0,
+      "wall_s": 0.6430641939950874,
+      "user_s": 0.621728,
+      "system_s": 0.02051,
+      "peak_rss_kib": 36028,
+      "minor_faults": 9164,
+      "major_faults": 0,
+      "stdout_sha256": "c64cd763b227281380bed142c14c9f1d85915b73a81374f3d00fc2f9bf3ac031",
+      "stdout_bytes": 794,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 20,
+          "elapsed_ms": 2.9,
+          "heap_peak_mib": 34.0,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 20 collections, 2.9 ms; heap peak 34.0 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 20 collections, 2.9 ms; heap peak 34.0 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "default",
+      "phase": "measure",
+      "round": 1,
+      "returncode": 0,
+      "wall_s": 0.6638537859980715,
+      "user_s": 0.646973,
+      "system_s": 0.016033,
+      "peak_rss_kib": 35956,
+      "minor_faults": 9162,
+      "major_faults": 0,
+      "stdout_sha256": "c64cd763b227281380bed142c14c9f1d85915b73a81374f3d00fc2f9bf3ac031",
+      "stdout_bytes": 794,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 20,
+          "elapsed_ms": 2.8,
+          "heap_peak_mib": 34.0,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 20 collections, 2.8 ms; heap peak 34.0 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 20 collections, 2.8 ms; heap peak 34.0 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "atomic_union",
+      "phase": "measure",
+      "round": 1,
+      "returncode": 0,
+      "wall_s": 0.6254195820001769,
+      "user_s": 0.616217,
+      "system_s": 0.008205,
+      "peak_rss_kib": 35964,
+      "minor_faults": 9160,
+      "major_faults": 0,
+      "stdout_sha256": "c64cd763b227281380bed142c14c9f1d85915b73a81374f3d00fc2f9bf3ac031",
+      "stdout_bytes": 794,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 20,
+          "elapsed_ms": 2.9,
+          "heap_peak_mib": 34.0,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 20 collections, 2.9 ms; heap peak 34.0 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 20 collections, 2.9 ms; heap peak 34.0 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "block",
+      "phase": "measure",
+      "round": 1,
+      "returncode": 0,
+      "wall_s": 0.6515725839999504,
+      "user_s": 0.642569,
+      "system_s": 0.008206999999999999,
+      "peak_rss_kib": 35840,
+      "minor_faults": 9148,
+      "major_faults": 0,
+      "stdout_sha256": "c64cd763b227281380bed142c14c9f1d85915b73a81374f3d00fc2f9bf3ac031",
+      "stdout_bytes": 794,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 20,
+          "elapsed_ms": 2.5,
+          "heap_peak_mib": 34.0,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 20 collections, 2.5 ms; heap peak 34.0 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 20 collections, 2.5 ms; heap peak 34.0 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "main",
+      "phase": "measure",
+      "round": 1,
+      "returncode": 0,
+      "wall_s": 0.6144704109974555,
+      "user_s": 0.58934,
+      "system_s": 0.023961999999999997,
+      "peak_rss_kib": 36072,
+      "minor_faults": 9164,
+      "major_faults": 0,
+      "stdout_sha256": "c64cd763b227281380bed142c14c9f1d85915b73a81374f3d00fc2f9bf3ac031",
+      "stdout_bytes": 794,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 20,
+          "elapsed_ms": 2.8,
+          "heap_peak_mib": 34.0,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 20 collections, 2.8 ms; heap peak 34.0 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 20 collections, 2.8 ms; heap peak 34.0 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "scalar",
+      "phase": "measure",
+      "round": 2,
+      "returncode": 0,
+      "wall_s": 0.6699200829971232,
+      "user_s": 0.6438619999999999,
+      "system_s": 0.025091,
+      "peak_rss_kib": 36028,
+      "minor_faults": 9163,
+      "major_faults": 0,
+      "stdout_sha256": "c64cd763b227281380bed142c14c9f1d85915b73a81374f3d00fc2f9bf3ac031",
+      "stdout_bytes": 794,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 20,
+          "elapsed_ms": 2.6,
+          "heap_peak_mib": 34.0,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 20 collections, 2.6 ms; heap peak 34.0 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 20 collections, 2.6 ms; heap peak 34.0 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "default",
+      "phase": "measure",
+      "round": 2,
+      "returncode": 0,
+      "wall_s": 0.6078969860027428,
+      "user_s": 0.587105,
+      "system_s": 0.02008,
+      "peak_rss_kib": 35956,
+      "minor_faults": 9158,
+      "major_faults": 0,
+      "stdout_sha256": "c64cd763b227281380bed142c14c9f1d85915b73a81374f3d00fc2f9bf3ac031",
+      "stdout_bytes": 794,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 20,
+          "elapsed_ms": 2.6,
+          "heap_peak_mib": 34.0,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 20 collections, 2.6 ms; heap peak 34.0 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 20 collections, 2.6 ms; heap peak 34.0 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "atomic_union",
+      "phase": "measure",
+      "round": 2,
+      "returncode": 0,
+      "wall_s": 0.6209193899994716,
+      "user_s": 0.5879099999999999,
+      "system_s": 0.032126999999999996,
+      "peak_rss_kib": 35956,
+      "minor_faults": 9159,
+      "major_faults": 0,
+      "stdout_sha256": "c64cd763b227281380bed142c14c9f1d85915b73a81374f3d00fc2f9bf3ac031",
+      "stdout_bytes": 794,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 20,
+          "elapsed_ms": 2.7,
+          "heap_peak_mib": 34.0,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 20 collections, 2.7 ms; heap peak 34.0 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 20 collections, 2.7 ms; heap peak 34.0 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "block",
+      "phase": "measure",
+      "round": 2,
+      "returncode": 0,
+      "wall_s": 0.6063749570021173,
+      "user_s": 0.581442,
+      "system_s": 0.023981,
+      "peak_rss_kib": 35828,
+      "minor_faults": 9146,
+      "major_faults": 0,
+      "stdout_sha256": "c64cd763b227281380bed142c14c9f1d85915b73a81374f3d00fc2f9bf3ac031",
+      "stdout_bytes": 794,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 20,
+          "elapsed_ms": 2.4,
+          "heap_peak_mib": 34.0,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 20 collections, 2.4 ms; heap peak 34.0 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 20 collections, 2.4 ms; heap peak 34.0 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "main",
+      "phase": "measure",
+      "round": 2,
+      "returncode": 0,
+      "wall_s": 0.6248152050029603,
+      "user_s": 0.60729,
+      "system_s": 0.016441,
+      "peak_rss_kib": 36072,
+      "minor_faults": 9162,
+      "major_faults": 0,
+      "stdout_sha256": "c64cd763b227281380bed142c14c9f1d85915b73a81374f3d00fc2f9bf3ac031",
+      "stdout_bytes": 794,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 20,
+          "elapsed_ms": 2.7,
+          "heap_peak_mib": 34.0,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 20 collections, 2.7 ms; heap peak 34.0 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 20 collections, 2.7 ms; heap peak 34.0 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "main_aa",
+      "phase": "measure",
+      "round": 2,
+      "returncode": 0,
+      "wall_s": 0.6428354259987827,
+      "user_s": 0.617126,
+      "system_s": 0.024966,
+      "peak_rss_kib": 35952,
+      "minor_faults": 9164,
+      "major_faults": 0,
+      "stdout_sha256": "c64cd763b227281380bed142c14c9f1d85915b73a81374f3d00fc2f9bf3ac031",
+      "stdout_bytes": 794,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 20,
+          "elapsed_ms": 2.7,
+          "heap_peak_mib": 34.0,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 20 collections, 2.7 ms; heap peak 34.0 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 20 collections, 2.7 ms; heap peak 34.0 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "default",
+      "phase": "measure",
+      "round": 3,
+      "returncode": 0,
+      "wall_s": 0.6279044569964753,
+      "user_s": 0.614858,
+      "system_s": 0.012216999999999999,
+      "peak_rss_kib": 36028,
+      "minor_faults": 9162,
+      "major_faults": 0,
+      "stdout_sha256": "c64cd763b227281380bed142c14c9f1d85915b73a81374f3d00fc2f9bf3ac031",
+      "stdout_bytes": 794,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 20,
+          "elapsed_ms": 2.5,
+          "heap_peak_mib": 34.0,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 20 collections, 2.5 ms; heap peak 34.0 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 20 collections, 2.5 ms; heap peak 34.0 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "atomic_union",
+      "phase": "measure",
+      "round": 3,
+      "returncode": 0,
+      "wall_s": 0.645178090002446,
+      "user_s": 0.636371,
+      "system_s": 0.008078,
+      "peak_rss_kib": 36076,
+      "minor_faults": 9161,
+      "major_faults": 0,
+      "stdout_sha256": "c64cd763b227281380bed142c14c9f1d85915b73a81374f3d00fc2f9bf3ac031",
+      "stdout_bytes": 794,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 20,
+          "elapsed_ms": 2.7,
+          "heap_peak_mib": 34.0,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 20 collections, 2.7 ms; heap peak 34.0 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 20 collections, 2.7 ms; heap peak 34.0 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "block",
+      "phase": "measure",
+      "round": 3,
+      "returncode": 0,
+      "wall_s": 0.6615566850014147,
+      "user_s": 0.6443099999999999,
+      "system_s": 0.016461,
+      "peak_rss_kib": 35944,
+      "minor_faults": 9148,
+      "major_faults": 0,
+      "stdout_sha256": "c64cd763b227281380bed142c14c9f1d85915b73a81374f3d00fc2f9bf3ac031",
+      "stdout_bytes": 794,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 20,
+          "elapsed_ms": 2.7,
+          "heap_peak_mib": 34.0,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 20 collections, 2.7 ms; heap peak 34.0 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 20 collections, 2.7 ms; heap peak 34.0 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "main",
+      "phase": "measure",
+      "round": 3,
+      "returncode": 0,
+      "wall_s": 0.6726144439962809,
+      "user_s": 0.661547,
+      "system_s": 0.010336,
+      "peak_rss_kib": 35956,
+      "minor_faults": 9162,
+      "major_faults": 0,
+      "stdout_sha256": "c64cd763b227281380bed142c14c9f1d85915b73a81374f3d00fc2f9bf3ac031",
+      "stdout_bytes": 794,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 20,
+          "elapsed_ms": 3.1,
+          "heap_peak_mib": 34.0,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 20 collections, 3.1 ms; heap peak 34.0 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 20 collections, 3.1 ms; heap peak 34.0 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "main_aa",
+      "phase": "measure",
+      "round": 3,
+      "returncode": 0,
+      "wall_s": 0.6565078600033303,
+      "user_s": 0.648856,
+      "system_s": 0.006895999999999999,
+      "peak_rss_kib": 35956,
+      "minor_faults": 9163,
+      "major_faults": 0,
+      "stdout_sha256": "c64cd763b227281380bed142c14c9f1d85915b73a81374f3d00fc2f9bf3ac031",
+      "stdout_bytes": 794,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 20,
+          "elapsed_ms": 2.7,
+          "heap_peak_mib": 34.0,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 20 collections, 2.7 ms; heap peak 34.0 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 20 collections, 2.7 ms; heap peak 34.0 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "scalar",
+      "phase": "measure",
+      "round": 3,
+      "returncode": 0,
+      "wall_s": 0.6592165990005014,
+      "user_s": 0.642419,
+      "system_s": 0.016006,
+      "peak_rss_kib": 36024,
+      "minor_faults": 9162,
+      "major_faults": 0,
+      "stdout_sha256": "c64cd763b227281380bed142c14c9f1d85915b73a81374f3d00fc2f9bf3ac031",
+      "stdout_bytes": 794,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 20,
+          "elapsed_ms": 3.0,
+          "heap_peak_mib": 34.0,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 20 collections, 3.0 ms; heap peak 34.0 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 20 collections, 3.0 ms; heap peak 34.0 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "atomic_union",
+      "phase": "measure",
+      "round": 4,
+      "returncode": 0,
+      "wall_s": 0.6745850720035378,
+      "user_s": 0.6616059999999999,
+      "system_s": 0.012152,
+      "peak_rss_kib": 35964,
+      "minor_faults": 9161,
+      "major_faults": 0,
+      "stdout_sha256": "c64cd763b227281380bed142c14c9f1d85915b73a81374f3d00fc2f9bf3ac031",
+      "stdout_bytes": 794,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 20,
+          "elapsed_ms": 3.0,
+          "heap_peak_mib": 34.0,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 20 collections, 3.0 ms; heap peak 34.0 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 20 collections, 3.0 ms; heap peak 34.0 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "block",
+      "phase": "measure",
+      "round": 4,
+      "returncode": 0,
+      "wall_s": 0.6497192150054616,
+      "user_s": 0.6326849999999999,
+      "system_s": 0.016253999999999998,
+      "peak_rss_kib": 35948,
+      "minor_faults": 9148,
+      "major_faults": 0,
+      "stdout_sha256": "c64cd763b227281380bed142c14c9f1d85915b73a81374f3d00fc2f9bf3ac031",
+      "stdout_bytes": 794,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 20,
+          "elapsed_ms": 2.8,
+          "heap_peak_mib": 34.0,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 20 collections, 2.8 ms; heap peak 34.0 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 20 collections, 2.8 ms; heap peak 34.0 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "main",
+      "phase": "measure",
+      "round": 4,
+      "returncode": 0,
+      "wall_s": 0.628743460001715,
+      "user_s": 0.6118819999999999,
+      "system_s": 0.016082,
+      "peak_rss_kib": 36072,
+      "minor_faults": 9164,
+      "major_faults": 0,
+      "stdout_sha256": "c64cd763b227281380bed142c14c9f1d85915b73a81374f3d00fc2f9bf3ac031",
+      "stdout_bytes": 794,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 20,
+          "elapsed_ms": 2.9,
+          "heap_peak_mib": 34.0,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 20 collections, 2.9 ms; heap peak 34.0 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 20 collections, 2.9 ms; heap peak 34.0 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "main_aa",
+      "phase": "measure",
+      "round": 4,
+      "returncode": 0,
+      "wall_s": 0.6553206120006507,
+      "user_s": 0.633593,
+      "system_s": 0.020878999999999998,
+      "peak_rss_kib": 35956,
+      "minor_faults": 9164,
+      "major_faults": 0,
+      "stdout_sha256": "c64cd763b227281380bed142c14c9f1d85915b73a81374f3d00fc2f9bf3ac031",
+      "stdout_bytes": 794,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 20,
+          "elapsed_ms": 2.8,
+          "heap_peak_mib": 34.0,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 20 collections, 2.8 ms; heap peak 34.0 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 20 collections, 2.8 ms; heap peak 34.0 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "scalar",
+      "phase": "measure",
+      "round": 4,
+      "returncode": 0,
+      "wall_s": 0.6519903369990061,
+      "user_s": 0.635122,
+      "system_s": 0.016059,
+      "peak_rss_kib": 35956,
+      "minor_faults": 9163,
+      "major_faults": 0,
+      "stdout_sha256": "c64cd763b227281380bed142c14c9f1d85915b73a81374f3d00fc2f9bf3ac031",
+      "stdout_bytes": 794,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 20,
+          "elapsed_ms": 2.8,
+          "heap_peak_mib": 34.0,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 20 collections, 2.8 ms; heap peak 34.0 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 20 collections, 2.8 ms; heap peak 34.0 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "default",
+      "phase": "measure",
+      "round": 4,
+      "returncode": 0,
+      "wall_s": 0.6377028520000749,
+      "user_s": 0.632707,
+      "system_s": 0.00403,
+      "peak_rss_kib": 35952,
+      "minor_faults": 9161,
+      "major_faults": 0,
+      "stdout_sha256": "c64cd763b227281380bed142c14c9f1d85915b73a81374f3d00fc2f9bf3ac031",
+      "stdout_bytes": 794,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 20,
+          "elapsed_ms": 2.6,
+          "heap_peak_mib": 34.0,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 20 collections, 2.6 ms; heap peak 34.0 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 20 collections, 2.6 ms; heap peak 34.0 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "block",
+      "phase": "measure",
+      "round": 5,
+      "returncode": 0,
+      "wall_s": 0.6412946980053675,
+      "user_s": 0.62454,
+      "system_s": 0.015936,
+      "peak_rss_kib": 35824,
+      "minor_faults": 9150,
+      "major_faults": 0,
+      "stdout_sha256": "c64cd763b227281380bed142c14c9f1d85915b73a81374f3d00fc2f9bf3ac031",
+      "stdout_bytes": 794,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 20,
+          "elapsed_ms": 2.7,
+          "heap_peak_mib": 34.0,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 20 collections, 2.7 ms; heap peak 34.0 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 20 collections, 2.7 ms; heap peak 34.0 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "main",
+      "phase": "measure",
+      "round": 5,
+      "returncode": 0,
+      "wall_s": 0.6327015229981043,
+      "user_s": 0.6197509999999999,
+      "system_s": 0.012199,
+      "peak_rss_kib": 35956,
+      "minor_faults": 9163,
+      "major_faults": 0,
+      "stdout_sha256": "c64cd763b227281380bed142c14c9f1d85915b73a81374f3d00fc2f9bf3ac031",
+      "stdout_bytes": 794,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 20,
+          "elapsed_ms": 2.8,
+          "heap_peak_mib": 34.0,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 20 collections, 2.8 ms; heap peak 34.0 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 20 collections, 2.8 ms; heap peak 34.0 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "main_aa",
+      "phase": "measure",
+      "round": 5,
+      "returncode": 0,
+      "wall_s": 0.6220605980051914,
+      "user_s": 0.609269,
+      "system_s": 0.011994,
+      "peak_rss_kib": 35956,
+      "minor_faults": 9164,
+      "major_faults": 0,
+      "stdout_sha256": "c64cd763b227281380bed142c14c9f1d85915b73a81374f3d00fc2f9bf3ac031",
+      "stdout_bytes": 794,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 20,
+          "elapsed_ms": 2.8,
+          "heap_peak_mib": 34.0,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 20 collections, 2.8 ms; heap peak 34.0 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 20 collections, 2.8 ms; heap peak 34.0 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "scalar",
+      "phase": "measure",
+      "round": 5,
+      "returncode": 0,
+      "wall_s": 0.6194898950052448,
+      "user_s": 0.60647,
+      "system_s": 0.01215,
+      "peak_rss_kib": 35952,
+      "minor_faults": 9163,
+      "major_faults": 0,
+      "stdout_sha256": "c64cd763b227281380bed142c14c9f1d85915b73a81374f3d00fc2f9bf3ac031",
+      "stdout_bytes": 794,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 20,
+          "elapsed_ms": 2.6,
+          "heap_peak_mib": 34.0,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 20 collections, 2.6 ms; heap peak 34.0 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 20 collections, 2.6 ms; heap peak 34.0 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "default",
+      "phase": "measure",
+      "round": 5,
+      "returncode": 0,
+      "wall_s": 0.6117841790037346,
+      "user_s": 0.6070209999999999,
+      "system_s": 0.004043,
+      "peak_rss_kib": 35952,
+      "minor_faults": 9161,
+      "major_faults": 0,
+      "stdout_sha256": "c64cd763b227281380bed142c14c9f1d85915b73a81374f3d00fc2f9bf3ac031",
+      "stdout_bytes": 794,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 20,
+          "elapsed_ms": 2.7,
+          "heap_peak_mib": 34.0,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 20 collections, 2.7 ms; heap peak 34.0 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 20 collections, 2.7 ms; heap peak 34.0 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "atomic_union",
+      "phase": "measure",
+      "round": 5,
+      "returncode": 0,
+      "wall_s": 0.6496090250002453,
+      "user_s": 0.629419,
+      "system_s": 0.019393999999999998,
+      "peak_rss_kib": 35956,
+      "minor_faults": 9162,
+      "major_faults": 0,
+      "stdout_sha256": "c64cd763b227281380bed142c14c9f1d85915b73a81374f3d00fc2f9bf3ac031",
+      "stdout_bytes": 794,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 20,
+          "elapsed_ms": 2.6,
+          "heap_peak_mib": 34.0,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 20 collections, 2.6 ms; heap peak 34.0 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 20 collections, 2.6 ms; heap peak 34.0 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    }
+  ],
+  "complete": true,
+  "loadavg_after": [
+    0.97314453125,
+    0.86767578125,
+    0.78515625
+  ],
+  "summary": {
+    "main": {
+      "wall_s": 0.6307224914999097,
+      "user_s": 0.6158165,
+      "system_s": 0.016261499999999998,
+      "peak_rss_kib": 36014.0,
+      "minor_faults": 9163.0,
+      "major_faults": 0.0,
+      "samples": 6,
+      "all_outputs_match": true,
+      "gc_collections": 20.0,
+      "gc_elapsed_ms": 2.8499999999999996,
+      "gc_heap_peak_mib": 34.0,
+      "gc_last_live_mib": 0.0
+    },
+    "main_aa": {
+      "wall_s": 0.6324480120019871,
+      "user_s": 0.6131975,
+      "system_s": 0.016002,
+      "peak_rss_kib": 35956.0,
+      "minor_faults": 9163.5,
+      "major_faults": 0.0,
+      "samples": 6,
+      "all_outputs_match": true,
+      "gc_collections": 20.0,
+      "gc_elapsed_ms": 2.8,
+      "gc_heap_peak_mib": 34.0,
+      "gc_last_live_mib": 0.0
+    },
+    "scalar": {
+      "wall_s": 0.6475272654970468,
+      "user_s": 0.628425,
+      "system_s": 0.016064500000000002,
+      "peak_rss_kib": 35990.0,
+      "minor_faults": 9163.0,
+      "major_faults": 0.0,
+      "samples": 6,
+      "all_outputs_match": true,
+      "gc_collections": 20.0,
+      "gc_elapsed_ms": 2.8499999999999996,
+      "gc_heap_peak_mib": 34.0,
+      "gc_last_live_mib": 0.0
+    },
+    "default": {
+      "wall_s": 0.6328036544982751,
+      "user_s": 0.6171955,
+      "system_s": 0.014124999999999999,
+      "peak_rss_kib": 35956.0,
+      "minor_faults": 9161.0,
+      "major_faults": 0.0,
+      "samples": 6,
+      "all_outputs_match": true,
+      "gc_collections": 20.0,
+      "gc_elapsed_ms": 2.6500000000000004,
+      "gc_heap_peak_mib": 34.0,
+      "gc_last_live_mib": 0.0
+    },
+    "atomic_union": {
+      "wall_s": 0.6369717355009925,
+      "user_s": 0.626802,
+      "system_s": 0.0101785,
+      "peak_rss_kib": 35960.0,
+      "minor_faults": 9160.5,
+      "major_faults": 0.0,
+      "samples": 6,
+      "all_outputs_match": true,
+      "gc_collections": 20.0,
+      "gc_elapsed_ms": 2.7,
+      "gc_heap_peak_mib": 34.0,
+      "gc_last_live_mib": 0.0
+    },
+    "block": {
+      "wall_s": 0.6455069565054146,
+      "user_s": 0.6286125,
+      "system_s": 0.016094999999999998,
+      "peak_rss_kib": 35840.0,
+      "minor_faults": 9148.0,
+      "major_faults": 0.0,
+      "samples": 6,
+      "all_outputs_match": true,
+      "gc_collections": 20.0,
+      "gc_elapsed_ms": 2.7,
+      "gc_heap_peak_mib": 34.0,
+      "gc_last_live_mib": 0.0
+    }
+  },
+  "all_outputs_match": true
+}

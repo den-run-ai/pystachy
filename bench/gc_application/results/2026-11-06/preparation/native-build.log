@@ -1,0 +1,108 @@
+ORACLE float smoke
+ORACLE float full
+BUILD main float
+PASS main float smoke, stress, full oracle
+PASS main_aa float smoke, stress, full oracle
+BUILD scalar float
+PASS scalar float smoke, stress, full oracle
+BUILD default float
+PASS default float smoke, stress, full oracle
+BUILD atomic_union float
+PASS atomic_union float smoke, stress, full oracle
+PASS block float smoke, stress, full oracle
+ORACLE chaos smoke
+ORACLE chaos full
+BUILD main chaos
+PASS main chaos smoke, stress, full oracle
+PASS main_aa chaos smoke, stress, full oracle
+BUILD scalar chaos
+PASS scalar chaos smoke, stress, full oracle
+BUILD default chaos
+PASS default chaos smoke, stress, full oracle
+BUILD atomic_union chaos
+PASS atomic_union chaos smoke, stress, full oracle
+PASS block chaos smoke, stress, full oracle
+ORACLE raytrace smoke
+ORACLE raytrace full
+BUILD main raytrace
+PASS main raytrace smoke, stress, full oracle
+PASS main_aa raytrace smoke, stress, full oracle
+BUILD scalar raytrace
+PASS scalar raytrace smoke, stress, full oracle
+BUILD default raytrace
+PASS default raytrace smoke, stress, full oracle
+BUILD atomic_union raytrace
+PASS atomic_union raytrace smoke, stress, full oracle
+PASS block raytrace smoke, stress, full oracle
+ORACLE json_loads smoke
+ORACLE json_loads full
+BUILD main json_loads
+PASS main json_loads smoke, stress, full oracle
+PASS main_aa json_loads smoke, stress, full oracle
+BUILD scalar json_loads
+PASS scalar json_loads smoke, stress, full oracle
+BUILD default json_loads
+PASS default json_loads smoke, stress, full oracle
+BUILD atomic_union json_loads
+PASS atomic_union json_loads smoke, stress, full oracle
+PASS block json_loads smoke, stress, full oracle
+ORACLE json_dumps smoke
+ORACLE json_dumps full
+BUILD main json_dumps
+PASS main json_dumps smoke, stress, full oracle
+PASS main_aa json_dumps smoke, stress, full oracle
+BUILD scalar json_dumps
+PASS scalar json_dumps smoke, stress, full oracle
+BUILD default json_dumps
+PASS default json_dumps smoke, stress, full oracle
+BUILD atomic_union json_dumps
+PASS atomic_union json_dumps smoke, stress, full oracle
+PASS block json_dumps smoke, stress, full oracle
+ORACLE richards smoke
+ORACLE richards full
+BUILD main richards
+PASS main richards smoke, stress, full oracle
+PASS main_aa richards smoke, stress, full oracle
+BUILD scalar richards
+PASS scalar richards smoke, stress, full oracle
+BUILD default richards
+PASS default richards smoke, stress, full oracle
+BUILD atomic_union richards
+PASS atomic_union richards smoke, stress, full oracle
+PASS block richards smoke, stress, full oracle
+ORACLE nbody smoke
+ORACLE nbody full
+BUILD main nbody
+PASS main nbody smoke, stress, full oracle
+PASS main_aa nbody smoke, stress, full oracle
+BUILD scalar nbody
+PASS scalar nbody smoke, stress, full oracle
+BUILD default nbody
+PASS default nbody smoke, stress, full oracle
+BUILD atomic_union nbody
+PASS atomic_union nbody smoke, stress, full oracle
+PASS block nbody smoke, stress, full oracle
+ORACLE json_retained smoke
+ORACLE json_retained full
+BUILD main json_retained
+PASS main json_retained smoke, stress, full oracle
+PASS main_aa json_retained smoke, stress, full oracle
+BUILD scalar json_retained
+PASS scalar json_retained smoke, stress, full oracle
+BUILD default json_retained
+PASS default json_retained smoke, stress, full oracle
+BUILD atomic_union json_retained
+PASS atomic_union json_retained smoke, stress, full oracle
+PASS block json_retained smoke, stress, full oracle
+ORACLE repair_traces smoke
+ORACLE repair_traces full
+BUILD main repair_traces
+PASS main repair_traces smoke, stress, full oracle
+PASS main_aa repair_traces smoke, stress, full oracle
+BUILD scalar repair_traces
+PASS scalar repair_traces smoke, stress, full oracle
+BUILD default repair_traces
+PASS default repair_traces smoke, stress, full oracle
+BUILD atomic_union repair_traces
+PASS atomic_union repair_traces smoke, stress, full oracle
+PASS block repair_traces smoke, stress, full oracle
