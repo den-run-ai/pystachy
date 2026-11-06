@@ -1,11 +1,12 @@
 """Explicit research overlay for mypyc's erased generic compiler receivers.
 
 This changes only the prepared host, never the benchmark's frozen source input.
-TYPE_CHECKING avoids runtime import cycles. Its else branch aliases Gen to Any,
-which keeps Pystachy's existing call-site specialization while mypyc sees the real
-receiver class. Three casts express existing branch invariants; typing.cast
-returns its argument unchanged. This is a host-preparation overlay, not a compiler
-algorithm change.
+TYPE_CHECKING avoids runtime import cycles. The following runtime import aliases
+Gen to Any, retaining Pystachy's call-site specialization; the explicit assignment
+ignore preserves mypyc's concrete static receiver type. Keeping that fallback out
+of an else branch avoids mypyc 2.4.0's unreachable-code trap. Three type-only
+assertions express existing branch invariants without runtime casts. This is a
+host-preparation overlay, not a compiler algorithm change.
 """
 from __future__ import annotations
 
@@ -35,14 +36,17 @@ def apply(work: Path):
         needle = "from __future__ import annotations\n"
         if needle not in text:
             raise RuntimeError(f"missing postponed annotations in {path}")
-        cast = ", cast" if path.stem in ("structs", "exceptions") else ""
-        text = text.replace(needle, needle + f"from typing import TYPE_CHECKING{cast}\n"
+        text = text.replace(needle, needle + "from typing import TYPE_CHECKING\n"
                             "if TYPE_CHECKING:\n    from src.pystachy_compiler.gen import Gen\n"
-                            "else:\n    from typing import Any as Gen\n", 1)
+                            "from typing import Any as Gen  # type: ignore[assignment]\n", 1)
         replacements = {
-            "structs": [("parse_struct(c.s)", "parse_struct(cast(Node, c).s)"),
-                        ('b = self.expr(buf, "bytes")', 'b = self.expr(cast(Node, buf), "bytes")')],
-            "exceptions": [("self.kw_type(init, a.s)", "self.kw_type(cast(FnInfo, init), a.s)")],
+            "structs": [("    sf = parse_struct(c.s)",
+                         "    if TYPE_CHECKING:\n        assert c is not None\n    sf = parse_struct(c.s)"),
+                        ('    b = self.expr(buf, "bytes")',
+                         '    if TYPE_CHECKING:\n        assert buf is not None\n    b = self.expr(buf, "bytes")')],
+            "exceptions": [("            kws.append(a if pure_arg(a.kids[0]) else mk(",
+                            "            if TYPE_CHECKING:\n                assert init is not None\n"
+                            "            kws.append(a if pure_arg(a.kids[0]) else mk(")],
         }
         for old, new in replacements.get(path.stem, []):
             if text.count(old) != 1:
