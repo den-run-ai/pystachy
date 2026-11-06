@@ -157,7 +157,7 @@ class PipelineTests(unittest.TestCase):
         self.assertIn("rendezvous peer did not start", Path(report["steps"][0]["log"]).read_text())
         self.assertFalse((self.root / "ready-rt1").exists())
 
-    def test_split_first_stage_keeps_three_independent_generations(self):
+    def install_pipeline(self):
         # Model only the external build boundary; the fallible compiler still
         # emits every witness, including both independently built executables.
         script = self.root / "bench/compiler_host/self_pipeline.py"
@@ -172,6 +172,9 @@ producer = [value("--compiler")] if "--compiler" in args else [sys.executable, s
 subprocess.run(producer + ["build", "pystachy.py", "-o", value("--output"),
                            "--emit-ir", value("--emit-ir")], check=True)
 ''')
+
+    def test_split_first_stage_keeps_three_independent_generations(self):
+        self.install_pipeline()
         for final_split in (0, 4):
             (self.root / "events.jsonl").unlink(missing_ok=True)
             code, report, events = self.run_case("optimized", (
@@ -194,6 +197,49 @@ subprocess.run(producer + ["build", "pystachy.py", "-o", value("--output"),
             self.assertEqual(arguments[arguments.index("--inline-threshold") + 1], "75" if final_split else "0")
             self.assertEqual([e["inline_threshold"] for e in builds], ["0", "75"])
             self.assertTrue(all(e["inline_threshold"] is None for e in events if e["kind"] != "build"))
+
+    def test_thinlto_final_keeps_ordinary_stage1_and_all_six_witnesses(self):
+        self.install_pipeline()
+        extra = ("--jobs", "4", "--build-jobs", "4", "--stage1-opt", "0",
+                 "--stage2-thinlto", "4", "--runtime-overlap", "--runtime-c-cache")
+        for mismatch in ("", "rt3"):
+            (self.root / "events.jsonl").unlink(missing_ok=True)
+            code, report, events = self.run_case("optimized", extra, MISMATCH_NODE=mismatch)
+            self.assertEqual(code, 1 if mismatch else 0)
+            builds = [event for event in events if event["kind"] == "build"]
+            self.assertEqual([event["producer"] for event in builds], ["pystachy.py", "pystachy1"])
+            self.assertEqual([event["opt"] for event in builds], ["0", "2"])
+            steps = {node["name"]: node for node in report["steps"]}
+            self.assertNotIn("self_pipeline.py", " ".join(steps["build1"]["command"]))
+            self.assertIn("self_pipeline.py", " ".join(steps["build2"]["command"]))
+            self.assertEqual(steps["build2"]["slots"], 4)
+            arguments = json.loads((self.root / "pipeline-arguments.json").read_text())
+            self.assertEqual(arguments[arguments.index("--backend") + 1], "thinlto")
+            self.assertEqual(arguments[arguments.index("--partitions") + 1], "4")
+            self.assertIn("--overlap", arguments)
+            self.assertIn("--caller-witnesses", arguments)
+            self.assertNotIn("--inline-threshold", arguments)
+            self.assertEqual(sum(event["kind"] == "ir" for event in events), 1)
+            self.assertCountEqual([event["producer"] for event in events if event["kind"] == "rt"],
+                                  ["pystachy.py", "pystachy1", "pystachy2"])
+            self.assertEqual(report["planned_work"]["runtime_prewarm_tiny_builds"], 1)
+            self.assertEqual(report["fixed_points"]["rt"]["identical"], not mismatch)
+            self.assertTrue(report["fixed_points"]["stage"]["identical"])
+
+    def test_thinlto_rejects_conflicting_policies_before_work(self):
+        for extra in (("--stage2-thinlto", "9", "--runtime-c-cache"),
+                      ("--stage2-thinlto", "-1", "--runtime-c-cache"),
+                      ("--stage2-thinlto", "4"),
+                      ("--stage2-thinlto", "4", "--stage2-split", "4", "--runtime-c-cache"),
+                      ("--stage2-thinlto", "4", "--stage2-inline-threshold", "75", "--runtime-c-cache"),
+                      ("--stage2-thinlto", "4", "--partitions", "1", "--runtime-c-cache"),
+                      ("--stage2-thinlto", "4", "--jobs", "9", "--build-jobs", "9", "--runtime-c-cache"),
+                      ("--stage2-thinlto", "4", "--runtime-overlap", "--runtime-c-cache")):
+            with self.subTest(extra=extra), contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                pipeline.main(self.argv("optimized", *extra))
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            pipeline.main(self.argv("baseline", "--stage2-thinlto", "4", "--runtime-c-cache"))
+        self.assertFalse(self.output.exists())
 
     def test_split_policy_rejects_unaccounted_work_and_missing_witnesses(self):
         for extra in (("--stage1-split", "9", "--runtime-c-cache"),

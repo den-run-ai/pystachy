@@ -50,7 +50,8 @@ from run import ROOT, atomic_json, bootstrap, measure, sha
 TOOLS = ("clang", "opt", "llvm-split", "llvm-lto2", "llvm-dis")
 INPUTS = ("linked.bc", "raw.ll", "seed-rt.ll")
 HARNESS_FILES = ("bench/compiler_host/partition_import.py", "bench/compiler_host/backend_workers.py",
-                 "bench/compiler_host/run.py", "bench/compiler_parallel/llvm_partitions.py",
+                 "bench/compiler_host/run.py", "bench/compiler_host/self_pipeline.py",
+                 "bench/compiler_parallel/llvm_partitions.py",
                  "tools/bootstrap_pipeline.py")
 FLAGS = re.compile(r"([DHP][U-][C-][W-][I-][O-][T-][X-]) (.+)")
 QUOTED = re.compile(r'"(?:[^"\\]|\\.)*"')
@@ -253,6 +254,39 @@ def validate_settings(partitions, jobs, prelink, timeout):
         raise ValueError("timeout must be positive and finite")
 
 
+def prepare_backend_job(source, llvm, work, partitions, jobs, prelink="summary", timeout=600):
+    """Shared frozen-backend preparation for the screen and self-build wrapper."""
+    source, llvm, work = source.resolve(), llvm.resolve(), work.resolve()
+    validate_settings(partitions, jobs, prelink, timeout)
+    job = {"version": 2, "llvm": str(llvm), "tools": tool_identity(llvm), "harness": harness_identity(),
+           "input": str(source), "input_sha256": sha(source), "partitions": partitions,
+           "jobs": jobs, "prelink": prelink, "timeout": timeout}
+    work.mkdir(parents=True, exist_ok=False)
+    path = work / "job.json"
+    atomic_json(path, job)
+    return path
+
+
+def backend_command(job_path, inherited_group=False):
+    command = [sys.executable, str(Path(__file__).resolve()), "--backend-job", str(job_path)]
+    return command + (["--inherited-group"] if inherited_group else [])
+
+
+def validate_backend_result(job_path, result):
+    """Require the bound executable and unchanged inputs before publication."""
+    job = json.loads(job_path.read_text())
+    if result.get("complete") is not True or result.get("job_sha256") != sha(job_path):
+        raise RuntimeError("backend publication does not match its job")
+    if (job["input_sha256"] != sha(job["input"]) or job["tools"] != tool_identity(Path(job["llvm"]))
+            or job["harness"] != harness_identity()):
+        raise RuntimeError("backend input, tools or harness changed")
+    compiler = job_path.parent / "compiler"
+    if (not compiler.is_file() or result.get("compiler_sha256") != sha(compiler)
+            or result.get("compiler_bytes") != compiler.stat().st_size):
+        raise RuntimeError("backend executable does not match its result")
+    return compiler
+
+
 def backend_job(job_path, inherited_group=False):
     """Child process: the parent measures the whole backend's CPU and RSS."""
     job = json.loads(job_path.read_text())
@@ -378,17 +412,14 @@ def main(argv=None):
     except ValueError as exc:
         parser.error(str(exc))
     source, inputs = bootstrap.source_identity(root), {name: sha(snapshot / name) for name in INPUTS}
-    tools, harness = tool_identity(llvm), harness_identity()
     env = {key: value for key, value in os.environ.items() if not key.startswith("PYSTACHY_")}
     env.update(PYSTACHY_HOME=str(root), PYSTACHY_LLVM=str(llvm), PYTHONHASHSEED="0", LC_ALL="C")
     work.mkdir(parents=True, exist_ok=False)
     backend = work / "backend"
-    backend.mkdir()
-    job_path = backend / "job.json"
-    atomic_json(job_path, {"version": 2, "llvm": str(llvm), "tools": tools, "harness": harness,
-                          "input": str(snapshot / "linked.bc"), "input_sha256": inputs["linked.bc"],
-                          "partitions": args.partitions, "jobs": args.jobs,
-                          "prelink": args.prelink, "timeout": args.timeout})
+    job_path = prepare_backend_job(snapshot / "linked.bc", llvm, backend, args.partitions, args.jobs,
+                                   args.prelink, args.timeout)
+    job = json.loads(job_path.read_text())
+    tools, harness = job["tools"], job["harness"]
     report = {"schema_version": 2, "source": source, "source_root": str(root), "inputs": inputs,
               "tools": tools, "harness": harness, "host": bootstrap.host_state(),
               "harness_sha256": sha(Path(__file__)),
@@ -399,17 +430,13 @@ def main(argv=None):
     started = time.monotonic()
     try:
         with runner:
-            result = runner.execute([sys.executable, str(Path(__file__).resolve()), "--backend-job",
-                                     str(job_path), "--inherited-group"], env, args.timeout)
+            result = runner.execute(backend_command(job_path, inherited_group=True), env, args.timeout)
             report["backend"] = result
             if (backend / "build.json").exists():
                 report["build"] = json.loads((backend / "build.json").read_text())
             atomic_json(destination, report)
             measure.successful(result)
-            build = report["build"]
-            if (not build["complete"] or build["job_sha256"] != sha(job_path)
-                    or build["compiler_sha256"] != sha(backend / "compiler")):
-                raise RuntimeError("backend publication does not match its job")
+            validate_backend_result(job_path, report["build"])
             for path in sorted(backend.glob("thin.o.*.bc")):
                 # Saved import/opt IR quantifies the extra scope and emitted size.
                 output = path.with_suffix(".ll")
