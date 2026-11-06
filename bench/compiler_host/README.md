@@ -1,9 +1,17 @@
 # Compiler hosts, LLVM workers, and scaling limits
 
-Research on Linux x86-64, 2026-11-05. This is a draft experiment based on
-[#1090](https://github.com/den-run-ai/pystachy/pull/1090), not a production backend
-change. All compiler, runtime and library files are unchanged relative to #1090. New code lives in
-this directory. Refs [#1089](https://github.com/den-run-ai/pystachy/pull/1089),
+**Follow-up:** [implemented optimizations and complete-bootstrap evidence](OPTIMIZATIONS.md)
+correct the allocator-routing false positive, provide a natively compatible
+receiver overlay, and extend worker cleanup and bootstrap scheduling. The results
+below describe the original frozen-source experiment, including its limitations
+at that revision.
+
+Original research on Linux x86-64, 2026-11-05, at `30ea5f7b`, based on
+[#1090](https://github.com/den-run-ai/pystachy/pull/1090). At that revision all compiler,
+runtime and library files were unchanged relative to #1090; new code lived in
+this directory. The follow-up includes an automatic allocator-routing correction
+in the driver while retaining configuration defaults and CI limits.
+Refs [#1089](https://github.com/den-run-ai/pystachy/pull/1089),
 [#1011](https://github.com/den-run-ai/pystachy/issues/1011),
 [#46](https://github.com/den-run-ai/pystachy/issues/46),
 [#767](https://github.com/den-run-ai/pystachy/issues/767),
@@ -119,11 +127,13 @@ Even eliminating it cannot substantially shorten an approximately 80-second
 native self-build. Loading and inference offer more frontend headroom, but LLVM
 remains the much larger self-build target.
 
-The annotation overlay **cannot currently be adopted as Pystachy source**:
-self-hosting rejects the annotated helper receiver at `gen.py:3732` as an
+The original annotation overlay **could not be adopted as Pystachy source**:
+self-hosting rejected the annotated helper receiver at `gen.py:3732` as an
 unsupported parameter annotation. [Native rejection](results/overlay-self-blocker.json).
 This is a concrete instance of the receiver-typing boundary in #46, not an
 unconditional recommendation to annotate the production tree.
+The [follow-up](OPTIMIZATIONS.md#receiver-typing-compatible-with-both-hosts)
+provides and validates a compatible preparation overlay.
 
 ### Preparation costs and scheduling
 
@@ -295,6 +305,12 @@ pipeline fusion is an additional concrete opportunity. This was validated for
 self-build only; arbitrary programs that retain allocator calls still need the
 late-inline contract. No general driver shortcut was enabled.
 
+The [follow-up](OPTIMIZATIONS.md#allocator-routing-remove-the-false-positive-at-its-source)
+finds that the original raw input already lacked an allocator declaration: the
+driver matched embedded LLVM strings. The declaration-line predicate now fixes
+that route. Its paired end-to-end timings were tied, so the historical late-pass
+time must not be presented as a measured net saving from the new ordinary route.
+
 The initial `-mllvm -time-passes` attempt reported only parsing timers. It is
 retained as [incomplete instrumentation evidence](results/llvm-profile-instrumentation.json)
 and superseded by the `-ftime-report` run with required pass tables. No normal
@@ -333,10 +349,11 @@ distributed service. Before production distribution, implement and validate:
 - Content-addressed immutable storage, atomic cache publication, cache eviction,
   deduplicated misses, retries and end-to-end failure handling. Local job/result
   binding and corrupt-output rejection are tested, but this is not a shared cache.
-- Owned worker lifecycle, timeout/cancellation propagation and cleanup. The
-  research measurement helper creates nested process groups; a failed coordinator
-  can leave a worker group running. Successful runs were checked, but failure
-  cleanup is not a production guarantee.
+- Remote worker lifecycle, timeout/cancellation propagation and cleanup. The
+  original local measurement helper created unmanaged nested process groups.
+  The [follow-up](OPTIMIZATIONS.md#worker-and-bootstrap-contracts) implements and
+  tests bounded local cleanup and inherited ownership; cross-host cancellation
+  and transport failures still require a remote design and validation.
 - One total CPU and memory budget across builds, LLVM partitions, C compilation
   and test workers. Queue bytes as well as job count; native self frontends already
   need roughly 0.9 GiB each before backend allocations.
@@ -515,11 +532,12 @@ not established and no OOM kill was recorded by the cgroup. That attempt is
 preserved as incomplete evidence; the typed-mypyc check was rerun separately with
 two workers. Do not count an interrupted or missing result as a pass.
 
-Full local `make verify`, a new three-generation bootstrap using early splitting,
-macOS, other architectures, sanitizers for every generated compiler and actual
-multi-host execution were not run. Production compiler/runtime defaults and CI
-limits are unchanged. This remains a research prototype, not a merge-ready
-replacement for the driver.
+At the original revision, full local `make verify`, a new three-generation
+bootstrap using early splitting, macOS, other architectures, sanitizers for every
+generated compiler and actual multi-host execution were not run. The
+[follow-up](OPTIMIZATIONS.md) supplies complete split-bootstrap evidence and
+current validation limits. Configuration defaults and CI limits are unchanged;
+the allocator-route correction is automatic. This remains a draft prototype.
 
 Additional reproducible entrypoints:
 

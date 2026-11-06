@@ -1,0 +1,108 @@
+{
+  "compiler_subprocesses_attempted": [],
+  "complete": true,
+  "llvm": "/workspace/scratch/3e98002bc0e0/toolchain/usr/lib/llvm-18/bin",
+  "negative_controls": {
+    "altered_output": {
+      "error": "incomplete or altered worker output",
+      "passed": true
+    },
+    "stale_result": {
+      "error": "worker result/job identity mismatch",
+      "passed": true
+    },
+    "valid_result": {
+      "passed": true
+    },
+    "wrong_expected_job": {
+      "error": "worker result/job identity mismatch",
+      "passed": true
+    },
+    "wrong_input": {
+      "error": "worker input/version mismatch",
+      "no_published_output": true,
+      "passed": true
+    },
+    "wrong_tool": {
+      "error": "worker toolchain/options mismatch",
+      "no_published_output": true,
+      "passed": true
+    }
+  },
+  "records": [
+    {
+      "directory": "split-both-0/optimized-gfg6i2n7/stage1-pipeline/backend/worker-0",
+      "input_sha256": "a1cbe2a6b186a7ca9ced2d9b5b798dbadd800267b43551a8a990d16564ae0cd1",
+      "job_sha256": "8e4589717c97b63dc8b65b54e80e7906c6e7ecea19ac910d96cdb8d23f9c5b75",
+      "output_bytes": 3842968,
+      "output_sha256": "17ed9f171e56cf1126033402b9ba0c577cfd6d691905796682d6315ee9f323de",
+      "passed": true
+    },
+    {
+      "directory": "split-both-0/optimized-gfg6i2n7/stage1-pipeline/backend/worker-1",
+      "input_sha256": "f2652497f5a35b117c6a96ce1056ef34a5164754795a604119d287fa53162549",
+      "job_sha256": "b9071b89e599ac78d1d87c1922906a270472e1817166022f706da9efe6a66f90",
+      "output_bytes": 3530944,
+      "output_sha256": "88ebc3ca280e15b4c7ac055963d71fd9a0bcc75ae1a2720b1e420dab0d208519",
+      "passed": true
+    },
+    {
+      "directory": "split-both-0/optimized-gfg6i2n7/stage1-pipeline/backend/worker-2",
+      "input_sha256": "f2e8fb459dd92c1b923d0e9be0bfd03e477ef8faf357c280a265aa52b9d4f77c",
+      "job_sha256": "e89b7726dd1417d239c70e86df3bad78c841e7378c9fe1085cfbf3e31aca0c9b",
+      "output_bytes": 3836288,
+      "output_sha256": "f95a561f3621f9d5b8fa076f798e6dab8fa457542a558e243cd9c3cf4cb60250",
+      "passed": true
+    },
+    {
+      "directory": "split-both-0/optimized-gfg6i2n7/stage1-pipeline/backend/worker-3",
+      "input_sha256": "c2426c92364aff4228c9ccb6a79b7eafef18fdaa244bc28e83b00b4e98cd28e3",
+      "job_sha256": "70c419878c917ed3b8932ed6c932657d5e43597a8746dbf6e2e4278d87804c52",
+      "output_bytes": 3608320,
+      "output_sha256": "5fb7b1a042077420a74dc22a902c74d7cac853d44621151230dd6749be871c1d",
+      "passed": true
+    },
+    {
+      "directory": "split-both-0/optimized-gfg6i2n7/stage2-pipeline/backend/worker-0",
+      "input_sha256": "a1cbe2a6b186a7ca9ced2d9b5b798dbadd800267b43551a8a990d16564ae0cd1",
+      "job_sha256": "ac2cb4cb8904a8ff4aa3e744f436dd9182c6bc73567faa469b38e7baa6521f67",
+      "output_bytes": 2933840,
+      "output_sha256": "4df2d3b0cfcdfac30a7c46ef9d7972e279f6a538cd4f4033f4291612429b1f25",
+      "passed": true
+    },
+    {
+      "directory": "split-both-0/optimized-gfg6i2n7/stage2-pipeline/backend/worker-1",
+      "input_sha256": "f2652497f5a35b117c6a96ce1056ef34a5164754795a604119d287fa53162549",
+      "job_sha256": "3300e47c0f9e1c00ce1f84ed6cee841cbd5b7043830575da661204b32f40469b",
+      "output_bytes": 2635992,
+      "output_sha256": "08e0166d48a030aed673abce01c734b70601ad0faf20f973a068393205b22630",
+      "passed": true
+    },
+    {
+      "directory": "split-both-0/optimized-gfg6i2n7/stage2-pipeline/backend/worker-2",
+      "input_sha256": "f2e8fb459dd92c1b923d0e9be0bfd03e477ef8faf357c280a265aa52b9d4f77c",
+      "job_sha256": "fce53e5e91f2adc2e62d1eec07400f577d641f14035350823b4e68ab5ec3478d",
+      "output_bytes": 3080232,
+      "output_sha256": "1b711c017ab37d47a50e7aaad64a9e7bd7083d1664689ff960342f8eb9141f39",
+      "passed": true
+    },
+    {
+      "directory": "split-both-0/optimized-gfg6i2n7/stage2-pipeline/backend/worker-3",
+      "input_sha256": "c2426c92364aff4228c9ccb6a79b7eafef18fdaa244bc28e83b00b4e98cd28e3",
+      "job_sha256": "ffae65bb0a12f4897c67513db1d86721b7f9bdf229bd699a8ce68175a02b3a1b",
+      "output_bytes": 2572368,
+      "output_sha256": "b0260a412be6206b0132348c82bb98ad290e82a523c9e02bc2ca4494d7b59414",
+      "passed": true
+    }
+  ],
+  "result_validator_available": true,
+  "successful_jobs": 8,
+  "tool_sha256": {
+    "clang": "8ef402d453d1ba4902e4ee0f0f847f6cfa01400c95aa43c24e97818b9c0e3f45",
+    "ld.lld": "7ad9a0e8fe6d0e79b71172d731e33872c0274e49fceb7b516d774876d5a58ade",
+    "opt": "67ebe8635087b5ebe22d8f085d5e5857e431f86be9ed76576e59b86b9743c0fb"
+  },
+  "validation_script_sha256": "61b6cfbc035cec53d9b16eb9c28e34649345ff2443c54b1a34ba56ffc3ec4cb8",
+  "work": "/workspace/scratch/7739746361cc/bootstrap-final",
+  "worker_script_sha256": "62843179cb86f3d388d585e78da3b0aca83e9ba54acc83f86349891b3eed4df0"
+}
