@@ -14,6 +14,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -181,6 +182,22 @@ class InputTests(unittest.TestCase):
             with self.subTest(settings=settings), self.assertRaises(ValueError):
                 imports.validate_settings(*settings)
 
+    def test_changed_harness_is_rejected_before_backend_launch(self):
+        source = self.directory / "input.bc"
+        source.write_bytes(b"frozen input")
+        work = self.directory / "job"
+        work.mkdir()
+        job = work / "job.json"
+        imports.atomic_json(job, {"version": 2, "input": str(source), "input_sha256": imports.sha(source),
+                                  "llvm": str(self.directory), "tools": {}, "harness": {"files": "before"},
+                                  "partitions": 2, "jobs": 2, "prelink": "summary", "timeout": 15})
+        with patch.object(imports, "tool_identity", return_value={}), \
+                patch.object(imports, "harness_identity", return_value={"files": "after"}), \
+                patch.object(imports, "Commands") as commands:
+            with self.assertRaisesRegex(ValueError, "harness identity mismatch"):
+                imports.backend_job(job)
+            commands.assert_not_called()
+
 
 @unittest.skipUnless(os.getenv("PYSTACHY_TEST_LLVM"), "set PYSTACHY_TEST_LLVM for LLVM 18 importing checks")
 class RealLLVMTests(unittest.TestCase):
@@ -208,26 +225,32 @@ int main(int argc, char **argv) {
             subprocess.run([str(llvm / "clang"), "-O0", "-c", "-emit-llvm", str(standin),
                             "-o", str(snapshot / "linked.bc")], capture_output=True, check=True, timeout=15)
             (snapshot / "seed-rt.ll").write_text("runtime\n")
-            for correct in (True, False):
-                (snapshot / "raw.ll").write_text("compiler\n" if correct else "mismatched witness\n")
-                report_path = base / f"report-{correct}.json"
+            for variant in ("correct", "compiler", "runtime"):
+                correct = variant == "correct"
+                (snapshot / "raw.ll").write_text("mismatched witness\n" if variant == "compiler" else "compiler\n")
+                (snapshot / "seed-rt.ll").write_text("mismatched witness\n" if variant == "runtime" else "runtime\n")
+                report_path = base / f"report-{variant}.json"
                 result = subprocess.run([sys.executable, str(BENCH / "partition_import.py"),
                                          "--snapshot", str(snapshot), "--source-root", str(source),
-                                         "--llvm", str(llvm), "--work", str(base / f"work-{correct}"),
+                                         "--llvm", str(llvm), "--work", str(base / f"work-{variant}"),
                                          "--report", str(report_path), "--partitions", "2", "--jobs", "2",
                                          "--execution-samples", "1", "--timeout", "15"],
                                         capture_output=True, text=True, timeout=30, start_new_session=True)
                 self.assertEqual(result.returncode, 0 if correct else 1, result.stderr)
                 report = json.loads(report_path.read_text())
                 self.assertEqual(report["complete"], correct)
-                self.assertEqual(report["witnesses"]["ir"]["matches"], correct)
+                self.assertEqual(report["witnesses"]["ir"]["matches"], variant != "compiler")
                 if correct:
                     self.assertTrue(report["witnesses"]["rt"]["matches"])
                     self.assertEqual(len(report["execution"]), 1)
                     self.assertTrue(report["execution"][0]["matches"])
                     self.assertEqual(report["settings"]["jobs"], 2)
+                    self.assertTrue(report["harness_unchanged"])
+                    self.assertEqual(set(report["harness"]["files"]), set(imports.HARNESS_FILES))
                 else:
-                    self.assertEqual(report["error"], "ir compiler witness mismatch")
+                    mode = "ir" if variant == "compiler" else "rt"
+                    self.assertEqual(report["error"], f"{mode} compiler witness mismatch")
+                    self.assertFalse(report["witnesses"][mode]["matches"])
                     self.assertEqual(report["execution"], [])
 
     def test_importing_native_result_and_worker_count_parity(self):
@@ -262,7 +285,8 @@ entry:
                 work = root / f"job-{prelink}-{jobs}"
                 work.mkdir()
                 job_path = work / "job.json"
-                imports.atomic_json(job_path, {"version": 1, "llvm": str(llvm), "tools": imports.tool_identity(llvm),
+                imports.atomic_json(job_path, {"version": 2, "llvm": str(llvm), "tools": imports.tool_identity(llvm),
+                                               "harness": imports.harness_identity(),
                                                "input": str(bitcode), "input_sha256": imports.sha(bitcode),
                                                "partitions": 2, "jobs": jobs, "prelink": prelink, "timeout": 15})
                 result = subprocess.run([sys.executable, str(BENCH / "partition_import.py"),
@@ -287,6 +311,38 @@ entry:
                     self.assertGreater(imported, 0)
                     binaries.append(imports.sha(work / "compiler"))
             self.assertEqual(binaries[0], binaries[1])
+
+    def test_native_weak_selection_and_strong_override(self):
+        llvm = Path(os.environ["PYSTACHY_TEST_LLVM"]).resolve()
+        with tempfile.TemporaryDirectory(prefix="pystachy-import-symbols-") as directory:
+            root = Path(directory)
+            for case, linkage, reverse, expected in (("weak", "weak", False, 21),
+                                                      ("weak-reversed", "weak", True, 37),
+                                                      ("strong", "", False, 37)):
+                work = root / case
+                work.mkdir()
+                left = ('target triple = "x86_64-pc-linux-gnu"\n@value = weak global i32 21\n'
+                        'define i32 @main() {\n %v = load i32, ptr @value\n ret i32 %v\n}\n')
+                right = f'target triple = "x86_64-pc-linux-gnu"\n@value = {linkage} global i32 37\n'
+                tables = []
+                for i, source in enumerate((right, left) if reverse else (left, right)):
+                    (work / f"part-{i}.ll").write_text(source)
+                    name = f"part-{i}.bc"
+                    subprocess.run([str(llvm / "opt"), "-passes=verify", "-module-summary",
+                                    f"part-{i}.ll", "-o", name], cwd=work,
+                                   capture_output=True, check=True, timeout=15)
+                    symbols = subprocess.run([str(llvm / "llvm-lto2"), "dump-symtab", name], cwd=work,
+                                             capture_output=True, text=True, check=True, timeout=15)
+                    tables.append((name, imports.parse_symtab(symbols.stdout)))
+                flags, _ = imports.symbol_resolutions(tables)
+                imports.write_response(work / "args.rsp", ["-O2", "-thinlto-threads=1", "-threads=1",
+                    "-relocation-model=pic", "-o", "result.o", "part-0.bc", "part-1.bc", *flags])
+                subprocess.run([str(llvm / "llvm-lto2"), "run", "@args.rsp"], cwd=work,
+                               capture_output=True, check=True, timeout=15)
+                subprocess.run([str(llvm / "clang"), "result.o.1", "result.o.2", "-o", "program"], cwd=work,
+                               capture_output=True, check=True, timeout=15)
+                result = subprocess.run([str(work / "program")], timeout=5)
+                self.assertEqual(result.returncode, expected, case)
 
 
 if __name__ == "__main__":
