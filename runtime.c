@@ -2509,6 +2509,9 @@ void *pys_big_box(I lo, void *hi) {
 /* Closed union: a program-wide tag and the value's 8-byte slot. The collector
    scans the box for str, container or native reference payloads. None remains null. */
 void *pys_ubox(I tag, I v) { I *p = gc_box(0); p[0] = tag; p[1] = v; return p; }
+/* Only a compiler-proved native int, float or bool payload: its bits cannot own
+   a reference. Optional conversion and a runtime tag keep the scanned entry. */
+void *pys_ubox_atomic(I tag, I v) { I *p = gc_box(1); p[0] = tag; p[1] = v; return p; }
 void *pys_ubox_opt(I tag, void *p, I deref) { return p ? pys_ubox(tag, deref ? *(I *)p : (I)p) : NULL; }
 
 static I unbox(I v, const char *d) { return *d == 'i' || *d == 'f' || *d == 'b' ? *(I *)v : v; }   /* the value of a ?d */

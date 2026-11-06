@@ -105,6 +105,38 @@ static void check(int root, I offset) {
   clear_marks();
 }
 
+/* The same pointer-sized bits have different ownership in these two union
+   boxes. Only the scanned payload is an edge in this tiny independent graph.
+   Explicit roots avoid accidental retention by the C stack, and an interior
+   pointer to the payload must keep either box itself alive. */
+static void union_boxes(void) {
+  W *tail = pys_alloc(23), *live = pys_alloc(23), *dead = pys_alloc(23);
+  live[0] = (W)tail;
+  W *ref = pys_ubox(17, (I)live);
+  W *scalar = pys_ubox_atomic(18, (I)dead);
+  W roots[] = {(W)(ref + 1), (W)(scalar + 1)};
+  scan(roots, roots + 2); trace();
+  if (!gc_marked(ref) || !gc_marked(scalar) || !gc_marked(live) || !gc_marked(tail))
+    bad("union box or its reference payload was not traced");
+  if (gc_marked(dead)) bad("scalar union's pointer-looking bits retained an unrelated object");
+  if (ref[0] != 17 || ref[1] != (W)live || scalar[0] != 18 || scalar[1] != (W)dead)
+    bad("tracing changed an immutable union box");
+  clear_marks();
+  /* Optional reference conversion must retain its edge, and a promoting-int
+     box must retain its Mpz pointer even when ordinary integer boxes are atomic. */
+  W *optional = pys_ubox_opt(19, live, 0);
+  Mpz *wide = pys_mpz_from_str(cstr("1180591620717411303424"), 10);
+  W *big = pys_big_box(0, wide);
+  W more[] = {(W)optional, (W)big};
+  scan(more, more + 2); trace();
+  if (!gc_marked(optional) || !gc_marked(live) || !gc_marked(tail) ||
+      !gc_marked(big) || !gc_marked(wide))
+    bad("optional union or promoting-int box lost its reference payload");
+  if (gc_marked(ref) || gc_marked(scalar) || gc_marked(dead))
+    bad("unreachable union box or payload was marked");
+  clear_marks(); sweep();
+}
+
 /* Tiny slots have the most bitmap words. A reverse chain spans whole chunks
    and their highest usable summary indices, using only the first pointer word. */
 static void small_boundaries(void) {
@@ -211,6 +243,7 @@ int main(void) {
   /* Construction must not collect: malloc's model table is intentionally not
      a root, and these checks control exactly which object starts tracing. */
   gc_off = 1; gc_stress = 0;
+  union_boxes();
   small_boundaries();
   for (int cycle = 0; cycle < 2; cycle++) {
     make_graph();
@@ -226,6 +259,6 @@ int main(void) {
     free(model); model = NULL;
     sweep();                        /* zero marks free everything; repeat on recycled pages */
   }
-  puts("gcmarkprobe: exact reachability, cycles, backward edges, large slices, interior/slack roots, queue reuse and partial-sweep refill passed");
+  puts("gcmarkprobe: union ownership, exact reachability, cycles, backward edges, large slices, interior/slack roots, queue reuse and partial-sweep refill passed");
   return 0;
 }

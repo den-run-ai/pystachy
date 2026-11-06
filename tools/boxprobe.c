@@ -37,6 +37,7 @@ __attribute__((noinline)) static void sizes(void) {
   box_slot(pys_dyn_float(0.5), 1, "a float's box is not in an atomic 16-byte slot");
   box_slot(pys_dyn_ref(&pys_dyntype_str, cstr("s")), 0, "a str's box is not in a scanned 16-byte slot");
   box_slot(pys_ubox(3, 4), 0, "a union's box is not in a scanned 16-byte slot");
+  box_slot(pys_ubox_atomic(3, 4), 1, "a proved scalar union's box is not in an atomic 16-byte slot");
   Seg *s = gc_find(pys_alloc(16));
   if (!s || s->size != 24) bad("an object of 16 bytes that is not a box has no byte of slack");
 }
