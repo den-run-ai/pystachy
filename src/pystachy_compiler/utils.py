@@ -17,6 +17,7 @@ from src.pystachy_compiler.specs import (
     INERT,
     LIST_WRITES,
     METHODS,
+    OPTINS,
     OPTS,
     OPAQUE,
     RUNTIME,
@@ -172,7 +173,7 @@ def fxs(m: int) -> str:
 
 def optimizations() -> dict[str, bool]:
     # the optimizations to run (OPTS): every one but those PYSTACHY_OPT turns off ("-name",
-    # comma-separated; "-all": every one), as name -> True
+    # comma-separated; "-all": every one), plus explicit experiments (+name from OPTINS)
     on: dict[str, bool] = {}
     for o in OPTS:
         on[o] = True
@@ -180,11 +181,13 @@ def optimizations() -> dict[str, bool]:
         w = w.strip()
         if w == "-all":
             on = {}
-        elif w.startswith("-") and w[1:] in OPTS:
+        elif w.startswith("+") and w[1:] in OPTINS:
+            on[w[1:]] = True
+        elif w.startswith("-") and (w[1:] in OPTS or w[1:] in OPTINS):
             if w[1:] in on:
                 on.pop(w[1:])
         elif w != "":
-            fail(f"PYSTACHY_OPT: no optimization {w} (it takes {', '.join(['-' + o for o in OPTS])} or -all, comma-separated)", 0)
+            fail(f"PYSTACHY_OPT: no optimization {w} (it takes {', '.join(['-' + o for o in OPTS] + ['+' + o for o in OPTINS])} or -all, comma-separated)", 0)
     return on
 
 

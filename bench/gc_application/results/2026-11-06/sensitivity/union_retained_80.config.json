@@ -1,0 +1,65 @@
+{
+  "name": "union_retained_80",
+  "cwd": "/workspace/scratch/a009f956ecf0/pystachy",
+  "inputs": [
+    "/workspace/scratch/a009f956ecf0/inputs-full/manifest.json",
+    "/workspace/scratch/a009f956ecf0/inputs-full/records.json",
+    "/workspace/scratch/a009f956ecf0/inputs-smoke/manifest.json",
+    "/workspace/scratch/a009f956ecf0/inputs-smoke/records.json",
+    "/workspace/scratch/a009f956ecf0/pystachy/bench/gc_application/json_retained.py",
+    "/workspace/scratch/a009f956ecf0/pystachy/bench/json_records.py",
+    "/workspace/scratch/a009f956ecf0/native-build/builds.json"
+  ],
+  "address_space_mib": 2048,
+  "env": {
+    "PYSTACHY_GC": "stats"
+  },
+  "notes": "Followup prompted by small primary union elapsed effect and wide A/A noise. Double ingestion rounds 40 to 80; same 20k records/window 4. Six rotated rounds plus one warmup; default_aa byte-identical to default. Detailed phase profiles kept separate.",
+  "variants": [
+    {
+      "name": "default",
+      "argv": [
+        "/workspace/scratch/a009f956ecf0/native-build/default-json_retained",
+        "/workspace/scratch/a009f956ecf0/inputs-full/records.json",
+        "80",
+        "4",
+        "{output}"
+      ],
+      "env": {
+        "PYSTACHY_GC": "stats",
+        "PYSTACHY_GC_MIN": "32"
+      },
+      "validated_executable_sha256": "bdef58b5816516e0af10ae190c2d8b3e9983e1e4c60cb18f5fe878095991bb4c"
+    },
+    {
+      "name": "default_aa",
+      "argv": [
+        "/workspace/scratch/a009f956ecf0/native-build/default-json_retained",
+        "/workspace/scratch/a009f956ecf0/inputs-full/records.json",
+        "80",
+        "4",
+        "{output}"
+      ],
+      "env": {
+        "PYSTACHY_GC": "stats",
+        "PYSTACHY_GC_MIN": "32"
+      },
+      "validated_executable_sha256": "bdef58b5816516e0af10ae190c2d8b3e9983e1e4c60cb18f5fe878095991bb4c"
+    },
+    {
+      "name": "atomic_union",
+      "argv": [
+        "/workspace/scratch/a009f956ecf0/native-build/atomic_union-json_retained",
+        "/workspace/scratch/a009f956ecf0/inputs-full/records.json",
+        "80",
+        "4",
+        "{output}"
+      ],
+      "env": {
+        "PYSTACHY_GC": "stats",
+        "PYSTACHY_GC_MIN": "32"
+      },
+      "validated_executable_sha256": "6c5b6fa7aff0aeddcec22f1964e3f16dacb1f623e817bfd7350c6ed954db2923"
+    }
+  ]
+}

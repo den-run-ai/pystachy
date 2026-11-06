@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "inputs": {
+    "SMALL": {
+      "path": "/workspace/scratch/a009f956ecf0/inputs-smoke/records.json",
+      "sha256": "ce249a9858ba1824214ef9ae778e8ad1c3e956a2e08d4636eedbe41a5f048c14",
+      "bytes": 1506,
+      "records": 16
+    },
+    "FULL": {
+      "path": "/workspace/scratch/a009f956ecf0/inputs-full/records.json",
+      "sha256": "7ce38f87876878e6277e58bba2aa1ec39e4a421d425127b7d77fa6ea0fcdca5f",
+      "bytes": 2030462,
+      "records": 20000
+    }
+  },
+  "generator_sha256": "2f73b1fce83c5ce8ea3807be00afbf1392dcaf67c9cdaaca11b7155e7d3d10ae",
+  "module_sha256": "45b5b03581a58db36b02693f52007f76c69df11ba825a33b95249211053c9679",
+  "module_bytes": 2032081,
+  "note": "Distinct workload: static literal input removes managed input allocation and file I/O."
+}

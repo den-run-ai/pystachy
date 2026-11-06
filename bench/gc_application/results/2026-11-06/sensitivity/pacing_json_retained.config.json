@@ -1,0 +1,65 @@
+{
+  "name": "pacing_json_retained",
+  "cwd": "/workspace/scratch/a009f956ecf0/pystachy",
+  "inputs": [
+    "/workspace/scratch/a009f956ecf0/inputs-full/manifest.json",
+    "/workspace/scratch/a009f956ecf0/inputs-full/records.json",
+    "/workspace/scratch/a009f956ecf0/inputs-smoke/manifest.json",
+    "/workspace/scratch/a009f956ecf0/inputs-smoke/records.json",
+    "/workspace/scratch/a009f956ecf0/pystachy/bench/gc_application/json_retained.py",
+    "/workspace/scratch/a009f956ecf0/pystachy/bench/json_records.py",
+    "/workspace/scratch/a009f956ecf0/native-build/builds.json"
+  ],
+  "address_space_mib": 2048,
+  "env": {
+    "PYSTACHY_GC": "stats"
+  },
+  "notes": "Native pacing sensitivity; same already-validated executable and full inputs. GC_MIN is a pacing floor, not heap cap. Six rotated rounds with one excluded warmup, CPU 3; identical 2048 MiB address-space limit. Actual RSS reported. Prespecified policies 8/32/128 MiB applied equally.",
+  "variants": [
+    {
+      "name": "min8",
+      "argv": [
+        "/workspace/scratch/a009f956ecf0/native-build/default-json_retained",
+        "/workspace/scratch/a009f956ecf0/inputs-full/records.json",
+        "40",
+        "4",
+        "{output}"
+      ],
+      "env": {
+        "PYSTACHY_GC": "stats",
+        "PYSTACHY_GC_MIN": "8"
+      },
+      "validated_executable_sha256": "bdef58b5816516e0af10ae190c2d8b3e9983e1e4c60cb18f5fe878095991bb4c"
+    },
+    {
+      "name": "min32",
+      "argv": [
+        "/workspace/scratch/a009f956ecf0/native-build/default-json_retained",
+        "/workspace/scratch/a009f956ecf0/inputs-full/records.json",
+        "40",
+        "4",
+        "{output}"
+      ],
+      "env": {
+        "PYSTACHY_GC": "stats",
+        "PYSTACHY_GC_MIN": "32"
+      },
+      "validated_executable_sha256": "bdef58b5816516e0af10ae190c2d8b3e9983e1e4c60cb18f5fe878095991bb4c"
+    },
+    {
+      "name": "min128",
+      "argv": [
+        "/workspace/scratch/a009f956ecf0/native-build/default-json_retained",
+        "/workspace/scratch/a009f956ecf0/inputs-full/records.json",
+        "40",
+        "4",
+        "{output}"
+      ],
+      "env": {
+        "PYSTACHY_GC": "stats",
+        "PYSTACHY_GC_MIN": "128"
+      },
+      "validated_executable_sha256": "bdef58b5816516e0af10ae190c2d8b3e9983e1e4c60cb18f5fe878095991bb4c"
+    }
+  ]
+}

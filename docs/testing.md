@@ -27,6 +27,7 @@ Run these from the repository root:
 | `make test-ffi` | Check C calls, FFI diagnostics, embedded CPython (`pyobj`) and CPython extension modules. |
 | `make check-ir` | Check the typed IR and its LLVM lowering across the compiler corpus. |
 | `make check-runtime` | Check runtime declarations, effects and source agreement. |
+| `make gcmarkprobe` | Compare exact reachable sets with an independent graph oracle under both GC tracing orders, including bitmap boundaries and recycled chunks. |
 | `make irsame REF=<commit>` | Compare IR, diagnostics and exit status with a reference compiler for a refactor. |
 | `make bench-extended-check` | Check the extended benchmark runner and CPython/JIT/AOT checksums; no timing thresholds. |
 | `make bench-pyperformance-check` | Check the pyperformance runner and the ported benchmarks' CPython/JIT/AOT output; no timing thresholds. |
@@ -145,6 +146,12 @@ keeps, with the objects they hold, and the allocation window between collections
 `PYSTACHY_GC_MIN` sets).
 They use deterministic operation or allocation limits where possible; shared CI runners do
 not gate on benchmark speed.
+
+The `box-slots` contract also runs `gcmarkprobe` with object and block tracing:
+6,000-object graphs, 16 root sets per mode, cycles, backward links, atomic
+payloads, large-object slices and interior/end-slack roots. The existing weakref
+and box probes run in both orders, normally and with collection on every
+allocation. These extend existing contract steps without adding CI jobs.
 
 `make python-int-gate` enforces the reviewed promoting-int compatibility baseline across
 `tests/programs/`: a fresh pinned-CPython oracle and both JIT and AOT for each entry module

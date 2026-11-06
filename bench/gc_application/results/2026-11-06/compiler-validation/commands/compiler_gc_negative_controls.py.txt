@@ -1,0 +1,63 @@
+"""Mutate allocator kinds outside the worktree; the graph oracle must fail."""
+import hashlib
+import json
+import os
+from pathlib import Path
+import subprocess
+
+ROOT = Path('/workspace/scratch/a009f956ecf0')
+WORK = ROOT / 'compiler-gc'
+LLVM = ROOT / 'toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin'
+OUT = ROOT / 'compiler-gc-validation/negative-kinds'
+OUT.mkdir(exist_ok=True)
+ENV = {key: value for key, value in os.environ.items() if not key.startswith('PYSTACHY_')}
+runtime = (WORK / 'runtime.c').read_text()
+probe = (WORK / 'tools/gcmarkprobe.c').read_text()
+cases = {
+    'scanned-scalar': (
+        'void *pys_ubox_atomic(I tag, I v) { I *p = gc_box(1);',
+        'void *pys_ubox_atomic(I tag, I v) { I *p = gc_box(0);',
+        "scalar union's pointer-looking bits retained an unrelated object"),
+    'atomic-reference': (
+        'void *pys_ubox(I tag, I v) { I *p = gc_box(0);',
+        'void *pys_ubox(I tag, I v) { I *p = gc_box(1);',
+        'union box or its reference payload was not traced'),
+    'atomic-wide': (
+        'I *p = gc_box(0); p[0] = INT64_MIN; ((void **)p)[1] = hi; return p;',
+        'I *p = gc_box(1); p[0] = INT64_MIN; ((void **)p)[1] = hi; return p;',
+        'optional union or promoting-int box lost its reference payload'),
+}
+results = []
+for name, (before, after, message) in cases.items():
+    assert runtime.count(before) == 1, name
+    folder = OUT / name
+    folder.mkdir(exist_ok=True)
+    changed = folder / 'runtime.c'
+    changed.write_text(runtime.replace(before, after))
+    source = folder / 'gcmarkprobe.c'
+    source.write_text(probe.replace('#include "../runtime.c"', '#include "' + str(changed) + '"'))
+    commands = [
+        [LLVM / 'clang', '-O2', '-S', '-emit-llvm', '-I', WORK, source, '-o', folder / 'probe.ll'],
+        [LLVM / 'llvm-link', WORK / 'build/gcmarkprobe-rt.ll', folder / 'probe.ll', '-o', folder / 'probe.bc'],
+        [LLVM / 'clang', '-O2', folder / 'probe.bc', '-o', folder / 'probe', '-lm'],
+    ]
+    with (folder / 'build.log').open('w') as log:
+        for command in commands:
+            subprocess.run([str(x) for x in command], env=ENV, cwd=WORK, stdout=log,
+                           stderr=subprocess.STDOUT, check=True, timeout=120)
+    for marker in ('object', 'block'):
+        result = subprocess.run([str(folder / 'probe')], cwd=WORK,
+                                env=ENV | {'PYSTACHY_GC_MARK': marker},
+                                text=True, capture_output=True, timeout=30)
+        expected = result.returncode == 1 and message in result.stderr
+        item = {'name': name, 'marker': marker, 'replacement': [before, after],
+                'expected_error': message, 'exit_code': result.returncode,
+                'stdout': result.stdout, 'stderr': result.stderr, 'rejected': expected,
+                'runtime_sha256': hashlib.sha256(changed.read_bytes()).hexdigest(),
+                'binary_sha256': hashlib.sha256((folder / 'probe').read_bytes()).hexdigest(),
+                'build_commands': [[str(x) for x in command] for command in commands]}
+        results.append(item)
+        (OUT / 'results.json').write_text(json.dumps(results, indent=2) + '\n')
+        print(name, marker, 'rejected' if expected else 'UNEXPECTED', result.stderr.strip(), flush=True)
+        if not expected:
+            raise SystemExit(1)

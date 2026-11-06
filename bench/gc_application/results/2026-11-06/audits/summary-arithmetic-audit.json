@@ -1,0 +1,37 @@
+{
+  "summary_files": [
+    {
+      "path": "/workspace/scratch/a009f956ecf0/analysis-gc/native-summary.json",
+      "sha256": "ee455c6ec62901cb1fd00a9cfa141398924a106955a9474939b91ef822736231"
+    },
+    {
+      "path": "/workspace/scratch/a009f956ecf0/analysis-gc/optional-summary.json",
+      "sha256": "58261f9d3ed60cca2a400564387ef546e5e674397c0d67ee6b6ac8137bd3cba2"
+    },
+    {
+      "path": "/workspace/scratch/a009f956ecf0/analysis-gc/pacing-summary.json",
+      "sha256": "dac1d261ccd39bcbc244ff66190a7b95fd8151da17cebaf24abba87c0f429e3f"
+    },
+    {
+      "path": "/workspace/scratch/a009f956ecf0/analysis-gc/pacing-bdw-summary.json",
+      "sha256": "7f5b09179449f12c02b8913c35ff1f86b813359fd0adbbee570103eab15b8882"
+    },
+    {
+      "path": "/workspace/scratch/a009f956ecf0/analysis-gc/union-long-summary.json",
+      "sha256": "86c3a598c1ffe9ecc15584e7a57cd22201aca6cfe13b1cbf01f827e82339fd7f"
+    },
+    {
+      "path": "/workspace/scratch/a009f956ecf0/analysis-gc/secondary-controls-summary.json",
+      "sha256": "ccf3b4f246925dee3b0118b679e7a9e8870c56f67c4c14508490f978ecb8cb96"
+    }
+  ],
+  "unique_raw_reports": 23,
+  "raw_samples": 741,
+  "raw_warmups": 115,
+  "raw_measurements": 626,
+  "variant_summaries_checked": 139,
+  "comparisons_recomputed": 143,
+  "identical_binary_and_settings_controls": 20,
+  "assertions": "Raw source hashes, completion, exits/output match flags, per-round wall/CPU/RSS ratios/geomean/median/range/lower-count, variant wall/CPU/RSS/native-GC medians and native-GC share. No timing or benchmark rerun.",
+  "all_passed": true
+}

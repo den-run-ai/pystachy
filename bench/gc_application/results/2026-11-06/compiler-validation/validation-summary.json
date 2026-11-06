@@ -1,0 +1,219 @@
+{
+  "schema_version": 1,
+  "written_utc": "2026-11-06T05:01:11.068271+00:00",
+  "status": "All targeted final checks passed; the initial fixture failure is preserved and resolved.",
+  "scope": "Experimental compiler lowering of literal native int/float/bool union tags to atomic boxes. Off by default; enable PYSTACHY_OPT=+atomicunion.",
+  "source": {
+    "worktree": "/workspace/scratch/a009f956ecf0/compiler-gc",
+    "branch": "research/gc-compiler-assist-20261106",
+    "head": "a055b652c0146503737cd2eadc4a2ea9d2f2c31a",
+    "compiler_build_commit": "c6e1402c24c0b5dc8ede1eab47e85043c1a85eed",
+    "fixture_correction_commit": "e0e8ac4979a397253ab4020c4747b2649ea8607e",
+    "head_compiler_runtime_and_library_sources_equal_build": true,
+    "post_fixture_change": "docs/typed-ir.md wording only",
+    "clean": true,
+    "compiler": "/workspace/scratch/a009f956ecf0/compiler-gc/pystachy",
+    "compiler_sha256": "b2806609c66900ed20f36aeb42833ae65a14b1036f4871f0386048920d11b8fe",
+    "baseline_compiler": "/workspace/scratch/8b5d64b08ada/pystachy/pystachy",
+    "baseline_source": "d36140acf551abbb6a7587d821c35442b11aed80",
+    "baseline_compiler_sha256": "c8dc02d3fcc2f101a6279ea260258aa36093ff8be5c6c46cb6ba0303787104af",
+    "python": "Python 3.13.16",
+    "llvm": "18.1.3"
+  },
+  "counts": {
+    "distinct_application_cases": 23,
+    "optin_normal_native_checks_passed": 46,
+    "optin_gc_stress_native_checks_passed": 46,
+    "corrected_fixture_default_native_checks_passed": 2,
+    "total_positive_native_application_checks_passed": 94,
+    "hosted_unit_tests_with_raw_log_passed": 54,
+    "additional_ownership_unit_tests_observed_passed": 64,
+    "wrong_kind_negative_controls_rejected": 6,
+    "default_ir_distinct_final_cases_matching": 23,
+    "optin_hosted_native_ir_cases_matching": 1
+  },
+  "validation": [
+    {
+      "check": "Native bootstrap",
+      "result": "pass",
+      "compiler_ir_lines": 832558,
+      "runtime_ir_lines": 18805,
+      "proof": "Stage 1, 2 and 3 compiler IR match; the three runtime IR outputs match.",
+      "logs": [
+        "bootstrap.log"
+      ]
+    },
+    {
+      "check": "Hosted unit tests",
+      "result": "pass",
+      "tests": 54,
+      "command": "python -m unittest tools.test_typed_atomicunion tools.test_typed_union_proofs tools.test_verify_variants -q",
+      "logs": [
+        "unit-final.log"
+      ]
+    },
+    {
+      "check": "Compiler module ownership inventory",
+      "result": "pass",
+      "tests": 64,
+      "command": "python -m unittest discover -s tools -p test_compiler_state_globals.py -q",
+      "evidence": "Interactive tool output reported 64 tests, OK; no separate raw log was captured."
+    },
+    {
+      "check": "Runtime ABI/effect contract",
+      "result": "pass",
+      "runtime_entries": 645,
+      "exception_classes": 70,
+      "runtime_py_functions": 172,
+      "logs": [
+        "runtime-contract.log"
+      ]
+    },
+    {
+      "check": "Default IR parity with d36140 baseline",
+      "result": "pass",
+      "distinct_cases": 23,
+      "comparisons": 24,
+      "composition": "23 initial cases plus the corrected new fixture; the other 22 source files did not change. Both compilers used the same unchanged library source home.",
+      "logs": [
+        "default-ir-parity.log",
+        "default-ir-parity-corrected-fixture.log"
+      ]
+    },
+    {
+      "check": "Opt-in native versus hosted compiler IR",
+      "result": "pass",
+      "cases": 1,
+      "setting": "PYSTACHY_OPT=+atomicunion",
+      "logs": [
+        "native-optin-ir-parity.log"
+      ]
+    },
+    {
+      "check": "Normal opt-in JIT/AOT application behavior",
+      "result": "pass",
+      "cases": 23,
+      "passed": 46,
+      "composition": "44 passing checks from the first attempt (22 unchanged cases), plus 2 passing corrected-fixture checks.",
+      "logs": [
+        "native-optin-literal-expression-failure.log",
+        "native-optin-corrected-fixture.log"
+      ]
+    },
+    {
+      "check": "Opt-in JIT/AOT application GC stress",
+      "result": "pass",
+      "cases": 23,
+      "passed": 46,
+      "settings": {
+        "PYSTACHY_OPT": "+atomicunion",
+        "PYSTACHY_GC_STRESS_PROGRAM": "1"
+      },
+      "logs": [
+        "native-optin-stress.log"
+      ]
+    },
+    {
+      "check": "Corrected fixture with default options",
+      "result": "pass",
+      "cases": 1,
+      "passed": 2,
+      "logs": [
+        "native-default-corrected-fixture.log"
+      ]
+    },
+    {
+      "check": "Collector/box probes",
+      "result": "pass",
+      "coverage": "boxprobe default and stress; gcmarkprobe object and block marking; boxprobe block plus stress. Explicit-root oracle checks scalar pointer-looking bits, reference transitivity, optional references and wide-int Mpz ownership.",
+      "logs": [
+        "gc-probes.log",
+        "boxprobe-block-stress.log"
+      ]
+    },
+    {
+      "check": "Wrong-kind negative controls",
+      "result": "all rejected",
+      "runs": 6,
+      "mutations": [
+        "scalar union allocated scanned",
+        "reference union allocated atomic",
+        "wide-int box allocated atomic"
+      ],
+      "markers": [
+        "object",
+        "block"
+      ],
+      "logs": [
+        "negative-controls.log",
+        "negative-kinds/results.json"
+      ]
+    }
+  ],
+  "resolved_initial_failure": {
+    "kind": "Test-input mistake reproduced on the baseline; not a changed compiler behavior.",
+    "first_attempt": "23 cases, 44 passed and 2 failed (new union_gc_boxes fixture under JIT and AOT).",
+    "cause": "Expressions -(2**63) and 2**63 - 1 overflow at their intermediate 2**63 in native-int mode.",
+    "correction": "Use signed representable integer literals; re-record with CPython 3.13.16. Expected output stayed byte-identical.",
+    "logs": [
+      "native-optin-literal-expression-failure.log",
+      "baseline-literal-expression-failure.json",
+      "native-optin-corrected-fixture.log"
+    ]
+  },
+  "resolved_invocation_issue": {
+    "cause": "An initial package-mode unittest command could not import compiler_state_globals from the test helper directory.",
+    "resolution": "Reran that test module through unittest discovery; all 64 tests passed.",
+    "evidence": "Interactive tool output only; no product test body failed in that setup invocation."
+  },
+  "limits": [
+    "No application performance claim is made by these validation runs.",
+    "Full verification/UBSan/hosted CI are owned by the parent task and are not claimed here.",
+    "Experimental optimization remains off by default; runtime tags and optional-to-union conversions remain scanned."
+  ],
+  "artifact_root": "/workspace/scratch/a009f956ecf0/compiler-gc-validation",
+  "artifacts_sha256": {
+    "bootstrap.log": "69cca4b07077d761d2fbc69930a78ed1314b85dc104c8aaa2c5dcb54cf4e7537",
+    "unit-final.log": "0f8dc41b29f1e8b122a9430de58183bbc16ea0ba60e2778ba39ceb94a1b100ac",
+    "runtime-contract.log": "154e0ed8a479f530eac2ada6f080a8924ef70ba91453747cbf3bddb469d9e9b9",
+    "default-ir-parity.log": "981a3c45ebcad5c59736fa2805e9458c1581004fa7bf8893a780cab06279ca4e",
+    "default-ir-parity-corrected-fixture.log": "667fc201943edb1580b8d600c78f5031db7c37c82e1a7205872eba97d8b175d6",
+    "native-optin-ir-parity.log": "667fc201943edb1580b8d600c78f5031db7c37c82e1a7205872eba97d8b175d6",
+    "gc-probes.log": "0108ee7468a56a2956bb9c982506bf0ba61304db7ad7633f88a86072bd53b3f6",
+    "boxprobe-block-stress.log": "67989988355cdf6ab791796ab18ed951e1aceba188edb1d0956f961b17dd4645",
+    "native-optin-literal-expression-failure.log": "919cb25c8263c260846a4eb40affee8227b0ae65c7db36858c5112f4d38ddb0e",
+    "baseline-literal-expression-failure.json": "eafd312469237873fb15ed2bce8a582a29f1b4114ef9a527cdc6f2b4f5af9104",
+    "native-optin-corrected-fixture.log": "662dece394c294eb255cdee7b42fd9d09b335e0bc3ee68e52df6c8b0b770a14d",
+    "native-optin-stress.log": "9ff7c5af4c5116bfaaee72af591fbe8b4a085e69fb4b1d43e78d6ff1e3856f5a",
+    "native-default-corrected-fixture.log": "662dece394c294eb255cdee7b42fd9d09b335e0bc3ee68e52df6c8b0b770a14d",
+    "negative-controls.log": "c7187e1e26947696b3ef10cd9ca721c5212583f96e0f679d0789b31504b656ba",
+    "negative-kinds/results.json": "53a6e768a1b9a385aa474b79275cedc72f314c7a9f96864d4aa140b59b9fb3cf",
+    "validation-first-attempt.json": "8eee34e26372862502f2c5be2e1270c4a3136ed11632116ebe3606bd4e460de1",
+    "validation.json": "2ee75e4fabd56ed4c83b6a9e6a234451c4791c3d175e524206aa715652a70bee"
+  },
+  "cases": [
+    "tests/programs/inference/union_gc_boxes.py",
+    "tests/programs/inference/scalar_union_storage.py",
+    "tests/programs/inference/scalar_union_mutation_and_loops.py",
+    "tests/programs/inference/scalar_union_optional_narrowing.py",
+    "tests/programs/inference/scalar_union_chained_optional.py",
+    "tests/programs/inference/union_slots.py",
+    "tests/programs/inference/mixed_union_storage.py",
+    "tests/programs/inference/mixed_union_nested.py",
+    "tests/programs/inference/mixed_union_repr_cycle.py",
+    "tests/programs/inference/reference_union_storage.py",
+    "tests/programs/inference/reference_union_calls.py",
+    "tests/programs/optional/union_identity_none.py",
+    "tests/programs/numbers/python_int_optional.py",
+    "tests/programs/numbers/python_int_roots.py",
+    "tests/deviations/python_int_limits.py",
+    "tests/programs/library/json_roundtrip.py",
+    "tests/programs/library/json_mutation.py",
+    "tests/programs/library/json_depth.py",
+    "tests/programs/library/json_long_text.py",
+    "tests/programs/inference/dynany_json_bigints.py",
+    "tests/programs/inference/dynany_numeric_union_protocol.py",
+    "tests/programs/inference/dynany_unions.py",
+    "tests/programs/library/lib_weakref.py"
+  ]
+}

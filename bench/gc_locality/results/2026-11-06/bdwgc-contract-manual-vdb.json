@@ -1,0 +1,196 @@
+{
+  "purpose": "manual-VDB safety and integration contract checks only; no benchmark conclusions",
+  "source_parent_commit": "b48f61b5225b252b2813971197ef6e000434e81f",
+  "supersedes": {
+    "path": "bench/gc_locality/results/2026-11-06/bdwgc-contract.json",
+    "sha256": "9a470ed19235814563498ba10e294156e14fa6c807ce648f49b5d2422edd4dec",
+    "reason": "disable manual VDB before collector initialization; probe simulates manual-enabled default"
+  },
+  "probe_precondition": "GC_set_manual_vdb_allowed(1) before pys_init; assert !GC_get_manual_vdb_allowed() after initialization",
+  "fresh_runtime_ir_equal_to_previous": true,
+  "build_results": [
+    {
+      "command": [
+        "python3",
+        "-I",
+        "bench/gc_locality/bdwgc_overlay.py",
+        "--source",
+        ".",
+        "--output",
+        "/workspace/scratch/a009f956ecf0/bdwgc-overlay-v4",
+        "--include",
+        "/workspace/scratch/a009f956ecf0/bdwgc/usr/include",
+        "--library",
+        "/workspace/scratch/a009f956ecf0/bdwgc/usr/lib/x86_64-linux-gnu/libgc.a"
+      ],
+      "returncode": 0,
+      "stdout": "{\n  \"schema\": 1,\n  \"backend\": \"bdwgc-restricted-aot\",\n  \"inputs\": {\n    \"source_runtime_sha256\": \"b8d65bb367168f45233c63bbfae8dd34f605bc4d0796b0858d509859a71a2690\",\n    \"adapter_sha256\": \"da765410982de0083f820d38bb2bd635898aea0e94cbe65f6cc4372ba665b546\",\n    \"headers_sha256\": {\n      \"gc/cord.h\": \"149bc2fd60d5f5383dfec0338440a2c2456ed1e4c8383053786f135605770643\",\n      \"gc/cord_pos.h\": \"f46fba45f62f97351eb1dd748ccaa1f55cc0a72272e07a788c351146411efc9d\",\n      \"gc/ec.h\": \"8bc9c2f888c3f3ef3464b851ff24f8be90672b13990e05cf88a4d906e7f516ba\",\n      \"gc/gc.h\": \"95588bad2b61aea599ab9ada27aac6d1e012e13c3b8a156879f2e25384f599e1\",\n      \"gc/gc_allocator.h\": \"b2a281c01c85af83007c859a62ed85413d4eb9ab892a26487b7a9aa5be97e90a\",\n      \"gc/gc_backptr.h\": \"6c2ecdc5fdcca5019a904179a2eb95805f8ff60482f2a429bdc5fd67957d1c95\",\n      \"gc/gc_config_macros.h\": \"d85397108f23351f3969843d8cf1cb092f1e4a5381dd22ab7d1404dd646373b1\",\n      \"gc/gc_cpp.h\": \"e0db5439de47fc40e19337430aa96c33150a5e58cf3cd07393c4aad003804b59\",\n      \"gc/gc_disclaim.h\": \"e63543535d3e4b795f5adc2108521a29d29839a8dfc19dc79cecf9f1176eb208\",\n      \"gc/gc_gcj.h\": \"87c8493463ff62edc7faa256f03e3a24cdf8b9375e3a0d3298530bdf74d95005\",\n      \"gc/gc_inline.h\": \"e7e918728746d48837f76390f7d09e9e2107305c2ea8e95339c900acfb22f21e\",\n      \"gc/gc_mark.h\": \"76e297c6c81c540b1c685ebe7390fb7a51e2c8d9b6598974abeca45fefda1963\",\n      \"gc/gc_pthread_redirects.h\": \"e68ce92ca0280b42bb1a0db62357e883d3e37235d18c2bd0d3ad6bd59209b09b\",\n      \"gc/gc_tiny_fl.h\": \"03b037e534c6f6b39209b65b39faa42526d88f3689df766ab9b5330020036efd\",\n      \"gc/gc_typed.h\": \"29fae0823f9f0c2d02b0aa9df4a98616dc8daf646a613124e6177ed48f2ae923\",\n      \"gc/gc_version.h\": \"9c4b7a9b5cfc4ffa04413809d9839d9245ac86925ddcbd32cc5adb7be1473063\",\n      \"gc/javaxfc.h\": \"1a89edc382dbc9e2c7d3a6bcf749ec71411c9c45f2da96b63efaf3cc1d8bbaba\",\n      \"gc/leak_detector.h\": \"32a974877a73d5b7ac1143cbf04a26911e3fa6299a6b9a4a7922c74dde2f40e2\"\n    },\n    \"library_sha256\": \"18cea650b80ab054e584b27a791f8080545ea1c1c1ca9a7f4b0ed4bece4cc635\"\n  },\n  \"source\": \"/workspace/scratch/a009f956ecf0/gc-dependency\",\n  \"include\": \"/workspace/scratch/a009f956ecf0/bdwgc/usr/include\",\n  \"library\": \"/workspace/scratch/a009f956ecf0/bdwgc/usr/lib/x86_64-linux-gnu/libgc.a\",\n  \"overlay\": \"/workspace/scratch/a009f956ecf0/bdwgc-overlay-v4\",\n  \"overlay_runtime_sha256\": \"03649f06d682e1374184bd7ddecf04e1b16c8169d1ebff1bb53e9b383d4f5d50\",\n  \"replaced_functions\": [\n    \"collect\",\n    \"gc_slow\",\n    \"gc_alloc\",\n    \"gc_init\",\n    \"gc_report\",\n    \"atomic_items\",\n    \"str_grow\",\n    \"pys_str_iadd\",\n    \"pys_weakref_new\",\n    \"pys_open\",\n    \"pys_bopen\",\n    \"pys_track\",\n    \"pys_init_lib\"\n  ],\n  \"environment\": {\n    \"PYSTACHY_HOME\": \"/workspace/scratch/a009f956ecf0/bdwgc-overlay-v4\",\n    \"PYSTACHY_CACHE\": \"/workspace/scratch/a009f956ecf0/bdwgc-overlay-v4/build\",\n    \"PYSTACHY_CFLAGS\": \"-I/workspace/scratch/a009f956ecf0/bdwgc/usr/include /workspace/scratch/a009f956ecf0/bdwgc/usr/lib/x86_64-linux-gnu/libgc.a\"\n  }\n}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "/workspace/scratch/8b5d64b08ada/pystachy/pystachy",
+        "rt",
+        "runtime.py",
+        "-o",
+        "/workspace/scratch/a009f956ecf0/bdwgc-probe-v5-rt.ll"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/clang",
+        "-O2",
+        "-fexceptions",
+        "-S",
+        "-emit-llvm",
+        "-I/workspace/scratch/a009f956ecf0/bdwgc/usr/include",
+        "-DPYSTACHY_GC_RUNTIME=\"/workspace/scratch/a009f956ecf0/bdwgc-overlay-v4/runtime.c\"",
+        "bench/gc_locality/bdwgc_probe.c",
+        "-o",
+        "/workspace/scratch/a009f956ecf0/bdwgc-probe-v5.ll"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/llvm-link",
+        "/workspace/scratch/a009f956ecf0/bdwgc-probe-v5-rt.ll",
+        "/workspace/scratch/a009f956ecf0/bdwgc-probe-v5.ll",
+        "-o",
+        "/workspace/scratch/a009f956ecf0/bdwgc-probe-v5.bc"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/clang",
+        "-O2",
+        "/workspace/scratch/a009f956ecf0/bdwgc-probe-v5.bc",
+        "/workspace/scratch/a009f956ecf0/bdwgc/usr/lib/x86_64-linux-gnu/libgc.a",
+        "-lm",
+        "-ldl",
+        "-pthread",
+        "-o",
+        "/workspace/scratch/a009f956ecf0/bdwgc-probe-v5"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "hashes": {
+    "/workspace/scratch/a009f956ecf0/bdwgc-probe-v5": "9c543262dc077d96318c20c2f929210099aa2008edc9139234b0db9488a3d26d",
+    "/workspace/scratch/a009f956ecf0/bdwgc-overlay-v4/runtime.c": "03649f06d682e1374184bd7ddecf04e1b16c8169d1ebff1bb53e9b383d4f5d50",
+    "/workspace/scratch/a009f956ecf0/bdwgc-overlay-v4/bdwgc-manifest.json": "4ee4790b6d6da565d2b296b2d3d8334ce0f0b99c21fd3456541948ad165cba08",
+    "/workspace/scratch/a009f956ecf0/bdwgc/usr/lib/x86_64-linux-gnu/libgc.a": "18cea650b80ab054e584b27a791f8080545ea1c1c1ca9a7f4b0ed4bece4cc635",
+    "/workspace/scratch/a009f956ecf0/bdwgc-probe-v5-rt.ll": "940a694da5ea93214d1308a8eb635b47d8d0a9d4256c63d084c24f5099f8aa5f",
+    "/workspace/scratch/8b5d64b08ada/pystachy/pystachy": "c8dc02d3fcc2f101a6279ea260258aa36093ff8be5c6c46cb6ba0303787104af",
+    "/workspace/scratch/a009f956ecf0/gc-dependency/runtime.py": "c45138f44a7aa25828b351b6d627e1a4f9fad69dc8a88532d053fb90e84beefb",
+    "/workspace/scratch/a009f956ecf0/gc-dependency/runtime.c": "b8d65bb367168f45233c63bbfae8dd34f605bc4d0796b0858d509859a71a2690",
+    "/workspace/scratch/a009f956ecf0/gc-dependency/bench/gc_locality/bdwgc_adapter.c": "da765410982de0083f820d38bb2bd635898aea0e94cbe65f6cc4372ba665b546",
+    "/workspace/scratch/a009f956ecf0/gc-dependency/bench/gc_locality/bdwgc_overlay.py": "b330d87d9e502b670abdcd23bbcf16a801df936d3fefd9e73b6d8491282965b1",
+    "/workspace/scratch/a009f956ecf0/gc-dependency/bench/gc_locality/bdwgc_probe.c": "c1848f5db6e74fef72f77228de2703ccdff9a873f8929d71a723dd3b02e944fa"
+  },
+  "cases": [
+    {
+      "case": "default",
+      "environment": {
+        "PYSTACHY_GC": "stats"
+      },
+      "expected_returncode": 0,
+      "returncode": 0,
+      "stdout": "bdwgc contract ok\n",
+      "stderr": "bdwgc: version=8.2.6 mode=default incremental=0 protection=1 markers=1 collections=2724 stopped_world_ms=34.843 pauses=2724 heap_peak_bytes=495616 heap_bytes=20480 free_bytes=0 allocated_bytes=435090304\n"
+    },
+    {
+      "case": "default_initial_32MiB",
+      "environment": {
+        "PYSTACHY_GC": "stats",
+        "GC_INITIAL_HEAP_SIZE": "33554432"
+      },
+      "expected_returncode": 0,
+      "returncode": 0,
+      "stdout": "bdwgc contract ok\n",
+      "stderr": "bdwgc: version=8.2.6 mode=default incremental=0 protection=1 markers=1 collections=38 stopped_world_ms=2.255 pauses=38 heap_peak_bytes=33554432 heap_bytes=12324864 free_bytes=12300288 allocated_bytes=435092128\n"
+    },
+    {
+      "case": "incremental_mprotect",
+      "environment": {
+        "PYSTACHY_GC": "stats",
+        "PYSTACHY_BDWGC_MODE": "incremental",
+        "GC_USE_GETWRITEWATCH": "0"
+      },
+      "expected_returncode": 0,
+      "returncode": 0,
+      "stdout": "bdwgc contract ok\n",
+      "stderr": "bdwgc: version=8.2.6 mode=incremental incremental=1 protection=1 markers=1 collections=7066 stopped_world_ms=112.038 pauses=7066 heap_peak_bytes=364544 heap_bytes=24576 free_bytes=0 allocated_bytes=435088032\n"
+    },
+    {
+      "case": "generational_mprotect",
+      "environment": {
+        "PYSTACHY_GC": "stats",
+        "PYSTACHY_BDWGC_MODE": "generational",
+        "GC_USE_GETWRITEWATCH": "0"
+      },
+      "expected_returncode": 0,
+      "returncode": 0,
+      "stdout": "bdwgc contract ok\n",
+      "stderr": "bdwgc: version=8.2.6 mode=generational incremental=1 protection=1 markers=1 collections=7067 stopped_world_ms=112.587 pauses=7067 heap_peak_bytes=487424 heap_bytes=24576 free_bytes=0 allocated_bytes=435088912\n"
+    },
+    {
+      "case": "incremental_auto",
+      "environment": {
+        "PYSTACHY_GC": "stats",
+        "PYSTACHY_BDWGC_MODE": "incremental"
+      },
+      "expected_returncode": 78,
+      "returncode": 78,
+      "stdout": "",
+      "stderr": "GC Warning: /proc/self/clear_refs open failed; cannot enable GC incremental mode\npystachy: BDWGC incremental capability warning; benchmark sample excluded\n"
+    },
+    {
+      "case": "generational_auto",
+      "environment": {
+        "PYSTACHY_GC": "stats",
+        "PYSTACHY_BDWGC_MODE": "generational"
+      },
+      "expected_returncode": 78,
+      "returncode": 78,
+      "stdout": "",
+      "stderr": "GC Warning: /proc/self/clear_refs open failed; cannot enable GC incremental mode\npystachy: BDWGC incremental capability warning; benchmark sample excluded\n"
+    },
+    {
+      "case": "incremental_disabled",
+      "environment": {
+        "PYSTACHY_GC": "stats",
+        "PYSTACHY_BDWGC_MODE": "incremental",
+        "GC_USE_GETWRITEWATCH": "0",
+        "GC_DISABLE_INCREMENTAL": "1"
+      },
+      "expected_returncode": 78,
+      "returncode": 78,
+      "stdout": "",
+      "stderr": "pystachy: experimental BDWGC adapter does not support automatic incremental tracking on this BDWGC build\n"
+    },
+    {
+      "case": "generational_disabled",
+      "environment": {
+        "PYSTACHY_GC": "stats",
+        "PYSTACHY_BDWGC_MODE": "generational",
+        "GC_USE_GETWRITEWATCH": "0",
+        "GC_DISABLE_INCREMENTAL": "1"
+      },
+      "expected_returncode": 78,
+      "returncode": 78,
+      "stdout": "",
+      "stderr": "pystachy: experimental BDWGC adapter does not support automatic incremental tracking on this BDWGC build\n"
+    }
+  ]
+}

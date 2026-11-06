@@ -1,0 +1,134 @@
+[
+  {
+    "argv": [
+      "/workspace/scratch/3e98002bc0e0/toolchain/usr/lib/llvm-18/bin/clang",
+      "-O2",
+      "-S",
+      "-emit-llvm",
+      "-I",
+      "/workspace/scratch/8b5d64b08ada/pystachy",
+      "/workspace/scratch/8b5d64b08ada/gcmark-negative-d6_gxu1h/gcmarkprobe-original.c",
+      "-o",
+      "/workspace/scratch/8b5d64b08ada/gcmark-negative-d6_gxu1h/gcmarkprobe-original.ll"
+    ],
+    "returncode": 0,
+    "elapsed": 3.363179018997471,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "/workspace/scratch/3e98002bc0e0/toolchain/usr/lib/llvm-18/bin/llvm-link",
+      "/workspace/scratch/8b5d64b08ada/gcmark-negative-d6_gxu1h/runtime-subset.ll",
+      "/workspace/scratch/8b5d64b08ada/gcmark-negative-d6_gxu1h/gcmarkprobe-original.ll",
+      "-o",
+      "/workspace/scratch/8b5d64b08ada/gcmark-negative-d6_gxu1h/gcmarkprobe-original.bc"
+    ],
+    "returncode": 0,
+    "elapsed": 0.24114738599746488,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "/workspace/scratch/3e98002bc0e0/toolchain/usr/lib/llvm-18/bin/clang",
+      "-O2",
+      "/workspace/scratch/8b5d64b08ada/gcmark-negative-d6_gxu1h/gcmarkprobe-original.bc",
+      "-o",
+      "/workspace/scratch/8b5d64b08ada/gcmark-negative-d6_gxu1h/gcmarkprobe-original",
+      "-lm"
+    ],
+    "returncode": 0,
+    "elapsed": 5.729164132993901,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "variant": "original",
+    "mode": "object",
+    "argv": [
+      "/workspace/scratch/8b5d64b08ada/gcmark-negative-d6_gxu1h/gcmarkprobe-original"
+    ],
+    "returncode": 0,
+    "stdout": "gcmarkprobe: exact reachability, cycles, backward edges, large slices, interior/slack roots, queue reuse and partial-sweep refill passed\n",
+    "stderr": "",
+    "binary_sha256": "e1dd0e37e787a1b75c49963e4ac86e3da33e0a7df80a8b03bcf13e4fc2f2152d"
+  },
+  {
+    "variant": "original",
+    "mode": "block",
+    "argv": [
+      "/workspace/scratch/8b5d64b08ada/gcmark-negative-d6_gxu1h/gcmarkprobe-original"
+    ],
+    "returncode": 0,
+    "stdout": "gcmarkprobe: exact reachability, cycles, backward edges, large slices, interior/slack roots, queue reuse and partial-sweep refill passed\n",
+    "stderr": "",
+    "binary_sha256": "e1dd0e37e787a1b75c49963e4ac86e3da33e0a7df80a8b03bcf13e4fc2f2152d"
+  },
+  {
+    "argv": [
+      "/workspace/scratch/3e98002bc0e0/toolchain/usr/lib/llvm-18/bin/clang",
+      "-O2",
+      "-S",
+      "-emit-llvm",
+      "-I",
+      "/workspace/scratch/8b5d64b08ada/pystachy",
+      "/workspace/scratch/8b5d64b08ada/gcmark-negative-d6_gxu1h/gcmarkprobe-negative.c",
+      "-o",
+      "/workspace/scratch/8b5d64b08ada/gcmark-negative-d6_gxu1h/gcmarkprobe-negative.ll"
+    ],
+    "returncode": 0,
+    "elapsed": 3.4241495649985154,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "/workspace/scratch/3e98002bc0e0/toolchain/usr/lib/llvm-18/bin/llvm-link",
+      "/workspace/scratch/8b5d64b08ada/gcmark-negative-d6_gxu1h/runtime-subset.ll",
+      "/workspace/scratch/8b5d64b08ada/gcmark-negative-d6_gxu1h/gcmarkprobe-negative.ll",
+      "-o",
+      "/workspace/scratch/8b5d64b08ada/gcmark-negative-d6_gxu1h/gcmarkprobe-negative.bc"
+    ],
+    "returncode": 0,
+    "elapsed": 0.29874317399662687,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "/workspace/scratch/3e98002bc0e0/toolchain/usr/lib/llvm-18/bin/clang",
+      "-O2",
+      "/workspace/scratch/8b5d64b08ada/gcmark-negative-d6_gxu1h/gcmarkprobe-negative.bc",
+      "-o",
+      "/workspace/scratch/8b5d64b08ada/gcmark-negative-d6_gxu1h/gcmarkprobe-negative",
+      "-lm"
+    ],
+    "returncode": 0,
+    "elapsed": 6.495483599996078,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "variant": "negative",
+    "mode": "object",
+    "argv": [
+      "/workspace/scratch/8b5d64b08ada/gcmark-negative-d6_gxu1h/gcmarkprobe-negative"
+    ],
+    "returncode": 0,
+    "stdout": "gcmarkprobe: exact reachability, cycles, backward edges, large slices, interior/slack roots, queue reuse and partial-sweep refill passed\n",
+    "stderr": "",
+    "binary_sha256": "83d054e3ff423abf2c3e2887e1027306f376318f24664327ffe053e1ad5b12b2"
+  },
+  {
+    "variant": "negative",
+    "mode": "block",
+    "argv": [
+      "/workspace/scratch/8b5d64b08ada/gcmark-negative-d6_gxu1h/gcmarkprobe-negative"
+    ],
+    "returncode": 1,
+    "stdout": "",
+    "stderr": "gcmarkprobe: tiny-slot chain lost an object or edge\n",
+    "binary_sha256": "83d054e3ff423abf2c3e2887e1027306f376318f24664327ffe053e1ad5b12b2"
+  }
+]

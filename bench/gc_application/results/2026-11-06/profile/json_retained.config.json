@@ -1,0 +1,66 @@
+{
+  "name": "json_retained_profile",
+  "cwd": "/workspace/scratch/a009f956ecf0/pystachy",
+  "inputs": [
+    "/workspace/scratch/a009f956ecf0/inputs-full/manifest.json",
+    "/workspace/scratch/a009f956ecf0/inputs-full/records.json",
+    "/workspace/scratch/a009f956ecf0/inputs-smoke/manifest.json",
+    "/workspace/scratch/a009f956ecf0/inputs-smoke/records.json",
+    "/workspace/scratch/a009f956ecf0/pystachy/bench/gc_application/json_retained.py",
+    "/workspace/scratch/a009f956ecf0/pystachy/bench/json_records.py",
+    "/workspace/scratch/a009f956ecf0/native-build/builds.json"
+  ],
+  "address_space_mib": 2048,
+  "env": {
+    "PYSTACHY_GC": "profile"
+  },
+  "notes": "Separate instrumentation run for structural trace counters; one round, no warmup. Do not use instrumented timings as headline throughput or pool with stats samples.",
+  "variants": [
+    {
+      "name": "default",
+      "argv": [
+        "/workspace/scratch/a009f956ecf0/native-build/default-json_retained",
+        "/workspace/scratch/a009f956ecf0/inputs-full/records.json",
+        "40",
+        "4",
+        "{output}"
+      ],
+      "env": {
+        "PYSTACHY_GC": "profile",
+        "PYSTACHY_GC_MIN": "32"
+      },
+      "validated_executable_sha256": "bdef58b5816516e0af10ae190c2d8b3e9983e1e4c60cb18f5fe878095991bb4c"
+    },
+    {
+      "name": "atomic_union",
+      "argv": [
+        "/workspace/scratch/a009f956ecf0/native-build/atomic_union-json_retained",
+        "/workspace/scratch/a009f956ecf0/inputs-full/records.json",
+        "40",
+        "4",
+        "{output}"
+      ],
+      "env": {
+        "PYSTACHY_GC": "profile",
+        "PYSTACHY_GC_MIN": "32"
+      },
+      "validated_executable_sha256": "6c5b6fa7aff0aeddcec22f1964e3f16dacb1f623e817bfd7350c6ed954db2923"
+    },
+    {
+      "name": "block",
+      "argv": [
+        "/workspace/scratch/a009f956ecf0/native-build/default-json_retained",
+        "/workspace/scratch/a009f956ecf0/inputs-full/records.json",
+        "40",
+        "4",
+        "{output}"
+      ],
+      "env": {
+        "PYSTACHY_GC": "profile",
+        "PYSTACHY_GC_MIN": "32",
+        "PYSTACHY_GC_MARK": "block"
+      },
+      "validated_executable_sha256": "bdef58b5816516e0af10ae190c2d8b3e9983e1e4c60cb18f5fe878095991bb4c"
+    }
+  ]
+}

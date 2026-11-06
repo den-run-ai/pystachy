@@ -1,0 +1,54 @@
+{
+  "schema": 1,
+  "backend": "bdwgc-restricted-aot",
+  "inputs": {
+    "source_runtime_sha256": "17bb3e3f05c65393b7cc9ced9b90daa3274a0762f12225586142e31d7ecac6c5",
+    "adapter_sha256": "da765410982de0083f820d38bb2bd635898aea0e94cbe65f6cc4372ba665b546",
+    "headers_sha256": {
+      "gc/cord.h": "149bc2fd60d5f5383dfec0338440a2c2456ed1e4c8383053786f135605770643",
+      "gc/cord_pos.h": "f46fba45f62f97351eb1dd748ccaa1f55cc0a72272e07a788c351146411efc9d",
+      "gc/ec.h": "8bc9c2f888c3f3ef3464b851ff24f8be90672b13990e05cf88a4d906e7f516ba",
+      "gc/gc.h": "95588bad2b61aea599ab9ada27aac6d1e012e13c3b8a156879f2e25384f599e1",
+      "gc/gc_allocator.h": "b2a281c01c85af83007c859a62ed85413d4eb9ab892a26487b7a9aa5be97e90a",
+      "gc/gc_backptr.h": "6c2ecdc5fdcca5019a904179a2eb95805f8ff60482f2a429bdc5fd67957d1c95",
+      "gc/gc_config_macros.h": "d85397108f23351f3969843d8cf1cb092f1e4a5381dd22ab7d1404dd646373b1",
+      "gc/gc_cpp.h": "e0db5439de47fc40e19337430aa96c33150a5e58cf3cd07393c4aad003804b59",
+      "gc/gc_disclaim.h": "e63543535d3e4b795f5adc2108521a29d29839a8dfc19dc79cecf9f1176eb208",
+      "gc/gc_gcj.h": "87c8493463ff62edc7faa256f03e3a24cdf8b9375e3a0d3298530bdf74d95005",
+      "gc/gc_inline.h": "e7e918728746d48837f76390f7d09e9e2107305c2ea8e95339c900acfb22f21e",
+      "gc/gc_mark.h": "76e297c6c81c540b1c685ebe7390fb7a51e2c8d9b6598974abeca45fefda1963",
+      "gc/gc_pthread_redirects.h": "e68ce92ca0280b42bb1a0db62357e883d3e37235d18c2bd0d3ad6bd59209b09b",
+      "gc/gc_tiny_fl.h": "03b037e534c6f6b39209b65b39faa42526d88f3689df766ab9b5330020036efd",
+      "gc/gc_typed.h": "29fae0823f9f0c2d02b0aa9df4a98616dc8daf646a613124e6177ed48f2ae923",
+      "gc/gc_version.h": "9c4b7a9b5cfc4ffa04413809d9839d9245ac86925ddcbd32cc5adb7be1473063",
+      "gc/javaxfc.h": "1a89edc382dbc9e2c7d3a6bcf749ec71411c9c45f2da96b63efaf3cc1d8bbaba",
+      "gc/leak_detector.h": "32a974877a73d5b7ac1143cbf04a26911e3fa6299a6b9a4a7922c74dde2f40e2"
+    },
+    "library_sha256": "18cea650b80ab054e584b27a791f8080545ea1c1c1ca9a7f4b0ed4bece4cc635"
+  },
+  "source": "/workspace/scratch/a009f956ecf0/pystachy",
+  "include": "/workspace/scratch/a009f956ecf0/bdwgc/usr/include",
+  "library": "/workspace/scratch/a009f956ecf0/bdwgc/usr/lib/x86_64-linux-gnu/libgc.a",
+  "overlay": "/workspace/scratch/a009f956ecf0/bdwgc-aot-overlay",
+  "overlay_runtime_sha256": "22e35fd0c604bcb3758fe9fc300d453f3d32ba5a5d07ffc74908fb8296e7c238",
+  "replaced_functions": [
+    "collect",
+    "gc_slow",
+    "gc_alloc",
+    "gc_init",
+    "gc_report",
+    "atomic_items",
+    "str_grow",
+    "pys_str_iadd",
+    "pys_weakref_new",
+    "pys_open",
+    "pys_bopen",
+    "pys_track",
+    "pys_init_lib"
+  ],
+  "environment": {
+    "PYSTACHY_HOME": "/workspace/scratch/a009f956ecf0/bdwgc-aot-overlay",
+    "PYSTACHY_CACHE": "/workspace/scratch/a009f956ecf0/bdwgc-aot-overlay/build",
+    "PYSTACHY_CFLAGS": "-I/workspace/scratch/a009f956ecf0/bdwgc/usr/include -pthread -Xlinker /workspace/scratch/a009f956ecf0/bdwgc/usr/lib/x86_64-linux-gnu/libgc.a -ldl"
+  }
+}

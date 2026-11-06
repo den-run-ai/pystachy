@@ -401,6 +401,14 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
             # a list or dict created empty whose type a later use decided: of int, float or bool
             # items (values), which no other type can reach (an open hole is not one of these)
             f = self.rtfns[self.runtime("pys_list_new_atomic" if i.s == "list.new" else "pys_dict_new_atomic")]
+        if i.s == "ubox" and not self.rtmode and "atomicunion" in self.opts:
+            # Keep the typed ubox, its tag/payload provenance checks and unionslots
+            # rewrites unchanged. Only a literal native-scalar tag proves this
+            # particular immutable payload pointer-free. A runtime tag, optional
+            # conversion or any reference-bearing representation stays scanned.
+            for m in ["int", "float", "bool"]:
+                if m in self.utags and i.a[0].v == str(self.utags[m]):
+                    f = self.rtfns[self.runtime("pys_ubox_atomic")]
         ll = f.ll
         vs = [ll[j + 1] + " " + i.a[j].v for j in range(len(i.a))]
         if i.k > 0 and (i.s == "dict.new" or i.s == "set.new"):

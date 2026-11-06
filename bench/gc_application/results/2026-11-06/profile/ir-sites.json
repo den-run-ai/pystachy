@@ -1,0 +1,73 @@
+{
+  "default": {
+    "command": [
+      "/workspace/scratch/a009f956ecf0/compiler-gc/pystachy",
+      "ir",
+      "/workspace/scratch/a009f956ecf0/pystachy/bench/gc_application/json_retained.py",
+      "-o",
+      "/workspace/scratch/a009f956ecf0/profile-results/default.ll"
+    ],
+    "env": {
+      "PYSTACHY_HOME": "/workspace/scratch/a009f956ecf0/pystachy",
+      "PYSTACHY_PATH": "/workspace/scratch/a009f956ecf0/pystachy/bench"
+    },
+    "ir_sha256": "4c0775e97e67dca9660374923f40217845669f8d11abbed9e676d5e4fb48c82c",
+    "bytes": 232259,
+    "scanned_union_call_sites": 16,
+    "atomic_union_call_sites": 0,
+    "union_calls": [
+      "%t85 = call ptr @pys_ubox(i64 1, i64 %t84)",
+      "%t136 = call ptr @pys_ubox(i64 1, i64 %t135)",
+      "%t147 = call ptr @pys_ubox(i64 1, i64 %t146)",
+      "%t49 = call ptr @pys_ubox(i64 5, i64 %t48)",
+      "%t81 = call ptr @pys_ubox(i64 1, i64 %t80)",
+      "%t86 = call ptr @pys_ubox(i64 2, i64 %t85)",
+      "%t121 = call ptr @pys_ubox(i64 6, i64 %t120)",
+      "%t163 = call ptr @pys_ubox(i64 3, i64 %t162)",
+      "%t184 = call ptr @pys_ubox(i64 3, i64 %t183)",
+      "%t206 = call ptr @pys_ubox(i64 6, i64 %t205)",
+      "%t228 = call ptr @pys_ubox(i64 6, i64 %t227)",
+      "%t436 = call ptr @pys_ubox(i64 6, i64 %t435)",
+      "%t486 = call ptr @pys_ubox(i64 5, i64 %t485)",
+      "%t498 = call ptr @pys_ubox(i64 4, i64 %t497)",
+      "%t508 = call ptr @pys_ubox(i64 4, i64 %t505)",
+      "%t510 = call ptr @pys_ubox(i64 4, i64 %t509)"
+    ]
+  },
+  "atomic_union": {
+    "command": [
+      "/workspace/scratch/a009f956ecf0/compiler-gc/pystachy",
+      "ir",
+      "/workspace/scratch/a009f956ecf0/pystachy/bench/gc_application/json_retained.py",
+      "-o",
+      "/workspace/scratch/a009f956ecf0/profile-results/atomic_union.ll"
+    ],
+    "env": {
+      "PYSTACHY_HOME": "/workspace/scratch/a009f956ecf0/pystachy",
+      "PYSTACHY_PATH": "/workspace/scratch/a009f956ecf0/pystachy/bench",
+      "PYSTACHY_OPT": "+atomicunion"
+    },
+    "ir_sha256": "a83114886c95af0335ae218ee29c5ae53d5987f7f7bb4a4be220a4f20377b88d",
+    "bytes": 232361,
+    "scanned_union_call_sites": 7,
+    "atomic_union_call_sites": 9,
+    "union_calls": [
+      "%t85 = call ptr @pys_ubox(i64 1, i64 %t84)",
+      "%t136 = call ptr @pys_ubox(i64 1, i64 %t135)",
+      "%t147 = call ptr @pys_ubox(i64 1, i64 %t146)",
+      "%t49 = call ptr @pys_ubox(i64 5, i64 %t48)",
+      "%t81 = call ptr @pys_ubox(i64 1, i64 %t80)",
+      "%t86 = call ptr @pys_ubox(i64 2, i64 %t85)",
+      "%t121 = call ptr @pys_ubox_atomic(i64 6, i64 %t120)",
+      "%t163 = call ptr @pys_ubox_atomic(i64 3, i64 %t162)",
+      "%t184 = call ptr @pys_ubox_atomic(i64 3, i64 %t183)",
+      "%t206 = call ptr @pys_ubox_atomic(i64 6, i64 %t205)",
+      "%t228 = call ptr @pys_ubox_atomic(i64 6, i64 %t227)",
+      "%t436 = call ptr @pys_ubox_atomic(i64 6, i64 %t435)",
+      "%t486 = call ptr @pys_ubox(i64 5, i64 %t485)",
+      "%t498 = call ptr @pys_ubox_atomic(i64 4, i64 %t497)",
+      "%t508 = call ptr @pys_ubox_atomic(i64 4, i64 %t505)",
+      "%t510 = call ptr @pys_ubox_atomic(i64 4, i64 %t509)"
+    ]
+  }
+}

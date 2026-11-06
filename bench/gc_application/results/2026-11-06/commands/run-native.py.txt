@@ -1,0 +1,18 @@
+from pathlib import Path
+import subprocess
+import json
+import sys
+root = Path('/workspace/scratch/a009f956ecf0')
+repo = root / 'pystachy'
+out = root / 'native-results'
+out.mkdir(exist_ok=True)
+cases = sys.argv[1:] or ['json_retained', 'float', 'repair_traces', 'chaos', 'raytrace', 'json_loads', 'json_dumps', 'richards', 'nbody']
+for name in cases:
+    target = out / (name + '.json')
+    if target.exists():
+        raise SystemExit('Refusing overwrite: ' + str(target))
+    print('BEGIN', name, flush=True)
+    with (out / (name + '.log')).open('w') as log:
+        subprocess.run([str(root / 'venv/bin/python'), '-I', str(repo / 'bench/gc_locality/run.py'), '--config', str(root / 'native-build' / (name + '.json')), '--cpu', '3', '--rounds', '6', '--warmups', '1', '--json', str(target)], cwd=repo, stdout=log, stderr=subprocess.STDOUT, check=True)
+    d = json.loads(target.read_text())
+    print('END', name, json.dumps(d['summary']), flush=True)

@@ -1,0 +1,1657 @@
+{
+  "schema_version": 1,
+  "workload": "richards",
+  "started_utc": "2026-11-06T05:24:45.364726+00:00",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.39",
+  "python": "3.13.16 (main, Oct 14 2026, 01:04:01) [Clang 23.1.3 ]",
+  "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+  "cpu": 3,
+  "allowed_cpus": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+  ],
+  "logical_cpus": 9,
+  "loadavg_before": [
+    2.28759765625,
+    1.4287109375,
+    1.02978515625
+  ],
+  "rounds": 6,
+  "warmups": 1,
+  "variants": [
+    {
+      "name": "main",
+      "argv": [
+        "/workspace/scratch/a009f956ecf0/native-build/main-richards",
+        "2400"
+      ],
+      "env": {
+        "PYSTACHY_GC": "stats",
+        "PYSTACHY_GC_MIN": "32"
+      },
+      "validated_executable_sha256": "b8b144cc916598cdd5c23ec81587a77bc5b2af51d00578b534a3f4309cb850a5",
+      "cwd": "/workspace/scratch/a009f956ecf0/pystachy",
+      "address_space_mib": 2048,
+      "inputs_sha256": {
+        "/workspace/scratch/a009f956ecf0/pystachy/bench/pyperformance/richards.py": "f290fb528a0086dc5fd98bdf866c591252d8c8a31c80415c051a6ae69c7e0c82",
+        "/workspace/scratch/a009f956ecf0/native-build/builds.json": "11b6fc1ffd6b1e4ed0411c2e40e1d287da0906a68635468b319817c55edeff2c"
+      },
+      "executable_path": "/workspace/scratch/a009f956ecf0/native-build/main-richards",
+      "executable_sha256": "b8b144cc916598cdd5c23ec81587a77bc5b2af51d00578b534a3f4309cb850a5",
+      "checkout": {
+        "revision": "8afcb804b263e7303f9f746ee55332cf40ddbff6",
+        "status": ""
+      }
+    },
+    {
+      "name": "main_aa",
+      "argv": [
+        "/workspace/scratch/a009f956ecf0/native-build/main-richards",
+        "2400"
+      ],
+      "env": {
+        "PYSTACHY_GC": "stats",
+        "PYSTACHY_GC_MIN": "32"
+      },
+      "validated_executable_sha256": "b8b144cc916598cdd5c23ec81587a77bc5b2af51d00578b534a3f4309cb850a5",
+      "cwd": "/workspace/scratch/a009f956ecf0/pystachy",
+      "address_space_mib": 2048,
+      "inputs_sha256": {
+        "/workspace/scratch/a009f956ecf0/pystachy/bench/pyperformance/richards.py": "f290fb528a0086dc5fd98bdf866c591252d8c8a31c80415c051a6ae69c7e0c82",
+        "/workspace/scratch/a009f956ecf0/native-build/builds.json": "11b6fc1ffd6b1e4ed0411c2e40e1d287da0906a68635468b319817c55edeff2c"
+      },
+      "executable_path": "/workspace/scratch/a009f956ecf0/native-build/main-richards",
+      "executable_sha256": "b8b144cc916598cdd5c23ec81587a77bc5b2af51d00578b534a3f4309cb850a5",
+      "checkout": {
+        "revision": "8afcb804b263e7303f9f746ee55332cf40ddbff6",
+        "status": ""
+      }
+    },
+    {
+      "name": "scalar",
+      "argv": [
+        "/workspace/scratch/a009f956ecf0/native-build/scalar-richards",
+        "2400"
+      ],
+      "env": {
+        "PYSTACHY_GC": "stats",
+        "PYSTACHY_GC_MIN": "32"
+      },
+      "validated_executable_sha256": "59927f8c986d5386e570642889e8ca1746a77539716f26e8548392ffd497c016",
+      "cwd": "/workspace/scratch/a009f956ecf0/pystachy",
+      "address_space_mib": 2048,
+      "inputs_sha256": {
+        "/workspace/scratch/a009f956ecf0/pystachy/bench/pyperformance/richards.py": "f290fb528a0086dc5fd98bdf866c591252d8c8a31c80415c051a6ae69c7e0c82",
+        "/workspace/scratch/a009f956ecf0/native-build/builds.json": "11b6fc1ffd6b1e4ed0411c2e40e1d287da0906a68635468b319817c55edeff2c"
+      },
+      "executable_path": "/workspace/scratch/a009f956ecf0/native-build/scalar-richards",
+      "executable_sha256": "59927f8c986d5386e570642889e8ca1746a77539716f26e8548392ffd497c016",
+      "checkout": {
+        "revision": "8afcb804b263e7303f9f746ee55332cf40ddbff6",
+        "status": ""
+      }
+    },
+    {
+      "name": "default",
+      "argv": [
+        "/workspace/scratch/a009f956ecf0/native-build/default-richards",
+        "2400"
+      ],
+      "env": {
+        "PYSTACHY_GC": "stats",
+        "PYSTACHY_GC_MIN": "32"
+      },
+      "validated_executable_sha256": "1d5f9b51446306920644a77297fad40428a888b05f9a4886f92b9370df2e48f4",
+      "cwd": "/workspace/scratch/a009f956ecf0/pystachy",
+      "address_space_mib": 2048,
+      "inputs_sha256": {
+        "/workspace/scratch/a009f956ecf0/pystachy/bench/pyperformance/richards.py": "f290fb528a0086dc5fd98bdf866c591252d8c8a31c80415c051a6ae69c7e0c82",
+        "/workspace/scratch/a009f956ecf0/native-build/builds.json": "11b6fc1ffd6b1e4ed0411c2e40e1d287da0906a68635468b319817c55edeff2c"
+      },
+      "executable_path": "/workspace/scratch/a009f956ecf0/native-build/default-richards",
+      "executable_sha256": "1d5f9b51446306920644a77297fad40428a888b05f9a4886f92b9370df2e48f4",
+      "checkout": {
+        "revision": "8afcb804b263e7303f9f746ee55332cf40ddbff6",
+        "status": ""
+      }
+    },
+    {
+      "name": "atomic_union",
+      "argv": [
+        "/workspace/scratch/a009f956ecf0/native-build/atomic_union-richards",
+        "2400"
+      ],
+      "env": {
+        "PYSTACHY_GC": "stats",
+        "PYSTACHY_GC_MIN": "32"
+      },
+      "validated_executable_sha256": "1d5f9b51446306920644a77297fad40428a888b05f9a4886f92b9370df2e48f4",
+      "cwd": "/workspace/scratch/a009f956ecf0/pystachy",
+      "address_space_mib": 2048,
+      "inputs_sha256": {
+        "/workspace/scratch/a009f956ecf0/pystachy/bench/pyperformance/richards.py": "f290fb528a0086dc5fd98bdf866c591252d8c8a31c80415c051a6ae69c7e0c82",
+        "/workspace/scratch/a009f956ecf0/native-build/builds.json": "11b6fc1ffd6b1e4ed0411c2e40e1d287da0906a68635468b319817c55edeff2c"
+      },
+      "executable_path": "/workspace/scratch/a009f956ecf0/native-build/atomic_union-richards",
+      "executable_sha256": "1d5f9b51446306920644a77297fad40428a888b05f9a4886f92b9370df2e48f4",
+      "checkout": {
+        "revision": "8afcb804b263e7303f9f746ee55332cf40ddbff6",
+        "status": ""
+      }
+    },
+    {
+      "name": "block",
+      "argv": [
+        "/workspace/scratch/a009f956ecf0/native-build/default-richards",
+        "2400"
+      ],
+      "env": {
+        "PYSTACHY_GC": "stats",
+        "PYSTACHY_GC_MIN": "32",
+        "PYSTACHY_GC_MARK": "block"
+      },
+      "validated_executable_sha256": "1d5f9b51446306920644a77297fad40428a888b05f9a4886f92b9370df2e48f4",
+      "cwd": "/workspace/scratch/a009f956ecf0/pystachy",
+      "address_space_mib": 2048,
+      "inputs_sha256": {
+        "/workspace/scratch/a009f956ecf0/pystachy/bench/pyperformance/richards.py": "f290fb528a0086dc5fd98bdf866c591252d8c8a31c80415c051a6ae69c7e0c82",
+        "/workspace/scratch/a009f956ecf0/native-build/builds.json": "11b6fc1ffd6b1e4ed0411c2e40e1d287da0906a68635468b319817c55edeff2c"
+      },
+      "executable_path": "/workspace/scratch/a009f956ecf0/native-build/default-richards",
+      "executable_sha256": "1d5f9b51446306920644a77297fad40428a888b05f9a4886f92b9370df2e48f4",
+      "checkout": {
+        "revision": "8afcb804b263e7303f9f746ee55332cf40ddbff6",
+        "status": ""
+      }
+    }
+  ],
+  "notes": "Prebuilt AOT application processes only; exact full-scale CPython stdout/artifact checks precede measurement. Native GC minimum32MiB, no forced collection. 2048MiB RLIMIT_AS is virtual address-space limit, not heap/RSS budget. Six rotated rounds plus one excluded warmup; main_aa is the identical executable. Shared machine, pinned CPU3; no owned concurrent heavy work.",
+  "samples": [
+    {
+      "variant": "main",
+      "phase": "warmup",
+      "round": 0,
+      "returncode": 0,
+      "wall_s": 1.3846650940031395,
+      "user_s": 1.362671,
+      "system_s": 0.011248,
+      "peak_rss_kib": 11732,
+      "minor_faults": 1827,
+      "major_faults": 0,
+      "stdout_sha256": "4f4bf8ca93f2a98b8bc55024cbe1ff43e3f40f2cf066e688e36b751d5e924426",
+      "stdout_bytes": 25,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 0,
+          "elapsed_ms": 0.0,
+          "heap_peak_mib": 5.8,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.3681401659996482\ngc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "main_aa",
+      "phase": "warmup",
+      "round": 0,
+      "returncode": 0,
+      "wall_s": 1.596475862999796,
+      "user_s": 1.579171,
+      "system_s": 0.014459999999999999,
+      "peak_rss_kib": 11732,
+      "minor_faults": 1824,
+      "major_faults": 0,
+      "stdout_sha256": "4f4bf8ca93f2a98b8bc55024cbe1ff43e3f40f2cf066e688e36b751d5e924426",
+      "stdout_bytes": 25,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 0,
+          "elapsed_ms": 0.0,
+          "heap_peak_mib": 5.8,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.5852490230026888\ngc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "scalar",
+      "phase": "warmup",
+      "round": 0,
+      "returncode": 0,
+      "wall_s": 1.5877129710061126,
+      "user_s": 1.582497,
+      "system_s": 0.004157,
+      "peak_rss_kib": 11732,
+      "minor_faults": 1825,
+      "major_faults": 0,
+      "stdout_sha256": "4f4bf8ca93f2a98b8bc55024cbe1ff43e3f40f2cf066e688e36b751d5e924426",
+      "stdout_bytes": 25,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 0,
+          "elapsed_ms": 0.0,
+          "heap_peak_mib": 5.8,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.5838022699972498\ngc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "default",
+      "phase": "warmup",
+      "round": 0,
+      "returncode": 0,
+      "wall_s": 1.5683938169968314,
+      "user_s": 1.5499290000000001,
+      "system_s": 0.017099,
+      "peak_rss_kib": 11732,
+      "minor_faults": 1823,
+      "major_faults": 0,
+      "stdout_sha256": "4f4bf8ca93f2a98b8bc55024cbe1ff43e3f40f2cf066e688e36b751d5e924426",
+      "stdout_bytes": 25,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 0,
+          "elapsed_ms": 0.0,
+          "heap_peak_mib": 5.8,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.564381754003989\ngc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "atomic_union",
+      "phase": "warmup",
+      "round": 0,
+      "returncode": 0,
+      "wall_s": 1.55954403099895,
+      "user_s": 1.554152,
+      "system_s": 0.00418,
+      "peak_rss_kib": 11732,
+      "minor_faults": 1825,
+      "major_faults": 0,
+      "stdout_sha256": "4f4bf8ca93f2a98b8bc55024cbe1ff43e3f40f2cf066e688e36b751d5e924426",
+      "stdout_bytes": 25,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 0,
+          "elapsed_ms": 0.0,
+          "heap_peak_mib": 5.8,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.555791238999518\ngc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "block",
+      "phase": "warmup",
+      "round": 0,
+      "returncode": 0,
+      "wall_s": 1.5744235289967037,
+      "user_s": 1.571667,
+      "system_s": 0.0,
+      "peak_rss_kib": 11740,
+      "minor_faults": 1828,
+      "major_faults": 0,
+      "stdout_sha256": "4f4bf8ca93f2a98b8bc55024cbe1ff43e3f40f2cf066e688e36b751d5e924426",
+      "stdout_bytes": 25,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 0,
+          "elapsed_ms": 0.0,
+          "heap_peak_mib": 5.8,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.5690263739961665\ngc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "main",
+      "phase": "measure",
+      "round": 0,
+      "returncode": 0,
+      "wall_s": 1.5787049680002383,
+      "user_s": 1.573483,
+      "system_s": 0.004099,
+      "peak_rss_kib": 11740,
+      "minor_faults": 1826,
+      "major_faults": 0,
+      "stdout_sha256": "4f4bf8ca93f2a98b8bc55024cbe1ff43e3f40f2cf066e688e36b751d5e924426",
+      "stdout_bytes": 25,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 0,
+          "elapsed_ms": 0.0,
+          "heap_peak_mib": 5.8,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.5753045569945243\ngc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "main_aa",
+      "phase": "measure",
+      "round": 0,
+      "returncode": 0,
+      "wall_s": 1.3277707750021364,
+      "user_s": 1.3229440000000001,
+      "system_s": 0.0038239999999999997,
+      "peak_rss_kib": 11740,
+      "minor_faults": 1826,
+      "major_faults": 0,
+      "stdout_sha256": "4f4bf8ca93f2a98b8bc55024cbe1ff43e3f40f2cf066e688e36b751d5e924426",
+      "stdout_bytes": 25,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 0,
+          "elapsed_ms": 0.0,
+          "heap_peak_mib": 5.8,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.3243074569982127\ngc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "scalar",
+      "phase": "measure",
+      "round": 0,
+      "returncode": 0,
+      "wall_s": 1.3092669089965057,
+      "user_s": 1.292457,
+      "system_s": 0.01596,
+      "peak_rss_kib": 11740,
+      "minor_faults": 1827,
+      "major_faults": 0,
+      "stdout_sha256": "4f4bf8ca93f2a98b8bc55024cbe1ff43e3f40f2cf066e688e36b751d5e924426",
+      "stdout_bytes": 25,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 0,
+          "elapsed_ms": 0.0,
+          "heap_peak_mib": 5.8,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.3064751620040624\ngc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "default",
+      "phase": "measure",
+      "round": 0,
+      "returncode": 0,
+      "wall_s": 1.2926618850033265,
+      "user_s": 1.287787,
+      "system_s": 0.004059,
+      "peak_rss_kib": 11740,
+      "minor_faults": 1825,
+      "major_faults": 0,
+      "stdout_sha256": "4f4bf8ca93f2a98b8bc55024cbe1ff43e3f40f2cf066e688e36b751d5e924426",
+      "stdout_bytes": 25,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 0,
+          "elapsed_ms": 0.0,
+          "heap_peak_mib": 5.8,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.290000554996368\ngc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "atomic_union",
+      "phase": "measure",
+      "round": 0,
+      "returncode": 0,
+      "wall_s": 1.2882404510019114,
+      "user_s": 1.283293,
+      "system_s": 0.003927,
+      "peak_rss_kib": 11740,
+      "minor_faults": 1824,
+      "major_faults": 0,
+      "stdout_sha256": "4f4bf8ca93f2a98b8bc55024cbe1ff43e3f40f2cf066e688e36b751d5e924426",
+      "stdout_bytes": 25,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 0,
+          "elapsed_ms": 0.0,
+          "heap_peak_mib": 5.8,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.285420072999841\ngc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "block",
+      "phase": "measure",
+      "round": 0,
+      "returncode": 0,
+      "wall_s": 1.3679666910029482,
+      "user_s": 1.366805,
+      "system_s": 0.0,
+      "peak_rss_kib": 11740,
+      "minor_faults": 1826,
+      "major_faults": 0,
+      "stdout_sha256": "4f4bf8ca93f2a98b8bc55024cbe1ff43e3f40f2cf066e688e36b751d5e924426",
+      "stdout_bytes": 25,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 0,
+          "elapsed_ms": 0.0,
+          "heap_peak_mib": 5.8,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.3649263520055683\ngc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "main_aa",
+      "phase": "measure",
+      "round": 1,
+      "returncode": 0,
+      "wall_s": 1.4119485470000654,
+      "user_s": 1.411082,
+      "system_s": 0.0,
+      "peak_rss_kib": 11740,
+      "minor_faults": 1826,
+      "major_faults": 0,
+      "stdout_sha256": "4f4bf8ca93f2a98b8bc55024cbe1ff43e3f40f2cf066e688e36b751d5e924426",
+      "stdout_bytes": 25,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 0,
+          "elapsed_ms": 0.0,
+          "heap_peak_mib": 5.8,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.4092418209984316\ngc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "scalar",
+      "phase": "measure",
+      "round": 1,
+      "returncode": 0,
+      "wall_s": 1.4083626619976712,
+      "user_s": 1.387969,
+      "system_s": 0.019392,
+      "peak_rss_kib": 11740,
+      "minor_faults": 1828,
+      "major_faults": 0,
+      "stdout_sha256": "4f4bf8ca93f2a98b8bc55024cbe1ff43e3f40f2cf066e688e36b751d5e924426",
+      "stdout_bytes": 25,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 0,
+          "elapsed_ms": 0.0,
+          "heap_peak_mib": 5.8,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.4051462279967382\ngc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "default",
+      "phase": "measure",
+      "round": 1,
+      "returncode": 0,
+      "wall_s": 1.3886646079990896,
+      "user_s": 1.3829449999999999,
+      "system_s": 0.004161,
+      "peak_rss_kib": 11748,
+      "minor_faults": 1824,
+      "major_faults": 0,
+      "stdout_sha256": "4f4bf8ca93f2a98b8bc55024cbe1ff43e3f40f2cf066e688e36b751d5e924426",
+      "stdout_bytes": 25,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 0,
+          "elapsed_ms": 0.0,
+          "heap_peak_mib": 5.8,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.3858169590021134\ngc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "atomic_union",
+      "phase": "measure",
+      "round": 1,
+      "returncode": 0,
+      "wall_s": 1.357440902000235,
+      "user_s": 1.348691,
+      "system_s": 0.007605,
+      "peak_rss_kib": 11752,
+      "minor_faults": 1824,
+      "major_faults": 0,
+      "stdout_sha256": "4f4bf8ca93f2a98b8bc55024cbe1ff43e3f40f2cf066e688e36b751d5e924426",
+      "stdout_bytes": 25,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 0,
+          "elapsed_ms": 0.0,
+          "heap_peak_mib": 5.8,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.353518960000656\ngc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "block",
+      "phase": "measure",
+      "round": 1,
+      "returncode": 0,
+      "wall_s": 1.2653964240016649,
+      "user_s": 1.252182,
+      "system_s": 0.011930999999999999,
+      "peak_rss_kib": 11564,
+      "minor_faults": 1827,
+      "major_faults": 0,
+      "stdout_sha256": "4f4bf8ca93f2a98b8bc55024cbe1ff43e3f40f2cf066e688e36b751d5e924426",
+      "stdout_bytes": 25,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 0,
+          "elapsed_ms": 0.0,
+          "heap_peak_mib": 5.8,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.2614423430059105\ngc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "main",
+      "phase": "measure",
+      "round": 1,
+      "returncode": 0,
+      "wall_s": 1.2676423730008537,
+      "user_s": 1.266356,
+      "system_s": 0.0,
+      "peak_rss_kib": 11568,
+      "minor_faults": 1827,
+      "major_faults": 0,
+      "stdout_sha256": "4f4bf8ca93f2a98b8bc55024cbe1ff43e3f40f2cf066e688e36b751d5e924426",
+      "stdout_bytes": 25,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 0,
+          "elapsed_ms": 0.0,
+          "heap_peak_mib": 5.8,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.2636959380033659\ngc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "scalar",
+      "phase": "measure",
+      "round": 2,
+      "returncode": 0,
+      "wall_s": 1.465870938001899,
+      "user_s": 1.46451,
+      "system_s": 0.0,
+      "peak_rss_kib": 11568,
+      "minor_faults": 1824,
+      "major_faults": 0,
+      "stdout_sha256": "4f4bf8ca93f2a98b8bc55024cbe1ff43e3f40f2cf066e688e36b751d5e924426",
+      "stdout_bytes": 25,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 0,
+          "elapsed_ms": 0.0,
+          "heap_peak_mib": 5.8,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.4621724229946267\ngc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "default",
+      "phase": "measure",
+      "round": 2,
+      "returncode": 0,
+      "wall_s": 1.354123855002399,
+      "user_s": 1.348792,
+      "system_s": 0.004156,
+      "peak_rss_kib": 11568,
+      "minor_faults": 1824,
+      "major_faults": 0,
+      "stdout_sha256": "4f4bf8ca93f2a98b8bc55024cbe1ff43e3f40f2cf066e688e36b751d5e924426",
+      "stdout_bytes": 25,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 0,
+          "elapsed_ms": 0.0,
+          "heap_peak_mib": 5.8,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.350166469004762\ngc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "atomic_union",
+      "phase": "measure",
+      "round": 2,
+      "returncode": 0,
+      "wall_s": 1.4562028649961576,
+      "user_s": 1.446415,
+      "system_s": 0.008265999999999999,
+      "peak_rss_kib": 11568,
+      "minor_faults": 1825,
+      "major_faults": 0,
+      "stdout_sha256": "4f4bf8ca93f2a98b8bc55024cbe1ff43e3f40f2cf066e688e36b751d5e924426",
+      "stdout_bytes": 25,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 0,
+          "elapsed_ms": 0.0,
+          "heap_peak_mib": 5.8,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.4531391450000228\ngc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "block",
+      "phase": "measure",
+      "round": 2,
+      "returncode": 0,
+      "wall_s": 1.4631401840015315,
+      "user_s": 1.457608,
+      "system_s": 0.0043289999999999995,
+      "peak_rss_kib": 11572,
+      "minor_faults": 1826,
+      "major_faults": 0,
+      "stdout_sha256": "4f4bf8ca93f2a98b8bc55024cbe1ff43e3f40f2cf066e688e36b751d5e924426",
+      "stdout_bytes": 25,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 0,
+          "elapsed_ms": 0.0,
+          "heap_peak_mib": 5.8,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.4593202610049048\ngc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "main",
+      "phase": "measure",
+      "round": 2,
+      "returncode": 0,
+      "wall_s": 1.391749117996369,
+      "user_s": 1.390879,
+      "system_s": 0.0,
+      "peak_rss_kib": 11588,
+      "minor_faults": 1828,
+      "major_faults": 0,
+      "stdout_sha256": "4f4bf8ca93f2a98b8bc55024cbe1ff43e3f40f2cf066e688e36b751d5e924426",
+      "stdout_bytes": 25,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 0,
+          "elapsed_ms": 0.0,
+          "heap_peak_mib": 5.8,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.3881679939950118\ngc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "main_aa",
+      "phase": "measure",
+      "round": 2,
+      "returncode": 0,
+      "wall_s": 1.3888363200021558,
+      "user_s": 1.380177,
+      "system_s": 0.007653,
+      "peak_rss_kib": 11576,
+      "minor_faults": 1827,
+      "major_faults": 0,
+      "stdout_sha256": "4f4bf8ca93f2a98b8bc55024cbe1ff43e3f40f2cf066e688e36b751d5e924426",
+      "stdout_bytes": 25,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 0,
+          "elapsed_ms": 0.0,
+          "heap_peak_mib": 5.8,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.3855442720014253\ngc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "default",
+      "phase": "measure",
+      "round": 3,
+      "returncode": 0,
+      "wall_s": 1.3956440609981655,
+      "user_s": 1.38708,
+      "system_s": 0.00762,
+      "peak_rss_kib": 11576,
+      "minor_faults": 1827,
+      "major_faults": 0,
+      "stdout_sha256": "4f4bf8ca93f2a98b8bc55024cbe1ff43e3f40f2cf066e688e36b751d5e924426",
+      "stdout_bytes": 25,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 0,
+          "elapsed_ms": 0.0,
+          "heap_peak_mib": 5.8,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.3919442839978728\ngc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "atomic_union",
+      "phase": "measure",
+      "round": 3,
+      "returncode": 0,
+      "wall_s": 1.3825184820016148,
+      "user_s": 1.373264,
+      "system_s": 0.008239999999999999,
+      "peak_rss_kib": 11580,
+      "minor_faults": 1826,
+      "major_faults": 0,
+      "stdout_sha256": "4f4bf8ca93f2a98b8bc55024cbe1ff43e3f40f2cf066e688e36b751d5e924426",
+      "stdout_bytes": 25,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 0,
+          "elapsed_ms": 0.0,
+          "heap_peak_mib": 5.8,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.3785554639980546\ngc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "block",
+      "phase": "measure",
+      "round": 3,
+      "returncode": 0,
+      "wall_s": 1.430108004999056,
+      "user_s": 1.420783,
+      "system_s": 0.008263999999999999,
+      "peak_rss_kib": 11580,
+      "minor_faults": 1827,
+      "major_faults": 0,
+      "stdout_sha256": "4f4bf8ca93f2a98b8bc55024cbe1ff43e3f40f2cf066e688e36b751d5e924426",
+      "stdout_bytes": 25,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 0,
+          "elapsed_ms": 0.0,
+          "heap_peak_mib": 5.8,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.426721584997722\ngc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "main",
+      "phase": "measure",
+      "round": 3,
+      "returncode": 0,
+      "wall_s": 1.5188677620026283,
+      "user_s": 1.509576,
+      "system_s": 0.008442,
+      "peak_rss_kib": 11580,
+      "minor_faults": 1829,
+      "major_faults": 0,
+      "stdout_sha256": "4f4bf8ca93f2a98b8bc55024cbe1ff43e3f40f2cf066e688e36b751d5e924426",
+      "stdout_bytes": 25,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 0,
+          "elapsed_ms": 0.0,
+          "heap_peak_mib": 5.8,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.5154170030000387\ngc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "main_aa",
+      "phase": "measure",
+      "round": 3,
+      "returncode": 0,
+      "wall_s": 1.4274732269986998,
+      "user_s": 1.418261,
+      "system_s": 0.008296,
+      "peak_rss_kib": 11572,
+      "minor_faults": 1831,
+      "major_faults": 0,
+      "stdout_sha256": "4f4bf8ca93f2a98b8bc55024cbe1ff43e3f40f2cf066e688e36b751d5e924426",
+      "stdout_bytes": 25,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 0,
+          "elapsed_ms": 0.0,
+          "heap_peak_mib": 5.8,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.4239328939947882\ngc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "scalar",
+      "phase": "measure",
+      "round": 3,
+      "returncode": 0,
+      "wall_s": 1.3786551339944708,
+      "user_s": 1.369424,
+      "system_s": 0.008350999999999999,
+      "peak_rss_kib": 11584,
+      "minor_faults": 1826,
+      "major_faults": 0,
+      "stdout_sha256": "4f4bf8ca93f2a98b8bc55024cbe1ff43e3f40f2cf066e688e36b751d5e924426",
+      "stdout_bytes": 25,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 0,
+          "elapsed_ms": 0.0,
+          "heap_peak_mib": 5.8,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.3757098319983925\ngc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "atomic_union",
+      "phase": "measure",
+      "round": 4,
+      "returncode": 0,
+      "wall_s": 1.354228863005119,
+      "user_s": 1.34939,
+      "system_s": 0.003998,
+      "peak_rss_kib": 11584,
+      "minor_faults": 1827,
+      "major_faults": 0,
+      "stdout_sha256": "4f4bf8ca93f2a98b8bc55024cbe1ff43e3f40f2cf066e688e36b751d5e924426",
+      "stdout_bytes": 25,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 0,
+          "elapsed_ms": 0.0,
+          "heap_peak_mib": 5.8,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.3512814080022508\ngc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "block",
+      "phase": "measure",
+      "round": 4,
+      "returncode": 0,
+      "wall_s": 1.3295387050020508,
+      "user_s": 1.3248959999999999,
+      "system_s": 0.0038309999999999998,
+      "peak_rss_kib": 11584,
+      "minor_faults": 1829,
+      "major_faults": 0,
+      "stdout_sha256": "4f4bf8ca93f2a98b8bc55024cbe1ff43e3f40f2cf066e688e36b751d5e924426",
+      "stdout_bytes": 25,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 0,
+          "elapsed_ms": 0.0,
+          "heap_peak_mib": 5.8,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.3267404500002158\ngc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "main",
+      "phase": "measure",
+      "round": 4,
+      "returncode": 0,
+      "wall_s": 1.4134604789942387,
+      "user_s": 1.396373,
+      "system_s": 0.016176,
+      "peak_rss_kib": 11584,
+      "minor_faults": 1830,
+      "major_faults": 0,
+      "stdout_sha256": "4f4bf8ca93f2a98b8bc55024cbe1ff43e3f40f2cf066e688e36b751d5e924426",
+      "stdout_bytes": 25,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 0,
+          "elapsed_ms": 0.0,
+          "heap_peak_mib": 5.8,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.4100870479960577\ngc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "main_aa",
+      "phase": "measure",
+      "round": 4,
+      "returncode": 0,
+      "wall_s": 1.3630793039992568,
+      "user_s": 1.349983,
+      "system_s": 0.012145999999999999,
+      "peak_rss_kib": 11592,
+      "minor_faults": 1828,
+      "major_faults": 0,
+      "stdout_sha256": "4f4bf8ca93f2a98b8bc55024cbe1ff43e3f40f2cf066e688e36b751d5e924426",
+      "stdout_bytes": 25,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 0,
+          "elapsed_ms": 0.0,
+          "heap_peak_mib": 5.8,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.359433622994402\ngc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "scalar",
+      "phase": "measure",
+      "round": 4,
+      "returncode": 0,
+      "wall_s": 1.4726292400009697,
+      "user_s": 1.46728,
+      "system_s": 0.004418,
+      "peak_rss_kib": 11592,
+      "minor_faults": 1827,
+      "major_faults": 0,
+      "stdout_sha256": "4f4bf8ca93f2a98b8bc55024cbe1ff43e3f40f2cf066e688e36b751d5e924426",
+      "stdout_bytes": 25,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 0,
+          "elapsed_ms": 0.0,
+          "heap_peak_mib": 5.8,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.4695494560000952\ngc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "default",
+      "phase": "measure",
+      "round": 4,
+      "returncode": 0,
+      "wall_s": 1.4237541030015564,
+      "user_s": 1.406414,
+      "system_s": 0.016405,
+      "peak_rss_kib": 11596,
+      "minor_faults": 1828,
+      "major_faults": 0,
+      "stdout_sha256": "4f4bf8ca93f2a98b8bc55024cbe1ff43e3f40f2cf066e688e36b751d5e924426",
+      "stdout_bytes": 25,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 0,
+          "elapsed_ms": 0.0,
+          "heap_peak_mib": 5.8,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.4204640019961516\ngc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "block",
+      "phase": "measure",
+      "round": 5,
+      "returncode": 0,
+      "wall_s": 1.3242956600006437,
+      "user_s": 1.31518,
+      "system_s": 0.00828,
+      "peak_rss_kib": 11600,
+      "minor_faults": 1828,
+      "major_faults": 0,
+      "stdout_sha256": "4f4bf8ca93f2a98b8bc55024cbe1ff43e3f40f2cf066e688e36b751d5e924426",
+      "stdout_bytes": 25,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 0,
+          "elapsed_ms": 0.0,
+          "heap_peak_mib": 5.8,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.321057782995922\ngc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "main",
+      "phase": "measure",
+      "round": 5,
+      "returncode": 0,
+      "wall_s": 1.2756032470060745,
+      "user_s": 1.274673,
+      "system_s": 0.0,
+      "peak_rss_kib": 11620,
+      "minor_faults": 1830,
+      "major_faults": 0,
+      "stdout_sha256": "4f4bf8ca93f2a98b8bc55024cbe1ff43e3f40f2cf066e688e36b751d5e924426",
+      "stdout_bytes": 25,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 0,
+          "elapsed_ms": 0.0,
+          "heap_peak_mib": 5.8,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.2723078939961852\ngc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "main_aa",
+      "phase": "measure",
+      "round": 5,
+      "returncode": 0,
+      "wall_s": 1.2807380220037885,
+      "user_s": 1.263669,
+      "system_s": 0.016201999999999998,
+      "peak_rss_kib": 11604,
+      "minor_faults": 1829,
+      "major_faults": 0,
+      "stdout_sha256": "4f4bf8ca93f2a98b8bc55024cbe1ff43e3f40f2cf066e688e36b751d5e924426",
+      "stdout_bytes": 25,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 0,
+          "elapsed_ms": 0.0,
+          "heap_peak_mib": 5.8,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.2771428670021123\ngc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "scalar",
+      "phase": "measure",
+      "round": 5,
+      "returncode": 0,
+      "wall_s": 1.2644321069965372,
+      "user_s": 1.259341,
+      "system_s": 0.004085,
+      "peak_rss_kib": 11604,
+      "minor_faults": 1828,
+      "major_faults": 0,
+      "stdout_sha256": "4f4bf8ca93f2a98b8bc55024cbe1ff43e3f40f2cf066e688e36b751d5e924426",
+      "stdout_bytes": 25,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 0,
+          "elapsed_ms": 0.0,
+          "heap_peak_mib": 5.8,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.2607378079992486\ngc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "default",
+      "phase": "measure",
+      "round": 5,
+      "returncode": 0,
+      "wall_s": 1.262984510998649,
+      "user_s": 1.257839,
+      "system_s": 0.004068,
+      "peak_rss_kib": 11604,
+      "minor_faults": 1827,
+      "major_faults": 0,
+      "stdout_sha256": "4f4bf8ca93f2a98b8bc55024cbe1ff43e3f40f2cf066e688e36b751d5e924426",
+      "stdout_bytes": 25,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 0,
+          "elapsed_ms": 0.0,
+          "heap_peak_mib": 5.8,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.2592137820029166\ngc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "atomic_union",
+      "phase": "measure",
+      "round": 5,
+      "returncode": 0,
+      "wall_s": 1.2705640019994462,
+      "user_s": 1.25629,
+      "system_s": 0.012197,
+      "peak_rss_kib": 11604,
+      "minor_faults": 1829,
+      "major_faults": 0,
+      "stdout_sha256": "4f4bf8ca93f2a98b8bc55024cbe1ff43e3f40f2cf066e688e36b751d5e924426",
+      "stdout_bytes": 25,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 0,
+          "elapsed_ms": 0.0,
+          "heap_peak_mib": 5.8,
+          "last_live_mib": 0.0
+        }
+      ],
+      "gc_lines": [
+        "gc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.2669960739949602\ngc: 0 collections, 0.0 ms; heap peak 5.8 MiB; live 0.0 MiB at the last\n",
+      "output_matches": true
+    }
+  ],
+  "complete": true,
+  "loadavg_after": [
+    1.7216796875,
+    1.4482421875,
+    1.0634765625
+  ],
+  "summary": {
+    "main": {
+      "wall_s": 1.4026047984953038,
+      "user_s": 1.393626,
+      "system_s": 0.0020495,
+      "peak_rss_kib": 11586.0,
+      "minor_faults": 1828.5,
+      "major_faults": 0.0,
+      "samples": 6,
+      "all_outputs_match": true,
+      "gc_collections": 0.0,
+      "gc_elapsed_ms": 0.0,
+      "gc_heap_peak_mib": 5.8,
+      "gc_last_live_mib": 0.0
+    },
+    "main_aa": {
+      "wall_s": 1.3759578120007063,
+      "user_s": 1.3650799999999998,
+      "system_s": 0.007974499999999999,
+      "peak_rss_kib": 11598.0,
+      "minor_faults": 1827.5,
+      "major_faults": 0.0,
+      "samples": 6,
+      "all_outputs_match": true,
+      "gc_collections": 0.0,
+      "gc_elapsed_ms": 0.0,
+      "gc_heap_peak_mib": 5.8,
+      "gc_last_live_mib": 0.0
+    },
+    "scalar": {
+      "wall_s": 1.393508897996071,
+      "user_s": 1.3786965,
+      "system_s": 0.0063844999999999996,
+      "peak_rss_kib": 11598.0,
+      "minor_faults": 1827.0,
+      "major_faults": 0.0,
+      "samples": 6,
+      "all_outputs_match": true,
+      "gc_collections": 0.0,
+      "gc_elapsed_ms": 0.0,
+      "gc_heap_peak_mib": 5.8,
+      "gc_last_live_mib": 0.0
+    },
+    "default": {
+      "wall_s": 1.3713942315007444,
+      "user_s": 1.3658685,
+      "system_s": 0.0041585,
+      "peak_rss_kib": 11600.0,
+      "minor_faults": 1826.0,
+      "major_faults": 0.0,
+      "samples": 6,
+      "all_outputs_match": true,
+      "gc_collections": 0.0,
+      "gc_elapsed_ms": 0.0,
+      "gc_heap_peak_mib": 5.8,
+      "gc_last_live_mib": 0.0
+    },
+    "atomic_union": {
+      "wall_s": 1.355834882502677,
+      "user_s": 1.3490405,
+      "system_s": 0.007922499999999999,
+      "peak_rss_kib": 11594.0,
+      "minor_faults": 1825.5,
+      "major_faults": 0.0,
+      "samples": 6,
+      "all_outputs_match": true,
+      "gc_collections": 0.0,
+      "gc_elapsed_ms": 0.0,
+      "gc_heap_peak_mib": 5.8,
+      "gc_last_live_mib": 0.0
+    },
+    "block": {
+      "wall_s": 1.3487526980024995,
+      "user_s": 1.3458505,
+      "system_s": 0.006296499999999999,
+      "peak_rss_kib": 11582.0,
+      "minor_faults": 1827.0,
+      "major_faults": 0.0,
+      "samples": 6,
+      "all_outputs_match": true,
+      "gc_collections": 0.0,
+      "gc_elapsed_ms": 0.0,
+      "gc_heap_peak_mib": 5.8,
+      "gc_last_live_mib": 0.0
+    }
+  },
+  "all_outputs_match": true
+}

@@ -1,0 +1,18 @@
+mkdir -p build
+./pystachy rt runtime.py -o build/boxprobe-rt.ll
+"/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/"clang -O2 -S -emit-llvm tools/boxprobe.c -o build/boxprobe.ll
+"/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/"llvm-link build/boxprobe-rt.ll build/boxprobe.ll -o build/boxprobe.bc
+"/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/"clang -O2 build/boxprobe.bc -o build/boxprobe -lm
+build/boxprobe
+boxprobe: 16-byte box slots, a box kept by its payload word's address, and the one-past-the-end control passed
+PYSTACHY_GC_STRESS=1 build/boxprobe
+boxprobe: 16-byte box slots, a box kept by its payload word's address, and the one-past-the-end control passed
+mkdir -p build
+./pystachy rt runtime.py -o build/gcmarkprobe-rt.ll
+"/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/"clang -O2 -S -emit-llvm tools/gcmarkprobe.c -o build/gcmarkprobe.ll
+"/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/"llvm-link build/gcmarkprobe-rt.ll build/gcmarkprobe.ll -o build/gcmarkprobe.bc
+"/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/"clang -O2 build/gcmarkprobe.bc -o build/gcmarkprobe -lm
+build/gcmarkprobe
+gcmarkprobe: union ownership, exact reachability, cycles, backward edges, large slices, interior/slack roots, queue reuse and partial-sweep refill passed
+PYSTACHY_GC_MARK=block build/gcmarkprobe
+gcmarkprobe: union ownership, exact reachability, cycles, backward edges, large slices, interior/slack roots, queue reuse and partial-sweep refill passed

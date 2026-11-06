@@ -1,0 +1,152 @@
+{
+  "schema_version": 1,
+  "archive_root": "bench/gc_application/results/2026-11-06/compiler-validation",
+  "original_evidence_root": "/workspace/scratch/a009f956ecf0/compiler-gc-validation",
+  "capture": "Original files copied byte for byte; README and this manifest are packaging metadata.",
+  "local_integration_commit_map": {
+    "c6e1402c24c0b5dc8ede1eab47e85043c1a85eed": "a2615f3227b52ebeee14a084c568df49ae2b0401",
+    "e0e8ac4979a397253ab4020c4747b2649ea8607e": "651194c91d26a26cef7a1e1938513ff7777e159f",
+    "a055b652c0146503737cd2eadc4a2ea9d2f2c31a": "84b27481a3d0761e6ef869272255f7f643913e0a"
+  },
+  "integration_map_note": "Local cherry-pick identities, not whole-tree equivalence or published commit identities.",
+  "files": [
+    {
+      "path": "validation-summary.json",
+      "original_path": "/workspace/scratch/a009f956ecf0/compiler-gc-validation/validation-summary.json",
+      "bytes": 9692,
+      "sha256": "f5db5a629e08b240b3e1fb2de2d5a8664b46f75de5110744dfad6b65917ef090"
+    },
+    {
+      "path": "bootstrap.log",
+      "original_path": "/workspace/scratch/a009f956ecf0/compiler-gc-validation/bootstrap.log",
+      "bytes": 830,
+      "sha256": "69cca4b07077d761d2fbc69930a78ed1314b85dc104c8aaa2c5dcb54cf4e7537"
+    },
+    {
+      "path": "unit-final.log",
+      "original_path": "/workspace/scratch/a009f956ecf0/compiler-gc-validation/unit-final.log",
+      "bytes": 98,
+      "sha256": "0f8dc41b29f1e8b122a9430de58183bbc16ea0ba60e2778ba39ceb94a1b100ac"
+    },
+    {
+      "path": "runtime-contract.log",
+      "original_path": "/workspace/scratch/a009f956ecf0/compiler-gc-validation/runtime-contract.log",
+      "bytes": 291,
+      "sha256": "154e0ed8a479f530eac2ada6f080a8924ef70ba91453747cbf3bddb469d9e9b9"
+    },
+    {
+      "path": "default-ir-parity.log",
+      "original_path": "/workspace/scratch/a009f956ecf0/compiler-gc-validation/default-ir-parity.log",
+      "bytes": 22,
+      "sha256": "981a3c45ebcad5c59736fa2805e9458c1581004fa7bf8893a780cab06279ca4e"
+    },
+    {
+      "path": "default-ir-parity-corrected-fixture.log",
+      "original_path": "/workspace/scratch/a009f956ecf0/compiler-gc-validation/default-ir-parity-corrected-fixture.log",
+      "bytes": 21,
+      "sha256": "667fc201943edb1580b8d600c78f5031db7c37c82e1a7205872eba97d8b175d6"
+    },
+    {
+      "path": "native-optin-ir-parity.log",
+      "original_path": "/workspace/scratch/a009f956ecf0/compiler-gc-validation/native-optin-ir-parity.log",
+      "bytes": 21,
+      "sha256": "667fc201943edb1580b8d600c78f5031db7c37c82e1a7205872eba97d8b175d6"
+    },
+    {
+      "path": "gc-probes.log",
+      "original_path": "/workspace/scratch/a009f956ecf0/compiler-gc-validation/gc-probes.log",
+      "bytes": 1624,
+      "sha256": "0108ee7468a56a2956bb9c982506bf0ba61304db7ad7633f88a86072bd53b3f6"
+    },
+    {
+      "path": "boxprobe-block-stress.log",
+      "original_path": "/workspace/scratch/a009f956ecf0/compiler-gc-validation/boxprobe-block-stress.log",
+      "bytes": 111,
+      "sha256": "67989988355cdf6ab791796ab18ed951e1aceba188edb1d0956f961b17dd4645"
+    },
+    {
+      "path": "native-optin-literal-expression-failure.log",
+      "original_path": "/workspace/scratch/a009f956ecf0/compiler-gc-validation/native-optin-literal-expression-failure.log",
+      "bytes": 1500,
+      "sha256": "919cb25c8263c260846a4eb40affee8227b0ae65c7db36858c5112f4d38ddb0e"
+    },
+    {
+      "path": "baseline-literal-expression-failure.json",
+      "original_path": "/workspace/scratch/a009f956ecf0/compiler-gc-validation/baseline-literal-expression-failure.json",
+      "bytes": 108,
+      "sha256": "eafd312469237873fb15ed2bce8a582a29f1b4114ef9a527cdc6f2b4f5af9104"
+    },
+    {
+      "path": "native-optin-corrected-fixture.log",
+      "original_path": "/workspace/scratch/a009f956ecf0/compiler-gc-validation/native-optin-corrected-fixture.log",
+      "bytes": 36,
+      "sha256": "662dece394c294eb255cdee7b42fd9d09b335e0bc3ee68e52df6c8b0b770a14d"
+    },
+    {
+      "path": "native-optin-stress.log",
+      "original_path": "/workspace/scratch/a009f956ecf0/compiler-gc-validation/native-optin-stress.log",
+      "bytes": 38,
+      "sha256": "9ff7c5af4c5116bfaaee72af591fbe8b4a085e69fb4b1d43e78d6ff1e3856f5a"
+    },
+    {
+      "path": "native-default-corrected-fixture.log",
+      "original_path": "/workspace/scratch/a009f956ecf0/compiler-gc-validation/native-default-corrected-fixture.log",
+      "bytes": 36,
+      "sha256": "662dece394c294eb255cdee7b42fd9d09b335e0bc3ee68e52df6c8b0b770a14d"
+    },
+    {
+      "path": "negative-controls.log",
+      "original_path": "/workspace/scratch/a009f956ecf0/compiler-gc-validation/negative-controls.log",
+      "bytes": 615,
+      "sha256": "c7187e1e26947696b3ef10cd9ca721c5212583f96e0f679d0789b31504b656ba"
+    },
+    {
+      "path": "negative-kinds/results.json",
+      "original_path": "/workspace/scratch/a009f956ecf0/compiler-gc-validation/negative-kinds/results.json",
+      "bytes": 11376,
+      "sha256": "53a6e768a1b9a385aa474b79275cedc72f314c7a9f96864d4aa140b59b9fb3cf"
+    },
+    {
+      "path": "validation-first-attempt.json",
+      "original_path": "/workspace/scratch/a009f956ecf0/compiler-gc-validation/validation-first-attempt.json",
+      "bytes": 7517,
+      "sha256": "8eee34e26372862502f2c5be2e1270c4a3136ed11632116ebe3606bd4e460de1"
+    },
+    {
+      "path": "validation.json",
+      "original_path": "/workspace/scratch/a009f956ecf0/compiler-gc-validation/validation.json",
+      "bytes": 6343,
+      "sha256": "2ee75e4fabd56ed4c83b6a9e6a234451c4791c3d175e524206aa715652a70bee"
+    },
+    {
+      "path": "unit-focused.log",
+      "original_path": "/workspace/scratch/a009f956ecf0/compiler-gc-validation/unit-focused.log",
+      "bytes": 98,
+      "sha256": "4ce9a9cfa2420c2dd650d2e9acbcf7061ff50ce2256042a20ac96299894a2a82"
+    },
+    {
+      "path": "native-optin.log",
+      "original_path": "/workspace/scratch/a009f956ecf0/compiler-gc-validation/native-optin.log",
+      "bytes": 1500,
+      "sha256": "919cb25c8263c260846a4eb40affee8227b0ae65c7db36858c5112f4d38ddb0e"
+    },
+    {
+      "path": "commands/compiler_gc_validate.py.txt",
+      "original_path": "/workspace/scratch/a009f956ecf0/compiler_gc_validate.py",
+      "bytes": 5208,
+      "sha256": "b8ca49f8782ab1cd072b74cb2b6bcc09e8c3b9d5e29faff1cc3c9fd3ecea5338"
+    },
+    {
+      "path": "commands/compiler_gc_resume_validation.py.txt",
+      "original_path": "/workspace/scratch/a009f956ecf0/compiler_gc_resume_validation.py",
+      "bytes": 4861,
+      "sha256": "b19f7fd21917bc07d80a1c6f2389851f76efd5c707d6cc031b42abe63f8714d8"
+    },
+    {
+      "path": "commands/compiler_gc_negative_controls.py.txt",
+      "original_path": "/workspace/scratch/a009f956ecf0/compiler_gc_negative_controls.py",
+      "bytes": 3322,
+      "sha256": "520ba7d875d1216bf3ee7adbfe756bc9562a65174e5d2e23db22fbfa5caa0f52"
+    }
+  ]
+}

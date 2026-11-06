@@ -1,0 +1,29 @@
+{
+  "method": {
+    "calls_regex": "^\\s*(?:%[^=\\s]+\\s*=\\s*)?(?:(?:tail|musttail|notail)\\s+)?(?:call|invoke)\\b[^\\n]*@pys_new\\(",
+    "declaration_regex": "^\\s*declare\\b[^\\n]*@pys_new\\("
+  },
+  "records": [
+    {
+      "path": "/workspace/scratch/8b5d64b08ada/baseline/build/stage2.ll",
+      "sha256": "7574c75482a127d5a94b889b693a0176b80a1eae7a42406c449c0f41b731eb35",
+      "direct_calls_or_invokes": 0,
+      "declarations": 0,
+      "all_text_occurrences": 10
+    },
+    {
+      "path": "/workspace/scratch/8b5d64b08ada/atomic-work/build/stage2.ll",
+      "sha256": "a36b446cd7d36af5f0364920e727bbeb5ac12265c00ff4b4430b0d8bdf2dca66",
+      "direct_calls_or_invokes": 0,
+      "declarations": 0,
+      "all_text_occurrences": 10
+    },
+    {
+      "path": "/workspace/scratch/8b5d64b08ada/pystachy/build/stage2.ll",
+      "sha256": "a36b446cd7d36af5f0364920e727bbeb5ac12265c00ff4b4430b0d8bdf2dca66",
+      "direct_calls_or_invokes": 0,
+      "declarations": 0,
+      "all_text_occurrences": 10
+    }
+  ]
+}

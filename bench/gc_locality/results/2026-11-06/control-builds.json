@@ -1,0 +1,28 @@
+[
+  {
+    "workload": "scalars",
+    "argv": [
+      "/workspace/scratch/8b5d64b08ada/atomic-work/pystachy",
+      "build",
+      "/workspace/scratch/8b5d64b08ada/pystachy/bench/gc_locality/scalars.py",
+      "-o",
+      "/workspace/scratch/8b5d64b08ada/bench-bin/atomic-only-scalars"
+    ],
+    "binary_sha256": "4af9df4c49f675e19b02f7e2ce8331a6ab65917cc9c71a764879a8cb287709cc",
+    "source_sha256": "5faa30b04f355feebb1e6a8458ed11af4bdb24a53ffa2f5261a63b49c75e50f7",
+    "oracle": "scalars 3 32 aligned 424704 3"
+  },
+  {
+    "workload": "stores",
+    "argv": [
+      "/workspace/scratch/8b5d64b08ada/atomic-work/pystachy",
+      "build",
+      "/workspace/scratch/8b5d64b08ada/pystachy/bench/gc_locality/stores.py",
+      "-o",
+      "/workspace/scratch/8b5d64b08ada/bench-bin/atomic-only-stores"
+    ],
+    "binary_sha256": "33c6aa6ba871b604277d385c9a8d49d5b1fde46c0ccc4a9f9f482956d998c36a",
+    "source_sha256": "57128be65ca97022d6055a1723239150ad6d946c389244694376a70a4c03025c",
+    "oracle": "stores 3 32 862 32 3"
+  }
+]

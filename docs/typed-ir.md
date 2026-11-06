@@ -456,6 +456,16 @@ before the next pass. Normal compilation does not add these verification scans.
 Disable one with `PYSTACHY_OPT=-dictfuse`, several with a comma-separated list, or all with
 `PYSTACHY_OPT=-all`. Differential runs check that the choices preserve behavior.
 
+`OPTINS` lists experiments that are off by default. `PYSTACHY_OPT=+atomicunion`
+allocates a closed union's box without scanning its payload when lowering sees a
+literal program-wide tag for a native `int`, `float` or `bool`. Typed `ubox` operations,
+their tag/payload provenance checks and `unionslots` rewrites stay unchanged. Runtime
+tags, optional conversions, references and boxes carrying a promoting integer's `Mpz`
+keep scanned storage.
+This does not add allocation-elision attributes or change object layouts. Disable it
+with `-atomicunion` or `-all`; tokens apply in order, so `-all,+atomicunion` enables
+this experiment alone. Enabled experiments are part of the runtime cache identity.
+
 For a statically known string variable `s`, the frontend can lower `ord(s[i])` and
 comparisons such as `s[i] == ":"` directly to `text.ord_at`. The comparison accepts
 `==` or `!=` with a single ASCII literal on either side. The indexed read evaluates

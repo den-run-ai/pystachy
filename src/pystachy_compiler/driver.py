@@ -12,7 +12,7 @@ from src.pystachy_compiler.loader import Loader
 from src.pystachy_compiler.lower_module import OBJHOOKS, address_runtime_ir, jit_alloc
 from src.pystachy_compiler.names import RENAMED
 from src.pystachy_compiler.parser import Parser
-from src.pystachy_compiler.specs import JIT_INLINE, LIBS, LINKDL, MODULES, OPTS, PLATFORM
+from src.pystachy_compiler.specs import JIT_INLINE, LIBS, LINKDL, MODULES, OPTINS, OPTS, PLATFORM
 from src.pystachy_compiler.syntax import LAMBDAS
 from src.pystachy_compiler.utils import optimizations
 
@@ -458,6 +458,9 @@ def main() -> None:
     keyed = flags + ["-fexceptions"]
     if len(off) > 0:
         keyed = keyed + ["PYSTACHY_OPT=-" + ",-".join(off)]
+    enabled = [o for o in OPTINS if o in on]
+    if len(enabled) > 0:
+        keyed = keyed + ["PYSTACHY_OPT=+" + ",+".join(enabled)]
     cflags = "".join([" " + q(a) for a in flags])
     # the AOT tier compiles bitcode whose runtime part is instrumented already, so the sanitizer flags
     # go to its link alone (which adds their runtime libraries): ASan's pass would instrument it again

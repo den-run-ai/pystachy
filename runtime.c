@@ -227,6 +227,11 @@ static I gc_allocd, gc_limit = GC_MIN, gc_live, gc_heap, gc_peak, gc_n, gc_ns, g
 static I gc_big, gc_big_limit = BIG_MIN;   /* pointer-free large-object bytes handed out since the last collection */
 static I gc_ext;                       /* malloc'd bytes that heap objects hold: open files' buffers (see I/O) */
 static int gc_off, gc_stats;
+static int gc_blocks, gc_profile;     /* opt-in chunk-ordered tracing and work counters */
+static I gc_root_ns, gc_trace_ns, gc_sweep_ns, gc_root_words, gc_heap_words;
+static I gc_objects, gc_ranges, gc_chunks;
+/* GC_NO_ROOT(gc_gray, gc_gray_tail): pending tracing work, drained before sweeping. */
+static Seg *gc_gray, *gc_gray_tail;
 /* GC_NO_ROOT(gc_bottom): stack boundary; mark_roots scans the stack range explicitly. */
 static char *gc_bottom;                /* the stack is scanned from the collector up to here */
 /* GC_NO_ROOT(gc_roots): program root addresses; mark_roots scans their referenced slots. */
@@ -286,7 +291,21 @@ __attribute__((noinline)) static void pmap_set(uintptr_t a, uintptr_t e, Seg *v)
 __attribute__((noinline)) static void mstk_grow(void) {
   if (!(mstk = realloc(mstk, (mcap = 2 * mcap + 4096) * sizeof *mstk))) oom();
 }
+/* Scanned small chunks have a pending bitmap and a summary of its nonempty
+   words. At most 4096 slots fit a chunk, so one 64-bit summary suffices. The
+   offset uses capacity, as chunk_new does. The slot reciprocal also computes
+   floor(CHUNK / size) exactly, avoiding a division on every discovered object. */
+_Static_assert(CHUNK / 16 <= 64 * 64, "block GC summary capacity");
+static uint64_t *pending(Seg *s) { return s->mark + (((CHUNK * s->inv >> 40) + 63) >> 6); }
+static void gray_push(Seg *s) {
+  if (s->used & 2) return;
+  s->used |= 2;                       /* bit 0 still records allocation since the last sweep */
+  s->avail = NULL;                    /* sweep rebuilds the allocator's avail lists */
+  if (gc_gray_tail) gc_gray_tail->avail = s; else gc_gray = s;
+  gc_gray_tail = s;
+}
 __attribute__((noinline, no_sanitize("address"))) static void scan(const W *p, const W *e) {
+  if (gc_profile) gc_heap_words += e - p;
   uintptr_t lo = gc_lo, span = gc_hi - gc_lo;   /* fixed while marking: keep them in registers */
   Seg ***pm = pmap;
   for (; p < e; p++) {                 /* mark every heap object a word in [p, e) points into */
@@ -298,10 +317,45 @@ __attribute__((noinline, no_sanitize("address"))) static void scan(const W *p, c
     if (s->mark[i >> 6] >> (i & 63) & 1) continue;
     s->mark[i >> 6] |= 1ULL << (i & 63); s->nmark++;
     if (s->k & 1) continue;            /* atomic: nothing to scan */
+    if (gc_profile) gc_objects++;
+    if (gc_blocks && !s->large) {
+      uint64_t *todo = pending(s);
+      todo[1 + (i >> 6)] |= 1ULL << (i & 63);
+      todo[0] |= 1ULL << (i >> 6);
+      gray_push(s);
+      continue;
+    }
+    if (gc_profile) gc_ranges++;
     if (msp + 2 > mcap) mstk_grow();
     mstk[msp++] = (uintptr_t)s->start + i * s->size;
     mstk[msp++] = (uintptr_t)(s->large ? s->size & ~7 : s->size);
   }
+}
+/* Consume only discovered objects, in slot order. A whole-chunk scan would make
+   unreachable objects retain their children. Keep the queued bit while scanning,
+   and use the word summary to find work added by both forward and backward edges
+   without repeatedly walking an almost empty bitmap. Other chunks can enqueue
+   this one again after it is drained. */
+__attribute__((noinline)) static void scan_chunk(void) {
+  Seg *s = gc_gray;
+  gc_gray = s->avail;
+  if (!gc_gray) gc_gray_tail = NULL;
+  uint64_t *todo = pending(s);
+  if (gc_profile) gc_chunks++;
+  while (todo[0]) {
+    int j = __builtin_ctzll(todo[0]);
+    uint64_t w = todo[j + 1];
+    todo[0] &= ~(1ULL << j); todo[j + 1] = 0;
+    while (w) {
+      int first = __builtin_ctzll(w);
+      uint64_t run = w >> first;
+      int n = run == UINT64_MAX ? 64 : __builtin_ctzll(~run);
+      const W *p = (const W *)(s->start + (j * 64 + first) * s->size);
+      scan(p, p + n * s->size / (I)sizeof(W));
+      w &= ~((n == 64 ? UINT64_MAX : (1ULL << n) - 1) << first);
+    }
+  }
+  s->used &= ~2;
 }
 __attribute__((noinline, no_sanitize("address"))) static void mark_roots(void) {
   scan((const W *)((uintptr_t)__builtin_frame_address(0) & ~(uintptr_t)7), (const W *)gc_bottom);
@@ -571,18 +625,16 @@ static I ntrk;                         /* Python references Pystachy objects own
 static void trk_sweep(void);
 static int gc_marked(const void *p);
 static void weakrefs_sweep(void);
-__attribute__((noinline)) static void collect(void) {
-  struct timespec t0, t1;
-  memset(text_hints, 0, sizeof text_hints);
-  __builtin_unwind_init();             /* spill the callee-saved registers into this frame */
-  if (gc_stats) clock_gettime(CLOCK_MONOTONIC, &t0);
-  mark_roots();
+__attribute__((noinline)) static void trace(void) {
   /* trace; big arrays in 4 KiB slices keep the stack short. A range off the stack waits in mq,
      its first 128 bytes prefetched, while the MQ - 1 before it are scanned: the cache misses of
      reading the objects, most of what collecting a big heap costs, overlap. The same objects are
      marked */
   unsigned qh = 0, qc = 0;
-  while (msp || qc) {
+  while (msp || qc || gc_gray) {
+    /* Drain array ranges before the next chunk. Their discoveries accumulate
+       in each pending bitmap instead of revisiting a chunk after every slice. */
+    if (!msp && !qc) { scan_chunk(); continue; }
     if (msp && qc < MQ) {
       I n = (I)mstk[msp - 1]; const W *p = (const W *)mstk[msp - 2];
       if (n > 4096) { mstk[msp - 2] = (uintptr_t)(p + 512); mstk[msp - 1] = (uintptr_t)(n - 4096); n = 4096; }
@@ -597,6 +649,24 @@ __attribute__((noinline)) static void collect(void) {
     qh = (qh + 1) & (MQ - 1); qc--;
     scan(p, p + n / 8);
   }
+}
+__attribute__((noinline)) static void collect(void) {
+  struct timespec t0, t1, t2;
+  memset(text_hints, 0, sizeof text_hints);
+  __builtin_unwind_init();             /* spill the callee-saved registers into this frame */
+  if (gc_stats) clock_gettime(CLOCK_MONOTONIC, &t0);
+  I words = gc_heap_words;
+  mark_roots();
+  if (gc_profile) {
+    gc_root_words += gc_heap_words - words; gc_heap_words = words;
+    clock_gettime(CLOCK_MONOTONIC, &t1);
+    gc_root_ns += (t1.tv_sec - t0.tv_sec) * 1000000000 + t1.tv_nsec - t0.tv_nsec;
+  }
+  trace();
+  if (gc_profile) {
+    clock_gettime(CLOCK_MONOTONIC, &t2);
+    gc_trace_ns += (t2.tv_sec - t1.tv_sec) * 1000000000 + t2.tv_nsec - t1.tv_nsec;
+  }
   weakrefs_sweep();                    /* clear weak targets before any memory is reclaimed */
   if (nfiles) files_sweep();
   if (ntrk) trk_sweep();
@@ -604,13 +674,16 @@ __attribute__((noinline)) static void collect(void) {
   if (gc_stats) {
     clock_gettime(CLOCK_MONOTONIC, &t1);
     gc_ns += (t1.tv_sec - t0.tv_sec) * 1000000000 + t1.tv_nsec - t0.tv_nsec;
+    if (gc_profile) gc_sweep_ns += (t1.tv_sec - t2.tv_sec) * 1000000000 + t1.tv_nsec - t2.tv_nsec;
   }
 }
 /* The allocator's frames that a collection's caller holds are scanned as roots, words that no
    one set included: the page heap's calls, whose results come back through memory, are made from
    frames of their own (noinline) that exist only after the collection */
 __attribute__((noinline)) static Seg *chunk_new(int k) {   /* a chunk from the page heap; its slots come lazily */
-  I sz = csize[k >> 1], hdr = ((I)sizeof(Seg) + (CHUNK / sz + 63) / 64 * 8 + 15) & ~15, rg;
+  I sz = csize[k >> 1], nw = (CHUNK / sz + 63) / 64;
+  I extra = gc_blocks && !(k & 1) ? nw + 1 : 0;
+  I hdr = ((I)sizeof(Seg) + (nw + extra) * 8 + 15) & ~15, rg;
   int dirty;
   Seg *s = (Seg *)pages_take(CHUNK / PAGE, &rg, &dirty);   /* dirty: old objects need zeroing */
   pmap_set((uintptr_t)s, (uintptr_t)s + CHUNK, s);
@@ -707,8 +780,10 @@ __attribute__((malloc, returns_nonnull)) void *pys_alloc_atomic(I n) { return gc
    address of such a marked object dead while the program still reads its fields, and the
    collector would then not see what it holds. Once that optimization has run, an AOT build
    inlines pys_new, the fast path, into the calls that remain (driver.py's LATE_INLINE). It is
-   gc_alloc, whose slots come zeroed */
-__attribute__((noinline, malloc, returns_nonnull)) void *pys_new(I n) { return gc_alloc(n, 0); }
+   gc_alloc, whose slots come zeroed. The same reference-free proof makes its surviving objects
+   atomic: scanning their numeric words would only retain false pointers. The JIT's own fast
+   path (lower_module.py's JITFAST) uses the atomic free lists too */
+__attribute__((noinline, malloc, returns_nonnull)) void *pys_new(I n) { return gc_alloc(n, 1); }
 /* A box, a dynamic value's DynType and payload or a closed union's tag and payload: 16 bytes in a
    16-byte slot (the class for 15 bytes and the byte of slack). The slack keeps an object alive
    through a pointer one past its end, which code walking the object leaves; code reads a box's two
@@ -790,6 +865,13 @@ static I trk_report(I *ex);
 static void gc_report(void) {
   fprintf(stderr, "gc: %lld collections, %.1f ms; heap peak %.1f MiB; live %.1f MiB at the last\n",
           (long long)gc_n, gc_ns / 1e6, gc_peak / 1048576.0, gc_live / 1048576.0);
+  if (gc_profile) {
+    fprintf(stderr, "gc phases: roots %.3f ms; trace %.3f ms; sweep %.3f ms\n",
+            gc_root_ns / 1e6, gc_trace_ns / 1e6, gc_sweep_ns / 1e6);
+    fprintf(stderr, "gc work: root words %lld; heap words %lld; scanned objects %lld; range pushes %lld; chunk visits %lld\n",
+            (long long)gc_root_words, (long long)gc_heap_words, (long long)gc_objects,
+            (long long)gc_ranges, (long long)gc_chunks);
+  }
   I ex, n = trk_report(&ex);
   if (n >= 0) fprintf(stderr, "gc: Python references released: %lld after collections, %lld at exit\n", (long long)n, (long long)ex);
 }
@@ -799,7 +881,10 @@ static void gc_init(char *sb, I **roots, I nroots) {
   gc_roots = roots; gc_nroots = nroots;
   if (!(pmap = calloc(1 << 18, sizeof *pmap))) oom();
   gc_off = e && !strcmp(e, "off");
-  gc_stats = e && !strcmp(e, "stats");
+  gc_profile = e && !strcmp(e, "profile");
+  gc_stats = gc_profile || (e && !strcmp(e, "stats"));
+  e = getenv("PYSTACHY_GC_MARK");
+  gc_blocks = e && !strcmp(e, "block");
   if (!gc_off && (e = getenv("PYSTACHY_GC_STRESS")) && atoll(e) > 0) gc_stress = atoll(e);
   /* PYSTACHY_GC_MIN=N: N MiB (1 to 2^20) of allocation between collections at least, for GC_MIN's 32
      (#650): a program trades memory for fewer collections, or the reverse */
@@ -2424,6 +2509,9 @@ void *pys_big_box(I lo, void *hi) {
 /* Closed union: a program-wide tag and the value's 8-byte slot. The collector
    scans the box for str, container or native reference payloads. None remains null. */
 void *pys_ubox(I tag, I v) { I *p = gc_box(0); p[0] = tag; p[1] = v; return p; }
+/* Only a compiler-proved native int, float or bool payload: its bits cannot own
+   a reference. Optional conversion and a runtime tag keep the scanned entry. */
+void *pys_ubox_atomic(I tag, I v) { I *p = gc_box(1); p[0] = tag; p[1] = v; return p; }
 void *pys_ubox_opt(I tag, void *p, I deref) { return p ? pys_ubox(tag, deref ? *(I *)p : (I)p) : NULL; }
 
 static I unbox(I v, const char *d) { return *d == 'i' || *d == 'f' || *d == 'b' ? *(I *)v : v; }   /* the value of a ?d */

@@ -1,0 +1,47 @@
+from pathlib import Path
+import copy
+import json
+import os
+import subprocess
+r=Path('/workspace/scratch/a009f956ecf0'); repo=r/'pystachy'; py=str(r/'venv/bin/python')
+out=r/'sensitivity-results'; out.mkdir(exist_ok=True)
+for name in ['float','json_retained','chaos','raytrace']:
+    cfg=json.loads((r/'native-build'/(name+'.json')).read_text())
+    base=next(v for v in cfg['variants'] if v['name']=='default')
+    cfg['name']='pacing_'+name
+    cfg['notes']='Native pacing sensitivity; same already-validated executable and full inputs. GC_MIN is a pacing floor, not heap cap. Six rotated rounds with one excluded warmup, CPU 3; identical 2048 MiB address-space limit. Actual RSS reported. Prespecified policies 8/32/128 MiB applied equally.'
+    cfg['variants']=[]
+    for minimum in [8,32,128]:
+        v=copy.deepcopy(base); v['name']='min'+str(minimum); v['env']['PYSTACHY_GC_MIN']=str(minimum);cfg['variants'].append(v)
+    rounds = 6
+    if name in ['chaos','raytrace']:
+        optional=json.loads((r/'optional-aot-build'/(name+'.json')).read_text())
+        cfg['variants'].append(next(v for v in optional['variants'] if v['name']=='bdw'))
+        cfg['inputs'].append(str(r/'optional-aot-build/builds.json'))
+        rounds = 4
+        cfg['notes'] += ' For this small-live-set follow-up, add the existing BDW default executable as a direct comparator to native MIN8. Four variants, four rotated measured rounds instead of six, plus one excluded warmup.'
+    cp=out/(cfg['name']+'.config.json'); cp.write_text(json.dumps(cfg,indent=2)+'\n')
+    dest=out/(cfg['name']+'.json')
+    if dest.exists(): raise SystemExit('Refusing overwrite '+str(dest))
+    print('BEGIN',cfg['name'],flush=True)
+    with (out/(cfg['name']+'.log')).open('w') as log:
+        subprocess.run([py,'-I',str(repo/'bench/gc_locality/run.py'),'--config',str(cp),'--cpu','3','--rounds',str(rounds),'--warmups','1','--json',str(dest)],stdout=log,stderr=subprocess.STDOUT,cwd=repo,check=True)
+    print('END',cfg['name'],flush=True)
+# A longer repeat checks whether the small union elapsed effect persists.
+cfg=json.loads((r/'native-build/json_retained.json').read_text())
+base=next(v for v in cfg['variants'] if v['name']=='default')
+un=next(v for v in cfg['variants'] if v['name']=='atomic_union')
+aa=copy.deepcopy(base);aa['name']='default_aa'
+cfg['variants']=[base,aa,un]
+for v in cfg['variants']:v['argv'][2]='80'
+cfg['name']='union_retained_80'
+cfg['notes']='Followup prompted by small primary union elapsed effect and wide A/A noise. Double ingestion rounds 40 to 80; same 20k records/window 4. Six rotated rounds plus one warmup; default_aa byte-identical to default. Detailed phase profiles kept separate.'
+cp=out/(cfg['name']+'.config.json');cp.write_text(json.dumps(cfg,indent=2)+'\n')
+# Preserve a complete CPython oracle for the changed input repetition count.
+env={k:v for k,v in os.environ.items() if not k.startswith(('PYSTACHY_','GC_')) and k not in ('PYTHONPATH','PYTHONHOME','LD_PRELOAD')};env['PYTHONPATH']=str(repo/'bench')
+with (out/'union80-oracle.stdout').open('wb') as f:
+    subprocess.run([py,str(repo/'bench/gc_application/json_retained.py'),str(r/'inputs-full/records.json'),'80','4',str(out/'union80-oracle.artifact')],env=env,stdout=f,check=True,cwd=repo)
+print('BEGIN',cfg['name'],flush=True)
+with (out/(cfg['name']+'.log')).open('w') as log:
+    subprocess.run([py,'-I',str(repo/'bench/gc_locality/run.py'),'--config',str(cp),'--cpu','3','--rounds','6','--warmups','1','--json',str(out/(cfg['name']+'.json'))],stdout=log,stderr=subprocess.STDOUT,cwd=repo,check=True)
+print('END',cfg['name'],flush=True)

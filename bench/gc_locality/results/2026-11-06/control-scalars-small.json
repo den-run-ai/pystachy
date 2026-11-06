@@ -1,0 +1,853 @@
+{
+  "schema_version": 1,
+  "workload": "control-scalars-small",
+  "started_utc": "2026-11-06T03:32:40.328045+00:00",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.39",
+  "python": "3.13.16 (main, Oct 14 2026, 01:04:01) [Clang 23.1.3 ]",
+  "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+  "cpu": 3,
+  "allowed_cpus": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+  ],
+  "logical_cpus": 9,
+  "loadavg_before": [
+    1.10595703125,
+    0.97412109375,
+    0.74560546875
+  ],
+  "rounds": 6,
+  "warmups": 1,
+  "variants": [
+    {
+      "name": "main",
+      "argv": [
+        "/workspace/scratch/8b5d64b08ada/bench-bin/main-scalars",
+        "600",
+        "200000",
+        "small"
+      ],
+      "source_revision": "e7513fd5b7604a0a35b6aa87875dd8cad9c31141",
+      "cwd": "/workspace/scratch/8b5d64b08ada/pystachy",
+      "env": {
+        "PYSTACHY_GC": "stats",
+        "PYSTACHY_GC_MIN": "32"
+      },
+      "address_space_mib": 2048,
+      "inputs_sha256": {
+        "/workspace/scratch/8b5d64b08ada/pystachy/bench/gc_locality/scalars.py": "5faa30b04f355feebb1e6a8458ed11af4bdb24a53ffa2f5261a63b49c75e50f7"
+      },
+      "executable_path": "/workspace/scratch/8b5d64b08ada/bench-bin/main-scalars",
+      "executable_sha256": "40afba9bc9cfc560a18deafbea1e9ea8467632af9da3b74ddb00bbde3b7b8459",
+      "checkout": {
+        "revision": "a533aa2b6c75b464ce01002208951087b384fed8",
+        "status": ""
+      }
+    },
+    {
+      "name": "atomic_only",
+      "argv": [
+        "/workspace/scratch/8b5d64b08ada/bench-bin/atomic-only-scalars",
+        "600",
+        "200000",
+        "small"
+      ],
+      "source_revision": "79fa9108180a6411b4064d811cffb978aef45833",
+      "cwd": "/workspace/scratch/8b5d64b08ada/pystachy",
+      "env": {
+        "PYSTACHY_GC": "stats",
+        "PYSTACHY_GC_MIN": "32"
+      },
+      "address_space_mib": 2048,
+      "inputs_sha256": {
+        "/workspace/scratch/8b5d64b08ada/pystachy/bench/gc_locality/scalars.py": "5faa30b04f355feebb1e6a8458ed11af4bdb24a53ffa2f5261a63b49c75e50f7"
+      },
+      "executable_path": "/workspace/scratch/8b5d64b08ada/bench-bin/atomic-only-scalars",
+      "executable_sha256": "4af9df4c49f675e19b02f7e2ce8331a6ab65917cc9c71a764879a8cb287709cc",
+      "checkout": {
+        "revision": "a533aa2b6c75b464ce01002208951087b384fed8",
+        "status": ""
+      }
+    },
+    {
+      "name": "combined_object",
+      "argv": [
+        "/workspace/scratch/8b5d64b08ada/bench-bin/candidate-scalars",
+        "600",
+        "200000",
+        "small"
+      ],
+      "source_revision": "a533aa2b6c75b464ce01002208951087b384fed8",
+      "env": {
+        "PYSTACHY_GC": "stats",
+        "PYSTACHY_GC_MIN": "32",
+        "PYSTACHY_GC_MARK": "object"
+      },
+      "cwd": "/workspace/scratch/8b5d64b08ada/pystachy",
+      "address_space_mib": 2048,
+      "inputs_sha256": {
+        "/workspace/scratch/8b5d64b08ada/pystachy/bench/gc_locality/scalars.py": "5faa30b04f355feebb1e6a8458ed11af4bdb24a53ffa2f5261a63b49c75e50f7"
+      },
+      "executable_path": "/workspace/scratch/8b5d64b08ada/bench-bin/candidate-scalars",
+      "executable_sha256": "cee10de5ed72f7391eb6693392760cf7a44e95f6f62b0bdda718519729a9c4fe",
+      "checkout": {
+        "revision": "a533aa2b6c75b464ce01002208951087b384fed8",
+        "status": ""
+      }
+    }
+  ],
+  "notes": "AOT execution only. Same source, 2 GiB address-space cap, GC minimum allocation window 32 MiB, single pinned CPU. Build metadata in builds.json. Atomic changes only reference-free object allocation; block is opt-in. Atomic-only control is base e7513fd5 plus commit79fa9108 (same scalar patch as e0ab020a on the research branch), without marker/instrumentation changes. Scalar rounds increased120->600, stores200->1000 for longer measurements.",
+  "samples": [
+    {
+      "variant": "main",
+      "phase": "warmup",
+      "round": 0,
+      "returncode": 0,
+      "wall_s": 2.1209389279974857,
+      "user_s": 2.098674,
+      "system_s": 0.021231,
+      "peak_rss_kib": 50176,
+      "minor_faults": 13093,
+      "major_faults": 0,
+      "stdout_sha256": "e8a5fb7e70214f91d0d3aa759c9c389aa619152a9822e28d728c8080d60b8f16",
+      "stdout_bytes": 44,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 333,
+          "elapsed_ms": 627.0,
+          "heap_peak_mib": 47.9,
+          "last_live_mib": 6.6
+        }
+      ],
+      "gc_lines": [
+        "gc: 333 collections, 627.0 ms; heap peak 47.9 MiB; live 6.6 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 333 collections, 627.0 ms; heap peak 47.9 MiB; live 6.6 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "atomic_only",
+      "phase": "warmup",
+      "round": 0,
+      "returncode": 0,
+      "wall_s": 1.6983449719991768,
+      "user_s": 1.677956,
+      "system_s": 0.019208,
+      "peak_rss_kib": 49920,
+      "minor_faults": 13041,
+      "major_faults": 0,
+      "stdout_sha256": "e8a5fb7e70214f91d0d3aa759c9c389aa619152a9822e28d728c8080d60b8f16",
+      "stdout_bytes": 44,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 333,
+          "elapsed_ms": 316.3,
+          "heap_peak_mib": 47.9,
+          "last_live_mib": 6.6
+        }
+      ],
+      "gc_lines": [
+        "gc: 333 collections, 316.3 ms; heap peak 47.9 MiB; live 6.6 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 333 collections, 316.3 ms; heap peak 47.9 MiB; live 6.6 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "combined_object",
+      "phase": "warmup",
+      "round": 0,
+      "returncode": 0,
+      "wall_s": 2.3555036629986716,
+      "user_s": 2.344907,
+      "system_s": 0.009413,
+      "peak_rss_kib": 49920,
+      "minor_faults": 13040,
+      "major_faults": 0,
+      "stdout_sha256": "e8a5fb7e70214f91d0d3aa759c9c389aa619152a9822e28d728c8080d60b8f16",
+      "stdout_bytes": 44,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 333,
+          "elapsed_ms": 460.6,
+          "heap_peak_mib": 47.9,
+          "last_live_mib": 6.6
+        }
+      ],
+      "gc_lines": [
+        "gc: 333 collections, 460.6 ms; heap peak 47.9 MiB; live 6.6 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 333 collections, 460.6 ms; heap peak 47.9 MiB; live 6.6 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "main",
+      "phase": "measure",
+      "round": 0,
+      "returncode": 0,
+      "wall_s": 2.3565668540031766,
+      "user_s": 2.331081,
+      "system_s": 0.024485999999999997,
+      "peak_rss_kib": 50176,
+      "minor_faults": 13094,
+      "major_faults": 0,
+      "stdout_sha256": "e8a5fb7e70214f91d0d3aa759c9c389aa619152a9822e28d728c8080d60b8f16",
+      "stdout_bytes": 44,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 333,
+          "elapsed_ms": 689.2,
+          "heap_peak_mib": 47.9,
+          "last_live_mib": 6.6
+        }
+      ],
+      "gc_lines": [
+        "gc: 333 collections, 689.2 ms; heap peak 47.9 MiB; live 6.6 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 333 collections, 689.2 ms; heap peak 47.9 MiB; live 6.6 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "atomic_only",
+      "phase": "measure",
+      "round": 0,
+      "returncode": 0,
+      "wall_s": 2.23332101500273,
+      "user_s": 2.204632,
+      "system_s": 0.027365999999999998,
+      "peak_rss_kib": 49920,
+      "minor_faults": 13044,
+      "major_faults": 0,
+      "stdout_sha256": "e8a5fb7e70214f91d0d3aa759c9c389aa619152a9822e28d728c8080d60b8f16",
+      "stdout_bytes": 44,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 333,
+          "elapsed_ms": 453.2,
+          "heap_peak_mib": 47.9,
+          "last_live_mib": 6.6
+        }
+      ],
+      "gc_lines": [
+        "gc: 333 collections, 453.2 ms; heap peak 47.9 MiB; live 6.6 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 333 collections, 453.2 ms; heap peak 47.9 MiB; live 6.6 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "combined_object",
+      "phase": "measure",
+      "round": 0,
+      "returncode": 0,
+      "wall_s": 1.8049092889996246,
+      "user_s": 1.7872569999999999,
+      "system_s": 0.016464,
+      "peak_rss_kib": 49920,
+      "minor_faults": 13043,
+      "major_faults": 0,
+      "stdout_sha256": "e8a5fb7e70214f91d0d3aa759c9c389aa619152a9822e28d728c8080d60b8f16",
+      "stdout_bytes": 44,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 333,
+          "elapsed_ms": 338.4,
+          "heap_peak_mib": 47.9,
+          "last_live_mib": 6.6
+        }
+      ],
+      "gc_lines": [
+        "gc: 333 collections, 338.4 ms; heap peak 47.9 MiB; live 6.6 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 333 collections, 338.4 ms; heap peak 47.9 MiB; live 6.6 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "atomic_only",
+      "phase": "measure",
+      "round": 1,
+      "returncode": 0,
+      "wall_s": 1.6959803319987259,
+      "user_s": 1.6620789999999999,
+      "system_s": 0.032526,
+      "peak_rss_kib": 49920,
+      "minor_faults": 13044,
+      "major_faults": 0,
+      "stdout_sha256": "e8a5fb7e70214f91d0d3aa759c9c389aa619152a9822e28d728c8080d60b8f16",
+      "stdout_bytes": 44,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 333,
+          "elapsed_ms": 318.7,
+          "heap_peak_mib": 47.9,
+          "last_live_mib": 6.6
+        }
+      ],
+      "gc_lines": [
+        "gc: 333 collections, 318.7 ms; heap peak 47.9 MiB; live 6.6 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 333 collections, 318.7 ms; heap peak 47.9 MiB; live 6.6 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "combined_object",
+      "phase": "measure",
+      "round": 1,
+      "returncode": 0,
+      "wall_s": 1.6518091070029186,
+      "user_s": 1.626515,
+      "system_s": 0.023764999999999998,
+      "peak_rss_kib": 49920,
+      "minor_faults": 13043,
+      "major_faults": 0,
+      "stdout_sha256": "e8a5fb7e70214f91d0d3aa759c9c389aa619152a9822e28d728c8080d60b8f16",
+      "stdout_bytes": 44,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 333,
+          "elapsed_ms": 308.7,
+          "heap_peak_mib": 47.9,
+          "last_live_mib": 6.6
+        }
+      ],
+      "gc_lines": [
+        "gc: 333 collections, 308.7 ms; heap peak 47.9 MiB; live 6.6 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 333 collections, 308.7 ms; heap peak 47.9 MiB; live 6.6 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "main",
+      "phase": "measure",
+      "round": 1,
+      "returncode": 0,
+      "wall_s": 2.14999861799879,
+      "user_s": 2.13589,
+      "system_s": 0.012308999999999999,
+      "peak_rss_kib": 50176,
+      "minor_faults": 13094,
+      "major_faults": 0,
+      "stdout_sha256": "e8a5fb7e70214f91d0d3aa759c9c389aa619152a9822e28d728c8080d60b8f16",
+      "stdout_bytes": 44,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 333,
+          "elapsed_ms": 634.3,
+          "heap_peak_mib": 47.9,
+          "last_live_mib": 6.6
+        }
+      ],
+      "gc_lines": [
+        "gc: 333 collections, 634.3 ms; heap peak 47.9 MiB; live 6.6 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 333 collections, 634.3 ms; heap peak 47.9 MiB; live 6.6 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "combined_object",
+      "phase": "measure",
+      "round": 2,
+      "returncode": 0,
+      "wall_s": 1.8678555229998892,
+      "user_s": 1.850161,
+      "system_s": 0.016752,
+      "peak_rss_kib": 49920,
+      "minor_faults": 13043,
+      "major_faults": 0,
+      "stdout_sha256": "e8a5fb7e70214f91d0d3aa759c9c389aa619152a9822e28d728c8080d60b8f16",
+      "stdout_bytes": 44,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 333,
+          "elapsed_ms": 363.5,
+          "heap_peak_mib": 47.9,
+          "last_live_mib": 6.6
+        }
+      ],
+      "gc_lines": [
+        "gc: 333 collections, 363.5 ms; heap peak 47.9 MiB; live 6.6 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 333 collections, 363.5 ms; heap peak 47.9 MiB; live 6.6 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "main",
+      "phase": "measure",
+      "round": 2,
+      "returncode": 0,
+      "wall_s": 2.099392654003168,
+      "user_s": 2.078003,
+      "system_s": 0.020475999999999998,
+      "peak_rss_kib": 50176,
+      "minor_faults": 13093,
+      "major_faults": 0,
+      "stdout_sha256": "e8a5fb7e70214f91d0d3aa759c9c389aa619152a9822e28d728c8080d60b8f16",
+      "stdout_bytes": 44,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 333,
+          "elapsed_ms": 613.6,
+          "heap_peak_mib": 47.9,
+          "last_live_mib": 6.6
+        }
+      ],
+      "gc_lines": [
+        "gc: 333 collections, 613.6 ms; heap peak 47.9 MiB; live 6.6 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 333 collections, 613.6 ms; heap peak 47.9 MiB; live 6.6 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "atomic_only",
+      "phase": "measure",
+      "round": 2,
+      "returncode": 0,
+      "wall_s": 1.892938918004802,
+      "user_s": 1.871521,
+      "system_s": 0.020534,
+      "peak_rss_kib": 49920,
+      "minor_faults": 13045,
+      "major_faults": 0,
+      "stdout_sha256": "e8a5fb7e70214f91d0d3aa759c9c389aa619152a9822e28d728c8080d60b8f16",
+      "stdout_bytes": 44,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 333,
+          "elapsed_ms": 360.0,
+          "heap_peak_mib": 47.9,
+          "last_live_mib": 6.6
+        }
+      ],
+      "gc_lines": [
+        "gc: 333 collections, 360.0 ms; heap peak 47.9 MiB; live 6.6 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 333 collections, 360.0 ms; heap peak 47.9 MiB; live 6.6 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "main",
+      "phase": "measure",
+      "round": 3,
+      "returncode": 0,
+      "wall_s": 2.1494048710010247,
+      "user_s": 2.123296,
+      "system_s": 0.024109,
+      "peak_rss_kib": 50176,
+      "minor_faults": 13096,
+      "major_faults": 0,
+      "stdout_sha256": "e8a5fb7e70214f91d0d3aa759c9c389aa619152a9822e28d728c8080d60b8f16",
+      "stdout_bytes": 44,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 333,
+          "elapsed_ms": 631.8,
+          "heap_peak_mib": 47.9,
+          "last_live_mib": 6.6
+        }
+      ],
+      "gc_lines": [
+        "gc: 333 collections, 631.8 ms; heap peak 47.9 MiB; live 6.6 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 333 collections, 631.8 ms; heap peak 47.9 MiB; live 6.6 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "atomic_only",
+      "phase": "measure",
+      "round": 3,
+      "returncode": 0,
+      "wall_s": 2.0493642990040826,
+      "user_s": 2.028824,
+      "system_s": 0.019653999999999998,
+      "peak_rss_kib": 49920,
+      "minor_faults": 13044,
+      "major_faults": 0,
+      "stdout_sha256": "e8a5fb7e70214f91d0d3aa759c9c389aa619152a9822e28d728c8080d60b8f16",
+      "stdout_bytes": 44,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 333,
+          "elapsed_ms": 356.8,
+          "heap_peak_mib": 47.9,
+          "last_live_mib": 6.6
+        }
+      ],
+      "gc_lines": [
+        "gc: 333 collections, 356.8 ms; heap peak 47.9 MiB; live 6.6 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 333 collections, 356.8 ms; heap peak 47.9 MiB; live 6.6 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "combined_object",
+      "phase": "measure",
+      "round": 3,
+      "returncode": 0,
+      "wall_s": 1.85749246100022,
+      "user_s": 1.8398409999999998,
+      "system_s": 0.016683,
+      "peak_rss_kib": 49920,
+      "minor_faults": 13044,
+      "major_faults": 0,
+      "stdout_sha256": "e8a5fb7e70214f91d0d3aa759c9c389aa619152a9822e28d728c8080d60b8f16",
+      "stdout_bytes": 44,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 333,
+          "elapsed_ms": 351.7,
+          "heap_peak_mib": 47.9,
+          "last_live_mib": 6.6
+        }
+      ],
+      "gc_lines": [
+        "gc: 333 collections, 351.7 ms; heap peak 47.9 MiB; live 6.6 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 333 collections, 351.7 ms; heap peak 47.9 MiB; live 6.6 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "atomic_only",
+      "phase": "measure",
+      "round": 4,
+      "returncode": 0,
+      "wall_s": 1.8868128250032896,
+      "user_s": 1.864856,
+      "system_s": 0.020746,
+      "peak_rss_kib": 49920,
+      "minor_faults": 13046,
+      "major_faults": 0,
+      "stdout_sha256": "e8a5fb7e70214f91d0d3aa759c9c389aa619152a9822e28d728c8080d60b8f16",
+      "stdout_bytes": 44,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 333,
+          "elapsed_ms": 352.4,
+          "heap_peak_mib": 47.9,
+          "last_live_mib": 6.6
+        }
+      ],
+      "gc_lines": [
+        "gc: 333 collections, 352.4 ms; heap peak 47.9 MiB; live 6.6 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 333 collections, 352.4 ms; heap peak 47.9 MiB; live 6.6 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "combined_object",
+      "phase": "measure",
+      "round": 4,
+      "returncode": 0,
+      "wall_s": 1.934927668000455,
+      "user_s": 1.916815,
+      "system_s": 0.017041,
+      "peak_rss_kib": 49920,
+      "minor_faults": 13043,
+      "major_faults": 0,
+      "stdout_sha256": "e8a5fb7e70214f91d0d3aa759c9c389aa619152a9822e28d728c8080d60b8f16",
+      "stdout_bytes": 44,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 333,
+          "elapsed_ms": 367.4,
+          "heap_peak_mib": 47.9,
+          "last_live_mib": 6.6
+        }
+      ],
+      "gc_lines": [
+        "gc: 333 collections, 367.4 ms; heap peak 47.9 MiB; live 6.6 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 333 collections, 367.4 ms; heap peak 47.9 MiB; live 6.6 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "main",
+      "phase": "measure",
+      "round": 4,
+      "returncode": 0,
+      "wall_s": 2.331305150000844,
+      "user_s": 2.306307,
+      "system_s": 0.023535999999999998,
+      "peak_rss_kib": 50176,
+      "minor_faults": 13095,
+      "major_faults": 0,
+      "stdout_sha256": "e8a5fb7e70214f91d0d3aa759c9c389aa619152a9822e28d728c8080d60b8f16",
+      "stdout_bytes": 44,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 333,
+          "elapsed_ms": 675.1,
+          "heap_peak_mib": 47.9,
+          "last_live_mib": 6.6
+        }
+      ],
+      "gc_lines": [
+        "gc: 333 collections, 675.1 ms; heap peak 47.9 MiB; live 6.6 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 333 collections, 675.1 ms; heap peak 47.9 MiB; live 6.6 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "combined_object",
+      "phase": "measure",
+      "round": 5,
+      "returncode": 0,
+      "wall_s": 1.9203392589988653,
+      "user_s": 1.896443,
+      "system_s": 0.023034,
+      "peak_rss_kib": 49920,
+      "minor_faults": 13043,
+      "major_faults": 0,
+      "stdout_sha256": "e8a5fb7e70214f91d0d3aa759c9c389aa619152a9822e28d728c8080d60b8f16",
+      "stdout_bytes": 44,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 333,
+          "elapsed_ms": 362.0,
+          "heap_peak_mib": 47.9,
+          "last_live_mib": 6.6
+        }
+      ],
+      "gc_lines": [
+        "gc: 333 collections, 362.0 ms; heap peak 47.9 MiB; live 6.6 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 333 collections, 362.0 ms; heap peak 47.9 MiB; live 6.6 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "main",
+      "phase": "measure",
+      "round": 5,
+      "returncode": 0,
+      "wall_s": 2.2381333489975077,
+      "user_s": 2.215364,
+      "system_s": 0.021849999999999998,
+      "peak_rss_kib": 50176,
+      "minor_faults": 13094,
+      "major_faults": 0,
+      "stdout_sha256": "e8a5fb7e70214f91d0d3aa759c9c389aa619152a9822e28d728c8080d60b8f16",
+      "stdout_bytes": 44,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 333,
+          "elapsed_ms": 662.4,
+          "heap_peak_mib": 47.9,
+          "last_live_mib": 6.6
+        }
+      ],
+      "gc_lines": [
+        "gc: 333 collections, 662.4 ms; heap peak 47.9 MiB; live 6.6 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 333 collections, 662.4 ms; heap peak 47.9 MiB; live 6.6 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "atomic_only",
+      "phase": "measure",
+      "round": 5,
+      "returncode": 0,
+      "wall_s": 2.123204921001161,
+      "user_s": 2.101891,
+      "system_s": 0.020406,
+      "peak_rss_kib": 49920,
+      "minor_faults": 13043,
+      "major_faults": 0,
+      "stdout_sha256": "e8a5fb7e70214f91d0d3aa759c9c389aa619152a9822e28d728c8080d60b8f16",
+      "stdout_bytes": 44,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 333,
+          "elapsed_ms": 409.4,
+          "heap_peak_mib": 47.9,
+          "last_live_mib": 6.6
+        }
+      ],
+      "gc_lines": [
+        "gc: 333 collections, 409.4 ms; heap peak 47.9 MiB; live 6.6 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "gc: 333 collections, 409.4 ms; heap peak 47.9 MiB; live 6.6 MiB at the last\n",
+      "output_matches": true
+    }
+  ],
+  "complete": true,
+  "loadavg_after": [
+    1.09375,
+    0.9951171875,
+    0.76416015625
+  ],
+  "summary": {
+    "main": {
+      "wall_s": 2.194065983498149,
+      "user_s": 2.175627,
+      "system_s": 0.022692999999999998,
+      "peak_rss_kib": 50176.0,
+      "minor_faults": 13094.0,
+      "major_faults": 0.0,
+      "samples": 6,
+      "all_outputs_match": true,
+      "gc_collections": 333.0,
+      "gc_elapsed_ms": 648.3499999999999,
+      "gc_heap_peak_mib": 47.9,
+      "gc_last_live_mib": 6.6
+    },
+    "atomic_only": {
+      "wall_s": 1.9711516085044423,
+      "user_s": 1.9501725,
+      "system_s": 0.02064,
+      "peak_rss_kib": 49920.0,
+      "minor_faults": 13044.0,
+      "major_faults": 0.0,
+      "samples": 6,
+      "all_outputs_match": true,
+      "gc_collections": 333.0,
+      "gc_elapsed_ms": 358.4,
+      "gc_heap_peak_mib": 47.9,
+      "gc_last_live_mib": 6.6
+    },
+    "combined_object": {
+      "wall_s": 1.8626739920000546,
+      "user_s": 1.845001,
+      "system_s": 0.016896500000000002,
+      "peak_rss_kib": 49920.0,
+      "minor_faults": 13043.0,
+      "major_faults": 0.0,
+      "samples": 6,
+      "all_outputs_match": true,
+      "gc_collections": 333.0,
+      "gc_elapsed_ms": 356.85,
+      "gc_heap_peak_mib": 47.9,
+      "gc_last_live_mib": 6.6
+    }
+  },
+  "all_outputs_match": true
+}

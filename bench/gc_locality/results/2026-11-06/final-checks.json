@@ -1,0 +1,340 @@
+{
+  "source_revision": "a533aa2b6c75b464ce01002208951087b384fed8",
+  "runtime_sha256": "b8d65bb367168f45233c63bbfae8dd34f605bc4d0796b0858d509859a71a2690",
+  "compiler_sha256": "c8dc02d3fcc2f101a6279ea260258aa36093ff8be5c6c46cb6ba0303787104af",
+  "runs": [
+    {
+      "name": "lint-contracts",
+      "argv": [
+        "make",
+        "PY=/workspace/scratch/3e98002bc0e0/venv/bin/python",
+        "lint",
+        "check-runtime",
+        "check-repository"
+      ],
+      "extra_env": {},
+      "returncode": 0,
+      "elapsed_s": 25.00278104100289,
+      "log": "/workspace/scratch/8b5d64b08ada/final-lint-contracts.log"
+    },
+    {
+      "name": "controller",
+      "argv": [
+        "/workspace/scratch/3e98002bc0e0/venv/bin/python",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "bench/gc_locality",
+        "-p",
+        "test_run.py"
+      ],
+      "extra_env": {},
+      "returncode": 0,
+      "elapsed_s": 1.4250669890025165,
+      "log": "/workspace/scratch/8b5d64b08ada/final-controller.log"
+    },
+    {
+      "name": "jitfast",
+      "argv": [
+        "/workspace/scratch/3e98002bc0e0/venv/bin/python",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools",
+        "-p",
+        "test_runtime_jitfast.py"
+      ],
+      "extra_env": {},
+      "returncode": 0,
+      "elapsed_s": 0.5156437519981409,
+      "log": "/workspace/scratch/8b5d64b08ada/final-jitfast.log"
+    },
+    {
+      "name": "workflow",
+      "argv": [
+        "/workspace/scratch/3e98002bc0e0/venv/bin/python",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools",
+        "-p",
+        "test_workflow_limits.py"
+      ],
+      "extra_env": {},
+      "returncode": 0,
+      "elapsed_s": 0.26537929600453936,
+      "log": "/workspace/scratch/8b5d64b08ada/final-workflow.log"
+    },
+    {
+      "name": "ir-proofs",
+      "argv": [
+        "make",
+        "PY=/workspace/scratch/3e98002bc0e0/venv/bin/python",
+        "check-ir",
+        "FILES=tests/ir/alloc_refs.py tests/ir/alloc_refs_dyn.py tests/ir/alloc_refs_big.py"
+      ],
+      "extra_env": {},
+      "returncode": 0,
+      "elapsed_s": 0.11464888999762479,
+      "log": "/workspace/scratch/8b5d64b08ada/final-ir-proofs.log"
+    },
+    {
+      "name": "irsame",
+      "argv": [
+        "sh",
+        "tools/irsame.sh",
+        "/workspace/scratch/8b5d64b08ada/baseline/pystachy",
+        "./pystachy",
+        "tests/programs/runtime/gc_churn.py",
+        "tests/programs/runtime/gc_dict_values.py",
+        "tests/programs/runtime/gc_list_kinds.py",
+        "tests/programs/runtime/gc_template_empty_kind.py",
+        "tests/programs/library/lib_weakref.py",
+        "tests/programs/library/lib_weakref_dead.py",
+        "tests/programs/library/lib_weakref_transition.py",
+        "tests/programs/library/lib_weakref_callback.py",
+        "tests/programs/library/lib_weakref_callback_nested.py",
+        "tests/programs/library/lib_weakref_callback_dead_ref.py",
+        "tests/programs/optimizations/opt_alloc_held_fields.py",
+        "tests/programs/optimizations/opt_alloc_held_tuple.py",
+        "tests/programs/optimizations/opt_alloc_held_cohort.py",
+        "tests/programs/optimizations/opt_scalars.py",
+        "tests/programs/optimizations/opt_tupleiter.py",
+        "tests/programs/inference/dynany_identity_fields.py",
+        "tests/programs/inference/dynany_identity_field_defaults.py",
+        "tests/programs/inference/dynany_identity_field_kinds.py",
+        "tests/programs/inference/dynany_identity_scope_fields.py",
+        "tests/programs/inference/dynany_identity_cells.py",
+        "tests/programs/inference/dynany_identity_joined_cells.py",
+        "tests/programs/inference/dynany_identity_field_retired.py",
+        "tests/programs/inference/dynany_identity_expression_lifetime.py",
+        "tests/programs/inference/dynany_layout_forms.py",
+        "tests/programs/inference/dynany_layout_records.py",
+        "tests/programs/inference/dynany_forward_cycle_dict.py",
+        "tests/programs/language/closures_scopes.py",
+        "tests/programs/language/closures_more.py",
+        "tests/programs/language/closure_paths.py",
+        "tests/programs/generators/gen_gc.py",
+        "tests/programs/generators/gen_protocol_gc.py",
+        "tests/programs/generators/gen_cm_gc.py",
+        "tests/programs/inference/dynany_generator_boxing.py",
+        "tests/programs/inference/dynany_generator_context_protocol.py",
+        "tests/programs/numbers/python_int_generators.py",
+        "tests/programs/numbers/python_int_tuples.py",
+        "tests/programs/numbers/python_int_class_defaults.py",
+        "tests/programs/numbers/python_int_dataclass_copy.py",
+        "tests/programs/inference/dynany_identity_inert_fields.py",
+        "tests/programs/inference/dynany_identity_promote_wide.py",
+        "tests/programs/inference/dynany_identity_promote_return.py",
+        "tests/programs/inference/dynany_identity_promote_list.py",
+        "tests/programs/inference/dynany_identity_display_lifetime.py",
+        "tests/programs/numbers/python_int_any_identity.py",
+        "tests/ir/alloc_refs.py",
+        "tests/ir/alloc_refs_dyn.py",
+        "tests/ir/alloc_refs_big.py",
+        "runtime.py"
+      ],
+      "extra_env": {
+        "PYSTACHY_HOME": ""
+      },
+      "returncode": 1,
+      "elapsed_s": 0.7715320439965581,
+      "log": "/workspace/scratch/8b5d64b08ada/final-irsame.log"
+    },
+    {
+      "name": "c-probes",
+      "argv": [
+        "make",
+        "PY=/workspace/scratch/3e98002bc0e0/venv/bin/python",
+        "boxprobe",
+        "listprobe",
+        "dictprobe",
+        "eqprobe",
+        "fileprobe",
+        "unicodeprobe"
+      ],
+      "extra_env": {},
+      "returncode": 0,
+      "elapsed_s": 54.505340958996385,
+      "log": "/workspace/scratch/8b5d64b08ada/final-c-probes.log"
+    },
+    {
+      "name": "boxprobe-block",
+      "argv": [
+        "build/boxprobe"
+      ],
+      "extra_env": {
+        "PYSTACHY_GC_MARK": "block"
+      },
+      "returncode": 0,
+      "elapsed_s": 0.0016394490012316965,
+      "log": "/workspace/scratch/8b5d64b08ada/final-boxprobe-block.log"
+    },
+    {
+      "name": "boxprobe-block-stress",
+      "argv": [
+        "build/boxprobe"
+      ],
+      "extra_env": {
+        "PYSTACHY_GC_MARK": "block",
+        "PYSTACHY_GC_STRESS": "1"
+      },
+      "returncode": 0,
+      "elapsed_s": 0.0015721179952379316,
+      "log": "/workspace/scratch/8b5d64b08ada/final-boxprobe-block-stress.log"
+    },
+    {
+      "name": "listprobe-block",
+      "argv": [
+        "build/listprobe"
+      ],
+      "extra_env": {
+        "PYSTACHY_GC_MARK": "block"
+      },
+      "returncode": 0,
+      "elapsed_s": 0.06411963700520573,
+      "log": "/workspace/scratch/8b5d64b08ada/final-listprobe-block.log"
+    },
+    {
+      "name": "listprobe-block-stress",
+      "argv": [
+        "build/listprobe"
+      ],
+      "extra_env": {
+        "PYSTACHY_GC_MARK": "block",
+        "PYSTACHY_GC_STRESS": "1"
+      },
+      "returncode": 0,
+      "elapsed_s": 1.669783760997234,
+      "log": "/workspace/scratch/8b5d64b08ada/final-listprobe-block-stress.log"
+    },
+    {
+      "name": "dictprobe-block",
+      "argv": [
+        "build/dictprobe"
+      ],
+      "extra_env": {
+        "PYSTACHY_GC_MARK": "block"
+      },
+      "returncode": 0,
+      "elapsed_s": 0.4153060069947969,
+      "log": "/workspace/scratch/8b5d64b08ada/final-dictprobe-block.log"
+    },
+    {
+      "name": "dictprobe-block-stress",
+      "argv": [
+        "build/dictprobe",
+        "--hash-cache"
+      ],
+      "extra_env": {
+        "PYSTACHY_GC_MARK": "block",
+        "PYSTACHY_GC_STRESS": "1"
+      },
+      "returncode": 0,
+      "elapsed_s": 0.06433182799810311,
+      "log": "/workspace/scratch/8b5d64b08ada/final-dictprobe-block-stress.log"
+    },
+    {
+      "name": "eqprobe-block",
+      "argv": [
+        "build/eqprobe"
+      ],
+      "extra_env": {
+        "PYSTACHY_GC_MARK": "block"
+      },
+      "returncode": 0,
+      "elapsed_s": 0.0025049530013347976,
+      "log": "/workspace/scratch/8b5d64b08ada/final-eqprobe-block.log"
+    },
+    {
+      "name": "eqprobe-block-stress",
+      "argv": [
+        "build/eqprobe"
+      ],
+      "extra_env": {
+        "PYSTACHY_GC_MARK": "block",
+        "PYSTACHY_GC_STRESS": "1"
+      },
+      "returncode": 0,
+      "elapsed_s": 0.0038718009964213707,
+      "log": "/workspace/scratch/8b5d64b08ada/final-eqprobe-block-stress.log"
+    },
+    {
+      "name": "fileprobe-block",
+      "argv": [
+        "build/fileprobe"
+      ],
+      "extra_env": {
+        "PYSTACHY_GC_MARK": "block"
+      },
+      "returncode": 0,
+      "elapsed_s": 0.01592933299980359,
+      "log": "/workspace/scratch/8b5d64b08ada/final-fileprobe-block.log"
+    },
+    {
+      "name": "fileprobe-block-stress",
+      "argv": [
+        "build/fileprobe"
+      ],
+      "extra_env": {
+        "PYSTACHY_GC_MARK": "block",
+        "PYSTACHY_GC_STRESS": "1"
+      },
+      "returncode": 0,
+      "elapsed_s": 0.016004004995920695,
+      "log": "/workspace/scratch/8b5d64b08ada/final-fileprobe-block-stress.log"
+    },
+    {
+      "name": "fileprobe-block-lib",
+      "argv": [
+        "build/fileprobe",
+        "--lib"
+      ],
+      "extra_env": {
+        "PYSTACHY_GC_MARK": "block"
+      },
+      "returncode": 0,
+      "elapsed_s": 0.016238559001067188,
+      "log": "/workspace/scratch/8b5d64b08ada/final-fileprobe-block-lib.log"
+    },
+    {
+      "name": "unicodeprobe-block",
+      "argv": [
+        "build/unicodeprobe"
+      ],
+      "extra_env": {
+        "PYSTACHY_GC_MARK": "block"
+      },
+      "returncode": 0,
+      "elapsed_s": 0.0038040500003262423,
+      "log": "/workspace/scratch/8b5d64b08ada/final-unicodeprobe-block.log"
+    },
+    {
+      "name": "unicodeprobe-block-stress",
+      "argv": [
+        "build/unicodeprobe"
+      ],
+      "extra_env": {
+        "PYSTACHY_GC_MARK": "block",
+        "PYSTACHY_GC_STRESS": "1"
+      },
+      "returncode": 0,
+      "elapsed_s": 0.00388282800122397,
+      "log": "/workspace/scratch/8b5d64b08ada/final-unicodeprobe-block-stress.log"
+    }
+  ],
+  "complete": true,
+  "ir_difference_resolution": {
+    "own_home_differing": 9,
+    "total": 48,
+    "sole_difference": "Each differing fixture embeds one absolute _pystachy_weakref.py import-error path; baseline/ versus pystachy/. All other IR bytes, exit statuses and diagnostics match.",
+    "library_files_identical": 90,
+    "library_bytes_identical": 2750993,
+    "shared_home_original_oracle_result": "48 programs identical",
+    "evidence": "irsame-diagnostic.json",
+    "original_failed_check_preserved": true
+  }
+}

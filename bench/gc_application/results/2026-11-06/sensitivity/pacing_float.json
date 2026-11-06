@@ -1,0 +1,852 @@
+{
+  "schema_version": 1,
+  "workload": "pacing_float",
+  "started_utc": "2026-11-06T05:38:34.864545+00:00",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.39",
+  "python": "3.13.16 (main, Oct 14 2026, 01:04:01) [Clang 23.1.3 ]",
+  "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+  "cpu": 3,
+  "allowed_cpus": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+  ],
+  "logical_cpus": 9,
+  "loadavg_before": [
+    2.4619140625,
+    2.33544921875,
+    1.78857421875
+  ],
+  "rounds": 6,
+  "warmups": 1,
+  "variants": [
+    {
+      "name": "min8",
+      "argv": [
+        "/workspace/scratch/a009f956ecf0/native-build/default-float",
+        "40",
+        "1000000"
+      ],
+      "env": {
+        "PYSTACHY_GC": "stats",
+        "PYSTACHY_GC_MIN": "8"
+      },
+      "validated_executable_sha256": "a38e509eb1125042aa13be3ccb1953b156d0d49b499a0fa329a356b8afcf2c92",
+      "cwd": "/workspace/scratch/a009f956ecf0/pystachy",
+      "address_space_mib": 2048,
+      "inputs_sha256": {
+        "/workspace/scratch/a009f956ecf0/pystachy/bench/pyperformance/float.py": "cc19566e50f47bc26d78324475260ff9808509266b70fffeff0091d1144388d0",
+        "/workspace/scratch/a009f956ecf0/native-build/builds.json": "11b6fc1ffd6b1e4ed0411c2e40e1d287da0906a68635468b319817c55edeff2c"
+      },
+      "executable_path": "/workspace/scratch/a009f956ecf0/native-build/default-float",
+      "executable_sha256": "a38e509eb1125042aa13be3ccb1953b156d0d49b499a0fa329a356b8afcf2c92",
+      "checkout": {
+        "revision": "8afcb804b263e7303f9f746ee55332cf40ddbff6",
+        "status": ""
+      }
+    },
+    {
+      "name": "min32",
+      "argv": [
+        "/workspace/scratch/a009f956ecf0/native-build/default-float",
+        "40",
+        "1000000"
+      ],
+      "env": {
+        "PYSTACHY_GC": "stats",
+        "PYSTACHY_GC_MIN": "32"
+      },
+      "validated_executable_sha256": "a38e509eb1125042aa13be3ccb1953b156d0d49b499a0fa329a356b8afcf2c92",
+      "cwd": "/workspace/scratch/a009f956ecf0/pystachy",
+      "address_space_mib": 2048,
+      "inputs_sha256": {
+        "/workspace/scratch/a009f956ecf0/pystachy/bench/pyperformance/float.py": "cc19566e50f47bc26d78324475260ff9808509266b70fffeff0091d1144388d0",
+        "/workspace/scratch/a009f956ecf0/native-build/builds.json": "11b6fc1ffd6b1e4ed0411c2e40e1d287da0906a68635468b319817c55edeff2c"
+      },
+      "executable_path": "/workspace/scratch/a009f956ecf0/native-build/default-float",
+      "executable_sha256": "a38e509eb1125042aa13be3ccb1953b156d0d49b499a0fa329a356b8afcf2c92",
+      "checkout": {
+        "revision": "8afcb804b263e7303f9f746ee55332cf40ddbff6",
+        "status": ""
+      }
+    },
+    {
+      "name": "min128",
+      "argv": [
+        "/workspace/scratch/a009f956ecf0/native-build/default-float",
+        "40",
+        "1000000"
+      ],
+      "env": {
+        "PYSTACHY_GC": "stats",
+        "PYSTACHY_GC_MIN": "128"
+      },
+      "validated_executable_sha256": "a38e509eb1125042aa13be3ccb1953b156d0d49b499a0fa329a356b8afcf2c92",
+      "cwd": "/workspace/scratch/a009f956ecf0/pystachy",
+      "address_space_mib": 2048,
+      "inputs_sha256": {
+        "/workspace/scratch/a009f956ecf0/pystachy/bench/pyperformance/float.py": "cc19566e50f47bc26d78324475260ff9808509266b70fffeff0091d1144388d0",
+        "/workspace/scratch/a009f956ecf0/native-build/builds.json": "11b6fc1ffd6b1e4ed0411c2e40e1d287da0906a68635468b319817c55edeff2c"
+      },
+      "executable_path": "/workspace/scratch/a009f956ecf0/native-build/default-float",
+      "executable_sha256": "a38e509eb1125042aa13be3ccb1953b156d0d49b499a0fa329a356b8afcf2c92",
+      "checkout": {
+        "revision": "8afcb804b263e7303f9f746ee55332cf40ddbff6",
+        "status": ""
+      }
+    }
+  ],
+  "notes": "Native pacing sensitivity; same already-validated executable and full inputs. GC_MIN is a pacing floor, not heap cap. Six rotated rounds with one excluded warmup, CPU 3; identical 2048 MiB address-space limit. Actual RSS reported. Prespecified policies 8/32/128 MiB applied equally.",
+  "samples": [
+    {
+      "variant": "min8",
+      "phase": "warmup",
+      "round": 0,
+      "returncode": 0,
+      "wall_s": 1.8263399920033407,
+      "user_s": 1.5242200000000001,
+      "system_s": 0.300929,
+      "peak_rss_kib": 77628,
+      "minor_faults": 276741,
+      "major_faults": 0,
+      "stdout_sha256": "d7a597130d39458a01ed4270e71869d702cc65720a7b7e280ec0db432d741feb",
+      "stdout_bytes": 76,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 73,
+          "elapsed_ms": 205.3,
+          "heap_peak_mib": 76.9,
+          "last_live_mib": 30.5
+        }
+      ],
+      "gc_lines": [
+        "gc: 73 collections, 205.3 ms; heap peak 76.9 MiB; live 30.5 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.821254526003031\ngc: 73 collections, 205.3 ms; heap peak 76.9 MiB; live 30.5 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "min32",
+      "phase": "warmup",
+      "round": 0,
+      "returncode": 0,
+      "wall_s": 2.016686661001586,
+      "user_s": 1.805682,
+      "system_s": 0.209401,
+      "peak_rss_kib": 67084,
+      "minor_faults": 161535,
+      "major_faults": 0,
+      "stdout_sha256": "d7a597130d39458a01ed4270e71869d702cc65720a7b7e280ec0db432d741feb",
+      "stdout_bytes": 76,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 59,
+          "elapsed_ms": 151.2,
+          "heap_peak_mib": 64.6,
+          "last_live_mib": 18.4
+        }
+      ],
+      "gc_lines": [
+        "gc: 59 collections, 151.2 ms; heap peak 64.6 MiB; live 18.4 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 2.0100661979959114\ngc: 59 collections, 151.2 ms; heap peak 64.6 MiB; live 18.4 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "min128",
+      "phase": "warmup",
+      "round": 0,
+      "returncode": 0,
+      "wall_s": 1.7755038370014518,
+      "user_s": 1.709684,
+      "system_s": 0.064502,
+      "peak_rss_kib": 180224,
+      "minor_faults": 46123,
+      "major_faults": 0,
+      "stdout_sha256": "d7a597130d39458a01ed4270e71869d702cc65720a7b7e280ec0db432d741feb",
+      "stdout_bytes": 76,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 14,
+          "elapsed_ms": 38.2,
+          "heap_peak_mib": 174.8,
+          "last_live_mib": 38.1
+        }
+      ],
+      "gc_lines": [
+        "gc: 14 collections, 38.2 ms; heap peak 174.8 MiB; live 38.1 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.7633774900023127\ngc: 14 collections, 38.2 ms; heap peak 174.8 MiB; live 38.1 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "min8",
+      "phase": "measure",
+      "round": 0,
+      "returncode": 0,
+      "wall_s": 2.1955267359953723,
+      "user_s": 1.869089,
+      "system_s": 0.325455,
+      "peak_rss_kib": 77624,
+      "minor_faults": 276737,
+      "major_faults": 0,
+      "stdout_sha256": "d7a597130d39458a01ed4270e71869d702cc65720a7b7e280ec0db432d741feb",
+      "stdout_bytes": 76,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 73,
+          "elapsed_ms": 262.8,
+          "heap_peak_mib": 76.9,
+          "last_live_mib": 30.5
+        }
+      ],
+      "gc_lines": [
+        "gc: 73 collections, 262.8 ms; heap peak 76.9 MiB; live 30.5 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 2.1881993589995545\ngc: 73 collections, 262.8 ms; heap peak 76.9 MiB; live 30.5 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "min32",
+      "phase": "measure",
+      "round": 0,
+      "returncode": 0,
+      "wall_s": 2.0928777630033437,
+      "user_s": 1.864249,
+      "system_s": 0.227563,
+      "peak_rss_kib": 67088,
+      "minor_faults": 161536,
+      "major_faults": 0,
+      "stdout_sha256": "d7a597130d39458a01ed4270e71869d702cc65720a7b7e280ec0db432d741feb",
+      "stdout_bytes": 76,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 59,
+          "elapsed_ms": 151.8,
+          "heap_peak_mib": 64.6,
+          "last_live_mib": 18.4
+        }
+      ],
+      "gc_lines": [
+        "gc: 59 collections, 151.8 ms; heap peak 64.6 MiB; live 18.4 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 2.0853399140032707\ngc: 59 collections, 151.8 ms; heap peak 64.6 MiB; live 18.4 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "min128",
+      "phase": "measure",
+      "round": 0,
+      "returncode": 0,
+      "wall_s": 1.7301937579977675,
+      "user_s": 1.6743890000000001,
+      "system_s": 0.054396,
+      "peak_rss_kib": 180224,
+      "minor_faults": 46124,
+      "major_faults": 0,
+      "stdout_sha256": "d7a597130d39458a01ed4270e71869d702cc65720a7b7e280ec0db432d741feb",
+      "stdout_bytes": 76,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 14,
+          "elapsed_ms": 36.7,
+          "heap_peak_mib": 174.8,
+          "last_live_mib": 38.1
+        }
+      ],
+      "gc_lines": [
+        "gc: 14 collections, 36.7 ms; heap peak 174.8 MiB; live 38.1 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.7187660490017151\ngc: 14 collections, 36.7 ms; heap peak 174.8 MiB; live 38.1 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "min32",
+      "phase": "measure",
+      "round": 1,
+      "returncode": 0,
+      "wall_s": 1.8672249380033463,
+      "user_s": 1.631,
+      "system_s": 0.23493599999999998,
+      "peak_rss_kib": 67088,
+      "minor_faults": 161534,
+      "major_faults": 0,
+      "stdout_sha256": "d7a597130d39458a01ed4270e71869d702cc65720a7b7e280ec0db432d741feb",
+      "stdout_bytes": 76,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 59,
+          "elapsed_ms": 132.6,
+          "heap_peak_mib": 64.6,
+          "last_live_mib": 18.4
+        }
+      ],
+      "gc_lines": [
+        "gc: 59 collections, 132.6 ms; heap peak 64.6 MiB; live 18.4 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.860342510000919\ngc: 59 collections, 132.6 ms; heap peak 64.6 MiB; live 18.4 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "min128",
+      "phase": "measure",
+      "round": 1,
+      "returncode": 0,
+      "wall_s": 1.8692369120035437,
+      "user_s": 1.7858990000000001,
+      "system_s": 0.081608,
+      "peak_rss_kib": 180224,
+      "minor_faults": 46124,
+      "major_faults": 0,
+      "stdout_sha256": "d7a597130d39458a01ed4270e71869d702cc65720a7b7e280ec0db432d741feb",
+      "stdout_bytes": 76,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 14,
+          "elapsed_ms": 41.8,
+          "heap_peak_mib": 174.8,
+          "last_live_mib": 38.1
+        }
+      ],
+      "gc_lines": [
+        "gc: 14 collections, 41.8 ms; heap peak 174.8 MiB; live 38.1 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.8556470080002327\ngc: 14 collections, 41.8 ms; heap peak 174.8 MiB; live 38.1 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "min8",
+      "phase": "measure",
+      "round": 1,
+      "returncode": 0,
+      "wall_s": 2.239372934003768,
+      "user_s": 1.865195,
+      "system_s": 0.371062,
+      "peak_rss_kib": 77624,
+      "minor_faults": 276735,
+      "major_faults": 0,
+      "stdout_sha256": "d7a597130d39458a01ed4270e71869d702cc65720a7b7e280ec0db432d741feb",
+      "stdout_bytes": 76,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 73,
+          "elapsed_ms": 246.8,
+          "heap_peak_mib": 76.9,
+          "last_live_mib": 30.5
+        }
+      ],
+      "gc_lines": [
+        "gc: 73 collections, 246.8 ms; heap peak 76.9 MiB; live 30.5 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 2.2299739439986297\ngc: 73 collections, 246.8 ms; heap peak 76.9 MiB; live 30.5 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "min128",
+      "phase": "measure",
+      "round": 2,
+      "returncode": 0,
+      "wall_s": 1.7519077089964412,
+      "user_s": 1.6855310000000001,
+      "system_s": 0.06514199999999999,
+      "peak_rss_kib": 180224,
+      "minor_faults": 46122,
+      "major_faults": 0,
+      "stdout_sha256": "d7a597130d39458a01ed4270e71869d702cc65720a7b7e280ec0db432d741feb",
+      "stdout_bytes": 76,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 14,
+          "elapsed_ms": 36.0,
+          "heap_peak_mib": 174.8,
+          "last_live_mib": 38.1
+        }
+      ],
+      "gc_lines": [
+        "gc: 14 collections, 36.0 ms; heap peak 174.8 MiB; live 38.1 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.739112130002468\ngc: 14 collections, 36.0 ms; heap peak 174.8 MiB; live 38.1 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "min8",
+      "phase": "measure",
+      "round": 2,
+      "returncode": 0,
+      "wall_s": 2.0754184150064248,
+      "user_s": 1.7781669999999998,
+      "system_s": 0.295715,
+      "peak_rss_kib": 77628,
+      "minor_faults": 276741,
+      "major_faults": 0,
+      "stdout_sha256": "d7a597130d39458a01ed4270e71869d702cc65720a7b7e280ec0db432d741feb",
+      "stdout_bytes": 76,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 73,
+          "elapsed_ms": 239.8,
+          "heap_peak_mib": 76.9,
+          "last_live_mib": 30.5
+        }
+      ],
+      "gc_lines": [
+        "gc: 73 collections, 239.8 ms; heap peak 76.9 MiB; live 30.5 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 2.069114179997996\ngc: 73 collections, 239.8 ms; heap peak 76.9 MiB; live 30.5 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "min32",
+      "phase": "measure",
+      "round": 2,
+      "returncode": 0,
+      "wall_s": 1.853096660997835,
+      "user_s": 1.6718060000000001,
+      "system_s": 0.180219,
+      "peak_rss_kib": 67088,
+      "minor_faults": 161538,
+      "major_faults": 0,
+      "stdout_sha256": "d7a597130d39458a01ed4270e71869d702cc65720a7b7e280ec0db432d741feb",
+      "stdout_bytes": 76,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 59,
+          "elapsed_ms": 131.2,
+          "heap_peak_mib": 64.6,
+          "last_live_mib": 18.4
+        }
+      ],
+      "gc_lines": [
+        "gc: 59 collections, 131.2 ms; heap peak 64.6 MiB; live 18.4 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.8449574710029992\ngc: 59 collections, 131.2 ms; heap peak 64.6 MiB; live 18.4 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "min8",
+      "phase": "measure",
+      "round": 3,
+      "returncode": 0,
+      "wall_s": 2.2327379830021528,
+      "user_s": 1.8601239999999999,
+      "system_s": 0.3705,
+      "peak_rss_kib": 77628,
+      "minor_faults": 276738,
+      "major_faults": 0,
+      "stdout_sha256": "d7a597130d39458a01ed4270e71869d702cc65720a7b7e280ec0db432d741feb",
+      "stdout_bytes": 76,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 73,
+          "elapsed_ms": 256.4,
+          "heap_peak_mib": 76.9,
+          "last_live_mib": 30.5
+        }
+      ],
+      "gc_lines": [
+        "gc: 73 collections, 256.4 ms; heap peak 76.9 MiB; live 30.5 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 2.223224550994928\ngc: 73 collections, 256.4 ms; heap peak 76.9 MiB; live 30.5 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "min32",
+      "phase": "measure",
+      "round": 3,
+      "returncode": 0,
+      "wall_s": 2.1096042360004503,
+      "user_s": 1.857567,
+      "system_s": 0.249327,
+      "peak_rss_kib": 67084,
+      "minor_faults": 161536,
+      "major_faults": 0,
+      "stdout_sha256": "d7a597130d39458a01ed4270e71869d702cc65720a7b7e280ec0db432d741feb",
+      "stdout_bytes": 76,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 59,
+          "elapsed_ms": 158.0,
+          "heap_peak_mib": 64.6,
+          "last_live_mib": 18.4
+        }
+      ],
+      "gc_lines": [
+        "gc: 59 collections, 158.0 ms; heap peak 64.6 MiB; live 18.4 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 2.1011884910039953\ngc: 59 collections, 158.0 ms; heap peak 64.6 MiB; live 18.4 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "min128",
+      "phase": "measure",
+      "round": 3,
+      "returncode": 0,
+      "wall_s": 1.8131951660034247,
+      "user_s": 1.766572,
+      "system_s": 0.045485,
+      "peak_rss_kib": 180224,
+      "minor_faults": 46125,
+      "major_faults": 0,
+      "stdout_sha256": "d7a597130d39458a01ed4270e71869d702cc65720a7b7e280ec0db432d741feb",
+      "stdout_bytes": 76,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 14,
+          "elapsed_ms": 37.4,
+          "heap_peak_mib": 174.8,
+          "last_live_mib": 38.1
+        }
+      ],
+      "gc_lines": [
+        "gc: 14 collections, 37.4 ms; heap peak 174.8 MiB; live 38.1 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.7986869099986507\ngc: 14 collections, 37.4 ms; heap peak 174.8 MiB; live 38.1 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "min32",
+      "phase": "measure",
+      "round": 4,
+      "returncode": 0,
+      "wall_s": 1.9497604770003818,
+      "user_s": 1.681214,
+      "system_s": 0.267654,
+      "peak_rss_kib": 67084,
+      "minor_faults": 161536,
+      "major_faults": 0,
+      "stdout_sha256": "d7a597130d39458a01ed4270e71869d702cc65720a7b7e280ec0db432d741feb",
+      "stdout_bytes": 76,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 59,
+          "elapsed_ms": 137.4,
+          "heap_peak_mib": 64.6,
+          "last_live_mib": 18.4
+        }
+      ],
+      "gc_lines": [
+        "gc: 59 collections, 137.4 ms; heap peak 64.6 MiB; live 18.4 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.9433349710016046\ngc: 59 collections, 137.4 ms; heap peak 64.6 MiB; live 18.4 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "min128",
+      "phase": "measure",
+      "round": 4,
+      "returncode": 0,
+      "wall_s": 1.5033568420039956,
+      "user_s": 1.455744,
+      "system_s": 0.046601,
+      "peak_rss_kib": 180224,
+      "minor_faults": 46126,
+      "major_faults": 0,
+      "stdout_sha256": "d7a597130d39458a01ed4270e71869d702cc65720a7b7e280ec0db432d741feb",
+      "stdout_bytes": 76,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 14,
+          "elapsed_ms": 30.6,
+          "heap_peak_mib": 174.8,
+          "last_live_mib": 38.1
+        }
+      ],
+      "gc_lines": [
+        "gc: 14 collections, 30.6 ms; heap peak 174.8 MiB; live 38.1 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.493221144999552\ngc: 14 collections, 30.6 ms; heap peak 174.8 MiB; live 38.1 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "min8",
+      "phase": "measure",
+      "round": 4,
+      "returncode": 0,
+      "wall_s": 2.0317209950007964,
+      "user_s": 1.633103,
+      "system_s": 0.397732,
+      "peak_rss_kib": 77624,
+      "minor_faults": 276740,
+      "major_faults": 0,
+      "stdout_sha256": "d7a597130d39458a01ed4270e71869d702cc65720a7b7e280ec0db432d741feb",
+      "stdout_bytes": 76,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 73,
+          "elapsed_ms": 232.5,
+          "heap_peak_mib": 76.9,
+          "last_live_mib": 30.5
+        }
+      ],
+      "gc_lines": [
+        "gc: 73 collections, 232.5 ms; heap peak 76.9 MiB; live 30.5 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 2.0258485919985105\ngc: 73 collections, 232.5 ms; heap peak 76.9 MiB; live 30.5 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "min128",
+      "phase": "measure",
+      "round": 5,
+      "returncode": 0,
+      "wall_s": 1.4861528309993446,
+      "user_s": 1.442005,
+      "system_s": 0.042928,
+      "peak_rss_kib": 180224,
+      "minor_faults": 46125,
+      "major_faults": 0,
+      "stdout_sha256": "d7a597130d39458a01ed4270e71869d702cc65720a7b7e280ec0db432d741feb",
+      "stdout_bytes": 76,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 14,
+          "elapsed_ms": 31.6,
+          "heap_peak_mib": 174.8,
+          "last_live_mib": 38.1
+        }
+      ],
+      "gc_lines": [
+        "gc: 14 collections, 31.6 ms; heap peak 174.8 MiB; live 38.1 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.4762825740035623\ngc: 14 collections, 31.6 ms; heap peak 174.8 MiB; live 38.1 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "min8",
+      "phase": "measure",
+      "round": 5,
+      "returncode": 0,
+      "wall_s": 1.9470407090047956,
+      "user_s": 1.6000619999999999,
+      "system_s": 0.342881,
+      "peak_rss_kib": 77628,
+      "minor_faults": 276742,
+      "major_faults": 0,
+      "stdout_sha256": "d7a597130d39458a01ed4270e71869d702cc65720a7b7e280ec0db432d741feb",
+      "stdout_bytes": 76,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 73,
+          "elapsed_ms": 222.2,
+          "heap_peak_mib": 76.9,
+          "last_live_mib": 30.5
+        }
+      ],
+      "gc_lines": [
+        "gc: 73 collections, 222.2 ms; heap peak 76.9 MiB; live 30.5 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.9371894860014436\ngc: 73 collections, 222.2 ms; heap peak 76.9 MiB; live 30.5 MiB at the last\n",
+      "output_matches": true
+    },
+    {
+      "variant": "min32",
+      "phase": "measure",
+      "round": 5,
+      "returncode": 0,
+      "wall_s": 1.7625661450001644,
+      "user_s": 1.509267,
+      "system_s": 0.252033,
+      "peak_rss_kib": 67084,
+      "minor_faults": 161539,
+      "major_faults": 0,
+      "stdout_sha256": "d7a597130d39458a01ed4270e71869d702cc65720a7b7e280ec0db432d741feb",
+      "stdout_bytes": 76,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "gc_reports": [
+        {
+          "collections": 59,
+          "elapsed_ms": 122.9,
+          "heap_peak_mib": 64.6,
+          "last_live_mib": 18.4
+        }
+      ],
+      "gc_lines": [
+        "gc: 59 collections, 122.9 ms; heap peak 64.6 MiB; live 18.4 MiB at the last"
+      ],
+      "gc_profile": {
+        "phases": [],
+        "work": []
+      },
+      "stderr_tail": "seconds 1.7547739319998072\ngc: 59 collections, 122.9 ms; heap peak 64.6 MiB; live 18.4 MiB at the last\n",
+      "output_matches": true
+    }
+  ],
+  "complete": true,
+  "loadavg_after": [
+    2.61328125,
+    2.38818359375,
+    1.83154296875
+  ],
+  "summary": {
+    "min8": {
+      "wall_s": 2.1354725755008985,
+      "user_s": 1.8191454999999999,
+      "system_s": 0.3566905,
+      "peak_rss_kib": 77626.0,
+      "minor_faults": 276739.0,
+      "major_faults": 0.0,
+      "samples": 6,
+      "all_outputs_match": true,
+      "gc_collections": 73.0,
+      "gc_elapsed_ms": 243.3,
+      "gc_heap_peak_mib": 76.9,
+      "gc_last_live_mib": 30.5
+    },
+    "min32": {
+      "wall_s": 1.908492707501864,
+      "user_s": 1.67651,
+      "system_s": 0.2421315,
+      "peak_rss_kib": 67086.0,
+      "minor_faults": 161536.0,
+      "major_faults": 0.0,
+      "samples": 6,
+      "all_outputs_match": true,
+      "gc_collections": 59.0,
+      "gc_elapsed_ms": 135.0,
+      "gc_heap_peak_mib": 64.6,
+      "gc_last_live_mib": 18.4
+    },
+    "min128": {
+      "wall_s": 1.7410507334971044,
+      "user_s": 1.6799600000000001,
+      "system_s": 0.0504985,
+      "peak_rss_kib": 180224.0,
+      "minor_faults": 46124.5,
+      "major_faults": 0.0,
+      "samples": 6,
+      "all_outputs_match": true,
+      "gc_collections": 14.0,
+      "gc_elapsed_ms": 36.35,
+      "gc_heap_peak_mib": 174.8,
+      "gc_last_live_mib": 38.1
+    }
+  },
+  "all_outputs_match": true
+}

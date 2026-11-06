@@ -1,0 +1,2 @@
+clang: error: cannot specify -o when generating multiple output files
+/workspace/scratch/a009f956ecf0/pystachy/bench/gc_application/json_retained_memory.py:0: error: cannot build the runtime (install LLVM 18 on Linux or LLVM 20 on macOS; see PYSTACHY_LLVM, PYSTACHY_CFLAGS)

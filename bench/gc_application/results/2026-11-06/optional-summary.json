@@ -1,0 +1,4719 @@
+{
+  "schema_version": 1,
+  "ratio_direction": "candidate/control",
+  "warmups_excluded": true,
+  "cases": [
+    {
+      "workload": "chaos",
+      "rounds": 5,
+      "warmups_excluded": 1,
+      "cpu": 3,
+      "started_utc": "2026-11-06T05:29:36.743363+00:00",
+      "loadavg_before": [
+        1.4873046875,
+        1.6552734375,
+        1.2509765625
+      ],
+      "loadavg_after": [
+        1.63916015625,
+        1.66015625,
+        1.27978515625
+      ],
+      "variants": {
+        "native": {
+          "wall_s_median": 1.0722045519942185,
+          "cpu_s_median": 1.07132,
+          "rss_mib_median": 35.015625,
+          "gc_elapsed_ms_median": 4.3,
+          "gc_collections_median": 51,
+          "gc_heap_peak_mib_median": 34.2,
+          "gc_last_live_mib_median": 1.0,
+          "gc_share_pct_median": 0.3995496031564321,
+          "wall_s_min": 1.0180189610036905,
+          "wall_s_max": 1.2531871469982434
+        },
+        "bdw": {
+          "wall_s_median": 1.3792581700035953,
+          "cpu_s_median": 1.378062,
+          "rss_mib_median": 11.44140625,
+          "bdw_collections_median": 3012,
+          "bdw_stopped_world_ms_median": 86.773,
+          "bdw_pauses_median": 3012,
+          "bdw_heap_peak_bytes_median": 2740224,
+          "bdw_heap_bytes_median": 2740224,
+          "bdw_free_bytes_median": 106496,
+          "bdw_allocated_bytes_median": 1891511248,
+          "bdw_version": "8.2.6",
+          "bdw_mode": "default",
+          "bdw_markers": 1,
+          "bdw_incremental": 0,
+          "bdw_protection": 1,
+          "wall_s_min": 1.2645622249983717,
+          "wall_s_max": 1.5807129129971145
+        },
+        "bdw_32m": {
+          "wall_s_median": 1.36399812700256,
+          "cpu_s_median": 1.362108,
+          "rss_mib_median": 36.04296875,
+          "bdw_collections_median": 69,
+          "bdw_stopped_world_ms_median": 8.212,
+          "bdw_pauses_median": 69,
+          "bdw_heap_peak_bytes_median": 33554432,
+          "bdw_heap_bytes_median": 33554432,
+          "bdw_free_bytes_median": 26451968,
+          "bdw_allocated_bytes_median": 1885812080,
+          "bdw_version": "8.2.6",
+          "bdw_mode": "default",
+          "bdw_markers": 1,
+          "bdw_incremental": 0,
+          "bdw_protection": 1,
+          "wall_s_min": 1.3102789739932632,
+          "wall_s_max": 1.5389981449989136
+        },
+        "bdw_incremental": {
+          "wall_s_median": 2.9329358670001966,
+          "cpu_s_median": 2.924685,
+          "rss_mib_median": 11.4375,
+          "bdw_collections_median": 16152,
+          "bdw_stopped_world_ms_median": 974.125,
+          "bdw_pauses_median": 16152,
+          "bdw_heap_peak_bytes_median": 3657728,
+          "bdw_heap_bytes_median": 2367488,
+          "bdw_free_bytes_median": 81920,
+          "bdw_allocated_bytes_median": 1885809168,
+          "bdw_version": "8.2.6",
+          "bdw_mode": "incremental",
+          "bdw_markers": 1,
+          "bdw_incremental": 1,
+          "bdw_protection": 1,
+          "wall_s_min": 2.8167338889979874,
+          "wall_s_max": 3.0006557880042237
+        },
+        "bdw_generational": {
+          "wall_s_median": 2.8594325220037717,
+          "cpu_s_median": 2.846064,
+          "rss_mib_median": 11.44140625,
+          "bdw_collections_median": 16215,
+          "bdw_stopped_world_ms_median": 965.819,
+          "bdw_pauses_median": 16215,
+          "bdw_heap_peak_bytes_median": 3657728,
+          "bdw_heap_bytes_median": 2408448,
+          "bdw_free_bytes_median": 90112,
+          "bdw_allocated_bytes_median": 1885809648,
+          "bdw_version": "8.2.6",
+          "bdw_mode": "generational",
+          "bdw_markers": 1,
+          "bdw_incremental": 1,
+          "bdw_protection": 1,
+          "wall_s_min": 2.7354983859986532,
+          "wall_s_max": 3.27814305100037
+        }
+      },
+      "comparisons": [
+        {
+          "candidate": "bdw",
+          "control": "native",
+          "same_executable": false,
+          "environment_differences": {
+            "PYSTACHY_BDWGC_MODE": {
+              "candidate": "default",
+              "control": null
+            },
+            "PYSTACHY_GC_MIN": {
+              "candidate": null,
+              "control": "32"
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              1.286375969434452,
+              1.2826403569458715,
+              1.3113028805290619,
+              1.2613542333109566,
+              1.2352744665137927
+            ],
+            "geometric_mean": 1.2751323783386466,
+            "median": 1.2826403569458715,
+            "min": 1.2352744665137927,
+            "max": 1.3113028805290619,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              1.2863215472501213,
+              1.2823851985277426,
+              1.3117513895390231,
+              1.2614665857398417,
+              1.2354751812577305
+            ],
+            "geometric_mean": 1.2752222163236488,
+            "median": 1.2823851985277426,
+            "min": 1.2354751812577305,
+            "max": 1.3117513895390231,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              0.32641677822400716,
+              0.32652605735966966,
+              0.3267514502454261,
+              0.32701104540890324,
+              0.32719767960731816
+            ],
+            "geometric_mean": 0.326780472103948,
+            "median": 0.3267514502454261,
+            "min": 0.32641677822400716,
+            "max": 0.32719767960731816,
+            "lower_rounds": 5,
+            "equal_rounds": 0
+          }
+        },
+        {
+          "candidate": "bdw_32m",
+          "control": "native",
+          "same_executable": false,
+          "environment_differences": {
+            "GC_INITIAL_HEAP_SIZE": {
+              "candidate": "33554432",
+              "control": null
+            },
+            "PYSTACHY_BDWGC_MODE": {
+              "candidate": "default",
+              "control": null
+            },
+            "PYSTACHY_GC_MIN": {
+              "candidate": null,
+              "control": "32"
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              1.2721435704275157,
+              1.2174917304261055,
+              1.315261263580982,
+              1.2280672912144628,
+              1.4436449748237432
+            ],
+            "geometric_mean": 1.2928238309546625,
+            "median": 1.2721435704275157,
+            "min": 1.2174917304261055,
+            "max": 1.4436449748237432,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              1.2714296382033379,
+              1.2182939900187197,
+              1.3152768654045104,
+              1.2281577434193713,
+              1.4440689732721237
+            ],
+            "geometric_mean": 1.2929470523029454,
+            "median": 1.2714296382033379,
+            "min": 1.2182939900187197,
+            "max": 1.4440689732721237,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              1.0290049085229809,
+              1.029126213592233,
+              1.0321285140562249,
+              1.0294544237420507,
+              1.0317938420348058
+            ],
+            "geometric_mean": 1.030300673682735,
+            "median": 1.0294544237420507,
+            "min": 1.0290049085229809,
+            "max": 1.0321285140562249,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          }
+        },
+        {
+          "candidate": "bdw_incremental",
+          "control": "native",
+          "same_executable": false,
+          "environment_differences": {
+            "GC_USE_GETWRITEWATCH": {
+              "candidate": "0",
+              "control": null
+            },
+            "PYSTACHY_BDWGC_MODE": {
+              "candidate": "incremental",
+              "control": null
+            },
+            "PYSTACHY_GC_MIN": {
+              "candidate": null,
+              "control": "32"
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              2.786611500051797,
+              2.705890176785782,
+              2.7668776289008394,
+              2.394419536772052,
+              2.8650079187937956
+            ],
+            "geometric_mean": 2.6986124735180543,
+            "median": 2.7668776289008394,
+            "min": 2.394419536772052,
+            "max": 2.8650079187937956,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              2.7800582459022514,
+              2.688739053899659,
+              2.7624537312023794,
+              2.3827146690518783,
+              2.8597263167158005
+            ],
+            "geometric_mean": 2.689421142673535,
+            "median": 2.7624537312023794,
+            "min": 2.3827146690518783,
+            "max": 2.8597263167158005,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              0.32641677822400716,
+              0.32652605735966966,
+              0.32663989290495316,
+              0.3272341849827067,
+              0.32719767960731816
+            ],
+            "geometric_mean": 0.32680273684209016,
+            "median": 0.32663989290495316,
+            "min": 0.32641677822400716,
+            "max": 0.3272341849827067,
+            "lower_rounds": 5,
+            "equal_rounds": 0
+          }
+        },
+        {
+          "candidate": "bdw_generational",
+          "control": "native",
+          "same_executable": false,
+          "environment_differences": {
+            "GC_USE_GETWRITEWATCH": {
+              "candidate": "0",
+              "control": null
+            },
+            "PYSTACHY_BDWGC_MODE": {
+              "candidate": "generational",
+              "control": null
+            },
+            "PYSTACHY_GC_MIN": {
+              "candidate": null,
+              "control": "32"
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              3.0573858737153046,
+              2.6569421614400066,
+              2.7981683044398844,
+              2.5670810913665454,
+              2.6721431675046112
+            ],
+            "geometric_mean": 2.745244940099309,
+            "median": 2.6721431675046112,
+            "min": 2.5670810913665454,
+            "max": 3.0573858737153046,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              3.0434006646006795,
+              2.6479644812302063,
+              2.7928160930843635,
+              2.5629927485305393,
+              2.663040045369433
+            ],
+            "geometric_mean": 2.7370815669764457,
+            "median": 2.663040045369433,
+            "min": 2.5629927485305393,
+            "max": 3.0434006646006795,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              0.32641677822400716,
+              0.32652605735966966,
+              0.3267514502454261,
+              0.32689947562200156,
+              0.32708612226684514
+            ],
+            "geometric_mean": 0.3267358862987444,
+            "median": 0.3267514502454261,
+            "min": 0.32641677822400716,
+            "max": 0.32708612226684514,
+            "lower_rounds": 5,
+            "equal_rounds": 0
+          }
+        },
+        {
+          "candidate": "bdw_32m",
+          "control": "bdw",
+          "same_executable": true,
+          "environment_differences": {
+            "GC_INITIAL_HEAP_SIZE": {
+              "candidate": "33554432",
+              "control": null
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              0.9889360503110194,
+              0.9492074094137399,
+              1.0030186641932206,
+              0.9736101554841432,
+              1.1686835711078982
+            ],
+            "geometric_mean": 1.0138742086049652,
+            "median": 0.9889360503110194,
+            "min": 0.9492074094137399,
+            "max": 1.1686835711078982,
+            "lower_rounds": 3,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              0.9884228721204127,
+              0.9500218744082483,
+              1.0026876097815502,
+              0.9735951449709349,
+              1.1688368938354892
+            ],
+            "geometric_mean": 1.0138994096498692,
+            "median": 0.9884228721204127,
+            "min": 0.9500218744082483,
+            "max": 1.1688368938354892,
+            "lower_rounds": 3,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              3.1524265208475737,
+              3.151742993848257,
+              3.1587572550358485,
+              3.148072330262709,
+              3.1534265257415615
+            ],
+            "geometric_mean": 3.1528832400823483,
+            "median": 3.1524265208475737,
+            "min": 3.148072330262709,
+            "max": 3.1587572550358485,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          }
+        },
+        {
+          "candidate": "bdw_incremental",
+          "control": "bdw",
+          "same_executable": true,
+          "environment_differences": {
+            "GC_USE_GETWRITEWATCH": {
+              "candidate": "0",
+              "control": null
+            },
+            "PYSTACHY_BDWGC_MODE": {
+              "candidate": "incremental",
+              "control": "default"
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              2.166249655049849,
+              2.1096250107308707,
+              2.110021772990011,
+              1.8982927028253493,
+              2.3193290207636665
+            ],
+            "geometric_mean": 2.1163390714256987,
+            "median": 2.110021772990011,
+            "min": 1.8982927028253493,
+            "max": 2.3193290207636665,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              2.1612467363587418,
+              2.096670374070519,
+              2.105927810126554,
+              1.8888448540667706,
+              2.3146772675793943
+            ],
+            "geometric_mean": 2.1089823469566698,
+            "median": 2.105927810126554,
+            "min": 1.8888448540667706,
+            "max": 2.3146772675793943,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              1.0,
+              1.0,
+              0.99965858654831,
+              1.0006823609689526,
+              1.0
+            ],
+            "geometric_mean": 1.0000681336249955,
+            "median": 1.0,
+            "min": 0.99965858654831,
+            "max": 1.0006823609689526,
+            "lower_rounds": 1,
+            "equal_rounds": 3
+          }
+        },
+        {
+          "candidate": "bdw_generational",
+          "control": "bdw",
+          "same_executable": true,
+          "environment_differences": {
+            "GC_USE_GETWRITEWATCH": {
+              "candidate": "0",
+              "control": null
+            },
+            "PYSTACHY_BDWGC_MODE": {
+              "candidate": "generational",
+              "control": "default"
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              2.376743616455667,
+              2.0714630933385885,
+              2.1338840522571934,
+              2.0351785593394784,
+              2.1631979288343643
+            ],
+            "geometric_mean": 2.152909758025322,
+            "median": 2.1338840522571934,
+            "min": 2.0351785593394784,
+            "max": 2.376743616455667,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              2.3659719228888108,
+              2.064874488780932,
+              2.1290742402535723,
+              2.0317563520934336,
+              2.1554783825430004
+            ],
+            "geometric_mean": 2.1463565580493147,
+            "median": 2.1290742402535723,
+            "min": 2.0317563520934336,
+            "max": 2.3659719228888108,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              1.0,
+              1.0,
+              1.0,
+              0.9996588195155237,
+              0.9996590521650187
+            ],
+            "geometric_mean": 0.9998635603745948,
+            "median": 1.0,
+            "min": 0.9996588195155237,
+            "max": 1.0,
+            "lower_rounds": 2,
+            "equal_rounds": 3
+          }
+        }
+      ],
+      "notes": [],
+      "source": "/workspace/scratch/a009f956ecf0/pystachy/bench/gc_application/results/2026-11-06/optional/chaos.json",
+      "source_sha256": "048f3d926f113eed8f251ac39b877f0ed48e951fcf2c3ca9c69943d9c388eafb"
+    },
+    {
+      "workload": "float",
+      "rounds": 5,
+      "warmups_excluded": 1,
+      "cpu": 3,
+      "started_utc": "2026-11-06T05:28:18.462501+00:00",
+      "loadavg_before": [
+        2.12939453125,
+        1.7548828125,
+        1.24365234375
+      ],
+      "loadavg_after": [
+        1.4873046875,
+        1.6552734375,
+        1.2509765625
+      ],
+      "variants": {
+        "native": {
+          "wall_s_median": 1.7179355199987185,
+          "cpu_s_median": 1.71702,
+          "rss_mib_median": 65.51171875,
+          "gc_elapsed_ms_median": 121.0,
+          "gc_collections_median": 59,
+          "gc_heap_peak_mib_median": 64.6,
+          "gc_last_live_mib_median": 18.4,
+          "gc_share_pct_median": 7.06471582231475,
+          "wall_s_min": 1.6239862660004292,
+          "wall_s_max": 1.7699214399981429
+        },
+        "bdw": {
+          "wall_s_median": 1.9200218499972834,
+          "cpu_s_median": 1.918829,
+          "rss_mib_median": 59.78125,
+          "bdw_collections_median": 44,
+          "bdw_stopped_world_ms_median": 72.432,
+          "bdw_pauses_median": 44,
+          "bdw_heap_peak_bytes_median": 58372096,
+          "bdw_heap_bytes_median": 58372096,
+          "bdw_free_bytes_median": 10350592,
+          "bdw_allocated_bytes_median": 1920074592,
+          "bdw_version": "8.2.6",
+          "bdw_mode": "default",
+          "bdw_markers": 1,
+          "bdw_incremental": 0,
+          "bdw_protection": 1,
+          "wall_s_min": 1.8589838270054315,
+          "wall_s_max": 2.0720302339977934
+        },
+        "bdw_32m": {
+          "wall_s_median": 1.8277333469959558,
+          "cpu_s_median": 1.8264660000000001,
+          "rss_mib_median": 51.90625,
+          "bdw_collections_median": 41,
+          "bdw_stopped_world_ms_median": 6.769,
+          "bdw_pauses_median": 41,
+          "bdw_heap_peak_bytes_median": 50331648,
+          "bdw_heap_bytes_median": 50331648,
+          "bdw_free_bytes_median": 2310144,
+          "bdw_allocated_bytes_median": 1920016400,
+          "bdw_version": "8.2.6",
+          "bdw_mode": "default",
+          "bdw_markers": 1,
+          "bdw_incremental": 0,
+          "bdw_protection": 1,
+          "wall_s_min": 1.8097070380026707,
+          "wall_s_max": 1.8445948249936919
+        },
+        "bdw_incremental": {
+          "wall_s_median": 3.7072468440019293,
+          "cpu_s_median": 3.698338,
+          "rss_mib_median": 78.93359375,
+          "bdw_collections_median": 433,
+          "bdw_stopped_world_ms_median": 1138.598,
+          "bdw_pauses_median": 433,
+          "bdw_heap_peak_bytes_median": 83537920,
+          "bdw_heap_bytes_median": 48406528,
+          "bdw_free_bytes_median": 385024,
+          "bdw_allocated_bytes_median": 1920025952,
+          "bdw_version": "8.2.6",
+          "bdw_mode": "incremental",
+          "bdw_markers": 1,
+          "bdw_incremental": 1,
+          "bdw_protection": 1,
+          "wall_s_min": 3.6625392959977034,
+          "wall_s_max": 3.7410688780000783
+        },
+        "bdw_generational": {
+          "wall_s_median": 3.6896163639976294,
+          "cpu_s_median": 3.688434,
+          "rss_mib_median": 78.921875,
+          "bdw_collections_median": 433,
+          "bdw_stopped_world_ms_median": 1134.536,
+          "bdw_pauses_median": 433,
+          "bdw_heap_peak_bytes_median": 83537920,
+          "bdw_heap_bytes_median": 48406528,
+          "bdw_free_bytes_median": 385024,
+          "bdw_allocated_bytes_median": 1920024352,
+          "bdw_version": "8.2.6",
+          "bdw_mode": "generational",
+          "bdw_markers": 1,
+          "bdw_incremental": 1,
+          "bdw_protection": 1,
+          "wall_s_min": 3.653441978000046,
+          "wall_s_max": 4.225648770996486
+        }
+      },
+      "comparisons": [
+        {
+          "candidate": "bdw",
+          "control": "native",
+          "same_executable": false,
+          "environment_differences": {
+            "PYSTACHY_BDWGC_MODE": {
+              "candidate": "default",
+              "control": null
+            },
+            "PYSTACHY_GC_MIN": {
+              "candidate": null,
+              "control": "32"
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              1.1740475226275329,
+              1.109113747179575,
+              1.0960628015227418,
+              1.1410245400584274,
+              1.18228946278341
+            ],
+            "geometric_mean": 1.1399956692189233,
+            "median": 1.1410245400584274,
+            "min": 1.0960628015227418,
+            "max": 1.18228946278341,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              1.1738649312070928,
+              1.1084326332832466,
+              1.0960425629815793,
+              1.1409471275549117,
+              1.1823020900083798
+            ],
+            "geometric_mean": 1.1398029209325227,
+            "median": 1.1409471275549117,
+            "min": 1.0960425629815793,
+            "max": 1.1823020900083798,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              0.9125275773656908,
+              0.9125275773656908,
+              0.9125275773656908,
+              0.9124731695683281,
+              0.9124731695683281
+            ],
+            "geometric_mean": 0.9125058138574574,
+            "median": 0.9125275773656908,
+            "min": 0.9124731695683281,
+            "max": 0.9125275773656908,
+            "lower_rounds": 5,
+            "equal_rounds": 0
+          }
+        },
+        {
+          "candidate": "bdw_32m",
+          "control": "native",
+          "same_executable": false,
+          "environment_differences": {
+            "GC_INITIAL_HEAP_SIZE": {
+              "candidate": "33554432",
+              "control": null
+            },
+            "PYSTACHY_BDWGC_MODE": {
+              "candidate": "default",
+              "control": null
+            },
+            "PYSTACHY_GC_MIN": {
+              "candidate": null,
+              "control": "32"
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              1.0381789918082096,
+              1.0585083280650889,
+              1.0421902256834785,
+              1.110778970037518,
+              1.1254610862549455
+            ],
+            "geometric_mean": 1.0744206055295151,
+            "median": 1.0585083280650889,
+            "min": 1.0381789918082096,
+            "max": 1.1254610862549455,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              1.0381016899188769,
+              1.0577558793724011,
+              1.042200640004884,
+              1.1108439669011394,
+              1.1253918765712034
+            ],
+            "geometric_mean": 1.0742533177191738,
+            "median": 1.0577558793724011,
+            "min": 1.0381016899188769,
+            "max": 1.1253918765712034,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              0.7923200763222229,
+              0.7923200763222229,
+              0.7923200763222229,
+              0.7922728356785118,
+              0.7922728356785118
+            ],
+            "geometric_mean": 0.7923011797267312,
+            "median": 0.7923200763222229,
+            "min": 0.7922728356785118,
+            "max": 0.7923200763222229,
+            "lower_rounds": 5,
+            "equal_rounds": 0
+          }
+        },
+        {
+          "candidate": "bdw_incremental",
+          "control": "native",
+          "same_executable": false,
+          "environment_differences": {
+            "GC_USE_GETWRITEWATCH": {
+              "candidate": "0",
+              "control": null
+            },
+            "PYSTACHY_BDWGC_MODE": {
+              "candidate": "incremental",
+              "control": null
+            },
+            "PYSTACHY_GC_MIN": {
+              "candidate": null,
+              "control": "32"
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              2.0752569708867825,
+              2.1462262891013912,
+              2.0979594970067557,
+              2.296228366183879,
+              2.282806770978536
+            ],
+            "geometric_mean": 2.1777385757947774,
+            "median": 2.1462262891013912,
+            "min": 2.0752569708867825,
+            "max": 2.296228366183879,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              2.075524804562384,
+              2.1465673084763135,
+              2.097910798400722,
+              2.2967192234516993,
+              2.278761029230542
+            ],
+            "geometric_mean": 2.177174451090427,
+            "median": 2.1465673084763135,
+            "min": 2.075524804562384,
+            "max": 2.2967192234516993,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              1.1763162602110786,
+              1.1763758869477074,
+              1.2049370937928567,
+              1.204865251609826,
+              1.2048056284283328
+            ],
+            "geometric_mean": 1.193377955477196,
+            "median": 1.2048056284283328,
+            "min": 1.1763162602110786,
+            "max": 1.2049370937928567,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          }
+        },
+        {
+          "candidate": "bdw_generational",
+          "control": "native",
+          "same_executable": false,
+          "environment_differences": {
+            "GC_USE_GETWRITEWATCH": {
+              "candidate": "0",
+              "control": null
+            },
+            "PYSTACHY_BDWGC_MODE": {
+              "candidate": "generational",
+              "control": null
+            },
+            "PYSTACHY_GC_MIN": {
+              "candidate": null,
+              "control": "32"
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              2.394324363458003,
+              2.1266467428316354,
+              2.0992350349795363,
+              2.2446930258356685,
+              2.271950472268744
+            ],
+            "geometric_mean": 2.224841334624274,
+            "median": 2.2446930258356685,
+            "min": 2.0992350349795363,
+            "max": 2.394324363458003,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              2.386049807538591,
+              2.1257213078473165,
+              2.0990475673652904,
+              2.2452733898573634,
+              2.272658599102874
+            ],
+            "geometric_mean": 2.2233217073564755,
+            "median": 2.2452733898573634,
+            "min": 2.0990475673652904,
+            "max": 2.386049807538591,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              1.2051756007393715,
+              1.1763758869477074,
+              1.1763162602110786,
+              1.204626758883854,
+              1.2049248747913188
+            ],
+            "geometric_mean": 1.1934015682507566,
+            "median": 1.204626758883854,
+            "min": 1.1763162602110786,
+            "max": 1.2051756007393715,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          }
+        },
+        {
+          "candidate": "bdw_32m",
+          "control": "bdw",
+          "same_executable": true,
+          "environment_differences": {
+            "GC_INITIAL_HEAP_SIZE": {
+              "candidate": "33554432",
+              "control": null
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              0.8842733976259769,
+              0.9543731026297588,
+              0.9508490063120297,
+              0.9734926209217544,
+              0.951933618358844
+            ],
+            "geometric_mean": 0.9424777957846652,
+            "median": 0.951933618358844,
+            "min": 0.8842733976259769,
+            "max": 0.9734926209217544,
+            "lower_rounds": 5,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              0.884345091433467,
+              0.9542807091841587,
+              0.9508760655879746,
+              0.9736156392117096,
+              0.9518649134446062
+            ],
+            "geometric_mean": 0.9424904060083301,
+            "median": 0.9518649134446062,
+            "min": 0.884345091433467,
+            "max": 0.9736156392117096,
+            "lower_rounds": 5,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              0.8682697334030319,
+              0.8682697334030319,
+              0.8682697334030319,
+              0.8682697334030319,
+              0.8682697334030319
+            ],
+            "geometric_mean": 0.8682697334030319,
+            "median": 0.8682697334030319,
+            "min": 0.8682697334030319,
+            "max": 0.8682697334030319,
+            "lower_rounds": 5,
+            "equal_rounds": 0
+          }
+        },
+        {
+          "candidate": "bdw_incremental",
+          "control": "bdw",
+          "same_executable": true,
+          "environment_differences": {
+            "GC_USE_GETWRITEWATCH": {
+              "candidate": "0",
+              "control": null
+            },
+            "PYSTACHY_BDWGC_MODE": {
+              "candidate": "incremental",
+              "control": "default"
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              1.7676090029493285,
+              1.9350822172740585,
+              1.914086942912482,
+              2.0124268020267975,
+              1.930835757940554
+            ],
+            "geometric_mean": 1.910304253424815,
+            "median": 1.930835757940554,
+            "min": 1.7676090029493285,
+            "max": 2.0124268020267975,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              1.7681121135700923,
+              1.9365789530375406,
+              1.9140778554199096,
+              2.0129935629652236,
+              1.9273932174258364
+            ],
+            "geometric_mean": 1.9101323668386339,
+            "median": 1.9273932174258364,
+            "min": 1.7681121135700923,
+            "max": 2.0129935629652236,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              1.2890747516989023,
+              1.2891400940930475,
+              1.3204391008886565,
+              1.3204391008886565,
+              1.3203737584945112
+            ],
+            "geometric_mean": 1.307803125584922,
+            "median": 1.3203737584945112,
+            "min": 1.2890747516989023,
+            "max": 1.3204391008886565,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          }
+        },
+        {
+          "candidate": "bdw_generational",
+          "control": "bdw",
+          "same_executable": true,
+          "environment_differences": {
+            "GC_USE_GETWRITEWATCH": {
+              "candidate": "0",
+              "control": null
+            },
+            "PYSTACHY_BDWGC_MODE": {
+              "candidate": "generational",
+              "control": "default"
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              2.039376019549426,
+              1.9174288915267705,
+              1.9152506882480675,
+              1.9672609545459263,
+              1.9216533207696826
+            ],
+            "geometric_mean": 1.951622619889987,
+            "median": 1.9216533207696826,
+            "min": 1.9152506882480675,
+            "max": 2.039376019549426,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              2.0326442541264105,
+              1.9177722163870237,
+              1.9151150131024322,
+              1.9679031005311,
+              1.9222317361265648
+            ],
+            "geometric_mean": 1.9506194154490135,
+            "median": 1.9222317361265648,
+            "min": 1.9151150131024322,
+            "max": 2.0326442541264105,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              1.3207004704652379,
+              1.2891400940930475,
+              1.2890747516989023,
+              1.3201777313120753,
+              1.320504443282802
+            ],
+            "geometric_mean": 1.307829002432173,
+            "median": 1.3201777313120753,
+            "min": 1.2890747516989023,
+            "max": 1.3207004704652379,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          }
+        }
+      ],
+      "notes": [],
+      "source": "/workspace/scratch/a009f956ecf0/pystachy/bench/gc_application/results/2026-11-06/optional/float.json",
+      "source_sha256": "187dea77eeeeb59db62c58da530f260845ff6f92bc9a33f8dcbb869caf80c4a3"
+    },
+    {
+      "workload": "json_dumps",
+      "rounds": 5,
+      "warmups_excluded": 1,
+      "cpu": 3,
+      "started_utc": "2026-11-06T05:35:31.087221+00:00",
+      "loadavg_before": [
+        2.7841796875,
+        2.19873046875,
+        1.61962890625
+      ],
+      "loadavg_after": [
+        2.63916015625,
+        2.3154296875,
+        1.72314453125
+      ],
+      "variants": {
+        "native": {
+          "wall_s_median": 1.677595156004827,
+          "cpu_s_median": 1.6765409999999998,
+          "rss_mib_median": 36.78515625,
+          "gc_elapsed_ms_median": 15.8,
+          "gc_collections_median": 100,
+          "gc_heap_peak_mib_median": 36.0,
+          "gc_last_live_mib_median": 0.2,
+          "gc_share_pct_median": 0.9306809251649438,
+          "wall_s_min": 1.5687438739987556,
+          "wall_s_max": 1.741612450001412
+        },
+        "bdw": {
+          "wall_s_median": 1.7015488690012717,
+          "cpu_s_median": 1.699636,
+          "rss_mib_median": 13.8203125,
+          "bdw_collections_median": 621,
+          "bdw_stopped_world_ms_median": 48.24,
+          "bdw_pauses_median": 621,
+          "bdw_heap_peak_bytes_median": 12488704,
+          "bdw_heap_bytes_median": 12488704,
+          "bdw_free_bytes_median": 5615616,
+          "bdw_allocated_bytes_median": 3673470960,
+          "bdw_version": "8.2.6",
+          "bdw_mode": "default",
+          "bdw_markers": 1,
+          "bdw_incremental": 0,
+          "bdw_protection": 1,
+          "wall_s_min": 1.5952583550024428,
+          "wall_s_max": 1.9890409389990964
+        },
+        "bdw_32m": {
+          "wall_s_median": 2.1572083389983163,
+          "cpu_s_median": 2.156228,
+          "rss_mib_median": 35.47265625,
+          "bdw_collections_median": 127,
+          "bdw_stopped_world_ms_median": 22.042,
+          "bdw_pauses_median": 127,
+          "bdw_heap_peak_bytes_median": 33554432,
+          "bdw_heap_bytes_median": 33554432,
+          "bdw_free_bytes_median": 11870208,
+          "bdw_allocated_bytes_median": 3673450752,
+          "bdw_version": "8.2.6",
+          "bdw_mode": "default",
+          "bdw_markers": 1,
+          "bdw_incremental": 0,
+          "bdw_protection": 1,
+          "wall_s_min": 1.8873118829942541,
+          "wall_s_max": 2.76842331700027
+        },
+        "bdw_incremental": {
+          "wall_s_median": 5.0544958160026,
+          "cpu_s_median": 5.047702,
+          "rss_mib_median": 12.60546875,
+          "bdw_collections_median": 15467,
+          "bdw_stopped_world_ms_median": 1171.633,
+          "bdw_pauses_median": 15467,
+          "bdw_heap_peak_bytes_median": 18255872,
+          "bdw_heap_bytes_median": 7491584,
+          "bdw_free_bytes_median": 5255168,
+          "bdw_allocated_bytes_median": 3673457648,
+          "bdw_version": "8.2.6",
+          "bdw_mode": "incremental",
+          "bdw_markers": 1,
+          "bdw_incremental": 1,
+          "bdw_protection": 1,
+          "wall_s_min": 4.4540070990042295,
+          "wall_s_max": 5.568148562000715
+        },
+        "bdw_generational": {
+          "wall_s_median": 5.113850846995774,
+          "cpu_s_median": 5.097716999999999,
+          "rss_mib_median": 12.44140625,
+          "bdw_collections_median": 15598,
+          "bdw_stopped_world_ms_median": 1184.199,
+          "bdw_pauses_median": 15598,
+          "bdw_heap_peak_bytes_median": 18370560,
+          "bdw_heap_bytes_median": 8847360,
+          "bdw_free_bytes_median": 5201920,
+          "bdw_allocated_bytes_median": 3673454592,
+          "bdw_version": "8.2.6",
+          "bdw_mode": "generational",
+          "bdw_markers": 1,
+          "bdw_incremental": 1,
+          "bdw_protection": 1,
+          "wall_s_min": 4.845616428996436,
+          "wall_s_max": 5.870472577997134
+        }
+      },
+      "comparisons": [
+        {
+          "candidate": "bdw",
+          "control": "native",
+          "same_executable": false,
+          "environment_differences": {
+            "PYSTACHY_BDWGC_MODE": {
+              "candidate": "default",
+              "control": null
+            },
+            "PYSTACHY_GC_MIN": {
+              "candidate": null,
+              "control": "32"
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              1.0267481304444688,
+              0.9550969643347427,
+              1.185650144422194,
+              0.9608368614824242,
+              1.0846569011064846
+            ],
+            "geometric_mean": 1.039158984269524,
+            "median": 1.0267481304444688,
+            "min": 0.9550969643347427,
+            "max": 1.185650144422194,
+            "lower_rounds": 2,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              1.0253464954737168,
+              0.9549808216814739,
+              1.185815318563638,
+              0.961043101545895,
+              1.0841769398484633
+            ],
+            "geometric_mean": 1.038831422861601,
+            "median": 1.0253464954737168,
+            "min": 0.9549808216814739,
+            "max": 1.185815318563638,
+            "lower_rounds": 2,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              0.31209514707443986,
+              0.31209514707443986,
+              0.37580970585112033,
+              0.37825209727089304,
+              0.37570351491982584
+            ],
+            "geometric_mean": 0.3493282637084496,
+            "median": 0.37570351491982584,
+            "min": 0.31209514707443986,
+            "max": 0.37825209727089304,
+            "lower_rounds": 5,
+            "equal_rounds": 0
+          }
+        },
+        {
+          "candidate": "bdw_32m",
+          "control": "native",
+          "same_executable": false,
+          "environment_differences": {
+            "GC_INITIAL_HEAP_SIZE": {
+              "candidate": "33554432",
+              "control": null
+            },
+            "PYSTACHY_BDWGC_MODE": {
+              "candidate": "default",
+              "control": null
+            },
+            "PYSTACHY_GC_MIN": {
+              "candidate": null,
+              "control": "32"
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              1.3283521767412987,
+              1.1299523018000046,
+              1.2858932807934915,
+              1.606223335550284,
+              1.2365000808285311
+            ],
+            "geometric_mean": 1.3083250900359853,
+            "median": 1.2858932807934915,
+            "min": 1.1299523018000046,
+            "max": 1.606223335550284,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              1.3298748492341352,
+              1.1299794588617131,
+              1.2861170708023246,
+              1.6059634838964447,
+              1.2365912810954318
+            ],
+            "geometric_mean": 1.3086536899930366,
+            "median": 1.2861170708023246,
+            "min": 1.1299794588617131,
+            "max": 1.6059634838964447,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              0.9661250929170648,
+              0.9643198470850589,
+              0.9635765105659977,
+              0.9651693745354146,
+              0.9634703196347032
+            ],
+            "geometric_mean": 0.9645317076800455,
+            "median": 0.9643198470850589,
+            "min": 0.9634703196347032,
+            "max": 0.9661250929170648,
+            "lower_rounds": 5,
+            "equal_rounds": 0
+          }
+        },
+        {
+          "candidate": "bdw_incremental",
+          "control": "native",
+          "same_executable": false,
+          "environment_differences": {
+            "GC_USE_GETWRITEWATCH": {
+              "candidate": "0",
+              "control": null
+            },
+            "PYSTACHY_BDWGC_MODE": {
+              "candidate": "incremental",
+              "control": null
+            },
+            "PYSTACHY_GC_MIN": {
+              "candidate": null,
+              "control": "32"
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              2.81034165149244,
+              3.0261766659729226,
+              3.3191253217857373,
+              2.584189381441523,
+              3.37154859736504
+            ],
+            "geometric_mean": 3.007226654471044,
+            "median": 3.0261766659729226,
+            "min": 2.584189381441523,
+            "max": 3.37154859736504,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              2.8102636396734657,
+              3.0237837507555416,
+              3.3163620812136423,
+              2.5817059431584575,
+              3.369977431532321
+            ],
+            "geometric_mean": 3.0053752129201388,
+            "median": 3.0237837507555416,
+            "min": 2.5817059431584575,
+            "max": 3.369977431532321,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              0.31209514707443986,
+              0.4170117871933737,
+              0.3123075289370288,
+              0.44908144844430287,
+              0.34267813528724644
+            ],
+            "geometric_mean": 0.3624481288712976,
+            "median": 0.34267813528724644,
+            "min": 0.31209514707443986,
+            "max": 0.44908144844430287,
+            "lower_rounds": 5,
+            "equal_rounds": 0
+          }
+        },
+        {
+          "candidate": "bdw_generational",
+          "control": "native",
+          "same_executable": false,
+          "environment_differences": {
+            "GC_USE_GETWRITEWATCH": {
+              "candidate": "0",
+              "control": null
+            },
+            "PYSTACHY_BDWGC_MODE": {
+              "candidate": "generational",
+              "control": null
+            },
+            "PYSTACHY_GC_MIN": {
+              "candidate": null,
+              "control": "32"
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              2.7963377679099293,
+              3.0617131104252,
+              2.8884301505353736,
+              3.2499998349268466,
+              3.7421485274286344
+            ],
+            "geometric_mean": 3.130718865907233,
+            "median": 3.0617131104252,
+            "min": 2.7963377679099293,
+            "max": 3.7421485274286344,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              2.7946668139096285,
+              3.053744819038502,
+              2.8825915978195584,
+              3.2435736768139005,
+              3.7391000935143404
+            ],
+            "geometric_mean": 3.125700420309391,
+            "median": 3.053744819038502,
+            "min": 2.7946668139096285,
+            "max": 3.7391000935143404,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              0.3341828607836891,
+              0.357120101943294,
+              0.41584368694913454,
+              0.33821811617287884,
+              0.31262610173091215
+            ],
+            "geometric_mean": 0.34993721949895495,
+            "median": 0.33821811617287884,
+            "min": 0.31262610173091215,
+            "max": 0.41584368694913454,
+            "lower_rounds": 5,
+            "equal_rounds": 0
+          }
+        },
+        {
+          "candidate": "bdw_32m",
+          "control": "bdw",
+          "same_executable": true,
+          "environment_differences": {
+            "GC_INITIAL_HEAP_SIZE": {
+              "candidate": "33554432",
+              "control": null
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              1.293746866786374,
+              1.1830760058870615,
+              1.0845469777428731,
+              1.671692042572271,
+              1.139991899343606
+            ],
+            "geometric_mean": 1.2590230271219485,
+            "median": 1.1830760058870615,
+            "min": 1.0845469777428731,
+            "max": 1.671692042572271,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              1.297000433614126,
+              1.1832483262565545,
+              1.084584631913999,
+              1.671062912072473,
+              1.1405806890416537
+            ],
+            "geometric_mean": 1.2597363356493145,
+            "median": 1.1832483262565545,
+            "min": 1.084584631913999,
+            "max": 1.671062912072473,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              3.095610751956448,
+              3.089826471588976,
+              2.564001130262786,
+              2.551656372824256,
+              2.5644431882419445
+            ],
+            "geometric_mean": 2.761104118632229,
+            "median": 2.5644431882419445,
+            "min": 2.551656372824256,
+            "max": 3.095610751956448,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          }
+        },
+        {
+          "candidate": "bdw_incremental",
+          "control": "bdw",
+          "same_executable": true,
+          "environment_differences": {
+            "GC_USE_GETWRITEWATCH": {
+              "candidate": "0",
+              "control": null
+            },
+            "PYSTACHY_BDWGC_MODE": {
+              "candidate": "incremental",
+              "control": "default"
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              2.737128579212384,
+              3.1684496747204687,
+              2.799413754049054,
+              2.689519402341116,
+              3.1084010012065955
+            ],
+            "geometric_mean": 2.893904301452941,
+            "median": 2.799413754049054,
+            "min": 2.689519402341116,
+            "max": 3.1684496747204687,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              2.74079411406688,
+              3.1663292938505734,
+              2.796693573861659,
+              2.686358123798641,
+              3.1083279007975824
+            ],
+            "geometric_mean": 2.8930345643968183,
+            "median": 2.796693573861659,
+            "min": 2.686358123798641,
+            "max": 3.1663292938505734,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              1.0,
+              1.3361687648860157,
+              0.8310257134783837,
+              1.1872543514879281,
+              0.9120972300734879
+            ],
+            "geometric_mean": 1.037557410968034,
+            "median": 1.0,
+            "min": 0.8310257134783837,
+            "max": 1.3361687648860157,
+            "lower_rounds": 2,
+            "equal_rounds": 1
+          }
+        },
+        {
+          "candidate": "bdw_generational",
+          "control": "bdw",
+          "same_executable": true,
+          "environment_differences": {
+            "GC_USE_GETWRITEWATCH": {
+              "candidate": "0",
+              "control": null
+            },
+            "PYSTACHY_BDWGC_MODE": {
+              "candidate": "generational",
+              "control": "default"
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              2.723489515095998,
+              3.205656833552797,
+              2.436157212246619,
+              3.3824678935741437,
+              3.450075801491862
+            ],
+            "geometric_mean": 3.012742913547506,
+            "median": 3.205656833552797,
+            "min": 2.436157212246619,
+            "max": 3.450075801491862,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              2.725582840772742,
+              3.1977027702625986,
+              2.43089421488601,
+              3.3750553659835023,
+              3.4487913882737247
+            ],
+            "geometric_mean": 3.008862026621441,
+            "median": 3.1977027702625986,
+            "min": 2.43089421488601,
+            "max": 3.4487913882737247,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              1.0707723715549506,
+              1.1442667574004763,
+              1.1065272675897146,
+              0.8941605839416058,
+              0.8321085358959864
+            ],
+            "geometric_mean": 1.0017432193548865,
+            "median": 1.0707723715549506,
+            "min": 0.8321085358959864,
+            "max": 1.1442667574004763,
+            "lower_rounds": 2,
+            "equal_rounds": 0
+          }
+        }
+      ],
+      "notes": [],
+      "source": "/workspace/scratch/a009f956ecf0/pystachy/bench/gc_application/results/2026-11-06/optional/json_dumps.json",
+      "source_sha256": "0900a13c1a90044daa855919ac24fb81f1b21a312752640ded2ea5469a48f56f"
+    },
+    {
+      "workload": "json_loads",
+      "rounds": 5,
+      "warmups_excluded": 1,
+      "cpu": 3,
+      "started_utc": "2026-11-06T05:33:04.097075+00:00",
+      "loadavg_before": [
+        2.14697265625,
+        1.93017578125,
+        1.44677734375
+      ],
+      "loadavg_after": [
+        2.7841796875,
+        2.19873046875,
+        1.61962890625
+      ],
+      "variants": {
+        "native": {
+          "wall_s_median": 2.0291411190046347,
+          "cpu_s_median": 2.026895,
+          "rss_mib_median": 34.66796875,
+          "gc_elapsed_ms_median": 10.8,
+          "gc_collections_median": 90,
+          "gc_heap_peak_mib_median": 34.0,
+          "gc_last_live_mib_median": 0.1,
+          "gc_share_pct_median": 0.5322448941007012,
+          "wall_s_min": 1.754456595001102,
+          "wall_s_max": 2.3880385239972384
+        },
+        "bdw": {
+          "wall_s_median": 3.2081289970010403,
+          "cpu_s_median": 3.206503,
+          "rss_mib_median": 11.55078125,
+          "bdw_collections_median": 21932,
+          "bdw_stopped_world_ms_median": 623.987,
+          "bdw_pauses_median": 21932,
+          "bdw_heap_peak_bytes_median": 364544,
+          "bdw_heap_bytes_median": 364544,
+          "bdw_free_bytes_median": 61440,
+          "bdw_allocated_bytes_median": 3476227696,
+          "bdw_version": "8.2.6",
+          "bdw_mode": "default",
+          "bdw_markers": 1,
+          "bdw_incremental": 0,
+          "bdw_protection": 1,
+          "wall_s_min": 2.7386001479972037,
+          "wall_s_max": 4.023614238001755
+        },
+        "bdw_32m": {
+          "wall_s_median": 2.8998300829989603,
+          "cpu_s_median": 2.898778,
+          "rss_mib_median": 36.19140625,
+          "bdw_collections_median": 106,
+          "bdw_stopped_world_ms_median": 18.459,
+          "bdw_pauses_median": 106,
+          "bdw_heap_peak_bytes_median": 33554432,
+          "bdw_heap_bytes_median": 33554432,
+          "bdw_free_bytes_median": 16162816,
+          "bdw_allocated_bytes_median": 3475516192,
+          "bdw_version": "8.2.6",
+          "bdw_mode": "default",
+          "bdw_markers": 1,
+          "bdw_incremental": 0,
+          "bdw_protection": 1,
+          "wall_s_min": 2.53044734300056,
+          "wall_s_max": 3.4707749070003047
+        },
+        "bdw_incremental": {
+          "wall_s_median": 8.34202349500265,
+          "cpu_s_median": 8.30263,
+          "rss_mib_median": 11.546875,
+          "bdw_collections_median": 37502,
+          "bdw_stopped_world_ms_median": 2800.419,
+          "bdw_pauses_median": 37502,
+          "bdw_heap_peak_bytes_median": 643072,
+          "bdw_heap_bytes_median": 643072,
+          "bdw_free_bytes_median": 344064,
+          "bdw_allocated_bytes_median": 3475512624,
+          "bdw_version": "8.2.6",
+          "bdw_mode": "incremental",
+          "bdw_markers": 1,
+          "bdw_incremental": 1,
+          "bdw_protection": 1,
+          "wall_s_min": 7.409576085003209,
+          "wall_s_max": 8.502246683005069
+        },
+        "bdw_generational": {
+          "wall_s_median": 8.30089341600251,
+          "cpu_s_median": 8.272001,
+          "rss_mib_median": 11.546875,
+          "bdw_collections_median": 37373,
+          "bdw_stopped_world_ms_median": 2753.584,
+          "bdw_pauses_median": 37373,
+          "bdw_heap_peak_bytes_median": 643072,
+          "bdw_heap_bytes_median": 643072,
+          "bdw_free_bytes_median": 331776,
+          "bdw_allocated_bytes_median": 3475511264,
+          "bdw_version": "8.2.6",
+          "bdw_mode": "generational",
+          "bdw_markers": 1,
+          "bdw_incremental": 1,
+          "bdw_protection": 1,
+          "wall_s_min": 7.358336937999411,
+          "wall_s_max": 8.844376136999927
+        }
+      },
+      "comparisons": [
+        {
+          "candidate": "bdw",
+          "control": "native",
+          "same_executable": false,
+          "environment_differences": {
+            "PYSTACHY_BDWGC_MODE": {
+              "candidate": "default",
+              "control": null
+            },
+            "PYSTACHY_GC_MIN": {
+              "candidate": null,
+              "control": "32"
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              1.5609392422703303,
+              2.012303612658176,
+              1.3434159310089715,
+              1.836576572763102,
+              1.5257085448357082
+            ],
+            "geometric_mean": 1.6389062964621945,
+            "median": 1.5609392422703303,
+            "min": 1.3434159310089715,
+            "max": 2.012303612658176,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              1.561255701667317,
+              2.013156334003821,
+              1.3433850758499684,
+              1.8379264836116325,
+              1.5244104385791224
+            ],
+            "geometric_mean": 1.6390659247834856,
+            "median": 1.561255701667317,
+            "min": 1.3433850758499684,
+            "max": 2.013156334003821,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              0.33359683794466405,
+              0.3328450704225352,
+              0.3331830985915493,
+              0.33329577464788734,
+              0.3339718309859155
+            ],
+            "geometric_mean": 0.3333783037979744,
+            "median": 0.33329577464788734,
+            "min": 0.3328450704225352,
+            "max": 0.3339718309859155,
+            "lower_rounds": 5,
+            "equal_rounds": 0
+          }
+        },
+        {
+          "candidate": "bdw_32m",
+          "control": "native",
+          "same_executable": false,
+          "environment_differences": {
+            "GC_INITIAL_HEAP_SIZE": {
+              "candidate": "33554432",
+              "control": null
+            },
+            "PYSTACHY_BDWGC_MODE": {
+              "candidate": "default",
+              "control": null
+            },
+            "PYSTACHY_GC_MIN": {
+              "candidate": null,
+              "control": "32"
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              1.442296919861372,
+              1.6645516841726138,
+              1.2143146158903062,
+              1.7104650211331,
+              1.34320936877434
+            ],
+            "geometric_mean": 1.4628110034910031,
+            "median": 1.442296919861372,
+            "min": 1.2143146158903062,
+            "max": 1.7104650211331,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              1.442886349997376,
+              1.6643660891199366,
+              1.214461705915204,
+              1.7117709600151954,
+              1.3432582780935045
+            ],
+            "geometric_mean": 1.4631673375456662,
+            "median": 1.442886349997376,
+            "min": 1.214461705915204,
+            "max": 1.7117709600151954,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              1.046075663466968,
+              1.044056338028169,
+              1.043943661971831,
+              1.044056338028169,
+              1.043943661971831
+            ],
+            "geometric_mean": 1.0444148017261419,
+            "median": 1.044056338028169,
+            "min": 1.043943661971831,
+            "max": 1.046075663466968,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          }
+        },
+        {
+          "candidate": "bdw_incremental",
+          "control": "native",
+          "same_executable": false,
+          "environment_differences": {
+            "GC_USE_GETWRITEWATCH": {
+              "candidate": "0",
+              "control": null
+            },
+            "PYSTACHY_BDWGC_MODE": {
+              "candidate": "incremental",
+              "control": null
+            },
+            "PYSTACHY_GC_MIN": {
+              "candidate": null,
+              "control": "32"
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              4.223288342450305,
+              4.252172475763723,
+              3.4951603381314236,
+              3.9479900761794444,
+              4.106363070617059
+            ],
+            "geometric_mean": 3.9949598726498228,
+            "median": 4.106363070617059,
+            "min": 3.4951603381314236,
+            "max": 4.252172475763723,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              4.20635985478575,
+              4.241220810901034,
+              3.4830974119803946,
+              3.9355383480644037,
+              4.089486060255005
+            ],
+            "geometric_mean": 3.981137356391925,
+            "median": 4.089486060255005,
+            "min": 3.4830974119803946,
+            "max": 4.241220810901034,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              0.33359683794466405,
+              0.3328450704225352,
+              0.33307042253521124,
+              0.3331830985915493,
+              0.3335211267605634
+            ],
+            "geometric_mean": 0.3332431929348331,
+            "median": 0.3331830985915493,
+            "min": 0.3328450704225352,
+            "max": 0.33359683794466405,
+            "lower_rounds": 5,
+            "equal_rounds": 0
+          }
+        },
+        {
+          "candidate": "bdw_generational",
+          "control": "native",
+          "same_executable": false,
+          "environment_differences": {
+            "GC_USE_GETWRITEWATCH": {
+              "candidate": "0",
+              "control": null
+            },
+            "PYSTACHY_BDWGC_MODE": {
+              "candidate": "generational",
+              "control": null
+            },
+            "PYSTACHY_GC_MIN": {
+              "candidate": null,
+              "control": "32"
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              4.48795037302746,
+              3.68007645058091,
+              3.5823403944428653,
+              4.090840867723577,
+              4.353646279392518
+            ],
+            "geometric_mean": 4.0229764732963265,
+            "median": 4.090840867723577,
+            "min": 3.5823403944428653,
+            "max": 4.48795037302746,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              4.473201878384206,
+              3.6645082277761953,
+              3.570417150735918,
+              4.0811196435927855,
+              4.338838599218417
+            ],
+            "geometric_mean": 4.009601357412429,
+            "median": 4.0811196435927855,
+            "min": 3.570417150735918,
+            "max": 4.473201878384206,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              0.33359683794466405,
+              0.3328450704225352,
+              0.33307042253521124,
+              0.33329577464788734,
+              0.33340845070422537
+            ],
+            "geometric_mean": 0.33324320816407216,
+            "median": 0.33329577464788734,
+            "min": 0.3328450704225352,
+            "max": 0.33359683794466405,
+            "lower_rounds": 5,
+            "equal_rounds": 0
+          }
+        },
+        {
+          "candidate": "bdw_32m",
+          "control": "bdw",
+          "same_executable": true,
+          "environment_differences": {
+            "GC_INITIAL_HEAP_SIZE": {
+              "candidate": "33554432",
+              "control": null
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              0.9239929914015121,
+              0.8271871469602965,
+              0.9039007115080853,
+              0.9313333549494922,
+              0.8803839850808334
+            ],
+            "geometric_mean": 0.8925531658818338,
+            "median": 0.9039007115080853,
+            "min": 0.8271871469602965,
+            "max": 0.9313333549494922,
+            "lower_rounds": 5,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              0.9241832381822335,
+              0.82674458064059,
+              0.9040309645741794,
+              0.931359864107005,
+              0.8811657570027749
+            ],
+            "geometric_mean": 0.8926836409822534,
+            "median": 0.9040309645741794,
+            "min": 0.82674458064059,
+            "max": 0.931359864107005,
+            "lower_rounds": 5,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              3.1357481381178065,
+              3.136763710223426,
+              3.133243151843084,
+              3.132521974306964,
+              3.1258434547908234
+            ],
+            "geometric_mean": 3.1328217518289727,
+            "median": 3.133243151843084,
+            "min": 3.1258434547908234,
+            "max": 3.136763710223426,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          }
+        },
+        {
+          "candidate": "bdw_incremental",
+          "control": "bdw",
+          "same_executable": true,
+          "environment_differences": {
+            "GC_USE_GETWRITEWATCH": {
+              "candidate": "0",
+              "control": null
+            },
+            "PYSTACHY_BDWGC_MODE": {
+              "candidate": "incremental",
+              "control": "default"
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              2.70560712940222,
+              2.11308693629326,
+              2.6016963603419425,
+              2.149646322799246,
+              2.6914465967412156
+            ],
+            "geometric_mean": 2.437576743266833,
+            "median": 2.6016963603419425,
+            "min": 2.11308693629326,
+            "max": 2.70560712940222,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              2.6942158483672074,
+              2.106751840015314,
+              2.5927766167691093,
+              2.14129258333056,
+              2.6826673163342725
+            ],
+            "geometric_mean": 2.4289061813775543,
+            "median": 2.5927766167691093,
+            "min": 2.106751840015314,
+            "max": 2.6942158483672074,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              1.0,
+              1.0,
+              0.9996618194115657,
+              0.9996619337390128,
+              0.9986504723346828
+            ],
+            "geometric_mean": 0.9995947220871841,
+            "median": 0.9996619337390128,
+            "min": 0.9986504723346828,
+            "max": 1.0,
+            "lower_rounds": 3,
+            "equal_rounds": 2
+          }
+        },
+        {
+          "candidate": "bdw_generational",
+          "control": "bdw",
+          "same_executable": true,
+          "environment_differences": {
+            "GC_USE_GETWRITEWATCH": {
+              "candidate": "0",
+              "control": null
+            },
+            "PYSTACHY_BDWGC_MODE": {
+              "candidate": "generational",
+              "control": "default"
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              2.8751601929745174,
+              1.8287878764575047,
+              2.666590675124979,
+              2.227427338664659,
+              2.853524216095499
+            ],
+            "geometric_mean": 2.4546714366650964,
+            "median": 2.666590675124979,
+            "min": 1.8287878764575047,
+            "max": 2.8751601929745174,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              2.865130851792647,
+              1.8202800080052004,
+              2.65777640002208,
+              2.220502114738098,
+              2.8462404149256395
+            ],
+            "geometric_mean": 2.446272170499843,
+            "median": 2.65777640002208,
+            "min": 1.8202800080052004,
+            "max": 2.865130851792647,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              1.0,
+              1.0,
+              0.9996618194115657,
+              1.0,
+              0.9983130904183536
+            ],
+            "geometric_mean": 0.9995947677687383,
+            "median": 1.0,
+            "min": 0.9983130904183536,
+            "max": 1.0,
+            "lower_rounds": 2,
+            "equal_rounds": 3
+          }
+        }
+      ],
+      "notes": [],
+      "source": "/workspace/scratch/a009f956ecf0/pystachy/bench/gc_application/results/2026-11-06/optional/json_loads.json",
+      "source_sha256": "95d494669b705b2338b2460612e6a98bf32ae76eee286b2c139e21e20f136533"
+    },
+    {
+      "workload": "json_retained_memory",
+      "rounds": 5,
+      "warmups_excluded": 1,
+      "cpu": 3,
+      "started_utc": "2026-11-06T05:26:44.774171+00:00",
+      "loadavg_before": [
+        2.052734375,
+        1.583984375,
+        1.13525390625
+      ],
+      "loadavg_after": [
+        2.12939453125,
+        1.7548828125,
+        1.24365234375
+      ],
+      "variants": {
+        "native": {
+          "wall_s_median": 1.1321387959978892,
+          "cpu_s_median": 1.130742,
+          "rss_mib_median": 225.8125,
+          "gc_elapsed_ms_median": 503.8,
+          "gc_collections_median": 13,
+          "gc_heap_peak_mib_median": 228.6,
+          "gc_last_live_mib_median": 88.1,
+          "gc_share_pct_median": 43.032456321922645,
+          "wall_s_min": 1.0606067870030529,
+          "wall_s_max": 1.3959724310043384
+        },
+        "bdw": {
+          "wall_s_median": 2.7103804319995106,
+          "cpu_s_median": 2.708311,
+          "rss_mib_median": 228.375,
+          "bdw_collections_median": 30,
+          "bdw_stopped_world_ms_median": 1089.565,
+          "bdw_pauses_median": 30,
+          "bdw_heap_peak_bytes_median": 224018432,
+          "bdw_heap_bytes_median": 224018432,
+          "bdw_free_bytes_median": 52031488,
+          "bdw_allocated_bytes_median": 1318321808,
+          "bdw_version": "8.2.6",
+          "bdw_mode": "default",
+          "bdw_markers": 1,
+          "bdw_incremental": 0,
+          "bdw_protection": 1,
+          "wall_s_min": 2.4998473700034083,
+          "wall_s_max": 3.1070299409984727
+        },
+        "bdw_32m": {
+          "wall_s_median": 2.7592330390034476,
+          "cpu_s_median": 2.756757,
+          "rss_mib_median": 233.25,
+          "bdw_collections_median": 24,
+          "bdw_stopped_world_ms_median": 1172.689,
+          "bdw_pauses_median": 24,
+          "bdw_heap_peak_bytes_median": 226762752,
+          "bdw_heap_bytes_median": 226762752,
+          "bdw_free_bytes_median": 31260672,
+          "bdw_allocated_bytes_median": 1318311456,
+          "bdw_version": "8.2.6",
+          "bdw_mode": "default",
+          "bdw_markers": 1,
+          "bdw_incremental": 0,
+          "bdw_protection": 1,
+          "wall_s_min": 2.5263025390013354,
+          "wall_s_max": 3.5309324280024157
+        },
+        "bdw_incremental": {
+          "wall_s_median": 4.464791215999867,
+          "cpu_s_median": 4.452197,
+          "rss_mib_median": 302.140625,
+          "bdw_collections_median": 61,
+          "bdw_stopped_world_ms_median": 1888.39,
+          "bdw_pauses_median": 61,
+          "bdw_heap_peak_bytes_median": 314056704,
+          "bdw_heap_bytes_median": 314056704,
+          "bdw_free_bytes_median": 90476544,
+          "bdw_allocated_bytes_median": 1318294432,
+          "bdw_version": "8.2.6",
+          "bdw_mode": "incremental",
+          "bdw_markers": 1,
+          "bdw_incremental": 1,
+          "bdw_protection": 1,
+          "wall_s_min": 4.060263409999607,
+          "wall_s_max": 4.642046690998541
+        },
+        "bdw_generational": {
+          "wall_s_median": 4.151043142999697,
+          "cpu_s_median": 4.139241999999999,
+          "rss_mib_median": 299.76953125,
+          "bdw_collections_median": 61,
+          "bdw_stopped_world_ms_median": 1780.936,
+          "bdw_pauses_median": 61,
+          "bdw_heap_peak_bytes_median": 314056704,
+          "bdw_heap_bytes_median": 314056704,
+          "bdw_free_bytes_median": 98680832,
+          "bdw_allocated_bytes_median": 1318294288,
+          "bdw_version": "8.2.6",
+          "bdw_mode": "generational",
+          "bdw_markers": 1,
+          "bdw_incremental": 1,
+          "bdw_protection": 1,
+          "wall_s_min": 4.074391605005076,
+          "wall_s_max": 5.134308597000199
+        }
+      },
+      "comparisons": [
+        {
+          "candidate": "bdw",
+          "control": "native",
+          "same_executable": false,
+          "environment_differences": {
+            "PYSTACHY_BDWGC_MODE": {
+              "candidate": "default",
+              "control": null
+            },
+            "PYSTACHY_GC_MIN": {
+              "candidate": null,
+              "control": "32"
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              2.744389603096214,
+              1.9428471578385993,
+              2.4317757588137936,
+              2.198159207610493,
+              2.356997334579769
+            ],
+            "geometric_mean": 2.3197716277382168,
+            "median": 2.356997334579769,
+            "min": 1.9428471578385993,
+            "max": 2.744389603096214,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              2.7466442389156858,
+              1.9469397429405624,
+              2.4293113968718236,
+              2.1992487033799417,
+              2.3585275049746453
+            ],
+            "geometric_mean": 2.321189940442966,
+            "median": 2.3585275049746453,
+            "min": 1.9469397429405624,
+            "max": 2.7466442389156858,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              1.018262313226342,
+              1.011452890903429,
+              1.0113479103238305,
+              1.0107943537226682,
+              1.018096259644995
+            ],
+            "geometric_mean": 1.0139849573869504,
+            "median": 1.011452890903429,
+            "min": 1.0107943537226682,
+            "max": 1.018262313226342,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          }
+        },
+        {
+          "candidate": "bdw_32m",
+          "control": "native",
+          "same_executable": false,
+          "environment_differences": {
+            "GC_INITIAL_HEAP_SIZE": {
+              "candidate": "33554432",
+              "control": null
+            },
+            "PYSTACHY_BDWGC_MODE": {
+              "candidate": "default",
+              "control": null
+            },
+            "PYSTACHY_GC_MIN": {
+              "candidate": null,
+              "control": "32"
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              3.1188158558687875,
+              2.077895509663248,
+              2.498535647188383,
+              2.048869273756827,
+              2.4689314909989606
+            ],
+            "geometric_mean": 2.413595321510446,
+            "median": 2.4689314909989606,
+            "min": 2.048869273756827,
+            "max": 3.1188158558687875,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              3.08811382260498,
+              2.0823042695999745,
+              2.499455547566828,
+              2.050600460749786,
+              2.470662807776683
+            ],
+            "geometric_mean": 2.4107683818202505,
+            "median": 2.470662807776683,
+            "min": 2.050600460749786,
+            "max": 3.08811382260498,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              1.0414879634753735,
+              1.0419016643022734,
+              1.0329366177691668,
+              1.0329366177691668,
+              1.0330438393135186
+            ],
+            "geometric_mean": 1.0364525328667091,
+            "median": 1.0330438393135186,
+            "min": 1.0329366177691668,
+            "max": 1.0419016643022734,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          }
+        },
+        {
+          "candidate": "bdw_incremental",
+          "control": "native",
+          "same_executable": false,
+          "environment_differences": {
+            "GC_USE_GETWRITEWATCH": {
+              "candidate": "0",
+              "control": null
+            },
+            "PYSTACHY_BDWGC_MODE": {
+              "candidate": "incremental",
+              "control": null
+            },
+            "PYSTACHY_GC_MIN": {
+              "candidate": null,
+              "control": "32"
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              3.8261278275326847,
+              3.325314016164918,
+              4.120575804740939,
+              3.6210126835472702,
+              3.828245736077794
+            ],
+            "geometric_mean": 3.7348742146783547,
+            "median": 3.8261278275326847,
+            "min": 3.325314016164918,
+            "max": 4.120575804740939,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              3.8191364608372202,
+              3.326864111873647,
+              4.109664778687566,
+              3.615348635899668,
+              3.8217981974226243
+            ],
+            "geometric_mean": 3.7294510761431723,
+            "median": 3.8191364608372202,
+            "min": 3.326864111873647,
+            "max": 4.109664778687566,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              1.3897516602102933,
+              1.3381543891214838,
+              1.3308019651259342,
+              1.326667589261002,
+              1.4145877305283554
+            ],
+            "geometric_mean": 1.3595330599153364,
+            "median": 1.3381543891214838,
+            "min": 1.326667589261002,
+            "max": 1.4145877305283554,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          }
+        },
+        {
+          "candidate": "bdw_generational",
+          "control": "native",
+          "same_executable": false,
+          "environment_differences": {
+            "GC_USE_GETWRITEWATCH": {
+              "candidate": "0",
+              "control": null
+            },
+            "PYSTACHY_BDWGC_MODE": {
+              "candidate": "generational",
+              "control": null
+            },
+            "PYSTACHY_GC_MIN": {
+              "candidate": null,
+              "control": "32"
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              3.6316519851927405,
+              2.973585330774198,
+              4.6492097158650845,
+              3.5652924286453698,
+              3.841566596531074
+            ],
+            "geometric_mean": 3.6938006889903527,
+            "median": 3.6316519851927405,
+            "min": 2.973585330774198,
+            "max": 4.6492097158650845,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              3.622141036593671,
+              2.9729846978168983,
+              4.634700070629217,
+              3.5577744015084405,
+              3.836365318320665
+            ],
+            "geometric_mean": 3.686851161341509,
+            "median": 3.622141036593671,
+            "min": 2.9729846978168983,
+            "max": 4.634700070629217,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              1.3135549252905367,
+              1.3544168021867755,
+              1.3487060614447828,
+              1.327515222806532,
+              1.324573544168022
+            ],
+            "geometric_mean": 1.3336648133887241,
+            "median": 1.327515222806532,
+            "min": 1.3135549252905367,
+            "max": 1.3544168021867755,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          }
+        },
+        {
+          "candidate": "bdw_32m",
+          "control": "bdw",
+          "same_executable": true,
+          "environment_differences": {
+            "GC_INITIAL_HEAP_SIZE": {
+              "candidate": "33554432",
+              "control": null
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              1.1364333447226833,
+              1.069510538325047,
+              1.0274531432977005,
+              0.932084112316891,
+              1.0474901497668212
+            ],
+            "geometric_mean": 1.0404452285950698,
+            "median": 1.0474901497668212,
+            "min": 0.932084112316891,
+            "max": 1.1364333447226833,
+            "lower_rounds": 1,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              1.1243224655203614,
+              1.0695268187678804,
+              1.0288740878527665,
+              0.932409534946319,
+              1.0475446237389725
+            ],
+            "geometric_mean": 1.0385916033050657,
+            "median": 1.0475446237389725,
+            "min": 0.932409534946319,
+            "max": 1.1243224655203614,
+            "lower_rounds": 1,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              1.0228091032608695,
+              1.030103995621237,
+              1.0213464696223318,
+              1.0219058050383352,
+              1.0146818923327896
+            ],
+            "geometric_mean": 1.0221577009758194,
+            "median": 1.0219058050383352,
+            "min": 1.0146818923327896,
+            "max": 1.030103995621237,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          }
+        },
+        {
+          "candidate": "bdw_incremental",
+          "control": "bdw",
+          "same_executable": true,
+          "environment_differences": {
+            "GC_USE_GETWRITEWATCH": {
+              "candidate": "0",
+              "control": null
+            },
+            "PYSTACHY_BDWGC_MODE": {
+              "candidate": "incremental",
+              "control": "default"
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              1.394163504779371,
+              1.7115674811313006,
+              1.6944719470149388,
+              1.6472931855939081,
+              1.6242045249322845
+            ],
+            "geometric_mean": 1.6100180595448814,
+            "median": 1.6472931855939081,
+            "min": 1.394163504779371,
+            "max": 1.7115674811313006,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              1.3904736575367078,
+              1.708765833116599,
+              1.69169946017604,
+              1.6439016789430756,
+              1.6204170565582228
+            ],
+            "geometric_mean": 1.6066979315925605,
+            "median": 1.6439016789430756,
+            "min": 1.3904736575367078,
+            "max": 1.708765833116599,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              1.3648267663043478,
+              1.3230021893814998,
+              1.3158695949644226,
+              1.3125,
+              1.3894439912996193
+            ],
+            "geometric_mean": 1.3407822769076052,
+            "median": 1.3230021893814998,
+            "min": 1.3125,
+            "max": 1.3894439912996193,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          }
+        },
+        {
+          "candidate": "bdw_generational",
+          "control": "bdw",
+          "same_executable": true,
+          "environment_differences": {
+            "GC_USE_GETWRITEWATCH": {
+              "candidate": "0",
+              "control": null
+            },
+            "PYSTACHY_BDWGC_MODE": {
+              "candidate": "generational",
+              "control": "default"
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              1.3233004457878426,
+              1.530529727352452,
+              1.911857908367728,
+              1.6219445872262446,
+              1.6298561479773546
+            ],
+            "geometric_mean": 1.5923122107462868,
+            "median": 1.6219445872262446,
+            "min": 1.3233004457878426,
+            "max": 1.911857908367728,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              1.3187514368528528,
+              1.5270039602389789,
+              1.9078246109565156,
+              1.6177226322973988,
+              1.6265934190841276
+            ],
+            "geometric_mean": 1.5883453125072244,
+            "median": 1.6177226322973988,
+            "min": 1.3187514368528528,
+            "max": 1.9078246109565156,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              1.2899966032608696,
+              1.339080459770115,
+              1.3335727969348659,
+              1.3133385815991239,
+              1.301029771615008
+            ],
+            "geometric_mean": 1.3152708071977637,
+            "median": 1.3133385815991239,
+            "min": 1.2899966032608696,
+            "max": 1.339080459770115,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          }
+        }
+      ],
+      "notes": [],
+      "source": "/workspace/scratch/a009f956ecf0/pystachy/bench/gc_application/results/2026-11-06/optional/json_retained_memory.json",
+      "source_sha256": "a41cc198efaec09aeeca9d78fc80141f732bd3e0fcfbfff4f662802dc490b526"
+    },
+    {
+      "workload": "nbody",
+      "rounds": 5,
+      "warmups_excluded": 1,
+      "cpu": 3,
+      "started_utc": "2026-11-06T05:37:50.334362+00:00",
+      "loadavg_before": [
+        2.42919921875,
+        2.3017578125,
+        1.74853515625
+      ],
+      "loadavg_after": [
+        2.4619140625,
+        2.33544921875,
+        1.78857421875
+      ],
+      "variants": {
+        "native": {
+          "wall_s_median": 1.4568352709975443,
+          "cpu_s_median": 1.4558360000000001,
+          "rss_mib_median": 11.3984375,
+          "gc_elapsed_ms_median": 0.0,
+          "gc_collections_median": 0,
+          "gc_heap_peak_mib_median": 0.8,
+          "gc_last_live_mib_median": 0.0,
+          "gc_share_pct_median": 0.0,
+          "wall_s_min": 1.3911981909986935,
+          "wall_s_max": 1.4674663769983454
+        },
+        "bdw": {
+          "wall_s_median": 1.4469918109971331,
+          "cpu_s_median": 1.4460739999999999,
+          "rss_mib_median": 11.3984375,
+          "bdw_collections_median": 1,
+          "bdw_stopped_world_ms_median": 0.023,
+          "bdw_pauses_median": 1,
+          "bdw_heap_peak_bytes_median": 65536,
+          "bdw_heap_bytes_median": 65536,
+          "bdw_free_bytes_median": 20480,
+          "bdw_allocated_bytes_median": 5296,
+          "bdw_version": "8.2.6",
+          "bdw_mode": "default",
+          "bdw_markers": 1,
+          "bdw_incremental": 0,
+          "bdw_protection": 1,
+          "wall_s_min": 1.4074955610049074,
+          "wall_s_max": 1.6607651220037951
+        },
+        "bdw_32m": {
+          "wall_s_median": 1.4754471979977097,
+          "cpu_s_median": 1.474294,
+          "rss_mib_median": 11.390625,
+          "bdw_collections_median": 1,
+          "bdw_stopped_world_ms_median": 0.023,
+          "bdw_pauses_median": 1,
+          "bdw_heap_peak_bytes_median": 33554432,
+          "bdw_heap_bytes_median": 33554432,
+          "bdw_free_bytes_median": 33509376,
+          "bdw_allocated_bytes_median": 5296,
+          "bdw_version": "8.2.6",
+          "bdw_mode": "default",
+          "bdw_markers": 1,
+          "bdw_incremental": 0,
+          "bdw_protection": 1,
+          "wall_s_min": 1.3669396709956345,
+          "wall_s_max": 1.5632479959967895
+        },
+        "bdw_incremental": {
+          "wall_s_median": 1.4869590860034805,
+          "cpu_s_median": 1.485978,
+          "rss_mib_median": 11.3984375,
+          "bdw_collections_median": 2,
+          "bdw_stopped_world_ms_median": 0.048,
+          "bdw_pauses_median": 2,
+          "bdw_heap_peak_bytes_median": 65536,
+          "bdw_heap_bytes_median": 65536,
+          "bdw_free_bytes_median": 24576,
+          "bdw_allocated_bytes_median": 5296,
+          "bdw_version": "8.2.6",
+          "bdw_mode": "incremental",
+          "bdw_markers": 1,
+          "bdw_incremental": 1,
+          "bdw_protection": 1,
+          "wall_s_min": 1.3330085370034794,
+          "wall_s_max": 1.6380597700044746
+        },
+        "bdw_generational": {
+          "wall_s_median": 1.4674412620006478,
+          "cpu_s_median": 1.4646649999999999,
+          "rss_mib_median": 11.39453125,
+          "bdw_collections_median": 2,
+          "bdw_stopped_world_ms_median": 0.046,
+          "bdw_pauses_median": 2,
+          "bdw_heap_peak_bytes_median": 65536,
+          "bdw_heap_bytes_median": 65536,
+          "bdw_free_bytes_median": 24576,
+          "bdw_allocated_bytes_median": 5296,
+          "bdw_version": "8.2.6",
+          "bdw_mode": "generational",
+          "bdw_markers": 1,
+          "bdw_incremental": 1,
+          "bdw_protection": 1,
+          "wall_s_min": 1.436070440999174,
+          "wall_s_max": 1.5592464949950227
+        }
+      },
+      "comparisons": [
+        {
+          "candidate": "bdw",
+          "control": "native",
+          "same_executable": false,
+          "environment_differences": {
+            "PYSTACHY_BDWGC_MODE": {
+              "candidate": "default",
+              "control": null
+            },
+            "PYSTACHY_GC_MIN": {
+              "candidate": null,
+              "control": "32"
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              0.999516218427246,
+              0.9906400491714498,
+              1.1070263221327283,
+              1.1317227760957878,
+              1.028432620355002
+            ],
+            "geometric_mean": 1.04991928943337,
+            "median": 1.028432620355002,
+            "min": 0.9906400491714498,
+            "max": 1.1317227760957878,
+            "lower_rounds": 2,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              1.0011609681235594,
+              0.9906448452796064,
+              1.1070711261433293,
+              1.1317786582829241,
+              1.028519765754128
+            ],
+            "geometric_mean": 1.050302289122579,
+            "median": 1.028519765754128,
+            "min": 0.9906448452796064,
+            "max": 1.1317786582829241,
+            "lower_rounds": 1,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              0.9989718985606579,
+              1.0,
+              1.0003428179636613,
+              1.001370332305584,
+              0.9986329460013671
+            ],
+            "geometric_mean": 0.9998631161503647,
+            "median": 1.0,
+            "min": 0.9986329460013671,
+            "max": 1.001370332305584,
+            "lower_rounds": 2,
+            "equal_rounds": 1
+          }
+        },
+        {
+          "candidate": "bdw_32m",
+          "control": "native",
+          "same_executable": false,
+          "environment_differences": {
+            "GC_INITIAL_HEAP_SIZE": {
+              "candidate": "33554432",
+              "control": null
+            },
+            "PYSTACHY_BDWGC_MODE": {
+              "candidate": "default",
+              "control": null
+            },
+            "PYSTACHY_GC_MIN": {
+              "candidate": null,
+              "control": "32"
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              1.1101219561268898,
+              1.0101211863577193,
+              0.9689833552956292,
+              1.041843680346869,
+              0.9825628582900582
+            ],
+            "geometric_mean": 1.0215148369543667,
+            "median": 1.0101211863577193,
+            "min": 0.9689833552956292,
+            "max": 1.1101219561268898,
+            "lower_rounds": 2,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              1.1099631138147377,
+              1.0099771875620833,
+              0.9689786486939462,
+              1.0419509932961883,
+              0.9824955730061985
+            ],
+            "geometric_mean": 1.0214625360838863,
+            "median": 1.0099771875620833,
+            "min": 0.9689786486939462,
+            "max": 1.1099631138147377,
+            "lower_rounds": 2,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              0.9989718985606579,
+              1.0,
+              0.9996571820363387,
+              1.0,
+              0.9989747095010253
+            ],
+            "geometric_mean": 0.9995206502236047,
+            "median": 0.9996571820363387,
+            "min": 0.9989718985606579,
+            "max": 1.0,
+            "lower_rounds": 3,
+            "equal_rounds": 2
+          }
+        },
+        {
+          "candidate": "bdw_incremental",
+          "control": "native",
+          "same_executable": false,
+          "environment_differences": {
+            "GC_USE_GETWRITEWATCH": {
+              "candidate": "0",
+              "control": null
+            },
+            "PYSTACHY_BDWGC_MODE": {
+              "candidate": "incremental",
+              "control": null
+            },
+            "PYSTACHY_GC_MIN": {
+              "candidate": null,
+              "control": "32"
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              1.1383057443410463,
+              1.1214490633397383,
+              0.9150029269202986,
+              1.013283240632066,
+              0.985002724892791
+            ],
+            "geometric_mean": 1.0311595088257315,
+            "median": 1.013283240632066,
+            "min": 0.9150029269202986,
+            "max": 1.1383057443410463,
+            "lower_rounds": 2,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              1.1401418787041004,
+              1.1213580593671433,
+              0.9149581408894957,
+              1.0133994394167753,
+              0.9849662023657625
+            ],
+            "geometric_mean": 1.03148112239029,
+            "median": 1.0133994394167753,
+            "min": 0.9149581408894957,
+            "max": 1.1401418787041004,
+            "lower_rounds": 2,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              1.0003427004797807,
+              1.0,
+              1.0,
+              0.999657416923604,
+              0.9989747095010253
+            ],
+            "geometric_mean": 0.9997948577507846,
+            "median": 1.0,
+            "min": 0.9989747095010253,
+            "max": 1.0003427004797807,
+            "lower_rounds": 2,
+            "equal_rounds": 2
+          }
+        },
+        {
+          "candidate": "bdw_generational",
+          "control": "native",
+          "same_executable": false,
+          "environment_differences": {
+            "GC_USE_GETWRITEWATCH": {
+              "candidate": "0",
+              "control": null
+            },
+            "PYSTACHY_BDWGC_MODE": {
+              "candidate": "generational",
+              "control": null
+            },
+            "PYSTACHY_GC_MIN": {
+              "candidate": null,
+              "control": "32"
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              1.107280337822628,
+              1.0046401596030983,
+              0.9857466177461836,
+              0.9851996091074033,
+              1.0561159448741553
+            ],
+            "geometric_mean": 1.0267243211673218,
+            "median": 1.0046401596030983,
+            "min": 0.9851996091074033,
+            "max": 1.107280337822628,
+            "lower_rounds": 2,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              1.1092997034584178,
+              1.0044782254252498,
+              0.9858260133696377,
+              0.98533617944119,
+              1.0534626931370448
+            ],
+            "geometric_mean": 1.0265938482136725,
+            "median": 1.0044782254252498,
+            "min": 0.98533617944119,
+            "max": 1.1092997034584178,
+            "lower_rounds": 2,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              0.9989718985606579,
+              1.0,
+              1.0,
+              0.999657416923604,
+              0.9982911825017088
+            ],
+            "geometric_mean": 0.9993838796277831,
+            "median": 0.999657416923604,
+            "min": 0.9982911825017088,
+            "max": 1.0,
+            "lower_rounds": 3,
+            "equal_rounds": 2
+          }
+        },
+        {
+          "candidate": "bdw_32m",
+          "control": "bdw",
+          "same_executable": true,
+          "environment_differences": {
+            "GC_INITIAL_HEAP_SIZE": {
+              "candidate": "33554432",
+              "control": null
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              1.1106592726165898,
+              1.019665202514842,
+              0.8753029046579903,
+              0.9205820562708976,
+              0.9553983788951481
+            ],
+            "geometric_mean": 0.9729460609354716,
+            "median": 0.9553983788951481,
+            "min": 0.8753029046579903,
+            "max": 1.1106592726165898,
+            "lower_rounds": 3,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              1.1086759763468428,
+              1.0195149072592413,
+              0.8752632290840682,
+              0.9206314199960108,
+              0.9552520094602325
+            ],
+            "geometric_mean": 0.9725414736906025,
+            "median": 0.9552520094602325,
+            "min": 0.8752632290840682,
+            "max": 1.1086759763468428,
+            "lower_rounds": 3,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              1.0,
+              1.0,
+              0.9993145990404386,
+              0.9986315429353404,
+              1.0003422313483916
+            ],
+            "geometric_mean": 0.9996574871887679,
+            "median": 1.0,
+            "min": 0.9986315429353404,
+            "max": 1.0003422313483916,
+            "lower_rounds": 2,
+            "equal_rounds": 2
+          }
+        },
+        {
+          "candidate": "bdw_incremental",
+          "control": "bdw",
+          "same_executable": true,
+          "environment_differences": {
+            "GC_USE_GETWRITEWATCH": {
+              "candidate": "0",
+              "control": null
+            },
+            "PYSTACHY_BDWGC_MODE": {
+              "candidate": "incremental",
+              "control": "default"
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              1.1388567022275913,
+              1.1320449483923998,
+              0.8265412561803505,
+              0.8953458055582182,
+              0.9577707915884469
+            ],
+            "geometric_mean": 0.9821321688281744,
+            "median": 0.9577707915884469,
+            "min": 0.8265412561803505,
+            "max": 1.1388567022275913,
+            "lower_rounds": 3,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              1.1388197452813487,
+              1.1319476043411334,
+              0.8264673509071707,
+              0.8954042665500093,
+              0.957654130879603
+            ],
+            "geometric_mean": 0.982080238301668,
+            "median": 0.957654130879603,
+            "min": 0.8264673509071707,
+            "max": 1.1388197452813487,
+            "lower_rounds": 3,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              1.0013722126929674,
+              1.0,
+              0.9996572995202193,
+              0.9982894286691755,
+              1.0003422313483916
+            ],
+            "geometric_mean": 0.9999317322556682,
+            "median": 1.0,
+            "min": 0.9982894286691755,
+            "max": 1.0013722126929674,
+            "lower_rounds": 2,
+            "equal_rounds": 1
+          }
+        },
+        {
+          "candidate": "bdw_generational",
+          "control": "bdw",
+          "same_executable": true,
+          "environment_differences": {
+            "GC_USE_GETWRITEWATCH": {
+              "candidate": "0",
+              "control": null
+            },
+            "PYSTACHY_BDWGC_MODE": {
+              "candidate": "generational",
+              "control": "default"
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              1.1078162789243682,
+              1.0141323888968126,
+              0.8904455097753278,
+              0.8705308666722611,
+              1.0269179759288436
+            ],
+            "geometric_mean": 0.9779078558709344,
+            "median": 1.0141323888968126,
+            "min": 0.8705308666722611,
+            "max": 1.1078162789243682,
+            "lower_rounds": 2,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              1.1080133352956607,
+              1.0139640156727803,
+              0.890481189590709,
+              0.8706085525027402,
+              1.02425128637623
+            ],
+            "geometric_mean": 0.9774270310991012,
+            "median": 1.0139640156727803,
+            "min": 0.8706085525027402,
+            "max": 1.1080133352956607,
+            "lower_rounds": 2,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              1.0,
+              1.0,
+              0.9996572995202193,
+              0.9982894286691755,
+              0.9996577686516085
+            ],
+            "geometric_mean": 0.9995206978686975,
+            "median": 0.9996577686516085,
+            "min": 0.9982894286691755,
+            "max": 1.0,
+            "lower_rounds": 3,
+            "equal_rounds": 2
+          }
+        }
+      ],
+      "notes": [],
+      "source": "/workspace/scratch/a009f956ecf0/pystachy/bench/gc_application/results/2026-11-06/optional/nbody.json",
+      "source_sha256": "0e2bfc5f3b91995ec29ac48aa62c47d1c22897b8a3fafadd6457d6ba4ac99b60"
+    },
+    {
+      "workload": "raytrace",
+      "rounds": 5,
+      "warmups_excluded": 1,
+      "cpu": 3,
+      "started_utc": "2026-11-06T05:30:35.177027+00:00",
+      "loadavg_before": [
+        1.63916015625,
+        1.66015625,
+        1.27978515625
+      ],
+      "loadavg_after": [
+        2.14697265625,
+        1.93017578125,
+        1.44677734375
+      ],
+      "variants": {
+        "native": {
+          "wall_s_median": 1.3830675690041971,
+          "cpu_s_median": 1.382158,
+          "rss_mib_median": 34.765625,
+          "gc_elapsed_ms_median": 18.0,
+          "gc_collections_median": 179,
+          "gc_heap_peak_mib_median": 34.0,
+          "gc_last_live_mib_median": 0.2,
+          "gc_share_pct_median": 1.3720291336084967,
+          "wall_s_min": 1.3092691600031685,
+          "wall_s_max": 1.5160027940000873
+        },
+        "bdw": {
+          "wall_s_median": 2.228176378994249,
+          "cpu_s_median": 2.226499,
+          "rss_mib_median": 11.41796875,
+          "bdw_collections_median": 11733,
+          "bdw_stopped_world_ms_median": 251.347,
+          "bdw_pauses_median": 11733,
+          "bdw_heap_peak_bytes_median": 1339392,
+          "bdw_heap_bytes_median": 1056768,
+          "bdw_free_bytes_median": 532480,
+          "bdw_allocated_bytes_median": 6799198000,
+          "bdw_version": "8.2.6",
+          "bdw_mode": "default",
+          "bdw_markers": 1,
+          "bdw_incremental": 0,
+          "bdw_protection": 1,
+          "wall_s_min": 1.7744051720001153,
+          "wall_s_max": 2.271979051998642
+        },
+        "bdw_32m": {
+          "wall_s_median": 2.3738976410022588,
+          "cpu_s_median": 2.370554,
+          "rss_mib_median": 35.8828125,
+          "bdw_collections_median": 205,
+          "bdw_stopped_world_ms_median": 30.481,
+          "bdw_pauses_median": 205,
+          "bdw_heap_peak_bytes_median": 33554432,
+          "bdw_heap_bytes_median": 33554432,
+          "bdw_free_bytes_median": 8286208,
+          "bdw_allocated_bytes_median": 6794563200,
+          "bdw_version": "8.2.6",
+          "bdw_mode": "default",
+          "bdw_markers": 1,
+          "bdw_incremental": 0,
+          "bdw_protection": 1,
+          "wall_s_min": 1.9791960980001022,
+          "wall_s_max": 2.85556594299851
+        },
+        "bdw_incremental": {
+          "wall_s_median": 9.683240152000508,
+          "cpu_s_median": 9.640329000000001,
+          "rss_mib_median": 11.41796875,
+          "bdw_collections_median": 85572,
+          "bdw_stopped_world_ms_median": 3450.877,
+          "bdw_pauses_median": 85572,
+          "bdw_heap_peak_bytes_median": 1339392,
+          "bdw_heap_bytes_median": 430080,
+          "bdw_free_bytes_median": 86016,
+          "bdw_allocated_bytes_median": 6794470848,
+          "bdw_version": "8.2.6",
+          "bdw_mode": "incremental",
+          "bdw_markers": 1,
+          "bdw_incremental": 1,
+          "bdw_protection": 1,
+          "wall_s_min": 8.935791664000135,
+          "wall_s_max": 10.9721114999993
+        },
+        "bdw_generational": {
+          "wall_s_median": 9.454876062998665,
+          "cpu_s_median": 9.401053999999998,
+          "rss_mib_median": 11.41796875,
+          "bdw_collections_median": 85202,
+          "bdw_stopped_world_ms_median": 3226.081,
+          "bdw_pauses_median": 85202,
+          "bdw_heap_peak_bytes_median": 1019904,
+          "bdw_heap_bytes_median": 454656,
+          "bdw_free_bytes_median": 114688,
+          "bdw_allocated_bytes_median": 6794470464,
+          "bdw_version": "8.2.6",
+          "bdw_mode": "generational",
+          "bdw_markers": 1,
+          "bdw_incremental": 1,
+          "bdw_protection": 1,
+          "wall_s_min": 8.88634456100408,
+          "wall_s_max": 10.319218069998897
+        }
+      },
+      "comparisons": [
+        {
+          "candidate": "bdw",
+          "control": "native",
+          "same_executable": false,
+          "environment_differences": {
+            "PYSTACHY_BDWGC_MODE": {
+              "candidate": "default",
+              "control": null
+            },
+            "PYSTACHY_GC_MIN": {
+              "candidate": null,
+              "control": "32"
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              1.3502987003608382,
+              1.2642580214889323,
+              1.7339964809033712,
+              1.6110394234741015,
+              1.4986641587934375
+            ],
+            "geometric_mean": 1.4819203220219324,
+            "median": 1.4986641587934375,
+            "min": 1.2642580214889323,
+            "max": 1.7339964809033712,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              1.3508774335487683,
+              1.2645236952035095,
+              1.7350030015791746,
+              1.610886020266858,
+              1.499396742608198
+            ],
+            "geometric_mean": 1.4823982886315765,
+            "median": 1.499396742608198,
+            "min": 1.2645236952035095,
+            "max": 1.7350030015791746,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              0.32827601708249043,
+              0.3282022471910112,
+              0.32842696629213486,
+              0.32853932584269663,
+              0.3289118705035971
+            ],
+            "geometric_mean": 0.3284711906706232,
+            "median": 0.32842696629213486,
+            "min": 0.3282022471910112,
+            "max": 0.3289118705035971,
+            "lower_rounds": 5,
+            "equal_rounds": 0
+          }
+        },
+        {
+          "candidate": "bdw_32m",
+          "control": "native",
+          "same_executable": false,
+          "environment_differences": {
+            "GC_INITIAL_HEAP_SIZE": {
+              "candidate": "33554432",
+              "control": null
+            },
+            "PYSTACHY_BDWGC_MODE": {
+              "candidate": "default",
+              "control": null
+            },
+            "PYSTACHY_GC_MIN": {
+              "candidate": null,
+              "control": "32"
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              1.5061418671792546,
+              1.8374731780761533,
+              1.5889717313658096,
+              1.7164003366165654,
+              1.8836152243914304
+            ],
+            "geometric_mean": 1.7004457016456243,
+            "median": 1.7164003366165654,
+            "min": 1.5061418671792546,
+            "max": 1.8836152243914304,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              1.5069803122133754,
+              1.8380177199460168,
+              1.5899758726565691,
+              1.7151107181668086,
+              1.884932036962805
+            ],
+            "geometric_mean": 1.7009327089357957,
+            "median": 1.7151107181668086,
+            "min": 1.5069803122133754,
+            "max": 1.884932036962805,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              1.0323668240053945,
+              1.0330337078651686,
+              1.0319101123595507,
+              1.0321348314606742,
+              1.032486510791367
+            ],
+            "geometric_mean": 1.0323863276080028,
+            "median": 1.0323668240053945,
+            "min": 1.0319101123595507,
+            "max": 1.0330337078651686,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          }
+        },
+        {
+          "candidate": "bdw_incremental",
+          "control": "native",
+          "same_executable": false,
+          "environment_differences": {
+            "GC_USE_GETWRITEWATCH": {
+              "candidate": "0",
+              "control": null
+            },
+            "PYSTACHY_BDWGC_MODE": {
+              "candidate": "incremental",
+              "control": null
+            },
+            "PYSTACHY_GC_MIN": {
+              "candidate": null,
+              "control": "32"
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              7.368816772434048,
+              6.240132539587368,
+              8.380332963752654,
+              6.875225257325319,
+              6.929848717679051
+            ],
+            "geometric_mean": 7.12480046859639,
+            "median": 6.929848717679051,
+            "min": 6.240132539587368,
+            "max": 8.380332963752654,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              7.343938258174806,
+              6.203516592268612,
+              8.3546275938806,
+              6.8472736112658605,
+              6.908142422895648
+            ],
+            "geometric_mean": 7.096996731811688,
+            "median": 6.908142422895648,
+            "min": 6.203516592268612,
+            "max": 8.3546275938806,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              0.3287255563047876,
+              0.3282022471910112,
+              0.32842696629213486,
+              0.32842696629213486,
+              0.3289118705035971
+            ],
+            "geometric_mean": 0.32853862625784785,
+            "median": 0.32842696629213486,
+            "min": 0.3282022471910112,
+            "max": 0.3289118705035971,
+            "lower_rounds": 5,
+            "equal_rounds": 0
+          }
+        },
+        {
+          "candidate": "bdw_generational",
+          "control": "native",
+          "same_executable": false,
+          "environment_differences": {
+            "GC_USE_GETWRITEWATCH": {
+              "candidate": "0",
+              "control": null
+            },
+            "PYSTACHY_BDWGC_MODE": {
+              "candidate": "generational",
+              "control": null
+            },
+            "PYSTACHY_GC_MIN": {
+              "candidate": null,
+              "control": "32"
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              6.990459748945021,
+              7.2062208792446505,
+              6.787255693842643,
+              6.836163521501799,
+              6.658235301376957
+            ],
+            "geometric_mean": 6.893119701141707,
+            "median": 6.836163521501799,
+            "min": 6.658235301376957,
+            "max": 7.2062208792446505,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              6.96780585240102,
+              7.165964620213486,
+              6.756212121791465,
+              6.801721655556021,
+              6.625768435010985
+            ],
+            "geometric_mean": 6.860974690749093,
+            "median": 6.801721655556021,
+            "min": 6.625768435010985,
+            "max": 7.165964620213486,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              0.32827601708249043,
+              0.3282022471910112,
+              0.32842696629213486,
+              0.32842696629213486,
+              0.3287994604316547
+            ],
+            "geometric_mean": 0.32842626692025406,
+            "median": 0.32842696629213486,
+            "min": 0.3282022471910112,
+            "max": 0.3287994604316547,
+            "lower_rounds": 5,
+            "equal_rounds": 0
+          }
+        },
+        {
+          "candidate": "bdw_32m",
+          "control": "bdw",
+          "same_executable": true,
+          "environment_differences": {
+            "GC_INITIAL_HEAP_SIZE": {
+              "candidate": "33554432",
+              "control": null
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              1.1154138464154417,
+              1.453400450575855,
+              0.9163638732057824,
+              1.065399338841293,
+              1.256862795669921
+            ],
+            "geometric_mean": 1.1474609507517488,
+            "median": 1.1154138464154417,
+            "min": 0.9163638732057824,
+            "max": 1.453400450575855,
+            "lower_rounds": 1,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              1.1155566558355507,
+              1.4535257242848347,
+              0.916411021312007,
+              1.0647002311701015,
+              1.2571269387206814
+            ],
+            "geometric_mean": 1.1474195039080568,
+            "median": 1.1155566558355507,
+            "min": 0.916411021312007,
+            "max": 1.4535257242848347,
+            "lower_rounds": 1,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              3.144813420061623,
+              3.1475522081478946,
+              3.141977420458433,
+              3.1415868673050618,
+              3.1390977443609023
+            ],
+            "geometric_mean": 3.1430041870650247,
+            "median": 3.141977420458433,
+            "min": 3.1390977443609023,
+            "max": 3.1475522081478946,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          }
+        },
+        {
+          "candidate": "bdw_incremental",
+          "control": "bdw",
+          "same_executable": true,
+          "environment_differences": {
+            "GC_USE_GETWRITEWATCH": {
+              "candidate": "0",
+              "control": null
+            },
+            "PYSTACHY_BDWGC_MODE": {
+              "candidate": "incremental",
+              "control": "default"
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              5.4571753423630565,
+              4.9358061673504645,
+              4.832958461015272,
+              4.267571083083332,
+              4.624017113519427
+            ],
+            "geometric_mean": 4.8078161576698735,
+            "median": 4.832958461015272,
+            "min": 4.267571083083332,
+            "max": 5.4571753423630565,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              5.436420859353766,
+              4.905812849375063,
+              4.815338985740278,
+              4.250625758197061,
+              4.607281199556928
+            ],
+            "geometric_mean": 4.787510068136296,
+            "median": 4.815338985740278,
+            "min": 4.250625758197061,
+            "max": 5.436420859353766,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              1.0013693940431359,
+              1.0,
+              1.0,
+              0.9996580027359782,
+              1.0
+            ],
+            "geometric_mean": 1.000205301375402,
+            "median": 1.0,
+            "min": 0.9996580027359782,
+            "max": 1.0013693940431359,
+            "lower_rounds": 1,
+            "equal_rounds": 3
+          }
+        },
+        {
+          "candidate": "bdw_generational",
+          "control": "bdw",
+          "same_executable": true,
+          "environment_differences": {
+            "GC_USE_GETWRITEWATCH": {
+              "candidate": "0",
+              "control": null
+            },
+            "PYSTACHY_BDWGC_MODE": {
+              "candidate": "generational",
+              "control": "default"
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              5.176972877983939,
+              5.699960575103011,
+              3.9142269137170587,
+              4.2433247888869525,
+              4.442780100070885
+            ],
+            "geometric_mean": 4.651477949729939,
+            "median": 4.442780100070885,
+            "min": 3.9142269137170587,
+            "max": 5.699960575103011,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              5.157985231936642,
+              5.6669279092158185,
+              3.894063650404096,
+              4.222348179810545,
+              4.418956135309107
+            ],
+            "geometric_mean": 4.628293720631961,
+            "median": 4.418956135309107,
+            "min": 3.894063650404096,
+            "max": 5.6669279092158185,
+            "lower_rounds": 0,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              1.0,
+              1.0,
+              1.0,
+              0.9996580027359782,
+              0.9996582365003418
+            ],
+            "geometric_mean": 0.9998632338188398,
+            "median": 1.0,
+            "min": 0.9996580027359782,
+            "max": 1.0,
+            "lower_rounds": 2,
+            "equal_rounds": 3
+          }
+        }
+      ],
+      "notes": [],
+      "source": "/workspace/scratch/a009f956ecf0/pystachy/bench/gc_application/results/2026-11-06/optional/raytrace.json",
+      "source_sha256": "30a932129e8686fbb1bf560e16d89c74a2871a86738f9735ce389edf13ea381c"
+    },
+    {
+      "workload": "richards",
+      "rounds": 5,
+      "warmups_excluded": 1,
+      "cpu": 3,
+      "started_utc": "2026-11-06T05:37:07.024601+00:00",
+      "loadavg_before": [
+        2.63916015625,
+        2.3154296875,
+        1.72314453125
+      ],
+      "loadavg_after": [
+        2.42919921875,
+        2.3017578125,
+        1.74853515625
+      ],
+      "variants": {
+        "native": {
+          "wall_s_median": 1.345803349999187,
+          "cpu_s_median": 1.344714,
+          "rss_mib_median": 11.43359375,
+          "gc_elapsed_ms_median": 0.0,
+          "gc_collections_median": 0,
+          "gc_heap_peak_mib_median": 5.8,
+          "gc_last_live_mib_median": 0.0,
+          "gc_share_pct_median": 0.0,
+          "wall_s_min": 1.338881689000118,
+          "wall_s_max": 1.413999258998956
+        },
+        "bdw": {
+          "wall_s_median": 1.4505246239932603,
+          "cpu_s_median": 1.43883,
+          "rss_mib_median": 11.43359375,
+          "bdw_collections_median": 8,
+          "bdw_stopped_world_ms_median": 2.77,
+          "bdw_pauses_median": 8,
+          "bdw_heap_peak_bytes_median": 6508544,
+          "bdw_heap_bytes_median": 6508544,
+          "bdw_free_bytes_median": 1433600,
+          "bdw_allocated_bytes_median": 6705936,
+          "bdw_version": "8.2.6",
+          "bdw_mode": "default",
+          "bdw_markers": 1,
+          "bdw_incremental": 0,
+          "bdw_protection": 1,
+          "wall_s_min": 1.2935694100015098,
+          "wall_s_max": 1.5558354559980216
+        },
+        "bdw_32m": {
+          "wall_s_median": 1.393615036002302,
+          "cpu_s_median": 1.392565,
+          "rss_mib_median": 11.4296875,
+          "bdw_collections_median": 1,
+          "bdw_stopped_world_ms_median": 0.024,
+          "bdw_pauses_median": 1,
+          "bdw_heap_peak_bytes_median": 33554432,
+          "bdw_heap_bytes_median": 33554432,
+          "bdw_free_bytes_median": 26820608,
+          "bdw_allocated_bytes_median": 6697328,
+          "bdw_version": "8.2.6",
+          "bdw_mode": "default",
+          "bdw_markers": 1,
+          "bdw_incremental": 0,
+          "bdw_protection": 1,
+          "wall_s_min": 1.2924436000030255,
+          "wall_s_max": 1.4811478129995521
+        },
+        "bdw_incremental": {
+          "wall_s_median": 1.3571201669983566,
+          "cpu_s_median": 1.356031,
+          "rss_mib_median": 11.43359375,
+          "bdw_collections_median": 20,
+          "bdw_stopped_world_ms_median": 7.085,
+          "bdw_pauses_median": 20,
+          "bdw_heap_peak_bytes_median": 6713344,
+          "bdw_heap_bytes_median": 6713344,
+          "bdw_free_bytes_median": 1601536,
+          "bdw_allocated_bytes_median": 6703728,
+          "bdw_version": "8.2.6",
+          "bdw_mode": "incremental",
+          "bdw_markers": 1,
+          "bdw_incremental": 1,
+          "bdw_protection": 1,
+          "wall_s_min": 1.3156454299969482,
+          "wall_s_max": 1.4521968729968648
+        },
+        "bdw_generational": {
+          "wall_s_median": 1.4112590279983124,
+          "cpu_s_median": 1.410372,
+          "rss_mib_median": 11.43359375,
+          "bdw_collections_median": 20,
+          "bdw_stopped_world_ms_median": 7.318,
+          "bdw_pauses_median": 20,
+          "bdw_heap_peak_bytes_median": 6713344,
+          "bdw_heap_bytes_median": 6713344,
+          "bdw_free_bytes_median": 1613824,
+          "bdw_allocated_bytes_median": 6702592,
+          "bdw_version": "8.2.6",
+          "bdw_mode": "generational",
+          "bdw_markers": 1,
+          "bdw_incremental": 1,
+          "bdw_protection": 1,
+          "wall_s_min": 1.3705303599999752,
+          "wall_s_max": 1.53268287100218
+        }
+      },
+      "comparisons": [
+        {
+          "candidate": "bdw",
+          "control": "native",
+          "same_executable": false,
+          "environment_differences": {
+            "PYSTACHY_BDWGC_MODE": {
+              "candidate": "default",
+              "control": null
+            },
+            "PYSTACHY_GC_MIN": {
+              "candidate": null,
+              "control": "32"
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              1.156064484457526,
+              1.0258312476204283,
+              0.9568770072605642,
+              1.0425094662717336,
+              1.0920495676151936
+            ],
+            "geometric_mean": 1.0525610432932744,
+            "median": 1.0425094662717336,
+            "min": 0.9568770072605642,
+            "max": 1.156064484457526,
+            "lower_rounds": 1,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              1.1562644547465113,
+              1.026126520850041,
+              0.9568583473050347,
+              1.041968687713414,
+              1.07459977818357
+            ],
+            "geometric_mean": 1.049159289646648,
+            "median": 1.041968687713414,
+            "min": 0.9568583473050347,
+            "max": 1.1562644547465113,
+            "lower_rounds": 1,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              1.000341997264022,
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "geometric_mean": 1.0000683900977536,
+            "median": 1.0,
+            "min": 1.0,
+            "max": 1.000341997264022,
+            "lower_rounds": 0,
+            "equal_rounds": 4
+          }
+        },
+        {
+          "candidate": "bdw_32m",
+          "control": "native",
+          "same_executable": false,
+          "environment_differences": {
+            "GC_INITIAL_HEAP_SIZE": {
+              "candidate": "33554432",
+              "control": null
+            },
+            "PYSTACHY_BDWGC_MODE": {
+              "candidate": "default",
+              "control": null
+            },
+            "PYSTACHY_GC_MIN": {
+              "candidate": null,
+              "control": "32"
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              1.1005677857767606,
+              0.959461328120234,
+              0.956044224965494,
+              1.040879898090965,
+              1.0437413220338303
+            ],
+            "geometric_mean": 1.018645686720448,
+            "median": 1.040879898090965,
+            "min": 0.956044224965494,
+            "max": 1.1005677857767606,
+            "lower_rounds": 2,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              1.1006593223540468,
+              0.9596086861427016,
+              0.9559449126352293,
+              1.040727346646548,
+              1.0436567596129789
+            ],
+            "geometric_mean": 1.018626386533317,
+            "median": 1.040727346646548,
+            "min": 0.9559449126352293,
+            "max": 1.1006593223540468,
+            "lower_rounds": 2,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              1.000341997264022,
+              1.0,
+              0.9996583532627263,
+              1.0,
+              1.0
+            ],
+            "geometric_mean": 1.0000000467368955,
+            "median": 1.0,
+            "min": 0.9996583532627263,
+            "max": 1.000341997264022,
+            "lower_rounds": 1,
+            "equal_rounds": 3
+          }
+        },
+        {
+          "candidate": "bdw_incremental",
+          "control": "native",
+          "same_executable": false,
+          "environment_differences": {
+            "GC_USE_GETWRITEWATCH": {
+              "candidate": "0",
+              "control": null
+            },
+            "PYSTACHY_BDWGC_MODE": {
+              "candidate": "incremental",
+              "control": null
+            },
+            "PYSTACHY_GC_MIN": {
+              "candidate": null,
+              "control": "32"
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              1.0790557721510665,
+              0.9597743127242746,
+              1.024491487404062,
+              0.9826450244304089,
+              1.0090992289305163
+            ],
+            "geometric_mean": 1.0102070162253407,
+            "median": 1.0090992289305163,
+            "min": 0.9597743127242746,
+            "max": 1.0790557721510665,
+            "lower_rounds": 2,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              1.0791670199016294,
+              0.9598323587765673,
+              1.0245539233647556,
+              0.9826189830270339,
+              1.0090556370874084
+            ],
+            "geometric_mean": 1.0102382945675663,
+            "median": 1.0090556370874084,
+            "min": 0.9598323587765673,
+            "max": 1.0791670199016294,
+            "lower_rounds": 2,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              1.000341997264022,
+              1.0,
+              1.0,
+              0.9996584699453552,
+              1.0003412969283276
+            ],
+            "geometric_mean": 1.0000683201550657,
+            "median": 1.0,
+            "min": 0.9996584699453552,
+            "max": 1.000341997264022,
+            "lower_rounds": 1,
+            "equal_rounds": 2
+          }
+        },
+        {
+          "candidate": "bdw_generational",
+          "control": "native",
+          "same_executable": false,
+          "environment_differences": {
+            "GC_USE_GETWRITEWATCH": {
+              "candidate": "0",
+              "control": null
+            },
+            "PYSTACHY_BDWGC_MODE": {
+              "candidate": "generational",
+              "control": null
+            },
+            "PYSTACHY_GC_MIN": {
+              "candidate": null,
+              "control": "32"
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              1.138860942055989,
+              0.9803762018789801,
+              1.0439341752669475,
+              1.055167096992697,
+              1.022901449298069
+            ],
+            "geometric_mean": 1.0469798460231763,
+            "median": 1.0439341752669475,
+            "min": 0.9803762018789801,
+            "max": 1.138860942055989,
+            "lower_rounds": 1,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              1.138875627085016,
+              0.9806140946319274,
+              1.0439892075547117,
+              1.0551526117113543,
+              1.0228388768769443
+            ],
+            "geometric_mean": 1.04702870614442,
+            "median": 1.0439892075547117,
+            "min": 0.9806140946319274,
+            "max": 1.138875627085016,
+            "lower_rounds": 1,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              1.000341997264022,
+              1.0,
+              1.0,
+              0.9996584699453552,
+              0.9996587030716724
+            ],
+            "geometric_mean": 0.9999318013703506,
+            "median": 1.0,
+            "min": 0.9996584699453552,
+            "max": 1.000341997264022,
+            "lower_rounds": 2,
+            "equal_rounds": 2
+          }
+        },
+        {
+          "candidate": "bdw_32m",
+          "control": "bdw",
+          "same_executable": true,
+          "environment_differences": {
+            "GC_INITIAL_HEAP_SIZE": {
+              "candidate": "33554432",
+              "control": null
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              0.9519951530153555,
+              0.9353013279190417,
+              0.999129687212932,
+              0.9984368792481124,
+              0.9557636878270478
+            ],
+            "geometric_mean": 0.967778252112855,
+            "median": 0.9557636878270478,
+            "min": 0.9353013279190417,
+            "max": 0.999129687212932,
+            "lower_rounds": 5,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              0.9519096758840913,
+              0.9351757962047057,
+              0.9990453815108808,
+              0.9988086579937543,
+              0.9712050763467538
+            ],
+            "geometric_mean": 0.9708977431600361,
+            "median": 0.9712050763467538,
+            "min": 0.9351757962047057,
+            "max": 0.9990453815108808,
+            "lower_rounds": 5,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              1.0,
+              1.0,
+              0.9996583532627263,
+              1.0,
+              1.0
+            ],
+            "geometric_mean": 0.9999316613128312,
+            "median": 1.0,
+            "min": 0.9996583532627263,
+            "max": 1.0,
+            "lower_rounds": 1,
+            "equal_rounds": 4
+          }
+        },
+        {
+          "candidate": "bdw_incremental",
+          "control": "bdw",
+          "same_executable": true,
+          "environment_differences": {
+            "GC_USE_GETWRITEWATCH": {
+              "candidate": "0",
+              "control": null
+            },
+            "PYSTACHY_BDWGC_MODE": {
+              "candidate": "incremental",
+              "control": "default"
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              0.933387182685925,
+              0.9356064313215425,
+              1.0706616206998962,
+              0.9425765963973312,
+              0.924041599260166
+            ],
+            "geometric_mean": 0.9597609779140072,
+            "median": 0.9356064313215425,
+            "min": 0.924041599260166,
+            "max": 1.0706616206998962,
+            "lower_rounds": 4,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              0.9333219710003247,
+              0.9353937738413041,
+              1.0707477509606136,
+              0.9430407982636962,
+              0.9390059979288727
+            ],
+            "geometric_mean": 0.9629026826877833,
+            "median": 0.9390059979288727,
+            "min": 0.9333219710003247,
+            "max": 1.0707477509606136,
+            "lower_rounds": 4,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              1.0,
+              1.0,
+              1.0,
+              0.9996584699453552,
+              1.0003412969283276
+            ],
+            "geometric_mean": 0.9999999300620951,
+            "median": 1.0,
+            "min": 0.9996584699453552,
+            "max": 1.0003412969283276,
+            "lower_rounds": 1,
+            "equal_rounds": 3
+          }
+        },
+        {
+          "candidate": "bdw_generational",
+          "control": "bdw",
+          "same_executable": true,
+          "environment_differences": {
+            "GC_USE_GETWRITEWATCH": {
+              "candidate": "0",
+              "control": null
+            },
+            "PYSTACHY_BDWGC_MODE": {
+              "candidate": "generational",
+              "control": "default"
+            }
+          },
+          "rounds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "wall": {
+            "paired": [
+              0.9851188730102632,
+              0.9556895485033351,
+              1.0909805203237337,
+              1.0121415019531956,
+              0.9366804215049235
+            ],
+            "geometric_mean": 0.9946975072793539,
+            "median": 0.9851188730102632,
+            "min": 0.9366804215049235,
+            "max": 1.0909805203237337,
+            "lower_rounds": 3,
+            "equal_rounds": 0
+          },
+          "cpu": {
+            "paired": [
+              0.9849612019204487,
+              0.9556463795708047,
+              1.0910593093482213,
+              1.0126528984540526,
+              0.9518323915959496
+            ],
+            "geometric_mean": 0.9979692468786646,
+            "median": 0.9849612019204487,
+            "min": 0.9518323915959496,
+            "max": 1.0910593093482213,
+            "lower_rounds": 3,
+            "equal_rounds": 0
+          },
+          "rss": {
+            "paired": [
+              1.0,
+              1.0,
+              1.0,
+              0.9996584699453552,
+              0.9996587030716724
+            ],
+            "geometric_mean": 0.9998634206132746,
+            "median": 1.0,
+            "min": 0.9996584699453552,
+            "max": 1.0,
+            "lower_rounds": 2,
+            "equal_rounds": 3
+          }
+        }
+      ],
+      "notes": [],
+      "source": "/workspace/scratch/a009f956ecf0/pystachy/bench/gc_application/results/2026-11-06/optional/richards.json",
+      "source_sha256": "1d4ac20f9239cf78aa925b854254c8b0d043f4562eb9b9cc40024f3a14eb8a94"
+    }
+  ]
+}

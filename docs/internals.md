@@ -190,6 +190,19 @@ than when they die. `PYSTACHY_GC_MIN` sets the 32 MiB allocation window between 
 records the measurements. Unreachable files close during collection or at program exit. Supported Python operations are checked
 against CPython; the [compatibility reference](language/compatibility.md) lists deviations.
 
+The research setting `PYSTACHY_GC_MARK=block` groups pending small-object tracing
+by chunk, visiting only discovered slots in address order. A second bitmap on
+scanned chunks tracks unprocessed objects; a word summary finds pending slots
+without walking empty bitmap words. Cross-chunk edges can enqueue a chunk again.
+Large objects retain the 4 KiB slicing path. This changes
+traversal order and adds bitmap space, while retaining conservative roots,
+non-moving addresses and the existing collection thresholds. It is selected at
+startup and remains experimental; ordinary execution uses object-ordered tracing.
+`PYSTACHY_GC=profile` adds root/heap word counts and root, tracing and sweep elapsed
+times. The sweep time includes weak references, native resource cleanup and page
+settlement. Use `stats` for timings without these work counters. See the
+[GC benchmark](../bench/gc_locality/README.md) for reproducible comparisons.
+
 Runtime static pointer storage is classified beside its declaration with `GC_ROOT`,
 `GC_ROOT_RANGE` or `GC_NO_ROOT` and a reason. `GC_ROOT` scans the storage's address;
 `GC_ROOT_RANGE` scans the contents of a malloc-backed pointer table. The distinction
@@ -616,6 +629,8 @@ whose every word is a 64-bit `int`, a `float` or a `bool` by the compiler's type
 fields, inherited and hidden ones included, and a tuple's items; lowering's `alloc_call`). A
 class attribute that the class body declares takes a slot of its type in each object, so
 `ZERO: "Vector" = None` makes a vector of floats hold a reference.
+The same proof makes surviving `pys_new` allocations pointer-free: AOT and JIT use atomic
+storage, so collecting skips their numeric words and address-like integers retain no objects.
 Each call is marked `allockind("alloc,zeroed") allocsize(0)`, so LLVM deletes an allocation
 whose object nothing keeps, after inlining has shown that. Every other object and tuple comes
 from `pys_alloc`, as without `allocelide`: one that holds a reference, a promoting int's `Mpz`
@@ -669,12 +684,13 @@ provide the broader behavior check. See [testing](testing.md) for the commands.
 | `PYSTACHY_CFLAGS` | Extra clang flags for runtime compilation and AOT linking; part of the cache key |
 | `PYSTACHY_IRCHECK=1` | Verify typed IR before lowering and after transforming passes |
 | `PYSTACHY_IRFX=1` | Print function effect summaries to stderr |
-| `PYSTACHY_OPT` | Disable named optimizations with `-name`, comma-separated, or all with `-all`; see [IR passes](typed-ir.md#optimizations) |
+| `PYSTACHY_OPT` | Disable named optimizations with `-name`, comma-separated, or all with `-all`; `+atomicunion` enables experimental pointer-free scalar union boxes (off by default); see [IR passes](typed-ir.md#optimizations) |
 | `PYSTACHY_JIT_INLINE=N` | IR-line threshold for JIT user-function inlining, including the recursion entry helper; `0` disables it (the scalar recursion helpers remain inlined) |
 | `PYSTACHY_JIT_CODEGEN=0\|2` | `0` selects MCJIT `-O0`; `2` (default) keeps ORC code generation |
 | `PYSTACHY_GC_STRESS=N` | Collect every N allocations |
 | `PYSTACHY_GC_STRESS_PROGRAM=N` | Apply the stress interval to the program run by JIT or the test runner, separately from its compiler |
-| `PYSTACHY_GC` | `off` disables collection; `stats` prints a summary at exit |
+| `PYSTACHY_GC` | `off` disables collection; `stats` prints a summary at exit; `profile` adds phase times and scan-work counters |
+| `PYSTACHY_GC_MARK` | `block` enables experimental chunk-ordered tracing; other values use the default object worklist |
 | `PYSTACHY_GC_MIN=N` | Make the allocation window between collections at least N MiB (1 to 2<sup>20</sup>) instead of 32: more memory for fewer collections, or the reverse ([#650](https://github.com/den-run-ai/pystachy/issues/650)). Pointer-free large objects can still start a collection sooner (see [start-up and memory](performance.md#start-up-and-memory)) |
 | `PYSTACHY_JOBS` | Parallelism for the test runner and IR tools |
 | `PYSTACHY_CASE_TIMES=FILE` | The test runner appends each case's milliseconds to `FILE`, from which `tools/case_weights.py` balances verification's shards; `tests/verify.sh` sets its own |

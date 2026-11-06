@@ -1,0 +1,72 @@
+ORACLE json_retained_memory smoke
+ORACLE json_retained_memory full
+BUILD native json_retained_memory
+PASS native json_retained_memory smoke, stress, full oracle
+BUILD bdw json_retained_memory
+PASS bdw json_retained_memory smoke, stress, full oracle
+PASS bdw_32m json_retained_memory smoke, stress, full oracle
+PASS bdw_incremental json_retained_memory smoke, stress, full oracle
+PASS bdw_generational json_retained_memory smoke, stress, full oracle
+ORACLE float smoke
+ORACLE float full
+BUILD native float
+PASS native float smoke, stress, full oracle
+BUILD bdw float
+PASS bdw float smoke, stress, full oracle
+PASS bdw_32m float smoke, stress, full oracle
+PASS bdw_incremental float smoke, stress, full oracle
+PASS bdw_generational float smoke, stress, full oracle
+ORACLE chaos smoke
+ORACLE chaos full
+BUILD native chaos
+PASS native chaos smoke, stress, full oracle
+BUILD bdw chaos
+PASS bdw chaos smoke, stress, full oracle
+PASS bdw_32m chaos smoke, stress, full oracle
+PASS bdw_incremental chaos smoke, stress, full oracle
+PASS bdw_generational chaos smoke, stress, full oracle
+ORACLE raytrace smoke
+ORACLE raytrace full
+BUILD native raytrace
+PASS native raytrace smoke, stress, full oracle
+BUILD bdw raytrace
+PASS bdw raytrace smoke, stress, full oracle
+PASS bdw_32m raytrace smoke, stress, full oracle
+PASS bdw_incremental raytrace smoke, stress, full oracle
+PASS bdw_generational raytrace smoke, stress, full oracle
+ORACLE json_loads smoke
+ORACLE json_loads full
+BUILD native json_loads
+PASS native json_loads smoke, stress, full oracle
+BUILD bdw json_loads
+PASS bdw json_loads smoke, stress, full oracle
+PASS bdw_32m json_loads smoke, stress, full oracle
+PASS bdw_incremental json_loads smoke, stress, full oracle
+PASS bdw_generational json_loads smoke, stress, full oracle
+ORACLE json_dumps smoke
+ORACLE json_dumps full
+BUILD native json_dumps
+PASS native json_dumps smoke, stress, full oracle
+BUILD bdw json_dumps
+PASS bdw json_dumps smoke, stress, full oracle
+PASS bdw_32m json_dumps smoke, stress, full oracle
+PASS bdw_incremental json_dumps smoke, stress, full oracle
+PASS bdw_generational json_dumps smoke, stress, full oracle
+ORACLE richards smoke
+ORACLE richards full
+BUILD native richards
+PASS native richards smoke, stress, full oracle
+BUILD bdw richards
+PASS bdw richards smoke, stress, full oracle
+PASS bdw_32m richards smoke, stress, full oracle
+PASS bdw_incremental richards smoke, stress, full oracle
+PASS bdw_generational richards smoke, stress, full oracle
+ORACLE nbody smoke
+ORACLE nbody full
+BUILD native nbody
+PASS native nbody smoke, stress, full oracle
+BUILD bdw nbody
+PASS bdw nbody smoke, stress, full oracle
+PASS bdw_32m nbody smoke, stress, full oracle
+PASS bdw_incremental nbody smoke, stress, full oracle
+PASS bdw_generational nbody smoke, stress, full oracle

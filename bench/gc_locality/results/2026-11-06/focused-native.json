@@ -1,0 +1,170 @@
+{
+  "schema_version": 1,
+  "started_at_utc": "2026-11-06T03:35:34.197435+00:00",
+  "selector": "/workspace/scratch/8b5d64b08ada/gc-focused-selector.json",
+  "selector_sha256": "a31dece9c85c39b737f4b7cb30dcbdb31392c1c82969a4a547b8810fa416e9bd",
+  "compiler": "/workspace/scratch/8b5d64b08ada/pystachy/pystachy",
+  "compiler_sha256": "c8dc02d3fcc2f101a6279ea260258aa36093ff8be5c6c46cb6ba0303787104af",
+  "repo": "/workspace/scratch/8b5d64b08ada/pystachy",
+  "output": "/workspace/scratch/8b5d64b08ada/gc-focused-final",
+  "removed_inherited_env_names": [],
+  "explicit_env": {
+    "PYSTACHY_HOME": "/workspace/scratch/8b5d64b08ada/pystachy",
+    "PYSTACHY_LLVM": "/workspace/scratch/3e98002bc0e0/toolchain/usr/lib/llvm-18/bin",
+    "PYSTACHY_CACHE": "/workspace/scratch/8b5d64b08ada/gc-focused-final/cache",
+    "PYSTACHY_JOBS": "2",
+    "PYSTACHY_GC_MIN": "32",
+    "PYSTACHY_GC_STRESS": "0",
+    "PYSTACHY_IRCHECK": "1"
+  },
+  "case_count": 44,
+  "expected_checks_per_configuration": 88,
+  "expected_total_checks": 352,
+  "command": [
+    "sh",
+    "/workspace/scratch/8b5d64b08ada/pystachy/tests/run.sh",
+    "/workspace/scratch/8b5d64b08ada/pystachy/pystachy",
+    "jit aot",
+    "tests/programs/runtime/gc_churn.py",
+    "tests/programs/runtime/gc_dict_values.py",
+    "tests/programs/runtime/gc_list_kinds.py",
+    "tests/programs/runtime/gc_template_empty_kind.py",
+    "tests/programs/library/lib_weakref.py",
+    "tests/programs/library/lib_weakref_dead.py",
+    "tests/programs/library/lib_weakref_transition.py",
+    "tests/programs/library/lib_weakref_callback.py",
+    "tests/programs/library/lib_weakref_callback_nested.py",
+    "tests/programs/library/lib_weakref_callback_dead_ref.py",
+    "tests/programs/optimizations/opt_alloc_held_fields.py",
+    "tests/programs/optimizations/opt_alloc_held_tuple.py",
+    "tests/programs/optimizations/opt_alloc_held_cohort.py",
+    "tests/programs/optimizations/opt_scalars.py",
+    "tests/programs/optimizations/opt_tupleiter.py",
+    "tests/programs/inference/dynany_identity_fields.py",
+    "tests/programs/inference/dynany_identity_field_defaults.py",
+    "tests/programs/inference/dynany_identity_field_kinds.py",
+    "tests/programs/inference/dynany_identity_scope_fields.py",
+    "tests/programs/inference/dynany_identity_cells.py",
+    "tests/programs/inference/dynany_identity_joined_cells.py",
+    "tests/programs/inference/dynany_identity_field_retired.py",
+    "tests/programs/inference/dynany_identity_expression_lifetime.py",
+    "tests/programs/inference/dynany_layout_forms.py",
+    "tests/programs/inference/dynany_layout_records.py",
+    "tests/programs/inference/dynany_forward_cycle_dict.py",
+    "tests/programs/language/closures_scopes.py",
+    "tests/programs/language/closures_more.py",
+    "tests/programs/language/closure_paths.py",
+    "tests/programs/generators/gen_gc.py",
+    "tests/programs/generators/gen_protocol_gc.py",
+    "tests/programs/generators/gen_cm_gc.py",
+    "tests/programs/inference/dynany_generator_boxing.py",
+    "tests/programs/inference/dynany_generator_context_protocol.py",
+    "tests/programs/numbers/python_int_generators.py",
+    "tests/programs/numbers/python_int_tuples.py",
+    "tests/programs/numbers/python_int_class_defaults.py",
+    "tests/programs/numbers/python_int_dataclass_copy.py",
+    "tests/programs/inference/dynany_identity_inert_fields.py",
+    "tests/programs/inference/dynany_identity_promote_wide.py",
+    "tests/programs/inference/dynany_identity_promote_return.py",
+    "tests/programs/inference/dynany_identity_promote_list.py",
+    "tests/programs/inference/dynany_identity_display_lifetime.py",
+    "tests/programs/numbers/python_int_any_identity.py"
+  ],
+  "runs": [
+    {
+      "marker": "object",
+      "program_stress": 0,
+      "environment": {
+        "PYSTACHY_GC_MARK": "object",
+        "PYSTACHY_GC_STRESS_PROGRAM": "0",
+        "PYSTACHY_CASE_TIMES": "/workspace/scratch/8b5d64b08ada/gc-focused-final/object-stress-0.times"
+      },
+      "log": "/workspace/scratch/8b5d64b08ada/gc-focused-final/object-stress-0.log",
+      "case_times": "/workspace/scratch/8b5d64b08ada/gc-focused-final/object-stress-0.times",
+      "returncode": 0,
+      "elapsed_seconds": 44.784304478002014,
+      "reported_counts": [
+        [
+          "88",
+          "0"
+        ]
+      ],
+      "reported_selected": [
+        "44"
+      ],
+      "passed": true
+    },
+    {
+      "marker": "object",
+      "program_stress": 1,
+      "environment": {
+        "PYSTACHY_GC_MARK": "object",
+        "PYSTACHY_GC_STRESS_PROGRAM": "1",
+        "PYSTACHY_CASE_TIMES": "/workspace/scratch/8b5d64b08ada/gc-focused-final/object-stress-1.times"
+      },
+      "log": "/workspace/scratch/8b5d64b08ada/gc-focused-final/object-stress-1.log",
+      "case_times": "/workspace/scratch/8b5d64b08ada/gc-focused-final/object-stress-1.times",
+      "returncode": 0,
+      "elapsed_seconds": 47.97039885499544,
+      "reported_counts": [
+        [
+          "88",
+          "0"
+        ]
+      ],
+      "reported_selected": [
+        "44"
+      ],
+      "passed": true
+    },
+    {
+      "marker": "block",
+      "program_stress": 0,
+      "environment": {
+        "PYSTACHY_GC_MARK": "block",
+        "PYSTACHY_GC_STRESS_PROGRAM": "0",
+        "PYSTACHY_CASE_TIMES": "/workspace/scratch/8b5d64b08ada/gc-focused-final/block-stress-0.times"
+      },
+      "log": "/workspace/scratch/8b5d64b08ada/gc-focused-final/block-stress-0.log",
+      "case_times": "/workspace/scratch/8b5d64b08ada/gc-focused-final/block-stress-0.times",
+      "returncode": 0,
+      "elapsed_seconds": 30.482116860999668,
+      "reported_counts": [
+        [
+          "88",
+          "0"
+        ]
+      ],
+      "reported_selected": [
+        "44"
+      ],
+      "passed": true
+    },
+    {
+      "marker": "block",
+      "program_stress": 1,
+      "environment": {
+        "PYSTACHY_GC_MARK": "block",
+        "PYSTACHY_GC_STRESS_PROGRAM": "1",
+        "PYSTACHY_CASE_TIMES": "/workspace/scratch/8b5d64b08ada/gc-focused-final/block-stress-1.times"
+      },
+      "log": "/workspace/scratch/8b5d64b08ada/gc-focused-final/block-stress-1.log",
+      "case_times": "/workspace/scratch/8b5d64b08ada/gc-focused-final/block-stress-1.times",
+      "returncode": 0,
+      "elapsed_seconds": 43.440792364002846,
+      "reported_counts": [
+        [
+          "88",
+          "0"
+        ]
+      ],
+      "reported_selected": [
+        "44"
+      ],
+      "passed": true
+    }
+  ],
+  "complete": true,
+  "passed": true,
+  "finished_at_utc": "2026-11-06T03:38:20.881414+00:00"
+}

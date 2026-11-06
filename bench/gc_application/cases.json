@@ -1,0 +1,65 @@
+[
+  {
+    "name": "float",
+    "source": "bench/pyperformance/float.py",
+    "args": ["40", "1000000"],
+    "smoke_args": ["1", "1000"],
+    "env": {}
+  },
+  {
+    "name": "chaos",
+    "source": "bench/pyperformance/chaos.py",
+    "args": ["500", "5000"],
+    "smoke_args": ["1", "200"],
+    "env": {}
+  },
+  {
+    "name": "raytrace",
+    "source": "bench/pyperformance/raytrace.py",
+    "args": ["140", "100", "100"],
+    "smoke_args": ["1", "20", "20"],
+    "env": {}
+  },
+  {
+    "name": "json_loads",
+    "source": "bench/pyperformance/json_loads.py",
+    "args": ["6000"],
+    "smoke_args": ["1"],
+    "env": {}
+  },
+  {
+    "name": "json_dumps",
+    "source": "bench/pyperformance/json_dumps.py",
+    "args": ["240"],
+    "smoke_args": ["1", "smoke"],
+    "env": {}
+  },
+  {
+    "name": "richards",
+    "source": "bench/pyperformance/richards.py",
+    "args": ["2400"],
+    "smoke_args": ["1"],
+    "env": {}
+  },
+  {
+    "name": "nbody",
+    "source": "bench/pyperformance/nbody.py",
+    "args": ["250", "20000"],
+    "smoke_args": ["1", "100"],
+    "env": {}
+  },
+  {
+    "name": "json_retained",
+    "source": "bench/gc_application/json_retained.py",
+    "args": ["{inputs}/records.json", "20", "4", "{output}"],
+    "smoke_args": ["{inputs}/records.json", "5", "3", "{output}"],
+    "env": {"PYSTACHY_PATH": "bench", "PYTHONPATH": "bench"}
+  },
+  {
+    "name": "repair_traces",
+    "source": "bench/gc_application/repair_traces.py",
+    "args": ["{inputs}/repair-inputs.jsonl", "20000"],
+    "smoke_args": ["{inputs}/repair-inputs.jsonl", "2"],
+    "env": {"PYSTACHY_PATH": "ports", "PYTHONPATH": "ports"}
+  }
+]

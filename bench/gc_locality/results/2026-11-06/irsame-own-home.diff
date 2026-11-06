@@ -1,0 +1,107 @@
+--- own-home-baseline
++++ own-home-candidate
+@@ -31,7 +31,7 @@
+ @s.14 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1, i64 0, i64 2, [2 x i8] c">\00"}, align 8
+ @s.15 = private unnamed_addr global {i64, i64, i64, [26 x i8]} {i64 25, i64 0, i64 26, [26 x i8] c"weak object has gone away\00"}, align 8
+ @s.16 = private unnamed_addr global {i64, i64, i64, [10 x i8]} {i64 9, i64 0, i64 10, [10 x i8] c"TypeError\00"}, align 8
+-@s.17 = private unnamed_addr global {i64, i64, i64, [109 x i8]} {i64 108, i64 0, i64 109, [109 x i8] c"cannot import name 'ref' from '_weakref' (/workspace/scratch/8b5d64b08ada/baseline/lib/_pystachy_weakref.py)\00"}, align 8
++@s.17 = private unnamed_addr global {i64, i64, i64, [109 x i8]} {i64 108, i64 0, i64 109, [109 x i8] c"cannot import name 'ref' from '_weakref' (/workspace/scratch/8b5d64b08ada/pystachy/lib/_pystachy_weakref.py)\00"}, align 8
+ @s.18 = private unnamed_addr global {i64, i64, i64, [12 x i8]} {i64 11, i64 0, i64 12, [12 x i8] c"ImportError\00"}, align 8
+ @s.19 = private unnamed_addr global {i64, i64, i64, [50 x i8]} {i64 49, i64 0, i64 50, [50 x i8] c"cannot create weak reference to 'NoneType' object\00"}, align 8
+ @s.20 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1, i64 0, i64 2, [2 x i8] c" \00"}, align 8
+
+--- own-home-baseline
++++ own-home-candidate
+@@ -47,7 +47,7 @@
+ @s.22 = private unnamed_addr global {i64, i64, i64, [6 x i8]} {i64 5, i64 0, i64 6, [6 x i8] c"False\00"}, align 8
+ @s.23 = private unnamed_addr global {i64, i64, i64, [1 x i8]} {i64 0, i64 0, i64 1, [1 x i8] c"\00"}, align 8
+ @s.24 = private unnamed_addr global {i64, i64, i64, [15 x i8]} {i64 14, i64 0, i64 15, [15 x i8] c"AssertionError\00"}, align 8
+-@s.25 = private unnamed_addr global {i64, i64, i64, [109 x i8]} {i64 108, i64 0, i64 109, [109 x i8] c"cannot import name 'ref' from '_weakref' (/workspace/scratch/8b5d64b08ada/baseline/lib/_pystachy_weakref.py)\00"}, align 8
++@s.25 = private unnamed_addr global {i64, i64, i64, [109 x i8]} {i64 108, i64 0, i64 109, [109 x i8] c"cannot import name 'ref' from '_weakref' (/workspace/scratch/8b5d64b08ada/pystachy/lib/_pystachy_weakref.py)\00"}, align 8
+ @s.26 = private unnamed_addr global {i64, i64, i64, [12 x i8]} {i64 11, i64 0, i64 12, [12 x i8] c"ImportError\00"}, align 8
+ @s.27 = private unnamed_addr global {i64, i64, i64, [26 x i8]} {i64 25, i64 0, i64 26, [26 x i8] c"name 'ref' is not defined\00"}, align 8
+ @s.28 = private unnamed_addr global {i64, i64, i64, [10 x i8]} {i64 9, i64 0, i64 10, [10 x i8] c"NameError\00"}, align 8
+
+--- own-home-baseline
++++ own-home-candidate
+@@ -34,7 +34,7 @@
+ @s.18 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1, i64 0, i64 2, [2 x i8] c"\0A\00"}, align 8
+ @s.19 = private unnamed_addr global {i64, i64, i64, [5 x i8]} {i64 4, i64 0, i64 5, [5 x i8] c"True\00"}, align 8
+ @s.20 = private unnamed_addr global {i64, i64, i64, [6 x i8]} {i64 5, i64 0, i64 6, [6 x i8] c"False\00"}, align 8
+-@s.21 = private unnamed_addr global {i64, i64, i64, [109 x i8]} {i64 108, i64 0, i64 109, [109 x i8] c"cannot import name 'ref' from '_weakref' (/workspace/scratch/8b5d64b08ada/baseline/lib/_pystachy_weakref.py)\00"}, align 8
++@s.21 = private unnamed_addr global {i64, i64, i64, [109 x i8]} {i64 108, i64 0, i64 109, [109 x i8] c"cannot import name 'ref' from '_weakref' (/workspace/scratch/8b5d64b08ada/pystachy/lib/_pystachy_weakref.py)\00"}, align 8
+ @s.22 = private unnamed_addr global {i64, i64, i64, [12 x i8]} {i64 11, i64 0, i64 12, [12 x i8] c"ImportError\00"}, align 8
+ @s.23 = private unnamed_addr global {i64, i64, i64, [26 x i8]} {i64 25, i64 0, i64 26, [26 x i8] c"name 'ref' is not defined\00"}, align 8
+ @s.24 = private unnamed_addr global {i64, i64, i64, [10 x i8]} {i64 9, i64 0, i64 10, [10 x i8] c"NameError\00"}, align 8
+
+--- own-home-baseline
++++ own-home-candidate
+@@ -53,7 +53,7 @@
+ @s.25 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1, i64 0, i64 2, [2 x i8] c"\0A\00"}, align 8
+ @s.26 = private unnamed_addr global {i64, i64, i64, [5 x i8]} {i64 4, i64 0, i64 5, [5 x i8] c"True\00"}, align 8
+ @s.27 = private unnamed_addr global {i64, i64, i64, [6 x i8]} {i64 5, i64 0, i64 6, [6 x i8] c"False\00"}, align 8
+-@s.28 = private unnamed_addr global {i64, i64, i64, [109 x i8]} {i64 108, i64 0, i64 109, [109 x i8] c"cannot import name 'ref' from '_weakref' (/workspace/scratch/8b5d64b08ada/baseline/lib/_pystachy_weakref.py)\00"}, align 8
++@s.28 = private unnamed_addr global {i64, i64, i64, [109 x i8]} {i64 108, i64 0, i64 109, [109 x i8] c"cannot import name 'ref' from '_weakref' (/workspace/scratch/8b5d64b08ada/pystachy/lib/_pystachy_weakref.py)\00"}, align 8
+ @s.29 = private unnamed_addr global {i64, i64, i64, [12 x i8]} {i64 11, i64 0, i64 12, [12 x i8] c"ImportError\00"}, align 8
+ @s.30 = private unnamed_addr global {i64, i64, i64, [39 x i8]} {i64 38, i64 0, i64 39, [39 x i8] c"integer result does not fit in 64 bits\00"}, align 8
+ @s.31 = private unnamed_addr global {i64, i64, i64, [14 x i8]} {i64 13, i64 0, i64 14, [14 x i8] c"OverflowError\00"}, align 8
+
+--- own-home-baseline
++++ own-home-candidate
+@@ -41,7 +41,7 @@
+ @s.22 = private unnamed_addr global {i64, i64, i64, [6 x i8]} {i64 5, i64 0, i64 6, [6 x i8] c"False\00"}, align 8
+ @s.23 = private unnamed_addr global {i64, i64, i64, [1 x i8]} {i64 0, i64 0, i64 1, [1 x i8] c"\00"}, align 8
+ @s.24 = private unnamed_addr global {i64, i64, i64, [15 x i8]} {i64 14, i64 0, i64 15, [15 x i8] c"AssertionError\00"}, align 8
+-@s.25 = private unnamed_addr global {i64, i64, i64, [109 x i8]} {i64 108, i64 0, i64 109, [109 x i8] c"cannot import name 'ref' from '_weakref' (/workspace/scratch/8b5d64b08ada/baseline/lib/_pystachy_weakref.py)\00"}, align 8
++@s.25 = private unnamed_addr global {i64, i64, i64, [109 x i8]} {i64 108, i64 0, i64 109, [109 x i8] c"cannot import name 'ref' from '_weakref' (/workspace/scratch/8b5d64b08ada/pystachy/lib/_pystachy_weakref.py)\00"}, align 8
+ @s.26 = private unnamed_addr global {i64, i64, i64, [12 x i8]} {i64 11, i64 0, i64 12, [12 x i8] c"ImportError\00"}, align 8
+ @s.27 = private unnamed_addr global {i64, i64, i64, [34 x i8]} {i64 33, i64 0, i64 34, [34 x i8] c"'NoneType' object is not callable\00"}, align 8
+ @s.28 = private unnamed_addr global {i64, i64, i64, [43 x i8]} {i64 42, i64 0, i64 43, [43 x i8] c"'NoneType' object has no attribute 'value'\00"}, align 8
+
+--- own-home-baseline
++++ own-home-candidate
+@@ -44,7 +44,7 @@
+ @s.23 = private unnamed_addr global {i64, i64, i64, [6 x i8]} {i64 5, i64 0, i64 6, [6 x i8] c"False\00"}, align 8
+ @s.24 = private unnamed_addr global {i64, i64, i64, [1 x i8]} {i64 0, i64 0, i64 1, [1 x i8] c"\00"}, align 8
+ @s.25 = private unnamed_addr global {i64, i64, i64, [15 x i8]} {i64 14, i64 0, i64 15, [15 x i8] c"AssertionError\00"}, align 8
+-@s.26 = private unnamed_addr global {i64, i64, i64, [109 x i8]} {i64 108, i64 0, i64 109, [109 x i8] c"cannot import name 'ref' from '_weakref' (/workspace/scratch/8b5d64b08ada/baseline/lib/_pystachy_weakref.py)\00"}, align 8
++@s.26 = private unnamed_addr global {i64, i64, i64, [109 x i8]} {i64 108, i64 0, i64 109, [109 x i8] c"cannot import name 'ref' from '_weakref' (/workspace/scratch/8b5d64b08ada/pystachy/lib/_pystachy_weakref.py)\00"}, align 8
+ @s.27 = private unnamed_addr global {i64, i64, i64, [12 x i8]} {i64 11, i64 0, i64 12, [12 x i8] c"ImportError\00"}, align 8
+ @s.28 = private unnamed_addr global {i64, i64, i64, [34 x i8]} {i64 33, i64 0, i64 34, [34 x i8] c"'NoneType' object is not callable\00"}, align 8
+ @s.29 = private unnamed_addr global {i64, i64, i64, [43 x i8]} {i64 42, i64 0, i64 43, [43 x i8] c"'NoneType' object has no attribute 'value'\00"}, align 8
+
+--- own-home-baseline
++++ own-home-candidate
+@@ -13,7 +13,7 @@
+ @pys.roots = private constant [0 x ptr] []
+ @s.0 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1, i64 0, i64 2, [2 x i8] c" \00"}, align 8
+ @s.1 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1, i64 0, i64 2, [2 x i8] c"\0A\00"}, align 8
+-@s.2 = private unnamed_addr global {i64, i64, i64, [109 x i8]} {i64 108, i64 0, i64 109, [109 x i8] c"cannot import name 'ref' from '_weakref' (/workspace/scratch/8b5d64b08ada/baseline/lib/_pystachy_weakref.py)\00"}, align 8
++@s.2 = private unnamed_addr global {i64, i64, i64, [109 x i8]} {i64 108, i64 0, i64 109, [109 x i8] c"cannot import name 'ref' from '_weakref' (/workspace/scratch/8b5d64b08ada/pystachy/lib/_pystachy_weakref.py)\00"}, align 8
+ @s.3 = private unnamed_addr global {i64, i64, i64, [12 x i8]} {i64 11, i64 0, i64 12, [12 x i8] c"ImportError\00"}, align 8
+ @s.4 = private unnamed_addr global {i64, i64, i64, [1 x i8]} {i64 0, i64 0, i64 1, [1 x i8] c"\00"}, align 8
+ @s.5 = private unnamed_addr global {i64, i64, i64, [15 x i8]} {i64 14, i64 0, i64 15, [15 x i8] c"AssertionError\00"}, align 8
+
+--- own-home-baseline
++++ own-home-candidate
+@@ -11,7 +11,7 @@
+ @g._weakref$sys.imp = internal global i1 zeroinitializer
+ @g.ref.imp = internal global i1 zeroinitializer
+ @pys.roots = private constant [0 x ptr] []
+-@s.0 = private unnamed_addr global {i64, i64, i64, [109 x i8]} {i64 108, i64 0, i64 109, [109 x i8] c"cannot import name 'ref' from '_weakref' (/workspace/scratch/8b5d64b08ada/baseline/lib/_pystachy_weakref.py)\00"}, align 8
++@s.0 = private unnamed_addr global {i64, i64, i64, [109 x i8]} {i64 108, i64 0, i64 109, [109 x i8] c"cannot import name 'ref' from '_weakref' (/workspace/scratch/8b5d64b08ada/pystachy/lib/_pystachy_weakref.py)\00"}, align 8
+ @s.1 = private unnamed_addr global {i64, i64, i64, [12 x i8]} {i64 11, i64 0, i64 12, [12 x i8] c"ImportError\00"}, align 8
+ @s.2 = private unnamed_addr global {i64, i64, i64, [1 x i8]} {i64 0, i64 0, i64 1, [1 x i8] c"\00"}, align 8
+ @s.3 = private unnamed_addr global {i64, i64, i64, [15 x i8]} {i64 14, i64 0, i64 15, [15 x i8] c"AssertionError\00"}, align 8
+
+--- own-home-baseline
++++ own-home-candidate
+@@ -10,7 +10,7 @@
+ @g._weakref$sys.imp = internal global i1 zeroinitializer
+ @g.ref.imp = internal global i1 zeroinitializer
+ @pys.roots = private constant [0 x ptr] []
+-@s.0 = private unnamed_addr global {i64, i64, i64, [109 x i8]} {i64 108, i64 0, i64 109, [109 x i8] c"cannot import name 'ref' from '_weakref' (/workspace/scratch/8b5d64b08ada/baseline/lib/_pystachy_weakref.py)\00"}, align 8
++@s.0 = private unnamed_addr global {i64, i64, i64, [109 x i8]} {i64 108, i64 0, i64 109, [109 x i8] c"cannot import name 'ref' from '_weakref' (/workspace/scratch/8b5d64b08ada/pystachy/lib/_pystachy_weakref.py)\00"}, align 8
+ @s.1 = private unnamed_addr global {i64, i64, i64, [12 x i8]} {i64 11, i64 0, i64 12, [12 x i8] c"ImportError\00"}, align 8
+ @s.2 = private unnamed_addr global {i64, i64, i64, [1 x i8]} {i64 0, i64 0, i64 1, [1 x i8] c"\00"}, align 8
+ @s.3 = private unnamed_addr global {i64, i64, i64, [15 x i8]} {i64 14, i64 0, i64 15, [15 x i8] c"AssertionError\00"}, align 8

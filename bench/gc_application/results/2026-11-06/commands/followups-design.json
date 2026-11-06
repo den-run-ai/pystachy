@@ -1,0 +1,42 @@
+{
+  "recorded_utc": "2026-11-06T05:34:14.860517+00:00",
+  "native_pacing": [
+    "float",
+    "json_retained",
+    "chaos",
+    "raytrace"
+  ],
+  "min_mib": [
+    8,
+    32,
+    128
+  ],
+  "reason": "Float/retained JSON sensitivity planned before primary results. Chaos/raytrace added after optional chaos showed lower RSS with BDW default tiny heap and its initial32 mode removed that advantage. Compare existing native pacing to separate heap sizing from collector replacement. No default policy changed.",
+  "union_confirmation": {
+    "records": 20000,
+    "ingestion_rounds": 80,
+    "window": 4,
+    "variants": [
+      "default",
+      "default_aa",
+      "atomic_union"
+    ],
+    "reason": "Double primary ingestion rounds to examine small elapsed effect near A/A noise; retain all measurements regardless of direction."
+  },
+  "amended_utc": "2026-11-06T05:37:50.033509+00:00",
+  "small_live_set_comparison": {
+    "cases": [
+      "chaos",
+      "raytrace"
+    ],
+    "variants": [
+      "min8",
+      "min32",
+      "min128",
+      "bdw"
+    ],
+    "measured_rounds": 4,
+    "excluded_warmups": 1,
+    "reason": "Direct within-batch comparison of native smaller pacing floor and BDW default after primary BDW memory tradeoff. Four rotations balance all four positions; keep same args and process cap. Other two pacing cases retain six rounds and three native variants."
+  }
+}
