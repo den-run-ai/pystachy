@@ -16,6 +16,9 @@ a separate cohort. Ordinary whole-module O2 remains the final-backend default.
 The integrated compiler source is frozen at
 `9b75dd6288e00a8290f3cb6b8190b8740ed54070`. Results below distinguish this
 source from the earlier `fa9bba37` inputs and separately prepared memory candidates.
+[Public equivalents with identical Git trees](PUBLISHED_REVISIONS.md#continuation-checkpoints-2026-11-06)
+map the local IDs retained in all raw evidence. The integrated source is publicly
+available at `5aeef325bba85166a5620cd2eaf9b8c0b63368a3`.
 
 ### Repeated complete bootstraps
 
@@ -277,7 +280,8 @@ retains the exact original argv and paths; replace checkout, toolchain and outpu
 roots when replaying elsewhere. It does not promise byte-identical native files
 across different system linkers or sysroots.
 
-For the complete integrated cohort, create a clean worktree at `9b75dd62`, then
+For the complete integrated cohort, create a clean worktree at `5aeef325bba8`
+(the public equivalent of local `9b75dd62`), then
 run the following from the research checkout. `$benchmark_llvm` is the matching
 LLVM executable directory and `$benchmark_root` is that frozen source worktree:
 
@@ -307,7 +311,8 @@ complete `PYSTACHY_HOME` tree. The separate frozen-input manifest and independen
 rehashes supplement that evidence; they do not retrofit a full-tree before/after
 guard into each timed frontend run.
 
-The memory hosts are ordinary O2 builds of `f4826b4e` and `a87b5c89`, using the
+The memory hosts are ordinary O2 builds of the public equivalents of
+`f4826b4e` and `a87b5c89` listed in the revision map, using the
 ordinary frozen native compiler as producer. Their exact native preparation argv
 and witnesses are in [the preparation record](results/continuation-memory-builds.json).
 `output_memory.py --root CANDIDATE --output NEW_DIRECTORY` reproduces the focused
