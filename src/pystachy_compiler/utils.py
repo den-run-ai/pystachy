@@ -1,6 +1,8 @@
 """Utils component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 import os
+import sys
+import time
 from src.pystachy_compiler.diagnostics import FILES, LINES, dynamic_program, fail, where
 from src.pystachy_compiler.ir import ClassInfo, Closure, FnInfo, Ins
 from src.pystachy_compiler.llvm_abi import llvm_decl
@@ -25,6 +27,17 @@ from src.pystachy_compiler.specs import (
     SPECSHOW,
 )
 from src.pystachy_compiler.syntax import Node
+
+
+def timing_start() -> float:
+    # An unset switch performs no clock read; the sentinel also keeps reporting off.
+    return time.perf_counter() if os.getenv("PYSTACHY_TIMING", "") == "1" else 0.0
+
+
+def timing_end(name: str, started: float) -> None:
+    if started != 0.0:
+        elapsed = time.perf_counter() - started
+        print(f"pystachy-timing\t{name}\t{elapsed:.9f}", file=sys.stderr)
 
 
 def lib_source(line: int, libdir: str, filename: str) -> bool:

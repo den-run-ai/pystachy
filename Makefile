@@ -76,6 +76,11 @@ bench-extended-check: $(BENCH_COMPILER)
 	$(PY) -m unittest discover -s tools -p test_bench_extended.py
 	$(PY) tools/bench_extended.py --compiler "$(BENCH_COMPILER)" --smoke --json build/extended-smoke.json
 
+# Opt-in process coordination and backend checks. BENCH_ARGS=--lto also requires
+# LLVM 18 LLD and checks 1/2/4 partitions; this adds no CI matrix jobs.
+compiler-parallel-check: $(BENCH_COMPILER)
+	$(PY) tools/check_compiler_parallel.py --compiler "$(BENCH_COMPILER)" $(BENCH_ARGS)
+
 # Ported pyperformance benchmarks (bench/pyperformance/README.md): CPython, JIT and AOT wall times,
 # each run's output compared with CPython's; advisory, no thresholds. The check runs small inputs
 # once (correctness only); --census needs the pinned sdist.
@@ -394,4 +399,4 @@ uninstall:
 test-install:
 	$(PY) -m unittest discover -s tools -p test_install.py
 
-.PHONY: test test-py coverage runtime-coverage variants test-cache test-ffi bench bench-extended bench-extended-check blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe boxprobe streamprobe jitprobe aotprobe unicode-audit unicodeprobe bytescanprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz dynany-fuzz dynany-optin python-int-optin python-int-gate re-probe re-specialize-check typecheck lint-python check-repository check-fast lint clean install uninstall test-install
+.PHONY: test test-py coverage runtime-coverage variants test-cache test-ffi bench bench-extended bench-extended-check compiler-parallel-check blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe boxprobe streamprobe jitprobe aotprobe unicode-audit unicodeprobe bytescanprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz dynany-fuzz dynany-optin python-int-optin python-int-gate re-probe re-specialize-check typecheck lint-python check-repository check-fast lint clean install uninstall test-install

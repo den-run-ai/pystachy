@@ -151,4 +151,7 @@ jobs:
       - name: Concurrency contract probes (docs/concurrency.md)
         run: python3 -m unittest discover -s tools -p test_concurrency_contract.py
 
+      - name: Compiler process coordination controls
+        run: python3 -m unittest discover -s tools -p 'test_compiler_parallel*.py'
+
       - run: make check-recordings
