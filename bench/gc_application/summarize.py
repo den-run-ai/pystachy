@@ -17,6 +17,34 @@ PAIRS = [("main_aa", "main"), ("scalar", "main"), ("default", "scalar"),
          ("block", "default")]
 
 
+BDW_IDENTITY = ("version", "mode", "markers", "incremental", "protection")
+BDW_COUNTERS = ("collections", "stopped_world_ms", "pauses", "heap_peak_bytes",
+                "heap_bytes", "free_bytes", "allocated_bytes")
+
+
+def bdw_diagnostics(sample):
+    lines = [line for line in sample.get("stderr_tail", "").splitlines() if line.startswith("bdwgc:")]
+    if not lines:
+        return None
+    if len(lines) != 1:
+        raise ValueError("ambiguous BDWGC diagnostic")
+    tokens = [token.split("=", 1) for token in lines[0].split()[1:]]
+    fields = dict(tokens)
+    if len(fields) != len(tokens) or set(fields) != set(BDW_IDENTITY + BDW_COUNTERS):
+        raise ValueError("unexpected BDWGC diagnostic fields")
+    if len(fields["version"].split(".")) != 3 or not all(p.isdigit() for p in fields["version"].split(".")):
+        raise ValueError("invalid BDWGC version")
+    if fields["mode"] not in ("default", "incremental", "generational"):
+        raise ValueError("unknown BDWGC mode")
+    for key in ("markers", "incremental", "protection") + BDW_COUNTERS:
+        fields[key] = float(fields[key]) if key == "stopped_world_ms" else int(fields[key])
+        if not math.isfinite(fields[key]) or fields[key] < 0:
+            raise ValueError("invalid BDWGC diagnostic value")
+    if fields["markers"] < 1 or fields["incremental"] not in (0, 1):
+        raise ValueError("invalid BDWGC configuration")
+    return fields
+
+
 def ratios(numerators, denominators):
     if any(n <= 0 or d <= 0 for n, d in zip(numerators, denominators)):
         return None  # zero/rounded-zero GC times do not support a ratio
@@ -84,7 +112,18 @@ def summarize(report, pairs=None):
         values = {"wall_s": [r["wall_s"] for r in rows],
                   "cpu_s": [r["user_s"] + r["system_s"] for r in rows],
                   "rss_mib": [r["peak_rss_kib"] / 1024 for r in rows]}
-        if all(len(r.get("gc_reports", [])) == 1 for r in rows):
+        all_bdw = [bdw_diagnostics(r) for r in report["samples"] if r["variant"] == name]
+        bdw_identity = {}
+        if any(all_bdw):
+            if not all(all_bdw) or len({tuple(r[k] for k in BDW_IDENTITY) for r in all_bdw}) != 1:
+                raise ValueError(f"{name}: inconsistent BDWGC configuration or missing diagnostics")
+            if any(r.get("gc_reports") for r in rows):
+                raise ValueError("native and BDWGC collection metrics cannot be combined")
+            bdw_identity = {"bdw_" + k: all_bdw[0][k] for k in BDW_IDENTITY}
+            measured = [bdw_diagnostics(r) for r in rows]
+            for field in BDW_COUNTERS:
+                values["bdw_" + field] = [r[field] for r in measured]
+        elif all(len(r.get("gc_reports", [])) == 1 for r in rows):
             for field in ("elapsed_ms", "collections", "heap_peak_mib", "last_live_mib"):
                 values["gc_" + field] = [r["gc_reports"][0][field] for r in rows]
             values["gc_share_pct"] = [g / (t * 10) for g, t in zip(values["gc_elapsed_ms"], values["wall_s"])]
@@ -92,7 +131,7 @@ def summarize(report, pairs=None):
             result["notes"].append(f"{name}: no unambiguous native GC summary in every measured sample")
         data[name] = values
         result["variants"][name] = {key + "_median": statistics.median(v) for key, v in values.items()}
-        result["variants"][name].update(wall_s_min=min(values["wall_s"]), wall_s_max=max(values["wall_s"]))
+        result["variants"][name].update(bdw_identity, wall_s_min=min(values["wall_s"]), wall_s_max=max(values["wall_s"]))
         if min(values["wall_s"]) < 1:
             result["notes"].append(f"{name}: at least one native sample is shorter than one second")
         if variants[name].get("env", {}).get("PYSTACHY_GC") == "profile":
@@ -131,12 +170,22 @@ def markdown(case):
         return f"{(value - 1) * 100:+.2f}%"
     lines = ["## " + case["workload"], "", f"{case['rounds']} paired measured rounds; "
              f"{case['warmups_excluded']} warmup(s) per variant excluded; CPU {case['cpu']}.", "",
-             "| Variant | Median elapsed (s) | Median RSS (MiB) | Median GC (ms) | Median GC share |",
+             "| Variant | Median elapsed (s) | Median RSS (MiB) | Median native GC (ms) | Median native GC share |",
              "| --- | ---: | ---: | ---: | ---: |"]
     for name, v in case["variants"].items():
         gc = f"{v['gc_elapsed_ms_median']:.2f}" if "gc_elapsed_ms_median" in v else "—"
         share = f"{v['gc_share_pct_median']:.2f}%" if "gc_share_pct_median" in v else "—"
         lines.append(f"| {name} | {v['wall_s_median']:.4f} | {v['rss_mib_median']:.2f} | {gc} | {share} |")
+    if any("bdw_mode" in v for v in case["variants"].values()):
+        lines += ["", "| BDWGC variant | Mode | Incremental / protection / markers | Median collections | Median stopped-world (ms) | Median heap peak (MiB) | Median allocated (MiB) |",
+                  "| --- | --- | --- | ---: | ---: | ---: | ---: |"]
+        for name, v in case["variants"].items():
+            if "bdw_mode" in v:
+                lines.append(f"| {name} | {v['bdw_mode']} | {v['bdw_incremental']} / {v['bdw_protection']} / {v['bdw_markers']} | "
+                             f"{v['bdw_collections_median']:g} | {v['bdw_stopped_world_ms_median']:.3f} | "
+                             f"{v['bdw_heap_peak_bytes_median'] / 1048576:.2f} | {v['bdw_allocated_bytes_median'] / 1048576:.2f} |")
+        lines += ["", "BDWGC stopped-world intervals exclude collector work outside those intervals. "
+                  "They are not native GC elapsed time or GC CPU time; no GC share is computed from them."]
     lines += ["", "| Candidate / control | Geomean elapsed change | Median paired change | Observed paired range | Lower elapsed rounds | Median paired RSS change |",
               "| --- | ---: | ---: | ---: | ---: | ---: |"]
     for c in case["comparisons"]:

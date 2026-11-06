@@ -5,6 +5,11 @@ from pathlib import Path
 import unittest
 
 SPEC = importlib.util.spec_from_file_location("gc_application_summarize", Path(__file__).with_name("summarize.py"))
+# Exact diagnostic from bdwgc-contract-manual-vdb.json's default integration
+# probe. It supplies a parser fixture only, not workload performance evidence.
+BDW_LINE = ("bdwgc: version=8.2.6 mode=default incremental=0 protection=1 markers=1 "
+            "collections=2724 stopped_world_ms=34.843 pauses=2724 heap_peak_bytes=495616 "
+            "heap_bytes=20480 free_bytes=0 allocated_bytes=435090304\n")
 SUMMARY = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(SUMMARY)
 
@@ -56,6 +61,28 @@ class SummaryTests(unittest.TestCase):
                 value["complete"] = False
             with self.subTest(mutation=mutation), self.assertRaises(ValueError):
                 SUMMARY.summarize(value)
+
+    def test_bdw_metrics_are_separate_from_native_gc(self):
+        value = fixture()
+        for row in value["samples"]:
+            row["gc_reports"] = []
+            row["stderr_tail"] = BDW_LINE
+        result = SUMMARY.summarize(value)
+        summary = result["variants"]["main"]
+        self.assertEqual(summary["bdw_mode"], "default")
+        self.assertEqual(summary["bdw_markers"], 1)
+        self.assertEqual(summary["bdw_collections_median"], 2724)
+        self.assertEqual(summary["bdw_stopped_world_ms_median"], 34.843)
+        self.assertEqual(summary["bdw_heap_peak_bytes_median"], 495616)
+        self.assertEqual(summary["bdw_allocated_bytes_median"], 435090304)
+        self.assertNotIn("gc_elapsed_ms_median", summary)
+        self.assertNotIn("gc_share_pct_median", summary)
+        for field, changed in (("mode=default", "mode=incremental"), ("markers=1", "markers=2"),
+                               ("incremental=0", "incremental=1"), ("protection=1", "protection=0")):
+            altered = copy.deepcopy(value)
+            altered["samples"][-1]["stderr_tail"] = BDW_LINE.replace(field, changed)
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                SUMMARY.summarize(altered)
 
     def test_nonidentical_aa_or_changed_memory_budget_rejects(self):
         for key, changed in (("executable_sha256", "different"), ("env", {}), ("address_space_mib", 1024)):
