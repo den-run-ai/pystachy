@@ -84,6 +84,16 @@ def plan(args, work):
         command = compilers[i - 1] + ["build", "pystachy.py", "-o", str(work / f"pystachy{i}")]
         if args.variant != "baseline":
             command += ["--emit-ir", str(work / f"stage{i}.ll")]
+        if i == 1 and args.stage1_split:
+            command = [args.python, str(args.root / "bench/compiler_host/self_pipeline.py"),
+                       "--hosted", "--root", str(args.root), "--llvm", args.llvm,
+                       "--work", str(work / "stage1-pipeline"), "--report", str(work / "stage1-pipeline.json"),
+                       "--jobs", str(args.build_jobs), "--partitions", str(args.stage1_split),
+                       "--opt", str(args.stage1_opt), "--cache", str(work / "cache"),
+                       "--output", str(work / "pystachy1"), "--emit-ir", str(work / "stage1.ll"),
+                       "--caller-witnesses"]
+            if args.runtime_overlap:
+                command.append("--overlap")
         add(f"build{i}", command, ["build1"] if i == 2 else [], args.build_jobs,
             args.stage1_opt if i == 1 else 2)
     for i in range(1 if args.variant == "baseline" else 3, 4):
@@ -174,7 +184,9 @@ def run_nodes(nodes, args, work, env):
             signal.signal(sig, signal.SIG_IGN)
         for pid in running:
             signal_group(pid, signal.SIGTERM)
-        deadline = time.monotonic() + 0.25
+        # Nested worker controllers use 0.25 s to drain their descendants and
+        # publish failure evidence. Give that cleanup time before the fallback.
+        deadline = time.monotonic() + 0.75
         while running and time.monotonic() < deadline:
             for pid in list(running):
                 done, status, usage = os.wait4(pid, os.WNOHANG)
@@ -206,6 +218,10 @@ def main(argv=None):
     parser.add_argument("--build-jobs", type=int, default=1, help="slots reserved per native build")
     parser.add_argument("--partitions", type=int, default=0)
     parser.add_argument("--stage1-opt", type=int, choices=(0, 1, 2), default=2)
+    parser.add_argument("--stage1-split", type=int, default=0,
+                        help="research: early-split temporary self-build, final build retains the driver")
+    parser.add_argument("--runtime-overlap", action="store_true",
+                        help="research: overlap whole cold runtime and hosted frontend in the split first stage")
     parser.add_argument("--runtime-c-cache", action="store_true", help="enable the independent runtime C bitcode cache")
     parser.add_argument("--timing", action="store_true", help="retain driver stage timings in each command log")
     parser.add_argument("--timeout", type=float, default=900, help="seconds per command")
@@ -213,6 +229,11 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if not 1 <= args.build_jobs <= args.jobs <= 64 or not 0 <= args.partitions <= args.build_jobs or args.timeout <= 0:
         parser.error("require 1 <= build-jobs <= jobs <= 64, 0 <= partitions <= build-jobs, timeout > 0")
+    if args.stage1_split and (not 1 <= args.stage1_split <= 8 or args.build_jobs > 8
+                              or args.variant == "baseline" or not args.runtime_c_cache):
+        parser.error("stage1-split needs retained witnesses, runtime-c-cache, 1..8 partitions and at most 8 build jobs")
+    if args.runtime_overlap and (not args.stage1_split or args.build_jobs < 2):
+        parser.error("runtime-overlap needs stage1-split and at least two build jobs")
     args.root = args.root.resolve()
     args.python = str(Path(shutil.which(args.python) or args.python).resolve())
     if not args.llvm:

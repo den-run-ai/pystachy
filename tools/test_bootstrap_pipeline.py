@@ -131,6 +131,48 @@ class PipelineTests(unittest.TestCase):
         self.assertIn("rendezvous peer did not start", Path(report["steps"][0]["log"]).read_text())
         self.assertFalse((self.root / "ready-rt1").exists())
 
+    def test_split_first_stage_keeps_three_independent_generations(self):
+        # Model only the external build boundary; the fallible compiler still
+        # emits every witness, including both independently built executables.
+        script = self.root / "bench/compiler_host/self_pipeline.py"
+        script.parent.mkdir(parents=True)
+        script.write_text('''import json, pathlib, subprocess, sys
+args = sys.argv[1:]
+def value(flag):
+    return args[args.index(flag) + 1]
+root = pathlib.Path(value("--root"))
+(root / "pipeline-arguments.json").write_text(json.dumps(args))
+subprocess.run([sys.executable, str(root / "pystachy.py"), "build", "pystachy.py",
+                "-o", value("--output"), "--emit-ir", value("--emit-ir")], check=True)
+''')
+        code, report, events = self.run_case("optimized", (
+            "--jobs", "4", "--build-jobs", "4", "--stage1-opt", "0",
+            "--stage1-split", "4", "--runtime-overlap", "--runtime-c-cache"))
+        self.assertEqual(code, 0)
+        builds = [e for e in events if e["kind"] == "build"]
+        self.assertEqual([e["producer"] for e in builds], ["pystachy.py", "pystachy1"])
+        self.assertEqual([e["opt"] for e in builds], ["0", "2"])
+        self.assertTrue(all(e["partitions"] == 0 for e in builds))
+        self.assertCountEqual([e["producer"] for e in events if e["kind"] == "rt"],
+                              ["pystachy.py", "pystachy1", "pystachy2"])
+        self.assertTrue(all(v["identical"] for v in report["fixed_points"].values()))
+        self.assertEqual(sum(e["kind"] == "ir" for e in events), 1)
+        arguments = json.loads((self.root / "pipeline-arguments.json").read_text())
+        self.assertIn("--overlap", arguments)
+        self.assertIn("--caller-witnesses", arguments)
+
+    def test_split_policy_rejects_unaccounted_work_and_missing_witnesses(self):
+        for extra in (("--stage1-split", "9", "--runtime-c-cache"),
+                      ("--stage1-split", "4"),
+                      ("--runtime-overlap",),
+                      ("--stage1-split", "4", "--runtime-overlap", "--runtime-c-cache")):
+            with self.subTest(extra=extra), contextlib.redirect_stderr(io.StringIO()):
+                with self.assertRaises(SystemExit) as caught:
+                    pipeline.main(self.argv("optimized", *extra))
+                self.assertEqual(caught.exception.code, 2)
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            pipeline.main(self.argv("baseline", "--stage1-split", "1", "--runtime-c-cache"))
+
     def test_failed_build_blocks_dependents_and_reports_diagnostics(self):
         code, report, events = self.run_case("optimized", ("--jobs", "2"), FAIL_NODE="pystachy1")
         self.assertEqual(code, 1)
