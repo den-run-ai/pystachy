@@ -198,6 +198,40 @@ class InputTests(unittest.TestCase):
                 imports.backend_job(job)
             commands.assert_not_called()
 
+    def test_shared_job_is_bounded_and_publication_is_bound_to_its_artifact(self):
+        source = self.directory / "input.bc"
+        source.write_bytes(b"frozen linked module")
+        work = self.directory / "backend"
+        with patch.object(imports, "tool_identity", return_value={}), \
+                patch.object(imports, "harness_identity", return_value={"identity": "unchanged"}):
+            job = imports.prepare_backend_job(source, self.directory, work, 4, 2)
+            expected_job_sha256 = imports.sha(job)
+            config = json.loads(job.read_text())
+            self.assertEqual((config["partitions"], config["jobs"], config["prelink"]), (4, 2, "summary"))
+            self.assertIn("--inherited-group", imports.backend_command(job, inherited_group=True))
+            self.assertNotIn("--inherited-group", imports.backend_command(job))
+            compiler = work / "compiler"
+            compiler.write_bytes(b"complete compiler")
+            result = {"complete": True, "job_sha256": imports.sha(job),
+                      "compiler_sha256": imports.sha(compiler), "compiler_bytes": compiler.stat().st_size}
+            self.assertEqual(imports.validate_backend_result(job, result, expected_job_sha256), compiler)
+            for changed in (dict(result, complete=False), dict(result, job_sha256="wrong"),
+                            dict(result, compiler_sha256="wrong"), dict(result, compiler_bytes=1)):
+                with self.subTest(changed=changed), self.assertRaises(RuntimeError):
+                    imports.validate_backend_result(job, changed, expected_job_sha256)
+            source.write_bytes(b"changed linked module")
+            with self.assertRaisesRegex(RuntimeError, "changed"):
+                imports.validate_backend_result(job, result, expected_job_sha256)
+            source.write_bytes(b"frozen linked module")
+            # Even an internally consistent replacement cannot change the
+            # coordinator's accepted scheduling/optimization settings.
+            config["jobs"] = 1
+            config["prelink"] = "o2"
+            imports.atomic_json(job, config)
+            result["job_sha256"] = imports.sha(job)
+            with self.assertRaisesRegex(RuntimeError, "job identity changed"):
+                imports.validate_backend_result(job, result, expected_job_sha256)
+
 
 @unittest.skipUnless(os.getenv("PYSTACHY_TEST_LLVM"), "set PYSTACHY_TEST_LLVM for LLVM 18 importing checks")
 class RealLLVMTests(unittest.TestCase):
@@ -283,14 +317,8 @@ entry:
             binaries = []
             for prelink, jobs in (("summary", 1), ("summary", 2), ("o2", 2)):
                 work = root / f"job-{prelink}-{jobs}"
-                work.mkdir()
-                job_path = work / "job.json"
-                imports.atomic_json(job_path, {"version": 2, "llvm": str(llvm), "tools": imports.tool_identity(llvm),
-                                               "harness": imports.harness_identity(),
-                                               "input": str(bitcode), "input_sha256": imports.sha(bitcode),
-                                               "partitions": 2, "jobs": jobs, "prelink": prelink, "timeout": 15})
-                result = subprocess.run([sys.executable, str(BENCH / "partition_import.py"),
-                                         "--backend-job", str(job_path)], capture_output=True, text=True,
+                job_path = imports.prepare_backend_job(bitcode, llvm, work, 2, jobs, prelink, 15)
+                result = subprocess.run(imports.backend_command(job_path), capture_output=True, text=True,
                                         timeout=30, start_new_session=True)
                 self.assertEqual(result.returncode, 0, result.stderr)
                 report = json.loads((work / "build.json").read_text())

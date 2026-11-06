@@ -3,6 +3,9 @@
 This self-build-only controller measures whole-runtime overlap. The tiny build
 prepares runtime bitcode through the unchanged driver (and has its own measured
 small overhead). It does not silently replace arbitrary-program driver behavior.
+--backend thinlto uses the bounded summaries-only LLVM 18 experiment at O2;
+the ordinary isolated-worker backend remains the default. Full bootstraps use
+--caller-witnesses only when their parent validates all six IR witnesses.
 """
 from __future__ import annotations
 
@@ -17,6 +20,7 @@ import time
 
 from run import ROOT, atomic_json, bootstrap, measure, sha
 from backend_workers import Commands
+import partition_import
 
 
 def same_file(first, second):
@@ -89,6 +93,7 @@ def main():
     parser.add_argument("--overlap", action="store_true")
     parser.add_argument("--jobs", type=int, default=1)
     parser.add_argument("--partitions", type=int, default=1)
+    parser.add_argument("--backend", choices=("workers", "thinlto"), default="workers")
     parser.add_argument("--opt", type=int, choices=(0, 1, 2), default=2)
     parser.add_argument("--inline-threshold", type=int, help="research: backend optimizer inlining threshold (0..10000)")
     parser.add_argument("--cache", type=Path, help="private bootstrap cache shared with the next stage")
@@ -100,6 +105,8 @@ def main():
         parser.error("jobs/partitions must be 1..8; overlap needs at least 2 jobs")
     if args.inline_threshold is not None and not 0 <= args.inline_threshold <= 10000:
         parser.error("inlining threshold must be from 0 to 10000")
+    if args.backend == "thinlto" and (args.opt != 2 or args.inline_threshold is not None):
+        parser.error("ThinLTO self-builds require O2 and the default LLVM inlining policy")
     return run_pipeline(args)
 
 
@@ -124,6 +131,7 @@ def run_pipeline(args):
               "producer_sha256": {p: sha(p) for p in compiler},
               "llvm": bootstrap.tool_identity(sys.executable, str(llvm)), "overlap": args.overlap,
               "partitions": args.partitions, "jobs": args.jobs, "opt": args.opt, "inline_threshold": args.inline_threshold,
+              "backend_policy": args.backend,
               "caller_witnesses": args.caller_witnesses, "complete": False, "stages": {}}
     runner = Commands(measure)
     try:
@@ -155,18 +163,30 @@ def run_pipeline(args):
             measure.successful(result)
             report["stages"]["link_ir"] = result
             backend_report = work / "backend.json"
-            command = [sys.executable, str(ROOT / "bench/compiler_host/backend_workers.py"), "--input", str(linked),
-                       "--llvm", str(llvm), "--partitions", str(args.partitions), "--jobs", str(args.jobs),
-                       "--opt", str(args.opt), "--inherited-group", "--work", str(work / "backend"), "--report", str(backend_report)]
-            if args.inline_threshold is not None:
-                command += ["--inline-threshold", str(args.inline_threshold)]
+            if args.backend == "thinlto":
+                job_path = partition_import.prepare_backend_job(linked, llvm, work / "backend",
+                                                               args.partitions, args.jobs)
+                expected_job_sha256 = sha(job_path)
+                report["expected_job_sha256"] = expected_job_sha256
+                report["thinlto_job"] = json.loads(job_path.read_text())
+                command = partition_import.backend_command(job_path, inherited_group=True)
+                backend_report = job_path.parent / "build.json"
+            else:
+                command = [sys.executable, str(ROOT / "bench/compiler_host/backend_workers.py"), "--input", str(linked),
+                           "--llvm", str(llvm), "--partitions", str(args.partitions), "--jobs", str(args.jobs),
+                           "--opt", str(args.opt), "--inherited-group", "--work", str(work / "backend"), "--report", str(backend_report)]
+                if args.inline_threshold is not None:
+                    command += ["--inline-threshold", str(args.inline_threshold)]
             result = runner.execute(command, env, 600)
             report["stages"]["backend"] = result
             report["build_wall_s"] = time.monotonic() - start
+            if backend_report.exists():
+                report["backend"] = json.loads(backend_report.read_text())
             atomic_json(args.report, report)
             measure.successful(result)
-            report["backend"] = json.loads(backend_report.read_text())
             built = work / "backend/compiler"
+            if args.backend == "thinlto":
+                built = partition_import.validate_backend_result(job_path, report["backend"], expected_job_sha256)
             report["witnesses"] = {}
             for mode, file in (() if args.caller_witnesses else (("ir", "pystachy.py"), ("rt", "runtime.py"))):
                 output = work / f"built-{mode}.ll"
@@ -184,6 +204,8 @@ def run_pipeline(args):
                 result["matches"] = sha(output) == sha(reference)
             report["source_unchanged"] = source == bootstrap.source_identity(root)
             report["producer_unchanged"] = report["producer_sha256"] == {p: sha(p) for p in compiler}
+            if args.backend == "thinlto":
+                partition_import.validate_backend_result(job_path, report["backend"], expected_job_sha256)
             report["complete"] = report["source_unchanged"] and report["producer_unchanged"] and (args.caller_witnesses or all(
                 report["witnesses"][mode]["matches"] for mode in ("ir", "rt")))
             if report["complete"]:
