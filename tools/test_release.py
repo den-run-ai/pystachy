@@ -1,5 +1,6 @@
 """Release packaging integrity, reproducibility, and launcher relocation checks."""
 
+import ast
 import contextlib
 import io
 import json
@@ -160,19 +161,45 @@ class ReleaseTests(unittest.TestCase):
         self.assertEqual(self.launch(directory / "bin/pystachy", environment)[1], str(self.root / "xdg cache/pystachy"))
 
     def test_program_cache_smoke_checks_fill_hit_and_unset_default(self):
-        environment = dict(self.environment, PYSTACHY_PROGRAM_CACHE="0")
+        environment = dict(self.environment, PYSTACHY_PROGRAM_CACHE="0",
+                           LD_LIBRARY_PATH="/opt/hostedtoolcache/Python/3.13.16/x64/lib")
         for hit, events in ((False, ["miss", "frontend", "stored"]), (True, ["hit"])):
+            environment["RELEASE_SMOKE_VALUE"] = ("hit" if hit else "fill") + " $`'"
+            original = environment.copy()
             script = ('test "${PYSTACHY_PROGRAM_CACHE-unset}" = unset || exit 91\n'
                       'test "$PYSTACHY_PROGRAM_CACHE_TRACE" = 1 || exit 92\n'
-                      "printf 'ok\\n'\n")
+                      'printf "%s\\n" "$RELEASE_SMOKE_VALUE"\n'
+                      'if [ -n "${LD_LIBRARY_PATH-}" ]; then\n'
+                      "  printf 'pystachy program cache: bypass custom build environment\\n' >&2\n"
+                      '  exit 0\n'
+                      'fi\n')
             script += "\n".join(f"printf 'pystachy program cache: {event}\\n' >&2" for event in events)
-            release_smoke.program_cache_run(["sh", "-c", script], self.root, environment, "ok\n", hit=hit)
-        self.assertEqual(environment["PYSTACHY_PROGRAM_CACHE"], "0")
+            release_smoke.program_cache_run(["sh", "-c", script], self.root, environment,
+                                            environment["RELEASE_SMOKE_VALUE"] + "\n", hit=hit)
+            self.assertEqual(environment, original)
+
+    def test_program_cache_smoke_clears_the_compiler_build_environment(self):
+        # Read the compiler's eligibility contract without importing its driver;
+        # new bypass inputs must also be excluded from the release cache check.
+        source = Path(__file__).resolve().parents[1] / "src/pystachy_compiler/cached_run.py"
+        build_env = next(ast.literal_eval(node.value) for node in ast.parse(source.read_text()).body
+                         if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name)
+                         and node.target.id == "BUILD_ENV")
+        environment = dict(self.environment, **{name: "/custom/build/input" for name in build_env},
+                           RELEASE_SMOKE_EMPTY="")
+        original = environment.copy()
+        script = "".join(f'test "${{{name}+set}}" != set || exit 93\n' for name in build_env)
+        script += ('test "${RELEASE_SMOKE_EMPTY+set}" = set || exit 94\n'
+                   "printf 'ok\\n'\n"
+                   "printf 'pystachy program cache: hit\\n' >&2\n")
+        release_smoke.program_cache_run(["sh", "-c", script], self.root, environment, "ok\n", hit=True)
+        self.assertEqual(environment, original)
 
     def test_program_cache_smoke_rejects_successful_fallback_and_false_hits(self):
         scripts = [
             "printf 'ok\\n'",  # Successful ordinary compilation is not a cache hit.
             "printf 'ok\\n'; printf 'pystachy program cache: bypass unavailable\\n' >&2",
+            "printf 'ok\\n'; printf 'pystachy program cache: bypass custom build environment\\n' >&2",
             "printf 'ok\\n'; printf 'pystachy program cache: frontend\\npystachy program cache: hit\\n' >&2",
             "printf 'wrong\\n'; printf 'pystachy program cache: hit\\n' >&2",
             "printf 'ok\\n'; printf 'pystachy program cache: hit\\n' >&2; exit 1",

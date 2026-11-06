@@ -17,6 +17,17 @@ import tempfile
 from install_smoke import PROGRAM, execute
 from release import binary_target, sha256
 
+# Match cached_run.BUILD_ENV: the default-cache check needs an ordinary build
+# environment even when the host interpreter's setup exports loader overrides.
+CACHE_BUILD_ENV = (
+    "CPATH", "C_INCLUDE_PATH", "CPLUS_INCLUDE_PATH", "OBJC_INCLUDE_PATH",
+    "LIBRARY_PATH", "COMPILER_PATH", "GCC_EXEC_PREFIX", "SDKROOT",
+    "CCC_OVERRIDE_OPTIONS", "CLANG_CONFIG_FILE_SYSTEM_DIR",
+    "CLANG_CONFIG_FILE_USER_DIR", "LD_PRELOAD", "LD_LIBRARY_PATH",
+    "LD_AUDIT", "LD_RUN_PATH", "LD_HWCAP_MASK", "GLIBC_TUNABLES",
+    "LDEMULATION", "GNUTARGET",
+)
+
 # Recursive JSON values and code-point indexing use the packaged json module and the
 # runtime's string operations from the relocated installation.
 TEXT_PROGRAM = r'''
@@ -99,7 +110,10 @@ def runtime_files(cache):
 
 def program_cache_run(command, directory, environment, expected, *, hit):
     """Require the default producer/hit path, including an exact diagnostic trace."""
-    current = dict(environment, PYSTACHY_PROGRAM_CACHE_TRACE="1")
+    # Keep these overrides for the CPython oracle and other release checks;
+    # sanitize only the explicit native cache test, preserving ordinary inputs.
+    current = {key: value for key, value in environment.items() if key not in CACHE_BUILD_ENV}
+    current["PYSTACHY_PROGRAM_CACHE_TRACE"] = "1"
     current.pop("PYSTACHY_PROGRAM_CACHE", None)
     result = subprocess.run(command, cwd=directory, env=current, capture_output=True,
                             text=True, timeout=180)
