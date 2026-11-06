@@ -59,6 +59,13 @@ w:
 """
 
 
+def uses_new_allocator(ir: str) -> bool:
+    # Match the complete declaration emitted by gen_lower_module, excluding
+    # allocator spellings embedded in LLVM string constants.
+    declaration = runtime_decl(RTSYM["pys_new"]) + "\n"
+    return ir.startswith(declaration) or "\n" + declaration in ir
+
+
 def jit_alloc(ir: str) -> str:
     # the program's IR with JITFAST in place of its declarations of pys_alloc and pys_new, and the
     # runtime names that JITFAST uses declared unless the program declares them (a second

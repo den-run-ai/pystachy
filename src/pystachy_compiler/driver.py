@@ -9,7 +9,7 @@ from src.pystachy_compiler.diagnostics import MAXNEST, RAW, NeedSliceEH, Rejoin,
 from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler.lexer import Lexer
 from src.pystachy_compiler.loader import Loader
-from src.pystachy_compiler.lower_module import OBJHOOKS, address_runtime_ir, jit_alloc
+from src.pystachy_compiler.lower_module import OBJHOOKS, address_runtime_ir, jit_alloc, uses_new_allocator
 from src.pystachy_compiler.names import RENAMED
 from src.pystachy_compiler.parser import Parser
 from src.pystachy_compiler.specs import JIT_INLINE, LIBS, LINKDL, MODULES, OPTS, PLATFORM
@@ -202,14 +202,6 @@ def timed_sh(name: str, cmd: str) -> int:
     code = sh(cmd)
     timing_end(name, started)
     return code
-
-
-def uses_new_allocator(ir: str) -> bool:
-    # Lowering declares pys_new exactly when it emits an allocation call. Match
-    # that complete line: the compiler itself embeds this spelling in LLVM
-    # string constants, whose newlines are escaped, without calling pys_new.
-    declaration = "declare ptr @pys_new(i64)\n"
-    return ir.startswith(declaration) or "\n" + declaration in ir
 
 
 def build_jobs() -> int:
