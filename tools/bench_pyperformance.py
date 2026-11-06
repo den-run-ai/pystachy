@@ -37,6 +37,7 @@ SDIST_DIR = "pyperformance-1.14.0/pyperformance/data-files/benchmarks/"
 # bench/pyperformance/NAME.py's main reads them; each starts with the number of loops.
 BENCHMARKS = {
     "barnes_hut": (["1"], ["1", "5", "50"]),
+    "bpe_tokeniser": (["1"], ["1", "260", "smoke"]),
     "chaos": (["10"], ["1", "200"]),
     "comprehensions": (["10000"], ["1"]),
     "fannkuch": (["2"], ["1", "7"]),
@@ -198,6 +199,7 @@ CENSUS_CALLS = {
 # their seconds to a list TIMED, whose sum the main prints.
 TIMED_PART = {
     "barnes_hut": ["bench_quadtree_nbody"],
+    "bpe_tokeniser": ["bench_bpe_tokeniser"],
     "chaos": "create_image_chaos",
     "comprehensions": ["bench_comprehensions"],
     "fannkuch": "fannkuch",

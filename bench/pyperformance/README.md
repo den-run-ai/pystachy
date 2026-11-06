@@ -1,6 +1,6 @@
 # pyperformance benchmarks
 
-These are 24 of the 52 benchmarks tried from [pyperformance](https://github.com/python/pyperformance)
+These are 25 of the 52 benchmarks tried from [pyperformance](https://github.com/python/pyperformance)
 1.14.0, adapted so that Pystachy compiles them. CPython runs the same adapted files, so each
 comparison runs identical source in CPython, the JIT and AOT. The adaptations and smaller
 inputs change the work, so these results are not comparable with published pyperformance numbers.
@@ -43,6 +43,29 @@ signed coefficients and an empty row. These run in the differential corpus. The 
 sparse timing workloads retain upstream's zero-filled inputs; their zero checksums alone
 cannot validate the kernels.
 
+## Byte BPE
+
+`bpe_tokeniser.py` provides the reusable `SimpleBytePairEncoding`, `bpe_train`,
+`bpe_encode` and `BPE_PATTERN` API. The default benchmark uses the complete bundled
+31,206-byte Frankenstein excerpt and vocabulary size 1,024. The existing suite's
+`--smoke` run uses a tiny in-memory corpus and vocabulary size 260:
+
+```sh
+python3 tools/bench_pyperformance.py --benchmarks bpe_tokeniser --smoke
+python3 bench/pyperformance/bpe_tokeniser.py 1 260 smoke
+python3 bench/pyperformance/bpe_tokeniser.py 1 1024 bench/pyperformance/data/frankenstein_intro.txt
+```
+
+The CLI takes loops, then optional vocabulary size and corpus path. Run from the
+repository root or pass an explicit corpus path. Its timer preserves upstream's
+`train()` loop, including the `hello world` round-trip check and corpus encoding.
+An independent untimed training pass prints every ordered rank, corpus token ID and
+decoded byte for comparison across modes. Process wall time therefore includes this
+correctness pass. Separate training, encoding and decoding measurements against
+pristine upstream CPython are in the [byte-BPE showcase](../../examples/byte_bpe/README.md).
+This educational tokenizer preserves its upstream splitting pattern and quadratic
+encoder; it is not a throughput comparison with production Rust tiktoken.
+
 ## Provenance
 
 The sources are `pyperformance/data-files/benchmarks/bm_NAME/run_benchmark.py` from the
@@ -64,7 +87,7 @@ hash is unmeasured (`null`).
 | `asyncio_tcp` | `fa993861ad75dcd724d282442e671095ad708a9dcb87e4314831d04006ad4a23` | blocked |
 | `barnes_hut` | `802a1c170b82a5d82ea69b7a893f09d4b50b4f232e20a8e1c1bb8b2c04e6af1d` | ported |
 | `base64` | `e2f1e7d4dbfbb2c722833081496497344550e4367f85f67f373fb8aa22cd35ed` | blocked |
-| `bpe_tokeniser` | `c7255345499e118181785370b0996e8cc1056491b9678b3fbeb02421e3f9b2df` | blocked |
+| `bpe_tokeniser` | `c7255345499e118181785370b0996e8cc1056491b9678b3fbeb02421e3f9b2df` | ported |
 | `chaos` | `5d20fd29c8ea89e0ebe4040ae4c05f26f1a620cd2a7fc654d9d7f8cb205651ac` | ported |
 | `comprehensions` | `6047efc06287a24a646f00fc8a8d47429f7cdeab3e942230e13cf6d7cefa6343` | ported |
 | `concurrent_imap` | `d5bfb854e7a1d754f3033132dca397704ea7ed2aabfd6d625396b61b82a9e316` | blocked |
@@ -110,20 +133,28 @@ hash is unmeasured (`null`).
 | `unpack_sequence` | `0dafe97531abc4a5baf30fe011db7acb3bf1e64cd4e41acb0c7db2bb141a8382` | ported |
 | `xml_etree` | `1d824c4d4dd92a7598e085dbdf7beed3809a75e4d6972c90377822c78f73477c` | blocked |
 
+The byte-BPE corpus, [data/frankenstein_intro.txt](data/frankenstein_intro.txt), is
+Mary Shelley's Frankenstein excerpt bundled with pyperformance 1.14.0 at commit
+`2ab96f98f98274d07ebfdfd66e4f021723179706`. It is retained byte for byte: SHA-256
+`6607193e67b7b459d082f5f2aea724e470615643d63ad2e205123b3076223da4`.
+The [pristine byte-BPE source and provenance](../../examples/byte_bpe/upstream/provenance.json)
+record the source, corpus and pyperformance license files used by the showcase.
+
 ## License
 
 pyperformance is distributed under the MIT License; [LICENSE](LICENSE) and [AUTHORS](AUTHORS)
 are its `COPYING` and `AUTHORS` files. Each port keeps its upstream header. `regex_v8.py`'s
 header carries the V8 project's BSD license, and `raytrace.py`'s states the MIT License.
 `deltablue` is excluded pending a separate provenance decision: its upstream docstring
-says the JavaScript original was GPL-licensed. The other 24 benchmarks remain included.
+says the JavaScript original was GPL-licensed. The other 25 benchmarks remain included.
 `fannkuch.py`, `meteor_contest.py`, `nbody.py`, `pidigits.py`, `regex_dna.py` and `spectral_norm.py` say they
 come from The Computer Language Benchmarks Game, whose programs are published under the
 3-clause BSD License. `richards.py` and `richards_super.py` credit a Java version
 "Copyright (C) 1995 Sun Microsystems, Inc.", and `chaos.py` says "Copyright (C) 2005 Carl
 Friedrich Bolz". pyperformance distributes all of these files under its MIT License; their
 origins are listed so that a license review can confirm that this suffices. See
-[THIRD_PARTY_NOTICES](../../THIRD_PARTY_NOTICES).
+[THIRD_PARTY_NOTICES](../../THIRD_PARTY_NOTICES). Byte BPE credits Shantanu Jain and
+tiktoken; those notices also retain tiktoken's MIT copyright and permission text.
 
 ## Adaptations
 
@@ -149,6 +180,7 @@ adaptations follow these rules:
 | Benchmark | Other adaptations |
 |---|---|
 | `barnes_hut` | Integer zeros that become floats are float literals. Constructors, the particle list and the child nodes are annotated. |
+| `bpe_tokeniser` | Five kernel adaptations: annotate the decoder field and empty ranks dictionary; type the pair `Counter`; materialize `zip` for `enumerate`; pass the UTF-8 replacement policy positionally. The runner exposes the unchanged pattern, permits smaller vocabularies, and takes an explicit corpus path instead of `__file__`. |
 | `chaos` | A Park–Miller generator replaces `random.seed()` and `randrange()`, so the points differ from upstream. `GVector` has float parameters and defaults; `__rmul__ = __mul__` becomes a method; fields are annotated; loops replace two-clause comprehensions; `length` starts as `0.0`; `x` and `y` are converted to int in one assignment each; an impossible `type()` message is a literal. `main()` returns the game, whose `create_image_chaos()` the main times with the default arguments. |
 | `comprehensions` | The empty widget list is annotated. The upstream `Enum` and enum iteration are restored. The complete sorted widget order is checked. |
 | `logging` | All three kernels run directly on the same `StringIO` stream. The driver checks every emitted line and verifies that disabled calls produce no output. |
@@ -181,6 +213,10 @@ Results within a benchmark are checked against CPython, not against upstream pyp
 <a id="runner-only-census-2026-10-22"></a>
 
 ## Census
+
+These census results record the cited historical revisions with only the runner
+replaced. The full byte-BPE port above now covers training, encoding and decoding;
+the earlier fixed-rank BPE sample below did not.
 
 The same 52 upstream files were compiled on `8444af96` (before the stdlib additions)
 and `3aa7265a` (with the argparse adapter). With only the runner replaced, both
@@ -259,7 +295,7 @@ What porting them would take:
   fractions-based `mdp` stay blocked, because fixed-width floats or ints would change what
   they test. `pidigits` is ported with [promoting ints](../../docs/python-int.md) instead,
   which keep CPython's `int` semantics.
-- **Missing APIs or adapters:** `argparse`, `base64`, `bpe_tokeniser`, `deepcopy`,
+- **Missing APIs or adapters:** `argparse`, `base64`, `deepcopy`,
   `pathlib`, `pickle`, `pprint`, `pyflate`, `regex_compile`, `tomli_loads`,
   `typing_runtime_protocols` and `xml_etree`. `regex_compile` also patches another module's
   regex calls, so annotating its global is not enough. `tomli_loads` needs the third-party

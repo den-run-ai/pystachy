@@ -8,12 +8,17 @@ https://github.com/openai/tiktoken
 """
 from __future__ import annotations
 
-import pyperf
+import time  # Pystachy port: time.perf_counter() is pyperf.perf_counter()
+
+TIMED: list[float] = []  # Pystachy port: report upstream timed regions
 
 
 import collections
 import re
-from pathlib import Path
+# Pystachy port: expose the unchanged upstream train() pattern for reusable callers.
+BPE_PATTERN = (
+    r"""'s|'t|'re|'ve|'m|'ll|'d| ?[a-zA-Z]+| ?\d+| ?[^\sa-zA-Z\d]+|\s+(?!\S)|\s+"""
+)
 
 
 class SimpleBytePairEncoding:
@@ -21,7 +26,8 @@ class SimpleBytePairEncoding:
         self.pat_str = pat_str
         self.mergeable_ranks = mergeable_ranks
 
-        self._decoder = {token: token_bytes for token_bytes, token in mergeable_ranks.items()}
+        # Pystachy port: declare the dictionary field type.
+        self._decoder: dict[int, bytes] = {token: token_bytes for token_bytes, token in mergeable_ranks.items()}
         self._pat = re.compile(pat_str)
 
     def encode(self, text: str) -> list[int]:
@@ -39,7 +45,8 @@ class SimpleBytePairEncoding:
         return b"".join(self._decoder[token] for token in tokens)
 
     def decode(self, tokens: list[int]) -> str:
-        return self.decode_bytes(tokens).decode("utf-8", errors="replace")
+        # Pystachy port: pass the supported positional errors argument.
+        return self.decode_bytes(tokens).decode("utf-8", "replace")
 
     @staticmethod
     def train(training_data: str, vocab_size: int, pat_str: str):
@@ -54,7 +61,8 @@ def bpe_encode(mergeable_ranks: dict[bytes, int], input: bytes) -> list[int]:
         # Iterate over all pairs and find the pair we want to merge the most
         min_idx = None
         min_rank = None
-        for i, pair in enumerate(zip(parts[:-1], parts[1:])):
+        # Pystachy port: materialize zip for enumerate composition.
+        for i, pair in enumerate(list(zip(parts[:-1], parts[1:]))):
             rank = mergeable_ranks.get(pair[0] + pair[1])
             if rank is not None and (min_rank is None or rank < min_rank):
                 min_idx = i
@@ -76,7 +84,7 @@ def bpe_train(data: str, vocab_size: int, pat_str: str) -> dict[bytes, int]:
     # First, add tokens for each individual byte value
     if vocab_size < 2**8:
         raise ValueError("vocab_size must be at least 256, so we can encode all bytes")
-    ranks = {}
+    ranks: dict[bytes, int] = {}  # Pystachy port: type the initially empty dictionary
     for i in range(2**8):
         ranks[bytes([i])] = i
 
@@ -93,7 +101,8 @@ def bpe_train(data: str, vocab_size: int, pat_str: str) -> dict[bytes, int]:
     # Now, use our data to figure out which merges we should make
     while len(ranks) < vocab_size:
         # Find the most common pair. This will become our next token
-        stats = collections.Counter()
+        # Pystachy port: type the initially empty pair counter.
+        stats = collections.Counter[tuple[bytes, bytes]]()
         for piece in words:
             for pair in zip(piece[:-1], piece[1:]):
                 stats[pair] += 1
@@ -126,11 +135,10 @@ def bpe_train(data: str, vocab_size: int, pat_str: str) -> dict[bytes, int]:
     return ranks
 
 
-def train(data: str):
-    pattern = (
-        r"""'s|'t|'re|'ve|'m|'ll|'d| ?[a-zA-Z]+| ?\d+| ?[^\sa-zA-Z\d]+|\s+(?!\S)|\s+"""
-    )
-    enc = SimpleBytePairEncoding.train(data, vocab_size=1024, pat_str=pattern)
+# Pystachy port: parameterize the vocabulary for bounded CI; the default is upstream's 1024.
+def train(data: str, vocab_size: int = 1024):
+    # Pystachy port: share the exact upstream pattern with callers.
+    enc = SimpleBytePairEncoding.train(data, vocab_size=vocab_size, pat_str=BPE_PATTERN)
 
     tokens = enc.encode("hello world")
     assert enc.decode(tokens) == "hello world"
@@ -138,20 +146,51 @@ def train(data: str):
     enc.encode(data)
 
 
-def bench_bpe_tokeniser(loops: int) -> float:
-    DATA = Path(__file__).parent / "data" / "frankenstein_intro.txt"
-    with open(DATA, "r", encoding="utf8") as f:
-        data = f.read()
+# Pystachy port: avoid __file__; allow an explicit corpus or a tiny in-memory CI case.
+def read_data(data_path: str) -> str:
+    if data_path == "smoke":
+        return "hello hello world world! abcabc aaaa\n"
+    with open(data_path, "r", encoding="utf8") as f:
+        return f.read()
+
+
+# Pystachy port: accept portable input parameters while preserving upstream's timed loop.
+def bench_bpe_tokeniser(
+    loops: int, vocab_size: int = 1024,
+    data_path: str = "bench/pyperformance/data/frankenstein_intro.txt",
+) -> float:
+    data = read_data(data_path)
 
     range_it = range(loops)
 
-    t0 = pyperf.perf_counter()
+    t0 = time.perf_counter()  # Pystachy port: same clock as pyperf
     for _ in range_it:
-        train(data)
-    return pyperf.perf_counter() - t0
+        train(data, vocab_size)
+    seconds = time.perf_counter() - t0  # Pystachy port: report upstream's returned seconds
+    TIMED.append(seconds)
+    return seconds
 
 
 if __name__ == "__main__":
-    runner = pyperf.Runner()
-    runner.metadata["description"] = "Benchmark a BPE tokeniser"
-    runner.bench_time_func("bpe_tokeniser", bench_bpe_tokeniser)
+    # Pystachy port: a deterministic main replaces pyperf.Runner: loops, then optional
+    # vocabulary size and corpus path (or "smoke"). Full correctness output is outside
+    # the timer, including an independent training pass for the complete learned state.
+    import sys
+    loops = int(sys.argv[1]) if len(sys.argv) > 1 else 1
+    vocab_size = int(sys.argv[2]) if len(sys.argv) > 2 else 1024
+    data_path = (sys.argv[3] if len(sys.argv) > 3
+                 else "bench/pyperformance/data/frankenstein_intro.txt")
+    if loops < 1:
+        raise ValueError("loops must be at least 1")
+    bench_bpe_tokeniser(loops, vocab_size, data_path)
+    print("seconds", sum(TIMED), file=sys.stderr)
+    data = read_data(data_path)
+    enc = SimpleBytePairEncoding.train(data, vocab_size=vocab_size, pat_str=BPE_PATTERN)
+    tokens = enc.encode(data)
+    decoded_bytes = enc.decode_bytes(tokens)
+    if decoded_bytes != data.encode("utf-8") or enc.decode(tokens) != data:
+        raise AssertionError("byte BPE round trip differs")
+    print("bpe_tokeniser", loops, vocab_size)
+    print("ranks", list(enc.mergeable_ranks.items()))
+    print("tokens", tokens)
+    print("decoded_bytes", decoded_bytes)
