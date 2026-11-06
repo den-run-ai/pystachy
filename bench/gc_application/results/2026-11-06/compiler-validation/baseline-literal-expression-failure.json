@@ -1,0 +1,5 @@
+{
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "OverflowError: integer result does not fit in 64 bits\n"
+}

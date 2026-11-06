@@ -1,0 +1,6 @@
+scanned-scalar object rejected gcmarkprobe: scalar union's pointer-looking bits retained an unrelated object
+scanned-scalar block rejected gcmarkprobe: scalar union's pointer-looking bits retained an unrelated object
+atomic-reference object rejected gcmarkprobe: union box or its reference payload was not traced
+atomic-reference block rejected gcmarkprobe: union box or its reference payload was not traced
+atomic-wide object rejected gcmarkprobe: optional union or promoting-int box lost its reference payload
+atomic-wide block rejected gcmarkprobe: optional union or promoting-int box lost its reference payload

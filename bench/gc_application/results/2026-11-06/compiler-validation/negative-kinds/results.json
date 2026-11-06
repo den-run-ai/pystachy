@@ -1,0 +1,260 @@
+[
+  {
+    "name": "scanned-scalar",
+    "marker": "object",
+    "replacement": [
+      "void *pys_ubox_atomic(I tag, I v) { I *p = gc_box(1);",
+      "void *pys_ubox_atomic(I tag, I v) { I *p = gc_box(0);"
+    ],
+    "expected_error": "scalar union's pointer-looking bits retained an unrelated object",
+    "exit_code": 1,
+    "stdout": "",
+    "stderr": "gcmarkprobe: scalar union's pointer-looking bits retained an unrelated object\n",
+    "rejected": true,
+    "runtime_sha256": "dffa03772bb6c858fcfc019f2accd7f1cf5c1fcadafc2fc2bfb5bb70eb7f3f66",
+    "binary_sha256": "a49b5c3dbf9e2d41330a6a283f73497e9fa6d69d75c23da4ae67f1af722023c5",
+    "build_commands": [
+      [
+        "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/clang",
+        "-O2",
+        "-S",
+        "-emit-llvm",
+        "-I",
+        "/workspace/scratch/a009f956ecf0/compiler-gc",
+        "/workspace/scratch/a009f956ecf0/compiler-gc-validation/negative-kinds/scanned-scalar/gcmarkprobe.c",
+        "-o",
+        "/workspace/scratch/a009f956ecf0/compiler-gc-validation/negative-kinds/scanned-scalar/probe.ll"
+      ],
+      [
+        "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/llvm-link",
+        "/workspace/scratch/a009f956ecf0/compiler-gc/build/gcmarkprobe-rt.ll",
+        "/workspace/scratch/a009f956ecf0/compiler-gc-validation/negative-kinds/scanned-scalar/probe.ll",
+        "-o",
+        "/workspace/scratch/a009f956ecf0/compiler-gc-validation/negative-kinds/scanned-scalar/probe.bc"
+      ],
+      [
+        "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/clang",
+        "-O2",
+        "/workspace/scratch/a009f956ecf0/compiler-gc-validation/negative-kinds/scanned-scalar/probe.bc",
+        "-o",
+        "/workspace/scratch/a009f956ecf0/compiler-gc-validation/negative-kinds/scanned-scalar/probe",
+        "-lm"
+      ]
+    ]
+  },
+  {
+    "name": "scanned-scalar",
+    "marker": "block",
+    "replacement": [
+      "void *pys_ubox_atomic(I tag, I v) { I *p = gc_box(1);",
+      "void *pys_ubox_atomic(I tag, I v) { I *p = gc_box(0);"
+    ],
+    "expected_error": "scalar union's pointer-looking bits retained an unrelated object",
+    "exit_code": 1,
+    "stdout": "",
+    "stderr": "gcmarkprobe: scalar union's pointer-looking bits retained an unrelated object\n",
+    "rejected": true,
+    "runtime_sha256": "dffa03772bb6c858fcfc019f2accd7f1cf5c1fcadafc2fc2bfb5bb70eb7f3f66",
+    "binary_sha256": "a49b5c3dbf9e2d41330a6a283f73497e9fa6d69d75c23da4ae67f1af722023c5",
+    "build_commands": [
+      [
+        "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/clang",
+        "-O2",
+        "-S",
+        "-emit-llvm",
+        "-I",
+        "/workspace/scratch/a009f956ecf0/compiler-gc",
+        "/workspace/scratch/a009f956ecf0/compiler-gc-validation/negative-kinds/scanned-scalar/gcmarkprobe.c",
+        "-o",
+        "/workspace/scratch/a009f956ecf0/compiler-gc-validation/negative-kinds/scanned-scalar/probe.ll"
+      ],
+      [
+        "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/llvm-link",
+        "/workspace/scratch/a009f956ecf0/compiler-gc/build/gcmarkprobe-rt.ll",
+        "/workspace/scratch/a009f956ecf0/compiler-gc-validation/negative-kinds/scanned-scalar/probe.ll",
+        "-o",
+        "/workspace/scratch/a009f956ecf0/compiler-gc-validation/negative-kinds/scanned-scalar/probe.bc"
+      ],
+      [
+        "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/clang",
+        "-O2",
+        "/workspace/scratch/a009f956ecf0/compiler-gc-validation/negative-kinds/scanned-scalar/probe.bc",
+        "-o",
+        "/workspace/scratch/a009f956ecf0/compiler-gc-validation/negative-kinds/scanned-scalar/probe",
+        "-lm"
+      ]
+    ]
+  },
+  {
+    "name": "atomic-reference",
+    "marker": "object",
+    "replacement": [
+      "void *pys_ubox(I tag, I v) { I *p = gc_box(0);",
+      "void *pys_ubox(I tag, I v) { I *p = gc_box(1);"
+    ],
+    "expected_error": "union box or its reference payload was not traced",
+    "exit_code": 1,
+    "stdout": "",
+    "stderr": "gcmarkprobe: union box or its reference payload was not traced\n",
+    "rejected": true,
+    "runtime_sha256": "919b64d5639e9eee321f549baf32a6fb33cd18a21862900fac6baf394f5e99b6",
+    "binary_sha256": "1c1015a59716095df390878e6170556b047a32d607238cedb9aac7afaaba38bd",
+    "build_commands": [
+      [
+        "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/clang",
+        "-O2",
+        "-S",
+        "-emit-llvm",
+        "-I",
+        "/workspace/scratch/a009f956ecf0/compiler-gc",
+        "/workspace/scratch/a009f956ecf0/compiler-gc-validation/negative-kinds/atomic-reference/gcmarkprobe.c",
+        "-o",
+        "/workspace/scratch/a009f956ecf0/compiler-gc-validation/negative-kinds/atomic-reference/probe.ll"
+      ],
+      [
+        "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/llvm-link",
+        "/workspace/scratch/a009f956ecf0/compiler-gc/build/gcmarkprobe-rt.ll",
+        "/workspace/scratch/a009f956ecf0/compiler-gc-validation/negative-kinds/atomic-reference/probe.ll",
+        "-o",
+        "/workspace/scratch/a009f956ecf0/compiler-gc-validation/negative-kinds/atomic-reference/probe.bc"
+      ],
+      [
+        "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/clang",
+        "-O2",
+        "/workspace/scratch/a009f956ecf0/compiler-gc-validation/negative-kinds/atomic-reference/probe.bc",
+        "-o",
+        "/workspace/scratch/a009f956ecf0/compiler-gc-validation/negative-kinds/atomic-reference/probe",
+        "-lm"
+      ]
+    ]
+  },
+  {
+    "name": "atomic-reference",
+    "marker": "block",
+    "replacement": [
+      "void *pys_ubox(I tag, I v) { I *p = gc_box(0);",
+      "void *pys_ubox(I tag, I v) { I *p = gc_box(1);"
+    ],
+    "expected_error": "union box or its reference payload was not traced",
+    "exit_code": 1,
+    "stdout": "",
+    "stderr": "gcmarkprobe: union box or its reference payload was not traced\n",
+    "rejected": true,
+    "runtime_sha256": "919b64d5639e9eee321f549baf32a6fb33cd18a21862900fac6baf394f5e99b6",
+    "binary_sha256": "1c1015a59716095df390878e6170556b047a32d607238cedb9aac7afaaba38bd",
+    "build_commands": [
+      [
+        "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/clang",
+        "-O2",
+        "-S",
+        "-emit-llvm",
+        "-I",
+        "/workspace/scratch/a009f956ecf0/compiler-gc",
+        "/workspace/scratch/a009f956ecf0/compiler-gc-validation/negative-kinds/atomic-reference/gcmarkprobe.c",
+        "-o",
+        "/workspace/scratch/a009f956ecf0/compiler-gc-validation/negative-kinds/atomic-reference/probe.ll"
+      ],
+      [
+        "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/llvm-link",
+        "/workspace/scratch/a009f956ecf0/compiler-gc/build/gcmarkprobe-rt.ll",
+        "/workspace/scratch/a009f956ecf0/compiler-gc-validation/negative-kinds/atomic-reference/probe.ll",
+        "-o",
+        "/workspace/scratch/a009f956ecf0/compiler-gc-validation/negative-kinds/atomic-reference/probe.bc"
+      ],
+      [
+        "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/clang",
+        "-O2",
+        "/workspace/scratch/a009f956ecf0/compiler-gc-validation/negative-kinds/atomic-reference/probe.bc",
+        "-o",
+        "/workspace/scratch/a009f956ecf0/compiler-gc-validation/negative-kinds/atomic-reference/probe",
+        "-lm"
+      ]
+    ]
+  },
+  {
+    "name": "atomic-wide",
+    "marker": "object",
+    "replacement": [
+      "I *p = gc_box(0); p[0] = INT64_MIN; ((void **)p)[1] = hi; return p;",
+      "I *p = gc_box(1); p[0] = INT64_MIN; ((void **)p)[1] = hi; return p;"
+    ],
+    "expected_error": "optional union or promoting-int box lost its reference payload",
+    "exit_code": 1,
+    "stdout": "",
+    "stderr": "gcmarkprobe: optional union or promoting-int box lost its reference payload\n",
+    "rejected": true,
+    "runtime_sha256": "aba2674844ab0697e83bde84b8990f3b92e9876bfc849cb1d8f91eeca3949baa",
+    "binary_sha256": "41612e52a65b2d9632e324cd7be9e7bd992f4638cd4ef72e09013084c86ec346",
+    "build_commands": [
+      [
+        "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/clang",
+        "-O2",
+        "-S",
+        "-emit-llvm",
+        "-I",
+        "/workspace/scratch/a009f956ecf0/compiler-gc",
+        "/workspace/scratch/a009f956ecf0/compiler-gc-validation/negative-kinds/atomic-wide/gcmarkprobe.c",
+        "-o",
+        "/workspace/scratch/a009f956ecf0/compiler-gc-validation/negative-kinds/atomic-wide/probe.ll"
+      ],
+      [
+        "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/llvm-link",
+        "/workspace/scratch/a009f956ecf0/compiler-gc/build/gcmarkprobe-rt.ll",
+        "/workspace/scratch/a009f956ecf0/compiler-gc-validation/negative-kinds/atomic-wide/probe.ll",
+        "-o",
+        "/workspace/scratch/a009f956ecf0/compiler-gc-validation/negative-kinds/atomic-wide/probe.bc"
+      ],
+      [
+        "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/clang",
+        "-O2",
+        "/workspace/scratch/a009f956ecf0/compiler-gc-validation/negative-kinds/atomic-wide/probe.bc",
+        "-o",
+        "/workspace/scratch/a009f956ecf0/compiler-gc-validation/negative-kinds/atomic-wide/probe",
+        "-lm"
+      ]
+    ]
+  },
+  {
+    "name": "atomic-wide",
+    "marker": "block",
+    "replacement": [
+      "I *p = gc_box(0); p[0] = INT64_MIN; ((void **)p)[1] = hi; return p;",
+      "I *p = gc_box(1); p[0] = INT64_MIN; ((void **)p)[1] = hi; return p;"
+    ],
+    "expected_error": "optional union or promoting-int box lost its reference payload",
+    "exit_code": 1,
+    "stdout": "",
+    "stderr": "gcmarkprobe: optional union or promoting-int box lost its reference payload\n",
+    "rejected": true,
+    "runtime_sha256": "aba2674844ab0697e83bde84b8990f3b92e9876bfc849cb1d8f91eeca3949baa",
+    "binary_sha256": "41612e52a65b2d9632e324cd7be9e7bd992f4638cd4ef72e09013084c86ec346",
+    "build_commands": [
+      [
+        "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/clang",
+        "-O2",
+        "-S",
+        "-emit-llvm",
+        "-I",
+        "/workspace/scratch/a009f956ecf0/compiler-gc",
+        "/workspace/scratch/a009f956ecf0/compiler-gc-validation/negative-kinds/atomic-wide/gcmarkprobe.c",
+        "-o",
+        "/workspace/scratch/a009f956ecf0/compiler-gc-validation/negative-kinds/atomic-wide/probe.ll"
+      ],
+      [
+        "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/llvm-link",
+        "/workspace/scratch/a009f956ecf0/compiler-gc/build/gcmarkprobe-rt.ll",
+        "/workspace/scratch/a009f956ecf0/compiler-gc-validation/negative-kinds/atomic-wide/probe.ll",
+        "-o",
+        "/workspace/scratch/a009f956ecf0/compiler-gc-validation/negative-kinds/atomic-wide/probe.bc"
+      ],
+      [
+        "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/clang",
+        "-O2",
+        "/workspace/scratch/a009f956ecf0/compiler-gc-validation/negative-kinds/atomic-wide/probe.bc",
+        "-o",
+        "/workspace/scratch/a009f956ecf0/compiler-gc-validation/negative-kinds/atomic-wide/probe",
+        "-lm"
+      ]
+    ]
+  }
+]

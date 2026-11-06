@@ -1,0 +1,171 @@
+{
+  "started_utc": "2026-11-06T04:52:05.709458+00:00",
+  "commit": "c6e1402c24c0b5dc8ede1eab47e85043c1a85eed",
+  "source_status": "",
+  "compiler": "/workspace/scratch/a009f956ecf0/compiler-gc/pystachy",
+  "compiler_sha256": "b2806609c66900ed20f36aeb42833ae65a14b1036f4871f0386048920d11b8fe",
+  "baseline_compiler": "/workspace/scratch/8b5d64b08ada/pystachy/pystachy",
+  "baseline_compiler_sha256": "c8dc02d3fcc2f101a6279ea260258aa36093ff8be5c6c46cb6ba0303787104af",
+  "baseline_source": "d36140acf551abbb6a7587d821c35442b11aed80",
+  "python": "Python 3.13.16",
+  "clang": "Ubuntu clang version 18.1.3 (1ubuntu1)\nTarget: x86_64-pc-linux-gnu\nThread model: posix\nInstalledDir: /workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin",
+  "cases": [
+    "tests/programs/inference/union_gc_boxes.py",
+    "tests/programs/inference/scalar_union_storage.py",
+    "tests/programs/inference/scalar_union_mutation_and_loops.py",
+    "tests/programs/inference/scalar_union_optional_narrowing.py",
+    "tests/programs/inference/scalar_union_chained_optional.py",
+    "tests/programs/inference/union_slots.py",
+    "tests/programs/inference/mixed_union_storage.py",
+    "tests/programs/inference/mixed_union_nested.py",
+    "tests/programs/inference/mixed_union_repr_cycle.py",
+    "tests/programs/inference/reference_union_storage.py",
+    "tests/programs/inference/reference_union_calls.py",
+    "tests/programs/optional/union_identity_none.py",
+    "tests/programs/numbers/python_int_optional.py",
+    "tests/programs/numbers/python_int_roots.py",
+    "tests/deviations/python_int_limits.py",
+    "tests/programs/library/json_roundtrip.py",
+    "tests/programs/library/json_mutation.py",
+    "tests/programs/library/json_depth.py",
+    "tests/programs/library/json_long_text.py",
+    "tests/programs/inference/dynany_json_bigints.py",
+    "tests/programs/inference/dynany_numeric_union_protocol.py",
+    "tests/programs/inference/dynany_unions.py",
+    "tests/programs/library/lib_weakref.py"
+  ],
+  "steps": [
+    {
+      "name": "unit-focused",
+      "command": [
+        "/workspace/scratch/a009f956ecf0/venv/bin/python",
+        "-m",
+        "unittest",
+        "tools.test_typed_atomicunion",
+        "tools.test_typed_union_proofs",
+        "tools.test_verify_variants",
+        "-q"
+      ],
+      "environment": {},
+      "elapsed_seconds": 0.3678795930027263,
+      "exit_code": 0,
+      "log": "/workspace/scratch/a009f956ecf0/compiler-gc-validation/unit-focused.log",
+      "log_sha256": "4ce9a9cfa2420c2dd650d2e9acbcf7061ff50ce2256042a20ac96299894a2a82"
+    },
+    {
+      "name": "runtime-contract",
+      "command": [
+        "make",
+        "PY=/workspace/scratch/a009f956ecf0/venv/bin/python",
+        "check-runtime"
+      ],
+      "environment": {},
+      "elapsed_seconds": 17.120115232006356,
+      "exit_code": 0,
+      "log": "/workspace/scratch/a009f956ecf0/compiler-gc-validation/runtime-contract.log",
+      "log_sha256": "154e0ed8a479f530eac2ada6f080a8924ef70ba91453747cbf3bddb469d9e9b9"
+    },
+    {
+      "name": "default-ir-parity",
+      "command": [
+        "tools/irsame.sh",
+        "/workspace/scratch/8b5d64b08ada/pystachy/pystachy",
+        "./pystachy",
+        "tests/programs/inference/union_gc_boxes.py",
+        "tests/programs/inference/scalar_union_storage.py",
+        "tests/programs/inference/scalar_union_mutation_and_loops.py",
+        "tests/programs/inference/scalar_union_optional_narrowing.py",
+        "tests/programs/inference/scalar_union_chained_optional.py",
+        "tests/programs/inference/union_slots.py",
+        "tests/programs/inference/mixed_union_storage.py",
+        "tests/programs/inference/mixed_union_nested.py",
+        "tests/programs/inference/mixed_union_repr_cycle.py",
+        "tests/programs/inference/reference_union_storage.py",
+        "tests/programs/inference/reference_union_calls.py",
+        "tests/programs/optional/union_identity_none.py",
+        "tests/programs/numbers/python_int_optional.py",
+        "tests/programs/numbers/python_int_roots.py",
+        "tests/deviations/python_int_limits.py",
+        "tests/programs/library/json_roundtrip.py",
+        "tests/programs/library/json_mutation.py",
+        "tests/programs/library/json_depth.py",
+        "tests/programs/library/json_long_text.py",
+        "tests/programs/inference/dynany_json_bigints.py",
+        "tests/programs/inference/dynany_numeric_union_protocol.py",
+        "tests/programs/inference/dynany_unions.py",
+        "tests/programs/library/lib_weakref.py"
+      ],
+      "environment": {},
+      "elapsed_seconds": 0.46568447000026936,
+      "exit_code": 0,
+      "log": "/workspace/scratch/a009f956ecf0/compiler-gc-validation/default-ir-parity.log",
+      "log_sha256": "981a3c45ebcad5c59736fa2805e9458c1581004fa7bf8893a780cab06279ca4e"
+    },
+    {
+      "name": "gc-probes",
+      "command": [
+        "make",
+        "PY=/workspace/scratch/a009f956ecf0/venv/bin/python",
+        "boxprobe",
+        "gcmarkprobe"
+      ],
+      "environment": {},
+      "elapsed_seconds": 18.4388641320038,
+      "exit_code": 0,
+      "log": "/workspace/scratch/a009f956ecf0/compiler-gc-validation/gc-probes.log",
+      "log_sha256": "0108ee7468a56a2956bb9c982506bf0ba61304db7ad7633f88a86072bd53b3f6"
+    },
+    {
+      "name": "boxprobe-block-stress",
+      "command": [
+        "build/boxprobe"
+      ],
+      "environment": {
+        "PYSTACHY_GC_MARK": "block",
+        "PYSTACHY_GC_STRESS": "1"
+      },
+      "elapsed_seconds": 0.0019955890020355582,
+      "exit_code": 0,
+      "log": "/workspace/scratch/a009f956ecf0/compiler-gc-validation/boxprobe-block-stress.log",
+      "log_sha256": "67989988355cdf6ab791796ab18ed951e1aceba188edb1d0956f961b17dd4645"
+    },
+    {
+      "name": "native-optin",
+      "command": [
+        "tests/run.sh",
+        "./pystachy",
+        "jit aot",
+        "tests/programs/inference/union_gc_boxes.py",
+        "tests/programs/inference/scalar_union_storage.py",
+        "tests/programs/inference/scalar_union_mutation_and_loops.py",
+        "tests/programs/inference/scalar_union_optional_narrowing.py",
+        "tests/programs/inference/scalar_union_chained_optional.py",
+        "tests/programs/inference/union_slots.py",
+        "tests/programs/inference/mixed_union_storage.py",
+        "tests/programs/inference/mixed_union_nested.py",
+        "tests/programs/inference/mixed_union_repr_cycle.py",
+        "tests/programs/inference/reference_union_storage.py",
+        "tests/programs/inference/reference_union_calls.py",
+        "tests/programs/optional/union_identity_none.py",
+        "tests/programs/numbers/python_int_optional.py",
+        "tests/programs/numbers/python_int_roots.py",
+        "tests/deviations/python_int_limits.py",
+        "tests/programs/library/json_roundtrip.py",
+        "tests/programs/library/json_mutation.py",
+        "tests/programs/library/json_depth.py",
+        "tests/programs/library/json_long_text.py",
+        "tests/programs/inference/dynany_json_bigints.py",
+        "tests/programs/inference/dynany_numeric_union_protocol.py",
+        "tests/programs/inference/dynany_unions.py",
+        "tests/programs/library/lib_weakref.py"
+      ],
+      "environment": {
+        "PYSTACHY_OPT": "+atomicunion"
+      },
+      "elapsed_seconds": 28.23455285000091,
+      "exit_code": 1,
+      "log": "/workspace/scratch/a009f956ecf0/compiler-gc-validation/native-optin.log",
+      "log_sha256": "919cb25c8263c260846a4eb40affee8227b0ae65c7db36858c5112f4d38ddb0e"
+    }
+  ]
+}

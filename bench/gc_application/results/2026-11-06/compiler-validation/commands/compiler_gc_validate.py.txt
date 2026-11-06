@@ -1,0 +1,108 @@
+from datetime import datetime, timezone
+import hashlib
+import json
+import os
+from pathlib import Path
+import subprocess
+import time
+
+ROOT = Path('/workspace/scratch/a009f956ecf0')
+WORK = ROOT / 'compiler-gc'
+LOGS = ROOT / 'compiler-gc-validation'
+PY = ROOT / 'venv/bin/python'
+LLVM = ROOT / 'toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin'
+OLD = Path('/workspace/scratch/8b5d64b08ada/pystachy/pystachy')
+ENV = {key: value for key, value in os.environ.items() if not key.startswith('PYSTACHY_')}
+ENV.update(PATH=str(PY.parent) + ':' + str(LLVM) + ':' + ENV['PATH'],
+           PYSTACHY_LLVM=str(LLVM), PYSTACHY_HOME=str(WORK),
+           PYSTACHY_CACHE=str(LOGS / 'cache'), PYSTACHY_JOBS='2',
+           PYTHON=str(PY))
+CASES = [
+    'tests/programs/inference/union_gc_boxes.py',
+    'tests/programs/inference/scalar_union_storage.py',
+    'tests/programs/inference/scalar_union_mutation_and_loops.py',
+    'tests/programs/inference/scalar_union_optional_narrowing.py',
+    'tests/programs/inference/scalar_union_chained_optional.py',
+    'tests/programs/inference/union_slots.py',
+    'tests/programs/inference/mixed_union_storage.py',
+    'tests/programs/inference/mixed_union_nested.py',
+    'tests/programs/inference/mixed_union_repr_cycle.py',
+    'tests/programs/inference/reference_union_storage.py',
+    'tests/programs/inference/reference_union_calls.py',
+    'tests/programs/optional/union_identity_none.py',
+    'tests/programs/numbers/python_int_optional.py',
+    'tests/programs/numbers/python_int_roots.py',
+    'tests/deviations/python_int_limits.py',
+    'tests/programs/library/json_roundtrip.py',
+    'tests/programs/library/json_mutation.py',
+    'tests/programs/library/json_depth.py',
+    'tests/programs/library/json_long_text.py',
+    'tests/programs/inference/dynany_json_bigints.py',
+    'tests/programs/inference/dynany_numeric_union_protocol.py',
+    'tests/programs/inference/dynany_unions.py',
+    'tests/programs/library/lib_weakref.py',
+]
+CONTROL = [CASES[i] for i in (0, 5, 7, 11, 12, 14, 20)]
+for path in CASES:
+    assert (WORK / path).is_file(), path
+
+
+def sha(path):
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+report = {
+    'started_utc': datetime.now(timezone.utc).isoformat(),
+    'commit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=WORK, text=True).strip(),
+    'source_status': subprocess.check_output(['git', 'status', '--short'], cwd=WORK, text=True),
+    'compiler': str(WORK / 'pystachy'),
+    'compiler_sha256': sha(WORK / 'pystachy'),
+    'baseline_compiler': str(OLD),
+    'baseline_compiler_sha256': sha(OLD),
+    'baseline_source': 'd36140acf551abbb6a7587d821c35442b11aed80',
+    'python': subprocess.check_output([str(PY), '--version'], text=True).strip(),
+    'clang': subprocess.check_output([str(LLVM / 'clang'), '--version'], text=True).strip(),
+    'cases': CASES,
+    'steps': [],
+}
+
+
+def run(name, command, extra=None, timeout=900):
+    print('START', name, flush=True)
+    start = time.monotonic()
+    log = LOGS / (name + '.log')
+    with log.open('w') as stream:
+        process = subprocess.run([str(x) for x in command], cwd=WORK,
+                                 env=ENV | (extra or {}), stdout=stream,
+                                 stderr=subprocess.STDOUT, timeout=timeout)
+    item = {'name': name, 'command': [str(x) for x in command], 'environment': extra or {},
+            'elapsed_seconds': time.monotonic() - start, 'exit_code': process.returncode,
+            'log': str(log), 'log_sha256': sha(log)}
+    report['steps'].append(item)
+    (LOGS / 'validation.json').write_text(json.dumps(report, indent=2) + '\n')
+    print('DONE', name, 'exit', process.returncode, flush=True)
+    print('\n'.join(log.read_text().splitlines()[-5:]), flush=True)
+    if process.returncode:
+        raise SystemExit(process.returncode)
+
+
+run('unit-focused', [PY, '-m', 'unittest', 'tools.test_typed_atomicunion',
+                    'tools.test_typed_union_proofs', 'tools.test_verify_variants', '-q'])
+run('runtime-contract', ['make', 'PY=' + str(PY), 'check-runtime'])
+run('default-ir-parity', ['tools/irsame.sh', OLD, './pystachy', *CASES])
+run('gc-probes', ['make', 'PY=' + str(PY), 'boxprobe', 'gcmarkprobe'])
+run('boxprobe-block-stress', ['build/boxprobe'],
+    {'PYSTACHY_GC_MARK': 'block', 'PYSTACHY_GC_STRESS': '1'})
+run('native-optin', ['tests/run.sh', './pystachy', 'jit aot', *CASES],
+    {'PYSTACHY_OPT': '+atomicunion'})
+run('native-optin-stress', ['tests/run.sh', './pystachy', 'jit aot', *CASES],
+    {'PYSTACHY_OPT': '+atomicunion', 'PYSTACHY_GC_STRESS_PROGRAM': '1'})
+run('native-optin-block-stress', ['tests/run.sh', './pystachy', 'jit aot', *CONTROL],
+    {'PYSTACHY_OPT': '+atomicunion', 'PYSTACHY_GC_STRESS_PROGRAM': '1', 'PYSTACHY_GC_MARK': 'block'})
+run('native-optin-alone', ['tests/run.sh', './pystachy', 'jit aot', *CONTROL],
+    {'PYSTACHY_OPT': '-all,+atomicunion'})
+run('native-default', ['tests/run.sh', './pystachy', 'jit aot', CASES[0]])
+run('native-ir-check', ['tools/check_ir.sh', './pystachy', *CASES],
+    {'PYSTACHY_OPT': '+atomicunion'})
+report['finished_utc'] = datetime.now(timezone.utc).isoformat()
+(LOGS / 'validation.json').write_text(json.dumps(report, indent=2) + '\n')
