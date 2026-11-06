@@ -11,16 +11,18 @@ import argparse
 import json
 import os
 from pathlib import Path
-import random
 import statistics
 import sys
 
 from run import ROOT, atomic_json, bootstrap, measure, sha
 from backend_workers import Commands
+from optimization_tiers import scheduled
 
 
 POLICIES = {
     "driver-o0": ["--jobs", "2", "--build-jobs", "1", "--stage1-opt", "0"],
+    "driver-inline75": ["--jobs", "2", "--build-jobs", "1", "--stage1-opt", "0",
+                        "--stage2-inline-threshold", "75"],
     "split-o0": ["--jobs", "4", "--build-jobs", "4", "--stage1-opt", "0",
                  "--stage1-split", "4", "--runtime-overlap"],
     "split-o1": ["--jobs", "4", "--build-jobs", "4", "--stage1-opt", "1",
@@ -30,6 +32,7 @@ POLICIES = {
     "split-both": ["--jobs", "4", "--build-jobs", "4", "--stage1-opt", "0",
                    "--stage1-split", "4", "--stage2-split", "4", "--runtime-overlap"],
 }
+CHANGED_FINAL = {"split-both", "driver-inline75"}
 
 
 def main():
@@ -52,16 +55,14 @@ def main():
     report = {"schema_version": 1, "source": source, "host": bootstrap.host_state(),
               "harness_sha256": sha(Path(__file__)), "cpus": args.cpus,
               "policies": policies, "requested_samples": args.samples,
+              "schedule": "rotate first position; reverse after each complete rotation",
               "runs": [], "complete": False}
-    rng = random.Random(20261106)
     # The bootstrap owns node groups and drains them within 0.75 s.
     runner = Commands(measure, cleanup_grace=1.5)
     try:
         with runner:
             for sample in range(args.samples):
-                order = list(policies)
-                rng.shuffle(order)
-                for policy in order:
+                for policy in scheduled(policies, sample):
                     command = ["taskset", "-c", args.cpus, sys.executable,
                                str(ROOT / "tools/bootstrap_pipeline.py"), "--root", str(root),
                                "--llvm", str(llvm), "--variant", "optimized", "--runtime-c-cache",
@@ -81,10 +82,10 @@ def main():
             final_hashes = {r["bootstrap"]["binaries"]["pystachy2"]["sha256"] for r in report["runs"]}
             ir_hashes = {r["bootstrap"]["fixed_points"]["stage"]["sha256"][0] for r in report["runs"]}
             report["final_compiler_identical"] = len(final_hashes) == 1
-            report["final_identity_required"] = "split-both" not in policies
+            report["final_identity_required"] = not any(policy in CHANGED_FINAL for policy in policies)
             ordinary_final_hashes = {
                 r["bootstrap"]["binaries"]["pystachy2"]["sha256"]
-                for r in report["runs"] if r["policy"] != "split-both"
+                for r in report["runs"] if r["policy"] not in CHANGED_FINAL
             }
             report["ordinary_final_compilers_identical"] = len(ordinary_final_hashes) <= 1
             report["raw_compiler_ir_identical"] = len(ir_hashes) == 1
