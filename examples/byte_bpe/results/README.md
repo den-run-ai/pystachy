@@ -4,7 +4,7 @@
 
 ## Stage measurements
 
-Source revision `72f5291204afac933597cbe42c897a902cb97e2a` uses unchanged compiler/runtime/library sources from `f7103067545b43cdcd8ce20dc66b1571425b3a8d`. CPython 3.13.16, LLVM 18.1.3, Linux x86-64, AMD EPYC 9V74; pinned to CPU 0 on a shared host. Five interleaved processes per mode. The unchanged Frankenstein input is 31,206 UTF-8 bytes; vocabulary size is 1,024. Each process trains once, encodes 50 times and decodes 200 times.
+Measured source [975e7de5](https://github.com/den-run-ai/pystachy/commit/975e7de5a1381cc7b0a8daed142f5fdbe13c35fe) has exactly the same file tree as local measurement revision `72f52912`; [publication identities](publication.json) preserve that mapping without rewriting raw records. Compiler/runtime/library sources are unchanged from `f7103067545b43cdcd8ce20dc66b1571425b3a8d`. CPython 3.13.16, LLVM 18.1.3, Linux x86-64, AMD EPYC 9V74; pinned to CPU 0 on a shared host. Five interleaved processes per mode. The unchanged Frankenstein input is 31,206 UTF-8 bytes; vocabulary size is 1,024. Each process trains once, encodes 50 times and decodes 200 times.
 
 Times are median milliseconds per operation. Speedup is original CPython median divided by AOT median. Input I/O, full-state output and validation are outside the stage timers.
 
