@@ -5059,5 +5059,32 @@
         "sha256": "0db7b34a4fb24e79bd104bbb2392e7190aeb32d708d58087a49a5c6fdb153e0a"
       }
     }
+  },
+  "static_snapshot_correction_9a3cc059": {
+    "compiler_code_commit": "9a3cc0594ed2d5d638e2278478c1aa9256557aac",
+    "compiler_code_tree": "32800654827cd3edc1ecf43f7419c09ab4cb507a",
+    "compiler_sha256": "4730996f292007b7b89de26a5ee2a6a186f7b012ce762d6693fa5e9b4a986c8e",
+    "evidence_file": "2026-11-06-program-cache-default-9a3cc059-validation.json",
+    "evidence_sha256": "e3e0395c723ea6a24ed595f7c06e359aae2caef2a03873494d208bd7058e126a",
+    "raw_evidence": {
+      "2026-11-06-program-cache-default-9a3cc059-checks.json": {
+        "sha256": "c3a158826fa297b7cc229bc3d134433b10b0c157ff34e147e3e2d25ff4bd2855",
+        "assertions": 498,
+        "passed": true
+      },
+      "2026-11-06-program-cache-default-9a3cc059-times.json": {
+        "sha256": "d9b98f24beaf153a3a475d336a46c00965ab83b808e543b7596d3edc2a0ee09e",
+        "assertions": 328,
+        "passed": true
+      }
+    },
+    "scope": "Latest corrected-code evidence; every prior field remains historical and unchanged.",
+    "local_validation_completed": true,
+    "new_publication_gates": {
+      "status": "Final-head CI is not evaluated by this local bundle; consult the checks on the final published PR head.",
+      "checks_url": "https://github.com/den-run-ai/pystachy/pull/1103/checks",
+      "repository_scheduling_changes": [],
+      "policy": "Require successful applicable workflows including Linux distribution and native-1; retain previous failed/cancelled conclusions."
+    }
   }
 }

@@ -1,6 +1,232 @@
 # Default native program cache: launch costs and validation, 2026-11-06
 
-This report records the default-enabled cache candidate for
+## Latest corrected implementation: 9a3cc059
+
+The latest measurements in this report use
+[`9a3cc0594ed2d5d638e2278478c1aa9256557aac`](https://github.com/den-run-ai/pystachy/tree/9a3cc0594ed2d5d638e2278478c1aa9256557aac),
+which fixes duplicate static-input capture across the two-second settling
+threshold. This is the implementation measured for promotion in
+[PR #1103](https://github.com/den-run-ai/pystachy/pull/1103) and
+[#104](https://github.com/den-run-ai/pystachy/issues/104).
+The earlier `e3b1b3a8` measurements and validation remain explicitly historical
+below; their raw files and original validation fields are preserved.
+
+**Latest measured result:** five interleaved rounds produced a
+38.75x median paired speedup for the import-heavy command
+(1.625565 s uncached median,
+0.039795 s hit median), and
+31.13x for the complete 1,000-event router command
+(1.224718 s to
+0.040723 s). The padded-helper command improved
+2.16x. All 20 timed hits skipped both the frontend and LLVM.
+
+**Tiny-command results vary across runs.** This refresh measured
+45.842 ms uncached versus
+41.920 ms for a hit
+(1.06x median paired speedup; 3/5 pairs faster).
+The preserved `e3b1b3a8` run measured 33.227 ms uncached versus 36.319 ms for a
+hit: 0.93x and a 3.092 ms regression, with all five pairs slower.
+The six-line correction changes capture on misses, so the changed hit result
+is not evidence of a performance improvement caused by that fix. This was one
+prescribed five-round refresh to pin evidence to corrected code, not a search
+for favorable samples. These results establish no universal startup gain;
+`PYSTACHY_PROGRAM_CACHE=0` remains available.
+
+Latest local validation completed successfully. Final-head CI is
+**not evaluated by this local evidence bundle**; follow the
+[PR checks](https://github.com/den-run-ai/pystachy/pull/1103/checks) for the actual
+outcome. Earlier CI failures and cancellations remain recorded below.
+
+### Latest pinned inputs
+
+| Item | Latest value |
+|---|---|
+| Measured code commit | `9a3cc0594ed2d5d638e2278478c1aa9256557aac` |
+| Measured code tree | `32800654827cd3edc1ecf43f7419c09ab4cb507a` |
+| Native compiler SHA-256 | `4730996f292007b7b89de26a5ee2a6a186f7b012ce762d6693fa5e9b4a986c8e` |
+| Platform | Linux-6.18.57-x86_64-with-glibc2.39 |
+| Hosted Python | CPython 3.13.16 |
+| LLVM | Ubuntu LLVM 18.1.3 (1ubuntu1), matching all five tools |
+| Timing repetitions and affinity | Five interleaved rounds per workload; CPU 0 |
+| Latest correctness evidence | [2026-11-06-program-cache-default-9a3cc059-checks.json](2026-11-06-program-cache-default-9a3cc059-checks.json) |
+| Latest timing evidence | [2026-11-06-program-cache-default-9a3cc059-times.json](2026-11-06-program-cache-default-9a3cc059-times.json) |
+| Correction, logs and native negative control | [2026-11-06-program-cache-default-9a3cc059-validation.json](2026-11-06-program-cache-default-9a3cc059-validation.json) |
+| Release test archive | `pystachy-native-cache-settle-fix-linux-x86_64.tar.gz` |
+| Archive SHA-256 | `fd80e80713a7cc11ca4f0ed229271b9cc1d77b14c51b0bfb6c5600bba1e46182` |
+
+Both new raw probes report `completed: true`, `passed: true`, no setup error and
+the compiler hash above. The source pin identifies the implementation; later
+report-only publication commits do not become the measured code identity.
+
+### Latest measured costs
+
+Workload and fresh-process boundaries are unchanged: uncached runs have warm
+runtime artifacts; recurring misses retain static hashes and runtime artifacts
+while removing program entries; hits validate and execute afresh. First-use
+fills empty `program-v2`, including its hash memo, with both runtime lineages
+already warm. There is no operating-system page-cache flush. Prebuilt AOT uses
+ordinary `pystachy build` and excludes build time.
+
+Tool-count wrappers and cache tracing remain enabled. Only cache trace lines
+are removed for output comparison; stdout, ordinary stderr and status must
+agree with CPython. Detailed workload definitions and cache-state boundaries
+are retained in the methodology below and in both raw probes.
+
+All table times are seconds. Paired speedup is the median of the five
+`uncached[i] / hit[i]` ratios, not a ratio of the displayed medians.
+Ranges are observed minimum/maximum values, not confidence intervals.
+
+| Workload | Uncached median | Recurring miss median | Hit median | Prebuilt AOT median | Median paired speedup |
+|---|---:|---:|---:|---:|---:|
+| Tiny | 0.045842 | 0.510070 | 0.041920 | 0.001999 | 1.06x |
+| Padded helper | 0.081506 | 0.508425 | 0.037702 | 0.001947 | 2.16x |
+| Import heavy | 1.625565 | 2.052534 | 0.039795 | 0.001808 | 38.75x |
+| Router, 1,000 events | 1.224718 | 1.738869 | 0.040723 | 0.002312 | 31.13x |
+
+| Workload | Uncached range | Recurring miss range | Hit range | Prebuilt AOT range | Paired speedup range |
+|---|---:|---:|---:|---:|---:|
+| Tiny | 0.044011-0.048826 | 0.495030-0.517632 | 0.036033-0.058247 | 0.000785-0.002281 | 0.79-1.26x |
+| Padded helper | 0.076479-0.086533 | 0.476062-0.611048 | 0.034921-0.053198 | 0.000828-0.002458 | 1.53-2.43x |
+| Import heavy | 1.542091-1.675805 | 1.939792-2.339000 | 0.038573-0.061257 | 0.001130-0.002434 | 27.36-41.59x |
+| Router, 1,000 events | 1.155193-1.425847 | 1.590146-1.822029 | 0.039342-0.042844 | 0.001395-0.002640 | 29.04-33.57x |
+
+First fills and AOT builds have one sample per workload. The recurring-miss
+premium is the difference between its median and the uncached median.
+
+| Workload | First-use fill, runtime warm | Ordinary AOT build | Recurring miss premium |
+|---|---:|---:|---:|
+| Tiny | 0.683090 | 0.347781 | +0.464229 |
+| Padded helper | 0.741112 | 0.365347 | +0.426920 |
+| Import heavy | 2.275479 | 6.456398 | +0.426969 |
+| Router, 1,000 events | 1.810763 | 5.275301 | +0.514151 |
+
+The timing probe passed **328 assertions**. Each of the 20 timed hits recorded
+exactly one `hit` event, no frontend event, zero LLVM tool calls, exit zero and
+no timeout. Every measured execution matched its CPython oracle. These are
+complete-command launch measurements, not long-running application benchmarks.
+The earlier and latest runs occurred separately; their absolute timings are
+not a controlled before/after comparison.
+
+### Latest completed local validation
+
+| Check | Result at the corrected implementation |
+|---|---|
+| Native compiler self-build | Three-stage fixed point: 846,369 IR lines. |
+| Runtime self-build | Three-stage fixed point: 18,805 IR lines. |
+| Focused cache units | 143 total: 142 passed, one wrong-owner fixture skipped. Program-cache tests: 88 passed/one skipped; cached-run tests: 30 passed; toolchain tests: 24 passed. |
+| Compiler-state controls | 121 passed. With the focused cache units: 264 total, 263 passed, one skipped, zero failed. |
+| Native settling-threshold regression | Old module revision: three expected validity/publication/hit failures; fixed revision: all 17 assertions pass. Static/source mutation controls pass in both. |
+| Default native cache probe | 498 assertions passed across all 14 groups. |
+| Output-checked timing probe | 328 assertions passed; 20/20 timed hits skip frontend and LLVM. |
+| Fast lint/static checks | Ruff, mypy (52 source files), repository hygiene and selected units, static GC roots, ShellCheck and C syntax checks passed. This is not the entire CI Lint workflow. |
+| Relocated release smoke | Passed with inherited `LD_LIBRARY_PATH`: version checks, default fill/hit, ordinary and GC-stressed JIT/AOT, and warm ordinary-runtime reuse. Relocated read-only resources, Python-free PATH and external cache. |
+| Broad corpus, pinned-base IR, full runtime contracts, existing runtime-cache suites and CPython recordings | Historical local results remain below; they were not rerun as latest local gates and are not relabeled as `9a3cc059` results. |
+| Final-head CI | Not evaluated by this local bundle; use the actual [PR checks](https://github.com/den-run-ai/pystachy/pull/1103/checks) on the final published head. |
+
+The skipped ownership fixture cannot change its file owner to UID 1 in this
+user namespace (`EINVAL`); it is not counted as a pass. The latest bundle
+retains exact commands, expected and actual statuses, logs and hashes. The
+negative control's expected exit of 1 is retained, with its three failed
+assertions identified rather than counted as ordinary passes.
+
+Across the compiler, runtime and library implementation, the change from
+`e3b1b3a8` to `9a3cc059` is six added lines in
+`src/pystachy_compiler/program_cache.py`. Compiler lowering and runtime/library
+sources are otherwise unchanged. The earlier broad comparisons remain pinned
+to their actual run identities despite that narrow implementation change.
+
+### Confirmed static-snapshot correction
+
+`tool_inputs()` records the compiler before and after hashing loaded libraries.
+A freshly extracted or chmodded compiler can cross the two-second settling
+threshold between those reads. Previously, identical canonical path, stat tuple
+and content digest could be recorded first with settled flag `0`, then with
+flag `1`. The differing policy field incorrectly invalidated the capture.
+
+The correction validates an already-recorded path against its first snapshot
+and retains that snapshot. A capture made while timestamps were unsettled keeps
+its content checks. Actual metadata changes and changed bytes within a simulated
+coarse timestamp still invalidate publication.
+
+The native fixture deliberately waits 2.1 seconds after its first capture and
+asserts that the threshold was crossed. The current native compiler executes
+the identical fixture against isolated old (`5ed9fcbc`) and corrected
+(`9a3cc059`) module sources. The old variant exits 1 with exactly three
+failures out of 17: unchanged-capture validity, publication and hit. The fixed
+variant exits 0 with all 17 passing. Both reject real static/source changes.
+The `/usr/bin/true` payload tests publication/lookup and is never executed.
+The bundle retains the full fixture, both logs, the module revision/hash
+manifest and invocation metadata.
+
+### Previous CI findings and publication gates
+
+The initial `1a33fcf1` Linux distribution failure was the inherited loader
+environment mismatch described in the historical section. After that fixture
+correction, the
+[`5ed9fcbc` Linux distribution job](https://github.com/den-run-ai/pystachy/actions/runs/42310101672/job/128212329033)
+entered `miss` and `frontend`, then reported `bypass native artifact unavailable`
+with correct output and exit status zero. That trace is consistent with the
+confirmed static-capture defect. The defect and fix are reproduced directly;
+attribution of that particular CI event remains an inference. A later successful
+distribution run would validate the corrected head; it would not reconstruct the
+old trace's inaccessible internal state.
+
+The same head's
+[native-1 job](https://github.com/den-run-ai/pystachy/actions/runs/42310101672/job/128212329286)
+was cancelled at the configured 15-minute boundary after its artifact recorded
+3,330 passed checks and zero failures. Native-0 recorded 3,328 passes. The
+retained analysis verifies that the disjoint 2,073-case selections cover all
+4,146 corpus cases, with 6,658 expected checks intact. Passing artifacts do not
+make a cancelled job successful.
+
+The shards' median program times differed by 1.63x; runner-speed variation and
+case mix were not independently measured. A normalized scheduling study modeled
+only about 2.08% improvement from filling missing weights (2.45% from a full
+refresh), establishing no new timeout bound. No CI weights, timeouts, worker
+counts, job counts or corpus selections were changed in response to the
+cancellation. This corpus invocation bypassed
+program caching through compiler diagnostics; cache fills do not explain its
+duration. A successful new native-1 job and distribution job remain required.
+
+### Reproduce the latest measurements
+
+Use the supported environment from [installation](../../../docs/install.md).
+The raw evidence retains exact host paths; the following uses a standard LLVM
+installation. Validate before timing, without an intentional concurrent
+bootstrap or other heavy workload.
+
+```sh
+git checkout 9a3cc0594ed2d5d638e2278478c1aa9256557aac
+export PY=python3.13
+export PYSTACHY_LLVM=/usr/lib/llvm-18/bin
+make pystachy PY="$PY"
+sha256sum ./pystachy
+
+"$PY" -m unittest discover -s tools -p 'test_program_cache*.py'
+"$PY" -m unittest discover -s tools -p 'test_cached_run*.py'
+"$PY" -m unittest discover -s tools -p test_cache_toolchain.py
+"$PY" -m unittest discover -s tools -p 'test_compiler_state*.py'
+
+"$PY" tools/program_cache_probe.py --compiler ./pystachy --python "$PY" --llvm "$PYSTACHY_LLVM" --output build/program-cache-default-9a3cc059-checks.json
+"$PY" tools/program_cache_probe.py --compiler ./pystachy --python "$PY" --llvm "$PYSTACHY_LLVM" --benchmark-only --rounds 5 --cpu 0 --output build/program-cache-default-9a3cc059-times.json
+```
+
+Choose an allowed CPU if CPU 0 is unavailable and record that change. Preserve
+all rounds and the stated cache-state boundaries. The latest validation bundle
+also retains release commands, the native regression fixture and orchestrator
+source. Require complete, passing output-checked probes before quoting new
+measurements.
+
+## Historical candidate evidence: e3b1b3a8
+
+Everything below records the earlier `e3b1b3a8` implementation unless a later
+test-fixture-only revision is explicitly named. These measurements, logs and
+comparison outcomes are historical evidence, not latest-code reruns. Original
+raw checks, times and profile files are byte-for-byte unchanged. Original
+validation fields are unchanged, with only a linked
+`static_snapshot_correction_9a3cc059` supplement appended.
+
+This historical section records the earlier default-enabled cache candidate for
 [#104](https://github.com/den-run-ai/pystachy/issues/104) at
 [`e3b1b3a8d4ee810cb8215fd986f9e83526f71dba`](https://github.com/den-run-ai/pystachy/tree/e3b1b3a8d4ee810cb8215fd986f9e83526f71dba).
 A validated hit starts the saved native program afresh, preserving its current
@@ -31,13 +257,13 @@ application speedup. The validation table below records the completed local
 checks, including the broad default-mode corpus, and keeps PR CI as a separate
 required gate.
 
-## Pinned inputs and evidence
+### Pinned inputs and evidence
 
 | Item | Value |
 |---|---|
 | Measured code commit | `e3b1b3a8d4ee810cb8215fd986f9e83526f71dba` |
 | Measured code tree | `f6ab52f8b3ea8c93bdaf12a34feed107517ecbbb` |
-| Native compiler SHA-256, both final probes | `ed36895dd2e15bdc5a9f88de553e19cfe51ab42d5d04d6c39941bf79b202ab21` |
+| Native compiler SHA-256, both historical probes | `ed36895dd2e15bdc5a9f88de553e19cfe51ab42d5d04d6c39941bf79b202ab21` |
 | Validation checkout after fixture correction | `4a18e825a3d9e4a827fd722d8c08697cc84f7f1a` |
 | Corrected validation tree | `75c5f61b3146de1d4ce6b1d3f43a7317f2f6a9d1` |
 | Release smoke test archive | `pystachy-native-cache-default-test-linux-x86_64.tar.gz` |
@@ -52,7 +278,7 @@ required gate.
 | Validation logs and full IR-diff review | [2026-11-06-program-cache-default-validation.json](2026-11-06-program-cache-default-validation.json) |
 | Earlier diagnostic profile | [2026-11-06-program-cache-default-profile.json](2026-11-06-program-cache-default-profile.json) |
 
-The final correctness and timing JSON both identify the compiler hash above,
+The historical correctness and timing JSON both identify the compiler hash above,
 have `completed: true` and `passed: true`, and have no setup error. The source
 commit and tree identify the implementation, while the binary hash identifies
 the native compiler actually executed. The diagnostic profile uses an earlier
@@ -68,7 +294,7 @@ The release test archive's manifest records target `linux-x86_64`, version
 `native-cache-default-test`, the measured code commit and the same native
 compiler hash. Its smoke-test outcome is recorded in the validation table.
 
-## Measurement boundary
+### Measurement boundary
 
 The [probe](../../../tools/program_cache_probe.py) measures complete fresh
 process launches. It compares outputs and status with CPython, warms the ordinary
@@ -100,7 +326,7 @@ LLVM tools, and their actual tools and loaded libraries are explicitly declared
 as cache inputs. Trace and wrappers remain enabled during timing, so the results
 include that instrumentation and any wrapper overhead in modes that invoke LLVM.
 
-## Workloads and measured costs
+### Workloads and measured costs
 
 | Workload | Exact scope |
 |---|---|
@@ -153,7 +379,7 @@ Absolute timing differences between the two reports are not a controlled
 before/after speedup measurement. Only the within-run mode comparisons above are
 presented as paired speedups.
 
-## Why the launch path changed
+### Why the launch path changed
 
 A diagnostic profile at source
 `113485f76962d9d8f765b90eaf980f645a8666a8`, compiler SHA-256
@@ -190,10 +416,10 @@ cache-directory admission checks, and streaming executable bytes through a
 native FNV-1a loop. The checksum format and digest values remain unchanged.
 Large static toolchain inputs use the optional `sha256sum` fast path, retaining a
 bounded in-process fallback. This report makes no separate post-change component
-speedup or process-count claim; the final five-round table measures the resulting
+speedup or process-count claim; the historical five-round table measures the resulting
 complete launch path.
 
-## Supported default and cache lifecycle
+### Supported default and cache lifecycle
 
 The default applies to the **Linux native CLI, default ORC tier and inspectable
 Clang/GNU toolchain**. Unset, empty and `PYSTACHY_PROGRAM_CACHE=1` enable it;
@@ -228,7 +454,7 @@ checks checksum-consistent malformed ELF and missing-interpreter failures,
 preserved caller environment, no internal-marker leak and exactly-once effects.
 Cross-user and remote caches are outside this contract.
 
-## Validation status
+### Historical validation status
 
 The following rows record the completed local checks and their scope.
 Earlier prototype CI and full-corpus results are not evidence for the current
@@ -259,7 +485,7 @@ skipped and zero failed. The skip is the wrong-owner cache fixture: changing its
 owner to UID 1 fails with `EINVAL` in this user namespace, so that ownership
 scenario could not be exercised here. The skip is not counted as a pass.
 
-### Release smoke environment regression
+#### Release smoke environment regression
 
 The first CI attempt on `1a33fcf1b1a0f0b7d0399638adda96a799a3479e`
 found a fixture mismatch in the
@@ -288,7 +514,7 @@ the negative and corrected run logs, commands and correction identity. CI must
 still pass on the final reviewed head; the earlier failed attempt is not
 relabelled as successful.
 
-### IR comparison
+#### IR comparison
 
 The IR comparison used a common `PYSTACHY_HOME` only after verifying that all 90
 library files present in the base were byte-identical in the candidate. This
@@ -312,7 +538,7 @@ retains the complete diff, review JSON and checker source. This accounts for all
 observed IR differences; it does not turn them into byte-identical IR or provide
 a general proof of semantic equivalence.
 
-### Runtime-cache fixture correction
+#### Runtime-cache fixture correction
 
 The initial combined runtime-cache run completed its native half with 66 passes
 and zero failures. Its hosted fixture copied `pystachy.py` and `src/` into a
@@ -330,7 +556,7 @@ halves. These were separate completed runs, not one successful initial
 failure and its correction do not change the measured implementation or erase
 the failed attempt.
 
-### Execution coverage
+#### Execution coverage
 
 The focused native probe covers reuse, consumed source and import invalidation,
 effects and status, corruption, bypasses, tool/compiler/runtime identity,
@@ -343,7 +569,7 @@ the compiler boundary and left the cache setting unset. Eligible programs thus
 used the default path; the run does not establish that every case produced a
 cache hit or cover the other modes in full verification.
 
-## Reproduce
+### Reproduce the historical candidate
 
 Use a clean checkout at the measured code commit and the supported development
 environment from [installation](../../../docs/install.md). The following uses a
