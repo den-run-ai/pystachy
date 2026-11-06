@@ -367,6 +367,18 @@ class ByteBpeShowcaseTests(unittest.TestCase):
                     self.showcase.main(["--compiler", sys.executable, "--json", str(report)])
             self.assertEqual(json.loads(report.read_text())["status"], "failed")
 
+    def test_memory_sampler_resolves_our_child_in_nested_pid_namespace(self):
+        with tempfile.TemporaryDirectory() as directory:
+            proc = Path(directory)
+            wrong = proc / "6"
+            wrong.mkdir()
+            (wrong / "status").write_text("PPid:\t1\nNSpid:\t6\nVmHWM:\t99999 kB\n")
+            child = proc / "333681"
+            child.mkdir()
+            (child / "status").write_text("PPid:\t333680\nNSpid:\t333681\t6\nVmHWM:\t4964 kB\n")
+            self.assertEqual(self.showcase.process_directory(6, proc, 333680), child)
+            self.assertIsNone(self.showcase.process_directory(7, proc, 333680))
+
 
 class ArgumentTests(unittest.TestCase):
     def test_invalid_settings_fail_before_execution(self):

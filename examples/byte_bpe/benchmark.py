@@ -66,6 +66,29 @@ def parse_times(stderr):
     return result
 
 
+def process_directory(pid, proc_root=Path("/proc"), parent_pid=None):
+    """Resolve our child when procfs uses an outer PID namespace.
+
+    Some containers expose host procfs while Popen returns a namespace-local PID.
+    Verify the parent and innermost NSpid before observing any process memory.
+    """
+    try:
+        parent = int(os.readlink(proc_root / "self")) if parent_pid is None else parent_pid
+        direct = proc_root / str(pid)
+        candidates = [direct] + [p for p in proc_root.iterdir() if p.name.isdecimal() and p != direct]
+    except (OSError, ValueError):
+        return None
+    for path in candidates:
+        try:
+            fields = {line.split(":", 1)[0]: line.split(":", 1)[1].strip()
+                      for line in (path / "status").read_text().splitlines() if ":" in line}
+            if int(fields.get("PPid", "-1")) == parent and int(fields.get("NSpid", "-1").split()[-1]) == pid:
+                return path
+        except (OSError, ValueError, IndexError):
+            pass
+    return None
+
+
 def run(command, env, timeout):
     """Bound the process group and retain wait4 plus Linux executable RSS samples.
 
@@ -81,15 +104,15 @@ def run(command, env, timeout):
         installed = False
         sampled_rss = None
         expected_cmdline = [os.fsencode(part) for part in command]
+        proc_dir = process_directory(proc.pid) if sys.platform.startswith("linux") else None
         try:
             while True:
                 pid, status, usage = os.wait4(proc.pid, os.WNOHANG)
                 if pid:
                     proc.returncode = os.waitstatus_to_exitcode(status)
                     break
-                if sys.platform.startswith("linux"):
+                if proc_dir is not None:
                     try:
-                        proc_dir = Path("/proc") / str(proc.pid)
                         if not installed:
                             installed = (proc_dir / "cmdline").read_bytes().split(b"\0")[:-1] == expected_cmdline
                         if installed:

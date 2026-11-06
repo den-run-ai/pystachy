@@ -1,6 +1,6 @@
 # pyperformance results
 
-Pystachy runs 24 of the 52 benchmarks tried from pyperformance 1.14.0, after the adaptations
+Pystachy runs 25 of the 52 benchmarks tried from pyperformance 1.14.0, after the adaptations
 listed in the [port notes](../bench/pyperformance/README.md), which also cover the blocked
 benchmarks and how to run the suite. CPython runs the same adapted files, and every JIT and AOT
 run must print exactly what CPython printed. These are comparisons on that source, not
