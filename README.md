@@ -1,7 +1,12 @@
 # Pystachy
 
 [![CI](https://github.com/den-run-ai/pystachy/actions/workflows/ci.yml/badge.svg?branch=main&event=push)](https://github.com/den-run-ai/pystachy/actions/workflows/ci.yml?query=branch%3Amain+event%3Apush)
+[![Installation](https://github.com/den-run-ai/pystachy/actions/workflows/install.yml/badge.svg?branch=main&event=push)](https://github.com/den-run-ai/pystachy/actions/workflows/install.yml?query=branch%3Amain+event%3Apush)
+[![Lint](https://github.com/den-run-ai/pystachy/actions/workflows/lint.yml/badge.svg?branch=main&event=push)](https://github.com/den-run-ai/pystachy/actions/workflows/lint.yml?query=branch%3Amain+event%3Apush)
+[![Release](https://img.shields.io/github/v/release/den-run-ai/pystachy)](https://github.com/den-run-ai/pystachy/releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Hosted compiler coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fden-run-ai%2Fpystachy%2Fbadges%2Fcoverage.json)](docs/testing.md#compiler-coverage)
+[![Native runtime coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fden-run-ai%2Fpystachy%2Fbadges%2Fruntime-coverage.json)](docs/testing.md#native-runtime-coverage)
 
 Pystachy compiles a typed subset of Python to native code through LLVM. Use it
 for CPU-bound work such as text processing, data repair, and simulation while
@@ -9,6 +14,8 @@ keeping your code in Python. The compiler is self-hosting, and its JIT and AOT
 modes share the same [typed intermediate representation](docs/typed-ir.md).
 
 ## Quick start
+
+The [latest release](https://github.com/den-run-ai/pystachy/releases/latest) offers native archives and Docker images; see the [installation guide](docs/install.md) for platform requirements and checksums.
 
 Follow the [installation guide](docs/install.md), then save this as `demo.py`:
 
