@@ -778,16 +778,27 @@ def upc(c: int) -> bool:
     return c >= 65 and c <= 90
 
 
-def every(s: str, k: int) -> int:
-    # all bytes are: 0 digits, 1 letters, 2 either; and there is one
-    if len(s) == 0:
+def pys_unicode_flags(cp: int) -> int: ...
+
+
+def every(s: str, mask: int) -> int:
+    # Every code point has a requested Unicode property, and there is at least one.
+    # ASCII stays a byte scan; the C table supplies alpha=1, digit=2, decimal=4, numeric=8.
+    n = len(s)
+    if n == 0:
         return 0
-    for i in range(len(s)):
+    i = 0
+    while i < n:
         c = _rt.byte(s, i)
-        d = digit(c)
-        a = lowc(c | 32)
-        if not (d if k == 0 else a if k == 1 else d or a):
-            return 0
+        if c < 128:
+            if not ((mask & 14 != 0 and digit(c)) or (mask & 1 != 0 and lowc(c | 32))):
+                return 0
+            i = _rt.wrap_add(i, 1)
+        else:
+            ch = uchar(s, i, n)
+            if pys_unicode_flags(ch >> 3) & mask == 0:
+                return 0
+            i = _rt.wrap_add(i, ch & 7)
     return 1
 
 
@@ -808,7 +819,7 @@ def cased(s: str, up: bool) -> int:
 
 
 def pys_str_isdigit(s: str) -> int:
-    return every(s, 0)
+    return every(s, 2)
 
 
 def pys_str_isalpha(s: str) -> int:
@@ -816,7 +827,7 @@ def pys_str_isalpha(s: str) -> int:
 
 
 def pys_str_isalnum(s: str) -> int:
-    return every(s, 2)
+    return every(s, 15)
 
 
 def pys_str_isspace(s: str) -> int:
@@ -833,11 +844,11 @@ def pys_str_islower(s: str) -> int:
 
 
 def pys_str_isdecimal(s: str) -> int:
-    return every(s, 0)
+    return every(s, 4)
 
 
 def pys_str_isnumeric(s: str) -> int:
-    return every(s, 0)
+    return every(s, 8)
 
 
 def pys_str_isascii(s: str) -> int:

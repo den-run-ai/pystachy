@@ -27,6 +27,13 @@ def exact_equal(left, right):
     return left == right
 
 
+def replay_input(row):
+    request = {key: row[key] for key in ("id", "api", "input", "flags")}
+    if "input_codepoints" in row:
+        request["input_codepoints"] = row["input_codepoints"]
+    return request
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("output", type=Path, nargs="?")
@@ -39,7 +46,7 @@ def main():
     args = parser.parse_args()
     cases = json.loads(args.cases.read_text())
     if args.write_inputs:
-        args.write_inputs.write_text("".join(json.dumps({key: row[key] for key in ("id", "api", "input", "flags")}, ensure_ascii=True) + "\n" for row in cases))
+        args.write_inputs.write_text("".join(json.dumps(replay_input(row), ensure_ascii=True) + "\n" for row in cases))
     if args.output is None:
         if args.write_inputs is None:
             parser.error("provide replay output or --write-inputs")
@@ -66,9 +73,12 @@ def main():
         if exact_equal(actual.get(ident), case["expected"]):
             matches += 1
         else:
-            problems.append({"id": ident, "input": case["input"], "flags": case["flags"],
-                             "sources": case["sources"], "expected": case["expected"],
-                             "actual": actual.get(ident, {"error": "missing case"})})
+            problem = {"id": ident, "input": case["input"], "flags": case["flags"],
+                       "sources": case["sources"], "expected": case["expected"],
+                       "actual": actual.get(ident, {"error": "missing case"})}
+            if "input_codepoints" in case:
+                problem["input_codepoints"] = case["input_codepoints"]
+            problems.append(problem)
     report = {"cases": len(cases), "matched": matches, "problems": problems}
     if args.report:
         args.report.write_text(json.dumps(report, ensure_ascii=True, indent=2) + "\n")

@@ -49,13 +49,20 @@ def tagged(value: Any) -> Any:
 with open(sys.argv[1]) as source:
     for line in source:
         request: Any = json.loads(line)
+        text: str = request["input"]
+        if "input_codepoints" in request:
+            # JSON transport otherwise combines literal adjacent surrogates.
+            characters: list[str] = []
+            for code in request["input_codepoints"]:
+                characters.append(chr(int(code)))
+            text = "".join(characters)
         flags: Any = request["flags"]
         row: dict[str, Any] = {"id": request["id"]}
         try:
             result: Any = None
             if request.get("api", "repair_json") == "loads":
                 result = loads(
-                    request["input"],
+                    text,
                     skip_json_loads=flags.get("skip_json_loads", False),
                     logging=flags.get("logging", False),
                     stream_stable=flags.get("stream_stable", False),
@@ -63,7 +70,7 @@ with open(sys.argv[1]) as source:
                 )
             else:
                 result = repair_json(
-                    request["input"],
+                    text,
                     return_objects=flags.get("return_objects", True),
                     skip_json_loads=flags.get("skip_json_loads", False),
                     logging=flags.get("logging", False),

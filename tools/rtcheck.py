@@ -4,7 +4,7 @@
 runtime.py is ordinary Python, so CPython runs it, with tools/rt_cpython/_rt.py standing in for
 the compiler's primitives: each pys_* function is called directly and compared with what CPython
 computes, on random inputs, with no compilation. Strs are ASCII here (where Pystachy behaves exactly
-as CPython) plus UTF-8 text for the width methods and replace("", x), which count characters; a
+as CPython) plus UTF-8 text for character classification, the width methods and replace("", x); a
 Pystachy str is given as its bytes, one character per byte. 64-bit overflow is not tested here
 (CPython's ints grow): the differential tests compile the same code and check it.
 
@@ -22,6 +22,9 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path[:0] = [os.path.join(ROOT, "tools", "rt_cpython"), ROOT]
 import runtime as rt  # noqa: E402
+from unicode_classification_tables import check as check_unicode_table, flags as unicode_flags  # noqa: E402
+
+rt.pys_unicode_flags = unicode_flags
 
 N = int(sys.argv[1]) if len(sys.argv) > 1 else 5000
 R = random.Random(int(sys.argv[2]) if len(sys.argv) > 2 else 1)
@@ -157,6 +160,18 @@ def bref(f):
 def data(n=12):
     alpha = b"ab" if R.randrange(3) == 0 else BYTES
     return bytes(R.choice(alpha) for _ in range(R.randrange(n + 1)))
+
+
+def fuzz_unicode_classification():
+    # Exercise runtime.py's UTF-8 traversal separately from its C lookup. The table check
+    # regenerates every code point; unicode_audit.py also compares native lookup results.
+    check_unicode_table()
+    pool = "aZ09é界न\u0301\u0345²½Ⅳ四٩१२𝟘\U0001e4f0\U0002ebf0😀\ud800\udfff\x00"
+    for _ in range(N):
+        s = text(pool) if R.randrange(2) else "".join(chr(R.randrange(0x110000)) for _ in range(R.randrange(8)))
+        raw = s.encode("utf-8", "surrogatepass").decode("latin-1")
+        for name in "isalpha isalnum isdecimal isdigit isnumeric".split():
+            same(name, outcome(getattr(rt, "pys_str_" + name), raw), outcome(getattr(s, name)), (s,))
 
 
 def fuzz_bytes():
@@ -538,6 +553,7 @@ def fuzz_malformed():
 
 
 fuzz_str()
+fuzz_unicode_classification()
 fuzz_replace()
 fuzz_bytes()
 fuzz_search()

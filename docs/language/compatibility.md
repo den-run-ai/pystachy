@@ -43,10 +43,16 @@ replacement, padding, formatting and text `read(n)` count **code points**, not
 visible characters: combining marks count separately. `chr()`, escapes, `ord()`
 and `repr()` use the same code points. Whitespace stripping/splitting, `splitlines()`
 and `isspace()` recognize CPython's Unicode whitespace and line breaks.
+`isalpha()`, `isalnum()`, `isdecimal()`, `isdigit()` and `isnumeric()` use Unicode
+15.1.0 properties, matching the pinned CPython. Decimal digits, digits and numeric
+characters are distinct: `"²".isdigit()` is true and `"²".isdecimal()` is false;
+`"Ⅳ".isnumeric()` is true and `"Ⅳ".isdigit()` is false. Combining marks are not
+letters, so `"e\u0301".isalpha()` is false. Bytes character tests remain ASCII-only.
 See [storage and indexing costs](../internals.md#values-and-runtime).
 
-- **Case mapping and character tests:** ASCII-only, except `isspace()` and
-  `isascii()` ([#120](https://github.com/den-run-ai/pystachy/issues/120)).
+- **Case mapping and case tests:** `upper()`, `lower()`, `swapcase()`,
+  `capitalize()`, `title()`, `casefold()`, `isupper()`, `islower()` and `istitle()`
+  remain ASCII-only ([#120](https://github.com/den-run-ai/pystachy/issues/120)).
 - **Invalid UTF-8:** builtin text files read/write unchecked bytes, where CPython
   decodes or raises `UnicodeDecodeError`. Each invalid byte counts as one character
   for length, widths, padding, precision and `expandtabs()`. `read(n)` counts
@@ -97,9 +103,9 @@ PYSTACHY_UNICODE_AUDIT=1 ./pystachy build app.py -o app
 ```
 
 The checks raise `NotImplementedError: Unicode audit: ...` for non-ASCII input to
-case mapping, ASCII character tests and `expandtabs()`, even when the result would
-match CPython. Code-point operations, printing, equality, concatenation and Unicode
-whitespace operations remain usable. File write counts, invalid UTF-8 decoding and
+case mapping, case tests and `expandtabs()`, even when the result would match
+CPython. Character classification, code-point operations, printing, equality,
+concatenation and Unicode whitespace operations remain usable. File write counts, invalid UTF-8 decoding and
 other unlisted boundaries are **not audited**.
 
 Each check scans to the first non-ASCII byte; default builds omit it. An AOT

@@ -9,6 +9,7 @@ import tempfile
 import unittest
 
 from build_json_repair_corpus import calls_with_env, request
+from json_repair_parity import replay_input
 
 
 CHECKER = Path(__file__).with_name("json_repair_parity.py")
@@ -112,6 +113,20 @@ class JsonRepairParityTests(unittest.TestCase):
 
     def test_exact_output_passes(self):
         self.check(self.rows, passes=True)
+
+    def test_replay_input_preserves_literal_surrogate_pairs(self):
+        raw = '{"value":"\ud83d\ude00"}'
+        row = {"id": 0, "api": "loads", "input": raw, "flags": {},
+               "input_codepoints": list(map(ord, raw))}
+        decoded = json.loads(json.dumps(replay_input(row), ensure_ascii=True))
+        self.assertNotEqual(decoded["input"], raw)
+        self.assertEqual("".join(map(chr, decoded["input_codepoints"])), raw)
+
+    def test_mismatch_reports_lossless_input(self):
+        self.cases[0]["input_codepoints"] = [0xD83D, 0xDE00]
+        self.corpus.write_text(json.dumps(self.cases))
+        report = self.check(self.rows[1:])
+        self.assertEqual(report["problems"][0]["input_codepoints"], [0xD83D, 0xDE00])
 
     def test_missing_case_fails(self):
         report = self.check(self.rows[:-1])
