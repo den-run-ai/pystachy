@@ -1,0 +1,211 @@
+{
+  "recorded_at_utc": "2026-11-06T22:00:03.982646+00:00",
+  "source_commit_reported_by_root": "113485f76962d9d8f765b90eaf980f645a8666a8",
+  "compiler": "/workspace/scratch/b766795aa447/pystachy/pystachy",
+  "compiler_sha256": "7a59021a752bcd4354f39d45b472eb96925d088f7d727e1dfaa593c6ab288b55",
+  "platform": "Linux x86_64",
+  "cpu_affinity": "not pinned",
+  "llvm": "Ubuntu LLVM 18.1.3",
+  "profile_directory": "/workspace/scratch/b766795aa447/cache-hit-profile-w2dbk5r1",
+  "warm_fill_seconds": 12.597,
+  "warm_fill_note": "Own private cache started empty, including runtime artifacts. This is preparation, not a comparison sample.",
+  "strace_status": "Blocked: PTRACE_TRACEME/PTRACE_SETOPTIONS Operation not permitted; no syscall trace executed.",
+  "loader_trace": "LD_DEBUG=libs,statistics; LD_DEBUG_OUTPUT private file prefix. These diagnostics do not trigger the cache build-environment bypass.",
+  "loader_trace_hit_seconds": 0.0822,
+  "loader_trace_hit_note": "One validated hit with diagnostics enabled; not an uninstrumented latency benchmark.",
+  "elf_exec_transitions": 34,
+  "program_counts": {
+    "stat": 10,
+    "sh": 17,
+    "/usr/bin/flock": 3,
+    "touch": 1,
+    "/workspace/scratch/b766795aa447/pystachy/pystachy": 2,
+    "/workspace/scratch/b766795aa447/cache-hit-profile-w2dbk5r1/tiny.py": 1
+  },
+  "native_component_probe": {
+    "build_seconds": 8.07,
+    "document_seconds": 0.006403586005035322,
+    "fields": 13655,
+    "source": {
+      "records": 2,
+      "valid": true,
+      "seconds": 0.0006450329965446144
+    },
+    "probe": {
+      "records": 2,
+      "valid": true,
+      "seconds": 3.0095005058683455e-05
+    },
+    "static": {
+      "records": 238,
+      "valid": true,
+      "seconds": 0.0018445070018060505
+    },
+    "layout": {
+      "records": 4309,
+      "valid": true,
+      "seconds": 0.017547271003422793
+    },
+    "all_records": {
+      "valid": true,
+      "seconds": 0.02159480599948438
+    },
+    "artifact_hash": {
+      "valid": true,
+      "seconds": 0.012229159001435619
+    },
+    "cache_directory": {
+      "valid": true,
+      "seconds": 0.004901517000689637
+    },
+    "note": "AOT native helper, one run. Per-class scans precede the full validator, warming those records. Full validation timing includes the record scans; do not add it to the per-class times.",
+    "rounds": 1,
+    "samples": {
+      "document": [
+        0.006403586005035322
+      ],
+      "source": [
+        0.0006450329965446144
+      ],
+      "probe": [
+        3.0095005058683455e-05
+      ],
+      "static": [
+        0.0018445070018060505
+      ],
+      "layout": [
+        0.017547271003422793
+      ],
+      "all_records": [
+        0.02159480599948438
+      ],
+      "artifact_hash": [
+        0.012229159001435619
+      ],
+      "cache_directory": [
+        0.004901517000689637
+      ]
+    },
+    "medians_seconds": {
+      "document": 0.006403586005035322,
+      "source": 0.0006450329965446144,
+      "probe": 3.0095005058683455e-05,
+      "static": 0.0018445070018060505,
+      "layout": 0.017547271003422793,
+      "all_records": 0.02159480599948438,
+      "artifact_hash": 0.012229159001435619,
+      "cache_directory": 0.004901517000689637
+    },
+    "median_note": "One component run only: medians equal the single raw sample. These measurements diagnose work distribution, not repeatability or speedup confidence."
+  },
+  "artifact_bytes": 504080,
+  "manifest_bytes": 491754,
+  "raw_files": [
+    "warm.stdout",
+    "warm.stderr",
+    "hit.stderr",
+    "uncached.stderr",
+    "loader-summary.json",
+    "loader.*",
+    "components.py",
+    "components.stdout",
+    "components.stderr",
+    "environment.json"
+  ],
+  "commands": {
+    "working_directory": "/workspace/scratch/b766795aa447/pystachy",
+    "common_environment": {
+      "PYSTACHY_HOME": "/workspace/scratch/b766795aa447/pystachy",
+      "PYSTACHY_LLVM": "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin",
+      "PYSTACHY_CACHE": "/workspace/scratch/b766795aa447/cache-hit-profile-w2dbk5r1/cache",
+      "PYSTACHY_PROGRAM_CACHE_TRACE": "1"
+    },
+    "fill": {
+      "argv": [
+        "/workspace/scratch/b766795aa447/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/b766795aa447/cache-hit-profile-w2dbk5r1/tiny.py"
+      ]
+    },
+    "blocked_strace_hit": {
+      "argv": [
+        "/usr/bin/strace",
+        "-f",
+        "-c",
+        "-o",
+        "/workspace/scratch/b766795aa447/cache-hit-profile-w2dbk5r1/hit.summary",
+        "/workspace/scratch/b766795aa447/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/b766795aa447/cache-hit-profile-w2dbk5r1/tiny.py"
+      ]
+    },
+    "blocked_strace_uncached": {
+      "argv": [
+        "/usr/bin/strace",
+        "-f",
+        "-c",
+        "-o",
+        "/workspace/scratch/b766795aa447/cache-hit-profile-w2dbk5r1/uncached.summary",
+        "/workspace/scratch/b766795aa447/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/b766795aa447/cache-hit-profile-w2dbk5r1/tiny.py"
+      ],
+      "additional_environment": {
+        "PYSTACHY_PROGRAM_CACHE": "0"
+      }
+    },
+    "loader_trace_hit": {
+      "argv": [
+        "/workspace/scratch/b766795aa447/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/b766795aa447/cache-hit-profile-w2dbk5r1/tiny.py"
+      ],
+      "additional_environment": {
+        "LD_DEBUG": "libs,statistics",
+        "LD_DEBUG_OUTPUT": "/workspace/scratch/b766795aa447/cache-hit-profile-w2dbk5r1/loader"
+      }
+    },
+    "component_build": {
+      "argv": [
+        "/workspace/scratch/b766795aa447/pystachy/pystachy",
+        "build",
+        "/workspace/scratch/b766795aa447/cache-hit-profile-w2dbk5r1/components.py",
+        "-o",
+        "/workspace/scratch/b766795aa447/cache-hit-profile-w2dbk5r1/components"
+      ],
+      "additional_environment": {
+        "PYSTACHY_PATH": "/workspace/scratch/b766795aa447/pystachy",
+        "PYSTACHY_PROGRAM_CACHE": "0"
+      }
+    },
+    "component_run": {
+      "argv": [
+        "/workspace/scratch/b766795aa447/cache-hit-profile-w2dbk5r1/components",
+        "/workspace/scratch/b766795aa447/cache-hit-profile-w2dbk5r1/cache/program-v2/f30357d8b69d3cfc.manifest",
+        "/workspace/scratch/b766795aa447/cache-hit-profile-w2dbk5r1/cache/program-v2/f30357d8b69d3cfc-8099ac313f501838.exe",
+        "/workspace/scratch/b766795aa447/cache-hit-profile-w2dbk5r1/cache"
+      ],
+      "additional_environment": {
+        "PYSTACHY_PATH": "/workspace/scratch/b766795aa447/pystachy",
+        "PYSTACHY_PROGRAM_CACHE": "0"
+      }
+    }
+  },
+  "source_identity_note": "The immutable source commit was supplied by root before profiling. The worktree changed after profiling; its later contents have not been represented as the measured source.",
+  "files_sha256": {
+    "tiny.py": "cc42155088fca5730758db72b2a5bca33112a941dfaa2d43098ec422ce4ea213",
+    "components.py": "ebc73b4a0fca974f3aabd81a98c8ce7d8c0a1c5c576fc10767050bbda111b665",
+    "components": "b341cefb375d1cdbaec7d2b77bc4dc178d57b5b7f8a052752a8f3edbea1632f3",
+    "components.stdout": "e01d55a382a37390b73a55ef5766750345b245b59f03cb0a42f1b3345a963e3d",
+    "loader-summary.json": "c6edf9396ac7123d54bf48e2690a0bddeef64a699a1a63f92faf84b68eb4cff1"
+  },
+  "reproduction_notes": [
+    "Use a fresh private directory and cache. Create tiny.py with exactly print(1) followed by a newline.",
+    "Clear inherited PYSTACHY_* settings before applying common_environment. The LLVM/tool inputs must be the same as those used to fill the cache.",
+    "Fill once and require trace events miss, frontend, stored with output1/status0.",
+    "The native helper source is components.py; building it uses the ordinary build command. Five existing runtime-py-*.bc files were copied from the repository build directory into this private cache before the helper build to avoid unnecessary runtime work.",
+    "Select the manifest/executable produced for tiny.py under program-v2, and require all_records_valid True and artifact_hash_ok True.",
+    "To count exec transitions despite redirected child stderr, use LD_DEBUG_OUTPUT. Count each transferring control line in all loader.PID files; a PID may contain multiple execs.",
+    "No additional native builds or timing runs were performed after this profile. Ptrace failure diagnostics are preserved in hit.stderr and uncached.stderr."
+  ]
+}
