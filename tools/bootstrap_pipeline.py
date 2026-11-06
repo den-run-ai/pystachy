@@ -76,15 +76,16 @@ def plan(args, work):
     compilers = [[args.python, "pystachy.py"], [str(work / "pystachy1")], [str(work / "pystachy2")]]
     nodes = []
 
-    def add(name, argv, deps, slots=1, opt=2):
+    def add(name, argv, deps, slots=1, opt=2, inline_threshold=None):
         nodes.append({"name": name, "command": argv, "dependencies": deps,
-                      "slots": slots, "aot_opt": opt, "status": "pending"})
+                      "slots": slots, "aot_opt": opt, "inline_threshold": inline_threshold, "status": "pending"})
 
     for i in (1, 2):
         command = compilers[i - 1] + ["build", "pystachy.py", "-o", str(work / f"pystachy{i}")]
         if args.variant != "baseline":
             command += ["--emit-ir", str(work / f"stage{i}.ll")]
         split = args.stage1_split if i == 1 else args.stage2_split
+        inline_threshold = args.stage1_inline_threshold if i == 1 else args.stage2_inline_threshold
         if split:
             command = [args.python, str(args.root / "bench/compiler_host/self_pipeline.py"),
                        "--root", str(args.root), "--llvm", args.llvm,
@@ -96,8 +97,10 @@ def plan(args, work):
             command += ["--hosted"] if i == 1 else ["--compiler", compilers[i - 1][0]]
             if args.runtime_overlap:
                 command.append("--overlap")
+            if inline_threshold is not None:
+                command += ["--inline-threshold", str(inline_threshold)]
         add(f"build{i}", command, ["build1"] if i == 2 else [], args.build_jobs,
-            args.stage1_opt if i == 1 else 2)
+            args.stage1_opt if i == 1 else 2, inline_threshold)
     for i in range(1 if args.variant == "baseline" else 3, 4):
         add(f"ir{i}", compilers[i - 1] + ["ir", "pystachy.py", "-o", str(work / f"stage{i}.ll")], ["build2"])
     for i in (1, 2, 3):
@@ -148,6 +151,8 @@ def run_nodes(nodes, args, work, env):
                 child_env = dict(env, PYSTACHY_BUILD_JOBS=str(node["slots"]),
                                  PYSTACHY_LTO_PARTITIONS=str(args.partitions if node["name"].startswith("build") else 0),
                                  PYSTACHY_AOT_OPT=str(node["aot_opt"]))
+                if node["inline_threshold"] is not None:
+                    child_env["PYSTACHY_AOT_INLINE_THRESHOLD"] = str(node["inline_threshold"])
                 node["environment"] = {k: v for k, v in child_env.items() if k.startswith("PYSTACHY_")}
                 node["log"] = str(work / (node["name"] + ".log"))
                 log = open(node["log"], "wb")
@@ -220,6 +225,8 @@ def main(argv=None):
     parser.add_argument("--build-jobs", type=int, default=1, help="slots reserved per native build")
     parser.add_argument("--partitions", type=int, default=0)
     parser.add_argument("--stage1-opt", type=int, choices=(0, 1, 2), default=2)
+    parser.add_argument("--stage1-inline-threshold", type=int, help="research: temporary compiler LLVM inlining threshold (0..10000)")
+    parser.add_argument("--stage2-inline-threshold", type=int, help="research: final compiler LLVM inlining threshold (0..10000)")
     parser.add_argument("--stage1-split", type=int, default=0,
                         help="research: early-split temporary self-build, final build retains the driver")
     parser.add_argument("--stage2-split", type=int, default=0,
@@ -233,6 +240,9 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if not 1 <= args.build_jobs <= args.jobs <= 64 or not 0 <= args.partitions <= args.build_jobs or args.timeout <= 0:
         parser.error("require 1 <= build-jobs <= jobs <= 64, 0 <= partitions <= build-jobs, timeout > 0")
+    if any(value is not None and not 0 <= value <= 10000
+           for value in (args.stage1_inline_threshold, args.stage2_inline_threshold)):
+        parser.error("inlining thresholds must be from 0 to 10000")
     if not 0 <= args.stage1_split <= 8 or not 0 <= args.stage2_split <= 8:
         parser.error("split counts must be from 0 to 8")
     if (args.stage1_split or args.stage2_split) and (args.build_jobs > 8

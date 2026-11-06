@@ -90,6 +90,7 @@ def main():
     parser.add_argument("--jobs", type=int, default=1)
     parser.add_argument("--partitions", type=int, default=1)
     parser.add_argument("--opt", type=int, choices=(0, 1, 2), default=2)
+    parser.add_argument("--inline-threshold", type=int, help="research: backend optimizer inlining threshold (0..10000)")
     parser.add_argument("--cache", type=Path, help="private bootstrap cache shared with the next stage")
     parser.add_argument("--output", type=Path, help="publish the built executable here")
     parser.add_argument("--emit-ir", type=Path, help="publish the exact frontend witness here")
@@ -97,6 +98,8 @@ def main():
     args = parser.parse_args()
     if not 1 <= args.jobs <= 8 or not 1 <= args.partitions <= 8 or (args.overlap and args.jobs < 2):
         parser.error("jobs/partitions must be 1..8; overlap needs at least 2 jobs")
+    if args.inline_threshold is not None and not 0 <= args.inline_threshold <= 10000:
+        parser.error("inlining threshold must be from 0 to 10000")
     return run_pipeline(args)
 
 
@@ -120,7 +123,7 @@ def run_pipeline(args):
               "harness_sha256": sha(Path(__file__)),
               "producer_sha256": {p: sha(p) for p in compiler},
               "llvm": bootstrap.tool_identity(sys.executable, str(llvm)), "overlap": args.overlap,
-              "partitions": args.partitions, "jobs": args.jobs, "opt": args.opt,
+              "partitions": args.partitions, "jobs": args.jobs, "opt": args.opt, "inline_threshold": args.inline_threshold,
               "caller_witnesses": args.caller_witnesses, "complete": False, "stages": {}}
     runner = Commands(measure)
     try:
@@ -155,6 +158,8 @@ def run_pipeline(args):
             command = [sys.executable, str(ROOT / "bench/compiler_host/backend_workers.py"), "--input", str(linked),
                        "--llvm", str(llvm), "--partitions", str(args.partitions), "--jobs", str(args.jobs),
                        "--opt", str(args.opt), "--inherited-group", "--work", str(work / "backend"), "--report", str(backend_report)]
+            if args.inline_threshold is not None:
+                command += ["--inline-threshold", str(args.inline_threshold)]
             result = runner.execute(command, env, 600)
             report["stages"]["backend"] = result
             report["build_wall_s"] = time.monotonic() - start

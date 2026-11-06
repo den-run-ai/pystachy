@@ -9,6 +9,7 @@ from src.pystachy_compiler.utils import atomic_dict, atomic_list, identity_abi, 
 
 def gen_lower(self, fn: IFn) -> None:
     o = self.out
+    start = len(o)
     f = fn.f
     # a method's receiver is never None (callers check it)
     ps = [f"{lt(f.ptypes[j])}{' nonnull' if j == 0 and takes_self(f) else ''} %a{j}" for j in fn.ps]
@@ -115,6 +116,11 @@ def gen_lower(self, fn: IFn) -> None:
             o.append(f"  store i64 %v{k}, ptr %p{k}")
         o.append("  ret ptr %p")
         o.append("}")
+    # Only module assembly reads completed output: keep this function and its wrappers as
+    # one chunk, releasing the individual line strings before lowering the next function.
+    text = "\n".join(o[start:])
+    del o[start:]
+    o.append(text)
 
 def gen_alloc_call(self, size: str, t: str) -> str:
     # the call that gives compiled code size zeroed bytes for an object or a fixed tuple of type t

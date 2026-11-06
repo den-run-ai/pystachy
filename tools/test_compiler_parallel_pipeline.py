@@ -1,5 +1,7 @@
 """Research build publication must preserve sources and existing artifacts."""
+import contextlib
 import importlib.util
+import io
 from pathlib import Path
 import sys
 import tempfile
@@ -13,6 +15,26 @@ sys.path.insert(0, str(BENCH))
 SPEC = importlib.util.spec_from_file_location("self_build_pipeline", BENCH / "self_pipeline.py")
 pipeline = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(pipeline)
+
+
+class InliningPolicyTests(unittest.TestCase):
+    def argv(self, *extra):
+        return ["self_pipeline.py", "--hosted", "--llvm", "llvm", "--work", "work", "--report", "report.json", *extra]
+
+    def test_default_and_explicit_policy_reach_the_pipeline(self):
+        for extra, expected in (((), None), (("--inline-threshold", "0"), 0), (("--inline-threshold", "75"), 75)):
+            with self.subTest(extra=extra), patch.object(sys, "argv", self.argv(*extra)), \
+                 patch.object(pipeline, "run_pipeline", return_value=0) as run:
+                self.assertEqual(pipeline.main(), 0)
+                self.assertEqual(run.call_args.args[0].inline_threshold, expected)
+
+    def test_invalid_policy_rejects_before_the_pipeline(self):
+        for value in ("-1", "10001", "invalid"):
+            with self.subTest(value=value), patch.object(sys, "argv", self.argv("--inline-threshold", value)), \
+                 patch.object(pipeline, "run_pipeline") as run, contextlib.redirect_stderr(io.StringIO()), \
+                 self.assertRaises(SystemExit):
+                pipeline.main()
+            run.assert_not_called()
 
 
 class PublicationTests(unittest.TestCase):

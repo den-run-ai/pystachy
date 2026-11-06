@@ -10,7 +10,7 @@ import argparse
 import json
 import os
 from pathlib import Path
-import random
+import re
 import statistics
 import sys
 import time
@@ -24,9 +24,32 @@ POLICIES = {
     "o1": ["-O1"],
     "o2-inline0": ["-O2", "-mllvm", "-inline-threshold=0"],
     "o2-inline75": ["-O2", "-mllvm", "-inline-threshold=75"],
+    "o2-inline100": ["-O2", "-mllvm", "-inline-threshold=100"],
+    "o2-inline125": ["-O2", "-mllvm", "-inline-threshold=125"],
+    "o2-inline150": ["-O2", "-mllvm", "-inline-threshold=150"],
 }
 LATE = ["-force-remove-attribute=pys_new:noinline",
         "-force-remove-attribute=pys_new:optnone", "-force-attribute=pys_new:alwaysinline"]
+
+
+def scheduled(policies, sample):
+    """Rotate first position; reverse each complete rotation to balance neighbors."""
+    order = list(policies)
+    if (sample // len(order)) % 2:
+        order.reverse()
+    offset = sample % len(order)
+    return order[offset:] + order[:offset]
+
+
+def ir_statistics(path, llvm, runner, env):
+    output = path.with_suffix(".ll")
+    result = runner.execute([str(llvm / "llvm-dis"), str(path), "-o", str(output)], env, 120)
+    measure.successful(result)
+    text = output.read_text()
+    return {"bitcode_bytes": path.stat().st_size, "bitcode_sha256": sha(path),
+            "text_bytes": output.stat().st_size, "lines": text.count("\n"),
+            "functions": len(re.findall(r"^define ", text, re.M)),
+            "instructions_approx": len(re.findall(r"^  (?!;|\])\S", text, re.M))}
 
 
 def main():
@@ -53,18 +76,17 @@ def main():
         parser.error("policies must be unique")
     source = bootstrap.source_identity(root)
     inputs = {name: sha(snapshot / name) for name in ("linked.bc", "raw.ll", "seed-rt.ll")}
-    report = {"schema_version": 1, "source": source, "inputs": inputs,
+    report = {"schema_version": 2, "source": source, "inputs": inputs,
               "source_root": str(root), "llvm": bootstrap.tool_identity(sys.executable, str(llvm)),
               "host": bootstrap.host_state(), "harness_sha256": sha(Path(__file__)),
+              "schedule": "rotate first position; reverse after each complete rotation",
+              "requested_build_samples": args.samples, "requested_execution_samples": args.execution_samples,
               "builds": [], "execution": [], "complete": False}
-    rng = random.Random(20261106)
     runner = Commands(measure)
     try:
         with runner:
             for sample in range(args.samples):
-                order = list(policies)
-                rng.shuffle(order)
-                for policy in order:
+                for policy in scheduled(policies, sample):
                     directory = work / f"{policy}-{sample}"
                     directory.mkdir()
                     record = {"policy": policy, "sample": sample, "steps": [], "witnesses": {}}
@@ -91,6 +113,10 @@ def main():
                                                 if all(s["sampled_process_tree_peak_rss_kib"] is not None for s in record["steps"]) else None),
                                   compiler_sha256=sha(directory / "compiler"),
                                   compiler_bytes=(directory / "compiler").stat().st_size)
+                    # Inspection is outside the timed backend and is needed only
+                    # once: repeated executable identity is checked separately.
+                    if sample == 0:
+                        record["optimized_ir"] = ir_statistics(directory / "optimized.bc", llvm, runner, env)
                     for mode, filename, reference in (("ir", "pystachy.py", "raw.ll"),
                                                        ("rt", "runtime.py", "seed-rt.ll")):
                         output = directory / f"{mode}.ll"
@@ -105,9 +131,7 @@ def main():
                             raise RuntimeError(f"{policy}: {mode} witness mismatch")
                     print(f"{policy} {sample}: backend {record['wall_s']:.3f}s; witnesses passed", flush=True)
             for sample in range(args.execution_samples):
-                order = list(policies)
-                rng.shuffle(order)
-                for policy in order:
+                for policy in scheduled(policies, sample):
                     output = work / f"execution-{policy}-{sample}.ll"
                     result = runner.execute(["taskset", "-c", str(args.cpu),
                                               str(work / f"{policy}-0/compiler"),

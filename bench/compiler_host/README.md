@@ -507,6 +507,30 @@ job directory, the worker script and compatible LLVM tools:
 "$HOST_PY" bench/compiler_host/backend_workers.py --worker /path/to/job --llvm "$LLVM"
 ```
 
+### Opt-in inlining policy
+
+The ordinary driver and all research controllers keep LLVM's default O2 inlining
+policy unless explicitly configured. To vary the heuristic threshold without changing
+the optimization or codegen level, use `PYSTACHY_AOT_INLINE_THRESHOLD=N` with `build`,
+`--inline-threshold N` with `self_pipeline.py` or the `backend_workers.py` coordinator,
+or separate `--stage1-inline-threshold N` / `--stage2-inline-threshold N` flags with
+`tools/bootstrap_pipeline.py`. Each accepts 0 through 10000. Driver settings do not
+alter runtime-cache identity or runtime preparation; the controller records its policy
+and applies it only to that native build's program optimizer.
+
+The late `forceattrs,always-inline` allocator sequence and codegen without a second
+LLVM optimization pipeline are unchanged. Zero does not disable mandatory inlining.
+The earlier threshold-75 observation is exploratory and does not justify a default
+change: repeat whole bootstrap and generated-compiler workloads on frozen inputs.
+
+New worker jobs use protocol version 2 and bind `inline_threshold` (including an
+explicit null for LLVM's default) into the hashed job record. Version-1 jobs with no
+policy field still replay with their original defaults; a version-1 job containing
+that field is rejected. Older worker scripts reject version 2 instead of silently
+ignoring the requested policy. Detached replay reads the policy exclusively from
+`job.json`; a replay CLI override is rejected. Toolchain hashes, output integrity and
+cancellation checks remain required.
+
 ## Validation and limits
 
 - Controlled host comparison: 120 exact raw IR matches; 48 module import origins

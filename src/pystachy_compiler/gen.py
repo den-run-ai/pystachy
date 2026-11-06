@@ -1290,7 +1290,7 @@ class Gen:
         self.opfxs: dict[str, int] = {}  # the effects of each op of IROPS with fixed effects
         for op in IROPS:
             self.opfxs[op] = fxmask(IROPS[op].replace("T", "").replace("*", ""))
-        self.out: list[str] = []
+        self.out: list[str] = []  # completed LLVM function chunks and the current function's lines
         self.fns: list[IFn] = []  # the functions compiled, in the order they were completed
         self.fll: dict[str, int] = {}  # and their positions there by symbol, once the program is built
         self.summaries = EffectSummaries()
