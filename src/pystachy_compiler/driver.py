@@ -28,6 +28,7 @@ LATE_INLINE = ("-force-remove-attribute=pys_new:noinline -force-remove-attribute
 
 # Every hosted component contributes to runtime-cache identity and startup trust.
 COMPILER_SOURCES: list[str] = [
+    'lib/_pystachy_cache.py',
     'src/__init__.py',
     'src/pystachy_compiler/__init__.py',
     'src/pystachy_compiler/analysis.py',

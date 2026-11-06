@@ -646,7 +646,8 @@ def main():
     rt = pys.RUNTIME
     bad = []
     note = []
-    component_sources = sorted((Path(ROOT) / "src").rglob("*.py"))
+    component_sources = sorted([*(Path(ROOT) / "src").rglob("*.py"),
+                                *(Path(ROOT) / "lib").glob("_pystachy_cache.py")])
     actual_sources = {str(p.relative_to(ROOT)) for p in component_sources}
     cached_sources = pys.runtime_ir.__globals__["COMPILER_SOURCES"]
     missing = actual_sources - set(cached_sources)

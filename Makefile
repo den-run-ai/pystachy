@@ -2,7 +2,7 @@
 # itself (stage 2) and must reproduce its own LLVM IR byte for byte (fixed point).
 PY ?= $(shell command -v python3.13 || command -v python3)
 export PYSTACHY_LLVM ?= $(shell $(PY) -c 'import pystachy; print(pystachy.llvm_dir())')
-COMPILER_SOURCES := pystachy.py $(wildcard src/*.py src/pystachy_compiler/*.py)
+COMPILER_SOURCES := pystachy.py lib/_pystachy_cache.py $(wildcard src/*.py src/pystachy_compiler/*.py)
 
 pystachy: $(COMPILER_SOURCES) runtime.c runtime.py $(wildcard ryu/*.c ryu/*.h mpz/*.c)
 	mkdir -p build

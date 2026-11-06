@@ -39,6 +39,7 @@
 #endif
 #ifdef __linux__
 #include <sys/auxv.h>
+#include <sys/file.h>
 #endif
 #include <time.h>
 #include <unistd.h>
@@ -6946,6 +6947,67 @@ _Noreturn void pys_execv(Str *path, List *args) {   /* os.execv: the process bec
   execv(path->s, v);
   ioerr(errno);
 }
+/* Private native-program cache primitive: no wait and no diagnostics. FD9
+   changes only after the new lock is acquired, and exec releases it atomically. */
+I pys_cache_lock(Str *path) {
+#ifdef __linux__
+  if (nul(path)) return -1;
+  int fd = open(path->s, O_RDONLY | O_CLOEXEC | O_NOFOLLOW | O_NONBLOCK);
+  if (fd < 0) return -1;
+  struct stat st;
+  if (fstat(fd, &st) || !S_ISREG(st.st_mode) || st.st_uid != geteuid()) {
+    close(fd); return -1;
+  }
+  if (flock(fd, LOCK_EX | LOCK_NB)) {
+    int saved = errno; close(fd);
+    return saved == EWOULDBLOCK || saved == EAGAIN ? 0 : -1;
+  }
+  if (fd != 9 && dup2(fd, 9) < 0) { close(fd); return -1; }
+  if (fcntl(9, F_SETFD, FD_CLOEXEC) < 0) {
+    if (fd != 9) close(fd);
+    close(9); return -1;
+  }
+  if (fd != 9) close(fd);
+  return 1;
+#else
+  (void)path;
+  return -1;
+#endif
+}
+/* Private cache helper: FNV-1a over raw file bytes, matching the compiler's
+   Latin-1 loop exactly. Failures return an empty string so callers can miss. */
+Str *pys_cache_file_hash(Str *path, I limit) {
+  if (nul(path) || limit < 0) return cstr("");
+  int fd;
+  do fd = open(path->s, O_RDONLY | O_NONBLOCK | O_CLOEXEC);
+  while (fd < 0 && errno == EINTR);
+  if (fd < 0) return cstr("");
+  struct stat st;
+  int ok = !fstat(fd, &st) && S_ISREG(st.st_mode) && st.st_size >= 0
+    && (uint64_t)st.st_size <= (uint64_t)limit;
+  uint64_t hash = UINT64_C(0xcbf29ce484222325), total = 0;
+  unsigned char bytes[16384];
+  while (ok) {
+    ssize_t n;
+    do n = read(fd, bytes, sizeof bytes); while (n < 0 && errno == EINTR);
+    if (n < 0) { ok = 0; break; }
+    if (!n) break;
+    if ((uint64_t)n > (uint64_t)limit - total) { ok = 0; break; }
+    total += (uint64_t)n;
+    for (ssize_t i = 0; i < n; ++i)
+      hash = (hash ^ bytes[i]) * UINT64_C(0x100000001b3);
+  }
+  if (close(fd)) ok = 0;
+  if (!ok) return cstr("");
+  char text[17];
+  for (int i = 15; i >= 0; --i) {
+    text[i] = "0123456789abcdef"[hash & 15];
+    hash >>= 4;
+  }
+  text[16] = 0;
+  return cstr(text);
+}
+
 I pys_getpid(void) { return getpid(); }
 Str *pys_getcwd(void) {          /* os.getcwd(): CPython's posix_getcwd(), whose buffer grows by 1024 bytes while getcwd() fails with ERANGE */
   size_t size = 1024;

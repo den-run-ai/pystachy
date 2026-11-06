@@ -58,7 +58,8 @@ changes ctime; source checks independently read the contents.
 The checked toolchain identity also keys the runtime object. A changed header or
 search candidate cannot create a new program entry backed by an older runtime.
 Large static files use the optional `/usr/bin/sha256sum` fast path; an unavailable
-helper falls back to the bounded in-process hash. Source contents are always read.
+helper falls back to the bounded in-process hash. Native executable checksums
+stream bytes directly through the same checksum algorithm. Source contents are always read.
 
 Only a private cache owned by the current user is accepted. Manifests and
 executables are checksummed, and complete artifacts are published before their
@@ -79,7 +80,9 @@ Kernel locks deduplicate concurrent compilation of the same context. There are
 Waiting is limited to 30 seconds, then the waiting command compiles normally.
 A killed compiler releases its lock automatically. Later accesses reclaim its
 incomplete staging, while eviction skips active entries. Each launch executes
-the program independently after opening its validated executable.
+the program independently after opening its validated executable. Native lock
+acquisition stays in the current process; the kernel closes the lock descriptor
+when it executes the already opened program.
 
 The cache is local and private. Tool wrappers must declare all additional inputs
 with `PYSTACHY_PROGRAM_CACHE_INPUTS`; the compiler cannot infer arbitrary wrapper

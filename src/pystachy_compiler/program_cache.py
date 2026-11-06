@@ -12,6 +12,14 @@ import tempfile
 import time
 from src.pystachy_compiler.diagnostics import RAW
 from src.pystachy_compiler import cache_toolchain
+try:
+    # Shipped native-only primitives; CPython uses the bounded reference loops.
+    from _pystachy_cache import NATIVE, file_hash as native_file_hash  # type: ignore[import-not-found]
+except ImportError:
+    NATIVE = False
+
+    def native_file_hash(path: str, limit: int) -> str:
+        return ""
 
 
 MAGIC = "pystachy-program-cache-2\n"
@@ -111,6 +119,8 @@ def _read(path: str, limit: int, encoding: str) -> tuple[bool, str]:
 
 
 def _file_hash(path: str) -> str:
+    if NATIVE:
+        return native_file_hash(path, MAX_BINARY)
     # LLVM shared libraries can exceed 100 MiB. Hash in bounded chunks without
     # keeping another complete copy in the compiler's heap.
     try:
@@ -588,10 +598,14 @@ def _prune(root: str, key: str, held: str, stage: str) -> bool:
 
 
 def lookup(cache_root: str, context: str) -> str:
-    root = ""
+    return lookup_in(_cache_dir(cache_root), context)
+
+
+def lookup_in(root: str, context: str) -> str:
+    # The launch layer admits this private directory once, before acquiring its
+    # bucket. Direct callers use lookup() to perform the same admission check.
     hit = ""
     try:
-        root = _cache_dir(cache_root)
         if root == "":
             return ""
         key = fnv(context)

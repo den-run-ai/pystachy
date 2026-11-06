@@ -63,6 +63,7 @@ class EligibilityTests(unittest.TestCase):
         self.stack.enter_context(patch.object(cached_run, "PLATFORM", "linux"))
         self.native = self.stack.enter_context(patch.object(cached_run, "native_compiler", return_value=True))
         self.stack.enter_context(patch.object(cached_run, "declared_tools", return_value=True))
+        self.admit = self.stack.enter_context(patch.object(cached_run.pc, "_cache_dir", return_value="/private/cache/program-v2"))
         self.acquire = self.stack.enter_context(patch.object(cached_run, "acquire", return_value=True))
         self.layout = self.stack.enter_context(patch.object(cached_run.cache_toolchain, "capture", return_value={"/headers": "record"}))
         self.stack.enter_context(patch.object(cached_run.pc, "track_layout"))
@@ -75,7 +76,7 @@ class EligibilityTests(unittest.TestCase):
         self.read = self.stack.enter_context(patch.object(cached_run, "read_raw", return_value="vendor_id: test\nflags: one two\n"))
         self.stop = self.stack.enter_context(patch.object(cached_run.pc, "stop"))
         self.start = self.stack.enter_context(patch.object(cached_run.pc, "start"))
-        self.lookup = self.stack.enter_context(patch.object(cached_run.pc, "lookup", return_value="/cache/native.exe"))
+        self.lookup = self.stack.enter_context(patch.object(cached_run.pc, "lookup_in", return_value="/cache/native.exe"))
         self.inputs = self.stack.enter_context(patch.object(cached_run, "tool_inputs", return_value=True))
         self.trace = self.stack.enter_context(patch.object(cached_run, "trace"))
 
@@ -139,6 +140,9 @@ class EligibilityTests(unittest.TestCase):
         self.inputs.assert_not_called()
         self.layout.assert_not_called()
         self.trace.assert_called_once_with("hit")
+        self.admit.assert_called_once_with("/private/cache")
+        self.acquire.assert_called_once_with("/private/cache/program-v2", context)
+        self.lookup.assert_called_once_with("/private/cache/program-v2", context)
 
     def test_miss_collects_actual_inputs_and_collection_failure_bypasses(self):
         self.lookup.return_value = ""
@@ -169,6 +173,46 @@ class EligibilityTests(unittest.TestCase):
                            ("PYSTACHY_PATH", "/new/imports"), ("PATH", "/different/tools")]:
             with self.subTest(key=key), patch.dict(os.environ, {key: value}):
                 self.assertNotEqual(baseline, self.prepare()[1])
+
+
+class NativeLockTests(unittest.TestCase):
+    def setUp(self):
+        self.stack = ExitStack()
+        self.addCleanup(self.stack.close)
+        self.stack.enter_context(patch.object(cached_run, "NATIVE", True))
+        self.bucket = self.stack.enter_context(patch.object(cached_run.pc, "_bucket_lock", return_value="/cache/lock-aa"))
+        self.lock = self.stack.enter_context(patch.object(cached_run, "try_lock", return_value=1))
+        self.sleep = self.stack.enter_context(patch.object(cached_run.time, "sleep"))
+        self.clock = self.stack.enter_context(patch.object(cached_run.time, "monotonic"))
+        self.stack.enter_context(patch.object(cached_run.pc, "_sh", side_effect=AssertionError("unexpected shell")))
+        self.stack.enter_context(patch.object(cached_run.os, "execv", side_effect=AssertionError("unexpected restart")))
+
+    def test_uncontended_native_lock_needs_no_restart_or_wait(self):
+        self.assertTrue(cached_run.acquire("/cache", "context"))
+        self.lock.assert_called_once_with("/cache/lock-aa")
+        self.sleep.assert_not_called()
+        self.clock.assert_not_called()
+
+    def test_busy_native_lock_waits_for_the_existing_writer(self):
+        self.lock.side_effect = [0, 0, 1]
+        self.clock.side_effect = [0.0, 0.0, 1.0]
+        self.assertTrue(cached_run.acquire("/cache", "context"))
+        self.assertEqual(self.lock.call_count, 3)
+        self.assertEqual(self.sleep.call_count, 2)
+
+    def test_timeout_and_unusable_lock_bypass_without_restart(self):
+        self.lock.return_value = 0
+        self.clock.side_effect = [0.0, 31.0]
+        self.assertFalse(cached_run.acquire("/cache", "context"))
+        self.sleep.assert_not_called()
+        self.lock.return_value = -1
+        self.clock.reset_mock(side_effect=True)
+        self.assertFalse(cached_run.acquire("/cache", "context"))
+        self.clock.assert_not_called()
+        self.bucket.return_value = ""
+        self.lock.reset_mock()
+        self.assertFalse(cached_run.acquire("/cache", "context"))
+        self.lock.assert_not_called()
 
 
 class ProcessTests(unittest.TestCase):
@@ -214,6 +258,14 @@ class ProcessTests(unittest.TestCase):
                     self.assertEqual(os.environ["PYSTACHY_PROGRAM_CACHE_LOCK"], "bypass")
                     self.assertNotIn("PYSTACHY_GC_STRESS", os.environ)
                 execute.assert_called_with(retry[0], retry)
+
+    def test_native_execution_leaves_unlock_to_close_on_exec(self):
+        with patch.object(cached_run, "NATIVE", True), \
+                patch.object(cached_run.pc, "_sh", side_effect=AssertionError("unexpected shell")), \
+                patch.object(cached_run.os, "execv") as execute:
+            cached_run.execute("/usr/bin/printf", "source.py", ["argument"])
+        self.assertTrue(execute.call_args.args[0].startswith("/proc/self/fd/"))
+        self.assertEqual(execute.call_args.args[1], ["source.py", "argument"])
 
 
 if __name__ == "__main__":

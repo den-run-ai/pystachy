@@ -1024,6 +1024,7 @@ RUNTIME: dict[str, str] = {
     "platform": "str:|A|", "errno": "int:str|R A|", "system": "int:str|R I|", "execv": "None:str,list[str]|R N A I rL|", "getpid": "int:|I|", "getcwd": "str:|R A I|", "exists": "bool:str|I|",
     "path_join": "str:str,str|A|", "realpath": "str:str|R A I|", "getenv": "opt[str]:str,opt[str]|R A I|", "remove": "None:str|R A I|", "rmdir": "None:str|R A I|",
     "environ_set": "None:str,str|R A I|", "environ_pop": "str:str,str|R A I|",
+    "cache_lock": "int:str|I|", "cache_file_hash": "str:str,int|A I|",
     "listdir": "list[str]:str|R A I|", "listdir_cwd": "list[str]:|R A I|", "mkdir": "None:str,int|R A I|", "mkdir_default": "None:str|R A I|",
     "rename": "None:str,str|R A I|", "replace": "None:str,str|R A I|", "isdir": "bool:str|I|", "isfile": "bool:str|I|",
     "islink": "bool:str|I|", "lexists": "bool:str|I|", "samefile": "bool:str,str|R A I|", "stat_mode": "int:str,int|R A I|",

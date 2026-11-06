@@ -167,6 +167,19 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         self.err(GALIASUSE if name == GALIAS else TYPESUSE.replace("NAME", name[len(TYPESMOD) + 1 :]))
     if name == "ffi.at":
         self.err("ffi.at(xs, k) passes a list from an index to C: it is only an argument of a call of an @extern function, for a list[float] or list[ffi.c_int64] parameter")
+    if name == "__pys_cache_lock":
+        if (self.curfn.mod != "_pystachy_cache" or not lib_source(self.curfn.node.line, self.libdir, "_pystachy_cache.py") or
+                len(args) != 1 or any([a.kind in ["kw", "starred", "dstar"] for a in args])):
+            self.err(f"name '{name}' is not defined")
+        path = self.coerce(self.expr(args[0], "str"), "str")
+        return Val(self.rt("pys_cache_lock", "i64", [f"ptr {path.v}"]), "int")
+    if name == "__pys_cache_file_hash":
+        if (self.curfn.mod != "_pystachy_cache" or not lib_source(self.curfn.node.line, self.libdir, "_pystachy_cache.py") or
+                len(args) != 2 or any([a.kind in ["kw", "starred", "dstar"] for a in args])):
+            self.err(f"name '{name}' is not defined")
+        path = self.coerce(self.expr(args[0], "str"), "str")
+        limit = self.as_int(self.expr(args[1], "int"))
+        return Val(self.rt("pys_cache_file_hash", "ptr", [f"ptr {path.v}", f"i64 {limit.v}"]), "str")
     if name == "__pys_thread_stack_valid":
         if (self.curfn.mod != "_thread" or not lib_source(self.curfn.node.line, self.libdir, "_pystachy_thread.py") or
                 len(args) != 1 or any([a.kind in ["kw", "starred", "dstar"] for a in args])):

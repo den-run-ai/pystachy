@@ -3,8 +3,16 @@ from __future__ import annotations
 import os
 import sys
 import tempfile
+import time
 from src.pystachy_compiler import cache_toolchain, program_cache as pc
 from src.pystachy_compiler.specs import PLATFORM
+try:
+    from _pystachy_cache import NATIVE, try_lock  # type: ignore[import-not-found]
+except ImportError:
+    NATIVE = False
+
+    def try_lock(path: str) -> int:
+        return -1
 
 
 # These can add unrecorded compiler/linker inputs. Ordinary program environment
@@ -47,13 +55,28 @@ def native_compiler(me: str) -> bool:
         return False
 
 
-def acquire(cache_root: str, context: str) -> bool:
+def acquire(program_root: str, context: str) -> bool:
     # A bounded set of permanent flock files avoids both stale PID ownership
     # and unlinking a lock while another process is waiting on its inode.
-    lock = pc.lock_path(cache_root, context)
-    if lock == "" or not os.path.isfile("/usr/bin/flock"):
+    # program_root has already passed the private-directory admission check.
+    bucket = pc.fnv(context)[:2]
+    lock = pc._bucket_lock(program_root, bucket)
+    if lock == "":
         return False
-    if pc.lock_held(cache_root, context):
+    if NATIVE:
+        result = try_lock(lock)
+        if result != 0:
+            return result == 1
+        deadline = time.monotonic() + 30.0
+        while time.monotonic() < deadline:
+            time.sleep(0.01)
+            result = try_lock(lock)
+            if result != 0:
+                return result == 1
+        return False
+    if not os.path.isfile("/usr/bin/flock"):
+        return False
+    if pc._holds_bucket(program_root, bucket):
         # The inherited descriptor and real kernel lock establish ownership;
         # no successful-launch marker needs to enter the program environment.
         return pc._sh("/usr/bin/flock -n 9")
@@ -206,10 +229,11 @@ def prepare(cmd: str, source: str, me: str, home: str, dirs: list[str], llvm: st
         # Length delimiters keep arbitrary source/import path spelling distinct.
         context = "".join([str(len(x)) + ":" + x for x in fields])
         root = os.getenv("PYSTACHY_CACHE", "") or home + "/build"
-        if not acquire(root, context):
+        program_root = pc._cache_dir(root)
+        if program_root == "" or not acquire(program_root, context):
             trace("bypass cache lock unavailable")
             return ("", "", "")
-        hit = pc.lookup(root, context)
+        hit = pc.lookup_in(program_root, context)
         if hit != "":
             trace("hit")
             return (root, context, hit)
@@ -265,7 +289,10 @@ def execute(executable: str, source: str, args: list[str]) -> None:
     try:
         f = open(executable, "r", encoding="latin-1", newline="")
         try:
-            pc._sh("/usr/bin/flock -u 9")
+            # Native acquisition marks FD9 close-on-exec. The kernel opens the
+            # pinned ELF before closing that lock, with no child launch needed.
+            if not NATIVE:
+                pc._sh("/usr/bin/flock -u 9")
             os.environ.pop("PYSTACHY_PROGRAM_CACHE_LOCK", "")
             if stress != "":
                 os.environ.__setitem__("PYSTACHY_GC_STRESS", stress)
