@@ -1,9 +1,11 @@
 """Explicit research overlay for mypyc's erased generic compiler receivers.
 
 This changes only the prepared host, never the benchmark's frozen source input.
-TYPE_CHECKING avoids runtime import cycles. Three casts express existing branch
-invariants; typing.cast returns its argument unchanged. The overlay is not a
-proposal to introduce circular compiler dependencies into Pystachy's source.
+TYPE_CHECKING avoids runtime import cycles. Its else branch aliases Gen to Any,
+which keeps Pystachy's existing call-site specialization while mypyc sees the real
+receiver class. Three casts express existing branch invariants; typing.cast
+returns its argument unchanged. This is a host-preparation overlay, not a compiler
+algorithm change.
 """
 from __future__ import annotations
 
@@ -35,7 +37,8 @@ def apply(work: Path):
             raise RuntimeError(f"missing postponed annotations in {path}")
         cast = ", cast" if path.stem in ("structs", "exceptions") else ""
         text = text.replace(needle, needle + f"from typing import TYPE_CHECKING{cast}\n"
-                            "if TYPE_CHECKING:\n    from src.pystachy_compiler.gen import Gen\n", 1)
+                            "if TYPE_CHECKING:\n    from src.pystachy_compiler.gen import Gen\n"
+                            "else:\n    from typing import Any as Gen\n", 1)
         replacements = {
             "structs": [("parse_struct(c.s)", "parse_struct(cast(Node, c).s)"),
                         ('b = self.expr(buf, "bytes")', 'b = self.expr(cast(Node, buf), "bytes")')],
