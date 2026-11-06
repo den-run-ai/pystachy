@@ -79,6 +79,10 @@ public headers and library. Those identities are also embedded in the generated
 runtime bytes so the existing runtime-cache key changes with the dependency.
 Keep the source checkout and dependency unchanged while building and testing.
 Record the compiler executable and toolchain identities separately.
+The output path is resolved before the containment check, including symlinked
+ancestors; existing directories and dangling output symlinks are rejected.
+`test_bdwgc_overlay.py` checks those cases using temporary files and placeholder
+dependency metadata, without a compiler or installed collector.
 
 Use the manifest's `PYSTACHY_HOME`, `PYSTACHY_CACHE`, and `PYSTACHY_CFLAGS` values
 when building. Do not use `pystachy run`: build AOT executables and launch them in
@@ -95,6 +99,12 @@ is needed by the final AOT link.
 `GC_TIME_UNLIMITED`, selecting the generational component without incremental
 pause budgeting as documented in `gc.h`. These are single-mutator configurations,
 not concurrent mutator execution.
+
+Before initialization, the adapter calls `GC_set_manual_vdb_allowed(0)`. Some
+BDWGC builds default to manual dirty-page tracking, which requires write barriers
+that Pystachy does not emit. Incremental/generational requests must instead enable
+automatic tracking; a disabled or unavailable incremental facility is rejected.
+Libraries built without the required public configuration APIs fail to link.
 
 The initial automatic incremental selection emitted an upstream warning that
 opening `/proc/self/pagemap` or `/proc/self/clear_refs` failed. Although the API
@@ -137,6 +147,8 @@ only as an observation mechanism for the C probe; Pystachy's language weak-refer
 API remains unsupported. Allocation and mutation happen in separate stack frames
 from the garbage churn. The probe enters through ordinary `pys_init` to exercise
 AOT signal setup as well as collector initialization.
+The probe first permits manual tracking to simulate a `MANUAL_VDB` build's default,
+then asserts that the adapter disables it during initialization.
 
 Build it with the same compiler, LLVM and library used for the application variants:
 
@@ -157,7 +169,7 @@ Success prints `bdwgc contract ok`. Arguments `weakref`, `file`, `track`, and
 native-only pacing, and JIT configuration must also reject. Probe results are
 correctness evidence, not a realistic workload score or full runtime verification.
 
-The [recorded 2026-11-06 checks](results/2026-11-06/bdwgc-contract.json) used LLVM
+The [initial 2026-11-06 checks](results/2026-11-06/bdwgc-contract.json) used LLVM
 18.1.3 and the pinned static library. Default, default with a 32 MiB initial heap,
 default under forced collection stress, explicit page-protection incremental and
 explicit page-protection generational configurations all passed. The two automatic
@@ -167,6 +179,23 @@ protection=1 and one marker, without the soft-dirty capability warnings. This
 establishes the tested AOT contract for these modes; it does not establish their
 performance on application workloads. The fresh runtime.py IR, compiler binary,
 source files, probe binary and dependency identities accompany the result.
+These initial results retain their original source identities and are superseded
+for the adapter by the manual-tracking safety update; they are not rewritten.
+
+The [post-review manual-VDB checks](results/2026-11-06/bdwgc-contract-manual-vdb.json)
+rebuild the overlay and probe with the guard above. Default, 32 MiB initial heap,
+explicit page-protection incremental and explicit page-protection generational
+modes pass with the simulated manual-enabled precondition. Both automatic
+soft-dirty selections reject with status 78, as do two negative controls that
+set `GC_DISABLE_INCREMENTAL=1`. Fresh runtime.py IR is byte-identical to the
+previous probe's IR. These checks use the following identities; the result also
+records compiler, dependency, full source, manifest and build-command identities.
+
+| Input/output | SHA-256 |
+|---|---|
+| Adapter source | `da765410982de0083f820d38bb2bd635898aea0e94cbe65f6cc4372ba665b546` |
+| Generated runtime | `03649f06d682e1374184bd7ddecf04e1b16c8169d1ebff1bb53e9b383d4f5d50` |
+| Probe executable | `9c543262dc077d96318c20c2f929210099aa2008edc9139234b0db9488a3d26d` |
 
 ## Why BDWGC first; requirements for broader bindings
 

@@ -85,6 +85,10 @@ static void bdw_init(char *sb, I **roots, I nroots) {
   bdw_previous_warn = GC_get_warn_proc();
   GC_set_warn_proc(bdw_warn);
   GC_set_all_interior_pointers(1);
+  /* Pystachy emits no dirty-object barriers. Some BDWGC builds default to
+     manual VDB, which requires them. Disable it before GC_INIT can enable
+     incremental collection, and require automatic tracking below. */
+  GC_set_manual_vdb_allowed(0);
   GC_set_markers_count(1);             /* one marker, including the mutator */
   GC_set_on_heap_resize(bdw_resize);
   GC_set_on_collection_event(bdw_event);
@@ -99,7 +103,7 @@ static void bdw_init(char *sb, I **roots, I nroots) {
     if (gc_off) bdw_unsupported("GC=off combined with incremental/generational mode");
     if (!strcmp(bdw_mode, "generational")) GC_set_time_limit(GC_TIME_UNLIMITED);
     GC_enable_incremental();
-    if (!GC_is_incremental_mode()) bdw_unsupported("incremental mode on this BDWGC build");
+    if (!GC_is_incremental_mode()) bdw_unsupported("automatic incremental tracking on this BDWGC build");
   }
   if (gc_off) GC_disable();
 }

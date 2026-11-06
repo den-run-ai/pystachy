@@ -123,7 +123,11 @@ int main(int argc, char **argv) {
   test_root = calloc(2, sizeof *test_root);
   assert(test_root);
   I *roots[2] = {test_root, test_root + 1};
+  /* Simulate the default of a MANUAL_VDB build: the adapter must override
+     it before initialization because generated code does not emit barriers. */
+  GC_set_manual_vdb_allowed(1);
   pys_init(argc, argv, __builtin_frame_address(0), roots, 2);
+  assert(!GC_get_manual_vdb_allowed());
   if (argc > 1) {
     if (!strcmp(argv[1], "weakref")) pys_weakref_new(NULL, NULL);
     if (!strcmp(argv[1], "file")) pys_open(NULL, NULL, NULL, NULL, 0);
