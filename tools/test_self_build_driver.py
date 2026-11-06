@@ -5,12 +5,14 @@ directory to exercise real builds, links, failure and exact IR witnesses. The
 default producer is hosted; PYSTACHY_TEST_COMPILER selects a native executable.
 """
 import contextlib
+import hashlib
 import io
 import os
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from unittest.mock import patch
 
@@ -220,6 +222,8 @@ class RealBuilds(unittest.TestCase):
                                PYSTACHY_CACHE=str(root / "cache"), PYSTACHY_TIMING="1")
             native = os.environ.get("PYSTACHY_TEST_COMPILER")
             command = [native] if native else [sys.executable, str(ROOT / "pystachy.py")]
+            # Runtime cache publication requires settled compiler/tool inputs.
+            time.sleep(2.05)
             cache_entries = None
             programs = (("plain", "print(42)\n", b"42\n"),
                         ("allocated", "class Cell:\n    def __init__(self, n: int):\n        self.n = n\n"
@@ -231,24 +235,44 @@ class RealBuilds(unittest.TestCase):
                 source.write_text(program)
                 expected_ir = subprocess.run([*command, "ir", str(source)], cwd=ROOT, env=environment,
                                              capture_output=True, check=True).stdout
-                for threshold in ("0", "75"):
-                    output = root / (label + "-" + threshold)
+                default_binary = None
+                for policy, threshold in (("unset", None), ("empty", ""), ("0", "0"), ("75", "75")):
+                    output = root / (label + "-" + policy)
                     witness = output.with_suffix(".ll")
-                    with self.subTest(program=label, threshold=threshold):
-                        env = dict(environment, PYSTACHY_AOT_INLINE_THRESHOLD=threshold)
+                    with self.subTest(program=label, policy=policy):
+                        env = dict(environment)
+                        if threshold is not None:
+                            env["PYSTACHY_AOT_INLINE_THRESHOLD"] = threshold
                         result = subprocess.run([*command, "build", str(source), "-o", str(output),
                                                  "--emit-ir", str(witness)], cwd=ROOT, env=env,
                                                 capture_output=True, timeout=120)
                         self.assertEqual(result.returncode, 0, result.stderr.decode())
                         self.assertEqual(witness.read_bytes(), expected_ir)
+                        if threshold is None:
+                            default_binary = output.read_bytes()
+                        elif threshold == "":
+                            self.assertEqual(output.read_bytes(), default_binary)
                         for stress in ("", "1"):
                             self.assertEqual(subprocess.check_output([str(output)],
-                                env=dict(environment, PYSTACHY_GC_STRESS=stress)), expected_stdout)
+                                env=dict(environment, PYSTACHY_GC_STRESS=stress), timeout=30), expected_stdout)
                         self.assertEqual(b"program.late_inline" in result.stderr, label == "allocated")
-                        current_cache = {p.name for p in (root / "cache").glob("runtime-py-*.bc")}
+                        timings = {line.split(b"\t")[1] for line in result.stderr.splitlines()
+                                   if line.startswith(b"pystachy-timing\t")}
+                        self.assertIn(b"runtime.cache_lookup", timings)
+                        current_cache = {}
+                        for path in (root / "cache").glob("runtime-py-*"):
+                            if path.is_file():
+                                stat = path.stat()
+                                current_cache[path.name] = (hashlib.sha256(path.read_bytes()).hexdigest(),
+                                                            stat.st_ino, stat.st_mtime_ns)
                         self.assertTrue(current_cache)
-                        if cache_entries is not None:
+                        if cache_entries is None:
+                            self.assertIn(b"runtime.frontend", timings)
+                            self.assertIn(b"runtime.llvm_optimize", timings)
+                        else:
                             self.assertEqual(current_cache, cache_entries)
+                            self.assertEqual({name for name in timings if name.startswith(b"runtime.")},
+                                             {b"runtime.cache_lookup"})
                         cache_entries = current_cache
 
     def test_tiers_preserve_raw_ir_and_failed_build_does_not_publish(self):
