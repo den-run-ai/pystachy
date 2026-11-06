@@ -259,6 +259,35 @@ skipped and zero failed. The skip is the wrong-owner cache fixture: changing its
 owner to UID 1 fails with `EINVAL` in this user namespace, so that ownership
 scenario could not be exercised here. The skip is not counted as a pass.
 
+### Release smoke environment regression
+
+The first CI attempt on `1a33fcf1b1a0f0b7d0399638adda96a799a3479e`
+found a fixture mismatch in the
+[Linux distribution job](https://github.com/den-run-ai/pystachy/actions/runs/42307710748/job/128204385097).
+GitHub's Python setup exports `LD_LIBRARY_PATH`. The native cache correctly
+bypassed that custom loader environment, and the program produced the expected
+output with exit status zero, but the smoke check required a cache fill.
+
+Commit `ca2a2828f5648a0f0f5bba23333d58d11b8a555c` changes only the release
+smoke helper and its tests. Its cache-specific invocation copies the supplied
+environment and removes the compiler's 19 custom build/loader inputs. The
+CPython reference run, other release checks, ordinary program variables and the
+caller's dictionary retain their environment. The compiler's bypass policy and
+all measured compiler/runtime/library sources are unchanged.
+
+The original smoke script was reproduced locally with inherited
+`LD_LIBRARY_PATH` and failed with the same bypass trace. Under that same
+condition, the corrected script passed the complete relocated release smoke:
+version checks, default fill/hit, normal and GC-stressed JIT/AOT, and ordinary
+warm-runtime reuse. All 50 release-related unit tests and Ruff passed. The new
+subprocess regression checks the complete compiler build-environment list,
+fresh ordinary values, preservation of empty values, caller immutability and
+continued rejection of bypass traces. The
+[validation bundle](2026-11-06-program-cache-default-validation.json) retains
+the negative and corrected run logs, commands and correction identity. CI must
+still pass on the final reviewed head; the earlier failed attempt is not
+relabelled as successful.
+
 ### IR comparison
 
 The IR comparison used a common `PYSTACHY_HOME` only after verifying that all 90

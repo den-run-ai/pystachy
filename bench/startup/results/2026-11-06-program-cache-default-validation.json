@@ -5022,5 +5022,42 @@
   "published_head_ci": {
     "status": "Separate required gate; not claimed by this local evidence bundle.",
     "checks_url": "https://github.com/den-run-ai/pystachy/pull/1103/checks"
+  },
+  "ci_release_environment_regression": {
+    "initial_head": "1a33fcf1b1a0f0b7d0399638adda96a799a3479e",
+    "initial_run": 42307710748,
+    "failed_job": 128204385097,
+    "failed_job_url": "https://github.com/den-run-ai/pystachy/actions/runs/42307710748/job/128204385097",
+    "cause": "setup-python LD_LIBRARY_PATH triggers the correct custom-build-environment cache bypass; smoke expected fill",
+    "correction_commit": "ca2a2828f5648a0f0f5bba23333d58d11b8a555c",
+    "correction_tree": "75ace0e5ff87cefdeb495bf46e091cd6242edb7a",
+    "changed_files": [
+      "tools/release_smoke.py",
+      "tools/test_release.py"
+    ],
+    "compiler_runtime_library_sources_unchanged": true,
+    "inherited_environment": {
+      "LD_LIBRARY_PATH": "/workspace/scratch/e98dc1e3e6cd/dev/lib"
+    },
+    "negative_exit_code": 1,
+    "corrected_exit_code": 0,
+    "release_unit_tests": 50,
+    "ruff": "passed",
+    "negative_script_source": "git show 1a33fcf1b1a0f0b7d0399638adda96a799a3479e:tools/release_smoke.py",
+    "positive_command": "LD_LIBRARY_PATH=/workspace/scratch/e98dc1e3e6cd/dev/lib /workspace/scratch/e98dc1e3e6cd/dev/bin/python tools/release_smoke.py /workspace/scratch/b766795aa447/default-release/pystachy-native-cache-default-test-linux-x86_64.tar.gz --llvm /workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin",
+    "logs": {
+      "default-release-env-negative.log": {
+        "text": "release smoke: release default program-cache fill failed: exit 0\napi\nworker\napi\nother\nother\nCacheInfo(hits=2, misses=3, maxsize=2, currsize=2)\ninner finally\nValueError caught\nouter finally\nstat 11 True True True True\nfile 'alpha\\nbeta\\n'\nremoved True\n{\"n\": [3, 2.5, null, true], \"tags\": [\"\\u03b1\", \"\\ud83d\\ude00\"], \"word\": \"caf\\u00e9\"}\nTrue {\"word\":\"caf\u00e9\",\"tags\":[\"\u03b1\",\"\ud83d\ude00\"],\"n\":[3,2.5,null,true]}\n12 \ud83d\ude00 caf\u00e9 8 \u00e9fac \ud83d\ude00 ev\u00efan\npystachy program cache: bypass custom build environment\n\npystachy native-cache-default-test (commit e3b1b3a8d4ee810cb8215fd986f9e83526f71dba): native and installed --version, without LLVM or Python\n",
+        "sha256": "b24221ea21ff2acc9bc1161af461ca585458b81122c76bfca4878db6fc57d3ca"
+      },
+      "default-release-env-fixed.log": {
+        "text": "pystachy native-cache-default-test (commit e3b1b3a8d4ee810cb8215fd986f9e83526f71dba): native and installed --version, without LLVM or Python\nrelocated release default cache: fill and hit match CPython; hit skips the frontend\nrelocated release JIT/AOT: CPython output matches\nrelocated release JIT/AOT with GC stress: CPython output matches\nrelocated release warm JIT: CPython output matches, cached runtime reused\nrelease native-cache-default-test linux-x86_64: Python-free PATH, read-only resources, external cache\n",
+        "sha256": "5689baff569b14eb0669d662f55398e212217fa72a92a4d5573f81fd57cdba81"
+      },
+      "default-release-env-units.log": {
+        "text": "..................................................\n----------------------------------------------------------------------\nRan 50 tests in 0.662s\n\nOK\nExisting Docker version matches both tested native images\nPublished namespace/pystachy:v0.1.0-alpha.4: linux/amd64 and linux/arm64\nPromoted v0.2.0: Docker and GitHub latest match commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nA newer stable version is already latest; nothing to change\n",
+        "sha256": "0db7b34a4fb24e79bd104bbb2392e7190aeb32d708d58087a49a5c6fdb153e0a"
+      }
+    }
   }
 }
