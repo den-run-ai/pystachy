@@ -1,4 +1,4 @@
-"""Interleave complete bootstraps while changing only the temporary build policy.
+"""Interleave complete bootstraps while changing LLVM build policies.
 
 Every run builds two compilers and verifies three compiler and three runtime IR
 witnesses. Runtime caches are fresh; the final compiler uses ordinary O2 unless split-both
@@ -82,6 +82,11 @@ def main():
             ir_hashes = {r["bootstrap"]["fixed_points"]["stage"]["sha256"][0] for r in report["runs"]}
             report["final_compiler_identical"] = len(final_hashes) == 1
             report["final_identity_required"] = "split-both" not in policies
+            ordinary_final_hashes = {
+                r["bootstrap"]["binaries"]["pystachy2"]["sha256"]
+                for r in report["runs"] if r["policy"] != "split-both"
+            }
+            report["ordinary_final_compilers_identical"] = len(ordinary_final_hashes) <= 1
             report["raw_compiler_ir_identical"] = len(ir_hashes) == 1
             report["source_unchanged"] = source == bootstrap.source_identity(root)
             report["summary"] = []
@@ -97,6 +102,7 @@ def main():
                     summary[key] = {"median": statistics.median(values), "min": min(values), "max": max(values)}
                 report["summary"].append(summary)
             report["complete"] = ((report["final_compiler_identical"] or not report["final_identity_required"])
+                                  and report["ordinary_final_compilers_identical"]
                                   and report["raw_compiler_ir_identical"] and report["source_unchanged"]
                                   and all(s["repeated_compilers_identical"] for s in report["summary"]))
     except BaseException as exc:
