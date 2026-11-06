@@ -88,7 +88,7 @@ jobs:
 
       - name: GC benchmark measurement controls
         run: |
-          python3 -m unittest discover -s bench/gc_locality -p test_run.py
+          python3 -m unittest discover -s bench/gc_locality -p 'test_*.py'
           python3 -m unittest discover -s bench/gc_application -p test_build.py
 
       - name: nanoGPT parity checker contract tests
