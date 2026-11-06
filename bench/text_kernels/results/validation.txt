@@ -1,0 +1,100 @@
+ruff check
+All checks passed!
+mypy --config-file mypy.ini
+Success: no issues found in 49 source files
+/workspace/scratch/c154e74884e5/venv/bin/python tools/check_repository_hygiene.py
+repository hygiene: tracked paths are clean
+/workspace/scratch/c154e74884e5/venv/bin/python -m unittest discover -s tools -p test_repository_hygiene.py
+...........
+----------------------------------------------------------------------
+Ran 11 tests in 0.189s
+
+OK
+/workspace/scratch/c154e74884e5/venv/bin/python -m unittest discover -s tools -p test_function_summaries.py
+.......
+----------------------------------------------------------------------
+Ran 7 tests in 0.045s
+
+OK
+/workspace/scratch/c154e74884e5/venv/bin/python -m unittest discover -s tools -p 'test_typed*.py'
+......................................................................................................................................................................................
+----------------------------------------------------------------------
+Ran 182 tests in 5.210s
+
+OK
+/workspace/scratch/c154e74884e5/venv/bin/python -m unittest discover -s tools -p 'test_json*.py'
+..................................
+----------------------------------------------------------------------
+Ran 34 tests in 0.955s
+
+OK
+/workspace/scratch/c154e74884e5/venv/bin/python -m unittest discover -s tools -p test_numeric_identity.py
+........................................................
+----------------------------------------------------------------------
+Ran 56 tests in 0.292s
+
+OK
+/workspace/scratch/c154e74884e5/venv/bin/python -m unittest discover -s tools -p test_identity_scope.py
+.................
+----------------------------------------------------------------------
+Ran 17 tests in 3.566s
+
+OK
+/workspace/scratch/c154e74884e5/venv/bin/python -m unittest discover -s tools -p test_dynany_comparisons.py
+..................................................
+----------------------------------------------------------------------
+Ran 50 tests in 6.708s
+
+OK
+/workspace/scratch/c154e74884e5/venv/bin/python -m unittest discover -s tools -p test_dynany_dict_kinds.py
+...
+----------------------------------------------------------------------
+Ran 3 tests in 0.006s
+
+OK
+/workspace/scratch/c154e74884e5/venv/bin/python -m unittest discover -s tools -p test_diagnostic_capture.py
+........
+----------------------------------------------------------------------
+Ran 8 tests in 0.096s
+
+OK
+/workspace/scratch/c154e74884e5/venv/bin/python -m unittest discover -s tools -p test_loader_preprocessing.py
+............
+----------------------------------------------------------------------
+Ran 12 tests in 0.010s
+
+OK
+/workspace/scratch/c154e74884e5/venv/bin/python -m unittest discover -s tools -p test_parser_allocations.py
+........
+----------------------------------------------------------------------
+Ran 8 tests in 0.006s
+
+OK
+/workspace/scratch/c154e74884e5/venv/bin/python -m unittest discover -s tools -p test_inspect_compiler.py
+......................
+----------------------------------------------------------------------
+Ran 22 tests in 4.561s
+
+OK
+/workspace/scratch/c154e74884e5/venv/bin/python -m unittest discover -s tools -p test_pystachy_toolchain.py
+..
+----------------------------------------------------------------------
+Ran 2 tests in 0.011s
+
+OK
+/workspace/scratch/c154e74884e5/venv/bin/python -m unittest discover -s tools -p test_text_kernels.py
+...
+----------------------------------------------------------------------
+Ran 3 tests in 0.000s
+
+OK
+/workspace/scratch/c154e74884e5/venv/bin/python tools/check_runtime.py
+644 RUNTIME entries, 70 exception classes: signatures, coverage and effects agree with runtime.c and runtime.py (172 functions, none of which reaches itself through a lowering or runtime.c), the classes with this Python
+/workspace/scratch/c154e74884e5/venv/bin/python tools/runtime_roots.py
+67 static pointer stores: 0 GC root problems
+shellcheck -s sh -S warning tests/cache.sh tests/corpus.sh tests/prepare_path.sh tests/record.sh tests/run.sh tests/verify.sh tests/ffi/run.sh tools/abi_check.sh tools/check_ir.sh tools/coverage.sh tools/docker_smoke.sh tools/irsame.sh tools/runtime_coverage.sh tools/setup.sh tools/shard_cases.sh tools/variants.sh bench/run.sh
+"/workspace/scratch/c154e74884e5/llvm-cache/ubuntu-18.1.3-1ubuntu1-amd64/bin/"clang -fsyntax-only -Wall -Wextra -Werror runtime.c tools/dictprobe.c tools/listprobe.c tools/eqprobe.c tools/fileprobe.c tools/selectprobe.c tools/weakrefprobe.c tools/boxprobe.c tools/unicodeprobe.c tools/bytescanprobe.c pyext.c pyembed.c
+"/workspace/scratch/c154e74884e5/llvm-cache/ubuntu-18.1.3-1ubuntu1-amd64/bin/"clang -fsyntax-only -Wall -Wextra -Werror -DPYX_ABI3T pyext.c
+the IR check and llvm-as accept the IR of 2 programs
+{"backend": "haswell-avx2", "adapter_sha256": "4456450d9c5456cca2d2842e7660a0211a8a8f89bd9f421e4e15f10801816984", "guard_page_cases": 36787, "lengths": 271, "max_length": 4096, "seed": 65530, "passed": true}
+{"backend": "serial", "adapter_sha256": "846502629a684be37c03060ad0002f56b424d62a053d25fe5e5028f46b7d1528", "guard_page_cases": 36787, "lengths": 271, "max_length": 4096, "seed": 65530, "passed": true}

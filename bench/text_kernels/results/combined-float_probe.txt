@@ -1,0 +1,7 @@
+floatprobe: 12.5, parser copy bytes=0, raw allocation requests=0, requested bytes=0
+floatprobe:   -0, parser copy bytes=0, raw allocation requests=0, requested bytes=0
+floatprobe: 12.5 	, parser copy bytes=5, raw allocation requests=1, requested bytes=68
+floatprobe: 1_2.5, parser copy bytes=5, raw allocation requests=1, requested bytes=6
+floatprobe: +InF, parser copy bytes=0, raw allocation requests=0, requested bytes=0
+floatprobe: 1e-9999, parser copy bytes=0, raw allocation requests=0, requested bytes=0
+floatprobe: 64 exact-terminator guard-page spans passed

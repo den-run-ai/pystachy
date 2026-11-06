@@ -1,0 +1,28 @@
+{
+  "native_backend": "haswell-avx2",
+  "callgrind_backend": "haswell-avx2",
+  "compiler_command": [
+    "/workspace/scratch/c154e74884e5/llvm-cache/ubuntu-18.1.3-1ubuntu1-amd64/bin/clang",
+    "-O2",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    "/workspace/scratch/3293b906db74/text-kernels/tools/text_kernels/backend_probe.c",
+    "-L/workspace/scratch/3293b906db74/text-kernels-run-2",
+    "-ltextkernels",
+    "-Wl,-rpath,/workspace/scratch/3293b906db74/text-kernels-run-2",
+    "-o",
+    "/workspace/scratch/3293b906db74/text-kernels-instructions/backend-probe"
+  ],
+  "callgrind_command": [
+    "/workspace/scratch/3293b906db74/profiling-tools/usr/bin/valgrind",
+    "--tool=callgrind",
+    "--error-exitcode=97",
+    "--callgrind-out-file=/workspace/scratch/3293b906db74/text-kernels-instructions/backend.callgrind",
+    "--log-file=/workspace/scratch/3293b906db74/text-kernels-instructions/backend.log",
+    "/workspace/scratch/3293b906db74/text-kernels-instructions/backend-probe"
+  ],
+  "source_sha256": "e469d766de7fbe9226edbea9667bf88ef6cf7ac926f79ba55865e5c8cadb0a2a",
+  "adapter_sha256": "4456450d9c5456cca2d2842e7660a0211a8a8f89bd9f421e4e15f10801816984",
+  "valgrind": "valgrind-3.22.0"
+}

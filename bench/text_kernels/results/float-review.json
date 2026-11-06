@@ -1,0 +1,16 @@
+{
+  "generator": "tools/text_kernels/generate_float_review.py",
+  "generator_sha256": "54863fdb8ae098f4fdd8db8bee7a43435cb5530c633b5385dc01b0f3e5a9391f",
+  "generated_program_sha256": "e63d17b9456ad5be1c237c6ef9dcb0ec4b6d9bd4f992e62aa038a477b817d269",
+  "seed": 710655582,
+  "case_count": 2281,
+  "expected_output_bytes": 90427,
+  "output_sha256": {
+    "cpython": "9fd24b184834dfe083085ca9134c058e51d083484d51eefb2fbf936ff7f247ae",
+    "base": "9fd24b184834dfe083085ca9134c058e51d083484d51eefb2fbf936ff7f247ae",
+    "span": "9fd24b184834dfe083085ca9134c058e51d083484d51eefb2fbf936ff7f247ae",
+    "span-jit": "9fd24b184834dfe083085ca9134c058e51d083484d51eefb2fbf936ff7f247ae",
+    "span-gc": "9fd24b184834dfe083085ca9134c058e51d083484d51eefb2fbf936ff7f247ae"
+  },
+  "note": "Independent review on the base and float-span implementation before the no-op GC_RAW_REQUEST accounting hook was added. The generator reproduces the exact tested source."
+}

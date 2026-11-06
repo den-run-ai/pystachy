@@ -2,9 +2,10 @@
    general delimiter predicates, exact guard-page bounds and deterministic bulk-work
    counts. Include the real runtime and link runtime.py's IR, as unicodeprobe does.
    Usage: make bytescanprobe. Timings are not pass/fail criteria. */
-static long long scan_words, scan_bytes;
+static long long scan_words, scan_bytes, scan_bulk;
 #define BYTESCAN_WORD() (scan_words++)
 #define BYTESCAN_BYTE() (scan_bytes++)
+#define BYTESCAN_BULK() (scan_bulk++)
 #include "../runtime.c"
 #include <sys/wait.h>
 
@@ -61,6 +62,18 @@ static void bytes_and_alignments(void) {
         check(p, 0, n, 34, 92, 32);
         p[at] = (char)0xFF;
       }
+    }
+  }
+}
+static void long_spans(void) {
+  char storage[32 + 512];
+  for (I alignment = 0; alignment < 32; alignment++) {
+    char *p = storage + alignment;
+    memset(p, 0xA5, 512);
+    for (unsigned c = 0; c < 256; c++) for (I at = 0; at < 512; at++) {
+      p[at] = (char)c;
+      check(p, 0, 512, 34, 92, 32);
+      p[at] = (char)0xA5;
     }
   }
 }
@@ -169,7 +182,7 @@ static void guarded(void) {
   char *right = mapping + 2 * page;
   /* Right guard catches reads of even one byte beyond end, including empty input.
      Varying length moves the first address through every word alignment. */
-  for (I n = 0; n <= 128; n++) {
+  for (I n = 0; n <= 512; n++) {
     char *p = right - n;
     memset(p, 0xA5, (size_t)n);
     check(p, 0, n, 34, 92, 32);
@@ -182,8 +195,11 @@ static void guarded(void) {
   }
   /* Left guard catches loads rounded below the first readable byte. */
   char *left = mapping + page;
-  memset(left, 0xFF, 128);
-  for (I n = 0; n <= 128; n++) check(left, 0, n, 0, 1, 128);
+  memset(left, 0xFF, 512);
+  for (I n = 0; n <= 512; n++) {
+    check(left, 0, n, 0, 1, 128);
+    check(left, 0, n, 34, 92, 32);
+  }
   if (munmap(mapping, (size_t)page * 3)) bad("guard unmap");
 }
 static void bulk_work(void) {
@@ -191,18 +207,22 @@ static void bulk_work(void) {
   for (I n = 4096; n <= (I)sizeof text; n *= 2) {
     current = pys_str(text, n);
     I tick = gc_tick;
-    scan_words = scan_bytes = 0;
+    scan_words = scan_bytes = scan_bulk = 0;
     if (pys_bytes_scan(current, 0, n, 34, 92, 32) != n) bad("long ordinary span result");
     /* A removed bulk path still passes the scalar oracle; these counts reject it.
        Permit a small prefix/tail rather than depending on one exact loop shape. */
+#ifdef PYSTACHY_STRINGZILLA
+    if (scan_bulk != 1 || scan_words || scan_bytes) bad("StringZilla path was not called");
+#else
     if (scan_words < n / 16 || scan_words > n / 4 || scan_bytes > 64) bad("long span did not skip words");
+#endif
     if (gc_tick != tick) bad("scanner allocates");
-    printf("bytescanprobe: %lld bytes, %lld word probes, %lld scalar probes\n", (long long)n, scan_words, scan_bytes);
+    printf("bytescanprobe: %lld bytes, %lld word probes, %lld scalar probes, %lld external calls\n", (long long)n, scan_words, scan_bytes, scan_bulk);
   }
 }
 int main(void) {
   gc_init(__builtin_frame_address(0), roots, 1);
-  bytes_and_alignments(); predicates(); wrapper(); errors(); guarded(); bulk_work();
+  bytes_and_alignments(); long_spans(); predicates(); wrapper(); errors(); guarded(); bulk_work();
   printf("bytescanprobe: %lld scalar-oracle/bounds checks, guard pages and bulk-work bounds passed\n", checks);
   return 0;
 }
