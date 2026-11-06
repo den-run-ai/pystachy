@@ -1,0 +1,224 @@
+{
+  "purpose": "integration contract checks only; no benchmark conclusions",
+  "source_commit": "d36140acf551abbb6a7587d821c35442b11aed80",
+  "compiler_source_validation": "fresh native compiler rt runtime.py output equals prior rt1.ll used for v3; v4 linked the fresh output",
+  "build_commands": [
+    [
+      "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/clang",
+      "-O2",
+      "-fexceptions",
+      "-S",
+      "-emit-llvm",
+      "-I/workspace/scratch/a009f956ecf0/bdwgc/usr/include",
+      "-DPYSTACHY_GC_RUNTIME=\"/workspace/scratch/a009f956ecf0/bdwgc-overlay-v3/runtime.c\"",
+      "bench/gc_locality/bdwgc_probe.c",
+      "-o",
+      "/workspace/scratch/a009f956ecf0/bdwgc-probe-v4.ll"
+    ],
+    [
+      "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/llvm-link",
+      "/workspace/scratch/a009f956ecf0/bdwgc-probe-v3-rt.ll",
+      "/workspace/scratch/a009f956ecf0/bdwgc-probe-v4.ll",
+      "-o",
+      "/workspace/scratch/a009f956ecf0/bdwgc-probe-v4.bc"
+    ],
+    [
+      "/workspace/scratch/a009f956ecf0/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/clang",
+      "-O2",
+      "/workspace/scratch/a009f956ecf0/bdwgc-probe-v4.bc",
+      "/workspace/scratch/a009f956ecf0/bdwgc/usr/lib/x86_64-linux-gnu/libgc.a",
+      "-lm",
+      "-ldl",
+      "-pthread",
+      "-o",
+      "/workspace/scratch/a009f956ecf0/bdwgc-probe-v4"
+    ]
+  ],
+  "hashes": {
+    "/workspace/scratch/a009f956ecf0/bdwgc-probe-v4": "dc98d661d350e7f7f1a2f903fd7f5cd1fb4bbac6dc76782b42c340755f5c58f8",
+    "/workspace/scratch/a009f956ecf0/bdwgc-overlay-v3/runtime.c": "13bb3a994f64e857ac42148246076f46a323c00e4d61803775bd15f0eb012c8c",
+    "/workspace/scratch/a009f956ecf0/bdwgc/usr/lib/x86_64-linux-gnu/libgc.a": "18cea650b80ab054e584b27a791f8080545ea1c1c1ca9a7f4b0ed4bece4cc635",
+    "/workspace/scratch/a009f956ecf0/bdwgc-probe-v3-rt.ll": "940a694da5ea93214d1308a8eb635b47d8d0a9d4256c63d084c24f5099f8aa5f",
+    "/workspace/scratch/8b5d64b08ada/pystachy/pystachy": "c8dc02d3fcc2f101a6279ea260258aa36093ff8be5c6c46cb6ba0303787104af",
+    "/workspace/scratch/a009f956ecf0/gc-dependency/runtime.py": "c45138f44a7aa25828b351b6d627e1a4f9fad69dc8a88532d053fb90e84beefb",
+    "/workspace/scratch/a009f956ecf0/gc-dependency/runtime.c": "b8d65bb367168f45233c63bbfae8dd34f605bc4d0796b0858d509859a71a2690",
+    "/workspace/scratch/a009f956ecf0/gc-dependency/bench/gc_locality/bdwgc_adapter.c": "870d5657e9f51e337b50aa0622081c348627983f6e66b5597cf4239504ece2f7",
+    "/workspace/scratch/a009f956ecf0/gc-dependency/bench/gc_locality/bdwgc_overlay.py": "62595eb50ec069d93332d32f58e8c18bf584f417b237a1e11959d103a5c3d6dd",
+    "/workspace/scratch/a009f956ecf0/gc-dependency/bench/gc_locality/bdwgc_probe.c": "754fd995c79497be3740c310a6033e0910bb9d0664ff0e319c89065b8e4e4932"
+  },
+  "cases": [
+    {
+      "case": "default",
+      "arguments": [],
+      "environment": {
+        "PYSTACHY_GC": "stats"
+      },
+      "expected_returncode": 0,
+      "returncode": 0,
+      "stdout": "bdwgc contract ok\n",
+      "stderr": "bdwgc: version=8.2.6 mode=default incremental=0 protection=1 markers=1 collections=2724 stopped_world_ms=36.292 pauses=2724 heap_peak_bytes=495616 heap_bytes=24576 free_bytes=0 allocated_bytes=435097472\n"
+    },
+    {
+      "case": "default_initial_32MiB",
+      "arguments": [],
+      "environment": {
+        "PYSTACHY_GC": "stats",
+        "GC_INITIAL_HEAP_SIZE": "33554432"
+      },
+      "expected_returncode": 0,
+      "returncode": 0,
+      "stdout": "bdwgc contract ok\n",
+      "stderr": "bdwgc: version=8.2.6 mode=default incremental=0 protection=1 markers=1 collections=38 stopped_world_ms=1.787 pauses=38 heap_peak_bytes=33554432 heap_bytes=12324864 free_bytes=12300288 allocated_bytes=435092128\n"
+    },
+    {
+      "case": "default_stress",
+      "arguments": [],
+      "environment": {
+        "PYSTACHY_GC": "stats",
+        "PYSTACHY_GC_STRESS": "127"
+      },
+      "expected_returncode": 0,
+      "returncode": 0,
+      "stdout": "bdwgc contract ok\n",
+      "stderr": "bdwgc: version=8.2.6 mode=default incremental=0 protection=1 markers=1 collections=3503 stopped_world_ms=45.610 pauses=3503 heap_peak_bytes=495616 heap_bytes=24576 free_bytes=0 allocated_bytes=435089648\n"
+    },
+    {
+      "case": "incremental_auto",
+      "arguments": [],
+      "environment": {
+        "PYSTACHY_GC": "stats",
+        "PYSTACHY_BDWGC_MODE": "incremental"
+      },
+      "expected_returncode": 78,
+      "returncode": 78,
+      "stdout": "",
+      "stderr": "GC Warning: /proc/self/clear_refs open failed; cannot enable GC incremental mode\npystachy: BDWGC incremental capability warning; benchmark sample excluded\n"
+    },
+    {
+      "case": "generational_auto",
+      "arguments": [],
+      "environment": {
+        "PYSTACHY_GC": "stats",
+        "PYSTACHY_BDWGC_MODE": "generational"
+      },
+      "expected_returncode": 78,
+      "returncode": 78,
+      "stdout": "",
+      "stderr": "GC Warning: /proc/self/clear_refs open failed; cannot enable GC incremental mode\npystachy: BDWGC incremental capability warning; benchmark sample excluded\n"
+    },
+    {
+      "case": "incremental_mprotect",
+      "arguments": [],
+      "environment": {
+        "PYSTACHY_GC": "stats",
+        "PYSTACHY_BDWGC_MODE": "incremental",
+        "GC_USE_GETWRITEWATCH": "0"
+      },
+      "expected_returncode": 0,
+      "returncode": 0,
+      "stdout": "bdwgc contract ok\n",
+      "stderr": "bdwgc: version=8.2.6 mode=incremental incremental=1 protection=1 markers=1 collections=7066 stopped_world_ms=117.393 pauses=7066 heap_peak_bytes=364544 heap_bytes=24576 free_bytes=0 allocated_bytes=435088032\n"
+    },
+    {
+      "case": "generational_mprotect",
+      "arguments": [],
+      "environment": {
+        "PYSTACHY_GC": "stats",
+        "PYSTACHY_BDWGC_MODE": "generational",
+        "GC_USE_GETWRITEWATCH": "0"
+      },
+      "expected_returncode": 0,
+      "returncode": 0,
+      "stdout": "bdwgc contract ok\n",
+      "stderr": "bdwgc: version=8.2.6 mode=generational incremental=1 protection=1 markers=1 collections=7066 stopped_world_ms=151.230 pauses=7066 heap_peak_bytes=364544 heap_bytes=24576 free_bytes=0 allocated_bytes=435087584\n"
+    },
+    {
+      "case": "weakref",
+      "arguments": [
+        "weakref"
+      ],
+      "environment": {
+        "PYSTACHY_GC": "stats"
+      },
+      "expected_returncode": 78,
+      "returncode": 78,
+      "stdout": "",
+      "stderr": "pystachy: experimental BDWGC adapter does not support weak references and weak-reference callbacks\n"
+    },
+    {
+      "case": "file",
+      "arguments": [
+        "file"
+      ],
+      "environment": {
+        "PYSTACHY_GC": "stats"
+      },
+      "expected_returncode": 78,
+      "returncode": 78,
+      "stdout": "",
+      "stderr": "pystachy: experimental BDWGC adapter does not support managed file resources\n"
+    },
+    {
+      "case": "track",
+      "arguments": [
+        "track"
+      ],
+      "environment": {
+        "PYSTACHY_GC": "stats"
+      },
+      "expected_returncode": 78,
+      "returncode": 78,
+      "stdout": "",
+      "stderr": "pystachy: experimental BDWGC adapter does not support CPython ownership tracking\n"
+    },
+    {
+      "case": "extension",
+      "arguments": [
+        "extension"
+      ],
+      "environment": {
+        "PYSTACHY_GC": "stats"
+      },
+      "expected_returncode": 78,
+      "returncode": 78,
+      "stdout": "",
+      "stderr": "pystachy: experimental BDWGC adapter does not support CPython extension embedding\n"
+    },
+    {
+      "case": "native_min",
+      "arguments": [],
+      "environment": {
+        "PYSTACHY_GC": "stats",
+        "PYSTACHY_GC_MIN": "1"
+      },
+      "expected_returncode": 78,
+      "returncode": 78,
+      "stdout": "",
+      "stderr": "pystachy: experimental BDWGC adapter does not support PYSTACHY_GC_MIN (native collection pacing)\n"
+    },
+    {
+      "case": "jit",
+      "arguments": [],
+      "environment": {
+        "PYSTACHY_GC": "stats",
+        "PYSTACHY_ARGV0": "probe"
+      },
+      "expected_returncode": 78,
+      "returncode": 78,
+      "stdout": "",
+      "stderr": "pystachy: experimental BDWGC adapter does not support JIT execution (signal ownership is unvalidated)\n"
+    },
+    {
+      "case": "unknown_mode",
+      "arguments": [],
+      "environment": {
+        "PYSTACHY_GC": "stats",
+        "PYSTACHY_BDWGC_MODE": "unknown"
+      },
+      "expected_returncode": 78,
+      "returncode": 78,
+      "stdout": "",
+      "stderr": "pystachy: experimental BDWGC adapter does not support the requested PYSTACHY_BDWGC_MODE\n"
+    }
+  ]
+}
