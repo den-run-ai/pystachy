@@ -142,8 +142,9 @@ runs of one and two loops:
 
   The 65 matchers keep most of the gain: 243.5 ms against 232.3 ms with all 231, and 359.4 ms with
   none, in one paired run.
-- **The JIT.** `pystachy run` compiles the matchers on every run, since there is no
-  compiled-program cache yet ([#104](https://github.com/den-run-ai/pystachy/issues/104)).
+- **The JIT.** These historical measurements compile the matchers on every run.
+  Reproduce that scope with `PYSTACHY_PROGRAM_CACHE=0`; current supported Linux
+  launches can reuse the [native program cache](program-cache.md).
   Medians of three runs:
 
   | Workload | Whole process, without → with | Timed part, without → with |

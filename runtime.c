@@ -6489,6 +6489,13 @@ __attribute__((noinline)) static int writing(dev_t dev, ino_t ino) {
     if (files[i]->wr && !files[i]->closed && files[i]->dev == dev && files[i]->ino == ino) return 1;
   return 0;
 }
+/* CPython opens ordinary text and binary files as non-inheritable. An exec
+   through /proc/self/fd/N can therefore pin an inode without leaking N into the program. */
+static void file_cloexec(FILE *f, Str *path) {
+  if (fcntl(fileno(f), F_SETFD, FD_CLOEXEC) == -1) {
+    int saved = errno; fclose(f); errno = saved; oserr(path->s);
+  }
+}
 File *pys_open(Str *path, Str *mode, Str *enc, Str *nl, I buffering) {   /* CPython's checks, in its order */
   int x = 0, r = 0, w = 0, a = 0, plus = 0, t = 0, b = 0, lat = 1;
   if (nul(mode) || (enc && nul(enc)) || (nl && nul(nl))) pys_fail("ValueError: embedded null character");
@@ -6512,6 +6519,7 @@ File *pys_open(Str *path, Str *mode, Str *enc, Str *nl, I buffering) {   /* CPyt
   FILE *f = fopen(path->s, m);
   if (!f && (errno == EMFILE || errno == ENFILE) && !gc_off) { collect(); f = fopen(path->s, m); }   /* unreachable files closed */
   if (!f) oserr(path->s);
+  file_cloexec(f, path);
   if (fstat(fileno(f), &st)) memset(&st, 0, sizeof st);
   else if (S_ISDIR(st.st_mode)) { fclose(f); errno = EISDIR; oserr(path->s); }
   if (!buffering) { fclose(f); pys_fail("ValueError: can't have unbuffered text I/O"); }   /* the file is created by now */
@@ -6767,6 +6775,7 @@ File *pys_bopen(Str *path, Str *mode, Str *enc, Str *errs, Str *nl, I buffering)
   FILE *f = fopen(path->s, m);
   if (!f && (errno == EMFILE || errno == ENFILE) && !gc_off) { collect(); f = fopen(path->s, m); }
   if (!f) oserr(path->s);
+  file_cloexec(f, path);
   if (fstat(fileno(f), &st)) memset(&st, 0, sizeof st);
   else if (S_ISDIR(st.st_mode)) { fclose(f); errno = EISDIR; oserr(path->s); }
   File *o = pys_alloc(sizeof(File));
@@ -7165,7 +7174,39 @@ Str *pys_path_join(Str *a, Str *b) {     /* os.path.join(a, b), as posixpath.joi
   s->len = a->len + 1 + b->len; memcpy(s->s, a->s, a->len); s->s[a->len] = '/'; memcpy(s->s + a->len + 1, b->s, b->len);
   return s;
 }
-Str *pys_getenv(Str *k, Str *dflt) { char *v = nul(k) ? 0 : getenv(k->s); return v ? cstr(v) : dflt; }
+/* POSIX environment text uses UTF-8 with surrogateescape, as CPython's os.environ.
+   Keep the common ASCII paths allocation-free until a value is returned. These
+   codec functions are implemented in runtime.py and share the ordinary codec checks. */
+Str *pys_str_encode(Str *, Str *, Str *);
+Str *pys_bytes_decode(Str *, Str *, Str *);
+static Str *env_encoded(Str *s) {
+  return memchr(s->s, 0xed, s->len) ? pys_str_encode(s, 0, cstr("surrogateescape")) : s;
+}
+static Str *env_decoded(const char *v) {
+  Str *s = cstr(v);
+  for (I i = 0; i < s->len; i++)
+    if ((unsigned char)s->s[i] >= 0x80) return pys_bytes_decode(s, 0, cstr("surrogateescape"));
+  return s;
+}
+Str *pys_getenv(Str *k, Str *dflt) {
+  k = env_encoded(k);
+  char *v = nul(k) || strchr(k->s, '=') ? 0 : getenv(k->s);
+  return v ? env_decoded(v) : dflt;
+}
+void pys_environ_set(Str *k, Str *v) {
+  k = env_encoded(k); v = env_encoded(v);
+  if (nul(k) || nul(v)) pys_fail("ValueError: embedded null byte");
+  if (strchr(k->s, '=')) pys_fail("ValueError: illegal environment variable name");
+  if (setenv(k->s, v->s, 1)) ioerr(errno);
+}
+Str *pys_environ_pop(Str *k, Str *dflt) {
+  k = env_encoded(k);
+  char *v = nul(k) || strchr(k->s, '=') ? 0 : getenv(k->s);
+  if (!v) return dflt;
+  Str *old = env_decoded(v);  /* copy the value before unsetenv invalidates it */
+  if (unsetenv(k->s)) ioerr(errno);
+  return old;
+}
 
 /* ---------- exceptions: table-driven unwinding (the Itanium C++ ABI's) ----------
    A program that has try or with calls pys_eh_on when it starts. From then on a raise (pys_fail,

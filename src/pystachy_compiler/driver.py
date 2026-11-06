@@ -36,6 +36,7 @@ COMPILER_SOURCES: list[str] = [
     'src/pystachy_compiler/builtins.py',
     'src/pystachy_compiler/calls.py',
     'src/pystachy_compiler/cached_run.py',
+    'src/pystachy_compiler/cache_toolchain.py',
     'src/pystachy_compiler/containers.py',
     'src/pystachy_compiler/conversions.py',
     'src/pystachy_compiler/declarations.py',
@@ -467,6 +468,7 @@ def main() -> None:
     on = optimizations()
     off = [o for o in OPTS if o not in on]
     keyed = flags + ["-fexceptions"]
+    runtime_inputs = [program_cache.runtime_key()] if pcroot != "" else []
     if len(off) > 0:
         keyed = keyed + ["PYSTACHY_OPT=-" + ",-".join(off)]
     cflags = "".join([" " + q(a) for a in flags])
@@ -524,6 +526,10 @@ def main() -> None:
             comp = got[len(ask) - 1]
     now = time.time()
     lines = [os.path.realpath(comp) if comp != "" else "", " ".join(keyed)]
+    if pcroot != "":
+        # Keep checked-toolchain runtime artifacts separate from ordinary JIT
+        # artifacts so switching the program-cache policy cannot evict either.
+        lines.append("program-cache-inputs-v2")
     times: list[str] = []
     for p in paths:
         lines.append(os.path.realpath(p) if p != "" else "")
@@ -567,7 +573,7 @@ def main() -> None:
         trusted = trusted and settled(born, t0) and "" not in component_hashes
         trusted = trusted and [stat3(p) for p in sources] == sourceborn
         trusted = trusted and len([st for st in sourceborn if not settled(st, t0)]) == 0
-    key = fnv("\n".join(lines + times + [rc[1], rp[1], rm[1]] + component_hashes + [x[1] for x in rs]))
+    key = fnv("\n".join(lines + times + [rc[1], rp[1], rm[1]] + component_hashes + [x[1] for x in rs] + runtime_inputs))
     rtb = f"{cache}/runtime-py-{lin}-{key}.bc"
     rtir = ""
     if not trusted or not os.path.exists(rtb):
@@ -577,7 +583,7 @@ def main() -> None:
         rc = hashed(rtc, memo, now, True)
         rs = [hashed(home + "/" + p, memo, now, True) for p in RTPARTS]
         rp = hashed(rtpy, memo, now, True)
-        key = fnv("\n".join(lines + times + [rc[1], rp[1], rm[1]] + component_hashes + [x[1] for x in rs]))
+        key = fnv("\n".join(lines + times + [rc[1], rp[1], rm[1]] + component_hashes + [x[1] for x in rs] + runtime_inputs))
         rtb = f"{cache}/runtime-py-{lin}-{key}.bc"
         if (not trusted or not os.path.exists(rtb)) and rc[1] != "" and rp[1] != "" and "" not in [x[1] for x in rs]:
             # (an error in runtime.py exits: the private directory is made again after it)
@@ -946,7 +952,7 @@ def main() -> None:
                 archive = f"jit_rtlib=$({tc[0]} -print-libgcc-file-name{ccflags}) || exit 1; "
                 archive += '[ -f "$jit_rtlib" ] || { echo "cannot find compiler runtime archive: $jit_rtlib" >&2; exit 1; }; '
                 rt += ' -extra-archive="$jit_rtlib"'
-            run = f"{archive}{env}PYSTACHY_ARGV0={q(diagnostics.SRC)} exec {llvm}lli{jitflags}{pe}{rt} /dev/fd/9 {' '.join([q(a) for a in rest])}"
+            run = f"unset PYSTACHY_PROGRAM_CACHE_LOCK; {archive}{env}PYSTACHY_ARGV0={q(diagnostics.SRC)} exec {llvm}lli{jitflags}{pe}{rt} /dev/fd/9 {' '.join([q(a) for a in rest])}"
             fds = f" 7< {q(peo[1])}" if embed else ""
             parts = q(parto) + " " + q(partso) + (" " + q(peo[2]) if peo[2] != "" else "")
             os.execv("/bin/sh", ["sh", "-c", f"exec 9< {q(bc)} 8< {q(useso if useso != '' else useo)}{fds} && rm -f {q(bc)} {parts} && rmdir {q(tmp)} && {run}"])

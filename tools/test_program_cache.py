@@ -53,7 +53,7 @@ class ProgramCacheTests(unittest.TestCase):
         return pc.lookup(str(self.cache), self.context)
 
     def index(self):
-        return self.cache / "program-v1" / (pc.fnv(self.context) + ".manifest")
+        return self.cache / "program-v2" / (pc.fnv(self.context) + ".manifest")
 
     def test_unchanged_program_reuses_exact_executable(self):
         target = self.publish()
@@ -62,6 +62,15 @@ class ProgramCacheTests(unittest.TestCase):
         self.assertEqual(target.stat().st_mode & 0o777, 0o700)
         self.assertEqual(target.parent.stat().st_mode & 0o777, 0o700)
         self.assertEqual(list(target.parent.glob("stage-*")), [])
+
+    def test_hit_skips_optional_hash_memo_but_miss_loads_it(self):
+        target = self.publish()
+        with patch.object(pc, "_load_memo") as load:
+            self.assertEqual(self.lookup(), str(target))
+            load.assert_not_called()
+            self.source.write_text("print(43)\n")
+            self.assertEqual(self.lookup(), "")
+            load.assert_called_once_with(str(self.cache / "program-v2"))
 
     def test_disabled_tracking_has_no_hash_or_realpath_work(self):
         pc.stop()
@@ -272,7 +281,7 @@ class ProgramCacheTests(unittest.TestCase):
 
     def test_unsafe_private_directory_is_not_repaired(self):
         self.publish()
-        private = self.cache / "program-v1"
+        private = self.cache / "program-v2"
         private.chmod(0o755)
         self.assertEqual(self.lookup(), "")
         self.assertEqual(pc.publish(str(self.cache), self.context, str(self.executable)), "")
@@ -287,8 +296,8 @@ class ProgramCacheTests(unittest.TestCase):
         alias = self.root / "alias"
         alias.symlink_to(self.root, target_is_directory=True)
         self.assertEqual(pc.lookup(str(alias / "cache"), self.context), "")
-        private = self.cache / "program-v1"
-        saved = self.root / "saved-program-v1"
+        private = self.cache / "program-v2"
+        saved = self.root / "saved-program-v2"
         private.rename(saved)
         private.symlink_to(saved, target_is_directory=True)
         self.assertEqual(self.lookup(), "")
@@ -299,7 +308,7 @@ class ProgramCacheTests(unittest.TestCase):
         with patch.object(pc.os, "replace", side_effect=PermissionError("read-only cache")):
             self.assertEqual(pc.publish(str(self.cache), self.context, str(self.executable)), "")
         self.assertEqual(self.lookup(), "")
-        self.assertEqual(list((self.cache / "program-v1").glob("stage-*")), [])
+        self.assertEqual(list((self.cache / "program-v2").glob("stage-*")), [])
         self.assertFalse(self.index().exists())
         with patch.object(pc.os, "mkdir", side_effect=PermissionError("read-only cache")):
             self.assertEqual(pc.publish(str(self.cache), self.context, str(self.executable)), "")
@@ -355,7 +364,7 @@ class ProgramCacheTests(unittest.TestCase):
             self.assertEqual(process.exitcode, 0)
         self.assertTrue(all(completed))
         self.assertIn(self.lookup(), completed)
-        self.assertEqual(list((self.cache / "program-v1").glob("stage-*")), [])
+        self.assertEqual(list((self.cache / "program-v2").glob("stage-*")), [])
 
     def test_static_dependencies_invalidate_on_content_or_realpath_change(self):
         static = self.root / "library.so"
@@ -419,7 +428,7 @@ class ProgramCacheTests(unittest.TestCase):
         with patch.object(pc.time, "time", return_value=time.time() + 10):
             pc.track_static(str(static))
         self.publish()
-        (self.cache / "program-v1" / "static-hashes").write_bytes(b"partial metadata")
+        (self.cache / "program-v2" / "static-hashes").write_bytes(b"partial metadata")
         pc.STATIC_MEMO.clear()
         pc.MEMO_ROOT[0] = ""
         pc.start()

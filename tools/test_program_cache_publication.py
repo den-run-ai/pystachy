@@ -71,7 +71,7 @@ class ProgramCachePublicationTests(unittest.TestCase):
         with patch.object(pc, "_sh", side_effect=noexec):
             self.assertEqual(self.publish(), "")
         self.assertEqual(len(denied), 1)
-        private = self.cache / "program-v1"
+        private = self.cache / "program-v2"
         self.assertEqual(list(private.glob("*.manifest")), [])
         self.assertEqual(list(private.glob("*.exe")), [])
         self.assertEqual(list(private.glob("stage-*")), [])

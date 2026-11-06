@@ -1,4 +1,4 @@
-"""Exercise the opt-in native-program cache and measure complete launches.
+"""Exercise the default native-program cache and measure complete launches.
 
 The correctness checks have no timing gates. LLVM wrappers count actual work;
 each hit must omit both the frontend trace and every wrapped tool invocation.
@@ -46,7 +46,9 @@ TOOLS = ("clang", "opt", "lli", "llvm-link", "llvm-as")
 TOOL_ENV = ("CPATH", "C_INCLUDE_PATH", "CPLUS_INCLUDE_PATH", "OBJC_INCLUDE_PATH",
             "LIBRARY_PATH", "COMPILER_PATH", "GCC_EXEC_PREFIX", "SDKROOT",
             "CCC_OVERRIDE_OPTIONS", "CLANG_CONFIG_FILE_SYSTEM_DIR",
-            "CLANG_CONFIG_FILE_USER_DIR", "LD_PRELOAD", "LD_LIBRARY_PATH")
+            "CLANG_CONFIG_FILE_USER_DIR", "LD_PRELOAD", "LD_LIBRARY_PATH",
+            "LD_AUDIT", "LD_RUN_PATH", "LD_HWCAP_MASK", "GLIBC_TUNABLES",
+            "LDEMULATION", "GNUTARGET")
 
 
 def digest(data: bytes) -> str:
@@ -130,7 +132,6 @@ class Probe:
         self.env.update({"PYSTACHY_HOME": str(self.home),
                          "PYSTACHY_LLVM": str(self.bindir),
                          "PYSTACHY_CACHE": str(self.cache),
-                         "PYSTACHY_PROGRAM_CACHE": "1",
                          "PYSTACHY_PROGRAM_CACHE_TRACE": "1"})
         llvm = Path(args.llvm).absolute() if args.llvm else None
         self.real: dict[str, str] = {}
@@ -273,12 +274,12 @@ class Probe:
         return cold, warm
 
     def entry_files(self) -> list[Path]:
-        # The prototype reserves its own subtree; never delete runtime caches.
-        base = self.cache / "program-v1"
+        # The cache reserves its own subtree; never delete runtime caches.
+        base = self.cache / "program-v2"
         return sorted(p for p in base.rglob("*") if p.is_file()) if base.exists() else []
 
     def remove_entries(self, *, keep_identity: bool = False) -> None:
-        path = self.cache / "program-v1"
+        path = self.cache / "program-v2"
         if not path.exists():
             return
         if not keep_identity:
@@ -324,6 +325,9 @@ def unused(x: int = defined()) -> int:
 print("module effect")
 print(sys.argv)
 print(os.getenv("CACHE_PROBE_VALUE", "missing"))
+print(os.getenv("PYSTACHY_PROGRAM_CACHE_LOCK", "absent"))
+with open("/dev/null") as stream:
+    print("first file descriptor", stream.fileno())
 print(input())
 ''')
     arguments = ["space here", "'quoted$argument`", "--", "-o"]
@@ -440,9 +444,27 @@ def check_semantics(p: Probe) -> None:
 
 
 def check_corruption(p: Probe) -> None:
-    source = p.source("corruption", "print(57)\n")
+    sys.path.insert(0, str(ROOT))
+    from src.pystachy_compiler import program_cache as pc
+
+    source = p.source("corruption", '''import os
+import sys
+with open(sys.argv[1], "a") as effect:
+    effect.write("executed\\n")
+print(57)
+print("policy", os.getenv("PYSTACHY_PROGRAM_CACHE", "unset"))
+print("lock", os.getenv("PYSTACHY_PROGRAM_CACHE_LOCK", "absent"))
+print("environment", os.getenv("CACHE_EXEC_ENV", "absent"))
+print(sys.argv[2])
+print(sys.stdin.read(), end="")
+print("program stderr", file=sys.stderr)
+sys.exit(7)
+''')
+    effects = p.directory / "corruption-effects"
+    arguments = [str(effects), "literal $`'"]
+    stdin = b"stdin survives failed exec\n"
     p.remove_entries()
-    p.pair(source, "corruption prime")
+    p.pair(source, "corruption prime", arguments=arguments, stdin=stdin)
     entries = p.entry_files()
     executables = [x for x in entries if x.read_bytes()[:4] == b"\x7fELF"]
     p.check(len(executables) == 1, f"expected one new cached executable, found {executables}")
@@ -451,25 +473,91 @@ def check_corruption(p: Probe) -> None:
     before_stat = executable.stat()
     executable.write_bytes(b"!" + data[1:])
     os.utime(executable, ns=(before_stat.st_atime_ns, before_stat.st_mtime_ns))
-    p.pair(source, "corrupt executable")
+    p.pair(source, "corrupt executable", arguments=arguments, stdin=stdin)
     metadata = [x for x in p.entry_files() if x.suffix == ".manifest"]
     p.check(bool(metadata), "no manifest found beside cached executable")
     for path in metadata:
         path.write_bytes(b"incomplete\n")
-    p.pair(source, "incomplete manifest")
+    p.pair(source, "incomplete manifest", arguments=arguments, stdin=stdin)
     for path in p.entry_files():
         if path.suffix == ".exe":
             path.unlink()
-    p.pair(source, "missing executable")
+    p.pair(source, "missing executable", arguments=arguments, stdin=stdin)
+
+    metadata = [x for x in p.entry_files() if x.suffix == ".manifest"]
+    p.check(len(metadata) == 1, "exec-failure control requires one complete manifest")
+    index = metadata[0]
+    original_manifest = index.read_text()
+    fields = pc._document(str(index), pc.MAGIC)
+    p.check(len(fields) >= 2, "exec-failure control could not decode the complete manifest")
+    executable = index.with_name(index.stem + "-" + fields[1] + ".exe")
+    data = executable.read_bytes()
+    p.check(data[:6] == b"\x7fELF\x02\x01", "exec-failure control requires a little-endian ELF64 executable")
+    # Keep the ELF otherwise valid while pointing its interpreter at a guaranteed
+    # missing descriptor. This exercises ENOENT separately from truncated ENOEXEC.
+    missing_interpreter = bytearray(data)
+    phoff = int.from_bytes(data[32:40], "little")
+    phsize = int.from_bytes(data[54:56], "little")
+    phcount = int.from_bytes(data[56:58], "little")
+    replaced = False
+    for i in range(phcount):
+        header = data[phoff + i * phsize:phoff + (i + 1) * phsize]
+        if int.from_bytes(header[:4], "little") == 3:  # PT_INTERP
+            offset = int.from_bytes(header[8:16], "little")
+            size = int.from_bytes(header[32:40], "little")
+            interpreter = b"/proc/self/fd/-1\0"
+            p.check(size >= len(interpreter) and offset + size <= len(data),
+                    "ELF interpreter field is too short or outside the executable")
+            missing_interpreter[offset:offset + size] = interpreter.ljust(size, b"\0")
+            replaced = True
+            break
+    p.check(replaced, "cached executable has no ELF interpreter to invalidate")
+    for label, damaged, policy in (
+            ("malformed ELF default", b"\x7fELFmalformed\n", None),
+            ("malformed ELF explicit", b"\x7fELFmalformed\n", "1"),
+            ("missing ELF interpreter", bytes(missing_interpreter), "")):
+        # Both checksums and the filename agree, so lookup must accept the entry.
+        # Failure happens only at the real kernel exec in the native driver.
+        broken_fields = fields.copy()
+        broken_fields[1] = pc.fnv(damaged.decode("latin-1"))
+        broken = index.with_name(index.stem + "-" + broken_fields[1] + ".exe")
+        broken.write_bytes(damaged)
+        broken.chmod(0o700)
+        payload = pc._pack(broken_fields)
+        index.write_text(pc.MAGIC + pc.fnv(payload) + "\n" + payload)
+        changes = {"PYSTACHY_PROGRAM_CACHE": policy, "CACHE_EXEC_ENV": label + " $`'"}
+        expected = p.oracle(source, arguments, stdin=stdin, changes=changes)
+        effects.write_bytes(b"")
+        result = p.run(label, source, arguments, stdin=stdin, changes=changes)
+        p.matches(result, expected, label)
+        p.check(result.events == ["hit"], f"{label}: entry was not accepted before exec: {result.events}")
+        p.check(result.tools.count("lli") == 1, f"{label}: ordinary fallback must execute exactly once")
+        p.check(effects.read_bytes() == b"executed\n", f"{label}: duplicated or omitted program effects")
+
+    executable.write_bytes(data)
+    executable.chmod(0o700)
+    index.write_text(original_manifest)
+    expected = p.oracle(source, arguments, stdin=stdin)
+    effects.write_bytes(b"")
+    recovered = p.run("valid hit after exec failures", source, arguments, stdin=stdin)
+    p.matches(recovered, expected, "valid hit after exec failures")
+    p.hit(recovered, "valid hit after exec failures")
+    p.check(effects.read_bytes() == b"executed\n", "recovered cached program did not execute exactly once")
 
 
 def check_bypass(p: Probe) -> None:
     source = p.source("bypass", "print(63)\n")
     expected = p.oracle(source)
     p.pair(source, "bypass prime", reference=expected)
+    default = p.run("enabled by default", source, changes={"PYSTACHY_PROGRAM_CACHE": None})
+    p.matches(default, expected, "default execution")
+    p.hit(default, "unset setting enables caching")
+    for flag in ("", "1"):
+        selected = p.run("explicit cache setting", source, changes={"PYSTACHY_PROGRAM_CACHE": flag})
+        p.matches(selected, expected, "explicit cache setting")
+        p.hit(selected, "empty and explicit settings keep caching enabled")
     variants = [
         ("disabled", {"PYSTACHY_PROGRAM_CACHE": "0"}),
-        ("default", {"PYSTACHY_PROGRAM_CACHE": None}),
         ("custom C flags", {"PYSTACHY_CFLAGS": "-DCACHE_PROBE=1"}),
         ("IR checker", {"PYSTACHY_IRCHECK": "1"}),
         ("MCJIT", {"PYSTACHY_JIT_CODEGEN": "0"}),
@@ -542,7 +630,7 @@ def check_failures(p: Probe) -> None:
             "invalid source was executed or accepted")
     p.write(source, "print(83)\n")
     p.pair(source, "recovered frontend failure")
-    backend = p.source("backend-failure", "print(89)\n")
+    backend = p.source("backend-failure", 'import os\nprint(89)\nprint(os.getenv("PYSTACHY_PROGRAM_CACHE", "unset"))\nprint(os.getenv("PYSTACHY_PROGRAM_CACHE_LOCK", "absent"))\n')
     p.fail.touch()
     result = p.run("failed cache codegen", backend)
     p.fail.unlink()
@@ -557,6 +645,7 @@ def check_concurrency(p: Probe) -> None:
     expected = p.oracle(source)
     command = p.command + ["run", str(source)]
     processes = []
+    events = []
     started = time.perf_counter()
     try:
         for _ in range(2):
@@ -569,10 +658,14 @@ def check_concurrency(p: Probe) -> None:
                          time.perf_counter() - started, [])
             p.runs.append({"label": f"concurrent miss {index}", **result.record()})
             p.matches(result, expected, f"concurrent miss {index}")
+            events.extend(result.events)
     finally:
         for process in processes:
             kill_owned_group(process)
             process.communicate()
+    p.check(events.count("frontend") == 1, "concurrent identical misses compiled more than once")
+    p.check(events.count("stored") == 1 and events.count("hit") == 1,
+            f"waiter did not reuse the completed entry: {events}")
     result = p.run("hit after concurrent publication", source)
     p.matches(result, expected, "concurrent publication")
     p.hit(result, "concurrent publication")
@@ -714,7 +807,8 @@ print(fnmatch.fnmatchcase("worker.py", "*.py"))
     for name, path, arguments in workloads:
         expected = p.oracle(path, arguments)
         p.check(expected.status == 0 and not expected.stderr, f"{name}: CPython reference failed")
-        # Warm only the shared runtime before collecting any cold-program sample.
+        # The checked-toolchain and ordinary runtime entries have separate
+        # lineages. Warm both before measuring cold program entries.
         warmup = p.run(name + ":runtime-warmup", path, arguments,
                        changes={"PYSTACHY_PROGRAM_CACHE": "0"})
         p.matches(warmup, expected, name + " warmup")
@@ -722,12 +816,15 @@ print(fnmatch.fnmatchcase("worker.py", "*.py"))
         built = p.launch(name + ":aot-build", p.command + ["build", str(path), "-o", str(executable)],
                          changes={"PYSTACHY_PROGRAM_CACHE": "0"})
         p.check(built.status == 0 and executable.is_file(), f"{name}: AOT build failed")
+        cached_warmup = p.run(name + ":checked-runtime-warmup", path, arguments)
+        p.matches(cached_warmup, expected, name + " checked runtime warmup")
         # One separately reported fill includes the initial identity hashing.
         # Recurring misses below retain that memo, as subsequent programs do.
         p.remove_entries()
         first_use = p.run(name + ":first-use-fill", path, arguments)
         p.matches(first_use, expected, name + " first-use fill")
         p.miss(first_use, name + " first-use fill")
+        p.check("llvm-as" not in first_use.tools, name + ": first-use sample unexpectedly rebuilt the runtime")
         modes: dict[str, list[float]] = {k: [] for k in ("uncached-run", "cold-program", "cache-hit", "prebuilt-aot")}
         for round_number in range(p.args.rounds):
             # Reverse the non-cache controls on alternating rounds. Cold/hit
@@ -796,7 +893,7 @@ def main() -> int:
                     "benchmarks": [], "setup_error": None, "completed": False,
                     "expected_checks": [] if args.benchmark_only else list(args.checks or CHECKS),
                     "benchmark_scopes": {
-                        "first_use_fill": "One sample per workload: program-v1 empty; runtime artifacts warm.",
+                        "first_use_fill": "One sample per workload: program-v2 empty; runtime artifacts warm.",
                         "cold_program": "Manifests, executables and stages removed; static-hashes and runtime artifacts warm.",
                         "cache_hit": "Fresh process after a checked cold-program producer; no frontend or LLVM calls.",
                         "uncached_run": "Program cache disabled; runtime artifacts warm.",

@@ -56,12 +56,12 @@ test-cache: pystachy
 	PY="$(PY)" tests/cache.sh ./pystachy
 	tests/cache.sh "$(PY) -m pystachy"
 
-# Linux-only opt-in program cache: invalidation, effects, failures and skipped work.
+# Linux native program cache: invalidation, effects, lifecycle and skipped work.
 PROGRAM_CACHE_COMPILER ?= ./pystachy
 test-program-cache: $(PROGRAM_CACHE_COMPILER)
-	$(PY) -m unittest discover -s tools -p test_program_cache.py
-	$(PY) -m unittest discover -s tools -p test_program_cache_publication.py
-	$(PY) -m unittest discover -s tools -p test_cached_run.py
+	$(PY) -m unittest discover -s tools -p 'test_program_cache*.py'
+	$(PY) -m unittest discover -s tools -p 'test_cached_run*.py'
+	$(PY) -m unittest discover -s tools -p test_cache_toolchain.py
 	$(PY) tools/program_cache_probe.py --compiler "$(PROGRAM_CACHE_COMPILER)" --llvm "$(PYSTACHY_LLVM)" --output build/program-cache-checks.json
 
 # the FFI's tests (docs/ffi.md): C calls, and with $(PY)'s libpython, CPython embedded and extension modules

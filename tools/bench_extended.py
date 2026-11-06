@@ -215,6 +215,7 @@ def main(argv=None):
         compiler[0] = str((ROOT / compiler[0]).resolve())
     # Honor deliberate optimization experiments; record their knobs. Fix randomized CPython hashing.
     env = dict(os.environ)
+    env["PYSTACHY_PROGRAM_CACHE"] = "0"  # JIT wall samples include frontend and LLVM work.
     env.setdefault("PYTHONHASHSEED", "0")
     report = {"schema_version": 1, "status": "running", "cases": [],
               "settings": {k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()}}

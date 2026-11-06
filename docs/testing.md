@@ -24,6 +24,7 @@ Run these from the repository root:
 | `make typecheck` | Run mypy on the Python compiler and its entry point; no native build needed. |
 | `make check-recordings` | Check expected outputs, remaining deviations, unchanged upstream sources and test-tree hygiene. |
 | `make test-cache` | Check runtime build-cache reuse, invalidation and failed-build handling with both compilers. |
+| `make test-program-cache` | Check default native program reuse, source/toolchain invalidation, fresh execution, concurrency, eviction and failure recovery. |
 | `make test-ffi` | Check C calls, FFI diagnostics, embedded CPython (`pyobj`) and CPython extension modules. |
 | `make check-ir` | Check the typed IR and its LLVM lowering across the compiler corpus. |
 | `make check-runtime` | Check runtime declarations, effects and source agreement. |
@@ -53,6 +54,12 @@ tests/run.sh ./pystachy jit tests/programs/library/lib_fnmatch.py
 all coverage even when CI distributes the work across jobs. `PYSTACHY_CASE_TIMES=FILE` makes
 `tests/run.sh` append each case's wall-clock milliseconds to `FILE` (`MILLISECONDS CASE`, with GNU
 `date`), which [the shards' weights](#continuous-integration) are made from.
+
+The ordinary corpus enables the IR checker and therefore exercises uncached JIT.
+`make test-program-cache` separately verifies default misses and hits, requiring
+zero frontend and LLVM calls on hits. To run selected ordinary corpus cases
+through the default cache, use a private `PYSTACHY_CACHE` and the compiler command
+`env -u PYSTACHY_IRCHECK -u PYSTACHY_PROGRAM_CACHE /absolute/path/to/pystachy`.
 
 ## Differential tests
 
@@ -770,7 +777,7 @@ The capture tests preserve legacy rejection output, and inspection tests exercis
 failed request followed by a repaired import in another worker. Inventory controls
 reject an added capture writer or a stale declaration of the existing writer.
 `program_cache` owns state for a CLI cache attempt, retained across inference retries.
-`start()` clears its source, import-probe and static input snapshots, resets validity
+`start()` clears its source, import-probe, static input and toolchain-layout snapshots, resets validity
 and enables tracking; `stop()` only disables tracking. A conflicting snapshot stays
 invalid through every retry. The settled static hash memo and its last-loaded cache
 root persist across attempts in the process; hashes can also be loaded from or

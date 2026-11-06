@@ -1,5 +1,7 @@
 """Release packaging integrity, reproducibility, and launcher relocation checks."""
 
+import contextlib
+import io
 import json
 import os
 from pathlib import Path
@@ -156,6 +158,83 @@ class ReleaseTests(unittest.TestCase):
         self.assertEqual(result.stdout, "custom llvm\n")
         environment = dict(self.environment, XDG_CACHE_HOME=str(self.root / "xdg cache"))
         self.assertEqual(self.launch(directory / "bin/pystachy", environment)[1], str(self.root / "xdg cache/pystachy"))
+
+    def test_program_cache_smoke_checks_fill_hit_and_unset_default(self):
+        environment = dict(self.environment, PYSTACHY_PROGRAM_CACHE="0")
+        for hit, events in ((False, ["miss", "frontend", "stored"]), (True, ["hit"])):
+            script = ('test "${PYSTACHY_PROGRAM_CACHE-unset}" = unset || exit 91\n'
+                      'test "$PYSTACHY_PROGRAM_CACHE_TRACE" = 1 || exit 92\n'
+                      "printf 'ok\\n'\n")
+            script += "\n".join(f"printf 'pystachy program cache: {event}\\n' >&2" for event in events)
+            release_smoke.program_cache_run(["sh", "-c", script], self.root, environment, "ok\n", hit=hit)
+        self.assertEqual(environment["PYSTACHY_PROGRAM_CACHE"], "0")
+
+    def test_program_cache_smoke_rejects_successful_fallback_and_false_hits(self):
+        scripts = [
+            "printf 'ok\\n'",  # Successful ordinary compilation is not a cache hit.
+            "printf 'ok\\n'; printf 'pystachy program cache: bypass unavailable\\n' >&2",
+            "printf 'ok\\n'; printf 'pystachy program cache: frontend\\npystachy program cache: hit\\n' >&2",
+            "printf 'wrong\\n'; printf 'pystachy program cache: hit\\n' >&2",
+            "printf 'ok\\n'; printf 'pystachy program cache: hit\\n' >&2; exit 1",
+        ]
+        for script in scripts:
+            with self.subTest(script=script), self.assertRaisesRegex(RuntimeError, "program-cache hit failed"):
+                release_smoke.program_cache_run(["sh", "-c", script], self.root, self.environment, "ok\n", hit=True)
+
+    @unittest.skipUnless(sys.platform.startswith("linux"), "Linux default program cache")
+    def test_smoke_primes_ordinary_runtime_before_checking_reuse(self):
+        archive = self.package()
+        for rebuild in (False, True):
+            uncached_runs = []
+
+            def execute(command, directory, environment, *, rebuild=rebuild, uncached_runs=uncached_runs):
+                if command[0] == sys.executable:
+                    return "ok\n"
+                if command[-1] in ("--version", "-V"):
+                    return f"pystachy v0.1.0-alpha.1 (commit {self.commit})\n"
+                cache = Path(environment["XDG_CACHE_HOME"]) / "pystachy"
+                if command[0] == "pystachy" and command[1] == "build":
+                    # AOT needs bitcode but does not produce the ordinary JIT's
+                    # runtime object or shared library.
+                    (cache / "runtime-py-ordinary.bc").touch(exist_ok=True)
+                    return ""
+                if command[0] == "pystachy" and command[1] == "run":
+                    if environment.get("PYSTACHY_PROGRAM_CACHE") == "0":
+                        uncached_runs.append(command)
+                        for suffix in ("bc", "o", "so"):
+                            path = cache / ("runtime-py-ordinary." + suffix)
+                            if not path.exists():
+                                path.write_bytes(b"ordinary runtime")
+                        if rebuild and len(uncached_runs) == 2:
+                            path = cache / "runtime-py-ordinary.so"
+                            before = path.stat()
+                            os.utime(path, ns=(before.st_atime_ns, before.st_mtime_ns + 1_000_000))
+                    return "ok\n"
+                self.assertIn(Path(command[0]).name, ("demo", "demo-stress"))
+                return "ok\n"
+
+            def program_cache_run(command, directory, environment, expected, *, hit):
+                cache = Path(environment["XDG_CACHE_HOME"]) / "pystachy"
+                entries = cache / "program-v2"
+                entries.mkdir(parents=True, exist_ok=True)
+                for name in ("program.manifest", "program.exe"):
+                    (entries / name).touch()
+                # Checked program-cache inputs use a separate runtime lineage;
+                # this path never creates the ordinary JIT's shared library.
+                for suffix in ("bc", "o"):
+                    (cache / ("runtime-py-checked." + suffix)).touch()
+
+            with self.subTest(rebuild=rebuild), \
+                    patch("release_smoke.llvm_directory", return_value=self.root), \
+                    patch("release_smoke.execute", side_effect=execute), \
+                    patch("release_smoke.program_cache_run", side_effect=program_cache_run), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                if rebuild:
+                    with self.assertRaisesRegex(RuntimeError, "warm JIT rebuilt its cached runtime"):
+                        release_smoke.smoke(archive)
+                else:
+                    release_smoke.smoke(archive)
+                self.assertEqual(len(uncached_runs), 2)
 
     def test_only_runtime_sources_and_provenance_are_packaged(self):
         (self.source / "lib/__pycache__").mkdir()

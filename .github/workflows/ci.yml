@@ -97,6 +97,8 @@ jobs:
           python3 -m unittest discover -s tools -p test_stack_floor.py
           python3 -m unittest discover -s tools -p test_runtime_signatures.py
           python3 -m unittest discover -s tools -p test_runtime_ubsan.py
+          python3 tools/program_cache_probe.py --compiler ./pystachy --llvm "$PYSTACHY_LLVM" \
+            --checks reuse semantics concurrency --output build/verify/arm-program-cache.json
       - name: Upload bootstrap report
         if: ${{ !cancelled() && steps.plan.outputs.kind == 'code' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
@@ -106,6 +108,7 @@ jobs:
             build/verification.json
             build/verify/bootstrap.log
             build/verify/arm-ffi.log
+            build/verify/arm-program-cache.json
           if-no-files-found: error
           retention-days: 7
           overwrite: true

@@ -2,7 +2,6 @@
 from contextlib import ExitStack
 import os
 from pathlib import Path
-import shlex
 import sys
 import tempfile
 import unittest
@@ -63,6 +62,11 @@ class EligibilityTests(unittest.TestCase):
         }, clear=True))
         self.stack.enter_context(patch.object(cached_run, "PLATFORM", "linux"))
         self.native = self.stack.enter_context(patch.object(cached_run, "native_compiler", return_value=True))
+        self.stack.enter_context(patch.object(cached_run, "declared_tools", return_value=True))
+        self.acquire = self.stack.enter_context(patch.object(cached_run, "acquire", return_value=True))
+        self.layout = self.stack.enter_context(patch.object(cached_run.cache_toolchain, "capture", return_value={"/headers": "record"}))
+        self.stack.enter_context(patch.object(cached_run.pc, "track_layout"))
+        self.stack.enter_context(patch.object(cached_run.pc, "VALID", [True]))
         self.stack.enter_context(patch.object(cached_run.os.path, "exists", return_value=True))
         self.stack.enter_context(patch.object(cached_run.os.path, "isfile", return_value=True))
         self.stack.enter_context(patch.object(cached_run.os.path, "realpath", side_effect=lambda p: p))
@@ -81,14 +85,21 @@ class EligibilityTests(unittest.TestCase):
                                   [".", "/compiler/lib"] if dirs is None else dirs,
                                   llvm, ["mpz/mpz.c"])
 
-    def test_default_and_other_commands_never_look_up_or_collect(self):
+    def test_disabled_and_other_commands_never_look_up_or_collect(self):
         for command in ("build", "ext", "ir", "check", "rt"):
             self.assertEqual(self.prepare(cmd=command), ("", "", ""))
-        for flag in ("", "0", "unexpected"):
+        for flag in ("0", "unexpected"):
             with patch.dict(os.environ, {"PYSTACHY_PROGRAM_CACHE": flag}):
                 self.assertEqual(self.prepare(), ("", "", ""))
         self.lookup.assert_not_called()
         self.inputs.assert_not_called()
+
+    def test_unset_and_empty_setting_enable_the_default(self):
+        for present in (False, True):
+            with patch.dict(os.environ, {"PYSTACHY_PROGRAM_CACHE": ""}):
+                if not present:
+                    del os.environ["PYSTACHY_PROGRAM_CACHE"]
+                self.assertEqual(self.prepare()[2], "/cache/native.exe")
 
     def test_nondefault_settings_fail_closed(self):
         variants = [
@@ -126,6 +137,7 @@ class EligibilityTests(unittest.TestCase):
         self.assertTrue(context)
         self.start.assert_not_called()
         self.inputs.assert_not_called()
+        self.layout.assert_not_called()
         self.trace.assert_called_once_with("hit")
 
     def test_miss_collects_actual_inputs_and_collection_failure_bypasses(self):
@@ -174,13 +186,34 @@ class ProcessTests(unittest.TestCase):
         source = "/path/a '$`\n.py"
         args = ["space here", "$(touch should-not-exist)", "a'b", "line\nbreak", ""]
         with patch.dict(os.environ, {"PYSTACHY_GC_STRESS_PROGRAM": "1"}, clear=True), \
+                patch.object(cached_run.sys, "argv", ["/bin/sh", "-c", "exit 119"]), \
+                patch.object(cached_run.pc, "_sh", return_value=True), \
                 patch.object(cached_run.os, "execv") as execute:
-            cached_run.execute("/cache/a b.exe", source, args)
+            cached_run.execute("/usr/bin/printf", source, ["%s\\n", *args])
+            self.assertEqual(os.environ["PYSTACHY_GC_STRESS"], "1")
+            self.assertNotIn("PYSTACHY_PROGRAM_CACHE_LOCK", os.environ)
         path, argv = execute.call_args.args
-        self.assertEqual(path, "/bin/sh")
-        self.assertEqual(argv[:2], ["sh", "-c"])
-        self.assertEqual(shlex.split(argv[2]), ["PYSTACHY_GC_STRESS=1", "PYSTACHY_ARGV0=" + source,
-                                               "exec", "/cache/a b.exe", *args])
+        self.assertTrue(path.startswith("/proc/self/fd/"))
+        self.assertEqual(argv, [source, "%s\\n", *args])
+
+    def test_missing_and_failed_exec_retry_preserves_user_cache_setting(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "entry"
+            retry = ["/compiler/pystachy", "run", "main.py", "argument"]
+            for create in (False, True):
+                if create:
+                    path.write_text("unusable")
+                    path.chmod(0o600)
+                failure = [PermissionError("cannot execute"), None] if create else [None]
+                with patch.dict(os.environ, {"PYSTACHY_PROGRAM_CACHE": "1", "PYSTACHY_GC_STRESS_PROGRAM": "1"}, clear=True), \
+                        patch.object(cached_run.sys, "argv", retry), \
+                        patch.object(cached_run.pc, "_sh", return_value=True), \
+                        patch.object(cached_run.os, "execv", side_effect=failure) as execute:
+                    cached_run.execute(str(path), "main.py", [])
+                    self.assertEqual(os.environ["PYSTACHY_PROGRAM_CACHE"], "1")
+                    self.assertEqual(os.environ["PYSTACHY_PROGRAM_CACHE_LOCK"], "bypass")
+                    self.assertNotIn("PYSTACHY_GC_STRESS", os.environ)
+                execute.assert_called_with(retry[0], retry)
 
 
 if __name__ == "__main__":

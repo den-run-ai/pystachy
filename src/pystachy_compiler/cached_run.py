@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 import sys
 import tempfile
-from src.pystachy_compiler import program_cache as pc
+from src.pystachy_compiler import cache_toolchain, program_cache as pc
 from src.pystachy_compiler.specs import PLATFORM
 
 
@@ -14,6 +14,8 @@ BUILD_ENV: list[str] = [
     "LIBRARY_PATH", "COMPILER_PATH", "GCC_EXEC_PREFIX", "SDKROOT",
     "CCC_OVERRIDE_OPTIONS", "CLANG_CONFIG_FILE_SYSTEM_DIR",
     "CLANG_CONFIG_FILE_USER_DIR", "LD_PRELOAD", "LD_LIBRARY_PATH",
+    "LD_AUDIT", "LD_RUN_PATH", "LD_HWCAP_MASK", "GLIBC_TUNABLES",
+    "LDEMULATION", "GNUTARGET",
 ]
 CPU_FIELDS: list[str] = [
     "vendor_id", "cpu family", "model", "model name", "stepping", "flags",
@@ -42,6 +44,43 @@ def native_compiler(me: str) -> bool:
     try:
         return not me.endswith(".py") and "/" in me and os.path.samefile(me, "/proc/self/exe")
     except OSError:
+        return False
+
+
+def acquire(cache_root: str, context: str) -> bool:
+    # A bounded set of permanent flock files avoids both stale PID ownership
+    # and unlinking a lock while another process is waiting on its inode.
+    lock = pc.lock_path(cache_root, context)
+    if lock == "" or not os.path.isfile("/usr/bin/flock"):
+        return False
+    if pc.lock_held(cache_root, context):
+        # The inherited descriptor and real kernel lock establish ownership;
+        # no successful-launch marker needs to enter the program environment.
+        return pc._sh("/usr/bin/flock -n 9")
+    command = " ".join([quote(a) for a in sys.argv])
+    # A failed open/acquisition restarts with caching disabled. Restore stderr
+    # before the compiler runs so all of its diagnostics remain visible.
+    run = "exec " + command
+    fallback = "PYSTACHY_PROGRAM_CACHE_LOCK=bypass exec " + command
+    script = ("if { /usr/bin/flock -w 30 9 && { exec 2>&7 7>&-; " + run
+              + "; }; } 7>&2 2>/dev/null 9< " + quote(lock)
+              + "; then exit 0; fi; " + fallback)
+    os.execv("/bin/sh", ["sh", "-c", script])
+    return False
+
+
+def declared_tools(llvm: str) -> bool:
+    if os.getenv("PYSTACHY_PROGRAM_CACHE_INPUTS", "") != "":
+        return True  # Explicit contract for wrappers and their hidden inputs.
+    try:
+        for name in ["clang", "opt", "llvm-as", "llvm-link", "lli"]:
+            f = open(llvm + "/" + name, "r", encoding="latin-1", newline="")
+            first = f.read(4)
+            f.close()
+            if first != "\x7fELF":
+                return False
+        return True
+    except (OSError, ValueError):
         return False
 
 
@@ -94,17 +133,19 @@ def tool_inputs(home: str, llvm: str, me: str, parts: list[str]) -> bool:
                 # its file remains an input. Extra wrapper dependencies may be
                 # declared through PYSTACHY_PROGRAM_CACHE_INPUTS.
                 tools = [me] + [llvm + "/" + t for t in ["clang", "opt", "llvm-as", "llvm-link", "lli"]]
-                os.system("ldd " + " ".join([quote(p) for p in tools]) + " > " + quote(shared) + " 2> /dev/null")
+                status = os.system("/usr/bin/ldd " + " ".join([quote(p) for p in tools]) + " > " + quote(shared) + " 2> /dev/null")
+                loaded = 0
                 for line in read_raw(shared).split("\n"):
                     for word in line.split():
                         if word.startswith("/") and os.path.isfile(word):
                             pc.track_static(word)
+                            loaded += 1
                 for p in tools:
                     pc.track_static(p)
                 for p in os.getenv("PYSTACHY_PROGRAM_CACHE_INPUTS", "").split(":"):
                     if p != "":
                         pc.track_static(p)
-                ok = True
+                ok = loaded > 0 and (status == 0 or os.getenv("PYSTACHY_PROGRAM_CACHE_INPUTS", "") != "")
     except (OSError, ValueError):
         ok = False
     for p in [deps, shared]:
@@ -117,7 +158,8 @@ def tool_inputs(home: str, llvm: str, me: str, parts: list[str]) -> bool:
 def prepare(cmd: str, source: str, me: str, home: str, dirs: list[str], llvm: str,
             parts: list[str]) -> tuple[str, str, str]:
     pc.stop()
-    if cmd != "run" or os.getenv("PYSTACHY_PROGRAM_CACHE", "") != "1":
+    if (cmd != "run" or os.getenv("PYSTACHY_PROGRAM_CACHE", "") not in ["", "1"]
+            or os.getenv("PYSTACHY_PROGRAM_CACHE_LOCK", "") == "bypass"):
         return ("", "", "")
     reason = ""
     if PLATFORM != "linux":
@@ -140,6 +182,9 @@ def prepare(cmd: str, source: str, me: str, home: str, dirs: list[str], llvm: st
         trace("bypass " + reason)
         return ("", "", "")
     try:
+        if not declared_tools(llvm):
+            trace("bypass undeclared tool wrapper")
+            return ("", "", "")
         # A clang configuration file can introduce flags/inputs absent above.
         if any(p.endswith(".cfg") for p in os.listdir(os.path.realpath(llvm))):
             trace("bypass clang configuration")
@@ -151,21 +196,29 @@ def prepare(cmd: str, source: str, me: str, home: str, dirs: list[str], llvm: st
         if len(cpu) == 0:
             trace("bypass CPU identity unavailable")
             return ("", "", "")
-        fields = ["jit-executable-v1", source, os.getcwd(), me, os.path.realpath(me),
+        fields = ["jit-executable-v2", source, os.getcwd(), me, os.path.realpath(me),
                   home, os.path.realpath(home), llvm, os.path.realpath(llvm)]
         for d in dirs:
             fields += [d, os.path.realpath(d)]
-        for k in ["PYSTACHY_OPT", "PYSTACHY_JIT_INLINE", "PYSTACHY_PATH", "PATH", "PYSTACHY_PROGRAM_CACHE_INPUTS"]:
+        for k in ["PYSTACHY_OPT", "PYSTACHY_JIT_INLINE", "PYSTACHY_PATH", "PATH", "HOME", "XDG_CONFIG_HOME", "PYSTACHY_PROGRAM_CACHE_INPUTS"]:
             fields += [k, os.getenv(k, "")]
         fields += [line for line in cpu]
         # Length delimiters keep arbitrary source/import path spelling distinct.
         context = "".join([str(len(x)) + ":" + x for x in fields])
         root = os.getenv("PYSTACHY_CACHE", "") or home + "/build"
+        if not acquire(root, context):
+            trace("bypass cache lock unavailable")
+            return ("", "", "")
         hit = pc.lookup(root, context)
         if hit != "":
             trace("hit")
             return (root, context, hit)
         pc.start()
+        pc.track_layout(cache_toolchain.capture(llvm))
+        if not pc.VALID[0]:
+            pc.stop()
+            trace("bypass toolchain search layout unavailable")
+            return ("", "", "")
         if not tool_inputs(home, llvm, me, [home + "/" + p for p in parts]):
             pc.stop()
             trace("bypass toolchain inputs unavailable")
@@ -204,10 +257,25 @@ def same_link_inputs(first: str, second: str) -> bool:
 
 
 def execute(executable: str, source: str, args: list[str]) -> None:
-    # The shell becomes the executable: output, exit status, signals and stdin
-    # belong to a fresh program process, as with the ordinary lli launch.
+    # Pin before releasing the bucket. Direct exec exposes ENOEXEC, EACCES,
+    # ETXTBSY and a missing ELF interpreter as OSError, before any program runs.
+    # A shell's exec special builtin exits instead and cannot perform fallback.
     stress = os.getenv("PYSTACHY_GC_STRESS_PROGRAM", "")
-    env = "PYSTACHY_GC_STRESS=" + quote(stress) + " " if stress != "" else ""
-    command = env + "PYSTACHY_ARGV0=" + quote(source) + " exec " + quote(executable)
-    command += " " + " ".join([quote(a) for a in args])
-    os.execv("/bin/sh", ["sh", "-c", command])
+    saved_stress = os.getenv("PYSTACHY_GC_STRESS", "\0")
+    try:
+        f = open(executable, "r", encoding="latin-1", newline="")
+        try:
+            pc._sh("/usr/bin/flock -u 9")
+            os.environ.pop("PYSTACHY_PROGRAM_CACHE_LOCK", "")
+            if stress != "":
+                os.environ.__setitem__("PYSTACHY_GC_STRESS", stress)
+            os.execv("/proc/self/fd/" + str(f.fileno()), [source] + args)
+        finally:
+            f.close()
+    except (OSError, ValueError):
+        if saved_stress == "\0":
+            os.environ.pop("PYSTACHY_GC_STRESS", "")
+        else:
+            os.environ.__setitem__("PYSTACHY_GC_STRESS", saved_stress)
+        os.environ.__setitem__("PYSTACHY_PROGRAM_CACHE_LOCK", "bypass")
+        os.execv(sys.argv[0], sys.argv)

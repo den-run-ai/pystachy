@@ -124,6 +124,8 @@ CALLS: dict[str, str] = {
     "os.getpid()": "pys_getpid:int", "os.getcwd()": "pys_getcwd:str", "os.path.exists(str)": "pys_exists:bool", "os.path.realpath(str)": "pys_realpath:str",
     "os.path.getsize(str)": "pys_getsize:int", "os.path.getmtime(str)": "pys_getmtime:float", "os.path.getctime(str)": "pys_getctime:float",
     "os.getenv(str,str)": "pys_getenv:str", "ffi.string_at(int,int)": "pys_string_at:str",
+    # Direct environment mutations; os.environ itself is not a mapping value.
+    "os.environ.__setitem__(str,str)": "pys_environ_set:None", "os.environ.pop(str,str)": "pys_environ_pop:str",
     "ffi.untrack(int)": "pys_untrack:None", "ffi.collected()": "pys_collected:int",
     "os.remove(str)": "pys_remove:None", "os.rmdir(str)": "pys_rmdir:None", "tempfile.mkdtemp()": "pys_mkdtemp:str",
     "os.unlink(str)": "pys_remove:None", "os.listdir()": "pys_listdir_cwd:list[str]", "os.listdir(str)": "pys_listdir:list[str]",
@@ -217,7 +219,7 @@ CALLS[IOMOD + ".unsupported(str)"] = "pys_io_unsupported:None"
 # of CALLS, and those Gen.builtin compiles itself
 MODFUNCS: dict[str, bool] = {}
 for _k in CALLS:
-    if "." in _k[: _k.find("(")]:
+    if "." in _k[: _k.find("(")] and not _k.startswith("os.environ."):
         MODFUNCS[_k[: _k.find("(")]] = True
 for _k in "os.path.join os.path.normcase os.fspath sys.exit math.fsum math.prod math.isclose select.select".split():
     MODFUNCS[_k] = True
@@ -1020,7 +1022,8 @@ RUNTIME: dict[str, str] = {
     # errors and the process
     "raise": "None:str,str|R N|", "exit": "None:int|R N I|", "exit_msg": "None:str|R N I|", "argv": "list[str]:|I|", "warnoptions": "list[str]:|A I|",
     "platform": "str:|A|", "errno": "int:str|R A|", "system": "int:str|R I|", "execv": "None:str,list[str]|R N A I rL|", "getpid": "int:|I|", "getcwd": "str:|R A I|", "exists": "bool:str|I|",
-    "path_join": "str:str,str|A|", "realpath": "str:str|R A I|", "getenv": "opt[str]:str,opt[str]|A I|", "remove": "None:str|R A I|", "rmdir": "None:str|R A I|",
+    "path_join": "str:str,str|A|", "realpath": "str:str|R A I|", "getenv": "opt[str]:str,opt[str]|R A I|", "remove": "None:str|R A I|", "rmdir": "None:str|R A I|",
+    "environ_set": "None:str,str|R A I|", "environ_pop": "str:str,str|R A I|",
     "listdir": "list[str]:str|R A I|", "listdir_cwd": "list[str]:|R A I|", "mkdir": "None:str,int|R A I|", "mkdir_default": "None:str|R A I|",
     "rename": "None:str,str|R A I|", "replace": "None:str,str|R A I|", "isdir": "bool:str|I|", "isfile": "bool:str|I|",
     "islink": "bool:str|I|", "lexists": "bool:str|I|", "samefile": "bool:str,str|R A I|", "stat_mode": "int:str,int|R A I|",

@@ -509,6 +509,7 @@ def main(argv=None):
     suffix = "-census" if args.census else "-smoke" if args.smoke else ""
     args.json = args.json or ROOT / "build" / f"pyperformance{suffix}.json"
     env = dict(os.environ)
+    env["PYSTACHY_PROGRAM_CACHE"] = "0"  # Each JIT process includes compilation.
     env.setdefault("PYTHONHASHSEED", "0")
     if args.census:
         # Measure the shipped module surface, independently of caller overlays.

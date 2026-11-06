@@ -18,6 +18,7 @@ LOOKUP = set("""
 analysis.BINDERS builtins.FSPRIMS
 bigints.BIGOPS bigints.BKEY bigints.PROMOTES bigints.NUMOPS bigints.NUMCALLS
 cached_run.BUILD_ENV cached_run.CPU_FIELDS
+cache_toolchain.SYSTEM_INPUTS
 driver.COMPILER_SOURCES driver.CPUID driver.RTPARTS
 dynamic.XCMP dynamic.XOPS dynamic.BINOPS dynamic.UNOPS dynamic.CMPOPS
 dynamic.BINDUNDERS dynamic.BUILTIN expressions.ORDERS
@@ -71,6 +72,7 @@ RETAINED = {
     "program_cache.SOURCES": "consumed source snapshots retained across retries; start clears them for a new cache attempt",
     "program_cache.PROBES": "import-resolution probes including misses retained across retries; start clears them for a new cache attempt",
     "program_cache.STATICS": "toolchain and link-input snapshots retained across retries; start clears them for a new cache attempt",
+    "program_cache.LAYOUTS": "toolchain search candidates retained across retries; start clears them for a new cache attempt",
     "program_cache.STATIC_MEMO": "settled static hashes retained across attempts in the process, also loaded from and saved to a private disk memo",
     "program_cache.MEMO_ROOT": "last cache root whose static memo was loaded in this process; retained across cache attempts",
     "specs.GLUE": "loader public-name discoveries; currently retained across restarts",
@@ -93,13 +95,14 @@ WRITERS = {
     "names.ENUMCLASSES": {"loader.Loader.program", "loader.enum_classes"},
     "program_cache.ACTIVE": {"program_cache.start", "program_cache.stop"},
     "program_cache.VALID": {"program_cache.start", "program_cache._record", "program_cache.tracked_exists",
-                            "program_cache.track_source", "program_cache.track_static"},
+                            "program_cache.track_source", "program_cache.track_static", "program_cache.track_layout"},
     # _record(table, ...) also inserts snapshots into these three tables. That
     # parameter-mediated effect is outside this scan; register only the observed
     # direct resets, not stale writer exceptions. Cache tests cover the recorder.
     "program_cache.SOURCES": {"program_cache.start"},
     "program_cache.PROBES": {"program_cache.start"},
     "program_cache.STATICS": {"program_cache.start"},
+    "program_cache.LAYOUTS": {"program_cache.start"},
     "program_cache.STATIC_MEMO": {"program_cache.track_static", "program_cache._load_memo"},
     "program_cache.MEMO_ROOT": {"program_cache._load_memo"},
     "specs.LIBS": {"lower_module.gen_cextern", "driver.compile_program", "driver.main"},

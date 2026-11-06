@@ -153,8 +153,8 @@ jobs:
 
       - name: Native program cache manifests and tool inputs
         run: |
-          python3 -m unittest discover -s tools -p test_program_cache.py
-          python3 -m unittest discover -s tools -p test_program_cache_publication.py
-          python3 -m unittest discover -s tools -p test_cached_run.py
+          python3 -m unittest discover -s tools -p 'test_program_cache*.py'
+          python3 -m unittest discover -s tools -p 'test_cached_run*.py'
+          python3 -m unittest discover -s tools -p test_cache_toolchain.py
 
       - run: make check-recordings

@@ -134,6 +134,7 @@ def run_campaign(config, *, pairs, batches, warmups, cpu, timeout):
     variants = config["variants"]
     clean_env = {key: value for key, value in os.environ.items()
                  if not key.startswith("PYSTACHY_") and key not in ("PYTHONPATH", "PYTHONHOME")}
+    clean_env["PYSTACHY_PROGRAM_CACHE"] = "0"
     report = {
         "config": config, "pairs": pairs, "batches": batches, "warmups": warmups,
         "platform": platform.platform(), "runner_python": platform.python_version(), "cpu": cpu,
@@ -141,6 +142,7 @@ def run_campaign(config, *, pairs, batches, warmups, cpu, timeout):
                            if line.startswith("model name")), platform.processor()) if Path("/proc/cpuinfo").exists() else platform.processor(),
         "memory_scope": "whole child process peak RSS, including startup/JIT, input/validation and possible pre-exec inherited launch floor; not retained heap",
         "timing_scope": "repair loops; input creation, full-result validation, startup and compilation excluded",
+        "default_environment": {"PYSTACHY_PROGRAM_CACHE": clean_env["PYSTACHY_PROGRAM_CACHE"]},
         "identities": {}, "samples": [], "summary": {},
     }
     for variant in variants:
