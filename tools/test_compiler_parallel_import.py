@@ -112,6 +112,25 @@ class InputTests(unittest.TestCase):
             with self.subTest(line=line), self.assertRaisesRegex(ValueError, "assembly"):
                 imports.inspect_ir(path, reject_assembly=True)
 
+    def test_only_known_empty_pointer_barrier_is_accepted_unchanged(self):
+        path = self.directory / "barrier.ll"
+        barrier = ('  %1 = tail call ptr asm "", "=r,0,~{dirflag},~{fpsr},~{flags}"'
+                   '(ptr nonnull @throw_) #73, !srcloc !1379\n')
+        path.write_text(barrier)
+        self.assertEqual(imports.inspect_ir(path, reject_assembly=True)["empty_pointer_barriers"], 1)
+        self.assertEqual(path.read_text(), barrier)
+        rejected = (barrier.replace('asm ""', 'asm "call hidden_symbol"'),
+                    barrier.replace('asm ""', 'asm "call ${0:c}"'),
+                    barrier.replace('~{flags}', '~{hidden_symbol}'),
+                    barrier.replace('@throw_)', '@throw_, ptr @hidden_symbol)'),
+                    barrier.replace('asm ""', 'asm sideeffect ""'),
+                    barrier.rstrip() + ' asm "hidden_symbol", ""()\n',
+                    'module asm ""\n')
+        for line in rejected:
+            path.write_text(line)
+            with self.subTest(line=line), self.assertRaisesRegex(ValueError, "assembly"):
+                imports.inspect_ir(path, reject_assembly=True)
+
     def test_response_file_preserves_literal_arguments(self):
         argv = ["-r", "file with 'quote.bc,symbol$part,plx", "$(literal)", r"back\slash", "double\"quote"]
         path = self.directory / "response"
@@ -229,7 +248,10 @@ entry:
 define i32 @main() {
 entry:
   %x = load i32, ptr @value
-  %result = call i32 @multiply(i32 %x)
+  %pointer = tail call ptr asm "", "=r,0,~{dirflag},~{fpsr},~{flags}"(ptr nonnull @multiply)
+  %indirect = call i32 %pointer(i32 %x)
+  %direct = call i32 @multiply(i32 0)
+  %result = add i32 %indirect, %direct
   ret i32 %result
 }
 ''')
@@ -249,6 +271,7 @@ entry:
                 self.assertEqual(result.returncode, 0, result.stderr)
                 report = json.loads((work / "build.json").read_text())
                 self.assertTrue(report["complete"])
+                self.assertEqual(report["input_ir"]["empty_pointer_barriers"], 1)
                 self.assertGreater(report["resolution_counts"]["weak_definitions"], 0)
                 if prelink == "o2":
                     self.assertEqual(sum(report["linkonce_promoted"]), 1)

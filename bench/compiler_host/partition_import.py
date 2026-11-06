@@ -15,9 +15,11 @@ That variant promotes linkonce definitions to weak before per-partition O2:
 after splitting, other partitions may reference an otherwise unused definition.
 llvm-lto2 supplies importing and bounded backend threads; clang performs the
 native link. No LLD installation is needed. This is a self-compiler experiment,
-not a general ELF linker or an arbitrary-program driver option. Assembly,
-common/TLS/indirect symbols, cross-partition COMDAT groups and pys_new symbols
-need additional contracts. Single linkonce definitions and ordinary weak
+not a general ELF linker or an arbitrary-program driver option. Module/nonempty
+assembly, common/TLS/indirect symbols, cross-partition COMDAT groups and pys_new
+symbols need additional contracts. The runtime's empty inline-asm pointer
+barrier is accepted unchanged: its symbol reference is an ordinary LLVM operand.
+Single linkonce definitions and ordinary weak
 resolution are supported. Default-visible definitions are kept conservatively;
 hidden definitions can be internalized. These policies affect optimization.
 
@@ -51,6 +53,16 @@ FLAGS = re.compile(r"([DHP][U-][C-][W-][I-][O-][T-][X-]) (.+)")
 QUOTED = re.compile(r'"(?:[^"\\]|\\.)*"')
 LINKONCE = re.compile(r'^(define\s+|@(?:[-a-zA-Z$._0-9]+|"(?:[^"\\]|\\.)*")\s*=\s*)'
                       r'linkonce(_odr)?(?=\s)')
+# runtime.c hide(Thrower *f): __asm__("" : "+r"(f)). The empty template
+# cannot mention another symbol; one ordinary ptr operand exposes the reference
+# to LLVM. Keep the instruction and its constraints untouched. No general asm
+# parsing or relaxation of module/nonempty-template assembly is intended.
+POINTER_BARRIER = re.compile(
+    r'[ \t]+%[-a-zA-Z$._0-9]+[ \t]*=[ \t]*(?:tail[ \t]+)?call[ \t]+ptr[ \t]+'
+    r'asm[ \t]+"",[ \t]+"=r,0,~\{dirflag\},~\{fpsr\},~\{flags\}"'
+    r'\(ptr(?:[ \t]+nonnull)?[ \t]+[@%][-a-zA-Z$._0-9]+\)'
+    r'(?:[ \t]+#[0-9]+)?(?:,[ \t]*![-a-zA-Z$._0-9]+[ \t]+![0-9]+)*'
+    r'[ \t]*(?:;[^\n]*)?\n?')
 
 
 def parse_symtab(text):
@@ -157,15 +169,19 @@ def symbol_resolutions(tables):
 
 def inspect_ir(path, reject_assembly=False):
     counts = {"function_definitions": 0, "available_externally_definitions": 0,
-              "linkonce_definitions": 0, "bytes": path.stat().st_size}
+              "linkonce_definitions": 0, "empty_pointer_barriers": 0,
+              "bytes": path.stat().st_size}
     with path.open() as stream:
         for line in stream:
-            if reject_assembly:
+            if "asm" in line:
+                barrier = POINTER_BARRIER.fullmatch(line)
+                counts["empty_pointer_barriers"] += bool(barrier)
                 # Compiler string constants can contain LLVM source, including
                 # '@pys_new(' or 'asm'. Examine syntax outside quoted strings.
-                syntax = QUOTED.sub('""', line).split(";", 1)[0]
-                if re.search(r"(?:^|\s)asm(?:\s|$)", syntax):
-                    raise ValueError("assembly requires a real linker resolution")
+                if reject_assembly:
+                    syntax = QUOTED.sub('""', line).split(";", 1)[0]
+                    if re.search(r"(?:^|\s)asm(?:\s|$)", syntax) and not barrier:
+                        raise ValueError("assembly requires a real linker resolution")
             if line.startswith("define "):
                 counts["function_definitions"] += 1
                 counts["available_externally_definitions"] += "available_externally" in line.split("@", 1)[0]
