@@ -227,6 +227,15 @@ def aot_optimization() -> str:
     return value
 
 
+def aot_inline_flags() -> str:
+    value = os.getenv("PYSTACHY_AOT_INLINE_THRESHOLD", "")
+    if value == "":
+        return ""
+    if not value.isascii() or not value.isdigit() or len(value) > 5 or int(value) > 10000:
+        fail("PYSTACHY_AOT_INLINE_THRESHOLD must be an integer from 0 to 10000", 0)
+    return " -mllvm -inline-threshold=" + str(int(value))
+
+
 def output_alias(first: str, second: str) -> bool:
     if os.path.realpath(first) == os.path.realpath(second):
         return True
@@ -509,6 +518,7 @@ def main() -> None:
     jobs = build_jobs() if cmd == "build" or cmd == "run" or cmd == "ext" else 1
     partitions = lto_partitions(jobs) if cmd == "build" else 0
     aotopt = aot_optimization() if cmd == "build" else "2"
+    aotinline = aot_inline_flags() if cmd == "build" else ""
     diagnostics.SRC = argv[2]
     if not os.path.exists(diagnostics.SRC):
         fail("file not found", 0)
@@ -1058,7 +1068,7 @@ def main() -> None:
         code = timed_sh("program.llvm_link", link)
         ready = bc
         if code == 0 and (newalloc or partitions > 0):
-            code = timed_sh("program.llvm_optimize", f"{llvm}clang -O{aotopt} -c -emit-llvm {q(bc)} -o {q(obc)} -Wno-unused-command-line-argument{ccflags}")
+            code = timed_sh("program.llvm_optimize", f"{llvm}clang -O{aotopt}{aotinline} -c -emit-llvm {q(bc)} -o {q(obc)} -Wno-unused-command-line-argument{ccflags}")
             ready = obc
         if code == 0 and newalloc:
             code = timed_sh("program.late_inline", f"{llvm}opt -passes=forceattrs,always-inline {LATE_INLINE} {q(obc)} -o {q(lbc)}")
@@ -1087,7 +1097,9 @@ def main() -> None:
                           f" -Wl,--lto-newpm-passes=verify -Wl,--lto-CGO{aotopt} -Wl,--lto-partitions={partitions}"
                           f" -Wl,--threads={jobs} -o {q(out)}{libs} -lm")
         elif code == 0:
-            disable = " -Xclang -disable-llvm-passes" if newalloc else ""
+            # The optional threshold belongs to the optimizer, never the late
+            # allocator pass or codegen of already optimized bitcode.
+            disable = " -Xclang -disable-llvm-passes" if newalloc else aotinline
             name = "program.codegen" if newalloc else "program.optimize_codegen"
             code = timed_sh(name, f"{llvm}clang -O{aotopt} -c{disable} {q(ready)} -o {q(obj)} -Wno-unused-command-line-argument{ccflags}")
             if code == 0:

@@ -718,6 +718,14 @@ or executable destination. The normal `make` and CI bootstrap remain unchanged.
 the shared worker budget, private output directories and measurement reports. The
 temporary first compiler can use `--stage1-opt 0` or `1`; the final compiler stays at
 level 2. A lower tier can slow the next stage, so compare complete bootstrap times.
+The optional `--stage1-inline-threshold N` and `--stage2-inline-threshold N` independently
+select LLVM's heuristic inlining threshold for each native build (0 through 10000).
+Omitting either retains LLVM's default policy at that stage. The same flags work with
+split stages and are recorded in the report; independent IR witnesses and cached runtime
+preparation retain their existing settings. Lower thresholds can reduce backend work
+while slowing the resulting compiler, so measure both complete bootstrap and generated
+compiler execution before choosing one. A threshold of zero is still a heuristic setting:
+mandatory `alwaysinline` functions, including the allocator's late pass, remain inlined.
 See [the experiment](../bench/bootstrap/README.md) for measured results and limits.
 
 `PYSTACHY_RUNTIME_C_CACHE=1` separately caches the C runtime's bitcode across compiler
@@ -738,6 +746,7 @@ retain the ordinary path; this experiment does not deduplicate simultaneous miss
 | `PYSTACHY_BUILD_JOBS` | Per-invocation build budget, 1–64 (default 1); 2 or more permits isolated cold-runtime jobs; see [build parallelism](#experimental-build-parallelism-and-timings) |
 | `PYSTACHY_LTO_PARTITIONS` | Experimental AOT full-LTO codegen partitions, 0–`PYSTACHY_BUILD_JOBS` (default 0/off); Linux LLVM 18 clang/LLD and default `PYSTACHY_CFLAGS` only |
 | `PYSTACHY_AOT_OPT` | Experimental program optimization/codegen tier for `build`: 0, 1, or 2 (default 2); runtime compilation and `ext` retain their existing tier |
+| `PYSTACHY_AOT_INLINE_THRESHOLD=N` | Experimental LLVM heuristic inlining threshold for `build`, 0–10000; unset or empty uses LLVM defaults. Applies only to program optimization, preserving late allocator inlining, codegen level, cached runtime preparation, `run` and `ext` |
 | `PYSTACHY_RUNTIME_C_CACHE` | Opt-in compiler-independent C-runtime bitcode cache: 0 (default) or 1; default C flags only |
 | `PYSTACHY_TIMING=1` | Print monotonic stage durations to stderr; nested totals and worker intervals overlap |
 | `PYSTACHY_IRCHECK=1` | Verify typed IR before lowering and after transforming passes |

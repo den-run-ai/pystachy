@@ -118,6 +118,36 @@ class OptimizationTier(unittest.TestCase):
                 self.assertIn("PYSTACHY_AOT_OPT", error.getvalue())
 
 
+class InliningPolicy(unittest.TestCase):
+    def test_default_and_explicit_thresholds(self):
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertEqual(driver.aot_inline_flags(), "")
+        for value, expected in (("", ""), ("0", "0"), ("75", "75"), ("00075", "75"), ("10000", "10000")):
+            with self.subTest(value=value), patch.dict(os.environ, PYSTACHY_AOT_INLINE_THRESHOLD=value):
+                self.assertEqual(driver.aot_inline_flags(), " -mllvm -inline-threshold=" + expected if expected else "")
+
+    def test_invalid_policy_rejects_before_frontend_or_tool_execution(self):
+        for value in ("-1", "+75", "10001", "000000", "75.0", " 75", "75\n", "７５", "75; false"):
+            with self.subTest(value=value), patch.dict(os.environ, PYSTACHY_AOT_INLINE_THRESHOLD=value):
+                with patch.object(sys, "argv", ["pystachy", "build", "unused.py"]), \
+                     patch.object(driver, "compile_program") as frontend, patch.object(driver, "sh") as shell, \
+                     contextlib.redirect_stderr(io.StringIO()) as error, self.assertRaises(SystemExit):
+                    driver.main()
+                self.assertIn("PYSTACHY_AOT_INLINE_THRESHOLD", error.getvalue())
+                frontend.assert_not_called()
+                shell.assert_not_called()
+
+    def test_policy_is_not_parsed_for_frontend_only_commands(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "probe.py"
+            source.write_text("print(42)\n")
+            with patch.dict(os.environ, PYSTACHY_AOT_INLINE_THRESHOLD="invalid"), \
+                 patch.object(sys, "argv", ["pystachy", "check", str(source)]), \
+                 patch.object(driver, "aot_inline_flags") as flags:
+                driver.main()
+            flags.assert_not_called()
+
+
 class AllocatorRouting(unittest.TestCase):
     def test_runtime_declaration_selects_allocator_pipeline(self):
         from src.pystachy_compiler.specs import RTSYM
@@ -182,6 +212,45 @@ class RealAllocatorRouting(unittest.TestCase):
 
 @unittest.skipUnless(os.environ.get("PYSTACHY_TEST_LLVM"), "set PYSTACHY_TEST_LLVM for real LLVM build checks")
 class RealBuilds(unittest.TestCase):
+    def test_inline_policy_preserves_ir_behavior_and_runtime_cache(self):
+        with tempfile.TemporaryDirectory(prefix="pystachy inline policy ") as directory:
+            root = Path(directory)
+            environment = {key: value for key, value in os.environ.items() if not key.startswith("PYSTACHY_")}
+            environment.update(PYSTACHY_LLVM=os.environ["PYSTACHY_TEST_LLVM"], PYSTACHY_HOME=str(ROOT),
+                               PYSTACHY_CACHE=str(root / "cache"), PYSTACHY_TIMING="1")
+            native = os.environ.get("PYSTACHY_TEST_COMPILER")
+            command = [native] if native else [sys.executable, str(ROOT / "pystachy.py")]
+            cache_entries = None
+            programs = (("plain", "print(42)\n", b"42\n"),
+                        ("allocated", "class Cell:\n    def __init__(self, n: int):\n        self.n = n\n"
+                         "cells = [Cell(i) for i in range(100)]\n"
+                         "try:\n    print(sum(c.n for c in cells))\n    raise ValueError('ok')\n"
+                         "except ValueError as error:\n    print(str(error))\n", b"4950\nok\n"))
+            for label, program, expected_stdout in programs:
+                source = root / (label + ".py")
+                source.write_text(program)
+                expected_ir = subprocess.run([*command, "ir", str(source)], cwd=ROOT, env=environment,
+                                             capture_output=True, check=True).stdout
+                for threshold in ("0", "75"):
+                    output = root / (label + "-" + threshold)
+                    witness = output.with_suffix(".ll")
+                    with self.subTest(program=label, threshold=threshold):
+                        env = dict(environment, PYSTACHY_AOT_INLINE_THRESHOLD=threshold)
+                        result = subprocess.run([*command, "build", str(source), "-o", str(output),
+                                                 "--emit-ir", str(witness)], cwd=ROOT, env=env,
+                                                capture_output=True, timeout=120)
+                        self.assertEqual(result.returncode, 0, result.stderr.decode())
+                        self.assertEqual(witness.read_bytes(), expected_ir)
+                        for stress in ("", "1"):
+                            self.assertEqual(subprocess.check_output([str(output)],
+                                env=dict(environment, PYSTACHY_GC_STRESS=stress)), expected_stdout)
+                        self.assertEqual(b"program.late_inline" in result.stderr, label == "allocated")
+                        current_cache = {p.name for p in (root / "cache").glob("runtime-py-*.bc")}
+                        self.assertTrue(current_cache)
+                        if cache_entries is not None:
+                            self.assertEqual(current_cache, cache_entries)
+                        cache_entries = current_cache
+
     def test_tiers_preserve_raw_ir_and_failed_build_does_not_publish(self):
         with tempfile.TemporaryDirectory(prefix="pystachy real witness ") as directory:
             root = Path(directory)

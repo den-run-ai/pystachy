@@ -149,6 +149,59 @@ class WorkerTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "input changed"):
             workers.validate_result(directory, expected)
 
+    def test_inline_policy_only_changes_the_optimizer_command(self):
+        cases = ((1, None), (2, None), (2, 0), (2, 75), (2, 10000))
+        for index, (version, threshold) in enumerate(cases):
+            with self.subTest(version=version, threshold=threshold):
+                directory, job = self.job(name=f"policy-{index}")
+                if version == 2:
+                    job.update(version=2, inline_threshold=threshold)
+                    workers.write_json(directory / "job.json", job)
+                workers.worker(directory, self.llvm)
+                result = workers.validate_result(directory, workers.digest(directory / "job.json"))
+                steps = result["steps"]
+                self.assertEqual([row["name"] for row in steps], ["optimize", "late_inline", "codegen"])
+                flags = [part for part in steps[0]["command"] if "inline-threshold" in part]
+                self.assertEqual(flags, [] if threshold is None else ["-inline-threshold=" + str(threshold)])
+                self.assertEqual("-mllvm" in steps[0]["command"], threshold is not None)
+                self.assertTrue(all(not any("inline-threshold" in part for part in row["command"]) for row in steps[1:]))
+                self.assertEqual(steps[1]["command"][1:5], ["-passes=forceattrs,always-inline", *workers.LATE])
+                self.assertIn("-disable-llvm-passes", steps[2]["command"])
+
+    def test_inline_policy_is_versioned_and_validated_before_execution(self):
+        cases = [{"version": 1, "inline_threshold": 75}, {"version": 2}]
+        cases += [{"version": 2, "inline_threshold": value} for value in (-1, 10001, True, 75.0, "75", [])]
+        for index, changes in enumerate(cases):
+            with self.subTest(changes=changes):
+                directory, job = self.job(name=f"invalid-policy-{index}")
+                job.update(changes)
+                workers.write_json(directory / "job.json", job)
+                with self.assertRaisesRegex(RuntimeError, "inlining policy/version"):
+                    workers.worker(directory, self.llvm)
+                self.assertFalse((directory / "optimized.bc").exists())
+                self.assertFalse((directory / "output.o").exists())
+                self.assertFalse((directory / "result.json").exists())
+
+    def test_inline_policy_changes_are_covered_by_result_binding(self):
+        directory, job = self.job()
+        job.update(version=2, inline_threshold=75)
+        workers.write_json(directory / "job.json", job)
+        expected = workers.digest(directory / "job.json")
+        workers.worker(directory, self.llvm)
+        job["inline_threshold"] = 0
+        workers.write_json(directory / "job.json", job)
+        with self.assertRaisesRegex(RuntimeError, "job identity"):
+            workers.validate_result(directory, expected)
+
+    def test_replay_cannot_override_the_recorded_policy(self):
+        directory, _ = self.job()
+        result = subprocess.run([sys.executable, str(SCRIPT), "--llvm", str(self.llvm),
+                                 "--worker", str(directory), "--inline-threshold", "75"],
+                                capture_output=True, text=True, timeout=10)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("job.json", result.stderr)
+        self.assertFalse((directory / "output.o").exists())
+
     def test_rejected_retry_cannot_reuse_stale_success(self):
         directory, _ = self.job()
         workers.worker(directory, self.llvm)
@@ -159,7 +212,9 @@ class WorkerTests(unittest.TestCase):
         self.assertFalse((directory / "output.o").exists())
 
     def test_detached_worker_needs_no_repository_imports(self):
-        directory, _ = self.job()
+        directory, job = self.job()
+        job.update(version=2, inline_threshold=75)
+        workers.write_json(directory / "job.json", job)
         workers.worker(directory, self.llvm)
         expected = workers.digest(directory / "output.o")
         detached = self.root / "detached.py"
@@ -190,21 +245,26 @@ class WorkerTests(unittest.TestCase):
         for jobs in (1, 2):
             work, report = self.root / f"run-{jobs}", self.root / f"report-{jobs}.json"
             result = subprocess.run([sys.executable, str(SCRIPT), "--llvm", str(self.llvm),
-                "--input", str(source), "--partitions", "4", "--jobs", str(jobs), "--opt", "0",
+                "--input", str(source), "--partitions", "4", "--jobs", str(jobs), "--opt", "0", "--inline-threshold", "75",
                 "--work", str(work), "--report", str(report)], capture_output=True, text=True,
                 env=dict(os.environ, EVENTS=str(events)), timeout=15, start_new_session=True)
             self.assertEqual(result.returncode, 0, result.stderr)
             data = json.loads(report.read_text())
             self.assertTrue(data["complete"])
             self.assertEqual(data["opt"], 0)
+            self.assertEqual(data["inline_threshold"], 75)
             self.assertEqual([r["partition"] for r in data["workers"]], list(range(4)))
             self.assertTrue(all(json.loads(p.read_text())["opt"] == 0 for p in work.glob("worker-*/job.json")))
+            self.assertTrue(all(json.loads(p.read_text())["inline_threshold"] == 75 for p in work.glob("worker-*/job.json")))
+            self.assertTrue(all(json.loads(p.read_text())["version"] == 2 for p in work.glob("worker-*/job.json")))
             outputs.append((work / "compiler").read_bytes())
         self.assertEqual(outputs[0], outputs[1])
         invocations = [json.loads(line) for line in events.read_text().splitlines()]
         compilation = [row for row in invocations if row["tool"] == "clang" and "-c" in row["args"]]
         self.assertTrue(compilation)
         self.assertTrue(all("-O0" in row["args"] for row in compilation))
+        for row in invocations:
+            self.assertEqual("-inline-threshold=75" in row["args"], "-emit-llvm" in row["args"])
 
 
 @unittest.skipUnless(os.name == "posix", "process groups need POSIX")
