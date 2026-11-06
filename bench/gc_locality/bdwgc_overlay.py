@@ -87,9 +87,9 @@ def main():
     parser.add_argument("--include", type=Path, required=True, help="directory containing gc/gc.h")
     parser.add_argument("--library", type=Path, required=True, help="exact libgc.a or shared-library file")
     args = parser.parse_args()
-    source, output = args.source.resolve(), args.output.absolute()
+    source, output = args.source.resolve(), args.output.resolve()
     include, library = args.include.resolve(), args.library.resolve()
-    if output.exists():
+    if output.exists() or args.output.is_symlink():
         parser.error("--output must not exist; do not overwrite an existing overlay")
     if output.is_relative_to(source):
         parser.error("place --output outside the source tree")
