@@ -30,30 +30,23 @@ marks no such line, now compiles too.
 <a id="speed"></a>
 <a id="tests"></a>
 
-## Recorded benchmark
+<a id="recorded-benchmark"></a>
+<a id="checks-and-reproduction"></a>
 
-Historical measurements on a 4-core x86-64 VM; the compiler commit was not
-recorded. Two 50,000-line texts (2.3 MB each); median wall time of five process runs,
-including startup; peak RSS of one run.
+## Checks and benchmarks
 
-| mode | CPython 3.13.16 | Pystachy AOT | speedup | CPython RSS | AOT RSS |
-|---|---:|---:|---:|---:|---:|
-| unified | 0.167 s | 0.079 s | 2.1x | 35.0 MB | 51.4 MB |
-| `--words` | 0.190 s | 0.086 s | 2.2x | 35.0 MB | 54.9 MB |
-| `-q` | 0.161 s | 0.076 s | 2.1x | 35.2 MB | 51.3 MB |
+[`example_linediff.py`](../../tests/programs/apps/example_linediff.py)
+compares unified and word diffs, context sizes, line endings, summaries and
+command-line errors with CPython.
 
-The baseline diff runs about 2× faster compiled; both programs retain the
-texts and matcher tables. Output is compared with CPython.
-
-## Checks and reproduction
-
-`tests/programs/apps/example_linediff.py` compares unified/word diffs, context sizes,
-line-ending cases, summaries and command-line errors with CPython.
+The benchmark generates two 50,000-line texts and exercises unified, word and
+summary modes. The program retains both texts and the matcher tables.
 
 ```sh
 python3 -I bench.py ../../pystachy 5
 ```
 
-The benchmark writes generated inputs and executables to `build/linediff/` at the
-repository root. Results depend on workload and host; see
-[the performance guide](../../docs/performance.md).
+Generated inputs and executables go to `build/linediff/` at the repository root.
+Earlier measurements without a compiler revision are preserved in
+[the historical table](https://github.com/den-run-ai/pystachy/blob/f7103067545b43cdcd8ce20dc66b1571425b3a8d/examples/linediff/README.md#recorded-benchmark).
+See the [benchmark guidance](../README.md#benchmarks) when measuring a current build.

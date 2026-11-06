@@ -24,31 +24,23 @@ Both tested runtimes produce the same report.
 <a id="what-the-heap-buys"></a>
 <a id="tests"></a>
 
-## Recorded benchmark
+<a id="recorded-benchmark"></a>
+<a id="checks-and-reproduction"></a>
 
-Historical measurements on a 4-core x86-64 VM; the compiler commit was not
-recorded. Texts of 1M (6.4 MB) and 4M (26 MB) words; median wall time of seven process
-runs, including startup; peak RSS of one run. Other jobs shared the host.
+## Checks and benchmarks
 
-| Text | Selection | CPython 3.13.16 | Pystachy AOT | CPython RSS | AOT RSS |
-|---|---|---:|---:|---:|---:|
-| 1M words | heap | 0.769 s | 0.520 s | 120.6 MB | 115.3 MB |
-| 1M words | sort | 0.988 s | 0.564 s | 172.2 MB | 146.1 MB |
-| 4M words | heap | 3.446 s | 2.493 s | 399.9 MB | 402.1 MB |
-| 4M words | sort | 3.934 s | 2.641 s | 579.8 MB | 483.8 MB |
+[`example_topk.py`](../../tests/programs/apps/example_topk.py)
+compares counts and heap and sort selections over generated text, including
+`n=0` and `n` beyond the number of distinct words.
 
-Heap selection is cheaper than sorting in either runtime. Counting dominates
-the whole program, so its speedup is smaller than the selection-only speedup.
-
-## Checks and reproduction
-
-`tests/programs/apps/example_topk.py` compares counts and heap/sort selections over generated
-text, including n=0 and n beyond the number of distinct words.
+The benchmark generates texts of one and four million words and compares heap
+selection with sorting. Both modes first build the word and adjacent-pair counts.
 
 ```sh
 python3 -I bench.py ../../pystachy 7
 ```
 
-The benchmark writes generated inputs and executables to `build/topk/` at the
-repository root. Results depend on workload and host; see
-[the performance guide](../../docs/performance.md).
+Generated inputs and executables go to `build/topk/` at the repository root.
+Earlier measurements without a compiler revision are preserved in
+[the historical table](https://github.com/den-run-ai/pystachy/blob/f7103067545b43cdcd8ce20dc66b1571425b3a8d/examples/topk/README.md#recorded-benchmark).
+See the [benchmark guidance](../README.md#benchmarks) when measuring a current build.

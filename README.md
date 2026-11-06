@@ -52,6 +52,7 @@ and shows how to measure compilation and execution separately.
 | [Coding agent](examples/agent/README.md) | Run a typed tool loop and edit files from a native executable. |
 | [nanoGPT](examples/nanogpt/README.md) | Run inference and training with native arrays and optional BLAS. |
 
+Browse [all examples](examples/README.md) for their purposes, checks and requirements.
 See the [performance guide](docs/performance.md) for measured workloads, startup
 and memory costs, and reproduction commands. `run` compiles the program on every
 invocation. `build` lets you reuse the executable.

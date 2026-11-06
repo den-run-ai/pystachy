@@ -48,51 +48,29 @@ needs a decision for each event. Prefix or suffix rules can use string operation
 regex work on misses.
 
 <a id="current-paired-snapshot"></a>
-
-### Paired measurements (2026-10-14)
-
-These measurements use main `1438ac4`'s compiler/runtime/library tree plus the router
-validation changes at local measured commit `a12cdd6`. The CPython-hosted compiler builds
-AOT with LLVM 18.1.3; compilation is
-excluded from execution time. The comparison uses CPython 3.13.16, an AMD EPYC 9V74 shared
-Linux x86-64 host, one assigned CPU (affinity 8), and five paired rounds that alternate
-CPython/AOT order. Both implementations use the same traces and cache policies.
-The [raw rounds and provenance](../../docs/benchmarks/route-2026-10-14-a12cdd6.json) include
-source/executable/trace hashes, environment, all reports and peak RSS. Every report agrees.
-
-| Trace | Mode | CPython wall | AOT wall | AOT speedup | CPython routing | AOT routing |
-|---|---|---:|---:|---:|---:|---:|
-| Repeated names | Cached classifications | 0.332 s | 0.185 s | 1.79× | 140 ns | 90 ns |
-| Repeated names | `--no-cache` | 2.023 s | 2.903 s | 0.70× | 1,759 ns | 3,796 ns |
-| Repeated names | `--fnmatch` | 3.111 s | 3.069 s | 1.01× | 2,895 ns | 3,767 ns |
-| Unique names | Cached classifications | 0.212 s | 0.328 s | 0.65× | 1,755 ns | 3,263 ns |
-| Unique names | `--no-cache` | 0.218 s | 0.302 s | 0.72× | 1,588 ns | 2,944 ns |
-| Unique names | `--fnmatch` | 0.363 s | 0.314 s | 1.15× | 2,835 ns | 3,422 ns |
-
-These are host-specific observations, with substantial variation: cached repeated-name wall
-times span 0.299–0.381 s for CPython and 0.165–0.228 s AOT; the fnmatch row spans
-2.959–4.155 s and 2.936–3.344 s respectively. Cached classifications are faster in AOT on
-this host; fnmatch whole-program times are approximately equal. New names still pay regex
-matching and eviction costs. Measurements from different hosts do not establish a
-performance regression.
-
-Streaming RSS is 12.2–12.8 MiB CPython and 34.4–36.3 MiB AOT. AOT's is higher because
-collection is deferred, not because of the classification cache, which is bounded at 4,096
-names. Keeping distinct names raises unique-trace RSS to 24.1 and 47.8 MiB respectively. Reading the whole trace into
-memory is only used for the routing-time column; it is not the streaming memory measurement.
-
-A build by the self-hosted compiler, at local commit `a74efdf` (the source tree of published
-`5ec733c1`, [PR #371](https://github.com/den-run-ai/pystachy/pull/371)), gave the same
-conclusion in five paired rounds with the same host, CPU, inputs and policies, and every report
-agreed. Its [raw measurements](../../docs/benchmarks/route-2026-10-14-a74efdf.json) record the
-native compiler's hash and source revision separately from the router harness revision.
-
+<a id="paired-measurements-2026-10-14"></a>
 <a id="historical-snapshots"></a>
 <a id="routing-only-timings-and-memory"></a>
 
-Earlier measurements from [#294](https://github.com/den-run-ai/pystachy/pull/294), on an older
-build and another host, are on
-[this page as of alpha.4](https://github.com/den-run-ai/pystachy/blob/9c8bc74648aa7c7e6a1b9d8f9dbbfeb1f2908ad3/examples/route/README.md#historical-snapshots).
+## Recorded benchmarks
+
+The 2026-10-14 comparison covered repeated and unique names in all three modes,
+using five alternating CPython/AOT rounds on one CPU of a shared host, with
+LLVM 18.1.3 and CPython 3.13.16. It recorded streaming process time and RSS
+separately from routing time after loading a trace into memory.
+
+The [hosted-compiler results](../../docs/benchmarks/route-2026-10-14-a12cdd6.json)
+use compiler/runtime/library source from `1438ac4` plus the router validation
+changes at `a12cdd6`. The
+[self-hosted results](../../docs/benchmarks/route-2026-10-14-a74efdf.json)
+use the source tree published as `5ec733c1` in
+[PR #371](https://github.com/den-run-ai/pystachy/pull/371). Both files retain
+raw rounds, hashes, environment and reports.
+
+The [full table and analysis](https://github.com/den-run-ai/pystachy/blob/f7103067545b43cdcd8ce20dc66b1571425b3a8d/examples/route/README.md#current-paired-snapshot)
+and [earlier snapshots](https://github.com/den-run-ai/pystachy/blob/9c8bc74648aa7c7e6a1b9d8f9dbbfeb1f2908ad3/examples/route/README.md#historical-snapshots)
+remain available in history. Rerun the command below for a current build; see the
+[benchmark guidance](../README.md#benchmarks) when comparing revisions.
 
 ## Tests
 
