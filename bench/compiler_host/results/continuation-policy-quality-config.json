@@ -1,0 +1,77 @@
+{
+  "hosts": [
+    {
+      "name": "ordinary",
+      "command": [
+        "/workspace/scratch/685873f30dd6/inline-screen/o2-0/compiler"
+      ]
+    },
+    {
+      "name": "inline75",
+      "command": [
+        "/workspace/scratch/685873f30dd6/inline-screen/o2-inline75-0/compiler"
+      ]
+    },
+    {
+      "name": "compact-output",
+      "command": [
+        "/workspace/scratch/685873f30dd6/memory-builds/chunks/compiler"
+      ]
+    },
+    {
+      "name": "thinlto4",
+      "command": [
+        "/workspace/scratch/685873f30dd6/thinlto-screen-2/backend/compiler"
+      ]
+    },
+    {
+      "name": "pgo-hot300",
+      "command": [
+        "/workspace/scratch/685873f30dd6/pgo-hot-screen/pgo-inline75-hot300-0/compiler"
+      ]
+    },
+    {
+      "name": "split4",
+      "command": [
+        "/workspace/scratch/7739746361cc/bootstrap-final/split-both-0/optimized-gfg6i2n7/pystachy2"
+      ]
+    },
+    {
+      "name": "mypyc-compatible",
+      "command": [
+        "/workspace/scratch/a009f956ecf0/venv/bin/python",
+        "/workspace/scratch/7739746361cc/final-compatible-mypyc/pystachy.py"
+      ],
+      "artifact_root": "/workspace/scratch/7739746361cc/final-compatible-mypyc",
+      "compiled": true
+    }
+  ],
+  "inputs": [
+    {
+      "name": "self",
+      "path": "/workspace/scratch/685873f30dd6/frozen-fa9/pystachy.py"
+    },
+    {
+      "name": "json-repair",
+      "path": "/workspace/scratch/685873f30dd6/frozen-fa9/bench/json_repair/bench.py",
+      "import_path": "/workspace/scratch/685873f30dd6/frozen-fa9/ports"
+    },
+    {
+      "name": "runtime",
+      "path": "/workspace/scratch/685873f30dd6/frozen-fa9/runtime.py",
+      "mode": "rt"
+    },
+    {
+      "name": "namegen",
+      "path": "/workspace/scratch/685873f30dd6/frozen-fa9/bench/compiler_parallel/namegen_probe.py",
+      "import_path": "/workspace/scratch/685873f30dd6/frozen-namegen"
+    },
+    {
+      "name": "pidigits",
+      "path": "/workspace/scratch/685873f30dd6/frozen-fa9/bench/pyperformance/pidigits.py"
+    }
+  ],
+  "environment": {
+    "PYSTACHY_HOME": "/workspace/scratch/685873f30dd6/frozen-fa9"
+  }
+}

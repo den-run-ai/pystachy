@@ -1,0 +1,7 @@
+{
+  "input": "mypyc receiver overlay as compiler source",
+  "host": "native Pystachy PR1090 626c3bf1",
+  "exit_code": 1,
+  "stderr": "/workspace/scratch/e5816a16ad37/mypyc-typed-work/src/pystachy_compiler/gen.py:3732: error: src.pystachy_compiler.program.gen_program() is not supported: parameter 'self': unsupported type annotation\n",
+  "implication": "The annotation overlay works as a mypyc-host preparation, but is not accepted as self-hosting Pystachy source. It stays a separate research overlay."
+}

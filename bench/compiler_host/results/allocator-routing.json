@@ -1,0 +1,298 @@
+{
+  "compilers_identical": true,
+  "complete": true,
+  "harness_sha256": "d6018d32756affc7a7d319c1180fbeb1160a37b8295c0bccc504197bb1f16acd",
+  "host": {
+    "affinity_cpus": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "cpu": "AMD EPYC 9V74 80-Core Processor",
+    "cpu_quota": "800000 100000",
+    "load_average": [
+      0.9013671875,
+      1.20166015625,
+      1.1640625
+    ],
+    "logical_cpus": 9,
+    "memory": "MemTotal:       10206472 kB\nMemAvailable:    9406112 kB",
+    "memory_limit": "8589934592"
+  },
+  "input_sha256": "3126c90b8bb6e2f841e1752ce7e1d786f3b7ddc40f160a07a4cf080789fbcdb1",
+  "input_unchanged": true,
+  "objects_identical": true,
+  "raw_ir_sha256": "49d7ba3ea011519eb0686762bafa7e3f43127307a8743d80544c56c742b4dcd4",
+  "raw_ir_unchanged": true,
+  "raw_string_matches": 3,
+  "runs": [
+    {
+      "compiler_sha256": "f22ac677341a10eecda4356b66329d51277ec9eea17cd4bf06e8c2c29d689502",
+      "cpu_s": 64.577268,
+      "object_sha256": "89ac15a2a3ef7cd496c843cd791c0280faea9d473dc1b37017e3bf077ef45dd4",
+      "route": "ordinary",
+      "sample": 0,
+      "steps": [
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/3e98002bc0e0/toolchain/usr/lib/llvm-18/bin/clang",
+            "-O2",
+            "-c",
+            "/workspace/scratch/e5816a16ad37/pipeline-final/linked.bc",
+            "-o",
+            "/workspace/scratch/7739746361cc/allocator-routing/ordinary-0/output.o"
+          ],
+          "cpu_s": 64.510718,
+          "exit_code": 0,
+          "key": 0,
+          "load_after": [
+            0.998046875,
+            1.17333984375,
+            1.1572265625
+          ],
+          "load_before": [
+            0.9013671875,
+            1.20166015625,
+            1.1640625
+          ],
+          "proc_pid_resolved": true,
+          "sampled_max_processes": 1,
+          "sampled_process_tree_peak_rss_kib": 557172,
+          "stderr": "",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stdout": "",
+          "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 557780,
+          "wall_s": 64.53369036199729
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/3e98002bc0e0/toolchain/usr/lib/llvm-18/bin/clang",
+            "/workspace/scratch/7739746361cc/allocator-routing/ordinary-0/output.o",
+            "-o",
+            "/workspace/scratch/7739746361cc/allocator-routing/ordinary-0/compiler",
+            "-lm"
+          ],
+          "cpu_s": 0.06655,
+          "exit_code": 0,
+          "key": 0,
+          "load_after": [
+            0.998046875,
+            1.17333984375,
+            1.1572265625
+          ],
+          "load_before": [
+            0.998046875,
+            1.17333984375,
+            1.1572265625
+          ],
+          "proc_pid_resolved": true,
+          "sampled_max_processes": 2,
+          "sampled_process_tree_peak_rss_kib": 89136,
+          "stderr": "",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stdout": "",
+          "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 78180,
+          "wall_s": 0.07237249900208553
+        }
+      ],
+      "wall_s": 64.60703409300186
+    },
+    {
+      "compiler_sha256": "f22ac677341a10eecda4356b66329d51277ec9eea17cd4bf06e8c2c29d689502",
+      "cpu_s": 64.195339,
+      "object_sha256": "89ac15a2a3ef7cd496c843cd791c0280faea9d473dc1b37017e3bf077ef45dd4",
+      "route": "staged",
+      "sample": 0,
+      "steps": [
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/3e98002bc0e0/toolchain/usr/lib/llvm-18/bin/clang",
+            "-O2",
+            "-c",
+            "-emit-llvm",
+            "/workspace/scratch/e5816a16ad37/pipeline-final/linked.bc",
+            "-o",
+            "/workspace/scratch/7739746361cc/allocator-routing/staged-0/optimized.bc"
+          ],
+          "cpu_s": 35.238522,
+          "exit_code": 0,
+          "key": 0,
+          "load_after": [
+            1.0615234375,
+            1.16943359375,
+            1.15625
+          ],
+          "load_before": [
+            0.998046875,
+            1.17333984375,
+            1.1572265625
+          ],
+          "proc_pid_resolved": true,
+          "sampled_max_processes": 1,
+          "sampled_process_tree_peak_rss_kib": 509644,
+          "stderr": "",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stdout": "",
+          "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 510540,
+          "wall_s": 35.246288079004444
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/3e98002bc0e0/toolchain/usr/lib/llvm-18/bin/opt",
+            "-passes=forceattrs,always-inline",
+            "-force-remove-attribute=pys_new:noinline",
+            "-force-remove-attribute=pys_new:optnone",
+            "-force-attribute=pys_new:alwaysinline",
+            "/workspace/scratch/7739746361cc/allocator-routing/staged-0/optimized.bc",
+            "-o",
+            "/workspace/scratch/7739746361cc/allocator-routing/staged-0/late.bc"
+          ],
+          "cpu_s": 3.027269,
+          "exit_code": 0,
+          "key": 0,
+          "load_after": [
+            1.0615234375,
+            1.16943359375,
+            1.15625
+          ],
+          "load_before": [
+            1.0615234375,
+            1.16943359375,
+            1.15625
+          ],
+          "proc_pid_resolved": true,
+          "sampled_max_processes": 1,
+          "sampled_process_tree_peak_rss_kib": 363644,
+          "stderr": "",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stdout": "",
+          "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 363644,
+          "wall_s": 3.0337696130009135
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/3e98002bc0e0/toolchain/usr/lib/llvm-18/bin/clang",
+            "-O2",
+            "-c",
+            "-Xclang",
+            "-disable-llvm-passes",
+            "/workspace/scratch/7739746361cc/allocator-routing/staged-0/late.bc",
+            "-o",
+            "/workspace/scratch/7739746361cc/allocator-routing/staged-0/output.o"
+          ],
+          "cpu_s": 25.852444000000002,
+          "exit_code": 0,
+          "key": 0,
+          "load_after": [
+            1.09716796875,
+            1.17041015625,
+            1.1572265625
+          ],
+          "load_before": [
+            1.0615234375,
+            1.16943359375,
+            1.15625
+          ],
+          "proc_pid_resolved": true,
+          "sampled_max_processes": 1,
+          "sampled_process_tree_peak_rss_kib": 549080,
+          "stderr": "",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stdout": "",
+          "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 549080,
+          "wall_s": 25.87027318699984
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/3e98002bc0e0/toolchain/usr/lib/llvm-18/bin/clang",
+            "/workspace/scratch/7739746361cc/allocator-routing/staged-0/output.o",
+            "-o",
+            "/workspace/scratch/7739746361cc/allocator-routing/staged-0/compiler",
+            "-lm"
+          ],
+          "cpu_s": 0.077104,
+          "exit_code": 0,
+          "key": 0,
+          "load_after": [
+            1.09716796875,
+            1.17041015625,
+            1.1572265625
+          ],
+          "load_before": [
+            1.09716796875,
+            1.17041015625,
+            1.1572265625
+          ],
+          "proc_pid_resolved": true,
+          "sampled_max_processes": 2,
+          "sampled_process_tree_peak_rss_kib": 88596,
+          "stderr": "",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stdout": "",
+          "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 78180,
+          "wall_s": 0.0834337569976924
+        }
+      ],
+      "wall_s": 64.23592880499928
+    }
+  ],
+  "summary": [
+    {
+      "cpu_s": 64.195339,
+      "n": 1,
+      "route": "staged",
+      "wall_s": 64.23592880499928
+    },
+    {
+      "cpu_s": 64.577268,
+      "n": 1,
+      "route": "ordinary",
+      "wall_s": 64.60703409300186
+    }
+  ],
+  "tools": {
+    "clang": {
+      "path": "/workspace/scratch/3e98002bc0e0/toolchain/usr/lib/llvm-18/bin/clang",
+      "sha256": "8ef402d453d1ba4902e4ee0f0f847f6cfa01400c95aa43c24e97818b9c0e3f45"
+    },
+    "ld.lld": {
+      "path": "/workspace/scratch/3e98002bc0e0/toolchain/usr/lib/llvm-18/bin/lld",
+      "sha256": "7ad9a0e8fe6d0e79b71172d731e33872c0274e49fceb7b516d774876d5a58ade"
+    },
+    "llvm-as": {
+      "path": "/workspace/scratch/3e98002bc0e0/toolchain/usr/lib/llvm-18/bin/llvm-as",
+      "sha256": "8e7460eff4ba4e22d8ae881404bb24c5fc346996264e883ba26d41da4188215d"
+    },
+    "llvm-link": {
+      "path": "/workspace/scratch/3e98002bc0e0/toolchain/usr/lib/llvm-18/bin/llvm-link",
+      "sha256": "e340363ed9e5346f0d6dc4441f4953c5f516ff73fa0a03e1955c1adaad68b651"
+    },
+    "opt": {
+      "path": "/workspace/scratch/3e98002bc0e0/toolchain/usr/lib/llvm-18/bin/opt",
+      "sha256": "67ebe8635087b5ebe22d8f085d5e5857e431f86be9ed76576e59b86b9743c0fb"
+    },
+    "python": {
+      "path": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+      "sha256": "6e9b7d27499f26dbec3c8687728f3a0500b9b61688664f03678242744567c461"
+    }
+  }
+}

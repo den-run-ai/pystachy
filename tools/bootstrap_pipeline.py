@@ -76,16 +76,34 @@ def plan(args, work):
     compilers = [[args.python, "pystachy.py"], [str(work / "pystachy1")], [str(work / "pystachy2")]]
     nodes = []
 
-    def add(name, argv, deps, slots=1, opt=2):
+    def add(name, argv, deps, slots=1, opt=2, inline_threshold=None):
         nodes.append({"name": name, "command": argv, "dependencies": deps,
-                      "slots": slots, "aot_opt": opt, "status": "pending"})
+                      "slots": slots, "aot_opt": opt, "inline_threshold": inline_threshold, "status": "pending"})
 
     for i in (1, 2):
         command = compilers[i - 1] + ["build", "pystachy.py", "-o", str(work / f"pystachy{i}")]
         if args.variant != "baseline":
             command += ["--emit-ir", str(work / f"stage{i}.ll")]
+        split = args.stage1_split if i == 1 else args.stage2_split
+        thinlto = args.stage2_thinlto if i == 2 else 0
+        inline_threshold = args.stage1_inline_threshold if i == 1 else args.stage2_inline_threshold
+        if split or thinlto:
+            command = [args.python, str(args.root / "bench/compiler_host/self_pipeline.py"),
+                       "--root", str(args.root), "--llvm", args.llvm,
+                       "--work", str(work / f"stage{i}-pipeline"), "--report", str(work / f"stage{i}-pipeline.json"),
+                       "--jobs", str(args.build_jobs), "--partitions", str(thinlto or split),
+                       "--opt", str(args.stage1_opt if i == 1 else 2), "--cache", str(work / "cache"),
+                       "--output", str(work / f"pystachy{i}"), "--emit-ir", str(work / f"stage{i}.ll"),
+                       "--caller-witnesses"]
+            command += ["--hosted"] if i == 1 else ["--compiler", compilers[i - 1][0]]
+            if thinlto:
+                command += ["--backend", "thinlto"]
+            if args.runtime_overlap:
+                command.append("--overlap")
+            if inline_threshold is not None:
+                command += ["--inline-threshold", str(inline_threshold)]
         add(f"build{i}", command, ["build1"] if i == 2 else [], args.build_jobs,
-            args.stage1_opt if i == 1 else 2)
+            args.stage1_opt if i == 1 else 2, inline_threshold)
     for i in range(1 if args.variant == "baseline" else 3, 4):
         add(f"ir{i}", compilers[i - 1] + ["ir", "pystachy.py", "-o", str(work / f"stage{i}.ll")], ["build2"])
     for i in (1, 2, 3):
@@ -136,6 +154,8 @@ def run_nodes(nodes, args, work, env):
                 child_env = dict(env, PYSTACHY_BUILD_JOBS=str(node["slots"]),
                                  PYSTACHY_LTO_PARTITIONS=str(args.partitions if node["name"].startswith("build") else 0),
                                  PYSTACHY_AOT_OPT=str(node["aot_opt"]))
+                if node["inline_threshold"] is not None:
+                    child_env["PYSTACHY_AOT_INLINE_THRESHOLD"] = str(node["inline_threshold"])
                 node["environment"] = {k: v for k, v in child_env.items() if k.startswith("PYSTACHY_")}
                 node["log"] = str(work / (node["name"] + ".log"))
                 log = open(node["log"], "wb")
@@ -174,7 +194,9 @@ def run_nodes(nodes, args, work, env):
             signal.signal(sig, signal.SIG_IGN)
         for pid in running:
             signal_group(pid, signal.SIGTERM)
-        deadline = time.monotonic() + 0.25
+        # Nested worker controllers use 0.25 s to drain their descendants and
+        # publish failure evidence. Give that cleanup time before the fallback.
+        deadline = time.monotonic() + 0.75
         while running and time.monotonic() < deadline:
             for pid in list(running):
                 done, status, usage = os.wait4(pid, os.WNOHANG)
@@ -206,6 +228,17 @@ def main(argv=None):
     parser.add_argument("--build-jobs", type=int, default=1, help="slots reserved per native build")
     parser.add_argument("--partitions", type=int, default=0)
     parser.add_argument("--stage1-opt", type=int, choices=(0, 1, 2), default=2)
+    parser.add_argument("--stage1-inline-threshold", type=int, help="research: temporary compiler LLVM inlining threshold (0..10000)")
+    parser.add_argument("--stage2-inline-threshold", type=int, help="research: final compiler LLVM inlining threshold (0..10000)")
+    parser.add_argument("--stage1-split", type=int, default=0,
+                        help="research: early-split temporary self-build, final build retains the driver")
+    final_backend = parser.add_mutually_exclusive_group()
+    final_backend.add_argument("--stage2-split", type=int, default=0,
+                               help="research: early-split final compiler too; generated-code quality changes")
+    final_backend.add_argument("--stage2-thinlto", type=int, default=0,
+                               help="research: final self-build with summaries-only ThinLTO at O2 (1..8 partitions)")
+    parser.add_argument("--runtime-overlap", action="store_true",
+                        help="research: overlap whole runtime and frontend in each split or ThinLTO stage")
     parser.add_argument("--runtime-c-cache", action="store_true", help="enable the independent runtime C bitcode cache")
     parser.add_argument("--timing", action="store_true", help="retain driver stage timings in each command log")
     parser.add_argument("--timeout", type=float, default=900, help="seconds per command")
@@ -213,6 +246,18 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if not 1 <= args.build_jobs <= args.jobs <= 64 or not 0 <= args.partitions <= args.build_jobs or args.timeout <= 0:
         parser.error("require 1 <= build-jobs <= jobs <= 64, 0 <= partitions <= build-jobs, timeout > 0")
+    if any(value is not None and not 0 <= value <= 10000
+           for value in (args.stage1_inline_threshold, args.stage2_inline_threshold)):
+        parser.error("inlining thresholds must be from 0 to 10000")
+    if any(not 0 <= count <= 8 for count in (args.stage1_split, args.stage2_split, args.stage2_thinlto)):
+        parser.error("split/ThinLTO counts must be from 0 to 8")
+    custom_backend = args.stage1_split or args.stage2_split or args.stage2_thinlto
+    if custom_backend and (args.build_jobs > 8 or args.variant == "baseline" or not args.runtime_c_cache):
+        parser.error("split/ThinLTO builds need retained witnesses, runtime-c-cache and at most 8 build jobs")
+    if args.stage2_thinlto and (args.stage2_inline_threshold is not None or args.partitions):
+        parser.error("ThinLTO needs the default final inlining policy and no full-LTO partitions")
+    if args.runtime_overlap and (not custom_backend or args.build_jobs < 2):
+        parser.error("runtime-overlap needs a split/ThinLTO build and at least two build jobs")
     args.root = args.root.resolve()
     args.python = str(Path(shutil.which(args.python) or args.python).resolve())
     if not args.llvm:
@@ -238,6 +283,7 @@ def main(argv=None):
               "options": {k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()},
               "platform": platform.platform(), "host_before": host_state(), "steps": nodes, "fixed_points": {},
               "planned_work": {"native_builds": 2, "compiler_frontend_emissions": 5 if args.variant == "baseline" else 3,
+                               "runtime_prewarm_tiny_builds": int(bool(args.stage1_split)) + int(bool(args.stage2_split or args.stage2_thinlto)),
                                "compiler_fixed_point_witnesses": 3, "runtime_fixed_point_witnesses": 3}}
     start = time.monotonic()
     code = 1

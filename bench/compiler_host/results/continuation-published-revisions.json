@@ -1,0 +1,354 @@
+{
+  "repository_full_name": "den-run-ai/pystachy",
+  "base_commit_sha": "fa9bba371c792999b6161b8aa507e8c584b1b0f5",
+  "local_evidence_head": "1c61cff0e0ab0403c9b7124edad065cb1573b37e",
+  "published_evidence_head": "87f95de71e17099ff08547bb9273e1b579c92cbf",
+  "evidence_tree_sha": "bc200958455545153a8250d68c00dc620d5aee5f",
+  "all_returned_tree_hashes_match_local_checkpoints": true,
+  "note": "Original commit metadata was recreated by the connected GitHub integration. Each mapped commit has the exact local tree and preserves mapped ordered parents; raw benchmark records are unchanged.",
+  "commits": [
+    {
+      "local_commit_sha": "f9dcdecf6d3c07692026173ad54db51f3df67f11",
+      "published_commit_sha": "f53d1f3422d54b83f2c1cab560e3e56214da650f",
+      "tree_sha": "7816c26ef28f269e6fd505785aeb6c9439dbf011",
+      "local_parent_shas": [
+        "fa9bba371c792999b6161b8aa507e8c584b1b0f5"
+      ],
+      "published_parent_shas": [
+        "fa9bba371c792999b6161b8aa507e8c584b1b0f5"
+      ],
+      "message": "Explore compiler inlining and offline profile guidance\n",
+      "sequence": 1
+    },
+    {
+      "local_commit_sha": "f4826b4ec68f7e3889354271249b885478eff471",
+      "published_commit_sha": "6da3927c6312af25eec8cbb01836e59a1dc871bb",
+      "tree_sha": "686bc639aaf2d21d660b44d4221728f5f756aae3",
+      "local_parent_shas": [
+        "fa9bba371c792999b6161b8aa507e8c584b1b0f5"
+      ],
+      "published_parent_shas": [
+        "fa9bba371c792999b6161b8aa507e8c584b1b0f5"
+      ],
+      "message": "Avoid copying LLVM output for the final newline\n",
+      "sequence": 2
+    },
+    {
+      "local_commit_sha": "a87b5c892ebfe828520fed74517e7c745d7c4a31",
+      "published_commit_sha": "0eec0c518a3a2384948dc38ffa7d7767622d4767",
+      "tree_sha": "24ccba578b2bd010779dc2509a6c56fbef895c5e",
+      "local_parent_shas": [
+        "f4826b4ec68f7e3889354271249b885478eff471"
+      ],
+      "published_parent_shas": [
+        "6da3927c6312af25eec8cbb01836e59a1dc871bb"
+      ],
+      "message": "Retain LLVM output in completed function chunks\n",
+      "sequence": 3
+    },
+    {
+      "local_commit_sha": "33fdda0ba8f98a1387375e3cd6fef9682cf345da",
+      "published_commit_sha": "cdb01a5b062faa0bc6599d3aaeb3d93f2e0650ae",
+      "tree_sha": "b68dc00e606a1c63c901ebbb97522bbffe4e176d",
+      "local_parent_shas": [
+        "f9dcdecf6d3c07692026173ad54db51f3df67f11",
+        "a87b5c892ebfe828520fed74517e7c745d7c4a31"
+      ],
+      "published_parent_shas": [
+        "f53d1f3422d54b83f2c1cab560e3e56214da650f",
+        "0eec0c518a3a2384948dc38ffa7d7767622d4767"
+      ],
+      "message": "Integrate compact LLVM output construction\n",
+      "sequence": 4
+    },
+    {
+      "local_commit_sha": "96600ad42f7d957612f04d7ea3886530005e1c1d",
+      "published_commit_sha": "fb5d513d76430705fd8eb71e3ec2d4f3962d6656",
+      "tree_sha": "c2d6aaeb3430e9da0dc358325e37509c4c77c775",
+      "local_parent_shas": [
+        "fa9bba371c792999b6161b8aa507e8c584b1b0f5"
+      ],
+      "published_parent_shas": [
+        "fa9bba371c792999b6161b8aa507e8c584b1b0f5"
+      ],
+      "message": "Add opt-in LLVM inlining policies to native builds\n",
+      "sequence": 5
+    },
+    {
+      "local_commit_sha": "694d619f09718e8092554a537f757024b110a871",
+      "published_commit_sha": "9f9b3d7af2a1561ba791e6c91248509966277e8a",
+      "tree_sha": "95901ba7f6239324304a6009cfa53be313e1921b",
+      "local_parent_shas": [
+        "33fdda0ba8f98a1387375e3cd6fef9682cf345da",
+        "96600ad42f7d957612f04d7ea3886530005e1c1d"
+      ],
+      "published_parent_shas": [
+        "cdb01a5b062faa0bc6599d3aaeb3d93f2e0650ae",
+        "fb5d513d76430705fd8eb71e3ec2d4f3962d6656"
+      ],
+      "message": "Integrate opt-in LLVM inlining controls\n",
+      "sequence": 6
+    },
+    {
+      "local_commit_sha": "3ee3ac97459a0ed2eb0c0935d9d99b34a926f704",
+      "published_commit_sha": "c05911a71ed0ac7c4053c5c8751f082cff7de26c",
+      "tree_sha": "90f74319993424452e4baf1b140f7ebf2619c7f4",
+      "local_parent_shas": [
+        "fa9bba371c792999b6161b8aa507e8c584b1b0f5"
+      ],
+      "published_parent_shas": [
+        "fa9bba371c792999b6161b8aa507e8c584b1b0f5"
+      ],
+      "message": "Prototype bounded ThinLTO importing for self builds\n",
+      "sequence": 7
+    },
+    {
+      "local_commit_sha": "d09dad53f339603ab44e08643aaf181a22fbcf53",
+      "published_commit_sha": "d35c93dff97997916941117cef1a0dbec56efb3c",
+      "tree_sha": "4355fb9c3dfff009c7cad5f7c5c916e298f6a625",
+      "local_parent_shas": [
+        "694d619f09718e8092554a537f757024b110a871",
+        "3ee3ac97459a0ed2eb0c0935d9d99b34a926f704"
+      ],
+      "published_parent_shas": [
+        "9f9b3d7af2a1561ba791e6c91248509966277e8a",
+        "c05911a71ed0ac7c4053c5c8751f082cff7de26c"
+      ],
+      "message": "Integrate ThinLTO function-import experiment\n",
+      "sequence": 8
+    },
+    {
+      "local_commit_sha": "b1b1e1ccd15211b4e951c3da6e23de7e4a4109dc",
+      "published_commit_sha": "c8430be6efebcbe8792c467f4b3f944f19280f3b",
+      "tree_sha": "7630c56ae941517491da5ecc512be3cfbd34e2c7",
+      "local_parent_shas": [
+        "d09dad53f339603ab44e08643aaf181a22fbcf53"
+      ],
+      "published_parent_shas": [
+        "d35c93dff97997916941117cef1a0dbec56efb3c"
+      ],
+      "message": "Validate IR profile compatibility and reuse provenance\n",
+      "sequence": 9
+    },
+    {
+      "local_commit_sha": "2391a454174bc959623904bc2ce27755df777a58",
+      "published_commit_sha": "5b5be9c80583dc3341a25758cfe91ecc4b87a2d2",
+      "tree_sha": "39e61887dc543336ceaeb2121fcfb04f6a5c595a",
+      "local_parent_shas": [
+        "3ee3ac97459a0ed2eb0c0935d9d99b34a926f704"
+      ],
+      "published_parent_shas": [
+        "c05911a71ed0ac7c4053c5c8751f082cff7de26c"
+      ],
+      "message": "Preserve known empty runtime pointer barriers in ThinLTO\n",
+      "sequence": 10
+    },
+    {
+      "local_commit_sha": "c07b152688e7456f814c832a120d029c09d8d137",
+      "published_commit_sha": "19fa559c7fd64e9e4e58412046109abad3b82e17",
+      "tree_sha": "164ca4b8350bb2842aa5a18cbdcc4744001eabbc",
+      "local_parent_shas": [
+        "b1b1e1ccd15211b4e951c3da6e23de7e4a4109dc",
+        "2391a454174bc959623904bc2ce27755df777a58"
+      ],
+      "published_parent_shas": [
+        "c8430be6efebcbe8792c467f4b3f944f19280f3b",
+        "5b5be9c80583dc3341a25758cfe91ecc4b87a2d2"
+      ],
+      "message": "Preserve known empty asm barriers in ThinLTO experiments\n",
+      "sequence": 11
+    },
+    {
+      "local_commit_sha": "b3f14124f556af9eaf8a4594c606da5d91a2010f",
+      "published_commit_sha": "588075f7ce264cc0a063cc70cf568c5daf601eea",
+      "tree_sha": "359a3570cbe15c0624d36f9a3e673f888c10c286",
+      "local_parent_shas": [
+        "c07b152688e7456f814c832a120d029c09d8d137"
+      ],
+      "published_parent_shas": [
+        "19fa559c7fd64e9e4e58412046109abad3b82e17"
+      ],
+      "message": "Compare opt-in inlining across complete bootstraps\n",
+      "sequence": 12
+    },
+    {
+      "local_commit_sha": "f6c76fb10759dcf945ab7d3b041ed0381e5d6188",
+      "published_commit_sha": "46b4bcf47f601958b11e7005c587ca9fd566d2b5",
+      "tree_sha": "eb280ebd2f254573a0edc66492188545db3fc7ca",
+      "local_parent_shas": [
+        "b3f14124f556af9eaf8a4594c606da5d91a2010f"
+      ],
+      "published_parent_shas": [
+        "588075f7ce264cc0a063cc70cf568c5daf601eea"
+      ],
+      "message": "Bound profile runtime discovery and clarify bootstrap policies\n",
+      "sequence": 13
+    },
+    {
+      "local_commit_sha": "f20bad228f960e50aa1a52a488775af7e005e0c4",
+      "published_commit_sha": "a6738721b39ea6bf1a4f826cca0108633b0f262c",
+      "tree_sha": "ac5d5086d2249794b7a14b5e4e51de06e151ddd4",
+      "local_parent_shas": [
+        "2391a454174bc959623904bc2ce27755df777a58"
+      ],
+      "published_parent_shas": [
+        "5b5be9c80583dc3341a25758cfe91ecc4b87a2d2"
+      ],
+      "message": "Bind ThinLTO jobs to harness provenance and test rejections\n",
+      "sequence": 14
+    },
+    {
+      "local_commit_sha": "6e96d64aa2c149632d7d89fa76c1c6f6b3c0d5f0",
+      "published_commit_sha": "57cf783f7574f45810045524b616ae8f5e5d66c4",
+      "tree_sha": "f46d36335ca5c1d288bb352ca11b362218c64d0c",
+      "local_parent_shas": [
+        "f6c76fb10759dcf945ab7d3b041ed0381e5d6188",
+        "f20bad228f960e50aa1a52a488775af7e005e0c4"
+      ],
+      "published_parent_shas": [
+        "46b4bcf47f601958b11e7005c587ca9fd566d2b5",
+        "a6738721b39ea6bf1a4f826cca0108633b0f262c"
+      ],
+      "message": "Bind ThinLTO experiment inputs and execution provenance\n",
+      "sequence": 15
+    },
+    {
+      "local_commit_sha": "b70f1578a912d20957924593205147338a22b560",
+      "published_commit_sha": "671a149e89b08894a26e9e624ece9d7527a4e419",
+      "tree_sha": "a4a853ba4550b6e0a5c4deaf835e8cd8363c257d",
+      "local_parent_shas": [
+        "b3f14124f556af9eaf8a4594c606da5d91a2010f"
+      ],
+      "published_parent_shas": [
+        "588075f7ce264cc0a063cc70cf568c5daf601eea"
+      ],
+      "message": "Validate inlining bootstrap applicability and comparison\n",
+      "sequence": 16
+    },
+    {
+      "local_commit_sha": "9efb3b2dcd34de65a715598a742360aba61aabe6",
+      "published_commit_sha": "6345f4bda583426bafac5118406af17cfa0a9618",
+      "tree_sha": "2a1c27c8a3c2f24eeeccf37d7a2fbfa1aa6fd7a5",
+      "local_parent_shas": [
+        "6e96d64aa2c149632d7d89fa76c1c6f6b3c0d5f0",
+        "b70f1578a912d20957924593205147338a22b560"
+      ],
+      "published_parent_shas": [
+        "57cf783f7574f45810045524b616ae8f5e5d66c4",
+        "671a149e89b08894a26e9e624ece9d7527a4e419"
+      ],
+      "message": "Verify bootstrap policy applicability and temporary compiler parity\n",
+      "sequence": 17
+    },
+    {
+      "local_commit_sha": "33228d8423084f5d4b14382b18898ee4b99eeb7c",
+      "published_commit_sha": "dbdb7162d5f5c7062ac0f5a786b4f40aea121372",
+      "tree_sha": "99f26003285f1e32899d31cd6f852412693b75e9",
+      "local_parent_shas": [
+        "f20bad228f960e50aa1a52a488775af7e005e0c4",
+        "b3f14124f556af9eaf8a4594c606da5d91a2010f"
+      ],
+      "published_parent_shas": [
+        "a6738721b39ea6bf1a4f826cca0108633b0f262c",
+        "588075f7ce264cc0a063cc70cf568c5daf601eea"
+      ],
+      "message": "Merge commit 'b3f14124' into research/compiler-partitions-next\n",
+      "sequence": 18
+    },
+    {
+      "local_commit_sha": "f3c0970cb7cc9627c7c84afc24da5398a764bd4a",
+      "published_commit_sha": "b4290ccc75d822aadd9fca5d6a86c193b7de14dc",
+      "tree_sha": "cf08c56b75dd3275f00a8d71d40be5aa989ab7fd",
+      "local_parent_shas": [
+        "33228d8423084f5d4b14382b18898ee4b99eeb7c"
+      ],
+      "published_parent_shas": [
+        "dbdb7162d5f5c7062ac0f5a786b4f40aea121372"
+      ],
+      "message": "Add opt-in ThinLTO final bootstrap stage\n",
+      "sequence": 19
+    },
+    {
+      "local_commit_sha": "5a663cf105a752ba4162328686494f05a928bf50",
+      "published_commit_sha": "6d8831b9fd3c03a96be2550eabce49f47d485f3e",
+      "tree_sha": "995d1e643ff5d4096c8010f57915ba89dbed3dac",
+      "local_parent_shas": [
+        "f3c0970cb7cc9627c7c84afc24da5398a764bd4a"
+      ],
+      "published_parent_shas": [
+        "b4290ccc75d822aadd9fca5d6a86c193b7de14dc"
+      ],
+      "message": "Bind ThinLTO publication to submitted job digest\n",
+      "sequence": 20
+    },
+    {
+      "local_commit_sha": "d26e29e9c8e6f18a95b9e1412b0d5c9a38c26dee",
+      "published_commit_sha": "0f59b64f3607feb8058fd8dab86222d407eae2ef",
+      "tree_sha": "573d7e0e1ad51eb2b5d4e5cc646ad8c54c59ee43",
+      "local_parent_shas": [
+        "9efb3b2dcd34de65a715598a742360aba61aabe6",
+        "5a663cf105a752ba4162328686494f05a928bf50"
+      ],
+      "published_parent_shas": [
+        "6345f4bda583426bafac5118406af17cfa0a9618",
+        "6d8831b9fd3c03a96be2550eabce49f47d485f3e"
+      ],
+      "message": "Integrate bounded ThinLTO compiler bootstrap with bound publication\n",
+      "sequence": 21
+    },
+    {
+      "local_commit_sha": "767743ea6176549b2d6070c9fa8bed4482f150a1",
+      "published_commit_sha": "49bb138ead61fe0686a754a47689b9baa6334494",
+      "tree_sha": "54de294651dce3720cde316aa199a9ceb67cf373",
+      "local_parent_shas": [
+        "9efb3b2dcd34de65a715598a742360aba61aabe6"
+      ],
+      "published_parent_shas": [
+        "6345f4bda583426bafac5118406af17cfa0a9618"
+      ],
+      "message": "Verify default inlining parity and runtime cache reuse\n",
+      "sequence": 22
+    },
+    {
+      "local_commit_sha": "686287cfa99a60b37f1d3e3531cbe904b80f7869",
+      "published_commit_sha": "abcb6160fdff9e30d47cf9a6272ac6be8cd7b286",
+      "tree_sha": "66d0ae0b67cd3681e66d918a5ae3558b0d2bfc89",
+      "local_parent_shas": [
+        "d26e29e9c8e6f18a95b9e1412b0d5c9a38c26dee",
+        "767743ea6176549b2d6070c9fa8bed4482f150a1"
+      ],
+      "published_parent_shas": [
+        "0f59b64f3607feb8058fd8dab86222d407eae2ef",
+        "49bb138ead61fe0686a754a47689b9baa6334494"
+      ],
+      "message": "Verify unchanged defaults and runtime reuse across inlining policies\n",
+      "sequence": 23
+    },
+    {
+      "local_commit_sha": "9b75dd6288e00a8290f3cb6b8190b8740ed54070",
+      "published_commit_sha": "5aeef325bba85166a5620cd2eaf9b8c0b63368a3",
+      "tree_sha": "7ee45da2550359b89f2519a2bf22da5eba43c82c",
+      "local_parent_shas": [
+        "686287cfa99a60b37f1d3e3531cbe904b80f7869"
+      ],
+      "published_parent_shas": [
+        "abcb6160fdff9e30d47cf9a6272ac6be8cd7b286"
+      ],
+      "message": "Compare imported partitions in controlled full bootstraps\n",
+      "sequence": 24
+    },
+    {
+      "local_commit_sha": "1c61cff0e0ab0403c9b7124edad065cb1573b37e",
+      "published_commit_sha": "87f95de71e17099ff08547bb9273e1b579c92cbf",
+      "tree_sha": "bc200958455545153a8250d68c00dc620d5aee5f",
+      "local_parent_shas": [
+        "9b75dd6288e00a8290f3cb6b8190b8740ed54070"
+      ],
+      "published_parent_shas": [
+        "5aeef325bba85166a5620cd2eaf9b8c0b63368a3"
+      ],
+      "message": "Measure imported backend bootstrap and compiler memory tradeoffs\n",
+      "sequence": 25
+    }
+  ]
+}

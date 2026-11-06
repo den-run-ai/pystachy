@@ -1,0 +1,42 @@
+{
+  "hosts": [
+    {
+      "name": "ordinary",
+      "command": [
+        "/workspace/scratch/685873f30dd6/inline-screen/o2-0/compiler"
+      ]
+    },
+    {
+      "name": "newline",
+      "command": [
+        "/workspace/scratch/685873f30dd6/memory-builds/newline/compiler"
+      ]
+    },
+    {
+      "name": "chunks",
+      "command": [
+        "/workspace/scratch/685873f30dd6/memory-builds/chunks/compiler"
+      ]
+    }
+  ],
+  "inputs": [
+    {
+      "name": "self",
+      "path": "/workspace/scratch/685873f30dd6/frozen-fa9/pystachy.py"
+    },
+    {
+      "name": "json-repair",
+      "path": "/workspace/scratch/685873f30dd6/frozen-fa9/bench/json_repair/bench.py",
+      "import_path": "/workspace/scratch/685873f30dd6/frozen-fa9/ports"
+    },
+    {
+      "name": "runtime",
+      "path": "/workspace/scratch/685873f30dd6/frozen-fa9/runtime.py",
+      "mode": "rt"
+    }
+  ],
+  "environment": {
+    "PYSTACHY_HOME": "/workspace/scratch/685873f30dd6/frozen-fa9",
+    "PYSTACHY_GC": "stats"
+  }
+}

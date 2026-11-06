@@ -1,0 +1,72 @@
+{
+  "base": "30ea5f7b3434a5efe99ea51801d1ea4cf13eeb2b",
+  "note": "Local measurement IDs retained; every published counterpart has an identical Git tree.",
+  "checkpoints": [
+    {
+      "local_sha": "79b86a85f374b27b3a198e3c5206af647c23039f",
+      "published_sha": "f631998b4fbea5fe98a90e31388e1d4dec84c2c0",
+      "tree_sha": "71f48abc9dc50c9b2029f7b94df6b0ab2738f5a3",
+      "title": "Keep receiver typing overlay native-compilable"
+    },
+    {
+      "local_sha": "9eaf428296a07a5c0afc5ce3b030a02a104ce7e9",
+      "published_sha": "c1f8c82a91566220dd4ed84b5f1d49e0fed8d0e4",
+      "tree_sha": "5c4bbb644685996c862c22a945ab88ba3462bf2b",
+      "title": "Bound LLVM worker lifetimes and expose optimization tiers"
+    },
+    {
+      "local_sha": "061d309c13c72066a3364819fb04c60a00914243",
+      "published_sha": "a444e5aa260cb73ca03caa1814f5a7c849d3a5e6",
+      "tree_sha": "50a33ff653ac7a1cbc8b24d9166aba0fd66e67c7",
+      "title": "Compare temporary bootstrap and LLVM optimization policies"
+    },
+    {
+      "local_sha": "ba5c96a1b52699b1d6f18fe72bed50948ed70c18",
+      "published_sha": "f6c6ba2b3504fa2ad1687ab3f9d8f4521495e1b5",
+      "tree_sha": "c5b974afc993463643d5abd7bea3221bdf91a3c1",
+      "title": "Detect allocator declarations without matching IR strings"
+    },
+    {
+      "local_sha": "4c96a6a0f45981018871ed96eaa7cc184fab822e",
+      "published_sha": "8ad4fb3ab4d9c0d43a5f4d597aeb4eda727f0fb7",
+      "tree_sha": "820f723944bf6c8bfde305935979df132e710b7a",
+      "title": "Compare complete split bootstraps with bounded cleanup"
+    },
+    {
+      "local_sha": "9ba9e0b8fa812ba45161f38bfab03f137e502b30",
+      "published_sha": "b6987d77a203db514d28ae9f845481ef83a12650",
+      "tree_sha": "5d7d3959c63f895d2c3f6e873fe9d85b314806d3",
+      "title": "Keep ordinary final compiler equality in mixed bootstrap sweeps"
+    },
+    {
+      "local_sha": "64014f16d96f9e1cdde0d304f027e6669da90e38",
+      "published_sha": "ba55727ad6b20ccdcac2b7e0c7840ed27c88042c",
+      "tree_sha": "26e27a81a7c3f7ce7859a5c72699c173de2f1ee1",
+      "title": "Verify native receiver overlay with frozen IR witnesses"
+    },
+    {
+      "local_sha": "91abd72482a43626dc5ae893018b63dcefe0701c",
+      "published_sha": "e6f63907973ac2fae94fe6cd10b71927b3115d5f",
+      "tree_sha": "e2a59285045967365142a2851d5220eea804b9d3",
+      "title": "Use portable static and runtime receiver bindings"
+    },
+    {
+      "local_sha": "c20ed941d559fd80914bba82a53f20e6bb37bcf1",
+      "published_sha": "aae5a6a1bcb26a2481e3d83fc51769e21d94223a",
+      "tree_sha": "c1e9b8cada4d9f1308b8db94f0fcf5f5f2d48145",
+      "title": "Record portable receiver host validation and timings"
+    },
+    {
+      "local_sha": "d137616584b041b310731c994b1086cf6562dc3d",
+      "published_sha": "8bd7fc00db803e426e516713d9f50465df61826a",
+      "tree_sha": "957deb2f2afaceaa1b8765e27189ff560a4723a4",
+      "title": "Keep allocator declaration recognition behind LLVM lowering"
+    },
+    {
+      "local_sha": "384310d07539dfe2a1d5be4e30198cab9ab8a7a6",
+      "published_sha": "ae127e0cf09c437115fba4acff04f5d9c450495a",
+      "tree_sha": "f8ff20effd96e8cb2a4fdfa29bfbb55a299f0cdb",
+      "title": "Record full bootstrap gains and reviewed compiler validation"
+    }
+  ]
+}

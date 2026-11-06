@@ -1,0 +1,42 @@
+{
+  "command": [
+    "env",
+    "-C",
+    "/workspace/scratch/e5816a16ad37/detached-worker",
+    "/workspace/scratch/e5816a16ad37/venv/bin/python",
+    "-I",
+    "/workspace/scratch/e5816a16ad37/detached-worker/worker.py",
+    "--worker",
+    "/workspace/scratch/e5816a16ad37/detached-worker/job",
+    "--llvm",
+    "/workspace/scratch/3e98002bc0e0/toolchain/usr/lib/llvm-18/bin"
+  ],
+  "complete": true,
+  "cpu_s": 9.67199,
+  "exit_code": 0,
+  "expected_output_sha256": "01d091b9d7e835f617b50a35ce2aa16ddb0552ade5083b945e1b30486fecae90",
+  "input_sha256": "bdffe5d08bcda0a3817c4a2748df2cc86143c1890ab75a172a67d8ed0faee915",
+  "load_after": [
+    1.07275390625,
+    1.14794921875,
+    1.31298828125
+  ],
+  "load_before": [
+    0.99853515625,
+    1.13623046875,
+    1.31103515625
+  ],
+  "matches": true,
+  "output_sha256": "01d091b9d7e835f617b50a35ce2aa16ddb0552ade5083b945e1b30486fecae90",
+  "proc_pid_resolved": true,
+  "sampled_max_processes": 2,
+  "sampled_process_tree_peak_rss_kib": 190648,
+  "stderr": "",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stdout": "",
+  "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "timed_out": false,
+  "wait4_max_process_rss_kib": 174524,
+  "wall_s": 9.685274970001046,
+  "worker_script_sha256": "b4b690519984af985260b06a9071bd54a8eba8b0539da248ac778763c5f25c4e"
+}

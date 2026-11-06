@@ -1,0 +1,4616 @@
+{
+  "command_fingerprints": {
+    "/workspace/scratch/685873f30dd6/inline-screen/o2-0/compiler": "b0f8fe2526d7753fa5de611848d96c74def6824b47f4ffea68052cf4aa896e0d",
+    "/workspace/scratch/685873f30dd6/memory-builds/chunks/compiler": "f2ecaeb80fb8a5a2f04230707990cb0efa1958fecdd32eabc228c4d5d02feb01",
+    "/workspace/scratch/685873f30dd6/memory-builds/newline/compiler": "1879151bdb6775cd7d73f58bcd517e7986f670c7118a313d8ee55f0b13e1d836"
+  },
+  "commands_unchanged": true,
+  "complete": true,
+  "config": {
+    "environment": {
+      "PYSTACHY_GC": "stats",
+      "PYSTACHY_HOME": "/workspace/scratch/685873f30dd6/frozen-fa9"
+    },
+    "hosts": [
+      {
+        "command": [
+          "/workspace/scratch/685873f30dd6/inline-screen/o2-0/compiler"
+        ],
+        "name": "ordinary"
+      },
+      {
+        "command": [
+          "/workspace/scratch/685873f30dd6/memory-builds/newline/compiler"
+        ],
+        "name": "newline"
+      },
+      {
+        "command": [
+          "/workspace/scratch/685873f30dd6/memory-builds/chunks/compiler"
+        ],
+        "name": "chunks"
+      }
+    ],
+    "inputs": [
+      {
+        "name": "self",
+        "path": "/workspace/scratch/685873f30dd6/frozen-fa9/pystachy.py"
+      },
+      {
+        "import_path": "/workspace/scratch/685873f30dd6/frozen-fa9/ports",
+        "name": "json-repair",
+        "path": "/workspace/scratch/685873f30dd6/frozen-fa9/bench/json_repair/bench.py"
+      },
+      {
+        "mode": "rt",
+        "name": "runtime",
+        "path": "/workspace/scratch/685873f30dd6/frozen-fa9/runtime.py"
+      }
+    ]
+  },
+  "cpu": 0,
+  "environment": {
+    "PYSTACHY_GC": "stats",
+    "PYSTACHY_HOME": "/workspace/scratch/685873f30dd6/frozen-fa9",
+    "PYSTACHY_TIMING": "1",
+    "PYTHONHASHSEED": "0"
+  },
+  "host_artifacts": {},
+  "host_artifacts_unchanged": true,
+  "host_imports": {},
+  "host_state": {
+    "affinity_cpus": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "cpu": "AMD EPYC 9V74 80-Core Processor",
+    "cpu_quota": "800000 100000",
+    "load_average": [
+      0.697265625,
+      1.38427734375,
+      1.58251953125
+    ],
+    "logical_cpus": 9,
+    "memory": "MemTotal:       10206472 kB\nMemAvailable:    9450324 kB",
+    "memory_limit": "8589934592"
+  },
+  "input_artifacts": {
+    "/workspace/scratch/685873f30dd6/frozen-fa9/bench/json_repair/bench.py": "cb00324211f2841fa14b7483b8378da07f0704f07b43c430a39decac3de183a6",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/bench/json_repair/codec.py": "1549c2744857eeeb55095ccf380cf91cc0fbdde7f7b5349d6eee6c7014398627",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/bench/json_repair/facade.py": "e71bdb84c22d8dd3a9d011168f61c7b657d312cf060fd1c068433d7a7cc84901",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/bench/json_repair/scaling.py": "a5097ae6d2bad8d4ae021bc75042246d41d7e4ed0afb95e77717af79cf986a32",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/convertdate/__init__.py": "58694fcfc3439cf29fb59f44e37cf97e74e2760b62b711e8cc6d544092f0c923",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/convertdate/_calendar.py": "b91b65c757c69e84dfc6f42fa86358292ce20efda8e78da7f683f86d17a38c56",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/convertdate/armenian.py": "17e307ab3cafd6f91da7a8e912c07ca7c01a603c237cb50f8501a06908878d3d",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/convertdate/coptic.py": "708c59f6ded28f4203e13c673ab9eede2f37df8370c3133e05f3a2b7d27443a2",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/convertdate/data/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/convertdate/data/positivist.py": "1008b71b7ce4d8f910dbb5ac075a100d6f7f9ff145a0b41496c49a1a8fb87df2",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/convertdate/daycount.py": "4a27c7e2fd2c0a95187364fd3b535ea622d1671bee08da55fbfbf7a3d1880b32",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/convertdate/dublin.py": "e79f1f026263a9e0de4cef7ae4131a1cffbdf392d08a1b2af9c2481e52d3dd9a",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/convertdate/gregorian.py": "faf0fb2ef1ebfd95e5a7741dcf6d535bb393b4f97683f4707fade59e58a726c3",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/convertdate/hebrew.py": "06a9045e6411a152a8dca703391d8d1f953fc9104df358c8d72bf7450ad5fc8c",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/convertdate/holidays.py": "271475e377c7d4128754c8f68397b29922b4711b8119d02a40df61713ab48beb",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/convertdate/indian_civil.py": "b74f37f5b5a0b62e892eb028354a61261db66fa034aa4912f284c3aeff0f0cc8",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/convertdate/islamic.py": "07ed8f5cebab7eda274153f28f32fc572469444fcf71e28f2d4ef41303813871",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/convertdate/iso.py": "1325e95ed843beb9ae7657d6cddc0a2a5d2e5619e326d32ade3f26ba4c01b2c3",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/convertdate/julian.py": "4649c2fb898fc32862728feafe072d0ea5ea64aa04f1f94796adba0b90f246dc",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/convertdate/julianday.py": "46eb3e618a0e5932acfe32b3861a95f9c354c19e9bd85d49943ae1c9902bbd0a",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/convertdate/mayan.py": "ca03d084245e06e8156eb1f5941977e395467fc24e52d1fcbc0bf26de2ca3178",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/convertdate/ordinal.py": "dfabf911e2fd81031e04695e94b0bd0177d2fc6243810c680aff3f5474825dea",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/convertdate/positivist.py": "a9a9aa838a3ce9f8786328a344c728b28c6fce13e871f392509d1e3f5cf89495",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/convertdate/utils.py": "af00824f8d47ef2bd29e08bf9e025c506e911b8f24acf8f1ffbb4b02b11178f5",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/iniconfig/__init__.py": "1c9d19c311e4b33c7974ae1353aae36bdb70a6e78a6407ce606a204fe70e1c7d",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/iniconfig/_parse.py": "8b5586212d89254f73959e527e437d5833b08b407ea20c79a4f012afd1e65f51",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/iniconfig/exceptions.py": "9a2a50fda3310fd0af4af156375a135d8e10b919ca00c6757f7b027668c34d4d",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/jdcal/__init__.py": "a10276d98617e91747e51b757019f327629c7ecc360b5ecc8ce957ab62129568",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/json_repair/__init__.py": "deddc9953db96ba6a1cb1e746b7192be1473d10d794341746fd53a30387a459a",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/json_repair/__main__.py": "b0993590a3edb2484bbdbf5da3f766d598736a0d0a12839eb0ad876381c82698",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/json_repair/json_parser.py": "d87f6e025b12f73bfcb6bac2b0b6876aa9906718f97aea59c24d823c4972e16d",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/json_repair/json_repair.py": "e77c02623aeac49798a65c8999955af3e42ea7176d3fe920fb03a1f521edf9ef",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/json_repair/parse_array.py": "176e5b609f499bcd5ee8fece5b1b808af780f1dde9b5ab2ab558eb5dfa186a36",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/json_repair/parse_comment.py": "16dc04e6907711cf39a8f0ffc90fb6db3d0d98513f9af44df9d2ff8333af380f",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/json_repair/parse_number.py": "76dd529dda1d707cde65d0451dd46c4413f023cb024caf33d21df5789fedf6fa",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/json_repair/parse_object.py": "38af981b1b59b3a06408ae6c59c06c2ceb31b37bc903e7c76447cdcb3bae1557",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/json_repair/parse_string.py": "7feae0a451f350b0f5a1fd950a3eb19cd0f67cd9934442986415d387d4aa67d1",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/json_repair/parse_string_helpers/__init__.py": "80495d283364a02756b0412700c6f427ba59cdc8e2cc47d8444a2dcb5743376b",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/json_repair/parse_string_helpers/object_value_context.py": "4bc9b19ec4e30a879fead92cc16190ee4af6b4bd97477209018916b7b101eb7c",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/json_repair/parse_string_helpers/parse_boolean_or_null.py": "47ee308c3fd48ab02e930d7db8482da3523a4f5cf6f45996f163af173bd4e6b2",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/json_repair/parse_string_helpers/parse_json_llm_block.py": "3664c2a861bcdcdfdd44d406ea5c342ea19a144f93ddf4125b273b3659b271ae",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/json_repair/parser_parenthesized.py": "7510aea0ba96d2a530b6b8cf4adfacf0e21a0f89926ce6380f5304b6e0d22955",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/json_repair/utils/__init__.py": "c22cc24de539293ce30af6057e9a8e4b1796de6a83657eb47f9b3be4a427e305",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/json_repair/utils/constants.py": "a71043131270e50a28a2b9d14a6e60c79c7dae502223da19a4434923388a9889",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/json_repair/utils/json_context.py": "84a8016d4167ac042ef8289b3c49b4e32cfe43a232ba9fc9dfed86a98e88424c",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/json_repair/utils/object_comparer.py": "eb4f926a48f689fa3bbbb581858ab8a0507d029b0bcc154eb32ebcab65588ded",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/ordered_set/__init__.py": "07bec65c1b02e2eaab9ab50dbd086ef0369abf28ce804eeac61ad41837698f0b",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/pylev/__init__.py": "abd7f780829ad3ef0dd4f4eeb01ccd048e4dead3bc73a646f0fa5a8461e12463",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/pylev/classic.py": "b2205250a290e2cf7f125e127bec28c1ea0f7a7387ad3559a841fec40a25d248",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/pylev/damerau.py": "848dce63d9af59a47302e510c943fba66809a60bab7b3c8c147c29ab1e97e583",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/pylev/recursive.py": "a7c26e5f825ac03d23f4d291b1f2d3281fc1788d53ae31e68e0dfdca591d68c6",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/pylev/wf.py": "b9c4317aa2515130469fd26f278e264304782915c92ce18de06f0a33a848c490",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/qrcode/LUT.py": "3635ca3df1d24c56282e51a45e11637f6394abf1060fa9ab772607206ddd35c9",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/qrcode/__init__.py": "d97230bd29481887e7fbb17f4b74c0ac39f231e1005aa4bf25060e1f074585b2",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/qrcode/base.py": "82f2a450ce1626a3c09a99977c7188364526e54b62185ed9cac8c7cbcd979f13",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/qrcode/constants.py": "d02b1af1861d790f0d685ad19ade3799a560d763bcf5dfa82a088a01520edace",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/qrcode/exceptions.py": "2f67d9b9838ab1cbdd9fbdab6bec05f06c2caf6641f5e4595aba757f4203c781",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/qrcode/main.py": "bb43cde0edd34b0b9d195c1aec4c707e31180f15c0493bc772ec3b6b8eecd4d8",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/qrcode/util.py": "4da30a571d84be7bfd5c4bfbd8091c50eb597173aee1fa5977fe68673ced6309",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/roman/__init__.py": "d588a8934b7c53b6443434f78fcc7431f8ed8011a69923365a2e6faa91ae0018",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/sgp4/__init__.py": "8f01018363382658c82ae05408e8fb00e077c02be3b6a857478205f887da6b0e",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/sgp4/alpha5.py": "98b6a004d971f25f837a0efa1f073e6bc6a36314fd1448b3078473db9ab4267a",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/sgp4/api.py": "e61f7a4b1ddd026a0cfd147ef18cf2eaf1aee9e05eae9098677cbd811f519bf3",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/sgp4/earth_gravity.py": "b31c9072c57e0c118b14bcaf4e06a9144d622d3fa709fcec6b18a65644a4901a",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/sgp4/ext.py": "6366f6a2323fee993b3da1dc8240e2077a2b1ab2f4ee8d90f9de41def592062c",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/sgp4/functions.py": "8947e790097ae705f35244a3233a8b0ec61b214873618a241488686993b79e40",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/sgp4/io.py": "664b02c3ed45c87ce8fa79cd435d2812986ee4a3f95e2fa52b35b503e92c8118",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/sgp4/model.py": "4b01a757a1920baee6872e5fd9039e9fca8283b2132e458baf0103c7d910b432",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/sgp4/propagation.py": "bf86adb6cdaebee92bb8ed6f88f3e8543f138d65cd98ea4bda2dae6b7dffab03",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/snowballstemmer/__init__.py": "f13cbea66c714230434fd03e02d8fbffb2d3d4e8fde3fd6c20dc7c1fb8915dee",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/snowballstemmer/among.py": "cb0eb8335ef88c705c9a98f9b8b0165f4d9012a1cf491a07f8ee0ffed7ad2d6c",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/snowballstemmer/basestemmer.py": "b8564e4b86bea54f194458d901b53760476e4058e7a4c4661a96423bcb98a354",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/snowballstemmer/english_stemmer.py": "acfd371ce0950df7137f8d468e4a254cdc1a2d7f28811a183e63260d9a2e9b38",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/snowballstemmer/porter_stemmer.py": "c3cc305c9009f92738ed43f937aa8811b2a897428ea756555c6d0c4ce485484d",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/sortedcontainers/__init__.py": "ee5585b74ff953bc71d7fcb05a296211c163adac60322f28288308b1e0e23fc4",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/sortedcontainers/sortedlist.py": "9c3c178c8247befa3d22dbb7f2909979a5b81df338d3e71c39fec2b0fc74e6dd",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/sqids/__init__.py": "dec511d0fd42c1fb20907eba8161abdadf6278c31d1d0b341038e242a204eaa1",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/sqids/constants.py": "9b0e801cfcd48c0d028669d84a73a174a99f51da57ecc250e464a92eaf8ac1ae",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/sqids/sqids.py": "3be667df1de8faa83fdb1151493008e64f70ca8cfa146b5d1772004bd3fea69d",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/tomli_w/__init__.py": "b85ea5a4b65f3f974a6a0327ece2d7d5702256eff8847315b8fba162afa3f410",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/tomli_w/_writer.py": "b38b1da012a06793524491a1f3b139d4e28b97fd74f875a56d6d1429684efce8",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/wcwidth/__init__.py": "09b9e031a0c10fa813946498486704ccc5cf024888b5d2121fec4b44eb6c1c28",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/wcwidth/_constants.py": "6baf51acd9bcbcc9fe95acb45d0c305869f873ceac270a8c3e4b456658217a6f",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/wcwidth/_wcswidth.py": "be0611ffde64b6d5ac77d08172dca70a9166894142fb3b02babe92f720a14d1f",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/wcwidth/_wcwidth.py": "4b4a400268786df98644845ad66a48de7b9949cd3697eb139e7ce0bf7ad19a7c",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/wcwidth/bisearch.py": "d135bc60fefa9bb848ac52acbf833855914f1c2b7817bebfdd175885a359d3ff",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/wcwidth/table_ambiguous.py": "762d8dfbdd8ad6a71bf50015e89d4dd4dbc5b3d270560e1c3c90130fda98657d",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/wcwidth/table_grapheme.py": "7704a8ddd911289e24fd5d872289eeaa99f7234ce5bbaff84ba95f687e16f7e3",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/wcwidth/table_mc.py": "f084236a9b43821968521672ec34c79c336f224c352c17b0eb82afbfcdb1fa61",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/wcwidth/table_vs15.py": "9af55c5c6801b678a4c110126f8032309ac8610640b1ca74be4ea0a3585e478b",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/wcwidth/table_vs16.py": "16371e2db996fd6e60ac63905f9d9e8323429b71742c765b83a4a5d7519ab0c6",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/wcwidth/table_wide.py": "a167dfa17738fb939b8157193fc9d11f70b1e1ed0385e1a6faee07c8d5ad5085",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/wcwidth/table_zero.py": "03d61051c69f286fe77acca5583be371fa674f86cff61a6abdc57fa1a5156cc6",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/ports/wcwidth/unicode_versions.py": "43517349abc42accdf546942961e6041e9b113ce95d23f28d4d176eae6984f38",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/pystachy.py": "a413782632f88d4746a81fd7cfb529d695ab36a35618522a83be1e25e1e31f29",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/pystachy_cli.py": "b56a199ed3202090b8e3f155592070a789020a9aa127c02b668d8a6bdb9292f4",
+    "/workspace/scratch/685873f30dd6/frozen-fa9/runtime.py": "c45138f44a7aa25828b351b6d627e1a4f9fad69dc8a88532d053fb90e84beefb"
+  },
+  "input_artifacts_unchanged": true,
+  "oracles": {
+    "json-repair": {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "/workspace/scratch/685873f30dd6/inline-screen/o2-0/compiler",
+        "ir",
+        "/workspace/scratch/685873f30dd6/frozen-fa9/bench/json_repair/bench.py",
+        "-o",
+        "/workspace/scratch/685873f30dd6/memory-quality/json-repair-ordinary-oracle.ll"
+      ],
+      "cpu_s": 0.27992,
+      "exit_code": 0,
+      "host": "ordinary",
+      "input": "json-repair",
+      "input_sha256": "cb00324211f2841fa14b7483b8378da07f0704f07b43c430a39decac3de183a6",
+      "load_after": [
+        1.35546875,
+        1.4287109375,
+        1.57763671875
+      ],
+      "load_before": [
+        1.35546875,
+        1.4287109375,
+        1.57763671875
+      ],
+      "output_bytes": 1424659,
+      "output_sha256": "83d86467b8f30d7648fe514e107ab0f946d7be21f4e474cc04b0a2c88f601f18",
+      "proc_pid_resolved": true,
+      "sample": "oracle",
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 52452,
+      "stages": [
+        {
+          "seconds": 0.047487731,
+          "stage": "program.load"
+        },
+        {
+          "seconds": 0.017366632,
+          "stage": "program.prepare"
+        },
+        {
+          "seconds": 0.111591583,
+          "stage": "program.attempt"
+        },
+        {
+          "seconds": 0.049111868,
+          "stage": "program.load"
+        },
+        {
+          "seconds": 0.017427489,
+          "stage": "program.prepare"
+        },
+        {
+          "seconds": 0.048233474,
+          "stage": "program.discover"
+        },
+        {
+          "seconds": 0.007824349,
+          "stage": "program.analysis"
+        },
+        {
+          "seconds": 0.010488302,
+          "stage": "program.optimize"
+        },
+        {
+          "seconds": 0.004487472,
+          "stage": "program.finalize"
+        },
+        {
+          "seconds": 0.023491846,
+          "stage": "program.lower"
+        },
+        {
+          "seconds": 0.161309639,
+          "stage": "program.attempt"
+        },
+        {
+          "seconds": 0.272953472,
+          "stage": "program.frontend"
+        },
+        {
+          "seconds": 0.27500386,
+          "stage": "driver.total"
+        }
+      ],
+      "stderr": "pystachy-timing\tprogram.load\t0.047487731\npystachy-timing\tprogram.prepare\t0.017366632\npystachy-timing\tprogram.attempt\t0.111591583\npystachy-timing\tprogram.load\t0.049111868\npystachy-timing\tprogram.prepare\t0.017427489\npystachy-timing\tprogram.discover\t0.048233474\npystachy-timing\tprogram.analysis\t0.007824349\npystachy-timing\tprogram.optimize\t0.010488302\npystachy-timing\tprogram.finalize\t0.004487472\npystachy-timing\tprogram.lower\t0.023491846\npystachy-timing\tprogram.attempt\t0.161309639\npystachy-timing\tprogram.frontend\t0.272953472\npystachy-timing\tdriver.total\t0.275003860\ngc: 3 collections, 20.9 ms; heap peak 50.9 MiB; live 12.9 MiB at the last\n",
+      "stderr_sha256": "e4fb6b63ddf9371c8db4deb59f09a7b732aa4f2e9292d62a6ce49f7c08b23ab6",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 56932,
+      "wall_s": 0.2808480360035901
+    },
+    "runtime": {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "/workspace/scratch/685873f30dd6/inline-screen/o2-0/compiler",
+        "rt",
+        "/workspace/scratch/685873f30dd6/frozen-fa9/runtime.py",
+        "-o",
+        "/workspace/scratch/685873f30dd6/memory-quality/runtime-ordinary-oracle.ll"
+      ],
+      "cpu_s": 0.088657,
+      "exit_code": 0,
+      "host": "ordinary",
+      "input": "runtime",
+      "input_sha256": "c45138f44a7aa25828b351b6d627e1a4f9fad69dc8a88532d053fb90e84beefb",
+      "load_after": [
+        1.32666015625,
+        1.42138671875,
+        1.57421875
+      ],
+      "load_before": [
+        1.32666015625,
+        1.42138671875,
+        1.57421875
+      ],
+      "output_bytes": 549411,
+      "output_sha256": "940a694da5ea93214d1308a8eb635b47d8d0a9d4256c63d084c24f5099f8aa5f",
+      "proc_pid_resolved": true,
+      "sample": "oracle",
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 37684,
+      "stages": [
+        {
+          "seconds": 0.040840223,
+          "stage": "runtime.load"
+        },
+        {
+          "seconds": 0.00947132,
+          "stage": "runtime.prepare"
+        },
+        {
+          "seconds": 0.016225056,
+          "stage": "runtime.discover"
+        },
+        {
+          "seconds": 0.003332951,
+          "stage": "runtime.analysis"
+        },
+        {
+          "seconds": 0.002547879,
+          "stage": "runtime.optimize"
+        },
+        {
+          "seconds": 0.003572132,
+          "stage": "runtime.finalize"
+        },
+        {
+          "seconds": 0.007385137,
+          "stage": "runtime.lower"
+        },
+        {
+          "seconds": 0.084655057,
+          "stage": "driver.total"
+        }
+      ],
+      "stderr": "pystachy-timing\truntime.load\t0.040840223\npystachy-timing\truntime.prepare\t0.009471320\npystachy-timing\truntime.discover\t0.016225056\npystachy-timing\truntime.analysis\t0.003332951\npystachy-timing\truntime.optimize\t0.002547879\npystachy-timing\truntime.finalize\t0.003572132\npystachy-timing\truntime.lower\t0.007385137\npystachy-timing\tdriver.total\t0.084655057\ngc: 0 collections, 0.0 ms; heap peak 34.1 MiB; live 0.0 MiB at the last\n",
+      "stderr_sha256": "3a6bf115ab32530d3f8a0cc248eedd16e765f2b43b4aa7ac6aab94d1c4c27227",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 52484,
+      "wall_s": 0.09013562899781391
+    },
+    "self": {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "/workspace/scratch/685873f30dd6/inline-screen/o2-0/compiler",
+        "ir",
+        "/workspace/scratch/685873f30dd6/frozen-fa9/pystachy.py",
+        "-o",
+        "/workspace/scratch/685873f30dd6/memory-quality/self-ordinary-oracle.ll"
+      ],
+      "cpu_s": 6.503745,
+      "exit_code": 0,
+      "host": "ordinary",
+      "input": "self",
+      "input_sha256": "a413782632f88d4746a81fd7cfb529d695ab36a35618522a83be1e25e1e31f29",
+      "load_after": [
+        0.8017578125,
+        1.39453125,
+        1.5849609375
+      ],
+      "load_before": [
+        0.697265625,
+        1.38427734375,
+        1.58251953125
+      ],
+      "output_bytes": 31522021,
+      "output_sha256": "bb45476154b2729c6201cd7f32250dce34b12bedc448359611cceefb1c3e78ae",
+      "proc_pid_resolved": true,
+      "sample": "oracle",
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 927548,
+      "stages": [
+        {
+          "seconds": 1.817518541,
+          "stage": "program.load"
+        },
+        {
+          "seconds": 1.016745992,
+          "stage": "program.prepare"
+        },
+        {
+          "seconds": 1.549079692,
+          "stage": "program.discover"
+        },
+        {
+          "seconds": 0.230730549,
+          "stage": "program.analysis"
+        },
+        {
+          "seconds": 0.599499139,
+          "stage": "program.optimize"
+        },
+        {
+          "seconds": 0.234341614,
+          "stage": "program.finalize"
+        },
+        {
+          "seconds": 0.863528482,
+          "stage": "program.lower"
+        },
+        {
+          "seconds": 6.311775868,
+          "stage": "program.attempt"
+        },
+        {
+          "seconds": 6.311792103,
+          "stage": "program.frontend"
+        },
+        {
+          "seconds": 6.468330327,
+          "stage": "driver.total"
+        }
+      ],
+      "stderr": "pystachy-timing\tprogram.load\t1.817518541\npystachy-timing\tprogram.prepare\t1.016745992\npystachy-timing\tprogram.discover\t1.549079692\npystachy-timing\tprogram.analysis\t0.230730549\npystachy-timing\tprogram.optimize\t0.599499139\npystachy-timing\tprogram.finalize\t0.234341614\npystachy-timing\tprogram.lower\t0.863528482\npystachy-timing\tprogram.attempt\t6.311775868\npystachy-timing\tprogram.frontend\t6.311792103\npystachy-timing\tdriver.total\t6.468330327\ngc: 13 collections, 939.0 ms; heap peak 909.8 MiB; live 316.0 MiB at the last\n",
+      "stderr_sha256": "260f453d10fa87b4ea69b098c83abbf46c8a845985539a4e082464bdab9e43f8",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 927548,
+      "wall_s": 6.5065212920017075
+    }
+  },
+  "requested_samples": 5,
+  "samples": [
+    {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "/workspace/scratch/685873f30dd6/memory-builds/newline/compiler",
+        "ir",
+        "/workspace/scratch/685873f30dd6/frozen-fa9/pystachy.py",
+        "-o",
+        "/workspace/scratch/685873f30dd6/memory-quality/self-newline-0.ll"
+      ],
+      "cpu_s": 6.284506,
+      "exit_code": 0,
+      "host": "newline",
+      "input": "self",
+      "input_sha256": "a413782632f88d4746a81fd7cfb529d695ab36a35618522a83be1e25e1e31f29",
+      "load_after": [
+        0.89794921875,
+        1.40478515625,
+        1.58740234375
+      ],
+      "load_before": [
+        0.8017578125,
+        1.39453125,
+        1.5849609375
+      ],
+      "matches_oracle": true,
+      "output_bytes": 31522021,
+      "output_sha256": "bb45476154b2729c6201cd7f32250dce34b12bedc448359611cceefb1c3e78ae",
+      "proc_pid_resolved": true,
+      "sample": 0,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 896640,
+      "stages": [
+        {
+          "seconds": 1.747150558,
+          "stage": "program.load"
+        },
+        {
+          "seconds": 0.969440432,
+          "stage": "program.prepare"
+        },
+        {
+          "seconds": 1.584250934,
+          "stage": "program.discover"
+        },
+        {
+          "seconds": 0.209008718,
+          "stage": "program.analysis"
+        },
+        {
+          "seconds": 0.523224729,
+          "stage": "program.optimize"
+        },
+        {
+          "seconds": 0.218900578,
+          "stage": "program.finalize"
+        },
+        {
+          "seconds": 0.84747188,
+          "stage": "program.lower"
+        },
+        {
+          "seconds": 6.099809164,
+          "stage": "program.attempt"
+        },
+        {
+          "seconds": 6.099827482,
+          "stage": "program.frontend"
+        },
+        {
+          "seconds": 6.245467043,
+          "stage": "driver.total"
+        }
+      ],
+      "stderr": "pystachy-timing\tprogram.load\t1.747150558\npystachy-timing\tprogram.prepare\t0.969440432\npystachy-timing\tprogram.discover\t1.584250934\npystachy-timing\tprogram.analysis\t0.209008718\npystachy-timing\tprogram.optimize\t0.523224729\npystachy-timing\tprogram.finalize\t0.218900578\npystachy-timing\tprogram.lower\t0.847471880\npystachy-timing\tprogram.attempt\t6.099809164\npystachy-timing\tprogram.frontend\t6.099827482\npystachy-timing\tdriver.total\t6.245467043\ngc: 13 collections, 951.4 ms; heap peak 879.7 MiB; live 316.0 MiB at the last\n",
+      "stderr_sha256": "aaaafdf396a1350a4dfe522fd699538855ffb5849819924b7ded07246c88484e",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 896640,
+      "wall_s": 6.290278888001922
+    },
+    {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "/workspace/scratch/685873f30dd6/memory-builds/chunks/compiler",
+        "ir",
+        "/workspace/scratch/685873f30dd6/frozen-fa9/pystachy.py",
+        "-o",
+        "/workspace/scratch/685873f30dd6/memory-quality/self-chunks-0.ll"
+      ],
+      "cpu_s": 6.339599,
+      "exit_code": 0,
+      "host": "chunks",
+      "input": "self",
+      "input_sha256": "a413782632f88d4746a81fd7cfb529d695ab36a35618522a83be1e25e1e31f29",
+      "load_after": [
+        1.06640625,
+        1.431640625,
+        1.59521484375
+      ],
+      "load_before": [
+        0.89794921875,
+        1.40478515625,
+        1.58740234375
+      ],
+      "matches_oracle": true,
+      "output_bytes": 31522021,
+      "output_sha256": "bb45476154b2729c6201cd7f32250dce34b12bedc448359611cceefb1c3e78ae",
+      "proc_pid_resolved": true,
+      "sample": 0,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 860260,
+      "stages": [
+        {
+          "seconds": 1.825321716,
+          "stage": "program.load"
+        },
+        {
+          "seconds": 0.880106947,
+          "stage": "program.prepare"
+        },
+        {
+          "seconds": 1.72813657,
+          "stage": "program.discover"
+        },
+        {
+          "seconds": 0.207019596,
+          "stage": "program.analysis"
+        },
+        {
+          "seconds": 0.582592555,
+          "stage": "program.optimize"
+        },
+        {
+          "seconds": 0.177997329,
+          "stage": "program.finalize"
+        },
+        {
+          "seconds": 0.78326371,
+          "stage": "program.lower"
+        },
+        {
+          "seconds": 6.184809471,
+          "stage": "program.attempt"
+        },
+        {
+          "seconds": 6.184825765,
+          "stage": "program.frontend"
+        },
+        {
+          "seconds": 6.313949726,
+          "stage": "driver.total"
+        }
+      ],
+      "stderr": "pystachy-timing\tprogram.load\t1.825321716\npystachy-timing\tprogram.prepare\t0.880106947\npystachy-timing\tprogram.discover\t1.728136570\npystachy-timing\tprogram.analysis\t0.207019596\npystachy-timing\tprogram.optimize\t0.582592555\npystachy-timing\tprogram.finalize\t0.177997329\npystachy-timing\tprogram.lower\t0.783263710\npystachy-timing\tprogram.attempt\t6.184809471\npystachy-timing\tprogram.frontend\t6.184825765\npystachy-timing\tdriver.total\t6.313949726\ngc: 13 collections, 987.1 ms; heap peak 837.2 MiB; live 309.2 MiB at the last\n",
+      "stderr_sha256": "b00b3d277caf7407e39e18697f6f62665e9f8f0da5dbd681848b09590e24063d",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 860260,
+      "wall_s": 6.353193681999983
+    },
+    {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "/workspace/scratch/685873f30dd6/inline-screen/o2-0/compiler",
+        "ir",
+        "/workspace/scratch/685873f30dd6/frozen-fa9/pystachy.py",
+        "-o",
+        "/workspace/scratch/685873f30dd6/memory-quality/self-ordinary-0.ll"
+      ],
+      "cpu_s": 6.3317239999999995,
+      "exit_code": 0,
+      "host": "ordinary",
+      "input": "self",
+      "input_sha256": "a413782632f88d4746a81fd7cfb529d695ab36a35618522a83be1e25e1e31f29",
+      "load_after": [
+        1.0556640625,
+        1.4169921875,
+        1.58837890625
+      ],
+      "load_before": [
+        1.06640625,
+        1.431640625,
+        1.59521484375
+      ],
+      "matches_oracle": true,
+      "output_bytes": 31522021,
+      "output_sha256": "bb45476154b2729c6201cd7f32250dce34b12bedc448359611cceefb1c3e78ae",
+      "proc_pid_resolved": true,
+      "sample": 0,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 927428,
+      "stages": [
+        {
+          "seconds": 1.731836401,
+          "stage": "program.load"
+        },
+        {
+          "seconds": 1.009508403,
+          "stage": "program.prepare"
+        },
+        {
+          "seconds": 1.614419455,
+          "stage": "program.discover"
+        },
+        {
+          "seconds": 0.235510949,
+          "stage": "program.analysis"
+        },
+        {
+          "seconds": 0.648561016,
+          "stage": "program.optimize"
+        },
+        {
+          "seconds": 0.199511829,
+          "stage": "program.finalize"
+        },
+        {
+          "seconds": 0.75012191,
+          "stage": "program.lower"
+        },
+        {
+          "seconds": 6.189843446,
+          "stage": "program.attempt"
+        },
+        {
+          "seconds": 6.189866009,
+          "stage": "program.frontend"
+        },
+        {
+          "seconds": 6.315659405,
+          "stage": "driver.total"
+        }
+      ],
+      "stderr": "pystachy-timing\tprogram.load\t1.731836401\npystachy-timing\tprogram.prepare\t1.009508403\npystachy-timing\tprogram.discover\t1.614419455\npystachy-timing\tprogram.analysis\t0.235510949\npystachy-timing\tprogram.optimize\t0.648561016\npystachy-timing\tprogram.finalize\t0.199511829\npystachy-timing\tprogram.lower\t0.750121910\npystachy-timing\tprogram.attempt\t6.189843446\npystachy-timing\tprogram.frontend\t6.189866009\npystachy-timing\tdriver.total\t6.315659405\ngc: 13 collections, 941.5 ms; heap peak 909.8 MiB; live 316.0 MiB at the last\n",
+      "stderr_sha256": "9cfcb33bca04cf6c406242c876e34343c6f7832c6f57a88b565e5632ade53a16",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 927428,
+      "wall_s": 6.357082526999875
+    },
+    {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "/workspace/scratch/685873f30dd6/memory-builds/newline/compiler",
+        "ir",
+        "/workspace/scratch/685873f30dd6/frozen-fa9/pystachy.py",
+        "-o",
+        "/workspace/scratch/685873f30dd6/memory-quality/self-newline-1.ll"
+      ],
+      "cpu_s": 6.116006,
+      "exit_code": 0,
+      "host": "newline",
+      "input": "self",
+      "input_sha256": "a413782632f88d4746a81fd7cfb529d695ab36a35618522a83be1e25e1e31f29",
+      "load_after": [
+        1.05078125,
+        1.40966796875,
+        1.5849609375
+      ],
+      "load_before": [
+        1.0556640625,
+        1.4169921875,
+        1.58837890625
+      ],
+      "matches_oracle": true,
+      "output_bytes": 31522021,
+      "output_sha256": "bb45476154b2729c6201cd7f32250dce34b12bedc448359611cceefb1c3e78ae",
+      "proc_pid_resolved": true,
+      "sample": 1,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 896636,
+      "stages": [
+        {
+          "seconds": 1.687059789,
+          "stage": "program.load"
+        },
+        {
+          "seconds": 1.011723385,
+          "stage": "program.prepare"
+        },
+        {
+          "seconds": 1.526936247,
+          "stage": "program.discover"
+        },
+        {
+          "seconds": 0.218317532,
+          "stage": "program.analysis"
+        },
+        {
+          "seconds": 0.520239362,
+          "stage": "program.optimize"
+        },
+        {
+          "seconds": 0.194030275,
+          "stage": "program.finalize"
+        },
+        {
+          "seconds": 0.78791736,
+          "stage": "program.lower"
+        },
+        {
+          "seconds": 5.946652565,
+          "stage": "program.attempt"
+        },
+        {
+          "seconds": 5.946670522,
+          "stage": "program.frontend"
+        },
+        {
+          "seconds": 6.081543946,
+          "stage": "driver.total"
+        }
+      ],
+      "stderr": "pystachy-timing\tprogram.load\t1.687059789\npystachy-timing\tprogram.prepare\t1.011723385\npystachy-timing\tprogram.discover\t1.526936247\npystachy-timing\tprogram.analysis\t0.218317532\npystachy-timing\tprogram.optimize\t0.520239362\npystachy-timing\tprogram.finalize\t0.194030275\npystachy-timing\tprogram.lower\t0.787917360\npystachy-timing\tprogram.attempt\t5.946652565\npystachy-timing\tprogram.frontend\t5.946670522\npystachy-timing\tdriver.total\t6.081543946\ngc: 13 collections, 918.0 ms; heap peak 879.7 MiB; live 316.0 MiB at the last\n",
+      "stderr_sha256": "28b25e9ce360f3ca771e24bddb3a1352e95982984872b0d4c3d09e1211a1d0e9",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 896636,
+      "wall_s": 6.126169676004793
+    },
+    {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "/workspace/scratch/685873f30dd6/inline-screen/o2-0/compiler",
+        "ir",
+        "/workspace/scratch/685873f30dd6/frozen-fa9/pystachy.py",
+        "-o",
+        "/workspace/scratch/685873f30dd6/memory-quality/self-ordinary-1.ll"
+      ],
+      "cpu_s": 6.122395,
+      "exit_code": 0,
+      "host": "ordinary",
+      "input": "self",
+      "input_sha256": "a413782632f88d4746a81fd7cfb529d695ab36a35618522a83be1e25e1e31f29",
+      "load_after": [
+        1.04638671875,
+        1.40283203125,
+        1.58154296875
+      ],
+      "load_before": [
+        1.05078125,
+        1.40966796875,
+        1.5849609375
+      ],
+      "matches_oracle": true,
+      "output_bytes": 31522021,
+      "output_sha256": "bb45476154b2729c6201cd7f32250dce34b12bedc448359611cceefb1c3e78ae",
+      "proc_pid_resolved": true,
+      "sample": 1,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 927432,
+      "stages": [
+        {
+          "seconds": 1.802923091,
+          "stage": "program.load"
+        },
+        {
+          "seconds": 0.864902312,
+          "stage": "program.prepare"
+        },
+        {
+          "seconds": 1.571593669,
+          "stage": "program.discover"
+        },
+        {
+          "seconds": 0.226841198,
+          "stage": "program.analysis"
+        },
+        {
+          "seconds": 0.560627881,
+          "stage": "program.optimize"
+        },
+        {
+          "seconds": 0.194739053,
+          "stage": "program.finalize"
+        },
+        {
+          "seconds": 0.750827036,
+          "stage": "program.lower"
+        },
+        {
+          "seconds": 5.972868815,
+          "stage": "program.attempt"
+        },
+        {
+          "seconds": 5.972884899,
+          "stage": "program.frontend"
+        },
+        {
+          "seconds": 6.100161433,
+          "stage": "driver.total"
+        }
+      ],
+      "stderr": "pystachy-timing\tprogram.load\t1.802923091\npystachy-timing\tprogram.prepare\t0.864902312\npystachy-timing\tprogram.discover\t1.571593669\npystachy-timing\tprogram.analysis\t0.226841198\npystachy-timing\tprogram.optimize\t0.560627881\npystachy-timing\tprogram.finalize\t0.194739053\npystachy-timing\tprogram.lower\t0.750827036\npystachy-timing\tprogram.attempt\t5.972868815\npystachy-timing\tprogram.frontend\t5.972884899\npystachy-timing\tdriver.total\t6.100161433\ngc: 13 collections, 897.2 ms; heap peak 909.8 MiB; live 316.0 MiB at the last\n",
+      "stderr_sha256": "86838c1d890d29280482de2dfd041a958eb30fa63dfb26b251899de9ef143ae7",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 927432,
+      "wall_s": 6.1441368800005876
+    },
+    {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "/workspace/scratch/685873f30dd6/memory-builds/chunks/compiler",
+        "ir",
+        "/workspace/scratch/685873f30dd6/frozen-fa9/pystachy.py",
+        "-o",
+        "/workspace/scratch/685873f30dd6/memory-quality/self-chunks-1.ll"
+      ],
+      "cpu_s": 6.208241,
+      "exit_code": 0,
+      "host": "chunks",
+      "input": "self",
+      "input_sha256": "a413782632f88d4746a81fd7cfb529d695ab36a35618522a83be1e25e1e31f29",
+      "load_after": [
+        1.04248046875,
+        1.39599609375,
+        1.578125
+      ],
+      "load_before": [
+        1.04638671875,
+        1.40283203125,
+        1.58154296875
+      ],
+      "matches_oracle": true,
+      "output_bytes": 31522021,
+      "output_sha256": "bb45476154b2729c6201cd7f32250dce34b12bedc448359611cceefb1c3e78ae",
+      "proc_pid_resolved": true,
+      "sample": 1,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 860244,
+      "stages": [
+        {
+          "seconds": 1.609787192,
+          "stage": "program.load"
+        },
+        {
+          "seconds": 0.917602004,
+          "stage": "program.prepare"
+        },
+        {
+          "seconds": 1.740739188,
+          "stage": "program.discover"
+        },
+        {
+          "seconds": 0.21848544,
+          "stage": "program.analysis"
+        },
+        {
+          "seconds": 0.553781111,
+          "stage": "program.optimize"
+        },
+        {
+          "seconds": 0.202388149,
+          "stage": "program.finalize"
+        },
+        {
+          "seconds": 0.79804621,
+          "stage": "program.lower"
+        },
+        {
+          "seconds": 6.041227113,
+          "stage": "program.attempt"
+        },
+        {
+          "seconds": 6.041247683,
+          "stage": "program.frontend"
+        },
+        {
+          "seconds": 6.172555229,
+          "stage": "driver.total"
+        }
+      ],
+      "stderr": "pystachy-timing\tprogram.load\t1.609787192\npystachy-timing\tprogram.prepare\t0.917602004\npystachy-timing\tprogram.discover\t1.740739188\npystachy-timing\tprogram.analysis\t0.218485440\npystachy-timing\tprogram.optimize\t0.553781111\npystachy-timing\tprogram.finalize\t0.202388149\npystachy-timing\tprogram.lower\t0.798046210\npystachy-timing\tprogram.attempt\t6.041227113\npystachy-timing\tprogram.frontend\t6.041247683\npystachy-timing\tdriver.total\t6.172555229\ngc: 13 collections, 974.1 ms; heap peak 837.2 MiB; live 309.2 MiB at the last\n",
+      "stderr_sha256": "923e1ec593709f42ce784b2a0d235c3f214b94e4fbf2fce51a626de0293a49b8",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 860244,
+      "wall_s": 6.213912432998768
+    },
+    {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "/workspace/scratch/685873f30dd6/memory-builds/chunks/compiler",
+        "ir",
+        "/workspace/scratch/685873f30dd6/frozen-fa9/pystachy.py",
+        "-o",
+        "/workspace/scratch/685873f30dd6/memory-quality/self-chunks-2.ll"
+      ],
+      "cpu_s": 6.0047299999999995,
+      "exit_code": 0,
+      "host": "chunks",
+      "input": "self",
+      "input_sha256": "a413782632f88d4746a81fd7cfb529d695ab36a35618522a83be1e25e1e31f29",
+      "load_after": [
+        1.1162109375,
+        1.3994140625,
+        1.5771484375
+      ],
+      "load_before": [
+        1.04248046875,
+        1.39599609375,
+        1.578125
+      ],
+      "matches_oracle": true,
+      "output_bytes": 31522021,
+      "output_sha256": "bb45476154b2729c6201cd7f32250dce34b12bedc448359611cceefb1c3e78ae",
+      "proc_pid_resolved": true,
+      "sample": 2,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 860244,
+      "stages": [
+        {
+          "seconds": 1.73974122,
+          "stage": "program.load"
+        },
+        {
+          "seconds": 0.981356042,
+          "stage": "program.prepare"
+        },
+        {
+          "seconds": 1.475130162,
+          "stage": "program.discover"
+        },
+        {
+          "seconds": 0.201695769,
+          "stage": "program.analysis"
+        },
+        {
+          "seconds": 0.51538078,
+          "stage": "program.optimize"
+        },
+        {
+          "seconds": 0.18712611,
+          "stage": "program.finalize"
+        },
+        {
+          "seconds": 0.733179677,
+          "stage": "program.lower"
+        },
+        {
+          "seconds": 5.833980336,
+          "stage": "program.attempt"
+        },
+        {
+          "seconds": 5.833997161,
+          "stage": "program.frontend"
+        },
+        {
+          "seconds": 5.96673884,
+          "stage": "driver.total"
+        }
+      ],
+      "stderr": "pystachy-timing\tprogram.load\t1.739741220\npystachy-timing\tprogram.prepare\t0.981356042\npystachy-timing\tprogram.discover\t1.475130162\npystachy-timing\tprogram.analysis\t0.201695769\npystachy-timing\tprogram.optimize\t0.515380780\npystachy-timing\tprogram.finalize\t0.187126110\npystachy-timing\tprogram.lower\t0.733179677\npystachy-timing\tprogram.attempt\t5.833980336\npystachy-timing\tprogram.frontend\t5.833997161\npystachy-timing\tdriver.total\t5.966738840\ngc: 13 collections, 862.6 ms; heap peak 837.2 MiB; live 309.2 MiB at the last\n",
+      "stderr_sha256": "e08d320bec3b055825bac5421f2623c734984343c7b692698059213c86e1d0d2",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 860244,
+      "wall_s": 6.007283760001883
+    },
+    {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "/workspace/scratch/685873f30dd6/inline-screen/o2-0/compiler",
+        "ir",
+        "/workspace/scratch/685873f30dd6/frozen-fa9/pystachy.py",
+        "-o",
+        "/workspace/scratch/685873f30dd6/memory-quality/self-ordinary-2.ll"
+      ],
+      "cpu_s": 5.963610999999999,
+      "exit_code": 0,
+      "host": "ordinary",
+      "input": "self",
+      "input_sha256": "a413782632f88d4746a81fd7cfb529d695ab36a35618522a83be1e25e1e31f29",
+      "load_after": [
+        1.18701171875,
+        1.40966796875,
+        1.57958984375
+      ],
+      "load_before": [
+        1.1162109375,
+        1.3994140625,
+        1.5771484375
+      ],
+      "matches_oracle": true,
+      "output_bytes": 31522021,
+      "output_sha256": "bb45476154b2729c6201cd7f32250dce34b12bedc448359611cceefb1c3e78ae",
+      "proc_pid_resolved": true,
+      "sample": 2,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 927480,
+      "stages": [
+        {
+          "seconds": 1.812114927,
+          "stage": "program.load"
+        },
+        {
+          "seconds": 0.99618273,
+          "stage": "program.prepare"
+        },
+        {
+          "seconds": 1.365830041,
+          "stage": "program.discover"
+        },
+        {
+          "seconds": 0.211020547,
+          "stage": "program.analysis"
+        },
+        {
+          "seconds": 0.541537298,
+          "stage": "program.optimize"
+        },
+        {
+          "seconds": 0.168668137,
+          "stage": "program.finalize"
+        },
+        {
+          "seconds": 0.770651825,
+          "stage": "program.lower"
+        },
+        {
+          "seconds": 5.866323834,
+          "stage": "program.attempt"
+        },
+        {
+          "seconds": 5.86638114,
+          "stage": "program.frontend"
+        },
+        {
+          "seconds": 5.932214556,
+          "stage": "driver.total"
+        }
+      ],
+      "stderr": "pystachy-timing\tprogram.load\t1.812114927\npystachy-timing\tprogram.prepare\t0.996182730\npystachy-timing\tprogram.discover\t1.365830041\npystachy-timing\tprogram.analysis\t0.211020547\npystachy-timing\tprogram.optimize\t0.541537298\npystachy-timing\tprogram.finalize\t0.168668137\npystachy-timing\tprogram.lower\t0.770651825\npystachy-timing\tprogram.attempt\t5.866323834\npystachy-timing\tprogram.frontend\t5.866381140\npystachy-timing\tdriver.total\t5.932214556\ngc: 13 collections, 859.1 ms; heap peak 909.8 MiB; live 316.0 MiB at the last\n",
+      "stderr_sha256": "346ef9aa711baadf8449c824fef8bb947fa41db129514cfa0852523e4a6e0539",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 927480,
+      "wall_s": 5.974796952003089
+    },
+    {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "/workspace/scratch/685873f30dd6/memory-builds/newline/compiler",
+        "ir",
+        "/workspace/scratch/685873f30dd6/frozen-fa9/pystachy.py",
+        "-o",
+        "/workspace/scratch/685873f30dd6/memory-quality/self-newline-2.ll"
+      ],
+      "cpu_s": 6.24109,
+      "exit_code": 0,
+      "host": "newline",
+      "input": "self",
+      "input_sha256": "a413782632f88d4746a81fd7cfb529d695ab36a35618522a83be1e25e1e31f29",
+      "load_after": [
+        1.171875,
+        1.40283203125,
+        1.576171875
+      ],
+      "load_before": [
+        1.18701171875,
+        1.40966796875,
+        1.57958984375
+      ],
+      "matches_oracle": true,
+      "output_bytes": 31522021,
+      "output_sha256": "bb45476154b2729c6201cd7f32250dce34b12bedc448359611cceefb1c3e78ae",
+      "proc_pid_resolved": true,
+      "sample": 2,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 896652,
+      "stages": [
+        {
+          "seconds": 1.824359531,
+          "stage": "program.load"
+        },
+        {
+          "seconds": 0.94144727,
+          "stage": "program.prepare"
+        },
+        {
+          "seconds": 1.655878602,
+          "stage": "program.discover"
+        },
+        {
+          "seconds": 0.22547773,
+          "stage": "program.analysis"
+        },
+        {
+          "seconds": 0.537772974,
+          "stage": "program.optimize"
+        },
+        {
+          "seconds": 0.168549122,
+          "stage": "program.finalize"
+        },
+        {
+          "seconds": 0.75230005,
+          "stage": "program.lower"
+        },
+        {
+          "seconds": 6.106136548,
+          "stage": "program.attempt"
+        },
+        {
+          "seconds": 6.106155197,
+          "stage": "program.frontend"
+        },
+        {
+          "seconds": 6.200505822,
+          "stage": "driver.total"
+        }
+      ],
+      "stderr": "pystachy-timing\tprogram.load\t1.824359531\npystachy-timing\tprogram.prepare\t0.941447270\npystachy-timing\tprogram.discover\t1.655878602\npystachy-timing\tprogram.analysis\t0.225477730\npystachy-timing\tprogram.optimize\t0.537772974\npystachy-timing\tprogram.finalize\t0.168549122\npystachy-timing\tprogram.lower\t0.752300050\npystachy-timing\tprogram.attempt\t6.106136548\npystachy-timing\tprogram.frontend\t6.106155197\npystachy-timing\tdriver.total\t6.200505822\ngc: 13 collections, 926.9 ms; heap peak 879.7 MiB; live 316.0 MiB at the last\n",
+      "stderr_sha256": "d47f05f5d212b7cffa8a38fb0b09b7b188bc82470aeef3e3931d1b0dbde55128",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 896652,
+      "wall_s": 6.244424550997792
+    },
+    {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "/workspace/scratch/685873f30dd6/inline-screen/o2-0/compiler",
+        "ir",
+        "/workspace/scratch/685873f30dd6/frozen-fa9/pystachy.py",
+        "-o",
+        "/workspace/scratch/685873f30dd6/memory-quality/self-ordinary-3.ll"
+      ],
+      "cpu_s": 6.241937,
+      "exit_code": 0,
+      "host": "ordinary",
+      "input": "self",
+      "input_sha256": "a413782632f88d4746a81fd7cfb529d695ab36a35618522a83be1e25e1e31f29",
+      "load_after": [
+        1.318359375,
+        1.4296875,
+        1.583984375
+      ],
+      "load_before": [
+        1.171875,
+        1.40283203125,
+        1.576171875
+      ],
+      "matches_oracle": true,
+      "output_bytes": 31522021,
+      "output_sha256": "bb45476154b2729c6201cd7f32250dce34b12bedc448359611cceefb1c3e78ae",
+      "proc_pid_resolved": true,
+      "sample": 3,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 925444,
+      "stages": [
+        {
+          "seconds": 1.864316039,
+          "stage": "program.load"
+        },
+        {
+          "seconds": 0.858859173,
+          "stage": "program.prepare"
+        },
+        {
+          "seconds": 1.727876036,
+          "stage": "program.discover"
+        },
+        {
+          "seconds": 0.206315985,
+          "stage": "program.analysis"
+        },
+        {
+          "seconds": 0.508736583,
+          "stage": "program.optimize"
+        },
+        {
+          "seconds": 0.207002549,
+          "stage": "program.finalize"
+        },
+        {
+          "seconds": 0.789136516,
+          "stage": "program.lower"
+        },
+        {
+          "seconds": 6.162692811,
+          "stage": "program.attempt"
+        },
+        {
+          "seconds": 6.162709226,
+          "stage": "program.frontend"
+        },
+        {
+          "seconds": 6.206305644,
+          "stage": "driver.total"
+        }
+      ],
+      "stderr": "pystachy-timing\tprogram.load\t1.864316039\npystachy-timing\tprogram.prepare\t0.858859173\npystachy-timing\tprogram.discover\t1.727876036\npystachy-timing\tprogram.analysis\t0.206315985\npystachy-timing\tprogram.optimize\t0.508736583\npystachy-timing\tprogram.finalize\t0.207002549\npystachy-timing\tprogram.lower\t0.789136516\npystachy-timing\tprogram.attempt\t6.162692811\npystachy-timing\tprogram.frontend\t6.162709226\npystachy-timing\tdriver.total\t6.206305644\ngc: 13 collections, 976.6 ms; heap peak 909.8 MiB; live 316.0 MiB at the last\n",
+      "stderr_sha256": "b6aff65766f8a9e58b20fa166217b928184b944f322a7732075ea6297929ff04",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 927364,
+      "wall_s": 6.24530518600659
+    },
+    {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "/workspace/scratch/685873f30dd6/memory-builds/chunks/compiler",
+        "ir",
+        "/workspace/scratch/685873f30dd6/frozen-fa9/pystachy.py",
+        "-o",
+        "/workspace/scratch/685873f30dd6/memory-quality/self-chunks-3.ll"
+      ],
+      "cpu_s": 6.212064,
+      "exit_code": 0,
+      "host": "chunks",
+      "input": "self",
+      "input_sha256": "a413782632f88d4746a81fd7cfb529d695ab36a35618522a83be1e25e1e31f29",
+      "load_after": [
+        1.349609375,
+        1.43212890625,
+        1.5830078125
+      ],
+      "load_before": [
+        1.318359375,
+        1.4296875,
+        1.583984375
+      ],
+      "matches_oracle": true,
+      "output_bytes": 31522021,
+      "output_sha256": "bb45476154b2729c6201cd7f32250dce34b12bedc448359611cceefb1c3e78ae",
+      "proc_pid_resolved": true,
+      "sample": 3,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 856912,
+      "stages": [
+        {
+          "seconds": 1.723120961,
+          "stage": "program.load"
+        },
+        {
+          "seconds": 0.968057237,
+          "stage": "program.prepare"
+        },
+        {
+          "seconds": 1.640986453,
+          "stage": "program.discover"
+        },
+        {
+          "seconds": 0.224036876,
+          "stage": "program.analysis"
+        },
+        {
+          "seconds": 0.61130594,
+          "stage": "program.optimize"
+        },
+        {
+          "seconds": 0.209796827,
+          "stage": "program.finalize"
+        },
+        {
+          "seconds": 0.770283536,
+          "stage": "program.lower"
+        },
+        {
+          "seconds": 6.147981002,
+          "stage": "program.attempt"
+        },
+        {
+          "seconds": 6.148001523,
+          "stage": "program.frontend"
+        },
+        {
+          "seconds": 6.188612043,
+          "stage": "driver.total"
+        }
+      ],
+      "stderr": "pystachy-timing\tprogram.load\t1.723120961\npystachy-timing\tprogram.prepare\t0.968057237\npystachy-timing\tprogram.discover\t1.640986453\npystachy-timing\tprogram.analysis\t0.224036876\npystachy-timing\tprogram.optimize\t0.611305940\npystachy-timing\tprogram.finalize\t0.209796827\npystachy-timing\tprogram.lower\t0.770283536\npystachy-timing\tprogram.attempt\t6.147981002\npystachy-timing\tprogram.frontend\t6.148001523\npystachy-timing\tdriver.total\t6.188612043\ngc: 13 collections, 910.4 ms; heap peak 837.2 MiB; live 309.2 MiB at the last\n",
+      "stderr_sha256": "f32ae39337c9bb4398bc26a4d94c04f83cd0c8a018c8b4f2a86ce1dbd5018f9e",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 858968,
+      "wall_s": 6.22858031999931
+    },
+    {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "/workspace/scratch/685873f30dd6/memory-builds/newline/compiler",
+        "ir",
+        "/workspace/scratch/685873f30dd6/frozen-fa9/pystachy.py",
+        "-o",
+        "/workspace/scratch/685873f30dd6/memory-quality/self-newline-3.ll"
+      ],
+      "cpu_s": 6.463966,
+      "exit_code": 0,
+      "host": "newline",
+      "input": "self",
+      "input_sha256": "a413782632f88d4746a81fd7cfb529d695ab36a35618522a83be1e25e1e31f29",
+      "load_after": [
+        1.40185546875,
+        1.44189453125,
+        1.58544921875
+      ],
+      "load_before": [
+        1.349609375,
+        1.43212890625,
+        1.5830078125
+      ],
+      "matches_oracle": true,
+      "output_bytes": 31522021,
+      "output_sha256": "bb45476154b2729c6201cd7f32250dce34b12bedc448359611cceefb1c3e78ae",
+      "proc_pid_resolved": true,
+      "sample": 3,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 896560,
+      "stages": [
+        {
+          "seconds": 1.889824835,
+          "stage": "program.load"
+        },
+        {
+          "seconds": 0.994333568,
+          "stage": "program.prepare"
+        },
+        {
+          "seconds": 1.755484119,
+          "stage": "program.discover"
+        },
+        {
+          "seconds": 0.217394368,
+          "stage": "program.analysis"
+        },
+        {
+          "seconds": 0.573410079,
+          "stage": "program.optimize"
+        },
+        {
+          "seconds": 0.160170982,
+          "stage": "program.finalize"
+        },
+        {
+          "seconds": 0.7652075,
+          "stage": "program.lower"
+        },
+        {
+          "seconds": 6.35620964,
+          "stage": "program.attempt"
+        },
+        {
+          "seconds": 6.356228988,
+          "stage": "program.frontend"
+        },
+        {
+          "seconds": 6.433364236,
+          "stage": "driver.total"
+        }
+      ],
+      "stderr": "pystachy-timing\tprogram.load\t1.889824835\npystachy-timing\tprogram.prepare\t0.994333568\npystachy-timing\tprogram.discover\t1.755484119\npystachy-timing\tprogram.analysis\t0.217394368\npystachy-timing\tprogram.optimize\t0.573410079\npystachy-timing\tprogram.finalize\t0.160170982\npystachy-timing\tprogram.lower\t0.765207500\npystachy-timing\tprogram.attempt\t6.356209640\npystachy-timing\tprogram.frontend\t6.356228988\npystachy-timing\tdriver.total\t6.433364236\ngc: 13 collections, 934.2 ms; heap peak 879.7 MiB; live 316.0 MiB at the last\n",
+      "stderr_sha256": "e67cf5a29e28617a7b481e22124316e81a720b0859c5c31d0f2e47639ba560ba",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 896560,
+      "wall_s": 6.477117533002456
+    },
+    {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "/workspace/scratch/685873f30dd6/memory-builds/chunks/compiler",
+        "ir",
+        "/workspace/scratch/685873f30dd6/frozen-fa9/pystachy.py",
+        "-o",
+        "/workspace/scratch/685873f30dd6/memory-quality/self-chunks-4.ll"
+      ],
+      "cpu_s": 6.4397899999999995,
+      "exit_code": 0,
+      "host": "chunks",
+      "input": "self",
+      "input_sha256": "a413782632f88d4746a81fd7cfb529d695ab36a35618522a83be1e25e1e31f29",
+      "load_after": [
+        1.36962890625,
+        1.43408203125,
+        1.58203125
+      ],
+      "load_before": [
+        1.40185546875,
+        1.44189453125,
+        1.58544921875
+      ],
+      "matches_oracle": true,
+      "output_bytes": 31522021,
+      "output_sha256": "bb45476154b2729c6201cd7f32250dce34b12bedc448359611cceefb1c3e78ae",
+      "proc_pid_resolved": true,
+      "sample": 4,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 860256,
+      "stages": [
+        {
+          "seconds": 1.771633502,
+          "stage": "program.load"
+        },
+        {
+          "seconds": 1.026327319,
+          "stage": "program.prepare"
+        },
+        {
+          "seconds": 1.644761115,
+          "stage": "program.discover"
+        },
+        {
+          "seconds": 0.218820087,
+          "stage": "program.analysis"
+        },
+        {
+          "seconds": 0.669190356,
+          "stage": "program.optimize"
+        },
+        {
+          "seconds": 0.178512358,
+          "stage": "program.finalize"
+        },
+        {
+          "seconds": 0.748567181,
+          "stage": "program.lower"
+        },
+        {
+          "seconds": 6.258302439,
+          "stage": "program.attempt"
+        },
+        {
+          "seconds": 6.258318123,
+          "stage": "program.frontend"
+        },
+        {
+          "seconds": 6.39533432,
+          "stage": "driver.total"
+        }
+      ],
+      "stderr": "pystachy-timing\tprogram.load\t1.771633502\npystachy-timing\tprogram.prepare\t1.026327319\npystachy-timing\tprogram.discover\t1.644761115\npystachy-timing\tprogram.analysis\t0.218820087\npystachy-timing\tprogram.optimize\t0.669190356\npystachy-timing\tprogram.finalize\t0.178512358\npystachy-timing\tprogram.lower\t0.748567181\npystachy-timing\tprogram.attempt\t6.258302439\npystachy-timing\tprogram.frontend\t6.258318123\npystachy-timing\tdriver.total\t6.395334320\ngc: 13 collections, 939.6 ms; heap peak 837.2 MiB; live 309.2 MiB at the last\n",
+      "stderr_sha256": "edef667fc6b27205ac5f6a5b400a25c1ab6d0d80f6cb2a85db62541b93eb2090",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 860256,
+      "wall_s": 6.443620887999714
+    },
+    {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "/workspace/scratch/685873f30dd6/memory-builds/newline/compiler",
+        "ir",
+        "/workspace/scratch/685873f30dd6/frozen-fa9/pystachy.py",
+        "-o",
+        "/workspace/scratch/685873f30dd6/memory-quality/self-newline-4.ll"
+      ],
+      "cpu_s": 6.427667,
+      "exit_code": 0,
+      "host": "newline",
+      "input": "self",
+      "input_sha256": "a413782632f88d4746a81fd7cfb529d695ab36a35618522a83be1e25e1e31f29",
+      "load_after": [
+        1.42041015625,
+        1.44384765625,
+        1.58447265625
+      ],
+      "load_before": [
+        1.36962890625,
+        1.43408203125,
+        1.58203125
+      ],
+      "matches_oracle": true,
+      "output_bytes": 31522021,
+      "output_sha256": "bb45476154b2729c6201cd7f32250dce34b12bedc448359611cceefb1c3e78ae",
+      "proc_pid_resolved": true,
+      "sample": 4,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 896652,
+      "stages": [
+        {
+          "seconds": 1.784220363,
+          "stage": "program.load"
+        },
+        {
+          "seconds": 1.076861102,
+          "stage": "program.prepare"
+        },
+        {
+          "seconds": 1.574307397,
+          "stage": "program.discover"
+        },
+        {
+          "seconds": 0.214128407,
+          "stage": "program.analysis"
+        },
+        {
+          "seconds": 0.642817308,
+          "stage": "program.optimize"
+        },
+        {
+          "seconds": 0.210203533,
+          "stage": "program.finalize"
+        },
+        {
+          "seconds": 0.830930409,
+          "stage": "program.lower"
+        },
+        {
+          "seconds": 6.333801471,
+          "stage": "program.attempt"
+        },
+        {
+          "seconds": 6.333817965,
+          "stage": "program.frontend"
+        },
+        {
+          "seconds": 6.393533059,
+          "stage": "driver.total"
+        }
+      ],
+      "stderr": "pystachy-timing\tprogram.load\t1.784220363\npystachy-timing\tprogram.prepare\t1.076861102\npystachy-timing\tprogram.discover\t1.574307397\npystachy-timing\tprogram.analysis\t0.214128407\npystachy-timing\tprogram.optimize\t0.642817308\npystachy-timing\tprogram.finalize\t0.210203533\npystachy-timing\tprogram.lower\t0.830930409\npystachy-timing\tprogram.attempt\t6.333801471\npystachy-timing\tprogram.frontend\t6.333817965\npystachy-timing\tdriver.total\t6.393533059\ngc: 13 collections, 938.6 ms; heap peak 879.7 MiB; live 316.0 MiB at the last\n",
+      "stderr_sha256": "251503d585028fecf3d8f21743819c5f63de69936fc3283ac51dd9ce0a8dcfd6",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 896652,
+      "wall_s": 6.4330723070015665
+    },
+    {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "/workspace/scratch/685873f30dd6/inline-screen/o2-0/compiler",
+        "ir",
+        "/workspace/scratch/685873f30dd6/frozen-fa9/pystachy.py",
+        "-o",
+        "/workspace/scratch/685873f30dd6/memory-quality/self-ordinary-4.ll"
+      ],
+      "cpu_s": 6.519863000000001,
+      "exit_code": 0,
+      "host": "ordinary",
+      "input": "self",
+      "input_sha256": "a413782632f88d4746a81fd7cfb529d695ab36a35618522a83be1e25e1e31f29",
+      "load_after": [
+        1.35546875,
+        1.4287109375,
+        1.57763671875
+      ],
+      "load_before": [
+        1.42041015625,
+        1.44384765625,
+        1.58447265625
+      ],
+      "matches_oracle": true,
+      "output_bytes": 31522021,
+      "output_sha256": "bb45476154b2729c6201cd7f32250dce34b12bedc448359611cceefb1c3e78ae",
+      "proc_pid_resolved": true,
+      "sample": 4,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 927432,
+      "stages": [
+        {
+          "seconds": 1.943426474,
+          "stage": "program.load"
+        },
+        {
+          "seconds": 1.070642179,
+          "stage": "program.prepare"
+        },
+        {
+          "seconds": 1.68760419,
+          "stage": "program.discover"
+        },
+        {
+          "seconds": 0.212767452,
+          "stage": "program.analysis"
+        },
+        {
+          "seconds": 0.560006505,
+          "stage": "program.optimize"
+        },
+        {
+          "seconds": 0.187454763,
+          "stage": "program.finalize"
+        },
+        {
+          "seconds": 0.756454984,
+          "stage": "program.lower"
+        },
+        {
+          "seconds": 6.418795941,
+          "stage": "program.attempt"
+        },
+        {
+          "seconds": 6.418812966,
+          "stage": "program.frontend"
+        },
+        {
+          "seconds": 6.49797344,
+          "stage": "driver.total"
+        }
+      ],
+      "stderr": "pystachy-timing\tprogram.load\t1.943426474\npystachy-timing\tprogram.prepare\t1.070642179\npystachy-timing\tprogram.discover\t1.687604190\npystachy-timing\tprogram.analysis\t0.212767452\npystachy-timing\tprogram.optimize\t0.560006505\npystachy-timing\tprogram.finalize\t0.187454763\npystachy-timing\tprogram.lower\t0.756454984\npystachy-timing\tprogram.attempt\t6.418795941\npystachy-timing\tprogram.frontend\t6.418812966\npystachy-timing\tdriver.total\t6.497973440\ngc: 13 collections, 931.4 ms; heap peak 909.8 MiB; live 316.0 MiB at the last\n",
+      "stderr_sha256": "f68268f4f9f1fd3caef8a10a94ba872bb55ab5e85aecb16b0de0698e75db931b",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 927432,
+      "wall_s": 6.532811416996992
+    },
+    {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "/workspace/scratch/685873f30dd6/inline-screen/o2-0/compiler",
+        "ir",
+        "/workspace/scratch/685873f30dd6/frozen-fa9/bench/json_repair/bench.py",
+        "-o",
+        "/workspace/scratch/685873f30dd6/memory-quality/json-repair-ordinary-0.ll"
+      ],
+      "cpu_s": 0.282356,
+      "exit_code": 0,
+      "host": "ordinary",
+      "input": "json-repair",
+      "input_sha256": "cb00324211f2841fa14b7483b8378da07f0704f07b43c430a39decac3de183a6",
+      "load_after": [
+        1.35546875,
+        1.4287109375,
+        1.57763671875
+      ],
+      "load_before": [
+        1.35546875,
+        1.4287109375,
+        1.57763671875
+      ],
+      "matches_oracle": true,
+      "output_bytes": 1424659,
+      "output_sha256": "83d86467b8f30d7648fe514e107ab0f946d7be21f4e474cc04b0a2c88f601f18",
+      "proc_pid_resolved": true,
+      "sample": 0,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 52456,
+      "stages": [
+        {
+          "seconds": 0.049593843,
+          "stage": "program.load"
+        },
+        {
+          "seconds": 0.016530626,
+          "stage": "program.prepare"
+        },
+        {
+          "seconds": 0.114534221,
+          "stage": "program.attempt"
+        },
+        {
+          "seconds": 0.049588236,
+          "stage": "program.load"
+        },
+        {
+          "seconds": 0.018395977,
+          "stage": "program.prepare"
+        },
+        {
+          "seconds": 0.04804642,
+          "stage": "program.discover"
+        },
+        {
+          "seconds": 0.006639782,
+          "stage": "program.analysis"
+        },
+        {
+          "seconds": 0.009838996,
+          "stage": "program.optimize"
+        },
+        {
+          "seconds": 0.004077175,
+          "stage": "program.finalize"
+        },
+        {
+          "seconds": 0.023607832,
+          "stage": "program.lower"
+        },
+        {
+          "seconds": 0.160404065,
+          "stage": "program.attempt"
+        },
+        {
+          "seconds": 0.274988702,
+          "stage": "program.frontend"
+        },
+        {
+          "seconds": 0.277253882,
+          "stage": "driver.total"
+        }
+      ],
+      "stderr": "pystachy-timing\tprogram.load\t0.049593843\npystachy-timing\tprogram.prepare\t0.016530626\npystachy-timing\tprogram.attempt\t0.114534221\npystachy-timing\tprogram.load\t0.049588236\npystachy-timing\tprogram.prepare\t0.018395977\npystachy-timing\tprogram.discover\t0.048046420\npystachy-timing\tprogram.analysis\t0.006639782\npystachy-timing\tprogram.optimize\t0.009838996\npystachy-timing\tprogram.finalize\t0.004077175\npystachy-timing\tprogram.lower\t0.023607832\npystachy-timing\tprogram.attempt\t0.160404065\npystachy-timing\tprogram.frontend\t0.274988702\npystachy-timing\tdriver.total\t0.277253882\ngc: 3 collections, 22.3 ms; heap peak 50.9 MiB; live 12.9 MiB at the last\n",
+      "stderr_sha256": "b8260f315b4f29ae77bbede5815d1f35982aa54e860155e4420094063ebe7894",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 56936,
+      "wall_s": 0.2832939229992917
+    },
+    {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "/workspace/scratch/685873f30dd6/memory-builds/newline/compiler",
+        "ir",
+        "/workspace/scratch/685873f30dd6/frozen-fa9/bench/json_repair/bench.py",
+        "-o",
+        "/workspace/scratch/685873f30dd6/memory-quality/json-repair-newline-0.ll"
+      ],
+      "cpu_s": 0.266263,
+      "exit_code": 0,
+      "host": "newline",
+      "input": "json-repair",
+      "input_sha256": "cb00324211f2841fa14b7483b8378da07f0704f07b43c430a39decac3de183a6",
+      "load_after": [
+        1.35546875,
+        1.4287109375,
+        1.57763671875
+      ],
+      "load_before": [
+        1.35546875,
+        1.4287109375,
+        1.57763671875
+      ],
+      "matches_oracle": true,
+      "output_bytes": 1424659,
+      "output_sha256": "83d86467b8f30d7648fe514e107ab0f946d7be21f4e474cc04b0a2c88f601f18",
+      "proc_pid_resolved": true,
+      "sample": 0,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 52456,
+      "stages": [
+        {
+          "seconds": 0.047050554,
+          "stage": "program.load"
+        },
+        {
+          "seconds": 0.016681664,
+          "stage": "program.prepare"
+        },
+        {
+          "seconds": 0.106823914,
+          "stage": "program.attempt"
+        },
+        {
+          "seconds": 0.047036653,
+          "stage": "program.load"
+        },
+        {
+          "seconds": 0.016622705,
+          "stage": "program.prepare"
+        },
+        {
+          "seconds": 0.043319389,
+          "stage": "program.discover"
+        },
+        {
+          "seconds": 0.006759542,
+          "stage": "program.analysis"
+        },
+        {
+          "seconds": 0.010312249,
+          "stage": "program.optimize"
+        },
+        {
+          "seconds": 0.004607283,
+          "stage": "program.finalize"
+        },
+        {
+          "seconds": 0.023238291,
+          "stage": "program.lower"
+        },
+        {
+          "seconds": 0.152113198,
+          "stage": "program.attempt"
+        },
+        {
+          "seconds": 0.25900933,
+          "stage": "program.frontend"
+        },
+        {
+          "seconds": 0.26110233,
+          "stage": "driver.total"
+        }
+      ],
+      "stderr": "pystachy-timing\tprogram.load\t0.047050554\npystachy-timing\tprogram.prepare\t0.016681664\npystachy-timing\tprogram.attempt\t0.106823914\npystachy-timing\tprogram.load\t0.047036653\npystachy-timing\tprogram.prepare\t0.016622705\npystachy-timing\tprogram.discover\t0.043319389\npystachy-timing\tprogram.analysis\t0.006759542\npystachy-timing\tprogram.optimize\t0.010312249\npystachy-timing\tprogram.finalize\t0.004607283\npystachy-timing\tprogram.lower\t0.023238291\npystachy-timing\tprogram.attempt\t0.152113198\npystachy-timing\tprogram.frontend\t0.259009330\npystachy-timing\tdriver.total\t0.261102330\ngc: 3 collections, 21.1 ms; heap peak 49.5 MiB; live 12.9 MiB at the last\n",
+      "stderr_sha256": "daa06f8d294c82c1a20b2afcac6d6cfd852d091f66a37434c54f43072e5dc8e7",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 55528,
+      "wall_s": 0.2666316309987451
+    },
+    {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "/workspace/scratch/685873f30dd6/memory-builds/chunks/compiler",
+        "ir",
+        "/workspace/scratch/685873f30dd6/frozen-fa9/bench/json_repair/bench.py",
+        "-o",
+        "/workspace/scratch/685873f30dd6/memory-quality/json-repair-chunks-0.ll"
+      ],
+      "cpu_s": 0.265321,
+      "exit_code": 0,
+      "host": "chunks",
+      "input": "json-repair",
+      "input_sha256": "cb00324211f2841fa14b7483b8378da07f0704f07b43c430a39decac3de183a6",
+      "load_after": [
+        1.35546875,
+        1.4287109375,
+        1.57763671875
+      ],
+      "load_before": [
+        1.35546875,
+        1.4287109375,
+        1.57763671875
+      ],
+      "matches_oracle": true,
+      "output_bytes": 1424659,
+      "output_sha256": "83d86467b8f30d7648fe514e107ab0f946d7be21f4e474cc04b0a2c88f601f18",
+      "proc_pid_resolved": true,
+      "sample": 0,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 52456,
+      "stages": [
+        {
+          "seconds": 0.046518364,
+          "stage": "program.load"
+        },
+        {
+          "seconds": 0.016554131,
+          "stage": "program.prepare"
+        },
+        {
+          "seconds": 0.102281529,
+          "stage": "program.attempt"
+        },
+        {
+          "seconds": 0.046341066,
+          "stage": "program.load"
+        },
+        {
+          "seconds": 0.016500381,
+          "stage": "program.prepare"
+        },
+        {
+          "seconds": 0.044286735,
+          "stage": "program.discover"
+        },
+        {
+          "seconds": 0.00797401,
+          "stage": "program.analysis"
+        },
+        {
+          "seconds": 0.011252894,
+          "stage": "program.optimize"
+        },
+        {
+          "seconds": 0.004750189,
+          "stage": "program.finalize"
+        },
+        {
+          "seconds": 0.023935079,
+          "stage": "program.lower"
+        },
+        {
+          "seconds": 0.155256539,
+          "stage": "program.attempt"
+        },
+        {
+          "seconds": 0.257589324,
+          "stage": "program.frontend"
+        },
+        {
+          "seconds": 0.259676685,
+          "stage": "driver.total"
+        }
+      ],
+      "stderr": "pystachy-timing\tprogram.load\t0.046518364\npystachy-timing\tprogram.prepare\t0.016554131\npystachy-timing\tprogram.attempt\t0.102281529\npystachy-timing\tprogram.load\t0.046341066\npystachy-timing\tprogram.prepare\t0.016500381\npystachy-timing\tprogram.discover\t0.044286735\npystachy-timing\tprogram.analysis\t0.007974010\npystachy-timing\tprogram.optimize\t0.011252894\npystachy-timing\tprogram.finalize\t0.004750189\npystachy-timing\tprogram.lower\t0.023935079\npystachy-timing\tprogram.attempt\t0.155256539\npystachy-timing\tprogram.frontend\t0.257589324\npystachy-timing\tdriver.total\t0.259676685\ngc: 3 collections, 20.1 ms; heap peak 48.9 MiB; live 12.4 MiB at the last\n",
+      "stderr_sha256": "df0d85c528b54aaab634786b63b2ad5d1f4874c71d42221eedd958eacde1bc4f",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 55272,
+      "wall_s": 0.2661919290039805
+    },
+    {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "/workspace/scratch/685873f30dd6/memory-builds/newline/compiler",
+        "ir",
+        "/workspace/scratch/685873f30dd6/frozen-fa9/bench/json_repair/bench.py",
+        "-o",
+        "/workspace/scratch/685873f30dd6/memory-quality/json-repair-newline-1.ll"
+      ],
+      "cpu_s": 0.266097,
+      "exit_code": 0,
+      "host": "newline",
+      "input": "json-repair",
+      "input_sha256": "cb00324211f2841fa14b7483b8378da07f0704f07b43c430a39decac3de183a6",
+      "load_after": [
+        1.35546875,
+        1.4287109375,
+        1.57763671875
+      ],
+      "load_before": [
+        1.35546875,
+        1.4287109375,
+        1.57763671875
+      ],
+      "matches_oracle": true,
+      "output_bytes": 1424659,
+      "output_sha256": "83d86467b8f30d7648fe514e107ab0f946d7be21f4e474cc04b0a2c88f601f18",
+      "proc_pid_resolved": true,
+      "sample": 1,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 52456,
+      "stages": [
+        {
+          "seconds": 0.047881405,
+          "stage": "program.load"
+        },
+        {
+          "seconds": 0.015054845,
+          "stage": "program.prepare"
+        },
+        {
+          "seconds": 0.102172684,
+          "stage": "program.attempt"
+        },
+        {
+          "seconds": 0.046962321,
+          "stage": "program.load"
+        },
+        {
+          "seconds": 0.017347836,
+          "stage": "program.prepare"
+        },
+        {
+          "seconds": 0.045699902,
+          "stage": "program.discover"
+        },
+        {
+          "seconds": 0.007469391,
+          "stage": "program.analysis"
+        },
+        {
+          "seconds": 0.011081596,
+          "stage": "program.optimize"
+        },
+        {
+          "seconds": 0.00490401,
+          "stage": "program.finalize"
+        },
+        {
+          "seconds": 0.023361586,
+          "stage": "program.lower"
+        },
+        {
+          "seconds": 0.157055565,
+          "stage": "program.attempt"
+        },
+        {
+          "seconds": 0.259309733,
+          "stage": "program.frontend"
+        },
+        {
+          "seconds": 0.26132176,
+          "stage": "driver.total"
+        }
+      ],
+      "stderr": "pystachy-timing\tprogram.load\t0.047881405\npystachy-timing\tprogram.prepare\t0.015054845\npystachy-timing\tprogram.attempt\t0.102172684\npystachy-timing\tprogram.load\t0.046962321\npystachy-timing\tprogram.prepare\t0.017347836\npystachy-timing\tprogram.discover\t0.045699902\npystachy-timing\tprogram.analysis\t0.007469391\npystachy-timing\tprogram.optimize\t0.011081596\npystachy-timing\tprogram.finalize\t0.004904010\npystachy-timing\tprogram.lower\t0.023361586\npystachy-timing\tprogram.attempt\t0.157055565\npystachy-timing\tprogram.frontend\t0.259309733\npystachy-timing\tdriver.total\t0.261321760\ngc: 3 collections, 21.3 ms; heap peak 49.5 MiB; live 12.9 MiB at the last\n",
+      "stderr_sha256": "60e62ee9eeb8433c95fe1ac28096b0f453ff2c0dd4ae7cace237b4f0dd4f3f74",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 55528,
+      "wall_s": 0.26693762100330787
+    },
+    {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "/workspace/scratch/685873f30dd6/memory-builds/chunks/compiler",
+        "ir",
+        "/workspace/scratch/685873f30dd6/frozen-fa9/bench/json_repair/bench.py",
+        "-o",
+        "/workspace/scratch/685873f30dd6/memory-quality/json-repair-chunks-1.ll"
+      ],
+      "cpu_s": 0.267962,
+      "exit_code": 0,
+      "host": "chunks",
+      "input": "json-repair",
+      "input_sha256": "cb00324211f2841fa14b7483b8378da07f0704f07b43c430a39decac3de183a6",
+      "load_after": [
+        1.35546875,
+        1.4287109375,
+        1.57763671875
+      ],
+      "load_before": [
+        1.35546875,
+        1.4287109375,
+        1.57763671875
+      ],
+      "matches_oracle": true,
+      "output_bytes": 1424659,
+      "output_sha256": "83d86467b8f30d7648fe514e107ab0f946d7be21f4e474cc04b0a2c88f601f18",
+      "proc_pid_resolved": true,
+      "sample": 1,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 52472,
+      "stages": [
+        {
+          "seconds": 0.046930634,
+          "stage": "program.load"
+        },
+        {
+          "seconds": 0.015692946,
+          "stage": "program.prepare"
+        },
+        {
+          "seconds": 0.103765667,
+          "stage": "program.attempt"
+        },
+        {
+          "seconds": 0.046186864,
+          "stage": "program.load"
+        },
+        {
+          "seconds": 0.016042242,
+          "stage": "program.prepare"
+        },
+        {
+          "seconds": 0.044926838,
+          "stage": "program.discover"
+        },
+        {
+          "seconds": 0.008241869,
+          "stage": "program.analysis"
+        },
+        {
+          "seconds": 0.012317425,
+          "stage": "program.optimize"
+        },
+        {
+          "seconds": 0.004628105,
+          "stage": "program.finalize"
+        },
+        {
+          "seconds": 0.023931483,
+          "stage": "program.lower"
+        },
+        {
+          "seconds": 0.156568667,
+          "stage": "program.attempt"
+        },
+        {
+          "seconds": 0.26038464,
+          "stage": "program.frontend"
+        },
+        {
+          "seconds": 0.262516319,
+          "stage": "driver.total"
+        }
+      ],
+      "stderr": "pystachy-timing\tprogram.load\t0.046930634\npystachy-timing\tprogram.prepare\t0.015692946\npystachy-timing\tprogram.attempt\t0.103765667\npystachy-timing\tprogram.load\t0.046186864\npystachy-timing\tprogram.prepare\t0.016042242\npystachy-timing\tprogram.discover\t0.044926838\npystachy-timing\tprogram.analysis\t0.008241869\npystachy-timing\tprogram.optimize\t0.012317425\npystachy-timing\tprogram.finalize\t0.004628105\npystachy-timing\tprogram.lower\t0.023931483\npystachy-timing\tprogram.attempt\t0.156568667\npystachy-timing\tprogram.frontend\t0.260384640\npystachy-timing\tdriver.total\t0.262516319\ngc: 3 collections, 20.7 ms; heap peak 48.9 MiB; live 12.4 MiB at the last\n",
+      "stderr_sha256": "bd8b1ea89b313ea319846476ef67dfd578fd2c00485f0410796b9672087f5b63",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 55288,
+      "wall_s": 0.2690809569976409
+    },
+    {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "/workspace/scratch/685873f30dd6/inline-screen/o2-0/compiler",
+        "ir",
+        "/workspace/scratch/685873f30dd6/frozen-fa9/bench/json_repair/bench.py",
+        "-o",
+        "/workspace/scratch/685873f30dd6/memory-quality/json-repair-ordinary-1.ll"
+      ],
+      "cpu_s": 0.315338,
+      "exit_code": 0,
+      "host": "ordinary",
+      "input": "json-repair",
+      "input_sha256": "cb00324211f2841fa14b7483b8378da07f0704f07b43c430a39decac3de183a6",
+      "load_after": [
+        1.35546875,
+        1.4287109375,
+        1.57763671875
+      ],
+      "load_before": [
+        1.35546875,
+        1.4287109375,
+        1.57763671875
+      ],
+      "matches_oracle": true,
+      "output_bytes": 1424659,
+      "output_sha256": "83d86467b8f30d7648fe514e107ab0f946d7be21f4e474cc04b0a2c88f601f18",
+      "proc_pid_resolved": true,
+      "sample": 1,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 56348,
+      "stages": [
+        {
+          "seconds": 0.054448918,
+          "stage": "program.load"
+        },
+        {
+          "seconds": 0.014892952,
+          "stage": "program.prepare"
+        },
+        {
+          "seconds": 0.109294622,
+          "stage": "program.attempt"
+        },
+        {
+          "seconds": 0.047270385,
+          "stage": "program.load"
+        },
+        {
+          "seconds": 0.016914033,
+          "stage": "program.prepare"
+        },
+        {
+          "seconds": 0.05459017,
+          "stage": "program.discover"
+        },
+        {
+          "seconds": 0.010030114,
+          "stage": "program.analysis"
+        },
+        {
+          "seconds": 0.01623427,
+          "stage": "program.optimize"
+        },
+        {
+          "seconds": 0.008533792,
+          "stage": "program.finalize"
+        },
+        {
+          "seconds": 0.034973951,
+          "stage": "program.lower"
+        },
+        {
+          "seconds": 0.188790593,
+          "stage": "program.attempt"
+        },
+        {
+          "seconds": 0.298785719,
+          "stage": "program.frontend"
+        },
+        {
+          "seconds": 0.30365802,
+          "stage": "driver.total"
+        }
+      ],
+      "stderr": "pystachy-timing\tprogram.load\t0.054448918\npystachy-timing\tprogram.prepare\t0.014892952\npystachy-timing\tprogram.attempt\t0.109294622\npystachy-timing\tprogram.load\t0.047270385\npystachy-timing\tprogram.prepare\t0.016914033\npystachy-timing\tprogram.discover\t0.054590170\npystachy-timing\tprogram.analysis\t0.010030114\npystachy-timing\tprogram.optimize\t0.016234270\npystachy-timing\tprogram.finalize\t0.008533792\npystachy-timing\tprogram.lower\t0.034973951\npystachy-timing\tprogram.attempt\t0.188790593\npystachy-timing\tprogram.frontend\t0.298785719\npystachy-timing\tdriver.total\t0.303658020\ngc: 3 collections, 23.8 ms; heap peak 50.9 MiB; live 12.9 MiB at the last\n",
+      "stderr_sha256": "ccade7430f6340fd47084eeca58a7757c3f0cd1171d35aa5915afd28c237907a",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 56988,
+      "wall_s": 0.31595354300225154
+    },
+    {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "/workspace/scratch/685873f30dd6/memory-builds/chunks/compiler",
+        "ir",
+        "/workspace/scratch/685873f30dd6/frozen-fa9/bench/json_repair/bench.py",
+        "-o",
+        "/workspace/scratch/685873f30dd6/memory-quality/json-repair-chunks-2.ll"
+      ],
+      "cpu_s": 0.371554,
+      "exit_code": 0,
+      "host": "chunks",
+      "input": "json-repair",
+      "input_sha256": "cb00324211f2841fa14b7483b8378da07f0704f07b43c430a39decac3de183a6",
+      "load_after": [
+        1.35546875,
+        1.4287109375,
+        1.57763671875
+      ],
+      "load_before": [
+        1.35546875,
+        1.4287109375,
+        1.57763671875
+      ],
+      "matches_oracle": true,
+      "output_bytes": 1424659,
+      "output_sha256": "83d86467b8f30d7648fe514e107ab0f946d7be21f4e474cc04b0a2c88f601f18",
+      "proc_pid_resolved": true,
+      "sample": 2,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 52600,
+      "stages": [
+        {
+          "seconds": 0.06889773,
+          "stage": "program.load"
+        },
+        {
+          "seconds": 0.022889916,
+          "stage": "program.prepare"
+        },
+        {
+          "seconds": 0.14403395,
+          "stage": "program.attempt"
+        },
+        {
+          "seconds": 0.066186912,
+          "stage": "program.load"
+        },
+        {
+          "seconds": 0.021681467,
+          "stage": "program.prepare"
+        },
+        {
+          "seconds": 0.052407165,
+          "stage": "program.discover"
+        },
+        {
+          "seconds": 0.010898491,
+          "stage": "program.analysis"
+        },
+        {
+          "seconds": 0.024742374,
+          "stage": "program.optimize"
+        },
+        {
+          "seconds": 0.009154416,
+          "stage": "program.finalize"
+        },
+        {
+          "seconds": 0.034332831,
+          "stage": "program.lower"
+        },
+        {
+          "seconds": 0.21985835,
+          "stage": "program.attempt"
+        },
+        {
+          "seconds": 0.363949415,
+          "stage": "program.frontend"
+        },
+        {
+          "seconds": 0.366190328,
+          "stage": "driver.total"
+        }
+      ],
+      "stderr": "pystachy-timing\tprogram.load\t0.068897730\npystachy-timing\tprogram.prepare\t0.022889916\npystachy-timing\tprogram.attempt\t0.144033950\npystachy-timing\tprogram.load\t0.066186912\npystachy-timing\tprogram.prepare\t0.021681467\npystachy-timing\tprogram.discover\t0.052407165\npystachy-timing\tprogram.analysis\t0.010898491\npystachy-timing\tprogram.optimize\t0.024742374\npystachy-timing\tprogram.finalize\t0.009154416\npystachy-timing\tprogram.lower\t0.034332831\npystachy-timing\tprogram.attempt\t0.219858350\npystachy-timing\tprogram.frontend\t0.363949415\npystachy-timing\tdriver.total\t0.366190328\ngc: 3 collections, 25.8 ms; heap peak 48.9 MiB; live 12.4 MiB at the last\n",
+      "stderr_sha256": "f22b424ad304bcc38841d07a2f04642152acd2c3f4ac3044902b7624853e55af",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 55288,
+      "wall_s": 0.3720559690045775
+    },
+    {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "/workspace/scratch/685873f30dd6/memory-builds/newline/compiler",
+        "ir",
+        "/workspace/scratch/685873f30dd6/frozen-fa9/bench/json_repair/bench.py",
+        "-o",
+        "/workspace/scratch/685873f30dd6/memory-quality/json-repair-newline-2.ll"
+      ],
+      "cpu_s": 0.39627899999999994,
+      "exit_code": 0,
+      "host": "newline",
+      "input": "json-repair",
+      "input_sha256": "cb00324211f2841fa14b7483b8378da07f0704f07b43c430a39decac3de183a6",
+      "load_after": [
+        1.35546875,
+        1.4287109375,
+        1.57763671875
+      ],
+      "load_before": [
+        1.35546875,
+        1.4287109375,
+        1.57763671875
+      ],
+      "matches_oracle": true,
+      "output_bytes": 1424659,
+      "output_sha256": "83d86467b8f30d7648fe514e107ab0f946d7be21f4e474cc04b0a2c88f601f18",
+      "proc_pid_resolved": true,
+      "sample": 2,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 52452,
+      "stages": [
+        {
+          "seconds": 0.050587467,
+          "stage": "program.load"
+        },
+        {
+          "seconds": 0.015448267,
+          "stage": "program.prepare"
+        },
+        {
+          "seconds": 0.109777869,
+          "stage": "program.attempt"
+        },
+        {
+          "seconds": 0.070005928,
+          "stage": "program.load"
+        },
+        {
+          "seconds": 0.023333794,
+          "stage": "program.prepare"
+        },
+        {
+          "seconds": 0.094268501,
+          "stage": "program.discover"
+        },
+        {
+          "seconds": 0.016225197,
+          "stage": "program.analysis"
+        },
+        {
+          "seconds": 0.032221263,
+          "stage": "program.optimize"
+        },
+        {
+          "seconds": 0.010107866,
+          "stage": "program.finalize"
+        },
+        {
+          "seconds": 0.032476397,
+          "stage": "program.lower"
+        },
+        {
+          "seconds": 0.278926117,
+          "stage": "program.attempt"
+        },
+        {
+          "seconds": 0.388758018,
+          "stage": "program.frontend"
+        },
+        {
+          "seconds": 0.391108786,
+          "stage": "driver.total"
+        }
+      ],
+      "stderr": "pystachy-timing\tprogram.load\t0.050587467\npystachy-timing\tprogram.prepare\t0.015448267\npystachy-timing\tprogram.attempt\t0.109777869\npystachy-timing\tprogram.load\t0.070005928\npystachy-timing\tprogram.prepare\t0.023333794\npystachy-timing\tprogram.discover\t0.094268501\npystachy-timing\tprogram.analysis\t0.016225197\npystachy-timing\tprogram.optimize\t0.032221263\npystachy-timing\tprogram.finalize\t0.010107866\npystachy-timing\tprogram.lower\t0.032476397\npystachy-timing\tprogram.attempt\t0.278926117\npystachy-timing\tprogram.frontend\t0.388758018\npystachy-timing\tdriver.total\t0.391108786\ngc: 3 collections, 29.4 ms; heap peak 49.5 MiB; live 12.9 MiB at the last\n",
+      "stderr_sha256": "a28aefba3abde45a13f429cb73f776a86e126c136d9cf7ee7dce640174695ad3",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 55524,
+      "wall_s": 0.39726328200049466
+    },
+    {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "/workspace/scratch/685873f30dd6/inline-screen/o2-0/compiler",
+        "ir",
+        "/workspace/scratch/685873f30dd6/frozen-fa9/bench/json_repair/bench.py",
+        "-o",
+        "/workspace/scratch/685873f30dd6/memory-quality/json-repair-ordinary-2.ll"
+      ],
+      "cpu_s": 0.37101699999999993,
+      "exit_code": 0,
+      "host": "ordinary",
+      "input": "json-repair",
+      "input_sha256": "cb00324211f2841fa14b7483b8378da07f0704f07b43c430a39decac3de183a6",
+      "load_after": [
+        1.35546875,
+        1.4287109375,
+        1.57763671875
+      ],
+      "load_before": [
+        1.35546875,
+        1.4287109375,
+        1.57763671875
+      ],
+      "matches_oracle": true,
+      "output_bytes": 1424659,
+      "output_sha256": "83d86467b8f30d7648fe514e107ab0f946d7be21f4e474cc04b0a2c88f601f18",
+      "proc_pid_resolved": true,
+      "sample": 2,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 52680,
+      "stages": [
+        {
+          "seconds": 0.081472233,
+          "stage": "program.load"
+        },
+        {
+          "seconds": 0.023385096,
+          "stage": "program.prepare"
+        },
+        {
+          "seconds": 0.152450565,
+          "stage": "program.attempt"
+        },
+        {
+          "seconds": 0.051321566,
+          "stage": "program.load"
+        },
+        {
+          "seconds": 0.029051303,
+          "stage": "program.prepare"
+        },
+        {
+          "seconds": 0.061204984,
+          "stage": "program.discover"
+        },
+        {
+          "seconds": 0.00983146,
+          "stage": "program.analysis"
+        },
+        {
+          "seconds": 0.014535043,
+          "stage": "program.optimize"
+        },
+        {
+          "seconds": 0.008635441,
+          "stage": "program.finalize"
+        },
+        {
+          "seconds": 0.033583412,
+          "stage": "program.lower"
+        },
+        {
+          "seconds": 0.208411052,
+          "stage": "program.attempt"
+        },
+        {
+          "seconds": 0.360912443,
+          "stage": "program.frontend"
+        },
+        {
+          "seconds": 0.363301179,
+          "stage": "driver.total"
+        }
+      ],
+      "stderr": "pystachy-timing\tprogram.load\t0.081472233\npystachy-timing\tprogram.prepare\t0.023385096\npystachy-timing\tprogram.attempt\t0.152450565\npystachy-timing\tprogram.load\t0.051321566\npystachy-timing\tprogram.prepare\t0.029051303\npystachy-timing\tprogram.discover\t0.061204984\npystachy-timing\tprogram.analysis\t0.009831460\npystachy-timing\tprogram.optimize\t0.014535043\npystachy-timing\tprogram.finalize\t0.008635441\npystachy-timing\tprogram.lower\t0.033583412\npystachy-timing\tprogram.attempt\t0.208411052\npystachy-timing\tprogram.frontend\t0.360912443\npystachy-timing\tdriver.total\t0.363301179\ngc: 3 collections, 24.8 ms; heap peak 50.9 MiB; live 12.9 MiB at the last\n",
+      "stderr_sha256": "8c4274659ce61d6f27ef1b90509a7c6bcc43d91b61c7a0969c13ce93988380e8",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 56904,
+      "wall_s": 0.3718752120039426
+    },
+    {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "/workspace/scratch/685873f30dd6/inline-screen/o2-0/compiler",
+        "ir",
+        "/workspace/scratch/685873f30dd6/frozen-fa9/bench/json_repair/bench.py",
+        "-o",
+        "/workspace/scratch/685873f30dd6/memory-quality/json-repair-ordinary-3.ll"
+      ],
+      "cpu_s": 0.31828799999999996,
+      "exit_code": 0,
+      "host": "ordinary",
+      "input": "json-repair",
+      "input_sha256": "cb00324211f2841fa14b7483b8378da07f0704f07b43c430a39decac3de183a6",
+      "load_after": [
+        1.35546875,
+        1.4287109375,
+        1.57763671875
+      ],
+      "load_before": [
+        1.35546875,
+        1.4287109375,
+        1.57763671875
+      ],
+      "matches_oracle": true,
+      "output_bytes": 1424659,
+      "output_sha256": "83d86467b8f30d7648fe514e107ab0f946d7be21f4e474cc04b0a2c88f601f18",
+      "proc_pid_resolved": true,
+      "sample": 3,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 52520,
+      "stages": [
+        {
+          "seconds": 0.060876285,
+          "stage": "program.load"
+        },
+        {
+          "seconds": 0.032665988,
+          "stage": "program.prepare"
+        },
+        {
+          "seconds": 0.151747037,
+          "stage": "program.attempt"
+        },
+        {
+          "seconds": 0.049488713,
+          "stage": "program.load"
+        },
+        {
+          "seconds": 0.01566924,
+          "stage": "program.prepare"
+        },
+        {
+          "seconds": 0.043024435,
+          "stage": "program.discover"
+        },
+        {
+          "seconds": 0.008916208,
+          "stage": "program.analysis"
+        },
+        {
+          "seconds": 0.011501869,
+          "stage": "program.optimize"
+        },
+        {
+          "seconds": 0.004916969,
+          "stage": "program.finalize"
+        },
+        {
+          "seconds": 0.024207259,
+          "stage": "program.lower"
+        },
+        {
+          "seconds": 0.158089592,
+          "stage": "program.attempt"
+        },
+        {
+          "seconds": 0.309895467,
+          "stage": "program.frontend"
+        },
+        {
+          "seconds": 0.311925743,
+          "stage": "driver.total"
+        }
+      ],
+      "stderr": "pystachy-timing\tprogram.load\t0.060876285\npystachy-timing\tprogram.prepare\t0.032665988\npystachy-timing\tprogram.attempt\t0.151747037\npystachy-timing\tprogram.load\t0.049488713\npystachy-timing\tprogram.prepare\t0.015669240\npystachy-timing\tprogram.discover\t0.043024435\npystachy-timing\tprogram.analysis\t0.008916208\npystachy-timing\tprogram.optimize\t0.011501869\npystachy-timing\tprogram.finalize\t0.004916969\npystachy-timing\tprogram.lower\t0.024207259\npystachy-timing\tprogram.attempt\t0.158089592\npystachy-timing\tprogram.frontend\t0.309895467\npystachy-timing\tdriver.total\t0.311925743\ngc: 3 collections, 21.7 ms; heap peak 50.9 MiB; live 12.9 MiB at the last\n",
+      "stderr_sha256": "8414c19e3581eae14093ecb010fce0ca52cf642d0246d6cec1956d4497804090",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 57000,
+      "wall_s": 0.31963495800300734
+    },
+    {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "/workspace/scratch/685873f30dd6/memory-builds/chunks/compiler",
+        "ir",
+        "/workspace/scratch/685873f30dd6/frozen-fa9/bench/json_repair/bench.py",
+        "-o",
+        "/workspace/scratch/685873f30dd6/memory-quality/json-repair-chunks-3.ll"
+      ],
+      "cpu_s": 0.268065,
+      "exit_code": 0,
+      "host": "chunks",
+      "input": "json-repair",
+      "input_sha256": "cb00324211f2841fa14b7483b8378da07f0704f07b43c430a39decac3de183a6",
+      "load_after": [
+        1.35546875,
+        1.4287109375,
+        1.57763671875
+      ],
+      "load_before": [
+        1.35546875,
+        1.4287109375,
+        1.57763671875
+      ],
+      "matches_oracle": true,
+      "output_bytes": 1424659,
+      "output_sha256": "83d86467b8f30d7648fe514e107ab0f946d7be21f4e474cc04b0a2c88f601f18",
+      "proc_pid_resolved": true,
+      "sample": 3,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 52392,
+      "stages": [
+        {
+          "seconds": 0.046236519,
+          "stage": "program.load"
+        },
+        {
+          "seconds": 0.014470486,
+          "stage": "program.prepare"
+        },
+        {
+          "seconds": 0.103068924,
+          "stage": "program.attempt"
+        },
+        {
+          "seconds": 0.044810974,
+          "stage": "program.load"
+        },
+        {
+          "seconds": 0.018464727,
+          "stage": "program.prepare"
+        },
+        {
+          "seconds": 0.045560241,
+          "stage": "program.discover"
+        },
+        {
+          "seconds": 0.008550727,
+          "stage": "program.analysis"
+        },
+        {
+          "seconds": 0.010754474,
+          "stage": "program.optimize"
+        },
+        {
+          "seconds": 0.005440717,
+          "stage": "program.finalize"
+        },
+        {
+          "seconds": 0.02388968,
+          "stage": "program.lower"
+        },
+        {
+          "seconds": 0.157724131,
+          "stage": "program.attempt"
+        },
+        {
+          "seconds": 0.260847126,
+          "stage": "program.frontend"
+        },
+        {
+          "seconds": 0.263022761,
+          "stage": "driver.total"
+        }
+      ],
+      "stderr": "pystachy-timing\tprogram.load\t0.046236519\npystachy-timing\tprogram.prepare\t0.014470486\npystachy-timing\tprogram.attempt\t0.103068924\npystachy-timing\tprogram.load\t0.044810974\npystachy-timing\tprogram.prepare\t0.018464727\npystachy-timing\tprogram.discover\t0.045560241\npystachy-timing\tprogram.analysis\t0.008550727\npystachy-timing\tprogram.optimize\t0.010754474\npystachy-timing\tprogram.finalize\t0.005440717\npystachy-timing\tprogram.lower\t0.023889680\npystachy-timing\tprogram.attempt\t0.157724131\npystachy-timing\tprogram.frontend\t0.260847126\npystachy-timing\tdriver.total\t0.263022761\ngc: 3 collections, 21.8 ms; heap peak 48.9 MiB; live 12.4 MiB at the last\n",
+      "stderr_sha256": "9e68e6f81a320841280cdfe8226110deac8c471a2c8ea5cd2ca08d056d957a39",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 55336,
+      "wall_s": 0.26944053400075063
+    },
+    {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "/workspace/scratch/685873f30dd6/memory-builds/newline/compiler",
+        "ir",
+        "/workspace/scratch/685873f30dd6/frozen-fa9/bench/json_repair/bench.py",
+        "-o",
+        "/workspace/scratch/685873f30dd6/memory-quality/json-repair-newline-3.ll"
+      ],
+      "cpu_s": 0.404958,
+      "exit_code": 0,
+      "host": "newline",
+      "input": "json-repair",
+      "input_sha256": "cb00324211f2841fa14b7483b8378da07f0704f07b43c430a39decac3de183a6",
+      "load_after": [
+        1.32666015625,
+        1.42138671875,
+        1.57421875
+      ],
+      "load_before": [
+        1.35546875,
+        1.4287109375,
+        1.57763671875
+      ],
+      "matches_oracle": true,
+      "output_bytes": 1424659,
+      "output_sha256": "83d86467b8f30d7648fe514e107ab0f946d7be21f4e474cc04b0a2c88f601f18",
+      "proc_pid_resolved": true,
+      "sample": 3,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 52700,
+      "stages": [
+        {
+          "seconds": 0.046021575,
+          "stage": "program.load"
+        },
+        {
+          "seconds": 0.015998145,
+          "stage": "program.prepare"
+        },
+        {
+          "seconds": 0.104705846,
+          "stage": "program.attempt"
+        },
+        {
+          "seconds": 0.053437165,
+          "stage": "program.load"
+        },
+        {
+          "seconds": 0.017380275,
+          "stage": "program.prepare"
+        },
+        {
+          "seconds": 0.043255353,
+          "stage": "program.discover"
+        },
+        {
+          "seconds": 0.009412764,
+          "stage": "program.analysis"
+        },
+        {
+          "seconds": 0.018624778,
+          "stage": "program.optimize"
+        },
+        {
+          "seconds": 0.005033505,
+          "stage": "program.finalize"
+        },
+        {
+          "seconds": 0.144283793,
+          "stage": "program.lower"
+        },
+        {
+          "seconds": 0.291911562,
+          "stage": "program.attempt"
+        },
+        {
+          "seconds": 0.396669767,
+          "stage": "program.frontend"
+        },
+        {
+          "seconds": 0.401478041,
+          "stage": "driver.total"
+        }
+      ],
+      "stderr": "pystachy-timing\tprogram.load\t0.046021575\npystachy-timing\tprogram.prepare\t0.015998145\npystachy-timing\tprogram.attempt\t0.104705846\npystachy-timing\tprogram.load\t0.053437165\npystachy-timing\tprogram.prepare\t0.017380275\npystachy-timing\tprogram.discover\t0.043255353\npystachy-timing\tprogram.analysis\t0.009412764\npystachy-timing\tprogram.optimize\t0.018624778\npystachy-timing\tprogram.finalize\t0.005033505\npystachy-timing\tprogram.lower\t0.144283793\npystachy-timing\tprogram.attempt\t0.291911562\npystachy-timing\tprogram.frontend\t0.396669767\npystachy-timing\tdriver.total\t0.401478041\ngc: 3 collections, 24.3 ms; heap peak 49.5 MiB; live 12.9 MiB at the last\n",
+      "stderr_sha256": "e0b605fb00b2e38cef922e1b68dcce0be1895e87c024f1908973256296b5cbd9",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 55516,
+      "wall_s": 0.4075752030039439
+    },
+    {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "/workspace/scratch/685873f30dd6/memory-builds/chunks/compiler",
+        "ir",
+        "/workspace/scratch/685873f30dd6/frozen-fa9/bench/json_repair/bench.py",
+        "-o",
+        "/workspace/scratch/685873f30dd6/memory-quality/json-repair-chunks-4.ll"
+      ],
+      "cpu_s": 0.35065199999999996,
+      "exit_code": 0,
+      "host": "chunks",
+      "input": "json-repair",
+      "input_sha256": "cb00324211f2841fa14b7483b8378da07f0704f07b43c430a39decac3de183a6",
+      "load_after": [
+        1.32666015625,
+        1.42138671875,
+        1.57421875
+      ],
+      "load_before": [
+        1.32666015625,
+        1.42138671875,
+        1.57421875
+      ],
+      "matches_oracle": true,
+      "output_bytes": 1424659,
+      "output_sha256": "83d86467b8f30d7648fe514e107ab0f946d7be21f4e474cc04b0a2c88f601f18",
+      "proc_pid_resolved": true,
+      "sample": 4,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 52392,
+      "stages": [
+        {
+          "seconds": 0.072392156,
+          "stage": "program.load"
+        },
+        {
+          "seconds": 0.022763617,
+          "stage": "program.prepare"
+        },
+        {
+          "seconds": 0.151767468,
+          "stage": "program.attempt"
+        },
+        {
+          "seconds": 0.062518089,
+          "stage": "program.load"
+        },
+        {
+          "seconds": 0.020027195,
+          "stage": "program.prepare"
+        },
+        {
+          "seconds": 0.052468277,
+          "stage": "program.discover"
+        },
+        {
+          "seconds": 0.009048884,
+          "stage": "program.analysis"
+        },
+        {
+          "seconds": 0.012199892,
+          "stage": "program.optimize"
+        },
+        {
+          "seconds": 0.006244459,
+          "stage": "program.finalize"
+        },
+        {
+          "seconds": 0.026139673,
+          "stage": "program.lower"
+        },
+        {
+          "seconds": 0.18904677,
+          "stage": "program.attempt"
+        },
+        {
+          "seconds": 0.340896862,
+          "stage": "program.frontend"
+        },
+        {
+          "seconds": 0.343697341,
+          "stage": "driver.total"
+        }
+      ],
+      "stderr": "pystachy-timing\tprogram.load\t0.072392156\npystachy-timing\tprogram.prepare\t0.022763617\npystachy-timing\tprogram.attempt\t0.151767468\npystachy-timing\tprogram.load\t0.062518089\npystachy-timing\tprogram.prepare\t0.020027195\npystachy-timing\tprogram.discover\t0.052468277\npystachy-timing\tprogram.analysis\t0.009048884\npystachy-timing\tprogram.optimize\t0.012199892\npystachy-timing\tprogram.finalize\t0.006244459\npystachy-timing\tprogram.lower\t0.026139673\npystachy-timing\tprogram.attempt\t0.189046770\npystachy-timing\tprogram.frontend\t0.340896862\npystachy-timing\tdriver.total\t0.343697341\ngc: 3 collections, 24.3 ms; heap peak 48.9 MiB; live 12.4 MiB at the last\n",
+      "stderr_sha256": "9ded66376bea26b781bd11ef3cfb3a01930dbba9c95779388ae6b6ef8e1fa96d",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 55336,
+      "wall_s": 0.35309581600449746
+    },
+    {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "/workspace/scratch/685873f30dd6/memory-builds/newline/compiler",
+        "ir",
+        "/workspace/scratch/685873f30dd6/frozen-fa9/bench/json_repair/bench.py",
+        "-o",
+        "/workspace/scratch/685873f30dd6/memory-quality/json-repair-newline-4.ll"
+      ],
+      "cpu_s": 0.306841,
+      "exit_code": 0,
+      "host": "newline",
+      "input": "json-repair",
+      "input_sha256": "cb00324211f2841fa14b7483b8378da07f0704f07b43c430a39decac3de183a6",
+      "load_after": [
+        1.32666015625,
+        1.42138671875,
+        1.57421875
+      ],
+      "load_before": [
+        1.32666015625,
+        1.42138671875,
+        1.57421875
+      ],
+      "matches_oracle": true,
+      "output_bytes": 1424659,
+      "output_sha256": "83d86467b8f30d7648fe514e107ab0f946d7be21f4e474cc04b0a2c88f601f18",
+      "proc_pid_resolved": true,
+      "sample": 4,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 54884,
+      "stages": [
+        {
+          "seconds": 0.052523565,
+          "stage": "program.load"
+        },
+        {
+          "seconds": 0.017060504,
+          "stage": "program.prepare"
+        },
+        {
+          "seconds": 0.112051885,
+          "stage": "program.attempt"
+        },
+        {
+          "seconds": 0.048394895,
+          "stage": "program.load"
+        },
+        {
+          "seconds": 0.030791152,
+          "stage": "program.prepare"
+        },
+        {
+          "seconds": 0.054465872,
+          "stage": "program.discover"
+        },
+        {
+          "seconds": 0.007983698,
+          "stage": "program.analysis"
+        },
+        {
+          "seconds": 0.012120431,
+          "stage": "program.optimize"
+        },
+        {
+          "seconds": 0.005613828,
+          "stage": "program.finalize"
+        },
+        {
+          "seconds": 0.026776514,
+          "stage": "program.lower"
+        },
+        {
+          "seconds": 0.186514404,
+          "stage": "program.attempt"
+        },
+        {
+          "seconds": 0.298612067,
+          "stage": "program.frontend"
+        },
+        {
+          "seconds": 0.301623585,
+          "stage": "driver.total"
+        }
+      ],
+      "stderr": "pystachy-timing\tprogram.load\t0.052523565\npystachy-timing\tprogram.prepare\t0.017060504\npystachy-timing\tprogram.attempt\t0.112051885\npystachy-timing\tprogram.load\t0.048394895\npystachy-timing\tprogram.prepare\t0.030791152\npystachy-timing\tprogram.discover\t0.054465872\npystachy-timing\tprogram.analysis\t0.007983698\npystachy-timing\tprogram.optimize\t0.012120431\npystachy-timing\tprogram.finalize\t0.005613828\npystachy-timing\tprogram.lower\t0.026776514\npystachy-timing\tprogram.attempt\t0.186514404\npystachy-timing\tprogram.frontend\t0.298612067\npystachy-timing\tdriver.total\t0.301623585\ngc: 3 collections, 23.1 ms; heap peak 49.5 MiB; live 12.9 MiB at the last\n",
+      "stderr_sha256": "a2c442f2ac6aea5b0519983102b754451f994c83b4d27efbfcf82c43c6117079",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 55524,
+      "wall_s": 0.3073178659979021
+    },
+    {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "/workspace/scratch/685873f30dd6/inline-screen/o2-0/compiler",
+        "ir",
+        "/workspace/scratch/685873f30dd6/frozen-fa9/bench/json_repair/bench.py",
+        "-o",
+        "/workspace/scratch/685873f30dd6/memory-quality/json-repair-ordinary-4.ll"
+      ],
+      "cpu_s": 0.30514399999999997,
+      "exit_code": 0,
+      "host": "ordinary",
+      "input": "json-repair",
+      "input_sha256": "cb00324211f2841fa14b7483b8378da07f0704f07b43c430a39decac3de183a6",
+      "load_after": [
+        1.32666015625,
+        1.42138671875,
+        1.57421875
+      ],
+      "load_before": [
+        1.32666015625,
+        1.42138671875,
+        1.57421875
+      ],
+      "matches_oracle": true,
+      "output_bytes": 1424659,
+      "output_sha256": "83d86467b8f30d7648fe514e107ab0f946d7be21f4e474cc04b0a2c88f601f18",
+      "proc_pid_resolved": true,
+      "sample": 4,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 56104,
+      "stages": [
+        {
+          "seconds": 0.048907066,
+          "stage": "program.load"
+        },
+        {
+          "seconds": 0.016770684,
+          "stage": "program.prepare"
+        },
+        {
+          "seconds": 0.112021694,
+          "stage": "program.attempt"
+        },
+        {
+          "seconds": 0.051574525,
+          "stage": "program.load"
+        },
+        {
+          "seconds": 0.019205751,
+          "stage": "program.prepare"
+        },
+        {
+          "seconds": 0.050054164,
+          "stage": "program.discover"
+        },
+        {
+          "seconds": 0.008081316,
+          "stage": "program.analysis"
+        },
+        {
+          "seconds": 0.011397241,
+          "stage": "program.optimize"
+        },
+        {
+          "seconds": 0.010540521,
+          "stage": "program.finalize"
+        },
+        {
+          "seconds": 0.034065085,
+          "stage": "program.lower"
+        },
+        {
+          "seconds": 0.185197465,
+          "stage": "program.attempt"
+        },
+        {
+          "seconds": 0.297270156,
+          "stage": "program.frontend"
+        },
+        {
+          "seconds": 0.299880659,
+          "stage": "driver.total"
+        }
+      ],
+      "stderr": "pystachy-timing\tprogram.load\t0.048907066\npystachy-timing\tprogram.prepare\t0.016770684\npystachy-timing\tprogram.attempt\t0.112021694\npystachy-timing\tprogram.load\t0.051574525\npystachy-timing\tprogram.prepare\t0.019205751\npystachy-timing\tprogram.discover\t0.050054164\npystachy-timing\tprogram.analysis\t0.008081316\npystachy-timing\tprogram.optimize\t0.011397241\npystachy-timing\tprogram.finalize\t0.010540521\npystachy-timing\tprogram.lower\t0.034065085\npystachy-timing\tprogram.attempt\t0.185197465\npystachy-timing\tprogram.frontend\t0.297270156\npystachy-timing\tdriver.total\t0.299880659\ngc: 3 collections, 23.1 ms; heap peak 50.9 MiB; live 12.9 MiB at the last\n",
+      "stderr_sha256": "0f17f1d76e59b0698a97886a85007acbb67dbf0b0bfba0f68fa301aa2a7f0cd3",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 57000,
+      "wall_s": 0.3060640199983027
+    },
+    {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "/workspace/scratch/685873f30dd6/memory-builds/chunks/compiler",
+        "rt",
+        "/workspace/scratch/685873f30dd6/frozen-fa9/runtime.py",
+        "-o",
+        "/workspace/scratch/685873f30dd6/memory-quality/runtime-chunks-0.ll"
+      ],
+      "cpu_s": 0.07156799999999999,
+      "exit_code": 0,
+      "host": "chunks",
+      "input": "runtime",
+      "input_sha256": "c45138f44a7aa25828b351b6d627e1a4f9fad69dc8a88532d053fb90e84beefb",
+      "load_after": [
+        1.32666015625,
+        1.42138671875,
+        1.57421875
+      ],
+      "load_before": [
+        1.32666015625,
+        1.42138671875,
+        1.57421875
+      ],
+      "matches_oracle": true,
+      "output_bytes": 549411,
+      "output_sha256": "940a694da5ea93214d1308a8eb635b47d8d0a9d4256c63d084c24f5099f8aa5f",
+      "proc_pid_resolved": true,
+      "sample": 0,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 33272,
+      "stages": [
+        {
+          "seconds": 0.03008632,
+          "stage": "runtime.load"
+        },
+        {
+          "seconds": 0.008305834,
+          "stage": "runtime.prepare"
+        },
+        {
+          "seconds": 0.014688641,
+          "stage": "runtime.discover"
+        },
+        {
+          "seconds": 0.002946359,
+          "stage": "runtime.analysis"
+        },
+        {
+          "seconds": 0.002264993,
+          "stage": "runtime.optimize"
+        },
+        {
+          "seconds": 0.001456324,
+          "stage": "runtime.finalize"
+        },
+        {
+          "seconds": 0.005755581,
+          "stage": "runtime.lower"
+        },
+        {
+          "seconds": 0.067020677,
+          "stage": "driver.total"
+        }
+      ],
+      "stderr": "pystachy-timing\truntime.load\t0.030086320\npystachy-timing\truntime.prepare\t0.008305834\npystachy-timing\truntime.discover\t0.014688641\npystachy-timing\truntime.analysis\t0.002946359\npystachy-timing\truntime.optimize\t0.002264993\npystachy-timing\truntime.finalize\t0.001456324\npystachy-timing\truntime.lower\t0.005755581\npystachy-timing\tdriver.total\t0.067020677\ngc: 0 collections, 0.0 ms; heap peak 33.2 MiB; live 0.0 MiB at the last\n",
+      "stderr_sha256": "5065f1eca933188699ea61cacd64ce7cc859d0336d4cbf2130e017e70fffb713",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 52484,
+      "wall_s": 0.07209381600114284
+    },
+    {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "/workspace/scratch/685873f30dd6/memory-builds/newline/compiler",
+        "rt",
+        "/workspace/scratch/685873f30dd6/frozen-fa9/runtime.py",
+        "-o",
+        "/workspace/scratch/685873f30dd6/memory-quality/runtime-newline-0.ll"
+      ],
+      "cpu_s": 0.09845799999999999,
+      "exit_code": 0,
+      "host": "newline",
+      "input": "runtime",
+      "input_sha256": "c45138f44a7aa25828b351b6d627e1a4f9fad69dc8a88532d053fb90e84beefb",
+      "load_after": [
+        1.32666015625,
+        1.42138671875,
+        1.57421875
+      ],
+      "load_before": [
+        1.32666015625,
+        1.42138671875,
+        1.57421875
+      ],
+      "matches_oracle": true,
+      "output_bytes": 549411,
+      "output_sha256": "940a694da5ea93214d1308a8eb635b47d8d0a9d4256c63d084c24f5099f8aa5f",
+      "proc_pid_resolved": true,
+      "sample": 0,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 32884,
+      "stages": [
+        {
+          "seconds": 0.039823721,
+          "stage": "runtime.load"
+        },
+        {
+          "seconds": 0.01042675,
+          "stage": "runtime.prepare"
+        },
+        {
+          "seconds": 0.019974315,
+          "stage": "runtime.discover"
+        },
+        {
+          "seconds": 0.003556228,
+          "stage": "runtime.analysis"
+        },
+        {
+          "seconds": 0.003503348,
+          "stage": "runtime.optimize"
+        },
+        {
+          "seconds": 0.002472655,
+          "stage": "runtime.finalize"
+        },
+        {
+          "seconds": 0.009606895,
+          "stage": "runtime.lower"
+        },
+        {
+          "seconds": 0.091257023,
+          "stage": "driver.total"
+        }
+      ],
+      "stderr": "pystachy-timing\truntime.load\t0.039823721\npystachy-timing\truntime.prepare\t0.010426750\npystachy-timing\truntime.discover\t0.019974315\npystachy-timing\truntime.analysis\t0.003556228\npystachy-timing\truntime.optimize\t0.003503348\npystachy-timing\truntime.finalize\t0.002472655\npystachy-timing\truntime.lower\t0.009606895\npystachy-timing\tdriver.total\t0.091257023\ngc: 0 collections, 0.0 ms; heap peak 33.5 MiB; live 0.0 MiB at the last\n",
+      "stderr_sha256": "f27f3d70e2e3c38dff13d7cd5b8f680a490475ad45a108fc44ae4493d293f73a",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 52484,
+      "wall_s": 0.09950527099863393
+    },
+    {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "/workspace/scratch/685873f30dd6/inline-screen/o2-0/compiler",
+        "rt",
+        "/workspace/scratch/685873f30dd6/frozen-fa9/runtime.py",
+        "-o",
+        "/workspace/scratch/685873f30dd6/memory-quality/runtime-ordinary-0.ll"
+      ],
+      "cpu_s": 0.094986,
+      "exit_code": 0,
+      "host": "ordinary",
+      "input": "runtime",
+      "input_sha256": "c45138f44a7aa25828b351b6d627e1a4f9fad69dc8a88532d053fb90e84beefb",
+      "load_after": [
+        1.32666015625,
+        1.42138671875,
+        1.57421875
+      ],
+      "load_before": [
+        1.32666015625,
+        1.42138671875,
+        1.57421875
+      ],
+      "matches_oracle": true,
+      "output_bytes": 549411,
+      "output_sha256": "940a694da5ea93214d1308a8eb635b47d8d0a9d4256c63d084c24f5099f8aa5f",
+      "proc_pid_resolved": true,
+      "sample": 0,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 33016,
+      "stages": [
+        {
+          "seconds": 0.039771412,
+          "stage": "runtime.load"
+        },
+        {
+          "seconds": 0.011264082,
+          "stage": "runtime.prepare"
+        },
+        {
+          "seconds": 0.020887661,
+          "stage": "runtime.discover"
+        },
+        {
+          "seconds": 0.003187332,
+          "stage": "runtime.analysis"
+        },
+        {
+          "seconds": 0.002525855,
+          "stage": "runtime.optimize"
+        },
+        {
+          "seconds": 0.001653732,
+          "stage": "runtime.finalize"
+        },
+        {
+          "seconds": 0.008058191,
+          "stage": "runtime.lower"
+        },
+        {
+          "seconds": 0.089138582,
+          "stage": "driver.total"
+        }
+      ],
+      "stderr": "pystachy-timing\truntime.load\t0.039771412\npystachy-timing\truntime.prepare\t0.011264082\npystachy-timing\truntime.discover\t0.020887661\npystachy-timing\truntime.analysis\t0.003187332\npystachy-timing\truntime.optimize\t0.002525855\npystachy-timing\truntime.finalize\t0.001653732\npystachy-timing\truntime.lower\t0.008058191\npystachy-timing\tdriver.total\t0.089138582\ngc: 0 collections, 0.0 ms; heap peak 34.1 MiB; live 0.0 MiB at the last\n",
+      "stderr_sha256": "4bdda516ef15e373e776e321496f548d6a379554fdc0d909b0b702888c4dd0ec",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 52484,
+      "wall_s": 0.0958436540022376
+    },
+    {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "/workspace/scratch/685873f30dd6/memory-builds/newline/compiler",
+        "rt",
+        "/workspace/scratch/685873f30dd6/frozen-fa9/runtime.py",
+        "-o",
+        "/workspace/scratch/685873f30dd6/memory-quality/runtime-newline-1.ll"
+      ],
+      "cpu_s": 0.09240299999999999,
+      "exit_code": 0,
+      "host": "newline",
+      "input": "runtime",
+      "input_sha256": "c45138f44a7aa25828b351b6d627e1a4f9fad69dc8a88532d053fb90e84beefb",
+      "load_after": [
+        1.32666015625,
+        1.42138671875,
+        1.57421875
+      ],
+      "load_before": [
+        1.32666015625,
+        1.42138671875,
+        1.57421875
+      ],
+      "matches_oracle": true,
+      "output_bytes": 549411,
+      "output_sha256": "940a694da5ea93214d1308a8eb635b47d8d0a9d4256c63d084c24f5099f8aa5f",
+      "proc_pid_resolved": true,
+      "sample": 1,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 34292,
+      "stages": [
+        {
+          "seconds": 0.03834345,
+          "stage": "runtime.load"
+        },
+        {
+          "seconds": 0.010687131,
+          "stage": "runtime.prepare"
+        },
+        {
+          "seconds": 0.020480668,
+          "stage": "runtime.discover"
+        },
+        {
+          "seconds": 0.003230828,
+          "stage": "runtime.analysis"
+        },
+        {
+          "seconds": 0.002731115,
+          "stage": "runtime.optimize"
+        },
+        {
+          "seconds": 0.00185164,
+          "stage": "runtime.finalize"
+        },
+        {
+          "seconds": 0.007667292,
+          "stage": "runtime.lower"
+        },
+        {
+          "seconds": 0.086906709,
+          "stage": "driver.total"
+        }
+      ],
+      "stderr": "pystachy-timing\truntime.load\t0.038343450\npystachy-timing\truntime.prepare\t0.010687131\npystachy-timing\truntime.discover\t0.020480668\npystachy-timing\truntime.analysis\t0.003230828\npystachy-timing\truntime.optimize\t0.002731115\npystachy-timing\truntime.finalize\t0.001851640\npystachy-timing\truntime.lower\t0.007667292\npystachy-timing\tdriver.total\t0.086906709\ngc: 0 collections, 0.0 ms; heap peak 33.5 MiB; live 0.0 MiB at the last\n",
+      "stderr_sha256": "98edcedcee8432c5d75c36217c4885aec4c24ccc5561f0db6412680970fd5445",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 52484,
+      "wall_s": 0.09324676200048998
+    },
+    {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "/workspace/scratch/685873f30dd6/inline-screen/o2-0/compiler",
+        "rt",
+        "/workspace/scratch/685873f30dd6/frozen-fa9/runtime.py",
+        "-o",
+        "/workspace/scratch/685873f30dd6/memory-quality/runtime-ordinary-1.ll"
+      ],
+      "cpu_s": 0.101487,
+      "exit_code": 0,
+      "host": "ordinary",
+      "input": "runtime",
+      "input_sha256": "c45138f44a7aa25828b351b6d627e1a4f9fad69dc8a88532d053fb90e84beefb",
+      "load_after": [
+        1.32666015625,
+        1.42138671875,
+        1.57421875
+      ],
+      "load_before": [
+        1.32666015625,
+        1.42138671875,
+        1.57421875
+      ],
+      "matches_oracle": true,
+      "output_bytes": 549411,
+      "output_sha256": "940a694da5ea93214d1308a8eb635b47d8d0a9d4256c63d084c24f5099f8aa5f",
+      "proc_pid_resolved": true,
+      "sample": 1,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 36084,
+      "stages": [
+        {
+          "seconds": 0.039801077,
+          "stage": "runtime.load"
+        },
+        {
+          "seconds": 0.011053494,
+          "stage": "runtime.prepare"
+        },
+        {
+          "seconds": 0.021149004,
+          "stage": "runtime.discover"
+        },
+        {
+          "seconds": 0.00373639,
+          "stage": "runtime.analysis"
+        },
+        {
+          "seconds": 0.003759574,
+          "stage": "runtime.optimize"
+        },
+        {
+          "seconds": 0.003188114,
+          "stage": "runtime.finalize"
+        },
+        {
+          "seconds": 0.011054946,
+          "stage": "runtime.lower"
+        },
+        {
+          "seconds": 0.095666798,
+          "stage": "driver.total"
+        }
+      ],
+      "stderr": "pystachy-timing\truntime.load\t0.039801077\npystachy-timing\truntime.prepare\t0.011053494\npystachy-timing\truntime.discover\t0.021149004\npystachy-timing\truntime.analysis\t0.003736390\npystachy-timing\truntime.optimize\t0.003759574\npystachy-timing\truntime.finalize\t0.003188114\npystachy-timing\truntime.lower\t0.011054946\npystachy-timing\tdriver.total\t0.095666798\ngc: 0 collections, 0.0 ms; heap peak 34.1 MiB; live 0.0 MiB at the last\n",
+      "stderr_sha256": "9cde23b846de12aa9d104ff7407e73ca31905c037d726b1230c0be78c3c299fa",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 52484,
+      "wall_s": 0.10292547899734927
+    },
+    {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "/workspace/scratch/685873f30dd6/memory-builds/chunks/compiler",
+        "rt",
+        "/workspace/scratch/685873f30dd6/frozen-fa9/runtime.py",
+        "-o",
+        "/workspace/scratch/685873f30dd6/memory-quality/runtime-chunks-1.ll"
+      ],
+      "cpu_s": 0.10551399999999998,
+      "exit_code": 0,
+      "host": "chunks",
+      "input": "runtime",
+      "input_sha256": "c45138f44a7aa25828b351b6d627e1a4f9fad69dc8a88532d053fb90e84beefb",
+      "load_after": [
+        1.32666015625,
+        1.42138671875,
+        1.57421875
+      ],
+      "load_before": [
+        1.32666015625,
+        1.42138671875,
+        1.57421875
+      ],
+      "matches_oracle": true,
+      "output_bytes": 549411,
+      "output_sha256": "940a694da5ea93214d1308a8eb635b47d8d0a9d4256c63d084c24f5099f8aa5f",
+      "proc_pid_resolved": true,
+      "sample": 1,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 35192,
+      "stages": [
+        {
+          "seconds": 0.044157331,
+          "stage": "runtime.load"
+        },
+        {
+          "seconds": 0.011338292,
+          "stage": "runtime.prepare"
+        },
+        {
+          "seconds": 0.021368365,
+          "stage": "runtime.discover"
+        },
+        {
+          "seconds": 0.004009611,
+          "stage": "runtime.analysis"
+        },
+        {
+          "seconds": 0.003807266,
+          "stage": "runtime.optimize"
+        },
+        {
+          "seconds": 0.003121963,
+          "stage": "runtime.finalize"
+        },
+        {
+          "seconds": 0.010183303,
+          "stage": "runtime.lower"
+        },
+        {
+          "seconds": 0.099980758,
+          "stage": "driver.total"
+        }
+      ],
+      "stderr": "pystachy-timing\truntime.load\t0.044157331\npystachy-timing\truntime.prepare\t0.011338292\npystachy-timing\truntime.discover\t0.021368365\npystachy-timing\truntime.analysis\t0.004009611\npystachy-timing\truntime.optimize\t0.003807266\npystachy-timing\truntime.finalize\t0.003121963\npystachy-timing\truntime.lower\t0.010183303\npystachy-timing\tdriver.total\t0.099980758\ngc: 0 collections, 0.0 ms; heap peak 33.2 MiB; live 0.0 MiB at the last\n",
+      "stderr_sha256": "8709220902e4d9843b14a9db4aa072e9815b659ea3e441f056465f95ce6707ac",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 52484,
+      "wall_s": 0.10671713700139662
+    },
+    {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "/workspace/scratch/685873f30dd6/memory-builds/chunks/compiler",
+        "rt",
+        "/workspace/scratch/685873f30dd6/frozen-fa9/runtime.py",
+        "-o",
+        "/workspace/scratch/685873f30dd6/memory-quality/runtime-chunks-2.ll"
+      ],
+      "cpu_s": 0.080534,
+      "exit_code": 0,
+      "host": "chunks",
+      "input": "runtime",
+      "input_sha256": "c45138f44a7aa25828b351b6d627e1a4f9fad69dc8a88532d053fb90e84beefb",
+      "load_after": [
+        1.32666015625,
+        1.42138671875,
+        1.57421875
+      ],
+      "load_before": [
+        1.32666015625,
+        1.42138671875,
+        1.57421875
+      ],
+      "matches_oracle": true,
+      "output_bytes": 549411,
+      "output_sha256": "940a694da5ea93214d1308a8eb635b47d8d0a9d4256c63d084c24f5099f8aa5f",
+      "proc_pid_resolved": true,
+      "sample": 2,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 33008,
+      "stages": [
+        {
+          "seconds": 0.04101137,
+          "stage": "runtime.load"
+        },
+        {
+          "seconds": 0.008485655,
+          "stage": "runtime.prepare"
+        },
+        {
+          "seconds": 0.013495623,
+          "stage": "runtime.discover"
+        },
+        {
+          "seconds": 0.003233792,
+          "stage": "runtime.analysis"
+        },
+        {
+          "seconds": 0.001901515,
+          "stage": "runtime.optimize"
+        },
+        {
+          "seconds": 0.001283644,
+          "stage": "runtime.finalize"
+        },
+        {
+          "seconds": 0.005362349,
+          "stage": "runtime.lower"
+        },
+        {
+          "seconds": 0.076111304,
+          "stage": "driver.total"
+        }
+      ],
+      "stderr": "pystachy-timing\truntime.load\t0.041011370\npystachy-timing\truntime.prepare\t0.008485655\npystachy-timing\truntime.discover\t0.013495623\npystachy-timing\truntime.analysis\t0.003233792\npystachy-timing\truntime.optimize\t0.001901515\npystachy-timing\truntime.finalize\t0.001283644\npystachy-timing\truntime.lower\t0.005362349\npystachy-timing\tdriver.total\t0.076111304\ngc: 0 collections, 0.0 ms; heap peak 33.2 MiB; live 0.0 MiB at the last\n",
+      "stderr_sha256": "304fdbed38e9be8a62ec14243cc97bdb7e2abce22ddf49ea942d34f9195d5e37",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 52484,
+      "wall_s": 0.08097390000330051
+    },
+    {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "/workspace/scratch/685873f30dd6/inline-screen/o2-0/compiler",
+        "rt",
+        "/workspace/scratch/685873f30dd6/frozen-fa9/runtime.py",
+        "-o",
+        "/workspace/scratch/685873f30dd6/memory-quality/runtime-ordinary-2.ll"
+      ],
+      "cpu_s": 0.104281,
+      "exit_code": 0,
+      "host": "ordinary",
+      "input": "runtime",
+      "input_sha256": "c45138f44a7aa25828b351b6d627e1a4f9fad69dc8a88532d053fb90e84beefb",
+      "load_after": [
+        1.32666015625,
+        1.42138671875,
+        1.57421875
+      ],
+      "load_before": [
+        1.32666015625,
+        1.42138671875,
+        1.57421875
+      ],
+      "matches_oracle": true,
+      "output_bytes": 549411,
+      "output_sha256": "940a694da5ea93214d1308a8eb635b47d8d0a9d4256c63d084c24f5099f8aa5f",
+      "proc_pid_resolved": true,
+      "sample": 2,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 34424,
+      "stages": [
+        {
+          "seconds": 0.048720405,
+          "stage": "runtime.load"
+        },
+        {
+          "seconds": 0.010054599,
+          "stage": "runtime.prepare"
+        },
+        {
+          "seconds": 0.024525341,
+          "stage": "runtime.discover"
+        },
+        {
+          "seconds": 0.003800166,
+          "stage": "runtime.analysis"
+        },
+        {
+          "seconds": 0.002253445,
+          "stage": "runtime.optimize"
+        },
+        {
+          "seconds": 0.001498297,
+          "stage": "runtime.finalize"
+        },
+        {
+          "seconds": 0.007207288,
+          "stage": "runtime.lower"
+        },
+        {
+          "seconds": 0.099504449,
+          "stage": "driver.total"
+        }
+      ],
+      "stderr": "pystachy-timing\truntime.load\t0.048720405\npystachy-timing\truntime.prepare\t0.010054599\npystachy-timing\truntime.discover\t0.024525341\npystachy-timing\truntime.analysis\t0.003800166\npystachy-timing\truntime.optimize\t0.002253445\npystachy-timing\truntime.finalize\t0.001498297\npystachy-timing\truntime.lower\t0.007207288\npystachy-timing\tdriver.total\t0.099504449\ngc: 0 collections, 0.0 ms; heap peak 34.1 MiB; live 0.0 MiB at the last\n",
+      "stderr_sha256": "2078bbe149b7b11eba18016b9930f974afc6d1eb3c96da43f27baf522003d93c",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 52484,
+      "wall_s": 0.1049576950026676
+    },
+    {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "/workspace/scratch/685873f30dd6/memory-builds/newline/compiler",
+        "rt",
+        "/workspace/scratch/685873f30dd6/frozen-fa9/runtime.py",
+        "-o",
+        "/workspace/scratch/685873f30dd6/memory-quality/runtime-newline-2.ll"
+      ],
+      "cpu_s": 0.069142,
+      "exit_code": 0,
+      "host": "newline",
+      "input": "runtime",
+      "input_sha256": "c45138f44a7aa25828b351b6d627e1a4f9fad69dc8a88532d053fb90e84beefb",
+      "load_after": [
+        1.32666015625,
+        1.42138671875,
+        1.57421875
+      ],
+      "load_before": [
+        1.32666015625,
+        1.42138671875,
+        1.57421875
+      ],
+      "matches_oracle": true,
+      "output_bytes": 549411,
+      "output_sha256": "940a694da5ea93214d1308a8eb635b47d8d0a9d4256c63d084c24f5099f8aa5f",
+      "proc_pid_resolved": true,
+      "sample": 2,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 36080,
+      "stages": [
+        {
+          "seconds": 0.027694211,
+          "stage": "runtime.load"
+        },
+        {
+          "seconds": 0.007925732,
+          "stage": "runtime.prepare"
+        },
+        {
+          "seconds": 0.015860411,
+          "stage": "runtime.discover"
+        },
+        {
+          "seconds": 0.002551554,
+          "stage": "runtime.analysis"
+        },
+        {
+          "seconds": 0.002002988,
+          "stage": "runtime.optimize"
+        },
+        {
+          "seconds": 0.001375202,
+          "stage": "runtime.finalize"
+        },
+        {
+          "seconds": 0.005893159,
+          "stage": "runtime.lower"
+        },
+        {
+          "seconds": 0.064499458,
+          "stage": "driver.total"
+        }
+      ],
+      "stderr": "pystachy-timing\truntime.load\t0.027694211\npystachy-timing\truntime.prepare\t0.007925732\npystachy-timing\truntime.discover\t0.015860411\npystachy-timing\truntime.analysis\t0.002551554\npystachy-timing\truntime.optimize\t0.002002988\npystachy-timing\truntime.finalize\t0.001375202\npystachy-timing\truntime.lower\t0.005893159\npystachy-timing\tdriver.total\t0.064499458\ngc: 0 collections, 0.0 ms; heap peak 33.5 MiB; live 0.0 MiB at the last\n",
+      "stderr_sha256": "92156dd76966e9567300657457497ab427103b4b78ad54323d1094358c07dba5",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 52484,
+      "wall_s": 0.07031556199945044
+    },
+    {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "/workspace/scratch/685873f30dd6/inline-screen/o2-0/compiler",
+        "rt",
+        "/workspace/scratch/685873f30dd6/frozen-fa9/runtime.py",
+        "-o",
+        "/workspace/scratch/685873f30dd6/memory-quality/runtime-ordinary-3.ll"
+      ],
+      "cpu_s": 0.072933,
+      "exit_code": 0,
+      "host": "ordinary",
+      "input": "runtime",
+      "input_sha256": "c45138f44a7aa25828b351b6d627e1a4f9fad69dc8a88532d053fb90e84beefb",
+      "load_after": [
+        1.32666015625,
+        1.42138671875,
+        1.57421875
+      ],
+      "load_before": [
+        1.32666015625,
+        1.42138671875,
+        1.57421875
+      ],
+      "matches_oracle": true,
+      "output_bytes": 549411,
+      "output_sha256": "940a694da5ea93214d1308a8eb635b47d8d0a9d4256c63d084c24f5099f8aa5f",
+      "proc_pid_resolved": true,
+      "sample": 3,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 34120,
+      "stages": [
+        {
+          "seconds": 0.027495031,
+          "stage": "runtime.load"
+        },
+        {
+          "seconds": 0.008912043,
+          "stage": "runtime.prepare"
+        },
+        {
+          "seconds": 0.016769396,
+          "stage": "runtime.discover"
+        },
+        {
+          "seconds": 0.002612536,
+          "stage": "runtime.analysis"
+        },
+        {
+          "seconds": 0.002075327,
+          "stage": "runtime.optimize"
+        },
+        {
+          "seconds": 0.001743106,
+          "stage": "runtime.finalize"
+        },
+        {
+          "seconds": 0.007471747,
+          "stage": "runtime.lower"
+        },
+        {
+          "seconds": 0.068523131,
+          "stage": "driver.total"
+        }
+      ],
+      "stderr": "pystachy-timing\truntime.load\t0.027495031\npystachy-timing\truntime.prepare\t0.008912043\npystachy-timing\truntime.discover\t0.016769396\npystachy-timing\truntime.analysis\t0.002612536\npystachy-timing\truntime.optimize\t0.002075327\npystachy-timing\truntime.finalize\t0.001743106\npystachy-timing\truntime.lower\t0.007471747\npystachy-timing\tdriver.total\t0.068523131\ngc: 0 collections, 0.0 ms; heap peak 34.1 MiB; live 0.0 MiB at the last\n",
+      "stderr_sha256": "dd9ba944370a61e7c2960a6b2fc75aaad6aeb1f940539399a4143c54240ff03d",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 52484,
+      "wall_s": 0.07371269999566721
+    },
+    {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "/workspace/scratch/685873f30dd6/memory-builds/newline/compiler",
+        "rt",
+        "/workspace/scratch/685873f30dd6/frozen-fa9/runtime.py",
+        "-o",
+        "/workspace/scratch/685873f30dd6/memory-quality/runtime-newline-3.ll"
+      ],
+      "cpu_s": 0.072611,
+      "exit_code": 0,
+      "host": "newline",
+      "input": "runtime",
+      "input_sha256": "c45138f44a7aa25828b351b6d627e1a4f9fad69dc8a88532d053fb90e84beefb",
+      "load_after": [
+        1.32666015625,
+        1.42138671875,
+        1.57421875
+      ],
+      "load_before": [
+        1.32666015625,
+        1.42138671875,
+        1.57421875
+      ],
+      "matches_oracle": true,
+      "output_bytes": 549411,
+      "output_sha256": "940a694da5ea93214d1308a8eb635b47d8d0a9d4256c63d084c24f5099f8aa5f",
+      "proc_pid_resolved": true,
+      "sample": 3,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 33288,
+      "stages": [
+        {
+          "seconds": 0.027542538,
+          "stage": "runtime.load"
+        },
+        {
+          "seconds": 0.008261036,
+          "stage": "runtime.prepare"
+        },
+        {
+          "seconds": 0.016695044,
+          "stage": "runtime.discover"
+        },
+        {
+          "seconds": 0.003451981,
+          "stage": "runtime.analysis"
+        },
+        {
+          "seconds": 0.002139584,
+          "stage": "runtime.optimize"
+        },
+        {
+          "seconds": 0.001676556,
+          "stage": "runtime.finalize"
+        },
+        {
+          "seconds": 0.006887447,
+          "stage": "runtime.lower"
+        },
+        {
+          "seconds": 0.068104009,
+          "stage": "driver.total"
+        }
+      ],
+      "stderr": "pystachy-timing\truntime.load\t0.027542538\npystachy-timing\truntime.prepare\t0.008261036\npystachy-timing\truntime.discover\t0.016695044\npystachy-timing\truntime.analysis\t0.003451981\npystachy-timing\truntime.optimize\t0.002139584\npystachy-timing\truntime.finalize\t0.001676556\npystachy-timing\truntime.lower\t0.006887447\npystachy-timing\tdriver.total\t0.068104009\ngc: 0 collections, 0.0 ms; heap peak 33.5 MiB; live 0.0 MiB at the last\n",
+      "stderr_sha256": "5f506011ee61d9baf9e21e9453e43a410e7a069b17d95d4e8761df6b891f97a5",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 52484,
+      "wall_s": 0.07363150799938012
+    },
+    {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "/workspace/scratch/685873f30dd6/memory-builds/chunks/compiler",
+        "rt",
+        "/workspace/scratch/685873f30dd6/frozen-fa9/runtime.py",
+        "-o",
+        "/workspace/scratch/685873f30dd6/memory-quality/runtime-chunks-3.ll"
+      ],
+      "cpu_s": 0.068783,
+      "exit_code": 0,
+      "host": "chunks",
+      "input": "runtime",
+      "input_sha256": "c45138f44a7aa25828b351b6d627e1a4f9fad69dc8a88532d053fb90e84beefb",
+      "load_after": [
+        1.32666015625,
+        1.42138671875,
+        1.57421875
+      ],
+      "load_before": [
+        1.32666015625,
+        1.42138671875,
+        1.57421875
+      ],
+      "matches_oracle": true,
+      "output_bytes": 549411,
+      "output_sha256": "940a694da5ea93214d1308a8eb635b47d8d0a9d4256c63d084c24f5099f8aa5f",
+      "proc_pid_resolved": true,
+      "sample": 3,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 35256,
+      "stages": [
+        {
+          "seconds": 0.028647923,
+          "stage": "runtime.load"
+        },
+        {
+          "seconds": 0.008345324,
+          "stage": "runtime.prepare"
+        },
+        {
+          "seconds": 0.015004737,
+          "stage": "runtime.discover"
+        },
+        {
+          "seconds": 0.002139294,
+          "stage": "runtime.analysis"
+        },
+        {
+          "seconds": 0.001534032,
+          "stage": "runtime.optimize"
+        },
+        {
+          "seconds": 0.001153718,
+          "stage": "runtime.finalize"
+        },
+        {
+          "seconds": 0.006023175,
+          "stage": "runtime.lower"
+        },
+        {
+          "seconds": 0.064844589,
+          "stage": "driver.total"
+        }
+      ],
+      "stderr": "pystachy-timing\truntime.load\t0.028647923\npystachy-timing\truntime.prepare\t0.008345324\npystachy-timing\truntime.discover\t0.015004737\npystachy-timing\truntime.analysis\t0.002139294\npystachy-timing\truntime.optimize\t0.001534032\npystachy-timing\truntime.finalize\t0.001153718\npystachy-timing\truntime.lower\t0.006023175\npystachy-timing\tdriver.total\t0.064844589\ngc: 0 collections, 0.0 ms; heap peak 33.2 MiB; live 0.0 MiB at the last\n",
+      "stderr_sha256": "412006cec72075fa8a173a048b43ec34012a957c29d493587721b6d7942e8d74",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 52484,
+      "wall_s": 0.06911405100254342
+    },
+    {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "/workspace/scratch/685873f30dd6/memory-builds/chunks/compiler",
+        "rt",
+        "/workspace/scratch/685873f30dd6/frozen-fa9/runtime.py",
+        "-o",
+        "/workspace/scratch/685873f30dd6/memory-quality/runtime-chunks-4.ll"
+      ],
+      "cpu_s": 0.073697,
+      "exit_code": 0,
+      "host": "chunks",
+      "input": "runtime",
+      "input_sha256": "c45138f44a7aa25828b351b6d627e1a4f9fad69dc8a88532d053fb90e84beefb",
+      "load_after": [
+        1.32666015625,
+        1.42138671875,
+        1.57421875
+      ],
+      "load_before": [
+        1.32666015625,
+        1.42138671875,
+        1.57421875
+      ],
+      "matches_oracle": true,
+      "output_bytes": 549411,
+      "output_sha256": "940a694da5ea93214d1308a8eb635b47d8d0a9d4256c63d084c24f5099f8aa5f",
+      "proc_pid_resolved": true,
+      "sample": 4,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 31864,
+      "stages": [
+        {
+          "seconds": 0.029565426,
+          "stage": "runtime.load"
+        },
+        {
+          "seconds": 0.007810608,
+          "stage": "runtime.prepare"
+        },
+        {
+          "seconds": 0.017243751,
+          "stage": "runtime.discover"
+        },
+        {
+          "seconds": 0.002423291,
+          "stage": "runtime.analysis"
+        },
+        {
+          "seconds": 0.002164642,
+          "stage": "runtime.optimize"
+        },
+        {
+          "seconds": 0.002845527,
+          "stage": "runtime.finalize"
+        },
+        {
+          "seconds": 0.005953389,
+          "stage": "runtime.lower"
+        },
+        {
+          "seconds": 0.06921878,
+          "stage": "driver.total"
+        }
+      ],
+      "stderr": "pystachy-timing\truntime.load\t0.029565426\npystachy-timing\truntime.prepare\t0.007810608\npystachy-timing\truntime.discover\t0.017243751\npystachy-timing\truntime.analysis\t0.002423291\npystachy-timing\truntime.optimize\t0.002164642\npystachy-timing\truntime.finalize\t0.002845527\npystachy-timing\truntime.lower\t0.005953389\npystachy-timing\tdriver.total\t0.069218780\ngc: 0 collections, 0.0 ms; heap peak 33.2 MiB; live 0.0 MiB at the last\n",
+      "stderr_sha256": "c3dee358684a2d9bf9e915b9be8a506fe724b867dd9c35ff1f0f3a63867f74ed",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 52484,
+      "wall_s": 0.07563845199911157
+    },
+    {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "/workspace/scratch/685873f30dd6/memory-builds/newline/compiler",
+        "rt",
+        "/workspace/scratch/685873f30dd6/frozen-fa9/runtime.py",
+        "-o",
+        "/workspace/scratch/685873f30dd6/memory-quality/runtime-newline-4.ll"
+      ],
+      "cpu_s": 0.066943,
+      "exit_code": 0,
+      "host": "newline",
+      "input": "runtime",
+      "input_sha256": "c45138f44a7aa25828b351b6d627e1a4f9fad69dc8a88532d053fb90e84beefb",
+      "load_after": [
+        1.32666015625,
+        1.42138671875,
+        1.57421875
+      ],
+      "load_before": [
+        1.32666015625,
+        1.42138671875,
+        1.57421875
+      ],
+      "matches_oracle": true,
+      "output_bytes": 549411,
+      "output_sha256": "940a694da5ea93214d1308a8eb635b47d8d0a9d4256c63d084c24f5099f8aa5f",
+      "proc_pid_resolved": true,
+      "sample": 4,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 30804,
+      "stages": [
+        {
+          "seconds": 0.028416855,
+          "stage": "runtime.load"
+        },
+        {
+          "seconds": 0.007862136,
+          "stage": "runtime.prepare"
+        },
+        {
+          "seconds": 0.013939692,
+          "stage": "runtime.discover"
+        },
+        {
+          "seconds": 0.001648604,
+          "stage": "runtime.analysis"
+        },
+        {
+          "seconds": 0.00161283,
+          "stage": "runtime.optimize"
+        },
+        {
+          "seconds": 0.00118152,
+          "stage": "runtime.finalize"
+        },
+        {
+          "seconds": 0.005576703,
+          "stage": "runtime.lower"
+        },
+        {
+          "seconds": 0.06165319,
+          "stage": "driver.total"
+        }
+      ],
+      "stderr": "pystachy-timing\truntime.load\t0.028416855\npystachy-timing\truntime.prepare\t0.007862136\npystachy-timing\truntime.discover\t0.013939692\npystachy-timing\truntime.analysis\t0.001648604\npystachy-timing\truntime.optimize\t0.001612830\npystachy-timing\truntime.finalize\t0.001181520\npystachy-timing\truntime.lower\t0.005576703\npystachy-timing\tdriver.total\t0.061653190\ngc: 0 collections, 0.0 ms; heap peak 33.5 MiB; live 0.0 MiB at the last\n",
+      "stderr_sha256": "acecba6a5be13404570bd9246e154587970ee20b9c664d032528840146095411",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 52484,
+      "wall_s": 0.06807542200112948
+    },
+    {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "/workspace/scratch/685873f30dd6/inline-screen/o2-0/compiler",
+        "rt",
+        "/workspace/scratch/685873f30dd6/frozen-fa9/runtime.py",
+        "-o",
+        "/workspace/scratch/685873f30dd6/memory-quality/runtime-ordinary-4.ll"
+      ],
+      "cpu_s": 0.07244,
+      "exit_code": 0,
+      "host": "ordinary",
+      "input": "runtime",
+      "input_sha256": "c45138f44a7aa25828b351b6d627e1a4f9fad69dc8a88532d053fb90e84beefb",
+      "load_after": [
+        1.32666015625,
+        1.42138671875,
+        1.57421875
+      ],
+      "load_before": [
+        1.32666015625,
+        1.42138671875,
+        1.57421875
+      ],
+      "matches_oracle": true,
+      "output_bytes": 549411,
+      "output_sha256": "940a694da5ea93214d1308a8eb635b47d8d0a9d4256c63d084c24f5099f8aa5f",
+      "proc_pid_resolved": true,
+      "sample": 4,
+      "sampled_max_processes": 1,
+      "sampled_process_tree_peak_rss_kib": 33140,
+      "stages": [
+        {
+          "seconds": 0.029010549,
+          "stage": "runtime.load"
+        },
+        {
+          "seconds": 0.00773945,
+          "stage": "runtime.prepare"
+        },
+        {
+          "seconds": 0.016026316,
+          "stage": "runtime.discover"
+        },
+        {
+          "seconds": 0.002749192,
+          "stage": "runtime.analysis"
+        },
+        {
+          "seconds": 0.002117551,
+          "stage": "runtime.optimize"
+        },
+        {
+          "seconds": 0.001527682,
+          "stage": "runtime.finalize"
+        },
+        {
+          "seconds": 0.007070814,
+          "stage": "runtime.lower"
+        },
+        {
+          "seconds": 0.067990509,
+          "stage": "driver.total"
+        }
+      ],
+      "stderr": "pystachy-timing\truntime.load\t0.029010549\npystachy-timing\truntime.prepare\t0.007739450\npystachy-timing\truntime.discover\t0.016026316\npystachy-timing\truntime.analysis\t0.002749192\npystachy-timing\truntime.optimize\t0.002117551\npystachy-timing\truntime.finalize\t0.001527682\npystachy-timing\truntime.lower\t0.007070814\npystachy-timing\tdriver.total\t0.067990509\ngc: 0 collections, 0.0 ms; heap peak 34.1 MiB; live 0.0 MiB at the last\n",
+      "stderr_sha256": "fad80eca819caddb5b0239f39aa42a6458c3569b7075f49dea50a1658a6676fd",
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "timed_out": false,
+      "wait4_max_process_rss_kib": 52484,
+      "wall_s": 0.07304388799821027
+    }
+  ],
+  "source": {
+    "files": {
+      "lib/_argparse_help.py": "71230160d94bdca256c1ec51df652634e56a663edb1934d8b15a3b45c8da0a42",
+      "lib/_markupbase.py": "6a294b294582f55905d310b8df054019e94f37b17eba3414be4e2cb61d5851d1",
+      "lib/_pyrandom.py": "5b37918369c0e4becdac2d012ffe9e40e314a330ee9f7b3fe2ce4cd3a926ff09",
+      "lib/_pystachy__io.py": "77ee03b3a67f79f49c3fe30666f4f5077bd41069797c727529a230c4caa0a117",
+      "lib/_pystachy_abc.py": "9f6f717c077b2dbac22e8dc9793373b939615a33f2698aaddd81ed905e5a48f8",
+      "lib/_pystachy_atexit.py": "a5ff97e421a4a8fd782e08a0124bac6a7b27486fc279cb4384655bc4b208d60c",
+      "lib/_pystachy_bfile.py": "3ae9d3ed7e23e4bd0712b097a73db93f14aa7321bf1e4c5585c8cd2774999826",
+      "lib/_pystachy_binascii.py": "c8ca70973dc409011ba89749878a2a205780fdc907437bc08521be0e3d07f848",
+      "lib/_pystachy_bytescan.py": "9d67b07a3bbcdf944454abbf138f3c588ffba4a5787d43ba148e5f918a3c8f63",
+      "lib/_pystachy_codecs.py": "fe8380d756e383192028c6a65d652047e9abb9c08b51e15aba5b35e8cf678acf",
+      "lib/_pystachy_copy.py": "27d374af0fc595f85da5e4d19dd9f235b0ed3212dd926695ee4c696b0f5b4d3f",
+      "lib/_pystachy_iterators.py": "61894584c1fda85936a740d4dafa2c5d631f9b05f5022fca8913e4ad0a84b27e",
+      "lib/_pystachy_itertools.py": "14f451cf7647016ad8105aa988b9cbabe4fe3f5a08f2710f6ed2db5d81a00566",
+      "lib/_pystachy_json_any.py": "9d4bf30d0a11b50d013de9b62f7c9b75269a66c26cbce1dcc67b6504428ea7af",
+      "lib/_pystachy_json_int.py": "dde398779410ac2476e4205468df5477af8e56a59809e8c12068a1938a19adb0",
+      "lib/_pystachy_mappingproxy.py": "e1d04e45f0b12e0e29fba497adf16f77864154c9e175a40065d2fd73654be70c",
+      "lib/_pystachy_object.py": "6a21df25fa11b3c80a70d95f310760d86adaeecd4a63e767bde5b9ecde63ca9c",
+      "lib/_pystachy_percent.py": "38119feeb5bff2d50d8d5d48e8c23e853bfe5ca92c6df99163b82a8699eda0e3",
+      "lib/_pystachy_range.py": "50df392f248e25a79896007a3b0a23741f8f5f56622e7c56060ba9612292f8b2",
+      "lib/_pystachy_re_specialized.py": "d09604c416700c3a7acd3a9f8c6f7536289c895b2e72393a9875e68ed92e45bf",
+      "lib/_pystachy_string.py": "2e87bb96489d12051446c1b59c2e4ee65543a14f15d8eff3465a43f2e1f51434",
+      "lib/_pystachy_struct.py": "2f224f07dd5a8db374dc2604257cc7c41a4caa7140c5d2ddf30a34bc8f88f1d6",
+      "lib/_pystachy_thread.py": "db3920b84b5b801ede68b2facab9ef2bc21f1f714dcc767625e66f1f4bf936cc",
+      "lib/_pystachy_time.py": "21470e0d9af8a1fb86b34f9977c4e5049a3b6785bb0db3f23198546665a9fa39",
+      "lib/_pystachy_types.py": "221d41e2f90c40493b3d712fb99cf39fb5a25c2306e63de7a89358e66cfcfe70",
+      "lib/_pystachy_unicodedata.py": "f1c877238f94279dfdb5a5f77396d9d25f504c409f34b78099613c6c3f71c7d0",
+      "lib/_pystachy_unicodedata_db.py": "d511e3c104f697e9e9ce150b97119ceb1fcaf00ebcdd3be21cf52c88337608b2",
+      "lib/_pystachy_unicodedata_names.py": "9b18f9e4aecb03f28672fdecce4fcf9d0ece0a1c565c7e9e0ce504fe4fc2bb28",
+      "lib/_pystachy_weakref.py": "961b272cf9e756d3829f57ad7325b123e5329a06dfb64519a50c8132728cb3cb",
+      "lib/_weakrefset.py": "91895a451d06e9f521a1171b31b9b19bc9740f35af00d4fa106338ab7167c9ac",
+      "lib/argparse.py": "7badc6e5fd7d0cd32884ee819a2c2875614ae49b0d17ccc46cf80a5910066936",
+      "lib/bisect.py": "f1cf7b85fc36b5da249813fc5ab97d9464f8cc1bc817f7146206fa2713e35999",
+      "lib/codecs.py": "feafe30244cc2ac23a8f03ca6c8b106ef82dede1630aac103126767e123a3c42",
+      "lib/collections/__init__.py": "8a6533ddf04c4823e1c1da10925028613420cc4e5cb6264e6066fdd3739b4852",
+      "lib/colorsys.py": "65e3dfbf7bad61d4d7d7731a69dd7e75a347fd350d91327a51010a94e6fd2f1d",
+      "lib/contextlib.py": "08bf5d132ae0aceafcd94c72396e21fd45fc9cd1ba6e74807ce1e39f22d0d665",
+      "lib/copy.py": "360bbbd25d50a8f6292487aadfaa43291619d09b26d90596a9a0cf36c727c969",
+      "lib/csv.py": "29676a25a82679e93c6d0eb771a3f60890aedf49941206c0387ce59696b7c3c4",
+      "lib/curses/__init__.py": "91156d2c9afdc168cee4bb7085c8b16936ca7079fa4035ac4d7908712d86f394",
+      "lib/curses/ascii.py": "780dd8bbaf0ee7e832f164c1772953e694a9cd1031d1ab1471af65344d3645e6",
+      "lib/datetime.py": "d269c51c55e7668b988c8194a7a2e643a39aa3a2770a727c178a5c898b91c239",
+      "lib/difflib.py": "4d33db46d2f0748bd674b5ae2f52c59ab0cab0865c465a99ea9521d8751aea0f",
+      "lib/enum.py": "5966e540800846a58328cfcf50029b5c6b79c27194ed01f30a432d45a81401ed",
+      "lib/fnmatch.py": "fd1da199d0eeabc34ec9796d5a0790da6300fff4d15e16ee2d8ca26e6885eec5",
+      "lib/functools.py": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703",
+      "lib/genericpath.py": "cdac5a68dd738051e0d66fc81d5947d6a1776248fc6fe862253477608d870ec4",
+      "lib/getopt.py": "0d152bede49816f2924ffb944d86369099bea3b68ec1ee6f0c84c56251670241",
+      "lib/gettext.py": "97b7fa3d8112826dae4d021a6445fe791521524bd4b06e729d0497ed59a85e63",
+      "lib/glob.py": "3ff5a1497ed62460e45f6031f1c9b921849a5e73b8ff6ea35fe25635a4106b78",
+      "lib/heapq.py": "89bfee37cf47aecdf2a5ae8706b9805f1b1789d6e2edb7e3556fe8b42c5ecba3",
+      "lib/html/__init__.py": "067cf63fe3eee1bece807caba82a83d0307010bf1c30d9974e56ea704ddea893",
+      "lib/html/entities.py": "6fbeb0318e22905269b414b7d045574b8a98767f194310071b9177fadc738a2f",
+      "lib/html/parser.py": "f3ab8871f5342562328cd3ff8e65d5667c79d27189c7a0401982a193de7b4e90",
+      "lib/io.py": "31f5102c549e7051190c81838928db3f5c21863ac9cf63e7a493352e767fa71f",
+      "lib/json.py": "b217485992131dd49d083a0fcff14fe56e6507933b4d7e3d5e09071be071dd39",
+      "lib/keyword.py": "833eb8e01577a8330f473ed49403fae4b5e6c95a66a81254405deb5c7ea7efb9",
+      "lib/logging/__init__.py": "73ce5de4a0780ba93deb120274a7aebba5f629a6a0ee48b81757f0770b12d6e3",
+      "lib/mpz.py": "754e4844ff8425e92ee8cde26b1e84a4ad318312d1ca17d10ea724a6c4c46a45",
+      "lib/operator.py": "7d42396ef02c03aa69eb86643769cdb889ab9fc66ffd140bc0efa0896fc94c99",
+      "lib/pathlib.py": "e489f1ddacdd4076b3f54b81e89e1d9a20e63d1e651a25f0c5b135398918cba2",
+      "lib/posixpath.py": "69acb9e294987cd6056a2237048373cf8d6201faf1e43a49c38889b47d2fb28e",
+      "lib/pyobj.py": "2d673d060a386ceae11b381ca94ce71a4ec43be89e7c1c59651c936ffea9054e",
+      "lib/random.py": "91e7fa770bfc1affb76a6441a10e1913af8993d8c657c12ffe6cbadc3e3add1e",
+      "lib/re/__init__.py": "62ebb86b1d7c3cabca75918d374c48eece358fd03bfe96f3ef486bb651b4c412",
+      "lib/re/_constants.py": "d8c63d4b91920ceb02d7c00073a062504c349b3e0de83ba480c3f4d1bca442fe",
+      "lib/re/_sre.py": "c7e98ec21fe209e8d3833516f408a5b219002e26a2f630cceb933b3e12cca3c5",
+      "lib/re/_unicode.py": "61f1343780ef2537ff83813b7a2097a55482a51a23b172a609a6836af4197ea2",
+      "lib/shlex.py": "7392b7c738fe818c43a8031820bef96db0b9f598d354a9fac0b771546a4fdba4",
+      "lib/shutil.py": "6f2ece466c6ebbd609758a22312842d61f8fba24bac5fefccbd9918a08d224c1",
+      "lib/stat.py": "07217986d9b2172b509dab3578d18ac05ba768b418e1f1e8c90e38a8f7c2b3c6",
+      "lib/statistics.py": "05a091943eb6a01272f95c190e99bab0d33c72a108aef45261c838842301991b",
+      "lib/string.py": "5a6ea720721a70a9d76d30135697ea612b9cb6610366b38d8c1d997043508b27",
+      "lib/struct.py": "9c231f9497caf513a22dee8f790b07f969b0e45854a0bdd6dd84b492e08c2856",
+      "lib/textwrap.py": "5102b1deb8905ad1b31a2830f7ac5a980229e55f3bbce06fd64baa9930159c1b",
+      "lib/this.py": "481d0cb3de511eae0b5713dad18542b07eafd9c013bb7690f7497bad49923a71",
+      "lib/threading.py": "b213b086e74428f910b7a469be2dd98108ae9041156851e8bc892f04a6bd62f9",
+      "lib/token.py": "1d81391050d5389c41f319ba4d42159c6247777400e48c27f2d28cac8ca4e6e2",
+      "lib/tomllib/__init__.py": "71f67036895f4c5acab942618af0cbd3d814451ba61e967f358d0f341a5b8f51",
+      "lib/tomllib/_parser.py": "11d40d79772967ebf81f5a0cf8dfa99608413b3ba6144d4beadae99baa28f279",
+      "lib/tomllib/_re.py": "17ec24dabd4e7089df6f04acacb331c85c437addbd2ab98bdfefcb18671ba056",
+      "lib/tomllib/_types.py": "e018cf69245202408dd97664cf76618e8cbb5efb6f43b134d29efd1d9221a6c0",
+      "lib/traceback.py": "0019cd354b5261be3496db20445c3f36f2e642cdee711fc1af51c7650e1625c1",
+      "lib/types.py": "d4215ea3abc258bdde763cc21ec4b0759f0c44e874b2483851c5681ae93f45e2",
+      "lib/urllib/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "lib/urllib/parse.py": "f5914562f9903ab7dde287fcb8bc0b1667a812f82e7e7c4419fed0493bfd0148",
+      "lib/warnings.py": "be4467c02d67040c87e31ede6787740815085298a880f2aa126b02fbabc0f133",
+      "lib/weakref.py": "4a08091ebed64fcd1d2368e97381009eab49669e40cdbddaaefd64d525e46e7a",
+      "mpz/mpz.c": "2d648cec5de20c6bb7d4882a364cfc9fa1d355395255c1d0e82e4389bde03afa",
+      "pystachy.py": "a413782632f88d4746a81fd7cfb529d695ab36a35618522a83be1e25e1e31f29",
+      "runtime.c": "1a6c77b09d5739d0d2ac263b8c86e7aa640c9b5bdf1cdafe369e84d1d7a0bb0c",
+      "runtime.py": "c45138f44a7aa25828b351b6d627e1a4f9fad69dc8a88532d053fb90e84beefb",
+      "ryu/common.h": "0bbd71d26da6193e678d0776cf418f43f287c73d6fd6725353df0aadf70f2a19",
+      "ryu/d2s.c": "c6357b5d53ac1ba7f4984847d3a76f0803e0a931b7d0b02680656576829cf1d2",
+      "ryu/d2s_intrinsics.h": "01d9bdaada67b42f2d1bbdebb3765867e6c44e3a181b806c1d7e851b93f9cc21",
+      "ryu/d2s_small_table.h": "01f3d8a3ff739a26ecbddc2caae44c91574592b1de7c01fec67bc2d06672b606",
+      "ryu/digit_table.h": "8b782573abc0b8554d74163ae6c02f0beb5c30d1e63eaebdb0ddf2c98d817e01",
+      "ryu/ryu.h": "b7feab0ba1df5e9ef3d602f386592ad152491405e49b408fb21c0e0e9e6bfb16",
+      "src/__init__.py": "c443ed6062edae246598189fb20f12799a5e87a04049acb855894652e3875af7",
+      "src/pystachy_compiler/__init__.py": "f60cd281f8ed4fd35776c9f4d40d6a1313c49a3cae5df61841028f711b9f13c8",
+      "src/pystachy_compiler/analysis.py": "0ed995ce65b1e1f364ba5a91a6650d067f5802871f86f96cf1ea08c14599a41e",
+      "src/pystachy_compiler/argparse_schema.py": "8cfb408e9066ddb51d89be371cab2c4b769c1108da3d1554391bc799a83082a5",
+      "src/pystachy_compiler/bigints.py": "1d00ba32bc6052944e552864375e2a0b390ba1ddb001208167056d87199bab61",
+      "src/pystachy_compiler/builtins.py": "16ef3fdc37e154e1b3d928b02c0e15d2335eb3ae1d1d935b981bfb72c61fea67",
+      "src/pystachy_compiler/calls.py": "6efdf96768d973faf8eeeb9bfd3faea0009d3b2d2516f7ea4b337fb3da39f71b",
+      "src/pystachy_compiler/containers.py": "0a75f833f7916fd05d5076c1a88393a203c97166ebc77d1048028fdac5716b50",
+      "src/pystachy_compiler/conversions.py": "79aed0912984999deb696242db22d39e3af32c4e74a7021d5794f662dcf6ddf2",
+      "src/pystachy_compiler/declarations.py": "195b04cf677118403e86c64b5d8e50d3bb1e738120c08ee796be1094b9fb1372",
+      "src/pystachy_compiler/diagnostics.py": "529f5423decb512a61505a289bf3a5fb9b59c3bb1bfaf512b8059893fd79b131",
+      "src/pystachy_compiler/driver.py": "659d462917fb7e979355726e1e365f177059e438078cbdef800037f5e84153dd",
+      "src/pystachy_compiler/dynamic.py": "7dc56b48f92da70aacb87c1236822f6df21fd079b5f1f59cd0c26f396f67072e",
+      "src/pystachy_compiler/emission.py": "de4f8c78b0d86b96f6c32a13186738e86ddfa3b55000ef9f4b8ff1aeffd0b8d4",
+      "src/pystachy_compiler/exceptions.py": "3fce23a767a24651c5658b48759e44ee66817fa931dd2251011c44b1b33d26d3",
+      "src/pystachy_compiler/expressions.py": "1e2ec3721e8ba3c5cd930f74a0790933b0c393089304f546d88dc26c853cbf5d",
+      "src/pystachy_compiler/flow.py": "cb6238905238d5dcd042b568f56243e9b407723a6e047d5f0cad478b060439c9",
+      "src/pystachy_compiler/functions.py": "3743e405f03039b4d5d0fb98a31473bb2f203857624d188e350f2700b23f28c2",
+      "src/pystachy_compiler/gen.py": "033c662f41f22dd9ce3eb4378acddaab2f4913a45bfc5f8ff3de3cf42af654ad",
+      "src/pystachy_compiler/generators.py": "e6dde0b55178adeca943b596f8f108915e652726954c9675aae04ea1454bc96c",
+      "src/pystachy_compiler/ir.py": "c3e499869f2bc7487d1a5466fc299a0d15f1939d3176dd5b2f0990a2a9d0b75c",
+      "src/pystachy_compiler/ircheck.py": "127dc1eb765afee724446f00c481b53ed80af396f064dd9112c1f189482be514",
+      "src/pystachy_compiler/lexer.py": "5d727507498549788d7d428b067e4bf794dbe49199286577cd1cd2d47d0b16f7",
+      "src/pystachy_compiler/llvm_abi.py": "7485f63097d4abac3de8b1fbfb782944ff7e3b68989d2fb266e40ebb8f8889ae",
+      "src/pystachy_compiler/loader.py": "270afd42d89c59fee9af0eaf16ff8f7d5166c9429ef026258dabc24097724d06",
+      "src/pystachy_compiler/local_versions.py": "10bb0f2f0fb57c442af0807b5b4af6c95e8b950a97430161c97f766a3dc4b375",
+      "src/pystachy_compiler/lower_module.py": "365de9a60a6f5dd9dee73c3ac9cb6dee5e2a4d88f94200f7d6602265c1c05bdf",
+      "src/pystachy_compiler/lowering.py": "9332b28da9729b702054f57ef0f8463621d112725e097b437e04c3ec230590b8",
+      "src/pystachy_compiler/memory_ir.py": "c2544eda0bdb89ccb99ac1330c95d99974983cc7bdfa0d3a2b39a993c9f62bc1",
+      "src/pystachy_compiler/module.py": "3349556dee4dcda00013d770743f27d5dc3525b76cbd5e2ab312b14506e1f601",
+      "src/pystachy_compiler/names.py": "1b114c50d950b971dc4e72afd87fa0daa3e71c653101747733ceb89777d07e1c",
+      "src/pystachy_compiler/optimizations.py": "8b922ea6e743908cd6c59983838ac2392df36fd3502bdc0a226a31092dc8be8e",
+      "src/pystachy_compiler/parser.py": "0ebba19e45b2d0396ce427894463c61fc41834aca13ba8e8383efa6ec634d6bc",
+      "src/pystachy_compiler/program.py": "666f3ca695805ddab1d499ef6e24064930b389a369a8389af6426a4bfd9f03ac",
+      "src/pystachy_compiler/reflection.py": "8628b10c2fd1fbe5b1751724d5ae5ffdaf28e72696677a87860d29efd53981cc",
+      "src/pystachy_compiler/scalar_ir.py": "14bc0ce71b4cbf066e8a4cab2ea0bb5c0a53880997484d74f5ea3e9a6d30c05a",
+      "src/pystachy_compiler/scope.py": "d9af25da84ba62a17a6a1a0b7d48d078977dd364528c8ec8e4135cc438f10a97",
+      "src/pystachy_compiler/specs.py": "d142ea175c11adde4a99126cb9fa173b6413a8c010a34cb93598c86e17b37af6",
+      "src/pystachy_compiler/statements.py": "36aa56f0e46156072be24236e242cf83825dc2feee4c77d6cdfee4ffc1deeffd",
+      "src/pystachy_compiler/structs.py": "e873fd6a6aeaebf39f740de2859a5de9a2da316d7a8993c728889677125c3090",
+      "src/pystachy_compiler/syntax.py": "9d4da3abe7447fa31031ba44936be765240dc60ab51d74728a9ed80c9a7674c3",
+      "src/pystachy_compiler/templates.py": "7e4b9422752d4a5ad1757a06d97ab4a8e39bb1f388a32ca49b5cc40628fc2f01",
+      "src/pystachy_compiler/union_arithmetic.py": "6d6892c0d97667d7e8ffeb5293ccbbe24c76529328e4761ffec6831229c416dd",
+      "src/pystachy_compiler/union_proof.py": "85e40039059975749ffe64f21e5c116ca7e3e6a26f6e0ce22ade4f398c74e568",
+      "src/pystachy_compiler/union_state.py": "b845af16073f24e1e1245bdcb00d4324dbf1d657874604cb4b991d852a07b026",
+      "src/pystachy_compiler/unions.py": "64d737b7405bec833d453f9b25211f947dab82cb1da54e3012f1dde61acf0e28",
+      "src/pystachy_compiler/utils.py": "c439c8cdf5516c630514980e9b6af5c43bff02991c2f1ec6c12964206597545a",
+      "src/pystachy_compiler/variables.py": "0a25bf8b786471a1c51f54bf92998489f5c8215c391e7f446615b9b11f12f670"
+    },
+    "sha256": "2bf4d02ff6af174e950d76971bb1b9db4b0a7578cc895453fcdd8f3530cd2b49"
+  },
+  "source_unchanged": true,
+  "summary": [
+    {
+      "correct": true,
+      "cpu_s": {
+        "max": 6.519863000000001,
+        "median": 6.241937,
+        "min": 5.963610999999999
+      },
+      "host": "ordinary",
+      "input": "self",
+      "n": 5,
+      "sampled_process_tree_peak_rss_kib": {
+        "max": 927480,
+        "median": 927432,
+        "min": 925444
+      },
+      "wait4_max_process_rss_kib": {
+        "max": 927480,
+        "median": 927432,
+        "min": 927364
+      },
+      "wall_s": {
+        "max": 6.532811416996992,
+        "median": 6.24530518600659,
+        "min": 5.974796952003089
+      }
+    },
+    {
+      "correct": true,
+      "cpu_s": {
+        "max": 6.463966,
+        "median": 6.284506,
+        "min": 6.116006
+      },
+      "host": "newline",
+      "input": "self",
+      "n": 5,
+      "sampled_process_tree_peak_rss_kib": {
+        "max": 896652,
+        "median": 896640,
+        "min": 896560
+      },
+      "wait4_max_process_rss_kib": {
+        "max": 896652,
+        "median": 896640,
+        "min": 896560
+      },
+      "wall_s": {
+        "max": 6.477117533002456,
+        "median": 6.290278888001922,
+        "min": 6.126169676004793
+      }
+    },
+    {
+      "correct": true,
+      "cpu_s": {
+        "max": 6.4397899999999995,
+        "median": 6.212064,
+        "min": 6.0047299999999995
+      },
+      "host": "chunks",
+      "input": "self",
+      "n": 5,
+      "sampled_process_tree_peak_rss_kib": {
+        "max": 860260,
+        "median": 860244,
+        "min": 856912
+      },
+      "wait4_max_process_rss_kib": {
+        "max": 860260,
+        "median": 860244,
+        "min": 858968
+      },
+      "wall_s": {
+        "max": 6.443620887999714,
+        "median": 6.22858031999931,
+        "min": 6.007283760001883
+      }
+    },
+    {
+      "correct": true,
+      "cpu_s": {
+        "max": 0.37101699999999993,
+        "median": 0.315338,
+        "min": 0.282356
+      },
+      "host": "ordinary",
+      "input": "json-repair",
+      "n": 5,
+      "sampled_process_tree_peak_rss_kib": {
+        "max": 56348,
+        "median": 52680,
+        "min": 52456
+      },
+      "wait4_max_process_rss_kib": {
+        "max": 57000,
+        "median": 56988,
+        "min": 56904
+      },
+      "wall_s": {
+        "max": 0.3718752120039426,
+        "median": 0.31595354300225154,
+        "min": 0.2832939229992917
+      }
+    },
+    {
+      "correct": true,
+      "cpu_s": {
+        "max": 0.404958,
+        "median": 0.306841,
+        "min": 0.266097
+      },
+      "host": "newline",
+      "input": "json-repair",
+      "n": 5,
+      "sampled_process_tree_peak_rss_kib": {
+        "max": 54884,
+        "median": 52456,
+        "min": 52452
+      },
+      "wait4_max_process_rss_kib": {
+        "max": 55528,
+        "median": 55524,
+        "min": 55516
+      },
+      "wall_s": {
+        "max": 0.4075752030039439,
+        "median": 0.3073178659979021,
+        "min": 0.2666316309987451
+      }
+    },
+    {
+      "correct": true,
+      "cpu_s": {
+        "max": 0.371554,
+        "median": 0.268065,
+        "min": 0.265321
+      },
+      "host": "chunks",
+      "input": "json-repair",
+      "n": 5,
+      "sampled_process_tree_peak_rss_kib": {
+        "max": 52600,
+        "median": 52456,
+        "min": 52392
+      },
+      "wait4_max_process_rss_kib": {
+        "max": 55336,
+        "median": 55288,
+        "min": 55272
+      },
+      "wall_s": {
+        "max": 0.3720559690045775,
+        "median": 0.26944053400075063,
+        "min": 0.2661919290039805
+      }
+    },
+    {
+      "correct": true,
+      "cpu_s": {
+        "max": 0.104281,
+        "median": 0.094986,
+        "min": 0.07244
+      },
+      "host": "ordinary",
+      "input": "runtime",
+      "n": 5,
+      "sampled_process_tree_peak_rss_kib": {
+        "max": 36084,
+        "median": 34120,
+        "min": 33016
+      },
+      "wait4_max_process_rss_kib": {
+        "max": 52484,
+        "median": 52484,
+        "min": 52484
+      },
+      "wall_s": {
+        "max": 0.1049576950026676,
+        "median": 0.0958436540022376,
+        "min": 0.07304388799821027
+      }
+    },
+    {
+      "correct": true,
+      "cpu_s": {
+        "max": 0.09845799999999999,
+        "median": 0.072611,
+        "min": 0.066943
+      },
+      "host": "newline",
+      "input": "runtime",
+      "n": 5,
+      "sampled_process_tree_peak_rss_kib": {
+        "max": 36080,
+        "median": 33288,
+        "min": 30804
+      },
+      "wait4_max_process_rss_kib": {
+        "max": 52484,
+        "median": 52484,
+        "min": 52484
+      },
+      "wall_s": {
+        "max": 0.09950527099863393,
+        "median": 0.07363150799938012,
+        "min": 0.06807542200112948
+      }
+    },
+    {
+      "correct": true,
+      "cpu_s": {
+        "max": 0.10551399999999998,
+        "median": 0.073697,
+        "min": 0.068783
+      },
+      "host": "chunks",
+      "input": "runtime",
+      "n": 5,
+      "sampled_process_tree_peak_rss_kib": {
+        "max": 35256,
+        "median": 33272,
+        "min": 31864
+      },
+      "wait4_max_process_rss_kib": {
+        "max": 52484,
+        "median": 52484,
+        "min": 52484
+      },
+      "wall_s": {
+        "max": 0.10671713700139662,
+        "median": 0.07563845199911157,
+        "min": 0.06911405100254342
+      }
+    }
+  ]
+}

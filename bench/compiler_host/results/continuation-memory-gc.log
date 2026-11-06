@@ -1,0 +1,14 @@
+self-stress5000 exact IR 436.429
+generators/gen_finally.py default exact IR 4.379
+generators/gen_finally.py -all exact IR 4.919
+generators/gen_cm_gc.py default exact IR 15.821
+generators/gen_cm_gc.py -all exact IR 15.554
+language/recursion_closed.py default exact IR 5.891
+language/recursion_closed.py -all exact IR 5.729
+containers/tuple_return_values.py default exact IR 5.354
+containers/tuple_return_values.py -all exact IR 4.781
+containers/tuple_return_closures.py default exact IR 1.935
+containers/tuple_return_closures.py -all exact IR 1.853
+inference/dynany_identity_list_scalar_reads.py default exact IR 3.385
+inference/dynany_identity_list_scalar_reads.py -all exact IR 2.975
+{"complete": true, "checks": 13}

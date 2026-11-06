@@ -1,0 +1,14 @@
+....E........s.................
+======================================================================
+ERROR: test_thinlto_comparison_keeps_the_same_temporary_compiler (test_compiler_parallel_tiers.BootstrapPolicyControls.test_thinlto_comparison_keeps_the_same_temporary_compiler)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/685873f30dd6/pystachy/tools/test_compiler_parallel_tiers.py", line 258, in test_thinlto_comparison_keeps_the_same_temporary_compiler
+    runs[-1] = self.run_identity("driver-thinlto4", stage1="changed", final="thinlto")
+               ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: BootstrapPolicyControls.run_identity() got an unexpected keyword argument 'stage1'
+
+----------------------------------------------------------------------
+Ran 31 tests in 11.401s
+
+FAILED (errors=1, skipped=1)
