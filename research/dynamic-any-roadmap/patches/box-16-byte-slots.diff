@@ -1,0 +1,20 @@
+--- a/runtime.c
++++ b/runtime.c
+@@ -1736,3 +1736,3 @@
+    scans the box for str, container or native reference payloads. None remains null. */
+-void *pys_ubox(I tag, I v) { I *p = pys_alloc(16); p[0] = tag; p[1] = v; return p; }
++void *pys_ubox(I tag, I v) { I *p = pys_alloc(15); p[0] = tag; p[1] = v; return p; }
+ void *pys_ubox_opt(I tag, void *p, I deref) { return p ? pys_ubox(tag, deref ? *(I *)p : (I)p) : NULL; }
+@@ -3244,5 +3244,5 @@
+   if ((uint64_t)(v + 5) < 262) return (Dyn *)&smallint[v + 5];
+-  Dyn *d = pys_alloc_atomic(sizeof(Dyn)); d->t = &pys_dyntype_int; d->v = v; return d;
++  Dyn *d = pys_alloc_atomic(sizeof(Dyn) - 1); d->t = &pys_dyntype_int; d->v = v; return d;
+ }
+-Dyn *pys_dyn_float(double x) { Dyn *d = pys_alloc_atomic(sizeof(Dyn)); d->t = &pys_dyntype_float; memcpy(&d->v, &x, 8); return d; }
++Dyn *pys_dyn_float(double x) { Dyn *d = pys_alloc_atomic(sizeof(Dyn) - 1); d->t = &pys_dyntype_float; memcpy(&d->v, &x, 8); return d; }
+ static Dyn *dbool(I b) { return (Dyn *)(b ? &pys_dyn_true_box : &pys_dyn_false_box); }
+@@ -3251,3 +3251,3 @@
+   if (!p) return DNONE;
+-  Dyn *d = pys_alloc(sizeof(Dyn)); d->t = t; d->v = (I)p; return d;
++  Dyn *d = pys_alloc(sizeof(Dyn) - 1); d->t = t; d->v = (I)p; return d;
+ }
