@@ -42,7 +42,7 @@ def profile_tool_identity(llvm, env):
         path = (llvm / name).resolve()
         result[name] = {"path": str(path), "sha256": sha(path)}
     runtime = Path(subprocess.check_output([str(llvm / "clang"), "--print-runtime-dir"],
-                                          env=env, text=True).strip()).resolve()
+                                          env=env, text=True, timeout=30).strip()).resolve()
     archives = sorted(runtime.glob("libclang_rt.profile*.a"))
     if not archives:
         raise ValueError("no Clang instrumentation profile runtime archive found")

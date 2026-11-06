@@ -1,8 +1,8 @@
 """Interleave complete bootstraps while changing LLVM build policies.
 
 Every run builds two compilers and verifies three compiler and three runtime IR
-witnesses. Runtime caches are fresh; the final compiler uses ordinary O2 unless split-both
-is explicitly selected, which changes generated-code quality. The
+witnesses. Runtime caches are fresh; the final compiler uses ordinary O2 unless
+split-both or driver-inline75 is explicitly selected. Both can change generated-code quality. The
 outer measurement includes the controller and samples its whole process tree.
 """
 from __future__ import annotations
