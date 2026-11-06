@@ -6567,13 +6567,16 @@ static int again(File *f) {
   if (e == EINTR && !io_intr) return 1;
   ioerr(e);
 }
-static int get(File *f) {
+/* Every byte of readline and bounded read passes through get and getnl. Keep both buffered paths
+   inline even when the EOF/error retry path grows; a call per byte regressed streaming examples
+   (fileprobe's IR guard). Inlining get alone can push getnl past the compiler's inline budget. */
+static inline __attribute__((always_inline)) int get(File *f) {
   int c;
   while ((c = getc_unlocked(f->f)) == EOF && again(f)) {}
   f->rcons += c != EOF; return c;
 }
 static void unget(File *f, int c) { ungetc(c, f->f); f->rcons--; }
-static int getnl(File *f, int c) {     /* newline=None reads "\r\n" and "\r" as "\n" */
+static inline __attribute__((always_inline)) int getnl(File *f, int c) { /* newline=None reads "\r\n" and "\r" as "\n" */
   if (c == '\r' && !f->nl) { int d = get(f); if (d != '\n' && d != EOF) unget(f, d); c = '\n'; }
   return c;
 }

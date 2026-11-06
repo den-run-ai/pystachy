@@ -1091,10 +1091,15 @@ L=$V/container-eq.log; s=$(now); r=fail
 step container-eq $r "$s" "$L" ', "shared_levels": 32, "comparison_limit": 64'
 fi
 
-# ---- file-buffers: dropped files' buffers run collections; opens, closes and the exit balance the counts
+# ---- file-buffers: dropped files' buffers run collections; opens, closes and the exit balance the counts.
+# Text read/readline must also inline their per-byte helpers (no wall-clock threshold).
 if want file-buffers; then
 L=$V/file-buffers.log; s=$(now); r=fail
 { "${LLVM}clang" -O2 -S -emit-llvm tools/fileprobe.c -o "$V/fileprobe.ll" &&
+  if [ "$(grep -Ec '^define[^@]*@pys_file_read(line)?\(' "$V/fileprobe.ll")" != 2 ]; then
+    echo 'file-buffers: IR must define text read and readline'; false; fi &&
+  if grep -Eq '^define[^@]*@get(nl)?[.(]' "$V/fileprobe.ll"; then
+    echo 'file-buffers: text reads must inline per-byte get/getnl helpers'; false; fi &&
   "${LLVM}llvm-link" "$V/rt1.ll" "$V/fileprobe.ll" -o "$V/fileprobe.bc" &&
   "${LLVM}clang" -O2 "$V/fileprobe.bc" -o "$V/fileprobe" -lm &&
   "$V/fileprobe" && "$V/fileprobe" --lib && PYSTACHY_GC_STRESS=1 "$V/fileprobe" && r=pass; } > "$L" 2>&1
