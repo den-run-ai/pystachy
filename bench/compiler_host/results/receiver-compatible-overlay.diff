@@ -1,0 +1,3765 @@
+--- a/src/pystachy_compiler/bigints.py
++++ b/src/pystachy_compiler/bigints.py
+@@ -9,0 +10,4 @@
++from typing import TYPE_CHECKING
++if TYPE_CHECKING:
++    from src.pystachy_compiler.gen import Gen
++from typing import Any as Gen  # type: ignore[assignment]
+@@ -174 +178 @@
+-def gen_bool_numeric(self, f: FnInfo, j: int) -> bool:
++def gen_bool_numeric(self: Gen, f: FnInfo, j: int) -> bool:
+@@ -301 +305 @@
+-def gen_int_policy(self, line: int) -> bool:
++def gen_int_policy(self: Gen, line: int) -> bool:
+@@ -308 +312 @@
+-def gen_read_policy(self) -> bool:
++def gen_read_policy(self: Gen) -> bool:
+@@ -320 +324 @@
+-def gen_big(self, lo: Val, hi: str = "null") -> Val:
++def gen_big(self: Gen, lo: Val, hi: str = "null") -> Val:
+@@ -328 +332 @@
+-def gen_big_lo(self, v: Val) -> Val:
++def gen_big_lo(self: Gen, v: Val) -> Val:
+@@ -335 +339 @@
+-def gen_big_hi(self, v: Val) -> Val:
++def gen_big_hi(self: Gen, v: Val) -> Val:
+@@ -342 +346 @@
+-def gen_to_big(self, v: Val) -> Val:
++def gen_to_big(self: Gen, v: Val) -> Val:
+@@ -352 +356 @@
+-def gen_big_fits(self, vs: list[Val]) -> str:
++def gen_big_fits(self: Gen, vs: list[Val]) -> str:
+@@ -360 +364 @@
+-def gen_big_call(self, op: str, x: Val, y: Val) -> Val:
++def gen_big_call(self: Gen, op: str, x: Val, y: Val) -> Val:
+@@ -365 +369 @@
+-def gen_big_arith(self, op: str, a: Val, b: Val) -> Val:
++def gen_big_arith(self: Gen, op: str, a: Val, b: Val) -> Val:
+@@ -432 +436 @@
+-def gen_big_known(self, op: str, x: Val, y: Val) -> str:
++def gen_big_known(self: Gen, op: str, x: Val, y: Val) -> str:
+@@ -449 +453 @@
+-def gen_big_truediv(self, x: Val, y: Val) -> Val:
++def gen_big_truediv(self: Gen, x: Val, y: Val) -> Val:
+@@ -454 +458 @@
+-def gen_big_unary(self, op: str, v: Val) -> Val:
++def gen_big_unary(self: Gen, op: str, v: Val) -> Val:
+@@ -465 +469 @@
+-def gen_big_abs(self, v: Val) -> Val:
++def gen_big_abs(self: Gen, v: Val) -> Val:
+@@ -483 +487 @@
+-def gen_big_cmp(self, op: str, a: Val, b: Val) -> Val:
++def gen_big_cmp(self: Gen, op: str, a: Val, b: Val) -> Val:
+@@ -506 +510 @@
+-def gen_big_float_cmp(self, op: str, a: Val, b: Val) -> Val:
++def gen_big_float_cmp(self: Gen, op: str, a: Val, b: Val) -> Val:
+@@ -521 +525 @@
+-def gen_big_truth(self, v: Val) -> str:
++def gen_big_truth(self: Gen, v: Val) -> str:
+@@ -527 +531 @@
+-def gen_big_str(self, v: Val) -> Val:
++def gen_big_str(self: Gen, v: Val) -> Val:
+@@ -531 +535 @@
+-def gen_big_hash(self, v: Val) -> Val:
++def gen_big_hash(self: Gen, v: Val) -> Val:
+@@ -535 +539 @@
+-def gen_big_float(self, v: Val) -> Val:
++def gen_big_float(self: Gen, v: Val) -> Val:
+@@ -539 +543 @@
+-def gen_big_narrow(self, v: Val) -> Val:
++def gen_big_narrow(self: Gen, v: Val) -> Val:
+@@ -547 +551 @@
+-def gen_big_box(self, v: Val) -> Val:
++def gen_big_box(self: Gen, v: Val) -> Val:
+@@ -552 +556 @@
+-def gen_big_unbox(self, v: Val) -> Val:
++def gen_big_unbox(self: Gen, v: Val) -> Val:
+@@ -561 +565 @@
+-def gen_big_opt_narrow(self, v: Val) -> Val:
++def gen_big_opt_narrow(self: Gen, v: Val) -> Val:
+@@ -579 +583 @@
+-def gen_big_opt_str(self, v: Val) -> Val:
++def gen_big_opt_str(self: Gen, v: Val) -> Val:
+@@ -594 +598 @@
+-def gen_big_opt_hash(self, v: Val) -> Val:
++def gen_big_opt_hash(self: Gen, v: Val) -> Val:
+@@ -609 +613 @@
+-def gen_big_opt_or(self, v: Val, none: str) -> Val:
++def gen_big_opt_or(self: Gen, v: Val, none: str) -> Val:
+@@ -628 +632 @@
+-def gen_big_status(self, v: Val) -> Val:
++def gen_big_status(self: Gen, v: Val) -> Val:
+@@ -639 +643 @@
+-def gen_big_slot(self, raw: str, fn: str, args: list[str], two: bool = False) -> Val:
++def gen_big_slot(self: Gen, raw: str, fn: str, args: list[str], two: bool = False) -> Val:
+@@ -662 +666 @@
+-def gen_big_list_value(self, o: Val, i: str, raw: str, keep: bool = False) -> Val:
++def gen_big_list_value(self: Gen, o: Val, i: str, raw: str, keep: bool = False) -> Val:
+@@ -670 +674 @@
+-def gen_item_type(self, t: str) -> str:
++def gen_item_type(self: Gen, t: str) -> str:
+@@ -681 +685 @@
+-def gen_held_value(self, v: Val, keep: bool = False) -> Val:
++def gen_held_value(self: Gen, v: Val, keep: bool = False) -> Val:
+@@ -693 +697 @@
+-def gen_big_list_store(self, o: Val, v: Val, method: str, index: str) -> None:
++def gen_big_list_store(self: Gen, o: Val, v: Val, method: str, index: str) -> None:
+@@ -711 +715 @@
+-def gen_list_coerce(self, v: Val, et: str) -> Val:
++def gen_list_coerce(self: Gen, v: Val, et: str) -> Val:
+@@ -720 +724 @@
+-def gen_search_hold(self, v: Val, et: str, t: str) -> Val:
++def gen_search_hold(self: Gen, v: Val, et: str, t: str) -> Val:
+@@ -742 +746 @@
+-def gen_big_items(self, o: Val) -> Val:
++def gen_big_items(self: Gen, o: Val) -> Val:
+@@ -753 +757 @@
+-def gen_update_pairs(self, d: str, v: Val, kv: list[str]) -> None:
++def gen_update_pairs(self: Gen, d: str, v: Val, kv: list[str]) -> None:
+@@ -765 +769 @@
+-def gen_list_hold(self, v: Val, et: str) -> Val:
++def gen_list_hold(self: Gen, v: Val, et: str) -> Val:
+@@ -776 +780 @@
+-def gen_key_hold(self, k: Val, kt: str) -> Val:
++def gen_key_hold(self: Gen, k: Val, kt: str) -> Val:
+@@ -790 +794 @@
+-def gen_dict_key(self, d: Val, e: str) -> Val:
++def gen_dict_key(self: Gen, d: Val, e: str) -> Val:
+@@ -798 +802 @@
+-def gen_dict_int(self, t: str) -> bool:
++def gen_dict_int(self: Gen, t: str) -> bool:
+@@ -804 +808 @@
+-def gen_big_dict_value(self, d: Val, e: str, keep: bool = False) -> Val:
++def gen_big_dict_value(self: Gen, d: Val, e: str, keep: bool = False) -> Val:
+@@ -812 +816 @@
+-def gen_dict_bigkey(self, t: str) -> bool:
++def gen_dict_bigkey(self: Gen, t: str) -> bool:
+@@ -818 +822 @@
+-def gen_key_coerce(self, k: Val, kt: str) -> Val:
++def gen_key_coerce(self: Gen, k: Val, kt: str) -> Val:
+@@ -827 +831 @@
+-def gen_key_slot(self, k: Val) -> str:
++def gen_key_slot(self: Gen, k: Val) -> str:
+@@ -833 +837 @@
+-def gen_big_key_entry(self, d: Val, k: Val, fn: str) -> str:
++def gen_big_key_entry(self: Gen, d: Val, k: Val, fn: str) -> str:
+@@ -840 +844 @@
+-def gen_dict_key_args(self, kx: Val, k: str) -> list[str]:
++def gen_dict_key_args(self: Gen, kx: Val, k: str) -> list[str]:
+@@ -848 +852 @@
+-def gen_dict_key_fn(self, fn: str, kx: Val) -> str:
++def gen_dict_key_fn(self: Gen, fn: str, kx: Val) -> str:
+@@ -854 +858 @@
+-def gen_big_key(self, k: Val) -> Val:
++def gen_big_key(self: Gen, k: Val) -> Val:
+@@ -863 +867 @@
+-def gen_dict_put(self, d: Val, k: Val, ks: str, v: Val, kv: list[str]) -> None:
++def gen_dict_put(self: Gen, d: Val, k: Val, ks: str, v: Val, kv: list[str]) -> None:
+@@ -872 +876 @@
+-def gen_dict_value(self, d: Val, e: str, keep: bool = False) -> Val:
++def gen_dict_value(self: Gen, d: Val, e: str, keep: bool = False) -> Val:
+@@ -881 +885 @@
+-def gen_held_read(self, v: Val) -> Val:
++def gen_held_read(self: Gen, v: Val) -> Val:
+@@ -899 +903 @@
+-def gen_held_default(self, v: Val, et: str, vt: str) -> Val:
++def gen_held_default(self: Gen, v: Val, et: str, vt: str) -> Val:
+@@ -908 +912 @@
+-def gen_held_pair(self, v: Val) -> Val:
++def gen_held_pair(self: Gen, v: Val) -> Val:
+@@ -921 +925 @@
+-def gen_big_dict_key(self, d: Val, e: str) -> Val:
++def gen_big_dict_key(self: Gen, d: Val, e: str) -> Val:
+@@ -929 +933 @@
+-def gen_dict_box(self, b: str) -> Val:
++def gen_dict_box(self: Gen, b: str) -> Val:
+@@ -937 +941 @@
+-def gen_big_dict_method(self, o: Val, m: str, args: list[Node]) -> Val:
++def gen_big_dict_method(self: Gen, o: Val, m: str, args: list[Node]) -> Val:
+@@ -976 +980 @@
+-def gen_big_dict_call(self, o: Val, m: str, kx: Val, k: str, d: Val, has: bool, x: str) -> Val:
++def gen_big_dict_call(self: Gen, o: Val, m: str, kx: Val, k: str, d: Val, has: bool, x: str) -> Val:
+@@ -1019 +1023 @@
+-def gen_big_popitem(self, o: Val) -> Val:
++def gen_big_popitem(self: Gen, o: Val) -> Val:
+@@ -1028 +1032 @@
+-def gen_dict_store(self, d: str, key: str, v: Val, kv: list[str], e: str = "") -> None:
++def gen_dict_store(self: Gen, d: str, key: str, v: Val, kv: list[str], e: str = "") -> None:
+@@ -1045 +1049 @@
+-def gen_set_int(self, t: str) -> bool:
++def gen_set_int(self: Gen, t: str) -> bool:
+@@ -1051 +1055 @@
+-def gen_big_set_value(self, s: Val, j: str) -> Val:
++def gen_big_set_value(self: Gen, s: Val, j: str) -> Val:
+@@ -1059 +1063 @@
+-def gen_set_value(self, s: Val, j: str) -> Val:
++def gen_set_value(self: Gen, s: Val, j: str) -> Val:
+@@ -1067 +1071 @@
+-def gen_set_coerce(self, v: Val, et: str) -> Val:
++def gen_set_coerce(self: Gen, v: Val, et: str) -> Val:
+@@ -1077 +1081 @@
+-def gen_set_store(self, s: str, v: Val, et: str) -> None:
++def gen_set_store(self: Gen, s: str, v: Val, et: str) -> None:
+@@ -1086 +1090 @@
+-def gen_big_set_method(self, o: Val, m: str, args: list[Node]) -> Val:
++def gen_big_set_method(self: Gen, o: Val, m: str, args: list[Node]) -> Val:
+@@ -1116 +1120 @@
+-def gen_big_list_minmax(self, o: Val, maximum: bool) -> Val:
++def gen_big_list_minmax(self: Gen, o: Val, maximum: bool) -> Val:
+@@ -1123 +1127 @@
+-def gen_big_list_find(self, o: Val, x: Val, op: int, st: str, en: str) -> Val:
++def gen_big_list_find(self: Gen, o: Val, x: Val, op: int, st: str, en: str) -> Val:
+@@ -1135 +1139 @@
+-def gen_big_list_method(self, o: Val, m: str, args: list[Node]) -> Val:
++def gen_big_list_method(self: Gen, o: Val, m: str, args: list[Node]) -> Val:
+@@ -1166 +1170 @@
+-def gen_big_len(self, v: Val) -> Val:
++def gen_big_len(self: Gen, v: Val) -> Val:
+@@ -1175 +1179 @@
+-def gen_big_hashed(self, v: Val) -> Val:
++def gen_big_hashed(self: Gen, v: Val) -> Val:
+@@ -1181 +1185 @@
+-def gen_big_tuple_narrow(self, v: Val) -> Val:
++def gen_big_tuple_narrow(self: Gen, v: Val) -> Val:
+@@ -1194 +1198 @@
+-def gen_big_item(self, v: Val, lo: Val, k: int, j: str) -> Val:
++def gen_big_item(self: Gen, v: Val, lo: Val, k: int, j: str) -> Val:
+@@ -1216 +1220 @@
+-def gen_big_view_test(self, v: Val, t: str) -> str:
++def gen_big_view_test(self: Gen, v: Val, t: str) -> str:
+@@ -1236 +1240 @@
+-def gen_big_tuple_view(self, v: Val, t: str) -> Val:
++def gen_big_tuple_view(self: Gen, v: Val, t: str) -> Val:
+@@ -1259 +1263 @@
+-def gen_big_tuple_repr(self, v: Val) -> Val:
++def gen_big_tuple_repr(self: Gen, v: Val) -> Val:
+@@ -1272 +1276 @@
+-def gen_big_tuple_hash(self, v: Val) -> Val:
++def gen_big_tuple_hash(self: Gen, v: Val) -> Val:
+@@ -1286 +1290 @@
+-def gen_big_parse(self, s: Val, base: Val) -> Val:
++def gen_big_parse(self: Gen, s: Val, base: Val) -> Val:
+@@ -1325 +1329 @@
+-def gen_big_literal(self, text: str) -> Val:
++def gen_big_literal(self: Gen, text: str) -> Val:
+@@ -1352 +1356 @@
+-def gen_big_binop(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
++def gen_big_binop(self: Gen, op: str, a: Val, b: Val, shown: str = "") -> Val:
+@@ -1372 +1376 @@
+-def gen_big_compare(self, op: str, a: Val, b: Val) -> Val:
++def gen_big_compare(self: Gen, op: str, a: Val, b: Val) -> Val:
+@@ -1422 +1426 @@
+-def gen_big_method(self, v: Val, m: str) -> Val:
++def gen_big_method(self: Gen, v: Val, m: str) -> Val:
+@@ -1431 +1435 @@
+-def gen_big_builtin(self, name: str, vals: list[Val]) -> Val:
++def gen_big_builtin(self: Gen, name: str, vals: list[Val]) -> Val:
+--- a/src/pystachy_compiler/builtins.py
++++ b/src/pystachy_compiler/builtins.py
+@@ -2,0 +3,4 @@
++from typing import TYPE_CHECKING
++if TYPE_CHECKING:
++    from src.pystachy_compiler.gen import Gen
++from typing import Any as Gen  # type: ignore[assignment]
+@@ -79 +83 @@
+-def gen_dotted(self, n: Node) -> str:
++def gen_dotted(self: Gen, n: Node) -> str:
+@@ -90 +94 @@
+-def gen_modattr(self, path: str) -> Val:
++def gen_modattr(self: Gen, path: str) -> Val:
+@@ -162 +166 @@
+-def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool = False) -> Val:
++def gen_builtin(self: Gen, name: str, args: list[Node], want: str, resultsoft: bool = False) -> Val:
+@@ -1084 +1088 @@
+-def gen_callable_type(self, t: str) -> int:
++def gen_callable_type(self: Gen, t: str) -> int:
+@@ -1099 +1103 @@
+-def gen_vnode(self, v: Val) -> Node:
++def gen_vnode(self: Gen, v: Val) -> Node:
+@@ -1105 +1109 @@
+-def gen_key_check(self, key: Val, of: str) -> None:
++def gen_key_check(self: Gen, key: Val, of: str) -> None:
+@@ -1113 +1117 @@
+-def gen_key_none(self, key: Val, et: str, use: str, of: str) -> str:
++def gen_key_none(self: Gen, key: Val, et: str, use: str, of: str) -> str:
+@@ -1138 +1142 @@
+-def gen_key_free(self, t: str, use: str) -> bool:
++def gen_key_free(self: Gen, t: str, use: str) -> bool:
+@@ -1163 +1167 @@
+-def gen_call_key(self, key: Val, x: Val) -> Val:
++def gen_call_key(self: Gen, key: Val, x: Val) -> Val:
+@@ -1174 +1178 @@
+-def gen_keys_of(self, xs: Val, key: Val) -> Val:
++def gen_keys_of(self: Gen, xs: Val, key: Val) -> Val:
+@@ -1208 +1212 @@
+-def gen_key_sort(self, xs: Val, key: Val, rev: str, taken: bool) -> None:
++def gen_key_sort(self: Gen, xs: Val, key: Val, rev: str, taken: bool) -> None:
+@@ -1226 +1230 @@
+-def gen_key_minmax(self, xs: Val, key: Val, name: str) -> Val:
++def gen_key_minmax(self: Gen, xs: Val, key: Val, name: str) -> Val:
+@@ -1280 +1284 @@
+-def gen_key_none_join(self, r: Val, lnone: str, xs: Val, vals: list[Val], name: str) -> Val:
++def gen_key_none_join(self: Gen, r: Val, lnone: str, xs: Val, vals: list[Val], name: str) -> Val:
+@@ -1317 +1321 @@
+-def gen_key_minmax2(self, vals: list[Val], key: Val, name: str) -> Val:
++def gen_key_minmax2(self: Gen, vals: list[Val], key: Val, name: str) -> Val:
+@@ -1340 +1344 @@
+-def gen_key_minmax_next(self, o: Val, key: Val, name: str) -> Val:
++def gen_key_minmax_next(self: Gen, o: Val, key: Val, name: str) -> Val:
+@@ -1388 +1392 @@
+-def gen_iter_object(self, t: str) -> bool:
++def gen_iter_object(self: Gen, t: str) -> bool:
+@@ -1393 +1397 @@
+-def gen_anyall(self, v: Val, name: str) -> Val:
++def gen_anyall(self: Gen, v: Val, name: str) -> Val:
+@@ -1428 +1432 @@
+-def gen_stream_start(self, name: str, args: list[Node]) -> str:
++def gen_stream_start(self: Gen, name: str, args: list[Node]) -> str:
+@@ -1447 +1451 @@
+-def gen_reduce(self, name: str, args: list[Node], stt: str) -> Val:
++def gen_reduce(self: Gen, name: str, args: list[Node], stt: str) -> Val:
+@@ -1531 +1535 @@
+-def gen_comp_end(self, acc: str, comp: str) -> str:
++def gen_comp_end(self: Gen, acc: str, comp: str) -> str:
+@@ -1541 +1545 @@
+-def gen_neumaier(self, acc: str, comp: str, x: str) -> None:
++def gen_neumaier(self: Gen, acc: str, comp: str, x: str) -> None:
+@@ -1555 +1559 @@
+-def gen_sum_union_item(self, r: Reduce, v: Val) -> None:
++def gen_sum_union_item(self: Gen, r: Reduce, v: Val) -> None:
+@@ -1594 +1598 @@
+-def gen_sum_union_end(self, r: Reduce) -> Val:
++def gen_sum_union_end(self: Gen, r: Reduce) -> Val:
+@@ -1620 +1624 @@
+-def gen_reduce_item(self, r: Reduce, e: Node) -> None:
++def gen_reduce_item(self: Gen, r: Reduce, e: Node) -> None:
+@@ -1715 +1719 @@
+-def gen_iterator_call(self, n: Node) -> bool:
++def gen_iterator_call(self: Gen, n: Node) -> bool:
+@@ -1721 +1725 @@
+-def gen_is_mapcall(self, n: Node) -> bool:
++def gen_is_mapcall(self: Gen, n: Node) -> bool:
+@@ -1725 +1729 @@
+-def gen_mapgen(self, n: Node) -> Node:
++def gen_mapgen(self: Gen, n: Node) -> Node:
+@@ -1754 +1758 @@
+-def gen_consume(self, n: Node, want: str, arg: IterArg | None = None, resultsoft: bool = False) -> Val:
++def gen_consume(self: Gen, n: Node, want: str, arg: IterArg | None = None, resultsoft: bool = False) -> Val:
+@@ -1782 +1786 @@
+-def gen_typed_list(self, v: Val, want: str) -> Val:
++def gen_typed_list(self: Gen, v: Val, want: str) -> Val:
+@@ -1803 +1807 @@
+-def gen_as_list(self, v: Val, name: str) -> Val:
++def gen_as_list(self: Gen, v: Val, name: str) -> Val:
+@@ -1898 +1902 @@
+-def gen_bytes_(self, args: list[Node]) -> Val:
++def gen_bytes_(self: Gen, args: list[Node]) -> Val:
+@@ -1943 +1947 @@
+-def gen_bytes_method(self, o: Val, m: str, args: list[Node]) -> Val:
++def gen_bytes_method(self: Gen, o: Val, m: str, args: list[Node]) -> Val:
+@@ -2018 +2022 @@
+-def gen_reverse_arg(self, n: Node, name: str) -> str:
++def gen_reverse_arg(self: Gen, n: Node, name: str) -> str:
+@@ -2021 +2025 @@
+-def gen_reverse_val(self, r: Val, name: str) -> str:
++def gen_reverse_val(self: Gen, r: Val, name: str) -> str:
+@@ -2030 +2034 @@
+-def gen_parse_expr(self, text: str) -> Node:
++def gen_parse_expr(self: Gen, text: str) -> Node:
+@@ -2033 +2037 @@
+-def gen_next_(self, args: list[Node], want: str) -> Val:
++def gen_next_(self: Gen, args: list[Node], want: str) -> Val:
+@@ -2104 +2108 @@
+-def gen_iter_(self, args: list[Node]) -> Val:
++def gen_iter_(self: Gen, args: list[Node]) -> Val:
+@@ -2172 +2176 @@
+-def gen_iter_obj(self, name: str, vals: list[Val]) -> Val:
++def gen_iter_obj(self: Gen, name: str, vals: list[Val]) -> Val:
+@@ -2186 +2190 @@
+-def gen_walk(self, name: str, args: list[Node]) -> Val:
++def gen_walk(self: Gen, name: str, args: list[Node]) -> Val:
+@@ -2211 +2215 @@
+-def gen_range_prim(self, name: str, args: list[Node]) -> Val:
++def gen_range_prim(self: Gen, name: str, args: list[Node]) -> Val:
+@@ -2232 +2236 @@
+-def gen_range_fields(self, v: Val) -> list[str]:
++def gen_range_fields(self: Gen, v: Val) -> list[str]:
+@@ -2238 +2242 @@
+-def gen_print_(self, args: list[Node]) -> Val:
++def gen_print_(self: Gen, args: list[Node]) -> Val:
+@@ -2306 +2310 @@
+-def gen_pwrite(self, fd: str, fv: str, s: str, fo: Val) -> None:
++def gen_pwrite(self: Gen, fd: str, fv: str, s: str, fo: Val) -> None:
+@@ -2315 +2319 @@
+-def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> Val:
++def gen_bmethod(self: Gen, o: Val, m: str, args: list[Node], first: bool = False) -> Val:
+@@ -2705 +2709 @@
+-def gen_update(self, o: Val, args: list[Node]) -> Val:
++def gen_update(self: Gen, o: Val, args: list[Node]) -> Val:
+@@ -2743 +2747 @@
+-def gen_isclose(self, args: list[Node]) -> Val:
++def gen_isclose(self: Gen, args: list[Node]) -> Val:
+@@ -2774 +2778 @@
+-def gen_prod_seq(self, xs: Val, s: Val) -> Val:
++def gen_prod_seq(self: Gen, xs: Val, s: Val) -> Val:
+@@ -2798 +2802 @@
+-def gen_prod_item(self, s: Val, item: Val) -> Val:
++def gen_prod_item(self: Gen, s: Val, item: Val) -> Val:
+@@ -2875 +2879 @@
+-def gen_dict_pairs(self, v: Val, want: str, found: str = "") -> Val:
++def gen_dict_pairs(self: Gen, v: Val, want: str, found: str = "") -> Val:
+@@ -2907 +2911 @@
+-def gen_tmethod(self, o: Val, m: str, args: list[Node]) -> Val:
++def gen_tmethod(self: Gen, o: Val, m: str, args: list[Node]) -> Val:
+--- a/src/pystachy_compiler/calls.py
++++ b/src/pystachy_compiler/calls.py
+@@ -2,0 +3,4 @@
++from typing import TYPE_CHECKING
++if TYPE_CHECKING:
++    from src.pystachy_compiler.gen import Gen
++from typing import Any as Gen  # type: ignore[assignment]
+@@ -51 +55 @@
+-def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str = "") -> Val:
++def gen_call(self: Gen, n: Node, want: str, resultsoft: bool = False, typeargs: str = "") -> Val:
+@@ -216 +220 @@
+-def gen_star_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str = "") -> Val:
++def gen_star_call(self: Gen, n: Node, want: str, resultsoft: bool = False, typeargs: str = "") -> Val:
+@@ -346 +350 @@
+-def gen_static_callee(self, f: Node) -> bool:
++def gen_static_callee(self: Gen, f: Node) -> bool:
+@@ -361 +365 @@
+-def gen_star_who(self, f: Node) -> str:
++def gen_star_who(self: Gen, f: Node) -> str:
+@@ -386 +390 @@
+-def gen_print_star(self, n: Node, args: list[Node]) -> Val:
++def gen_print_star(self: Gen, n: Node, args: list[Node]) -> Val:
+@@ -410 +414 @@
+-def gen_not_callable(self, name: str, t: str) -> None:
++def gen_not_callable(self: Gen, name: str, t: str) -> None:
+@@ -421 +425 @@
+-def gen_obj_call(self, o: Val, args: list[Node], want: str, resultsoft: bool = False) -> Val:
++def gen_obj_call(self: Gen, o: Val, args: list[Node], want: str, resultsoft: bool = False) -> Val:
+@@ -439 +443 @@
+-def gen_cached_wrapper(self, t: str) -> bool:
++def gen_cached_wrapper(self: Gen, t: str) -> bool:
+@@ -444 +448 @@
+-def gen_call_cache(self, o: Val, args: list[Node], want: str, resultsoft: bool = False) -> Val:
++def gen_call_cache(self: Gen, o: Val, args: list[Node], want: str, resultsoft: bool = False) -> Val:
+@@ -454 +458 @@
+-def gen_to_callable(self, v: Val, t: str) -> Val:
++def gen_to_callable(self: Gen, v: Val, t: str) -> Val:
+@@ -474 +478 @@
+-def gen_adapter(self, ft: str, t: str) -> str:
++def gen_adapter(self: Gen, ft: str, t: str) -> str:
+@@ -537 +541 @@
+-def gen_callable_pat(self, a: Node) -> str:
++def gen_callable_pat(self: Gen, a: Node) -> str:
+@@ -555 +559 @@
+-def gen_pat_arg(self, v: Val, a: Node) -> Val:
++def gen_pat_arg(self: Gen, v: Val, a: Node) -> Val:
+@@ -578 +582 @@
+-def gen_adapter_ret(self, ft: str, ps: list[str]) -> str:
++def gen_adapter_ret(self: Gen, ft: str, ps: list[str]) -> str:
+@@ -618 +622 @@
+-def gen_call_callable(self, o: Val, args: list[Node]) -> Val:
++def gen_call_callable(self: Gen, o: Val, args: list[Node]) -> Val:
+@@ -665 +669 @@
+-def gen_call_value(self, v: Val, args: list[Node], want: str, resultsoft: bool = False) -> Val:
++def gen_call_value(self: Gen, v: Val, args: list[Node], want: str, resultsoft: bool = False) -> Val:
+@@ -684 +688 @@
+-def gen_bound(self, s: str) -> bool:
++def gen_bound(self: Gen, s: str) -> bool:
+@@ -688 +692 @@
+-def gen_ffi_at(self, n: Node) -> bool:
++def gen_ffi_at(self: Gen, n: Node) -> bool:
+@@ -698 +702 @@
+-def gen_at_arg(self, n: Node, f: FnInfo, j: int, offs: dict[int, Val]) -> Val:
++def gen_at_arg(self: Gen, n: Node, f: FnInfo, j: int, offs: dict[int, Val]) -> Val:
+@@ -721 +725 @@
+-def gen_open_call(self, n: Node) -> bool:
++def gen_open_call(self: Gen, n: Node) -> bool:
+@@ -724 +728 @@
+-def gen_close_temp(self, n: Node, v: Val) -> None:
++def gen_close_temp(self: Gen, n: Node, v: Val) -> None:
+@@ -740 +744 @@
+-def gen_open_(self, args: list[Node]) -> Val:
++def gen_open_(self: Gen, args: list[Node]) -> Val:
+@@ -799 +803 @@
+-def gen_method(self, o: Val, m: str, args: list[Node], want: str = "", resultsoft: bool = False) -> Val:
++def gen_method(self: Gen, o: Val, m: str, args: list[Node], want: str = "", resultsoft: bool = False) -> Val:
+@@ -895 +899 @@
+-def gen_unbound_call(self, tn: str, m: str, args: list[Node], want: str = "") -> Val:
++def gen_unbound_call(self: Gen, tn: str, m: str, args: list[Node], want: str = "") -> Val:
+@@ -922 +926 @@
+-def gen_kw_record(self, names: list[str], vals: list[Val]) -> Val:
++def gen_kw_record(self: Gen, names: list[str], vals: list[Val]) -> Val:
+@@ -929 +933 @@
+-def gen_kw_method(self, o: Val, m: str, args: list[Node]) -> Val:
++def gen_kw_method(self: Gen, o: Val, m: str, args: list[Node]) -> Val:
+@@ -952 +956 @@
+-def gen_kw_repr(self, v: Val) -> Val:
++def gen_kw_repr(self: Gen, v: Val) -> Val:
+@@ -964 +968 @@
+-def gen_kw_list(self, v: Val) -> Val:
++def gen_kw_list(self: Gen, v: Val) -> Val:
+@@ -968 +972 @@
+-def gen_kw_tuple(self, v: Val) -> Val:
++def gen_kw_tuple(self: Gen, v: Val) -> Val:
+@@ -972 +976 @@
+-def gen_kw_dict(self, v: Val) -> Val:
++def gen_kw_dict(self: Gen, v: Val) -> Val:
+@@ -987 +991 @@
+-def gen_method_value(self, o: Val, name: str) -> Val:
++def gen_method_value(self: Gen, o: Val, name: str) -> Val:
+@@ -1017 +1021 @@
+-def gen_replace(self, o: Val, args: list[Node]) -> Val:
++def gen_replace(self: Gen, o: Val, args: list[Node]) -> Val:
+@@ -1039 +1043 @@
+-def gen_nt_new(self, c: str, vals: list[Val], want: str) -> Val:
++def gen_nt_new(self: Gen, c: str, vals: list[Val], want: str) -> Val:
+@@ -1051 +1055 @@
+-def gen_nt_make(self, c: str, args: list[Node], want: str) -> Val:
++def gen_nt_make(self: Gen, c: str, args: list[Node], want: str) -> Val:
+@@ -1084 +1088 @@
+-def gen_dc_replace(self, args: list[Node]) -> Val:
++def gen_dc_replace(self: Gen, args: list[Node]) -> Val:
+@@ -1138 +1142 @@
+-def gen_asdict(self, o: Val, args: list[Node]) -> Val:
++def gen_asdict(self: Gen, o: Val, args: list[Node]) -> Val:
+@@ -1156 +1160 @@
+-def gen_init_result(self, v: Val) -> None:
++def gen_init_result(self: Gen, v: Val) -> None:
+@@ -1191 +1195 @@
+-def gen_new_obj(self, c: str) -> Val:
++def gen_new_obj(self: Gen, c: str) -> Val:
+@@ -1206 +1210 @@
+-def gen_pcoerce(self, v: Val, t: str, f: FnInfo, j: int) -> Val:
++def gen_pcoerce(self: Gen, v: Val, t: str, f: FnInfo, j: int) -> Val:
+@@ -1227 +1231 @@
+-def gen_virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: str, none: str, resultsoft: bool = False) -> Val:
++def gen_virtual_call(self: Gen, f: FnInfo, pre: list[Val], args: list[Node], want: str, none: str, resultsoft: bool = False) -> Val:
+@@ -1302 +1306 @@
+-def gen_scalar_call_types(self, f: FnInfo, args: list[Node]) -> list[str]:
++def gen_scalar_call_types(self: Gen, f: FnInfo, args: list[Node]) -> list[str]:
+@@ -1333 +1337 @@
+-def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "", none: str = "", cache: Val | None = None, direct: bool = False, resultsoft: bool = False, typeargs: str = "") -> Val:
++def gen_call_fn(self: Gen, f: FnInfo, pre: list[Val], args: list[Node], want: str = "", none: str = "", cache: Val | None = None, direct: bool = False, resultsoft: bool = False, typeargs: str = "") -> Val:
+@@ -1589 +1593 @@
+-def gen_fname(self, f: FnInfo) -> str:
++def gen_fname(self: Gen, f: FnInfo) -> str:
+@@ -1596 +1600 @@
+-def gen_arity(self, f: FnInfo, npre: int, args: list[Node]) -> None:
++def gen_arity(self: Gen, f: FnInfo, npre: int, args: list[Node]) -> None:
+@@ -1602 +1606 @@
+-def gen_arity_error(self, f: FnInfo, npre: int, args: list[Node]) -> str:
++def gen_arity_error(self: Gen, f: FnInfo, npre: int, args: list[Node]) -> str:
+@@ -1659 +1663 @@
+-def gen_kw_type(self, f: FnInfo, name: str) -> str:
++def gen_kw_type(self: Gen, f: FnInfo, name: str) -> str:
+@@ -1668 +1672 @@
+-def gen_dispatches(self, f: FnInfo, p: str) -> bool:
++def gen_dispatches(self: Gen, f: FnInfo, p: str) -> bool:
+@@ -1676 +1680 @@
+-def gen_tests(self, ns: list[Node], p: str) -> bool:
++def gen_tests(self: Gen, ns: list[Node], p: str) -> bool:
+@@ -1690 +1694 @@
+-def gen_getattr_name(self, n: Node) -> str:
++def gen_getattr_name(self: Gen, n: Node) -> str:
+--- a/src/pystachy_compiler/containers.py
++++ b/src/pystachy_compiler/containers.py
+@@ -2,0 +3,4 @@
++from typing import TYPE_CHECKING
++if TYPE_CHECKING:
++    from src.pystachy_compiler.gen import Gen
++from typing import Any as Gen  # type: ignore[assignment]
+@@ -40 +44 @@
+-def gen_list_id_kind(self, t: str) -> int:
++def gen_list_id_kind(self: Gen, t: str) -> int:
+@@ -54 +58 @@
+-def gen_list_identity(self, v: Val) -> Val:
++def gen_list_identity(self: Gen, v: Val) -> Val:
+@@ -61 +65 @@
+-def gen_list_item(self, o: Val, i: Val, keep: bool = False) -> Val:
++def gen_list_item(self: Gen, o: Val, i: Val, keep: bool = False) -> Val:
+@@ -71 +75 @@
+-def gen_list_value(self, o: Val, i: str, raw: str, keep: bool = False) -> Val:
++def gen_list_value(self: Gen, o: Val, i: str, raw: str, keep: bool = False) -> Val:
+@@ -79 +83 @@
+-def gen_list_store(self, o: Val, v: Val, method: str, index: str = "") -> None:
++def gen_list_store(self: Gen, o: Val, v: Val, method: str, index: str = "") -> None:
+@@ -98 +102 @@
+-def gen_list_minmax(self, o: Val, desc: str, maximum: bool) -> Val:
++def gen_list_minmax(self: Gen, o: Val, desc: str, maximum: bool) -> Val:
+@@ -110 +114 @@
+-def gen_list_find(self, o: Val, v: Val, method: str, start: str = "", stop: str = "") -> Val:
++def gen_list_find(self: Gen, o: Val, v: Val, method: str, start: str = "", stop: str = "") -> Val:
+@@ -134 +138 @@
+-def gen_none_container(self, e: Node) -> Val:
++def gen_none_container(self: Gen, e: Node) -> Val:
+@@ -168 +172 @@
+-def gen_set_display(self, n: Node, want: str, folded: bool, returnctx: bool = False, resultsoft: bool = False) -> Val:
++def gen_set_display(self: Gen, n: Node, want: str, folded: bool, returnctx: bool = False, resultsoft: bool = False) -> Val:
+@@ -245 +249 @@
+-def gen_star_items(self, x: Node) -> Val:
++def gen_star_items(self: Gen, x: Node) -> Val:
+@@ -272 +276 @@
+-def gen_star_display(self, n: Node, want: str) -> Val:
++def gen_star_display(self: Gen, n: Node, want: str) -> Val:
+@@ -345 +349 @@
+-def gen_iter_elem(self, t: str) -> str:
++def gen_iter_elem(self: Gen, t: str) -> str:
+@@ -361 +365 @@
+-def gen_siter(self, n: Node, et: str, what: str, resultsoft: bool = False) -> Val:
++def gen_siter(self: Gen, n: Node, et: str, what: str, resultsoft: bool = False) -> Val:
+@@ -368 +372 @@
+-def gen_sitems(self, v: Val, et: str, what: str) -> Val:
++def gen_sitems(self: Gen, v: Val, et: str, what: str) -> Val:
+@@ -391 +395 @@
+-def gen_supdate(self, s: str, v: Val, et: str) -> None:
++def gen_supdate(self: Gen, s: str, v: Val, et: str) -> None:
+@@ -401 +405 @@
+-def gen_sdiscard(self, ov: str, v: Val, et: str) -> None:
++def gen_sdiscard(self: Gen, ov: str, v: Val, et: str) -> None:
+@@ -420 +424 @@
+-def gen_sargs(self, o: Val, m: str, args: list[Node]) -> list[SetArg]:
++def gen_sargs(self: Gen, o: Val, m: str, args: list[Node]) -> list[SetArg]:
+@@ -448 +452 @@
+-def gen_stake(self, o: Val, m: str, x: SetArg) -> Val:
++def gen_stake(self: Gen, o: Val, m: str, x: SetArg) -> Val:
+@@ -462 +466 @@
+-def gen_sgen(self, o: Val, m: str, g: Node, arg: IterArg | None) -> Val:
++def gen_sgen(self: Gen, o: Val, m: str, g: Node, arg: IterArg | None) -> Val:
+@@ -472 +476 @@
+-def gen_keys_list(self, v: Val) -> Val:
++def gen_keys_list(self: Gen, v: Val) -> Val:
+@@ -476 +480 @@
+-def gen_set_new(self, name: str, args: list[Node], want: str, resultsoft: bool = False) -> Val:
++def gen_set_new(self: Gen, name: str, args: list[Node], want: str, resultsoft: bool = False) -> Val:
+@@ -502 +506 @@
+-def gen_setop(self, op: str, a: Val, b: Val) -> Val:
++def gen_setop(self: Gen, op: str, a: Val, b: Val) -> Val:
+@@ -511 +515 @@
+-def gen_smethod(self, o: Val, m: str, args: list[Node]) -> Val:
++def gen_smethod(self: Gen, o: Val, m: str, args: list[Node]) -> Val:
+@@ -650 +654 @@
+-def gen_fromkeys(self, args: list[Node], want: str, resultsoft: bool = False) -> Val:
++def gen_fromkeys(self: Gen, args: list[Node], want: str, resultsoft: bool = False) -> Val:
+@@ -700 +704 @@
+-def gen_affix_any(self, tup: Val, m: str, av: list[str], base: str = "str") -> Val:
++def gen_affix_any(self: Gen, tup: Val, m: str, av: list[str], base: str = "str") -> Val:
+@@ -720 +724 @@
+-def gen_optdefault(self, d: Val, t: str) -> str:
++def gen_optdefault(self: Gen, d: Val, t: str) -> str:
+@@ -727 +731 @@
+-def gen_key_kind(self, kt: str, dictionary: bool = False, built: bool = False) -> str:
++def gen_key_kind(self: Gen, kt: str, dictionary: bool = False, built: bool = False) -> str:
+@@ -753 +757 @@
+-def gen_key_class(self, t: str) -> bool:
++def gen_key_class(self: Gen, t: str) -> bool:
+@@ -758 +762 @@
+-def gen_key_items(self, t: str) -> bool:
++def gen_key_items(self: Gen, t: str) -> bool:
+@@ -768 +772 @@
+-def gen_key_problem(self, t: str) -> str:
++def gen_key_problem(self: Gen, t: str) -> str:
+@@ -780 +784 @@
+-def gen_elem_problem(self, t: str) -> str:
++def gen_elem_problem(self: Gen, t: str) -> str:
+@@ -785 +789 @@
+-def gen_hash_kind(self, c: str) -> str:
++def gen_hash_kind(self: Gen, c: str) -> str:
+@@ -794 +798 @@
+-def gen_hash_classes(self, t: str) -> list[ClassInfo]:
++def gen_hash_classes(self: Gen, t: str) -> list[ClassInfo]:
+@@ -805 +809 @@
+-def gen_hash_desc(self, t: str) -> str:
++def gen_hash_desc(self: Gen, t: str) -> str:
+@@ -825 +829 @@
+-def gen_key_fx(self, kt: str) -> str:
++def gen_key_fx(self: Gen, kt: str) -> str:
+@@ -832 +836 @@
+-def gen_key_repr(self, t: str) -> bool:
++def gen_key_repr(self: Gen, t: str) -> bool:
+@@ -839 +843 @@
+-def gen_dkey(self, k: Val, kt: str) -> Val:
++def gen_dkey(self: Gen, k: Val, kt: str) -> Val:
+@@ -858 +862 @@
+-def gen_bool_find(self, d: str, k: Val, key: str) -> str:
++def gen_bool_find(self: Gen, d: str, k: Val, key: str) -> str:
+@@ -873 +877 @@
+-def gen_int_any_lookup(self, d: Val, k: Val, get: bool) -> str:
++def gen_int_any_lookup(self: Gen, d: Val, k: Val, get: bool) -> str:
+@@ -896 +900 @@
+-def gen_int_key_entry(self, o: Val, k: Val, required: bool = False) -> str:
++def gen_int_key_entry(self: Gen, o: Val, k: Val, required: bool = False) -> str:
+@@ -911 +915 @@
+-def gen_dict_any_method(self, o: Val, m: str, args: list[Node]) -> Val:
++def gen_dict_any_method(self: Gen, o: Val, m: str, args: list[Node]) -> Val:
+@@ -970 +974 @@
+-def gen_store_key(self, k: Val, kt: str) -> Val:
++def gen_store_key(self: Gen, k: Val, kt: str) -> Val:
+@@ -979 +983 @@
+-def gen_store_elem(self, k: Val, et: str) -> Val:
++def gen_store_elem(self: Gen, k: Val, et: str) -> Val:
+@@ -986 +990 @@
+-def gen_nonekey(self, k: Val, none: str, fn: str, av: list[str], x: str) -> str:
++def gen_nonekey(self: Gen, k: Val, none: str, fn: str, av: list[str], x: str) -> str:
+@@ -1010 +1014 @@
+-def gen_keyed(self, k: Val, av: list[str]) -> list[str]:
++def gen_keyed(self: Gen, k: Val, av: list[str]) -> list[str]:
+@@ -1020 +1024 @@
+-def gen_none_arg(self, m: str, k: int) -> str:
++def gen_none_arg(self: Gen, m: str, k: int) -> str:
+@@ -1030 +1034 @@
+-def gen_to_str(self, v: Val) -> Val:
++def gen_to_str(self: Gen, v: Val) -> Val:
+@@ -1077 +1081 @@
+-def gen_obj_str(self, v: Val, m: str) -> Val:
++def gen_obj_str(self: Gen, v: Val, m: str) -> Val:
+@@ -1147 +1151 @@
+-def gen_obj_hash(self, v: Val) -> Val:
++def gen_obj_hash(self: Gen, v: Val) -> Val:
+@@ -1191 +1195 @@
+-def gen_hash_value(self, v: Val) -> Val:
++def gen_hash_value(self: Gen, v: Val) -> Val:
+@@ -1224 +1228 @@
+-def gen_hashable(self, t: str) -> bool:
++def gen_hashable(self: Gen, t: str) -> bool:
+@@ -1232 +1236 @@
+-def gen_repr(self, v: Val) -> Val:
++def gen_repr(self: Gen, v: Val) -> Val:
+--- a/src/pystachy_compiler/conversions.py
++++ b/src/pystachy_compiler/conversions.py
+@@ -2,0 +3,4 @@
++from typing import TYPE_CHECKING
++if TYPE_CHECKING:
++    from src.pystachy_compiler.gen import Gen
++from typing import Any as Gen  # type: ignore[assignment]
+@@ -31 +35 @@
+-def gen_to_slot(self, v: Val, keep: bool = False) -> str:
++def gen_to_slot(self: Gen, v: Val, keep: bool = False) -> str:
+@@ -48 +52 @@
+-def gen_from_slot(self, s: str, t: str) -> Val:
++def gen_from_slot(self: Gen, s: str, t: str) -> Val:
+@@ -59 +63 @@
+-def gen_rarg(self, v: Val) -> str:
++def gen_rarg(self: Gen, v: Val) -> str:
+@@ -64 +68 @@
+-def gen_rres(self, r: str, t: str) -> Val:
++def gen_rres(self: Gen, r: str, t: str) -> Val:
+@@ -71 +75 @@
+-def gen_as_int(self, v: Val) -> Val:
++def gen_as_int(self: Gen, v: Val) -> Val:
+@@ -78 +82 @@
+-def gen_as_float(self, v: Val) -> Val:
++def gen_as_float(self: Gen, v: Val) -> Val:
+@@ -85 +89 @@
+-def gen_num_cast(self, v: Val, t: str) -> Val:
++def gen_num_cast(self: Gen, v: Val, t: str) -> Val:
+@@ -92 +96 @@
+-def gen_num_cmp(self, op: str, a: Val, b: Val) -> Val:
++def gen_num_cmp(self: Gen, op: str, a: Val, b: Val) -> Val:
+@@ -99 +103 @@
+-def gen_int_ucmp(self, op: str, a: Val, b: Val) -> Val:
++def gen_int_ucmp(self: Gen, op: str, a: Val, b: Val) -> Val:
+@@ -107 +111 @@
+-def gen_ptr_cmp(self, op: str, a: Val, b: Val) -> Val:
++def gen_ptr_cmp(self: Gen, op: str, a: Val, b: Val) -> Val:
+@@ -114 +118 @@
+-def gen_floats(self, v: Val) -> Val:
++def gen_floats(self: Gen, v: Val) -> Val:
+@@ -120 +124 @@
+-def gen_ufloats(self, v: Val) -> Val:
++def gen_ufloats(self: Gen, v: Val) -> Val:
+@@ -126 +130 @@
+-def gen_is_dc(self, t: str) -> bool:
++def gen_is_dc(self: Gen, t: str) -> bool:
+@@ -129 +133 @@
+-def gen_isnum(self, t: str) -> bool:
++def gen_isnum(self: Gen, t: str) -> bool:
+@@ -132 +136 @@
+-def gen_isref(self, t: str) -> bool:
++def gen_isref(self: Gen, t: str) -> bool:
+@@ -135 +139 @@
+-def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
++def gen_coerce(self: Gen, v: Val, t: str, what: str = "") -> Val:
+@@ -239 +243 @@
+-def gen_desc(self, t: str, use: str) -> str:
++def gen_desc(self: Gen, t: str, use: str) -> str:
+@@ -245 +249 @@
+-def gen_plain_desc(self, t: str, use: str) -> str:
++def gen_plain_desc(self: Gen, t: str, use: str) -> str:
+@@ -352 +356 @@
+-def gen_rec_desc(self, t: str, use: str, active: dict[str, int], offset: int) -> str:
++def gen_rec_desc(self: Gen, t: str, use: str, active: dict[str, int], offset: int) -> str:
+@@ -368 +372 @@
+-def gen_rec_desc_body(self, t: str, use: str, active: dict[str, int], offset: int) -> str:
++def gen_rec_desc_body(self: Gen, t: str, use: str, active: dict[str, int], offset: int) -> str:
+--- a/src/pystachy_compiler/declarations.py
++++ b/src/pystachy_compiler/declarations.py
+@@ -2,0 +3,4 @@
++from typing import TYPE_CHECKING
++if TYPE_CHECKING:
++    from src.pystachy_compiler.gen import Gen
++from typing import Any as Gen  # type: ignore[assignment]
+@@ -82 +86 @@
+-def gen_ctype(self, base: str, ts: list[str], canon: bool = True) -> str:
++def gen_ctype(self: Gen, base: str, ts: list[str], canon: bool = True) -> str:
+@@ -125 +129 @@
+-def gen_none_items(self, t: str) -> str:
++def gen_none_items(self: Gen, t: str) -> str:
+@@ -131 +135 @@
+-def gen_subst(self, t: str, T: str, K: str, V: str, S: str) -> str:
++def gen_subst(self: Gen, t: str, T: str, K: str, V: str, S: str) -> str:
+@@ -145 +149 @@
+-def gen_typeof(self, n: Node) -> str:
++def gen_typeof(self: Gen, n: Node) -> str:
+@@ -151 +155 @@
+-def gen_ann(self, n: Node) -> str:
++def gen_ann(self: Gen, n: Node) -> str:
+@@ -307 +311 @@
+-def gen_class_family(self, ts: list[str]) -> str:
++def gen_class_family(self: Gen, ts: list[str]) -> str:
+@@ -326 +330 @@
+-def gen_ann_base(self, b: Node) -> str:
++def gen_ann_base(self: Gen, b: Node) -> str:
+@@ -346 +350 @@
+-def gen_ann_items(self, xs: list[Node]) -> list[str]:
++def gen_ann_items(self: Gen, xs: list[Node]) -> list[str]:
+@@ -358 +362 @@
+-def gen_unpack_ann(self, n: Node) -> str:
++def gen_unpack_ann(self: Gen, n: Node) -> str:
+@@ -370 +374 @@
+-def gen_tvar(self, s: str) -> str:
++def gen_tvar(self: Gen, s: str) -> str:
+@@ -376 +380 @@
+-def gen_self_type(self) -> str:
++def gen_self_type(self: Gen) -> str:
+@@ -381 +385 @@
+-def gen_pathlike(self, n: Node) -> bool:
++def gen_pathlike(self: Gen, n: Node) -> bool:
+@@ -387 +391 @@
+-def gen_imported_ref(self, n: Node) -> str:
++def gen_imported_ref(self: Gen, n: Node) -> str:
+@@ -395 +399 @@
+-def gen_union_members(self, n: Node, out: list[Node]) -> list[Node]:
++def gen_union_members(self: Gen, n: Node, out: list[Node]) -> list[Node]:
+@@ -404 +408 @@
+-def gen_has_path(self, n: Node) -> bool:
++def gen_has_path(self: Gen, n: Node) -> bool:
+@@ -407 +411 @@
+-def gen_path_union(self, ms: list[Node]) -> str:
++def gen_path_union(self: Gen, ms: list[Node]) -> str:
+@@ -424 +428 @@
+-def gen_typevar_def(self, st: Node) -> bool:
++def gen_typevar_def(self: Gen, st: Node) -> bool:
+@@ -446 +450 @@
+-def gen_typevar_in(self, anns: list[Node], skip: list[str]) -> str:
++def gen_typevar_in(self: Gen, anns: list[Node], skip: list[str]) -> str:
+@@ -461 +465 @@
+-def gen_any_in(self, anns: list[Node]) -> bool:
++def gen_any_in(self: Gen, anns: list[Node]) -> bool:
+@@ -480 +484 @@
+-def gen_any_variables(self, n: Node, classbody: bool) -> None:
++def gen_any_variables(self: Gen, n: Node, classbody: bool) -> None:
+@@ -502 +506 @@
+-def gen_class_params(self, st: Node) -> str:
++def gen_class_params(self: Gen, st: Node) -> str:
+@@ -523 +527 @@
+-def gen_alias_value(self, name: str) -> Node:
++def gen_alias_value(self: Gen, name: str) -> Node:
+@@ -528 +532 @@
+-def gen_alias_params(self, name: str) -> list[str]:
++def gen_alias_params(self: Gen, name: str) -> list[str]:
+@@ -540 +544 @@
+-def gen_alias_whole(self, name: str) -> Node:
++def gen_alias_whole(self: Gen, name: str) -> Node:
+@@ -549 +553 @@
+-def gen_alias_problem(self, e: Node) -> str:
++def gen_alias_problem(self: Gen, e: Node) -> str:
+@@ -611 +615 @@
+-def gen_alias_args(self, name: str, n: int) -> str:
++def gen_alias_args(self: Gen, name: str, n: int) -> str:
+@@ -628 +632 @@
+-def gen_alias_arity(self, name: str, tps: list[str], n: int) -> str:
++def gen_alias_arity(self: Gen, name: str, tps: list[str], n: int) -> str:
+@@ -636 +640 @@
+-def gen_alias_variadic(self, name: str) -> bool:
++def gen_alias_variadic(self: Gen, name: str) -> bool:
+@@ -644 +648 @@
+-def gen_alias_tvars(self, a: Node, out: list[str], seen: list[str]) -> None:
++def gen_alias_tvars(self: Gen, a: Node, out: list[str], seen: list[str]) -> None:
+@@ -657 +661 @@
+-def gen_alias_kept(self, name: str) -> bool:
++def gen_alias_kept(self: Gen, name: str) -> bool:
+@@ -667 +671 @@
+-def gen_rec_type(self, t: str) -> str:
++def gen_rec_type(self: Gen, t: str) -> str:
+@@ -673 +677 @@
+-def gen_rec_fold(self, t: str) -> str:
++def gen_rec_fold(self: Gen, t: str) -> str:
+@@ -680 +684 @@
+-def gen_recursive_aliases(self) -> None:
++def gen_recursive_aliases(self: Gen) -> None:
+@@ -709 +713 @@
+-def gen_unalias(self, a: Node, seen: list[str]) -> Node:
++def gen_unalias(self: Gen, a: Node, seen: list[str]) -> Node:
+@@ -738 +742 @@
+-def gen_subst_ann(self, n: Node, tps: list[str], args: list[Node]) -> Node:
++def gen_subst_ann(self: Gen, n: Node, tps: list[str], args: list[Node]) -> Node:
+@@ -746 +750 @@
+-def gen_alias_ann(self, n: Node) -> str:
++def gen_alias_ann(self: Gen, n: Node) -> str:
+@@ -769 +773 @@
+-def gen_unalias_all(self, n: Node) -> None:
++def gen_unalias_all(self: Gen, n: Node) -> None:
+@@ -786 +790 @@
+-def gen_class_tvars(self, cls: str) -> list[str]:
++def gen_class_tvars(self: Gen, cls: str) -> list[str]:
+@@ -792 +796 @@
+-def gen_ann_problem(self, n: Node, ret: bool) -> str:
++def gen_ann_problem(self: Gen, n: Node, ret: bool) -> str:
+@@ -800 +804 @@
+-def gen_vtype(self, n: Node) -> str:
++def gen_vtype(self: Gen, n: Node) -> str:
+@@ -807 +811 @@
+-def gen_typing_attr(self, n: Node) -> str:
++def gen_typing_attr(self: Gen, n: Node) -> str:
+@@ -816 +820 @@
+-def gen_typing_ref(self, n: Node) -> str:
++def gen_typing_ref(self: Gen, n: Node) -> str:
+@@ -827 +831 @@
+-def gen_typing_forms(self, m: Mod, body: list[Node], cls: bool) -> list[Node]:
++def gen_typing_forms(self: Gen, m: Mod, body: list[Node], cls: bool) -> list[Node]:
+@@ -890 +894 @@
+-def gen_stub(self, m: Mod, st: Node) -> bool:
++def gen_stub(self: Gen, m: Mod, st: Node) -> bool:
+@@ -898 +902 @@
+-def gen_typing_name(self, s: str) -> str:
++def gen_typing_name(self: Gen, s: str) -> str:
+@@ -910 +914 @@
+-def gen_opt(self, t: str, x: Node) -> str:
++def gen_opt(self: Gen, t: str, x: Node) -> str:
+@@ -920 +924 @@
+-def gen_optional(self, t: str) -> str:
++def gen_optional(self: Gen, t: str) -> str:
+@@ -937 +941 @@
+-def gen_ann_none(self, n: Node, seen: list[str]) -> bool:
++def gen_ann_none(self: Gen, n: Node, seen: list[str]) -> bool:
+@@ -953 +957 @@
+-def gen_join(self, a: str, b: str) -> str:
++def gen_join(self: Gen, a: str, b: str) -> str:
+@@ -980 +984 @@
+-def gen_wider(self, a: str, b: str) -> str:
++def gen_wider(self: Gen, a: str, b: str) -> str:
+@@ -1018 +1022 @@
+-def gen_widens_items(self, a: str, b: str) -> bool:
++def gen_widens_items(self: Gen, a: str, b: str) -> bool:
+@@ -1025 +1029 @@
+-def gen_boxwider(self, a: str, b: str) -> str:
++def gen_boxwider(self: Gen, a: str, b: str) -> str:
+@@ -1054 +1058 @@
+-def gen_boxto(self, v: Val, t: str) -> Val:
++def gen_boxto(self: Gen, v: Val, t: str) -> Val:
+@@ -1062 +1066 @@
+-def gen_widens(self, a: str, b: str) -> bool:
++def gen_widens(self: Gen, a: str, b: str) -> bool:
+@@ -1096 +1100 @@
+-def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
++def gen_declare_fn(self: Gen, d: Node, cls: str, inherited: bool = False) -> FnInfo:
+@@ -1414 +1418 @@
+-def gen_iter_ann(self, n: Node) -> str:
++def gen_iter_ann(self: Gen, n: Node) -> str:
+@@ -1420 +1424 @@
+-def gen_iter_item(self, n: Node) -> Node | None:
++def gen_iter_item(self: Gen, n: Node) -> Node | None:
+@@ -1428 +1432 @@
+-def gen_exc_attr(self, ci: ClassInfo, name: str) -> None:
++def gen_exc_attr(self: Gen, ci: ClassInfo, name: str) -> None:
+@@ -1445 +1449 @@
+-def gen_bad_class(self, ci: ClassInfo, why: str) -> None:
++def gen_bad_class(self: Gen, ci: ClassInfo, why: str) -> None:
+@@ -1455 +1459 @@
+-def gen_shadowed(self, ci: ClassInfo, name: str) -> bool:
++def gen_shadowed(self: Gen, ci: ClassInfo, name: str) -> bool:
+@@ -1467 +1471 @@
+-def gen_init_after(self, ci: ClassInfo, name: str) -> bool:
++def gen_init_after(self: Gen, ci: ClassInfo, name: str) -> bool:
+@@ -1497 +1501 @@
+-def gen_add_field(self, ci: ClassInfo, name: str, t: str) -> None:
++def gen_add_field(self: Gen, ci: ClassInfo, name: str, t: str) -> None:
+@@ -1510 +1514 @@
+-def gen_declare_fields(self, ci: ClassInfo) -> None:
++def gen_declare_fields(self: Gen, ci: ClassInfo) -> None:
+@@ -1537 +1541 @@
+-def gen_class_fields(self, ci: ClassInfo) -> None:
++def gen_class_fields(self: Gen, ci: ClassInfo) -> None:
+@@ -1834 +1838 @@
+-def gen_nt_class(self, ci: ClassInfo) -> None:
++def gen_nt_class(self: Gen, ci: ClassInfo) -> None:
+@@ -1852 +1856 @@
+-def gen_generic_base(self, n: Node) -> list[str]:
++def gen_generic_base(self: Gen, n: Node) -> list[str]:
+@@ -1865 +1869 @@
+-def gen_nt_base(self, n: Node) -> bool:
++def gen_nt_base(self: Gen, n: Node) -> bool:
+@@ -1869 +1873 @@
+-def gen_nt_fields(self, c: str) -> list[str]:
++def gen_nt_fields(self: Gen, c: str) -> list[str]:
+@@ -1876 +1880 @@
+-def gen_nt_defaults(self, c: str) -> Val:
++def gen_nt_defaults(self: Gen, c: str) -> Val:
+@@ -1887 +1891 @@
+-def gen_nt_dflt_type(self, c: str) -> str:
++def gen_nt_dflt_type(self: Gen, c: str) -> str:
+@@ -1901 +1905 @@
+-def gen_nt_dflt_display(self, c: str) -> Node:
++def gen_nt_dflt_display(self: Gen, c: str) -> Node:
+@@ -1912 +1916 @@
+-def gen_dc_fields(self, ci: ClassInfo) -> list[str]:
++def gen_dc_fields(self: Gen, ci: ClassInfo) -> list[str]:
+@@ -1917 +1921 @@
+-def gen_dc_field(self, ci: ClassInfo, st: Node) -> None:
++def gen_dc_field(self: Gen, ci: ClassInfo, st: Node) -> None:
+@@ -1958 +1962 @@
+-def gen_dc_factory(self, ci: ClassInfo, fl: str) -> None:
++def gen_dc_factory(self: Gen, ci: ClassInfo, fl: str) -> None:
+@@ -1984 +1988 @@
+-def gen_frozen_store(self, o: Val, name: str, delete: bool = False) -> bool:
++def gen_frozen_store(self: Gen, o: Val, name: str, delete: bool = False) -> bool:
+@@ -1995 +1999 @@
+-def gen_frozen(self, t: str, name: str) -> None:
++def gen_frozen(self: Gen, t: str, name: str) -> None:
+@@ -2005 +2009 @@
+-def gen_synth(self, ci: ClassInfo, name: str, ret: str, body: list[Node]) -> None:
++def gen_synth(self: Gen, ci: ClassInfo, name: str, ret: str, body: list[Node]) -> None:
+@@ -2023 +2027 @@
+-def gen_dc_methods(self, ci: ClassInfo) -> None:
++def gen_dc_methods(self: Gen, ci: ClassInfo) -> None:
+@@ -2090 +2094 @@
+-def gen_scan_fields(self, ci: ClassInfo, f: FnInfo, body: list[Node], known: dict[str, bool]) -> None:
++def gen_scan_fields(self: Gen, ci: ClassInfo, f: FnInfo, body: list[Node], known: dict[str, bool]) -> None:
+@@ -2165 +2169 @@
+-def gen_guess_args(self, init: FnInfo, args: list[Node], f: FnInfo) -> list[str]:
++def gen_guess_args(self: Gen, init: FnInfo, args: list[Node], f: FnInfo) -> list[str]:
+@@ -2189 +2193 @@
+-def gen_guess_varargs(self, init: FnInfo, args: list[Node], f: FnInfo) -> list[str]:
++def gen_guess_varargs(self: Gen, init: FnInfo, args: list[Node], f: FnInfo) -> list[str]:
+@@ -2242 +2246 @@
+-def gen_guess(self, e: Node, f: FnInfo) -> str:
++def gen_guess(self: Gen, e: Node, f: FnInfo) -> str:
+@@ -2457 +2461 @@
+-def gen_guess_iter(self, a: Node, f: FnInfo) -> str:
++def gen_guess_iter(self: Gen, a: Node, f: FnInfo) -> str:
+@@ -2497 +2501 @@
+-def gen_field_root(self, ci: ClassInfo, name: str) -> ClassInfo:
++def gen_field_root(self: Gen, ci: ClassInfo, name: str) -> ClassInfo:
+@@ -2503 +2507 @@
+-def gen_refine_field(self, ci: ClassInfo, name: str, t: str) -> None:
++def gen_refine_field(self: Gen, ci: ClassInfo, name: str, t: str) -> None:
+@@ -2517 +2521 @@
+-def gen_none_field(self, cls: str, name: str, cmp: bool) -> str:
++def gen_none_field(self: Gen, cls: str, name: str, cmp: bool) -> str:
+@@ -2553 +2557 @@
+-def gen_field_fill(self, root: ClassInfo, name: str) -> str:
++def gen_field_fill(self: Gen, root: ClassInfo, name: str) -> str:
+@@ -2574 +2578 @@
+-def gen_field_modfill(self, root: ClassInfo, name: str) -> str:
++def gen_field_modfill(self: Gen, root: ClassInfo, name: str) -> str:
+@@ -2600 +2604 @@
+-def gen_field_early(self, root: ClassInfo, name: str) -> str:
++def gen_field_early(self: Gen, root: ClassInfo, name: str) -> str:
+@@ -2643 +2647 @@
+-def gen_field_type(self, c: str, name: str) -> str:
++def gen_field_type(self: Gen, c: str, name: str) -> str:
+@@ -2649 +2653 @@
+-def gen_field_guess(self, root: ClassInfo, name: str) -> str:
++def gen_field_guess(self: Gen, root: ClassInfo, name: str) -> str:
+@@ -2671 +2675 @@
+-def gen_set_elsewhere(self, root: ClassInfo, name: str) -> bool:
++def gen_set_elsewhere(self: Gen, root: ClassInfo, name: str) -> bool:
+@@ -2697 +2701 @@
+-def gen_none_field_store(self, o: Val, name: str, v: Val) -> None:
++def gen_none_field_store(self: Gen, o: Val, name: str, v: Val) -> None:
+@@ -2714 +2718 @@
+-def gen_field(self, o: Val, name: str, store: bool = False) -> Val:
++def gen_field(self: Gen, o: Val, name: str, store: bool = False) -> Val:
+@@ -2778 +2782 @@
+-def gen_glue_field(self, o: Val, name: str) -> None:
++def gen_glue_field(self: Gen, o: Val, name: str) -> None:
+@@ -2789 +2793 @@
+-def gen_fn_attr_read(self, o: Val, name: str) -> None:
++def gen_fn_attr_read(self: Gen, o: Val, name: str) -> None:
+@@ -2804 +2808 @@
+-def gen_fgep(self, o: Val, i: int) -> str:
++def gen_fgep(self: Gen, o: Val, i: int) -> str:
+@@ -2817 +2821 @@
+-def gen_getfield(self, o: Val, p: Val, name: str) -> Val:
++def gen_getfield(self: Gen, o: Val, p: Val, name: str) -> Val:
+@@ -2919 +2923 @@
+-def gen_setfield(self, o: Val, p: Val, name: str, v: Val) -> None:
++def gen_setfield(self: Gen, o: Val, p: Val, name: str, v: Val) -> None:
+@@ -2949 +2953 @@
+-def gen_is_prop(self, t: str, name: str) -> bool:
++def gen_is_prop(self: Gen, t: str, name: str) -> bool:
+@@ -2957 +2961 @@
+-def gen_prop_store(self, o: Val, name: str, v: Val | None) -> None:
++def gen_prop_store(self: Gen, o: Val, name: str, v: Val | None) -> None:
+--- a/src/pystachy_compiler/dynamic.py
++++ b/src/pystachy_compiler/dynamic.py
+@@ -18,0 +19,4 @@
++from typing import TYPE_CHECKING
++if TYPE_CHECKING:
++    from src.pystachy_compiler.gen import Gen
++from typing import Any as Gen  # type: ignore[assignment]
+@@ -64 +68 @@
+-def gen_dyn_policy(self, line: int) -> bool:
++def gen_dyn_policy(self: Gen, line: int) -> bool:
+@@ -69 +73 @@
+-def gen_identity_modules(self, mods: list[Mod]) -> None:
++def gen_identity_modules(self: Gen, mods: list[Mod]) -> None:
+@@ -125 +129 @@
+-def gen_fn_home(self, f: FnInfo) -> str:
++def gen_fn_home(self: Gen, f: FnInfo) -> str:
+@@ -140 +144 @@
+-def gen_fn_identity(self, f: FnInfo) -> bool:
++def gen_fn_identity(self: Gen, f: FnInfo) -> bool:
+@@ -146 +150 @@
+-def gen_idhere(self) -> bool:
++def gen_idhere(self: Gen) -> bool:
+@@ -151 +155 @@
+-def gen_class_identity(self, ci: ClassInfo) -> bool:
++def gen_class_identity(self: Gen, ci: ClassInfo) -> bool:
+@@ -160 +164 @@
+-def gen_global_identity(self, name: str) -> bool:
++def gen_global_identity(self: Gen, name: str) -> bool:
+@@ -165 +169 @@
+-def gen_identity_event(self, why: str) -> None:
++def gen_identity_event(self: Gen, why: str) -> None:
+@@ -173 +177 @@
+-def gen_identity_free(self, t: str) -> bool:
++def gen_identity_free(self: Gen, t: str) -> bool:
+@@ -186 +190 @@
+-def gen_identity_inert(self, t: str, seen: list[str], handle: bool = False) -> bool:
++def gen_identity_inert(self: Gen, t: str, seen: list[str], handle: bool = False) -> bool:
+@@ -211 +215 @@
+-def gen_identity_call(self, f: FnInfo) -> None:
++def gen_identity_call(self: Gen, f: FnInfo) -> None:
+@@ -231 +235 @@
+-def gen_identity_global(self, name: str, t: str, store: bool) -> None:
++def gen_identity_global(self: Gen, name: str, t: str, store: bool) -> None:
+@@ -248 +252 @@
+-def gen_identity_field(self, ci: ClassInfo, t: str, store: bool) -> None:
++def gen_identity_field(self: Gen, ci: ClassInfo, t: str, store: bool) -> None:
+@@ -264 +268 @@
+-def gen_identity_box(self, v: Val, t: str) -> None:
++def gen_identity_box(self: Gen, v: Val, t: str) -> None:
+@@ -285 +289 @@
+-def gen_rtdata(self, sym: str) -> str:
++def gen_rtdata(self: Gen, sym: str) -> str:
+@@ -293 +297 @@
+-def gen_dyn_boxable(self, t: str) -> str:
++def gen_dyn_boxable(self: Gen, t: str) -> str:
+@@ -342 +346 @@
+-def gen_dyn_type(self, t: str) -> str:
++def gen_dyn_type(self: Gen, t: str) -> str:
+@@ -368 +372 @@
+-def gen_dyn_class_type(self, c: str) -> str:
++def gen_dyn_class_type(self: Gen, c: str) -> str:
+@@ -423 +427 @@
+-def gen_dyn_xmethod(self, c: str, m: str) -> bool:
++def gen_dyn_xmethod(self: Gen, c: str, m: str) -> bool:
+@@ -431 +435 @@
+-def gen_dyn_xhelper(self, c: str) -> None:
++def gen_dyn_xhelper(self: Gen, c: str) -> None:
+@@ -807 +811 @@
+-def comparison_storage_key(self, ci: ClassInfo) -> str:
++def comparison_storage_key(self: Gen, ci: ClassInfo) -> str:
+@@ -816 +820 @@
+-def comparison_reserve_fields(self, ci: ClassInfo) -> None:
++def comparison_reserve_fields(self: Gen, ci: ClassInfo) -> None:
+@@ -828 +832 @@
+-def comparison_record_write(self, name: str, t: str) -> None:
++def comparison_record_write(self: Gen, name: str, t: str) -> None:
+@@ -836 +840 @@
+-def comparison_storage(self, candidate: str = "") -> None:
++def comparison_storage(self: Gen, candidate: str = "") -> None:
+@@ -1263 +1267 @@
+-def comparison_property_type(self, ci: ClassInfo, name: str) -> str:
++def comparison_property_type(self: Gen, ci: ClassInfo, name: str) -> str:
+@@ -1290 +1294 @@
+-def gen_dyn_xbody(self, c: str) -> None:
++def gen_dyn_xbody(self: Gen, c: str) -> None:
+@@ -1413 +1417 @@
+-def gen_dyn_box(self, v: Val) -> Val:
++def gen_dyn_box(self: Gen, v: Val) -> Val:
+@@ -1557 +1561 @@
+-def box_big(self, v: Val) -> Val:
++def box_big(self: Gen, v: Val) -> Val:
+@@ -1612 +1616 @@
+-def gen_dyn_id_box(self, v: Val) -> Val:
++def gen_dyn_id_box(self: Gen, v: Val) -> Val:
+@@ -1617 +1621 @@
+-def gen_dyn_id_store(self, slot: str, v: Val, t: str) -> None:
++def gen_dyn_id_store(self: Gen, slot: str, v: Val, t: str) -> None:
+@@ -1666 +1670 @@
+-def gen_dyn_id_fresh(self, v: Val) -> bool:
++def gen_dyn_id_fresh(self: Gen, v: Val) -> bool:
+@@ -1675 +1679 @@
+-def gen_dyn_id_arg(self, v: Val) -> Val:
++def gen_dyn_id_arg(self: Gen, v: Val) -> Val:
+@@ -1683 +1687 @@
+-def gen_dyn_id_read(self, v: Val, slot: str) -> None:
++def gen_dyn_id_read(self: Gen, v: Val, slot: str) -> None:
+@@ -1742 +1746 @@
+-def gen_dyn_id_held(self, v: Val) -> Val:
++def gen_dyn_id_held(self: Gen, v: Val) -> Val:
+@@ -1777 +1781 @@
+-def gen_lazy_field(self, o: str, f: str, line: int) -> str:
++def gen_lazy_field(self: Gen, o: str, f: str, line: int) -> str:
+@@ -1792 +1796 @@
+-def gen_lazy_fields(self, f: FnInfo, body: list[Node]) -> None:
++def gen_lazy_fields(self: Gen, f: FnInfo, body: list[Node]) -> None:
+@@ -1881 +1885 @@
+-def gen_id_move(self, e: Node) -> bool:
++def gen_id_move(self: Gen, e: Node) -> bool:
+@@ -1941 +1945 @@
+-def gen_lazy_test(self, e: Node) -> bool:
++def gen_lazy_test(self: Gen, e: Node) -> bool:
+@@ -1951 +1955 @@
+-def gen_lazy_value(self, e: Node) -> bool:
++def gen_lazy_value(self: Gen, e: Node) -> bool:
+@@ -1970 +1974 @@
+-def gen_proven_call(self, e: Node) -> bool:
++def gen_proven_call(self: Gen, e: Node) -> bool:
+@@ -1997 +2001 @@
+-def gen_lazy_inert(self, n: Node) -> bool:
++def gen_lazy_inert(self: Gen, n: Node) -> bool:
+@@ -2019 +2023 @@
+-def gen_id_stmt(self, n: Node) -> None:
++def gen_id_stmt(self: Gen, n: Node) -> None:
+@@ -2034 +2038 @@
+-def gen_lazy_barrier(self, n: Node) -> None:
++def gen_lazy_barrier(self: Gen, n: Node) -> None:
+@@ -2056 +2060 @@
+-def gen_lazy_resolve(self, x: str) -> None:
++def gen_lazy_resolve(self: Gen, x: str) -> None:
+@@ -2083 +2087 @@
+-def gen_lazy_store(self, o: Val, box: str, name: str) -> bool:
++def gen_lazy_store(self: Gen, o: Val, box: str, name: str) -> bool:
+@@ -2117 +2121 @@
+-def gen_lazy_assign(self, n: Node) -> bool:
++def gen_lazy_assign(self: Gen, n: Node) -> bool:
+@@ -2168 +2172 @@
+-def gen_lazy_while(self, n: Node) -> None:
++def gen_lazy_while(self: Gen, n: Node) -> None:
+@@ -2182 +2186 @@
+-def gen_dyn_union_box(self, v: Val) -> Val:
++def gen_dyn_union_box(self: Gen, v: Val) -> Val:
+@@ -2211 +2215 @@
+-def gen_dyn_value_type(self, v: Val) -> str:
++def gen_dyn_value_type(self: Gen, v: Val) -> str:
+@@ -2250 +2254 @@
+-def gen_dyn_tagged_type(self, v: Val, method: str = "") -> str:
++def gen_dyn_tagged_type(self: Gen, v: Val, method: str = "") -> str:
+@@ -2275 +2279 @@
+-def gen_dyn_typeof(self, v: Val) -> str:
++def gen_dyn_typeof(self: Gen, v: Val) -> str:
+@@ -2283 +2287 @@
+-def gen_dyn_payload(self, v: Val, t: str) -> Val:
++def gen_dyn_payload(self: Gen, v: Val, t: str) -> Val:
+@@ -2297 +2301 @@
+-def gen_dyn_unbox(self, v: Val, t: str, what: str = "") -> Val:
++def gen_dyn_unbox(self: Gen, v: Val, t: str, what: str = "") -> Val:
+@@ -2356 +2360 @@
+-def gen_dyn_check(self, v: Val, ts: list[str], shown: str) -> None:
++def gen_dyn_check(self: Gen, v: Val, ts: list[str], shown: str) -> None:
+@@ -2361 +2365 @@
+-def gen_dyn_unboxable(self, t: str) -> bool:
++def gen_dyn_unboxable(self: Gen, t: str) -> bool:
+@@ -2375 +2379 @@
+-def gen_dyn_isa(self, v: Val, t: str) -> str:
++def gen_dyn_isa(self: Gen, v: Val, t: str) -> str:
+@@ -2423 +2427 @@
+-def gen_dyn_select(self, v: Val, ts: list[str], t: str) -> Val:
++def gen_dyn_select(self: Gen, v: Val, ts: list[str], t: str) -> Val:
+@@ -2444 +2448 @@
+-def gen_dyn_test(self, v: Val, ts: list[str]) -> str:
++def gen_dyn_test(self: Gen, v: Val, ts: list[str]) -> str:
+@@ -2469 +2473 @@
+-def gen_dyn_types_of(self, t: str) -> list[str]:
++def gen_dyn_types_of(self: Gen, t: str) -> list[str]:
+@@ -2481 +2485 @@
+-def gen_dyn_isinst_types(self, c: Node) -> list[str]:
++def gen_dyn_isinst_types(self: Gen, c: Node) -> list[str]:
+@@ -2511 +2515 @@
+-def gen_dyn_isinst(self, v: Val, c: Node) -> Val:
++def gen_dyn_isinst(self: Gen, v: Val, c: Node) -> Val:
+@@ -2521 +2525 @@
+-def gen_dyn_narrow_type(self, c: Node, truth: bool) -> str:
++def gen_dyn_narrow_type(self: Gen, c: Node, truth: bool) -> str:
+@@ -2536 +2540 @@
+-def gen_dyn_narrowed(self, v: Val, nt: str) -> Val:
++def gen_dyn_narrowed(self: Gen, v: Val, nt: str) -> Val:
+@@ -2548 +2552 @@
+-def gen_dyn_proven_int(self, v: Val) -> Val:
++def gen_dyn_proven_int(self: Gen, v: Val) -> Val:
+@@ -2572 +2576 @@
+-def gen_dyn_widen(self, name: str, t: str) -> bool:
++def gen_dyn_widen(self: Gen, name: str, t: str) -> bool:
+@@ -2604 +2608 @@
+-def gen_dyn_fields(self, ci: ClassInfo) -> None:
++def gen_dyn_fields(self: Gen, ci: ClassInfo) -> None:
+@@ -2617 +2621 @@
+-def gen_dyn_field_stores(self, ci: ClassInfo, f: FnInfo, ns: list[Node]) -> None:
++def gen_dyn_field_stores(self: Gen, ci: ClassInfo, f: FnInfo, ns: list[Node]) -> None:
+@@ -2651 +2655 @@
+-def gen_dyn_guessed(self, e: Node, f: FnInfo) -> bool:
++def gen_dyn_guessed(self: Gen, e: Node, f: FnInfo) -> bool:
+@@ -2667 +2671 @@
+-def gen_dyn_global_ahead(self, name: str, t: str) -> bool:
++def gen_dyn_global_ahead(self: Gen, name: str, t: str) -> bool:
+@@ -2677 +2681 @@
+-def gen_dyn_stores_ahead(self, ns: list[Node], name: str, env: dict[str, bool]) -> bool:
++def gen_dyn_stores_ahead(self: Gen, ns: list[Node], name: str, env: dict[str, bool]) -> bool:
+@@ -2707 +2711 @@
+-def gen_dyn_ahead(self, e: Node, env: dict[str, bool]) -> bool:
++def gen_dyn_ahead(self: Gen, e: Node, env: dict[str, bool]) -> bool:
+@@ -2733 +2737 @@
+-def gen_dyn_items_ahead(self, it: Node, env: dict[str, bool]) -> str:
++def gen_dyn_items_ahead(self: Gen, it: Node, env: dict[str, bool]) -> str:
+@@ -2749 +2753 @@
+-def gen_dyn_widened(self, name: str) -> bool:
++def gen_dyn_widened(self: Gen, name: str) -> bool:
+@@ -2754 +2758 @@
+-def gen_dyn_none_first(self, name: str) -> None:
++def gen_dyn_none_first(self: Gen, name: str) -> None:
+@@ -2771 +2775 @@
+-def gen_dyn_asked(self, f: FnInfo) -> int:
++def gen_dyn_asked(self: Gen, f: FnInfo) -> int:
+@@ -2776 +2780 @@
+-def gen_dyn_again(self, f: FnInfo, asked: int) -> bool:
++def gen_dyn_again(self: Gen, f: FnInfo, asked: int) -> bool:
+@@ -2815 +2819 @@
+-def gen_dyn_arith(self, op: str, a: Val, b: Val, inplace: bool = False) -> Val:
++def gen_dyn_arith(self: Gen, op: str, a: Val, b: Val, inplace: bool = False) -> Val:
+@@ -2834 +2838 @@
+-def gen_dyn_unary(self, op: str, v: Val) -> Val:
++def gen_dyn_unary(self: Gen, op: str, v: Val) -> Val:
+@@ -2844 +2848 @@
+-def gen_dyn_compare(self, op: str, a: Val, b: Val) -> Val:
++def gen_dyn_compare(self: Gen, op: str, a: Val, b: Val) -> Val:
+@@ -2859 +2863 @@
+-def gen_dyn_cmp2(self, op: str, a: Val, b: Val) -> Val:
++def gen_dyn_cmp2(self: Gen, op: str, a: Val, b: Val) -> Val:
+@@ -2875 +2879 @@
+-def gen_dyn_identity(self, op: str, a: Val, b: Val) -> Val:
++def gen_dyn_identity(self: Gen, op: str, a: Val, b: Val) -> Val:
+@@ -2897 +2901 @@
+-def gen_dyn_truth(self, v: Val) -> str:
++def gen_dyn_truth(self: Gen, v: Val) -> str:
+@@ -2905 +2909 @@
+-def gen_dyn_str(self, v: Val) -> Val:
++def gen_dyn_str(self: Gen, v: Val) -> Val:
+@@ -2910 +2914 @@
+-def gen_dyn_repr(self, v: Val) -> Val:
++def gen_dyn_repr(self: Gen, v: Val) -> Val:
+@@ -2914 +2918 @@
+-def gen_dyn_len(self, v: Val) -> Val:
++def gen_dyn_len(self: Gen, v: Val) -> Val:
+@@ -2919 +2923 @@
+-def gen_dyn_format(self, v: Val, spec: Val) -> Val:
++def gen_dyn_format(self: Gen, v: Val, spec: Val) -> Val:
+@@ -2926 +2930 @@
+-def gen_dyn_hash(self, v: Val) -> Val:
++def gen_dyn_hash(self: Gen, v: Val) -> Val:
+@@ -2930 +2934 @@
+-def gen_dyn_getitem(self, o: Val, k: Val) -> Val:
++def gen_dyn_getitem(self: Gen, o: Val, k: Val) -> Val:
+@@ -2935 +2939 @@
+-def gen_dyn_setitem(self, o: Val, k: Val, v: Val) -> None:
++def gen_dyn_setitem(self: Gen, o: Val, k: Val, v: Val) -> None:
+@@ -2940 +2944 @@
+-def gen_dyn_delitem(self, o: Val, k: Val) -> None:
++def gen_dyn_delitem(self: Gen, o: Val, k: Val) -> None:
+@@ -2945 +2949 @@
+-def gen_dyn_contains(self, o: Val, k: Val) -> Val:
++def gen_dyn_contains(self: Gen, o: Val, k: Val) -> Val:
+@@ -2951 +2955 @@
+-def gen_dyn_int(self, v: Val) -> Val:
++def gen_dyn_int(self: Gen, v: Val) -> Val:
+@@ -2958 +2962 @@
+-def gen_dyn_float(self, v: Val) -> Val:
++def gen_dyn_float(self: Gen, v: Val) -> Val:
+@@ -2962 +2966 @@
+-def index_value(self, v: Val) -> Val:
++def index_value(self: Gen, v: Val) -> Val:
+@@ -2968 +2972 @@
+-def numeric_result(self, r: Val, method: str, owner: str) -> Val:
++def numeric_result(self: Gen, r: Val, method: str, owner: str) -> Val:
+@@ -3023 +3027 @@
+-def sequence_index(self, o: Val, k: Val) -> Val:
++def sequence_index(self: Gen, o: Val, k: Val) -> Val:
+@@ -3039 +3043 @@
+-def gen_dyn_type_module(self, v: Val) -> Val:
++def gen_dyn_type_module(self: Gen, v: Val) -> Val:
+@@ -3044 +3048 @@
+-def gen_dyn_bound(self, v: Val, bound: bool) -> str:
++def gen_dyn_bound(self: Gen, v: Val, bound: bool) -> str:
+@@ -3051 +3055 @@
+-def index_bound(self, v: Val, bound: bool) -> str:
++def index_bound(self: Gen, v: Val, bound: bool) -> str:
+@@ -3064 +3068 @@
+-def gen_dyn_slice(self, o: Val, bs: list[Node]) -> Val:
++def gen_dyn_slice(self: Gen, o: Val, bs: list[Node]) -> Val:
+@@ -3076 +3080 @@
+-def gen_dyn_type_name(self, v: Val) -> Val:
++def gen_dyn_type_name(self: Gen, v: Val) -> Val:
+@@ -3085 +3089 @@
+-def gen_dyn_dispatcher(self, key: str, ptypes: list[str], ret: str, dunder: str) -> FnInfo:
++def gen_dyn_dispatcher(self: Gen, key: str, ptypes: list[str], ret: str, dunder: str) -> FnInfo:
+@@ -3102 +3106 @@
+-def gen_dyn_call(self, f: FnInfo, args: list[Val]) -> Val:
++def gen_dyn_call(self: Gen, f: FnInfo, args: list[Val]) -> Val:
+@@ -3114 +3118 @@
+-def gen_dyn_body(self, key: str) -> None:
++def gen_dyn_body(self: Gen, key: str) -> None:
+@@ -3195 +3199 @@
+-def dyn_generator_arms(self, key: str, o: Val) -> None:
++def dyn_generator_arms(self: Gen, key: str, o: Val) -> None:
+@@ -3219 +3223 @@
+-def gen_dyn_reflected(self, f: FnInfo, c: str, r: str, a: Val, b: Val, ok: str) -> None:
++def gen_dyn_reflected(self: Gen, f: FnInfo, c: str, r: str, a: Val, b: Val, ok: str) -> None:
+@@ -3232 +3236 @@
+-def gen_dyn_fn_arms(self, f: FnInfo, key: str, o: Val, args: list[Val]) -> None:
++def gen_dyn_fn_arms(self: Gen, f: FnInfo, key: str, o: Val, args: list[Val]) -> None:
+@@ -3253 +3257 @@
+-def gen_dyn_supports(self, c: str, key: str, dunder: str, nargs: int) -> bool:
++def gen_dyn_supports(self: Gen, c: str, key: str, dunder: str, nargs: int) -> bool:
+@@ -3341 +3345 @@
+-def gen_dyn_takes(self, fm: FnInfo, own: int, nargs: int) -> bool:
++def gen_dyn_takes(self: Gen, fm: FnInfo, own: int, nargs: int) -> bool:
+@@ -3355 +3359 @@
+-def gen_dyn_arity(self, fm: FnInfo, own: int, nargs: int) -> str:
++def gen_dyn_arity(self: Gen, fm: FnInfo, own: int, nargs: int) -> str:
+@@ -3381 +3385 @@
+-def gen_dyn_bind(self, fm: FnInfo, own: int, key: str, an: list[Node]) -> str:
++def gen_dyn_bind(self: Gen, fm: FnInfo, own: int, key: str, an: list[Node]) -> str:
+@@ -3394 +3398 @@
+-def gen_dyn_call_args(self, key: str, args: list[Val]) -> list[Node]:
++def gen_dyn_call_args(self: Gen, key: str, args: list[Val]) -> list[Node]:
+@@ -3402 +3406 @@
+-def gen_dyn_arm(self, f: FnInfo, key: str, dunder: str, x: Val, args: list[Val]) -> None:
++def gen_dyn_arm(self: Gen, f: FnInfo, key: str, dunder: str, x: Val, args: list[Val]) -> None:
+@@ -3530 +3534 @@
+-def dyn_iteration_arm(self, f: FnInfo, key: str, x: Val) -> None:
++def dyn_iteration_arm(self: Gen, f: FnInfo, key: str, x: Val) -> None:
+@@ -3569 +3573 @@
+-def dyn_length_hint(self, x: Val) -> None:
++def dyn_length_hint(self: Gen, x: Val) -> None:
+@@ -3595 +3599 @@
+-def dyn_hint_result(self, value: Val, index: bool) -> Val:
++def dyn_hint_result(self: Gen, value: Val, index: bool) -> Val:
+@@ -3647 +3651 @@
+-def gen_dyn_return(self, f: FnInfo, r: Val) -> None:
++def gen_dyn_return(self: Gen, f: FnInfo, r: Val) -> None:
+@@ -3660 +3664 @@
+-def gen_dyn_builtin_methods(self, f: FnInfo, key: str, o: Val, args: list[Val]) -> None:
++def gen_dyn_builtin_methods(self: Gen, f: FnInfo, key: str, o: Val, args: list[Val]) -> None:
+@@ -3714 +3718 @@
+-def dynamic_list_method(self, o: Val, method: str, args: list[Val]) -> Val:
++def dynamic_list_method(self: Gen, o: Val, method: str, args: list[Val]) -> Val:
+@@ -3751 +3755 @@
+-def gen_dyn_builtin_takes(self, bt: str, m: str, n: int) -> bool:
++def gen_dyn_builtin_takes(self: Gen, bt: str, m: str, n: int) -> bool:
+@@ -3783 +3787 @@
+-def boxed_list_items(self, sources: list[Val]) -> Val:
++def boxed_list_items(self: Gen, sources: list[Val]) -> Val:
+@@ -3805 +3809 @@
+-def gen_dyn_fresh(self, v: Val) -> Val:
++def gen_dyn_fresh(self: Gen, v: Val) -> Val:
+@@ -3815 +3819 @@
+-def gen_dyn_fallback(self, f: FnInfo, key: str, ps: list[Val]) -> None:
++def gen_dyn_fallback(self: Gen, f: FnInfo, key: str, ps: list[Val]) -> None:
+@@ -3947 +3951 @@
+-def gen_dyn_dispatchers(self) -> bool:
++def gen_dyn_dispatchers(self: Gen) -> bool:
+@@ -3981 +3985 @@
+-def gen_dyn_builtin(self, name: str, v: Val) -> Val:
++def gen_dyn_builtin(self: Gen, name: str, v: Val) -> Val:
+@@ -4001 +4005 @@
+-def gen_dyn_getattr(self, o: Val, a: str) -> Val:
++def gen_dyn_getattr(self: Gen, o: Val, a: str) -> Val:
+@@ -4027 +4031 @@
+-def gen_dyn_setattr(self, o: Val, a: str, v: Val) -> None:
++def gen_dyn_setattr(self: Gen, o: Val, a: str, v: Val) -> None:
+@@ -4088 +4092 @@
+-def gen_dyn_lookup(self, o: Val, m: str, npos: int, names: list[str]) -> Val:
++def gen_dyn_lookup(self: Gen, o: Val, m: str, npos: int, names: list[str]) -> Val:
+@@ -4095 +4099 @@
+-def gen_dyn_method(self, o: Val, m: str, args: list[Node]) -> Val:
++def gen_dyn_method(self: Gen, o: Val, m: str, args: list[Node]) -> Val:
+@@ -4117 +4121 @@
+-def gen_dyn_method_found(self, o: Val, m: str, args: list[Node], h: Val) -> Val:
++def gen_dyn_method_found(self: Gen, o: Val, m: str, args: list[Node], h: Val) -> Val:
+@@ -4142 +4146 @@
+-def gen_dyn_mixed(self, es: list[Node]) -> bool:
++def gen_dyn_mixed(self: Gen, es: list[Node]) -> bool:
+@@ -4163 +4167 @@
+-def gen_dyn_callables(self, ts: list[str]) -> bool:
++def gen_dyn_callables(self: Gen, ts: list[str]) -> bool:
+@@ -4170 +4174 @@
+-def gen_dyn_untyped_empty(self, e: Node) -> bool:
++def gen_dyn_untyped_empty(self: Gen, e: Node) -> bool:
+@@ -4190 +4194 @@
+-def gen_empty_ctor(self, e: Node) -> str:
++def gen_empty_ctor(self: Gen, e: Node) -> str:
+@@ -4196 +4200 @@
+-def gen_dyn_untyped_items(self, ks: list[Node]) -> bool:
++def gen_dyn_untyped_items(self: Gen, ks: list[Node]) -> bool:
+@@ -4215 +4219 @@
+-def gen_dyn_dry(self, e: Node) -> str:
++def gen_dyn_dry(self: Gen, e: Node) -> str:
+@@ -4234 +4238 @@
+-def gen_dyn_fn_type(self, ft: str) -> str:
++def gen_dyn_fn_type(self: Gen, ft: str) -> str:
+@@ -4253 +4257 @@
+-def gen_dyn_fn_box(self, v: Val) -> Val:
++def gen_dyn_fn_box(self: Gen, v: Val) -> Val:
+@@ -4278 +4282 @@
+-def gen_dyn_call_value(self, o: Val, args: list[Node]) -> Val:
++def gen_dyn_call_value(self: Gen, o: Val, args: list[Node]) -> Val:
+@@ -4289 +4293 @@
+-def gen_dyn_fn_takes(self, ft: str, key: str, an: list[Node]) -> str:
++def gen_dyn_fn_takes(self: Gen, ft: str, key: str, an: list[Node]) -> str:
+@@ -4330 +4334 @@
+-def gen_dyn_sum_slots(self, r: Reduce) -> None:
++def gen_dyn_sum_slots(self: Gen, r: Reduce) -> None:
+@@ -4339 +4343 @@
+-def gen_dyn_sum_start(self, r: Reduce, start: Val) -> None:
++def gen_dyn_sum_start(self: Gen, r: Reduce, start: Val) -> None:
+@@ -4370 +4374 @@
+-def gen_dyn_sum_item(self, r: Reduce, value: Val) -> None:
++def gen_dyn_sum_item(self: Gen, r: Reduce, value: Val) -> None:
+@@ -4424 +4428 @@
+-def gen_dyn_sum_end(self, r: Reduce) -> Val:
++def gen_dyn_sum_end(self: Gen, r: Reduce) -> Val:
+@@ -4446 +4450 @@
+-def gen_dyn_sum(self, xs: Val, start: Val) -> Val:
++def gen_dyn_sum(self: Gen, xs: Val, start: Val) -> Val:
+@@ -4478 +4482 @@
+-def gen_json_any(self, name: str, args: list[Node], want: str, resultsoft: bool) -> Val | None:
++def gen_json_any(self: Gen, name: str, args: list[Node], want: str, resultsoft: bool) -> Val | None:
+--- a/src/pystachy_compiler/emission.py
++++ b/src/pystachy_compiler/emission.py
+@@ -2,0 +3,4 @@
++from typing import TYPE_CHECKING
++if TYPE_CHECKING:
++    from src.pystachy_compiler.gen import Gen
++from typing import Any as Gen  # type: ignore[assignment]
+@@ -26 +30 @@
+-def gen_err(self, msg: str) -> None:
++def gen_err(self: Gen, msg: str) -> None:
+@@ -48 +52 @@
+-def gen_save(self) -> Frame:
++def gen_save(self: Gen) -> Frame:
+@@ -102 +106 @@
+-def gen_restore(self, fr: Frame) -> None:
++def gen_restore(self: Gen, fr: Frame) -> None:
+@@ -157 +161 @@
+-def gen_tmp(self) -> str:
++def gen_tmp(self: Gen) -> str:
+@@ -161 +165 @@
+-def gen_label(self) -> str:
++def gen_label(self: Gen) -> str:
+@@ -166 +170 @@
+-def gen_add(self, i: Ins) -> None:
++def gen_add(self: Gen, i: Ins) -> None:
+@@ -172 +176 @@
+-def gen_put(self, i: Ins, k: int) -> None:
++def gen_put(self: Gen, i: Ins, k: int) -> None:
+@@ -182 +186 @@
+-def gen_mem_load(self, a: Val) -> Val:
++def gen_mem_load(self: Gen, a: Val) -> Val:
+@@ -189 +193 @@
+-def gen_mem_store(self, a: Val, v: Val) -> None:
++def gen_mem_store(self: Gen, a: Val, v: Val) -> None:
+@@ -194 +198 @@
+-def gen_place(self, l: str) -> None:
++def gen_place(self: Gen, l: str) -> None:
+@@ -203 +207 @@
+-def gen_jump(self, l: str) -> None:
++def gen_jump(self: Gen, l: str) -> None:
+@@ -208 +212 @@
+-def gen_br(self, l: str) -> None:
++def gen_br(self: Gen, l: str) -> None:
+@@ -213 +217 @@
+-def gen_cbr(self, c: str, a: str, b: str) -> None:
++def gen_cbr(self: Gen, c: str, a: str, b: str) -> None:
+@@ -220 +224 @@
+-def gen_switch(self, v: Val, cases: list[str], to: list[str], other: str) -> None:
++def gen_switch(self: Gen, v: Val, cases: list[str], to: list[str], other: str) -> None:
+@@ -228 +232 @@
+-def gen_ret_(self, v: Val) -> None:
++def gen_ret_(self: Gen, v: Val) -> None:
+@@ -241 +245 @@
+-def gen_returned_none(self) -> bool:
++def gen_returned_none(self: Gen) -> bool:
+@@ -250 +254 @@
+-def gen_unreachable(self) -> None:
++def gen_unreachable(self: Gen) -> None:
+@@ -254 +258 @@
+-def gen_incoming(self, ph: Ins, v: str, l: str) -> None:
++def gen_incoming(self: Gen, ph: Ins, v: str, l: str) -> None:
+@@ -262 +266 @@
+-def gen_phi(self, ph: Ins) -> str:
++def gen_phi(self: Gen, ph: Ins) -> str:
+@@ -266 +270 @@
+-def gen_select(self, c: str, x: Val, y: Val) -> str:
++def gen_select(self: Gen, c: str, x: Val, y: Val) -> str:
+@@ -273 +277 @@
+-def gen_rt(self, name: str, ret: str, args: list[str], x: str = "") -> str:
++def gen_rt(self: Gen, name: str, ret: str, args: list[str], x: str = "") -> str:
+@@ -331 +335 @@
+-def gen_list_write(self, key: str, args: list[Val]) -> None:
++def gen_list_write(self: Gen, key: str, args: list[Val]) -> None:
+@@ -346 +350 @@
+-def gen_alloc_fixed(self, t: str) -> Val:
++def gen_alloc_fixed(self: Gen, t: str) -> Val:
+@@ -357 +361 @@
+-def gen_runtime(self, name: str) -> str:
++def gen_runtime(self: Gen, name: str) -> str:
+@@ -366 +370 @@
+-def gen_hole(self, kind: str) -> Ins:
++def gen_hole(self: Gen, kind: str) -> Ins:
+@@ -378 +382 @@
+-def gen_checked(self, op: str, a: str, b: str) -> list[str]:
++def gen_checked(self: Gen, op: str, a: str, b: str) -> list[str]:
+@@ -386 +390 @@
+-def gen_guard(self, bad: str, msg: str) -> None:
++def gen_guard(self: Gen, bad: str, msg: str) -> None:
+@@ -404 +408 @@
+-def gen_primitive(self, name: str, vals: list[Val]) -> Val:
++def gen_primitive(self: Gen, name: str, vals: list[Val]) -> Val:
+@@ -492 +496 @@
+-def gen_iop(self, op: str, a: str, b: str) -> str:
++def gen_iop(self: Gen, op: str, a: str, b: str) -> str:
+@@ -498 +502 @@
+-def gen_notnone(self, v: Val, msg: str) -> None:
++def gen_notnone(self: Gen, v: Val, msg: str) -> None:
+@@ -503 +507 @@
+-def gen_unwrap(self, v: Val, msg: str) -> Val:
++def gen_unwrap(self: Gen, v: Val, msg: str) -> Val:
+@@ -510 +514 @@
+-def gen_deref(self, v: Val) -> Val:
++def gen_deref(self: Gen, v: Val) -> Val:
+@@ -519 +523 @@
+-def gen_reboxes(self, a: str, b: str) -> bool:
++def gen_reboxes(self: Gen, a: str, b: str) -> bool:
+@@ -536 +540 @@
+-def gen_convert_at(self, v: Val, t: str, label: str) -> Val:
++def gen_convert_at(self: Gen, v: Val, t: str, label: str) -> Val:
+@@ -550 +554 @@
+-def gen_converts(self, a: str, b: str) -> bool:
++def gen_converts(self: Gen, a: str, b: str) -> bool:
+@@ -554 +558 @@
+-def gen_boxes(self, a: str, b: str) -> bool:
++def gen_boxes(self: Gen, a: str, b: str) -> bool:
+@@ -561 +565 @@
+-def gen_convert_in(self, v: Val, t: str, blk: Blk) -> Val:
++def gen_convert_in(self: Gen, v: Val, t: str, blk: Blk) -> Val:
+@@ -582 +586 @@
+-def gen_sconst(self, s: str) -> str:
++def gen_sconst(self: Gen, s: str) -> str:
+@@ -593 +597 @@
+-def gen_bconst(self, s: str) -> str:
++def gen_bconst(self: Gen, s: str) -> str:
+@@ -606 +610 @@
+-def gen_alloca(self, t: str, name: str) -> str:
++def gen_alloca(self: Gen, t: str, name: str) -> str:
+--- a/src/pystachy_compiler/exceptions.py
++++ b/src/pystachy_compiler/exceptions.py
+@@ -2,0 +3,4 @@
++from typing import TYPE_CHECKING
++if TYPE_CHECKING:
++    from src.pystachy_compiler.gen import Gen
++from typing import Any as Gen  # type: ignore[assignment]
+@@ -46 +50 @@
+-def gen_try_(self, n: Node) -> None:
++def gen_try_(self: Gen, n: Node) -> None:
+@@ -236 +240 @@
+-def gen_assert_fails(self, n: Node) -> None:
++def gen_assert_fails(self: Gen, n: Node) -> None:
+@@ -244 +248 @@
+-def gen_unnarrowed(self, bodies: list[list[Node]]) -> dict[str, str]:
++def gen_unnarrowed(self: Gen, bodies: list[list[Node]]) -> dict[str, str]:
+@@ -258 +262 @@
+-def gen_clause_or(self, t: Node) -> Node:
++def gen_clause_or(self: Gen, t: Node) -> Node:
+@@ -272 +276 @@
+-def gen_catches(self, h: Node) -> str:
++def gen_catches(self: Gen, h: Node) -> str:
+@@ -279 +283 @@
+-def gen_exc_classes(self, t: Node) -> bool:
++def gen_exc_classes(self: Gen, t: Node) -> bool:
+@@ -288 +292 @@
+-def gen_exc_isinst(self, v: Val, t: Node) -> Val:
++def gen_exc_isinst(self: Gen, v: Val, t: Node) -> Val:
+@@ -317 +321 @@
+-def gen_catch_set(self, t: Node) -> str:
++def gen_catch_set(self: Gen, t: Node) -> str:
+@@ -363 +367 @@
+-def gen_as_type(self, h: Node) -> str:
++def gen_as_type(self: Gen, h: Node) -> str:
+@@ -378 +382 @@
+-def gen_bind_as(self, name: str, e: Val, t: str) -> None:
++def gen_bind_as(self: Gen, name: str, e: Val, t: str) -> None:
+@@ -398 +402 @@
+-def gen_global_reader(self, name: str) -> str:
++def gen_global_reader(self: Gen, name: str) -> str:
+@@ -417 +421 @@
+-def gen_unbinds(self, name: str) -> bool:
++def gen_unbinds(self: Gen, name: str) -> bool:
+@@ -426 +430 @@
+-def gen_unshadow(self) -> None:
++def gen_unshadow(self: Gen) -> None:
+@@ -440 +444 @@
+-def gen_landing(self, l: str, slot: str, mark: Val) -> Val:
++def gen_landing(self: Gen, l: str, slot: str, mark: Val) -> Val:
+@@ -464 +468 @@
+-def gen_exc_match(self, e: Val, names: str) -> str:
++def gen_exc_match(self: Gen, e: Val, names: str) -> str:
+@@ -472 +476 @@
+-def gen_unbind(self, name: str) -> None:
++def gen_unbind(self: Gen, name: str) -> None:
+@@ -485 +489 @@
+-def gen_exc_args(self, e: Node) -> list[Node]:
++def gen_exc_args(self: Gen, e: Node) -> list[Node]:
+@@ -512 +516 @@
+-def gen_exc_kw(self, c: str, args: list[Node], what: str) -> None:
++def gen_exc_kw(self: Gen, c: str, args: list[Node], what: str) -> None:
+@@ -524 +528 @@
+-def gen_exc_vals(self, args: list[Node], name: str = "") -> list[Val]:
++def gen_exc_vals(self: Gen, args: list[Node], name: str = "") -> list[Val]:
+@@ -544 +548 @@
+-def gen_exc_class(self, e: Node) -> str:
++def gen_exc_class(self: Gen, e: Node) -> str:
+@@ -553 +557 @@
+-def gen_cause_value(self, c: Node) -> Val:
++def gen_cause_value(self: Gen, c: Node) -> Val:
+@@ -568 +572 @@
+-def gen_cause(self, c: Node, v: Val) -> Val:
++def gen_cause(self: Gen, c: Node, v: Val) -> Val:
+@@ -607 +611 @@
+-def gen_exc_value_of(self, e: Node, k: str, make: bool = True) -> Val:
++def gen_exc_value_of(self: Gen, e: Node, k: str, make: bool = True) -> Val:
+@@ -620 +624 @@
+-def gen_raise_stmt(self, n: Node) -> None:
++def gen_raise_stmt(self: Gen, n: Node) -> None:
+@@ -732 +736 @@
+-def gen_os_error(self, name: str, vals: list[Val]) -> list[str]:
++def gen_os_error(self: Gen, name: str, vals: list[Val]) -> list[str]:
+@@ -774 +778 @@
+-def gen_unicode_error(self, name: str, vals: list[Val]) -> list[str]:
++def gen_unicode_error(self: Gen, name: str, vals: list[Val]) -> list[str]:
+@@ -804 +808 @@
+-def gen_exc_str_args(self, msg: str) -> str:
++def gen_exc_str_args(self: Gen, msg: str) -> str:
+@@ -813 +817 @@
+-def gen_exc_value(self, name: str, vals: list[Val]) -> Val:
++def gen_exc_value(self: Gen, name: str, vals: list[Val]) -> Val:
+@@ -852 +856 @@
+-def gen_exit_(self, vals: list[Val], sysx: bool) -> None:
++def gen_exit_(self: Gen, vals: list[Val], sysx: bool) -> None:
+@@ -891 +895 @@
+-def gen_no_code(self) -> Val:
++def gen_no_code(self: Gen) -> Val:
+@@ -896 +900 @@
+-def gen_exit_value(self, vals: list[Val]) -> Val:
++def gen_exit_value(self: Gen, vals: list[Val]) -> Val:
+@@ -926 +930 @@
+-def gen_exc_object(self, c: str, args: list[Node]) -> Val:
++def gen_exc_object(self: Gen, c: str, args: list[Node]) -> Val:
+@@ -950,0 +955,2 @@
++            if TYPE_CHECKING:
++                assert init is not None
+@@ -999 +1005 @@
+-def gen_exc_init_keeps(self, c: str, init: FnInfo) -> bool:
++def gen_exc_init_keeps(self: Gen, c: str, init: FnInfo) -> bool:
+@@ -1068 +1074 @@
+-def gen_class_defaults(self, o: Val) -> None:
++def gen_class_defaults(self: Gen, o: Val) -> None:
+@@ -1085 +1091 @@
+-def gen_exc_keep(self, o: Val, vals: list[Val], coded: bool = True) -> None:
++def gen_exc_keep(self: Gen, o: Val, vals: list[Val], coded: bool = True) -> None:
+@@ -1129 +1135 @@
+-def gen_exc_of(self, v: Val) -> Val:
++def gen_exc_of(self: Gen, v: Val) -> Val:
+@@ -1134 +1140 @@
+-def gen_exc_brepr(self, o: Val) -> Val:
++def gen_exc_brepr(self: Gen, o: Val) -> Val:
+@@ -1139 +1145 @@
+-def gen_super_call(self, sc: Node, m: str, args: list[Node], based: bool = False, read: bool = False) -> Val:
++def gen_super_call(self: Gen, sc: Node, m: str, args: list[Node], based: bool = False, read: bool = False) -> Val:
+@@ -1193 +1199 @@
+-def gen_exc_helpers(self, c: str) -> None:
++def gen_exc_helpers(self: Gen, c: str) -> None:
+@@ -1230 +1236 @@
+-def gen_exc_disp(self, c: str) -> str:
++def gen_exc_disp(self: Gen, c: str) -> str:
+@@ -1242 +1248 @@
+-def gen_exc_set_module(self, cn: Node, v: Val) -> None:
++def gen_exc_set_module(self: Gen, cn: Node, v: Val) -> None:
+@@ -1256 +1262 @@
+-def gen_throw(self, e: Val) -> None:
++def gen_throw(self: Gen, e: Val) -> None:
+@@ -1264 +1270 @@
+-def gen_raise_(self, name: str, msg: str, kind: str = "") -> None:
++def gen_raise_(self: Gen, name: str, msg: str, kind: str = "") -> None:
+@@ -1272 +1278 @@
+-def gen_exc_class_value(self, c: str) -> Val:
++def gen_exc_class_value(self: Gen, c: str) -> Val:
+@@ -1289 +1295 @@
+-def gen_exc_type_of(self, v: Val) -> Val:
++def gen_exc_type_of(self: Gen, v: Val) -> Val:
+@@ -1316 +1322 @@
+-def gen_exc_tree(self) -> str:
++def gen_exc_tree(self: Gen) -> str:
+@@ -1331 +1337 @@
+-def gen_exc_sub(self, a: Val, b: Val) -> Val:
++def gen_exc_sub(self: Gen, a: Val, b: Val) -> Val:
+@@ -1336 +1342 @@
+-def gen_exc_dynamic(self, t: Node) -> bool:
++def gen_exc_dynamic(self: Gen, t: Node) -> bool:
+@@ -1345 +1351 @@
+-def gen_exc_held(self, t: Node) -> bool:
++def gen_exc_held(self: Gen, t: Node) -> bool:
+@@ -1372 +1378 @@
+-def gen_exc_holds(self, t: str) -> bool:
++def gen_exc_holds(self: Gen, t: str) -> bool:
+@@ -1379 +1385 @@
+-def gen_exc_test(self, v: Val, t: Node, what: str) -> Val:
++def gen_exc_test(self: Gen, v: Val, t: Node, what: str) -> Val:
+@@ -1416 +1422 @@
+-def gen_exc_flat(self, t: str, what: str) -> None:
++def gen_exc_flat(self: Gen, t: str, what: str) -> None:
+@@ -1429 +1435 @@
+-def gen_exc_any(self, v: Val, bs: list[Val], what: str) -> Val:
++def gen_exc_any(self: Gen, v: Val, bs: list[Val], what: str) -> Val:
+@@ -1446 +1452 @@
+-def gen_exc_each(self, v: Val, bs: list[Val], what: str, done: str, ph: Ins) -> Val:
++def gen_exc_each(self: Gen, v: Val, bs: list[Val], what: str, done: str, ph: Ins) -> Val:
+@@ -1465 +1471 @@
+-def gen_exc_none_class(self) -> Val:
++def gen_exc_none_class(self: Gen) -> Val:
+@@ -1472 +1478 @@
+-def gen_exc_call(self, c: Val, args: list[Node], how: int = 0) -> Val:
++def gen_exc_call(self: Gen, c: Val, args: list[Node], how: int = 0) -> Val:
+@@ -1516 +1522 @@
+-def gen_exc_make(self, c: Val, vals: list[Val], how: int = 0) -> Val:
++def gen_exc_make(self: Gen, c: Val, vals: list[Val], how: int = 0) -> Val:
+@@ -1557 +1563 @@
+-def gen_exc_ctors(self) -> int:
++def gen_exc_ctors(self: Gen) -> int:
+@@ -1593 +1599 @@
+-def gen_exc_ctor_classes(self) -> list[str]:
++def gen_exc_ctor_classes(self: Gen) -> list[str]:
+@@ -1602 +1608 @@
+-def gen_exc_ctor_takes(self, t: str, p: str) -> bool:
++def gen_exc_ctor_takes(self: Gen, t: str, p: str) -> bool:
+@@ -1609 +1615 @@
+-def gen_exc_ctor_arity(self, c: str, n: int) -> str:
++def gen_exc_ctor_arity(self: Gen, c: str, n: int) -> str:
+@@ -1630 +1636 @@
+-def gen_exc_tables(self) -> None:
++def gen_exc_tables(self: Gen) -> None:
+--- a/src/pystachy_compiler/expressions.py
++++ b/src/pystachy_compiler/expressions.py
+@@ -2,0 +3,4 @@
++from typing import TYPE_CHECKING
++if TYPE_CHECKING:
++    from src.pystachy_compiler.gen import Gen
++from typing import Any as Gen  # type: ignore[assignment]
+@@ -92 +96 @@
+-def gen_narrows(self, n: Node, truth: bool, out: dict[str, str]) -> None:
++def gen_narrows(self: Gen, n: Node, truth: bool, out: dict[str, str]) -> None:
+@@ -135 +139 @@
+-def gen_forget_walrus(self, pre: dict[str, str], es: list[Node]) -> dict[str, str]:
++def gen_forget_walrus(self: Gen, pre: dict[str, str], es: list[Node]) -> dict[str, str]:
+@@ -149 +153 @@
+-def gen_narrowable(self, name: str) -> bool:
++def gen_narrowable(self: Gen, name: str) -> bool:
+@@ -155 +159 @@
+-def gen_narrow_by(self, test: Node, truth: bool) -> dict[str, str]:
++def gen_narrow_by(self: Gen, test: Node, truth: bool) -> dict[str, str]:
+@@ -165 +169 @@
+-def gen_forget(self, body: list[Node], tgt: Node) -> dict[str, str]:
++def gen_forget(self: Gen, body: list[Node], tgt: Node) -> dict[str, str]:
+@@ -187 +191 @@
+-def gen_static(self, n: Node) -> int:
++def gen_static(self: Gen, n: Node) -> int:
+@@ -271 +275 @@
+-def gen_static_len(self, n: Node) -> int:
++def gen_static_len(self: Gen, n: Node) -> int:
+@@ -279 +283 @@
+-def gen_static_reads(self, n: Node) -> None:
++def gen_static_reads(self: Gen, n: Node) -> None:
+@@ -291 +295 @@
+-def gen_knownobj(self, n: Node) -> bool:
++def gen_knownobj(self: Gen, n: Node) -> bool:
+@@ -295 +299 @@
+-def gen_has(self, t: str, a: str) -> int:
++def gen_has(self: Gen, t: str, a: str) -> int:
+@@ -360 +364 @@
+-def gen_static_type(self, n: Node, typed: bool = False) -> str:
++def gen_static_type(self: Gen, n: Node, typed: bool = False) -> str:
+@@ -388 +392 @@
+-def gen_isinst(self, t: str, c: Node) -> int:
++def gen_isinst(self: Gen, t: str, c: Node) -> int:
+@@ -492 +496 @@
+-def gen_isnone(self, t: str) -> int:
++def gen_isnone(self: Gen, t: str) -> int:
+@@ -496 +500 @@
+-def gen_class_matches(self, c: str, t: Node) -> bool:
++def gen_class_matches(self: Gen, c: str, t: Node) -> bool:
+@@ -504 +508 @@
+-def gen_obj_isinst(self, v: Val, t: Node) -> Val:
++def gen_obj_isinst(self: Gen, v: Val, t: Node) -> Val:
+@@ -526 +530 @@
+-def gen_isinst_reads(self, c: Node) -> None:
++def gen_isinst_reads(self: Gen, c: Node) -> None:
+@@ -541 +545 @@
+-def gen_puretype(self, c: Node, u: bool) -> bool:
++def gen_puretype(self: Gen, c: Node, u: bool) -> bool:
+@@ -559 +563 @@
+-def gen_cond(self, n: Node) -> str:
++def gen_cond(self: Gen, n: Node) -> str:
+@@ -571 +575 @@
+-def gen_truth(self, v: Val) -> str:
++def gen_truth(self: Gen, v: Val) -> str:
+@@ -675 +679 @@
+-def gen_list_hint_type(self, a: str, b: str) -> str:
++def gen_list_hint_type(self: Gen, a: str, b: str) -> str:
+@@ -691 +695 @@
+-def gen_scalar_read_value(self, n: Node) -> bool:
++def gen_scalar_read_value(self: Gen, n: Node) -> bool:
+@@ -717 +721 @@
+-def gen_scalar_read_index(self, n: Node) -> bool:
++def gen_scalar_read_index(self: Gen, n: Node) -> bool:
+@@ -736 +740 @@
+-def gen_plain_field(self, n: Node) -> str:
++def gen_plain_field(self: Gen, n: Node) -> str:
+@@ -746 +750 @@
+-def gen_class_field(self, c: str, f: str) -> str:
++def gen_class_field(self: Gen, c: str, f: str) -> str:
+@@ -761 +765 @@
+-def gen_scalar_receiver(self, n: Node) -> str:
++def gen_scalar_receiver(self: Gen, n: Node) -> str:
+@@ -769 +773 @@
+-def gen_seq_index(self, n: Node, msg: str) -> Val:
++def gen_seq_index(self: Gen, n: Node, msg: str) -> Val:
+@@ -784 +788 @@
+-def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool = False) -> Val:
++def gen_expr(self: Gen, n: Node, want: str, returnctx: bool = False, resultsoft: bool = False) -> Val:
+@@ -1270 +1274 @@
+-def gen_class_attr(self, cn: Node, a: str) -> Val:
++def gen_class_attr(self: Gen, cn: Node, a: str) -> Val:
+@@ -1289 +1293 @@
+-def gen_cvar_stores(self, ns: list[Node]) -> None:
++def gen_cvar_stores(self: Gen, ns: list[Node]) -> None:
+@@ -1316 +1320 @@
+-def gen_cvar(self, cn: Node, a: str) -> ClassInfo:
++def gen_cvar(self: Gen, cn: Node, a: str) -> ClassInfo:
+@@ -1337 +1341 @@
+-def gen_class_store(self, ci: ClassInfo, a: str, v: Val) -> None:
++def gen_class_store(self: Gen, ci: ClassInfo, a: str, v: Val) -> None:
+@@ -1345 +1349 @@
+-def gen_no_class_attr(self, c: str, a: str) -> None:
++def gen_no_class_attr(self: Gen, c: str, a: str) -> None:
+@@ -1362 +1366 @@
+-def gen_class_ready(self, cn: Node) -> ClassInfo:
++def gen_class_ready(self: Gen, cn: Node) -> ClassInfo:
+@@ -1375 +1379 @@
+-def gen_class_call(self, cn: Node, m: str, args: list[Node], want: str, resultsoft: bool = False) -> Val:
++def gen_class_call(self: Gen, cn: Node, m: str, args: list[Node], want: str, resultsoft: bool = False) -> Val:
+@@ -1402 +1406 @@
+-def gen_cls_bound(self, f: FnInfo, c: str, obj: bool) -> None:
++def gen_cls_bound(self: Gen, f: FnInfo, c: str, obj: bool) -> None:
+@@ -1457 +1461 @@
+-def gen_percent(self, fmt: str, rhs: Node, lit: bool) -> Val:
++def gen_percent(self: Gen, fmt: str, rhs: Node, lit: bool) -> Val:
+@@ -1481 +1485 @@
+-def gen_percent_opt(self, fmt: str, v: Val) -> Val:
++def gen_percent_opt(self: Gen, fmt: str, v: Val) -> Val:
+@@ -1508 +1512 @@
+-def gen_pformat(self, fmt: str, items: list[Val], rtnone: bool, lazy: list[Node]) -> Val:
++def gen_pformat(self: Gen, fmt: str, items: list[Val], rtnone: bool, lazy: list[Node]) -> Val:
+@@ -1570 +1574 @@
+-def gen_nonefmt(self, t: str) -> str:
++def gen_nonefmt(self: Gen, t: str) -> str:
+@@ -1578 +1582 @@
+-def gen_fmt_error(self, msg: str) -> Val:
++def gen_fmt_error(self: Gen, msg: str) -> Val:
+@@ -1582 +1586 @@
+-def gen_str_format(self, fmt: str, m: str, args: list[Node]) -> Val:
++def gen_str_format(self: Gen, fmt: str, m: str, args: list[Node]) -> Val:
+@@ -1602 +1606 @@
+-def gen_format_of(self, f: Node) -> Node:
++def gen_format_of(self: Gen, f: Node) -> Node:
+@@ -1610 +1614 @@
+-def gen_const_str(self, o: Node) -> Node:
++def gen_const_str(self: Gen, o: Node) -> Node:
+@@ -1618 +1622 @@
+-def gen_format_args(self, fa: FmtArgs, args: list[Node]) -> bool:
++def gen_format_args(self: Gen, fa: FmtArgs, args: list[Node]) -> bool:
+@@ -1697 +1701 @@
+-def gen_format_kw(self, fa: FmtArgs, name: str, v: Val) -> bool:
++def gen_format_kw(self: Gen, fa: FmtArgs, name: str, v: Val) -> bool:
+@@ -1709 +1713 @@
+-def gen_format_dup(self, fa: FmtArgs, name: str) -> None:
++def gen_format_dup(self: Gen, fa: FmtArgs, name: str) -> None:
+@@ -1714 +1718 @@
+-def gen_format_merge(self, fa: FmtArgs) -> None:
++def gen_format_merge(self: Gen, fa: FmtArgs) -> None:
+@@ -1734 +1738 @@
+-def gen_fmt_raise(self, kind: str, msg: str) -> Val:
++def gen_fmt_raise(self: Gen, kind: str, msg: str) -> Val:
+@@ -1739 +1743 @@
+-def gen_str_fields(self, s: str, depth: int, fa: FmtArgs) -> Val:
++def gen_str_fields(self: Gen, s: str, depth: int, fa: FmtArgs) -> Val:
+@@ -1825 +1829 @@
+-def gen_str_field(self, name: str, conv: str, spec: str, expand: bool, depth: int, fa: FmtArgs) -> Val:
++def gen_str_field(self: Gen, name: str, conv: str, spec: str, expand: bool, depth: int, fa: FmtArgs) -> Val:
+@@ -1892 +1896 @@
+-def gen_format_arg(self, first: str, idx: int, fa: FmtArgs) -> Val:
++def gen_format_arg(self: Gen, first: str, idx: int, fa: FmtArgs) -> Val:
+@@ -1913 +1917 @@
+-def gen_cat(self, a: Val, b: Val) -> Val:
++def gen_cat(self: Gen, a: Val, b: Val) -> Val:
+@@ -1918 +1922 @@
+-def gen_concat(self, parts: list[Val]) -> Val:
++def gen_concat(self: Gen, parts: list[Val]) -> Val:
+@@ -1953 +1957 @@
+-def gen_conversion(self, v: Val, flags: str, width: str, prec: str, t: str) -> Val:
++def gen_conversion(self: Gen, v: Val, flags: str, width: str, prec: str, t: str) -> Val:
+@@ -1993 +1997 @@
+-def gen_format_(self, v: Val, spec: Node) -> Val:
++def gen_format_(self: Gen, v: Val, spec: Node) -> Val:
+@@ -2102 +2106 @@
+-def gen_slice_bound(self, x: Node, dvs: list[Val], fold: bool = False) -> str:
++def gen_slice_bound(self: Gen, x: Node, dvs: list[Val], fold: bool = False) -> str:
+@@ -2126 +2130 @@
+-def gen_slice_step(self, x: Node, dvs: list[Val], fold: bool = False) -> str:
++def gen_slice_step(self: Gen, x: Node, dvs: list[Val], fold: bool = False) -> str:
+@@ -2143 +2147 @@
+-def gen_slice_dyn(self, ss: list[str], dvs: list[Val]) -> None:
++def gen_slice_dyn(self: Gen, ss: list[str], dvs: list[Val]) -> None:
+@@ -2158 +2162 @@
+-def gen_slice_tuple(self, o: Val, bnd: list[str], step: str) -> Val:
++def gen_slice_tuple(self: Gen, o: Val, bnd: list[str], step: str) -> Val:
+@@ -2184 +2188 @@
+-def gen_optbound(self, v: Val) -> str:
++def gen_optbound(self: Gen, v: Val) -> str:
+@@ -2202 +2206 @@
+-def gen_optint(self, v: Val, none: str) -> str:
++def gen_optint(self: Gen, v: Val, none: str) -> str:
+@@ -2218 +2222 @@
+-def gen_numkey(self, v: Val, t: str) -> list[str]:
++def gen_numkey(self: Gen, v: Val, t: str) -> list[str]:
+@@ -2264 +2268 @@
+-def gen_iter_static(self, n: Node) -> str:
++def gen_iter_static(self: Gen, n: Node) -> str:
+@@ -2272 +2276 @@
+-def gen_unroll(self, g: Node, every: bool = False) -> list[Node] | None:
++def gen_unroll(self: Gen, g: Node, every: bool = False) -> list[Node] | None:
+@@ -2326 +2330 @@
+-def gen_dict_merge(self, n: Node, want: str) -> Val:
++def gen_dict_merge(self: Gen, n: Node, want: str) -> Val:
+@@ -2392 +2396 @@
+-def gen_tuple_(self, vals: list[Val]) -> Val:
++def gen_tuple_(self: Gen, vals: list[Val]) -> Val:
+@@ -2399 +2403 @@
+-def gen_tuple_const(self, n: Node, vals: list[Val]) -> Val:
++def gen_tuple_const(self: Gen, n: Node, vals: list[Val]) -> Val:
+@@ -2446 +2450 @@
+-def gen_stack_tuple(self, vals: list[Val]) -> Val:
++def gen_stack_tuple(self: Gen, vals: list[Val]) -> Val:
+@@ -2460 +2464 @@
+-def gen_stack_ok(self, f: FnInfo) -> bool:
++def gen_stack_ok(self: Gen, f: FnInfo) -> bool:
+@@ -2483 +2487 @@
+-def gen_stack_key(self, t: str, ms: list[str]) -> bool:
++def gen_stack_key(self: Gen, t: str, ms: list[str]) -> bool:
+@@ -2496 +2500 @@
+-def gen_key_read(self, f: FnInfo) -> bool:
++def gen_key_read(self: Gen, f: FnInfo) -> bool:
+@@ -2526 +2530 @@
+-def gen_keep_stack(self, n: Node) -> None:
++def gen_keep_stack(self: Gen, n: Node) -> None:
+@@ -2596 +2600 @@
+-def gen_stack_target(self, t: Node, out: dict[str, bool]) -> None:
++def gen_stack_target(self: Gen, t: Node, out: dict[str, bool]) -> None:
+@@ -2609 +2613 @@
+-def gen_stack_uses(self, n: Node, out: dict[str, bool]) -> None:
++def gen_stack_uses(self: Gen, n: Node, out: dict[str, bool]) -> None:
+@@ -2649 +2653 @@
+-def gen_lookup_key(self, n: Node) -> bool:
++def gen_lookup_key(self: Gen, n: Node) -> bool:
+@@ -2654 +2658 @@
+-def gen_probe_type(self, n: Node) -> str:
++def gen_probe_type(self: Gen, n: Node) -> str:
+@@ -2665 +2669 @@
+-def gen_tget(self, v: Val, i: int) -> Val:
++def gen_tget(self: Gen, v: Val, i: int) -> Val:
+@@ -2674 +2678 @@
+-def gen_tslot(self, v: Val, k: int) -> Val:
++def gen_tslot(self: Gen, v: Val, k: int) -> Val:
+@@ -2682 +2686 @@
+-def gen_tstore(self, v: Val, index: int, slot: str) -> None:
++def gen_tstore(self: Gen, v: Val, index: int, slot: str) -> None:
+@@ -2690 +2694 @@
+-def gen_tput(self, v: Val, index: int, x: Val) -> None:
++def gen_tput(self: Gen, v: Val, index: int, x: Val) -> None:
+@@ -2701 +2705 @@
+-def gen_indexed_ord(self, n: Node) -> Val | None:
++def gen_indexed_ord(self: Gen, n: Node) -> Val | None:
+@@ -2711 +2715 @@
+-def gen_index(self, n: Node, want: str = "") -> Val:
++def gen_index(self: Gen, n: Node, want: str = "") -> Val:
+@@ -2729 +2733 @@
+-def gen_subscript(self, n: Node, o: Val, want: str = "") -> Val:
++def gen_subscript(self: Gen, n: Node, o: Val, want: str = "") -> Val:
+@@ -2847 +2851 @@
+-def gen_pick(self, o: Val, tests: list[Val], exc: str, msg: str, what: str, want: str, dflt: Val | None = None) -> Val:
++def gen_pick(self: Gen, o: Val, tests: list[Val], exc: str, msg: str, what: str, want: str, dflt: Val | None = None) -> Val:
+@@ -2881 +2885 @@
+-def gen_list_read(self, o: Val, i: Val) -> Val:
++def gen_list_read(self: Gen, o: Val, i: Val) -> Val:
+@@ -2910 +2914 @@
+-def gen_bytes_read(self, o: Val, i: Val) -> Val:
++def gen_bytes_read(self: Gen, o: Val, i: Val) -> Val:
+@@ -2932 +2936 @@
+-def gen_argtype(self, t: str, m: str, j: int, missing: str) -> str:
++def gen_argtype(self: Gen, t: str, m: str, j: int, missing: str) -> str:
+@@ -2942 +2946 @@
+-def gen_protocol(self, o: Val, m: str, args: list[Val]) -> Val:
++def gen_protocol(self: Gen, o: Val, m: str, args: list[Val]) -> Val:
+@@ -2950 +2954 @@
+-def gen_obj_iter(self, v: Val, none: str, missing: str, name: str = "__iter__") -> Val:
++def gen_obj_iter(self: Gen, v: Val, none: str, missing: str, name: str = "__iter__") -> Val:
+@@ -2957 +2961 @@
+-def gen_obj_iterator(self, v: Val, none: str, missing: str, name: str = "__iter__") -> Val:
++def gen_obj_iterator(self: Gen, v: Val, none: str, missing: str, name: str = "__iter__") -> Val:
+@@ -2988 +2992 @@
+-def gen_is_iterator(self, t: str) -> bool:
++def gen_is_iterator(self: Gen, t: str) -> bool:
+@@ -2992 +2996 @@
+-def gen_next_type(self, t: str) -> str:
++def gen_next_type(self: Gen, t: str) -> str:
+@@ -3010 +3014 @@
+-def gen_iter_ret(self, e: Node) -> Val:
++def gen_iter_ret(self: Gen, e: Node) -> Val:
+@@ -3039 +3043 @@
+-def gen_listcomp(self, n: Node, want: str, mode: str = "", into: str = "", arg: IterArg | None = None, kind: str = "list", resultsoft: bool = False) -> Val:
++def gen_listcomp(self: Gen, n: Node, want: str, mode: str = "", into: str = "", arg: IterArg | None = None, kind: str = "list", resultsoft: bool = False) -> Val:
+@@ -3130 +3134 @@
+-def gen_numeric_phi(self, result: Val, values: list[Val], edges: list[str]) -> Val:
++def gen_numeric_phi(self: Gen, result: Val, values: list[Val], edges: list[str]) -> Val:
+@@ -3194 +3198 @@
+-def gen_ifexp(self, n: Node, want: str, resultsoft: bool = False) -> Val:
++def gen_ifexp(self: Gen, n: Node, want: str, resultsoft: bool = False) -> Val:
+@@ -3260 +3264 @@
+-def gen_boolop(self, n: Node, ascond: bool, want: str, resultsoft: bool = False) -> Val:
++def gen_boolop(self: Gen, n: Node, ascond: bool, want: str, resultsoft: bool = False) -> Val:
+@@ -3341 +3345 @@
+-def gen_unary(self, n: Node) -> Val:
++def gen_unary(self: Gen, n: Node) -> Val:
+@@ -3386 +3390 @@
+-def gen_dunder(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
++def gen_dunder(self: Gen, op: str, a: Val, b: Val, shown: str = "") -> Val:
+@@ -3455 +3459 @@
+-def gen_ntop(self, op: str, a: Val, b: Val, shown: str) -> Val:
++def gen_ntop(self: Gen, op: str, a: Val, b: Val, shown: str) -> Val:
+@@ -3479 +3483 @@
+-def gen_ntup(self, v: Val, known: bool = False) -> Val:
++def gen_ntup(self: Gen, v: Val, known: bool = False) -> Val:
+@@ -3505 +3509 @@
+-def gen_cmp_method(self, t: str, m: str, other: str) -> str:
++def gen_cmp_method(self: Gen, t: str, m: str, other: str) -> str:
+@@ -3518 +3522 @@
+-def gen_exc_kinds(self, t: str) -> list[str]:
++def gen_exc_kinds(self: Gen, t: str) -> list[str]:
+@@ -3530 +3534 @@
+-def gen_cmp_kinds(self, t: str) -> list[str]:
++def gen_cmp_kinds(self: Gen, t: str) -> list[str]:
+@@ -3538 +3542 @@
+-def gen_enum_intlike(self, c: str) -> bool:
++def gen_enum_intlike(self: Gen, c: str) -> bool:
+@@ -3544 +3548 @@
+-def gen_cmp_pick(self, op: str, at: str, bt: str) -> list[str]:
++def gen_cmp_pick(self: Gen, op: str, at: str, bt: str) -> list[str]:
+@@ -3572 +3576 @@
+-def gen_inherit_cmp(self, op: str, a: Val, b: Val) -> Val:
++def gen_inherit_cmp(self: Gen, op: str, a: Val, b: Val) -> Val:
+@@ -3665 +3669 @@
+-def gen_cmp_alts(self, v: Val) -> list[Val]:
++def gen_cmp_alts(self: Gen, v: Val) -> list[Val]:
+@@ -3679 +3683 @@
+-def gen_cmp_widen(self, op: str, x: Val, y: Val, at: str, bt: str) -> list[Val]:
++def gen_cmp_widen(self: Gen, op: str, x: Val, y: Val, at: str, bt: str) -> list[Val]:
+@@ -3703 +3707 @@
+-def gen_cmp_key(self, op: str, a: Val, b: Val) -> str:
++def gen_cmp_key(self: Gen, op: str, a: Val, b: Val) -> str:
+@@ -3734 +3738 @@
+-def gen_cmp_arm(self, op: str, a: Val, b: Val, k: str, p: list[Val], l: str, ph: Ins, end: str) -> None:
++def gen_cmp_arm(self: Gen, op: str, a: Val, b: Val, k: str, p: list[Val], l: str, ph: Ins, end: str) -> None:
+@@ -3743 +3747 @@
+-def gen_cmp_rest(self, v: Val, alts: list[Val], to: list[str]) -> str:
++def gen_cmp_rest(self: Gen, v: Val, alts: list[Val], to: list[str]) -> str:
+@@ -3758 +3762 @@
+-def gen_cmp_null(self, v: Val, alts: list[Val], to: list[str]) -> str:
++def gen_cmp_null(self: Gen, v: Val, alts: list[Val], to: list[str]) -> str:
+@@ -3768 +3772 @@
+-def gen_cmp_tags(self, v: Val, alts: list[Val], to: list[str]) -> None:
++def gen_cmp_tags(self: Gen, v: Val, alts: list[Val], to: list[str]) -> None:
+@@ -3793 +3797 @@
+-def gen_concrete_cmp(self, op: str, a: Val, b: Val) -> Val:
++def gen_concrete_cmp(self: Gen, op: str, a: Val, b: Val) -> Val:
+@@ -3819 +3823 @@
+-def gen_member_item(self, item: Val, a: Val, found: str, ph: Ins) -> None:
++def gen_member_item(self: Gen, item: Val, a: Val, found: str, ph: Ins) -> None:
+@@ -3824 +3828 @@
+-def gen_iter_in(self, op: str, a: Val, it: Val) -> Val:
++def gen_iter_in(self: Gen, op: str, a: Val, it: Val) -> Val:
+@@ -3847 +3851 @@
+-def gen_inherit_contains(self, op: str, a: Val, b: Val) -> Val:
++def gen_inherit_contains(self: Gen, op: str, a: Val, b: Val) -> Val:
+@@ -3887 +3891 @@
+-def gen_isnull(self, v: Val) -> str:
++def gen_isnull(self: Gen, v: Val) -> str:
+@@ -3895 +3899 @@
+-def gen_richcmp(self, op: str, a: Val, b: Val) -> Val:
++def gen_richcmp(self: Gen, op: str, a: Val, b: Val) -> Val:
+@@ -3954 +3958 @@
+-def gen_eqcall(self, f: FnInfo, iseq: bool, a: Val, b: Val) -> Val:
++def gen_eqcall(self: Gen, f: FnInfo, iseq: bool, a: Val, b: Val) -> Val:
+@@ -3998 +4002 @@
+-def gen_wflag(self, op: str, a: Val, b: Val) -> Val:
++def gen_wflag(self: Gen, op: str, a: Val, b: Val) -> Val:
+@@ -4013 +4017 @@
+-def gen_masked(self, n: Node, want: str, resultsoft: bool) -> Val:
++def gen_masked(self: Gen, n: Node, want: str, resultsoft: bool) -> Val:
+@@ -4048 +4052 @@
+-def gen_wexpr(self, e: Node, want: str, resultsoft: bool) -> list[Val]:
++def gen_wexpr(self: Gen, e: Node, want: str, resultsoft: bool) -> list[Val]:
+@@ -4095 +4099 @@
+-def gen_arith(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
++def gen_arith(self: Gen, op: str, a: Val, b: Val, shown: str = "") -> Val:
+@@ -4222 +4226 @@
+-def gen_compare(self, n: Node) -> Val:
++def gen_compare(self: Gen, n: Node) -> Val:
+@@ -4339 +4343 @@
+-def gen_exc_id(self, v: Val) -> Val:
++def gen_exc_id(self: Gen, v: Val) -> Val:
+@@ -4344 +4348 @@
+-def gen_exc_eq(self, t: str, what: str = "") -> None:
++def gen_exc_eq(self: Gen, t: str, what: str = "") -> None:
+@@ -4354 +4358 @@
+-def gen_titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str) -> bool:
++def gen_titem_eq(self: Gen, item: Val, a: Val, hit: str, ph: Ins | None, value: str) -> bool:
+@@ -4412 +4416 @@
+-def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
++def gen_cmp2(self: Gen, op: str, a: Val, b: Val) -> Val:
+@@ -4838 +4842 @@
+-def gen_container_pair_type(self, a: str, b: str) -> bool:
++def gen_container_pair_type(self: Gen, a: str, b: str) -> bool:
+@@ -4845 +4849 @@
+-def gen_pair_item_eq(self, a: Val, b: Val, hit: str) -> None:
++def gen_pair_item_eq(self: Gen, a: Val, b: Val, hit: str) -> None:
+@@ -4860 +4864 @@
+-def gen_container_pair_eq(self, op: str, a: Val, b: Val) -> Val:
++def gen_container_pair_eq(self: Gen, op: str, a: Val, b: Val) -> Val:
+@@ -4883 +4887 @@
+-def gen_list_pair_eq(self, op: str, a: Val, b: Val) -> Val:
++def gen_list_pair_eq(self: Gen, op: str, a: Val, b: Val) -> Val:
+@@ -4930 +4934 @@
+-def gen_tuple_pair_eq(self, op: str, a: Val, b: Val) -> Val:
++def gen_tuple_pair_eq(self: Gen, op: str, a: Val, b: Val) -> Val:
+@@ -4982 +4986 @@
+-def gen_dict_pair_eq(self, op: str, a: Val, b: Val) -> Val:
++def gen_dict_pair_eq(self: Gen, op: str, a: Val, b: Val) -> Val:
+@@ -5036 +5040 @@
+-def gen_tuple_order(self, op: str, a: Val, b: Val) -> Val:
++def gen_tuple_order(self: Gen, op: str, a: Val, b: Val) -> Val:
+@@ -5078 +5082 @@
+-def gen_optcmp(self, op: str, a: Val, b: Val) -> Val:
++def gen_optcmp(self: Gen, op: str, a: Val, b: Val) -> Val:
+@@ -5109 +5113 @@
+-def gen_numeric_comparable(self, t: str, u: str) -> bool:
++def gen_numeric_comparable(self: Gen, t: str, u: str) -> bool:
+@@ -5126 +5130 @@
+-def gen_comparable(self, t: str, u: str) -> bool:
++def gen_comparable(self: Gen, t: str, u: str) -> bool:
+@@ -5138 +5142 @@
+-def gen_foreign_eq(self, a: Val, b: Val) -> Val:
++def gen_foreign_eq(self: Gen, a: Val, b: Val) -> Val:
+--- a/src/pystachy_compiler/flow.py
++++ b/src/pystachy_compiler/flow.py
+@@ -2,0 +3,4 @@
++from typing import TYPE_CHECKING
++if TYPE_CHECKING:
++    from src.pystachy_compiler.gen import Gen
++from typing import Any as Gen  # type: ignore[assignment]
+@@ -177 +181 @@
+-def gen_flow_program(self, top: list[Node], mod: str, mfns: list[FnInfo], mcls: list[ClassInfo], first: bool) -> None:
++def gen_flow_program(self: Gen, top: list[Node], mod: str, mfns: list[FnInfo], mcls: list[ClassInfo], first: bool) -> None:
+@@ -279 +283 @@
+-def gen_flow_function(self, f: FnInfo, gl: dict[str, bool], safe: dict[str, bool], dels: dict[str, bool]) -> None:
++def gen_flow_function(self: Gen, f: FnInfo, gl: dict[str, bool], safe: dict[str, bool], dels: dict[str, bool]) -> None:
+@@ -331 +335 @@
+-def gen_fl_super(self, fl: Flow, m: str) -> bool:
++def gen_fl_super(self: Gen, fl: Flow, m: str) -> bool:
+@@ -354 +358 @@
+-def gen_fl_nested(self, fl: Flow, n: Node) -> None:
++def gen_fl_nested(self: Gen, fl: Flow, n: Node) -> None:
+@@ -401 +405 @@
+-def gen_flow_body(self, d: Node, caps: dict[str, bool]) -> None:
++def gen_flow_body(self: Gen, d: Node, caps: dict[str, bool]) -> None:
+@@ -449 +453 @@
+-def gen_fl_fields(self, ci: ClassInfo) -> None:
++def gen_fl_fields(self: Gen, ci: ClassInfo) -> None:
+@@ -552 +556 @@
+-def gen_default_home(self, ci: ClassInfo, fl: str) -> ClassInfo:
++def gen_default_home(self: Gen, ci: ClassInfo, fl: str) -> ClassInfo:
+@@ -560 +564 @@
+-def gen_fl_defaults(self, n: Node) -> list[Node]:
++def gen_fl_defaults(self: Gen, n: Node) -> list[Node]:
+@@ -580 +584 @@
+-def gen_scc(self, root: str, num: dict[str, int], low: dict[str, int], stack: list[str]) -> None:
++def gen_scc(self: Gen, root: str, num: dict[str, int], low: dict[str, int], stack: list[str]) -> None:
+@@ -622 +626 @@
+-def gen_user_call(self, n: Node) -> bool:
++def gen_user_call(self: Gen, n: Node) -> bool:
+@@ -671 +675 @@
+-def gen_fl_stmts(self, fl: Flow, body: list[Node]) -> None:
++def gen_fl_stmts(self: Gen, fl: Flow, body: list[Node]) -> None:
+@@ -675 +679 @@
+-def gen_fl_stmt(self, fl: Flow, n: Node) -> None:
++def gen_fl_stmt(self: Gen, fl: Flow, n: Node) -> None:
+@@ -866 +870 @@
+-def gen_fl_target(self, fl: Flow, t: Node) -> None:
++def gen_fl_target(self: Gen, fl: Flow, t: Node) -> None:
+@@ -881 +885 @@
+-def gen_fl_expr(self, fl: Flow, e: Node) -> None:
++def gen_fl_expr(self: Gen, fl: Flow, e: Node) -> None:
+--- a/src/pystachy_compiler/functions.py
++++ b/src/pystachy_compiler/functions.py
+@@ -2,0 +3,4 @@
++from typing import TYPE_CHECKING
++if TYPE_CHECKING:
++    from src.pystachy_compiler.gen import Gen
++from typing import Any as Gen  # type: ignore[assignment]
+@@ -27 +31 @@
+-def gen_enter(self, f: FnInfo, body: list[Node]) -> None:
++def gen_enter(self: Gen, f: FnInfo, body: list[Node]) -> None:
+@@ -95 +99 @@
+-def gen_materialize(self, f: FnInfo) -> None:
++def gen_materialize(self: Gen, f: FnInfo) -> None:
+@@ -109 +113 @@
+-def gen_function(self, f: FnInfo, body: list[Node]) -> None:
++def gen_function(self: Gen, f: FnInfo, body: list[Node]) -> None:
+@@ -168 +172 @@
+-def gen_numeric_proof(self, f: FnInfo, body: list[Node]) -> None:
++def gen_numeric_proof(self: Gen, f: FnInfo, body: list[Node]) -> None:
+@@ -205 +209 @@
+-def gen_receiver_fields(self, c: str, me: str, body: list[Node], names: dict[str, bool]) -> dict[str, str]:
++def gen_receiver_fields(self: Gen, c: str, me: str, body: list[Node], names: dict[str, bool]) -> dict[str, str]:
+@@ -236 +240 @@
+-def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
++def gen_function_body(self: Gen, f: FnInfo, body: list[Node]) -> None:
+@@ -445 +449 @@
+-def gen_extern_args(self, x: Node, more: bool) -> list[str]:
++def gen_extern_args(self: Gen, x: Node, more: bool) -> list[str]:
+@@ -486 +490 @@
+-def gen_externtype(self, a: Node, t: str, what: str, f: FnInfo) -> str:
++def gen_externtype(self: Gen, a: Node, t: str, what: str, f: FnInfo) -> str:
+@@ -513 +517 @@
+-def gen_untold(self, f: FnInfo, ts: list[str], how: str) -> None:
++def gen_untold(self: Gen, f: FnInfo, ts: list[str], how: str) -> None:
+--- a/src/pystachy_compiler/generators.py
++++ b/src/pystachy_compiler/generators.py
+@@ -13,0 +14,4 @@
++from typing import TYPE_CHECKING
++if TYPE_CHECKING:
++    from src.pystachy_compiler.gen import Gen
++from typing import Any as Gen  # type: ignore[assignment]
+@@ -113 +117 @@
+-def gen_pep479(self, e: Val) -> None:
++def gen_pep479(self: Gen, e: Val) -> None:
+@@ -124 +128 @@
+-def gen_exc_mark(self) -> str:
++def gen_exc_mark(self: Gen) -> str:
+@@ -135 +139 @@
+-def gen_exc_back(self, old: str) -> None:
++def gen_exc_back(self: Gen, old: str) -> None:
+@@ -187 +191 @@
+-def gen_gen_declare(self, f: FnInfo, d: Node) -> str:
++def gen_gen_declare(self: Gen, f: FnInfo, d: Node) -> str:
+@@ -218 +222 @@
+-def gen_gen_type(self, y: str, s: str) -> str:
++def gen_gen_type(self: Gen, y: str, s: str) -> str:
+@@ -224 +228 @@
+-def gen_gen_ann_ret(self, n: Node, infer: bool = False) -> list[str]:
++def gen_gen_ann_ret(self: Gen, n: Node, infer: bool = False) -> list[str]:
+@@ -266 +270 @@
+-def gen_gen_name(self, f: FnInfo) -> str:
++def gen_gen_name(self: Gen, f: FnInfo) -> str:
+@@ -272 +276 @@
+-def gen_gen_begin(self, f: FnInfo) -> None:
++def gen_gen_begin(self: Gen, f: FnInfo) -> None:
+@@ -304 +308 @@
+-def gen_gen_enter(self) -> None:
++def gen_gen_enter(self: Gen) -> None:
+@@ -327 +331 @@
+-def gen_gen_end(self, f: FnInfo) -> None:
++def gen_gen_end(self: Gen, f: FnInfo) -> None:
+@@ -374 +378 @@
+-def gen_builtin_catch(self, b: str) -> str:
++def gen_builtin_catch(self: Gen, b: str) -> str:
+@@ -386 +390 @@
+-def gen_gen_promise(self, h: Val) -> str:
++def gen_gen_promise(self: Gen, h: Val) -> str:
+@@ -395 +399 @@
+-def gen_gen_unhandle(self) -> None:
++def gen_gen_unhandle(self: Gen) -> None:
+@@ -406 +410 @@
+-def gen_gen_ret(self, v: Val) -> None:
++def gen_gen_ret(self: Gen, v: Val) -> None:
+@@ -418 +422 @@
+-def gen_gen_none_end(self) -> None:
++def gen_gen_none_end(self: Gen) -> None:
+@@ -430 +434 @@
+-def gen_none_null(self, t: str) -> bool:
++def gen_none_null(self: Gen, t: str) -> bool:
+@@ -436 +440 @@
+-def gen_gen_return(self, n: Node) -> None:
++def gen_gen_return(self: Gen, n: Node) -> None:
+@@ -466 +470 @@
+-def gen_gen_cleanup(self) -> int:
++def gen_gen_cleanup(self: Gen) -> int:
+@@ -480 +484 @@
+-def gen_gen_suspend(self, slot: str, k: int, sub: Val, thrown: str = "", hi: str = "") -> None:
++def gen_gen_suspend(self: Gen, slot: str, k: int, sub: Val, thrown: str = "", hi: str = "") -> None:
+@@ -532 +536 @@
+-def gen_yield_value(self, n: Node) -> Val:
++def gen_yield_value(self: Gen, n: Node) -> Val:
+@@ -558 +562 @@
+-def gen_yield_stmt(self, n: Node) -> None:
++def gen_yield_stmt(self: Gen, n: Node) -> None:
+@@ -585 +589 @@
+-def gen_yield_from(self, x: Node) -> Val:
++def gen_yield_from(self: Gen, x: Node) -> Val:
+@@ -648 +652 @@
+-def gen_yield_from_proto(self, v: Val, t: str, y: str, callee: FnInfo | None) -> Val:
++def gen_yield_from_proto(self: Gen, v: Val, t: str, y: str, callee: FnInfo | None) -> Val:
+@@ -703 +707 @@
+-def gen_gen_keep(self, w: list[str], ys: str, yh: str) -> None:
++def gen_gen_keep(self: Gen, w: list[str], ys: str, yh: str) -> None:
+@@ -710 +714 @@
+-def gen_gen_slots(self, v: Val, y: str) -> list[str]:
++def gen_gen_slots(self: Gen, v: Val, y: str) -> list[str]:
+@@ -721 +725 @@
+-def gen_gen_words(self, p: str, t: str, y: str, owned: Val | None = None) -> list[str]:
++def gen_gen_words(self: Gen, p: str, t: str, y: str, owned: Val | None = None) -> list[str]:
+@@ -758 +762 @@
+-def gen_gen_value(self, p: str, t: str) -> Val:
++def gen_gen_value(self: Gen, p: str, t: str) -> Val:
+@@ -769 +773 @@
+-def gen_gen_value_type(self, t: str) -> str:
++def gen_gen_value_type(self: Gen, t: str) -> str:
+@@ -774 +778 @@
+-def gen_gen_returned(self, h: Val, r: str) -> Val:
++def gen_gen_returned(self: Gen, h: Val, r: str) -> Val:
+@@ -784 +788 @@
+-def gen_yield_from_iter(self, what: str) -> None:
++def gen_yield_from_iter(self: Gen, what: str) -> None:
+@@ -792 +796 @@
+-def gen_hidden_loop(self, loop: Node, own: list[str], names: list[str]) -> None:
++def gen_hidden_loop(self: Gen, loop: Node, own: list[str], names: list[str]) -> None:
+@@ -827 +831 @@
+-def gen_gen_resume_enter(self, st: str) -> str:
++def gen_gen_resume_enter(self: Gen, st: str) -> str:
+@@ -842 +846 @@
+-def gen_gen_next(self, h: Val, done: str) -> str:
++def gen_gen_next(self: Gen, h: Val, done: str) -> str:
+@@ -866 +870 @@
+-def gen_gen_drop(self, h: Val) -> None:
++def gen_gen_drop(self: Gen, h: Val) -> None:
+@@ -878 +882 @@
+-def gen_owned_gen(self, v: Val, it: Node) -> int:
++def gen_owned_gen(self: Gen, v: Val, it: Node) -> int:
+@@ -892 +896 @@
+-def gen_owned_node(self, v: Val) -> Node:
++def gen_owned_node(self: Gen, v: Val) -> Node:
+@@ -902 +906 @@
+-def gen_owned_loop(self, owned: list[Val], close: bool, tgt: Node, seqs: list[Val], mode: str, body: list[Node], start: str, hide: list[str], arg: IterArg | None, made: SeqStart | None) -> None:
++def gen_owned_loop(self: Gen, owned: list[Val], close: bool, tgt: Node, seqs: list[Val], mode: str, body: list[Node], start: str, hide: list[str], arg: IterArg | None, made: SeqStart | None) -> None:
+@@ -958 +962 @@
+-def gen_gen_list(self, v: Val, want: str) -> Val:
++def gen_gen_list(self: Gen, v: Val, want: str) -> Val:
+@@ -964 +968 @@
+-def gen_gen_stream(self, name: str, v: Val, args: list[Node], want: str, resultsoft: bool) -> Val:
++def gen_gen_stream(self: Gen, name: str, v: Val, args: list[Node], want: str, resultsoft: bool) -> Val:
+@@ -972 +976 @@
+-def gen_gen_unpack(self, t: Node, g: Val) -> None:
++def gen_gen_unpack(self: Gen, t: Node, g: Val) -> None:
+@@ -1002 +1006 @@
+-def gen_gen_contains(self, x: Val, g: Val) -> Val:
++def gen_gen_contains(self: Gen, x: Val, g: Val) -> Val:
+@@ -1010 +1014 @@
+-def gen_gen_method(self, o: Val, m: str, args: list[Node]) -> Val:
++def gen_gen_method(self: Gen, o: Val, m: str, args: list[Node]) -> Val:
+@@ -1034 +1038 @@
+-def gen_gen_next_value(self, g: Val, dflt: Val) -> Val:
++def gen_gen_next_value(self: Gen, g: Val, dflt: Val) -> Val:
+@@ -1068 +1072 @@
+-def gen_gen_stop(self) -> None:
++def gen_gen_stop(self: Gen) -> None:
+@@ -1078 +1082 @@
+-def gen_gen_raised(self, e: Val) -> None:
++def gen_gen_raised(self: Gen, e: Val) -> None:
+@@ -1089 +1093 @@
+-def gen_gen_close(self, h: Val) -> None:
++def gen_gen_close(self: Gen, h: Val) -> None:
+@@ -1140 +1144 @@
+-def gen_exc_operand(self, e: Node) -> Val:
++def gen_exc_operand(self: Gen, e: Node) -> Val:
+@@ -1158 +1162 @@
+-def gen_gen_throw_into(self, h: Val, e: Val, done: str) -> str:
++def gen_gen_throw_into(self: Gen, h: Val, e: Val, done: str) -> str:
+@@ -1198 +1202 @@
+-def gen_gen_throw(self, g: Val, args: list[Node]) -> Val:
++def gen_gen_throw(self: Gen, g: Val, args: list[Node]) -> Val:
+@@ -1215 +1219 @@
+-def gen_gen_send(self, g: Val, args: list[Node]) -> Val:
++def gen_gen_send(self: Gen, g: Val, args: list[Node]) -> Val:
+@@ -1299 +1303 @@
+-def gen_genexp_value(self, n: Node) -> Val:
++def gen_genexp_value(self: Gen, n: Node) -> Val:
+--- a/src/pystachy_compiler/ircheck.py
++++ b/src/pystachy_compiler/ircheck.py
+@@ -2,0 +3,4 @@
++from typing import TYPE_CHECKING
++if TYPE_CHECKING:
++    from src.pystachy_compiler.gen import Gen
++from typing import Any as Gen  # type: ignore[assignment]
+@@ -132 +136 @@
+-def gen_verify(self, fn: IFn, eh: bool) -> None:
++def gen_verify(self: Gen, fn: IFn, eh: bool) -> None:
+@@ -397 +401 @@
+-def gen_verify_gen(self, fn: IFn, b: Blk, i: Ins, j: int) -> None:
++def gen_verify_gen(self: Gen, fn: IFn, b: Blk, i: Ins, j: int) -> None:
+@@ -422 +426 @@
+-def gen_nums(self, i: Ins) -> int:
++def gen_nums(self: Gen, i: Ins) -> int:
+@@ -431 +435 @@
+-def gen_bad_ir(self, fn: IFn, b: Blk, what: str) -> None:
++def gen_bad_ir(self: Gen, fn: IFn, b: Blk, what: str) -> None:
+@@ -434 +438 @@
+-def gen_effects(self) -> None:
++def gen_effects(self: Gen) -> None:
+@@ -469 +473 @@
+-def gen_opfx(self, i: Ins, fa: dict[str, bool]) -> int:
++def gen_opfx(self: Gen, i: Ins, fa: dict[str, bool]) -> int:
+--- a/src/pystachy_compiler/lower_module.py
++++ b/src/pystachy_compiler/lower_module.py
+@@ -6,0 +7,4 @@
++from typing import TYPE_CHECKING
++if TYPE_CHECKING:
++    from src.pystachy_compiler.gen import Gen
++from typing import Any as Gen  # type: ignore[assignment]
+@@ -193 +197 @@
+-def gen_tbaa_nodes(self) -> list[str]:
++def gen_tbaa_nodes(self: Gen) -> list[str]:
+@@ -231 +235 @@
+-def gen_extern_decl(self, f: FnInfo) -> None:
++def gen_extern_decl(self: Gen, f: FnInfo) -> None:
+@@ -330 +334 @@
+-def gen_cextern(self, f: FnInfo, at: bool = False) -> None:
++def gen_cextern(self: Gen, f: FnInfo, at: bool = False) -> None:
+@@ -458 +462 @@
+-def gen_pyext(self) -> list[str]:
++def gen_pyext(self: Gen) -> list[str]:
+@@ -534 +538 @@
+-def gen_dispatch(self, op: str) -> None:
++def gen_dispatch(self: Gen, op: str) -> None:
+@@ -586 +590 @@
+-def gen_gen_module(self) -> list[str]:
++def gen_gen_module(self: Gen) -> list[str]:
+@@ -677 +681 @@
+-def gen_lower_module(self) -> str:
++def gen_lower_module(self: Gen) -> str:
+--- a/src/pystachy_compiler/lowering.py
++++ b/src/pystachy_compiler/lowering.py
+@@ -2,0 +3,4 @@
++from typing import TYPE_CHECKING
++if TYPE_CHECKING:
++    from src.pystachy_compiler.gen import Gen
++from typing import Any as Gen  # type: ignore[assignment]
+@@ -10 +14 @@
+-def gen_lower(self, fn: IFn) -> None:
++def gen_lower(self: Gen, fn: IFn) -> None:
+@@ -119 +123 @@
+-def gen_alloc_call(self, size: str, t: str) -> str:
++def gen_alloc_call(self: Gen, size: str, t: str) -> str:
+@@ -150 +154 @@
+-def gen_tuple_rets(self) -> None:
++def gen_tuple_rets(self: Gen) -> None:
+@@ -232 +236 @@
+-def gen_field_tag(self, c: str, k: int) -> str:
++def gen_field_tag(self: Gen, c: str, k: int) -> str:
+@@ -253 +257 @@
+-def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
++def gen_lower_ins(self: Gen, fn: IFn, i: Ins) -> None:
+@@ -535 +539 @@
+-def gen_invoke(self, c: str, i: Ins) -> str:
++def gen_invoke(self: Gen, c: str, i: Ins) -> str:
+@@ -540 +544 @@
+-def gen_eh_ir(self, fn: IFn) -> None:
++def gen_eh_ir(self: Gen, fn: IFn) -> None:
+@@ -614 +618 @@
+-def gen_lower_scalar(self, i: Ins) -> None:
++def gen_lower_scalar(self: Gen, i: Ins) -> None:
+--- a/src/pystachy_compiler/memory_ir.py
++++ b/src/pystachy_compiler/memory_ir.py
+@@ -6,0 +7,4 @@
++from typing import TYPE_CHECKING
++if TYPE_CHECKING:
++    from src.pystachy_compiler.gen import Gen
++from typing import Any as Gen  # type: ignore[assignment]
+@@ -10 +14 @@
+-def gen_mload(self, t: str, p: str, metadata: str = "") -> str:
++def gen_mload(self: Gen, t: str, p: str, metadata: str = "") -> str:
+@@ -17 +21 @@
+-def gen_mstore(self, t: str, v: str, p: str, metadata: str = "") -> None:
++def gen_mstore(self: Gen, t: str, v: str, p: str, metadata: str = "") -> None:
+@@ -23 +27 @@
+-def gen_maddr(self, t: str, p: str, index: str, inbounds: bool = False) -> str:
++def gen_maddr(self: Gen, t: str, p: str, index: str, inbounds: bool = False) -> str:
+--- a/src/pystachy_compiler/optimizations.py
++++ b/src/pystachy_compiler/optimizations.py
+@@ -2,0 +3,4 @@
++from typing import TYPE_CHECKING
++if TYPE_CHECKING:
++    from src.pystachy_compiler.gen import Gen
++from typing import Any as Gen  # type: ignore[assignment]
+@@ -55 +59 @@
+-def gen_pass_check(self, fn: IFn, contract: PassContract, after: bool) -> None:
++def gen_pass_check(self: Gen, fn: IFn, contract: PassContract, after: bool) -> None:
+@@ -176 +180 @@
+-def gen_recursionscope(self) -> int:
++def gen_recursionscope(self: Gen) -> int:
+@@ -336 +340 @@
+-def gen_optimize(self, fn: IFn, on: dict[str, bool]) -> int:
++def gen_optimize(self: Gen, fn: IFn, on: dict[str, bool]) -> int:
+@@ -367 +371 @@
+-def gen_preds(self, fn: IFn) -> dict[str, list[int]]:
++def gen_preds(self: Gen, fn: IFn) -> dict[str, list[int]]:
+@@ -410 +414 @@
+-def gen_charslots(self, fn: IFn) -> int:
++def gen_charslots(self: Gen, fn: IFn) -> int:
+@@ -504 +508 @@
+-def gen_listget(self, fn: IFn) -> int:
++def gen_listget(self: Gen, fn: IFn) -> int:
+@@ -550 +554 @@
+-def gen_dictfuse(self, fn: IFn) -> int:
++def gen_dictfuse(self: Gen, fn: IFn) -> int:
+@@ -727 +731 @@
+-def gen_unionslots(self, fn: IFn) -> int:
++def gen_unionslots(self: Gen, fn: IFn) -> int:
+@@ -883 +887 @@
+-def gen_tag_read(self, i: Ins) -> bool:
++def gen_tag_read(self: Gen, i: Ins) -> bool:
+@@ -889 +893 @@
+-def gen_usplits(self, fn: IFn, defs: dict[str, list[int]], v: str, seen: dict[str, bool]) -> bool:
++def gen_usplits(self: Gen, fn: IFn, defs: dict[str, list[int]], v: str, seen: dict[str, bool]) -> bool:
+@@ -904 +908 @@
+-def gen_uparts(self, fn: IFn, defs: dict[str, list[int]], v: str, t: str, parts: dict[str, list[str]], before: dict[str, list[Ins]], after: dict[str, list[Ins]], heads: dict[int, list[Ins]]) -> list[str]:
++def gen_uparts(self: Gen, fn: IFn, defs: dict[str, list[int]], v: str, t: str, parts: dict[str, list[str]], before: dict[str, list[Ins]], after: dict[str, list[Ins]], heads: dict[int, list[Ins]]) -> list[str]:
+@@ -951 +955 @@
+-def gen_uleaves(self, fn: IFn, uses: dict[str, list[list[int]]], i: Ins, split: dict[str, Ins]) -> bool:
++def gen_uleaves(self: Gen, fn: IFn, uses: dict[str, list[list[int]]], i: Ins, split: dict[str, Ins]) -> bool:
+@@ -960 +964 @@
+-def gen_ufresh(self, fn: IFn, defs: dict[str, list[int]], uses: dict[str, list[list[int]]], v: str, seen: dict[str, bool]) -> bool:
++def gen_ufresh(self: Gen, fn: IFn, defs: dict[str, list[int]], uses: dict[str, list[list[int]]], v: str, seen: dict[str, bool]) -> bool:
+@@ -974 +978 @@
+-def gen_upaid(self, fn: IFn, defs: dict[str, list[int]], uses: dict[str, list[list[int]]], addr: str, split: dict[str, Ins]) -> bool:
++def gen_upaid(self: Gen, fn: IFn, defs: dict[str, list[int]], uses: dict[str, list[list[int]]], addr: str, split: dict[str, Ins]) -> bool:
+@@ -1014 +1018 @@
+-def gen_canon(self, vs: Values, v: str) -> str:
++def gen_canon(self: Gen, vs: Values, v: str) -> str:
+@@ -1067 +1071 @@
+-def gen_same(self, vs: Values, v: str, t: str) -> str:
++def gen_same(self: Gen, vs: Values, v: str, t: str) -> str:
+@@ -1075 +1079 @@
+-def gen_addr(self, vs: Values, a: str) -> str:
++def gen_addr(self: Gen, vs: Values, a: str) -> str:
+@@ -1079 +1083 @@
+-def gen_reaching(self, vs: Values, a: str, j: int, x: int) -> str:
++def gen_reaching(self: Gen, vs: Values, a: str, j: int, x: int) -> str:
+@@ -1127 +1131 @@
+-def gen_disjoint(self, vs: Values, a: str, b: str) -> bool:
++def gen_disjoint(self: Gen, vs: Values, a: str, b: str) -> bool:
+@@ -1139 +1143 @@
+-def gen_nullcheck(self, fn: IFn) -> int:
++def gen_nullcheck(self: Gen, fn: IFn) -> int:
+@@ -1434 +1438 @@
+-def gen_nullslot(self, fn: IFn, lds: list[int], stride: int, slots: dict[str, int], q: Ins) -> str:
++def gen_nullslot(self: Gen, fn: IFn, lds: list[int], stride: int, slots: dict[str, int], q: Ins) -> str:
+--- a/src/pystachy_compiler/program.py
++++ b/src/pystachy_compiler/program.py
+@@ -2,0 +3,4 @@
++from typing import TYPE_CHECKING
++if TYPE_CHECKING:
++    from src.pystachy_compiler.gen import Gen
++from typing import Any as Gen  # type: ignore[assignment]
+@@ -77 +81 @@
+-def gen_subclass_problem(self, st: Node) -> str:
++def gen_subclass_problem(self: Gen, st: Node) -> str:
+@@ -151 +155 @@
+-def gen_exc_base(self, b: Node) -> str:
++def gen_exc_base(self: Gen, b: Node) -> str:
+@@ -168 +172 @@
+-def gen_inherit(self, ci: ClassInfo) -> None:
++def gen_inherit(self: Gen, ci: ClassInfo) -> None:
+@@ -241 +245 @@
+-def gen_accessor(self, ci: ClassInfo, d: Node) -> str:
++def gen_accessor(self: Gen, ci: ClassInfo, d: Node) -> str:
+@@ -258 +262 @@
+-def gen_class_ref(self, m: Mod, s: str) -> str:
++def gen_class_ref(self: Gen, m: Mod, s: str) -> str:
+@@ -269 +273 @@
+-def gen_dc_options(self, ci: ClassInfo) -> None:
++def gen_dc_options(self: Gen, ci: ClassInfo) -> None:
+@@ -286 +290 @@
+-def gen_derives(self, c: str, base: str) -> bool:
++def gen_derives(self: Gen, c: str, base: str) -> bool:
+@@ -299 +303 @@
+-def gen_init_template(self, st: Node) -> bool:
++def gen_init_template(self: Gen, st: Node) -> bool:
+@@ -321 +325 @@
+-def gen_template_fix(self, cs: list[Node]) -> str:
++def gen_template_fix(self: Gen, cs: list[Node]) -> str:
+@@ -331 +335 @@
+-def gen_makes_tmpl(self, n: Node) -> bool:
++def gen_makes_tmpl(self: Gen, n: Node) -> bool:
+@@ -341 +345 @@
+-def gen_tmpl_ann(self, a: Node) -> bool:
++def gen_tmpl_ann(self: Gen, a: Node) -> bool:
+@@ -368 +372 @@
+-def gen_tmpl_of(self, c: str) -> str:
++def gen_tmpl_of(self: Gen, c: str) -> str:
+@@ -374 +378 @@
+-def gen_class_problem(self, m: Mod, st: Node, exc: bool) -> str:
++def gen_class_problem(self: Gen, m: Mod, st: Node, exc: bool) -> str:
+@@ -412 +416 @@
+-def gen_eager(self, e: str, why: str, does: str) -> None:
++def gen_eager(self: Gen, e: str, why: str, does: str) -> None:
+@@ -417 +421 @@
+-def gen_decorators(self, d: Node, decos: list[Node], local: dict[str, str]) -> str:
++def gen_decorators(self: Gen, d: Node, decos: list[Node], local: dict[str, str]) -> str:
+@@ -440 +444 @@
+-def gen_left_out(self, st: Node, why: str) -> None:
++def gen_left_out(self: Gen, st: Node, why: str) -> None:
+@@ -448 +452 @@
+-def gen_class_effect(self, st: Node, why: str, runs: bool = True) -> bool:
++def gen_class_effect(self: Gen, st: Node, why: str, runs: bool = True) -> bool:
+@@ -468 +472 @@
+-def gen_body_effect(self, body: list[Node], local: dict[str, str], why: str, does: str, runs: bool = True) -> bool:
++def gen_body_effect(self: Gen, body: list[Node], local: dict[str, str], why: str, does: str, runs: bool = True) -> bool:
+@@ -520 +524 @@
+-def gen_raisers(self, e: Node, local: dict[str, str], run: bool) -> bool:
++def gen_raisers(self: Gen, e: Node, local: dict[str, str], run: bool) -> bool:
+@@ -544 +548 @@
+-def gen_plain(self, e: Node, local: dict[str, str]) -> str:
++def gen_plain(self: Gen, e: Node, local: dict[str, str]) -> str:
+@@ -589 +593 @@
+-def gen_body_names(self, c: Node) -> dict[str, bool]:
++def gen_body_names(self: Gen, c: Node) -> dict[str, bool]:
+@@ -598 +602 @@
+-def gen_hook(self, st: Node) -> None:
++def gen_hook(self: Gen, st: Node) -> None:
+@@ -615 +619 @@
+-def gen_path_of(self, n: Node) -> str:
++def gen_path_of(self: Gen, n: Node) -> str:
+@@ -623 +627 @@
+-def gen_objects(self, t: str, use: int) -> bool:
++def gen_objects(self: Gen, t: str, use: int) -> bool:
+@@ -627 +631 @@
+-def gen_pure(self, q: str) -> bool:
++def gen_pure(self: Gen, q: str) -> bool:
+@@ -633 +637 @@
+-def gen_effect(self, e: Node, local: dict[str, str], use: int) -> str:
++def gen_effect(self: Gen, e: Node, local: dict[str, str], use: int) -> str:
+@@ -705 +709 @@
+-def gen_partly(self, e: Node, use: int) -> str:
++def gen_partly(self: Gen, e: Node, use: int) -> str:
+@@ -716 +720 @@
+-def gen_generic_aliases(self, body: list[Node]) -> None:
++def gen_generic_aliases(self: Gen, body: list[Node]) -> None:
+@@ -739 +743 @@
+-def gen_abstract_defs(self, body: list[Node]) -> list[Node]:
++def gen_abstract_defs(self: Gen, body: list[Node]) -> list[Node]:
+@@ -775 +779 @@
+-def gen_abstract_of(self, c: str) -> list[str]:
++def gen_abstract_of(self: Gen, c: str) -> list[str]:
+@@ -796 +800 @@
+-def gen_abc_class(self, c: str) -> bool:
++def gen_abc_class(self: Gen, c: str) -> bool:
+@@ -804 +808 @@
+-def gen_program(self, mods: list[Mod]) -> str:
++def gen_program(self: Gen, mods: list[Mod]) -> str:
+--- a/src/pystachy_compiler/reflection.py
++++ b/src/pystachy_compiler/reflection.py
+@@ -11,0 +12,4 @@
++from typing import TYPE_CHECKING
++if TYPE_CHECKING:
++    from src.pystachy_compiler.gen import Gen
++from typing import Any as Gen  # type: ignore[assignment]
+@@ -60 +64 @@
+-def gen_refl_typeof(self, n: Node) -> Node | None:
++def gen_refl_typeof(self: Gen, n: Node) -> Node | None:
+@@ -73 +77 @@
+-def gen_refl_concrete(self, t: str) -> list[str]:
++def gen_refl_concrete(self: Gen, t: str) -> list[str]:
+@@ -89 +93 @@
+-def gen_refl_may_none(self, v: Val) -> bool:
++def gen_refl_may_none(self: Gen, v: Val) -> bool:
+@@ -98 +102 @@
+-def gen_refl_split(self, v: Val, nonnull: bool = False, guarded: bool = False) -> list[RLeaf]:
++def gen_refl_split(self: Gen, v: Val, nonnull: bool = False, guarded: bool = False) -> list[RLeaf]:
+@@ -140 +144 @@
+-def gen_refl_split_class(self, v: Val) -> list[RLeaf]:
++def gen_refl_split_class(self: Gen, v: Val) -> list[RLeaf]:
+@@ -162 +166 @@
+-def gen_refl_type_name(self, c: str, what: str) -> str:
++def gen_refl_type_name(self: Gen, c: str, what: str) -> str:
+@@ -184 +188 @@
+-def gen_refl_record(self, c: str) -> str:
++def gen_refl_record(self: Gen, c: str) -> str:
+@@ -211 +215 @@
+-def gen_refl_type_of(self, v: Val, what: str, nonnull: bool = False) -> list[RLeaf]:
++def gen_refl_type_of(self: Gen, v: Val, what: str, nonnull: bool = False) -> list[RLeaf]:
+@@ -223 +227 @@
+-def gen_refl_class_of(self, v: Val, nonnull: bool = False) -> Val:
++def gen_refl_class_of(self: Gen, v: Val, nonnull: bool = False) -> Val:
+@@ -241 +245 @@
+-def gen_refl_type_attr(self, x: Node, what: str) -> Val:
++def gen_refl_type_attr(self: Gen, x: Node, what: str) -> Val:
+@@ -290 +294 @@
+-def gen_refl_dyn_type_cmp(self, n: Node) -> Val:
++def gen_refl_dyn_type_cmp(self: Gen, n: Node) -> Val:
+@@ -329 +333 @@
+-def gen_refl_type_operand(self, n: Node) -> str:
++def gen_refl_type_operand(self: Gen, n: Node) -> str:
+@@ -350 +354 @@
+-def gen_refl_type_cmp(self, n: Node) -> Val | None:
++def gen_refl_type_cmp(self: Gen, n: Node) -> Val | None:
+@@ -403 +407 @@
+-def gen_refl_name(self, n: Node) -> str:
++def gen_refl_name(self: Gen, n: Node) -> str:
+@@ -414 +418 @@
+-def gen_refl_args(self, name: str, args: list[Node], lo: int, hi: int) -> None:
++def gen_refl_args(self: Gen, name: str, args: list[Node], lo: int, hi: int) -> None:
+@@ -426 +430 @@
+-def gen_refl_has(self, c: str, a: str) -> str:
++def gen_refl_has(self: Gen, c: str, a: str) -> str:
+@@ -442 +446 @@
+-def gen_refl_join(self, vals: list[Val], what: str) -> str:
++def gen_refl_join(self: Gen, vals: list[Val], what: str) -> str:
+@@ -458 +462 @@
+-def gen_refl_phi(self, vals: list[Val], blocks: list[str], end: str, what: str) -> Val:
++def gen_refl_phi(self: Gen, vals: list[Val], blocks: list[str], end: str, what: str) -> Val:
+@@ -486 +490 @@
+-def gen_refl_catch_attr(self, x: Val, a: str, d: Val, vals: list[Val], blocks: list[str], end: str, truth: bool = False) -> None:
++def gen_refl_catch_attr(self: Gen, x: Val, a: str, d: Val, vals: list[Val], blocks: list[str], end: str, truth: bool = False) -> None:
+@@ -517 +521 @@
+-def gen_refl_getattr(self, args: list[Node], want: str, split: bool = False) -> Val:
++def gen_refl_getattr(self: Gen, args: list[Node], want: str, split: bool = False) -> Val:
+@@ -581 +585 @@
+-def gen_refl_setattr(self, args: list[Node]) -> Val:
++def gen_refl_setattr(self: Gen, args: list[Node]) -> Val:
+@@ -721 +725 @@
+-def gen_refl_bound_once(self, name: str) -> list[str] | None:
++def gen_refl_bound_once(self: Gen, name: str) -> list[str] | None:
+@@ -746 +750 @@
+-def gen_refl_const_names(self, it: Node) -> list[str] | None:
++def gen_refl_const_names(self: Gen, it: Node) -> list[str] | None:
+@@ -759 +763 @@
+-def gen_refl_unroll_for(self, n: Node) -> bool:
++def gen_refl_unroll_for(self: Gen, n: Node) -> bool:
+@@ -886 +890 @@
+-def gen_refl_supported(self, c: str, what: str) -> None:
++def gen_refl_supported(self: Gen, c: str, what: str) -> None:
+@@ -911 +915 @@
+-def gen_refl_defines(self, c: str, m: str) -> bool:
++def gen_refl_defines(self: Gen, c: str, m: str) -> bool:
+@@ -927 +931 @@
+-def gen_refl_names(self, c: str) -> list[list[str]]:
++def gen_refl_names(self: Gen, c: str) -> list[list[str]]:
+@@ -988 +992 @@
+-def gen_refl_listed(self, c: str, nk: list[str]) -> bool:
++def gen_refl_listed(self: Gen, c: str, nk: list[str]) -> bool:
+@@ -1020 +1024 @@
+-def gen_refl_init_order(self, c: str, f: FnInfo, out: list[str], maybe: dict[str, bool]) -> bool:
++def gen_refl_init_order(self: Gen, c: str, f: FnInfo, out: list[str], maybe: dict[str, bool]) -> bool:
+@@ -1066 +1070 @@
+-def gen_refl_dict_order(self, c: str) -> list[str]:
++def gen_refl_dict_order(self: Gen, c: str) -> list[str]:
+@@ -1080 +1084 @@
+-def gen_refl_order(self, c: str) -> tuple[list[str], str]:
++def gen_refl_order(self: Gen, c: str) -> tuple[list[str], str]:
+@@ -1133 +1137 @@
+-def gen_refl_stored(self, name: str) -> bool:
++def gen_refl_stored(self: Gen, name: str) -> bool:
+@@ -1145 +1149 @@
+-def gen_refl_late(self, name: str) -> bool:
++def gen_refl_late(self: Gen, name: str) -> bool:
+@@ -1202 +1206 @@
+-def gen_refl_fields_table(self, c: str) -> str:
++def gen_refl_fields_table(self: Gen, c: str) -> str:
+@@ -1227 +1231 @@
+-def gen_refl_layout_record(self, c: str) -> str:
++def gen_refl_layout_record(self: Gen, c: str) -> str:
+@@ -1244 +1248 @@
+-def gen_refl_dict_of(self, n: Node) -> Node | None:
++def gen_refl_dict_of(self: Gen, n: Node) -> Node | None:
+@@ -1256 +1260 @@
+-def comparison_dict_guard(self, o: Val, known: bool) -> None:
++def comparison_dict_guard(self: Gen, o: Val, known: bool) -> None:
+@@ -1275 +1279 @@
+-def gen_refl_vars_text(self, o: Val, known: bool) -> Val:
++def gen_refl_vars_text(self: Gen, o: Val, known: bool) -> Val:
+@@ -1327 +1331 @@
+-def gen_refl_textual(self, n: Node) -> bool:
++def gen_refl_textual(self: Gen, n: Node) -> bool:
+@@ -1335 +1339 @@
+-def gen_refl_defer(self, n: Node) -> Val:
++def gen_refl_defer(self: Gen, n: Node) -> Val:
+@@ -1348 +1352 @@
+-def gen_refl_finish(self, v: Val, conv: str) -> Val:
++def gen_refl_finish(self: Gen, v: Val, conv: str) -> Val:
+@@ -1356 +1360 @@
+-def gen_refl_dict_operand(self, n: Node, x: Node) -> Val:
++def gen_refl_dict_operand(self: Gen, n: Node, x: Node) -> Val:
+@@ -1375 +1379 @@
+-def gen_refl_unroll_dict(self, n: Node, d: Node, x: Node, m: str) -> None:
++def gen_refl_unroll_dict(self: Gen, n: Node, d: Node, x: Node, m: str) -> None:
+@@ -1481 +1485 @@
+-def gen_refl_size_check(self, ov: Val, flagged: list[str], snap: list[str]) -> None:
++def gen_refl_size_check(self: Gen, ov: Val, flagged: list[str], snap: list[str]) -> None:
+@@ -1500 +1504 @@
+-def gen_refl_dir_names(self, c: str) -> list[list[str]]:
++def gen_refl_dir_names(self: Gen, c: str) -> list[list[str]]:
+@@ -1512 +1516 @@
+-def gen_refl_dir(self, x: Node) -> Val:
++def gen_refl_dir(self: Gen, x: Node) -> Val:
+@@ -1543 +1547 @@
+-def gen_refl_dir_of(self, it: Node) -> Node | None:
++def gen_refl_dir_of(self: Gen, it: Node) -> Node | None:
+@@ -1552 +1556 @@
+-def gen_refl_dict_copy(self, d: Node) -> Val:
++def gen_refl_dict_copy(self: Gen, d: Node) -> Val:
+@@ -1596 +1600 @@
+-def gen_refl_dict_format(self, d: Node, keys: list[str], fmt: str, what: str) -> Val:
++def gen_refl_dict_format(self: Gen, d: Node, keys: list[str], fmt: str, what: str) -> Val:
+@@ -1628 +1632 @@
+-def gen_refl_percent(self, fmt: str, d: Node) -> Val:
++def gen_refl_percent(self: Gen, fmt: str, d: Node) -> Val:
+@@ -1662 +1666 @@
+-def gen_refl_format_map(self, fmt: str, d: Node) -> Val:
++def gen_refl_format_map(self: Gen, fmt: str, d: Node) -> Val:
+@@ -1736 +1740 @@
+-def gen_refl_dc_class(self, x: Node, what: str) -> str:
++def gen_refl_dc_class(self: Gen, x: Node, what: str) -> str:
+@@ -1749 +1753 @@
+-def gen_refl_dc_check(self, t: str, what: str) -> str:
++def gen_refl_dc_check(self: Gen, t: str, what: str) -> str:
+@@ -1761 +1765 @@
+-def gen_refl_dc_names(self, it: Node) -> list[str] | None:
++def gen_refl_dc_names(self: Gen, it: Node) -> list[str] | None:
+@@ -1794 +1798 @@
+-def gen_refl_unroll_fields(self, n: Node, names: list[str]) -> None:
++def gen_refl_unroll_fields(self: Gen, n: Node, names: list[str]) -> None:
+@@ -1835 +1839 @@
+-def gen_refl_dc_type(self, t: str, what: str, seen: list[str]) -> str:
++def gen_refl_dc_type(self: Gen, t: str, what: str, seen: list[str]) -> str:
+@@ -1875 +1879 @@
+-def gen_refl_dc_copy(self, v: Val, what: str, seen: list[str], nonnull: bool = False) -> Val:
++def gen_refl_dc_copy(self: Gen, v: Val, what: str, seen: list[str], nonnull: bool = False) -> Val:
+@@ -1948 +1952 @@
+-def gen_refl_dataclasses(self, name: str, args: list[Node]) -> Val:
++def gen_refl_dataclasses(self: Gen, name: str, args: list[Node]) -> Val:
+@@ -1976 +1980 @@
+-def gen_refl_union_str(self, v: Val, m: str) -> Val:
++def gen_refl_union_str(self: Gen, v: Val, m: str) -> Val:
+@@ -2008 +2012 @@
+-def gen_refl_name_list(self, c: str) -> list[list[str]]:
++def gen_refl_name_list(self: Gen, c: str) -> list[list[str]]:
+@@ -2016 +2020 @@
+-def gen_refl_names_table(self, c: str) -> str:
++def gen_refl_names_table(self: Gen, c: str) -> str:
+@@ -2032 +2036 @@
+-def gen_refl_runtime_name(self, a: Node, what: str) -> Val:
++def gen_refl_runtime_name(self: Gen, a: Node, what: str) -> Val:
+@@ -2040 +2044 @@
+-def gen_refl_find(self, c: str, name: Val) -> str:
++def gen_refl_find(self: Gen, c: str, name: Val) -> str:
+@@ -2046 +2050 @@
+-def gen_refl_hasattr(self, args: list[Node]) -> Val:
++def gen_refl_hasattr(self: Gen, args: list[Node]) -> Val:
+@@ -2091 +2095 @@
+-def gen_refl_otext(self, c: str, name: str) -> str:
++def gen_refl_otext(self: Gen, c: str, name: str) -> str:
+@@ -2165 +2169 @@
+-def gen_refl_lookup(self, n: Node) -> RText:
++def gen_refl_lookup(self: Gen, n: Node) -> RText:
+@@ -2272 +2276 @@
+-def gen_refl_lookup_text(self, r: RText, conv: str) -> Val:
++def gen_refl_lookup_text(self: Gen, r: RText, conv: str) -> Val:
+@@ -2293 +2297 @@
+-def gen_refl_arm_text(self, r: RText, arm: RArm, conv: str) -> Val:
++def gen_refl_arm_text(self: Gen, r: RText, arm: RArm, conv: str) -> Val:
+@@ -2343 +2347 @@
+-def gen_refl_setattr_runtime(self, args: list[Node]) -> Val:
++def gen_refl_setattr_runtime(self: Gen, args: list[Node]) -> Val:
+@@ -2404 +2408 @@
+-def gen_refl_replace_changes(self, obj: Node, d: Val) -> None:
++def gen_refl_replace_changes(self: Gen, obj: Node, d: Val) -> None:
+@@ -2419 +2423 @@
+-def gen_refl_hasattr_lit(self, o: Val, a: str, known: bool) -> Val:
++def gen_refl_hasattr_lit(self: Gen, o: Val, a: str, known: bool) -> Val:
+@@ -2443 +2447 @@
+-def gen_refl_prop_in(self, t: str, a: str) -> bool:
++def gen_refl_prop_in(self: Gen, t: str, a: str) -> bool:
+@@ -2451 +2455 @@
+-def gen_refl_derived_only(self, x: Node, a: str) -> bool:
++def gen_refl_derived_only(self: Gen, x: Node, a: str) -> bool:
+@@ -2497 +2501 @@
+-def gen_copy_check(self, ci: ClassInfo, what: str) -> None:
++def gen_copy_check(self: Gen, ci: ClassInfo, what: str) -> None:
+@@ -2520 +2524 @@
+-def gen_copy_clone(self, o: Val) -> Val:
++def gen_copy_clone(self: Gen, o: Val) -> Val:
+@@ -2546 +2550 @@
+-def gen_copy_share(self, o: Val, y: Val, fl: str) -> None:
++def gen_copy_share(self: Gen, o: Val, y: Val, fl: str) -> None:
+@@ -2567 +2571 @@
+-def gen_copy_fields(self, y: Val, x: Val, memo: Val) -> None:
++def gen_copy_fields(self: Gen, y: Val, x: Val, memo: Val) -> None:
+@@ -2633 +2637 @@
+-def gen_copy_hooks(self, t: str, seen: dict[str, bool]) -> bool:
++def gen_copy_hooks(self: Gen, t: str, seen: dict[str, bool]) -> bool:
+@@ -2671 +2675 @@
+-def gen_copy_prim(self, name: str, args: list[Node]) -> Val:
++def gen_copy_prim(self: Gen, name: str, args: list[Node]) -> Val:
+@@ -2846 +2850 @@
+-def gen_copy_private(self, name: str) -> None:
++def gen_copy_private(self: Gen, name: str) -> None:
+@@ -2861 +2865 @@
+-def gen_copy_own(self, t: str, deep: bool) -> int:
++def gen_copy_own(self: Gen, t: str, deep: bool) -> int:
+@@ -2881 +2885 @@
+-def gen_enum_view(self, c: str, line: int) -> Node:
++def gen_enum_view(self: Gen, c: str, line: int) -> Node:
+@@ -2892 +2896 @@
+-def gen_enum_member(self, n: Node, want: str) -> Val:
++def gen_enum_member(self: Gen, n: Node, want: str) -> Val:
+@@ -2906 +2910 @@
+-def gen_enum_alias(self, n: Node, want: str) -> Val:
++def gen_enum_alias(self: Gen, n: Node, want: str) -> Val:
+@@ -2916 +2920 @@
+-def gen_enum_is_static(self, t: str, ms: str) -> int:
++def gen_enum_is_static(self: Gen, t: str, ms: str) -> int:
+@@ -2936 +2940 @@
+-def gen_enum_class_test(self, v: Val, c: str) -> str:
++def gen_enum_class_test(self: Gen, v: Val, c: str) -> str:
+@@ -2959 +2963 @@
+-def gen_enum_own(self, v: Val, c: str) -> Val:
++def gen_enum_own(self: Gen, v: Val, c: str) -> Val:
+@@ -3004 +3008 @@
+-def gen_enum_is(self, args: list[Node]) -> Val:
++def gen_enum_is(self: Gen, args: list[Node]) -> Val:
+@@ -3022 +3026 @@
+-def gen_enum_own_call(self, args: list[Node]) -> Val:
++def gen_enum_own_call(self: Gen, args: list[Node]) -> Val:
+@@ -3039 +3043 @@
+-def gen_enum_missing(self, args: list[Node]) -> Val:
++def gen_enum_missing(self: Gen, args: list[Node]) -> Val:
+@@ -3058 +3062 @@
+-def gen_enum_new(self, args: list[Node]) -> Val:
++def gen_enum_new(self: Gen, args: list[Node]) -> Val:
+--- a/src/pystachy_compiler/scalar_ir.py
++++ b/src/pystachy_compiler/scalar_ir.py
+@@ -2,0 +3,4 @@
++from typing import TYPE_CHECKING
++if TYPE_CHECKING:
++    from src.pystachy_compiler.gen import Gen
++from typing import Any as Gen  # type: ignore[assignment]
+@@ -14 +18 @@
+-def gen_scalar(self, op: str, args: list[Val], flags: str = "") -> str:
++def gen_scalar(self: Gen, op: str, args: list[Val], flags: str = "") -> str:
+@@ -22 +26 @@
+-def gen_scalar_cast(self, op: str, a: Val, t: str) -> str:
++def gen_scalar_cast(self: Gen, op: str, a: Val, t: str) -> str:
+@@ -29 +33 @@
+-def gen_scalar_cmp(self, predicate: str, a: Val, b: Val) -> str:
++def gen_scalar_cmp(self: Gen, predicate: str, a: Val, b: Val) -> str:
+@@ -38 +42 @@
+-def gen_verify_scalar(self, fn: IFn, b: Blk, i: Ins) -> None:
++def gen_verify_scalar(self: Gen, fn: IFn, b: Blk, i: Ins) -> None:
+--- a/src/pystachy_compiler/statements.py
++++ b/src/pystachy_compiler/statements.py
+@@ -2,0 +3,4 @@
++from typing import TYPE_CHECKING
++if TYPE_CHECKING:
++    from src.pystachy_compiler.gen import Gen
++from typing import Any as Gen  # type: ignore[assignment]
+@@ -63 +67 @@
+-def gen_stmts(self, body: list[Node]) -> None:
++def gen_stmts(self: Gen, body: list[Node]) -> None:
+@@ -71 +75 @@
+-def gen_callable_guard(self, st: Node, f: FnInfo) -> str:
++def gen_callable_guard(self: Gen, st: Node, f: FnInfo) -> str:
+@@ -90 +94 @@
+-def gen_obj_helpers(self, c: str, which: list[int]) -> None:
++def gen_obj_helpers(self: Gen, c: str, which: list[int]) -> None:
+@@ -119 +123 @@
+-def gen_hash_helper(self, c: str) -> None:
++def gen_hash_helper(self: Gen, c: str) -> None:
+@@ -133 +137 @@
+-def gen_check_special(self, f: FnInfo) -> None:
++def gen_check_special(self: Gen, f: FnInfo) -> None:
+@@ -166 +170 @@
+-def gen_scan_imports(self, body: list[Node]) -> None:
++def gen_scan_imports(self: Gen, body: list[Node]) -> None:
+@@ -183 +187 @@
+-def gen_imported(self, name: str) -> str:
++def gen_imported(self: Gen, name: str) -> str:
+@@ -188 +192 @@
+-def gen_check_import(self, a: Node) -> None:
++def gen_check_import(self: Gen, a: Node) -> None:
+@@ -210 +214 @@
+-def gen_hidden(self, name: str, v: Val) -> str:
++def gen_hidden(self: Gen, name: str, v: Val) -> str:
+@@ -216 +220 @@
+-def gen_dflt_fn(self, f: FnInfo) -> FnInfo:
++def gen_dflt_fn(self: Gen, f: FnInfo) -> FnInfo:
+@@ -225 +229 @@
+-def gen_early_default(self, f: FnInfo, j: int) -> None:
++def gen_early_default(self: Gen, f: FnInfo, j: int) -> None:
+@@ -253 +257 @@
+-def gen_class_default(self, ci: ClassInfo, fl: str) -> None:
++def gen_class_default(self: Gen, ci: ClassInfo, fl: str) -> None:
+@@ -266 +270 @@
+-def gen_hoist(self, f: FnInfo) -> None:
++def gen_hoist(self: Gen, f: FnInfo) -> None:
+@@ -300 +304 @@
+-def gen_default_problem(self, e: Node, t: str) -> str:
++def gen_default_problem(self: Gen, e: Node, t: str) -> str:
+@@ -321 +325 @@
+-def gen_hoist_class(self, ci: ClassInfo) -> None:
++def gen_hoist_class(self: Gen, ci: ClassInfo) -> None:
+@@ -391 +395 @@
+-def gen_no_class_names(self, e: Node, bound: dict[str, bool], ci: ClassInfo) -> None:
++def gen_no_class_names(self: Gen, e: Node, bound: dict[str, bool], ci: ClassInfo) -> None:
+@@ -398 +402 @@
+-def gen_unhashable(self, t: str) -> bool:
++def gen_unhashable(self: Gen, t: str) -> bool:
+@@ -409 +413 @@
+-def gen_while_(self, n: Node) -> None:
++def gen_while_(self: Gen, n: Node) -> None:
+@@ -434 +438 @@
+-def gen_loop(self, body: list[Node], lp: Loop) -> list[dict[str, str]]:
++def gen_loop(self: Gen, body: list[Node], lp: Loop) -> list[dict[str, str]]:
+@@ -452 +456 @@
+-def gen_leave(self, depth: int) -> bool:
++def gen_leave(self: Gen, depth: int) -> bool:
+@@ -526 +530 @@
+-def gen_cm_exits(self) -> bool:
++def gen_cm_exits(self: Gen) -> bool:
+@@ -539 +543 @@
+-def gen_suppress_item(self, e: Node) -> bool:
++def gen_suppress_item(self: Gen, e: Node) -> bool:
+@@ -552 +556 @@
+-def gen_with_cm(self, m: Val, it: Node, body: list[Node]) -> None:
++def gen_with_cm(self: Gen, m: Val, it: Node, body: list[Node]) -> None:
+@@ -592 +596 @@
+-def gen_stmt(self, n: Node) -> None:
++def gen_stmt(self: Gen, n: Node) -> None:
+@@ -598 +602 @@
+-def gen_stmt_main(self, n: Node) -> None:
++def gen_stmt_main(self: Gen, n: Node) -> None:
+@@ -1150 +1154 @@
+-def gen_nonemix(self, f: FnInfo, t: str) -> str:
++def gen_nonemix(self: Gen, f: FnInfo, t: str) -> str:
+@@ -1157 +1161 @@
+-def gen_reopt(self, t: str) -> None:
++def gen_reopt(self: Gen, t: str) -> None:
+@@ -1169 +1173 @@
+-def gen_del_name(self, n: Node) -> None:
++def gen_del_name(self: Gen, n: Node) -> None:
+@@ -1194 +1198 @@
+-def gen_augassign(self, n: Node) -> None:
++def gen_augassign(self: Gen, n: Node) -> None:
+@@ -1368 +1372 @@
+-def gen_owns(self, name: str) -> bool:
++def gen_owns(self: Gen, name: str) -> bool:
+@@ -1372 +1376 @@
+-def gen_str_append(self, t: Node, rhs: Node, shown: str) -> None:
++def gen_str_append(self: Gen, t: Node, rhs: Node, shown: str) -> None:
+@@ -1393 +1397 @@
+-def gen_may_change(self, b0: Blk, x0: int, n0: int) -> bool:
++def gen_may_change(self: Gen, b0: Blk, x0: int, n0: int) -> bool:
+@@ -1407 +1411 @@
+-def gen_inplace(self, op: str, cur: Val, rhs: Node) -> Val:
++def gen_inplace(self: Gen, op: str, cur: Val, rhs: Node) -> Val:
+@@ -1480 +1484 @@
+-def gen_objlen(self, v: Val) -> Val:
++def gen_objlen(self: Gen, v: Val) -> Val:
+@@ -1488 +1492 @@
+-def gen_none_operand(self, op: str, a: Val, b: Val) -> None:
++def gen_none_operand(self: Gen, op: str, a: Val, b: Val) -> None:
+@@ -1501 +1505 @@
+-def gen_none_operands(self, op: str, a: Val, b: Val, shown: str, right: bool = True) -> None:
++def gen_none_operands(self: Gen, op: str, a: Val, b: Val, shown: str, right: bool = True) -> None:
+@@ -1527 +1531 @@
+-def gen_hide(self, names: list[str]) -> None:
++def gen_hide(self: Gen, names: list[str]) -> None:
+@@ -1535 +1539 @@
+-def gen_iterarg(self, arg: IterArg | None) -> None:
++def gen_iterarg(self: Gen, arg: IterArg | None) -> None:
+@@ -1545 +1549 @@
+-def gen_for_(self, n: Node, hide: list[str], arg: IterArg | None = None) -> None:
++def gen_for_(self: Gen, n: Node, hide: list[str], arg: IterArg | None = None) -> None:
+@@ -1707 +1711 @@
+-def gen_iterable(self, v: Val, msg: str = "TypeError: 'NoneType' object is not iterable") -> Val:
++def gen_iterable(self: Gen, v: Val, msg: str = "TypeError: 'NoneType' object is not iterable") -> Val:
+@@ -1739 +1743 @@
+-def gen_ival(self, n: Node, none: str = "") -> Val:
++def gen_ival(self: Gen, n: Node, none: str = "") -> Val:
+@@ -1747 +1751 @@
+-def gen_range_args(self, args: list[Node]) -> list[str]:
++def gen_range_args(self: Gen, args: list[Node]) -> list[str]:
+@@ -1763 +1767 @@
+-def gen_for_range(self, tgt: Node, start: str, stop: str, step: str, body: list[Node], hide: list[str], arg: IterArg | None = None, check: bool = True) -> None:
++def gen_for_range(self: Gen, tgt: Node, start: str, stop: str, step: str, body: list[Node], hide: list[str], arg: IterArg | None = None, check: bool = True) -> None:
+@@ -1809 +1813 @@
+-def gen_for_rrange(self, tgt: Node, vs: list[str], body: list[Node], hide: list[str], arg: IterArg | None = None) -> None:
++def gen_for_rrange(self: Gen, tgt: Node, vs: list[str], body: list[Node], hide: list[str], arg: IterArg | None = None) -> None:
+@@ -1838 +1842 @@
+-def gen_for_seq(self, tgt: Node, seqs: list[Val], mode: str, body: list[Node], start: str, hide: list[str], arg: IterArg | None = None, made: SeqStart | None = None) -> None:
++def gen_for_seq(self: Gen, tgt: Node, seqs: list[Val], mode: str, body: list[Node], start: str, hide: list[str], arg: IterArg | None = None, made: SeqStart | None = None) -> None:
+@@ -1971 +1975 @@
+-def gen_seq_item(self, s: Val, j: str, mode: str) -> list[Val]:
++def gen_seq_item(self: Gen, s: Val, j: str, mode: str) -> list[Val]:
+@@ -2011 +2015 @@
+-def gen_seq_start(self, s: Val, mode: str, made: SeqStart) -> None:
++def gen_seq_start(self: Gen, s: Val, mode: str, made: SeqStart) -> None:
+@@ -2051 +2055 @@
+-def gen_stop_catch(self) -> StopCatch:
++def gen_stop_catch(self: Gen) -> StopCatch:
+@@ -2065 +2069 @@
+-def gen_next_in(self, it: Val, c: StopCatch) -> Val:
++def gen_next_in(self: Gen, it: Val, c: StopCatch) -> Val:
+@@ -2078 +2082 @@
+-def gen_stop_landing(self, c: StopCatch, stop: str) -> None:
++def gen_stop_landing(self: Gen, c: StopCatch, stop: str) -> None:
+@@ -2093 +2097 @@
+-def gen_stop_classes(self) -> str:
++def gen_stop_classes(self: Gen) -> str:
+@@ -2102 +2106 @@
+-def gen_drain(self, it: Val) -> Val:
++def gen_drain(self: Gen, it: Val) -> Val:
+--- a/src/pystachy_compiler/structs.py
++++ b/src/pystachy_compiler/structs.py
+@@ -2,0 +3,4 @@
++from typing import TYPE_CHECKING
++if TYPE_CHECKING:
++    from src.pystachy_compiler.gen import Gen
++from typing import Any as Gen  # type: ignore[assignment]
+@@ -96 +100 @@
+-def gen_struct_format(self, a: Node) -> Node | None:
++def gen_struct_format(self: Gen, a: Node) -> Node | None:
+@@ -108 +112 @@
+-def gen_struct_call(self, name: str, args: list[Node], want: str) -> Val | None:
++def gen_struct_call(self: Gen, name: str, args: list[Node], want: str) -> Val | None:
+@@ -127,0 +132,2 @@
++    if TYPE_CHECKING:
++        assert c is not None
+@@ -156,0 +163,2 @@
++    if TYPE_CHECKING:
++        assert buf is not None
+@@ -177 +185 @@
+-def gen_struct_helper(self, f: str, args: list[Node]) -> Node:
++def gen_struct_helper(self: Gen, f: str, args: list[Node]) -> Node:
+@@ -182 +190 @@
+-def gen_struct_nodes(self, sf: StructFmt, bn: Node, base: Node | None) -> list[Node]:
++def gen_struct_nodes(self: Gen, sf: StructFmt, bn: Node, base: Node | None) -> list[Node]:
+@@ -209 +217 @@
+-def gen_struct_pack(self, sf: StructFmt, args: list[Node]) -> Val:
++def gen_struct_pack(self: Gen, sf: StructFmt, args: list[Node]) -> Val:
+--- a/src/pystachy_compiler/templates.py
++++ b/src/pystachy_compiler/templates.py
+@@ -2,0 +3,4 @@
++from typing import TYPE_CHECKING
++if TYPE_CHECKING:
++    from src.pystachy_compiler.gen import Gen
++from typing import Any as Gen  # type: ignore[assignment]
+@@ -38 +42 @@
+-def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bool, lits: dict[str, Node]) -> str:
++def gen_specialize(self: Gen, c: str, ts: list[str], given: dict[str, str], named: bool, lits: dict[str, Node]) -> str:
+@@ -241 +245 @@
+-def gen_names_tv(self, a: Node, tvs: list[str]) -> bool:
++def gen_names_tv(self: Gen, a: Node, tvs: list[str]) -> bool:
+@@ -252 +256 @@
+-def gen_bind(self, c: str, ts: list[str], given: dict[str, str]) -> dict[str, str]:
++def gen_bind(self: Gen, c: str, ts: list[str], given: dict[str, str]) -> dict[str, str]:
+@@ -299 +303 @@
+-def gen_want_tvars(self, c: str, want: str) -> dict[str, str]:
++def gen_want_tvars(self: Gen, c: str, want: str) -> dict[str, str]:
+@@ -307 +311 @@
+-def gen_constructor_unions(self, c: str, ts: list[str]) -> list[str]:
++def gen_constructor_unions(self: Gen, c: str, ts: list[str]) -> list[str]:
+@@ -344 +348 @@
+-def gen_want_params(self, c: str, want: str) -> list[str]:
++def gen_want_params(self: Gen, c: str, want: str) -> list[str]:
+@@ -367 +371 @@
+-def gen_generic_hint(self, e: Node, t: str) -> str:
++def gen_generic_hint(self: Gen, e: Node, t: str) -> str:
+@@ -406 +410 @@
+-def gen_generic_ann(self, c: str, a: Node) -> str:
++def gen_generic_ann(self: Gen, c: str, a: Node) -> str:
+@@ -436 +440 @@
+-def gen_named_params(self, c: str, init: Node) -> list[str]:
++def gen_named_params(self: Gen, c: str, init: Node) -> list[str]:
+@@ -451 +455 @@
+-def gen_named_param(self, a: Node) -> str:
++def gen_named_param(self: Gen, a: Node) -> str:
+@@ -467 +471 @@
+-def gen_match(self, a: Node, t: str, tv: dict[str, str], tvs: list[str]) -> str:
++def gen_match(self: Gen, a: Node, t: str, tv: dict[str, str], tvs: list[str]) -> str:
+@@ -543 +547 @@
+-def gen_match_items(self, xs: list[Node], ts: list[str], tv: dict[str, str], tvs: list[str]) -> str:
++def gen_match_items(self: Gen, xs: list[Node], ts: list[str], tv: dict[str, str], tvs: list[str]) -> str:
+@@ -569 +573 @@
+-def gen_fn_sig(self, t: str) -> list[str]:
++def gen_fn_sig(self: Gen, t: str) -> list[str]:
+@@ -667 +671 @@
+-def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "", resultsoft: bool = False, cmpfields: str = "") -> FnInfo:
++def gen_instance(self: Gen, f: FnInfo, ts: list[str], nnp: list[str], want: str = "", resultsoft: bool = False, cmpfields: str = "") -> FnInfo:
+@@ -817 +821 @@
+-def gen_literal_class(self, c: str) -> bool:
++def gen_literal_class(self: Gen, c: str) -> bool:
+@@ -829 +833 @@
+-def gen_literal_args(self, f: FnInfo, args: list[Node]) -> dict[str, Node]:
++def gen_literal_args(self: Gen, f: FnInfo, args: list[Node]) -> dict[str, Node]:
+@@ -888 +892 @@
+-def gen_lit_context(self) -> bool:
++def gen_lit_context(self: Gen) -> bool:
+@@ -892 +896 @@
+-def gen_const_of(self, n: Node, env: dict[str, Node], live: bool) -> Node | None:
++def gen_const_of(self: Gen, n: Node, env: dict[str, Node], live: bool) -> Node | None:
+@@ -988 +992 @@
+-def gen_const_fields(self, s: ClassInfo, init: FnInfo) -> None:
++def gen_const_fields(self: Gen, s: ClassInfo, init: FnInfo) -> None:
+--- a/src/pystachy_compiler/union_arithmetic.py
++++ b/src/pystachy_compiler/union_arithmetic.py
+@@ -2,0 +3,4 @@
++from typing import TYPE_CHECKING
++if TYPE_CHECKING:
++    from src.pystachy_compiler.gen import Gen
++from typing import Any as Gen  # type: ignore[assignment]
+@@ -7 +11 @@
+-def gen_unumeric(self, op: str, a: Val, b: Val, shown: str, unary: bool) -> Val:
++def gen_unumeric(self: Gen, op: str, a: Val, b: Val, shown: str, unary: bool) -> Val:
+@@ -22 +26 @@
+-def gen_unumeric_case(self, op: str, a: Val, b: Val, shown: str, unary: bool) -> Val:
++def gen_unumeric_case(self: Gen, op: str, a: Val, b: Val, shown: str, unary: bool) -> Val:
+@@ -72 +76 @@
+-def gen_usplit(self, name: str, vals: list[Val], i: int, want: str) -> Val:
++def gen_usplit(self: Gen, name: str, vals: list[Val], i: int, want: str) -> Val:
+@@ -111 +115 @@
+-def gen_uorders(self, a: str, b: str) -> bool:
++def gen_uorders(self: Gen, a: str, b: str) -> bool:
+@@ -117 +121 @@
+-def gen_ucmp(self, op: str, a: Val, b: Val, nonnull: bool = False) -> Val:
++def gen_ucmp(self: Gen, op: str, a: Val, b: Val, nonnull: bool = False) -> Val:
+--- a/src/pystachy_compiler/unions.py
++++ b/src/pystachy_compiler/unions.py
+@@ -2,0 +3,4 @@
++from typing import TYPE_CHECKING
++if TYPE_CHECKING:
++    from src.pystachy_compiler.gen import Gen
++from typing import Any as Gen  # type: ignore[assignment]
+@@ -11 +15 @@
+-def gen_uboxes(self, a: str, b: str) -> bool:
++def gen_uboxes(self: Gen, a: str, b: str) -> bool:
+@@ -21 +25 @@
+-def gen_reference_union(self, t: str) -> bool:
++def gen_reference_union(self: Gen, t: str) -> bool:
+@@ -24 +28 @@
+-def gen_scalar_union(self, t: str) -> bool:
++def gen_scalar_union(self: Gen, t: str) -> bool:
+@@ -27 +31 @@
+-def gen_num_union(self, t: str) -> bool:
++def gen_num_union(self: Gen, t: str) -> bool:
+@@ -32 +36 @@
+-def gen_value_union(self, t: str) -> bool:
++def gen_value_union(self: Gen, t: str) -> bool:
+@@ -35 +39 @@
+-def gen_ueq_type(self, t: str) -> bool:
++def gen_ueq_type(self: Gen, t: str) -> bool:
+@@ -49 +53 @@
+-def gen_uop(self, v: Val, op: str) -> Val:
++def gen_uop(self: Gen, v: Val, op: str) -> Val:
+@@ -83 +87 @@
+-def gen_uequal(self, op: str, a: Val, b: Val) -> Val:
++def gen_uequal(self: Gen, op: str, a: Val, b: Val) -> Val:
+@@ -102 +106 @@
+-def gen_umember_problem(self, t: str) -> str:
++def gen_umember_problem(self: Gen, t: str) -> str:
+@@ -112 +116 @@
+-def gen_union_type(self, ts: list[str]) -> str:
++def gen_union_type(self: Gen, ts: list[str]) -> str:
+@@ -158 +162 @@
+-def gen_utag(self, t: str) -> int:
++def gen_utag(self: Gen, t: str) -> int:
+@@ -165 +169 @@
+-def gen_ubox(self, v: Val, m: str) -> str:
++def gen_ubox(self: Gen, v: Val, m: str) -> str:
+@@ -172 +176 @@
+-def gen_uget(self, u: Val, m: str) -> Val:
++def gen_uget(self: Gen, u: Val, m: str) -> Val:
+@@ -179 +183 @@
+-def gen_utest(self, u: Val, ms: list[str], may_none: bool) -> str:
++def gen_utest(self: Gen, u: Val, ms: list[str], may_none: bool) -> str:
+@@ -207 +211 @@
+-def gen_to_union(self, v: Val, t: str, what: str) -> Val:
++def gen_to_union(self: Gen, v: Val, t: str, what: str) -> Val:
+@@ -240 +244 @@
+-def gen_narrow_val(self, v: Val, nt: str) -> Val:
++def gen_narrow_val(self: Gen, v: Val, nt: str) -> Val:
+@@ -274 +278 @@
+-def gen_unarrowed(self, v: Val) -> str:
++def gen_unarrowed(self: Gen, v: Val) -> str:
+@@ -283 +287 @@
+-def gen_uisinst(self, v: Val, c: Node) -> str:
++def gen_uisinst(self: Gen, v: Val, c: Node) -> str:
+@@ -330 +334 @@
+-def gen_umethod(self, o: Val, m: str, args: list[Node]) -> Val:
++def gen_umethod(self: Gen, o: Val, m: str, args: list[Node]) -> Val:
+@@ -383 +387 @@
+-def gen_now_type(self, name: str) -> str:
++def gen_now_type(self: Gen, name: str) -> str:
+@@ -387 +391 @@
+-def gen_isinst_narrow(self, t: str, c: Node, truth: bool) -> str:
++def gen_isinst_narrow(self: Gen, t: str, c: Node, truth: bool) -> str:
+@@ -406 +410 @@
+-def gen_holds(self, t: str, vt: str) -> str:
++def gen_holds(self: Gen, t: str, vt: str) -> str:
+@@ -421 +425 @@
+-def gen_stable(self, s: str) -> str:
++def gen_stable(self: Gen, s: str) -> str:
+@@ -437 +441 @@
+-def gen_fnkey(self, f: FnInfo) -> str:
++def gen_fnkey(self: Gen, f: FnInfo) -> str:
+@@ -444 +448 @@
+-def gen_field_key(self, ci: ClassInfo, name: str) -> str:
++def gen_field_key(self: Gen, ci: ClassInfo, name: str) -> str:
+@@ -449 +453 @@
+-def gen_local_hint(self, name: str) -> str:
++def gen_local_hint(self: Gen, name: str) -> str:
+@@ -454 +458 @@
+-def gen_join_at(self, kind: str, name: str, t: str) -> list[str]:
++def gen_join_at(self: Gen, kind: str, name: str, t: str) -> list[str]:
+@@ -464 +468 @@
+-def gen_join_hint(self, t: str, vt: str) -> bool:
++def gen_join_hint(self: Gen, t: str, vt: str) -> bool:
+@@ -511 +515 @@
+-def gen_join_type(self, a: str, b: str) -> str:
++def gen_join_type(self: Gen, a: str, b: str) -> str:
+@@ -540 +544 @@
+-def gen_joinable(self, t: str) -> bool:
++def gen_joinable(self: Gen, t: str) -> bool:
+@@ -549 +553 @@
+-def gen_replay_state(self) -> list[int]:
++def gen_replay_state(self: Gen) -> list[int]:
+@@ -557 +561 @@
+-def gen_local_again(self, f: FnInfo, before: list[int]) -> bool:
++def gen_local_again(self: Gen, f: FnInfo, before: list[int]) -> bool:
+--- a/src/pystachy_compiler/variables.py
++++ b/src/pystachy_compiler/variables.py
+@@ -2,0 +3,4 @@
++from typing import TYPE_CHECKING
++if TYPE_CHECKING:
++    from src.pystachy_compiler.gen import Gen
++from typing import Any as Gen  # type: ignore[assignment]
+@@ -60 +64 @@
+-def gen_global_var(self, g: str, ty: str) -> None:
++def gen_global_var(self: Gen, g: str, ty: str) -> None:
+@@ -69 +73 @@
+-def gen_is_global(self, name: str) -> bool:
++def gen_is_global(self: Gen, name: str) -> bool:
+@@ -74 +78 @@
+-def gen_unbound_local(self, name: str) -> bool:
++def gen_unbound_local(self: Gen, name: str) -> bool:
+@@ -79 +83 @@
+-def gen_read_ahead(self, name: str) -> None:
++def gen_read_ahead(self: Gen, name: str) -> None:
+@@ -85 +89 @@
+-def gen_class_ahead(self, name: str) -> None:
++def gen_class_ahead(self: Gen, name: str) -> None:
+@@ -92 +96 @@
+-def gen_no_type(self, name: str) -> None:
++def gen_no_type(self: Gen, name: str) -> None:
+@@ -103 +107 @@
+-def gen_load_name(self, name: str) -> Val:
++def gen_load_name(self: Gen, name: str) -> Val:
+@@ -200 +204 @@
+-def gen_applies(self, st: Node, top: bool, loc: dict[str, bool]) -> bool:
++def gen_applies(self: Gen, st: Node, top: bool, loc: dict[str, bool]) -> bool:
+@@ -217 +221 @@
+-def gen_scope_names(self) -> dict[str, bool]:
++def gen_scope_names(self: Gen) -> dict[str, bool]:
+@@ -229 +233 @@
+-def gen_decorate(self, n: Node) -> Val:
++def gen_decorate(self: Gen, n: Node) -> Val:
+@@ -262 +266 @@
+-def gen_lib_fn(self, e: Node, qual: str) -> bool:
++def gen_lib_fn(self: Gen, e: Node, qual: str) -> bool:
+@@ -270 +274 @@
+-def gen_fn_names(self, t: str) -> list[str]:
++def gen_fn_names(self: Gen, t: str) -> list[str]:
+@@ -297 +301 @@
+-def gen_wrap_names(self, v: Val, args: list[Node], vals: list[Val], what: str) -> None:
++def gen_wrap_names(self: Gen, v: Val, args: list[Node], vals: list[Val], what: str) -> None:
+@@ -348 +352 @@
+-def gen_deco_callee(self, x: Node, mod: str) -> Node:
++def gen_deco_callee(self: Gen, x: Node, mod: str) -> Node:
+@@ -362 +366 @@
+-def gen_cellvars(self, f: FnInfo, body: list[Node]) -> list[str]:
++def gen_cellvars(self: Gen, f: FnInfo, body: list[Node]) -> list[str]:
+@@ -384 +388 @@
+-def gen_qualname(self, f: FnInfo) -> str:
++def gen_qualname(self: Gen, f: FnInfo) -> str:
+@@ -391 +395 @@
+-def gen_closure(self, n: Node) -> Val:
++def gen_closure(self: Gen, n: Node) -> Val:
+@@ -442 +446 @@
+-def gen_new_closure(self, n: Node, key: str) -> Closure:
++def gen_new_closure(self: Gen, n: Node, key: str) -> Closure:
+@@ -539 +543 @@
+-def gen_fn_value(self, name: str) -> Val:
++def gen_fn_value(self: Gen, name: str) -> Val:
+@@ -547 +551 @@
+-def gen_none_read(self, name: str) -> str:
++def gen_none_read(self: Gen, name: str) -> str:
+@@ -566 +570 @@
+-def gen_none_resolve(self, name: str, t: str) -> None:
++def gen_none_resolve(self: Gen, name: str, t: str) -> None:
+@@ -577 +581 @@
+-def gen_none_type(self, name: str) -> str:
++def gen_none_type(self: Gen, name: str) -> str:
+@@ -605 +609 @@
+-def gen_none_global(self, name: str) -> str:
++def gen_none_global(self: Gen, name: str) -> str:
+@@ -657 +661 @@
+-def gen_none_global_resolve(self, name: str, t: str) -> None:
++def gen_none_global_resolve(self: Gen, name: str, t: str) -> None:
+@@ -666 +670 @@
+-def gen_none_arms(self, name: str) -> str:
++def gen_none_arms(self: Gen, name: str) -> str:
+@@ -684 +688 @@
+-def gen_global_setters(self, name: str) -> list[FnInfo]:
++def gen_global_setters(self: Gen, name: str) -> list[FnInfo]:
+@@ -693 +697 @@
+-def gen_none_global_store(self, name: str, v: Val) -> str:
++def gen_none_global_store(self: Gen, name: str, v: Val) -> str:
+@@ -709 +713 @@
+-def gen_none_values(self, st: Node, name: str, out: list[Node]) -> None:
++def gen_none_values(self: Gen, st: Node, name: str, out: list[Node]) -> None:
+@@ -729 +733 @@
+-def gen_read(self, n: Node) -> Val:
++def gen_read(self: Gen, n: Node) -> Val:
+@@ -758 +762 @@
+-def gen_modchk(self, n: Node) -> None:
++def gen_modchk(self: Gen, n: Node) -> None:
+@@ -784 +788 @@
+-def gen_imp_flag(self, x: str, glob: bool) -> str:
++def gen_imp_flag(self: Gen, x: str, glob: bool) -> str:
+@@ -802 +806 @@
+-def gen_foreign(self, name: str) -> bool:
++def gen_foreign(self: Gen, name: str) -> bool:
+@@ -806 +810 @@
+-def gen_unbound(self, name: str, imp: bool = False) -> str:
++def gen_unbound(self: Gen, name: str, imp: bool = False) -> str:
+@@ -817 +821 @@
+-def gen_qtype(self, name: str) -> str:
++def gen_qtype(self: Gen, name: str) -> str:
+@@ -825 +829 @@
+-def gen_rtype(self, name: str) -> str:
++def gen_rtype(self: Gen, name: str) -> str:
+@@ -829 +833 @@
+-def gen_globread(self, name: str) -> bool:
++def gen_globread(self: Gen, name: str) -> bool:
+@@ -833 +837 @@
+-def gen_where_def(self, name: str) -> str:
++def gen_where_def(self: Gen, name: str) -> str:
+@@ -837 +841 @@
+-def gen_gtype(self, name: str) -> str:
++def gen_gtype(self: Gen, name: str) -> str:
+@@ -844 +848 @@
+-def gen_ahead(self, name: str) -> str:
++def gen_ahead(self: Gen, name: str) -> str:
+@@ -893 +897 @@
+-def gen_unpacked(self, st: Node, name: str) -> str:
++def gen_unpacked(self: Gen, st: Node, name: str) -> str:
+@@ -929 +933 @@
+-def gen_twin(self, x: str, y: str) -> None:
++def gen_twin(self: Gen, x: str, y: str) -> None:
+@@ -948 +952 @@
+-def gen_twins(self, x: str) -> list[str]:
++def gen_twins(self: Gen, x: str) -> list[str]:
+@@ -952 +956 @@
+-def gen_calls_open(self, n: Node, seen: dict[str, bool]) -> bool:
++def gen_calls_open(self: Gen, n: Node, seen: dict[str, bool]) -> bool:
+@@ -969 +973 @@
+-def gen_modframe(self, mod: str, line: int) -> Frame:
++def gen_modframe(self: Gen, mod: str, line: int) -> Frame:
+@@ -979 +983 @@
+-def gen_modtype(self, e: Node, mod: str) -> str:
++def gen_modtype(self: Gen, e: Node, mod: str) -> str:
+@@ -987 +991 @@
+-def gen_early(self, name: str) -> str:
++def gen_early(self: Gen, name: str) -> str:
+@@ -1010 +1014 @@
+-def gen_unready(self, n: Node, mod: str, seen: dict[str, bool]) -> bool:
++def gen_unready(self: Gen, n: Node, mod: str, seen: dict[str, bool]) -> bool:
+@@ -1026 +1030 @@
+-def gen_decides(self, f: FnInfo, names: list[str]) -> bool:
++def gen_decides(self: Gen, f: FnInfo, names: list[str]) -> bool:
+@@ -1041 +1045 @@
+-def gen_sets(self, f: FnInfo, names: list[str]) -> bool:
++def gen_sets(self: Gen, f: FnInfo, names: list[str]) -> bool:
+@@ -1057 +1061 @@
+-def gen_first_binding(self, body: list[Node], name: str) -> Node | None:
++def gen_first_binding(self: Gen, body: list[Node], name: str) -> Node | None:
+@@ -1071 +1075 @@
+-def gen_only_empties(self, body: list[Node], name: str) -> bool:
++def gen_only_empties(self: Gen, body: list[Node], name: str) -> bool:
+@@ -1086 +1090 @@
+-def gen_live_blocks(self, st: Node) -> list[Node]:
++def gen_live_blocks(self: Gen, st: Node) -> list[Node]:
+@@ -1100 +1104 @@
+-def gen_static_now(self, n: Node) -> int:
++def gen_static_now(self: Gen, n: Node) -> int:
+@@ -1107 +1111 @@
+-def gen_static_whole(self, n: Node, line: int) -> int:
++def gen_static_whole(self: Gen, n: Node, line: int) -> int:
+@@ -1122 +1126 @@
+-def gen_none_ends(self) -> None:
++def gen_none_ends(self: Gen) -> None:
+@@ -1137 +1141 @@
+-def gen_type_reads(self, n: Node) -> None:
++def gen_type_reads(self: Gen, n: Node) -> None:
+@@ -1143 +1147 @@
+-def gen_empty_of(self, e: Node) -> str:
++def gen_empty_of(self: Gen, e: Node) -> str:
+@@ -1152 +1156 @@
+-def gen_empty(self, kind: str, name: str) -> Val:
++def gen_empty(self: Gen, kind: str, name: str) -> Val:
+@@ -1162 +1166 @@
+-def gen_none_extend(self, name: str) -> None:
++def gen_none_extend(self: Gen, name: str) -> None:
+@@ -1168 +1172 @@
+-def gen_refine(self, name: str, t: str, glob: bool = False) -> None:
++def gen_refine(self: Gen, name: str, t: str, glob: bool = False) -> None:
+@@ -1212 +1216 @@
+-def gen_lookahead(self, name: str, ahead: bool = False) -> str:
++def gen_lookahead(self: Gen, name: str, ahead: bool = False) -> str:
+@@ -1273 +1277 @@
+-def gen_unfilled(self, name: str) -> bool:
++def gen_unfilled(self: Gen, name: str) -> bool:
+@@ -1287 +1291 @@
+-def gen_retval(self, e: Node, want: str) -> Val:
++def gen_retval(self: Gen, e: Node, want: str) -> Val:
+@@ -1329 +1333 @@
+-def gen_adopt(self, t: str) -> None:
++def gen_adopt(self: Gen, t: str) -> None:
+@@ -1362 +1366 @@
+-def gen_qchain(self, f: FnInfo) -> list[FnInfo]:
++def gen_qchain(self: Gen, f: FnInfo) -> list[FnInfo]:
+@@ -1373 +1377 @@
+-def gen_typed_empty(self, v: Val, want: str, f: FnInfo) -> Val:
++def gen_typed_empty(self: Gen, v: Val, want: str, f: FnInfo) -> Val:
+@@ -1416 +1420 @@
+-def gen_fills(self, body: list[Node], name: str, found: list[Node]) -> bool:
++def gen_fills(self: Gen, body: list[Node], name: str, found: list[Node]) -> bool:
+@@ -1466 +1470 @@
+-def gen_fill_calls(self, n: Node, name: str, found: list[Node]) -> None:
++def gen_fill_calls(self: Gen, n: Node, name: str, found: list[Node]) -> None:
+@@ -1504 +1508 @@
+-def gen_typed_now(self, e: Node, own: str = "") -> bool:
++def gen_typed_now(self: Gen, e: Node, own: str = "") -> bool:
+@@ -1530 +1534 @@
+-def gen_dry(self, e: Node, want: str = "") -> str:
++def gen_dry(self: Gen, e: Node, want: str = "") -> str:
+@@ -1553 +1557 @@
+-def gen_fill(self, n: Node, m: str, args: list[Node], want: str = "") -> Val:
++def gen_fill(self: Gen, n: Node, m: str, args: list[Node], want: str = "") -> Val:
+@@ -1651 +1655 @@
+-def gen_default_want(self, r: Node, m: str, args: list[Node], vt: str) -> str:
++def gen_default_want(self: Gen, r: Node, m: str, args: list[Node], vt: str) -> str:
+@@ -1668 +1672 @@
+-def gen_new_global(self, name: str, t: str) -> None:
++def gen_new_global(self: Gen, name: str, t: str) -> None:
+@@ -1683 +1687 @@
+-def gen_declare(self, name: str, t: str) -> None:
++def gen_declare(self: Gen, name: str, t: str) -> None:
+@@ -1698 +1702 @@
+-def gen_store_name(self, name: str, v: Val, retype: bool = False) -> None:
++def gen_store_name(self: Gen, name: str, v: Val, retype: bool = False) -> None:
+@@ -1815 +1819 @@
+-def gen_assigned_to(self, v: Val, t: str, name: str) -> str:
++def gen_assigned_to(self: Gen, v: Val, t: str, name: str) -> str:
+@@ -1819 +1823 @@
+-def gen_target_type(self, n: Node, base: bool = False) -> str:
++def gen_target_type(self: Gen, n: Node, base: bool = False) -> str:
+@@ -1884 +1888 @@
+-def gen_assign(self, t: Node, v: Val) -> None:
++def gen_assign(self: Gen, t: Node, v: Val) -> None:
+@@ -2090 +2094 @@
+-def gen_slice_target(self, t: Node, bnd: list[str], nosub: str, raw: list[str] | None = None, values: list[Val] | None = None) -> Val:
++def gen_slice_target(self: Gen, t: Node, bnd: list[str], nosub: str, raw: list[str] | None = None, values: list[Val] | None = None) -> Val:
+@@ -2127 +2131 @@
+-def gen_slice_check(self, step: str) -> None:
++def gen_slice_check(self: Gen, step: str) -> None:
+@@ -2132 +2136 @@
+-def gen_slice_store(self, o: Val, bnd: list[str], v: Val) -> None:
++def gen_slice_store(self: Gen, o: Val, bnd: list[str], v: Val) -> None:
+@@ -2175 +2179 @@
+-def gen_slice_assign(self, t: Node, g: Node) -> None:
++def gen_slice_assign(self: Gen, t: Node, g: Node) -> None:
+@@ -2191 +2195 @@
+-def gen_walrus(self, n: Node, want: str) -> Val:
++def gen_walrus(self: Gen, n: Node, want: str) -> Val:
+@@ -2211 +2215 @@
+-def gen_star_assign(self, t: Node, v: Val) -> None:
++def gen_star_assign(self: Gen, t: Node, v: Val) -> None:
+@@ -2278 +2282 @@
+-def gen_list_slot(self, o: Val, i: str) -> str:
++def gen_list_slot(self: Gen, o: Val, i: str) -> str:
+@@ -2288 +2292 @@
+-def gen_unpack_next(self, t: Node, it: Val) -> None:
++def gen_unpack_next(self: Gen, t: Node, it: Val) -> None:
