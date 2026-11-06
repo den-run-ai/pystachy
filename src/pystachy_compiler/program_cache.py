@@ -289,6 +289,12 @@ def track_static(path: str) -> None:
     if not ACTIVE[0]:
         return
     try:
+        if path in STATICS:
+            # Keep the first read's validation policy: time passing cannot
+            # upgrade a racy capture or make an unchanged duplicate conflict.
+            if not _static_matches(path, STATICS[path]):
+                VALID[0] = False
+            return
         real = os.path.realpath(path)
         st = _stat3(path)
         snapshot = STATIC_MEMO.get(real, "")

@@ -407,6 +407,51 @@ class ProgramCacheTests(unittest.TestCase):
                 patch.object(pc, "_stat3", side_effect=lambda path: recorded if path == str(static) else real_stat(path)):
             self.assertEqual(self.lookup(), "")
 
+    def test_duplicate_static_capture_crossing_settle_threshold_can_publish(self):
+        static = self.root / "compiler"
+        static.write_bytes(b"unchanged native compiler")
+        path = str(static)
+        changed = max(float(value) for value in pc._stat3(path).split()[1:])
+        with patch.object(pc.time, "time", return_value=changed):
+            pc.track_static(path)
+        recorded = pc.STATICS[path]
+        self.assertEqual(pc._unpack(recorded)[3], "0")
+        # tool_inputs records the fresh compiler before and after hashing its
+        # libraries. Elapsed time alone must not invalidate the original read.
+        with patch.object(pc.time, "time", return_value=changed + 3):
+            pc.track_static(path)
+        self.assertTrue(pc.VALID[0])
+        self.assertEqual(pc.STATICS[path], recorded)
+        target = self.publish()
+        self.assertEqual(self.lookup(), str(target))
+
+    def test_duplicate_static_capture_still_rejects_changed_inputs(self):
+        static = self.root / "compiler"
+        path = str(static)
+        real_stat = pc._stat3
+        for change in ("content within a coarse timestamp", "metadata"):
+            with self.subTest(change=change):
+                pc.start()
+                pc.STATIC_MEMO.clear()
+                static.write_bytes(b"first native compiler")
+                stamp = real_stat(path)
+                changed = max(float(value) for value in stamp.split()[1:])
+                with patch.object(pc.time, "time", return_value=changed):
+                    pc.track_static(path)
+                if change == "metadata":
+                    os.utime(static, (changed + 1, changed + 1))
+                else:
+                    static.write_bytes(b"other native compiler")
+                def observed(item, recorded=stamp, mutation=change):
+                    return recorded if item == path and mutation != "metadata" else real_stat(item)
+
+                with patch.object(pc.time, "time", return_value=changed + 3), \
+                        patch.object(pc, "_stat3", side_effect=observed):
+                    pc.track_static(path)
+                self.assertFalse(pc.VALID[0])
+                self.remember()
+                self.assertEqual(pc.publish(str(self.cache), self.context, str(self.executable)), "")
+
     def test_persistent_static_memo_avoids_rehash_for_another_program(self):
         static = self.root / "library.so"
         static.write_bytes(b"shared toolchain library")
