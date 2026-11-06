@@ -204,6 +204,14 @@ def timed_sh(name: str, cmd: str) -> int:
     return code
 
 
+def uses_new_allocator(ir: str) -> bool:
+    # Lowering declares pys_new exactly when it emits an allocation call. Match
+    # that complete line: the compiler itself embeds this spelling in LLVM
+    # string constants, whose newlines are escaped, without calling pys_new.
+    declaration = "declare ptr @pys_new(i64)\n"
+    return ir.startswith(declaration) or "\n" + declaration in ir
+
+
 def build_jobs() -> int:
     value = os.getenv("PYSTACHY_BUILD_JOBS", "1")
     if not value.isascii() or not value.isdigit() or len(value) > 2 or int(value) < 1 or int(value) > 64:
@@ -812,7 +820,7 @@ def main() -> None:
     # optimized with pys_new out of line (runtime.c), so that LLVM deletes the allocations whose
     # objects nothing keeps; then LATE_INLINE puts pys_new, the allocator's fast path, into the
     # calls left (the JIT tier calls the shared runtime's pys_new, which it never inlines)
-    newalloc = (cmd == "build" or cmd == "ext") and "@pys_new(" in ir
+    newalloc = (cmd == "build" or cmd == "ext") and uses_new_allocator(ir)
     f.close()
     tc = [q(paths[i]) if paths[i] != "" else tools[i] for i in range(len(tools))]
     msg = ""
