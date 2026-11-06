@@ -134,6 +134,14 @@ if "-o" in args:
     if out.name == "dictprobe.ll":  # (dict-probes checks the probes: only dfindc tests for wide int keys)
         out.write_text("define i64 @dfind() {\\n  ret i64 0\\n}\\ndefine i64 @dfindc(i64 %k) {\\n  %w = icmp eq i64 %k, -9223372036854775808\\n  ret i64 0\\n}\\n"
                        "define i64 @dfindi() {\\n  ret i64 0\\n}\\ndefine i64 @dfinds() {\\n  ret i64 0\\n}\\n")
+    elif out.name == "fileprobe.ll":  # (file-buffers checks both readers and their per-byte inlining)
+        mode = os.environ.get("MOCK_FILE_READ_IR", "inline")
+        ir = "define ptr @pys_file_read() {\\n  ret ptr null\\n}\\ndefine ptr @pys_file_readline() {\\n  ret ptr null\\n}\\n"
+        if mode == "missing":
+            ir = ""
+        elif mode != "inline":
+            ir += "define internal i32 @" + mode + "() {\\n  ret i32 0\\n}\\n"
+        out.write_text(ir)
     elif out.suffix:
         out.write_text("probe")
     else:
@@ -203,6 +211,17 @@ else:
                 self.assertEqual(report["result"], "fail")
                 self.assertEqual([s["name"] for s in report["steps"]], self.steps)
                 self.assertEqual([s["name"] for s in report["steps"] if s["result"] == "fail"], [step])
+
+    def test_text_read_ir_must_exist_and_inline_both_byte_helpers(self):
+        # This checks the IR guard, independently of the lane-overlap barriers above.
+        self.env["MOCK_SERIAL"] = "1"
+        for mode in ("inline", "missing", "get", "getnl"):
+            with self.subTest(mode=mode):
+                self.env["MOCK_FILE_READ_IR"] = mode
+                result, report = self.run_contracts()
+                failures = [step["name"] for step in report["steps"] if step["result"] == "fail"]
+                self.assertEqual(failures, [] if mode == "inline" else ["file-buffers"], result.stdout + result.stderr)
+                self.assertEqual(result.returncode == 0, mode == "inline")
 
     def survivors(self, mark):
         """The live processes (not zombies) whose environment holds MARK: tests/verify.sh's and every
