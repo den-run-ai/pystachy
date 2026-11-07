@@ -16,6 +16,7 @@ PREFIX = "src.pystachy_compiler."
 # a container or a post-import writer requires an explicit ownership decision.
 LOOKUP = set("""
 analysis.BINDERS builtins.FSPRIMS
+ctypes_schema.SCALARS ctypes_schema.MARKERS
 bigints.BIGOPS bigints.BKEY bigints.PROMOTES bigints.NUMOPS bigints.NUMCALLS
 driver.COMPILER_SOURCES driver.CPUID driver.RTPARTS
 dynamic.XCMP dynamic.XOPS dynamic.BINOPS dynamic.UNOPS dynamic.CMPOPS
@@ -82,7 +83,9 @@ WRITERS = {
     "names.RENAMED": {"program.gen_program", "driver.compile_program"},
     "names.ENUMCLASSES": {"loader.Loader.program", "loader.enum_classes"},
     "specs.LIBS": {"lower_module.gen_cextern", "driver.compile_program", "driver.main"},
-    "specs.LINKDL": {"lower_module.gen_cextern", "driver.compile_program"},
+    # CDLL emits ffi.load_library even without foreign symbols. Its builtin
+    # appends the same per-pass requirement as @extern; compile_program rewinds it.
+    "specs.LINKDL": {"lower_module.gen_cextern", "builtins.gen_builtin", "driver.compile_program"},
     "specs.GLUE": {"loader.Loader.load"},
     "specs.SPECSHOW": {"templates.gen_specialize"},
     "specs.MODULES": {"driver.runtime_ir", "driver.main"},
