@@ -83,6 +83,11 @@ jobs:
       - name: Example CLI smoke contract tests
         run: python3 -m unittest discover -s tools -p test_check_example_cli.py
 
+      - name: Owned communication buffer and completion checks
+        run: |
+          python3 -m unittest discover -s tools -p test_comm_example.py
+          python3 examples/comm/check.py --compiler 'python3 -m pystachy' --cc "$PYSTACHY_LLVM/clang" --sanitizers --leak-check
+
       - name: Install sanitizer runtime for generated-code controls
         run: sudo apt-get update && sudo apt-get install -y libclang-rt-18-dev
 

@@ -157,6 +157,12 @@ convention, C++ exception or `longjmp` across subset frames, or retained tempora
 string pointer causes undefined behavior, as with ctypes. Foreign calls are
 conservatively treated as having all effects; inside `try`, a call is an `invoke`.
 
+The optional [buffer/completion example](../examples/comm/README.md) copies
+call-scoped inputs into native-owned host allocations, retains them across local
+queued operations and exposes explicit completion acknowledgment. It runs under
+CPython and Pystachy without extending the FFI borrowing contract; its collectives
+are a single-process reference backend, not distributed communication.
+
 ## Static ctypes declarations
 
 The experimental ctypes subset accepts an immutable module declaration block

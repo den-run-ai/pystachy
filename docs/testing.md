@@ -906,6 +906,9 @@ Every job, including release jobs, has a time limit of at most 15 minutes. Relea
 waits at most ten minutes for its exact-commit CI evidence. Expensive new checks must fit the
 existing PR budget or run in the full matrix; raising limits or adding matrix axes is not a fix.
 
+Lint also runs the optional [communication buffer/completion probe](../examples/comm/README.md)
+with the hosted compiler, JIT/AOT, GC stress and a sanitized standalone C probe.
+
 The [DCO workflow](../.github/workflows/dco.yml) checks that the author of a pull request from a
 fork is listed in `.github/dco-signers.txt`, on main or in the pull request; pull requests from
 the repository's own branches skip it. It runs main's copy of the workflow and of
