@@ -230,6 +230,7 @@ jobs:
             build/verification.json
             build/extended-smoke.json
             build/verify/*.log
+            build/verify/example-cli.json
             build/verify/dynany-fuzz/*.py
             build/verify/dynany-optin-*.json
             build/verify/dynany-optin-*/tests/programs/*/*

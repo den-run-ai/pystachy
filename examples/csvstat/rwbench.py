@@ -29,7 +29,9 @@ def main() -> None:
     with open(sys.argv[2], newline="") as f:
         same = same and list(csv.reader(f)) == rows
     n = len(rows)
-    print(f"{n} rows, read back {'as written' if same else 'DIFFERENT'}")
+    if not same:
+        raise ValueError("CSV read, parse and write results differ")
+    print(f"{n} rows, read back as written")
     print(f"read {read * 1e6 / n:.3f} us/row, parse {parse * 1e6 / n:.3f} us/row, write {written * 1e6 / n:.3f} us/row")
 
 

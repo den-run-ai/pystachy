@@ -14,6 +14,7 @@ import subprocess
 import sys
 
 import annotation_widening
+import check_example_cli
 import dynany_optin
 import python_int_gate
 
@@ -205,6 +206,34 @@ def integer(value, label, minimum=0):
     return value
 
 
+def benchmark_programs():
+    """The top-level bench/*.py inputs of verify.sh, independently of an artifact's counts."""
+    return sorted(path.stem for path in (ROOT / "bench").glob("*.py")
+                  if path.is_file() and not path.name.startswith("."))
+
+
+def validate_benchmarks(step, label):
+    programs = benchmark_programs()
+    if not programs:
+        raise ValueError(f"{label}: no benchmark programs in the checkout")
+    for field in ("programs", "identical"):
+        if integer(step.get(field), f"{label}.{field}", 1) != len(programs):
+            raise ValueError(f"{label}: {field} must count every bench/*.py program")
+    rows = step.get("timings")
+    if not isinstance(rows, list) or any(not isinstance(row, dict) for row in rows):
+        raise ValueError(f"{label}: missing benchmark timing rows")
+    names = [row.get("name") for row in rows]
+    if any(not isinstance(name, str) for name in names) or sorted(names) != programs:
+        raise ValueError(f"{label}: timing rows must name every bench/*.py program exactly once")
+    for row in rows:
+        case = f"{label}.{row['name']}"
+        if row.get("identical") is not True:
+            raise ValueError(f"{case}: missing CPython/JIT/AOT output parity")
+        for field in ("cpython_seconds", "jit_seconds", "aot_build_seconds", "aot_seconds"):
+            if number(row.get(field), f"{case}.{field}") == 0:
+                raise ValueError(f"{case}.{field}: expected a positive duration")
+
+
 def validate_report(report, group, expected, profile="full", selection=None):
     if not isinstance(report, dict) or report.get("project") != "Pystachy":
         raise ValueError(f"{group}: not a Pystachy verification report")
@@ -252,6 +281,10 @@ def validate_report(report, group, expected, profile="full", selection=None):
                 raise ValueError(f"{label}: expected 3 programs, 540 cases including 90 parity cases, JIT/AOT with program GC stress, and no mismatches")
         if step["name"] == "annotation-widening":
             annotation_widening.validate_report(step.get("widening"), ROOT, profile)
+        if step["name"] == "example-cli":
+            check_example_cli.validate_report(step.get("example_cli"))
+        if step["name"] == "benchmarks":
+            validate_benchmarks(step, label)
         if step["name"] == "aot-dead-code":
             if (integer(step.get("opt_in_symbols"), f"{label}.opt_in_symbols") != 12 or
                     step.get("programs") != ["plain", "python-int", "dynamic-any", "python-int-import", "dynamic-any-import"] or

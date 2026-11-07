@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest import mock
@@ -240,6 +241,15 @@ def report(group, steps):
                         program_gc_interval=1, mismatches=0)
         if name == "annotation-widening":
             step["widening"] = merge.annotation_widening.expected_ci_report(merge.ROOT, "pr" if group == "opt-in" else "full")
+        if name == "example-cli":
+            step["example_cli"] = {"schema": 1, "result": "pass", "python": (merge.ROOT / ".python-version").read_text().strip(),
+                                   "modes": merge.check_example_cli.MODES, "cases": merge.check_example_cli.case_names(),
+                                   "integrations": merge.check_example_cli.integrations()}
+        if name == "benchmarks":
+            programs = merge.benchmark_programs()
+            step.update(programs=len(programs), identical=len(programs), timings=[
+                {"name": program, "identical": True, "cpython_seconds": 0.1, "jit_seconds": 0.2,
+                 "aot_build_seconds": 0.3, "aot_seconds": 0.01} for program in programs])
         if name == "aot-dead-code":
             step.update(opt_in_symbols=12, programs=["plain", "python-int", "dynamic-any", "python-int-import", "dynamic-any-import"],
                         compilers=["CPython-hosted", "stage2"])
@@ -264,6 +274,145 @@ def report(group, steps):
                         "corpus_cases": CORPUS_CASES, "syntax_cases": SYNTAX_CASES},
             "toolchain": {"llvm": "LLVM 18", "python": "Python 3.13"},
             "platform": {"machine": "x86_64"}, "steps": checks}
+
+
+class BenchmarkTests(unittest.TestCase):
+    def test_report_requires_every_program_once_with_parity_and_positive_timings(self):
+        steps = ["bootstrap", "benchmarks"]
+        original = report("benchmarks", steps)
+        merge.validate_report(original, "benchmarks", steps)
+        mutations = [lambda step: step.pop("timings"),
+                     lambda step: step.update(timings=[]),
+                     lambda step: step.update(timings={}),
+                     lambda step: step["timings"].pop(),
+                     lambda step: step["timings"].append(step["timings"][0]),
+                     lambda step: step["timings"].__setitem__(0, None),
+                     lambda step: step["timings"][0].update(name=step["timings"][1]["name"]),
+                     lambda step: step["timings"][0].update(name="unknown"),
+                     lambda step: step["timings"][0].update(name=[]),
+                     lambda step: step["timings"][0].pop("name"),
+                     lambda step: step["timings"][0].pop("identical")]
+        for field in ("programs", "identical"):
+            mutations.append(lambda step, field=field: step.pop(field))
+            count = len(merge.benchmark_programs())
+            for value in (0, True, str(count), float(count), count - 1, count + 1):
+                mutations.append(lambda step, field=field, value=value: step.update({field: value}))
+        for value in (False, 1, "true"):
+            mutations.append(lambda step, value=value: step["timings"][0].update(identical=value))
+        for field in ("cpython_seconds", "jit_seconds", "aot_build_seconds", "aot_seconds"):
+            mutations.append(lambda step, field=field: step["timings"][0].pop(field))
+            for value in (None, True, "0.1", 0, -1, float("nan"), float("inf"), -float("inf")):
+                mutations.append(lambda step, field=field, value=value: step["timings"][0].update({field: value}))
+        for index, mutate in enumerate(mutations):
+            data = copy.deepcopy(original)
+            mutate(data["steps"][1])
+            with self.subTest(mutation=index), self.assertRaises(ValueError):
+                merge.validate_report(data, "benchmarks", steps)
+
+    def test_inventory_comes_from_checkout_and_cannot_be_empty(self):
+        with tempfile.TemporaryDirectory() as temp, mock.patch.object(merge, "ROOT", Path(temp)):
+            bench = Path(temp) / "bench"
+            bench.mkdir()
+            (bench / "one.py").write_text("")
+            (bench / ".hidden.py").write_text("")
+            (bench / "nested").mkdir()
+            (bench / "nested/two.py").write_text("")
+            self.assertEqual(merge.benchmark_programs(), ["one"])
+            steps = ["bootstrap", "benchmarks"]
+            data = report("benchmarks", steps)
+            merge.validate_report(data, "benchmarks", steps)
+            (bench / "two.py").write_text("")
+            with self.assertRaisesRegex(ValueError, "count every"):
+                merge.validate_report(data, "benchmarks", steps)
+            (bench / "one.py").unlink()
+            (bench / "two.py").unlink()
+            data["steps"][1].update(programs=0, identical=0, timings=[])
+            with self.assertRaisesRegex(ValueError, "no benchmark programs"):
+                merge.validate_report(data, "benchmarks", steps)
+
+    def test_producer_rejects_failed_build_stale_output_and_process_mismatches(self):
+        source = (merge.ROOT / "tests/verify.sh").read_text()
+        stage = source.split("# ---- benchmarks:", 1)[1].split("# ---- example-cli:", 1)[0]
+        stage = stage[stage.index("if want benchmarks;"):]
+        # Execute the real shell stage with deterministic clocks and a tiny compiler double.
+        header = '''want() { return 0; }
+now() { echo 0; }
+secs() { echo 0.1; }
+step() { printf '{"name":"%s","result":"%s"%s}\\n' "$1" "$2" "$5" > "$V/report.json"; [ "$2" = pass ]; }
+'''
+        oracle = '''import os, sys
+print("answer")
+print("diagnostic", file=sys.stderr)
+sys.exit(7 if os.environ["MOCK_BENCH_MODE"] == "all-nonzero" else 0)
+'''
+        compiler = '''import os, sys
+from pathlib import Path
+mode = os.environ["MOCK_BENCH_MODE"]
+if sys.argv[1] == "run":
+    if mode == "jit-stdout":
+        print("unexpected JIT output", flush=True)
+    if mode == "jit-stderr":
+        print("unexpected JIT diagnostic", file=sys.stderr)
+    if mode == "jit-nonzero":
+        sys.exit(7)
+    os.execv(sys.executable, [sys.executable, sys.argv[2]])
+if mode == "build-fail":
+    print("build failed", file=sys.stderr)
+    sys.exit(7)
+if mode == "build-missing":
+    sys.exit(0)
+if mode == "build-stdout":
+    print("unexpected build output")
+if mode == "build-stderr":
+    print("unexpected build diagnostic", file=sys.stderr)
+output = Path(sys.argv[sys.argv.index("-o") + 1])
+prefix = 'from pathlib import Path\\nPath("aot-ran").touch()\\n'
+if mode == "aot-stdout":
+    prefix += 'print("unexpected AOT output")\\n'
+if mode == "aot-stderr":
+    prefix += 'import sys\\nprint("unexpected AOT diagnostic", file=sys.stderr)\\n'
+if mode == "aot-nonzero":
+    prefix += 'import sys\\nsys.exit(7)\\n'
+output.write_text("#!" + sys.executable + "\\n" + prefix + Path(sys.argv[2]).read_text())
+output.chmod(0o644 if mode == "build-not-executable" else 0o755)
+sys.exit(7 if mode == "build-fail-after-output" else 0)
+'''
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "bench").mkdir()
+            (root / "bench/one.py").write_text(oracle)
+            verify = root / "verify"
+            verify.mkdir()
+            (verify / "pystachy2").write_text(f"#!{sys.executable}\n" + compiler)
+            (verify / "pystachy2").chmod(0o755)
+            for mode in ("pass", "build-fail", "build-fail-after-output", "build-missing", "build-not-executable",
+                         "build-stdout", "build-stderr", "jit-stdout", "jit-stderr", "jit-nonzero",
+                         "aot-stdout", "aot-stderr", "aot-nonzero", "all-nonzero"):
+                with self.subTest(mode=mode):
+                    marker = root / "aot-ran"
+                    marker.unlink(missing_ok=True)
+                    # A previous successful output must never rescue a failed/no-output build.
+                    stale = verify / "bench-one.exe"
+                    stale.write_text(f"#!{sys.executable}\nfrom pathlib import Path\nPath('aot-ran').touch()\n" + oracle)
+                    stale.chmod(0o755)
+                    result = subprocess.run(["sh", "-c", header + stage], cwd=root, capture_output=True, text=True,
+                                            env={**os.environ, "V": str(verify), "PY": sys.executable, "MOCK_BENCH_MODE": mode},
+                                            timeout=10)
+                    data = json.loads((verify / "report.json").read_text())
+                    log = (verify / "benchmarks.log").read_text()
+                    passed = mode == "pass"
+                    self.assertEqual(result.returncode, 0 if passed else 1, result.stdout + result.stderr + log)
+                    self.assertEqual(data["result"], "pass" if passed else "fail", log)
+                    self.assertEqual(data["programs"], 1)
+                    self.assertEqual(data["identical"], int(passed))
+                    self.assertIs(data["timings"][0]["identical"], passed)
+                    self.assertEqual(marker.exists(), not mode.startswith("build-"))
+                    if not passed:
+                        self.assertIn("FAIL one: CPython=", log)
+                        self.assertIn("build diagnostics:", log)
+                        self.assertIn("ref stderr:\ndiagnostic\n", log)
+                    if mode == "build-fail":
+                        self.assertIn("build failed", log)
 
 
 class ContractTests(unittest.TestCase):
@@ -300,7 +449,7 @@ class ContractTests(unittest.TestCase):
         for shard in ("0", "1"):
             self.assertEqual(groups["native-" + shard], ["bootstrap", "tests-native-" + shard])
             self.assertEqual(groups["opt-off-" + shard], ["bootstrap", "tests-opt-off-" + shard])
-        self.assertEqual(groups["benchmarks"], ["bootstrap", "benchmarks"])
+        self.assertEqual(groups["benchmarks"], ["bootstrap", "benchmarks", "example-cli"])
         self.assertEqual(groups["scaling"], ["bootstrap", "scaling-0", "scaling-1"])
         # (all lists the steps in the order a run of all records them: the contracts' steps in their
         # group's order, as the lanes report them, after the opt-in sweeps and before scaling)
