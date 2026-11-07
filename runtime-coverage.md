@@ -1,12 +1,12 @@
 ## Native runtime coverage
 
-Commit `f7103067545b43cdcd8ce20dc66b1571425b3a8d`: lines **95.5%** (7094 of 7428) and branches **85.6%** (7687 of 8982) of `runtime.c` (with the `ryu/` and `mpz/` files it includes), `pyembed.c` and `pyext.c`, as clang's source-based coverage counts them; functions 96.3%, regions 92.1%. `pys_init` ran 4552 times: the program runs whose profiles were written.
+Commit `54ad139a378b2fe8761a44cedf7ff9a317f1d300`: lines **95.5%** (7094 of 7428) and branches **85.6%** (7687 of 8982) of `runtime.c` (with the `ryu/` and `mpz/` files it includes), `pyembed.c` and `pyext.c`, as clang's source-based coverage counts them; functions 96.3%, regions 92.1%. `pys_init` ran 4552 times: the program runs whose profiles were written.
 Programs built by the native compiler against an instrumented runtime; `runtime.py`, compiled by Pystachy, is not measured, nor are the C probes. The compiler's own coverage is the [hosted compiler coverage](https://github.com/den-run-ai/pystachy/blob/badges/coverage.md).
 
 | Suite | Runs | Checks | Time |
 |---|---|---|---:|
-| corpus | `tests/run.sh`, JIT and AOT (6 shards) | 6654 passed, 0 failed | 1796 s |
-| ffi | `tests/ffi/run.sh`, AOT and extension modules | 116 passed, 0 failed | 76 s |
+| corpus | `tests/run.sh`, JIT and AOT (6 shards) | 6654 passed, 0 failed | 1668 s |
+| ffi | `tests/ffi/run.sh`, AOT and extension modules | 116 passed, 0 failed | 99 s |
 
 | File | Lines | Missed | Lines % | Branches | Missed | Branches % | Functions % | Regions % |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -37,9 +37,9 @@ Programs built by the native compiler against an instrumented runtime; `runtime.
 | dynamic values | 4696 | 1111 | 97.0% | 1544 | 89.8% | 171 | 99.4% |
 | formatting: f"{x:spec}" | 6048 | 66 | 100.0% | 154 | 88.3% | 5 | 100.0% |
 | I/O and process | 6127 | 831 | 92.5% | 1064 | 76.7% | 111 | 90.1% |
-| exceptions: table-driven unwinding (the Itanium C++ ABI's) | 7170 | 322 | 93.2% | 376 | 75.3% | 61 | 98.4% |
-| the time module: clocks and sleep | 7639 | 51 | 98.0% | 50 | 48.0% | 11 | 90.9% |
-| select: a POSIX integer-descriptor subset | 7699 | 73 | 87.7% | 62 | 71.0% | 2 | 100.0% |
-| the errno module: the platform's error numbers | 7779 | 4 | 50.0% | 4 | 75.0% | 1 | 100.0% |
-| temporary directories: tempfile.mkdtemp, os.remove, os.rmdir | 8055 | 276 | 92.4% | 364 | 65.1% | 31 | 96.8% |
-| tables | 8368 | 66 | 98.5% | 82 | 78.0% | 13 | 92.3% |
+| exceptions: table-driven unwinding (the Itanium C++ ABI's) | 7173 | 322 | 93.2% | 376 | 75.3% | 61 | 98.4% |
+| the time module: clocks and sleep | 7642 | 51 | 98.0% | 50 | 48.0% | 11 | 90.9% |
+| select: a POSIX integer-descriptor subset | 7702 | 73 | 87.7% | 62 | 71.0% | 2 | 100.0% |
+| the errno module: the platform's error numbers | 7782 | 4 | 50.0% | 4 | 75.0% | 1 | 100.0% |
+| temporary directories: tempfile.mkdtemp, os.remove, os.rmdir | 8058 | 276 | 92.4% | 364 | 65.1% | 31 | 96.8% |
+| tables | 8371 | 66 | 98.5% | 82 | 78.0% | 13 | 92.3% |
