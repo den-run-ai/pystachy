@@ -77,6 +77,15 @@ bench: pystachy
 BENCH_COMPILER ?= ./pystachy
 BENCH_ARGS ?=
 
+# Optional socket/readiness bridge: stdlib oracle, JIT/AOT and program GC stress.
+netio-check: $(BENCH_COMPILER)
+	$(PY) -m unittest discover -s tools -p 'test_netio*.py'
+	$(PY) examples/netio/check.py --compiler "$(BENCH_COMPILER)" --json build/netio-check.json
+	$(PY) examples/netio/check_drain.py --compiler "$(BENCH_COMPILER)" --json build/netio-drain-checks.json
+	mkdir -p build/netio
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -Wpedantic examples/netio/netio.c examples/netio/ownership.c -o build/netio/ownership
+	build/netio/ownership
+
 # Tiny fixtures through the real CLIs, plus JSON repair and agent loopback HTTP.
 example-cli-check: $(BENCH_COMPILER)
 	$(PY) -m unittest discover -s tools -p test_check_example_cli.py
@@ -414,4 +423,4 @@ uninstall:
 test-install:
 	$(PY) -m unittest discover -s tools -p test_install.py
 
-.PHONY: test test-py coverage runtime-coverage variants test-cache test-program-cache test-ffi bench bench-extended bench-extended-check example-cli-check blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe boxprobe streamprobe jitprobe aotprobe unicode-audit unicodeprobe bytescanprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz dynany-fuzz dynany-optin python-int-optin python-int-gate re-probe re-specialize-check typecheck lint-python check-repository check-fast lint clean install uninstall test-install
+.PHONY: test test-py coverage runtime-coverage variants test-cache test-program-cache test-ffi bench bench-extended bench-extended-check example-cli-check netio-check blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe boxprobe streamprobe jitprobe aotprobe unicode-audit unicodeprobe bytescanprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz dynany-fuzz dynany-optin python-int-optin python-int-gate re-probe re-specialize-check typecheck lint-python check-repository check-fast lint clean install uninstall test-install
