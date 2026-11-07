@@ -1,0 +1,16 @@
+448 0
+1 0 0
+b'\xff\x80' b'\xff\x80' None
+b'\xff\x80' b'\xff\x80\x00A' b'' b''
+b'\xff\x80' b'B\x80'
+54850
+True
+True
+ValueError a C function declared -> bytes returned NULL
+ValueError ffi.bytes_at() cannot read a NULL pointer
+ValueError ffi.bytes_at() cannot read a NULL pointer
+ValueError ffi.bytes_at() takes a length >= -1
+ValueError embedded null character
+ValueError ffi.string_at() takes a length >= 0
+missing library raised OSError
+[exit 0]

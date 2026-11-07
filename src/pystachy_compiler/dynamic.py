@@ -22,9 +22,9 @@ from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, INTFILES
 from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Reduce, Val
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import ENUMCLASSES, owner, retoken, short
-from src.pystachy_compiler.specs import BIG, ITERS, JSONANY, METHODS, NONEVAR, RANGEC, RANGES, RTDATA
-from src.pystachy_compiler.syntax import Node, has_kind, mk
-from src.pystachy_compiler.utils import ListLayout, builtin_key, disjoint_sets, elem, fbits, gelem, holds_dyn, identity_abi, is_callable, is_dict, is_fn, is_gen, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, numeric_identity, selem, takes_self, targs, tname, typestr, umembers, unopt
+from src.pystachy_compiler.specs import BIG, GLUE, ITERS, JSONANY, METHODS, NONEVAR, RANGEC, RANGES, RTDATA
+from src.pystachy_compiler.syntax import Node, has_kind, made_var, mk
+from src.pystachy_compiler.utils import ListLayout, builtin_key, closure_default_slots, disjoint_sets, elem, fbits, gelem, holds_dyn, identity_abi, identity_default, int_fits, int_lit, is_callable, is_const, is_dict, is_fn, is_gen, is_kw, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, kw_names, numeric_identity, selem, takes_self, targs, tname, typestr, umembers, unopt
 
 DYN = "dyn"
 # what isinstance(x, int) narrows a dyn local to: still the box (a bool passes the test too),
@@ -34,6 +34,7 @@ DYNINT = "dyn[int]"
 DK_OBJ = 8
 DK_FUNC = 9
 DK_GEN = 11
+DK_TYPE = 12
 DF_EQ = 1
 DF_CMP = 2
 DF_HASH = 4
@@ -294,7 +295,7 @@ def gen_dyn_boxable(self, t: str) -> str:
     # why a value of static type t cannot become a dyn value, or "": a scalar, None, a str, an
     # object of the program's classes, a container of boxes, a tuple (made one of boxes), a union
     # of these, and dyn
-    if t == DYN or dyn_builtin_type(t) != "" or t == BIG or t == NONEVAR:
+    if t == DYN or dyn_builtin_type(t) != "" or t == BIG or t == NONEVAR or self.refl_builtin_class(t) != "":
         return ""
     if t in self.classes and t not in self.tmpl:
         if self.classes[t].exc != "":
@@ -1417,6 +1418,9 @@ def gen_dyn_box(self, v: Val) -> Val:
         return box_big(self, v)
     if t == DYN:
         return v
+    builtin_class = self.refl_builtin_class(t)
+    if builtin_class != "":
+        return self.refl_class_value(builtin_class)
     if len(self.idoff) > 0:
         self.identity_box(v, t)  # (where a module's code does not track numeric identity)
     if t == "None" or t == NONEVAR or (is_opt(t) and v.v == "null"):
@@ -2469,6 +2473,8 @@ def gen_dyn_test(self, v: Val, ts: list[str]) -> str:
 def gen_dyn_types_of(self, t: str) -> list[str]:
     # the DynTypes of the boxes that hold values of static type t: a class's and its subclasses'
     # of those boxed (a subclass boxed later is a case the program tests too: see dyn_dispatchers)
+    if t == "%class:type":
+        return [self.rtdata("pys_dyntype_type")]
     if (t == "int" or t == BIG) and int_program():
         return [self.rtdata("pys_dyntype_int"), self.rtdata("pys_dyntype_bigint")]
     if dyn_builtin_type(t) != "":
@@ -2500,7 +2506,7 @@ def gen_dyn_isinst_types(self, c: Node) -> list[str]:
     if self.bound(c.s):
         return [""]
     m = {"int": ["int", "bool"], "bool": ["bool"], "float": ["float"], "str": ["str"], "list": ["list[dyn]", "list[int]"], "dict": ["dict[dyn,dyn]"],
-         "tuple": ["vtuple[dyn]"], "object": ["*"]}
+         "tuple": ["vtuple[dyn]"], "object": ["*"], "type": ["%class:type"]}
     if c.s in m:
         return m[c.s]
     if c.s in "set frozenset bytes bytearray complex range type memoryview slice".split():
@@ -2528,7 +2534,7 @@ def gen_dyn_narrow_type(self, c: Node, truth: bool) -> str:
         return DYNINT
     # A list's Python type does not establish boxed versus native integer storage.
     # Keep its descriptor and use the layout-aware dynamic operations after the test.
-    if len(ts) != 1 or ts[0] == "" or ts[0] == "*":
+    if len(ts) != 1 or ts[0] == "" or ts[0] == "*" or ts[0] == "%class:type":
         return ""
     return ts[0]
 
@@ -3120,6 +3126,15 @@ def gen_dyn_body(self, key: str) -> None:
     ps = [self.read(mk("name", p, line, [])) for p in f.params]
     o = ps[0]
     dunder = self.dynkeys[key]
+    if key == "callpack" or key.startswith("callpackm."):
+        dyn_packed_body(self, f, o, ps[1], ps[2], key[10:] if key.startswith("callpackm.") else "")
+        return
+    if key == "callname" or key.startswith("callnamem."):
+        dyn_packed_name(self, o, key[10:] if key.startswith("callnamem.") else "")
+        return
+    if key == "typevalue":
+        self.refl_dynamic_type(o)
+        return
     if key.startswith("pairkey."):
         # Each raw key slot travels with its wide-int companion. The callback
         # receives the stored target key first, as dict equality does, and keeps
@@ -3143,6 +3158,18 @@ def gen_dyn_body(self, key: str) -> None:
         self.ret_(Val("1", "int"))
         return
     t = Val(self.dyn_typeof(o), "dyntype")
+    if key in ["get.__name__", "get.__qualname__", "get.__module__"]:
+        hit = self.label()
+        miss = self.label()
+        self.cbr(self.ptr_cmp("==", t, Val(self.rtdata("pys_dyntype_type"), "dyntype")).v, hit, miss)
+        self.place(hit)
+        # This metatype's payload is an internal record pointer, not a native
+        # Python value type for dyn.payload. Read its proven pointer slot with
+        # the ordinary typed-memory operation instead.
+        rec = Val(self.mload("%ptr", self.maddr("%ptr", o.v, "1")), "%ptr")
+        word = "0" if key == "get.__name__" else "1" if key == "get.__qualname__" else "2"
+        self.ret_(self.dyn_box(Val(self.mload("str", self.maddr("%ptr", rec.v, word)), "str")))
+        self.place(miss)
     arith = (key.startswith("op") or key.startswith("iop")) and dunder != ""
     r = "__r" + dunder[2:] if arith else ""
     # the case of the receiver's class, by one switch on its DynType's class id (word 3: a class's
@@ -3325,10 +3352,14 @@ def gen_dyn_supports(self, c: str, key: str, dunder: str, nargs: int) -> bool:
         return "__call__" in ci.methods and ci.methods["__call__"].bad == ""
     if key == "reversed" and c == RANGEC:
         return True
-    if key == "module":
+    if key == "module" or key == "qualname":
         return True
+    if key == "callable":
+        return "__call__" in ci.methods
     if key == "truth":
         return "__bool__" in ci.methods or "__len__" in ci.methods
+    if key == "lengthhint":
+        return "__len__" in ci.methods or "__length_hint__" in ci.methods
     if key == "str":
         return "__str__" in ci.methods or "__repr__" in ci.methods
     if key == "int" or key == "float":
@@ -3487,8 +3518,10 @@ def gen_dyn_arm(self, f: FnInfo, key: str, dunder: str, x: Val, args: list[Val])
             self.raise_("TypeError", self.sconst(bad))
             return
         r = self.expr(mk("call", "", line, [mk("attr", key[5 : key.rfind(".")], line, [xn])] + an), "")
-    elif key == "module":
-        r = Val(self.sconst(self.refl_type_name(x.t, "__module__")), "str")
+    elif key == "module" or key == "qualname":
+        r = Val(self.sconst(self.refl_type_name(x.t, "__module__" if key == "module" else "__qualname__")), "str")
+    elif key == "callable":
+        r = Val("true", "bool")
     elif key == "slice":
         self.raise_("TypeError", self.sconst(f"slicing an object is not supported: {short(x.t)}.__getitem__ would take a slice object, which Pystachy does not have"))
         return
@@ -3505,16 +3538,15 @@ def gen_dyn_arm(self, f: FnInfo, key: str, dunder: str, x: Val, args: list[Val])
         r = Val(self.truth(x), "bool")
     elif key == "str":
         r = self.to_str(x)
-    elif key == "len" or key == "lengthhint":
-        attempt = f"protocol-hint:{x.t}.__len__" if key == "lengthhint" else f"protocol:{x.t}.__len__"
+    elif key == "lengthhint":
+        dyn_length_hint(self, x)
+        return
+    elif key == "len":
+        attempt = f"protocol:{x.t}.__len__"
         if attempt in self.xnot:
             self.raise_("TypeError", self.sconst(f"{short(x.t)}.__len__ through Any is not supported: its body cannot be compiled"))
             return
         self.xtry = attempt
-        if key == "lengthhint":
-            dyn_length_hint(self, x)
-            self.xtry = ""
-            return
         r = self.objlen(x)
         self.xtry = ""
     elif key.startswith("iop") and ("__i" + dunder[2:]) in self.classes[x.t].methods:
@@ -3567,35 +3599,52 @@ def dyn_iteration_arm(self, f: FnInfo, key: str, x: Val) -> None:
 
 
 def dyn_length_hint(self, x: Val) -> None:
-    # PyObject_LengthHint ignores TypeError from __len__, but not ValueError
-    # for a negative result or any other user exception. -1 means no hint.
-    caught = self.stop_catch()
-    outer = self.handler
-    self.handler = caught.landing
-    block = self.label()
-    caught.tr.body = block
-    self.place(block)
-    value = self.call_fn(self.classes[x.t].methods["__len__"], [x], [], direct=True)
-    r = dyn_hint_result(self, value, True)
-    self.handler = outer
-    self.ret_(r)
-    e = self.landing(caught.landing, caught.slot, caught.mark)
-    yes = self.label()
-    no = self.label()
-    kinds = ["TypeError"] + [c for c in self.classes if self.classes[c].exc != "" and self.derives(c, "TypeError")]
-    self.cbr(self.exc_match(e, "\x01" + "\x01".join(kinds) + "\x01"), yes, no)
-    self.place(no)
-    self.throw(e)
-    self.place(yes)
-    self.rt("pys_exc_restore", "void", [f"ptr {caught.old}"])
-    caught.tr.exit = yes
+    # A declined __len__ falls back to __length_hint__. TypeError from either
+    # call is ignored, but __length_hint__'s result is validated OUTSIDE its
+    # handler. A negative length or another user exception always propagates.
+    for method in ["__len__", "__length_hint__"]:
+        if method not in self.classes[x.t].methods:
+            continue
+        attempt = f"protocol-hint:{x.t}.{method}"
+        if attempt in self.xnot:
+            self.raise_("TypeError", self.sconst(f"{short(x.t)}.{method} through Any is not supported: its body cannot be compiled"))
+            return
+        self.xtry = attempt
+        caught = self.stop_catch()
+        outer = self.handler
+        self.handler = caught.landing
+        caught.tr.body = self.label()
+        self.place(caught.tr.body)
+        fm = self.classes[x.t].methods[method]
+        own = 0 if fm.deco != "" else 1
+        if fm.bad == "" and len(fm.defaults) >= len(fm.params) and not self.dyn_takes(fm, own, 0):
+            self.raise_("TypeError", self.sconst(self.dyn_arity(fm, own, 0)))
+        else:
+            value = self.call_fn(fm, [x] if own else [], [], direct=True)
+            if method == "__length_hint__":
+                self.handler = outer
+            if not self.term:
+                r = dyn_hint_result(self, value, method == "__len__", method == "__length_hint__")
+                self.ret_(r)
+        self.handler = outer
+        e = self.landing(caught.landing, caught.slot, caught.mark)
+        yes = self.label()
+        no = self.label()
+        kinds = ["TypeError"] + [c for c in self.classes if self.classes[c].exc != "" and self.derives(c, "TypeError")]
+        self.cbr(self.exc_match(e, "\x01" + "\x01".join(kinds) + "\x01"), yes, no)
+        self.place(no)
+        self.throw(e)
+        self.place(yes)
+        self.rt("pys_exc_restore", "void", [f"ptr {caught.old}"])
+        caught.tr.exit = yes
+        self.xtry = ""
     self.ret_(Val("-1", "int"))
 
 
-def dyn_hint_result(self, value: Val, index: bool) -> Val:
+def dyn_hint_result(self, value: Val, index: bool, hint: bool = False) -> Val:
     # Execute the method before validating its result. Invalid length results
     # are TypeErrors, which the hint caller declines without losing effects.
-    value = self.unwrap(value, "TypeError: length is not an integer")
+    value = self.unwrap(value, "TypeError: __length_hint__ must be an integer, not NoneType" if hint else "TypeError: length is not an integer")
     if is_union(value.t):
         end = self.label()
         ph = Ins("phi", "int", "")
@@ -3603,7 +3652,7 @@ def dyn_hint_result(self, value: Val, index: bool) -> Val:
         if len([m for m in members if m in self.classes]) > 0:
             # Native reference unions admit None without an opt[] wrapper.
             # Reject it before reading a tag or calling any __index__ method.
-            self.guard(self.ptr_cmp("==", value, Val("null", "None")).v, "TypeError: length is not an integer")
+            self.guard(self.ptr_cmp("==", value, Val("null", "None")).v, "TypeError: __length_hint__ must be an integer, not NoneType" if hint else "TypeError: length is not an integer")
         for j in range(len(members)):
             hit = self.label()
             miss = self.label() if j + 1 < len(members) else ""
@@ -3612,7 +3661,7 @@ def dyn_hint_result(self, value: Val, index: bool) -> Val:
             else:
                 self.cbr(self.utest(value, [members[j]], False), hit, miss)
             self.place(hit)
-            r = dyn_hint_result(self, self.uget(value, members[j]), index)
+            r = dyn_hint_result(self, self.uget(value, members[j]), index, hint)
             if not self.term:
                 self.incoming(ph, r.v, self.cur)
                 self.br(end)
@@ -3625,7 +3674,15 @@ def dyn_hint_result(self, value: Val, index: bool) -> Val:
     if value.t == DYN and index:
         return self.dyn_call(self.dyn_dispatcher("hintindex", [DYN], "int", "__index__"), [value])
     if value.t == DYN:
-        self.guard(self.scalar("xor", [Val(self.dyn_test(value, ["int", "bool"]), "bool"), Val("true", "bool")]), "TypeError: length is not an integer")
+        if hint:
+            good = self.label()
+            bad = self.label()
+            self.cbr(self.dyn_test(value, ["int", "bool"]), good, bad)
+            self.place(bad)
+            self.raise_("TypeError", self.concat([Val(self.sconst("__length_hint__ must be an integer, not "), "str"), self.dyn_type_name(value)]).v)
+            self.place(good)
+        else:
+            self.guard(self.scalar("xor", [Val(self.dyn_test(value, ["int", "bool"]), "bool"), Val("true", "bool")]), "TypeError: length is not an integer")
         value = Val(self.rt("pys_dyn_big_of", "{i64, ptr}", [f"ptr {value.v}"]), BIG) if int_program() else self.dyn_payload(value, "int")
     if index and value.t in self.classes and "__index__" in self.classes[value.t].methods:
         self.notnone(value, "TypeError: length is not an integer")
@@ -3636,12 +3693,15 @@ def dyn_hint_result(self, value: Val, index: bool) -> Val:
             return Val("0", "int")
         return dyn_hint_result(self, self.protocol(value, "__index__", []), False)
     if value.t == BIG:
-        return self.big_len(value)
+        if not hint:
+            return self.big_len(value)
+        self.guard(self.scalar("xor", [Val(self.big_fits([value]), "bool"), Val("true", "bool")]), "OverflowError: Python int too large to convert to C ssize_t")
+        value = self.big_lo(value)
     if value.t not in ["int", "bool"]:
-        self.raise_("TypeError", self.sconst("length is not an integer"))
+        self.raise_("TypeError", self.sconst(f"__length_hint__ must be an integer, not {tname(value.t)}" if hint else "length is not an integer"))
         return Val("0", "int")
     r = self.as_int(value)
-    self.guard(self.num_cmp("<", r, Val("0", "int")).v, "ValueError: __len__() should return >= 0")
+    self.guard(self.num_cmp("<", r, Val("0", "int")).v, "ValueError: __length_hint__() should return >= 0" if hint else "ValueError: __len__() should return >= 0")
     return r
 
 def gen_dyn_return(self, f: FnInfo, r: Val) -> None:
@@ -3812,6 +3872,192 @@ def gen_dyn_fresh(self, v: Val) -> Val:
     return Val(self.rt("pys_dyn_list_of", "ptr", [f"ptr {v.v}", f"ptr {self.sconst(d)}"]), "list[dyn]")
 
 
+def dyn_class_initializer(self, c: str) -> FnInfo | None:
+    # Inheritance makes self a template parameter even with fully annotated
+    # arguments. Reuse an existing concrete instance; never infer another one.
+    if "__init__" not in self.classes[c].methods:
+        return None
+    f = self.classes[c].methods["__init__"]
+    if not f.generic:
+        return f if f.ll in self.compiled else None
+    ts = [c] + f.ptypes[1:]
+    for g in f.insts.values():
+        if g.ptypes == ts and g.ll in self.compiled and not g.cmpops and g.cmpfields == "" and len(g.cmptypes) == 0 and all(p == g.params[0] for p in g.nnp):
+            return g
+    return None
+
+
+def dyn_class_argument(self, t: str) -> bool:
+    # Unboxing must not introduce a previously unused class's repr/hash helpers
+    # or dynamic attribute arms. Check nominal leaves before requesting DynTypes.
+    if not self.dyn_unboxable(t):
+        return False
+    if is_opt(t):
+        return dyn_class_argument(self, unopt(t))
+    if is_union(t):
+        return all(dyn_class_argument(self, m) for m in umembers(t))
+    if is_tuple(t):
+        return all(dyn_class_argument(self, m) for m in targs(t))
+    return t not in self.classes or t in self.dynclasses
+
+
+def dyn_class_defaults(self, f: FnInfo, supplied: list[int], first: int = 1) -> bool:
+    # A compiled body does not prove that an omitted default can bind: an unused
+    # int parameter may have a str literal default. Inspect existing globals or
+    # inert literals without dry compilation, diagnostics or inference effects.
+    df = self.dflt_fn(f)
+    for j in range(first, len(f.params)):
+        if j in supplied:
+            continue
+        if df.dglob[j].startswith("!") or df.dglob[j] == "()" or df.dglob[j].startswith("&"):
+            return False
+        if df.dglob[j] != "" and df.dglob[j] != "=None":
+            continue
+        e = f.defaults[j]
+        literal = int_lit(e)
+        if literal != "" and not self.int_policy(e.line) and not int_fits(literal):
+            return False
+        if e.kind == "unary" and e.s == "-":
+            e = e.kids[0]
+        t = "bool" if e.kind in ["True", "False"] else e.kind
+        if t not in ["None", "int", "float", "str", "bool"]:
+            return False
+        if not (self.widens(t, f.ptypes[j]) or self.boxes(t, f.ptypes[j]) or (t == "int" and f.ptypes[j] == BIG)):
+            return False
+    return True
+
+
+def dyn_factory_candidate(self, c: str) -> bool:
+    # An annotation-backed layout needs no exemplar instance. Initially prepare
+    # only isolated ordinary classes: adding a DynType must not wake user protocol
+    # methods, inherited dispatch or new nominal field adapters on later passes.
+    ci = self.classes[c]
+    if c in self.tmpl or ci.origin != "" or ci.bad != "" or ci.hook != "" or ci.exc != "" or ci.mod in GLUE or ci.node.line in ENUMCLASSES or c in self.nts or self.is_dc(c):
+        return False
+    if ci.base != "" or ci.role != "" or ci.isrole or ci.tag != 0 or any(m != "__init__" for m in ci.methods):
+        return False
+    if any(a.startswith("__") and a.endswith("__") and a != "__slots__" for a in ci.ftypes):
+        return False
+    if "__init__" not in ci.methods:
+        return False
+    f = ci.methods["__init__"]
+    if f.bad != "" or f.generic or f.prop or f.deco != "" or f.vararg >= 0 or f.kwarg >= 0 or f.pyexport or f.gen or f.ret not in ["", "None"]:
+        return False
+    if len(f.ptypes) == 0 or f.ptypes[0] != c or len(f.defaults) != len(f.params):
+        return False
+    # Existing get.__init__/call.__init__ dispatchers can expose this method
+    # after the adapter is registered. Every omitted default must bind safely,
+    # even when the constructor call that first needs the class supplies it.
+    required = [j for j in range(len(f.params)) if f.defaults[j].kind == "noann"]
+    return all(t != "" and dyn_class_argument(self, t) for t in f.ptypes[1:]) and all(dyn_class_argument(self, ci.ftypes[a]) for a in ci.ftypes) and dyn_class_defaults(self, f, required)
+
+
+def dyn_factory_work(self) -> list[list[str]]:
+    # These append-only worklists can activate user bodies after function()
+    # returns. Ordinary runtime scalar helpers do not; dynamic iteration's
+    # implicit callbacks do, even before dyn_dispatchers has made their arms.
+    callbacks = [k for k in self.rtfns if k in ["dyn.iter", "dyn.list", "dyn.strs", "dyn.unpack", "dyn.update", "dyn.inplace", "dyn.inplace_promote", "dyn.contains", "dyn.list_method", "dyn.list_set_slice", "dyn.star_extend"]]
+    return [list(self.dynclasses), list(self.dynfuncs), list(self.dynfns), list(self.ocls), list(self.ocmp), list(self.one), list(self.xobj), list(self.hcls), list(self.xcls), list(self.xctors), callbacks]
+
+
+def dyn_prepare_factory(self, c: str) -> None:
+    # A failed candidate restarts the entire compilation through xtry/xnot.
+    # save/restore alone is not a transaction for inference, helper registries
+    # or lazy function calls. No failure may leave a half-prepared adapter.
+    if (c in self.dynclasses and dyn_class_initializer(self, c) is not None) or not dyn_factory_candidate(self, c):
+        return
+    attempt = "protocol:constructor:" + c
+    if attempt in self.xnot:
+        return
+    previous = self.xtry
+    self.xtry = attempt
+    fr = self.save()
+    f = self.classes[c].methods["__init__"]
+    called = dict(self.called)
+    work = dyn_factory_work(self)
+    hints = dict(self.newhints)
+    declined = dict(self.newx)
+    try:
+        self.modlevel = False
+        self.lenient = False
+        if f.ll not in self.compiled:
+            self.function(f, f.node.kids[2].kids)
+        while True:
+            # Generic instances/closures compile synchronously. Ordinary imported
+            # callees are lazy: keep every newly reached one inside this attempt,
+            # but leave independently required calls to the normal program worklist.
+            pending = [g for g in self.lazy.values() if g.ll in self.called and g.ll not in called and g.ll not in self.compiled and not g.generic]
+            if len(pending) == 0:
+                break
+            for g in pending:
+                if g.ll not in self.compiled:
+                    self.function(g, g.node.kids[2].kids)
+        if self.newhints != hints or dyn_factory_work(self) != work or not dyn_factory_candidate(self, c):
+            self.err("factory-only class preparation needs additional inference or dynamic helpers")
+        self.restore(fr)
+        self.dyn_class_type(c)
+    except Rejoin as retry:
+        # The driver normally retains newhints across retries. An optional
+        # constructor must not widen unrelated storage before being declined,
+        # including a first inference-only retry before a later body error.
+        self.newhints = hints
+        self.newx = declined
+        if not isinstance(retry, NeedSliceEH) and self.idevent == "":
+            self.newx[attempt] = True
+        raise
+    self.xtry = previous
+
+
+def dyn_class_calls(self, key: str, o: Val, args: list[Val]) -> None:
+    # A class box identifies its canonical record, not one instance layout.
+    # Reuse the program's adapters/initializers, including the annotation-backed
+    # factories prepared separately under the whole-compilation retry contract.
+    rec = Val(self.mload("%ptr", self.maddr("%ptr", o.v, "1")), "%ptr")
+    an = self.dyn_call_args(key, args)
+    classes = [c for c in self.classes if "@pys.refl.c." + c in self.reflrecs and self.classes[c].origin == "" and "__init__" in self.classes[c].methods]
+    for c in classes:
+        hit = self.label()
+        rest = self.label()
+        self.cbr(self.scalar_cmp("eq", rec, Val(self.refl_record(c), "%ptr")), hit, rest)
+        self.place(hit)
+        ci = self.classes[c]
+        declaration = ci.methods["__init__"]
+        fm = dyn_class_initializer(self, c)
+        dup = dup_kw(key)
+        if dup >= 0:
+            name = self.refl_type_name(c, "__module__") + "." + self.refl_type_name(c, "__qualname__")
+            self.raise_("TypeError", self.sconst(f"{name}() got multiple values for keyword argument '{shape_kws(key)[dup]}'"))
+        elif c in self.tmpl or ci.bad != "" or ci.mod in GLUE or ci.node.line in ENUMCLASSES or c in self.nts or self.is_dc(c) or "__init__" in ci.ftypes or "__init__" in ci.fdefault or declaration.prop or declaration.deco != "" or declaration.vararg >= 0 or declaration.kwarg >= 0:
+            self.raise_("NotImplementedError", self.sconst(f"{short(c)}() through Any requires an ordinary class with a fixed initializer"))
+        elif fm is None:
+            self.raise_("NotImplementedError", self.sconst(f"{short(c)}() through Any requires a statically compiled initializer"))
+        elif c not in self.dynclasses:
+            self.raise_("NotImplementedError", self.sconst(f"{short(c)}() through Any requires an existing boxed instance layout"))
+        else:
+            abstract = self.abstract_of(c)
+            bad = self.arity_error(fm, 1, an)
+            if len(abstract) > 0:
+                names = ", ".join([f"'{n}'" for n in abstract])
+                self.raise_("TypeError", self.sconst(f"Can't instantiate abstract class {short(c)} without an implementation for abstract method{'s' if len(abstract) > 1 else ''} {names}"))
+            elif bad != "":
+                self.raise_("TypeError", self.sconst(bad))
+            else:
+                # Defaults stay in the ordinary binder. Only supplied values
+                # cross from Any; never copy/reinterpret a typed container.
+                supplied = list(range(1, 1 + shape_npos(key))) + [fm.params.index(a.s) for a in an if a.kind == "kw"]
+                if any(not dyn_class_argument(self, fm.ptypes[j]) for j in supplied):
+                    self.raise_("NotImplementedError", self.sconst(f"{short(c)}() through Any cannot receive this parameter layout"))
+                elif not dyn_class_defaults(self, fm, supplied):
+                    self.raise_("NotImplementedError", self.sconst(f"{short(c)}() through Any cannot bind this default value"))
+                else:
+                    value = self.new_obj(c)
+                    self.init_result(self.call_fn(fm, [value], an, direct=True))
+                    if not self.term:
+                        self.ret_(self.dyn_box(value))
+        self.place(rest)
+    self.raise_("NotImplementedError", self.sconst("calling a class held as an Any value is not supported"))
+
+
 def gen_dyn_fallback(self, f: FnInfo, key: str, ps: list[Val]) -> None:
     # what dispatcher key does for the builtin types: runtime.c's helper, or an AttributeError
     if self.term:
@@ -3889,6 +4135,16 @@ def gen_dyn_fallback(self, f: FnInfo, key: str, ps: list[Val]) -> None:
         self.ret_(o)
     elif key == "module":
         self.ret_(Val(self.sconst("builtins"), "str"))
+    elif key == "qualname":
+        self.ret_(self.dyn_type_name(o))
+    elif key == "callable":
+        kind = Val(self.mload("int", self.dyn_typeof(o)), "int")
+        self.ret_(Val(self.scalar("or", [self.num_cmp("==", kind, Val(str(DK_FUNC), "int")),
+                                        self.num_cmp("==", kind, Val(str(DK_TYPE), "int"))]), "bool"))
+    elif key == "get.__class__":
+        # Declared fields and properties have already run in the user-class
+        # arms. Only an unshadowed object.__class__ falls back to type(o).
+        self.ret_(self.refl_type_value(o))
     elif key == "slice":
         hit = self.label()
         rest = self.label()
@@ -3930,6 +4186,12 @@ def gen_dyn_fallback(self, f: FnInfo, key: str, ps: list[Val]) -> None:
     elif key == "contains":
         self.ret_(self.num_cmp("!=", Val(self.rt("pys_dyn_contains", "i64", [f"ptr {o.v}", f"ptr {ps[1].v}"]), "int"), Val("0", "int")))
     elif key.startswith("callv."):
+        unsupported = self.label()
+        other = self.label()
+        self.cbr(self.ptr_cmp("==", Val(self.dyn_typeof(o), "dyntype"), Val(self.rtdata("pys_dyntype_type"), "dyntype")).v, unsupported, other)
+        self.place(unsupported)
+        dyn_class_calls(self, key, o, ps[1:])
+        self.place(other)
         dup = dup_kw(key)
         if dup >= 0:
             # Duplicate keywords fail during the merge, before checking whether o is callable.
@@ -3944,37 +4206,66 @@ def gen_dyn_fallback(self, f: FnInfo, key: str, ps: list[Val]) -> None:
         self.raise_("AttributeError", msg.v)
 
 
-def gen_dyn_dispatchers(self) -> bool:
-    # compile the dispatchers (again) for the classes and function values boxed so far, if any
-    # or a new dispatcher appeared since the last time: True if so. Compiling them may box more
-    # classes and function values (get.<a> a bound method), and need more dispatchers, so that
-    # program calls this until it is False
+def dyn_iteration_hooks(self) -> None:
     # Runtime consumers need callbacks even without an explicit iter()/next().
     # Resolve these after the main walk, using only existing program registries.
-    iterate = any(k in self.rtfns for k in ["dyn.iter", "dyn.list", "dyn.strs", "dyn.unpack", "dyn.update", "dyn.inplace", "dyn.inplace_promote", "dyn.contains", "dyn.list_method", "dyn.list_set_slice"]) or "iter" in self.dynfns
+    iterate = any(k in self.rtfns for k in ["dyn.iter", "dyn.list", "dyn.strs", "dyn.unpack", "dyn.update", "dyn.inplace", "dyn.inplace_promote", "dyn.contains", "dyn.list_method", "dyn.list_set_slice", "dyn.star_extend"]) or "iter" in self.dynfns
     advance = iterate or "next" in self.dynfns or "nextvalue" in self.dynfns
-    length = any(k in self.rtfns for k in ["dyn.list", "dyn.strs", "dyn.update", "dyn.inplace", "dyn.inplace_promote", "dyn.list_method", "dyn.list_set_slice"])
+    length = any(k in self.rtfns for k in ["dyn.list", "dyn.strs", "dyn.update", "dyn.inplace", "dyn.inplace_promote", "dyn.list_method", "dyn.list_set_slice", "dyn.star_extend"])
     for c in self.dynclasses:
         ms = self.classes[c].methods
         for key in ["iter", "next", "lengthhint"]:
             needed = iterate if key == "iter" else advance if key == "next" else length
             method = "__len__" if key == "lengthhint" else "__" + key + "__"
-            if needed and method in ms:
+            if needed and (method in ms or (key == "lengthhint" and "__length_hint__" in ms)):
                 f = self.dyn_dispatcher(key, [DYN], "int" if key == "lengthhint" else DYN, method)
                 self.called[f.ll] = True
                 for d in self.consts:
                     if d.name == self.dyntypes[c]:
                         d.refs[3 if key == "iter" else 4 if key == "next" else 5] = f.ll
-    sig = f"{len(self.dynclasses)} {len(self.dynfns)} {len(self.dynfuncs)} {len(self.dyntypes)}"
+
+
+def gen_dyn_dispatchers(self) -> bool:
+    # Compile the dispatchers again when more classes/function values have boxed
+    # or another dispatcher appeared. Program repeats until the registry settles.
+    # Only a dynamic call needs instance adapters for class values. Capturing a
+    # class or using it as a registry key alone does not prepare its constructor.
+    if any(k.startswith("callv.") or k == "callpack" for k in self.dynfns):
+        for c in [x for x in self.classes if "@pys.refl.c." + x in self.reflrecs]:
+            dyn_prepare_factory(self, c)
+    dyn_iteration_hooks(self)
+    # Class values need no boxed instance. A later typevalue arm can expose a
+    # record, and a later ordinary call can compile an imported initializer.
+    # Revisit construction arms for both changes without retaining new state.
+    constructors = len([c for c in self.classes if "@pys.refl.c." + c in self.reflrecs and dyn_class_initializer(self, c) is not None])
+    sig = f"{len(self.dynclasses)} {len(self.dynfns)} {len(self.dynfuncs)} {len(self.dyntypes)} {len(self.reflrecs)} {constructors}"
     if sig == self.dynsig:
         return False
     self.dynsig = sig
-    for key in [k for k in self.dynfns]:
+    keys = list(self.dynfns)
+    packed = [k for k in keys if k == "callpack" or k.startswith("callpackm.")]
+    work = dyn_packed_work(self) if len(packed) > 0 else []
+    for key in [k for k in keys if k not in packed]:
         f = self.dynfns[key]
         if f.ll in self.compiled:
             self.fns = [fn for fn in self.fns if fn.f.ll != f.ll]
             del self.compiled[f.ll]
         self.function(f, [mk("dynbody", key, self.dynlines[key], [])])
+    if len(packed) > 0:
+        # Ordinary dispatch may discover later boxed classes or lazy callees.
+        # Settle that universe before optional packed adapters introduce more
+        # operations; their proof must not become stale on a subsequent pass.
+        ready = len([c for c in self.classes if "@pys.refl.c." + c in self.reflrecs and dyn_class_initializer(self, c) is not None])
+        now = f"{len(self.dynclasses)} {len(self.dynfns)} {len(self.dynfuncs)} {len(self.dyntypes)} {len(self.reflrecs)} {ready}"
+        if dyn_packed_work(self) != work or now != sig or any(g.ll in self.called and g.ll not in self.compiled and not g.generic for g in self.lazy.values()):
+            self.dynsig = ""
+            return True
+        for key in packed:
+            f = self.dynfns[key]
+            if f.ll in self.compiled:
+                self.fns = [fn for fn in self.fns if fn.f.ll != f.ll]
+                del self.compiled[f.ll]
+            self.function(f, [mk("dynbody", key, self.dynlines[key], [])])
     return True
 
 
@@ -4284,6 +4575,390 @@ def gen_dyn_call_value(self, o: Val, args: list[Node]) -> Val:
             self.err("a call of an Any value takes no * or ** arguments here")
     vals = [self.dyn_box(self.expr(a.kids[0] if a.kind == "kw" else a, DYN)) for a in args]
     return self.dyn_call(self.dyn_dispatcher(f"callv.{call_shape(args)}", [DYN] * (len(args) + 1), DYN, "__call__"), [o] + vals)
+
+
+def dyn_star_source(self, value: Val) -> Val:
+    # Star expansion copies the outer sequence, never its elements. Native
+    # storage is read with its own layout before its items enter the call pack.
+    if is_list(value.t) and self.dyn_boxable(value.t) != "":
+        value = boxed_list_items(self, [value])
+    elif is_vtuple(value.t) and value.t != "vtuple[dyn]":
+        item = made_var("__pys_star_item", self.line)
+        value = self.expr(mk("listcomp", "", self.line, [item, item, self.vnode(value)]), "list[dyn]")
+    return self.dyn_box(value)
+
+
+def dyn_keyword_source(self, value: Val) -> Val:
+    # A ** mapping contributes a fresh set of entries to a call. Converting
+    # these entries does not change the source dictionary or its aliases.
+    if is_kw(value.t):
+        entries: list[Node] = []
+        for j in range(len(kw_names(value.t))):
+            entries.extend([mk("str", kw_names(value.t)[j], self.line, []), self.vnode(self.tget(self.kw_tuple(value), j))])
+        value = self.expr(mk("dict", "", self.line, entries), "dict[dyn,dyn]")
+    elif is_dict(value.t) and value.t != "dict[dyn,dyn]":
+        if targs(value.t)[0] != "str":
+            self.err("runtime ** unpacking of a typed dict requires str keys; use dict[Any, Any] for other key types")
+        key = made_var("__pys_keyword_key", self.line)
+        val = made_var("__pys_keyword_value", self.line)
+        pair = mk("tuple", "", self.line, [key, val])
+        items = mk("call", "", self.line, [mk("attr", "items", self.line, [self.vnode(value)])])
+        comp = mk("listcomp", "", self.line, [pair, pair, items])
+        value = self.expr(mk("dictcomp", "", self.line, [comp]), "dict[dyn,dyn]")
+    return self.dyn_box(value)
+
+
+def gen_dyn_star_call(self, o: Val, args: list[Node], method: str = "", found: Val | None = None) -> Val:
+    # The callable/receiver and attribute lookup were captured by star_call.
+    # CPython consumes a sole * operand after all keyword groups, but consumes
+    # each star of a multi-part positional list before the next operand runs.
+    name = self.dyn_dispatcher("callname", [DYN], "str", "")
+    stringify = self.dyn_dispatcher("str", [DYN], "str", "__str__")
+    self.called[name.ll] = True
+    self.called[stringify.ll] = True
+    who = o
+    namefn = name.ll
+    if method != "" and found is not None:
+        methodname = self.dyn_dispatcher("callnamem." + method, [DYN], "str", method)
+        self.called[methodname.ll] = True
+        ismethod = self.ptr_cmp("==", found, Val("null", DYN)).v
+        who = Val(self.select(ismethod, o, found), DYN)
+        namefn = self.select(ismethod, Val(methodname.ll, "%ptr"), Val(name.ll, "%ptr"))
+    pos = Val(self.rt("pys_list_new", "ptr", ["i64 0"]), "list[dyn]")
+    kws = self.expr(mk("dict", "", self.line, []), "dict[dyn,dyn]")
+    positional = [a for a in args if a.kind not in ["kw", "dstar"]]
+    sole = len(positional) == 1 and positional[0].kind == "starred"
+    held = Val("", "")
+    for a in positional:
+        value = self.expr(a.kids[0] if a.kind == "starred" else a, DYN)
+        if sole:
+            held = value
+        elif a.kind == "starred":
+            value = dyn_star_source(self, value)
+            self.rt("pys_dyn_star_extend", "void", [f"ptr {pos.v}", f"ptr {value.v}", f"ptr {who.v}", "ptr null"])
+        else:
+            self.list_store(pos, self.dyn_box(value), "append")
+    keywords = [a for a in args if a.kind in ["kw", "dstar"]]
+    names: list[str] = []
+    values: list[Val] = []
+    for j in range(len(keywords)):
+        a = keywords[j]
+        if a.kind == "dstar":
+            value = dyn_keyword_source(self, self.expr(a.kids[0], DYN))
+            self.rt("pys_dyn_kw_merge", "void", [f"ptr {kws.v}", f"ptr {value.v}", f"ptr {who.v}", f"ptr {namefn}", f"ptr {stringify.ll}"])
+        else:
+            names.append(a.s)
+            values.append(self.dyn_box(self.expr(a.kids[0], DYN)))
+            # Explicit keywords between two ** operands form one dictionary:
+            # all their value expressions run before that dictionary is merged.
+            if j + 1 == len(keywords) or keywords[j + 1].kind == "dstar":
+                entries: list[Node] = []
+                for k in range(len(names)):
+                    entries.extend([mk("str", names[k], self.line, []), self.vnode(values[k])])
+                group = self.dyn_box(self.expr(mk("dict", "", self.line, entries), "dict[dyn,dyn]"))
+                self.rt("pys_dyn_kw_merge", "void", [f"ptr {kws.v}", f"ptr {group.v}", f"ptr {who.v}", f"ptr {namefn}", f"ptr {stringify.ll}"])
+                names = []
+                values = []
+    if sole:
+        held = dyn_star_source(self, held)
+        self.rt("pys_dyn_star_extend", "void", [f"ptr {pos.v}", f"ptr {held.v}", f"ptr {who.v}", f"ptr {namefn}"])
+    call = self.dyn_dispatcher("callpack", [DYN, "list[dyn]", "dict[dyn,dyn]"], DYN, "")
+    if method == "" or found is None:
+        return self.dyn_call(call, [o, pos, kws])
+    field = self.label()
+    bound = self.label()
+    end = self.label()
+    ph = Ins("phi", DYN, "")
+    self.cbr(self.ptr_cmp("==", found, Val("null", DYN)).v, bound, field)
+    self.place(field)
+    value = self.dyn_call(call, [found, pos, kws])
+    self.incoming(ph, value.v, self.cur)
+    self.br(end)
+    self.place(bound)
+    value = self.dyn_call(self.dyn_dispatcher("callpackm." + method, [DYN, "list[dyn]", "dict[dyn,dyn]"], DYN, method), [o, pos, kws])
+    self.incoming(ph, value.v, self.cur)
+    self.br(end)
+    self.place(end)
+    return Val(self.phi(ph), DYN)
+
+
+def dyn_packed_function(self, ft: str) -> FnInfo | None:
+    if ft.startswith("fn[f:"):
+        return self.funcs[ft[5:-1]]
+    if ft.startswith("fn[c:"):
+        return self.closures[int(ft[5:ft.find(":", 5)])].f
+    if ft.startswith("fn[m:"):
+        dot = ft.rfind(".")
+        return self.classes[ft[5:dot]].methods[ft[dot + 1:-1]]
+    return None
+
+
+def dyn_packed_name(self, o: Val, method: str) -> None:
+    # Runtime helpers invoke this only on an error. Function/method/class names
+    # are static; callable objects use their __str__ at the actual error point.
+    typ = Val(self.dyn_typeof(o), "dyntype")
+    if method != "":
+        for c in [x for x in self.dynclasses if method in self.classes[x].methods]:
+            fm = self.classes[c].methods[method]
+            hit = self.label()
+            rest = self.label()
+            self.cbr(self.ptr_cmp("==", typ, Val(self.dyntypes[c], "dyntype")).v, hit, rest)
+            self.place(hit)
+            self.ret_(Val(self.sconst((fm.mod if fm.mod != "" else "__main__") + "." + self.qualname(fm) + "()"), "str"))
+            self.place(rest)
+        self.ret_(self.concat([self.dyn_type_name(o), Val(self.sconst("." + method + "()"), "str")]))
+        return
+    for ft in [x for x in self.dynfuncs]:
+        fm = dyn_packed_function(self, ft)
+        if fm is None:
+            continue
+        hit = self.label()
+        rest = self.label()
+        self.cbr(self.ptr_cmp("==", typ, Val(self.dynfnt[ft], "dyntype")).v, hit, rest)
+        self.place(hit)
+        self.ret_(Val(self.sconst((fm.mod if fm.mod != "" else "__main__") + "." + self.qualname(fm) + "()"), "str"))
+        self.place(rest)
+    meta = self.label()
+    rest = self.label()
+    self.cbr(self.ptr_cmp("==", typ, Val(self.rtdata("pys_dyntype_type"), "dyntype")).v, meta, rest)
+    self.place(meta)
+    rec = self.mload("%ptr", self.maddr("%ptr", o.v, "1"))
+    mod = Val(self.mload("str", self.maddr("%ptr", rec, "2")), "str")
+    qual = Val(self.mload("str", self.maddr("%ptr", rec, "1")), "str")
+    self.ret_(self.concat([mod, Val(self.sconst("."), "str"), qual, Val(self.sconst("()"), "str")]))
+    self.place(rest)
+    self.ret_(self.dyn_str(o))
+
+
+def dyn_packed_default(self, f: FnInfo, pre: list[Val], j: int) -> Val:
+    # Definition-time defaults use the same global/env slots as call_fn.
+    # This helper runs only on the omitted-argument branch.
+    df = self.dflt_fn(f)
+    t = f.ptypes[j]
+    check = f.name == "__init__" or (t != "" and df.dglob[j] in ["", "=None"] and is_const(f.defaults[j]))
+    if check and not dyn_class_defaults(self, f, [i for i in range(len(f.params)) if i != j], 0):
+        self.raise_("NotImplementedError", self.sconst(f"{self.fname(f)}() through runtime unpacking cannot bind this default value"))
+        return Val("undef", t if t != "" else DYN)
+    if df.dglob[j] == "" and (not is_const(f.defaults[j]) or (identity_default(f.defaults[j]) and self.fn_identity(df))):
+        self.early_default(df, j)
+    if df.dglob[j].startswith("!") or df.dglob[j] == "()":
+        self.raise_("NotImplementedError", self.sconst(f"{self.fname(f)}() through runtime unpacking cannot bind this default value"))
+        return Val("undef", t if t != "" else DYN)
+    if df.dglob[j] == "=None":
+        value = Val("null", "None")
+    elif df.dglob[j].startswith("&"):
+        t = t if t != "" else df.dtypes[j]
+        value = Val(self.mload(t, self.maddr("int", pre[0].v, df.dglob[j][1:], True)), t)
+        if self.fn_identity(f) and numeric_identity(t):
+            clo = self.closures[f.clo]
+            offset = len(clo.caps) + closure_default_slots(clo) + len(clo.iflags) + clo.defs.index(j)
+            value.idfrom = self.mload("dyn", self.maddr("%ptr", pre[0].v, str(offset), True))
+    elif df.dglob[j] != "":
+        t = t if t != "" else df.dtypes[j]
+        value = Val(self.mload(t, df.dglob[j]), t)
+        if self.fn_identity(df) and numeric_identity(t):
+            value.idfrom = self.mload("dyn", df.dglob[j] + ".box")
+    else:
+        value = self.expr(f.defaults[j], t)
+    return self.pcoerce(value, f.ptypes[j], f, j) if f.ptypes[j] != "" else self.dyn_box(value)
+
+
+def dyn_packed_slots(self, fm: FnInfo, own: int, pos: Val, kws: Val) -> Val:
+    # Binding validates the entire call before unboxing a single argument.
+    # Missing defaults are null slots; a supplied Python None is a non-null box.
+    last = fm.npos if fm.npos >= 0 else len(fm.params)
+    required = "".join("1" if d.kind == "noann" else "0" for d in fm.defaults)
+    off = 1 if fm.deco == "classmethod" else -1 if fm.clo >= 0 else 0
+    return Val(self.rt("pys_dyn_bind", "ptr", [f"ptr {pos.v}", f"ptr {kws.v}", f"ptr {self.sconst(self.fname(fm))}",
+                f"ptr {self.sconst(chr(1).join(fm.params))}", f"ptr {self.sconst(required)}", f"i64 {last}", f"i64 {fm.posonly}", f"i64 {own}", f"i64 {off}"]), "list[dyn]")
+
+
+def dyn_packed_args(self, fm: FnInfo, pre: list[Val], slots: Val) -> list[Node]:
+    own = len(pre)
+    last = fm.npos if fm.npos >= 0 else len(fm.params)
+    args: list[Node] = []
+    for j in range(own, len(fm.params)):
+        value = self.list_item(slots, Val(str(j), "int"))
+        optional = fm.defaults[j].kind != "noann"
+        missing = self.label() if optional else ""
+        present = self.label() if optional else ""
+        end = self.label() if optional else ""
+        vals: list[Val] = []
+        blocks: list[str] = []
+        if optional:
+            self.cbr(self.ptr_cmp("==", value, Val("null", DYN)).v, missing, present)
+            self.place(missing)
+            default = dyn_packed_default(self, fm, pre, j)
+            if not self.term:
+                vals.append(default)
+                blocks.append(self.cur)
+                self.br(end)
+            self.place(present)
+        t = fm.ptypes[j]
+        if t != "" and not dyn_class_argument(self, t):
+            self.raise_("NotImplementedError", self.sconst(f"{self.fname(fm)}() through runtime unpacking cannot receive parameter '{fm.params[j]}' with this layout"))
+        else:
+            value = self.pcoerce(value, t, fm, j) if t != "" else value
+            if optional:
+                vals.append(value)
+                blocks.append(self.cur)
+                self.br(end)
+        if optional:
+            value = self.refl_phi(vals, blocks, end, "runtime call default")
+        if self.term:
+            return []
+        node = self.vnode(value)
+        args.append(node if j < last else mk("kw", fm.params[j], self.line, [node]))
+    return args
+
+
+def dyn_packed_work(self) -> list[list[str]]:
+    # New operation dispatchers can be compiled within an optional attempt.
+    # New object/layout helpers would escape to program's later worklists.
+    return [list(self.dynclasses), list(self.dynfuncs), list(self.ocls), list(self.ocmp), list(self.one), list(self.xobj), list(self.hcls), list(self.xcls), list(self.xctors)]
+
+
+def dyn_packed_invoke(self, f: FnInfo, fm: FnInfo, pre: list[Val], pos: Val, kws: Val, constructed: Val | None = None) -> None:
+    if fm.bad != "" or fm.vararg >= 0 or fm.kwarg >= 0 or fm.pyexport or len(fm.defaults) != len(fm.params):
+        self.raise_("NotImplementedError", self.sconst(f"{self.fname(fm)}() through runtime unpacking requires a supported fixed signature"))
+        return
+    if constructed is not None and fm.node.kids[0].kind == "noann":
+        npos = self.builtin("len", [self.vnode(pos)], "")
+        nkw = self.builtin("len", [self.vnode(kws)], "")
+        self.guard(self.scalar("or", [self.num_cmp("!=", npos, Val("0", "int")), self.num_cmp("!=", nkw, Val("0", "int"))]), f"TypeError: {short(constructed.t)}() takes no arguments")
+    slots = dyn_packed_slots(self, fm, len(pre), pos, kws)
+    attempt = "protocol:callpack:" + fm.ll + ":" + ",".join(v.t for v in pre)
+    if attempt in self.xnot:
+        self.raise_("NotImplementedError", self.sconst(f"{self.fname(fm)}() through runtime unpacking cannot compile this callable adapter"))
+        return
+    previous = self.xtry
+    self.xtry = attempt
+    hints = dict(self.newhints)
+    declined = dict(self.newx)
+    called = dict(self.called)
+    dispatchers = list(self.dynfns)
+    work = dyn_packed_work(self)
+    try:
+        args = dyn_packed_args(self, fm, pre, slots)
+        if not self.term:
+            result = self.call_fn(fm, pre, args, direct=True)
+            if constructed is not None:
+                self.init_result(result)
+                if not self.term:
+                    self.ret_(self.dyn_box(constructed))
+            elif not self.term:
+                self.dyn_return(f, result)
+        # Generic bodies compile synchronously; imported fixed callees and new
+        # dynamic operation dispatchers are deferred. Keep newly reached work
+        # inside this attempt, leaving independent calls on program's worklist.
+        fr = self.save()
+        self.modlevel = False
+        self.lenient = False
+        while True:
+            self.xtry = attempt
+            dyn_iteration_hooks(self)
+            if dyn_packed_work(self) != work:
+                self.err("runtime callable adapter requires additional object helpers")
+            pending = [g for g in self.lazy.values() if g.ll in self.called and g.ll not in called and g.ll not in self.compiled and not g.generic]
+            dynamic = [k for k in self.dynfns if k not in dispatchers and self.dynfns[k].ll not in self.compiled and self.dynfns[k].ll not in self.building]
+            if len(pending) == 0 and len(dynamic) == 0:
+                break
+            for g in pending:
+                if g.ll not in self.compiled:
+                    self.xtry = attempt
+                    self.function(g, g.node.kids[2].kids)
+            for key in dynamic:
+                self.xtry = attempt
+                g = self.dynfns[key]
+                self.function(g, [mk("dynbody", key, self.dynlines[key], [])])
+        self.restore(fr)
+        if self.newhints != hints:
+            self.err("runtime callable adapter requires additional inference")
+    except Rejoin as retry:
+        # A failed optional adapter must not export speculative layout hints
+        # into the compiler's otherwise global inference restart, including
+        # an inference-only retry that precedes a later unsupported body.
+        nested = [k for k in self.newx if k not in declined and k != attempt]
+        self.newhints = hints
+        failed = attempt in self.newx
+        self.newx = declined
+        if not isinstance(retry, NeedSliceEH) and self.idevent == "":
+            if len(nested) > 0 and not failed:
+                # A nested protocol may install its own unsupported arm and
+                # leave this otherwise usable adapter intact on the next pass.
+                for key in nested:
+                    self.newx[key] = True
+            else:
+                self.newx[attempt] = True
+        raise
+    finally:
+        self.xtry = previous
+
+
+def dyn_packed_body(self, f: FnInfo, o: Val, pos: Val, kws: Val, method: str) -> None:
+    # One runtime binder per reachable fixed signature, independent of the
+    # number of argument lengths or keyword combinations a program supplies.
+    typ = Val(self.dyn_typeof(o), "dyntype")
+    if method == "":
+        for ft in [x for x in self.dynfuncs]:
+            hit = self.label()
+            rest = self.label()
+            self.cbr(self.ptr_cmp("==", typ, Val(self.dynfnt[ft], "dyntype")).v, hit, rest)
+            self.place(hit)
+            fm = dyn_packed_function(self, ft)
+            if fm is None:
+                self.raise_("NotImplementedError", self.sconst("runtime unpacking requires a callable with retained parameter names"))
+            else:
+                pre: list[Val] = []
+                if ft.startswith("fn[c:"):
+                    pre = [Val(self.dyn_payload(o, ft).v, "env")]
+                elif ft.startswith("fn[m:") and fm.deco == "":
+                    pre = [Val(self.dyn_payload(o, ft).v, ft[5:ft.rfind(".")])]
+                dyn_packed_invoke(self, f, fm, pre, pos, kws)
+            self.place(rest)
+    for c in [x for x in self.dynclasses]:
+        name = method if method != "" else "__call__"
+        if name not in self.classes[c].methods:
+            continue
+        fm = self.classes[c].methods[name]
+        hit = self.label()
+        rest = self.label()
+        self.cbr(self.ptr_cmp("==", typ, Val(self.dyntypes[c], "dyntype")).v, hit, rest)
+        self.place(hit)
+        dyn_packed_invoke(self, f, fm, [self.dyn_payload(o, c)] if fm.deco == "" else [], pos, kws)
+        self.place(rest)
+    if method != "":
+        self.raise_("NotImplementedError", self.sconst(f"runtime unpacking of builtin method {method}() is not supported"))
+        return
+    meta = self.label()
+    other = self.label()
+    self.cbr(self.ptr_cmp("==", typ, Val(self.rtdata("pys_dyntype_type"), "dyntype")).v, meta, other)
+    self.place(meta)
+    rec = Val(self.mload("%ptr", self.maddr("%ptr", o.v, "1")), "%ptr")
+    for c in [x for x in self.classes if "@pys.refl.c." + x in self.reflrecs and self.classes[x].origin == "" and "__init__" in self.classes[x].methods]:
+        hit = self.label()
+        rest = self.label()
+        self.cbr(self.scalar_cmp("eq", rec, Val(self.refl_record(c), "%ptr")), hit, rest)
+        self.place(hit)
+        ci = self.classes[c]
+        declaration = ci.methods["__init__"]
+        fm = dyn_class_initializer(self, c)
+        if c in self.tmpl or ci.bad != "" or ci.mod in GLUE or ci.node.line in ENUMCLASSES or c in self.nts or self.is_dc(c) or "__init__" in ci.ftypes or "__init__" in ci.fdefault or declaration.prop or declaration.deco != "" or declaration.vararg >= 0 or declaration.kwarg >= 0:
+            self.raise_("NotImplementedError", self.sconst(f"{short(c)}() through Any requires an ordinary class with a fixed initializer"))
+        elif fm is None or c not in self.dynclasses:
+            self.raise_("NotImplementedError", self.sconst(f"{short(c)}() through Any requires a statically compiled initializer and boxed instance layout"))
+        elif len(self.abstract_of(c)) > 0:
+            abstract = self.abstract_of(c)
+            names = ", ".join([f"'{n}'" for n in abstract])
+            self.raise_("TypeError", self.sconst(f"Can't instantiate abstract class {short(c)} without an implementation for abstract method{'s' if len(abstract) > 1 else ''} {names}"))
+        else:
+            value = self.new_obj(c)
+            dyn_packed_invoke(self, f, fm, [value], pos, kws, value)
+        self.place(rest)
+    self.raise_("NotImplementedError", self.sconst("calling this class through runtime unpacking is not supported"))
+    self.place(other)
+    message = self.concat([Val(self.sconst("'"), "str"), self.dyn_type_name(o), Val(self.sconst("' object is not callable"), "str")])
+    self.raise_("TypeError", message.v)
 
 
 def gen_dyn_fn_takes(self, ft: str, key: str, an: list[Node]) -> str:

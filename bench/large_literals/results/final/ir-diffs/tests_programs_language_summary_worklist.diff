@@ -1,0 +1,95 @@
+--- a/tests/programs/language/summary_worklist.py.ll
++++ b/tests/programs/language/summary_worklist.py.ll
+@@ -2246,6 +2246,7 @@
+ @s.1900 = private unnamed_addr global {i64, i64, i64, [97 x i8]} {i64 96, i64 0, i64 97, [97 x i8] c"id int float str fstr rfstr bytes complex ... ( [ { - + ~ not None True False lambda yield await\00"}, align 8
+ @s.1901 = private unnamed_addr global {i64, i64, i64, [3 x i8]} {i64 2, i64 0, i64 3, [3 x i8] c"in\00"}, align 8
+ @s.1902 = private unnamed_addr global {i64, i64, i64, [43 x i8]} {i64 42, i64 0, i64 43, [43 x i8] c"+= -= *= /= //= %= **= &= |= ^= <<= >>= @=\00"}, align 8
++@lc.0 = private unnamed_addr constant [68 x i64] [i64 48, i64 1632, i64 1776, i64 1984, i64 2406, i64 2534, i64 2662, i64 2790, i64 2918, i64 3046, i64 3174, i64 3302, i64 3430, i64 3558, i64 3664, i64 3792, i64 3872, i64 4160, i64 4240, i64 6112, i64 6160, i64 6470, i64 6608, i64 6784, i64 6800, i64 6992, i64 7088, i64 7232, i64 7248, i64 42528, i64 43216, i64 43264, i64 43472, i64 43504, i64 43600, i64 44016, i64 65296, i64 66720, i64 68912, i64 69734, i64 69872, i64 69942, i64 70096, i64 70384, i64 70736, i64 70864, i64 71248, i64 71360, i64 71472, i64 71904, i64 72016, i64 72784, i64 73040, i64 73120, i64 73552, i64 92768, i64 92864, i64 93008, i64 120782, i64 120792, i64 120802, i64 120812, i64 120822, i64 123200, i64 123632, i64 124144, i64 125264, i64 130032], align 8
+ @s.1903 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1, i64 0, i64 2, [2 x i8] c" \00"}, align 8
+ @s.1904 = private unnamed_addr global {i64, i64, i64, [3 x i8]} {i64 2, i64 0, i64 3, [3 x i8] c"Li\00"}, align 8
+ @s.1905 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1, i64 0, i64 2, [2 x i8] c"I\00"}, align 8
+@@ -8510,75 +8511,7 @@
+   invoke void @init.src.pystachy_compiler.syntax() to label %L120 unwind label %L7
+ L120:
+   store i1 true, ptr @g.src$pystachy_compiler$utils$Node.imp
+-  %t28 = call ptr @pys_list_new_atomic(i64 68)
+-  call void @pys_list_append(ptr %t28, i64 48)
+-  call void @pys_list_append(ptr %t28, i64 1632)
+-  call void @pys_list_append(ptr %t28, i64 1776)
+-  call void @pys_list_append(ptr %t28, i64 1984)
+-  call void @pys_list_append(ptr %t28, i64 2406)
+-  call void @pys_list_append(ptr %t28, i64 2534)
+-  call void @pys_list_append(ptr %t28, i64 2662)
+-  call void @pys_list_append(ptr %t28, i64 2790)
+-  call void @pys_list_append(ptr %t28, i64 2918)
+-  call void @pys_list_append(ptr %t28, i64 3046)
+-  call void @pys_list_append(ptr %t28, i64 3174)
+-  call void @pys_list_append(ptr %t28, i64 3302)
+-  call void @pys_list_append(ptr %t28, i64 3430)
+-  call void @pys_list_append(ptr %t28, i64 3558)
+-  call void @pys_list_append(ptr %t28, i64 3664)
+-  call void @pys_list_append(ptr %t28, i64 3792)
+-  call void @pys_list_append(ptr %t28, i64 3872)
+-  call void @pys_list_append(ptr %t28, i64 4160)
+-  call void @pys_list_append(ptr %t28, i64 4240)
+-  call void @pys_list_append(ptr %t28, i64 6112)
+-  call void @pys_list_append(ptr %t28, i64 6160)
+-  call void @pys_list_append(ptr %t28, i64 6470)
+-  call void @pys_list_append(ptr %t28, i64 6608)
+-  call void @pys_list_append(ptr %t28, i64 6784)
+-  call void @pys_list_append(ptr %t28, i64 6800)
+-  call void @pys_list_append(ptr %t28, i64 6992)
+-  call void @pys_list_append(ptr %t28, i64 7088)
+-  call void @pys_list_append(ptr %t28, i64 7232)
+-  call void @pys_list_append(ptr %t28, i64 7248)
+-  call void @pys_list_append(ptr %t28, i64 42528)
+-  call void @pys_list_append(ptr %t28, i64 43216)
+-  call void @pys_list_append(ptr %t28, i64 43264)
+-  call void @pys_list_append(ptr %t28, i64 43472)
+-  call void @pys_list_append(ptr %t28, i64 43504)
+-  call void @pys_list_append(ptr %t28, i64 43600)
+-  call void @pys_list_append(ptr %t28, i64 44016)
+-  call void @pys_list_append(ptr %t28, i64 65296)
+-  call void @pys_list_append(ptr %t28, i64 66720)
+-  call void @pys_list_append(ptr %t28, i64 68912)
+-  call void @pys_list_append(ptr %t28, i64 69734)
+-  call void @pys_list_append(ptr %t28, i64 69872)
+-  call void @pys_list_append(ptr %t28, i64 69942)
+-  call void @pys_list_append(ptr %t28, i64 70096)
+-  call void @pys_list_append(ptr %t28, i64 70384)
+-  call void @pys_list_append(ptr %t28, i64 70736)
+-  call void @pys_list_append(ptr %t28, i64 70864)
+-  call void @pys_list_append(ptr %t28, i64 71248)
+-  call void @pys_list_append(ptr %t28, i64 71360)
+-  call void @pys_list_append(ptr %t28, i64 71472)
+-  call void @pys_list_append(ptr %t28, i64 71904)
+-  call void @pys_list_append(ptr %t28, i64 72016)
+-  call void @pys_list_append(ptr %t28, i64 72784)
+-  call void @pys_list_append(ptr %t28, i64 73040)
+-  call void @pys_list_append(ptr %t28, i64 73120)
+-  call void @pys_list_append(ptr %t28, i64 73552)
+-  call void @pys_list_append(ptr %t28, i64 92768)
+-  call void @pys_list_append(ptr %t28, i64 92864)
+-  call void @pys_list_append(ptr %t28, i64 93008)
+-  call void @pys_list_append(ptr %t28, i64 120782)
+-  call void @pys_list_append(ptr %t28, i64 120792)
+-  call void @pys_list_append(ptr %t28, i64 120802)
+-  call void @pys_list_append(ptr %t28, i64 120812)
+-  call void @pys_list_append(ptr %t28, i64 120822)
+-  call void @pys_list_append(ptr %t28, i64 123200)
+-  call void @pys_list_append(ptr %t28, i64 123632)
+-  call void @pys_list_append(ptr %t28, i64 124144)
+-  call void @pys_list_append(ptr %t28, i64 125264)
+-  call void @pys_list_append(ptr %t28, i64 130032)
++  %t28 = call ptr @pys_list_from_const(ptr @lc.0, i64 68)
+   store ptr %t28, ptr @g.src$pystachy_compiler$utils$DECRUNS
+   ret void
+ L7:
+@@ -10329,6 +10262,7 @@
+ declare {i64, i1} @llvm.ssub.with.overflow.i64(i64, i64)
+ declare void @pys_raise(ptr, ptr)
+ declare ptr @pys_list_new_atomic(i64)
++declare ptr @pys_list_from_const(ptr, i64)
+ declare ptr @pys_alloc(i64)
+ declare ptr @pys_list_mul(ptr, i64)
+ declare void @pys_write(ptr, i64)

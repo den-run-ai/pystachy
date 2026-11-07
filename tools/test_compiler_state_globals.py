@@ -710,6 +710,16 @@ for ordered in (sources, dict(reversed(list(sources.items())))):
         self.assertIn("unreviewed container writer: lexer.bad_writer writes lexer.KEYWORDS via KEYWORDS",
                       validate_sources(sources))
 
+    def test_ctypes_schema_tables_reject_post_import_writers(self):
+        for name, change in (("SCALARS", "SCALARS['c_int'] = 'pointer'"),
+                             ("MARKERS", "MARKERS.append('Structure')")):
+            with self.subTest(table=name):
+                sources = read_sources()
+                sources["ctypes_schema"] += "\ndef bad_writer():\n    " + change + "\n"
+                self.assertEqual(validate_sources(sources), [
+                    f"unreviewed container writer: ctypes_schema.bad_writer writes ctypes_schema.{name} via {name}",
+                ])
+
     def test_diagnostic_observation_does_not_allow_additional_writers(self):
         sources = read_sources()
         sources["diagnostics"] += "\ndef added_capture_reset():\n    CAPTURED.clear()\n"

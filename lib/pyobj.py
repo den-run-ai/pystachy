@@ -13,7 +13,7 @@ import os
 import sys
 from ffi import extern, c_int, c_int64, c_ssize_t, c_void_p, c_buf, string_at, track, untrack, collected
 
-__all__ = ["Object", "import_module", "of_int", "of_float", "of_str", "of_list"]
+__all__ = ["Object", "Buffer", "import_module", "of_int", "of_float", "of_str", "of_list"]
 
 
 @extern("python")
@@ -96,6 +96,20 @@ def pye_sizeof(o: c_void_p) -> c_int64: ...
 def pye_flush() -> None: ...
 @extern("")
 def pye_exit(e: c_void_p) -> None: ...
+
+# pyembed.c: retained CPU-buffer ownership and the first bulk numerical consumer.
+@extern("")
+def pye_buffer_open(o: c_void_p, writable: c_int) -> c_void_p: ...
+@extern("")
+def pye_buffer_info(o: c_void_p, field: c_int) -> c_int64: ...
+@extern("")
+def pye_buffer_view(o: c_void_p, start: c_int64, count: c_int64, step: c_int64) -> c_void_p: ...
+@extern("")
+def pye_buffer_get(o: c_void_p, index: c_int64) -> float: ...
+@extern("")
+def pye_buffer_set(o: c_void_p, index: c_int64, value: float) -> c_int: ...
+@extern("")
+def pye_buffer_dot(left: c_void_p, right: c_void_p) -> float: ...
 
 
 _BUILTIN = ["KeyError", "IndexError", "ZeroDivisionError", "OverflowError", "ValueError", "TypeError",
@@ -253,6 +267,16 @@ class Object:
         finally:
             _leave(g)
 
+    def buffer_f64(self, writable: bool = False) -> "Buffer":
+        g = _enter()
+        p = 0
+        try:
+            p = _own(self._p)
+            return _buffer(pye_buffer_open(p, 1 if writable else 0))
+        finally:
+            Py_DecRef(p)
+            _leave(g)
+
     def attr(self, name: str) -> "Object":
         g = _enter()
         p = 0
@@ -371,6 +395,111 @@ class Object:
         finally:
             Py_DecRef(p)
             _leave(g)
+
+
+def _buffer_info(owner: Object, field: int) -> int:
+    g = _enter()
+    p = 0
+    try:
+        p = _own(owner._p)
+        v = pye_buffer_info(p, field)
+        if PyErr_Occurred() != 0:
+            _raise()
+        return v
+    finally:
+        Py_DecRef(p)
+        _leave(g)
+
+
+class Buffer:
+    # Private construction: each capsule owns an export or retains its root capsule.
+    # A view has an independent Object, so closing its parent cannot invalidate it.
+    def __init__(self, owner: Object) -> None:
+        self._owner = owner
+
+    def close(self) -> None:
+        self._owner.close()
+
+    def __len__(self) -> int:
+        return _buffer_info(self._owner, 0)
+
+    def dtype(self) -> str:
+        _buffer_info(self._owner, 0)
+        return "float64"
+
+    def shape(self) -> list[int]:
+        return [_buffer_info(self._owner, 0)]
+
+    def strides(self) -> list[int]:
+        return [_buffer_info(self._owner, 3)]
+
+    def offset(self) -> int:
+        return _buffer_info(self._owner, 2)
+
+    def nbytes(self) -> int:
+        return 8 * _buffer_info(self._owner, 0)
+
+    def storage_nbytes(self) -> int:
+        return _buffer_info(self._owner, 1)
+
+    def readonly(self) -> bool:
+        return _buffer_info(self._owner, 4) != 0
+
+    def view(self, start: int, count: int, step: int = 1) -> "Buffer":
+        g = _enter()
+        p = 0
+        try:
+            p = _own(self._owner._p)
+            return _buffer(pye_buffer_view(p, start, count, step))
+        finally:
+            Py_DecRef(p)
+            _leave(g)
+
+    def get(self, index: int) -> float:
+        g = _enter()
+        p = 0
+        try:
+            p = _own(self._owner._p)
+            v = pye_buffer_get(p, index)
+            if PyErr_Occurred() != 0:
+                _raise()
+            return v
+        finally:
+            Py_DecRef(p)
+            _leave(g)
+
+    def set(self, index: int, value: float) -> None:
+        g = _enter()
+        p = 0
+        try:
+            p = _own(self._owner._p)
+            if pye_buffer_set(p, index, value) < 0:
+                _raise()
+        finally:
+            Py_DecRef(p)
+            _leave(g)
+
+    def dot(self, other: "Buffer") -> float:
+        g = _enter()
+        p = 0
+        q = 0
+        try:
+            p = _own(self._owner._p)
+            q = _own(other._owner._p)
+            v = pye_buffer_dot(p, q)
+            if PyErr_Occurred() != 0:
+                _raise()
+            return v
+        finally:
+            Py_DecRef(q)
+            Py_DecRef(p)
+            _leave(g)
+
+
+def _buffer(p: int) -> Buffer:
+    if p == 0:
+        _raise()
+    return Buffer(_ref(p, pye_buffer_info(p, 5)))
 
 
 def import_module(name: str) -> Object:

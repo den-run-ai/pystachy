@@ -1,0 +1,8 @@
+True 7 ['argument', 'original']
+True 8 ['argument', 'original', 'replacement']
+missing before argument ['argument', 'original', 'replacement']
+arguments before arity ['argument', 'original', 'replacement', 'argument', 'argument']
+argument before keyword ['argument', 'original', 'replacement', 'argument', 'argument', 'argument']
+failed argument ['argument', 'original', 'replacement', 'argument', 'argument', 'argument', 'bad argument']
+failed init ['argument', 'original', 'replacement', 'argument', 'argument', 'argument', 'bad argument', 'argument', 'initializer']
+[exit 0]

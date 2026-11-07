@@ -1,0 +1,528 @@
+{
+  "workload": "microGPT alternating AOT comparison",
+  "purpose": "Follow up exploratory non-interleaved reports after concurrent ownership-test contamination was reported.",
+  "method": "Five paired fresh-process repetitions; alternate before/after ordering per pair; CPU affinity inherited from controller. Compile both executables before measured runs. No other coordinated native builds or tests during this comparison.",
+  "steps": 100,
+  "samples": 5,
+  "all_gradients": false,
+  "lr_schedule_steps": 1000,
+  "seed": 42,
+  "repeats_per_version": 5,
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.39",
+  "cpu_affinity": [
+    2
+  ],
+  "controller_python": "3.13.16",
+  "measurement_controller_sha256": "dfc61ea71502676c8e8c4f45c04ba4323a299c7cfc1dba19455098c870b30ee1",
+  "comparison_controller_sha256": "287ad50054ce8fd3610c488158bb506a0fedfab42074741aa07c8776afb1a74e",
+  "adapted_instrumented_sha256": "4f9b17df915794436aca3987c7c774e13a5655a5179de8a66c3ad7e3ae5a7a6b",
+  "dataset_sha256": "0a30b5557f192f32ab962680889aac5f6fda0f4cecf40a6d0b5694f58ea8cc4d",
+  "reference_checks_sha256": "d376d7d85c8843cd00176f9c8cbb3fbdf35ae79d84fd5044ca07c8aebf2157ff",
+  "compiler_git_revisions": {
+    "before": "f7103067545b43cdcd8ce20dc66b1571425b3a8d",
+    "after": "1d452c39e6f9752fdfd521e74b0cfdfa8e86f7d1"
+  },
+  "source_provenance_reports": {
+    "before": "direct-tuples-before-linux-x86_64-2026-11-07.json",
+    "after": "direct-tuples-after-linux-x86_64-2026-11-07.json"
+  },
+  "builds": {
+    "before": {
+      "command": [
+        "/root/.local/bin/python3.13",
+        "/workspace/scratch/773660c98364/tuple-base/pystachy.py",
+        "build",
+        "/workspace/scratch/773660c98364/tuple-bench-alternating/adapted.py",
+        "-o",
+        "/workspace/scratch/773660c98364/tuple-bench-alternating/microgpt-before"
+      ],
+      "wall_seconds": 2.3715212489914848,
+      "returncode": 0,
+      "timed_out": false,
+      "stderr": "",
+      "peak_rss_kib": null,
+      "stdout_tail": "",
+      "executable_sha256": "50b1e39255482ed9eecf0137dde0f268a8c05830076ff8163ba329800c054e5c"
+    },
+    "after": {
+      "command": [
+        "/root/.local/bin/python3.13",
+        "/workspace/scratch/773660c98364/tuple-conversion/pystachy.py",
+        "build",
+        "/workspace/scratch/773660c98364/tuple-bench-alternating/adapted.py",
+        "-o",
+        "/workspace/scratch/773660c98364/tuple-bench-alternating/microgpt-after"
+      ],
+      "wall_seconds": 2.4329493529949104,
+      "returncode": 0,
+      "timed_out": false,
+      "stderr": "",
+      "peak_rss_kib": null,
+      "stdout_tail": "",
+      "executable_sha256": "58b1311d1453d89e90dc8e8cc17495285ac6a2e5ef4856b951fd3f411e8ed2d0"
+    }
+  },
+  "runs": [
+    {
+      "pair": 0,
+      "version": "before",
+      "command": [
+        "/workspace/scratch/773660c98364/tuple-bench-alternating/microgpt-before",
+        "100",
+        "5",
+        "0"
+      ],
+      "wall_seconds": 1.0576155080052558,
+      "returncode": 0,
+      "timed_out": false,
+      "stderr": "",
+      "peak_rss_kib": null,
+      "timing": {
+        "initialization_seconds": 0.005393341998569667,
+        "forward_seconds": 0.408309612859739,
+        "backward_seconds": 0.5804271160450298,
+        "optimizer_seconds": 0.03884714403830003,
+        "train_seconds": 1.0275838729430689,
+        "inference_seconds": 0.014478672004770488,
+        "training_tokens": 744,
+        "inference_tokens": 29,
+        "per_sample_seconds": [
+          0.001003022989607416,
+          0.0014194580144248903,
+          0.001884796001832001,
+          0.008788701001321897,
+          0.0013826939975842834
+        ]
+      },
+      "checks_sha256": "d376d7d85c8843cd00176f9c8cbb3fbdf35ae79d84fd5044ca07c8aebf2157ff",
+      "comparison": {
+        "numeric_values": 25252,
+        "max_abs_error": 0.0,
+        "max_relative_error_floor_atol": 0.0,
+        "max_scaled_error": 0.0,
+        "rtol": 1e-09,
+        "atol": 1e-10
+      }
+    },
+    {
+      "pair": 0,
+      "version": "after",
+      "command": [
+        "/workspace/scratch/773660c98364/tuple-bench-alternating/microgpt-after",
+        "100",
+        "5",
+        "0"
+      ],
+      "wall_seconds": 0.9235879320040112,
+      "returncode": 0,
+      "timed_out": false,
+      "stderr": "",
+      "peak_rss_kib": null,
+      "timing": {
+        "initialization_seconds": 0.005799512000521645,
+        "forward_seconds": 0.3393038110662019,
+        "backward_seconds": 0.5114391260722186,
+        "optimizer_seconds": 0.03780668192484882,
+        "train_seconds": 0.8885496190632693,
+        "inference_seconds": 0.012723305000690743,
+        "training_tokens": 744,
+        "inference_tokens": 29,
+        "per_sample_seconds": [
+          0.0007080959912855178,
+          0.0008880929963197559,
+          0.0013532700104406103,
+          0.0011301100021228194,
+          0.00864373600052204
+        ]
+      },
+      "checks_sha256": "d376d7d85c8843cd00176f9c8cbb3fbdf35ae79d84fd5044ca07c8aebf2157ff",
+      "comparison": {
+        "numeric_values": 25252,
+        "max_abs_error": 0.0,
+        "max_relative_error_floor_atol": 0.0,
+        "max_scaled_error": 0.0,
+        "rtol": 1e-09,
+        "atol": 1e-10
+      }
+    },
+    {
+      "pair": 1,
+      "version": "after",
+      "command": [
+        "/workspace/scratch/773660c98364/tuple-bench-alternating/microgpt-after",
+        "100",
+        "5",
+        "0"
+      ],
+      "wall_seconds": 1.0164997379906708,
+      "returncode": 0,
+      "timed_out": false,
+      "stderr": "",
+      "peak_rss_kib": null,
+      "timing": {
+        "initialization_seconds": 0.005929124003159814,
+        "forward_seconds": 0.3682822450209642,
+        "backward_seconds": 0.5710689990082756,
+        "optimizer_seconds": 0.042682706902269274,
+        "train_seconds": 0.982033950931509,
+        "inference_seconds": 0.012834842986194417,
+        "training_tokens": 744,
+        "inference_tokens": 29,
+        "per_sample_seconds": [
+          0.0009339009993709624,
+          0.0010364719928475097,
+          0.001485336004407145,
+          0.0013420339964795858,
+          0.008037099993089214
+        ]
+      },
+      "checks_sha256": "d376d7d85c8843cd00176f9c8cbb3fbdf35ae79d84fd5044ca07c8aebf2157ff",
+      "comparison": {
+        "numeric_values": 25252,
+        "max_abs_error": 0.0,
+        "max_relative_error_floor_atol": 0.0,
+        "max_scaled_error": 0.0,
+        "rtol": 1e-09,
+        "atol": 1e-10
+      }
+    },
+    {
+      "pair": 1,
+      "version": "before",
+      "command": [
+        "/workspace/scratch/773660c98364/tuple-bench-alternating/microgpt-before",
+        "100",
+        "5",
+        "0"
+      ],
+      "wall_seconds": 0.9238791690004291,
+      "returncode": 0,
+      "timed_out": false,
+      "stderr": "",
+      "peak_rss_kib": null,
+      "timing": {
+        "initialization_seconds": 0.00575695899897255,
+        "forward_seconds": 0.37110222806222737,
+        "backward_seconds": 0.48777878397959284,
+        "optimizer_seconds": 0.03587467904435471,
+        "train_seconds": 0.8947556910861749,
+        "inference_seconds": 0.013724175994866528,
+        "training_tokens": 744,
+        "inference_tokens": 29,
+        "per_sample_seconds": [
+          0.001116931001888588,
+          0.0011616069969022647,
+          0.001753542004735209,
+          0.007894658992881887,
+          0.0017974369984585792
+        ]
+      },
+      "checks_sha256": "d376d7d85c8843cd00176f9c8cbb3fbdf35ae79d84fd5044ca07c8aebf2157ff",
+      "comparison": {
+        "numeric_values": 25252,
+        "max_abs_error": 0.0,
+        "max_relative_error_floor_atol": 0.0,
+        "max_scaled_error": 0.0,
+        "rtol": 1e-09,
+        "atol": 1e-10
+      }
+    },
+    {
+      "pair": 2,
+      "version": "before",
+      "command": [
+        "/workspace/scratch/773660c98364/tuple-bench-alternating/microgpt-before",
+        "100",
+        "5",
+        "0"
+      ],
+      "wall_seconds": 1.0235945080057718,
+      "returncode": 0,
+      "timed_out": false,
+      "stderr": "",
+      "peak_rss_kib": null,
+      "timing": {
+        "initialization_seconds": 0.006140976998722181,
+        "forward_seconds": 0.41476839494134765,
+        "backward_seconds": 0.539762431930285,
+        "optimizer_seconds": 0.04060489502444398,
+        "train_seconds": 0.9951357218960766,
+        "inference_seconds": 0.012636118990485556,
+        "training_tokens": 744,
+        "inference_tokens": 29,
+        "per_sample_seconds": [
+          0.0008639969892101362,
+          0.0010874980071093887,
+          0.0016587919963058084,
+          0.007680292997974902,
+          0.0013455389998853207
+        ]
+      },
+      "checks_sha256": "d376d7d85c8843cd00176f9c8cbb3fbdf35ae79d84fd5044ca07c8aebf2157ff",
+      "comparison": {
+        "numeric_values": 25252,
+        "max_abs_error": 0.0,
+        "max_relative_error_floor_atol": 0.0,
+        "max_scaled_error": 0.0,
+        "rtol": 1e-09,
+        "atol": 1e-10
+      }
+    },
+    {
+      "pair": 2,
+      "version": "after",
+      "command": [
+        "/workspace/scratch/773660c98364/tuple-bench-alternating/microgpt-after",
+        "100",
+        "5",
+        "0"
+      ],
+      "wall_seconds": 0.9950869019958191,
+      "returncode": 0,
+      "timed_out": false,
+      "stderr": "",
+      "peak_rss_kib": null,
+      "timing": {
+        "initialization_seconds": 0.007246431996463798,
+        "forward_seconds": 0.35320650406356435,
+        "backward_seconds": 0.5452348968392471,
+        "optimizer_seconds": 0.04002122093515936,
+        "train_seconds": 0.9384626218379708,
+        "inference_seconds": 0.03090842699748464,
+        "training_tokens": 744,
+        "inference_tokens": 29,
+        "per_sample_seconds": [
+          0.0007570689922431484,
+          0.019481196999549866,
+          0.0016659020038787276,
+          0.001161295993370004,
+          0.007842963008442894
+        ]
+      },
+      "checks_sha256": "d376d7d85c8843cd00176f9c8cbb3fbdf35ae79d84fd5044ca07c8aebf2157ff",
+      "comparison": {
+        "numeric_values": 25252,
+        "max_abs_error": 0.0,
+        "max_relative_error_floor_atol": 0.0,
+        "max_scaled_error": 0.0,
+        "rtol": 1e-09,
+        "atol": 1e-10
+      }
+    },
+    {
+      "pair": 3,
+      "version": "after",
+      "command": [
+        "/workspace/scratch/773660c98364/tuple-bench-alternating/microgpt-after",
+        "100",
+        "5",
+        "0"
+      ],
+      "wall_seconds": 0.8361203539971029,
+      "returncode": 0,
+      "timed_out": false,
+      "stderr": "",
+      "peak_rss_kib": null,
+      "timing": {
+        "initialization_seconds": 0.005463815992698073,
+        "forward_seconds": 0.301935247000074,
+        "backward_seconds": 0.4606525090202922,
+        "optimizer_seconds": 0.036262876965338364,
+        "train_seconds": 0.7988506329857046,
+        "inference_seconds": 0.01599351200275123,
+        "training_tokens": 744,
+        "inference_tokens": 29,
+        "per_sample_seconds": [
+          0.001361973991151899,
+          0.001346479999483563,
+          0.001862142002210021,
+          0.001808023007470183,
+          0.009614893002435565
+        ]
+      },
+      "checks_sha256": "d376d7d85c8843cd00176f9c8cbb3fbdf35ae79d84fd5044ca07c8aebf2157ff",
+      "comparison": {
+        "numeric_values": 25252,
+        "max_abs_error": 0.0,
+        "max_relative_error_floor_atol": 0.0,
+        "max_scaled_error": 0.0,
+        "rtol": 1e-09,
+        "atol": 1e-10
+      }
+    },
+    {
+      "pair": 3,
+      "version": "before",
+      "command": [
+        "/workspace/scratch/773660c98364/tuple-bench-alternating/microgpt-before",
+        "100",
+        "5",
+        "0"
+      ],
+      "wall_seconds": 0.9736635010049213,
+      "returncode": 0,
+      "timed_out": false,
+      "stderr": "",
+      "peak_rss_kib": null,
+      "timing": {
+        "initialization_seconds": 0.006704240004182793,
+        "forward_seconds": 0.39434319705469534,
+        "backward_seconds": 0.5082334399630781,
+        "optimizer_seconds": 0.040989537999848835,
+        "train_seconds": 0.9435661750176223,
+        "inference_seconds": 0.013447967008687556,
+        "training_tokens": 744,
+        "inference_tokens": 29,
+        "per_sample_seconds": [
+          0.0009814110089791939,
+          0.0012856399989686906,
+          0.001898565998999402,
+          0.007880018005380407,
+          0.0014023319963598624
+        ]
+      },
+      "checks_sha256": "d376d7d85c8843cd00176f9c8cbb3fbdf35ae79d84fd5044ca07c8aebf2157ff",
+      "comparison": {
+        "numeric_values": 25252,
+        "max_abs_error": 0.0,
+        "max_relative_error_floor_atol": 0.0,
+        "max_scaled_error": 0.0,
+        "rtol": 1e-09,
+        "atol": 1e-10
+      }
+    },
+    {
+      "pair": 4,
+      "version": "before",
+      "command": [
+        "/workspace/scratch/773660c98364/tuple-bench-alternating/microgpt-before",
+        "100",
+        "5",
+        "0"
+      ],
+      "wall_seconds": 0.9346321170014562,
+      "returncode": 0,
+      "timed_out": false,
+      "stderr": "",
+      "peak_rss_kib": null,
+      "timing": {
+        "initialization_seconds": 0.005476705002365634,
+        "forward_seconds": 0.3809262099530315,
+        "backward_seconds": 0.4879992020141799,
+        "optimizer_seconds": 0.0376897120004287,
+        "train_seconds": 0.9066151239676401,
+        "inference_seconds": 0.012949281997862272,
+        "training_tokens": 744,
+        "inference_tokens": 29,
+        "per_sample_seconds": [
+          0.0008857600041665137,
+          0.0011226399947190657,
+          0.001662427996052429,
+          0.007882010002504103,
+          0.0013964440004201606
+        ]
+      },
+      "checks_sha256": "d376d7d85c8843cd00176f9c8cbb3fbdf35ae79d84fd5044ca07c8aebf2157ff",
+      "comparison": {
+        "numeric_values": 25252,
+        "max_abs_error": 0.0,
+        "max_relative_error_floor_atol": 0.0,
+        "max_scaled_error": 0.0,
+        "rtol": 1e-09,
+        "atol": 1e-10
+      }
+    },
+    {
+      "pair": 4,
+      "version": "after",
+      "command": [
+        "/workspace/scratch/773660c98364/tuple-bench-alternating/microgpt-after",
+        "100",
+        "5",
+        "0"
+      ],
+      "wall_seconds": 0.9326501020113938,
+      "returncode": 0,
+      "timed_out": false,
+      "stderr": "",
+      "peak_rss_kib": null,
+      "timing": {
+        "initialization_seconds": 0.005621670003165491,
+        "forward_seconds": 0.3286154759989586,
+        "backward_seconds": 0.5290992869995534,
+        "optimizer_seconds": 0.0424594799260376,
+        "train_seconds": 0.9001742429245496,
+        "inference_seconds": 0.011868783985846676,
+        "training_tokens": 744,
+        "inference_tokens": 29,
+        "per_sample_seconds": [
+          0.0007196840015240014,
+          0.0009340309916296974,
+          0.0013447480014292523,
+          0.0011545159941306338,
+          0.007715804997133091
+        ]
+      },
+      "checks_sha256": "d376d7d85c8843cd00176f9c8cbb3fbdf35ae79d84fd5044ca07c8aebf2157ff",
+      "comparison": {
+        "numeric_values": 25252,
+        "max_abs_error": 0.0,
+        "max_relative_error_floor_atol": 0.0,
+        "max_scaled_error": 0.0,
+        "rtol": 1e-09,
+        "atol": 1e-10
+      }
+    }
+  ],
+  "errors": [],
+  "medians": {
+    "before": {
+      "initialization_seconds": 0.00575695899897255,
+      "forward_seconds": 0.39434319705469534,
+      "backward_seconds": 0.5082334399630781,
+      "optimizer_seconds": 0.03884714403830003,
+      "train_seconds": 0.9435661750176223,
+      "inference_seconds": 0.013447967008687556,
+      "wall_seconds": 0.9736635010049213
+    },
+    "after": {
+      "initialization_seconds": 0.005799512000521645,
+      "forward_seconds": 0.3393038110662019,
+      "backward_seconds": 0.5290992869995534,
+      "optimizer_seconds": 0.04002122093515936,
+      "train_seconds": 0.9001742429245496,
+      "inference_seconds": 0.012834842986194417,
+      "wall_seconds": 0.9326501020113938
+    }
+  },
+  "all_verified": true,
+  "hardware": {
+    "cpu": "AMD EPYC 9V74 80-Core Processor",
+    "available_cpu_count": 9,
+    "pinned_cpu": 2,
+    "shared_host": true,
+    "llvm": "18.1.3"
+  },
+  "recorded_date": "2026-11-07",
+  "compaction": "Per-step phase timers omitted; all run phase totals, sample times, numerical comparisons, execution order and build commands retained.",
+  "comparison_controller_source": "\"\"\"Bounded follow-up: interleave fresh microGPT AOT processes, verify all vectors.\"\"\"\nimport hashlib\nimport importlib.util\nimport json\nimport os\nfrom pathlib import Path\nimport platform\nimport statistics\nimport subprocess\n\nBASE = Path('/workspace/scratch/773660c98364')\nROOT = BASE / 'tuple-conversion'\nWORK = BASE / 'tuple-bench-alternating'\nspec = importlib.util.spec_from_file_location('bench_microgpt', ROOT / 'tools/bench_microgpt.py')\nb = importlib.util.module_from_spec(spec)\nspec.loader.exec_module(b)\nWORK.mkdir(exist_ok=True)\n(WORK / 'input.txt').symlink_to(BASE / 'microgpt-names.txt')\nsource = b.instrument((ROOT / 'bench/microgpt/microgpt.py').read_text())\nprogram = WORK / 'adapted.py'\nprogram.write_text(source)\nreference = json.loads((BASE / 'tuple-microgpt-before-raw.json').read_text())['reference_checks']\nenv = os.environ.copy()\npython = '/root/.local/bin/python3.13'\nroots = {'before': BASE / 'tuple-base', 'after': ROOT}\nreport = {\n    'workload': 'microGPT alternating AOT comparison',\n    'purpose': 'Follow up exploratory non-interleaved reports after concurrent ownership-test contamination was reported.',\n    'method': 'Five paired fresh-process repetitions; alternate before/after ordering per pair; CPU affinity inherited from controller. Compile both executables before measured runs. No other coordinated native builds or tests during this comparison.',\n    'steps': 100, 'samples': 5, 'all_gradients': False, 'lr_schedule_steps': 1000,\n    'seed': 42, 'repeats_per_version': 5,\n    'platform': platform.platform(),\n    'cpu_affinity': sorted(os.sched_getaffinity(0)),\n    'controller_python': platform.python_version(),\n    'measurement_controller_sha256': hashlib.sha256((ROOT / 'tools/bench_microgpt.py').read_bytes()).hexdigest(),\n    'comparison_controller_sha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),\n    'adapted_instrumented_sha256': hashlib.sha256(source.encode()).hexdigest(),\n    'dataset_sha256': hashlib.sha256((BASE / 'microgpt-names.txt').read_bytes()).hexdigest(),\n    'reference_checks_sha256': b.digest(reference),\n    'compiler_git_revisions': {k: subprocess.check_output(['git', 'rev-parse', 'HEAD'],cwd=v,text=True).strip() for k,v in roots.items()},\n    'source_provenance_reports': {'before': 'direct-tuples-before-linux-x86_64-2026-11-07.json', 'after': 'direct-tuples-after-linux-x86_64-2026-11-07.json'},\n    'builds': {}, 'runs': [], 'errors': [],\n}\npath = BASE / 'tuple-microgpt-alternating-raw.json'\nfor name, root in roots.items():\n    exe = WORK / ('microgpt-' + name)\n    result = b.execute([python, str(root / 'pystachy.py'), 'build', str(program), '-o', str(exe)], root, env, 300)\n    report['builds'][name] = b.compact_result(result)\n    if not b.successful(result):\n        report['errors'].append(name + ' build failed')\n        b.save(report,path)\n        raise SystemExit(1)\n    report['builds'][name]['executable_sha256'] = hashlib.sha256(exe.read_bytes()).hexdigest()\n    print(name, 'build complete', flush=True)\nfor pair in range(5):\n    names = ['before', 'after'] if pair % 2 == 0 else ['after', 'before']\n    for name in names:\n        result = b.execute([str(WORK / ('microgpt-' + name)), '100', '5', '0'],WORK,env,300)\n        record = {'pair': pair, 'version': name, 'command': result['command'], 'wall_seconds': result['wall_seconds'], 'returncode': result['returncode'], 'timed_out': result['timed_out'], 'stderr': result['stderr'], 'peak_rss_kib': result['peak_rss_kib']}\n        if b.successful(result):\n            checks, timing = b.parse_output(result['stdout'],100,5,False)\n            record.update(timing=timing, checks_sha256=b.digest(checks), comparison=b.compare(checks,reference))\n        else:\n            record['stdout_tail'] = result['stdout'][-4000:]\n            report['errors'].append(name + ' execution failed')\n        report['runs'].append(record)\n        b.save(report,path)\n        print(pair, name, record.get('timing',{}).get('train_seconds'), 'verified' if 'comparison' in record else 'FAILED',flush=True)\nreport['medians'] = {}\nfor name in roots:\n    runs = [r for r in report['runs'] if r['version'] == name and 'comparison' in r]\n    report['medians'][name] = {k: statistics.median(r['timing'][k] for r in runs) for k in ('initialization_seconds','forward_seconds','backward_seconds','optimizer_seconds','train_seconds','inference_seconds')}\n    report['medians'][name]['wall_seconds'] = statistics.median(r['wall_seconds'] for r in runs)\nreport['all_verified'] = not report['errors'] and len(report['runs']) == 10\nb.save(report,path)\nprint('COMPLETE', report['all_verified'], json.dumps(report['medians']),flush=True)\n",
+  "reproduction_note": "The retained comparison driver imports the unchanged instrument, execute, parse_output and compare helpers in tools/bench_microgpt.py. Replace its BASE, ROOT, worktree and Python paths with local paths; generate the original reference with tools/bench_microgpt.py first. The dataset is supplied separately.",
+  "assessment": "AOT median training: 0.943566 -> 0.900174 seconds (1.048x). Ranges overlap and one pair is slower after the change; no statistically established overall speedup. Forward median improves, backward and optimizer medians regress. These are instrumented 100-step prefix measurements on a shared host, not a full convergence or allocation-byte claim.",
+  "training_ranges_seconds": {
+    "before": [
+      0.8947556910861749,
+      1.0275838729430689
+    ],
+    "after": [
+      0.7988506329857046,
+      0.982033950931509
+    ]
+  },
+  "training_before_over_after_per_pair": [
+    1.1564732581016386,
+    0.9111250076817138,
+    1.0603892991999107,
+    1.1811546940772186,
+    1.0071551492321809
+  ]
+}

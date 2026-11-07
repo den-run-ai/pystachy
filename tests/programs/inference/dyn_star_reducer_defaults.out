@@ -1,0 +1,7 @@
+True True True True
+True False False
+True [1, 2]
+True False [1]
+True True True ['kept', 2000, 2000]
+False False True ['replacement', 2000]
+[exit 0]

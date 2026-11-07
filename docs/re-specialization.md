@@ -188,10 +188,10 @@ the five-round medians above.
 
 ### JIT startup cost
 
-`pystachy run` recompiles the matchers on every run because there is no
-compiled-program cache yet
-([#104](https://github.com/den-run-ai/pystachy/issues/104)). The recorded medians
-of three runs show faster matching but a slower whole process:
+These historical measurements compile the matchers on every run. Reproduce
+that scope with `PYSTACHY_PROGRAM_CACHE=0`; current eligible Linux launches can
+reuse the [native program cache](program-cache.md). The recorded medians of
+three runs show faster matching but a slower whole process:
 
 | Workload | Whole process, without → with | Timed part, without → with |
 |---|---:|---:|

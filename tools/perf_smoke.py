@@ -103,6 +103,7 @@ def summary(report):
              "Three pairs; ≥20% and ≥5 ms slower triggers three confirmation pairs. Warnings require",
              "both batches to meet the threshold with non-overlapping base/head ranges.", "",
              "Build time is measured once per source file, shown on its first workload.", "",
+             "JIT process measurements include frontend and LLVM work; program caching is disabled.", "",
              "graph_copy loop time measures processing CPU seconds; other loop times measure wall seconds.", "",
              "| Workload | Metric | Base | Head | Change | Result |",
              "|---|---|---:|---:|---:|---|"]
@@ -138,10 +139,12 @@ def main():
     env = {k: v for k, v in os.environ.items() if not k.startswith("PYSTACHY_") and k != "PYTHONPATH"}
     if "PYSTACHY_LLVM" in os.environ:
         env["PYSTACHY_LLVM"] = os.environ["PYSTACHY_LLVM"]
+    env["PYSTACHY_PROGRAM_CACHE"] = "0"
     env["PYTHONHASHSEED"] = "0"
     affinity = None
     report = {"schema": 2, "status": "incomplete", "phase": "setup",
-              "revisions": {}, "bootstrap": {}, "results": []}
+              "revisions": {}, "bootstrap": {}, "results": [],
+              "environment": {"PYSTACHY_PROGRAM_CACHE": env["PYSTACHY_PROGRAM_CACHE"]}}
     try:
         write_report(args.json, report)
         affinity = sorted(os.sched_getaffinity(0))

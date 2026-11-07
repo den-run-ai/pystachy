@@ -14,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.pystachy_compiler import optimizations
 from src.pystachy_compiler.gen import Gen
+from src.pystachy_compiler.driver import runtime_ir
 from src.pystachy_compiler.ir import FnInfo, IFn, Ins, Val
 from src.pystachy_compiler.loader import Loader
 from src.pystachy_compiler.specs import FXALL, FXBIT, RAWR
@@ -241,6 +242,48 @@ class PassContractTests(unittest.TestCase):
         for name in ("returned", "boxed", "same_object", "nonascii", "assigned_twice", "conditional"):
             with self.subTest(name=name):
                 self.assertEqual(shapes[name][:2], (0, ["text.get"]))
+
+    def test_range_list_loads_require_invariant_list_and_index(self):
+        root = Path(__file__).resolve().parents[1]
+        fixtures = [root / "tests/ir/range_listget.py",
+                    root / "tests/programs/optimizations/opt_listget_range.py"]
+        shapes = {}
+        original = Gen.listget
+
+        def observe(gen, fn):
+            changed = original(gen, fn)
+            ops = [op for block in fn.blocks for op in block.code]
+            shapes[fn.f.name] = (changed, sum(op.op == "rt" and op.s == "list.get" for op in ops))
+            return changed
+
+        with patch.dict(os.environ, {"PYSTACHY_IRCHECK": "1", "PYSTACHY_OPT": ""}), \
+                patch.object(Gen, "listget", observe):
+            for path in fixtures:
+                Gen().program(Loader([]).program(str(path), path.read_text()))
+        for name in ("tail", "stride", "captured", "entry_rebound", "stepped"):
+            with self.subTest(name=name):
+                self.assertEqual(shapes[name], (1, 0))
+        for name in ("unknown_start", "changed_index", "different_list", "negative", "descending",
+                     "shrink_before", "shrink_after", "alias_shrink", "captured_shrink",
+                     "rebound_loop", "rebound_capture", "target_reassigned", "nested_target",
+                     "callback", "suspended"):
+            with self.subTest(name=name):
+                self.assertEqual(shapes[name], (0, 1))
+        # The inner loop proves its own index. Reaching the outer index would
+        # require carrying the proof across the inner loop's back edge.
+        self.assertEqual(shapes["nested"], (1, 1))
+
+        shapes.clear()
+        source = fixtures[0].read_text()
+        with patch.dict(os.environ, {"PYSTACHY_IRCHECK": "1", "PYSTACHY_OPT": ""}), \
+                patch.object(Gen, "listget", observe):
+            runtime_ir(str(fixtures[0]), source, False)
+        for name in ("tail", "stride", "captured", "entry_rebound"):
+            with self.subTest(runtime=name):
+                self.assertEqual(shapes[name], (1, 0))
+        for name in ("unknown_start", "changed_index", "different_list"):
+            with self.subTest(runtime=name):
+                self.assertEqual(shapes[name], (0, 1))
 
     def test_real_rewrites_are_verified_and_llvm_is_unchanged(self):
         events = []

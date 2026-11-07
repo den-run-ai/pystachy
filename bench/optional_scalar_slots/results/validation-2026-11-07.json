@@ -1,0 +1,200 @@
+{
+  "bootstrap": {
+    "revision": "f3410cf358210ab4c68f863c7666214b4797b583",
+    "tree": "9d324518e4165716b3d4231f94ef31064d85a17b",
+    "started_utc": "2026-11-07T07:15:56.705239+00:00",
+    "command": [
+      "make",
+      "PY=/root/.local/bin/python3.13"
+    ],
+    "returncode": 0,
+    "wall_seconds": 224.18222294699808,
+    "finished_utc": "2026-11-07T07:19:40.892453+00:00",
+    "compiler_sha256": "fa1b0acffc9533b2bbf88259b289b4737408b79d5f8d2806708a26b353966972"
+  },
+  "native": {
+    "revision": "f3410cf358210ab4c68f863c7666214b4797b583",
+    "started_utc": "2026-11-07T07:20:28.134041+00:00",
+    "compiler_sha256": "fa1b0acffc9533b2bbf88259b289b4737408b79d5f8d2806708a26b353966972",
+    "environment": {
+      "PYSTACHY_HOME": "/workspace/scratch/773660c98364/optional-scalars",
+      "PYSTACHY_CACHE": "/workspace/scratch/773660c98364/optional-native-cache",
+      "PYSTACHY_PROGRAM_CACHE": "0",
+      "PYSTACHY_LLVM": "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin",
+      "PYSTACHY_JOBS": "2",
+      "PYSTACHY_IRCHECK": "1"
+    },
+    "stages": [
+      {
+        "name": "normal",
+        "command": [
+          "tests/run.sh",
+          "./pystachy",
+          "jit aot",
+          "tests/programs/optional/eq_optional_list_items.py",
+          "tests/programs/optional/eq_optional_list_right.py",
+          "tests/programs/optional/eq_unrelated_optional.py",
+          "tests/programs/optional/nestcomp_cmpnode.py",
+          "tests/programs/optional/nestcomp_fieldcmp.py",
+          "tests/programs/optional/nestcomp_nonecmp_clobber.py",
+          "tests/programs/optional/nestcomp_nonecmp_one_read.py",
+          "tests/programs/optional/none_dict_fill.py",
+          "tests/programs/optional/none_eq.py",
+          "tests/programs/optional/none_field_always.py",
+          "tests/programs/optional/none_field_cmp.py",
+          "tests/programs/optional/none_field_external.py",
+          "tests/programs/optional/none_field_import.py",
+          "tests/programs/optional/none_field_inherit.py",
+          "tests/programs/optional/none_field_method.py",
+          "tests/programs/optional/none_field_order.py",
+          "tests/programs/optional/none_field_push.py",
+          "tests/programs/optional/none_field_relink.py",
+          "tests/programs/optional/none_field_scalar.py",
+          "tests/programs/optional/none_field_template.py",
+          "tests/programs/optional/none_field_unrelated.py",
+          "tests/programs/optional/none_format_spec.py",
+          "tests/programs/optional/none_global_always.py",
+          "tests/programs/optional/none_global_call.py",
+          "tests/programs/optional/none_global_count.py",
+          "tests/programs/optional/none_global_function.py",
+          "tests/programs/optional/none_global_loop.py",
+          "tests/programs/optional/none_global_loop_copy.py",
+          "tests/programs/optional/none_global_loop_result.py",
+          "tests/programs/optional/none_global_module.py",
+          "tests/programs/optional/none_global_object.py",
+          "tests/programs/optional/none_list_add.py",
+          "tests/programs/optional/none_list_fill.py",
+          "tests/programs/optional/none_list_objects.py",
+          "tests/programs/optional/none_loop_dependencies.py",
+          "tests/programs/optional/none_loop_inference.py",
+          "tests/programs/optional/none_objects.py",
+          "tests/programs/optional/none_operand_errors.py",
+          "tests/programs/optional/none_values.py",
+          "tests/programs/optional/optional_back_fn.py",
+          "tests/programs/optional/optional_fromlist.py",
+          "tests/programs/optional/optional_init_fails.py",
+          "tests/programs/optional/optional_nested.py",
+          "tests/programs/optional/optional_partial.py",
+          "tests/programs/optional/optional_prefix.py",
+          "tests/programs/optional/optional_rest.py",
+          "tests/programs/optional/optional_return.py",
+          "tests/programs/optional/optional_scalar_slots.py",
+          "tests/programs/optional/optional_scalar_slots_identity.py",
+          "tests/programs/optional/optional_scalar_slots_unbound.py",
+          "tests/programs/optional/optional_uncaught.py",
+          "tests/programs/optional/optional_with_block.py",
+          "tests/programs/optional/optkey_update.py",
+          "tests/programs/optional/union_identity_none.py",
+          "tests/programs/inference/union_slots.py",
+          "tests/programs/inference/scalar_union_chained_optional.py",
+          "tests/programs/inference/dynany_identity_promote_optional.py"
+        ],
+        "environment_overrides": {},
+        "returncode": 0,
+        "wall_seconds": 27.904134130003513,
+        "summary": [
+          "selected 57 cases",
+          "114 passed, 0 failed"
+        ]
+      },
+      {
+        "name": "gc",
+        "command": [
+          "tests/run.sh",
+          "./pystachy",
+          "jit aot",
+          "tests/programs/optional/optional_scalar_slots.py",
+          "tests/programs/optional/optional_scalar_slots_identity.py",
+          "tests/programs/optional/optional_scalar_slots_unbound.py",
+          "tests/programs/inference/union_slots.py",
+          "tests/programs/inference/scalar_union_chained_optional.py",
+          "tests/programs/inference/dynany_identity_promote_optional.py"
+        ],
+        "environment_overrides": {
+          "PYSTACHY_GC_STRESS_PROGRAM": "1"
+        },
+        "returncode": 0,
+        "wall_seconds": 2.777791532003903,
+        "summary": [
+          "selected 6 cases",
+          "12 passed, 0 failed"
+        ]
+      },
+      {
+        "name": "disabled",
+        "command": [
+          "tests/run.sh",
+          "./pystachy",
+          "jit aot",
+          "tests/programs/optional/optional_scalar_slots.py",
+          "tests/programs/optional/optional_scalar_slots_identity.py",
+          "tests/programs/optional/optional_scalar_slots_unbound.py",
+          "tests/programs/inference/union_slots.py",
+          "tests/programs/inference/scalar_union_chained_optional.py",
+          "tests/programs/inference/dynany_identity_promote_optional.py"
+        ],
+        "environment_overrides": {
+          "PYSTACHY_OPT": "-unionslots"
+        },
+        "returncode": 0,
+        "wall_seconds": 13.608147195001948,
+        "summary": [
+          "selected 6 cases",
+          "12 passed, 0 failed"
+        ]
+      },
+      {
+        "name": "ir",
+        "command": [
+          "tools/check_ir.sh",
+          "./pystachy",
+          "tests/programs/optional/optional_scalar_slots.py",
+          "tests/programs/optional/optional_scalar_slots_identity.py",
+          "tests/programs/optional/optional_scalar_slots_unbound.py",
+          "tests/ir/unionslots.py",
+          "bench/optional_scalars.py"
+        ],
+        "environment_overrides": {},
+        "returncode": 0,
+        "wall_seconds": 0.11763840100320522,
+        "summary": [
+          "the IR check and llvm-as accept the IR of 5 programs"
+        ]
+      }
+    ],
+    "finished_utc": "2026-11-07T07:21:12.543469+00:00"
+  },
+  "hosted": {
+    "check_fast": {
+      "revision": "defcaaeea0b11e7efe560eb4221f9133004bbeb0",
+      "status": "passed",
+      "typed_ir_tests": 188
+    },
+    "focused_optional_slots": {
+      "revision": "f3410cf358210ab4c68f863c7666214b4797b583",
+      "status": "passed",
+      "tests": 7
+    },
+    "compiler_selfcompile": {
+      "revision": "defcaaeea0b11e7efe560eb4221f9133004bbeb0",
+      "status": "passed",
+      "ircheck": true
+    },
+    "typed_ir_and_llvm_as": {
+      "revision": "defcaaeea0b11e7efe560eb4221f9133004bbeb0",
+      "programs": 58,
+      "status": "passed"
+    },
+    "unbound_typed_ir_and_llvm_as": {
+      "revision": "f3410cf358210ab4c68f863c7666214b4797b583",
+      "programs": 1,
+      "status": "passed"
+    }
+  },
+  "not_run": [
+    "full make verify",
+    "exact-main full-corpus irsame for this branch",
+    "JIT performance measurements",
+    "allocated-byte or dynamic-allocation measurements"
+  ]
+}

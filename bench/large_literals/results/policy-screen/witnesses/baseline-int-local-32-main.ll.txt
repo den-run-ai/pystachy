@@ -1,0 +1,184 @@
+define noundef i32 @main(i32 %argc, ptr nocapture readonly %argv) local_unnamed_addr {
+  %sb = tail call ptr @llvm.frameaddress.p0(i32 0)
+  tail call void @pys_init(i32 %argc, ptr %argv, ptr %sb, ptr nonnull @pys.roots, i64 0)
+  %1 = load ptr, ptr getelementptr inbounds ([80 x ptr], ptr @pys_fl, i64 0, i64 4), align 16, !tbaa !5
+  %2 = icmp eq ptr %1, null
+  br i1 %2, label %7, label %3, !prof !9
+
+3:                                                ; preds = %0
+  %4 = load i64, ptr %1, align 8, !tbaa !10
+  %5 = xor i64 %4, -1
+  %6 = inttoptr i64 %5 to ptr
+  store ptr %6, ptr getelementptr inbounds ([80 x ptr], ptr @pys_fl, i64 0, i64 4), align 16, !tbaa !5
+  store i64 0, ptr %1, align 8, !tbaa !10
+  br label %f.make_values.exit.i
+
+7:                                                ; preds = %0
+  %8 = tail call fastcc ptr @gc_slow(i64 noundef 31, i32 noundef 0)
+  br label %f.make_values.exit.i
+
+f.make_values.exit.i:                             ; preds = %7, %3
+  %9 = phi ptr [ %1, %3 ], [ %8, %7 ]
+  %10 = getelementptr inbounds %struct.List, ptr %9, i64 0, i32 1
+  store i64 32, ptr %10, align 8, !tbaa !11
+  %11 = tail call fastcc ptr @gc_slow(i64 noundef 256, i32 noundef 1)
+  %12 = getelementptr inbounds %struct.List, ptr %9, i64 0, i32 2
+  store ptr %11, ptr %12, align 8, !tbaa !14
+  tail call void @pys_list_append(ptr %9, i64 -16)
+  tail call void @pys_list_append(ptr %9, i64 -15)
+  tail call void @pys_list_append(ptr %9, i64 -14)
+  tail call void @pys_list_append(ptr %9, i64 -13)
+  tail call void @pys_list_append(ptr %9, i64 -12)
+  tail call void @pys_list_append(ptr %9, i64 -11)
+  tail call void @pys_list_append(ptr %9, i64 -10)
+  tail call void @pys_list_append(ptr %9, i64 -9)
+  tail call void @pys_list_append(ptr %9, i64 -8)
+  tail call void @pys_list_append(ptr %9, i64 -7)
+  tail call void @pys_list_append(ptr %9, i64 -6)
+  tail call void @pys_list_append(ptr %9, i64 -5)
+  tail call void @pys_list_append(ptr %9, i64 -4)
+  tail call void @pys_list_append(ptr %9, i64 -3)
+  tail call void @pys_list_append(ptr %9, i64 -2)
+  tail call void @pys_list_append(ptr %9, i64 -1)
+  tail call void @pys_list_append(ptr %9, i64 0)
+  tail call void @pys_list_append(ptr %9, i64 1)
+  tail call void @pys_list_append(ptr %9, i64 2)
+  tail call void @pys_list_append(ptr %9, i64 3)
+  tail call void @pys_list_append(ptr %9, i64 4)
+  tail call void @pys_list_append(ptr %9, i64 5)
+  tail call void @pys_list_append(ptr %9, i64 6)
+  tail call void @pys_list_append(ptr %9, i64 7)
+  tail call void @pys_list_append(ptr %9, i64 8)
+  tail call void @pys_list_append(ptr %9, i64 9)
+  tail call void @pys_list_append(ptr %9, i64 10)
+  tail call void @pys_list_append(ptr %9, i64 11)
+  tail call void @pys_list_append(ptr %9, i64 12)
+  tail call void @pys_list_append(ptr %9, i64 13)
+  tail call void @pys_list_append(ptr %9, i64 14)
+  tail call void @pys_list_append(ptr %9, i64 15)
+  %t3.i = ptrtoint ptr %9 to i64
+  %t4.i = tail call ptr @pys_repr(i64 %t3.i, ptr nonnull @s.2)
+  tail call void @pys_write(ptr %t4.i, i64 1)
+  tail call void @pys_write(ptr nonnull @s.1, i64 1)
+  %13 = load ptr, ptr @args, align 8, !tbaa !5
+  %14 = load i64, ptr %13, align 8, !tbaa !15
+  %15 = icmp sgt i64 %14, 1
+  br i1 %15, label %pys_list_get.exit.i, label %16
+
+16:                                               ; preds = %f.make_values.exit.i
+  tail call void @pys_fail(ptr noundef nonnull @.str.85) #36
+  unreachable
+
+pys_list_get.exit.i:                              ; preds = %f.make_values.exit.i
+  %17 = getelementptr inbounds %struct.List, ptr %13, i64 0, i32 2
+  %18 = load ptr, ptr %17, align 8, !tbaa !14
+  %19 = getelementptr inbounds %struct.Slot, ptr %18, i64 1
+  %20 = load i64, ptr %19, align 8, !tbaa !16
+  %t11.i = inttoptr i64 %20 to ptr
+  %t12.i = tail call i64 @pys_int_str(ptr %t11.i, i64 10)
+  %t116.i.i = icmp sgt i64 %t12.i, 0
+  br i1 %t116.i.i, label %L7.i.i, label %main.init.exit
+
+L7.i.i:                                           ; preds = %pys_list_get.exit.i, %L19.i.i
+  %h.5.08.i.i = phi i64 [ %t202.i.i, %L19.i.i ], [ 0, %pys_list_get.exit.i ]
+  %checksum.3.07.i.i = phi i64 [ %t16.i.i, %L19.i.i ], [ 0, %pys_list_get.exit.i ]
+  %21 = load ptr, ptr getelementptr inbounds ([80 x ptr], ptr @pys_fl, i64 0, i64 4), align 16, !tbaa !5
+  %22 = icmp eq ptr %21, null
+  br i1 %22, label %27, label %23, !prof !9
+
+23:                                               ; preds = %L7.i.i
+  %24 = load i64, ptr %21, align 8, !tbaa !10
+  %25 = xor i64 %24, -1
+  %26 = inttoptr i64 %25 to ptr
+  store ptr %26, ptr getelementptr inbounds ([80 x ptr], ptr @pys_fl, i64 0, i64 4), align 16, !tbaa !5
+  store i64 0, ptr %21, align 8, !tbaa !10
+  br label %pys_list_new_atomic.exit.i.i.i
+
+27:                                               ; preds = %L7.i.i
+  %28 = tail call fastcc ptr @gc_slow(i64 noundef 31, i32 noundef 0)
+  br label %pys_list_new_atomic.exit.i.i.i
+
+pys_list_new_atomic.exit.i.i.i:                   ; preds = %27, %23
+  %29 = phi ptr [ %21, %23 ], [ %28, %27 ]
+  %30 = getelementptr inbounds %struct.List, ptr %29, i64 0, i32 1
+  store i64 32, ptr %30, align 8, !tbaa !11
+  %31 = tail call fastcc ptr @gc_slow(i64 noundef 256, i32 noundef 1)
+  %32 = getelementptr inbounds %struct.List, ptr %29, i64 0, i32 2
+  store ptr %31, ptr %32, align 8, !tbaa !14
+  tail call void @pys_list_append(ptr %29, i64 -16)
+  tail call void @pys_list_append(ptr %29, i64 -15)
+  tail call void @pys_list_append(ptr %29, i64 -14)
+  tail call void @pys_list_append(ptr %29, i64 -13)
+  tail call void @pys_list_append(ptr %29, i64 -12)
+  tail call void @pys_list_append(ptr %29, i64 -11)
+  tail call void @pys_list_append(ptr %29, i64 -10)
+  tail call void @pys_list_append(ptr %29, i64 -9)
+  tail call void @pys_list_append(ptr %29, i64 -8)
+  tail call void @pys_list_append(ptr %29, i64 -7)
+  tail call void @pys_list_append(ptr %29, i64 -6)
+  tail call void @pys_list_append(ptr %29, i64 -5)
+  tail call void @pys_list_append(ptr %29, i64 -4)
+  tail call void @pys_list_append(ptr %29, i64 -3)
+  tail call void @pys_list_append(ptr %29, i64 -2)
+  tail call void @pys_list_append(ptr %29, i64 -1)
+  tail call void @pys_list_append(ptr %29, i64 0)
+  tail call void @pys_list_append(ptr %29, i64 1)
+  tail call void @pys_list_append(ptr %29, i64 2)
+  tail call void @pys_list_append(ptr %29, i64 3)
+  tail call void @pys_list_append(ptr %29, i64 4)
+  tail call void @pys_list_append(ptr %29, i64 5)
+  tail call void @pys_list_append(ptr %29, i64 6)
+  tail call void @pys_list_append(ptr %29, i64 7)
+  tail call void @pys_list_append(ptr %29, i64 8)
+  tail call void @pys_list_append(ptr %29, i64 9)
+  tail call void @pys_list_append(ptr %29, i64 10)
+  tail call void @pys_list_append(ptr %29, i64 11)
+  tail call void @pys_list_append(ptr %29, i64 12)
+  tail call void @pys_list_append(ptr %29, i64 13)
+  tail call void @pys_list_append(ptr %29, i64 14)
+  tail call void @pys_list_append(ptr %29, i64 15)
+  %t5.i.i.i = load i64, ptr %29, align 4
+  %33 = icmp sgt i64 %t5.i.i.i, 0
+  br i1 %33, label %pys_list_get.exit.i.i.i, label %34
+
+34:                                               ; preds = %pys_list_new_atomic.exit.i.i.i
+  tail call void @pys_fail(ptr noundef nonnull @.str.85) #36
+  unreachable
+
+pys_list_get.exit.i.i.i:                          ; preds = %pys_list_new_atomic.exit.i.i.i
+  %35 = load ptr, ptr %32, align 8, !tbaa !14
+  %36 = getelementptr %struct.Slot, ptr %35, i64 %t5.i.i.i
+  %37 = getelementptr %struct.Slot, ptr %36, i64 -1
+  %38 = load i64, ptr %37, align 8, !tbaa !16
+  %t18.i.i.i = tail call { i64, i1 } @llvm.sadd.with.overflow.i64(i64 %t5.i.i.i, i64 %38)
+  %t20.i.i.i = extractvalue { i64, i1 } %t18.i.i.i, 1
+  br i1 %t20.i.i.i, label %L21.i.i.i, label %f.local.exit.i.i
+
+L21.i.i.i:                                        ; preds = %pys_list_get.exit.i.i.i
+  tail call void @pys_raise(ptr nonnull @s.6, ptr nonnull @s.5)
+  unreachable
+
+f.local.exit.i.i:                                 ; preds = %pys_list_get.exit.i.i.i
+  %t19.i.i.i = extractvalue { i64, i1 } %t18.i.i.i, 0
+  %t15.i.i = tail call { i64, i1 } @llvm.sadd.with.overflow.i64(i64 %checksum.3.07.i.i, i64 %t19.i.i.i)
+  %t17.i.i = extractvalue { i64, i1 } %t15.i.i, 1
+  br i1 %t17.i.i, label %L18.i.i, label %L19.i.i
+
+L19.i.i:                                          ; preds = %f.local.exit.i.i
+  %t16.i.i = extractvalue { i64, i1 } %t15.i.i, 0
+  %t202.i.i = add nuw nsw i64 %h.5.08.i.i, 1
+  %exitcond.not.i.i = icmp eq i64 %t202.i.i, %t12.i
+  br i1 %exitcond.not.i.i, label %main.init.exit, label %L7.i.i
+
+L18.i.i:                                          ; preds = %f.local.exit.i.i
+  tail call void @pys_raise(ptr nonnull @s.6, ptr nonnull @s.5)
+  unreachable
+
+main.init.exit:                                   ; preds = %L19.i.i, %pys_list_get.exit.i
+  %checksum.3.0.lcssa.i.i = phi i64 [ 0, %pys_list_get.exit.i ], [ %t16.i.i, %L19.i.i ]
+  %t14.i = tail call ptr @pys_str_int(i64 %checksum.3.0.lcssa.i.i)
+  tail call void @pys_write(ptr %t14.i, i64 1)
+  tail call void @pys_write(ptr nonnull @s.1, i64 1)
+  tail call void @pys_finish()
+  ret i32 0
+}

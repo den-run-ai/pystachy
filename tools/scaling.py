@@ -33,6 +33,8 @@ Each shape is a family of programs whose size grows with N:
            each from the values the module's statements assign it
   nulls    one function of N if statements, each reading a field of the parameter its first
            statement read (nullcheck's walk down the dominator tree drops their checks)
+  handlers one function of N try/except statements, each binding a distinct handler target
+  samehandlers the same statements reusing one handler target (a control for binding scans)
 Each cell is the median of RUNS runs of "COMMAND ir main.py -o /dev/null" in seconds, startup
 included; "x" is its growth from the previous N (2.0 is linear when N doubles, 4.0 quadratic).
 --ops adds, for each COMMAND that runs a .py file (the CPython-hosted compiler), the number of
@@ -238,10 +240,23 @@ def nulls(n):
     return {"main.py": src}
 
 
+def handlers(n, same=False):
+    src = ["def big() -> int:"]
+    for i in range(n):
+        src += ["    try:", "        pass", f"    except ValueError as e{0 if same else i}:", "        pass"]
+    src += ["    return 1", "print(big())"]
+    return {"main.py": src}
+
+
+def samehandlers(n):
+    return handlers(n, True)
+
+
 SHAPES = {"funcs": funcs, "globals": globals_, "both": both, "long": long, "top": top, "classes": classes, "modules": modules,
           "fields": fields, "calls": calls, "imports": imports, "stdlib": stdlib, "breaks": breaks, "exits": exits, "elifs": elifs,
           "topelifs": topelifs, "comps": comps, "chain": chain,
-          "lookups": lookups, "gdicts": gdicts, "dropped": dropped, "nones": nones, "nulls": nulls}
+          "lookups": lookups, "gdicts": gdicts, "dropped": dropped, "nones": nones, "nulls": nulls,
+          "handlers": handlers, "samehandlers": samehandlers}
 
 
 def write(d, files):

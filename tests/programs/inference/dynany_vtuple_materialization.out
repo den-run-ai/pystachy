@@ -1,0 +1,7 @@
+(1.25, 1.25, 1234567, 1234567) True True True True
+True True 9 ['item', 'changed']
+True True True
+9 ['item', 'changed'] (1.25, None) 1.25 True True
+(None, None)
+7 ['owned-7'] leaf-7
+[exit 0]

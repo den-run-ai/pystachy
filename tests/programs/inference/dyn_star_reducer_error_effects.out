@@ -1,0 +1,19 @@
+returned 3
+['args', 'kwargs', 'call']
+1 TypeError CALL argument after * must be an iterable, not int
+['args', 'keyword', 'callee str']
+2 TypeError CALL got multiple values for keyword argument 'value'
+['args', 'first', 'second', 'callee str']
+3 TypeError CALL got multiple values for keyword argument 'KEY'
+['args', 'first', 'second', 'callee str', 'key str']
+4 ValueError name failed
+['args', 'keyword', 'broken str']
+5 ValueError name failed
+['args', 'first', 'second', 'broken str']
+6 ValueError key name failed
+['args', 'first', 'second', 'callee str', 'broken key str']
+7 TypeError CALL argument after ** must be a mapping, not int
+['args', 'not mapping', 'callee str']
+8 TypeError keywords must be strings
+['args', 'keys', 'last']
+[exit 0]

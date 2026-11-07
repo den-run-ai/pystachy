@@ -1,0 +1,10 @@
+wire Outer.C
+C wire Outer.C <class 'wire.Outer.C'>
+wire Outer.C
+wire Outer.C
+True True
+__main__ Child
+__main__ Child <class '__main__.Child'>
+__main__ Child
+True True
+[exit 0]

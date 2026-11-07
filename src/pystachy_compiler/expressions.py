@@ -938,6 +938,8 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             if x is not None:
                 return self.refl_type_attr(x, n.s)
         c = n.kids[0].s if n.kids[0].kind == "name" and n.kids[0].s not in self.ltype else ""
+        if c in self.classes and n.s == "__class__" and self.dyn_policy(n.line):
+            return self.refl_type_value(self.expr(n.kids[0], ""))
         if c in self.xmods and n.s == "__module__":
             # (an exception class's that the program assigns: its ExcClass's, as it shows it then)
             self.class_ready(n.kids[0])
@@ -947,11 +949,16 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         if c in self.classes and n.s == "__members__" and self.classes[c].node.line in ENUMCLASSES:
             self.class_ready(n.kids[0])
             return self.expr(mk("call", "", n.line, [mk("attr", "_members_view_", n.line, [self.enum_view(c, n.line)])]), "")  # (its EnumType object's)
-        if c in self.classes and ((c in self.nts and (n.s == "_fields" or n.s == "_field_defaults")) or (c not in self.nts and n.s in self.classes[c].fdefault)):
+        metadata = c in self.classes and self.classes[c].exc == "" and self.dyn_policy(n.line) and n.s in ["__qualname__", "__module__"]
+        inherited_meta = metadata and n.s in self.classes[c].fdefault and self.default_home(self.classes[c], n.s) is not self.classes[c]
+        if c in self.classes and ((c in self.nts and (n.s == "_fields" or n.s == "_field_defaults")) or (c not in self.nts and n.s in self.classes[c].fdefault and not inherited_meta)):
             return self.class_attr(n.kids[0], n.s)
         if c in self.classes and n.s == "__name__":
             self.class_ready(n.kids[0])
             return Val(self.sconst(short(c)), "str")  # (C.__name__, and cls.__name__ in a class method)
+        if metadata:
+            self.class_ready(n.kids[0])
+            return Val(self.sconst(self.refl_type_name(c, n.s)), "str")
         if c in self.classes and self.classes[c].exc != "" and (n.s == "__qualname__" or n.s == "__module__"):
             # (an exception class's, as its class object's: runtime.c's pys_exc_name, pys_exc_module)
             self.class_ready(n.kids[0])
@@ -980,6 +987,19 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                     return Val("undef", missingtype)
         if o.t == "dyn":
             return self.dyn_getattr(o, n.s)  # (its box's class's attribute: dynamic.py)
+        if n.s == "__class__" and self.dyn_policy(n.line):
+            if o.t == "exc" or o.t == "opt[exc]" or (o.t in self.classes and self.classes[o.t].exc != ""):
+                return self.exc_type_of(o)
+            if o.t not in self.classes or (n.s not in self.classes[o.t].ftypes and n.s not in self.classes[o.t].methods):
+                if any(c in self.classes and (n.s in self.classes[c].ftypes or n.s in self.classes[c].methods) for c in self.refl_concrete(o.t)):
+                    # A subclass may shadow object.__class__ even though this
+                    # static base does not. The existing boxed-class dispatcher
+                    # preserves that exact lookup and the receiver's identity.
+                    return self.dyn_getattr(self.dyn_box(o), n.s)
+                return self.refl_type_value(o)
+        builtin_class = self.refl_builtin_class(o.t) if self.dyn_policy(n.line) else ""
+        if builtin_class != "" and n.s in ["__name__", "__qualname__", "__module__"]:
+            return Val(self.sconst(self.refl_type_name(builtin_class, n.s)), "str")
         if is_fn(o.t) and (n.s == "__name__" or n.s == "__qualname__"):
             # (a function of a module's top level, or a builtin: its own name; a closure's
             # qualified name is outer.<locals>.name, a bound method's C.name)
@@ -1143,6 +1163,10 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         if lty == "list[dyn]":
             et = "dyn"  # (where the items are Any values or containers: ctype)
         items = [self.list_hold(kept[i] if i in kept else items[i], et) for i in range(len(items))]
+        if len(items) >= 32:
+            constant = self.list_const(n, items, lty)
+            if constant.v != "":
+                return constant
         r = self.rt("pys_list_new_atomic" if atomic_list(lty) else "pys_list_new", "ptr", [f"i64 {len(items)}"])
         for v in items:
             self.list_store(Val(r, lty), v, "append")
@@ -1246,6 +1270,13 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         tconst = self.tuple_const(n, vals)
         if tconst.v != "":
             return tconst  # (a display of literals: CPython's constant, the same object at each run)
+        if is_vtuple(want) and not resultsoft:
+            # Every item is evaluated before these remaining coercions. want is also
+            # an operand hint: concatenation may widen it (int plus int | None).
+            # Comparisons preserve each side's own element representation.
+            et = targs(want)[0]
+            if all(self.widens(v.t, et) or self.boxes(v.t, et) or (v.t == BIG and et == "int") for v in vals):
+                return self.vtuple_make([self.coerce(v, et) for v in vals], want)
         return self.stack_tuple(vals) if n is self.stkkey else self.tuple_(vals)
     if k == "listcomp":
         if n.s == "gen":
@@ -1995,6 +2026,8 @@ def gen_conversion(self, v: Val, flags: str, width: str, prec: str, t: str) -> V
 def gen_format_(self, v: Val, spec: Node) -> Val:
     # format(v, spec), as an f-string field computes it; spec is a str or an f-string node, or
     # format()'s argument
+    if self.dyn_policy(self.line) and self.refl_builtin_class(v.t) != "":
+        v = self.dyn_box(v)
     empty = spec.kind == "str" and spec.s == ""
     if v.t == "dyn":
         # by its box's type (dynamic.py): a boxed class's __format__, else str() for an empty spec
@@ -2397,6 +2430,41 @@ def gen_tuple_(self, vals: list[Val]) -> Val:
     for i in range(len(vals)):
         self.tput(Val(p, t), i, vals[i])
     return Val(p, t)
+
+def gen_list_const(self, n: Node, vals: list[Val], t: str) -> Val:
+    # Large all-scalar literal displays copy immutable data into a fresh atomic item array.
+    # Keep small displays, pointer-bearing items and graphs with numeric identity or promoting
+    # ints on the ordinary path. All items have already passed the usual typing/coercion rules.
+    if len(vals) < 32 or self.rtmode or dynamic_program() or int_lists() or not atomic_list(t):
+        return Val("", "")
+    for j in range(len(vals)):
+        e = n.kids[j]
+        if e.kind == "unary" and e.s == "-":
+            e = e.kids[0]
+        v = vals[j]
+        ok = (e.kind == "int" and v.t == "int" and v.lit and int_fits(v.v)) or (e.kind == "float" and v.t == "float" and v.lit and v.v.startswith("0x")) or (e.kind in ["True", "False"] and v.t == "bool" and v.v in ["true", "false"])
+        if not ok or v.t != elem(t):
+            return Val("", "")
+    key = t + "(" + ",".join([v.v for v in vals]) + ")"
+    if key not in self.lconsts:
+        d = Data("listdata", f"@lc.{len(self.lconsts)}")
+        d.items = [Val(v.v, v.t) for v in vals]
+        self.consts.append(d)
+        self.lconsts[key] = d.name
+    return Val(self.rt("pys_list_from_const", "ptr", [f"ptr {self.lconsts[key]}", f"i64 {len(vals)}"]), t)
+
+def gen_vtuple_make(self, vals: list[Val], t: str) -> Val:
+    # Already evaluated and coerced homogeneous items. Keep their native types,
+    # including references, until lowering allocates the final scanned VTuple.
+    # This is also the copy boundary for an existing fixed tuple: it never edits
+    # or reinterprets the source tuple's storage.
+    if self.rtmode and self.curfn.ll == "@pys_alloc":
+        self.err("pys_alloc() implements an operation that it uses: write it without that operation")
+    self.runtime("pys_alloc")
+    i = Ins("vtuple.make", t, "")
+    i.a = vals
+    self.put(i, 1)
+    return Val(f"%t{i.r[0]}", t)
 
 def gen_tuple_const(self, n: Node, vals: list[Val]) -> Val:
     # a tuple display of literals that the source writes (n.src), whose items are vals: the
@@ -2887,23 +2955,21 @@ def gen_list_read(self, o: Val, i: Val) -> Val:
     if self.list_id_kind(o.t) != 0 and not self.fn.scalar_reads:
         return self.list_item(o, i)
     if o.t != "list[int]" or "listfast" not in self.opts:
-        return self.list_value(o, i.v, self.rt("pys_list_get", "i64", [f"ptr {o.v}", f"i64 {i.v}"]))
+        return self.list_value(o, i.v, self.list_get("list.get", [o, i]))
     fast = self.label()
     slow = self.label()
     done = self.label()
-    length = Ins("list.len", "int", "")
-    length.a = [o]
-    self.put(length, 1)
-    self.cbr(self.int_ucmp('<', Val(i.v, "int"), Val(f'%t{length.r[0]}', "int")).v, fast, slow)
-    ph = Ins("phi", "int", "")
+    length = self.list_len(o)
+    self.cbr(self.int_ucmp('<', Val(i.v, "int"), Val(length, "int")).v, fast, slow)
+    ph = Ins("phi", "%slot", "")
     self.place(fast)
-    read = Ins("list.load", "int", "")
+    read = Ins("list.load", "*int", "")
     read.a = [o, i]
     self.put(read, 4)
     self.incoming(ph, f"%t{read.r[0]}", self.cur)
     self.br(done)
     self.place(slow)
-    v = self.rt("pys_list_get", "i64", [f"ptr {o.v}", f"i64 {i.v}"])
+    v = self.list_get("list.get", [o, i])
     self.incoming(ph, v, self.cur)
     self.br(done)
     self.place(done)

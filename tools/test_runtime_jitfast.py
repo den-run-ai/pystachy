@@ -105,6 +105,8 @@ def runtime_part(source, pattern):
 def harness():
     runtime = (ROOT / "runtime.c").read_text()
     return (PREFIX
+            # JITFAST is compared with the default, uninstrumented allocator.
+            + runtime_part(runtime, r"^#define PROFILE_ALLOC\(n\) \(\(void\)0\)\n")
             + runtime_part(runtime, r"^typedef uintptr_t __attribute__\(\(may_alias\)\) W;[^\n]*\n")
             + runtime_part(runtime, r"^#define NK [^\n]*\n")
             + runtime_part(runtime, r"^static const short csize\[NK / 2\] = \{.*?\};\n")

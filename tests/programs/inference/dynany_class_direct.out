@@ -1,0 +1,15 @@
+17 19
+True True
+True True
+True True
+True True True True
+<class 'int'> <class 'int'> True
+<class 'int'> <class 'int'> <class 'int'> <class 'int'> <class 'int'>
+int int builtins
+int int builtins
+type type builtins
+<class 'object'> <class 'range'> <class 'bytes'> <class 'set'>
+True True
+True True
+unsupported format string passed to type.__format__
+[exit 0]

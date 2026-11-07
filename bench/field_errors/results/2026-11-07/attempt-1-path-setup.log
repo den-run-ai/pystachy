@@ -1,0 +1,1 @@
+tests/programs/apps/example_linediff.py:6: error: module 'gentext' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no gentext.py on the module path

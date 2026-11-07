@@ -1,0 +1,7 @@
+Base True True
+Child True False
+int True
+bool True False
+NoneType True
+True True
+[exit 0]

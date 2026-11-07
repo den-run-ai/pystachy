@@ -1,0 +1,8 @@
+['default']
+True True
+True 123457 123457
+True True
+[1, 'default', 'shared'] [1, 'default', 'shared']
+True 654322 True
+['default', 'init', 'init', 'init']
+[exit 0]

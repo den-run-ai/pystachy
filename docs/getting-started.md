@@ -86,12 +86,14 @@ correctness and a representative input, then separate these costs:
 |---|---|
 | `pystachy build squares.py -o squares` | AOT compilation |
 | `./squares` | Executable startup and program execution |
-| `pystachy run squares.py` | JIT compilation, startup and execution |
+| `pystachy run squares.py` | Cache validation or JIT compilation, then execution |
+| `PYSTACHY_PROGRAM_CACHE=0 pystachy run squares.py` | JIT compilation, startup and execution on every invocation |
 | A timer around repeated calls inside the program | Steady work after startup, excluding compilation |
 
-JIT compiles on each invocation; its runtime compilation cache can make the first
-invocation slower. Warm that cache when comparing repeated runs, and report cold
-startup separately. Repeat measurements, compare medians, and check outputs in
+The Linux native CLI uses a [program cache](program-cache.md) by default. Report
+first fills, validated hits and uncached launches separately. Set
+`PYSTACHY_PROGRAM_CACHE=0` when measuring repeated compilation, and warm the
+separate runtime cache first. Repeat measurements, compare medians, and check outputs in
 every mode. Ordinary integers are checked signed 64-bit values: increasing the
 input enough to overflow is a correctness change, not a useful timing sample.
 

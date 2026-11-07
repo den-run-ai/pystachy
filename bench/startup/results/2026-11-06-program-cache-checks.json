@@ -1,0 +1,3641 @@
+{
+  "schema": "pystachy-program-cache-probe-v1",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.39",
+  "python": "3.13.16 (main, Oct 14 2026, 01:04:01) [Clang 23.1.3 ]",
+  "cpu_affinity": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+  ],
+  "temporary_directory": "/tmp/pystachy-program-cache-x51d2h7y",
+  "rounds": 5,
+  "benchmarks": [],
+  "setup_error": null,
+  "completed": true,
+  "expected_checks": [
+    "reuse",
+    "source",
+    "imports",
+    "semantics",
+    "corruption",
+    "bypass",
+    "tool",
+    "compiler",
+    "runtime",
+    "failures",
+    "concurrency",
+    "signals",
+    "source-race",
+    "interruption"
+  ],
+  "benchmark_scopes": {
+    "first_use_fill": "One sample per workload: program-v1 empty; runtime artifacts warm.",
+    "cold_program": "Manifests, executables and stages removed; static-hashes and runtime artifacts warm.",
+    "cache_hit": "Fresh process after a checked cold-program producer; no frontend or LLVM calls.",
+    "uncached_run": "Program cache disabled; runtime artifacts warm.",
+    "prebuilt_aot": "Fresh process from the ordinary AOT tier; its build time is reported separately."
+  },
+  "compiler": [
+    "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy"
+  ],
+  "compiler_sha256": "df000379236b3b920463c1c1960e4a73bef5672aeefb46bb580664b944d3643b",
+  "home": "/workspace/scratch/e98dc1e3e6cd/pystachy",
+  "llvm": {
+    "clang": "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/clang",
+    "opt": "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/opt",
+    "lli": "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/lli",
+    "llvm-link": "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/llvm-link",
+    "llvm-as": "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/llvm-as"
+  },
+  "declared_toolchain_inputs": [
+    "/lib/x86_64-linux-gnu/libbsd.so.0",
+    "/lib/x86_64-linux-gnu/libc.so.6",
+    "/lib/x86_64-linux-gnu/libedit.so.2",
+    "/lib/x86_64-linux-gnu/libffi.so.8",
+    "/lib/x86_64-linux-gnu/libgcc_s.so.1",
+    "/lib/x86_64-linux-gnu/libicudata.so.74",
+    "/lib/x86_64-linux-gnu/libicuuc.so.74",
+    "/lib/x86_64-linux-gnu/liblzma.so.5",
+    "/lib/x86_64-linux-gnu/libm.so.6",
+    "/lib/x86_64-linux-gnu/libmd.so.0",
+    "/lib/x86_64-linux-gnu/libstdc++.so.6",
+    "/lib/x86_64-linux-gnu/libtinfo.so.6",
+    "/lib/x86_64-linux-gnu/libxml2.so.2",
+    "/lib/x86_64-linux-gnu/libz.so.1",
+    "/lib/x86_64-linux-gnu/libzstd.so.1",
+    "/lib64/ld-linux-x86-64.so.2",
+    "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/../lib/libLLVM.so.18.1",
+    "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/../lib/libclang-cpp.so.18.1",
+    "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/clang",
+    "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/lli",
+    "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/llvm-as",
+    "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/llvm-link",
+    "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/opt"
+  ],
+  "llvm_version": "Ubuntu clang version 18.1.3 (1ubuntu1)\nTarget: x86_64-pc-linux-gnu\nThread model: posix\nInstalledDir: /workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin\n",
+  "checks": [
+    {
+      "name": "reuse",
+      "passed": true,
+      "assertions": 15,
+      "seconds": 17.8201867530006
+    },
+    {
+      "name": "source",
+      "passed": true,
+      "assertions": 33,
+      "seconds": 0.9070455029977893
+    },
+    {
+      "name": "imports",
+      "passed": true,
+      "assertions": 126,
+      "seconds": 3.919934647001355
+    },
+    {
+      "name": "semantics",
+      "passed": true,
+      "assertions": 71,
+      "seconds": 2.1577046229976986
+    },
+    {
+      "name": "corruption",
+      "passed": true,
+      "assertions": 42,
+      "seconds": 6.372042771999986
+    },
+    {
+      "name": "bypass",
+      "passed": true,
+      "assertions": 29,
+      "seconds": 14.117055236001761
+    },
+    {
+      "name": "tool",
+      "passed": true,
+      "assertions": 23,
+      "seconds": 15.383739713997784
+    },
+    {
+      "name": "compiler",
+      "passed": true,
+      "assertions": 24,
+      "seconds": 32.31836416199803
+    },
+    {
+      "name": "runtime",
+      "passed": true,
+      "assertions": 23,
+      "seconds": 26.276236885998514
+    },
+    {
+      "name": "failures",
+      "passed": true,
+      "assertions": 24,
+      "seconds": 12.248650546000135
+    },
+    {
+      "name": "concurrency",
+      "passed": true,
+      "assertions": 9,
+      "seconds": 0.29687435099913273
+    },
+    {
+      "name": "signals",
+      "passed": true,
+      "assertions": 12,
+      "seconds": 0.2576796569992439
+    },
+    {
+      "name": "source-race",
+      "passed": true,
+      "assertions": 15,
+      "seconds": 0.7119788979980513
+    },
+    {
+      "name": "interruption",
+      "passed": true,
+      "assertions": 12,
+      "seconds": 0.376213583000208
+    }
+  ],
+  "runs": [
+    {
+      "label": "cpython-reference",
+      "environment_changes": {
+        "CACHE_PROBE_VALUE": "first"
+      },
+      "stdin": "first input\n",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/reuse/main.py",
+        "space here",
+        "'quoted$argument`",
+        "--",
+        "-o"
+      ],
+      "status": 0,
+      "stdout": "definition effect\nmodule effect\n['/tmp/pystachy-program-cache-x51d2h7y/sources/reuse/main.py', 'space here', \"'quoted$argument`\", '--', '-o']\nfirst\nfirst input\n",
+      "stderr": "",
+      "stdout_sha256": "4043918d766dbb1afdb124d8b4253863617453e357f9e3e77186d1339116aaa2",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.01335265599846025,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "fresh effects:miss",
+      "environment_changes": {
+        "CACHE_PROBE_VALUE": "first"
+      },
+      "stdin": "first input\n",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/reuse/main.py",
+        "space here",
+        "'quoted$argument`",
+        "--",
+        "-o"
+      ],
+      "status": 0,
+      "stdout": "definition effect\nmodule effect\n['/tmp/pystachy-program-cache-x51d2h7y/sources/reuse/main.py', 'space here', \"'quoted$argument`\", '--', '-o']\nfirst\nfirst input\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "4043918d766dbb1afdb124d8b4253863617453e357f9e3e77186d1339116aaa2",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 17.717428545001894,
+      "tools": {
+        "clang": 6,
+        "llvm-as": 1,
+        "llvm-link": 1,
+        "opt": 3
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "fresh effects:hit",
+      "environment_changes": {
+        "CACHE_PROBE_VALUE": "first"
+      },
+      "stdin": "first input\n",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/reuse/main.py",
+        "space here",
+        "'quoted$argument`",
+        "--",
+        "-o"
+      ],
+      "status": 0,
+      "stdout": "definition effect\nmodule effect\n['/tmp/pystachy-program-cache-x51d2h7y/sources/reuse/main.py', 'space here', \"'quoted$argument`\", '--', '-o']\nfirst\nfirst input\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "4043918d766dbb1afdb124d8b4253863617453e357f9e3e77186d1339116aaa2",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.04314958700342686,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "cpython-reference",
+      "environment_changes": {
+        "CACHE_PROBE_VALUE": "second",
+        "PYSTACHY_GC_STRESS_PROGRAM": "1"
+      },
+      "stdin": "second input\n",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/reuse/main.py",
+        "changed argument"
+      ],
+      "status": 0,
+      "stdout": "definition effect\nmodule effect\n['/tmp/pystachy-program-cache-x51d2h7y/sources/reuse/main.py', 'changed argument']\nsecond\nsecond input\n",
+      "stderr": "",
+      "stdout_sha256": "2b6a14fe01eec3530f158e216f78d6b6359ceb0a66e0cefefe83eab556c65283",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.014952309000364039,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "fresh runtime inputs",
+      "environment_changes": {
+        "CACHE_PROBE_VALUE": "second",
+        "PYSTACHY_GC_STRESS_PROGRAM": "1"
+      },
+      "stdin": "second input\n",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/reuse/main.py",
+        "changed argument"
+      ],
+      "status": 0,
+      "stdout": "definition effect\nmodule effect\n['/tmp/pystachy-program-cache-x51d2h7y/sources/reuse/main.py', 'changed argument']\nsecond\nsecond input\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "2b6a14fe01eec3530f158e216f78d6b6359ceb0a66e0cefefe83eab556c65283",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.029757530999631854,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "cpython-reference",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/content/main.py"
+      ],
+      "status": 0,
+      "stdout": "111\n",
+      "stderr": "",
+      "stdout_sha256": "1fc917c7ad66487470e466c0ad40ddd45b9f7730a4b43e1b2542627f0596bbdc",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.013794991002214374,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "original source:miss",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/content/main.py"
+      ],
+      "status": 0,
+      "stdout": "111\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "1fc917c7ad66487470e466c0ad40ddd45b9f7730a4b43e1b2542627f0596bbdc",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 0.2629292860001442,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "original source:hit",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/content/main.py"
+      ],
+      "status": 0,
+      "stdout": "111\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "1fc917c7ad66487470e466c0ad40ddd45b9f7730a4b43e1b2542627f0596bbdc",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.02536678799879155,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "cpython-reference",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/content/main.py"
+      ],
+      "status": 0,
+      "stdout": "222\n",
+      "stderr": "",
+      "stdout_sha256": "8f8eea956d0ea50d6442fdab213326f75bb6f584268b0795ad452faa85db5f9d",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.015036614000564441,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "same-size source edit:miss",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/content/main.py"
+      ],
+      "status": 0,
+      "stdout": "222\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "8f8eea956d0ea50d6442fdab213326f75bb6f584268b0795ad452faa85db5f9d",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 0.24334320399793796,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "same-size source edit:hit",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/content/main.py"
+      ],
+      "status": 0,
+      "stdout": "222\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "8f8eea956d0ea50d6442fdab213326f75bb6f584268b0795ad452faa85db5f9d",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.028656335998675786,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "unrelated source appeared",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/content/main.py"
+      ],
+      "status": 0,
+      "stdout": "222\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "8f8eea956d0ea50d6442fdab213326f75bb6f584268b0795ad452faa85db5f9d",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.02934337999977288,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "cpython-reference",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/content/main.py"
+      ],
+      "status": 0,
+      "stdout": "222\n",
+      "stderr": "",
+      "stdout_sha256": "8f8eea956d0ea50d6442fdab213326f75bb6f584268b0795ad452faa85db5f9d",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.013597189001302468,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "cpython-reference",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/content/alias.py"
+      ],
+      "status": 0,
+      "stdout": "222\n",
+      "stderr": "",
+      "stdout_sha256": "8f8eea956d0ea50d6442fdab213326f75bb6f584268b0795ad452faa85db5f9d",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.013998581998748705,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "source alias",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/content/alias.py"
+      ],
+      "status": 0,
+      "stdout": "222\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "8f8eea956d0ea50d6442fdab213326f75bb6f584268b0795ad452faa85db5f9d",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 0.25767946299674804,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "cpython-reference",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/imports/main.py"
+      ],
+      "status": 0,
+      "stdout": "111\n",
+      "stderr": "",
+      "stdout_sha256": "1fc917c7ad66487470e466c0ad40ddd45b9f7730a4b43e1b2542627f0596bbdc",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.015932636997604277,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "transitive import:miss",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/imports/main.py"
+      ],
+      "status": 0,
+      "stdout": "111\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "1fc917c7ad66487470e466c0ad40ddd45b9f7730a4b43e1b2542627f0596bbdc",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 0.265891039998678,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "transitive import:hit",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/imports/main.py"
+      ],
+      "status": 0,
+      "stdout": "111\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "1fc917c7ad66487470e466c0ad40ddd45b9f7730a4b43e1b2542627f0596bbdc",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.029443852999975206,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "cpython-reference",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/imports/main.py"
+      ],
+      "status": 0,
+      "stdout": "222\n",
+      "stderr": "",
+      "stdout_sha256": "8f8eea956d0ea50d6442fdab213326f75bb6f584268b0795ad452faa85db5f9d",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.06670333800138906,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "transitive content edit:miss",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/imports/main.py"
+      ],
+      "status": 0,
+      "stdout": "222\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "8f8eea956d0ea50d6442fdab213326f75bb6f584268b0795ad452faa85db5f9d",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 0.4900894579986925,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "transitive content edit:hit",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/imports/main.py"
+      ],
+      "status": 0,
+      "stdout": "222\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "8f8eea956d0ea50d6442fdab213326f75bb6f584268b0795ad452faa85db5f9d",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.024011816996790003,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "cpython-reference",
+      "environment_changes": {
+        "PYSTACHY_PATH": "/tmp/pystachy-program-cache-x51d2h7y/lower-priority",
+        "PYTHONPATH": "/tmp/pystachy-program-cache-x51d2h7y/lower-priority"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/shadow/main.py"
+      ],
+      "status": 0,
+      "stdout": "31\n",
+      "stderr": "",
+      "stdout_sha256": "32c2643e0dc65524c9f1f6f9f00937322fd68d59986bc381d9ff2285d23e353d",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.01838197399774799,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "lower-priority import:miss",
+      "environment_changes": {
+        "PYSTACHY_PATH": "/tmp/pystachy-program-cache-x51d2h7y/lower-priority",
+        "PYTHONPATH": "/tmp/pystachy-program-cache-x51d2h7y/lower-priority"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/shadow/main.py"
+      ],
+      "status": 0,
+      "stdout": "31\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "32c2643e0dc65524c9f1f6f9f00937322fd68d59986bc381d9ff2285d23e353d",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 0.2380010159977246,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "lower-priority import:hit",
+      "environment_changes": {
+        "PYSTACHY_PATH": "/tmp/pystachy-program-cache-x51d2h7y/lower-priority",
+        "PYTHONPATH": "/tmp/pystachy-program-cache-x51d2h7y/lower-priority"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/shadow/main.py"
+      ],
+      "status": 0,
+      "stdout": "31\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "32c2643e0dc65524c9f1f6f9f00937322fd68d59986bc381d9ff2285d23e353d",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.026485219997994136,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "cpython-reference",
+      "environment_changes": {
+        "PYSTACHY_PATH": "/tmp/pystachy-program-cache-x51d2h7y/lower-priority",
+        "PYTHONPATH": "/tmp/pystachy-program-cache-x51d2h7y/lower-priority"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/shadow/main.py"
+      ],
+      "status": 0,
+      "stdout": "32\n",
+      "stderr": "",
+      "stdout_sha256": "2115cdb6bfcfb008eb2bab2bb79347cb064a48e4e7c4115ccbe4469c787bb6c4",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.012685181998676853,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "new shadowing module:miss",
+      "environment_changes": {
+        "PYSTACHY_PATH": "/tmp/pystachy-program-cache-x51d2h7y/lower-priority",
+        "PYTHONPATH": "/tmp/pystachy-program-cache-x51d2h7y/lower-priority"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/shadow/main.py"
+      ],
+      "status": 0,
+      "stdout": "32\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "2115cdb6bfcfb008eb2bab2bb79347cb064a48e4e7c4115ccbe4469c787bb6c4",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 0.22579651300111436,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "new shadowing module:hit",
+      "environment_changes": {
+        "PYSTACHY_PATH": "/tmp/pystachy-program-cache-x51d2h7y/lower-priority",
+        "PYTHONPATH": "/tmp/pystachy-program-cache-x51d2h7y/lower-priority"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/shadow/main.py"
+      ],
+      "status": 0,
+      "stdout": "32\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "2115cdb6bfcfb008eb2bab2bb79347cb064a48e4e7c4115ccbe4469c787bb6c4",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.03259721500216983,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "cpython-reference",
+      "environment_changes": {
+        "PYSTACHY_PATH": "/tmp/pystachy-program-cache-x51d2h7y/lower-priority",
+        "PYTHONPATH": "/tmp/pystachy-program-cache-x51d2h7y/lower-priority"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/shadow/main.py"
+      ],
+      "status": 0,
+      "stdout": "33\n",
+      "stderr": "",
+      "stdout_sha256": "19b8d5c59e421f037fe563007c7254eb8d98bc221b278c3db3e5fdbbfd52e273",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.015461536000657361,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "new shadowing package:miss",
+      "environment_changes": {
+        "PYSTACHY_PATH": "/tmp/pystachy-program-cache-x51d2h7y/lower-priority",
+        "PYTHONPATH": "/tmp/pystachy-program-cache-x51d2h7y/lower-priority"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/shadow/main.py"
+      ],
+      "status": 0,
+      "stdout": "33\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "19b8d5c59e421f037fe563007c7254eb8d98bc221b278c3db3e5fdbbfd52e273",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 0.23470365200046217,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "new shadowing package:hit",
+      "environment_changes": {
+        "PYSTACHY_PATH": "/tmp/pystachy-program-cache-x51d2h7y/lower-priority",
+        "PYTHONPATH": "/tmp/pystachy-program-cache-x51d2h7y/lower-priority"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/shadow/main.py"
+      ],
+      "status": 0,
+      "stdout": "33\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "19b8d5c59e421f037fe563007c7254eb8d98bc221b278c3db3e5fdbbfd52e273",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.028567904999363236,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "cpython-reference",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/optional/main.py"
+      ],
+      "status": 0,
+      "stdout": "missing\n",
+      "stderr": "",
+      "stdout_sha256": "6bbd052ab054ef222c1c87be60cd191addedd24cc882d1f5f7f7be61dc61bb3a",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.010541906998696504,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "missing optional import:miss",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/optional/main.py"
+      ],
+      "status": 0,
+      "stdout": "missing\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "6bbd052ab054ef222c1c87be60cd191addedd24cc882d1f5f7f7be61dc61bb3a",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 0.24893824699756806,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "missing optional import:hit",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/optional/main.py"
+      ],
+      "status": 0,
+      "stdout": "missing\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "6bbd052ab054ef222c1c87be60cd191addedd24cc882d1f5f7f7be61dc61bb3a",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.028424823001842014,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "cpython-reference",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/optional/main.py"
+      ],
+      "status": 0,
+      "stdout": "44\n",
+      "stderr": "",
+      "stdout_sha256": "b1ce0aa6fdf3cf349d773243dab9fbbe09d30619f38b0c1e8977e28c4f0bc495",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.013960403997771209,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "optional import appears:miss",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/optional/main.py"
+      ],
+      "status": 0,
+      "stdout": "44\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "b1ce0aa6fdf3cf349d773243dab9fbbe09d30619f38b0c1e8977e28c4f0bc495",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 0.27867677999893203,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "optional import appears:hit",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/optional/main.py"
+      ],
+      "status": 0,
+      "stdout": "44\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "b1ce0aa6fdf3cf349d773243dab9fbbe09d30619f38b0c1e8977e28c4f0bc495",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.02584889000354451,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "cpython-reference",
+      "environment_changes": {
+        "PYSTACHY_PATH": "/tmp/pystachy-program-cache-x51d2h7y/namespace-first:/tmp/pystachy-program-cache-x51d2h7y/namespace-last",
+        "PYTHONPATH": "/tmp/pystachy-program-cache-x51d2h7y/namespace-first:/tmp/pystachy-program-cache-x51d2h7y/namespace-last"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/namespace/main.py"
+      ],
+      "status": 0,
+      "stdout": "51\n",
+      "stderr": "",
+      "stdout_sha256": "9e62e6489fcc4bc58be7cb23e74d25cbfcc3732c1f70e8c37f12a756d1db9381",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.015493587998207659,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "namespace import:miss",
+      "environment_changes": {
+        "PYSTACHY_PATH": "/tmp/pystachy-program-cache-x51d2h7y/namespace-first:/tmp/pystachy-program-cache-x51d2h7y/namespace-last",
+        "PYTHONPATH": "/tmp/pystachy-program-cache-x51d2h7y/namespace-first:/tmp/pystachy-program-cache-x51d2h7y/namespace-last"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/namespace/main.py"
+      ],
+      "status": 0,
+      "stdout": "51\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "9e62e6489fcc4bc58be7cb23e74d25cbfcc3732c1f70e8c37f12a756d1db9381",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 0.24629765099962242,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "namespace import:hit",
+      "environment_changes": {
+        "PYSTACHY_PATH": "/tmp/pystachy-program-cache-x51d2h7y/namespace-first:/tmp/pystachy-program-cache-x51d2h7y/namespace-last",
+        "PYTHONPATH": "/tmp/pystachy-program-cache-x51d2h7y/namespace-first:/tmp/pystachy-program-cache-x51d2h7y/namespace-last"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/namespace/main.py"
+      ],
+      "status": 0,
+      "stdout": "51\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "9e62e6489fcc4bc58be7cb23e74d25cbfcc3732c1f70e8c37f12a756d1db9381",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.031567900001391536,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "cpython-reference",
+      "environment_changes": {
+        "PYSTACHY_PATH": "/tmp/pystachy-program-cache-x51d2h7y/namespace-first:/tmp/pystachy-program-cache-x51d2h7y/namespace-last",
+        "PYTHONPATH": "/tmp/pystachy-program-cache-x51d2h7y/namespace-first:/tmp/pystachy-program-cache-x51d2h7y/namespace-last"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/namespace/main.py"
+      ],
+      "status": 0,
+      "stdout": "52\n",
+      "stderr": "",
+      "stdout_sha256": "6f3e559bbd93fa2f9b25cbd9b5f348a4b20c902d8e6498de5c28d73df8e2f571",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.012751980997563805,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "new namespace portion:miss",
+      "environment_changes": {
+        "PYSTACHY_PATH": "/tmp/pystachy-program-cache-x51d2h7y/namespace-first:/tmp/pystachy-program-cache-x51d2h7y/namespace-last",
+        "PYTHONPATH": "/tmp/pystachy-program-cache-x51d2h7y/namespace-first:/tmp/pystachy-program-cache-x51d2h7y/namespace-last"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/namespace/main.py"
+      ],
+      "status": 0,
+      "stdout": "52\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "6f3e559bbd93fa2f9b25cbd9b5f348a4b20c902d8e6498de5c28d73df8e2f571",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 0.2238632980006514,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "new namespace portion:hit",
+      "environment_changes": {
+        "PYSTACHY_PATH": "/tmp/pystachy-program-cache-x51d2h7y/namespace-first:/tmp/pystachy-program-cache-x51d2h7y/namespace-last",
+        "PYTHONPATH": "/tmp/pystachy-program-cache-x51d2h7y/namespace-first:/tmp/pystachy-program-cache-x51d2h7y/namespace-last"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/namespace/main.py"
+      ],
+      "status": 0,
+      "stdout": "52\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "6f3e559bbd93fa2f9b25cbd9b5f348a4b20c902d8e6498de5c28d73df8e2f571",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.03200334100256441,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "cpython-reference",
+      "environment_changes": {
+        "PYSTACHY_PATH": "/tmp/pystachy-program-cache-x51d2h7y/namespace-first:/tmp/pystachy-program-cache-x51d2h7y/namespace-last",
+        "PYTHONPATH": "/tmp/pystachy-program-cache-x51d2h7y/namespace-first:/tmp/pystachy-program-cache-x51d2h7y/namespace-last"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/namespace/main.py"
+      ],
+      "status": 0,
+      "stdout": "51\n",
+      "stderr": "",
+      "stdout_sha256": "9e62e6489fcc4bc58be7cb23e74d25cbfcc3732c1f70e8c37f12a756d1db9381",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.0153132720006397,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "namespace becomes regular package:miss",
+      "environment_changes": {
+        "PYSTACHY_PATH": "/tmp/pystachy-program-cache-x51d2h7y/namespace-first:/tmp/pystachy-program-cache-x51d2h7y/namespace-last",
+        "PYTHONPATH": "/tmp/pystachy-program-cache-x51d2h7y/namespace-first:/tmp/pystachy-program-cache-x51d2h7y/namespace-last"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/namespace/main.py"
+      ],
+      "status": 0,
+      "stdout": "51\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "9e62e6489fcc4bc58be7cb23e74d25cbfcc3732c1f70e8c37f12a756d1db9381",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 0.22766065699761384,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "namespace becomes regular package:hit",
+      "environment_changes": {
+        "PYSTACHY_PATH": "/tmp/pystachy-program-cache-x51d2h7y/namespace-first:/tmp/pystachy-program-cache-x51d2h7y/namespace-last",
+        "PYTHONPATH": "/tmp/pystachy-program-cache-x51d2h7y/namespace-first:/tmp/pystachy-program-cache-x51d2h7y/namespace-last"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/namespace/main.py"
+      ],
+      "status": 0,
+      "stdout": "51\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "9e62e6489fcc4bc58be7cb23e74d25cbfcc3732c1f70e8c37f12a756d1db9381",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.02473729200210073,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "builtin ffi reference",
+      "environment_changes": {
+        "PYSTACHY_PROGRAM_CACHE": "0"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/ffi-shadow/main.py"
+      ],
+      "status": 0,
+      "stdout": "ok\n",
+      "stderr": "",
+      "stdout_sha256": "dc51b8c96c2d745df3bd5590d990230a482fd247123599548e0632fdbf97fc22",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.11208163599803811,
+      "tools": {
+        "clang": 1,
+        "opt": 1,
+        "lli": 1
+      },
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "builtin ffi:miss",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/ffi-shadow/main.py"
+      ],
+      "status": 0,
+      "stdout": "ok\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "dc51b8c96c2d745df3bd5590d990230a482fd247123599548e0632fdbf97fc22",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 0.22697112600144465,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "builtin ffi:hit",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/ffi-shadow/main.py"
+      ],
+      "status": 0,
+      "stdout": "ok\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "dc51b8c96c2d745df3bd5590d990230a482fd247123599548e0632fdbf97fc22",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.02671713100062334,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "cpython-reference",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/ffi-shadow/main.py"
+      ],
+      "status": 0,
+      "stdout": "shadow\nok\n",
+      "stderr": "",
+      "stdout_sha256": "ff9334e48e21af103dede4ebfd2a076b34bcfdc626178e3a7217792e53cb779d",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.014454281001235358,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "new ffi shadow:miss",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/ffi-shadow/main.py"
+      ],
+      "status": 0,
+      "stdout": "shadow\nok\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "ff9334e48e21af103dede4ebfd2a076b34bcfdc626178e3a7217792e53cb779d",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 0.24649031500302954,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "new ffi shadow:hit",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/ffi-shadow/main.py"
+      ],
+      "status": 0,
+      "stdout": "shadow\nok\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "ff9334e48e21af103dede4ebfd2a076b34bcfdc626178e3a7217792e53cb779d",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.03143497500059311,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "import removed",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/imports/main.py"
+      ],
+      "status": 1,
+      "stdout": "",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\n/tmp/pystachy-program-cache-x51d2h7y/sources/imports/helper.py:1: error: module 'nested' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no nested.py on the module path\n",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "3d40cc618f4740be0ba72c6e9852e8f51545c5664b5cf15a9a161bafe8e973ce",
+      "seconds": 0.0869580920007138,
+      "tools": {
+        "clang": 1
+      },
+      "events": [
+        "miss",
+        "frontend"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "cpython-reference",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/callbacks/main.py",
+        "literal $`'"
+      ],
+      "status": 0,
+      "stdout": "import effect\ndefault\nfeedback 7\n21\n42\nTrue True\n[Item(1), Item(2)]\ncaught callback\n['/tmp/pystachy-program-cache-x51d2h7y/sources/callbacks/main.py', \"literal $`'\"]\nTrue 17 True 18 True 19 ['kept']\n",
+      "stderr": "",
+      "stdout_sha256": "89218762dfbac2699a7e11c2e064eee85d610d09680bf13bd56d2eda9ce6ae5c",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.012867183999333065,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "callbacks, exceptions and layout:miss",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/callbacks/main.py",
+        "literal $`'"
+      ],
+      "status": 0,
+      "stdout": "import effect\ndefault\nfeedback 7\n21\n42\nTrue True\n[Item(1), Item(2)]\ncaught callback\n['/tmp/pystachy-program-cache-x51d2h7y/sources/callbacks/main.py', \"literal $`'\"]\nTrue 17 True 18 True 19 ['kept']\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "89218762dfbac2699a7e11c2e064eee85d610d09680bf13bd56d2eda9ce6ae5c",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 0.2518414059995848,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "callbacks, exceptions and layout:hit",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/callbacks/main.py",
+        "literal $`'"
+      ],
+      "status": 0,
+      "stdout": "import effect\ndefault\nfeedback 7\n21\n42\nTrue True\n[Item(1), Item(2)]\ncaught callback\n['/tmp/pystachy-program-cache-x51d2h7y/sources/callbacks/main.py', \"literal $`'\"]\nTrue 17 True 18 True 19 ['kept']\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "89218762dfbac2699a7e11c2e064eee85d610d09680bf13bd56d2eda9ce6ae5c",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.034567292997962795,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "callback GC hit",
+      "environment_changes": {
+        "PYSTACHY_GC_STRESS_PROGRAM": "1"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/callbacks/main.py",
+        "literal $`'"
+      ],
+      "status": 0,
+      "stdout": "import effect\ndefault\nfeedback 7\n21\n42\nTrue True\n[Item(1), Item(2)]\ncaught callback\n['/tmp/pystachy-program-cache-x51d2h7y/sources/callbacks/main.py', \"literal $`'\"]\nTrue 17 True 18 True 19 ['kept']\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "89218762dfbac2699a7e11c2e064eee85d610d09680bf13bd56d2eda9ce6ae5c",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.039699259999906644,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "cpython-reference",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/callbacks/main.py",
+        "literal $`'"
+      ],
+      "status": 0,
+      "stdout": "import effect\ndefault\nfeedback 7\n21\n42\nTrue True\n[Item(1), Item(2)]\ncaught callback\n['/tmp/pystachy-program-cache-x51d2h7y/sources/callbacks/main.py', \"literal $`'\"]\nTrue 17 True 18 True 19 ['kept']\n",
+      "stderr": "",
+      "stdout_sha256": "89218762dfbac2699a7e11c2e064eee85d610d09680bf13bd56d2eda9ce6ae5c",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.013577349000115646,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "cpython-reference",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/generator/main.py"
+      ],
+      "status": 0,
+      "stdout": "closed\n[0, 1, 2, 3]\n",
+      "stderr": "",
+      "stdout_sha256": "91ddb50804148d817e6c820ffa9027a08d3d72c48ab31fc22e7800015c628dfd",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.019772894000197994,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "coroutine finalization:miss",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/generator/main.py"
+      ],
+      "status": 0,
+      "stdout": "closed\n[0, 1, 2, 3]\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "91ddb50804148d817e6c820ffa9027a08d3d72c48ab31fc22e7800015c628dfd",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 0.23601935600163415,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "coroutine finalization:hit",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/generator/main.py"
+      ],
+      "status": 0,
+      "stdout": "closed\n[0, 1, 2, 3]\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "91ddb50804148d817e6c820ffa9027a08d3d72c48ab31fc22e7800015c628dfd",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.026609821998135885,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "cpython-reference",
+      "environment_changes": {},
+      "stdin": "9.646074145397322e-06\n0.20167126564134574\n-13.610862979021343\n",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/float/main.py"
+      ],
+      "status": 0,
+      "stdout": "square 9.304674641850267e-11 9.304674641850267e-11 9.304674641850267e-11\nreciprocal 4.958564606712046 4.958564606712046 4.958564606712046\nbase two 7.993223866522653e-05 7.993223866522653e-05 7.993223866522653e-05\n-0.0 0.0 0.0\nZeroDivisionError: 0.0 cannot be raised to a negative power\nValueError: math domain error\n0.0 0.0 0.0\nZeroDivisionError: 0.0 cannot be raised to a negative power\nValueError: math domain error\n-inf inf inf\noperator reciprocal -0.0\nmath reciprocal -0.0\ninf inf inf\noperator reciprocal 0.0\nmath reciprocal 0.0\nnan nan nan\noperator reciprocal nan\nmath reciprocal nan\n",
+      "stderr": "",
+      "stdout_sha256": "306de5a8a4b5770291b5d478a85587fadf297db6b94dc62d3e59305c611b4ed3",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.01516857800015714,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "runtime floating-point inputs:miss",
+      "environment_changes": {},
+      "stdin": "9.646074145397322e-06\n0.20167126564134574\n-13.610862979021343\n",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/float/main.py"
+      ],
+      "status": 0,
+      "stdout": "square 9.304674641850267e-11 9.304674641850267e-11 9.304674641850267e-11\nreciprocal 4.958564606712046 4.958564606712046 4.958564606712046\nbase two 7.993223866522653e-05 7.993223866522653e-05 7.993223866522653e-05\n-0.0 0.0 0.0\nZeroDivisionError: 0.0 cannot be raised to a negative power\nValueError: math domain error\n0.0 0.0 0.0\nZeroDivisionError: 0.0 cannot be raised to a negative power\nValueError: math domain error\n-inf inf inf\noperator reciprocal -0.0\nmath reciprocal -0.0\ninf inf inf\noperator reciprocal 0.0\nmath reciprocal 0.0\nnan nan nan\noperator reciprocal nan\nmath reciprocal nan\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "306de5a8a4b5770291b5d478a85587fadf297db6b94dc62d3e59305c611b4ed3",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 0.23962611599927186,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "runtime floating-point inputs:hit",
+      "environment_changes": {},
+      "stdin": "9.646074145397322e-06\n0.20167126564134574\n-13.610862979021343\n",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/float/main.py"
+      ],
+      "status": 0,
+      "stdout": "square 9.304674641850267e-11 9.304674641850267e-11 9.304674641850267e-11\nreciprocal 4.958564606712046 4.958564606712046 4.958564606712046\nbase two 7.993223866522653e-05 7.993223866522653e-05 7.993223866522653e-05\n-0.0 0.0 0.0\nZeroDivisionError: 0.0 cannot be raised to a negative power\nValueError: math domain error\n0.0 0.0 0.0\nZeroDivisionError: 0.0 cannot be raised to a negative power\nValueError: math domain error\n-inf inf inf\noperator reciprocal -0.0\nmath reciprocal -0.0\ninf inf inf\noperator reciprocal 0.0\nmath reciprocal 0.0\nnan nan nan\noperator reciprocal nan\nmath reciprocal nan\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "306de5a8a4b5770291b5d478a85587fadf297db6b94dc62d3e59305c611b4ed3",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.0250066410008003,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "cpython-reference",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/dynamic-json/main.py"
+      ],
+      "status": 0,
+      "stdout": "int 0\nint 0\nint 7\nint -7\nint 999999999999999999\nint 1000000000000000000\nint 9223372036854775807\nint -9223372036854775808\nint 9223372036854775808\nint -9223372036854775809\nint 12345678901234567890\nint -12345678901234567890\nint 340282366920938463463374607431768211455\nint -340282366920938463463374607431768211456\nfloat 1.2345678901234568e+29\nfloat 1234567890.1234567\n{\"n\": 12345678901234567890, \"emoji\": \"\\ud83d\\ude00\", \"nested\": [false, null, -12345678901234567890, {\"small\": 1}], \"nan\": NaN, \"positive\": Infinity, \"negative\": -Infinity}\n1 128512\nint 12345678901234567891\nTrue [false, null, -12345678901234567890, {\"small\": 1}, 12345678901234567890]\n{\"\": 12345678901234567890}\n{\"n\": 7}\n{\"n\": 12345678901234567890}\nerror Extra data 1 1 2\nerror Extra data 20 1 21\nerror Expecting ',' delimiter 27 1 28\nerror Extra data 27 1 28\ndigits 4300 4300\ndigits 4301 ValueError\n",
+      "stderr": "",
+      "stdout_sha256": "8bbe9e0a33a7b3ea8401341614f1428635ad00f164aac78b4833c217f9de6740",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.025293490001786267,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "dynamic JSON and promoted integers:miss",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/dynamic-json/main.py"
+      ],
+      "status": 0,
+      "stdout": "int 0\nint 0\nint 7\nint -7\nint 999999999999999999\nint 1000000000000000000\nint 9223372036854775807\nint -9223372036854775808\nint 9223372036854775808\nint -9223372036854775809\nint 12345678901234567890\nint -12345678901234567890\nint 340282366920938463463374607431768211455\nint -340282366920938463463374607431768211456\nfloat 1.2345678901234568e+29\nfloat 1234567890.1234567\n{\"n\": 12345678901234567890, \"emoji\": \"\\ud83d\\ude00\", \"nested\": [false, null, -12345678901234567890, {\"small\": 1}], \"nan\": NaN, \"positive\": Infinity, \"negative\": -Infinity}\n1 128512\nint 12345678901234567891\nTrue [false, null, -12345678901234567890, {\"small\": 1}, 12345678901234567890]\n{\"\": 12345678901234567890}\n{\"n\": 7}\n{\"n\": 12345678901234567890}\nerror Extra data 1 1 2\nerror Extra data 20 1 21\nerror Expecting ',' delimiter 27 1 28\nerror Extra data 27 1 28\ndigits 4300 4300\ndigits 4301 ValueError\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "8bbe9e0a33a7b3ea8401341614f1428635ad00f164aac78b4833c217f9de6740",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 0.5321591309984797,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "dynamic JSON and promoted integers:hit",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/dynamic-json/main.py"
+      ],
+      "status": 0,
+      "stdout": "int 0\nint 0\nint 7\nint -7\nint 999999999999999999\nint 1000000000000000000\nint 9223372036854775807\nint -9223372036854775808\nint 9223372036854775808\nint -9223372036854775809\nint 12345678901234567890\nint -12345678901234567890\nint 340282366920938463463374607431768211455\nint -340282366920938463463374607431768211456\nfloat 1.2345678901234568e+29\nfloat 1234567890.1234567\n{\"n\": 12345678901234567890, \"emoji\": \"\\ud83d\\ude00\", \"nested\": [false, null, -12345678901234567890, {\"small\": 1}], \"nan\": NaN, \"positive\": Infinity, \"negative\": -Infinity}\n1 128512\nint 12345678901234567891\nTrue [false, null, -12345678901234567890, {\"small\": 1}, 12345678901234567890]\n{\"\": 12345678901234567890}\n{\"n\": 7}\n{\"n\": 12345678901234567890}\nerror Extra data 1 1 2\nerror Extra data 20 1 21\nerror Expecting ',' delimiter 27 1 28\nerror Extra data 27 1 28\ndigits 4300 4300\ndigits 4301 ValueError\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "8bbe9e0a33a7b3ea8401341614f1428635ad00f164aac78b4833c217f9de6740",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.03431002200159128,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "dynamic JSON GC hit",
+      "environment_changes": {
+        "PYSTACHY_GC_STRESS_PROGRAM": "1"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/dynamic-json/main.py"
+      ],
+      "status": 0,
+      "stdout": "int 0\nint 0\nint 7\nint -7\nint 999999999999999999\nint 1000000000000000000\nint 9223372036854775807\nint -9223372036854775808\nint 9223372036854775808\nint -9223372036854775809\nint 12345678901234567890\nint -12345678901234567890\nint 340282366920938463463374607431768211455\nint -340282366920938463463374607431768211456\nfloat 1.2345678901234568e+29\nfloat 1234567890.1234567\n{\"n\": 12345678901234567890, \"emoji\": \"\\ud83d\\ude00\", \"nested\": [false, null, -12345678901234567890, {\"small\": 1}], \"nan\": NaN, \"positive\": Infinity, \"negative\": -Infinity}\n1 128512\nint 12345678901234567891\nTrue [false, null, -12345678901234567890, {\"small\": 1}, 12345678901234567890]\n{\"\": 12345678901234567890}\n{\"n\": 7}\n{\"n\": 12345678901234567890}\nerror Extra data 1 1 2\nerror Extra data 20 1 21\nerror Expecting ',' delimiter 27 1 28\nerror Extra data 27 1 28\ndigits 4300 4300\ndigits 4301 ValueError\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "8bbe9e0a33a7b3ea8401341614f1428635ad00f164aac78b4833c217f9de6740",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.030414599998039193,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "cpython-reference",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/status/main.py"
+      ],
+      "status": 7,
+      "stdout": "before exit\n",
+      "stderr": "",
+      "stdout_sha256": "0348d7c87547cf5b9564e1b74bdb63091f12c55f40a557e653f43497ac8e6455",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.011937153001781553,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "nonzero program status:miss",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/status/main.py"
+      ],
+      "status": 7,
+      "stdout": "before exit\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "0348d7c87547cf5b9564e1b74bdb63091f12c55f40a557e653f43497ac8e6455",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 0.2629185870027868,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "nonzero program status:hit",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/status/main.py"
+      ],
+      "status": 7,
+      "stdout": "before exit\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "0348d7c87547cf5b9564e1b74bdb63091f12c55f40a557e653f43497ac8e6455",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.031622477999917464,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "uncached error reference",
+      "environment_changes": {
+        "PYSTACHY_PROGRAM_CACHE": "0"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/uncaught/main.py"
+      ],
+      "status": 1,
+      "stdout": "before raise\n",
+      "stderr": "ValueError: same error\n",
+      "stdout_sha256": "3a287fa681b157034ed1219c7f50191e4301b45df820bd7056aaead11e713525",
+      "stderr_sha256": "23b7ba50f7831982bffbff2daa049a75342b41fc48de5e1826ac7e47673b774d",
+      "seconds": 0.03343543899973156,
+      "tools": {
+        "opt": 1,
+        "lli": 1
+      },
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "uncaught error:miss",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/uncaught/main.py"
+      ],
+      "status": 1,
+      "stdout": "before raise\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\nValueError: same error\n",
+      "stdout_sha256": "3a287fa681b157034ed1219c7f50191e4301b45df820bd7056aaead11e713525",
+      "stderr_sha256": "59108e5de81fec276005f240796970cbd081ad07c106883820a6466dc23b6a2c",
+      "seconds": 0.24144335399978445,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "uncaught error:hit",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/uncaught/main.py"
+      ],
+      "status": 1,
+      "stdout": "before raise\n",
+      "stderr": "pystachy program cache: hit\nValueError: same error\n",
+      "stdout_sha256": "3a287fa681b157034ed1219c7f50191e4301b45df820bd7056aaead11e713525",
+      "stderr_sha256": "f12bb544b8815689f427d91019439eee666f5ea255268666826f1041e0554acd",
+      "seconds": 0.03314944000157993,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "cpython-reference",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/corruption/main.py"
+      ],
+      "status": 0,
+      "stdout": "57\n",
+      "stderr": "",
+      "stdout_sha256": "1326faec3eb42dc72ddffe46daf3940b932f48b9799f6cbf28e80504e7b34958",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.015481626000109827,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "corruption prime:miss",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/corruption/main.py"
+      ],
+      "status": 0,
+      "stdout": "57\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "1326faec3eb42dc72ddffe46daf3940b932f48b9799f6cbf28e80504e7b34958",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 5.383492266999383,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "corruption prime:hit",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/corruption/main.py"
+      ],
+      "status": 0,
+      "stdout": "57\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "1326faec3eb42dc72ddffe46daf3940b932f48b9799f6cbf28e80504e7b34958",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.025519547998555936,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "cpython-reference",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/corruption/main.py"
+      ],
+      "status": 0,
+      "stdout": "57\n",
+      "stderr": "",
+      "stdout_sha256": "1326faec3eb42dc72ddffe46daf3940b932f48b9799f6cbf28e80504e7b34958",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.012402312997437548,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "corrupt executable:miss",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/corruption/main.py"
+      ],
+      "status": 0,
+      "stdout": "57\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "1326faec3eb42dc72ddffe46daf3940b932f48b9799f6cbf28e80504e7b34958",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 0.24200673700033803,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "corrupt executable:hit",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/corruption/main.py"
+      ],
+      "status": 0,
+      "stdout": "57\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "1326faec3eb42dc72ddffe46daf3940b932f48b9799f6cbf28e80504e7b34958",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.03011660799893434,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "cpython-reference",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/corruption/main.py"
+      ],
+      "status": 0,
+      "stdout": "57\n",
+      "stderr": "",
+      "stdout_sha256": "1326faec3eb42dc72ddffe46daf3940b932f48b9799f6cbf28e80504e7b34958",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.013333098002476618,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "incomplete manifest:miss",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/corruption/main.py"
+      ],
+      "status": 0,
+      "stdout": "57\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "1326faec3eb42dc72ddffe46daf3940b932f48b9799f6cbf28e80504e7b34958",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 0.3011204210015421,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "incomplete manifest:hit",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/corruption/main.py"
+      ],
+      "status": 0,
+      "stdout": "57\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "1326faec3eb42dc72ddffe46daf3940b932f48b9799f6cbf28e80504e7b34958",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.027763259997300338,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "cpython-reference",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/corruption/main.py"
+      ],
+      "status": 0,
+      "stdout": "57\n",
+      "stderr": "",
+      "stdout_sha256": "1326faec3eb42dc72ddffe46daf3940b932f48b9799f6cbf28e80504e7b34958",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.010825817000295501,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "missing executable:miss",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/corruption/main.py"
+      ],
+      "status": 0,
+      "stdout": "57\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "1326faec3eb42dc72ddffe46daf3940b932f48b9799f6cbf28e80504e7b34958",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 0.27022478800063254,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "missing executable:hit",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/corruption/main.py"
+      ],
+      "status": 0,
+      "stdout": "57\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "1326faec3eb42dc72ddffe46daf3940b932f48b9799f6cbf28e80504e7b34958",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.03370665399779682,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "cpython-reference",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/bypass/main.py"
+      ],
+      "status": 0,
+      "stdout": "63\n",
+      "stderr": "",
+      "stdout_sha256": "eecd262c3ecab667b61ebb70835f3b181a1d1530d3ebc0ef99a3a8dc3d5b193f",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.013625310999486828,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "bypass prime:miss",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/bypass/main.py"
+      ],
+      "status": 0,
+      "stdout": "63\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "eecd262c3ecab667b61ebb70835f3b181a1d1530d3ebc0ef99a3a8dc3d5b193f",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 0.25458016700213193,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "bypass prime:hit",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/bypass/main.py"
+      ],
+      "status": 0,
+      "stdout": "63\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "eecd262c3ecab667b61ebb70835f3b181a1d1530d3ebc0ef99a3a8dc3d5b193f",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.02641319399845088,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "disabled",
+      "environment_changes": {
+        "PYSTACHY_PROGRAM_CACHE": "0"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/bypass/main.py"
+      ],
+      "status": 0,
+      "stdout": "63\n",
+      "stderr": "",
+      "stdout_sha256": "eecd262c3ecab667b61ebb70835f3b181a1d1530d3ebc0ef99a3a8dc3d5b193f",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.03907754399915575,
+      "tools": {
+        "opt": 1,
+        "lli": 1
+      },
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "default",
+      "environment_changes": {
+        "PYSTACHY_PROGRAM_CACHE": null
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/bypass/main.py"
+      ],
+      "status": 0,
+      "stdout": "63\n",
+      "stderr": "",
+      "stdout_sha256": "eecd262c3ecab667b61ebb70835f3b181a1d1530d3ebc0ef99a3a8dc3d5b193f",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.041142721001961036,
+      "tools": {
+        "opt": 1,
+        "lli": 1
+      },
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "custom C flags",
+      "environment_changes": {
+        "PYSTACHY_CFLAGS": "-DCACHE_PROBE=1"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/bypass/main.py"
+      ],
+      "status": 0,
+      "stdout": "63\n",
+      "stderr": "pystachy program cache: bypass custom CFLAGS\n",
+      "stdout_sha256": "eecd262c3ecab667b61ebb70835f3b181a1d1530d3ebc0ef99a3a8dc3d5b193f",
+      "stderr_sha256": "a3aa384f15c447f2685ffc143d8954c096ef6edec00d46f40ebca68e409bcf3c",
+      "seconds": 12.439601062000293,
+      "tools": {
+        "clang": 3,
+        "llvm-as": 1,
+        "llvm-link": 1,
+        "opt": 3,
+        "lli": 1
+      },
+      "events": [
+        "bypass custom CFLAGS"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "IR checker",
+      "environment_changes": {
+        "PYSTACHY_IRCHECK": "1"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/bypass/main.py"
+      ],
+      "status": 0,
+      "stdout": "63\n",
+      "stderr": "pystachy program cache: bypass compiler diagnostics requested\n",
+      "stdout_sha256": "eecd262c3ecab667b61ebb70835f3b181a1d1530d3ebc0ef99a3a8dc3d5b193f",
+      "stderr_sha256": "2c02827cfeb78adc97b03858fe1f7766f110bee78b8d951939c4d1673bbd214e",
+      "seconds": 0.0470362899977772,
+      "tools": {
+        "opt": 1,
+        "lli": 1
+      },
+      "events": [
+        "bypass compiler diagnostics requested"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "MCJIT",
+      "environment_changes": {
+        "PYSTACHY_JIT_CODEGEN": "0"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/bypass/main.py"
+      ],
+      "status": 0,
+      "stdout": "63\n",
+      "stderr": "pystachy program cache: bypass default ORC tier required\n",
+      "stdout_sha256": "eecd262c3ecab667b61ebb70835f3b181a1d1530d3ebc0ef99a3a8dc3d5b193f",
+      "stderr_sha256": "31216a3e37a0eff2fa81d0cb382b49b4cba5c7a34dd4795ef1dd2e190ad6658b",
+      "seconds": 0.06592162000015378,
+      "tools": {
+        "opt": 1,
+        "lli": 1
+      },
+      "events": [
+        "bypass default ORC tier required"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "build bypass",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "build",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/bypass/main.py",
+        "-o",
+        "/tmp/pystachy-program-cache-x51d2h7y/ordinary-aot"
+      ],
+      "status": 0,
+      "stdout": "",
+      "stderr": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.3576713039983588,
+      "tools": {
+        "llvm-link": 1,
+        "clang": 2
+      },
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "ordinary AOT",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/tmp/pystachy-program-cache-x51d2h7y/ordinary-aot"
+      ],
+      "status": 0,
+      "stdout": "63\n",
+      "stderr": "",
+      "stdout_sha256": "eecd262c3ecab667b61ebb70835f3b181a1d1530d3ebc0ef99a3a8dc3d5b193f",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.0012196050010970794,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "extension bypass",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "ext",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/bypass/main.py",
+        "-o",
+        "/tmp/pystachy-program-cache-x51d2h7y/main.abi3.so"
+      ],
+      "status": 0,
+      "stdout": "",
+      "stderr": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.8277875540006789,
+      "tools": {
+        "clang": 4,
+        "llvm-as": 2,
+        "llvm-link": 2,
+        "opt": 1
+      },
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "cpython-reference",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/tool/main.py"
+      ],
+      "status": 0,
+      "stdout": "71\n",
+      "stderr": "",
+      "stdout_sha256": "826b6832e45ba17d625debc95ae8554e148550b00c05b47fa8f7be1c555bc83c",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.016403707002609735,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "tool identity prime:miss",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/tool/main.py"
+      ],
+      "status": 0,
+      "stdout": "71\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "826b6832e45ba17d625debc95ae8554e148550b00c05b47fa8f7be1c555bc83c",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 0.2292156880030234,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "tool identity prime:hit",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/tool/main.py"
+      ],
+      "status": 0,
+      "stdout": "71\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "826b6832e45ba17d625debc95ae8554e148550b00c05b47fa8f7be1c555bc83c",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.024164690999896266,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "cpython-reference",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/tool/main.py"
+      ],
+      "status": 0,
+      "stdout": "71\n",
+      "stderr": "",
+      "stdout_sha256": "826b6832e45ba17d625debc95ae8554e148550b00c05b47fa8f7be1c555bc83c",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.015729353999631712,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "tool same-size edit:miss",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/tool/main.py"
+      ],
+      "status": 0,
+      "stdout": "71\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "826b6832e45ba17d625debc95ae8554e148550b00c05b47fa8f7be1c555bc83c",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 13.021950105998258,
+      "tools": {
+        "clang": 6,
+        "llvm-as": 1,
+        "llvm-link": 1,
+        "opt": 3
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "tool same-size edit:hit",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/tool/main.py"
+      ],
+      "status": 0,
+      "stdout": "71\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "826b6832e45ba17d625debc95ae8554e148550b00c05b47fa8f7be1c555bc83c",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.023821359001885867,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "cpython-reference",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/compiler/main.py"
+      ],
+      "status": 0,
+      "stdout": "73\n",
+      "stderr": "",
+      "stdout_sha256": "c6ebc76be5dc1f8b433f8d6fd9bd85cd9325086038442db8614bb799fec6fd85",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.012416834000759991,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "copied compiler:miss",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/tmp/pystachy-program-cache-x51d2h7y/compiler-copy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/compiler/main.py"
+      ],
+      "status": 0,
+      "stdout": "73\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "c6ebc76be5dc1f8b433f8d6fd9bd85cd9325086038442db8614bb799fec6fd85",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 14.26888575400153,
+      "tools": {
+        "clang": 6,
+        "llvm-as": 1,
+        "llvm-link": 1,
+        "opt": 3
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "copied compiler:hit",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/tmp/pystachy-program-cache-x51d2h7y/compiler-copy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/compiler/main.py"
+      ],
+      "status": 0,
+      "stdout": "73\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "c6ebc76be5dc1f8b433f8d6fd9bd85cd9325086038442db8614bb799fec6fd85",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.03469238999969093,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "cpython-reference",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/compiler/main.py"
+      ],
+      "status": 0,
+      "stdout": "73\n",
+      "stderr": "",
+      "stdout_sha256": "c6ebc76be5dc1f8b433f8d6fd9bd85cd9325086038442db8614bb799fec6fd85",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.01592876499853446,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "compiler same-size edit:miss",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/tmp/pystachy-program-cache-x51d2h7y/compiler-copy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/compiler/main.py"
+      ],
+      "status": 0,
+      "stdout": "73\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "c6ebc76be5dc1f8b433f8d6fd9bd85cd9325086038442db8614bb799fec6fd85",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 13.827305023998633,
+      "tools": {
+        "clang": 6,
+        "llvm-as": 1,
+        "llvm-link": 1,
+        "opt": 3
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "compiler same-size edit:hit",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/tmp/pystachy-program-cache-x51d2h7y/compiler-copy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/compiler/main.py"
+      ],
+      "status": 0,
+      "stdout": "73\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "c6ebc76be5dc1f8b433f8d6fd9bd85cd9325086038442db8614bb799fec6fd85",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.03666946099838242,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "cpython-reference",
+      "environment_changes": {
+        "PYSTACHY_HOME": "/tmp/pystachy-program-cache-x51d2h7y/runtime-home"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/runtime/main.py"
+      ],
+      "status": 0,
+      "stdout": "79\n",
+      "stderr": "",
+      "stdout_sha256": "5ced0deaf966775a8b592f6bd95a33a67053b242a7c13654896cd9f2d36a0e37",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.01174062599966419,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "runtime identity prime:miss",
+      "environment_changes": {
+        "PYSTACHY_HOME": "/tmp/pystachy-program-cache-x51d2h7y/runtime-home"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/runtime/main.py"
+      ],
+      "status": 0,
+      "stdout": "79\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "5ced0deaf966775a8b592f6bd95a33a67053b242a7c13654896cd9f2d36a0e37",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 13.325209236001683,
+      "tools": {
+        "clang": 6,
+        "llvm-as": 1,
+        "llvm-link": 1,
+        "opt": 3
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "runtime identity prime:hit",
+      "environment_changes": {
+        "PYSTACHY_HOME": "/tmp/pystachy-program-cache-x51d2h7y/runtime-home"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/runtime/main.py"
+      ],
+      "status": 0,
+      "stdout": "79\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "5ced0deaf966775a8b592f6bd95a33a67053b242a7c13654896cd9f2d36a0e37",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.03999683800066123,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "cpython-reference",
+      "environment_changes": {
+        "PYSTACHY_HOME": "/tmp/pystachy-program-cache-x51d2h7y/runtime-home"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/runtime/main.py"
+      ],
+      "status": 0,
+      "stdout": "79\n",
+      "stderr": "",
+      "stdout_sha256": "5ced0deaf966775a8b592f6bd95a33a67053b242a7c13654896cd9f2d36a0e37",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.019527835000189953,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "runtime same-size edit:miss",
+      "environment_changes": {
+        "PYSTACHY_HOME": "/tmp/pystachy-program-cache-x51d2h7y/runtime-home"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/runtime/main.py"
+      ],
+      "status": 0,
+      "stdout": "79\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "5ced0deaf966775a8b592f6bd95a33a67053b242a7c13654896cd9f2d36a0e37",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 12.84721555500073,
+      "tools": {
+        "clang": 6,
+        "llvm-as": 1,
+        "llvm-link": 1,
+        "opt": 3
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "runtime same-size edit:hit",
+      "environment_changes": {
+        "PYSTACHY_HOME": "/tmp/pystachy-program-cache-x51d2h7y/runtime-home"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/runtime/main.py"
+      ],
+      "status": 0,
+      "stdout": "79\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "5ced0deaf966775a8b592f6bd95a33a67053b242a7c13654896cd9f2d36a0e37",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.028579498000908643,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "failed frontend",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/failure/main.py"
+      ],
+      "status": 1,
+      "stdout": "",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\n/tmp/pystachy-program-cache-x51d2h7y/sources/failure/main.py:1: error: name 'undefined_cache_probe' is not defined\n",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "44bcaad14a782f9beeee9e6d48fe2ba90cf6c79b39d0876f5f149cc8ad9390e8",
+      "seconds": 0.08431757600192213,
+      "tools": {
+        "clang": 1
+      },
+      "events": [
+        "miss",
+        "frontend"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "cpython-reference",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/failure/main.py"
+      ],
+      "status": 0,
+      "stdout": "83\n",
+      "stderr": "",
+      "stdout_sha256": "f1769867b0abc7068f5cb7dd41574a420b3cfa4553856f459857ff8e5a525b13",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.013899767000111751,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "recovered frontend failure:miss",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/failure/main.py"
+      ],
+      "status": 0,
+      "stdout": "83\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "f1769867b0abc7068f5cb7dd41574a420b3cfa4553856f459857ff8e5a525b13",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 11.643732030002866,
+      "tools": {
+        "clang": 6,
+        "llvm-as": 1,
+        "llvm-link": 1,
+        "opt": 3
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "recovered frontend failure:hit",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/failure/main.py"
+      ],
+      "status": 0,
+      "stdout": "83\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "f1769867b0abc7068f5cb7dd41574a420b3cfa4553856f459857ff8e5a525b13",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.03424479399836855,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "failed cache codegen",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/backend-failure/main.py"
+      ],
+      "status": 0,
+      "stdout": "89\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: bypass native artifact unavailable\n",
+      "stdout_sha256": "69a9cd8a9e12b122cdf59392131bf6c83e7360c2f745921e76f48a16f1cc541a",
+      "stderr_sha256": "c6493b462308d59c33b475024d0af1d6e93aa9b58dd7f29c1466a7d05f562f96",
+      "seconds": 0.1598828530004539,
+      "tools": {
+        "clang": 2,
+        "opt": 1,
+        "lli": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "bypass native artifact unavailable"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "cpython-reference",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/backend-failure/main.py"
+      ],
+      "status": 0,
+      "stdout": "89\n",
+      "stderr": "",
+      "stdout_sha256": "69a9cd8a9e12b122cdf59392131bf6c83e7360c2f745921e76f48a16f1cc541a",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.012952206001500599,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "cpython-reference",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/backend-failure/main.py"
+      ],
+      "status": 0,
+      "stdout": "89\n",
+      "stderr": "",
+      "stdout_sha256": "69a9cd8a9e12b122cdf59392131bf6c83e7360c2f745921e76f48a16f1cc541a",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.014266129001043737,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "recovered backend failure:miss",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/backend-failure/main.py"
+      ],
+      "status": 0,
+      "stdout": "89\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "69a9cd8a9e12b122cdf59392131bf6c83e7360c2f745921e76f48a16f1cc541a",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 0.2539340789990092,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "recovered backend failure:hit",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/backend-failure/main.py"
+      ],
+      "status": 0,
+      "stdout": "89\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "69a9cd8a9e12b122cdf59392131bf6c83e7360c2f745921e76f48a16f1cc541a",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.02860818100089091,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "cpython-reference",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/concurrent/main.py"
+      ],
+      "status": 0,
+      "stdout": "97\n",
+      "stderr": "",
+      "stdout_sha256": "969eeff1eaac226a228cc61503effa46ea87d872ef3174365befc7c36ffa3c48",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.01045017300202744,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "concurrent miss 0",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/concurrent/main.py"
+      ],
+      "status": 0,
+      "stdout": "97\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "969eeff1eaac226a228cc61503effa46ea87d872ef3174365befc7c36ffa3c48",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 0.2486405020026723,
+      "tools": {},
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "concurrent miss 1",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/concurrent/main.py"
+      ],
+      "status": 0,
+      "stdout": "97\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "969eeff1eaac226a228cc61503effa46ea87d872ef3174365befc7c36ffa3c48",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 0.26109118100066553,
+      "tools": {},
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "hit after concurrent publication",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/concurrent/main.py"
+      ],
+      "status": 0,
+      "stdout": "97\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "969eeff1eaac226a228cc61503effa46ea87d872ef3174365befc7c36ffa3c48",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.0245546469996043,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "signal miss",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/signal/main.py"
+      ],
+      "status": -15,
+      "stdout": "ready\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "ed1a545bb85e55816bbf9566b028b2a0bc456b88f49f6f266c0401048824194b",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 0.23065113800112158,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "signal hit",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/signal/main.py"
+      ],
+      "status": -15,
+      "stdout": "ready\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "ed1a545bb85e55816bbf9566b028b2a0bc456b88f49f6f266c0401048824194b",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.026335253998695407,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "dependency changed during codegen",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/source-race/main.py"
+      ],
+      "status": 0,
+      "stdout": "111\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: bypass native artifact unavailable\n",
+      "stdout_sha256": "1fc917c7ad66487470e466c0ad40ddd45b9f7730a4b43e1b2542627f0596bbdc",
+      "stderr_sha256": "c6493b462308d59c33b475024d0af1d6e93aa9b58dd7f29c1466a7d05f562f96",
+      "seconds": 0.40827191499920445,
+      "tools": {},
+      "events": [
+        "miss",
+        "frontend",
+        "bypass native artifact unavailable"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "cpython-reference",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/source-race/main.py"
+      ],
+      "status": 0,
+      "stdout": "222\n",
+      "stderr": "",
+      "stdout_sha256": "8f8eea956d0ea50d6442fdab213326f75bb6f584268b0795ad452faa85db5f9d",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.012324542996793753,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "source after race:miss",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/source-race/main.py"
+      ],
+      "status": 0,
+      "stdout": "222\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "8f8eea956d0ea50d6442fdab213326f75bb6f584268b0795ad452faa85db5f9d",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 0.2640494770021178,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "source after race:hit",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/source-race/main.py"
+      ],
+      "status": 0,
+      "stdout": "222\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "8f8eea956d0ea50d6442fdab213326f75bb6f584268b0795ad452faa85db5f9d",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.02566207299969392,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "killed during native codegen",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/interrupted/main.py"
+      ],
+      "status": -9,
+      "stdout": "",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\n",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "218b34a569264ad196b36f6d1e59c6d6044a278da5726e1eb7b7b33f64e17ddf",
+      "seconds": 0.10138687200014829,
+      "tools": {},
+      "events": [
+        "miss",
+        "frontend"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "cpython-reference",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/interrupted/main.py"
+      ],
+      "status": 0,
+      "stdout": "101\n",
+      "stderr": "",
+      "stdout_sha256": "39b8dc3fc8b44765c8e6f1adee04c5b465e555ab791cc42d0d9e810d5b64297c",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.011017810000339523,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "recovered interrupted build:miss",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/interrupted/main.py"
+      ],
+      "status": 0,
+      "stdout": "101\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "39b8dc3fc8b44765c8e6f1adee04c5b465e555ab791cc42d0d9e810d5b64297c",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 0.23588290899715503,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "recovered interrupted build:hit",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-x51d2h7y",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-x51d2h7y/sources/interrupted/main.py"
+      ],
+      "status": 0,
+      "stdout": "101\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "39b8dc3fc8b44765c8e6f1adee04c5b465e555ab791cc42d0d9e810d5b64297c",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.02634723700248287,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    }
+  ],
+  "source_inputs": [
+    {
+      "path": "/tmp/pystachy-program-cache-x51d2h7y/sources/reuse/main.py",
+      "text": "import os\nimport sys\ndef defined() -> int:\n    print(\"definition effect\")\n    return 17\ndef unused(x: int = defined()) -> int:\n    return x\nprint(\"module effect\")\nprint(sys.argv)\nprint(os.getenv(\"CACHE_PROBE_VALUE\", \"missing\"))\nprint(input())\n",
+      "sha256": "ac428706e285e311d398260fcaf2e63a0cf44a0be3f18c5c158359c2a3cb4fd5"
+    },
+    {
+      "path": "/tmp/pystachy-program-cache-x51d2h7y/sources/content/main.py",
+      "text": "print(111)\n",
+      "sha256": "7174b82819f0f3959aa6121946ea7fc2b46ef35a5175ea62aac8102445cfc4d9"
+    },
+    {
+      "path": "/tmp/pystachy-program-cache-x51d2h7y/sources/content/main.py",
+      "edit_from": "111",
+      "edit_to": "222",
+      "sha256": "d11082d68d78b9ff8a856303fca96884722608bbbfa599398a8126a69223afac",
+      "preserved_mtime": true
+    },
+    {
+      "path": "/tmp/pystachy-program-cache-x51d2h7y/sources/content/unrelated.py",
+      "text": "print('unrelated')\n",
+      "sha256": "0913b7de3b5521281e5dac0e8ddf25cce8e8ba1a0e413a56d4929afc03e43fcc"
+    },
+    {
+      "path": "/tmp/pystachy-program-cache-x51d2h7y/sources/imports/main.py",
+      "text": "import helper\nprint(helper.value())\n",
+      "sha256": "ee8bc661f1f73ae40d1b9468a3a675b88cd628d159ae47be631cfecaf7a87a15"
+    },
+    {
+      "path": "/tmp/pystachy-program-cache-x51d2h7y/sources/imports/helper.py",
+      "text": "import nested\ndef value() -> int:\n    return nested.VALUE\n",
+      "sha256": "1007fc2f5361c4e6b7e352b551eb0ddbf406ea6c7f537488020f6ad01d90f784"
+    },
+    {
+      "path": "/tmp/pystachy-program-cache-x51d2h7y/sources/imports/nested.py",
+      "text": "VALUE = 111\n",
+      "sha256": "1e6f0b17fb0f8cef04427fded917c201fc3ee0db4819634e35f386329292baa6"
+    },
+    {
+      "path": "/tmp/pystachy-program-cache-x51d2h7y/sources/imports/nested.py",
+      "edit_from": "111",
+      "edit_to": "222",
+      "sha256": "c4b87cd94e492c59762d8e1e776661005b5135803ee763f62dc6840f3c401e11",
+      "preserved_mtime": true
+    },
+    {
+      "path": "/tmp/pystachy-program-cache-x51d2h7y/sources/shadow/main.py",
+      "text": "import chosen\nprint(chosen.VALUE)\n",
+      "sha256": "39cb4fa8e47e2b2c92ae177ca053843af1632618c26dd0b5c9d5b59c93f5ed37"
+    },
+    {
+      "path": "/tmp/pystachy-program-cache-x51d2h7y/lower-priority/chosen.py",
+      "text": "VALUE = 31\n",
+      "sha256": "d3e3571d68a1d60d852b4ee4a9cc49f54d7f7b299e7f07e37c35df73a198dfbf"
+    },
+    {
+      "path": "/tmp/pystachy-program-cache-x51d2h7y/sources/shadow/chosen.py",
+      "text": "VALUE = 32\n",
+      "sha256": "cfcca21484dad603220c3b46e24a8fa51050d4b7f8a28bd628bb77e71e603a9b"
+    },
+    {
+      "path": "/tmp/pystachy-program-cache-x51d2h7y/sources/shadow/chosen/__init__.py",
+      "text": "VALUE = 33\n",
+      "sha256": "c8bd7aa5e3e98ca11b2432ee623bd412fb5c49e4e2c66cd1371d4a7b55be871c"
+    },
+    {
+      "path": "/tmp/pystachy-program-cache-x51d2h7y/sources/optional/main.py",
+      "text": "try:\n    import optional_cache_probe\n    print(optional_cache_probe.VALUE)\nexcept ImportError:\n    print(\"missing\")\n",
+      "sha256": "fe004ca8590ddd5bd2734a99db2aa6bb063595dc4a9bc9f633eb22cdd35e4c29"
+    },
+    {
+      "path": "/tmp/pystachy-program-cache-x51d2h7y/sources/optional/optional_cache_probe.py",
+      "text": "VALUE = 44\n",
+      "sha256": "63d011101dd12ef7b42525ef94f16df9aa05751596397134c4bc3437f08b62d9"
+    },
+    {
+      "path": "/tmp/pystachy-program-cache-x51d2h7y/sources/namespace/main.py",
+      "text": "import cache_ns.item\nprint(cache_ns.item.VALUE)\n",
+      "sha256": "d62c1522fa2efccfed8ff22085d7a5868507663a89baba44930bf83eb898b6b0"
+    },
+    {
+      "path": "/tmp/pystachy-program-cache-x51d2h7y/namespace-last/cache_ns/item.py",
+      "text": "VALUE = 51\n",
+      "sha256": "ca27110007b32d22f3fbe5d736622f7d3a31dc7403986a56207f821435ae1b43"
+    },
+    {
+      "path": "/tmp/pystachy-program-cache-x51d2h7y/namespace-first/cache_ns/item.py",
+      "text": "VALUE = 52\n",
+      "sha256": "e37ea21aa09ce7c43dfb1de64cfbd003379acf98122c84ee526029b0cd0743bc"
+    },
+    {
+      "path": "/tmp/pystachy-program-cache-x51d2h7y/namespace-last/cache_ns/__init__.py",
+      "text": "# regular package takes priority\n",
+      "sha256": "a4904ee2ecd70b93568c90880d183cebc58d11737a8b76f7d85e481418043437"
+    },
+    {
+      "path": "/tmp/pystachy-program-cache-x51d2h7y/sources/ffi-shadow/main.py",
+      "text": "import ffi\nprint(\"ok\")\n",
+      "sha256": "d4140c39d8fed2ad29e859fb52dd4b96b8dd73efa6ac6803c4318894f68a24f3"
+    },
+    {
+      "path": "/tmp/pystachy-program-cache-x51d2h7y/sources/ffi-shadow/ffi.py",
+      "text": "print(\"shadow\")\n",
+      "sha256": "0680114a9bea12b812082efe871faa6350ecf5b0c190d1b8ce3d1ad2fc7b367c"
+    },
+    {
+      "path": "/tmp/pystachy-program-cache-x51d2h7y/sources/callbacks/main.py",
+      "text": "import jitprobe_module\nimport sys\n\ndef note() -> int:\n    print(\"default\")\n    return 7\n\ndef unused_default(x: int = note()) -> int:\n    return x\n\ndef unused_left(x: int) -> int:\n    return unused_right(x - 1) if x else 0\n\ndef unused_right(x: int) -> int:\n    return unused_left(x - 1) if x else 0\n\ndef live_leaf(x: int) -> int:\n    return x + 1\n\ndef live_root(x: int) -> int:\n    return live_leaf(x) * 2\n\ndef loop_feedback(n: int) -> int:\n    dead = 17\n    total = 0\n    for i in range(n):\n        if i & 1:\n            dead = dead ^ i\n        total += i\n    print(\"feedback\", n)\n    return total\n\nprint(loop_feedback(7))\n\nclass Item:\n    def __init__(self, x: int):\n        self.x = x\n    def __eq__(self, other: \"Item\") -> bool:\n        return self.x == other.x\n    def __lt__(self, other: \"Item\") -> bool:\n        if self.x < 0:\n            raise ValueError(\"callback\")\n        return self.x < other.x\n    def __repr__(self) -> str:\n        return f\"Item({self.x})\"\n\nprint(live_root(20))\nprint([Item(1)] == [Item(1)], [Item(1)] < [Item(2)])\nprint(sorted([Item(2), Item(1)]))\ntry:\n    sorted([Item(1), Item(-1)])\nexcept ValueError as error:\n    print(\"caught\", error)\nprint(sys.argv)\n\n# Seven fields need 56 bytes on the supported 64-bit targets. LLVM's default\n# layout folds their size to 48 before ORC supplies the actual host layout.\nclass Layout:\n    def __init__(self, value: int):\n        self.a = True\n        self.b = value\n        self.c = True\n        self.d = value + 1\n        self.e = True\n        self.f = value + 2\n        self.tags: list[str] = []\n\npadded = Layout(17)\npadded.tags.append(\"kept\")\nprint(padded.a, padded.b, padded.c, padded.d, padded.e, padded.f, padded.tags)\n",
+      "sha256": "5ac55dce8bc193b107fab73b744f13c5fc0f2bbc81b8abcaef4d7ced25981370"
+    },
+    {
+      "path": "/tmp/pystachy-program-cache-x51d2h7y/sources/callbacks/jitprobe_module.py",
+      "text": "print(\"import effect\")\n",
+      "sha256": "4bda660d56300cafbae306e2841703f3552b1ff9e7efc4fa2cc5dac74d123608"
+    },
+    {
+      "path": "/tmp/pystachy-program-cache-x51d2h7y/sources/generator/main.py",
+      "text": "from typing import Iterator\n\ndef numbers(n: int) -> Iterator[int]:\n    try:\n        for i in range(n):\n            yield i\n    finally:\n        print(\"closed\")\n\nprint(list(numbers(4)))\n",
+      "sha256": "7dfedfe776c9343792c04aaafb51c1aaad788fbd8de5864903f125a44c9358ba"
+    },
+    {
+      "path": "/tmp/pystachy-program-cache-x51d2h7y/sources/float/main.py",
+      "text": "# Runtime inputs exercise LLVM's pow -> multiply, reciprocal and exp2 rewrites\n# (#656). Literal-only inputs can be folded by the compiler and miss AOT drift.\nimport math\n\nx = float(input())\nprint('square', repr(x ** 2), repr(pow(x, 2.0)), repr(math.pow(x, 2.0)))\nx = float(input())\nprint('reciprocal', repr(x ** -1.0), repr(pow(x, -1.0)), repr(math.pow(x, -1.0)))\ny = float(input())\nprint('base two', repr(2.0 ** y), repr(pow(2.0, y)), repr(math.pow(2.0, y)))\n\n# Each exponent is constant at its call site, even with the values read at run time.\n# Signed zero and exceptional values must still keep Python's power semantics.\nfor s in ['-0.0', '0.0', '-inf', 'inf', 'nan']:\n    x = float(s)\n    print(s, repr(x ** 2), repr(math.pow(x, 2.0)))\n    try:\n        print('operator reciprocal', repr(x ** -1.0))\n    except ZeroDivisionError as e:\n        print('ZeroDivisionError:', e)\n    try:\n        print('math reciprocal', repr(math.pow(x, -1.0)))\n    except ValueError as e:\n        print('ValueError:', e)\n\n",
+      "sha256": "58bb37e42b132a8a80a8e689f6a2f133e70da939779bff3245a823c396808ec7"
+    },
+    {
+      "path": "/tmp/pystachy-program-cache-x51d2h7y/sources/dynamic-json/main.py",
+      "text": "# pystachy: dynamic-any\n# The dynamic JSON result must promote its integer tokens even when the caller\n# has not opted in to python-int. Keep the scanner's cursor and small path bounded.\nimport json\nfrom typing import Any\n\n\nfor source in [\n    \"0\", \"-0\", \"7\", \"-7\", \"999999999999999999\", \"1000000000000000000\",\n    \"9223372036854775807\", \"-9223372036854775808\",\n    \"9223372036854775808\", \"-9223372036854775809\",\n    \"12345678901234567890\", \"-12345678901234567890\",\n    \"340282366920938463463374607431768211455\",\n    \"-340282366920938463463374607431768211456\",\n    \"123456789012345678901234567890.0\", \"123456789012345678901234567890e-20\",\n]:\n    value: Any = json.loads(source)\n    print(type(value).__name__, json.dumps(value))\n\ndocument: Any = json.loads(\n    '{\"n\": 12345678901234567890, \"emoji\": \"\\\\uD83D\\\\uDE00\", '\n    '\"nested\": [false, null, -12345678901234567890, {\"small\": 1}], '\n    '\"nan\": NaN, \"positive\": Infinity, \"negative\": -Infinity}'\n)\nprint(json.dumps(document))\nemoji: str = document[\"emoji\"]\nprint(len(emoji), ord(emoji[0]))\nprint(type(document[\"n\"]).__name__, document[\"n\"] + 1)\nitems: list[Any] = document[\"nested\"]\nitems.append(document[\"n\"])\nprint(items is document[\"nested\"], json.dumps(items))\nfor source in ['{\"\": 12345678901234567890}',\n               '{\"n\": 12345678901234567890, \"n\": 7}',\n               '{\"n\": 7, \"n\": 12345678901234567890}']:\n    value = json.loads(source)\n    print(json.dumps(value))\n\n# The scanner must still classify floats before promoting, reject leading zeros,\n# and report character offsets rather than byte offsets after a large integer.\nfor source in ['012345678901234567890', '12345678901234567890x',\n               '[\"\u00e9\", 12345678901234567890 x]', '{\"\u00e9\": 12345678901234567890}tail']:\n    try:\n        value = json.loads(source)\n        print(\"accepted\", json.dumps(value))\n    except json.JSONDecodeError as exc:\n        print(\"error\", exc.msg, exc.pos, exc.lineno, exc.colno)\n\n# Promoted decimal conversion retains the normal int string-conversion limit.\nfor length in [4300, 4301]:\n    try:\n        value = json.loads(\"9\" * length)\n        print(\"digits\", length, len(str(value)))\n    except ValueError:\n        print(\"digits\", length, \"ValueError\")\n",
+      "sha256": "4dcb67340b811b1c5deefbdcb138fa8295d93dc9391527a65ee17b6c1d6b859e"
+    },
+    {
+      "path": "/tmp/pystachy-program-cache-x51d2h7y/sources/status/main.py",
+      "text": "import sys\nprint(\"before exit\")\nsys.exit(7)\n",
+      "sha256": "e4d61d477a21dc14756f1a07016c20ec0baba7e8ad9cec9b1ed0eff0666a8543"
+    },
+    {
+      "path": "/tmp/pystachy-program-cache-x51d2h7y/sources/uncaught/main.py",
+      "text": "print(\"before raise\")\nraise ValueError(\"same error\")\n",
+      "sha256": "c1a7e7c2ef31f01fcd052b08a2ad60e9852f0b0d030c49363f39d2c74aaa2a46"
+    },
+    {
+      "path": "/tmp/pystachy-program-cache-x51d2h7y/sources/corruption/main.py",
+      "text": "print(57)\n",
+      "sha256": "f610d4bbe3d553f1f1f340911e729a3fbd81c66defb20c3b09cfc681ee43a62e"
+    },
+    {
+      "path": "/tmp/pystachy-program-cache-x51d2h7y/sources/bypass/main.py",
+      "text": "print(63)\n",
+      "sha256": "25527bd535b5c5c866dc5660047201d332126a37cbf53428c862a3f262a63771"
+    },
+    {
+      "path": "/tmp/pystachy-program-cache-x51d2h7y/sources/tool/main.py",
+      "text": "print(71)\n",
+      "sha256": "5095abf72b4590ed9ef93dee0563911d0502abd727818d031ee9154518362344"
+    },
+    {
+      "path": "/tmp/pystachy-program-cache-x51d2h7y/llvm/opt",
+      "edit_from": "# identity-marker-A",
+      "edit_to": "# identity-marker-B",
+      "sha256": "1925f82c19091dfbd3c68796cf0f82653eb4fd0bb2ba85503e711f9d14436af2",
+      "preserved_mtime": true
+    },
+    {
+      "path": "/tmp/pystachy-program-cache-x51d2h7y/sources/compiler/main.py",
+      "text": "print(73)\n",
+      "sha256": "6cfce8d600764a14c3fff394e7603bd0aaca5ec3b96dbd6a9799c570c2d4daad"
+    },
+    {
+      "path": "/tmp/pystachy-program-cache-x51d2h7y/compiler-copy",
+      "edit_from": "PROGRAM_CACHE_COMPILER_A",
+      "edit_to": "PROGRAM_CACHE_COMPILER_B",
+      "sha256": "749938c08f0b43934691f8af94ee09d280d8110f96b4e09438397fef919f6863",
+      "preserved_mtime": true
+    },
+    {
+      "path": "/tmp/pystachy-program-cache-x51d2h7y/sources/runtime/main.py",
+      "text": "print(79)\n",
+      "sha256": "112ac1e24a95718eceba17ea6b599845f12954be955f478c5293588245f8a55a"
+    },
+    {
+      "path": "/tmp/pystachy-program-cache-x51d2h7y/runtime-home/runtime.c",
+      "edit_from": "program-cache-runtime-A",
+      "edit_to": "program-cache-runtime-B",
+      "sha256": "2d7885a569d52c83d1c8399afb08c0c2c35b8ea107ca600ff0fed65f79b9bfbf",
+      "preserved_mtime": true
+    },
+    {
+      "path": "/tmp/pystachy-program-cache-x51d2h7y/sources/failure/main.py",
+      "text": "print(undefined_cache_probe)\n",
+      "sha256": "f5754cc51802157b9837552b4477c26981e6086fee12718dee5bd2b5c6ebb216"
+    },
+    {
+      "path": "/tmp/pystachy-program-cache-x51d2h7y/sources/failure/main.py",
+      "text": "print(83)\n",
+      "sha256": "08cb868fe48d18e3f900becb1955fc2224bc10a29c1148742d57a9551d25c270"
+    },
+    {
+      "path": "/tmp/pystachy-program-cache-x51d2h7y/sources/backend-failure/main.py",
+      "text": "print(89)\n",
+      "sha256": "df2078d1c635c0aad9fdb51f99e2e5fd10397542e4fa36c627383779753b869b"
+    },
+    {
+      "path": "/tmp/pystachy-program-cache-x51d2h7y/sources/concurrent/main.py",
+      "text": "print(97)\n",
+      "sha256": "3ccd456532d8a15dc66ecac86e897519b26fec74159db2274b3355fa2046a333"
+    },
+    {
+      "path": "/tmp/pystachy-program-cache-x51d2h7y/sources/signal/main.py",
+      "text": "import time\nprint(\"ready\", flush=True)\ntime.sleep(30.0)\n",
+      "sha256": "275005ff786ed0f81731ce121169913494fad388c09f157630823322fd923e3f"
+    },
+    {
+      "path": "/tmp/pystachy-program-cache-x51d2h7y/sources/source-race/main.py",
+      "text": "import racing\nprint(racing.VALUE)\n",
+      "sha256": "bd0d107adb453f8970192545313b7579583dbe3af865d6ba4f4e8c8aa077c013"
+    },
+    {
+      "path": "/tmp/pystachy-program-cache-x51d2h7y/sources/source-race/racing.py",
+      "text": "VALUE = 111\n",
+      "sha256": "1e6f0b17fb0f8cef04427fded917c201fc3ee0db4819634e35f386329292baa6"
+    },
+    {
+      "path": "/tmp/pystachy-program-cache-x51d2h7y/sources/source-race/racing.py",
+      "edit_from": "111",
+      "edit_to": "222",
+      "sha256": "c4b87cd94e492c59762d8e1e776661005b5135803ee763f62dc6840f3c401e11",
+      "preserved_mtime": true
+    },
+    {
+      "path": "/tmp/pystachy-program-cache-x51d2h7y/sources/interrupted/main.py",
+      "text": "print(101)\n",
+      "sha256": "c951fdf4d05f5fb05f90ae01127cc255dae63f874f7f0d09e530fc36878d7ece"
+    }
+  ],
+  "assertions": 458,
+  "passed": true
+}

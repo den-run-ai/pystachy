@@ -300,6 +300,56 @@ os.execv({TIMEOUT!r}, [{TIMEOUT!r}, "--verbose", "--kill-after=0.2s", limit, *sy
         for text in ("gc-self: started", "limit 10m", "gc-self: finished after", "gc statistics"):
             self.assertIn(text, logs["gc-self"])
 
+    def test_compact_cache_group_finishes_two_cache_lanes_before_gc_self(self):
+        shutil.copy(ROOT / "tools/ci_sample.py", self.root / "tools/ci_sample.py")
+        compiler = self.root / "bin/compiler"
+        compiler.write_text(compiler.read_text().replace(
+            'if args == ["-"]:', 'if args[:1] == ["tools/ci_sample.py"]:\n'
+            '    os.execv(sys.executable, [sys.executable, *args])\nif args == ["-"]:'))
+        self.env["VERIFY_PROFILE"] = "pr"
+        self.env.pop("CI_BASE_SHA", None)
+        # Exercise both scheduler branches even on hosts whose ps cannot list processes.
+        ps = self.root / "bin/ps"
+        ps.write_text(f"#!{sys.executable}\nimport os\nimport sys\n"
+                      'if os.environ.get("VERIFY_MOCK_SERIAL"): sys.exit(1)\n'
+                      'print(os.getppid(), 0)\n')
+        ps.chmod(0o755)
+        cache = self.root / "tests/cache.sh"
+        cache.write_text(f"#!{sys.executable}\n" + '''import os
+from pathlib import Path
+import sys
+import time
+name = "native" if sys.argv[1].endswith("/pystachy2") else "hosted"
+Path("started-" + name).touch()
+if not os.environ.get("VERIFY_MOCK_SERIAL"):
+    deadline = time.monotonic() + 5
+    while not all(Path("started-" + lane).exists() for lane in ("native", "hosted")):
+        if time.monotonic() > deadline:
+            raise SystemExit("the two private cache lanes did not overlap")
+        time.sleep(0.01)
+print((66 if name == "native" else 68), "passed, 0 failed")
+''')
+        cache.chmod(0o755)
+        for mode, serial in (("pass", False), ("pass", True), ("mismatch", False), ("timeout", False)):
+            with self.subTest(mode=mode, serial=serial):
+                self.env["VERIFY_MOCK_SERIAL"] = "1" if serial else ""
+                for name in ("native", "hosted"):
+                    (self.root / ("started-" + name)).unlink(missing_ok=True)
+                result, report, logs = self.run_group("cache-gc", mode)
+                self.assertEqual([step["name"] for step in report["steps"]],
+                                 ["bootstrap", "runtime-cache", "gc-self"])
+                cache_step, gc_step = report["steps"][1:]
+                self.assertEqual(cache_step["compilers"], ["stage2", "CPython-hosted"])
+                self.assertEqual((cache_step["result"], cache_step["passed"], cache_step["expected"]),
+                                 ("pass", 134, 134), logs["runtime-cache"])
+                # The parent records cache completion only after both lanes have ended.
+                # Starting GC afterwards bounds this group to two simultaneous compiler lanes.
+                self.assertLess(result.stdout.index("runtime-cache"), result.stdout.index("gc-self: starting"))
+                self.assertEqual(gc_step["compiler_interval"], 5000)
+                self.assertEqual(gc_step["ir_identical"], mode == "pass")
+                self.assertEqual((result.returncode, report["result"], gc_step["result"]),
+                                 (0, "pass", "pass") if mode == "pass" else (1, "fail", "fail"))
+
     def test_each_suite_runs_its_shard_once_with_program_stress_and_its_sample_compiler_stressed_first(self):
         observed, samples, reports = {"jit": [], "aot": []}, {"jit": set(), "aot": set()}, {}
         for group, mode, steps in SUITES:

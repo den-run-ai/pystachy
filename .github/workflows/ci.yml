@@ -103,6 +103,8 @@ jobs:
           python3 -m unittest discover -s tools -p test_stack_floor.py
           python3 -m unittest discover -s tools -p test_runtime_signatures.py
           python3 -m unittest discover -s tools -p test_runtime_ubsan.py
+          python3 tools/program_cache_probe.py --compiler ./pystachy --llvm "$PYSTACHY_LLVM" \
+            --checks reuse semantics concurrency --output build/verify/arm-program-cache.json
       - name: Upload bootstrap report
         if: ${{ !cancelled() && steps.plan.outputs.kind == 'code' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
@@ -112,6 +114,7 @@ jobs:
             build/verification.json
             build/verify/bootstrap.log
             build/verify/arm-ffi.log
+            build/verify/arm-program-cache.json
           if-no-files-found: error
           retention-days: 7
           overwrite: true
@@ -128,7 +131,7 @@ jobs:
       fail-fast: false
       matrix:
         machine: ${{ fromJSON(github.event_name == 'pull_request' && '["x86_64"]' || '["x86_64","aarch64"]') }}
-        group: ${{ fromJSON(github.event_name == 'pull_request' && '["hosted","native-0","native-1","safety-0","safety-1","opt-in","contracts","cache-gc","benchmarks"]' || '["hosted","native-0","native-1","native-2","opt-off-0","opt-off-1","opt-off-2","python-free-0","python-free-1","python-free-2","ubsan-0","ubsan-1","ubsan-2","ubsan-3","gc-self","gc-jit-0","gc-jit-1","gc-aot-0","gc-aot-1","gc-aot-2","runtime-cache","dynany-optin-0","dynany-optin-1","dynany-optin-2","python-int-optin-0","python-int-optin-1","python-int-optin-2","contracts","benchmarks","scaling"]') }}
+        group: ${{ fromJSON(github.event_name == 'pull_request' && '["hosted","native-aot-0","native-aot-1","safety-0","safety-1","opt-in","contracts","cache-gc","benchmarks"]' || '["hosted","native-0","native-1","native-2","opt-off-0","opt-off-1","opt-off-2","python-free-0","python-free-1","python-free-2","ubsan-0","ubsan-1","ubsan-2","ubsan-3","gc-self","gc-jit-0","gc-jit-1","gc-aot-0","gc-aot-1","gc-aot-2","runtime-cache","dynany-optin-0","dynany-optin-1","dynany-optin-2","python-int-optin-0","python-int-optin-1","python-int-optin-2","contracts","benchmarks","scaling"]') }}
     env:
       VERIFY_PROFILE: ${{ github.event_name == 'pull_request' && 'pr' || 'full' }}
       PYSTACHY_LLVM: /usr/lib/llvm-18/bin
@@ -152,7 +155,7 @@ jobs:
         # New groups keep the full setup until their dependencies have been checked.
         run: |
           case "$VERIFY_GROUP" in
-            hosted|native-[012]|opt-off-[012]|python-free-[012]|gc-self|gc-jit-[01]|gc-aot-[012]|runtime-cache|dynany-optin-[012]|python-int-optin-[012]|contracts|scaling|safety-0|opt-in|cache-gc)
+            hosted|native-[012]|native-aot-[01]|opt-off-[012]|python-free-[012]|gc-self|gc-jit-[01]|gc-aot-[012]|runtime-cache|dynany-optin-[012]|python-int-optin-[012]|contracts|scaling|safety-0|opt-in|cache-gc)
               tools/setup.sh --minimal ;;
             *) tools/setup.sh --verify ;;
           esac
@@ -195,6 +198,14 @@ jobs:
         if: matrix.group == 'ubsan-0' || matrix.group == 'safety-1'
         run: python3 -m unittest discover -s tools -p test_runtime_ubsan.py
 
+      - name: Native program cache invalidation and execution
+        # Keep the compact cache/GC job within its budget after its serialized self-check.
+        # Full runs retain this independent probe on both architectures' runtime-cache jobs.
+        if: matrix.group == 'runtime-cache' || (github.event_name == 'pull_request' && matrix.group == 'contracts')
+        env:
+          PYSTACHY_HOME: ${{ github.workspace }}
+        run: make test-program-cache PROGRAM_CACHE_COMPILER=build/verify/pystachy2
+
       - name: Extended subset benchmark correctness
         if: matrix.group == 'benchmarks'
         env:
@@ -236,6 +247,7 @@ jobs:
             build/pyperformance-smoke.json
             build/verification.json
             build/extended-smoke.json
+            build/program-cache-checks.json
             build/verify/*.log
             build/verify/example-cli.json
             build/verify/dynany-fuzz/*.py
@@ -249,7 +261,7 @@ jobs:
           overwrite: true
 
   pr-variants:
-    name: variants (worker ${{ matrix.worker }})
+    name: native JIT and variants (worker ${{ matrix.worker }})
     if: github.event_name == 'pull_request' && needs.bootstrap.outputs.plan_x86_64 == 'code' && needs.bootstrap.outputs.plan_aarch64 == 'code'
     needs: bootstrap
     runs-on: ubuntu-24.04
@@ -259,6 +271,7 @@ jobs:
       matrix:
         worker: [0, 1]
     env:
+      VERIFY_PROFILE: pr
       PYSTACHY_LLVM: /usr/lib/llvm-18/bin
       CI_BASE_SHA: ${{ needs.bootstrap.outputs.base }}
     steps:
@@ -274,7 +287,25 @@ jobs:
         with:
           name: verified-bootstrap-x86_64
           path: build/ci-bootstrap
-      - name: Three configurations on representative and changed cases
+      # Keep two workers per execution mode and the same total job count. JIT finishes before
+      # these workers run their existing sparse configurations; AOT has its own two workers.
+      - name: Complete native JIT corpus half
+        env:
+          VARIANT_WORKER: ${{ matrix.worker }}
+          VERIFY_BOOTSTRAP_DIR: build/ci-bootstrap
+        run: tests/verify.sh "native-jit-$VARIANT_WORKER"
+      - name: Upload native JIT report
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        if: always()
+        with:
+          name: x86_64-verification-native-jit-${{ matrix.worker }}
+          path: |
+            build/verification.json
+            build/verify/*.log
+          if-no-files-found: error
+          retention-days: 7
+          overwrite: true
+      - name: Sampled configurations on representative and changed cases
         env:
           VARIANT_WORKER: ${{ matrix.worker }}
           VERIFY_BOOTSTRAP_DIR: build/ci-bootstrap

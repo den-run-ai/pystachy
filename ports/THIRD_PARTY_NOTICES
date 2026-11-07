@@ -86,6 +86,16 @@ adapt selected cases of that commit's Lib/test/test_contextlib.py and
 Lib/test/test_generators.py. They preserve the upstream assertions for the supported
 cases and disclose adaptations and exclusions; the same PSF license applies.
 
+CPython's selected copyreg registration functions
+------------------------------------------------
+
+tests/registrymods/copyreg_slice.py extracts pickle() and constructor() from
+CPython 3.13.16's Lib/copyreg.py. Their bodies are unchanged. The marked
+adaptations add the dynamic-Any opt-in and a type annotation for dispatch_table.
+The fixture exercises registration and reducer dispatch, not the complete
+copyreg module or pickle protocols. It uses the Python Software Foundation
+License Version 2, retained in tests/upstream/CPYTHON-LICENSE.txt.
+
 CPython's dynamic core regression cases
 --------------------------------------
 
@@ -530,7 +540,7 @@ Kuhn's code that wcwidth derives from.
 pyperformance (bench/pyperformance/)
 ------------------------------------
 
-The Python files in bench/pyperformance/ are the run_benchmark.py files of 24 benchmarks from
+The Python files in bench/pyperformance/ are the run_benchmark.py files of 25 benchmarks from
 pyperformance 1.14.0 (https://github.com/python/pyperformance), edited where
 bench/pyperformance/README.md lists (each edit is marked "Pystachy port:"); that README records
 the sdist's and each file's SHA-256. pyperformance is used under the MIT License, whose text is in
@@ -545,6 +555,43 @@ richards_super.py credit a Java version "Copyright (C) 1995 Sun Microsystems, In
 "Copyright (C) 2005 Carl Friedrich Bolz". pyperformance distributes all of these files under its
 MIT License; their origins are listed here so that a license review can confirm that this
 suffices.
+
+Byte BPE (bench/pyperformance/bpe_tokeniser.py and examples/byte_bpe/upstream/bpe_tokeniser.py)
+-------------------------------------------------------------------------------------------
+
+The pyperformance byte-BPE benchmark credits its author Shantanu Jain and says it is based
+on tiktoken (https://github.com/openai/tiktoken). The pristine benchmark and its unmodified
+Mary Shelley Frankenstein excerpt, bench/pyperformance/data/frankenstein_intro.txt, come from
+pyperformance 1.14.0 at commit 2ab96f98f98274d07ebfdfd66e4f021723179706; source paths and SHA-256
+hashes are recorded in examples/byte_bpe/upstream/provenance.json. The excerpt is the fixture
+bundled by pyperformance; it has no separate license header. The pyperformance MIT license
+and author list are retained in bench/pyperformance/LICENSE and AUTHORS.
+
+The benchmark does not identify its original tiktoken revision. The tiktoken MIT notice below
+is reproduced from LICENSE at commit 4e71bbe0c078468e00fefbf94b39849389f346e5
+(https://github.com/openai/tiktoken/blob/4e71bbe0c078468e00fefbf94b39849389f346e5/LICENSE):
+
+MIT License
+
+Copyright (c) 2022 OpenAI, Shantanu Jain
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 
 Ryu (ryu/)
 ----------
@@ -579,14 +626,15 @@ CPython makes them; key= and the type-specialized compare functions are left out
 floats are merged with branch-free selects; and the merge buffer is memory that Pystachy's
 garbage collector scans.
 
-CPython's gamma functions and isclose() (runtime.c)
----------------------------------------------------
+CPython's gamma functions and isclose() (runtime.c, runtime.py)
+------------------------------------------------------------
 
 math.gamma() and math.lgamma() in runtime.c (the section that starts with "math.gamma and
 math.lgamma are CPython 3.13.16's m_tgamma and m_lgamma") are CPython 3.13.16's m_sinpi,
 lanczos_sum, m_tgamma and m_lgamma from Modules/mathmodule.c (SHA-256
 e9370d6380c154d620ab7d5b54727aedb6c19e786156974445b965d1dd9a233a), with their constants and
-comments; pys_m_isclose, just before them, is that file's math_isclose_impl.
+comments; pys_m_isclose in runtime.py is that file's math_isclose_impl, translated
+to typed Python with the same comparisons and arithmetic order.
 They are a derivative work of Python and are used under the Python Software Foundation License
 Version 2, reproduced below. The changes: Python's Py_IS_FINITE, Py_IS_NAN, Py_IS_INFINITY,
 Py_NAN, Py_HUGE_VAL and Py_INFINITY are C99's, the asserts are dropped, Py_UNREACHABLE() is

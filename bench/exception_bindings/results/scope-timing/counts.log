@@ -1,0 +1,9 @@
+handlers 32 {"hosted-baseline": 0.057496383000398055, "hosted-candidate": 0.0536653489980381}
+handlers 64 {"hosted-baseline": 0.07007179500214988, "hosted-candidate": 0.06507933400280308}
+handlers 128 {"hosted-baseline": 0.10668143800285179, "hosted-candidate": 0.08113563199731288}
+samehandlers 32 {"hosted-baseline": 0.05141760599508416, "hosted-candidate": 0.053431672997248825}
+samehandlers 64 {"hosted-baseline": 0.06039503799547674, "hosted-candidate": 0.060661812996841036}
+samehandlers 128 {"hosted-baseline": 0.07824274500308093, "hosted-candidate": 0.07465539199620252}
+nohandlers 32 {"hosted-baseline": 0.06726737399731064, "hosted-candidate": 0.07132824200380128}
+nohandlers 64 {"hosted-baseline": 0.07713240299926838, "hosted-candidate": 0.07826791200204752}
+nohandlers 128 {"hosted-baseline": 0.13887340200017206, "hosted-candidate": 0.12699257700296585}

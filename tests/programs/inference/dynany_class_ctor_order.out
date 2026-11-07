@@ -1,0 +1,10 @@
+True 1 True
+True 2 True
+['field:1', 'text:saved field', 'original:saved field', 'replacement:new field', 'global:2', 'original:default', 'replacement:new global']
+merge __main__.Original() got multiple values for keyword argument 'value'
+True ['field:3', 'number:4', 'text:mapping']
+bind Original.__init__() got multiple values for argument 'value'
+['number:6', 'number:7', 'text:binding']
+argument argument first
+['argument failure']
+[exit 0]

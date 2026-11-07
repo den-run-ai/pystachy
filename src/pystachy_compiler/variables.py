@@ -165,6 +165,8 @@ def gen_load_name(self, name: str) -> Val:
     if name in self.classes and self.classes[name].node.line in ENUMCLASSES:
         return self.expr(self.enum_view(name, self.line), "")  # (an enum class: its EnumType object)
     if name in self.classes:
+        if self.dyn_policy(self.line):
+            return self.refl_class_value(name)
         self.err(f"class '{name}' cannot be used as a value (classes are not values: call it, or read an attribute, C.x)")
     if name in self.fglobals:
         self.err(f"name '{name}' is not defined yet here: a function assigns it, so declare it at module level{self.where_def(name)} first ({short(name)}: T)")
@@ -751,8 +753,8 @@ def gen_read(self, n: Node) -> Val:
         if name in self.gidbox and self.idhere():
             self.dyn_id_read(val, self.gidbox[name])  # (its binding's object, as an Any value: dyn_box)
         return val
-    if name not in self.ltype and name not in self.gtypes and name not in self.funcs and name not in self.aliases and name in self.classes and self.classes[name].exc != "":
-        self.class_ready(n)  # (an exception class as a value, where its class statement may not have run yet)
+    if name not in self.ltype and name not in self.gtypes and name not in self.funcs and name not in self.aliases and name in self.classes and (self.classes[name].exc != "" or self.dyn_policy(n.line)):
+        self.class_ready(n)  # (a class value is unbound before its class statement runs)
     return self.load_name(name)
 
 def gen_modchk(self, n: Node) -> None:
@@ -2042,7 +2044,7 @@ def gen_assign(self, t: Node, v: Val) -> None:
         # xs, a __setitem__ that empties it, or a nested target whose item's __iter__ does), the
         # items are all read first; a store to a plain name runs no code, so with only those
         # each item is read within the length checked (list_slot)
-        size = self.rt("pys_text_len", "i64", [f"ptr {v.v}"]) if v.t == "str" and not self.rtmode else self.mload('int', v.v)
+        size = self.rt("pys_text_len", "i64", [f"ptr {v.v}"]) if v.t == "str" and not self.rtmode else self.list_len(v) if is_list(v.t) else self.mload('int', v.v)
         self.rt("pys_unpack_check", "void", [f"i64 {size}", f"i64 {len(t.kids)}"])
         first = v.t != "str" and not name_targets(t)
         items = []
@@ -2264,7 +2266,7 @@ def gen_star_assign(self, t: Node, v: Val) -> None:
             xs = self.as_list(v, "unpack")
         if not is_list(xs.t):
             self.err(f"cannot unpack non-iterable {tname(v.t)} object")
-        size = self.mload('int', xs.v)
+        size = self.list_len(xs)
         self.rt("pys_unpack_ex_check", "void", [f"i64 {size}", f"i64 {s + after}"])
         for i in range(s):
             items.append(self.list_item(xs, Val(str(i), "int")) if self.list_id_kind(xs.t) != 0 else self.list_value(xs, str(i), self.list_slot(xs, str(i))))
@@ -2280,7 +2282,7 @@ def gen_list_slot(self, o: Val, i: str) -> str:
     # range (unpacking's: no code runs between, as only plain-name stores or none come before
     # the read): an inline list.load, as listget makes of a
     # list.get, without a bounds check (each one an exit from a loop, which costs clang -O2 time)
-    read = Ins("list.load", "int", "")
+    read = Ins("list.load", "*" + elem(o.t), "")
     read.a = [o, Val(i, "int")]
     self.put(read, 4)
     return f"%t{read.r[0]}"

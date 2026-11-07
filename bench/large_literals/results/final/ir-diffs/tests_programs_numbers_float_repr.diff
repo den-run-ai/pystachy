@@ -1,0 +1,84 @@
+--- a/tests/programs/numbers/float_repr.py.ll
++++ b/tests/programs/numbers/float_repr.py.ll
+@@ -20,6 +20,7 @@
+ @g.s = internal global ptr zeroinitializer
+ @pys.roots = private constant [8 x ptr] [ptr @g.LEN, ptr @g.p, ptr @g.q, ptr @g.xs, ptr @g.d, ptr @g.o, ptr @g.r, ptr @g.s]
+ @s.0 = private unnamed_addr global {i64, i64, i64, [37 x i8]} {i64 36, i64 0, i64 37, [37 x i8] c"0123456789abcdefghijklmnopqrstuvwxyz\00"}, align 8
++@lc.0 = private unnamed_addr constant [46 x i64] [i64 976, i64 896, i64 863, i64 803, i64 710, i64 594, i64 574, i64 554, i64 544, i64 534, i64 481, i64 405, i64 398, i64 378, i64 345, i64 305, i64 275, i64 182, i64 172, i64 132, i64 122, i64 89, i64 -24, i64 -44, i64 -77, i64 -97, i64 -140, i64 -296, i64 -366, i64 -383, i64 -489, i64 -496, i64 -509, i64 -549, i64 -652, i64 -662, i64 -695, i64 -705, i64 -778, i64 -788, i64 -791, i64 -808, i64 -921, i64 -957, i64 -1007, i64 -1017], align 8
+ @s.1 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1, i64 0, i64 2, [2 x i8] c" \00"}, align 8
+ @s.2 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1, i64 0, i64 2, [2 x i8] c"\0A\00"}, align 8
+ @s.3 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1, i64 0, i64 2, [2 x i8] c"f\00"}, align 8
+@@ -82,53 +83,7 @@
+   store i1 true, ptr @g.math.imp
+   store i1 true, ptr @g.sys.imp
+   store ptr @s.0, ptr @g.LEN
+-  %t2 = call ptr @pys_list_new_atomic(i64 46)
+-  call void @pys_list_append(ptr %t2, i64 976)
+-  call void @pys_list_append(ptr %t2, i64 896)
+-  call void @pys_list_append(ptr %t2, i64 863)
+-  call void @pys_list_append(ptr %t2, i64 803)
+-  call void @pys_list_append(ptr %t2, i64 710)
+-  call void @pys_list_append(ptr %t2, i64 594)
+-  call void @pys_list_append(ptr %t2, i64 574)
+-  call void @pys_list_append(ptr %t2, i64 554)
+-  call void @pys_list_append(ptr %t2, i64 544)
+-  call void @pys_list_append(ptr %t2, i64 534)
+-  call void @pys_list_append(ptr %t2, i64 481)
+-  call void @pys_list_append(ptr %t2, i64 405)
+-  call void @pys_list_append(ptr %t2, i64 398)
+-  call void @pys_list_append(ptr %t2, i64 378)
+-  call void @pys_list_append(ptr %t2, i64 345)
+-  call void @pys_list_append(ptr %t2, i64 305)
+-  call void @pys_list_append(ptr %t2, i64 275)
+-  call void @pys_list_append(ptr %t2, i64 182)
+-  call void @pys_list_append(ptr %t2, i64 172)
+-  call void @pys_list_append(ptr %t2, i64 132)
+-  call void @pys_list_append(ptr %t2, i64 122)
+-  call void @pys_list_append(ptr %t2, i64 89)
+-  call void @pys_list_append(ptr %t2, i64 -24)
+-  call void @pys_list_append(ptr %t2, i64 -44)
+-  call void @pys_list_append(ptr %t2, i64 -77)
+-  call void @pys_list_append(ptr %t2, i64 -97)
+-  call void @pys_list_append(ptr %t2, i64 -140)
+-  call void @pys_list_append(ptr %t2, i64 -296)
+-  call void @pys_list_append(ptr %t2, i64 -366)
+-  call void @pys_list_append(ptr %t2, i64 -383)
+-  call void @pys_list_append(ptr %t2, i64 -489)
+-  call void @pys_list_append(ptr %t2, i64 -496)
+-  call void @pys_list_append(ptr %t2, i64 -509)
+-  call void @pys_list_append(ptr %t2, i64 -549)
+-  call void @pys_list_append(ptr %t2, i64 -652)
+-  call void @pys_list_append(ptr %t2, i64 -662)
+-  call void @pys_list_append(ptr %t2, i64 -695)
+-  call void @pys_list_append(ptr %t2, i64 -705)
+-  call void @pys_list_append(ptr %t2, i64 -778)
+-  call void @pys_list_append(ptr %t2, i64 -788)
+-  call void @pys_list_append(ptr %t2, i64 -791)
+-  call void @pys_list_append(ptr %t2, i64 -808)
+-  call void @pys_list_append(ptr %t2, i64 -921)
+-  call void @pys_list_append(ptr %t2, i64 -957)
+-  call void @pys_list_append(ptr %t2, i64 -1007)
+-  call void @pys_list_append(ptr %t2, i64 -1017)
++  %t2 = call ptr @pys_list_from_const(ptr @lc.0, i64 46)
+   store i64 0, ptr %h.3
+   %t4 = load i64, ptr %t2
+   br label %L5
+@@ -1497,8 +1452,7 @@
+   unreachable
+ }
+ declare i64 @pys_recursion_depth()
+-declare ptr @pys_list_new_atomic(i64)
+-declare void @pys_list_append(ptr, i64)
++declare ptr @pys_list_from_const(ptr, i64)
+ declare i64 @pys_list_get(ptr, i64)
+ declare double @pys_m_ldexp(double, i64)
+ declare ptr @pys_repr(i64, ptr)
+@@ -1507,6 +1461,8 @@
+ declare ptr @pys_str_int(i64)
+ declare void @pys_write(ptr, i64)
+ declare ptr @pys_str_float(double)
++declare ptr @pys_list_new_atomic(i64)
++declare void @pys_list_append(ptr, i64)
+ declare double @pys_m_nextafter(double, double)
+ declare {i64, i1} @llvm.sadd.with.overflow.i64(i64, i64)
+ declare {i64, i1} @llvm.ssub.with.overflow.i64(i64, i64)

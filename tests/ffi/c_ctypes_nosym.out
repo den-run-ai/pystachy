@@ -1,0 +1,3 @@
+noisy: imported
+[exit 1]
+[stderr] AttributeError: libm.so.6: undefined symbol: no_such_function_here

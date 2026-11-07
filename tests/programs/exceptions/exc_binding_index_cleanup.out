@@ -1,0 +1,12 @@
+loop 0 0
+loop 0 1
+loop target deleted 0
+loop 1 0
+loop target deleted 1
+return target deleted
+return
+outer different
+outer remains outer
+same
+inner deleted outer target
+[exit 0]

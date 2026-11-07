@@ -7,7 +7,7 @@ the representation and operation determine their costs.
 
 ## Benchmarks
 
-Run `make bench` to compare CPython, JIT and AOT on your build. Each invocation measures each
+Run `PYSTACHY_PROGRAM_CACHE=0 make bench` to compare CPython, uncached JIT and AOT on your build. Each invocation measures each
 mode once; repeat it to obtain a median. The benchmark gate in `make verify` checks output
 agreement, without imposing timing thresholds.
 
@@ -35,7 +35,9 @@ The runtime compilation cache was primed first.
 
 - **Speedups** divide the unrounded medians. A mode's slowest run took up to 1.6 times its
   fastest, so the smaller ratios are approximate.
-- **Short programs favor AOT over the JIT**, which compiles on every run.
+- **These historical JIT measurements include compilation on every run.** The
+  Linux native CLI now uses a [program cache](program-cache.md) by default;
+  measure first fills and hits separately. Prebuilt AOT also avoids validation.
 - **`json_records.py`**, the other program `make bench` runs, is left out: its default run takes
   26 ms under CPython, too short to time this way. See the [JSON benchmarks](json.md#benchmarks).
 - **Data.** The [raw samples](../bench/results/bench-run-alpha4-2026-11-03.json) give every run's

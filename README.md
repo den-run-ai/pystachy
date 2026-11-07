@@ -60,13 +60,15 @@ and shows how to measure compilation and execution separately.
 |---|---|
 | [Event router](examples/route/README.md) | Route logs and traces using pattern matching and memoization. |
 | [JSON repair](examples/json_repair/README.md) | Repair malformed JSON through a native CLI or a CPython extension. |
+| [Byte BPE](examples/byte_bpe/README.md) | Train a byte tokenizer and encode/decode Unicode text natively. |
 | [Coding agent](examples/agent/README.md) | Run a typed tool loop and edit files from a native executable. |
 | [nanoGPT](examples/nanogpt/README.md) | Run inference and training with native arrays and optional BLAS. |
 
 Browse [all examples](examples/README.md) for their purposes, checks and requirements.
 See the [performance guide](docs/performance.md) for measured workloads, startup
-and memory costs, and reproduction commands. `run` compiles the program on every
-invocation. `build` lets you reuse the executable.
+and memory costs, and reproduction commands. On supported Linux native installs,
+`run` automatically [reuses unchanged programs](docs/program-cache.md).
+`PYSTACHY_PROGRAM_CACHE=0` forces compilation; `build` produces a standalone executable.
 
 ## Compatibility
 
@@ -74,12 +76,14 @@ Pystachy is experimental. It supports typed containers, classes, generators and
 other common Python constructs. General multiple inheritance, `async` and
 `match` are outside the supported subset. Integers are checked 64-bit values by
 default. [Promoting integers](docs/python-int.md) and [dynamic `Any`](docs/dynamic-any.md)
-are opt-in.
+are opt-in. Dynamic `Any` includes a bounded prototype for
+[class values, type-keyed registries, generic calls and annotated factories](docs/dynamic-any.md#class-values-and-type-keyed-registries).
 
 Check the [language guide](docs/language.md#support-at-a-glance) and
 [library support table](docs/stdlib.md#library-support-at-a-glance) for the
-features and APIs your code uses. The library includes bounded `argparse` and
-`enum` support. Some packages compile from installed sources, and others need
+features and APIs your code uses. The library includes bounded `argparse`, `enum`
+and experimental [static ctypes declarations](docs/ffi.md#static-ctypes-declarations).
+Some packages compile from installed sources, and others need
 adaptations like the [maintained ports](ports/README.md). The optional
 [CPython bridge](docs/ffi.md#calling-cpython) lets native code call
 packages that need CPython at runtime.
