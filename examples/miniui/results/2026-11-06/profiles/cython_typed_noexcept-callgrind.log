@@ -1,0 +1,12 @@
+RESULT frame 150 5000 0 28.05396501300129 426158804 167 930000 -1
+==41== Callgrind, a call-graph generating cache profiler
+==41== Copyright (C) 2002-2017, and GNU GPL'd, by Josef Weidendorfer et al.
+==41== Using Valgrind-3.22.0 and LibVEX; rerun with -h for copyright info
+==41== Command: /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13 -c import\ sys;\ from\ benchmark_workload\ import\ run;\ run(sys.argv[1],\ int(sys.argv[2]),\ int(sys.argv[3]),\ int(sys.argv[4]),\ sys.argv[5]\ if\ len(sys.argv)\>5\ else\ '') frame 150 5000 0
+==41==
+==41== For interactive control, run 'callgrind_control -h'.
+==41==
+==41== Events    : Ir
+==41== Collected : 2536041197
+==41==
+==41== I   refs:      2,536,041,197

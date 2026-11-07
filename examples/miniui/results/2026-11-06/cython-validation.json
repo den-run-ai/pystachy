@@ -1,0 +1,781 @@
+{
+  "python": "3.13.16 (main, Oct 14 2026, 01:04:01) [Clang 23.1.3 ]",
+  "variants": [
+    "same_source_auto",
+    "cython_native_auto",
+    "cython_typed_noexcept"
+  ],
+  "checks": [
+    {
+      "variant": "cpython_source",
+      "particles": 150,
+      "mode": "simulate",
+      "fields_without_time": [
+        "RESULT",
+        "simulate",
+        "150",
+        "7",
+        "2",
+        "697579842",
+        "167",
+        "0",
+        "2166136261"
+      ]
+    },
+    {
+      "variant": "cpython_source",
+      "particles": 150,
+      "mode": "ui",
+      "fields_without_time": [
+        "RESULT",
+        "ui",
+        "150",
+        "7",
+        "2",
+        "1845740862",
+        "167",
+        "0",
+        "2166136261"
+      ]
+    },
+    {
+      "variant": "cpython_source",
+      "particles": 150,
+      "mode": "submit",
+      "fields_without_time": [
+        "RESULT",
+        "submit",
+        "150",
+        "7",
+        "2",
+        "1845740862",
+        "167",
+        "1302",
+        "1832535193"
+      ]
+    },
+    {
+      "variant": "cpython_source",
+      "particles": 150,
+      "mode": "poll",
+      "fields_without_time": [
+        "RESULT",
+        "poll",
+        "150",
+        "7",
+        "2",
+        "1845740862",
+        "167",
+        "0",
+        "2166136261"
+      ]
+    },
+    {
+      "variant": "cpython_source",
+      "particles": 150,
+      "mode": "frame",
+      "fields_without_time": [
+        "RESULT",
+        "frame",
+        "150",
+        "7",
+        "2",
+        "2091924262",
+        "167",
+        "1302",
+        "2480502664"
+      ]
+    },
+    {
+      "variant": "cpython_source",
+      "particles": 150,
+      "mode": "ffi",
+      "fields_without_time": [
+        "RESULT",
+        "ffi",
+        "150",
+        "7",
+        "2",
+        "1845740862",
+        "167",
+        "7",
+        "3404853700"
+      ]
+    },
+    {
+      "variant": "cpython_source",
+      "particles": 2000,
+      "mode": "simulate",
+      "fields_without_time": [
+        "RESULT",
+        "simulate",
+        "2000",
+        "7",
+        "2",
+        "1195063606",
+        "2017",
+        "0",
+        "2166136261"
+      ]
+    },
+    {
+      "variant": "cpython_source",
+      "particles": 2000,
+      "mode": "ui",
+      "fields_without_time": [
+        "RESULT",
+        "ui",
+        "2000",
+        "7",
+        "2",
+        "1979070156",
+        "2017",
+        "0",
+        "2166136261"
+      ]
+    },
+    {
+      "variant": "cpython_source",
+      "particles": 2000,
+      "mode": "submit",
+      "fields_without_time": [
+        "RESULT",
+        "submit",
+        "2000",
+        "7",
+        "2",
+        "1979070156",
+        "2017",
+        "14252",
+        "905901291"
+      ]
+    },
+    {
+      "variant": "cpython_source",
+      "particles": 2000,
+      "mode": "poll",
+      "fields_without_time": [
+        "RESULT",
+        "poll",
+        "2000",
+        "7",
+        "2",
+        "1979070156",
+        "2017",
+        "0",
+        "2166136261"
+      ]
+    },
+    {
+      "variant": "cpython_source",
+      "particles": 2000,
+      "mode": "frame",
+      "fields_without_time": [
+        "RESULT",
+        "frame",
+        "2000",
+        "7",
+        "2",
+        "2100476857",
+        "2017",
+        "14252",
+        "1710442241"
+      ]
+    },
+    {
+      "variant": "cpython_source",
+      "particles": 2000,
+      "mode": "ffi",
+      "fields_without_time": [
+        "RESULT",
+        "ffi",
+        "2000",
+        "7",
+        "2",
+        "1979070156",
+        "2017",
+        "7",
+        "3404853700"
+      ]
+    },
+    {
+      "variant": "same_source_auto",
+      "particles": 150,
+      "mode": "simulate",
+      "fields_without_time": [
+        "RESULT",
+        "simulate",
+        "150",
+        "7",
+        "2",
+        "697579842",
+        "167",
+        "0",
+        "2166136261"
+      ]
+    },
+    {
+      "variant": "same_source_auto",
+      "particles": 150,
+      "mode": "ui",
+      "fields_without_time": [
+        "RESULT",
+        "ui",
+        "150",
+        "7",
+        "2",
+        "1845740862",
+        "167",
+        "0",
+        "2166136261"
+      ]
+    },
+    {
+      "variant": "same_source_auto",
+      "particles": 150,
+      "mode": "submit",
+      "fields_without_time": [
+        "RESULT",
+        "submit",
+        "150",
+        "7",
+        "2",
+        "1845740862",
+        "167",
+        "1302",
+        "1832535193"
+      ]
+    },
+    {
+      "variant": "same_source_auto",
+      "particles": 150,
+      "mode": "poll",
+      "fields_without_time": [
+        "RESULT",
+        "poll",
+        "150",
+        "7",
+        "2",
+        "1845740862",
+        "167",
+        "0",
+        "2166136261"
+      ]
+    },
+    {
+      "variant": "same_source_auto",
+      "particles": 150,
+      "mode": "frame",
+      "fields_without_time": [
+        "RESULT",
+        "frame",
+        "150",
+        "7",
+        "2",
+        "2091924262",
+        "167",
+        "1302",
+        "2480502664"
+      ]
+    },
+    {
+      "variant": "same_source_auto",
+      "particles": 150,
+      "mode": "ffi",
+      "fields_without_time": [
+        "RESULT",
+        "ffi",
+        "150",
+        "7",
+        "2",
+        "1845740862",
+        "167",
+        "7",
+        "3404853700"
+      ]
+    },
+    {
+      "variant": "same_source_auto",
+      "particles": 2000,
+      "mode": "simulate",
+      "fields_without_time": [
+        "RESULT",
+        "simulate",
+        "2000",
+        "7",
+        "2",
+        "1195063606",
+        "2017",
+        "0",
+        "2166136261"
+      ]
+    },
+    {
+      "variant": "same_source_auto",
+      "particles": 2000,
+      "mode": "ui",
+      "fields_without_time": [
+        "RESULT",
+        "ui",
+        "2000",
+        "7",
+        "2",
+        "1979070156",
+        "2017",
+        "0",
+        "2166136261"
+      ]
+    },
+    {
+      "variant": "same_source_auto",
+      "particles": 2000,
+      "mode": "submit",
+      "fields_without_time": [
+        "RESULT",
+        "submit",
+        "2000",
+        "7",
+        "2",
+        "1979070156",
+        "2017",
+        "14252",
+        "905901291"
+      ]
+    },
+    {
+      "variant": "same_source_auto",
+      "particles": 2000,
+      "mode": "poll",
+      "fields_without_time": [
+        "RESULT",
+        "poll",
+        "2000",
+        "7",
+        "2",
+        "1979070156",
+        "2017",
+        "0",
+        "2166136261"
+      ]
+    },
+    {
+      "variant": "same_source_auto",
+      "particles": 2000,
+      "mode": "frame",
+      "fields_without_time": [
+        "RESULT",
+        "frame",
+        "2000",
+        "7",
+        "2",
+        "2100476857",
+        "2017",
+        "14252",
+        "1710442241"
+      ]
+    },
+    {
+      "variant": "same_source_auto",
+      "particles": 2000,
+      "mode": "ffi",
+      "fields_without_time": [
+        "RESULT",
+        "ffi",
+        "2000",
+        "7",
+        "2",
+        "1979070156",
+        "2017",
+        "7",
+        "3404853700"
+      ]
+    },
+    {
+      "variant": "cython_native_auto",
+      "particles": 150,
+      "mode": "simulate",
+      "fields_without_time": [
+        "RESULT",
+        "simulate",
+        "150",
+        "7",
+        "2",
+        "697579842",
+        "167",
+        "0",
+        "2166136261"
+      ]
+    },
+    {
+      "variant": "cython_native_auto",
+      "particles": 150,
+      "mode": "ui",
+      "fields_without_time": [
+        "RESULT",
+        "ui",
+        "150",
+        "7",
+        "2",
+        "1845740862",
+        "167",
+        "0",
+        "2166136261"
+      ]
+    },
+    {
+      "variant": "cython_native_auto",
+      "particles": 150,
+      "mode": "submit",
+      "fields_without_time": [
+        "RESULT",
+        "submit",
+        "150",
+        "7",
+        "2",
+        "1845740862",
+        "167",
+        "1302",
+        "1832535193"
+      ]
+    },
+    {
+      "variant": "cython_native_auto",
+      "particles": 150,
+      "mode": "poll",
+      "fields_without_time": [
+        "RESULT",
+        "poll",
+        "150",
+        "7",
+        "2",
+        "1845740862",
+        "167",
+        "0",
+        "2166136261"
+      ]
+    },
+    {
+      "variant": "cython_native_auto",
+      "particles": 150,
+      "mode": "frame",
+      "fields_without_time": [
+        "RESULT",
+        "frame",
+        "150",
+        "7",
+        "2",
+        "2091924262",
+        "167",
+        "1302",
+        "2480502664"
+      ]
+    },
+    {
+      "variant": "cython_native_auto",
+      "particles": 150,
+      "mode": "ffi",
+      "fields_without_time": [
+        "RESULT",
+        "ffi",
+        "150",
+        "7",
+        "2",
+        "1845740862",
+        "167",
+        "7",
+        "3404853700"
+      ]
+    },
+    {
+      "variant": "cython_native_auto",
+      "particles": 2000,
+      "mode": "simulate",
+      "fields_without_time": [
+        "RESULT",
+        "simulate",
+        "2000",
+        "7",
+        "2",
+        "1195063606",
+        "2017",
+        "0",
+        "2166136261"
+      ]
+    },
+    {
+      "variant": "cython_native_auto",
+      "particles": 2000,
+      "mode": "ui",
+      "fields_without_time": [
+        "RESULT",
+        "ui",
+        "2000",
+        "7",
+        "2",
+        "1979070156",
+        "2017",
+        "0",
+        "2166136261"
+      ]
+    },
+    {
+      "variant": "cython_native_auto",
+      "particles": 2000,
+      "mode": "submit",
+      "fields_without_time": [
+        "RESULT",
+        "submit",
+        "2000",
+        "7",
+        "2",
+        "1979070156",
+        "2017",
+        "14252",
+        "905901291"
+      ]
+    },
+    {
+      "variant": "cython_native_auto",
+      "particles": 2000,
+      "mode": "poll",
+      "fields_without_time": [
+        "RESULT",
+        "poll",
+        "2000",
+        "7",
+        "2",
+        "1979070156",
+        "2017",
+        "0",
+        "2166136261"
+      ]
+    },
+    {
+      "variant": "cython_native_auto",
+      "particles": 2000,
+      "mode": "frame",
+      "fields_without_time": [
+        "RESULT",
+        "frame",
+        "2000",
+        "7",
+        "2",
+        "2100476857",
+        "2017",
+        "14252",
+        "1710442241"
+      ]
+    },
+    {
+      "variant": "cython_native_auto",
+      "particles": 2000,
+      "mode": "ffi",
+      "fields_without_time": [
+        "RESULT",
+        "ffi",
+        "2000",
+        "7",
+        "2",
+        "1979070156",
+        "2017",
+        "7",
+        "3404853700"
+      ]
+    },
+    {
+      "variant": "cython_typed_noexcept",
+      "particles": 150,
+      "mode": "simulate",
+      "fields_without_time": [
+        "RESULT",
+        "simulate",
+        "150",
+        "7",
+        "2",
+        "697579842",
+        "167",
+        "0",
+        "2166136261"
+      ]
+    },
+    {
+      "variant": "cython_typed_noexcept",
+      "particles": 150,
+      "mode": "ui",
+      "fields_without_time": [
+        "RESULT",
+        "ui",
+        "150",
+        "7",
+        "2",
+        "1845740862",
+        "167",
+        "0",
+        "2166136261"
+      ]
+    },
+    {
+      "variant": "cython_typed_noexcept",
+      "particles": 150,
+      "mode": "submit",
+      "fields_without_time": [
+        "RESULT",
+        "submit",
+        "150",
+        "7",
+        "2",
+        "1845740862",
+        "167",
+        "1302",
+        "1832535193"
+      ]
+    },
+    {
+      "variant": "cython_typed_noexcept",
+      "particles": 150,
+      "mode": "poll",
+      "fields_without_time": [
+        "RESULT",
+        "poll",
+        "150",
+        "7",
+        "2",
+        "1845740862",
+        "167",
+        "0",
+        "2166136261"
+      ]
+    },
+    {
+      "variant": "cython_typed_noexcept",
+      "particles": 150,
+      "mode": "frame",
+      "fields_without_time": [
+        "RESULT",
+        "frame",
+        "150",
+        "7",
+        "2",
+        "2091924262",
+        "167",
+        "1302",
+        "2480502664"
+      ]
+    },
+    {
+      "variant": "cython_typed_noexcept",
+      "particles": 150,
+      "mode": "ffi",
+      "fields_without_time": [
+        "RESULT",
+        "ffi",
+        "150",
+        "7",
+        "2",
+        "1845740862",
+        "167",
+        "7",
+        "3404853700"
+      ]
+    },
+    {
+      "variant": "cython_typed_noexcept",
+      "particles": 2000,
+      "mode": "simulate",
+      "fields_without_time": [
+        "RESULT",
+        "simulate",
+        "2000",
+        "7",
+        "2",
+        "1195063606",
+        "2017",
+        "0",
+        "2166136261"
+      ]
+    },
+    {
+      "variant": "cython_typed_noexcept",
+      "particles": 2000,
+      "mode": "ui",
+      "fields_without_time": [
+        "RESULT",
+        "ui",
+        "2000",
+        "7",
+        "2",
+        "1979070156",
+        "2017",
+        "0",
+        "2166136261"
+      ]
+    },
+    {
+      "variant": "cython_typed_noexcept",
+      "particles": 2000,
+      "mode": "submit",
+      "fields_without_time": [
+        "RESULT",
+        "submit",
+        "2000",
+        "7",
+        "2",
+        "1979070156",
+        "2017",
+        "14252",
+        "905901291"
+      ]
+    },
+    {
+      "variant": "cython_typed_noexcept",
+      "particles": 2000,
+      "mode": "poll",
+      "fields_without_time": [
+        "RESULT",
+        "poll",
+        "2000",
+        "7",
+        "2",
+        "1979070156",
+        "2017",
+        "0",
+        "2166136261"
+      ]
+    },
+    {
+      "variant": "cython_typed_noexcept",
+      "particles": 2000,
+      "mode": "frame",
+      "fields_without_time": [
+        "RESULT",
+        "frame",
+        "2000",
+        "7",
+        "2",
+        "2100476857",
+        "2017",
+        "14252",
+        "1710442241"
+      ]
+    },
+    {
+      "variant": "cython_typed_noexcept",
+      "particles": 2000,
+      "mode": "ffi",
+      "fields_without_time": [
+        "RESULT",
+        "ffi",
+        "2000",
+        "7",
+        "2",
+        "1979070156",
+        "2017",
+        "7",
+        "3404853700"
+      ]
+    }
+  ],
+  "headless": "buttons: capture, release, fast click, disabled, distinct IDs\nkeyboard: tab, reverse wrap, enter, removed focus, isolated contexts\ncheckbox and identity: release-only toggle; IDs survive reordered layout\nsliders: capture, clamp, keyboard step, equal bounds, disabled\ntext: Unicode code points, insertion, deletion, capacity, commit\nfocus loss: window blur, disappearing control, escape cancellation\nclipped focus: hidden navigation, stale focus/capture, partial visibility\ncancellation: Escape/blur win over click, keys, edits and navigation\ndrawing: flexible rows, clipping, progress, rectangle, RGBA\nvalidation: lifecycle, IDs, layout, finite values, NUL\nminiui: 10 headless scenarios passed\n",
+  "adapter": "/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench/adapters/verify",
+  "all_passed": true
+}

@@ -1,0 +1,33 @@
+Sat Nov  7 04:39:09 2026    /workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench/profiles/cpython_native.pstats
+
+         1659046 function calls in 0.555 seconds
+
+   Ordered by: cumulative time
+   List reduced from 58 to 25 due to restriction <25>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000    0.555    0.555 benchmark_workload.py:111(run)
+        2    0.001    0.001    0.553    0.277 benchmark_workload.py:86(loop)
+     1031    0.105    0.000    0.447    0.000 benchmark_workload.py:31(make_ui)
+   154650    0.051    0.000    0.160    0.000 miniui.py:248(rectangle)
+   163929    0.070    0.000    0.104    0.000 miniui.py:200(_rect)
+     1030    0.087    0.000    0.102    0.000 raylib_backend.py:50(draw)
+   200008    0.059    0.000    0.088    0.000 miniui.py:9(__init__)
+     8248    0.014    0.000    0.037    0.000 miniui.py:203(_text)
+    20612    0.021    0.000    0.037    0.000 miniui.py:18(intersect)
+   465984    0.035    0.000    0.035    0.000 {built-in method builtins.max}
+     4124    0.003    0.000    0.028    0.000 miniui.py:253(label)
+   172177    0.019    0.000    0.019    0.000 miniui.py:51(__init__)
+   183518    0.018    0.000    0.018    0.000 {method 'append' of 'list' objects}
+     1031    0.004    0.000    0.017    0.000 miniui.py:269(checkbox)
+    10310    0.010    0.000    0.017    0.000 miniui.py:188(_next)
+     4124    0.004    0.000    0.014    0.000 miniui.py:212(_control)
+     1031    0.001    0.000    0.013    0.000 miniui.py:262(button)
+     1031    0.002    0.000    0.012    0.000 miniui.py:321(textbox)
+   170115    0.012    0.000    0.012    0.000 miniui.py:153(_check_frame)
+     1031    0.003    0.000    0.011    0.000 miniui.py:284(slider)
+     1031    0.010    0.000    0.011    0.000 miniui.py:102(begin)
+     1031    0.001    0.000    0.008    0.000 miniui.py:256(panel)
+     4124    0.006    0.000    0.007    0.000 miniui.py:157(row)
+    53596    0.006    0.000    0.006    0.000 {built-in method builtins.min}
+     1031    0.002    0.000    0.006    0.000 miniui.py:313(progress)

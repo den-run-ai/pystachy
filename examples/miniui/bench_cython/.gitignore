@@ -1,0 +1,7 @@
+/deps/
+/__pycache__/
+/STATUS.txt
+/build.log
+/typed-build.log
+/*.log
+/validation.json

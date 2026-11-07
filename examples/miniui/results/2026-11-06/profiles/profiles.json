@@ -1,0 +1,636 @@
+{
+  "source": "build/miniui-bench/final-manifest.json",
+  "commands": [
+    {
+      "runtime": "cpython_twin",
+      "argv": [
+        "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+        "-c",
+        "import cProfile; from benchmark_workload import run; p=cProfile.Profile(); p.runcall(run,'frame',150,1000,30); p.dump_stats('/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench/profiles/cpython_twin.pstats')"
+      ],
+      "extra_env": null
+    },
+    {
+      "runtime": "cpython_native",
+      "argv": [
+        "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+        "-c",
+        "import cProfile; from benchmark_workload import run; p=cProfile.Profile(); p.runcall(run,'frame',150,1000,30); p.dump_stats('/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench/profiles/cpython_native.pstats')"
+      ],
+      "extra_env": null
+    },
+    {
+      "runtime": "pystachy_aot",
+      "argv": [
+        "/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench/miniui-aot",
+        "frame",
+        "150",
+        "50000",
+        "30"
+      ],
+      "extra_env": {
+        "PYSTACHY_GC": "stats"
+      }
+    },
+    {
+      "runtime": "pystachy_aot",
+      "argv": [
+        "/workspace/scratch/3293b906db74/profiling-tools/usr/bin/valgrind",
+        "--tool=callgrind",
+        "--collect-atstart=no",
+        "--toggle-collect=f.benchmark_workload$loop",
+        "--callgrind-out-file=/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench/profiles/pystachy_aot.callgrind",
+        "/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench/miniui-aot",
+        "frame",
+        "150",
+        "5000",
+        "0"
+      ],
+      "extra_env": null
+    },
+    {
+      "runtime": "cython_typed_noexcept",
+      "argv": [
+        "/workspace/scratch/3293b906db74/profiling-tools/usr/bin/valgrind",
+        "--tool=callgrind",
+        "--collect-atstart=no",
+        "--toggle-collect=__pyx_f_18benchmark_workload_loop",
+        "--callgrind-out-file=/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench/profiles/cython_typed_noexcept.callgrind",
+        "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+        "-c",
+        "import sys; from benchmark_workload import run; run(sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4]), sys.argv[5] if len(sys.argv)>5 else '')",
+        "frame",
+        "150",
+        "5000",
+        "0"
+      ],
+      "extra_env": null
+    }
+  ],
+  "profiles": {
+    "cpython_twin": {
+      "total_seconds": 5.167220685000002,
+      "top_functions": [
+        {
+          "file": "/workspace/scratch/fc7e23979fc8/pystachy-bench/examples/miniui/benchmark_workload.py",
+          "line": 111,
+          "function": "run",
+          "primitive_calls": 1,
+          "calls": 1,
+          "self_seconds": 3.2137e-05,
+          "cumulative_seconds": 5.167206834
+        },
+        {
+          "file": "/workspace/scratch/fc7e23979fc8/pystachy-bench/examples/miniui/benchmark_workload.py",
+          "line": 86,
+          "function": "loop",
+          "primitive_calls": 2,
+          "calls": 2,
+          "self_seconds": 0.002031404,
+          "cumulative_seconds": 5.1659794990000005
+        },
+        {
+          "file": "/workspace/scratch/fc7e23979fc8/pystachy-bench/examples/miniui/raylib_backend.py",
+          "line": 116,
+          "function": "draw",
+          "primitive_calls": 1030,
+          "calls": 1030,
+          "self_seconds": 0.160153766,
+          "cumulative_seconds": 4.582734393
+        },
+        {
+          "file": "/workspace/scratch/fc7e23979fc8/pystachy-bench/tools/rt_cpython/ffi.py",
+          "line": 119,
+          "function": "call",
+          "primitive_calls": 195706,
+          "calls": 195706,
+          "self_seconds": 1.209305531,
+          "cumulative_seconds": 4.450523296
+        },
+        {
+          "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+          "line": 3311,
+          "function": "bind",
+          "primitive_calls": 195706,
+          "calls": 195706,
+          "self_seconds": 0.074404571,
+          "cumulative_seconds": 1.9713348620000002
+        },
+        {
+          "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+          "line": 3169,
+          "function": "_bind",
+          "primitive_calls": 195706,
+          "calls": 195706,
+          "self_seconds": 1.200463048,
+          "cumulative_seconds": 1.896930291
+        },
+        {
+          "file": "/workspace/scratch/fc7e23979fc8/pystachy-bench/examples/miniui/benchmark_workload.py",
+          "line": 31,
+          "function": "make_ui",
+          "primitive_calls": 1031,
+          "calls": 1031,
+          "self_seconds": 0.11553247500000001,
+          "cumulative_seconds": 0.522446458
+        },
+        {
+          "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+          "line": 2983,
+          "function": "apply_defaults",
+          "primitive_calls": 195706,
+          "calls": 195706,
+          "self_seconds": 0.35948973700000003,
+          "cumulative_seconds": 0.519486569
+        },
+        {
+          "file": "/workspace/scratch/fc7e23979fc8/pystachy-bench/tools/rt_cpython/ffi.py",
+          "line": 78,
+          "function": "_check",
+          "primitive_calls": 922883,
+          "calls": 922883,
+          "self_seconds": 0.334153888,
+          "cumulative_seconds": 0.336309483
+        },
+        {
+          "file": "~",
+          "line": 0,
+          "function": "<built-in method builtins.next>",
+          "primitive_calls": 2237178,
+          "calls": 2237178,
+          "self_seconds": 0.31082081,
+          "cumulative_seconds": 0.31082081
+        },
+        {
+          "file": "~",
+          "line": 0,
+          "function": "<method 'append' of 'list' objects>",
+          "primitive_calls": 2029284,
+          "calls": 2029284,
+          "self_seconds": 0.251804325,
+          "cumulative_seconds": 0.251804325
+        },
+        {
+          "file": "/workspace/scratch/fc7e23979fc8/pystachy-bench/examples/miniui/miniui.py",
+          "line": 248,
+          "function": "rectangle",
+          "primitive_calls": 154650,
+          "calls": 154650,
+          "self_seconds": 0.054803044,
+          "cumulative_seconds": 0.182846893
+        },
+        {
+          "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+          "line": 2828,
+          "function": "name",
+          "primitive_calls": 1845766,
+          "calls": 1845766,
+          "self_seconds": 0.14136826,
+          "cumulative_seconds": 0.14136826
+        },
+        {
+          "file": "~",
+          "line": 0,
+          "function": "<built-in method builtins.isinstance>",
+          "primitive_calls": 1118589,
+          "calls": 1118589,
+          "self_seconds": 0.134822364,
+          "cumulative_seconds": 0.134822364
+        },
+        {
+          "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+          "line": 2840,
+          "function": "kind",
+          "primitive_calls": 1845766,
+          "calls": 1845766,
+          "self_seconds": 0.12787515600000002,
+          "cumulative_seconds": 0.12787515600000002
+        },
+        {
+          "file": "/workspace/scratch/fc7e23979fc8/pystachy-bench/examples/miniui/miniui.py",
+          "line": 200,
+          "function": "_rect",
+          "primitive_calls": 163929,
+          "calls": 163929,
+          "self_seconds": 0.085146076,
+          "cumulative_seconds": 0.125543275
+        },
+        {
+          "file": "/workspace/scratch/fc7e23979fc8/pystachy-bench/examples/miniui/miniui.py",
+          "line": 9,
+          "function": "__init__",
+          "primitive_calls": 200008,
+          "calls": 200008,
+          "self_seconds": 0.062095494,
+          "cumulative_seconds": 0.096490136
+        },
+        {
+          "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/typing.py",
+          "line": 1788,
+          "function": "__eq__",
+          "primitive_calls": 195706,
+          "calls": 195706,
+          "self_seconds": 0.05768326000000001,
+          "cumulative_seconds": 0.08723304800000001
+        },
+        {
+          "file": "/workspace/scratch/fc7e23979fc8/pystachy-bench/examples/miniui/raylib_backend.py",
+          "line": 90,
+          "function": "poll",
+          "primitive_calls": 1030,
+          "calls": 1030,
+          "self_seconds": 0.009976538,
+          "cumulative_seconds": 0.059430024000000005
+        },
+        {
+          "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/typing.py",
+          "line": 426,
+          "function": "inner",
+          "primitive_calls": 195706,
+          "calls": 195706,
+          "self_seconds": 0.058365235,
+          "cumulative_seconds": 0.058365235
+        },
+        {
+          "file": "/workspace/scratch/fc7e23979fc8/pystachy-bench/examples/miniui/miniui.py",
+          "line": 18,
+          "function": "intersect",
+          "primitive_calls": 20612,
+          "calls": 20612,
+          "self_seconds": 0.027330162,
+          "cumulative_seconds": 0.049148978
+        },
+        {
+          "file": "/workspace/scratch/fc7e23979fc8/pystachy-bench/examples/miniui/miniui.py",
+          "line": 203,
+          "function": "_text",
+          "primitive_calls": 8248,
+          "calls": 8248,
+          "self_seconds": 0.019974445,
+          "cumulative_seconds": 0.048579519
+        },
+        {
+          "file": "~",
+          "line": 0,
+          "function": "<built-in method builtins.iter>",
+          "primitive_calls": 391412,
+          "calls": 391412,
+          "self_seconds": 0.046083677,
+          "cumulative_seconds": 0.046083677
+        },
+        {
+          "file": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+          "line": 3123,
+          "function": "parameters",
+          "primitive_calls": 587118,
+          "calls": 587118,
+          "self_seconds": 0.044870869,
+          "cumulative_seconds": 0.044870869
+        },
+        {
+          "file": "~",
+          "line": 0,
+          "function": "<built-in method builtins.max>",
+          "primitive_calls": 465984,
+          "calls": 465984,
+          "self_seconds": 0.042131252,
+          "cumulative_seconds": 0.042131252
+        },
+        {
+          "file": "~",
+          "line": 0,
+          "function": "<method 'items' of 'mappingproxy' objects>",
+          "primitive_calls": 195706,
+          "calls": 195706,
+          "self_seconds": 0.035771155,
+          "cumulative_seconds": 0.035771155
+        },
+        {
+          "file": "~",
+          "line": 0,
+          "function": "<method 'values' of 'mappingproxy' objects>",
+          "primitive_calls": 195706,
+          "calls": 195706,
+          "self_seconds": 0.035371795000000004,
+          "cumulative_seconds": 0.035371795000000004
+        },
+        {
+          "file": "/workspace/scratch/fc7e23979fc8/pystachy-bench/examples/miniui/miniui.py",
+          "line": 253,
+          "function": "label",
+          "primitive_calls": 4124,
+          "calls": 4124,
+          "self_seconds": 0.0026407130000000003,
+          "cumulative_seconds": 0.033623117
+        },
+        {
+          "file": "~",
+          "line": 0,
+          "function": "<method 'values' of 'dict' objects>",
+          "primitive_calls": 195706,
+          "calls": 195706,
+          "self_seconds": 0.029502532,
+          "cumulative_seconds": 0.029502532
+        },
+        {
+          "file": "/workspace/scratch/fc7e23979fc8/pystachy-bench/examples/miniui/miniui.py",
+          "line": 269,
+          "function": "checkbox",
+          "primitive_calls": 1031,
+          "calls": 1031,
+          "self_seconds": 0.005265142,
+          "cumulative_seconds": 0.023639169
+        }
+      ]
+    },
+    "cpython_native": {
+      "total_seconds": 0.5545690660000001,
+      "top_functions": [
+        {
+          "file": "/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cpython_native/benchmark_workload.py",
+          "line": 111,
+          "function": "run",
+          "primitive_calls": 1,
+          "calls": 1,
+          "self_seconds": 3.7065000000000005e-05,
+          "cumulative_seconds": 0.554556047
+        },
+        {
+          "file": "/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cpython_native/benchmark_workload.py",
+          "line": 86,
+          "function": "loop",
+          "primitive_calls": 2,
+          "calls": 2,
+          "self_seconds": 0.001143333,
+          "cumulative_seconds": 0.553443071
+        },
+        {
+          "file": "/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cpython_native/benchmark_workload.py",
+          "line": 31,
+          "function": "make_ui",
+          "primitive_calls": 1031,
+          "calls": 1031,
+          "self_seconds": 0.10487626200000001,
+          "cumulative_seconds": 0.447082146
+        },
+        {
+          "file": "/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cpython_native/miniui.py",
+          "line": 248,
+          "function": "rectangle",
+          "primitive_calls": 154650,
+          "calls": 154650,
+          "self_seconds": 0.051117399,
+          "cumulative_seconds": 0.15964340500000002
+        },
+        {
+          "file": "/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cpython_native/miniui.py",
+          "line": 200,
+          "function": "_rect",
+          "primitive_calls": 163929,
+          "calls": 163929,
+          "self_seconds": 0.07017657000000001,
+          "cumulative_seconds": 0.10415344100000001
+        },
+        {
+          "file": "/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cpython_native/raylib_backend.py",
+          "line": 50,
+          "function": "draw",
+          "primitive_calls": 1030,
+          "calls": 1030,
+          "self_seconds": 0.087488783,
+          "cumulative_seconds": 0.102358026
+        },
+        {
+          "file": "/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cpython_native/miniui.py",
+          "line": 9,
+          "function": "__init__",
+          "primitive_calls": 200008,
+          "calls": 200008,
+          "self_seconds": 0.058854680000000006,
+          "cumulative_seconds": 0.088450078
+        },
+        {
+          "file": "/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cpython_native/miniui.py",
+          "line": 203,
+          "function": "_text",
+          "primitive_calls": 8248,
+          "calls": 8248,
+          "self_seconds": 0.014456771,
+          "cumulative_seconds": 0.037242731
+        },
+        {
+          "file": "/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cpython_native/miniui.py",
+          "line": 18,
+          "function": "intersect",
+          "primitive_calls": 20612,
+          "calls": 20612,
+          "self_seconds": 0.02078559,
+          "cumulative_seconds": 0.036965102
+        },
+        {
+          "file": "~",
+          "line": 0,
+          "function": "<built-in method builtins.max>",
+          "primitive_calls": 465984,
+          "calls": 465984,
+          "self_seconds": 0.035374204,
+          "cumulative_seconds": 0.035374204
+        },
+        {
+          "file": "/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cpython_native/miniui.py",
+          "line": 253,
+          "function": "label",
+          "primitive_calls": 4124,
+          "calls": 4124,
+          "self_seconds": 0.002515659,
+          "cumulative_seconds": 0.027821398
+        },
+        {
+          "file": "/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cpython_native/miniui.py",
+          "line": 51,
+          "function": "__init__",
+          "primitive_calls": 172177,
+          "calls": 172177,
+          "self_seconds": 0.019478910000000002,
+          "cumulative_seconds": 0.019478910000000002
+        },
+        {
+          "file": "~",
+          "line": 0,
+          "function": "<method 'append' of 'list' objects>",
+          "primitive_calls": 183518,
+          "calls": 183518,
+          "self_seconds": 0.018101806,
+          "cumulative_seconds": 0.018101806
+        },
+        {
+          "file": "/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cpython_native/miniui.py",
+          "line": 269,
+          "function": "checkbox",
+          "primitive_calls": 1031,
+          "calls": 1031,
+          "self_seconds": 0.0038243440000000004,
+          "cumulative_seconds": 0.017018417
+        },
+        {
+          "file": "/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cpython_native/miniui.py",
+          "line": 188,
+          "function": "_next",
+          "primitive_calls": 10310,
+          "calls": 10310,
+          "self_seconds": 0.009965502000000001,
+          "cumulative_seconds": 0.016641726000000003
+        },
+        {
+          "file": "/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cpython_native/miniui.py",
+          "line": 212,
+          "function": "_control",
+          "primitive_calls": 4124,
+          "calls": 4124,
+          "self_seconds": 0.004099722,
+          "cumulative_seconds": 0.014022792000000001
+        },
+        {
+          "file": "/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cpython_native/miniui.py",
+          "line": 262,
+          "function": "button",
+          "primitive_calls": 1031,
+          "calls": 1031,
+          "self_seconds": 0.001354828,
+          "cumulative_seconds": 0.012619856
+        },
+        {
+          "file": "/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cpython_native/miniui.py",
+          "line": 321,
+          "function": "textbox",
+          "primitive_calls": 1031,
+          "calls": 1031,
+          "self_seconds": 0.001697146,
+          "cumulative_seconds": 0.012483600000000001
+        },
+        {
+          "file": "/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cpython_native/miniui.py",
+          "line": 153,
+          "function": "_check_frame",
+          "primitive_calls": 170115,
+          "calls": 170115,
+          "self_seconds": 0.012282406000000001,
+          "cumulative_seconds": 0.012282406000000001
+        },
+        {
+          "file": "/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cpython_native/miniui.py",
+          "line": 284,
+          "function": "slider",
+          "primitive_calls": 1031,
+          "calls": 1031,
+          "self_seconds": 0.003064378,
+          "cumulative_seconds": 0.011424834
+        },
+        {
+          "file": "/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cpython_native/miniui.py",
+          "line": 102,
+          "function": "begin",
+          "primitive_calls": 1031,
+          "calls": 1031,
+          "self_seconds": 0.010307776000000001,
+          "cumulative_seconds": 0.011060110000000001
+        },
+        {
+          "file": "/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cpython_native/miniui.py",
+          "line": 256,
+          "function": "panel",
+          "primitive_calls": 1031,
+          "calls": 1031,
+          "self_seconds": 0.00095673,
+          "cumulative_seconds": 0.008267519000000001
+        },
+        {
+          "file": "/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cpython_native/miniui.py",
+          "line": 157,
+          "function": "row",
+          "primitive_calls": 4124,
+          "calls": 4124,
+          "self_seconds": 0.005702802000000001,
+          "cumulative_seconds": 0.007312599
+        },
+        {
+          "file": "~",
+          "line": 0,
+          "function": "<built-in method builtins.min>",
+          "primitive_calls": 53596,
+          "calls": 53596,
+          "self_seconds": 0.0055197150000000006,
+          "cumulative_seconds": 0.0055197150000000006
+        },
+        {
+          "file": "/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cpython_native/miniui.py",
+          "line": 313,
+          "function": "progress",
+          "primitive_calls": 1031,
+          "calls": 1031,
+          "self_seconds": 0.0016474690000000001,
+          "cumulative_seconds": 0.005508259000000001
+        },
+        {
+          "file": "/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cpython_native/miniui.py",
+          "line": 237,
+          "function": "_box",
+          "primitive_calls": 4124,
+          "calls": 4124,
+          "self_seconds": 0.00138826,
+          "cumulative_seconds": 0.0044154680000000005
+        },
+        {
+          "file": "/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cpython_native/raylib_backend.py",
+          "line": 24,
+          "function": "poll",
+          "primitive_calls": 1030,
+          "calls": 1030,
+          "self_seconds": 0.003006917,
+          "cumulative_seconds": 0.0033540870000000004
+        },
+        {
+          "file": "~",
+          "line": 0,
+          "function": "<built-in method builtins.len>",
+          "primitive_calls": 15466,
+          "calls": 15466,
+          "self_seconds": 0.001550865,
+          "cumulative_seconds": 0.001550865
+        },
+        {
+          "file": "~",
+          "line": 0,
+          "function": "<method 'add' of 'set' objects>",
+          "primitive_calls": 4124,
+          "calls": 4124,
+          "self_seconds": 0.0009620920000000001,
+          "cumulative_seconds": 0.0009620920000000001
+        },
+        {
+          "file": "/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cpython_native/miniui.py",
+          "line": 143,
+          "function": "end",
+          "primitive_calls": 1031,
+          "calls": 1031,
+          "self_seconds": 0.000591231,
+          "cumulative_seconds": 0.0006569970000000001
+        }
+      ]
+    },
+    "pystachy_aot": {
+      "instructions": 347966878,
+      "frames": 5000,
+      "symbol": "f.benchmark_workload$loop"
+    },
+    "cython_typed_noexcept": {
+      "instructions": 2536041197,
+      "frames": 5000,
+      "symbol": "__pyx_f_18benchmark_workload_loop"
+    }
+  },
+  "gc": {
+    "stdout": "RESULT frame 150 50000 30 0.2885643859990523 1029396409 167 9300000 -1\n",
+    "stderr": "gc: 35 collections, 1.6 ms; heap peak 34.0 MiB; live 0.0 MiB at the last\n"
+  }
+}

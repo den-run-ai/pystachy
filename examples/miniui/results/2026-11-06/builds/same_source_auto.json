@@ -1,0 +1,54 @@
+{
+  "mode": "same_source_auto",
+  "python": "3.13.16 (main, Oct 14 2026, 01:04:01) [Clang 23.1.3 ]",
+  "cython": "3.1.8",
+  "compiler": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+  "optimization": "-O3; no fast-math; checked integer conversions; GIL held",
+  "extension_suffix": ".cpython-313-x86_64-linux-gnu.so",
+  "source_sha256": {
+    "miniui.py": "587bf161c2a9ba8cf9f43dcfbe1aebac34281fa5ccfb4dba82e248e50c41d991",
+    "raylib_backend.py": "ed79be510124b92fefc26cc60f87b7f9484982bc70a5b15fd2fead90f4cc1b4e",
+    "benchmark_workload.py": "a2892797da5f17234f0910cf3552bc009eedae20f1337327a370f9439981f0c9"
+  },
+  "generator_sha256": {
+    "build.py": "3a689ef66dbc72544484d65649a923aee75cf8cb9ca0907c0027b3ccfcf6d128",
+    "typed_codegen.py": "cd024f0614818924317d0e69ac891eb3e58eb348f80608fc2f6f3ca01a38806d",
+    "native_bindings.pxi": "02bcef0fff0352384e5890fa2b81616fca2a70a3b603e02677ddce0863802fdb",
+    "miniui_abi.h": "07d0f1bcc5fbfb299c5cce80e9f12d4d1b2f7a703ad115c6867bc7ca9732dfa9"
+  },
+  "compiler_so": [
+    "/workspace/scratch/c154e74884e5/llvm-cache/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/clang",
+    "-fno-strict-overflow",
+    "-Wsign-compare",
+    "-Wunreachable-code",
+    "-DNDEBUG",
+    "-g",
+    "-O3",
+    "-Wall",
+    "-O3",
+    "-fstack-protector",
+    "-fstack-clash-protection",
+    "-U_FORTIFY_SOURCE",
+    "-D_FORTIFY_SOURCE=2",
+    "-fno-omit-frame-pointer",
+    "-mno-omit-leaf-frame-pointer",
+    "-fPIC",
+    "-fPIC"
+  ],
+  "linker_so": [
+    "/workspace/scratch/c154e74884e5/llvm-cache/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/clang",
+    "-shared"
+  ],
+  "overflowcheck": false,
+  "boundscheck": true,
+  "wraparound": true,
+  "infer_types": null,
+  "inference": "Cython default safe inference (infer_types=None)",
+  "native_noexcept_helpers": [],
+  "native_bindings_sha256": null,
+  "sensitivity_baseline": "same_source",
+  "library_dir_for_link": "/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench/adapters/stub",
+  "runtime_library_selection": "LD_LIBRARY_PATH; no RPATH embedded",
+  "python_classes": "regular classes; not cdef classes",
+  "transformations": "none"
+}

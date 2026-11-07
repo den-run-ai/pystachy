@@ -1,0 +1,33 @@
+Sat Nov  7 04:39:09 2026    /workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench/profiles/cpython_twin.pstats
+
+         14418753 function calls in 5.167 seconds
+
+   Ordered by: cumulative time
+   List reduced from 62 to 25 due to restriction <25>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000    5.167    5.167 benchmark_workload.py:111(run)
+        2    0.002    0.001    5.166    2.583 benchmark_workload.py:86(loop)
+     1030    0.160    0.000    4.583    0.004 raylib_backend.py:116(draw)
+   195706    1.209    0.000    4.451    0.000 ffi.py:119(call)
+   195706    0.074    0.000    1.971    0.000 inspect.py:3311(bind)
+   195706    1.200    0.000    1.897    0.000 inspect.py:3169(_bind)
+     1031    0.116    0.000    0.522    0.001 benchmark_workload.py:31(make_ui)
+   195706    0.359    0.000    0.519    0.000 inspect.py:2983(apply_defaults)
+   922883    0.334    0.000    0.336    0.000 ffi.py:78(_check)
+  2237178    0.311    0.000    0.311    0.000 {built-in method builtins.next}
+  2029284    0.252    0.000    0.252    0.000 {method 'append' of 'list' objects}
+   154650    0.055    0.000    0.183    0.000 miniui.py:248(rectangle)
+  1845766    0.141    0.000    0.141    0.000 inspect.py:2828(name)
+  1118589    0.135    0.000    0.135    0.000 {built-in method builtins.isinstance}
+  1845766    0.128    0.000    0.128    0.000 inspect.py:2840(kind)
+   163929    0.085    0.000    0.126    0.000 miniui.py:200(_rect)
+   200008    0.062    0.000    0.096    0.000 miniui.py:9(__init__)
+   195706    0.058    0.000    0.087    0.000 typing.py:1788(__eq__)
+     1030    0.010    0.000    0.059    0.000 raylib_backend.py:90(poll)
+   195706    0.058    0.000    0.058    0.000 typing.py:426(inner)
+    20612    0.027    0.000    0.049    0.000 miniui.py:18(intersect)
+     8248    0.020    0.000    0.049    0.000 miniui.py:203(_text)
+   391412    0.046    0.000    0.046    0.000 {built-in method builtins.iter}
+   587118    0.045    0.000    0.045    0.000 inspect.py:3123(parameters)
+   465984    0.042    0.000    0.042    0.000 {built-in method builtins.max}

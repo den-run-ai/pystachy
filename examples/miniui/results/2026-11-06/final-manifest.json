@@ -1,0 +1,82 @@
+{
+  "runtimes": [
+    {
+      "name": "cpython_twin",
+      "command": [
+        "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+        "-c",
+        "import sys; from benchmark_workload import run; run(sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4]), sys.argv[5] if len(sys.argv)>5 else '')"
+      ],
+      "env": {
+        "PYTHONPATH": "/workspace/scratch/fc7e23979fc8/pystachy-bench/examples/miniui:/workspace/scratch/fc7e23979fc8/pystachy-bench/tools/rt_cpython"
+      }
+    },
+    {
+      "name": "cpython_native",
+      "command": [
+        "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+        "-c",
+        "import sys; from benchmark_workload import run; run(sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4]), sys.argv[5] if len(sys.argv)>5 else '')"
+      ],
+      "env": {
+        "PYTHONPATH": "/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cpython_native:/workspace/scratch/fc7e23979fc8/pystachy-bench/examples/miniui:/workspace/scratch/fc7e23979fc8/pystachy-bench/tools/rt_cpython"
+      }
+    },
+    {
+      "name": "cython_auto",
+      "command": [
+        "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+        "-c",
+        "import sys; from benchmark_workload import run; run(sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4]), sys.argv[5] if len(sys.argv)>5 else '')"
+      ],
+      "env": {
+        "PYTHONPATH": "/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/same_source_auto:/workspace/scratch/fc7e23979fc8/pystachy-bench/examples/miniui:/workspace/scratch/fc7e23979fc8/pystachy-bench/tools/rt_cpython"
+      }
+    },
+    {
+      "name": "cython_native_auto",
+      "command": [
+        "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+        "-c",
+        "import sys; from benchmark_workload import run; run(sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4]), sys.argv[5] if len(sys.argv)>5 else '')"
+      ],
+      "env": {
+        "PYTHONPATH": "/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cython_native_auto:/workspace/scratch/fc7e23979fc8/pystachy-bench/examples/miniui:/workspace/scratch/fc7e23979fc8/pystachy-bench/tools/rt_cpython"
+      }
+    },
+    {
+      "name": "cython_typed_noexcept",
+      "command": [
+        "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+        "-c",
+        "import sys; from benchmark_workload import run; run(sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4]), sys.argv[5] if len(sys.argv)>5 else '')"
+      ],
+      "env": {
+        "PYTHONPATH": "/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cython_typed_noexcept:/workspace/scratch/fc7e23979fc8/pystachy-bench/examples/miniui:/workspace/scratch/fc7e23979fc8/pystachy-bench/tools/rt_cpython"
+      }
+    },
+    {
+      "name": "pystachy_aot",
+      "command": [
+        "/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench/miniui-aot"
+      ]
+    },
+    {
+      "name": "pystachy_jit",
+      "command": [
+        "/workspace/scratch/fc7e23979fc8/pystachy-bench/pystachy",
+        "run",
+        "/workspace/scratch/fc7e23979fc8/pystachy-bench/examples/miniui/benchmark_entry.py"
+      ]
+    }
+  ],
+  "env": {
+    "PYSTACHY_HOME": "/workspace/scratch/fc7e23979fc8/pystachy-bench",
+    "PYSTACHY_LLVM": "/workspace/scratch/c154e74884e5/llvm-cache/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin"
+  },
+  "adapters": {
+    "stub": "/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench/adapters/stub",
+    "verify": "/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench/adapters/verify",
+    "real": "/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench/adapters/real"
+  }
+}

@@ -1,0 +1,71 @@
+--------------------------------------------------------------------------------
+Profile data file '/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench/profiles/cython_typed_noexcept.callgrind' (creator: callgrind-3.22.0)
+--------------------------------------------------------------------------------
+I1 cache:
+D1 cache:
+LL cache:
+Timerange: Basic block 0 - 574214609
+Trigger: Program termination
+Profiled target:  /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13 -c import sys; from benchmark_workload import run; run(sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4]), sys.argv[5] if len(sys.argv)>5 else '') frame 150 5000 0 (PID 41, part 1)
+Events recorded:  Ir
+Events shown:     Ir
+Event sort order: Ir
+Thresholds:       95
+Include dirs:
+User annotated:
+Auto-annotation:  off
+
+--------------------------------------------------------------------------------
+Ir
+--------------------------------------------------------------------------------
+2,536,041,197 (100.0%)  PROGRAM TOTALS
+
+--------------------------------------------------------------------------------
+Ir                    file:function
+--------------------------------------------------------------------------------
+238,250,946 ( 9.39%)  ???:_PyObject_MakeTpCall [/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13]
+228,264,445 ( 9.00%)  ???:_PyObject_Free [/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13]
+195,892,838 ( 7.72%)  ???:tupledealloc [/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13]
+152,762,287 ( 6.02%)  ???:_PyObject_Malloc [/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13]
+144,930,000 ( 5.71%)  ???:PyType_GenericAlloc [/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13]
+100,409,392 ( 3.96%)  ???:PyLong_FromLong [/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13]
+ 94,080,000 ( 3.71%)  build/miniui-bench-cython/cython_typed_noexcept/generated/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cython_typed_noexcept/miniui.c:__pyx_pw_6miniui_7Command_1__init__ [/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cython_typed_noexcept/miniui.cpython-313-x86_64-linux-gnu.so]
+ 92,941,432 ( 3.66%)  build/miniui-bench-cython/cython_typed_noexcept/generated/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cython_typed_noexcept/benchmark_workload.c:__pyx_f_18benchmark_workload_5State_make_ui [/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cython_typed_noexcept/benchmark_workload.cpython-313-x86_64-linux-gnu.so]
+ 86,880,000 ( 3.43%)  ???:type_call [/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13]
+ 74,690,000 ( 2.95%)  build/miniui-bench-cython/cython_typed_noexcept/generated/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cython_typed_noexcept/miniui.c:__pyx_pw_6miniui_4Rect_1__init__ [/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cython_typed_noexcept/miniui.cpython-313-x86_64-linux-gnu.so]
+ 68,460,000 ( 2.70%)  build/miniui-bench-cython/cython_typed_noexcept/generated/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cython_typed_noexcept/miniui.c:__Pyx_PyLong_As_PY_LONG_LONG [/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cython_typed_noexcept/miniui.cpython-313-x86_64-linux-gnu.so]
+ 68,060,000 ( 2.68%)  build/miniui-bench-cython/cython_typed_noexcept/generated/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cython_typed_noexcept/raylib_backend.c:__pyx_f_14raylib_backend_6Window_draw [/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cython_typed_noexcept/raylib_backend.cpython-313-x86_64-linux-gnu.so]
+ 64,115,000 ( 2.53%)  /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/include/python3.13/object.h:__pyx_pw_6miniui_7Command_1__init__
+ 62,839,955 ( 2.48%)  /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/include/python3.13/object.h:__pyx_f_18benchmark_workload_5State_make_ui
+ 57,050,304 ( 2.25%)  ???:long_dealloc [/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13]
+ 54,805,000 ( 2.16%)  build/miniui-bench-cython/cython_typed_noexcept/generated/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cython_typed_noexcept/miniui.c:__pyx_f_6miniui_2UI__rect [/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cython_typed_noexcept/miniui.cpython-313-x86_64-linux-gnu.so]
+ 52,490,000 ( 2.07%)  ???:_PyObject_VectorcallDictTstate [/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13]
+ 42,000,000 ( 1.66%)  ???:PyLong_FromSsize_t [/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13]
+ 41,673,784 ( 1.64%)  /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/include/python3.13/object.h:__pyx_pw_6miniui_4Rect_1__init__
+ 34,500,000 ( 1.36%)  build/miniui-bench-cython/cython_typed_noexcept/generated/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cython_typed_noexcept/miniui.c:__pyx_f_6miniui_2UI_rectangle [/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cython_typed_noexcept/miniui.cpython-313-x86_64-linux-gnu.so]
+ 33,520,000 ( 1.32%)  /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/include/python3.13/object.h:__pyx_f_14raylib_backend_6Window_draw
+ 31,454,542 ( 1.24%)  ???:PyLong_FromDouble [/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13]
+ 27,895,000 ( 1.10%)  ???:0x0000000000189440 [/usr/lib/x86_64-linux-gnu/libc.so.6]
+ 24,450,000 ( 0.96%)  /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/include/python3.13/cpython/longintrepr.h:__Pyx_PyLong_As_PY_LONG_LONG
+ 24,215,000 ( 0.95%)  build/miniui-bench-cython/cython_typed_noexcept/generated/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cython_typed_noexcept/miniui.c:__pyx_tp_dealloc_6miniui_Command [/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cython_typed_noexcept/miniui.cpython-313-x86_64-linux-gnu.so]
+ 23,805,000 ( 0.94%)  ???:PyErr_Occurred [/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13]
+ 22,052,688 ( 0.87%)  ???:_Py_Dealloc [???]
+ 21,870,000 ( 0.86%)  /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/include/python3.13/object.h:__pyx_f_6miniui_2UI__rect
+ 21,710,000 ( 0.86%)  ???:PyObject_GC_Del [/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13]
+ 21,440,000 ( 0.85%)  build/miniui-bench-cython/cython_typed_noexcept/generated/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cython_typed_noexcept/miniui.c:__Pyx_PyLong_As_unsigned_int [/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cython_typed_noexcept/miniui.cpython-313-x86_64-linux-gnu.so]
+ 21,075,000 ( 0.83%)  ???:list_dealloc [/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13]
+ 20,625,000 ( 0.81%)  build/miniui-bench-cython/cython_typed_noexcept/generated/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cython_typed_noexcept/miniui.c:__pyx_f_6miniui_2UI__check_frame [/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cython_typed_noexcept/miniui.cpython-313-x86_64-linux-gnu.so]
+ 18,000,000 ( 0.71%)  ???:PyFloat_FromDouble [/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13]
+ 16,290,000 ( 0.64%)  ???:PyObject_VectorcallDict [???]
+ 14,390,000 ( 0.57%)  /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/include/python3.13/object.h:__pyx_tp_dealloc_6miniui_Command
+ 13,500,000 ( 0.53%)  ???:float_dealloc [/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13]
+ 13,360,000 ( 0.53%)  ???:PyObject_GC_UnTrack [???]
+ 11,690,000 ( 0.46%)  build/miniui-bench-cython/cython_typed_noexcept/generated/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cython_typed_noexcept/miniui.c:__pyx_tp_new_6miniui_Command [/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cython_typed_noexcept/miniui.cpython-313-x86_64-linux-gnu.so]
+ 11,640,000 ( 0.46%)  build/miniui-bench-cython/cython_typed_noexcept/generated/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cython_typed_noexcept/miniui.c:__pyx_tp_new_6miniui_Rect [/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cython_typed_noexcept/miniui.cpython-313-x86_64-linux-gnu.so]
+ 10,670,000 ( 0.42%)  build/miniui-bench-cython/cython_typed_noexcept/generated/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cython_typed_noexcept/miniui.c:__pyx_tp_dealloc_6miniui_Rect [/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cython_typed_noexcept/miniui.cpython-313-x86_64-linux-gnu.so]
+ 10,200,000 ( 0.40%)  build/miniui-bench-cython/cython_typed_noexcept/generated/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cython_typed_noexcept/miniui.c:__pyx_f_6miniui_4Rect_intersect [/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cython_typed_noexcept/miniui.cpython-313-x86_64-linux-gnu.so]
+ 10,125,000 ( 0.40%)  ???:PyUnicode_Contains [/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13]
+  9,828,480 ( 0.39%)  ???:fmod'2 [/usr/lib/x86_64-linux-gnu/libm.so.6]
+  9,750,000 ( 0.38%)  ???:fmod [/usr/lib/x86_64-linux-gnu/libm.so.6]
+  8,735,000 ( 0.34%)  build/miniui-bench-cython/cython_typed_noexcept/generated/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cython_typed_noexcept/miniui.c:__pyx_f_6miniui_2UI__text [/workspace/scratch/fc7e23979fc8/pystachy-bench/build/miniui-bench-cython/cython_typed_noexcept/miniui.cpython-313-x86_64-linux-gnu.so]
+  7,780,000 ( 0.31%)  ???:PyList_Append [/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13]
