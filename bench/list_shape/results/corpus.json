@@ -1,0 +1,219 @@
+{
+  "baseline": {
+    "checkout": "/workspace/scratch/773660c98364/list-contracts",
+    "checkout_commit": "8a1c5b5eb1700522028efd51faac00bf2c37828d",
+    "core_build_commit": "4fd481b061be50b16943e28aa5861c09c6951c6c",
+    "source_sha256": "84d5fda1055f2f054c2eac0a7e9e17620db41de8aefd0fdd3731b3515312554d",
+    "binary_sha256": "0f1b01bf2e6fde23aa717c685f30813108457e3b02b853cfd41210d19c3ff984"
+  },
+  "candidate": {
+    "checkout": "/workspace/scratch/773660c98364/pystachy",
+    "prepared_commit": "1e4359a0cffd15fc330c9038cb75163a063f5c3f",
+    "prepared_tree": "c6a57c01a798ae7836fe8dc3e22900b72fa611cc",
+    "source_sha256": "43dde7d38843be61a52202e6603e4bef4a694e1d5682454ec0f2f7d14ac7699b",
+    "fresh_build_verified": true,
+    "run_binary_sha256": "2af6e2e0ce362f875351d92a6ef78d31c3f3b0a4c76a332b6c6fcc477c0bba74",
+    "native_build_commit": "1e4359a0cffd15fc330c9038cb75163a063f5c3f",
+    "native_compiler_fixed_point_lines": 834805,
+    "native_runtime_fixed_point_lines": 18805
+  },
+  "input_snapshot": {
+    "path": "/workspace/scratch/773660c98364/effects-contracts-full-irsame/source",
+    "commit": "1e4359a0cffd15fc330c9038cb75163a063f5c3f",
+    "tree": "c6a57c01a798ae7836fe8dc3e22900b72fa611cc"
+  },
+  "equal_resource_git_ids": {
+    "lib": {
+      "baseline": "e0c17b450d47d6e0b44cce81fd16226dd9fdb183",
+      "candidate": "e0c17b450d47d6e0b44cce81fd16226dd9fdb183"
+    },
+    "runtime.c": {
+      "baseline": "d57e508b50090af7cc12b742d8bafd44d31659e3",
+      "candidate": "d57e508b50090af7cc12b742d8bafd44d31659e3"
+    },
+    "runtime.py": {
+      "baseline": "05efce704fe02b0e445283bbf2b88c0182454216",
+      "candidate": "05efce704fe02b0e445283bbf2b88c0182454216"
+    },
+    "pyext.c": {
+      "baseline": "d3b9c95764a13bc6a46c47f38e8518afce4312b7",
+      "candidate": "d3b9c95764a13bc6a46c47f38e8518afce4312b7"
+    },
+    "pyembed.c": {
+      "baseline": "0bb131ea066beca5d1312b578b7330bb103a0a73",
+      "candidate": "0bb131ea066beca5d1312b578b7330bb103a0a73"
+    },
+    "tools/irsame.sh": {
+      "baseline": "875ea0ff512dab27b5f3dd19428f23eeb9be69ac",
+      "candidate": "875ea0ff512dab27b5f3dd19428f23eeb9be69ac"
+    }
+  },
+  "workers": 1,
+  "distinct_home_full_run": {
+    "total": 4243,
+    "accepted_by_both": 2363,
+    "expected_rejections_by_both": 1880,
+    "exit_status_changes": 0,
+    "unexpected_rejections": 0,
+    "identical": 3978,
+    "path_only_differences": 261,
+    "intentional_code_differences": 4,
+    "unexplained_differences": 0
+  },
+  "common_home_control": {
+    "cases": 265,
+    "home": "/workspace/scratch/773660c98364/pystachy",
+    "identical": 261,
+    "remaining_code_differences": 4,
+    "unexpected_differences": 0
+  },
+  "compiler_and_runtime_ir_identical": true,
+  "read_replacements": 11,
+  "code_change_audit": [
+    {
+      "case": "tests/programs/apps/example_nanogpt.py",
+      "read_replacements": 1,
+      "llvm_line_delta": 3,
+      "functions": [
+        {
+          "function": "@f.close",
+          "before": {
+            "checked": 2,
+            "inline": 1
+          },
+          "after": {
+            "checked": 1,
+            "inline": 2
+          }
+        }
+      ],
+      "inspection": "Only the second actual[i] read in close becomes unchecked. expected[i] remains checked; the pass does not infer that its owner shares actual's length from the assertion.",
+      "before_sha256": "2ddf45812e61daa3859592bf60c3e3e42ff797e02486274b7f85f2c966114e38",
+      "after_sha256": "d32c92fc5d4d3d913041b1475e95ce38e5dc72a5de295f82b3cdfbf4ce59d74d"
+    },
+    {
+      "case": "tests/programs/apps/ouro2_sorts.py",
+      "read_replacements": 2,
+      "llvm_line_delta": 6,
+      "functions": [
+        {
+          "function": "@f.insertion_sort",
+          "before": {
+            "checked": 3,
+            "inline": 0
+          },
+          "after": {
+            "checked": 2,
+            "inline": 1
+          }
+        },
+        {
+          "function": "@f.stable",
+          "before": {
+            "checked": 3,
+            "inline": 1
+          },
+          "after": {
+            "checked": 2,
+            "inline": 2
+          }
+        }
+      ],
+      "inspection": "The outer a[i] read in insertion_sort is bounded across indexed updates; the data-dependent a[j] reads remain checked. stable gains its second a[i] rewrite; a[i - 1] reads remain checked.",
+      "before_sha256": "3bb9dc9f8b5d92bde8919f2460add9b340d2dad5ffaee6123ebf0f574d21ef4d",
+      "after_sha256": "37253a5c0306f2bb9d6805b01b3cccd37b1a7f5d28e9325b7ac5eea1c5f669d8"
+    },
+    {
+      "case": "tests/programs/optimizations/opt_listget_shape.py",
+      "read_replacements": 6,
+      "llvm_line_delta": 18,
+      "functions": [
+        {
+          "function": "@f.alias_updated",
+          "before": {
+            "checked": 1,
+            "inline": 0
+          },
+          "after": {
+            "checked": 0,
+            "inline": 1
+          }
+        },
+        {
+          "function": "@f.copied_read",
+          "before": {
+            "checked": 1,
+            "inline": 0
+          },
+          "after": {
+            "checked": 0,
+            "inline": 1
+          }
+        },
+        {
+          "function": "@f.reversed_read",
+          "before": {
+            "checked": 1,
+            "inline": 0
+          },
+          "after": {
+            "checked": 0,
+            "inline": 1
+          }
+        },
+        {
+          "function": "@f.sliced_read",
+          "before": {
+            "checked": 1,
+            "inline": 0
+          },
+          "after": {
+            "checked": 0,
+            "inline": 1
+          }
+        },
+        {
+          "function": "@f.updated",
+          "before": {
+            "checked": 2,
+            "inline": 0
+          },
+          "after": {
+            "checked": 0,
+            "inline": 2
+          }
+        }
+      ],
+      "inspection": "Six intended sites across updated, reversed_read, copied_read, sliced_read, and alias_updated become unchecked. Shrinking aliases, length changes, direct functions and indirect callbacks retain the checked fallbacks.",
+      "before_sha256": "83d6392bc31697fce8426b3437b901b60b5a32f69a9d0bfb58a6d70b01b2ed10",
+      "after_sha256": "5f208f5b4c49f5f54bb1601821e6e9d99a73cf15995cc857846d1e973ac15201"
+    },
+    {
+      "case": "tests/programs/strings/unicode_codepoints.py",
+      "read_replacements": 2,
+      "llvm_line_delta": 6,
+      "functions": [
+        {
+          "function": "@f.test_append_cache",
+          "before": {
+            "checked": 2,
+            "inline": 0
+          },
+          "after": {
+            "checked": 0,
+            "inline": 2
+          }
+        }
+      ],
+      "inspection": "Both parts[i] reads in test_append_cache become unchecked. The later parts slice preserves the input length; string append and Unicode operations remain unchanged.",
+      "before_sha256": "8817babc83b2e8a86987e4a353a498f3ddbbd801a7c8def224e4167554b78c65",
+      "after_sha256": "cd66ccdfadf975fbef3e15f84902432c000d2840cdb8948b7a7561a93d609172"
+    }
+  ],
+  "concrete_new_risks_found": [],
+  "limits": [
+    "This full corpus comparison checks emitted IR, diagnostics and compiler exit statuses; it does not execute every program or replace native, GC or sanitizer validation.",
+    "The 11 read substitutions add 33 unoptimized LLVM address/load lines across the four changed programs. These static counts are not speedup or machine-code size measurements.",
+    "The original separate-home oracle retains its real path differences; the controlled rerun changes the environment, not the stored LLVM oracle inputs."
+  ]
+}

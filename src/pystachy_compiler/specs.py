@@ -665,6 +665,19 @@ LIST_WRITES: dict[str, str] = {
     "list.append_big": "big", "list.set_big": "big", "list.insert_big": "big",
     "list.append_identity": "identity", "list.set_identity": "identity", "list.insert_identity": "identity",
 }
+# Audited primitive contracts for list bounds: these preserve every input list's
+# length and element-storage pointer. Identity companions may be allocated or
+# changed; fresh result storage is independent. Keep RUNTIME's wL/A/R effects:
+# this table is NOT a purity or value-invariance contract. Missing entries,
+# arbitrary functions and raw/foreign writes stay conservative.
+LIST_STABLE_SHAPE: dict[str, str] = {
+    "list.set": "elements identity", "list.set_big": "elements identity",
+    "list.set_identity": "elements identity", "list.reverse": "elements identity",
+    "list.copy": "identity fresh", "list.slice": "identity fresh",
+    "list.slice_step": "identity fresh",
+    "list.identity": "identity", "list.get_identity": "identity",
+    "list.forget_identity": "identity",
+}
 # a generator's promise, five i64 slots: the value it yielded last, the value it returned, its
 # state and the command its consumer gives it, and its __qualname__ (a str, for the reports of
 # what closing it raises). State: suspended where closing it runs no code of its, suspended

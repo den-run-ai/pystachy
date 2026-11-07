@@ -4,7 +4,7 @@ import os
 from src.pystachy_compiler.diagnostics import fail
 from src.pystachy_compiler.ir import IFn, Ins, Lookup, Val, Values
 from src.pystachy_compiler.ircheck import EffectSummaries
-from src.pystachy_compiler.specs import CANON_DEPTH, FXALL, FXBIT, LOOKUPS, RAWW, REACH
+from src.pystachy_compiler.specs import CANON_DEPTH, FXALL, FXBIT, LIST_STABLE_SHAPE, LOOKUPS, RAWW, REACH
 from src.pystachy_compiler.utils import is_list, is_tuple, is_union, umembers
 
 
@@ -37,7 +37,7 @@ PASS_CONTRACTS: list[PassContract] = [
     PassContract("charslots", ["uses", "predecessors", "reaching-stores"],
                  ["cfg", "loop-shape"],
                  ["values", "range-proofs", "alias-proofs", "slot-layout", "exact-effects"]),
-    PassContract("listget", ["predecessors", "loop-ranges", "values", "invariant-slots"],
+    PassContract("listget", ["predecessors", "loop-ranges", "values", "invariant-slots", "list-shape-effects"],
                  ["cfg", "loop-shape", "slot-layout"],
                  ["values", "range-proofs", "alias-proofs", "exact-effects"]),
     PassContract("dictfuse", ["predecessors", "values", "lookup-proofs"],
@@ -501,24 +501,37 @@ def gen_charslots(self, fn: IFn) -> int:
     fn.slots = [s for s in fn.slots if s is not slots[addr]]
     return 1
 
+def list_shape_clobber(i: Ins, effects: int) -> bool:
+    # Only a trusted primitive refines wL. A callback, arbitrary callee or raw
+    # write can resize an alias, even when its spelling resembles a primitive.
+    return effects & FXBIT["U"] != 0 or (effects & FXBIT["wL"] != 0 and (i.op != "rt" or i.s not in LIST_STABLE_SHAPE))
+
+
 def gen_listget(self, fn: IFn) -> int:
     # Unchecked list reads in sequence loops. The test a seq loop makes of a list leads to a
     # block (Loop.tests) where the loop's index (Loop.idx) is within the list's length. A
     # list.get of that list at that index, on the one path from there with no op between
-    # that may shorten a list (wL, or U: user code), needs no bounds check: it becomes a
+    # that may shorten a list (unrefined wL, or U: user code), needs no bounds check: it becomes a
     # list.load, which lowers to an inline load. The path goes only to blocks that one
     # branch leads to, so that no other path reaches the read: not a handler's either,
     # whose code (after a landing block, which only unwind edges reach, see preds) joins
     # this path only after its try statement or at a loop's test, where paths meet. How
     # many reads it rewrote
-    bad = FXBIT["wL"] | FXBIT["U"]
     ranges = False
     some = False
     for lp in fn.loops:
         ranges = ranges or (lp.kind == "range" and lp.nonnegative)
         for s in lp.seqs:
             some = some or is_list(s.t)
-    ranges = ranges and not fn.coro and fn.fx & bad == 0
+    ranges = ranges and not fn.coro and fn.fx & FXBIT["U"] == 0
+    if ranges and fn.fx & FXBIT["wL"] != 0:
+        for block in fn.blocks:
+            for ins in block.code:
+                if list_shape_clobber(ins, self.opfx(ins, fn.fa)):
+                    ranges = False
+                    break
+            if not ranges:
+                break
     if not some and not ranges:
         return 0
     at: dict[str, int] = {}
@@ -544,7 +557,7 @@ def gen_listget(self, fn: IFn) -> int:
                         fn.n += 3
                         n += 1
                         break
-                    if self.opfx(i, fn.fa) & bad != 0:
+                    if list_shape_clobber(i, self.opfx(i, fn.fa)):
                         break
                     if j == len(code) - 1 and (i.op == "br" or i.op == "cbr" or i.op == "check") and len(pl[i.b[0]]) == 1:
                         l = i.b[0]  # (a cbr's: the next sequence's test, in a zip)
@@ -552,8 +565,10 @@ def gen_listget(self, fn: IFn) -> int:
         return n
     # range(k, len(xs), step) tests a captured length. Its positive constant step
     # and nonnegative start keep the induction value nonnegative (overflow exits
-    # the loop), and no list write or unknown call anywhere in this function can
+    # the loop), and no shape-changing write or unknown call in this function can
     # invalidate the length, including before the loop or across its back edge.
+    # Element/identity updates preserve bounds, not values: every load stays at
+    # its original position and reads the current element.
     # A suspended generator can let its caller mutate the list, so is excluded.
     # Entry-only local bindings let the same list be recognized across that edge;
     # every other value uses canon's existing, bounded forward-path proof.
@@ -607,8 +622,8 @@ def gen_listget(self, fn: IFn) -> int:
                     i.r = [i.r[0], fn.n + 1, fn.n + 2, fn.n + 3]
                     fn.n += 3
                     n += 1
-                    break
-                if self.opfx(i, fn.fa) & bad != 0:
+                    continue
+                if list_shape_clobber(i, self.opfx(i, fn.fa)):
                     break
                 if j == len(code) - 1 and (i.op == "br" or i.op == "cbr" or i.op == "check") and len(pl[i.b[0]]) == 1 and at[i.b[0]] > b:
                     l = i.b[0]

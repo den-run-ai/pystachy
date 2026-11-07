@@ -1,0 +1,123 @@
+{
+  "benchmark": {
+    "source": "/workspace/scratch/773660c98364/pystachy/bench/list_shape/kernel.py",
+    "source_sha256": "cac6c14a2fb5b9a946ee1a3d3c4264c8bdd8e4925930e8ef37cff7d569711822",
+    "variants": {
+      "baseline": {
+        "head": "8a1c5b5eb1700522028efd51faac00bf2c37828d",
+        "tree": "208920ae4aaabbc70edd89c023addd18a8dbb756",
+        "compiler_sha256": "0f1b01bf2e6fde23aa717c685f30813108457e3b02b853cfd41210d19c3ff984",
+        "compiler_bytes": 5233312,
+        "command": [
+          "/workspace/scratch/773660c98364/list-contracts/pystachy",
+          "ir",
+          "/workspace/scratch/773660c98364/pystachy/bench/list_shape/kernel.py",
+          "-o",
+          "/workspace/scratch/773660c98364/list-shape-ir-review/baseline.ll"
+        ],
+        "llvm_sha256": "7429c6f847c17ceed054579a7542d41949a167acd4f6ec5cb6ec901a4877fda9",
+        "llvm_bytes": 11417,
+        "functions": 7,
+        "llvm_lines": 361
+      },
+      "candidate": {
+        "head": "1e4359a0cffd15fc330c9038cb75163a063f5c3f",
+        "tree": "c6a57c01a798ae7836fe8dc3e22900b72fa611cc",
+        "compiler_sha256": "2af6e2e0ce362f875351d92a6ef78d31c3f3b0a4c76a332b6c6fcc477c0bba74",
+        "compiler_bytes": 5233744,
+        "command": [
+          "/workspace/scratch/773660c98364/pystachy/pystachy",
+          "ir",
+          "/workspace/scratch/773660c98364/pystachy/bench/list_shape/kernel.py",
+          "-o",
+          "/workspace/scratch/773660c98364/list-shape-ir-review/candidate.ll"
+        ],
+        "llvm_sha256": "c7a85238d2bb054e8170a34533e9e712ed46f64fc8f0fa5415feb75e95b3ec29",
+        "llvm_bytes": 11681,
+        "functions": 7,
+        "llvm_lines": 367
+      }
+    },
+    "f.read_only": {
+      "byte_identical": true,
+      "baseline_sha256": "1062d83dbfa02c07516a6296e538fb34a6abcc5ea2b91e1852ae1c995cd98a7b",
+      "candidate_sha256": "1062d83dbfa02c07516a6296e538fb34a6abcc5ea2b91e1852ae1c995cd98a7b",
+      "baseline_bytes": 1977,
+      "candidate_bytes": 1977,
+      "lines": 67
+    },
+    "f.update": {
+      "byte_identical": false,
+      "baseline_sha256": "c1f987fabf0f924da183e924d535385b51307c1b0fd6613d05e34c82c3a27b92",
+      "candidate_sha256": "6883ab4a5ca2aef66a6adb562ab8c92951ba3007dd63cfae7377eb58ce5fb16e",
+      "baseline_bytes": 2456,
+      "candidate_bytes": 2720,
+      "baseline_lines": 80,
+      "candidate_lines": 86
+    },
+    "changed_functions": [
+      {
+        "function": "f.update",
+        "baseline_bytes": 2456,
+        "candidate_bytes": 2720
+      }
+    ],
+    "module_outside_update_byte_identical": true,
+    "module_outside_update_sha256": "c4f5a3e18d8861b352a833e49e1c7cbf53a0a46ce7d78ef82d50cf8a13e34934",
+    "scope": "Raw native-compiler-generated LLVM before JIT cleanup or native code generation; no performance measurements were performed.",
+    "jit_pipeline": {
+      "compile_program_precedes_run_argument_collection": true,
+      "both_functions_reachable_from_runtime_mode_branch": true,
+      "default_JIT_INLINE_line_budget": 20000,
+      "both_below_default_inline_budget": true,
+      "driver_sources_equal": true,
+      "module_lowering_sources_equal": true,
+      "relevant_locations": {
+        "compile_program": "driver.py:404",
+        "run_argument_collection": "driver.py:411-422",
+        "JIT_cleanup_and_ORC": "driver.py:845-911",
+        "benchmark_process_timer": "bench/list_shape/compare.py:13-16",
+        "runtime_mode_branch": "bench/list_shape/kernel.py:26-32"
+      },
+      "interpretation": "Each warm-runtime-cache process still compiles the whole program, optimizes the module, and performs ORC code generation. Changed update IR therefore participates even when read_only executes. This is an overhead mechanism; phase cost and causation of the measured read-mode slowdown are unmeasured."
+    }
+  },
+  "standalone_regression": {
+    "source": "/workspace/scratch/773660c98364/pystachy/tests/programs/optimizations/opt_listget_shape.py",
+    "source_sha256": "e0d384a90fd3f6a90f1d4d976d578281e4a28a157d81008c9c0386450e8226f4",
+    "variants": {
+      "baseline": {
+        "command": [
+          "/workspace/scratch/773660c98364/list-contracts/pystachy",
+          "ir",
+          "/workspace/scratch/773660c98364/pystachy/tests/programs/optimizations/opt_listget_shape.py",
+          "-o",
+          "/workspace/scratch/773660c98364/list-shape-ir-review/baseline-shape.ll"
+        ],
+        "function": "f.updated",
+        "definition_lines": 53,
+        "body_lines_excluding_signature_brace": 51,
+        "bytes": 1619,
+        "sha256": "a8a660e3dcef89f706201bc56b073cd89df8a024aebfcfeeacbf0858f8ead076",
+        "checked_list_get_calls": 2,
+        "list_data_geps": 0
+      },
+      "candidate": {
+        "command": [
+          "/workspace/scratch/773660c98364/pystachy/pystachy",
+          "ir",
+          "/workspace/scratch/773660c98364/pystachy/tests/programs/optimizations/opt_listget_shape.py",
+          "-o",
+          "/workspace/scratch/773660c98364/list-shape-ir-review/candidate-shape.ll"
+        ],
+        "function": "f.updated",
+        "definition_lines": 59,
+        "body_lines_excluding_signature_brace": 57,
+        "bytes": 1883,
+        "sha256": "dd608b99a22907b12cb44741908105ed36cf6da63c0958b138b3567002396375",
+        "checked_list_get_calls": 0,
+        "list_data_geps": 2
+      }
+    }
+  }
+}

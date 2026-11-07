@@ -1,0 +1,121 @@
+{
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.39",
+  "cpu": 0,
+  "python": "3.13.16 (main, Oct 14 2026, 01:04:01) [Clang 23.1.3 ]",
+  "mode": "warm-jit-process",
+  "size": 8192,
+  "rounds": 10000,
+  "pairs": 9,
+  "source_sha256": "cac6c14a2fb5b9a946ee1a3d3c4264c8bdd8e4925930e8ef37cff7d569711822",
+  "binaries": {
+    "baseline": {
+      "path": "/workspace/scratch/773660c98364/list-contracts/pystachy",
+      "bytes": 5233312,
+      "sha256": "0f1b01bf2e6fde23aa717c685f30813108457e3b02b853cfd41210d19c3ff984"
+    },
+    "candidate": {
+      "path": "/workspace/scratch/773660c98364/pystachy/pystachy",
+      "bytes": 5233744,
+      "sha256": "2af6e2e0ce362f875351d92a6ef78d31c3f3b0a4c76a332b6c6fcc477c0bba74"
+    }
+  },
+  "workloads": {
+    "update": {
+      "expected": "81930752.00000009\n",
+      "samples_s": {
+        "baseline": [
+          0.5833260969957337,
+          0.5753221819904866,
+          0.6070960679935524,
+          0.5856025160028366,
+          0.6113572410104098,
+          0.5816673349909252,
+          0.5724446499953046,
+          0.5561495959991589,
+          0.5598240560066188
+        ],
+        "candidate": [
+          0.34764391199860256,
+          0.3429563749959925,
+          0.3902634240075713,
+          0.36581846499757376,
+          0.36971426200761925,
+          0.35975132801104337,
+          0.3462754810025217,
+          0.3362098439974943,
+          0.3417272489896277
+        ]
+      },
+      "medians_s": {
+        "baseline": 0.5816673349909252,
+        "candidate": 0.34764391199860256
+      },
+      "speedup": 1.673169915868578,
+      "sample_ranges_s": {
+        "baseline": [
+          0.5561495959991589,
+          0.6113572410104098
+        ],
+        "candidate": [
+          0.3362098439974943,
+          0.3902634240075713
+        ]
+      },
+      "candidate_faster_pairs": 9
+    },
+    "read": {
+      "expected": "76800000.0\n",
+      "samples_s": {
+        "baseline": [
+          0.1180824799957918,
+          0.11839340899314266,
+          0.12690839200513437,
+          0.12514612800441682,
+          0.11690350799472071,
+          0.13664166600210592,
+          0.11771007000061218,
+          0.11797122600546572,
+          0.1235423530015396
+        ],
+        "candidate": [
+          0.13096063100965694,
+          0.14631116199598182,
+          0.14176049998786766,
+          0.15248849400086328,
+          0.12853741001163144,
+          0.13106812900514342,
+          0.12526290099776816,
+          0.12644972999987658,
+          0.12767960199562367
+        ]
+      },
+      "medians_s": {
+        "baseline": 0.11839340899314266,
+        "candidate": 0.13096063100965694
+      },
+      "speedup": 0.9040381684203432,
+      "sample_ranges_s": {
+        "baseline": [
+          0.11690350799472071,
+          0.13664166600210592
+        ],
+        "candidate": [
+          0.12526290099776816,
+          0.15248849400086328
+        ]
+      },
+      "candidate_faster_pairs": 1
+    }
+  },
+  "provenance": {
+    "baseline_published_commit": "1dc2a4bb3db43a5c0f1e8ab02b12c8aeecd5fb9d",
+    "baseline_local_complete_commit": "8a1c5b5eb1700522028efd51faac00bf2c37828d",
+    "baseline_native_core_commit": "4fd481b061be50b16943e28aa5861c09c6951c6c",
+    "candidate_local_compiler_commit": "1e4359a0cffd15fc330c9038cb75163a063f5c3f",
+    "candidate_tree_before_final_evidence": "c6a57c01a798ae7836fe8dc3e22900b72fa611cc",
+    "llvm": "18.1.3",
+    "cpu_model": "AMD EPYC 9V74",
+    "team_workload_isolation": "Other team builds and tests paused during all measured pairs",
+    "compiler_source_changes_since_bootstrap": false
+  }
+}
