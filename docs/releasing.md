@@ -45,6 +45,12 @@ them after those same checks. Leave `pypi` set to `off` for the native release
 process below. The publishing workflow revision supplies the upload tooling;
 package sources always come from the requested release tag.
 
+Choose a workflow ref already permitted by the `pypi` environment. An approved
+release branch can publish a newer tag when its `release.yml`, `pypi_release.py`
+and `release_gate.py` match the reviewed publishing revision. The workflow ref
+supplies publishing logic; the `version` input selects package sources. Keep
+deployment restrictions unchanged.
+
 The PyPI path requires the tag, `VERSION`, published release commit and successful
 main CI to agree. It builds a source distribution and its wheel, validates their
 metadata, and exercises clean pip/uv installs in JIT and AOT. Only the separate

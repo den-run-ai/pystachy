@@ -74,6 +74,7 @@ def callback_codes(fn: IFn, param: int) -> dict[str, bool]:
 
 def callback_ins(i: Ins, arg: str, target: str, code: str, ft: str, codes: dict[str, bool]) -> Ins:
     c = Ins(i.op, i.t, i.s)
+    c.line = i.line
     c.k, c.x = i.k, i.x
     c.r, c.b = [r for r in i.r], [b for b in i.b]
     c.a = []
@@ -174,6 +175,8 @@ def specialize_callbacks(fns: list[IFn], adapters: dict[str, str], objects: dict
                 candidates[ct] = []
             if len(candidates[ct]) < 2:
                 candidates[ct].append(key)
+    if len(candidates) == 0:
+        return 0
     extra = 0
     for fn in fns[:]:
         f = fn.f
@@ -182,8 +185,10 @@ def specialize_callbacks(fns: list[IFn], adapters: dict[str, str], objects: dict
         if not fn.counted or fn.rdepth == "":
             continue
         params = [p for p in fn.ps if is_callable(f.ptypes[p])]
+        if len(params) != 1 or f.ptypes[params[0]] not in candidates:
+            continue
         size = len(fn.slots) + sum(len(b.code) for b in fn.blocks)
-        if len(params) != 1 or size > 256 or (size + 4) * 2 + extra > 4096:
+        if size > 256 or (size + 4) * 2 + extra > 4096:
             continue
         param = params[0]
         codes = callback_codes(fn, param)

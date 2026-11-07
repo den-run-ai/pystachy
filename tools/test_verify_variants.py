@@ -46,10 +46,12 @@ echo '1 passed, 0 failed'
         matrix = re.search(r"^\s+variant: \[([^\]]+)\]", workflow, re.M)
         self.assertIsNotNone(matrix)
         variants = matrix.group(1).replace(",", " ").split()
-        self.assertEqual([cache.removeprefix("cache-") for cache, _, _ in calls], variants)
+        # CI may reorder rows to balance work; each configuration must still run once.
+        self.assertCountEqual([cache.removeprefix("cache-") for cache, _, _ in calls], variants)
         self.assertEqual(len(set(variants)), len(variants))
         rows = [{name: True for name in OPTS}]  # default all-on row, run by verification
-        for (cache, disabled, cflags), variant in zip(calls, variants):
+        for cache, disabled, cflags in calls:
+            variant = cache.removeprefix("cache-")
             if variant == "cflags-O0":
                 self.assertEqual((disabled, cflags), ("", "-O0"))
                 continue

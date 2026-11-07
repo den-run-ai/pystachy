@@ -112,7 +112,9 @@ class SourceLines:
 
     def finish(self, out: list[str]) -> str:
         if not self.enabled:
-            return "\n".join(out) + "\n"
+            # Let join write the final newline without copying the full module.
+            # Keep the caller's chunks unchanged for deterministic repeated use.
+            return "\n".join(out + [""]) if len(out) > 0 else "\n"
         # LLVM can inline Python functions into the entry point and FFI/tuple
         # wrappers. Give generated functions a line-zero scope as well, otherwise
         # inlining into an unscoped caller discards its callees' source locations.
@@ -138,10 +140,10 @@ class SourceLines:
         existing: list[int] = []
         for line in out:
             if line.startswith("!") and " = " in line:
-                number = line[1:line.find(" = ")]
-                if number.isdigit():
-                    largest = max(largest, int(number))
-                    existing.append(int(number))
+                number_text = line[1:line.find(" = ")]
+                if number_text.isdigit():
+                    largest = max(largest, int(number_text))
+                    existing.append(int(number_text))
         offset = largest + 1
         if offset + len(self.nodes) > 4294967296:
             # A legal node can already occupy the maximum ID. Reuse a free
@@ -160,4 +162,5 @@ class SourceLines:
         out.append(remap_refs("!llvm.dbg.cu = !{" + self.unit + "}", offset))
         out.append(remap_refs("!llvm.module.flags = !{" + ", ".join(self.flags) + "}", offset))
         out.extend([remap_refs(node, offset) for node in self.nodes])
-        return "\n".join(out) + "\n"
+        out.append("")
+        return "\n".join(out)

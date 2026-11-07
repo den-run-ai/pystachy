@@ -398,7 +398,8 @@ x=""
 step bootstrap $r "$s" "$L" "$x"
 fi
 
-# Self-compilation has its own CI runner; all/local runs can overlap earlier checks.
+# Self-compilation has its own full-CI runner; all/local runs can overlap earlier checks.
+# The compact cache-gc group waits for both cache runs before starting GC self-compilation.
 # Bound it separately from the CI job,
 # leaving time to write/upload a failed report. timeout forwards TERM to its process group,
 # including the compiler, so cancellation cannot leave the background self-compile running.
@@ -452,6 +453,7 @@ cancel_gc() {
   exit 130
 }
 trap cancel_gc INT TERM
+start_gc_self() {
 if want gc-self && [ -x "$V/pystachy2" ]; then
   # At 1000, self-compilation spent 23 minutes in 15,543 full-heap collections.
   # 5000 still exercises thousands of collections; the test suite keeps its stronger intervals.
@@ -472,6 +474,8 @@ if want gc-self && [ -x "$V/pystachy2" ]; then
     "$V/pystachy2" ir pystachy.py -o "$V/stage-gc.ll" > "$V/gc-self.log" 2>&1 &
   gcpid=$!
 fi
+}
+[ "$GROUP" = cache-gc ] || start_gc_self
 
 # ---- differential tests with both compilers
 # tests-cpython: the CPython-hosted compiler must compile every case of the corpus exactly as stage 2
@@ -719,6 +723,9 @@ fi
 
 # ---- gc-self: fixed-point identity under compiler GC stress
 if want gc-self; then
+  # runtime-cache already uses two compiler lanes. Give this bounded compile the runner
+  # after those lanes finish instead of competing with them as a third heavy process.
+  if [ "$GROUP" = cache-gc ]; then start_gc_self; fi
 L=$V/gc-self-check.log; s=$(now); r=fail
 {
   self_ok=0; self_status=127

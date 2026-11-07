@@ -9,8 +9,8 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.pystachy_compiler.gen import Gen
-from src.pystachy_compiler.callbacks import callback_clone
-from src.pystachy_compiler.ir import FnInfo, IFn, Loop, Val
+from src.pystachy_compiler.callbacks import callback_clone, callback_ins, specialize_callbacks
+from src.pystachy_compiler.ir import FnInfo, IFn, Ins, Loop, Val
 from src.pystachy_compiler.loader import Loader
 from src.pystachy_compiler.syntax import Node
 from src.pystachy_compiler.utils import identity_abi
@@ -71,6 +71,41 @@ def target_guards(fn):
 
 
 class CallbackSpecializationTests(unittest.TestCase):
+    def test_cloning_preserves_source_positions_for_direct_and_rewritten_calls(self):
+        for op in ("call", "icall"):
+            with self.subTest(op=op):
+                instruction = Ins(op, "int", "@original")
+                instruction.line = 3000007
+                instruction.a = [Val("%code", "%ptr"), Val("%env", "%ptr"), Val("%a1", "int")]
+                cloned = callback_ins(instruction, "%a0", "@target", "@adapter", "callable[int,int]", {"%code": True})
+                self.assertEqual(cloned.line, instruction.line)
+                self.assertEqual(instruction.op, op)
+                self.assertEqual(cloned.op, "call")
+
+    def test_no_immutable_targets_skips_function_traversal(self):
+        class UnreadFunctions(list):
+            def __getitem__(self, index):
+                self.fail_read()
+
+            def __iter__(self):
+                self.fail_read()
+
+            def fail_read(self):
+                raise AssertionError("no function can specialize without an immutable target")
+
+        self.assertEqual(specialize_callbacks(UnreadFunctions(), {}, {}), 0)
+        self.assertEqual(specialize_callbacks(UnreadFunctions(),
+                                            {"fn[f:square] callable[int,int]": "@a.square"}, {}), 0)
+
+    def test_guarded_variants_keep_user_instruction_lines(self):
+        with patch.dict(os.environ, {"PYSTACHY_DEBUG_LINES": "1"}):
+            _, functions, _ = compile_source(KERNEL + TARGETS)
+        original_lines = {i.line for i in operations(functions["@f.kernel"]) if i.line > 0}
+        self.assertTrue(original_lines)
+        self.assertEqual(len(versions(functions)), 2)
+        for variant in versions(functions):
+            self.assertEqual({i.line for i in operations(variant) if i.line > 0}, original_lines)
+
     def test_cloning_preserves_every_loop_fact_without_sharing_lists(self):
         fn = IFn(FnInfo("kernel", "@kernel", Node("def", "kernel", 1), ""))
         loop = Loop("range", "head", "body", "step", "exit")

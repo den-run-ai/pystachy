@@ -97,6 +97,34 @@ class SourceLinesTests(unittest.TestCase):
                     ir.write_text(text)
                     self.run_tool([assembler, str(ir), '-o', os.devnull])
 
+    def test_disabled_chunks_keep_newlines_without_mutating_input(self):
+        from src.pystachy_compiler.source_lines import SourceLines
+        for chunks in ([], [""], ["line"], ["line\n"], ["first\nsecond", "third"], ["first", "", ""]):
+            with self.subTest(chunks=chunks):
+                original = chunks.copy()
+                expected = "\n".join(chunks) + "\n"
+                lines = SourceLines(False)
+                self.assertEqual(lines.finish(chunks), expected)
+                self.assertEqual(lines.finish(chunks), expected)
+                self.assertEqual(chunks, original)
+
+    def test_finish_compiles_without_restarting_type_inference(self):
+        from src.pystachy_compiler.gen import Gen
+        from src.pystachy_compiler.loader import Loader
+
+        source = ('from src.pystachy_compiler.source_lines import SourceLines\n'
+                  'print(SourceLines(False).finish(["line"]))\n')
+        compiler = Gen()
+        compiler.final = False
+        compiler.libdir = str(ROOT / 'lib')
+        compiler.prefix = str(ROOT)
+        modules = Loader([str(ROOT), compiler.libdir]).program(str(self.path), source)
+        # Compile once directly: a Rejoin would restart the entire compiler when
+        # this helper is included in self-compilation, even with debug lines off.
+        ir = compiler.program(modules)
+        self.assertIn('SourceLines.finish', ir)
+        self.assertEqual(compiler.newhints, {})
+
     def test_metadata_remapping_preserves_strings_comments_and_whole_ids(self):
         from src.pystachy_compiler.source_lines import remap_refs
 

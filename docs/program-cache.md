@@ -109,7 +109,8 @@ python3 tools/program_cache_probe.py --compiler ./pystachy \
 
 The correctness probe leaves the enable setting unset and checks skipped
 frontend/LLVM work, invalidation, effects, failure recovery and concurrent
-launches. CI runs it in the existing cache job; manifest, lifecycle, hashing and
+launches. CI runs it after the PR contracts checks, or in each architecture's
+runtime-cache job on full runs; manifest, lifecycle, hashing and
 toolchain unit tests also run in Lint. The benchmark
 checks output before reporting uncached launches, cold program entries, hits and
 prebuilt AOT execution. Cold program samples retain the warmed runtime/tool

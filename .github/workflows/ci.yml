@@ -199,7 +199,9 @@ jobs:
         run: python3 -m unittest discover -s tools -p test_runtime_ubsan.py
 
       - name: Native program cache invalidation and execution
-        if: matrix.group == 'cache-gc' || matrix.group == 'runtime-cache'
+        # Keep the compact cache/GC job within its budget after its serialized self-check.
+        # Full runs retain this independent probe on both architectures' runtime-cache jobs.
+        if: matrix.group == 'runtime-cache' || (github.event_name == 'pull_request' && matrix.group == 'contracts')
         env:
           PYSTACHY_HOME: ${{ github.workspace }}
         run: make test-program-cache PROGRAM_CACHE_COMPILER=build/verify/pystachy2
