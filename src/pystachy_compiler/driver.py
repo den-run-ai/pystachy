@@ -325,6 +325,65 @@ def compiler_version(home: str) -> str:
     return f"pystachy {version} (commit {revision})"
 
 
+def output_alias(first: str, second: str) -> bool:
+    if os.path.realpath(first) == os.path.realpath(second):
+        return True
+    try:
+        return os.path.samefile(first, second)
+    except OSError:
+        return False
+
+
+def check_retained_ir(path: str, source: str, output: str) -> None:
+    if output_alias(path, source) or output_alias(path, output):
+        fail("--emit-ir must name a different file from the source and executable", 0)
+    if os.path.isdir(path):
+        fail("--emit-ir must name a file, not a directory", 0)
+
+
+def retained_ir_path(cmd: str, source: str, args: list[str]) -> str:
+    # run's remaining arguments belong to the program, not the compiler.
+    if cmd == "run":
+        return ""
+    path = ""
+    default_output = source[:-3] if source.endswith(".py") else source + ".exe"
+    output = default_output
+    i = 0
+    while i < len(args):
+        if args[i] == "-o" and i + 1 < len(args):
+            output = args[i + 1] or default_output
+            i += 2
+        elif args[i] == "--emit-ir":
+            if cmd != "build" or path != "" or i + 1 >= len(args) or args[i + 1] == "" or args[i + 1] == "-o" or args[i + 1] == "--emit-ir":
+                fail("--emit-ir requires one file path and is only supported by build", 0)
+            path = args[i + 1]
+            i += 2
+        else:
+            i += 1
+    if path != "":
+        check_retained_ir(path, source, output)
+    return path
+
+
+def publish_retained_ir(path: str, source: str, output: str, ir: str, own: str) -> None:
+    # A private sibling directory keeps the final replace on one filesystem,
+    # without following an existing output symlink or overwriting a partial file.
+    # Publication is called only after the executable has linked successfully.
+    check_retained_ir(path, source, output)
+    staging = path + ".tmp." + own
+    os.mkdir(staging, 0o700)
+    part = staging + "/ir"
+    try:
+        f = open(part, "w", encoding=RAW)
+        f.write(ir)
+        f.close()
+        os.replace(part, path)
+    finally:
+        if os.path.exists(part):
+            os.remove(part)
+        os.rmdir(staging)
+
+
 def main() -> None:
     # the parser and the code generator recurse for each level of nesting (at most MAXNEST), a
     # dozen calls deep each: more than CPython's default limit of 1,000 calls when it runs this file
@@ -336,6 +395,7 @@ def main() -> None:
     if len(argv) < 3 or (argv[1] != "run" and argv[1] != "build" and argv[1] != "ext" and argv[1] != "ir" and argv[1] != "check" and argv[1] != "rt"):
         print("usage: pystachy run FILE.py [ARGS...]   JIT-compile and run (LLVM ORC via lli)", file=sys.stderr)
         print("       pystachy build FILE.py [-o EXE]  compile ahead of time to a native executable", file=sys.stderr)
+        print("                    [--emit-ir RAW.ll] retain raw IR after a successful build", file=sys.stderr)
         print("       pystachy ext NAME.py [-o NAME.abi3.so]  compile to a CPython extension module (abi3, CPython 3.12+)", file=sys.stderr)
         print("       pystachy ir FILE.py [-o OUT.ll]  emit LLVM IR", file=sys.stderr)
         print("       pystachy check FILE.py           only parse it, with the checks CPython makes before running it", file=sys.stderr)
@@ -346,6 +406,7 @@ def main() -> None:
     diagnostics.SRC = argv[2]
     if not os.path.exists(diagnostics.SRC):
         fail("file not found", 0)
+    retained = retained_ir_path(cmd, diagnostics.SRC, argv[3:])
     jitflags = ""
     if cmd == "run":
         codegen = os.getenv("PYSTACHY_JIT_CODEGEN", "2")
@@ -426,6 +487,8 @@ def main() -> None:
         if argv[i] == "-o" and i + 1 < len(argv) and cmd != "run":
             out = argv[i + 1]
             i += 2
+        elif argv[i] == "--emit-ir" and cmd == "build":
+            i += 2  # validated before compiling; publish only after the native build
         elif argv[i] == "--abi" and i + 1 < len(argv) and cmd == "ext" and (argv[i + 1] == "abi3" or argv[i + 1] == "abi3t"):
             abi = argv[i + 1]
             i += 2
@@ -966,6 +1029,11 @@ def main() -> None:
         if os.path.exists(p):
             os.remove(p)
     os.rmdir(tmp)
+    if code == 0 and msg == "" and retained != "":
+        try:
+            publish_retained_ir(retained, diagnostics.SRC, out, ir, own)
+        except OSError:
+            fail("cannot write --emit-ir output: " + retained, 0)
     if msg != "":
         fail(msg, 0)
     sys.exit(code)

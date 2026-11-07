@@ -663,6 +663,16 @@ The bootstrap checks that all three emit identical LLVM IR for the compiler and 
 This fixed point catches disagreements that affect self-compilation; differential tests
 provide the broader behavior check. See [testing](testing.md) for the commands.
 
+`pystachy build FILE.py -o EXE --emit-ir RAW.ll` retains the same raw module that
+`pystachy ir FILE.py` emits, without another frontend invocation. It excludes the
+AOT-only `pys_plain` marker and subsequent LLVM optimization. The IR file is replaced
+only after a successful native build; a failed build preserves an earlier IR file.
+The IR path must differ from the source and executable, including symbolic and hard
+links. The executable and IR are separate outputs: a later IR publication failure
+reports an error but does not roll back the executable. They are not an atomic pair.
+`make` uses these retained modules for its first two compiler witnesses; the final
+compiler and all three runtime witnesses still run separately.
+
 ## Environment variables
 
 | Variable | Effect |
