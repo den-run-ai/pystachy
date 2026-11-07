@@ -971,7 +971,7 @@ RUNTIME: dict[str, str] = {
     "str.center": "str:S,int,str|R A|", "str.zfill": "str:S,int|R A|", "str.partition": "tuple[str,str,str]:S,str|R A|",
     "str.rpartition": "tuple[str,str,str]:S,str|R A|", "str.removeprefix": "str:S,str|A|", "str.removesuffix": "str:S,str|A|",
     "str.expandtabs": "str:S,int|R A|", "str.int": "str:int|A|", "str.float": "str:float|A|", "str.list": "list[str]:str|R A|",
-    "chr": "str:int|R A|", "ord": "int:str|R|", "ascii": "str:str|A|", "pct_char": "str:str|R|", "pct_chr": "str:int|R A|",
+    "chr": "str:int|R A|", "ord": "int:str|R|", "ascii": "str:str|R A|", "pct_char": "str:str|R|", "pct_chr": "str:int|R A|",
     # bytes: a Str, its bytes as a str's (see bytes in runtime.c)
     "bytes.get": "int:S,int|R|", "bytes.list": "list[int]:bytes|A|", "bytes.add": "bytes:S,bytes|A|", "bytes.mul": "bytes:S,int|R A|",
     "bytes.slice": "bytes:S,int,int|A|", "bytes.slice_step": "bytes:S,int,int,int|R A|", "bytes.has": "bool:str,int|R|",

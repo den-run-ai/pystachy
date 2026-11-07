@@ -929,15 +929,7 @@ Str *pys_pct_chr(I c) {                /* "%c" % i: the character, UTF-8 encoded
   char b[4];
   return c < 128 ? pys_chr(c) : pys_str(b, u8enc(b, c));
 }
-Str *pys_ascii(Str *r) {                       /* ascii(): repr with non-ASCII as \xhh, \uhhhh, \Uhhhhhhhh */
-  Buf b = {0}; char t[16];
-  for (I i = 0, n, cp; i < r->len; i += n) {   /* the characters u8char sees, as repr() did */
-    n = u8char(r->s + i, r->len - i, &cp);
-    if (cp < 128) put(&b, r->s + i, 1);
-    else put(&b, t, snprintf(t, 16, cp < 0x100 ? "\\x%02llx" : cp < 0x10000 ? "\\u%04llx" : "\\U%08llx", (long long)cp));
-  }
-  return pys_str(b.p, b.n);
-}
+Str *pys_ascii(Str *r);                       /* ascii(): the repr-escaping pass is in runtime.py */
 static I idx(I i, I n, const char *m) { if (i < 0) i += n; if (i < 0 || i >= n) pys_fail(m); return i; }
 static void span(I *lo, I *hi, I n) {
   if (*lo == NONE) *lo = 0; else if (*lo < 0 && (*lo += n) < 0) *lo = 0; else if (*lo > n) *lo = n;
@@ -1498,17 +1490,7 @@ I pys_mod(I a, I b) {
   if (b == -1) return 0;
   I r = a % b; return (r && (r < 0) != (b < 0)) ? r + b : r;
 }
-I pys_pow(I a, I b) {
-  if (b < 0) pys_fail(a ? "ValueError: negative exponent for int ** int" : "ZeroDivisionError: 0.0 cannot be raised to a negative power");
-  I r = 1, x = a;
-  if (a == 0 || a == 1) return b ? a : 1;
-  if (a == -1) return b & 1 ? -1 : 1;
-  for (;;) {                                   /* |a| >= 2, so overflow comes within 63 steps */
-    if ((b & 1) && __builtin_mul_overflow(r, x, &r)) pys_fail(OVF);
-    if (!(b >>= 1)) return r;
-    if (__builtin_mul_overflow(x, x, &x)) pys_fail(OVF);
-  }
-}
+I pys_pow(I a, I b);
 I pys_powmod(I a, I b, I m) {                 /* pow(a, b, m) as CPython's long_pow, in 128 bits: products cannot overflow */
   if (!m) pys_fail("ValueError: pow() 3rd argument cannot be 0");
   __int128 n = m < 0 ? -(__int128)m : m, x = a, r = 1;
@@ -1958,21 +1940,15 @@ double pys_m_logb(double x, double b) {   /* log(x) / log(b), and a base of 1 di
   if (d == 0) pys_fail("ZeroDivisionError: float division by zero");
   return n / d;
 }
-double pys_m_degrees(double x) { return x * (180.0 / 3.141592653589793); }
-double pys_m_radians(double x) { return x * (3.141592653589793 / 180.0); }
+double pys_m_degrees(double x);
+double pys_m_radians(double x);
 I pys_m_isfinite(double x) { return isfinite(x); }
 I pys_m_isinf(double x) { return isinf(x); }
 I pys_m_isnan(double x) { return isnan(x); }
 I pys_m_trunc(double x) { return pys_f2i(trunc(x)); }
 /* Portions derived from CPython's Modules/mathmodule.c: Copyright (c) 2001-2024 Python Software
    Foundation; All Rights Reserved; used under the PSF License Agreement (see THIRD_PARTY_NOTICES). */
-I pys_m_isclose(double a, double b, double rel_tol, double abs_tol) {   /* CPython's math_isclose_impl */
-  if (rel_tol < 0.0 || abs_tol < 0.0) pys_fail("ValueError: tolerances must be non-negative");
-  if (a == b) return 1;            /* (two infinities of the same sign) */
-  if (isinf(a) || isinf(b)) return 0;
-  double diff = fabs(b - a);
-  return diff <= fabs(rel_tol * b) || diff <= fabs(rel_tol * a) || diff <= abs_tol;
-}
+I pys_m_isclose(double a, double b, double rel_tol, double abs_tol);
 /* math.gamma and math.lgamma are CPython 3.13.16's m_tgamma and m_lgamma (Modules/mathmodule.c),
    which do not use libm's tgamma and lgamma: their Lanczos approximation, reflection formula and
    special cases, with their comments, so that every result is CPython's to the last bit. The
@@ -3880,18 +3856,8 @@ Dyn *pys_list_minmax_identity(List *l, Str *d, I max, I kind) {
 I pys_any(List *l) { for (I i = 0; i < l->len; i++) if (l->a[i]) return 1; return 0; }
 I pys_all(List *l) { for (I i = 0; i < l->len; i++) if (!l->a[i]) return 0; return 1; }
 I pys_sum_int(List *l, I s) { list_narrow(l); for (I i = 0; i < l->len; i++) if (__builtin_add_overflow(s, l->a[i], &s)) pys_fail(OVF); return s; }
-static double fsum(List *l, I i, double s) {  /* CPython 3.12's compensated (Neumaier) sum of l[i:] */
-  double c = 0;
-  for (; i < l->len; i++) {
-    double x = dbl(l->a[i]), t = s + x;
-    if (fabs(s) >= fabs(x)) c += (s - t) + x; else c += (x - t) + s;
-    s = t;
-  }
-  return c && isfinite(c) ? s + c : s;
-}
-double pys_sum_float(List *l, double s) { return fsum(l, 0, s); }
-/* an int start: CPython adds the first float to it plainly, then sums the rest compensated */
-double pys_sum_float_int(List *l, I s) { return l->len ? fsum(l, 1, (double)s + dbl(l->a[0])) : (double)s; }
+double pys_sum_float(List *l, double s);
+double pys_sum_float_int(List *l, I s);
 double pys_sum_int_float(List *l, double s) { for (I i = 0; i < l->len; i++) s += (double)l->a[i]; return s; }   /* ints: not compensated */
 double pys_m_dist(List *p, List *q) {   /* math.dist: hypot's vnorm of the differences of two lists of floats */
   if (p->len != q->len) pys_fail("ValueError: both points must have the same number of dimensions");
@@ -3912,16 +3878,8 @@ double pys_m_hypot_list(List *p) {   /* math.hypot of other than two coordinates
   if (isinf(max)) return max;
   return nan ? NAN : vnorm(v, p->len, max);
 }
-I pys_range_len(I a, I b, I s) {                     /* len(range(a, b, s)) as an unsigned count */
-  if (!s) pys_fail("ValueError: range() arg 3 must not be zero");
-  uint64_t d = s > 0 ? (uint64_t)b - (uint64_t)a : (uint64_t)a - (uint64_t)b, st = s > 0 ? (uint64_t)s : -(uint64_t)s;
-  return (s > 0 ? a < b : a > b) ? (I)((d - 1) / st + 1) : 0;
-}
-I pys_range_has(I x, I a, I b, I s) {               /* x in range(a, b, s) */
-  if (!s) pys_fail("ValueError: range() arg 3 must not be zero");
-  if (s > 0 ? !(a <= x && x < b) : !(b < x && x <= a)) return 0;
-  return (s > 0 ? (uint64_t)x - (uint64_t)a : (uint64_t)a - (uint64_t)x) % (s > 0 ? (uint64_t)s : -(uint64_t)s) == 0;
-}
+I pys_range_len(I a, I b, I s);
+I pys_range_has(I x, I a, I b, I s);
 List *pys_range_list(I a, I b, I s) {   /* list(range(a, b, s)): allocated once at its length, as CPython does */
   uint64_t n = (uint64_t)pys_range_len(a, b, s);
   if (n > INT64_MAX) pys_fail("OverflowError: Python int too large to convert to C ssize_t");
