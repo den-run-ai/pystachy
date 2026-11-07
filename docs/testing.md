@@ -477,13 +477,13 @@ from the budget. Each test runner uses at most four processes within its worker.
 |---|---:|---|
 | Linux bootstrap | 2 | x86-64 and ARM64 compiler/runtime fixed points; ARM64 installer, FFI, thread, stack and sanitizer linkage smoke. |
 | Hosted | 1 | Every corpus case: hosted/native IR, diagnostics and check parity; hosted driver end-to-end strata. |
-| Native | 2 | Disjoint halves of the **complete** corpus, JIT and AOT. |
+| Native AOT | 2 | Disjoint halves of the **complete** corpus in AOT. |
+| Native JIT and variants | 2 | Disjoint halves of the **complete** corpus in JIT, then seven sampled configurations split across the same workers. |
 | Safety | 2 | Representative and changed cases: optimizer off, Python-free rebuild, UBSan rebuild, JIT/AOT GC stress. |
 | Opt-in compatibility | 1 | Selected programs with dynamic `Any` and promoting ints, against fresh CPython oracles. |
 | Contracts | 1 | Complete IR/runtime/FFI and behavioral contract checks, then native program-cache invalidation and execution. |
 | Cache and compiler GC | 1 | Both runtime-cache checks, then stressed self-compilation. |
 | Benchmarks and scaling | 1 | Correctness, both scaling halves, BLAS and large upstream regex. |
-| Variants | 2 | Seven configurations, split across both workers, on the selected cases. |
 | Distribution | 2 | Linux x86-64 and macOS ARM64 installation, including pip/uv; Linux source packages and native archive smoke. |
 | `Verification` | 1 | Confirms the selected plan. For code PRs, checks reports, profiles, selection manifests, counts and job results. |
 | Lint, performance, DCO and submission format | 4 | Lint includes CPython port preservation. DCO applies to forks. Submission format validates PR metadata. |
@@ -499,6 +499,12 @@ The two variant workers and Linux distribution job reuse the same verified boots
 verification groups. Every consumer checks source bytes, commit, architecture, toolchain,
 workflow run and artifact hashes. Runtime caches stay private; Python-free and sanitized builds
 remain independent. Pip downloads are cached by the pinned dependency files.
+PR native work uses two JIT halves and two AOT halves, each with one execution mode.
+Both modes retain every corpus case; the inexpensive rejection and parser checks repeat.
+The aggregate requires every exact case/mode pair once and the producer's bootstrap identity,
+including the native baselines deferred by opt-in checks. The JIT workers upload their native
+reports before running their existing sampled configurations in sequence. This keeps the same
+16 CI jobs and 20 total PR jobs while separating costly AOT compilation from JIT execution.
 The compact cache/GC group finishes both parallel cache checks before starting its
 collector-stressed self-compilation, preserving the latter's ten-minute bound without
 three competing compiler processes.

@@ -1,5 +1,6 @@
 """The final CI gate must reject incomplete or inconsistent verification artifacts."""
 import contextlib
+from collections import Counter
 import copy
 import io
 from functools import lru_cache
@@ -216,7 +217,9 @@ def report(group, steps):
                 step["bootstrap_reused"] = True
         if name in merge.SUITE_STEPS:
             step.update(passed=10, failed=0, expected=10, failures=[])
-        if name.startswith(("tests-native-", "tests-opt-off-")):   # thirds of a 10-check suite
+        if name in merge.PR_NATIVE_STEPS:
+            step.update(shard_index=int(name[-1]), shard_count=2)
+        elif name.startswith(("tests-native-", "tests-opt-off-")):   # thirds of a 10-check suite
             share = 10 // merge.SHARDED_STEPS[name] + (int(name[-1]) < 10 % merge.SHARDED_STEPS[name])
             step.update(passed=share, expected=share)
         if name.startswith("tests-native"):
@@ -1231,7 +1234,8 @@ class PullRequestProfileTests(unittest.TestCase):
                     cases = (self.native[int(name[-1])] if name.startswith("tests-native-")
                              else self.selection["cases"])
                     step.update(selected_cases=list(cases), shard_count=merge.PR_SHARDED_STEPS[name])
-                    expected = merge.case_checks(cases, ["jit", "aot"])
+                    modes = [merge.PR_NATIVE_STEPS[name]] if name in merge.PR_NATIVE_STEPS else ["jit", "aot"]
+                    expected = merge.case_checks(cases, modes)
                     if name in merge.GC_STEPS:
                         mode = step["modes"][0]
                         offset = merge.GC_SAMPLE_OFFSETS[mode]
@@ -1250,7 +1254,7 @@ class PullRequestProfileTests(unittest.TestCase):
                     elif name == "python-free-0":
                         step.update(python_on_path=False, ir_identical=True, path_tools=["sh", "clang", "lli"])
                     else:
-                        step.update(compiler="stage2", modes=["jit", "aot"])
+                        step.update(compiler="stage2", modes=modes)
                     step.update(expected=expected, passed=expected)
                 for field, make in (("optin", optin_report), ("python_int_optin", python_int_report)):
                     if field not in step:
@@ -1276,9 +1280,9 @@ class PullRequestProfileTests(unittest.TestCase):
     def merge(self):
         return merge.merge_reports(self.directory, self.groups, COMMIT, profile="pr")
 
-    def test_nine_groups_reuse_full_bootstrap_and_cover_every_native_case_in_two_workers(self):
+    def test_eleven_groups_reuse_bootstrap_and_cover_every_native_case_in_two_workers_per_mode(self):
         result = self.merge()
-        self.assertEqual(len(self.groups) - 2, 9)
+        self.assertEqual(len(self.groups) - 2, 11)
         self.assertEqual(result["profile"], "pr")
         self.assertEqual(result["group"], "pr")
         self.assertEqual(result["selection"], self.selection)
@@ -1287,7 +1291,12 @@ class PullRequestProfileTests(unittest.TestCase):
         self.assertFalse(set(self.native[0]) & set(self.native[1]))
         self.assertEqual(result["steps"][0]["ci_group"], "bootstrap")
         self.assertNotIn("bootstrap_reused", result["steps"][0])
-        for group in ("native-1", "safety-1", "opt-in", "cache-gc"):
+        native = [step for step in result["steps"] if step["name"] in merge.PR_NATIVE_STEPS]
+        self.assertEqual(sum(step["expected"] for step in native), 2 * merge.case_checks(self.corpus, ["jit"]))
+        for mode in ("jit", "aot"):
+            pairs = [(case, mode) for step in native if step["modes"] == [mode] for case in step["selected_cases"]]
+            self.assertEqual(Counter(pairs), Counter((case, mode) for case in self.corpus))
+        for group in ("native-jit-0", "native-jit-1", "native-aot-0", "native-aot-1", "safety-1", "opt-in", "cache-gc"):
             path = self.directory / f"verification-{group}" / "verification.json"
             path.unlink()
             with self.subTest(missing=group), self.assertRaisesRegex(ValueError, "missing report groups"):
@@ -1301,8 +1310,12 @@ class PullRequestProfileTests(unittest.TestCase):
                 ("bootstrap", lambda data: data.update(profile="pr")),
                 ("safety-0", lambda data: data["selection"].update(base_commit="f" * 40)),
                 ("safety-0", lambda data: data["selection"]["cases"].pop()),
-                ("native-1", lambda data: data["steps"][1].update(shard_count=3)),
-                ("native-0", lambda data: data["steps"][1]["selected_cases"].pop()),
+                ("native-jit-1", lambda data: data["steps"][1].update(shard_count=3)),
+                ("native-jit-0", lambda data: data["steps"][1]["selected_cases"].pop()),
+                ("native-jit-0", lambda data: data["steps"][1].update(modes=["aot"])),
+                ("native-aot-0", lambda data: data["steps"][1].update(modes=["jit", "aot"])),
+                ("native-aot-1", lambda data: data["steps"][1].update(compiler="CPython-hosted")),
+                ("native-aot-1", lambda data: data["steps"][0].update(bootstrap_bundle_id="f" * 64)),
                 ("safety-0", lambda data: data["steps"][1]["selected_cases"].reverse()),
                 ("safety-0", lambda data: data["steps"][1].update(expected=1, passed=1)),
                 ("safety-0", lambda data: data["steps"][2].update(python_on_path=True)),
@@ -1324,6 +1337,19 @@ class PullRequestProfileTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "requires every compact group"):
             merge.merge_reports(self.directory, self.groups, COMMIT, subset=["contracts"], profile="pr")
 
+    def test_native_mode_coverage_rejects_duplicate_or_substituted_cases_with_unchanged_counts(self):
+        for mode in ("jit", "aot"):
+            changed = copy.deepcopy(self.data)
+            left = changed[f"native-{mode}-0"]["steps"][1]
+            right = changed[f"native-{mode}-1"]["steps"][1]
+            left["selected_cases"][0] = right["selected_cases"][0]
+            with self.subTest(mode=mode), self.assertRaisesRegex(ValueError, "every corpus case and mode exactly once"):
+                merge.validate_pr_native_coverage(changed)
+        changed = copy.deepcopy(self.data)
+        changed.pop("native-aot-1")
+        with self.assertRaisesRegex(ValueError, "both complete JIT and AOT halves"):
+            merge.validate_pr_native_coverage(changed)
+
 
 class PullRequestMatrixTests(unittest.TestCase):
     """The compact PR matrix and full main/release matrix each match their own gate contract."""
@@ -1335,7 +1361,8 @@ class PullRequestMatrixTests(unittest.TestCase):
         self.assertIsNotNone(matrix, "the verification matrix's explicit PR and full group lists")
         for profile, value in zip(("pr", "full"), matrix.groups()):
             groups = merge.load_groups(profile)
-            self.assertEqual(sorted(json.loads(value)), sorted(name for name in groups if name not in ("all", "bootstrap")))
+            folded = {"native-jit-0", "native-jit-1"} if profile == "pr" else set()
+            self.assertEqual(sorted(json.loads(value)), sorted(name for name in groups if name not in {"all", "bootstrap", *folded}))
         self.assertEqual(len(json.loads(matrix[1])), 9)
         machines = re.search(r"machine: \$\{\{ fromJSON\(github\.event_name == 'pull_request' && '([^']+)' \|\| '([^']+)'\) \}\}", job)
         self.assertIsNotNone(machines)
@@ -1343,6 +1370,17 @@ class PullRequestMatrixTests(unittest.TestCase):
         self.assertEqual(json.loads(machines[2]), ["x86_64", "aarch64"])
         self.assertIn("VERIFY_PROFILE: ${{ github.event_name == 'pull_request' && 'pr' || 'full' }}", text)
         self.assertIn('--profile "$VERIFY_PROFILE"', text)
+        variants = text[text.index("\n  pr-variants:\n"):text.index("\n  distribution:\n")]
+        self.assertIn('worker: [0, 1]', variants)
+        self.assertIn('VERIFY_PROFILE: pr', variants)
+        self.assertIn('name: x86_64-verification-native-jit-${{ matrix.worker }}', variants)
+        native_run = variants.index('run: tests/verify.sh "native-jit-$VARIANT_WORKER"')
+        native_upload = variants.index('name: Upload native JIT report')
+        variant_run = variants.index('run: python3 tools/pr_variants.py --worker "$VARIANT_WORKER"')
+        self.assertLess(native_run, native_upload)
+        self.assertLess(native_upload, variant_run)
+        self.assertIn('name: pr-variants-${{ matrix.worker }}', variants)
+        self.assertIn('needs: [bootstrap, verification, pr-variants, distribution]', text)
         # An ambient PR setting must not silently downgrade a caller asking for full evidence.
         with mock.patch.dict(os.environ, {"VERIFY_PROFILE": "pr"}):
             self.assertEqual(merge.load_groups(), merge.load_groups("full"))
