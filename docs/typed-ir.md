@@ -453,6 +453,19 @@ before the next pass. Normal compilation does not add these verification scans.
 | `nullcheck` | Drop a check that a value is not None (before a read through it) where a passed test of the same value dominates it: the block after a check, or the branch of a null test where the value is not None, reached from nowhere else. The same value is the value, an equal one, or a load of a slot that only the entry block stores and only loads and stores use (a parameter the function never assigns). The check becomes a branch, its test goes once nothing reads it, the block after it joins its block where nothing else goes there, and a cold block no check goes to any more goes too; a walk down the dominator tree keeps the work linear ([#787](https://github.com/den-run-ai/pystachy/issues/787)) |
 | `allocelide` | Allocate an object or fixed tuple that holds no reference (every field or item an `int`, a `float` or a `bool`) with `pys_new`, a call that LLVM may delete when nothing keeps its object (`allockind`); the others keep `pys_alloc`, as without it, so that one the program still reads keeps what it holds. AOT builds inline the allocator's fast path into the calls left ([#1017](https://github.com/den-run-ai/pystachy/issues/1017), [internals](internals.md#whole-program-optimization)) |
 
+`unionslots` also splits private `int | None`, `float | None` and `bool | None`
+locals into a presence slot (zero or one) and a payload slot. Inferred None-first
+locals whose slot still has the provisional `opt[None]` type use the same checks.
+Stores must come from
+`None`, scalar `box` operations, or phis of those values. Loads may only test against
+`None` or read the packed scalar payload; no nullable pointer is dereferenced to
+extract its parts. The payload stays as bits, so zero, `False`, negative zero and
+NaN remain distinct from absence. An optional parameter, call or dictionary-lookup
+result, an optional copy, an escaping or identity-sensitive pointer use, and a
+generator frame retain their boxes. Numeric identity companions remain unchanged.
+This uses the existing slot/phi rewrite and adds no runtime ABI or LLVM operation;
+`PYSTACHY_OPT=-unionslots` disables both scalar-union and optional-local splitting.
+
 Disable one with `PYSTACHY_OPT=-dictfuse`, several with a comma-separated list, or all with
 `PYSTACHY_OPT=-all`. Differential runs check that the choices preserve behavior.
 

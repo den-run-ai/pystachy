@@ -4,8 +4,8 @@ import os
 from src.pystachy_compiler.diagnostics import fail
 from src.pystachy_compiler.ir import IFn, Ins, Lookup, Val, Values
 from src.pystachy_compiler.ircheck import EffectSummaries
-from src.pystachy_compiler.specs import CANON_DEPTH, FXALL, FXBIT, LOOKUPS, RAWW, REACH
-from src.pystachy_compiler.utils import is_list, is_tuple, is_union, umembers
+from src.pystachy_compiler.specs import CANON_DEPTH, FXALL, FXBIT, LOOKUPS, NONEVAR, RAWW, REACH
+from src.pystachy_compiler.utils import is_list, is_opt, is_tuple, is_union, umembers
 
 
 # Every non-read summary effect: exceptions, allocation/GC, callbacks, runtime
@@ -736,12 +736,17 @@ def gen_unionslots(self, fn: IFn) -> int:
     # more boxes than before, also where a store's box was made elsewhere (a call's, a
     # parameter's), which a load that leaves would box again. A ubox, slot.pack, union read or
     # union phi that nothing uses any more goes: a loop that adds floats to an int | float local
-    # allocates nothing. A generator's locals stay (its frame keeps them). How many slots it split
+    # allocates nothing. Private optional scalars also use two slots: presence and payload,
+    # only for None, scalar boxes or their phis, with no use beyond null tests and payload reads.
+    # Inferred None-first locals can retain NONEVAR on their slots: the same producer/use
+    # checks prove scalar storage without depending on that provisional annotation.
+    # Unknown producers and escaping optionals stay boxed; no nullable pointer is dereferenced
+    # to take it apart. A generator's locals stay (its frame keeps them). How many slots it split
     if fn.coro:
         return 0
-    cands = [s for s in fn.slots if s.k == 0 and is_union(s.t) and len([m for m in umembers(s.t) if m != "int" and m != "float" and m != "bool"]) == 0]
+    cands = [s for s in fn.slots if s.k == 0 and ((is_union(s.t) and len([m for m in umembers(s.t) if m != "int" and m != "float" and m != "bool"]) == 0) or s.t in ["opt[int]", "opt[float]", "opt[bool]", NONEVAR])]
     if len(cands) == 0:
-        return 0  # (no local of a union of numbers: defs and uses would go unread)
+        return 0  # (no scalar union or optional local: defs and uses would go unread)
     defs: dict[str, list[int]] = {}  # a value -> the block and position of the op that makes it
     uses: dict[str, list[list[int]]] = {}  # a value -> the block, position and operand of each use
     for j in range(len(fn.blocks)):
@@ -760,9 +765,11 @@ def gen_unionslots(self, fn: IFn) -> int:
         ok = addr in uses
         for u in uses.get(addr, []):
             i = fn.blocks[u[0]].code[u[1]]
-            if u[2] != 0 or (i.op != "mem.load" and i.op != "mem.store") or (i.op == "mem.store" and not self.usplits(fn, defs, i.a[1].v, {})):
+            if u[2] != 0 or (i.op != "mem.load" and i.op != "mem.store") or (i.op == "mem.store" and not self.usplits(fn, defs, i.a[1].v, {}, is_opt(s.t))):
                 ok = False
             elif i.op == "mem.load":
+                if is_opt(s.t) and self.uleaves(fn, uses, i, {}):
+                    ok = False  # (optional copies and identity-sensitive uses also stay boxed)
                 for w in uses.get(f"%t{i.r[0]}", []):
                     o = fn.blocks[w[0]].code[w[1]]
                     if (o.op == "union.payload" or o.op == "union.raw") and f"%t{o.r[0]}" in uses:
@@ -811,8 +818,13 @@ def gen_unionslots(self, fn: IFn) -> int:
             parts[v] = [f"%t{ops[0].r[0]}", f"%t{ops[1].r[0]}"]
             for w in uses.get(v, []):
                 o = fn.blocks[w[0]].code[w[1]]
-                if o.op == "union.tag" or self.tag_read(o):
-                    ren[f"%t{o.r[0]}"] = parts[v][0]
+                if is_opt(split[addr].t) and o.op == "ptr.cmp":
+                    test = Ins("num.cmp", "bool", o.s)
+                    test.a = [Val(parts[v][0], "int"), Val("0", "int")]
+                    test.r = o.r
+                    repl[f"{w[0]}:{w[1]}"] = [test]
+                elif o.op == "union.tag" or self.tag_read(o):
+                    ren[f"%t{o.r[0]}"] = parts[v][1 if is_opt(split[addr].t) else 0]
                     repl[f"{w[0]}:{w[1]}"] = []
                 elif o.op == "union.payload" or o.op == "union.raw":
                     p = Ins("slot.pack", "%slot", "")
@@ -872,7 +884,7 @@ def gen_unionslots(self, fn: IFn) -> int:
         for b in fn.blocks:
             code = []
             for i in b.code:
-                pure = (i.op == "rt" and i.s == "ubox") or i.op == "slot.pack" or i.op == "union.tag" or i.op == "union.payload" or i.op == "union.raw" or (i.op == "phi" and (is_union(i.t) or i.t == "int"))
+                pure = (i.op == "rt" and (i.s == "ubox" or i.s == "box")) or i.op == "slot.pack" or i.op == "union.tag" or i.op == "union.payload" or i.op == "union.raw" or (i.op == "phi" and (is_union(i.t) or is_opt(i.t) or i.t == "int"))
                 if pure and len([r for r in i.r if f"%t{r}" in used]) == 0:
                     gone += 1
                 else:
@@ -886,10 +898,12 @@ def gen_tag_read(self, i: Ins) -> bool:
     # equality and methods reads it (Gen.mload of the box)
     return i.op == "mach.load" and i.t == "int" and i.s == ""
 
-def gen_usplits(self, fn: IFn, defs: dict[str, list[int]], v: str, seen: dict[str, bool]) -> bool:
+def gen_usplits(self, fn: IFn, defs: dict[str, list[int]], v: str, seen: dict[str, bool], optional: bool = False) -> bool:
     # can unionslots take apart union value v: an op's (a phi's where its incoming values'
-    # are) or a parameter's
-    if v in seen or (v.startswith("%a") and v[2:].isdigit()):
+    # are) or a parameter's. An optional admits only known scalar boxes, None and their phis.
+    if optional and v == "null":
+        return True
+    if v in seen or (not optional and v.startswith("%a") and v[2:].isdigit()):
         return True
     if v not in defs:
         return False
@@ -897,8 +911,10 @@ def gen_usplits(self, fn: IFn, defs: dict[str, list[int]], v: str, seen: dict[st
     i = fn.blocks[defs[v][0]].code[defs[v][1]]
     if i.op == "phi":
         for a in i.a:
-            if not self.usplits(fn, defs, a.v, seen):
+            if not self.usplits(fn, defs, a.v, seen, optional):
                 return False
+    elif optional:
+        return i.op == "rt" and i.s == "box"
     return True
 
 def gen_uparts(self, fn: IFn, defs: dict[str, list[int]], v: str, t: str, parts: dict[str, list[str]], before: dict[str, list[Ins]], after: dict[str, list[Ins]], heads: dict[int, list[Ins]]) -> list[str]:
@@ -908,8 +924,13 @@ def gen_uparts(self, fn: IFn, defs: dict[str, list[int]], v: str, t: str, parts:
     # function begins), so that they are there wherever v is
     if v in parts:
         return parts[v]
+    if is_opt(t) and v == "null":
+        return ["0", "0"]
     d = defs[v] if v in defs else [0, -1]
     i = fn.blocks[d[0]].code[d[1]] if d[1] >= 0 else Ins("", "", "")
+    if is_opt(t) and i.op == "rt" and i.s == "box":
+        parts[v] = ["1", i.a[0].v]
+        return parts[v]
     if i.op == "rt" and i.s == "ubox":
         parts[v] = [i.a[0].v, i.a[1].v]
         return parts[v]
@@ -953,6 +974,10 @@ def gen_uleaves(self, fn: IFn, uses: dict[str, list[list[int]]], i: Ins, split: 
     # than its union.tag, its union.payload/raw, a tag read and a store to a slot that splits too
     for w in uses.get(f"%t{i.r[0]}", []):
         o = fn.blocks[w[0]].code[w[1]]
+        if is_opt(i.t):
+            if self.tag_read(o) or (o.op == "ptr.cmp" and len(o.a) == 2 and (o.a[0].v == "null" or o.a[1].v == "null")):
+                continue
+            return True
         if not (o.op == "union.tag" or o.op == "union.payload" or o.op == "union.raw" or self.tag_read(o) or (o.op == "mem.store" and w[2] == 1 and o.a[0].v in split)):
             return True
     return False

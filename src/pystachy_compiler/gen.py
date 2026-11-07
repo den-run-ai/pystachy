@@ -3599,8 +3599,8 @@ class Gen:
     def nullslot(self, fn: IFn, lds: list[int], stride: int, slots: dict[str, int], q: Ins) -> str:
         return optimizations_nullslot(self, fn, lds, stride, slots, q)
 
-    def usplits(self, fn: IFn, defs: dict[str, list[int]], v: str, seen: dict[str, bool]) -> bool:
-        return optimizations_usplits(self, fn, defs, v, seen)
+    def usplits(self, fn: IFn, defs: dict[str, list[int]], v: str, seen: dict[str, bool], optional: bool = False) -> bool:
+        return optimizations_usplits(self, fn, defs, v, seen, optional)
 
     def uparts(self, fn: IFn, defs: dict[str, list[int]], v: str, t: str, parts: dict[str, list[str]], before: dict[str, list[Ins]], after: dict[str, list[Ins]], heads: dict[int, list[Ins]]) -> list[str]:
         return optimizations_uparts(self, fn, defs, v, t, parts, before, after, heads)
