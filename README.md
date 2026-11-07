@@ -76,12 +76,14 @@ Pystachy is experimental. It supports typed containers, classes, generators and
 other common Python constructs. General multiple inheritance, `async` and
 `match` are outside the supported subset. Integers are checked 64-bit values by
 default. [Promoting integers](docs/python-int.md) and [dynamic `Any`](docs/dynamic-any.md)
-are opt-in.
+are opt-in. Dynamic `Any` includes a bounded prototype for
+[class values, type-keyed registries, generic calls and annotated factories](docs/dynamic-any.md#class-values-and-type-keyed-registries).
 
 Check the [language guide](docs/language.md#support-at-a-glance) and
 [library support table](docs/stdlib.md#library-support-at-a-glance) for the
-features and APIs your code uses. The library includes bounded `argparse` and
-`enum` support. Some packages compile from installed sources, and others need
+features and APIs your code uses. The library includes bounded `argparse`, `enum`
+and experimental [static ctypes declarations](docs/ffi.md#static-ctypes-declarations).
+Some packages compile from installed sources, and others need
 adaptations like the [maintained ports](ports/README.md). The optional
 [CPython bridge](docs/ffi.md#calling-cpython) lets native code call
 packages that need CPython at runtime.

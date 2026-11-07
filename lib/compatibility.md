@@ -24,6 +24,7 @@ the [module guide](README.md#module-guide) summarizes what each module supports.
 | [Files, OS and command line](#files-os-and-command-line) | [`io`](#io), [Binary files](#binary-files), [Path modules](#path-modules), [`pathlib`](#pathlib), [`glob`](#glob), [`shutil`](#shutil), [`argparse`](#argparse), [`getopt`](#getopt) |
 | [Processes and threads](#processes-and-threads) | [`_thread`](#_thread), [`threading`](#threading), [`atexit`](#atexit) |
 | [Runtime services](#runtime-services) | [`abc`](#abc), [`types`](#types), [`warnings`](#warnings), [`logging`](#logging), [`traceback`](#traceback), [`weakref` and `_weakref` (prototype)](#weakref-and-_weakref-prototype) |
+| [Native interoperability](#native-interoperability) | [`ctypes`](#ctypes) |
 | [Removed modules](#removed-modules) | `_imp`, `_ast`, `opcode` |
 
 ## Across modules
@@ -1743,6 +1744,22 @@ and `ReferenceType` are `_weakref`'s, also through from-imports and `import *`.
 - `WeakSet` is not registered as a `MutableSet`: a class is not a value here
   ([#7](https://github.com/den-run-ai/pystachy/issues/7)).
 - `_remove_dead_weakref()`, `_weakref`'s in CPython, is `weakref`'s own here.
+
+## Native interoperability
+
+### `ctypes`
+
+Only [static declarations](../docs/ffi.md#static-ctypes-declarations) are supported:
+literal module-level `CDLL`, complete immutable `argtypes`/`restype` pairs, and
+direct fixed-arity calls. The FFI guide lists accepted scalar types, bytes,
+pointer cells and rejected dynamic features. The adapted llvmlite example verifies
+real parsing, verification and ownership; it is not whole-package support.
+
+Pointer integers are restricted to `[0, 2**63)`. Negative inputs or high-bit results
+raise `OverflowError`, including output-cell reads; CPython instead exposes
+unsigned pointer-sized integers. `string_at(NULL, 0)` returns empty bytes;
+other NULL reads and lengths below `-1` raise `ValueError`. Invalid non-NULL
+addresses and mismatched C declarations remain the caller's responsibility.
 
 <a id="_imp-prototype"></a>
 <a id="_ast-prototype"></a>

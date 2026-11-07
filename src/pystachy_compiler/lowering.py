@@ -9,7 +9,7 @@ from src.pystachy_compiler.utils import atomic_dict, atomic_list, identity_abi, 
 
 def gen_lower(self, fn: IFn) -> None:
     o = self.out
-    start = len(o)
+    chunk_start = len(o)
     f = fn.f
     # a method's receiver is never None (callers check it)
     ps = [f"{lt(f.ptypes[j])}{' nonnull' if j == 0 and takes_self(f) else ''} %a{j}" for j in fn.ps]
@@ -29,11 +29,14 @@ def gen_lower(self, fn: IFn) -> None:
     rd = f.ll in self.rdpass
     cold = " cold noinline" if raises_only(fn) else ""
     name = "@v." + f.ll[1:] if n > 0 else "@r." + f.ll[1:] if rd else f.ll
+    scope = self.source_lines.function(f.name, name, f.node.line)
+    debug = " !dbg " + scope if scope != "" else ""
     # (a generator function is a coroutine that LLVM's coroutine passes split: see gen.start)
     # (a function that only raises is an error path: cold, and kept out of its callers, so that
     # what it formats does not keep LLVM from inlining the checks that call it: raises_only)
-    o.append(f"define {'' if f.export and not rd else 'internal '}{agg if n > 0 else lt(f.ret)} {name}({', '.join(ps + ['i64 %rd'] if rd else ps)}){' presplitcoroutine' if fn.coro else ''}{cold}{' personality ptr @pys_personality' if fn.pads else ''} {{")
+    o.append(f"define {'' if f.export and not rd else 'internal '}{agg if n > 0 else lt(f.ret)} {name}({', '.join(ps + ['i64 %rd'] if rd else ps)}){' presplitcoroutine' if fn.coro else ''}{cold}{' personality ptr @pys_personality' if fn.pads else ''}{debug} {{")
     o.append("entry:")
+    prologue = len(o)
     self.ftags = {}  # (its own numbers: another function's %tN is no field address of this one)
     if fn.coro:
         o.append(f"  %coro.promise = alloca [{promise_slots(self.gproto)} x i64], align 8")
@@ -48,12 +51,16 @@ def gen_lower(self, fn: IFn) -> None:
             r = f"%{i.s or 'h'}.{i.r[0]}"
             o.append(f"  {r} = alloca {lt(i.t)}")
             o.append(f"  store {lt(i.t)} zeroinitializer, ptr {r}")
+    self.source_lines.mark(o, prologue, scope, 0)
     for b in fn.blocks:
         if b.label != "entry" and b.label != "":
             o.append(b.label + ":")
         self.lowblk = b.label
         for i in b.code:
+            instruction_start = len(o)
             self.lower_ins(fn, i)
+            self.source_lines.mark(o, instruction_start, scope, i.line)
+    epilogue = len(o)
     if fn.coro:
         # where a generator's suspends go when it is destroyed (coro.free: nothing to free, the
         # collector reclaims the frame) and when it suspends (its caller or resumer goes on)
@@ -68,6 +75,7 @@ def gen_lower(self, fn: IFn) -> None:
         o.append("  ret ptr %coro.hdl")
         o.append("coro.unreach:")
         o.append("  unreachable")
+    self.source_lines.mark(o, epilogue, scope, 0)
     o.append("}")
     if rd:
         # its symbol, for every caller outside its cycle (and as a value): the body at the depth
@@ -118,8 +126,8 @@ def gen_lower(self, fn: IFn) -> None:
         o.append("}")
     # Only module assembly reads completed output: keep this function and its wrappers as
     # one chunk, releasing the individual line strings before lowering the next function.
-    text = "\n".join(o[start:])
-    del o[start:]
+    text = "\n".join(o[chunk_start:])
+    del o[chunk_start:]
     o.append(text)
 
 def gen_alloc_call(self, size: str, t: str) -> str:
@@ -592,15 +600,18 @@ def gen_eh_ir(self, fn: IFn) -> None:
             if t.op == "raise":
                 fn.n += 1
                 i = Ins("rt", "exc", "exc.new")
+                i.line = t.line
                 i.a = [t.a[0], t.a[1], Val("null", "str")]
                 i.r = [fn.n]
                 self.runtime("pys_exc_new")
                 code.append(i)
                 ex = f"%t{fn.n}"
             st = Ins("mach.store", "", "")
+            st.line = t.line
             st.a = [Val(lp.a[0].v, "%ptr"), Val(ex, "%ptr")]
             code.append(st)
             br = Ins("br", "", "")
+            br.line = t.line
             br.b = [lp.b[0]]
             code.append(br)
         cur = b

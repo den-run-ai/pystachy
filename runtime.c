@@ -46,6 +46,35 @@
 #include <unwind.h>
 #include <utime.h>
 
+/* Research counters are compiled out of ordinary runtimes. These count requests
+   through C helpers, not physical memory traffic: generated LLVM/runtime.py copy
+   intrinsics, scalar stores, libc internals and foreign allocations are excluded.
+   Relaxed atomics keep callbacks on foreign threads free of counter data races. */
+#ifdef PYSTACHY_PROFILE_DATA
+static _Atomic uint64_t profile_alloc_calls, profile_alloc_bytes;
+static _Atomic uint64_t profile_memcpy_calls, profile_memcpy_bytes;
+static _Atomic uint64_t profile_memmove_calls, profile_memmove_bytes;
+static inline void profile_alloc(size_t n) {
+  atomic_fetch_add_explicit(&profile_alloc_calls, 1, memory_order_relaxed);
+  atomic_fetch_add_explicit(&profile_alloc_bytes, n, memory_order_relaxed);
+}
+static inline void *profile_copy(void *dst, const void *src, size_t n) {
+  atomic_fetch_add_explicit(&profile_memcpy_calls, 1, memory_order_relaxed);
+  atomic_fetch_add_explicit(&profile_memcpy_bytes, n, memory_order_relaxed);
+  return memcpy(dst, src, n);
+}
+static inline void *profile_move(void *dst, const void *src, size_t n) {
+  atomic_fetch_add_explicit(&profile_memmove_calls, 1, memory_order_relaxed);
+  atomic_fetch_add_explicit(&profile_memmove_bytes, n, memory_order_relaxed);
+  return memmove(dst, src, n);
+}
+#define memcpy(dst, src, n) profile_copy((dst), (src), (n))
+#define memmove(dst, src, n) profile_move((dst), (src), (n))
+#define PROFILE_ALLOC(n) profile_alloc((size_t)(n))
+#else
+#define PROFILE_ALLOC(n) ((void)0)
+#endif
+
 /* A float's shortest round-trip digits: Ryu's d2s (ryu/, upstream commit 4c0618b; ryu/README.md),
    with its small tables. The driver's cached runtime is built from its files too, which RTPARTS
    (pystachy.py) lists. Its functions are made static, so that no symbol of it leaves the runtime
@@ -686,6 +715,7 @@ __attribute__((noinline)) static void *gc_slow(I n, int how) {
   return p;
 }
 static inline __attribute__((always_inline)) void *gc_alloc(I n, int atomic) {
+  PROFILE_ALLOC(n);
   if ((uint64_t)n < 136) {             /* fast path, inlined: pop a zeroed slot of a class 16..136 */
     W **h = &pys_fl[2 * (n < 8 ? 0 : (n + 8) / 8 - 2) + atomic], *p = *h;
     if (__builtin_expect(p != 0, 1)) { *h = (W *)~*p; *p = 0; return p; }
@@ -694,11 +724,15 @@ static inline __attribute__((always_inline)) void *gc_alloc(I n, int atomic) {
 }
 /* The slow path of the JIT tier's fast path (lower_module.py's JITFAST: a program it runs pops pys_fl
    itself, as gc_alloc does, and calls this for the rest) */
-void *pys_gc_slow(I n, I atomic) { return gc_slow(n, (int)atomic); }
+void *pys_gc_slow(I n, I atomic) { PROFILE_ALLOC(n); return gc_slow(n, (int)atomic); }
 /* atomic memory whose bytes may be those of an object that died: for a caller that writes every
    byte it (or anything) reads, as a new str's whose header, bytes and NUL it stores. The classes
    the fast path serves come clear anyway */
-static void *gc_raw(I n) { return (uint64_t)n < 136 ? gc_alloc(n, 1) : gc_slow(n, 3); }   /* (an allocator: check_runtime's ALLOC) */
+static void *gc_raw(I n) {
+  if ((uint64_t)n < 136) return gc_alloc(n, 1);
+  PROFILE_ALLOC(n);
+  return gc_slow(n, 3);
+}   /* (an allocator: check_runtime's ALLOC) */
 __attribute__((malloc, returns_nonnull)) void *pys_alloc(I n) { return gc_alloc(n, 0); }
 __attribute__((malloc, returns_nonnull)) void *pys_alloc_atomic(I n) { return gc_alloc(n, 1); }
 /* Compiled code's own objects and fixed tuples (alloc.fixed) that hold no reference, only ints,
@@ -929,15 +963,7 @@ Str *pys_pct_chr(I c) {                /* "%c" % i: the character, UTF-8 encoded
   char b[4];
   return c < 128 ? pys_chr(c) : pys_str(b, u8enc(b, c));
 }
-Str *pys_ascii(Str *r) {                       /* ascii(): repr with non-ASCII as \xhh, \uhhhh, \Uhhhhhhhh */
-  Buf b = {0}; char t[16];
-  for (I i = 0, n, cp; i < r->len; i += n) {   /* the characters u8char sees, as repr() did */
-    n = u8char(r->s + i, r->len - i, &cp);
-    if (cp < 128) put(&b, r->s + i, 1);
-    else put(&b, t, snprintf(t, 16, cp < 0x100 ? "\\x%02llx" : cp < 0x10000 ? "\\u%04llx" : "\\U%08llx", (long long)cp));
-  }
-  return pys_str(b.p, b.n);
-}
+Str *pys_ascii(Str *r);                       /* ascii(): the repr-escaping pass is in runtime.py */
 static I idx(I i, I n, const char *m) { if (i < 0) i += n; if (i < 0 || i >= n) pys_fail(m); return i; }
 static void span(I *lo, I *hi, I n) {
   if (*lo == NONE) *lo = 0; else if (*lo < 0 && (*lo += n) < 0) *lo = 0; else if (*lo > n) *lo = n;
@@ -1498,17 +1524,7 @@ I pys_mod(I a, I b) {
   if (b == -1) return 0;
   I r = a % b; return (r && (r < 0) != (b < 0)) ? r + b : r;
 }
-I pys_pow(I a, I b) {
-  if (b < 0) pys_fail(a ? "ValueError: negative exponent for int ** int" : "ZeroDivisionError: 0.0 cannot be raised to a negative power");
-  I r = 1, x = a;
-  if (a == 0 || a == 1) return b ? a : 1;
-  if (a == -1) return b & 1 ? -1 : 1;
-  for (;;) {                                   /* |a| >= 2, so overflow comes within 63 steps */
-    if ((b & 1) && __builtin_mul_overflow(r, x, &r)) pys_fail(OVF);
-    if (!(b >>= 1)) return r;
-    if (__builtin_mul_overflow(x, x, &x)) pys_fail(OVF);
-  }
-}
+I pys_pow(I a, I b);
 I pys_powmod(I a, I b, I m) {                 /* pow(a, b, m) as CPython's long_pow, in 128 bits: products cannot overflow */
   if (!m) pys_fail("ValueError: pow() 3rd argument cannot be 0");
   __int128 n = m < 0 ? -(__int128)m : m, x = a, r = 1;
@@ -1958,21 +1974,15 @@ double pys_m_logb(double x, double b) {   /* log(x) / log(b), and a base of 1 di
   if (d == 0) pys_fail("ZeroDivisionError: float division by zero");
   return n / d;
 }
-double pys_m_degrees(double x) { return x * (180.0 / 3.141592653589793); }
-double pys_m_radians(double x) { return x * (3.141592653589793 / 180.0); }
+double pys_m_degrees(double x);
+double pys_m_radians(double x);
 I pys_m_isfinite(double x) { return isfinite(x); }
 I pys_m_isinf(double x) { return isinf(x); }
 I pys_m_isnan(double x) { return isnan(x); }
 I pys_m_trunc(double x) { return pys_f2i(trunc(x)); }
 /* Portions derived from CPython's Modules/mathmodule.c: Copyright (c) 2001-2024 Python Software
    Foundation; All Rights Reserved; used under the PSF License Agreement (see THIRD_PARTY_NOTICES). */
-I pys_m_isclose(double a, double b, double rel_tol, double abs_tol) {   /* CPython's math_isclose_impl */
-  if (rel_tol < 0.0 || abs_tol < 0.0) pys_fail("ValueError: tolerances must be non-negative");
-  if (a == b) return 1;            /* (two infinities of the same sign) */
-  if (isinf(a) || isinf(b)) return 0;
-  double diff = fabs(b - a);
-  return diff <= fabs(rel_tol * b) || diff <= fabs(rel_tol * a) || diff <= abs_tol;
-}
+I pys_m_isclose(double a, double b, double rel_tol, double abs_tol);
 /* math.gamma and math.lgamma are CPython 3.13.16's m_tgamma and m_lgamma (Modules/mathmodule.c),
    which do not use libm's tgamma and lgamma: their Lanczos approximation, reflection formula and
    special cases, with their comments, so that every result is CPython's to the last bit. The
@@ -2363,7 +2373,8 @@ I pys_ceil(double d) { return pys_f2i(ceil(d)); }
    U<n>:<tag>:<e>... a tagged union, n program-wide tags and their member descriptors;
    R<n>: a recursive alias edge, n bytes backwards from R to an enclosing descriptor;
    A a dynamic value's box (see dynamic values), walked by its DynType's descriptor, Z the
-   function a box holds, which compares and hashes by identity; J a promoting int (a fixed
+   function a box holds, which compares and hashes by identity; Y a class object's canonical
+   reflection record (distinct from its instances); J a promoting int (a fixed
    tuple's item, the box of an int | None of a module that opts in, a field), its two words
    (jbig).
    skip treats R as a leaf; value operations follow it without changing the slot layout.
@@ -2575,6 +2586,12 @@ static const char *repr_depth(Buf *b, I v, const char *d, I depth) {
   case 'G': put(b, "<generator object>", 18); return d;
   case 'Q': put(b, "<iterator object>", 17); return d;
   case 'Z': put(b, "<function>", 10); return d;   /* (a dynamic value's function: by identity, unnamed) */
+  case 'Y': {   /* a class value: ReflRec's first words are name, qualname and module */
+    Str **r = (Str **)v;
+    put(b, "<class '", 8);
+    if (strcmp(r[2]->s, "builtins")) { put(b, r[2]->s, r[2]->len); put(b, ".", 1); }
+    put(b, r[1]->s, r[1]->len); put(b, "'>", 2); return d;
+  }
   case 'i': { char t[32]; put(b, t, snprintf(t, 32, "%lld", (long long)v)); return d; }
   case 'J': {                                       /* a promoting int's two words (jbig) */
     opt_in(); Big x = jbig(v);
@@ -2766,7 +2783,7 @@ static int eqv(I a, I b, const char *d) {
   }
   case 'S': case 'F': return pys_set_cmp((Set *)a, (Set *)b, 4);   /* (a set equals a frozenset of its elements) */
   case 'O': case 'H': return a == b || pys_obj_eq(ocls(d + 1), a, b);   /* identity first, like CPython */
-  case 'P': case 'C': return a == b;
+  case 'P': case 'C': case 'Y': return a == b;
   case '?': return a && b ? eqv(unbox(a, d + 1), unbox(b, d + 1), d + 1) : a == b;   /* None equals only None */
   case 'E': return pys_exc_id((Exc *)a) == pys_exc_id((Exc *)b);
   }
@@ -2930,7 +2947,7 @@ static int opv(I a, I b, const char *d, I op) {
     if (a && b) return opv(unbox(a, d + 1), unbox(b, d + 1), d + 1, op);
     failf("TypeError: '%s' not supported between instances of '%s' and '%s'", op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=",
           a ? vtyname(a, d + 1) : "NoneType", b ? vtyname(b, d + 1) : "NoneType");
-  case 'C': failf("TypeError: '%s' not supported between instances of 'type' and 'type'", op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=");
+  case 'C': case 'Y': failf("TypeError: '%s' not supported between instances of 'type' and 'type'", op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=");
   case 'E': {
     int m, n; const char *x = exc_name((Exc *)a, &m), *y = exc_name((Exc *)b, &n);
     failf("TypeError: '%s' not supported between instances of '%.*s' and '%.*s'", op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=", m, x, n, y);
@@ -3873,18 +3890,8 @@ Dyn *pys_list_minmax_identity(List *l, Str *d, I max, I kind) {
 I pys_any(List *l) { for (I i = 0; i < l->len; i++) if (l->a[i]) return 1; return 0; }
 I pys_all(List *l) { for (I i = 0; i < l->len; i++) if (!l->a[i]) return 0; return 1; }
 I pys_sum_int(List *l, I s) { list_narrow(l); for (I i = 0; i < l->len; i++) if (__builtin_add_overflow(s, l->a[i], &s)) pys_fail(OVF); return s; }
-static double fsum(List *l, I i, double s) {  /* CPython 3.12's compensated (Neumaier) sum of l[i:] */
-  double c = 0;
-  for (; i < l->len; i++) {
-    double x = dbl(l->a[i]), t = s + x;
-    if (fabs(s) >= fabs(x)) c += (s - t) + x; else c += (x - t) + s;
-    s = t;
-  }
-  return c && isfinite(c) ? s + c : s;
-}
-double pys_sum_float(List *l, double s) { return fsum(l, 0, s); }
-/* an int start: CPython adds the first float to it plainly, then sums the rest compensated */
-double pys_sum_float_int(List *l, I s) { return l->len ? fsum(l, 1, (double)s + dbl(l->a[0])) : (double)s; }
+double pys_sum_float(List *l, double s);
+double pys_sum_float_int(List *l, I s);
 double pys_sum_int_float(List *l, double s) { for (I i = 0; i < l->len; i++) s += (double)l->a[i]; return s; }   /* ints: not compensated */
 double pys_m_dist(List *p, List *q) {   /* math.dist: hypot's vnorm of the differences of two lists of floats */
   if (p->len != q->len) pys_fail("ValueError: both points must have the same number of dimensions");
@@ -3905,16 +3912,8 @@ double pys_m_hypot_list(List *p) {   /* math.hypot of other than two coordinates
   if (isinf(max)) return max;
   return nan ? NAN : vnorm(v, p->len, max);
 }
-I pys_range_len(I a, I b, I s) {                     /* len(range(a, b, s)) as an unsigned count */
-  if (!s) pys_fail("ValueError: range() arg 3 must not be zero");
-  uint64_t d = s > 0 ? (uint64_t)b - (uint64_t)a : (uint64_t)a - (uint64_t)b, st = s > 0 ? (uint64_t)s : -(uint64_t)s;
-  return (s > 0 ? a < b : a > b) ? (I)((d - 1) / st + 1) : 0;
-}
-I pys_range_has(I x, I a, I b, I s) {               /* x in range(a, b, s) */
-  if (!s) pys_fail("ValueError: range() arg 3 must not be zero");
-  if (s > 0 ? !(a <= x && x < b) : !(b < x && x <= a)) return 0;
-  return (s > 0 ? (uint64_t)x - (uint64_t)a : (uint64_t)a - (uint64_t)x) % (s > 0 ? (uint64_t)s : -(uint64_t)s) == 0;
-}
+I pys_range_len(I a, I b, I s);
+I pys_range_has(I x, I a, I b, I s);
 List *pys_range_list(I a, I b, I s) {   /* list(range(a, b, s)): allocated once at its length, as CPython does */
   uint64_t n = (uint64_t)pys_range_len(a, b, s);
   if (n > INT64_MAX) pys_fail("OverflowError: Python int too large to convert to C ssize_t");
@@ -4678,7 +4677,7 @@ static I hitem(I k, const char *d) {                 /* the hash of a value k (a
   case 'f': return hdbl(dbl(k));
   case 'T': return htuple((I *)k, d[1] - '0', d + 2, 1);
   case 'V': return htuple(((VTuple *)k)->a, ((VTuple *)k)->len, d + 1, 0);
-  case 'P': case 'C': return hptr(k);   /* (an exception class's class object: by identity, as object's) */
+  case 'P': case 'C': case 'Y': return hptr(k);   /* (class objects: by identity, as object's) */
   case 'H': return ohash(k, d);
   case 'A': return pys_dyn_hash((Dyn *)k);
   case 'J': { opt_in(); Big x = jbig(k); return x.hi ? pys_mpz_hash(x.hi) : hint(x.lo); }   /* (a promoting int's two words) */
@@ -4726,13 +4725,14 @@ I pys_hash_id(void *p) { return hptr((I)p); }        /* object.__hash__ */
    immutable Mpz digits through a scanned box, under the same Python kind with its own
    payload descriptor. An int's, a float's and a bound method's box is its
    identity for `is` and id() (pys_dyn_id), other values' their payload's (#797). */
-enum { DK_NONE, DK_BOOL, DK_INT, DK_FLOAT, DK_STR, DK_LIST, DK_DICT, DK_TUPLE, DK_OBJ, DK_FUNC, DK_ITER, DK_GEN };
+enum { DK_NONE, DK_BOOL, DK_INT, DK_FLOAT, DK_STR, DK_LIST, DK_DICT, DK_TUPLE, DK_OBJ, DK_FUNC, DK_ITER, DK_GEN, DK_TYPE };
 enum { DF_EQ = 1, DF_CMP = 2, DF_HASH = 4, DF_BOXID = 8, DF_NE = 16, DF_X = 32, DF_ITER = 64, DF_BIG = 128, DF_ROLE = 256 };   /* a class's ==, ordering, hash and != run the program's
                                                                      helpers; a box of this type is its own identity (a bound method's);
                                                                      the class's comparison methods take a value of any type (dobj) */
 #define DSTR(id, lit) static struct { I len; uint64_t h; I c1; char s[sizeof lit]; } id = {sizeof lit - 1, 0, sizeof lit, lit}
 DSTR(dd_none, "?s"); DSTR(dd_bool, "b"); DSTR(dd_int, "i"); DSTR(dd_bigint, "j"); DSTR(dd_float, "f"); DSTR(dd_str, "s");
 DSTR(dd_list, "LA"); DSTR(dd_intlist, "Li"); DSTR(dd_dict, "DAA"); DSTR(dd_tuple, "VA");
+DSTR(dd_type, "Y"); DSTR(dn_type, "type");
 DSTR(dn_none, "NoneType"); DSTR(dn_bool, "bool"); DSTR(dn_int, "int"); DSTR(dn_float, "float"); DSTR(dn_str, "str");
 DSTR(dn_list, "list"); DSTR(dn_dict, "dict"); DSTR(dn_tuple, "tuple");
 #define DTYPE(id, k, d, n) const DynType id = {k, (Str *)&d, (Str *)&n, -1, 0, 0, 0, 0, 0} /* GC_NO_ROOT(pys_dyntype_none, pys_dyntype_bool, pys_dyntype_int, pys_dyntype_float, pys_dyntype_str, pys_dyntype_list, pys_dyntype_intlist, pys_dyntype_biglist, pys_dyntype_dict, pys_dyntype_tuple): immutable descriptors reference only static strings. */
@@ -4743,6 +4743,8 @@ const DynType pys_dyntype_bigint = {DK_INT, (Str *)&dd_bigint, (Str *)&dn_int, -
 DTYPE(pys_dyntype_str, DK_STR, dd_str, dn_str); DTYPE(pys_dyntype_list, DK_LIST, dd_list, dn_list);
 DTYPE(pys_dyntype_intlist, DK_LIST, dd_intlist, dn_list); DTYPE(pys_dyntype_biglist, DK_LIST, dd_intlist, dn_list);
 DTYPE(pys_dyntype_dict, DK_DICT, dd_dict, dn_dict); DTYPE(pys_dyntype_tuple, DK_TUPLE, dd_tuple, dn_tuple);
+/* GC_NO_ROOT(pys_dyntype_type): immutable descriptor references only static strings. */
+DTYPE(pys_dyntype_type, DK_TYPE, dd_type, dn_type);
 const Dyn pys_dyn_none_box = {&pys_dyntype_none, 0}; /* GC_NO_ROOT(pys_dyn_none_box, pys_dyn_true_box, pys_dyn_false_box): immutable scalar boxes reference only static type descriptors. */
 const Dyn pys_dyn_true_box = {&pys_dyntype_bool, 1}, pys_dyn_false_box = {&pys_dyntype_bool, 0};
 #define DI(v) {&pys_dyntype_int, v}
@@ -4858,7 +4860,7 @@ I pys_dyn_role_isa(Dyn *x, const DynType *t) {
 /* is box x its own copy (lib/copy.py's __pys_copy_is_own and __pys_deepcopy_is_own of an Any
    value): None, a bool, an int, a float or a str, as CPython's copy gives it; for copy.copy()
    (deep 0) also a tuple or a function */
-I pys_dyn_copy_is_own(Dyn *x, I deep) { int k = DKIND(x); return k <= DK_STR || (!deep && (k == DK_TUPLE || k == DK_FUNC)); }
+I pys_dyn_copy_is_own(Dyn *x, I deep) { int k = DKIND(x); return k <= DK_STR || k == DK_TYPE || (!deep && (k == DK_TUPLE || k == DK_FUNC)); }
 /* lib/copy.py's memo retains the payload, so typed and Any aliases have one key and
    one copy. A deep list copy preserves its original physical layout; reboxing a
    memo hit uses that descriptor. Shallow dynamic copy() remains unrestricted. */
@@ -5056,7 +5058,7 @@ I pys_dyn_hash(Dyn *x) {
   case DK_STR: return hstr((Str *)x->v);
   case DK_TUPLE: return htuple(((VTuple *)x->v)->a, ((VTuple *)x->v)->len, "A", 0);
   case DK_OBJ: return x->t->flags & DF_HASH ? pys_obj_eq(-1 - x->t->cls, x->v, 0) : hptr(x->v);
-  case DK_FUNC: case DK_ITER: case DK_GEN: return hptr(x->v);
+  case DK_FUNC: case DK_ITER: case DK_GEN: case DK_TYPE: return hptr(x->v);
   }
   failf("TypeError: unhashable type: '%s'", DNAME(x));
 }
@@ -5599,6 +5601,179 @@ void pys_dyn_update(Dict *d, Dyn *x) {
     pys_dict_set(d, kv->a[0], kv->a[1]);
   }
 }
+/* Runtime-sized call packs own fresh scanned containers. Their elements retain the original
+   boxes (including native-list identity companions); no typed aliased storage is reinterpreted.
+   A null name callback denotes LIST_EXTEND's mixed-positional path. A sole *source is
+   materialized after keyword merges by the compiler. Calling an object's __str__ to name
+   an unpacking error must happen only when the error is known, after argument evaluation. */
+static Str *dyn_call_text(Dyn *value, Str *(*convert)(Dyn *)) { return convert(value); }
+static _Noreturn void dyn_call_error(Buf *b) {
+  /* Keyword names and an object's __str__ may contain NUL; retain their byte lengths. */
+  pys_raise(cstr("TypeError"), pys_str(b->p, b->n));
+}
+void pys_dyn_star_extend(List *dest, Dyn *source, Dyn *callee, Str *(*name)(Dyn *)) {
+  if (!dyn_iterable(source)) {
+    if (!name) failf("TypeError: Value after * must be an iterable, not %s", DNAME(source));
+    Str *who = dyn_call_text(callee, name);
+    Buf b = {0}; put(&b, who->s, who->len);
+    const char *m = " argument after * must be an iterable, not ";
+    put(&b, m, strlen(m)); put(&b, source->t->name->s, source->t->name->len);
+    dyn_call_error(&b);
+  }
+  if (DKIND(source) == DK_LIST) {
+    I n = ((List *)source->v)->len;
+    for (I i = 0; i < n; i++) pys_list_append(dest, (I)dyn_list_at(source, i));
+    return;
+  }
+  if (DKIND(source) == DK_TUPLE) {
+    VTuple *t = (VTuple *)source->v;
+    for (I i = 0; i < t->len; i++) pys_list_append(dest, t->a[i]);
+    return;
+  }
+  DynIter *it = pys_dyn_iter(source);   /* __iter__ validation precedes the length hint */
+  if (source->t->len && dyn_user_len(source) > INT64_MAX / (I)sizeof(I)) pys_fail("MemoryError");
+  for (Dyn *x; (x = pys_dyn_next(it));) pys_list_append(dest, (I)x);
+}
+static _Noreturn void dyn_kw_duplicate(Dyn *callee, Str *(*name)(Dyn *), Dyn *key, Str *(*stringify)(Dyn *)) {
+  /* CPython formats the callable before the key; either conversion can itself raise. */
+  Str *who = dyn_call_text(callee, name);
+  Str *keyname = DKIND(key) == DK_STR ? (Str *)key->v : dyn_call_text(key, stringify);
+  Buf b = {0}; put(&b, who->s, who->len);
+  const char *m = " got multiple values for keyword argument '";
+  put(&b, m, strlen(m)); put(&b, keyname->s, keyname->len); put(&b, "'", 1);
+  dyn_call_error(&b);
+}
+/* ** accepts builtin dynamic dicts. Custom mapping protocols remain an explicit boundary.
+   Merge with each source entry's stored hash: hashing it again would add __hash__ calls.
+   Non-string keys are checked only after every mapping has merged, as CALL_FUNCTION_EX does. */
+void pys_dyn_kw_merge(Dict *dest, Dyn *source, Dyn *callee, Str *(*name)(Dyn *), Str *(*stringify)(Dyn *)) {
+  if (DKIND(source) != DK_DICT) {
+    if (DKIND(source) == DK_OBJ) pys_fail("NotImplementedError: dynamic ** calls require builtin dict mappings");
+    Str *who = dyn_call_text(callee, name);
+    Buf b = {0}; put(&b, who->s, who->len);
+    const char *m = " argument after ** must be a mapping, not ";
+    put(&b, m, strlen(m)); put(&b, source->t->name->s, source->t->name->len);
+    dyn_call_error(&b);
+  }
+  Dict *from = (Dict *)source->v;
+  if (!from->len) return;
+  int empty = !dest->len;
+  if (empty && clean(from)) { retable(dest, from); return; }
+  if ((dest->size ? dest->size : 8) * 2 / 3 < from->len)
+    build(dest, dest, keysize(((dest->len + from->len) * 3 + 1) / 2));
+  I used = from->len;
+  for (I e = 0; e < from->n; e++) if (dlive(from, e)) {
+    I key = from->keys[e], value = from->vals[e];
+    uint64_t hash = from->hs[e];   /* comparisons can replace the source table */
+    if (!empty && dfind(dest, key, hash, NULL) >= 0) dyn_kw_duplicate(callee, name, (Dyn *)key, stringify);
+    /* _PyDict_MergeEx first checks a nonempty destination for a duplicate, then insertdict
+       looks up the key again. A second comparison can run code or change its answer. An
+       initially empty destination skips the duplicate check for the complete merge. */
+    dset(dest, key, hash, value);
+    if (from->len != used) pys_fail("RuntimeError: dict mutated during update");
+  }
+}
+static I dyn_param_find(Str *names, I *starts, I np, Str *key) {
+  for (I j = 0; j < np; j++) {
+    I n = starts[j + 1] - starts[j] - (j + 1 < np);
+    if (key->len == n && !memcmp(key->s, names->s + starts[j], n)) return j;
+  }
+  return -1;
+}
+static void dyn_param_put(Buf *b, Str *names, I *starts, I np, I j) {
+  put(b, names->s + starts[j], starts[j + 1] - starts[j] - (j + 1 < np));
+}
+/* Bind a fixed signature to nullable slots. names has '\1'-separated ALL parameter names;
+   required has one '1' (required) or '0' (default) per name. npos and posonly are absolute
+   parameter indices, own implicit receiver/env slots are already filled, and off adjusts
+   counts for classmethod's omitted cls (+1) or a closure's synthetic env (-1).
+   Implicit and omitted-default result slots stay NULL, distinct from boxed None. The
+   generated adapter supplies definition-time defaults, then calls its ordinary compiled fn. */
+List *pys_dyn_bind(List *pos, Dict *kw, Str *fname, Str *names, Str *required, I npos, I posonly, I own, I off) {
+  I np = required->len;
+  I *starts = pys_alloc_atomic((np + 1) * sizeof(I));
+  I count = 1; starts[0] = 0;
+  for (I i = 0; i < names->len; i++) if (names->s[i] == '\1' && count < np) starts[count++] = i + 1;
+  starts[np] = names->len;
+  List *bound = pys_list_new(np); bound->len = np;
+  for (I i = 0; i < pos->len && i + own < npos; i++) bound->a[i + own] = pos->a[i];
+  /* CPython checks the complete keyword tuple's strings before matching any parameter. */
+  for (I e = 0; e < kw->n; e++) if (dlive(kw, e) && DKIND((Dyn *)kw->keys[e]) != DK_STR)
+    pys_fail("TypeError: keywords must be strings");
+  for (I e = 0; e < kw->n; e++) if (dlive(kw, e)) {
+    Str *key = (Str *)((Dyn *)kw->keys[e])->v;
+    I j = dyn_param_find(names, starts, np, key);
+    if (j < 0 || j < posonly) {
+      Buf b = {0}; put(&b, fname->s, fname->len);
+      I po = 0;
+      for (I k = 0; k < kw->n; k++) if (dlive(kw, k)) {
+        Str *s = (Str *)((Dyn *)kw->keys[k])->v;
+        I index = dyn_param_find(names, starts, np, s);
+        if (index >= 0 && index < posonly) po++;
+      }
+      if (po) {
+        const char *m = "() got some positional-only arguments passed as keyword arguments: '";
+        put(&b, m, strlen(m)); I added = 0;
+        /* Positional-only complaints list signature order, not keyword insertion order. */
+        for (I index = 0; index < posonly; index++) {
+          for (I k = 0; k < kw->n; k++) if (dlive(kw, k)) {
+            Str *s = (Str *)((Dyn *)kw->keys[k])->v;
+            if (dyn_param_find(names, starts, np, s) == index) {
+              if (added++) put(&b, ", ", 2);
+              dyn_param_put(&b, names, starts, np, index);
+              break;
+            }
+          }
+        }
+      } else {
+        const char *m = "() got an unexpected keyword argument '";
+        put(&b, m, strlen(m)); put(&b, key->s, key->len);
+      }
+      put(&b, "'", 1); dyn_call_error(&b);
+    }
+    if (j < own || bound->a[j]) {
+      Buf b = {0}; put(&b, fname->s, fname->len);
+      const char *m = "() got multiple values for argument '";
+      put(&b, m, strlen(m)); put(&b, key->s, key->len); put(&b, "'", 1);
+      dyn_call_error(&b);
+    }
+    bound->a[j] = kw->vals[e];
+  }
+  I given = pos->len + own;
+  if (given > npos) {
+    I defaults = 0, kwgiven = 0;
+    for (I j = 0; j < npos; j++) if (required->s[j] != '1') defaults++;
+    for (I j = npos; j < np; j++) if (bound->a[j]) kwgiven++;
+    char counts[240];
+    int n;
+    if (defaults) n = snprintf(counts, sizeof counts, "() takes from %lld to %lld positional arguments but %lld", (long long)(npos + off - defaults), (long long)(npos + off), (long long)(given + off));
+    else n = snprintf(counts, sizeof counts, "() takes %lld positional argument%s but %lld", (long long)(npos + off), npos + off != 1 ? "s" : "", (long long)(given + off));
+    Buf b = {0}; put(&b, fname->s, fname->len); put(&b, counts, n);
+    if (kwgiven) {
+      n = snprintf(counts, sizeof counts, " positional argument%s (and %lld keyword-only argument%s)", given + off != 1 ? "s" : "", (long long)kwgiven, kwgiven != 1 ? "s" : "");
+      put(&b, counts, n);
+    }
+    const char *tail = given + off == 1 && !kwgiven ? " was given" : " were given";
+    put(&b, tail, strlen(tail)); dyn_call_error(&b);
+  }
+  for (int kind = 0; kind < 2; kind++) {
+    I missing = 0;
+    for (I j = own; j < np; j++) if (!bound->a[j] && required->s[j] == '1' && (j < npos) == !kind) missing++;
+    if (!missing) continue;
+    Buf b = {0}; put(&b, fname->s, fname->len); char message[128];
+    int n = snprintf(message, sizeof message, "() missing %lld required %s argument%s: ", (long long)missing, kind ? "keyword-only" : "positional", missing != 1 ? "s" : "");
+    put(&b, message, n); I added = 0;
+    for (I j = own; j < np; j++) if (!bound->a[j] && required->s[j] == '1' && (j < npos) == !kind) {
+      if (added) {
+        const char *sep = added + 1 == missing ? missing == 2 ? " and " : ", and " : ", ";
+        put(&b, sep, strlen(sep));
+      }
+      put(&b, "'", 1); dyn_param_put(&b, names, starts, np, j); put(&b, "'", 1); added++;
+    }
+    dyn_call_error(&b);
+  }
+  return bound;
+}
 /* list(o): a new list of o's items; str.join's items, which must be strs (CPython's message) */
 List *pys_dyn_list(Dyn *o) {
   DynIter *it = pys_dyn_iter(o);   /* __iter__ and its validation precede __len__'s hint */
@@ -6070,7 +6245,7 @@ static I u8enc(char *o, I c) {
   o[0] = 0xF0 | c >> 18; o[1] = 0x80 | (c >> 12 & 63); o[2] = 0x80 | (c >> 6 & 63); o[3] = 0x80 | (c & 63); return 4;
 }
 static const char *tyname(char d) {
-  return d == 'i' || d == 'J' ? "int" : d == 'b' ? "bool" : d == 'f' ? "float" : d == 's' ? "str" : d == 'L' ? "list" : d == 'D' ? "dict" : d == 'T' || d == 'V' ? "tuple" : d == 'S' ? "set" : d == 'F' ? "frozenset" : d == 'C' ? "type" : "object";
+  return d == 'i' || d == 'J' ? "int" : d == 'b' ? "bool" : d == 'f' ? "float" : d == 's' ? "str" : d == 'L' ? "list" : d == 'D' ? "dict" : d == 'T' || d == 'V' ? "tuple" : d == 'S' ? "set" : d == 'F' ? "frozenset" : d == 'C' || d == 'Y' ? "type" : "object";
 }
 /* The mini-language itself is in runtime.py (pys_format_str, _int, _float); pys_format picks one
    by the descriptor, and pys_fmt_float writes the digits of a float for a presentation type with
@@ -6082,7 +6257,7 @@ Str *pys_format(I v, Str *desc, Str *spec) {
   const char *ds = desc->s;
   if (*ds == 'A') {   /* (a dynamic value: its own; an object's or a function's with a spec: object.__format__'s error) */
     Dyn *x = (Dyn *)v;
-    if ((DKIND(x) == DK_OBJ || DKIND(x) == DK_FUNC || DKIND(x) == DK_ITER || DKIND(x) == DK_GEN) && spec->len) failf("TypeError: unsupported format string passed to %s.__format__", DNAME(x));
+    if ((DKIND(x) == DK_OBJ || DKIND(x) == DK_FUNC || DKIND(x) == DK_ITER || DKIND(x) == DK_GEN || DKIND(x) == DK_TYPE) && spec->len) failf("TypeError: unsupported format string passed to %s.__format__", DNAME(x));
     v = x->v; ds = x->t->desc->s;
   }
   if (*ds == '?') {                            /* None or a value */
@@ -6344,6 +6519,18 @@ void pys_finish(void) {                /* at exit, what CPython's shows of its e
   int bad = finish_hook ? finish_hook() : 0, e;   /* an embedded CPython's end (pyembed.c), after the program's
                                                     output and its atexit callbacks */
   if (gc_stats) gc_report();
+#ifdef PYSTACHY_PROFILE_DATA
+  fprintf(stderr, "pystachy-data: {\"schema\":1,\"c_gc_alloc_calls\":%llu,\"c_gc_requested_bytes\":%llu,"
+          "\"c_memcpy_calls\":%llu,\"c_memcpy_requested_bytes\":%llu,\"c_memmove_calls\":%llu,"
+          "\"c_memmove_requested_bytes\":%llu,\"gc_collections\":%lld,\"gc_peak_heap_bytes\":%lld}\n",
+          (unsigned long long)atomic_load_explicit(&profile_alloc_calls, memory_order_relaxed),
+          (unsigned long long)atomic_load_explicit(&profile_alloc_bytes, memory_order_relaxed),
+          (unsigned long long)atomic_load_explicit(&profile_memcpy_calls, memory_order_relaxed),
+          (unsigned long long)atomic_load_explicit(&profile_memcpy_bytes, memory_order_relaxed),
+          (unsigned long long)atomic_load_explicit(&profile_memmove_calls, memory_order_relaxed),
+          (unsigned long long)atomic_load_explicit(&profile_memmove_bytes, memory_order_relaxed),
+          (long long)gc_n, (long long)gc_peak);
+#endif
   if (!std_out.closed && (e = flush1(&std_out))) {
     fprintf(stderr, "Exception ignored on flushing sys.stdout:\n%s: [Errno %d] %s\n", errcls(e), e, strerror(e));
     bad = 1;
@@ -8759,11 +8946,20 @@ static int printable(I c) {            /* c >= 0x80: printable unless an odd num
   while (lo < hi) { I m = (lo + hi) / 2; if (pchange[m] <= c) lo = m + 1; else hi = m; }
   return !(lo & 1);
 }
-/* @ffi.extern: a char * a C function returned, as a str (NULL: None, or an error if must) */
-Str *pys_cstr(const char *p, I must) { if (!p && must) pys_fail("ValueError: a C function declared -> str returned NULL"); return p ? cstr(p) : 0; }
+/* @ffi.extern: copy a returned char * into str/bytes storage (must: 0 optional, 1 str, 2 bytes). */
+Str *pys_cstr(const char *p, I must) {
+  if (!p && must) pys_fail(must == 2 ? "ValueError: a C function declared -> bytes returned NULL" : "ValueError: a C function declared -> str returned NULL");
+  return p ? cstr(p) : 0;
+}
 Str *pys_string_at(I a, I n) {         /* ffi.string_at: n bytes at a, as ctypes.string_at */
   if (n < 0) pys_fail("ValueError: ffi.string_at() takes a length >= 0");
   return pys_str((const char *)a, n);
+}
+Str *pys_bytes_at(I a, I n) {          /* copy foreign bytes; only -1 scans for a NUL */
+  if (n < -1) pys_fail("ValueError: ffi.bytes_at() takes a length >= -1");
+  if (!a && n != 0) pys_fail("ValueError: ffi.bytes_at() cannot read a NULL pointer");
+  const char *p = a ? (const char *)a : "";
+  return pys_str(p, n == -1 ? (I)strlen(p) : n);
 }
 /* ffi.track (lib/pyobj.py): a value, a PyObject *, that object o owns. The table is malloc'd, out
    of the collector's sight: once a collection finds o unmarked, the value moves to a queue that
@@ -8826,7 +9022,7 @@ void *pys_c_at(List *l, I k) {         /* ffi.at(xs, k), a list passed from its 
    ctypes.CDLL(lib or None) finds it: dlopen(RTLD_NOW | RTLD_LOCAL), then dlsym; a failure raises what
    ctypes raises, OSError or AttributeError with dlerror's text. Under pystachy run, lli's own libraries
    (libLLVM's dependencies) are in the global scope: RTLD_DEEPBIND keeps lib and its dependencies first */
-void pys_c_bind(void **slot, const char *lib, const char *sym) {
+static void *c_library(const char *lib) {
   pys_c_numeric();                     /* (a C function may call setlocale) */
 #ifdef RTLD_DEEPBIND
   int deep = jit ? RTLD_DEEPBIND : 0;
@@ -8835,6 +9031,14 @@ void pys_c_bind(void **slot, const char *lib, const char *sym) {
 #endif
   void *h = dlopen(*lib ? lib : 0, RTLD_NOW | RTLD_LOCAL | deep);
   if (!h) failf("OSError: %s", dlerror());
+  return h;                           /* dlopen caches handles; retained for the process lifetime */
+}
+I pys_load_library(Str *lib) {
+  pys_c_str(lib);
+  return (I)c_library(lib->s);
+}
+void pys_c_bind(void **slot, const char *lib, const char *sym) {
+  void *h = c_library(lib);
   dlerror();
   void *p = dlsym(h, sym);
   const char *e = p ? 0 : dlerror();

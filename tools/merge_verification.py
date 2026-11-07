@@ -29,9 +29,11 @@ SHARDED_STEPS = {f"{suite}-{index}": count for suite, count in
                  (("tests-native", 3), ("tests-opt-off", 3), ("python-free", 3),
                   ("ubsan", 4), ("gc-ir", 2), ("gc-jit", 2), ("gc-aot", 3))
                  for index in range(count)}
-# The PR profile keeps full native coverage in two workers. Each alternate configuration runs
+# The PR profile keeps full native coverage in two workers per execution mode. Each alternate configuration runs
 # the common deterministic sample in one worker; these are not partial shards of the full gate.
-PR_SHARDED_STEPS = {"tests-native-0": 2, "tests-native-1": 2, "tests-opt-off-0": 1,
+PR_NATIVE_STEPS = {f"tests-native-{mode}-{index}": mode for mode in ("jit", "aot") for index in range(2)}
+SUITE_STEPS.update(PR_NATIVE_STEPS)
+PR_SHARDED_STEPS = {**dict.fromkeys(PR_NATIVE_STEPS, 2), "tests-opt-off-0": 1,
                     "python-free-0": 1, "ubsan-0": 1, "gc-jit-0": 1, "gc-aot-0": 1}
 # The GC suites run their shards (halves in JIT, thirds in AOT) with program stress alone, compiled by
 # stage 2 unstressed, after the gc-ir halves have shown the stage-2 compiler collecting every
@@ -166,6 +168,11 @@ def validate_pr_case_step(step, selection, label):
                 step.get("cflags") != "-fsanitize=undefined -fno-sanitize-recover=all --rtlib=compiler-rt" or
                 not isinstance(step.get("jit_preload"), str) or not step["jit_preload"]):
             raise ValueError(f"{label}: missing instrumented UBSan JIT/AOT and compiler identity evidence")
+    elif name in PR_NATIVE_STEPS:
+        mode = PR_NATIVE_STEPS[name]
+        expected = case_checks(selected, [mode])
+        if step.get("compiler") != "stage2" or step.get("modes") != [mode]:
+            raise ValueError(f"{label}: expected the stage-2 compiler in {mode} only")
     else:
         expected = case_checks(selected, ["jit", "aot"])
         if name.startswith("python-free-"):
@@ -179,6 +186,33 @@ def validate_pr_case_step(step, selection, label):
             raise ValueError(f"{label}: all optimization passes must be disabled")
     if step["expected"] != expected:
         raise ValueError(f"{label}: check count differs from its exact selected cases")
+
+
+def validate_pr_native_coverage(reports):
+    """Require every case in each execution mode exactly once, including opt-in baselines.
+
+    Both mode groups keep the full corpus: rejection and parser checks repeat, while every
+    accepted program runs exactly once in JIT and once in AOT. Counts alone cannot prove this.
+    """
+    import ci_sample
+    cases = ci_sample.corpus(ROOT)
+    steps = [step for report in reports.values() for step in report["steps"]
+             if step["name"].startswith("tests-native")]
+    if Counter(step["name"] for step in steps) != Counter(PR_NATIVE_STEPS.keys()):
+        raise ValueError("PR native coverage requires both complete JIT and AOT halves")
+    pairs = []
+    for step in steps:
+        mode = PR_NATIVE_STEPS[step["name"]]
+        if (step.get("compiler") != "stage2" or step.get("modes") != [mode] or
+                step.get("passed") != step["expected"] or step.get("failed") != 0):
+            raise ValueError("PR native coverage requires successful stage-2 checks in the declared mode")
+        pairs.extend((case, mode) for case in step["selected_cases"])
+    expected = {(case, mode) for case in cases for mode in ("jit", "aot")}
+    if len(pairs) != len(expected) or set(pairs) != expected:
+        raise ValueError("PR native halves must cover every corpus case and mode exactly once")
+    for mode in ("jit", "aot"):
+        if sum(step["expected"] for step in steps if step["modes"] == [mode]) != case_checks(cases, [mode]):
+            raise ValueError(f"PR native {mode} halves must cover all execution, rejection and parser checks")
 
 
 def unique_object(pairs):
@@ -463,6 +497,8 @@ def merge_reports(directory, groups, expected_commit=None, machine=None, subset=
     suite = reports[wanted[0]]["sources"]["suite_checks"]
     for kind, prefix, what in (("native", "tests-native", "native"), ("opt-off", "tests-opt-off", "opt-off"),
                                ("python-free", "python-free", "python-free")):
+        if profile == "pr" and kind == "native":
+            continue  # The PR's separate execution modes have an exact case×mode contract below.
         count = sharded_steps[f"{prefix}-0"]
         shards = [reports[f"{kind}-{index}"]["steps"][-1] for index in range(count) if f"{kind}-{index}" in reports]
         if len(shards) < count:
@@ -480,6 +516,8 @@ def merge_reports(directory, groups, expected_commit=None, machine=None, subset=
     # (sources.mode_checks), their stressed samples included, and hold as many cases as it does
     # (sources.corpus_cases); the UBSan quarters, which run in both modes one at a time, twice as many.
     mode_checks = reports[wanted[0]]["sources"]["mode_checks"]
+    if profile == "pr":
+        validate_pr_native_coverage(reports)
 
     def checks(group):
         step = reports[group]["steps"][-1]
@@ -536,7 +574,8 @@ def merge_reports(directory, groups, expected_commit=None, machine=None, subset=
     deferring = [step["name"] for report in reports.values() for step in report["steps"]
                  if (step["name"].startswith("dynany-optin-") and step["optin"]["native_suite"]) or
                  (step["name"].startswith("python-int-optin-") and step["python_int_optin"]["native_suite"])]
-    if deferring:
+    # PR coverage was proven by exact case×mode identity above, including every deferred baseline.
+    if deferring and profile != "pr":
         native = [step for report in reports.values() for step in report["steps"]
                   if step["name"].startswith("tests-native")]
         if (not native or sum(step["expected"] for step in native) != suite or

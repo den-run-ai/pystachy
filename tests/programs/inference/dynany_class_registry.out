@@ -1,0 +1,9 @@
+int:12 str:hello entry:3 child:4 none:None
+5 True True
+False False True True
+missing bool
+True
+none:2 str:again 5
+False True
+missing child
+[exit 0]

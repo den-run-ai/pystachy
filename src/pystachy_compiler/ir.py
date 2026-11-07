@@ -234,6 +234,7 @@ NOLABELS: list[str] = []
 class Ins:
     # one instruction: op decides which fields mean something
     def __init__(self, op: str, t: str, s: str):
+        self.line = 0  # encoded source position; zero for synthesized operations
         self.op = op  # a key of IROPS
         self.t = t  # its result type ("" if it defines no value; an rt op's as RUNTIME spells it), a slot's type
         # slot.pack/unpack keep the native type in the operand/result and use %slot for

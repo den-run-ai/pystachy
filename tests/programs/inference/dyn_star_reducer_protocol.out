@@ -1,0 +1,25 @@
+sole 0 6
+['arg', 'kw', 'iter', 'len', 'next:0', 'next:1', 'next:2', 'call']
+sole error 1 ValueError __len__() should return >= 0
+['arg', 'kw', 'iter', 'len']
+sole 2 6
+['arg', 'kw', 'iter', 'len', 'hint', 'next:0', 'next:1', 'next:2', 'call']
+sole 3 6
+['arg', 'kw', 'iter', 'len', 'hint', 'next:0', 'next:1', 'next:2', 'call']
+sole error 4 ValueError __length_hint__() should return >= 0
+['arg', 'kw', 'iter', 'len', 'hint']
+multiple 7
+['arg', 'iter', 'len', 'next:0', 'next:1', 'next:2', 'empty', 'kw', 'call']
+iterator 8
+['arg', 'kw', 'iterator iter', 'iterator hint', 'next:0', 'next:1', 'next:2', 'call']
+hint error 0 TypeError __length_hint__ must be an integer, not str
+['arg', 'kw', 'hint iter', 'hint value']
+hint error 1 TypeError __length_hint__ must be an integer, not NoneType
+['arg', 'kw', 'hint iter', 'hint value']
+hint error 2 TypeError __length_hint__ must be an integer, not Index
+['arg', 'kw', 'hint iter', 'hint value']
+hint 3 9
+['arg', 'kw', 'hint iter', 'hint value', 'next:0', 'next:1', 'next:2', 'call']
+hint error 4 ValueError hint failed
+['arg', 'kw', 'hint iter', 'hint value']
+[exit 0]

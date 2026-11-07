@@ -46,7 +46,7 @@ calls() {
 # (cold noinline, presplitcoroutine), but for its personality
 attrs() {
   awk '/^define / { f = $0; sub(/\(.*/, "", f); sub(/.* /, "", f)
-      a = $0; sub(/^[^(]*\([^)]*\)/, "", a); sub(/ *\{$/, "", a); sub(/ personality .*/, "", a)
+      a = $0; sub(/^[^(]*\([^)]*\)/, "", a); sub(/ *\{$/, "", a); sub(/ !dbg ![0-9]+/, "", a); sub(/ personality .*/, "", a)
       print f ":" a }' "$1"
 }
 # tbaa IR: each function IR defines, and the loads and stores it tags with TBAA, in the order of its

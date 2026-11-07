@@ -1,6 +1,7 @@
 """Gen component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 import os
+from src.pystachy_compiler.source_lines import SourceLines
 from src.pystachy_compiler.lowering import gen_lower_scalar as scalar_ir_lower_scalar
 from src.pystachy_compiler.scalar_ir import (
     gen_scalar as scalar_ir_scalar,
@@ -125,6 +126,7 @@ from src.pystachy_compiler.dynamic import (
     gen_dyn_call as dynamic_dyn_call,
     gen_dyn_call_args as dynamic_dyn_call_args,
     gen_dyn_call_value as dynamic_dyn_call_value,
+    gen_dyn_star_call as dynamic_dyn_star_call,
     gen_dyn_callables as dynamic_dyn_callables,
     gen_dyn_check as dynamic_dyn_check,
     gen_dyn_class_type as dynamic_dyn_class_type,
@@ -283,6 +285,11 @@ from src.pystachy_compiler.reflection import (
     gen_refl_split_class as reflection_refl_split_class,
     gen_refl_type_name as reflection_refl_type_name,
     gen_refl_record as reflection_refl_record,
+    gen_refl_builtin_class as reflection_refl_builtin_class,
+    gen_refl_class_problem as reflection_refl_class_problem,
+    gen_refl_class_value as reflection_refl_class_value,
+    gen_refl_type_value as reflection_refl_type_value,
+    gen_refl_dynamic_type as reflection_refl_dynamic_type,
     gen_refl_type_of as reflection_refl_type_of,
     gen_refl_class_of as reflection_refl_class_of,
     gen_refl_type_attr as reflection_refl_type_attr,
@@ -1278,6 +1285,7 @@ class Gen:
         self.globs: list[Val] = []
         self.gcroots: list[str] = []
         self.consts: list[Data] = []
+        self.fieldnames = False  # the program's static class-tag name table, shared by missing-field checks
         self.bconsts: dict[str, Val] = {}  # builtin module singleton values
         # the constant tuples of displays of literals (Gen.tuple_const): each one's name (@tc.N),
         # by its module and items, and each one's Data, by its name (tupleret reads its slots)
@@ -1298,6 +1306,7 @@ class Gen:
         for op in IROPS:
             self.opfxs[op] = fxmask(IROPS[op].replace("T", "").replace("*", ""))
         self.out: list[str] = []  # completed LLVM function chunks and the current function's lines
+        self.source_lines = SourceLines(os.getenv("PYSTACHY_DEBUG_LINES", "") == "1")
         self.fns: list[IFn] = []  # the functions compiled, in the order they were completed
         self.fll: dict[str, int] = {}  # and their positions there by symbol, once the program is built
         self.summaries = EffectSummaries()
@@ -2258,6 +2267,9 @@ class Gen:
     def dyn_call_value(self, o: Val, args: list[Node]) -> Val:
         return dynamic_dyn_call_value(self, o, args)
 
+    def dyn_star_call(self, o: Val, args: list[Node], method: str = "", found: Val | None = None) -> Val:
+        return dynamic_dyn_star_call(self, o, args, method, found)
+
     def dyn_fn_takes(self, ft: str, key: str, an: list[Node]) -> str:
         return dynamic_dyn_fn_takes(self, ft, key, an)
 
@@ -2298,6 +2310,21 @@ class Gen:
 
     def refl_record(self, c: str) -> str:
         return reflection_refl_record(self, c)
+
+    def refl_builtin_class(self, t: str) -> str:
+        return reflection_refl_builtin_class(self, t)
+
+    def refl_class_problem(self, c: str) -> str:
+        return reflection_refl_class_problem(self, c)
+
+    def refl_class_value(self, c: str) -> Val:
+        return reflection_refl_class_value(self, c)
+
+    def refl_type_value(self, v: Val) -> Val:
+        return reflection_refl_type_value(self, v)
+
+    def refl_dynamic_type(self, v: Val) -> None:
+        return reflection_refl_dynamic_type(self, v)
 
     def refl_type_of(self, v: Val, what: str, nonnull: bool = False) -> list[RLeaf]:
         return reflection_refl_type_of(self, v, what, nonnull)

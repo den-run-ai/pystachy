@@ -33,6 +33,7 @@ COMPILER_SOURCES: list[str] = [
     'src/pystachy_compiler/__init__.py',
     'src/pystachy_compiler/analysis.py',
     'src/pystachy_compiler/argparse_schema.py',
+    'src/pystachy_compiler/ctypes_schema.py',
     'src/pystachy_compiler/bigints.py',
     'src/pystachy_compiler/builtins.py',
     'src/pystachy_compiler/calls.py',
@@ -49,6 +50,7 @@ COMPILER_SOURCES: list[str] = [
     'src/pystachy_compiler/expressions.py',
     'src/pystachy_compiler/flow.py',
     'src/pystachy_compiler/functions.py',
+    'src/pystachy_compiler/callbacks.py',
     'src/pystachy_compiler/generators.py',
     'src/pystachy_compiler/gen.py',
     'src/pystachy_compiler/ir.py',
@@ -69,6 +71,7 @@ COMPILER_SOURCES: list[str] = [
     'src/pystachy_compiler/reflection.py',
     'src/pystachy_compiler/scalar_ir.py',
     'src/pystachy_compiler/scope.py',
+    'src/pystachy_compiler/source_lines.py',
     'src/pystachy_compiler/specs.py',
     'src/pystachy_compiler/statements.py',
     'src/pystachy_compiler/structs.py',
@@ -469,6 +472,8 @@ def main() -> None:
     on = optimizations()
     off = [o for o in OPTS if o not in on]
     keyed = flags + ["-fexceptions"]
+    if os.getenv("PYSTACHY_DEBUG_LINES", "") == "1":
+        keyed = keyed + ["PYSTACHY_DEBUG_LINES=1"]
     runtime_inputs = [program_cache.runtime_key()] if pcroot != "" else []
     if len(off) > 0:
         keyed = keyed + ["PYSTACHY_OPT=-" + ",-".join(off)]
@@ -873,7 +878,7 @@ def main() -> None:
         if not lim.isdigit():
             fail(f"PYSTACHY_JIT_INLINE: {lim} is no number of lines (0 turns the JIT's inliner off)", 0)
         clean = "function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg)"
-        if ir.count("\n") <= int(lim):
+        if ir.split("; pystachy source locations\n")[0].count("\n") <= int(lim):
             clean = f"cgscc(inline,{clean})"
         # Recursion accounting helpers belong to the program module, even when the
         # runtime is a separate library. Inline only those explicitly marked helpers

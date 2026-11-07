@@ -55,9 +55,10 @@ NOT_RESET = {
 
 # Gen's fields that hold the program's state (#767): each nested compile reads and extends them,
 # and the function it interrupts sees what it added. Only Gen.__init__ assigns them of the lists.
+# source_lines accumulates metadata across module lowering, outside AST/dry traversal.
 PROGRAM = """
     classes tmpl compiling utags specdone funcs aliases imports fglobals mvars gtypes globs gcroots
-    consts bconsts tconsts tconstdata lconsts strs bstrs strvals vnodes cmexit rtfns opfxs out fns fll summaries xcls xvals
+    consts fieldnames bconsts tconsts tconstdata lconsts strs bstrs strvals vnodes cmexit rtfns opfxs out source_lines fns fll summaries xcls xvals
     xmods xsigs xctors xtypes exctree eh opts reds lazy lazyat wake called gflag ocls ocmp hcls one
     xobj impg wide nokey nonereads noneglobalpending attrvals attrown hints newhints final xnot newx retseen
     template_instances template_retained retainers unsupported cnodes hooks chooks flagged unraised

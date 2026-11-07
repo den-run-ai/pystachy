@@ -938,6 +938,8 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             if x is not None:
                 return self.refl_type_attr(x, n.s)
         c = n.kids[0].s if n.kids[0].kind == "name" and n.kids[0].s not in self.ltype else ""
+        if c in self.classes and n.s == "__class__" and self.dyn_policy(n.line):
+            return self.refl_type_value(self.expr(n.kids[0], ""))
         if c in self.xmods and n.s == "__module__":
             # (an exception class's that the program assigns: its ExcClass's, as it shows it then)
             self.class_ready(n.kids[0])
@@ -947,11 +949,16 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         if c in self.classes and n.s == "__members__" and self.classes[c].node.line in ENUMCLASSES:
             self.class_ready(n.kids[0])
             return self.expr(mk("call", "", n.line, [mk("attr", "_members_view_", n.line, [self.enum_view(c, n.line)])]), "")  # (its EnumType object's)
-        if c in self.classes and ((c in self.nts and (n.s == "_fields" or n.s == "_field_defaults")) or (c not in self.nts and n.s in self.classes[c].fdefault)):
+        metadata = c in self.classes and self.classes[c].exc == "" and self.dyn_policy(n.line) and n.s in ["__qualname__", "__module__"]
+        inherited_meta = metadata and n.s in self.classes[c].fdefault and self.default_home(self.classes[c], n.s) is not self.classes[c]
+        if c in self.classes and ((c in self.nts and (n.s == "_fields" or n.s == "_field_defaults")) or (c not in self.nts and n.s in self.classes[c].fdefault and not inherited_meta)):
             return self.class_attr(n.kids[0], n.s)
         if c in self.classes and n.s == "__name__":
             self.class_ready(n.kids[0])
             return Val(self.sconst(short(c)), "str")  # (C.__name__, and cls.__name__ in a class method)
+        if metadata:
+            self.class_ready(n.kids[0])
+            return Val(self.sconst(self.refl_type_name(c, n.s)), "str")
         if c in self.classes and self.classes[c].exc != "" and (n.s == "__qualname__" or n.s == "__module__"):
             # (an exception class's, as its class object's: runtime.c's pys_exc_name, pys_exc_module)
             self.class_ready(n.kids[0])
@@ -980,6 +987,19 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                     return Val("undef", missingtype)
         if o.t == "dyn":
             return self.dyn_getattr(o, n.s)  # (its box's class's attribute: dynamic.py)
+        if n.s == "__class__" and self.dyn_policy(n.line):
+            if o.t == "exc" or o.t == "opt[exc]" or (o.t in self.classes and self.classes[o.t].exc != ""):
+                return self.exc_type_of(o)
+            if o.t not in self.classes or (n.s not in self.classes[o.t].ftypes and n.s not in self.classes[o.t].methods):
+                if any(c in self.classes and (n.s in self.classes[c].ftypes or n.s in self.classes[c].methods) for c in self.refl_concrete(o.t)):
+                    # A subclass may shadow object.__class__ even though this
+                    # static base does not. The existing boxed-class dispatcher
+                    # preserves that exact lookup and the receiver's identity.
+                    return self.dyn_getattr(self.dyn_box(o), n.s)
+                return self.refl_type_value(o)
+        builtin_class = self.refl_builtin_class(o.t) if self.dyn_policy(n.line) else ""
+        if builtin_class != "" and n.s in ["__name__", "__qualname__", "__module__"]:
+            return Val(self.sconst(self.refl_type_name(builtin_class, n.s)), "str")
         if is_fn(o.t) and (n.s == "__name__" or n.s == "__qualname__"):
             # (a function of a module's top level, or a builtin: its own name; a closure's
             # qualified name is outer.<locals>.name, a bound method's C.name)
@@ -2006,6 +2026,8 @@ def gen_conversion(self, v: Val, flags: str, width: str, prec: str, t: str) -> V
 def gen_format_(self, v: Val, spec: Node) -> Val:
     # format(v, spec), as an f-string field computes it; spec is a str or an f-string node, or
     # format()'s argument
+    if self.dyn_policy(self.line) and self.refl_builtin_class(v.t) != "":
+        v = self.dyn_box(v)
     empty = spec.kind == "str" and spec.s == ""
     if v.t == "dyn":
         # by its box's type (dynamic.py): a boxed class's __format__, else str() for an empty spec

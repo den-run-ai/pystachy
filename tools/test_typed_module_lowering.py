@@ -13,7 +13,8 @@ from src.pystachy_compiler.syntax import Node
 
 
 ROOT = Path(__file__).resolve().parents[1]
-BACKENDS = {"lowering.py", "lower_module.py", "llvm_abi.py"}
+# Source-line metadata is emitted after LLVM lowering (see src/README.md).
+BACKENDS = {"lowering.py", "lower_module.py", "llvm_abi.py", "source_lines.py"}
 
 
 class ModuleLoweringTests(unittest.TestCase):

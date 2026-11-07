@@ -482,7 +482,7 @@ def builtin_has(mod: str, x: str) -> bool:
     if mod == "dataclasses":
         return x == "dataclass"
     if mod == "ffi":
-        return x in ("extern", "export", "string_at", "at", "c_buf", "c_float", "track", "untrack", "collected") or x in CTYPES
+        return x in ("extern", "export", "string_at", "bytes_at", "load_library", "at", "c_buf", "c_float", "track", "untrack", "collected") or x in CTYPES
     return mod == "builtins" or known_path(mod + "." + x)  # (a builtin is checked where it is called)
 
 

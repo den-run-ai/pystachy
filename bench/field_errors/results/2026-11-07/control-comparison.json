@@ -1,0 +1,370 @@
+{
+  "original_sha256": "3ded86732bb2ce15154656fed9be5366ec5086f795a46b566726516b850948ee",
+  "confirmation_sha256": "2b733ddb0b374e9319b242c8376923409a4076eea44b27feba60e8e22c6b76df",
+  "same_input_hashes": {
+    "hierarchy-128": true,
+    "exact-class": true,
+    "hierarchy-no-read": true,
+    "sparse-read": true
+  },
+  "same_executable_hashes": {
+    "base": true,
+    "head": true
+  },
+  "cohorts": {
+    "original5": {
+      "hierarchy-128": {
+        "revisions": {
+          "base": {
+            "samples": 5,
+            "wall_median_s": 0.07774636300018756,
+            "wall_min_s": 0.07373162000294542,
+            "wall_max_s": 0.0791412760008825,
+            "cpu_median_s": 0.077223,
+            "rss_median_kib": 56940,
+            "rss_min_kib": 56928,
+            "rss_max_kib": 57004,
+            "samples_below_40ms": 0
+          },
+          "head": {
+            "samples": 5,
+            "wall_median_s": 0.03871059199445881,
+            "wall_min_s": 0.037142323002626654,
+            "wall_max_s": 0.04169578399887541,
+            "cpu_median_s": 0.038343,
+            "rss_median_kib": 38380,
+            "rss_min_kib": 38316,
+            "rss_max_kib": 38512,
+            "samples_below_40ms": 4
+          }
+        },
+        "ratio_of_wall_medians": 0.4979087188215534,
+        "paired_wall_ratios": [
+          0.49929116638196974,
+          0.5250202286741076,
+          0.5015803722985946,
+          0.479498139354728,
+          0.5363052674087767
+        ],
+        "median_paired_wall_ratio": 0.5015803722985946,
+        "candidate_slower_pairs": 0
+      },
+      "exact-class": {
+        "revisions": {
+          "base": {
+            "samples": 5,
+            "wall_median_s": 0.002255995001178235,
+            "wall_min_s": 0.0020264560007490218,
+            "wall_max_s": 0.0026596910029184073,
+            "cpu_median_s": 0.0020599999999999998,
+            "rss_median_kib": 25028,
+            "rss_min_kib": 25028,
+            "rss_max_kib": 25028,
+            "samples_below_40ms": 5
+          },
+          "head": {
+            "samples": 5,
+            "wall_median_s": 0.0021627569949487224,
+            "wall_min_s": 0.0018542109974077903,
+            "wall_max_s": 0.0025840489979600534,
+            "cpu_median_s": 0.001969,
+            "rss_median_kib": 25028,
+            "rss_min_kib": 25028,
+            "rss_max_kib": 25028,
+            "samples_below_40ms": 5
+          }
+        },
+        "ratio_of_wall_medians": 0.9586710049531062,
+        "paired_wall_ratios": [
+          0.9715598523003786,
+          0.8492882941225453,
+          1.1329552663910687,
+          0.8219038590242419,
+          0.9968886905026291
+        ],
+        "median_paired_wall_ratio": 0.9715598523003786,
+        "candidate_slower_pairs": 1
+      },
+      "hierarchy-no-read": {
+        "revisions": {
+          "base": {
+            "samples": 5,
+            "wall_median_s": 0.03416188700066414,
+            "wall_min_s": 0.03130580500146607,
+            "wall_max_s": 0.04692274999979418,
+            "cpu_median_s": 0.033699999999999994,
+            "rss_median_kib": 34816,
+            "rss_min_kib": 34732,
+            "rss_max_kib": 34860,
+            "samples_below_40ms": 3
+          },
+          "head": {
+            "samples": 5,
+            "wall_median_s": 0.04675082599715097,
+            "wall_min_s": 0.031070578006620053,
+            "wall_max_s": 0.04725884700019378,
+            "cpu_median_s": 0.04629,
+            "rss_median_kib": 34816,
+            "rss_min_kib": 34788,
+            "rss_max_kib": 34884,
+            "samples_below_40ms": 2
+          }
+        },
+        "ratio_of_wall_medians": 1.3685083027246736,
+        "paired_wall_ratios": [
+          1.040284815241003,
+          1.3685083027246736,
+          1.0231820698082408,
+          0.9924861540907509,
+          1.0071627728639323
+        ],
+        "median_paired_wall_ratio": 1.0231820698082408,
+        "candidate_slower_pairs": 4
+      },
+      "sparse-read": {
+        "revisions": {
+          "base": {
+            "samples": 5,
+            "wall_median_s": 0.008102166000753641,
+            "wall_min_s": 0.007705500000156462,
+            "wall_max_s": 0.010831530998984817,
+            "cpu_median_s": 0.0078,
+            "rss_median_kib": 25028,
+            "rss_min_kib": 25028,
+            "rss_max_kib": 25028,
+            "samples_below_40ms": 5
+          },
+          "head": {
+            "samples": 5,
+            "wall_median_s": 0.008460935998300556,
+            "wall_min_s": 0.00804234800307313,
+            "wall_max_s": 0.011391618994821329,
+            "cpu_median_s": 0.008154,
+            "rss_median_kib": 25028,
+            "rss_min_kib": 25028,
+            "rss_max_kib": 25028,
+            "samples_below_40ms": 5
+          }
+        },
+        "ratio_of_wall_medians": 1.0442807512847234,
+        "paired_wall_ratios": [
+          1.0517090331818286,
+          1.0144181305076014,
+          1.04371526869247,
+          1.0454621488643574,
+          1.0703866100639055
+        ],
+        "median_paired_wall_ratio": 1.0454621488643574,
+        "candidate_slower_pairs": 5
+      }
+    },
+    "confirmation20": {
+      "hierarchy-128": {
+        "revisions": {
+          "base": {
+            "samples": 20,
+            "wall_median_s": 0.07261567100067623,
+            "wall_min_s": 0.0696507019965793,
+            "wall_max_s": 0.08194179699785309,
+            "cpu_median_s": 0.07225,
+            "rss_median_kib": 58496.0,
+            "rss_min_kib": 58340,
+            "rss_max_kib": 58608,
+            "samples_below_40ms": 0
+          },
+          "head": {
+            "samples": 20,
+            "wall_median_s": 0.03804011200190871,
+            "wall_min_s": 0.03672767199896043,
+            "wall_max_s": 0.05520508599875029,
+            "cpu_median_s": 0.037562,
+            "rss_median_kib": 38300.0,
+            "rss_min_kib": 38188,
+            "rss_max_kib": 38380,
+            "samples_below_40ms": 16
+          }
+        },
+        "ratio_of_wall_medians": 0.5238554085874172,
+        "paired_wall_ratios": [
+          0.4767667756611936,
+          0.5083307444050809,
+          0.5197831299937579,
+          0.534566645060098,
+          0.5332459269250985,
+          0.5259393038430582,
+          0.5290677989953447,
+          0.5379825318232284,
+          0.5187667980700064,
+          0.5050715316460087,
+          0.5256243441458498,
+          0.5524863423357157,
+          0.537954439730214,
+          0.495378919594128,
+          0.5923003389689594,
+          0.5404158296033553,
+          0.5517635059105863,
+          0.6737109512035315,
+          0.507601476563705,
+          0.5150051037868645
+        ],
+        "median_paired_wall_ratio": 0.5275035514192015,
+        "candidate_slower_pairs": 0
+      },
+      "exact-class": {
+        "revisions": {
+          "base": {
+            "samples": 20,
+            "wall_median_s": 0.002038252499914961,
+            "wall_min_s": 0.001955079998879228,
+            "wall_max_s": 0.0026690950035117567,
+            "cpu_median_s": 0.0018174999999999999,
+            "rss_median_kib": 24920.0,
+            "rss_min_kib": 24920,
+            "rss_max_kib": 24920,
+            "samples_below_40ms": 20
+          },
+          "head": {
+            "samples": 20,
+            "wall_median_s": 0.0020227594977768604,
+            "wall_min_s": 0.0019241929985582829,
+            "wall_max_s": 0.0023652360032428987,
+            "cpu_median_s": 0.0017919999999999998,
+            "rss_median_kib": 24920.0,
+            "rss_min_kib": 24920,
+            "rss_max_kib": 24920,
+            "samples_below_40ms": 20
+          }
+        },
+        "ratio_of_wall_medians": 0.9923988798548036,
+        "paired_wall_ratios": [
+          0.8676847389023542,
+          0.9451911775427674,
+          1.013592406697609,
+          0.7945153541421867,
+          1.0116373789162416,
+          0.9535440067686592,
+          0.9793329490485941,
+          1.1160484204881327,
+          1.0088819916212013,
+          1.00025827197814,
+          1.0079598113086046,
+          1.002998070355154,
+          1.0683610571051165,
+          1.0522931930675057,
+          0.9670323838435955,
+          0.9095615880564948,
+          1.0001247767107433,
+          0.8974249223982917,
+          1.198167749224385,
+          0.7517621603609197
+        ],
+        "median_paired_wall_ratio": 1.0001915243444417,
+        "candidate_slower_pairs": 11
+      },
+      "hierarchy-no-read": {
+        "revisions": {
+          "base": {
+            "samples": 20,
+            "wall_median_s": 0.03296518249771907,
+            "wall_min_s": 0.03163081000093371,
+            "wall_max_s": 0.04655140099930577,
+            "cpu_median_s": 0.0325405,
+            "rss_median_kib": 34816.0,
+            "rss_min_kib": 34732,
+            "rss_max_kib": 34880,
+            "samples_below_40ms": 19
+          },
+          "head": {
+            "samples": 20,
+            "wall_median_s": 0.03371590200185892,
+            "wall_min_s": 0.03193752299557673,
+            "wall_max_s": 0.05126923400530359,
+            "cpu_median_s": 0.033327499999999996,
+            "rss_median_kib": 34804.0,
+            "rss_min_kib": 34708,
+            "rss_max_kib": 34924,
+            "samples_below_40ms": 16
+          }
+        },
+        "ratio_of_wall_medians": 1.0227731032337466,
+        "paired_wall_ratios": [
+          1.0192878619993588,
+          1.3263627119254136,
+          1.0256686121899679,
+          0.9749025053312398,
+          1.1952726172401267,
+          1.1077489473777662,
+          1.4956733496940007,
+          1.3822373404742399,
+          1.0065624199793177,
+          0.9801564701347121,
+          0.9962376826336641,
+          0.9964313568694628,
+          0.9787682813068278,
+          1.0750320258333526,
+          0.9911679025468199,
+          1.0009840115415265,
+          1.0631800951907555,
+          1.1871020882051888,
+          1.038971312226734,
+          1.0448901301029025
+        ],
+        "median_paired_wall_ratio": 1.032319962208351,
+        "candidate_slower_pairs": 14
+      },
+      "sparse-read": {
+        "revisions": {
+          "base": {
+            "samples": 20,
+            "wall_median_s": 0.00870192200090969,
+            "wall_min_s": 0.007812916999682784,
+            "wall_max_s": 0.0177257390023442,
+            "cpu_median_s": 0.008397,
+            "rss_median_kib": 24920.0,
+            "rss_min_kib": 24920,
+            "rss_max_kib": 24920,
+            "samples_below_40ms": 20
+          },
+          "head": {
+            "samples": 20,
+            "wall_median_s": 0.008949021499574883,
+            "wall_min_s": 0.007955448003485799,
+            "wall_max_s": 0.017428749000828248,
+            "cpu_median_s": 0.008594999999999998,
+            "rss_median_kib": 24920.0,
+            "rss_min_kib": 24920,
+            "rss_max_kib": 24920,
+            "samples_below_40ms": 20
+          }
+        },
+        "ratio_of_wall_medians": 1.0283959679987205,
+        "paired_wall_ratios": [
+          0.9046678237750184,
+          1.0998235353394807,
+          0.9832452682803987,
+          1.079298836690346,
+          1.0632573128521086,
+          1.3735211519174513,
+          1.0531991439906843,
+          1.1492944733968142,
+          1.0163263670650868,
+          0.9760840091108703,
+          1.0742971956861758,
+          1.0801999619078848,
+          1.0806488004933779,
+          0.9865201765824188,
+          0.9907208156737943,
+          0.9345894029844823,
+          1.3057347625539646,
+          1.129106723266071,
+          0.9075988155478266,
+          0.9719366804245276
+        ],
+        "median_paired_wall_ratio": 1.0582282284213964,
+        "candidate_slower_pairs": 12
+      }
+    }
+  },
+  "interpretation": "One preplanned bounded confirmation, no further runs. Original median jump is mixture-sensitive and does not recur at the same size; smaller no-read cost remains possible. CPU follows wall; RSS does not separate revisions. Forty milliseconds describes the gap between the original observed timing bands, not an acceptance threshold. Original samples stay unchanged; cohorts are not pooled.",
+  "same_compiler_source_hashes": true
+}

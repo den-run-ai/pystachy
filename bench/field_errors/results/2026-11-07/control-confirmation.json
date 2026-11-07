@@ -1,0 +1,4649 @@
+{
+  "complete": true,
+  "command": "bench/field_errors/run.py --base /workspace/scratch/5798eb31a437/compiler-work --head /workspace/scratch/5798eb31a437/field-errors --output /workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation --sizes 128 --samples 20 --builds 0 --cpu 0",
+  "python": "3.13.16 (main, Oct 14 2026, 01:04:01) [Clang 23.1.3 ]",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.39",
+  "affinity": [
+    0
+  ],
+  "compiler_host": "native Pystachy",
+  "samples": [
+    {
+      "case": "hierarchy-128",
+      "phase": "frontend",
+      "sample": 0,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128-frontend-0-base.ll"
+      ],
+      "wall_s": 0.07917080200422788,
+      "user_s": 0.050184,
+      "system_s": 0.028502,
+      "max_process_rss_kib": 58340,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 1550165,
+        "lines": 40148,
+        "sha256": "0ce75711c2a57d9376a4686ff928a30e8c82382d084f31bb615b07868216aac5",
+        "select_instructions": 16641,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-128",
+      "phase": "frontend",
+      "sample": 0,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128-frontend-0-head.ll"
+      ],
+      "wall_s": 0.03774600799806649,
+      "user_s": 0.033274,
+      "system_s": 0.0037849999999999997,
+      "max_process_rss_kib": 38188,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 260367,
+        "lines": 7129,
+        "sha256": "4567a9c198b74c90e791bc009f5b9d25fa4c2f30004f01fac9ac04b9eff6ba0c",
+        "select_instructions": 1,
+        "class_name_tables": 1
+      }
+    },
+    {
+      "case": "hierarchy-128",
+      "phase": "frontend",
+      "sample": 1,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128-frontend-1-head.ll"
+      ],
+      "wall_s": 0.03672767199896043,
+      "user_s": 0.025411,
+      "system_s": 0.010953,
+      "max_process_rss_kib": 38332,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 260367,
+        "lines": 7129,
+        "sha256": "4567a9c198b74c90e791bc009f5b9d25fa4c2f30004f01fac9ac04b9eff6ba0c",
+        "select_instructions": 1,
+        "class_name_tables": 1
+      }
+    },
+    {
+      "case": "hierarchy-128",
+      "phase": "frontend",
+      "sample": 1,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128-frontend-1-base.ll"
+      ],
+      "wall_s": 0.07225152600585716,
+      "user_s": 0.059907999999999996,
+      "system_s": 0.011866,
+      "max_process_rss_kib": 58420,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 1550165,
+        "lines": 40148,
+        "sha256": "0ce75711c2a57d9376a4686ff928a30e8c82382d084f31bb615b07868216aac5",
+        "select_instructions": 16641,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-128",
+      "phase": "frontend",
+      "sample": 2,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128-frontend-2-base.ll"
+      ],
+      "wall_s": 0.07467642900155624,
+      "user_s": 0.059155,
+      "system_s": 0.015106,
+      "max_process_rss_kib": 58560,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 1550165,
+        "lines": 40148,
+        "sha256": "0ce75711c2a57d9376a4686ff928a30e8c82382d084f31bb615b07868216aac5",
+        "select_instructions": 16641,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-128",
+      "phase": "frontend",
+      "sample": 2,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128-frontend-2-head.ll"
+      ],
+      "wall_s": 0.03881554800318554,
+      "user_s": 0.017315999999999998,
+      "system_s": 0.021109,
+      "max_process_rss_kib": 38324,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 260367,
+        "lines": 7129,
+        "sha256": "4567a9c198b74c90e791bc009f5b9d25fa4c2f30004f01fac9ac04b9eff6ba0c",
+        "select_instructions": 1,
+        "class_name_tables": 1
+      }
+    },
+    {
+      "case": "hierarchy-128",
+      "phase": "frontend",
+      "sample": 3,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128-frontend-3-head.ll"
+      ],
+      "wall_s": 0.037956168001983315,
+      "user_s": 0.026369,
+      "system_s": 0.011033999999999999,
+      "max_process_rss_kib": 38324,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 260367,
+        "lines": 7129,
+        "sha256": "4567a9c198b74c90e791bc009f5b9d25fa4c2f30004f01fac9ac04b9eff6ba0c",
+        "select_instructions": 1,
+        "class_name_tables": 1
+      }
+    },
+    {
+      "case": "hierarchy-128",
+      "phase": "frontend",
+      "sample": 3,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128-frontend-3-base.ll"
+      ],
+      "wall_s": 0.07100362200435484,
+      "user_s": 0.059215,
+      "system_s": 0.011429,
+      "max_process_rss_kib": 58412,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 1550165,
+        "lines": 40148,
+        "sha256": "0ce75711c2a57d9376a4686ff928a30e8c82382d084f31bb615b07868216aac5",
+        "select_instructions": 16641,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-128",
+      "phase": "frontend",
+      "sample": 4,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128-frontend-4-base.ll"
+      ],
+      "wall_s": 0.06981940999685321,
+      "user_s": 0.056978999999999995,
+      "system_s": 0.012438999999999999,
+      "max_process_rss_kib": 58496,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 1550165,
+        "lines": 40148,
+        "sha256": "0ce75711c2a57d9376a4686ff928a30e8c82382d084f31bb615b07868216aac5",
+        "select_instructions": 16641,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-128",
+      "phase": "frontend",
+      "sample": 4,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128-frontend-4-head.ll"
+      ],
+      "wall_s": 0.03723091600113548,
+      "user_s": 0.032847999999999995,
+      "system_s": 0.003946,
+      "max_process_rss_kib": 38244,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 260367,
+        "lines": 7129,
+        "sha256": "4567a9c198b74c90e791bc009f5b9d25fa4c2f30004f01fac9ac04b9eff6ba0c",
+        "select_instructions": 1,
+        "class_name_tables": 1
+      }
+    },
+    {
+      "case": "hierarchy-128",
+      "phase": "frontend",
+      "sample": 5,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128-frontend-5-head.ll"
+      ],
+      "wall_s": 0.03814766099822009,
+      "user_s": 0.01918,
+      "system_s": 0.018577,
+      "max_process_rss_kib": 38244,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 260367,
+        "lines": 7129,
+        "sha256": "4567a9c198b74c90e791bc009f5b9d25fa4c2f30004f01fac9ac04b9eff6ba0c",
+        "select_instructions": 1,
+        "class_name_tables": 1
+      }
+    },
+    {
+      "case": "hierarchy-128",
+      "phase": "frontend",
+      "sample": 5,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128-frontend-5-base.ll"
+      ],
+      "wall_s": 0.0725324399973033,
+      "user_s": 0.036212999999999995,
+      "system_s": 0.035952,
+      "max_process_rss_kib": 58420,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 1550165,
+        "lines": 40148,
+        "sha256": "0ce75711c2a57d9376a4686ff928a30e8c82382d084f31bb615b07868216aac5",
+        "select_instructions": 16641,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-128",
+      "phase": "frontend",
+      "sample": 6,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128-frontend-6-base.ll"
+      ],
+      "wall_s": 0.07248976799746742,
+      "user_s": 0.055616,
+      "system_s": 0.016456,
+      "max_process_rss_kib": 58408,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 1550165,
+        "lines": 40148,
+        "sha256": "0ce75711c2a57d9376a4686ff928a30e8c82382d084f31bb615b07868216aac5",
+        "select_instructions": 16641,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-128",
+      "phase": "frontend",
+      "sample": 6,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128-frontend-6-head.ll"
+      ],
+      "wall_s": 0.03835200200410327,
+      "user_s": 0.023188999999999998,
+      "system_s": 0.014738999999999999,
+      "max_process_rss_kib": 38316,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 260367,
+        "lines": 7129,
+        "sha256": "4567a9c198b74c90e791bc009f5b9d25fa4c2f30004f01fac9ac04b9eff6ba0c",
+        "select_instructions": 1,
+        "class_name_tables": 1
+      }
+    },
+    {
+      "case": "hierarchy-128",
+      "phase": "frontend",
+      "sample": 7,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128-frontend-7-head.ll"
+      ],
+      "wall_s": 0.037470861003384925,
+      "user_s": 0.032902,
+      "system_s": 0.0041919999999999995,
+      "max_process_rss_kib": 38328,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 260367,
+        "lines": 7129,
+        "sha256": "4567a9c198b74c90e791bc009f5b9d25fa4c2f30004f01fac9ac04b9eff6ba0c",
+        "select_instructions": 1,
+        "class_name_tables": 1
+      }
+    },
+    {
+      "case": "hierarchy-128",
+      "phase": "frontend",
+      "sample": 7,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128-frontend-7-base.ll"
+      ],
+      "wall_s": 0.0696507019965793,
+      "user_s": 0.061404,
+      "system_s": 0.007865,
+      "max_process_rss_kib": 58476,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 1550165,
+        "lines": 40148,
+        "sha256": "0ce75711c2a57d9376a4686ff928a30e8c82382d084f31bb615b07868216aac5",
+        "select_instructions": 16641,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-128",
+      "phase": "frontend",
+      "sample": 8,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128-frontend-8-base.ll"
+      ],
+      "wall_s": 0.07178483499592403,
+      "user_s": 0.044229,
+      "system_s": 0.027132,
+      "max_process_rss_kib": 58412,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 1550165,
+        "lines": 40148,
+        "sha256": "0ce75711c2a57d9376a4686ff928a30e8c82382d084f31bb615b07868216aac5",
+        "select_instructions": 16641,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-128",
+      "phase": "frontend",
+      "sample": 8,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128-frontend-8-head.ll"
+      ],
+      "wall_s": 0.03723958900081925,
+      "user_s": 0.020173,
+      "system_s": 0.016582,
+      "max_process_rss_kib": 38188,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 260367,
+        "lines": 7129,
+        "sha256": "4567a9c198b74c90e791bc009f5b9d25fa4c2f30004f01fac9ac04b9eff6ba0c",
+        "select_instructions": 1,
+        "class_name_tables": 1
+      }
+    },
+    {
+      "case": "hierarchy-128",
+      "phase": "frontend",
+      "sample": 9,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128-frontend-9-head.ll"
+      ],
+      "wall_s": 0.03682532600214472,
+      "user_s": 0.024156,
+      "system_s": 0.012299,
+      "max_process_rss_kib": 38356,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 260367,
+        "lines": 7129,
+        "sha256": "4567a9c198b74c90e791bc009f5b9d25fa4c2f30004f01fac9ac04b9eff6ba0c",
+        "select_instructions": 1,
+        "class_name_tables": 1
+      }
+    },
+    {
+      "case": "hierarchy-128",
+      "phase": "frontend",
+      "sample": 9,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128-frontend-9-base.ll"
+      ],
+      "wall_s": 0.07291111000085948,
+      "user_s": 0.048046,
+      "system_s": 0.024508,
+      "max_process_rss_kib": 58496,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 1550165,
+        "lines": 40148,
+        "sha256": "0ce75711c2a57d9376a4686ff928a30e8c82382d084f31bb615b07868216aac5",
+        "select_instructions": 16641,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-128",
+      "phase": "frontend",
+      "sample": 10,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128-frontend-10-base.ll"
+      ],
+      "wall_s": 0.07127167799626477,
+      "user_s": 0.062667,
+      "system_s": 0.008116,
+      "max_process_rss_kib": 58608,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 1550165,
+        "lines": 40148,
+        "sha256": "0ce75711c2a57d9376a4686ff928a30e8c82382d084f31bb615b07868216aac5",
+        "select_instructions": 16641,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-128",
+      "phase": "frontend",
+      "sample": 10,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128-frontend-10-head.ll"
+      ],
+      "wall_s": 0.037462129002960864,
+      "user_s": 0.028690999999999998,
+      "system_s": 0.008348,
+      "max_process_rss_kib": 38204,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 260367,
+        "lines": 7129,
+        "sha256": "4567a9c198b74c90e791bc009f5b9d25fa4c2f30004f01fac9ac04b9eff6ba0c",
+        "select_instructions": 1,
+        "class_name_tables": 1
+      }
+    },
+    {
+      "case": "hierarchy-128",
+      "phase": "frontend",
+      "sample": 11,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128-frontend-11-head.ll"
+      ],
+      "wall_s": 0.03924172699771589,
+      "user_s": 0.034776,
+      "system_s": 0.004095,
+      "max_process_rss_kib": 38288,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 260367,
+        "lines": 7129,
+        "sha256": "4567a9c198b74c90e791bc009f5b9d25fa4c2f30004f01fac9ac04b9eff6ba0c",
+        "select_instructions": 1,
+        "class_name_tables": 1
+      }
+    },
+    {
+      "case": "hierarchy-128",
+      "phase": "frontend",
+      "sample": 11,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128-frontend-11-base.ll"
+      ],
+      "wall_s": 0.0710275060046115,
+      "user_s": 0.058307,
+      "system_s": 0.012343999999999999,
+      "max_process_rss_kib": 58548,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 1550165,
+        "lines": 40148,
+        "sha256": "0ce75711c2a57d9376a4686ff928a30e8c82382d084f31bb615b07868216aac5",
+        "select_instructions": 16641,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-128",
+      "phase": "frontend",
+      "sample": 12,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128-frontend-12-base.ll"
+      ],
+      "wall_s": 0.07035042600182351,
+      "user_s": 0.054304,
+      "system_s": 0.015631,
+      "max_process_rss_kib": 58472,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 1550165,
+        "lines": 40148,
+        "sha256": "0ce75711c2a57d9376a4686ff928a30e8c82382d084f31bb615b07868216aac5",
+        "select_instructions": 16641,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-128",
+      "phase": "frontend",
+      "sample": 12,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128-frontend-12-head.ll"
+      ],
+      "wall_s": 0.03784532400459284,
+      "user_s": 0.02906,
+      "system_s": 0.008355999999999999,
+      "max_process_rss_kib": 38188,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 260367,
+        "lines": 7129,
+        "sha256": "4567a9c198b74c90e791bc009f5b9d25fa4c2f30004f01fac9ac04b9eff6ba0c",
+        "select_instructions": 1,
+        "class_name_tables": 1
+      }
+    },
+    {
+      "case": "hierarchy-128",
+      "phase": "frontend",
+      "sample": 13,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128-frontend-13-head.ll"
+      ],
+      "wall_s": 0.038124056001834106,
+      "user_s": 0.018529999999999998,
+      "system_s": 0.019178,
+      "max_process_rss_kib": 38340,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 260367,
+        "lines": 7129,
+        "sha256": "4567a9c198b74c90e791bc009f5b9d25fa4c2f30004f01fac9ac04b9eff6ba0c",
+        "select_instructions": 1,
+        "class_name_tables": 1
+      }
+    },
+    {
+      "case": "hierarchy-128",
+      "phase": "frontend",
+      "sample": 13,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128-frontend-13-base.ll"
+      ],
+      "wall_s": 0.07695938299730187,
+      "user_s": 0.052504999999999996,
+      "system_s": 0.024069999999999998,
+      "max_process_rss_kib": 58544,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 1550165,
+        "lines": 40148,
+        "sha256": "0ce75711c2a57d9376a4686ff928a30e8c82382d084f31bb615b07868216aac5",
+        "select_instructions": 16641,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-128",
+      "phase": "frontend",
+      "sample": 14,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128-frontend-14-base.ll"
+      ],
+      "wall_s": 0.07395073599764146,
+      "user_s": 0.065272,
+      "system_s": 0.008242,
+      "max_process_rss_kib": 58348,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 1550165,
+        "lines": 40148,
+        "sha256": "0ce75711c2a57d9376a4686ff928a30e8c82382d084f31bb615b07868216aac5",
+        "select_instructions": 16641,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-128",
+      "phase": "frontend",
+      "sample": 14,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128-frontend-14-head.ll"
+      ],
+      "wall_s": 0.04380104599840706,
+      "user_s": 0.031176,
+      "system_s": 0.012039999999999999,
+      "max_process_rss_kib": 38312,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 260367,
+        "lines": 7129,
+        "sha256": "4567a9c198b74c90e791bc009f5b9d25fa4c2f30004f01fac9ac04b9eff6ba0c",
+        "select_instructions": 1,
+        "class_name_tables": 1
+      }
+    },
+    {
+      "case": "hierarchy-128",
+      "phase": "frontend",
+      "sample": 15,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128-frontend-15-head.ll"
+      ],
+      "wall_s": 0.04271320800035028,
+      "user_s": 0.029063,
+      "system_s": 0.013078,
+      "max_process_rss_kib": 38188,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 260367,
+        "lines": 7129,
+        "sha256": "4567a9c198b74c90e791bc009f5b9d25fa4c2f30004f01fac9ac04b9eff6ba0c",
+        "select_instructions": 1,
+        "class_name_tables": 1
+      }
+    },
+    {
+      "case": "hierarchy-128",
+      "phase": "frontend",
+      "sample": 15,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128-frontend-15-base.ll"
+      ],
+      "wall_s": 0.07903766999515938,
+      "user_s": 0.066684,
+      "system_s": 0.011786,
+      "max_process_rss_kib": 58532,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 1550165,
+        "lines": 40148,
+        "sha256": "0ce75711c2a57d9376a4686ff928a30e8c82382d084f31bb615b07868216aac5",
+        "select_instructions": 16641,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-128",
+      "phase": "frontend",
+      "sample": 16,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128-frontend-16-base.ll"
+      ],
+      "wall_s": 0.07510470800480107,
+      "user_s": 0.061953999999999995,
+      "system_s": 0.012572,
+      "max_process_rss_kib": 58560,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 1550165,
+        "lines": 40148,
+        "sha256": "0ce75711c2a57d9376a4686ff928a30e8c82382d084f31bb615b07868216aac5",
+        "select_instructions": 16641,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-128",
+      "phase": "frontend",
+      "sample": 16,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128-frontend-16-head.ll"
+      ],
+      "wall_s": 0.04144003699911991,
+      "user_s": 0.033664,
+      "system_s": 0.007316,
+      "max_process_rss_kib": 38380,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 260367,
+        "lines": 7129,
+        "sha256": "4567a9c198b74c90e791bc009f5b9d25fa4c2f30004f01fac9ac04b9eff6ba0c",
+        "select_instructions": 1,
+        "class_name_tables": 1
+      }
+    },
+    {
+      "case": "hierarchy-128",
+      "phase": "frontend",
+      "sample": 17,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128-frontend-17-head.ll"
+      ],
+      "wall_s": 0.05520508599875029,
+      "user_s": 0.039057999999999995,
+      "system_s": 0.015763,
+      "max_process_rss_kib": 38252,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 260367,
+        "lines": 7129,
+        "sha256": "4567a9c198b74c90e791bc009f5b9d25fa4c2f30004f01fac9ac04b9eff6ba0c",
+        "select_instructions": 1,
+        "class_name_tables": 1
+      }
+    },
+    {
+      "case": "hierarchy-128",
+      "phase": "frontend",
+      "sample": 17,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128-frontend-17-base.ll"
+      ],
+      "wall_s": 0.08194179699785309,
+      "user_s": 0.057144999999999994,
+      "system_s": 0.024343999999999998,
+      "max_process_rss_kib": 58536,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 1550165,
+        "lines": 40148,
+        "sha256": "0ce75711c2a57d9376a4686ff928a30e8c82382d084f31bb615b07868216aac5",
+        "select_instructions": 16641,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-128",
+      "phase": "frontend",
+      "sample": 18,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128-frontend-18-base.ll"
+      ],
+      "wall_s": 0.07269890200404916,
+      "user_s": 0.047962,
+      "system_s": 0.024373,
+      "max_process_rss_kib": 58556,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 1550165,
+        "lines": 40148,
+        "sha256": "0ce75711c2a57d9376a4686ff928a30e8c82382d084f31bb615b07868216aac5",
+        "select_instructions": 16641,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-128",
+      "phase": "frontend",
+      "sample": 18,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128-frontend-18-head.ll"
+      ],
+      "wall_s": 0.036902070001815446,
+      "user_s": 0.02413,
+      "system_s": 0.012333,
+      "max_process_rss_kib": 38312,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 260367,
+        "lines": 7129,
+        "sha256": "4567a9c198b74c90e791bc009f5b9d25fa4c2f30004f01fac9ac04b9eff6ba0c",
+        "select_instructions": 1,
+        "class_name_tables": 1
+      }
+    },
+    {
+      "case": "hierarchy-128",
+      "phase": "frontend",
+      "sample": 19,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128-frontend-19-head.ll"
+      ],
+      "wall_s": 0.038719055002729874,
+      "user_s": 0.015514,
+      "system_s": 0.022778,
+      "max_process_rss_kib": 38248,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 260367,
+        "lines": 7129,
+        "sha256": "4567a9c198b74c90e791bc009f5b9d25fa4c2f30004f01fac9ac04b9eff6ba0c",
+        "select_instructions": 1,
+        "class_name_tables": 1
+      }
+    },
+    {
+      "case": "hierarchy-128",
+      "phase": "frontend",
+      "sample": 19,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-128-frontend-19-base.ll"
+      ],
+      "wall_s": 0.07518188600079156,
+      "user_s": 0.058704,
+      "system_s": 0.016003,
+      "max_process_rss_kib": 58552,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 1550165,
+        "lines": 40148,
+        "sha256": "0ce75711c2a57d9376a4686ff928a30e8c82382d084f31bb615b07868216aac5",
+        "select_instructions": 16641,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "exact-class",
+      "phase": "frontend",
+      "sample": 0,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class-frontend-0-base.ll"
+      ],
+      "wall_s": 0.0026690950035117567,
+      "user_s": 0.002287,
+      "system_s": 0.0,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 3902,
+        "lines": 118,
+        "sha256": "dd04e9fcdca1b5dd18a8074545e1496e0024c09c7782e6210f418a768b22fa88",
+        "select_instructions": 0,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "exact-class",
+      "phase": "frontend",
+      "sample": 0,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class-frontend-0-head.ll"
+      ],
+      "wall_s": 0.002315933001227677,
+      "user_s": 0.001985,
+      "system_s": 0.0,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 3902,
+        "lines": 118,
+        "sha256": "dd04e9fcdca1b5dd18a8074545e1496e0024c09c7782e6210f418a768b22fa88",
+        "select_instructions": 0,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "exact-class",
+      "phase": "frontend",
+      "sample": 1,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class-frontend-1-head.ll"
+      ],
+      "wall_s": 0.0023652360032428987,
+      "user_s": 0.0017829999999999999,
+      "system_s": 0.0,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 3902,
+        "lines": 118,
+        "sha256": "dd04e9fcdca1b5dd18a8074545e1496e0024c09c7782e6210f418a768b22fa88",
+        "select_instructions": 0,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "exact-class",
+      "phase": "frontend",
+      "sample": 1,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class-frontend-1-base.ll"
+      ],
+      "wall_s": 0.002502388997527305,
+      "user_s": 0.002242,
+      "system_s": 0.0,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 3902,
+        "lines": 118,
+        "sha256": "dd04e9fcdca1b5dd18a8074545e1496e0024c09c7782e6210f418a768b22fa88",
+        "select_instructions": 0,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "exact-class",
+      "phase": "frontend",
+      "sample": 2,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class-frontend-2-base.ll"
+      ],
+      "wall_s": 0.00218158500501886,
+      "user_s": 0.001898,
+      "system_s": 0.0,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 3902,
+        "lines": 118,
+        "sha256": "dd04e9fcdca1b5dd18a8074545e1496e0024c09c7782e6210f418a768b22fa88",
+        "select_instructions": 0,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "exact-class",
+      "phase": "frontend",
+      "sample": 2,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class-frontend-2-head.ll"
+      ],
+      "wall_s": 0.002211237995652482,
+      "user_s": 0.0019329999999999998,
+      "system_s": 0.0,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 3902,
+        "lines": 118,
+        "sha256": "dd04e9fcdca1b5dd18a8074545e1496e0024c09c7782e6210f418a768b22fa88",
+        "select_instructions": 0,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "exact-class",
+      "phase": "frontend",
+      "sample": 3,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class-frontend-3-head.ll"
+      ],
+      "wall_s": 0.0019465069999569096,
+      "user_s": 0.0016979999999999999,
+      "system_s": 0.0,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 3902,
+        "lines": 118,
+        "sha256": "dd04e9fcdca1b5dd18a8074545e1496e0024c09c7782e6210f418a768b22fa88",
+        "select_instructions": 0,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "exact-class",
+      "phase": "frontend",
+      "sample": 3,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class-frontend-3-base.ll"
+      ],
+      "wall_s": 0.002449929997965228,
+      "user_s": 0.0,
+      "system_s": 0.002227,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 3902,
+        "lines": 118,
+        "sha256": "dd04e9fcdca1b5dd18a8074545e1496e0024c09c7782e6210f418a768b22fa88",
+        "select_instructions": 0,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "exact-class",
+      "phase": "frontend",
+      "sample": 4,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class-frontend-4-base.ll"
+      ],
+      "wall_s": 0.0020412669982761145,
+      "user_s": 0.001753,
+      "system_s": 0.0,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 3902,
+        "lines": 118,
+        "sha256": "dd04e9fcdca1b5dd18a8074545e1496e0024c09c7782e6210f418a768b22fa88",
+        "select_instructions": 0,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "exact-class",
+      "phase": "frontend",
+      "sample": 4,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class-frontend-4-head.ll"
+      ],
+      "wall_s": 0.0020650219958042726,
+      "user_s": 0.0,
+      "system_s": 0.001808,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 3902,
+        "lines": 118,
+        "sha256": "dd04e9fcdca1b5dd18a8074545e1496e0024c09c7782e6210f418a768b22fa88",
+        "select_instructions": 0,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "exact-class",
+      "phase": "frontend",
+      "sample": 5,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class-frontend-5-head.ll"
+      ],
+      "wall_s": 0.0019406889987294562,
+      "user_s": 0.001651,
+      "system_s": 0.0,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 3902,
+        "lines": 118,
+        "sha256": "dd04e9fcdca1b5dd18a8074545e1496e0024c09c7782e6210f418a768b22fa88",
+        "select_instructions": 0,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "exact-class",
+      "phase": "frontend",
+      "sample": 5,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class-frontend-5-base.ll"
+      ],
+      "wall_s": 0.0020352380015538074,
+      "user_s": 0.001782,
+      "system_s": 0.0,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 3902,
+        "lines": 118,
+        "sha256": "dd04e9fcdca1b5dd18a8074545e1496e0024c09c7782e6210f418a768b22fa88",
+        "select_instructions": 0,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "exact-class",
+      "phase": "frontend",
+      "sample": 6,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class-frontend-6-base.ll"
+      ],
+      "wall_s": 0.002031832998909522,
+      "user_s": 0.0,
+      "system_s": 0.001769,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 3902,
+        "lines": 118,
+        "sha256": "dd04e9fcdca1b5dd18a8074545e1496e0024c09c7782e6210f418a768b22fa88",
+        "select_instructions": 0,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "exact-class",
+      "phase": "frontend",
+      "sample": 6,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class-frontend-6-head.ll"
+      ],
+      "wall_s": 0.001989841002796311,
+      "user_s": 0.001738,
+      "system_s": 0.0,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 3902,
+        "lines": 118,
+        "sha256": "dd04e9fcdca1b5dd18a8074545e1496e0024c09c7782e6210f418a768b22fa88",
+        "select_instructions": 0,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "exact-class",
+      "phase": "frontend",
+      "sample": 7,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class-frontend-7-head.ll"
+      ],
+      "wall_s": 0.002253630998893641,
+      "user_s": 0.0017499999999999998,
+      "system_s": 0.0,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 3902,
+        "lines": 118,
+        "sha256": "dd04e9fcdca1b5dd18a8074545e1496e0024c09c7782e6210f418a768b22fa88",
+        "select_instructions": 0,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "exact-class",
+      "phase": "frontend",
+      "sample": 7,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class-frontend-7-base.ll"
+      ],
+      "wall_s": 0.0020192950032651424,
+      "user_s": 0.0,
+      "system_s": 0.0018,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 3902,
+        "lines": 118,
+        "sha256": "dd04e9fcdca1b5dd18a8074545e1496e0024c09c7782e6210f418a768b22fa88",
+        "select_instructions": 0,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "exact-class",
+      "phase": "frontend",
+      "sample": 8,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class-frontend-8-base.ll"
+      ],
+      "wall_s": 0.001955079998879228,
+      "user_s": 0.0017209999999999999,
+      "system_s": 0.0,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 3902,
+        "lines": 118,
+        "sha256": "dd04e9fcdca1b5dd18a8074545e1496e0024c09c7782e6210f418a768b22fa88",
+        "select_instructions": 0,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "exact-class",
+      "phase": "frontend",
+      "sample": 8,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class-frontend-8-head.ll"
+      ],
+      "wall_s": 0.001972445003048051,
+      "user_s": 0.0017599999999999998,
+      "system_s": 0.0,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 3902,
+        "lines": 118,
+        "sha256": "dd04e9fcdca1b5dd18a8074545e1496e0024c09c7782e6210f418a768b22fa88",
+        "select_instructions": 0,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "exact-class",
+      "phase": "frontend",
+      "sample": 9,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class-frontend-9-head.ll"
+      ],
+      "wall_s": 0.0019790650039794855,
+      "user_s": 0.0,
+      "system_s": 0.0017729999999999998,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 3902,
+        "lines": 118,
+        "sha256": "dd04e9fcdca1b5dd18a8074545e1496e0024c09c7782e6210f418a768b22fa88",
+        "select_instructions": 0,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "exact-class",
+      "phase": "frontend",
+      "sample": 9,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class-frontend-9-base.ll"
+      ],
+      "wall_s": 0.001978553998924326,
+      "user_s": 0.001769,
+      "system_s": 0.0,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 3902,
+        "lines": 118,
+        "sha256": "dd04e9fcdca1b5dd18a8074545e1496e0024c09c7782e6210f418a768b22fa88",
+        "select_instructions": 0,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "exact-class",
+      "phase": "frontend",
+      "sample": 10,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class-frontend-10-base.ll"
+      ],
+      "wall_s": 0.002015499005210586,
+      "user_s": 0.0,
+      "system_s": 0.001803,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 3902,
+        "lines": 118,
+        "sha256": "dd04e9fcdca1b5dd18a8074545e1496e0024c09c7782e6210f418a768b22fa88",
+        "select_instructions": 0,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "exact-class",
+      "phase": "frontend",
+      "sample": 10,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class-frontend-10-head.ll"
+      ],
+      "wall_s": 0.0020315419969847426,
+      "user_s": 0.001823,
+      "system_s": 0.0,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 3902,
+        "lines": 118,
+        "sha256": "dd04e9fcdca1b5dd18a8074545e1496e0024c09c7782e6210f418a768b22fa88",
+        "select_instructions": 0,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "exact-class",
+      "phase": "frontend",
+      "sample": 11,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class-frontend-11-head.ll"
+      ],
+      "wall_s": 0.002013976998568978,
+      "user_s": 0.0018009999999999999,
+      "system_s": 0.0,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 3902,
+        "lines": 118,
+        "sha256": "dd04e9fcdca1b5dd18a8074545e1496e0024c09c7782e6210f418a768b22fa88",
+        "select_instructions": 0,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "exact-class",
+      "phase": "frontend",
+      "sample": 11,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class-frontend-11-base.ll"
+      ],
+      "wall_s": 0.00200795700220624,
+      "user_s": 0.0017989999999999998,
+      "system_s": 0.0,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 3902,
+        "lines": 118,
+        "sha256": "dd04e9fcdca1b5dd18a8074545e1496e0024c09c7782e6210f418a768b22fa88",
+        "select_instructions": 0,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "exact-class",
+      "phase": "frontend",
+      "sample": 12,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class-frontend-12-base.ll"
+      ],
+      "wall_s": 0.0020563900034176186,
+      "user_s": 0.001849,
+      "system_s": 0.0,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 3902,
+        "lines": 118,
+        "sha256": "dd04e9fcdca1b5dd18a8074545e1496e0024c09c7782e6210f418a768b22fa88",
+        "select_instructions": 0,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "exact-class",
+      "phase": "frontend",
+      "sample": 12,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class-frontend-12-head.ll"
+      ],
+      "wall_s": 0.002196966997871641,
+      "user_s": 0.001908,
+      "system_s": 0.0,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 3902,
+        "lines": 118,
+        "sha256": "dd04e9fcdca1b5dd18a8074545e1496e0024c09c7782e6210f418a768b22fa88",
+        "select_instructions": 0,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "exact-class",
+      "phase": "frontend",
+      "sample": 13,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class-frontend-13-head.ll"
+      ],
+      "wall_s": 0.0022236459990381263,
+      "user_s": 0.0019069999999999998,
+      "system_s": 0.0,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 3902,
+        "lines": 118,
+        "sha256": "dd04e9fcdca1b5dd18a8074545e1496e0024c09c7782e6210f418a768b22fa88",
+        "select_instructions": 0,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "exact-class",
+      "phase": "frontend",
+      "sample": 13,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class-frontend-13-base.ll"
+      ],
+      "wall_s": 0.002113143003953155,
+      "user_s": 0.0,
+      "system_s": 0.001896,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 3902,
+        "lines": 118,
+        "sha256": "dd04e9fcdca1b5dd18a8074545e1496e0024c09c7782e6210f418a768b22fa88",
+        "select_instructions": 0,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "exact-class",
+      "phase": "frontend",
+      "sample": 14,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class-frontend-14-base.ll"
+      ],
+      "wall_s": 0.002027716996963136,
+      "user_s": 0.0018319999999999999,
+      "system_s": 0.0,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 3902,
+        "lines": 118,
+        "sha256": "dd04e9fcdca1b5dd18a8074545e1496e0024c09c7782e6210f418a768b22fa88",
+        "select_instructions": 0,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "exact-class",
+      "phase": "frontend",
+      "sample": 14,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class-frontend-14-head.ll"
+      ],
+      "wall_s": 0.001960868001333438,
+      "user_s": 0.0017519999999999999,
+      "system_s": 0.0,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 3902,
+        "lines": 118,
+        "sha256": "dd04e9fcdca1b5dd18a8074545e1496e0024c09c7782e6210f418a768b22fa88",
+        "select_instructions": 0,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "exact-class",
+      "phase": "frontend",
+      "sample": 15,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class-frontend-15-head.ll"
+      ],
+      "wall_s": 0.0019241929985582829,
+      "user_s": 0.0017159999999999999,
+      "system_s": 0.0,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 3902,
+        "lines": 118,
+        "sha256": "dd04e9fcdca1b5dd18a8074545e1496e0024c09c7782e6210f418a768b22fa88",
+        "select_instructions": 0,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "exact-class",
+      "phase": "frontend",
+      "sample": 15,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class-frontend-15-base.ll"
+      ],
+      "wall_s": 0.0021155169961275533,
+      "user_s": 0.0018989999999999999,
+      "system_s": 0.0,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 3902,
+        "lines": 118,
+        "sha256": "dd04e9fcdca1b5dd18a8074545e1496e0024c09c7782e6210f418a768b22fa88",
+        "select_instructions": 0,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "exact-class",
+      "phase": "frontend",
+      "sample": 16,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class-frontend-16-base.ll"
+      ],
+      "wall_s": 0.002011582997511141,
+      "user_s": 0.0,
+      "system_s": 0.001689,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 3902,
+        "lines": 118,
+        "sha256": "dd04e9fcdca1b5dd18a8074545e1496e0024c09c7782e6210f418a768b22fa88",
+        "select_instructions": 0,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "exact-class",
+      "phase": "frontend",
+      "sample": 16,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class-frontend-16-head.ll"
+      ],
+      "wall_s": 0.0020118339962209575,
+      "user_s": 0.001803,
+      "system_s": 0.0,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 3902,
+        "lines": 118,
+        "sha256": "dd04e9fcdca1b5dd18a8074545e1496e0024c09c7782e6210f418a768b22fa88",
+        "select_instructions": 0,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "exact-class",
+      "phase": "frontend",
+      "sample": 17,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class-frontend-17-head.ll"
+      ],
+      "wall_s": 0.002188464000937529,
+      "user_s": 0.00198,
+      "system_s": 0.0,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 3902,
+        "lines": 118,
+        "sha256": "dd04e9fcdca1b5dd18a8074545e1496e0024c09c7782e6210f418a768b22fa88",
+        "select_instructions": 0,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "exact-class",
+      "phase": "frontend",
+      "sample": 17,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class-frontend-17-base.ll"
+      ],
+      "wall_s": 0.002438603994960431,
+      "user_s": 0.001923,
+      "system_s": 0.0,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 3902,
+        "lines": 118,
+        "sha256": "dd04e9fcdca1b5dd18a8074545e1496e0024c09c7782e6210f418a768b22fa88",
+        "select_instructions": 0,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "exact-class",
+      "phase": "frontend",
+      "sample": 18,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class-frontend-18-base.ll"
+      ],
+      "wall_s": 0.0019692709975061007,
+      "user_s": 0.001696,
+      "system_s": 0.0,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 3902,
+        "lines": 118,
+        "sha256": "dd04e9fcdca1b5dd18a8074545e1496e0024c09c7782e6210f418a768b22fa88",
+        "select_instructions": 0,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "exact-class",
+      "phase": "frontend",
+      "sample": 18,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class-frontend-18-head.ll"
+      ],
+      "wall_s": 0.002359516998694744,
+      "user_s": 0.002127,
+      "system_s": 0.0,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 3902,
+        "lines": 118,
+        "sha256": "dd04e9fcdca1b5dd18a8074545e1496e0024c09c7782e6210f418a768b22fa88",
+        "select_instructions": 0,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "exact-class",
+      "phase": "frontend",
+      "sample": 19,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class-frontend-19-head.ll"
+      ],
+      "wall_s": 0.001985034003155306,
+      "user_s": 0.0017729999999999998,
+      "system_s": 0.0,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 3902,
+        "lines": 118,
+        "sha256": "dd04e9fcdca1b5dd18a8074545e1496e0024c09c7782e6210f418a768b22fa88",
+        "select_instructions": 0,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "exact-class",
+      "phase": "frontend",
+      "sample": 19,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/exact-class-frontend-19-base.ll"
+      ],
+      "wall_s": 0.0026405080061522312,
+      "user_s": 0.0,
+      "system_s": 0.0024059999999999997,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 3902,
+        "lines": 118,
+        "sha256": "dd04e9fcdca1b5dd18a8074545e1496e0024c09c7782e6210f418a768b22fa88",
+        "select_instructions": 0,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-no-read",
+      "phase": "frontend",
+      "sample": 0,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read-frontend-0-base.ll"
+      ],
+      "wall_s": 0.04655140099930577,
+      "user_s": 0.037674,
+      "system_s": 0.008379,
+      "max_process_rss_kib": 34856,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 87054,
+        "lines": 2730,
+        "sha256": "04f6d3349bf01649ca781355e4d2ddf3d20f29c7cce62eccc94b53ba169bda06",
+        "select_instructions": 1,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-no-read",
+      "phase": "frontend",
+      "sample": 0,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read-frontend-0-head.ll"
+      ],
+      "wall_s": 0.04744927799765719,
+      "user_s": 0.034983,
+      "system_s": 0.011668,
+      "max_process_rss_kib": 34792,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 87054,
+        "lines": 2730,
+        "sha256": "04f6d3349bf01649ca781355e4d2ddf3d20f29c7cce62eccc94b53ba169bda06",
+        "select_instructions": 1,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-no-read",
+      "phase": "frontend",
+      "sample": 1,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read-frontend-1-head.ll"
+      ],
+      "wall_s": 0.046851694998622406,
+      "user_s": 0.030944,
+      "system_s": 0.015472,
+      "max_process_rss_kib": 34816,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 87054,
+        "lines": 2730,
+        "sha256": "04f6d3349bf01649ca781355e4d2ddf3d20f29c7cce62eccc94b53ba169bda06",
+        "select_instructions": 1,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-no-read",
+      "phase": "frontend",
+      "sample": 1,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read-frontend-1-base.ll"
+      ],
+      "wall_s": 0.03532344099949114,
+      "user_s": 0.026106999999999998,
+      "system_s": 0.00877,
+      "max_process_rss_kib": 34796,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 87054,
+        "lines": 2730,
+        "sha256": "04f6d3349bf01649ca781355e4d2ddf3d20f29c7cce62eccc94b53ba169bda06",
+        "select_instructions": 1,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-no-read",
+      "phase": "frontend",
+      "sample": 2,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read-frontend-2-base.ll"
+      ],
+      "wall_s": 0.03163081000093371,
+      "user_s": 0.019421,
+      "system_s": 0.011856,
+      "max_process_rss_kib": 34856,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 87054,
+        "lines": 2730,
+        "sha256": "04f6d3349bf01649ca781355e4d2ddf3d20f29c7cce62eccc94b53ba169bda06",
+        "select_instructions": 1,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-no-read",
+      "phase": "frontend",
+      "sample": 2,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read-frontend-2-head.ll"
+      ],
+      "wall_s": 0.03244272899610223,
+      "user_s": 0.027996999999999998,
+      "system_s": 0.004091,
+      "max_process_rss_kib": 34884,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 87054,
+        "lines": 2730,
+        "sha256": "04f6d3349bf01649ca781355e4d2ddf3d20f29c7cce62eccc94b53ba169bda06",
+        "select_instructions": 1,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-no-read",
+      "phase": "frontend",
+      "sample": 3,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read-frontend-3-head.ll"
+      ],
+      "wall_s": 0.033778693999920506,
+      "user_s": 0.029165,
+      "system_s": 0.004216999999999999,
+      "max_process_rss_kib": 34780,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 87054,
+        "lines": 2730,
+        "sha256": "04f6d3349bf01649ca781355e4d2ddf3d20f29c7cce62eccc94b53ba169bda06",
+        "select_instructions": 1,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-no-read",
+      "phase": "frontend",
+      "sample": 3,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read-frontend-3-base.ll"
+      ],
+      "wall_s": 0.03464827899733791,
+      "user_s": 0.02113,
+      "system_s": 0.012964,
+      "max_process_rss_kib": 34816,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 87054,
+        "lines": 2730,
+        "sha256": "04f6d3349bf01649ca781355e4d2ddf3d20f29c7cce62eccc94b53ba169bda06",
+        "select_instructions": 1,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-no-read",
+      "phase": "frontend",
+      "sample": 4,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read-frontend-4-base.ll"
+      ],
+      "wall_s": 0.03171788799954811,
+      "user_s": 0.015719999999999998,
+      "system_s": 0.015597,
+      "max_process_rss_kib": 34768,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 87054,
+        "lines": 2730,
+        "sha256": "04f6d3349bf01649ca781355e4d2ddf3d20f29c7cce62eccc94b53ba169bda06",
+        "select_instructions": 1,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-no-read",
+      "phase": "frontend",
+      "sample": 4,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read-frontend-4-head.ll"
+      ],
+      "wall_s": 0.037911523002549075,
+      "user_s": 0.030479,
+      "system_s": 0.007107,
+      "max_process_rss_kib": 34788,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 87054,
+        "lines": 2730,
+        "sha256": "04f6d3349bf01649ca781355e4d2ddf3d20f29c7cce62eccc94b53ba169bda06",
+        "select_instructions": 1,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-no-read",
+      "phase": "frontend",
+      "sample": 5,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read-frontend-5-head.ll"
+      ],
+      "wall_s": 0.03647076200286392,
+      "user_s": 0.027666999999999997,
+      "system_s": 0.008302,
+      "max_process_rss_kib": 34708,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 87054,
+        "lines": 2730,
+        "sha256": "04f6d3349bf01649ca781355e4d2ddf3d20f29c7cce62eccc94b53ba169bda06",
+        "select_instructions": 1,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-no-read",
+      "phase": "frontend",
+      "sample": 5,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read-frontend-5-base.ll"
+      ],
+      "wall_s": 0.03292331000557169,
+      "user_s": 0.024253999999999998,
+      "system_s": 0.008036,
+      "max_process_rss_kib": 34816,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 87054,
+        "lines": 2730,
+        "sha256": "04f6d3349bf01649ca781355e4d2ddf3d20f29c7cce62eccc94b53ba169bda06",
+        "select_instructions": 1,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-no-read",
+      "phase": "frontend",
+      "sample": 6,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read-frontend-6-base.ll"
+      ],
+      "wall_s": 0.03427836299670162,
+      "user_s": 0.022796,
+      "system_s": 0.010832,
+      "max_process_rss_kib": 34848,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 87054,
+        "lines": 2730,
+        "sha256": "04f6d3349bf01649ca781355e4d2ddf3d20f29c7cce62eccc94b53ba169bda06",
+        "select_instructions": 1,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-no-read",
+      "phase": "frontend",
+      "sample": 6,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read-frontend-6-head.ll"
+      ],
+      "wall_s": 0.05126923400530359,
+      "user_s": 0.038757,
+      "system_s": 0.011999,
+      "max_process_rss_kib": 34792,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 87054,
+        "lines": 2730,
+        "sha256": "04f6d3349bf01649ca781355e4d2ddf3d20f29c7cce62eccc94b53ba169bda06",
+        "select_instructions": 1,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-no-read",
+      "phase": "frontend",
+      "sample": 7,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read-frontend-7-head.ll"
+      ],
+      "wall_s": 0.04524523100553779,
+      "user_s": 0.024447999999999998,
+      "system_s": 0.020206,
+      "max_process_rss_kib": 34816,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 87054,
+        "lines": 2730,
+        "sha256": "04f6d3349bf01649ca781355e4d2ddf3d20f29c7cce62eccc94b53ba169bda06",
+        "select_instructions": 1,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-no-read",
+      "phase": "frontend",
+      "sample": 7,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read-frontend-7-base.ll"
+      ],
+      "wall_s": 0.03273333000106504,
+      "user_s": 0.015922,
+      "system_s": 0.016413999999999998,
+      "max_process_rss_kib": 34816,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 87054,
+        "lines": 2730,
+        "sha256": "04f6d3349bf01649ca781355e4d2ddf3d20f29c7cce62eccc94b53ba169bda06",
+        "select_instructions": 1,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-no-read",
+      "phase": "frontend",
+      "sample": 8,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read-frontend-8-base.ll"
+      ],
+      "wall_s": 0.033433703996706754,
+      "user_s": 0.016321,
+      "system_s": 0.016527,
+      "max_process_rss_kib": 34792,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 87054,
+        "lines": 2730,
+        "sha256": "04f6d3349bf01649ca781355e4d2ddf3d20f29c7cce62eccc94b53ba169bda06",
+        "select_instructions": 1,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-no-read",
+      "phase": "frontend",
+      "sample": 8,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read-frontend-8-head.ll"
+      ],
+      "wall_s": 0.03365311000379734,
+      "user_s": 0.033273,
+      "system_s": 0.0,
+      "max_process_rss_kib": 34880,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 87054,
+        "lines": 2730,
+        "sha256": "04f6d3349bf01649ca781355e4d2ddf3d20f29c7cce62eccc94b53ba169bda06",
+        "select_instructions": 1,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-no-read",
+      "phase": "frontend",
+      "sample": 9,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read-frontend-9-head.ll"
+      ],
+      "wall_s": 0.03341373500006739,
+      "user_s": 0.024541999999999998,
+      "system_s": 0.008484,
+      "max_process_rss_kib": 34732,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 87054,
+        "lines": 2730,
+        "sha256": "04f6d3349bf01649ca781355e4d2ddf3d20f29c7cce62eccc94b53ba169bda06",
+        "select_instructions": 1,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-no-read",
+      "phase": "frontend",
+      "sample": 9,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read-frontend-9-base.ll"
+      ],
+      "wall_s": 0.03409020500112092,
+      "user_s": 0.015092999999999999,
+      "system_s": 0.018434,
+      "max_process_rss_kib": 34868,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 87054,
+        "lines": 2730,
+        "sha256": "04f6d3349bf01649ca781355e4d2ddf3d20f29c7cce62eccc94b53ba169bda06",
+        "select_instructions": 1,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-no-read",
+      "phase": "frontend",
+      "sample": 10,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read-frontend-10-base.ll"
+      ],
+      "wall_s": 0.03299934299866436,
+      "user_s": 0.024218999999999997,
+      "system_s": 0.008265,
+      "max_process_rss_kib": 34880,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 87054,
+        "lines": 2730,
+        "sha256": "04f6d3349bf01649ca781355e4d2ddf3d20f29c7cce62eccc94b53ba169bda06",
+        "select_instructions": 1,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-no-read",
+      "phase": "frontend",
+      "sample": 10,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read-frontend-10-head.ll"
+      ],
+      "wall_s": 0.03287518899742281,
+      "user_s": 0.024451999999999998,
+      "system_s": 0.00808,
+      "max_process_rss_kib": 34824,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 87054,
+        "lines": 2730,
+        "sha256": "04f6d3349bf01649ca781355e4d2ddf3d20f29c7cce62eccc94b53ba169bda06",
+        "select_instructions": 1,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-no-read",
+      "phase": "frontend",
+      "sample": 11,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read-frontend-11-head.ll"
+      ],
+      "wall_s": 0.03340207799919881,
+      "user_s": 0.028981,
+      "system_s": 0.004063,
+      "max_process_rss_kib": 34792,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 87054,
+        "lines": 2730,
+        "sha256": "04f6d3349bf01649ca781355e4d2ddf3d20f29c7cce62eccc94b53ba169bda06",
+        "select_instructions": 1,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-no-read",
+      "phase": "frontend",
+      "sample": 11,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read-frontend-11-base.ll"
+      ],
+      "wall_s": 0.03352170500147622,
+      "user_s": 0.029328,
+      "system_s": 0.003802,
+      "max_process_rss_kib": 34872,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 87054,
+        "lines": 2730,
+        "sha256": "04f6d3349bf01649ca781355e4d2ddf3d20f29c7cce62eccc94b53ba169bda06",
+        "select_instructions": 1,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-no-read",
+      "phase": "frontend",
+      "sample": 12,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read-frontend-12-base.ll"
+      ],
+      "wall_s": 0.03308008199383039,
+      "user_s": 0.018068999999999998,
+      "system_s": 0.014693,
+      "max_process_rss_kib": 34792,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 87054,
+        "lines": 2730,
+        "sha256": "04f6d3349bf01649ca781355e4d2ddf3d20f29c7cce62eccc94b53ba169bda06",
+        "select_instructions": 1,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-no-read",
+      "phase": "frontend",
+      "sample": 12,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read-frontend-12-head.ll"
+      ],
+      "wall_s": 0.03237773499859031,
+      "user_s": 0.028145999999999997,
+      "system_s": 0.003874,
+      "max_process_rss_kib": 34780,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 87054,
+        "lines": 2730,
+        "sha256": "04f6d3349bf01649ca781355e4d2ddf3d20f29c7cce62eccc94b53ba169bda06",
+        "select_instructions": 1,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-no-read",
+      "phase": "frontend",
+      "sample": 13,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read-frontend-13-head.ll"
+      ],
+      "wall_s": 0.03429531800065888,
+      "user_s": 0.030230999999999997,
+      "system_s": 0.00365,
+      "max_process_rss_kib": 34924,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 87054,
+        "lines": 2730,
+        "sha256": "04f6d3349bf01649ca781355e4d2ddf3d20f29c7cce62eccc94b53ba169bda06",
+        "select_instructions": 1,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-no-read",
+      "phase": "frontend",
+      "sample": 13,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read-frontend-13-base.ll"
+      ],
+      "wall_s": 0.031901670998195186,
+      "user_s": 0.019939,
+      "system_s": 0.011611,
+      "max_process_rss_kib": 34784,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 87054,
+        "lines": 2730,
+        "sha256": "04f6d3349bf01649ca781355e4d2ddf3d20f29c7cce62eccc94b53ba169bda06",
+        "select_instructions": 1,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-no-read",
+      "phase": "frontend",
+      "sample": 14,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read-frontend-14-base.ll"
+      ],
+      "wall_s": 0.03293102199677378,
+      "user_s": 0.032597,
+      "system_s": 0.0,
+      "max_process_rss_kib": 34868,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 87054,
+        "lines": 2730,
+        "sha256": "04f6d3349bf01649ca781355e4d2ddf3d20f29c7cce62eccc94b53ba169bda06",
+        "select_instructions": 1,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-no-read",
+      "phase": "frontend",
+      "sample": 14,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read-frontend-14-head.ll"
+      ],
+      "wall_s": 0.032640172001265455,
+      "user_s": 0.012509,
+      "system_s": 0.019788999999999998,
+      "max_process_rss_kib": 34860,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 87054,
+        "lines": 2730,
+        "sha256": "04f6d3349bf01649ca781355e4d2ddf3d20f29c7cce62eccc94b53ba169bda06",
+        "select_instructions": 1,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-no-read",
+      "phase": "frontend",
+      "sample": 15,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read-frontend-15-head.ll"
+      ],
+      "wall_s": 0.03193752299557673,
+      "user_s": 0.027548999999999997,
+      "system_s": 0.003964,
+      "max_process_rss_kib": 34856,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 87054,
+        "lines": 2730,
+        "sha256": "04f6d3349bf01649ca781355e4d2ddf3d20f29c7cce62eccc94b53ba169bda06",
+        "select_instructions": 1,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-no-read",
+      "phase": "frontend",
+      "sample": 15,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read-frontend-15-base.ll"
+      ],
+      "wall_s": 0.031906126998364925,
+      "user_s": 0.023665,
+      "system_s": 0.007923,
+      "max_process_rss_kib": 34792,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 87054,
+        "lines": 2730,
+        "sha256": "04f6d3349bf01649ca781355e4d2ddf3d20f29c7cce62eccc94b53ba169bda06",
+        "select_instructions": 1,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-no-read",
+      "phase": "frontend",
+      "sample": 16,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read-frontend-16-base.ll"
+      ],
+      "wall_s": 0.03304784500505775,
+      "user_s": 0.021370999999999998,
+      "system_s": 0.011323,
+      "max_process_rss_kib": 34860,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 87054,
+        "lines": 2730,
+        "sha256": "04f6d3349bf01649ca781355e4d2ddf3d20f29c7cce62eccc94b53ba169bda06",
+        "select_instructions": 1,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-no-read",
+      "phase": "frontend",
+      "sample": 16,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read-frontend-16-head.ll"
+      ],
+      "wall_s": 0.03513581099832663,
+      "user_s": 0.030597,
+      "system_s": 0.00421,
+      "max_process_rss_kib": 34812,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 87054,
+        "lines": 2730,
+        "sha256": "04f6d3349bf01649ca781355e4d2ddf3d20f29c7cce62eccc94b53ba169bda06",
+        "select_instructions": 1,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-no-read",
+      "phase": "frontend",
+      "sample": 17,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read-frontend-17-head.ll"
+      ],
+      "wall_s": 0.038267378993623424,
+      "user_s": 0.029161999999999997,
+      "system_s": 0.008594,
+      "max_process_rss_kib": 34796,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 87054,
+        "lines": 2730,
+        "sha256": "04f6d3349bf01649ca781355e4d2ddf3d20f29c7cce62eccc94b53ba169bda06",
+        "select_instructions": 1,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-no-read",
+      "phase": "frontend",
+      "sample": 17,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read-frontend-17-base.ll"
+      ],
+      "wall_s": 0.03223596300085774,
+      "user_s": 0.024024999999999998,
+      "system_s": 0.007864,
+      "max_process_rss_kib": 34732,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 87054,
+        "lines": 2730,
+        "sha256": "04f6d3349bf01649ca781355e4d2ddf3d20f29c7cce62eccc94b53ba169bda06",
+        "select_instructions": 1,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-no-read",
+      "phase": "frontend",
+      "sample": 18,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read-frontend-18-base.ll"
+      ],
+      "wall_s": 0.03174922600010177,
+      "user_s": 0.019618999999999998,
+      "system_s": 0.011757,
+      "max_process_rss_kib": 34796,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 87054,
+        "lines": 2730,
+        "sha256": "04f6d3349bf01649ca781355e4d2ddf3d20f29c7cce62eccc94b53ba169bda06",
+        "select_instructions": 1,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-no-read",
+      "phase": "frontend",
+      "sample": 18,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read-frontend-18-head.ll"
+      ],
+      "wall_s": 0.032986534999508876,
+      "user_s": 0.012407999999999999,
+      "system_s": 0.020211,
+      "max_process_rss_kib": 34752,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 87054,
+        "lines": 2730,
+        "sha256": "04f6d3349bf01649ca781355e4d2ddf3d20f29c7cce62eccc94b53ba169bda06",
+        "select_instructions": 1,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-no-read",
+      "phase": "frontend",
+      "sample": 19,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read-frontend-19-head.ll"
+      ],
+      "wall_s": 0.03317836600035662,
+      "user_s": 0.012417,
+      "system_s": 0.02039,
+      "max_process_rss_kib": 34868,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 87054,
+        "lines": 2730,
+        "sha256": "04f6d3349bf01649ca781355e4d2ddf3d20f29c7cce62eccc94b53ba169bda06",
+        "select_instructions": 1,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "hierarchy-no-read",
+      "phase": "frontend",
+      "sample": 19,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/hierarchy-no-read-frontend-19-base.ll"
+      ],
+      "wall_s": 0.03175297100096941,
+      "user_s": 0.023386999999999998,
+      "system_s": 0.008017999999999999,
+      "max_process_rss_kib": 34876,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 87054,
+        "lines": 2730,
+        "sha256": "04f6d3349bf01649ca781355e4d2ddf3d20f29c7cce62eccc94b53ba169bda06",
+        "select_instructions": 1,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "sparse-read",
+      "phase": "frontend",
+      "sample": 0,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read-frontend-0-base.ll"
+      ],
+      "wall_s": 0.008793777997198049,
+      "user_s": 0.004228,
+      "system_s": 0.004254,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 16405,
+        "lines": 504,
+        "sha256": "bc064326b4d93d3f8ac2b1205b8185bd184ac27b05ce8ee5ca48b69936f5f8b5",
+        "select_instructions": 4,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "sparse-read",
+      "phase": "frontend",
+      "sample": 0,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read-frontend-0-head.ll"
+      ],
+      "wall_s": 0.007955448003485799,
+      "user_s": 0.003909,
+      "system_s": 0.003774,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 52381,
+        "lines": 761,
+        "sha256": "ef19bd1d4cd5e2759efbecd2d3497e55fb6f7146e90a76df7eea01a61cf283fd",
+        "select_instructions": 1,
+        "class_name_tables": 1
+      }
+    },
+    {
+      "case": "sparse-read",
+      "phase": "frontend",
+      "sample": 1,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read-frontend-1-head.ll"
+      ],
+      "wall_s": 0.00859282999590505,
+      "user_s": 0.008321,
+      "system_s": 0.0,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 52381,
+        "lines": 761,
+        "sha256": "ef19bd1d4cd5e2759efbecd2d3497e55fb6f7146e90a76df7eea01a61cf283fd",
+        "select_instructions": 1,
+        "class_name_tables": 1
+      }
+    },
+    {
+      "case": "sparse-read",
+      "phase": "frontend",
+      "sample": 1,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read-frontend-1-base.ll"
+      ],
+      "wall_s": 0.007812916999682784,
+      "user_s": 0.003885,
+      "system_s": 0.0036469999999999996,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 16405,
+        "lines": 504,
+        "sha256": "bc064326b4d93d3f8ac2b1205b8185bd184ac27b05ce8ee5ca48b69936f5f8b5",
+        "select_instructions": 4,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "sparse-read",
+      "phase": "frontend",
+      "sample": 2,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read-frontend-2-base.ll"
+      ],
+      "wall_s": 0.0177257390023442,
+      "user_s": 0.008586,
+      "system_s": 0.0087,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 16405,
+        "lines": 504,
+        "sha256": "bc064326b4d93d3f8ac2b1205b8185bd184ac27b05ce8ee5ca48b69936f5f8b5",
+        "select_instructions": 4,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "sparse-read",
+      "phase": "frontend",
+      "sample": 2,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read-frontend-2-head.ll"
+      ],
+      "wall_s": 0.017428749000828248,
+      "user_s": 0.012192999999999999,
+      "system_s": 0.004909,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 52381,
+        "lines": 761,
+        "sha256": "ef19bd1d4cd5e2759efbecd2d3497e55fb6f7146e90a76df7eea01a61cf283fd",
+        "select_instructions": 1,
+        "class_name_tables": 1
+      }
+    },
+    {
+      "case": "sparse-read",
+      "phase": "frontend",
+      "sample": 3,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read-frontend-3-head.ll"
+      ],
+      "wall_s": 0.008741359997657128,
+      "user_s": 0.005484999999999999,
+      "system_s": 0.00296,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 52381,
+        "lines": 761,
+        "sha256": "ef19bd1d4cd5e2759efbecd2d3497e55fb6f7146e90a76df7eea01a61cf283fd",
+        "select_instructions": 1,
+        "class_name_tables": 1
+      }
+    },
+    {
+      "case": "sparse-read",
+      "phase": "frontend",
+      "sample": 3,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read-frontend-3-base.ll"
+      ],
+      "wall_s": 0.008099109996692277,
+      "user_s": 0.003825,
+      "system_s": 0.003894,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 16405,
+        "lines": 504,
+        "sha256": "bc064326b4d93d3f8ac2b1205b8185bd184ac27b05ce8ee5ca48b69936f5f8b5",
+        "select_instructions": 4,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "sparse-read",
+      "phase": "frontend",
+      "sample": 4,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read-frontend-4-base.ll"
+      ],
+      "wall_s": 0.008053803998336662,
+      "user_s": 0.0,
+      "system_s": 0.007443,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 16405,
+        "lines": 504,
+        "sha256": "bc064326b4d93d3f8ac2b1205b8185bd184ac27b05ce8ee5ca48b69936f5f8b5",
+        "select_instructions": 4,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "sparse-read",
+      "phase": "frontend",
+      "sample": 4,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read-frontend-4-head.ll"
+      ],
+      "wall_s": 0.008563265997509006,
+      "user_s": 0.004057,
+      "system_s": 0.004154,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 52381,
+        "lines": 761,
+        "sha256": "ef19bd1d4cd5e2759efbecd2d3497e55fb6f7146e90a76df7eea01a61cf283fd",
+        "select_instructions": 1,
+        "class_name_tables": 1
+      }
+    },
+    {
+      "case": "sparse-read",
+      "phase": "frontend",
+      "sample": 5,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read-frontend-5-head.ll"
+      ],
+      "wall_s": 0.012110325005778577,
+      "user_s": 0.007215999999999999,
+      "system_s": 0.0043939999999999995,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 52381,
+        "lines": 761,
+        "sha256": "ef19bd1d4cd5e2759efbecd2d3497e55fb6f7146e90a76df7eea01a61cf283fd",
+        "select_instructions": 1,
+        "class_name_tables": 1
+      }
+    },
+    {
+      "case": "sparse-read",
+      "phase": "frontend",
+      "sample": 5,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read-frontend-5-base.ll"
+      ],
+      "wall_s": 0.008816991998173762,
+      "user_s": 0.005529999999999999,
+      "system_s": 0.002957,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 16405,
+        "lines": 504,
+        "sha256": "bc064326b4d93d3f8ac2b1205b8185bd184ac27b05ce8ee5ca48b69936f5f8b5",
+        "select_instructions": 4,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "sparse-read",
+      "phase": "frontend",
+      "sample": 6,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read-frontend-6-base.ll"
+      ],
+      "wall_s": 0.00834331099758856,
+      "user_s": 0.007929,
+      "system_s": 0.0,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 16405,
+        "lines": 504,
+        "sha256": "bc064326b4d93d3f8ac2b1205b8185bd184ac27b05ce8ee5ca48b69936f5f8b5",
+        "select_instructions": 4,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "sparse-read",
+      "phase": "frontend",
+      "sample": 6,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read-frontend-6-head.ll"
+      ],
+      "wall_s": 0.008787168000708334,
+      "user_s": 0.004245,
+      "system_s": 0.004128,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 52381,
+        "lines": 761,
+        "sha256": "ef19bd1d4cd5e2759efbecd2d3497e55fb6f7146e90a76df7eea01a61cf283fd",
+        "select_instructions": 1,
+        "class_name_tables": 1
+      }
+    },
+    {
+      "case": "sparse-read",
+      "phase": "frontend",
+      "sample": 7,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read-frontend-7-head.ll"
+      ],
+      "wall_s": 0.00994024100509705,
+      "user_s": 0.005011,
+      "system_s": 0.0045,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 52381,
+        "lines": 761,
+        "sha256": "ef19bd1d4cd5e2759efbecd2d3497e55fb6f7146e90a76df7eea01a61cf283fd",
+        "select_instructions": 1,
+        "class_name_tables": 1
+      }
+    },
+    {
+      "case": "sparse-read",
+      "phase": "frontend",
+      "sample": 7,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read-frontend-7-base.ll"
+      ],
+      "wall_s": 0.00864899400039576,
+      "user_s": 0.004144999999999999,
+      "system_s": 0.004215,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 16405,
+        "lines": 504,
+        "sha256": "bc064326b4d93d3f8ac2b1205b8185bd184ac27b05ce8ee5ca48b69936f5f8b5",
+        "select_instructions": 4,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "sparse-read",
+      "phase": "frontend",
+      "sample": 8,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read-frontend-8-base.ll"
+      ],
+      "wall_s": 0.00892292799835559,
+      "user_s": 0.0,
+      "system_s": 0.008548,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 16405,
+        "lines": 504,
+        "sha256": "bc064326b4d93d3f8ac2b1205b8185bd184ac27b05ce8ee5ca48b69936f5f8b5",
+        "select_instructions": 4,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "sparse-read",
+      "phase": "frontend",
+      "sample": 8,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read-frontend-8-head.ll"
+      ],
+      "wall_s": 0.009068606996152084,
+      "user_s": 0.004422,
+      "system_s": 0.004187,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 52381,
+        "lines": 761,
+        "sha256": "ef19bd1d4cd5e2759efbecd2d3497e55fb6f7146e90a76df7eea01a61cf283fd",
+        "select_instructions": 1,
+        "class_name_tables": 1
+      }
+    },
+    {
+      "case": "sparse-read",
+      "phase": "frontend",
+      "sample": 9,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read-frontend-9-head.ll"
+      ],
+      "wall_s": 0.008112119998259004,
+      "user_s": 0.0,
+      "system_s": 0.00773,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 52381,
+        "lines": 761,
+        "sha256": "ef19bd1d4cd5e2759efbecd2d3497e55fb6f7146e90a76df7eea01a61cf283fd",
+        "select_instructions": 1,
+        "class_name_tables": 1
+      }
+    },
+    {
+      "case": "sparse-read",
+      "phase": "frontend",
+      "sample": 9,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read-frontend-9-base.ll"
+      ],
+      "wall_s": 0.008310883000376634,
+      "user_s": 0.00401,
+      "system_s": 0.0040019999999999995,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 16405,
+        "lines": 504,
+        "sha256": "bc064326b4d93d3f8ac2b1205b8185bd184ac27b05ce8ee5ca48b69936f5f8b5",
+        "select_instructions": 4,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "sparse-read",
+      "phase": "frontend",
+      "sample": 10,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read-frontend-10-base.ll"
+      ],
+      "wall_s": 0.00835370699496707,
+      "user_s": 0.004001,
+      "system_s": 0.004049,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 16405,
+        "lines": 504,
+        "sha256": "bc064326b4d93d3f8ac2b1205b8185bd184ac27b05ce8ee5ca48b69936f5f8b5",
+        "select_instructions": 4,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "sparse-read",
+      "phase": "frontend",
+      "sample": 10,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read-frontend-10-head.ll"
+      ],
+      "wall_s": 0.008974363998277113,
+      "user_s": 0.0042439999999999995,
+      "system_s": 0.004386,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 52381,
+        "lines": 761,
+        "sha256": "ef19bd1d4cd5e2759efbecd2d3497e55fb6f7146e90a76df7eea01a61cf283fd",
+        "select_instructions": 1,
+        "class_name_tables": 1
+      }
+    },
+    {
+      "case": "sparse-read",
+      "phase": "frontend",
+      "sample": 11,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read-frontend-11-head.ll"
+      ],
+      "wall_s": 0.009139155998127535,
+      "user_s": 0.008793,
+      "system_s": 0.0,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 52381,
+        "lines": 761,
+        "sha256": "ef19bd1d4cd5e2759efbecd2d3497e55fb6f7146e90a76df7eea01a61cf283fd",
+        "select_instructions": 1,
+        "class_name_tables": 1
+      }
+    },
+    {
+      "case": "sparse-read",
+      "phase": "frontend",
+      "sample": 11,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read-frontend-11-base.ll"
+      ],
+      "wall_s": 0.008460614997602534,
+      "user_s": 0.008112,
+      "system_s": 0.0,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 16405,
+        "lines": 504,
+        "sha256": "bc064326b4d93d3f8ac2b1205b8185bd184ac27b05ce8ee5ca48b69936f5f8b5",
+        "select_instructions": 4,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "sparse-read",
+      "phase": "frontend",
+      "sample": 12,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read-frontend-12-base.ll"
+      ],
+      "wall_s": 0.008257704997959081,
+      "user_s": 0.0,
+      "system_s": 0.007899,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 16405,
+        "lines": 504,
+        "sha256": "bc064326b4d93d3f8ac2b1205b8185bd184ac27b05ce8ee5ca48b69936f5f8b5",
+        "select_instructions": 4,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "sparse-read",
+      "phase": "frontend",
+      "sample": 12,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read-frontend-12-head.ll"
+      ],
+      "wall_s": 0.008923679000872653,
+      "user_s": 0.004360999999999999,
+      "system_s": 0.00422,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 52381,
+        "lines": 761,
+        "sha256": "ef19bd1d4cd5e2759efbecd2d3497e55fb6f7146e90a76df7eea01a61cf283fd",
+        "select_instructions": 1,
+        "class_name_tables": 1
+      }
+    },
+    {
+      "case": "sparse-read",
+      "phase": "frontend",
+      "sample": 13,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read-frontend-13-head.ll"
+      ],
+      "wall_s": 0.008291635000205133,
+      "user_s": 0.0,
+      "system_s": 0.007901,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 52381,
+        "lines": 761,
+        "sha256": "ef19bd1d4cd5e2759efbecd2d3497e55fb6f7146e90a76df7eea01a61cf283fd",
+        "select_instructions": 1,
+        "class_name_tables": 1
+      }
+    },
+    {
+      "case": "sparse-read",
+      "phase": "frontend",
+      "sample": 13,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read-frontend-13-base.ll"
+      ],
+      "wall_s": 0.008404931999393739,
+      "user_s": 0.00399,
+      "system_s": 0.003948,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 16405,
+        "lines": 504,
+        "sha256": "bc064326b4d93d3f8ac2b1205b8185bd184ac27b05ce8ee5ca48b69936f5f8b5",
+        "select_instructions": 4,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "sparse-read",
+      "phase": "frontend",
+      "sample": 14,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read-frontend-14-base.ll"
+      ],
+      "wall_s": 0.008812305000901688,
+      "user_s": 0.0041259999999999995,
+      "system_s": 0.004308,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 16405,
+        "lines": 504,
+        "sha256": "bc064326b4d93d3f8ac2b1205b8185bd184ac27b05ce8ee5ca48b69936f5f8b5",
+        "select_instructions": 4,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "sparse-read",
+      "phase": "frontend",
+      "sample": 14,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read-frontend-14-head.ll"
+      ],
+      "wall_s": 0.008730533998459578,
+      "user_s": 0.0,
+      "system_s": 0.008395999999999999,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 52381,
+        "lines": 761,
+        "sha256": "ef19bd1d4cd5e2759efbecd2d3497e55fb6f7146e90a76df7eea01a61cf283fd",
+        "select_instructions": 1,
+        "class_name_tables": 1
+      }
+    },
+    {
+      "case": "sparse-read",
+      "phase": "frontend",
+      "sample": 15,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read-frontend-15-head.ll"
+      ],
+      "wall_s": 0.010603527996863704,
+      "user_s": 0.006144,
+      "system_s": 0.0041659999999999996,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 52381,
+        "lines": 761,
+        "sha256": "ef19bd1d4cd5e2759efbecd2d3497e55fb6f7146e90a76df7eea01a61cf283fd",
+        "select_instructions": 1,
+        "class_name_tables": 1
+      }
+    },
+    {
+      "case": "sparse-read",
+      "phase": "frontend",
+      "sample": 15,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read-frontend-15-base.ll"
+      ],
+      "wall_s": 0.011345653998432681,
+      "user_s": 0.006643,
+      "system_s": 0.004225,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 16405,
+        "lines": 504,
+        "sha256": "bc064326b4d93d3f8ac2b1205b8185bd184ac27b05ce8ee5ca48b69936f5f8b5",
+        "select_instructions": 4,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "sparse-read",
+      "phase": "frontend",
+      "sample": 16,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read-frontend-16-base.ll"
+      ],
+      "wall_s": 0.009467627998674288,
+      "user_s": 0.009149,
+      "system_s": 0.0,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 16405,
+        "lines": 504,
+        "sha256": "bc064326b4d93d3f8ac2b1205b8185bd184ac27b05ce8ee5ca48b69936f5f8b5",
+        "select_instructions": 4,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "sparse-read",
+      "phase": "frontend",
+      "sample": 16,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read-frontend-16-head.ll"
+      ],
+      "wall_s": 0.01236221099679824,
+      "user_s": 0.007176999999999999,
+      "system_s": 0.004887,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 52381,
+        "lines": 761,
+        "sha256": "ef19bd1d4cd5e2759efbecd2d3497e55fb6f7146e90a76df7eea01a61cf283fd",
+        "select_instructions": 1,
+        "class_name_tables": 1
+      }
+    },
+    {
+      "case": "sparse-read",
+      "phase": "frontend",
+      "sample": 17,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read-frontend-17-head.ll"
+      ],
+      "wall_s": 0.00988515999779338,
+      "user_s": 0.0044199999999999995,
+      "system_s": 0.0051719999999999995,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 52381,
+        "lines": 761,
+        "sha256": "ef19bd1d4cd5e2759efbecd2d3497e55fb6f7146e90a76df7eea01a61cf283fd",
+        "select_instructions": 1,
+        "class_name_tables": 1
+      }
+    },
+    {
+      "case": "sparse-read",
+      "phase": "frontend",
+      "sample": 17,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read-frontend-17-base.ll"
+      ],
+      "wall_s": 0.00875485000142362,
+      "user_s": 0.008461999999999999,
+      "system_s": 0.0,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 16405,
+        "lines": 504,
+        "sha256": "bc064326b4d93d3f8ac2b1205b8185bd184ac27b05ce8ee5ca48b69936f5f8b5",
+        "select_instructions": 4,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "sparse-read",
+      "phase": "frontend",
+      "sample": 18,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read-frontend-18-base.ll"
+      ],
+      "wall_s": 0.009082783995836508,
+      "user_s": 0.008793,
+      "system_s": 0.0,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 16405,
+        "lines": 504,
+        "sha256": "bc064326b4d93d3f8ac2b1205b8185bd184ac27b05ce8ee5ca48b69936f5f8b5",
+        "select_instructions": 4,
+        "class_name_tables": 0
+      }
+    },
+    {
+      "case": "sparse-read",
+      "phase": "frontend",
+      "sample": 18,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read-frontend-18-head.ll"
+      ],
+      "wall_s": 0.00824352399649797,
+      "user_s": 0.004007,
+      "system_s": 0.003959,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 52381,
+        "lines": 761,
+        "sha256": "ef19bd1d4cd5e2759efbecd2d3497e55fb6f7146e90a76df7eea01a61cf283fd",
+        "select_instructions": 1,
+        "class_name_tables": 1
+      }
+    },
+    {
+      "case": "sparse-read",
+      "phase": "frontend",
+      "sample": 19,
+      "revision": "head",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read-frontend-19-head.ll"
+      ],
+      "wall_s": 0.009326890998636372,
+      "user_s": 0.008985,
+      "system_s": 0.0,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 52381,
+        "lines": 761,
+        "sha256": "ef19bd1d4cd5e2759efbecd2d3497e55fb6f7146e90a76df7eea01a61cf283fd",
+        "select_instructions": 1,
+        "class_name_tables": 1
+      }
+    },
+    {
+      "case": "sparse-read",
+      "phase": "frontend",
+      "sample": 19,
+      "revision": "base",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "ir",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-control-confirmation/sparse-read-frontend-19-base.ll"
+      ],
+      "wall_s": 0.00959619200148154,
+      "user_s": 0.009250999999999999,
+      "system_s": 0.0,
+      "max_process_rss_kib": 24920,
+      "returncode": 0,
+      "timed_out": false,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir": {
+        "bytes": 16405,
+        "lines": 504,
+        "sha256": "bc064326b4d93d3f8ac2b1205b8185bd184ac27b05ce8ee5ca48b69936f5f8b5",
+        "select_instructions": 4,
+        "class_name_tables": 0
+      }
+    }
+  ],
+  "inputs": {
+    "hierarchy-128": {
+      "sha256": "1ffe7bc46de8192a51709ff8ba0ab233dc299ce2ace9f86b0829d3747e6fc40e",
+      "source_bytes": 3622,
+      "oracle_stdout": "True\n"
+    },
+    "exact-class": {
+      "sha256": "d73a10d05ab121baeb60bc4710d317ddb7a9dd3fd43fcb80f82716d1bf63a354",
+      "source_bytes": 179,
+      "oracle_stdout": "7\n"
+    },
+    "hierarchy-no-read": {
+      "sha256": "76892c972aa41655a949f6cff9921a9ea17a7a0d096d7eb6e9ae9a87d457ce72",
+      "source_bytes": 3610,
+      "oracle_stdout": "False\n"
+    },
+    "sparse-read": {
+      "sha256": "3a5b98f43041b02b9b549f611eeddf2fe3b1943e0f63c5ce6179f93d699dfc02",
+      "source_bytes": 9825,
+      "oracle_stdout": "True\n"
+    }
+  },
+  "revisions": {
+    "base": {
+      "commit": "f7103067545b43cdcd8ce20dc66b1571425b3a8d",
+      "compiler_source_sha256": "900cedb1d5765729df199cc5ebace0f39abed502f6b0dc7fc36491e62b6cb109",
+      "command": [
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy"
+      ],
+      "version": "pystachy v0.2.0 (commit unknown)",
+      "executable_sha256": "3b59b4e875a89f15777395f5993ccf2e6d51e934dbc7a4e45228d622c7f1cff7"
+    },
+    "head": {
+      "commit": "d64c6c835f885b7ee445d8bd7d670008ee67e0bb",
+      "compiler_source_sha256": "93c9348bc4d55d404d9b9306119469e355c1ce1d424e355764cde481b8bf4a1e",
+      "command": [
+        "/workspace/scratch/5798eb31a437/field-errors/pystachy"
+      ],
+      "version": "pystachy v0.2.0 (commit unknown)",
+      "executable_sha256": "31c72be5a542f170743bd968b3737219671750aa7e8001c88adfe3d6ccae0141"
+    }
+  },
+  "notes": [
+    "Compiler preparation is excluded. Each frontend sample is a fresh process.",
+    "Native build samples include frontend, LLVM and linking, with a prewarmed per-revision runtime cache.",
+    "wait4 maximum RSS is the maximum individual process RSS (including waited children), not a concurrent aggregate.",
+    "Execution checks compare exact stdout/exit status with CPython; they are not runtime-throughput benchmarks."
+  ],
+  "clang": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+  "tools": {
+    "clang": {
+      "path": "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/clang",
+      "sha256": "8ef402d453d1ba4902e4ee0f0f847f6cfa01400c95aa43c24e97818b9c0e3f45",
+      "version": "Ubuntu clang version 18.1.3 (1ubuntu1)"
+    },
+    "opt": {
+      "path": "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/opt",
+      "sha256": "67ebe8635087b5ebe22d8f085d5e5857e431f86be9ed76576e59b86b9743c0fb",
+      "version": "Ubuntu LLVM version 18.1.3"
+    },
+    "llvm-link": {
+      "path": "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/llvm-link",
+      "sha256": "e340363ed9e5346f0d6dc4441f4953c5f516ff73fa0a03e1955c1adaad68b651",
+      "version": "Ubuntu LLVM version 18.1.3"
+    },
+    "llvm-as": {
+      "path": "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/llvm-as",
+      "sha256": "8e7460eff4ba4e22d8ae881404bb24c5fc346996264e883ba26d41da4188215d",
+      "version": "Ubuntu LLVM version 18.1.3"
+    },
+    "llc": {
+      "path": "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/llc",
+      "sha256": "1efd161c597a2c4255987800505303e298eba00dbee1e93468271c1f7f738181",
+      "version": "Ubuntu LLVM version 18.1.3"
+    }
+  },
+  "control_ir_identical": true,
+  "frontend_ir_deterministic": true,
+  "medians": [
+    {
+      "case": "hierarchy-128",
+      "phase": "frontend",
+      "revision": "base",
+      "wall_s": 0.07261567100067623,
+      "min_s": 0.0696507019965793,
+      "max_s": 0.08194179699785309
+    },
+    {
+      "case": "hierarchy-128",
+      "phase": "frontend",
+      "revision": "head",
+      "wall_s": 0.03804011200190871,
+      "min_s": 0.03672767199896043,
+      "max_s": 0.05520508599875029
+    },
+    {
+      "case": "exact-class",
+      "phase": "frontend",
+      "revision": "base",
+      "wall_s": 0.002038252499914961,
+      "min_s": 0.001955079998879228,
+      "max_s": 0.0026690950035117567
+    },
+    {
+      "case": "exact-class",
+      "phase": "frontend",
+      "revision": "head",
+      "wall_s": 0.0020227594977768604,
+      "min_s": 0.0019241929985582829,
+      "max_s": 0.0023652360032428987
+    },
+    {
+      "case": "hierarchy-no-read",
+      "phase": "frontend",
+      "revision": "base",
+      "wall_s": 0.03296518249771907,
+      "min_s": 0.03163081000093371,
+      "max_s": 0.04655140099930577
+    },
+    {
+      "case": "hierarchy-no-read",
+      "phase": "frontend",
+      "revision": "head",
+      "wall_s": 0.03371590200185892,
+      "min_s": 0.03193752299557673,
+      "max_s": 0.05126923400530359
+    },
+    {
+      "case": "sparse-read",
+      "phase": "frontend",
+      "revision": "base",
+      "wall_s": 0.00870192200090969,
+      "min_s": 0.007812916999682784,
+      "max_s": 0.0177257390023442
+    },
+    {
+      "case": "sparse-read",
+      "phase": "frontend",
+      "revision": "head",
+      "wall_s": 0.008949021499574883,
+      "min_s": 0.007955448003485799,
+      "max_s": 0.017428749000828248
+    }
+  ],
+  "revisions_after": {
+    "base": {
+      "commit": "f7103067545b43cdcd8ce20dc66b1571425b3a8d",
+      "compiler_source_sha256": "900cedb1d5765729df199cc5ebace0f39abed502f6b0dc7fc36491e62b6cb109",
+      "executable_sha256": "3b59b4e875a89f15777395f5993ccf2e6d51e934dbc7a4e45228d622c7f1cff7"
+    },
+    "head": {
+      "commit": "d64c6c835f885b7ee445d8bd7d670008ee67e0bb",
+      "compiler_source_sha256": "93c9348bc4d55d404d9b9306119469e355c1ce1d424e355764cde481b8bf4a1e",
+      "executable_sha256": "31c72be5a542f170743bd968b3737219671750aa7e8001c88adfe3d6ccae0141"
+    }
+  },
+  "sources_executables_inputs_unchanged": true
+}

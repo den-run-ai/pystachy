@@ -27,6 +27,7 @@ The example's typed and dynamic views share the same list; see the
 | --- | --- |
 | Choose annotations and container layouts | [Selecting dynamic storage](#selecting-dynamic-storage) |
 | Pass values between typed and dynamic code | [The typed/dynamic contract](#the-typeddynamic-contract) |
+| Use classes, reducers and runtime argument packs | [Class values and type-keyed registries](#class-values-and-type-keyed-registries) |
 | Use operators, methods, iterators and generators | [Operations](#operations) and [Iteration](#iteration) |
 | Check compatibility before opting in | [Deviations](#deviations) |
 | Understand identity and allocation costs | [Representation](#representation), [Identity scope](#identity-scope) and [Measurements](#measurements) |
@@ -282,6 +283,153 @@ class. A list test keeps the layout-aware dynamic reference described above.
 proves an int or bool payload for arithmetic and comparisons. Bool `&`, `|` and
 `^` with another bool, and `**`, stay dynamic because their result rules differ
 (`tests/programs/inference/dynany_proven_int.py`).
+
+## Class values and type-keyed registries
+
+In an opted-in module, ordinary user classes and builtin classes can be stored in
+`Any`, passed to functions, and used as dictionary keys. `type(value)` returns a
+canonical class value; `value.__class__` does likewise unless an explicit
+attribute overrides it. For example:
+
+```python
+# pystachy: dynamic-any
+from typing import Any
+
+reducers: dict[Any, Any] = {}
+
+def register(cls: Any, reducer: Any) -> None:
+    reducers[cls] = reducer
+
+def encode_int(value: int) -> str:
+    return str(value)
+
+register(int, encode_int)
+value: Any = 42
+print(reducers[type(value)](value))
+```
+
+Lookup uses exact Python type: `bool` and `int` have different keys, as do a base
+class and a subclass. Checked and promoting integers share the `int` key;
+native `list[int]` and `list[Any]` share the `list` key without changing their
+storage. Class objects retain identity and identity hashing, report metatype
+`type`, and expose `__name__`, `__qualname__` and `__module__`. An instance's
+`__eq__` or `__hash__` does not become the class object's operation; reflected
+instance equality still runs when a class is compared with an instance.
+
+Stored class values can reconstruct ordinary user classes whose boxed instance
+adapters and matching initializers have already been compiled by the program:
+
+```python
+class Record:
+    def __init__(self, value: int):
+        self.value = value
+
+original: Any = Record(7)
+factory = type(original)
+restored = factory(value=original.value)
+print(type(restored) is Record, restored is original)  # True False
+```
+
+Boxing the original instance establishes its native adapter during compilation.
+The constructor reuses its compiled initializer, including an existing
+class-specific specialization for inherited `__init__`. Explicit positional and
+keyword arguments and supported static unpacking use the ordinary binder.
+Runtime-sized `factory(*args, **kwargs)` uses the binding contract below.
+For supplied arguments, parameter layouts containing user classes require
+existing boxed adapters for those classes, including optional, union and tuple
+members. Omitted defaults reuse an already prepared value or a compatible
+`None`, boolean, integer, float or string literal; this path does not compile
+additional default expressions. Arguments run once, after capturing the class
+and before binding errors; initializer exceptions and non-`None` returns retain
+their ordinary behavior. Mutable arguments retain their aliases. Typed-tuple
+numeric items retain the existing [identity limitation](#deviations).
+
+An isolated ordinary class can also be used only as a factory, without a prior
+instance:
+
+```python
+class Record:
+    def __init__(self, value: int) -> None:
+        self.value = value
+
+factory: Any = Record
+restored = factory(7)
+print(type(restored) is Record, restored.value)  # True 7
+```
+
+This preparation path accepts classes outside inheritance hierarchies with no
+methods other than a fixed, concretely annotated `__init__`, or the default empty
+initializer. The initializer must return `None`. Other special class attributes
+are excluded except for `__slots__` given as a string or tuple of strings.
+Parameters and fields must use supported dynamic layouts; nominal members need
+an existing boxed adapter. Positional-only and keyword-only parameters keep the
+ordinary binding rules. Imported initializers and their ordinary scalar helper
+functions can compile on demand. Defaults retain their definition-time evaluation
+and original identity. Every optional initializer default must bind to its
+parameter type, even if the call supplies that argument: an existing dynamic
+lookup can also expose the new object's bound `__init__`.
+
+Initializer preparation does not widen inferred storage or introduce new dynamic
+protocol dispatchers, callable adapters or unrelated object helpers. A declined
+initializer or helper discards the entire attempted compilation before the
+compiler retries; an unused unsupported factory therefore does not make another
+accepted path fail. Capturing a class as a value alone does not prepare its
+initializer. Classes with additional methods or inheritance still use the
+existing-adapter path above.
+
+Outside these paths, an uncompiled initializer, a new nominal argument layout,
+or a default that cannot bind raises `NotImplementedError` if selected. Builtin
+classes, class templates, dataclasses, NamedTuples, decorated or variadic
+initializers, `__init__` stored as class data, and custom `__new__` remain outside
+this construction path. Runtime class creation, metaclasses, writable class
+dictionaries and classes held as the second argument of `isinstance` also remain
+unsupported. Overrides of `__module__` and `__qualname__` must be fixed literal
+strings. Computed overrides or later writes to `__name__`, `__qualname__` or
+`__module__` are rejected for a stored class value, or raise `NotImplementedError`
+when reached through a dynamic type query.
+
+Exception class values keep their existing typed representation and cannot cross
+into `Any`. Fixed-signature `Callable` adapters erase whether their source was a
+function, bound method or builtin class; new stored-type queries reject that
+representation or raise `NotImplementedError` when it is held in `Any`. Keep
+registry class values in `Any` directly. The `copyreg` tests use two unchanged
+upstream registration functions and bounded reconstruction steps; they do not
+establish full `copyreg` or `pickle` support.
+
+### Runtime argument unpacking
+
+A callable held in `Any` can receive `factory(*args, **kwargs)` with runtime-sized
+arguments. This supports fixed signatures of functions, closures, ordinary user
+methods and callable objects, plus the prepared class constructors above. Reducers
+can therefore return `(type(value), args)` without a consumer indexing each argument.
+
+Positional packs accept supported dynamic iterables, including lists, tuples,
+ranges and generators. Native lists and homogeneous tuples whose elements can
+cross `Any` contribute boxed items to fresh argument storage. Keyword packs accept
+dynamic builtin dictionaries, str-keyed native dictionaries and existing fixed
+kwargs records. Already boxed elements retain their identity and mutable aliases
+in the fresh outer packs. Native storage retains existing typed/`Any` identity
+limits; packing a native numeric dictionary does not add scalar identity to reads.
+
+Binding checks positional-only and keyword-only parameters, repeated or unexpected
+keywords, missing arguments and excess positional arguments before converting
+argument values. Omitted defaults reuse definition-time values, including closure
+captures; an explicit `None` remains supplied. The callable is captured first.
+Multiple positional groups expand in order; a sole `*args` is expanded after
+keyword evaluation. Duplicate keyword merges stop later groups.
+
+Callees declaring variadic `*args` or `**kwargs`, erased `Callable` signatures,
+builtin methods with runtime packs, custom mapping protocols and unprepared class
+constructors remain explicit `NotImplementedError` boundaries. Native keyword
+dictionaries with non-str keys are rejected at compilation to avoid rehashing
+user keys during conversion. Existing iterator and typed/`Any` storage limits
+still apply. Adapter preparation requires stable inferred layouts and existing
+object helpers. An adapter needing broader inference, new object helpers or an
+unsupported body raises `NotImplementedError` only when selected; unrelated
+stored callbacks remain usable. See the
+[boundary cases](../tests/deviations/dyn_star_reducer_boundaries.py) and
+[unsupported adapter](../tests/deviations/dyn_star_reducer_unsupported_body.py).
+These calls do not establish full `copyreg` or `pickle` support.
 
 ## Iteration
 
@@ -696,9 +844,10 @@ can still need an explicit `list[Any]` destination.
   cannot become `Any` values yet.
 
 - Calls of `Any` values and their methods take positional and keyword arguments, and what a
-  typed call unpacks (a tuple's items, a dict display with str keys, a function's `**kwargs`);
-  an `Any` value unpacked into a call's arguments (`f(*xs)`) is rejected at compile time. A
-  builtin type's method takes keyword arguments only where typed code takes them
+  typed call unpacks (a tuple's items, a dict display with str keys, a function's `**kwargs`).
+  [Runtime argument unpacking](#runtime-argument-unpacking) additionally supports fixed
+  user callables and prepared constructors; variadic callees and custom mappings remain
+  bounded. A builtin type's method takes keyword arguments only where typed code takes them
   (`list.sort()`'s `key` and `reverse`, `dict.update()`'s): another raises the `TypeError` that
   typed code reports at compile time, where CPython binds them (`s.split(sep=",")`). So does a
   call with keyword arguments of a function value whose type is a `Callable`, which has no
@@ -722,6 +871,16 @@ can still need an explicit `list[Any]` destination.
   (`tests/deviations/dynany_builtin_star_error.py`).
 
 ### Formatting, attributes and unsupported values
+
+- Calls through stored classes outside the
+  [bounded reconstruction contract](#class-values-and-type-keyed-registries)
+  raise `NotImplementedError`, although `callable()` reports true. This includes
+  classes with additional methods and no existing boxed adapter, uncompiled
+  initializers and `__init__` stored as class data.
+
+- Stored `type()` of an erased `Callable` held in `Any` raises
+  `NotImplementedError`; its existing supported calls still work. Restoring the
+  original callable's identity remains tracked by #858.
 
 - `%` of an `Any` str raises `TypeError`: printf-style formatting is implemented for a str that
   is known as such, which formats `Any` values (`tests/deviations/dynany_str_mod.py`).
@@ -802,6 +961,7 @@ copies the container or gives an alias a second layout.
 | `DAA` | `dict[Any, Any]` |
 | `VA` | A tuple of boxes |
 | `Z` | A boxed function |
+| `Y` | An immutable class reflection record |
 
 Generic repr, equality, ordering, hashing, sorting, searching and `KeyError`
 formatting follow descriptor `A` through the box's DynType. Dynamic dict keys use
@@ -813,6 +973,12 @@ with the same receiver or closure environment. Each evaluation of `o.m` creates
 a distinct bound-method box for identity. A def's box is a constant with its
 DynType address as payload; a closure retains the environment created by its def.
 Different function objects therefore have different IDs.
+
+Class objects use a distinct `DK_TYPE` and descriptor `Y`. Their payload is the
+existing immutable reflection record, shared by every representation of the same
+Python class. Their outer type is the metatype, never an instance layout. Class
+boxes and records reference only static constants; the runtime `DynType` layout is
+unchanged.
 
 Coverage: [dynany_fn_identity.py](../tests/programs/inference/dynany_fn_identity.py).
 
@@ -1159,15 +1325,24 @@ allocation), `tests/errors/inference/dynany_*.py` and `tests/deviations/dynany_*
 object graph. One memo, keyed by `id()`, holds lists, dicts, tuples, scalars and objects of six
 unrelated classes; the graph has repeated references (a shared list in three places), cycles
 (parents, a registry that holds itself), a field whose type changes (an `int`, then a `float`,
-then a `str`), and a copier chosen at run time by `type(x).__name__` from a dict of
-`Callable[[Any, dict[int, Any]], Any]`. The copy preserves sharing and cycles and is independent
+then a `str`), and a copier registered through a function parameter and chosen at run time by
+`type(x)` from a class-keyed dictionary. The copy preserves sharing and cycles and is independent
 of the original, as CPython's is.
 
 The acceptance workload uses a custom copier. Pystachy's supported
 [`copy` subset](../lib/compatibility.md#copy) includes `copy.deepcopy` for supported
-values. Compiling unmodified CPython `copy.py` still needs `type(x)` as a value with
-class objects as dict keys (#7), `getattr(x, "__deepcopy__", None)` and `__reduce_ex__`
-by run-time names (#489), `cls.__new__(cls)`, and `object.__dict__` updates.
+values. Compiling unmodified CPython `copy.py` still needs
+`getattr(x, "__deepcopy__", None)` and `__reduce_ex__` by run-time names (#489),
+`cls.__new__(cls)`, and `object.__dict__` updates.
+
+`tests/programs/upstream/upstream_copyreg_registry.py` uses CPython 3.13.16's
+`copyreg.pickle` and `constructor` bodies unchanged. Its helper adds the dynamic
+opt-in and an annotation for the empty registry. It checks exact-type reducer
+lookup, callback replacement, validation order and reconstruction from reduction
+tuples with one argument. `upstream_copyreg_construct.py` returns actual class
+values and reconstructs base/subclass instances through `factory(*args)`, checking
+exact type, fresh identity and shared mutable payloads. These consumers do not
+validate state restoration, serialization memoization/cycles or pickle protocols.
 
 `lib/tomllib` is a library compiled this way: CPython's `tomllib`, whose modules opt in, parses a
 document into dicts and lists of `Any` values that programs which do not opt in read

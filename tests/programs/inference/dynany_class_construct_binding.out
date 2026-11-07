@@ -1,0 +1,11 @@
+True True 3 default
+True True 4 named
+True True 5 mixed
+False False
+True False
+Entry.__init__() missing 1 required positional argument: 'value'
+Entry.__init__() got an unexpected keyword argument 'unknown'
+Entry.__init__() got multiple values for argument 'value'
+Config.__init__() got some positional-only arguments passed as keyword arguments: 'value'
+Config.__init__() takes 2 positional arguments but 3 were given
+[exit 0]

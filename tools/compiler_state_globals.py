@@ -16,6 +16,7 @@ PREFIX = "src.pystachy_compiler."
 # a container or a post-import writer requires an explicit ownership decision.
 LOOKUP = set("""
 analysis.BINDERS builtins.FSPRIMS
+ctypes_schema.SCALARS ctypes_schema.MARKERS
 bigints.BIGOPS bigints.BKEY bigints.PROMOTES bigints.NUMOPS bigints.NUMCALLS
 cached_run.BUILD_ENV cached_run.CPU_FIELDS
 cache_toolchain.SYSTEM_INPUTS
@@ -26,7 +27,7 @@ ir.NONUMS ir.NOVALS ir.NOLABELS ircheck.RESULT_NUMBERS
 lexer.KEYWORDS lexer.OPS lexer.ESCAPES lexer.PREFIXES lexer.NONPRINT lexer.NOTID
 loader.ENUM_NAMES loader.ENUM_BASES loader.ENUM_HOOKS
 local_versions.UNVERSIONED optimizations.PASS_CONTRACTS parser.ATOMS
-reflection.BUILTIN_TYPES reflection.SLOT_WRAPPERS reflection.OBJ_BUILTINS reflection.TYPE_BUILTINS reflection.PICKLING
+reflection.BUILTIN_TYPES reflection.CLASS_BUILTINS reflection.SLOT_WRAPPERS reflection.OBJ_BUILTINS reflection.TYPE_BUILTINS reflection.PICKLING
 scalar_ir.SCALAR_INTS scalar_ir.SCALAR_BIN scalar_ir.SCALAR_FLOAT
 scalar_ir.SCALAR_ICMP scalar_ir.SCALAR_FCMP scalar_ir.SCALAR_CASTS scope.COMPNAMES
 specs.PYBUILTINS specs.MODNAMES specs.ANNKINDS specs.GENERICS specs.CBUILTIN
@@ -106,7 +107,9 @@ WRITERS = {
     "program_cache.STATIC_MEMO": {"program_cache.track_static", "program_cache._load_memo"},
     "program_cache.MEMO_ROOT": {"program_cache._load_memo"},
     "specs.LIBS": {"lower_module.gen_cextern", "driver.compile_program", "driver.main"},
-    "specs.LINKDL": {"lower_module.gen_cextern", "driver.compile_program"},
+    # CDLL emits ffi.load_library even without foreign symbols. Its builtin
+    # appends the same per-pass requirement as @extern; compile_program rewinds it.
+    "specs.LINKDL": {"lower_module.gen_cextern", "builtins.gen_builtin", "driver.compile_program"},
     "specs.GLUE": {"loader.Loader.load"},
     "specs.SPECSHOW": {"templates.gen_specialize"},
     "specs.MODULES": {"driver.runtime_ir", "driver.main"},

@@ -381,9 +381,11 @@ check-fast: lint-python typecheck check-repository
 	$(PY) -m unittest discover -s tools -p test_dynany_dict_kinds.py
 	$(PY) -m unittest discover -s tools -p test_diagnostic_capture.py
 	$(PY) -m unittest discover -s tools -p test_loader_preprocessing.py
+	$(PY) -m unittest discover -s tools -p test_ctypes_schema.py
 	$(PY) -m unittest discover -s tools -p test_parser_allocations.py
 	$(PY) -m unittest discover -s tools -p test_exception_bindings.py
 	$(PY) -m unittest discover -s tools -p test_inspect_compiler.py
+	$(PY) -m unittest discover -s tools -p test_source_lines.py
 	$(PY) -m unittest discover -s tools -p test_pystachy_toolchain.py
 
 check-repository:

@@ -127,6 +127,152 @@ Str *pye_to_str(PyObject *o) {         /* a Python str as Pystachy's (UTF-8, lon
 }
 PyObject *pye_text(Str *s) { return PyUnicode_DecodeUTF8(s->s, s->len, "surrogatepass"); }
 
+/* Retained CPU float64 buffers. The complete Py_buffer ABI is stable since 3.11.
+   Every helper is called with the GIL held; none calls back into Python after
+   taking a data pointer. A compliant exporter pins storage until Release. */
+typedef struct {
+  void *buf;
+  PyObject *obj;
+  Py_ssize_t len, itemsize;
+  int readonly, ndim;
+  char *format;
+  Py_ssize_t *shape, *strides, *suboffsets;
+  void *internal;
+} Py_buffer;
+int PyObject_GetBuffer(PyObject *, Py_buffer *, int);
+void PyBuffer_Release(Py_buffer *);
+PyObject *PyCapsule_New(void *, const char *, void (*)(PyObject *));
+void *PyCapsule_GetPointer(PyObject *, const char *);
+PyObject *PyErr_NoMemory(void);
+extern PyObject *PyExc_ValueError, *PyExc_IndexError, *PyExc_OverflowError;
+#define PYE_BUFFER_NAME "pystachy.cpu_float64.v1"
+#define PYE_BUFFER_FULL_RO 0x011c
+_Static_assert(sizeof(double) == 8 && sizeof(Py_ssize_t) == sizeof(I), "CPU buffer ABI requires 64-bit doubles and sizes");
+typedef struct {
+  Py_buffer export;             /* owning export on the root descriptor only */
+  PyObject *owner;              /* a root capsule retained by a derived view */
+  unsigned char *base;          /* the root export's logical start, never freed here */
+  I storage_bytes, count, offset, stride;
+  int readonly;                 /* access granted to this handle, not all aliases */
+} CpuBuffer;
+
+static CpuBuffer *buffer_ptr(PyObject *o) { return PyCapsule_GetPointer(o, PYE_BUFFER_NAME); }
+static void buffer_free(CpuBuffer *b) {
+  if (b->export.obj) PyBuffer_Release(&b->export);
+  Py_DecRef(b->owner);
+  free(b);
+}
+static void buffer_drop(PyObject *o) {
+  CpuBuffer *b = buffer_ptr(o);
+  if (b) buffer_free(b);
+}
+static PyObject *buffer_capsule(CpuBuffer *b) {
+  PyObject *o = PyCapsule_New(b, PYE_BUFFER_NAME, buffer_drop);
+  if (!o) buffer_free(b);
+  return o;
+}
+PyObject *pye_buffer_open(PyObject *o, int writable) {
+  CpuBuffer *b = calloc(1, sizeof *b);
+  if (!b) return PyErr_NoMemory();
+  if (PyObject_GetBuffer(o, &b->export, PYE_BUFFER_FULL_RO) < 0) { free(b); return 0; }
+  Py_buffer *v = &b->export;
+  const char *why = 0;
+  PyObject *kind = PyExc_ValueError;
+  if (!v->format || strcmp(v->format, "d") || v->itemsize != 8) {
+    why = "buffer_f64 requires native float64 format 'd'"; kind = PyExc_TypeError;
+  } else if (v->ndim != 1) why = "buffer_f64 requires one dimension";
+  else if (!v->obj || !v->shape || !v->strides || v->len < 0 || v->shape[0] < 0 ||
+           v->len % 8 || v->shape[0] != v->len / 8 || (v->len && !v->buf))
+    why = "buffer_f64 received invalid buffer metadata";
+  else if ((v->suboffsets && v->suboffsets[0] >= 0) || v->strides[0] != 8)
+    why = "buffer_f64 requires contiguous direct storage";
+  else if (writable && v->readonly) { why = "buffer_f64 requires writable storage"; kind = PyExc_TypeError; }
+  if (why) {
+    buffer_free(b);  /* release a successful export on every rejected path */
+    PyErr_SetString(kind, why);
+    return 0;
+  }
+  b->base = v->buf; b->storage_bytes = v->len; b->count = v->len / 8;
+  b->stride = 8; b->readonly = !writable;
+  return buffer_capsule(b);
+}
+I pye_buffer_info(PyObject *o, int field) {
+  CpuBuffer *b = buffer_ptr(o);
+  if (!b) return -1;
+  if (field == 0) return b->count;
+  if (field == 1) return b->storage_bytes;
+  if (field == 2) return b->offset;
+  if (field == 3) return b->stride;
+  if (field == 4) return b->readonly;
+  /* An allocation-pressure estimate, capped so a fabricated giant export
+     cannot overflow the runtime's signed allocation counter in ffi.track. */
+  if (field == 5) return (b->storage_bytes > 1073741824 ? 1073741824 : b->storage_bytes) + (I)sizeof *b;
+  PyErr_SetString(PyExc_ValueError, "invalid CPU buffer metadata field");
+  return -1;
+}
+PyObject *pye_buffer_view(PyObject *o, I start, I count, I step) {
+  CpuBuffer *b = buffer_ptr(o);
+  if (!b) return 0;
+  if (!step || count < 0) { PyErr_SetString(PyExc_ValueError, "buffer view requires nonnegative count and nonzero step"); return 0; }
+  if (start < 0 || start > b->count || (count && start == b->count)) {
+    PyErr_SetString(PyExc_IndexError, "buffer view start out of range"); return 0;
+  }
+  I last = start, span, stride, offset = 0;
+  if (__builtin_mul_overflow(b->stride, step, &stride) ||
+      (count && (__builtin_mul_overflow(count - 1, step, &span) || __builtin_add_overflow(start, span, &last)))) {
+    PyErr_SetString(PyExc_OverflowError, "buffer view arithmetic overflow"); return 0;
+  }
+  if (count && (last < 0 || last >= b->count)) { PyErr_SetString(PyExc_IndexError, "buffer view end out of range"); return 0; }
+  if (count && (__builtin_mul_overflow(start, b->stride, &span) || __builtin_add_overflow(b->offset, span, &offset))) {
+    PyErr_SetString(PyExc_OverflowError, "buffer view arithmetic overflow"); return 0;
+  }
+  CpuBuffer *v = calloc(1, sizeof *v);
+  if (!v) return PyErr_NoMemory();
+  v->owner = b->owner ? b->owner : o;
+  Py_IncRef(v->owner);
+  v->base = b->base; v->storage_bytes = b->storage_bytes;
+  v->count = count; v->offset = offset; v->stride = stride; v->readonly = b->readonly;
+  return buffer_capsule(v);
+}
+static int buffer_index(CpuBuffer *b, I i, I *offset) {
+  if (i < 0) i += b->count;
+  if (i < 0 || i >= b->count) { PyErr_SetString(PyExc_IndexError, "buffer index out of range"); return -1; }
+  /* A view's two endpoints were checked against its parent; intermediate
+     offsets lie inside that span. No pointer is formed for an empty view. */
+  *offset = b->offset + i * b->stride;
+  return 0;
+}
+double pye_buffer_get(PyObject *o, I i) {
+  CpuBuffer *b = buffer_ptr(o); I offset;
+  if (!b || buffer_index(b, i, &offset) < 0) return -1.0;
+  double x; memcpy(&x, b->base + offset, 8);  /* unaligned exporters are allowed */
+  return x;
+}
+int pye_buffer_set(PyObject *o, I i, double x) {
+  CpuBuffer *b = buffer_ptr(o); I offset;
+  if (!b) return -1;
+  if (b->readonly) { PyErr_SetString(PyExc_TypeError, "buffer is read-only"); return -1; }
+  if (buffer_index(b, i, &offset) < 0) return -1;
+  memcpy(b->base + offset, &x, 8);
+  return 0;
+}
+double pye_buffer_dot(PyObject *left, PyObject *right) {
+#pragma STDC FP_CONTRACT OFF
+  CpuBuffer *a = buffer_ptr(left), *b = buffer_ptr(right);
+  if (!a || !b) return -1.0;
+  if (a->count != b->count) { PyErr_SetString(PyExc_ValueError, "buffer dot requires equal lengths"); return -1.0; }
+  double sum = 0.0;
+  I ai = a->offset, bi = b->offset;
+  for (I i = 0; i < a->count; i++) {
+    double x, y;
+    memcpy(&x, a->base + ai, 8); memcpy(&y, b->base + bi, 8);
+    sum += x * y;
+    /* Avoid even forming a pointer beyond the last element of reverse views. */
+    if (i + 1 < a->count) { ai += a->stride; bi += b->stride; }
+  }
+  return sum;
+}
+
 /* the builtin classes a Python exception may become (lib/pyobj.py's and tools/rt_cpython/pyobj.py's list) */
 static const char *const known[] = {"KeyError", "IndexError", "ZeroDivisionError", "OverflowError", "ValueError",
   "TypeError", "AttributeError", "ModuleNotFoundError", "ImportError", "NotImplementedError", "RecursionError",

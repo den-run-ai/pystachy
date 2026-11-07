@@ -86,6 +86,16 @@ adapt selected cases of that commit's Lib/test/test_contextlib.py and
 Lib/test/test_generators.py. They preserve the upstream assertions for the supported
 cases and disclose adaptations and exclusions; the same PSF license applies.
 
+CPython's selected copyreg registration functions
+------------------------------------------------
+
+tests/registrymods/copyreg_slice.py extracts pickle() and constructor() from
+CPython 3.13.16's Lib/copyreg.py. Their bodies are unchanged. The marked
+adaptations add the dynamic-Any opt-in and a type annotation for dispatch_table.
+The fixture exercises registration and reducer dispatch, not the complete
+copyreg module or pickle protocols. It uses the Python Software Foundation
+License Version 2, retained in tests/upstream/CPYTHON-LICENSE.txt.
+
 CPython's dynamic core regression cases
 --------------------------------------
 
@@ -616,14 +626,15 @@ CPython makes them; key= and the type-specialized compare functions are left out
 floats are merged with branch-free selects; and the merge buffer is memory that Pystachy's
 garbage collector scans.
 
-CPython's gamma functions and isclose() (runtime.c)
----------------------------------------------------
+CPython's gamma functions and isclose() (runtime.c, runtime.py)
+------------------------------------------------------------
 
 math.gamma() and math.lgamma() in runtime.c (the section that starts with "math.gamma and
 math.lgamma are CPython 3.13.16's m_tgamma and m_lgamma") are CPython 3.13.16's m_sinpi,
 lanczos_sum, m_tgamma and m_lgamma from Modules/mathmodule.c (SHA-256
 e9370d6380c154d620ab7d5b54727aedb6c19e786156974445b965d1dd9a233a), with their constants and
-comments; pys_m_isclose, just before them, is that file's math_isclose_impl.
+comments; pys_m_isclose in runtime.py is that file's math_isclose_impl, translated
+to typed Python with the same comparisons and arithmetic order.
 They are a derivative work of Python and are used under the Python Software Foundation License
 Version 2, reproduced below. The changes: Python's Py_IS_FINITE, Py_IS_NAN, Py_IS_INFINITY,
 Py_NAN, Py_HUGE_VAL and Py_INFINITY are C99's, the asserts are dropped, Py_UNREACHABLE() is

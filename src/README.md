@@ -9,7 +9,7 @@ remain valid Python and compile together through Pystachy's existing loader.
 | Area | Modules and responsibility |
 |---|---|
 | Syntax | [lexer](pystachy_compiler/lexer.py), [parser](pystachy_compiler/parser.py), [syntax](pystachy_compiler/syntax.py): tokens, parsing and AST nodes. |
-| Imports | [loader](pystachy_compiler/loader.py), [module](pystachy_compiler/module.py): source discovery, qualification and module records. [argparse_schema](pystachy_compiler/argparse_schema.py) checks literal parser declarations and generates typed Namespace classes. |
+| Imports | [loader](pystachy_compiler/loader.py), [module](pystachy_compiler/module.py): source discovery, qualification and module records. [argparse_schema](pystachy_compiler/argparse_schema.py) generates typed Namespace classes; [ctypes_schema](pystachy_compiler/ctypes_schema.py) lowers bounded ctypes declarations to the existing C FFI. |
 | Analysis | [analysis](pystachy_compiler/analysis.py), [scope](pystachy_compiler/scope.py), [flow](pystachy_compiler/flow.py): AST queries, lexical checks and definite assignment. |
 | Compilation | [gen](pystachy_compiler/gen.py), [program](pystachy_compiler/program.py), [functions](pystachy_compiler/functions.py): compiler state, program orchestration and function compilation. |
 | Types | [declarations](pystachy_compiler/declarations.py), [templates](pystachy_compiler/templates.py): annotations, fields and specialization. |
@@ -23,7 +23,8 @@ remain valid Python and compile together through Pystachy's existing loader.
 | Control flow | [statements](pystachy_compiler/statements.py), [exceptions](pystachy_compiler/exceptions.py): statements, loops and exceptional cleanup. |
 | Generators | [generators](pystachy_compiler/generators.py): generator functions as LLVM coroutines, `yield`, `yield from`, loops that own generators, generator expressions as values, `send()`, `throw()` and `close()`. |
 | Typed IR | [ir](pystachy_compiler/ir.py), [emission](pystachy_compiler/emission.py), [scalar_ir](pystachy_compiler/scalar_ir.py), [memory_ir](pystachy_compiler/memory_ir.py): records, instruction building, typed machine scalars and memory addresses, and function-state save/restore. |
-| Backend | [ircheck](pystachy_compiler/ircheck.py), [optimizations](pystachy_compiler/optimizations.py), [lowering](pystachy_compiler/lowering.py), [lower_module](pystachy_compiler/lower_module.py), [llvm_abi](pystachy_compiler/llvm_abi.py): verification, effects, IR passes, and LLVM lowering of functions, modules and native ABI declarations. |
+| Backend | [ircheck](pystachy_compiler/ircheck.py), [optimizations](pystachy_compiler/optimizations.py), [lowering](pystachy_compiler/lowering.py), [lower_module](pystachy_compiler/lower_module.py), [llvm_abi](pystachy_compiler/llvm_abi.py), [source_lines](pystachy_compiler/source_lines.py): verification, effects, IR passes, optional Python line tables, and LLVM lowering of functions, modules and native ABI declarations. |
+| Callback specialization | [callbacks](pystachy_compiler/callbacks.py): bounded precompiled loop variants with callable identity guards and an unchanged fallback. |
 | Union proofs | [union_proof](pystachy_compiler/union_proof.py), [union_state](pystachy_compiler/union_state.py): control-flow tag proofs and raw payload provenance for closed unions under `PYSTACHY_IRCHECK=1`. |
 | Shared support | [specs](pystachy_compiler/specs.py), [diagnostics](pystachy_compiler/diagnostics.py), [names](pystachy_compiler/names.py), [utils](pystachy_compiler/utils.py): operation tables, source locations, names and type helpers. |
 | CLI | [driver](pystachy_compiler/driver.py): JIT, AOT, extensions, LLVM tools and runtime caching. |
