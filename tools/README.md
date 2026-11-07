@@ -21,6 +21,7 @@ which checks each kind of change needs.
 | Verify declared upstream port coverage | `make port-check` | Pinned sources, adaptation diffs and upstream tests of selected ports under CPython. Compiled behavior needs the differential suite separately. |
 | Find performance changes | [perf_smoke.py](perf_smoke.py), `make bench-extended` | Checked workload outputs and separate compilation/execution measurements. See [performance](../docs/performance.md) and [kernel controls](../bench/smoke/README.md). |
 | Inspect emitted LLVM | [ir_cost_report.py](ir_cost_report.py) | Static call sites, runtime declarations/definitions and input hashes; static counts do not measure runtime cost. |
+| Check reduced LLVM optimizations | [llvm_validation.py](llvm_validation.py) | [Extracted scalar kernels](../docs/llvm-validation.md), structural verification, finite CPython/native agreement, optional llubi path checks and Alive2 refinement. |
 | Inspect typed stages or a compiler diagnostic | [inspect_compiler.py](inspect_compiler.py) | Same-run typed snapshots, pass diffs and structured diagnostics in the [hosted inspection prototype](../docs/compiler-inspection.md). |
 | Check release/install tooling | `make test-install`, [release_smoke.py](release_smoke.py) | Installation unit tests and release-artifact checks described in the [release guide](../docs/releasing.md); release publication has additional gates. |
 
