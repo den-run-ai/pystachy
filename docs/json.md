@@ -196,10 +196,14 @@ public `JSONDecoder` methods retain their signed-64-bit boundary.
 `dumps()` of `Any` values writes tuples as arrays, and int, float, bool and `None` keys as
 strings, and takes CPython's `skipkeys`, `check_circular` and `default` too. It raises CPython's
 `TypeError`s: `Object of type C is not JSON serializable` for a value JSON cannot hold, and `keys
-must be str, int, float, bool or None, not C`. A `default` callback's result becomes an `Any` value,
-so the callback is declared `-> Any`: one declared `-> dict[str, int]` is rejected, as a typed
-container is wherever it would become an `Any` value. It preserves wide integer values and
+must be str, int, float, bool or None, not C`. It preserves wide integer values and
 keys; its other limits are those listed above.
+
+A `default` callback's result must be representable as `Any`. Annotate it `-> Any`
+when it returns dynamic containers; concrete results such as `int` and native
+`list[int]` also work. An existing `dict[str, int]` result is rejected; use dynamic
+dictionary storage. See the [typed/dynamic contract](dynamic-any.md#the-typeddynamic-contract).
+
 Without `sort_keys`, callbacks that delete and reinsert keys or clear and repopulate the dict
 can change output order or entries compared with CPython's live dict-table traversal (the
 [dynamic `Any` deviation](dynamic-any.md#selecting-dynamic-storage)).
@@ -208,42 +212,57 @@ Elsewhere, including where the result has a typed or no annotation (`doc = json.
 
 ## Decoder
 
-`loads()` scans the UTF-8 bytes of its argument with integer comparisons, so it
-creates no one-character strings and translates no code-point offsets while
-scanning. Object keys, and the strings of a text of at most 1 KiB, use a scalar loop
-with no per-string setup. In a longer text, a string value of more than 32 bytes
+### Scanning
+
+`loads()` scans UTF-8 bytes with integer comparisons, avoiding one-character
+strings and code-point translations during scanning. Object keys, and strings
+in a document of at most 1 KiB, use a scalar loop with no per-string setup.
+In a longer document, a string value of more than 32 bytes
 continues past that scalar prefix with a shared bounded byte scanner, skipping eight
 bytes at a time until a quote, backslash or control byte is possible, then checking
-the matching word and tail scalar. Bounding the scalar loop and calling the scanner
-cost more than short strings save, so short texts and keys keep the plain loop; the
-retained [JSON decoder controls](../bench/smoke/README.md#retained-json-decoder-controls)
-and the [byte-scanning controls](extended-performance.md#json-byte-scanning-controls)
-measure both sides. After an escape, the helper scans the next ordinary
+the matching word and tail scalar.
+
+After an escape, the helper scans the next ordinary
 run when the run before the escape reached 16 bytes; dense escapes keep the byte loop,
-which a per-byte bound check made mispredict. Both typed and dynamic decoders use it.
-Loads use `memcpy`, require a
-complete word inside the range, and accept any alignment; high bytes keep their
-existing decoding behavior. Pystachy's `str.encode()` returns the string's own UTF-8 storage unless
+which a per-byte bound check made mispredict. Both typed and dynamic decoders use
+this scanner. Loads use `memcpy`, require a complete word inside the range and
+accept any alignment.
+
+Short texts and keys retain the scalar loop because scanner setup costs more than
+it saves there. The [JSON decoder controls](../bench/smoke/README.md#retained-json-decoder-controls)
+and [byte-scanning controls](extended-performance.md#json-byte-scanning-controls)
+measure both short and long inputs.
+
+### UTF-8 and error positions
+
+Pystachy's `str.encode()` returns the string's own UTF-8 storage unless
 the text contains a character from U+D000 to U+DFFF; then it checks and copies
-every character. Every delimiter, digit and escape is ASCII: the scanner stops
-only at character boundaries, and an error converts its byte offset into the
-character position CPython reports. A string without escapes is one slice of the
-bytes, decoded without an error handler or codec lookup; a document that holds
-lone surrogates, which `encode()` rejects, decodes its slices with
-`surrogatepass`. Pystachy reads files
+every character. Every delimiter, digit and escape is ASCII, so the scanner stops
+only at character boundaries. Errors convert byte offsets into the character
+positions CPython reports.
+
+A string without escapes is one slice of the bytes, decoded without an error
+handler or codec lookup. A document containing lone surrogates, which `encode()`
+rejects, decodes its slices with `surrogatepass`.
+
+Pystachy reads files
 ([deviation](language/compatibility.md#text-and-file-positions)), `input()` and
 `sys.argv` without checking their bytes, and `encode()` returns such text
 unchanged. When a slice is not UTF-8, `loads()` parses the text again and takes
 each string from the `str` itself, at character offsets counted as `str` counts
-them, as the character-by-character decoder this one replaced did. Integers of up
-to 18 digits accumulate as they are scanned; longer ones keep the signed 64-bit
-bound check.
+them. This preserves the earlier character-by-character decoder's behavior.
+
+### Keys and numbers
 
 A 64-entry cache indexed by key length and first byte, and checked byte for
 byte, returns the string of an equal object key seen earlier in the same
 document. Records of one shape then share their key objects, as CPython's
 decoder memo makes them do, and dictionary insertion reuses those keys' cached
 hashes. The cache lives for one `loads()` call.
+
+Integer tokens of up to 18 digits accumulate directly. Longer tokens are checked
+against the signed 64-bit bound: typed JSON rejects overflow, while dynamic JSON
+passes an overflowing token to the promoting-integer helper.
 
 ## Encoder
 
@@ -258,23 +277,127 @@ escaped character by character, again copying the runs between escapes whole. A
 byte that starts no UTF-8 sequence is escaped as the character `str` counts it
 as.
 
-In the [recorded encoder benchmark](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/reports/native-json-encoder-2026-10-19.md),
+In the [19 October 2026 encoder measurements](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/reports/native-json-encoder-2026-10-19.md),
 AOT and JIT `dumps()` of 5,000-record documents took 1.1–1.6 times CPython's C
 encoder time. Escaping non-ASCII text with `ensure_ascii=True` was the slowest
 case. The report includes inputs, measurements and comparisons with the earlier encoder.
 
 ## Benchmarks
 
-The [record-processing benchmark](json-benchmark.md) uses nested API/event
-records with common integer amounts and rare floats, nulls, missing fields and
-other values. It separates parsing, processing and their combination, and compares
-ordinary execution with a hand-written guarded control. Correct generic fallback
-behavior is required for every alternative. The
-[parser measurements](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/reports/native-json-parser-2026-10-18.md) compare CPython,
-PyPy and Pystachy, with parsing and processing timed separately. They do not
-establish a reliable benefit from the hand-written guarded path in JIT or AOT.
-The [initial checkpoint](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/reports/native-json-2026-10-18.md) retains the earlier
-parser baseline and experiment details.
+[`tools/bench_json.py`](../tools/bench_json.py) measures parsing, processing and
+encoding of nested API/event records. It runs the same
+[`bench/json_records.py`](../bench/json_records.py) consumer in each mode and checks
+every measured result against CPython. Run the controller with the exact CPython
+version in [`.python-version`](../.python-version), from the repository root:
+
+```sh
+python3.13 tools/bench_json.py --compiler ./pystachy --smoke
+python3.13 tools/bench_json.py --compiler ./pystachy --profiles skewed --records 10000
+python3.13 tools/bench_json.py --compiler ./pystachy --pypy /path/to/pypy3 \
+  --modes cpython pypy jit aot cpython-lib pypy-lib --texts utf8 ascii escaped
+```
+
+`--smoke` checks correctness with 100 records and one iteration, sample and process;
+its timings are not speedup evidence. Use `--compiler "python3.13 -m pystachy"` for
+the CPython-hosted compiler. Reports go to `build/json-benchmark.json` by default;
+`--json PATH` selects another file.
+
+The consumer also runs without arguments: it prints one deterministic checksum
+for a small fixture covering every amount alternative, missing fields and nested
+Unicode. `make bench` and the verification matrix compare that output with
+CPython in JIT and AOT. The controller supplies the larger measurement inputs.
+
+### Runtimes
+
+| Mode | JSON implementation | Execution |
+|---|---|---|
+| `cpython` | CPython's standard `json`, including its C scanner | Interpreter |
+| `pypy` | PyPy's standard `json` | PyPy interpreter and tracing JIT |
+| `jit`, `aot` | The compiler-resolved `json.py`, normally `lib/json.py` | Pystachy native code |
+| `cpython-lib` | That same `json.py` source | CPython interpreter |
+| `pypy-lib` | That same `json.py` source | PyPy interpreter and tracing JIT |
+
+The `-lib` modes separate the parser implementation from how it executes. For
+PyPy 3.11, the controller replaces the PEP 695 type-alias statement with an
+assignment in a temporary copy; it leaves the parser logic unchanged.
+
+The controller verifies each imported JSON module with `bench/` first on the
+interpreter's module path. Native resolution checks `bench/`, then `PYSTACHY_PATH`
+entries relative to the repository root, then `lib/` under `PYSTACHY_HOME` or the
+compiler's home. The report records the resolved source path and hash. To compare
+parser revisions with one compiler, select their directories through
+`PYSTACHY_PATH` and keep the other inputs fixed.
+
+### Inputs and phases
+
+Inputs are deterministic and generated outside the timers. `skewed` uses integer
+amounts in 92 of each 100 records; `mixed` has no integer amounts; `changing`
+switches from skewed to mixed halfway through. Floats, nulls, missing fields,
+strings, booleans and container amounts all affect the checksum. The inputs also
+contain nested objects, arrays and Unicode; their sums stay within signed 64-bit
+range.
+
+`--texts utf8` keeps raw non-ASCII text, `escaped` encodes the same values with
+`\u` escapes, and `ascii` substitutes one ASCII character for each non-ASCII
+character. The ASCII control preserves character lengths and the processing
+checksum.
+
+| Phase | Separately timed operations |
+|---|---|
+| `all` | Parse; process the parsed document; parse and process together |
+| `predecoded` | Process a document decoded before timing; rebuild its containers; encode it with default `json.dumps()` options |
+
+Both phases run by default; `--phases` selects either. The `predecoded` processing
+measurement excludes parser allocation and garbage. Its `rebuild()` control
+creates fresh lists and dicts around the same scalars and strings, without text
+scanning or conversion. In native code, use `parse - rebuild` as an optimistic
+ceiling on savings from a faster input format that still builds these containers.
+That subtraction is not valid for CPython, where `rebuild()` is interpreted and
+the standard decoder runs in C. Encodings must preserve the decoded checksum and
+match CPython's text length and order-sensitive digest.
+
+Every case compares `generic` processing with `handguarded`, a handwritten integer
+fast path that excludes booleans and falls back for every other value. It reads
+the original objects without copying them or persisting a schema. This is a
+source-level control; it neither collects profiles nor demonstrates automatic
+compiler specialization. LLVM may optimize the generic path similarly, so the
+guard need not improve performance.
+
+### Measurement and evidence
+
+Warmup runs the measured operations for `--warmup-ms` (2,000 ms by default), with
+at least one round even when set to zero. Samples exclude warmup, and the report
+retains its duration and round count. PyPy may compile during warmup; Pystachy
+compiles before the program starts.
+
+Operation timers exclude file I/O, initial validation and printing. Whole-process
+wall time includes those costs, warmup and JIT compilation. AOT build time and
+executable size are separate, as is the first native invocation that primes the
+runtime cache. The independent `PYSTACHY_GC=stats` run reports GC and heap data,
+not an allocation count. On Linux, `/usr/bin/time` supplies peak RSS when present;
+otherwise RSS is `null`. JIT and build RSS include toolchain children and are not
+comparable with AOT runtime RSS.
+
+Reports retain raw samples, input and source hashes, interpreter identities and
+binary hashes, imported JSON paths, compiler revision, environment and dirty-tree
+status. Mismatched checksums or encodings and malformed timing output fail the
+run; the report retains completed work with a failed status. Compare completed,
+passed runs.
+
+Independent processes are the statistical repetitions. The controller rotates
+execution order, takes the median of each process's samples, then summarizes
+those process results. For performance evidence, increase `--processes`,
+`--samples` and `--iterations` on an idle host. Keep benchmarks separate from
+builds and test suites that compete for the same resources.
+
+### Earlier measurements
+
+The [18 October parser measurements](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/reports/native-json-parser-2026-10-18.md)
+compare CPython, PyPy and Pystachy with parsing and processing timed separately.
+They did not establish a reliable benefit from the handwritten guarded path in
+JIT or AOT. The [initial checkpoint](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/reports/native-json-2026-10-18.md)
+retains the earlier parser baseline and experiment details. These reports describe
+their pinned revisions; use the commands above to measure the current tree.
 
 ## Validation and reproduction
 
@@ -284,7 +407,6 @@ From the repository root:
 ```sh
 PYSTACHY_GC_STRESS_PROGRAM=1 make test-py PY=python3.13 FILES="tests/programs/library/json_*.py tests/programs/inference/recursive_alias_*.py tests/deviations/json_*.py tests/deviations/recursive_alias_limits.py"
 python3.13 tools/json_check.py --native --gc-stress
-python3.13 tools/bench_json.py --compiler "python3.13 -m pystachy" --smoke
 ```
 
 The regular fixtures compare against CPython's standard `json`; the separate

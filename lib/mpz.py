@@ -1,8 +1,8 @@
 """Explicit immutable arbitrary-precision integers, backed by the native runtime.
 
-Ordinary Pystachy int remains checked signed 64-bit. Construct mpz from an int
-or a string, and keep calculations in mpz to grow beyond that range. The
-CPython reference module in tools/rt_cpython delegates arithmetic to int.
+Ordinary int is checked signed 64-bit by default; python-int is a separate
+opt-in. Construct mpz from a signed 64-bit int or a string to select this class.
+tools/rt_cpython/mpz_oracle.py provides an independent CPython-int oracle.
 """
 
 __all__ = ["mpz"]

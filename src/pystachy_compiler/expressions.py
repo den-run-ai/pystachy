@@ -1236,7 +1236,9 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             v = self.expr(n.kids[i], ws[i] if i < len(ws) else "", returnctx, resultsoft)
             if i < len(ws) and v.t != ws[i] and self.widens(v.t, ws[i]):
                 v = Val(v.v, ws[i])  # (None as an object, T as T | None)
-            elif i < len(ws) and self.converts(v.t, ws[i]) and not is_sopt(v.t) and not (int_lists() and big_viewable(v.t, ws[i])):
+            elif i < len(ws) and self.converts(v.t, ws[i]) and (not is_sopt(v.t) or ws[i] == "dyn") and not (int_lists() and big_viewable(v.t, ws[i])):
+                # An Any item must capture optional numeric identity before a
+                # typed tuple slot would discard the original box's provenance.
                 v = self.coerce(v, ws[i])  # (an int as an int | None: its box; a tuple of promoting ints stays one, as its int items do: bigints.held)
             elif i < len(ws) and is_fn(v.t) and is_callable(unopt(ws[i])):
                 v = self.coerce(v, ws[i])  # (a function where a Callable is expected: made one)

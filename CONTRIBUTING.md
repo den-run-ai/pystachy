@@ -120,6 +120,12 @@ build/test scripts, dependency changes and executable test fixtures. Run untrust
 only in disposable isolated environments without secrets or write-capable repository credentials.
 Pending workflow approval is not a test failure. Approval permits CI execution, not merge.
 
-Merge requires maintainer review and passing applicable checks on the current revision;
-new changes need renewed review and validation. Passing CI does not resolve open design
+Merge requires maintainer review and passing applicable checks on the current revision.
+For `main`, configure GitHub branch protection to require the GitHub Actions checks
+`Verification`, `make lint (ruff, shellcheck, clang -Wall -Wextra)` and
+`DCO certified (fork pull requests)`, plus the `Submission format` commit status.
+Apply the rule to administrators and other
+credentials with bypass access. Documentation-only changes still receive `Verification`.
+
+New changes need renewed review and validation. Passing CI does not resolve open design
 or security concerns. Accepted contributions do not grant write or release access.

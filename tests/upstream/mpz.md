@@ -2,8 +2,10 @@
 
 The `mpz` fixtures run through Pystachy's ordinary differential corpus in JIT
 and AOT, including its GC-stressed and sanitizer configurations. They exercise
-an explicit arbitrary-precision class; ordinary `int` remains checked signed
-64-bit. They do not establish full CPython `int` or C-API compatibility.
+an explicit arbitrary-precision class. Their ordinary `int` calculations use
+checked signed 64-bit storage; the separate [promoting-int cases](python-int.md)
+cover the opt-in integer policy. These fixtures do not establish full CPython
+`int` or C-API compatibility.
 
 The fixtures first import the native `mpz` module. Under CPython, where that
 module is absent, they import [mpz_oracle.py](../../tools/rt_cpython/mpz_oracle.py),
