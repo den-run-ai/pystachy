@@ -125,6 +125,7 @@ from src.pystachy_compiler.dynamic import (
     gen_dyn_call as dynamic_dyn_call,
     gen_dyn_call_args as dynamic_dyn_call_args,
     gen_dyn_call_value as dynamic_dyn_call_value,
+    gen_dyn_star_call as dynamic_dyn_star_call,
     gen_dyn_callables as dynamic_dyn_callables,
     gen_dyn_check as dynamic_dyn_check,
     gen_dyn_class_type as dynamic_dyn_class_type,
@@ -2255,6 +2256,9 @@ class Gen:
 
     def dyn_call_value(self, o: Val, args: list[Node]) -> Val:
         return dynamic_dyn_call_value(self, o, args)
+
+    def dyn_star_call(self, o: Val, args: list[Node], method: str = "", found: Val | None = None) -> Val:
+        return dynamic_dyn_star_call(self, o, args, method, found)
 
     def dyn_fn_takes(self, ft: str, key: str, an: list[Node]) -> str:
         return dynamic_dyn_fn_takes(self, ft, key, an)

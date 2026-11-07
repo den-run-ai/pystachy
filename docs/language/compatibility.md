@@ -299,6 +299,13 @@ item layout. See the [native-list deviation](../../tests/deviations/dynany_nativ
 Unsupported selected comparison bodies also raise
 `TypeError`; they do not silently fall back to identity or a lower-priority method.
 
+Runtime argument packs support fixed user callables and prepared constructors.
+Variadic targets, erased callable signatures, custom mappings, builtin methods,
+unprepared classes and adapters whose bodies cannot compile raise
+`NotImplementedError` when selected. See the
+[runtime-call boundaries](../../tests/deviations/dyn_star_reducer_boundaries.py)
+and [unavailable-body case](../../tests/deviations/dyn_star_reducer_unsupported_body.py).
+
 The prototype's [operation matrix](../dynamic-any.md#operations),
 [typed/dynamic boundary](../dynamic-any.md#the-typeddynamic-contract) and
 [deviations](../dynamic-any.md#deviations) define comparison adapters, field writes,
@@ -584,7 +591,8 @@ See [annotations](typing.md#annotations), [aliases](typing.md#type-aliases) and
   string expressions in `type` statements fail even when unused.
 - **Dynamic `Any`:** typed mutable containers other than the supported native `list[int]`
   boundary becoming `Any`, unimplemented prototype operations,
-  call-argument unpacking of `Any`, or None-first storage that cannot select `Any` initially:
+  runtime `**` expansion of native dictionaries with non-str keys, or None-first storage
+  that cannot select `Any` initially:
   generator/closure locals, function-assigned globals, fields assigned outside their class's
   methods, and all-`None` displays. See the [prototype contract](../dynamic-any.md).
 

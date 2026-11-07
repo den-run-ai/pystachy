@@ -21,8 +21,7 @@ def reduce_entry(value: Any) -> Any:
 def restore(value: Any) -> Any:
     reducer = copyreg.dispatch_table[type(value)]
     factory, arguments = reducer(value)
-    # Runtime-sized *arguments remains separate; these reductions have two items.
-    return factory(arguments[0], arguments[1])
+    return factory(*arguments)
 
 
 copyreg.pickle(Entry, reduce_entry, Entry)

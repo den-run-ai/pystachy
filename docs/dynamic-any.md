@@ -197,6 +197,7 @@ Boxing the original instance establishes its native adapter during compilation.
 The constructor reuses its compiled initializer, including an existing
 class-specific specialization for inherited `__init__`. Explicit positional and
 keyword arguments and supported static unpacking use the ordinary binder.
+Runtime-sized `factory(*args, **kwargs)` uses the binding contract below.
 For supplied arguments, parameter layouts containing user classes require
 existing boxed adapters for those classes, including optional, union and tuple
 members. Omitted defaults
@@ -213,9 +214,8 @@ Constructor arms do not speculatively compile unused bodies or boxing helpers.
 Builtin classes, class templates, dataclasses, NamedTuples, decorated or variadic
 initializers, `__init__` stored as class data, and custom `__new__` remain outside
 this construction path.
-Runtime-sized argument unpacking, runtime class creation, metaclasses, writable
-class dictionaries and classes held as the second argument of `isinstance`
-also remain unsupported.
+Runtime class creation, metaclasses, writable class dictionaries and classes held
+as the second argument of `isinstance` also remain unsupported.
 Overrides of `__module__` and `__qualname__` must be fixed literal strings.
 Computed overrides or later writes to `__name__`, `__qualname__` or `__module__`
 are rejected for a stored class value, or raise `NotImplementedError` when
@@ -228,6 +228,42 @@ Keep registry class values in `Any` directly. The `copyreg` tests use two
 unchanged upstream registration functions and bounded reconstruction steps;
 they do not establish full
 `copyreg` or `pickle` support.
+
+## Runtime argument unpacking
+
+A callable held in `Any` can receive `factory(*args, **kwargs)` with runtime-sized
+arguments. This supports fixed signatures of functions, closures, ordinary user
+methods and callable objects, plus the prepared class constructors above. Reducers
+can therefore return `(type(value), args)` without a consumer indexing each argument.
+
+Positional packs accept the supported dynamic iterables, including lists, tuples,
+ranges and generators. Native lists and homogeneous tuples whose elements can
+cross `Any` contribute boxed items to fresh argument storage. Keyword packs accept
+dynamic builtin dictionaries,
+str-keyed native dictionaries and existing fixed kwargs records. Already boxed
+elements retain their identity and mutable aliases in the fresh outer packs.
+Native storage retains the existing typed/`Any` identity limits; in particular,
+packing a native numeric dictionary does not add scalar identity to its reads.
+
+Binding checks positional-only and keyword-only parameters, repeated or unexpected
+keywords, missing arguments and excess positional arguments before converting
+argument values. Omitted defaults reuse definition-time values, including closure
+captures; an explicit `None` remains a supplied value. The callable is captured
+first. Multiple positional groups expand in order; a sole `*args` is expanded after
+keyword evaluation. Duplicate keyword merges stop later groups.
+
+Callees declaring variadic `*args` or `**kwargs`, erased `Callable` signatures,
+builtin methods with runtime packs, custom mapping protocols and unprepared class
+constructors remain explicit `NotImplementedError` boundaries. Native keyword
+dictionaries with non-str key types are rejected at compilation to avoid rehashing
+user keys while converting their storage. Existing iterator and typed/`Any` storage
+limits still apply. Adapter preparation requires stable inferred layouts and
+existing object helpers. An adapter that needs broader inference, new object
+helpers or an unsupported body raises `NotImplementedError` only when selected;
+unrelated stored callbacks remain usable. See the
+[boundary cases](../tests/deviations/dyn_star_reducer_boundaries.py) and
+[unsupported adapter](../tests/deviations/dyn_star_reducer_unsupported_body.py).
+These calls do not establish full `copyreg` or `pickle` support.
 
 ## Representation
 
@@ -588,11 +624,14 @@ A `for` loop, membership fallback, `any()`, `all()` and reductions consume items
 they arrive. Builtin iterators remain exhausted after their first exhaustion;
 user iterators may resume after raising `StopIteration`. `__contains__` takes
 precedence over iteration. A custom `__iter__` may return an iterator without its
-own `__iter__`, or a generator. `list()` and list extension request the source's
-available `__len__` after obtaining its iterator. Sequence-fast consumers such as
+own `__iter__`, or a generator. `list()`, list extension and runtime star expansion
+request the source's available `__len__` after obtaining its iterator, falling
+back to `__length_hint__` when no length is available. Sequence-fast consumers such as
 `str.join()` and dictionary-pair conversion instead request the returned iterator's
-hint. TypeError declines a hint after its effects; negative lengths and other
-exceptions propagate. Inferred length results are checked before allocation, with
+hint. TypeError from either method call declines that hint after its effects;
+an invalid `__length_hint__` result, negative lengths and other exceptions
+propagate. Hint results must be integers or booleans; `__len__` also accepts
+`__index__` results. Inferred length results are checked before allocation, with
 a separate specialization that leaves ordinary typed `len()` rules unchanged.
 
 `reversed()` supports boxed lists, tuples, dictionaries, strings and ranges, and
@@ -604,8 +643,8 @@ therefore share advancement, cleanup and yielded mutable values.
 
 This remains a bounded protocol surface: legacy `__getitem__` iteration and the
 `__len__`/`__getitem__` reverse fallback are unsupported, as in typed code.
-`__length_hint__`, generator `send`/`throw`/`close` through `Any`, and generator
-`StopIteration.value` are not added here. A generator yielding aliased typed mutable
+Returning `NotImplemented` from a hint, generator `send`/`throw`/`close` through
+`Any`, and generator `StopIteration.value` are not added here. A generator yielding aliased typed mutable
 containers cannot box them; use a boxable yield channel such as `list[Any]` from
 the start. `str.join()` and dictionary-pair conversion preserve a `TypeError`
 raised by user `__iter__` rather than replacing its message as CPython does.
@@ -847,7 +886,7 @@ dynamic opt-in and an annotation for the empty registry. It checks exact-type
 reducer lookup, callback replacement, validation order and reconstruction from
 reduction tuples with one argument.
 `tests/programs/upstream/upstream_copyreg_construct.py` returns actual class
-values from reducers and reconstructs base/subclass instances with two arguments.
+values from reducers and reconstructs base/subclass instances through `factory(*args)`.
 It checks exact type, fresh identity and shared mutable payloads. Full `copyreg`
 still stops at runtime `int | str`; omitting that registration reaches the
 unsupported builtin method value `int.__new__`.
@@ -934,9 +973,10 @@ document into dicts and lists of `Any` values that programs which do not opt in 
 - A function value prints as `<function>`; builtin functions and methods (`len`, `"".join`)
   cannot become `Any` values yet.
 - Calls of `Any` values and their methods take positional and keyword arguments, and what a
-  typed call unpacks (a tuple's items, a dict display with str keys, a function's `**kwargs`);
-  an `Any` value unpacked into a call's arguments (`f(*xs)`) is rejected at compile time. A
-  builtin type's method takes keyword arguments only where typed code takes them
+  typed call unpacks (a tuple's items, a dict display with str keys, a function's `**kwargs`).
+  [Runtime argument unpacking](#runtime-argument-unpacking) additionally supports fixed
+  user callables and prepared constructors; variadic callees and custom mappings remain
+  bounded. A builtin type's method takes keyword arguments only where typed code takes them
   (`list.sort()`'s `key` and `reverse`, `dict.update()`'s): another raises the `TypeError` that
   typed code reports at compile time, where CPython binds them (`s.split(sep=",")`). So does a
   call with keyword arguments of a function value whose type is a `Callable`, which has no
@@ -1047,11 +1087,11 @@ lines.
   closure's cell and a generator's frame, which would need their users compiled again too.
 - **Broader typed-container crossings**: the flow analysis that selects `list[Any]` storage at the
   allocation of every alias of a container that may flow into `Any` storage.
-- **Calls**: an `Any` value unpacked into a call's arguments, through a generic binding entry;
+- **Calls**: variadic targets and custom mappings through runtime binding;
   builtin functions as values; stored-class construction beyond precompiled
   ordinary instance adapters and initializers.
 - **Protocols**: legacy sequence iteration through `__getitem__`, reverse iteration through
-  `__len__`/`__getitem__`, `__length_hint__`, and the
+  `__len__`/`__getitem__`, `NotImplemented` hint results, and the
   builtins listed under [deviations](#deviations) that do not take `Any` values yet.
 - **Guarded variants and inline caches** only where measurements justify them (#392): a
   dispatcher with one dominant case is a candidate for a guarded direct call.

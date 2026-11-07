@@ -835,6 +835,9 @@ RUNTIME: dict[str, str] = {
     "dyn.int_of": "int:%ptr|R A|", "dyn.float_of": "float:%ptr|R A|", "dyn.unpack": "%ptr:%ptr,int|R A I U rL rD|",
     "dyn.slice": "%ptr:%ptr,%ptr,%ptr,%ptr|R A I U|", "dyn.update": "None:%ptr,%ptr|R A I U|",
     "dyn.list_of": "%ptr:%ptr,%ptr|R A rL wL|", "dyn.list": "list[T]:%ptr|R A I U rL rD|", "dyn.strs": "list[str]:%ptr|R A I U rL rD|", "dyn.id": "int:%ptr||",
+    "dyn.star_extend": "None:list[dyn],%ptr,%ptr,%ptr|R A I U rL wL rD|",
+    "dyn.kw_merge": "None:dict[dyn,dyn],%ptr,%ptr,%ptr,%ptr|R A I U rD wD|",
+    "dyn.bind": "list[dyn]:list[dyn],dict[dyn,dyn],str,str,str,int,int,int,int|R A I U rL rD|",
     # weakref handles are atomic GC objects; reads depend on collections (I prevents CSE), as does
     # the queue of the fire functions of references whose referents a collection found dead
     "weakref.new": "%ptr:%ptr,%ptr|A I|", "weakref.get": "%ptr:%ptr|I|", "weakref.fired": "%ptr:|I|",

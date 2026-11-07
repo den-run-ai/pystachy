@@ -5598,6 +5598,179 @@ void pys_dyn_update(Dict *d, Dyn *x) {
     pys_dict_set(d, kv->a[0], kv->a[1]);
   }
 }
+/* Runtime-sized call packs own fresh scanned containers. Their elements retain the original
+   boxes (including native-list identity companions); no typed aliased storage is reinterpreted.
+   A null name callback denotes LIST_EXTEND's mixed-positional path. A sole *source is
+   materialized after keyword merges by the compiler. Calling an object's __str__ to name
+   an unpacking error must happen only when the error is known, after argument evaluation. */
+static Str *dyn_call_text(Dyn *value, Str *(*convert)(Dyn *)) { return convert(value); }
+static _Noreturn void dyn_call_error(Buf *b) {
+  /* Keyword names and an object's __str__ may contain NUL; retain their byte lengths. */
+  pys_raise(cstr("TypeError"), pys_str(b->p, b->n));
+}
+void pys_dyn_star_extend(List *dest, Dyn *source, Dyn *callee, Str *(*name)(Dyn *)) {
+  if (!dyn_iterable(source)) {
+    if (!name) failf("TypeError: Value after * must be an iterable, not %s", DNAME(source));
+    Str *who = dyn_call_text(callee, name);
+    Buf b = {0}; put(&b, who->s, who->len);
+    const char *m = " argument after * must be an iterable, not ";
+    put(&b, m, strlen(m)); put(&b, source->t->name->s, source->t->name->len);
+    dyn_call_error(&b);
+  }
+  if (DKIND(source) == DK_LIST) {
+    I n = ((List *)source->v)->len;
+    for (I i = 0; i < n; i++) pys_list_append(dest, (I)dyn_list_at(source, i));
+    return;
+  }
+  if (DKIND(source) == DK_TUPLE) {
+    VTuple *t = (VTuple *)source->v;
+    for (I i = 0; i < t->len; i++) pys_list_append(dest, t->a[i]);
+    return;
+  }
+  DynIter *it = pys_dyn_iter(source);   /* __iter__ validation precedes the length hint */
+  if (source->t->len && dyn_user_len(source) > INT64_MAX / (I)sizeof(I)) pys_fail("MemoryError");
+  for (Dyn *x; (x = pys_dyn_next(it));) pys_list_append(dest, (I)x);
+}
+static _Noreturn void dyn_kw_duplicate(Dyn *callee, Str *(*name)(Dyn *), Dyn *key, Str *(*stringify)(Dyn *)) {
+  /* CPython formats the callable before the key; either conversion can itself raise. */
+  Str *who = dyn_call_text(callee, name);
+  Str *keyname = DKIND(key) == DK_STR ? (Str *)key->v : dyn_call_text(key, stringify);
+  Buf b = {0}; put(&b, who->s, who->len);
+  const char *m = " got multiple values for keyword argument '";
+  put(&b, m, strlen(m)); put(&b, keyname->s, keyname->len); put(&b, "'", 1);
+  dyn_call_error(&b);
+}
+/* ** accepts builtin dynamic dicts. Custom mapping protocols remain an explicit boundary.
+   Merge with each source entry's stored hash: hashing it again would add __hash__ calls.
+   Non-string keys are checked only after every mapping has merged, as CALL_FUNCTION_EX does. */
+void pys_dyn_kw_merge(Dict *dest, Dyn *source, Dyn *callee, Str *(*name)(Dyn *), Str *(*stringify)(Dyn *)) {
+  if (DKIND(source) != DK_DICT) {
+    if (DKIND(source) == DK_OBJ) pys_fail("NotImplementedError: dynamic ** calls require builtin dict mappings");
+    Str *who = dyn_call_text(callee, name);
+    Buf b = {0}; put(&b, who->s, who->len);
+    const char *m = " argument after ** must be a mapping, not ";
+    put(&b, m, strlen(m)); put(&b, source->t->name->s, source->t->name->len);
+    dyn_call_error(&b);
+  }
+  Dict *from = (Dict *)source->v;
+  if (!from->len) return;
+  int empty = !dest->len;
+  if (empty && clean(from)) { retable(dest, from); return; }
+  if ((dest->size ? dest->size : 8) * 2 / 3 < from->len)
+    build(dest, dest, keysize(((dest->len + from->len) * 3 + 1) / 2));
+  I used = from->len;
+  for (I e = 0; e < from->n; e++) if (dlive(from, e)) {
+    I key = from->keys[e], value = from->vals[e];
+    uint64_t hash = from->hs[e];   /* comparisons can replace the source table */
+    if (!empty && dfind(dest, key, hash, NULL) >= 0) dyn_kw_duplicate(callee, name, (Dyn *)key, stringify);
+    /* _PyDict_MergeEx first checks a nonempty destination for a duplicate, then insertdict
+       looks up the key again. A second comparison can run code or change its answer. An
+       initially empty destination skips the duplicate check for the complete merge. */
+    dset(dest, key, hash, value);
+    if (from->len != used) pys_fail("RuntimeError: dict mutated during update");
+  }
+}
+static I dyn_param_find(Str *names, I *starts, I np, Str *key) {
+  for (I j = 0; j < np; j++) {
+    I n = starts[j + 1] - starts[j] - (j + 1 < np);
+    if (key->len == n && !memcmp(key->s, names->s + starts[j], n)) return j;
+  }
+  return -1;
+}
+static void dyn_param_put(Buf *b, Str *names, I *starts, I np, I j) {
+  put(b, names->s + starts[j], starts[j + 1] - starts[j] - (j + 1 < np));
+}
+/* Bind a fixed signature to nullable slots. names has '\1'-separated ALL parameter names;
+   required has one '1' (required) or '0' (default) per name. npos and posonly are absolute
+   parameter indices, own implicit receiver/env slots are already filled, and off adjusts
+   counts for classmethod's omitted cls (+1) or a closure's synthetic env (-1).
+   Implicit and omitted-default result slots stay NULL, distinct from boxed None. The
+   generated adapter supplies definition-time defaults, then calls its ordinary compiled fn. */
+List *pys_dyn_bind(List *pos, Dict *kw, Str *fname, Str *names, Str *required, I npos, I posonly, I own, I off) {
+  I np = required->len;
+  I *starts = pys_alloc_atomic((np + 1) * sizeof(I));
+  I count = 1; starts[0] = 0;
+  for (I i = 0; i < names->len; i++) if (names->s[i] == '\1' && count < np) starts[count++] = i + 1;
+  starts[np] = names->len;
+  List *bound = pys_list_new(np); bound->len = np;
+  for (I i = 0; i < pos->len && i + own < npos; i++) bound->a[i + own] = pos->a[i];
+  /* CPython checks the complete keyword tuple's strings before matching any parameter. */
+  for (I e = 0; e < kw->n; e++) if (dlive(kw, e) && DKIND((Dyn *)kw->keys[e]) != DK_STR)
+    pys_fail("TypeError: keywords must be strings");
+  for (I e = 0; e < kw->n; e++) if (dlive(kw, e)) {
+    Str *key = (Str *)((Dyn *)kw->keys[e])->v;
+    I j = dyn_param_find(names, starts, np, key);
+    if (j < 0 || j < posonly) {
+      Buf b = {0}; put(&b, fname->s, fname->len);
+      I po = 0;
+      for (I k = 0; k < kw->n; k++) if (dlive(kw, k)) {
+        Str *s = (Str *)((Dyn *)kw->keys[k])->v;
+        I index = dyn_param_find(names, starts, np, s);
+        if (index >= 0 && index < posonly) po++;
+      }
+      if (po) {
+        const char *m = "() got some positional-only arguments passed as keyword arguments: '";
+        put(&b, m, strlen(m)); I added = 0;
+        /* Positional-only complaints list signature order, not keyword insertion order. */
+        for (I index = 0; index < posonly; index++) {
+          for (I k = 0; k < kw->n; k++) if (dlive(kw, k)) {
+            Str *s = (Str *)((Dyn *)kw->keys[k])->v;
+            if (dyn_param_find(names, starts, np, s) == index) {
+              if (added++) put(&b, ", ", 2);
+              dyn_param_put(&b, names, starts, np, index);
+              break;
+            }
+          }
+        }
+      } else {
+        const char *m = "() got an unexpected keyword argument '";
+        put(&b, m, strlen(m)); put(&b, key->s, key->len);
+      }
+      put(&b, "'", 1); dyn_call_error(&b);
+    }
+    if (j < own || bound->a[j]) {
+      Buf b = {0}; put(&b, fname->s, fname->len);
+      const char *m = "() got multiple values for argument '";
+      put(&b, m, strlen(m)); put(&b, key->s, key->len); put(&b, "'", 1);
+      dyn_call_error(&b);
+    }
+    bound->a[j] = kw->vals[e];
+  }
+  I given = pos->len + own;
+  if (given > npos) {
+    I defaults = 0, kwgiven = 0;
+    for (I j = 0; j < npos; j++) if (required->s[j] != '1') defaults++;
+    for (I j = npos; j < np; j++) if (bound->a[j]) kwgiven++;
+    char counts[240];
+    int n;
+    if (defaults) n = snprintf(counts, sizeof counts, "() takes from %lld to %lld positional arguments but %lld", (long long)(npos + off - defaults), (long long)(npos + off), (long long)(given + off));
+    else n = snprintf(counts, sizeof counts, "() takes %lld positional argument%s but %lld", (long long)(npos + off), npos + off != 1 ? "s" : "", (long long)(given + off));
+    Buf b = {0}; put(&b, fname->s, fname->len); put(&b, counts, n);
+    if (kwgiven) {
+      n = snprintf(counts, sizeof counts, " positional argument%s (and %lld keyword-only argument%s)", given + off != 1 ? "s" : "", (long long)kwgiven, kwgiven != 1 ? "s" : "");
+      put(&b, counts, n);
+    }
+    const char *tail = given + off == 1 && !kwgiven ? " was given" : " were given";
+    put(&b, tail, strlen(tail)); dyn_call_error(&b);
+  }
+  for (int kind = 0; kind < 2; kind++) {
+    I missing = 0;
+    for (I j = own; j < np; j++) if (!bound->a[j] && required->s[j] == '1' && (j < npos) == !kind) missing++;
+    if (!missing) continue;
+    Buf b = {0}; put(&b, fname->s, fname->len); char message[128];
+    int n = snprintf(message, sizeof message, "() missing %lld required %s argument%s: ", (long long)missing, kind ? "keyword-only" : "positional", missing != 1 ? "s" : "");
+    put(&b, message, n); I added = 0;
+    for (I j = own; j < np; j++) if (!bound->a[j] && required->s[j] == '1' && (j < npos) == !kind) {
+      if (added) {
+        const char *sep = added + 1 == missing ? missing == 2 ? " and " : ", and " : ", ";
+        put(&b, sep, strlen(sep));
+      }
+      put(&b, "'", 1); dyn_param_put(&b, names, starts, np, j); put(&b, "'", 1); added++;
+    }
+    dyn_call_error(&b);
+  }
+  return bound;
+}
 /* list(o): a new list of o's items; str.join's items, which must be strs (CPython's message) */
 List *pys_dyn_list(Dyn *o) {
   DynIter *it = pys_dyn_iter(o);   /* __iter__ and its validation precede __len__'s hint */

@@ -666,7 +666,9 @@ future `send()` calls. A yielding `__iter__` method can also use `Iterator[Any]`
 `*args` is a fixed tuple for each call. Iterating a nonempty tuple requires one item type.
 Tuple arguments and list or tuple displays can be unpacked into any callable:
 `fn(*args)` or `fn(*[a, b])`. `print()` additionally accepts a list, string or dict through `*`.
-Arbitrary runtime list unpacking into other functions is unsupported.
+In dynamic-`Any` modules, a callable held in `Any` also accepts
+[runtime argument packs](../dynamic-any.md#runtime-argument-unpacking) for fixed signatures.
+Other runtime list unpacking remains unsupported.
 
 `**kwargs` has a fixed set of keyword names and value types for each call. It supports
 indexing, `get()`, membership, length, truth tests, iteration and `keys()`. If its values
@@ -676,7 +678,7 @@ or `get()` by a variable name gives the union of their types, and a list compreh
 rejected; make a dict copy first. `fn(**kwargs)` forwards it, and a dict display with string
 keys can also supply keyword arguments. `{**kwargs, "name": value, **other}` merges records
 as a dict does: a name keeps its first place and takes its last value. Arbitrary runtime
-dict expansion is unsupported.
+dict expansion is supported only through that dynamic fixed-signature call path.
 
 A fixed tuple indexed by a variable gives the item there, typed as the union of the items'
 types (a tuple of one item type gives that type), and raises CPython's `IndexError` past
@@ -690,7 +692,8 @@ element type is supplied by the parameter annotation. In particular, an empty
 parameter, rather than an alias.
 
 Arguments are evaluated in CPython's order: the callable first, then positional and starred
-arguments, then keyword arguments. Each unpacking operation happens at its position.
+arguments, then keyword arguments. Multiple positional groups expand in order; a sole
+`*args` iterable is consumed after keyword evaluation.
 
 ### Contextual template results
 

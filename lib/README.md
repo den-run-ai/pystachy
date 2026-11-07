@@ -17,7 +17,7 @@ catchable `RecursionError`; [its depth policy](../docs/language/compatibility.md
 also applies to compiled library functions. Ports that opt in to
 [dynamic `Any`](../docs/dynamic-any.md) rely on its [operation](../docs/dynamic-any.md#operations)
 and [iteration](../docs/dynamic-any.md#iteration) contracts, including
-[class values, type-keyed registries and bounded reconstruction](../docs/dynamic-any.md#class-values-and-type-keyed-registries).
+[class values, type-keyed registries and generic reducer calls](../docs/dynamic-any.md#class-values-and-type-keyed-registries).
 That protocol support alone does not establish whole-module compatibility.
 
 ## Module guide
