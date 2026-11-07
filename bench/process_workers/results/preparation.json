@@ -1,0 +1,18 @@
+[
+  {
+    "kind": "json",
+    "command": [
+      "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+      "pystachy.py",
+      "build",
+      "bench/process_workers/json_batch.py",
+      "-o",
+      "/workspace/scratch/8c7ef878d89d/evidence/json-batch"
+    ],
+    "imports": "/workspace/scratch/8c7ef878d89d/pystachy-workers/ports/json_repair",
+    "wall_s": 0.6259304020059062,
+    "exit_code": 1,
+    "stdout": "",
+    "stderr": "/workspace/scratch/8c7ef878d89d/pystachy-workers/ports/json_repair/json_repair.py:6: error: attempted relative import with no known parent package\n"
+  }
+]
