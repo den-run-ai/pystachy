@@ -270,6 +270,9 @@ def lower_data(d: Data) -> str:
         # copying its exact slots preserves float bits, including negative zero.
         slots = ["i64 " + const_slot(v) for v in d.items]
         return f"{d.name} = private unnamed_addr constant [{len(slots)} x i64] [{', '.join(slots)}], align 8"
+    if d.kind == "fieldnames":
+        # Class-tag indexed static strings: neither the table nor its entries need GC roots.
+        return f"{d.name} = private constant [{len(d.refs)} x ptr] [{', '.join(['ptr ' + x for x in d.refs])}], align 8"
     if d.kind == "callable" or d.kind == "exception":
         # (an ExcClass whose displayed name the program assigns, d.text, is written: exc_set_module)
         how = "global" if d.text == "global" else "constant"

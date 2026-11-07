@@ -1,0 +1,3265 @@
+{
+  "cases": 143,
+  "complete": true,
+  "note": "Post-comparison structural audit only. Strict corpus comparator still exits 1 for all 143 raw IR changes. Every compared tag/name mapping and all other IR match after explicit string-symbol/SSA/label renumbering; no executable correctness is inferred from normalization.",
+  "rows": [
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/apps/port_convertdate_datetime.py",
+      "functions": 150,
+      "lookup_functions": 5,
+      "name_lookups": 10,
+      "names_by_tag": [
+        null,
+        "date\\00",
+        "tzinfo\\00",
+        "datetime\\00",
+        "timezone\\00"
+      ],
+      "new_sha256": "4e31c1e811d380c0632c5f37f825a384fb9df48bb6d4af1427df6aaf1b92c076",
+      "old_sha256": "a891b464307b602a754702efe11236c57b7aa03c2f5bba121421dd0096fa9bad",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 10,
+      "table_entries": 5,
+      "tails": {
+        "raise": 10
+      }
+    },
+    {
+      "additional_name_strings": 2,
+      "case": "tests/programs/apps/port_json_repair_cli.py",
+      "functions": 496,
+      "lookup_functions": 9,
+      "name_lookups": 17,
+      "names_by_tag": [
+        null,
+        "BinaryIO\\00",
+        "BufferedReader\\00",
+        "BufferedWriter\\00",
+        "BufferedRandom\\00",
+        "FileIO\\00",
+        "Namespace\\00",
+        "_pys_argparse0_0\\00"
+      ],
+      "new_sha256": "36bb751cff896687dd7fc9a3607e61360a2869d3fc758518c10544f79cdf982f",
+      "old_sha256": "6b28fab23f1944ed066f874ac480483784d24b2521033e860d53b0d231366f04",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 68,
+      "table_entries": 8,
+      "tails": {
+        "raise": 17
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/classes/class_field_metadata.py",
+      "functions": 7,
+      "lookup_functions": 1,
+      "name_lookups": 3,
+      "names_by_tag": [
+        null,
+        "Base\\00",
+        "Child\\00"
+      ],
+      "new_sha256": "a84d38b8aaff344c5ed4ac1c685ebe3d1ad7593966562fb8050f5d9ac80b45d2",
+      "old_sha256": "722438c312bed67df375c412f648199f2ab803efc20bea03c58aa94efabef18e",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 3,
+      "table_entries": 3,
+      "tails": {
+        "raise": 3
+      }
+    },
+    {
+      "additional_name_strings": 2,
+      "case": "tests/programs/classes/class_slots.py",
+      "functions": 17,
+      "lookup_functions": 2,
+      "name_lookups": 3,
+      "names_by_tag": [
+        null,
+        "Point\\00",
+        "Child\\00",
+        "Open\\00",
+        "Ordinary\\00",
+        "WithDict\\00"
+      ],
+      "new_sha256": "5d202a015da9abe102ddf7e86f09ee415a388c8920b2ae2ca0fe7d6f15d2a9b1",
+      "old_sha256": "d92bfc16e2b0335edb4ac6c5e759b40b4c664558a4b12c44a897027f944ee406",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 6,
+      "table_entries": 6,
+      "tails": {
+        "raise": 3
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/classes/dataclass_factory_order.py",
+      "functions": 61,
+      "lookup_functions": 2,
+      "name_lookups": 8,
+      "names_by_tag": [
+        null,
+        "Item\\00",
+        "Record\\00",
+        "Extended\\00",
+        "Manual\\00"
+      ],
+      "new_sha256": "8c9983133b6a7d662e883d2024f50206e49a47c3f365e1fc4add443d26267f59",
+      "old_sha256": "cff58a474fe06c38e2d43f2405d28d6cb5a6364c303053a92dd48669a550fb17",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 8,
+      "table_entries": 5,
+      "tails": {
+        "raise": 8
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/classes/dataclass_hash_keys.py",
+      "functions": 44,
+      "lookup_functions": 3,
+      "name_lookups": 8,
+      "names_by_tag": [
+        null,
+        "F\\00",
+        "G\\00"
+      ],
+      "new_sha256": "e002096d28f7a4c68bca1b52d1c95bb88fe7c06b29a80ce6b8c1cc9902d1c859",
+      "old_sha256": "499beb9249b3f24884fec404002df5dc13537234eff813ab01d3a7c9d2e8973b",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 8,
+      "table_entries": 3,
+      "tails": {
+        "raise": 8
+      }
+    },
+    {
+      "additional_name_strings": 3,
+      "case": "tests/programs/classes/dataclass_inheritance.py",
+      "functions": 53,
+      "lookup_functions": 12,
+      "name_lookups": 50,
+      "names_by_tag": [
+        null,
+        "Shape\\00",
+        "Polygon\\00",
+        "Square\\00",
+        "Point\\00",
+        "Point3\\00",
+        "Labeled\\00",
+        "Unmatched\\00",
+        "Unmatched3\\00",
+        "Key\\00",
+        "Version\\00"
+      ],
+      "new_sha256": "c3cb54c757b9dadb80a648ef5dd41e325dabf11bdc5315bda697c471f9b5a6d9",
+      "old_sha256": "6c3fd30c736e5abc0b80fcfeba5ab9dce6745336533b596408d23f5a02131b05",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 66,
+      "table_entries": 11,
+      "tails": {
+        "raise": 50
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/classes/dataclass_inheritance_compare.py",
+      "functions": 20,
+      "lookup_functions": 7,
+      "name_lookups": 11,
+      "names_by_tag": [
+        null,
+        "Base\\00",
+        "Derived\\00"
+      ],
+      "new_sha256": "2a29a2f154c40b4876d244819e3d3c5749364bb9a0ef7d6da29e13fe02d511bb",
+      "old_sha256": "5932c96bff8d938623f5f63bae6796d08048ac5703ed1a33067bdef513821f7a",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 11,
+      "table_entries": 3,
+      "tails": {
+        "handled_exception": 1,
+        "raise": 10
+      }
+    },
+    {
+      "additional_name_strings": 2,
+      "case": "tests/programs/classes/dataclass_inheritance_import.py",
+      "functions": 25,
+      "lookup_functions": 6,
+      "name_lookups": 23,
+      "names_by_tag": [
+        null,
+        "Event\\00",
+        "Timed\\00",
+        "Alarm\\00",
+        "Silent\\00",
+        "Plain\\00",
+        "Sub\\00"
+      ],
+      "new_sha256": "4aae3cbc3cc5b9c5b25646aa1cec905d44750ce5500064630f4c2cd3e3091223",
+      "old_sha256": "243e92745b6f1adadf82c46bcbcb5cae1028f51c8136bde90da94aa7144982f0",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 58,
+      "table_entries": 7,
+      "tails": {
+        "raise": 23
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/classes/dataclass_inheritance_property.py",
+      "functions": 24,
+      "lookup_functions": 4,
+      "name_lookups": 6,
+      "names_by_tag": [
+        null,
+        "Account\\00",
+        "Savings\\00",
+        "Origin\\00",
+        "Origin3\\00"
+      ],
+      "new_sha256": "df9628cd1325e232aca6ca6f935d582e535b47ea46d94f7946cccd2f4b2d468b",
+      "old_sha256": "2c9c2fd6876c4a9326c58e4375d0a7e189cd945aedc77e97d0821a6d3e292713",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 6,
+      "table_entries": 5,
+      "tails": {
+        "raise": 6
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/classes/dataclass_own_init.py",
+      "functions": 13,
+      "lookup_functions": 3,
+      "name_lookups": 4,
+      "names_by_tag": [
+        null,
+        "Base\\00",
+        "Derived\\00"
+      ],
+      "new_sha256": "ae25c2a7b6c0c363937d82ff9e8b68523899ad60e96f511bb39612c55a05deb2",
+      "old_sha256": "1d19677476511d2471d8a2f398f78690842158af161d89710116bf047fedabec",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 4,
+      "table_entries": 3,
+      "tails": {
+        "raise": 4
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/classes/dataclass_unused_import.py",
+      "functions": 17,
+      "lookup_functions": 3,
+      "name_lookups": 7,
+      "names_by_tag": [
+        null,
+        "Point\\00",
+        null,
+        null,
+        null,
+        null,
+        null,
+        "Labeled\\00"
+      ],
+      "new_sha256": "2dee874d078578b654aafec5afeebf245bd381aa5922d2b1d5e294704d085944",
+      "old_sha256": "74f7bda8692a941a9d421aa17c502018c5d3491b3544f188d4beaef262089f96",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 7,
+      "table_entries": 8,
+      "tails": {
+        "raise": 7
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/classes/field_alias.py",
+      "functions": 21,
+      "lookup_functions": 4,
+      "name_lookups": 5,
+      "names_by_tag": [
+        null,
+        "Base\\00",
+        "Derived\\00",
+        "Lazy\\00",
+        "LazyChild\\00"
+      ],
+      "new_sha256": "4c985b7ae0463c333a2895a39bda4b058b351d7dc9dd30313ebfaf576575993e",
+      "old_sha256": "44aa617a5cfccf0fce0acd8cc08baf18dae7c9a1d9270f07005dbd9561a001dc",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 5,
+      "table_entries": 5,
+      "tails": {
+        "raise": 5
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/classes/hash_unannotated.py",
+      "functions": 24,
+      "lookup_functions": 3,
+      "name_lookups": 8,
+      "names_by_tag": [
+        null,
+        "P\\00",
+        "Q\\00"
+      ],
+      "new_sha256": "516e7618d9a251f9c8d9af2d53e84e558ca4829eabff77eae22235b7e63b93d1",
+      "old_sha256": "056eb88260a6f8f9c9282d2b102b4c6f294310d83c5563c6918a072124a9b141",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 8,
+      "table_entries": 3,
+      "tails": {
+        "raise": 8
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/classes/inheritance_call_order.py",
+      "functions": 14,
+      "lookup_functions": 1,
+      "name_lookups": 1,
+      "names_by_tag": [
+        null,
+        "Base\\00",
+        "Derived\\00"
+      ],
+      "new_sha256": "92fb9641fa962a6bee56448100d76aea6132d9777ce15bd06f48916d4a039db2",
+      "old_sha256": "51c25a6f4c75120ccdd4a880335d555ce6320fde7f37d6c7abdac9870cf2f23d",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 1,
+      "table_entries": 3,
+      "tails": {
+        "raise": 1
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/classes/inheritance_classattrs.py",
+      "functions": 12,
+      "lookup_functions": 4,
+      "name_lookups": 13,
+      "names_by_tag": [
+        null,
+        "Parent\\00",
+        "Child\\00",
+        "Grandchild\\00"
+      ],
+      "new_sha256": "5d8f71f659e7ac2bf8562e0f1a1abec3f23e07a7e56714f8ab72b029c0156fd5",
+      "old_sha256": "2df98dc701287c1f86e2b8732c84a22df91de8a8e52355cfe6968289c974b1a9",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 21,
+      "table_entries": 4,
+      "tails": {
+        "raise": 13
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/classes/inheritance_classmethod_override.py",
+      "functions": 26,
+      "lookup_functions": 3,
+      "name_lookups": 5,
+      "names_by_tag": [
+        null,
+        "Shape\\00",
+        "Square\\00",
+        "Cube\\00"
+      ],
+      "new_sha256": "bb5972759d0363d078175415c33f98a04d6cd2b6a543134f52063d9a3e8a65ad",
+      "old_sha256": "ebfefefb56ee932f3b51ab4426353bcf6c13911f185348f65d39249971f3fbc3",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 8,
+      "table_entries": 4,
+      "tails": {
+        "raise": 5
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/classes/inheritance_compare_chain.py",
+      "functions": 19,
+      "lookup_functions": 4,
+      "name_lookups": 8,
+      "names_by_tag": [
+        null,
+        "B\\00",
+        "S\\00"
+      ],
+      "new_sha256": "7d3e8dab0f0697806191e2cb05c9896de4cad2620907531cddde7b10d2536d7d",
+      "old_sha256": "66df09245a5f636fab4baa241c6db2db718f1d921fd011ae441f10bcb0b62017",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 8,
+      "table_entries": 3,
+      "tails": {
+        "raise": 8
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/classes/inheritance_compare_chain_unrun.py",
+      "functions": 13,
+      "lookup_functions": 3,
+      "name_lookups": 4,
+      "names_by_tag": [
+        null,
+        "B\\00",
+        "S\\00"
+      ],
+      "new_sha256": "21c38ec953fe9978aff5333719a8ba9b9c90f3a1238b56d21c7108732d9fa919",
+      "old_sha256": "9355c7007441c625d656770e848f5149d774299c6b2e64d928ded3d4904d68f5",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 4,
+      "table_entries": 3,
+      "tails": {
+        "raise": 4
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/classes/inheritance_compare_object.py",
+      "functions": 43,
+      "lookup_functions": 16,
+      "name_lookups": 30,
+      "names_by_tag": [
+        null,
+        "Shape\\00",
+        "Square\\00",
+        "Circle\\00",
+        "Dot\\00"
+      ],
+      "new_sha256": "f37db816d76a4bddcfd3f7819914a84905551dc7f551a8e8421aa3b52afdf440",
+      "old_sha256": "1bd4fc78f6b7ae1be536a6fa7b92b981fe9caf011dcb10e27e7815b8235b86ec",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 60,
+      "table_entries": 5,
+      "tails": {
+        "raise": 30
+      }
+    },
+    {
+      "additional_name_strings": 2,
+      "case": "tests/programs/classes/inheritance_compare_pairs.py",
+      "functions": 40,
+      "lookup_functions": 10,
+      "name_lookups": 27,
+      "names_by_tag": [
+        null,
+        "Base\\00",
+        "Left\\00",
+        "Right\\00",
+        "Deep\\00",
+        "Plain\\00",
+        "Sub\\00"
+      ],
+      "new_sha256": "7dac328a68df62471e7dffd1fb3fbb58c70a270a238d97c1dd191bf9fcb727dd",
+      "old_sha256": "cb8e4903159fa2a9a1ec85450fd250154e980588209b93ae67cb8964ece2f87d",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 73,
+      "table_entries": 7,
+      "tails": {
+        "raise": 27
+      }
+    },
+    {
+      "additional_name_strings": 2,
+      "case": "tests/programs/classes/inheritance_comparisons.py",
+      "functions": 32,
+      "lookup_functions": 16,
+      "name_lookups": 22,
+      "names_by_tag": [
+        null,
+        "Base\\00",
+        "Child\\00",
+        "Plain\\00",
+        "Ordered\\00"
+      ],
+      "new_sha256": "267c36ee421986e088b5fc6ebe02160222e12c946a779b77410bc7fd36dec37a",
+      "old_sha256": "47dde129c6e9f6ef05a8cc18e0cad3dd9d241170c425cbc19d3e5bc778f0f5bf",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 22,
+      "table_entries": 5,
+      "tails": {
+        "raise": 22
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/classes/inheritance_container_compare_base.py",
+      "functions": 21,
+      "lookup_functions": 2,
+      "name_lookups": 4,
+      "names_by_tag": [
+        null,
+        "Version\\00",
+        "Patched\\00"
+      ],
+      "new_sha256": "fd49dcd128c6c0446ab034143875054eafd190cc8f380f4aa8715638282ec079",
+      "old_sha256": "1fd2de1471b9eb9a6c396957bb525d546d979789efa5ee1affd8314effbc00f8",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 4,
+      "table_entries": 3,
+      "tails": {
+        "raise": 4
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/classes/inheritance_dispatch.py",
+      "functions": 21,
+      "lookup_functions": 2,
+      "name_lookups": 2,
+      "names_by_tag": [
+        null,
+        "Base\\00",
+        "Scaled\\00",
+        "More\\00"
+      ],
+      "new_sha256": "a8bab76b8dd2f8438442141f9a58e9ba7937f5df01f646bfc9ea98fa13c19e74",
+      "old_sha256": "5c18bb5fb52840e9d83cb54bd0b2f4ce11ac37eba6c7a773b6337e194108fc54",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 3,
+      "table_entries": 4,
+      "tails": {
+        "raise": 2
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/classes/inheritance_field_errors.py",
+      "functions": 25,
+      "lookup_functions": 6,
+      "name_lookups": 11,
+      "names_by_tag": [
+        null,
+        "Base\\00",
+        "Child\\00",
+        "Deep\\00",
+        "Sibling\\00",
+        "Other\\00",
+        "OtherChild\\00"
+      ],
+      "new_sha256": "70c235d7b8761f974f2735abd5ef6186c1ee849d41f70bd08d92ec43fcaa093f",
+      "old_sha256": "9fea871e3faa8cd82e61259faba2958020da637a2f470c668e6ccaafefdc133d",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 29,
+      "table_entries": 7,
+      "tails": {
+        "handled_exception": 3,
+        "raise": 8
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/classes/inheritance_fields.py",
+      "functions": 22,
+      "lookup_functions": 5,
+      "name_lookups": 7,
+      "names_by_tag": [
+        null,
+        "Parent\\00",
+        "Child\\00",
+        "Inherited\\00",
+        "Early\\00",
+        "Late\\00"
+      ],
+      "new_sha256": "0b67a83b70b04238e568eba68120e48ed6a68a15f7f05fd9df99c15edea432f5",
+      "old_sha256": "b7d79f40254e77b68568af2d34ee79ba82b25d959c131b54ea86917f8a6fefe7",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 10,
+      "table_entries": 6,
+      "tails": {
+        "raise": 7
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/classes/inheritance_import.py",
+      "functions": 23,
+      "lookup_functions": 4,
+      "name_lookups": 4,
+      "names_by_tag": [
+        null,
+        "Base\\00",
+        "Derived\\00",
+        "Local\\00"
+      ],
+      "new_sha256": "6722cf03411e0ec1afcdd7471385f7419e6bf499818d069c1143773ce1944887",
+      "old_sha256": "a4a88769027f8b75146140e7721b61775fec20cf72637c1cffce6e52a6dbb666",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 6,
+      "table_entries": 4,
+      "tails": {
+        "raise": 4
+      }
+    },
+    {
+      "additional_name_strings": 2,
+      "case": "tests/programs/classes/inheritance_narrowing.py",
+      "functions": 19,
+      "lookup_functions": 7,
+      "name_lookups": 12,
+      "names_by_tag": [
+        null,
+        "Base\\00",
+        "Child\\00",
+        "Deep\\00",
+        "Sibling\\00"
+      ],
+      "new_sha256": "feafd9a955086665a17e4a4f6518af91bc2940cd5e159ff09248301a3f3e6ab6",
+      "old_sha256": "2e8664c876f8b188374cb92b29b6784d530acc885c4985d1f784aab1edfbb4c8",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 12,
+      "table_entries": 5,
+      "tails": {
+        "raise": 12
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/classes/inheritance_protocols.py",
+      "functions": 25,
+      "lookup_functions": 8,
+      "name_lookups": 9,
+      "names_by_tag": [
+        null,
+        "Base\\00",
+        "Child\\00"
+      ],
+      "new_sha256": "d7ea16d62460b4be9c08ea70fd202d248d1d215dd752491dc59b79a861065e61",
+      "old_sha256": "dd2939656a965ef919d606d3caee2b58a88a455d88711f2e265c8044139a079f",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 9,
+      "table_entries": 3,
+      "tails": {
+        "raise": 9
+      }
+    },
+    {
+      "additional_name_strings": 5,
+      "case": "tests/programs/classes/inheritance_protocols_added.py",
+      "functions": 25,
+      "lookup_functions": 1,
+      "name_lookups": 1,
+      "names_by_tag": [
+        null,
+        "Base\\00",
+        "Child\\00",
+        "IterBase\\00",
+        "ContainsChild\\00",
+        "ContainsGrandchild\\00",
+        "Empty\\00",
+        "AddedContains\\00"
+      ],
+      "new_sha256": "a3d3fffcbe73fe3c96ad8ad15cf36f479859b62aa0b8df8cd004c451b0dbe5c6",
+      "old_sha256": "bde4a2e487f8d27ffefba6b50948354fdf5fd6578096b95eeb2938e4eb17f12c",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 1,
+      "table_entries": 8,
+      "tails": {
+        "raise": 1
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/classes/inheritance_secondary.py",
+      "functions": 26,
+      "lookup_functions": 2,
+      "name_lookups": 5,
+      "names_by_tag": [
+        null,
+        "Storage\\00",
+        "Reader\\00",
+        "Both\\00",
+        "Twice\\00",
+        "Other\\00",
+        "Independent\\00"
+      ],
+      "new_sha256": "af4a96ecba11d269f5b284fc6b2bbb569022b1a8db9dc9d8c08d78e081a5ae2f",
+      "old_sha256": "d5773f99e722ca868107047ff7da80d0b8bd27575d532d2919cabd71b5f5cc28",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 5,
+      "table_entries": 7,
+      "tails": {
+        "raise": 5
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/classes/inheritance_secondary_forward.py",
+      "functions": 25,
+      "lookup_functions": 2,
+      "name_lookups": 2,
+      "names_by_tag": [
+        null,
+        "Buffer\\00",
+        "Writer\\00",
+        "Plain\\00",
+        "Bracketed\\00"
+      ],
+      "new_sha256": "66f38d1a92c5fc60c74f933602c250abb9e890522802eb4aeb018fc06f8d177a",
+      "old_sha256": "01d6d85ea951f33537c13b1549dbea82d8f4e02634b167f470ee8ab0bd91bdcb",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 2,
+      "table_entries": 5,
+      "tails": {
+        "raise": 2
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/classes/inheritance_super.py",
+      "functions": 33,
+      "lookup_functions": 4,
+      "name_lookups": 6,
+      "names_by_tag": [
+        null,
+        "Root\\00",
+        "Middle\\00",
+        "Leaf\\00",
+        "Inherited\\00"
+      ],
+      "new_sha256": "e0355e3156fd17cc562f63c2ee9e6820cfa6edc6d3e131e89681427689893974",
+      "old_sha256": "d194f0216f239a39d69a69f298507991cf7bfca23202512a9c0d4ee263ceb367",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 9,
+      "table_entries": 5,
+      "tails": {
+        "raise": 6
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/classes/inheritance_union_family.py",
+      "functions": 116,
+      "lookup_functions": 6,
+      "name_lookups": 18,
+      "names_by_tag": [
+        null,
+        "date\\00",
+        "tzinfo\\00",
+        "datetime\\00",
+        "timezone\\00",
+        "Shape\\00",
+        "Square\\00",
+        "Unit\\00"
+      ],
+      "new_sha256": "cd60d7eec087f64656277084a988b864786b198ddbcda8c145a0d697d1ce171f",
+      "old_sha256": "478518a6bf9afcff596625039d1ea9e5bf46acda56f1923b58007888816d1a3e",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 19,
+      "table_entries": 8,
+      "tails": {
+        "raise": 18
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/classes/inheritance_union_nested.py",
+      "functions": 13,
+      "lookup_functions": 1,
+      "name_lookups": 1,
+      "names_by_tag": [
+        null,
+        "Base\\00",
+        "Child\\00"
+      ],
+      "new_sha256": "f3fe5ccde3e62d1e60ca2315359be424adae96d85eaa572add813b85185b33fb",
+      "old_sha256": "dd169085f4446733e4711bc8439c210dabe0618e07fe46296512a221a1274fc2",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 1,
+      "table_entries": 3,
+      "tails": {
+        "raise": 1
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/classes/obj_abs_divmod.py",
+      "functions": 16,
+      "lookup_functions": 3,
+      "name_lookups": 4,
+      "names_by_tag": [
+        null,
+        "Money\\00",
+        "Debt\\00"
+      ],
+      "new_sha256": "dcdba6e248eb88683f8a19bb0719a87ea903c3ced273d5d1e2e6efb89e66168d",
+      "old_sha256": "d3681735cea70032774de9482a565b76d2a0abe9159f9bbfe2960798745f7efb",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 4,
+      "table_entries": 3,
+      "tails": {
+        "raise": 4
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/classes/object_power.py",
+      "functions": 35,
+      "lookup_functions": 3,
+      "name_lookups": 3,
+      "names_by_tag": [
+        null,
+        "Base\\00",
+        "Inherited\\00",
+        "Override\\00",
+        "InplaceBase\\00",
+        "InplaceOverride\\00"
+      ],
+      "new_sha256": "fc72a01d0ddc3407c54f8dcecb8fec67c27cbaa3a99985df274db70c7ac8c9d9",
+      "old_sha256": "aa09b2c5b449e137d8a00559178e82be6d0bd6767e9577bef28058c03aece9b1",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 4,
+      "table_entries": 6,
+      "tails": {
+        "raise": 3
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/classes/private_names.py",
+      "functions": 18,
+      "lookup_functions": 2,
+      "name_lookups": 2,
+      "names_by_tag": [
+        null,
+        "Base\\00",
+        "Child\\00"
+      ],
+      "new_sha256": "1becd4ac520307229c84729a6db4068ca39fc9f10b195a929599ff68be0ac6c6",
+      "old_sha256": "c3825adeef60babce654516df34c8f5fa3d2d46c0b24d9c4a203703458ff7fa0",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 2,
+      "table_entries": 3,
+      "tails": {
+        "raise": 2
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/classes/property_inheritance.py",
+      "functions": 26,
+      "lookup_functions": 2,
+      "name_lookups": 2,
+      "names_by_tag": [
+        null,
+        "Base\\00",
+        "Child\\00",
+        "Grandchild\\00"
+      ],
+      "new_sha256": "15ae2f16818e25122dfa48ac1afac6df3ef77a9760675fbbaaf35f79e4665373",
+      "old_sha256": "f2a6ab53c02c4c195102d4e40fa73a53fe1a6b270e6623e7e5717d0da5176a15",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 3,
+      "table_entries": 4,
+      "tails": {
+        "raise": 2
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/classes/property_setter_import.py",
+      "functions": 29,
+      "lookup_functions": 3,
+      "name_lookups": 4,
+      "names_by_tag": [
+        null,
+        "Account\\00",
+        "Savings\\00",
+        "Rounded\\00",
+        "Capped\\00",
+        "Doubled\\00"
+      ],
+      "new_sha256": "40656085f0e319b85489e710b708b00c67c9aee40849d849f43606c887cb72e1",
+      "old_sha256": "1710d57e70eba3ee1c34b730ee9a5c5250de2c3bd4b4888cfc753c74103fbdc3",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 16,
+      "table_entries": 6,
+      "tails": {
+        "raise": 4
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/classes/property_setter_inheritance.py",
+      "functions": 31,
+      "lookup_functions": 2,
+      "name_lookups": 2,
+      "names_by_tag": [
+        null,
+        "Base\\00",
+        "ReadOnly\\00",
+        "Logged\\00",
+        "Plain\\00",
+        "Own\\00"
+      ],
+      "new_sha256": "0c27952661d37b2ffa100cd81668c4128e8c08376a0408e0c0cbac6dfbc2ab4f",
+      "old_sha256": "5de7d217aaa24cd676399e0bd534473eaf30da8703e555aac6d4ffe839704d57",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 5,
+      "table_entries": 6,
+      "tails": {
+        "raise": 2
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/classes/property_setter_slots.py",
+      "functions": 32,
+      "lookup_functions": 2,
+      "name_lookups": 2,
+      "names_by_tag": [
+        null,
+        "Point\\00",
+        "Point3\\00"
+      ],
+      "new_sha256": "aace740c2def656ba332ede18ac297ea3e811ae809020224c8092871844fe94f",
+      "old_sha256": "be23d66347d51e2aad4c3611dc1ecad08025299fb8f3d9136c8cf1fbe4b3c50c",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 2,
+      "table_entries": 3,
+      "tails": {
+        "raise": 2
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/containers/dict_object_keys.py",
+      "functions": 33,
+      "lookup_functions": 4,
+      "name_lookups": 8,
+      "names_by_tag": [
+        null,
+        "Node\\00",
+        "Leaf\\00"
+      ],
+      "new_sha256": "ba7f89c6cdb37935761eb91287ee3fa107203aa6efdd91f32b057c73ab384a03",
+      "old_sha256": "bad4c2135fbb2900db8aeb03f420e89fca1b8e7fb5b0302e893c7017bc6adefc",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 8,
+      "table_entries": 3,
+      "tails": {
+        "raise": 8
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/containers/star_rebound.py",
+      "functions": 23,
+      "lookup_functions": 2,
+      "name_lookups": 2,
+      "names_by_tag": [
+        null,
+        "Shape\\00",
+        "Shape\\00",
+        "Base\\00"
+      ],
+      "new_sha256": "f3981af15063a2621bcd71b131051eb631502a52e6f2cd62de410e61fdec39ee",
+      "old_sha256": "7b1b817f38d0f075e7e8951aa07317169f1057819acef3064a4501844ac99894",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 2,
+      "table_entries": 4,
+      "tails": {
+        "raise": 2
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/exceptions/exc_record_print.py",
+      "functions": 37,
+      "lookup_functions": 1,
+      "name_lookups": 1,
+      "names_by_tag": [
+        null,
+        "Base\\00",
+        "Sub\\00"
+      ],
+      "new_sha256": "8ced89870256525bf1a4c53654eab69a617d531c0b77a678bd82e1549923b7dd",
+      "old_sha256": "400fdc47d57cd7d97b2d62f3d7b26b28e54c18a38ca3e82ad34ed07c1afc21aa",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 1,
+      "table_entries": 3,
+      "tails": {
+        "raise": 1
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/generators/iterator_class.py",
+      "functions": 60,
+      "lookup_functions": 1,
+      "name_lookups": 3,
+      "names_by_tag": [
+        null,
+        "Base\\00",
+        "Derived\\00"
+      ],
+      "new_sha256": "e7067d6ad85acfb9f00123bb76494875fe64228df0caa1948e5504ffcfa342e9",
+      "old_sha256": "d2d330e86964c7c007598f899fc27552a1b2b2bbd42a1d24e2290e1397cbfe75",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 3,
+      "table_entries": 3,
+      "tails": {
+        "raise": 3
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/imports/import_attr_class_alias.py",
+      "functions": 23,
+      "lookup_functions": 1,
+      "name_lookups": 1,
+      "names_by_tag": [
+        null,
+        "Box\\00",
+        "Crate\\00"
+      ],
+      "new_sha256": "4c318b7c11bf15549ef009b849c3d26ab2ee967e2f9abafaaf81c04e7fad90d1",
+      "old_sha256": "594a7f848aac5d0a9ded81dcbabd03fe1d5f4aa3d9f818d81c5112bb03b5599e",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 1,
+      "table_entries": 3,
+      "tails": {
+        "raise": 1
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/inference/any_iterators.py",
+      "functions": 25,
+      "lookup_functions": 1,
+      "name_lookups": 4,
+      "names_by_tag": [
+        null,
+        "Count\\00",
+        "Derived\\00"
+      ],
+      "new_sha256": "ffc0a9aac43c5c52708200ead11e40961531016eff44fc80c8d2dc1c0f8ec39c",
+      "old_sha256": "5b09e1e04a81d7fe85d09f8205eece83c8f35dac14b8b41ae391fe4a79e306de",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 4,
+      "table_entries": 3,
+      "tails": {
+        "raise": 4
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/inference/any_mutation.py",
+      "functions": 34,
+      "lookup_functions": 7,
+      "name_lookups": 8,
+      "names_by_tag": [
+        null,
+        "Table\\00",
+        "Derived\\00"
+      ],
+      "new_sha256": "00d21594adb1a18bb9b1f4a12278310948c5d66095ab9b4ada69825fb1cd93b9",
+      "old_sha256": "e20c27b8890a73619f34bc83b4912c0751dd20b017c6e854415d1d0c4950189a",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 8,
+      "table_entries": 3,
+      "tails": {
+        "raise": 8
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/inference/dynany_abs_objects.py",
+      "functions": 28,
+      "lookup_functions": 1,
+      "name_lookups": 2,
+      "names_by_tag": [
+        null,
+        "Number\\00",
+        "Inherited\\00",
+        "Override\\00"
+      ],
+      "new_sha256": "bea3a51c6d7f8fef40ab4e6fa5a02c9d70b2efbe879ae716077fe04bf2f3f212",
+      "old_sha256": "62164f44d82c421df35c771825332ffcc8c9ea824b503157417182cf3963c5d2",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 4,
+      "table_entries": 4,
+      "tails": {
+        "raise": 2
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/inference/dynany_cmp_builtin_fields.py",
+      "functions": 36,
+      "lookup_functions": 7,
+      "name_lookups": 19,
+      "names_by_tag": [
+        null,
+        "Numbers\\00",
+        "Inherited\\00"
+      ],
+      "new_sha256": "59b80a3a713cefe16e75cff8e32b62769eb17200b87cb8b6a34d4e667709e707",
+      "old_sha256": "0a9c1a8eafb57980269a696571536b31218a0284cceb3484ba76e6e3d606cd8a",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 19,
+      "table_entries": 3,
+      "tails": {
+        "raise": 19
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/inference/dynany_cmp_concrete_effects.py",
+      "functions": 25,
+      "lookup_functions": 3,
+      "name_lookups": 10,
+      "names_by_tag": [
+        null,
+        "Strict\\00",
+        "Inherited\\00"
+      ],
+      "new_sha256": "a0be8e33dfef28ab0162bfd40dfede7bf89c87e844fd883d26ba778b167de629",
+      "old_sha256": "b6bffbc0b641d6a9ac94a4acd1fe5598cad181e69c603d4ea1ba26b75faf2c0d",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 10,
+      "table_entries": 3,
+      "tails": {
+        "raise": 10
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/inference/dynany_cmp_declined_dataclass.py",
+      "functions": 38,
+      "lookup_functions": 6,
+      "name_lookups": 11,
+      "names_by_tag": [
+        null,
+        "Item\\00",
+        "Child\\00"
+      ],
+      "new_sha256": "66bb47db30a9c2352f7523776270bd6319cb8211097c18cbfc81ea3a1d0adf99",
+      "old_sha256": "aa8bc2ac9ccc69b5fcb4a43cb392be18a3c104c21fe6c0dd55eb20e57c3fdfc3",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 11,
+      "table_entries": 3,
+      "tails": {
+        "raise": 11
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/inference/dynany_cmp_missing_effects.py",
+      "functions": 26,
+      "lookup_functions": 3,
+      "name_lookups": 32,
+      "names_by_tag": [
+        null,
+        "Strict\\00",
+        "Inherited\\00"
+      ],
+      "new_sha256": "701a8bd1a53561428d4ea538e1c56eaa2d5792c5cda69d32fe65fa17d50fce11",
+      "old_sha256": "341acf17b71eb5f3a126482336cc6866f1f837ffb4435d2fcc077a0b3d9006c2",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 32,
+      "table_entries": 3,
+      "tails": {
+        "raise": 32
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/inference/dynany_cmp_missing_write_hierarchy.py",
+      "functions": 39,
+      "lookup_functions": 3,
+      "name_lookups": 8,
+      "names_by_tag": [
+        null,
+        "Root\\00",
+        "Child\\00",
+        "Grandchild\\00",
+        "Property\\00",
+        "Default\\00"
+      ],
+      "new_sha256": "3a2bd30297d20059a846b19d0c0a96c8f48f2262a8a3e9b0bf5a495b653558c9",
+      "old_sha256": "fd2eeab2034c9a0bd8d8d08b21ca65fd1fddbeca6cfabe588a9a2ad13b3b0eb7",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 20,
+      "table_entries": 6,
+      "tails": {
+        "raise": 8
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/inference/dynany_cmp_missing_write_import.py",
+      "functions": 23,
+      "lookup_functions": 2,
+      "name_lookups": 2,
+      "names_by_tag": [
+        null,
+        "Peer\\00",
+        "Child\\00"
+      ],
+      "new_sha256": "8ab2479d6de37f6762da62e21aaaf279b59e8ffe1b9920429d50c425fc91f8b0",
+      "old_sha256": "0f56784afded7a6ad457b2a75872d9f19225e58e70514e3f172efe8e4bdcd8d5",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 2,
+      "table_entries": 3,
+      "tails": {
+        "raise": 2
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/inference/dynany_cmp_missing_write_inherit.py",
+      "functions": 20,
+      "lookup_functions": 1,
+      "name_lookups": 1,
+      "names_by_tag": [
+        null,
+        "Root\\00",
+        "B\\00"
+      ],
+      "new_sha256": "39e8b5e4a775089d8e0d5412790831ec730690c66f3cce200c4b6f8bcfb2c5cc",
+      "old_sha256": "ec3891ae873408e37a3ecb839b5007d362a7efffafeab36ee59c717822131df6",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 1,
+      "table_entries": 3,
+      "tails": {
+        "raise": 1
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/inference/dynany_cmp_missing_write_reflection.py",
+      "functions": 26,
+      "lookup_functions": 1,
+      "name_lookups": 1,
+      "names_by_tag": [
+        null,
+        "Root\\00",
+        "Child\\00"
+      ],
+      "new_sha256": "fc5cb54b38ebf019b6ff26ab3ccecb14443fc8e5ab685d02186e1112e3ab8cc9",
+      "old_sha256": "aeb8436164f20b0c830a043f7b5c905872fa1bbdd74c96c0bc1de1f6948b318a",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 1,
+      "table_entries": 3,
+      "tails": {
+        "raise": 1
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/inference/dynany_dispatch_switch.py",
+      "functions": 30,
+      "lookup_functions": 2,
+      "name_lookups": 2,
+      "names_by_tag": [
+        null,
+        "A\\00",
+        "C\\00",
+        "D\\00"
+      ],
+      "new_sha256": "be47b42f5c23ecba28edb1f37f1640391be08e2c995aa4cedc88ac5a0164783d",
+      "old_sha256": "dc9fa1f37d1560a00e91623bb285b8349bec7df5c33b69d56bcf8ee5f6d44390",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 4,
+      "table_entries": 4,
+      "tails": {
+        "raise": 2
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/inference/dynany_eq_annotated.py",
+      "functions": 43,
+      "lookup_functions": 8,
+      "name_lookups": 12,
+      "names_by_tag": [
+        null,
+        "Point\\00",
+        "Point3\\00"
+      ],
+      "new_sha256": "58a58e29c3030a8ea701be08454de4b0952e96ce2395433b281dd593fe6c4853",
+      "old_sha256": "d47bcc32528ea28dd24c2e15972d35096cf6619c3516f739e9a0b7afdd69f022",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 12,
+      "table_entries": 3,
+      "tails": {
+        "raise": 12
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/inference/dynany_eq_datetime.py",
+      "functions": 179,
+      "lookup_functions": 3,
+      "name_lookups": 14,
+      "names_by_tag": [
+        null,
+        "date\\00",
+        "tzinfo\\00",
+        "datetime\\00",
+        "timezone\\00"
+      ],
+      "new_sha256": "ba0971f7efa325010b273f95335977a5b2c4250c152f535e8d7ebfd462ee2376",
+      "old_sha256": "0d42dc3a842815f9f2d36262a1871a63fa19edb6ae36a28d1be2c29d680a0a48",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 14,
+      "table_entries": 5,
+      "tails": {
+        "raise": 14
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/inference/dynany_identity_call_branch_snapshots.py",
+      "functions": 15,
+      "lookup_functions": 2,
+      "name_lookups": 2,
+      "names_by_tag": [
+        null,
+        "Base\\00",
+        "Child\\00"
+      ],
+      "new_sha256": "f813e0bfd197a49d53de97897d7f82e15880295e77e54972f41e0282385c2345",
+      "old_sha256": "a61eda2b9bdb1cfb97843fcde2bd2bacae391f676e98839b1b9a9ded48c23196",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 2,
+      "table_entries": 3,
+      "tails": {
+        "raise": 2
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/inference/dynany_identity_field_defaults.py",
+      "functions": 13,
+      "lookup_functions": 2,
+      "name_lookups": 8,
+      "names_by_tag": [
+        null,
+        "Base\\00",
+        "Child\\00",
+        "Grandchild\\00"
+      ],
+      "new_sha256": "7436ad1412d096fa85de827855140be552ef9492c47d9cec0dee8eaa990a1107",
+      "old_sha256": "2e0dd1d33e127409300324d7332a4075a49b061244e31d51ccef9fb6d25364c9",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 16,
+      "table_entries": 4,
+      "tails": {
+        "raise": 8
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/inference/dynany_identity_method_proofs.py",
+      "functions": 23,
+      "lookup_functions": 1,
+      "name_lookups": 1,
+      "names_by_tag": [
+        null,
+        "Base\\00",
+        "Derived\\00"
+      ],
+      "new_sha256": "6ffdcc3f01e7a10216b7ded8e89ea5a438d8ea2ce8791536ae42f0ba5520e256",
+      "old_sha256": "c7605e6b989c43ffaa3263c0172250eebd041c788cd2f4a0452ee02d2f7daff4",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 1,
+      "table_entries": 3,
+      "tails": {
+        "raise": 1
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/inference/dynany_inplace_typed.py",
+      "functions": 20,
+      "lookup_functions": 2,
+      "name_lookups": 3,
+      "names_by_tag": [
+        null,
+        "Q\\00",
+        "R\\00"
+      ],
+      "new_sha256": "f7d6ba76e261c47974d124f03c097f52b7c67cdaaa2de50ab653fa6dcdf85d65",
+      "old_sha256": "39794e4e5aaa0240e0252cb0e67fb0e14df96a23784707ad8aa477ec4baad7b5",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 3,
+      "table_entries": 3,
+      "tails": {
+        "raise": 3
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/inference/dynany_iteration.py",
+      "functions": 32,
+      "lookup_functions": 3,
+      "name_lookups": 6,
+      "names_by_tag": [
+        null,
+        "Count\\00",
+        "Contains\\00"
+      ],
+      "new_sha256": "6b3500194a18e158c34fae2c61a3b546e2667a5451762606f34a83a166b9cf58",
+      "old_sha256": "d401d1565849eb061b63e070f8391b551e762b4ae672c17c581ad156f4756d4b",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 6,
+      "table_entries": 3,
+      "tails": {
+        "raise": 6
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/inference/dynany_ne.py",
+      "functions": 73,
+      "lookup_functions": 6,
+      "name_lookups": 8,
+      "names_by_tag": [
+        null,
+        "E\\00",
+        "F\\00",
+        "G\\00",
+        "P\\00",
+        "Q\\00"
+      ],
+      "new_sha256": "86192c498de0c0a5b29d52bc5fab8b27c406af0600c0e477b4706901e28d9207",
+      "old_sha256": "1ba6e5cb3b5649f72aff26aaa2b09d81f86418f2fd34a1501fc64f3c09cbbcaa",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 16,
+      "table_entries": 6,
+      "tails": {
+        "raise": 8
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/inference/dynany_objects.py",
+      "functions": 42,
+      "lookup_functions": 3,
+      "name_lookups": 3,
+      "names_by_tag": [
+        null,
+        "Animal\\00",
+        "Dog\\00"
+      ],
+      "new_sha256": "da0ad16a0a07c36785407b381691e11f7c8419d4fc843dad45302f854df7be8b",
+      "old_sha256": "d242249116880c48758d667934ff04543cc15a064349b4cfe896a785e748d848",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 3,
+      "table_entries": 3,
+      "tails": {
+        "raise": 3
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/inference/dynany_reflected.py",
+      "functions": 53,
+      "lookup_functions": 14,
+      "name_lookups": 21,
+      "names_by_tag": [
+        null,
+        "B\\00",
+        "S\\00",
+        "T\\00",
+        "U\\00",
+        "I\\00",
+        "J\\00"
+      ],
+      "new_sha256": "393339fbaec57d8b5abc43a897c55d0ef9793006afbe9e132cc6fed0200e206d",
+      "old_sha256": "e8edb660129ed4bd7356d6abef9485ad24adf193e7f316fea96a9bf2d0bfadb8",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 55,
+      "table_entries": 7,
+      "tails": {
+        "raise": 21
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/inference/dynany_subclass_cmp.py",
+      "functions": 24,
+      "lookup_functions": 3,
+      "name_lookups": 5,
+      "names_by_tag": [
+        null,
+        "B\\00",
+        "S\\00"
+      ],
+      "new_sha256": "fdfbadfe20d8fec1cdfa205a0662808acb7daa94472defcf0f73c2b16db98613",
+      "old_sha256": "74fa5238d3e54cf3f63846643d6a4e7943250b2389a4aae2561deccdd1c03a7f",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 5,
+      "table_entries": 3,
+      "tails": {
+        "raise": 5
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/inference/dynany_subclass_eq.py",
+      "functions": 30,
+      "lookup_functions": 2,
+      "name_lookups": 2,
+      "names_by_tag": [
+        null,
+        "B\\00",
+        "S\\00"
+      ],
+      "new_sha256": "617da977d097147abb14cc2105a510fb48776c8e5ec941a83f44ebb92b09d275",
+      "old_sha256": "a9fdd5f27e36eca05386a6104c4c3ddd9e251eb3b7e77f804c0d4682a53a4f85",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 2,
+      "table_entries": 3,
+      "tails": {
+        "raise": 2
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/io/bfile_basic.py",
+      "functions": 135,
+      "lookup_functions": 22,
+      "name_lookups": 35,
+      "names_by_tag": [
+        null,
+        "BinaryIO\\00",
+        "BufferedReader\\00",
+        "BufferedWriter\\00",
+        "BufferedRandom\\00",
+        "FileIO\\00"
+      ],
+      "new_sha256": "2f103f6e513d9e108031673139fd30dc8f5a642ceb73f2a21023f71a4cf7facb",
+      "old_sha256": "b9b7403abc40e3f53b57cc0efc7c56f4e2028285bc100417c77b76e54f6ed6d0",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 140,
+      "table_entries": 6,
+      "tails": {
+        "raise": 35
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/io/bfile_errors.py",
+      "functions": 163,
+      "lookup_functions": 25,
+      "name_lookups": 44,
+      "names_by_tag": [
+        null,
+        "BinaryIO\\00",
+        "BufferedReader\\00",
+        "BufferedWriter\\00",
+        "BufferedRandom\\00",
+        "FileIO\\00"
+      ],
+      "new_sha256": "e6171db1e60957b6772702f44688da0bb93c5fc9b1798b1fe106c7731fd3fda4",
+      "old_sha256": "c608f63d409a2bcf8d0c1dd984e303a3f6051aa8a393c41af98adf24a0247ee1",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 176,
+      "table_entries": 6,
+      "tails": {
+        "raise": 44
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/io/bfile_fifo_raw.py",
+      "functions": 34,
+      "lookup_functions": 5,
+      "name_lookups": 9,
+      "names_by_tag": [
+        null,
+        "BinaryIO\\00",
+        "BufferedReader\\00",
+        "BufferedWriter\\00",
+        "BufferedRandom\\00",
+        "FileIO\\00"
+      ],
+      "new_sha256": "9473ab41fc94162fe2c1f8e5972822b205897aaebd684645a99cb61597c6e3ce",
+      "old_sha256": "3606c311f458eaa87c0ab5e1a26315f3815c6d346c58dce4b375e557d3c100b7",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 36,
+      "table_entries": 6,
+      "tails": {
+        "raise": 9
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/io/bfile_method_open.py",
+      "functions": 69,
+      "lookup_functions": 10,
+      "name_lookups": 18,
+      "names_by_tag": [
+        null,
+        "BinaryIO\\00",
+        "BufferedReader\\00",
+        "BufferedWriter\\00",
+        "BufferedRandom\\00",
+        "FileIO\\00"
+      ],
+      "new_sha256": "b9926a0cd23daea41179bff192274d15de83af90831ea6e7177d99749cb31931",
+      "old_sha256": "d67df19d503e7505dca82494487c303a191fc18a5b31751147174bcd55cd84a6",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 72,
+      "table_entries": 6,
+      "tails": {
+        "raise": 18
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/io/bfile_modes.py",
+      "functions": 121,
+      "lookup_functions": 19,
+      "name_lookups": 36,
+      "names_by_tag": [
+        null,
+        "BinaryIO\\00",
+        "BufferedReader\\00",
+        "BufferedWriter\\00",
+        "BufferedRandom\\00",
+        "FileIO\\00"
+      ],
+      "new_sha256": "7fd3e9d7951f6a4b79cbddaef68311ea8efe7e71d957f22fa3afd508507dd750",
+      "old_sha256": "f7c9aa2e8feea2603654ce6bba28cab2d5f8b39f741b7654bc641c6855ea39db",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 144,
+      "table_entries": 6,
+      "tails": {
+        "raise": 36
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/io/bfile_read_error.py",
+      "functions": 67,
+      "lookup_functions": 10,
+      "name_lookups": 18,
+      "names_by_tag": [
+        null,
+        "BinaryIO\\00",
+        "BufferedReader\\00",
+        "BufferedWriter\\00",
+        "BufferedRandom\\00",
+        "FileIO\\00"
+      ],
+      "new_sha256": "4cb9ea59a96a27ccc71bb5bf8a8cd7e29afff10b9feebafba7235ac126ca87fb",
+      "old_sha256": "166f9decd5e8e4fa7c1d2ef73c316b4fce7295812597d2905f90b3f96fb778af",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 72,
+      "table_entries": 6,
+      "tails": {
+        "raise": 18
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/io/bfile_readlines_hint.py",
+      "functions": 81,
+      "lookup_functions": 11,
+      "name_lookups": 23,
+      "names_by_tag": [
+        null,
+        "BinaryIO\\00",
+        "BufferedReader\\00",
+        "BufferedWriter\\00",
+        "BufferedRandom\\00",
+        "FileIO\\00"
+      ],
+      "new_sha256": "dfdf16aa0053738312462a77bf7d829c6582006a38c7a9c4c4c94357ad1ad250",
+      "old_sha256": "0a39b0ee24d73cad2ce0a0d6974d250b693fcd052a3b6c3386f93939a180e0b0",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 92,
+      "table_entries": 6,
+      "tails": {
+        "raise": 23
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/io/bfile_stdio_sync.py",
+      "functions": 90,
+      "lookup_functions": 13,
+      "name_lookups": 29,
+      "names_by_tag": [
+        null,
+        "BinaryIO\\00",
+        "BufferedReader\\00",
+        "BufferedWriter\\00",
+        "BufferedRandom\\00",
+        "FileIO\\00"
+      ],
+      "new_sha256": "e26f3f6828ec853e49352fbc56208466b652bbcf8d1ad9f0b98e2743d682ac76",
+      "old_sha256": "cfc449fec4a3941d466cd5db1490edd2cb26c0135376678bef71da0d45a7cdfd",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 116,
+      "table_entries": 6,
+      "tails": {
+        "raise": 29
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/io/bfile_temp.py",
+      "functions": 70,
+      "lookup_functions": 10,
+      "name_lookups": 26,
+      "names_by_tag": [
+        null,
+        "BinaryIO\\00",
+        "BufferedReader\\00",
+        "BufferedWriter\\00",
+        "BufferedRandom\\00",
+        "FileIO\\00"
+      ],
+      "new_sha256": "2e05bb4c11e5a87e1adbf838643ba83e8b23e7c55e670eaaceb1601511e99196",
+      "old_sha256": "04c33651665ed31b1092bfc56958271c935a0102bea8d9b7c9f5665092d677b9",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 104,
+      "table_entries": 6,
+      "tails": {
+        "raise": 26
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/io/bfile_temp_escape.py",
+      "functions": 86,
+      "lookup_functions": 13,
+      "name_lookups": 26,
+      "names_by_tag": [
+        null,
+        "BinaryIO\\00",
+        "BufferedReader\\00",
+        "BufferedWriter\\00",
+        "BufferedRandom\\00",
+        "FileIO\\00"
+      ],
+      "new_sha256": "e27beb71cb718d4365370f06ea1899327ba28a26463b3e561dcbdee34c6a504a",
+      "old_sha256": "d30049aa28125df32f1e1591b47ce7319f7b211ea01f59e156ffb0fcaaacbb48",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 104,
+      "table_entries": 6,
+      "tails": {
+        "raise": 26
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/io/bfile_truncate_read.py",
+      "functions": 83,
+      "lookup_functions": 12,
+      "name_lookups": 25,
+      "names_by_tag": [
+        null,
+        "BinaryIO\\00",
+        "BufferedReader\\00",
+        "BufferedWriter\\00",
+        "BufferedRandom\\00",
+        "FileIO\\00"
+      ],
+      "new_sha256": "4ce15badd2a2531592207857ea3e99ad810fff9c540d145464662994d1905d81",
+      "old_sha256": "3b4aae4f1a4af27373ab8e05629fb4ce53804a621d5512150b81c7bde93aa02d",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 100,
+      "table_entries": 6,
+      "tails": {
+        "raise": 25
+      }
+    },
+    {
+      "additional_name_strings": 6,
+      "case": "tests/programs/library/lib_abc.py",
+      "functions": 34,
+      "lookup_functions": 2,
+      "name_lookups": 2,
+      "names_by_tag": [
+        null,
+        "ABC\\00",
+        "Base\\00",
+        "Partial\\00",
+        "Full\\00",
+        "Meta\\00",
+        "MetaImpl\\00",
+        "Attr\\00",
+        "Old\\00",
+        "OldImpl\\00"
+      ],
+      "new_sha256": "121dd88cf763fd80011b07567e94211481cf6343f7b356d89d0a0218e639ba08",
+      "old_sha256": "1d4754ae52c54f5b58146290a62fca150e3c851d507a0baa0294029d35337907",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 3,
+      "table_entries": 10,
+      "tails": {
+        "raise": 2
+      }
+    },
+    {
+      "additional_name_strings": 2,
+      "case": "tests/programs/library/lib_contextlib.py",
+      "functions": 159,
+      "lookup_functions": 4,
+      "name_lookups": 14,
+      "names_by_tag": [
+        null,
+        "ABC\\00",
+        "AbstractContextManager\\00",
+        "_NullContext\\00",
+        "Writer\\00",
+        "Pretty\\00",
+        "Plain\\00"
+      ],
+      "new_sha256": "4ab136e0e0973b2644711f418332812a8f062794c05bf0b066a6c1d77dffcf68",
+      "old_sha256": "b7c25e15f35f269f36f8e3961124a72972a52820ae650ef4b7959b68418c3d2c",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 28,
+      "table_entries": 7,
+      "tails": {
+        "handled_exception": 10,
+        "raise": 4
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/library/lib_copy.py",
+      "functions": 188,
+      "lookup_functions": 1,
+      "name_lookups": 1,
+      "names_by_tag": [
+        null,
+        "Base\\00",
+        "Sub\\00"
+      ],
+      "new_sha256": "fc1cbdf5530d52d662fc441befcc3c94afea5263e4bb5d91cb6866428b562854",
+      "old_sha256": "2af4c316301e33dfbb7b1e02b6b3c6f3598ac68f7c09b47c70782bfe3a6e1e26",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 1,
+      "table_entries": 3,
+      "tails": {
+        "raise": 1
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/library/lib_copy_deepcopy_base.py",
+      "functions": 27,
+      "lookup_functions": 2,
+      "name_lookups": 4,
+      "names_by_tag": [
+        null,
+        "Base\\00",
+        "Leaf\\00"
+      ],
+      "new_sha256": "d8bf7e272c777fa230d0e50a6de819afc078df5c831fe955ac59f47ff63e3535",
+      "old_sha256": "e0b05cfc2731eadb77c49b2667f630dbb0ce6261eff907201d74c276c3a64fff",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 4,
+      "table_entries": 3,
+      "tails": {
+        "raise": 4
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/library/lib_datetime_date.py",
+      "functions": 218,
+      "lookup_functions": 14,
+      "name_lookups": 37,
+      "names_by_tag": [
+        null,
+        "date\\00",
+        "tzinfo\\00",
+        "datetime\\00",
+        "timezone\\00"
+      ],
+      "new_sha256": "b7b045ed4d25566c18c0242dfeecb175b1dbf7efa9217782088e122c02b3746b",
+      "old_sha256": "67fb0d29f19ef7055950a2afd5004107ed2fb8817a3d4a839bf8c0e934e5af38",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 37,
+      "table_entries": 5,
+      "tails": {
+        "raise": 37
+      }
+    },
+    {
+      "additional_name_strings": 1,
+      "case": "tests/programs/library/lib_datetime_datetime.py",
+      "functions": 233,
+      "lookup_functions": 6,
+      "name_lookups": 12,
+      "names_by_tag": [
+        null,
+        "date\\00",
+        "tzinfo\\00",
+        "datetime\\00",
+        "timezone\\00",
+        "Eastern\\00"
+      ],
+      "new_sha256": "49e552d75f73d11fa0e25ab31a45850dd9e4d54eef86306304bf9126980d63f7",
+      "old_sha256": "1d1c9e0007001d800691001cdfb59ddbd22b02ebe75e1ae89c0d3271f17a7381",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 12,
+      "table_entries": 6,
+      "tails": {
+        "raise": 12
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/library/lib_datetime_dict_key.py",
+      "functions": 95,
+      "lookup_functions": 3,
+      "name_lookups": 14,
+      "names_by_tag": [
+        null,
+        "date\\00",
+        "tzinfo\\00",
+        "datetime\\00",
+        "timezone\\00"
+      ],
+      "new_sha256": "a180263ad492075b903f7f08326ffc0d709d94563a9140352c9f6df761c1ac91",
+      "old_sha256": "67ca94d9f5a6ee3652990c9105be581ff92b4ecbd013329638e7c1a4a527139f",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 14,
+      "table_entries": 5,
+      "tails": {
+        "raise": 14
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/library/lib_datetime_hash.py",
+      "functions": 137,
+      "lookup_functions": 3,
+      "name_lookups": 14,
+      "names_by_tag": [
+        null,
+        "date\\00",
+        "tzinfo\\00",
+        "datetime\\00",
+        "timezone\\00"
+      ],
+      "new_sha256": "a4fb82ed481bfc931bc526f62a16f2a3d572ebad47a761fe2e4887563e8f463a",
+      "old_sha256": "a4f47d6a278b4e9608bc2f66a8107f1232b622aa6fe53bdd8fde9fbef7df0271",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 14,
+      "table_entries": 5,
+      "tails": {
+        "raise": 14
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/library/lib_enum_any.py",
+      "functions": 183,
+      "lookup_functions": 41,
+      "name_lookups": 45,
+      "names_by_tag": [
+        null,
+        "Enum\\00",
+        "ReprEnum\\00",
+        "IntEnum\\00",
+        "StrEnum\\00",
+        "_IntMixin\\00",
+        "_StrMixin\\00",
+        "Flag\\00",
+        "IntFlag\\00",
+        "Color\\00",
+        "Num\\00"
+      ],
+      "new_sha256": "baf56ee4ce6a86cfaceedfce21bd4f92384e0f0fda3368965c3faf680f65735d",
+      "old_sha256": "4a939f5675b895f8f50388de1e544bd5a58c7695985fd791e19fbf3d56aa691b",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 92,
+      "table_entries": 11,
+      "tails": {
+        "raise": 45
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/library/lib_enum_base_lookup.py",
+      "functions": 60,
+      "lookup_functions": 10,
+      "name_lookups": 11,
+      "names_by_tag": [
+        null,
+        "Enum\\00",
+        "ReprEnum\\00",
+        "IntEnum\\00",
+        "StrEnum\\00",
+        "_IntMixin\\00",
+        "_StrMixin\\00",
+        "Flag\\00",
+        "IntFlag\\00",
+        "Color\\00",
+        "Shade\\00",
+        "Base\\00",
+        "Size\\00"
+      ],
+      "new_sha256": "bcea7f044321f20367f247962c7a7279b0ddbd4766c932558aa60339d785f168",
+      "old_sha256": "0e63d1f2f06cc7b68e8e07712d47f661d9eb5fb640ed64807d72555127642923",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 24,
+      "table_entries": 13,
+      "tails": {
+        "raise": 11
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/library/lib_enum_intflag.py",
+      "functions": 98,
+      "lookup_functions": 6,
+      "name_lookups": 8,
+      "names_by_tag": [
+        null,
+        "Enum\\00",
+        "ReprEnum\\00",
+        "IntEnum\\00",
+        "StrEnum\\00",
+        "_IntMixin\\00",
+        "_StrMixin\\00",
+        "Flag\\00",
+        "IntFlag\\00",
+        "P\\00",
+        "Q\\00",
+        "I\\00",
+        "Number\\00"
+      ],
+      "new_sha256": "9acda1b8c8847407a6ef820437ff9261db422128c9c8bed18951ef5927b3c098",
+      "old_sha256": "4d36471ac021178d213de7b8f8dbb15764bf22f86360e83c02448006341236cb",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 29,
+      "table_entries": 13,
+      "tails": {
+        "raise": 8
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/library/lib_enum_plain_isinstance.py",
+      "functions": 204,
+      "lookup_functions": 52,
+      "name_lookups": 61,
+      "names_by_tag": [
+        null,
+        "Enum\\00",
+        "ReprEnum\\00",
+        "IntEnum\\00",
+        "StrEnum\\00",
+        "_IntMixin\\00",
+        "_StrMixin\\00",
+        "Flag\\00",
+        "IntFlag\\00",
+        "Color\\00"
+      ],
+      "new_sha256": "14cc65fb919ace204e16b93d58814fa20f50e8b0e19ef65e893ece54579f9422",
+      "old_sha256": "777e1d4385fc96834d0ca9d3de89108d0f820a569aade5bf089fd864f6cb3b7d",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 81,
+      "table_entries": 10,
+      "tails": {
+        "raise": 61
+      }
+    },
+    {
+      "additional_name_strings": 2,
+      "case": "tests/programs/library/lib_flag_base_lookup.py",
+      "functions": 42,
+      "lookup_functions": 3,
+      "name_lookups": 5,
+      "names_by_tag": [
+        null,
+        "Enum\\00",
+        "ReprEnum\\00",
+        "IntEnum\\00",
+        "StrEnum\\00",
+        "_IntMixin\\00",
+        "_StrMixin\\00",
+        "Flag\\00",
+        "IntFlag\\00",
+        "Color\\00",
+        "Perm\\00"
+      ],
+      "new_sha256": "5c46f2c5c8fd3dc9ca44cfbc74d4e846a72c52c70cdcc7219c0d3cf239593de2",
+      "old_sha256": "b05c96dc761039d0e67597a3f061a422f56a2b626a3c43e4b5f0ff8df8ad1e1f",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 10,
+      "table_entries": 11,
+      "tails": {
+        "raise": 5
+      }
+    },
+    {
+      "additional_name_strings": 1,
+      "case": "tests/programs/library/lib_html_parser.py",
+      "functions": 283,
+      "lookup_functions": 12,
+      "name_lookups": 45,
+      "names_by_tag": [
+        null,
+        "ParserBase\\00",
+        "HTMLParser\\00",
+        "Recorder\\00"
+      ],
+      "new_sha256": "a40fa181cbc0a63027ea735fe1f32cce2b47c8b3242faa9043a2a5074b64998d",
+      "old_sha256": "5a4a2f2c594a2dc1b774ae252f4d318ba07ed262e53e485ee5d5e877628dd3c8",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 45,
+      "table_entries": 4,
+      "tails": {
+        "raise": 45
+      }
+    },
+    {
+      "additional_name_strings": 1,
+      "case": "tests/programs/library/lib_logging.py",
+      "functions": 657,
+      "lookup_functions": 49,
+      "name_lookups": 102,
+      "names_by_tag": [
+        null,
+        "Semaphore\\00",
+        "BoundedSemaphore\\00",
+        "Thread\\00",
+        "Timer\\00",
+        "_MainThread\\00",
+        "_DummyThread\\00",
+        "PercentStyle\\00",
+        "StrFormatStyle\\00",
+        "StringTemplateStyle\\00",
+        "Filter\\00",
+        "Filterer\\00",
+        "Handler\\00",
+        "StreamHandler\\00",
+        "FileHandler\\00",
+        "_StderrHandler\\00",
+        "Logger\\00",
+        "RootLogger\\00",
+        "NullHandler\\00",
+        "OnlyEven\\00"
+      ],
+      "new_sha256": "874724601c1065ffc5795446acf80691308245175b78c651da65fd79ea4075cd",
+      "old_sha256": "a459cbace4ba4f2096dad67c5497b68172e8839b3d0e101a9c5c0e43bd7585ea",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 186,
+      "table_entries": 20,
+      "tails": {
+        "handled_exception": 19,
+        "raise": 83
+      }
+    },
+    {
+      "additional_name_strings": 1,
+      "case": "tests/programs/library/lib_logging_config.py",
+      "functions": 617,
+      "lookup_functions": 39,
+      "name_lookups": 80,
+      "names_by_tag": [
+        null,
+        "Semaphore\\00",
+        "BoundedSemaphore\\00",
+        "Thread\\00",
+        "Timer\\00",
+        "_MainThread\\00",
+        "_DummyThread\\00",
+        "PercentStyle\\00",
+        "StrFormatStyle\\00",
+        "StringTemplateStyle\\00",
+        "Filterer\\00",
+        "Handler\\00",
+        "StreamHandler\\00",
+        "FileHandler\\00",
+        "_StderrHandler\\00",
+        "Logger\\00",
+        "RootLogger\\00",
+        "NullHandler\\00"
+      ],
+      "new_sha256": "524fa283afe74137444d88fa363ccbfa16a8684eafc5f63ddad029b711de7f2e",
+      "old_sha256": "99e53068bc9b5a4490048d8f364db09456db8e56bfc341aa752878d296b62d1a",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 167,
+      "table_entries": 18,
+      "tails": {
+        "handled_exception": 14,
+        "raise": 66
+      }
+    },
+    {
+      "additional_name_strings": 1,
+      "case": "tests/programs/library/lib_logging_int_min.py",
+      "functions": 602,
+      "lookup_functions": 38,
+      "name_lookups": 79,
+      "names_by_tag": [
+        null,
+        "Semaphore\\00",
+        "BoundedSemaphore\\00",
+        "Thread\\00",
+        "Timer\\00",
+        "_MainThread\\00",
+        "_DummyThread\\00",
+        "PercentStyle\\00",
+        "StrFormatStyle\\00",
+        "StringTemplateStyle\\00",
+        "Filterer\\00",
+        "Handler\\00",
+        "StreamHandler\\00",
+        "FileHandler\\00",
+        "_StderrHandler\\00",
+        "Logger\\00",
+        "RootLogger\\00",
+        "NullHandler\\00"
+      ],
+      "new_sha256": "463ba469f5fa26df9432de2638f49a60f61f65d841403a721191017d9db5b388",
+      "old_sha256": "f76850e700ba6b3e754aa1bb2604364c5002c5a8811a61e866489ec54feb628f",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 166,
+      "table_entries": 18,
+      "tails": {
+        "handled_exception": 14,
+        "raise": 65
+      }
+    },
+    {
+      "additional_name_strings": 2,
+      "case": "tests/programs/library/lib_logging_make_record.py",
+      "functions": 488,
+      "lookup_functions": 15,
+      "name_lookups": 37,
+      "names_by_tag": [
+        null,
+        "Semaphore\\00",
+        "BoundedSemaphore\\00",
+        "Thread\\00",
+        "Timer\\00",
+        "_MainThread\\00",
+        "_DummyThread\\00",
+        "PercentStyle\\00",
+        "StrFormatStyle\\00",
+        "StringTemplateStyle\\00",
+        "Filterer\\00",
+        "Handler\\00",
+        "StreamHandler\\00",
+        "FileHandler\\00",
+        "_StderrHandler\\00",
+        "Logger\\00",
+        "RootLogger\\00",
+        "NullHandler\\00"
+      ],
+      "new_sha256": "9e8dbf864372bf8f130c32f33a76bda60071ecdb0093554c67274cf3a20ecd03",
+      "old_sha256": "721151a8648d2019fecb03af4caa46521d1199e9f48ebf69647536b32ff3ccf7",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 99,
+      "table_entries": 18,
+      "tails": {
+        "handled_exception": 7,
+        "raise": 30
+      }
+    },
+    {
+      "additional_name_strings": 1,
+      "case": "tests/programs/library/lib_logging_stderr.py",
+      "functions": 597,
+      "lookup_functions": 36,
+      "name_lookups": 77,
+      "names_by_tag": [
+        null,
+        "Semaphore\\00",
+        "BoundedSemaphore\\00",
+        "Thread\\00",
+        "Timer\\00",
+        "_MainThread\\00",
+        "_DummyThread\\00",
+        "PercentStyle\\00",
+        "StrFormatStyle\\00",
+        "StringTemplateStyle\\00",
+        "Filterer\\00",
+        "Handler\\00",
+        "StreamHandler\\00",
+        "FileHandler\\00",
+        "_StderrHandler\\00",
+        "Logger\\00",
+        "RootLogger\\00",
+        "NullHandler\\00"
+      ],
+      "new_sha256": "596c4c4e495f08b289f0ab791e532848d746418d59fd1b90e760cdfd19720ae0",
+      "old_sha256": "a6b47c76a0ea189227603e3bf09645c0154deced79406698cccb560a20dd56a1",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 164,
+      "table_entries": 18,
+      "tails": {
+        "handled_exception": 14,
+        "raise": 63
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/library/lib_pathlib.py",
+      "functions": 363,
+      "lookup_functions": 26,
+      "name_lookups": 47,
+      "names_by_tag": [
+        null,
+        "_PurePathParents\\00",
+        "_PathParents\\00",
+        "PurePosixPath\\00",
+        "PosixPath\\00"
+      ],
+      "new_sha256": "b9f53e93c9ad2051b4555c6258fa0915a18ec146ceeaa32699c545fa63d4a7ca",
+      "old_sha256": "83220c422ef329b4007f4b075377ca71555f63496cf5612aae1a4040befbaae6",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 47,
+      "table_entries": 5,
+      "tails": {
+        "raise": 47
+      }
+    },
+    {
+      "additional_name_strings": 2,
+      "case": "tests/programs/library/lib_pathlib_glob_case.py",
+      "functions": 293,
+      "lookup_functions": 9,
+      "name_lookups": 11,
+      "names_by_tag": [
+        null,
+        "_PurePathParents\\00",
+        "_PathParents\\00",
+        "PurePosixPath\\00",
+        "PosixPath\\00"
+      ],
+      "new_sha256": "140d002a27f10db51c5068a59308f3e858dee5b0e87ea0263122a4b3817ed006",
+      "old_sha256": "4f00167503f02cc799ae9f1c3b316a0ce06c0d13c781006f4ec5e16bb155ae37",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 11,
+      "table_entries": 5,
+      "tails": {
+        "raise": 11
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/library/lib_threading.py",
+      "functions": 316,
+      "lookup_functions": 11,
+      "name_lookups": 36,
+      "names_by_tag": [
+        null,
+        "Semaphore\\00",
+        "BoundedSemaphore\\00",
+        "Thread\\00",
+        "Timer\\00",
+        "_MainThread\\00",
+        "_DummyThread\\00",
+        "Worker\\00"
+      ],
+      "new_sha256": "49b57ed59cdd7417aa8f876f4855120e8a685d2af1ecb3e99dcce313a1c255ff",
+      "old_sha256": "1b5e2d080d0ddbecaac7c2a74fd517b67b2bf47b9250ad0837af98b73be9413b",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 111,
+      "table_entries": 8,
+      "tails": {
+        "handled_exception": 12,
+        "raise": 24
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/library/lib_tomllib.py",
+      "functions": 481,
+      "lookup_functions": 8,
+      "name_lookups": 23,
+      "names_by_tag": [
+        null,
+        "date\\00",
+        "tzinfo\\00",
+        "datetime\\00",
+        "timezone\\00"
+      ],
+      "new_sha256": "969aaa3b1d6a17c08c51fc6d29b28f77d590c510562eb7b98bde75347c98e8f1",
+      "old_sha256": "f363d99418d66b6644c22f007c1efbd8dc1483b372304d9301b930ee4c95af4c",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 23,
+      "table_entries": 5,
+      "tails": {
+        "raise": 23
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/library/lib_tomllib_dynamic.py",
+      "functions": 480,
+      "lookup_functions": 8,
+      "name_lookups": 23,
+      "names_by_tag": [
+        null,
+        "date\\00",
+        "tzinfo\\00",
+        "datetime\\00",
+        "timezone\\00"
+      ],
+      "new_sha256": "95a8dca26fc13df7f6b516eb9d99badeab9b92beb4f3fb7cb93f31f38d4c9da7",
+      "old_sha256": "23fdd7ab7f4aebd218b5bb825cb7ca750552d0386f24a71e1bd14c591f5f2d80",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 23,
+      "table_entries": 5,
+      "tails": {
+        "raise": 23
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/library/lib_tomllib_uncaught.py",
+      "functions": 443,
+      "lookup_functions": 3,
+      "name_lookups": 14,
+      "names_by_tag": [
+        null,
+        "date\\00",
+        "tzinfo\\00",
+        "datetime\\00",
+        "timezone\\00"
+      ],
+      "new_sha256": "5ffeab89582e6a90748342b170a3a383a968b91a2bc1d7672fccbf51ece4bcff",
+      "old_sha256": "81545b50e0ae6c53ea5d272a7cc312ebe44b6e8b1ae6b0221c1758fb9f1fd5fe",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 14,
+      "table_entries": 5,
+      "tails": {
+        "raise": 14
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/library/lib_weakref_eq.py",
+      "functions": 270,
+      "lookup_functions": 2,
+      "name_lookups": 4,
+      "names_by_tag": [
+        null,
+        "Item\\00",
+        "Sub\\00"
+      ],
+      "new_sha256": "23c60197b1e2dac6b48e4498577cb1bd62a1b85c0aaab420de0d31baca3cac2a",
+      "old_sha256": "e6868338a22d4e139c6c9405394bf670d231b857db2e156f033be3660a2d35c2",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 4,
+      "table_entries": 3,
+      "tails": {
+        "raise": 4
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/numbers/eq_object_param.py",
+      "functions": 58,
+      "lookup_functions": 11,
+      "name_lookups": 23,
+      "names_by_tag": [
+        null,
+        "Pair\\00",
+        "Key\\00",
+        "Point\\00",
+        "Point3\\00"
+      ],
+      "new_sha256": "a1c8d98e39643d726f1f649fc023b60f72a1146a2a252cdd47f7916d4672d949",
+      "old_sha256": "9a8dbe11a4bc41c4085067592253320a1ffd5e87892cbd5380c77523b88c93d6",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 23,
+      "table_entries": 5,
+      "tails": {
+        "raise": 23
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/numbers/python_int_bool_args.py",
+      "functions": 25,
+      "lookup_functions": 3,
+      "name_lookups": 4,
+      "names_by_tag": [
+        null,
+        "Acc\\00",
+        "Big\\00"
+      ],
+      "new_sha256": "211655fe9c1d155d8ea08a899a5fc10fd25a7b0921bd111cbc003a10c8b0b2cd",
+      "old_sha256": "03388f7460a0d0d5a7d0cb5f500d9bcb7336e272aa5a61eaa45da26f533863d9",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 4,
+      "table_entries": 3,
+      "tails": {
+        "raise": 4
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/numbers/python_int_class_defaults.py",
+      "functions": 9,
+      "lookup_functions": 1,
+      "name_lookups": 1,
+      "names_by_tag": [
+        null,
+        "Parent\\00",
+        "Child\\00",
+        "Grandchild\\00"
+      ],
+      "new_sha256": "238a4c63a05f7fc86dc20fa77512d10403ed80d2408f60aca6dde02b5c0396d6",
+      "old_sha256": "9282efc7e1c544f66bb8da704e8fc4df42a4a2d6a164272f6488956deef3285d",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 2,
+      "table_entries": 4,
+      "tails": {
+        "raise": 1
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/numbers/python_int_optional.py",
+      "functions": 19,
+      "lookup_functions": 3,
+      "name_lookups": 10,
+      "names_by_tag": [
+        null,
+        "Acc\\00",
+        "Half\\00"
+      ],
+      "new_sha256": "b98b24cf0d4bbb1d7cff4a5c5c5eba579e14d0dd2bd52a31650922df39ae1b80",
+      "old_sha256": "70629e3e5f464c5a46be4958c0a8a46c9e2ff689417aa199c9d400d48fe92ec5",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 10,
+      "table_entries": 3,
+      "tails": {
+        "raise": 10
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/numbers/python_int_special.py",
+      "functions": 36,
+      "lookup_functions": 4,
+      "name_lookups": 5,
+      "names_by_tag": [
+        null,
+        "Key\\00",
+        "Doubled\\00",
+        "Loose\\00"
+      ],
+      "new_sha256": "9d3d52dfcfdd8341d383dde24159f961a7489e02a1fa0cc22c795b1f5847f11a",
+      "old_sha256": "cd0b7282ba5b4953d66ae128c57bc7c9b87f0a0c7ce6ecfa3e6c5b29ead004fd",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 10,
+      "table_entries": 4,
+      "tails": {
+        "raise": 5
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/optional/none_field_inherit.py",
+      "functions": 9,
+      "lookup_functions": 2,
+      "name_lookups": 2,
+      "names_by_tag": [
+        null,
+        "Base\\00",
+        "Child\\00"
+      ],
+      "new_sha256": "6dd3abd687b9497795d208c7d5a7413c0272ef9d629abd26895e66f1b56cd062",
+      "old_sha256": "b8bcf238af8a7a14f561cc5d3828267dd2f3c472c968c227e6e11b11719092c9",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 2,
+      "table_entries": 3,
+      "tails": {
+        "raise": 2
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/reflection/reflect_dataclasses.py",
+      "functions": 16,
+      "lookup_functions": 1,
+      "name_lookups": 2,
+      "names_by_tag": [
+        null,
+        "Base\\00",
+        "Derived\\00"
+      ],
+      "new_sha256": "246a046cbeb92a8c0088ab392c17dbc565039dbd157c8f170987f8e43c17c42e",
+      "old_sha256": "cf83bace4f90cdb40f0699f210c837eca3386b92e11d0fcfd2753fbf56ea88db",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 2,
+      "table_entries": 3,
+      "tails": {
+        "raise": 2
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/reflection/reflect_dir_loop_fields.py",
+      "functions": 13,
+      "lookup_functions": 1,
+      "name_lookups": 2,
+      "names_by_tag": [
+        null,
+        "Case\\00",
+        "Math\\00"
+      ],
+      "new_sha256": "6092f73d11680ee387ecb72706361c4443d80bbf281d265fb46438d4e785e7d2",
+      "old_sha256": "b8af469601402ab83d6872af557e0e3cf63a6b1d436077c8027d433a7b3a78f9",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 2,
+      "table_entries": 3,
+      "tails": {
+        "raise": 2
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/reflection/reflect_runtime_doc.py",
+      "functions": 7,
+      "lookup_functions": 2,
+      "name_lookups": 6,
+      "names_by_tag": [
+        null,
+        "P\\00",
+        "Q\\00"
+      ],
+      "new_sha256": "d6db8079e7c3eeb7a0b80a9d3eb68a642a8853c5268e313d6e9446010270bbec",
+      "old_sha256": "dd60a7580bdbbdf9c16a3fb7e2b6bf5286dc45bbdbe33af67905de1e0b2737b6",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 6,
+      "table_entries": 3,
+      "tails": {
+        "raise": 6
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/reflection/reflect_runtime_getattr.py",
+      "functions": 16,
+      "lookup_functions": 1,
+      "name_lookups": 1,
+      "names_by_tag": [
+        null,
+        "Base\\00",
+        "Derived\\00"
+      ],
+      "new_sha256": "4a3d343304aa89a3697bd2cf8c7a844c50f4a7862675d70ce835c26d958fb618",
+      "old_sha256": "6a45adf1b3a73a960bf6a2207a87a631664697f7c45ee57effad054c13210236",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 1,
+      "table_entries": 3,
+      "tails": {
+        "raise": 1
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/reflection/reflect_runtime_setattr.py",
+      "functions": 12,
+      "lookup_functions": 2,
+      "name_lookups": 4,
+      "names_by_tag": [
+        null,
+        "P\\00",
+        "Q\\00"
+      ],
+      "new_sha256": "db94b78a0e6ad31f7a6faf1c5d6e3f29fa2bc86dc6bfeefb3df69456cbae159e",
+      "old_sha256": "fa723e3c176b09ac35cfa356ddb4a0173c6463d79ca141a1638d42f5caa0075e",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 4,
+      "table_entries": 3,
+      "tails": {
+        "raise": 4
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/reflection/reflect_union_getattr_deferred.py",
+      "functions": 18,
+      "lookup_functions": 4,
+      "name_lookups": 5,
+      "names_by_tag": [
+        null,
+        "Left\\00",
+        "Child\\00"
+      ],
+      "new_sha256": "2e9e902d3da5665d1a0ef526904acbbc49d37465cc02506253c46e6bddc9f3d6",
+      "old_sha256": "0ea1857887bc689630ca249f521bbac62b6185d964d65d0ce08847333e9600b3",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 5,
+      "table_entries": 3,
+      "tails": {
+        "raise": 5
+      }
+    },
+    {
+      "additional_name_strings": 2,
+      "case": "tests/programs/reflection/reflect_unroll_scope.py",
+      "functions": 22,
+      "lookup_functions": 1,
+      "name_lookups": 1,
+      "names_by_tag": [
+        null,
+        "T\\00",
+        "U\\00",
+        "V\\00",
+        "W\\00"
+      ],
+      "new_sha256": "2f6c083934e6ec64df030c880377814ac41df43be1bc83cb0d2c4300a4a32324",
+      "old_sha256": "d37f7479d19814aa406360cd84dcd688e8737ab946fbc3ad6995684759c147ba",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 1,
+      "table_entries": 5,
+      "tails": {
+        "raise": 1
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/reflection/reflect_vars.py",
+      "functions": 16,
+      "lookup_functions": 1,
+      "name_lookups": 13,
+      "names_by_tag": [
+        null,
+        "Point\\00",
+        "Child\\00"
+      ],
+      "new_sha256": "2d5c843063e0d79771443dd51faab0538b6b5dacfd3c7840e68c91922805490b",
+      "old_sha256": "8b5e40cb6c9eed6c56ef7451580d9f64ab85313468d9ac4bbbe6e9fb0239cd7f",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 13,
+      "table_entries": 3,
+      "tails": {
+        "raise": 13
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/reflection/types_generic_alias.py",
+      "functions": 17,
+      "lookup_functions": 2,
+      "name_lookups": 2,
+      "names_by_tag": [
+        null,
+        "Queue\\00",
+        "Stack\\00"
+      ],
+      "new_sha256": "1e619419256688efb39c84e38d182b4405f9b1321fa2d067e99df8a1a1ac4dbd",
+      "old_sha256": "d5584f1e87c0286d9ec53ed50eafaec95878072af2e8d44686f84a7df8bb01cd",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 2,
+      "table_entries": 3,
+      "tails": {
+        "raise": 2
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/upstream/upstream_contextlib_locks.py",
+      "functions": 264,
+      "lookup_functions": 5,
+      "name_lookups": 18,
+      "names_by_tag": [
+        null,
+        "Semaphore\\00",
+        "BoundedSemaphore\\00",
+        "Thread\\00",
+        "Timer\\00",
+        "_MainThread\\00",
+        "_DummyThread\\00"
+      ],
+      "new_sha256": "349362156c58ef1ea148c3b9bca76ab8e69db50d198737b75db145bfcba96b0f",
+      "old_sha256": "db5b56730015655d8d2f39a66faedcd666860720dad880000245cdc2bee47513",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 40,
+      "table_entries": 7,
+      "tails": {
+        "handled_exception": 5,
+        "raise": 13
+      }
+    },
+    {
+      "additional_name_strings": 7,
+      "case": "tests/programs/upstream/upstream_dataclasses.py",
+      "functions": 151,
+      "lookup_functions": 1,
+      "name_lookups": 2,
+      "names_by_tag": [
+        null,
+        "B\\00",
+        "C_4\\00",
+        "B_2\\00",
+        "C_5\\00",
+        "B_3\\00",
+        "C_9\\00",
+        "D_2\\00",
+        "C_12\\00",
+        "D_3\\00"
+      ],
+      "new_sha256": "9c746f13add0383acd2d933408f41dceb53c57ef754d88c19e27a3460ae2573a",
+      "old_sha256": "01e4edd6bf6a771ca5c0fbdd27c0f2adbfc4c02bc6dfdf094f3329cfd4620a1b",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 2,
+      "table_entries": 10,
+      "tails": {
+        "raise": 2
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/upstream/upstream_datetime.py",
+      "functions": 354,
+      "lookup_functions": 14,
+      "name_lookups": 41,
+      "names_by_tag": [
+        null,
+        "date\\00",
+        "tzinfo\\00",
+        "datetime\\00",
+        "timezone\\00",
+        "A\\00",
+        "B\\00"
+      ],
+      "new_sha256": "a069bcd2ab1cd88f02289c394d7454442318bd4e93d24c2a6bd10c8e5b246a33",
+      "old_sha256": "9e7f8875f359322039dd6d93538eff9810da2c45f1f709a47c881fe320aa76f4",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 123,
+      "table_entries": 7,
+      "tails": {
+        "raise": 41
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/upstream/upstream_str_format.py",
+      "functions": 59,
+      "lookup_functions": 1,
+      "name_lookups": 1,
+      "names_by_tag": [
+        null,
+        "date\\00",
+        "tzinfo\\00",
+        "datetime\\00",
+        "timezone\\00"
+      ],
+      "new_sha256": "92ae83166847cb712dc678b89f2260fa87f97f6e73ef085baf78ba2646dc3d04",
+      "old_sha256": "cf1f1a9d217513a136a423ccebfffd4abe7bc745c669beec50596fe2e60e8c30",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 1,
+      "table_entries": 5,
+      "tails": {
+        "raise": 1
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/upstream/upstream_tomllib_data.py",
+      "functions": 443,
+      "lookup_functions": 3,
+      "name_lookups": 14,
+      "names_by_tag": [
+        null,
+        "date\\00",
+        "tzinfo\\00",
+        "datetime\\00",
+        "timezone\\00"
+      ],
+      "new_sha256": "8bd7944079ed948b49e00d9f04f7da714a90d5f59bb82d3d79ab4116bb625f10",
+      "old_sha256": "fa65e69f689917f4a0e611590aeec7aa3a5a2b13a4addc70002eb26f14157cac",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 14,
+      "table_entries": 5,
+      "tails": {
+        "raise": 14
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/programs/upstream/upstream_tomllib_misc.py",
+      "functions": 463,
+      "lookup_functions": 4,
+      "name_lookups": 17,
+      "names_by_tag": [
+        null,
+        "date\\00",
+        "tzinfo\\00",
+        "datetime\\00",
+        "timezone\\00"
+      ],
+      "new_sha256": "c1a27438e45a67fd270f166281c688a874e2a1c06a4d5921856de0023b7c2cf7",
+      "old_sha256": "8c15b19f46c25a716c2470c738aa4efe373c825235b8e993022e26bb373b0d41",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 17,
+      "table_entries": 5,
+      "tails": {
+        "raise": 17
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/deviations/bfile_append_buffer.py",
+      "functions": 78,
+      "lookup_functions": 12,
+      "name_lookups": 22,
+      "names_by_tag": [
+        null,
+        "BinaryIO\\00",
+        "BufferedReader\\00",
+        "BufferedWriter\\00",
+        "BufferedRandom\\00",
+        "FileIO\\00"
+      ],
+      "new_sha256": "0604ef3225eb34f718d4cd6cbb191f8e84834f70fd21cfd9e8fa39aafcf14f66",
+      "old_sha256": "2f7ce265ccb5a80ec4923dcd02d21d12a03369d9a7b4ffb69f42dbd6ff75ea27",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 88,
+      "table_entries": 6,
+      "tails": {
+        "raise": 22
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/deviations/bfile_mode_computed.py",
+      "functions": 49,
+      "lookup_functions": 6,
+      "name_lookups": 10,
+      "names_by_tag": [
+        null,
+        "BinaryIO\\00",
+        "BufferedReader\\00",
+        "BufferedWriter\\00",
+        "BufferedRandom\\00",
+        "FileIO\\00"
+      ],
+      "new_sha256": "056be1348865192a8702fcfaf76cdd1164f1fca3d6743ac425a97364cf425f67",
+      "old_sha256": "b0ad63b41eb3176634d5058c828106f79be999240d21cbe701ae90bbbdc5d6d3",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 40,
+      "table_entries": 6,
+      "tails": {
+        "raise": 10
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/deviations/dataclass_direct_compare.py",
+      "functions": 10,
+      "lookup_functions": 2,
+      "name_lookups": 4,
+      "names_by_tag": [
+        null,
+        "P\\00",
+        "D\\00"
+      ],
+      "new_sha256": "40af410072a59e45992ba5a97c40bed3300aa5d6ecba92832133f68085335755",
+      "old_sha256": "b66fc5f15f5a13b1624ce050fc8bbc8511b44dc589afaa64c9bcd856a25cad91",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 4,
+      "table_entries": 3,
+      "tails": {
+        "raise": 4
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/deviations/dynany_cmp_field_shadow.py",
+      "functions": 20,
+      "lookup_functions": 1,
+      "name_lookups": 1,
+      "names_by_tag": [
+        null,
+        "Base\\00",
+        "Child\\00"
+      ],
+      "new_sha256": "7b60ae3071bb0a8b6a76ae96869994760513da5caaf8d95ade504b4e3b977957",
+      "old_sha256": "5906a7fb53c0ce9e846c3bb64cda9591b37865aa0e5205120d59e5c54bd464c7",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 1,
+      "table_entries": 3,
+      "tails": {
+        "raise": 1
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/deviations/lib_datetime.py",
+      "functions": 215,
+      "lookup_functions": 8,
+      "name_lookups": 18,
+      "names_by_tag": [
+        null,
+        "date\\00",
+        "tzinfo\\00",
+        "datetime\\00",
+        "timezone\\00",
+        "MyDate\\00"
+      ],
+      "new_sha256": "16504b4f1e1e8f218c65e722b34f46712e8b0eea864e8bbf3ab5dd5eef5926ce",
+      "old_sha256": "8214e8c8c961c749b1112fc6619379c1014ea58a5db2dbb4db9d57bd0ea9dd2f",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 36,
+      "table_entries": 6,
+      "tails": {
+        "raise": 18
+      }
+    },
+    {
+      "additional_name_strings": 2,
+      "case": "tests/deviations/lib_logging_exc_info.py",
+      "functions": 421,
+      "lookup_functions": 13,
+      "name_lookups": 33,
+      "names_by_tag": [
+        null,
+        "Semaphore\\00",
+        "BoundedSemaphore\\00",
+        "Thread\\00",
+        "Timer\\00",
+        "_MainThread\\00",
+        "_DummyThread\\00",
+        "PercentStyle\\00",
+        "StrFormatStyle\\00",
+        "StringTemplateStyle\\00",
+        "Filterer\\00",
+        "Handler\\00",
+        "StreamHandler\\00",
+        "FileHandler\\00",
+        "_StderrHandler\\00",
+        "Logger\\00",
+        "RootLogger\\00",
+        "NullHandler\\00"
+      ],
+      "new_sha256": "5155beca97021469be44b0e2404c7489c189eaaeebfc838ff2147fb967e16a01",
+      "old_sha256": "9d2c05e9989cb02f080ed8be4a89c627efcd0b107146558f3e9eac96d18bf44c",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 91,
+      "table_entries": 18,
+      "tails": {
+        "handled_exception": 7,
+        "raise": 26
+      }
+    },
+    {
+      "additional_name_strings": 2,
+      "case": "tests/deviations/lib_pathlib_unsupported.py",
+      "functions": 85,
+      "lookup_functions": 8,
+      "name_lookups": 10,
+      "names_by_tag": [
+        null,
+        "_PurePathParents\\00",
+        "_PathParents\\00",
+        "PurePosixPath\\00",
+        "PosixPath\\00"
+      ],
+      "new_sha256": "f7468272edbb6d44efb73d0a697919961df28e06519bdac668b2a34e92845fa6",
+      "old_sha256": "04d7cecc6b32f6309d081099522da8407d51f6d459801d5953305496bb74cc4a",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 10,
+      "table_entries": 5,
+      "tails": {
+        "raise": 10
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/deviations/threading_start.py",
+      "functions": 240,
+      "lookup_functions": 3,
+      "name_lookups": 11,
+      "names_by_tag": [
+        null,
+        "Semaphore\\00",
+        "BoundedSemaphore\\00",
+        "Thread\\00",
+        "Timer\\00",
+        "_MainThread\\00",
+        "_DummyThread\\00",
+        "Worker\\00"
+      ],
+      "new_sha256": "f097bea47c6d0e14fae6cf46e1ab47841b997138a87165149a91875094ff0028",
+      "old_sha256": "98a5f89d6ae3589b6274dd825ca3992407332e87bd12ce3c2edaa6592e8640cd",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 44,
+      "table_entries": 8,
+      "tails": {
+        "raise": 11
+      }
+    },
+    {
+      "additional_name_strings": 1,
+      "case": "bench/pyperformance/bm_logging.py",
+      "functions": 589,
+      "lookup_functions": 37,
+      "name_lookups": 79,
+      "names_by_tag": [
+        null,
+        "Semaphore\\00",
+        "BoundedSemaphore\\00",
+        "Thread\\00",
+        "Timer\\00",
+        "_MainThread\\00",
+        "_DummyThread\\00",
+        "PercentStyle\\00",
+        "StrFormatStyle\\00",
+        "StringTemplateStyle\\00",
+        "Filterer\\00",
+        "Handler\\00",
+        "StreamHandler\\00",
+        "FileHandler\\00",
+        "_StderrHandler\\00",
+        "Logger\\00",
+        "RootLogger\\00",
+        "NullHandler\\00"
+      ],
+      "new_sha256": "eab2e1306376d0417c94d254433c3ca0fa54ff481117cf0bc4272f7b96209fa8",
+      "old_sha256": "298ee4cb191dcc3ddcfe0c30c94c1df0620a6f84fcde9aef833f003e50b4eccf",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 163,
+      "table_entries": 18,
+      "tails": {
+        "handled_exception": 15,
+        "raise": 64
+      }
+    },
+    {
+      "additional_name_strings": 5,
+      "case": "bench/pyperformance/raytrace.py",
+      "functions": 61,
+      "lookup_functions": 3,
+      "name_lookups": 9,
+      "names_by_tag": [
+        null,
+        "BinaryIO\\00",
+        "BufferedReader\\00",
+        "BufferedWriter\\00",
+        "BufferedRandom\\00",
+        "FileIO\\00",
+        "SimpleSurface\\00",
+        "CheckerboardSurface\\00"
+      ],
+      "new_sha256": "f51afcf5c470b95c5506f240e1b4ba065d75ba3e00af699c2dfe52c09dd567b8",
+      "old_sha256": "40290aa330a31e96e5fd577d2dc11fb436008ffa327c816be4e97621293b281a",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 9,
+      "table_entries": 8,
+      "tails": {
+        "raise": 9
+      }
+    },
+    {
+      "additional_name_strings": 5,
+      "case": "bench/pyperformance/richards.py",
+      "functions": 107,
+      "lookup_functions": 16,
+      "name_lookups": 27,
+      "names_by_tag": [
+        null,
+        "TaskRec\\00",
+        "DeviceTaskRec\\00",
+        "IdleTaskRec\\00",
+        "HandlerTaskRec\\00",
+        "WorkerTaskRec\\00",
+        "TaskState\\00",
+        "Task\\00",
+        "DeviceTask\\00",
+        "HandlerTask\\00",
+        "IdleTask\\00",
+        "WorkTask\\00"
+      ],
+      "new_sha256": "8a6657269142f0f208553ce05081f0e78bf18d41f3377d962fc11ce16d7b02a9",
+      "old_sha256": "0e214c35bf7a6ae4ba950c6cde854d6dd044bd6d23e5b2f71737501874c95196",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 111,
+      "table_entries": 12,
+      "tails": {
+        "raise": 27
+      }
+    },
+    {
+      "additional_name_strings": 5,
+      "case": "bench/pyperformance/richards_super.py",
+      "functions": 111,
+      "lookup_functions": 16,
+      "name_lookups": 27,
+      "names_by_tag": [
+        null,
+        "TaskRec\\00",
+        "DeviceTaskRec\\00",
+        "IdleTaskRec\\00",
+        "HandlerTaskRec\\00",
+        "WorkerTaskRec\\00",
+        "TaskState\\00",
+        "Task\\00",
+        "DeviceTask\\00",
+        "HandlerTask\\00",
+        "IdleTask\\00",
+        "WorkTask\\00"
+      ],
+      "new_sha256": "4367fd6449a5f1fd6396d432405dd00852a9f9bfa94a0c2b2074a6e8f2b370bb",
+      "old_sha256": "59d3c2f36f0a35dde49964f692ca774e05acb93a0c70664ae8b0a83ca3937f61",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 111,
+      "table_entries": 12,
+      "tails": {
+        "raise": 27
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/ir/alloc_refs.py",
+      "functions": 31,
+      "lookup_functions": 1,
+      "name_lookups": 1,
+      "names_by_tag": [
+        null,
+        "Base\\00",
+        "Scalars\\00",
+        "Tagged\\00"
+      ],
+      "new_sha256": "9c8187dae35eb269f1e9da1389918642d55d731f74f69cee19546d5144cff104",
+      "old_sha256": "9436b79dcc4be7a963f4e871d70a65cb13309751d97e635c53b2c7271f09d072",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 2,
+      "table_entries": 4,
+      "tails": {
+        "raise": 1
+      }
+    },
+    {
+      "additional_name_strings": 0,
+      "case": "tests/ir/field_tbaa.py",
+      "functions": 11,
+      "lookup_functions": 1,
+      "name_lookups": 1,
+      "names_by_tag": [
+        null,
+        "Point\\00",
+        "Labeled\\00"
+      ],
+      "new_sha256": "0766679e70eba459e38b7644ce5854e5302a9334d8df4695c916dc891487f822",
+      "old_sha256": "629bd062ba948ad0770dd93633a35f55e144aca408d4309d86000a02a298e9d6",
+      "remaining_ir_equal": true,
+      "replaced_tag_comparisons": 1,
+      "table_entries": 3,
+      "tails": {
+        "raise": 1
+      }
+    }
+  ],
+  "total_lookups": 2096,
+  "total_replaced_tag_comparisons": 4437
+}

@@ -1284,6 +1284,7 @@ class Gen:
         self.globs: list[Val] = []
         self.gcroots: list[str] = []
         self.consts: list[Data] = []
+        self.fieldnames = False  # the program's static class-tag name table, shared by missing-field checks
         self.bconsts: dict[str, Val] = {}  # builtin module singleton values
         # the constant tuples of displays of literals (Gen.tuple_const): each one's name (@tc.N),
         # by its module and items, and each one's Data, by its name (tupleret reads its slots)
