@@ -1,0 +1,2 @@
+33 runtime calls of the FFI's C glue (pyext.c, both ABIs; pyembed.c) checked against runtime.c
+146 functions of runtime.py, 19130 uses in runtime.c and 2364 programs, 0 mismatches

@@ -1,0 +1,511 @@
+{
+  "complete": true,
+  "stages": [
+    {
+      "name": "contracts",
+      "command": [
+        "python3.13",
+        "tools/check_runtime.py"
+      ],
+      "environment_overrides": {},
+      "returncode": 0,
+      "wall_seconds": 16.3900538569942,
+      "log": "final-contracts.log",
+      "log_sha256": "2aad7c786916cb334b3f2c0901b96acd19060c56af319a017de8f04c37eb5b08",
+      "stdout": "644 RUNTIME entries, 70 exception classes: signatures, coverage and effects agree with runtime.c and runtime.py (181 functions, none of which reaches itself through a lowering or runtime.c), the classes with this Python\n",
+      "stderr": ""
+    },
+    {
+      "name": "ruff",
+      "command": [
+        "ruff",
+        "check",
+        "runtime.py",
+        "bench/runtime_subset"
+      ],
+      "environment_overrides": {},
+      "returncode": 0,
+      "wall_seconds": 0.014936747000319883,
+      "log": "final-ruff.log",
+      "log_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+      "stdout": "All checks passed!\n",
+      "stderr": ""
+    },
+    {
+      "name": "rtcheck",
+      "command": [
+        "python3.13",
+        "tools/rtcheck.py",
+        "5000",
+        "7"
+      ],
+      "environment_overrides": {},
+      "returncode": 0,
+      "wall_seconds": 19.978016977998777,
+      "log": "final-rtcheck.log",
+      "log_sha256": "e2512be2d7bd89dd3a6e29fdae328519fc259e134a9dfae6c0b9b0421c63fc5d",
+      "stdout": "604985 cases, 0 failed\n",
+      "stderr": ""
+    },
+    {
+      "name": "numeric-contract",
+      "command": [
+        "python3.13",
+        "bench/runtime_subset/numeric_contract.py",
+        "--before",
+        "/workspace/scratch/9c9ef915af51/baseline",
+        "--after",
+        "/workspace/scratch/9c9ef915af51/pystachy",
+        "--compiler",
+        "/workspace/scratch/9c9ef915af51/pystachy/pystachy",
+        "--json",
+        "/workspace/scratch/9c9ef915af51/numeric-contract-published.json"
+      ],
+      "environment_overrides": {},
+      "returncode": 0,
+      "wall_seconds": 0.9123969729989767,
+      "log": "final-numeric-contract.log",
+      "log_sha256": "78c981cd0668929f015f4224daa6a88b2aec39d1dd0566da56186dada7c51a8f",
+      "stdout": "{\n  \"after\": {\n    \"commit\": \"263bd32d3c64193c58127ef51e432de7d44db7da\",\n    \"inputs_sha256\": {\n      \"runtime.c\": \"9719626b7ce179f48b79f29bc39c78b3f751fdc5eb8c240df51c83035dd0ce2f\",\n      \"runtime.py\": \"442951a4d250041b47885d8325045bdd9af324a6022e3b7c0d8625596119206a\"\n    },\n    \"path\": \"/workspace/scratch/9c9ef915af51/pystachy\",\n    \"status\": []\n  },\n  \"before\": {\n    \"commit\": \"f7103067545b43cdcd8ce20dc66b1571425b3a8d\",\n    \"inputs_sha256\": {\n      \"runtime.c\": \"1a6c77b09d5739d0d2ac263b8c86e7aa640c9b5bdf1cdafe369e84d1d7a0bb0c\"\n    },\n    \"path\": \"/workspace/scratch/9c9ef915af51/baseline\",\n    \"status\": []\n  },\n  \"cases_passed\": {\n    \"integer_power\": 9669,\n    \"range_length\": 21352,\n    \"range_membership\": 106760\n  },\n  \"compiler\": {\n    \"mode\": \"native\",\n    \"path\": \"/workspace/scratch/9c9ef915af51/pystachy/pystachy\",\n    \"sha256\": \"793c313f8f580349f9fcd9a9f36a9a3d8847ed3187ddba94204747e37c3b3a23\"\n  },\n  \"function_size_bytes\": {\n    \"after\": {\n      \"pys_pow\": 154,\n      \"pys_range_has\": 102,\n      \"pys_range_len\": 91\n    },\n    \"before\": {\n      \"pys_pow\": 128,\n      \"pys_range_has\": 108,\n      \"pys_range_len\": 94\n    }\n  },\n  \"llvm_passes\": \"default<O2>\",\n  \"native_flags\": [\n    \"-O2\",\n    \"-fPIC\"\n  ],\n  \"optimized_calls\": {\n    \"pys_pow\": [\n      \"llvm.smul.with.overflow.i64\",\n      \"llvm.smul.with.overflow.i64\",\n      \"pys_raise\",\n      \"pys_raise\",\n      \"pys_raise\"\n    ],\n    \"pys_range_has\": [\n      \"pys_raise\"\n    ],\n    \"pys_range_len\": [\n      \"pys_raise\"\n    ]\n  },\n  \"platform\": \"Linux-6.18.57-x86_64-with-glibc2.39\",\n  \"python\": \"3.13.16 (main, Oct 14 2026, 01:04:01) [Clang 23.1.3 ]\",\n  \"random_ranges\": 20000,\n  \"runner_sha256\": \"7ec5fa923e3fe50c710756deaa5fa5a61cef1726e89e1d58bb170caeacd9458a\",\n  \"schema\": 1,\n  \"scope\": \"isolated native helper values and error text; excludes full unwinder, GC and performance\",\n  \"seed\": 1123,\n  \"status\": \"pass\",\n  \"toolchain\": {\n    \"clang\": {\n      \"path\": \"/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/clang\",\n      \"version\": \"Ubuntu clang version 18.1.3 (1ubuntu1)\"\n    },\n    \"llvm-extract\": {\n      \"path\": \"/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/llvm-extract\",\n      \"version\": \"Ubuntu LLVM version 18.1.3\"\n    },\n    \"llvm-nm\": {\n      \"path\": \"/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/llvm-nm\",\n      \"version\": \"llvm-nm, compatible with GNU nm\"\n    },\n    \"opt\": {\n      \"path\": \"/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/opt\",\n      \"version\": \"Ubuntu LLVM version 18.1.3\"\n    }\n  }\n}\n",
+      "stderr": ""
+    },
+    {
+      "name": "native",
+      "command": [
+        "tests/run.sh",
+        "./pystachy",
+        "jit aot",
+        "tests/programs/runtime/rt_scalar_math_input.py",
+        "tests/programs/runtime/rt_sum_float_edges.py",
+        "tests/programs/runtime/rt_ascii_edges.py",
+        "tests/programs/numbers/runtime_range_boundaries.py",
+        "tests/programs/numbers/runtime_power_boundaries.py",
+        "tests/programs/optimizations/opt_listget_range.py",
+        "tests/programs/numbers/math_isclose.py",
+        "tests/programs/numbers/math_funcs.py",
+        "tests/programs/numbers/math_more.py",
+        "tests/programs/numbers/numbers_exact.py",
+        "tests/programs/numbers/python_int_sums.py",
+        "tests/programs/numbers/python_int_any_sum.py",
+        "tests/programs/numbers/python_int_ipow.py",
+        "tests/programs/runtime/rt_math_range.py",
+        "tests/programs/runtime/rt_range_step.py",
+        "tests/programs/runtime/rt_range_list.py",
+        "tests/programs/runtime/rt_repr_nonprintable.py",
+        "tests/programs/runtime/rt_zero_pow.py",
+        "tests/programs/containers/range_value.py",
+        "tests/programs/containers/range_list.py",
+        "tests/programs/generators/iter_range_boundaries.py",
+        "tests/programs/upstream/upstream_math_functions.py",
+        "tests/programs/upstream/upstream_math_ieee754.py",
+        "tests/programs/upstream/upstream_builtin_min_max_sum.py",
+        "tests/programs/upstream/upstream_sum_start.py",
+        "tests/programs/upstream/upstream_range_extracted.py",
+        "tests/programs/upstream/upstream_pow_extracted.py",
+        "tests/programs/inference/dynany_sum_compensated.py",
+        "tests/programs/optimizations/opt_scalar_none_ipow.py",
+        "tests/programs/optimizations/opt_scalar_none_pow.py",
+        "tests/programs/optimizations/opt_scalar_none_range.py",
+        "tests/programs/optimizations/opt_in_range.py",
+        "tests/programs/optimizations/opt_none_sum.py",
+        "tests/programs/numbers/float_power_rounding.py"
+      ],
+      "environment_overrides": {},
+      "returncode": 0,
+      "wall_seconds": 28.842162765999092,
+      "log": "final-native.log",
+      "log_sha256": "f3be0d2c331ea11ce5cb3b3b0b58c922d7d33ea77ff976554b08492b53253c57",
+      "stdout": "selected 34 cases\n68 passed, 0 failed\n",
+      "stderr": ""
+    },
+    {
+      "name": "gc",
+      "command": [
+        "tests/run.sh",
+        "./pystachy",
+        "jit aot",
+        "tests/programs/runtime/rt_scalar_math_input.py",
+        "tests/programs/runtime/rt_sum_float_edges.py",
+        "tests/programs/runtime/rt_ascii_edges.py",
+        "tests/programs/numbers/runtime_range_boundaries.py",
+        "tests/programs/numbers/runtime_power_boundaries.py",
+        "tests/programs/optimizations/opt_listget_range.py"
+      ],
+      "environment_overrides": {
+        "PYSTACHY_GC_STRESS_PROGRAM": "1"
+      },
+      "returncode": 0,
+      "wall_seconds": 2.4256653409975115,
+      "log": "final-gc.log",
+      "log_sha256": "13825232b180756a6c300305f73ab1133591422e08b7368301f24b3b78851ffc",
+      "stdout": "selected 6 cases\n12 passed, 0 failed\n",
+      "stderr": ""
+    },
+    {
+      "name": "opt-off",
+      "command": [
+        "tests/run.sh",
+        "./pystachy",
+        "jit aot",
+        "tests/programs/runtime/rt_scalar_math_input.py",
+        "tests/programs/runtime/rt_sum_float_edges.py",
+        "tests/programs/runtime/rt_ascii_edges.py",
+        "tests/programs/numbers/runtime_range_boundaries.py",
+        "tests/programs/numbers/runtime_power_boundaries.py",
+        "tests/programs/optimizations/opt_listget_range.py"
+      ],
+      "environment_overrides": {
+        "PYSTACHY_OPT": "-listget"
+      },
+      "returncode": 0,
+      "wall_seconds": 12.855393000994809,
+      "log": "final-opt-off.log",
+      "log_sha256": "13825232b180756a6c300305f73ab1133591422e08b7368301f24b3b78851ffc",
+      "stdout": "selected 6 cases\n12 passed, 0 failed\n",
+      "stderr": ""
+    },
+    {
+      "name": "hosted",
+      "command": [
+        "tests/run.sh",
+        "python3.13 -m pystachy",
+        "jit aot",
+        "tests/programs/runtime/rt_scalar_math_input.py",
+        "tests/programs/runtime/rt_sum_float_edges.py",
+        "tests/programs/runtime/rt_ascii_edges.py",
+        "tests/programs/numbers/runtime_range_boundaries.py",
+        "tests/programs/numbers/runtime_power_boundaries.py",
+        "tests/programs/optimizations/opt_listget_range.py"
+      ],
+      "environment_overrides": {},
+      "returncode": 0,
+      "wall_seconds": 7.775353808996442,
+      "log": "final-hosted.log",
+      "log_sha256": "13825232b180756a6c300305f73ab1133591422e08b7368301f24b3b78851ffc",
+      "stdout": "selected 6 cases\n12 passed, 0 failed\n",
+      "stderr": ""
+    },
+    {
+      "name": "asan-jit",
+      "command": [
+        "tests/run.sh",
+        "./pystachy",
+        "jit",
+        "tests/programs/runtime/rt_scalar_math_input.py",
+        "tests/programs/runtime/rt_sum_float_edges.py",
+        "tests/programs/runtime/rt_ascii_edges.py",
+        "tests/programs/numbers/runtime_range_boundaries.py",
+        "tests/programs/numbers/runtime_power_boundaries.py",
+        "tests/programs/optimizations/opt_listget_range.py"
+      ],
+      "environment_overrides": {
+        "PYSTACHY_JOBS": "1",
+        "PYSTACHY_CFLAGS": "-fsanitize=address",
+        "PYSTACHY_CACHE": "/workspace/scratch/9c9ef915af51/asan-program-cache",
+        "ASAN_OPTIONS": "detect_leaks=0:detect_stack_use_after_return=0",
+        "LD_PRELOAD": "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/lib/clang/18/lib/linux/libclang_rt.asan-x86_64.so"
+      },
+      "returncode": 0,
+      "wall_seconds": 31.165207696001744,
+      "log": "final-asan-jit.log",
+      "log_sha256": "2717f572e7a0d4121bbe7400eebafa7eb1cbd6bf55179fdc85851b72098f7130",
+      "stdout": "selected 6 cases\n6 passed, 0 failed\n",
+      "stderr": ""
+    },
+    {
+      "name": "asan-build-rt_scalar_math_input",
+      "command": [
+        "./pystachy",
+        "build",
+        "tests/programs/runtime/rt_scalar_math_input.py",
+        "-o",
+        "/workspace/scratch/9c9ef915af51/final-asan-rt_scalar_math_input"
+      ],
+      "environment_overrides": {
+        "PYSTACHY_JOBS": "1",
+        "PYSTACHY_CFLAGS": "-fsanitize=address",
+        "PYSTACHY_CACHE": "/workspace/scratch/9c9ef915af51/asan-program-cache",
+        "ASAN_OPTIONS": "detect_leaks=0:detect_stack_use_after_return=0"
+      },
+      "returncode": 0,
+      "wall_seconds": 1.6384050720007508,
+      "log": "final-asan-build-rt_scalar_math_input.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "name": "asan-build-rt_sum_float_edges",
+      "command": [
+        "./pystachy",
+        "build",
+        "tests/programs/runtime/rt_sum_float_edges.py",
+        "-o",
+        "/workspace/scratch/9c9ef915af51/final-asan-rt_sum_float_edges"
+      ],
+      "environment_overrides": {
+        "PYSTACHY_JOBS": "1",
+        "PYSTACHY_CFLAGS": "-fsanitize=address",
+        "PYSTACHY_CACHE": "/workspace/scratch/9c9ef915af51/asan-program-cache",
+        "ASAN_OPTIONS": "detect_leaks=0:detect_stack_use_after_return=0"
+      },
+      "returncode": 0,
+      "wall_seconds": 0.9732173439988401,
+      "log": "final-asan-build-rt_sum_float_edges.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "name": "asan-build-rt_ascii_edges",
+      "command": [
+        "./pystachy",
+        "build",
+        "tests/programs/runtime/rt_ascii_edges.py",
+        "-o",
+        "/workspace/scratch/9c9ef915af51/final-asan-rt_ascii_edges"
+      ],
+      "environment_overrides": {
+        "PYSTACHY_JOBS": "1",
+        "PYSTACHY_CFLAGS": "-fsanitize=address",
+        "PYSTACHY_CACHE": "/workspace/scratch/9c9ef915af51/asan-program-cache",
+        "ASAN_OPTIONS": "detect_leaks=0:detect_stack_use_after_return=0"
+      },
+      "returncode": 0,
+      "wall_seconds": 1.1296142260034685,
+      "log": "final-asan-build-rt_ascii_edges.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "name": "asan-build-runtime_range_boundaries",
+      "command": [
+        "./pystachy",
+        "build",
+        "tests/programs/numbers/runtime_range_boundaries.py",
+        "-o",
+        "/workspace/scratch/9c9ef915af51/final-asan-runtime_range_boundaries"
+      ],
+      "environment_overrides": {
+        "PYSTACHY_JOBS": "1",
+        "PYSTACHY_CFLAGS": "-fsanitize=address",
+        "PYSTACHY_CACHE": "/workspace/scratch/9c9ef915af51/asan-program-cache",
+        "ASAN_OPTIONS": "detect_leaks=0:detect_stack_use_after_return=0"
+      },
+      "returncode": 0,
+      "wall_seconds": 0.9400063429930015,
+      "log": "final-asan-build-runtime_range_boundaries.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "name": "asan-build-runtime_power_boundaries",
+      "command": [
+        "./pystachy",
+        "build",
+        "tests/programs/numbers/runtime_power_boundaries.py",
+        "-o",
+        "/workspace/scratch/9c9ef915af51/final-asan-runtime_power_boundaries"
+      ],
+      "environment_overrides": {
+        "PYSTACHY_JOBS": "1",
+        "PYSTACHY_CFLAGS": "-fsanitize=address",
+        "PYSTACHY_CACHE": "/workspace/scratch/9c9ef915af51/asan-program-cache",
+        "ASAN_OPTIONS": "detect_leaks=0:detect_stack_use_after_return=0"
+      },
+      "returncode": 0,
+      "wall_seconds": 0.9191159659967525,
+      "log": "final-asan-build-runtime_power_boundaries.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "name": "asan-build-opt_listget_range",
+      "command": [
+        "./pystachy",
+        "build",
+        "tests/programs/optimizations/opt_listget_range.py",
+        "-o",
+        "/workspace/scratch/9c9ef915af51/final-asan-opt_listget_range"
+      ],
+      "environment_overrides": {
+        "PYSTACHY_JOBS": "1",
+        "PYSTACHY_CFLAGS": "-fsanitize=address",
+        "PYSTACHY_CACHE": "/workspace/scratch/9c9ef915af51/asan-program-cache",
+        "ASAN_OPTIONS": "detect_leaks=0:detect_stack_use_after_return=0"
+      },
+      "returncode": 0,
+      "wall_seconds": 0.9947419790041749,
+      "log": "final-asan-build-opt_listget_range.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "name": "runtime-ir-before",
+      "command": [
+        "/workspace/scratch/9c9ef915af51/baseline/pystachy",
+        "rt",
+        "runtime.py",
+        "-o",
+        "/workspace/scratch/9c9ef915af51/final-runtime-before.ll"
+      ],
+      "environment_overrides": {},
+      "returncode": 0,
+      "wall_seconds": 0.08471290199668147,
+      "log": "final-runtime-ir-before.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "name": "runtime-ir-after",
+      "command": [
+        "./pystachy",
+        "rt",
+        "runtime.py",
+        "-o",
+        "/workspace/scratch/9c9ef915af51/final-runtime-after.ll"
+      ],
+      "environment_overrides": {},
+      "returncode": 0,
+      "wall_seconds": 0.10097837899957085,
+      "log": "final-runtime-ir-after.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "source_commit": "263bd32d3c64193c58127ef51e432de7d44db7da",
+  "source_sha256": {
+    "pystachy.py": "a413782632f88d4746a81fd7cfb529d695ab36a35618522a83be1e25e1e31f29",
+    "runtime.c": "9719626b7ce179f48b79f29bc39c78b3f751fdc5eb8c240df51c83035dd0ce2f",
+    "runtime.py": "442951a4d250041b47885d8325045bdd9af324a6022e3b7c0d8625596119206a",
+    "src/__init__.py": "c443ed6062edae246598189fb20f12799a5e87a04049acb855894652e3875af7",
+    "src/pystachy_compiler/__init__.py": "f60cd281f8ed4fd35776c9f4d40d6a1313c49a3cae5df61841028f711b9f13c8",
+    "src/pystachy_compiler/analysis.py": "0ed995ce65b1e1f364ba5a91a6650d067f5802871f86f96cf1ea08c14599a41e",
+    "src/pystachy_compiler/argparse_schema.py": "8cfb408e9066ddb51d89be371cab2c4b769c1108da3d1554391bc799a83082a5",
+    "src/pystachy_compiler/bigints.py": "1d00ba32bc6052944e552864375e2a0b390ba1ddb001208167056d87199bab61",
+    "src/pystachy_compiler/builtins.py": "16ef3fdc37e154e1b3d928b02c0e15d2335eb3ae1d1d935b981bfb72c61fea67",
+    "src/pystachy_compiler/calls.py": "6efdf96768d973faf8eeeb9bfd3faea0009d3b2d2516f7ea4b337fb3da39f71b",
+    "src/pystachy_compiler/containers.py": "0a75f833f7916fd05d5076c1a88393a203c97166ebc77d1048028fdac5716b50",
+    "src/pystachy_compiler/conversions.py": "79aed0912984999deb696242db22d39e3af32c4e74a7021d5794f662dcf6ddf2",
+    "src/pystachy_compiler/declarations.py": "195b04cf677118403e86c64b5d8e50d3bb1e738120c08ee796be1094b9fb1372",
+    "src/pystachy_compiler/diagnostics.py": "529f5423decb512a61505a289bf3a5fb9b59c3bb1bfaf512b8059893fd79b131",
+    "src/pystachy_compiler/driver.py": "461adebff12636e0db62a1b7656620760cc5143529f23c982e16285bf1e57aef",
+    "src/pystachy_compiler/dynamic.py": "7dc56b48f92da70aacb87c1236822f6df21fd079b5f1f59cd0c26f396f67072e",
+    "src/pystachy_compiler/emission.py": "de4f8c78b0d86b96f6c32a13186738e86ddfa3b55000ef9f4b8ff1aeffd0b8d4",
+    "src/pystachy_compiler/exceptions.py": "3fce23a767a24651c5658b48759e44ee66817fa931dd2251011c44b1b33d26d3",
+    "src/pystachy_compiler/expressions.py": "1e2ec3721e8ba3c5cd930f74a0790933b0c393089304f546d88dc26c853cbf5d",
+    "src/pystachy_compiler/flow.py": "cb6238905238d5dcd042b568f56243e9b407723a6e047d5f0cad478b060439c9",
+    "src/pystachy_compiler/functions.py": "3743e405f03039b4d5d0fb98a31473bb2f203857624d188e350f2700b23f28c2",
+    "src/pystachy_compiler/gen.py": "033c662f41f22dd9ce3eb4378acddaab2f4913a45bfc5f8ff3de3cf42af654ad",
+    "src/pystachy_compiler/generators.py": "e6dde0b55178adeca943b596f8f108915e652726954c9675aae04ea1454bc96c",
+    "src/pystachy_compiler/ir.py": "b238c837fdebc75d7ab02633c72192f3c6d4f3bb82e2c015182a1f954a294542",
+    "src/pystachy_compiler/ircheck.py": "127dc1eb765afee724446f00c481b53ed80af396f064dd9112c1f189482be514",
+    "src/pystachy_compiler/lexer.py": "5d727507498549788d7d428b067e4bf794dbe49199286577cd1cd2d47d0b16f7",
+    "src/pystachy_compiler/llvm_abi.py": "7485f63097d4abac3de8b1fbfb782944ff7e3b68989d2fb266e40ebb8f8889ae",
+    "src/pystachy_compiler/loader.py": "270afd42d89c59fee9af0eaf16ff8f7d5166c9429ef026258dabc24097724d06",
+    "src/pystachy_compiler/local_versions.py": "10bb0f2f0fb57c442af0807b5b4af6c95e8b950a97430161c97f766a3dc4b375",
+    "src/pystachy_compiler/lower_module.py": "373c2fd810b3e08312a51d59f6ed05307819300ccad286d5c33cb48790923562",
+    "src/pystachy_compiler/lowering.py": "9332b28da9729b702054f57ef0f8463621d112725e097b437e04c3ec230590b8",
+    "src/pystachy_compiler/memory_ir.py": "c2544eda0bdb89ccb99ac1330c95d99974983cc7bdfa0d3a2b39a993c9f62bc1",
+    "src/pystachy_compiler/module.py": "3349556dee4dcda00013d770743f27d5dc3525b76cbd5e2ab312b14506e1f601",
+    "src/pystachy_compiler/names.py": "1b114c50d950b971dc4e72afd87fa0daa3e71c653101747733ceb89777d07e1c",
+    "src/pystachy_compiler/optimizations.py": "46e4ad4c040ea40f27e87dafa3592e048336c9812186f24498d4ec2e56349aa5",
+    "src/pystachy_compiler/parser.py": "0ebba19e45b2d0396ce427894463c61fc41834aca13ba8e8383efa6ec634d6bc",
+    "src/pystachy_compiler/program.py": "2deb10404234f8e97c1c2ce4a9d3c4f1313ef7142de42d3bc0689918d36b8625",
+    "src/pystachy_compiler/reflection.py": "8628b10c2fd1fbe5b1751724d5ae5ffdaf28e72696677a87860d29efd53981cc",
+    "src/pystachy_compiler/scalar_ir.py": "14bc0ce71b4cbf066e8a4cab2ea0bb5c0a53880997484d74f5ea3e9a6d30c05a",
+    "src/pystachy_compiler/scope.py": "d9af25da84ba62a17a6a1a0b7d48d078977dd364528c8ec8e4135cc438f10a97",
+    "src/pystachy_compiler/specs.py": "71f745e3745ced88575b77368cf8229be190e1e4bd6473192f577eb209f30def",
+    "src/pystachy_compiler/statements.py": "b03c5267a2409f71b64ef09b3313f9587db2a85acd976d271437199514959559",
+    "src/pystachy_compiler/structs.py": "e873fd6a6aeaebf39f740de2859a5de9a2da316d7a8993c728889677125c3090",
+    "src/pystachy_compiler/syntax.py": "9d4da3abe7447fa31031ba44936be765240dc60ab51d74728a9ed80c9a7674c3",
+    "src/pystachy_compiler/templates.py": "7e4b9422752d4a5ad1757a06d97ab4a8e39bb1f388a32ca49b5cc40628fc2f01",
+    "src/pystachy_compiler/union_arithmetic.py": "6d6892c0d97667d7e8ffeb5293ccbbe24c76529328e4761ffec6831229c416dd",
+    "src/pystachy_compiler/union_proof.py": "85e40039059975749ffe64f21e5c116ca7e3e6a26f6e0ce22ade4f398c74e568",
+    "src/pystachy_compiler/union_state.py": "b845af16073f24e1e1245bdcb00d4324dbf1d657874604cb4b991d852a07b026",
+    "src/pystachy_compiler/unions.py": "64d737b7405bec833d453f9b25211f947dab82cb1da54e3012f1dde61acf0e28",
+    "src/pystachy_compiler/utils.py": "2f2a4833264131f5b8bceb22fb6cdb215f14a310e84d79bfd80f93880d3119ef",
+    "src/pystachy_compiler/variables.py": "0a25bf8b786471a1c51f54bf92998489f5c8215c391e7f446615b9b11f12f670"
+  },
+  "compiler_sha256": "793c313f8f580349f9fcd9a9f36a9a3d8847ed3187ddba94204747e37c3b3a23",
+  "compiler_fixed_point_ir_sha256": "e8779b696e64a2be9cdcb6b853a22513d1b439fcb2cdf419dd905a61f868e7c2",
+  "runtime_ir_delta": {
+    "only_changed_definition": "pys_m_isclose",
+    "all_other_bytes_equal": true,
+    "before_sha256": "aa3696e39cc1420d5e8332cc953584a81df6044bc4e652909308bf369dfbc6ea",
+    "after_sha256": "29fe8fb63f2a92ada7004e6c63b0b2d7c275c9c47f00fddf5a98d5aab083e166"
+  },
+  "asan_aot": [
+    {
+      "case": "tests/programs/runtime/rt_scalar_math_input.py",
+      "returncode": 0,
+      "stdout_sha256": "f95b1071666322b3ea0a24030736629f63b1ffb6af9405701705af258c12180f",
+      "expected_sha256": "f95b1071666322b3ea0a24030736629f63b1ffb6af9405701705af258c12180f",
+      "stderr": "",
+      "passed": true
+    },
+    {
+      "case": "tests/programs/runtime/rt_sum_float_edges.py",
+      "returncode": 0,
+      "stdout_sha256": "68014c6a9fa7fc8837c1ee092fe86b5c51b16ac1dc49b7e50873be2f959d8f38",
+      "expected_sha256": "68014c6a9fa7fc8837c1ee092fe86b5c51b16ac1dc49b7e50873be2f959d8f38",
+      "stderr": "",
+      "passed": true
+    },
+    {
+      "case": "tests/programs/runtime/rt_ascii_edges.py",
+      "returncode": 0,
+      "stdout_sha256": "dfd3ef9fdc77a7c8c533ca73298e11e325043c981d36a050f1bba9de283fa402",
+      "expected_sha256": "dfd3ef9fdc77a7c8c533ca73298e11e325043c981d36a050f1bba9de283fa402",
+      "stderr": "",
+      "passed": true
+    },
+    {
+      "case": "tests/programs/numbers/runtime_range_boundaries.py",
+      "returncode": 0,
+      "stdout_sha256": "6256eb790e2df7698d878fdc853c5781a47580811f4e375d834de7985ab2ba02",
+      "expected_sha256": "6256eb790e2df7698d878fdc853c5781a47580811f4e375d834de7985ab2ba02",
+      "stderr": "",
+      "passed": true
+    },
+    {
+      "case": "tests/programs/numbers/runtime_power_boundaries.py",
+      "returncode": 0,
+      "stdout_sha256": "faae430aafef069dc5143ef7a8bd00d623af55193099d3142b4632b177c67e20",
+      "expected_sha256": "faae430aafef069dc5143ef7a8bd00d623af55193099d3142b4632b177c67e20",
+      "stderr": "",
+      "passed": true
+    },
+    {
+      "case": "tests/programs/optimizations/opt_listget_range.py",
+      "returncode": 0,
+      "stdout_sha256": "c3f9aabe40562a484d5e0ec66bf3c5542be517fbd72254fe6d2e461f446ec9a0",
+      "expected_sha256": "c3f9aabe40562a484d5e0ec66bf3c5542be517fbd72254fe6d2e461f446ec9a0",
+      "stderr": "",
+      "passed": true
+    }
+  ],
+  "final_runtime_ir_comparison": {
+    "case": "runtime.py",
+    "restorations": [
+      {
+        "old_call": "  %t31 = call i64 @pys_list_get(ptr %t29, i64 %t30)",
+        "new_instructions": [
+          "  %t78 = getelementptr inbounds {i64, i64, ptr}, ptr %t29, i64 0, i32 2",
+          "  %t79 = load ptr, ptr %t78",
+          "  %t80 = getelementptr inbounds i64, ptr %t79, i64 %t30",
+          "  %t31 = load i64, ptr %t80"
+        ]
+      }
+    ],
+    "all_other_bytes_equal": true,
+    "before_sha256": "56382946977781b0f8d8b4115c35c600e5fb153f983d84c460afd94e71e287ce",
+    "after_sha256": "29fe8fb63f2a92ada7004e6c63b0b2d7c275c9c47f00fddf5a98d5aab083e166"
+  }
+}

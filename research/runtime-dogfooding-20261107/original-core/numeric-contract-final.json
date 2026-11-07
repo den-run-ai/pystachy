@@ -1,0 +1,87 @@
+{
+  "after": {
+    "commit": "93c1284cafb454ee1531c422012ea9181bcbf0cd",
+    "inputs_sha256": {
+      "runtime.c": "9719626b7ce179f48b79f29bc39c78b3f751fdc5eb8c240df51c83035dd0ce2f",
+      "runtime.py": "2d01162f5ff74b17a7ac2b0890637a0e51ac3d3145186ca585104ba8b528d574"
+    },
+    "path": "/workspace/scratch/9c9ef915af51/pystachy",
+    "status": []
+  },
+  "before": {
+    "commit": "f7103067545b43cdcd8ce20dc66b1571425b3a8d",
+    "inputs_sha256": {
+      "runtime.c": "1a6c77b09d5739d0d2ac263b8c86e7aa640c9b5bdf1cdafe369e84d1d7a0bb0c"
+    },
+    "path": "/workspace/scratch/9c9ef915af51/baseline",
+    "status": []
+  },
+  "cases_passed": {
+    "integer_power": 9669,
+    "range_length": 21352,
+    "range_membership": 106760
+  },
+  "compiler": {
+    "mode": "native",
+    "path": "/workspace/scratch/9c9ef915af51/pystachy/pystachy",
+    "sha256": "793c313f8f580349f9fcd9a9f36a9a3d8847ed3187ddba94204747e37c3b3a23"
+  },
+  "function_size_bytes": {
+    "after": {
+      "pys_pow": 154,
+      "pys_range_has": 102,
+      "pys_range_len": 91
+    },
+    "before": {
+      "pys_pow": 128,
+      "pys_range_has": 108,
+      "pys_range_len": 94
+    }
+  },
+  "llvm_passes": "default<O2>",
+  "native_flags": [
+    "-O2",
+    "-fPIC"
+  ],
+  "optimized_calls": {
+    "pys_pow": [
+      "llvm.smul.with.overflow.i64",
+      "llvm.smul.with.overflow.i64",
+      "pys_raise",
+      "pys_raise",
+      "pys_raise"
+    ],
+    "pys_range_has": [
+      "pys_raise"
+    ],
+    "pys_range_len": [
+      "pys_raise"
+    ]
+  },
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.39",
+  "python": "3.13.16 (main, Oct 14 2026, 01:04:01) [Clang 23.1.3 ]",
+  "random_ranges": 20000,
+  "runner_sha256": "7ec5fa923e3fe50c710756deaa5fa5a61cef1726e89e1d58bb170caeacd9458a",
+  "schema": 1,
+  "scope": "isolated native helper values and error text; excludes full unwinder, GC and performance",
+  "seed": 1123,
+  "status": "pass",
+  "toolchain": {
+    "clang": {
+      "path": "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/clang",
+      "version": "Ubuntu clang version 18.1.3 (1ubuntu1)"
+    },
+    "llvm-extract": {
+      "path": "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/llvm-extract",
+      "version": "Ubuntu LLVM version 18.1.3"
+    },
+    "llvm-nm": {
+      "path": "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/llvm-nm",
+      "version": "llvm-nm, compatible with GNU nm"
+    },
+    "opt": {
+      "path": "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/opt",
+      "version": "Ubuntu LLVM version 18.1.3"
+    }
+  }
+}

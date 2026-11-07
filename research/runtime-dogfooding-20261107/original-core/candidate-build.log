@@ -1,0 +1,5 @@
+mkdir -p build
+/workspace/scratch/e98dc1e3e6cd/dev/bin/python3.13 pystachy.py build pystachy.py -o build/pystachy1
+src/pystachy_compiler/optimizations.py:562: error: expected Val, got Ins (compiling src.pystachy_compiler.optimizations.gen_listget(src.pystachy_compiler.gen.Gen, src.pystachy_compiler.ir.IFn) for the call at src/pystachy_compiler/gen.py:3585)
+make: *** [Makefile:9: pystachy] Error 1
+bootstrap_wall_seconds 17.125840317996335

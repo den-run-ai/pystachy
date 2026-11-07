@@ -1,0 +1,18 @@
+contracts 0
+ruff 0
+rtcheck 0
+numeric-contract 0
+native 0
+gc 0
+opt-off 0
+hosted 0
+asan-jit 0
+asan-build-rt_scalar_math_input 0
+asan-build-rt_sum_float_edges 0
+asan-build-rt_ascii_edges 0
+asan-build-runtime_range_boundaries 0
+asan-build-runtime_power_boundaries 0
+asan-build-opt_listget_range 0
+runtime-ir-before 0
+runtime-ir-after 0
+final validation complete

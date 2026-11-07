@@ -1,0 +1,7 @@
+PASS tests/programs/runtime/rt_scalar_math_input.py
+PASS tests/programs/runtime/rt_sum_float_edges.py
+PASS tests/programs/runtime/rt_ascii_edges.py
+PASS tests/programs/numbers/runtime_range_boundaries.py
+PASS tests/programs/numbers/runtime_power_boundaries.py
+PASS tests/programs/optimizations/opt_listget_range.py
+6 instrumented AOT programs passed

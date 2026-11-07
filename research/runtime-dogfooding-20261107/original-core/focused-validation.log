@@ -1,0 +1,12 @@
+native 0 selected 34 cases
+68 passed, 0 failed
+
+gc-stress 0 selected 6 cases
+12 passed, 0 failed
+
+bounds-disabled 0 selected 6 cases
+12 passed, 0 failed
+
+hosted 0 selected 6 cases
+12 passed, 0 failed
+

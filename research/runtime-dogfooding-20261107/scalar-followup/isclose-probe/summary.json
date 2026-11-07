@@ -1,0 +1,102 @@
+{
+  "port-to-early": {
+    "complete": true,
+    "affinity": [
+      8
+    ],
+    "count": 120000000,
+    "checksum": "0x1.d12ef830239b7p+32",
+    "pairs": 11,
+    "before_commit": "5c4bb5916a2425752670875add03062e0b54d7a2",
+    "after_commit": "6ed54439105206bd2e2a78b967eb73f359ad4988",
+    "compiler_hashes_equal": true,
+    "before_status": "",
+    "after_status": "",
+    "modes": {
+      "aot": {
+        "median_paired_ratio": 0.9313880857364616,
+        "minimum_ratio": 0.8142215838471932,
+        "maximum_ratio": 1.0529861340244728,
+        "pairs_under_1": 10,
+        "median_before_seconds": 0.22676234400569228,
+        "median_after_seconds": 0.20612265000090702
+      },
+      "jit": {
+        "median_paired_ratio": 0.9991910855221703,
+        "minimum_ratio": 0.9286289133034343,
+        "maximum_ratio": 1.0686909401332607,
+        "pairs_under_1": 6,
+        "median_before_seconds": 0.7153581769962329,
+        "median_after_seconds": 0.716141239994613
+      }
+    },
+    "heap": {
+      "before": {
+        "collections": 0,
+        "collection_ms": 0.0,
+        "peak_mib_rounded": 0.4,
+        "live_mib_rounded": 0.0
+      },
+      "after": {
+        "collections": 0,
+        "collection_ms": 0.0,
+        "peak_mib_rounded": 0.4,
+        "live_mib_rounded": 0.0
+      }
+    },
+    "executable_bytes": {
+      "before": 114552,
+      "after": 114552
+    }
+  },
+  "c-to-early": {
+    "complete": true,
+    "affinity": [
+      8
+    ],
+    "count": 120000000,
+    "checksum": "0x1.d12ef830239b7p+32",
+    "pairs": 11,
+    "before_commit": "f7103067545b43cdcd8ce20dc66b1571425b3a8d",
+    "after_commit": "6ed54439105206bd2e2a78b967eb73f359ad4988",
+    "compiler_hashes_equal": false,
+    "before_status": "",
+    "after_status": "",
+    "modes": {
+      "aot": {
+        "median_paired_ratio": 1.0078002149693794,
+        "minimum_ratio": 0.9212990057342835,
+        "maximum_ratio": 1.0998601829607748,
+        "pairs_under_1": 4,
+        "median_before_seconds": 0.20477209499949822,
+        "median_after_seconds": 0.19898769100109348
+      },
+      "jit": {
+        "median_paired_ratio": 1.0337136171062153,
+        "minimum_ratio": 0.9217556013951781,
+        "maximum_ratio": 1.1587283970652946,
+        "pairs_under_1": 4,
+        "median_before_seconds": 0.731926664004277,
+        "median_after_seconds": 0.7432995580020361
+      }
+    },
+    "heap": {
+      "before": {
+        "collections": 0,
+        "collection_ms": 0.0,
+        "peak_mib_rounded": 0.4,
+        "live_mib_rounded": 0.0
+      },
+      "after": {
+        "collections": 0,
+        "collection_ms": 0.0,
+        "peak_mib_rounded": 0.4,
+        "live_mib_rounded": 0.0
+      }
+    },
+    "executable_bytes": {
+      "before": 114024,
+      "after": 114552
+    }
+  }
+}
