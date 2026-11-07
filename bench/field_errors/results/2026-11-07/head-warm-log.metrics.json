@@ -1,0 +1,17 @@
+{
+  "wall_s": 5.9962346219981555,
+  "user_s": 5.874658,
+  "system_s": 0.11977199999999999,
+  "max_process_rss_kib": 137996,
+  "returncode": 0,
+  "timed_out": false,
+  "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "command": [
+    "/workspace/scratch/5798eb31a437/field-errors/pystachy",
+    "build",
+    "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-timing/exact-class.py",
+    "-o",
+    "/workspace/scratch/5798eb31a437/baseline-evidence/field-errors-timing/head-warm"
+  ]
+}

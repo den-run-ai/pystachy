@@ -5,7 +5,7 @@ from src.pystachy_compiler.analysis import attr_fills, attr_values, calls_init, 
 from src.pystachy_compiler.bigints import PROMOTES, callable_ints, narrowed
 from src.pystachy_compiler.diagnostics import Rejoin, int_lists, shown, where
 from src.pystachy_compiler.dynamic import comparison_record_write, comparison_storage_key
-from src.pystachy_compiler.ir import ClassInfo, FnInfo, Ins, Val
+from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Val
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import ENUMCLASSES, owner, short
 from src.pystachy_compiler.specs import (
@@ -2892,11 +2892,20 @@ def gen_getfield(self, o: Val, p: Val, name: str) -> Val:
                 c = self.rt("pys_exc_cls", "ptr", [f"ptr {o.v}"])
             else:
                 tag = self.mem_load(Val(self.fgep(o, ci.fpos[" class"]), "*int")).v
-                c = self.sconst(short(ci.name))
-                for sub in self.classes.values():
-                    if sub.tag != 0 and sub.name != ci.name and self.derives(sub.name, ci.name):
-                        match = self.num_cmp('==', Val(tag, "int"), Val(str(sub.tag), "int")).v
-                        c = self.select(match, Val(self.sconst(short(sub.name)), "str"), Val(c, "str"))
+                if not self.fieldnames:
+                    # Positive tags are assigned before discovery and never reused; templates
+                    # are untagged. Share one immutable table rather than a subclass-name select
+                    # chain at every missing-field check (#786). Like sconst, it survives dry().
+                    d = Data("fieldnames", "@pys.field.names")
+                    d.refs = ["null"]
+                    for sub in self.classes.values():
+                        if sub.tag > 0:
+                            while len(d.refs) <= sub.tag:
+                                d.refs.append("null")
+                            d.refs[sub.tag] = self.sconst(short(sub.name))
+                    self.consts.append(d)
+                    self.fieldnames = True
+                c = self.mload("str", self.maddr("%ptr", "@pys.field.names", tag))
             q = self.sconst("'")
             t = self.sconst("' object has no attribute '" + name + "'")
             m = self.rt("pys_str_add", "ptr", [f"ptr {q}", f"ptr {c}"])

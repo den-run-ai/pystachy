@@ -1,0 +1,25 @@
+value 'Base' object has no attribute 'value'
+text 'Base' object has no attribute 'text'
+after 31 assigned
+value 'Child' object has no attribute 'value'
+text 'Child' object has no attribute 'text'
+after 31 assigned
+value 'Deep' object has no attribute 'value'
+text 'Deep' object has no attribute 'text'
+after 31 assigned
+value 'Sibling' object has no attribute 'value'
+text 'Sibling' object has no attribute 'text'
+after 31 assigned
+value 17
+text present
+after 31 assigned
+equal 'Child' object has no attribute 'value'
+equal 'Deep' object has no attribute 'value'
+equal True
+other 'Other' object has no attribute 'value'
+other 'OtherChild' object has no attribute 'value'
+other 29
+exception 'Missing' object has no attribute 'value'
+exception 'MissingChild' object has no attribute 'value'
+exception 41
+[exit 0]
