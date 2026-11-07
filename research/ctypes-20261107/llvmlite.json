@@ -1,0 +1,92 @@
+{
+  "llvmlite": "0.46.0",
+  "llvm": [
+    20,
+    1,
+    8
+  ],
+  "python": "3.13.16 (main, Oct 14 2026, 01:04:01) [Clang 23.1.3 ]",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.39",
+  "library_sha256": "ce878d86ee0f847ac0ffdaaf6e3bbc6304b510e4d8aafe7ce81d1f648ba61080",
+  "consumer_sha256": "f7d67eb71380aa4e4c8a2e1c1b253104caead99cff112ee1e8941e6e2d0b9169",
+  "checker_sha256": "57d7519d6e6417581218c1870a50ff9753046511b7b97fdcfcd4c2ed33a3113e",
+  "repetitions_per_case": 16,
+  "cases": {
+    "empty": {
+      "input_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "status": 0,
+      "output_sha256": "1a0a50508036d8f888f9ae191772c42d9245b0f68e65f0b3c70b478776caf5c9"
+    },
+    "constant": {
+      "input_sha256": "1334e451da2bf31e999fef82f33ebfd6bb02e2dfba0aa540a82c3ce969341371",
+      "status": 0,
+      "output_sha256": "35b93025ee9ea6a159c9fd2d161032f53e9111405f22a5e7d9ef3f616acf86c9"
+    },
+    "reward": {
+      "input_sha256": "1d65850bd2bae48f16a6b49c73655c45d3a165dba19bfe7c3decb92ba6ba1d34",
+      "status": 0,
+      "output_sha256": "2459e8444b9853b6f0713ec9bda8e6df4b2c838510e593ff557cbc0f87a98752"
+    },
+    "unicode": {
+      "input_sha256": "4afc032c6cb62bcbf4a654e8f64cce82b3594992f4ba168c2612a9034758baab",
+      "status": 0,
+      "output_sha256": "4926e3f7b45db4633be49636bd60f15627b33d665612047a9bad6b1b704c74fc"
+    },
+    "nul_terminator": {
+      "input_sha256": "212351770cca9ca883d36f4f58fd0828738775c5e39dd5638fca0a7e01902703",
+      "status": 0,
+      "output_sha256": "258d46ec3786371be7e016682e09e410a366130b3969f230a433d33e80d51120"
+    },
+    "many_functions": {
+      "input_sha256": "cafa0f05d126b9b84fe82b32c3644525cc3a618464a80e950ee3de98d42ec946",
+      "status": 0,
+      "output_sha256": "1fd3c6ecd75571b48a6a0e4a5b7deb25a69eb26ea8906fd01c5dd54f1b44decd"
+    },
+    "syntax": {
+      "input_sha256": "41f75e1f78d95ae5ba99f2a6da3e6a596af2999b841f0c8e2cac387532217dc1",
+      "status": 1,
+      "output_sha256": "509c5ec800bd371a1206e6237a13d15b716f36641f09924b69db6261e7c62393"
+    },
+    "undefined": {
+      "input_sha256": "41c8f5a4a4a2a68d9a8ce0174dc7129580b53de3743ed4e44a73d2bab95b5ac3",
+      "status": 1,
+      "output_sha256": "6124fddfcd719f604f99828b910531759164f6c9e561264b35a23a05d38d3c95"
+    },
+    "dominance": {
+      "input_sha256": "4499c8fe36fe0e0472e74ffc8d7445e2e58b53659c813b59ff78a2c32df514e2",
+      "status": 2,
+      "output_sha256": "b5610f9d2f40b2202c353e5407487712a09d2841fbfe2817b4c09c9b0f0d62ee"
+    },
+    "phi_predecessor": {
+      "input_sha256": "bb4afab0544611caeca1142132026b60c7ffcf9b2a356d4e5da95815ff897db5",
+      "status": 2,
+      "output_sha256": "023fe0b6324576b48f5198957dec2f09693c52cf49a0875fdf2cabeceeebd4b2"
+    }
+  },
+  "runs": {
+    "cpython_ctypes": {
+      "cases": 10,
+      "gc_settings": {}
+    },
+    "jit": {
+      "cases": 10,
+      "gc_settings": {}
+    },
+    "aot": {
+      "cases": 10,
+      "gc_settings": {}
+    },
+    "jit_gc": {
+      "cases": 10,
+      "gc_settings": {
+        "PYSTACHY_GC_STRESS_PROGRAM": "1"
+      }
+    },
+    "aot_gc": {
+      "cases": 10,
+      "gc_settings": {
+        "PYSTACHY_GC_STRESS": "1"
+      }
+    }
+  }
+}

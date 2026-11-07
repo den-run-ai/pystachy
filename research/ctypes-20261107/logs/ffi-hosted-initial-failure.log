@@ -1,0 +1,27 @@
+FAIL c_ctypes_scalars (jit)
+10,21c10,11
+< -9223372036854775808
+< -1152921504606846979
+< 1152921504606846979
+< 9223372036854775807
+< 0.10000000149011612 0.1
+< 16777216.0 16777217.0
+< -0.0 -0.0
+< inf 1e+40
+< -inf -1e+40
+OverflowError: integer result does not fit in 64 bits
+FAIL c_ctypes_scalars (aot)
+10,21c10,11
+< -9223372036854775808
+< -1152921504606846979
+< 1152921504606846979
+< 9223372036854775807
+< 0.10000000149011612 0.1
+< 16777216.0 16777217.0
+< -0.0 -0.0
+< inf 1e+40
+< -inf -1e+40
+OverflowError: integer result does not fit in 64 bits
+Checking /tmp/pystachy-ffi.5/repair/pystachy_json_repair/_native.abi3.so
+645/645 match; 0 problems
+174 passed, 2 failed; skipped: py_coerce (the CPython-hosted compiler's own locale coercion reaches the program)

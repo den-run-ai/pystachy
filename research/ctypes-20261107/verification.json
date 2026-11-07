@@ -1,0 +1,166 @@
+{
+  "schema_version": 1,
+  "recorded_at_utc": "2026-11-07T04:18:09.925158+00:00",
+  "scope": "Local validation of the static ctypes prototype; this evidence branch is not for merge.",
+  "tested_commit": "dc449fab60998dbe622858efa50d3ec82b6c81f6",
+  "baseline_commit": "f7103067545b43cdcd8ce20dc66b1571425b3a8d",
+  "candidate_compiler_sha256": "a73181889b3fb8ee0c117b0e49c58a9725469087fac5cde75c6c8c722c944294",
+  "environment": {
+    "platform": "Linux x86_64, glibc 2.39",
+    "python": "3.13.16",
+    "compiler_llvm": "18.1.3",
+    "llvmlite": "0.46.0",
+    "llvmlite_llvm": "20.1.8",
+    "workers": 2
+  },
+  "checks": {
+    "bootstrap": {
+      "command": "make PY=python3.13",
+      "result": "passed",
+      "compiler_fixed_point_stages": 3,
+      "compiler_ir_lines": 836682,
+      "runtime_fixed_point_stages": 3,
+      "runtime_ir_lines": 18805,
+      "log": "logs/bootstrap.log"
+    },
+    "fast_lint_runtime_recordings": {
+      "command": "make check-fast lint check-runtime check-recordings PY=python3.13",
+      "result": "passed",
+      "unit_tests": 436,
+      "mypy_sources": 50,
+      "runtime_entries": 646,
+      "exception_classes": 70,
+      "runtime_python_functions": 172,
+      "static_pointer_stores": 67,
+      "gc_root_problems": 0,
+      "cpython_recordings": 2143,
+      "documented_deviations": 123,
+      "library_files": 11,
+      "pinned_askme_files": 6,
+      "log": "logs/fast-lint-runtime-recordings.log"
+    },
+    "native_ffi": {
+      "command": "make test-ffi PY=python3.13",
+      "result": "passed",
+      "checks_passed": 178,
+      "checks_failed": 0,
+      "skips_reported": 0,
+      "json_repair_companion_cases": 645,
+      "log": "logs/ffi-native.log"
+    },
+    "focused_native": {
+      "command": "tests/run.sh ./pystachy 'jit aot' tests/programs/imports/ctypes_relative.py tests/deviations/ctypes_pointer_range.py tests/programs/language/ffi_own.py",
+      "result": "passed",
+      "checks_passed": 6,
+      "checks_failed": 0,
+      "log": "logs/focused-native.log"
+    },
+    "llvmlite": {
+      "command": "python examples/ctypes_llvmlite/check.py --compiler ./pystachy --json REPORT.json",
+      "result": "passed",
+      "report": "llvmlite.json",
+      "mode_case_checks": 50,
+      "lifecycles": 800,
+      "native_mode_case_checks": 40,
+      "native_lifecycles": 640,
+      "oracle": "Unmodified llvmlite 0.46.0 high-level Python binding; exact canonical IR and diagnostic bytes.",
+      "scope": "Original adapted C-ABI consumer, not unmodified import llvmlite.binding or Numba.",
+      "log": "logs/llvmlite.log"
+    },
+    "corpus_comparison": {
+      "candidate_commit": "dc449fab60998dbe622858efa50d3ec82b6c81f6",
+      "candidate_compiler_sha256": "a73181889b3fb8ee0c117b0e49c58a9725469087fac5cde75c6c8c722c944294",
+      "baseline_commit": "f7103067545b43cdcd8ce20dc66b1571425b3a8d",
+      "baseline_compiler_sha256": "3b59b4e875a89f15777395f5993ccf2e6d51e934dbc7a4e45228d622c7f1cff7",
+      "corpus_inputs": 4240,
+      "unchanged_tool_returncode": 1,
+      "wall_seconds": 178.37653756141663,
+      "exact_tool_matches": 3978,
+      "path_only_ir_cases": 248,
+      "path_only_diagnostic_cases": 13,
+      "expected_new_acceptances": [
+        "tests/deviations/ctypes_pointer_range.py"
+      ],
+      "new_rejections": [],
+      "unexplained_changes": [],
+      "exact_notable_cases": [
+        "pystachy.py",
+        "runtime.py",
+        "tests/programs/imports/ctypes_relative.py"
+      ],
+      "comparison_command": [
+        "tools/irsame.sh",
+        "/workspace/scratch/beed858167db/baseline/pystachy",
+        "/workspace/scratch/beed858167db/ctypes-irsame-dc449fab/checkout/pystachy"
+      ],
+      "library_policy": "Separate compiler homes and lib directories; PYSTACHY_HOME empty; two workers.",
+      "tool_sha256": "7baa4d09a86103485f6b6c87a739162347b97542051d80b6cfb57c8a108587d5",
+      "log_sha256": "b9b407593aa67144c6d6ae224b561b605cba29d0aba12c3a0f39ca9042c4e9e7",
+      "classification_sha256": "4014a4bf65b48f40778779782e782d5b064e8ae78098d7402dbdec2d93fe554c",
+      "difference_capture": "Unchanged irsame script; passive mv observer saved each report and all differing IR/diagnostics. All 4240 reports and timing rows verified; no capture errors.",
+      "classification_rule": "Only complete compiler Str constants; exact baseline/lib to candidate/lib payload replacement, or the complete emitted sys.*prefix value from each compiler's home. All other bytes identical, every embedded size validated against decoded bytes. Rejection diagnostics are path-only only when every replaced library prefix is at a primary source-location line start or 'for the call at' location and exact wording and line numbers match. No normalized rerun or success reclassification."
+    },
+    "check_ir": {
+      "command": "make check-ir PY=python3.13",
+      "result": "passed",
+      "programs": 2360,
+      "log": "logs/check-ir.log"
+    }
+  },
+  "earlier_failure": {
+    "stage": "Preliminary hosted FFI run before the tested commits",
+    "checks_passed": 174,
+    "checks_failed": 2,
+    "failed_cases": [
+      "c_ctypes_scalars (jit)",
+      "c_ctypes_scalars (aot)"
+    ],
+    "cause": "Test expressions -(2**63) and 2**63-1 overflowed Pystachy checked intermediate integer arithmetic before reaching the FFI.",
+    "correction": "Use the exact signed 64-bit min/max literals. CPython expected output was unchanged; the full final native FFI suite passes.",
+    "skip": "py_coerce: CPython-hosted compiler locale coercion reaches the program; final native run reported no skips.",
+    "log": "logs/ffi-hosted-initial-failure.log"
+  },
+  "relative_import_regression": {
+    "cause": "The first prototype treated from .ctypes imports as the fallback standard ctypes module.",
+    "negative_control_output": "7",
+    "corrected_output": "93",
+    "baseline_and_cpython_output": "93",
+    "fix": "Only absolute import forms trigger ctypes lowering.",
+    "verification": "Three schema tests, native JIT/AOT fixture, and exact baseline IR in the full corpus comparison."
+  },
+  "not_run": [
+    "Full local make verify matrix",
+    "Full GC verification groups",
+    "Sanitizers",
+    "Non-Linux or non-x86_64 validation",
+    "Full upstream llvmlite test suite",
+    "Performance benchmarks"
+  ],
+  "artifact_notes": [
+    "All sources were unchanged during final builds and tests.",
+    "The raw irsame command returned 1; classification does not turn this into a pass.",
+    "The full raw IR capture remains transient; compressed manifest and full per-case classifications are preserved here.",
+    "CI results are separate from this local report."
+  ],
+  "published_commit": "9371d37daf2397798f02393e95fff0e25a1fefbe",
+  "tested_and_published_tree": "4afdb91ce38428d58a347633d9ca4dce3b0387e0",
+  "publication_note": "Direct git push had no credentials. The connected GitHub app created a commit with different metadata but the identical Git tree; the returned tree SHA was checked before publishing.",
+  "artifact_sha256": {
+    "classification.json.gz": "c1a9d4c3d4ac7c00a6406dbb375e328782f65ac9caa0fd78b10d3d3f86934412",
+    "classify.py": "73b93c7eabf23fd9e0fbdc10eae2a113e14db9d8a395457b4dfdc25746163a6d",
+    "llvmlite.json": "f5aaae911dd47590d0be886ca3f14eb8f14a3dc48e41d4a149fbbba3c71938e0",
+    "logs/bootstrap.log": "82c401196c89c03647f825aab6ce58c8b8d1af0922166d91861dd361e1c499a6",
+    "logs/check-ir.log": "07edda482221663467393f3fbcbde03d3f9e11fe5e22c325e074aae1743fa29c",
+    "logs/fast-lint-runtime-recordings.log": "8adee61ca3add1e071922d26ad9369ecdd146228c338be47b344e782cbb63c5b",
+    "logs/ffi-hosted-initial-failure.log": "445a54db06081f87debbc7be20a7320d7c4a0c26e12378a2b388e5e35c4c9654",
+    "logs/ffi-native.log": "4d3e8352b012a71f3e51409da5b78a2a9ede4ff4e6947b8d9c23fef0183c1d20",
+    "logs/focused-native.log": "e75083075705d6bac4f06f729e0fd827471cb894c095fa54fd094306281bae78",
+    "logs/irsame.log": "b9b407593aa67144c6d6ae224b561b605cba29d0aba12c3a0f39ca9042c4e9e7",
+    "logs/llvmlite.log": "5ed6d1b3ac8e260fd7ee308b9d78cfc7abcc8bdda6cd2063e53b7d48431d6040",
+    "logs/relative-import-after-hosted.txt": "d6ba4fb19951b0a0175af857ec4891947aaf65d7de043c48a38b2daf2df0a329",
+    "logs/relative-import-before.txt": "10159baf262b43a92d95db59dae1f72c645127301661e0a3ce4e38b295a97c58",
+    "manifest.json.gz": "b9d4091b91760f6890d391600dc9d31e2b975684e4313c92b89e6c7d1349dddc",
+    "status.json": "053e9593f85d3a2e840a48643ddd6a318d6b21a0ca2de2184264b65c4f4198bc",
+    "summary.json": "51970fabbb0cbd143456f23578079b0724445cb9b91c5c563f338317070c3211"
+  }
+}

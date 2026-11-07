@@ -1,0 +1,4 @@
+PY="/workspace/scratch/c154e74884e5/venv/bin/python3.13" tests/ffi/run.sh ./pystachy "jit aot"
+Checking /tmp/pystachy-ffi.7/repair/pystachy_json_repair/_native.abi3.so
+645/645 match; 0 problems
+178 passed, 0 failed

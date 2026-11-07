@@ -1,0 +1,33 @@
+{
+  "candidate_commit": "dc449fab60998dbe622858efa50d3ec82b6c81f6",
+  "candidate_compiler_sha256": "a73181889b3fb8ee0c117b0e49c58a9725469087fac5cde75c6c8c722c944294",
+  "baseline_commit": "f7103067545b43cdcd8ce20dc66b1571425b3a8d",
+  "baseline_compiler_sha256": "3b59b4e875a89f15777395f5993ccf2e6d51e934dbc7a4e45228d622c7f1cff7",
+  "corpus_inputs": 4240,
+  "unchanged_tool_returncode": 1,
+  "wall_seconds": 178.37653756141663,
+  "exact_tool_matches": 3978,
+  "path_only_ir_cases": 248,
+  "path_only_diagnostic_cases": 13,
+  "expected_new_acceptances": [
+    "tests/deviations/ctypes_pointer_range.py"
+  ],
+  "new_rejections": [],
+  "unexplained_changes": [],
+  "exact_notable_cases": [
+    "pystachy.py",
+    "runtime.py",
+    "tests/programs/imports/ctypes_relative.py"
+  ],
+  "comparison_command": [
+    "tools/irsame.sh",
+    "/workspace/scratch/beed858167db/baseline/pystachy",
+    "/workspace/scratch/beed858167db/ctypes-irsame-dc449fab/checkout/pystachy"
+  ],
+  "library_policy": "Separate compiler homes and lib directories; PYSTACHY_HOME empty; two workers.",
+  "tool_sha256": "7baa4d09a86103485f6b6c87a739162347b97542051d80b6cfb57c8a108587d5",
+  "log_sha256": "b9b407593aa67144c6d6ae224b561b605cba29d0aba12c3a0f39ca9042c4e9e7",
+  "classification_sha256": "4014a4bf65b48f40778779782e782d5b064e8ae78098d7402dbdec2d93fe554c",
+  "difference_capture": "Unchanged irsame script; passive mv observer saved each report and all differing IR/diagnostics. All 4240 reports and timing rows verified; no capture errors.",
+  "classification_rule": "Only complete compiler Str constants; exact baseline/lib to candidate/lib payload replacement, or the complete emitted sys.*prefix value from each compiler's home. All other bytes identical, every embedded size validated against decoded bytes. Rejection diagnostics are path-only only when every replaced library prefix is at a primary source-location line start or 'for the call at' location and exact wording and line numbers match. No normalized rerun or success reclassification."
+}

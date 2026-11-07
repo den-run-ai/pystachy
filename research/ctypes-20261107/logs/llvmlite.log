@@ -1,0 +1,6 @@
+cpython_ctypes: 10 cases x 16 lifecycles match upstream llvmlite
+jit: 10 cases x 16 lifecycles match upstream llvmlite
+aot: 10 cases x 16 lifecycles match upstream llvmlite
+jit_gc: 10 cases x 16 lifecycles match upstream llvmlite
+aot_gc: 10 cases x 16 lifecycles match upstream llvmlite
+Exact IR/diagnostic parity passed; this does not establish full llvmlite or Numba support.
