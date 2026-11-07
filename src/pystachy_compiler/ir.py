@@ -330,6 +330,10 @@ class IFn:
     # one compiled function: a function, a method, a module's code, a helper or a template's function
     def __init__(self, f: FnInfo):
         self.f = f  # f.ret is final once the IFn is complete
+        # Syntax-only names bound outside except targets, built lazily by bind_as.
+        # Frame retains this IFn during nested compilation; a retry gets a fresh one.
+        # dry() may retain the index: it depends on no inferred or speculative state.
+        self.otherbinds: dict[str, bool] | None = None
         self.numeric_only = False  # function_body proved local numeric identity unobservable
         self.scalar_reads = False  # scoped numeric arithmetic/comparison; no operand identity escapes
         # Lazy numeric field locals (Gen.lazy_fields): local -> the parameter whose field it reads,

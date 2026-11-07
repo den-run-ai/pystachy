@@ -1910,6 +1910,27 @@ def binds_other(body: list[Node], name: str) -> bool:
     return False
 
 
+def other_bindings(body: list[Node], out: dict[str, bool]) -> None:
+    # All names binds_other would find, in one walk. Handler targets themselves do not
+    # enter this set; assignments in their bodies do. Keep the same scope boundaries
+    # and expression bindings, including defaults/decorators of nested definitions.
+    for st in body:
+        if st.kind == "compfor":
+            stmt_walrus(st, out)  # targets also counts a comprehension's private target
+        else:
+            targets(st, out)
+        if st.kind == "def" or st.kind == "class" or st.kind == "subclass":
+            out[st.s] = True
+            continue
+        for a in st.kids if st.kind == "import" else NOKIDS:
+            out[a.s] = True
+        for k in st.kids:
+            if k.kind == "block":
+                other_bindings(k.kids, out)
+            elif k.kind == "except":
+                other_bindings(k.kids[1].kids, out)
+
+
 def has_finally(body: list[Node]) -> bool:
     # does code body hold a try statement with a finally block (not in the functions and classes it defines)
     for st in body:

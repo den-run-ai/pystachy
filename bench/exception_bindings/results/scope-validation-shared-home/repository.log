@@ -1,0 +1,8 @@
+/workspace/scratch/e98dc1e3e6cd/dev/bin/python tools/check_repository_hygiene.py
+repository hygiene: tracked paths are clean
+/workspace/scratch/e98dc1e3e6cd/dev/bin/python -m unittest discover -s tools -p test_repository_hygiene.py
+...........
+----------------------------------------------------------------------
+Ran 11 tests in 0.198s
+
+OK
