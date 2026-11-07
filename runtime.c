@@ -32,6 +32,8 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/resource.h>
+#include <sys/wait.h>
+#include <poll.h>
 #include <sys/select.h>
 #include <sys/stat.h>
 #ifdef __APPLE__
@@ -39,6 +41,7 @@
 #endif
 #ifdef __linux__
 #include <sys/auxv.h>
+#include <sys/syscall.h>
 #endif
 #include <time.h>
 #include <unistd.h>
@@ -6179,6 +6182,8 @@ static _Noreturn void ioerr(int e) { char b[160]; pys_fail(ioerr_line(b, e)); } 
    the ordinary KeyboardInterrupt exit when it leaves (io_out). */
 static volatile sig_atomic_t io_busy;
 static int sigint_on;
+static void process_exit(void);
+static void process_signal_exit(void);
 static void io_in(void) { io_busy++; atomic_signal_fence(memory_order_seq_cst); }
 static void io_out(void) { atomic_signal_fence(memory_order_seq_cst); if (!--io_busy && io_intr) kbint_exit(); }
 static void drain(File *f) { if (f->pn) fwrite(f->pb, 1, f->pn, f->f); fflush(f->f); }   /* all it holds, errors aside */
@@ -6190,6 +6195,7 @@ static void on_sigint(int s) {
   if (!std_out.closed) drain(&std_out);
   if (write(2, k, sizeof k - 1) < 0) {}
   for (I i = 0; i < nfiles; i++) if (files[i]->wr && !files[i]->closed) drain(files[i]);
+  process_signal_exit();
   raise(s); _exit(130);
 }
 static void leaving(void) { if (sigint_on) signal(SIGINT, SIG_DFL); sigint_on = 0; }
@@ -6337,6 +6343,7 @@ void pys_finish(void) {                /* at exit, what CPython's shows of its e
     fprintf(stderr, "Exception ignored on flushing sys.stdout:\n%s: [Errno %d] %s\n", errcls(e), e, strerror(e));
     bad = 1;
   }
+  process_exit();
   pys_files_exit();
   if (kbint) die_sigint();
   if (bad) { fflush(NULL); _exit(120); }
@@ -6937,6 +6944,282 @@ _Noreturn void pys_execv(Str *path, List *args) {   /* os.execv: the process bec
   execv(path->s, v);
   ioerr(errno);
 }
+/* ---------- owned process workers (lib/process.py) ----------
+   This Linux prototype never calls back into the managed heap from a child. The
+   parent owns every process group and pipe until close; opaque monotonic handles
+   cannot be confused with PIDs or recycled slots. No background thread is used. */
+#define PROCESS_LIMIT 64
+#define PROCESS_RUNNING INT64_MAX
+#define PROCESS_BYTES (64 * 1024 * 1024)
+typedef struct { I handle; pid_t pid; int fd[3], status, reaped, communicated; } Process;
+/* OS handles and statuses only; no managed pointers. */
+static Process processes[PROCESS_LIMIT];
+static I process_serial;
+static volatile sig_atomic_t process_pids[PROCESS_LIMIT];
+_Static_assert(sizeof(pid_t) <= sizeof(sig_atomic_t), "process signal PID storage");
+static double process_clock(void) {
+  struct timespec t;
+  clock_gettime(CLOCK_MONOTONIC, &t);
+  return (double)t.tv_sec + (double)t.tv_nsec / 1e9;
+}
+static void process_fds(Process *p) {
+  for (int i = 0; i < 3; i++) if (p->fd[i] >= 0) { close(p->fd[i]); p->fd[i] = -1; }
+}
+static Process *process_get(I handle) {
+  for (int i = 0; i < PROCESS_LIMIT; i++) if (handle > 0 && processes[i].handle == handle) return &processes[i];
+  pys_fail("ValueError: process handle is closed or invalid");
+}
+static int process_poll(Process *p) {
+  if (p->reaped) return 0;
+  /* WNOWAIT retains the leader's PID until its group has been stopped. Otherwise
+     a reaped PID could be recycled before a later killpg (including close). */
+  siginfo_t info = {0};
+  if (waitid(P_PID, (id_t)p->pid, &info, WEXITED | WNOHANG | WNOWAIT)) {
+    int e = errno;
+    if (e == ECHILD) {  /* another reaper violated ownership: never signal a stale PID */
+      process_pids[p - processes] = 0; p->pid = 0; p->reaped = 1; p->status = -1;
+    }
+    return e == EINTR ? 0 : e;
+  }
+  if (!info.si_pid) return 0;
+  kill(-p->pid, SIGKILL);  /* a worker's descendants may not outlive its leader */
+  process_pids[p - processes] = 0;
+  int status = 0;
+  pid_t result;
+  do { result = waitpid(p->pid, &status, 0); } while (result < 0 && errno == EINTR);
+  if (result < 0) return errno;
+  p->status = WIFEXITED(status) ? WEXITSTATUS(status) : -WTERMSIG(status);
+  p->reaped = 1; p->pid = 0;
+  return 0;
+}
+static void process_stop(Process *p, double deadline) {
+  process_poll(p);
+  if (!p->reaped && p->pid > 0) {
+    kill(-p->pid, SIGKILL); kill(p->pid, SIGKILL);
+    while (!p->reaped && process_clock() < deadline) {
+      if (process_poll(p)) break;
+      if (!p->reaped) poll(NULL, 0, 5);
+    }
+  }
+  process_fds(p);
+}
+static void process_exit(void) {
+  if (!process_serial) return;
+  double deadline = process_clock() + 1.0;
+  for (int i = 0; i < PROCESS_LIMIT; i++) if (processes[i].handle) {
+    process_poll(&processes[i]);
+    if (processes[i].pid > 0) { kill(-processes[i].pid, SIGKILL); kill(processes[i].pid, SIGKILL); }
+  }
+  for (int i = 0; i < PROCESS_LIMIT; i++) if (processes[i].handle) process_stop(&processes[i], deadline);
+}
+static void process_signal_exit(void) {
+  /* Called by the existing fatal SIGINT handler: only async-signal-safe calls.
+     Normal runtime finalization also reaps. SIGKILL cannot run user cleanup. */
+  for (int i = 0; i < PROCESS_LIMIT; i++) {
+    pid_t pid = (pid_t)process_pids[i];
+    if (pid > 0) { kill(-pid, SIGKILL); kill(pid, SIGKILL); }
+  }
+}
+static void process_timeout(double timeout) {
+  if (!isfinite(timeout) || (timeout < 0 && timeout != -1))
+    pys_fail("ValueError: timeout must be finite, non-negative or -1");
+}
+I pys_process_spawn(List *args) {
+  /* Extension imports/calls have a different host signal/finalization contract,
+     including imports that fail before pyx_exit is registered. Keep this slice
+     within the executable/JIT runtime that owns both SIGINT and shutdown. */
+  if (lib_depth) pys_fail("NotImplementedError: native process workers require an executable or JIT owner");
+#ifndef __linux__
+  (void)args;
+  pys_fail("NotImplementedError: native process workers currently require Linux");
+#else
+  /* Automatic reaping defeats WNOWAIT and the retained-PID ownership contract.
+     Reject unsupported host dispositions before allocating or forking. */
+  struct sigaction child_signal;
+  if (sigaction(SIGCHLD, NULL, &child_signal)) ioerr(errno);
+  if (child_signal.sa_handler != SIG_DFL || (child_signal.sa_flags & SA_NOCLDWAIT))
+    pys_fail("NotImplementedError: native process workers require default SIGCHLD handling");
+  if (!args->len || args->len > 4096) pys_fail("ValueError: argv must contain 1 to 4096 strings");
+  I bytes = 0;
+  for (I i = 0; i < args->len; i++) {
+    Str *s = (Str *)args->a[i];
+    if (nul(s)) pys_fail("ValueError: embedded null byte in argv");
+    bytes += s->len + 1;
+    if (bytes > 1024 * 1024) pys_fail("ValueError: argv exceeds 1 MiB");
+  }
+  if (!((Str *)args->a[0])->len || ((Str *)args->a[0])->s[0] != '/')
+    pys_fail("ValueError: argv[0] must be an absolute executable path");
+  Process *p = NULL;
+  for (int i = 0; i < PROCESS_LIMIT; i++) if (!processes[i].handle) { p = &processes[i]; break; }
+  if (!p || process_serial == INT64_MAX) pys_fail("RuntimeError: too many owned processes; close completed handles");
+  char **argv = calloc((size_t)args->len + 1, sizeof *argv);
+  if (!argv) oom();
+  for (I i = 0; i < args->len; i++) argv[i] = ((Str *)args->a[i])->s;
+  int pipes[4][2], made = 0, error = 0;
+  io_in();
+  for (; made < 4; made++) {
+    if (pipe2(pipes[made], O_CLOEXEC)) { error = errno; break; }
+    for (int k = 0; k < 2; k++) if (pipes[made][k] < 4) {
+      int fd = fcntl(pipes[made][k], F_DUPFD_CLOEXEC, 4);
+      if (fd < 0) { error = errno; break; }
+      close(pipes[made][k]); pipes[made][k] = fd;
+    }
+    if (error) { made++; break; }
+  }
+  pid_t pid = error ? -1 : fork();
+  if (!error && pid < 0) error = errno;
+  if (!pid) {
+    /* After fork, only async-signal-safe operations until exec or _exit. The
+       child must not allocate, flush stdio, run Python, or enter the collector. */
+    int e = 0;
+    if (dup2(pipes[3][1], 3) < 0) { e = errno; if (write(pipes[3][1], &e, sizeof e) < 0) {} _exit(127); }
+    if (setpgid(0, 0)) e = errno;
+    if (!e && (dup2(pipes[0][0], 0) < 0 || dup2(pipes[1][1], 1) < 0 || dup2(pipes[2][1], 2) < 0)) e = errno;
+    if (!e && fcntl(3, F_SETFD, FD_CLOEXEC) < 0) e = errno;
+    /* A lowered RLIMIT_NOFILE is not an upper bound on inherited descriptors.
+       Fail closed on kernels/seccomp policies without close_range instead of
+       risking a leak through an incomplete descriptor walk. */
+#ifdef SYS_close_range
+    if (!e && syscall(SYS_close_range, 4U, ~0U, 0U) < 0) e = errno;
+#else
+    if (!e) e = ENOSYS;
+#endif
+    struct sigaction action = {0}; action.sa_handler = SIG_DFL;
+    sigemptyset(&action.sa_mask);
+    sigaction(SIGPIPE, &action, NULL); sigaction(SIGXFSZ, &action, NULL);
+    sigaction(SIGINT, &action, NULL); sigaction(SIGTERM, &action, NULL);
+    sigset_t mask; sigemptyset(&mask); sigprocmask(SIG_SETMASK, &mask, NULL);
+    if (!e) { execv(argv[0], argv); e = errno; }
+    if (write(3, &e, sizeof e) < 0) {}
+    _exit(127);
+  }
+  free(argv);
+  if (error) {
+    for (int i = 0; i < made; i++) { close(pipes[i][0]); close(pipes[i][1]); }
+    io_out(); ioerr(error);
+  }
+  *p = (Process){.handle = ++process_serial, .pid = pid, .fd = {pipes[0][1], pipes[1][0], pipes[2][0]}};
+  process_pids[p - processes] = (sig_atomic_t)pid;
+  close(pipes[0][0]); close(pipes[1][1]); close(pipes[2][1]); close(pipes[3][1]);
+  struct pollfd ready = {.fd = pipes[3][0], .events = POLLIN};
+  double deadline = process_clock() + 5.0;
+  int n;
+  do { n = poll(&ready, 1, 20); } while (!io_intr && process_clock() < deadline && (n == 0 || (n < 0 && errno == EINTR)));
+  if (n > 0) {
+    ssize_t got = read(pipes[3][0], &error, sizeof error);
+    if (got < 0) error = errno;
+    else if (got && got != sizeof error) error = EIO;
+  }
+  else error = n < 0 ? errno : ETIMEDOUT;
+  close(pipes[3][0]);
+  if (!error) for (int i = 0; i < 3; i++)
+    if (fcntl(p->fd[i], F_SETFL, O_NONBLOCK) < 0) { error = errno; break; }
+  if (error || io_intr) {
+    process_stop(p, process_clock() + 1.0);
+    if (p->reaped) p->handle = 0;
+  }
+  io_out();
+  if (error) ioerr(error);
+  return p->handle;
+#endif
+}
+I pys_process_pid(I handle) { Process *p = process_get(handle); return p->pid; }
+I pys_process_poll(I handle) {
+  Process *p = process_get(handle);
+  io_in(); int e = process_poll(p); io_out();
+  if (e) ioerr(e);
+  return p->reaped ? p->status : PROCESS_RUNNING;
+}
+I pys_process_wait(I handle, double timeout) {
+  process_timeout(timeout);
+  Process *p = process_get(handle);
+  double deadline = process_clock() + timeout;
+  int e = 0, expired = 0;
+  io_in();
+  while (!p->reaped && !io_intr) {
+    if ((e = process_poll(p)) || p->reaped) break;
+    if (timeout >= 0 && process_clock() >= deadline) { expired = 1; break; }
+    poll(NULL, 0, 5);
+  }
+  io_out();
+  if (e) ioerr(e);
+  if (expired) pys_fail("TimeoutError: process wait timed out");
+  return p->status;
+}
+void pys_process_signal(I handle, I signal_number) {
+  if (signal_number != SIGTERM && signal_number != SIGKILL) pys_fail("ValueError: only terminate and kill are supported");
+  Process *p = process_get(handle);
+  io_in(); int e = process_poll(p);
+  if (!e && !p->reaped && kill(-p->pid, (int)signal_number) && errno != ESRCH) e = errno;
+  io_out(); if (e) ioerr(e);
+}
+void pys_process_close(I handle) {
+  if (!handle) return;
+  Process *p = process_get(handle);
+  io_in(); process_stop(p, process_clock() + 1.0); io_out();
+  if (!p->reaped) pys_fail("TimeoutError: process did not exit after kill; ownership retained");
+  p->handle = 0;
+}
+void **pys_process_communicate(I handle, Str *input, double timeout, I max_output) {
+  process_timeout(timeout);
+  if (max_output < 0 || max_output > PROCESS_BYTES) pys_fail("ValueError: max_output_bytes must be between 0 and 67108864");
+  if (input->len > PROCESS_BYTES) pys_fail("ValueError: process input exceeds 64 MiB");
+  Process *p = process_get(handle);
+  if (p->communicated) pys_fail("ValueError: communicate may only be called once");
+  p->communicated = 1;
+  /* Buffers are outside the managed heap while polling. The final scanned tuple
+     roots its immutable byte strings across the remaining managed allocations. */
+  char *data[2] = {NULL, NULL}; size_t used[2] = {0, 0}, capacity[2] = {0, 0};
+  I sent = 0;
+  double deadline = process_clock() + timeout;
+  const char *failure = NULL;
+  int error = 0;
+  io_in();
+  while (!io_intr) {
+    if (p->fd[0] >= 0 && sent == input->len) { close(p->fd[0]); p->fd[0] = -1; }
+    if ((error = process_poll(p))) break;
+    if (p->reaped && p->fd[1] < 0 && p->fd[2] < 0) break;
+    if (timeout >= 0 && process_clock() >= deadline) { failure = "TimeoutError: process communicate timed out"; break; }
+    struct pollfd fds[3] = {{p->fd[0], POLLOUT, 0}, {p->fd[1], POLLIN, 0}, {p->fd[2], POLLIN, 0}};
+    int n = poll(fds, 3, 5);
+    if (n < 0) { if (errno == EINTR) continue; error = errno; break; }
+    if (fds[0].revents && p->fd[0] >= 0) {
+      ssize_t wrote = write(p->fd[0], input->s + sent, (size_t)(input->len - sent > 4096 ? 4096 : input->len - sent));
+      if (wrote > 0) sent += wrote;
+      else if (wrote < 0 && errno == EPIPE) { close(p->fd[0]); p->fd[0] = -1; }
+      else if (wrote < 0 && errno != EAGAIN && errno != EINTR) { error = errno; break; }
+    }
+    for (int k = 0; k < 2; k++) if (fds[k + 1].revents && p->fd[k + 1] >= 0) {
+      char chunk[4096]; ssize_t got = read(p->fd[k + 1], chunk, sizeof chunk);
+      if (!got) { close(p->fd[k + 1]); p->fd[k + 1] = -1; }
+      else if (got > 0) {
+        if (used[0] + used[1] + (size_t)got > (size_t)max_output) { failure = "BufferError: process output limit exceeded"; break; }
+        size_t need = used[k] + (size_t)got;
+        if (need > capacity[k]) {
+          size_t cap = need * 2; if (cap > (size_t)max_output) cap = (size_t)max_output;
+          char *next = realloc(data[k], cap);
+          if (!next) { error = ENOMEM; break; }
+          data[k] = next; capacity[k] = cap;
+        }
+        memcpy(data[k] + used[k], chunk, (size_t)got); used[k] = need;
+      } else if (errno != EAGAIN && errno != EINTR) { error = errno; break; }
+    }
+    if (failure || error) break;
+  }
+  if (failure || error || io_intr) process_stop(p, process_clock() + 1.0);
+  process_fds(p);
+  if (failure || error || io_intr) {
+    free(data[0]); free(data[1]); io_out();
+    if (failure) pys_fail(failure);
+    ioerr(error);
+  }
+  io_out();
+  void **out = pys_alloc(16);
+  out[0] = pys_str(data[0], (I)used[0]); out[1] = pys_str(data[1], (I)used[1]);
+  free(data[0]); free(data[1]);
+  return out;
+}
+
 I pys_getpid(void) { return getpid(); }
 Str *pys_getcwd(void) {          /* os.getcwd(): CPython's posix_getcwd(), whose buffer grows by 1024 bytes while getcwd() fails with ERANGE */
   size_t size = 1024;

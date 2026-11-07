@@ -151,4 +151,7 @@ jobs:
       - name: Concurrency contract probes (docs/concurrency.md)
         run: python3 -m unittest discover -s tools -p test_concurrency_contract.py
 
+      - name: Native process worker correctness and ownership
+        run: python3 -m unittest discover -s tools -p test_native_process_workers.py
+
       - run: make check-recordings

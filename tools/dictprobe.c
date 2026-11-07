@@ -35,6 +35,8 @@
    --hash-cache runs only these checks, also under GC stress.
    runtime.c's dict hash functions are in runtime.py, so the build links its IR (pystachy rt).
    usage: make dictprobe   (build/dictprobe [N...] or build/dictprobe --hash-cache) */
+/* runtime.c's feature-test macros must precede every libc header. */
+#define _GNU_SOURCE
 #include <time.h>
 static long long dict_slots;          /* (not a name the runtime's code uses: the set's lookups have a local probes) */
 #define DICT_PROBE() (dict_slots++)
