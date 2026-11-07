@@ -385,6 +385,7 @@ check-fast: lint-python typecheck check-repository
 	$(PY) -m unittest discover -s tools -p test_exception_bindings.py
 	$(PY) -m unittest discover -s tools -p test_inspect_compiler.py
 	$(PY) -m unittest discover -s tools -p test_pystachy_toolchain.py
+	$(PY) -m unittest discover -s tools -p test_text_kernels.py
 
 check-repository:
 	$(PY) tools/check_repository_hygiene.py

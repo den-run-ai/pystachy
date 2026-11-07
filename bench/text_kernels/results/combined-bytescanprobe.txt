@@ -1,0 +1,4 @@
+bytescanprobe: 4096 bytes, 0 word probes, 0 scalar probes, 1 external calls
+bytescanprobe: 8192 bytes, 0 word probes, 0 scalar probes, 1 external calls
+bytescanprobe: 16384 bytes, 0 word probes, 0 scalar probes, 1 external calls
+bytescanprobe: 5737092 scalar-oracle/bounds checks, guard pages and bulk-work bounds passed

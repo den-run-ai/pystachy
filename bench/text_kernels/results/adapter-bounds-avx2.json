@@ -1,0 +1,9 @@
+{
+  "backend": "haswell-avx2",
+  "adapter_sha256": "4456450d9c5456cca2d2842e7660a0211a8a8f89bd9f421e4e15f10801816984",
+  "guard_page_cases": 36787,
+  "lengths": 271,
+  "max_length": 4096,
+  "seed": 65530,
+  "passed": true
+}

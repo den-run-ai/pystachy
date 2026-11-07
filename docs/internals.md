@@ -671,7 +671,7 @@ provide the broader behavior check. See [testing](testing.md) for the commands.
 | `PYSTACHY_HOME` | Directory holding the runtime and `lib/`; set by the installed launcher |
 | `PYSTACHY_CACHE` | Runtime cache directory; checkout default is `build/`, installed default is `${XDG_CACHE_HOME:-$HOME/.cache}/pystachy` |
 | `PYSTACHY_PATH` | Additional import directories, separated by `:` |
-| `PYSTACHY_CFLAGS` | Extra clang flags for runtime compilation and AOT linking; part of the cache key |
+| `PYSTACHY_CFLAGS` | Extra clang flags for runtime compilation and AOT linking; part of the cache key. Optional [text-kernel experiments](../bench/text_kernels/README.md) use isolated dependency snapshots and caches |
 | `PYSTACHY_IRCHECK=1` | Verify typed IR before lowering and after transforming passes |
 | `PYSTACHY_IRFX=1` | Print function effect summaries to stderr |
 | `PYSTACHY_OPT` | Disable named optimizations with `-name`, comma-separated, or all with `-all`; see [IR passes](typed-ir.md#optimizations) |

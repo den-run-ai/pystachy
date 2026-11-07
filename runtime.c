@@ -698,7 +698,13 @@ void *pys_gc_slow(I n, I atomic) { return gc_slow(n, (int)atomic); }
 /* atomic memory whose bytes may be those of an object that died: for a caller that writes every
    byte it (or anything) reads, as a new str's whose header, bytes and NUL it stores. The classes
    the fast path serves come clear anyway */
-static void *gc_raw(I n) { return (uint64_t)n < 136 ? gc_alloc(n, 1) : gc_slow(n, 3); }   /* (an allocator: check_runtime's ALLOC) */
+#ifndef GC_RAW_REQUEST
+#define GC_RAW_REQUEST(n) ((void)0)
+#endif
+static void *gc_raw(I n) {   /* (an allocator: check_runtime's ALLOC) */
+  GC_RAW_REQUEST(n);
+  return (uint64_t)n < 136 ? gc_alloc(n, 1) : gc_slow(n, 3);
+}
 __attribute__((malloc, returns_nonnull)) void *pys_alloc(I n) { return gc_alloc(n, 0); }
 __attribute__((malloc, returns_nonnull)) void *pys_alloc_atomic(I n) { return gc_alloc(n, 1); }
 /* Compiled code's own objects and fixed tuples (alloc.fixed) that hold no reference, only ints,
@@ -1014,7 +1020,23 @@ static I ascii_end(const char *p, I i, I n) {   /* the first index from i of a b
 #ifndef BYTESCAN_BYTE
 #define BYTESCAN_BYTE() ((void)0)
 #endif
+#ifndef BYTESCAN_BULK
+#define BYTESCAN_BULK() ((void)0)
+#endif
+#ifdef PYSTACHY_STRINGZILLA
+/* Experimental external adapter: keep its CPU-specific code outside the LLVM
+   runtime module, whose target attributes the driver strips before inlining. */
+extern I pystachy_stringzilla_json_scan(const char *, I);
+#endif
 static I byte_scan(const char *p, I i, I end, unsigned first, unsigned second, unsigned below) {
+#ifdef PYSTACHY_STRINGZILLA
+  /* The JSON predicate is byte-oriented. The caller retains its UTF-8 decoding
+     and code-point bookkeeping. Short spans avoid the external call entirely. */
+  if (end - i >= 128 && first == 34 && second == 92 && below == 32) {
+    BYTESCAN_BULK();
+    return i + pystachy_stringzilla_json_scan(p + i, end - i);
+  }
+#endif
   /* Skip eight bytes only after proving all are ordinary. memcpy permits every alignment
      and reads only within [i, end); neither a NUL terminator nor allocation padding is read.
      Refine a matching word in byte order: subtraction can mark neighboring lanes through
@@ -1459,30 +1481,84 @@ I pys_int_str(Str *s, I base) {               /* CPython's PyLong_FromString on 
 /* Explicit arbitrary-precision integers; ordinary int keeps its checked i64 ABI. */
 #include "mpz/mpz.c"
 
+#ifndef FLOAT_PARSE_COPY
+#define FLOAT_PARSE_COPY(n) ((void)0)
+#endif
+#ifdef PYSTACHY_FLOAT_SPAN
+double pys_float_str(Str *s) {
+  Str *t = asciinum(s);
+  const char *p = t->s, *e = t->s + t->len;
+  while (p < e && aws(*p)) p++;
+  while (e > p && aws(e[-1])) e--;
+  const char *q = p;
+  if (q < e && (*q == '+' || *q == '-')) q++;
+  I n = e - q;
+  int special = (n == 3 && !strncasecmp(q, "inf", 3)) ||
+                (n == 8 && !strncasecmp(q, "infinity", 8)) ||
+                (n == 3 && !strncasecmp(q, "nan", 3));
+  int digits = 0, prev = 0, underscores = 0;
+  /* Preserve Python's lexical checks before asking libc to validate decimal
+     syntax. In particular, reject NUL, hex floats and misplaced underscores. */
+  if (!special) for (; q < e; q++) {
+    char c = *q;
+    if (c >= '0' && c <= '9') { digits = 1; prev = 1; continue; }
+    if (c == '_' && prev && q + 1 < e && q[1] >= '0' && q[1] <= '9') {
+      prev = 0; underscores = 1; continue;
+    }
+    if (c == '.' || c == 'e' || c == 'E' ||
+        ((c == '+' || c == '-') && q > p && (q[-1] | 32) == 'e')) { prev = 0; continue; }
+    badlit("ValueError: could not convert string to float", -1, s);
+  }
+  if (!special && !digits) badlit("ValueError: could not convert string to float", -1, s);
+  const char *parse = p, *limit = e;
+  Buf b = {0};
+  if (underscores) {
+    /* Filtering remains necessary, but reserve once instead of growing for
+       individual characters. Never pass the unfiltered source to strtod. */
+    b.cap = e - p + 1; b.p = gc_raw(b.cap);
+    for (q = p; q < e; q++) if (*q != '_') b.p[b.n++] = *q;
+    b.p[b.n] = 0;
+    FLOAT_PARSE_COPY(b.n + 1);
+    parse = b.p; limit = b.p + b.n;
+  } else if (e != t->s + t->len) {
+    /* A trimmed end is not a terminator. Copy exactly the validated span so
+       strtod cannot consume a suffix beyond its logical end. */
+    FLOAT_PARSE_COPY(e - p + 1);
+    put(&b, p, e - p); put(&b, "", 1);
+    parse = b.p; limit = b.p + b.n - 1;
+  }
+  /* Direct only when e is the real string terminator. All bytes up to it were
+     validated above; Str owns that terminator even for embedded/sliced text. */
+  char *end; double v = fstrtod(parse, &end);
+  if (end != limit) badlit("ValueError: could not convert string to float", -1, s);
+  return v;
+}
+#else
 double pys_float_str(Str *s) {
   Str *t = asciinum(s);
   const char *p = t->s, *e = t->s + t->len;
   while (p < e && aws(*p)) p++;
   while (e > p && aws(e[-1])) e--;
   Buf b = {0}; const char *q = p;
-  if (q < e && (*q == '+' || *q == '-')) put(&b, q++, 1);
+  if (q < e && (*q == '+' || *q == '-')) { FLOAT_PARSE_COPY(1); put(&b, q++, 1); }
   I n = e - q;
   if ((n == 3 && !strncasecmp(q, "inf", 3)) || (n == 8 && !strncasecmp(q, "infinity", 8)) || (n == 3 && !strncasecmp(q, "nan", 3))) {
-    put(&b, q, n); put(&b, "", 1); return fstrtod(b.p, 0);
+    FLOAT_PARSE_COPY(n + 1); put(&b, q, n); put(&b, "", 1); return fstrtod(b.p, 0);
   }
   int digits = 0, prev = 0;                    /* prev: 1 after a digit; underscores only between digits */
   for (; q < e; q++) {
     char c = *q;
-    if (c >= '0' && c <= '9') { digits = 1; prev = 1; put(&b, q, 1); continue; }
+    if (c >= '0' && c <= '9') { digits = 1; prev = 1; FLOAT_PARSE_COPY(1); put(&b, q, 1); continue; }
     if (c == '_' && prev && q + 1 < e && q[1] >= '0' && q[1] <= '9') { prev = 0; continue; }
-    if (c == '.' || c == 'e' || c == 'E' || ((c == '+' || c == '-') && q > p && (q[-1] | 32) == 'e')) { prev = 0; put(&b, q, 1); continue; }
+    if (c == '.' || c == 'e' || c == 'E' || ((c == '+' || c == '-') && q > p && (q[-1] | 32) == 'e')) { prev = 0; FLOAT_PARSE_COPY(1); put(&b, q, 1); continue; }
     badlit("ValueError: could not convert string to float", -1, s);
   }
-  put(&b, "", 1);
+  FLOAT_PARSE_COPY(1); put(&b, "", 1);
   char *end; double v = fstrtod(b.p, &end);
   if (!digits || *end) badlit("ValueError: could not convert string to float", -1, s);
   return v;
 }
+#endif
 
 /* ---------- arithmetic with Python semantics ----------
    ints are 64-bit: a result CPython would represent as a big int raises OverflowError */
