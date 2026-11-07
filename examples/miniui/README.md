@@ -5,6 +5,12 @@ no imports, no FFI, no CPython bridge and no dependency on raylib or raygui. Thi
 is original project code, not a source translation of either upstream library.
 Only the optional desktop backend uses raylib's C API (5.5 API surface).
 
+![Native miniui particle demo](miniui-native.png)
+
+Actual Pystachy AOT output, captured from a 760-by-520 X11 window using raylib
+5.5 and Mesa llvmpipe under Xvfb on Linux x86-64. The demo draws rectangles and
+text directly; this PNG documents its output and is not loaded by the application.
+
 ## Scope
 
 Six controls: label, button, checkbox, slider, progress bar and single-line
@@ -117,10 +123,18 @@ checks scalar widths, UTF-8 input, unsigned RGBA, retained title ownership and
 cleanup; it does NOT validate real raylib headers, display creation, fonts or
 rendering. Run the real demo separately on each supported platform.
 
-Initial local evidence: all eight headless scenarios and the compiled mock-backend
-probe passed on Linux with CPython 3.13.5. Its checked-in `.out` was recorded on
-that interpreter; the repository-pinned 3.13.16 recording check is still required.
-The session had no Pystachy executable/complete LLVM toolchain, raylib or network
-clone access. Native compilation, real graphics, sanitizers and full repository
-verification were not run locally. Keep this prototype draft until those checks
-and review are complete.
+Local validation uses Linux x86-64, pinned CPython 3.13.16 and LLVM 18.1.3:
+
+- `make`: compiler and runtime IR fixed points pass.
+- `make test` and `make test-py` with `FILES=tests/programs/apps/miniui_headless.py`:
+  all eight scenarios pass in JIT and AOT with both compiler hosts.
+- `check_backend.py --compiler ./pystachy`: CPython, native JIT, AOT and AOT
+  GC-stress outputs match.
+- `make lint check-repository` and the full pinned `tests/record.sh --check` pass.
+- Real raylib 5.5 graphics smoke under CPython, native JIT and AOT: visible pixels,
+  pause, reset, slider/progress updates, text/greeting updates and normal window
+  closure pass. Their final interacted frames are pixel-identical. The screenshot
+  above comes from the native AOT run, without a substitute renderer.
+
+Real graphics on other platforms, physical displays/GPUs and sanitizers remain
+unverified. Focused local checks are not full `make verify`.

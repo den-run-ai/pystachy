@@ -9,8 +9,8 @@ class Rect:
     def __init__(self, x: int, y: int, w: int, h: int):
         self.x = x
         self.y = y
-        self.w = max(0, w)
-        self.h = max(0, h)
+        self.w: int = max(0, w)
+        self.h: int = max(0, h)
 
     def contains(self, x: int, y: int) -> bool:
         return self.x <= x < self.x + self.w and self.y <= y < self.y + self.h

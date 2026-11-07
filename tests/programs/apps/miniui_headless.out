@@ -7,3 +7,4 @@ focus loss: window blur, disappearing control, escape cancellation
 drawing: flexible rows, clipping, progress, rectangle, RGBA
 validation: lifecycle, IDs, layout, finite values, NUL
 miniui: 8 headless scenarios passed
+[exit 0]
