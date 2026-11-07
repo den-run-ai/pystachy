@@ -33,35 +33,84 @@ class PlanTests(unittest.TestCase):
         self.git("switch", "-q", "main")
         self.git("merge", "-q", "--no-ff", "feature")
 
+    def plan(self, base=None, commit=None, head=None):
+        return verification_plan("pull_request", self.base if base is None else base,
+                                 self.git("rev-parse", "HEAD") if commit is None else commit,
+                                 self.git("rev-parse", "feature") if head is None else head)
+
     def test_docs_paths_and_literal_newline(self):
         Path("README.md").write_text("Read me\n")
         Path("docs").mkdir()
         Path("docs/topic\nodd.txt").write_text("Docs\n")
         self.merge()
-        self.assertEqual(verification_plan("pull_request", self.base), "docs")
+        self.assertEqual(self.plan(), "docs")
 
     def test_mixed_changes(self):
         Path("README.md").write_text("Read me\n")
         Path("old.py").write_text("print(1)\n")
         self.merge()
-        self.assertEqual(verification_plan("pull_request", self.base), "code")
+        self.assertEqual(self.plan(), "code")
 
     def test_moving_code_into_docs_counts_as_source_removal(self):
         Path("docs").mkdir()
         Path("old.py").rename("docs/old.py")
         self.merge()
-        self.assertEqual(verification_plan("pull_request", self.base), "code")
+        self.assertEqual(self.plan(), "code")
 
     def test_empty_diff_keeps_code_plan(self):
         self.merge()
-        self.assertEqual(verification_plan("pull_request", self.base), "code")
+        self.assertEqual(self.plan(), "code")
 
-    def test_mismatched_base_fails_and_main_uses_code(self):
+    def test_newer_merge_base_requires_code_instead_of_failing(self):
+        Path("README.md").write_text("Read me\n")
+        self.git("add", "README.md")
+        self.git("commit", "-qm", "Docs")
+        self.git("switch", "-q", "main")
+        Path("old.py").write_text("print(1)\n")
+        self.git("commit", "-qam", "New base")
+        actual_base = self.git("rev-parse", "HEAD")
+        self.git("merge", "-q", "--no-ff", "feature")
+        # The same docs merge permits skipping only with its exact event base.
+        self.assertEqual(self.plan(base=actual_base), "docs")
+        self.assertEqual(self.plan(), "code")
+        # Reproduce checkout's depth two: the stale event base can be unavailable,
+        # while the validated actual base remains usable for changed-case checks.
+        merge = self.git("rev-parse", "HEAD")
+        head = self.git("rev-parse", "feature")
+        previous = Path.cwd()
+        with tempfile.TemporaryDirectory() as shallow:
+            self.git("clone", "-q", "--depth=2", previous.as_uri(), shallow)
+            os.chdir(shallow)
+            try:
+                self.assertEqual(self.plan(commit=merge, head=head), "code")
+                self.assertEqual(self.git("rev-parse", "HEAD^1"), actual_base)
+                self.assertEqual(self.git("diff", "--name-only", actual_base, "HEAD"), "README.md")
+                missing = subprocess.run(["git", "cat-file", "-e", self.base], capture_output=True)
+                self.assertNotEqual(missing.returncode, 0)
+            finally:
+                os.chdir(previous)
+
+    def test_wrong_checkout_or_pr_head_fails_even_with_stale_base(self):
         self.merge()
-        with self.assertRaisesRegex(ValueError, "expected PR base"):
-            verification_plan("pull_request", self.git("rev-parse", "HEAD^2"))
+        for base in (self.base, "1" * 40):
+            with self.subTest(base=base):
+                with self.assertRaisesRegex(ValueError, "event merge commit"):
+                    self.plan(base=base, commit=self.base)
+                with self.assertRaisesRegex(ValueError, "expected PR head"):
+                    self.plan(base=base, head=self.base)
+
+    def test_nonmerge_and_missing_event_identities_fail(self):
+        with self.assertRaisesRegex(ValueError, "exactly two parents"):
+            self.plan()
+        self.merge()
+        for name in ("base", "commit", "head"):
+            for value in ("", "HEAD", "1" * 39):
+                with self.subTest(name=name, value=value), self.assertRaisesRegex(ValueError, "invalid event"):
+                    self.plan(**{name: value})
+
+    def test_main_and_manual_runs_use_code(self):
         for event in ("push", "workflow_dispatch"):
-            self.assertEqual(verification_plan(event, ""), "code")
+            self.assertEqual(verification_plan(event, "", "", ""), "code")
 
 
 class GateTests(unittest.TestCase):
@@ -97,6 +146,20 @@ class GateTests(unittest.TestCase):
         self.assertIn("'Verification'", gate["name"])
         self.assertEqual(gate["if"], "${{ !cancelled() }}")
         self.assertEqual(set(gate["needs"]), {"bootstrap", "verification", "pr-variants", "distribution"})
+
+    def test_workflow_checks_event_identity_and_shares_the_validated_base(self):
+        ci = workflows()["ci.yml"]
+        self.assertEqual(ci["env"]["CI_EVENT_BASE_SHA"], "${{ github.event.pull_request.base.sha || '' }}")
+        self.assertEqual(ci["env"]["CI_HEAD_SHA"], "${{ github.event.pull_request.head.sha || '' }}")
+        self.assertNotIn("CI_BASE_SHA", ci["env"])
+        bootstrap = ci["jobs"]["bootstrap"]
+        plan = next(step for step in bootstrap["steps"] if step.get("id") == "plan")["run"]
+        self.assertIn('"$CI_EVENT_BASE_SHA" "$GITHUB_SHA" "$CI_HEAD_SHA"', plan)
+        self.assertIn('base=$(git rev-parse HEAD^1)', plan)
+        self.assertEqual(bootstrap["outputs"]["base"], "${{ steps.plan.outputs.base }}")
+        for name in ("verification", "pr-variants", "verify"):
+            with self.subTest(job=name):
+                self.assertEqual(ci["jobs"][name]["env"]["CI_BASE_SHA"], "${{ needs.bootstrap.outputs.base }}")
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-"""Correctness-gated JSON parsing/processing benchmark; see docs/json-benchmark.md.
+"""Correctness-gated JSON parsing/processing benchmark; see docs/json.md#benchmarks.
 
 No downloads or performance thresholds. The source-written guarded mode is a
 control, not a claim of automatic profile-guided or online specialization.

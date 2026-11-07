@@ -90,7 +90,7 @@ described [below](#unchanged-cpython-files).
 | 🟡 `random` | Adapted CPython on a subset `_random` (`_pyrandom`) | Seeded `Random` and module functions, integers, sequences, distributions, state | Int, bool and float seeds; 63-bit `getrandbits`; no subclasses |
 | 🟡 `statistics` | Adapted CPython | `fmean`, geometric mean, medians, quantiles, mode, `covariance`, `correlation` (of floats) | Selected numeric types and APIs |
 | 🟢 `colorsys` | Unchanged CPython | All conversion functions | Subset string and type rules apply |
-| 🧪 `mpz` | Experimental subset wrapper over a compact MicroPython-derived C core | Explicit arbitrary-precision arithmetic, comparisons, decimal text, hashing and typed containers | Ordinary `int` remains checked 64-bit; see [API and limits](../docs/mpz.md) |
+| 🧪 `mpz` | Experimental subset wrapper over the shared native bigint core | Explicit arbitrary-precision arithmetic, comparisons, decimal text, hashing and typed containers | Default `int` is checked 64-bit; [promoting ints](../docs/python-int.md) are a separate opt-in. See [API and limits](../docs/mpz.md) |
 
 ### Dates and times
 

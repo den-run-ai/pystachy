@@ -32,7 +32,7 @@ that cache when rules change. Fnmatch's own pattern cache would still match ever
 Include every input that determines a result in the cache key, and invalidate when external
 configuration changes. Prefer immutable cached results: a caller can mutate a cached list and
 change subsequent hits. Choose a bound that fits the repeated working set, then inspect
-`cache_info()` for hits, misses and evictions. See [functools support](../lib/README.md#functools-pystachys-own)
+`cache_info()` for hits, misses, the size limit and the current size. See [functools support](../lib/README.md#functools-pystachys-own)
 for the supported signatures and key rules.
 
 ## Reproduce the measurements

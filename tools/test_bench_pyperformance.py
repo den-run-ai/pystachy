@@ -288,20 +288,19 @@ class RecordTests(unittest.TestCase):
             self.assertIn("Pystachy port: a deterministic main replaces pyperf.Runner", text, name)
             self.assertNotIn("import pyperf", text, name)
 
-    def test_readme_records_every_upstream_hash(self):
+    def test_readme_links_the_authoritative_manifest(self):
         readme = (bench.BENCH / "README.md").read_text()
         self.assertIn(bench.SDIST_SHA256, readme)
+        # Source hashes and delivery status live in the controller, not in the
+        # historical first-error tables, which may mention a source more than once.
+        self.assertIn("[`UPSTREAM` map](../../tools/bench_pyperformance.py)", readme)
+        self.assertIn("`BENCHMARKS` map", readme)
+
+    def test_manifest_hashes_are_complete_sha256_values(self):
+        self.assertRegex(bench.SDIST_SHA256, r"\A[0-9a-f]{64}\Z")
+        self.assertEqual(len(set(bench.UPSTREAM.values())), len(bench.UPSTREAM))
         for name, sha in bench.UPSTREAM.items():
-            row = re.search(rf"^\| `{name}` \|.*$", readme, re.M)
-            self.assertIsNotNone(row, name)
-            self.assertIn(sha, row.group(0), name)
-            status = row.group(0).split("|")[3].strip()
-            if name in bench.BENCHMARKS:
-                self.assertEqual(status, "ported", name)
-            elif name in bench.DEFERRED:
-                self.assertTrue(status.startswith("deferred:"), name)
-            else:
-                self.assertIn(status, ("blocked", "runner-only compiles; not ported"), name)
+            self.assertRegex(sha, r"\A[0-9a-f]{64}\Z", name)
 
 
 class ArgumentTests(unittest.TestCase):

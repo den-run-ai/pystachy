@@ -37,13 +37,13 @@ The runtime compilation cache was primed first.
   fastest, so the smaller ratios are approximate.
 - **Short programs favor AOT over the JIT**, which compiles on every run.
 - **`json_records.py`**, the other program `make bench` runs, is left out: its default run takes
-  26 ms under CPython, too short to time this way. See the [JSON benchmarks](json-benchmark.md).
+  26 ms under CPython, too short to time this way. See the [JSON benchmarks](json.md#benchmarks).
 - **Data.** The [raw samples](../bench/results/bench-run-alpha4-2026-11-03.json) give every run's
   time, CPU time and peak RSS, and the executables' hashes. The October 2026 table these replace,
   whose revision was not recorded, is on
   [this page as of alpha.4](https://github.com/den-run-ai/pystachy/blob/9c8bc74648aa7c7e6a1b9d8f9dbbfeb1f2908ad3/docs/performance.md#benchmarks).
 
-The [pyperformance results](pyperformance.md) compare alpha.3 and alpha.4 AOT instruction
+The [pyperformance results](../bench/pyperformance/README.md#recorded-results) compare alpha.3 and alpha.4 AOT instruction
 counts on the benchmarks adapted from pyperformance 1.14.0. These are comparisons on adapted
 sources, not official pyperformance scores. The [port notes](../bench/pyperformance/README.md)
 describe adaptations, unsupported benchmarks and how to time CPython, JIT and AOT.
@@ -228,7 +228,7 @@ This inventory does not implement source-line annotations or explain missed pass
 | Stack tuple keys | Cache and memo hits can avoid heap allocation; escaping tuples are copied. `o[i, j]` of a class whose `__getitem__` and `__setitem__` only read the key makes the key in the caller's frame | [#308](https://github.com/den-run-ai/pystachy/pull/308), [#660](https://github.com/den-run-ai/pystachy/issues/660) |
 | First-part split | `s.split(...)[0]` produces only the required string | [#317](https://github.com/den-run-ai/pystachy/pull/317) |
 | In-place str append | `s += t` and `s = s + t` on a str local grow its str in place while only the local holds it; past 8,200 bytes a second copy leaves room for as much again, trimmed after its length is unchanged across two sweeps | [#544](https://github.com/den-run-ai/pystachy/pull/544), [#567](https://github.com/den-run-ai/pystachy/issues/567); no switch |
-| JIT helper inlining | Inlines program functions up to 20,000 IR lines by default | `PYSTACHY_JIT_INLINE=0` disables it |
+| JIT helper inlining | Runs user-function inlining for programs of at most 20,000 IR lines by default | `PYSTACHY_JIT_INLINE=0` disables it |
 
 `PYSTACHY_OPT=-all` disables the typed-IR passes. JIT inlining has a separate control:
 `PYSTACHY_JIT_INLINE=N` changes the size limit. It excludes the separately compiled runtime;

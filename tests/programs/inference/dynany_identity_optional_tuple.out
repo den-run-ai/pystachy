@@ -1,0 +1,12 @@
+float 1.25 True True True True True True True True
+float -0.0 True True True True True True True True
+float nan True True True True True True True True
+float None True True True True True True True True
+int True True True
+int None True
+bool True True
+bool True True
+bool True True
+rebind True True False True True True
+retained True 1.25 nan False
+[exit 0]

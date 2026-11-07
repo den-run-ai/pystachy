@@ -362,6 +362,10 @@ and a lightweight `Verification` check. Both bootstrap workers classify the test
 merge commit's changes against its base. When both select the documentation plan,
 they skip toolchain setup and builds, and CI skips the verification, variant and
 distribution jobs. Renaming a source file into `docs/` still selects code verification.
+Classification verifies the immutable event merge SHA and its PR-head parent. If
+GitHub generated that merge against a newer base than the event payload records,
+CI requires code verification and uses the validated merge's first parent for changed-case
+selection. A wrong checkout, wrong PR head or non-merge commit fails classification.
 Other PRs use the compact profile below. Pushes to `main` and manual CI runs retain
 complete verification for the release gate.
 The toolchain is Ubuntu 24.04, LLVM 18 and the CPython version pinned in `.python-version`.
