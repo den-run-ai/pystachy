@@ -23,6 +23,9 @@ class Record:
     def __init__(self, value: int) -> None:
         self.value = value
 
+    def read(self) -> int:
+        return self.value
+
 
 def attempt(label: str, function: Any, args: Any, kwargs: Any) -> None:
     try:

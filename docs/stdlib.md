@@ -139,7 +139,9 @@ opt in to the [dynamic `Any` prototype](dynamic-any.md); its [operations](dynami
 and [iteration](dynamic-any.md#iteration) contracts list what such ports can rely on.
 Its bounded [class-value prototype](dynamic-any.md#class-values-and-type-keyed-registries)
 supports exact-type callback registries and `factory(*args, **kwargs)` reconstruction through existing boxed
-instance adapters and compiled initializers. Differential consumers exercise the
+instance adapters and compiled initializers, plus factory-only construction of
+isolated classes with a fixed annotated initializer and supported fields.
+Differential consumers exercise the
 selected `copyreg` registration functions and reduction tuples; full `copyreg` and `pickle` remain unsupported.
 Generator functions, resumable generator objects, bytes, bounded unions and per-call
 function/constructor specialization already work; their remaining restrictions depend on the

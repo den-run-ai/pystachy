@@ -3927,11 +3927,91 @@ def dyn_class_defaults(self, f: FnInfo, supplied: list[int], first: int = 1) -> 
     return True
 
 
+def dyn_factory_candidate(self, c: str) -> bool:
+    # An annotation-backed layout needs no exemplar instance. Initially prepare
+    # only isolated ordinary classes: adding a DynType must not wake user protocol
+    # methods, inherited dispatch or new nominal field adapters on later passes.
+    ci = self.classes[c]
+    if c in self.tmpl or ci.origin != "" or ci.bad != "" or ci.hook != "" or ci.exc != "" or ci.mod in GLUE or ci.node.line in ENUMCLASSES or c in self.nts or self.is_dc(c):
+        return False
+    if ci.base != "" or ci.role != "" or ci.isrole or ci.tag != 0 or any(m != "__init__" for m in ci.methods):
+        return False
+    if any(a.startswith("__") and a.endswith("__") and a != "__slots__" for a in ci.ftypes):
+        return False
+    if "__init__" not in ci.methods:
+        return False
+    f = ci.methods["__init__"]
+    if f.bad != "" or f.generic or f.prop or f.deco != "" or f.vararg >= 0 or f.kwarg >= 0 or f.pyexport or f.gen or f.ret not in ["", "None"]:
+        return False
+    if len(f.ptypes) == 0 or f.ptypes[0] != c or len(f.defaults) != len(f.params):
+        return False
+    # Existing get.__init__/call.__init__ dispatchers can expose this method
+    # after the adapter is registered. Every omitted default must bind safely,
+    # even when the constructor call that first needs the class supplies it.
+    required = [j for j in range(len(f.params)) if f.defaults[j].kind == "noann"]
+    return all(t != "" and dyn_class_argument(self, t) for t in f.ptypes[1:]) and all(dyn_class_argument(self, ci.ftypes[a]) for a in ci.ftypes) and dyn_class_defaults(self, f, required)
+
+
+def dyn_factory_work(self) -> list[list[str]]:
+    # These append-only worklists can activate user bodies after function()
+    # returns. Ordinary runtime scalar helpers do not; dynamic iteration's
+    # implicit callbacks do, even before dyn_dispatchers has made their arms.
+    callbacks = [k for k in self.rtfns if k in ["dyn.iter", "dyn.list", "dyn.strs", "dyn.unpack", "dyn.update", "dyn.inplace", "dyn.inplace_promote", "dyn.contains", "dyn.list_method", "dyn.list_set_slice", "dyn.star_extend"]]
+    return [list(self.dynclasses), list(self.dynfuncs), list(self.dynfns), list(self.ocls), list(self.ocmp), list(self.one), list(self.xobj), list(self.hcls), list(self.xcls), list(self.xctors), callbacks]
+
+
+def dyn_prepare_factory(self, c: str) -> None:
+    # A failed candidate restarts the entire compilation through xtry/xnot.
+    # save/restore alone is not a transaction for inference, helper registries
+    # or lazy function calls. No failure may leave a half-prepared adapter.
+    if (c in self.dynclasses and dyn_class_initializer(self, c) is not None) or not dyn_factory_candidate(self, c):
+        return
+    attempt = "protocol:constructor:" + c
+    if attempt in self.xnot:
+        return
+    previous = self.xtry
+    self.xtry = attempt
+    fr = self.save()
+    f = self.classes[c].methods["__init__"]
+    called = dict(self.called)
+    work = dyn_factory_work(self)
+    hints = dict(self.newhints)
+    declined = dict(self.newx)
+    try:
+        self.modlevel = False
+        self.lenient = False
+        if f.ll not in self.compiled:
+            self.function(f, f.node.kids[2].kids)
+        while True:
+            # Generic instances/closures compile synchronously. Ordinary imported
+            # callees are lazy: keep every newly reached one inside this attempt,
+            # but leave independently required calls to the normal program worklist.
+            pending = [g for g in self.lazy.values() if g.ll in self.called and g.ll not in called and g.ll not in self.compiled and not g.generic]
+            if len(pending) == 0:
+                break
+            for g in pending:
+                if g.ll not in self.compiled:
+                    self.function(g, g.node.kids[2].kids)
+        if self.newhints != hints or dyn_factory_work(self) != work or not dyn_factory_candidate(self, c):
+            self.err("factory-only class preparation needs additional inference or dynamic helpers")
+        self.restore(fr)
+        self.dyn_class_type(c)
+    except Rejoin as retry:
+        # The driver normally retains newhints across retries. An optional
+        # constructor must not widen unrelated storage before being declined,
+        # including a first inference-only retry before a later body error.
+        self.newhints = hints
+        self.newx = declined
+        if not isinstance(retry, NeedSliceEH) and self.idevent == "":
+            self.newx[attempt] = True
+        raise
+    self.xtry = previous
+
+
 def dyn_class_calls(self, key: str, o: Val, args: list[Val]) -> None:
     # A class box identifies its canonical record, not one instance layout.
-    # Reuse proven instance adapters and initializers: trying every unused
-    # registry class could reject an accepted program or retain speculative
-    # inference effects. No constructor body or boxing layout is attempted.
+    # Reuse the program's adapters/initializers, including the annotation-backed
+    # factories prepared separately under the whole-compilation retry contract.
     rec = Val(self.mload("%ptr", self.maddr("%ptr", o.v, "1")), "%ptr")
     an = self.dyn_call_args(key, args)
     classes = [c for c in self.classes if "@pys.refl.c." + c in self.reflrecs and self.classes[c].origin == "" and "__init__" in self.classes[c].methods]
@@ -4148,6 +4228,11 @@ def dyn_iteration_hooks(self) -> None:
 def gen_dyn_dispatchers(self) -> bool:
     # Compile the dispatchers again when more classes/function values have boxed
     # or another dispatcher appeared. Program repeats until the registry settles.
+    # Only a dynamic call needs instance adapters for class values. Capturing a
+    # class or using it as a registry key alone does not prepare its constructor.
+    if any(k.startswith("callv.") or k == "callpack" for k in self.dynfns):
+        for c in [x for x in self.classes if "@pys.refl.c." + x in self.reflrecs]:
+            dyn_prepare_factory(self, c)
     dyn_iteration_hooks(self)
     # Class values need no boxed instance. A later typevalue arm can expose a
     # record, and a later ordinary call can compile an imported initializer.

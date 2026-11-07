@@ -744,6 +744,11 @@ The values keep their types; integers are not converted to floats.
 
 ## Class templates and generic classes
 
+In modules opting in to [dynamic `Any`](../dynamic-any.md), a stored class can
+also serve as an [annotated factory](../dynamic-any.md#class-values-and-type-keyed-registries)
+without an earlier instance. This bounded path uses concrete field and initializer
+annotations; it does not infer a new class-template specialization from runtime arguments.
+
 A class specializes when its `__init__` has an unannotated parameter, a parameter annotated
 `object` or mentioning `Any` (also `list[Any]`, quoted or imported annotations), variadic parameters,
 a parameter or constructed field using another class template, an `Iterator[T]` or

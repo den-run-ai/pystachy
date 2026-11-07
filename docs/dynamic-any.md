@@ -206,11 +206,43 @@ or string literal; this path does not compile additional default expressions.
 Arguments run once, after capturing the class and before binding errors;
 initializer exceptions and non-`None` returns retain their ordinary behavior.
 Mutable arguments retain their aliases.
+Typed-tuple numeric items retain the existing [identity limitation](#deviations).
 
-This is bounded reconstruction. A class used only as a key does not establish
-an instance adapter. An uncompiled imported initializer, a new nominal argument
-layout, or a default that cannot bind raises `NotImplementedError` if selected.
-Constructor arms do not speculatively compile unused bodies or boxing helpers.
+An isolated ordinary class can also be used only as a factory, without a prior
+instance:
+
+```python
+class Record:
+    def __init__(self, value: int) -> None:
+        self.value = value
+
+factory: Any = Record
+restored = factory(7)
+print(type(restored) is Record, restored.value)  # True 7
+```
+
+This preparation path accepts classes outside inheritance hierarchies with no
+methods other than a fixed, concretely annotated `__init__`, or the default empty
+initializer. The initializer must return `None`. Other special class attributes
+are excluded except for `__slots__` given as a string or tuple of strings.
+Parameters and fields must use supported dynamic layouts; nominal members need
+an existing boxed adapter. Positional-only and keyword-only
+parameters keep the ordinary binding rules. Imported initializers and their
+ordinary scalar helper functions can compile on demand. Defaults retain their
+definition-time evaluation and original identity. Every optional initializer
+default must bind to its parameter type, even if the call supplies that argument:
+an existing dynamic lookup can also expose the new object's bound `__init__`.
+
+Initializer preparation does not widen inferred storage or introduce new dynamic
+protocol dispatchers, callable adapters or unrelated object helpers.
+A declined initializer or helper
+discards the entire attempted compilation before the compiler retries; an unused
+unsupported factory therefore does not make another accepted path fail.
+Capturing a class as a value alone does not prepare its initializer. Classes with
+additional methods or inheritance still use the existing-adapter path above.
+
+Outside these paths, an uncompiled initializer, a new nominal argument layout,
+or a default that cannot bind raises `NotImplementedError` if selected.
 Builtin classes, class templates, dataclasses, NamedTuples, decorated or variadic
 initializers, `__init__` stored as class data, and custom `__new__` remain outside
 this construction path.
@@ -887,7 +919,12 @@ reducer lookup, callback replacement, validation order and reconstruction from
 reduction tuples with one argument.
 `tests/programs/upstream/upstream_copyreg_construct.py` returns actual class
 values from reducers and reconstructs base/subclass instances through `factory(*args)`.
-It checks exact type, fresh identity and shared mutable payloads. Full `copyreg`
+It checks exact type, fresh identity and shared mutable payloads.
+`tests/programs/upstream/upstream_copyreg_factory_only.py` uses a reducer whose
+result class has no earlier instance or typed construction, reconstructing it
+through `factory(*arguments)` while preserving payload aliases.
+These consumers do not validate state restoration, serialization
+memoization/cycles or pickle protocol behavior. Full `copyreg`
 still stops at runtime `int | str`; omitting that registration reaches the
 unsupported builtin method value `int.__new__`.
 
@@ -900,8 +937,8 @@ document into dicts and lists of `Any` values that programs which do not opt in 
 - Calls through stored classes outside the
   [bounded reconstruction contract](#class-values-and-type-keyed-registries)
   raise `NotImplementedError`, although `callable()` reports true. This includes
-  a class without an existing boxed adapter
-  (`tests/deviations/dynany_class_constructor.py`), an uncompiled imported
+  a class with additional methods and no existing boxed adapter
+  (`tests/deviations/dynany_class_factory_methods.py`), an uncompiled imported
   initializer (`tests/deviations/dynany_class_construct_deferred.py`), and
   `__init__` stored as class data
   (`tests/deviations/dynany_class_construct_field.py`).
@@ -1088,8 +1125,8 @@ lines.
 - **Broader typed-container crossings**: the flow analysis that selects `list[Any]` storage at the
   allocation of every alias of a container that may flow into `Any` storage.
 - **Calls**: variadic targets and custom mappings through runtime binding;
-  builtin functions as values; stored-class construction beyond precompiled
-  ordinary instance adapters and initializers.
+  builtin functions as values; stored-class construction beyond existing ordinary
+  instance adapters and the bounded annotated-factory path.
 - **Protocols**: legacy sequence iteration through `__getitem__`, reverse iteration through
   `__len__`/`__getitem__`, `NotImplemented` hint results, and the
   builtins listed under [deviations](#deviations) that do not take `Any` values yet.
