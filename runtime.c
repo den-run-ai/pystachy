@@ -1957,21 +1957,15 @@ double pys_m_logb(double x, double b) {   /* log(x) / log(b), and a base of 1 di
   if (d == 0) pys_fail("ZeroDivisionError: float division by zero");
   return n / d;
 }
-double pys_m_degrees(double x) { return x * (180.0 / 3.141592653589793); }
-double pys_m_radians(double x) { return x * (3.141592653589793 / 180.0); }
+double pys_m_degrees(double x);
+double pys_m_radians(double x);
 I pys_m_isfinite(double x) { return isfinite(x); }
 I pys_m_isinf(double x) { return isinf(x); }
 I pys_m_isnan(double x) { return isnan(x); }
 I pys_m_trunc(double x) { return pys_f2i(trunc(x)); }
 /* Portions derived from CPython's Modules/mathmodule.c: Copyright (c) 2001-2024 Python Software
    Foundation; All Rights Reserved; used under the PSF License Agreement (see THIRD_PARTY_NOTICES). */
-I pys_m_isclose(double a, double b, double rel_tol, double abs_tol) {   /* CPython's math_isclose_impl */
-  if (rel_tol < 0.0 || abs_tol < 0.0) pys_fail("ValueError: tolerances must be non-negative");
-  if (a == b) return 1;            /* (two infinities of the same sign) */
-  if (isinf(a) || isinf(b)) return 0;
-  double diff = fabs(b - a);
-  return diff <= fabs(rel_tol * b) || diff <= fabs(rel_tol * a) || diff <= abs_tol;
-}
+I pys_m_isclose(double a, double b, double rel_tol, double abs_tol);
 /* math.gamma and math.lgamma are CPython 3.13.16's m_tgamma and m_lgamma (Modules/mathmodule.c),
    which do not use libm's tgamma and lgamma: their Lanczos approximation, reflection formula and
    special cases, with their comments, so that every result is CPython's to the last bit. The

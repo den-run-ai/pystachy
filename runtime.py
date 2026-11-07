@@ -18,6 +18,31 @@ import math
 import _rt
 
 
+# ---------- scalar math (native ABI, no heap allocations) ----------
+# Keep the literal constants and operation ordering identical to runtime.c.
+
+
+def pys_m_degrees(x: float) -> float:
+    return x * (180.0 / 3.141592653589793)
+
+
+def pys_m_radians(x: float) -> float:
+    return x * (3.141592653589793 / 180.0)
+
+
+def pys_m_isclose(a: float, b: float, rel_tol: float, abs_tol: float) -> int:
+    # CPython's math.isclose order: reject negative tolerances, including -inf.
+    # NaNs are intentionally not rejected by that comparison.
+    if rel_tol < 0.0 or abs_tol < 0.0:
+        raise ValueError("tolerances must be non-negative")
+    if a == b:
+        return 1  # same-signed infinities compare equal
+    if math.isinf(a) or math.isinf(b):
+        return 0
+    diff = abs(b - a)
+    return 1 if diff <= abs(rel_tol * b) or diff <= abs(rel_tol * a) or diff <= abs_tol else 0
+
+
 # ---------- the math module's integer functions ----------
 # The subset's arithmetic is checked, so an int result that does not fit in 64 bits raises
 # CPython's OverflowError where runtime.c had to test for it by hand. There are no unsigned or
