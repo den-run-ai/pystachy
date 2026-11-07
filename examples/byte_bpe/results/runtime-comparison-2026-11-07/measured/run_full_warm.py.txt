@@ -1,0 +1,119 @@
+"""Warmup sensitivity: existing binaries, 200 warmups, 200 full encodes."""
+from pathlib import Path
+import hashlib
+import json
+import math
+import os
+import statistics
+import subprocess
+import time
+
+ROOT = Path('/workspace/scratch/1d4aec3744ed')
+REPO = ROOT / 'pystachy'
+OUT = ROOT / 'bottlenecks/decompose'
+PYPY = '/root/.local/share/uv/python/pypy-3.11.17-linux-x86_64-gnu/bin/pypy3.11'
+CORPUS = REPO / 'bench/pyperformance/data/frankenstein_intro.txt'
+LOOPS = 200
+WARMUPS = 200
+
+def digest(path):
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+base = json.loads((OUT / 'results.json').read_text())
+assert base['status'] == 'passed'
+inputs = {name: Path(path) for name, path in base['source_paths'].items()}
+hashes = {name: digest(path) for name, path in inputs.items()}
+assert hashes == base['source_hashes']
+binary_hash = digest(OUT / 'stages')
+assert binary_hash == base['binary_sha256']
+env = {k: v for k, v in os.environ.items() if not k.startswith(('PYSTACHY_', 'PYPY_')) and k not in ('PYTHONPATH', 'PYTHONHOME')}
+env.update(base['environment_overrides'])
+os.sched_setaffinity(0, {0})
+expected_six = (OUT / '0-cpython_original.stdout').read_text()
+oracle = json.loads((REPO / 'examples/byte_bpe/results/2026-11-06-default.json').read_text())['oracle']['stdout']
+orders = [['pypy_original', 'pystachy_aot'], ['pystachy_aot', 'pypy_original'], ['pypy_original', 'pystachy_aot']]
+record = {
+    'status': 'running',
+    'description': 'Separate full-encoding warmup sensitivity diagnostic. No rebuild; not pooled with primary timings or all-phase decomposition.',
+    'versions': base['versions'],
+    'platform': base['platform'],
+    'cpu_model': base['cpu_model'],
+    'cpu_affinity': [0],
+    'environment_overrides': base['environment_overrides'],
+    'source_hashes': hashes,
+    'source_paths': base['source_paths'],
+    'binary_sha256': binary_hash,
+    'build_performed': False,
+    'corpus_bytes': CORPUS.stat().st_size,
+    'vocab_size': 1024,
+    'warmups': WARMUPS,
+    'measured_loops': LOOPS,
+    'phase': 'full',
+    'setup_encodes_outside_warmups': {'full': 1, 'merge': 1},
+    'processes_per_mode': 3,
+    'run_order': orders,
+    'load_average_start': os.getloadavg(),
+    'runs': [],
+}
+
+def save():
+    (OUT / 'warmup_sensitivity.json').write_text(json.dumps(record, indent=2) + '\n')
+
+for round_id, order in enumerate(orders):
+    for mode in order:
+        run_env = env.copy()
+        if mode == 'pypy_original':
+            command = [PYPY, str(OUT / 'stages.py')]
+            run_env['PYTHONPATH'] = str(ROOT / 'original')
+        else:
+            command = [str(OUT / 'stages')]
+        command += [str(CORPUS), '1024', str(LOOPS), str(WARMUPS), 'full']
+        start = time.perf_counter()
+        proc = subprocess.run(command, env=run_env, cwd=REPO, text=True, capture_output=True, timeout=180)
+        wall = time.perf_counter() - start
+        label = f'full-warm-{round_id}-{mode}'
+        (OUT / (label + '.stdout')).write_text(proc.stdout)
+        (OUT / (label + '.stderr')).write_text(proc.stderr)
+        lines = proc.stdout.splitlines(keepends=True)
+        fields = proc.stderr.split()
+        assert len(fields) == 2 and fields[0] == 'full', proc.stderr
+        seconds = float(fields[1])
+        assert math.isfinite(seconds) and seconds >= 0
+        run = {
+            'mode': mode,
+            'round': round_id,
+            'command': command,
+            'returncode': proc.returncode,
+            'wall_seconds': wall,
+            'stdout_sha256': hashlib.sha256(proc.stdout.encode()).hexdigest(),
+            'stdout_lines': len(lines),
+            'first_four_match_existing_oracle': ''.join(lines[:4]) == oracle,
+            'six_lines_match_pristine_cpython': proc.stdout == expected_six,
+            'stderr': proc.stderr,
+            'seconds_per_full_encode': seconds / LOOPS,
+            'load_average_after': os.getloadavg(),
+        }
+        record['runs'].append(run)
+        save()
+        assert proc.returncode == 0 and len(lines) == 6 and run['first_four_match_existing_oracle'] and run['six_lines_match_pristine_cpython'], run
+        print(round_id, mode, round(seconds * 1000 / LOOPS, 3), 'ms', flush=True)
+
+record['summary'] = {}
+for mode in ['pypy_original', 'pystachy_aot']:
+    samples = [r['seconds_per_full_encode'] * 1000 for r in record['runs'] if r['mode'] == mode]
+    record['summary'][mode] = {'median_ms': statistics.median(samples), 'range_ms': [min(samples), max(samples)], 'samples_ms': samples}
+paired = []
+for round_id in range(3):
+    times = {r['mode']: r['seconds_per_full_encode'] for r in record['runs'] if r['round'] == round_id}
+    paired.append(times['pystachy_aot'] / times['pypy_original'])
+record['summary']['pystachy_over_pypy_seconds_ratio'] = {
+    'paired_ratios': paired,
+    'paired_median_ratio': statistics.median(paired),
+    'ratio_of_medians': record['summary']['pystachy_aot']['median_ms'] / record['summary']['pypy_original']['median_ms'],
+}
+record['source_hashes_after'] = {name: digest(path) for name, path in inputs.items()}
+record['binary_sha256_after'] = digest(OUT / 'stages')
+assert record['source_hashes_after'] == hashes and record['binary_sha256_after'] == binary_hash
+record['status'] = 'passed'
+save()
+print(json.dumps(record['summary'], indent=2))

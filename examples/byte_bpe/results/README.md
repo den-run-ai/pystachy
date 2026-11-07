@@ -2,6 +2,11 @@
 
 **The full native port matches the original CPython kernels and accelerates all three measured stages.** These are measurements of this educational tokenizer and corpus, not production tiktoken or published pyperformance scores.
 
+For the later Cython/mypyc/PyPy comparison and bottleneck experiments, see
+[the 7 November research report](runtime-comparison-2026-11-07/README.md).
+It uses an explicit warmup protocol and retains its own raw samples; the two
+series are not a before/after compiler comparison.
+
 ## Stage measurements
 
 Measured source [975e7de5](https://github.com/den-run-ai/pystachy/commit/975e7de5a1381cc7b0a8daed142f5fdbe13c35fe) has exactly the same file tree as local measurement revision `72f52912`; [publication identities](publication.json) preserve that mapping without rewriting raw records. Compiler/runtime/library sources are unchanged from `f7103067545b43cdcd8ce20dc66b1571425b3a8d`. CPython 3.13.16, LLVM 18.1.3, Linux x86-64, AMD EPYC 9V74; pinned to CPU 0 on a shared host. Five interleaved processes per mode. The unchanged Frankenstein input is 31,206 UTF-8 bytes; vocabulary size is 1,024. Each process trains once, encodes 50 times and decodes 200 times.

@@ -1,0 +1,41 @@
+{
+  "description": "Derived during publication: five recorded complete comparator states are byte-identical and reproduce the retained four-line oracle. Their raw JSON representation can be reconstructed from that oracle; it is not stored five times.",
+  "canonical_json_serialization": "json.dumps(state, ensure_ascii=False), no trailing newline; ranks use base64 byte keys",
+  "modes": {
+    "original": {
+      "recorded_json_sha256": "b4d9adec5646f5b9057b04e3fa959c93683d5ea996297d4c7b40a7c67a9c4280",
+      "recorded_json_bytes": 141074,
+      "full_state_matches_oracle": true,
+      "fixture_stdout_matches": true,
+      "log_tail": "module /workspace/scratch/1d4aec3744ed/comparators/original/bpe_tokeniser.py\nfull corpus validated\n"
+    },
+    "cython_original": {
+      "recorded_json_sha256": "b4d9adec5646f5b9057b04e3fa959c93683d5ea996297d4c7b40a7c67a9c4280",
+      "recorded_json_bytes": 141074,
+      "full_state_matches_oracle": true,
+      "fixture_stdout_matches": true,
+      "log_tail": "module /workspace/scratch/1d4aec3744ed/comparators/cython_original/bpe_tokeniser.cpython-313-x86_64-linux-gnu.so\nfull corpus validated\n"
+    },
+    "cython_scalar": {
+      "recorded_json_sha256": "b4d9adec5646f5b9057b04e3fa959c93683d5ea996297d4c7b40a7c67a9c4280",
+      "recorded_json_bytes": 141074,
+      "full_state_matches_oracle": true,
+      "fixture_stdout_matches": true,
+      "log_tail": "module /workspace/scratch/1d4aec3744ed/comparators/cython_scalar/bpe_tokeniser.cpython-313-x86_64-linux-gnu.so\nfull corpus validated\n"
+    },
+    "cython_adapted": {
+      "recorded_json_sha256": "b4d9adec5646f5b9057b04e3fa959c93683d5ea996297d4c7b40a7c67a9c4280",
+      "recorded_json_bytes": 141074,
+      "full_state_matches_oracle": true,
+      "fixture_stdout_matches": true,
+      "log_tail": "module /workspace/scratch/1d4aec3744ed/comparators/cython_adapted/bpe_tokeniser.cpython-313-x86_64-linux-gnu.so\nfull corpus validated\n"
+    },
+    "mypyc_original": {
+      "recorded_json_sha256": "b4d9adec5646f5b9057b04e3fa959c93683d5ea996297d4c7b40a7c67a9c4280",
+      "recorded_json_bytes": 141074,
+      "full_state_matches_oracle": true,
+      "fixture_stdout_matches": true,
+      "log_tail": "module /workspace/scratch/1d4aec3744ed/comparators/mypyc_original/bpe_tokeniser.cpython-313-x86_64-linux-gnu.so\nfull corpus validated\n"
+    }
+  }
+}

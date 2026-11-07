@@ -1,0 +1,247 @@
+{
+  "schema": 1,
+  "kind": "byte-BPE research evidence",
+  "measured_pr": 1107,
+  "measured_revision": "3d0f56d82e3f7e3e0799d37e014f73391913f1ca",
+  "compiler_source_revision": "f7103067545b43cdcd8ce20dc66b1571425b3a8d",
+  "measured_date_utc": "2026-11-07",
+  "notes": [
+    "Raw data and measured source snapshots are copied byte-for-byte. Absolute paths in them identify the historical environment, not runnable commands for a new checkout.",
+    "Published portable reproduction code is in ../../compare; publication-time validation is separate from the historical performance measurements.",
+    "No binaries, generated C, full IR/assembly, virtual environments or duplicate corpora are included. Native binary hashes identify historical artifacts; rebuilding need not reproduce those bytes.",
+    "The main, secondary, encoding-phase and extended-warmup series are separate experiments and must not be pooled.",
+    "README.md is the publication-time interpretation, intentionally excluded from this data manifest. verify.py validates recorded evidence without timing new programs. Native sites are compact excerpts; original full disassemblies are identified by SHA256, not included."
+  ],
+  "recorded_files": {
+    "comparison.json": {
+      "source": "evidence/comparison.json",
+      "sha256": "ba4e479b0aa9fbd139d20ba902bd72966948922b44f9c5bd42c14ba311c83af3",
+      "bytes": 67197
+    },
+    "secondary.json": {
+      "source": "evidence/secondary.json",
+      "sha256": "721fa7860ee60565a5f4f8ca13b825be8326952810ffedb7d2b7d4da23f6629e",
+      "bytes": 17730
+    },
+    "full-output-oracle.txt": {
+      "source": "evidence/full-output-oracle.txt",
+      "sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+      "bytes": 130147
+    },
+    "correctness-final.json": {
+      "source": "evidence/correctness-final.json",
+      "sha256": "e2a7f50f970ff046d4f096defb71a77ab9de319e6627d10b2c423ae1b33bf638",
+      "bytes": 1942
+    },
+    "comparator-manifest.json": {
+      "source": "comparators/manifest.json",
+      "sha256": "be5eb27ab176ff137c23a5240af11e3d6cee2ee1a1f3ce010edcbefee1fc0c04",
+      "bytes": 2836
+    },
+    "operations.json": {
+      "source": "bottlenecks/operations.json",
+      "sha256": "b9231a0cb19d523cba9bc8d523773ed2c6f77308691d8478dfa4b6f1d3f7dca1",
+      "bytes": 2176
+    },
+    "scalar-tuple-manifest.json": {
+      "source": "bottlenecks/scalar_tuple/manifest.json",
+      "sha256": "4affbda3620cdcdc8f62c655abe3e95c4ccea948b5fc1dbac6e2013619f2c8ac",
+      "bytes": 4649
+    },
+    "encoding-phases.json": {
+      "source": "bottlenecks/decompose/results.json",
+      "sha256": "399f4a16dbd32fe3f0434b980403f17b497877ea9f4fea5401b4b5e4de9ead59",
+      "bytes": 16860
+    },
+    "warmup-sensitivity.json": {
+      "source": "bottlenecks/decompose/warmup_sensitivity.json",
+      "sha256": "fa6be99d1a31798e2710d61afe1614e724de2c7987453cfb651f6d2924c44787",
+      "bytes": 9003
+    },
+    "language-probes.json": {
+      "source": "bottlenecks/language_probes/results.json",
+      "sha256": "0796013ad324e4b5222f4a13b6cc8cbd71e9c2f9c739c869de095e33617ef963",
+      "bytes": 3676
+    },
+    "fixture-output.txt": {
+      "source": "evidence/correctness-original-final.stdout",
+      "sha256": "4404fc17b7367309f827cc4ff52dd9f2c85aa54b90ddcde17d9ad13c0b0a91da",
+      "bytes": 1463
+    },
+    "fixture-pypy-output.txt": {
+      "source": "evidence/correctness-pypy-final.stdout",
+      "sha256": "67fc8a17d958ad565f6696f3b8bc69e57f6add25803dfeab02e06bd64154b601",
+      "bytes": 1439
+    },
+    "measured/run_comparison.py.txt": {
+      "source": "evidence/run_comparison_measured.py",
+      "sha256": "fcbeb50d189b497b4db6e54449701f4e53013704e8d193dd0a5ab19f76a56933",
+      "bytes": 7944
+    },
+    "measured/run_secondary.py.txt": {
+      "source": "run_comparison.py",
+      "sha256": "b2431c3d5b81fe5ae36ba3dd9fd2b09ba911a17f2188f77d96cef62d5e1aff83",
+      "bytes": 8486
+    },
+    "measured/prepare_native.py.txt": {
+      "source": "prepare_native.py",
+      "sha256": "5b96b50c6f5e481733c5913504f006363aa446b9169b084db78e23425dda23b7",
+      "bytes": 2934
+    },
+    "measured/stages_warm.py.txt": {
+      "source": "stages_warm.py",
+      "sha256": "d0fa5dd733a37c28ec3e4078a73566c71641aa199a5a7e1e8dd24d90bc09562c",
+      "bytes": 2353
+    },
+    "measured/correctness.py.txt": {
+      "source": "correctness.py",
+      "sha256": "88f7ad0e0e9f185cc6908e72ec9281c6315dec09b880d653dad430882a260943",
+      "bytes": 6368
+    },
+    "measured/comparator_run.py.txt": {
+      "source": "comparators/run_mode.py",
+      "sha256": "207471c786bb5616c7f11fb82a1cbc2b44aaee2bb6534d33f61f2f58b4d8e829",
+      "bytes": 639
+    },
+    "measured/comparator_check.py.txt": {
+      "source": "comparators/check.py",
+      "sha256": "fc8a2737babd3f0fc80f81095a0038418fc40f91a0d7d4c906c903a5b64374d4",
+      "bytes": 884
+    },
+    "measured/encoding_phases.py.txt": {
+      "source": "bottlenecks/decompose/stages.py",
+      "sha256": "5bf23cd3f63770ce3289bfe1ea4c9661015c6c9362df9d3599550b5902f7b44c",
+      "bytes": 4040
+    },
+    "measured/run_encoding_phases.py.txt": {
+      "source": "bottlenecks/decompose/run.py",
+      "sha256": "a6f0574479869624e407c194a32cf833867908e44fa5565645a4734fbfde1cf8",
+      "bytes": 6338
+    },
+    "measured/run_full_warm.py.txt": {
+      "source": "bottlenecks/decompose/run_full_warm.py",
+      "sha256": "4e3447e564a3f2ada937e0d4932c6f29975ccc6dcda5f7dbab676ba09dbdd502",
+      "bytes": 5293
+    },
+    "measured/count_bpe_operations.py.txt": {
+      "source": "bottlenecks/count_bpe_operations.py",
+      "sha256": "5370d30dd90bd195e169f75d3b7b6a2174519971bce1704bca08d67760962c21",
+      "bytes": 6749
+    },
+    "measured/probe_language_gaps.py.txt": {
+      "source": "bottlenecks/probe_language_gaps.py",
+      "sha256": "46422081a02322727146c2a52c4eef194d256cee6bc82461729b88788867fa3f",
+      "bytes": 2702
+    },
+    "measured/mypyc_original.diff": {
+      "source": "comparators/mypyc_original.diff",
+      "sha256": "fa054e128cef1cb9a09a0654b57786bac2dffda460fad6179c782ba2a30eb16f",
+      "bytes": 493
+    },
+    "measured/scalar_tuple.diff": {
+      "source": "bottlenecks/scalar_tuple/change.diff",
+      "sha256": "6e0effc5d68436cd084ecc08d9a9baae0b62e6882b2dbb722f721eb91e70cafa",
+      "bytes": 452
+    }
+  },
+  "repository_inputs": {
+    "bench/pyperformance/bpe_tokeniser.py": {
+      "sha256": "9775aff77bb52efc6fb9828517ead0584552b1cba5afe73ef4d93e13972ca7de",
+      "bytes": 7556,
+      "revision": "3d0f56d82e3f7e3e0799d37e014f73391913f1ca"
+    },
+    "bench/pyperformance/data/frankenstein_intro.txt": {
+      "sha256": "6607193e67b7b459d082f5f2aea724e470615643d63ad2e205123b3076223da4",
+      "bytes": 31206,
+      "revision": "3d0f56d82e3f7e3e0799d37e014f73391913f1ca"
+    },
+    "examples/byte_bpe/upstream/bpe_tokeniser.py": {
+      "sha256": "c7255345499e118181785370b0996e8cc1056491b9678b3fbeb02421e3f9b2df",
+      "bytes": 5240,
+      "revision": "3d0f56d82e3f7e3e0799d37e014f73391913f1ca"
+    },
+    "examples/byte_bpe/benchmark.py": {
+      "sha256": "3ee02e75c7bfed6c6bc0d644a73916e6e99eda883bb3330c7f894510005d14e5",
+      "bytes": 16554,
+      "revision": "3d0f56d82e3f7e3e0799d37e014f73391913f1ca"
+    },
+    "tests/programs/apps/byte_bpe.py": {
+      "sha256": "623b6601539311e92261a3b7589f03afbb5775ccba33764f8306d400019626e3",
+      "bytes": 6304,
+      "revision": "3d0f56d82e3f7e3e0799d37e014f73391913f1ca"
+    }
+  },
+  "generated_files": {
+    "measured/comparator-build-inputs.json": {
+      "sha256": "6e5012fc947c8a0d8cadd0f57448dfa0b03bb225341ef71c19e297c45c7d42c5",
+      "bytes": 2562
+    },
+    "comparator-correctness.json": {
+      "sha256": "d54acdf415ac64bc3d97fb8ee042b9d4df096ff9985e3bae84880c03b4fca3ff",
+      "bytes": 2364
+    },
+    "measured/native-sites.txt": {
+      "sha256": "fb98be28e6d416c3ef5925b10aac67f255a4503bd0844b3b62d4535f679dec2a",
+      "bytes": 7535
+    },
+    "summary.csv": {
+      "sha256": "daacf4d7cd7c50c09dd2f0b32c7f171df06726d985a7ea609a8ee17d92a8a42c",
+      "bytes": 2244
+    },
+    "verify.py": {
+      "sha256": "97402b36dae91d51354a4f477c64c323efb5661f988352342ae1eb3efedf6751",
+      "bytes": 21933
+    },
+    "measured/README.md": {
+      "sha256": "24105fc09643531889ae75187263f63e6db06d56dd761b597c406dff5d11fa13",
+      "bytes": 4634
+    },
+    "measured/cython_scalar.diff": {
+      "sha256": "63cf6fa79c0f37f94898ae1842795ca06978599814813bcef1e31c7881661f49",
+      "bytes": 246,
+      "source": "comparators/cython_scalar.diff",
+      "original_diff_sha256": "582b94d90fc2957ecff900ce0a267f7438ab4af5ae5f0e47b4fc2c293a81e223",
+      "transformation": "Regenerated as a zero-context unified diff of the exact recorded original and scalar-annotated sources; avoids blank context lines containing a trailing space."
+    }
+  },
+  "generated_kernel_identities": {
+    "original_extracted": "ab44d9b2600ee956f8464d0a1d299641cdd552c40c60e64e91310ae8e6ba235e",
+    "cython_original": "c7255345499e118181785370b0996e8cc1056491b9678b3fbeb02421e3f9b2df",
+    "cython_scalar": "5da6c2151bb957e5477c14d430c816ff293bd3e8b64e4ae8720a1248da6be0c4",
+    "cython_adapted": "9775aff77bb52efc6fb9828517ead0584552b1cba5afe73ef4d93e13972ca7de",
+    "mypyc_original": "5c6daefb08269934beab79bbd62dc81842e26e82ce536e74a6096a216d730764",
+    "pystachy_scalar_tuple": "ba5a7eb209668b3fcbd2ca6952ec6199ab06466e4ad27e836f5ad01a3eab9155"
+  },
+  "assembly_source_identities": {
+    "baseline": {
+      "assembly": "bottlenecks/stages.asm",
+      "binary": "native/stages",
+      "kernel": "pystachy/bench/pyperformance/bpe_tokeniser.py",
+      "driver": "stages_warm.py",
+      "assembly_sha256": "9ee32bd9f10fcfb99919b7e8b2a530528ac903ce091e27cca2aee6da4f01838d",
+      "binary_sha256": "f4f9b9bd0e7c2ad8ca556c3ba05fe82c6f5d4426adcb7c855a5c25dca2f2e642",
+      "kernel_sha256": "9775aff77bb52efc6fb9828517ead0584552b1cba5afe73ef4d93e13972ca7de",
+      "driver_sha256": "d0fa5dd733a37c28ec3e4078a73566c71641aa199a5a7e1e8dd24d90bc09562c"
+    },
+    "scalar_tuple": {
+      "assembly": "bottlenecks/scalar_tuple/stages.asm",
+      "binary": "bottlenecks/scalar_tuple/stages",
+      "kernel": "bottlenecks/scalar_tuple/bpe_tokeniser.py",
+      "driver": "stages_warm.py",
+      "assembly_sha256": "999eaa8b7b60d8ddf973e97a185d0d341bf5e977b2204bb448a0c7f8a5980173",
+      "binary_sha256": "8a17a0e016f2930065c4d608d66cc7951300aafe6a9e29bf096d1cc7d8698909",
+      "kernel_sha256": "ba5a7eb209668b3fcbd2ca6952ec6199ab06466e4ad27e836f5ad01a3eab9155",
+      "driver_sha256": "d0fa5dd733a37c28ec3e4078a73566c71641aa199a5a7e1e8dd24d90bc09562c"
+    },
+    "phases": {
+      "assembly": "bottlenecks/decompose/codec.asm",
+      "binary": "bottlenecks/decompose/stages",
+      "kernel": "pystachy/bench/pyperformance/bpe_tokeniser.py",
+      "driver": "bottlenecks/decompose/stages.py",
+      "assembly_sha256": "5497a9cb76620b43b61b9a03a31baefc80c113b721787b5d6ed912364e31f20f",
+      "binary_sha256": "bb84c9a6246f03b5223d91c378786abbb0c4df3e139b3424e7bb43001a579c02",
+      "kernel_sha256": "9775aff77bb52efc6fb9828517ead0584552b1cba5afe73ef4d93e13972ca7de",
+      "driver_sha256": "5bf23cd3f63770ce3289bfe1ea4c9661015c6c9362df9d3599550b5902f7b44c"
+    }
+  }
+}

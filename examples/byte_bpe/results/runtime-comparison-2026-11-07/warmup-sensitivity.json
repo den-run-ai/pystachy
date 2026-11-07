@@ -1,0 +1,267 @@
+{
+  "status": "passed",
+  "description": "Separate full-encoding warmup sensitivity diagnostic. No rebuild; not pooled with primary timings or all-phase decomposition.",
+  "versions": {
+    "cpython": "Python 3.13.16",
+    "pypy": "Python 3.11.17 (ec82f20141cf, Oct 13 2026, 15:02:27)\n[PyPy 8.0.1 with GCC 14.2.1 20250110 (Red Hat 14.2.1-11)]",
+    "clang": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+    "opt": "Ubuntu LLVM version 18.1.3"
+  },
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.39",
+  "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+  "cpu_affinity": [
+    0
+  ],
+  "environment_overrides": {
+    "PYTHONHASHSEED": "0",
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "PYSTACHY_HOME": "/workspace/scratch/1d4aec3744ed/pystachy",
+    "PYSTACHY_PATH": "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance",
+    "PYSTACHY_LLVM": "/workspace/scratch/c154e74884e5/llvm-cache/ubuntu-18.1.3-1ubuntu1-amd64/bin",
+    "PYSTACHY_CACHE": "/workspace/scratch/1d4aec3744ed/native/runtime-cache",
+    "PYSTACHY_PROGRAM_CACHE": "0"
+  },
+  "source_hashes": {
+    "driver": "5bf23cd3f63770ce3289bfe1ea4c9661015c6c9362df9d3599550b5902f7b44c",
+    "original_kernel": "ab44d9b2600ee956f8464d0a1d299641cdd552c40c60e64e91310ae8e6ba235e",
+    "adapted_kernel": "9775aff77bb52efc6fb9828517ead0584552b1cba5afe73ef4d93e13972ca7de",
+    "corpus": "6607193e67b7b459d082f5f2aea724e470615643d63ad2e205123b3076223da4",
+    "compiler": "3b59b4e875a89f15777395f5993ccf2e6d51e934dbc7a4e45228d622c7f1cff7"
+  },
+  "source_paths": {
+    "driver": "/workspace/scratch/1d4aec3744ed/bottlenecks/decompose/stages.py",
+    "original_kernel": "/workspace/scratch/1d4aec3744ed/original/bpe_tokeniser.py",
+    "adapted_kernel": "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/bpe_tokeniser.py",
+    "corpus": "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+    "compiler": "/workspace/scratch/1d4aec3744ed/pystachy/pystachy"
+  },
+  "binary_sha256": "bb84c9a6246f03b5223d91c378786abbb0c4df3e139b3424e7bb43001a579c02",
+  "build_performed": false,
+  "corpus_bytes": 31206,
+  "vocab_size": 1024,
+  "warmups": 200,
+  "measured_loops": 200,
+  "phase": "full",
+  "setup_encodes_outside_warmups": {
+    "full": 1,
+    "merge": 1
+  },
+  "processes_per_mode": 3,
+  "run_order": [
+    [
+      "pypy_original",
+      "pystachy_aot"
+    ],
+    [
+      "pystachy_aot",
+      "pypy_original"
+    ],
+    [
+      "pypy_original",
+      "pystachy_aot"
+    ]
+  ],
+  "load_average_start": [
+    2.12451171875,
+    2.07275390625,
+    2.158203125
+  ],
+  "runs": [
+    {
+      "mode": "pypy_original",
+      "round": 0,
+      "command": [
+        "/root/.local/share/uv/python/pypy-3.11.17-linux-x86_64-gnu/bin/pypy3.11",
+        "/workspace/scratch/1d4aec3744ed/bottlenecks/decompose/stages.py",
+        "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+        "1024",
+        "200",
+        "200",
+        "full"
+      ],
+      "returncode": 0,
+      "wall_seconds": 5.729148480997537,
+      "stdout_sha256": "056f595d23a58e9eebebc9c59192e2d293b029a9f6cff27da8af2961de81f1e2",
+      "stdout_lines": 6,
+      "first_four_match_existing_oracle": true,
+      "six_lines_match_pristine_cpython": true,
+      "stderr": "full 1.8522703740018187\n",
+      "seconds_per_full_encode": 0.009261351870009094,
+      "load_average_after": [
+        2.35498046875,
+        2.12158203125,
+        2.173828125
+      ]
+    },
+    {
+      "mode": "pystachy_aot",
+      "round": 0,
+      "command": [
+        "/workspace/scratch/1d4aec3744ed/bottlenecks/decompose/stages",
+        "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+        "1024",
+        "200",
+        "200",
+        "full"
+      ],
+      "returncode": 0,
+      "wall_seconds": 5.747791084999335,
+      "stdout_sha256": "056f595d23a58e9eebebc9c59192e2d293b029a9f6cff27da8af2961de81f1e2",
+      "stdout_lines": 6,
+      "first_four_match_existing_oracle": true,
+      "six_lines_match_pristine_cpython": true,
+      "stderr": "full 2.3484289449988864\n",
+      "seconds_per_full_encode": 0.011742144724994432,
+      "load_average_after": [
+        2.64697265625,
+        2.18603515625,
+        2.19482421875
+      ]
+    },
+    {
+      "mode": "pystachy_aot",
+      "round": 1,
+      "command": [
+        "/workspace/scratch/1d4aec3744ed/bottlenecks/decompose/stages",
+        "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+        "1024",
+        "200",
+        "200",
+        "full"
+      ],
+      "returncode": 0,
+      "wall_seconds": 6.168056690999947,
+      "stdout_sha256": "056f595d23a58e9eebebc9c59192e2d293b029a9f6cff27da8af2961de81f1e2",
+      "stdout_lines": 6,
+      "first_four_match_existing_oracle": true,
+      "six_lines_match_pristine_cpython": true,
+      "stderr": "full 3.011922311001399\n",
+      "seconds_per_full_encode": 0.015059611555006996,
+      "load_average_after": [
+        2.83544921875,
+        2.23291015625,
+        2.2099609375
+      ]
+    },
+    {
+      "mode": "pypy_original",
+      "round": 1,
+      "command": [
+        "/root/.local/share/uv/python/pypy-3.11.17-linux-x86_64-gnu/bin/pypy3.11",
+        "/workspace/scratch/1d4aec3744ed/bottlenecks/decompose/stages.py",
+        "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+        "1024",
+        "200",
+        "200",
+        "full"
+      ],
+      "returncode": 0,
+      "wall_seconds": 6.173718261001341,
+      "stdout_sha256": "056f595d23a58e9eebebc9c59192e2d293b029a9f6cff27da8af2961de81f1e2",
+      "stdout_lines": 6,
+      "first_four_match_existing_oracle": true,
+      "six_lines_match_pristine_cpython": true,
+      "stderr": "full 1.8925560229981784\n",
+      "seconds_per_full_encode": 0.009462780114990892,
+      "load_average_after": [
+        2.9287109375,
+        2.2626953125,
+        2.2197265625
+      ]
+    },
+    {
+      "mode": "pypy_original",
+      "round": 2,
+      "command": [
+        "/root/.local/share/uv/python/pypy-3.11.17-linux-x86_64-gnu/bin/pypy3.11",
+        "/workspace/scratch/1d4aec3744ed/bottlenecks/decompose/stages.py",
+        "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+        "1024",
+        "200",
+        "200",
+        "full"
+      ],
+      "returncode": 0,
+      "wall_seconds": 6.028002540995658,
+      "stdout_sha256": "056f595d23a58e9eebebc9c59192e2d293b029a9f6cff27da8af2961de81f1e2",
+      "stdout_lines": 6,
+      "first_four_match_existing_oracle": true,
+      "six_lines_match_pristine_cpython": true,
+      "stderr": "full 2.0387935689941514\n",
+      "seconds_per_full_encode": 0.010193967844970757,
+      "load_average_after": [
+        3.09375,
+        2.32080078125,
+        2.2392578125
+      ]
+    },
+    {
+      "mode": "pystachy_aot",
+      "round": 2,
+      "command": [
+        "/workspace/scratch/1d4aec3744ed/bottlenecks/decompose/stages",
+        "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+        "1024",
+        "200",
+        "200",
+        "full"
+      ],
+      "returncode": 0,
+      "wall_seconds": 6.068970492997323,
+      "stdout_sha256": "056f595d23a58e9eebebc9c59192e2d293b029a9f6cff27da8af2961de81f1e2",
+      "stdout_lines": 6,
+      "first_four_match_existing_oracle": true,
+      "six_lines_match_pristine_cpython": true,
+      "stderr": "full 2.3476660099986475\n",
+      "seconds_per_full_encode": 0.011738330049993237,
+      "load_average_after": [
+        3.0859375,
+        2.33251953125,
+        2.24365234375
+      ]
+    }
+  ],
+  "summary": {
+    "pypy_original": {
+      "median_ms": 9.462780114990892,
+      "range_ms": [
+        9.261351870009094,
+        10.193967844970757
+      ],
+      "samples_ms": [
+        9.261351870009094,
+        9.462780114990892,
+        10.193967844970757
+      ]
+    },
+    "pystachy_aot": {
+      "median_ms": 11.742144724994432,
+      "range_ms": [
+        11.738330049993237,
+        15.059611555006995
+      ],
+      "samples_ms": [
+        11.742144724994432,
+        15.059611555006995,
+        11.738330049993237
+      ]
+    },
+    "pystachy_over_pypy_seconds_ratio": {
+      "paired_ratios": [
+        1.2678650903027295,
+        1.5914574123041947,
+        1.1514976531718608
+      ],
+      "paired_median_ratio": 1.2678650903027295,
+      "ratio_of_medians": 1.2408768440463476
+    }
+  },
+  "source_hashes_after": {
+    "driver": "5bf23cd3f63770ce3289bfe1ea4c9661015c6c9362df9d3599550b5902f7b44c",
+    "original_kernel": "ab44d9b2600ee956f8464d0a1d299641cdd552c40c60e64e91310ae8e6ba235e",
+    "adapted_kernel": "9775aff77bb52efc6fb9828517ead0584552b1cba5afe73ef4d93e13972ca7de",
+    "corpus": "6607193e67b7b459d082f5f2aea724e470615643d63ad2e205123b3076223da4",
+    "compiler": "3b59b4e875a89f15777395f5993ccf2e6d51e934dbc7a4e45228d622c7f1cff7"
+  },
+  "binary_sha256_after": "bb84c9a6246f03b5223d91c378786abbb0c4df3e139b3424e7bb43001a579c02"
+}

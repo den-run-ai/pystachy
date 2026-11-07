@@ -1,0 +1,1763 @@
+{
+  "status": "passed",
+  "created_utc": "2026-11-07T04:04:04Z",
+  "git_revision": "3d0f56d82e3f7e3e0799d37e014f73391913f1ca",
+  "cpu": 0,
+  "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.39",
+  "load_average_start": [
+    1.4453125,
+    1.49267578125,
+    1.642578125
+  ],
+  "environment": {
+    "PYTHONHASHSEED": "0",
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "PYSTACHY_HOME": "/workspace/scratch/1d4aec3744ed/pystachy",
+    "PYSTACHY_PATH": "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance",
+    "PYSTACHY_LLVM": "/workspace/scratch/c154e74884e5/llvm-cache/ubuntu-18.1.3-1ubuntu1-amd64/bin",
+    "PYSTACHY_CACHE": "/workspace/scratch/1d4aec3744ed/native/runtime-cache",
+    "PYSTACHY_PROGRAM_CACHE": "0"
+  },
+  "versions": {
+    "cpython": "Python 3.13.16",
+    "pypy": "Python 3.11.17 (ec82f20141cf, Oct 13 2026, 15:02:27)\n[PyPy 8.0.1 with GCC 14.2.1 20250110 (Red Hat 14.2.1-11)]"
+  },
+  "input_sha256": {
+    "/workspace/scratch/1d4aec3744ed/stages_warm.py": "d0fa5dd733a37c28ec3e4078a73566c71641aa199a5a7e1e8dd24d90bc09562c",
+    "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt": "6607193e67b7b459d082f5f2aea724e470615643d63ad2e205123b3076223da4",
+    "/workspace/scratch/1d4aec3744ed/original/bpe_tokeniser.py": "ab44d9b2600ee956f8464d0a1d299641cdd552c40c60e64e91310ae8e6ba235e",
+    "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/bpe_tokeniser.py": "9775aff77bb52efc6fb9828517ead0584552b1cba5afe73ef4d93e13972ca7de",
+    "/workspace/scratch/1d4aec3744ed/pystachy/pystachy": "3b59b4e875a89f15777395f5993ccf2e6d51e934dbc7a4e45228d622c7f1cff7",
+    "/workspace/scratch/1d4aec3744ed/native/stages": "f4f9b9bd0e7c2ad8ca556c3ba05fe82c6f5d4426adcb7c855a5c25dca2f2e642",
+    "/workspace/scratch/1d4aec3744ed/comparators/manifest.json": "be5eb27ab176ff137c23a5240af11e3d6cee2ee1a1f3ce010edcbefee1fc0c04",
+    "/workspace/scratch/1d4aec3744ed/bottlenecks/scalar_tuple/bpe_tokeniser.py": "ba5a7eb209668b3fcbd2ca6952ec6199ab06466e4ad27e836f5ad01a3eab9155",
+    "/workspace/scratch/1d4aec3744ed/bottlenecks/scalar_tuple/stages": "8a17a0e016f2930065c4d608d66cc7951300aafe6a9e29bf096d1cc7d8698909",
+    "/workspace/scratch/1d4aec3744ed/comparators/cython_adapted/bpe_tokeniser.cpython-313-x86_64-linux-gnu.so": "d2ed622da3d33d141528f4e29ea71012cc787a38adcbf2ece60d79a222373de1",
+    "/workspace/scratch/1d4aec3744ed/comparators/cython_original/bpe_tokeniser.cpython-313-x86_64-linux-gnu.so": "6e115d03bddd2a3b26cfc0ee87829f727bb1b2d8216930b991e6ff3c48f83e59",
+    "/workspace/scratch/1d4aec3744ed/comparators/cython_scalar/bpe_tokeniser.cpython-313-x86_64-linux-gnu.so": "8580afccbb33ecba743e812a9845028ae3d241674367b1eb317b0e2a7519c3de",
+    "/workspace/scratch/1d4aec3744ed/comparators/mypyc_original/bpe_tokeniser.cpython-313-x86_64-linux-gnu.so": "f0a2a2c97d72ae7588d5741240f044f158b3ee2da5e745455ad2e52038ff0ca3"
+  },
+  "workload": {
+    "corpus_bytes": 31206,
+    "vocab_size": 1024,
+    "processes": 5,
+    "train_warmups": 2,
+    "encode_warmups": 20,
+    "decode_warmups": 100,
+    "train_loops": 1,
+    "encode_loops": 50,
+    "decode_loops": 200,
+    "first_train_and_second_train": "recorded separately, excluded from warmed train metric"
+  },
+  "rss_definition": "Linux main-process VmHWM after command installed; sampled every approximately 5 ms; includes warmups and interpreted launcher, excludes child compiler processes",
+  "wall_definition": "whole process, including all warmups, I/O, imports, output validation and compiler where relevant; not single-query latency",
+  "samples": {
+    "cpython_original": [
+      {
+        "command": [
+          "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+          "/workspace/scratch/1d4aec3744ed/stages_warm.py",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 15.005618114002573,
+        "cpu_seconds": 14.657218,
+        "peak_rss_kib": 19200,
+        "sampled_main_rss_kib": 15188,
+        "stderr": "first_train 4.749582410993753\nsecond_train 3.8591467770020245\ntrain 4.164993986996706\nencode 1.43957581500581\ndecode 0.12362037700222572\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 4.749582410993753,
+        "second_train_seconds": 3.8591467770020245,
+        "train_seconds": 4.164993986996706,
+        "encode_seconds": 0.0287915163001162,
+        "decode_seconds": 0.0006181018850111286,
+        "round": 0,
+        "load_average_after": [
+          1.6484375,
+          1.53466796875,
+          1.65380859375
+        ]
+      },
+      {
+        "command": [
+          "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+          "/workspace/scratch/1d4aec3744ed/stages_warm.py",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 15.873014238997712,
+        "cpu_seconds": 15.487014,
+        "peak_rss_kib": 19200,
+        "sampled_main_rss_kib": 14996,
+        "stderr": "first_train 4.106822868001473\nsecond_train 4.355840896998416\ntrain 4.81378392699844\nencode 1.739084371998615\ndecode 0.10671706699940842\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 4.106822868001473,
+        "second_train_seconds": 4.355840896998416,
+        "train_seconds": 4.81378392699844,
+        "encode_seconds": 0.0347816874399723,
+        "decode_seconds": 0.0005335853349970421,
+        "round": 1,
+        "load_average_after": [
+          2.671875,
+          1.84765625,
+          1.75390625
+        ]
+      },
+      {
+        "command": [
+          "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+          "/workspace/scratch/1d4aec3744ed/stages_warm.py",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 15.556272375004482,
+        "cpu_seconds": 15.149608,
+        "peak_rss_kib": 19200,
+        "sampled_main_rss_kib": 14932,
+        "stderr": "first_train 4.21615630400629\nsecond_train 4.3514188659974025\ntrain 4.356924332001654\nencode 1.7464426580045256\ndecode 0.1218694180060993\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 4.21615630400629,
+        "second_train_seconds": 4.3514188659974025,
+        "train_seconds": 4.356924332001654,
+        "encode_seconds": 0.03492885316009051,
+        "decode_seconds": 0.0006093470900304965,
+        "round": 2,
+        "load_average_after": [
+          3.72314453125,
+          2.509765625,
+          2.015625
+        ]
+      },
+      {
+        "command": [
+          "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+          "/workspace/scratch/1d4aec3744ed/stages_warm.py",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 15.408067035998101,
+        "cpu_seconds": 15.038245,
+        "peak_rss_kib": 19200,
+        "sampled_main_rss_kib": 14996,
+        "stderr": "first_train 4.314414093998494\nsecond_train 4.362115891999565\ntrain 4.208355789000052\nencode 1.64926912500232\ndecode 0.10041798600286711\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 4.314414093998494,
+        "second_train_seconds": 4.362115891999565,
+        "train_seconds": 4.208355789000052,
+        "encode_seconds": 0.0329853825000464,
+        "decode_seconds": 0.0005020899300143356,
+        "round": 3,
+        "load_average_after": [
+          4.77734375,
+          3.05224609375,
+          2.23583984375
+        ]
+      },
+      {
+        "command": [
+          "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+          "/workspace/scratch/1d4aec3744ed/stages_warm.py",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 14.356480818001728,
+        "cpu_seconds": 14.06161,
+        "peak_rss_kib": 19200,
+        "sampled_main_rss_kib": 15060,
+        "stderr": "first_train 4.105604897995363\nsecond_train 3.97004278699751\ntrain 3.933788041002117\nencode 1.5313231890031602\ndecode 0.1314146980002988\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 4.105604897995363,
+        "second_train_seconds": 3.97004278699751,
+        "train_seconds": 3.933788041002117,
+        "encode_seconds": 0.030626463780063205,
+        "decode_seconds": 0.000657073490001494,
+        "round": 4,
+        "load_average_after": [
+          4.6279296875,
+          3.47998046875,
+          2.46875
+        ]
+      }
+    ],
+    "cpython_adapted": [
+      {
+        "command": [
+          "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+          "/workspace/scratch/1d4aec3744ed/stages_warm.py",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 14.290167320999899,
+        "cpu_seconds": 13.988725,
+        "peak_rss_kib": 19200,
+        "sampled_main_rss_kib": 15280,
+        "stderr": "first_train 3.7871752330029267\nsecond_train 3.8651597569987644\ntrain 4.120786767998652\nencode 1.6450291469955118\ndecode 0.10713831900648074\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 3.7871752330029267,
+        "second_train_seconds": 3.8651597569987644,
+        "train_seconds": 4.120786767998652,
+        "encode_seconds": 0.03290058293991024,
+        "decode_seconds": 0.0005356915950324037,
+        "round": 0,
+        "load_average_after": [
+          1.80078125,
+          1.57421875,
+          1.6650390625
+        ]
+      },
+      {
+        "command": [
+          "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+          "/workspace/scratch/1d4aec3744ed/stages_warm.py",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 14.799150125996675,
+        "cpu_seconds": 14.470081,
+        "peak_rss_kib": 19200,
+        "sampled_main_rss_kib": 15152,
+        "stderr": "first_train 4.075781722996908\nsecond_train 3.960680850999779\ntrain 4.187274265997985\nencode 1.7148232660038047\ndecode 0.12619495899707545\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 4.075781722996908,
+        "second_train_seconds": 3.960680850999779,
+        "train_seconds": 4.187274265997985,
+        "encode_seconds": 0.034296465320076096,
+        "decode_seconds": 0.0006309747949853772,
+        "round": 1,
+        "load_average_after": [
+          2.72705078125,
+          2.08837890625,
+          1.8505859375
+        ]
+      },
+      {
+        "command": [
+          "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+          "/workspace/scratch/1d4aec3744ed/stages_warm.py",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 16.661034297998413,
+        "cpu_seconds": 16.135998,
+        "peak_rss_kib": 19200,
+        "sampled_main_rss_kib": 15088,
+        "stderr": "first_train 4.245168581997859\nsecond_train 4.353274400004011\ntrain 5.169109761998698\nencode 1.9184886869988986\ndecode 0.1369671290012775\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 4.245168581997859,
+        "second_train_seconds": 4.353274400004011,
+        "train_seconds": 5.169109761998698,
+        "encode_seconds": 0.03836977373997797,
+        "decode_seconds": 0.0006848356450063875,
+        "round": 2,
+        "load_average_after": [
+          4.14208984375,
+          2.66455078125,
+          2.07470703125
+        ]
+      },
+      {
+        "command": [
+          "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+          "/workspace/scratch/1d4aec3744ed/stages_warm.py",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 16.984412933001295,
+        "cpu_seconds": 16.241567,
+        "peak_rss_kib": 19200,
+        "sampled_main_rss_kib": 15088,
+        "stderr": "first_train 4.321368817996699\nsecond_train 4.435174439000548\ntrain 5.002935017000709\nencode 2.181797801000357\ndecode 0.13617854999756673\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 4.321368817996699,
+        "second_train_seconds": 4.435174439000548,
+        "train_seconds": 5.002935017000709,
+        "encode_seconds": 0.043635956020007145,
+        "decode_seconds": 0.0006808927499878337,
+        "round": 3,
+        "load_average_after": [
+          4.72216796875,
+          2.95166015625,
+          2.1904296875
+        ]
+      },
+      {
+        "command": [
+          "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+          "/workspace/scratch/1d4aec3744ed/stages_warm.py",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 15.279228596002213,
+        "cpu_seconds": 14.922223,
+        "peak_rss_kib": 19200,
+        "sampled_main_rss_kib": 15152,
+        "stderr": "first_train 4.161736973001098\nsecond_train 4.002020056999754\ntrain 4.2874280879987055\nencode 1.8528134129956015\ndecode 0.10508639600448078\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 4.161736973001098,
+        "second_train_seconds": 4.002020056999754,
+        "train_seconds": 4.2874280879987055,
+        "encode_seconds": 0.03705626825991203,
+        "decode_seconds": 0.0005254319800224039,
+        "round": 4,
+        "load_average_after": [
+          4.66796875,
+          3.5390625,
+          2.50439453125
+        ]
+      }
+    ],
+    "cython_original": [
+      {
+        "command": [
+          "/workspace/scratch/1d4aec3744ed/comparators/venv/bin/python",
+          "/workspace/scratch/1d4aec3744ed/comparators/run_mode.py",
+          "cython_original",
+          "/workspace/scratch/1d4aec3744ed/stages_warm.py",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 9.480868808001105,
+        "cpu_seconds": 9.27448,
+        "peak_rss_kib": 19200,
+        "sampled_main_rss_kib": 17520,
+        "stderr": "first_train 2.6997647210009745\nsecond_train 2.6336791130015627\ntrain 2.4887281810006243\nencode 1.071473996998975\ndecode 0.08877944199775811\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 2.6997647210009745,
+        "second_train_seconds": 2.6336791130015627,
+        "train_seconds": 2.4887281810006243,
+        "encode_seconds": 0.021429479939979502,
+        "decode_seconds": 0.0004438972099887906,
+        "round": 0,
+        "load_average_after": [
+          1.83203125,
+          1.5888671875,
+          1.6689453125
+        ]
+      },
+      {
+        "command": [
+          "/workspace/scratch/1d4aec3744ed/comparators/venv/bin/python",
+          "/workspace/scratch/1d4aec3744ed/comparators/run_mode.py",
+          "cython_original",
+          "/workspace/scratch/1d4aec3744ed/stages_warm.py",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 9.53643887299404,
+        "cpu_seconds": 9.326564,
+        "peak_rss_kib": 19200,
+        "sampled_main_rss_kib": 17584,
+        "stderr": "first_train 2.5532391739980085\nsecond_train 2.6556821430058335\ntrain 2.5633850960002746\nencode 1.1198016439957428\ndecode 0.09393953499966301\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 2.5532391739980085,
+        "second_train_seconds": 2.6556821430058335,
+        "train_seconds": 2.5633850960002746,
+        "encode_seconds": 0.022396032879914856,
+        "decode_seconds": 0.00046969767499831504,
+        "round": 1,
+        "load_average_after": [
+          2.93505859375,
+          2.09423828125,
+          1.84765625
+        ]
+      },
+      {
+        "command": [
+          "/workspace/scratch/1d4aec3744ed/comparators/venv/bin/python",
+          "/workspace/scratch/1d4aec3744ed/comparators/run_mode.py",
+          "cython_original",
+          "/workspace/scratch/1d4aec3744ed/stages_warm.py",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 9.215956943000492,
+        "cpu_seconds": 9.027896,
+        "peak_rss_kib": 19200,
+        "sampled_main_rss_kib": 17520,
+        "stderr": "first_train 2.5247970650016214\nsecond_train 2.4390645009989385\ntrain 2.601801031996729\nencode 1.0612277690015617\ndecode 0.08494905100087635\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 2.5247970650016214,
+        "second_train_seconds": 2.4390645009989385,
+        "train_seconds": 2.601801031996729,
+        "encode_seconds": 0.021224555380031235,
+        "decode_seconds": 0.0004247452550043818,
+        "round": 2,
+        "load_average_after": [
+          2.6953125,
+          2.10205078125,
+          1.85791015625
+        ]
+      },
+      {
+        "command": [
+          "/workspace/scratch/1d4aec3744ed/comparators/venv/bin/python",
+          "/workspace/scratch/1d4aec3744ed/comparators/run_mode.py",
+          "cython_original",
+          "/workspace/scratch/1d4aec3744ed/stages_warm.py",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 10.302326887998788,
+        "cpu_seconds": 10.040535,
+        "peak_rss_kib": 19200,
+        "sampled_main_rss_kib": 17520,
+        "stderr": "first_train 2.6115666889963904\nsecond_train 2.8978562539996346\ntrain 2.591209259997413\nencode 1.4609066230041208\ndecode 0.14111997000145493\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 2.6115666889963904,
+        "second_train_seconds": 2.8978562539996346,
+        "train_seconds": 2.591209259997413,
+        "encode_seconds": 0.029218132460082414,
+        "decode_seconds": 0.0007055998500072746,
+        "round": 3,
+        "load_average_after": [
+          4.42822265625,
+          2.77490234375,
+          2.1171875
+        ]
+      },
+      {
+        "command": [
+          "/workspace/scratch/1d4aec3744ed/comparators/venv/bin/python",
+          "/workspace/scratch/1d4aec3744ed/comparators/run_mode.py",
+          "cython_original",
+          "/workspace/scratch/1d4aec3744ed/stages_warm.py",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 9.743295918000513,
+        "cpu_seconds": 9.545798,
+        "peak_rss_kib": 19200,
+        "sampled_main_rss_kib": 17512,
+        "stderr": "first_train 2.376500013997429\nsecond_train 2.703779098999803\ntrain 2.567443865002133\nencode 1.4630150150042027\ndecode 0.09705494000081671\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 2.376500013997429,
+        "second_train_seconds": 2.703779098999803,
+        "train_seconds": 2.567443865002133,
+        "encode_seconds": 0.029260300300084054,
+        "decode_seconds": 0.00048527470000408356,
+        "round": 4,
+        "load_average_after": [
+          4.33740234375,
+          3.50439453125,
+          2.50439453125
+        ]
+      }
+    ],
+    "cython_scalar": [
+      {
+        "command": [
+          "/workspace/scratch/1d4aec3744ed/comparators/venv/bin/python",
+          "/workspace/scratch/1d4aec3744ed/comparators/run_mode.py",
+          "cython_scalar",
+          "/workspace/scratch/1d4aec3744ed/stages_warm.py",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 9.316191361001984,
+        "cpu_seconds": 9.116589999999999,
+        "peak_rss_kib": 19200,
+        "sampled_main_rss_kib": 17500,
+        "stderr": "first_train 2.570150683000975\nsecond_train 2.5040496720030205\ntrain 2.5589481240021996\nencode 1.0758227510013967\ndecode 0.09885971299809171\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 2.570150683000975,
+        "second_train_seconds": 2.5040496720030205,
+        "train_seconds": 2.5589481240021996,
+        "encode_seconds": 0.021516455020027934,
+        "decode_seconds": 0.0004942985649904585,
+        "round": 0,
+        "load_average_after": [
+          1.8583984375,
+          1.6025390625,
+          1.6728515625
+        ]
+      },
+      {
+        "command": [
+          "/workspace/scratch/1d4aec3744ed/comparators/venv/bin/python",
+          "/workspace/scratch/1d4aec3744ed/comparators/run_mode.py",
+          "cython_scalar",
+          "/workspace/scratch/1d4aec3744ed/stages_warm.py",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 9.36548577999929,
+        "cpu_seconds": 9.158470999999999,
+        "peak_rss_kib": 19200,
+        "sampled_main_rss_kib": 17628,
+        "stderr": "first_train 2.514629500998126\nsecond_train 2.438943263994588\ntrain 2.4601594080013456\nencode 1.2938749250024557\ndecode 0.08373839099658653\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 2.514629500998126,
+        "second_train_seconds": 2.438943263994588,
+        "train_seconds": 2.4601594080013456,
+        "encode_seconds": 0.025877498500049115,
+        "decode_seconds": 0.00041869195498293264,
+        "round": 1,
+        "load_average_after": [
+          3.10546875,
+          2.09814453125,
+          1.845703125
+        ]
+      },
+      {
+        "command": [
+          "/workspace/scratch/1d4aec3744ed/comparators/venv/bin/python",
+          "/workspace/scratch/1d4aec3744ed/comparators/run_mode.py",
+          "cython_scalar",
+          "/workspace/scratch/1d4aec3744ed/stages_warm.py",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 10.558919570001308,
+        "cpu_seconds": 10.276718,
+        "peak_rss_kib": 19200,
+        "sampled_main_rss_kib": 17436,
+        "stderr": "first_train 2.373396014001628\nsecond_train 2.6777261850002105\ntrain 2.8064644300029613\nencode 1.3296915530008846\ndecode 0.09425558099610498\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 2.373396014001628,
+        "second_train_seconds": 2.6777261850002105,
+        "train_seconds": 2.8064644300029613,
+        "encode_seconds": 0.02659383106001769,
+        "decode_seconds": 0.0004712779049805249,
+        "round": 2,
+        "load_average_after": [
+          3.13623046875,
+          2.21484375,
+          1.8974609375
+        ]
+      },
+      {
+        "command": [
+          "/workspace/scratch/1d4aec3744ed/comparators/venv/bin/python",
+          "/workspace/scratch/1d4aec3744ed/comparators/run_mode.py",
+          "cython_scalar",
+          "/workspace/scratch/1d4aec3744ed/stages_warm.py",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 9.939647038998373,
+        "cpu_seconds": 9.680907000000001,
+        "peak_rss_kib": 19200,
+        "sampled_main_rss_kib": 17500,
+        "stderr": "first_train 2.61969459199463\nsecond_train 2.747759981000854\ntrain 2.8000542860027053\nencode 1.0572767759949784\ndecode 0.09434593700279947\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 2.61969459199463,
+        "second_train_seconds": 2.747759981000854,
+        "train_seconds": 2.8000542860027053,
+        "encode_seconds": 0.021145535519899568,
+        "decode_seconds": 0.00047172968501399734,
+        "round": 3,
+        "load_average_after": [
+          4.97802734375,
+          3.32763671875,
+          2.365234375
+        ]
+      },
+      {
+        "command": [
+          "/workspace/scratch/1d4aec3744ed/comparators/venv/bin/python",
+          "/workspace/scratch/1d4aec3744ed/comparators/run_mode.py",
+          "cython_scalar",
+          "/workspace/scratch/1d4aec3744ed/stages_warm.py",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 8.93730538800446,
+        "cpu_seconds": 8.757469,
+        "peak_rss_kib": 19200,
+        "sampled_main_rss_kib": 17500,
+        "stderr": "first_train 2.3776688760044635\nsecond_train 2.3512764740007697\ntrain 2.480909255995357\nencode 1.0900743569945917\ndecode 0.09144222500617616\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 2.3776688760044635,
+        "second_train_seconds": 2.3512764740007697,
+        "train_seconds": 2.480909255995357,
+        "encode_seconds": 0.021801487139891832,
+        "decode_seconds": 0.0004572111250308808,
+        "round": 4,
+        "load_average_after": [
+          4.205078125,
+          3.50390625,
+          2.515625
+        ]
+      }
+    ],
+    "cython_adapted": [
+      {
+        "command": [
+          "/workspace/scratch/1d4aec3744ed/comparators/venv/bin/python",
+          "/workspace/scratch/1d4aec3744ed/comparators/run_mode.py",
+          "cython_adapted",
+          "/workspace/scratch/1d4aec3744ed/stages_warm.py",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 9.708593014001963,
+        "cpu_seconds": 9.505615,
+        "peak_rss_kib": 19200,
+        "sampled_main_rss_kib": 17684,
+        "stderr": "first_train 2.6677134389974526\nsecond_train 2.729226587995072\ntrain 2.5652973579999525\nencode 1.1164327090009465\ndecode 0.09058540100522805\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 2.6677134389974526,
+        "second_train_seconds": 2.729226587995072,
+        "train_seconds": 2.5652973579999525,
+        "encode_seconds": 0.02232865418001893,
+        "decode_seconds": 0.00045292700502614025,
+        "round": 0,
+        "load_average_after": [
+          2.1748046875,
+          1.681640625,
+          1.6982421875
+        ]
+      },
+      {
+        "command": [
+          "/workspace/scratch/1d4aec3744ed/comparators/venv/bin/python",
+          "/workspace/scratch/1d4aec3744ed/comparators/run_mode.py",
+          "cython_adapted",
+          "/workspace/scratch/1d4aec3744ed/stages_warm.py",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 9.977356153998699,
+        "cpu_seconds": 9.745843999999998,
+        "peak_rss_kib": 19200,
+        "sampled_main_rss_kib": 17684,
+        "stderr": "first_train 2.8208206459967187\nsecond_train 2.4918909420011914\ntrain 2.701873568003066\nencode 1.238110645004781\ndecode 0.09187685100187082\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 2.8208206459967187,
+        "second_train_seconds": 2.4918909420011914,
+        "train_seconds": 2.701873568003066,
+        "encode_seconds": 0.02476221290009562,
+        "decode_seconds": 0.0004593842550093541,
+        "round": 1,
+        "load_average_after": [
+          3.30712890625,
+          2.10205078125,
+          1.84375
+        ]
+      },
+      {
+        "command": [
+          "/workspace/scratch/1d4aec3744ed/comparators/venv/bin/python",
+          "/workspace/scratch/1d4aec3744ed/comparators/run_mode.py",
+          "cython_adapted",
+          "/workspace/scratch/1d4aec3744ed/stages_warm.py",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 10.37697409199609,
+        "cpu_seconds": 10.10534,
+        "peak_rss_kib": 19200,
+        "sampled_main_rss_kib": 17748,
+        "stderr": "first_train 2.571830975000921\nsecond_train 2.5191359809978167\ntrain 3.2175410389972967\nencode 1.4049503109999932\ndecode 0.09698155699879862\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 2.571830975000921,
+        "second_train_seconds": 2.5191359809978167,
+        "train_seconds": 3.2175410389972967,
+        "encode_seconds": 0.028099006219999865,
+        "decode_seconds": 0.0004849077849939931,
+        "round": 2,
+        "load_average_after": [
+          3.26953125,
+          2.27392578125,
+          1.92041015625
+        ]
+      },
+      {
+        "command": [
+          "/workspace/scratch/1d4aec3744ed/comparators/venv/bin/python",
+          "/workspace/scratch/1d4aec3744ed/comparators/run_mode.py",
+          "cython_adapted",
+          "/workspace/scratch/1d4aec3744ed/stages_warm.py",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 9.662155386999075,
+        "cpu_seconds": 9.467295,
+        "peak_rss_kib": 19200,
+        "sampled_main_rss_kib": 17808,
+        "stderr": "first_train 2.5188210330015863\nsecond_train 2.7232363779985462\ntrain 2.645269749998988\nencode 1.1201339190010913\ndecode 0.09825843299768167\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 2.5188210330015863,
+        "second_train_seconds": 2.7232363779985462,
+        "train_seconds": 2.645269749998988,
+        "encode_seconds": 0.022402678380021825,
+        "decode_seconds": 0.0004912921649884083,
+        "round": 3,
+        "load_average_after": [
+          5.14794921875,
+          3.3046875,
+          2.3466796875
+        ]
+      },
+      {
+        "command": [
+          "/workspace/scratch/1d4aec3744ed/comparators/venv/bin/python",
+          "/workspace/scratch/1d4aec3744ed/comparators/run_mode.py",
+          "cython_adapted",
+          "/workspace/scratch/1d4aec3744ed/stages_warm.py",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 10.53513496099913,
+        "cpu_seconds": 10.271855,
+        "peak_rss_kib": 19200,
+        "sampled_main_rss_kib": 17748,
+        "stderr": "first_train 2.6608600560066407\nsecond_train 2.5530727060031495\ntrain 3.2216401699988637\nencode 1.3725461950016324\ndecode 0.12978607300465228\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 2.6608600560066407,
+        "second_train_seconds": 2.5530727060031495,
+        "train_seconds": 3.2216401699988637,
+        "encode_seconds": 0.027450923900032648,
+        "decode_seconds": 0.0006489303650232614,
+        "round": 4,
+        "load_average_after": [
+          4.767578125,
+          3.36083984375,
+          2.3916015625
+        ]
+      }
+    ],
+    "mypyc_original": [
+      {
+        "command": [
+          "/workspace/scratch/1d4aec3744ed/comparators/venv/bin/python",
+          "/workspace/scratch/1d4aec3744ed/comparators/run_mode.py",
+          "mypyc_original",
+          "/workspace/scratch/1d4aec3744ed/stages_warm.py",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 9.901458287000423,
+        "cpu_seconds": 9.6819,
+        "peak_rss_kib": 19200,
+        "sampled_main_rss_kib": 17540,
+        "stderr": "first_train 2.6854143169985036\nsecond_train 2.8472402409970528\ntrain 2.833771647005051\nencode 0.9448953609971795\ndecode 0.09410148599999957\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 2.6854143169985036,
+        "second_train_seconds": 2.8472402409970528,
+        "train_seconds": 2.833771647005051,
+        "encode_seconds": 0.01889790721994359,
+        "decode_seconds": 0.00047050742999999785,
+        "round": 0,
+        "load_average_after": [
+          2.16064453125,
+          1.68701171875,
+          1.7001953125
+        ]
+      },
+      {
+        "command": [
+          "/workspace/scratch/1d4aec3744ed/comparators/venv/bin/python",
+          "/workspace/scratch/1d4aec3744ed/comparators/run_mode.py",
+          "mypyc_original",
+          "/workspace/scratch/1d4aec3744ed/stages_warm.py",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 11.174818161001895,
+        "cpu_seconds": 10.927174,
+        "peak_rss_kib": 19200,
+        "sampled_main_rss_kib": 17540,
+        "stderr": "first_train 3.357136332000664\nsecond_train 3.1059782700031064\ntrain 2.9815288450045045\nencode 1.0980369800017797\ndecode 0.13089614199998323\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 3.357136332000664,
+        "second_train_seconds": 3.1059782700031064,
+        "train_seconds": 2.9815288450045045,
+        "encode_seconds": 0.021960739600035594,
+        "decode_seconds": 0.0006544807099999161,
+        "round": 1,
+        "load_average_after": [
+          3.37060546875,
+          2.07177734375,
+          1.8310546875
+        ]
+      },
+      {
+        "command": [
+          "/workspace/scratch/1d4aec3744ed/comparators/venv/bin/python",
+          "/workspace/scratch/1d4aec3744ed/comparators/run_mode.py",
+          "mypyc_original",
+          "/workspace/scratch/1d4aec3744ed/stages_warm.py",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 10.13069909499609,
+        "cpu_seconds": 9.898378,
+        "peak_rss_kib": 19200,
+        "sampled_main_rss_kib": 17540,
+        "stderr": "first_train 2.6377286610004376\nsecond_train 2.828053188000922\ntrain 2.9345038940009545\nencode 1.1054922779949266\ndecode 0.14560589299799176\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 2.6377286610004376,
+        "second_train_seconds": 2.828053188000922,
+        "train_seconds": 2.9345038940009545,
+        "encode_seconds": 0.02210984555989853,
+        "decode_seconds": 0.0007280294649899588,
+        "round": 2,
+        "load_average_after": [
+          3.37548828125,
+          2.3310546875,
+          1.94287109375
+        ]
+      },
+      {
+        "command": [
+          "/workspace/scratch/1d4aec3744ed/comparators/venv/bin/python",
+          "/workspace/scratch/1d4aec3744ed/comparators/run_mode.py",
+          "mypyc_original",
+          "/workspace/scratch/1d4aec3744ed/stages_warm.py",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 10.427390390002984,
+        "cpu_seconds": 10.128221,
+        "peak_rss_kib": 19200,
+        "sampled_main_rss_kib": 17536,
+        "stderr": "first_train 2.6821633409999777\nsecond_train 2.9926474330059136\ntrain 3.0120746009997674\nencode 1.112727840001753\ndecode 0.10927821000223048\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 2.6821633409999777,
+        "second_train_seconds": 2.9926474330059136,
+        "train_seconds": 3.0120746009997674,
+        "encode_seconds": 0.02225455680003506,
+        "decode_seconds": 0.0005463910500111524,
+        "round": 3,
+        "load_average_after": [
+          5.1611328125,
+          3.27587890625,
+          2.33203125
+        ]
+      },
+      {
+        "command": [
+          "/workspace/scratch/1d4aec3744ed/comparators/venv/bin/python",
+          "/workspace/scratch/1d4aec3744ed/comparators/run_mode.py",
+          "mypyc_original",
+          "/workspace/scratch/1d4aec3744ed/stages_warm.py",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 10.097018838998338,
+        "cpu_seconds": 9.848608,
+        "peak_rss_kib": 19200,
+        "sampled_main_rss_kib": 17540,
+        "stderr": "first_train 2.9600082709948765\nsecond_train 2.9700042539989226\ntrain 2.595923514003516\nencode 0.9685113219966297\ndecode 0.10731837200000882\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 2.9600082709948765,
+        "second_train_seconds": 2.9700042539989226,
+        "train_seconds": 2.595923514003516,
+        "encode_seconds": 0.019370226439932595,
+        "decode_seconds": 0.0005365918600000442,
+        "round": 4,
+        "load_average_after": [
+          4.64306640625,
+          3.38134765625,
+          2.4091796875
+        ]
+      }
+    ],
+    "pypy_original": [
+      {
+        "command": [
+          "/root/.local/share/uv/python/pypy-3.11.17-linux-x86_64-gnu/bin/pypy3.11",
+          "/workspace/scratch/1d4aec3744ed/stages_warm.py",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 6.453595020997454,
+        "cpu_seconds": 6.26382,
+        "peak_rss_kib": 115624,
+        "sampled_main_rss_kib": 115224,
+        "stderr": "first_train 1.732620800001314\nsecond_train 1.960850028997811\ntrain 1.7779953610006487\nencode 0.5463146090041846\ndecode 0.07184237600449705\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 1.732620800001314,
+        "second_train_seconds": 1.960850028997811,
+        "train_seconds": 1.7779953610006487,
+        "encode_seconds": 0.010926292180083692,
+        "decode_seconds": 0.0003592118800224853,
+        "round": 0,
+        "load_average_after": [
+          2.13525390625,
+          1.69775390625,
+          1.7041015625
+        ]
+      },
+      {
+        "command": [
+          "/root/.local/share/uv/python/pypy-3.11.17-linux-x86_64-gnu/bin/pypy3.11",
+          "/workspace/scratch/1d4aec3744ed/stages_warm.py",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 5.8045770449971315,
+        "cpu_seconds": 5.657067,
+        "peak_rss_kib": 115620,
+        "sampled_main_rss_kib": 115312,
+        "stderr": "first_train 1.6339729579995037\nsecond_train 1.6751756290032063\ntrain 1.5948707729985472\nencode 0.45374370699573774\ndecode 0.06689555699995253\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 1.6339729579995037,
+        "second_train_seconds": 1.6751756290032063,
+        "train_seconds": 1.5948707729985472,
+        "encode_seconds": 0.009074874139914755,
+        "decode_seconds": 0.00033447778499976264,
+        "round": 1,
+        "load_average_after": [
+          2.892578125,
+          1.9375,
+          1.78515625
+        ]
+      },
+      {
+        "command": [
+          "/root/.local/share/uv/python/pypy-3.11.17-linux-x86_64-gnu/bin/pypy3.11",
+          "/workspace/scratch/1d4aec3744ed/stages_warm.py",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 6.269813778999378,
+        "cpu_seconds": 6.098629000000001,
+        "peak_rss_kib": 115488,
+        "sampled_main_rss_kib": 115276,
+        "stderr": "first_train 1.8225116530011292\nsecond_train 1.6871401550015435\ntrain 1.6635590649966616\nencode 0.5889829320003628\ndecode 0.11945310199371306\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 1.8225116530011292,
+        "second_train_seconds": 1.6871401550015435,
+        "train_seconds": 1.6635590649966616,
+        "encode_seconds": 0.011779658640007256,
+        "decode_seconds": 0.0005972655099685654,
+        "round": 2,
+        "load_average_after": [
+          3.34521484375,
+          2.34228515625,
+          1.94873046875
+        ]
+      },
+      {
+        "command": [
+          "/root/.local/share/uv/python/pypy-3.11.17-linux-x86_64-gnu/bin/pypy3.11",
+          "/workspace/scratch/1d4aec3744ed/stages_warm.py",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 6.797466813004576,
+        "cpu_seconds": 6.5704839999999995,
+        "peak_rss_kib": 115576,
+        "sampled_main_rss_kib": 115324,
+        "stderr": "first_train 2.0473912680026842\nsecond_train 2.128403119997529\ntrain 1.6980834319983842\nencode 0.43470596699626185\ndecode 0.07010831199295353\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 2.0473912680026842,
+        "second_train_seconds": 2.128403119997529,
+        "train_seconds": 1.6980834319983842,
+        "encode_seconds": 0.008694119339925237,
+        "decode_seconds": 0.00035054155996476765,
+        "round": 3,
+        "load_average_after": [
+          4.7314453125,
+          3.1005859375,
+          2.2607421875
+        ]
+      },
+      {
+        "command": [
+          "/root/.local/share/uv/python/pypy-3.11.17-linux-x86_64-gnu/bin/pypy3.11",
+          "/workspace/scratch/1d4aec3744ed/stages_warm.py",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 7.048815643996932,
+        "cpu_seconds": 6.809027,
+        "peak_rss_kib": 115916,
+        "sampled_main_rss_kib": 115896,
+        "stderr": "first_train 2.2925010829931125\nsecond_train 1.965585514997656\ntrain 1.7779844449978555\nencode 0.5282440270020743\ndecode 0.07243975500023225\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 2.2925010829931125,
+        "second_train_seconds": 1.965585514997656,
+        "train_seconds": 1.7779844449978555,
+        "encode_seconds": 0.010564880540041486,
+        "decode_seconds": 0.00036219877500116127,
+        "round": 4,
+        "load_average_after": [
+          4.59130859375,
+          3.39208984375,
+          2.41796875
+        ]
+      }
+    ],
+    "pystachy_aot": [
+      {
+        "command": [
+          "/workspace/scratch/1d4aec3744ed/native/stages",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 3.483206553006312,
+        "cpu_seconds": 3.390345,
+        "peak_rss_kib": 40676,
+        "sampled_main_rss_kib": 40728,
+        "stderr": "first_train 0.9346331319975434\nsecond_train 0.8718976610034588\ntrain 0.8168523290005396\nencode 0.580975633005437\ndecode 0.037523234001128\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 0.9346331319975434,
+        "second_train_seconds": 0.8718976610034588,
+        "train_seconds": 0.8168523290005396,
+        "encode_seconds": 0.011619512660108739,
+        "decode_seconds": 0.00018761617000564,
+        "round": 0,
+        "load_average_after": [
+          2.13525390625,
+          1.69775390625,
+          1.7041015625
+        ]
+      },
+      {
+        "command": [
+          "/workspace/scratch/1d4aec3744ed/native/stages",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 3.591688246000558,
+        "cpu_seconds": 3.48701,
+        "peak_rss_kib": 40676,
+        "sampled_main_rss_kib": 40732,
+        "stderr": "first_train 1.0007074149980326\nsecond_train 0.9049937759991735\ntrain 0.8402966479989118\nencode 0.5691194960018038\ndecode 0.03697744600503938\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 1.0007074149980326,
+        "second_train_seconds": 0.9049937759991735,
+        "train_seconds": 0.8402966479989118,
+        "encode_seconds": 0.011382389920036075,
+        "decode_seconds": 0.00018488723002519692,
+        "round": 1,
+        "load_average_after": [
+          2.8828125,
+          1.91943359375,
+          1.7783203125
+        ]
+      },
+      {
+        "command": [
+          "/workspace/scratch/1d4aec3744ed/native/stages",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 3.904161523001676,
+        "cpu_seconds": 3.7818129999999996,
+        "peak_rss_kib": 40676,
+        "sampled_main_rss_kib": 40732,
+        "stderr": "first_train 1.1096548400018946\nsecond_train 0.9948796159951598\ntrain 0.9558198060040013\nencode 0.5696631929968135\ndecode 0.030357736002770253\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 1.1096548400018946,
+        "second_train_seconds": 0.9948796159951598,
+        "train_seconds": 0.9558198060040013,
+        "encode_seconds": 0.011393263859936269,
+        "decode_seconds": 0.00015178868001385125,
+        "round": 2,
+        "load_average_after": [
+          3.47802734375,
+          2.38671875,
+          1.96533203125
+        ]
+      },
+      {
+        "command": [
+          "/workspace/scratch/1d4aec3744ed/native/stages",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 3.736616974005301,
+        "cpu_seconds": 3.605784,
+        "peak_rss_kib": 40676,
+        "sampled_main_rss_kib": 40696,
+        "stderr": "first_train 0.9234391670033801\nsecond_train 0.9286483899995801\ntrain 0.9337399399955757\nencode 0.6326283369999146\ndecode 0.02975465700001223\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 0.9234391670033801,
+        "second_train_seconds": 0.9286483899995801,
+        "train_seconds": 0.9337399399955757,
+        "encode_seconds": 0.012652566739998292,
+        "decode_seconds": 0.00014877328500006114,
+        "round": 3,
+        "load_average_after": [
+          4.79541015625,
+          3.0849609375,
+          2.2509765625
+        ]
+      },
+      {
+        "command": [
+          "/workspace/scratch/1d4aec3744ed/native/stages",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 3.5116634989972226,
+        "cpu_seconds": 3.420579,
+        "peak_rss_kib": 40676,
+        "sampled_main_rss_kib": 40688,
+        "stderr": "first_train 0.856835055994452\nsecond_train 0.9177352200058522\ntrain 0.8701921759929974\nencode 0.5700293219997548\ndecode 0.03765219599881675\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 0.856835055994452,
+        "second_train_seconds": 0.9177352200058522,
+        "train_seconds": 0.8701921759929974,
+        "encode_seconds": 0.011400586439995095,
+        "decode_seconds": 0.00018826097999408376,
+        "round": 4,
+        "load_average_after": [
+          4.62451171875,
+          3.4189453125,
+          2.43212890625
+        ]
+      }
+    ],
+    "pystachy_scalar_tuple": [
+      {
+        "command": [
+          "/workspace/scratch/1d4aec3744ed/bottlenecks/scalar_tuple/stages",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 3.549031609996746,
+        "cpu_seconds": 3.447171,
+        "peak_rss_kib": 40576,
+        "sampled_main_rss_kib": 40648,
+        "stderr": "first_train 0.843631039999309\nsecond_train 0.9393783990017255\ntrain 0.8463079389985069\nencode 0.6429859569980181\ndecode 0.029674122997676022\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 0.843631039999309,
+        "second_train_seconds": 0.9393783990017255,
+        "train_seconds": 0.8463079389985069,
+        "encode_seconds": 0.012859719139960361,
+        "decode_seconds": 0.00014837061498838012,
+        "round": 0,
+        "load_average_after": [
+          2.28466796875,
+          1.736328125,
+          1.716796875
+        ]
+      },
+      {
+        "command": [
+          "/workspace/scratch/1d4aec3744ed/bottlenecks/scalar_tuple/stages",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 3.4372473740004352,
+        "cpu_seconds": 3.336407,
+        "peak_rss_kib": 40544,
+        "sampled_main_rss_kib": 40608,
+        "stderr": "first_train 0.8090265920036472\nsecond_train 0.8440864039948792\ntrain 0.8328874770013499\nencode 0.6525183150006342\ndecode 0.03024472700053593\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 0.8090265920036472,
+        "second_train_seconds": 0.8440864039948792,
+        "train_seconds": 0.8328874770013499,
+        "encode_seconds": 0.013050366300012684,
+        "decode_seconds": 0.00015122363500267967,
+        "round": 1,
+        "load_average_after": [
+          2.6982421875,
+          1.8671875,
+          1.7607421875
+        ]
+      },
+      {
+        "command": [
+          "/workspace/scratch/1d4aec3744ed/bottlenecks/scalar_tuple/stages",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 3.324267249001423,
+        "cpu_seconds": 3.225987,
+        "peak_rss_kib": 40528,
+        "sampled_main_rss_kib": 40608,
+        "stderr": "first_train 0.8586673629979487\nsecond_train 0.8309063080014312\ntrain 0.7844566679996205\nencode 0.5792407659973833\ndecode 0.0319133469965891\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 0.8586673629979487,
+        "second_train_seconds": 0.8309063080014312,
+        "train_seconds": 0.7844566679996205,
+        "encode_seconds": 0.011584815319947666,
+        "decode_seconds": 0.0001595667349829455,
+        "round": 2,
+        "load_average_after": [
+          3.439453125,
+          2.39697265625,
+          1.97119140625
+        ]
+      },
+      {
+        "command": [
+          "/workspace/scratch/1d4aec3744ed/bottlenecks/scalar_tuple/stages",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 3.5628466569978627,
+        "cpu_seconds": 3.441326,
+        "peak_rss_kib": 40544,
+        "sampled_main_rss_kib": 40648,
+        "stderr": "first_train 0.8486894500019844\nsecond_train 0.9990632699991693\ntrain 0.8255078549991595\nencode 0.5989421179983765\ndecode 0.037500725004065316\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 0.8486894500019844,
+        "second_train_seconds": 0.9990632699991693,
+        "train_seconds": 0.8255078549991595,
+        "encode_seconds": 0.01197884235996753,
+        "decode_seconds": 0.0001875036250203266,
+        "round": 3,
+        "load_average_after": [
+          4.77734375,
+          3.05224609375,
+          2.23583984375
+        ]
+      },
+      {
+        "command": [
+          "/workspace/scratch/1d4aec3744ed/bottlenecks/scalar_tuple/stages",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 3.5457484319995274,
+        "cpu_seconds": 3.4451430000000003,
+        "peak_rss_kib": 40544,
+        "sampled_main_rss_kib": 40648,
+        "stderr": "first_train 0.8912427529940032\nsecond_train 0.8629411470028572\ntrain 0.9319438279999304\nencode 0.5533023560055881\ndecode 0.02876606900099432\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 0.8912427529940032,
+        "second_train_seconds": 0.8629411470028572,
+        "train_seconds": 0.9319438279999304,
+        "encode_seconds": 0.011066047120111762,
+        "decode_seconds": 0.0001438303450049716,
+        "round": 4,
+        "load_average_after": [
+          4.62451171875,
+          3.4189453125,
+          2.43212890625
+        ]
+      }
+    ]
+  },
+  "order": [
+    [
+      "cpython_original",
+      "cpython_adapted",
+      "cython_original",
+      "cython_scalar",
+      "cython_adapted",
+      "mypyc_original",
+      "pypy_original",
+      "pystachy_aot",
+      "pystachy_scalar_tuple"
+    ],
+    [
+      "cpython_original",
+      "pystachy_scalar_tuple",
+      "pystachy_aot",
+      "pypy_original",
+      "mypyc_original",
+      "cython_adapted",
+      "cython_scalar",
+      "cython_original",
+      "cpython_adapted"
+    ],
+    [
+      "cython_original",
+      "cython_scalar",
+      "cython_adapted",
+      "mypyc_original",
+      "pypy_original",
+      "pystachy_aot",
+      "pystachy_scalar_tuple",
+      "cpython_original",
+      "cpython_adapted"
+    ],
+    [
+      "cython_original",
+      "cpython_adapted",
+      "cpython_original",
+      "pystachy_scalar_tuple",
+      "pystachy_aot",
+      "pypy_original",
+      "mypyc_original",
+      "cython_adapted",
+      "cython_scalar"
+    ],
+    [
+      "cython_adapted",
+      "mypyc_original",
+      "pypy_original",
+      "pystachy_aot",
+      "pystachy_scalar_tuple",
+      "cpython_original",
+      "cpython_adapted",
+      "cython_original",
+      "cython_scalar"
+    ]
+  ],
+  "summary": {
+    "cpython_original": {
+      "first_train_seconds": {
+        "median": 4.21615630400629,
+        "min": 4.105604897995363,
+        "max": 4.749582410993753
+      },
+      "second_train_seconds": {
+        "median": 4.3514188659974025,
+        "min": 3.8591467770020245,
+        "max": 4.362115891999565
+      },
+      "train_seconds": {
+        "median": 4.208355789000052,
+        "min": 3.933788041002117,
+        "max": 4.81378392699844
+      },
+      "encode_seconds": {
+        "median": 0.0329853825000464,
+        "min": 0.0287915163001162,
+        "max": 0.03492885316009051
+      },
+      "decode_seconds": {
+        "median": 0.0006093470900304965,
+        "min": 0.0005020899300143356,
+        "max": 0.000657073490001494
+      },
+      "wall_seconds": {
+        "median": 15.408067035998101,
+        "min": 14.356480818001728,
+        "max": 15.873014238997712
+      },
+      "cpu_seconds": {
+        "median": 15.038245,
+        "min": 14.06161,
+        "max": 15.487014
+      },
+      "sampled_main_rss_kib": {
+        "median": 14996,
+        "min": 14932,
+        "max": 15188
+      }
+    },
+    "cpython_adapted": {
+      "first_train_seconds": {
+        "median": 4.161736973001098,
+        "min": 3.7871752330029267,
+        "max": 4.321368817996699
+      },
+      "second_train_seconds": {
+        "median": 4.002020056999754,
+        "min": 3.8651597569987644,
+        "max": 4.435174439000548
+      },
+      "train_seconds": {
+        "median": 4.2874280879987055,
+        "min": 4.120786767998652,
+        "max": 5.169109761998698
+      },
+      "encode_seconds": {
+        "median": 0.03705626825991203,
+        "min": 0.03290058293991024,
+        "max": 0.043635956020007145
+      },
+      "decode_seconds": {
+        "median": 0.0006309747949853772,
+        "min": 0.0005254319800224039,
+        "max": 0.0006848356450063875
+      },
+      "wall_seconds": {
+        "median": 15.279228596002213,
+        "min": 14.290167320999899,
+        "max": 16.984412933001295
+      },
+      "cpu_seconds": {
+        "median": 14.922223,
+        "min": 13.988725,
+        "max": 16.241567
+      },
+      "sampled_main_rss_kib": {
+        "median": 15152,
+        "min": 15088,
+        "max": 15280
+      }
+    },
+    "cython_original": {
+      "first_train_seconds": {
+        "median": 2.5532391739980085,
+        "min": 2.376500013997429,
+        "max": 2.6997647210009745
+      },
+      "second_train_seconds": {
+        "median": 2.6556821430058335,
+        "min": 2.4390645009989385,
+        "max": 2.8978562539996346
+      },
+      "train_seconds": {
+        "median": 2.567443865002133,
+        "min": 2.4887281810006243,
+        "max": 2.601801031996729
+      },
+      "encode_seconds": {
+        "median": 0.022396032879914856,
+        "min": 0.021224555380031235,
+        "max": 0.029260300300084054
+      },
+      "decode_seconds": {
+        "median": 0.00046969767499831504,
+        "min": 0.0004247452550043818,
+        "max": 0.0007055998500072746
+      },
+      "wall_seconds": {
+        "median": 9.53643887299404,
+        "min": 9.215956943000492,
+        "max": 10.302326887998788
+      },
+      "cpu_seconds": {
+        "median": 9.326564,
+        "min": 9.027896,
+        "max": 10.040535
+      },
+      "sampled_main_rss_kib": {
+        "median": 17520,
+        "min": 17512,
+        "max": 17584
+      }
+    },
+    "cython_scalar": {
+      "first_train_seconds": {
+        "median": 2.514629500998126,
+        "min": 2.373396014001628,
+        "max": 2.61969459199463
+      },
+      "second_train_seconds": {
+        "median": 2.5040496720030205,
+        "min": 2.3512764740007697,
+        "max": 2.747759981000854
+      },
+      "train_seconds": {
+        "median": 2.5589481240021996,
+        "min": 2.4601594080013456,
+        "max": 2.8064644300029613
+      },
+      "encode_seconds": {
+        "median": 0.021801487139891832,
+        "min": 0.021145535519899568,
+        "max": 0.02659383106001769
+      },
+      "decode_seconds": {
+        "median": 0.0004712779049805249,
+        "min": 0.00041869195498293264,
+        "max": 0.0004942985649904585
+      },
+      "wall_seconds": {
+        "median": 9.36548577999929,
+        "min": 8.93730538800446,
+        "max": 10.558919570001308
+      },
+      "cpu_seconds": {
+        "median": 9.158470999999999,
+        "min": 8.757469,
+        "max": 10.276718
+      },
+      "sampled_main_rss_kib": {
+        "median": 17500,
+        "min": 17436,
+        "max": 17628
+      }
+    },
+    "cython_adapted": {
+      "first_train_seconds": {
+        "median": 2.6608600560066407,
+        "min": 2.5188210330015863,
+        "max": 2.8208206459967187
+      },
+      "second_train_seconds": {
+        "median": 2.5530727060031495,
+        "min": 2.4918909420011914,
+        "max": 2.729226587995072
+      },
+      "train_seconds": {
+        "median": 2.701873568003066,
+        "min": 2.5652973579999525,
+        "max": 3.2216401699988637
+      },
+      "encode_seconds": {
+        "median": 0.02476221290009562,
+        "min": 0.02232865418001893,
+        "max": 0.028099006219999865
+      },
+      "decode_seconds": {
+        "median": 0.0004849077849939931,
+        "min": 0.00045292700502614025,
+        "max": 0.0006489303650232614
+      },
+      "wall_seconds": {
+        "median": 9.977356153998699,
+        "min": 9.662155386999075,
+        "max": 10.53513496099913
+      },
+      "cpu_seconds": {
+        "median": 9.745843999999998,
+        "min": 9.467295,
+        "max": 10.271855
+      },
+      "sampled_main_rss_kib": {
+        "median": 17748,
+        "min": 17684,
+        "max": 17808
+      }
+    },
+    "mypyc_original": {
+      "first_train_seconds": {
+        "median": 2.6854143169985036,
+        "min": 2.6377286610004376,
+        "max": 3.357136332000664
+      },
+      "second_train_seconds": {
+        "median": 2.9700042539989226,
+        "min": 2.828053188000922,
+        "max": 3.1059782700031064
+      },
+      "train_seconds": {
+        "median": 2.9345038940009545,
+        "min": 2.595923514003516,
+        "max": 3.0120746009997674
+      },
+      "encode_seconds": {
+        "median": 0.021960739600035594,
+        "min": 0.01889790721994359,
+        "max": 0.02225455680003506
+      },
+      "decode_seconds": {
+        "median": 0.0005463910500111524,
+        "min": 0.00047050742999999785,
+        "max": 0.0007280294649899588
+      },
+      "wall_seconds": {
+        "median": 10.13069909499609,
+        "min": 9.901458287000423,
+        "max": 11.174818161001895
+      },
+      "cpu_seconds": {
+        "median": 9.898378,
+        "min": 9.6819,
+        "max": 10.927174
+      },
+      "sampled_main_rss_kib": {
+        "median": 17540,
+        "min": 17536,
+        "max": 17540
+      }
+    },
+    "pypy_original": {
+      "first_train_seconds": {
+        "median": 1.8225116530011292,
+        "min": 1.6339729579995037,
+        "max": 2.2925010829931125
+      },
+      "second_train_seconds": {
+        "median": 1.960850028997811,
+        "min": 1.6751756290032063,
+        "max": 2.128403119997529
+      },
+      "train_seconds": {
+        "median": 1.6980834319983842,
+        "min": 1.5948707729985472,
+        "max": 1.7779953610006487
+      },
+      "encode_seconds": {
+        "median": 0.010564880540041486,
+        "min": 0.008694119339925237,
+        "max": 0.011779658640007256
+      },
+      "decode_seconds": {
+        "median": 0.0003592118800224853,
+        "min": 0.00033447778499976264,
+        "max": 0.0005972655099685654
+      },
+      "wall_seconds": {
+        "median": 6.453595020997454,
+        "min": 5.8045770449971315,
+        "max": 7.048815643996932
+      },
+      "cpu_seconds": {
+        "median": 6.26382,
+        "min": 5.657067,
+        "max": 6.809027
+      },
+      "sampled_main_rss_kib": {
+        "median": 115312,
+        "min": 115224,
+        "max": 115896
+      }
+    },
+    "pystachy_aot": {
+      "first_train_seconds": {
+        "median": 0.9346331319975434,
+        "min": 0.856835055994452,
+        "max": 1.1096548400018946
+      },
+      "second_train_seconds": {
+        "median": 0.9177352200058522,
+        "min": 0.8718976610034588,
+        "max": 0.9948796159951598
+      },
+      "train_seconds": {
+        "median": 0.8701921759929974,
+        "min": 0.8168523290005396,
+        "max": 0.9558198060040013
+      },
+      "encode_seconds": {
+        "median": 0.011400586439995095,
+        "min": 0.011382389920036075,
+        "max": 0.012652566739998292
+      },
+      "decode_seconds": {
+        "median": 0.00018488723002519692,
+        "min": 0.00014877328500006114,
+        "max": 0.00018826097999408376
+      },
+      "wall_seconds": {
+        "median": 3.591688246000558,
+        "min": 3.483206553006312,
+        "max": 3.904161523001676
+      },
+      "cpu_seconds": {
+        "median": 3.48701,
+        "min": 3.390345,
+        "max": 3.7818129999999996
+      },
+      "sampled_main_rss_kib": {
+        "median": 40728,
+        "min": 40688,
+        "max": 40732
+      }
+    },
+    "pystachy_scalar_tuple": {
+      "first_train_seconds": {
+        "median": 0.8486894500019844,
+        "min": 0.8090265920036472,
+        "max": 0.8912427529940032
+      },
+      "second_train_seconds": {
+        "median": 0.8629411470028572,
+        "min": 0.8309063080014312,
+        "max": 0.9990632699991693
+      },
+      "train_seconds": {
+        "median": 0.8328874770013499,
+        "min": 0.7844566679996205,
+        "max": 0.9319438279999304
+      },
+      "encode_seconds": {
+        "median": 0.01197884235996753,
+        "min": 0.011066047120111762,
+        "max": 0.013050366300012684
+      },
+      "decode_seconds": {
+        "median": 0.00015122363500267967,
+        "min": 0.0001438303450049716,
+        "max": 0.0001875036250203266
+      },
+      "wall_seconds": {
+        "median": 3.5457484319995274,
+        "min": 3.324267249001423,
+        "max": 3.5628466569978627
+      },
+      "cpu_seconds": {
+        "median": 3.441326,
+        "min": 3.225987,
+        "max": 3.447171
+      },
+      "sampled_main_rss_kib": {
+        "median": 40648,
+        "min": 40608,
+        "max": 40648
+      }
+    }
+  },
+  "oracle_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+  "load_average_end": [
+    4.205078125,
+    3.50390625,
+    2.515625
+  ]
+}

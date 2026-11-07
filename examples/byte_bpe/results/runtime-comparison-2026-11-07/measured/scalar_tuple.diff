@@ -1,0 +1,11 @@
+--- baseline/bpe_tokeniser.py
++++ scalar_tuple/bpe_tokeniser.py
+@@ -120,7 +120,7 @@
+             new_word = []
+             i = 0
+             while i < len(word) - 1:
+-                if (word[i], word[i + 1]) == most_common_pair:
++                if word[i] == most_common_pair[0] and word[i + 1] == most_common_pair[1]:
+                     # We found our pair! Merge it
+                     new_word.append(token_bytes)
+                     i += 2

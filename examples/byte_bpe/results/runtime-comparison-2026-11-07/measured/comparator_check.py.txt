@@ -1,0 +1,18 @@
+from pathlib import Path
+import sys, runpy, json, base64
+mode=sys.argv[1]
+root=Path(__file__).resolve().parent
+sys.path.insert(0,str(root/mode))
+from bpe_tokeniser import SimpleBytePairEncoding
+from bpe_tokeniser import __file__ as module_path
+fixture=str(root/'fixture.py')
+runpy.run_path(fixture)
+pattern=r"'s|'t|'re|'ve|'m|'ll|'d| ?[a-zA-Z]+| ?\d+| ?[^\sa-zA-Z\d]+|\s+(?!\S)|\s+"
+data=(root/'corpus.txt').read_text(encoding='utf-8')
+enc=SimpleBytePairEncoding.train(data,1024,pattern)
+tokens=enc.encode(data)
+assert enc.decode(tokens)==data
+result={'ranks':[(base64.b64encode(k).decode(),v) for k,v in enc.mergeable_ranks.items()], 'tokens':tokens,'decoded':enc.decode(tokens),'bytes':base64.b64encode(enc.decode_bytes(tokens)).decode()}
+(root/(mode+'-correctness.json')).write_text(json.dumps(result,ensure_ascii=False))
+print('module',module_path)
+print('full corpus validated')

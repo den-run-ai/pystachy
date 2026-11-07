@@ -1,0 +1,53 @@
+{
+  "description": "Exact source-operation counts; instrumented wall times are diagnostic only, not benchmark evidence.",
+  "pr": 1107,
+  "commit": "3d0f56d82e3f7e3e0799d37e014f73391913f1ca",
+  "source_sha256": "9775aff77bb52efc6fb9828517ead0584552b1cba5afe73ef4d93e13972ca7de",
+  "corpus_sha256": "6607193e67b7b459d082f5f2aea724e470615643d63ad2e205123b3076223da4",
+  "corpus_bytes": 31206,
+  "vocab_size": 1024,
+  "decoded_token_count": 10335,
+  "complete_stdout_matches_pinned_pristine_oracle": true,
+  "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+  "counts": {
+    "encode_candidate_concat_bytes": 225793,
+    "encode_candidate_pairs": 82362,
+    "encode_initial_single_bytes": 31206,
+    "encode_materialized_zip_lists": 27331,
+    "encode_merges": 20871,
+    "encode_new_minimum_updates": 29215,
+    "encode_pair_scan_list_slices": 54662,
+    "encode_pair_scan_slice_items": 164724,
+    "encode_rebuild_list_addition_items": 124839,
+    "encode_rebuild_list_additions": 41742,
+    "encode_rebuild_list_slices": 41742,
+    "encode_rebuild_singleton_lists": 20871,
+    "encode_rebuild_slice_items": 57616,
+    "encode_rescans": 27331,
+    "encode_selected_concat_bytes": 58905,
+    "encode_successful_rank_lookups": 48594,
+    "encode_words": 6460,
+    "training_initial_bytes": 31206,
+    "training_initial_words": 6460,
+    "training_max_key_visits": 1815343,
+    "training_merge_rounds": 768,
+    "training_new_outer_lists": 768,
+    "training_new_word_items": 10468472,
+    "training_new_word_lists": 4961280,
+    "training_pair_merges": 20871,
+    "training_pair_scan_list_slices": 9922560,
+    "training_pair_scan_slice_items": 11056126,
+    "training_pair_visits": 5528063,
+    "training_rebuild_pair_comparisons": 5515789,
+    "training_unique_key_insertions": 1815343
+  },
+  "diagnostic_wall_seconds_do_not_use_for_speedup": {
+    "training": 7.0881218439972145,
+    "encoding": 0.09162807399843587
+  },
+  "derived": {
+    "training_redundant_pair_key_allocations_lower_bound": 3712720,
+    "training_tuple_allocation_sites_executed_in_raw_ir": 11043852,
+    "encode_optional_int_box_sites_executed_in_raw_ir": 107024
+  }
+}

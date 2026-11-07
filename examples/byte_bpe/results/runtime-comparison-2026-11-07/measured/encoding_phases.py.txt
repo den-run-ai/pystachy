@@ -1,0 +1,104 @@
+"""Isolate byte-BPE encoding phases; model preparation stays outside timers.
+
+CORPUS VOCAB LOOPS [WARMUPS [PHASE]]
+PHASE is all, regex, utf8, merge, or full. A selected phase permits one phase
+per process to avoid phase-order JIT/GC interactions. Print complete witnesses
+outside timers; report total seconds for LOOPS operations to stderr.
+"""
+import sys
+import time
+from bpe_tokeniser import BPE_PATTERN, SimpleBytePairEncoding, bpe_encode
+
+
+def encode_utf8(words: list[str]) -> list[bytes]:
+    result: list[bytes] = []
+    for word in words:
+        result.append(word.encode("utf-8"))
+    return result
+
+
+def encode_precomputed(ranks: dict[bytes, int], words: list[bytes]) -> list[int]:
+    result: list[int] = []
+    for word in words:
+        result.extend(bpe_encode(ranks, word))
+    return result
+
+
+def main() -> None:
+    if len(sys.argv) < 4 or len(sys.argv) > 6:
+        raise ValueError("expected CORPUS VOCAB LOOPS [WARMUPS [PHASE]]")
+    vocab_size = int(sys.argv[2])
+    loops = int(sys.argv[3])
+    warmups = int(sys.argv[4]) if len(sys.argv) > 4 else 20
+    phase = sys.argv[5] if len(sys.argv) > 5 else "all"
+    if loops < 1 or warmups < 0:
+        raise ValueError("invalid loop counts")
+    if phase != "all" and phase != "regex" and phase != "utf8" and phase != "merge" and phase != "full":
+        raise ValueError("unknown phase")
+    with open(sys.argv[1], "r", encoding="utf-8") as stream:
+        data = stream.read()
+    model = SimpleBytePairEncoding.train(data, vocab_size, BPE_PATTERN)
+    # Full setup and common witnesses are outside every phase's timers.
+    reference_words = model._pat.findall(data)
+    reference_bytes = encode_utf8(reference_words)
+    reference_tokens = model.encode(data)
+    assert model.decode(reference_tokens) == data
+    assert encode_precomputed(model.mergeable_ranks, reference_bytes) == reference_tokens
+
+    if phase == "all" or phase == "regex":
+        words: list[str] = []
+        for _ in range(warmups):
+            words = model._pat.findall(data)
+        start = time.perf_counter()
+        for _ in range(loops):
+            words = model._pat.findall(data)
+        seconds = time.perf_counter() - start
+        assert words == reference_words
+        print("regex", seconds, file=sys.stderr)
+
+    if phase == "all" or phase == "utf8":
+        word_bytes: list[bytes] = []
+        for _ in range(warmups):
+            word_bytes = encode_utf8(reference_words)
+        start = time.perf_counter()
+        for _ in range(loops):
+            word_bytes = encode_utf8(reference_words)
+        seconds = time.perf_counter() - start
+        assert word_bytes == reference_bytes
+        print("utf8", seconds, file=sys.stderr)
+
+    if phase == "all" or phase == "merge":
+        merged: list[int] = []
+        for _ in range(warmups):
+            merged = encode_precomputed(model.mergeable_ranks, reference_bytes)
+        start = time.perf_counter()
+        for _ in range(loops):
+            merged = encode_precomputed(model.mergeable_ranks, reference_bytes)
+        seconds = time.perf_counter() - start
+        assert merged == reference_tokens
+        print("merge", seconds, file=sys.stderr)
+
+    if phase == "all" or phase == "full":
+        tokens: list[int] = []
+        for _ in range(warmups):
+            tokens = model.encode(data)
+        start = time.perf_counter()
+        for _ in range(loops):
+            tokens = model.encode(data)
+        seconds = time.perf_counter() - start
+        assert tokens == reference_tokens
+        print("full", seconds, file=sys.stderr)
+
+    # Match the original full-state oracle's first four lines, then add complete
+    # regex and encoded-word witnesses to expose phase-specific mismatches.
+    assert len(model.mergeable_ranks) == vocab_size
+    print(list(model.mergeable_ranks.items()))
+    print(reference_tokens)
+    print(repr(model.decode_bytes(reference_tokens)))
+    print(repr(model.decode(reference_tokens)))
+    print(reference_words)
+    print(reference_bytes)
+
+
+if __name__ == "__main__":
+    main()

@@ -10,6 +10,12 @@ The [6 November measurements](results/README.md) show **4.3× faster training,
 31.2 KB corpus. That report retains raw samples, memory/startup measurements and
 the separate program-cache experiment; speedups describe that measured workload.
 
+A separate [warmed runtime comparison](results/runtime-comparison-2026-11-07/README.md)
+measures the same port against Cython, mypyc and PyPy, records PyPy's encoding
+advantage, and investigates remaining compiler/runtime costs. Its
+[portable runner](compare/README.md) keeps original/adapted baselines and
+diagnostic experiments separate from the earlier measurements.
+
 The implementation is Shantanu Jain's
 [pyperformance 1.14.0 byte-BPE benchmark](https://github.com/python/pyperformance/blob/2ab96f98f98274d07ebfdfd66e4f021723179706/pyperformance/data-files/benchmarks/bm_bpe_tokeniser/run_benchmark.py),
 derived from OpenAI's educational tiktoken code. It is a useful companion to

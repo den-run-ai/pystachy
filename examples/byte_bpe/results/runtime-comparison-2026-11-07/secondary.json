@@ -1,0 +1,469 @@
+{
+  "status": "passed",
+  "created_utc": "2026-11-07T04:12:16Z",
+  "git_revision": "3d0f56d82e3f7e3e0799d37e014f73391913f1ca",
+  "cpu": 0,
+  "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.39",
+  "load_average_start": [
+    2.39599609375,
+    3.12158203125,
+    2.4541015625
+  ],
+  "environment": {
+    "PYTHONHASHSEED": "0",
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "PYSTACHY_HOME": "/workspace/scratch/1d4aec3744ed/pystachy",
+    "PYSTACHY_PATH": "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance",
+    "PYSTACHY_LLVM": "/workspace/scratch/c154e74884e5/llvm-cache/ubuntu-18.1.3-1ubuntu1-amd64/bin",
+    "PYSTACHY_CACHE": "/workspace/scratch/1d4aec3744ed/native/runtime-cache",
+    "PYSTACHY_PROGRAM_CACHE": "0"
+  },
+  "mode_environment_overrides": {
+    "pystachy_jit": {},
+    "pystachy_jit_inline100k": {
+      "PYSTACHY_JIT_INLINE": "100000"
+    },
+    "pystachy_aot_gc8": {
+      "PYSTACHY_GC_MIN": "8"
+    }
+  },
+  "versions": {
+    "cpython": "Python 3.13.16",
+    "pypy": "Python 3.11.17 (ec82f20141cf, Oct 13 2026, 15:02:27)\n[PyPy 8.0.1 with GCC 14.2.1 20250110 (Red Hat 14.2.1-11)]"
+  },
+  "input_sha256": {
+    "/workspace/scratch/1d4aec3744ed/stages_warm.py": "d0fa5dd733a37c28ec3e4078a73566c71641aa199a5a7e1e8dd24d90bc09562c",
+    "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt": "6607193e67b7b459d082f5f2aea724e470615643d63ad2e205123b3076223da4",
+    "/workspace/scratch/1d4aec3744ed/original/bpe_tokeniser.py": "ab44d9b2600ee956f8464d0a1d299641cdd552c40c60e64e91310ae8e6ba235e",
+    "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/bpe_tokeniser.py": "9775aff77bb52efc6fb9828517ead0584552b1cba5afe73ef4d93e13972ca7de",
+    "/workspace/scratch/1d4aec3744ed/pystachy/pystachy": "3b59b4e875a89f15777395f5993ccf2e6d51e934dbc7a4e45228d622c7f1cff7",
+    "/workspace/scratch/1d4aec3744ed/native/stages": "f4f9b9bd0e7c2ad8ca556c3ba05fe82c6f5d4426adcb7c855a5c25dca2f2e642",
+    "/workspace/scratch/1d4aec3744ed/comparators/manifest.json": "be5eb27ab176ff137c23a5240af11e3d6cee2ee1a1f3ce010edcbefee1fc0c04",
+    "/workspace/scratch/1d4aec3744ed/bottlenecks/scalar_tuple/bpe_tokeniser.py": "ba5a7eb209668b3fcbd2ca6952ec6199ab06466e4ad27e836f5ad01a3eab9155",
+    "/workspace/scratch/1d4aec3744ed/bottlenecks/scalar_tuple/stages": "8a17a0e016f2930065c4d608d66cc7951300aafe6a9e29bf096d1cc7d8698909",
+    "/workspace/scratch/1d4aec3744ed/comparators/cython_adapted/bpe_tokeniser.cpython-313-x86_64-linux-gnu.so": "d2ed622da3d33d141528f4e29ea71012cc787a38adcbf2ece60d79a222373de1",
+    "/workspace/scratch/1d4aec3744ed/comparators/cython_original/bpe_tokeniser.cpython-313-x86_64-linux-gnu.so": "6e115d03bddd2a3b26cfc0ee87829f727bb1b2d8216930b991e6ff3c48f83e59",
+    "/workspace/scratch/1d4aec3744ed/comparators/cython_scalar/bpe_tokeniser.cpython-313-x86_64-linux-gnu.so": "8580afccbb33ecba743e812a9845028ae3d241674367b1eb317b0e2a7519c3de",
+    "/workspace/scratch/1d4aec3744ed/comparators/mypyc_original/bpe_tokeniser.cpython-313-x86_64-linux-gnu.so": "f0a2a2c97d72ae7588d5741240f044f158b3ee2da5e745455ad2e52038ff0ca3"
+  },
+  "workload": {
+    "corpus_bytes": 31206,
+    "vocab_size": 1024,
+    "processes": 3,
+    "train_warmups": 2,
+    "encode_warmups": 20,
+    "decode_warmups": 100,
+    "train_loops": 1,
+    "encode_loops": 50,
+    "decode_loops": 200,
+    "first_train_and_second_train": "recorded separately, excluded from warmed train metric"
+  },
+  "rss_definition": "Linux main-process VmHWM after command installed; sampled every approximately 5 ms; includes warmups and interpreted launcher, excludes child compiler processes",
+  "wall_definition": "whole process, including all warmups, I/O, imports, output validation and compiler where relevant; not single-query latency",
+  "samples": {
+    "pystachy_jit": [
+      {
+        "command": [
+          "/workspace/scratch/1d4aec3744ed/pystachy/pystachy",
+          "run",
+          "/workspace/scratch/1d4aec3744ed/stages_warm.py",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 5.315496791998157,
+        "cpu_seconds": 5.183179,
+        "peak_rss_kib": 119660,
+        "sampled_main_rss_kib": 119612,
+        "stderr": "first_train 0.9285620779992314\nsecond_train 0.9188146470041829\ntrain 0.9891821980054374\nencode 0.6114816010012873\ndecode 0.03135420400212752\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 0.9285620779992314,
+        "second_train_seconds": 0.9188146470041829,
+        "train_seconds": 0.9891821980054374,
+        "encode_seconds": 0.012229632020025747,
+        "decode_seconds": 0.0001567710200106376,
+        "round": 0,
+        "load_average_after": [
+          2.52490234375,
+          3.13623046875,
+          2.462890625
+        ]
+      },
+      {
+        "command": [
+          "/workspace/scratch/1d4aec3744ed/pystachy/pystachy",
+          "run",
+          "/workspace/scratch/1d4aec3744ed/stages_warm.py",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 5.6006272149970755,
+        "cpu_seconds": 5.457904,
+        "peak_rss_kib": 119420,
+        "sampled_main_rss_kib": 119368,
+        "stderr": "first_train 0.9379453270012164\nsecond_train 0.9977731860053609\ntrain 1.1020168879986159\nencode 0.6897368339996319\ndecode 0.05558802900486626\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 0.9379453270012164,
+        "second_train_seconds": 0.9977731860053609,
+        "train_seconds": 1.1020168879986159,
+        "encode_seconds": 0.013794736679992639,
+        "decode_seconds": 0.00027794014502433126,
+        "round": 1,
+        "load_average_after": [
+          2.48193359375,
+          3.0966796875,
+          2.4599609375
+        ]
+      },
+      {
+        "command": [
+          "/workspace/scratch/1d4aec3744ed/pystachy/pystachy",
+          "run",
+          "/workspace/scratch/1d4aec3744ed/stages_warm.py",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 5.391234333001194,
+        "cpu_seconds": 5.255966,
+        "peak_rss_kib": 119952,
+        "sampled_main_rss_kib": 120020,
+        "stderr": "first_train 0.947476312998333\nsecond_train 1.057083302999672\ntrain 0.9659474450018024\nencode 0.6926615180054796\ndecode 0.03525118000106886\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 0.947476312998333,
+        "second_train_seconds": 1.057083302999672,
+        "train_seconds": 0.9659474450018024,
+        "encode_seconds": 0.013853230360109593,
+        "decode_seconds": 0.0001762559000053443,
+        "round": 2,
+        "load_average_after": [
+          2.4873046875,
+          3.05712890625,
+          2.4599609375
+        ]
+      }
+    ],
+    "pystachy_jit_inline100k": [
+      {
+        "command": [
+          "/workspace/scratch/1d4aec3744ed/pystachy/pystachy",
+          "run",
+          "/workspace/scratch/1d4aec3744ed/stages_warm.py",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 5.882325229998969,
+        "cpu_seconds": 5.707584,
+        "peak_rss_kib": 120812,
+        "sampled_main_rss_kib": 120740,
+        "stderr": "first_train 0.905373817004147\nsecond_train 0.9930220349997398\ntrain 1.1802852600012557\nencode 0.6836602219991619\ndecode 0.036270803000661545\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 0.905373817004147,
+        "second_train_seconds": 0.9930220349997398,
+        "train_seconds": 1.1802852600012557,
+        "encode_seconds": 0.013673204439983237,
+        "decode_seconds": 0.00018135401500330773,
+        "round": 0,
+        "load_average_after": [
+          2.482421875,
+          3.1171875,
+          2.4599609375
+        ]
+      },
+      {
+        "command": [
+          "/workspace/scratch/1d4aec3744ed/pystachy/pystachy",
+          "run",
+          "/workspace/scratch/1d4aec3744ed/stages_warm.py",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 5.511720381000487,
+        "cpu_seconds": 5.376576,
+        "peak_rss_kib": 121568,
+        "sampled_main_rss_kib": 121524,
+        "stderr": "first_train 0.8577044260018738\nsecond_train 0.9135247110025375\ntrain 0.8788228739940678\nencode 0.631245067997952\ndecode 0.04023968399997102\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 0.8577044260018738,
+        "second_train_seconds": 0.9135247110025375,
+        "train_seconds": 0.8788228739940678,
+        "encode_seconds": 0.01262490135995904,
+        "decode_seconds": 0.0002011984199998551,
+        "round": 1,
+        "load_average_after": [
+          2.4013671875,
+          3.0595703125,
+          2.45458984375
+        ]
+      },
+      {
+        "command": [
+          "/workspace/scratch/1d4aec3744ed/pystachy/pystachy",
+          "run",
+          "/workspace/scratch/1d4aec3744ed/stages_warm.py",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 5.881893340003444,
+        "cpu_seconds": 5.714112,
+        "peak_rss_kib": 121744,
+        "sampled_main_rss_kib": 121664,
+        "stderr": "first_train 1.0256520599941723\nsecond_train 1.2048636339968652\ntrain 0.977577026002109\nencode 0.7147842510021292\ndecode 0.033023773998138495\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 1.0256520599941723,
+        "second_train_seconds": 1.2048636339968652,
+        "train_seconds": 0.977577026002109,
+        "encode_seconds": 0.014295685020042583,
+        "decode_seconds": 0.00016511886999069248,
+        "round": 2,
+        "load_average_after": [
+          2.3681640625,
+          3.02294921875,
+          2.45166015625
+        ]
+      }
+    ],
+    "pystachy_aot_gc8": [
+      {
+        "command": [
+          "/workspace/scratch/1d4aec3744ed/native/stages",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 3.441364140002406,
+        "cpu_seconds": 3.3560659999999998,
+        "peak_rss_kib": 19200,
+        "sampled_main_rss_kib": 15244,
+        "stderr": "first_train 0.8272752990014851\nsecond_train 1.0448794869953417\ntrain 0.8854170810009236\nencode 0.45420244799606735\ndecode 0.027858585002832115\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 0.8272752990014851,
+        "second_train_seconds": 1.0448794869953417,
+        "train_seconds": 0.8854170810009236,
+        "encode_seconds": 0.009084048959921346,
+        "decode_seconds": 0.00013929292501416057,
+        "round": 0,
+        "load_average_after": [
+          2.52392578125,
+          3.115234375,
+          2.462890625
+        ]
+      },
+      {
+        "command": [
+          "/workspace/scratch/1d4aec3744ed/native/stages",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 4.111528900997655,
+        "cpu_seconds": 4.0151769999999996,
+        "peak_rss_kib": 19200,
+        "sampled_main_rss_kib": 15224,
+        "stderr": "first_train 1.139853476001008\nsecond_train 1.1577023999998346\ntrain 0.8934918859958998\nencode 0.6749187210007221\ndecode 0.030149715996230952\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 1.139853476001008,
+        "second_train_seconds": 1.1577023999998346,
+        "train_seconds": 0.8934918859958998,
+        "encode_seconds": 0.013498374420014442,
+        "decode_seconds": 0.00015074857998115476,
+        "round": 1,
+        "load_average_after": [
+          2.5234375,
+          3.0947265625,
+          2.462890625
+        ]
+      },
+      {
+        "command": [
+          "/workspace/scratch/1d4aec3744ed/native/stages",
+          "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+          "1024",
+          "50",
+          "200"
+        ],
+        "wall_seconds": 3.4803027779998956,
+        "cpu_seconds": 3.395465,
+        "peak_rss_kib": 19200,
+        "sampled_main_rss_kib": 15264,
+        "stderr": "first_train 0.9705632170007448\nsecond_train 0.8668147339994903\ntrain 0.9017357929988066\nencode 0.5054078640023363\ndecode 0.02970524700504029\n",
+        "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+        "first_train_seconds": 0.9705632170007448,
+        "second_train_seconds": 0.8668147339994903,
+        "train_seconds": 0.9017357929988066,
+        "encode_seconds": 0.010108157280046725,
+        "decode_seconds": 0.00014852623502520146,
+        "round": 2,
+        "load_average_after": [
+          2.52978515625,
+          3.0751953125,
+          2.462890625
+        ]
+      }
+    ]
+  },
+  "order": [
+    [
+      "pystachy_jit",
+      "pystachy_jit_inline100k",
+      "pystachy_aot_gc8"
+    ],
+    [
+      "pystachy_jit",
+      "pystachy_aot_gc8",
+      "pystachy_jit_inline100k"
+    ],
+    [
+      "pystachy_aot_gc8",
+      "pystachy_jit",
+      "pystachy_jit_inline100k"
+    ]
+  ],
+  "summary": {
+    "pystachy_jit": {
+      "first_train_seconds": {
+        "median": 0.9379453270012164,
+        "min": 0.9285620779992314,
+        "max": 0.947476312998333
+      },
+      "second_train_seconds": {
+        "median": 0.9977731860053609,
+        "min": 0.9188146470041829,
+        "max": 1.057083302999672
+      },
+      "train_seconds": {
+        "median": 0.9891821980054374,
+        "min": 0.9659474450018024,
+        "max": 1.1020168879986159
+      },
+      "encode_seconds": {
+        "median": 0.013794736679992639,
+        "min": 0.012229632020025747,
+        "max": 0.013853230360109593
+      },
+      "decode_seconds": {
+        "median": 0.0001762559000053443,
+        "min": 0.0001567710200106376,
+        "max": 0.00027794014502433126
+      },
+      "wall_seconds": {
+        "median": 5.391234333001194,
+        "min": 5.315496791998157,
+        "max": 5.6006272149970755
+      },
+      "cpu_seconds": {
+        "median": 5.255966,
+        "min": 5.183179,
+        "max": 5.457904
+      },
+      "sampled_main_rss_kib": {
+        "median": 119612,
+        "min": 119368,
+        "max": 120020
+      }
+    },
+    "pystachy_jit_inline100k": {
+      "first_train_seconds": {
+        "median": 0.905373817004147,
+        "min": 0.8577044260018738,
+        "max": 1.0256520599941723
+      },
+      "second_train_seconds": {
+        "median": 0.9930220349997398,
+        "min": 0.9135247110025375,
+        "max": 1.2048636339968652
+      },
+      "train_seconds": {
+        "median": 0.977577026002109,
+        "min": 0.8788228739940678,
+        "max": 1.1802852600012557
+      },
+      "encode_seconds": {
+        "median": 0.013673204439983237,
+        "min": 0.01262490135995904,
+        "max": 0.014295685020042583
+      },
+      "decode_seconds": {
+        "median": 0.00018135401500330773,
+        "min": 0.00016511886999069248,
+        "max": 0.0002011984199998551
+      },
+      "wall_seconds": {
+        "median": 5.881893340003444,
+        "min": 5.511720381000487,
+        "max": 5.882325229998969
+      },
+      "cpu_seconds": {
+        "median": 5.707584,
+        "min": 5.376576,
+        "max": 5.714112
+      },
+      "sampled_main_rss_kib": {
+        "median": 121524,
+        "min": 120740,
+        "max": 121664
+      }
+    },
+    "pystachy_aot_gc8": {
+      "first_train_seconds": {
+        "median": 0.9705632170007448,
+        "min": 0.8272752990014851,
+        "max": 1.139853476001008
+      },
+      "second_train_seconds": {
+        "median": 1.0448794869953417,
+        "min": 0.8668147339994903,
+        "max": 1.1577023999998346
+      },
+      "train_seconds": {
+        "median": 0.8934918859958998,
+        "min": 0.8854170810009236,
+        "max": 0.9017357929988066
+      },
+      "encode_seconds": {
+        "median": 0.010108157280046725,
+        "min": 0.009084048959921346,
+        "max": 0.013498374420014442
+      },
+      "decode_seconds": {
+        "median": 0.00014852623502520146,
+        "min": 0.00013929292501416057,
+        "max": 0.00015074857998115476
+      },
+      "wall_seconds": {
+        "median": 3.4803027779998956,
+        "min": 3.441364140002406,
+        "max": 4.111528900997655
+      },
+      "cpu_seconds": {
+        "median": 3.395465,
+        "min": 3.3560659999999998,
+        "max": 4.0151769999999996
+      },
+      "sampled_main_rss_kib": {
+        "median": 15244,
+        "min": 15224,
+        "max": 15264
+      }
+    }
+  },
+  "oracle_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+  "load_average_end": [
+    2.3681640625,
+    3.02294921875,
+    2.45166015625
+  ]
+}

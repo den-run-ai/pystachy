@@ -1,0 +1,125 @@
+"""Count source operations without using instrumented timings as performance evidence.
+
+Run against pinned PR #1107. The unchanged original benchmark oracle already
+records complete ordered ranks, token IDs, decoded bytes and decoded text.
+Instrumentation adds counters around existing operations; the result must match
+that oracle byte-for-byte. Native IR links are interpreted separately.
+"""
+from __future__ import annotations
+import collections
+import hashlib
+import json
+from pathlib import Path
+import sys
+import time
+
+ROOT = Path(sys.argv[1])
+OUT = Path(sys.argv[2])
+source_path = ROOT / "bench/pyperformance/bpe_tokeniser.py"
+source = source_path.read_text()
+transformed = source
+counts = collections.Counter()
+
+def replace(old: str, new: str) -> None:
+    global transformed
+    assert transformed.count(old) == 1, (old, transformed.count(old))
+    transformed = transformed.replace(old, new)
+
+replace('    while len(ranks) < vocab_size:\n',
+        '    counts["training_initial_words"] = len(words)\n'
+        '    counts["training_initial_bytes"] = sum(len(w) for w in words)\n'
+        '    while len(ranks) < vocab_size:\n'
+        '        counts["training_merge_rounds"] += 1\n')
+replace('        for piece in words:\n',
+        '        for piece in words:\n'
+        '            counts["training_pair_scan_list_slices"] += 2\n'
+        '            counts["training_pair_scan_slice_items"] += 2 * max(len(piece) - 1, 0)\n')
+replace('                stats[pair] += 1\n',
+        '                counts["training_pair_visits"] += 1\n'
+        '                stats[pair] += 1\n')
+replace('        most_common_pair = max(stats, key=lambda x: stats[x])\n',
+        '        counts["training_max_key_visits"] += len(stats)\n'
+        '        counts["training_unique_key_insertions"] += len(stats)\n'
+        '        most_common_pair = max(stats, key=lambda x: stats[x])\n')
+replace('        new_words = []\n',
+        '        counts["training_new_outer_lists"] += 1\n'
+        '        new_words = []\n')
+replace('        for word in words:\n            new_word = []\n',
+        '        for word in words:\n'
+        '            counts["training_new_word_lists"] += 1\n'
+        '            new_word = []\n')
+replace('            while i < len(word) - 1:\n',
+        '            while i < len(word) - 1:\n'
+        '                counts["training_rebuild_pair_comparisons"] += 1\n')
+replace('                    new_word.append(token_bytes)\n',
+        '                    counts["training_pair_merges"] += 1\n'
+        '                    new_word.append(token_bytes)\n')
+replace('            new_words.append(new_word)\n',
+        '            counts["training_new_word_items"] += len(new_word)\n'
+        '            new_words.append(new_word)\n')
+replace('    parts = [bytes([b]) for b in input]\n',
+        '    counts["encode_words"] += 1\n'
+        '    counts["encode_initial_single_bytes"] += len(input)\n'
+        '    parts = [bytes([b]) for b in input]\n')
+replace('    while True:\n',
+        '    while True:\n'
+        '        counts["encode_rescans"] += 1\n'
+        '        counts["encode_pair_scan_list_slices"] += 2\n'
+        '        counts["encode_pair_scan_slice_items"] += 2 * max(len(parts) - 1, 0)\n'
+        '        counts["encode_materialized_zip_lists"] += 1\n')
+replace('            rank = mergeable_ranks.get(pair[0] + pair[1])\n',
+        '            counts["encode_candidate_pairs"] += 1\n'
+        '            counts["encode_candidate_concat_bytes"] += len(pair[0]) + len(pair[1])\n'
+        '            rank = mergeable_ranks.get(pair[0] + pair[1])\n'
+        '            counts["encode_successful_rank_lookups"] += int(rank is not None)\n')
+replace('                min_idx = i\n',
+        '                counts["encode_new_minimum_updates"] += 1\n'
+        '                min_idx = i\n')
+replace('        parts = parts[:min_idx] + [parts[min_idx] + parts[min_idx + 1]] + parts[min_idx + 2 :]\n',
+        '        counts["encode_merges"] += 1\n'
+        '        counts["encode_rebuild_list_slices"] += 2\n'
+        '        counts["encode_rebuild_slice_items"] += len(parts) - 2\n'
+        '        counts["encode_rebuild_singleton_lists"] += 1\n'
+        '        counts["encode_rebuild_list_additions"] += 2\n'
+        '        counts["encode_rebuild_list_addition_items"] += min_idx + 1 + len(parts) - 1\n'
+        '        counts["encode_selected_concat_bytes"] += len(parts[min_idx]) + len(parts[min_idx + 1])\n'
+        '        parts = parts[:min_idx] + [parts[min_idx] + parts[min_idx + 1]] + parts[min_idx + 2 :]\n')
+
+ns = {"__name__": "bpe_operations_instrumented", "counts": counts}
+exec(compile(transformed, str(source_path), 'exec'), ns)
+corpus_path = ROOT / 'bench/pyperformance/data/frankenstein_intro.txt'
+data = corpus_path.read_text()
+start = time.perf_counter()
+enc = ns['SimpleBytePairEncoding'].train(data, 1024, ns['BPE_PATTERN'])
+training_diagnostic_seconds = time.perf_counter() - start
+start = time.perf_counter()
+tokens = enc.encode(data)
+encoding_diagnostic_seconds = time.perf_counter() - start
+full_stdout = '\n'.join([
+    str(list(enc.mergeable_ranks.items())), str(tokens),
+    repr(enc.decode_bytes(tokens)), repr(enc.decode(tokens)),
+]) + '\n'
+oracle = json.loads((ROOT / 'examples/byte_bpe/results/2026-11-06-default.json').read_text())['oracle']['stdout']
+assert full_stdout == oracle
+assert enc.decode(tokens) == data
+report = {
+    "description": "Exact source-operation counts; instrumented wall times are diagnostic only, not benchmark evidence.",
+    "pr": 1107,
+    "commit": "3d0f56d82e3f7e3e0799d37e014f73391913f1ca",
+    "source_sha256": hashlib.sha256(source.encode()).hexdigest(),
+    "corpus_sha256": hashlib.sha256(corpus_path.read_bytes()).hexdigest(),
+    "corpus_bytes": len(corpus_path.read_bytes()), "vocab_size": 1024,
+    "decoded_token_count": len(tokens),
+    "complete_stdout_matches_pinned_pristine_oracle": True,
+    "stdout_sha256": hashlib.sha256(full_stdout.encode()).hexdigest(),
+    "counts": dict(sorted(counts.items())),
+    "diagnostic_wall_seconds_do_not_use_for_speedup": {
+        "training": training_diagnostic_seconds, "encoding": encoding_diagnostic_seconds},
+    "derived": {
+        "training_redundant_pair_key_allocations_lower_bound": counts['training_pair_visits'] - counts['training_unique_key_insertions'],
+        "training_tuple_allocation_sites_executed_in_raw_ir": counts['training_pair_visits'] + counts['training_rebuild_pair_comparisons'],
+        "encode_optional_int_box_sites_executed_in_raw_ir": counts['encode_successful_rank_lookups'] + 2 * counts['encode_new_minimum_updates'],
+    }
+}
+OUT.write_text(json.dumps(report, indent=2) + '\n')
+print(json.dumps(report, indent=2))

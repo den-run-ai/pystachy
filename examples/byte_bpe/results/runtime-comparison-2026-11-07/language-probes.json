@@ -1,0 +1,72 @@
+[
+  {
+    "name": "baseline",
+    "kind": "single_adaptation_reverted_in_complete_byte_bpe",
+    "returncode": 0,
+    "diagnostic": "",
+    "source_sha256": "9775aff77bb52efc6fb9828517ead0584552b1cba5afe73ef4d93e13972ca7de"
+  },
+  {
+    "name": "inferred_decoder_field",
+    "kind": "single_adaptation_reverted_in_complete_byte_bpe",
+    "returncode": 1,
+    "diagnostic": "/workspace/scratch/1d4aec3744ed/stages_warm.py:19: error: class bpe_tokeniser.SimpleBytePairEncoding is not supported: cannot infer the type of field '_decoder'; annotate it (self._decoder: T = ...)\n",
+    "source_sha256": "fdb3eaeccdc17cc95abb86fab73c536f6f9c6063658611345cb96d1ae3d9cfc9"
+  },
+  {
+    "name": "inferred_empty_ranks",
+    "kind": "single_adaptation_reverted_in_complete_byte_bpe",
+    "returncode": 0,
+    "diagnostic": "",
+    "source_sha256": "414cb8dfa163a0580a3c44176fff63f1754550964fdd33b0fcbf1c36a59cb83f"
+  },
+  {
+    "name": "inferred_empty_counter",
+    "kind": "single_adaptation_reverted_in_complete_byte_bpe",
+    "returncode": 1,
+    "diagnostic": "/workspace/scratch/1d4aec3744ed/bottlenecks/language_probes/inferred_empty_counter/bpe_tokeniser.py:105: error: Counter() does not bind its type variable '_T': no argument's type gives it; name it where the object goes (q: Counter[int] = Counter(...), a field or a parameter annotated so) or in the call (Counter[int](...)) (specializing collections.Counter(tuple[]) for the call at /workspace/scratch/1d4aec3744ed/bottlenecks/language_probes/inferred_empty_counter/bpe_tokeniser.py:105)\n",
+    "source_sha256": "17e354a1b3c17105cd8ffa30686242b23c163985082d2519bcff15cae46e0e06"
+  },
+  {
+    "name": "nested_enumerate_zip",
+    "kind": "single_adaptation_reverted_in_complete_byte_bpe",
+    "returncode": 1,
+    "diagnostic": "/workspace/scratch/1d4aec3744ed/bottlenecks/language_probes/nested_enumerate_zip/bpe_tokeniser.py:65: error: zip() cannot be nested in enumerate() here; make it a list first, list(zip(...))\n",
+    "source_sha256": "fe9021606e5f9ce686105dfddb24902b0295d2b38a03c43fe777f5fdcb4bac7c"
+  },
+  {
+    "name": "bytes_decode_keyword",
+    "kind": "single_adaptation_reverted_in_complete_byte_bpe",
+    "returncode": 1,
+    "diagnostic": "/workspace/scratch/1d4aec3744ed/bottlenecks/language_probes/bytes_decode_keyword/bpe_tokeniser.py:49: error: keyword arguments to bytes.decode() are not supported; pass them by position\n",
+    "source_sha256": "cb9a5f4dad27be0cb00c64b71d6cb5ebc501b1b3a66c82a86d22a8edd5939ef7"
+  },
+  {
+    "name": "json_load",
+    "kind": "minimal_source_probe",
+    "returncode": 1,
+    "diagnostic": "/workspace/scratch/1d4aec3744ed/bottlenecks/language_probes/json_load.py:3: error: module 'json' has no attribute 'load'\n",
+    "source_sha256": "9b9fd3747abb93e9f9b9256dba30885ffb4139bb740b77ed52b2a56196fdd064"
+  },
+  {
+    "name": "json_dump",
+    "kind": "minimal_source_probe",
+    "returncode": 1,
+    "diagnostic": "/workspace/scratch/1d4aec3744ed/bottlenecks/language_probes/json_dump.py:3: error: module 'json' has no attribute 'dump'\n",
+    "source_sha256": "ef2daecb17c7a9eed1e26dc72507c19d7579b9e774dbe0c0113b25667e410e99"
+  },
+  {
+    "name": "cached_method",
+    "kind": "minimal_source_probe",
+    "returncode": 1,
+    "diagnostic": "/workspace/scratch/1d4aec3744ed/bottlenecks/language_probes/cached_method.py:4: error: unsupported decorator @lru_cache\n",
+    "source_sha256": "140b2f2f329d08297bd5529bd94383ff8ad9ba6ca583625663261382109a14c5"
+  },
+  {
+    "name": "cached_top_level",
+    "kind": "minimal_source_probe",
+    "returncode": 0,
+    "diagnostic": "",
+    "source_sha256": "ba9aa8ea127def58c2474d50f047cb203c0450fa48b0713e0b3c347f035d13b3"
+  }
+]

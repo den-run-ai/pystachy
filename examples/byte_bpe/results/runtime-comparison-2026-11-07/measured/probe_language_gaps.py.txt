@@ -1,0 +1,46 @@
+"""Recheck the exact five port adaptations and small companion API gaps."""
+import hashlib
+import json
+import os
+from pathlib import Path
+import subprocess
+
+ROOT=Path('/workspace/scratch/1d4aec3744ed')
+REPO=ROOT/'pystachy'
+OUT=ROOT/'bottlenecks/language_probes'
+OUT.mkdir(exist_ok=True)
+source=(REPO/'bench/pyperformance/bpe_tokeniser.py').read_text()
+variations={
+ 'baseline':None,
+ 'inferred_decoder_field':('self._decoder: dict[int, bytes] =','self._decoder ='),
+ 'inferred_empty_ranks':('ranks: dict[bytes, int] = {}','ranks = {}'),
+ 'inferred_empty_counter':('collections.Counter[tuple[bytes, bytes]]()','collections.Counter()'),
+ 'nested_enumerate_zip':('enumerate(list(zip(parts[:-1], parts[1:])))','enumerate(zip(parts[:-1], parts[1:]))'),
+ 'bytes_decode_keyword':('.decode("utf-8", "replace")','.decode("utf-8", errors="replace")'),
+}
+extras={
+ 'json_load':'import json\nwith open("input.json") as stream:\n    print(json.load(stream))\n',
+ 'json_dump':'import json\nwith open("/dev/null", "w") as stream:\n    json.dump(1, stream)\n',
+ 'cached_method':'from functools import lru_cache\nclass Tokenizer:\n    @lru_cache(maxsize=None)\n    def cached(self, word: str) -> int:\n        return len(word)\nprint(Tokenizer().cached("example"))\n',
+ 'cached_top_level':'from functools import lru_cache\n@lru_cache(maxsize=None)\ndef cached(word: str) -> int:\n    return len(word)\nprint(cached("example"))\n',
+}
+env={k:v for k,v in os.environ.items() if not k.startswith(('PYSTACHY_','PYPY_')) and k not in ('PYTHONPATH','PYTHONHOME')}
+env['PYSTACHY_HOME']=str(REPO)
+records=[]
+for name,change in variations.items():
+    folder=OUT/name
+    folder.mkdir(exist_ok=True)
+    variant=source
+    if change:
+        assert source.count(change[0]) == 1
+        variant=variant.replace(*change)
+    (folder/'bpe_tokeniser.py').write_text(variant)
+    p=subprocess.run([str(REPO/'pystachy'),'ir',str(ROOT/'stages_warm.py'),'-o',str(folder/'probe.ll')],env=dict(env,PYSTACHY_PATH=str(folder)),capture_output=True,text=True)
+    records.append({'name':name,'kind':'single_adaptation_reverted_in_complete_byte_bpe','returncode':p.returncode,'diagnostic':p.stderr,'source_sha256':hashlib.sha256(variant.encode()).hexdigest()})
+for name,text in extras.items():
+    file=OUT/(name+'.py')
+    file.write_text(text)
+    p=subprocess.run([str(REPO/'pystachy'),'ir',str(file),'-o',str(OUT/(name+'.ll'))],env=env,capture_output=True,text=True)
+    records.append({'name':name,'kind':'minimal_source_probe','returncode':p.returncode,'diagnostic':p.stderr,'source_sha256':hashlib.sha256(text.encode()).hexdigest()})
+(OUT/'results.json').write_text(json.dumps(records,indent=2)+'\n')
+print(json.dumps(records,indent=2))

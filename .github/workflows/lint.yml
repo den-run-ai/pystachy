@@ -81,7 +81,9 @@ jobs:
         run: python3 -m unittest discover -s tools -p 'test_runtime_*.py'
 
       - name: pyperformance runner and port record tests
-        run: python3 -m unittest discover -s tools -p test_bench_pyperformance.py
+        run: |
+          python3 -m unittest discover -s tools -p test_bench_pyperformance.py
+          python3 -m unittest discover -s tools -p test_byte_bpe_comparison.py
 
       - name: Performance smoke comparison tests
         run: python3 -m unittest discover -s tools -p test_perf_smoke.py

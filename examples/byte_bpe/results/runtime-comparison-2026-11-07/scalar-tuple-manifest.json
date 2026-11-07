@@ -1,0 +1,111 @@
+{
+  "source_sha256": "ba5a7eb209668b3fcbd2ca6952ec6199ab06466e4ad27e836f5ad01a3eab9155",
+  "baseline_source_sha256": "9775aff77bb52efc6fb9828517ead0584552b1cba5afe73ef4d93e13972ca7de",
+  "note": "Only tuple equality rewritten as two bytes comparisons. Operands here are exact built-in bytes in a typed list. No algorithm change. Tests below check the complete output. No performance claim from this build/verification run.",
+  "environment_overrides": {
+    "PYTHONHASHSEED": "0",
+    "PYTHONPATH": "/workspace/scratch/1d4aec3744ed/bottlenecks/scalar_tuple",
+    "PYSTACHY_HOME": "/workspace/scratch/1d4aec3744ed/pystachy",
+    "PYSTACHY_PATH": "/workspace/scratch/1d4aec3744ed/bottlenecks/scalar_tuple",
+    "PYSTACHY_LLVM": "/workspace/scratch/c154e74884e5/llvm-cache/ubuntu-18.1.3-1ubuntu1-amd64/bin",
+    "PYSTACHY_CACHE": "/workspace/scratch/1d4aec3744ed/native/runtime-cache",
+    "PYSTACHY_PROGRAM_CACHE": "0"
+  },
+  "runs": [
+    {
+      "name": "build-stages",
+      "command": [
+        "/workspace/scratch/1d4aec3744ed/pystachy/pystachy",
+        "build",
+        "/workspace/scratch/1d4aec3744ed/stages_warm.py",
+        "-o",
+        "/workspace/scratch/1d4aec3744ed/bottlenecks/scalar_tuple/stages"
+      ],
+      "returncode": 0,
+      "wall_seconds": 6.318701285003044,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr": ""
+    },
+    {
+      "name": "build-correctness",
+      "command": [
+        "/workspace/scratch/1d4aec3744ed/pystachy/pystachy",
+        "build",
+        "/workspace/scratch/1d4aec3744ed/pystachy/tests/programs/apps/byte_bpe.py",
+        "-o",
+        "/workspace/scratch/1d4aec3744ed/bottlenecks/scalar_tuple/correctness"
+      ],
+      "returncode": 0,
+      "wall_seconds": 6.495353937993059,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr": ""
+    },
+    {
+      "name": "cpython-fixture",
+      "command": [
+        "/workspace/scratch/c154e74884e5/venv/bin/python",
+        "/workspace/scratch/1d4aec3744ed/pystachy/tests/programs/apps/byte_bpe.py"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.02872220599965658,
+      "stdout_sha256": "4404fc17b7367309f827cc4ff52dd9f2c85aa54b90ddcde17d9ad13c0b0a91da",
+      "stderr": "",
+      "stdout_matches_expected": true
+    },
+    {
+      "name": "native-fixture",
+      "command": [
+        "/workspace/scratch/1d4aec3744ed/bottlenecks/scalar_tuple/correctness"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.004115472998819314,
+      "stdout_sha256": "4404fc17b7367309f827cc4ff52dd9f2c85aa54b90ddcde17d9ad13c0b0a91da",
+      "stderr": "",
+      "stdout_matches_expected": true
+    },
+    {
+      "name": "native-fixture-gcstress",
+      "command": [
+        "/workspace/scratch/1d4aec3744ed/bottlenecks/scalar_tuple/correctness"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.39369594699383015,
+      "stdout_sha256": "4404fc17b7367309f827cc4ff52dd9f2c85aa54b90ddcde17d9ad13c0b0a91da",
+      "stderr": "",
+      "stdout_matches_expected": true
+    },
+    {
+      "name": "native-full-corpus",
+      "command": [
+        "/workspace/scratch/1d4aec3744ed/bottlenecks/scalar_tuple/stages",
+        "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+        "1024",
+        "1",
+        "1"
+      ],
+      "returncode": 0,
+      "wall_seconds": 2.588951271995029,
+      "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+      "stderr": "first_train 0.7402117330057081\nsecond_train 0.8145778730031452\ntrain 0.7718474510038504\nencode 0.011568849004106596\ndecode 0.00015544000052614138\n",
+      "stdout_matches_expected": true
+    },
+    {
+      "name": "ir",
+      "command": [
+        "/workspace/scratch/1d4aec3744ed/pystachy/pystachy",
+        "ir",
+        "/workspace/scratch/1d4aec3744ed/stages_warm.py",
+        "-o",
+        "/workspace/scratch/1d4aec3744ed/bottlenecks/scalar_tuple/stages.ll"
+      ],
+      "returncode": 0,
+      "wall_seconds": 0.21949014900019392,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr": ""
+    }
+  ],
+  "harness_note": "Initial comparison included recording-only [exit 0] marker. Compare stdout separately from status after removing that marker; initial evidence retained.",
+  "stages_sha256": "8a17a0e016f2930065c4d608d66cc7951300aafe6a9e29bf096d1cc7d8698909",
+  "correctness_sha256": "6d8a598c77581843c54e89e78d3c8c05fc6850ebd924f5cba5c00ba5ed6e313b",
+  "stages.ll_sha256": "0486ae69794849959a37172970306ddadb5b56b9e41a075937203bb4353cbfe0"
+}
