@@ -1,0 +1,57 @@
+{
+  "python": "3.13.16",
+  "cython": "3.3.1",
+  "mypy": "2.4.1",
+  "setuptools": "80.9.0",
+  "gcc": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0",
+  "original_sha256": "c7255345499e118181785370b0996e8cc1056491b9678b3fbeb02421e3f9b2df",
+  "corpus_sha256": "6607193e67b7b459d082f5f2aea724e470615643d63ad2e205123b3076223da4",
+  "modes": {
+    "cython_original": {
+      "module": "/workspace/scratch/1d4aec3744ed/comparators/cython_original/bpe_tokeniser.cpython-313-x86_64-linux-gnu.so",
+      "module_sha256": "6e115d03bddd2a3b26cfc0ee87829f727bb1b2d8216930b991e6ff3c48f83e59",
+      "source_sha256": "c7255345499e118181785370b0996e8cc1056491b9678b3fbeb02421e3f9b2df",
+      "build_command": "../venv/bin/python setup.py build_ext --force --inplace",
+      "flags": "-O3",
+      "correctness_sha256": "b4d9adec5646f5b9057b04e3fa959c93683d5ea996297d4c7b40a7c67a9c4280"
+    },
+    "mypyc_original": {
+      "module": "/workspace/scratch/1d4aec3744ed/comparators/mypyc_original/bpe_tokeniser.cpython-313-x86_64-linux-gnu.so",
+      "module_sha256": "f0a2a2c97d72ae7588d5741240f044f158b3ee2da5e745455ad2e52038ff0ca3",
+      "source_sha256": "5c6daefb08269934beab79bbd62dc81842e26e82ce536e74a6096a216d730764",
+      "build_command": "../venv/bin/python setup.py build_ext --force --inplace",
+      "flags": "-O3",
+      "correctness_sha256": "b4d9adec5646f5b9057b04e3fa959c93683d5ea996297d4c7b40a7c67a9c4280"
+    },
+    "cython_adapted": {
+      "module": "/workspace/scratch/1d4aec3744ed/comparators/cython_adapted/bpe_tokeniser.cpython-313-x86_64-linux-gnu.so",
+      "module_sha256": "d2ed622da3d33d141528f4e29ea71012cc787a38adcbf2ece60d79a222373de1",
+      "source_sha256": "9775aff77bb52efc6fb9828517ead0584552b1cba5afe73ef4d93e13972ca7de",
+      "build_command": "../venv/bin/python setup.py build_ext --force --inplace",
+      "flags": "-O3",
+      "correctness_sha256": "b4d9adec5646f5b9057b04e3fa959c93683d5ea996297d4c7b40a7c67a9c4280"
+    },
+    "cython_scalar": {
+      "module": "/workspace/scratch/1d4aec3744ed/comparators/cython_scalar/bpe_tokeniser.cpython-313-x86_64-linux-gnu.so",
+      "module_sha256": "8580afccbb33ecba743e812a9845028ae3d241674367b1eb317b0e2a7519c3de",
+      "source_sha256": "5da6c2151bb957e5477c14d430c816ff293bd3e8b64e4ae8720a1248da6be0c4",
+      "build_command": "../venv/bin/python setup.py build_ext --force --inplace",
+      "flags": "-O3; language_level=3; overflowcheck,boundscheck,wraparound,initializedcheck=True",
+      "scalar_types": {
+        "bpe_encode": [
+          "i: Py_ssize_t",
+          "b: uchar"
+        ],
+        "bpe_train": [
+          "i: Py_ssize_t",
+          "token: Py_ssize_t"
+        ]
+      },
+      "correctness_sha256": "b4d9adec5646f5b9057b04e3fa959c93683d5ea996297d4c7b40a7c67a9c4280"
+    }
+  },
+  "upgraded_from": {
+    "cython": "3.1.8",
+    "mypy": "2.4.0"
+  }
+}

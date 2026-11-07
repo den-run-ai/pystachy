@@ -1,0 +1,112 @@
+"""Run an isolated, interleaved diagnostic encoding decomposition."""
+from pathlib import Path
+import hashlib
+import json
+import math
+import os
+import platform
+import statistics
+import subprocess
+import time
+
+ROOT=Path('/workspace/scratch/1d4aec3744ed')
+REPO=ROOT/'pystachy'
+OUT=ROOT/'bottlenecks/decompose'
+PYTHON='/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13'
+PYPY='/root/.local/share/uv/python/pypy-3.11.17-linux-x86_64-gnu/bin/pypy3.11'
+LLVM='/workspace/scratch/c154e74884e5/llvm-cache/ubuntu-18.1.3-1ubuntu1-amd64/bin'
+CORPUS=REPO/'bench/pyperformance/data/frankenstein_intro.txt'
+COMPILER=REPO/'pystachy'
+LOOPS=50
+WARMUPS=20
+PHASES=('regex','utf8','merge','full')
+
+def digest(path):
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+env={k:v for k,v in os.environ.items() if not k.startswith(('PYSTACHY_','PYPY_')) and k not in ('PYTHONPATH','PYTHONHOME')}
+env.update(PYTHONHASHSEED='0',PYTHONDONTWRITEBYTECODE='1',PYSTACHY_HOME=str(REPO),PYSTACHY_PATH=str(REPO/'bench/pyperformance'),PYSTACHY_LLVM=LLVM,PYSTACHY_CACHE=str(ROOT/'native/runtime-cache'),PYSTACHY_PROGRAM_CACHE='0')
+inputs={'driver':OUT/'stages.py','original_kernel':ROOT/'original/bpe_tokeniser.py','adapted_kernel':REPO/'bench/pyperformance/bpe_tokeniser.py','corpus':CORPUS,'compiler':COMPILER}
+source_hashes={name:digest(path) for name,path in inputs.items()}
+allowed=sorted(os.sched_getaffinity(0))
+os.sched_setaffinity(0,{0})
+versions={name:subprocess.check_output([path,'--version'],env=env,text=True).strip() for name,path in [('cpython',PYTHON),('pypy',PYPY)]}
+versions['clang']=subprocess.check_output([LLVM+'/clang','--version'],env=env,text=True).splitlines()[0]
+versions['opt']=subprocess.check_output([LLVM+'/opt','--version'],env=env,text=True).splitlines()[0]
+record={'status':'running','description':'Diagnostic encoding phases; isolated-phase timings are not guaranteed additive. Model training, I/O, output and comparisons excluded from timers.',
+        'versions':versions,'platform':platform.platform(),'cpu_affinity':[0],'initial_allowed_affinity':allowed,'load_average_start':os.getloadavg(),
+        'processes_per_mode':3,'phase_order':list(PHASES),'measured_loops_per_phase':LOOPS,'warmups_per_phase':WARMUPS,
+        'setup_encodes_outside_warmups':{'full':1,'merge':1},'corpus_bytes':CORPUS.stat().st_size,'vocab_size':1024,
+        'source_hashes':source_hashes,'source_paths':{name:str(path) for name,path in inputs.items()},
+        'environment_overrides':{k:v for k,v in env.items() if k.startswith(('PYSTACHY_','PYPY_')) or k in ('PYTHONHASHSEED','PYTHONDONTWRITEBYTECODE')},
+        'runs':[]}
+for line in Path('/proc/cpuinfo').read_text().splitlines():
+    if line.startswith('model name'):
+        record['cpu_model']=line.split(':',1)[1].strip()
+        break
+
+def save():
+    (OUT/'results.json').write_text(json.dumps(record,indent=2)+'\n')
+
+command=[str(COMPILER),'build',str(OUT/'stages.py'),'-o',str(OUT/'stages')]
+start=time.perf_counter()
+p=subprocess.run(command,env=env,cwd=REPO,text=True,capture_output=True,timeout=180)
+(OUT/'build.stdout').write_text(p.stdout)
+(OUT/'build.stderr').write_text(p.stderr)
+record['build']={'command':command,'returncode':p.returncode,'wall_seconds':time.perf_counter()-start,'stderr':p.stderr}
+save()
+assert p.returncode==0, p.stderr
+record['binary_sha256']=digest(OUT/'stages')
+print('build passed',flush=True)
+oracle=json.loads((REPO/'examples/byte_bpe/results/2026-11-06-default.json').read_text())['oracle']['stdout']
+assert len(oracle.splitlines(keepends=True))==4
+expected_six=None
+modes={
+ 'cpython_original':([PYTHON,str(OUT/'stages.py')],dict(env,PYTHONPATH=str(ROOT/'original'))),
+ 'pypy_original':([PYPY,str(OUT/'stages.py')],dict(env,PYTHONPATH=str(ROOT/'original'))),
+ 'pystachy_aot':([str(OUT/'stages')],env),
+}
+orders=[['cpython_original','pypy_original','pystachy_aot'],['pypy_original','pystachy_aot','cpython_original'],['pystachy_aot','cpython_original','pypy_original']]
+record['run_order']=orders
+for round_id,order in enumerate(orders):
+    for mode in order:
+        prefix,run_env=modes[mode]
+        cmd=prefix+[str(CORPUS),'1024',str(LOOPS),str(WARMUPS),'all']
+        start=time.perf_counter()
+        p=subprocess.run(cmd,env=run_env,cwd=REPO,text=True,capture_output=True,timeout=180)
+        wall=time.perf_counter()-start
+        label=f'{round_id}-{mode}'
+        (OUT/f'{label}.stdout').write_text(p.stdout)
+        (OUT/f'{label}.stderr').write_text(p.stderr)
+        lines=p.stdout.splitlines(keepends=True)
+        if expected_six is None and mode=='cpython_original':
+            expected_six=p.stdout
+        timings={}
+        for line in p.stderr.splitlines():
+            fields=line.split()
+            assert len(fields)==2 and fields[0] in PHASES and fields[0] not in timings, (mode,p.stderr)
+            seconds=float(fields[1])
+            assert math.isfinite(seconds) and seconds>=0, (mode,line)
+            timings[fields[0]]=seconds/LOOPS
+        r={'mode':mode,'round':round_id,'command':cmd,'returncode':p.returncode,'wall_seconds':wall,
+           'stdout_sha256':hashlib.sha256(p.stdout.encode()).hexdigest(),'stdout_lines':len(lines),
+           'first_four_match_existing_oracle':''.join(lines[:4])==oracle,'six_lines_match_pristine_cpython':p.stdout==expected_six,
+           'stderr':p.stderr,'per_operation_seconds':timings,'load_average_after':os.getloadavg()}
+        record['runs'].append(r)
+        save()
+        assert p.returncode==0 and len(lines)==6 and r['first_four_match_existing_oracle'] and r['six_lines_match_pristine_cpython'], r
+        assert set(timings)==set(PHASES), r
+        print(round_id,mode, {k:round(v*1000,3) for k,v in timings.items()},flush=True)
+record['summary']={}
+for mode in modes:
+    summary={}
+    for phase in PHASES:
+        samples=[r['per_operation_seconds'][phase]*1000 for r in record['runs'] if r['mode']==mode]
+        summary[phase]={'median_ms':statistics.median(samples),'range_ms':[min(samples),max(samples)],'samples_ms':samples}
+    record['summary'][mode]=summary
+record['source_hashes_after']={name:digest(path) for name,path in inputs.items()}
+assert record['source_hashes_after']==source_hashes
+record['active_comparison_sources_unchanged']=True
+record['status']='passed'
+save()
+print(json.dumps(record['summary'],indent=2))

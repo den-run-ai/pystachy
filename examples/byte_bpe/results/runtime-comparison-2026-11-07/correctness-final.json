@@ -1,0 +1,63 @@
+[
+  {
+    "name": "build-correctness-final",
+    "command": [
+      "/workspace/scratch/1d4aec3744ed/pystachy/pystachy",
+      "build",
+      "/workspace/scratch/1d4aec3744ed/correctness.py",
+      "-o",
+      "/workspace/scratch/1d4aec3744ed/native/correctness"
+    ],
+    "returncode": 0,
+    "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stderr": ""
+  },
+  {
+    "name": "correctness-original-final",
+    "command": [
+      "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+      "/workspace/scratch/1d4aec3744ed/correctness.py"
+    ],
+    "returncode": 0,
+    "stdout_sha256": "4404fc17b7367309f827cc4ff52dd9f2c85aa54b90ddcde17d9ad13c0b0a91da",
+    "stderr": ""
+  },
+  {
+    "name": "correctness-pypy-final",
+    "command": [
+      "/root/.local/share/uv/python/pypy-3.11.17-linux-x86_64-gnu/bin/pypy3.11",
+      "/workspace/scratch/1d4aec3744ed/correctness.py"
+    ],
+    "returncode": 0,
+    "stdout_sha256": "67fc8a17d958ad565f6696f3b8bc69e57f6add25803dfeab02e06bd64154b601",
+    "stderr": ""
+  },
+  {
+    "name": "correctness-adapted-final",
+    "command": [
+      "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+      "/workspace/scratch/1d4aec3744ed/correctness.py"
+    ],
+    "returncode": 0,
+    "stdout_sha256": "4404fc17b7367309f827cc4ff52dd9f2c85aa54b90ddcde17d9ad13c0b0a91da",
+    "stderr": ""
+  },
+  {
+    "name": "correctness-aot-final",
+    "command": [
+      "/workspace/scratch/1d4aec3744ed/native/correctness"
+    ],
+    "returncode": 0,
+    "stdout_sha256": "4404fc17b7367309f827cc4ff52dd9f2c85aa54b90ddcde17d9ad13c0b0a91da",
+    "stderr": ""
+  },
+  {
+    "name": "correctness-aot-gcstress-final",
+    "command": [
+      "/workspace/scratch/1d4aec3744ed/native/correctness"
+    ],
+    "returncode": 0,
+    "stdout_sha256": "4404fc17b7367309f827cc4ff52dd9f2c85aa54b90ddcde17d9ad13c0b0a91da",
+    "stderr": ""
+  }
+]

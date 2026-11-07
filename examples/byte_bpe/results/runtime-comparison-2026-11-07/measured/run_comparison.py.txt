@@ -1,0 +1,137 @@
+"""Run verified byte-BPE implementations serially, interleaved, on one core.
+
+All timed functions use the original algorithm. The optional scalar-tuple AOT
+mode is a separately labelled source-shape experiment. Kernel outputs are
+compared in full, including ordered vocabularies, before accepting every sample.
+"""
+import argparse
+import hashlib
+import importlib.util
+import json
+import math
+import os
+from pathlib import Path
+import platform
+import statistics
+import subprocess
+import sys
+import time
+
+from prepare_native import ROOT, REPO, PYTHON, PYPY, LLVM, clean_env, sha
+
+spec = importlib.util.spec_from_file_location('original_harness', REPO / 'examples/byte_bpe/benchmark.py')
+h = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(h)
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--processes', type=int, default=5)
+    parser.add_argument('--cpu', type=int, default=0)
+    parser.add_argument('--modes', default='all')
+    parser.add_argument('--output', type=Path, default=ROOT / 'evidence/comparison.json')
+    args = parser.parse_args()
+    os.sched_setaffinity(0, {args.cpu})
+    source = ROOT / 'stages_warm.py'
+    corpus = REPO / 'bench/pyperformance/data/frankenstein_intro.txt'
+    runargs = [str(corpus), '1024', '50', '200']
+    venv = ROOT / 'comparators/venv/bin/python'
+    helper = ROOT / 'comparators/run_mode.py'
+    env = clean_env()
+    modes = {
+        'cpython_original': ([PYTHON, str(source), *runargs], dict(env, PYTHONPATH=str(ROOT / 'original'))),
+        'cpython_adapted': ([PYTHON, str(source), *runargs], dict(env, PYTHONPATH=str(REPO / 'bench/pyperformance'))),
+        'cython_original': ([str(venv), str(helper), 'cython_original', str(source), *runargs], env),
+        'cython_scalar': ([str(venv), str(helper), 'cython_scalar', str(source), *runargs], env),
+        'cython_adapted': ([str(venv), str(helper), 'cython_adapted', str(source), *runargs], env),
+        'mypyc_original': ([str(venv), str(helper), 'mypyc_original', str(source), *runargs], env),
+        'pypy_original': ([PYPY, str(source), *runargs], dict(env, PYTHONPATH=str(ROOT / 'original'))),
+        'pystachy_aot': ([str(ROOT / 'native/stages'), *runargs], env),
+        'pystachy_scalar_tuple': ([str(ROOT / 'bottlenecks/scalar_tuple/stages'), *runargs], env),
+        'pystachy_jit': ([str(REPO / 'pystachy'), 'run', str(source), *runargs], env),
+        'pystachy_jit_inline100k': ([str(REPO / 'pystachy'), 'run', str(source), *runargs], dict(env, PYSTACHY_JIT_INLINE='100000')),
+    }
+    if args.modes == 'all':
+        selected = list(modes)[:-2]
+    else:
+        selected = args.modes.split(',')
+    for name in selected:
+        if name not in modes:
+            parser.error('unknown mode ' + name)
+    inputs = [source, corpus, ROOT / 'original/bpe_tokeniser.py', REPO / 'bench/pyperformance/bpe_tokeniser.py',
+              REPO / 'pystachy', ROOT / 'native/stages', ROOT / 'comparators/manifest.json',
+              ROOT / 'bottlenecks/scalar_tuple/bpe_tokeniser.py', ROOT / 'bottlenecks/scalar_tuple/stages']
+    inputs += sorted((ROOT / 'comparators').glob('*/bpe_tokeniser.*.so'))
+    hashes = {str(p): sha(p) for p in inputs if p.is_file()}
+    report = {
+        'status': 'running', 'created_utc': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
+        'git_revision': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=REPO, text=True).strip(),
+        'cpu': args.cpu, 'cpu_model': next(s.split(':',1)[1].strip() for s in Path('/proc/cpuinfo').read_text().splitlines() if s.startswith('model name')),
+        'platform': platform.platform(), 'load_average_start': os.getloadavg(),
+        'environment': {k:v for k,v in env.items() if k.startswith('PYSTACHY_') or k in ('PYTHONHASHSEED','PYTHONDONTWRITEBYTECODE')},
+        'versions': {name:subprocess.check_output([path,'--version'],text=True).strip() for name,path in [('cpython',PYTHON),('pypy',PYPY)]},
+        'input_sha256': hashes,
+        'workload': {'corpus_bytes':corpus.stat().st_size, 'vocab_size':1024, 'processes':args.processes,
+                     'train_warmups':2, 'encode_warmups':20, 'decode_warmups':100,
+                     'train_loops':1, 'encode_loops':50, 'decode_loops':200,
+                     'first_train_and_second_train': 'recorded separately, excluded from warmed train metric'},
+        'rss_definition': 'Linux main-process VmHWM after command installed; sampled every approximately 5 ms; includes warmups and interpreted launcher, excludes child compiler processes',
+        'wall_definition': 'whole process, including all warmups, I/O, imports, output validation and compiler where relevant; not single-query latency',
+        'samples': {name:[] for name in selected}, 'order': [],
+    }
+    output = args.output
+    output.parent.mkdir(parents=True, exist_ok=True)
+    def save():
+        tmp = output.with_suffix('.tmp')
+        tmp.write_text(json.dumps(report,indent=2)+'\n')
+        tmp.replace(output)
+    save()
+    oracle_path = ROOT / 'evidence/full-output-oracle.txt'
+    expected = oracle_path.read_text() if oracle_path.exists() else None
+    for repeat in range(args.processes):
+        order = selected[repeat % len(selected):] + selected[:repeat % len(selected)]
+        if repeat % 2:
+            order = list(reversed(order))
+        report['order'].append(order)
+        for name in order:
+            cmd, runenv = modes[name]
+            r = h.run(cmd, runenv, 180)
+            if expected is None:
+                if name != 'cpython_original':
+                    raise RuntimeError('first accepted oracle must be original CPython')
+                expected = r['stdout']
+                if len(expected.splitlines()) != 4:
+                    raise RuntimeError('incomplete oracle state')
+                oracle_path.write_text(expected)
+            if r['stdout'] != expected:
+                (ROOT / 'evidence' / (name + '-mismatch.txt')).write_text(r['stdout'])
+                raise RuntimeError('complete state mismatch: ' + name)
+            times = {}
+            for row in r['stderr'].splitlines():
+                key, value = row.split()
+                value = float(value)
+                if key not in ('first_train','second_train','train','encode','decode') or not math.isfinite(value) or value <= 0:
+                    raise RuntimeError('invalid timing row: ' + row)
+                times[key] = value
+            if set(times) != {'first_train','second_train','train','encode','decode'}:
+                raise RuntimeError('incomplete timing rows')
+            for stage, divisor in [('first_train',1),('second_train',1),('train',1),('encode',50),('decode',200)]:
+                r[stage+'_seconds'] = times[stage]/divisor
+            del r['stdout']
+            r['round'] = repeat
+            r['load_average_after'] = os.getloadavg()
+            report['samples'][name].append(r)
+            save()
+            print(f"{repeat+1}/{args.processes} {name}: train {r['train_seconds']*1000:.3f} ms; encode {r['encode_seconds']*1000:.3f}; decode {r['decode_seconds']*1000:.3f}; full state matches",flush=True)
+    report['summary'] = {}
+    metrics = ['first_train_seconds','second_train_seconds','train_seconds','encode_seconds','decode_seconds','wall_seconds','cpu_seconds','sampled_main_rss_kib']
+    for name, rows in report['samples'].items():
+        report['summary'][name] = {metric:{'median':statistics.median(r[metric] for r in rows),'min':min(r[metric] for r in rows),'max':max(r[metric] for r in rows)} for metric in metrics if all(r.get(metric) is not None for r in rows)}
+    for path, digest in hashes.items():
+        if sha(path) != digest:
+            raise RuntimeError('input changed while measuring: ' + path)
+    report.update(status='passed', oracle_sha256=sha(oracle_path), load_average_end=os.getloadavg())
+    save()
+    print('Saved',output,flush=True)
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,537 @@
+{
+  "status": "passed",
+  "description": "Diagnostic encoding phases; isolated-phase timings are not guaranteed additive. Model training, I/O, output and comparisons excluded from timers.",
+  "versions": {
+    "cpython": "Python 3.13.16",
+    "pypy": "Python 3.11.17 (ec82f20141cf, Oct 13 2026, 15:02:27)\n[PyPy 8.0.1 with GCC 14.2.1 20250110 (Red Hat 14.2.1-11)]",
+    "clang": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+    "opt": "Ubuntu LLVM version 18.1.3"
+  },
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.39",
+  "cpu_affinity": [
+    0
+  ],
+  "initial_allowed_affinity": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+  ],
+  "load_average_start": [
+    0.73876953125,
+    2.30419921875,
+    2.24951171875
+  ],
+  "processes_per_mode": 3,
+  "phase_order": [
+    "regex",
+    "utf8",
+    "merge",
+    "full"
+  ],
+  "measured_loops_per_phase": 50,
+  "warmups_per_phase": 20,
+  "setup_encodes_outside_warmups": {
+    "full": 1,
+    "merge": 1
+  },
+  "corpus_bytes": 31206,
+  "vocab_size": 1024,
+  "source_hashes": {
+    "driver": "5bf23cd3f63770ce3289bfe1ea4c9661015c6c9362df9d3599550b5902f7b44c",
+    "original_kernel": "ab44d9b2600ee956f8464d0a1d299641cdd552c40c60e64e91310ae8e6ba235e",
+    "adapted_kernel": "9775aff77bb52efc6fb9828517ead0584552b1cba5afe73ef4d93e13972ca7de",
+    "corpus": "6607193e67b7b459d082f5f2aea724e470615643d63ad2e205123b3076223da4",
+    "compiler": "3b59b4e875a89f15777395f5993ccf2e6d51e934dbc7a4e45228d622c7f1cff7"
+  },
+  "source_paths": {
+    "driver": "/workspace/scratch/1d4aec3744ed/bottlenecks/decompose/stages.py",
+    "original_kernel": "/workspace/scratch/1d4aec3744ed/original/bpe_tokeniser.py",
+    "adapted_kernel": "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/bpe_tokeniser.py",
+    "corpus": "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+    "compiler": "/workspace/scratch/1d4aec3744ed/pystachy/pystachy"
+  },
+  "environment_overrides": {
+    "PYTHONHASHSEED": "0",
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "PYSTACHY_HOME": "/workspace/scratch/1d4aec3744ed/pystachy",
+    "PYSTACHY_PATH": "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance",
+    "PYSTACHY_LLVM": "/workspace/scratch/c154e74884e5/llvm-cache/ubuntu-18.1.3-1ubuntu1-amd64/bin",
+    "PYSTACHY_CACHE": "/workspace/scratch/1d4aec3744ed/native/runtime-cache",
+    "PYSTACHY_PROGRAM_CACHE": "0"
+  },
+  "runs": [
+    {
+      "mode": "cpython_original",
+      "round": 0,
+      "command": [
+        "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+        "/workspace/scratch/1d4aec3744ed/bottlenecks/decompose/stages.py",
+        "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+        "1024",
+        "50",
+        "20",
+        "all"
+      ],
+      "returncode": 0,
+      "wall_seconds": 7.775813123997068,
+      "stdout_sha256": "056f595d23a58e9eebebc9c59192e2d293b029a9f6cff27da8af2961de81f1e2",
+      "stdout_lines": 6,
+      "first_four_match_existing_oracle": true,
+      "six_lines_match_pristine_cpython": true,
+      "stderr": "regex 0.04723129199555842\nutf8 0.015071540998178534\nmerge 1.3327363449934637\nfull 1.41065250900283\n",
+      "per_operation_seconds": {
+        "regex": 0.0009446258399111684,
+        "utf8": 0.00030143081996357067,
+        "merge": 0.026654726899869273,
+        "full": 0.028213050180056598
+      },
+      "load_average_after": [
+        0.95751953125,
+        2.2734375,
+        2.240234375
+      ]
+    },
+    {
+      "mode": "pypy_original",
+      "round": 0,
+      "command": [
+        "/root/.local/share/uv/python/pypy-3.11.17-linux-x86_64-gnu/bin/pypy3.11",
+        "/workspace/scratch/1d4aec3744ed/bottlenecks/decompose/stages.py",
+        "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+        "1024",
+        "50",
+        "20",
+        "all"
+      ],
+      "returncode": 0,
+      "wall_seconds": 2.902105841996672,
+      "stdout_sha256": "056f595d23a58e9eebebc9c59192e2d293b029a9f6cff27da8af2961de81f1e2",
+      "stdout_lines": 6,
+      "first_four_match_existing_oracle": true,
+      "six_lines_match_pristine_cpython": true,
+      "stderr": "regex 0.05795347999810474\nutf8 0.0017719899988151155\nmerge 0.34975319400109584\nfull 0.40778661299555097\n",
+      "per_operation_seconds": {
+        "regex": 0.0011590695999620947,
+        "utf8": 3.543979997630231e-05,
+        "merge": 0.006995063880021917,
+        "full": 0.008155732259911019
+      },
+      "load_average_after": [
+        0.9609375,
+        2.251953125,
+        2.2333984375
+      ]
+    },
+    {
+      "mode": "pystachy_aot",
+      "round": 0,
+      "command": [
+        "/workspace/scratch/1d4aec3744ed/bottlenecks/decompose/stages",
+        "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+        "1024",
+        "50",
+        "20",
+        "all"
+      ],
+      "returncode": 0,
+      "wall_seconds": 2.4892384740014677,
+      "stdout_sha256": "056f595d23a58e9eebebc9c59192e2d293b029a9f6cff27da8af2961de81f1e2",
+      "stdout_lines": 6,
+      "first_four_match_existing_oracle": true,
+      "six_lines_match_pristine_cpython": true,
+      "stderr": "regex 0.05321378299413482\nutf8 0.04679081899666926\nmerge 0.45967775600001914\nfull 0.5935590809967835\n",
+      "per_operation_seconds": {
+        "regex": 0.0010642756598826964,
+        "utf8": 0.0009358163799333852,
+        "merge": 0.009193555120000384,
+        "full": 0.011871181619935669
+      },
+      "load_average_after": [
+        0.9609375,
+        2.251953125,
+        2.2333984375
+      ]
+    },
+    {
+      "mode": "pypy_original",
+      "round": 1,
+      "command": [
+        "/root/.local/share/uv/python/pypy-3.11.17-linux-x86_64-gnu/bin/pypy3.11",
+        "/workspace/scratch/1d4aec3744ed/bottlenecks/decompose/stages.py",
+        "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+        "1024",
+        "50",
+        "20",
+        "all"
+      ],
+      "returncode": 0,
+      "wall_seconds": 3.107686454997747,
+      "stdout_sha256": "056f595d23a58e9eebebc9c59192e2d293b029a9f6cff27da8af2961de81f1e2",
+      "stdout_lines": 6,
+      "first_four_match_existing_oracle": true,
+      "six_lines_match_pristine_cpython": true,
+      "stderr": "regex 0.06407646300067427\nutf8 0.0017916880024131387\nmerge 0.361626095000247\nfull 0.46905223000067053\n",
+      "per_operation_seconds": {
+        "regex": 0.0012815292600134854,
+        "utf8": 3.583376004826278e-05,
+        "merge": 0.00723252190000494,
+        "full": 0.00938104460001341
+      },
+      "load_average_after": [
+        1.12451171875,
+        2.2646484375,
+        2.23779296875
+      ]
+    },
+    {
+      "mode": "pystachy_aot",
+      "round": 1,
+      "command": [
+        "/workspace/scratch/1d4aec3744ed/bottlenecks/decompose/stages",
+        "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+        "1024",
+        "50",
+        "20",
+        "all"
+      ],
+      "returncode": 0,
+      "wall_seconds": 2.525004176000948,
+      "stdout_sha256": "056f595d23a58e9eebebc9c59192e2d293b029a9f6cff27da8af2961de81f1e2",
+      "stdout_lines": 6,
+      "first_four_match_existing_oracle": true,
+      "six_lines_match_pristine_cpython": true,
+      "stderr": "regex 0.04797926299943356\nutf8 0.047789682997972704\nmerge 0.45868220400006976\nfull 0.5782535359976464\n",
+      "per_operation_seconds": {
+        "regex": 0.0009595852599886712,
+        "utf8": 0.0009557936599594541,
+        "merge": 0.009173644080001396,
+        "full": 0.011565070719952927
+      },
+      "load_average_after": [
+        1.12451171875,
+        2.2646484375,
+        2.23779296875
+      ]
+    },
+    {
+      "mode": "cpython_original",
+      "round": 1,
+      "command": [
+        "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+        "/workspace/scratch/1d4aec3744ed/bottlenecks/decompose/stages.py",
+        "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+        "1024",
+        "50",
+        "20",
+        "all"
+      ],
+      "returncode": 0,
+      "wall_seconds": 8.14450825899985,
+      "stdout_sha256": "056f595d23a58e9eebebc9c59192e2d293b029a9f6cff27da8af2961de81f1e2",
+      "stdout_lines": 6,
+      "first_four_match_existing_oracle": true,
+      "six_lines_match_pristine_cpython": true,
+      "stderr": "regex 0.052288632999989204\nutf8 0.014710435003507882\nmerge 1.5314392820000648\nfull 1.43847538800037\n",
+      "per_operation_seconds": {
+        "regex": 0.0010457726599997841,
+        "utf8": 0.0002942087000701577,
+        "merge": 0.030628785640001297,
+        "full": 0.0287695077600074
+      },
+      "load_average_after": [
+        1.42578125,
+        2.28955078125,
+        2.24609375
+      ]
+    },
+    {
+      "mode": "pystachy_aot",
+      "round": 2,
+      "command": [
+        "/workspace/scratch/1d4aec3744ed/bottlenecks/decompose/stages",
+        "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+        "1024",
+        "50",
+        "20",
+        "all"
+      ],
+      "returncode": 0,
+      "wall_seconds": 2.6347133700037375,
+      "stdout_sha256": "056f595d23a58e9eebebc9c59192e2d293b029a9f6cff27da8af2961de81f1e2",
+      "stdout_lines": 6,
+      "first_four_match_existing_oracle": true,
+      "six_lines_match_pristine_cpython": true,
+      "stderr": "regex 0.05231983400153695\nutf8 0.04148015700047836\nmerge 0.45695230899582384\nfull 0.6215960100016673\n",
+      "per_operation_seconds": {
+        "regex": 0.001046396680030739,
+        "utf8": 0.0008296031400095671,
+        "merge": 0.009139046179916477,
+        "full": 0.012431920200033347
+      },
+      "load_average_after": [
+        1.55224609375,
+        2.3017578125,
+        2.25048828125
+      ]
+    },
+    {
+      "mode": "cpython_original",
+      "round": 2,
+      "command": [
+        "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+        "/workspace/scratch/1d4aec3744ed/bottlenecks/decompose/stages.py",
+        "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+        "1024",
+        "50",
+        "20",
+        "all"
+      ],
+      "returncode": 0,
+      "wall_seconds": 8.50935676899826,
+      "stdout_sha256": "056f595d23a58e9eebebc9c59192e2d293b029a9f6cff27da8af2961de81f1e2",
+      "stdout_lines": 6,
+      "first_four_match_existing_oracle": true,
+      "six_lines_match_pristine_cpython": true,
+      "stderr": "regex 0.07149387499521254\nutf8 0.016868049999175128\nmerge 1.5576094040006865\nfull 1.4570227959993645\n",
+      "per_operation_seconds": {
+        "regex": 0.0014298774999042508,
+        "utf8": 0.00033736099998350256,
+        "merge": 0.03115218808001373,
+        "full": 0.02914045591998729
+      },
+      "load_average_after": [
+        1.58837890625,
+        2.29638671875,
+        2.2490234375
+      ]
+    },
+    {
+      "mode": "pypy_original",
+      "round": 2,
+      "command": [
+        "/root/.local/share/uv/python/pypy-3.11.17-linux-x86_64-gnu/bin/pypy3.11",
+        "/workspace/scratch/1d4aec3744ed/bottlenecks/decompose/stages.py",
+        "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance/data/frankenstein_intro.txt",
+        "1024",
+        "50",
+        "20",
+        "all"
+      ],
+      "returncode": 0,
+      "wall_seconds": 3.2075360329981777,
+      "stdout_sha256": "056f595d23a58e9eebebc9c59192e2d293b029a9f6cff27da8af2961de81f1e2",
+      "stdout_lines": 6,
+      "first_four_match_existing_oracle": true,
+      "six_lines_match_pristine_cpython": true,
+      "stderr": "regex 0.059453688001667615\nutf8 0.0017552749995957129\nmerge 0.3562659419985721\nfull 0.4406192589958664\n",
+      "per_operation_seconds": {
+        "regex": 0.0011890737600333524,
+        "utf8": 3.5105499991914255e-05,
+        "merge": 0.007125318839971442,
+        "full": 0.008812385179917328
+      },
+      "load_average_after": [
+        1.70166015625,
+        2.30810546875,
+        2.25341796875
+      ]
+    }
+  ],
+  "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+  "build": {
+    "command": [
+      "/workspace/scratch/1d4aec3744ed/pystachy/pystachy",
+      "build",
+      "/workspace/scratch/1d4aec3744ed/bottlenecks/decompose/stages.py",
+      "-o",
+      "/workspace/scratch/1d4aec3744ed/bottlenecks/decompose/stages"
+    ],
+    "returncode": 0,
+    "wall_seconds": 5.668349763996957,
+    "stderr": ""
+  },
+  "binary_sha256": "bb84c9a6246f03b5223d91c378786abbb0c4df3e139b3424e7bb43001a579c02",
+  "run_order": [
+    [
+      "cpython_original",
+      "pypy_original",
+      "pystachy_aot"
+    ],
+    [
+      "pypy_original",
+      "pystachy_aot",
+      "cpython_original"
+    ],
+    [
+      "pystachy_aot",
+      "cpython_original",
+      "pypy_original"
+    ]
+  ],
+  "summary": {
+    "cpython_original": {
+      "regex": {
+        "median_ms": 1.045772659999784,
+        "range_ms": [
+          0.9446258399111684,
+          1.4298774999042507
+        ],
+        "samples_ms": [
+          0.9446258399111684,
+          1.045772659999784,
+          1.4298774999042507
+        ]
+      },
+      "utf8": {
+        "median_ms": 0.3014308199635707,
+        "range_ms": [
+          0.29420870007015765,
+          0.33736099998350255
+        ],
+        "samples_ms": [
+          0.3014308199635707,
+          0.29420870007015765,
+          0.33736099998350255
+        ]
+      },
+      "merge": {
+        "median_ms": 30.628785640001297,
+        "range_ms": [
+          26.654726899869274,
+          31.15218808001373
+        ],
+        "samples_ms": [
+          26.654726899869274,
+          30.628785640001297,
+          31.15218808001373
+        ]
+      },
+      "full": {
+        "median_ms": 28.7695077600074,
+        "range_ms": [
+          28.213050180056598,
+          29.14045591998729
+        ],
+        "samples_ms": [
+          28.213050180056598,
+          28.7695077600074,
+          29.14045591998729
+        ]
+      }
+    },
+    "pypy_original": {
+      "regex": {
+        "median_ms": 1.1890737600333523,
+        "range_ms": [
+          1.1590695999620948,
+          1.2815292600134853
+        ],
+        "samples_ms": [
+          1.1590695999620948,
+          1.2815292600134853,
+          1.1890737600333523
+        ]
+      },
+      "utf8": {
+        "median_ms": 0.03543979997630231,
+        "range_ms": [
+          0.03510549999191426,
+          0.035833760048262775
+        ],
+        "samples_ms": [
+          0.03543979997630231,
+          0.035833760048262775,
+          0.03510549999191426
+        ]
+      },
+      "merge": {
+        "median_ms": 7.125318839971442,
+        "range_ms": [
+          6.995063880021917,
+          7.23252190000494
+        ],
+        "samples_ms": [
+          6.995063880021917,
+          7.23252190000494,
+          7.125318839971442
+        ]
+      },
+      "full": {
+        "median_ms": 8.812385179917328,
+        "range_ms": [
+          8.15573225991102,
+          9.38104460001341
+        ],
+        "samples_ms": [
+          8.15573225991102,
+          9.38104460001341,
+          8.812385179917328
+        ]
+      }
+    },
+    "pystachy_aot": {
+      "regex": {
+        "median_ms": 1.046396680030739,
+        "range_ms": [
+          0.9595852599886712,
+          1.0642756598826963
+        ],
+        "samples_ms": [
+          1.0642756598826963,
+          0.9595852599886712,
+          1.046396680030739
+        ]
+      },
+      "utf8": {
+        "median_ms": 0.9358163799333852,
+        "range_ms": [
+          0.8296031400095671,
+          0.9557936599594541
+        ],
+        "samples_ms": [
+          0.9358163799333852,
+          0.9557936599594541,
+          0.8296031400095671
+        ]
+      },
+      "merge": {
+        "median_ms": 9.173644080001395,
+        "range_ms": [
+          9.139046179916477,
+          9.193555120000383
+        ],
+        "samples_ms": [
+          9.193555120000383,
+          9.173644080001395,
+          9.139046179916477
+        ]
+      },
+      "full": {
+        "median_ms": 11.871181619935669,
+        "range_ms": [
+          11.565070719952928,
+          12.431920200033346
+        ],
+        "samples_ms": [
+          11.871181619935669,
+          11.565070719952928,
+          12.431920200033346
+        ]
+      }
+    }
+  },
+  "source_hashes_after": {
+    "driver": "5bf23cd3f63770ce3289bfe1ea4c9661015c6c9362df9d3599550b5902f7b44c",
+    "original_kernel": "ab44d9b2600ee956f8464d0a1d299641cdd552c40c60e64e91310ae8e6ba235e",
+    "adapted_kernel": "9775aff77bb52efc6fb9828517ead0584552b1cba5afe73ef4d93e13972ca7de",
+    "corpus": "6607193e67b7b459d082f5f2aea724e470615643d63ad2e205123b3076223da4",
+    "compiler": "3b59b4e875a89f15777395f5993ccf2e6d51e934dbc7a4e45228d622c7f1cff7"
+  },
+  "active_comparison_sources_unchanged": true
+}

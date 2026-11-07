@@ -1,0 +1,46 @@
+{
+  "cython_original": {
+    "setup.py": {
+      "sha256": "b8c7da465536c26826f9a494c310bf4607f1072e0f6eafb256f7ee7439eda939",
+      "contents": "from setuptools import setup, Extension\nfrom Cython.Build import cythonize\nsetup(ext_modules=cythonize([Extension(\"bpe_tokeniser\", [\"bpe_tokeniser.py\"], extra_compile_args=[\"-O3\"])], compiler_directives={\"language_level\":3}))\n"
+    },
+    "pyperf.py": {
+      "sha256": "6dd30d8ecbd32be0957e820a42ae05484dcedde24ede553f290fcd049edb6ac1",
+      "contents": "from time import perf_counter\n"
+    }
+  },
+  "cython_scalar": {
+    "setup.py": {
+      "sha256": "f3b151729ccaeb74fb037fae5932ee0b0795375b6e4b4bcab000ce50efc486b4",
+      "contents": "from setuptools import setup, Extension\nfrom Cython.Build import cythonize\nsetup(ext_modules=cythonize([Extension(\"bpe_tokeniser\", [\"bpe_tokeniser.py\"], extra_compile_args=[\"-O3\"])], compiler_directives={\"language_level\":3, \"overflowcheck\":True, \"boundscheck\":True, \"wraparound\":True, \"initializedcheck\":True}))\n"
+    },
+    "pyperf.py": {
+      "sha256": "6dd30d8ecbd32be0957e820a42ae05484dcedde24ede553f290fcd049edb6ac1",
+      "contents": "from time import perf_counter\n"
+    }
+  },
+  "cython_adapted": {
+    "setup.py": {
+      "sha256": "b8c7da465536c26826f9a494c310bf4607f1072e0f6eafb256f7ee7439eda939",
+      "contents": "from setuptools import setup, Extension\nfrom Cython.Build import cythonize\nsetup(ext_modules=cythonize([Extension(\"bpe_tokeniser\", [\"bpe_tokeniser.py\"], extra_compile_args=[\"-O3\"])], compiler_directives={\"language_level\":3}))\n"
+    },
+    "pyperf.py": {
+      "sha256": "6dd30d8ecbd32be0957e820a42ae05484dcedde24ede553f290fcd049edb6ac1",
+      "contents": "from time import perf_counter\n"
+    }
+  },
+  "mypyc_original": {
+    "setup.py": {
+      "sha256": "68b8032db617d0790d4f9db5e10e80a1b9f1cc2fb3e81e1a1b8f3d6d56ca8984",
+      "contents": "from setuptools import setup\nfrom mypyc.build import mypycify\nsetup(ext_modules=mypycify([\"bpe_tokeniser.py\", \"--ignore-missing-imports\"], opt_level=\"3\"))\n"
+    },
+    "pyperf.py": {
+      "sha256": "6dd30d8ecbd32be0957e820a42ae05484dcedde24ede553f290fcd049edb6ac1",
+      "contents": "from time import perf_counter\n"
+    },
+    "pyperf.pyi": {
+      "sha256": "8701cae1765abfea5cfc089142586c4407317ea0c2d1505c8c07a84134c9d711",
+      "contents": "from typing import Any\nfrom time import perf_counter as perf_counter\nclass Runner:\n    metadata: dict[str, Any]\n    def bench_time_func(self, *args: Any, **kwargs: Any) -> Any: ...\n"
+    }
+  }
+}

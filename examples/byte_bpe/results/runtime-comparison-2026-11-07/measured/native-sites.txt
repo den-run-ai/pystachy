@@ -1,0 +1,144 @@
+Byte-BPE optimized native sites (historical disassembly excerpts)
+Addresses are specific to the identified binaries. Each address range below
+preserves recorded instruction text with trailing whitespace stripped; omitted
+ranges are marked.
+These sites plus operations.json support source-site execution counts. They
+do not measure total allocator bytes, live heap, RSS, or CPU-time shares.
+
+Compiler source: f7103067545b43cdcd8ce20dc66b1571425b3a8d
+Measured port: 3d0f56d82e3f7e3e0799d37e014f73391913f1ca
+LLVM: 18.1.3
+
+baseline binary SHA256: f4f9b9bd0e7c2ad8ca556c3ba05fe82c6f5d4426adcb7c855a5c25dca2f2e642
+
+scalar_tuple binary SHA256: 8a17a0e016f2930065c4d608d66cc7951300aafe6a9e29bf096d1cc7d8698909
+
+phases binary SHA256: bb84c9a6246f03b5223d91c378786abbb0c4df3e139b3424e7bb43001a579c02
+
+[baseline] Training: pair-key tuple allocation and two bytes fields
+  Address range: 0x4b25-0x4b4c
+    4b25:	4c 8b 3d 34 d8 05 00 	mov    0x5d834(%rip),%r15        # 62360 <pys_fl+0x10>
+    4b2c:	4d 85 ff             	test   %r15,%r15
+    4b2f:	0f 84 83 00 00 00    	je     4bb8 <m.bpe_tokeniser$SimpleBytePairEncoding.train.1+0x618>
+    4b35:	49 8b 07             	mov    (%r15),%rax
+    4b38:	48 f7 d0             	not    %rax
+    4b3b:	48 89 05 1e d8 05 00 	mov    %rax,0x5d81e(%rip)        # 62360 <pys_fl+0x10>
+    4b42:	49 c7 07 00 00 00 00 	movq   $0x0,(%r15)
+    4b49:	49 89 2f             	mov    %rbp,(%r15)
+    4b4c:	4d 89 67 08          	mov    %r12,0x8(%r15)
+
+[baseline] Training: fused membership/read, then a separate dictionary store
+  Address range: 0x4b61-0x4b7f
+    4b61:	48 8b 7d 00          	mov    0x0(%rbp),%rdi
+    4b65:	4c 89 fe             	mov    %r15,%rsi
+    4b68:	e8 e3 e3 03 00       	call   42f50 <pys_dict_find>
+    4b6d:	48 83 f8 ff          	cmp    $0xffffffffffffffff,%rax
+    4b71:	74 1d                	je     4b90 <m.bpe_tokeniser$SimpleBytePairEncoding.train.1+0x5f0>
+    4b73:	48 8b 4d 00          	mov    0x0(%rbp),%rcx
+    4b77:	48 8b 49 28          	mov    0x28(%rcx),%rcx
+    4b7b:	48 8b 14 c1          	mov    (%rcx,%rax,8),%rdx
+    4b7f:	48 ff c2             	inc    %rdx
+  ... omitted address range ...
+  Address range: 0x4b9b-0x4ba2
+    4b9b:	48 8b 7d 00          	mov    0x0(%rbp),%rdi
+    4b9f:	4c 89 fe             	mov    %r15,%rsi
+    4ba2:	e8 19 e8 03 00       	call   433c0 <pys_dict_set>
+
+[baseline] Training: comparison tuple allocation, then generic tuple equality
+  Address range: 0x4e7f-0x4eb6
+    4e7f:	48 8b 3d da d4 05 00 	mov    0x5d4da(%rip),%rdi        # 62360 <pys_fl+0x10>
+    4e86:	48 85 ff             	test   %rdi,%rdi
+    4e89:	0f 84 f7 00 00 00    	je     4f86 <m.bpe_tokeniser$SimpleBytePairEncoding.train.1+0x9e6>
+    4e8f:	48 8b 07             	mov    (%rdi),%rax
+    4e92:	48 f7 d0             	not    %rax
+    4e95:	48 89 05 c4 d4 05 00 	mov    %rax,0x5d4c4(%rip)        # 62360 <pys_fl+0x10>
+    4e9c:	48 c7 07 00 00 00 00 	movq   $0x0,(%rdi)
+    4ea3:	4c 89 3f             	mov    %r15,(%rdi)
+    4ea6:	48 89 5f 08          	mov    %rbx,0x8(%rdi)
+    4eaa:	48 8b 74 24 30       	mov    0x30(%rsp),%rsi
+    4eaf:	48 8d 15 0a 76 05 00 	lea    0x5760a(%rip),%rdx        # 5c4c0 <__dso_handle+0x71f8>
+    4eb6:	e8 15 09 03 00       	call   357d0 <eqv>
+
+[baseline] Encoding: concatenated candidate and boxed optional lookup
+  Address range: 0x57df-0x57fb
+    57df:	48 8b 38             	mov    (%rax),%rdi
+    57e2:	48 8b 70 08          	mov    0x8(%rax),%rsi
+    57e6:	e8 d5 c0 02 00       	call   318c0 <pys_str_add>
+    57eb:	48 89 ef             	mov    %rbp,%rdi
+    57ee:	48 89 c6             	mov    %rax,%rsi
+    57f1:	31 d2                	xor    %edx,%edx
+    57f3:	e8 08 e7 03 00       	call   43f00 <pys_dict_getbox>
+    57f8:	48 85 c0             	test   %rax,%rax
+    57fb:	74 ce                	je     57cb <m.bpe_tokeniser$SimpleBytePairEncoding.encode+0x3eb>
+
+[baseline] Encoding: two optional-int free-list allocation sites and payload writes
+  Address range: 0x580a-0x582a
+    580a:	4c 8b 3d 47 cb 05 00 	mov    0x5cb47(%rip),%r15        # 62358 <pys_fl+0x8>
+    5811:	4d 85 ff             	test   %r15,%r15
+    5814:	74 4b                	je     5861 <m.bpe_tokeniser$SimpleBytePairEncoding.encode+0x481>
+    5816:	49 8b 0f             	mov    (%r15),%rcx
+    5819:	48 f7 d1             	not    %rcx
+    581c:	48 89 0d 35 cb 05 00 	mov    %rcx,0x5cb35(%rip)        # 62358 <pys_fl+0x8>
+    5823:	49 c7 07 00 00 00 00 	movq   $0x0,(%r15)
+    582a:	4d 89 27             	mov    %r12,(%r15)
+  ... omitted address range ...
+  Address range: 0x5835-0x583f
+    5835:	4c 8b 28             	mov    (%rax),%r13
+    5838:	4c 8b 35 19 cb 05 00 	mov    0x5cb19(%rip),%r14        # 62358 <pys_fl+0x8>
+    583f:	4d 85 f6             	test   %r14,%r14
+  ... omitted address range ...
+  Address range: 0x5848-0x585c
+    5848:	49 8b 06             	mov    (%r14),%rax
+    584b:	48 f7 d0             	not    %rax
+    584e:	48 89 05 03 cb 05 00 	mov    %rax,0x5cb03(%rip)        # 62358 <pys_fl+0x8>
+    5855:	49 c7 06 00 00 00 00 	movq   $0x0,(%r14)
+    585c:	e9 5f ff ff ff       	jmp    57c0 <m.bpe_tokeniser$SimpleBytePairEncoding.encode+0x3e0>
+  ... omitted address range ...
+  Address range: 0x57c0-0x57ca
+    57c0:	4d 89 2e             	mov    %r13,(%r14)
+    57c3:	49 c7 46 08 00 00 00 	movq   $0x0,0x8(%r14)
+    57ca:	00
+
+[scalar_tuple] Scalar comparison variant: direct bytes operands still call generic eqv
+  Address range: 0x4e19-0x4e32
+    4e19:	48 8b 43 10          	mov    0x10(%rbx),%rax
+    4e1d:	4a 8b 3c f0          	mov    (%rax,%r14,8),%rdi
+    4e21:	49 8b 37             	mov    (%r15),%rsi
+    4e24:	48 8d 15 3d 5e 05 00 	lea    0x55e3d(%rip),%rdx        # 5ac68 <__dso_handle+0x69a0>
+    4e2b:	e8 00 09 03 00       	call   35730 <eqv>
+    4e30:	85 c0                	test   %eax,%eax
+    4e32:	74 6c                	je     4ea0 <m.bpe_tokeniser$SimpleBytePairEncoding.train.1+0x900>
+  ... omitted address range ...
+  Address range: 0x4e41-0x4e5c
+    4e41:	48 8b 43 10          	mov    0x10(%rbx),%rax
+    4e45:	4a 8b 7c f0 08       	mov    0x8(%rax,%r14,8),%rdi
+    4e4a:	49 8b 77 08          	mov    0x8(%r15),%rsi
+    4e4e:	48 8d 15 13 5e 05 00 	lea    0x55e13(%rip),%rdx        # 5ac68 <__dso_handle+0x69a0>
+    4e55:	e8 d6 08 03 00       	call   35730 <eqv>
+    4e5a:	85 c0                	test   %eax,%eax
+    4e5c:	74 42                	je     4ea0 <m.bpe_tokeniser$SimpleBytePairEncoding.train.1+0x900>
+
+[phases] UTF-8 helper and full encoder each call pys_str_encode
+  Address range: 0x6ce4-0x6ce4
+    6ce4:	e8 67 c2 02 00       	call   32f50 <pys_str_encode>
+  ... omitted address range ...
+  Address range: 0x6e01-0x6e01
+    6e01:	e8 4a c1 02 00       	call   32f50 <pys_str_encode>
+
+[phases] Explicit encoding names resolve before subsequent no-copy checks
+  Address range: 0x32f64-0x32f79
+   32f64:	48 85 f6             	test   %rsi,%rsi
+   32f67:	74 0d                	je     32f76 <pys_str_encode+0x26>
+   32f69:	48 89 f7             	mov    %rsi,%rdi
+   32f6c:	e8 5f 0c 00 00       	call   33bd0 <f.codec_of>
+   32f71:	49 89 c3             	mov    %rax,%r11
+   32f74:	eb 03                	jmp    32f79 <pys_str_encode+0x29>
+   32f76:	45 31 db             	xor    %r11d,%r11d
+   32f79:	4d 85 ff             	test   %r15,%r15
+
+[phases] codec_of normalization still constructs strings
+  Address range: 0x33c27-0x33c32
+   33c27:	e8 14 20 00 00       	call   35c40 <pys_chr>
+   33c2c:	48 89 ef             	mov    %rbp,%rdi
+   33c2f:	48 89 c6             	mov    %rax,%rsi
+   33c32:	e8 99 e2 ff ff       	call   31ed0 <pys_str_add>

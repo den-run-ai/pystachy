@@ -1,0 +1,11 @@
+--- upstream/bpe_tokeniser.py
++++ mypyc_original/bpe_tokeniser.py
+@@ -93,7 +93,7 @@
+     # Now, use our data to figure out which merges we should make
+     while len(ranks) < vocab_size:
+         # Find the most common pair. This will become our next token
+-        stats = collections.Counter()
++        stats: collections.Counter[tuple[bytes, bytes]] = collections.Counter()
+         for piece in words:
+             for pair in zip(piece[:-1], piece[1:]):
+                 stats[pair] += 1

@@ -1,0 +1,9 @@
+--- upstream/bpe_tokeniser.py
++++ cython_scalar/bpe_tokeniser.py
+@@ -9,0 +10,2 @@
++
++import cython
+@@ -49,0 +52 @@
++@cython.locals(i=cython.Py_ssize_t, b=cython.uchar)
+@@ -74,0 +78 @@
++@cython.locals(i=cython.Py_ssize_t, token=cython.Py_ssize_t)
