@@ -266,6 +266,44 @@ def stat3(p: str) -> str:
         return ""
 
 
+def runtime_c_cache_enabled(flags: list[str]) -> bool:
+    value = os.getenv("PYSTACHY_RUNTIME_C_CACHE", "0")
+    if value != "0" and value != "1":
+        fail("PYSTACHY_RUNTIME_C_CACHE must be 0 or 1", 0)
+    # Keep custom flags, instrumentation and their diagnostic ordering on the
+    # existing path. This first cache is deliberately limited to Linux defaults.
+    return value == "1" and PLATFORM == "linux" and len(flags) == 0
+
+
+def runtime_c_snapshot(source: str, directory: str) -> str:
+    # Normalize only preprocessor line markers for our captured source tree.
+    # An expanded __FILE__/__BASE_FILE__ containing that directory is semantic:
+    # retain the ordinary build rather than rewriting a C string literal.
+    # Unlike __FILE__, these expand during semantic analysis, after -E.
+    # Their filename still depends on the original line markers.
+    if "__builtin_FILE" in source or "__builtin_source_location" in source:
+        return ""
+    out: list[str] = []
+    directory = directory.replace("\\", "\\\\").replace('"', '\\"')
+    for line in source.split("\n"):
+        if directory + "/" in line:
+            if not line.startswith("# "):
+                return ""
+            line = line.replace('"' + directory + "/", '"')
+        out.append(line)
+    return "\n".join(out)
+
+
+def runtime_c_key(source: str, paths: list[str], times: list[str], strip: str) -> str:
+    # Preprocessing captures included headers, environment include paths and
+    # target macros. Compile those exact bytes, rather than reopening headers.
+    # No Pystachy executable, hosted source, runtime.py or typed-IR option belongs
+    # here: they do not produce this C bitcode. Bump the schema for recipe changes.
+    identity = ["runtime-c-v2", PLATFORM, "-O2 -fexceptions -x cpp-output", strip]
+    identity = identity + [os.path.realpath(p) for p in paths[:2]] + times[:2]
+    return fnv("\n".join(identity) + "\n" + source)
+
+
 def settled(st: str, now: float) -> bool:
     # did st's file last change more than 2 s before now? A file system keeps times at a coarse grain
     # (the kernel's clock tick, or a second on some), so a file changed again within it may show st
@@ -559,6 +597,7 @@ def main() -> None:
     # if clang marked them nounwind. runtime.py goes through the optimizations on the IR as programs
     # do, so the ones PYSTACHY_OPT turns off count too: the cached runtime's key (below) has both
     flags = os.getenv("PYSTACHY_CFLAGS", "").split()
+    cache_c = runtime_c_cache_enabled(flags)
     asan = address_sanitized(flags)
     on = optimizations()
     off = [o for o in OPTS if o not in on]
@@ -777,7 +816,44 @@ def main() -> None:
             # only the ungrouped subset constructor may be renamed by llvm-link.
             modules = f"{q(rcb)} {q(rpb)}"
             sanitize = f"{tc[0]} -O2 -emit-llvm -c -x ir {q(rpl)} -o {q(rpb)} -Wno-override-module -Wno-unused-command-line-argument{cflags} -mllvm -asan-with-comdat=0 -fexceptions && "
-        code = timed_sh("runtime.llvm_build", sanitize + f"{tc[0]} -O2 -S -emit-llvm -x c {q(rcc)} -o {q(rll)} -Wno-unused-command-line-argument{cflags} -fexceptions && {strip} {q(rll)} > {q(rsl)} && {tc[1]} {q(rsl)} -o {q(rcb)} && {tc[2]} {modules} -o {q(lnk)} && {tc[3]} -O2 {q(lnk)} -o {q(part)}")
+        cstarted = timing_start()
+        cbuild = f"{tc[0]} -O2 -S -emit-llvm -x c {q(rcc)} -o {q(rll)} -Wno-unused-command-line-argument{cflags} -fexceptions && {strip} {q(rll)} > {q(rsl)} && {tc[1]} {q(rsl)} -o {q(rcb)}"
+        ccached = ""
+        cline = ""
+        chit = False
+        if cache_c and "" not in paths[:2] and "" not in times[:2] and all(settled(t, now) for t in times[:2]):
+            # Capture headers and target macros once; compile those same bytes.
+            # Warnings, semantic temporary paths and unstable tools use the
+            # original path so diagnostics and instrumentation stay unchanged.
+            pre = tmp + "/runtime.i"
+            perr = tmp + "/runtime-preprocess.err"
+            prepared = timed_sh("runtime.c_preprocess", f"{tc[0]} -O2 -E -x c {q(rcc)} -o {q(pre)} -fexceptions 2> {q(perr)}")
+            if prepared == 0 and os.path.getsize(perr) == 0 and [stat3(p) for p in paths[:2]] == times[:2]:
+                f = open(pre, "r", encoding=RAW, newline="")
+                captured = runtime_c_snapshot(f.read(), tmp)
+                f.close()
+                if captured != "":
+                    cline = fnv("\n".join([os.path.realpath(p) for p in paths[:2]]))
+                    ccached = cache + "/runtime-c-" + cline + "-" + runtime_c_key(captured, paths, times, strip) + ".bc"
+                    f = open(pre, "w", encoding=RAW, newline="")
+                    f.write(captured)
+                    f.close()
+                    # Readers take a private copy before validation; another
+                    # build may replace/prune the entry at any point. A missing,
+                    # unreadable or malformed entry is a miss, not a build error.
+                    chit = timed_sh("runtime.c_cache_read", f"(test -f {q(ccached)} && test ! -L {q(ccached)} && cp {q(ccached)} {q(rcb)} && {tc[3]} -passes=verify -disable-output {q(rcb)}) 2> /dev/null") == 0
+                    cbuild = f"{tc[0]} -O2 -S -emit-llvm -x cpp-output {q(pre)} -o {q(rll)} -Wno-unused-command-line-argument -fexceptions && {strip} {q(rll)} > {q(rsl)} && {tc[1]} {q(rsl)} -o {q(rcb)}"
+        code = 0 if chit else timed_sh("runtime.c", sanitize + cbuild)
+        if code == 0:
+            code = timed_sh("runtime.link_optimize", f"{tc[2]} {modules} -o {q(lnk)} && {tc[3]} -O2 {q(lnk)} -o {q(part)}")
+        if code == 0 and ccached != "" and not chit and [stat3(p) for p in paths[:2]] == times[:2]:
+            # Stage privately on the cache filesystem; rename only a complete
+            # file. Publication failure cannot invalidate the successful build.
+            # Keep one entry per tool pair; concurrent readers tolerate pruning.
+            stage = ccached + "." + own
+            old = q(cache) + "/runtime-c-" + cline + "-" + "?" * 16 + ".bc"
+            sh(f"""(umask 077; mkdir {q(stage)} && {{ test ! -d {q(ccached)} && cp {q(rcb)} {q(stage + '/entry')} && mv -f {q(stage + '/entry')} {q(ccached)} && for f in {old}; do [ "$f" = {q(ccached)} ] || rm -f "$f"; done; rm -f {q(stage + '/entry')}; rmdir {q(stage)}; }}) 2> /dev/null""")
+        timing_end("runtime.llvm_build", cstarted)
         for p in RTPARTS:
             os.remove(tmp + "/" + p)
         for d in sub:
@@ -1040,7 +1116,7 @@ def main() -> None:
             # PYSTACHY_GC_STRESS_PROGRAM: the program's own collection interval, apart from the
             # compiler's (PYSTACHY_GC_STRESS), so that the tests can stress programs without stressing
             # their compilation
-            for p in [ll, obj, pcout, pclink, pclink2, pcerror, rcc, rll, rsl, rcb, rpl, rpb, lnk, part, hp, rso, tmp + "/pyembed.c"] + [g[3] for g in glue]:
+            for p in [ll, obj, pcout, pclink, pclink2, pcerror, rcc, rll, rsl, rcb, rpl, rpb, lnk, part, hp, rso, tmp + "/runtime.i", tmp + "/runtime-preprocess.err", tmp + "/pyembed.c"] + [g[3] for g in glue]:
                 if os.path.exists(p):
                     os.remove(p)
             gsp = os.getenv("PYSTACHY_GC_STRESS_PROGRAM", "")
@@ -1062,7 +1138,7 @@ def main() -> None:
             parts = q(parto) + " " + q(partso) + (" " + q(peo[2]) if peo[2] != "" else "")
             timing_end("driver.prepare_run", total)
             os.execv("/bin/sh", ["sh", "-c", f"exec 9< {q(bc)} 8< {q(useso if useso != '' else useo)}{fds} && rm -f {q(bc)} {parts} && rmdir {q(tmp)} && {run}"])
-    for p in [ll, bc, obj, obc, lbc, pcout, pclink, pclink2, pcerror, rcc, rll, rsl, rcb, rpl, rpb, lnk, part, parto, partso, hp, rso, tmp + "/pyembed.c", tmp + "/pyext.c", peo[2]] + [g[3] for g in glue]:
+    for p in [ll, bc, obj, obc, lbc, pcout, pclink, pclink2, pcerror, rcc, rll, rsl, rcb, rpl, rpb, lnk, part, parto, partso, hp, rso, tmp + "/runtime.i", tmp + "/runtime-preprocess.err", tmp + "/pyembed.c", tmp + "/pyext.c", peo[2]] + [g[3] for g in glue]:
         if os.path.exists(p):
             os.remove(p)
     os.rmdir(tmp)

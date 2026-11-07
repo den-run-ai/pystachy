@@ -654,6 +654,18 @@ Cached runtime artifacts depend on the runtime sources, included Ryu files, comp
 LLVM tools and compilation flags. Changes invalidate the relevant cache. Builds use private
 temporary files and publish reusable artifacts only after checking their inputs stayed stable.
 
+On Linux, `PYSTACHY_RUNTIME_C_CACHE=1` additionally caches default-flag C runtime
+bitcode across compiler producers (for example, bootstrap stages). On a combined
+runtime miss, clang preprocesses the captured runtime sources and headers; those
+exact bytes, resolved clang/assembler identities and recipe determine the C entry.
+Changes in `runtime.py` or compiler identity still rebuild the combined runtime.
+Custom C flags, preprocessing warnings and temporary paths in expanded C strings
+use the ordinary build. Readers validate private copies; incomplete or malformed
+entries rebuild. Publication is atomic and best effort, retaining one C entry per
+tool pair. This opt-in does not change the existing combined-cache hit contract or
+cache headers independently on those hits. Cache directories must remain trusted
+local storage; no shared-cache trust or additional platform support is implied.
+
 ### Compiler stage timings
 
 Set `PYSTACHY_TIMING=1` to emit tab-separated stderr records with a monotonic
@@ -707,6 +719,7 @@ compiler and all three runtime witnesses still run separately.
 | `PYSTACHY_HOME` | Directory holding the runtime and `lib/`; set by the installed launcher |
 | `PYSTACHY_CACHE` | Runtime cache directory; checkout default is `build/`, installed default is `${XDG_CACHE_HOME:-$HOME/.cache}/pystachy` |
 | `PYSTACHY_PATH` | Additional import directories, separated by `:` |
+| `PYSTACHY_RUNTIME_C_CACHE=1` | Opt in to Linux default-flag C-runtime bitcode reuse across compiler producers; `0` (default) disables it |
 | `PYSTACHY_CFLAGS` | Extra clang flags for runtime compilation and AOT linking; part of the cache key |
 | `PYSTACHY_DEBUG_LINES=1` | Emit deterministic Python file, function and instruction line metadata in LLVM IR; AOT retains DWARF line tables. No local variable descriptions; part of the runtime cache key. See [source attribution](../bench/source_attribution/README.md) for JIT and profiler limits. |
 | `PYSTACHY_TIMING=1` | Print monotonic compiler [stage durations](#compiler-stage-timings) to stderr; nested totals overlap |
