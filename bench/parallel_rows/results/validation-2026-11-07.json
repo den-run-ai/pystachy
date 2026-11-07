@@ -1,0 +1,488 @@
+{
+  "schema": 1,
+  "recorded_utc": "2026-11-07T08:13:27.635522+00:00",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.39",
+  "scope": "Correctness validation. Shared bounded CPU budget with another checkout; elapsed durations are deliberately omitted and are not benchmark evidence.",
+  "source": {
+    "implementation_commit": "99ffe9bdea48455ac310a89ebbaa6bb63fa58f5c",
+    "implementation_tree": "8b65c3fb1771ed4a65456821d57d46d5134ce5cb",
+    "reference_commit": "163fe22c9bfcdb6c299bf65998cf003d151b6132",
+    "compiler_runtime_library_workload_sha256": "77059c352f2623a2a94d8cc1221891d76d025432a26a57436887b5aeb4e8c561",
+    "matches_measured_source_files": true,
+    "source_file_hashes_record": "native-2026-11-07.json"
+  },
+  "toolchain": {
+    "python_version": "Python 3.13.16",
+    "clang_version": "Ubuntu clang version 18.1.3 (1ubuntu1)\nTarget: x86_64-pc-linux-gnu\nThread model: posix\nInstalledDir: /workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin",
+    "llvm_config_version": "18.1.3",
+    "clang_sha256": "8ef402d453d1ba4902e4ee0f0f847f6cfa01400c95aa43c24e97818b9c0e3f45"
+  },
+  "bootstrap": {
+    "compiler_witnesses": 3,
+    "compiler_ir": {
+      "bytes": 31551741,
+      "sha256": "f7b7aec59d55ea673bc1260d1c514ad8f2c784ffd946e64474ea6543581dfbfb",
+      "lines": 836028
+    },
+    "runtime_witnesses": 3,
+    "runtime_ir": {
+      "bytes": 549411,
+      "sha256": "940a694da5ea93214d1308a8eb635b47d8d0a9d4256c63d084c24f5099f8aa5f",
+      "lines": 18805
+    },
+    "native_compiler": {
+      "bytes": 5250264,
+      "sha256": "aeb6e42219599184914a29ee94eb9516c926ffe01ecd165b5f5ad1adeff9afba"
+    }
+  },
+  "commands": [
+    {
+      "label": "bootstrap",
+      "argv": [
+        "make",
+        "-j1",
+        "pystachy",
+        "PY=/workspace/scratch/e98dc1e3e6cd/dev/bin/python"
+      ],
+      "jobs": 2,
+      "returncode": 0,
+      "log_sha256": "071af96114412d5386e658bace6ec6d01cc0951d706ca613744bb241e5ffdd03"
+    },
+    {
+      "label": "full-parity",
+      "argv": [
+        "make",
+        "-j1",
+        "irsame",
+        "REF=163fe22c9bfcdb6c299bf65998cf003d151b6132",
+        "PY=/workspace/scratch/e98dc1e3e6cd/dev/bin/python"
+      ],
+      "jobs": 2,
+      "returncode": 2,
+      "log_sha256": "bad08ef8de709e7b0af1c53761dcb8d1c0ef0826d706c0676e89cdf9b0aab199"
+    },
+    {
+      "label": "controlled-parity",
+      "argv": [
+        "env",
+        "PYSTACHY_HOME=/workspace/scratch/8c7ef878d89d/pystachy-numeric",
+        "tools/irsame.sh",
+        "build/ref/pystachy",
+        "./pystachy"
+      ],
+      "jobs": 2,
+      "returncode": 1,
+      "log_sha256": "a7eb50286f7b868041022870ec332e3e06d9892f6544cddc53a1fecb3965a73e"
+    },
+    {
+      "label": "runtime-contract",
+      "argv": [
+        "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+        "tools/check_runtime.py"
+      ],
+      "jobs": 2,
+      "returncode": 0,
+      "log_sha256": "f463fd2423af59f0e84f80b6885e9cdadf22c1151728c365821fa8c4b79cb3c3"
+    },
+    {
+      "label": "native-ir",
+      "argv": [
+        "tools/check_ir.sh",
+        "./pystachy",
+        "tests/ir/parallel_map.py",
+        "tests/ir/parallel_map_fallback.py",
+        "tests/ir/parallel_rows.py",
+        "tests/programs/library/lib_parallel_rows.py",
+        "tests/programs/library/lib_parallel_rows_fallback.py"
+      ],
+      "environment_overrides": {},
+      "jobs": 1,
+      "returncode": 0,
+      "log_sha256": "ff4a36c3fcca0679579bbeda3ae7b7012ccaa9e0d92e718958488b52c363b9a3"
+    },
+    {
+      "label": "native-tests",
+      "argv": [
+        "tests/run.sh",
+        "./pystachy",
+        "jit aot",
+        "tests/programs/library/lib_parallel.py",
+        "tests/programs/library/lib_parallel_fallback.py",
+        "tests/programs/library/lib_parallel_rows.py",
+        "tests/programs/library/lib_parallel_rows_fallback.py"
+      ],
+      "environment_overrides": {},
+      "jobs": 1,
+      "returncode": 0,
+      "log_sha256": "d12fbcbada799542a7911024e1012a54125698f44ed41d6b6e79b150d1389165"
+    },
+    {
+      "label": "native-gc",
+      "argv": [
+        "tests/run.sh",
+        "./pystachy",
+        "jit aot",
+        "tests/programs/library/lib_parallel_rows.py",
+        "tests/programs/library/lib_parallel_rows_fallback.py"
+      ],
+      "environment_overrides": {
+        "PYSTACHY_GC_STRESS_PROGRAM": "1"
+      },
+      "jobs": 1,
+      "returncode": 0,
+      "log_sha256": "722ce81183a715ba4ea15394695c92843246b30c0bb73db06d49c88a851abe52"
+    },
+    {
+      "label": "fast-lint",
+      "argv": [
+        "make",
+        "-j1",
+        "check-fast",
+        "lint",
+        "PY=/workspace/scratch/e98dc1e3e6cd/dev/bin/python"
+      ],
+      "returncode": 0,
+      "log_sha256": "c0a7391ad76aaa54f44a63db36cc1faff8f55f3e92ad3b6362d506ba41267d28",
+      "unit_tests": 440,
+      "mypy_source_files": 50,
+      "static_pointer_stores": 67,
+      "gc_root_findings": 0
+    }
+  ],
+  "corpus": {
+    "own_library": {
+      "cases": 4246,
+      "identical": 3978,
+      "different": 268,
+      "make_returncode": 2,
+      "scope": "Exact reference was rebuilt. Each compiler consumed its own library. This original result is retained, not relabeled a zero-difference pass.",
+      "representative_path_difference": "DIFF tests/programs/apps/example_linediff.py\n  IR from line 1060:\n@@ -1057,7 +1057,7 @@\n @s.129 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1, i64 0, i64 2, [2 x i8] c\"a\\00\"}, align 8\n @s.130 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1, i64 0, i64 2, [2 x i8] c\"u\\00\"}, align 8\n @s.131 = private unnamed_addr global {i64, i64, i64, [6 x i8]} {i64 5, i64 0, i64 6, [6 x i8] c\"T3sis\\00\"}, align 8\n-@s.132 = private unnamed_addr global {i64, i64, i64, [121 x i8]} {i64 120, i64 0, i64 121, [121 x i8] c\"cannot import name 'GenericAlias' from 'types' (/workspace/scratch/8c7ef878d89d/pystachy-numeric/build/ref/lib/types.py)\\00\"}, align 8\n+@s.132 = private unnamed_addr global {i64, i64, i64, [111 x i8]} {i64 110, i64 0, i64 111, [111 x i8] c\"cannot import name 'GenericAlias' from 'types' (/workspace/scratch/8c7ef878d89d/pystachy-numeric/lib/types.py)\\00\"}, align 8\n @s.133 = private unnamed_addr global {i64, i64, i64, [12 x i8]} {i64 11, i64 0, i64 12, [12 x i8] c\"ImportError\\00\"}, align 8\n @s.134 = private unnamed_addr global {i64, i64, i64, [18 x i8]} {i64 17, i64 0, i64 18, [18 x i8] c\"get_close_matches\\00\"}, align 8\n @s.135 = private unnamed_addr global {i64, i64, i64, [6 x i8]} {i64 5, i64 0, i64 6, [6 x i8] c\"ndiff\\00\"}, align 8\nDIFF tests/programs/apps/example_mailmerge.py\n  IR from line 992:"
+    },
+    "shared_input_control": {
+      "cases": 4246,
+      "identical": 4239,
+      "different": 7,
+      "oracle_returncode": 1,
+      "scope": "IR and diagnostics only; both compiler executables consume the exact candidate library/runtime files at the same physical home. This control does not replace the raw own-library result or execute a base-produced binary against the candidate runtime.",
+      "python_library_files": 88,
+      "byte_identical_to_reference": 87,
+      "changed_from_reference": [
+        "parallel.py"
+      ],
+      "existing_map_float_ast_identical": true,
+      "runtime_python_sha256": "c45138f44a7aa25828b351b6d627e1a4f9fad69dc8a88532d053fb90e84beefb",
+      "runtime_python_identical_to_reference": true,
+      "candidate_library_manifest_sha256": "855232dabe25ab3aefcd8ffe556ae66e5c24d6ad00faa6b0cb3ad2e0caec18f7",
+      "reference_library_manifest_sha256": "73c11ee11d9058be0e08393cc1c6854c4007204e28deffe1679c20014d6b2dc6",
+      "parallel_library_sha256": {
+        "candidate": "261c39c0919ebb4831a081a490e57f1ba903593fb304c9c961095e604358b06a",
+        "reference": "52458cb7e931af99d8109796b9df788e084b65b0e64328897009c5428c2305c5"
+      },
+      "runtime_c_sha256": {
+        "candidate": "b55e381b6434c81b15bbe6483c4b66a3ffcc9d8846be6e7ad41546cc4d5572fe",
+        "reference": "d3ab7a6ea520673ea3aa0323d89c19ac835f75cbe5c5ba08784a8c4f7f428422"
+      },
+      "additional_differences_removed": 261
+    },
+    "individual_cases": [
+      {
+        "mode": "own-library",
+        "case": "tests/programs/inference/dynany_parallel.py",
+        "base": {
+          "returncode": 0,
+          "messages": "",
+          "ir_sha256": "ac28a7bd2365f86fa9bdefaee498efc1a5665a3ca21d45961459f18089a04478"
+        },
+        "candidate": {
+          "returncode": 0,
+          "messages": "",
+          "ir_sha256": "b67f75d047f28c8dbc7281f2da466afeb547a3bab26d54f4a42efc7936640c1b"
+        },
+        "same_status": true,
+        "same_messages": true,
+        "same_ir": false
+      },
+      {
+        "mode": "own-library",
+        "case": "tests/programs/library/lib_parallel.py",
+        "base": {
+          "returncode": 0,
+          "messages": "",
+          "ir_sha256": "eb150323b0a6362acd842228ce272aa3f55964e4cd57833af0a764f69a4d2b75"
+        },
+        "candidate": {
+          "returncode": 0,
+          "messages": "",
+          "ir_sha256": "fe8a06d56e70ef58314ef8fe866e27872c1eb73828c040868fa713399c043df9"
+        },
+        "same_status": true,
+        "same_messages": true,
+        "same_ir": false
+      },
+      {
+        "mode": "own-library",
+        "case": "tests/programs/library/lib_parallel_fallback.py",
+        "base": {
+          "returncode": 0,
+          "messages": "",
+          "ir_sha256": "2c619d35aec238be9c2cec8acbb29bb481bd3cd0eeb4f045ef24974ccdc0f02f"
+        },
+        "candidate": {
+          "returncode": 0,
+          "messages": "",
+          "ir_sha256": "17f88b754bfc75278d0ebe5acdacffd3744782dc30a633f82371da4a5faa9ff5"
+        },
+        "same_status": true,
+        "same_messages": true,
+        "same_ir": false
+      },
+      {
+        "mode": "own-library",
+        "case": "tests/programs/library/lib_parallel_rows.py",
+        "base": {
+          "returncode": 0,
+          "messages": "",
+          "ir_sha256": "4d6f866ab6bcb644d176c2104539d923ed8d785df325e868658800a9766b9b8f"
+        },
+        "candidate": {
+          "returncode": 0,
+          "messages": "",
+          "ir_sha256": "bef3de358573a2660dd6dec963933d3ab53ba9b13bcab46e1f8c4e6842320e9b"
+        },
+        "same_status": true,
+        "same_messages": true,
+        "same_ir": false
+      },
+      {
+        "mode": "own-library",
+        "case": "tests/programs/library/lib_parallel_rows_fallback.py",
+        "base": {
+          "returncode": 0,
+          "messages": "",
+          "ir_sha256": "5472134808021386af42e4e82bcac09e289fd73b32fb27d3fb7a641558783ccb"
+        },
+        "candidate": {
+          "returncode": 0,
+          "messages": "",
+          "ir_sha256": "d40ff2482e1447223ecc3cf39b835d4973d154564631431ecc5af360ce83ff13"
+        },
+        "same_status": true,
+        "same_messages": true,
+        "same_ir": false
+      },
+      {
+        "mode": "own-library",
+        "case": "tests/ir/parallel_map.py",
+        "base": {
+          "returncode": 0,
+          "messages": "",
+          "ir_sha256": "4e987d007da53f17cd4774a7e60d86dc690336bdfe8044b3fbe32460e5fe3ef9"
+        },
+        "candidate": {
+          "returncode": 0,
+          "messages": "",
+          "ir_sha256": "e55313143da4451b02850dd4ea716de93c6f45f2eacc0bc8abef3f23dddb2148"
+        },
+        "same_status": true,
+        "same_messages": true,
+        "same_ir": false
+      },
+      {
+        "mode": "own-library",
+        "case": "tests/ir/parallel_rows.py",
+        "base": {
+          "returncode": 1,
+          "messages": "tests/ir/parallel_rows.py:1: error: cannot import name 'sum_rows_float' from 'parallel'\n",
+          "ir_sha256": null
+        },
+        "candidate": {
+          "returncode": 0,
+          "messages": "",
+          "ir_sha256": "1d50ebb120101395ac37d874725348e9b9f767980341b4f53859ba17299fe5b6"
+        },
+        "same_status": false,
+        "same_messages": false,
+        "same_ir": false
+      },
+      {
+        "mode": "shared-home",
+        "case": "tests/programs/inference/dynany_parallel.py",
+        "base": {
+          "returncode": 0,
+          "messages": "",
+          "ir_sha256": "5c2ea4f05d91f210dfe02fd69b759c1fcbd5a6c03e2f1bcc8d415e791ebaa471"
+        },
+        "candidate": {
+          "returncode": 0,
+          "messages": "",
+          "ir_sha256": "b67f75d047f28c8dbc7281f2da466afeb547a3bab26d54f4a42efc7936640c1b"
+        },
+        "same_status": true,
+        "same_messages": true,
+        "same_ir": false,
+        "classification": "Only conservative row eligibility comment or internal map thunk width argument"
+      },
+      {
+        "mode": "shared-home",
+        "case": "tests/programs/library/lib_parallel.py",
+        "base": {
+          "returncode": 0,
+          "messages": "",
+          "ir_sha256": "eb150323b0a6362acd842228ce272aa3f55964e4cd57833af0a764f69a4d2b75"
+        },
+        "candidate": {
+          "returncode": 0,
+          "messages": "",
+          "ir_sha256": "fe8a06d56e70ef58314ef8fe866e27872c1eb73828c040868fa713399c043df9"
+        },
+        "same_status": true,
+        "same_messages": true,
+        "same_ir": false,
+        "classification": "Only conservative row eligibility comment or internal map thunk width argument"
+      },
+      {
+        "mode": "shared-home",
+        "case": "tests/programs/library/lib_parallel_fallback.py",
+        "base": {
+          "returncode": 0,
+          "messages": "",
+          "ir_sha256": "2c619d35aec238be9c2cec8acbb29bb481bd3cd0eeb4f045ef24974ccdc0f02f"
+        },
+        "candidate": {
+          "returncode": 0,
+          "messages": "",
+          "ir_sha256": "17f88b754bfc75278d0ebe5acdacffd3744782dc30a633f82371da4a5faa9ff5"
+        },
+        "same_status": true,
+        "same_messages": true,
+        "same_ir": false,
+        "classification": "Only conservative row eligibility comment or internal map thunk width argument"
+      },
+      {
+        "mode": "shared-home",
+        "case": "tests/programs/library/lib_parallel_rows.py",
+        "base": {
+          "returncode": 0,
+          "messages": "",
+          "ir_sha256": "2b0475c8e8d08055e0a116e8242a4c9abfeac1963b637986415e4339bfe217fc"
+        },
+        "candidate": {
+          "returncode": 0,
+          "messages": "",
+          "ir_sha256": "bef3de358573a2660dd6dec963933d3ab53ba9b13bcab46e1f8c4e6842320e9b"
+        },
+        "same_status": true,
+        "same_messages": true,
+        "same_ir": false,
+        "classification": "New proven native row runtime call and generated ordered reduction thunk, versus serial library implementation"
+      },
+      {
+        "mode": "shared-home",
+        "case": "tests/programs/library/lib_parallel_rows_fallback.py",
+        "base": {
+          "returncode": 0,
+          "messages": "",
+          "ir_sha256": "728a7e2c5b739df65b988e5190162ef7e3cde8c66e3a97512e986f6167e14360"
+        },
+        "candidate": {
+          "returncode": 0,
+          "messages": "",
+          "ir_sha256": "d40ff2482e1447223ecc3cf39b835d4973d154564631431ecc5af360ce83ff13"
+        },
+        "same_status": true,
+        "same_messages": true,
+        "same_ir": false,
+        "classification": "Only serial row eligibility comments; fallback function IR identical"
+      },
+      {
+        "mode": "shared-home",
+        "case": "tests/ir/parallel_map.py",
+        "base": {
+          "returncode": 0,
+          "messages": "",
+          "ir_sha256": "4e987d007da53f17cd4774a7e60d86dc690336bdfe8044b3fbe32460e5fe3ef9"
+        },
+        "candidate": {
+          "returncode": 0,
+          "messages": "",
+          "ir_sha256": "e55313143da4451b02850dd4ea716de93c6f45f2eacc0bc8abef3f23dddb2148"
+        },
+        "same_status": true,
+        "same_messages": true,
+        "same_ir": false,
+        "classification": "Only conservative row eligibility comment or internal map thunk width argument"
+      },
+      {
+        "mode": "shared-home",
+        "case": "tests/ir/parallel_rows.py",
+        "base": {
+          "returncode": 0,
+          "messages": "",
+          "ir_sha256": "b73f8b59d8e6786d02ef602f719b74b6e70b658e5b6ae4748be006d789fc1761"
+        },
+        "candidate": {
+          "returncode": 0,
+          "messages": "",
+          "ir_sha256": "1d50ebb120101395ac37d874725348e9b9f767980341b4f53859ba17299fe5b6"
+        },
+        "same_status": true,
+        "same_messages": true,
+        "same_ir": false,
+        "classification": "New proven native row runtime call and generated ordered reduction thunk, versus serial library implementation"
+      }
+    ],
+    "controlled_normalization_checks": {
+      "existing_map_fixtures": 3,
+      "dynamic_identity_fixture": 1,
+      "ineligible_row_fallback_fixture": 1,
+      "method": "For these five controlled cases, removing only added serial row-eligibility comment lines and the generated internal map thunk width parameter reproduced the reference IR byte for byte. No general path/diagnostic normalization was added to the oracle.",
+      "new_native_row_fixtures": 2,
+      "new_native_row_difference": "--- base-with-candidate-library\n\n+++ candidate\n\n@@ -16,4 +16,5 @@\n\n @s.9 = private unnamed_addr global {i64, i64, i64, [39 x i8]} {i64 38, i64 0, i64 39, [39 x i8] c\"integer result does not fit in 64 bits\\00\"}, align 8\n @s.10 = private unnamed_addr global {i64, i64, i64, [14 x i8]} {i64 13, i64 0, i64 14, [14 x i8] c\"OverflowError\\00\"}, align 8\n+; parallel.sum_rows_float: native @f.polynomial\n define internal void @init.parallel() {\n entry:\n@@ -106,5 +107,5 @@\n\n   %t10 = load i64, ptr %width.3\n   %t11 = load i64, ptr %workers.4\n-  %t12 = call ptr @f.parallel$sum_rows_float(ptr @cvo.0, ptr %t9, i64 %t10, i64 %t11)\n+  %t12 = call ptr @pys_parallel_rows_f64(ptr %t9, i64 %t10, i64 %t11, ptr @pys.parallel.rows.f.polynomial)\n   store i64 %t13, ptr @pys_recursion_state, !tbaa !6\n   ret ptr %t12\n@@ -256,4 +257,35 @@\n\n   unreachable\n }\n+define internal void @pys.parallel.rows.f.polynomial(ptr %src, ptr %dst, i64 %begin, i64 %end, i64 %width) nounwind {\n+entry:\n+  br label %row.test\n+row.test:\n+  %row = phi i64 [ %begin, %entry ], [ %next.row, %row.store ]\n+  %more.rows = icmp slt i64 %row, %end\n+  br i1 %more.rows, label %row.begin, label %done\n+row.begin:\n+  %base = mul i64 %row, %width\n+  br label %column.test\n+column.test:\n+  %column = phi i64 [ 0, %row.begin ], [ %next.column, %column.body ]\n+  %sum = phi double [ 0.0, %row.begin ], [ %next.sum, %column.body ]\n+  %more.columns = icmp slt i64 %column, %width\n+  br i1 %more.columns, label %column.body, label %row.store\n+column.body:\n+  %index = add i64 %base, %column\n+  %in = getelementptr double, ptr %src, i64 %index\n+  %x = load double, ptr %in, align 8\n+  %y = call double @f.polynomial(double %x)\n+  %next.sum = fadd double %sum, %y\n+  %next.column = add i64 %column, 1\n+  br label %column.test\n+row.store:"
+    },
+    "acceptance": {
+      "new_rejections": 0,
+      "newly_accepted": [
+        "tests/ir/parallel_rows.py"
+      ],
+      "base_rejection": "tests/ir/parallel_rows.py:1: error: cannot import name 'sum_rows_float' from 'parallel'",
+      "explicit_reference_fallback_already_accepted_on_base": [
+        "tests/programs/library/lib_parallel_rows.py",
+        "tests/programs/library/lib_parallel_rows_fallback.py"
+      ]
+    }
+  },
+  "focused_outcomes": {
+    "native_ir_llvm_as_cases": 5,
+    "native_jit_aot_comparisons": 8,
+    "native_program_gc_stress_comparisons": 4,
+    "runtime_entries": 646,
+    "exception_classes": 70,
+    "earlier_scheduler_probe": {
+      "map_batches": 34,
+      "row_batches": 31,
+      "log_sha256": "3b9ef02cd78f6902ba64dd5933b72099fa5d9fb2f7ca6c3362a5e2c51170edd4"
+    },
+    "earlier_signal_probes": {
+      "modes": [
+        "interrupt",
+        "interrupt-rows"
+      ],
+      "joined_before_sigint": 3,
+      "exit_status": -2,
+      "log_sha256": "ce7fc9a30e576e2f66226a072e7fa8ba238812a87cb9f525b474137e80609b3c"
+    }
+  },
+  "not_run_on_this_revision": [
+    "full make verify",
+    "full native execution corpus",
+    "complete GC configuration matrix",
+    "ThreadSanitizer",
+    "macOS"
+  ],
+  "out_of_scope": [
+    "#1122/#1125 composition",
+    "retained external-buffer alias safety",
+    "persistent native pool",
+    "general shared-heap threads"
+  ]
+}

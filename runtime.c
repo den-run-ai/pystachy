@@ -6198,30 +6198,31 @@ static _Noreturn void die_sigint(void) {   /* CPython's exit_sigint: killed by S
 }
 
 #ifdef PYSTACHY_PARALLEL
-/* An optional, synchronous backend for a compiler-proven float map. Only the owner
+/* An optional, synchronous backend for compiler-proven float maps and rows. Only the owner
    allocates or touches list metadata, GC, exceptions and signal state. The callback
-   accepts raw arrays and a disjoint half-open interval; its generated code may not
+   accepts raw arrays, a disjoint half-open interval and an immutable row width;
+   its generated code may not
    allocate, raise, access globals or call the runtime. The result is fresh, so an
    input alias cannot overlap a write. No collector runs between launching and
    joining: the owner's live source/result references suffice, without registering
    worker stacks or making the managed heap concurrent. */
-typedef void ParallelFloatKernel(const double *, double *, I, I);
+typedef void ParallelFloatKernel(const double *, double *, I, I, I);
 typedef struct {
-  const double *src; double *dst; I lo, hi; ParallelFloatKernel *kernel;
+  const double *src; double *dst; I lo, hi, width; ParallelFloatKernel *kernel;
 } ParallelFloatTask;
 static void *parallel_float_thread(void *arg) {
   ParallelFloatTask *t = arg;
-  t->kernel(t->src, t->dst, t->lo, t->hi);
+  t->kernel(t->src, t->dst, t->lo, t->hi, t->width);
   return 0;
 }
 static __attribute__((noinline)) void parallel_float_run(
-    const double *src, double *dst, I n, I count, ParallelFloatKernel *kernel) {
+    const double *src, double *dst, I n, I count, I width, ParallelFloatKernel *kernel) {
   ParallelFloatTask tasks[64];
   pthread_t threads[63];
   I each = n / count, extra = n % count;
   for (I i = 0; i < count; i++) {
     I lo = i * each + (i < extra ? i : extra);
-    tasks[i] = (ParallelFloatTask){src, dst, lo, lo + each + (i < extra), kernel};
+    tasks[i] = (ParallelFloatTask){src, dst, lo, lo + each + (i < extra), width, kernel};
   }
   /* Workers inherit blocked signals, so the owner's handler alone sees SIGINT.
      io_in/io_out defer it until every worker has joined. No cancellation flag is
@@ -6229,7 +6230,7 @@ static __attribute__((noinline)) void parallel_float_run(
   sigset_t previous, blocked;
   sigfillset(&blocked);
   if (pthread_sigmask(SIG_BLOCK, &blocked, &previous)) {
-    kernel(src, dst, 0, n);
+    kernel(src, dst, 0, n, width);
     return;
   }
   I started = 0;
@@ -6240,8 +6241,8 @@ static __attribute__((noinline)) void parallel_float_run(
   if (pthread_sigmask(SIG_SETMASK, &previous, 0)) abort();
   /* Thread creation can fail under a resource limit. Compute only the chunks
      that were not launched, rather than replaying work already in progress. */
-  kernel(src, dst, tasks[0].lo, tasks[0].hi);
-  for (I i = started + 1; i < count; i++) kernel(src, dst, tasks[i].lo, tasks[i].hi);
+  kernel(src, dst, tasks[0].lo, tasks[0].hi, width);
+  for (I i = started + 1; i < count; i++) kernel(src, dst, tasks[i].lo, tasks[i].hi, width);
   for (I i = 0; i < started; i++) {
     /* With these private joinable handles this cannot fail. Returning anyway
        would release stack task records and managed roots still used by a worker. */
@@ -6256,9 +6257,26 @@ List *pys_parallel_map_f64(List *src, I workers, ParallelFloatKernel *kernel) {
   I count = n / 16384;                 /* at least 16K elements per participating thread */
   if (count > workers) count = workers;
   io_in();
-  if (count < 2) kernel((const double *)src->a, (double *)dst->a, 0, n);
-  else parallel_float_run((const double *)src->a, (double *)dst->a, n, count, kernel);
+  if (count < 2) kernel((const double *)src->a, (double *)dst->a, 0, n, 1);
+  else parallel_float_run((const double *)src->a, (double *)dst->a, n, count, 1, kernel);
   io_out();                          /* joins publish every write before signals or user code resume */
+  return dst;
+}
+List *pys_parallel_rows_f64(List *src, I width, I workers, ParallelFloatKernel *kernel) {
+  if (workers < 1 || workers > 64) pys_fail("ValueError: workers must be between 1 and 64");
+  if (width < 1) pys_fail("ValueError: width must be positive");
+  I n = src->len;
+  if (n % width) pys_fail("ValueError: values length must be a multiple of width");
+  I rows = n / width;
+  List *dst = pys_list_new_atomic(rows);
+  dst->len = rows;
+  I count = n / 16384;                 /* budget input work, while keeping every row indivisible */
+  if (count > workers) count = workers;
+  if (count > rows) count = rows;
+  io_in();
+  if (count < 2) kernel((const double *)src->a, (double *)dst->a, 0, rows, width);
+  else parallel_float_run((const double *)src->a, (double *)dst->a, rows, count, width, kernel);
+  io_out();
   return dst;
 }
 #endif

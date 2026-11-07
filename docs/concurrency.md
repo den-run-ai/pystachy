@@ -110,8 +110,54 @@ the runtime cache identity. Programs without such sites keep their ordinary runt
 This does not make shared objects, the compiler frontend, or extension entrypoints
 thread-safe. CPython extension calls still obey their owner-thread contract and keep
 the host GIL. General threading, a persistent worker pool, process-wide BLAS budgeting,
-compiler parallelization, reductions and broader kernels remain separate work.
+compiler parallelization, reductions split across workers and broader kernels remain separate work.
 See the [reproducer and measurements](../bench/parallel/README.md).
+
+## Experimental row scoring
+
+```python
+from parallel import sum_rows_float
+
+def feature(x: float) -> float:
+    return x * x
+
+# Two rows, each containing three features.
+scores = sum_rows_float(feature, [1.0, 2.0, 3.0, 4.0, 5.0, 6.0], width=3, workers=4)
+# [14.0, 77.0]
+```
+
+`sum_rows_float(fn, values, width, workers=1)` returns one float for each fixed-width
+row of a flat `list[float]`. Each row starts at positive zero and adds
+`fn(values[row * width + column])` from left to right. It deliberately uses ordinary
+addition, not Python's `sum()` (whose newer implementations may compensate rounding).
+It validates workers first, then positive width and rectangular input, before
+allocation or calling `fn`. An empty input returns an empty fresh list for every
+positive width. Invalid dimensions raise `ValueError`.
+
+The callback has exactly the float map's audited scalar eligibility rules. The
+compiler emits the bounded row/column loops itself; this does **not** extend the
+proof to user-written loops, helper calls, allocation or string operations. Unknown
+or effectful callbacks run the library's serial implementation, preserving callback
+order, mutations of later input elements and the first exception. Recognized sites
+also keep this behavior when their kernel proof fails.
+
+Workers receive whole rows and write disjoint result slots. A row's floating-point
+reduction is never split, reassociated, contracted or combined with another row.
+The number of participants is bounded by requested workers, row count and one thread
+per 16,384 input elements. One long row therefore stays sequential. As with float
+maps, output allocation and dispatch can dominate cheap or small jobs; one worker
+remains the default. This prototype has no persistent pool or automatic cost model.
+
+Input and output are native lists owned by the synchronous caller, which retains
+them until all workers have joined, including deferred interrupt delivery. General
+managed-heap threads and externally mutable retained CPU buffers are outside this
+API. Retaining a buffer does not freeze its aliases: adding that input type will
+require a separate no-concurrent-mutation and lifetime contract. Callback
+specialization, arbitrary bounded-loop proofs and buffer work in #1122, #1125,
+#1106 and #1118 remain separate prerequisites for broader worker kernels.
+
+The [row-scoring experiment](../bench/parallel_rows/README.md) keeps correctness
+checks, dispatch costs and end-to-end benchmark limitations explicit.
 
 ## Guarantees
 

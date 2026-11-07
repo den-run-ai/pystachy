@@ -191,17 +191,21 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                     error = list_write_error(i, int_lists(), self.rtfns[i.s].sig)
                     if error != "":
                         self.bad_ir(fn, b, error)
-                if i.s == "parallel.map_f64":
-                    if i.t != "list[float]" or [a.t for a in i.a] != ["list[float]", "int", "%ptr"] or len(i.r) != 1 or i.k != 0 or i.x != "" or len(i.b) not in [0, 2]:
-                        self.bad_ir(fn, b, "parallel.map_f64 needs a float list, worker count and proven kernel pointer")
-                    pointer = i.a[2].v
+                if i.s in ["parallel.map_f64", "parallel.rows_f64"]:
+                    types = ["list[float]", "int", "%ptr"]
                     prefix = "@pys.parallel."
+                    if i.s == "parallel.rows_f64":
+                        types = ["list[float]", "int", "int", "%ptr"]
+                        prefix = "@pys.parallel.rows."
+                    if i.t != "list[float]" or [a.t for a in i.a] != types or len(i.r) != 1 or i.k != 0 or i.x != "" or len(i.b) not in [0, 2]:
+                        self.bad_ir(fn, b, i.s + " needs a float list, dimensions/count and proven kernel pointer")
+                    pointer = i.a[-1].v
                     target = "@" + pointer[len(prefix):]
                     if not pointer.startswith(prefix) or target not in self.fll:
-                        self.bad_ir(fn, b, "parallel.map_f64 needs a compiled kernel thunk")
+                        self.bad_ir(fn, b, i.s + " needs a compiled kernel thunk")
                     error = kernel_reason(self.fns[self.fll[target]])
                     if error != "":
-                        self.bad_ir(fn, b, "parallel.map_f64 unsafe kernel: " + error)
+                        self.bad_ir(fn, b, i.s + " unsafe kernel: " + error)
             if i.op == "empty.kind":
                 if len(i.a) != 1 or i.t != "" or i.s != "" or i.x != "" or len(i.b) != 0 or i.k < 0 or i.k >= len(self.holes):
                     self.bad_ir(fn, b, "empty.kind needs one empty dict/set and a valid type hole")

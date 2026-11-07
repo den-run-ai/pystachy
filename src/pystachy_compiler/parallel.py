@@ -85,19 +85,25 @@ def kernel_reason(fn: IFn) -> str:
     return ""
 
 
-def gen_parallel_maps(self) -> tuple[list[str], list[str]]:
+def gen_parallel_maps(self) -> tuple[list[str], list[str], list[str]]:
     # The normal frontend has already evaluated/captured the callable and all
     # arguments, including keyword/default handling. Match its immutable callable
     # constant, never the source name of an argument that may have been rebound.
     # This pass owns all its state; nothing survives a retry or compilation.
-    name = "parallel$map_float"
-    if self.rtmode or name not in self.funcs:
-        return [], []
-    lib = self.funcs[name]
-    if not lib_source(lib.node.line, self.libdir, "parallel.py"):
-        return [], []
+    sites: dict[str, bool] = {}
+    for name in ["parallel$map_float", "parallel$sum_rows_float"]:
+        if not self.rtmode and name in self.funcs:
+            lib = self.funcs[name]
+            if lib_source(lib.node.line, self.libdir, "parallel.py"):
+                sites[lib.ll] = name == "parallel$sum_rows_float"
+    if len(sites) == 0:
+        return [], [], []
     if dynamic_program():
-        return [], ["parallel.map_float: serial (numeric identity program)"]
+        notes: list[str] = []
+        for symbol in sites:
+            label = "parallel.sum_rows_float" if sites[symbol] else "parallel.map_float"
+            notes.append(label + ": serial (numeric identity program)")
+        return [], [], notes
     targets: dict[str, str] = {}
     for key in self.adapters:
         suffix = "] callable[float,float]"
@@ -106,29 +112,41 @@ def gen_parallel_maps(self) -> tuple[list[str], list[str]]:
             if target in self.funcs:
                 targets["@cvo." + self.adapters[key][4:]] = self.funcs[target].ll
     kernels: list[str] = []
-    notes: list[str] = []
+    rows: list[str] = []
+    notes = []
     for fn in self.fns:
         for b in fn.blocks:
             for i in b.code:
-                if i.op != "call" or i.s != lib.ll or len(i.a) != 3:
+                if i.op != "call" or i.s not in sites:
                     continue
-                if [a.t for a in i.a] != ["callable[float,float]", "list[float]", "int"]:
+                rowwise = sites[i.s]
+                types = ["callable[float,float]", "list[float]", "int"]
+                if rowwise:
+                    types.append("int")
+                if [a.t for a in i.a] != types:
                     continue
+                label = "parallel.sum_rows_float" if rowwise else "parallel.map_float"
                 value = i.a[0].v
                 if value not in targets or targets[value] not in self.fll:
-                    notes.append("parallel.map_float: serial in " + fn.f.ll + " (unknown callable)")
+                    notes.append(label + ": serial in " + fn.f.ll + " (unknown callable)")
                     continue
                 target = targets[value]
                 reason = kernel_reason(self.fns[self.fll[target]])
                 if reason != "":
-                    notes.append("parallel.map_float: serial " + target + " (" + reason + ")")
+                    notes.append(label + ": serial " + target + " (" + reason + ")")
                     continue
-                notes.append("parallel.map_float: native " + target)
-                if target not in kernels:
-                    kernels.append(target)
-                # The typed runtime operation retains both list and count types;
-                # its final pointer names only a thunk made from a verified kernel.
+                notes.append(label + ": native " + target)
+                # Row bounds and reduction order are fixed by the trusted thunk;
+                # the callback uses exactly the same audited scalar proof as map.
                 i.op = "rt"
-                i.s = self.runtime("pys_parallel_map_f64")
-                i.a = [i.a[1], i.a[2], Val("@pys.parallel." + target[1:], "%ptr")]
-    return kernels, notes
+                if rowwise:
+                    if target not in rows:
+                        rows.append(target)
+                    i.s = self.runtime("pys_parallel_rows_f64")
+                    i.a = [i.a[1], i.a[2], i.a[3], Val("@pys.parallel.rows." + target[1:], "%ptr")]
+                else:
+                    if target not in kernels:
+                        kernels.append(target)
+                    i.s = self.runtime("pys_parallel_map_f64")
+                    i.a = [i.a[1], i.a[2], Val("@pys.parallel." + target[1:], "%ptr")]
+    return kernels, rows, notes
