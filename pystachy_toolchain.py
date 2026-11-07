@@ -9,6 +9,8 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import time
+from urllib.error import HTTPError, URLError
 from urllib.request import urlopen
 
 
@@ -48,13 +50,39 @@ MACOS_SHA256 = "a9a22f450d35f1f73cd61ab6a17c6f27d8f6051d56197395c1eb397f0c9bbec4
 
 
 def download(url: str, sha256: str, destination: Path) -> None:
-    digest = hashlib.sha256()
-    with urlopen(url, timeout=60) as response, destination.open("wb") as archive:
-        while chunk := response.read(1024 * 1024):
-            digest.update(chunk)
-            archive.write(chunk)
-    if digest.hexdigest() != sha256:
-        raise ValueError(f"LLVM download checksum mismatch: {url}")
+    for attempt in range(3):
+        digest = hashlib.sha256()
+        error = None
+        # Catch network operations separately so local file errors are not retried.
+        try:
+            response = urlopen(url, timeout=60)
+        except (URLError, TimeoutError) as failure:
+            error = failure
+        else:
+            with response, destination.open("wb") as archive:
+                while True:
+                    try:
+                        chunk = response.read(1024 * 1024)
+                    except (URLError, TimeoutError) as failure:
+                        error = failure
+                        break
+                    if not chunk:
+                        break
+                    digest.update(chunk)
+                    archive.write(chunk)
+        if error is None:
+            if digest.hexdigest() != sha256:
+                raise ValueError(f"LLVM download checksum mismatch: {url}")
+            return
+        if isinstance(error, HTTPError):
+            retryable = error.code in (408, 429, 500, 502, 503, 504)
+        else:
+            retryable = isinstance(error, TimeoutError) or isinstance(error.reason, TimeoutError)
+        if not retryable or attempt == 2:
+            raise error
+        if isinstance(error, HTTPError):
+            error.close()
+        time.sleep(attempt + 1)
 
 
 def unpack_ubuntu(staging: Path, payload: Path, arch: str) -> Path:
