@@ -35,7 +35,8 @@
     "recordings": 2142,
     "deviations": 122,
     "library_copies": 11,
-    "pinned_agent_files": 6
+    "pinned_agent_files": 6,
+    "full_lint_passed": true
   },
   "corpus_control": "All 89 existing base library files and runtime.py were verified byte-identical before both native compilers used the same base PYSTACHY_HOME. No output oracle was rewritten. The eight differences only add _pystachy_process to the supported builtins list; rejection status and IR behavior are unchanged. Final runtime-only SIGCHLD guard was followed by another complete bootstrap and native integration suite; frontend/library sources are unchanged.",
   "diagnostic_replay": "The comparison script was passed to sh -c with its original comparison logic, fixed working directory, and SHOW=1000 instead of SHOW=3 to preserve every expected delta.",
@@ -213,6 +214,58 @@
     "process-check-recordings.log": "PYTHON=\"/workspace/scratch/e98dc1e3e6cd/dev/bin/python\" tests/record.sh --check\nCPython 3.13.16: 2142 recordings, 122 deviations, 11 files of lib/ checked; 0 failed\n/workspace/scratch/e98dc1e3e6cd/dev/bin/python tools/check_agent_source.py\n6 pinned AskMe files verified at 9256333b07628f6e4b399f41916f36d463914501\n",
     "process-check-recordings-missing-dependency.log": "PYTHON=\"/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13\" tests/record.sh --check\nFAIL typevar_templates: tests/programs/generics/typevar_templates.out (<) is not what CPython prints (>)\n1,11c1\n< mods: init mods\n< mods.shapes: init mods.shapes\n< a a [1]\n< e None\n< dflt y None\n< [1] ['a', 'b'] 1.5 [1] s True\n< {1: 'a', 2: 'b'} {'x': 1}\n< 2 1\n< 1 y (1, 2) ('p', 'q')\nFAIL typevar_templates: CPython writes to stderr, and there is no tests/programs/generics/typevar_templates.err: 'ModuleNotFoundError: No module named 'typing_extensions''\nFAIL any_annotated: tests/programs/inference/any_annotated.out (<) is not what CPython prints (>)\n1,2c1\n< 3 s 4 v 5 6\n< [exit 0]\n---\n> [exit 1]\nFAIL any_annotated: CPython writes to stderr, and there is no tests/programs/inference/any_annotated.err: 'ModuleNotFoundError: No module named 'typing_extensions''\nFAIL any_templates: tests/programs/inference/any_templates.out (<) is not what CPython prints (>)\n1,13c1\n< <1> <a> <[1, 2]> <None> 42\n< ['a=1', 'b=2'] ['x=y']\n< 6 0.75 abc\n< None None 3 None None 'k' [1] 2\n< none 9 (1, 'b', 2)\n< int 2\n< int 3\n< str A bool none other [1] other 2.5\n< 4 7 <1.5>\nFAIL any_templates: CPython writes to stderr, and there is no tests/programs/inference/any_templates.err: 'ModuleNotFoundError: No module named 'typing_extensions''\nFAIL any_variables: tests/programs/inference/any_variables.out (<) is not what CPython prints (>)\n1,4c1\n< 5 ['ann'] {'one': 1} 3 [2, 4] alias 2.5 True\n< 3\n< 2 text 11 4 5 7\n< [exit 0]\n---\n> [exit 1]\nFAIL any_variables: CPython writes to stderr, and there is no tests/programs/inference/any_variables.err: 'ModuleNotFoundError: No module named 'typing_extensions''\nFAIL dynany_annotated: tests/programs/inference/dynany_annotated.out (<) is not what CPython prints (>)\n1,2c1\n< 3 s 4 v 5 6 now a str\n< [exit 0]\n---\n> [exit 1]\nFAIL dynany_annotated: CPython writes to stderr, and there is no tests/programs/inference/dynany_annotated.err: 'ModuleNotFoundError: No module named 'typing_extensions''\nCPython 3.13.16: 2142 recordings, 122 deviations, 11 files of lib/ checked; 10 failed\nmake: *** [Makefile:279: check-recordings] Error 1\n",
     "process-final-fast.log": "ruff check\nAll checks passed!\nmypy --config-file mypy.ini\nSuccess: no issues found in 49 source files\n/workspace/scratch/e98dc1e3e6cd/dev/bin/python tools/check_repository_hygiene.py\nrepository hygiene: tracked paths are clean\n/workspace/scratch/e98dc1e3e6cd/dev/bin/python -m unittest discover -s tools -p test_repository_hygiene.py\n...........\n----------------------------------------------------------------------\nRan 11 tests in 0.209s\n\nOK\n/workspace/scratch/e98dc1e3e6cd/dev/bin/python -m unittest discover -s tools -p test_function_summaries.py\n.......\n----------------------------------------------------------------------\nRan 7 tests in 0.055s\n\nOK\n/workspace/scratch/e98dc1e3e6cd/dev/bin/python -m unittest discover -s tools -p 'test_typed*.py'\n......................................................................................................................................................................................\n----------------------------------------------------------------------\nRan 182 tests in 4.912s\n\nOK\n/workspace/scratch/e98dc1e3e6cd/dev/bin/python -m unittest discover -s tools -p 'test_json*.py'\n..................................\n----------------------------------------------------------------------\nRan 34 tests in 0.971s\n\nOK\n/workspace/scratch/e98dc1e3e6cd/dev/bin/python -m unittest discover -s tools -p test_numeric_identity.py\n........................................................\n----------------------------------------------------------------------\nRan 56 tests in 0.300s\n\nOK\n/workspace/scratch/e98dc1e3e6cd/dev/bin/python -m unittest discover -s tools -p test_identity_scope.py\n.................\n----------------------------------------------------------------------\nRan 17 tests in 3.504s\n\nOK\n/workspace/scratch/e98dc1e3e6cd/dev/bin/python -m unittest discover -s tools -p test_dynany_comparisons.py\n..................................................\n----------------------------------------------------------------------\nRan 50 tests in 6.270s\n\nOK\n/workspace/scratch/e98dc1e3e6cd/dev/bin/python -m unittest discover -s tools -p test_dynany_dict_kinds.py\n...\n----------------------------------------------------------------------\nRan 3 tests in 0.005s\n\nOK\n/workspace/scratch/e98dc1e3e6cd/dev/bin/python -m unittest discover -s tools -p test_diagnostic_capture.py\n........\n----------------------------------------------------------------------\nRan 8 tests in 0.098s\n\nOK\n/workspace/scratch/e98dc1e3e6cd/dev/bin/python -m unittest discover -s tools -p test_loader_preprocessing.py\n............\n----------------------------------------------------------------------\nRan 12 tests in 0.010s\n\nOK\n/workspace/scratch/e98dc1e3e6cd/dev/bin/python -m unittest discover -s tools -p test_parser_allocations.py\n........\n----------------------------------------------------------------------\nRan 8 tests in 0.006s\n\nOK\n/workspace/scratch/e98dc1e3e6cd/dev/bin/python -m unittest discover -s tools -p test_inspect_compiler.py\n......................\n----------------------------------------------------------------------\nRan 22 tests in 4.358s\n\nOK\n/workspace/scratch/e98dc1e3e6cd/dev/bin/python -m unittest discover -s tools -p test_pystachy_toolchain.py\n..\n----------------------------------------------------------------------\nRan 2 tests in 0.013s\n\nOK\n",
-    "process-final-fast-missing-path.log": "ruff is required: install tools/requirements-dev.txt and activate its environment\nmake: *** [Makefile:353: lint-python] Error 1\n"
+    "process-final-fast-missing-path.log": "ruff is required: install tools/requirements-dev.txt and activate its environment\nmake: *** [Makefile:353: lint-python] Error 1\n",
+    "process-ci-lint-before.log": "ruff check\nAll checks passed!\n/workspace/scratch/e98dc1e3e6cd/dev/bin/python tools/runtime_roots.py\n67 static pointer stores: 0 GC root problems\nshellcheck -s sh -S warning tests/cache.sh tests/corpus.sh tests/prepare_path.sh tests/record.sh tests/run.sh tests/verify.sh tests/ffi/run.sh tools/abi_check.sh tools/check_ir.sh tools/coverage.sh tools/docker_smoke.sh tools/irsame.sh tools/runtime_coverage.sh tools/setup.sh tools/shard_cases.sh tools/variants.sh bench/run.sh\n\"/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/\"clang -fsyntax-only -Wall -Wextra -Werror runtime.c tools/dictprobe.c tools/listprobe.c tools/eqprobe.c tools/fileprobe.c tools/selectprobe.c tools/weakrefprobe.c tools/boxprobe.c tools/unicodeprobe.c tools/bytescanprobe.c pyext.c pyembed.c\nIn file included from tools/dictprobe.c:48:\ntools/../runtime.c:7061:9: error: call to undeclared function 'pipe2'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]\n 7061 |     if (pipe2(pipes[made], O_CLOEXEC)) { error = errno; break; }\n      |         ^\ntools/../runtime.c:7061:9: note: did you mean 'pipe'?\n/usr/include/unistd.h:437:12: note: 'pipe' declared here\n  437 | extern int pipe (int __pipedes[2]) __THROW __wur;\n      |            ^\n1 error generated.\nmake: *** [Makefile:380: lint] Error 1\n",
+    "process-ci-lint-after.log": "ruff check\nAll checks passed!\n/workspace/scratch/e98dc1e3e6cd/dev/bin/python tools/runtime_roots.py\n67 static pointer stores: 0 GC root problems\nshellcheck -s sh -S warning tests/cache.sh tests/corpus.sh tests/prepare_path.sh tests/record.sh tests/run.sh tests/verify.sh tests/ffi/run.sh tools/abi_check.sh tools/check_ir.sh tools/coverage.sh tools/docker_smoke.sh tools/irsame.sh tools/runtime_coverage.sh tools/setup.sh tools/shard_cases.sh tools/variants.sh bench/run.sh\n\"/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/\"clang -fsyntax-only -Wall -Wextra -Werror runtime.c tools/dictprobe.c tools/listprobe.c tools/eqprobe.c tools/fileprobe.c tools/selectprobe.c tools/weakrefprobe.c tools/boxprobe.c tools/unicodeprobe.c tools/bytescanprobe.c pyext.c pyembed.c\n\"/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/\"clang -fsyntax-only -Wall -Wextra -Werror -DPYX_ABI3T pyext.c\n",
+    "process-ci-fix-integration.log": "test_abandoned_handle_and_unhandled_exception_cleanup (test_native_process_workers.ProcessWorkersTests.test_abandoned_handle_and_unhandled_exception_cleanup) ... ok\ntest_aot_matches_cpython (test_native_process_workers.ProcessWorkersTests.test_aot_matches_cpython) ... ok\ntest_aot_with_collection_on_each_allocation (test_native_process_workers.ProcessWorkersTests.test_aot_with_collection_on_each_allocation) ... ok\ntest_descendants_end_with_their_leader (test_native_process_workers.ProcessWorkersTests.test_descendants_end_with_their_leader) ... ok\ntest_descriptor_closure_is_independent_of_current_soft_limit (test_native_process_workers.ProcessWorkersTests.test_descriptor_closure_is_independent_of_current_soft_limit) ... ok\ntest_extension_imports_and_calls_reject_native_spawning (test_native_process_workers.ProcessWorkersTests.test_extension_imports_and_calls_reject_native_spawning) ... ok\ntest_jit_matches_cpython (test_native_process_workers.ProcessWorkersTests.test_jit_matches_cpython) ... ok\ntest_native_owner_cancels_other_requests_after_failure (test_native_process_workers.ProcessWorkersTests.test_native_owner_cancels_other_requests_after_failure) ... ok\ntest_native_owner_supervises_fresh_compiler_requests (test_native_process_workers.ProcessWorkersTests.test_native_owner_supervises_fresh_compiler_requests) ... ok\ntest_sigchld_auto_reaping_is_rejected_before_fork (test_native_process_workers.ProcessWorkersTests.test_sigchld_auto_reaping_is_rejected_before_fork) ... ok\ntest_sigint_cleans_blocking_wait_and_owner_sleep (test_native_process_workers.ProcessWorkersTests.test_sigint_cleans_blocking_wait_and_owner_sleep) ... ok\n\n----------------------------------------------------------------------\nRan 11 tests in 20.837s\n\nOK\n"
+  },
+  "ci_followup": {
+    "pull_request": 1135,
+    "published_head_before_fix": "f73435048ab2c416a9c4bf40c428d63d77773416",
+    "local_equivalent_tree_commit": "eb36d8ec66ed0667423d646128aa6d7466ad37be",
+    "failure": "Full CI lint rejected runtime.c:7061 when included by tools/dictprobe.c: pipe2 was undeclared because the first libc header preceded _GNU_SOURCE.",
+    "reproduction": {
+      "command": "make lint",
+      "exit_status": 2,
+      "removed_environment": [
+        "CC",
+        "CFLAGS",
+        "CPPFLAGS",
+        "CXXFLAGS"
+      ],
+      "log": "process-ci-lint-before.log"
+    },
+    "fix": "Define _GNU_SOURCE before tools/dictprobe.c includes time.h, matching fileprobe.c and selectprobe.c. Production pipe2(O_CLOEXEC) and lifecycle code are unchanged.",
+    "changed_code": [
+      "tools/dictprobe.c"
+    ],
+    "changed_code_sha256": {
+      "tools/dictprobe.c": "3986477a620c6b85f2f04de8f081df5a7e3bdd5f8b622c891672831c285e8344"
+    },
+    "validation": [
+      {
+        "command": "make lint",
+        "exit_status": 0,
+        "coverage": "Ruff, runtime roots, ShellCheck, strict Clang checks for all 12 runtime/probe/extension translation units plus ABI3T pyext.c. Same environment as failing reproduction.",
+        "log": "process-ci-lint-after.log"
+      },
+      {
+        "command": "python -m unittest discover -s tools -p test_native_process_workers.py -v",
+        "exit_status": 0,
+        "tests": 11,
+        "log": "process-ci-fix-integration.log"
+      }
+    ],
+    "source_and_artifact_identity": {
+      "recorded_production_sources": 122,
+      "unchanged_production_sources": 122,
+      "recorded_artifacts": 5,
+      "unchanged_artifacts": 5
+    },
+    "bootstrap_and_corpus": "Not repeated: the fix changes only the probe translation unit and documentation/evidence. All recorded compiler/runtime/library sources and existing final artifacts retain their exact SHA-256 identities. The integration rerun builds its native owner and extension fixtures anew.",
+    "toolchain": {
+      "python": "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+      "llvm": "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin"
+    }
   }
 }

@@ -160,6 +160,7 @@ comparison or a compiler speedup claim.
 | Complete native bootstrap | Three byte-identical compiler IR witnesses (832,374 lines), and three byte-identical runtime IR witnesses (18,805 lines) |
 | Runtime ABI/effects | 651 entries, 70 exception classes, 172 runtime Python functions pass |
 | Fast checks | Ruff, mypy for 49 source files, and 412 unit checks pass |
+| Full lint | Ruff, runtime roots, ShellCheck and strict Clang checks of all runtime/probe/extension translation units pass, including ABI3T |
 | Recorded expectations | 2,142 recordings, 122 deviations, 11 library copies and 6 pinned agent files pass |
 | Native compiler consumer | Final AOT supervisor launches two fresh native compiler children; both emitted artifacts match the same CPython frontend's IR byte for byte |
 
@@ -179,6 +180,18 @@ corpus run. The final runtime passes a new complete bootstrap and all 11 native
 integration checks; the compiler and library sources remain unchanged. The first
 recording check used a bare interpreter missing the required `typing_extensions`;
 the corrected run used the existing development environment and passed.
+
+The first CI Lint run on #1135 (`f73435048ab2c416a9c4bf40c428d63d77773416`)
+exposed a header-order error that the earlier standalone `runtime.c` check missed:
+`tools/dictprobe.c` included `<time.h>` before `runtime.c`, making `_GNU_SOURCE`
+too late to expose `pipe2`. Full `make lint` reproduced the failure locally with
+inherited compiler flags removed. Defining `_GNU_SOURCE` before the probe's first
+libc header fixes it, matching the existing file and select probes. The runtime
+still uses atomic `pipe2(O_CLOEXEC)`. Full lint and all 11 process integration
+tests pass after this fix. All 122 recorded production-source hashes and five
+artifact hashes are unchanged; the bootstrap and corpus comparisons were not
+repeated for this probe-only correction. The validation record retains both lint
+outcomes and the integration rerun.
 
 Full `make verify`, the complete GC groups and FFI suite, native non-Linux
 execution and remote execution remain unrun. This API is a draft runtime slice;
