@@ -248,6 +248,18 @@ class BootstrapPolicyControls(unittest.TestCase):
         self.assertFalse(checked["compiler_identity_passed"])
         self.assertFalse(checked["ordinary_final_compilers_identical"])
 
+    def test_runtime_overlap_requires_both_compilers_to_match(self):
+        policies = ["driver-o0", "driver-overlap"]
+        for first, final, passed in (("temporary", "ordinary", True),
+                                     ("different", "ordinary", False),
+                                     ("temporary", "different", False)):
+            with self.subTest(first=first, final=final):
+                runs = [self.run_identity(policies[0]), self.run_identity(policies[1], first, final)]
+                checked = followup.compiler_identity(runs, policies)
+                self.assertEqual(checked["compiler_identity_passed"], passed)
+                self.assertTrue(checked["final_identity_required"])
+                self.assertTrue(checked["driver_stage1_identity_required"])
+
     def test_thinlto_comparison_keeps_the_same_temporary_compiler(self):
         runs = [self.run_identity("driver-o0"), self.run_identity("driver-inline75", final="inline"),
                 self.run_identity("driver-thinlto4", final="thinlto")]

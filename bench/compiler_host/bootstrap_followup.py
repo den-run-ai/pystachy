@@ -22,6 +22,7 @@ from optimization_tiers import scheduled
 
 POLICIES = {
     "driver-o0": ["--jobs", "2", "--build-jobs", "1", "--stage1-opt", "0"],
+    "driver-overlap": ["--jobs", "2", "--build-jobs", "2", "--stage1-opt", "0", "--runtime-overlap"],
     "driver-inline75": ["--jobs", "2", "--build-jobs", "1", "--stage1-opt", "0",
                         "--stage2-inline-threshold", "75"],
     "driver-thinlto4": ["--jobs", "4", "--build-jobs", "4", "--stage1-opt", "0",
@@ -65,7 +66,7 @@ def compiler_identity(runs, policies):
     final = {r["bootstrap"]["binaries"]["pystachy2"]["sha256"] for r in runs}
     ordinary = {r["bootstrap"]["binaries"]["pystachy2"]["sha256"]
                 for r in runs if r["policy"] not in CHANGED_FINAL}
-    pair = {"driver-o0", "driver-inline75", "driver-thinlto4"} & set(policies)
+    pair = {"driver-o0", "driver-overlap", "driver-inline75", "driver-thinlto4"} & set(policies)
     stage1 = {policy: sorted({r["bootstrap"]["binaries"]["pystachy1"]["sha256"]
                              for r in runs if r["policy"] == policy}) for policy in sorted(pair & set(policies))}
     pair_required = len(pair) > 1
