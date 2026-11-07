@@ -1,0 +1,76 @@
+'' False False False False False
+'abcXYZ' True True False False False
+'123' False True True True True
+'a1' False True False False False
+'_' False False False False False
+' ' False False False False False
+'A\x00B' False False False False False
+'é' True True False False False
+'界' True True False False False
+'Привет' True True False False False
+'العربية' True True False False False
+'Ελληνικά' True True False False False
+'עברית' True True False False False
+'한글' True True False False False
+'न' True True False False False
+'नमस्ते' False False False False False
+'é' False False False False False
+'ͅ' False False False False False
+'ʰ' True True False False False
+'©' False False False False False
+'ª' True True False False False
+'«' False False False False False
+'²' False True False True True
+'½' False True False False True
+'Ⅳ' False True False False True
+'四' True True False False True
+'٠١٢' False True True True True
+'१२३' False True True True True
+'１２３' False True True True True
+'𝟘𝟙' False True True True True
+'𐒠' False True True True True
+'𞓰' False True True True True
+'𝋀' False True False False True
+'Ⓐ' False False False False False
+'①' False True False True True
+'\u200b' False False False False False
+'𐀀' True True False False False
+'𐐀' True True False False False
+'𠀀' True True False False False
+'𮯰' True True False False False
+'𮹝' True True False False False
+'\U0002ee5e' False False False False False
+'😀' False False False False False
+'\ufffe' False False False False False
+'\ud800' False False False False False
+'\udfff' False False False False False
+'\U0010ffff' False False False False False
+'a²' False True False False False
+'9²' False True False True True
+'²٩' False True False True True
+'四9' False True False False True
+'éa' True True False False False
+'a界z' True True False False False
+'é́' False False False False False
+'²!' False False False False False
+'Ⅳa' False True False False False
+8193 True True False False False
+8193 False True False True True
+8193 False True True True True
+4097 False False False False False
+33 False False False False False
+33 False True False False False
+True False
+b'' False False False
+b'aZ' True True False
+b'a1' False True False
+b'12' False True True
+b'_' False False False
+b'\x00' False False False
+b'\xaa' False False False
+b'\xb2' False False False
+b'\xe9' False False False
+b'\xff' False False False
+b'\xc3\xa9' False False False
+b'\xd9\xa1' False False False
+[exit 0]

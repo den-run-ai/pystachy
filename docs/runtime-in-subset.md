@@ -60,6 +60,19 @@ Programs supply their own entry point, roots and object callbacks. Runtime mode
 does not emit replacements. `runtime.c` keeps prototypes for subset definitions
 that its own functions call.
 
+## Unicode classification
+
+`runtime.py` scans ASCII directly for `isalpha`, `isalnum`, `isdecimal`, `isdigit`
+and `isnumeric`, and decodes other UTF-8 code points with `uchar`. A pure C helper,
+`pys_unicode_flags`, binary-searches a 6,944-byte constant transition table in
+`runtime.c`; it allocates nothing and has no locale or mutable state. Its distinct
+alpha, digit, decimal and numeric flags preserve CPython's overlapping properties.
+`tools/unicode_classification_tables.py --write` regenerates the table from the
+pinned CPython and `--check` compares it with all 1,114,112 code points. The table
+check runs in `tools/rtcheck.py`; `tools/unicode_audit.py` compares each native
+predicate result over the same entire range in JIT and AOT. Bytes predicates keep
+their independent ASCII scan. Case mapping and case tests remain separate work.
+
 ## Private primitives
 
 `import _rt` is available only in runtime mode. Its implementations operate on

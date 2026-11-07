@@ -195,8 +195,13 @@ def main():
             rows[seen[key]]["sources"].append(source)
             return
         seen[key] = len(rows)
-        rows.append({"id": len(rows), "api": api, "input": raw, "flags": flags,
-                     "sources": [source], "expected": outcome(raw, flags, api)})
+        row = {"id": len(rows), "api": api, "input": raw, "flags": flags,
+               "sources": [source], "expected": outcome(raw, flags, api)}
+        # Escaped JSON combines an adjacent surrogate pair into one astral
+        # character. Preserve the original input as well as the tagged result.
+        if json.loads(json.dumps(raw, ensure_ascii=True)) != raw:
+            row["input_codepoints"] = [ord(char) for char in raw]
+        rows.append(row)
 
     for filename in FILES:
         path = UPSTREAM / "tests" / filename
@@ -251,6 +256,44 @@ def main():
             add(raw, flags, "task-api:" + name)
     for name in ("valid", "unquoted_keys", "surrogate_pair", "nested_mixed"):
         add(user_cases[name], {}, "task-loads:" + name, api="loads")
+
+    # Append to the original 645 cases so their IDs, inputs and oracle outcomes
+    # remain stable. These exercise the Unicode predicates used by the repair
+    # heuristics, including characters that must *not* count as letters/digits.
+    unicode_cases = {
+        "latin_value": '[é]',
+        "cjk_key": '{界:1}',
+        "cyrillic": '{город:Москва, имя:Денис}',
+        "arabic": '{المدينة:دبي, اللغة:العربية}',
+        "devanagari": '{नाम:नमस्ते}',
+        "hangul": '{도시:서울}',
+        "astral_letters": '{𐐀:𐐨, 𠀀:𠀁}',
+        "mixed_scripts": '[café, Привет, 中文, العربية, 日本語]',
+        "numeric_suffix": '{code:123é, other:42界}',
+        "numeric_keys": '{²:1, Ⅳ:2, ١:3, ９:4}',
+        "non_ascii_digits": '[١٢, １２, ², Ⅳ]',
+        "combining": '{e\u0301:a\u0301, \u0301x:1}',
+        "uncased_letter": '{字:字, \u0345:1}',
+        "nonletters": '[😀, \u0378, \ue000, é]',
+        "embedded_nul": '{é:"a\u0000b",}',
+        "surrogate": '{é:"\ud800", 值:"\ud83d\ude00",}',
+        "unicode_space": '\u3000{\u00a0é\u2003:\u202f界,\u3000}\u0085',
+        "unicode_line": '{é:bonjour\u2028monde, 界:2}',
+        "truncated_value": '{город:Моск',
+        "truncated_quoted": '{город:"Моск',
+        "missing_comma": '{é:1 界:2}',
+        "nested_wide": '{数:9223372036854775808, items:[é, {界:-9223372036854775809}]}',
+        "valid_unicode": '{"é":"界","город":"Москва","emoji":"😀"}',
+        "quoted_boundaries": '{"\u0378":"\ud800","\ue000":"\u0301",}',
+    }
+    for name, raw in unicode_cases.items():
+        for flags in ({}, {"strict": True}, {"stream_stable": True},
+                      {"skip_json_loads": True}, {"logging": True}):
+            add(raw, flags, "unicode-loads:" + name, api="loads")
+        for flags in ({"return_objects": False},
+                      {"return_objects": False, "ensure_ascii": False},
+                      {"logging": True, "return_objects": False}):
+            add(raw, flags, "unicode-api:" + name)
 
     manifest = {"upstream": "mangiucugna/json_repair", "tag": "v0.64.1",
                 "commit": "ace9b23cb7fc6757775d5fafbfaaa9a88363a573",
