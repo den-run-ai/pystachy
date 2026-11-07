@@ -217,7 +217,9 @@ native dot product over existing host arrays. Imports require one dimension,
 native format `d`, eight-byte items, a positive eight-byte stride and direct
 storage. Empty and unaligned buffers are supported. Wrong formats, dimensions,
 indirection and noncontiguous imports are rejected before reading payload data.
-There is no DLPack, Arrow, device-memory or general ndarray API in this prototype.
+An [optional CPython DLPack adapter](../examples/cpu_dlpack/README.md) uses
+NumPy to expose a compatible CPU view. Arrow, device memory and general ndarray
+operations remain outside this native buffer API.
 
 ```python
 from pyobj import import_module
