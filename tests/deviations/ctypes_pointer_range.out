@@ -1,0 +1,7 @@
+None False
+1 True
+None False
+ctypes pointers require an address below 2**63
+ctypes pointers require an address below 2**63
+None
+[exit 0]

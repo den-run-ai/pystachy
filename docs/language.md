@@ -72,7 +72,7 @@ Additional costs and measurements:
 - **Catchable recursion limits** add a depth check to calls that can recur. In the alpha.4
   release's instruction counts, recursion accounting and the native stack check cost
   pyperformance's `generators` 18.2% and `barnes_hut` 11.2% over alpha.3
-  ([per-benchmark counts](pyperformance.md#alpha3-to-alpha4),
+  ([per-benchmark counts](../bench/pyperformance/README.md#alpha3-to-alpha4),
   [release notes](releases/v0.1.0-alpha.4.md#performance-and-remaining-risks)).
 - **Opt-ins are per module, but some policies are program-wide:** once a module opts in to
   dynamic `Any`, every typed dictionary in the program uses CPython's hash and probe scheme,

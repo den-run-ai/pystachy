@@ -1,6 +1,6 @@
 """Loader component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
-import os
+from src.pystachy_compiler import program_cache
 from src.pystachy_compiler.analysis import (
     accel_try,
     bind_count,
@@ -52,6 +52,7 @@ from src.pystachy_compiler.analysis import (
     walrus_names,
 )
 from src.pystachy_compiler.argparse_schema import lower_argparse, parser_import
+from src.pystachy_compiler.ctypes_schema import ctypes_import, lower_ctypes
 from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, IDPRAGMA, INTFILES, INTSPANS, LINES, MODDUNDERS, RAW, dynamic_pragma, fail, int_pragma, leading_pragma
 from src.pystachy_compiler.lexer import KEYWORDS, Lexer
 from src.pystachy_compiler.module import Mod
@@ -769,6 +770,7 @@ class Loader:
         # A program owns one file-index space, including its dynamic-Any opt-ins.
         # Rebuild both on every load (also runtime.py and restarted/hosted compilations):
         # the main parser starts at file zero, and old opt-ins must not apply to new files.
+        program_cache.track_source(path, src)
         FILES.clear()
         ENUMCLASSES.clear()
         DYNFILES.clear()
@@ -784,6 +786,7 @@ class Loader:
         cm_methods(m.body, cm_names(m.body))
         enum_classes(m.body, enum_names(m.body))
         self.argparse(m.body)
+        self.ctypes(m.body)
         self.prescan(m)
         self.simplify(m, m.body, {})
         self.docstring(m)
@@ -1038,13 +1041,13 @@ class Loader:
             base = name[dot + 1 :]
         for d in dirs:
             p = d + "/" + base
-            if os.path.exists(p + "/__init__.py"):
+            if program_cache.tracked_exists(p + "/__init__.py"):
                 return p + "/__init__.py"
-            if os.path.exists(p + ".py"):
+            if program_cache.tracked_exists(p + ".py"):
                 return p + ".py"
         found: list[str] = []
         for d in dirs:
-            if os.path.exists(d + "/" + base):
+            if program_cache.tracked_exists(d + "/" + base):
                 found.append(d + "/" + base)
         return ":".join(found)
 
@@ -1136,6 +1139,7 @@ class Loader:
         f = open(path, "r", encoding=RAW)
         src = f.read()
         f.close()
+        program_cache.track_source(path, src)
         k = len(FILES)
         FILES.append(path[2:] if path.startswith("./") else path)
         self.pragmas(src, k, k * LINES + 1)
@@ -1145,11 +1149,16 @@ class Loader:
         cm_methods(self.parsed[path], cm_names(self.parsed[path]))
         enum_classes(self.parsed[path], enum_names(self.parsed[path]))
         self.argparse(self.parsed[path])
+        self.ctypes(self.parsed[path])
         return self.parsed[path]
 
     def argparse(self, body: Node) -> None:
         if any([parser_import(st) != "" for st in body.kids]) and len(self.dirs) > 0 and self.modpath("argparse") == self.dirs[-1] + "/argparse.py":
             lower_argparse(body)
+
+    def ctypes(self, body: Node) -> None:
+        if any([ctypes_import(st) for st in body.kids]) and len(self.dirs) > 0 and self.modpath("ctypes") == self.dirs[-1] + "/ctypes.py":
+            lower_ctypes(body)
 
     def pragmas(self, src: str, k: int, line: int) -> None:
         # the opt-ins of file k, whose source is src: dynamic Any, and promoting ints

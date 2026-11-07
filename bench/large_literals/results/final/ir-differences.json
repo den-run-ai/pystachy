@@ -1,0 +1,637 @@
+{
+  "expected_cases": 4241,
+  "completed_cases": 4241,
+  "ir_differences": [
+    {
+      "case": "pystachy.py",
+      "before_sha256": "c2cda02af65083040342027654079bafe2b717464ba8c5c2558c221fe30c2c33",
+      "after_sha256": "940e90f09f3f562fe1db442f81a4c97c4b953d56800e7be4a730cc939d15623e",
+      "before_bytes": 31435882,
+      "after_bytes": 31429427,
+      "changed_functions": [
+        "@init.src.pystachy_compiler.utils",
+        "@init.src.pystachy_compiler.lexer"
+      ],
+      "function_sets_identical": true,
+      "constant_data": [
+        {
+          "name": "@lc.0",
+          "n": 68,
+          "data": "i64 48, i64 1632, i64 1776, i64 1984, i64 2406, i64 2534, i64 2662, i64 2790, i64 2918, i64 3046, i64 3174, i64 3302, i64 3430, i64 3558, i64 3664, i64 3792, i64 3872, i64 4160, i64 4240, i64 6112, i64 6160, i64 6470, i64 6608, i64 6784, i64 6800, i64 6992, i64 7088, i64 7232, i64 7248, i64 42528, i64 43216, i64 43264, i64 43472, i64 43504, i64 43600, i64 44016, i64 65296, i64 66720, i64 68912, i64 69734, i64 69872, i64 69942, i64 70096, i64 70384, i64 70736, i64 70864, i64 71248, i64 71360, i64 71472, i64 71904, i64 72016, i64 72784, i64 73040, i64 73120, i64 73552, i64 92768, i64 92864, i64 93008, i64 120782, i64 120792, i64 120802, i64 120812, i64 120822, i64 123200, i64 123632, i64 124144, i64 125264, i64 130032"
+        },
+        {
+          "name": "@lc.1",
+          "n": 40,
+          "data": "i64 128, i64 160, i64 173, i64 173, i64 1536, i64 1541, i64 1564, i64 1564, i64 1757, i64 1757, i64 1807, i64 1807, i64 6158, i64 6158, i64 5760, i64 5760, i64 8192, i64 8203, i64 8206, i64 8207, i64 8232, i64 8239, i64 8287, i64 8292, i64 8294, i64 8303, i64 12288, i64 12288, i64 57344, i64 63743, i64 65279, i64 65279, i64 65529, i64 65531, i64 917505, i64 917505, i64 917536, i64 917631, i64 983040, i64 1114111"
+        },
+        {
+          "name": "@lc.2",
+          "n": 64,
+          "data": "i64 161, i64 169, i64 171, i64 172, i64 174, i64 180, i64 182, i64 182, i64 184, i64 185, i64 187, i64 191, i64 215, i64 215, i64 247, i64 247, i64 8208, i64 8231, i64 8240, i64 8254, i64 8257, i64 8275, i64 8277, i64 8286, i64 8304, i64 8304, i64 8308, i64 8318, i64 8320, i64 8334, i64 8352, i64 8384, i64 8528, i64 8543, i64 8585, i64 8587, i64 8592, i64 11263, i64 11776, i64 11903, i64 12289, i64 12292, i64 12296, i64 12320, i64 12336, i64 12336, i64 12349, i64 12351, i64 65281, i64 65295, i64 65306, i64 65312, i64 65339, i64 65342, i64 65344, i64 65344, i64 65371, i64 65380, i64 65504, i64 65518, i64 65532, i64 65533, i64 126976, i64 129791"
+        }
+      ],
+      "copy_calls": [
+        {
+          "data": "@lc.0",
+          "n": 68
+        },
+        {
+          "data": "@lc.1",
+          "n": 40
+        },
+        {
+          "data": "@lc.2",
+          "n": 64
+        }
+      ],
+      "before_append_calls": 7525,
+      "after_append_calls": 7353,
+      "statuses_and_diagnostics_unchanged": true,
+      "module_scope_unchanged_except_constant_pools_and_list_declarations": true,
+      "payload_audit": [
+        {
+          "function": "@init.src.pystachy_compiler.utils",
+          "new_pool": "@lc.0",
+          "old_allocation": "%t28",
+          "n": 68,
+          "canonical_slot_words_sha256": "36efb2f56cc3002d7ae14af0ade2a61d67befec79b17c33214c28b272005abf4",
+          "all_slot_bits_identical": true
+        },
+        {
+          "function": "@init.src.pystachy_compiler.lexer",
+          "new_pool": "@lc.1",
+          "old_allocation": "%t59",
+          "n": 40,
+          "canonical_slot_words_sha256": "644fbf04a6e1c1d334cce21668aac11e8cee9c30fb333c0a98ee971265931a4a",
+          "all_slot_bits_identical": true
+        },
+        {
+          "function": "@init.src.pystachy_compiler.lexer",
+          "new_pool": "@lc.2",
+          "old_allocation": "%t60",
+          "n": 64,
+          "canonical_slot_words_sha256": "626b7eb68db11401fd827f48221e198234df9d28c415e80ba42c5b58846e29ca",
+          "all_slot_bits_identical": true
+        }
+      ],
+      "full_diff": "ir-diffs/pystachy.diff",
+      "full_diff_sha256": "c1bd2a0724f4b62c57501efaf092609129eb454aa399ca15eaff99876944ceaa"
+    },
+    {
+      "case": "tests/programs/containers/large_scalar_literals.py",
+      "before_sha256": "8e007e5f93934e07959e8e24c3da26aec749253903e0bd43d70cda9fd8175bea",
+      "after_sha256": "2e30a36b4262936cc1eb2b7d20620bfc4990810d75b7ead5b994a3fd66724dbb",
+      "before_bytes": 26813,
+      "after_bytes": 22022,
+      "changed_functions": [
+        "@f.integers",
+        "@f.floats",
+        "@f.flags"
+      ],
+      "function_sets_identical": true,
+      "constant_data": [
+        {
+          "name": "@lc.0",
+          "n": 32,
+          "data": "i64 -9223372036854775808, i64 9223372036854775807, i64 0, i64 -1, i64 4, i64 5, i64 6, i64 7, i64 8, i64 9, i64 10, i64 11, i64 12, i64 13, i64 14, i64 15, i64 16, i64 17, i64 18, i64 19, i64 20, i64 21, i64 22, i64 23, i64 24, i64 25, i64 26, i64 27, i64 28, i64 29, i64 30, i64 31"
+        },
+        {
+          "name": "@lc.1",
+          "n": 32,
+          "data": "i64 bitcast (double 0x8000000000000000 to i64), i64 bitcast (double 0x0000000000000000 to i64), i64 bitcast (double 0x7FF0000000000000 to i64), i64 bitcast (double 0xFFF0000000000000 to i64), i64 bitcast (double 0x0000000000000001 to i64), i64 bitcast (double 0x8000000000000001 to i64), i64 bitcast (double 0x3FF4000000000000 to i64), i64 bitcast (double 0xBFF4000000000000 to i64), i64 bitcast (double 0x4020000000000000 to i64), i64 bitcast (double 0x4022000000000000 to i64), i64 bitcast (double 0x4024000000000000 to i64), i64 bitcast (double 0x4026000000000000 to i64), i64 bitcast (double 0x4028000000000000 to i64), i64 bitcast (double 0x402A000000000000 to i64), i64 bitcast (double 0x402C000000000000 to i64), i64 bitcast (double 0x402E000000000000 to i64), i64 bitcast (double 0x4030000000000000 to i64), i64 bitcast (double 0x4031000000000000 to i64), i64 bitcast (double 0x4032000000000000 to i64), i64 bitcast (double 0x4033000000000000 to i64), i64 bitcast (double 0x4034000000000000 to i64), i64 bitcast (double 0x4035000000000000 to i64), i64 bitcast (double 0x4036000000000000 to i64), i64 bitcast (double 0x4037000000000000 to i64), i64 bitcast (double 0x4038000000000000 to i64), i64 bitcast (double 0x4039000000000000 to i64), i64 bitcast (double 0x403A000000000000 to i64), i64 bitcast (double 0x403B000000000000 to i64), i64 bitcast (double 0x403C000000000000 to i64), i64 bitcast (double 0x403D000000000000 to i64), i64 bitcast (double 0x403E000000000000 to i64), i64 bitcast (double 0x403F000000000000 to i64)"
+        },
+        {
+          "name": "@lc.2",
+          "n": 32,
+          "data": "i64 1, i64 0, i64 1, i64 0, i64 1, i64 0, i64 1, i64 0, i64 1, i64 1, i64 0, i64 0, i64 1, i64 1, i64 0, i64 0, i64 0, i64 0, i64 1, i64 1, i64 0, i64 0, i64 1, i64 1, i64 0, i64 1, i64 0, i64 1, i64 0, i64 1, i64 0, i64 1"
+        }
+      ],
+      "copy_calls": [
+        {
+          "data": "@lc.0",
+          "n": 32
+        },
+        {
+          "data": "@lc.1",
+          "n": 32
+        },
+        {
+          "data": "@lc.2",
+          "n": 32
+        }
+      ],
+      "before_append_calls": 108,
+      "after_append_calls": 12,
+      "statuses_and_diagnostics_unchanged": true,
+      "module_scope_unchanged_except_constant_pools_and_list_declarations": true,
+      "payload_audit": [
+        {
+          "function": "@f.integers",
+          "new_pool": "@lc.0",
+          "old_allocation": "%t2",
+          "n": 32,
+          "canonical_slot_words_sha256": "9d6622a850e4777cd05b968b70a3690072a4b01b8b1eb5b2a252730722867503",
+          "all_slot_bits_identical": true
+        },
+        {
+          "function": "@f.floats",
+          "new_pool": "@lc.1",
+          "old_allocation": "%t2",
+          "n": 32,
+          "canonical_slot_words_sha256": "2263c9869e50039bc38d58d168e08b88791059d1bdb869738b04f9916f2d61ee",
+          "all_slot_bits_identical": true
+        },
+        {
+          "function": "@f.flags",
+          "new_pool": "@lc.2",
+          "old_allocation": "%t2",
+          "n": 32,
+          "canonical_slot_words_sha256": "1c50d5032da8a8d80367f56a331f897624bd99fdc62c2adc9894e13dbf5b251c",
+          "all_slot_bits_identical": true
+        }
+      ],
+      "full_diff": "ir-diffs/tests_programs_containers_large_scalar_literals.diff",
+      "full_diff_sha256": "ece83ad3817d5d9af87ed0cfbd9830533a34a3a51eff58f5d7a14ae44a959860"
+    },
+    {
+      "case": "tests/programs/language/summary_worklist.py",
+      "before_sha256": "ebb8ff4bc2d0853e7a19aa8f6ff14959b2a93ac2ca427f30a442b52b766ff291",
+      "after_sha256": "abc2b327776e7c0ce109239a084d7211b9646d3098bc55cba0e3af91406badeb",
+      "before_bytes": 642014,
+      "after_bytes": 639475,
+      "changed_functions": [
+        "@init.src.pystachy_compiler.utils"
+      ],
+      "function_sets_identical": true,
+      "constant_data": [
+        {
+          "name": "@lc.0",
+          "n": 68,
+          "data": "i64 48, i64 1632, i64 1776, i64 1984, i64 2406, i64 2534, i64 2662, i64 2790, i64 2918, i64 3046, i64 3174, i64 3302, i64 3430, i64 3558, i64 3664, i64 3792, i64 3872, i64 4160, i64 4240, i64 6112, i64 6160, i64 6470, i64 6608, i64 6784, i64 6800, i64 6992, i64 7088, i64 7232, i64 7248, i64 42528, i64 43216, i64 43264, i64 43472, i64 43504, i64 43600, i64 44016, i64 65296, i64 66720, i64 68912, i64 69734, i64 69872, i64 69942, i64 70096, i64 70384, i64 70736, i64 70864, i64 71248, i64 71360, i64 71472, i64 71904, i64 72016, i64 72784, i64 73040, i64 73120, i64 73552, i64 92768, i64 92864, i64 93008, i64 120782, i64 120792, i64 120802, i64 120812, i64 120822, i64 123200, i64 123632, i64 124144, i64 125264, i64 130032"
+        }
+      ],
+      "copy_calls": [
+        {
+          "data": "@lc.0",
+          "n": 68
+        }
+      ],
+      "before_append_calls": 233,
+      "after_append_calls": 165,
+      "statuses_and_diagnostics_unchanged": true,
+      "module_scope_unchanged_except_constant_pools_and_list_declarations": true,
+      "payload_audit": [
+        {
+          "function": "@init.src.pystachy_compiler.utils",
+          "new_pool": "@lc.0",
+          "old_allocation": "%t28",
+          "n": 68,
+          "canonical_slot_words_sha256": "36efb2f56cc3002d7ae14af0ade2a61d67befec79b17c33214c28b272005abf4",
+          "all_slot_bits_identical": true
+        }
+      ],
+      "full_diff": "ir-diffs/tests_programs_language_summary_worklist.diff",
+      "full_diff_sha256": "9d11a68638ee566f5bc791502d2c8fed39165b5bc7ec9f6402e0fc435e9af99e"
+    },
+    {
+      "case": "tests/programs/library/lib_urllib_parse.py",
+      "before_sha256": "3c760c607af31fa2f71fe64701f9cf1526b539363f45f253bf541cf2b891cd63",
+      "after_sha256": "acee3852a64e44865a51f58e8bf8e8843d0fb8d7ea813e0c5facd9ace40d1b38",
+      "before_bytes": 2673801,
+      "after_bytes": 2672602,
+      "changed_functions": [
+        "@main.init"
+      ],
+      "function_sets_identical": true,
+      "constant_data": [
+        {
+          "name": "@lc.0",
+          "n": 32,
+          "data": "i64 0, i64 65, i64 127, i64 128, i64 160, i64 233, i64 255, i64 256, i64 2047, i64 2048, i64 4095, i64 4096, i64 55295, i64 55296, i64 56191, i64 56192, i64 56319, i64 56320, i64 56447, i64 56448, i64 56553, i64 56575, i64 56576, i64 57343, i64 57344, i64 65533, i64 65535, i64 65536, i64 128512, i64 1048575, i64 1048576, i64 1114111"
+        }
+      ],
+      "copy_calls": [
+        {
+          "data": "@lc.0",
+          "n": 32
+        }
+      ],
+      "before_append_calls": 1061,
+      "after_append_calls": 1029,
+      "statuses_and_diagnostics_unchanged": true,
+      "module_scope_unchanged_except_constant_pools_and_list_declarations": true,
+      "payload_audit": [
+        {
+          "function": "@main.init",
+          "new_pool": "@lc.0",
+          "old_allocation": "%t3340",
+          "n": 32,
+          "canonical_slot_words_sha256": "d743e95e5f8990047220130216d1ce0964891e21cce5a2832da64210ec215f7a",
+          "all_slot_bits_identical": true
+        }
+      ],
+      "full_diff": "ir-diffs/tests_programs_library_lib_urllib_parse.diff",
+      "full_diff_sha256": "77eac4004aaa3c0a83622a7608e04a52ba2d93cb5bd4f92633483b0e17c15349"
+    },
+    {
+      "case": "tests/programs/library/re_specialize.py",
+      "before_sha256": "c44e2b97ab26bdc23f3012809fa0903e80b6c249296c634c563da59be6918fd1",
+      "after_sha256": "79d1d61a5f2656517aab54b6b794558f5db71c7ba9b281e5fdc4c9d4122e6af0",
+      "before_bytes": 2740972,
+      "after_bytes": 2723237,
+      "changed_functions": [
+        "@init._pystachy_re_specialized"
+      ],
+      "function_sets_identical": true,
+      "constant_data": [
+        {
+          "name": "@lc.0",
+          "n": 52,
+          "data": "i64 14, i64 4, i64 0, i64 10, i64 10, i64 17, i64 0, i64 24, i64 9, i64 4, i64 4, i64 13, i64 4, i64 8, i64 10, i64 0, i64 1, i64 17, i64 1, i64 16, i64 45, i64 17, i64 2, i64 24, i64 9, i64 2, i64 2, i64 13, i64 4, i64 8, i64 10, i64 0, i64 1, i64 17, i64 3, i64 16, i64 45, i64 17, i64 4, i64 24, i64 9, i64 2, i64 2, i64 13, i64 4, i64 8, i64 10, i64 0, i64 1, i64 17, i64 5, i64 1"
+        },
+        {
+          "name": "@lc.1",
+          "n": 78,
+          "data": "i64 14, i64 4, i64 0, i64 3, i64 4294967295, i64 24, i64 9, i64 0, i64 4294967295, i64 13, i64 4, i64 8, i64 12, i64 0, i64 1, i64 17, i64 0, i64 24, i64 9, i64 1, i64 4294967295, i64 13, i64 4, i64 8, i64 14, i64 0, i64 1, i64 17, i64 1, i64 24, i64 9, i64 0, i64 4294967295, i64 13, i64 4, i64 8, i64 12, i64 0, i64 1, i64 16, i64 61, i64 24, i64 9, i64 0, i64 4294967295, i64 13, i64 4, i64 8, i64 12, i64 0, i64 1, i64 17, i64 2, i64 24, i64 9, i64 1, i64 4294967295, i64 13, i64 4, i64 8, i64 10, i64 0, i64 1, i64 17, i64 3, i64 24, i64 9, i64 0, i64 4294967295, i64 13, i64 4, i64 8, i64 12, i64 0, i64 1, i64 6, i64 5, i64 1"
+        },
+        {
+          "name": "@lc.2",
+          "n": 45,
+          "data": "i64 14, i64 14, i64 4, i64 1, i64 4294967295, i64 9, i64 0, i64 0, i64 2281701374, i64 134217726, i64 0, i64 0, i64 0, i64 0, i64 0, i64 13, i64 11, i64 9, i64 0, i64 0, i64 2281701374, i64 134217726, i64 0, i64 0, i64 0, i64 0, i64 0, i64 24, i64 16, i64 0, i64 4294967295, i64 13, i64 11, i64 9, i64 0, i64 67043328, i64 2281701374, i64 134217726, i64 0, i64 0, i64 0, i64 0, i64 0, i64 1, i64 1"
+        },
+        {
+          "name": "@lc.3",
+          "n": 37,
+          "data": "i64 14, i64 4, i64 0, i64 7, i64 4294967295, i64 27, i64 22, i64 26, i64 5, i64 0, i64 4294967295, i64 3, i64 1, i64 16, i64 46, i64 16, i64 100, i64 16, i64 101, i64 16, i64 98, i64 16, i64 117, i64 16, i64 103, i64 16, i64 46, i64 1, i64 24, i64 5, i64 0, i64 4294967295, i64 3, i64 1, i64 6, i64 7, i64 1"
+        },
+        {
+          "name": "@lc.4",
+          "n": 50,
+          "data": "i64 14, i64 16, i64 1, i64 12, i64 4294967295, i64 5, i64 5, i64 97, i64 117, i64 116, i64 104, i64 46, i64 0, i64 0, i64 0, i64 0, i64 0, i64 16, i64 97, i64 16, i64 117, i64 16, i64 116, i64 16, i64 104, i64 16, i64 46, i64 24, i64 5, i64 0, i64 4294967295, i64 3, i64 1, i64 16, i64 46, i64 16, i64 102, i64 16, i64 97, i64 16, i64 105, i64 16, i64 108, i64 16, i64 101, i64 16, i64 100, i64 6, i64 7, i64 1"
+        },
+        {
+          "name": "@lc.5",
+          "n": 40,
+          "data": "i64 14, i64 18, i64 1, i64 6, i64 4294967295, i64 6, i64 6, i64 99, i64 97, i64 99, i64 104, i64 101, i64 46, i64 0, i64 0, i64 1, i64 0, i64 0, i64 0, i64 16, i64 99, i64 16, i64 97, i64 16, i64 99, i64 16, i64 104, i64 16, i64 101, i64 16, i64 46, i64 24, i64 5, i64 0, i64 4294967295, i64 3, i64 1, i64 6, i64 7, i64 1"
+        },
+        {
+          "name": "@lc.6",
+          "n": 68,
+          "data": "i64 14, i64 32, i64 1, i64 13, i64 4294967295, i64 13, i64 13, i64 100, i64 98, i64 46, i64 113, i64 117, i64 101, i64 114, i64 121, i64 46, i64 115, i64 108, i64 111, i64 119, i64 0, i64 0, i64 0, i64 0, i64 0, i64 0, i64 0, i64 0, i64 0, i64 0, i64 0, i64 0, i64 0, i64 16, i64 100, i64 16, i64 98, i64 16, i64 46, i64 16, i64 113, i64 16, i64 117, i64 16, i64 101, i64 16, i64 114, i64 16, i64 121, i64 16, i64 46, i64 16, i64 115, i64 16, i64 108, i64 16, i64 111, i64 16, i64 119, i64 24, i64 5, i64 0, i64 4294967295, i64 3, i64 1, i64 6, i64 7, i64 1"
+        },
+        {
+          "name": "@lc.7",
+          "n": 70,
+          "data": "i64 14, i64 32, i64 1, i64 16, i64 16, i64 13, i64 13, i64 104, i64 116, i64 116, i64 112, i64 46, i64 114, i64 101, i64 113, i64 117, i64 101, i64 115, i64 116, i64 46, i64 0, i64 0, i64 0, i64 0, i64 0, i64 0, i64 0, i64 0, i64 0, i64 0, i64 0, i64 0, i64 0, i64 16, i64 104, i64 16, i64 116, i64 16, i64 116, i64 16, i64 112, i64 16, i64 46, i64 16, i64 114, i64 16, i64 101, i64 16, i64 113, i64 16, i64 117, i64 16, i64 101, i64 16, i64 115, i64 16, i64 116, i64 16, i64 46, i64 13, i64 5, i64 22, i64 52, i64 53, i64 0, i64 3, i64 3, i64 6, i64 7, i64 1"
+        },
+        {
+          "name": "@lc.8",
+          "n": 32,
+          "data": "i64 14, i64 14, i64 4, i64 1, i64 1, i64 9, i64 0, i64 64, i64 0, i64 1342177280, i64 0, i64 0, i64 0, i64 0, i64 0, i64 17, i64 0, i64 13, i64 11, i64 9, i64 0, i64 64, i64 0, i64 1342177280, i64 0, i64 0, i64 0, i64 0, i64 0, i64 17, i64 1, i64 1"
+        }
+      ],
+      "copy_calls": [
+        {
+          "data": "@lc.0",
+          "n": 52
+        },
+        {
+          "data": "@lc.1",
+          "n": 78
+        },
+        {
+          "data": "@lc.2",
+          "n": 45
+        },
+        {
+          "data": "@lc.3",
+          "n": 37
+        },
+        {
+          "data": "@lc.4",
+          "n": 50
+        },
+        {
+          "data": "@lc.5",
+          "n": 40
+        },
+        {
+          "data": "@lc.6",
+          "n": 68
+        },
+        {
+          "data": "@lc.7",
+          "n": 70
+        },
+        {
+          "data": "@lc.8",
+          "n": 32
+        }
+      ],
+      "before_append_calls": 1505,
+      "after_append_calls": 1033,
+      "statuses_and_diagnostics_unchanged": true,
+      "module_scope_unchanged_except_constant_pools_and_list_declarations": true,
+      "payload_audit": [
+        {
+          "function": "@init._pystachy_re_specialized",
+          "new_pool": "@lc.0",
+          "old_allocation": "%t40",
+          "n": 52,
+          "canonical_slot_words_sha256": "e7a3c6bef34a0d4eefd9367db9522acc699dddb31a243d04aa9e86cfe4b5b78a",
+          "all_slot_bits_identical": true
+        },
+        {
+          "function": "@init._pystachy_re_specialized",
+          "new_pool": "@lc.1",
+          "old_allocation": "%t41",
+          "n": 78,
+          "canonical_slot_words_sha256": "b989e760c672dbf2bc0dd2013a409c56447d55244a696610ea0f0dc6a240543b",
+          "all_slot_bits_identical": true
+        },
+        {
+          "function": "@init._pystachy_re_specialized",
+          "new_pool": "@lc.2",
+          "old_allocation": "%t48",
+          "n": 45,
+          "canonical_slot_words_sha256": "a774ee755588830bfb97e93bd5b2eb47e78376a32935c151eef916b98d1777c6",
+          "all_slot_bits_identical": true
+        },
+        {
+          "function": "@init._pystachy_re_specialized",
+          "new_pool": "@lc.3",
+          "old_allocation": "%t61",
+          "n": 37,
+          "canonical_slot_words_sha256": "ce12e95a390c7decc9ca102271394513a4251dae74070477cc7c102d604df01d",
+          "all_slot_bits_identical": true
+        },
+        {
+          "function": "@init._pystachy_re_specialized",
+          "new_pool": "@lc.4",
+          "old_allocation": "%t63",
+          "n": 50,
+          "canonical_slot_words_sha256": "c044a375e2df240615020701d0640bccec0b539195e347204a7f6bcd1388b5f5",
+          "all_slot_bits_identical": true
+        },
+        {
+          "function": "@init._pystachy_re_specialized",
+          "new_pool": "@lc.5",
+          "old_allocation": "%t64",
+          "n": 40,
+          "canonical_slot_words_sha256": "85f3d80722220c906bd394ad99910c3e2bb9a6f0b5cd96d06f6950961002c275",
+          "all_slot_bits_identical": true
+        },
+        {
+          "function": "@init._pystachy_re_specialized",
+          "new_pool": "@lc.6",
+          "old_allocation": "%t65",
+          "n": 68,
+          "canonical_slot_words_sha256": "b50e3051449da8c2bbf9b320cc2271750a91daa59904e7378acfe1545a2e5bad",
+          "all_slot_bits_identical": true
+        },
+        {
+          "function": "@init._pystachy_re_specialized",
+          "new_pool": "@lc.7",
+          "old_allocation": "%t66",
+          "n": 70,
+          "canonical_slot_words_sha256": "038e8f66e3b6803d431a2195d851d0d0b4b0e454e934d15bc24f06d80c3aca93",
+          "all_slot_bits_identical": true
+        },
+        {
+          "function": "@init._pystachy_re_specialized",
+          "new_pool": "@lc.8",
+          "old_allocation": "%t67",
+          "n": 32,
+          "canonical_slot_words_sha256": "b2bc16c445aac72f145544c40da0924c496f3dfca2c529d2de504b3f1e1f3dd9",
+          "all_slot_bits_identical": true
+        }
+      ],
+      "full_diff": "ir-diffs/tests_programs_library_re_specialize.diff",
+      "full_diff_sha256": "a54ecef92d1c2fcf81cf7d334775aaad46dd6d696b0ee9d15dee6e87d6038c0b"
+    },
+    {
+      "case": "tests/programs/library/re_specialize_recursion.py",
+      "before_sha256": "810ad9743b29b22208e5d3ff0e56985586e58e40feea314800309e9fff8d0ac2",
+      "after_sha256": "bc05036f235de9a37fdea036a74ae9a12bdc6bf1a7be731999139822b7dad164",
+      "before_bytes": 2455857,
+      "after_bytes": 2438122,
+      "changed_functions": [
+        "@init._pystachy_re_specialized"
+      ],
+      "function_sets_identical": true,
+      "constant_data": [
+        {
+          "name": "@lc.0",
+          "n": 52,
+          "data": "i64 14, i64 4, i64 0, i64 10, i64 10, i64 17, i64 0, i64 24, i64 9, i64 4, i64 4, i64 13, i64 4, i64 8, i64 10, i64 0, i64 1, i64 17, i64 1, i64 16, i64 45, i64 17, i64 2, i64 24, i64 9, i64 2, i64 2, i64 13, i64 4, i64 8, i64 10, i64 0, i64 1, i64 17, i64 3, i64 16, i64 45, i64 17, i64 4, i64 24, i64 9, i64 2, i64 2, i64 13, i64 4, i64 8, i64 10, i64 0, i64 1, i64 17, i64 5, i64 1"
+        },
+        {
+          "name": "@lc.1",
+          "n": 78,
+          "data": "i64 14, i64 4, i64 0, i64 3, i64 4294967295, i64 24, i64 9, i64 0, i64 4294967295, i64 13, i64 4, i64 8, i64 12, i64 0, i64 1, i64 17, i64 0, i64 24, i64 9, i64 1, i64 4294967295, i64 13, i64 4, i64 8, i64 14, i64 0, i64 1, i64 17, i64 1, i64 24, i64 9, i64 0, i64 4294967295, i64 13, i64 4, i64 8, i64 12, i64 0, i64 1, i64 16, i64 61, i64 24, i64 9, i64 0, i64 4294967295, i64 13, i64 4, i64 8, i64 12, i64 0, i64 1, i64 17, i64 2, i64 24, i64 9, i64 1, i64 4294967295, i64 13, i64 4, i64 8, i64 10, i64 0, i64 1, i64 17, i64 3, i64 24, i64 9, i64 0, i64 4294967295, i64 13, i64 4, i64 8, i64 12, i64 0, i64 1, i64 6, i64 5, i64 1"
+        },
+        {
+          "name": "@lc.2",
+          "n": 45,
+          "data": "i64 14, i64 14, i64 4, i64 1, i64 4294967295, i64 9, i64 0, i64 0, i64 2281701374, i64 134217726, i64 0, i64 0, i64 0, i64 0, i64 0, i64 13, i64 11, i64 9, i64 0, i64 0, i64 2281701374, i64 134217726, i64 0, i64 0, i64 0, i64 0, i64 0, i64 24, i64 16, i64 0, i64 4294967295, i64 13, i64 11, i64 9, i64 0, i64 67043328, i64 2281701374, i64 134217726, i64 0, i64 0, i64 0, i64 0, i64 0, i64 1, i64 1"
+        },
+        {
+          "name": "@lc.3",
+          "n": 37,
+          "data": "i64 14, i64 4, i64 0, i64 7, i64 4294967295, i64 27, i64 22, i64 26, i64 5, i64 0, i64 4294967295, i64 3, i64 1, i64 16, i64 46, i64 16, i64 100, i64 16, i64 101, i64 16, i64 98, i64 16, i64 117, i64 16, i64 103, i64 16, i64 46, i64 1, i64 24, i64 5, i64 0, i64 4294967295, i64 3, i64 1, i64 6, i64 7, i64 1"
+        },
+        {
+          "name": "@lc.4",
+          "n": 50,
+          "data": "i64 14, i64 16, i64 1, i64 12, i64 4294967295, i64 5, i64 5, i64 97, i64 117, i64 116, i64 104, i64 46, i64 0, i64 0, i64 0, i64 0, i64 0, i64 16, i64 97, i64 16, i64 117, i64 16, i64 116, i64 16, i64 104, i64 16, i64 46, i64 24, i64 5, i64 0, i64 4294967295, i64 3, i64 1, i64 16, i64 46, i64 16, i64 102, i64 16, i64 97, i64 16, i64 105, i64 16, i64 108, i64 16, i64 101, i64 16, i64 100, i64 6, i64 7, i64 1"
+        },
+        {
+          "name": "@lc.5",
+          "n": 40,
+          "data": "i64 14, i64 18, i64 1, i64 6, i64 4294967295, i64 6, i64 6, i64 99, i64 97, i64 99, i64 104, i64 101, i64 46, i64 0, i64 0, i64 1, i64 0, i64 0, i64 0, i64 16, i64 99, i64 16, i64 97, i64 16, i64 99, i64 16, i64 104, i64 16, i64 101, i64 16, i64 46, i64 24, i64 5, i64 0, i64 4294967295, i64 3, i64 1, i64 6, i64 7, i64 1"
+        },
+        {
+          "name": "@lc.6",
+          "n": 68,
+          "data": "i64 14, i64 32, i64 1, i64 13, i64 4294967295, i64 13, i64 13, i64 100, i64 98, i64 46, i64 113, i64 117, i64 101, i64 114, i64 121, i64 46, i64 115, i64 108, i64 111, i64 119, i64 0, i64 0, i64 0, i64 0, i64 0, i64 0, i64 0, i64 0, i64 0, i64 0, i64 0, i64 0, i64 0, i64 16, i64 100, i64 16, i64 98, i64 16, i64 46, i64 16, i64 113, i64 16, i64 117, i64 16, i64 101, i64 16, i64 114, i64 16, i64 121, i64 16, i64 46, i64 16, i64 115, i64 16, i64 108, i64 16, i64 111, i64 16, i64 119, i64 24, i64 5, i64 0, i64 4294967295, i64 3, i64 1, i64 6, i64 7, i64 1"
+        },
+        {
+          "name": "@lc.7",
+          "n": 70,
+          "data": "i64 14, i64 32, i64 1, i64 16, i64 16, i64 13, i64 13, i64 104, i64 116, i64 116, i64 112, i64 46, i64 114, i64 101, i64 113, i64 117, i64 101, i64 115, i64 116, i64 46, i64 0, i64 0, i64 0, i64 0, i64 0, i64 0, i64 0, i64 0, i64 0, i64 0, i64 0, i64 0, i64 0, i64 16, i64 104, i64 16, i64 116, i64 16, i64 116, i64 16, i64 112, i64 16, i64 46, i64 16, i64 114, i64 16, i64 101, i64 16, i64 113, i64 16, i64 117, i64 16, i64 101, i64 16, i64 115, i64 16, i64 116, i64 16, i64 46, i64 13, i64 5, i64 22, i64 52, i64 53, i64 0, i64 3, i64 3, i64 6, i64 7, i64 1"
+        },
+        {
+          "name": "@lc.8",
+          "n": 32,
+          "data": "i64 14, i64 14, i64 4, i64 1, i64 1, i64 9, i64 0, i64 64, i64 0, i64 1342177280, i64 0, i64 0, i64 0, i64 0, i64 0, i64 17, i64 0, i64 13, i64 11, i64 9, i64 0, i64 64, i64 0, i64 1342177280, i64 0, i64 0, i64 0, i64 0, i64 0, i64 17, i64 1, i64 1"
+        }
+      ],
+      "copy_calls": [
+        {
+          "data": "@lc.0",
+          "n": 52
+        },
+        {
+          "data": "@lc.1",
+          "n": 78
+        },
+        {
+          "data": "@lc.2",
+          "n": 45
+        },
+        {
+          "data": "@lc.3",
+          "n": 37
+        },
+        {
+          "data": "@lc.4",
+          "n": 50
+        },
+        {
+          "data": "@lc.5",
+          "n": 40
+        },
+        {
+          "data": "@lc.6",
+          "n": 68
+        },
+        {
+          "data": "@lc.7",
+          "n": 70
+        },
+        {
+          "data": "@lc.8",
+          "n": 32
+        }
+      ],
+      "before_append_calls": 1277,
+      "after_append_calls": 805,
+      "statuses_and_diagnostics_unchanged": true,
+      "module_scope_unchanged_except_constant_pools_and_list_declarations": true,
+      "payload_audit": [
+        {
+          "function": "@init._pystachy_re_specialized",
+          "new_pool": "@lc.0",
+          "old_allocation": "%t40",
+          "n": 52,
+          "canonical_slot_words_sha256": "e7a3c6bef34a0d4eefd9367db9522acc699dddb31a243d04aa9e86cfe4b5b78a",
+          "all_slot_bits_identical": true
+        },
+        {
+          "function": "@init._pystachy_re_specialized",
+          "new_pool": "@lc.1",
+          "old_allocation": "%t41",
+          "n": 78,
+          "canonical_slot_words_sha256": "b989e760c672dbf2bc0dd2013a409c56447d55244a696610ea0f0dc6a240543b",
+          "all_slot_bits_identical": true
+        },
+        {
+          "function": "@init._pystachy_re_specialized",
+          "new_pool": "@lc.2",
+          "old_allocation": "%t48",
+          "n": 45,
+          "canonical_slot_words_sha256": "a774ee755588830bfb97e93bd5b2eb47e78376a32935c151eef916b98d1777c6",
+          "all_slot_bits_identical": true
+        },
+        {
+          "function": "@init._pystachy_re_specialized",
+          "new_pool": "@lc.3",
+          "old_allocation": "%t61",
+          "n": 37,
+          "canonical_slot_words_sha256": "ce12e95a390c7decc9ca102271394513a4251dae74070477cc7c102d604df01d",
+          "all_slot_bits_identical": true
+        },
+        {
+          "function": "@init._pystachy_re_specialized",
+          "new_pool": "@lc.4",
+          "old_allocation": "%t63",
+          "n": 50,
+          "canonical_slot_words_sha256": "c044a375e2df240615020701d0640bccec0b539195e347204a7f6bcd1388b5f5",
+          "all_slot_bits_identical": true
+        },
+        {
+          "function": "@init._pystachy_re_specialized",
+          "new_pool": "@lc.5",
+          "old_allocation": "%t64",
+          "n": 40,
+          "canonical_slot_words_sha256": "85f3d80722220c906bd394ad99910c3e2bb9a6f0b5cd96d06f6950961002c275",
+          "all_slot_bits_identical": true
+        },
+        {
+          "function": "@init._pystachy_re_specialized",
+          "new_pool": "@lc.6",
+          "old_allocation": "%t65",
+          "n": 68,
+          "canonical_slot_words_sha256": "b50e3051449da8c2bbf9b320cc2271750a91daa59904e7378acfe1545a2e5bad",
+          "all_slot_bits_identical": true
+        },
+        {
+          "function": "@init._pystachy_re_specialized",
+          "new_pool": "@lc.7",
+          "old_allocation": "%t66",
+          "n": 70,
+          "canonical_slot_words_sha256": "038e8f66e3b6803d431a2195d851d0d0b4b0e454e934d15bc24f06d80c3aca93",
+          "all_slot_bits_identical": true
+        },
+        {
+          "function": "@init._pystachy_re_specialized",
+          "new_pool": "@lc.8",
+          "old_allocation": "%t67",
+          "n": 32,
+          "canonical_slot_words_sha256": "b2bc16c445aac72f145544c40da0924c496f3dfca2c529d2de504b3f1e1f3dd9",
+          "all_slot_bits_identical": true
+        }
+      ],
+      "full_diff": "ir-diffs/tests_programs_library_re_specialize_recursion.diff",
+      "full_diff_sha256": "7130adfe724a5eab017b14110e1d39ab2ed500afb10750a154320cfad6577971"
+    },
+    {
+      "case": "tests/programs/numbers/float_repr.py",
+      "before_sha256": "3b698dffc16b33e92ded8a30f86f2027321a3e18c0bfa6ccd45f259b09c3ba75",
+      "after_sha256": "4b3295dfec3325d71aa0d0d507a2936fdc4171d8da2deea4e14d98131f90280c",
+      "before_bytes": 60622,
+      "after_bytes": 58987,
+      "changed_functions": [
+        "@main.init"
+      ],
+      "function_sets_identical": true,
+      "constant_data": [
+        {
+          "name": "@lc.0",
+          "n": 46,
+          "data": "i64 976, i64 896, i64 863, i64 803, i64 710, i64 594, i64 574, i64 554, i64 544, i64 534, i64 481, i64 405, i64 398, i64 378, i64 345, i64 305, i64 275, i64 182, i64 172, i64 132, i64 122, i64 89, i64 -24, i64 -44, i64 -77, i64 -97, i64 -140, i64 -296, i64 -366, i64 -383, i64 -489, i64 -496, i64 -509, i64 -549, i64 -652, i64 -662, i64 -695, i64 -705, i64 -778, i64 -788, i64 -791, i64 -808, i64 -921, i64 -957, i64 -1007, i64 -1017"
+        }
+      ],
+      "copy_calls": [
+        {
+          "data": "@lc.0",
+          "n": 46
+        }
+      ],
+      "before_append_calls": 74,
+      "after_append_calls": 28,
+      "statuses_and_diagnostics_unchanged": true,
+      "module_scope_unchanged_except_constant_pools_and_list_declarations": true,
+      "payload_audit": [
+        {
+          "function": "@main.init",
+          "new_pool": "@lc.0",
+          "old_allocation": "%t2",
+          "n": 46,
+          "canonical_slot_words_sha256": "396289c75b2132767f45e22758e5e25ffeb318c1567114f68501b18f7d002689",
+          "all_slot_bits_identical": true
+        }
+      ],
+      "full_diff": "ir-diffs/tests_programs_numbers_float_repr.diff",
+      "full_diff_sha256": "e0d09ede3ff57e9d90144fc8d1999daa4647db18e756f6cd4d5a0c4fc372da27"
+    }
+  ],
+  "payload_audit_summary": {
+    "replaced_constructors": 27,
+    "replaced_appends": 1358,
+    "all_slot_bits_preserved": true,
+    "all_other_function_bodies_exact": true,
+    "all_other_module_scope_exact_ignoring_line_order": true
+  },
+  "fully_matching_cases": 4234
+}

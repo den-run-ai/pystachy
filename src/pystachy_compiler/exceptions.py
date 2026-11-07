@@ -8,6 +8,7 @@ from src.pystachy_compiler.analysis import (
     globals_in,
     has_finally,
     local_names,
+    other_bindings,
     reads,
 )
 from src.pystachy_compiler.diagnostics import dynamic_program, shown
@@ -384,8 +385,16 @@ def gen_bind_as(self, name: str, e: Val, t: str) -> None:
     v = e if t == "exc" else Val(self.rt("pys_exc_obj", "ptr", [f"ptr {e.v}"]), t)
     self.nn[v.v] = True
     had = self.ltype[name] if name in self.ltype else self.gtypes[name] if self.is_global(name) and name in self.gtypes else ""
-    node = self.curfn.node
-    if (had != "" and had != t) or (had == "" and binds_other(node.kids if node.kind == "block" else node.kids[2].kids, name)):
+    other = False
+    if had == "":
+        names = self.fn.otherbinds
+        if names is None:
+            names = {}
+            node = self.curfn.node
+            other_bindings(node.kids if node.kind == "block" else node.kids[2].kids, names)
+            self.fn.otherbinds = names
+        other = name in names
+    if (had != "" and had != t) or other:
         f = self.global_reader(name) if self.modlevel else ""
         if f != "":
             self.err(f"except ... as {short(name)} is not supported here: the module's global '{short(name)}' has another type, so the clause binds a variable of its own, which {f}() would not see (use another name)")

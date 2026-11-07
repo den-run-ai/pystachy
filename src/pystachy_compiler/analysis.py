@@ -482,7 +482,7 @@ def builtin_has(mod: str, x: str) -> bool:
     if mod == "dataclasses":
         return x == "dataclass"
     if mod == "ffi":
-        return x in ("extern", "export", "string_at", "at", "c_buf", "c_float", "track", "untrack", "collected") or x in CTYPES
+        return x in ("extern", "export", "string_at", "bytes_at", "load_library", "at", "c_buf", "c_float", "track", "untrack", "collected") or x in CTYPES
     return mod == "builtins" or known_path(mod + "." + x)  # (a builtin is checked where it is called)
 
 
@@ -1908,6 +1908,27 @@ def binds_other(body: list[Node], name: str) -> bool:
             if (k.kind == "block" and binds_other(k.kids, name)) or (k.kind == "except" and binds_other(k.kids[1].kids, name)):
                 return True
     return False
+
+
+def other_bindings(body: list[Node], out: dict[str, bool]) -> None:
+    # All names binds_other would find, in one walk. Handler targets themselves do not
+    # enter this set; assignments in their bodies do. Keep the same scope boundaries
+    # and expression bindings, including defaults/decorators of nested definitions.
+    for st in body:
+        if st.kind == "compfor":
+            stmt_walrus(st, out)  # targets also counts a comprehension's private target
+        else:
+            targets(st, out)
+        if st.kind == "def" or st.kind == "class" or st.kind == "subclass":
+            out[st.s] = True
+            continue
+        for a in st.kids if st.kind == "import" else NOKIDS:
+            out[a.s] = True
+        for k in st.kids:
+            if k.kind == "block":
+                other_bindings(k.kids, out)
+            elif k.kind == "except":
+                other_bindings(k.kids[1].kids, out)
 
 
 def has_finally(body: list[Node]) -> bool:

@@ -1,0 +1,48 @@
+FFFF
+======================================================================
+FAIL: test_initializer_instructions_stay_bounded_as_data_grows (test_typed_list_constants.ScalarListConstantTests.test_initializer_instructions_stay_bounded_as_data_grows) (item_type='int', n=32)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/5798eb31a437/literal-init/tools/test_typed_list_constants.py", line 50, in test_initializer_instructions_stay_bounded_as_data_grows
+    self.assertEqual(code.count("@pys_list_from_const("), 1)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0 != 1
+
+======================================================================
+FAIL: test_initializer_instructions_stay_bounded_as_data_grows (test_typed_list_constants.ScalarListConstantTests.test_initializer_instructions_stay_bounded_as_data_grows) (item_type='int', n=256)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/5798eb31a437/literal-init/tools/test_typed_list_constants.py", line 50, in test_initializer_instructions_stay_bounded_as_data_grows
+    self.assertEqual(code.count("@pys_list_from_const("), 1)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0 != 1
+
+======================================================================
+FAIL: test_initializer_instructions_stay_bounded_as_data_grows (test_typed_list_constants.ScalarListConstantTests.test_initializer_instructions_stay_bounded_as_data_grows) (item_type='int', n=2048)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/5798eb31a437/literal-init/tools/test_typed_list_constants.py", line 50, in test_initializer_instructions_stay_bounded_as_data_grows
+    self.assertEqual(code.count("@pys_list_from_const("), 1)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0 != 1
+
+======================================================================
+FAIL: test_initializer_instructions_stay_bounded_as_data_grows (test_typed_list_constants.ScalarListConstantTests.test_initializer_instructions_stay_bounded_as_data_grows)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/5798eb31a437/literal-init/tools/test_typed_list_constants.py", line 53, in test_initializer_instructions_stay_bounded_as_data_grows
+    self.assertEqual(counts, [counts[0]] * len(counts))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: [34, 258, 2050] != [34, 34, 34]
+
+First differing element 1:
+258
+34
+
+- [34, 258, 2050]
++ [34, 34, 34]
+
+----------------------------------------------------------------------
+Ran 1 test in 0.115s
+
+FAILED (failures=4)

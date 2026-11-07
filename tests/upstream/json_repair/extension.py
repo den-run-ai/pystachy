@@ -33,6 +33,21 @@ def main():
     if companion.loads(NonIndexableString('{"ok":true}')) != {"ok": True}:
         raise AssertionError("valid str subclass did not use the CPython decoder")
 
+    # Multilingual classification must preserve strict-mode rejection as well
+    # as successful values. Messages are checked against pinned pristine CPython.
+    for text, expected in [
+        ('{é:, 界:2}', "Parsed value is empty in strict mode while parsing object."),
+        ('"界":1}', "Missing opening object brace in strict mode."),
+        ('{é:1}{界:2}', "Multiple top-level JSON elements found in strict mode."),
+    ]:
+        try:
+            companion.loads(text, strict=True)
+        except ValueError as error:
+            if str(error) != expected:
+                raise AssertionError(f"strict repair changed the error: {text!r}") from error
+        else:
+            raise AssertionError(f"strict repair unexpectedly accepted {text!r}")
+
     suite = Path(__file__).resolve().parent
     checker = suite.parents[2] / "tools/json_repair_parity.py"
     with tempfile.TemporaryDirectory() as tmp:

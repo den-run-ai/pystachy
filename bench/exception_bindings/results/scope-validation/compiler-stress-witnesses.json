@@ -1,0 +1,22 @@
+{
+  "exc_binding_index_cleanup": {
+    "compiler_stress": {
+      "bytes": 19129,
+      "sha256": "12be5c5bcfeb75e86005700866c2214938bd86c892aaaa0d8d6af89af79ece36"
+    },
+    "normal": {
+      "bytes": 19129,
+      "sha256": "12be5c5bcfeb75e86005700866c2214938bd86c892aaaa0d8d6af89af79ece36"
+    }
+  },
+  "exc_binding_index_scopes": {
+    "compiler_stress": {
+      "bytes": 11266,
+      "sha256": "0879a219877ef7fb6ac1ed97c349b557ec62f5bbe1385809b21454afa3370c1d"
+    },
+    "normal": {
+      "bytes": 11266,
+      "sha256": "0879a219877ef7fb6ac1ed97c349b557ec62f5bbe1385809b21454afa3370c1d"
+    }
+  }
+}

@@ -1,0 +1,137 @@
+{
+  "schema_version": 1,
+  "workload": "microGPT derivative tuple construction",
+  "source": "bench/microgpt/microgpt.py",
+  "source_sha256": "bc4de9ceec8348e8b14b4f80dfe5d64b092ece18286029db2640bb92162ee69e",
+  "scope": "static operation sites after Pystachy typed-IR passes; compiled whole source, selected Value derivative-producing methods",
+  "baseline_commit": "f7103067545b43cdcd8ce20dc66b1571425b3a8d",
+  "candidate_source_commit": "1d452c39e6f9752fdfd521e74b0cfdfa8e86f7d1",
+  "inspection_command": "python3.13 tools/inspect_compiler.py bench/microgpt/microgpt.py --output <new-output-dir>",
+  "methods": {
+    "@m.Value.__add__": {
+      "before": {
+        "fixed_tuple_allocations": 1,
+        "value_node_allocations": 1,
+        "vtuple_from": 1,
+        "vtuple_make": 0,
+        "typed_operations": 32,
+        "tuple_load": 2,
+        "tuple_store": 2
+      },
+      "after": {
+        "fixed_tuple_allocations": 0,
+        "value_node_allocations": 1,
+        "vtuple_from": 0,
+        "vtuple_make": 1,
+        "typed_operations": 27,
+        "tuple_load": 2,
+        "tuple_store": 0
+      }
+    },
+    "@m.Value.__mul__": {
+      "before": {
+        "fixed_tuple_allocations": 2,
+        "value_node_allocations": 1,
+        "vtuple_from": 1,
+        "vtuple_make": 0,
+        "typed_operations": 43,
+        "tuple_load": 2,
+        "tuple_store": 4
+      },
+      "after": {
+        "fixed_tuple_allocations": 0,
+        "value_node_allocations": 1,
+        "vtuple_from": 0,
+        "vtuple_make": 1,
+        "typed_operations": 29,
+        "tuple_load": 0,
+        "tuple_store": 0
+      }
+    },
+    "@m.Value.__pow__": {
+      "before": {
+        "fixed_tuple_allocations": 2,
+        "value_node_allocations": 1,
+        "vtuple_from": 1,
+        "vtuple_make": 0,
+        "typed_operations": 32,
+        "tuple_load": 1,
+        "tuple_store": 2
+      },
+      "after": {
+        "fixed_tuple_allocations": 0,
+        "value_node_allocations": 1,
+        "vtuple_from": 0,
+        "vtuple_make": 1,
+        "typed_operations": 24,
+        "tuple_load": 0,
+        "tuple_store": 0
+      }
+    },
+    "@m.Value.log": {
+      "before": {
+        "fixed_tuple_allocations": 2,
+        "value_node_allocations": 1,
+        "vtuple_from": 1,
+        "vtuple_make": 0,
+        "typed_operations": 30,
+        "tuple_load": 1,
+        "tuple_store": 2
+      },
+      "after": {
+        "fixed_tuple_allocations": 0,
+        "value_node_allocations": 1,
+        "vtuple_from": 0,
+        "vtuple_make": 1,
+        "typed_operations": 22,
+        "tuple_load": 0,
+        "tuple_store": 0
+      }
+    },
+    "@m.Value.exp": {
+      "before": {
+        "fixed_tuple_allocations": 2,
+        "value_node_allocations": 1,
+        "vtuple_from": 1,
+        "vtuple_make": 0,
+        "typed_operations": 32,
+        "tuple_load": 1,
+        "tuple_store": 2
+      },
+      "after": {
+        "fixed_tuple_allocations": 0,
+        "value_node_allocations": 1,
+        "vtuple_from": 0,
+        "vtuple_make": 1,
+        "typed_operations": 24,
+        "tuple_load": 0,
+        "tuple_store": 0
+      }
+    },
+    "@m.Value.relu": {
+      "before": {
+        "fixed_tuple_allocations": 2,
+        "value_node_allocations": 1,
+        "vtuple_from": 1,
+        "vtuple_make": 0,
+        "typed_operations": 28,
+        "tuple_load": 1,
+        "tuple_store": 2
+      },
+      "after": {
+        "fixed_tuple_allocations": 0,
+        "value_node_allocations": 1,
+        "vtuple_from": 0,
+        "vtuple_make": 1,
+        "typed_operations": 20,
+        "tuple_load": 0,
+        "tuple_store": 0
+      }
+    }
+  },
+  "limits": [
+    "Static sites are not allocated bytes or dynamic execution counts.",
+    "LLVM may remove fixed scalar tuple allocations; benchmark runtime impact separately.",
+    "Value nodes and children lists retain their representation and graph semantics."
+  ]
+}

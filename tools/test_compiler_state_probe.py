@@ -10,6 +10,7 @@ from compiler_state_probe import ROOT, Snapshot
 from src.pystachy_compiler import driver
 from src.pystachy_compiler.diagnostics import Rejoin
 from src.pystachy_compiler.ir import FnInfo
+from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler.syntax import Node
 
 
@@ -107,6 +108,62 @@ class StateProbeTests(unittest.TestCase):
 
     def test_restart_rewinds_known_globals_and_uses_fresh_gen(self):
         self.restart_contract(driver.compile_program)
+
+    def ctypes_link_restart_contract(self, compile_fn, prefix):
+        # Exercise the real CDLL lowering and ffi.load_library builtin, including
+        # an unused library: no @extern declaration can mask its link requirement.
+        source = "import ctypes\nlibrary = ctypes.CDLL(None)\nprint(1)\n"
+        names = ("LAMBDAS", "RENAMED", "LIBS", "LINKDL")
+        saved = {name: getattr(driver, name).copy() for name in names}
+        builtin, program = Gen.builtin, Gen.program
+        try:
+            driver.LINKDL[:] = prefix
+            expected = driver.compile_program("ctypes_state.py", source, [str(ROOT / "lib")], "")
+            wanted = prefix or ["dl"]
+            self.assertEqual(driver.LINKDL, wanted)
+            driver.LINKDL[:] = prefix
+            entries, generated = [], []
+
+            def entering(gen, mods):
+                entries.append(driver.LINKDL.copy())
+                self.assertEqual(driver.LINKDL, prefix)
+                return program(gen, mods)
+
+            def retry_after_builtin(gen, name, args, want, resultsoft=False):
+                result = builtin(gen, name, args, want, resultsoft)
+                if name == "ffi.load_library":
+                    generated.append(driver.LINKDL.copy())
+                    self.assertEqual(driver.LINKDL, wanted)
+                    if len(generated) == 1:
+                        raise Rejoin()
+                return result
+
+            with patch.object(Gen, "program", entering), patch.object(Gen, "builtin", retry_after_builtin):
+                actual = compile_fn("ctypes_state.py", source, [str(ROOT / "lib")], "")
+            self.assertEqual(actual, expected)
+            self.assertEqual(entries, [prefix, prefix])
+            self.assertEqual(generated, [wanted, wanted])
+            self.assertEqual(driver.LINKDL, wanted)
+        finally:
+            for name, value in saved.items():
+                target = getattr(driver, name)
+                if isinstance(target, list):
+                    target[:] = value
+                else:
+                    target.clear()
+                    target.update(value)
+
+    def test_ctypes_library_link_requirement_rewinds_on_retry(self):
+        for prefix in ([], ["entry-dl"]):
+            with self.subTest(prefix=prefix):
+                self.ctypes_link_restart_contract(driver.compile_program, prefix)
+
+    def test_missing_ctypes_link_rewind_is_detected(self):
+        source = inspect.getsource(driver.compile_program)
+        namespace = dict(vars(driver))
+        exec(compile(source.replace("LINKDL.pop()", "break"), "<missing-ctypes-link-rewind>", "exec"), namespace)
+        with self.assertRaises(AssertionError):
+            self.ctypes_link_restart_contract(namespace["compile_program"], [])
 
     def test_identity_restart_starts_over_tracking_everywhere(self):
         # A crossing into code that tracks numeric identity (Gen.identity_event) discards the

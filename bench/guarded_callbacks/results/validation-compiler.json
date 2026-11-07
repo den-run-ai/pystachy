@@ -1,0 +1,458 @@
+{
+  "schema_version": 1,
+  "scope": "Local compiler-change validation; not a complete make verify matrix.",
+  "source_commit": "9e4ae4624f4bcd8ac37dcdd73344ac856e43a222",
+  "base_commit": "f7103067545b43cdcd8ce20dc66b1571425b3a8d",
+  "original_prototype_commit": "16d90a566000b6aaedd372824d8f47d158ccb744",
+  "compiler_sha256": "1b802672864cfc62145c7e8da4d58e50687b5d235689ee37f5eb650b13f7f9d0",
+  "python": {
+    "version": "3.13.16 (main, Oct 14 2026, 01:04:01) [Clang 23.1.3 ]",
+    "executable": "/root/.local/bin/python3.13",
+    "sha256": "6e9b7d27499f26dbec3c8687728f3a0500b9b61688664f03678242744567c461",
+    "repository_version": "3.13.16"
+  },
+  "llvm": {
+    "clang": {
+      "path": "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/clang",
+      "version": "Ubuntu clang version 18.1.3 (1ubuntu1)\nTarget: x86_64-pc-linux-gnu\nThread model: posix\nInstalledDir: /workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin",
+      "sha256": "8ef402d453d1ba4902e4ee0f0f847f6cfa01400c95aa43c24e97818b9c0e3f45"
+    },
+    "opt": {
+      "path": "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/opt",
+      "version": "Ubuntu LLVM version 18.1.3\n  Optimized build.\n  Default target: x86_64-pc-linux-gnu\n  Host CPU: znver4",
+      "sha256": "67ebe8635087b5ebe22d8f085d5e5857e431f86be9ed76576e59b86b9743c0fb"
+    },
+    "lli": {
+      "path": "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/lli",
+      "version": "Ubuntu LLVM version 18.1.3\n  Optimized build.",
+      "sha256": "f787c770f5281ab909eac3d28ed984d8f0759caf87def4794f432fd008ef4f8c"
+    },
+    "llvm-link": {
+      "path": "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/llvm-link",
+      "version": "Ubuntu LLVM version 18.1.3\n  Optimized build.",
+      "sha256": "e340363ed9e5346f0d6dc4441f4953c5f516ff73fa0a03e1955c1adaad68b651"
+    },
+    "llvm-as": {
+      "path": "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/llvm-as",
+      "version": "Ubuntu LLVM version 18.1.3\n  Optimized build.",
+      "sha256": "8e7460eff4ba4e22d8ae881404bb24c5fc346996264e883ba26d41da4188215d"
+    }
+  },
+  "compiler_line_delta": {
+    "added": 210,
+    "removed": 1,
+    "net": 209,
+    "paths": "src/pystachy_compiler only; documentation and tests excluded"
+  },
+  "runtime_line_delta": 0,
+  "environment": {
+    "PYSTACHY_LLVM": "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin",
+    "PY": "/root/.local/bin/python3.13",
+    "development_environment": "/workspace/scratch/e98dc1e3e6cd/dev/bin",
+    "PYSTACHY_IRCHECK": "1",
+    "PYSTACHY_JOBS": "2"
+  },
+  "fixed_points": {
+    "command": "make PY=/root/.local/bin/python3.13",
+    "compiler": {
+      "stages_equal": [
+        1,
+        2,
+        3
+      ],
+      "ir_lines": 835871
+    },
+    "runtime": {
+      "stages_equal": [
+        1,
+        2,
+        3
+      ],
+      "ir_lines": 18805
+    },
+    "exit_code": 0
+  },
+  "fast_checks": {
+    "command": "make check-fast lint PY=/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+    "development_tools_on_path": true,
+    "exit_code": 0,
+    "typed_ir_tests": 189,
+    "new_callback_tests": 7,
+    "typechecked_source_files": 50
+  },
+  "contracts": {
+    "command": "make check-runtime check-repository PY=/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+    "exit_code": 0,
+    "runtime_entries": 644,
+    "exception_classes": 70
+  },
+  "native_differential": {
+    "command_template": "tests/run.sh ./pystachy \"jit aot\" <selected cases>",
+    "oracle": "CPython 3.13.16 stdout, exit status and recorded stderr; no expected outputs generated from Pystachy.",
+    "new_or_updated_cases": [
+      "tests/programs/apps/guarded_score.py",
+      "tests/programs/language/guarded_callback_bindings.py",
+      "tests/programs/language/guarded_callback_writes.py",
+      "tests/programs/language/guarded_callback_effects.py",
+      "tests/programs/language/guarded_callback_recursion.py"
+    ],
+    "related_existing_cases": [
+      "tests/programs/language/recursion_callable_frames.py",
+      "tests/programs/language/recursion_set_limit.py",
+      "tests/programs/reflection/callables.py",
+      "tests/programs/generics/generic_callable_field.py",
+      "tests/programs/inference/dynany_callables.py",
+      "tests/programs/numbers/python_int_callables.py",
+      "tests/programs/numbers/python_int_callables_fixed.py",
+      "tests/programs/library/lib_bisect_key.py",
+      "tests/programs/exceptions/exc_callback.py"
+    ],
+    "runs": [
+      {
+        "settings": {},
+        "selected_cases": 14,
+        "passed": 28,
+        "failed": 0,
+        "log": "native-targeted.log"
+      },
+      {
+        "settings": {
+          "PYSTACHY_OPT": "-callbacks"
+        },
+        "selected_cases": 5,
+        "passed": 10,
+        "failed": 0,
+        "log": "native-disabled.log"
+      },
+      {
+        "settings": {
+          "PYSTACHY_OPT": "-all"
+        },
+        "selected_cases": 5,
+        "passed": 10,
+        "failed": 0,
+        "log": "native-unoptimized.log"
+      },
+      {
+        "settings": {
+          "PYSTACHY_GC_STRESS_PROGRAM": "1"
+        },
+        "selected_cases": 5,
+        "passed": 10,
+        "failed": 0,
+        "log": "native-gc.log"
+      }
+    ],
+    "residual_numeric_case": {
+      "case": "tests/programs/numbers/python_int_local_retry.py",
+      "started_utc": "2026-11-07T05:05:14.981299+00:00",
+      "source_commit": "9e4ae4624f4bcd8ac37dcdd73344ac856e43a222",
+      "compiler_sha256": "1b802672864cfc62145c7e8da4d58e50687b5d235689ee37f5eb650b13f7f9d0",
+      "native": [
+        {
+          "configuration": "normal",
+          "command": "env PYSTACHY_HOME=/workspace/scratch/dd558ed171f8/pystachy PYSTACHY_LLVM=/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin PYSTACHY_JOBS=1 PYSTACHY_IRCHECK=1 tests/run.sh ./pystachy 'jit aot' tests/programs/numbers/python_int_local_retry.py",
+          "exit_status": 0,
+          "stdout": "selected 1 cases\n2 passed, 0 failed\n",
+          "stderr": ""
+        },
+        {
+          "configuration": "callbacks_disabled",
+          "command": "env PYSTACHY_HOME=/workspace/scratch/dd558ed171f8/pystachy PYSTACHY_LLVM=/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin PYSTACHY_JOBS=1 PYSTACHY_IRCHECK=1 PYSTACHY_OPT=-callbacks tests/run.sh ./pystachy 'jit aot' tests/programs/numbers/python_int_local_retry.py",
+          "exit_status": 0,
+          "stdout": "selected 1 cases\n2 passed, 0 failed\n",
+          "stderr": ""
+        },
+        {
+          "configuration": "gc_stress",
+          "command": "env PYSTACHY_HOME=/workspace/scratch/dd558ed171f8/pystachy PYSTACHY_LLVM=/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin PYSTACHY_JOBS=1 PYSTACHY_IRCHECK=1 PYSTACHY_GC_STRESS_PROGRAM=1 tests/run.sh ./pystachy 'jit aot' tests/programs/numbers/python_int_local_retry.py",
+          "exit_status": 0,
+          "stdout": "selected 1 cases\n2 passed, 0 failed\n",
+          "stderr": ""
+        }
+      ],
+      "cpython": {
+        "command": "/root/.local/bin/python3.13 tests/programs/numbers/python_int_local_retry.py a1 a2",
+        "environment": {
+          "PATH": "/root/.codex/tmp/arg0-linux/codex-arg0gMzh4z:/opt/codex/codex-path:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/override:/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/codex/runtimes/codex-primary-runtime/dependencies/bin/fallback",
+          "PYTHONPATH": "tests/python_int_modules"
+        },
+        "version": "Python 3.13.16",
+        "matches_recording": true,
+        "stderr": "",
+        "exit_status": 0
+      },
+      "finished_utc": "2026-11-07T05:05:39.093312+00:00",
+      "ir_checks": [
+        {
+          "configuration": "old",
+          "command": "env PYSTACHY_HOME=/workspace/scratch/dd558ed171f8/pystachy PYSTACHY_PATH=tests/python_int_modules PYSTACHY_IRCHECK=1 PYSTACHY_LLVM=/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin PYSTACHY_OPT= /workspace/scratch/86a482912029/pystachy/pystachy ir tests/programs/numbers/python_int_local_retry.py -o /workspace/scratch/dd558ed171f8/numeric-callback-old.ll",
+          "exit_status": 0,
+          "stdout": "",
+          "stderr": "",
+          "sha256": "168ba38806f0bccb68410d860436c5c88156ad66df04e3e6e23bba2e3496da81"
+        },
+        {
+          "configuration": "enabled",
+          "command": "env PYSTACHY_HOME=/workspace/scratch/dd558ed171f8/pystachy PYSTACHY_PATH=tests/python_int_modules PYSTACHY_IRCHECK=1 PYSTACHY_LLVM=/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin PYSTACHY_OPT= ./pystachy ir tests/programs/numbers/python_int_local_retry.py -o /workspace/scratch/dd558ed171f8/numeric-callback-enabled.ll",
+          "exit_status": 0,
+          "stdout": "",
+          "stderr": "",
+          "sha256": "3d418136a76804dc39efebce9359aa13d03b6fed543a2398eeb757147dc01ffa"
+        },
+        {
+          "configuration": "disabled",
+          "command": "env PYSTACHY_HOME=/workspace/scratch/dd558ed171f8/pystachy PYSTACHY_PATH=tests/python_int_modules PYSTACHY_IRCHECK=1 PYSTACHY_LLVM=/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin PYSTACHY_OPT=-callbacks ./pystachy ir tests/programs/numbers/python_int_local_retry.py -o /workspace/scratch/dd558ed171f8/numeric-callback-disabled.ll",
+          "exit_status": 0,
+          "stdout": "",
+          "stderr": "",
+          "sha256": "168ba38806f0bccb68410d860436c5c88156ad66df04e3e6e23bba2e3496da81"
+        }
+      ],
+      "disabled_ir_matches_old_byte_for_byte": true,
+      "llvm_as": {
+        "command": "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/llvm-as /workspace/scratch/dd558ed171f8/numeric-callback-enabled.ll -o /workspace/scratch/dd558ed171f8/numeric-callback-enabled.bc",
+        "exit_status": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "ir_structure": {
+        "changed_functions": [
+          "@f.fixed_retry$sum_results.1"
+        ],
+        "added_functions": [
+          "@f.fixed_retry$sum_results.1.callback1",
+          "@f.fixed_retry$sum_results.1.callback2"
+        ],
+        "removed_functions": [],
+        "exact_object_guards": 2,
+        "direct_adapter_calls_with_promoting_return": 2
+      },
+      "oracle_summary": {
+        "strict": {
+          "differences": 266,
+          "diagnostic_differences": 13,
+          "status_changes": 0,
+          "missing_ir": 0,
+          "summary": "266 of 4243 differ",
+          "all_diagnostic_differences_are_library_prefix_only": true,
+          "checked_diagnostic_cases": [
+            "tests/errors/inference/any_lru_cache.py",
+            "tests/errors/library/lib_copy_callable_field.py",
+            "tests/errors/library/lib_copy_deep_order.py",
+            "tests/errors/library/lib_copy_getstate.py",
+            "tests/errors/library/lib_copy_library_base.py",
+            "tests/errors/library/lib_copy_library_class.py",
+            "tests/errors/library/lib_csv_namedtuple_row.py",
+            "tests/errors/library/lib_datetime_strptime.py",
+            "tests/errors/library/lib_datetime_utcnow.py",
+            "tests/errors/library/lib_enum_missing_result.py",
+            "tests/errors/library/lib_functools_lambda.py",
+            "tests/errors/library/lib_functools_unannotated.py",
+            "tests/errors/library/lib_itertools_starmap_list.py"
+          ]
+        },
+        "shared": {
+          "differences": 5,
+          "diagnostic_differences": 0,
+          "status_changes": 0,
+          "missing_ir": 0,
+          "summary": "5 of 266 differ",
+          "changed_cases": [
+            "tests/programs/apps/guarded_score.py",
+            "tests/programs/language/guarded_callback_bindings.py",
+            "tests/programs/language/guarded_callback_effects.py",
+            "tests/programs/language/guarded_callback_recursion.py",
+            "tests/programs/numbers/python_int_local_retry.py"
+          ]
+        },
+        "library_runtime_sources": {
+          "count": 99,
+          "mismatches": [],
+          "manifest": "oracle-inputs.json",
+          "each_hash_verified_against_both_trees": true
+        }
+      }
+    },
+    "total_passed": 64,
+    "total_failed": 0
+  },
+  "ir_validation": {
+    "command_template": "tools/check_ir.sh ./pystachy <tests/ir/*.py and five callback fixtures>",
+    "programs": 59,
+    "typed_ir_checked": true,
+    "llvm_as_accepted": true,
+    "exit_code": 0,
+    "total_distinct_programs_including_residual_numeric_case": 60
+  },
+  "corpus_comparison": {
+    "tool": "tools/irsame.sh",
+    "display_only_change": "SHOW=3 replaced with SHOW=10000 to display every differing case; comparisons unchanged.",
+    "reference_binary_sha256": "3b59b4e875a89f15777395f5993ccf2e6d51e934dbc7a4e45228d622c7f1cff7",
+    "reference_source": "Original prototype commit; compiler/runtime/library inputs are unchanged from base main.",
+    "strict": {
+      "command": "PYSTACHY_HOME= tools/irsame.sh /workspace/scratch/86a482912029/pystachy/pystachy ./pystachy",
+      "cases": 4243,
+      "different": 266,
+      "diagnostic_differences": 13,
+      "exit_status_differences": 0,
+      "exit_code": 1,
+      "interpretation": "Includes distinct checkout paths embedded in IR error strings and diagnostics."
+    },
+    "shared_inputs_recheck": {
+      "command_template": "PYSTACHY_HOME=/workspace/scratch/dd558ed171f8/pystachy tools/irsame.sh /workspace/scratch/86a482912029/pystachy/pystachy ./pystachy <all 266 differing cases>",
+      "verified_identical_inputs": {
+        "equal_files": 99,
+        "sha256": "fd29b58d6a12253c6e719f37f912c98d3e59f23ec8c88ea718b8e1ec1bb3cac3",
+        "files": {
+          "VERSION": "fb31663e843d506f2c2bb375bb125b8e99e8692482d903e7fdcf5aad1f5f72b2",
+          "lib/_argparse_help.py": "71230160d94bdca256c1ec51df652634e56a663edb1934d8b15a3b45c8da0a42",
+          "lib/_markupbase.py": "6a294b294582f55905d310b8df054019e94f37b17eba3414be4e2cb61d5851d1",
+          "lib/_pyrandom.py": "5b37918369c0e4becdac2d012ffe9e40e314a330ee9f7b3fe2ce4cd3a926ff09",
+          "lib/_pystachy__io.py": "77ee03b3a67f79f49c3fe30666f4f5077bd41069797c727529a230c4caa0a117",
+          "lib/_pystachy_abc.py": "9f6f717c077b2dbac22e8dc9793373b939615a33f2698aaddd81ed905e5a48f8",
+          "lib/_pystachy_atexit.py": "a5ff97e421a4a8fd782e08a0124bac6a7b27486fc279cb4384655bc4b208d60c",
+          "lib/_pystachy_bfile.py": "3ae9d3ed7e23e4bd0712b097a73db93f14aa7321bf1e4c5585c8cd2774999826",
+          "lib/_pystachy_binascii.py": "c8ca70973dc409011ba89749878a2a205780fdc907437bc08521be0e3d07f848",
+          "lib/_pystachy_bytescan.py": "9d67b07a3bbcdf944454abbf138f3c588ffba4a5787d43ba148e5f918a3c8f63",
+          "lib/_pystachy_codecs.py": "fe8380d756e383192028c6a65d652047e9abb9c08b51e15aba5b35e8cf678acf",
+          "lib/_pystachy_copy.py": "27d374af0fc595f85da5e4d19dd9f235b0ed3212dd926695ee4c696b0f5b4d3f",
+          "lib/_pystachy_iterators.py": "61894584c1fda85936a740d4dafa2c5d631f9b05f5022fca8913e4ad0a84b27e",
+          "lib/_pystachy_itertools.py": "14f451cf7647016ad8105aa988b9cbabe4fe3f5a08f2710f6ed2db5d81a00566",
+          "lib/_pystachy_json_any.py": "9d4bf30d0a11b50d013de9b62f7c9b75269a66c26cbce1dcc67b6504428ea7af",
+          "lib/_pystachy_json_int.py": "dde398779410ac2476e4205468df5477af8e56a59809e8c12068a1938a19adb0",
+          "lib/_pystachy_mappingproxy.py": "e1d04e45f0b12e0e29fba497adf16f77864154c9e175a40065d2fd73654be70c",
+          "lib/_pystachy_object.py": "6a21df25fa11b3c80a70d95f310760d86adaeecd4a63e767bde5b9ecde63ca9c",
+          "lib/_pystachy_percent.py": "38119feeb5bff2d50d8d5d48e8c23e853bfe5ca92c6df99163b82a8699eda0e3",
+          "lib/_pystachy_range.py": "50df392f248e25a79896007a3b0a23741f8f5f56622e7c56060ba9612292f8b2",
+          "lib/_pystachy_re_specialized.py": "d09604c416700c3a7acd3a9f8c6f7536289c895b2e72393a9875e68ed92e45bf",
+          "lib/_pystachy_string.py": "2e87bb96489d12051446c1b59c2e4ee65543a14f15d8eff3465a43f2e1f51434",
+          "lib/_pystachy_struct.py": "2f224f07dd5a8db374dc2604257cc7c41a4caa7140c5d2ddf30a34bc8f88f1d6",
+          "lib/_pystachy_thread.py": "db3920b84b5b801ede68b2facab9ef2bc21f1f714dcc767625e66f1f4bf936cc",
+          "lib/_pystachy_time.py": "21470e0d9af8a1fb86b34f9977c4e5049a3b6785bb0db3f23198546665a9fa39",
+          "lib/_pystachy_types.py": "221d41e2f90c40493b3d712fb99cf39fb5a25c2306e63de7a89358e66cfcfe70",
+          "lib/_pystachy_unicodedata.py": "f1c877238f94279dfdb5a5f77396d9d25f504c409f34b78099613c6c3f71c7d0",
+          "lib/_pystachy_unicodedata_db.py": "d511e3c104f697e9e9ce150b97119ceb1fcaf00ebcdd3be21cf52c88337608b2",
+          "lib/_pystachy_unicodedata_names.py": "9b18f9e4aecb03f28672fdecce4fcf9d0ece0a1c565c7e9e0ce504fe4fc2bb28",
+          "lib/_pystachy_weakref.py": "961b272cf9e756d3829f57ad7325b123e5329a06dfb64519a50c8132728cb3cb",
+          "lib/_weakrefset.py": "91895a451d06e9f521a1171b31b9b19bc9740f35af00d4fa106338ab7167c9ac",
+          "lib/argparse.py": "7badc6e5fd7d0cd32884ee819a2c2875614ae49b0d17ccc46cf80a5910066936",
+          "lib/bisect.py": "f1cf7b85fc36b5da249813fc5ab97d9464f8cc1bc817f7146206fa2713e35999",
+          "lib/codecs.py": "feafe30244cc2ac23a8f03ca6c8b106ef82dede1630aac103126767e123a3c42",
+          "lib/collections/__init__.py": "8a6533ddf04c4823e1c1da10925028613420cc4e5cb6264e6066fdd3739b4852",
+          "lib/colorsys.py": "65e3dfbf7bad61d4d7d7731a69dd7e75a347fd350d91327a51010a94e6fd2f1d",
+          "lib/contextlib.py": "08bf5d132ae0aceafcd94c72396e21fd45fc9cd1ba6e74807ce1e39f22d0d665",
+          "lib/copy.py": "360bbbd25d50a8f6292487aadfaa43291619d09b26d90596a9a0cf36c727c969",
+          "lib/csv.py": "29676a25a82679e93c6d0eb771a3f60890aedf49941206c0387ce59696b7c3c4",
+          "lib/curses/__init__.py": "91156d2c9afdc168cee4bb7085c8b16936ca7079fa4035ac4d7908712d86f394",
+          "lib/curses/ascii.py": "780dd8bbaf0ee7e832f164c1772953e694a9cd1031d1ab1471af65344d3645e6",
+          "lib/datetime.py": "d269c51c55e7668b988c8194a7a2e643a39aa3a2770a727c178a5c898b91c239",
+          "lib/difflib.py": "4d33db46d2f0748bd674b5ae2f52c59ab0cab0865c465a99ea9521d8751aea0f",
+          "lib/enum.py": "5966e540800846a58328cfcf50029b5c6b79c27194ed01f30a432d45a81401ed",
+          "lib/fnmatch.py": "fd1da199d0eeabc34ec9796d5a0790da6300fff4d15e16ee2d8ca26e6885eec5",
+          "lib/functools.py": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703",
+          "lib/genericpath.py": "cdac5a68dd738051e0d66fc81d5947d6a1776248fc6fe862253477608d870ec4",
+          "lib/getopt.py": "0d152bede49816f2924ffb944d86369099bea3b68ec1ee6f0c84c56251670241",
+          "lib/gettext.py": "97b7fa3d8112826dae4d021a6445fe791521524bd4b06e729d0497ed59a85e63",
+          "lib/glob.py": "3ff5a1497ed62460e45f6031f1c9b921849a5e73b8ff6ea35fe25635a4106b78",
+          "lib/heapq.py": "89bfee37cf47aecdf2a5ae8706b9805f1b1789d6e2edb7e3556fe8b42c5ecba3",
+          "lib/html/__init__.py": "067cf63fe3eee1bece807caba82a83d0307010bf1c30d9974e56ea704ddea893",
+          "lib/html/entities.py": "6fbeb0318e22905269b414b7d045574b8a98767f194310071b9177fadc738a2f",
+          "lib/html/parser.py": "f3ab8871f5342562328cd3ff8e65d5667c79d27189c7a0401982a193de7b4e90",
+          "lib/io.py": "31f5102c549e7051190c81838928db3f5c21863ac9cf63e7a493352e767fa71f",
+          "lib/json.py": "b217485992131dd49d083a0fcff14fe56e6507933b4d7e3d5e09071be071dd39",
+          "lib/keyword.py": "833eb8e01577a8330f473ed49403fae4b5e6c95a66a81254405deb5c7ea7efb9",
+          "lib/logging/__init__.py": "73ce5de4a0780ba93deb120274a7aebba5f629a6a0ee48b81757f0770b12d6e3",
+          "lib/mpz.py": "754e4844ff8425e92ee8cde26b1e84a4ad318312d1ca17d10ea724a6c4c46a45",
+          "lib/operator.py": "7d42396ef02c03aa69eb86643769cdb889ab9fc66ffd140bc0efa0896fc94c99",
+          "lib/pathlib.py": "e489f1ddacdd4076b3f54b81e89e1d9a20e63d1e651a25f0c5b135398918cba2",
+          "lib/posixpath.py": "69acb9e294987cd6056a2237048373cf8d6201faf1e43a49c38889b47d2fb28e",
+          "lib/pyobj.py": "2d673d060a386ceae11b381ca94ce71a4ec43be89e7c1c59651c936ffea9054e",
+          "lib/random.py": "91e7fa770bfc1affb76a6441a10e1913af8993d8c657c12ffe6cbadc3e3add1e",
+          "lib/re/__init__.py": "62ebb86b1d7c3cabca75918d374c48eece358fd03bfe96f3ef486bb651b4c412",
+          "lib/re/_constants.py": "d8c63d4b91920ceb02d7c00073a062504c349b3e0de83ba480c3f4d1bca442fe",
+          "lib/re/_sre.py": "c7e98ec21fe209e8d3833516f408a5b219002e26a2f630cceb933b3e12cca3c5",
+          "lib/re/_unicode.py": "61f1343780ef2537ff83813b7a2097a55482a51a23b172a609a6836af4197ea2",
+          "lib/shlex.py": "7392b7c738fe818c43a8031820bef96db0b9f598d354a9fac0b771546a4fdba4",
+          "lib/shutil.py": "6f2ece466c6ebbd609758a22312842d61f8fba24bac5fefccbd9918a08d224c1",
+          "lib/stat.py": "07217986d9b2172b509dab3578d18ac05ba768b418e1f1e8c90e38a8f7c2b3c6",
+          "lib/statistics.py": "05a091943eb6a01272f95c190e99bab0d33c72a108aef45261c838842301991b",
+          "lib/string.py": "5a6ea720721a70a9d76d30135697ea612b9cb6610366b38d8c1d997043508b27",
+          "lib/struct.py": "9c231f9497caf513a22dee8f790b07f969b0e45854a0bdd6dd84b492e08c2856",
+          "lib/textwrap.py": "5102b1deb8905ad1b31a2830f7ac5a980229e55f3bbce06fd64baa9930159c1b",
+          "lib/this.py": "481d0cb3de511eae0b5713dad18542b07eafd9c013bb7690f7497bad49923a71",
+          "lib/threading.py": "b213b086e74428f910b7a469be2dd98108ae9041156851e8bc892f04a6bd62f9",
+          "lib/token.py": "1d81391050d5389c41f319ba4d42159c6247777400e48c27f2d28cac8ca4e6e2",
+          "lib/tomllib/__init__.py": "71f67036895f4c5acab942618af0cbd3d814451ba61e967f358d0f341a5b8f51",
+          "lib/tomllib/_parser.py": "11d40d79772967ebf81f5a0cf8dfa99608413b3ba6144d4beadae99baa28f279",
+          "lib/tomllib/_re.py": "17ec24dabd4e7089df6f04acacb331c85c437addbd2ab98bdfefcb18671ba056",
+          "lib/tomllib/_types.py": "e018cf69245202408dd97664cf76618e8cbb5efb6f43b134d29efd1d9221a6c0",
+          "lib/traceback.py": "0019cd354b5261be3496db20445c3f36f2e642cdee711fc1af51c7650e1625c1",
+          "lib/types.py": "d4215ea3abc258bdde763cc21ec4b0759f0c44e874b2483851c5681ae93f45e2",
+          "lib/urllib/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "lib/urllib/parse.py": "f5914562f9903ab7dde287fcb8bc0b1667a812f82e7e7c4419fed0493bfd0148",
+          "lib/warnings.py": "be4467c02d67040c87e31ede6787740815085298a880f2aa126b02fbabc0f133",
+          "lib/weakref.py": "4a08091ebed64fcd1d2368e97381009eab49669e40cdbddaaefd64d525e46e7a",
+          "mpz/mpz.c": "2d648cec5de20c6bb7d4882a364cfc9fa1d355395255c1d0e82e4389bde03afa",
+          "pyembed.c": "e3815cc8d3f133957b83dfa5b236ed78dc22e7c43a3d01e9c8d2f6a43ca5946e",
+          "pyext.c": "4278d2506c88d20a08b4a5b5563237e6323372201603b6c5c78231ee52301109",
+          "runtime.c": "1a6c77b09d5739d0d2ac263b8c86e7aa640c9b5bdf1cdafe369e84d1d7a0bb0c",
+          "runtime.py": "c45138f44a7aa25828b351b6d627e1a4f9fad69dc8a88532d053fb90e84beefb",
+          "ryu/common.h": "0bbd71d26da6193e678d0776cf418f43f287c73d6fd6725353df0aadf70f2a19",
+          "ryu/d2s.c": "c6357b5d53ac1ba7f4984847d3a76f0803e0a931b7d0b02680656576829cf1d2",
+          "ryu/d2s_intrinsics.h": "01d9bdaada67b42f2d1bbdebb3765867e6c44e3a181b806c1d7e851b93f9cc21",
+          "ryu/d2s_small_table.h": "01f3d8a3ff739a26ecbddc2caae44c91574592b1de7c01fec67bc2d06672b606",
+          "ryu/digit_table.h": "8b782573abc0b8554d74163ae6c02f0beb5c30d1e63eaebdb0ddf2c98d817e01",
+          "ryu/ryu.h": "b7feab0ba1df5e9ef3d602f386592ad152491405e49b408fb21c0e0e9e6bfb16"
+        }
+      },
+      "identity_checked_before_and_after": true,
+      "cases": 266,
+      "different": 5,
+      "diagnostic_differences": 0,
+      "exit_status_differences": 0,
+      "exit_code": 1,
+      "interpretation": "Five intended guards and cloned callback kernels; the remaining 261 differences disappear with identical input paths. No new rejection.",
+      "changed_cases": [
+        "tests/programs/apps/guarded_score.py",
+        "tests/programs/language/guarded_callback_bindings.py",
+        "tests/programs/language/guarded_callback_effects.py",
+        "tests/programs/language/guarded_callback_recursion.py",
+        "tests/programs/numbers/python_int_local_retry.py"
+      ],
+      "diff_output": "Verified identical library/runtime source files: 99\nRechecking original differences with shared verified inputs: 266\nDIFF tests/programs/apps/guarded_score.py\n  IR from line 1603 (in @f.scoring$score):\n@@ -1600,7 +1600,21 @@\n   %value.28 = alloca double\n   store double zeroinitializer, ptr %value.28\n   %t1 = call i64 @pys.recursion.enter()\n-  %t43 = sub i64 %t1, 1\n+  %t52 = sub i64 %t1, 1\n+  %t46 = icmp eq ptr %a0, @cvo.1\n+  br i1 %t46, label %L44, label %L45\n+L44:\n+  %t47 = call double @f.scoring$score.callback1(ptr %a0, ptr %a1, ptr %a2)\n+  store i64 %t52, ptr @pys_recursion_state, !tbaa !6\n+  ret double %t47\n+L45:\n+  %t50 = icmp eq ptr %a0, @cvo.2\n+  br i1 %t50, label %L48, label %L43\n+L48:\nDIFF tests/programs/language/guarded_callback_bindings.py\n  IR from line 337 (in @f.apply):\n@@ -334,7 +334,21 @@\n   %value.17 = alloca i64\n   store i64 zeroinitializer, ptr %value.17\n   %t1 = call i64 @pys.recursion.enter()\n-  %t27 = sub i64 %t1, 1\n+  %t36 = sub i64 %t1, 1\n+  %t30 = icmp eq ptr %a0, @cvo.0\n+  br i1 %t30, label %L28, label %L29\n+L28:\n+  %t31 = call ptr @f.apply.callback1(ptr %a0, ptr %a1)\n+  store i64 %t36, ptr @pys_recursion_state, !tbaa !6\n+  ret ptr %t31\n+L29:\n+  %t34 = icmp eq ptr %a0, @cvo.1\n+  br i1 %t34, label %L32, label %L27\n+L32:\nDIFF tests/programs/language/guarded_callback_effects.py\n  IR from line 244 (in @f.apply):\n@@ -241,7 +241,14 @@\n   %item.17 = alloca i64\n   store i64 zeroinitializer, ptr %item.17\n   %t1 = call i64 @pys.recursion.enter()\n-  %t27 = sub i64 %t1, 1\n+  %t32 = sub i64 %t1, 1\n+  %t30 = icmp eq ptr %a0, @cvo.0\n+  br i1 %t30, label %L28, label %L27\n+L28:\n+  %t31 = call ptr @f.apply.callback1(ptr %a0, ptr %a1)\n+  store i64 %t32, ptr @pys_recursion_state, !tbaa !6\n+  ret ptr %t31\n+L27:\n   store ptr %a0, ptr %callback.2\n   store ptr %a1, ptr %items.3\n   %t5 = call ptr @pys_list_new_atomic(i64 0)\nDIFF tests/programs/language/guarded_callback_recursion.py\n  IR from line 168 (in @f.kernel):\n@@ -165,7 +165,14 @@\n   %_.12 = alloca i64\n   store i64 zeroinitializer, ptr %_.12\n   %t1 = call i64 @pys.recursion.enter()\n-  %t29 = sub i64 %t1, 1\n+  %t34 = sub i64 %t1, 1\n+  %t32 = icmp eq ptr %a0, @cvo.0\n+  br i1 %t32, label %L30, label %L29\n+L30:\n+  %t33 = call i64 @f.kernel.callback1(ptr %a0, i64 %a1)\n+  store i64 %t34, ptr @pys_recursion_state, !tbaa !6\n+  ret i64 %t33\n+L29:\n   store ptr %a0, ptr %callback.2\n   store i64 %a1, ptr %n.3\n   store i64 0, ptr %result.4\nDIFF tests/programs/numbers/python_int_local_retry.py\n  IR from line 54 (in @f.fixed_retry$sum_results.1):\n@@ -51,7 +51,21 @@\n   %i.15 = alloca i64\n   store i64 zeroinitializer, ptr %i.15\n   %t1 = call i64 @pys.recursion.enter()\n-  %t52 = sub i64 %t1, 1\n+  %t61 = sub i64 %t1, 1\n+  %t55 = icmp eq ptr %a0, @cvo.0\n+  br i1 %t55, label %L53, label %L54\n+L53:\n+  %t56 = call {i64, ptr} @f.fixed_retry$sum_results.1.callback1(ptr %a0, i64 %a1)\n+  store i64 %t61, ptr @pys_recursion_state, !tbaa !6\n+  ret {i64, ptr} %t56\n+L54:\n+  %t59 = icmp eq ptr %a0, @cvo.1\n+  br i1 %t59, label %L57, label %L52\n+L57:\n5 of 266 differ\n"
+    },
+    "result": "All substantive differences attributed to the new optimization; no unexplained IR, diagnostics or exit-status difference."
+  },
+  "benchmark": {
+    "result_file": "llvm18-compiler-2026-11-06.json",
+    "status": "complete",
+    "same_source_program": true,
+    "generic_option": "-callbacks",
+    "guarded_option": "default",
+    "scenarios": 8,
+    "alternating_pairs_per_scenario": 7,
+    "every_output_checked_against_cpython": true
+  },
+  "log_sha256": {
+    "bootstrap-final.log": "fa1adda6e1cbd6c7d794bfc57c7a84869167de9195c9d32a1512f4f4af53a9bf",
+    "check-fast-lint.log": "a244e0d222fbe03d4d90553ff9f5f6db868fb440cc52a2cdf09b1a774c4bb450",
+    "runtime-repository.log": "902d73fa0a3f789700026e4f35a91120e67cccda9f5892a9b1af47d28b3b2ae6",
+    "native-targeted.log": "e04206a15bd42b1d4a4ea06b683e88b4b00acf60bcaf32479f4b46fad7537c97",
+    "native-disabled.log": "d7422e2182bdd960b027fbcd9b0e716646be3135f97ff83cc85ae2e8a42304b7",
+    "native-unoptimized.log": "d7422e2182bdd960b027fbcd9b0e716646be3135f97ff83cc85ae2e8a42304b7",
+    "native-gc.log": "d7422e2182bdd960b027fbcd9b0e716646be3135f97ff83cc85ae2e8a42304b7",
+    "check-ir.log": "26013e8fcb2b76e509e9781020c1de56695f2bf5d3ab8846fa5e7c5e89bd1dfc",
+    "benchmark.log": "d20c1119345d9a44174d42d663d2697d56641d8c715eebe0a793d9c6c3ad65e9",
+    "irsame.log": "21bc77d2bfe126bb6f6676f18239f887921b7cba5ee24c726ab4bb83a98c55df",
+    "irsame-shared-inputs.log": "cc02f7842e170b9f891c432a92084b7497f9011c33e8cd117dc4c5a08717f68c",
+    "numeric-callback-validation.log": "4cefef462be8d399260a1367988d7762057a84f3965d4f1a808370f8753b9aa9"
+  },
+  "not_run": [
+    "Full local make verify matrix; the draft PR requires the corresponding CI matrix before merge readiness."
+  ],
+  "limitations": [
+    "Static bounded callback-target selection, not runtime-frequency profiling.",
+    "Existing application-level 2x acceleration remains unmeasured."
+  ]
+}

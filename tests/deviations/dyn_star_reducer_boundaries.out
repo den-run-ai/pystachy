@@ -1,0 +1,6 @@
+variadic variadic() through runtime unpacking requires a supported fixed signature
+mapping dynamic ** calls require builtin dict mappings
+erased runtime unpacking requires a callable with retained parameter names
+builtin runtime unpacking of builtin method append() is not supported
+class Record() through Any requires a statically compiled initializer and boxed instance layout
+[exit 0]

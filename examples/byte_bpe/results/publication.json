@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "compiler_source_commit": "f7103067545b43cdcd8ce20dc66b1571425b3a8d",
+  "entries": [
+    {
+      "local_sha": "1d7a039447a950ef4801ea77f292a3df281ba53b",
+      "published_sha": "4806d9352ef680436bfeecfa4e3acf3c96ec2b43",
+      "tree": "b860ad2c8874d6e464e06878f9ab299089edbddc"
+    },
+    {
+      "local_sha": "3c2c523381af0a343d798619304937dc5b579032",
+      "published_sha": "132dc4159d89024df096ebb5657c24e4add1c39f",
+      "tree": "5bad5ee1a937e40e35d569acb93199d28490b8ba"
+    },
+    {
+      "local_sha": "4460cc546f3cf1055c339d5b66452cddf4d0553c",
+      "published_sha": "18d50e9cc548159f95b74186b13b1fc1bef860b1",
+      "tree": "169d95e77de65493f3e45c4ac62c47e8c4166525"
+    },
+    {
+      "local_sha": "72f5291204afac933597cbe42c897a902cb97e2a",
+      "published_sha": "975e7de5a1381cc7b0a8daed142f5fdbe13c35fe",
+      "tree": "eb05edb9e52582fd17c4582211a3bcc9e975fd41"
+    },
+    {
+      "local_sha": "8ee3f9592affe08322f024ef227eb6bfd1734703",
+      "published_sha": "0529fedd4bc33707cc653d4c95c56d0d3a5e80ca",
+      "tree": "2cd745aa77cbff2faa68e99022cdc13f5559a53a"
+    }
+  ],
+  "note": "Each published tree was verified equal to its measured local tree. Commit IDs differ because publication preserves file contents with new commit metadata; raw measurement records retain their original local revision IDs."
+}

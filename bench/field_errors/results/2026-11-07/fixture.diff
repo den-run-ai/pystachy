@@ -1,0 +1,753 @@
+--- tests/programs/classes/inheritance_field_errors.py:baseline
++++ tests/programs/classes/inheritance_field_errors.py:candidate
+@@ -19,26 +19,27 @@
+ @s.6 = private unnamed_addr global {i64, i64, i64, [6 x i8]} {i64 5, i64 0, i64 6, [6 x i8] c"Child\00"}, align 8
+ @s.7 = private unnamed_addr global {i64, i64, i64, [5 x i8]} {i64 4, i64 0, i64 5, [5 x i8] c"Deep\00"}, align 8
+ @s.8 = private unnamed_addr global {i64, i64, i64, [8 x i8]} {i64 7, i64 0, i64 8, [8 x i8] c"Sibling\00"}, align 8
+-@s.9 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1, i64 0, i64 2, [2 x i8] c"'\00"}, align 8
+-@s.10 = private unnamed_addr global {i64, i64, i64, [34 x i8]} {i64 33, i64 0, i64 34, [34 x i8] c"' object has no attribute 'value'\00"}, align 8
+-@s.11 = private unnamed_addr global {i64, i64, i64, [15 x i8]} {i64 14, i64 0, i64 15, [15 x i8] c"AttributeError\00"}, align 8
+-@s.12 = private unnamed_addr global {i64, i64, i64, [17 x i8]} {i64 16, i64 0, i64 17, [17 x i8] c"\01AttributeError\01\00"}, align 8
+-@s.13 = private unnamed_addr global {i64, i64, i64, [5 x i8]} {i64 4, i64 0, i64 5, [5 x i8] c"text\00"}, align 8
+-@s.14 = private unnamed_addr global {i64, i64, i64, [33 x i8]} {i64 32, i64 0, i64 33, [33 x i8] c"' object has no attribute 'text'\00"}, align 8
+-@s.15 = private unnamed_addr global {i64, i64, i64, [9 x i8]} {i64 8, i64 0, i64 9, [9 x i8] c"assigned\00"}, align 8
+-@s.16 = private unnamed_addr global {i64, i64, i64, [6 x i8]} {i64 5, i64 0, i64 6, [6 x i8] c"after\00"}, align 8
+-@s.17 = private unnamed_addr global {i64, i64, i64, [43 x i8]} {i64 42, i64 0, i64 43, [43 x i8] c"'NoneType' object has no attribute 'value'\00"}, align 8
+-@s.18 = private unnamed_addr global {i64, i64, i64, [42 x i8]} {i64 41, i64 0, i64 42, [42 x i8] c"'NoneType' object has no attribute 'text'\00"}, align 8
+-@s.19 = private unnamed_addr global {i64, i64, i64, [86 x i8]} {i64 85, i64 0, i64 86, [86 x i8] c"'NoneType' object has no attribute 'value' and no __dict__ for setting new attributes\00"}, align 8
+-@s.20 = private unnamed_addr global {i64, i64, i64, [85 x i8]} {i64 84, i64 0, i64 85, [85 x i8] c"'NoneType' object has no attribute 'text' and no __dict__ for setting new attributes\00"}, align 8
+-@s.21 = private unnamed_addr global {i64, i64, i64, [6 x i8]} {i64 5, i64 0, i64 6, [6 x i8] c"equal\00"}, align 8
+-@s.22 = private unnamed_addr global {i64, i64, i64, [39 x i8]} {i64 38, i64 0, i64 39, [39 x i8] c"'Deep' object has no attribute 'value'\00"}, align 8
+-@s.23 = private unnamed_addr global {i64, i64, i64, [42 x i8]} {i64 41, i64 0, i64 42, [42 x i8] c"'Sibling' object has no attribute 'value'\00"}, align 8
+-@s.24 = private unnamed_addr global {i64, i64, i64, [5 x i8]} {i64 4, i64 0, i64 5, [5 x i8] c"True\00"}, align 8
+-@s.25 = private unnamed_addr global {i64, i64, i64, [6 x i8]} {i64 5, i64 0, i64 6, [6 x i8] c"False\00"}, align 8
+-@s.26 = private unnamed_addr global {i64, i64, i64, [6 x i8]} {i64 5, i64 0, i64 6, [6 x i8] c"other\00"}, align 8
+-@s.27 = private unnamed_addr global {i64, i64, i64, [6 x i8]} {i64 5, i64 0, i64 6, [6 x i8] c"Other\00"}, align 8
+-@s.28 = private unnamed_addr global {i64, i64, i64, [11 x i8]} {i64 10, i64 0, i64 11, [11 x i8] c"OtherChild\00"}, align 8
++@s.9 = private unnamed_addr global {i64, i64, i64, [6 x i8]} {i64 5, i64 0, i64 6, [6 x i8] c"Other\00"}, align 8
++@s.10 = private unnamed_addr global {i64, i64, i64, [11 x i8]} {i64 10, i64 0, i64 11, [11 x i8] c"OtherChild\00"}, align 8
++@pys.field.names = private constant [7 x ptr] [ptr null, ptr @s.5, ptr @s.6, ptr @s.7, ptr @s.8, ptr @s.9, ptr @s.10], align 8
++@s.11 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1, i64 0, i64 2, [2 x i8] c"'\00"}, align 8
++@s.12 = private unnamed_addr global {i64, i64, i64, [34 x i8]} {i64 33, i64 0, i64 34, [34 x i8] c"' object has no attribute 'value'\00"}, align 8
++@s.13 = private unnamed_addr global {i64, i64, i64, [15 x i8]} {i64 14, i64 0, i64 15, [15 x i8] c"AttributeError\00"}, align 8
++@s.14 = private unnamed_addr global {i64, i64, i64, [17 x i8]} {i64 16, i64 0, i64 17, [17 x i8] c"\01AttributeError\01\00"}, align 8
++@s.15 = private unnamed_addr global {i64, i64, i64, [5 x i8]} {i64 4, i64 0, i64 5, [5 x i8] c"text\00"}, align 8
++@s.16 = private unnamed_addr global {i64, i64, i64, [33 x i8]} {i64 32, i64 0, i64 33, [33 x i8] c"' object has no attribute 'text'\00"}, align 8
++@s.17 = private unnamed_addr global {i64, i64, i64, [9 x i8]} {i64 8, i64 0, i64 9, [9 x i8] c"assigned\00"}, align 8
++@s.18 = private unnamed_addr global {i64, i64, i64, [6 x i8]} {i64 5, i64 0, i64 6, [6 x i8] c"after\00"}, align 8
++@s.19 = private unnamed_addr global {i64, i64, i64, [43 x i8]} {i64 42, i64 0, i64 43, [43 x i8] c"'NoneType' object has no attribute 'value'\00"}, align 8
++@s.20 = private unnamed_addr global {i64, i64, i64, [42 x i8]} {i64 41, i64 0, i64 42, [42 x i8] c"'NoneType' object has no attribute 'text'\00"}, align 8
++@s.21 = private unnamed_addr global {i64, i64, i64, [86 x i8]} {i64 85, i64 0, i64 86, [86 x i8] c"'NoneType' object has no attribute 'value' and no __dict__ for setting new attributes\00"}, align 8
++@s.22 = private unnamed_addr global {i64, i64, i64, [85 x i8]} {i64 84, i64 0, i64 85, [85 x i8] c"'NoneType' object has no attribute 'text' and no __dict__ for setting new attributes\00"}, align 8
++@s.23 = private unnamed_addr global {i64, i64, i64, [6 x i8]} {i64 5, i64 0, i64 6, [6 x i8] c"equal\00"}, align 8
++@s.24 = private unnamed_addr global {i64, i64, i64, [39 x i8]} {i64 38, i64 0, i64 39, [39 x i8] c"'Deep' object has no attribute 'value'\00"}, align 8
++@s.25 = private unnamed_addr global {i64, i64, i64, [42 x i8]} {i64 41, i64 0, i64 42, [42 x i8] c"'Sibling' object has no attribute 'value'\00"}, align 8
++@s.26 = private unnamed_addr global {i64, i64, i64, [5 x i8]} {i64 4, i64 0, i64 5, [5 x i8] c"True\00"}, align 8
++@s.27 = private unnamed_addr global {i64, i64, i64, [6 x i8]} {i64 5, i64 0, i64 6, [6 x i8] c"False\00"}, align 8
++@s.28 = private unnamed_addr global {i64, i64, i64, [6 x i8]} {i64 5, i64 0, i64 6, [6 x i8] c"other\00"}, align 8
+ @s.29 = private unnamed_addr global {i64, i64, i64, [10 x i8]} {i64 9, i64 0, i64 10, [10 x i8] c"exception\00"}, align 8
+ @s.30 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1, i64 0, i64 2, [2 x i8] c"s\00"}, align 8
+ @s.31 = private unnamed_addr global {i64, i64, i64, [8 x i8]} {i64 7, i64 0, i64 8, [8 x i8] c"Missing\00"}, align 8
+@@ -320,12 +321,12 @@
+   store ptr zeroinitializer, ptr %obj.2
+   %h.5 = alloca ptr
+   store ptr zeroinitializer, ptr %h.5
+-  %error.40 = alloca ptr
+-  store ptr zeroinitializer, ptr %error.40
+-  %h.45 = alloca ptr
+-  store ptr zeroinitializer, ptr %h.45
++  %error.36 = alloca ptr
++  store ptr zeroinitializer, ptr %error.36
++  %h.41 = alloca ptr
++  store ptr zeroinitializer, ptr %h.41
+   %t1 = call i64 @pys.recursion.enter()
+-  %t136 = sub i64 %t1, 1
++  %t120 = sub i64 %t1, 1
+   store ptr %a0, ptr %obj.2
+   %t3 = call i64 @pys_try_mark()
+   %t4 = call ptr @pys_exc_handled()
+@@ -343,194 +344,178 @@
+ L17:
+   %t19 = getelementptr %C.Base, ptr %t9, i32 0, i32 0
+   %t20 = load i64, ptr %t19, !tbaa !25
+-  %t21 = icmp eq i64 %t20, 2
+-  %t22 = select i1 %t21, ptr @s.6, ptr @s.5
+-  %t23 = icmp eq i64 %t20, 3
+-  %t24 = select i1 %t23, ptr @s.7, ptr %t22
+-  %t25 = icmp eq i64 %t20, 4
+-  %t26 = select i1 %t25, ptr @s.8, ptr %t24
+-  %t27 = call ptr @pys_str_add(ptr @s.9, ptr %t26)
+-  %t28 = call ptr @pys_str_add(ptr %t27, ptr @s.10)
+-  %t137 = call ptr @pys_exc_new(ptr @s.11, ptr %t28, ptr null)
+-  store ptr %t137, ptr %h.5
+-  br label %L31
++  %t21 = getelementptr ptr, ptr @pys.field.names, i64 %t20
++  %t22 = load ptr, ptr %t21
++  %t23 = call ptr @pys_str_add(ptr @s.11, ptr %t22)
++  %t24 = call ptr @pys_str_add(ptr %t23, ptr @s.12)
++  %t121 = call ptr @pys_exc_new(ptr @s.13, ptr %t24, ptr null)
++  store ptr %t121, ptr %h.5
++  br label %L27
+ L18:
+-  %t29 = load i64, ptr %t13, !tbaa !16
+-  invoke void @pys_write(ptr @s.4, i64 1) to label %L138 unwind label %L6
+-L138:
+-  invoke void @pys_write(ptr @s.2, i64 1) to label %L139 unwind label %L6
+-L139:
+-  %t30 = call ptr @pys_str_int(i64 %t29)
+-  invoke void @pys_write(ptr %t30, i64 1) to label %L140 unwind label %L6
+-L140:
+-  invoke void @pys_write(ptr @s.3, i64 1) to label %L141 unwind label %L6
+-L141:
++  %t25 = load i64, ptr %t13, !tbaa !16
++  invoke void @pys_write(ptr @s.4, i64 1) to label %L122 unwind label %L6
++L122:
++  invoke void @pys_write(ptr @s.2, i64 1) to label %L123 unwind label %L6
++L123:
++  %t26 = call ptr @pys_str_int(i64 %t25)
++  invoke void @pys_write(ptr %t26, i64 1) to label %L124 unwind label %L6
++L124:
++  invoke void @pys_write(ptr @s.3, i64 1) to label %L125 unwind label %L6
++L125:
+   br label %L7
+ L6:
+-  %t32 = landingpad { ptr, i32 } catch ptr null
+-  %t33 = extractvalue { ptr, i32 } %t32, 0
+-  store ptr %t33, ptr %h.5
+-  br label %L31
+-L31:
+-  %t34 = load ptr, ptr %h.5
++  %t28 = landingpad { ptr, i32 } catch ptr null
++  %t29 = extractvalue { ptr, i32 } %t28, 0
++  store ptr %t29, ptr %h.5
++  br label %L27
++L27:
++  %t30 = load ptr, ptr %h.5
+   store i64 %t1, ptr @pys_recursion_state, !tbaa !6
+-  %t35 = call ptr @pys_exc_begin(ptr %t34, i64 %t3)
+-  %t38 = call i64 @pys_exc_in(ptr %t35, ptr @s.12)
+-  %t39 = icmp ne i64 %t38, 0
+-  br i1 %t39, label %L36, label %L37
+-L36:
+-  store ptr %t35, ptr %error.40
+-  %t41 = load ptr, ptr %error.40
++  %t31 = call ptr @pys_exc_begin(ptr %t30, i64 %t3)
++  %t34 = call i64 @pys_exc_in(ptr %t31, ptr @s.14)
++  %t35 = icmp ne i64 %t34, 0
++  br i1 %t35, label %L32, label %L33
++L32:
++  store ptr %t31, ptr %error.36
++  %t37 = load ptr, ptr %error.36
+   call void @pys_write(ptr @s.4, i64 1)
+   call void @pys_write(ptr @s.2, i64 1)
+-  %t42 = call ptr @pys_exc_str(ptr %t41)
+-  call void @pys_write(ptr %t42, i64 1)
++  %t38 = call ptr @pys_exc_str(ptr %t37)
++  call void @pys_write(ptr %t38, i64 1)
+   call void @pys_write(ptr @s.3, i64 1)
+   call void @pys_exc_restore(ptr %t4)
+   br label %L7
+-L37:
+-  call void @pys_throw(ptr %t35)
++L33:
++  call void @pys_throw(ptr %t31)
+   unreachable
+ L7:
+-  %t43 = call i64 @pys_try_mark()
+-  %t44 = call ptr @pys_exc_handled()
+-  br label %L48
++  %t39 = call i64 @pys_try_mark()
++  %t40 = call ptr @pys_exc_handled()
++  br label %L44
++L44:
++  %t45 = load ptr, ptr %obj.2
++  %t46 = icmp eq ptr %t45, null
++  br i1 %t46, label %L47, label %L48
+ L48:
+-  %t49 = load ptr, ptr %obj.2
+-  %t50 = icmp eq ptr %t49, null
+-  br i1 %t50, label %L51, label %L52
+-L52:
+-  %t53 = getelementptr %C.Base, ptr %t49, i32 0, i32 2
+-  %t54 = getelementptr %C.Base, ptr %t49, i32 0, i32 4
+-  %t55 = load i1, ptr %t54, !tbaa !19
+-  %t56 = xor i1 %t55, true
+-  br i1 %t56, label %L57, label %L58
+-L57:
+-  %t59 = getelementptr %C.Base, ptr %t49, i32 0, i32 0
+-  %t60 = load i64, ptr %t59, !tbaa !25
+-  %t61 = icmp eq i64 %t60, 2
+-  %t62 = select i1 %t61, ptr @s.6, ptr @s.5
+-  %t63 = icmp eq i64 %t60, 3
+-  %t64 = select i1 %t63, ptr @s.7, ptr %t62
+-  %t65 = icmp eq i64 %t60, 4
+-  %t66 = select i1 %t65, ptr @s.8, ptr %t64
+-  %t67 = call ptr @pys_str_add(ptr @s.9, ptr %t66)
+-  %t68 = call ptr @pys_str_add(ptr %t67, ptr @s.14)
+-  %t142 = call ptr @pys_exc_new(ptr @s.11, ptr %t68, ptr null)
+-  store ptr %t142, ptr %h.45
+-  br label %L70
+-L58:
+-  %t69 = load ptr, ptr %t53, !tbaa !18
+-  invoke void @pys_write(ptr @s.13, i64 1) to label %L143 unwind label %L46
+-L143:
+-  invoke void @pys_write(ptr @s.2, i64 1) to label %L144 unwind label %L46
+-L144:
+-  invoke void @pys_write(ptr %t69, i64 1) to label %L145 unwind label %L46
+-L145:
+-  invoke void @pys_write(ptr @s.3, i64 1) to label %L146 unwind label %L46
+-L146:
+-  br label %L47
+-L46:
+-  %t71 = landingpad { ptr, i32 } catch ptr null
+-  %t72 = extractvalue { ptr, i32 } %t71, 0
+-  store ptr %t72, ptr %h.45
+-  br label %L70
+-L70:
+-  %t73 = load ptr, ptr %h.45
++  %t49 = getelementptr %C.Base, ptr %t45, i32 0, i32 2
++  %t50 = getelementptr %C.Base, ptr %t45, i32 0, i32 4
++  %t51 = load i1, ptr %t50, !tbaa !19
++  %t52 = xor i1 %t51, true
++  br i1 %t52, label %L53, label %L54
++L53:
++  %t55 = getelementptr %C.Base, ptr %t45, i32 0, i32 0
++  %t56 = load i64, ptr %t55, !tbaa !25
++  %t57 = getelementptr ptr, ptr @pys.field.names, i64 %t56
++  %t58 = load ptr, ptr %t57
++  %t59 = call ptr @pys_str_add(ptr @s.11, ptr %t58)
++  %t60 = call ptr @pys_str_add(ptr %t59, ptr @s.16)
++  %t126 = call ptr @pys_exc_new(ptr @s.13, ptr %t60, ptr null)
++  store ptr %t126, ptr %h.41
++  br label %L62
++L54:
++  %t61 = load ptr, ptr %t49, !tbaa !18
++  invoke void @pys_write(ptr @s.15, i64 1) to label %L127 unwind label %L42
++L127:
++  invoke void @pys_write(ptr @s.2, i64 1) to label %L128 unwind label %L42
++L128:
++  invoke void @pys_write(ptr %t61, i64 1) to label %L129 unwind label %L42
++L129:
++  invoke void @pys_write(ptr @s.3, i64 1) to label %L130 unwind label %L42
++L130:
++  br label %L43
++L42:
++  %t63 = landingpad { ptr, i32 } catch ptr null
++  %t64 = extractvalue { ptr, i32 } %t63, 0
++  store ptr %t64, ptr %h.41
++  br label %L62
++L62:
++  %t65 = load ptr, ptr %h.41
+   store i64 %t1, ptr @pys_recursion_state, !tbaa !6
+-  %t74 = call ptr @pys_exc_begin(ptr %t73, i64 %t43)
+-  %t77 = call i64 @pys_exc_in(ptr %t74, ptr @s.12)
+-  %t78 = icmp ne i64 %t77, 0
+-  br i1 %t78, label %L75, label %L76
+-L75:
+-  store ptr %t74, ptr %error.40
+-  %t79 = load ptr, ptr %error.40
+-  call void @pys_write(ptr @s.13, i64 1)
++  %t66 = call ptr @pys_exc_begin(ptr %t65, i64 %t39)
++  %t69 = call i64 @pys_exc_in(ptr %t66, ptr @s.14)
++  %t70 = icmp ne i64 %t69, 0
++  br i1 %t70, label %L67, label %L68
++L67:
++  store ptr %t66, ptr %error.36
++  %t71 = load ptr, ptr %error.36
++  call void @pys_write(ptr @s.15, i64 1)
+   call void @pys_write(ptr @s.2, i64 1)
+-  %t80 = call ptr @pys_exc_str(ptr %t79)
+-  call void @pys_write(ptr %t80, i64 1)
++  %t72 = call ptr @pys_exc_str(ptr %t71)
++  call void @pys_write(ptr %t72, i64 1)
+   call void @pys_write(ptr @s.3, i64 1)
+-  call void @pys_exc_restore(ptr %t44)
+-  br label %L47
++  call void @pys_exc_restore(ptr %t40)
++  br label %L43
++L68:
++  call void @pys_throw(ptr %t66)
++  unreachable
++L43:
++  %t73 = load ptr, ptr %obj.2
++  %t74 = icmp eq ptr %t73, null
++  br i1 %t74, label %L75, label %L76
+ L76:
+-  call void @pys_throw(ptr %t74)
+-  unreachable
+-L47:
+-  %t81 = load ptr, ptr %obj.2
+-  %t82 = icmp eq ptr %t81, null
+-  br i1 %t82, label %L83, label %L84
+-L84:
+-  %t85 = getelementptr %C.Base, ptr %t81, i32 0, i32 1
+-  store i64 31, ptr %t85, !tbaa !16
+-  %t86 = getelementptr %C.Base, ptr %t81, i32 0, i32 3
+-  store i1 true, ptr %t86, !tbaa !17
+-  %t87 = load ptr, ptr %obj.2
+-  %t91 = getelementptr %C.Base, ptr %t87, i32 0, i32 2
+-  store ptr @s.15, ptr %t91, !tbaa !18
+-  %t92 = getelementptr %C.Base, ptr %t87, i32 0, i32 4
+-  store i1 true, ptr %t92, !tbaa !19
+-  %t93 = load ptr, ptr %obj.2
+-  %t97 = getelementptr %C.Base, ptr %t93, i32 0, i32 1
+-  %t98 = getelementptr %C.Base, ptr %t93, i32 0, i32 3
+-  %t99 = load i1, ptr %t98, !tbaa !17
+-  %t100 = xor i1 %t99, true
+-  br i1 %t100, label %L101, label %L102
+-L101:
+-  %t103 = getelementptr %C.Base, ptr %t93, i32 0, i32 0
+-  %t104 = load i64, ptr %t103, !tbaa !25
+-  %t105 = icmp eq i64 %t104, 2
+-  %t106 = select i1 %t105, ptr @s.6, ptr @s.5
+-  %t107 = icmp eq i64 %t104, 3
+-  %t108 = select i1 %t107, ptr @s.7, ptr %t106
+-  %t109 = icmp eq i64 %t104, 4
+-  %t110 = select i1 %t109, ptr @s.8, ptr %t108
+-  %t111 = call ptr @pys_str_add(ptr @s.9, ptr %t110)
+-  %t112 = call ptr @pys_str_add(ptr %t111, ptr @s.10)
+-  call void @pys_raise(ptr @s.11, ptr %t112)
+-  unreachable
+-L102:
+-  %t113 = load i64, ptr %t97, !tbaa !16
+-  %t114 = load ptr, ptr %obj.2
+-  %t118 = getelementptr %C.Base, ptr %t114, i32 0, i32 2
+-  %t119 = getelementptr %C.Base, ptr %t114, i32 0, i32 4
+-  %t120 = load i1, ptr %t119, !tbaa !19
+-  %t121 = xor i1 %t120, true
+-  br i1 %t121, label %L122, label %L123
+-L122:
+-  %t124 = getelementptr %C.Base, ptr %t114, i32 0, i32 0
+-  %t125 = load i64, ptr %t124, !tbaa !25
+-  %t126 = icmp eq i64 %t125, 2
+-  %t127 = select i1 %t126, ptr @s.6, ptr @s.5
+-  %t128 = icmp eq i64 %t125, 3
+-  %t129 = select i1 %t128, ptr @s.7, ptr %t127
+-  %t130 = icmp eq i64 %t125, 4
+-  %t131 = select i1 %t130, ptr @s.8, ptr %t129
+-  %t132 = call ptr @pys_str_add(ptr @s.9, ptr %t131)
+-  %t133 = call ptr @pys_str_add(ptr %t132, ptr @s.14)
+-  call void @pys_raise(ptr @s.11, ptr %t133)
+-  unreachable
+-L123:
+-  %t134 = load ptr, ptr %t118, !tbaa !18
+-  call void @pys_write(ptr @s.16, i64 1)
++  %t77 = getelementptr %C.Base, ptr %t73, i32 0, i32 1
++  store i64 31, ptr %t77, !tbaa !16
++  %t78 = getelementptr %C.Base, ptr %t73, i32 0, i32 3
++  store i1 true, ptr %t78, !tbaa !17
++  %t79 = load ptr, ptr %obj.2
++  %t83 = getelementptr %C.Base, ptr %t79, i32 0, i32 2
++  store ptr @s.17, ptr %t83, !tbaa !18
++  %t84 = getelementptr %C.Base, ptr %t79, i32 0, i32 4
++  store i1 true, ptr %t84, !tbaa !19
++  %t85 = load ptr, ptr %obj.2
++  %t89 = getelementptr %C.Base, ptr %t85, i32 0, i32 1
++  %t90 = getelementptr %C.Base, ptr %t85, i32 0, i32 3
++  %t91 = load i1, ptr %t90, !tbaa !17
++  %t92 = xor i1 %t91, true
++  br i1 %t92, label %L93, label %L94
++L93:
++  %t95 = getelementptr %C.Base, ptr %t85, i32 0, i32 0
++  %t96 = load i64, ptr %t95, !tbaa !25
++  %t97 = getelementptr ptr, ptr @pys.field.names, i64 %t96
++  %t98 = load ptr, ptr %t97
++  %t99 = call ptr @pys_str_add(ptr @s.11, ptr %t98)
++  %t100 = call ptr @pys_str_add(ptr %t99, ptr @s.12)
++  call void @pys_raise(ptr @s.13, ptr %t100)
++  unreachable
++L94:
++  %t101 = load i64, ptr %t89, !tbaa !16
++  %t102 = load ptr, ptr %obj.2
++  %t106 = getelementptr %C.Base, ptr %t102, i32 0, i32 2
++  %t107 = getelementptr %C.Base, ptr %t102, i32 0, i32 4
++  %t108 = load i1, ptr %t107, !tbaa !19
++  %t109 = xor i1 %t108, true
++  br i1 %t109, label %L110, label %L111
++L110:
++  %t112 = getelementptr %C.Base, ptr %t102, i32 0, i32 0
++  %t113 = load i64, ptr %t112, !tbaa !25
++  %t114 = getelementptr ptr, ptr @pys.field.names, i64 %t113
++  %t115 = load ptr, ptr %t114
++  %t116 = call ptr @pys_str_add(ptr @s.11, ptr %t115)
++  %t117 = call ptr @pys_str_add(ptr %t116, ptr @s.16)
++  call void @pys_raise(ptr @s.13, ptr %t117)
++  unreachable
++L111:
++  %t118 = load ptr, ptr %t106, !tbaa !18
++  call void @pys_write(ptr @s.18, i64 1)
+   call void @pys_write(ptr @s.2, i64 1)
+-  %t135 = call ptr @pys_str_int(i64 %t113)
+-  call void @pys_write(ptr %t135, i64 1)
++  %t119 = call ptr @pys_str_int(i64 %t101)
++  call void @pys_write(ptr %t119, i64 1)
+   call void @pys_write(ptr @s.2, i64 1)
+-  call void @pys_write(ptr %t134, i64 1)
++  call void @pys_write(ptr %t118, i64 1)
+   call void @pys_write(ptr @s.3, i64 1)
+-  store i64 %t136, ptr @pys_recursion_state, !tbaa !6
++  store i64 %t120, ptr @pys_recursion_state, !tbaa !6
+   ret void
+   br label %L11
+ L11:
+-  %t147 = call ptr @pys_exc_new(ptr @s.11, ptr @s.17, ptr null)
+-  store ptr %t147, ptr %h.5
+-  br label %L31
+-L51:
+-  %t148 = call ptr @pys_exc_new(ptr @s.11, ptr @s.18, ptr null)
+-  store ptr %t148, ptr %h.45
+-  br label %L70
+-L83:
+-  call void @pys_raise(ptr @s.11, ptr @s.19)
++  %t131 = call ptr @pys_exc_new(ptr @s.13, ptr @s.19, ptr null)
++  store ptr %t131, ptr %h.5
++  br label %L27
++L47:
++  %t132 = call ptr @pys_exc_new(ptr @s.13, ptr @s.20, ptr null)
++  store ptr %t132, ptr %h.41
++  br label %L62
++L75:
++  call void @pys_raise(ptr @s.13, ptr @s.21)
+   unreachable
+ }
+ define internal i1 @m.Base.__eq__.1(ptr nonnull %a0, ptr %a1) {
+@@ -550,70 +535,11 @@
+ L9:
+   %t11 = getelementptr %C.Base, ptr %t4, i32 0, i32 0
+   %t12 = load i64, ptr %t11, !tbaa !25
+-  %t13 = icmp eq i64 %t12, 2
+-  %t14 = select i1 %t13, ptr @s.6, ptr @s.5
+-  %t15 = icmp eq i64 %t12, 3
+-  %t16 = select i1 %t15, ptr @s.7, ptr %t14
+-  %t17 = icmp eq i64 %t12, 4
+-  %t18 = select i1 %t17, ptr @s.8, ptr %t16
+-  %t19 = call ptr @pys_str_add(ptr @s.9, ptr %t18)
+-  %t20 = call ptr @pys_str_add(ptr %t19, ptr @s.10)
+-  call void @pys_raise(ptr @s.11, ptr %t20)
+-  unreachable
+-L10:
+-  %t21 = load i64, ptr %t5, !tbaa !16
+-  %t22 = load ptr, ptr %other.3
+-  %t23 = icmp eq ptr %t22, null
+-  br i1 %t23, label %L24, label %L25
+-L25:
+-  %t26 = getelementptr %C.Base, ptr %t22, i32 0, i32 1
+-  %t27 = getelementptr %C.Base, ptr %t22, i32 0, i32 3
+-  %t28 = load i1, ptr %t27, !tbaa !17
+-  %t29 = xor i1 %t28, true
+-  br i1 %t29, label %L30, label %L31
+-L30:
+-  %t32 = getelementptr %C.Base, ptr %t22, i32 0, i32 0
+-  %t33 = load i64, ptr %t32, !tbaa !25
+-  %t34 = icmp eq i64 %t33, 2
+-  %t35 = select i1 %t34, ptr @s.6, ptr @s.5
+-  %t36 = icmp eq i64 %t33, 3
+-  %t37 = select i1 %t36, ptr @s.7, ptr %t35
+-  %t38 = icmp eq i64 %t33, 4
+-  %t39 = select i1 %t38, ptr @s.8, ptr %t37
+-  %t40 = call ptr @pys_str_add(ptr @s.9, ptr %t39)
+-  %t41 = call ptr @pys_str_add(ptr %t40, ptr @s.10)
+-  call void @pys_raise(ptr @s.11, ptr %t41)
+-  unreachable
+-L31:
+-  %t42 = load i64, ptr %t26, !tbaa !16
+-  %t43 = icmp eq i64 %t21, %t42
+-  ret i1 %t43
+-L24:
+-  call void @pys_raise(ptr @s.11, ptr @s.17)
+-  unreachable
+-}
+-define internal i1 @m.Base.__eq__.2(ptr nonnull %a0, ptr %a1) {
+-entry:
+-  %self.2 = alloca ptr
+-  store ptr zeroinitializer, ptr %self.2
+-  %other.3 = alloca ptr
+-  store ptr zeroinitializer, ptr %other.3
+-  store ptr %a0, ptr %self.2
+-  store ptr %a1, ptr %other.3
+-  %t4 = load ptr, ptr %self.2
+-  %t5 = getelementptr %C.Child, ptr %t4, i32 0, i32 1
+-  %t6 = getelementptr %C.Child, ptr %t4, i32 0, i32 3
+-  %t7 = load i1, ptr %t6, !tbaa !17
+-  %t8 = xor i1 %t7, true
+-  br i1 %t8, label %L9, label %L10
+-L9:
+-  %t11 = getelementptr %C.Child, ptr %t4, i32 0, i32 0
+-  %t12 = load i64, ptr %t11, !tbaa !25
+-  %t13 = icmp eq i64 %t12, 3
+-  %t14 = select i1 %t13, ptr @s.7, ptr @s.6
+-  %t15 = call ptr @pys_str_add(ptr @s.9, ptr %t14)
+-  %t16 = call ptr @pys_str_add(ptr %t15, ptr @s.10)
+-  call void @pys_raise(ptr @s.11, ptr %t16)
++  %t13 = getelementptr ptr, ptr @pys.field.names, i64 %t12
++  %t14 = load ptr, ptr %t13
++  %t15 = call ptr @pys_str_add(ptr @s.11, ptr %t14)
++  %t16 = call ptr @pys_str_add(ptr %t15, ptr @s.12)
++  call void @pys_raise(ptr @s.13, ptr %t16)
+   unreachable
+ L10:
+   %t17 = load i64, ptr %t5, !tbaa !16
+@@ -629,22 +555,69 @@
+ L26:
+   %t28 = getelementptr %C.Base, ptr %t18, i32 0, i32 0
+   %t29 = load i64, ptr %t28, !tbaa !25
+-  %t30 = icmp eq i64 %t29, 2
+-  %t31 = select i1 %t30, ptr @s.6, ptr @s.5
+-  %t32 = icmp eq i64 %t29, 3
+-  %t33 = select i1 %t32, ptr @s.7, ptr %t31
+-  %t34 = icmp eq i64 %t29, 4
+-  %t35 = select i1 %t34, ptr @s.8, ptr %t33
+-  %t36 = call ptr @pys_str_add(ptr @s.9, ptr %t35)
+-  %t37 = call ptr @pys_str_add(ptr %t36, ptr @s.10)
+-  call void @pys_raise(ptr @s.11, ptr %t37)
++  %t30 = getelementptr ptr, ptr @pys.field.names, i64 %t29
++  %t31 = load ptr, ptr %t30
++  %t32 = call ptr @pys_str_add(ptr @s.11, ptr %t31)
++  %t33 = call ptr @pys_str_add(ptr %t32, ptr @s.12)
++  call void @pys_raise(ptr @s.13, ptr %t33)
+   unreachable
+ L27:
+-  %t38 = load i64, ptr %t22, !tbaa !16
+-  %t39 = icmp eq i64 %t17, %t38
+-  ret i1 %t39
++  %t34 = load i64, ptr %t22, !tbaa !16
++  %t35 = icmp eq i64 %t17, %t34
++  ret i1 %t35
+ L20:
+-  call void @pys_raise(ptr @s.11, ptr @s.17)
++  call void @pys_raise(ptr @s.13, ptr @s.19)
++  unreachable
++}
++define internal i1 @m.Base.__eq__.2(ptr nonnull %a0, ptr %a1) {
++entry:
++  %self.2 = alloca ptr
++  store ptr zeroinitializer, ptr %self.2
++  %other.3 = alloca ptr
++  store ptr zeroinitializer, ptr %other.3
++  store ptr %a0, ptr %self.2
++  store ptr %a1, ptr %other.3
++  %t4 = load ptr, ptr %self.2
++  %t5 = getelementptr %C.Child, ptr %t4, i32 0, i32 1
++  %t6 = getelementptr %C.Child, ptr %t4, i32 0, i32 3
++  %t7 = load i1, ptr %t6, !tbaa !17
++  %t8 = xor i1 %t7, true
++  br i1 %t8, label %L9, label %L10
++L9:
++  %t11 = getelementptr %C.Child, ptr %t4, i32 0, i32 0
++  %t12 = load i64, ptr %t11, !tbaa !25
++  %t13 = getelementptr ptr, ptr @pys.field.names, i64 %t12
++  %t14 = load ptr, ptr %t13
++  %t15 = call ptr @pys_str_add(ptr @s.11, ptr %t14)
++  %t16 = call ptr @pys_str_add(ptr %t15, ptr @s.12)
++  call void @pys_raise(ptr @s.13, ptr %t16)
++  unreachable
++L10:
++  %t17 = load i64, ptr %t5, !tbaa !16
++  %t18 = load ptr, ptr %other.3
++  %t19 = icmp eq ptr %t18, null
++  br i1 %t19, label %L20, label %L21
++L21:
++  %t22 = getelementptr %C.Base, ptr %t18, i32 0, i32 1
++  %t23 = getelementptr %C.Base, ptr %t18, i32 0, i32 3
++  %t24 = load i1, ptr %t23, !tbaa !17
++  %t25 = xor i1 %t24, true
++  br i1 %t25, label %L26, label %L27
++L26:
++  %t28 = getelementptr %C.Base, ptr %t18, i32 0, i32 0
++  %t29 = load i64, ptr %t28, !tbaa !25
++  %t30 = getelementptr ptr, ptr @pys.field.names, i64 %t29
++  %t31 = load ptr, ptr %t30
++  %t32 = call ptr @pys_str_add(ptr @s.11, ptr %t31)
++  %t33 = call ptr @pys_str_add(ptr %t32, ptr @s.12)
++  call void @pys_raise(ptr @s.13, ptr %t33)
++  unreachable
++L27:
++  %t34 = load i64, ptr %t22, !tbaa !16
++  %t35 = icmp eq i64 %t17, %t34
++  ret i1 %t35
++L20:
++  call void @pys_raise(ptr @s.13, ptr @s.19)
+   unreachable
+ }
+ define internal i1 @m.Base.__eq__.3(ptr nonnull %a0, ptr %a1) {
+@@ -675,25 +648,21 @@
+ L20:
+   %t22 = getelementptr %C.Base, ptr %t12, i32 0, i32 0
+   %t23 = load i64, ptr %t22, !tbaa !25
+-  %t24 = icmp eq i64 %t23, 2
+-  %t25 = select i1 %t24, ptr @s.6, ptr @s.5
+-  %t26 = icmp eq i64 %t23, 3
+-  %t27 = select i1 %t26, ptr @s.7, ptr %t25
+-  %t28 = icmp eq i64 %t23, 4
+-  %t29 = select i1 %t28, ptr @s.8, ptr %t27
+-  %t30 = call ptr @pys_str_add(ptr @s.9, ptr %t29)
+-  %t31 = call ptr @pys_str_add(ptr %t30, ptr @s.10)
+-  call void @pys_raise(ptr @s.11, ptr %t31)
++  %t24 = getelementptr ptr, ptr @pys.field.names, i64 %t23
++  %t25 = load ptr, ptr %t24
++  %t26 = call ptr @pys_str_add(ptr @s.11, ptr %t25)
++  %t27 = call ptr @pys_str_add(ptr %t26, ptr @s.12)
++  call void @pys_raise(ptr @s.13, ptr %t27)
+   unreachable
+ L21:
+-  %t32 = load i64, ptr %t16, !tbaa !16
+-  %t33 = icmp eq i64 %t11, %t32
+-  ret i1 %t33
++  %t28 = load i64, ptr %t16, !tbaa !16
++  %t29 = icmp eq i64 %t11, %t28
++  ret i1 %t29
+ L9:
+-  call void @pys_raise(ptr @s.11, ptr @s.22)
++  call void @pys_raise(ptr @s.13, ptr @s.24)
+   unreachable
+ L14:
+-  call void @pys_raise(ptr @s.11, ptr @s.17)
++  call void @pys_raise(ptr @s.13, ptr @s.19)
+   unreachable
+ }
+ define internal i1 @m.Base.__eq__.4(ptr nonnull %a0, ptr %a1) {
+@@ -724,25 +693,21 @@
+ L20:
+   %t22 = getelementptr %C.Base, ptr %t12, i32 0, i32 0
+   %t23 = load i64, ptr %t22, !tbaa !25
+-  %t24 = icmp eq i64 %t23, 2
+-  %t25 = select i1 %t24, ptr @s.6, ptr @s.5
+-  %t26 = icmp eq i64 %t23, 3
+-  %t27 = select i1 %t26, ptr @s.7, ptr %t25
+-  %t28 = icmp eq i64 %t23, 4
+-  %t29 = select i1 %t28, ptr @s.8, ptr %t27
+-  %t30 = call ptr @pys_str_add(ptr @s.9, ptr %t29)
+-  %t31 = call ptr @pys_str_add(ptr %t30, ptr @s.10)
+-  call void @pys_raise(ptr @s.11, ptr %t31)
++  %t24 = getelementptr ptr, ptr @pys.field.names, i64 %t23
++  %t25 = load ptr, ptr %t24
++  %t26 = call ptr @pys_str_add(ptr @s.11, ptr %t25)
++  %t27 = call ptr @pys_str_add(ptr %t26, ptr @s.12)
++  call void @pys_raise(ptr @s.13, ptr %t27)
+   unreachable
+ L21:
+-  %t32 = load i64, ptr %t16, !tbaa !16
+-  %t33 = icmp eq i64 %t11, %t32
+-  ret i1 %t33
++  %t28 = load i64, ptr %t16, !tbaa !16
++  %t29 = icmp eq i64 %t11, %t28
++  ret i1 %t29
+ L9:
+-  call void @pys_raise(ptr @s.11, ptr @s.23)
++  call void @pys_raise(ptr @s.13, ptr @s.25)
+   unreachable
+ L14:
+-  call void @pys_raise(ptr @s.11, ptr @s.17)
++  call void @pys_raise(ptr @s.13, ptr @s.19)
+   unreachable
+ }
+ define internal void @f.compare(ptr %a0, ptr %a1) personality ptr @pys_personality {
+@@ -825,11 +790,11 @@
+   br label %L24
+ L24:
+   %t46 = phi i1 [%t29, %L12], [%t31, %L61], [%t32, %L62], [%t33, %L63], [%t34, %L64], [%t38, %L65], [%t42, %L66], [%t44, %L67], [%t45, %L68]
+-  invoke void @pys_write(ptr @s.21, i64 1) to label %L69 unwind label %L7
++  invoke void @pys_write(ptr @s.23, i64 1) to label %L69 unwind label %L7
+ L69:
+   invoke void @pys_write(ptr @s.2, i64 1) to label %L70 unwind label %L7
+ L70:
+-  %t47 = select i1 %t46, ptr @s.24, ptr @s.25
++  %t47 = select i1 %t46, ptr @s.26, ptr @s.27
+   invoke void @pys_write(ptr %t47, i64 1) to label %L71 unwind label %L7
+ L71:
+   invoke void @pys_write(ptr @s.3, i64 1) to label %L72 unwind label %L7
+@@ -844,13 +809,13 @@
+   %t51 = load ptr, ptr %h.6
+   store i64 %t1, ptr @pys_recursion_state, !tbaa !6
+   %t52 = call ptr @pys_exc_begin(ptr %t51, i64 %t4)
+-  %t55 = call i64 @pys_exc_in(ptr %t52, ptr @s.12)
++  %t55 = call i64 @pys_exc_in(ptr %t52, ptr @s.14)
+   %t56 = icmp ne i64 %t55, 0
+   br i1 %t56, label %L53, label %L54
+ L53:
+   store ptr %t52, ptr %error.57
+   %t58 = load ptr, ptr %error.57
+-  call void @pys_write(ptr @s.21, i64 1)
++  call void @pys_write(ptr @s.23, i64 1)
+   call void @pys_write(ptr @s.2, i64 1)
+   %t59 = call ptr @pys_exc_str(ptr %t58)
+   call void @pys_write(ptr %t59, i64 1)
+@@ -891,16 +856,16 @@
+ L17:
+   %t19 = getelementptr %C.Other, ptr %t9, i32 0, i32 0
+   %t20 = load i64, ptr %t19, !tbaa !26
+-  %t21 = icmp eq i64 %t20, 6
+-  %t22 = select i1 %t21, ptr @s.28, ptr @s.27
+-  %t23 = call ptr @pys_str_add(ptr @s.9, ptr %t22)
+-  %t24 = call ptr @pys_str_add(ptr %t23, ptr @s.10)
+-  %t40 = call ptr @pys_exc_new(ptr @s.11, ptr %t24, ptr null)
++  %t21 = getelementptr ptr, ptr @pys.field.names, i64 %t20
++  %t22 = load ptr, ptr %t21
++  %t23 = call ptr @pys_str_add(ptr @s.11, ptr %t22)
++  %t24 = call ptr @pys_str_add(ptr %t23, ptr @s.12)
++  %t40 = call ptr @pys_exc_new(ptr @s.13, ptr %t24, ptr null)
+   store ptr %t40, ptr %h.5
+   br label %L27
+ L18:
+   %t25 = load i64, ptr %t13, !tbaa !20
+-  invoke void @pys_write(ptr @s.26, i64 1) to label %L41 unwind label %L6
++  invoke void @pys_write(ptr @s.28, i64 1) to label %L41 unwind label %L6
+ L41:
+   invoke void @pys_write(ptr @s.2, i64 1) to label %L42 unwind label %L6
+ L42:
+@@ -919,13 +884,13 @@
+   %t30 = load ptr, ptr %h.5
+   store i64 %t1, ptr @pys_recursion_state, !tbaa !6
+   %t31 = call ptr @pys_exc_begin(ptr %t30, i64 %t3)
+-  %t34 = call i64 @pys_exc_in(ptr %t31, ptr @s.12)
++  %t34 = call i64 @pys_exc_in(ptr %t31, ptr @s.14)
+   %t35 = icmp ne i64 %t34, 0
+   br i1 %t35, label %L32, label %L33
+ L32:
+   store ptr %t31, ptr %error.36
+   %t37 = load ptr, ptr %error.36
+-  call void @pys_write(ptr @s.26, i64 1)
++  call void @pys_write(ptr @s.28, i64 1)
+   call void @pys_write(ptr @s.2, i64 1)
+   %t38 = call ptr @pys_exc_str(ptr %t37)
+   call void @pys_write(ptr %t38, i64 1)
+@@ -940,7 +905,7 @@
+   ret void
+   br label %L11
+ L11:
+-  %t45 = call ptr @pys_exc_new(ptr @s.11, ptr @s.17, ptr null)
++  %t45 = call ptr @pys_exc_new(ptr @s.13, ptr @s.19, ptr null)
+   store ptr %t45, ptr %h.5
+   br label %L27
+ }
+@@ -970,9 +935,9 @@
+   br i1 %t16, label %L17, label %L18
+ L17:
+   %t19 = call ptr @pys_exc_cls(ptr %t9)
+-  %t20 = call ptr @pys_str_add(ptr @s.9, ptr %t19)
+-  %t21 = call ptr @pys_str_add(ptr %t20, ptr @s.10)
+-  %t37 = call ptr @pys_exc_new(ptr @s.11, ptr %t21, ptr null)
++  %t20 = call ptr @pys_str_add(ptr @s.11, ptr %t19)
++  %t21 = call ptr @pys_str_add(ptr %t20, ptr @s.12)
++  %t37 = call ptr @pys_exc_new(ptr @s.13, ptr %t21, ptr null)
+   store ptr %t37, ptr %h.5
+   br label %L24
+ L18:
+@@ -996,7 +961,7 @@
+   %t27 = load ptr, ptr %h.5
+   store i64 %t1, ptr @pys_recursion_state, !tbaa !6
+   %t28 = call ptr @pys_exc_begin(ptr %t27, i64 %t3)
+-  %t31 = call i64 @pys_exc_in(ptr %t28, ptr @s.12)
++  %t31 = call i64 @pys_exc_in(ptr %t28, ptr @s.14)
+   %t32 = icmp ne i64 %t31, 0
+   br i1 %t32, label %L29, label %L30
+ L29:
+@@ -1017,7 +982,7 @@
+   ret void
+   br label %L11
+ L11:
+-  %t42 = call ptr @pys_exc_new(ptr @s.11, ptr @s.17, ptr null)
++  %t42 = call ptr @pys_exc_new(ptr @s.13, ptr @s.19, ptr null)
+   store ptr %t42, ptr %h.5
+   br label %L24
+ }

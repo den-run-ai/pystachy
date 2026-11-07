@@ -24,6 +24,7 @@ Run these from the repository root:
 | `make typecheck` | Run mypy on the Python compiler and its entry point; no native build needed. |
 | `make check-recordings` | Check expected outputs, remaining deviations, unchanged upstream sources and test-tree hygiene. |
 | `make test-cache` | Check runtime build-cache reuse, invalidation and failed-build handling with both compilers. |
+| `make test-program-cache` | Check default native program reuse, source/toolchain invalidation, fresh execution, concurrency, eviction and failure recovery. |
 | `make test-ffi` | Check C calls, FFI diagnostics, embedded CPython (`pyobj`) and CPython extension modules. |
 | `make check-ir` | Check the typed IR and its LLVM lowering across the compiler corpus. |
 | `make check-runtime` | Check runtime declarations, effects and source agreement. |
@@ -54,6 +55,12 @@ tests/run.sh ./pystachy jit tests/programs/library/lib_fnmatch.py
 all coverage even when CI distributes the work across jobs. `PYSTACHY_CASE_TIMES=FILE` makes
 `tests/run.sh` append each case's wall-clock milliseconds to `FILE` (`MILLISECONDS CASE`, with GNU
 `date`), which [the shards' weights](#continuous-integration) are made from.
+
+The ordinary corpus enables the IR checker and therefore exercises uncached JIT.
+`make test-program-cache` separately verifies default misses and hits, requiring
+zero frontend and LLVM calls on hits. To run selected ordinary corpus cases
+through the default cache, use a private `PYSTACHY_CACHE` and the compiler command
+`env -u PYSTACHY_IRCHECK -u PYSTACHY_PROGRAM_CACHE /absolute/path/to/pystachy`.
 
 ## Differential tests
 
@@ -347,7 +354,9 @@ the corpus (`tools/shard_cases.sh`) and `MODES=jit` one tier. The script drops t
 settings that verification drops, builds each variant's runtime in a cache of its own and writes
 the logs to `build/variants/`, so run one at a time in a checkout. Each variant takes about as
 long as `make test`. The [Variants workflow](../.github/workflows/variants.yml) runs each one in
-four shards (24 jobs) daily, on demand and on relevant `main` pushes. Two rows share one build per shard. PRs run the seven
+four shards (24 jobs) daily, on demand and on relevant `main` pushes. The lighter `opt-1`
+and `cflags-O0` rows share one build per shard; the slower optimizer rows run separately
+within the 15-minute job limit. PRs run the seven
 configurations on representative and changed cases in **two workers**, reusing the verified
 bootstrap. Each worker runs three or four configurations with private runtime caches and records its
 exact cases and results. The PR aggregate requires both workers to pass.
@@ -362,6 +371,10 @@ and a lightweight `Verification` check. Both bootstrap workers classify the test
 merge commit's changes against its base. When both select the documentation plan,
 they skip toolchain setup and builds, and CI skips the verification, variant and
 distribution jobs. Renaming a source file into `docs/` still selects code verification.
+Classification verifies the immutable event merge SHA and its PR-head parent. If
+GitHub generated that merge against a newer base than the event payload records,
+CI requires code verification and uses the validated merge's first parent for changed-case
+selection. A wrong checkout, wrong PR head or non-merge commit fails classification.
 Other PRs use the compact profile below. Pushes to `main` and manual CI runs retain
 complete verification for the release gate.
 The toolchain is Ubuntu 24.04, LLVM 18 and the CPython version pinned in `.python-version`.
@@ -464,13 +477,13 @@ from the budget. Each test runner uses at most four processes within its worker.
 |---|---:|---|
 | Linux bootstrap | 2 | x86-64 and ARM64 compiler/runtime fixed points; ARM64 installer, FFI, thread, stack and sanitizer linkage smoke. |
 | Hosted | 1 | Every corpus case: hosted/native IR, diagnostics and check parity; hosted driver end-to-end strata. |
-| Native | 2 | Disjoint halves of the **complete** corpus, JIT and AOT. |
+| Native AOT | 2 | Disjoint halves of the **complete** corpus in AOT. |
+| Native JIT and variants | 2 | Disjoint halves of the **complete** corpus in JIT, then seven sampled configurations split across the same workers. |
 | Safety | 2 | Representative and changed cases: optimizer off, Python-free rebuild, UBSan rebuild, JIT/AOT GC stress. |
 | Opt-in compatibility | 1 | Selected programs with dynamic `Any` and promoting ints, against fresh CPython oracles. |
-| Contracts | 1 | Complete IR/runtime/FFI and behavioral contract checks. |
-| Cache and compiler GC | 1 | Cache invalidation plus stressed self-compilation. |
+| Contracts | 1 | Complete IR/runtime/FFI and behavioral contract checks, then native program-cache invalidation and execution. |
+| Cache and compiler GC | 1 | Both runtime-cache checks, then stressed self-compilation. |
 | Benchmarks and scaling | 1 | Correctness, both scaling halves, BLAS and large upstream regex. |
-| Variants | 2 | Seven configurations, split across both workers, on the selected cases. |
 | Distribution | 2 | Linux x86-64 and macOS ARM64 installation, including pip/uv; Linux source packages and native archive smoke. |
 | `Verification` | 1 | Confirms the selected plan. For code PRs, checks reports, profiles, selection manifests, counts and job results. |
 | Lint, performance, DCO and submission format | 4 | Lint includes CPython port preservation. DCO applies to forks. Submission format validates PR metadata. |
@@ -486,6 +499,17 @@ The two variant workers and Linux distribution job reuse the same verified boots
 verification groups. Every consumer checks source bytes, commit, architecture, toolchain,
 workflow run and artifact hashes. Runtime caches stay private; Python-free and sanitized builds
 remain independent. Pip downloads are cached by the pinned dependency files.
+PR native work uses two JIT halves and two AOT halves, each with one execution mode.
+Both modes retain every corpus case; the inexpensive rejection and parser checks repeat.
+The aggregate requires every exact case/mode pair once and the producer's bootstrap identity,
+including the native baselines deferred by opt-in checks. The JIT workers upload their native
+reports before running their existing sampled configurations in sequence. This keeps the same
+16 CI jobs and 20 total PR jobs while separating costly AOT compilation from JIT execution.
+The compact cache/GC group finishes both parallel cache checks before starting its
+collector-stressed self-compilation, preserving the latter's ten-minute bound without
+three competing compiler processes.
+Native program-cache checks follow the contracts group's own checks, leaving
+the compact cache/GC group's budget for runtime-cache and compiler GC verification.
 
 ### Full verification
 
@@ -506,7 +530,7 @@ benchmark correctness, and Lint checks CPython port preservation. The full group
 | `gc-aot-0`, `gc-aot-1`, `gc-aot-2` | Three disjoint thirds of the AOT suite with program GC stress, one case in 16 of each third with the compiler stressed too. |
 | `dynany-optin-0` through `dynany-optin-2` | Three disjoint thirds of `tests/programs/`, opted into dynamic `Any`, compared with a fresh pinned-CPython oracle in JIT and AOT. |
 | `python-int-optin-0` through `python-int-optin-2` | Three disjoint thirds of `tests/programs/`, opted into promoting ints, with a fresh pinned-CPython oracle in JIT and AOT and exact reviewed limitations. |
-| `runtime-cache` | The cached runtime's rules with both compilers, the two runs side by side. |
+| `runtime-cache` | The cached runtime's rules with both compilers, the two runs side by side; then native program-cache invalidation and execution. |
 | `contracts` | Runtime, IR, library and resource-bound checks, including 540 seeded dynamic-`Any` cases (90 typed/Any pairs) in JIT/AOT, normally and with program GC stress; independent steps run side by side. |
 | `benchmarks` | Benchmark correctness/timings, real example CLI parity, JSON repair process cases and agent loopback HTTP; extended correctness checks reuse the verified compiler. |
 | `scaling` | Every compiler-scaling shape, in two steps, shapes measured side by side. |
@@ -803,6 +827,15 @@ compiler-source inventory, and does not establish safe in-process session reuse.
 The capture tests preserve legacy rejection output, and inspection tests exercise a
 failed request followed by a repaired import in another worker. Inventory controls
 reject an added capture writer or a stale declaration of the existing writer.
+`program_cache` owns state for a CLI cache attempt, retained across inference retries.
+`start()` clears its source, import-probe, static input and toolchain-layout snapshots, resets validity
+and enables tracking; `stop()` only disables tracking. A conflicting snapshot stays
+invalid through every retry. The settled static hash memo and its last-loaded cache
+root persist across attempts in the process; hashes can also be loaded from or
+published to the private disk memo. The inventory checks direct resets and flag/memo
+writers. Snapshot insertion through `_record(table, ...)` is a parameter-mediated
+effect outside this scanner; the cache tests cover capture, conflicting retries and
+publication. This state does not provide concurrent in-process compilation isolation.
 `GLUE` and `SPECSHOW` currently retain discoveries across restarts; the inventory records
 that behavior without certifying its safety. This is a hosted drift check, not a
 whole-program effect analysis: arbitrary helper calls, object-attribute aliases,

@@ -241,16 +241,19 @@ class ReportTests(unittest.TestCase):
             path = Path(directory) / "report.json"
             finished = []
 
-            def measure(name, *args):
+            def measure(name, compilers, environments, *args):
                 checkpoint = json.loads(path.read_text())
                 self.assertEqual(checkpoint["status"], "incomplete")
                 self.assertEqual(checkpoint["phase"], f"measure:{name}")
                 self.assertEqual(checkpoint["results"], finished)
                 self.assertEqual(set(checkpoint["bootstrap"]), {"base", "head"})
+                self.assertEqual(checkpoint["environment"]["PYSTACHY_PROGRAM_CACHE"], "0")
+                self.assertEqual({side: env["PYSTACHY_PROGRAM_CACHE"] for side, env in environments.items()},
+                                 {"base": "0", "head": "0"})
                 finished.append(self.result(name))
                 return finished[-1]
 
-            with self.main_context(path, measure):
+            with mock.patch.dict(os.environ, PYSTACHY_PROGRAM_CACHE="1"), self.main_context(path, measure):
                 perf.main()
             report = json.loads(path.read_text())
             self.assertEqual(report["schema"], 2)

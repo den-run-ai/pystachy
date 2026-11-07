@@ -1,0 +1,36 @@
+{
+  "source": "examples/byte_bpe/stages.py at 3d0f56d82e3f7e3e0799d37e014f73391913f1ca",
+  "driver_sha256": "3f0154fadce48607aa9868cb93fd7a75f4a18b52c4281590709dfb3632a50b7d",
+  "module_sha256": "9775aff77bb52efc6fb9828517ead0584552b1cba5afe73ef4d93e13972ca7de",
+  "runs": [
+    {
+      "options": "-unionslots",
+      "function": {
+        "box": 2,
+        "dict_getbox": 1,
+        "optional_slots": [
+          "min_idx",
+          "min_rank",
+          "rank"
+        ],
+        "ops": 184
+      },
+      "llvm_bytes": 1869124
+    },
+    {
+      "options": "",
+      "function": {
+        "box": 0,
+        "dict_getbox": 1,
+        "optional_slots": [
+          "rank"
+        ],
+        "ops": 189
+      },
+      "llvm_bytes": 1869606
+    }
+  ],
+  "compiler_core_revision": "defcaaeea0b11e7efe560eb4221f9133004bbeb0",
+  "scope": "Same candidate, -unionslots versus default. Disabling the pass also disables existing numeric-union optimization. This is a structural control; performance uses exact main with default optimization.",
+  "function": "bpe_tokeniser$bpe_encode"
+}

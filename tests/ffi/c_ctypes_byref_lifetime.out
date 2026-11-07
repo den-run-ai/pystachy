@@ -1,0 +1,24 @@
+1
+1
+0
+1
+1
+0
+0
+b'\xff\x80\x00A'
+b'\xff\x80\x00A'
+first
+32 temporary 31
+second
+32 temporary 31
+0
+left
+32 later 31
+right
+32 later 31
+1
+replacement
+1
+32 after return 31
+32
+[exit 0]

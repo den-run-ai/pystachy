@@ -1,0 +1,13 @@
+125
+-120
+345
+-340
+['field', 'keyword', 'original', 'replacement', 'global', 'keyword', 'original', 'replacement']
+678
+[6, 7] ['mutate', 'original']
+675
+[6, 9] ['next', 'keyword', 'original']
+125
+['star', 'keyword', 'original']
+missing first []
+[exit 0]

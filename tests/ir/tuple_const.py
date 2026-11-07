@@ -4,6 +4,7 @@
 # slots by value from @v.f.either, which makes no tuple, and the wrapper that other calls get
 # makes one only where the body returned no constant. A display of a parameter is made at each
 # call (ray), and so is the tuple of *args, which CPython makes at each call (varargs).
+# Its return conversion reads that fixed tuple into final VTuple storage (pys_alloc).
 def zero() -> tuple[float, float, float]:
     return (0.0, 0.0, 0.0)
 

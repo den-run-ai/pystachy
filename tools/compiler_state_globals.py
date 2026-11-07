@@ -16,7 +16,10 @@ PREFIX = "src.pystachy_compiler."
 # a container or a post-import writer requires an explicit ownership decision.
 LOOKUP = set("""
 analysis.BINDERS builtins.FSPRIMS
+ctypes_schema.SCALARS ctypes_schema.MARKERS
 bigints.BIGOPS bigints.BKEY bigints.PROMOTES bigints.NUMOPS bigints.NUMCALLS
+cached_run.BUILD_ENV cached_run.CPU_FIELDS
+cache_toolchain.SYSTEM_INPUTS
 driver.COMPILER_SOURCES driver.CPUID driver.RTPARTS
 dynamic.XCMP dynamic.XOPS dynamic.BINOPS dynamic.UNOPS dynamic.CMPOPS
 dynamic.BINDUNDERS dynamic.BUILTIN expressions.ORDERS
@@ -24,7 +27,7 @@ ir.NONUMS ir.NOVALS ir.NOLABELS ircheck.RESULT_NUMBERS
 lexer.KEYWORDS lexer.OPS lexer.ESCAPES lexer.PREFIXES lexer.NONPRINT lexer.NOTID
 loader.ENUM_NAMES loader.ENUM_BASES loader.ENUM_HOOKS
 local_versions.UNVERSIONED optimizations.PASS_CONTRACTS parser.ATOMS
-reflection.BUILTIN_TYPES reflection.SLOT_WRAPPERS reflection.OBJ_BUILTINS reflection.TYPE_BUILTINS reflection.PICKLING
+reflection.BUILTIN_TYPES reflection.CLASS_BUILTINS reflection.SLOT_WRAPPERS reflection.OBJ_BUILTINS reflection.TYPE_BUILTINS reflection.PICKLING
 scalar_ir.SCALAR_INTS scalar_ir.SCALAR_BIN scalar_ir.SCALAR_FLOAT
 scalar_ir.SCALAR_ICMP scalar_ir.SCALAR_FCMP scalar_ir.SCALAR_CASTS scope.COMPNAMES
 specs.PYBUILTINS specs.MODNAMES specs.ANNKINDS specs.GENERICS specs.CBUILTIN
@@ -38,7 +41,7 @@ specs.FUTURE specs.DEFAULTS specs.EXCEPTIONS specs.EXCBASES specs.PLAIN_EXC_BASE
 specs.EXCKW specs.HASATTR specs.NONEARG specs.OPTARG specs.NONERET specs.OPTCALLS
 specs.NOREF specs.UNSUPPORTED specs.INERT_DECOS specs.INERT specs.PURE specs.RAISERS
 specs.CODECS specs.ARITY specs.METHODS specs.TEXT_OPS specs.UNICODE_AUDIT
-specs.FSETMETHODS specs.SETMETHODS specs.IROPS specs.OPTS specs.VALUE_AT specs.FX specs.LIST_WRITES
+specs.FSETMETHODS specs.SETMETHODS specs.IROPS specs.OPTS specs.VALUE_AT specs.FX specs.LIST_READS specs.LIST_WRITES
 specs.FXBIT specs.RUNTIME specs.NARROWED specs.READ_HELPERS specs.INT_HELPERS specs.RTDATA specs.RTSYM
 structs.STRUCT_FNS structs.NATIVE_SIZES structs.STANDARD_SIZES
 syntax.DCOPTS syntax.EXPRNAMES syntax.STARTS syntax.CMPOPS syntax.AUGOPS syntax.BINOPS syntax.NOKIDS
@@ -63,6 +66,16 @@ RESET = {
 }
 RETAINED = {
     "diagnostics.CAPTURED": "opt-in observer records; inspection worker clears before its request and exits after it, not compiler restart state",
+    # CLI cache-attempt state survives inference retries. Only start begins a new
+    # attempt; loader resets must not discard dependencies or an invalid snapshot.
+    "program_cache.ACTIVE": "start enables tracking; stop disables it without discarding the attempt's snapshots",
+    "program_cache.VALID": "start resets validity; conflicting or unreadable inputs invalidate the whole attempt across retries",
+    "program_cache.SOURCES": "consumed source snapshots retained across retries; start clears them for a new cache attempt",
+    "program_cache.PROBES": "import-resolution probes including misses retained across retries; start clears them for a new cache attempt",
+    "program_cache.STATICS": "toolchain and link-input snapshots retained across retries; start clears them for a new cache attempt",
+    "program_cache.LAYOUTS": "toolchain search candidates retained across retries; start clears them for a new cache attempt",
+    "program_cache.STATIC_MEMO": "settled static hashes retained across attempts in the process, also loaded from and saved to a private disk memo",
+    "program_cache.MEMO_ROOT": "last cache root whose static memo was loaded in this process; retained across cache attempts",
     "specs.GLUE": "loader public-name discoveries; currently retained across restarts",
     "specs.SPECSHOW": "specialization display names; currently retained across restarts",
     "specs.MODULES": "driver builtin-module configuration; runtime_ir restores its temporary _rt entry on every exit",
@@ -81,8 +94,22 @@ WRITERS = {
     "syntax.LAMBDAS": {"parser.Parser.test1", "driver.compile_program"},
     "names.RENAMED": {"program.gen_program", "driver.compile_program"},
     "names.ENUMCLASSES": {"loader.Loader.program", "loader.enum_classes"},
+    "program_cache.ACTIVE": {"program_cache.start", "program_cache.stop"},
+    "program_cache.VALID": {"program_cache.start", "program_cache._record", "program_cache.tracked_exists",
+                            "program_cache.track_source", "program_cache.track_static", "program_cache.track_layout"},
+    # _record(table, ...) also inserts snapshots into these three tables. That
+    # parameter-mediated effect is outside this scan; register only the observed
+    # direct resets, not stale writer exceptions. Cache tests cover the recorder.
+    "program_cache.SOURCES": {"program_cache.start"},
+    "program_cache.PROBES": {"program_cache.start"},
+    "program_cache.STATICS": {"program_cache.start"},
+    "program_cache.LAYOUTS": {"program_cache.start"},
+    "program_cache.STATIC_MEMO": {"program_cache.track_static", "program_cache._load_memo"},
+    "program_cache.MEMO_ROOT": {"program_cache._load_memo"},
     "specs.LIBS": {"lower_module.gen_cextern", "driver.compile_program", "driver.main"},
-    "specs.LINKDL": {"lower_module.gen_cextern", "driver.compile_program"},
+    # CDLL emits ffi.load_library even without foreign symbols. Its builtin
+    # appends the same per-pass requirement as @extern; compile_program rewinds it.
+    "specs.LINKDL": {"lower_module.gen_cextern", "builtins.gen_builtin", "driver.compile_program"},
     "specs.GLUE": {"loader.Loader.load"},
     "specs.SPECSHOW": {"templates.gen_specialize"},
     "specs.MODULES": {"driver.runtime_ir", "driver.main"},

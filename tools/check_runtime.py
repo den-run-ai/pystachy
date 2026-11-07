@@ -7,7 +7,7 @@ disagrees with its entry is an internal error. This tool checks the table itself
   - signatures: each entry's declare line has the result and parameter types of the function
     clang compiles runtime.c to (LLVM IR at -O0); a C library function (fabs) is taken from a
     file that includes <math.h>, and llvm-as checks the LLVM intrinsics (llvm.*);
-  - coverage: every runtime function compiler source names (METHODS, CALLS, IRT, FRT, LIST_WRITES, the "pys_..."
+  - coverage: every runtime function compiler source names (METHODS, CALLS, IRT, FRT, LIST_READS, LIST_WRITES, the "pys_..."
     strings of its source, the file attributes Gen.expr names as pys_file_<attribute> and the
     __pys_repr_enter/leave builtins) has an entry, and every entry is named;
   - exceptions: the builtin exception classes the compiler knows (EXCBASES) are this Python's,
@@ -116,7 +116,7 @@ EXC_MAKERS = {"exc_line", "exc_raise", "exc_exit"}
 # functions that store another's address rather than call it: pys_eh_on the funnels' thrower,
 # pys_unwind_file the unwind action that a landing pad or an uncaught exception runs
 STORES = {"pys_eh_on": "throw_", "pys_unwind_file": "close_with"}
-USER = {"pys_obj_eq", "pys_obj_cmp", "pys_obj_repr", "dyn_user_iter", "dyn_user_next", "dyn_user_len"}
+USER = {"pys_obj_eq", "pys_obj_cmp", "pys_obj_repr", "dyn_user_iter", "dyn_user_next", "dyn_user_len", "dyn_call_text"}
 # a dynamic value's box in a descriptor walk (A): what its DynType holds decides what the walk
 # runs, an object's helpers among them, so that the compiler gives an op whose descriptor holds
 # an A every effect, as it does for an O (Gen.opfx). The walks of other entries do not look into
@@ -642,11 +642,12 @@ assert cycle({"h": {"rt:g"}, "rt:g": {"g"}, "g": {"h"}}, "g", {"rt:g"}) == ["g",
 def main():
     verbose = "-v" in sys.argv[1:]
     pys = load_compiler()
-    from src.pystachy_compiler.specs import LIST_WRITES
+    from src.pystachy_compiler.specs import LIST_READS, LIST_WRITES
     rt = pys.RUNTIME
     bad = []
     note = []
-    component_sources = sorted((Path(ROOT) / "src").rglob("*.py"))
+    component_sources = sorted([*(Path(ROOT) / "src").rglob("*.py"),
+                                *(Path(ROOT) / "lib").glob("_pystachy_cache.py")])
     actual_sources = {str(p.relative_to(ROOT)) for p in component_sources}
     cached_sources = pys.runtime_ir.__globals__["COMPILER_SOURCES"]
     missing = actual_sources - set(cached_sources)
@@ -780,12 +781,13 @@ def main():
     named = set()
     for key in pys.METHODS:
         named.add("pys_" + key.replace(".", "_"))
-    # Typed list-write builders select registry keys instead of spelling symbols.
-    for key in LIST_WRITES:
-        if key not in rt:
-            bad.append(f"{key}: LIST_WRITES has no RUNTIME signature")
-        else:
-            named.add(pys.rtsym(key))
+    # Typed list builders select registry keys instead of spelling symbols.
+    for table, keys in (("LIST_READS", LIST_READS), ("LIST_WRITES", LIST_WRITES)):
+        for key in keys:
+            if key not in rt:
+                bad.append(f"{key}: {table} has no RUNTIME signature")
+            else:
+                named.add(pys.rtsym(key))
     for spec in pys.CALLS.values():
         named.add(spec.split(":")[0])
     named.update(pys.IRT.values())

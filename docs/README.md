@@ -35,8 +35,8 @@ memory and emitted LLVM. Then choose a workload-specific guide:
 | Workload | Guide |
 |---|---|
 | Text, regex and memoization | [Caching](caching.md), [router example](../examples/route/README.md) |
-| JSON and data repair | [JSON benchmarks](json-benchmark.md), [json_repair](../bench/json_repair/README.md) |
-| General Python workloads | [Extended benchmarks](extended-performance.md), [adapted pyperformance](pyperformance.md) |
+| JSON and data repair | [JSON benchmarks](json.md#benchmarks), [json_repair](../bench/json_repair/README.md) |
+| General Python workloads | [Extended benchmarks](extended-performance.md), [adapted pyperformance](../bench/pyperformance/README.md) |
 | Numerical and machine-learning code | [microGPT](../bench/microgpt/README.md), [nanoGPT](../examples/nanogpt/README.md), [arrays](../examples/ndarray/README.md) |
 | Integer representation | [Integer benchmarks](../bench/integers/README.md) |
 

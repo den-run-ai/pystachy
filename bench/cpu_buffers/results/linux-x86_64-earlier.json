@@ -1,0 +1,420 @@
+{
+  "schema": 1,
+  "experiment": "retained CPU float64 scoring",
+  "base_commit": "f7103067545b43cdcd8ce20dc66b1571425b3a8d",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.39",
+  "python": "3.13.16 (main, Oct 14 2026, 01:04:01) [Clang 23.1.3 ]",
+  "cpu": "AMD EPYC 9V74 80-Core Processor",
+  "affinity": [
+    0
+  ],
+  "samples": 9,
+  "build": {
+    "compiler_sha256": "3b59b4e875a89f15777395f5993ccf2e6d51e934dbc7a4e45228d622c7f1cff7",
+    "llvm": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+    "command": [
+      "pystachy",
+      "ext",
+      "tests/ffi/ext/cb.py",
+      "--abi",
+      "abi3",
+      "-o",
+      "cb.abi3.so"
+    ],
+    "driver_optimization": "opt default<O2>, clang -O2 -fPIC; linked runtime and embedding glue",
+    "environment": {
+      "PYSTACHY_CFLAGS": "",
+      "PYSTACHY_OPT": "",
+      "PYSTACHY_JOBS": "2",
+      "PYSTACHY_IRCHECK": "1",
+      "PYSTACHY_GC_STRESS": "0"
+    },
+    "measurements": [
+      {
+        "cache": "empty_cache",
+        "elapsed_ns": 8635247363,
+        "extension_bytes": 163616,
+        "extension_sha256": "9cd978ef6201afbf28e7677a96aa6ecda62068e0da956fe1df24271ba0891b67"
+      },
+      {
+        "cache": "warm_runtime_glue_cache",
+        "elapsed_ns": 2346550255,
+        "extension_bytes": 163616,
+        "extension_sha256": "9cd978ef6201afbf28e7677a96aa6ecda62068e0da956fe1df24271ba0891b67"
+      }
+    ]
+  },
+  "extension_bytes": 163616,
+  "extension_sha256": "9cd978ef6201afbf28e7677a96aa6ecda62068e0da956fe1df24271ba0891b67",
+  "source_sha256": {
+    "pyembed.c": "5429fb7023c9dc952ee02d251938c64f8ef72a1de9403525c57f86cae97ff6b8",
+    "lib/pyobj.py": "9767f4f115f03bf908a3f7c3b509f2ebd44472f37705521cb1d0cb59b6979f71",
+    "tests/ffi/ext/cb.py": "06f3a91bf7b88a8aff444c95fb1fa3de5e5d93331272a552283840cb07fd1435",
+    "tests/ffi/ext/cbdata.py": "11d1bce125df31ed5ae336be2d7e2f76fbf497be8d75ade7da310fb02ad6f3c1",
+    "bench/cpu_buffers/bench.py": "8739a97dfbab4b797717c416ae0599d2a931059be8fae83b72d3221af7783997"
+  },
+  "method": "Same native sequential dot kernel in retained/open/copy paths; complete CPython-to-extension call timed, one-time host-array creation excluded; variant order rotated per sample; preflight and each timed batch's final result checked exact and finite; copy bytes counted by the host copy function. Element extraction counts describe API operations, not allocator events.",
+  "results": [
+    {
+      "elements": 0,
+      "batch_bytes": 0,
+      "retained_export_bytes": 0,
+      "expected_score": 0.0,
+      "prepare_median_ns": 1071,
+      "calls_per_sample": {
+        "retained": 1000,
+        "open_each_call": 1000,
+        "copy_each_call": 1000,
+        "boxed_elements": 1000
+      },
+      "variants": {
+        "retained": {
+          "median_ns": 70.254,
+          "samples_ns": [
+            71.265,
+            70.514,
+            70.214,
+            70.524,
+            71.265,
+            70.254,
+            69.253,
+            70.124,
+            67.48
+          ],
+          "payload_copy_bytes_per_call": 0,
+          "element_extractions_per_call": 0
+        },
+        "open_each_call": {
+          "median_ns": 372.19,
+          "samples_ns": [
+            400.803,
+            372.801,
+            371.67,
+            368.294,
+            372.19,
+            371.158,
+            379.5,
+            370.488,
+            487.721
+          ],
+          "payload_copy_bytes_per_call": 0,
+          "element_extractions_per_call": 0
+        },
+        "copy_each_call": {
+          "median_ns": 970.995,
+          "samples_ns": [
+            1041.48,
+            960.289,
+            931.246,
+            970.995,
+            1152.433,
+            902.674,
+            926.489,
+            1380.551,
+            1165.894
+          ],
+          "payload_copy_bytes_per_call": 0,
+          "element_extractions_per_call": 0
+        },
+        "boxed_elements": {
+          "median_ns": 409.526,
+          "samples_ns": [
+            409.526,
+            433.601,
+            388.314,
+            381.594,
+            368.625,
+            439.099,
+            371.319,
+            540.339,
+            479.8
+          ],
+          "payload_copy_bytes_per_call": 0,
+          "element_extractions_per_call": 0
+        }
+      }
+    },
+    {
+      "elements": 8,
+      "batch_bytes": 64,
+      "retained_export_bytes": 128,
+      "expected_score": -0.65625,
+      "prepare_median_ns": 571,
+      "calls_per_sample": {
+        "retained": 1000,
+        "open_each_call": 1000,
+        "copy_each_call": 1000,
+        "boxed_elements": 512
+      },
+      "variants": {
+        "retained": {
+          "median_ns": 70.213,
+          "samples_ns": [
+            70.925,
+            186.206,
+            70.213,
+            69.352,
+            68.922,
+            69.533,
+            70.995,
+            71.225,
+            70.024
+          ],
+          "payload_copy_bytes_per_call": 0,
+          "element_extractions_per_call": 0
+        },
+        "open_each_call": {
+          "median_ns": 416.827,
+          "samples_ns": [
+            555.972,
+            437.086,
+            416.827,
+            376.286,
+            366.883,
+            437.997,
+            398.129,
+            353.533,
+            572.366
+          ],
+          "payload_copy_bytes_per_call": 0,
+          "element_extractions_per_call": 0
+        },
+        "copy_each_call": {
+          "median_ns": 1136.339,
+          "samples_ns": [
+            1136.339,
+            1317.197,
+            1245.061,
+            1182.097,
+            960.479,
+            989.603,
+            1015.251,
+            976.484,
+            1239.802
+          ],
+          "payload_copy_bytes_per_call": 64,
+          "element_extractions_per_call": 0
+        },
+        "boxed_elements": {
+          "median_ns": 3653.232421875,
+          "samples_ns": [
+            3915.142578125,
+            3059.189453125,
+            3653.232421875,
+            5966.044921875,
+            3661.564453125,
+            4379.65625,
+            2886.083984375,
+            3553.75,
+            2983.765625
+          ],
+          "payload_copy_bytes_per_call": 0,
+          "element_extractions_per_call": 16
+        }
+      }
+    },
+    {
+      "elements": 1024,
+      "batch_bytes": 8192,
+      "retained_export_bytes": 16384,
+      "expected_score": -1.578125,
+      "prepare_median_ns": 671,
+      "calls_per_sample": {
+        "retained": 1000,
+        "open_each_call": 1000,
+        "copy_each_call": 1000,
+        "boxed_elements": 4
+      },
+      "variants": {
+        "retained": {
+          "median_ns": 2478.183,
+          "samples_ns": [
+            2771.337,
+            2478.183,
+            2366.589,
+            2551.542,
+            2384.114,
+            2318.517,
+            2595.477,
+            2394.169,
+            2808.312
+          ],
+          "payload_copy_bytes_per_call": 0,
+          "element_extractions_per_call": 0
+        },
+        "open_each_call": {
+          "median_ns": 2996.689,
+          "samples_ns": [
+            3677.556,
+            3803.682,
+            2996.689,
+            3085.01,
+            3038.532,
+            2568.697,
+            2843.393,
+            2572.372,
+            2797.305
+          ],
+          "payload_copy_bytes_per_call": 0,
+          "element_extractions_per_call": 0
+        },
+        "copy_each_call": {
+          "median_ns": 4016.317,
+          "samples_ns": [
+            4044.999,
+            4354.657,
+            4016.317,
+            4254.759,
+            4238.366,
+            3481.116,
+            3579.171,
+            3462.869,
+            3445.082
+          ],
+          "payload_copy_bytes_per_call": 8192,
+          "element_extractions_per_call": 0
+        },
+        "boxed_elements": {
+          "median_ns": 348437.5,
+          "samples_ns": [
+            403058.25,
+            334644.75,
+            357978.0,
+            307599.75,
+            385821.5,
+            331635.25,
+            360185.0,
+            348437.5,
+            336299.5
+          ],
+          "payload_copy_bytes_per_call": 0,
+          "element_extractions_per_call": 2048
+        }
+      }
+    },
+    {
+      "elements": 65536,
+      "batch_bytes": 524288,
+      "retained_export_bytes": 1048576,
+      "expected_score": -0.0546875,
+      "prepare_median_ns": 641,
+      "calls_per_sample": {
+        "retained": 45,
+        "open_each_call": 45,
+        "copy_each_call": 45
+      },
+      "variants": {
+        "retained": {
+          "median_ns": 156000.82222222222,
+          "samples_ns": [
+            143511.24444444446,
+            164279.51111111112,
+            140846.64444444445,
+            162934.84444444443,
+            151479.02222222224,
+            145902.77777777778,
+            169723.11111111112,
+            156000.82222222222,
+            162192.2
+          ],
+          "payload_copy_bytes_per_call": 0,
+          "element_extractions_per_call": 0
+        },
+        "open_each_call": {
+          "median_ns": 160873.57777777777,
+          "samples_ns": [
+            160943.9111111111,
+            171335.48888888888,
+            165727.86666666667,
+            162708.2888888889,
+            154879.3777777778,
+            156151.48888888888,
+            160873.57777777777,
+            149972.13333333333,
+            148434.0888888889
+          ],
+          "payload_copy_bytes_per_call": 0,
+          "element_extractions_per_call": 0
+        },
+        "copy_each_call": {
+          "median_ns": 168598.77777777778,
+          "samples_ns": [
+            168598.77777777778,
+            173836.2888888889,
+            155221.88888888888,
+            164522.3111111111,
+            160430.6888888889,
+            200302.75555555554,
+            158355.17777777778,
+            194489.48888888888,
+            177619.44444444444
+          ],
+          "payload_copy_bytes_per_call": 524288,
+          "element_extractions_per_call": 0
+        }
+      }
+    },
+    {
+      "elements": 1048576,
+      "batch_bytes": 8388608,
+      "retained_export_bytes": 16777216,
+      "expected_score": -1.0234375,
+      "prepare_median_ns": 8843,
+      "calls_per_sample": {
+        "retained": 3,
+        "open_each_call": 3,
+        "copy_each_call": 3
+      },
+      "variants": {
+        "retained": {
+          "median_ns": 2255160.3333333335,
+          "samples_ns": [
+            2255160.3333333335,
+            2243563.0,
+            2257223.3333333335,
+            2260414.6666666665,
+            2256101.6666666665,
+            2230196.6666666665,
+            2256719.3333333335,
+            2240809.0,
+            2228030.0
+          ],
+          "payload_copy_bytes_per_call": 0,
+          "element_extractions_per_call": 0
+        },
+        "open_each_call": {
+          "median_ns": 2281258.6666666665,
+          "samples_ns": [
+            2281258.6666666665,
+            2274912.6666666665,
+            2251511.6666666665,
+            2287648.3333333335,
+            2285304.6666666665,
+            2267865.6666666665,
+            2281412.3333333335,
+            2263746.3333333335,
+            4313570.666666667
+          ],
+          "payload_copy_bytes_per_call": 0,
+          "element_extractions_per_call": 0
+        },
+        "copy_each_call": {
+          "median_ns": 2944723.0,
+          "samples_ns": [
+            3128064.0,
+            3007705.6666666665,
+            2966541.6666666665,
+            2943955.0,
+            2944723.0,
+            2943127.0,
+            2938610.6666666665,
+            3024781.0,
+            2793008.6666666665
+          ],
+          "payload_copy_bytes_per_call": 8388608,
+          "element_extractions_per_call": 0
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,134 @@
+{
+  "affinity": [
+    0
+  ],
+  "baseline_bootstrap": "../main/report.json",
+  "baseline_bootstrap_sha256": "ea4ade95e887049d63c611192caee2d668bb257741a0ab68fed70769cc1f8359",
+  "calibration_frontend_wall_s": 1.9027196850074688,
+  "candidate_bootstrap": "../scope-index-bootstrap/report.json",
+  "candidate_bootstrap_sha256": "81c3ad3eae8b186b286616b27647da21cbfcb146b51fbdc3d123705574f44509",
+  "cgroup": {
+    "cpu.max": "800000 100000",
+    "memory.max": "8589934592"
+  },
+  "complete": true,
+  "controller_sha256": "63010cdd91844e7c15c8c2a4c3673f62f5ae4fa37e38a4b87cb07b6029ddef7f",
+  "cpu": [
+    "vendor_id\t: AuthenticAMD",
+    "model name\t: AMD EPYC 9V74 80-Core Processor"
+  ],
+  "host_note": "Team heavy jobs are serialized. Other sessions may run on this shared host; compiler-process observations and host load are recorded, not proof of an otherwise idle host.",
+  "load_after": [
+    1.3916015625,
+    1.97607421875,
+    2.20849609375
+  ],
+  "load_before": [
+    1.12744140625,
+    2.2060546875,
+    2.30419921875
+  ],
+  "measurement_scope": "frontend only; no whole-compiler speedup claim",
+  "projected_timing_wall_s": {
+    "linear_model": 66.59518897526141,
+    "note": "Sizing estimates only; actual scaling and controller overhead can differ",
+    "quadratic_model": 199.78556692578422
+  },
+  "selected_sizes": [
+    500,
+    1000,
+    2000
+  ],
+  "steps": [
+    {
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+        "/workspace/scratch/5798eb31a437/scope-index/bench/exception_bindings/run.py",
+        "--baseline",
+        "/workspace/scratch/5798eb31a437/compiler-work",
+        "--candidate",
+        "/workspace/scratch/5798eb31a437/scope-index",
+        "--python",
+        "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+        "--cpu",
+        "0",
+        "--output",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/scope-timing/counts.json",
+        "--sizes",
+        "32,64,128",
+        "--rounds",
+        "1",
+        "--counts"
+      ],
+      "log_sha256": "6da60949e6a841c6e45b1547528392fc55eefe5b5607548a873333554bb0dc74",
+      "name": "counts",
+      "other_compilers_after": [],
+      "other_compilers_before": [],
+      "returncode": 0,
+      "timeout_s": 120,
+      "wall_s": 4.682071880000876
+    },
+    {
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+        "/workspace/scratch/5798eb31a437/scope-index/bench/exception_bindings/run.py",
+        "--baseline",
+        "/workspace/scratch/5798eb31a437/compiler-work",
+        "--candidate",
+        "/workspace/scratch/5798eb31a437/scope-index",
+        "--python",
+        "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+        "--cpu",
+        "0",
+        "--output",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/scope-timing/calibration.json",
+        "--sizes",
+        "500",
+        "--rounds",
+        "1",
+        "--baseline-native",
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "--candidate-native",
+        "/workspace/scratch/5798eb31a437/scope-index/pystachy"
+      ],
+      "log_sha256": "9c449805479b1d029a5deaa26986e4a9a6df2e3571adac557696d68042d43133",
+      "name": "calibration",
+      "other_compilers_after": [],
+      "other_compilers_before": [],
+      "returncode": 0,
+      "timeout_s": 180,
+      "wall_s": 2.1732839910037
+    },
+    {
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+        "/workspace/scratch/5798eb31a437/scope-index/bench/exception_bindings/run.py",
+        "--baseline",
+        "/workspace/scratch/5798eb31a437/compiler-work",
+        "--candidate",
+        "/workspace/scratch/5798eb31a437/scope-index",
+        "--python",
+        "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+        "--cpu",
+        "0",
+        "--output",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/scope-timing/timing.json",
+        "--sizes",
+        "500,1000,2000",
+        "--rounds",
+        "5",
+        "--baseline-native",
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "--candidate-native",
+        "/workspace/scratch/5798eb31a437/scope-index/pystachy"
+      ],
+      "log_sha256": "edefbd2d8242f9468217e2fb8c7eea5136f683392ebd41669aa59b425fc04ab7",
+      "name": "timing",
+      "other_compilers_after": [],
+      "other_compilers_before": [],
+      "returncode": 0,
+      "timeout_s": 600,
+      "wall_s": 92.87197364199528
+    }
+  ]
+}

@@ -13,6 +13,7 @@ Linux with glibc; both architectures run the FFI suite in native CI.
 Start with the examples, then use the contracts below for exact behavior:
 
 - [Call C](#calling-c), [C types](#c-types-and-conversions) and [pointer lifetimes](#pointer-lifetimes-and-foreign-control-flow).
+- [Static ctypes declarations](#static-ctypes-declarations) and the adapted llvmlite consumer.
 - [Call CPython](#calling-cpython), including [ownership and shutdown](#references-memory-and-program-end).
 - [Build an extension](#building-a-cpython-extension) and check its [threading contract](#threading-and-host-lifetime).
 - [Compare behavior](#checking-behavior-and-compatibility), [deviations](#deviations-from-cpython-and-the-twin) and [platform limits](#platform-and-api-limits).
@@ -90,7 +91,8 @@ Calls bind positional and keyword arguments and declared defaults using the
 function's normal signature. The compiler rejects:
 
 - Bare `int`, `bool`, classes, containers other than `list[float]` and
-  `list[ffi.c_int64]` arguments, and optionals other than a `str | None` return; every C
+  `list[ffi.c_int64]` arguments, and optionals other than `bytes | None` or a
+  `str | None` return; every C
   integer must specify its width, a list's items too (`list[ffi.c_int64]`, not `list[int]`).
 - Unannotated parameters, `*args`, a body other than `...`, or `@extern` on a method.
 - Nonliteral library/symbol names, embedded NULs and invalid decorator arguments.
@@ -113,17 +115,24 @@ The compiler does not read C headers or infer C calling conventions.
 | `float` | `double` | Preserves signed zero, infinities and NaN. |
 | `ffi.c_float` | 32-bit `float` | An argument is rounded to the nearest float, ties to even, and past the largest float to an infinity, as ctypes rounds it; a result widens to a `float` exactly. Declare C `float` parameters with it: passed as `float`, a C `float` parameter would read the wrong register bits. |
 | `str` argument | `const char *` | NUL-terminated UTF-8 bytes, valid during the call; NUL in the value raises `ValueError`. |
+| `bytes`, `bytes \| None` argument | `const char *` | Borrowed bytes, including NUL and non-UTF-8 data; `None` passes NULL. Pass a separate length for binary buffers. C must not write or retain the pointer. |
 | `ffi.c_buf` argument | `const char *` | Same bytes, NULs allowed; pass the length separately. |
 | `list[float]` argument | `double *` | The list's own items, for the call: C reads and writes them in place. Pass the length separately. |
 | `list[ffi.c_int64]` argument | `int64_t *` | The same, for a list of ints (`list[ffi.c_ssize_t]` too). Other item types, `list[ffi.c_float]` and `list[ffi.c_int]` among them, are rejected: a list's items are 8 bytes each. |
 | `ffi.at(xs, k)` argument | `double *`, `int64_t *` | Item `k` of the list's own items, for a list parameter: C may read and write the `len(xs) - k` items from there. `k` is checked as the call starts, after the other arguments: `IndexError` outside `0 <= k <= len(xs)`. Elsewhere `ffi.at()` is a compile error. |
 | `str` result | `char *` | Copied into a new string; NULL raises `ValueError`. |
 | `str \| None` result | `char *` | Copied into a new string; NULL becomes `None`. |
+| `bytes`, `bytes \| None` result | `char *` | Copy through the first NUL without decoding; NULL raises `ValueError` for required `bytes`, or becomes `None`. |
 | `None` result | `void` | No value. |
 
 C integer annotations are ordinary `int` inside a stub's subset signature.
 `ffi.string_at(addr, n)` copies `n` bytes into a string; negative `n` raises
 `ValueError` rather than reading to a NUL as ctypes would.
+`ffi.bytes_at(addr, n)` copies bytes, preserving NULs; `n=-1` reads to a NUL.
+Other negative lengths and NULL with a nonzero length raise `ValueError`.
+`ffi.load_library(path)` opens a library immediately with the same loader used
+by `extern` and returns its handle as an integer; `""` opens the process.
+Handles stay loaded for the process lifetime.
 
 ## Pointer lifetimes and foreign control flow
 
@@ -147,6 +156,71 @@ A declaration must match the real C prototype. A mismatch in widths or calling
 convention, C++ exception or `longjmp` across subset frames, or retained temporary
 string pointer causes undefined behavior, as with ctypes. Foreign calls are
 conservatively treated as having all effects; inside `try`, a call is an `invoke`.
+
+## Static ctypes declarations
+
+The experimental ctypes subset accepts an immutable module declaration block
+and lowers it to ordinary `@ffi.extern` stubs. It uses the existing native loader,
+ABI checks and call lowering, without libffi or an embedded CPython.
+The same source runs with CPython's real ctypes:
+
+```python
+import ctypes
+
+lib = ctypes.CDLL("libm.so.6")
+lib.fabs.argtypes = [ctypes.c_double]
+lib.fabs.restype = ctypes.c_double
+
+print(lib.fabs(-2.5))
+```
+
+`CDLL` takes one literal library name or `None`. Imports, docstrings and `pass`
+may precede or separate declarations, but each function's `argtypes` and `restype`
+must form a complete pair before another declaration or import. Both are
+mandatory, assigned once, before function definitions or executable statements.
+Library loading occurs at `CDLL`; symbol lookup occurs at its first signature
+assignment. A missing unused library still raises `OSError`.
+
+| ctypes spelling | Accepted values and behavior |
+|---|---|
+| `c_int`, `c_int32` | Python integers; low 32 bits interpreted as signed. |
+| `c_uint`, `c_uint32` | Python integers; low 32 bits interpreted as unsigned. |
+| `c_int64`, `c_longlong`, `c_long`, `c_ssize_t` | Signed 64-bit integers on the supported LP64 targets. |
+| `c_double`, `c_float` | Python floats or integers (including bool); C double or float ABI, respectively. |
+| `c_char_p` | `bytes` or `None`; borrowed input, copied NUL-terminated result. |
+| `c_void_p` | Scalar arguments/results are integer addresses or `None`; use a cell's `.value` as a scalar argument. Addresses must be below `2**63`. |
+| `POINTER(c_void_p)` argument | A `c_void_p` cell or `byref(cell)`, borrowing one stable pointer-sized cell for the call. Shared cells preserve native aliasing. |
+| `None` restype | C void. |
+
+`c_void_p()` creates a cell whose `.value` is `None`; C writes through `byref`
+update that same cell. `string_at(address, size=-1)` returns a bytes copy, using
+the copying rules above. Negative/high-bit pointer values raise `OverflowError`
+instead of ctypes' unsigned wrapping. Scalar type objects are declaration markers,
+not general ctypes scalar instances; `c_void_p` is the supported cell constructor.
+
+Generated conversion wrappers specialize on concrete numeric arguments without
+allocating union boxes; existing union and dynamic values retain their checked
+conversions. An immediate `byref(cell)` argument borrows the cell directly, while
+a stored `byref` result keeps its owning wrapper. Cells retain stable managed
+storage, and pointer results still use the ordinary `int | None` representation.
+
+Calls must name `lib.symbol` directly and supply exactly the declared positional
+arguments. Imports and library bindings must remain stable. Function/library
+objects cannot escape, and signatures cannot change after declaration.
+Classes, lambdas and comprehensions containing library calls are rejected in this
+prototype. Private CDLL attributes are not interpreted as C symbols.
+
+Dynamic library names, loader options, `find_library`, `errcheck`, `use_errno`,
+structures, arrays, callbacks, variadic calls, `c_bool`, unsigned 64-bit types,
+arbitrary pointers/casts and `byref` offsets remain unsupported. C must not retain
+borrowed bytes or output-cell storage after returning. Owning native pointers
+still require the library's matching destructor.
+
+The [llvmlite example](../examples/ctypes_llvmlite/README.md) exercises LLVM context
+creation, assembly parsing, verification, canonical printing and disposal through
+the real `libllvmlite.so`. It compares exact IR and diagnostics with unmodified
+llvmlite 0.46.0 under CPython. This is an adapted binding slice; it does not make
+`import llvmlite.binding` or Numba compile unchanged.
 
 <a id="next-pystachy-calls-cpython-libpyobjpy"></a>
 <a id="calling-cpython-libpyobjpy"></a>
@@ -189,7 +263,7 @@ host interpreter.
 ### The API
 
 A program may use what the twin's `__all__` names. Importing another name of
-`pyobj`, calling `Object(...)`, using an `Object`'s fields, or reflecting on one
+`pyobj`, calling `Object(...)` or `Buffer(...)`, using their fields, or reflecting on one
 (`dir()`, `vars()`, `hasattr()`, `getattr()` with a default) is a compile-time
 error: the twin's `Object` is another class.
 
@@ -202,9 +276,86 @@ error: the twin's `Object` is another class.
 | `len(o)`, `bool(o)`, `str(o)`, `repr(o)` | The same operations. |
 | `o.to_int()`, `o.to_float()` | `PyLong_AsLongLong` (`__index__`, signed 64-bit) and `PyFloat_AsDouble` (no str). |
 | `o.close()` | Releases the reference; a closed `Object` raises `ValueError`. |
+| `o.buffer_f64(writable=False)` | Retains a one-dimensional native float64 CPU buffer; see the prototype below. |
 
 No container converts implicitly; Pystachy code reaches Python's containers as
 `Object`s ([#108](https://github.com/den-run-ai/pystachy/issues/108)).
+
+### Retained CPU buffer prototype
+
+`Object.buffer_f64()` acquires a [CPython buffer export](https://docs.python.org/3/c-api/buffer.html)
+and returns an opaque `Buffer`. This is a bounded ownership experiment for
+[#493](https://github.com/den-run-ai/pystachy/issues/493) and
+[#582](https://github.com/den-run-ai/pystachy/issues/582): the first consumer is a
+native dot product over existing host arrays. Imports require one dimension,
+native format `d`, eight-byte items, a positive eight-byte stride and direct
+storage. Empty and unaligned buffers are supported. Wrong formats, dimensions,
+indirection and noncontiguous imports are rejected before reading payload data.
+An [optional CPython DLPack adapter](../examples/cpu_dlpack/README.md) uses
+NumPy to expose a compatible CPU view. Arrow, device memory and general ndarray
+operations remain outside this native buffer API.
+
+```python
+from pyobj import import_module
+
+batch = import_module("host_batches").attr("batch")  # e.g. array.array('d')
+values = batch.buffer_f64()
+batch.close()
+reverse = values.view(len(values) - 1, len(values), -1)  # nonempty batch
+values.close()
+score = reverse.dot(reverse)
+reverse.close()
+```
+
+The complete across-call scoring consumer is
+[`tests/ffi/ext/cb.py`](../tests/ffi/ext/cb.py); the Python host creates arrays once
+and calls `retain()`, `score()` repeatedly, then `release()`. Its extension test
+also drops the host's array reference between calls. Reproduction and measured
+results are in [`bench/cpu_buffers`](../bench/cpu_buffers/README.md).
+
+| Buffer operation | Contract |
+|---|---|
+| `len(b)`, `b.dtype()`, `b.shape()` | Logical item count, `"float64"`, and `[count]`. |
+| `b.strides()`, `b.offset()` | Signed byte stride and byte offset from the imported export's logical start. An imported memoryview slice starts at offset zero in its own export. |
+| `b.nbytes()`, `b.storage_nbytes()` | Logical payload bytes and the retained root export's span. The latter is not necessarily the original allocation's full size. |
+| `b.readonly()` | Whether this handle forbids writes; the default is `True` even for mutable exporters. |
+| `b.view(start, count, step=1)` | An independently retained view. `start` and `count` are nonnegative; `step` is nonzero. Both endpoints must be in the parent, with checked signed 64-bit offset/stride arithmetic. Reverse views are supported. An empty view permits `start == len(b)` and normalizes offset to zero. |
+| `b.get(index)`, `b.set(index, value)` | One indexed load/store; negative indices follow Python indexing. `set` requires a writable handle. |
+| `b.dot(other)` | Equal-length sequential binary64 multiplication and addition, starting at positive zero. No fused multiply-add or reassociation; NaN and infinity propagate. Empty dot returns positive zero. |
+| `b.close()` | Idempotent release of this handle. All other operations on it then raise `ValueError`. |
+
+The root descriptor keeps the `Py_buffer` in a
+[PyCapsule](https://docs.python.org/3/c-api/capsule.html). Derived descriptors retain
+that root capsule, so closing a source `Object` or a parent `Buffer` cannot
+invalidate a live child. The last capsule release calls `PyBuffer_Release`
+exactly once; the exporter owns and frees its storage. A compliant export pins
+its address and size, which makes resizing an exported `array.array` fail with
+`BufferError`. Dropped buffers use the existing deferred foreign-reference
+release path, including collection and shutdown. Descriptor/capsule allocation
+failures release any acquired export or owner reference.
+
+Every operation holds the GIL, and the dot loop runs without Python callbacks or
+releasing it. Read-only access does not freeze aliases: host writes between calls
+are visible. External threads that write without the GIL need synchronization
+outside this API. The native extension's existing owner-thread restriction still
+applies. Exporter metadata is an ABI contract: validation cannot verify the
+allocation size of a malicious exporter.
+
+Acquisition requests `PyBUF_FULL_RO`, like the CPython twin's `memoryview`.
+`writable=True` permits stores only when that returned export is writable; it
+does not issue a separate `PyBUF_WRITABLE` request. Exporters that expose writable
+storage only on an explicit writable request are outside this prototype. Derived
+views inherit the handle's permission.
+
+Dot reads the payload directly, without copying it or boxing each element. The
+collector charges each handle a conservative pressure estimate: 512 bytes plus
+the descriptor and up to 1 GiB of the retained root export. Multiple views can
+charge the same backing span repeatedly. This estimate is neither unique retained
+memory nor physical allocation/RSS. The Linux-only fault probe
+`tools/check_cpu_buffers.sh` tests malformed metadata and allocation cleanup.
+Lint runs its address/undefined-sanitized probe and missing-release negative control.
+`tests/ffi/py_cpu_buffer.py` and `tests/ffi/ext/cbclient.py` cover normal ownership,
+GC, aliases and numerical behavior.
 
 ### Startup, output and exceptions
 

@@ -1,5 +1,6 @@
 """Cap PRs at 20 jobs, task groups at two workers, and every job at 15 minutes."""
 
+import ast
 from collections import Counter
 import itertools
 import json
@@ -252,6 +253,31 @@ class LimitTests(unittest.TestCase):
 
     def test_worst_case_pr_job_and_worker_budget(self):
         self.assertTrue(require_pr_budget(workflows()))
+
+    def test_program_cache_probe_runs_once_per_machine_outside_compact_gc(self):
+        job = workflows()["ci.yml"]["jobs"]["verification"]
+        probes = [step for step in job["steps"] if "make test-program-cache " in step.get("run", "")]
+        self.assertEqual(len(probes), 1)
+        probe = probes[0]
+        self.assertIn("PROGRAM_CACHE_COMPILER=build/verify/pystachy2", probe["run"])
+        self.assertNotIn("continue-on-error", probe)
+        self.assertEqual(probe["env"]["PYSTACHY_HOME"], "${{ github.workspace }}")
+        for event in ("pull_request", "push", "workflow_dispatch"):
+            selected = []
+            for row in matrix_rows(job, event):
+                # Evaluate only this condition's literal comparisons and boolean operators.
+                condition = probe["if"].replace("github.event_name", repr(event))
+                condition = condition.replace("matrix.group", repr(row["group"]))
+                condition = condition.replace("&&", " and ").replace("||", " or ")
+                expression = ast.parse(condition, mode="eval")
+                allowed = (ast.Expression, ast.BoolOp, ast.Compare, ast.Constant, ast.And, ast.Or, ast.Eq)
+                self.assertTrue(all(isinstance(node, allowed) for node in ast.walk(expression)), condition)
+                if eval(compile(expression, "<program-cache condition>", "eval"), {"__builtins__": {}}, {}):
+                    selected.append((row["machine"], row["group"]))
+            expected = [("x86_64", "contracts")] if event == "pull_request" else [
+                ("x86_64", "runtime-cache"), ("aarch64", "runtime-cache")]
+            with self.subTest(event=event):
+                self.assertCountEqual(selected, expected)
 
 
 if __name__ == "__main__":

@@ -62,10 +62,10 @@ def gen_list_item(self, o: Val, i: Val, keep: bool = False) -> Val:
     # Container comparisons retain the stored layout even in a fixed-width caller (keep).
     k = self.list_id_kind(o.t)
     if k != 0:
-        b = self.rt("pys_list_get_identity", "ptr", [f"ptr {o.v}", f"i64 {i.v}", f"i64 {k}"])
+        b = self.list_get("list.get_identity", [o, i, Val(str(k), "int")])
         t = BIG if keep and elem(o.t) == "int" and int_lists() else self.item_type(o.t)
         return self.dyn_unbox(Val(b, "dyn"), t)
-    return self.list_value(o, i.v, self.rt("pys_list_get", "i64", [f"ptr {o.v}", f"i64 {i.v}"]), keep)
+    return self.list_value(o, i.v, self.list_get("list.get", [o, i]), keep)
 
 
 def gen_list_value(self, o: Val, i: str, raw: str, keep: bool = False) -> Val:
@@ -1028,6 +1028,8 @@ def gen_none_arg(self, m: str, k: int) -> str:
     return f"TypeError: {m}() argument {k} must be str, not None"
 
 def gen_to_str(self, v: Val) -> Val:
+    if self.dyn_policy(self.line) and self.refl_builtin_class(v.t) != "":
+        return self.dyn_str(self.dyn_box(v))
     t = v.t
     if t == "dyn":
         return self.dyn_str(v)  # (by its box's type: dynamic.py)
@@ -1230,6 +1232,8 @@ def gen_hashable(self, t: str) -> bool:
     return (is_tuple(u) or is_vtuple(u)) and all(self.hashable(x) for x in targs(u))
 
 def gen_repr(self, v: Val) -> Val:
+    if self.dyn_policy(self.line) and self.refl_builtin_class(v.t) != "":
+        return self.dyn_repr(self.dyn_box(v))
     if is_kw(v.t):
         return self.kw_repr(v)
     if v.t == BIG:

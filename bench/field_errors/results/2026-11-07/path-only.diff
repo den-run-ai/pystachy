@@ -1,0 +1,11 @@
+--- baseline-home
++++ candidate-home
+@@ -1057,7 +1057,7 @@
+ @s.129 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1, i64 0, i64 2, [2 x i8] c"a\00"}, align 8
+ @s.130 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1, i64 0, i64 2, [2 x i8] c"u\00"}, align 8
+ @s.131 = private unnamed_addr global {i64, i64, i64, [6 x i8]} {i64 5, i64 0, i64 6, [6 x i8] c"T3sis\00"}, align 8
+-@s.132 = private unnamed_addr global {i64, i64, i64, [108 x i8]} {i64 107, i64 0, i64 108, [108 x i8] c"cannot import name 'GenericAlias' from 'types' (/workspace/scratch/5798eb31a437/compiler-work/lib/types.py)\00"}, align 8
++@s.132 = private unnamed_addr global {i64, i64, i64, [107 x i8]} {i64 106, i64 0, i64 107, [107 x i8] c"cannot import name 'GenericAlias' from 'types' (/workspace/scratch/5798eb31a437/field-errors/lib/types.py)\00"}, align 8
+ @s.133 = private unnamed_addr global {i64, i64, i64, [12 x i8]} {i64 11, i64 0, i64 12, [12 x i8] c"ImportError\00"}, align 8
+ @s.134 = private unnamed_addr global {i64, i64, i64, [18 x i8]} {i64 17, i64 0, i64 18, [18 x i8] c"get_close_matches\00"}, align 8
+ @s.135 = private unnamed_addr global {i64, i64, i64, [6 x i8]} {i64 5, i64 0, i64 6, [6 x i8] c"ndiff\00"}, align 8

@@ -1,0 +1,9 @@
+annotated False False cannot access local variable 'value' where it is not associated with a value
+inferred False False cannot access local variable 'value' where it is not associated with a value
+annotated False True cannot access local variable 'value' where it is not associated with a value
+inferred False True cannot access local variable 'value' where it is not associated with a value
+annotated True False 17
+inferred True False 17
+annotated True True 0
+inferred True True 0
+[exit 0]
