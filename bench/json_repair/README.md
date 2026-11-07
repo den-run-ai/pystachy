@@ -194,3 +194,86 @@ those costs and is not retained heap. Its 10 ms child polling limits the resolut
 of short process wall-time measurements. Compare the same source under CPython
 explicitly; these controls do not establish performance against pristine upstream,
 PyPy or GraalPy.
+
+## Installed CPython API campaign
+
+`tools/json_repair_api_bench.py` measures the public `pystachy_json_repair` wheel
+in the Python process using it, alongside pristine upstream 0.64.1 and the adapted
+port under the same CPython interpreter. This complements the core/JIT/AOT probes
+above: it includes native string transport, CPython decoding of object/log payloads,
+and the valid-JSON CPython fast path.
+
+The [2026-11-06 installed-wheel evaluation](results/installed-api-2026-11-06.md)
+records calibrated timings, process-to-process ranges, startup, sustained-request
+RSS, and the validated CPython 3.12/3.13 wheel. It retains both the corrected raw
+campaign and the initial short-sample run that exposed measurement limitations.
+
+Install the wheel into a dedicated environment using the
+[companion build instructions](../../docs/packages.md#install-native-json-repair-into-cpython),
+then invoke that environment's Python. Replace the paths and CPU below:
+
+```sh
+/path/to/venv/bin/python tools/json_repair_api_bench.py \
+  --upstream /path/to/json_repair_upstream --adapted /path/to/pystachy \
+  --cpu 0 --check-only --output /tmp/json-repair-api-check.json
+/path/to/venv/bin/python tools/json_repair_api_bench.py \
+  --upstream /path/to/json_repair_upstream --adapted /path/to/pystachy \
+  --cpu 0 --pairs 3 --batches 3 --warmups 2 --rounds 100 \
+  --min-sample-seconds 0.2 --group-sizes 1 32 --memory-rounds 500 \
+  --output /tmp/json-repair-api.json
+python3.13 -m unittest discover -s tools -p test_json_repair_api_bench.py
+```
+
+Every backend uses a fresh isolated (`-I`) worker. The runner verifies all pinned
+upstream source hashes, requires the companion to load an actual extension from
+an installed distribution, and records its wrapper/native hashes, distribution
+version, wheel metadata, and installer provenance when present. It refuses to
+proceed if any complete tagged output differs. The tags distinguish bool/int,
+int/float, signed zero, tuple/list, dictionary order and exact string code points;
+strict-error messages and Unicode/wide-integer boundaries are checked too. These
+checks include both default and forced repair. The maintained upstream corpus
+remains the larger compatibility gate; these benchmark witnesses do not replace it.
+
+The campaign rotates backend order and pins all children to the selected CPU. It
+uses eight constructed record shapes with tool calls, verifier results, simulation
+state, search candidates, code, nested data and a longer answer. The controls are
+all valid, all malformed, and an explicit **80% valid / 20% malformed** mixture
+containing every shape. This is a reproducible scenario, not measured production
+failure frequency. Three paths are measured: `repair_json(ensure_ascii=False)`
+text, `loads()` objects, and `loads(logging=True)` objects/logs. The public
+`repair_json(return_objects=True)` and `repair_json(logging=True)` facades also
+receive untimed parity checks.
+
+Each steady worker starts with `--rounds` and calibrates toward
+`--min-sample-seconds` (default 0.2 seconds) before warmups and measured batches.
+Calibration is limited to eight checked probes and at most the larger of the
+initial count and one million rounds. It never reduces the initial count.
+The report retains every probe, the stop reason, the actual rounds, and the
+`requests_per_sample` denominator used for that worker's timings. This avoids
+using millisecond samples for fast inputs while giving slower inputs independent
+counts. Calibration time is excluded from measured samples. The target is an aim,
+not a performance gate; warmup and host load can still change sample duration.
+Use `--min-sample-seconds 0` for fixed-round reproduction. Startup and sustained
+memory request counts are not calibrated.
+
+| Evidence | Included | Interpretation |
+|---|---|---|
+| Steady API calls | Public Python/native conversion, result lists, loop and length-checksum overhead | Median of process medians per request using each worker's calibrated denominator; excludes calibration, startup, input construction and complete-result validation. |
+| Group sizes 1 and 32 | Groups of ordinary Python API calls, capped by the workload length | There is no native bulk API; this measures request-loop grouping, not one native call for a batch. |
+| Fresh-process startup | Python worker launch through exit, common harness setup and report output | Backend import and first malformed request are also timed separately; the process wall time is not a bare application import measurement. |
+| Sustained memory | Separate fresh workers; Linux `/proc/self/status` `VmRSS` and `VmHWM` after warmup and each block | Counters describe the current address space since exec. Bounded retention: expected and latest workload results plus the current group. CPython GC runs before samples; native GC is not forced. |
+
+Every timed worker verifies its complete final outputs against its initial outputs
+and the pristine preflight witness; a length checksum covers all calls. Memory is
+measured separately after ordinary timings. Its RSS series includes interpreter,
+native heap and allocator retention; it is not a native live-heap counter or proof
+that no leaks exist. Every snapshot names the source and peak scope. Linux uses
+`VmRSS`/`VmHWM` in KiB converted to bytes, and fails on missing or invalid counters.
+It does not use `getrusage().ru_maxrss`, which can preserve the launching parent's
+high-water mark across exec. The non-Linux `getrusage` fallback is explicitly
+labeled, reports no current RSS, and may include inherited pre-exec usage.
+Compilation and wheel installation are outside all timers.
+No performance threshold is enforced. Stop other local builds/timing jobs, retain
+the raw JSON, and report shared-host noise; CPU affinity alone does not isolate a VM.
+The runner rejects changes to consumed sources, Python, the harness or installed
+wrapper/native binaries during the campaign.
