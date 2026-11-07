@@ -103,3 +103,89 @@ was shared to control those path literals. Lint and repository checks passed in
 the same replay. The 12 focused unit tests, 18 frame tests, 16 state-contract tests,
 and the 424-test fast suite also passed. Full local `make verify`, the broader
 compiler GC-self group, and macOS validation have not been run for this prototype.
+
+## Counter and timing results
+
+The [raw cohorts](results/scope-timing/cohorts.json) ran on an AMD EPYC 9V74 host,
+with the benchmark pinned to CPU 0, an eight-CPU container quota and an 8 GiB memory
+limit. Hosted compilation used CPython 3.13.16; native compilation used the ordinary
+LLVM 18.1.3 O2 binaries recorded above. This team serialized heavy jobs. No other
+compiler process was observed at the sampled cohort boundaries, but the host was
+shared; those observations and the recorded load averages do not prove an otherwise
+idle host. RSS was not measured.
+
+The measured local commit was `bb9ffdfbfb0f9f9afca73987c66fa5081c24e84f`. The initial
+published PR head `8c32e0767bdaaab2e7e1bb8284e09423c23edc9a` has the identical tree,
+`e6b73a7c14a58152564b6690390c697b0d3627dd`; publication changed commit metadata.
+Both native binaries and all their consumed compiler/library/runtime source files
+were checked against their fresh-bootstrap manifests before measurement. The
+later evidence-only commits do not change those compiler inputs.
+
+### Deterministic work
+
+Separate [instrumented hosted runs](results/scope-timing/counts.json) measured
+actual statement visits. Each generated case retained matching uninstrumented and
+instrumented LLVM IR. Distinct names require one index, and no-handler functions
+create none.
+
+| Handlers N | Distinct names, old visits | Distinct names, indexed visits | Same name, old and indexed visits |
+|---:|---:|---:|---:|
+| 32 | 3,104 | 97 | 97 |
+| 64 | 12,352 | 193 | 193 |
+| 128 | 49,280 | 385 | 385 |
+
+These are exactly `3*N*N + N` versus `3*N + 1` for distinct handler names. The
+same-name control already avoided repeated queries through the existing local type
+information. All three no-handler sizes recorded zero scans and zero index builds.
+
+### Repeated frontend timings
+
+The [primary timing cohort](results/scope-timing/timing.json) used five interleaved,
+fresh-process samples per compiler, host and workload. All **180/180** primary
+outputs matched in LLVM IR, diagnostics and exit status. Compiler preparation,
+LLVM optimization/code generation and execution of the generated programs are
+outside these timings. The generated programs separately passed their CPython
+execution oracles; native execution is covered by the fixtures above.
+
+Median milliseconds for the distinct-name workload:
+
+| Handlers N | Hosted baseline | Hosted indexed | Hosted speedup | Native baseline | Native indexed | Native speedup |
+|---:|---:|---:|---:|---:|---:|---:|
+| 500 | 503.86 | 194.24 | 2.59x | 102.07 | 28.77 | 3.55x |
+| 1,000 | 1,666.26 | 314.41 | 5.30x | 320.21 | 51.73 | 6.19x |
+| 2,000 | 5,822.34 | 594.63 | 9.79x | 1,366.16 | 111.42 | 12.26x |
+
+The before/after sample ranges were disjoint at every distinct-name size in both
+hosts. At N=2,000, native ranges were 1,319.13–1,450.78 ms and 102.69–128.98 ms;
+hosted ranges were 5,688.30–6,134.83 ms and 573.17–607.50 ms. These measurements
+establish a gain on the generated many-handler frontend workload, not an ordinary
+self-build or general compiler speedup.
+
+Controls must remain visible. Each cell below gives baseline → indexed median
+milliseconds, then the indexed time change:
+
+| Control | N | Hosted frontend | Native frontend |
+|---|---:|---:|---:|
+| Same handler name | 500 | 166.03 → 170.63 (+2.8%) | 26.49 → 26.66 (+0.6%) |
+| Same handler name | 1,000 | 301.69 → 304.22 (+0.8%) | 53.86 → 53.53 (-0.6%) |
+| Same handler name | 2,000 | 553.13 → 561.21 (+1.5%) | 112.31 → 111.43 (-0.8%) |
+| No handlers | 500 | 289.58 → 274.22 (-5.3%) | 46.34 → 45.12 (-2.6%) |
+| No handlers | 1,000 | 593.86 → 538.62 (-9.3%) | 121.03 → 95.00 (-21.5%) |
+| No handlers | 2,000 | 1,208.26 → 1,199.25 (-0.7%) | 211.98 → 223.83 (+5.6%) |
+
+Every control's before/after ranges overlap. The N=1,000 native no-handler ranges
+were 93.72–140.54 ms and 91.57–140.03 ms; N=2,000 ranges were 208.45–266.40 ms and
+219.59–229.81 ms. Thus the observed 5.6% slower N=2,000 median is retained alongside
+the inconsistent smaller-size results. This cohort does not establish a control
+speedup or rule out a small regression. The [derived summary](results/scope-timing/summary.json)
+includes all medians, ranges, CPU medians and raw-report hashes.
+
+The [bounded controller](results/scope-timing/controller.py) preserved the small
+counter cohort, a separate N=500 [calibration](results/scope-timing/calibration.json),
+and the primary timing cohort. After calibration, the cost-only sizing rule kept
+500/1,000/2,000: projected timing duration was 66.6 s under a linear model or 199.8 s
+under an all-quadratic model; actual primary-cohort duration was 92.9 s. Cohort limits
+were 120/180/600 seconds and each direct frontend also had a 180-second limit.
+All three cohorts completed; no measured process timed out or was aborted. The
+controller is retained verbatim as execution evidence with its original paths;
+use the portable commands under **Reproduce** for another checkout.
