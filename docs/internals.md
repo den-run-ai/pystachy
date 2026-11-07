@@ -654,6 +654,32 @@ Cached runtime artifacts depend on the runtime sources, included Ryu files, comp
 LLVM tools and compilation flags. Changes invalidate the relevant cache. Builds use private
 temporary files and publish reusable artifacts only after checking their inputs stayed stable.
 
+### Compiler stage timings
+
+Set `PYSTACHY_TIMING=1` to emit tab-separated stderr records with a monotonic
+elapsed duration in seconds:
+
+```text
+pystachy-timing<TAB>stage<TAB>elapsed-seconds
+```
+
+Frontend phases are `load`, `prepare`, `discover`, `analysis`, `optimize`,
+`finalize` and `lower`, prefixed with `program.` or `runtime.`. `program.attempt`
+includes one inference attempt; retries repeat phase names. `program.frontend`
+contains all attempts. Runtime lookup, frontend, LLVM build, code generation and
+shared linking are separate records. AOT also reports LLVM linking, optimization,
+late allocator inlining, code generation and executable linking; a program without
+allocator calls combines optimization and code generation. Extension backend work
+is one record. Failed commands retain their status and report elapsed time;
+a frontend failure can omit unfinished phases.
+
+`driver.total` ends when compilation finishes. For `run`, `driver.prepare_run`
+ends before execution and excludes application execution and LLVM JIT code
+generation. A program-cache hit reports lookup and preparation only. Set
+`PYSTACHY_PROGRAM_CACHE=0` to measure ordinary JIT preparation. Totals contain
+smaller intervals: do not add nested records together. Timing leaves stdout IR
+unchanged and reads no clock when disabled.
+
 <a id="bootstrap"></a>
 
 ## Bootstrap validation
@@ -683,6 +709,7 @@ compiler and all three runtime witnesses still run separately.
 | `PYSTACHY_PATH` | Additional import directories, separated by `:` |
 | `PYSTACHY_CFLAGS` | Extra clang flags for runtime compilation and AOT linking; part of the cache key |
 | `PYSTACHY_DEBUG_LINES=1` | Emit deterministic Python file, function and instruction line metadata in LLVM IR; AOT retains DWARF line tables. No local variable descriptions; part of the runtime cache key. See [source attribution](../bench/source_attribution/README.md) for JIT and profiler limits. |
+| `PYSTACHY_TIMING=1` | Print monotonic compiler [stage durations](#compiler-stage-timings) to stderr; nested totals overlap |
 | `PYSTACHY_IRCHECK=1` | Verify typed IR before lowering and after transforming passes |
 | `PYSTACHY_IRFX=1` | Print function effect summaries to stderr |
 | `PYSTACHY_OPT` | Disable named optimizations with `-name`, comma-separated, or all with `-all`; see [IR passes](typed-ir.md#optimizations) |
