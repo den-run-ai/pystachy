@@ -247,11 +247,13 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   generation lazily, and a local assignment expression keeps its target's provenance
   (`tests/programs/inference/dynany_identity_expressions.py`). No box is materialized solely
   to produce these expression results.
-  Displays whose item storage is already dynamic capture int- or float-typed binding objects as
-  each item is evaluated. Thus repeated reads in `[x, x, (x := value)]` keep the old
-  object together, and a repeated NaN key or set item stays one entry even when a
-  later item rebinds its name. Later items and hashing retain their evaluation order
-  (`tests/programs/inference/dynany_identity_display_reads.py`).
+  Displays whose item storage is already dynamic capture numeric binding objects,
+  including optional numbers, as each item is evaluated. Thus repeated reads in
+  `[x, x, (x := value)]` keep the old object together, and a repeated NaN key or set
+  item stays one entry even when a later item rebinds its name. Later items and hashing retain their evaluation order
+  (`tests/programs/inference/dynany_identity_display_reads.py`). Fresh tuple displays
+  with `Any` item destinations retain optional numeric identity too, including nested
+  displays (`dynany_identity_optional_tuple.py`, `python_int_optional_tuple_identity.py`).
   Inferred starred list and runtime-length tuple displays also capture their numeric
   items when their resulting dynamic storage can be determined before evaluation
   (`tests/programs/inference/dynany_identity_inferred_stars.py`). This lookahead keeps
@@ -812,7 +814,8 @@ document into dicts and lists of `Any` values that programs which do not opt in 
   or a typed numeric generator's yielded item (`Iterator[float]`, for example).
   Yielding into dynamic item storage (`Iterator[Any]`) retains the source box.
   The typed-tuple case remains in `tests/deviations/dynany_identity_boundary.py`;
-  typed numeric lists now retain their item objects as described above.
+  fresh displays with dynamic item destinations avoid that typed storage boundary.
+  Typed numeric lists now retain their item objects as described above.
   Numeric optional/scalar-union locals, closure cells, globals, instance fields and class
   attributes retain their identity. Module-level and function-local from-import copies
   retain the source global's object, including imports in non-opt-in functions.
