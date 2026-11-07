@@ -1245,7 +1245,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         if tconst.v != "":
             return tconst  # (a display of literals: CPython's constant, the same object at each run)
         if is_vtuple(want) and not resultsoft:
-            # Every item has been evaluated before conversion starts. want is also
+            # Every item is evaluated before these remaining coercions. want is also
             # an operand hint: concatenation may widen it (int plus int | None).
             # Comparisons preserve each side's own element representation.
             et = targs(want)[0]
