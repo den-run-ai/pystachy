@@ -9,7 +9,7 @@ from src.pystachy_compiler.utils import atomic_dict, atomic_list, identity_abi, 
 
 def gen_lower(self, fn: IFn) -> None:
     o = self.out
-    start = len(o)
+    chunk_start = len(o)
     f = fn.f
     # a method's receiver is never None (callers check it)
     ps = [f"{lt(f.ptypes[j])}{' nonnull' if j == 0 and takes_self(f) else ''} %a{j}" for j in fn.ps]
@@ -57,9 +57,9 @@ def gen_lower(self, fn: IFn) -> None:
             o.append(b.label + ":")
         self.lowblk = b.label
         for i in b.code:
-            start = len(o)
+            instruction_start = len(o)
             self.lower_ins(fn, i)
-            self.source_lines.mark(o, start, scope, i.line)
+            self.source_lines.mark(o, instruction_start, scope, i.line)
     epilogue = len(o)
     if fn.coro:
         # where a generator's suspends go when it is destroyed (coro.free: nothing to free, the
@@ -126,8 +126,8 @@ def gen_lower(self, fn: IFn) -> None:
         o.append("}")
     # Only module assembly reads completed output: keep this function and its wrappers as
     # one chunk, releasing the individual line strings before lowering the next function.
-    text = "\n".join(o[start:])
-    del o[start:]
+    text = "\n".join(o[chunk_start:])
+    del o[chunk_start:]
     o.append(text)
 
 def gen_alloc_call(self, size: str, t: str) -> str:
