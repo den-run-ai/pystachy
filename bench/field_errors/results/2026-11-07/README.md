@@ -89,3 +89,20 @@ even though the local heavy validation queue was paused for the cohort. No-read
 and sparse-read controls remain part of the report, including their unfavorable
 medians and the sparse control's larger raw IR. Executable runs check behavior;
 they do not measure generated-program throughput.
+
+## Bounded control confirmation
+
+`control-confirmation.json` is a separate frontend-only run of the unchanged
+harness with `--sizes 128 --samples 20 --builds 0 --cpu 0`. It records all 160 new
+samples over four existing inputs. All compiler, executable and input hashes are
+identical to the original cohort and unchanged during this run. There were no
+failed/interrupted samples and no further native builds.
+
+`control-comparison.json` records original and confirmation statistics separately,
+including CPU/RSS, every paired wall-time ratio and the original file's SHA256.
+The original `timings.json` is unchanged; results are not pooled. The no-read
+median increase changes from 36.85% in five samples to 2.28% in twenty. The
+confirmation still has a slower candidate in 14 of 20 pairs and more slow-tail
+samples. The report retains a possible smaller control regression rather than
+attributing all differences to noise. This was one requested confirmation cohort;
+no additional runs were selected or discarded.

@@ -86,6 +86,42 @@ within every revision/input. The compiler sources, executables and inputs are
 hashed before/after and unchanged. Raw samples, process accounting, tool hashes,
 source inputs and all ranges are in [timings.json](results/2026-11-07/timings.json).
 
+### Follow-up: unchanged no-read control
+
+The original no-read frontend median increases from 34.162 to 46.751 ms (+36.9%).
+The overlapping ranges are not enough to dismiss a possible regression: both
+compilers show approximately 31–34 ms and 45–47 ms bands, and one cross-band pair
+places the baseline median in the lower band and the candidate median in the
+upper one. CPU time follows wall time; similar RSS does not explain the two bands.
+
+One bounded confirmation uses the unchanged harness and the same source/binary
+hashes: `--sizes 128 --samples 20 --builds 0 --cpu 0`. This adds 160 frontend samples
+over the four existing inputs, without another native build. The original cohort
+is retained unchanged, and the two cohorts are not pooled.
+
+| Input | Original five-sample median, baseline → candidate | Confirmation 20-sample median, baseline → candidate | Confirmation range, baseline → candidate |
+| --- | ---: | ---: | --- |
+| 128-class field read | 77.746 → 38.711 ms | 72.616 → 38.040 ms | 69.651–81.942 → 36.728–55.205 ms |
+| Exact class | 2.256 → 2.163 ms | 2.038 → 2.023 ms | 1.955–2.669 → 1.924–2.365 ms |
+| 128-class hierarchy, no field read | 34.162 → 46.751 ms | 32.965 → 33.716 ms | 31.631–46.551 → 31.938–51.269 ms |
+| Sparse read | 8.102 → 8.461 ms | 8.702 → 8.949 ms | 7.813–17.726 → 7.955–17.429 ms |
+
+The no-read median increase is 2.28% in the confirmation, with a 3.23% median
+paired ratio and a slower candidate in 14 of 20 pairs. CPU medians are 32.541 →
+33.328 ms; RSS medians are 34,816 → 34,804 KiB. Nineteen baseline and sixteen
+candidate samples fall below 40 ms, the gap between the original timing bands.
+Thus the original 36.9% increase does not recur at that size, while a smaller
+control regression and more frequent slow samples remain possible. This is not
+evidence of zero overhead. The large-hierarchy improvement persists in all twenty
+pairs. No further confirmation runs were selected or discarded.
+
+The [raw confirmation](results/2026-11-07/control-confirmation.json) and
+[separate-cohort comparison](results/2026-11-07/control-comparison.json) preserve
+every sample and paired ratio. All confirmation IR is deterministic, both
+unchanged-path controls match between revisions, and compiler/source/input hashes
+remain unchanged. The sparse static-data tradeoff and all earlier limitations
+still apply.
+
 ## Correctness evidence
 
 The candidate completed an ordinary two-build self-hosting bootstrap with all six
