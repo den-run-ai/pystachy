@@ -15,13 +15,26 @@ used by `runtime.py`. Ordinary programs cannot use that interface.
 
 | Part | Responsibilities |
 |---|---|
-| `runtime.py` | String methods, integer `math` functions, `fsum`/`prod`, dict hashing and format-spec parsing. |
+| `runtime.py` | String methods and ASCII escaping, scalar and integer `math`, float `sum`/`fsum`/`prod`, checked integer power, range arithmetic, dict hashing and format-spec parsing. |
 | `runtime.c` | Collector, object and container memory layouts, I/O, signals, native library calls and float conversion. |
 | [The compiler](../src/README.md) | Runtime compilation, checked primitives, runtime signatures and linking. |
 
 Moving a function into the subset keeps its C symbol and signature. Programs
 continue calling the same runtime entry points. LLVM can inline across the two
 parts after their bitcode is linked.
+
+Numeric migrations preserve native scalar and list representations: the scalar,
+range, power and compensated-sum helpers allocate nothing on successful paths.
+Range length retains its existing unsigned count encoded in an `i64`; callers
+check whether that count fits the operation they perform. Float summation keeps
+CPython's distinct first-item handling for an integer start, and applies a finite,
+nonzero correction only after traversal.
+
+ASCII escaping measures the output before allocating one string, then copies
+ASCII spans and writes escapes. It reuses the runtime's UTF-8 decoder, including
+its malformed-byte and surrogate behavior. The result remains a fresh string,
+including for empty or already-ASCII input. Raw storage, the collector, and the
+small stack scratch arrays used by `hypot` and `dist` remain in `runtime.c`.
 
 ## Writing runtime code
 

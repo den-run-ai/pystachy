@@ -1776,9 +1776,11 @@ def gen_for_range(self, tgt: Node, start: str, stop: str, step: str, body: list[
     lp = Loop("range", lc, lb, ls, le)
     lp.ctr = ctr
     lp.stop = Val(stop, "int")
+    lp.nonnegative = not start.startswith("%") and int(start) >= 0 and not step.startswith("%") and int(step) > 0
     self.fn.loops.append(lp)
     self.place(lc)
     i = self.mload('int', ctr)
+    lp.idx = [i]
     if not step.startswith("%"):
         c = self.num_cmp('<' if int(step) > 0 else '>', Val(i, "int"), Val(stop, "int")).v
     else:

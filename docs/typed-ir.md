@@ -430,7 +430,7 @@ rerun `Gen.effects`; exact effect reporting already does so after a rewrite.
 | Pass | Analyses built locally | Additional invalidation after a rewrite |
 |---|---|---|
 | `charslots` | Use counts, private slot accesses and predecessor reachability | Slot layout and instruction-derived proofs |
-| `listget` | Predecessors and loop bounds | Instruction-derived value, range and alias proofs |
+| `listget` | Predecessors, loop bounds, values and invariant slots | Instruction-derived value, range and alias proofs |
 | `dictfuse` | Predecessors, values and lookup proofs | Instruction-derived value, range and alias proofs |
 | `unionslots` | Values, uses, aliases and reaching stores | Read-effect bounds, slot layout and instruction-derived proofs |
 | `nullcheck` | Predecessors, dominators, values and reaching stores | CFG, dominance and instruction-derived proofs |
@@ -442,7 +442,7 @@ before the next pass. Normal compilation does not add these verification scans.
 | Option | Implemented behavior |
 |---|---|
 | `charslots` | For a private local assigned once in the IR from a string index, keep the indexed code point if the store dominates every read and each read only compares it to a one-byte ASCII string literal. Indexing and its exceptions stay at the assignment. |
-| `listget` | Replace a sequence loop's list read with an unchecked load when the loop test proves the index valid and no intervening effect can shorten the list; a loop over a `bytes`, which never changes in place, reads each byte inline as it is lowered |
+| `listget` | Replace a list read in a sequence loop or an invariant forward range loop with an unchecked load when the loop test proves the index valid and effects preserve the list's length; a loop over a `bytes`, which never changes in place, reads each byte inline as it is lowered |
 | `dictfuse` | Reuse a known dictionary entry across membership tests, reads and updates of the same dictionary/key, until a mutation or user-code effect invalidates it |
 | `tupleiter` | Traverse tuple slots directly instead of materializing a list |
 | `listfast` | Inline a checked fast path for arbitrary `list[int]` and `bytes` reads, retaining the runtime fallback for negative or out-of-range indices |
@@ -455,6 +455,14 @@ before the next pass. Normal compilation does not add these verification scans.
 
 Disable one with `PYSTACHY_OPT=-dictfuse`, several with a comma-separated list, or all with
 `PYSTACHY_OPT=-all`. Differential runs check that the choices preserve behavior.
+
+For `range(k, len(xs), step)`, `listget` requires a nonnegative constant start and a
+positive constant step. It proves the first matching read uses the same list and the
+unchanged induction value on a forward path without joins; entry-only local stores
+can establish invariant list bindings. The whole function must exclude list writes
+(`wL`) and unknown user code (`U`), so a captured length remains valid across iterations.
+Coroutines are excluded because their callers can mutate a list while they are suspended.
+Other range reads retain their bounds checks.
 
 For a statically known string variable `s`, the frontend can lower `ord(s[i])` and
 comparisons such as `s[i] == ":"` directly to `text.ord_at`. The comparison accepts

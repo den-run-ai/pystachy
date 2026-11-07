@@ -569,14 +569,15 @@ CPython makes them; key= and the type-specialized compare functions are left out
 floats are merged with branch-free selects; and the merge buffer is memory that Pystachy's
 garbage collector scans.
 
-CPython's gamma functions and isclose() (runtime.c)
----------------------------------------------------
+CPython's gamma functions and isclose() (runtime.c, runtime.py)
+------------------------------------------------------------
 
 math.gamma() and math.lgamma() in runtime.c (the section that starts with "math.gamma and
 math.lgamma are CPython 3.13.16's m_tgamma and m_lgamma") are CPython 3.13.16's m_sinpi,
 lanczos_sum, m_tgamma and m_lgamma from Modules/mathmodule.c (SHA-256
 e9370d6380c154d620ab7d5b54727aedb6c19e786156974445b965d1dd9a233a), with their constants and
-comments; pys_m_isclose, just before them, is that file's math_isclose_impl.
+comments; pys_m_isclose in runtime.py is that file's math_isclose_impl, translated
+to typed Python with the same comparisons and arithmetic order.
 They are a derivative work of Python and are used under the Python Software Foundation License
 Version 2, reproduced below. The changes: Python's Py_IS_FINITE, Py_IS_NAN, Py_IS_INFINITY,
 Py_NAN, Py_HUGE_VAL and Py_INFINITY are C99's, the asserts are dropped, Py_UNREACHABLE() is

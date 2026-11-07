@@ -301,6 +301,7 @@ class Loop:
         self.idx: list[str] = []
         self.ctr = ""  # the slot of its counter or index
         self.stop = Val("", "")  # a range loop's stop, evaluated once
+        self.nonnegative = False  # range: a nonnegative constant start and positive constant step
 
 
 class Try:

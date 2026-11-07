@@ -19,7 +19,7 @@ import _rt
 
 
 # ---------- scalar math (native ABI, no heap allocations) ----------
-# Keep the literal constants and operation ordering identical to runtime.c.
+# Preserve the C helpers' literal constants and operation ordering.
 
 
 def pys_m_degrees(x: float) -> float:
@@ -30,6 +30,9 @@ def pys_m_radians(x: float) -> float:
     return x * (3.141592653589793 / 180.0)
 
 
+# Derived from CPython's Modules/mathmodule.c, math_isclose_impl.
+# Copyright (c) 2001-2024 Python Software Foundation; All Rights Reserved.
+# Used under the PSF License Agreement; see THIRD_PARTY_NOTICES.
 def pys_m_isclose(a: float, b: float, rel_tol: float, abs_tol: float) -> int:
     # CPython's math.isclose order: reject negative tolerances, including -inf.
     # NaNs are intentionally not rejected by that comparison.
@@ -40,7 +43,69 @@ def pys_m_isclose(a: float, b: float, rel_tol: float, abs_tol: float) -> int:
     if math.isinf(a) or math.isinf(b):
         return 0
     diff = abs(b - a)
-    return 1 if diff <= abs(rel_tol * b) or diff <= abs(rel_tol * a) or diff <= abs_tol else 0
+    # Separate exits preserve this short circuit through runtime preoptimization.
+    if diff <= abs(rel_tol * b):
+        return 1
+    if diff <= abs(rel_tol * a):
+        return 1
+    return 1 if diff <= abs_tol else 0
+
+
+# ---------- checked integer powers and unsigned range arithmetic ----------
+
+
+def pys_pow(a: int, b: int) -> int:
+    if b < 0:
+        if a == 0:
+            raise ZeroDivisionError("0.0 cannot be raised to a negative power")
+        raise ValueError("negative exponent for int ** int")
+    r = 1
+    x = a
+    if a == 0 or a == 1:
+        return a if b != 0 else 1
+    if a == -1:
+        return -1 if b & 1 else 1
+    while True:  # |a| >= 2: either the result fits or checked multiplication raises
+        if b & 1:
+            r *= x
+        b = _rt.lshr(b, 1)
+        if b == 0:
+            return r
+        x *= x
+
+
+def pys_range_len(a: int, b: int, s: int) -> int:
+    if s == 0:
+        raise ValueError("range() arg 3 must not be zero")
+    if s > 0:
+        if a >= b:
+            return 0
+        d = _rt.wrap_sub(b, a)
+        st = s
+    else:
+        if a <= b:
+            return 0
+        d = _rt.wrap_sub(a, b)
+        st = _rt.wrap_sub(0, s)
+    # Both the distance and count may exceed INT64_MAX. Keep their unsigned
+    # 64-bit patterns; callers, including iterators, already use that ABI.
+    return _rt.wrap_add(_rt.udiv(_rt.wrap_sub(d, 1), st), 1)
+
+
+def pys_range_has(x: int, a: int, b: int, s: int) -> int:
+    if s == 0:
+        raise ValueError("range() arg 3 must not be zero")
+    if s > 0:
+        if x < a or x >= b:
+            return 0
+        d = _rt.wrap_sub(x, a)
+        st = s
+    else:
+        if x <= b or x > a:
+            return 0
+        d = _rt.wrap_sub(a, x)
+        st = _rt.wrap_sub(0, s)
+    return 1 if _rt.urem(d, st) == 0 else 0
 
 
 # ---------- the math module's integer functions ----------
@@ -126,6 +191,39 @@ def pys_m_perm(n: int, k: int) -> int:
     for i in range(k):
         r *= n - i
     return r
+
+
+# ---------- sum of floats ----------
+# CPython's compensated (Neumaier) sum, preserving the C implementation's
+# arithmetic order. An integer start adds its first float without compensation.
+
+
+def pys_sum_float(xs: list[float], s: float) -> float:
+    c = 0.0
+    for x in xs:
+        t = s + x
+        if abs(s) >= abs(x):
+            c += (s - t) + x
+        else:
+            c += (x - t) + s
+        s = t
+    return s + c if c != 0.0 and math.isfinite(c) else s
+
+
+def pys_sum_float_int(xs: list[float], start: int) -> float:
+    if len(xs) == 0:
+        return float(start)
+    s = float(start) + xs[0]
+    c = 0.0
+    for i in range(1, len(xs)):
+        x = xs[i]
+        t = s + x
+        if abs(s) >= abs(x):
+            c += (s - t) + x
+        else:
+            c += (x - t) + s
+        s = t
+    return s + c if c != 0.0 and math.isfinite(c) else s
 
 
 # ---------- math.fsum and math.prod ----------
@@ -691,6 +789,51 @@ def uchar(s: str, i: int, n: int) -> int:
     if v < (128 if k == 2 else 2048 if k == 3 else 65536) or v > 1114111:
         return c * 8 + 1
     return _rt.shl(v, 3) | k
+
+
+def pys_ascii(s: str) -> str:
+    # ascii() receives repr's bytes: escape only its non-ASCII characters, with uchar's
+    # one-byte fallback and surrogate handling. Count once, then fill one exact-size str.
+    n = len(s)
+    size = n
+    first = n
+    i = 0
+    while i < n:
+        if _rt.byte(s, i) < 128:
+            i = _rt.wrap_add(i, 1)
+            continue
+        if first == n:
+            first = i
+        u = uchar(s, i, n)
+        cp = _rt.lshr(u, 3)
+        extra = (4 if cp < 256 else 6 if cp < 65536 else 10) - (u & 7)
+        if size > _rt.wrap_sub(9223372036854775807, extra):
+            raise MemoryError
+        size = _rt.wrap_add(size, extra)
+        i = _rt.wrap_add(i, u & 7)
+    r = _rt.str_new(size)  # also checks the header and trailing NUL fit
+    _rt.copy(r, 0, s, 0, first)  # the whole input when it is ASCII, still a fresh result
+    at = first
+    i = first
+    while i < n:
+        u = uchar(s, i, n)
+        cp = _rt.lshr(u, 3)
+        digits = 2 if cp < 256 else 4 if cp < 65536 else 8
+        _rt.str_put(r, at, 92)
+        _rt.str_put(r, _rt.wrap_add(at, 1), 120 if digits == 2 else 117 if digits == 4 else 85)
+        for j in range(digits):
+            d = _rt.lshr(cp, 4 * (digits - 1 - j)) & 15
+            _rt.str_put(r, _rt.wrap_add(at, j + 2), (48 if d < 10 else 87) + d)
+        at = _rt.wrap_add(at, digits + 2)
+        i = _rt.wrap_add(i, u & 7)
+        start = i
+        while i < n and _rt.byte(s, i) < 128:
+            i = _rt.wrap_add(i, 1)
+        if i > start:
+            count = _rt.wrap_sub(i, start)
+            _rt.copy(r, at, s, start, count)
+            at = _rt.wrap_add(at, count)
+    return _rt.str_done(r)
 
 
 def uspace(cp: int) -> bool:
