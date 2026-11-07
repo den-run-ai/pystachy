@@ -37,7 +37,7 @@ PASS_CONTRACTS: list[PassContract] = [
     PassContract("charslots", ["uses", "predecessors", "reaching-stores"],
                  ["cfg", "loop-shape"],
                  ["values", "range-proofs", "alias-proofs", "slot-layout", "exact-effects"]),
-    PassContract("listget", ["predecessors", "loop-ranges"],
+    PassContract("listget", ["predecessors", "loop-ranges", "values", "invariant-slots"],
                  ["cfg", "loop-shape", "slot-layout"],
                  ["values", "range-proofs", "alias-proofs", "exact-effects"]),
     PassContract("dictfuse", ["predecessors", "values", "lookup-proofs"],
@@ -511,17 +511,20 @@ def gen_listget(self, fn: IFn) -> int:
     # whose code (after a landing block, which only unwind edges reach, see preds) joins
     # this path only after its try statement or at a loop's test, where paths meet. How
     # many reads it rewrote
+    bad = FXBIT["wL"] | FXBIT["U"]
+    ranges = False
     some = False
     for lp in fn.loops:
+        ranges = ranges or (lp.kind == "range" and lp.nonnegative)
         for s in lp.seqs:
             some = some or is_list(s.t)
-    if not some:
+    ranges = ranges and not fn.coro and fn.fx & bad == 0
+    if not some and not ranges:
         return 0
     at: dict[str, int] = {}
     for j in range(len(fn.blocks)):
         at[fn.blocks[j].label] = j
     pl = self.preds(fn)
-    bad = FXBIT["wL"] | FXBIT["U"]
     n = 0
     for lp in fn.loops:
         for k in range(len(lp.tests) if lp.kind == "seq" else 0):
@@ -545,6 +548,70 @@ def gen_listget(self, fn: IFn) -> int:
                         break
                     if j == len(code) - 1 and (i.op == "br" or i.op == "cbr" or i.op == "check") and len(pl[i.b[0]]) == 1:
                         l = i.b[0]  # (a cbr's: the next sequence's test, in a zip)
+    if not ranges:
+        return n
+    # range(k, len(xs), step) tests a captured length. Its positive constant step
+    # and nonnegative start keep the induction value nonnegative (overflow exits
+    # the loop), and no list write or unknown call anywhere in this function can
+    # invalidate the length, including before the loop or across its back edge.
+    # A suspended generator can let its caller mutate the list, so is excluded.
+    # Entry-only local bindings let the same list be recognized across that edge;
+    # every other value uses canon's existing, bounded forward-path proof.
+    vs = Values(fn, pl)
+    slots: dict[str, int] = {}
+    for slot in fn.slots:
+        if slot.k == 0 and is_list(slot.t):
+            slots[f"%{slot.s or 'h'}.{slot.r[0]}"] = 0
+    for b in range(len(fn.blocks)):
+        code = fn.blocks[b].code
+        for x in range(len(code)):
+            i = code[x]
+            for k in range(len(i.a)):
+                a = i.a[k].v
+                if a in slots and slots[a] >= 0 and (k != 0 or i.op != "mem.load"):
+                    slots[a] = x + 1 if k == 0 and i.op == "mem.store" and b == 0 else -1
+    for b in range(len(fn.blocks)):
+        code = fn.blocks[b].code
+        for x in range(len(code)):
+            i = code[x]
+            if i.op == "mem.load" and i.a[0].v in slots:
+                a = i.a[0].v
+                if slots[a] >= 0 and (b > 0 or x >= slots[a]):
+                    vs.cn[f"%t{i.r[0]}"] = "slot " + a
+    for lp in fn.loops:
+        if lp.kind != "range" or not lp.nonnegative or len(lp.idx) != 1 or len(pl[lp.body]) != 1:
+            continue
+        stop = self.canon(vs, lp.stop.v)
+        w = vs.at[int(stop[2:])] if stop.startswith("%t") and stop[2:].isdigit() else -1
+        if w < 0:
+            continue
+        length = fn.blocks[w // vs.stride].code[w % vs.stride]
+        if length.op != "mach.load" or length.t != "int" or length.s != "":
+            continue
+        # len(list) is a load of its first field. A matching list.get proves the
+        # pointer is a list; a load of another object's length cannot match it.
+        seq = self.canon(vs, length.a[0].v)
+        idx = self.canon(vs, lp.idx[0])
+        l = lp.body
+        steps = 0
+        while l != "" and steps < len(fn.blocks):
+            steps += 1
+            b = at[l]
+            code = fn.blocks[b].code
+            l = ""
+            for j in range(len(code)):
+                i = code[j]
+                if i.op == "rt" and i.s == "list.get" and self.canon(vs, i.a[0].v) == seq and self.canon(vs, i.a[1].v) == idx:
+                    i.op = "list.load"
+                    i.s = ""
+                    i.r = [i.r[0], fn.n + 1, fn.n + 2, fn.n + 3]
+                    fn.n += 3
+                    n += 1
+                    break
+                if self.opfx(i, fn.fa) & bad != 0:
+                    break
+                if j == len(code) - 1 and (i.op == "br" or i.op == "cbr" or i.op == "check") and len(pl[i.b[0]]) == 1 and at[i.b[0]] > b:
+                    l = i.b[0]
     return n
 
 def gen_dictfuse(self, fn: IFn) -> int:
