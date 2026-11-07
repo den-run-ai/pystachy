@@ -29,6 +29,7 @@ The extra requirements below are in addition to the compiler and its build toolc
 | [suggest](suggest/README.md) | Spelling suggestions with `difflib` | [App corpus](../tests/programs/apps/example_suggest.py) | None |
 | [topk](topk/README.md) | Word counts and heap-based selection | [App corpus](../tests/programs/apps/example_topk.py) | None |
 | [urlstats](urlstats/README.md) | URL parsing and canonicalization with `urllib.parse` | [App corpus](../tests/programs/apps/example_urlstats.py) | None |
+| [uvio](uvio/README.md) | Optional owned-buffer libuv TCP exchanges with deadlines and cancellation | `make uvio-check`: CPython/JIT/AOT, GC stress and native ownership checks | Linux; separate libuv development installation |
 
 ## Checks
 
