@@ -1,0 +1,16 @@
+batches False [11.0, 5.0, -1.0, 8.0, 20.0, 8.0, 20.0, 11.0, 5.0]
+edges False ok
+initial lengths False ok
+exception False [1.0, 2.0]
+mutation False 0 [1.0, 7.0, 3.0, 4.0]
+mutation False 1 [1.0, 2.0]
+mutation False 2 [1.0, 2.0]
+batches True [11.0, 5.0, -1.0, 8.0, 20.0, 8.0, 20.0, 11.0, 5.0]
+edges True ok
+initial lengths True ok
+exception True [1.0, 2.0]
+mutation True 0 [1.0, 7.0, 3.0, 4.0]
+mutation True 1 [1.0, 2.0]
+mutation True 2 [1.0, 2.0]
+guarded scoring controls passed
+[exit 0]
