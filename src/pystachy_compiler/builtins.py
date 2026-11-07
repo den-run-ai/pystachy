@@ -168,6 +168,33 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         self.err(GALIASUSE if name == GALIAS else TYPESUSE.replace("NAME", name[len(TYPESMOD) + 1 :]))
     if name == "ffi.at":
         self.err("ffi.at(xs, k) passes a list from an index to C: it is only an argument of a call of an @extern function, for a list[float] or list[ffi.c_int64] parameter")
+    if name == "__pys_ctypes_value":
+        # ctypes' generic conversion helpers keep concrete scalars unboxed, but
+        # must not accept int(float), float(str), or arbitrary conversion methods.
+        # Existing union/dynamic callers retain their checked boundary. A cell
+        # borrow also keeps its nominal type, without a reference-union box.
+        if (self.curfn.mod != "ctypes" or not lib_source(self.curfn.node.line, self.libdir, "ctypes.py") or
+                len(args) != 2 or args[1].kind != "str" or args[1].s not in ["integer", "number", "address", "cell"] or
+                any([a.kind in ["kw", "starred", "dstar"] for a in args])):
+            self.err(f"name '{name}' is not defined")
+        kind = args[1].s
+        v = self.expr(args[0], "")
+        if kind == "cell":
+            if v.t in self.classes and self.derives(v.t, "ctypes$c_void_p"):
+                return self.coerce(v, "ctypes$c_void_p")
+            pointer = self.coerce(v, "ctypes$_Pointer")
+            return self.getfield(pointer, self.field(pointer, "_cell"), "_cell")
+        if kind == "address" and v.t == "None":
+            return Val("0", "int")
+        members = ["int", "bool"] + (["float"] if kind == "number" else ["None"] if kind == "address" else [])
+        if v.t == BIG:
+            v = self.big_narrow(v)
+        if v.t == "dyn" or v.t == BIGOPT:
+            return self.coerce(v, self.union_type(members))
+        actual = umembers(unopt(v.t)) if is_union(unopt(v.t)) else [unopt(v.t)]
+        if any([t not in members for t in actual]) or (is_opt(v.t) and "None" not in members):
+            self.err(f"ctypes {kind} argument requires {' | '.join(members)}, got {typestr(v.t)}")
+        return v
     if name == "__pys_thread_stack_valid":
         if (self.curfn.mod != "_thread" or not lib_source(self.curfn.node.line, self.libdir, "_pystachy_thread.py") or
                 len(args) != 1 or any([a.kind in ["kw", "starred", "dstar"] for a in args])):

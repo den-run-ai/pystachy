@@ -177,6 +177,73 @@ class CtypesSchemaTests(unittest.TestCase):
         self.assertNotIn("lib.abs", call_names(function))
         self.assertEqual(function.kids[2].kids[0].kids[0].s, "lib")
 
+    def test_immediate_byref_uses_the_cell_without_moving_arguments(self):
+        body = parsed(LIBRARY + "lib.set.argtypes = [ct.POINTER(ct.c_void_p), ct.c_int]\n"
+                      + "lib.set.restype = None\nlib.set(ct.byref(make_cell()), later())\n")
+        call = body.kids[-1].kids[0]
+        arguments = list(call.kids[1:])
+        cell = arguments[0].kids[1]
+        ctypes_schema.lower_ctypes(body)
+        self.assertEqual(call.kids[1:], arguments)
+        self.assertIs(arguments[0].kids[1], cell)
+        self.assertEqual(ctypes_schema.dotted(arguments[0].kids[0]), "_pys_ctypes_support._byref_cell")
+        self.assertEqual(call_names(call), ["_pys_ctypes_fn0", "_pys_ctypes_support._byref_cell", "make_cell", "later"])
+        self.assertEqual(sum(n is cell for n in walk(body)), 1)
+        self.assertEqual(sum(n is arguments[1] for n in walk(body)), 1)
+
+    def test_immediate_byref_resolves_import_aliases_and_generated_prefix(self):
+        for imports, call in (
+            ("import ctypes\n", "ctypes.byref(cell)"),
+            ("import ctypes as ct\n", "ct.byref(cell)"),
+            ("from ctypes import byref as borrow\n", "borrow(cell)"),
+        ):
+            with self.subTest(call=call):
+                source = ("from ctypes import CDLL, POINTER, c_void_p\n" + imports
+                          + "lib = CDLL(None)\nlib.set.argtypes = [POINTER(c_void_p)]\n"
+                          + "lib.set.restype = None\n_pys_ctypes = 1\nlib.set(" + call + ")\n")
+                body = self.lower(source)
+                self.assertEqual(call_names(body.kids[-1]), ["_pys_ctypes__fn0", "_pys_ctypes__support._byref_cell"])
+
+    def test_stored_and_unrelated_byref_calls_keep_their_wrappers(self):
+        body = self.lower(LIBRARY + "lib.set.argtypes = [ct.POINTER(ct.c_void_p)]\n"
+                          + "lib.set.restype = None\nref = ct.byref(cell)\n"
+                          + "use(ct.byref(cell))\nlib.set(ref)\nlib.set(cell)\n")
+        self.assertEqual(call_names(body).count("ct.byref"), 2)
+        self.assertNotIn("_pys_ctypes_support._byref_cell", call_names(body))
+        self.assertEqual(body.kids[-2].kids[0].kids[1].s, "ref")
+        self.assertEqual(body.kids[-1].kids[0].kids[1].s, "cell")
+
+    def test_only_single_positional_byref_arguments_are_elided(self):
+        for argument in ("ct.byref()", "ct.byref(cell, 0)", "ct.byref(value=cell)",
+                         "ct.byref(*values)", "ct.byref(**values)"):
+            with self.subTest(argument=argument):
+                body = self.lower(LIBRARY + "lib.set.argtypes = [ct.POINTER(ct.c_void_p)]\n"
+                                  + "lib.set.restype = None\nlib.set(" + argument + ")\n")
+                self.assertEqual(call_names(body.kids[-1]), ["_pys_ctypes_fn0", "ct.byref"])
+        body = self.lower(DECLARED + "lib.abs(ct.byref(cell))\n")
+        self.assertEqual(call_names(body.kids[-1]), ["_pys_ctypes_fn0", "ct.byref"])
+
+    def test_immediate_byref_respects_local_and_enclosing_shadowing(self):
+        body = self.lower(LIBRARY + "from ctypes import byref as borrow\n"
+                          + "lib.set.argtypes = [ct.POINTER(ct.c_void_p)]\nlib.set.restype = None\n"
+                          + "def module_alias(ct):\n    lib.set(ct.byref(cell))\n"
+                          + "def function_alias(borrow):\n    lib.set(borrow(cell))\n"
+                          + "def outer(ct):\n    def inner():\n        lib.set(ct.byref(cell))\n"
+                          + "def defaults(ct=lib.set(ct.byref(cell))):\n    pass\n")
+        functions = {n.s: n for n in body.kids if n.kind == "def"}
+        self.assertEqual(call_names(functions["module_alias"]), ["_pys_ctypes_fn0", "ct.byref"])
+        self.assertEqual(call_names(functions["function_alias"]), ["_pys_ctypes_fn0", "borrow"])
+        self.assertEqual(call_names(functions["outer"]), ["_pys_ctypes_fn0", "ct.byref"])
+        self.assertEqual(call_names(functions["defaults"]), ["_pys_ctypes_fn0", "_pys_ctypes_support._byref_cell"])
+
+    def test_immediate_byref_does_not_skip_a_later_import_binding(self):
+        body = self.lower(LIBRARY + "lib.set.argtypes = [ct.POINTER(ct.c_void_p)]\n"
+                          + "lib.set.restype = None\nlib.set(borrow(cell))\n"
+                          + "def earlier():\n    lib.set(borrow(cell))\n"
+                          + "from ctypes import byref as borrow\nlib.set(borrow(cell))\n")
+        self.assertEqual(call_names(body).count("borrow"), 2)
+        self.assertEqual(call_names(body).count("_pys_ctypes_support._byref_cell"), 1)
+
     def test_generated_names_do_not_replace_user_bindings(self):
         body = self.lower(DECLARED + "_pys_ctypes_fn0 = 99\nresult = lib.abs(-7)\n")
         names = [n.s for n in body.kids if n.kind == "def"]

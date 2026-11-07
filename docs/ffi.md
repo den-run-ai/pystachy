@@ -186,10 +186,10 @@ assignment. A missing unused library still raises `OSError`.
 | `c_int`, `c_int32` | Python integers; low 32 bits interpreted as signed. |
 | `c_uint`, `c_uint32` | Python integers; low 32 bits interpreted as unsigned. |
 | `c_int64`, `c_longlong`, `c_long`, `c_ssize_t` | Signed 64-bit integers on the supported LP64 targets. |
-| `c_double`, `c_float` | Python floats; C double or float ABI, respectively. |
+| `c_double`, `c_float` | Python floats or integers (including bool); C double or float ABI, respectively. |
 | `c_char_p` | `bytes` or `None`; borrowed input, copied NUL-terminated result. |
 | `c_void_p` | Scalar arguments/results are integer addresses or `None`; use a cell's `.value` as a scalar argument. Addresses must be below `2**63`. |
-| `POINTER(c_void_p)` argument | `byref(c_void_p(...))`, borrowing one stable pointer-sized cell for the call. Shared cells preserve native aliasing. |
+| `POINTER(c_void_p)` argument | A `c_void_p` cell or `byref(cell)`, borrowing one stable pointer-sized cell for the call. Shared cells preserve native aliasing. |
 | `None` restype | C void. |
 
 `c_void_p()` creates a cell whose `.value` is `None`; C writes through `byref`
@@ -197,6 +197,12 @@ update that same cell. `string_at(address, size=-1)` returns a bytes copy, using
 the copying rules above. Negative/high-bit pointer values raise `OverflowError`
 instead of ctypes' unsigned wrapping. Scalar type objects are declaration markers,
 not general ctypes scalar instances; `c_void_p` is the supported cell constructor.
+
+Generated conversion wrappers specialize on concrete numeric arguments without
+allocating union boxes; existing union and dynamic values retain their checked
+conversions. An immediate `byref(cell)` argument borrows the cell directly, while
+a stored `byref` result keeps its owning wrapper. Cells retain stable managed
+storage, and pointer results still use the ordinary `int | None` representation.
 
 Calls must name `lib.symbol` directly and supply exactly the declared positional
 arguments. Imports and library bindings must remain stable. Function/library

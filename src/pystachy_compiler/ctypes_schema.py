@@ -81,11 +81,14 @@ class Prototype:
             typ = self.args[i]
             name = "a" + str(i)
             native = binary if typ == "bytes" else raw + ".c_void_p" if typ == "pointer" else prefix + "_list[" + raw + ".c_int64]" if typ == "outpointer" else floating if typ == "float" else raw + "." + typ
-            public = binary if typ == "bytes" else support + "._Address" if typ == "pointer" else support + "._Pointer" if typ == "outpointer" else support + "._Number" if typ in ("float", "c_float") else support + "._Integer"
             convert = "_signed32" if typ == "c_int" else "_unsigned32" if typ == "c_uint" else "_address" if typ == "pointer" else "_borrow" if typ == "outpointer" else "_floating" if typ in ("float", "c_float") else "_integer"
             value = name if typ == "bytes" else support + "." + convert + "(" + name + ")"
             params.append(name + ": " + native)
-            wrapper.append(name + ": " + public)
+            # Specialize conversions on the actual argument type. The support
+            # helpers check the accepted ctypes types without first boxing every
+            # scalar into a union. Unannotated parameters specialize even in a
+            # caller module that opts into dynamic Any.
+            wrapper.append(name + ": " + binary if typ == "bytes" else name)
             values.append(value)
         typ = self.ret
         native_ret = "None" if typ == "void" else binary if typ == "bytes" else raw + ".c_void_p" if typ == "pointer" else floating if typ == "float" else raw + "." + typ
@@ -105,7 +108,7 @@ class Prototype:
         return out
 
 
-def rewrite(n: Node, libraries: dict[str, str], prototypes: dict[str, Prototype], aliases: dict[str, str]) -> None:
+def rewrite(n: Node, libraries: dict[str, str], prototypes: dict[str, Prototype], aliases: dict[str, str], support: str) -> None:
     if n.kind == "import":
         # Declaration-only names disappear with their checked uses; the support
         # module contains real cells/helpers, not fake ctypes type objects.
@@ -114,11 +117,11 @@ def rewrite(n: Node, libraries: dict[str, str], prototypes: dict[str, Prototype]
         return
     if n.kind == "def":
         for k in n.kids[:2] + n.kids[3:]:
-            rewrite(k, libraries, prototypes, aliases)
+            rewrite(k, libraries, prototypes, aliases, support)
         local = scope_names(n)
         visible = {k: libraries[k] for k in libraries if k not in local}
         imported = {k: aliases[k] for k in aliases if k.split(".")[0] not in local}
-        rewrite(n.kids[2], visible, prototypes, imported)
+        rewrite(n.kids[2], visible, prototypes, imported, support)
         return
     if n.kind in ("class", "subclass", "lambda", "listcomp", "setcomp", "dictcomp"):
         # These scopes have distinct binding rules. Keep them out of this first
@@ -127,7 +130,7 @@ def rewrite(n: Node, libraries: dict[str, str], prototypes: dict[str, Prototype]
             if mentions(n, lib):
                 reject(n, "library calls in classes, lambdas and comprehensions are not supported")
         for k in n.kids:
-            rewrite(k, {}, prototypes, aliases)
+            rewrite(k, {}, prototypes, aliases, support)
         return
     if n.kind == "call":
         name = dotted(n.kids[0])
@@ -138,8 +141,15 @@ def rewrite(n: Node, libraries: dict[str, str], prototypes: dict[str, Prototype]
             if len(n.kids) - 1 != len(p.args) or any([a.kind in ("kw", "starred", "dstar") for a in n.kids[1:]]):
                 reject(n, "foreign calls require exactly the declared positional arguments")
             n.kids[0] = mk("name", p.generated, n.line, [])
-            for k in n.kids[1:]:
-                rewrite(k, libraries, prototypes, aliases)
+            for i in range(len(p.args)):
+                argument = n.kids[i + 1]
+                if p.args[i] == "outpointer" and argument.kind == "call" and len(argument.kids) == 2 and argument.kids[1].kind not in ("kw", "starred", "dstar") and aliases.get(dotted(argument.kids[0]), "") == "byref":
+                    # Only the temporary wrapper disappears. The typed helper still
+                    # evaluates/checks the cell here, before subsequent arguments;
+                    # borrowing its storage stays in the foreign call's wrapper.
+                    at = argument.kids[0].line
+                    argument.kids[0] = mk("attr", "_byref_cell", at, [mk("name", support, at, [])])
+                rewrite(argument, libraries, prototypes, aliases, support)
             return
     name = dotted(n)
     if name in aliases and aliases[name] in MARKERS:
@@ -147,7 +157,7 @@ def rewrite(n: Node, libraries: dict[str, str], prototypes: dict[str, Prototype]
     if n.kind == "name" and n.s in libraries:
         reject(n, "libraries and foreign function objects cannot escape or be rebound")
     for k in n.kids:
-        rewrite(k, libraries, prototypes, aliases)
+        rewrite(k, libraries, prototypes, aliases, support)
 
 
 def mentions(n: Node, name: str) -> bool:
@@ -255,7 +265,10 @@ def lower_ctypes(body: Node) -> None:
                 if prototypes[key].at == i:
                     out += prototypes[key].declarations(prefix)
         else:
-            rewrite(st, libraries, prototypes, aliases)
+            # A later byref import must not lose its unbound-name lookup. Earlier
+            # function bodies conservatively keep their ordinary wrappers too.
+            visible = {name: aliases[name] for name in aliases if aliases[name] != "byref" or imported_at[name] < i}
+            rewrite(st, libraries, prototypes, visible, prefix + "_support")
             if st.kind != "import" or len(st.kids) > 0:
                 out.append(st)
     body.kids = out
