@@ -1,6 +1,7 @@
 """Gen component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 import os
+from src.pystachy_compiler.source_lines import SourceLines
 from src.pystachy_compiler.lowering import gen_lower_scalar as scalar_ir_lower_scalar
 from src.pystachy_compiler.scalar_ir import (
     gen_scalar as scalar_ir_scalar,
@@ -1305,6 +1306,7 @@ class Gen:
         for op in IROPS:
             self.opfxs[op] = fxmask(IROPS[op].replace("T", "").replace("*", ""))
         self.out: list[str] = []  # completed LLVM function chunks and the current function's lines
+        self.source_lines = SourceLines(os.getenv("PYSTACHY_DEBUG_LINES", "") == "1")
         self.fns: list[IFn] = []  # the functions compiled, in the order they were completed
         self.fll: dict[str, int] = {}  # and their positions there by symbol, once the program is built
         self.summaries = EffectSummaries()

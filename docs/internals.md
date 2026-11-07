@@ -672,6 +672,7 @@ provide the broader behavior check. See [testing](testing.md) for the commands.
 | `PYSTACHY_CACHE` | Runtime cache directory; checkout default is `build/`, installed default is `${XDG_CACHE_HOME:-$HOME/.cache}/pystachy` |
 | `PYSTACHY_PATH` | Additional import directories, separated by `:` |
 | `PYSTACHY_CFLAGS` | Extra clang flags for runtime compilation and AOT linking; part of the cache key |
+| `PYSTACHY_DEBUG_LINES=1` | Emit deterministic Python file, function and instruction line metadata in LLVM IR; AOT retains DWARF line tables. No local variable descriptions; part of the runtime cache key. See [source attribution](../bench/source_attribution/README.md) for JIT and profiler limits. |
 | `PYSTACHY_IRCHECK=1` | Verify typed IR before lowering and after transforming passes |
 | `PYSTACHY_IRFX=1` | Print function effect summaries to stderr |
 | `PYSTACHY_OPT` | Disable named optimizations with `-name`, comma-separated, or all with `-all`; see [IR passes](typed-ir.md#optimizations) |
