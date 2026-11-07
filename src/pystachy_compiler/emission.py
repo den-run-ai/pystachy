@@ -5,13 +5,15 @@ from src.pystachy_compiler.bigints import narrows
 from src.pystachy_compiler.diagnostics import Rejoin, fail, int_lists
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.ir import Blk, Data, Frame, Ins, Val
-from src.pystachy_compiler.specs import BIGOPT, CHECKED, LIST_WRITES, NARROWED, RTL, RTSYM, STR_HEADER_SIZE, TEXT_OPS, UNICODE_AUDIT
+from src.pystachy_compiler.specs import BIGOPT, CHECKED, LIST_READS, LIST_WRITES, NARROWED, RTL, RTSYM, STR_HEADER_SIZE, TEXT_OPS, UNICODE_AUDIT
 from src.pystachy_compiler.utils import (
     RtFn,
+    elem,
     identity_abi,
     is_opt,
     is_sopt,
     is_tuple,
+    list_read_error,
     list_write_error,
     numeric_identity,
     optnames,
@@ -314,6 +316,8 @@ def gen_rt(self, name: str, ret: str, args: list[str], x: str = "") -> str:
             i.x = self.strvals[int(v[3:])]
     if not ok:
         fail(f"internal error: {name} called as {ret} ({', '.join(args)}), but RUNTIME declares it as {runtime_decl(k)}", 0)
+    if k in LIST_READS:
+        fail(f"internal error: {k} needs list_get's concrete storage operands", 0)
     if k in LIST_WRITES:
         fail(f"internal error: {k} needs list_write's concrete storage operands", 0)
     if ret == "void":
@@ -326,6 +330,32 @@ def gen_rt(self, name: str, ret: str, args: list[str], x: str = "") -> str:
     if self.list_id_kind(ts[0]) != 0:
         self.list_identity(Val(result, ts[0]))
     return result
+
+
+def gen_list_len(self, o: Val) -> str:
+    # The semantic owner survives to the bounds pass; LLVM still emits one load.
+    i = Ins("list.len", "int", "")
+    i.a = [o]
+    error = list_read_error(i)
+    if error != "":
+        fail(f"internal error: list.len: {error}", 0)
+    self.put(i, 1)
+    return f"%t{i.r[0]}"
+
+
+def gen_list_get(self, key: str, args: list[Val]) -> str:
+    # Preserve the concrete receiver and packed result independently of the ABI.
+    i = Ins("rt", "*" + elem(args[0].t) if key == "list.get" and len(args) > 0 else "dyn", key)
+    i.a = args
+    error = list_read_error(i, self.rtfns[key].sig if key in self.rtfns else None)
+    if error != "":
+        fail(f"internal error: {key}: {error}", 0)
+    name = rtsym(key)
+    if self.rtmode and "@" + name == self.curfn.ll:
+        self.err(f"{name}() implements an operation that it uses: write it without that operation")
+    self.runtime(name)
+    self.put(i, 1)
+    return f"%t{i.r[0]}"
 
 
 def gen_list_write(self, key: str, args: list[Val]) -> None:

@@ -1,0 +1,38 @@
+all 256 bytes and empty input
+'ab cd' [256, 32, 257]
+'cd ab' [256, 32, 257]
+'' []
+'a' [97]
+'aa' [256]
+'aaa' [256, 97]
+'aaaa' [257]
+'aaaaa' [258]
+'aaaaaa' [257, 256]
+'aaaaaaa' [257, 256, 97]
+'banana bandana banana\nbanana\tbandana\n' [259, 262, 263, 10, 259, 9, 261, 10]
+'bananas bandanas' [259, 115, 262, 115]
+'日本語 😀 ÆÉ Ġ é' [230, 151, 165, 230, 156, 172, 232, 170, 158, 32, 240, 159, 152, 128, 32, 195, 134, 195, 137, 32, 196, 160, 32, 101, 204, 129]
+'a\xa0b\u2003c' [97, 194, 160, 98, 226, 128, 131, 99]
+'x\x0b\x0cy' [120, 11, 12, 121]
+"don't won't I'll 123" [100, 111, 110, 39, 116, 32, 119, 111, 110, 39, 116, 32, 73, 39, 108, 108, 32, 49, 50, 51]
+'  a\tb\r\nc \n\n' [32, 32, 97, 9, 98, 13, 10, 99, 32, 10, 10]
+'\x00\x01\x7f' [0, 1, 127]
+'日本語 😀 日本語 😀\nÆÉ Ġ é' [263, 267, 32, 263, 267, 10, 195, 134, 195, 137, 32, 196, 160, 32, 101, 204, 129]
+decode [] ''
+decode [255] '�'
+decode [192, 128] '��'
+decode [226, 130] '�'
+decode [237, 160, 128] '���'
+decode [65, 128, 66] 'A�B'
+decode [240, 159, 152, 128] '😀'
+decode [195, 134, 195, 137] 'ÆÉ'
+vocab -1 vocab_size must be at least 256, so we can encode all bytes
+vocab 255 vocab_size must be at least 256, so we can encode all bytes
+exhausted '' 257 max() iterable argument is empty
+exhausted 'a' 257 max() iterable argument is empty
+exhausted 'ab' 258 max() iterable argument is empty
+token -1 -1
+token 264 264
+token 999999 999999
+byte BPE checks complete
+[exit 0]

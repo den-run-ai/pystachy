@@ -4,6 +4,7 @@
 cd "$(dirname "$0")/.." || exit 1
 PY=${PY:-python3}
 PYS=${PYS:-./pystachy}
+export PYSTACHY_PROGRAM_CACHE=0  # The JIT column includes frontend and LLVM work.
 T=$(mktemp -d "${TMPDIR:-/tmp}/pystachy-bench.XXXXXX") || exit 1
 trap 'rm -rf "$T"' EXIT
 trap 'exit 130' INT

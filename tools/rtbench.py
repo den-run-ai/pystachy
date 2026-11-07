@@ -23,6 +23,7 @@ REPS = int(os.environ.get("REPS", "7"))
 names = sys.argv[3:] or sorted(f[:-3] for f in os.listdir(D) if f.endswith(".py"))
 tmp = tempfile.mkdtemp()
 ENV = {k: v for k, v in os.environ.items() if k != "PYSTACHY_HOME"}
+ENV["PYSTACHY_PROGRAM_CACHE"] = "0"  # Compare the same JIT compilation work under both compilers.
 
 
 def best(cmd, want):

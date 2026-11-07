@@ -1,4 +1,4 @@
-@f.varargs.1: pys_on_stack pys_new pys_new pys_vtuple_from
+@f.varargs.1: pys_on_stack pys_new pys_alloc
 @main.init: pys_dict_new_atomic pys_dict_set pys_repr pys_write pys_write pys_repr pys_write pys_write pys_repr pys_write pys_write pys_repr pys_write pys_write pys_write pys_write pys_str_int pys_write pys_write pys_repr pys_write pys_write pys_str_int pys_write pys_write
 @f.zero:
 @f.empty:

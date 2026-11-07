@@ -131,3 +131,110 @@ behavior. The benchmark therefore reports adapted CPython as well as original
 CPython. The adapter is deliberately specific to this model: its sums are
 nonempty, and its concrete operator signatures do not provide the original
 class's complete general-purpose scalar/object API.
+
+## Direct tuple materialization research
+
+The bounded experiment for [#898](https://github.com/den-run-ai/pystachy/issues/898)
+compares main at `f7103067545b43cdcd8ce20dc66b1571425b3a8d` with compiler source
+`1d452c39e6f9752fdfd521e74b0cfdfa8e86f7d1`. The benchmark adaptation is unchanged.
+Derivative tuples are constructed in their final runtime-length representation
+using `vtuple.make`, which retains native typed operands and has one semantic
+result. Existing fixed tuples are read directly into the final representation;
+compatible tuple displays can avoid constructing a fixed tuple first. Literal
+constant tuples retain their existing identity path. `Value` nodes and their
+child lists retain their graph representation.
+
+The [structural report](results/direct-tuples-ir-linux-x86_64-2026-11-07.json)
+counts static sites after Pystachy's typed-IR passes:
+
+| Derivative-producing method | Fixed tuple allocations, before → after | Typed operations, before → after |
+|---|---:|---:|
+| `Value.__add__` | 1 → 0 | 32 → 27 |
+| `Value.__mul__` | 2 → 0 | 43 → 29 |
+| `Value.__pow__` | 2 → 0 | 32 → 24 |
+| `Value.log` | 2 → 0 | 30 → 22 |
+| `Value.exp` | 2 → 0 | 32 → 24 |
+| `Value.relu` | 2 → 0 | 28 → 20 |
+
+Each method still allocates its `Value` node and final derivative tuple. Its
+`vtuple.from` call becomes one `vtuple.make`; `__add__` retains two reads from its
+constant derivative tuple. These are static operation counts, not dynamic
+allocation counts or allocated bytes. LLVM may already remove some fixed scalar
+tuples. The minimal `return (x, x + 1.0)` example with result annotation
+`tuple[float, ...]` changes from two fixed allocations plus `vtuple.from` to one
+`vtuple.make`.
+
+### Timing and numerical evidence
+
+The 7 November 2026 follow-up ran on a shared AMD EPYC 9V74 host, pinned to CPU 2,
+with CPython 3.13.16 and LLVM 18.1.3. It uses the same seed, exact dataset and
+100-step / 744-token / five-name workload described above. Both compilers run
+hosted under the same CPython; generated JIT and AOT programs execute natively.
+The final AOT comparison builds both executables first, then runs five pairs of
+fresh processes, reversing before/after order on alternate pairs. No other
+coordinated compiler builds or tests ran during these pairs.
+
+| AOT phase | Main median | Direct tuples median | Before / after |
+|---|---:|---:|---:|
+| Forward | 394.34 ms | 339.30 ms | 1.162x |
+| Backward | 508.23 ms | 529.10 ms | 0.961x |
+| Adam | 38.85 ms | 40.02 ms | 0.971x |
+| Training total | 943.57 ms | 900.17 ms | 1.048x |
+| Five-name inference | 13.45 ms | 12.83 ms | 1.048x |
+
+Training ranges overlap: 0.895–1.028 s before and 0.799–0.982 s after. One of the
+five pairs is slower after the change. Forward execution improves in the median,
+while backward and Adam medians regress slightly; the measured overall training
+difference is inconclusive at this sample size on a shared host. The structural
+simplification is established independently of the timing result. No build-time,
+allocated-byte, or full 1000-step convergence improvement is claimed.
+
+All ten alternating AOT processes match the original CPython reference exactly:
+25,252 floating-point values per process, plus exact documents, vocabulary,
+token counts and generated names. Maximum absolute numerical error is zero.
+The [alternating report](results/direct-tuples-alternating-linux-x86_64-2026-11-07.json)
+retains execution order, every run's phase totals and comparisons, source and
+binary hashes, build commands, and the small comparison driver's exact source.
+Full reference vectors and individual step timers can be regenerated with the
+existing controller.
+
+Earlier [baseline](results/direct-tuples-before-linux-x86_64-2026-11-07.json) and
+[candidate](results/direct-tuples-after-linux-x86_64-2026-11-07.json) reports each
+run all four tiers three times; all 24 processes also match exactly. Their
+exploratory training medians are 1.117 → 0.884 s for JIT and 1.086 → 0.809 s for
+AOT. These reports ran in separate blocks, and another test briefly overlapped
+the measurement window. The apparent 1.26x/1.34x gains are therefore not reliable
+estimates; the alternating AOT follow-up above is the primary timing evidence.
+The controller's snapshots can also shift later collection work between phases.
+
+To reproduce the full four-tier reports, use the command in **Reproduce** with
+`--compiler 'python3.13 /path/to/before/pystachy.py'` and then the corresponding
+candidate path, retaining `--steps 100 --samples 5 --repeats 3`. To reproduce the
+bounded alternating follow-up, use the driver stored in its report and replace
+the recorded workspace/Python paths with local paths. Generate a full original
+reference report first. To reproduce static counts, run in each checkout:
+
+```sh
+python3.13 tools/inspect_compiler.py bench/microgpt/microgpt.py \
+  --output /path/to/new-inspection-directory
+```
+
+### Correctness checks for the changed representation
+
+The final compiler reaches a three-stage native fixed point: 833,069 compiler
+IR lines and 18,805 runtime IR lines, identical between stages. Twelve selected
+CPython differential fixtures pass in both native JIT and AOT (24 runs), and six
+of those fixtures also pass with collection at every program allocation (12
+runs). They cover evaluation order and later-item exceptions, optional/bool
+packing, checked and promoting integers, constant identity, existing tuple
+aliases, pointer-valued operands, and retained graphs. Typed verification plus
+`llvm-as` accepts 67 selected tuple programs including microGPT after updating
+one expected allocation-call snapshot. `make check-fast` passes, including 194
+typed-IR tests; `check-runtime` passes.
+
+An initial broader IR comparison found two new acceptance failures caused by
+using an operand's contextual type too eagerly: nullable concatenation and
+comparison of differently typed tuples. Both were fixed by retaining soft hints
+and requiring compatible element conversions, then retested in the focused
+native suite. That earlier corpus comparison contains expected IR changes and
+checkout-path differences and is not a successful final byte-equality gate.

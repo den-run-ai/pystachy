@@ -162,6 +162,7 @@ The exact operation table is `IROPS`; its current groups are:
 | Scalar arithmetic, bitwise operations and machine conversions | `scalar.bin`, `scalar.cast`, `scalar.cmp` |
 | Native memory access | `mem.load`, `mem.store` |
 | Fixed-layout allocation | `alloc.fixed` |
+| Known-arity runtime-length tuple construction | `vtuple.make` |
 | Fixed tuple slots | `tuple.load`, `tuple.store` |
 | Object layout addresses | `field.addr` |
 | Container payload conversions | `slot.pack`, `slot.unpack` |
@@ -206,6 +207,18 @@ initialization, field and tuple stores, stack tuple promotion, and the runtime A
 retain their existing behavior. The verifier checks the layout type, one result,
 runtime declaration and absence of unused operands or metadata. Variable-sized
 allocations and closure/cell layouts still use runtime calls.
+
+`vtuple.make` constructs the final runtime-length tuple from already evaluated,
+coerced homogeneous elements. Its result is `vtuple[T]` and every operand has native
+type `T`; it owns one semantic result and an allocation effect. A fresh tuple display
+can use it directly, while conversion from an existing fixed tuple first reads that
+tuple without changing its storage. Literal constant displays keep their existing
+constant path. Lowering allocates the existing scanned layout (length followed by
+eight-byte elements), retaining native references across that allocation; address
+and bool-widening temporaries are local to the emitter. This removes intermediate
+fixed tuples and the copy through `vtuple.from` without a new runtime API, allocator
+attributes, or specialization on runtime lengths. The verifier checks the supported
+element representations, operand agreement, result count and allocation declaration.
 
 `tuple.load` and `tuple.store` retain a fixed tuple's type, constant item index and
 declared item type while transferring an opaque `%slot`. The verifier checks that the
@@ -375,7 +388,7 @@ Each `RUNTIME` entry has the form `result:params|effects|symbol`. Its type varia
 `pys_<key>` with dots replaced by underscores. Calls are checked against the entries;
 `tools/check_runtime.py` checks them against the C and subset runtime implementations.
 
-### Shared native-list write contract
+### Shared native-list storage contracts
 
 `LIST_WRITES` selects the append, indexed-assignment and insert adapters. Their
 signatures and effects remain in `RUNTIME`; `list_write_error` supplies the same
@@ -385,6 +398,21 @@ These `rt` instructions retain the receiver's list type and the packed item's ty
 storage. Existing inference holes, including the None-only `list[opt[?]]`, still
 belong to frontend refinement; this validator checks retained type agreement,
 not canonical type resolution. Other runtime families use their existing builders.
+
+`LIST_READS` selects the indexed-read adapters. `Gen.list_get` and the verifier
+share `list_read_error`: `list.get` and inline `list.load` retain a concrete list
+receiver, native integer index and encoded result `*element`. The identity adapter
+returns `dyn` and requires the receiver's numeric identity kind. Decoding the
+packed slot and reading a promoting integer's companion remain separate operations;
+the encoded result is not an address or an unpacked Python value. Union payload
+provenance continues to use the receiver definition's element type.
+
+`Gen.list_len` preserves the measured list as the operand of `list.len` for source
+`len`, sequence-loop bounds and unpacking. The value index records this operation
+so `listget` can connect a captured range stop to its owner without reconstructing
+list header pointer arithmetic. No length is cached across a mutation: each semantic
+operation still lowers to the same single LLVM load, and the bounds pass retains
+its conservative invalidation rules. Runtime signatures and lowering are unchanged.
 
 `ListLayout` records the outer list's semantic element and packed slot, scalar
 promoting-integer capability, numeric identity capability, payload-array GC policy
@@ -430,7 +458,7 @@ rerun `Gen.effects`; exact effect reporting already does so after a rewrite.
 | Pass | Analyses built locally | Additional invalidation after a rewrite |
 |---|---|---|
 | `charslots` | Use counts, private slot accesses and predecessor reachability | Slot layout and instruction-derived proofs |
-| `listget` | Predecessors and loop bounds | Instruction-derived value, range and alias proofs |
+| `listget` | Predecessors, loop bounds, values and invariant slots | Instruction-derived value, range and alias proofs |
 | `dictfuse` | Predecessors, values and lookup proofs | Instruction-derived value, range and alias proofs |
 | `unionslots` | Values, uses, aliases and reaching stores | Read-effect bounds, slot layout and instruction-derived proofs |
 | `nullcheck` | Predecessors, dominators, values and reaching stores | CFG, dominance and instruction-derived proofs |
@@ -442,7 +470,7 @@ before the next pass. Normal compilation does not add these verification scans.
 | Option | Implemented behavior |
 |---|---|
 | `charslots` | For a private local assigned once in the IR from a string index, keep the indexed code point if the store dominates every read and each read only compares it to a one-byte ASCII string literal. Indexing and its exceptions stay at the assignment. |
-| `listget` | Replace a sequence loop's list read with an unchecked load when the loop test proves the index valid and no intervening effect can shorten the list; a loop over a `bytes`, which never changes in place, reads each byte inline as it is lowered |
+| `listget` | Replace a list read in a sequence loop or an invariant forward range loop with an unchecked load when the loop test proves the index valid and effects preserve the list's length; a loop over a `bytes`, which never changes in place, reads each byte inline as it is lowered |
 | `dictfuse` | Reuse a known dictionary entry across membership tests, reads and updates of the same dictionary/key, until a mutation or user-code effect invalidates it |
 | `tupleiter` | Traverse tuple slots directly instead of materializing a list |
 | `listfast` | Inline a checked fast path for arbitrary `list[int]` and `bytes` reads, retaining the runtime fallback for negative or out-of-range indices |
@@ -453,8 +481,29 @@ before the next pass. Normal compilation does not add these verification scans.
 | `nullcheck` | Drop a check that a value is not None (before a read through it) where a passed test of the same value dominates it: the block after a check, or the branch of a null test where the value is not None, reached from nowhere else. The same value is the value, an equal one, or a load of a slot that only the entry block stores and only loads and stores use (a parameter the function never assigns). The check becomes a branch, its test goes once nothing reads it, the block after it joins its block where nothing else goes there, and a cold block no check goes to any more goes too; a walk down the dominator tree keeps the work linear ([#787](https://github.com/den-run-ai/pystachy/issues/787)) |
 | `allocelide` | Allocate an object or fixed tuple that holds no reference (every field or item an `int`, a `float` or a `bool`) with `pys_new`, a call that LLVM may delete when nothing keeps its object (`allockind`); the others keep `pys_alloc`, as without it, so that one the program still reads keeps what it holds. AOT builds inline the allocator's fast path into the calls left ([#1017](https://github.com/den-run-ai/pystachy/issues/1017), [internals](internals.md#whole-program-optimization)) |
 
+`unionslots` also splits private `int | None`, `float | None` and `bool | None`
+locals into a presence slot (zero or one) and a payload slot. Inferred None-first
+locals whose slot still has the provisional `opt[None]` type use the same checks.
+Stores must come from
+`None`, scalar `box` operations, or phis of those values. Loads may only test against
+`None` or read the packed scalar payload; no nullable pointer is dereferenced to
+extract its parts. The payload stays as bits, so zero, `False`, negative zero and
+NaN remain distinct from absence. An optional parameter, call or dictionary-lookup
+result, an optional copy, an escaping or identity-sensitive pointer use, and a
+generator frame retain their boxes. Numeric identity companions remain unchanged.
+This uses the existing slot/phi rewrite and adds no runtime ABI or LLVM operation;
+`PYSTACHY_OPT=-unionslots` disables both scalar-union and optional-local splitting.
+
 Disable one with `PYSTACHY_OPT=-dictfuse`, several with a comma-separated list, or all with
 `PYSTACHY_OPT=-all`. Differential runs check that the choices preserve behavior.
+
+For `range(k, len(xs), step)`, `listget` reads the owner from the captured `list.len`
+and requires a nonnegative constant start and a positive constant step. It proves the first matching read uses the same list and the
+unchanged induction value on a forward path without joins; entry-only local stores
+can establish invariant list bindings. The whole function must exclude list writes
+(`wL`) and unknown user code (`U`), so a captured length remains valid across iterations.
+Coroutines are excluded because their callers can mutate a list while they are suspended.
+Other range reads retain their bounds checks.
 
 For a statically known string variable `s`, the frontend can lower `ord(s[i])` and
 comparisons such as `s[i] == ":"` directly to `text.ord_at`. The comparison accepts
@@ -500,6 +549,22 @@ and a by-value return gives its Mpz words as 0; a display with `-2**63` is not o
 at each run, as CPython's is. `tests/programs/containers/tuple_constant_identity.py` and
 `tests/programs/imports/tuple_constant_modules.py` check identity, and
 `tests/ir/tuple_const.calls` pins that such displays allocate nothing.
+
+Scalar list displays with at least 32 literal `int`, `float` or `bool` items use
+immutable `Data("listdata")` slots and one `list.from_const` operation. The normal
+item typing and coercion runs first. The runtime helper always allocates a fresh
+scanned header and pointer-free item array, then copies the exact eight-byte
+slots; float signed zeros and other bit patterns are not converted. The frontend
+emits one copy operation regardless of the item count. The helper remains
+eligible for LLVM inlining, preserving small-constant simplifications; LLVM
+controls the eventual copy expansion and optimized code size.
+Small, mixed, pointer-bearing, tuple and computed displays retain ordinary
+construction, as do all dynamic-Any and promoting-int program graphs. The data
+pool is module state like string constants: function save/restore and dry typing
+may retain immutable entries; a whole-program retry constructs a new `Gen`.
+`test_typed_list_constants.py` guards instruction growth and these boundaries;
+the differential literal fixtures and `listprobe` check fresh storage, mutations,
+exact slot bits, allocation kind and collection.
 
 A field's TBAA tag names the class whose struct lays the field out. A derived class's struct
 begins with its base's, flags included, so an inherited field has its base's tag whichever class

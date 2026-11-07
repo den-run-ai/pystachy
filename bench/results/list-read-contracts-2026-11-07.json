@@ -1,0 +1,282 @@
+{
+  "schema_version": 1,
+  "measurement": "Static hosted typed-IR comparison; no execution-time claim",
+  "fixture": "bench/list_reads.py",
+  "fixture_sha256": "eb15120e5873d059c22ea267496932e873fdb875887c0965802ca78ba09f3928",
+  "baseline": {
+    "compiler_commit": "2cf2f2dd15408e3f7fc0a2a43a3b6d74de42ba40",
+    "compiler_source_sha256": "4b200fed59d00dc6b2ec4bfbd87f57e053aba406de2ca4b2edab87e4f53aaa42",
+    "host_python": "3.13.16",
+    "llvm_lines": 422,
+    "llvm_sha256": "48f17ae713396d39011b97765b6a2c45af8f7c354f94dd1d7df1b56ff2bb2f3a",
+    "functions": [
+      {
+        "function": "@f.stride_sum",
+        "before_pass_operation_count": 24,
+        "before_pass_reads": [
+          {
+            "op": "list.get",
+            "receiver": "S",
+            "result": "*T"
+          }
+        ],
+        "after_pass_counts": {
+          "list.len": 0,
+          "list.load": 1,
+          "rt:list.get": 0,
+          "mach.load": 2
+        },
+        "listget_rewrites": 1
+      },
+      {
+        "function": "@f.dot_zip",
+        "before_pass_operation_count": 35,
+        "before_pass_reads": [
+          {
+            "op": "list.get",
+            "receiver": "S",
+            "result": "*T"
+          },
+          {
+            "op": "list.get",
+            "receiver": "S",
+            "result": "*T"
+          }
+        ],
+        "after_pass_counts": {
+          "list.len": 0,
+          "list.load": 2,
+          "rt:list.get": 0,
+          "mach.load": 5
+        },
+        "listget_rewrites": 2
+      },
+      {
+        "function": "@f.sparse_gather",
+        "before_pass_operation_count": 27,
+        "before_pass_reads": [
+          {
+            "op": "list.get",
+            "receiver": "S",
+            "result": "*T"
+          },
+          {
+            "op": "list.get",
+            "receiver": "S",
+            "result": "*T"
+          }
+        ],
+        "after_pass_counts": {
+          "list.len": 0,
+          "list.load": 1,
+          "rt:list.get": 1,
+          "mach.load": 3
+        },
+        "listget_rewrites": 1
+      }
+    ]
+  },
+  "candidate": {
+    "compiler_commit": "4fd481b061be50b16943e28aa5861c09c6951c6c",
+    "compiler_source_sha256": "84d5fda1055f2f054c2eac0a7e9e17620db41de8aefd0fdd3731b3515312554d",
+    "host_python": "3.13.16",
+    "llvm_lines": 422,
+    "llvm_sha256": "48f17ae713396d39011b97765b6a2c45af8f7c354f94dd1d7df1b56ff2bb2f3a",
+    "functions": [
+      {
+        "function": "@f.stride_sum",
+        "before_pass_operation_count": 24,
+        "before_pass_reads": [
+          {
+            "op": "list.get",
+            "receiver": "list[float]",
+            "result": "*float"
+          }
+        ],
+        "after_pass_counts": {
+          "list.len": 1,
+          "list.load": 1,
+          "rt:list.get": 0,
+          "mach.load": 1
+        },
+        "listget_rewrites": 1
+      },
+      {
+        "function": "@f.dot_zip",
+        "before_pass_operation_count": 35,
+        "before_pass_reads": [
+          {
+            "op": "list.get",
+            "receiver": "list[float]",
+            "result": "*float"
+          },
+          {
+            "op": "list.get",
+            "receiver": "list[float]",
+            "result": "*float"
+          }
+        ],
+        "after_pass_counts": {
+          "list.len": 4,
+          "list.load": 2,
+          "rt:list.get": 0,
+          "mach.load": 1
+        },
+        "listget_rewrites": 2
+      },
+      {
+        "function": "@f.sparse_gather",
+        "before_pass_operation_count": 27,
+        "before_pass_reads": [
+          {
+            "op": "list.get",
+            "receiver": "list[int]",
+            "result": "*int"
+          },
+          {
+            "op": "list.get",
+            "receiver": "list[float]",
+            "result": "*float"
+          }
+        ],
+        "after_pass_counts": {
+          "list.len": 2,
+          "list.load": 1,
+          "rt:list.get": 1,
+          "mach.load": 1
+        },
+        "listget_rewrites": 1
+      }
+    ]
+  },
+  "llvm_identical": true,
+  "cpython_checksum_one_round": "11744.0",
+  "reproduction": [
+    "Run each checkout: python3 tools/inspect_compiler.py /absolute/path/to/bench/list_reads.py --output /new/output/directory",
+    "Read typed-before.json for retained receiver/result types; report.json listget entries for after_operations and reported_rewrites",
+    "Compare llvm.ll bytes. python3 bench/list_reads.py 1 checks the independently computed checksum."
+  ],
+  "limits": [
+    "Static operation and LLVM line counts do not measure execution time, allocation counts, or dynamic instruction counts.",
+    "The baseline already contains draft #1125 bounds elimination; this change preserves the semantic owner and packed type while emitting identical LLVM for this fixture.",
+    "sparse_gather deliberately retains the checked xs[column] read; list iteration only proves the columns traversal bound.",
+    "Execution and GC validation remain focused; the full native IR corpus comparison is recorded separately below. Sanitizer builds and all compiler variants were not run for this isolated change."
+  ],
+  "native_checksum_one_round": "11744.0",
+  "validation": {
+    "python": "3.13.16",
+    "llvm": "18.1.3",
+    "source_commit": "4fd481b061be50b16943e28aa5861c09c6951c6c",
+    "check_fast": {
+      "passed": true,
+      "typed_ir_tests": 193
+    },
+    "check_runtime": {
+      "passed": true,
+      "runtime_entries": 644,
+      "exception_classes": 70,
+      "subset_runtime_functions": 172
+    },
+    "native_bootstrap": {
+      "passed": true,
+      "compiler_ir_lines": 834585,
+      "runtime_ir_lines": 18805,
+      "three_stages_identical": true
+    },
+    "differential_cases": [
+      "tests/programs/optimizations/opt_list_read_contracts.py",
+      "tests/programs/optimizations/opt_listget_range.py",
+      "tests/programs/containers/list_int_reads.py",
+      "tests/programs/containers/unpack_list_items.py",
+      "tests/programs/inference/dynany_identity_list_scalar_reads.py",
+      "tests/programs/inference/dynany_identity_promote_list.py"
+    ],
+    "hosted_jit_aot": {
+      "passed": 12,
+      "failed": 0
+    },
+    "native_jit_aot": {
+      "passed": 12,
+      "failed": 0
+    },
+    "program_gc_stress_jit_aot": {
+      "passed": 6,
+      "failed": 0,
+      "cases": [
+        "tests/programs/optimizations/opt_list_read_contracts.py",
+        "tests/programs/inference/dynany_identity_list_scalar_reads.py",
+        "tests/programs/inference/dynany_identity_promote_list.py"
+      ]
+    },
+    "listget_listfast_disabled_jit_aot": {
+      "passed": 4,
+      "failed": 0,
+      "cases": [
+        "tests/programs/optimizations/opt_list_read_contracts.py",
+        "tests/programs/optimizations/opt_listget_range.py"
+      ]
+    },
+    "ircheck_and_llvm_as": {
+      "accepted": 8,
+      "cases": [
+        "tests/programs/optimizations/opt_list_read_contracts.py",
+        "tests/programs/optimizations/opt_listget_range.py",
+        "tests/programs/containers/list_int_reads.py",
+        "tests/programs/containers/unpack_list_items.py",
+        "tests/programs/inference/dynany_identity_list_scalar_reads.py",
+        "tests/programs/inference/dynany_identity_promote_list.py",
+        "bench/list_reads.py",
+        "runtime.py"
+      ]
+    },
+    "native_irsame_against_baseline": {
+      "identical": 8,
+      "cases": [
+        "tests/programs/optimizations/opt_list_read_contracts.py",
+        "tests/programs/optimizations/opt_listget_range.py",
+        "tests/programs/containers/list_int_reads.py",
+        "tests/programs/containers/unpack_list_items.py",
+        "tests/programs/inference/dynany_identity_list_scalar_reads.py",
+        "tests/programs/inference/dynany_identity_promote_list.py",
+        "bench/list_reads.py",
+        "runtime.py"
+      ]
+    },
+    "cpython_recording": "PYTHON=python3.13 tests/record.sh tests/programs/optimizations/opt_list_read_contracts.py",
+    "full_native_irsame": {
+      "baseline_commit": "2cf2f2dd15408e3f7fc0a2a43a3b6d74de42ba40",
+      "candidate_core_commit": "4fd481b061be50b16943e28aa5861c09c6951c6c",
+      "candidate_complete_commit": "24ace3b3e9e84dad049c807fbcd21c170727660f",
+      "workers": 1,
+      "corpus": "Complete tools/irsame.sh default corpus, including pystachy.py, runtime.py, programs, deviations, benchmarks, IR probes and rejections",
+      "distinct_home_run": {
+        "total": 4242,
+        "accepted_by_both": 2362,
+        "expected_rejections_by_both": 1880,
+        "exit_status_changes": 0,
+        "unexpected_rejections": 0,
+        "identical": 3981,
+        "llvm_home_literal_differences": 248,
+        "diagnostic_location_differences": 13
+      },
+      "identical_library_git_tree": "e0c17b450d47d6e0b44cce81fd16226dd9fdb183",
+      "common_home_control": {
+        "scope": "All 261 changed cases from the full run",
+        "identical": 261,
+        "differences": 0
+      },
+      "reproduction": {
+        "cwd": "/workspace/scratch/773660c98364/list-contracts",
+        "oracle": "tools/irsame.sh copied to irsame-all.sh with absolute cwd, SHOW=5000, and retention of all per-case statuses, diagnostics and complete changed LLVM diffs; comparison logic unchanged",
+        "full_command": "env -u PYSTACHY_HOME -u PYSTACHY_PATH -u PYSTACHY_OPT -u PYSTACHY_GC_STRESS -u PYSTACHY_GC_STRESS_PROGRAM PYSTACHY_LLVM=/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin PYSTACHY_JOBS=1 sh /workspace/scratch/773660c98364/list-contracts-full-irsame/irsame-all.sh /workspace/scratch/773660c98364/baseline/pystachy ./pystachy",
+        "changed_case_arguments": "set --; while IFS= read -r file; do set -- \"$@\" \"$file\"; done < /workspace/scratch/773660c98364/list-contracts-full-irsame/changed-cases.txt",
+        "common_home_command": "env -u PYSTACHY_PATH -u PYSTACHY_OPT -u PYSTACHY_GC_STRESS -u PYSTACHY_GC_STRESS_PROGRAM PYSTACHY_HOME=/workspace/scratch/773660c98364/list-contracts PYSTACHY_LLVM=/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin PYSTACHY_JOBS=1 sh /workspace/scratch/773660c98364/list-contracts-full-irsame/irsame-common-home.sh /workspace/scratch/773660c98364/baseline/pystachy ./pystachy \"$@\"",
+        "controlled_oracle": "Same retained-report oracle, with a separate output directory and the 261 changed-case arguments"
+      },
+      "limits": [
+        "The original separate-home run has 261 real byte differences; no LLVM literals were normalized away in that oracle. The separate common-home rerun isolates their environment cause.",
+        "This is a full IR/diagnostic comparison of the isolated contracts lane, not a full execution, sanitizer or combined-effects validation."
+      ]
+    }
+  }
+}

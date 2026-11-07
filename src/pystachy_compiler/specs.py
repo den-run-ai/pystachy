@@ -124,6 +124,8 @@ CALLS: dict[str, str] = {
     "os.getpid()": "pys_getpid:int", "os.getcwd()": "pys_getcwd:str", "os.path.exists(str)": "pys_exists:bool", "os.path.realpath(str)": "pys_realpath:str",
     "os.path.getsize(str)": "pys_getsize:int", "os.path.getmtime(str)": "pys_getmtime:float", "os.path.getctime(str)": "pys_getctime:float",
     "os.getenv(str,str)": "pys_getenv:str", "ffi.string_at(int,int)": "pys_string_at:str",
+    # Direct environment mutations; os.environ itself is not a mapping value.
+    "os.environ.__setitem__(str,str)": "pys_environ_set:None", "os.environ.pop(str,str)": "pys_environ_pop:str",
     "ffi.untrack(int)": "pys_untrack:None", "ffi.collected()": "pys_collected:int",
     "os.remove(str)": "pys_remove:None", "os.rmdir(str)": "pys_rmdir:None", "tempfile.mkdtemp()": "pys_mkdtemp:str",
     "os.unlink(str)": "pys_remove:None", "os.listdir()": "pys_listdir_cwd:list[str]", "os.listdir(str)": "pys_listdir:list[str]",
@@ -217,7 +219,7 @@ CALLS[IOMOD + ".unsupported(str)"] = "pys_io_unsupported:None"
 # of CALLS, and those Gen.builtin compiles itself
 MODFUNCS: dict[str, bool] = {}
 for _k in CALLS:
-    if "." in _k[: _k.find("(")]:
+    if "." in _k[: _k.find("(")] and not _k.startswith("os.environ."):
         MODFUNCS[_k[: _k.find("(")]] = True
 for _k in "os.path.join os.path.normcase os.fspath sys.exit math.fsum math.prod math.isclose select.select".split():
     MODFUNCS[_k] = True
@@ -631,7 +633,7 @@ IROPS: dict[str, str] = {
     "slot": "", "rt": "*", "call": "*", "icall": "*", "init": "*", "br": "T", "cbr": "T", "switch": "T", "check": "T R",
     "ret": "T", "ret.none": "T", "raise": "T R N", "unreachable": "T", "phi": "", "select": "", "ovf": "",
     "list.load": "rL", "list.len": "rL",
-    "alloc.fixed": "A",
+    "alloc.fixed": "A", "vtuple.make": "A",
     "mem.load": "*", "mem.store": "*",
     "mach.load": "*", "mach.store": "*", "mach.addr": "",
     "tuple.load": "rL rD rO", "tuple.store": "wL wD wO",
@@ -653,6 +655,9 @@ IROPS: dict[str, str] = {
     "gen.start": "T A", "gen.yield": "T U", "gen.ret": "T", "gen.promise": "", "gen.resume": "U",
     "gen.drop": "A I rL wL rD wD rO wO rG wG rF wF",
 }
+# Native list reads whose receiver and encoded result survive in IR.
+LIST_READS: list[str] = ["list.get", "list.get_identity"]
+
 # Native list writes whose concrete receiver and packed item types survive in IR.
 # RUNTIME remains authoritative for their signatures, effects and LLVM symbols.
 # The variant selects the storage contract checked by builders and verifiers.
@@ -717,7 +722,7 @@ LOOKUPS = 32
 # the ops whose values Values places, by the number each defines (its block and position there),
 # as how: 1, the value of one that defines one; 2, the payload of union.payload/raw and dyn.payload,
 # their second; 3, each value of tuple.load and tuple.store
-VALUE_AT: dict[str, int] = {"select": 1, "scalar.bin": 1, "scalar.cast": 1, "scalar.cmp": 1, "rt": 1, "slot.pack": 1, "slot.unpack": 1,
+VALUE_AT: dict[str, int] = {"list.len": 1, "select": 1, "scalar.bin": 1, "scalar.cast": 1, "scalar.cmp": 1, "rt": 1, "slot.pack": 1, "slot.unpack": 1,
                             "num.cast": 1, "num.cmp": 1, "mach.load": 1, "mach.addr": 1, "mem.load": 1, "field.addr": 1, "int.ucmp": 1,
                             "ptr.cmp": 1, "dyn.type": 1, "big.lo": 1, "big.hi": 1, "union.payload": 2, "union.raw": 2, "dyn.payload": 2,
                             "big.make": 2, "tuple.load": 3, "tuple.store": 3}
@@ -844,6 +849,7 @@ RUNTIME: dict[str, str] = {
     "vtuple.index": "int:%ptr,*T,#,int,int|R rL rD U?|", "vtuple.count": "int:%ptr,*T,#|R? rL rD U?|",
     # lists
     "list.new": "list[T]:int|A|", "list.new_atomic": "list[T]:int|A|", "list.get": "*T:S,int|R rL|", "list.set": "None:S,int,*T|R rL wL|",
+    "list.from_const": "list[T]:%ptr,int|A|",
     "list.append": "None:S,*T|A rL wL|", "list.pop": "*T:S,int|R rL wL|", "list.del": "None:S,int|R rL wL|",
     "list.insert": "None:S,int,*T|A rL wL|", "list.extend": "None:S,S|A rL wL|", "list.slice": "S:S,int,int|A rL wL|",
     "list.slice_step": "S:S,int,int,int|R A rL wL|", "list.set_slice": "None:S,int,int,int,S|R A rL wL|",
@@ -1019,7 +1025,9 @@ RUNTIME: dict[str, str] = {
     # errors and the process
     "raise": "None:str,str|R N|", "exit": "None:int|R N I|", "exit_msg": "None:str|R N I|", "argv": "list[str]:|I|", "warnoptions": "list[str]:|A I|",
     "platform": "str:|A|", "errno": "int:str|R A|", "system": "int:str|R I|", "execv": "None:str,list[str]|R N A I rL|", "getpid": "int:|I|", "getcwd": "str:|R A I|", "exists": "bool:str|I|",
-    "path_join": "str:str,str|A|", "realpath": "str:str|R A I|", "getenv": "opt[str]:str,opt[str]|A I|", "remove": "None:str|R A I|", "rmdir": "None:str|R A I|",
+    "path_join": "str:str,str|A|", "realpath": "str:str|R A I|", "getenv": "opt[str]:str,opt[str]|R A I|", "remove": "None:str|R A I|", "rmdir": "None:str|R A I|",
+    "environ_set": "None:str,str|R A I|", "environ_pop": "str:str,str|R A I|",
+    "cache_lock": "int:str|I|", "cache_file_hash": "str:str,int|A I|",
     "listdir": "list[str]:str|R A I|", "listdir_cwd": "list[str]:|R A I|", "mkdir": "None:str,int|R A I|", "mkdir_default": "None:str|R A I|",
     "rename": "None:str,str|R A I|", "replace": "None:str,str|R A I|", "isdir": "bool:str|I|", "isfile": "bool:str|I|",
     "islink": "bool:str|I|", "lexists": "bool:str|I|", "samefile": "bool:str,str|R A I|", "stat_mode": "int:str,int|R A I|",

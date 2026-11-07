@@ -678,6 +678,8 @@ from src.pystachy_compiler.emission import (
     gen_ret_ as emission_ret_,
     gen_returned_none as emission_returned_none,
     gen_rt as emission_rt,
+    gen_list_get as emission_list_get,
+    gen_list_len as emission_list_len,
     gen_list_write as emission_list_write,
     gen_runtime as emission_runtime,
     gen_save as emission_save,
@@ -881,6 +883,8 @@ from src.pystachy_compiler.expressions import (
     gen_tslot as expressions_tslot,
     gen_truth as expressions_truth,
     gen_tuple_ as expressions_tuple_,
+    gen_list_const as expressions_list_const,
+    gen_vtuple_make as expressions_vtuple_make,
     gen_tuple_const as expressions_tuple_const,
     gen_dict_merge as expressions_dict_merge,
     gen_unroll as expressions_unroll,
@@ -1279,6 +1283,9 @@ class Gen:
         # by its module and items, and each one's Data, by its name (tupleret reads its slots)
         self.tconsts: dict[str, str] = {}
         self.tconstdata: dict[str, Data] = {}
+        # Immutable scalar list data, shared across functions/dry runs like the string pool.
+        # Frame save/restore leaves this module state in place; a Rejoin creates a fresh Gen.
+        self.lconsts: dict[str, str] = {}
         self.strs: dict[str, str] = {}
         self.bstrs: dict[str, str] = {}  # the name of each bytes constant (@b.N), by its bytes
         self.strvals: list[str] = []  # the text of each @s.N
@@ -1290,7 +1297,7 @@ class Gen:
         self.opfxs: dict[str, int] = {}  # the effects of each op of IROPS with fixed effects
         for op in IROPS:
             self.opfxs[op] = fxmask(IROPS[op].replace("T", "").replace("*", ""))
-        self.out: list[str] = []
+        self.out: list[str] = []  # completed LLVM function chunks and the current function's lines
         self.fns: list[IFn] = []  # the functions compiled, in the order they were completed
         self.fll: dict[str, int] = {}  # and their positions there by symbol, once the program is built
         self.summaries = EffectSummaries()
@@ -2631,6 +2638,12 @@ class Gen:
     def rt(self, name: str, ret: str, args: list[str], x: str = "") -> str:
         return emission_rt(self, name, ret, args, x)
 
+    def list_len(self, o: Val) -> str:
+        return emission_list_len(self, o)
+
+    def list_get(self, key: str, args: list[Val]) -> str:
+        return emission_list_get(self, key, args)
+
     def list_write(self, key: str, args: list[Val]) -> None:
         emission_list_write(self, key, args)
 
@@ -3599,8 +3612,8 @@ class Gen:
     def nullslot(self, fn: IFn, lds: list[int], stride: int, slots: dict[str, int], q: Ins) -> str:
         return optimizations_nullslot(self, fn, lds, stride, slots, q)
 
-    def usplits(self, fn: IFn, defs: dict[str, list[int]], v: str, seen: dict[str, bool]) -> bool:
-        return optimizations_usplits(self, fn, defs, v, seen)
+    def usplits(self, fn: IFn, defs: dict[str, list[int]], v: str, seen: dict[str, bool], optional: bool = False) -> bool:
+        return optimizations_usplits(self, fn, defs, v, seen, optional)
 
     def uparts(self, fn: IFn, defs: dict[str, list[int]], v: str, t: str, parts: dict[str, list[str]], before: dict[str, list[Ins]], after: dict[str, list[Ins]], heads: dict[int, list[Ins]]) -> list[str]:
         return optimizations_uparts(self, fn, defs, v, t, parts, before, after, heads)
@@ -4310,8 +4323,14 @@ class Gen:
     def tuple_(self, vals: list[Val]) -> Val:
         return expressions_tuple_(self, vals)
 
+    def vtuple_make(self, vals: list[Val], t: str) -> Val:
+        return expressions_vtuple_make(self, vals, t)
+
     def tuple_const(self, n: Node, vals: list[Val]) -> Val:
         return expressions_tuple_const(self, n, vals)
+
+    def list_const(self, n: Node, vals: list[Val], t: str) -> Val:
+        return expressions_list_const(self, n, vals, t)
 
     def dict_merge(self, n: Node, want: str) -> Val:
         return expressions_dict_merge(self, n, want)

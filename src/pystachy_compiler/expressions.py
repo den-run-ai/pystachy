@@ -1143,6 +1143,10 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         if lty == "list[dyn]":
             et = "dyn"  # (where the items are Any values or containers: ctype)
         items = [self.list_hold(kept[i] if i in kept else items[i], et) for i in range(len(items))]
+        if len(items) >= 32:
+            constant = self.list_const(n, items, lty)
+            if constant.v != "":
+                return constant
         r = self.rt("pys_list_new_atomic" if atomic_list(lty) else "pys_list_new", "ptr", [f"i64 {len(items)}"])
         for v in items:
             self.list_store(Val(r, lty), v, "append")
@@ -1246,6 +1250,13 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         tconst = self.tuple_const(n, vals)
         if tconst.v != "":
             return tconst  # (a display of literals: CPython's constant, the same object at each run)
+        if is_vtuple(want) and not resultsoft:
+            # Every item is evaluated before these remaining coercions. want is also
+            # an operand hint: concatenation may widen it (int plus int | None).
+            # Comparisons preserve each side's own element representation.
+            et = targs(want)[0]
+            if all(self.widens(v.t, et) or self.boxes(v.t, et) or (v.t == BIG and et == "int") for v in vals):
+                return self.vtuple_make([self.coerce(v, et) for v in vals], want)
         return self.stack_tuple(vals) if n is self.stkkey else self.tuple_(vals)
     if k == "listcomp":
         if n.s == "gen":
@@ -2398,6 +2409,41 @@ def gen_tuple_(self, vals: list[Val]) -> Val:
         self.tput(Val(p, t), i, vals[i])
     return Val(p, t)
 
+def gen_list_const(self, n: Node, vals: list[Val], t: str) -> Val:
+    # Large all-scalar literal displays copy immutable data into a fresh atomic item array.
+    # Keep small displays, pointer-bearing items and graphs with numeric identity or promoting
+    # ints on the ordinary path. All items have already passed the usual typing/coercion rules.
+    if len(vals) < 32 or self.rtmode or dynamic_program() or int_lists() or not atomic_list(t):
+        return Val("", "")
+    for j in range(len(vals)):
+        e = n.kids[j]
+        if e.kind == "unary" and e.s == "-":
+            e = e.kids[0]
+        v = vals[j]
+        ok = (e.kind == "int" and v.t == "int" and v.lit and int_fits(v.v)) or (e.kind == "float" and v.t == "float" and v.lit and v.v.startswith("0x")) or (e.kind in ["True", "False"] and v.t == "bool" and v.v in ["true", "false"])
+        if not ok or v.t != elem(t):
+            return Val("", "")
+    key = t + "(" + ",".join([v.v for v in vals]) + ")"
+    if key not in self.lconsts:
+        d = Data("listdata", f"@lc.{len(self.lconsts)}")
+        d.items = [Val(v.v, v.t) for v in vals]
+        self.consts.append(d)
+        self.lconsts[key] = d.name
+    return Val(self.rt("pys_list_from_const", "ptr", [f"ptr {self.lconsts[key]}", f"i64 {len(vals)}"]), t)
+
+def gen_vtuple_make(self, vals: list[Val], t: str) -> Val:
+    # Already evaluated and coerced homogeneous items. Keep their native types,
+    # including references, until lowering allocates the final scanned VTuple.
+    # This is also the copy boundary for an existing fixed tuple: it never edits
+    # or reinterprets the source tuple's storage.
+    if self.rtmode and self.curfn.ll == "@pys_alloc":
+        self.err("pys_alloc() implements an operation that it uses: write it without that operation")
+    self.runtime("pys_alloc")
+    i = Ins("vtuple.make", t, "")
+    i.a = vals
+    self.put(i, 1)
+    return Val(f"%t{i.r[0]}", t)
+
 def gen_tuple_const(self, n: Node, vals: list[Val]) -> Val:
     # a tuple display of literals that the source writes (n.src), whose items are vals: the
     # constant that CPython's compiler makes of it, which each run of the display is. Its
@@ -2887,23 +2933,21 @@ def gen_list_read(self, o: Val, i: Val) -> Val:
     if self.list_id_kind(o.t) != 0 and not self.fn.scalar_reads:
         return self.list_item(o, i)
     if o.t != "list[int]" or "listfast" not in self.opts:
-        return self.list_value(o, i.v, self.rt("pys_list_get", "i64", [f"ptr {o.v}", f"i64 {i.v}"]))
+        return self.list_value(o, i.v, self.list_get("list.get", [o, i]))
     fast = self.label()
     slow = self.label()
     done = self.label()
-    length = Ins("list.len", "int", "")
-    length.a = [o]
-    self.put(length, 1)
-    self.cbr(self.int_ucmp('<', Val(i.v, "int"), Val(f'%t{length.r[0]}', "int")).v, fast, slow)
-    ph = Ins("phi", "int", "")
+    length = self.list_len(o)
+    self.cbr(self.int_ucmp('<', Val(i.v, "int"), Val(length, "int")).v, fast, slow)
+    ph = Ins("phi", "%slot", "")
     self.place(fast)
-    read = Ins("list.load", "int", "")
+    read = Ins("list.load", "*int", "")
     read.a = [o, i]
     self.put(read, 4)
     self.incoming(ph, f"%t{read.r[0]}", self.cur)
     self.br(done)
     self.place(slow)
-    v = self.rt("pys_list_get", "i64", [f"ptr {o.v}", f"i64 {i.v}"])
+    v = self.list_get("list.get", [o, i])
     self.incoming(ph, v, self.cur)
     self.br(done)
     self.place(done)

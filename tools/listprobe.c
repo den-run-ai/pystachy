@@ -162,6 +162,39 @@ static void ranges(void) {
   kinds(r, 1);                                    /* growth past it keeps the kind */
   if (r->len != 7 || r->a[6] != 6) bad("range-list slice growth");
 }
+static void scalar_constants(void) {
+  /* Raw slots include signed zero, infinities and NaN payloads: the helper copies bits,
+     without scalar conversions. Python's computed NaNs keep the general frontend path. */
+  static const I data[32] = {INT64_MIN, INT64_MAX, 0, 1, -1,
+    INT64_C(0x7ff0000000000000), -INT64_C(0x10000000000000),
+    INT64_C(0x7ff8000000000001), INT64_C(0x7ff8000000000042)};
+  buffers = pys_list_new(4);
+  for (I n = 0; n <= 32; n += 32) {
+    List *a = pys_list_from_const(data, n), *b = pys_list_from_const(data, n);
+    pys_list_append(buffers, (I)a); pys_list_append(buffers, (I)b);
+    kinds(a, 1); kinds(b, 1);
+    if (a == b || a->a == b->a || a->a == data || b->a == data || a->ids || b->ids)
+      bad("constant-list storage is shared or has a companion");
+    if (a->len != n || b->len != n || memcmp(a->a, data, n * sizeof(I)) || memcmp(b->a, data, n * sizeof(I)))
+      bad("constant-list length or exact slots");
+    if (n) {
+      pys_list_set(a, 0, 7);
+      if (b->a[0] != INT64_MIN || data[0] != INT64_MIN) bad("constant-list mutation aliases source");
+    }
+    pys_list_append(a, 9); kinds(a, 1);
+    if (a->len != n + 1 || a->a[n] != 9 || b->len != n) bad("constant-list growth");
+  }
+  scrub_collect(); scrub_collect();
+  List *a = (List *)buffers->a[2], *b = (List *)buffers->a[3];
+  if (a->a[0] != 7 || a->a[32] != 9 || memcmp(b->a, data, sizeof data))
+    bad("constant-list data lost through collection");
+  List *copy = pys_list_copy(b); kinds(copy, 1);
+  if (copy == b || copy->a == b->a || memcmp(copy->a, data, sizeof data)) bad("constant-list copy");
+  pys_list_clear(b);
+  if (b->a != empty_atomic) bad("constant-list clear forgot atomic kind");
+  pys_list_append(b, 17); kinds(b, 1);
+  if (b->len != 1 || b->a[0] != 17 || copy->a[0] != INT64_MIN) bad("constant-list refill");
+}
 static Str *big(I i) {                 /* a str of 1 MiB; its first byte tells i */
   Str *s = pys_str_mul(cstr("x"), 1 << 20); s->s[0] = (char)('a' + i); return s;
 }
@@ -562,6 +595,7 @@ int main(void) {
   operations();
   vacated();
   ranges();
+  scalar_constants();
   numeric();
   identities();
   wide_identities();

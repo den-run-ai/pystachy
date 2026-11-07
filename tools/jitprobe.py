@@ -142,7 +142,9 @@ def main():
         wrapper = bindir / "lli"
         wrapper.write_text(f"#!/bin/sh\nprintf '%s\\n' \"$@\" > {shlex.quote(str(invocation))}\n{shlex.quote(real['opt'])} -S -passes=verify /dev/fd/9 -o {shlex.quote(str(capture))} || exit $?\nexec {shlex.quote(real['lli'])} \"$@\"\n")
         wrapper.chmod(0o755)
-        env = os.environ | {"PYSTACHY_LLVM": str(bindir), "PYSTACHY_PATH": str(temp)}
+        # Native program caching skips the lli wrapper even when filling an entry.
+        env = os.environ | {"PYSTACHY_LLVM": str(bindir), "PYSTACHY_PATH": str(temp),
+                            "PYSTACHY_PROGRAM_CACHE": "0"}
         env.pop("PYSTACHY_JIT_INLINE", None)  # (the default's inliner is what is checked first)
         env.pop("PYSTACHY_JIT_CODEGEN", None)
         arguments = ["space here", "'quoted$argument`"]

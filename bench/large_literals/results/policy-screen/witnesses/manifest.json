@@ -1,0 +1,22 @@
+{
+  "baseline-int-local-32-main.ll.txt": {
+    "full_module_sha256": "a1dcc15937ebbe6e07fe17597493f23244ac5c5f8aef27ee2c9ff58c0a3c523c",
+    "excerpt_sha256": "70813b24c0ca388bc51ace8c2aa857d39f6fe004e34bc9fc42c31f5fdaa1ebde",
+    "note": "main function excerpt, not a standalone module"
+  },
+  "candidate-int-local-32-main.ll.txt": {
+    "full_module_sha256": "65c5513b7a4c9923cecafdc1d44eba85ef68713f683c5cb21973249d2209c5f5",
+    "excerpt_sha256": "220d24b0e8865d99bb6104e3a1d567152aa5f156a5cc0ea832c8560e7b600972",
+    "note": "main function excerpt, not a standalone module"
+  },
+  "candidate-inline-int-local-32-main.ll.txt": {
+    "full_module_sha256": "997f77df8031131c93d68954663e31129c63728b30e9d6fc9bd649b1d6276dee",
+    "excerpt_sha256": "8c05fcf73737392040e2e0bc4f58319923cafe2f950a794e207e57c2c3e3c1d3",
+    "note": "main function excerpt, not a standalone module"
+  },
+  "candidate-inline-int-escape-4096-main.ll.txt": {
+    "full_module_sha256": "c7da6920c5be0abe1ce6261035c2d27700d44ffcded151db3b1cfe332cbab131",
+    "excerpt_sha256": "ed2a47bc2f6b0521c72c5f3b09be6c6d5c90019b1ec83be9cae6a3b551b1f0a9",
+    "note": "main function excerpt, not a standalone module"
+  }
+}

@@ -32,15 +32,15 @@ class Val:
 
 
 class Data:
-    # Immutable module data: string bytes, callable/exception references, or constant tuple slots
-    # (whose type its text is).
+    # Immutable module data: string bytes, callable/exception references, constant tuple slots
+    # (whose type its text is), or pointer-free scalar slots copied into fresh lists.
     # LLVM's concrete layout and declaration syntax belong to lower_module.
     def __init__(self, kind: str, name: str):
         self.kind = kind
         self.name = name
         self.text = ""
         self.refs: list[str] = []
-        self.items: list[Val] = []  # tuple slots: int literals or static string references
+        self.items: list[Val] = []  # typed constant slots; listdata permits only int/float/bool
 
 
 class IterArg:
@@ -301,6 +301,7 @@ class Loop:
         self.idx: list[str] = []
         self.ctr = ""  # the slot of its counter or index
         self.stop = Val("", "")  # a range loop's stop, evaluated once
+        self.nonnegative = False  # range: a nonnegative constant start and positive constant step
 
 
 class Try:
@@ -330,6 +331,10 @@ class IFn:
     # one compiled function: a function, a method, a module's code, a helper or a template's function
     def __init__(self, f: FnInfo):
         self.f = f  # f.ret is final once the IFn is complete
+        # Syntax-only names bound outside except targets, built lazily by bind_as.
+        # Frame retains this IFn during nested compilation; a retry gets a fresh one.
+        # dry() may retain the index: it depends on no inferred or speculative state.
+        self.otherbinds: dict[str, bool] | None = None
         self.numeric_only = False  # function_body proved local numeric identity unobservable
         self.scalar_reads = False  # scoped numeric arithmetic/comparison; no operand identity escapes
         # Lazy numeric field locals (Gen.lazy_fields): local -> the parameter whose field it reads,

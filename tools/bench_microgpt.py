@@ -302,6 +302,7 @@ def main():
     adapted_source = instrument(raw_adapted.decode())
     compiler = normalize_compiler(args.compiler)
     env = os.environ.copy()
+    env["PYSTACHY_PROGRAM_CACHE"] = "0"  # JIT wall time includes per-process compilation.
     report = {
         "workload": "microgpt scalar autograd training and autoregressive inference; original and adapted source",
         "upstream_commit": UPSTREAM_COMMIT, "original_source_sha256": UPSTREAM_SHA256,
@@ -316,7 +317,7 @@ def main():
         "seed": 42, "all_gradients": args.all_gradients,
         "timing_scope": "timed initialization/forward/backward/Adam/inference; snapshots and progress output excluded; separate process wall and AOT build",
         "environment": {name: env.get(name) for name in (
-            "PYSTACHY_OPT", "PYSTACHY_JIT_CODEGEN", "PYSTACHY_JIT_INLINE", "PYSTACHY_CFLAGS",
+            "PYSTACHY_OPT", "PYSTACHY_JIT_CODEGEN", "PYSTACHY_JIT_INLINE", "PYSTACHY_CFLAGS", "PYSTACHY_PROGRAM_CACHE",
             "PYSTACHY_GC", "PYSTACHY_GC_MIN", "PYSTACHY_GC_STRESS", "PYSTACHY_GC_STRESS_PROGRAM", "PYSTACHY_LLVM", "PYTHONHASHSEED",
         )},
         "runs": {}, "errors": [],

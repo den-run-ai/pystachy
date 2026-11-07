@@ -1,0 +1,6 @@
+{"label": "baseline", "input": "int-escape-4096", "sample": 0, "wall_s": 0.7178568069939502, "max_phase_rss_kib": 117512, "binary_bytes": 126360}
+{"label": "candidate", "input": "int-escape-4096", "sample": 0, "wall_s": 0.5891751689996454, "max_phase_rss_kib": 100308, "binary_bytes": 101744}
+{"label": "candidate", "input": "int-escape-4096", "sample": 1, "wall_s": 0.5067459729980328, "max_phase_rss_kib": 100676, "binary_bytes": 101744}
+{"label": "baseline", "input": "int-escape-4096", "sample": 1, "wall_s": 0.6814798140039784, "max_phase_rss_kib": 118432, "binary_bytes": 126360}
+{"label": "baseline", "input": "int-escape-4096", "sample": 2, "wall_s": 0.6984697560037603, "max_phase_rss_kib": 117524, "binary_bytes": 126360}
+{"label": "candidate", "input": "int-escape-4096", "sample": 2, "wall_s": 0.5450429710035678, "max_phase_rss_kib": 100456, "binary_bytes": 101744}

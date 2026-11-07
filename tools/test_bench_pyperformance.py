@@ -303,6 +303,82 @@ class RecordTests(unittest.TestCase):
             self.assertRegex(sha, r"\A[0-9a-f]{64}\Z", name)
 
 
+class ByteBpeShowcaseTests(unittest.TestCase):
+    """The showcase must reject bad evidence before reporting acceleration."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.showcase = SimpleNamespace(**runpy.run_path(
+            str(bench.ROOT / "examples/byte_bpe/benchmark.py")))
+
+    def test_original_kernel_is_pinned_and_distinct_from_adaptation(self):
+        source = self.showcase.original_module()
+        self.assertIn("enumerate(zip(parts[:-1], parts[1:]))", source)
+        self.assertIn('decode("utf-8", errors="replace")', source)
+        self.assertNotIn("Pystachy port:", source)
+        namespace = {}
+        exec(compile(source, "upstream-byte-bpe", "exec"), namespace)
+        self.assertEqual(namespace["BPE_PATTERN"], self.showcase.PATTERN)
+        tokenizer = namespace["SimpleBytePairEncoding"].train("banana banana", 260, self.showcase.PATTERN)
+        self.assertEqual(tokenizer.decode(tokenizer.encode("日本語 🦉\tÆ É Ġ\n")), "日本語 🦉\tÆ É Ġ\n")
+
+    def test_pristine_source_corruption_is_rejected(self):
+        with mock.patch.dict(self.showcase.original_module.__globals__, UPSTREAM_SHA256="wrong"):
+            with self.assertRaisesRegex(ValueError, "SHA-256 mismatch"):
+                self.showcase.original_module()
+
+    def test_stage_timings_require_complete_finite_positive_rows(self):
+        valid = "train 1.0\nencode 0.25\ndecode 0.01\n"
+        self.assertEqual(self.showcase.parse_times(valid), {"train": 1.0, "encode": 0.25, "decode": 0.01})
+        for bad in ("", valid + "decode 1\n", valid.replace("encode", "train"),
+                    valid.replace("0.25", "nan"), valid.replace("0.25", "inf"),
+                    valid.replace("0.25", "-1"), valid.replace("0.25", "0")):
+            with self.subTest(stderr=bad), self.assertRaises(ValueError):
+                self.showcase.parse_times(bad)
+
+    def test_exact_output_mismatch_is_rejected(self):
+        record = {"stdout": "wrong token order", "stderr": "train 1\nencode 2\ndecode 3\n"}
+        with self.assertRaisesRegex(ValueError, "differs from original CPython"):
+            self.showcase.checked_sample(record, "complete ordered output", 1, 1)
+
+    def test_stage_normalization_and_small_values_keep_precision(self):
+        record = {"stdout": "same", "stderr": "train 1\nencode 0.0000001\ndecode 0.0000002\n",
+                  "wall_seconds": 2.0}
+        sample = self.showcase.checked_sample(record, "same", 5, 10)
+        self.assertEqual(sample["encode_seconds"], 0.00000002)
+        self.assertEqual(sample["decode_seconds"], 0.00000002)
+        self.assertNotIn("stdout", sample)
+
+    def test_bad_controller_arguments_fail_before_measurement(self):
+        for arguments in (["--processes", "0"], ["--encode-loops", "0"], ["--decode-loops", "-1"],
+                          ["--timeout", "nan"], ["--timeout", "inf"], ["--compiler", ""]):
+            with self.subTest(arguments=arguments), contextlib.redirect_stderr(io.StringIO()), \
+                    self.assertRaises(SystemExit) as error:
+                self.showcase.main(arguments)
+            self.assertEqual(error.exception.code, 2)
+
+    def test_failed_run_replaces_old_success_report(self):
+        with tempfile.TemporaryDirectory() as directory:
+            report = Path(directory) / "result.json"
+            report.write_text('{"status": "passed"}')
+            with mock.patch.dict(self.showcase.main.__globals__, CORPUS_SHA256="wrong"):
+                with self.assertRaisesRegex(ValueError, "corpus SHA-256 mismatch"):
+                    self.showcase.main(["--compiler", sys.executable, "--json", str(report)])
+            self.assertEqual(json.loads(report.read_text())["status"], "failed")
+
+    def test_memory_sampler_resolves_our_child_in_nested_pid_namespace(self):
+        with tempfile.TemporaryDirectory() as directory:
+            proc = Path(directory)
+            wrong = proc / "6"
+            wrong.mkdir()
+            (wrong / "status").write_text("PPid:\t1\nNSpid:\t6\nVmHWM:\t99999 kB\n")
+            child = proc / "333681"
+            child.mkdir()
+            (child / "status").write_text("PPid:\t333680\nNSpid:\t333681\t6\nVmHWM:\t4964 kB\n")
+            self.assertEqual(self.showcase.process_directory(6, proc, 333680), child)
+            self.assertIsNone(self.showcase.process_directory(7, proc, 333680))
+
+
 class ArgumentTests(unittest.TestCase):
     def test_invalid_settings_fail_before_execution(self):
         for arguments in (["--runs", "0"], ["--timeout", "inf"], ["--timeout", "-1"], ["--compiler", ""],
