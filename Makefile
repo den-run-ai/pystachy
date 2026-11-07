@@ -6,10 +6,8 @@ COMPILER_SOURCES := pystachy.py lib/_pystachy_cache.py $(wildcard src/*.py src/p
 
 pystachy: $(COMPILER_SOURCES) runtime.c runtime.py $(wildcard ryu/*.c ryu/*.h mpz/*.c)
 	mkdir -p build
-	$(PY) pystachy.py build pystachy.py -o build/pystachy1
-	build/pystachy1 build pystachy.py -o build/pystachy2
-	$(PY) pystachy.py ir pystachy.py -o build/stage1.ll
-	build/pystachy1 ir pystachy.py -o build/stage2.ll
+	$(PY) pystachy.py build pystachy.py -o build/pystachy1 --emit-ir build/stage1.ll
+	build/pystachy1 build pystachy.py -o build/pystachy2 --emit-ir build/stage2.ll
 	build/pystachy2 ir pystachy.py -o build/stage3.ll
 	cmp build/stage1.ll build/stage2.ll && cmp build/stage2.ll build/stage3.ll
 	@echo "fixed point: stage1 == stage2 == stage3 ($$(wc -l < build/stage1.ll) lines of IR)"
@@ -397,6 +395,7 @@ check-fast: lint-python typecheck check-repository
 	$(PY) -m unittest discover -s tools -p test_inspect_compiler.py
 	$(PY) -m unittest discover -s tools -p test_source_lines.py
 	$(PY) -m unittest discover -s tools -p test_pystachy_toolchain.py
+	$(PY) -m unittest discover -s tools -p test_retained_ir.py
 
 check-repository:
 	$(PY) tools/check_repository_hygiene.py
