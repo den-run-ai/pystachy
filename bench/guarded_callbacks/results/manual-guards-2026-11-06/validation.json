@@ -1,0 +1,90 @@
+{
+  "compiler_base": "f7103067545b43cdcd8ce20dc66b1571425b3a8d",
+  "published_source_revision": "d66686bc50d7939f51c85ca6d8b1cdd924725270",
+  "compiler_binary_sha256": "3b59b4e875a89f15777395f5993ccf2e6d51e934dbc7a4e45228d622c7f1cff7",
+  "python": "3.13.16",
+  "llvm": "18.1.3",
+  "bootstrap": {
+    "compiler_fixed_point_ir_lines": 832277,
+    "runtime_fixed_point_ir_lines": 18805,
+    "stages_compared": [
+      1,
+      2,
+      3
+    ]
+  },
+  "fixture_sha256": {
+    "guarded_score.py": "c8b494bc4006957918a09beece88c91a0bc484b4d20ec7233eb156c51f13cf8d",
+    "guarded_score.out": "d6c5d1911d7058a363d79b4a367b9159cb592e574eb4706dd909130fa09b0af6",
+    "guarded_score.path": "7a5d222d8a635463172561424b6ab8586a991bd3448e7f09185956eea148f58a"
+  },
+  "checks": [
+    {
+      "name": "CPython recording",
+      "command": "PYTHON=python3.13 tests/record.sh guarded_score",
+      "status": "passed"
+    },
+    {
+      "name": "Native JIT/AOT differential",
+      "command": "tests/run.sh ./pystachy 'jit aot' tests/programs/apps/guarded_score.py",
+      "status": "passed",
+      "checks": 2
+    },
+    {
+      "name": "Program GC stress JIT/AOT differential",
+      "command": "PYSTACHY_GC_STRESS_PROGRAM=1 tests/run.sh ./pystachy 'jit aot' tests/programs/apps/guarded_score.py",
+      "status": "passed",
+      "checks": 2
+    },
+    {
+      "name": "Optimization-disabled JIT/AOT differential",
+      "command": "PYSTACHY_OPT=-all tests/run.sh ./pystachy 'jit aot' tests/programs/apps/guarded_score.py",
+      "status": "passed",
+      "checks": 2
+    },
+    {
+      "name": "Syntax sweep",
+      "command": "python3.13 -I tools/syntax_sweep.py --compiler ./pystachy examples/guarded_score/scoring.py examples/guarded_score/workload.py tests/programs/apps/guarded_score.py",
+      "status": "passed",
+      "checks": 3
+    },
+    {
+      "name": "Ruff",
+      "command": "ruff check --no-force-exclude examples/guarded_score tests/programs/apps/guarded_score.py",
+      "status": "passed"
+    },
+    {
+      "name": "Eight-scenario CPython/native smoke",
+      "command": "python3.13 examples/guarded_score/bench.py --compiler ./pystachy --smoke --cpu 8",
+      "status": "passed",
+      "scenarios": 8,
+      "modes": [
+        "aot",
+        "jit"
+      ],
+      "variants": [
+        "generic",
+        "guarded"
+      ]
+    },
+    {
+      "name": "Seven paired measurements per scenario/mode",
+      "command": "python3.13 examples/guarded_score/bench.py --compiler ./pystachy --jit all --cpu 8",
+      "status": "passed",
+      "scenarios": 8,
+      "modes": [
+        "aot",
+        "jit"
+      ],
+      "samples_per_variant_mode_scenario": 7
+    }
+  ],
+  "development_attempts": [
+    "Two initial fixture compilations rejected heterogeneous function lists and a nested empty list without explicit annotations; adding Callable and list[list[float]] annotations preserved CPython outputs and passed native checks.",
+    "An initial optimization-off invocation used unsupported PYSTACHY_OPT=0 and failed during harness setup; the documented PYSTACHY_OPT=-all passed both modes."
+  ],
+  "not_run": [
+    "Full local make verify; this is a draft example-only experiment and no compiler/runtime source changed."
+  ],
+  "core_diff_lines": 0
+}
