@@ -1,0 +1,9 @@
+True 10 default
+True 7 default
+True 8 tuple
+True 9 list
+True False
+12 mapping
+True 13 False
+14 native
+[exit 0]

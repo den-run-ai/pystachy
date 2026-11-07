@@ -24,30 +24,22 @@ under both Pystachy and CPython.
 <a id="speed"></a>
 <a id="tests"></a>
 
-## Recorded benchmark
+<a id="recorded-benchmark"></a>
+<a id="checks-and-reproduction"></a>
 
-Historical measurements on a 4-core x86-64 VM; the compiler commit was not
-recorded. 300,000 rows (20 MB); median wall time of five process runs, including startup;
-peak RSS of one run. The shared host produced up to 2× variation in CPython
-times, so the apparent 4× speedup is especially noisy.
+## Checks and benchmarks
 
-| options | CPython 3.13.16 | Pystachy AOT | speedup | CPython RSS | AOT RSS |
-|---|---:|---:|---:|---:|---:|
-| (none) | 1.518 s | 0.376 s | 4.0x | 232.4 MB | 230.1 MB |
-| `-R 1,5,6,7` | 0.779 s | 0.381 s | 2.0x | 232.7 MB | 230.9 MB |
-| `-o ' \| '` | 1.024 s | 0.487 s | 2.1x | 237.6 MB | 236.2 MB |
+[`example_column.py`](../../tests/programs/apps/example_column.py)
+compares widths, alignment, options, generated tables and error cases with CPython.
 
-Both programs retain the entire table, which dominates memory use.
-
-## Checks and reproduction
-
-`tests/programs/apps/example_column.py` compares widths, alignment, options, generated tables
-and error cases with CPython.
+The benchmark generates 300,000 rows and exercises alignment and separator options.
+The program retains the entire table to determine column widths.
 
 ```sh
 python3 -I bench.py ../../pystachy 5
 ```
 
-The benchmark writes generated inputs and executables to `build/column/` at the
-repository root. Results depend on workload and host; see
-[the performance guide](../../docs/performance.md).
+Generated inputs and executables go to `build/column/` at the repository root.
+Earlier measurements without a compiler revision are preserved in
+[the historical table](https://github.com/den-run-ai/pystachy/blob/f7103067545b43cdcd8ce20dc66b1571425b3a8d/examples/column/README.md#recorded-benchmark).
+See the [benchmark guidance](../README.md#benchmarks) when measuring a current build.

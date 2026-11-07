@@ -1,0 +1,133 @@
+Source attribution prototype local validation, 2026-11-06
+Base: f7103067545b43cdcd8ce20dc66b1571425b3a8d
+Python 3.13.16; LLVM 18.1.3; Linux x86-64.
+Sources stayed fixed throughout native builds and measurements.
+No full make verify or complete test-cache run is claimed.
+
+source-bootstrap.log (final lines)
+fixed point: stage1 == stage2 == stage3 (833648 lines of IR)
+/workspace/scratch/c154e74884e5/venv/bin/python pystachy.py rt runtime.py -o build/rt1.ll
+build/pystachy1 rt runtime.py -o build/rt2.ll
+build/pystachy2 rt runtime.py -o build/rt3.ll
+cmp build/rt1.ll build/rt2.ll && cmp build/rt2.ll build/rt3.ll
+fixed point: runtime.py's IR, rt1 == rt2 == rt3 (18805 lines)
+cp build/pystachy2 pystachy
+
+source-fixedpoints.log (final lines)
+ffb27fa91d7af95452d8420a82db153c6892d43f04845562ca37b1533977ab34  build/source-checks/runtime-host.ll
+ffb27fa91d7af95452d8420a82db153c6892d43f04845562ca37b1533977ab34  build/source-checks/runtime-stage1.ll
+ffb27fa91d7af95452d8420a82db153c6892d43f04845562ca37b1533977ab34  build/source-checks/runtime-stage2.ll
+  892452 build/source-checks/compiler-host.ll
+   20964 build/source-checks/runtime-host.ll
+  913416 total
+DEBUG_LINES host/stage1/stage2 compiler and runtime fixed points passed
+
+source-irsame.log (final lines)
+4238 programs identical
+
+source-checkir.log (final lines)
+the IR check and llvm-as accept the IR of 54 programs
+
+source-native-cases.log (final lines)
+selected 12 cases
+24 passed, 0 failed
+
+source-native-gc.log (final lines)
+selected 4 cases
+8 passed, 0 failed
+
+source-corpus.log (final lines)
+Unicode/quote/bang path: hosted/native enabled IR identical
+
+Native regression command source (local interpreter/toolchain paths identify the actual run):
+#!/bin/bash
+set -euo pipefail
+source /workspace/scratch/3293b906db74/experiment-env.sh
+cd /workspace/scratch/3293b906db74/source-attribution
+unset PYSTACHY_DEBUG_LINES
+export PYSTACHY_HOME="$PWD" PYSTACHY_JOBS=2
+./tools/irsame.sh /workspace/scratch/c154e74884e5/pystachy-main/pystachy ./pystachy > build/source-irsame.log 2>&1
+export PYSTACHY_DEBUG_LINES=1 PYSTACHY_HOME="$PWD" PYSTACHY_IRCHECK=1
+./tools/check_ir.sh ./pystachy tests/ir/*.py > build/source-checkir.log 2>&1
+./tests/run.sh ./pystachy 'jit aot' tests/programs/containers/dicts.py tests/programs/containers/tuple_return_closures.py tests/programs/imports/import_conditional_closures.py tests/programs/numbers/python_int_generators.py tests/programs/numbers/python_int_generics_dynamic.py tests/programs/inference/dynany_generator_exceptions.py tests/programs/inference/dynany_scalars.py tests/programs/exceptions/exc_finally_nested.py tests/programs/exceptions/exc_callback.py tests/programs/exceptions/exc_flow.py tests/programs/generators/gen_yield_from.py tests/programs/generators/gen_cm_gc.py > build/source-native-cases.log 2>&1
+PYSTACHY_GC_STRESS_PROGRAM=1 ./tests/run.sh ./pystachy 'jit aot' tests/programs/containers/tuple_return_closures.py tests/programs/numbers/python_int_generators.py tests/programs/inference/dynany_generator_exceptions.py tests/programs/exceptions/exc_finally_nested.py > build/source-native-gc.log 2>&1
+"$PY" - <<'PYCODE'
+import subprocess
+from tools.test_source_lines import SourceLinesTests, ROOT
+case = SourceLinesTests()
+case.setUp()
+try:
+    hosted = case.compile_ir('1').encode('latin-1')
+    env = dict(case.env, PYSTACHY_DEBUG_LINES='1')
+    native = subprocess.check_output([str(ROOT / 'pystachy'), 'ir', str(case.path)], cwd=ROOT, env=env)
+    assert hosted == native, 'Unicode-path hosted/native metadata mismatch'
+    print('Unicode/quote/bang path: hosted/native enabled IR identical')
+finally:
+    case.doCleanups()
+PYCODE
+
+Fixed-point validation command source:
+#!/bin/bash
+set -euo pipefail
+source /workspace/scratch/3293b906db74/experiment-env.sh
+cd /workspace/scratch/3293b906db74/source-attribution
+export PYSTACHY_DEBUG_LINES=1 PYSTACHY_HOME="$PWD" PYSTACHY_IRCHECK=1
+mkdir -p build/source-checks
+"$PY" pystachy.py ir pystachy.py -o build/source-checks/compiler-host.ll
+build/pystachy1 ir pystachy.py -o build/source-checks/compiler-stage1.ll
+build/pystachy2 ir pystachy.py -o build/source-checks/compiler-stage2.ll
+cmp build/source-checks/compiler-host.ll build/source-checks/compiler-stage1.ll
+cmp build/source-checks/compiler-stage1.ll build/source-checks/compiler-stage2.ll
+"$PY" pystachy.py rt runtime.py -o build/source-checks/runtime-host.ll
+build/pystachy1 rt runtime.py -o build/source-checks/runtime-stage1.ll
+build/pystachy2 rt runtime.py -o build/source-checks/runtime-stage2.ll
+cmp build/source-checks/runtime-host.ll build/source-checks/runtime-stage1.ll
+cmp build/source-checks/runtime-stage1.ll build/source-checks/runtime-stage2.ll
+opt -passes=verify -disable-output build/source-checks/compiler-host.ll
+opt -passes='default<O2>,verify' -disable-output build/source-checks/runtime-host.ll
+sha256sum build/source-checks/*.ll
+wc -l build/source-checks/compiler-host.ll build/source-checks/runtime-host.ll
+printf 'DEBUG_LINES host/stage1/stage2 compiler and runtime fixed points passed\n'
+
+Known metadata-ID failure; intentionally not counted as passing validation:
+PYSTACHY_DEBUG_LINES=0: exit 0
+
+PYSTACHY_DEBUG_LINES=1: exit 1
+/workspace/scratch/c154e74884e5/llvm-cache/ubuntu-18.1.3-1ubuntu1-amd64/bin/llvm-as: build/source-profile/metadata-id-True.ll:1:26: error: expected 32-bit integer (too large)
+define i32 @main() !dbg !5000000016 {
+                         ^
+
+Final light gates:
+make lint typecheck check-runtime check-repository PY="$PY"
+ruff check
+All checks passed!
+/workspace/scratch/c154e74884e5/venv/bin/python tools/runtime_roots.py
+67 static pointer stores: 0 GC root problems
+shellcheck -s sh -S warning tests/cache.sh tests/corpus.sh tests/prepare_path.sh tests/record.sh tests/run.sh tests/verify.sh tests/ffi/run.sh tools/abi_check.sh tools/check_ir.sh tools/coverage.sh tools/docker_smoke.sh tools/irsame.sh tools/runtime_coverage.sh tools/setup.sh tools/shard_cases.sh tools/variants.sh bench/run.sh
+"/workspace/scratch/c154e74884e5/llvm-cache/ubuntu-18.1.3-1ubuntu1-amd64/bin/"clang -fsyntax-only -Wall -Wextra -Werror runtime.c tools/dictprobe.c tools/listprobe.c tools/eqprobe.c tools/fileprobe.c tools/selectprobe.c tools/weakrefprobe.c tools/boxprobe.c tools/unicodeprobe.c tools/bytescanprobe.c pyext.c pyembed.c
+"/workspace/scratch/c154e74884e5/llvm-cache/ubuntu-18.1.3-1ubuntu1-amd64/bin/"clang -fsyntax-only -Wall -Wextra -Werror -DPYX_ABI3T pyext.c
+mypy --config-file mypy.ini
+Success: no issues found in 50 source files
+/workspace/scratch/c154e74884e5/venv/bin/python tools/check_runtime.py
+644 RUNTIME entries, 70 exception classes: signatures, coverage and effects agree with runtime.c and runtime.py (172 functions, none of which reaches itself through a lowering or runtime.c), the classes with this Python
+/workspace/scratch/c154e74884e5/venv/bin/python tools/check_repository_hygiene.py
+repository hygiene: tracked paths are clean
+/workspace/scratch/c154e74884e5/venv/bin/python -m unittest discover -s tools -p test_repository_hygiene.py
+...........
+----------------------------------------------------------------------
+Ran 11 tests in 0.204s
+
+OK
+
+$PY -m unittest discover -s tools -p test_source_lines.py
+....
+----------------------------------------------------------------------
+Ran 4 tests in 0.691s
+
+OK
+
+clang -fsyntax-only -Wall -Wextra -Werror -DPYSTACHY_PROFILE_DATA runtime.c: exit0
+clang -fsyntax-only -Wall -Wextra -Werror tools/source_lines_jit.c: exit0
+git diff --check --cached: exit0
+Recorded source/input hashes match the final source files.
+Local Markdown link targets exist.

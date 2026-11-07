@@ -1,0 +1,8 @@
+(2.5, 3.5) (-0.0, 1.0, None) ['first', 'second']
+later item ['first', 'second', 'before', 'raise']
+(2.0, 7.0) (2.0, 7.0) True
+(True, False) (False, True)
+('first-0', None, 'last-0') ('first-39', None, 'last-39') (1.0, 0.0) (40.0, 39.0)
+(0.0, None, 1.0) (39.0, None, 40.0)
+['first', 'second', 'before', 'raise', 'source']
+[exit 0]

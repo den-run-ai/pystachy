@@ -1,0 +1,3 @@
+handlers 500 {"hosted-baseline": 0.4846951479994459, "hosted-candidate": 0.17293915299524087, "native-baseline": 0.11801737600035267, "native-candidate": 0.029385027999524027}
+samehandlers 500 {"hosted-baseline": 0.18454628500330728, "hosted-candidate": 0.1797289450041717, "native-baseline": 0.02864346100250259, "native-candidate": 0.030853679003485013}
+nohandlers 500 {"hosted-baseline": 0.29296251499908976, "hosted-candidate": 0.2850822749969666, "native-baseline": 0.04781765500229085, "native-candidate": 0.04804816500109155}

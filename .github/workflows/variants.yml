@@ -2,7 +2,7 @@
 # JIT and AOT in configurations that CI's verification does not test and that must change no result:
 # the IR passes off in the rows of a covering array of their pairs (PYSTACHY_OPT), and the runtime and
 # AOT programs built at -O0 (PYSTACHY_CFLAGS). Each variant runs in four corpus shards.
-# Two optimizer rows share a build per shard. PRs use two workers with sampled cases.
+# The lighter opt-1 and cflags-O0 rows share a build per shard. PRs use two workers with sampled cases.
 # The full matrix runs daily, on demand and on relevant pushes to main.
 name: Variants
 
@@ -30,12 +30,13 @@ jobs:
   variant:
     name: variant ${{ matrix.variant }} (shard ${{ matrix.shard }}, JIT and AOT)
     runs-on: ubuntu-24.04
-    # (the compiler's build, then a quarter of the corpus: about 5 minutes of work)
+    # Keep the slow optimizer rows separate; pair opt-1 with the cheaper -O0 runtime.
+    # Every row still covers one quarter of the corpus in both JIT and AOT.
     timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
-        variant: [opt-1, opt-2, opt-3, opt-4, opt-5 opt-6, cflags-O0]
+        variant: [opt-1 cflags-O0, opt-2, opt-3, opt-4, opt-5, opt-6]
         shard: [0/4, 1/4, 2/4, 3/4]
     env:
       PYSTACHY_LLVM: /usr/lib/llvm-18/bin

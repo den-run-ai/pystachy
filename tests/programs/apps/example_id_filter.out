@@ -1,0 +1,19 @@
+0 0 0 []
+1 0 0 []
+2 1 1 []
+62 49 41 [1, 2, 4, 7, 8, 11, 13, 14]
+63 50 42 [1, 2, 4, 7, 8, 11, 13, 14]
+64 51 42 [1, 2, 4, 7, 8, 11, 13, 14]
+125 100 83 [1, 2, 4, 7, 8, 11, 13, 14]
+126 100 84 [1, 2, 4, 7, 8, 11, 13, 14]
+127 101 84 [1, 2, 4, 7, 8, 11, 13, 14]
+1025 820 683 [1, 2, 4, 7, 8, 11, 13, 14]
+invalid IDs rejected
+capacity must be nonnegative
+capacity must be nonnegative
+different universes rejected
+changing IDs 170 [1, 4, 6, 8, 9, 11, 12, 13, 14, 16]
+['Native Python arrays', 'Compiler internals', 'Python graph tools']
+search oracle passed
+benchmark controls agree
+[exit 0]

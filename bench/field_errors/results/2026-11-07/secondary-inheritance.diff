@@ -1,0 +1,207 @@
+--- tests/programs/classes/inheritance_secondary.py:baseline
++++ tests/programs/classes/inheritance_secondary.py:candidate
+@@ -23,19 +23,20 @@
+ @dt.Twice = internal constant {{i64, ptr, ptr, i64, ptr, i64, ptr, ptr, ptr}, ptr} {{i64, ptr, ptr, i64, ptr, i64, ptr, ptr, ptr} {i64 8, ptr @s.6, ptr @s.7, i64 3, ptr @dt.Both, i64 256, ptr null, ptr null, ptr null}, ptr @dt.Reader}, align 8
+ @s.8 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1, i64 0, i64 2, [2 x i8] c" \00"}, align 8
+ @s.9 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1, i64 0, i64 2, [2 x i8] c"\0A\00"}, align 8
+-@s.10 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1, i64 0, i64 2, [2 x i8] c"'\00"}, align 8
+-@s.11 = private unnamed_addr global {i64, i64, i64, [34 x i8]} {i64 33, i64 0, i64 34, [34 x i8] c"' object has no attribute 'value'\00"}, align 8
+-@s.12 = private unnamed_addr global {i64, i64, i64, [15 x i8]} {i64 14, i64 0, i64 15, [15 x i8] c"AttributeError\00"}, align 8
+-@s.13 = private unnamed_addr global {i64, i64, i64, [39 x i8]} {i64 38, i64 0, i64 39, [39 x i8] c"integer result does not fit in 64 bits\00"}, align 8
+-@s.14 = private unnamed_addr global {i64, i64, i64, [14 x i8]} {i64 13, i64 0, i64 14, [14 x i8] c"OverflowError\00"}, align 8
+-@s.15 = private unnamed_addr global {i64, i64, i64, [40 x i8]} {i64 39, i64 0, i64 40, [40 x i8] c"'Twice' object has no attribute 'value'\00"}, align 8
+-@s.16 = private unnamed_addr global {i64, i64, i64, [42 x i8]} {i64 41, i64 0, i64 42, [42 x i8] c"'NoneType' object has no attribute 'read'\00"}, align 8
+-@s.17 = private unnamed_addr global {i64, i64, i64, [5 x i8]} {i64 4, i64 0, i64 5, [5 x i8] c"O004\00"}, align 8
+-@s.18 = private unnamed_addr global {i64, i64, i64, [6 x i8]} {i64 5, i64 0, i64 6, [6 x i8] c"Other\00"}, align 8
+-@dt.Other = internal constant {i64, ptr, ptr, i64, ptr, i64, ptr, ptr, ptr} {i64 8, ptr @s.17, ptr @s.18, i64 4, ptr null, i64 0, ptr null, ptr null, ptr null}, align 8
+-@s.19 = private unnamed_addr global {i64, i64, i64, [5 x i8]} {i64 4, i64 0, i64 5, [5 x i8] c"O005\00"}, align 8
+-@s.20 = private unnamed_addr global {i64, i64, i64, [12 x i8]} {i64 11, i64 0, i64 12, [12 x i8] c"Independent\00"}, align 8
+-@dt.Independent = internal constant {{i64, ptr, ptr, i64, ptr, i64, ptr, ptr, ptr}, ptr} {{i64, ptr, ptr, i64, ptr, i64, ptr, ptr, ptr} {i64 8, ptr @s.19, ptr @s.20, i64 5, ptr @dt.Other, i64 256, ptr null, ptr null, ptr null}, ptr @dt.Reader}, align 8
++@s.10 = private unnamed_addr global {i64, i64, i64, [6 x i8]} {i64 5, i64 0, i64 6, [6 x i8] c"Other\00"}, align 8
++@s.11 = private unnamed_addr global {i64, i64, i64, [12 x i8]} {i64 11, i64 0, i64 12, [12 x i8] c"Independent\00"}, align 8
++@pys.field.names = private constant [7 x ptr] [ptr null, ptr @s.1, ptr @s.5, ptr @s.3, ptr @s.7, ptr @s.10, ptr @s.11], align 8
++@s.12 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1, i64 0, i64 2, [2 x i8] c"'\00"}, align 8
++@s.13 = private unnamed_addr global {i64, i64, i64, [34 x i8]} {i64 33, i64 0, i64 34, [34 x i8] c"' object has no attribute 'value'\00"}, align 8
++@s.14 = private unnamed_addr global {i64, i64, i64, [15 x i8]} {i64 14, i64 0, i64 15, [15 x i8] c"AttributeError\00"}, align 8
++@s.15 = private unnamed_addr global {i64, i64, i64, [39 x i8]} {i64 38, i64 0, i64 39, [39 x i8] c"integer result does not fit in 64 bits\00"}, align 8
++@s.16 = private unnamed_addr global {i64, i64, i64, [14 x i8]} {i64 13, i64 0, i64 14, [14 x i8] c"OverflowError\00"}, align 8
++@s.17 = private unnamed_addr global {i64, i64, i64, [40 x i8]} {i64 39, i64 0, i64 40, [40 x i8] c"'Twice' object has no attribute 'value'\00"}, align 8
++@s.18 = private unnamed_addr global {i64, i64, i64, [42 x i8]} {i64 41, i64 0, i64 42, [42 x i8] c"'NoneType' object has no attribute 'read'\00"}, align 8
++@s.19 = private unnamed_addr global {i64, i64, i64, [5 x i8]} {i64 4, i64 0, i64 5, [5 x i8] c"O004\00"}, align 8
++@dt.Other = internal constant {i64, ptr, ptr, i64, ptr, i64, ptr, ptr, ptr} {i64 8, ptr @s.19, ptr @s.10, i64 4, ptr null, i64 0, ptr null, ptr null, ptr null}, align 8
++@s.20 = private unnamed_addr global {i64, i64, i64, [5 x i8]} {i64 4, i64 0, i64 5, [5 x i8] c"O005\00"}, align 8
++@dt.Independent = internal constant {{i64, ptr, ptr, i64, ptr, i64, ptr, ptr, ptr}, ptr} {{i64, ptr, ptr, i64, ptr, i64, ptr, ptr, ptr} {i64 8, ptr @s.20, ptr @s.11, i64 5, ptr @dt.Other, i64 256, ptr null, ptr null, ptr null}, ptr @dt.Reader}, align 8
+ @s.21 = private unnamed_addr global {i64, i64, i64, [9 x i8]} {i64 8, i64 0, i64 9, [9 x i8] c"NoneType\00"}, align 8
+ @s.22 = private unnamed_addr global {i64, i64, i64, [9 x i8]} {i64 8, i64 0, i64 9, [9 x i8] c"builtins\00"}, align 8
+ @pys.refl.b.NoneType = internal constant {ptr, ptr, ptr, i64, i64, ptr, i64, ptr} {ptr @s.21, ptr @s.21, ptr @s.22, i64 16, i64 0, ptr null, i64 0, ptr null}, align 8
+@@ -43,7 +44,7 @@
+ @pys.refl.c.Reader = internal constant {ptr, ptr, ptr, i64, i64, ptr, i64, ptr} {ptr @s.5, ptr @s.5, ptr @s.23, i64 9, i64 0, ptr null, i64 0, ptr null}, align 8
+ @pys.refl.c.Both = internal constant {ptr, ptr, ptr, i64, i64, ptr, i64, ptr} {ptr @s.3, ptr @s.3, ptr @s.23, i64 9, i64 0, ptr null, i64 0, ptr null}, align 8
+ @pys.refl.c.Twice = internal constant {ptr, ptr, ptr, i64, i64, ptr, i64, ptr} {ptr @s.7, ptr @s.7, ptr @s.23, i64 9, i64 0, ptr null, i64 0, ptr null}, align 8
+-@pys.refl.c.Independent = internal constant {ptr, ptr, ptr, i64, i64, ptr, i64, ptr} {ptr @s.20, ptr @s.20, ptr @s.23, i64 9, i64 0, ptr null, i64 0, ptr null}, align 8
++@pys.refl.c.Independent = internal constant {ptr, ptr, ptr, i64, i64, ptr, i64, ptr} {ptr @s.11, ptr @s.11, ptr @s.23, i64 9, i64 0, ptr null, i64 0, ptr null}, align 8
+ @s.24 = private unnamed_addr global {i64, i64, i64, [5 x i8]} {i64 4, i64 0, i64 5, [5 x i8] c"True\00"}, align 8
+ @s.25 = private unnamed_addr global {i64, i64, i64, [6 x i8]} {i64 5, i64 0, i64 6, [6 x i8] c"False\00"}, align 8
+ @s.26 = private unnamed_addr global {i64, i64, i64, [43 x i8]} {i64 42, i64 0, i64 43, [43 x i8] c"'NoneType' object has no attribute 'value'\00"}, align 8
+@@ -134,11 +135,11 @@
+ L10:
+   %t12 = getelementptr %C.Both, ptr %t4, i32 0, i32 0
+   %t13 = load i64, ptr %t12, !tbaa !19
+-  %t14 = icmp eq i64 %t13, 4
+-  %t15 = select i1 %t14, ptr @s.7, ptr @s.3
+-  %t16 = call ptr @pys_str_add(ptr @s.10, ptr %t15)
+-  %t17 = call ptr @pys_str_add(ptr %t16, ptr @s.11)
+-  call void @pys_raise(ptr @s.12, ptr %t17)
++  %t14 = getelementptr ptr, ptr @pys.field.names, i64 %t13
++  %t15 = load ptr, ptr %t14
++  %t16 = call ptr @pys_str_add(ptr @s.12, ptr %t15)
++  %t17 = call ptr @pys_str_add(ptr %t16, ptr @s.13)
++  call void @pys_raise(ptr @s.14, ptr %t17)
+   unreachable
+ L11:
+   %t18 = load i64, ptr %t5, !tbaa !16
+@@ -163,11 +164,11 @@
+ L33:
+   %t35 = getelementptr %C.Both, ptr %t27, i32 0, i32 0
+   %t36 = load i64, ptr %t35, !tbaa !19
+-  %t37 = icmp eq i64 %t36, 4
+-  %t38 = select i1 %t37, ptr @s.7, ptr @s.3
+-  %t39 = call ptr @pys_str_add(ptr @s.10, ptr %t38)
+-  %t40 = call ptr @pys_str_add(ptr %t39, ptr @s.11)
+-  call void @pys_raise(ptr @s.12, ptr %t40)
++  %t37 = getelementptr ptr, ptr @pys.field.names, i64 %t36
++  %t38 = load ptr, ptr %t37
++  %t39 = call ptr @pys_str_add(ptr @s.12, ptr %t38)
++  %t40 = call ptr @pys_str_add(ptr %t39, ptr @s.13)
++  call void @pys_raise(ptr @s.14, ptr %t40)
+   unreachable
+ L34:
+   %t41 = load i64, ptr %t28, !tbaa !16
+@@ -177,7 +178,7 @@
+   store ptr %t43, ptr %idret
+   ret i64 %t41
+ L23:
+-  call void @pys_raise(ptr @s.14, ptr @s.13)
++  call void @pys_raise(ptr @s.16, ptr @s.15)
+   unreachable
+ }
+ define internal i64 @m.Twice.read.1(ptr nonnull %a0, i64 %a1, ptr %aid1, ptr %idret) {
+@@ -233,10 +234,10 @@
+   store ptr %t34, ptr %idret
+   ret i64 %t32
+ L10:
+-  call void @pys_raise(ptr @s.12, ptr @s.15)
++  call void @pys_raise(ptr @s.14, ptr @s.17)
+   unreachable
+ L17:
+-  call void @pys_raise(ptr @s.14, ptr @s.13)
++  call void @pys_raise(ptr @s.16, ptr @s.15)
+   unreachable
+ }
+ define internal void @m.Storage.__init__.3(ptr nonnull %a0, i64 %a1, ptr %aid1) {
+@@ -525,7 +526,7 @@
+   ret void
+   br label %L37
+ L37:
+-  call void @pys_raise(ptr @s.12, ptr @s.16)
++  call void @pys_raise(ptr @s.14, ptr @s.18)
+   unreachable
+ }
+ define internal i64 @f.guarded(ptr %a0, ptr %idret) {
+@@ -628,7 +629,7 @@
+   store ptr %t64, ptr %idret
+   ret i64 -1
+ L17:
+-  call void @pys_raise(ptr @s.12, ptr @s.16)
++  call void @pys_raise(ptr @s.14, ptr @s.18)
+   unreachable
+ }
+ define internal i64 @cv.0(ptr %a0, i64 %a1, ptr %aid1, ptr %idret) {
+@@ -725,7 +726,7 @@
+   store ptr %t56, ptr %idret
+   ret i64 %t50
+ L6:
+-  call void @pys_raise(ptr @s.12, ptr @s.16)
++  call void @pys_raise(ptr @s.14, ptr @s.18)
+   unreachable
+ }
+ define internal void @f.exercise(ptr %a0, ptr %a1, ptr %a2) {
+@@ -906,11 +907,11 @@
+ L109:
+   %t111 = getelementptr %C.Both, ptr %t100, i32 0, i32 0
+   %t112 = load i64, ptr %t111, !tbaa !19
+-  %t113 = icmp eq i64 %t112, 4
+-  %t114 = select i1 %t113, ptr @s.7, ptr @s.3
+-  %t115 = call ptr @pys_str_add(ptr @s.10, ptr %t114)
+-  %t116 = call ptr @pys_str_add(ptr %t115, ptr @s.11)
+-  call void @pys_raise(ptr @s.12, ptr %t116)
++  %t113 = getelementptr ptr, ptr @pys.field.names, i64 %t112
++  %t114 = load ptr, ptr %t113
++  %t115 = call ptr @pys_str_add(ptr @s.12, ptr %t114)
++  %t116 = call ptr @pys_str_add(ptr %t115, ptr @s.13)
++  call void @pys_raise(ptr @s.14, ptr %t116)
+   unreachable
+ L110:
+   %t117 = load i64, ptr %t104, !tbaa !16
+@@ -973,11 +974,11 @@
+ L165:
+   %t167 = getelementptr %C.Both, ptr %t157, i32 0, i32 0
+   %t168 = load i64, ptr %t167, !tbaa !19
+-  %t169 = icmp eq i64 %t168, 4
+-  %t170 = select i1 %t169, ptr @s.7, ptr @s.3
+-  %t171 = call ptr @pys_str_add(ptr @s.10, ptr %t170)
+-  %t172 = call ptr @pys_str_add(ptr %t171, ptr @s.11)
+-  call void @pys_raise(ptr @s.12, ptr %t172)
++  %t169 = getelementptr ptr, ptr @pys.field.names, i64 %t168
++  %t170 = load ptr, ptr %t169
++  %t171 = call ptr @pys_str_add(ptr @s.12, ptr %t170)
++  %t172 = call ptr @pys_str_add(ptr %t171, ptr @s.13)
++  call void @pys_raise(ptr @s.14, ptr %t172)
+   unreachable
+ L166:
+   %t173 = load i64, ptr %t160, !tbaa !16
+@@ -1064,11 +1065,11 @@
+ L244:
+   %t246 = getelementptr %C.Both, ptr %t236, i32 0, i32 0
+   %t247 = load i64, ptr %t246, !tbaa !19
+-  %t248 = icmp eq i64 %t247, 4
+-  %t249 = select i1 %t248, ptr @s.7, ptr @s.3
+-  %t250 = call ptr @pys_str_add(ptr @s.10, ptr %t249)
+-  %t251 = call ptr @pys_str_add(ptr %t250, ptr @s.11)
+-  call void @pys_raise(ptr @s.12, ptr %t251)
++  %t248 = getelementptr ptr, ptr @pys.field.names, i64 %t247
++  %t249 = load ptr, ptr %t248
++  %t250 = call ptr @pys_str_add(ptr @s.12, ptr %t249)
++  %t251 = call ptr @pys_str_add(ptr %t250, ptr @s.13)
++  call void @pys_raise(ptr @s.14, ptr %t251)
+   unreachable
+ L245:
+   %t252 = load i64, ptr %t239, !tbaa !16
+@@ -1121,10 +1122,10 @@
+   ret void
+   br label %L102
+ L102:
+-  call void @pys_raise(ptr @s.12, ptr @s.26)
++  call void @pys_raise(ptr @s.14, ptr @s.26)
+   unreachable
+ L127:
+-  call void @pys_raise(ptr @s.12, ptr @s.16)
++  call void @pys_raise(ptr @s.14, ptr @s.18)
+   unreachable
+ }
+ define internal ptr @o.repr.Storage(ptr %a0, ptr %a1) {
+@@ -1512,11 +1513,11 @@
+   %t158 = load ptr, ptr %t4
+   %t159 = getelementptr inbounds ptr, ptr %t158, i64 2
+   %t160 = load ptr, ptr %t159
+-  %t161 = call ptr @pys_str_cat(i64 3, ptr @s.10, ptr %t160, ptr @s.34, ptr null, ptr null, ptr null, ptr null, ptr null)
+-  call void @pys_raise(ptr @s.12, ptr %t161)
++  %t161 = call ptr @pys_str_cat(i64 3, ptr @s.12, ptr %t160, ptr @s.34, ptr null, ptr null, ptr null, ptr null, ptr null)
++  call void @pys_raise(ptr @s.14, ptr %t161)
+   unreachable
+ L18:
+-  call void @pys_raise(ptr @s.12, ptr @s.16)
++  call void @pys_raise(ptr @s.14, ptr @s.18)
+   unreachable
+ }
+ define internal ptr @dyn.str(ptr %a0) {

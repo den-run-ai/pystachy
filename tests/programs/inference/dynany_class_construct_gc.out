@@ -1,0 +1,7 @@
+192
+True True True
+[1, 'retained', [2, 3], 'alias'] payload:7
+192
+[1, 'retained', [2, 3], 'alias'] payload:8
+[1, 'retained', [2, 3, 4], 'alias']
+[exit 0]

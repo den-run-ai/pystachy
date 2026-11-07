@@ -39,11 +39,41 @@
 #endif
 #ifdef __linux__
 #include <sys/auxv.h>
+#include <sys/file.h>
 #endif
 #include <time.h>
 #include <unistd.h>
 #include <unwind.h>
 #include <utime.h>
+
+/* Research counters are compiled out of ordinary runtimes. These count requests
+   through C helpers, not physical memory traffic: generated LLVM/runtime.py copy
+   intrinsics, scalar stores, libc internals and foreign allocations are excluded.
+   Relaxed atomics keep callbacks on foreign threads free of counter data races. */
+#ifdef PYSTACHY_PROFILE_DATA
+static _Atomic uint64_t profile_alloc_calls, profile_alloc_bytes;
+static _Atomic uint64_t profile_memcpy_calls, profile_memcpy_bytes;
+static _Atomic uint64_t profile_memmove_calls, profile_memmove_bytes;
+static inline void profile_alloc(size_t n) {
+  atomic_fetch_add_explicit(&profile_alloc_calls, 1, memory_order_relaxed);
+  atomic_fetch_add_explicit(&profile_alloc_bytes, n, memory_order_relaxed);
+}
+static inline void *profile_copy(void *dst, const void *src, size_t n) {
+  atomic_fetch_add_explicit(&profile_memcpy_calls, 1, memory_order_relaxed);
+  atomic_fetch_add_explicit(&profile_memcpy_bytes, n, memory_order_relaxed);
+  return memcpy(dst, src, n);
+}
+static inline void *profile_move(void *dst, const void *src, size_t n) {
+  atomic_fetch_add_explicit(&profile_memmove_calls, 1, memory_order_relaxed);
+  atomic_fetch_add_explicit(&profile_memmove_bytes, n, memory_order_relaxed);
+  return memmove(dst, src, n);
+}
+#define memcpy(dst, src, n) profile_copy((dst), (src), (n))
+#define memmove(dst, src, n) profile_move((dst), (src), (n))
+#define PROFILE_ALLOC(n) profile_alloc((size_t)(n))
+#else
+#define PROFILE_ALLOC(n) ((void)0)
+#endif
 
 /* A float's shortest round-trip digits: Ryu's d2s (ryu/, upstream commit 4c0618b; ryu/README.md),
    with its small tables. The driver's cached runtime is built from its files too, which RTPARTS
@@ -685,6 +715,7 @@ __attribute__((noinline)) static void *gc_slow(I n, int how) {
   return p;
 }
 static inline __attribute__((always_inline)) void *gc_alloc(I n, int atomic) {
+  PROFILE_ALLOC(n);
   if ((uint64_t)n < 136) {             /* fast path, inlined: pop a zeroed slot of a class 16..136 */
     W **h = &pys_fl[2 * (n < 8 ? 0 : (n + 8) / 8 - 2) + atomic], *p = *h;
     if (__builtin_expect(p != 0, 1)) { *h = (W *)~*p; *p = 0; return p; }
@@ -693,11 +724,15 @@ static inline __attribute__((always_inline)) void *gc_alloc(I n, int atomic) {
 }
 /* The slow path of the JIT tier's fast path (lower_module.py's JITFAST: a program it runs pops pys_fl
    itself, as gc_alloc does, and calls this for the rest) */
-void *pys_gc_slow(I n, I atomic) { return gc_slow(n, (int)atomic); }
+void *pys_gc_slow(I n, I atomic) { PROFILE_ALLOC(n); return gc_slow(n, (int)atomic); }
 /* atomic memory whose bytes may be those of an object that died: for a caller that writes every
    byte it (or anything) reads, as a new str's whose header, bytes and NUL it stores. The classes
    the fast path serves come clear anyway */
-static void *gc_raw(I n) { return (uint64_t)n < 136 ? gc_alloc(n, 1) : gc_slow(n, 3); }   /* (an allocator: check_runtime's ALLOC) */
+static void *gc_raw(I n) {
+  if ((uint64_t)n < 136) return gc_alloc(n, 1);
+  PROFILE_ALLOC(n);
+  return gc_slow(n, 3);
+}   /* (an allocator: check_runtime's ALLOC) */
 __attribute__((malloc, returns_nonnull)) void *pys_alloc(I n) { return gc_alloc(n, 0); }
 __attribute__((malloc, returns_nonnull)) void *pys_alloc_atomic(I n) { return gc_alloc(n, 1); }
 /* Compiled code's own objects and fixed tuples (alloc.fixed) that hold no reference, only ints,
@@ -928,15 +963,7 @@ Str *pys_pct_chr(I c) {                /* "%c" % i: the character, UTF-8 encoded
   char b[4];
   return c < 128 ? pys_chr(c) : pys_str(b, u8enc(b, c));
 }
-Str *pys_ascii(Str *r) {                       /* ascii(): repr with non-ASCII as \xhh, \uhhhh, \Uhhhhhhhh */
-  Buf b = {0}; char t[16];
-  for (I i = 0, n, cp; i < r->len; i += n) {   /* the characters u8char sees, as repr() did */
-    n = u8char(r->s + i, r->len - i, &cp);
-    if (cp < 128) put(&b, r->s + i, 1);
-    else put(&b, t, snprintf(t, 16, cp < 0x100 ? "\\x%02llx" : cp < 0x10000 ? "\\u%04llx" : "\\U%08llx", (long long)cp));
-  }
-  return pys_str(b.p, b.n);
-}
+Str *pys_ascii(Str *r);                       /* ascii(): the repr-escaping pass is in runtime.py */
 static I idx(I i, I n, const char *m) { if (i < 0) i += n; if (i < 0 || i >= n) pys_fail(m); return i; }
 static void span(I *lo, I *hi, I n) {
   if (*lo == NONE) *lo = 0; else if (*lo < 0 && (*lo += n) < 0) *lo = 0; else if (*lo > n) *lo = n;
@@ -1497,17 +1524,7 @@ I pys_mod(I a, I b) {
   if (b == -1) return 0;
   I r = a % b; return (r && (r < 0) != (b < 0)) ? r + b : r;
 }
-I pys_pow(I a, I b) {
-  if (b < 0) pys_fail(a ? "ValueError: negative exponent for int ** int" : "ZeroDivisionError: 0.0 cannot be raised to a negative power");
-  I r = 1, x = a;
-  if (a == 0 || a == 1) return b ? a : 1;
-  if (a == -1) return b & 1 ? -1 : 1;
-  for (;;) {                                   /* |a| >= 2, so overflow comes within 63 steps */
-    if ((b & 1) && __builtin_mul_overflow(r, x, &r)) pys_fail(OVF);
-    if (!(b >>= 1)) return r;
-    if (__builtin_mul_overflow(x, x, &x)) pys_fail(OVF);
-  }
-}
+I pys_pow(I a, I b);
 I pys_powmod(I a, I b, I m) {                 /* pow(a, b, m) as CPython's long_pow, in 128 bits: products cannot overflow */
   if (!m) pys_fail("ValueError: pow() 3rd argument cannot be 0");
   __int128 n = m < 0 ? -(__int128)m : m, x = a, r = 1;
@@ -1957,21 +1974,15 @@ double pys_m_logb(double x, double b) {   /* log(x) / log(b), and a base of 1 di
   if (d == 0) pys_fail("ZeroDivisionError: float division by zero");
   return n / d;
 }
-double pys_m_degrees(double x) { return x * (180.0 / 3.141592653589793); }
-double pys_m_radians(double x) { return x * (3.141592653589793 / 180.0); }
+double pys_m_degrees(double x);
+double pys_m_radians(double x);
 I pys_m_isfinite(double x) { return isfinite(x); }
 I pys_m_isinf(double x) { return isinf(x); }
 I pys_m_isnan(double x) { return isnan(x); }
 I pys_m_trunc(double x) { return pys_f2i(trunc(x)); }
 /* Portions derived from CPython's Modules/mathmodule.c: Copyright (c) 2001-2024 Python Software
    Foundation; All Rights Reserved; used under the PSF License Agreement (see THIRD_PARTY_NOTICES). */
-I pys_m_isclose(double a, double b, double rel_tol, double abs_tol) {   /* CPython's math_isclose_impl */
-  if (rel_tol < 0.0 || abs_tol < 0.0) pys_fail("ValueError: tolerances must be non-negative");
-  if (a == b) return 1;            /* (two infinities of the same sign) */
-  if (isinf(a) || isinf(b)) return 0;
-  double diff = fabs(b - a);
-  return diff <= fabs(rel_tol * b) || diff <= fabs(rel_tol * a) || diff <= abs_tol;
-}
+I pys_m_isclose(double a, double b, double rel_tol, double abs_tol);
 /* math.gamma and math.lgamma are CPython 3.13.16's m_tgamma and m_lgamma (Modules/mathmodule.c),
    which do not use libm's tgamma and lgamma: their Lanczos approximation, reflection formula and
    special cases, with their comments, so that every result is CPython's to the last bit. The
@@ -2362,7 +2373,8 @@ I pys_ceil(double d) { return pys_f2i(ceil(d)); }
    U<n>:<tag>:<e>... a tagged union, n program-wide tags and their member descriptors;
    R<n>: a recursive alias edge, n bytes backwards from R to an enclosing descriptor;
    A a dynamic value's box (see dynamic values), walked by its DynType's descriptor, Z the
-   function a box holds, which compares and hashes by identity; J a promoting int (a fixed
+   function a box holds, which compares and hashes by identity; Y a class object's canonical
+   reflection record (distinct from its instances); J a promoting int (a fixed
    tuple's item, the box of an int | None of a module that opts in, a field), its two words
    (jbig).
    skip treats R as a leaf; value operations follow it without changing the slot layout.
@@ -2574,6 +2586,12 @@ static const char *repr_depth(Buf *b, I v, const char *d, I depth) {
   case 'G': put(b, "<generator object>", 18); return d;
   case 'Q': put(b, "<iterator object>", 17); return d;
   case 'Z': put(b, "<function>", 10); return d;   /* (a dynamic value's function: by identity, unnamed) */
+  case 'Y': {   /* a class value: ReflRec's first words are name, qualname and module */
+    Str **r = (Str **)v;
+    put(b, "<class '", 8);
+    if (strcmp(r[2]->s, "builtins")) { put(b, r[2]->s, r[2]->len); put(b, ".", 1); }
+    put(b, r[1]->s, r[1]->len); put(b, "'>", 2); return d;
+  }
   case 'i': { char t[32]; put(b, t, snprintf(t, 32, "%lld", (long long)v)); return d; }
   case 'J': {                                       /* a promoting int's two words (jbig) */
     opt_in(); Big x = jbig(v);
@@ -2765,7 +2783,7 @@ static int eqv(I a, I b, const char *d) {
   }
   case 'S': case 'F': return pys_set_cmp((Set *)a, (Set *)b, 4);   /* (a set equals a frozenset of its elements) */
   case 'O': case 'H': return a == b || pys_obj_eq(ocls(d + 1), a, b);   /* identity first, like CPython */
-  case 'P': case 'C': return a == b;
+  case 'P': case 'C': case 'Y': return a == b;
   case '?': return a && b ? eqv(unbox(a, d + 1), unbox(b, d + 1), d + 1) : a == b;   /* None equals only None */
   case 'E': return pys_exc_id((Exc *)a) == pys_exc_id((Exc *)b);
   }
@@ -2929,7 +2947,7 @@ static int opv(I a, I b, const char *d, I op) {
     if (a && b) return opv(unbox(a, d + 1), unbox(b, d + 1), d + 1, op);
     failf("TypeError: '%s' not supported between instances of '%s' and '%s'", op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=",
           a ? vtyname(a, d + 1) : "NoneType", b ? vtyname(b, d + 1) : "NoneType");
-  case 'C': failf("TypeError: '%s' not supported between instances of 'type' and 'type'", op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=");
+  case 'C': case 'Y': failf("TypeError: '%s' not supported between instances of 'type' and 'type'", op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=");
   case 'E': {
     int m, n; const char *x = exc_name((Exc *)a, &m), *y = exc_name((Exc *)b, &n);
     failf("TypeError: '%s' not supported between instances of '%.*s' and '%.*s'", op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=", m, x, n, y);
@@ -3041,6 +3059,16 @@ static List *list_new(I cap, int atomic) {
 }
 List *pys_list_new(I cap) { return list_new(cap, 0); }
 List *pys_list_new_atomic(I cap) { return list_new(cap, 1); }   /* a list[int], list[float] or list[bool] */
+/* Large scalar literals emit one copy operation plus immutable pointer-free slots, never
+   a live list's storage or an identity companion. LLVM may inline this helper and expand
+   memcpy as appropriate; the header and atomic item array are freshly allocated each time. */
+List *pys_list_from_const(const I *values, I n) {
+  if ((uint64_t)n > INT64_MAX / sizeof(I)) oom();
+  List *l = list_new(n, 1);
+  if (n) memcpy(l->a, values, n * sizeof(I));
+  l->len = n;
+  return l;
+}
 /* Only dynamic program graphs request this companion. The numeric array remains raw and
    atomic, preserving its C ABI. A raw in-place store clears its companion without allocating;
    a later observation or sharing operation materializes that new object. Pure moves carry
@@ -3862,18 +3890,8 @@ Dyn *pys_list_minmax_identity(List *l, Str *d, I max, I kind) {
 I pys_any(List *l) { for (I i = 0; i < l->len; i++) if (l->a[i]) return 1; return 0; }
 I pys_all(List *l) { for (I i = 0; i < l->len; i++) if (!l->a[i]) return 0; return 1; }
 I pys_sum_int(List *l, I s) { list_narrow(l); for (I i = 0; i < l->len; i++) if (__builtin_add_overflow(s, l->a[i], &s)) pys_fail(OVF); return s; }
-static double fsum(List *l, I i, double s) {  /* CPython 3.12's compensated (Neumaier) sum of l[i:] */
-  double c = 0;
-  for (; i < l->len; i++) {
-    double x = dbl(l->a[i]), t = s + x;
-    if (fabs(s) >= fabs(x)) c += (s - t) + x; else c += (x - t) + s;
-    s = t;
-  }
-  return c && isfinite(c) ? s + c : s;
-}
-double pys_sum_float(List *l, double s) { return fsum(l, 0, s); }
-/* an int start: CPython adds the first float to it plainly, then sums the rest compensated */
-double pys_sum_float_int(List *l, I s) { return l->len ? fsum(l, 1, (double)s + dbl(l->a[0])) : (double)s; }
+double pys_sum_float(List *l, double s);
+double pys_sum_float_int(List *l, I s);
 double pys_sum_int_float(List *l, double s) { for (I i = 0; i < l->len; i++) s += (double)l->a[i]; return s; }   /* ints: not compensated */
 double pys_m_dist(List *p, List *q) {   /* math.dist: hypot's vnorm of the differences of two lists of floats */
   if (p->len != q->len) pys_fail("ValueError: both points must have the same number of dimensions");
@@ -3894,16 +3912,8 @@ double pys_m_hypot_list(List *p) {   /* math.hypot of other than two coordinates
   if (isinf(max)) return max;
   return nan ? NAN : vnorm(v, p->len, max);
 }
-I pys_range_len(I a, I b, I s) {                     /* len(range(a, b, s)) as an unsigned count */
-  if (!s) pys_fail("ValueError: range() arg 3 must not be zero");
-  uint64_t d = s > 0 ? (uint64_t)b - (uint64_t)a : (uint64_t)a - (uint64_t)b, st = s > 0 ? (uint64_t)s : -(uint64_t)s;
-  return (s > 0 ? a < b : a > b) ? (I)((d - 1) / st + 1) : 0;
-}
-I pys_range_has(I x, I a, I b, I s) {               /* x in range(a, b, s) */
-  if (!s) pys_fail("ValueError: range() arg 3 must not be zero");
-  if (s > 0 ? !(a <= x && x < b) : !(b < x && x <= a)) return 0;
-  return (s > 0 ? (uint64_t)x - (uint64_t)a : (uint64_t)a - (uint64_t)x) % (s > 0 ? (uint64_t)s : -(uint64_t)s) == 0;
-}
+I pys_range_len(I a, I b, I s);
+I pys_range_has(I x, I a, I b, I s);
 List *pys_range_list(I a, I b, I s) {   /* list(range(a, b, s)): allocated once at its length, as CPython does */
   uint64_t n = (uint64_t)pys_range_len(a, b, s);
   if (n > INT64_MAX) pys_fail("OverflowError: Python int too large to convert to C ssize_t");
@@ -4667,7 +4677,7 @@ static I hitem(I k, const char *d) {                 /* the hash of a value k (a
   case 'f': return hdbl(dbl(k));
   case 'T': return htuple((I *)k, d[1] - '0', d + 2, 1);
   case 'V': return htuple(((VTuple *)k)->a, ((VTuple *)k)->len, d + 1, 0);
-  case 'P': case 'C': return hptr(k);   /* (an exception class's class object: by identity, as object's) */
+  case 'P': case 'C': case 'Y': return hptr(k);   /* (class objects: by identity, as object's) */
   case 'H': return ohash(k, d);
   case 'A': return pys_dyn_hash((Dyn *)k);
   case 'J': { opt_in(); Big x = jbig(k); return x.hi ? pys_mpz_hash(x.hi) : hint(x.lo); }   /* (a promoting int's two words) */
@@ -4715,13 +4725,14 @@ I pys_hash_id(void *p) { return hptr((I)p); }        /* object.__hash__ */
    immutable Mpz digits through a scanned box, under the same Python kind with its own
    payload descriptor. An int's, a float's and a bound method's box is its
    identity for `is` and id() (pys_dyn_id), other values' their payload's (#797). */
-enum { DK_NONE, DK_BOOL, DK_INT, DK_FLOAT, DK_STR, DK_LIST, DK_DICT, DK_TUPLE, DK_OBJ, DK_FUNC, DK_ITER, DK_GEN };
+enum { DK_NONE, DK_BOOL, DK_INT, DK_FLOAT, DK_STR, DK_LIST, DK_DICT, DK_TUPLE, DK_OBJ, DK_FUNC, DK_ITER, DK_GEN, DK_TYPE };
 enum { DF_EQ = 1, DF_CMP = 2, DF_HASH = 4, DF_BOXID = 8, DF_NE = 16, DF_X = 32, DF_ITER = 64, DF_BIG = 128, DF_ROLE = 256 };   /* a class's ==, ordering, hash and != run the program's
                                                                      helpers; a box of this type is its own identity (a bound method's);
                                                                      the class's comparison methods take a value of any type (dobj) */
 #define DSTR(id, lit) static struct { I len; uint64_t h; I c1; char s[sizeof lit]; } id = {sizeof lit - 1, 0, sizeof lit, lit}
 DSTR(dd_none, "?s"); DSTR(dd_bool, "b"); DSTR(dd_int, "i"); DSTR(dd_bigint, "j"); DSTR(dd_float, "f"); DSTR(dd_str, "s");
 DSTR(dd_list, "LA"); DSTR(dd_intlist, "Li"); DSTR(dd_dict, "DAA"); DSTR(dd_tuple, "VA");
+DSTR(dd_type, "Y"); DSTR(dn_type, "type");
 DSTR(dn_none, "NoneType"); DSTR(dn_bool, "bool"); DSTR(dn_int, "int"); DSTR(dn_float, "float"); DSTR(dn_str, "str");
 DSTR(dn_list, "list"); DSTR(dn_dict, "dict"); DSTR(dn_tuple, "tuple");
 #define DTYPE(id, k, d, n) const DynType id = {k, (Str *)&d, (Str *)&n, -1, 0, 0, 0, 0, 0} /* GC_NO_ROOT(pys_dyntype_none, pys_dyntype_bool, pys_dyntype_int, pys_dyntype_float, pys_dyntype_str, pys_dyntype_list, pys_dyntype_intlist, pys_dyntype_biglist, pys_dyntype_dict, pys_dyntype_tuple): immutable descriptors reference only static strings. */
@@ -4732,6 +4743,8 @@ const DynType pys_dyntype_bigint = {DK_INT, (Str *)&dd_bigint, (Str *)&dn_int, -
 DTYPE(pys_dyntype_str, DK_STR, dd_str, dn_str); DTYPE(pys_dyntype_list, DK_LIST, dd_list, dn_list);
 DTYPE(pys_dyntype_intlist, DK_LIST, dd_intlist, dn_list); DTYPE(pys_dyntype_biglist, DK_LIST, dd_intlist, dn_list);
 DTYPE(pys_dyntype_dict, DK_DICT, dd_dict, dn_dict); DTYPE(pys_dyntype_tuple, DK_TUPLE, dd_tuple, dn_tuple);
+/* GC_NO_ROOT(pys_dyntype_type): immutable descriptor references only static strings. */
+DTYPE(pys_dyntype_type, DK_TYPE, dd_type, dn_type);
 const Dyn pys_dyn_none_box = {&pys_dyntype_none, 0}; /* GC_NO_ROOT(pys_dyn_none_box, pys_dyn_true_box, pys_dyn_false_box): immutable scalar boxes reference only static type descriptors. */
 const Dyn pys_dyn_true_box = {&pys_dyntype_bool, 1}, pys_dyn_false_box = {&pys_dyntype_bool, 0};
 #define DI(v) {&pys_dyntype_int, v}
@@ -4847,7 +4860,7 @@ I pys_dyn_role_isa(Dyn *x, const DynType *t) {
 /* is box x its own copy (lib/copy.py's __pys_copy_is_own and __pys_deepcopy_is_own of an Any
    value): None, a bool, an int, a float or a str, as CPython's copy gives it; for copy.copy()
    (deep 0) also a tuple or a function */
-I pys_dyn_copy_is_own(Dyn *x, I deep) { int k = DKIND(x); return k <= DK_STR || (!deep && (k == DK_TUPLE || k == DK_FUNC)); }
+I pys_dyn_copy_is_own(Dyn *x, I deep) { int k = DKIND(x); return k <= DK_STR || k == DK_TYPE || (!deep && (k == DK_TUPLE || k == DK_FUNC)); }
 /* lib/copy.py's memo retains the payload, so typed and Any aliases have one key and
    one copy. A deep list copy preserves its original physical layout; reboxing a
    memo hit uses that descriptor. Shallow dynamic copy() remains unrestricted. */
@@ -5045,7 +5058,7 @@ I pys_dyn_hash(Dyn *x) {
   case DK_STR: return hstr((Str *)x->v);
   case DK_TUPLE: return htuple(((VTuple *)x->v)->a, ((VTuple *)x->v)->len, "A", 0);
   case DK_OBJ: return x->t->flags & DF_HASH ? pys_obj_eq(-1 - x->t->cls, x->v, 0) : hptr(x->v);
-  case DK_FUNC: case DK_ITER: case DK_GEN: return hptr(x->v);
+  case DK_FUNC: case DK_ITER: case DK_GEN: case DK_TYPE: return hptr(x->v);
   }
   failf("TypeError: unhashable type: '%s'", DNAME(x));
 }
@@ -5588,6 +5601,179 @@ void pys_dyn_update(Dict *d, Dyn *x) {
     pys_dict_set(d, kv->a[0], kv->a[1]);
   }
 }
+/* Runtime-sized call packs own fresh scanned containers. Their elements retain the original
+   boxes (including native-list identity companions); no typed aliased storage is reinterpreted.
+   A null name callback denotes LIST_EXTEND's mixed-positional path. A sole *source is
+   materialized after keyword merges by the compiler. Calling an object's __str__ to name
+   an unpacking error must happen only when the error is known, after argument evaluation. */
+static Str *dyn_call_text(Dyn *value, Str *(*convert)(Dyn *)) { return convert(value); }
+static _Noreturn void dyn_call_error(Buf *b) {
+  /* Keyword names and an object's __str__ may contain NUL; retain their byte lengths. */
+  pys_raise(cstr("TypeError"), pys_str(b->p, b->n));
+}
+void pys_dyn_star_extend(List *dest, Dyn *source, Dyn *callee, Str *(*name)(Dyn *)) {
+  if (!dyn_iterable(source)) {
+    if (!name) failf("TypeError: Value after * must be an iterable, not %s", DNAME(source));
+    Str *who = dyn_call_text(callee, name);
+    Buf b = {0}; put(&b, who->s, who->len);
+    const char *m = " argument after * must be an iterable, not ";
+    put(&b, m, strlen(m)); put(&b, source->t->name->s, source->t->name->len);
+    dyn_call_error(&b);
+  }
+  if (DKIND(source) == DK_LIST) {
+    I n = ((List *)source->v)->len;
+    for (I i = 0; i < n; i++) pys_list_append(dest, (I)dyn_list_at(source, i));
+    return;
+  }
+  if (DKIND(source) == DK_TUPLE) {
+    VTuple *t = (VTuple *)source->v;
+    for (I i = 0; i < t->len; i++) pys_list_append(dest, t->a[i]);
+    return;
+  }
+  DynIter *it = pys_dyn_iter(source);   /* __iter__ validation precedes the length hint */
+  if (source->t->len && dyn_user_len(source) > INT64_MAX / (I)sizeof(I)) pys_fail("MemoryError");
+  for (Dyn *x; (x = pys_dyn_next(it));) pys_list_append(dest, (I)x);
+}
+static _Noreturn void dyn_kw_duplicate(Dyn *callee, Str *(*name)(Dyn *), Dyn *key, Str *(*stringify)(Dyn *)) {
+  /* CPython formats the callable before the key; either conversion can itself raise. */
+  Str *who = dyn_call_text(callee, name);
+  Str *keyname = DKIND(key) == DK_STR ? (Str *)key->v : dyn_call_text(key, stringify);
+  Buf b = {0}; put(&b, who->s, who->len);
+  const char *m = " got multiple values for keyword argument '";
+  put(&b, m, strlen(m)); put(&b, keyname->s, keyname->len); put(&b, "'", 1);
+  dyn_call_error(&b);
+}
+/* ** accepts builtin dynamic dicts. Custom mapping protocols remain an explicit boundary.
+   Merge with each source entry's stored hash: hashing it again would add __hash__ calls.
+   Non-string keys are checked only after every mapping has merged, as CALL_FUNCTION_EX does. */
+void pys_dyn_kw_merge(Dict *dest, Dyn *source, Dyn *callee, Str *(*name)(Dyn *), Str *(*stringify)(Dyn *)) {
+  if (DKIND(source) != DK_DICT) {
+    if (DKIND(source) == DK_OBJ) pys_fail("NotImplementedError: dynamic ** calls require builtin dict mappings");
+    Str *who = dyn_call_text(callee, name);
+    Buf b = {0}; put(&b, who->s, who->len);
+    const char *m = " argument after ** must be a mapping, not ";
+    put(&b, m, strlen(m)); put(&b, source->t->name->s, source->t->name->len);
+    dyn_call_error(&b);
+  }
+  Dict *from = (Dict *)source->v;
+  if (!from->len) return;
+  int empty = !dest->len;
+  if (empty && clean(from)) { retable(dest, from); return; }
+  if ((dest->size ? dest->size : 8) * 2 / 3 < from->len)
+    build(dest, dest, keysize(((dest->len + from->len) * 3 + 1) / 2));
+  I used = from->len;
+  for (I e = 0; e < from->n; e++) if (dlive(from, e)) {
+    I key = from->keys[e], value = from->vals[e];
+    uint64_t hash = from->hs[e];   /* comparisons can replace the source table */
+    if (!empty && dfind(dest, key, hash, NULL) >= 0) dyn_kw_duplicate(callee, name, (Dyn *)key, stringify);
+    /* _PyDict_MergeEx first checks a nonempty destination for a duplicate, then insertdict
+       looks up the key again. A second comparison can run code or change its answer. An
+       initially empty destination skips the duplicate check for the complete merge. */
+    dset(dest, key, hash, value);
+    if (from->len != used) pys_fail("RuntimeError: dict mutated during update");
+  }
+}
+static I dyn_param_find(Str *names, I *starts, I np, Str *key) {
+  for (I j = 0; j < np; j++) {
+    I n = starts[j + 1] - starts[j] - (j + 1 < np);
+    if (key->len == n && !memcmp(key->s, names->s + starts[j], n)) return j;
+  }
+  return -1;
+}
+static void dyn_param_put(Buf *b, Str *names, I *starts, I np, I j) {
+  put(b, names->s + starts[j], starts[j + 1] - starts[j] - (j + 1 < np));
+}
+/* Bind a fixed signature to nullable slots. names has '\1'-separated ALL parameter names;
+   required has one '1' (required) or '0' (default) per name. npos and posonly are absolute
+   parameter indices, own implicit receiver/env slots are already filled, and off adjusts
+   counts for classmethod's omitted cls (+1) or a closure's synthetic env (-1).
+   Implicit and omitted-default result slots stay NULL, distinct from boxed None. The
+   generated adapter supplies definition-time defaults, then calls its ordinary compiled fn. */
+List *pys_dyn_bind(List *pos, Dict *kw, Str *fname, Str *names, Str *required, I npos, I posonly, I own, I off) {
+  I np = required->len;
+  I *starts = pys_alloc_atomic((np + 1) * sizeof(I));
+  I count = 1; starts[0] = 0;
+  for (I i = 0; i < names->len; i++) if (names->s[i] == '\1' && count < np) starts[count++] = i + 1;
+  starts[np] = names->len;
+  List *bound = pys_list_new(np); bound->len = np;
+  for (I i = 0; i < pos->len && i + own < npos; i++) bound->a[i + own] = pos->a[i];
+  /* CPython checks the complete keyword tuple's strings before matching any parameter. */
+  for (I e = 0; e < kw->n; e++) if (dlive(kw, e) && DKIND((Dyn *)kw->keys[e]) != DK_STR)
+    pys_fail("TypeError: keywords must be strings");
+  for (I e = 0; e < kw->n; e++) if (dlive(kw, e)) {
+    Str *key = (Str *)((Dyn *)kw->keys[e])->v;
+    I j = dyn_param_find(names, starts, np, key);
+    if (j < 0 || j < posonly) {
+      Buf b = {0}; put(&b, fname->s, fname->len);
+      I po = 0;
+      for (I k = 0; k < kw->n; k++) if (dlive(kw, k)) {
+        Str *s = (Str *)((Dyn *)kw->keys[k])->v;
+        I index = dyn_param_find(names, starts, np, s);
+        if (index >= 0 && index < posonly) po++;
+      }
+      if (po) {
+        const char *m = "() got some positional-only arguments passed as keyword arguments: '";
+        put(&b, m, strlen(m)); I added = 0;
+        /* Positional-only complaints list signature order, not keyword insertion order. */
+        for (I index = 0; index < posonly; index++) {
+          for (I k = 0; k < kw->n; k++) if (dlive(kw, k)) {
+            Str *s = (Str *)((Dyn *)kw->keys[k])->v;
+            if (dyn_param_find(names, starts, np, s) == index) {
+              if (added++) put(&b, ", ", 2);
+              dyn_param_put(&b, names, starts, np, index);
+              break;
+            }
+          }
+        }
+      } else {
+        const char *m = "() got an unexpected keyword argument '";
+        put(&b, m, strlen(m)); put(&b, key->s, key->len);
+      }
+      put(&b, "'", 1); dyn_call_error(&b);
+    }
+    if (j < own || bound->a[j]) {
+      Buf b = {0}; put(&b, fname->s, fname->len);
+      const char *m = "() got multiple values for argument '";
+      put(&b, m, strlen(m)); put(&b, key->s, key->len); put(&b, "'", 1);
+      dyn_call_error(&b);
+    }
+    bound->a[j] = kw->vals[e];
+  }
+  I given = pos->len + own;
+  if (given > npos) {
+    I defaults = 0, kwgiven = 0;
+    for (I j = 0; j < npos; j++) if (required->s[j] != '1') defaults++;
+    for (I j = npos; j < np; j++) if (bound->a[j]) kwgiven++;
+    char counts[240];
+    int n;
+    if (defaults) n = snprintf(counts, sizeof counts, "() takes from %lld to %lld positional arguments but %lld", (long long)(npos + off - defaults), (long long)(npos + off), (long long)(given + off));
+    else n = snprintf(counts, sizeof counts, "() takes %lld positional argument%s but %lld", (long long)(npos + off), npos + off != 1 ? "s" : "", (long long)(given + off));
+    Buf b = {0}; put(&b, fname->s, fname->len); put(&b, counts, n);
+    if (kwgiven) {
+      n = snprintf(counts, sizeof counts, " positional argument%s (and %lld keyword-only argument%s)", given + off != 1 ? "s" : "", (long long)kwgiven, kwgiven != 1 ? "s" : "");
+      put(&b, counts, n);
+    }
+    const char *tail = given + off == 1 && !kwgiven ? " was given" : " were given";
+    put(&b, tail, strlen(tail)); dyn_call_error(&b);
+  }
+  for (int kind = 0; kind < 2; kind++) {
+    I missing = 0;
+    for (I j = own; j < np; j++) if (!bound->a[j] && required->s[j] == '1' && (j < npos) == !kind) missing++;
+    if (!missing) continue;
+    Buf b = {0}; put(&b, fname->s, fname->len); char message[128];
+    int n = snprintf(message, sizeof message, "() missing %lld required %s argument%s: ", (long long)missing, kind ? "keyword-only" : "positional", missing != 1 ? "s" : "");
+    put(&b, message, n); I added = 0;
+    for (I j = own; j < np; j++) if (!bound->a[j] && required->s[j] == '1' && (j < npos) == !kind) {
+      if (added) {
+        const char *sep = added + 1 == missing ? missing == 2 ? " and " : ", and " : ", ";
+        put(&b, sep, strlen(sep));
+      }
+      put(&b, "'", 1); dyn_param_put(&b, names, starts, np, j); put(&b, "'", 1); added++;
+    }
+    dyn_call_error(&b);
+  }
+  return bound;
+}
 /* list(o): a new list of o's items; str.join's items, which must be strs (CPython's message) */
 List *pys_dyn_list(Dyn *o) {
   DynIter *it = pys_dyn_iter(o);   /* __iter__ and its validation precede __len__'s hint */
@@ -6059,7 +6245,7 @@ static I u8enc(char *o, I c) {
   o[0] = 0xF0 | c >> 18; o[1] = 0x80 | (c >> 12 & 63); o[2] = 0x80 | (c >> 6 & 63); o[3] = 0x80 | (c & 63); return 4;
 }
 static const char *tyname(char d) {
-  return d == 'i' || d == 'J' ? "int" : d == 'b' ? "bool" : d == 'f' ? "float" : d == 's' ? "str" : d == 'L' ? "list" : d == 'D' ? "dict" : d == 'T' || d == 'V' ? "tuple" : d == 'S' ? "set" : d == 'F' ? "frozenset" : d == 'C' ? "type" : "object";
+  return d == 'i' || d == 'J' ? "int" : d == 'b' ? "bool" : d == 'f' ? "float" : d == 's' ? "str" : d == 'L' ? "list" : d == 'D' ? "dict" : d == 'T' || d == 'V' ? "tuple" : d == 'S' ? "set" : d == 'F' ? "frozenset" : d == 'C' || d == 'Y' ? "type" : "object";
 }
 /* The mini-language itself is in runtime.py (pys_format_str, _int, _float); pys_format picks one
    by the descriptor, and pys_fmt_float writes the digits of a float for a presentation type with
@@ -6071,7 +6257,7 @@ Str *pys_format(I v, Str *desc, Str *spec) {
   const char *ds = desc->s;
   if (*ds == 'A') {   /* (a dynamic value: its own; an object's or a function's with a spec: object.__format__'s error) */
     Dyn *x = (Dyn *)v;
-    if ((DKIND(x) == DK_OBJ || DKIND(x) == DK_FUNC || DKIND(x) == DK_ITER || DKIND(x) == DK_GEN) && spec->len) failf("TypeError: unsupported format string passed to %s.__format__", DNAME(x));
+    if ((DKIND(x) == DK_OBJ || DKIND(x) == DK_FUNC || DKIND(x) == DK_ITER || DKIND(x) == DK_GEN || DKIND(x) == DK_TYPE) && spec->len) failf("TypeError: unsupported format string passed to %s.__format__", DNAME(x));
     v = x->v; ds = x->t->desc->s;
   }
   if (*ds == '?') {                            /* None or a value */
@@ -6333,6 +6519,18 @@ void pys_finish(void) {                /* at exit, what CPython's shows of its e
   int bad = finish_hook ? finish_hook() : 0, e;   /* an embedded CPython's end (pyembed.c), after the program's
                                                     output and its atexit callbacks */
   if (gc_stats) gc_report();
+#ifdef PYSTACHY_PROFILE_DATA
+  fprintf(stderr, "pystachy-data: {\"schema\":1,\"c_gc_alloc_calls\":%llu,\"c_gc_requested_bytes\":%llu,"
+          "\"c_memcpy_calls\":%llu,\"c_memcpy_requested_bytes\":%llu,\"c_memmove_calls\":%llu,"
+          "\"c_memmove_requested_bytes\":%llu,\"gc_collections\":%lld,\"gc_peak_heap_bytes\":%lld}\n",
+          (unsigned long long)atomic_load_explicit(&profile_alloc_calls, memory_order_relaxed),
+          (unsigned long long)atomic_load_explicit(&profile_alloc_bytes, memory_order_relaxed),
+          (unsigned long long)atomic_load_explicit(&profile_memcpy_calls, memory_order_relaxed),
+          (unsigned long long)atomic_load_explicit(&profile_memcpy_bytes, memory_order_relaxed),
+          (unsigned long long)atomic_load_explicit(&profile_memmove_calls, memory_order_relaxed),
+          (unsigned long long)atomic_load_explicit(&profile_memmove_bytes, memory_order_relaxed),
+          (long long)gc_n, (long long)gc_peak);
+#endif
   if (!std_out.closed && (e = flush1(&std_out))) {
     fprintf(stderr, "Exception ignored on flushing sys.stdout:\n%s: [Errno %d] %s\n", errcls(e), e, strerror(e));
     bad = 1;
@@ -6489,6 +6687,13 @@ __attribute__((noinline)) static int writing(dev_t dev, ino_t ino) {
     if (files[i]->wr && !files[i]->closed && files[i]->dev == dev && files[i]->ino == ino) return 1;
   return 0;
 }
+/* CPython opens ordinary text and binary files as non-inheritable. An exec
+   through /proc/self/fd/N can therefore pin an inode without leaking N into the program. */
+static void file_cloexec(FILE *f, Str *path) {
+  if (fcntl(fileno(f), F_SETFD, FD_CLOEXEC) == -1) {
+    int saved = errno; fclose(f); errno = saved; oserr(path->s);
+  }
+}
 File *pys_open(Str *path, Str *mode, Str *enc, Str *nl, I buffering) {   /* CPython's checks, in its order */
   int x = 0, r = 0, w = 0, a = 0, plus = 0, t = 0, b = 0, lat = 1;
   if (nul(mode) || (enc && nul(enc)) || (nl && nul(nl))) pys_fail("ValueError: embedded null character");
@@ -6512,6 +6717,7 @@ File *pys_open(Str *path, Str *mode, Str *enc, Str *nl, I buffering) {   /* CPyt
   FILE *f = fopen(path->s, m);
   if (!f && (errno == EMFILE || errno == ENFILE) && !gc_off) { collect(); f = fopen(path->s, m); }   /* unreachable files closed */
   if (!f) oserr(path->s);
+  file_cloexec(f, path);
   if (fstat(fileno(f), &st)) memset(&st, 0, sizeof st);
   else if (S_ISDIR(st.st_mode)) { fclose(f); errno = EISDIR; oserr(path->s); }
   if (!buffering) { fclose(f); pys_fail("ValueError: can't have unbuffered text I/O"); }   /* the file is created by now */
@@ -6567,13 +6773,16 @@ static int again(File *f) {
   if (e == EINTR && !io_intr) return 1;
   ioerr(e);
 }
-static int get(File *f) {
+/* Every byte of readline and bounded read passes through get and getnl. Keep both buffered paths
+   inline even when the EOF/error retry path grows; a call per byte regressed streaming examples
+   (fileprobe's IR guard). Inlining get alone can push getnl past the compiler's inline budget. */
+static inline __attribute__((always_inline)) int get(File *f) {
   int c;
   while ((c = getc_unlocked(f->f)) == EOF && again(f)) {}
   f->rcons += c != EOF; return c;
 }
 static void unget(File *f, int c) { ungetc(c, f->f); f->rcons--; }
-static int getnl(File *f, int c) {     /* newline=None reads "\r\n" and "\r" as "\n" */
+static inline __attribute__((always_inline)) int getnl(File *f, int c) { /* newline=None reads "\r\n" and "\r" as "\n" */
   if (c == '\r' && !f->nl) { int d = get(f); if (d != '\n' && d != EOF) unget(f, d); c = '\n'; }
   return c;
 }
@@ -6767,6 +6976,7 @@ File *pys_bopen(Str *path, Str *mode, Str *enc, Str *errs, Str *nl, I buffering)
   FILE *f = fopen(path->s, m);
   if (!f && (errno == EMFILE || errno == ENFILE) && !gc_off) { collect(); f = fopen(path->s, m); }
   if (!f) oserr(path->s);
+  file_cloexec(f, path);
   if (fstat(fileno(f), &st)) memset(&st, 0, sizeof st);
   else if (S_ISDIR(st.st_mode)) { fclose(f); errno = EISDIR; oserr(path->s); }
   File *o = pys_alloc(sizeof(File));
@@ -6937,6 +7147,67 @@ _Noreturn void pys_execv(Str *path, List *args) {   /* os.execv: the process bec
   execv(path->s, v);
   ioerr(errno);
 }
+/* Private native-program cache primitive: no wait and no diagnostics. FD9
+   changes only after the new lock is acquired, and exec releases it atomically. */
+I pys_cache_lock(Str *path) {
+#ifdef __linux__
+  if (nul(path)) return -1;
+  int fd = open(path->s, O_RDONLY | O_CLOEXEC | O_NOFOLLOW | O_NONBLOCK);
+  if (fd < 0) return -1;
+  struct stat st;
+  if (fstat(fd, &st) || !S_ISREG(st.st_mode) || st.st_uid != geteuid()) {
+    close(fd); return -1;
+  }
+  if (flock(fd, LOCK_EX | LOCK_NB)) {
+    int saved = errno; close(fd);
+    return saved == EWOULDBLOCK || saved == EAGAIN ? 0 : -1;
+  }
+  if (fd != 9 && dup2(fd, 9) < 0) { close(fd); return -1; }
+  if (fcntl(9, F_SETFD, FD_CLOEXEC) < 0) {
+    if (fd != 9) close(fd);
+    close(9); return -1;
+  }
+  if (fd != 9) close(fd);
+  return 1;
+#else
+  (void)path;
+  return -1;
+#endif
+}
+/* Private cache helper: FNV-1a over raw file bytes, matching the compiler's
+   Latin-1 loop exactly. Failures return an empty string so callers can miss. */
+Str *pys_cache_file_hash(Str *path, I limit) {
+  if (nul(path) || limit < 0) return cstr("");
+  int fd;
+  do fd = open(path->s, O_RDONLY | O_NONBLOCK | O_CLOEXEC);
+  while (fd < 0 && errno == EINTR);
+  if (fd < 0) return cstr("");
+  struct stat st;
+  int ok = !fstat(fd, &st) && S_ISREG(st.st_mode) && st.st_size >= 0
+    && (uint64_t)st.st_size <= (uint64_t)limit;
+  uint64_t hash = UINT64_C(0xcbf29ce484222325), total = 0;
+  unsigned char bytes[16384];
+  while (ok) {
+    ssize_t n;
+    do n = read(fd, bytes, sizeof bytes); while (n < 0 && errno == EINTR);
+    if (n < 0) { ok = 0; break; }
+    if (!n) break;
+    if ((uint64_t)n > (uint64_t)limit - total) { ok = 0; break; }
+    total += (uint64_t)n;
+    for (ssize_t i = 0; i < n; ++i)
+      hash = (hash ^ bytes[i]) * UINT64_C(0x100000001b3);
+  }
+  if (close(fd)) ok = 0;
+  if (!ok) return cstr("");
+  char text[17];
+  for (int i = 15; i >= 0; --i) {
+    text[i] = "0123456789abcdef"[hash & 15];
+    hash >>= 4;
+  }
+  text[16] = 0;
+  return cstr(text);
+}
+
 I pys_getpid(void) { return getpid(); }
 Str *pys_getcwd(void) {          /* os.getcwd(): CPython's posix_getcwd(), whose buffer grows by 1024 bytes while getcwd() fails with ERANGE */
   size_t size = 1024;
@@ -7165,7 +7436,39 @@ Str *pys_path_join(Str *a, Str *b) {     /* os.path.join(a, b), as posixpath.joi
   s->len = a->len + 1 + b->len; memcpy(s->s, a->s, a->len); s->s[a->len] = '/'; memcpy(s->s + a->len + 1, b->s, b->len);
   return s;
 }
-Str *pys_getenv(Str *k, Str *dflt) { char *v = nul(k) ? 0 : getenv(k->s); return v ? cstr(v) : dflt; }
+/* POSIX environment text uses UTF-8 with surrogateescape, as CPython's os.environ.
+   Keep the common ASCII paths allocation-free until a value is returned. These
+   codec functions are implemented in runtime.py and share the ordinary codec checks. */
+Str *pys_str_encode(Str *, Str *, Str *);
+Str *pys_bytes_decode(Str *, Str *, Str *);
+static Str *env_encoded(Str *s) {
+  return memchr(s->s, 0xed, s->len) ? pys_str_encode(s, 0, cstr("surrogateescape")) : s;
+}
+static Str *env_decoded(const char *v) {
+  Str *s = cstr(v);
+  for (I i = 0; i < s->len; i++)
+    if ((unsigned char)s->s[i] >= 0x80) return pys_bytes_decode(s, 0, cstr("surrogateescape"));
+  return s;
+}
+Str *pys_getenv(Str *k, Str *dflt) {
+  k = env_encoded(k);
+  char *v = nul(k) || strchr(k->s, '=') ? 0 : getenv(k->s);
+  return v ? env_decoded(v) : dflt;
+}
+void pys_environ_set(Str *k, Str *v) {
+  k = env_encoded(k); v = env_encoded(v);
+  if (nul(k) || nul(v)) pys_fail("ValueError: embedded null byte");
+  if (strchr(k->s, '=')) pys_fail("ValueError: illegal environment variable name");
+  if (setenv(k->s, v->s, 1)) ioerr(errno);
+}
+Str *pys_environ_pop(Str *k, Str *dflt) {
+  k = env_encoded(k);
+  char *v = nul(k) || strchr(k->s, '=') ? 0 : getenv(k->s);
+  if (!v) return dflt;
+  Str *old = env_decoded(v);  /* copy the value before unsetenv invalidates it */
+  if (unsetenv(k->s)) ioerr(errno);
+  return old;
+}
 
 /* ---------- exceptions: table-driven unwinding (the Itanium C++ ABI's) ----------
    A program that has try or with calls pys_eh_on when it starts. From then on a raise (pys_fail,
@@ -8366,6 +8669,169 @@ Str *pys_mkdtemp(void) {     /* like CPython: first usable of $TMPDIR $TEMP $TMP
 }
 
 /* ---------- tables ---------- */
+/* BEGIN GENERATED UNICODE CLASSIFICATION */
+/* Generated by tools/unicode_classification_tables.py from CPython 3.13.16, Unicode 15.1.0.
+   Each entry is (transition code point << 4) | alpha/digit/decimal/numeric flags.
+   Do not edit: regenerate with --write; --check verifies every code point. */
+static const uint32_t unicode_classification[] = {
+  0x0, 0x30e, 0x3a0, 0x411, 0x5b0, 0x611, 0x7b0, 0xaa1, 0xab0, 0xb2a, 0xb40, 0xb51,
+  0xb60, 0xb9a, 0xba1, 0xbb0, 0xbc8, 0xbf0, 0xc01, 0xd70, 0xd81, 0xf70, 0xf81, 0x2c20,
+  0x2c61, 0x2d20, 0x2e01, 0x2e50, 0x2ec1, 0x2ed0, 0x2ee1, 0x2ef0, 0x3701, 0x3750, 0x3761, 0x3780,
+  0x37a1, 0x37e0, 0x37f1, 0x3800, 0x3861, 0x3870, 0x3881, 0x38b0, 0x38c1, 0x38d0, 0x38e1, 0x3a20,
+  0x3a31, 0x3f60, 0x3f71, 0x4820, 0x48a1, 0x5300, 0x5311, 0x5570, 0x5591, 0x55a0, 0x5601, 0x5890,
+  0x5d01, 0x5eb0, 0x5ef1, 0x5f30, 0x6201, 0x64b0, 0x660e, 0x66a0, 0x66e1, 0x6700, 0x6711, 0x6d40,
+  0x6d51, 0x6d60, 0x6e51, 0x6e70, 0x6ee1, 0x6f0e, 0x6fa1, 0x6fd0, 0x6ff1, 0x7000, 0x7101, 0x7110,
+  0x7121, 0x7300, 0x74d1, 0x7a60, 0x7b11, 0x7b20, 0x7c0e, 0x7ca1, 0x7eb0, 0x7f41, 0x7f60, 0x7fa1,
+  0x7fb0, 0x8001, 0x8160, 0x81a1, 0x81b0, 0x8241, 0x8250, 0x8281, 0x8290, 0x8401, 0x8590, 0x8601,
+  0x86b0, 0x8701, 0x8880, 0x8891, 0x88f0, 0x8a01, 0x8ca0, 0x9041, 0x93a0, 0x93d1, 0x93e0, 0x9501,
+  0x9510, 0x9581, 0x9620, 0x966e, 0x9700, 0x9711, 0x9810, 0x9851, 0x98d0, 0x98f1, 0x9910, 0x9931,
+  0x9a90, 0x9aa1, 0x9b10, 0x9b21, 0x9b30, 0x9b61, 0x9ba0, 0x9bd1, 0x9be0, 0x9ce1, 0x9cf0, 0x9dc1,
+  0x9de0, 0x9df1, 0x9e20, 0x9e6e, 0x9f01, 0x9f20, 0x9f48, 0x9fa0, 0x9fc1, 0x9fd0, 0xa051, 0xa0b0,
+  0xa0f1, 0xa110, 0xa131, 0xa290, 0xa2a1, 0xa310, 0xa321, 0xa340, 0xa351, 0xa370, 0xa381, 0xa3a0,
+  0xa591, 0xa5d0, 0xa5e1, 0xa5f0, 0xa66e, 0xa700, 0xa721, 0xa750, 0xa851, 0xa8e0, 0xa8f1, 0xa920,
+  0xa931, 0xaa90, 0xaaa1, 0xab10, 0xab21, 0xab40, 0xab51, 0xaba0, 0xabd1, 0xabe0, 0xad01, 0xad10,
+  0xae01, 0xae20, 0xae6e, 0xaf00, 0xaf91, 0xafa0, 0xb051, 0xb0d0, 0xb0f1, 0xb110, 0xb131, 0xb290,
+  0xb2a1, 0xb310, 0xb321, 0xb340, 0xb351, 0xb3a0, 0xb3d1, 0xb3e0, 0xb5c1, 0xb5e0, 0xb5f1, 0xb620,
+  0xb66e, 0xb700, 0xb711, 0xb728, 0xb780, 0xb831, 0xb840, 0xb851, 0xb8b0, 0xb8e1, 0xb910, 0xb921,
+  0xb960, 0xb991, 0xb9b0, 0xb9c1, 0xb9d0, 0xb9e1, 0xba00, 0xba31, 0xba50, 0xba81, 0xbab0, 0xbae1,
+  0xbba0, 0xbd01, 0xbd10, 0xbe6e, 0xbf08, 0xbf30, 0xc051, 0xc0d0, 0xc0e1, 0xc110, 0xc121, 0xc290,
+  0xc2a1, 0xc3a0, 0xc3d1, 0xc3e0, 0xc581, 0xc5b0, 0xc5d1, 0xc5e0, 0xc601, 0xc620, 0xc66e, 0xc700,
+  0xc788, 0xc7f0, 0xc801, 0xc810, 0xc851, 0xc8d0, 0xc8e1, 0xc910, 0xc921, 0xca90, 0xcaa1, 0xcb40,
+  0xcb51, 0xcba0, 0xcbd1, 0xcbe0, 0xcdd1, 0xcdf0, 0xce01, 0xce20, 0xce6e, 0xcf00, 0xcf11, 0xcf30,
+  0xd041, 0xd0d0, 0xd0e1, 0xd110, 0xd121, 0xd3b0, 0xd3d1, 0xd3e0, 0xd4e1, 0xd4f0, 0xd541, 0xd570,
+  0xd588, 0xd5f1, 0xd620, 0xd66e, 0xd708, 0xd790, 0xd7a1, 0xd800, 0xd851, 0xd970, 0xd9a1, 0xdb20,
+  0xdb31, 0xdbc0, 0xdbd1, 0xdbe0, 0xdc01, 0xdc70, 0xde6e, 0xdf00, 0xe011, 0xe310, 0xe321, 0xe340,
+  0xe401, 0xe470, 0xe50e, 0xe5a0, 0xe811, 0xe830, 0xe841, 0xe850, 0xe861, 0xe8b0, 0xe8c1, 0xea40,
+  0xea51, 0xea60, 0xea71, 0xeb10, 0xeb21, 0xeb40, 0xebd1, 0xebe0, 0xec01, 0xec50, 0xec61, 0xec70,
+  0xed0e, 0xeda0, 0xedc1, 0xee00, 0xf001, 0xf010, 0xf20e, 0xf2a8, 0xf340, 0xf401, 0xf480, 0xf491,
+  0xf6d0, 0xf881, 0xf8d0, 0x10001, 0x102b0, 0x103f1, 0x1040e, 0x104a0, 0x10501, 0x10560, 0x105a1, 0x105e0,
+  0x10611, 0x10620, 0x10651, 0x10670, 0x106e1, 0x10710, 0x10751, 0x10820, 0x108e1, 0x108f0, 0x1090e, 0x109a0,
+  0x10a01, 0x10c60, 0x10c71, 0x10c80, 0x10cd1, 0x10ce0, 0x10d01, 0x10fb0, 0x10fc1, 0x12490, 0x124a1, 0x124e0,
+  0x12501, 0x12570, 0x12581, 0x12590, 0x125a1, 0x125e0, 0x12601, 0x12890, 0x128a1, 0x128e0, 0x12901, 0x12b10,
+  0x12b21, 0x12b60, 0x12b81, 0x12bf0, 0x12c01, 0x12c10, 0x12c21, 0x12c60, 0x12c81, 0x12d70, 0x12d81, 0x13110,
+  0x13121, 0x13160, 0x13181, 0x135b0, 0x1369a, 0x13728, 0x137d0, 0x13801, 0x13900, 0x13a01, 0x13f60, 0x13f81,
+  0x13fe0, 0x14011, 0x166d0, 0x166f1, 0x16800, 0x16811, 0x169b0, 0x16a01, 0x16eb0, 0x16ee8, 0x16f11, 0x16f90,
+  0x17001, 0x17120, 0x171f1, 0x17320, 0x17401, 0x17520, 0x17601, 0x176d0, 0x176e1, 0x17710, 0x17801, 0x17b40,
+  0x17d71, 0x17d80, 0x17dc1, 0x17dd0, 0x17e0e, 0x17ea0, 0x17f08, 0x17fa0, 0x1810e, 0x181a0, 0x18201, 0x18790,
+  0x18801, 0x18850, 0x18871, 0x18a90, 0x18aa1, 0x18ab0, 0x18b01, 0x18f60, 0x19001, 0x191f0, 0x1946e, 0x19501,
+  0x196e0, 0x19701, 0x19750, 0x19801, 0x19ac0, 0x19b01, 0x19ca0, 0x19d0e, 0x19daa, 0x19db0, 0x1a001, 0x1a170,
+  0x1a201, 0x1a550, 0x1a80e, 0x1a8a0, 0x1a90e, 0x1a9a0, 0x1aa71, 0x1aa80, 0x1b051, 0x1b340, 0x1b451, 0x1b4d0,
+  0x1b50e, 0x1b5a0, 0x1b831, 0x1ba10, 0x1bae1, 0x1bb0e, 0x1bba1, 0x1be60, 0x1c001, 0x1c240, 0x1c40e, 0x1c4a0,
+  0x1c4d1, 0x1c50e, 0x1c5a1, 0x1c7e0, 0x1c801, 0x1c890, 0x1c901, 0x1cbb0, 0x1cbd1, 0x1cc00, 0x1ce91, 0x1ced0,
+  0x1cee1, 0x1cf40, 0x1cf51, 0x1cf70, 0x1cfa1, 0x1cfb0, 0x1d001, 0x1dc00, 0x1e001, 0x1f160, 0x1f181, 0x1f1e0,
+  0x1f201, 0x1f460, 0x1f481, 0x1f4e0, 0x1f501, 0x1f580, 0x1f591, 0x1f5a0, 0x1f5b1, 0x1f5c0, 0x1f5d1, 0x1f5e0,
+  0x1f5f1, 0x1f7e0, 0x1f801, 0x1fb50, 0x1fb61, 0x1fbd0, 0x1fbe1, 0x1fbf0, 0x1fc21, 0x1fc50, 0x1fc61, 0x1fcd0,
+  0x1fd01, 0x1fd40, 0x1fd61, 0x1fdc0, 0x1fe01, 0x1fed0, 0x1ff21, 0x1ff50, 0x1ff61, 0x1ffd0, 0x2070a, 0x20711,
+  0x20720, 0x2074a, 0x207a0, 0x207f1, 0x2080a, 0x208a0, 0x20901, 0x209d0, 0x21021, 0x21030, 0x21071, 0x21080,
+  0x210a1, 0x21140, 0x21151, 0x21160, 0x21191, 0x211e0, 0x21241, 0x21250, 0x21261, 0x21270, 0x21281, 0x21290,
+  0x212a1, 0x212e0, 0x212f1, 0x213a0, 0x213c1, 0x21400, 0x21451, 0x214a0, 0x214e1, 0x214f0, 0x21508, 0x21831,
+  0x21858, 0x218a0, 0x2460a, 0x24698, 0x2474a, 0x247d8, 0x2488a, 0x24918, 0x249c0, 0x24eaa, 0x24eb8, 0x24f5a,
+  0x24fe8, 0x24ffa, 0x25000, 0x2776a, 0x277f8, 0x2780a, 0x27898, 0x278aa, 0x27938, 0x27940, 0x2c001, 0x2ce50,
+  0x2ceb1, 0x2cef0, 0x2cf21, 0x2cf40, 0x2cfd8, 0x2cfe0, 0x2d001, 0x2d260, 0x2d271, 0x2d280, 0x2d2d1, 0x2d2e0,
+  0x2d301, 0x2d680, 0x2d6f1, 0x2d700, 0x2d801, 0x2d970, 0x2da01, 0x2da70, 0x2da81, 0x2daf0, 0x2db01, 0x2db70,
+  0x2db81, 0x2dbf0, 0x2dc01, 0x2dc70, 0x2dc81, 0x2dcf0, 0x2dd01, 0x2dd70, 0x2dd81, 0x2ddf0, 0x2e2f1, 0x2e300,
+  0x30051, 0x30078, 0x30080, 0x30218, 0x302a0, 0x30311, 0x30360, 0x30388, 0x303b1, 0x303d0, 0x30411, 0x30970,
+  0x309d1, 0x30a00, 0x30a11, 0x30fb0, 0x30fc1, 0x31000, 0x31051, 0x31300, 0x31311, 0x318f0, 0x31928, 0x31960,
+  0x31a01, 0x31c00, 0x31f01, 0x32000, 0x32208, 0x322a0, 0x32488, 0x32500, 0x32518, 0x32600, 0x32808, 0x328a0,
+  0x32b18, 0x32c00, 0x34001, 0x34059, 0x34061, 0x34839, 0x34841, 0x382a9, 0x382b1, 0x3b4d9, 0x3b4e1, 0x4dc00,
+  0x4e009, 0x4e011, 0x4e039, 0x4e041, 0x4e079, 0x4e081, 0x4e099, 0x4e0a1, 0x4e249, 0x4e251, 0x4e5d9, 0x4e5e1,
+  0x4e8c9, 0x4e8d1, 0x4e949, 0x4e951, 0x4e969, 0x4e971, 0x4eac9, 0x4ead1, 0x4ebf9, 0x4ec11, 0x4edf9, 0x4ee01,
+  0x4ee89, 0x4ee91, 0x4f0d9, 0x4f0e1, 0x4f709, 0x4f711, 0x4fe99, 0x4fea1, 0x50069, 0x50071, 0x51049, 0x51051,
+  0x51469, 0x51471, 0x51699, 0x516a1, 0x516b9, 0x516c1, 0x516d9, 0x516e1, 0x53419, 0x53421, 0x53439, 0x53461,
+  0x534c9, 0x534d1, 0x53c19, 0x53c51, 0x56db9, 0x56dc1, 0x58f19, 0x58f21, 0x58f99, 0x58fa1, 0x5e7a9, 0x5e7b1,
+  0x5efe9, 0x5f001, 0x5f0c9, 0x5f0f1, 0x5f109, 0x5f111, 0x62d09, 0x62d11, 0x62fe9, 0x62ff1, 0x634c9, 0x634d1,
+  0x67d29, 0x67d31, 0x6d1e9, 0x6d1f1, 0x6f069, 0x6f071, 0x73969, 0x73971, 0x767e9, 0x767f1, 0x76959, 0x76961,
+  0x79ed9, 0x79ee1, 0x80869, 0x80871, 0x842c9, 0x842d1, 0x8cae9, 0x8caf1, 0x8cb39, 0x8cb41, 0x8d309, 0x8d311,
+  0x920e9, 0x920f1, 0x94a99, 0x94aa1, 0x96219, 0x96221, 0x96469, 0x96471, 0x964c9, 0x964d1, 0x96789, 0x96791,
+  0x96f69, 0x96f71, 0xa48d0, 0xa4d01, 0xa4fe0, 0xa5001, 0xa60d0, 0xa6101, 0xa620e, 0xa62a1, 0xa62c0, 0xa6401,
+  0xa66f0, 0xa67f1, 0xa69e0, 0xa6a01, 0xa6e68, 0xa6f00, 0xa7171, 0xa7200, 0xa7221, 0xa7890, 0xa78b1, 0xa7cb0,
+  0xa7d01, 0xa7d20, 0xa7d31, 0xa7d40, 0xa7d51, 0xa7da0, 0xa7f21, 0xa8020, 0xa8031, 0xa8060, 0xa8071, 0xa80b0,
+  0xa80c1, 0xa8230, 0xa8308, 0xa8360, 0xa8401, 0xa8740, 0xa8821, 0xa8b40, 0xa8d0e, 0xa8da0, 0xa8f21, 0xa8f80,
+  0xa8fb1, 0xa8fc0, 0xa8fd1, 0xa8ff0, 0xa900e, 0xa90a1, 0xa9260, 0xa9301, 0xa9470, 0xa9601, 0xa97d0, 0xa9841,
+  0xa9b30, 0xa9cf1, 0xa9d0e, 0xa9da0, 0xa9e01, 0xa9e50, 0xa9e61, 0xa9f0e, 0xa9fa1, 0xa9ff0, 0xaa001, 0xaa290,
+  0xaa401, 0xaa430, 0xaa441, 0xaa4c0, 0xaa50e, 0xaa5a0, 0xaa601, 0xaa770, 0xaa7a1, 0xaa7b0, 0xaa7e1, 0xaab00,
+  0xaab11, 0xaab20, 0xaab51, 0xaab70, 0xaab91, 0xaabe0, 0xaac01, 0xaac10, 0xaac21, 0xaac30, 0xaadb1, 0xaade0,
+  0xaae01, 0xaaeb0, 0xaaf21, 0xaaf50, 0xab011, 0xab070, 0xab091, 0xab0f0, 0xab111, 0xab170, 0xab201, 0xab270,
+  0xab281, 0xab2f0, 0xab301, 0xab5b0, 0xab5c1, 0xab6a0, 0xab701, 0xabe30, 0xabf0e, 0xabfa0, 0xac001, 0xd7a40,
+  0xd7b01, 0xd7c70, 0xd7cb1, 0xd7fc0, 0xf9001, 0xf96b9, 0xf96c1, 0xf9739, 0xf9741, 0xf9789, 0xf9791, 0xf9b29,
+  0xf9b31, 0xf9d19, 0xf9d21, 0xf9d39, 0xf9d41, 0xf9fd9, 0xf9fe1, 0xfa6e0, 0xfa701, 0xfada0, 0xfb001, 0xfb070,
+  0xfb131, 0xfb180, 0xfb1d1, 0xfb1e0, 0xfb1f1, 0xfb290, 0xfb2a1, 0xfb370, 0xfb381, 0xfb3d0, 0xfb3e1, 0xfb3f0,
+  0xfb401, 0xfb420, 0xfb431, 0xfb450, 0xfb461, 0xfbb20, 0xfbd31, 0xfd3e0, 0xfd501, 0xfd900, 0xfd921, 0xfdc80,
+  0xfdf01, 0xfdfc0, 0xfe701, 0xfe750, 0xfe761, 0xfefd0, 0xff10e, 0xff1a0, 0xff211, 0xff3b0, 0xff411, 0xff5b0,
+  0xff661, 0xffbf0, 0xffc21, 0xffc80, 0xffca1, 0xffd00, 0xffd21, 0xffd80, 0xffda1, 0xffdd0, 0x100001, 0x1000c0,
+  0x1000d1, 0x100270, 0x100281, 0x1003b0, 0x1003c1, 0x1003e0, 0x1003f1, 0x1004e0, 0x100501, 0x1005e0, 0x100801, 0x100fb0,
+  0x101078, 0x101340, 0x101408, 0x101790, 0x1018a8, 0x1018c0, 0x102801, 0x1029d0, 0x102a01, 0x102d10, 0x102e18, 0x102fc0,
+  0x103001, 0x103208, 0x103240, 0x1032d1, 0x103418, 0x103421, 0x1034a8, 0x1034b0, 0x103501, 0x103760, 0x103801, 0x1039e0,
+  0x103a01, 0x103c40, 0x103c81, 0x103d00, 0x103d18, 0x103d60, 0x104001, 0x1049e0, 0x104a0e, 0x104aa0, 0x104b01, 0x104d40,
+  0x104d81, 0x104fc0, 0x105001, 0x105280, 0x105301, 0x105640, 0x105701, 0x1057b0, 0x1057c1, 0x1058b0, 0x1058c1, 0x105930,
+  0x105941, 0x105960, 0x105971, 0x105a20, 0x105a31, 0x105b20, 0x105b31, 0x105ba0, 0x105bb1, 0x105bd0, 0x106001, 0x107370,
+  0x107401, 0x107560, 0x107601, 0x107680, 0x107801, 0x107860, 0x107871, 0x107b10, 0x107b21, 0x107bb0, 0x108001, 0x108060,
+  0x108081, 0x108090, 0x1080a1, 0x108360, 0x108371, 0x108390, 0x1083c1, 0x1083d0, 0x1083f1, 0x108560, 0x108588, 0x108601,
+  0x108770, 0x108798, 0x108801, 0x1089f0, 0x108a78, 0x108b00, 0x108e01, 0x108f30, 0x108f41, 0x108f60, 0x108fb8, 0x109001,
+  0x109168, 0x1091c0, 0x109201, 0x1093a0, 0x109801, 0x109b80, 0x109bc8, 0x109be1, 0x109c08, 0x109d00, 0x109d28, 0x10a001,
+  0x10a010, 0x10a101, 0x10a140, 0x10a151, 0x10a180, 0x10a191, 0x10a360, 0x10a40a, 0x10a448, 0x10a490, 0x10a601, 0x10a7d8,
+  0x10a7f0, 0x10a801, 0x10a9d8, 0x10aa00, 0x10ac01, 0x10ac80, 0x10ac91, 0x10ae50, 0x10aeb8, 0x10af00, 0x10b001, 0x10b360,
+  0x10b401, 0x10b560, 0x10b588, 0x10b601, 0x10b730, 0x10b788, 0x10b801, 0x10b920, 0x10ba98, 0x10bb00, 0x10c001, 0x10c490,
+  0x10c801, 0x10cb30, 0x10cc01, 0x10cf30, 0x10cfa8, 0x10d001, 0x10d240, 0x10d30e, 0x10d3a0, 0x10e60a, 0x10e698, 0x10e7f0,
+  0x10e801, 0x10eaa0, 0x10eb01, 0x10eb20, 0x10f001, 0x10f1d8, 0x10f271, 0x10f280, 0x10f301, 0x10f460, 0x10f518, 0x10f550,
+  0x10f701, 0x10f820, 0x10fb01, 0x10fc58, 0x10fcc0, 0x10fe01, 0x10ff70, 0x110031, 0x110380, 0x11052a, 0x1105b8, 0x11066e,
+  0x110700, 0x110711, 0x110730, 0x110751, 0x110760, 0x110831, 0x110b00, 0x110d01, 0x110e90, 0x110f0e, 0x110fa0, 0x111031,
+  0x111270, 0x11136e, 0x111400, 0x111441, 0x111450, 0x111471, 0x111480, 0x111501, 0x111730, 0x111761, 0x111770, 0x111831,
+  0x111b30, 0x111c11, 0x111c50, 0x111d0e, 0x111da1, 0x111db0, 0x111dc1, 0x111dd0, 0x111e18, 0x111f50, 0x112001, 0x112120,
+  0x112131, 0x1122c0, 0x1123f1, 0x112410, 0x112801, 0x112870, 0x112881, 0x112890, 0x1128a1, 0x1128e0, 0x1128f1, 0x1129e0,
+  0x1129f1, 0x112a90, 0x112b01, 0x112df0, 0x112f0e, 0x112fa0, 0x113051, 0x1130d0, 0x1130f1, 0x113110, 0x113131, 0x113290,
+  0x1132a1, 0x113310, 0x113321, 0x113340, 0x113351, 0x1133a0, 0x1133d1, 0x1133e0, 0x113501, 0x113510, 0x1135d1, 0x113620,
+  0x114001, 0x114350, 0x114471, 0x1144b0, 0x11450e, 0x1145a0, 0x1145f1, 0x114620, 0x114801, 0x114b00, 0x114c41, 0x114c60,
+  0x114c71, 0x114c80, 0x114d0e, 0x114da0, 0x115801, 0x115af0, 0x115d81, 0x115dc0, 0x116001, 0x116300, 0x116441, 0x116450,
+  0x11650e, 0x1165a0, 0x116801, 0x116ab0, 0x116b81, 0x116b90, 0x116c0e, 0x116ca0, 0x117001, 0x1171b0, 0x11730e, 0x1173a8,
+  0x1173c0, 0x117401, 0x117470, 0x118001, 0x1182c0, 0x118a01, 0x118e0e, 0x118ea8, 0x118f30, 0x118ff1, 0x119070, 0x119091,
+  0x1190a0, 0x1190c1, 0x119140, 0x119151, 0x119170, 0x119181, 0x119300, 0x1193f1, 0x119400, 0x119411, 0x119420, 0x11950e,
+  0x1195a0, 0x119a01, 0x119a80, 0x119aa1, 0x119d10, 0x119e11, 0x119e20, 0x119e31, 0x119e40, 0x11a001, 0x11a010, 0x11a0b1,
+  0x11a330, 0x11a3a1, 0x11a3b0, 0x11a501, 0x11a510, 0x11a5c1, 0x11a8a0, 0x11a9d1, 0x11a9e0, 0x11ab01, 0x11af90, 0x11c001,
+  0x11c090, 0x11c0a1, 0x11c2f0, 0x11c401, 0x11c410, 0x11c50e, 0x11c5a8, 0x11c6d0, 0x11c721, 0x11c900, 0x11d001, 0x11d070,
+  0x11d081, 0x11d0a0, 0x11d0b1, 0x11d310, 0x11d461, 0x11d470, 0x11d50e, 0x11d5a0, 0x11d601, 0x11d660, 0x11d671, 0x11d690,
+  0x11d6a1, 0x11d8a0, 0x11d981, 0x11d990, 0x11da0e, 0x11daa0, 0x11ee01, 0x11ef30, 0x11f021, 0x11f030, 0x11f041, 0x11f110,
+  0x11f121, 0x11f340, 0x11f50e, 0x11f5a0, 0x11fb01, 0x11fb10, 0x11fc08, 0x11fd50, 0x120001, 0x1239a0, 0x124008, 0x1246f0,
+  0x124801, 0x125440, 0x12f901, 0x12ff10, 0x130001, 0x134300, 0x134411, 0x134470, 0x144001, 0x146470, 0x168001, 0x16a390,
+  0x16a401, 0x16a5f0, 0x16a60e, 0x16a6a0, 0x16a701, 0x16abf0, 0x16ac0e, 0x16aca0, 0x16ad01, 0x16aee0, 0x16b001, 0x16b300,
+  0x16b401, 0x16b440, 0x16b50e, 0x16b5a0, 0x16b5b8, 0x16b620, 0x16b631, 0x16b780, 0x16b7d1, 0x16b900, 0x16e401, 0x16e808,
+  0x16e970, 0x16f001, 0x16f4b0, 0x16f501, 0x16f510, 0x16f931, 0x16fa00, 0x16fe01, 0x16fe20, 0x16fe31, 0x16fe40, 0x170001,
+  0x187f80, 0x188001, 0x18cd60, 0x18d001, 0x18d090, 0x1aff01, 0x1aff40, 0x1aff51, 0x1affc0, 0x1affd1, 0x1afff0, 0x1b0001,
+  0x1b1230, 0x1b1321, 0x1b1330, 0x1b1501, 0x1b1530, 0x1b1551, 0x1b1560, 0x1b1641, 0x1b1680, 0x1b1701, 0x1b2fc0, 0x1bc001,
+  0x1bc6b0, 0x1bc701, 0x1bc7d0, 0x1bc801, 0x1bc890, 0x1bc901, 0x1bc9a0, 0x1d2c08, 0x1d2d40, 0x1d2e08, 0x1d2f40, 0x1d3608,
+  0x1d3790, 0x1d4001, 0x1d4550, 0x1d4561, 0x1d49d0, 0x1d49e1, 0x1d4a00, 0x1d4a21, 0x1d4a30, 0x1d4a51, 0x1d4a70, 0x1d4a91,
+  0x1d4ad0, 0x1d4ae1, 0x1d4ba0, 0x1d4bb1, 0x1d4bc0, 0x1d4bd1, 0x1d4c40, 0x1d4c51, 0x1d5060, 0x1d5071, 0x1d50b0, 0x1d50d1,
+  0x1d5150, 0x1d5161, 0x1d51d0, 0x1d51e1, 0x1d53a0, 0x1d53b1, 0x1d53f0, 0x1d5401, 0x1d5450, 0x1d5461, 0x1d5470, 0x1d54a1,
+  0x1d5510, 0x1d5521, 0x1d6a60, 0x1d6a81, 0x1d6c10, 0x1d6c21, 0x1d6db0, 0x1d6dc1, 0x1d6fb0, 0x1d6fc1, 0x1d7150, 0x1d7161,
+  0x1d7350, 0x1d7361, 0x1d74f0, 0x1d7501, 0x1d76f0, 0x1d7701, 0x1d7890, 0x1d78a1, 0x1d7a90, 0x1d7aa1, 0x1d7c30, 0x1d7c41,
+  0x1d7cc0, 0x1d7cee, 0x1d8000, 0x1df001, 0x1df1f0, 0x1df251, 0x1df2b0, 0x1e0301, 0x1e06e0, 0x1e1001, 0x1e12d0, 0x1e1371,
+  0x1e13e0, 0x1e140e, 0x1e14a0, 0x1e14e1, 0x1e14f0, 0x1e2901, 0x1e2ae0, 0x1e2c01, 0x1e2ec0, 0x1e2f0e, 0x1e2fa0, 0x1e4d01,
+  0x1e4ec0, 0x1e4f0e, 0x1e4fa0, 0x1e7e01, 0x1e7e70, 0x1e7e81, 0x1e7ec0, 0x1e7ed1, 0x1e7ef0, 0x1e7f01, 0x1e7ff0, 0x1e8001,
+  0x1e8c50, 0x1e8c78, 0x1e8d00, 0x1e9001, 0x1e9440, 0x1e94b1, 0x1e94c0, 0x1e950e, 0x1e95a0, 0x1ec718, 0x1ecac0, 0x1ecad8,
+  0x1ecb00, 0x1ecb18, 0x1ecb50, 0x1ed018, 0x1ed2e0, 0x1ed2f8, 0x1ed3e0, 0x1ee001, 0x1ee040, 0x1ee051, 0x1ee200, 0x1ee211,
+  0x1ee230, 0x1ee241, 0x1ee250, 0x1ee271, 0x1ee280, 0x1ee291, 0x1ee330, 0x1ee341, 0x1ee380, 0x1ee391, 0x1ee3a0, 0x1ee3b1,
+  0x1ee3c0, 0x1ee421, 0x1ee430, 0x1ee471, 0x1ee480, 0x1ee491, 0x1ee4a0, 0x1ee4b1, 0x1ee4c0, 0x1ee4d1, 0x1ee500, 0x1ee511,
+  0x1ee530, 0x1ee541, 0x1ee550, 0x1ee571, 0x1ee580, 0x1ee591, 0x1ee5a0, 0x1ee5b1, 0x1ee5c0, 0x1ee5d1, 0x1ee5e0, 0x1ee5f1,
+  0x1ee600, 0x1ee611, 0x1ee630, 0x1ee641, 0x1ee650, 0x1ee671, 0x1ee6b0, 0x1ee6c1, 0x1ee730, 0x1ee741, 0x1ee780, 0x1ee791,
+  0x1ee7d0, 0x1ee7e1, 0x1ee7f0, 0x1ee801, 0x1ee8a0, 0x1ee8b1, 0x1ee9c0, 0x1eea11, 0x1eea40, 0x1eea51, 0x1eeaa0, 0x1eeab1,
+  0x1eebc0, 0x1f100a, 0x1f10b8, 0x1f10d0, 0x1fbf0e, 0x1fbfa0, 0x200001, 0x200019, 0x200021, 0x200649, 0x200651, 0x200e29,
+  0x200e31, 0x201219, 0x201221, 0x2092a9, 0x2092b1, 0x209839, 0x209841, 0x2098c9, 0x2098d1, 0x2099c9, 0x2099d1, 0x20aea9,
+  0x20aeb1, 0x20afd9, 0x20afe1, 0x20b199, 0x20b1a1, 0x223909, 0x223911, 0x229989, 0x229991, 0x23b1b9, 0x23b1c1, 0x2626d9,
+  0x2626e1, 0x2a6e00, 0x2a7001, 0x2b73a0, 0x2b7401, 0x2b81e0, 0x2b8201, 0x2cea20, 0x2ceb01, 0x2ebe10, 0x2ebf01, 0x2ee5e0,
+  0x2f8001, 0x2f8909, 0x2f8911, 0x2fa1e0, 0x300001, 0x3134b0, 0x313501, 0x323b00,
+};
+/* END GENERATED UNICODE CLASSIFICATION */
+
+I pys_unicode_flags(I cp) {  /* pure lookup, shared by str's five classification predicates */
+  if (cp < 0 || cp >= 0x110000) return 0;
+  I lo = 0, hi = sizeof unicode_classification / sizeof *unicode_classification;
+  while (lo < hi) {
+    I mid = (lo + hi) / 2;
+    if ((unicode_classification[mid] >> 4) <= cp) lo = mid + 1; else hi = mid;
+  }
+  return unicode_classification[lo - 1] & 15;  /* the first transition is U+0000 */
+}
+
 /* str.isprintable(), CPython's Py_UNICODE_ISPRINTABLE: false for the categories Cc Cf Cs Co Cn Zl
    Zp and Zs (but U+0020), which repr() escapes. The code points from U+0080 on where it changes,
    for Unicode 15.1 (unicodedata.unidata_version in CPython 3.13), as printed by
@@ -8480,11 +8946,20 @@ static int printable(I c) {            /* c >= 0x80: printable unless an odd num
   while (lo < hi) { I m = (lo + hi) / 2; if (pchange[m] <= c) lo = m + 1; else hi = m; }
   return !(lo & 1);
 }
-/* @ffi.extern: a char * a C function returned, as a str (NULL: None, or an error if must) */
-Str *pys_cstr(const char *p, I must) { if (!p && must) pys_fail("ValueError: a C function declared -> str returned NULL"); return p ? cstr(p) : 0; }
+/* @ffi.extern: copy a returned char * into str/bytes storage (must: 0 optional, 1 str, 2 bytes). */
+Str *pys_cstr(const char *p, I must) {
+  if (!p && must) pys_fail(must == 2 ? "ValueError: a C function declared -> bytes returned NULL" : "ValueError: a C function declared -> str returned NULL");
+  return p ? cstr(p) : 0;
+}
 Str *pys_string_at(I a, I n) {         /* ffi.string_at: n bytes at a, as ctypes.string_at */
   if (n < 0) pys_fail("ValueError: ffi.string_at() takes a length >= 0");
   return pys_str((const char *)a, n);
+}
+Str *pys_bytes_at(I a, I n) {          /* copy foreign bytes; only -1 scans for a NUL */
+  if (n < -1) pys_fail("ValueError: ffi.bytes_at() takes a length >= -1");
+  if (!a && n != 0) pys_fail("ValueError: ffi.bytes_at() cannot read a NULL pointer");
+  const char *p = a ? (const char *)a : "";
+  return pys_str(p, n == -1 ? (I)strlen(p) : n);
 }
 /* ffi.track (lib/pyobj.py): a value, a PyObject *, that object o owns. The table is malloc'd, out
    of the collector's sight: once a collection finds o unmarked, the value moves to a queue that
@@ -8547,7 +9022,7 @@ void *pys_c_at(List *l, I k) {         /* ffi.at(xs, k), a list passed from its 
    ctypes.CDLL(lib or None) finds it: dlopen(RTLD_NOW | RTLD_LOCAL), then dlsym; a failure raises what
    ctypes raises, OSError or AttributeError with dlerror's text. Under pystachy run, lli's own libraries
    (libLLVM's dependencies) are in the global scope: RTLD_DEEPBIND keeps lib and its dependencies first */
-void pys_c_bind(void **slot, const char *lib, const char *sym) {
+static void *c_library(const char *lib) {
   pys_c_numeric();                     /* (a C function may call setlocale) */
 #ifdef RTLD_DEEPBIND
   int deep = jit ? RTLD_DEEPBIND : 0;
@@ -8556,6 +9031,14 @@ void pys_c_bind(void **slot, const char *lib, const char *sym) {
 #endif
   void *h = dlopen(*lib ? lib : 0, RTLD_NOW | RTLD_LOCAL | deep);
   if (!h) failf("OSError: %s", dlerror());
+  return h;                           /* dlopen caches handles; retained for the process lifetime */
+}
+I pys_load_library(Str *lib) {
+  pys_c_str(lib);
+  return (I)c_library(lib->s);
+}
+void pys_c_bind(void **slot, const char *lib, const char *sym) {
+  void *h = c_library(lib);
   dlerror();
   void *p = dlsym(h, sym);
   const char *e = p ? 0 : dlerror();

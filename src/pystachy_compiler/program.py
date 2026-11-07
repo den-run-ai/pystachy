@@ -2,6 +2,7 @@
 from __future__ import annotations
 import os
 import sys
+from src.pystachy_compiler.callbacks import specialize_callbacks
 from src.pystachy_compiler.reflection import refl_needs_eh, refl_props
 from src.pystachy_compiler.analysis import all_imports, collect, defines, module_ints, module_reads, module_strs, needs_eh, none_assigns, reads_builtin
 from src.pystachy_compiler.diagnostics import Rejoin, dynamic_program, fail, shown
@@ -1236,6 +1237,10 @@ def gen_program(self, mods: list[Mod]) -> str:
     # terminal). Finish these even if earlier fields used the ordinary join budget.
     if len(self.newhints) > 0 and (not self.final or any(k.startswith("cmpfield:") or k.startswith("cmpwrite:") for k in self.newhints)):
         raise Rejoin()  # (joins found wider types: the next pass compiles them, see join_hint)
+    # The completed adapter set makes candidate discovery independent of which
+    # caller first compiled a kernel. Versions add no frontend inference state.
+    if not self.rtmode and "callbacks" in self.opts:
+        specialize_callbacks(self.fns, self.adapters, self.cvos)
     # the whole program is built: its functions are printed in the order they were completed
     for j in range(len(self.fns)):
         self.fll[self.fns[j].f.ll] = j

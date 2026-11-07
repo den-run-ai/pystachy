@@ -22,6 +22,43 @@ public repository on Docker Hub first. Tokens belong in Actions secrets, never i
 source, build arguments, release notes or workflow inputs. `.dockerignore` allows
 only build inputs and excludes environment files, keys and caches.
 
+### Publish the hosted compiler to PyPI
+
+PyPI account links do not grant package upload access. Configure a GitHub
+[Trusted Publisher](https://docs.pypi.org/trusted-publishers/) for `pystachy`:
+
+| Field | Value |
+|---|---|
+| PyPI project | `pystachy` |
+| Repository owner | `den-run-ai` |
+| Repository | `pystachy` |
+| Workflow filename | `release.yml` |
+| GitHub environment | `pypi` |
+
+For the first upload, add it as a pending publisher in the PyPI account's
+Publishing settings. Configure the matching `pypi` GitHub environment and its
+deployment restrictions before publishing. No long-lived PyPI token is needed.
+
+Run **Release** manually with an already published tag such as `v0.2.0` and set
+`pypi` to `verify` to build and check the distributions, or `publish` to upload
+them after those same checks. Leave `pypi` set to `off` for the native release
+process below. The publishing workflow revision supplies the upload tooling;
+package sources always come from the requested release tag.
+
+Choose a workflow ref already permitted by the `pypi` environment. An approved
+release branch can publish a newer tag when its `release.yml`, `pypi_release.py`
+and `release_gate.py` match the reviewed publishing revision. The workflow ref
+supplies publishing logic; the `version` input selects package sources. Keep
+deployment restrictions unchanged.
+
+The PyPI path requires the tag, `VERSION`, published release commit and successful
+main CI to agree. It builds a source distribution and its wheel, validates their
+metadata, and exercises clean pip/uv installs in JIT and AOT. Only the separate
+upload job receives OIDC permission; it uploads those tested artifacts with
+attestations. Native archives and Docker publication do not run in this mode.
+The workflow retains the source SHA and distribution checksums with its artifact.
+Changed package contents require a new version; existing PyPI files are not replaced.
+
 ## Publish a version
 
 1. Set [VERSION](../VERSION) to the intended semantic version and add its curated notes

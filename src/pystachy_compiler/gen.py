@@ -1,6 +1,7 @@
 """Gen component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 import os
+from src.pystachy_compiler.source_lines import SourceLines
 from src.pystachy_compiler.lowering import gen_lower_scalar as scalar_ir_lower_scalar
 from src.pystachy_compiler.scalar_ir import (
     gen_scalar as scalar_ir_scalar,
@@ -125,6 +126,7 @@ from src.pystachy_compiler.dynamic import (
     gen_dyn_call as dynamic_dyn_call,
     gen_dyn_call_args as dynamic_dyn_call_args,
     gen_dyn_call_value as dynamic_dyn_call_value,
+    gen_dyn_star_call as dynamic_dyn_star_call,
     gen_dyn_callables as dynamic_dyn_callables,
     gen_dyn_check as dynamic_dyn_check,
     gen_dyn_class_type as dynamic_dyn_class_type,
@@ -283,6 +285,11 @@ from src.pystachy_compiler.reflection import (
     gen_refl_split_class as reflection_refl_split_class,
     gen_refl_type_name as reflection_refl_type_name,
     gen_refl_record as reflection_refl_record,
+    gen_refl_builtin_class as reflection_refl_builtin_class,
+    gen_refl_class_problem as reflection_refl_class_problem,
+    gen_refl_class_value as reflection_refl_class_value,
+    gen_refl_type_value as reflection_refl_type_value,
+    gen_refl_dynamic_type as reflection_refl_dynamic_type,
     gen_refl_type_of as reflection_refl_type_of,
     gen_refl_class_of as reflection_refl_class_of,
     gen_refl_type_attr as reflection_refl_type_attr,
@@ -678,6 +685,8 @@ from src.pystachy_compiler.emission import (
     gen_ret_ as emission_ret_,
     gen_returned_none as emission_returned_none,
     gen_rt as emission_rt,
+    gen_list_get as emission_list_get,
+    gen_list_len as emission_list_len,
     gen_list_write as emission_list_write,
     gen_runtime as emission_runtime,
     gen_save as emission_save,
@@ -881,6 +890,8 @@ from src.pystachy_compiler.expressions import (
     gen_tslot as expressions_tslot,
     gen_truth as expressions_truth,
     gen_tuple_ as expressions_tuple_,
+    gen_list_const as expressions_list_const,
+    gen_vtuple_make as expressions_vtuple_make,
     gen_tuple_const as expressions_tuple_const,
     gen_dict_merge as expressions_dict_merge,
     gen_unroll as expressions_unroll,
@@ -1274,11 +1285,15 @@ class Gen:
         self.globs: list[Val] = []
         self.gcroots: list[str] = []
         self.consts: list[Data] = []
+        self.fieldnames = False  # the program's static class-tag name table, shared by missing-field checks
         self.bconsts: dict[str, Val] = {}  # builtin module singleton values
         # the constant tuples of displays of literals (Gen.tuple_const): each one's name (@tc.N),
         # by its module and items, and each one's Data, by its name (tupleret reads its slots)
         self.tconsts: dict[str, str] = {}
         self.tconstdata: dict[str, Data] = {}
+        # Immutable scalar list data, shared across functions/dry runs like the string pool.
+        # Frame save/restore leaves this module state in place; a Rejoin creates a fresh Gen.
+        self.lconsts: dict[str, str] = {}
         self.strs: dict[str, str] = {}
         self.bstrs: dict[str, str] = {}  # the name of each bytes constant (@b.N), by its bytes
         self.strvals: list[str] = []  # the text of each @s.N
@@ -1290,7 +1305,8 @@ class Gen:
         self.opfxs: dict[str, int] = {}  # the effects of each op of IROPS with fixed effects
         for op in IROPS:
             self.opfxs[op] = fxmask(IROPS[op].replace("T", "").replace("*", ""))
-        self.out: list[str] = []
+        self.out: list[str] = []  # completed LLVM function chunks and the current function's lines
+        self.source_lines = SourceLines(os.getenv("PYSTACHY_DEBUG_LINES", "") == "1")
         self.fns: list[IFn] = []  # the functions compiled, in the order they were completed
         self.fll: dict[str, int] = {}  # and their positions there by symbol, once the program is built
         self.summaries = EffectSummaries()
@@ -2251,6 +2267,9 @@ class Gen:
     def dyn_call_value(self, o: Val, args: list[Node]) -> Val:
         return dynamic_dyn_call_value(self, o, args)
 
+    def dyn_star_call(self, o: Val, args: list[Node], method: str = "", found: Val | None = None) -> Val:
+        return dynamic_dyn_star_call(self, o, args, method, found)
+
     def dyn_fn_takes(self, ft: str, key: str, an: list[Node]) -> str:
         return dynamic_dyn_fn_takes(self, ft, key, an)
 
@@ -2291,6 +2310,21 @@ class Gen:
 
     def refl_record(self, c: str) -> str:
         return reflection_refl_record(self, c)
+
+    def refl_builtin_class(self, t: str) -> str:
+        return reflection_refl_builtin_class(self, t)
+
+    def refl_class_problem(self, c: str) -> str:
+        return reflection_refl_class_problem(self, c)
+
+    def refl_class_value(self, c: str) -> Val:
+        return reflection_refl_class_value(self, c)
+
+    def refl_type_value(self, v: Val) -> Val:
+        return reflection_refl_type_value(self, v)
+
+    def refl_dynamic_type(self, v: Val) -> None:
+        return reflection_refl_dynamic_type(self, v)
 
     def refl_type_of(self, v: Val, what: str, nonnull: bool = False) -> list[RLeaf]:
         return reflection_refl_type_of(self, v, what, nonnull)
@@ -2630,6 +2664,12 @@ class Gen:
 
     def rt(self, name: str, ret: str, args: list[str], x: str = "") -> str:
         return emission_rt(self, name, ret, args, x)
+
+    def list_len(self, o: Val) -> str:
+        return emission_list_len(self, o)
+
+    def list_get(self, key: str, args: list[Val]) -> str:
+        return emission_list_get(self, key, args)
 
     def list_write(self, key: str, args: list[Val]) -> None:
         emission_list_write(self, key, args)
@@ -3599,8 +3639,8 @@ class Gen:
     def nullslot(self, fn: IFn, lds: list[int], stride: int, slots: dict[str, int], q: Ins) -> str:
         return optimizations_nullslot(self, fn, lds, stride, slots, q)
 
-    def usplits(self, fn: IFn, defs: dict[str, list[int]], v: str, seen: dict[str, bool]) -> bool:
-        return optimizations_usplits(self, fn, defs, v, seen)
+    def usplits(self, fn: IFn, defs: dict[str, list[int]], v: str, seen: dict[str, bool], optional: bool = False) -> bool:
+        return optimizations_usplits(self, fn, defs, v, seen, optional)
 
     def uparts(self, fn: IFn, defs: dict[str, list[int]], v: str, t: str, parts: dict[str, list[str]], before: dict[str, list[Ins]], after: dict[str, list[Ins]], heads: dict[int, list[Ins]]) -> list[str]:
         return optimizations_uparts(self, fn, defs, v, t, parts, before, after, heads)
@@ -4310,8 +4350,14 @@ class Gen:
     def tuple_(self, vals: list[Val]) -> Val:
         return expressions_tuple_(self, vals)
 
+    def vtuple_make(self, vals: list[Val], t: str) -> Val:
+        return expressions_vtuple_make(self, vals, t)
+
     def tuple_const(self, n: Node, vals: list[Val]) -> Val:
         return expressions_tuple_const(self, n, vals)
+
+    def list_const(self, n: Node, vals: list[Val], t: str) -> Val:
+        return expressions_list_const(self, n, vals, t)
 
     def dict_merge(self, n: Node, want: str) -> Val:
         return expressions_dict_merge(self, n, want)

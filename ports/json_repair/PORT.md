@@ -43,10 +43,11 @@ Split trace records before repair and validate types and content afterward.
 
 For accelerated calls from CPython, build the [native companion module](../../examples/json_repair/README.md).
 
-Native character tests can drop unquoted non-ASCII keys and values during repair.
-For example, `loads('[é]')` returns `[]` in native modes and `['é']` in the port
-under CPython. Quoted strings preserve these characters.
-[Unicode classification is tracked in #120](https://github.com/den-run-ai/pystachy/issues/120).
+Native repair uses CPython 3.13's Unicode 15.1 character classification, including
+non-BMP letters and the distinct decimal, digit and numeric classes. Unquoted
+keys and values such as `loads('[é]')` and `loads('{界:1}')` retain the same content
+as the adapted parser under CPython. This preserves upstream's repair heuristics;
+it does not turn arbitrary punctuation or emoji into unquoted string values.
 
 ## File and pipe command
 
@@ -129,18 +130,23 @@ parser. Changes are marked with `Pystachy port` comments or described above.
 
 ## Validation and limits
 
-The [replay corpus](../../tests/upstream/json_repair/README.md) contains **645**
+The [replay corpus](../../tests/upstream/json_repair/README.md) contains **837**
 input/API/option combinations, with type-sensitive comparisons, dictionary order,
 exact Unicode codepoints, serialized output, logs and error messages. It is not
 the complete upstream suite. The checker retains all cases and fails on every
 mismatch; it does not silently waive known limitations.
 
-On CPython 3.13.16, pristine upstream and adapted sources match **645/645**.
-Native JIT, AOT and both modes with collection at every allocation now match
-**645/645**. That corpus did not detect
-wide primitive-root loss, Unicode/strict-mode changes after overflow fallback or
-comment-related value loss. Additional differential regressions now cover those
-cases, independently of the retained upstream oracle. The dynamic native JSON
+On the Unicode-classification implementation, pristine and adapted CPython
+3.13.16 and native JIT/AOT each pass all 837 cases. Both native modes also pass
+with program GC stress enabled. The separate classification audit compares all
+1,114,112 Unicode code points exactly against CPython 3.13's Unicode 15.1 data.
+
+The original 645 cases retain their IDs, inputs and expected outcomes. Another
+192 cases cover multilingual keys and values, combining marks, non-BMP letters,
+Unicode numeric classes, whitespace, unassigned/private-use characters, surrogate
+code points, strict/streaming behavior and repair logs. Separate differential
+regressions cover wide primitive-root loss, overflow fallback and comment-related
+value loss. The dynamic native JSON
 decoder promotes a wide token directly, so valid documents keep the normal
 decoder's semantics instead of entering heuristic repair; the facade and both
 `raw_decode` probes keep upstream's exception handling. The number parser
@@ -162,7 +168,7 @@ for frames that do not count. Integer tokens beyond the runtime's 4,300-digit
 conversion limit follow upstream: valid-JSON decoding falls back to repair, the
 missing-brace probe declines, and the number parser keeps the token as a string,
 so forced repair can drop such a top-level number. Forced-repair primitive-root
-heuristics described above remain. The replay establishes these 645 cases, not
+heuristics described above remain. The replay establishes these 837 cases, not
 full-package parity.
 
 The small [native regression](../../tests/programs/apps/port_json_repair.py)

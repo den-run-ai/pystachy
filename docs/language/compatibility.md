@@ -43,10 +43,16 @@ replacement, padding, formatting and text `read(n)` count **code points**, not
 visible characters: combining marks count separately. `chr()`, escapes, `ord()`
 and `repr()` use the same code points. Whitespace stripping/splitting, `splitlines()`
 and `isspace()` recognize CPython's Unicode whitespace and line breaks.
+`isalpha()`, `isalnum()`, `isdecimal()`, `isdigit()` and `isnumeric()` use Unicode
+15.1.0 properties, matching the pinned CPython. Decimal digits, digits and numeric
+characters are distinct: `"²".isdigit()` is true and `"²".isdecimal()` is false;
+`"Ⅳ".isnumeric()` is true and `"Ⅳ".isdigit()` is false. Combining marks are not
+letters, so `"e\u0301".isalpha()` is false. Bytes character tests remain ASCII-only.
 See [storage and indexing costs](../internals.md#values-and-runtime).
 
-- **Case mapping and character tests:** ASCII-only, except `isspace()` and
-  `isascii()` ([#120](https://github.com/den-run-ai/pystachy/issues/120)).
+- **Case mapping and case tests:** `upper()`, `lower()`, `swapcase()`,
+  `capitalize()`, `title()`, `casefold()`, `isupper()`, `islower()` and `istitle()`
+  remain ASCII-only ([#120](https://github.com/den-run-ai/pystachy/issues/120)).
 - **Invalid UTF-8:** builtin text files read/write unchecked bytes, where CPython
   decodes or raises `UnicodeDecodeError`. Each invalid byte counts as one character
   for length, widths, padding, precision and `expandtabs()`. `read(n)` counts
@@ -97,9 +103,9 @@ PYSTACHY_UNICODE_AUDIT=1 ./pystachy build app.py -o app
 ```
 
 The checks raise `NotImplementedError: Unicode audit: ...` for non-ASCII input to
-case mapping, ASCII character tests and `expandtabs()`, even when the result would
-match CPython. Code-point operations, printing, equality, concatenation and Unicode
-whitespace operations remain usable. File write counts, invalid UTF-8 decoding and
+case mapping, case tests and `expandtabs()`, even when the result would match
+CPython. Character classification, code-point operations, printing, equality,
+concatenation and Unicode whitespace operations remain usable. File write counts, invalid UTF-8 decoding and
 other unlisted boundaries are **not audited**.
 
 Each check scans to the first non-ASCII byte; default builds omit it. An AOT
@@ -298,6 +304,13 @@ boxed lists stay unrestricted, and `isinstance(value, list)` does not prove thei
 item layout. See the [native-list deviation](../../tests/deviations/dynany_native_int_list_store.py).
 Unsupported selected comparison bodies also raise
 `TypeError`; they do not silently fall back to identity or a lower-priority method.
+
+Runtime argument packs support fixed user callables and prepared constructors.
+Variadic targets, erased callable signatures, custom mappings, builtin methods,
+unprepared classes and adapters whose bodies cannot compile raise
+`NotImplementedError` when selected. See the
+[runtime-call boundaries](../../tests/deviations/dyn_star_reducer_boundaries.py)
+and [unavailable-body case](../../tests/deviations/dyn_star_reducer_unsupported_body.py).
 
 The prototype's [operation matrix](../dynamic-any.md#operations),
 [typed/dynamic boundary](../dynamic-any.md#the-typeddynamic-contract) and
@@ -584,7 +597,8 @@ See [annotations](typing.md#annotations), [aliases](typing.md#type-aliases) and
   string expressions in `type` statements fail even when unused.
 - **Dynamic `Any`:** typed mutable containers other than the supported native `list[int]`
   boundary becoming `Any`, unimplemented prototype operations,
-  call-argument unpacking of `Any`, or None-first storage that cannot select `Any` initially:
+  runtime `**` expansion of native dictionaries with non-str keys, or None-first storage
+  that cannot select `Any` initially:
   generator/closure locals, function-assigned globals, fields assigned outside their class's
   methods, and all-`None` displays. See the [prototype contract](../dynamic-any.md).
 
@@ -662,8 +676,11 @@ See [user exception classes](semantics.md#user-exception-classes) and
 
 See [reflection rules](semantics.md#reflection).
 
-- **Types:** `type(x)` as a runtime value except exception class objects; type names of
-  functions, files or callables.
+- **Types:** stored `type(x)` values outside the
+  [dynamic-Any class registry prototype](../dynamic-any.md#class-values-and-type-keyed-registries)
+  and exception class objects; dynamic class calls beyond ordinary reconstruction
+  and the bounded annotated-factory path, runtime class creation and metaclasses. Type names of files
+  remain unsupported.
 - **Runtime names:** retaining, passing, calling, comparing or sorting by a `getattr` result;
   formatting its text with a spec, or obtaining that text for dataclasses, generics, classes
   with annotated class attributes or builtins; `setattr` without slots, with values incompatible with any

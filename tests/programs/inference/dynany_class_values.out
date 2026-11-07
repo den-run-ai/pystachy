@@ -1,0 +1,54 @@
+True True True
+True True True
+True True True
+True True True
+True True True
+True True True
+True True True
+True True True
+True True True
+True True True
+True True True
+True True True
+True True True
+True True True
+True True True
+True True True
+True True True
+True True True
+True True True
+True True True
+True True True
+True True True
+True True True
+True True True
+True True True
+True True True
+True True True
+True True True
+True True True
+True True True
+True False False False
+False False True
+False True False
+True True True
+True False
+True True True
+True True True
+<class 'int'> <class 'int'> int int builtins
+True True True
+<class 'bool'> <class 'bool'> bool bool builtins
+True True True
+<class 'str'> <class 'str'> str str builtins
+True True True
+<class 'list'> <class 'list'> list list builtins
+True True True
+<class '__main__.Base'> <class '__main__.Base'> Base Base __main__
+True True True
+<class '__main__.Child'> <class '__main__.Child'> Child Child __main__
+True True True
+<class 'NoneType'> <class 'NoneType'> NoneType NoneType builtins
+True True True
+<class 'type'> <class 'type'> type type builtins
+True True True
+[exit 0]

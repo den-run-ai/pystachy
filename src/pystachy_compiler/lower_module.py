@@ -265,6 +265,14 @@ def lower_data(d: Data) -> str:
         # reads, so that no other constant can share its address
         slots = ["i64 " + const_slot(v) for v in d.items] if len(d.items) > 0 else ["i64 0"]
         return f"{d.name} = private constant [{len(slots)} x i64] [{', '.join(slots)}], align 8"
+    if d.kind == "listdata":
+        # An immutable source array, never a Python object. Its address has no identity and
+        # copying its exact slots preserves float bits, including negative zero.
+        slots = ["i64 " + const_slot(v) for v in d.items]
+        return f"{d.name} = private unnamed_addr constant [{len(slots)} x i64] [{', '.join(slots)}], align 8"
+    if d.kind == "fieldnames":
+        # Class-tag indexed static strings: neither the table nor its entries need GC roots.
+        return f"{d.name} = private constant [{len(d.refs)} x ptr] [{', '.join(['ptr ' + x for x in d.refs])}], align 8"
     if d.kind == "callable" or d.kind == "exception":
         # (an ExcClass whose displayed name the program assigns, d.text, is written: exc_set_module)
         how = "global" if d.text == "global" else "constant"
@@ -330,7 +338,8 @@ def lower_data(d: Data) -> str:
 def gen_cextern(self, f: FnInfo, at: bool = False) -> None:
     # @ffi.extern: the program calls @f.<name> as any function, an internal stub that checks and
     # narrows C integers (OverflowError), passes a str as its bytes (const char *, NUL-terminated;
-    # ValueError for a NUL in it) and a list[float] or list[c_int64] as its items (double *,
+    # ValueError for a NUL in it), bytes as their raw bytes (NULs allowed; None as NULL), and
+    # a list[float] or list[c_int64] as its items (double *,
     # int64_t *: runtime.c's List.a, which C reads and writes in place for the call; the collector
     # moves nothing, and no subset code runs until the call returns, so the list cannot grow
     # meanwhile), and copies a returned char * (NULL: None, or ValueError). It calls
@@ -357,11 +366,17 @@ def gen_cextern(self, f: FnInfo, at: bool = False) -> None:
         t = f.ptypes[j]
         ps.append(f"{lt(t)} %a{j}")
         c = self.externtype(f.node.kids[0].kids[j].kids[0], t, "takes", f)
-        if c == "str" or c == "c_buf":
+        if c in ("str", "c_buf", "bytes", "opt[bytes]"):
             if c == "str":
                 self.runtime("pys_c_str")
                 code.append(f"  call void @pys_c_str(ptr %a{j})")
-            code.append(f"  %p{j} = getelementptr i8, ptr %a{j}, i64 {STR_HEADER_SIZE}")  # (bytes after Str's byte length, hash and character-count cache)
+            # The call only borrows immutable bytes; the same stable Str storage backs str and bytes.
+            if c == "opt[bytes]":
+                code.append(f"  %b{j} = getelementptr i8, ptr %a{j}, i64 {STR_HEADER_SIZE}")
+                code.append(f"  %n{j} = icmp eq ptr %a{j}, null")
+                code.append(f"  %p{j} = select i1 %n{j}, ptr null, ptr %b{j}")
+            else:
+                code.append(f"  %p{j} = getelementptr i8, ptr %a{j}, i64 {STR_HEADER_SIZE}")  # (bytes after Str's byte length, hash and character-count cache)
             cts.append("ptr")
         elif (c == "list[float]" or c == "list[c_int64]") and at:
             self.runtime("pys_c_at")
@@ -393,16 +408,16 @@ def gen_cextern(self, f: FnInfo, at: bool = False) -> None:
             cts.append(ll)
         args.append(f"{cts[-1]} %p{j}")
     c = self.externtype(f.node.kids[1], f.ret, "returns", f)
-    r = "ptr" if c in ("str", "opt[str]") else "double" if c == "float" else "float" if c == "c_float" else "void" if c == "None" else CTYPES[c].split(":")[0]
+    r = "ptr" if c in ("str", "opt[str]", "bytes", "opt[bytes]") else "double" if c == "float" else "float" if c == "c_float" else "void" if c == "None" else CTYPES[c].split(":")[0]
     rr = r[r.find(" ") + 1 :] + " " + r[: r.find(" ")] if " " in r else r  # (a result's attribute comes first: zeroext i32)
     cl = f"call {rr} {f.csym if direct else '%fp'}({', '.join(args)})"
     if not direct:
         code.insert(0, f"  %fp = load ptr, ptr @ffi.fp.{f.ll[1:]}")
     if r == "void":
         code.extend([f"  {cl}", "  ret void"])
-    elif c == "str" or c == "opt[str]":
+    elif c in ("str", "opt[str]", "bytes", "opt[bytes]"):
         self.runtime("pys_cstr")
-        code.extend([f"  %r = {cl}", f"  %s = call ptr @pys_cstr(ptr %r, i64 {1 if c == 'str' else 0})", "  ret ptr %s"])
+        code.extend([f"  %r = {cl}", f"  %s = call ptr @pys_cstr(ptr %r, i64 {1 if c == 'str' else 2 if c == 'bytes' else 0})", "  ret ptr %s"])
     elif c == "float":
         code.extend([f"  %r = {cl}", "  ret double %r"])
     elif c == "c_float":
@@ -716,7 +731,7 @@ def gen_lower_module(self) -> str:
         hdr.append(f"!{TBAA_LEN} = !{{!{TBAA_LEN - 2}, !{TBAA_LEN - 2}, i64 0}}")
         hdr.append(f"!{TBAA_BYTES} = !{{!{TBAA_LEN - 1}, !{TBAA_LEN - 1}, i64 0}}")
         hdr.append(f"!{STRLEN_RANGE} = !{{i64 0, i64 9223372036854775791}}")
-        return "\n".join(hdr) + "\n"
+        return self.source_lines.finish(hdr)
     recursion = [key for key in self.rtfns if key.startswith("recursion.")]
     # (lowering stores and loads the depth itself: only the extension's entries and pys.gen.drop.counted
     # call those helpers by name)
@@ -728,7 +743,7 @@ def gen_lower_module(self) -> str:
             recursion.append(key)
     hdr.extend(recursion_ir([key for key in recursion if key in named], len(recursion) > 0, TBAA_FIELDS + len(self.tbaa), len(self.tbaa) > 0, len(self.rdpass) > 0))
     if self.ext != "":
-        return "\n".join(hdr + self.pyext()) + "\n"
+        return self.source_lines.finish(hdr + self.pyext())
     # pys_init gets the GC roots: main's frame address bounds the stack scan (it also
     # covers @main.init if inlined here) and the table of pointer-typed globals
     hdr.append(runtime_decl("init"))
@@ -751,4 +766,4 @@ def gen_lower_module(self) -> str:
     hdr.append("  call void @pys_finish()")
     hdr.append("  ret i32 0")
     hdr.append("}")
-    return "\n".join(hdr) + "\n"
+    return self.source_lines.finish(hdr)

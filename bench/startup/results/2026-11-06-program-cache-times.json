@@ -1,0 +1,2598 @@
+{
+  "schema": "pystachy-program-cache-probe-v1",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.39",
+  "python": "3.13.16 (main, Oct 14 2026, 01:04:01) [Clang 23.1.3 ]",
+  "cpu_affinity": [
+    0
+  ],
+  "temporary_directory": "/tmp/pystachy-program-cache-_r8yuh7b",
+  "rounds": 5,
+  "benchmarks": [
+    {
+      "name": "tiny",
+      "source": "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-tiny/main.py",
+      "source_sha256": "cc42155088fca5730758db72b2a5bca33112a941dfaa2d43098ec422ce4ea213",
+      "arguments": [],
+      "samples_seconds": {
+        "uncached-run": [
+          0.03656748399953358,
+          0.04001688399876002,
+          0.03513137099798769,
+          0.034702278000622755,
+          0.0323264750004455
+        ],
+        "cold-program": [
+          0.21318677900126204,
+          0.211119558000064,
+          0.2124281680007698,
+          0.19742714799940586,
+          0.18936820599992643
+        ],
+        "cache-hit": [
+          0.024670648999745026,
+          0.024241212999186246,
+          0.02213650200064876,
+          0.020819364999624668,
+          0.021640859999024542
+        ],
+        "prebuilt-aot": [
+          0.002375722000579117,
+          0.0008413439973082859,
+          0.002088677003484918,
+          0.0019270390002930071,
+          0.002120895002008183
+        ]
+      },
+      "median_seconds": {
+        "uncached-run": 0.03513137099798769,
+        "cold-program": 0.211119558000064,
+        "cache-hit": 0.02213650200064876,
+        "prebuilt-aot": 0.002088677003484918
+      },
+      "first_use_fill_seconds": 4.735254868999618,
+      "first_use_fill_tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "aot_build_seconds": 0.30655614499846706,
+      "paired_hit_speedup": 1.587033533887065
+    },
+    {
+      "name": "padded-helper",
+      "source": "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-padded/main.py",
+      "source_sha256": "2d1d45b12572ecf1956add197e3a7f2fb14d04cc485c314d74e8120af209423f",
+      "arguments": [],
+      "samples_seconds": {
+        "uncached-run": [
+          0.074339823997434,
+          0.07091263799884473,
+          0.06773603399778949,
+          0.07084506799947121,
+          0.07440434000091045
+        ],
+        "cold-program": [
+          0.22993764000057126,
+          0.22625821199835627,
+          0.21869186600088142,
+          0.22969951699997182,
+          0.23284467600024072
+        ],
+        "cache-hit": [
+          0.021772082000097726,
+          0.0217677860018739,
+          0.021158184001251357,
+          0.02154564800002845,
+          0.02458542999738711
+        ],
+        "prebuilt-aot": [
+          0.001957283002411714,
+          0.0019808379984169733,
+          0.0019184359989594668,
+          0.0008080749976215884,
+          0.002005444999667816
+        ]
+      },
+      "median_seconds": {
+        "uncached-run": 0.07091263799884473,
+        "cold-program": 0.22969951699997182,
+        "cache-hit": 0.0217677860018739,
+        "prebuilt-aot": 0.001957283002411714
+      },
+      "first_use_fill_seconds": 4.585234350000974,
+      "first_use_fill_tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "aot_build_seconds": 0.3356724329969438,
+      "paired_hit_speedup": 3.257687207727058
+    },
+    {
+      "name": "import-heavy",
+      "source": "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-imports/main.py",
+      "source_sha256": "3ef08c74f1794f4f058593e0a8183ce8d4c43fdb3425ca722519e5d3b78515f8",
+      "arguments": [],
+      "samples_seconds": {
+        "uncached-run": [
+          1.6646249410005112,
+          1.7665301140004885,
+          1.615490066997154,
+          1.5351841150004475,
+          1.6160382649977691
+        ],
+        "cold-program": [
+          1.708174056999269,
+          2.0420401789997413,
+          1.791226518998883,
+          1.7659932860005938,
+          1.8894332220006618
+        ],
+        "cache-hit": [
+          0.032082245001220144,
+          0.034222825001052115,
+          0.04161201599708875,
+          0.030518032999680145,
+          0.033715616998961195
+        ],
+        "prebuilt-aot": [
+          0.0025749260021257214,
+          0.002255524002976017,
+          0.0024362609983654693,
+          0.0014335590021801181,
+          0.002600192998215789
+        ]
+      },
+      "median_seconds": {
+        "uncached-run": 1.6160382649977691,
+        "cold-program": 1.791226518998883,
+        "cache-hit": 0.033715616998961195,
+        "prebuilt-aot": 0.0024362609983654693
+      },
+      "first_use_fill_seconds": 6.160133135999786,
+      "first_use_fill_tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "aot_build_seconds": 6.383927333001338,
+      "paired_hit_speedup": 50.30416328000358
+    },
+    {
+      "name": "router-1000-events",
+      "source": "/workspace/scratch/e98dc1e3e6cd/pystachy/examples/route/route.py",
+      "source_sha256": "352f80197e02e796f889a8b6a7789db6487b6e28f35d435b2c04d4eea6314c0d",
+      "arguments": [
+        "/tmp/pystachy-program-cache-_r8yuh7b/rules.txt",
+        "/tmp/pystachy-program-cache-_r8yuh7b/events.txt",
+        "--names"
+      ],
+      "samples_seconds": {
+        "uncached-run": [
+          1.355387300001894,
+          1.2437220979991253,
+          1.185090040002251,
+          1.2674566399982723,
+          1.4049457459987025
+        ],
+        "cold-program": [
+          1.4309407100008684,
+          1.3800828429993999,
+          1.4293958849993942,
+          1.3603928400007135,
+          1.65328443999897
+        ],
+        "cache-hit": [
+          0.033115268997789826,
+          0.02971255000011297,
+          0.029960173000290524,
+          0.028980694001802476,
+          0.03729344199746265
+        ],
+        "prebuilt-aot": [
+          0.0012627559990505688,
+          0.0012587210003403015,
+          0.0028363720011839177,
+          0.002522517999750562,
+          0.0028679189999820665
+        ]
+      },
+      "median_seconds": {
+        "uncached-run": 1.2674566399982723,
+        "cold-program": 1.4293958849993942,
+        "cache-hit": 0.029960173000290524,
+        "prebuilt-aot": 0.002522517999750562
+      },
+      "first_use_fill_seconds": 5.946479839003587,
+      "first_use_fill_tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "aot_build_seconds": 5.435300389999611,
+      "paired_hit_speedup": 40.92937611626694
+    }
+  ],
+  "setup_error": null,
+  "completed": true,
+  "expected_checks": [],
+  "benchmark_scopes": {
+    "first_use_fill": "One sample per workload: program-v1 empty; runtime artifacts warm.",
+    "cold_program": "Manifests, executables and stages removed; static-hashes and runtime artifacts warm.",
+    "cache_hit": "Fresh process after a checked cold-program producer; no frontend or LLVM calls.",
+    "uncached_run": "Program cache disabled; runtime artifacts warm.",
+    "prebuilt_aot": "Fresh process from the ordinary AOT tier; its build time is reported separately."
+  },
+  "compiler": [
+    "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy"
+  ],
+  "compiler_sha256": "df000379236b3b920463c1c1960e4a73bef5672aeefb46bb580664b944d3643b",
+  "home": "/workspace/scratch/e98dc1e3e6cd/pystachy",
+  "llvm": {
+    "clang": "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/clang",
+    "opt": "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/opt",
+    "lli": "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/lli",
+    "llvm-link": "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/llvm-link",
+    "llvm-as": "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/llvm-as"
+  },
+  "declared_toolchain_inputs": [
+    "/lib/x86_64-linux-gnu/libbsd.so.0",
+    "/lib/x86_64-linux-gnu/libc.so.6",
+    "/lib/x86_64-linux-gnu/libedit.so.2",
+    "/lib/x86_64-linux-gnu/libffi.so.8",
+    "/lib/x86_64-linux-gnu/libgcc_s.so.1",
+    "/lib/x86_64-linux-gnu/libicudata.so.74",
+    "/lib/x86_64-linux-gnu/libicuuc.so.74",
+    "/lib/x86_64-linux-gnu/liblzma.so.5",
+    "/lib/x86_64-linux-gnu/libm.so.6",
+    "/lib/x86_64-linux-gnu/libmd.so.0",
+    "/lib/x86_64-linux-gnu/libstdc++.so.6",
+    "/lib/x86_64-linux-gnu/libtinfo.so.6",
+    "/lib/x86_64-linux-gnu/libxml2.so.2",
+    "/lib/x86_64-linux-gnu/libz.so.1",
+    "/lib/x86_64-linux-gnu/libzstd.so.1",
+    "/lib64/ld-linux-x86-64.so.2",
+    "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/../lib/libLLVM.so.18.1",
+    "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/../lib/libclang-cpp.so.18.1",
+    "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/clang",
+    "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/lli",
+    "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/llvm-as",
+    "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/llvm-link",
+    "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin/opt"
+  ],
+  "llvm_version": "Ubuntu clang version 18.1.3 (1ubuntu1)\nTarget: x86_64-pc-linux-gnu\nThread model: posix\nInstalledDir: /workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin\n",
+  "checks": [],
+  "runs": [
+    {
+      "label": "cpython-reference",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-tiny/main.py"
+      ],
+      "status": 0,
+      "stdout": "1\n",
+      "stderr": "",
+      "stdout_sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.01331858900084626,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "tiny:runtime-warmup",
+      "environment_changes": {
+        "PYSTACHY_PROGRAM_CACHE": "0"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-tiny/main.py"
+      ],
+      "status": 0,
+      "stdout": "1\n",
+      "stderr": "",
+      "stdout_sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 11.146168375002162,
+      "tools": {
+        "clang": 3,
+        "llvm-as": 1,
+        "llvm-link": 1,
+        "opt": 3,
+        "lli": 1
+      },
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "tiny:aot-build",
+      "environment_changes": {
+        "PYSTACHY_PROGRAM_CACHE": "0"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "build",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-tiny/main.py",
+        "-o",
+        "/tmp/pystachy-program-cache-_r8yuh7b/aot-tiny"
+      ],
+      "status": 0,
+      "stdout": "",
+      "stderr": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.30655614499846706,
+      "tools": {
+        "llvm-link": 1,
+        "clang": 2
+      },
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "tiny:first-use-fill",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-tiny/main.py"
+      ],
+      "status": 0,
+      "stdout": "1\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 4.735254868999618,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "tiny:round-0:uncached",
+      "environment_changes": {
+        "PYSTACHY_PROGRAM_CACHE": "0"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-tiny/main.py"
+      ],
+      "status": 0,
+      "stdout": "1\n",
+      "stderr": "",
+      "stdout_sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.03656748399953358,
+      "tools": {
+        "opt": 1,
+        "lli": 1
+      },
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "tiny:round-0:miss",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-tiny/main.py"
+      ],
+      "status": 0,
+      "stdout": "1\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 0.21318677900126204,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "tiny:round-0:hit",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-tiny/main.py"
+      ],
+      "status": 0,
+      "stdout": "1\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.024670648999745026,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "tiny:round-0:aot",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/tmp/pystachy-program-cache-_r8yuh7b/aot-tiny"
+      ],
+      "status": 0,
+      "stdout": "1\n",
+      "stderr": "",
+      "stdout_sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.002375722000579117,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "tiny:round-1:aot",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/tmp/pystachy-program-cache-_r8yuh7b/aot-tiny"
+      ],
+      "status": 0,
+      "stdout": "1\n",
+      "stderr": "",
+      "stdout_sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.0008413439973082859,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "tiny:round-1:miss",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-tiny/main.py"
+      ],
+      "status": 0,
+      "stdout": "1\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 0.211119558000064,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "tiny:round-1:hit",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-tiny/main.py"
+      ],
+      "status": 0,
+      "stdout": "1\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.024241212999186246,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "tiny:round-1:uncached",
+      "environment_changes": {
+        "PYSTACHY_PROGRAM_CACHE": "0"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-tiny/main.py"
+      ],
+      "status": 0,
+      "stdout": "1\n",
+      "stderr": "",
+      "stdout_sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.04001688399876002,
+      "tools": {
+        "opt": 1,
+        "lli": 1
+      },
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "tiny:round-2:uncached",
+      "environment_changes": {
+        "PYSTACHY_PROGRAM_CACHE": "0"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-tiny/main.py"
+      ],
+      "status": 0,
+      "stdout": "1\n",
+      "stderr": "",
+      "stdout_sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.03513137099798769,
+      "tools": {
+        "opt": 1,
+        "lli": 1
+      },
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "tiny:round-2:miss",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-tiny/main.py"
+      ],
+      "status": 0,
+      "stdout": "1\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 0.2124281680007698,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "tiny:round-2:hit",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-tiny/main.py"
+      ],
+      "status": 0,
+      "stdout": "1\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.02213650200064876,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "tiny:round-2:aot",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/tmp/pystachy-program-cache-_r8yuh7b/aot-tiny"
+      ],
+      "status": 0,
+      "stdout": "1\n",
+      "stderr": "",
+      "stdout_sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.002088677003484918,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "tiny:round-3:aot",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/tmp/pystachy-program-cache-_r8yuh7b/aot-tiny"
+      ],
+      "status": 0,
+      "stdout": "1\n",
+      "stderr": "",
+      "stdout_sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.0019270390002930071,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "tiny:round-3:miss",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-tiny/main.py"
+      ],
+      "status": 0,
+      "stdout": "1\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 0.19742714799940586,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "tiny:round-3:hit",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-tiny/main.py"
+      ],
+      "status": 0,
+      "stdout": "1\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.020819364999624668,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "tiny:round-3:uncached",
+      "environment_changes": {
+        "PYSTACHY_PROGRAM_CACHE": "0"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-tiny/main.py"
+      ],
+      "status": 0,
+      "stdout": "1\n",
+      "stderr": "",
+      "stdout_sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.034702278000622755,
+      "tools": {
+        "opt": 1,
+        "lli": 1
+      },
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "tiny:round-4:uncached",
+      "environment_changes": {
+        "PYSTACHY_PROGRAM_CACHE": "0"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-tiny/main.py"
+      ],
+      "status": 0,
+      "stdout": "1\n",
+      "stderr": "",
+      "stdout_sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.0323264750004455,
+      "tools": {
+        "opt": 1,
+        "lli": 1
+      },
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "tiny:round-4:miss",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-tiny/main.py"
+      ],
+      "status": 0,
+      "stdout": "1\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 0.18936820599992643,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "tiny:round-4:hit",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-tiny/main.py"
+      ],
+      "status": 0,
+      "stdout": "1\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.021640859999024542,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "tiny:round-4:aot",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/tmp/pystachy-program-cache-_r8yuh7b/aot-tiny"
+      ],
+      "status": 0,
+      "stdout": "1\n",
+      "stderr": "",
+      "stdout_sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.002120895002008183,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "cpython-reference",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-padded/main.py"
+      ],
+      "status": 0,
+      "stdout": "603\n",
+      "stderr": "",
+      "stdout_sha256": "1b2abe0133355871eb02c842ea8648835879a98491f4dcc24bbc8ec829d0498c",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.017809126002248377,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "padded-helper:runtime-warmup",
+      "environment_changes": {
+        "PYSTACHY_PROGRAM_CACHE": "0"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-padded/main.py"
+      ],
+      "status": 0,
+      "stdout": "603\n",
+      "stderr": "",
+      "stdout_sha256": "1b2abe0133355871eb02c842ea8648835879a98491f4dcc24bbc8ec829d0498c",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.08322196500012069,
+      "tools": {
+        "opt": 1,
+        "lli": 1
+      },
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "padded-helper:aot-build",
+      "environment_changes": {
+        "PYSTACHY_PROGRAM_CACHE": "0"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "build",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-padded/main.py",
+        "-o",
+        "/tmp/pystachy-program-cache-_r8yuh7b/aot-padded-helper"
+      ],
+      "status": 0,
+      "stdout": "",
+      "stderr": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.3356724329969438,
+      "tools": {
+        "llvm-link": 1,
+        "clang": 2
+      },
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "padded-helper:first-use-fill",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-padded/main.py"
+      ],
+      "status": 0,
+      "stdout": "603\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "1b2abe0133355871eb02c842ea8648835879a98491f4dcc24bbc8ec829d0498c",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 4.585234350000974,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "padded-helper:round-0:uncached",
+      "environment_changes": {
+        "PYSTACHY_PROGRAM_CACHE": "0"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-padded/main.py"
+      ],
+      "status": 0,
+      "stdout": "603\n",
+      "stderr": "",
+      "stdout_sha256": "1b2abe0133355871eb02c842ea8648835879a98491f4dcc24bbc8ec829d0498c",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.074339823997434,
+      "tools": {
+        "opt": 1,
+        "lli": 1
+      },
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "padded-helper:round-0:miss",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-padded/main.py"
+      ],
+      "status": 0,
+      "stdout": "603\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "1b2abe0133355871eb02c842ea8648835879a98491f4dcc24bbc8ec829d0498c",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 0.22993764000057126,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "padded-helper:round-0:hit",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-padded/main.py"
+      ],
+      "status": 0,
+      "stdout": "603\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "1b2abe0133355871eb02c842ea8648835879a98491f4dcc24bbc8ec829d0498c",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.021772082000097726,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "padded-helper:round-0:aot",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/tmp/pystachy-program-cache-_r8yuh7b/aot-padded-helper"
+      ],
+      "status": 0,
+      "stdout": "603\n",
+      "stderr": "",
+      "stdout_sha256": "1b2abe0133355871eb02c842ea8648835879a98491f4dcc24bbc8ec829d0498c",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.001957283002411714,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "padded-helper:round-1:aot",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/tmp/pystachy-program-cache-_r8yuh7b/aot-padded-helper"
+      ],
+      "status": 0,
+      "stdout": "603\n",
+      "stderr": "",
+      "stdout_sha256": "1b2abe0133355871eb02c842ea8648835879a98491f4dcc24bbc8ec829d0498c",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.0019808379984169733,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "padded-helper:round-1:miss",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-padded/main.py"
+      ],
+      "status": 0,
+      "stdout": "603\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "1b2abe0133355871eb02c842ea8648835879a98491f4dcc24bbc8ec829d0498c",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 0.22625821199835627,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "padded-helper:round-1:hit",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-padded/main.py"
+      ],
+      "status": 0,
+      "stdout": "603\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "1b2abe0133355871eb02c842ea8648835879a98491f4dcc24bbc8ec829d0498c",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.0217677860018739,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "padded-helper:round-1:uncached",
+      "environment_changes": {
+        "PYSTACHY_PROGRAM_CACHE": "0"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-padded/main.py"
+      ],
+      "status": 0,
+      "stdout": "603\n",
+      "stderr": "",
+      "stdout_sha256": "1b2abe0133355871eb02c842ea8648835879a98491f4dcc24bbc8ec829d0498c",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.07091263799884473,
+      "tools": {
+        "opt": 1,
+        "lli": 1
+      },
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "padded-helper:round-2:uncached",
+      "environment_changes": {
+        "PYSTACHY_PROGRAM_CACHE": "0"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-padded/main.py"
+      ],
+      "status": 0,
+      "stdout": "603\n",
+      "stderr": "",
+      "stdout_sha256": "1b2abe0133355871eb02c842ea8648835879a98491f4dcc24bbc8ec829d0498c",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.06773603399778949,
+      "tools": {
+        "opt": 1,
+        "lli": 1
+      },
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "padded-helper:round-2:miss",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-padded/main.py"
+      ],
+      "status": 0,
+      "stdout": "603\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "1b2abe0133355871eb02c842ea8648835879a98491f4dcc24bbc8ec829d0498c",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 0.21869186600088142,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "padded-helper:round-2:hit",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-padded/main.py"
+      ],
+      "status": 0,
+      "stdout": "603\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "1b2abe0133355871eb02c842ea8648835879a98491f4dcc24bbc8ec829d0498c",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.021158184001251357,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "padded-helper:round-2:aot",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/tmp/pystachy-program-cache-_r8yuh7b/aot-padded-helper"
+      ],
+      "status": 0,
+      "stdout": "603\n",
+      "stderr": "",
+      "stdout_sha256": "1b2abe0133355871eb02c842ea8648835879a98491f4dcc24bbc8ec829d0498c",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.0019184359989594668,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "padded-helper:round-3:aot",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/tmp/pystachy-program-cache-_r8yuh7b/aot-padded-helper"
+      ],
+      "status": 0,
+      "stdout": "603\n",
+      "stderr": "",
+      "stdout_sha256": "1b2abe0133355871eb02c842ea8648835879a98491f4dcc24bbc8ec829d0498c",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.0008080749976215884,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "padded-helper:round-3:miss",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-padded/main.py"
+      ],
+      "status": 0,
+      "stdout": "603\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "1b2abe0133355871eb02c842ea8648835879a98491f4dcc24bbc8ec829d0498c",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 0.22969951699997182,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "padded-helper:round-3:hit",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-padded/main.py"
+      ],
+      "status": 0,
+      "stdout": "603\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "1b2abe0133355871eb02c842ea8648835879a98491f4dcc24bbc8ec829d0498c",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.02154564800002845,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "padded-helper:round-3:uncached",
+      "environment_changes": {
+        "PYSTACHY_PROGRAM_CACHE": "0"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-padded/main.py"
+      ],
+      "status": 0,
+      "stdout": "603\n",
+      "stderr": "",
+      "stdout_sha256": "1b2abe0133355871eb02c842ea8648835879a98491f4dcc24bbc8ec829d0498c",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.07084506799947121,
+      "tools": {
+        "opt": 1,
+        "lli": 1
+      },
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "padded-helper:round-4:uncached",
+      "environment_changes": {
+        "PYSTACHY_PROGRAM_CACHE": "0"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-padded/main.py"
+      ],
+      "status": 0,
+      "stdout": "603\n",
+      "stderr": "",
+      "stdout_sha256": "1b2abe0133355871eb02c842ea8648835879a98491f4dcc24bbc8ec829d0498c",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.07440434000091045,
+      "tools": {
+        "opt": 1,
+        "lli": 1
+      },
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "padded-helper:round-4:miss",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-padded/main.py"
+      ],
+      "status": 0,
+      "stdout": "603\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "1b2abe0133355871eb02c842ea8648835879a98491f4dcc24bbc8ec829d0498c",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 0.23284467600024072,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "padded-helper:round-4:hit",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-padded/main.py"
+      ],
+      "status": 0,
+      "stdout": "603\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "1b2abe0133355871eb02c842ea8648835879a98491f4dcc24bbc8ec829d0498c",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.02458542999738711,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "padded-helper:round-4:aot",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/tmp/pystachy-program-cache-_r8yuh7b/aot-padded-helper"
+      ],
+      "status": 0,
+      "stdout": "603\n",
+      "stderr": "",
+      "stdout_sha256": "1b2abe0133355871eb02c842ea8648835879a98491f4dcc24bbc8ec829d0498c",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.002005444999667816,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "cpython-reference",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-imports/main.py"
+      ],
+      "status": 0,
+      "stdout": "one two\nthree\nfour five\n['one', 'two', 'three']\n[1, 2, 3]\nTrue\n",
+      "stderr": "",
+      "stdout_sha256": "5c0fa748cab68467019d45a15f97f3fcecadf550703ec12c7231ddd10662a009",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.01641941999696428,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "import-heavy:runtime-warmup",
+      "environment_changes": {
+        "PYSTACHY_PROGRAM_CACHE": "0"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-imports/main.py"
+      ],
+      "status": 0,
+      "stdout": "one two\nthree\nfour five\n['one', 'two', 'three']\n[1, 2, 3]\nTrue\n",
+      "stderr": "",
+      "stdout_sha256": "5c0fa748cab68467019d45a15f97f3fcecadf550703ec12c7231ddd10662a009",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 1.609112105001259,
+      "tools": {
+        "opt": 1,
+        "lli": 1
+      },
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "import-heavy:aot-build",
+      "environment_changes": {
+        "PYSTACHY_PROGRAM_CACHE": "0"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "build",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-imports/main.py",
+        "-o",
+        "/tmp/pystachy-program-cache-_r8yuh7b/aot-import-heavy"
+      ],
+      "status": 0,
+      "stdout": "",
+      "stderr": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 6.383927333001338,
+      "tools": {
+        "llvm-link": 1,
+        "clang": 3,
+        "opt": 1
+      },
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "import-heavy:first-use-fill",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-imports/main.py"
+      ],
+      "status": 0,
+      "stdout": "one two\nthree\nfour five\n['one', 'two', 'three']\n[1, 2, 3]\nTrue\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "5c0fa748cab68467019d45a15f97f3fcecadf550703ec12c7231ddd10662a009",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 6.160133135999786,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "import-heavy:round-0:uncached",
+      "environment_changes": {
+        "PYSTACHY_PROGRAM_CACHE": "0"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-imports/main.py"
+      ],
+      "status": 0,
+      "stdout": "one two\nthree\nfour five\n['one', 'two', 'three']\n[1, 2, 3]\nTrue\n",
+      "stderr": "",
+      "stdout_sha256": "5c0fa748cab68467019d45a15f97f3fcecadf550703ec12c7231ddd10662a009",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 1.6646249410005112,
+      "tools": {
+        "opt": 1,
+        "lli": 1
+      },
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "import-heavy:round-0:miss",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-imports/main.py"
+      ],
+      "status": 0,
+      "stdout": "one two\nthree\nfour five\n['one', 'two', 'three']\n[1, 2, 3]\nTrue\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "5c0fa748cab68467019d45a15f97f3fcecadf550703ec12c7231ddd10662a009",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 1.708174056999269,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "import-heavy:round-0:hit",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-imports/main.py"
+      ],
+      "status": 0,
+      "stdout": "one two\nthree\nfour five\n['one', 'two', 'three']\n[1, 2, 3]\nTrue\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "5c0fa748cab68467019d45a15f97f3fcecadf550703ec12c7231ddd10662a009",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.032082245001220144,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "import-heavy:round-0:aot",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/tmp/pystachy-program-cache-_r8yuh7b/aot-import-heavy"
+      ],
+      "status": 0,
+      "stdout": "one two\nthree\nfour five\n['one', 'two', 'three']\n[1, 2, 3]\nTrue\n",
+      "stderr": "",
+      "stdout_sha256": "5c0fa748cab68467019d45a15f97f3fcecadf550703ec12c7231ddd10662a009",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.0025749260021257214,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "import-heavy:round-1:aot",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/tmp/pystachy-program-cache-_r8yuh7b/aot-import-heavy"
+      ],
+      "status": 0,
+      "stdout": "one two\nthree\nfour five\n['one', 'two', 'three']\n[1, 2, 3]\nTrue\n",
+      "stderr": "",
+      "stdout_sha256": "5c0fa748cab68467019d45a15f97f3fcecadf550703ec12c7231ddd10662a009",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.002255524002976017,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "import-heavy:round-1:miss",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-imports/main.py"
+      ],
+      "status": 0,
+      "stdout": "one two\nthree\nfour five\n['one', 'two', 'three']\n[1, 2, 3]\nTrue\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "5c0fa748cab68467019d45a15f97f3fcecadf550703ec12c7231ddd10662a009",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 2.0420401789997413,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "import-heavy:round-1:hit",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-imports/main.py"
+      ],
+      "status": 0,
+      "stdout": "one two\nthree\nfour five\n['one', 'two', 'three']\n[1, 2, 3]\nTrue\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "5c0fa748cab68467019d45a15f97f3fcecadf550703ec12c7231ddd10662a009",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.034222825001052115,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "import-heavy:round-1:uncached",
+      "environment_changes": {
+        "PYSTACHY_PROGRAM_CACHE": "0"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-imports/main.py"
+      ],
+      "status": 0,
+      "stdout": "one two\nthree\nfour five\n['one', 'two', 'three']\n[1, 2, 3]\nTrue\n",
+      "stderr": "",
+      "stdout_sha256": "5c0fa748cab68467019d45a15f97f3fcecadf550703ec12c7231ddd10662a009",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 1.7665301140004885,
+      "tools": {
+        "opt": 1,
+        "lli": 1
+      },
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "import-heavy:round-2:uncached",
+      "environment_changes": {
+        "PYSTACHY_PROGRAM_CACHE": "0"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-imports/main.py"
+      ],
+      "status": 0,
+      "stdout": "one two\nthree\nfour five\n['one', 'two', 'three']\n[1, 2, 3]\nTrue\n",
+      "stderr": "",
+      "stdout_sha256": "5c0fa748cab68467019d45a15f97f3fcecadf550703ec12c7231ddd10662a009",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 1.615490066997154,
+      "tools": {
+        "opt": 1,
+        "lli": 1
+      },
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "import-heavy:round-2:miss",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-imports/main.py"
+      ],
+      "status": 0,
+      "stdout": "one two\nthree\nfour five\n['one', 'two', 'three']\n[1, 2, 3]\nTrue\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "5c0fa748cab68467019d45a15f97f3fcecadf550703ec12c7231ddd10662a009",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 1.791226518998883,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "import-heavy:round-2:hit",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-imports/main.py"
+      ],
+      "status": 0,
+      "stdout": "one two\nthree\nfour five\n['one', 'two', 'three']\n[1, 2, 3]\nTrue\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "5c0fa748cab68467019d45a15f97f3fcecadf550703ec12c7231ddd10662a009",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.04161201599708875,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "import-heavy:round-2:aot",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/tmp/pystachy-program-cache-_r8yuh7b/aot-import-heavy"
+      ],
+      "status": 0,
+      "stdout": "one two\nthree\nfour five\n['one', 'two', 'three']\n[1, 2, 3]\nTrue\n",
+      "stderr": "",
+      "stdout_sha256": "5c0fa748cab68467019d45a15f97f3fcecadf550703ec12c7231ddd10662a009",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.0024362609983654693,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "import-heavy:round-3:aot",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/tmp/pystachy-program-cache-_r8yuh7b/aot-import-heavy"
+      ],
+      "status": 0,
+      "stdout": "one two\nthree\nfour five\n['one', 'two', 'three']\n[1, 2, 3]\nTrue\n",
+      "stderr": "",
+      "stdout_sha256": "5c0fa748cab68467019d45a15f97f3fcecadf550703ec12c7231ddd10662a009",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.0014335590021801181,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "import-heavy:round-3:miss",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-imports/main.py"
+      ],
+      "status": 0,
+      "stdout": "one two\nthree\nfour five\n['one', 'two', 'three']\n[1, 2, 3]\nTrue\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "5c0fa748cab68467019d45a15f97f3fcecadf550703ec12c7231ddd10662a009",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 1.7659932860005938,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "import-heavy:round-3:hit",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-imports/main.py"
+      ],
+      "status": 0,
+      "stdout": "one two\nthree\nfour five\n['one', 'two', 'three']\n[1, 2, 3]\nTrue\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "5c0fa748cab68467019d45a15f97f3fcecadf550703ec12c7231ddd10662a009",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.030518032999680145,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "import-heavy:round-3:uncached",
+      "environment_changes": {
+        "PYSTACHY_PROGRAM_CACHE": "0"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-imports/main.py"
+      ],
+      "status": 0,
+      "stdout": "one two\nthree\nfour five\n['one', 'two', 'three']\n[1, 2, 3]\nTrue\n",
+      "stderr": "",
+      "stdout_sha256": "5c0fa748cab68467019d45a15f97f3fcecadf550703ec12c7231ddd10662a009",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 1.5351841150004475,
+      "tools": {
+        "opt": 1,
+        "lli": 1
+      },
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "import-heavy:round-4:uncached",
+      "environment_changes": {
+        "PYSTACHY_PROGRAM_CACHE": "0"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-imports/main.py"
+      ],
+      "status": 0,
+      "stdout": "one two\nthree\nfour five\n['one', 'two', 'three']\n[1, 2, 3]\nTrue\n",
+      "stderr": "",
+      "stdout_sha256": "5c0fa748cab68467019d45a15f97f3fcecadf550703ec12c7231ddd10662a009",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 1.6160382649977691,
+      "tools": {
+        "opt": 1,
+        "lli": 1
+      },
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "import-heavy:round-4:miss",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-imports/main.py"
+      ],
+      "status": 0,
+      "stdout": "one two\nthree\nfour five\n['one', 'two', 'three']\n[1, 2, 3]\nTrue\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "5c0fa748cab68467019d45a15f97f3fcecadf550703ec12c7231ddd10662a009",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 1.8894332220006618,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "import-heavy:round-4:hit",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-imports/main.py"
+      ],
+      "status": 0,
+      "stdout": "one two\nthree\nfour five\n['one', 'two', 'three']\n[1, 2, 3]\nTrue\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "5c0fa748cab68467019d45a15f97f3fcecadf550703ec12c7231ddd10662a009",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.033715616998961195,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "import-heavy:round-4:aot",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/tmp/pystachy-program-cache-_r8yuh7b/aot-import-heavy"
+      ],
+      "status": 0,
+      "stdout": "one two\nthree\nfour five\n['one', 'two', 'three']\n[1, 2, 3]\nTrue\n",
+      "stderr": "",
+      "stdout_sha256": "5c0fa748cab68467019d45a15f97f3fcecadf550703ec12c7231ddd10662a009",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.002600192998215789,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "cpython-reference",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/examples/route/route.py",
+        "/tmp/pystachy-program-cache-_r8yuh7b/rules.txt",
+        "/tmp/pystachy-program-cache-_r8yuh7b/events.txt",
+        "--names"
+      ],
+      "status": 0,
+      "stdout": "1000 events, 4 names, 3 rules\n      250 backend\n      250 errors\n      250 jobs\n      250 unrouted\nroute: CacheInfo(hits=996, misses=4, maxsize=4096, currsize=4)\n",
+      "stderr": "",
+      "stdout_sha256": "808d2adda4e1cef6b0b9c3cbb85f8f14265ba196f3b8acacbe6aa56efd960d9e",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.023152411999035394,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "router-1000-events:runtime-warmup",
+      "environment_changes": {
+        "PYSTACHY_PROGRAM_CACHE": "0"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/examples/route/route.py",
+        "/tmp/pystachy-program-cache-_r8yuh7b/rules.txt",
+        "/tmp/pystachy-program-cache-_r8yuh7b/events.txt",
+        "--names"
+      ],
+      "status": 0,
+      "stdout": "1000 events, 4 names, 3 rules\n      250 backend\n      250 errors\n      250 jobs\n      250 unrouted\nroute: CacheInfo(hits=996, misses=4, maxsize=4096, currsize=4)\n",
+      "stderr": "",
+      "stdout_sha256": "808d2adda4e1cef6b0b9c3cbb85f8f14265ba196f3b8acacbe6aa56efd960d9e",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 1.5090471359981166,
+      "tools": {
+        "opt": 1,
+        "lli": 1
+      },
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "router-1000-events:aot-build",
+      "environment_changes": {
+        "PYSTACHY_PROGRAM_CACHE": "0"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "build",
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/examples/route/route.py",
+        "-o",
+        "/tmp/pystachy-program-cache-_r8yuh7b/aot-router-1000-events"
+      ],
+      "status": 0,
+      "stdout": "",
+      "stderr": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 5.435300389999611,
+      "tools": {
+        "llvm-link": 1,
+        "clang": 3,
+        "opt": 1
+      },
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "router-1000-events:first-use-fill",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/examples/route/route.py",
+        "/tmp/pystachy-program-cache-_r8yuh7b/rules.txt",
+        "/tmp/pystachy-program-cache-_r8yuh7b/events.txt",
+        "--names"
+      ],
+      "status": 0,
+      "stdout": "1000 events, 4 names, 3 rules\n      250 backend\n      250 errors\n      250 jobs\n      250 unrouted\nroute: CacheInfo(hits=996, misses=4, maxsize=4096, currsize=4)\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "808d2adda4e1cef6b0b9c3cbb85f8f14265ba196f3b8acacbe6aa56efd960d9e",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 5.946479839003587,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "router-1000-events:round-0:uncached",
+      "environment_changes": {
+        "PYSTACHY_PROGRAM_CACHE": "0"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/examples/route/route.py",
+        "/tmp/pystachy-program-cache-_r8yuh7b/rules.txt",
+        "/tmp/pystachy-program-cache-_r8yuh7b/events.txt",
+        "--names"
+      ],
+      "status": 0,
+      "stdout": "1000 events, 4 names, 3 rules\n      250 backend\n      250 errors\n      250 jobs\n      250 unrouted\nroute: CacheInfo(hits=996, misses=4, maxsize=4096, currsize=4)\n",
+      "stderr": "",
+      "stdout_sha256": "808d2adda4e1cef6b0b9c3cbb85f8f14265ba196f3b8acacbe6aa56efd960d9e",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 1.355387300001894,
+      "tools": {
+        "opt": 1,
+        "lli": 1
+      },
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "router-1000-events:round-0:miss",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/examples/route/route.py",
+        "/tmp/pystachy-program-cache-_r8yuh7b/rules.txt",
+        "/tmp/pystachy-program-cache-_r8yuh7b/events.txt",
+        "--names"
+      ],
+      "status": 0,
+      "stdout": "1000 events, 4 names, 3 rules\n      250 backend\n      250 errors\n      250 jobs\n      250 unrouted\nroute: CacheInfo(hits=996, misses=4, maxsize=4096, currsize=4)\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "808d2adda4e1cef6b0b9c3cbb85f8f14265ba196f3b8acacbe6aa56efd960d9e",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 1.4309407100008684,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "router-1000-events:round-0:hit",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/examples/route/route.py",
+        "/tmp/pystachy-program-cache-_r8yuh7b/rules.txt",
+        "/tmp/pystachy-program-cache-_r8yuh7b/events.txt",
+        "--names"
+      ],
+      "status": 0,
+      "stdout": "1000 events, 4 names, 3 rules\n      250 backend\n      250 errors\n      250 jobs\n      250 unrouted\nroute: CacheInfo(hits=996, misses=4, maxsize=4096, currsize=4)\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "808d2adda4e1cef6b0b9c3cbb85f8f14265ba196f3b8acacbe6aa56efd960d9e",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.033115268997789826,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "router-1000-events:round-0:aot",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/tmp/pystachy-program-cache-_r8yuh7b/aot-router-1000-events",
+        "/tmp/pystachy-program-cache-_r8yuh7b/rules.txt",
+        "/tmp/pystachy-program-cache-_r8yuh7b/events.txt",
+        "--names"
+      ],
+      "status": 0,
+      "stdout": "1000 events, 4 names, 3 rules\n      250 backend\n      250 errors\n      250 jobs\n      250 unrouted\nroute: CacheInfo(hits=996, misses=4, maxsize=4096, currsize=4)\n",
+      "stderr": "",
+      "stdout_sha256": "808d2adda4e1cef6b0b9c3cbb85f8f14265ba196f3b8acacbe6aa56efd960d9e",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.0012627559990505688,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "router-1000-events:round-1:aot",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/tmp/pystachy-program-cache-_r8yuh7b/aot-router-1000-events",
+        "/tmp/pystachy-program-cache-_r8yuh7b/rules.txt",
+        "/tmp/pystachy-program-cache-_r8yuh7b/events.txt",
+        "--names"
+      ],
+      "status": 0,
+      "stdout": "1000 events, 4 names, 3 rules\n      250 backend\n      250 errors\n      250 jobs\n      250 unrouted\nroute: CacheInfo(hits=996, misses=4, maxsize=4096, currsize=4)\n",
+      "stderr": "",
+      "stdout_sha256": "808d2adda4e1cef6b0b9c3cbb85f8f14265ba196f3b8acacbe6aa56efd960d9e",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.0012587210003403015,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "router-1000-events:round-1:miss",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/examples/route/route.py",
+        "/tmp/pystachy-program-cache-_r8yuh7b/rules.txt",
+        "/tmp/pystachy-program-cache-_r8yuh7b/events.txt",
+        "--names"
+      ],
+      "status": 0,
+      "stdout": "1000 events, 4 names, 3 rules\n      250 backend\n      250 errors\n      250 jobs\n      250 unrouted\nroute: CacheInfo(hits=996, misses=4, maxsize=4096, currsize=4)\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "808d2adda4e1cef6b0b9c3cbb85f8f14265ba196f3b8acacbe6aa56efd960d9e",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 1.3800828429993999,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "router-1000-events:round-1:hit",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/examples/route/route.py",
+        "/tmp/pystachy-program-cache-_r8yuh7b/rules.txt",
+        "/tmp/pystachy-program-cache-_r8yuh7b/events.txt",
+        "--names"
+      ],
+      "status": 0,
+      "stdout": "1000 events, 4 names, 3 rules\n      250 backend\n      250 errors\n      250 jobs\n      250 unrouted\nroute: CacheInfo(hits=996, misses=4, maxsize=4096, currsize=4)\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "808d2adda4e1cef6b0b9c3cbb85f8f14265ba196f3b8acacbe6aa56efd960d9e",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.02971255000011297,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "router-1000-events:round-1:uncached",
+      "environment_changes": {
+        "PYSTACHY_PROGRAM_CACHE": "0"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/examples/route/route.py",
+        "/tmp/pystachy-program-cache-_r8yuh7b/rules.txt",
+        "/tmp/pystachy-program-cache-_r8yuh7b/events.txt",
+        "--names"
+      ],
+      "status": 0,
+      "stdout": "1000 events, 4 names, 3 rules\n      250 backend\n      250 errors\n      250 jobs\n      250 unrouted\nroute: CacheInfo(hits=996, misses=4, maxsize=4096, currsize=4)\n",
+      "stderr": "",
+      "stdout_sha256": "808d2adda4e1cef6b0b9c3cbb85f8f14265ba196f3b8acacbe6aa56efd960d9e",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 1.2437220979991253,
+      "tools": {
+        "opt": 1,
+        "lli": 1
+      },
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "router-1000-events:round-2:uncached",
+      "environment_changes": {
+        "PYSTACHY_PROGRAM_CACHE": "0"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/examples/route/route.py",
+        "/tmp/pystachy-program-cache-_r8yuh7b/rules.txt",
+        "/tmp/pystachy-program-cache-_r8yuh7b/events.txt",
+        "--names"
+      ],
+      "status": 0,
+      "stdout": "1000 events, 4 names, 3 rules\n      250 backend\n      250 errors\n      250 jobs\n      250 unrouted\nroute: CacheInfo(hits=996, misses=4, maxsize=4096, currsize=4)\n",
+      "stderr": "",
+      "stdout_sha256": "808d2adda4e1cef6b0b9c3cbb85f8f14265ba196f3b8acacbe6aa56efd960d9e",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 1.185090040002251,
+      "tools": {
+        "opt": 1,
+        "lli": 1
+      },
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "router-1000-events:round-2:miss",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/examples/route/route.py",
+        "/tmp/pystachy-program-cache-_r8yuh7b/rules.txt",
+        "/tmp/pystachy-program-cache-_r8yuh7b/events.txt",
+        "--names"
+      ],
+      "status": 0,
+      "stdout": "1000 events, 4 names, 3 rules\n      250 backend\n      250 errors\n      250 jobs\n      250 unrouted\nroute: CacheInfo(hits=996, misses=4, maxsize=4096, currsize=4)\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "808d2adda4e1cef6b0b9c3cbb85f8f14265ba196f3b8acacbe6aa56efd960d9e",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 1.4293958849993942,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "router-1000-events:round-2:hit",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/examples/route/route.py",
+        "/tmp/pystachy-program-cache-_r8yuh7b/rules.txt",
+        "/tmp/pystachy-program-cache-_r8yuh7b/events.txt",
+        "--names"
+      ],
+      "status": 0,
+      "stdout": "1000 events, 4 names, 3 rules\n      250 backend\n      250 errors\n      250 jobs\n      250 unrouted\nroute: CacheInfo(hits=996, misses=4, maxsize=4096, currsize=4)\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "808d2adda4e1cef6b0b9c3cbb85f8f14265ba196f3b8acacbe6aa56efd960d9e",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.029960173000290524,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "router-1000-events:round-2:aot",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/tmp/pystachy-program-cache-_r8yuh7b/aot-router-1000-events",
+        "/tmp/pystachy-program-cache-_r8yuh7b/rules.txt",
+        "/tmp/pystachy-program-cache-_r8yuh7b/events.txt",
+        "--names"
+      ],
+      "status": 0,
+      "stdout": "1000 events, 4 names, 3 rules\n      250 backend\n      250 errors\n      250 jobs\n      250 unrouted\nroute: CacheInfo(hits=996, misses=4, maxsize=4096, currsize=4)\n",
+      "stderr": "",
+      "stdout_sha256": "808d2adda4e1cef6b0b9c3cbb85f8f14265ba196f3b8acacbe6aa56efd960d9e",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.0028363720011839177,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "router-1000-events:round-3:aot",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/tmp/pystachy-program-cache-_r8yuh7b/aot-router-1000-events",
+        "/tmp/pystachy-program-cache-_r8yuh7b/rules.txt",
+        "/tmp/pystachy-program-cache-_r8yuh7b/events.txt",
+        "--names"
+      ],
+      "status": 0,
+      "stdout": "1000 events, 4 names, 3 rules\n      250 backend\n      250 errors\n      250 jobs\n      250 unrouted\nroute: CacheInfo(hits=996, misses=4, maxsize=4096, currsize=4)\n",
+      "stderr": "",
+      "stdout_sha256": "808d2adda4e1cef6b0b9c3cbb85f8f14265ba196f3b8acacbe6aa56efd960d9e",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.002522517999750562,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "router-1000-events:round-3:miss",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/examples/route/route.py",
+        "/tmp/pystachy-program-cache-_r8yuh7b/rules.txt",
+        "/tmp/pystachy-program-cache-_r8yuh7b/events.txt",
+        "--names"
+      ],
+      "status": 0,
+      "stdout": "1000 events, 4 names, 3 rules\n      250 backend\n      250 errors\n      250 jobs\n      250 unrouted\nroute: CacheInfo(hits=996, misses=4, maxsize=4096, currsize=4)\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "808d2adda4e1cef6b0b9c3cbb85f8f14265ba196f3b8acacbe6aa56efd960d9e",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 1.3603928400007135,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "router-1000-events:round-3:hit",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/examples/route/route.py",
+        "/tmp/pystachy-program-cache-_r8yuh7b/rules.txt",
+        "/tmp/pystachy-program-cache-_r8yuh7b/events.txt",
+        "--names"
+      ],
+      "status": 0,
+      "stdout": "1000 events, 4 names, 3 rules\n      250 backend\n      250 errors\n      250 jobs\n      250 unrouted\nroute: CacheInfo(hits=996, misses=4, maxsize=4096, currsize=4)\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "808d2adda4e1cef6b0b9c3cbb85f8f14265ba196f3b8acacbe6aa56efd960d9e",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.028980694001802476,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "router-1000-events:round-3:uncached",
+      "environment_changes": {
+        "PYSTACHY_PROGRAM_CACHE": "0"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/examples/route/route.py",
+        "/tmp/pystachy-program-cache-_r8yuh7b/rules.txt",
+        "/tmp/pystachy-program-cache-_r8yuh7b/events.txt",
+        "--names"
+      ],
+      "status": 0,
+      "stdout": "1000 events, 4 names, 3 rules\n      250 backend\n      250 errors\n      250 jobs\n      250 unrouted\nroute: CacheInfo(hits=996, misses=4, maxsize=4096, currsize=4)\n",
+      "stderr": "",
+      "stdout_sha256": "808d2adda4e1cef6b0b9c3cbb85f8f14265ba196f3b8acacbe6aa56efd960d9e",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 1.2674566399982723,
+      "tools": {
+        "opt": 1,
+        "lli": 1
+      },
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "router-1000-events:round-4:uncached",
+      "environment_changes": {
+        "PYSTACHY_PROGRAM_CACHE": "0"
+      },
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/examples/route/route.py",
+        "/tmp/pystachy-program-cache-_r8yuh7b/rules.txt",
+        "/tmp/pystachy-program-cache-_r8yuh7b/events.txt",
+        "--names"
+      ],
+      "status": 0,
+      "stdout": "1000 events, 4 names, 3 rules\n      250 backend\n      250 errors\n      250 jobs\n      250 unrouted\nroute: CacheInfo(hits=996, misses=4, maxsize=4096, currsize=4)\n",
+      "stderr": "",
+      "stdout_sha256": "808d2adda4e1cef6b0b9c3cbb85f8f14265ba196f3b8acacbe6aa56efd960d9e",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 1.4049457459987025,
+      "tools": {
+        "opt": 1,
+        "lli": 1
+      },
+      "events": [],
+      "timed_out": false
+    },
+    {
+      "label": "router-1000-events:round-4:miss",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/examples/route/route.py",
+        "/tmp/pystachy-program-cache-_r8yuh7b/rules.txt",
+        "/tmp/pystachy-program-cache-_r8yuh7b/events.txt",
+        "--names"
+      ],
+      "status": 0,
+      "stdout": "1000 events, 4 names, 3 rules\n      250 backend\n      250 errors\n      250 jobs\n      250 unrouted\nroute: CacheInfo(hits=996, misses=4, maxsize=4096, currsize=4)\n",
+      "stderr": "pystachy program cache: miss\npystachy program cache: frontend\npystachy program cache: stored\n",
+      "stdout_sha256": "808d2adda4e1cef6b0b9c3cbb85f8f14265ba196f3b8acacbe6aa56efd960d9e",
+      "stderr_sha256": "9c8f54bcf7a0c1627ac758a4a982f04e021e9391c86915bff84a94f009f8c051",
+      "seconds": 1.65328443999897,
+      "tools": {
+        "clang": 4,
+        "opt": 1
+      },
+      "events": [
+        "miss",
+        "frontend",
+        "stored"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "router-1000-events:round-4:hit",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/e98dc1e3e6cd/pystachy/examples/route/route.py",
+        "/tmp/pystachy-program-cache-_r8yuh7b/rules.txt",
+        "/tmp/pystachy-program-cache-_r8yuh7b/events.txt",
+        "--names"
+      ],
+      "status": 0,
+      "stdout": "1000 events, 4 names, 3 rules\n      250 backend\n      250 errors\n      250 jobs\n      250 unrouted\nroute: CacheInfo(hits=996, misses=4, maxsize=4096, currsize=4)\n",
+      "stderr": "pystachy program cache: hit\n",
+      "stdout_sha256": "808d2adda4e1cef6b0b9c3cbb85f8f14265ba196f3b8acacbe6aa56efd960d9e",
+      "stderr_sha256": "7f973225323c6870097894d20e96bfb0fdff821b05abdc5522a015c245f86bcd",
+      "seconds": 0.03729344199746265,
+      "tools": {},
+      "events": [
+        "hit"
+      ],
+      "timed_out": false
+    },
+    {
+      "label": "router-1000-events:round-4:aot",
+      "environment_changes": {},
+      "stdin": "",
+      "cwd": "/tmp/pystachy-program-cache-_r8yuh7b",
+      "command": [
+        "/tmp/pystachy-program-cache-_r8yuh7b/aot-router-1000-events",
+        "/tmp/pystachy-program-cache-_r8yuh7b/rules.txt",
+        "/tmp/pystachy-program-cache-_r8yuh7b/events.txt",
+        "--names"
+      ],
+      "status": 0,
+      "stdout": "1000 events, 4 names, 3 rules\n      250 backend\n      250 errors\n      250 jobs\n      250 unrouted\nroute: CacheInfo(hits=996, misses=4, maxsize=4096, currsize=4)\n",
+      "stderr": "",
+      "stdout_sha256": "808d2adda4e1cef6b0b9c3cbb85f8f14265ba196f3b8acacbe6aa56efd960d9e",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds": 0.0028679189999820665,
+      "tools": {},
+      "events": [],
+      "timed_out": false
+    }
+  ],
+  "source_inputs": [
+    {
+      "path": "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-tiny/main.py",
+      "text": "print(1)\n",
+      "sha256": "cc42155088fca5730758db72b2a5bca33112a941dfaa2d43098ec422ce4ea213"
+    },
+    {
+      "path": "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-padded/main.py",
+      "text": "def helper_0(x: int) -> int:\n    return x + 0\n\ndef helper_1(x: int) -> int:\n    return x + 1\n\ndef helper_2(x: int) -> int:\n    return x + 2\n\ndef helper_3(x: int) -> int:\n    return x + 3\n\ndef helper_4(x: int) -> int:\n    return x + 4\n\ndef helper_5(x: int) -> int:\n    return x + 5\n\ndef helper_6(x: int) -> int:\n    return x + 6\n\ndef helper_7(x: int) -> int:\n    return x + 7\n\ndef helper_8(x: int) -> int:\n    return x + 8\n\ndef helper_9(x: int) -> int:\n    return x + 9\n\ndef helper_10(x: int) -> int:\n    return x + 10\n\ndef helper_11(x: int) -> int:\n    return x + 11\n\ndef helper_12(x: int) -> int:\n    return x + 12\n\ndef helper_13(x: int) -> int:\n    return x + 13\n\ndef helper_14(x: int) -> int:\n    return x + 14\n\ndef helper_15(x: int) -> int:\n    return x + 15\n\ndef helper_16(x: int) -> int:\n    return x + 16\n\ndef helper_17(x: int) -> int:\n    return x + 17\n\ndef helper_18(x: int) -> int:\n    return x + 18\n\ndef helper_19(x: int) -> int:\n    return x + 19\n\ndef helper_20(x: int) -> int:\n    return x + 20\n\ndef helper_21(x: int) -> int:\n    return x + 21\n\ndef helper_22(x: int) -> int:\n    return x + 22\n\ndef helper_23(x: int) -> int:\n    return x + 23\n\ndef helper_24(x: int) -> int:\n    return x + 24\n\ndef helper_25(x: int) -> int:\n    return x + 25\n\ndef helper_26(x: int) -> int:\n    return x + 26\n\ndef helper_27(x: int) -> int:\n    return x + 27\n\ndef helper_28(x: int) -> int:\n    return x + 28\n\ndef helper_29(x: int) -> int:\n    return x + 29\n\ndef helper_30(x: int) -> int:\n    return x + 30\n\ndef helper_31(x: int) -> int:\n    return x + 31\n\ndef helper_32(x: int) -> int:\n    return x + 32\n\ndef helper_33(x: int) -> int:\n    return x + 33\n\ndef helper_34(x: int) -> int:\n    return x + 34\n\ndef helper_35(x: int) -> int:\n    return x + 35\n\ndef helper_36(x: int) -> int:\n    return x + 36\n\ndef helper_37(x: int) -> int:\n    return x + 37\n\ndef helper_38(x: int) -> int:\n    return x + 38\n\ndef helper_39(x: int) -> int:\n    return x + 39\n\ndef helper_40(x: int) -> int:\n    return x + 40\n\ndef helper_41(x: int) -> int:\n    return x + 41\n\ndef helper_42(x: int) -> int:\n    return x + 42\n\ndef helper_43(x: int) -> int:\n    return x + 43\n\ndef helper_44(x: int) -> int:\n    return x + 44\n\ndef helper_45(x: int) -> int:\n    return x + 45\n\ndef helper_46(x: int) -> int:\n    return x + 46\n\ndef helper_47(x: int) -> int:\n    return x + 47\n\ndef helper_48(x: int) -> int:\n    return x + 48\n\ndef helper_49(x: int) -> int:\n    return x + 49\n\ndef helper_50(x: int) -> int:\n    return x + 50\n\ndef helper_51(x: int) -> int:\n    return x + 51\n\ndef helper_52(x: int) -> int:\n    return x + 52\n\ndef helper_53(x: int) -> int:\n    return x + 53\n\ndef helper_54(x: int) -> int:\n    return x + 54\n\ndef helper_55(x: int) -> int:\n    return x + 55\n\ndef helper_56(x: int) -> int:\n    return x + 56\n\ndef helper_57(x: int) -> int:\n    return x + 57\n\ndef helper_58(x: int) -> int:\n    return x + 58\n\ndef helper_59(x: int) -> int:\n    return x + 59\n\ndef helper_60(x: int) -> int:\n    return x + 60\n\ndef helper_61(x: int) -> int:\n    return x + 61\n\ndef helper_62(x: int) -> int:\n    return x + 62\n\ndef helper_63(x: int) -> int:\n    return x + 63\n\ndef helper_64(x: int) -> int:\n    return x + 64\n\ndef helper_65(x: int) -> int:\n    return x + 65\n\ndef helper_66(x: int) -> int:\n    return x + 66\n\ndef helper_67(x: int) -> int:\n    return x + 67\n\ndef helper_68(x: int) -> int:\n    return x + 68\n\ndef helper_69(x: int) -> int:\n    return x + 69\n\ndef helper_70(x: int) -> int:\n    return x + 70\n\ndef helper_71(x: int) -> int:\n    return x + 71\n\ndef helper_72(x: int) -> int:\n    return x + 72\n\ndef helper_73(x: int) -> int:\n    return x + 73\n\ndef helper_74(x: int) -> int:\n    return x + 74\n\ndef helper_75(x: int) -> int:\n    return x + 75\n\ndef helper_76(x: int) -> int:\n    return x + 76\n\ndef helper_77(x: int) -> int:\n    return x + 77\n\ndef helper_78(x: int) -> int:\n    return x + 78\n\ndef helper_79(x: int) -> int:\n    return x + 79\n\ndef helper_80(x: int) -> int:\n    return x + 80\n\ndef helper_81(x: int) -> int:\n    return x + 81\n\ndef helper_82(x: int) -> int:\n    return x + 82\n\ndef helper_83(x: int) -> int:\n    return x + 83\n\ndef helper_84(x: int) -> int:\n    return x + 84\n\ndef helper_85(x: int) -> int:\n    return x + 85\n\ndef helper_86(x: int) -> int:\n    return x + 86\n\ndef helper_87(x: int) -> int:\n    return x + 87\n\ndef helper_88(x: int) -> int:\n    return x + 88\n\ndef helper_89(x: int) -> int:\n    return x + 89\n\ndef helper_90(x: int) -> int:\n    return x + 90\n\ndef helper_91(x: int) -> int:\n    return x + 91\n\ndef helper_92(x: int) -> int:\n    return x + 92\n\ndef helper_93(x: int) -> int:\n    return x + 93\n\ndef helper_94(x: int) -> int:\n    return x + 94\n\ndef helper_95(x: int) -> int:\n    return x + 95\n\ndef helper_96(x: int) -> int:\n    return x + 96\n\ndef helper_97(x: int) -> int:\n    return x + 97\n\ndef helper_98(x: int) -> int:\n    return x + 98\n\ndef helper_99(x: int) -> int:\n    return x + 99\n\ndef helper_100(x: int) -> int:\n    return x + 100\n\ndef helper_101(x: int) -> int:\n    return x + 101\n\ndef helper_102(x: int) -> int:\n    return x + 102\n\ndef helper_103(x: int) -> int:\n    return x + 103\n\ndef helper_104(x: int) -> int:\n    return x + 104\n\ndef helper_105(x: int) -> int:\n    return x + 105\n\ndef helper_106(x: int) -> int:\n    return x + 106\n\ndef helper_107(x: int) -> int:\n    return x + 107\n\ndef helper_108(x: int) -> int:\n    return x + 108\n\ndef helper_109(x: int) -> int:\n    return x + 109\n\ndef helper_110(x: int) -> int:\n    return x + 110\n\ndef helper_111(x: int) -> int:\n    return x + 111\n\ndef helper_112(x: int) -> int:\n    return x + 112\n\ndef helper_113(x: int) -> int:\n    return x + 113\n\ndef helper_114(x: int) -> int:\n    return x + 114\n\ndef helper_115(x: int) -> int:\n    return x + 115\n\ndef helper_116(x: int) -> int:\n    return x + 116\n\ndef helper_117(x: int) -> int:\n    return x + 117\n\ndef helper_118(x: int) -> int:\n    return x + 118\n\ndef helper_119(x: int) -> int:\n    return x + 119\n\ndef helper_120(x: int) -> int:\n    return x + 120\n\ndef helper_121(x: int) -> int:\n    return x + 121\n\ndef helper_122(x: int) -> int:\n    return x + 122\n\ndef helper_123(x: int) -> int:\n    return x + 123\n\ndef helper_124(x: int) -> int:\n    return x + 124\n\ndef helper_125(x: int) -> int:\n    return x + 125\n\ndef helper_126(x: int) -> int:\n    return x + 126\n\ndef helper_127(x: int) -> int:\n    return x + 127\n\ndef helper_128(x: int) -> int:\n    return x + 128\n\ndef helper_129(x: int) -> int:\n    return x + 129\n\ndef helper_130(x: int) -> int:\n    return x + 130\n\ndef helper_131(x: int) -> int:\n    return x + 131\n\ndef helper_132(x: int) -> int:\n    return x + 132\n\ndef helper_133(x: int) -> int:\n    return x + 133\n\ndef helper_134(x: int) -> int:\n    return x + 134\n\ndef helper_135(x: int) -> int:\n    return x + 135\n\ndef helper_136(x: int) -> int:\n    return x + 136\n\ndef helper_137(x: int) -> int:\n    return x + 137\n\ndef helper_138(x: int) -> int:\n    return x + 138\n\ndef helper_139(x: int) -> int:\n    return x + 139\n\ndef helper_140(x: int) -> int:\n    return x + 140\n\ndef helper_141(x: int) -> int:\n    return x + 141\n\ndef helper_142(x: int) -> int:\n    return x + 142\n\ndef helper_143(x: int) -> int:\n    return x + 143\n\ndef helper_144(x: int) -> int:\n    return x + 144\n\ndef helper_145(x: int) -> int:\n    return x + 145\n\ndef helper_146(x: int) -> int:\n    return x + 146\n\ndef helper_147(x: int) -> int:\n    return x + 147\n\ndef helper_148(x: int) -> int:\n    return x + 148\n\ndef helper_149(x: int) -> int:\n    return x + 149\n\ndef helper_150(x: int) -> int:\n    return x + 150\n\ndef helper_151(x: int) -> int:\n    return x + 151\n\ndef helper_152(x: int) -> int:\n    return x + 152\n\ndef helper_153(x: int) -> int:\n    return x + 153\n\ndef helper_154(x: int) -> int:\n    return x + 154\n\ndef helper_155(x: int) -> int:\n    return x + 155\n\ndef helper_156(x: int) -> int:\n    return x + 156\n\ndef helper_157(x: int) -> int:\n    return x + 157\n\ndef helper_158(x: int) -> int:\n    return x + 158\n\ndef helper_159(x: int) -> int:\n    return x + 159\n\ndef helper_160(x: int) -> int:\n    return x + 160\n\ndef helper_161(x: int) -> int:\n    return x + 161\n\ndef helper_162(x: int) -> int:\n    return x + 162\n\ndef helper_163(x: int) -> int:\n    return x + 163\n\ndef helper_164(x: int) -> int:\n    return x + 164\n\ndef helper_165(x: int) -> int:\n    return x + 165\n\ndef helper_166(x: int) -> int:\n    return x + 166\n\ndef helper_167(x: int) -> int:\n    return x + 167\n\ndef helper_168(x: int) -> int:\n    return x + 168\n\ndef helper_169(x: int) -> int:\n    return x + 169\n\ndef helper_170(x: int) -> int:\n    return x + 170\n\ndef helper_171(x: int) -> int:\n    return x + 171\n\ndef helper_172(x: int) -> int:\n    return x + 172\n\ndef helper_173(x: int) -> int:\n    return x + 173\n\ndef helper_174(x: int) -> int:\n    return x + 174\n\ndef helper_175(x: int) -> int:\n    return x + 175\n\ndef helper_176(x: int) -> int:\n    return x + 176\n\ndef helper_177(x: int) -> int:\n    return x + 177\n\ndef helper_178(x: int) -> int:\n    return x + 178\n\ndef helper_179(x: int) -> int:\n    return x + 179\n\ndef helper_180(x: int) -> int:\n    return x + 180\n\ndef helper_181(x: int) -> int:\n    return x + 181\n\ndef helper_182(x: int) -> int:\n    return x + 182\n\ndef helper_183(x: int) -> int:\n    return x + 183\n\ndef helper_184(x: int) -> int:\n    return x + 184\n\ndef helper_185(x: int) -> int:\n    return x + 185\n\ndef helper_186(x: int) -> int:\n    return x + 186\n\ndef helper_187(x: int) -> int:\n    return x + 187\n\ndef helper_188(x: int) -> int:\n    return x + 188\n\ndef helper_189(x: int) -> int:\n    return x + 189\n\ndef helper_190(x: int) -> int:\n    return x + 190\n\ndef helper_191(x: int) -> int:\n    return x + 191\n\ndef helper_192(x: int) -> int:\n    return x + 192\n\ndef helper_193(x: int) -> int:\n    return x + 193\n\ndef helper_194(x: int) -> int:\n    return x + 194\n\ndef helper_195(x: int) -> int:\n    return x + 195\n\ndef helper_196(x: int) -> int:\n    return x + 196\n\ndef helper_197(x: int) -> int:\n    return x + 197\n\ndef helper_198(x: int) -> int:\n    return x + 198\n\ndef helper_199(x: int) -> int:\n    return x + 199\n\ndef helper_200(x: int) -> int:\n    return x + 200\n\ndef helper_201(x: int) -> int:\n    return x + 201\n\ndef helper_202(x: int) -> int:\n    return x + 202\n\ndef helper_203(x: int) -> int:\n    return x + 203\n\ndef helper_204(x: int) -> int:\n    return x + 204\n\ndef helper_205(x: int) -> int:\n    return x + 205\n\ndef helper_206(x: int) -> int:\n    return x + 206\n\ndef helper_207(x: int) -> int:\n    return x + 207\n\ndef helper_208(x: int) -> int:\n    return x + 208\n\ndef helper_209(x: int) -> int:\n    return x + 209\n\ndef helper_210(x: int) -> int:\n    return x + 210\n\ndef helper_211(x: int) -> int:\n    return x + 211\n\ndef helper_212(x: int) -> int:\n    return x + 212\n\ndef helper_213(x: int) -> int:\n    return x + 213\n\ndef helper_214(x: int) -> int:\n    return x + 214\n\ndef helper_215(x: int) -> int:\n    return x + 215\n\ndef helper_216(x: int) -> int:\n    return x + 216\n\ndef helper_217(x: int) -> int:\n    return x + 217\n\ndef helper_218(x: int) -> int:\n    return x + 218\n\ndef helper_219(x: int) -> int:\n    return x + 219\n\ndef helper_220(x: int) -> int:\n    return x + 220\n\ndef helper_221(x: int) -> int:\n    return x + 221\n\ndef helper_222(x: int) -> int:\n    return x + 222\n\ndef helper_223(x: int) -> int:\n    return x + 223\n\ndef helper_224(x: int) -> int:\n    return x + 224\n\ndef helper_225(x: int) -> int:\n    return x + 225\n\ndef helper_226(x: int) -> int:\n    return x + 226\n\ndef helper_227(x: int) -> int:\n    return x + 227\n\ndef helper_228(x: int) -> int:\n    return x + 228\n\ndef helper_229(x: int) -> int:\n    return x + 229\n\ndef helper_230(x: int) -> int:\n    return x + 230\n\ndef helper_231(x: int) -> int:\n    return x + 231\n\ndef helper_232(x: int) -> int:\n    return x + 232\n\ndef helper_233(x: int) -> int:\n    return x + 233\n\ndef helper_234(x: int) -> int:\n    return x + 234\n\ndef helper_235(x: int) -> int:\n    return x + 235\n\ndef helper_236(x: int) -> int:\n    return x + 236\n\ndef helper_237(x: int) -> int:\n    return x + 237\n\ndef helper_238(x: int) -> int:\n    return x + 238\n\ndef helper_239(x: int) -> int:\n    return x + 239\n\ndef helper_240(x: int) -> int:\n    return x + 240\n\ndef helper_241(x: int) -> int:\n    return x + 241\n\ndef helper_242(x: int) -> int:\n    return x + 242\n\ndef helper_243(x: int) -> int:\n    return x + 243\n\ndef helper_244(x: int) -> int:\n    return x + 244\n\ndef helper_245(x: int) -> int:\n    return x + 245\n\ndef helper_246(x: int) -> int:\n    return x + 246\n\ndef helper_247(x: int) -> int:\n    return x + 247\n\ndef helper_248(x: int) -> int:\n    return x + 248\n\ndef helper_249(x: int) -> int:\n    return x + 249\n\ndef helper_250(x: int) -> int:\n    return x + 250\n\ndef helper_251(x: int) -> int:\n    return x + 251\n\ndef helper_252(x: int) -> int:\n    return x + 252\n\ndef helper_253(x: int) -> int:\n    return x + 253\n\ndef helper_254(x: int) -> int:\n    return x + 254\n\ndef helper_255(x: int) -> int:\n    return x + 255\n\ndef helper_256(x: int) -> int:\n    return x + 256\n\ndef helper_257(x: int) -> int:\n    return x + 257\n\ndef helper_258(x: int) -> int:\n    return x + 258\n\ndef helper_259(x: int) -> int:\n    return x + 259\n\ndef helper_260(x: int) -> int:\n    return x + 260\n\ndef helper_261(x: int) -> int:\n    return x + 261\n\ndef helper_262(x: int) -> int:\n    return x + 262\n\ndef helper_263(x: int) -> int:\n    return x + 263\n\ndef helper_264(x: int) -> int:\n    return x + 264\n\ndef helper_265(x: int) -> int:\n    return x + 265\n\ndef helper_266(x: int) -> int:\n    return x + 266\n\ndef helper_267(x: int) -> int:\n    return x + 267\n\ndef helper_268(x: int) -> int:\n    return x + 268\n\ndef helper_269(x: int) -> int:\n    return x + 269\n\ndef helper_270(x: int) -> int:\n    return x + 270\n\ndef helper_271(x: int) -> int:\n    return x + 271\n\ndef helper_272(x: int) -> int:\n    return x + 272\n\ndef helper_273(x: int) -> int:\n    return x + 273\n\ndef helper_274(x: int) -> int:\n    return x + 274\n\ndef helper_275(x: int) -> int:\n    return x + 275\n\ndef helper_276(x: int) -> int:\n    return x + 276\n\ndef helper_277(x: int) -> int:\n    return x + 277\n\ndef helper_278(x: int) -> int:\n    return x + 278\n\ndef helper_279(x: int) -> int:\n    return x + 279\n\ndef helper_280(x: int) -> int:\n    return x + 280\n\ndef helper_281(x: int) -> int:\n    return x + 281\n\ndef helper_282(x: int) -> int:\n    return x + 282\n\ndef helper_283(x: int) -> int:\n    return x + 283\n\ndef helper_284(x: int) -> int:\n    return x + 284\n\ndef helper_285(x: int) -> int:\n    return x + 285\n\ndef helper_286(x: int) -> int:\n    return x + 286\n\ndef helper_287(x: int) -> int:\n    return x + 287\n\ndef helper_288(x: int) -> int:\n    return x + 288\n\ndef helper_289(x: int) -> int:\n    return x + 289\n\ndef helper_290(x: int) -> int:\n    return x + 290\n\ndef helper_291(x: int) -> int:\n    return x + 291\n\ndef helper_292(x: int) -> int:\n    return x + 292\n\ndef helper_293(x: int) -> int:\n    return x + 293\n\ndef helper_294(x: int) -> int:\n    return x + 294\n\ndef helper_295(x: int) -> int:\n    return x + 295\n\ndef helper_296(x: int) -> int:\n    return x + 296\n\ndef helper_297(x: int) -> int:\n    return x + 297\n\ndef helper_298(x: int) -> int:\n    return x + 298\n\ndef helper_299(x: int) -> int:\n    return x + 299\n\ndef helper_300(x: int) -> int:\n    return x + 300\n\ndef helper_301(x: int) -> int:\n    return x + 301\n\ndef helper_302(x: int) -> int:\n    return x + 302\n\ndef helper_303(x: int) -> int:\n    return x + 303\n\ndef helper_304(x: int) -> int:\n    return x + 304\n\ndef helper_305(x: int) -> int:\n    return x + 305\n\ndef helper_306(x: int) -> int:\n    return x + 306\n\ndef helper_307(x: int) -> int:\n    return x + 307\n\ndef helper_308(x: int) -> int:\n    return x + 308\n\ndef helper_309(x: int) -> int:\n    return x + 309\n\ndef helper_310(x: int) -> int:\n    return x + 310\n\ndef helper_311(x: int) -> int:\n    return x + 311\n\ndef helper_312(x: int) -> int:\n    return x + 312\n\ndef helper_313(x: int) -> int:\n    return x + 313\n\ndef helper_314(x: int) -> int:\n    return x + 314\n\ndef helper_315(x: int) -> int:\n    return x + 315\n\ndef helper_316(x: int) -> int:\n    return x + 316\n\ndef helper_317(x: int) -> int:\n    return x + 317\n\ndef helper_318(x: int) -> int:\n    return x + 318\n\ndef helper_319(x: int) -> int:\n    return x + 319\n\ndef helper_320(x: int) -> int:\n    return x + 320\n\ndef helper_321(x: int) -> int:\n    return x + 321\n\ndef helper_322(x: int) -> int:\n    return x + 322\n\ndef helper_323(x: int) -> int:\n    return x + 323\n\ndef helper_324(x: int) -> int:\n    return x + 324\n\ndef helper_325(x: int) -> int:\n    return x + 325\n\ndef helper_326(x: int) -> int:\n    return x + 326\n\ndef helper_327(x: int) -> int:\n    return x + 327\n\ndef helper_328(x: int) -> int:\n    return x + 328\n\ndef helper_329(x: int) -> int:\n    return x + 329\n\ndef helper_330(x: int) -> int:\n    return x + 330\n\ndef helper_331(x: int) -> int:\n    return x + 331\n\ndef helper_332(x: int) -> int:\n    return x + 332\n\ndef helper_333(x: int) -> int:\n    return x + 333\n\ndef helper_334(x: int) -> int:\n    return x + 334\n\ndef helper_335(x: int) -> int:\n    return x + 335\n\ndef helper_336(x: int) -> int:\n    return x + 336\n\ndef helper_337(x: int) -> int:\n    return x + 337\n\ndef helper_338(x: int) -> int:\n    return x + 338\n\ndef helper_339(x: int) -> int:\n    return x + 339\n\ndef helper_340(x: int) -> int:\n    return x + 340\n\ndef helper_341(x: int) -> int:\n    return x + 341\n\ndef helper_342(x: int) -> int:\n    return x + 342\n\ndef helper_343(x: int) -> int:\n    return x + 343\n\ndef helper_344(x: int) -> int:\n    return x + 344\n\ndef helper_345(x: int) -> int:\n    return x + 345\n\ndef helper_346(x: int) -> int:\n    return x + 346\n\ndef helper_347(x: int) -> int:\n    return x + 347\n\ndef helper_348(x: int) -> int:\n    return x + 348\n\ndef helper_349(x: int) -> int:\n    return x + 349\n\ndef helper_350(x: int) -> int:\n    return x + 350\n\ndef helper_351(x: int) -> int:\n    return x + 351\n\ndef helper_352(x: int) -> int:\n    return x + 352\n\ndef helper_353(x: int) -> int:\n    return x + 353\n\ndef helper_354(x: int) -> int:\n    return x + 354\n\ndef helper_355(x: int) -> int:\n    return x + 355\n\ndef helper_356(x: int) -> int:\n    return x + 356\n\ndef helper_357(x: int) -> int:\n    return x + 357\n\ndef helper_358(x: int) -> int:\n    return x + 358\n\ndef helper_359(x: int) -> int:\n    return x + 359\n\ndef helper_360(x: int) -> int:\n    return x + 360\n\ndef helper_361(x: int) -> int:\n    return x + 361\n\ndef helper_362(x: int) -> int:\n    return x + 362\n\ndef helper_363(x: int) -> int:\n    return x + 363\n\ndef helper_364(x: int) -> int:\n    return x + 364\n\ndef helper_365(x: int) -> int:\n    return x + 365\n\ndef helper_366(x: int) -> int:\n    return x + 366\n\ndef helper_367(x: int) -> int:\n    return x + 367\n\ndef helper_368(x: int) -> int:\n    return x + 368\n\ndef helper_369(x: int) -> int:\n    return x + 369\n\ndef helper_370(x: int) -> int:\n    return x + 370\n\ndef helper_371(x: int) -> int:\n    return x + 371\n\ndef helper_372(x: int) -> int:\n    return x + 372\n\ndef helper_373(x: int) -> int:\n    return x + 373\n\ndef helper_374(x: int) -> int:\n    return x + 374\n\ndef helper_375(x: int) -> int:\n    return x + 375\n\ndef helper_376(x: int) -> int:\n    return x + 376\n\ndef helper_377(x: int) -> int:\n    return x + 377\n\ndef helper_378(x: int) -> int:\n    return x + 378\n\ndef helper_379(x: int) -> int:\n    return x + 379\n\ndef helper_380(x: int) -> int:\n    return x + 380\n\ndef helper_381(x: int) -> int:\n    return x + 381\n\ndef helper_382(x: int) -> int:\n    return x + 382\n\ndef helper_383(x: int) -> int:\n    return x + 383\n\ndef helper_384(x: int) -> int:\n    return x + 384\n\ndef helper_385(x: int) -> int:\n    return x + 385\n\ndef helper_386(x: int) -> int:\n    return x + 386\n\ndef helper_387(x: int) -> int:\n    return x + 387\n\ndef helper_388(x: int) -> int:\n    return x + 388\n\ndef helper_389(x: int) -> int:\n    return x + 389\n\ndef helper_390(x: int) -> int:\n    return x + 390\n\ndef helper_391(x: int) -> int:\n    return x + 391\n\ndef helper_392(x: int) -> int:\n    return x + 392\n\ndef helper_393(x: int) -> int:\n    return x + 393\n\ndef helper_394(x: int) -> int:\n    return x + 394\n\ndef helper_395(x: int) -> int:\n    return x + 395\n\ndef helper_396(x: int) -> int:\n    return x + 396\n\ndef helper_397(x: int) -> int:\n    return x + 397\n\ndef helper_398(x: int) -> int:\n    return x + 398\n\ndef helper_399(x: int) -> int:\n    return x + 399\n\ndef helper_400(x: int) -> int:\n    return x + 400\n\ndef helper_401(x: int) -> int:\n    return x + 401\n\ndef helper_402(x: int) -> int:\n    return x + 402\n\ndef helper_403(x: int) -> int:\n    return x + 403\n\ndef helper_404(x: int) -> int:\n    return x + 404\n\ndef helper_405(x: int) -> int:\n    return x + 405\n\ndef helper_406(x: int) -> int:\n    return x + 406\n\ndef helper_407(x: int) -> int:\n    return x + 407\n\ndef helper_408(x: int) -> int:\n    return x + 408\n\ndef helper_409(x: int) -> int:\n    return x + 409\n\ndef helper_410(x: int) -> int:\n    return x + 410\n\ndef helper_411(x: int) -> int:\n    return x + 411\n\ndef helper_412(x: int) -> int:\n    return x + 412\n\ndef helper_413(x: int) -> int:\n    return x + 413\n\ndef helper_414(x: int) -> int:\n    return x + 414\n\ndef helper_415(x: int) -> int:\n    return x + 415\n\ndef helper_416(x: int) -> int:\n    return x + 416\n\ndef helper_417(x: int) -> int:\n    return x + 417\n\ndef helper_418(x: int) -> int:\n    return x + 418\n\ndef helper_419(x: int) -> int:\n    return x + 419\n\ndef helper_420(x: int) -> int:\n    return x + 420\n\ndef helper_421(x: int) -> int:\n    return x + 421\n\ndef helper_422(x: int) -> int:\n    return x + 422\n\ndef helper_423(x: int) -> int:\n    return x + 423\n\ndef helper_424(x: int) -> int:\n    return x + 424\n\ndef helper_425(x: int) -> int:\n    return x + 425\n\ndef helper_426(x: int) -> int:\n    return x + 426\n\ndef helper_427(x: int) -> int:\n    return x + 427\n\ndef helper_428(x: int) -> int:\n    return x + 428\n\ndef helper_429(x: int) -> int:\n    return x + 429\n\ndef helper_430(x: int) -> int:\n    return x + 430\n\ndef helper_431(x: int) -> int:\n    return x + 431\n\ndef helper_432(x: int) -> int:\n    return x + 432\n\ndef helper_433(x: int) -> int:\n    return x + 433\n\ndef helper_434(x: int) -> int:\n    return x + 434\n\ndef helper_435(x: int) -> int:\n    return x + 435\n\ndef helper_436(x: int) -> int:\n    return x + 436\n\ndef helper_437(x: int) -> int:\n    return x + 437\n\ndef helper_438(x: int) -> int:\n    return x + 438\n\ndef helper_439(x: int) -> int:\n    return x + 439\n\ndef helper_440(x: int) -> int:\n    return x + 440\n\ndef helper_441(x: int) -> int:\n    return x + 441\n\ndef helper_442(x: int) -> int:\n    return x + 442\n\ndef helper_443(x: int) -> int:\n    return x + 443\n\ndef helper_444(x: int) -> int:\n    return x + 444\n\ndef helper_445(x: int) -> int:\n    return x + 445\n\ndef helper_446(x: int) -> int:\n    return x + 446\n\ndef helper_447(x: int) -> int:\n    return x + 447\n\ndef helper_448(x: int) -> int:\n    return x + 448\n\ndef helper_449(x: int) -> int:\n    return x + 449\n\ndef helper_450(x: int) -> int:\n    return x + 450\n\ndef helper_451(x: int) -> int:\n    return x + 451\n\ndef helper_452(x: int) -> int:\n    return x + 452\n\ndef helper_453(x: int) -> int:\n    return x + 453\n\ndef helper_454(x: int) -> int:\n    return x + 454\n\ndef helper_455(x: int) -> int:\n    return x + 455\n\ndef helper_456(x: int) -> int:\n    return x + 456\n\ndef helper_457(x: int) -> int:\n    return x + 457\n\ndef helper_458(x: int) -> int:\n    return x + 458\n\ndef helper_459(x: int) -> int:\n    return x + 459\n\ndef helper_460(x: int) -> int:\n    return x + 460\n\ndef helper_461(x: int) -> int:\n    return x + 461\n\ndef helper_462(x: int) -> int:\n    return x + 462\n\ndef helper_463(x: int) -> int:\n    return x + 463\n\ndef helper_464(x: int) -> int:\n    return x + 464\n\ndef helper_465(x: int) -> int:\n    return x + 465\n\ndef helper_466(x: int) -> int:\n    return x + 466\n\ndef helper_467(x: int) -> int:\n    return x + 467\n\ndef helper_468(x: int) -> int:\n    return x + 468\n\ndef helper_469(x: int) -> int:\n    return x + 469\n\ndef helper_470(x: int) -> int:\n    return x + 470\n\ndef helper_471(x: int) -> int:\n    return x + 471\n\ndef helper_472(x: int) -> int:\n    return x + 472\n\ndef helper_473(x: int) -> int:\n    return x + 473\n\ndef helper_474(x: int) -> int:\n    return x + 474\n\ndef helper_475(x: int) -> int:\n    return x + 475\n\ndef helper_476(x: int) -> int:\n    return x + 476\n\ndef helper_477(x: int) -> int:\n    return x + 477\n\ndef helper_478(x: int) -> int:\n    return x + 478\n\ndef helper_479(x: int) -> int:\n    return x + 479\n\ndef helper_480(x: int) -> int:\n    return x + 480\n\ndef helper_481(x: int) -> int:\n    return x + 481\n\ndef helper_482(x: int) -> int:\n    return x + 482\n\ndef helper_483(x: int) -> int:\n    return x + 483\n\ndef helper_484(x: int) -> int:\n    return x + 484\n\ndef helper_485(x: int) -> int:\n    return x + 485\n\ndef helper_486(x: int) -> int:\n    return x + 486\n\ndef helper_487(x: int) -> int:\n    return x + 487\n\ndef helper_488(x: int) -> int:\n    return x + 488\n\ndef helper_489(x: int) -> int:\n    return x + 489\n\ndef helper_490(x: int) -> int:\n    return x + 490\n\ndef helper_491(x: int) -> int:\n    return x + 491\n\ndef helper_492(x: int) -> int:\n    return x + 492\n\ndef helper_493(x: int) -> int:\n    return x + 493\n\ndef helper_494(x: int) -> int:\n    return x + 494\n\ndef helper_495(x: int) -> int:\n    return x + 495\n\ndef helper_496(x: int) -> int:\n    return x + 496\n\ndef helper_497(x: int) -> int:\n    return x + 497\n\ndef helper_498(x: int) -> int:\n    return x + 498\n\ndef helper_499(x: int) -> int:\n    return x + 499\n\ndef helper_500(x: int) -> int:\n    return x + 500\n\ndef helper_501(x: int) -> int:\n    return x + 501\n\ndef helper_502(x: int) -> int:\n    return x + 502\n\ndef helper_503(x: int) -> int:\n    return x + 503\n\ndef helper_504(x: int) -> int:\n    return x + 504\n\ndef helper_505(x: int) -> int:\n    return x + 505\n\ndef helper_506(x: int) -> int:\n    return x + 506\n\ndef helper_507(x: int) -> int:\n    return x + 507\n\ndef helper_508(x: int) -> int:\n    return x + 508\n\ndef helper_509(x: int) -> int:\n    return x + 509\n\ndef helper_510(x: int) -> int:\n    return x + 510\n\ndef helper_511(x: int) -> int:\n    return x + 511\n\ndef helper_512(x: int) -> int:\n    return x + 512\n\ndef helper_513(x: int) -> int:\n    return x + 513\n\ndef helper_514(x: int) -> int:\n    return x + 514\n\ndef helper_515(x: int) -> int:\n    return x + 515\n\ndef helper_516(x: int) -> int:\n    return x + 516\n\ndef helper_517(x: int) -> int:\n    return x + 517\n\ndef helper_518(x: int) -> int:\n    return x + 518\n\ndef helper_519(x: int) -> int:\n    return x + 519\n\ndef helper_520(x: int) -> int:\n    return x + 520\n\ndef helper_521(x: int) -> int:\n    return x + 521\n\ndef helper_522(x: int) -> int:\n    return x + 522\n\ndef helper_523(x: int) -> int:\n    return x + 523\n\ndef helper_524(x: int) -> int:\n    return x + 524\n\ndef helper_525(x: int) -> int:\n    return x + 525\n\ndef helper_526(x: int) -> int:\n    return x + 526\n\ndef helper_527(x: int) -> int:\n    return x + 527\n\ndef helper_528(x: int) -> int:\n    return x + 528\n\ndef helper_529(x: int) -> int:\n    return x + 529\n\ndef helper_530(x: int) -> int:\n    return x + 530\n\ndef helper_531(x: int) -> int:\n    return x + 531\n\ndef helper_532(x: int) -> int:\n    return x + 532\n\ndef helper_533(x: int) -> int:\n    return x + 533\n\ndef helper_534(x: int) -> int:\n    return x + 534\n\ndef helper_535(x: int) -> int:\n    return x + 535\n\ndef helper_536(x: int) -> int:\n    return x + 536\n\ndef helper_537(x: int) -> int:\n    return x + 537\n\ndef helper_538(x: int) -> int:\n    return x + 538\n\ndef helper_539(x: int) -> int:\n    return x + 539\n\ndef helper_540(x: int) -> int:\n    return x + 540\n\ndef helper_541(x: int) -> int:\n    return x + 541\n\ndef helper_542(x: int) -> int:\n    return x + 542\n\ndef helper_543(x: int) -> int:\n    return x + 543\n\ndef helper_544(x: int) -> int:\n    return x + 544\n\ndef helper_545(x: int) -> int:\n    return x + 545\n\ndef helper_546(x: int) -> int:\n    return x + 546\n\ndef helper_547(x: int) -> int:\n    return x + 547\n\ndef helper_548(x: int) -> int:\n    return x + 548\n\ndef helper_549(x: int) -> int:\n    return x + 549\n\ndef helper_550(x: int) -> int:\n    return x + 550\n\ndef helper_551(x: int) -> int:\n    return x + 551\n\ndef helper_552(x: int) -> int:\n    return x + 552\n\ndef helper_553(x: int) -> int:\n    return x + 553\n\ndef helper_554(x: int) -> int:\n    return x + 554\n\ndef helper_555(x: int) -> int:\n    return x + 555\n\ndef helper_556(x: int) -> int:\n    return x + 556\n\ndef helper_557(x: int) -> int:\n    return x + 557\n\ndef helper_558(x: int) -> int:\n    return x + 558\n\ndef helper_559(x: int) -> int:\n    return x + 559\n\ndef helper_560(x: int) -> int:\n    return x + 560\n\ndef helper_561(x: int) -> int:\n    return x + 561\n\ndef helper_562(x: int) -> int:\n    return x + 562\n\ndef helper_563(x: int) -> int:\n    return x + 563\n\ndef helper_564(x: int) -> int:\n    return x + 564\n\ndef helper_565(x: int) -> int:\n    return x + 565\n\ndef helper_566(x: int) -> int:\n    return x + 566\n\ndef helper_567(x: int) -> int:\n    return x + 567\n\ndef helper_568(x: int) -> int:\n    return x + 568\n\ndef helper_569(x: int) -> int:\n    return x + 569\n\ndef helper_570(x: int) -> int:\n    return x + 570\n\ndef helper_571(x: int) -> int:\n    return x + 571\n\ndef helper_572(x: int) -> int:\n    return x + 572\n\ndef helper_573(x: int) -> int:\n    return x + 573\n\ndef helper_574(x: int) -> int:\n    return x + 574\n\ndef helper_575(x: int) -> int:\n    return x + 575\n\ndef helper_576(x: int) -> int:\n    return x + 576\n\ndef helper_577(x: int) -> int:\n    return x + 577\n\ndef helper_578(x: int) -> int:\n    return x + 578\n\ndef helper_579(x: int) -> int:\n    return x + 579\n\ndef helper_580(x: int) -> int:\n    return x + 580\n\ndef helper_581(x: int) -> int:\n    return x + 581\n\ndef helper_582(x: int) -> int:\n    return x + 582\n\ndef helper_583(x: int) -> int:\n    return x + 583\n\ndef helper_584(x: int) -> int:\n    return x + 584\n\ndef helper_585(x: int) -> int:\n    return x + 585\n\ndef helper_586(x: int) -> int:\n    return x + 586\n\ndef helper_587(x: int) -> int:\n    return x + 587\n\ndef helper_588(x: int) -> int:\n    return x + 588\n\ndef helper_589(x: int) -> int:\n    return x + 589\n\ndef helper_590(x: int) -> int:\n    return x + 590\n\ndef helper_591(x: int) -> int:\n    return x + 591\n\ndef helper_592(x: int) -> int:\n    return x + 592\n\ndef helper_593(x: int) -> int:\n    return x + 593\n\ndef helper_594(x: int) -> int:\n    return x + 594\n\ndef helper_595(x: int) -> int:\n    return x + 595\n\ndef helper_596(x: int) -> int:\n    return x + 596\n\ndef helper_597(x: int) -> int:\n    return x + 597\n\ndef helper_598(x: int) -> int:\n    return x + 598\n\ndef helper_599(x: int) -> int:\n    return x + 599\nprint(helper_599(4))\n",
+      "sha256": "2d1d45b12572ecf1956add197e3a7f2fb14d04cc485c314d74e8120af209423f"
+    },
+    {
+      "path": "/tmp/pystachy-program-cache-_r8yuh7b/sources/bench-imports/main.py",
+      "text": "import re\nimport textwrap\nimport json\nimport fnmatch\nprint(textwrap.fill(\"one two three four five\", width=9))\nprint(re.findall(\"[a-z]+\", \"one1two2three3\"))\nprint(json.dumps([1, 2, 3]))\nprint(fnmatch.fnmatchcase(\"worker.py\", \"*.py\"))\n",
+      "sha256": "3ef08c74f1794f4f058593e0a8183ce8d4c43fdb3425ca722519e5d3b78515f8"
+    },
+    {
+      "path": "/tmp/pystachy-program-cache-_r8yuh7b/rules.txt",
+      "text": "api.* backend\nworker.* jobs\n*.error errors\n",
+      "sha256": "2829070326b1aefa23a0a0be9386976b1d8f949d19485f3ec9ec361934f00df7"
+    },
+    {
+      "path": "/tmp/pystachy-program-cache-_r8yuh7b/events.txt",
+      "text": "api.read\tpayload 0\nworker.run\tpayload 0\napp.error\tpayload 0\nignored\tpayload 0\napi.read\tpayload 1\nworker.run\tpayload 1\napp.error\tpayload 1\nignored\tpayload 1\napi.read\tpayload 2\nworker.run\tpayload 2\napp.error\tpayload 2\nignored\tpayload 2\napi.read\tpayload 3\nworker.run\tpayload 3\napp.error\tpayload 3\nignored\tpayload 3\napi.read\tpayload 4\nworker.run\tpayload 4\napp.error\tpayload 4\nignored\tpayload 4\napi.read\tpayload 5\nworker.run\tpayload 5\napp.error\tpayload 5\nignored\tpayload 5\napi.read\tpayload 6\nworker.run\tpayload 6\napp.error\tpayload 6\nignored\tpayload 6\napi.read\tpayload 7\nworker.run\tpayload 7\napp.error\tpayload 7\nignored\tpayload 7\napi.read\tpayload 8\nworker.run\tpayload 8\napp.error\tpayload 8\nignored\tpayload 8\napi.read\tpayload 9\nworker.run\tpayload 9\napp.error\tpayload 9\nignored\tpayload 9\napi.read\tpayload 10\nworker.run\tpayload 10\napp.error\tpayload 10\nignored\tpayload 10\napi.read\tpayload 11\nworker.run\tpayload 11\napp.error\tpayload 11\nignored\tpayload 11\napi.read\tpayload 12\nworker.run\tpayload 12\napp.error\tpayload 12\nignored\tpayload 12\napi.read\tpayload 13\nworker.run\tpayload 13\napp.error\tpayload 13\nignored\tpayload 13\napi.read\tpayload 14\nworker.run\tpayload 14\napp.error\tpayload 14\nignored\tpayload 14\napi.read\tpayload 15\nworker.run\tpayload 15\napp.error\tpayload 15\nignored\tpayload 15\napi.read\tpayload 16\nworker.run\tpayload 16\napp.error\tpayload 16\nignored\tpayload 16\napi.read\tpayload 17\nworker.run\tpayload 17\napp.error\tpayload 17\nignored\tpayload 17\napi.read\tpayload 18\nworker.run\tpayload 18\napp.error\tpayload 18\nignored\tpayload 18\napi.read\tpayload 19\nworker.run\tpayload 19\napp.error\tpayload 19\nignored\tpayload 19\napi.read\tpayload 20\nworker.run\tpayload 20\napp.error\tpayload 20\nignored\tpayload 20\napi.read\tpayload 21\nworker.run\tpayload 21\napp.error\tpayload 21\nignored\tpayload 21\napi.read\tpayload 22\nworker.run\tpayload 22\napp.error\tpayload 22\nignored\tpayload 22\napi.read\tpayload 23\nworker.run\tpayload 23\napp.error\tpayload 23\nignored\tpayload 23\napi.read\tpayload 24\nworker.run\tpayload 24\napp.error\tpayload 24\nignored\tpayload 24\napi.read\tpayload 25\nworker.run\tpayload 25\napp.error\tpayload 25\nignored\tpayload 25\napi.read\tpayload 26\nworker.run\tpayload 26\napp.error\tpayload 26\nignored\tpayload 26\napi.read\tpayload 27\nworker.run\tpayload 27\napp.error\tpayload 27\nignored\tpayload 27\napi.read\tpayload 28\nworker.run\tpayload 28\napp.error\tpayload 28\nignored\tpayload 28\napi.read\tpayload 29\nworker.run\tpayload 29\napp.error\tpayload 29\nignored\tpayload 29\napi.read\tpayload 30\nworker.run\tpayload 30\napp.error\tpayload 30\nignored\tpayload 30\napi.read\tpayload 31\nworker.run\tpayload 31\napp.error\tpayload 31\nignored\tpayload 31\napi.read\tpayload 32\nworker.run\tpayload 32\napp.error\tpayload 32\nignored\tpayload 32\napi.read\tpayload 33\nworker.run\tpayload 33\napp.error\tpayload 33\nignored\tpayload 33\napi.read\tpayload 34\nworker.run\tpayload 34\napp.error\tpayload 34\nignored\tpayload 34\napi.read\tpayload 35\nworker.run\tpayload 35\napp.error\tpayload 35\nignored\tpayload 35\napi.read\tpayload 36\nworker.run\tpayload 36\napp.error\tpayload 36\nignored\tpayload 36\napi.read\tpayload 37\nworker.run\tpayload 37\napp.error\tpayload 37\nignored\tpayload 37\napi.read\tpayload 38\nworker.run\tpayload 38\napp.error\tpayload 38\nignored\tpayload 38\napi.read\tpayload 39\nworker.run\tpayload 39\napp.error\tpayload 39\nignored\tpayload 39\napi.read\tpayload 40\nworker.run\tpayload 40\napp.error\tpayload 40\nignored\tpayload 40\napi.read\tpayload 41\nworker.run\tpayload 41\napp.error\tpayload 41\nignored\tpayload 41\napi.read\tpayload 42\nworker.run\tpayload 42\napp.error\tpayload 42\nignored\tpayload 42\napi.read\tpayload 43\nworker.run\tpayload 43\napp.error\tpayload 43\nignored\tpayload 43\napi.read\tpayload 44\nworker.run\tpayload 44\napp.error\tpayload 44\nignored\tpayload 44\napi.read\tpayload 45\nworker.run\tpayload 45\napp.error\tpayload 45\nignored\tpayload 45\napi.read\tpayload 46\nworker.run\tpayload 46\napp.error\tpayload 46\nignored\tpayload 46\napi.read\tpayload 47\nworker.run\tpayload 47\napp.error\tpayload 47\nignored\tpayload 47\napi.read\tpayload 48\nworker.run\tpayload 48\napp.error\tpayload 48\nignored\tpayload 48\napi.read\tpayload 49\nworker.run\tpayload 49\napp.error\tpayload 49\nignored\tpayload 49\napi.read\tpayload 50\nworker.run\tpayload 50\napp.error\tpayload 50\nignored\tpayload 50\napi.read\tpayload 51\nworker.run\tpayload 51\napp.error\tpayload 51\nignored\tpayload 51\napi.read\tpayload 52\nworker.run\tpayload 52\napp.error\tpayload 52\nignored\tpayload 52\napi.read\tpayload 53\nworker.run\tpayload 53\napp.error\tpayload 53\nignored\tpayload 53\napi.read\tpayload 54\nworker.run\tpayload 54\napp.error\tpayload 54\nignored\tpayload 54\napi.read\tpayload 55\nworker.run\tpayload 55\napp.error\tpayload 55\nignored\tpayload 55\napi.read\tpayload 56\nworker.run\tpayload 56\napp.error\tpayload 56\nignored\tpayload 56\napi.read\tpayload 57\nworker.run\tpayload 57\napp.error\tpayload 57\nignored\tpayload 57\napi.read\tpayload 58\nworker.run\tpayload 58\napp.error\tpayload 58\nignored\tpayload 58\napi.read\tpayload 59\nworker.run\tpayload 59\napp.error\tpayload 59\nignored\tpayload 59\napi.read\tpayload 60\nworker.run\tpayload 60\napp.error\tpayload 60\nignored\tpayload 60\napi.read\tpayload 61\nworker.run\tpayload 61\napp.error\tpayload 61\nignored\tpayload 61\napi.read\tpayload 62\nworker.run\tpayload 62\napp.error\tpayload 62\nignored\tpayload 62\napi.read\tpayload 63\nworker.run\tpayload 63\napp.error\tpayload 63\nignored\tpayload 63\napi.read\tpayload 64\nworker.run\tpayload 64\napp.error\tpayload 64\nignored\tpayload 64\napi.read\tpayload 65\nworker.run\tpayload 65\napp.error\tpayload 65\nignored\tpayload 65\napi.read\tpayload 66\nworker.run\tpayload 66\napp.error\tpayload 66\nignored\tpayload 66\napi.read\tpayload 67\nworker.run\tpayload 67\napp.error\tpayload 67\nignored\tpayload 67\napi.read\tpayload 68\nworker.run\tpayload 68\napp.error\tpayload 68\nignored\tpayload 68\napi.read\tpayload 69\nworker.run\tpayload 69\napp.error\tpayload 69\nignored\tpayload 69\napi.read\tpayload 70\nworker.run\tpayload 70\napp.error\tpayload 70\nignored\tpayload 70\napi.read\tpayload 71\nworker.run\tpayload 71\napp.error\tpayload 71\nignored\tpayload 71\napi.read\tpayload 72\nworker.run\tpayload 72\napp.error\tpayload 72\nignored\tpayload 72\napi.read\tpayload 73\nworker.run\tpayload 73\napp.error\tpayload 73\nignored\tpayload 73\napi.read\tpayload 74\nworker.run\tpayload 74\napp.error\tpayload 74\nignored\tpayload 74\napi.read\tpayload 75\nworker.run\tpayload 75\napp.error\tpayload 75\nignored\tpayload 75\napi.read\tpayload 76\nworker.run\tpayload 76\napp.error\tpayload 76\nignored\tpayload 76\napi.read\tpayload 77\nworker.run\tpayload 77\napp.error\tpayload 77\nignored\tpayload 77\napi.read\tpayload 78\nworker.run\tpayload 78\napp.error\tpayload 78\nignored\tpayload 78\napi.read\tpayload 79\nworker.run\tpayload 79\napp.error\tpayload 79\nignored\tpayload 79\napi.read\tpayload 80\nworker.run\tpayload 80\napp.error\tpayload 80\nignored\tpayload 80\napi.read\tpayload 81\nworker.run\tpayload 81\napp.error\tpayload 81\nignored\tpayload 81\napi.read\tpayload 82\nworker.run\tpayload 82\napp.error\tpayload 82\nignored\tpayload 82\napi.read\tpayload 83\nworker.run\tpayload 83\napp.error\tpayload 83\nignored\tpayload 83\napi.read\tpayload 84\nworker.run\tpayload 84\napp.error\tpayload 84\nignored\tpayload 84\napi.read\tpayload 85\nworker.run\tpayload 85\napp.error\tpayload 85\nignored\tpayload 85\napi.read\tpayload 86\nworker.run\tpayload 86\napp.error\tpayload 86\nignored\tpayload 86\napi.read\tpayload 87\nworker.run\tpayload 87\napp.error\tpayload 87\nignored\tpayload 87\napi.read\tpayload 88\nworker.run\tpayload 88\napp.error\tpayload 88\nignored\tpayload 88\napi.read\tpayload 89\nworker.run\tpayload 89\napp.error\tpayload 89\nignored\tpayload 89\napi.read\tpayload 90\nworker.run\tpayload 90\napp.error\tpayload 90\nignored\tpayload 90\napi.read\tpayload 91\nworker.run\tpayload 91\napp.error\tpayload 91\nignored\tpayload 91\napi.read\tpayload 92\nworker.run\tpayload 92\napp.error\tpayload 92\nignored\tpayload 92\napi.read\tpayload 93\nworker.run\tpayload 93\napp.error\tpayload 93\nignored\tpayload 93\napi.read\tpayload 94\nworker.run\tpayload 94\napp.error\tpayload 94\nignored\tpayload 94\napi.read\tpayload 95\nworker.run\tpayload 95\napp.error\tpayload 95\nignored\tpayload 95\napi.read\tpayload 96\nworker.run\tpayload 96\napp.error\tpayload 96\nignored\tpayload 96\napi.read\tpayload 97\nworker.run\tpayload 97\napp.error\tpayload 97\nignored\tpayload 97\napi.read\tpayload 98\nworker.run\tpayload 98\napp.error\tpayload 98\nignored\tpayload 98\napi.read\tpayload 99\nworker.run\tpayload 99\napp.error\tpayload 99\nignored\tpayload 99\napi.read\tpayload 100\nworker.run\tpayload 100\napp.error\tpayload 100\nignored\tpayload 100\napi.read\tpayload 101\nworker.run\tpayload 101\napp.error\tpayload 101\nignored\tpayload 101\napi.read\tpayload 102\nworker.run\tpayload 102\napp.error\tpayload 102\nignored\tpayload 102\napi.read\tpayload 103\nworker.run\tpayload 103\napp.error\tpayload 103\nignored\tpayload 103\napi.read\tpayload 104\nworker.run\tpayload 104\napp.error\tpayload 104\nignored\tpayload 104\napi.read\tpayload 105\nworker.run\tpayload 105\napp.error\tpayload 105\nignored\tpayload 105\napi.read\tpayload 106\nworker.run\tpayload 106\napp.error\tpayload 106\nignored\tpayload 106\napi.read\tpayload 107\nworker.run\tpayload 107\napp.error\tpayload 107\nignored\tpayload 107\napi.read\tpayload 108\nworker.run\tpayload 108\napp.error\tpayload 108\nignored\tpayload 108\napi.read\tpayload 109\nworker.run\tpayload 109\napp.error\tpayload 109\nignored\tpayload 109\napi.read\tpayload 110\nworker.run\tpayload 110\napp.error\tpayload 110\nignored\tpayload 110\napi.read\tpayload 111\nworker.run\tpayload 111\napp.error\tpayload 111\nignored\tpayload 111\napi.read\tpayload 112\nworker.run\tpayload 112\napp.error\tpayload 112\nignored\tpayload 112\napi.read\tpayload 113\nworker.run\tpayload 113\napp.error\tpayload 113\nignored\tpayload 113\napi.read\tpayload 114\nworker.run\tpayload 114\napp.error\tpayload 114\nignored\tpayload 114\napi.read\tpayload 115\nworker.run\tpayload 115\napp.error\tpayload 115\nignored\tpayload 115\napi.read\tpayload 116\nworker.run\tpayload 116\napp.error\tpayload 116\nignored\tpayload 116\napi.read\tpayload 117\nworker.run\tpayload 117\napp.error\tpayload 117\nignored\tpayload 117\napi.read\tpayload 118\nworker.run\tpayload 118\napp.error\tpayload 118\nignored\tpayload 118\napi.read\tpayload 119\nworker.run\tpayload 119\napp.error\tpayload 119\nignored\tpayload 119\napi.read\tpayload 120\nworker.run\tpayload 120\napp.error\tpayload 120\nignored\tpayload 120\napi.read\tpayload 121\nworker.run\tpayload 121\napp.error\tpayload 121\nignored\tpayload 121\napi.read\tpayload 122\nworker.run\tpayload 122\napp.error\tpayload 122\nignored\tpayload 122\napi.read\tpayload 123\nworker.run\tpayload 123\napp.error\tpayload 123\nignored\tpayload 123\napi.read\tpayload 124\nworker.run\tpayload 124\napp.error\tpayload 124\nignored\tpayload 124\napi.read\tpayload 125\nworker.run\tpayload 125\napp.error\tpayload 125\nignored\tpayload 125\napi.read\tpayload 126\nworker.run\tpayload 126\napp.error\tpayload 126\nignored\tpayload 126\napi.read\tpayload 127\nworker.run\tpayload 127\napp.error\tpayload 127\nignored\tpayload 127\napi.read\tpayload 128\nworker.run\tpayload 128\napp.error\tpayload 128\nignored\tpayload 128\napi.read\tpayload 129\nworker.run\tpayload 129\napp.error\tpayload 129\nignored\tpayload 129\napi.read\tpayload 130\nworker.run\tpayload 130\napp.error\tpayload 130\nignored\tpayload 130\napi.read\tpayload 131\nworker.run\tpayload 131\napp.error\tpayload 131\nignored\tpayload 131\napi.read\tpayload 132\nworker.run\tpayload 132\napp.error\tpayload 132\nignored\tpayload 132\napi.read\tpayload 133\nworker.run\tpayload 133\napp.error\tpayload 133\nignored\tpayload 133\napi.read\tpayload 134\nworker.run\tpayload 134\napp.error\tpayload 134\nignored\tpayload 134\napi.read\tpayload 135\nworker.run\tpayload 135\napp.error\tpayload 135\nignored\tpayload 135\napi.read\tpayload 136\nworker.run\tpayload 136\napp.error\tpayload 136\nignored\tpayload 136\napi.read\tpayload 137\nworker.run\tpayload 137\napp.error\tpayload 137\nignored\tpayload 137\napi.read\tpayload 138\nworker.run\tpayload 138\napp.error\tpayload 138\nignored\tpayload 138\napi.read\tpayload 139\nworker.run\tpayload 139\napp.error\tpayload 139\nignored\tpayload 139\napi.read\tpayload 140\nworker.run\tpayload 140\napp.error\tpayload 140\nignored\tpayload 140\napi.read\tpayload 141\nworker.run\tpayload 141\napp.error\tpayload 141\nignored\tpayload 141\napi.read\tpayload 142\nworker.run\tpayload 142\napp.error\tpayload 142\nignored\tpayload 142\napi.read\tpayload 143\nworker.run\tpayload 143\napp.error\tpayload 143\nignored\tpayload 143\napi.read\tpayload 144\nworker.run\tpayload 144\napp.error\tpayload 144\nignored\tpayload 144\napi.read\tpayload 145\nworker.run\tpayload 145\napp.error\tpayload 145\nignored\tpayload 145\napi.read\tpayload 146\nworker.run\tpayload 146\napp.error\tpayload 146\nignored\tpayload 146\napi.read\tpayload 147\nworker.run\tpayload 147\napp.error\tpayload 147\nignored\tpayload 147\napi.read\tpayload 148\nworker.run\tpayload 148\napp.error\tpayload 148\nignored\tpayload 148\napi.read\tpayload 149\nworker.run\tpayload 149\napp.error\tpayload 149\nignored\tpayload 149\napi.read\tpayload 150\nworker.run\tpayload 150\napp.error\tpayload 150\nignored\tpayload 150\napi.read\tpayload 151\nworker.run\tpayload 151\napp.error\tpayload 151\nignored\tpayload 151\napi.read\tpayload 152\nworker.run\tpayload 152\napp.error\tpayload 152\nignored\tpayload 152\napi.read\tpayload 153\nworker.run\tpayload 153\napp.error\tpayload 153\nignored\tpayload 153\napi.read\tpayload 154\nworker.run\tpayload 154\napp.error\tpayload 154\nignored\tpayload 154\napi.read\tpayload 155\nworker.run\tpayload 155\napp.error\tpayload 155\nignored\tpayload 155\napi.read\tpayload 156\nworker.run\tpayload 156\napp.error\tpayload 156\nignored\tpayload 156\napi.read\tpayload 157\nworker.run\tpayload 157\napp.error\tpayload 157\nignored\tpayload 157\napi.read\tpayload 158\nworker.run\tpayload 158\napp.error\tpayload 158\nignored\tpayload 158\napi.read\tpayload 159\nworker.run\tpayload 159\napp.error\tpayload 159\nignored\tpayload 159\napi.read\tpayload 160\nworker.run\tpayload 160\napp.error\tpayload 160\nignored\tpayload 160\napi.read\tpayload 161\nworker.run\tpayload 161\napp.error\tpayload 161\nignored\tpayload 161\napi.read\tpayload 162\nworker.run\tpayload 162\napp.error\tpayload 162\nignored\tpayload 162\napi.read\tpayload 163\nworker.run\tpayload 163\napp.error\tpayload 163\nignored\tpayload 163\napi.read\tpayload 164\nworker.run\tpayload 164\napp.error\tpayload 164\nignored\tpayload 164\napi.read\tpayload 165\nworker.run\tpayload 165\napp.error\tpayload 165\nignored\tpayload 165\napi.read\tpayload 166\nworker.run\tpayload 166\napp.error\tpayload 166\nignored\tpayload 166\napi.read\tpayload 167\nworker.run\tpayload 167\napp.error\tpayload 167\nignored\tpayload 167\napi.read\tpayload 168\nworker.run\tpayload 168\napp.error\tpayload 168\nignored\tpayload 168\napi.read\tpayload 169\nworker.run\tpayload 169\napp.error\tpayload 169\nignored\tpayload 169\napi.read\tpayload 170\nworker.run\tpayload 170\napp.error\tpayload 170\nignored\tpayload 170\napi.read\tpayload 171\nworker.run\tpayload 171\napp.error\tpayload 171\nignored\tpayload 171\napi.read\tpayload 172\nworker.run\tpayload 172\napp.error\tpayload 172\nignored\tpayload 172\napi.read\tpayload 173\nworker.run\tpayload 173\napp.error\tpayload 173\nignored\tpayload 173\napi.read\tpayload 174\nworker.run\tpayload 174\napp.error\tpayload 174\nignored\tpayload 174\napi.read\tpayload 175\nworker.run\tpayload 175\napp.error\tpayload 175\nignored\tpayload 175\napi.read\tpayload 176\nworker.run\tpayload 176\napp.error\tpayload 176\nignored\tpayload 176\napi.read\tpayload 177\nworker.run\tpayload 177\napp.error\tpayload 177\nignored\tpayload 177\napi.read\tpayload 178\nworker.run\tpayload 178\napp.error\tpayload 178\nignored\tpayload 178\napi.read\tpayload 179\nworker.run\tpayload 179\napp.error\tpayload 179\nignored\tpayload 179\napi.read\tpayload 180\nworker.run\tpayload 180\napp.error\tpayload 180\nignored\tpayload 180\napi.read\tpayload 181\nworker.run\tpayload 181\napp.error\tpayload 181\nignored\tpayload 181\napi.read\tpayload 182\nworker.run\tpayload 182\napp.error\tpayload 182\nignored\tpayload 182\napi.read\tpayload 183\nworker.run\tpayload 183\napp.error\tpayload 183\nignored\tpayload 183\napi.read\tpayload 184\nworker.run\tpayload 184\napp.error\tpayload 184\nignored\tpayload 184\napi.read\tpayload 185\nworker.run\tpayload 185\napp.error\tpayload 185\nignored\tpayload 185\napi.read\tpayload 186\nworker.run\tpayload 186\napp.error\tpayload 186\nignored\tpayload 186\napi.read\tpayload 187\nworker.run\tpayload 187\napp.error\tpayload 187\nignored\tpayload 187\napi.read\tpayload 188\nworker.run\tpayload 188\napp.error\tpayload 188\nignored\tpayload 188\napi.read\tpayload 189\nworker.run\tpayload 189\napp.error\tpayload 189\nignored\tpayload 189\napi.read\tpayload 190\nworker.run\tpayload 190\napp.error\tpayload 190\nignored\tpayload 190\napi.read\tpayload 191\nworker.run\tpayload 191\napp.error\tpayload 191\nignored\tpayload 191\napi.read\tpayload 192\nworker.run\tpayload 192\napp.error\tpayload 192\nignored\tpayload 192\napi.read\tpayload 193\nworker.run\tpayload 193\napp.error\tpayload 193\nignored\tpayload 193\napi.read\tpayload 194\nworker.run\tpayload 194\napp.error\tpayload 194\nignored\tpayload 194\napi.read\tpayload 195\nworker.run\tpayload 195\napp.error\tpayload 195\nignored\tpayload 195\napi.read\tpayload 196\nworker.run\tpayload 196\napp.error\tpayload 196\nignored\tpayload 196\napi.read\tpayload 197\nworker.run\tpayload 197\napp.error\tpayload 197\nignored\tpayload 197\napi.read\tpayload 198\nworker.run\tpayload 198\napp.error\tpayload 198\nignored\tpayload 198\napi.read\tpayload 199\nworker.run\tpayload 199\napp.error\tpayload 199\nignored\tpayload 199\napi.read\tpayload 200\nworker.run\tpayload 200\napp.error\tpayload 200\nignored\tpayload 200\napi.read\tpayload 201\nworker.run\tpayload 201\napp.error\tpayload 201\nignored\tpayload 201\napi.read\tpayload 202\nworker.run\tpayload 202\napp.error\tpayload 202\nignored\tpayload 202\napi.read\tpayload 203\nworker.run\tpayload 203\napp.error\tpayload 203\nignored\tpayload 203\napi.read\tpayload 204\nworker.run\tpayload 204\napp.error\tpayload 204\nignored\tpayload 204\napi.read\tpayload 205\nworker.run\tpayload 205\napp.error\tpayload 205\nignored\tpayload 205\napi.read\tpayload 206\nworker.run\tpayload 206\napp.error\tpayload 206\nignored\tpayload 206\napi.read\tpayload 207\nworker.run\tpayload 207\napp.error\tpayload 207\nignored\tpayload 207\napi.read\tpayload 208\nworker.run\tpayload 208\napp.error\tpayload 208\nignored\tpayload 208\napi.read\tpayload 209\nworker.run\tpayload 209\napp.error\tpayload 209\nignored\tpayload 209\napi.read\tpayload 210\nworker.run\tpayload 210\napp.error\tpayload 210\nignored\tpayload 210\napi.read\tpayload 211\nworker.run\tpayload 211\napp.error\tpayload 211\nignored\tpayload 211\napi.read\tpayload 212\nworker.run\tpayload 212\napp.error\tpayload 212\nignored\tpayload 212\napi.read\tpayload 213\nworker.run\tpayload 213\napp.error\tpayload 213\nignored\tpayload 213\napi.read\tpayload 214\nworker.run\tpayload 214\napp.error\tpayload 214\nignored\tpayload 214\napi.read\tpayload 215\nworker.run\tpayload 215\napp.error\tpayload 215\nignored\tpayload 215\napi.read\tpayload 216\nworker.run\tpayload 216\napp.error\tpayload 216\nignored\tpayload 216\napi.read\tpayload 217\nworker.run\tpayload 217\napp.error\tpayload 217\nignored\tpayload 217\napi.read\tpayload 218\nworker.run\tpayload 218\napp.error\tpayload 218\nignored\tpayload 218\napi.read\tpayload 219\nworker.run\tpayload 219\napp.error\tpayload 219\nignored\tpayload 219\napi.read\tpayload 220\nworker.run\tpayload 220\napp.error\tpayload 220\nignored\tpayload 220\napi.read\tpayload 221\nworker.run\tpayload 221\napp.error\tpayload 221\nignored\tpayload 221\napi.read\tpayload 222\nworker.run\tpayload 222\napp.error\tpayload 222\nignored\tpayload 222\napi.read\tpayload 223\nworker.run\tpayload 223\napp.error\tpayload 223\nignored\tpayload 223\napi.read\tpayload 224\nworker.run\tpayload 224\napp.error\tpayload 224\nignored\tpayload 224\napi.read\tpayload 225\nworker.run\tpayload 225\napp.error\tpayload 225\nignored\tpayload 225\napi.read\tpayload 226\nworker.run\tpayload 226\napp.error\tpayload 226\nignored\tpayload 226\napi.read\tpayload 227\nworker.run\tpayload 227\napp.error\tpayload 227\nignored\tpayload 227\napi.read\tpayload 228\nworker.run\tpayload 228\napp.error\tpayload 228\nignored\tpayload 228\napi.read\tpayload 229\nworker.run\tpayload 229\napp.error\tpayload 229\nignored\tpayload 229\napi.read\tpayload 230\nworker.run\tpayload 230\napp.error\tpayload 230\nignored\tpayload 230\napi.read\tpayload 231\nworker.run\tpayload 231\napp.error\tpayload 231\nignored\tpayload 231\napi.read\tpayload 232\nworker.run\tpayload 232\napp.error\tpayload 232\nignored\tpayload 232\napi.read\tpayload 233\nworker.run\tpayload 233\napp.error\tpayload 233\nignored\tpayload 233\napi.read\tpayload 234\nworker.run\tpayload 234\napp.error\tpayload 234\nignored\tpayload 234\napi.read\tpayload 235\nworker.run\tpayload 235\napp.error\tpayload 235\nignored\tpayload 235\napi.read\tpayload 236\nworker.run\tpayload 236\napp.error\tpayload 236\nignored\tpayload 236\napi.read\tpayload 237\nworker.run\tpayload 237\napp.error\tpayload 237\nignored\tpayload 237\napi.read\tpayload 238\nworker.run\tpayload 238\napp.error\tpayload 238\nignored\tpayload 238\napi.read\tpayload 239\nworker.run\tpayload 239\napp.error\tpayload 239\nignored\tpayload 239\napi.read\tpayload 240\nworker.run\tpayload 240\napp.error\tpayload 240\nignored\tpayload 240\napi.read\tpayload 241\nworker.run\tpayload 241\napp.error\tpayload 241\nignored\tpayload 241\napi.read\tpayload 242\nworker.run\tpayload 242\napp.error\tpayload 242\nignored\tpayload 242\napi.read\tpayload 243\nworker.run\tpayload 243\napp.error\tpayload 243\nignored\tpayload 243\napi.read\tpayload 244\nworker.run\tpayload 244\napp.error\tpayload 244\nignored\tpayload 244\napi.read\tpayload 245\nworker.run\tpayload 245\napp.error\tpayload 245\nignored\tpayload 245\napi.read\tpayload 246\nworker.run\tpayload 246\napp.error\tpayload 246\nignored\tpayload 246\napi.read\tpayload 247\nworker.run\tpayload 247\napp.error\tpayload 247\nignored\tpayload 247\napi.read\tpayload 248\nworker.run\tpayload 248\napp.error\tpayload 248\nignored\tpayload 248\napi.read\tpayload 249\nworker.run\tpayload 249\napp.error\tpayload 249\nignored\tpayload 249\n",
+      "sha256": "09b0289a3ce9ed914e6e33e23fb47760d8a026e8fcc2e4cbaf5c050b3bbf9a14"
+    }
+  ],
+  "assertions": 316,
+  "passed": true
+}

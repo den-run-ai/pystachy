@@ -29,10 +29,10 @@ to object-return calls use CPython's decoder directly unless `skip_json_loads`
 is set. Malformed inputs are repaired natively. Object and log results cross the
 extension boundary as JSON text, which the companion decodes in CPython.
 
-When a malformed document has an unquoted non-ASCII key or value, native repair
-can drop it. For example, `loads('{界:1}')` returns `{}`. Quoting the key as
-`loads('{"界":1}')` preserves it. This also affects the standalone native command.
-[Unicode classification is tracked in #120](https://github.com/den-run-ai/pystachy/issues/120).
+Unquoted multilingual keys and values follow the upstream repair rules:
+`loads('{界:1}')` returns `{'界': 1}` and `loads('[é]')` returns `['é']`.
+The native parser uses CPython 3.13's Unicode 15.1 character classes. Malformed
+numbers, punctuation and emoji still follow upstream's bounded heuristics.
 
 The native integer parser uses CPython’s default limit of 4,300 decimal digits.
 If the host changes `sys.set_int_max_str_digits()`, large numbers can produce
@@ -40,7 +40,7 @@ different results or a `ValueError` when CPython decodes a native result.
 
 The native calls follow the [extension thread and GIL contract](../../docs/ffi.md#threading-and-host-lifetime).
 
-Check the built module against all 645 [recorded API cases](../../tests/upstream/json_repair/README.md).
+Check the built module against all 837 [recorded API cases](../../tests/upstream/json_repair/README.md).
 The verifier checks the loaded extension and reuses the same corpus and comparison
 as the standalone replay. Omit the directory to verify an installed package.
 

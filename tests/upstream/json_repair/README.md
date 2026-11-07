@@ -5,8 +5,9 @@ Inputs derive from `mangiucugna/json_repair` **v0.64.1**, commit
 `manifest.json` records all 22 Python source hashes and the seven test-file
 hashes used to extract inputs.
 
-The **645 distinct input/API/option combinations** comprise 438 extracted
-upstream schema-free calls and 207 task-focused cases. This is an API replay
+The **837 distinct input/API/option combinations** comprise 438 extracted
+upstream schema-free calls and 399 task-focused cases. The original 645 cases are
+unchanged; 192 additional combinations cover multilingual repair. This is an API replay
 corpus, **not execution of the complete upstream test suite**. The extractor
 resolves literal calls, simple string construction, local literal assignments
 and loops, literal conditions and string interpolation, literal `pytest.mark.parametrize` decorators, and the upstream
@@ -27,14 +28,22 @@ Pristine CPython 3.13.16 supplies the expected outcomes. Recursive tags retain
 the distinction between booleans, integers, floats, strings, arrays, tuples,
 objects and null. Objects retain key order. Strings use integer code points:
 ordinary JSON escaping would make two surrogate characters and the equivalent
-astral character indistinguishable. The native runner emits round-trip float
+astral character indistinguishable. Inputs containing a literal adjacent surrogate
+pair also carry `input_codepoints`, which the replay restores before calling the
+API. The native runner emits round-trip float
 representations, which the host checker converts to exact `float.hex()` values,
 including negative zero. Error classes and exact messages are also compared.
 
 **Case 59 exceeds signed 64-bit integer range.** It stays in the corpus and now
-passes through the native dynamic JSON decoder's token-promotion path. Native JIT, AOT and both
-modes with collection at every allocation match **645/645**. There is no silent
-exclusion or automatic known-failure allowance.
+passes through the native dynamic JSON decoder's token-promotion path. Additional
+Unicode cases cover numeric suffixes, wide integers, combining marks, non-BMP
+letters, whitespace, surrogates, nonletters and all supported parsing modes.
+There is no silent exclusion or automatic known-failure allowance.
+
+The expanded corpus passes **837/837** under pristine and adapted CPython
+3.13.16, native JIT, native AOT, and both native modes with program GC stress.
+These results cover the recorded combinations; the separate Unicode audit checks
+the five corrected character predicates across every Unicode code point.
 
 ## Replay
 
@@ -68,5 +77,5 @@ python3.13 tools/json_repair_parity.py /tmp/json_repair_pristine.out
 
 The builder verifies the pinned commit and rejects tracked source modifications.
 Upstream and adapted runs must be separate processes so Python's module cache
-cannot select the wrong package. Pristine CPython replay was checked at
-**645/645**; see the port guide for native evidence and limitations.
+cannot select the wrong package. See the port guide for validation scope and
+native limitations.

@@ -1,0 +1,59 @@
+--- a/tests/programs/library/lib_urllib_parse.py.ll
++++ b/tests/programs/library/lib_urllib_parse.py.ll
+@@ -1901,6 +1901,7 @@
+ @s.794 = private unnamed_addr global {i64, i64, i64, [85 x i8]} {i64 84, i64 0, i64 85, [85 x i8] c"%F0%9F%98%80%F4%8F%BF%BF%F4%90%80%80%ED%9F%BF%EE%80%80%EF%BF%BF%E0%A0%80%DF%BF%C2%80\00"}, align 8
+ @s.795 = private unnamed_addr global {i64, i64, i64, [60 x i8]} {i64 59, i64 0, i64 60, [60 x i8] c"a%C3%A9%E9%80%80%C3x%F0%9F%98%E2%82%AC%ED%A0%80%ED%B0%80%F8\00"}, align 8
+ @s.796 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"-- code points at the ends of each length of UTF-8, and surrogates, quoted and unquoted\00"}, align 8
++@lc.0 = private unnamed_addr constant [32 x i64] [i64 0, i64 65, i64 127, i64 128, i64 160, i64 233, i64 255, i64 256, i64 2047, i64 2048, i64 4095, i64 4096, i64 55295, i64 55296, i64 56191, i64 56192, i64 56319, i64 56320, i64 56447, i64 56448, i64 56553, i64 56575, i64 56576, i64 57343, i64 57344, i64 65533, i64 65535, i64 65536, i64 128512, i64 1048575, i64 1048576, i64 1114111], align 8
+ @tc.47 = private constant [2 x i64] [i64 ptrtoint (ptr @s.248 to i64), i64 ptrtoint (ptr @s.156 to i64)], align 8
+ @tc.48 = private constant [2 x i64] [i64 ptrtoint (ptr @s.248 to i64), i64 ptrtoint (ptr @s.277 to i64)], align 8
+ @tc.49 = private constant [2 x i64] [i64 ptrtoint (ptr @s.248 to i64), i64 ptrtoint (ptr @s.276 to i64)], align 8
+@@ -25116,39 +25117,7 @@
+   call void @pys_write(ptr @s.154, i64 1)
+   call void @pys_write(ptr @s.796, i64 1)
+   call void @pys_write(ptr @s.154, i64 1)
+-  %t3340 = call ptr @pys_list_new_atomic(i64 32)
+-  call void @pys_list_append(ptr %t3340, i64 0)
+-  call void @pys_list_append(ptr %t3340, i64 65)
+-  call void @pys_list_append(ptr %t3340, i64 127)
+-  call void @pys_list_append(ptr %t3340, i64 128)
+-  call void @pys_list_append(ptr %t3340, i64 160)
+-  call void @pys_list_append(ptr %t3340, i64 233)
+-  call void @pys_list_append(ptr %t3340, i64 255)
+-  call void @pys_list_append(ptr %t3340, i64 256)
+-  call void @pys_list_append(ptr %t3340, i64 2047)
+-  call void @pys_list_append(ptr %t3340, i64 2048)
+-  call void @pys_list_append(ptr %t3340, i64 4095)
+-  call void @pys_list_append(ptr %t3340, i64 4096)
+-  call void @pys_list_append(ptr %t3340, i64 55295)
+-  call void @pys_list_append(ptr %t3340, i64 55296)
+-  call void @pys_list_append(ptr %t3340, i64 56191)
+-  call void @pys_list_append(ptr %t3340, i64 56192)
+-  call void @pys_list_append(ptr %t3340, i64 56319)
+-  call void @pys_list_append(ptr %t3340, i64 56320)
+-  call void @pys_list_append(ptr %t3340, i64 56447)
+-  call void @pys_list_append(ptr %t3340, i64 56448)
+-  call void @pys_list_append(ptr %t3340, i64 56553)
+-  call void @pys_list_append(ptr %t3340, i64 56575)
+-  call void @pys_list_append(ptr %t3340, i64 56576)
+-  call void @pys_list_append(ptr %t3340, i64 57343)
+-  call void @pys_list_append(ptr %t3340, i64 57344)
+-  call void @pys_list_append(ptr %t3340, i64 65533)
+-  call void @pys_list_append(ptr %t3340, i64 65535)
+-  call void @pys_list_append(ptr %t3340, i64 65536)
+-  call void @pys_list_append(ptr %t3340, i64 128512)
+-  call void @pys_list_append(ptr %t3340, i64 1048575)
+-  call void @pys_list_append(ptr %t3340, i64 1048576)
+-  call void @pys_list_append(ptr %t3340, i64 1114111)
++  %t3340 = call ptr @pys_list_from_const(ptr @lc.0, i64 32)
+   store ptr %t3340, ptr @g.cps
+   store i64 0, ptr %h.3341
+   br label %L3342
+@@ -77591,6 +77560,7 @@
+ declare void @pys_list_del(ptr, i64)
+ declare ptr @pys_list_add(ptr, ptr)
+ declare void @pys_list_set_slice(ptr, i64, i64, i64, ptr)
++declare ptr @pys_list_from_const(ptr, i64)
+ declare ptr @pys_str_join_slice(ptr, ptr, i64, i64)
+ declare i64 @pys_mod(i64, i64)
+ declare ptr @pys_exc_user(ptr)

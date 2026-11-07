@@ -33,6 +33,8 @@ for name, args in [
     ("replace", "'', 'x'"), ("replace", "'', 'x', 2"),
 ]:
     FIXED.append((f"str.{name}", f"print(repr(s.{name}({args})))"))
+for name in ("isalpha", "isalnum", "isdecimal", "isdigit", "isnumeric"):
+    FIXED.append((f"str.{name}", f"print(s.{name}())"))
 OPS = [
     ("str.upper", "f = s.upper\nprint(repr(f()))"),
     ("str.upper", "s.upper()\nprint('discarded')"),
@@ -40,9 +42,8 @@ OPS = [
 ]
 for name, args in [
     ("upper", ""), ("lower", ""), ("swapcase", ""),
-    ("capitalize", ""), ("title", ""), ("casefold", ""), ("isdigit", ""),
-    ("isalpha", ""), ("isalnum", ""), ("isupper", ""), ("islower", ""),
-    ("istitle", ""), ("isdecimal", ""), ("isnumeric", ""), ("expandtabs", "4"),
+    ("capitalize", ""), ("title", ""), ("casefold", ""), ("isupper", ""), ("islower", ""),
+    ("istitle", ""), ("expandtabs", "4"),
 ]:
     OPS.append((f"str.{name}", f"print(repr(s.{name}({args})))"))
 SAFE = "\n".join(body for _, body in FIXED) + "\n" + """print(repr(s), bool(s), s == s, s in s, repr(s + s))
@@ -98,6 +99,18 @@ def main():
                             "1\n"
                             "0 True True\n").encode()
         errors = "".join(f"Unicode audit: {name} on non-ASCII str uses byte/ASCII semantics\n" for name, _ in OPS).encode()
+        # Exact comparison of five predicate bits for every code point, emitted in bounded
+        # chunks. Focused corpus cases additionally cover mixed strings and GC stress.
+        classification = temp / "classification.py"
+        classification.write_text("""for start in range(0, 0x110000, 4096):
+    result = ""
+    for cp in range(start, start + 4096):
+        s = chr(cp)
+        bits = int(s.isalpha()) + int(s.isalnum()) * 2 + int(s.isdecimal()) * 4 + int(s.isdigit()) * 8 + int(s.isnumeric()) * 16
+        result += chr(bits + 32)
+    print(result)
+""")
+        classification_expected = invoke([sys.executable, str(classification)], env)
         for item in commands:
             label, command = item.split("=", 1)
             cmd = shlex.split(command)
@@ -145,7 +158,14 @@ def main():
                 irs.append(out.read_bytes())
             if irs[0] != irs[1]:
                 raise RuntimeError("audit mode changed cached runtime IR")
-            print(f"{label}: normal/audit/normal JIT + AOT + GC stress passed; runtime IR identical")
+            classification_binary = temp / "classification"
+            invoke(cmd + ["build", str(classification), "-o", str(classification_binary)], audit)
+            for call in (cmd + ["run", str(classification)], [str(classification_binary)]):
+                if invoke(call, audit) != classification_expected:
+                    raise RuntimeError(f"{label}: Unicode classification differs from CPython")
+                checked += 5 * 0x110000
+            print(f"{label}: normal/audit/normal JIT + AOT + GC stress passed; runtime IR identical; "
+                  "all 1,114,112 code points classify identically")
     print(f"{checked} operation/control checks passed")
 
 

@@ -4,7 +4,7 @@ import os
 import sys
 import tempfile
 import time
-from src.pystachy_compiler import diagnostics
+from src.pystachy_compiler import cached_run, diagnostics, program_cache
 from src.pystachy_compiler.diagnostics import MAXNEST, RAW, NeedSliceEH, Rejoin, fail
 from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler.lexer import Lexer
@@ -28,13 +28,17 @@ LATE_INLINE = ("-force-remove-attribute=pys_new:noinline -force-remove-attribute
 
 # Every hosted component contributes to runtime-cache identity and startup trust.
 COMPILER_SOURCES: list[str] = [
+    'lib/_pystachy_cache.py',
     'src/__init__.py',
     'src/pystachy_compiler/__init__.py',
     'src/pystachy_compiler/analysis.py',
     'src/pystachy_compiler/argparse_schema.py',
+    'src/pystachy_compiler/ctypes_schema.py',
     'src/pystachy_compiler/bigints.py',
     'src/pystachy_compiler/builtins.py',
     'src/pystachy_compiler/calls.py',
+    'src/pystachy_compiler/cached_run.py',
+    'src/pystachy_compiler/cache_toolchain.py',
     'src/pystachy_compiler/containers.py',
     'src/pystachy_compiler/conversions.py',
     'src/pystachy_compiler/declarations.py',
@@ -46,6 +50,7 @@ COMPILER_SOURCES: list[str] = [
     'src/pystachy_compiler/expressions.py',
     'src/pystachy_compiler/flow.py',
     'src/pystachy_compiler/functions.py',
+    'src/pystachy_compiler/callbacks.py',
     'src/pystachy_compiler/generators.py',
     'src/pystachy_compiler/gen.py',
     'src/pystachy_compiler/ir.py',
@@ -62,9 +67,11 @@ COMPILER_SOURCES: list[str] = [
     'src/pystachy_compiler/optimizations.py',
     'src/pystachy_compiler/parser.py',
     'src/pystachy_compiler/program.py',
+    'src/pystachy_compiler/program_cache.py',
     'src/pystachy_compiler/reflection.py',
     'src/pystachy_compiler/scalar_ir.py',
     'src/pystachy_compiler/scope.py',
+    'src/pystachy_compiler/source_lines.py',
     'src/pystachy_compiler/specs.py',
     'src/pystachy_compiler/statements.py',
     'src/pystachy_compiler/structs.py',
@@ -395,12 +402,17 @@ def main() -> None:
         if d != "":
             dirs.append(d)
     dirs.append(home + "/lib")
+    pcroot, pccontext, pcexe = cached_run.prepare(cmd, diagnostics.SRC, me, home, dirs, llvm_dir(), RTPARTS)
+    if pcexe != "":
+        cached_run.execute(pcexe, diagnostics.SRC, argv[3:])
     for d in dirs[:-1]:
-        if os.path.exists(d + "/ffi.py") or os.path.exists(d + "/ffi/__init__.py"):
+        if program_cache.tracked_exists(d + "/ffi.py") or program_cache.tracked_exists(d + "/ffi/__init__.py"):
             del MODULES["ffi"]  # (the program's own ffi module comes first, as under CPython: Pystachy's is not imported then)
             break
     f = open(diagnostics.SRC, "r", encoding=RAW)
     ext = diagnostics.SRC[diagnostics.SRC.rfind("/") + 1 : -3] if cmd == "ext" and diagnostics.SRC.endswith(".py") else ""
+    if pcroot != "":
+        cached_run.trace("frontend")
     ir = compile_program(diagnostics.SRC, f.read(), dirs, ext)
     f.close()
     # a program that opts in to neither dynamic Any nor promoting ints: pys_plain, below (read now, as
@@ -421,6 +433,10 @@ def main() -> None:
             rest.append(argv[i])
             i += 1
     embed = "python" in LIBS  # (lib/pyobj.py: pyembed.c is linked in, which ends the CPython it starts)
+    if pcroot != "" and (len(LIBS) > 0 or len(LINKDL) > 0):
+        cached_run.trace("bypass external native libraries")
+        program_cache.stop()
+        pcroot = ""
     for i in range(len(LIBS)):
         if LIBS[i] == "python":  # (lib/pyobj.py's: the libpython to embed; an extension's host has it)
             LIBS[i] = os.getenv("PYSTACHY_LIBPYTHON", "") if cmd != "ext" else "-"
@@ -456,6 +472,9 @@ def main() -> None:
     on = optimizations()
     off = [o for o in OPTS if o not in on]
     keyed = flags + ["-fexceptions"]
+    if os.getenv("PYSTACHY_DEBUG_LINES", "") == "1":
+        keyed = keyed + ["PYSTACHY_DEBUG_LINES=1"]
+    runtime_inputs = [program_cache.runtime_key()] if pcroot != "" else []
     if len(off) > 0:
         keyed = keyed + ["PYSTACHY_OPT=-" + ",-".join(off)]
     cflags = "".join([" " + q(a) for a in flags])
@@ -513,6 +532,10 @@ def main() -> None:
             comp = got[len(ask) - 1]
     now = time.time()
     lines = [os.path.realpath(comp) if comp != "" else "", " ".join(keyed)]
+    if pcroot != "":
+        # Keep checked-toolchain runtime artifacts separate from ordinary JIT
+        # artifacts so switching the program-cache policy cannot evict either.
+        lines.append("program-cache-inputs-v2")
     times: list[str] = []
     for p in paths:
         lines.append(os.path.realpath(p) if p != "" else "")
@@ -556,7 +579,7 @@ def main() -> None:
         trusted = trusted and settled(born, t0) and "" not in component_hashes
         trusted = trusted and [stat3(p) for p in sources] == sourceborn
         trusted = trusted and len([st for st in sourceborn if not settled(st, t0)]) == 0
-    key = fnv("\n".join(lines + times + [rc[1], rp[1], rm[1]] + component_hashes + [x[1] for x in rs]))
+    key = fnv("\n".join(lines + times + [rc[1], rp[1], rm[1]] + component_hashes + [x[1] for x in rs] + runtime_inputs))
     rtb = f"{cache}/runtime-py-{lin}-{key}.bc"
     rtir = ""
     if not trusted or not os.path.exists(rtb):
@@ -566,7 +589,7 @@ def main() -> None:
         rc = hashed(rtc, memo, now, True)
         rs = [hashed(home + "/" + p, memo, now, True) for p in RTPARTS]
         rp = hashed(rtpy, memo, now, True)
-        key = fnv("\n".join(lines + times + [rc[1], rp[1], rm[1]] + component_hashes + [x[1] for x in rs]))
+        key = fnv("\n".join(lines + times + [rc[1], rp[1], rm[1]] + component_hashes + [x[1] for x in rs] + runtime_inputs))
         rtb = f"{cache}/runtime-py-{lin}-{key}.bc"
         if (not trusted or not os.path.exists(rtb)) and rc[1] != "" and rp[1] != "" and "" not in [x[1] for x in rs]:
             # (an error in runtime.py exits: the private directory is made again after it)
@@ -581,6 +604,10 @@ def main() -> None:
     obj = tmp + "/prog.o"
     obc = tmp + "/prog-opt.bc"  # (allocelide's late step, below: -O2's module, and that module once
     lbc = tmp + "/prog-late.bc"  # pys_new is inlined into it)
+    pcout = tmp + "/program"
+    pclink = tmp + "/program-link"
+    pclink2 = tmp + "/program-link-final"
+    pcerror = tmp + "/program-error"
     rcc = tmp + "/runtime.c"
     rll = tmp + "/runtime.ll"
     rsl = tmp + "/runtime-s.ll"
@@ -669,7 +696,7 @@ def main() -> None:
         # -x ir: clang would take a name not ending in .bc, as part's, for a linker input, and do nothing)
         code = sh(f"{tc[0]} -O2 -fPIC -c -x ir {q(usebc)} -o {q(parto)} -Wno-unused-command-line-argument{ccflags}")
         useo = parto
-    if code == 0 and cmd == "run" and PLATFORM == "linux":
+    if code == 0 and cmd == "run" and PLATFORM == "linux" and pcroot == "":
         # the shared library: the cache's, made from the cache's .o, or one of this run's (from its own
         # .o, or from the cache's where no library is cached: published as the .o is). -Bsymbolic: the
         # runtime's calls of its own functions go to them, not through the PLT; libm and libdl are the
@@ -851,7 +878,7 @@ def main() -> None:
         if not lim.isdigit():
             fail(f"PYSTACHY_JIT_INLINE: {lim} is no number of lines (0 turns the JIT's inliner off)", 0)
         clean = "function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg)"
-        if ir.count("\n") <= int(lim):
+        if ir.split("; pystachy source locations\n")[0].count("\n") <= int(lim):
             clean = f"cgscc(inline,{clean})"
         # Recursion accounting helpers belong to the program module, even when the
         # runtime is a separate library. Inline only those explicitly marked helpers
@@ -883,6 +910,29 @@ def main() -> None:
                 f.close()
                 code = sh(f"{fast} {q(ll)} -o {q(bc)}")
         if code == 0:
+            if pcroot != "":
+                # The ordinary JIT cleanup above already ran. Disable further
+                # LLVM IR passes: using the whole-program AOT pipeline here can
+                # change floating-point results and allocation behavior.
+                cachecode = sh(f"{{ {llvm}clang -O2 -Xclang -disable-llvm-passes -mllvm -profile-guided-section-prefix=false -fPIC -c {q(bc)} -o {q(obj)}"
+                               + f" && {llvm}clang --ld-path=/usr/bin/ld {q(obj)} {q(useo)} -o {q(pcout)} -lm -ldl -Wl,-t > {q(pclink)}; }} 2> {q(pcerror)}")
+                if cachecode == 0 and pub and cached_run.link_inputs(pclink, obj, useo):
+                    # The first link discovers inputs; snapshot them before the
+                    # final link, then require the same resolution and contents.
+                    # Recording newly discovered CRT/archive files only after
+                    # their consuming link could publish against newer bytes.
+                    cachecode = sh(f"{llvm}clang --ld-path=/usr/bin/ld {q(obj)} {q(useo)} -o {q(pcout)} -lm -ldl -Wl,-t > {q(pclink2)} 2> {q(pcerror)}")
+                    if cachecode == 0 and cached_run.same_link_inputs(pclink, pclink2) and cached_run.link_inputs(pclink2, obj, useo):
+                        pcexe = program_cache.publish(pcroot, pccontext, pcout)
+                    if pcexe != "":
+                        for p in [ll, bc, obj, pcout, pclink, pclink2, pcerror, rcc, rll, rsl, rcb, rpl, rpb, lnk, part, parto, partso, hp, rso]:
+                            if os.path.exists(p):
+                                os.remove(p)
+                        os.rmdir(tmp)
+                        cached_run.trace("stored")
+                        cached_run.execute(pcexe, diagnostics.SRC, rest)
+                cached_run.trace("bypass native artifact unavailable")
+                program_cache.stop()
             # then this process becomes lli, through a shell that opens the bitcode and the runtime
             # for it (the cache's, or this run's own: the shared library, or else the machine code that
             # lli links) and removes the files: the program's end is pystachy run's own, a signal that
@@ -891,7 +941,7 @@ def main() -> None:
             # PYSTACHY_GC_STRESS_PROGRAM: the program's own collection interval, apart from the
             # compiler's (PYSTACHY_GC_STRESS), so that the tests can stress programs without stressing
             # their compilation
-            for p in [ll, obj, rcc, rll, rsl, rcb, rpl, rpb, lnk, part, hp, rso, tmp + "/pyembed.c"] + [g[3] for g in glue]:
+            for p in [ll, obj, pcout, pclink, pclink2, pcerror, rcc, rll, rsl, rcb, rpl, rpb, lnk, part, hp, rso, tmp + "/pyembed.c"] + [g[3] for g in glue]:
                 if os.path.exists(p):
                     os.remove(p)
             gsp = os.getenv("PYSTACHY_GC_STRESS_PROGRAM", "")
@@ -908,11 +958,11 @@ def main() -> None:
                 archive = f"jit_rtlib=$({tc[0]} -print-libgcc-file-name{ccflags}) || exit 1; "
                 archive += '[ -f "$jit_rtlib" ] || { echo "cannot find compiler runtime archive: $jit_rtlib" >&2; exit 1; }; '
                 rt += ' -extra-archive="$jit_rtlib"'
-            run = f"{archive}{env}PYSTACHY_ARGV0={q(diagnostics.SRC)} exec {llvm}lli{jitflags}{pe}{rt} /dev/fd/9 {' '.join([q(a) for a in rest])}"
+            run = f"unset PYSTACHY_PROGRAM_CACHE_LOCK; {archive}{env}PYSTACHY_ARGV0={q(diagnostics.SRC)} exec {llvm}lli{jitflags}{pe}{rt} /dev/fd/9 {' '.join([q(a) for a in rest])}"
             fds = f" 7< {q(peo[1])}" if embed else ""
             parts = q(parto) + " " + q(partso) + (" " + q(peo[2]) if peo[2] != "" else "")
             os.execv("/bin/sh", ["sh", "-c", f"exec 9< {q(bc)} 8< {q(useso if useso != '' else useo)}{fds} && rm -f {q(bc)} {parts} && rmdir {q(tmp)} && {run}"])
-    for p in [ll, bc, obj, obc, lbc, rcc, rll, rsl, rcb, rpl, rpb, lnk, part, parto, partso, hp, rso, tmp + "/pyembed.c", tmp + "/pyext.c", peo[2]] + [g[3] for g in glue]:
+    for p in [ll, bc, obj, obc, lbc, pcout, pclink, pclink2, pcerror, rcc, rll, rsl, rcb, rpl, rpb, lnk, part, parto, partso, hp, rso, tmp + "/pyembed.c", tmp + "/pyext.c", peo[2]] + [g[3] for g in glue]:
         if os.path.exists(p):
             os.remove(p)
     os.rmdir(tmp)

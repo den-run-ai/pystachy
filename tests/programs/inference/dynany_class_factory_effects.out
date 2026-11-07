@@ -1,0 +1,6 @@
+7 ['callee', 'argument:7', 'init:supplied']
+Checked.__init__() takes 2 positional arguments but 3 were given
+['callee', 'argument:1', 'argument:2']
+negative
+['callee', 'argument:-1', 'init:default']
+[exit 0]

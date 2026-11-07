@@ -17,6 +17,17 @@ import tempfile
 from install_smoke import PROGRAM, execute
 from release import binary_target, sha256
 
+# Match cached_run.BUILD_ENV: the default-cache check needs an ordinary build
+# environment even when the host interpreter's setup exports loader overrides.
+CACHE_BUILD_ENV = (
+    "CPATH", "C_INCLUDE_PATH", "CPLUS_INCLUDE_PATH", "OBJC_INCLUDE_PATH",
+    "LIBRARY_PATH", "COMPILER_PATH", "GCC_EXEC_PREFIX", "SDKROOT",
+    "CCC_OVERRIDE_OPTIONS", "CLANG_CONFIG_FILE_SYSTEM_DIR",
+    "CLANG_CONFIG_FILE_USER_DIR", "LD_PRELOAD", "LD_LIBRARY_PATH",
+    "LD_AUDIT", "LD_RUN_PATH", "LD_HWCAP_MASK", "GLIBC_TUNABLES",
+    "LDEMULATION", "GNUTARGET",
+)
+
 # Recursive JSON values and code-point indexing use the packaged json module and the
 # runtime's string operations from the relocated installation.
 TEXT_PROGRAM = r'''
@@ -97,6 +108,23 @@ def runtime_files(cache):
     return {path.name: (path.stat().st_ino, path.stat().st_mtime_ns) for path in cache.glob("runtime-py-*")}
 
 
+def program_cache_run(command, directory, environment, expected, *, hit):
+    """Require the default producer/hit path, including an exact diagnostic trace."""
+    # Keep these overrides for the CPython oracle and other release checks;
+    # sanitize only the explicit native cache test, preserving ordinary inputs.
+    current = {key: value for key, value in environment.items() if key not in CACHE_BUILD_ENV}
+    current["PYSTACHY_PROGRAM_CACHE_TRACE"] = "1"
+    current.pop("PYSTACHY_PROGRAM_CACHE", None)
+    result = subprocess.run(command, cwd=directory, env=current, capture_output=True,
+                            text=True, timeout=180)
+    events = ["hit"] if hit else ["miss", "frontend", "stored"]
+    trace = ["pystachy program cache: " + event for event in events]
+    if result.returncode or result.stdout != expected or result.stderr.splitlines() != trace:
+        phase = "hit" if hit else "fill"
+        raise RuntimeError(f"release default program-cache {phase} failed: exit {result.returncode}\n"
+                           f"{result.stdout}{result.stderr}")
+
+
 def smoke(archive, llvm=None):
     toolchain = llvm_directory(llvm)
     environment = {key: value for key, value in os.environ.items() if not key.startswith("PYSTACHY_")}
@@ -119,6 +147,7 @@ def smoke(archive, llvm=None):
         # skips its shared runtime); clang may invoke the system linker/assembler and macOS
         # SDK tools. Add only these commands, not an entire bin directory containing Python.
         for name in ("sh", "dirname", "readlink", "sed", "chmod", "mkdir", "mv", "rm", "rmdir",
+                     "stat", "cp", "ldd", "flock", "touch", "sha256sum",
                      "ld", "as", "xcrun", "dsymutil", "uname"):
             command = shutil.which(name)
             if command:
@@ -143,6 +172,15 @@ def smoke(archive, llvm=None):
         if (scratch / "user cache").exists():
             raise RuntimeError("--version created a runtime cache")
         print(version.strip() + ": native and installed --version, without LLVM or Python")
+        cache = Path(environment["XDG_CACHE_HOME"]) / "pystachy"
+        if manifest["target"].startswith("linux-"):
+            command = ["pystachy", "run", str(program)]
+            program_cache_run(command, work, environment, expected, hit=False)
+            entries = cache / "program-v2"
+            if not list(entries.glob("*.manifest")) or not list(entries.glob("*.exe")):
+                raise RuntimeError("release default program-cache fill did not publish an entry")
+            program_cache_run(command, work, environment, expected, hit=True)
+            print("relocated release default cache: fill and hit match CPython; hit skips the frontend")
         for stress in (False, True):
             current = dict(environment)
             if stress:
@@ -158,13 +196,18 @@ def smoke(archive, llvm=None):
             if execute([str(executable)], work, runtime) != expected:
                 raise RuntimeError("release AOT output differs from CPython")
             print(f"relocated release JIT/AOT{' with GC stress' if stress else ''}: CPython output matches")
-        cache = Path(environment["XDG_CACHE_HOME"]) / "pystachy"
+        # Default program-cache runs have a separate runtime lineage and do not
+        # create the ordinary JIT's shared library. Prime that path before
+        # checking its artifacts and recording the warm-reuse snapshot.
+        uncached = dict(environment, PYSTACHY_PROGRAM_CACHE="0")
+        if execute(["pystachy", "run", str(program)], work, uncached) != expected:
+            raise RuntimeError("release uncached JIT output differs from CPython")
         if not list(cache.glob("runtime-*.bc")) or (relocated / "libexec/pystachy/build").exists():
             raise RuntimeError("release compiler did not use its external runtime cache")
         if manifest["target"].startswith("linux-") and not list(cache.glob("runtime-*.so")):
             raise RuntimeError("release JIT did not cache its shared runtime library")
         runtime = runtime_files(cache)
-        if execute(["pystachy", "run", str(program)], work, environment) != expected:
+        if execute(["pystachy", "run", str(program)], work, uncached) != expected:
             raise RuntimeError("release warm JIT output differs from CPython")
         if runtime_files(cache) != runtime:
             raise RuntimeError("release warm JIT rebuilt its cached runtime")

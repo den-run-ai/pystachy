@@ -1,0 +1,13 @@
+0 '' '' '' ''
+1 '\x00' '\x00' '\x00' '\x00'
+2 '"\'\\\n\r\t\x7f' '"\'\\\n\r\t\x7f' '"\'\\\n\r\t\x7f' '"\'\\\n\r\t\x7f'
+3 'ASCII' 'ASCII' 'ASCII' 'ASCII'
+4 '\x7f\x80\xff\u0100\u07ff\u0800\ud7ff\ud800\udbff\udc00\udcff\udfff\ue000\uffff\U00010000\U0010ffff' '\x7f\\x80\\xff\\u0100\\u07ff\\u0800\\ud7ff\\ud800\\udbff\\udc00\\udcff\\udfff\\ue000\\uffff\\U00010000\\U0010ffff' '\x7f\\x80\\xff\\u0100\\u07ff\\u0800\\ud7ff\\ud800\\udbff\\udc00\\udcff\\udfff\\ue000\\uffff\\U00010000\\U0010ffff' '\x7f\\x80\\xff\\u0100\\u07ff\\u0800\\ud7ff\\ud800\\udbff\\udc00\\udcff\\udfff\\ue000\\uffff\\U00010000\\U0010ffff'
+5 '\xe9\u20ac\U0001f600' '\\xe9\\u20ac\\U0001f600' '\\xe9\\u20ac\\U0001f600' '\\xe9\\u20ac\\U0001f600'
+6 'a\xe9b\u20acc\U0001f600d' 'a\\xe9b\\u20acc\\U0001f600d' 'a\\xe9b\\u20acc\\U0001f600d' 'a\\xe9b\\u20acc\\U0001f600d'
+257 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+261 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\xe9'
+263 '\\u20acbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'
+528 'ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\\U0001f600ddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\\xe9'
+[0, 1, 7, 5, 95, 20, 24, 257, 261, 263, 528] [True, True, True, True, True, True, True, True, True, True, True]
+[exit 0]

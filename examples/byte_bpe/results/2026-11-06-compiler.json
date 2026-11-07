@@ -1,0 +1,83 @@
+{
+  "compiler_binary_sha256": "3b59b4e875a89f15777395f5993ccf2e6d51e934dbc7a4e45228d622c7f1cff7",
+  "compiler_source_commit": "f7103067545b43cdcd8ce20dc66b1571425b3a8d",
+  "source_paths_equal_to_commit": [
+    "pystachy.py",
+    "src",
+    "lib",
+    "runtime.c",
+    "runtime.py",
+    "mpz",
+    "ryu",
+    "pyext.c",
+    "pyembed.c"
+  ],
+  "recorded_bootstrap": {
+    "repository": "/workspace/scratch/c154e74884e5/pystachy-main",
+    "commit": "f7103067545b43cdcd8ce20dc66b1571425b3a8d",
+    "tree": "e9a3b41168e0e0ae13e23ce6e8575c6ec12c77ad",
+    "git_status_porcelain": "",
+    "shallow": "false",
+    "command": "PYSTACHY_JOBS=2 make PY=/workspace/scratch/c154e74884e5/venv/bin/python",
+    "build_status": {
+      "build_started_at": "2026-11-06T18:53:08Z",
+      "build_finished_at": "2026-11-06T18:57:19Z",
+      "elapsed_seconds": "251",
+      "exit_status": "0"
+    },
+    "environment": {
+      "PY": "/workspace/scratch/c154e74884e5/venv/bin/python",
+      "PYTHON": "/workspace/scratch/c154e74884e5/venv/bin/python",
+      "PYSTACHY_LLVM": "/workspace/scratch/c154e74884e5/llvm-cache/ubuntu-18.1.3-1ubuntu1-amd64/bin",
+      "PYSTACHY_LLVM_CACHE": "/workspace/scratch/c154e74884e5/llvm-cache",
+      "PYSTACHY_JOBS": "2",
+      "PYSTACHY_HOME": null,
+      "PYSTACHY_PATH": null,
+      "PYSTACHY_CACHE": null,
+      "PYSTACHY_CFLAGS": null,
+      "PYSTACHY_OPT": null,
+      "PYSTACHY_GC": null,
+      "PYSTACHY_GC_STRESS": null,
+      "PYSTACHY_GC_STRESS_PROGRAM": null,
+      "PYTHONPATH": null,
+      "PYTHONHOME": null
+    },
+    "python_version": "3.13.16 (main, Oct 14 2026, 01:04:01) [Clang 23.1.3 ]",
+    "python_executable": "/workspace/scratch/c154e74884e5/venv/bin/python",
+    "python_realpath": "/workspace/scratch/c154e74884e5/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+    "platform": "Linux-6.18.57-x86_64-with-glibc2.39",
+    "libc": [
+      "glibc",
+      "2.39"
+    ],
+    "tools": {
+      "clang": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+      "opt": "Ubuntu LLVM version 18.1.3",
+      "lli": "Ubuntu LLVM version 18.1.3",
+      "llvm-link": "Ubuntu LLVM version 18.1.3",
+      "llvm-as": "Ubuntu LLVM version 18.1.3",
+      "llvm-config": "18.1.3"
+    },
+    "dev_packages": {
+      "coverage": "7.17.0",
+      "PyYAML": "6.0.3",
+      "mypy": "2.4.0",
+      "ruff": "0.17.2",
+      "shellcheck-py": "0.11.0.1",
+      "typing_extensions": "4.16.0"
+    },
+    "binary": "/workspace/scratch/c154e74884e5/pystachy-main/pystachy",
+    "binary_sha256": "3b59b4e875a89f15777395f5993ccf2e6d51e934dbc7a4e45228d622c7f1cff7",
+    "native_version_output": "pystachy v0.2.0 (commit unknown)",
+    "ir_sha256": {
+      "stage1.ll": "7574c75482a127d5a94b889b693a0176b80a1eae7a42406c449c0f41b731eb35",
+      "stage2.ll": "7574c75482a127d5a94b889b693a0176b80a1eae7a42406c449c0f41b731eb35",
+      "stage3.ll": "7574c75482a127d5a94b889b693a0176b80a1eae7a42406c449c0f41b731eb35",
+      "rt1.ll": "940a694da5ea93214d1308a8eb635b47d8d0a9d4256c63d084c24f5099f8aa5f",
+      "rt2.ll": "940a694da5ea93214d1308a8eb635b47d8d0a9d4256c63d084c24f5099f8aa5f",
+      "rt3.ll": "940a694da5ea93214d1308a8eb635b47d8d0a9d4256c63d084c24f5099f8aa5f"
+    },
+    "log": "/workspace/scratch/c154e74884e5/main-build.log"
+  },
+  "current_validation": "Native JIT/AOT executed in this showcase; prior verified compiler reused because compiler/runtime/library inputs are unchanged."
+}

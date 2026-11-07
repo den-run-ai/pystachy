@@ -16,8 +16,9 @@ Compiler-provided `sys.setrecursionlimit()` bounds recursive native calls with
 catchable `RecursionError`; [its depth policy](../docs/language/compatibility.md#errors-and-control-flow)
 also applies to compiled library functions. Ports that opt in to
 [dynamic `Any`](../docs/dynamic-any.md) rely on its [operation](../docs/dynamic-any.md#operations)
-and [iteration](../docs/dynamic-any.md#iteration) contracts; that protocol support alone does
-not establish whole-module compatibility.
+and [iteration](../docs/dynamic-any.md#iteration) contracts, including
+[class values, type-keyed registries, generic calls and annotated factories](../docs/dynamic-any.md#class-values-and-type-keyed-registries).
+That protocol support alone does not establish whole-module compatibility.
 
 ## Module guide
 
@@ -90,7 +91,7 @@ described [below](#unchanged-cpython-files).
 | 🟡 `random` | Adapted CPython on a subset `_random` (`_pyrandom`) | Seeded `Random` and module functions, integers, sequences, distributions, state | Int, bool and float seeds; 63-bit `getrandbits`; no subclasses |
 | 🟡 `statistics` | Adapted CPython | `fmean`, geometric mean, medians, quantiles, mode, `covariance`, `correlation` (of floats) | Selected numeric types and APIs |
 | 🟢 `colorsys` | Unchanged CPython | All conversion functions | Subset string and type rules apply |
-| 🧪 `mpz` | Experimental subset wrapper over a compact MicroPython-derived C core | Explicit arbitrary-precision arithmetic, comparisons, decimal text, hashing and typed containers | Ordinary `int` remains checked 64-bit; see [API and limits](../docs/mpz.md) |
+| 🧪 `mpz` | Experimental subset wrapper over the shared native bigint core | Explicit arbitrary-precision arithmetic, comparisons, decimal text, hashing and typed containers | Default `int` is checked 64-bit; [promoting ints](../docs/python-int.md) are a separate opt-in. See [API and limits](../docs/mpz.md) |
 
 ### Dates and times
 
@@ -150,6 +151,7 @@ which `threading` and `_thread` describe.
 
 | Module | Origin | Supported APIs | Main limitation |
 |---|---|---|---|
+| 🧪 `ctypes` | Static declaration lowering over `ffi`, with Python pointer-cell helpers | Literal `CDLL`, immutable `argtypes`/`restype`, selected scalar types, bytes, opaque pointers, `byref(c_void_p)`, `string_at` | Fixed positional calls; no structures, callbacks or dynamic signatures. [Contract and llvmlite consumer](../docs/ffi.md#static-ctypes-declarations) |
 | 🧪 `pyobj` | Subset implementation over CPython's stable ABI (`@ffi.extern`), with its twin in `tools/rt_cpython` | Python objects through an embedded CPython, or an extension module's host: `Object`, `import_module`, `of_int`, `of_float`, `of_str`, `of_list` | Needs `PYSTACHY_LIBPYTHON` (CPython 3.12+); scalar conversions only; see [FFI](../docs/ffi.md#calling-cpython) |
 
 CPython VM adapters `opcode`, `_opcode`, `_imp` and `_ast` are not shipped; see the

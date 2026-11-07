@@ -28,31 +28,21 @@ least 1,000): N points, N // 1000 walks of 1000 steps, N // 100 groups of 23 bir
 N // 1000 bootstrap resamples. `random.Random(seed)` draws CPython's numbers, so CPython and
 the executable print the same estimates for a seed.
 
-## Recorded benchmark
+<a id="recorded-benchmark"></a>
+<a id="checks-and-reproduction"></a>
 
-Measured on a 4-core x86-64 VM with LLVM 18.1.3 and CPython 3.13.16, with the compiler of commit
-`bdc20a2` and the `random` library added with this example; median of five runs each, including
-startup; seed 42. Other jobs shared the host (load average about 20), so the CPU (user + system)
-times are the steadier comparison.
+## Checks and benchmarks
 
-| Samples | CPython wall | AOT wall | Speedup | CPython CPU | AOT CPU | Speedup |
-|---|---:|---:|---:|---:|---:|---:|
-| 1M | 1.378 s | 0.220 s | 6.3× | 0.499 s | 0.071 s | 7.0× |
-| 10M | 12.391 s | 1.817 s | 6.8× | 4.537 s | 0.719 s | 6.3× |
-
-Both print the same estimates. Timed alone, the walks gain most (about 9×): `choice()` runs
-`_randbelow()`, Python code in CPython, which the executable compiles together with the Mersenne
-Twister of `_pyrandom`. The pi estimate, two `random()` calls per point, gains about 4× against
-CPython's C generator; the bootstrap's resampling and `fmean()`, under 2×.
-
-## Checks and reproduction
-
-`tests/programs/apps/example_montecarlo.py` compares each estimator over five seeds, `main()` and its usage
-errors with CPython.
+[`example_montecarlo.py`](../../tests/programs/apps/example_montecarlo.py)
+compares each estimator over five seeds, `main()` and usage errors with CPython.
+The benchmark uses seed 42 with one and ten million samples and reports wall
+and CPU time, including process startup.
 
 ```sh
 python3 -I bench.py ../../pystachy 5
 ```
 
-The benchmark writes its executable to `build/montecarlo/` at the repository root. Results
-depend on workload and host; see [the performance guide](../../docs/performance.md).
+The executable goes to `build/montecarlo/` at the repository root.
+[Earlier measurements](https://github.com/den-run-ai/pystachy/blob/f7103067545b43cdcd8ce20dc66b1571425b3a8d/examples/montecarlo/README.md#recorded-benchmark)
+used compiler `bdc20a2` with the original random-library port on a heavily shared host.
+See the [benchmark guidance](../README.md#benchmarks) when measuring a current build.

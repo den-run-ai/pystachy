@@ -144,7 +144,7 @@ or `-all` can test a hypothesis before deeper profiling.
 This suite complements `bench/run.sh`, `tools/scaling.py` and the deterministic container
 probes described in [testing](testing.md). Checksums do not replace differential tests.
 The kernels are original implementations. Adapted upstream benchmarks, with pinned sources,
-licenses and documented adaptations, are measured separately in [pyperformance results](pyperformance.md).
+licenses and documented adaptations, are measured separately in [pyperformance results](../bench/pyperformance/README.md#recorded-results).
 
 <a id="measured-observations"></a>
 

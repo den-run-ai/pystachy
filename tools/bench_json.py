@@ -1,4 +1,4 @@
-"""Correctness-gated JSON parsing/processing benchmark; see docs/json-benchmark.md.
+"""Correctness-gated JSON parsing/processing benchmark; see docs/json.md#benchmarks.
 
 No downloads or performance thresholds. The source-written guarded mode is a
 control, not a claim of automatic profile-guided or online specialization.
@@ -238,6 +238,7 @@ def main(argv=None):
     if "/" in compiler[0]:
         compiler[0] = str((ROOT / compiler[0]).resolve())
     env = dict(os.environ, PYTHONHASHSEED="0")
+    env["PYSTACHY_PROGRAM_CACHE"] = "0"  # Preserve the measured JIT process boundary.
     plain = {key: value for key, value in env.items() if key != "PYTHONPATH"}
     native = "jit" in args.modes or "aot" in args.modes
     module = compiled_json_module(env, compiler)

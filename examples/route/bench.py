@@ -8,72 +8,84 @@ and optional raw timing/provenance JSON go to build/route/ (unless PATH selects 
 import argparse
 import hashlib
 import json
-import math
 import os
 import platform
 import statistics
-import subprocess
 import sys
 import time
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
+import example_bench as checked
+
 
 def peak_rss(cmd: list[str], expected: str | None = None) -> tuple[int, str]:
-    # Peak RSS of one child, in KiB on Linux (macOS reports bytes).
-    probe = "import json, resource, subprocess, sys; p = subprocess.run(sys.argv[1:], capture_output=True, text=True, check=True); print(json.dumps([resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss, p.stdout, p.stderr]))"
-    raw, report, diagnostics = json.loads(subprocess.run([sys.executable, "-I", "-c", probe] + cmd, capture_output=True, text=True, check=True).stdout)
-    if expected is not None and report != expected:
-        raise ValueError(f"OUTPUT DIFFERS in RSS run for {cmd!r}:\nexpected:\n{expected}\ngot:\n{report}")
-    if diagnostics:
-        raise ValueError(f"unexpected RSS run diagnostics for {cmd!r}: {diagnostics!r}")
-    return (raw // 1024 if sys.platform == "darwin" else raw), report
+    if expected is None:
+        expected = checked.run(cmd).stdout.decode()
+    return checked.peak_rss(cmd, expected.encode()), expected
 
 
-def routing_time(stderr: str) -> float:
+def routing_time(stderr: str, events: int | None = None) -> float:
     fields = stderr.split()
     if len(fields) != 7 or fields[0] != "routing:" or fields[2] != "s," or fields[4:] != ["ns", "per", "event"]:
         raise ValueError(f"invalid routing report: {stderr!r}")
-    seconds = float(fields[1])
-    if not math.isfinite(seconds) or seconds <= 0:
-        raise ValueError(f"invalid routing duration: {seconds}")
+    seconds = checked.number(fields[1], "routing duration")
+    per_event = checked.number(fields[3], "routing ns per event")
+    if events is not None:
+        events = checked.positive_int(events, "events")
+        # The CLI rounds seconds to four decimal places and ns/event to one.
+        rounding = 0.00005 + 0.05 * events / 1e9
+        if abs(seconds - per_event * events / 1e9) > rounding + 1e-12:
+            raise ValueError(f"inconsistent routing durations: {stderr!r}")
     return seconds
 
 
 def measure_pair(commands: list[list[str]], runs: int, events: int) -> list[dict]:
-    if runs < 1:
-        raise ValueError("runs must be positive")
+    runs = checked.positive_int(runs)
+    events = checked.positive_int(events, "events")
+    if not commands:
+        raise ValueError("expected a CPython command")
     samples = [{"wall_s": [], "routing_s": []} for _ in commands]
-    expected = None
+
+    def report(stdout, cmd, expected=None):
+        if not stdout.startswith(f"{events} events, ".encode()):
+            raise ValueError(f"event count differs for {cmd!r}: {stdout!r}")
+        if expected is not None and stdout != expected:
+            raise ValueError(f"OUTPUT DIFFERS for {cmd!r}:\nexpected:\n{expected!r}\ngot:\n{stdout!r}")
+        return stdout
+
+    def in_memory(cmd, expected):
+        result = checked.execute(cmd + ["--in-memory"])
+        result.check_returncode()
+        report(result.stdout, cmd, expected)
+        return routing_time(result.stderr.decode(), events)
+
+    # Establish the CPython report and check both execution modes before timing.
+    expected = report(checked.run(commands[0]).stdout, commands[0])
+    for index, cmd in enumerate(commands):
+        if index:
+            report(checked.run(cmd).stdout, cmd, expected)
+        in_memory(cmd, expected)
     for round_index in range(runs):
-        # Reverse runtime order on alternate rounds, so drift affects both runtimes.
         order = range(len(commands)) if round_index % 2 == 0 else range(len(commands) - 1, -1, -1)
         for index in order:
             cmd = commands[index]
-            t = time.perf_counter()
-            p = subprocess.run(cmd, capture_output=True, text=True, check=True)
-            samples[index]["wall_s"].append(time.perf_counter() - t)
-            for result in [p, subprocess.run(cmd + ["--in-memory"], capture_output=True, text=True, check=True)]:
-                if not result.stdout.startswith(f"{events} events, "):
-                    raise ValueError(f"event count differs for {cmd!r}: {result.stdout!r}")
-                if expected is None:
-                    expected = result.stdout
-                elif result.stdout != expected:
-                    raise ValueError(f"OUTPUT DIFFERS for {cmd!r}, round {round_index + 1}:\nexpected:\n{expected}\ngot:\n{result.stdout}")
-            samples[index]["routing_s"].append(routing_time(result.stderr))
-            if p.stderr:
-                raise ValueError(f"unexpected streaming diagnostics for {cmd!r}: {p.stderr!r}")
+            result = checked.run(cmd)
+            report(result.stdout, cmd, expected)
+            samples[index]["wall_s"].append(result.wall_s)
+            samples[index]["routing_s"].append(in_memory(cmd, expected))
     for sample in samples:
-        sample["report"] = expected
+        sample["report"] = expected.decode()
     return samples
 
 
 def provenance(root: Path, compiler: str, paths: list[Path]) -> dict:
     def git(*args: str) -> str:
-        return subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True, check=True).stdout.strip()
+        return checked.run(["git", "-C", str(root), *args], timeout=30).stdout.decode().strip()
 
     # Follow the compiler's apt/Homebrew discovery, including an explicit empty PATH override.
     probe = "import sys; sys.path.insert(0, sys.argv[1]); import pystachy; print(pystachy.llvm_dir())"
-    llvm_dir = subprocess.run([sys.executable, "-I", "-c", probe, str(root)], capture_output=True, text=True, check=True).stdout.strip()
+    llvm_dir = checked.run([sys.executable, "-I", "-c", probe, str(root)], timeout=30).stdout.decode().strip()
     clang = str(Path(llvm_dir) / "clang") if llvm_dir else "clang"
     settings = ["PYSTACHY_LLVM", "PYSTACHY_OPT", "PYSTACHY_CFLAGS", "PYSTACHY_GC", "PYSTACHY_GC_STRESS", "PYSTACHY_HOME", "PYSTACHY_PATH", "PYSTACHY_JIT_INLINE"]
     cpu_model = platform.processor()
@@ -84,7 +96,7 @@ def provenance(root: Path, compiler: str, paths: list[Path]) -> dict:
     return {
         "timestamp_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "revision": git("rev-parse", "HEAD"),
-        "working_tree_diff": git("diff", "HEAD", "--", "examples/route", "pystachy.py", "src", "runtime.c", "runtime.py", "lib"),
+        "working_tree_diff": git("diff", "HEAD", "--", "examples/route", "tools/example_bench.py", "pystachy.py", "src", "runtime.c", "runtime.py", "lib"),
         "python": sys.version,
         "python_executable": sys.executable,
         "platform": platform.platform(),
@@ -93,7 +105,7 @@ def provenance(root: Path, compiler: str, paths: list[Path]) -> dict:
         "cpus": os.cpu_count(),
         "cpu_affinity": sorted(os.sched_getaffinity(0)) if hasattr(os, "sched_getaffinity") else None,
         "compiler": compiler,
-        "clang": subprocess.run([clang, "--version"], capture_output=True, text=True, check=True).stdout.splitlines()[0],
+        "clang": checked.run([clang, "--version"], timeout=30).stdout.decode().splitlines()[0],
         "settings": {key: os.environ[key] for key in settings if key in os.environ},
         "sha256": {str(path.relative_to(root)): hashlib.sha256(path.read_bytes()).hexdigest() for path in paths},
     }
@@ -119,13 +131,13 @@ def main() -> None:
             # An interrupted generation must not publish a shortened trace.
             part = path.with_suffix(".tsv.part")
             with part.open("w") as f:
-                subprocess.run([sys.executable, "-I", str(here / "genevents.py"), str(n), mode], stdout=f, check=True)
+                checked.run([sys.executable, "-I", str(here / "genevents.py"), str(n), mode], stdout=f)
             part.replace(path)
     exe = out / "route_aot"
     route = here / "route.py"
     rules = here / "rules.txt"
     t = time.perf_counter()
-    subprocess.run([args.compiler, "build", str(route), "-o", str(exe)], check=True)
+    checked.run([args.compiler, "build", str(route), "-o", str(exe)])
     build_seconds = time.perf_counter() - t
     print(f"pystachy build route.py: {build_seconds:.2f} s")
     records = []
@@ -155,7 +167,7 @@ def main() -> None:
         print(f"{name:7} cached, --names: RSS CPython {rc / 1024:.1f} MiB, AOT {ra / 1024:.1f} MiB")
         names_rss.append({"trace": name, "rss_kib": [rc, ra]})
     if args.json:
-        result = {"provenance": provenance(root, args.compiler, [route, rules, here / "genevents.py", here / "bench.py", exe] + [t[0] for t in traces]),
+        result = {"provenance": provenance(root, args.compiler, [route, rules, here / "genevents.py", here / "bench.py", root / "tools/example_bench.py", exe] + [t[0] for t in traces]),
                   "runs": args.runs, "build_s": build_seconds, "records": records, "names_rss": names_rss}
         args.json.parent.mkdir(parents=True, exist_ok=True)
         args.json.write_text(json.dumps(result, indent=2) + "\n")

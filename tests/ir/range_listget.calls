@@ -1,0 +1,12 @@
+@main.init:
+@f.tail: pys_m_isfinite pys_raise
+@f.stride:
+@f.captured:
+@f.entry_rebound:
+@f.unknown_start: pys_list_get
+@f.changed_index: pys_list_get pys_raise
+@f.different_list: pys_list_get
+@pys_obj_eq:
+@pys_obj_cmp:
+@pys_obj_repr:
+@main: pys_init pys_finish

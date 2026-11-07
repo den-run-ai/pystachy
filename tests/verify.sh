@@ -46,6 +46,8 @@
 #                  runtime the step's tests use), the shard's other cases compiled by stage 2
 #                  unstressed, whose IR gc-ir shows to be the stressed compiler's
 #   benchmarks     bench/*.py print exactly what CPython prints, JIT and AOT; timings recorded
+#   example-cli    real example command lines match CPython's status/stdout/stderr, JIT and AOT;
+#                  existing JSON repair process cases and agent loopback-HTTP checks also pass
 #   rtcheck        tools/rtcheck.py: runtime.py, run by CPython, gives what CPython's str methods and
 #                  math functions give on random inputs
 #   re-fuzz        tools/re_fuzz.py: lib/re, run by CPython, compiles random patterns to the code and
@@ -128,7 +130,7 @@ cd "$(dirname "$0")/.." || exit 1
 # shellcheck disable=SC3045 # (ulimit -c is not POSIX, but dash, bash, ksh and busybox have it)
 ulimit -c 0 2> /dev/null  # (no core file of a crashing compiler or test program in the tree)
 ROOT=$(pwd)
-# PRs keep the complete native corpus in two workers and sample the alternate configurations.
+# PRs keep the complete native corpus in two workers per execution mode and sample alternate configurations.
 # Full verification remains the default for main, releases and local runs. The report gate binds
 # this explicit profile and the independently reproduced sample; a PR report is never full evidence.
 PROFILE=${VERIFY_PROFILE:-full}
@@ -142,13 +144,14 @@ esac
 plan() {
   if [ "$PROFILE" = pr ]; then
     case $1 in
-      all) echo 'bootstrap tests-cpython tests-native-0 tests-native-1 tests-opt-off-0 runtime-cache python-free-0 ubsan-0 gc-self gc-jit-0 gc-aot-0 benchmarks dynany-optin-0 python-int-optin-0 annotation-widening check-ir runtime-table rtcheck re-fuzz dynany-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code aot-dead-code unicode-audit scaling-0 scaling-1'; return ;;
+      all) echo 'bootstrap tests-cpython tests-native-jit-0 tests-native-jit-1 tests-native-aot-0 tests-native-aot-1 tests-opt-off-0 runtime-cache python-free-0 ubsan-0 gc-self gc-jit-0 gc-aot-0 benchmarks example-cli dynany-optin-0 python-int-optin-0 annotation-widening check-ir runtime-table rtcheck re-fuzz dynany-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code aot-dead-code unicode-audit scaling-0 scaling-1'; return ;;
+      native-jit-[01]|native-aot-[01]) echo "bootstrap tests-$1"; return ;;
       safety-0) echo 'bootstrap tests-opt-off-0 python-free-0 gc-jit-0'; return ;;
       safety-1) echo 'bootstrap ubsan-0 gc-aot-0'; return ;;
       opt-in) echo 'bootstrap dynany-optin-0 python-int-optin-0 annotation-widening'; return ;;
       cache-gc) echo 'bootstrap runtime-cache gc-self'; return ;;
-      benchmarks) echo 'bootstrap benchmarks scaling-0 scaling-1'; return ;;
-      bootstrap|hosted|native-0|native-1|contracts) ;; # shared names and steps below
+      benchmarks) echo 'bootstrap benchmarks example-cli scaling-0 scaling-1'; return ;;
+      bootstrap|hosted|contracts) ;; # shared names and steps below
       *) echo "verify: unknown PR group: $1" >&2; return 2 ;;
     esac
   fi
@@ -156,7 +159,7 @@ plan() {
     bootstrap) echo 'bootstrap' ;;
     # (in the order a run of all records them: the contracts' steps, as their lanes report them, after
     # the opt-in sweeps)
-    all) echo 'bootstrap tests-cpython tests-native-0 tests-native-1 tests-native-2 tests-opt-off-0 tests-opt-off-1 tests-opt-off-2 runtime-cache python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 ubsan-3 gc-self gc-ir-0 gc-ir-1 gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 benchmarks dynany-optin-0 dynany-optin-1 dynany-optin-2 python-int-optin-0 python-int-optin-1 python-int-optin-2 annotation-widening check-ir runtime-table rtcheck re-fuzz dynany-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code aot-dead-code unicode-audit scaling-0 scaling-1' ;;
+    all) echo 'bootstrap tests-cpython tests-native-0 tests-native-1 tests-native-2 tests-opt-off-0 tests-opt-off-1 tests-opt-off-2 runtime-cache python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 ubsan-3 gc-self gc-ir-0 gc-ir-1 gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 benchmarks example-cli dynany-optin-0 dynany-optin-1 dynany-optin-2 python-int-optin-0 python-int-optin-1 python-int-optin-2 annotation-widening check-ir runtime-table rtcheck re-fuzz dynany-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code aot-dead-code unicode-audit scaling-0 scaling-1' ;;
     hosted) echo 'bootstrap tests-cpython' ;;
     native-0) echo 'bootstrap tests-native-0' ;;
     native-1) echo 'bootstrap tests-native-1' ;;
@@ -192,7 +195,7 @@ plan() {
     python-int-optin-2) echo "bootstrap $1 annotation-widening" ;;
     python-int-optin) echo 'bootstrap python-int-optin-0 python-int-optin-1 python-int-optin-2' ;; # local alias
     contracts) echo 'bootstrap check-ir runtime-table rtcheck re-fuzz dynany-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code aot-dead-code unicode-audit' ;;
-    benchmarks) echo 'bootstrap benchmarks' ;;
+    benchmarks) echo 'bootstrap benchmarks example-cli' ;;
     scaling) echo 'bootstrap scaling-0 scaling-1' ;;
     *) echo "verify: unknown group: $1" >&2; return 2 ;;
   esac
@@ -201,7 +204,7 @@ plan() {
 GROUP=${1:-all}
 if [ "$GROUP" = --list ]; then
   groups='all bootstrap hosted native-0 native-1 native-2 opt-off-0 opt-off-1 opt-off-2 python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 ubsan-3 gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 runtime-cache dynany-optin-0 dynany-optin-1 dynany-optin-2 python-int-optin-0 python-int-optin-1 python-int-optin-2 contracts benchmarks scaling'
-  [ "$PROFILE" != pr ] || groups='all bootstrap hosted native-0 native-1 safety-0 safety-1 opt-in contracts cache-gc benchmarks'
+  [ "$PROFILE" != pr ] || groups='all bootstrap hosted native-jit-0 native-jit-1 native-aot-0 native-aot-1 safety-0 safety-1 opt-in contracts cache-gc benchmarks'
   for g in $groups; do
     printf '%s %s\n' "$g" "$(plan "$g")"
   done
@@ -238,7 +241,7 @@ export PYSTACHY_HOME="$ROOT"
 # The steps set the knobs they test themselves: one left in the caller's environment would weaken a
 # step (PYSTACHY_GC=off: gc-stress collects nothing) or fail it falsely (PYSTACHY_OPT=-all), so they
 # are dropped, and the report lists them (PYSTACHY_LLVM and PYSTACHY_JOBS are kept)
-ign=$(env | sed -nE 's/^(PYSTACHY_(PATH|CFLAGS|GC|GC_MIN|GC_STRESS|GC_STRESS_PROGRAM|IRCHECK|IRFX|OPT|JIT_INLINE|JIT_CODEGEN|UNICODE_AUDIT|ARGV0|CASE_TIMES))=.*$/\1/p' | sort -u)
+ign=$(env | sed -nE 's/^(PYSTACHY_(PATH|CFLAGS|GC|GC_MIN|GC_STRESS|GC_STRESS_PROGRAM|IRCHECK|IRFX|OPT|JIT_INLINE|JIT_CODEGEN|PROGRAM_CACHE|PROGRAM_CACHE_TRACE|PROGRAM_CACHE_INPUTS|PROGRAM_CACHE_LOCK|UNICODE_AUDIT|DEBUG_LINES|ARGV0|CASE_TIMES))=.*$/\1/p' | sort -u)
 for e in $ign; do echo "verify: ignoring $e=$(printenv "$e")"; unset "$e"; done
 LLVM=${PYSTACHY_LLVM:+${PYSTACHY_LLVM%/}/}
 
@@ -396,7 +399,8 @@ x=""
 step bootstrap $r "$s" "$L" "$x"
 fi
 
-# Self-compilation has its own CI runner; all/local runs can overlap earlier checks.
+# Self-compilation has its own full-CI runner; all/local runs can overlap earlier checks.
+# The compact cache-gc group waits for both cache runs before starting GC self-compilation.
 # Bound it separately from the CI job,
 # leaving time to write/upload a failed report. timeout forwards TERM to its process group,
 # including the compiler, so cancellation cannot leave the background self-compile running.
@@ -450,6 +454,7 @@ cancel_gc() {
   exit 130
 }
 trap cancel_gc INT TERM
+start_gc_self() {
 if want gc-self && [ -x "$V/pystachy2" ]; then
   # At 1000, self-compilation spent 23 minutes in 15,543 full-heap collections.
   # 5000 still exercises thousands of collections; the test suite keeps its stronger intervals.
@@ -470,6 +475,8 @@ if want gc-self && [ -x "$V/pystachy2" ]; then
     "$V/pystachy2" ir pystachy.py -o "$V/stage-gc.ll" > "$V/gc-self.log" 2>&1 &
   gcpid=$!
 fi
+}
+[ "$GROUP" = cache-gc ] || start_gc_self
 
 # ---- differential tests with both compilers
 # tests-cpython: the CPython-hosted compiler must compile every case of the corpus exactly as stage 2
@@ -567,17 +574,25 @@ if want tests-cpython; then
   done < "$V/tests-cpython-strata.log")
   step tests-cpython $r "$s" "$L" ', "compiler": "CPython-hosted", "reference": "stage2", "ir_cases": '"${ir_n:-0}"', "ir_identical": '"$ir_ok"', "check_cases": '"$chk_n"', "check_identical": '"$chk_ok"', "modes": ["jit", "aot"], "sample_index": 0, "sample_count": '"$HOSTED_SAMPLE_OF"', "sample_cases": '"$#"', "sample": ['"${sample#, }"'], "sample_strata": {'"${strata#, }"'}'"$x"
 fi
-for shard in 0 1 2; do
-  want tests-native-$shard || continue
-  L=$V/tests-native-$shard.log; s=$(now); r=fail
-  shard_cases $shard "$NATIVE_SHARDS" "$V/tests-native-$shard-cases.log"
+native_steps='tests-native-0 tests-native-1 tests-native-2'
+[ "$PROFILE" != pr ] || native_steps='tests-native-jit-0 tests-native-jit-1 tests-native-aot-0 tests-native-aot-1'
+for native_step in $native_steps; do
+  want "$native_step" || continue
+  shard=${native_step##*-}; modes='jit aot'; mode_json='["jit", "aot"]'
+  case $native_step in
+    tests-native-jit-*) modes=jit; mode_json='["jit"]' ;;
+    tests-native-aot-*) modes=aot; mode_json='["aot"]' ;;
+  esac
+  L=$V/$native_step.log; s=$(now); r=fail
+  shard_cases "$shard" "$NATIVE_SHARDS" "$V/$native_step-cases.log"
   set --
-  while IFS= read -r f; do set -- "$@" "$f"; done < "$V/tests-native-$shard-cases.log"
+  while IFS= read -r f; do set -- "$@" "$f"; done < "$V/$native_step-cases.log"
   # An empty shard must not silently invoke run.sh's whole-suite default.
-  [ $# != 0 ] || { echo 'empty native shard' > "$L"; step tests-native-$shard fail "$s" "$L" ""; continue; }
-  PYSTACHY_CASE_TIMES="$V/tests-native-$shard-times.log" tests/run.sh "$V/pystachy2" "jit aot" "$@" > "$L" 2>&1
-  x=$(tests "$(checks "jit aot" "$@")" "$L" 2>> "$L") && r=pass
-  step tests-native-$shard $r "$s" "$L" ', "compiler": "stage2", "modes": ["jit", "aot"], "shard_index": '"$shard"', "shard_count": '"$NATIVE_SHARDS$x$(case_fields "$V/tests-native-$shard-cases.log")"
+  # One-mode PR groups repeat the cheap rejection/parser checks; no corpus case is filtered out.
+  [ $# != 0 ] || { echo 'empty native shard' > "$L"; step "$native_step" fail "$s" "$L" ""; continue; }
+  PYSTACHY_CASE_TIMES="$V/$native_step-times.log" tests/run.sh "$V/pystachy2" "$modes" "$@" > "$L" 2>&1
+  x=$(tests "$(checks "$modes" "$@")" "$L" 2>> "$L") && r=pass
+  step "$native_step" $r "$s" "$L" ', "compiler": "stage2", "modes": '"$mode_json"', "shard_index": '"$shard"', "shard_count": '"$NATIVE_SHARDS$x$(case_fields "$V/$native_step-cases.log")"
 done
 for shard in 0 1 2; do
   want tests-opt-off-$shard || continue
@@ -637,7 +652,7 @@ nopy() { env -i PATH="$NP" TMPDIR="${TMPDIR:-/tmp}" PYSTACHY_HOME="$V/home" ${PY
   # clang's system linker; the driver's shell commands (pystachy run's rmdir too); tests/run.sh; the rm,
   # mkfifo, sleep and ln (shutil's symbolic links) test programs run; the native-agent example's permission
   # preservation and bounded visible check use chmod and timeout.
-  for t in ld sh mkdir mktemp sed mv chmod timeout rm rmdir test cat cmp diff head tail grep dirname basename mkfifo sleep ln nproc; do tool $t || ok=0; done
+  for t in ld sh mkdir mktemp sed mv chmod timeout rm rmdir test cat cmp diff head tail grep dirname basename mkfifo sleep ln nproc stat cp ldd flock touch sha256sum; do tool $t || ok=0; done
   echo "PATH=$NP"; ls -l "$NP" | sed 1d
   if nopy sh -c 'command -v python3 || command -v python'; then ok=0; echo "python is reachable"
   else py=false; echo "python3, python: not found on PATH"; fi
@@ -717,6 +732,9 @@ fi
 
 # ---- gc-self: fixed-point identity under compiler GC stress
 if want gc-self; then
+  # runtime-cache already uses two compiler lanes. Give this bounded compile the runner
+  # after those lanes finish instead of competing with them as a third heavy process.
+  if [ "$GROUP" = cache-gc ]; then start_gc_self; fi
 L=$V/gc-self-check.log; s=$(now); r=fail
 {
   self_ok=0; self_status=127
@@ -852,17 +870,56 @@ L=$V/benchmarks.log; s=$(now); r=pass; x=""; n=0; ok=0
 : > "$L"
 for b in bench/*.py; do
   k=$(basename "$b" .py); n=$((n + 1)); B=$V/bench-$k
-  t0=$(now); ($PY "$b"; echo "[exit $?]") > "$B.ref" 2>> "$L"
-  t1=$(now); ("$V/pystachy2" run "$b"; echo "[exit $?]") > "$B.jit" 2>> "$L"
-  t2=$(now); "$V/pystachy2" build "$b" -o "$B.exe" >> "$L" 2>&1
-  t3=$(now); ("$B.exe"; echo "[exit $?]") > "$B.aot" 2>> "$L"
+  t0=$(now); $PY "$b" > "$B.ref" 2> "$B.ref.err"; ref_status=$?
+  t1=$(now); "$V/pystachy2" run "$b" > "$B.jit" 2> "$B.jit.err"; jit_status=$?
+  t2=$(now); build_status=0
+  # A failed/no-output build must not execute a previous run's binary.
+  rm -f "$B.exe" > "$B.build" 2>&1 || build_status=$?
+  if [ "$build_status" = 0 ]; then
+    "$V/pystachy2" build "$b" -o "$B.exe" >> "$B.build" 2>&1; build_status=$?
+  fi
+  t3=$(now); aot_status=not-run; : > "$B.aot"; : > "$B.aot.err"
+  if [ "$build_status" = 0 ] && [ ! -s "$B.build" ] && [ -x "$B.exe" ]; then
+    "$B.exe" > "$B.aot" 2> "$B.aot.err"; aot_status=$?
+  fi
   t4=$(now)
-  if cmp -s "$B.ref" "$B.jit" && cmp -s "$B.ref" "$B.aot" && grep -q '^\[exit 0\]$' "$B.ref"; then i=true; ok=$((ok + 1)); echo "ok $k"
-  else i=false; r=fail; echo "FAIL $k"; diff "$B.ref" "$B.jit"; diff "$B.ref" "$B.aot"; fi >> "$L"
+  if [ "$ref_status" = 0 ] && [ "$jit_status" = 0 ] && [ "$build_status" = 0 ] && [ "$aot_status" = 0 ] &&
+      cmp -s "$B.ref" "$B.jit" && cmp -s "$B.ref" "$B.aot" &&
+      cmp -s "$B.ref.err" "$B.jit.err" && cmp -s "$B.ref.err" "$B.aot.err"; then
+    i=true; ok=$((ok + 1)); echo "ok $k"
+  else
+    i=false; r=fail
+    echo "FAIL $k: CPython=$ref_status JIT=$jit_status build=$build_status AOT=$aot_status"
+    echo 'build diagnostics:'; cat "$B.build"
+    for mode in ref jit aot; do
+      echo "$mode stdout:"; cat "$B.$mode"
+      echo "$mode stderr:"; cat "$B.$mode.err"
+    done
+  fi >> "$L"
   x="$x$(printf '%s\n        {"name": "%s", "identical": %s, "cpython_seconds": %s, "jit_seconds": %s, "aot_build_seconds": %s, "aot_seconds": %s}' \
     "${x:+,}" "$k" $i "$(secs "$t0" "$t1")" "$(secs "$t1" "$t2")" "$(secs "$t2" "$t3")" "$(secs "$t3" "$t4")")"
 done
 step benchmarks $r "$s" "$L" ", \"programs\": $n, \"identical\": $ok, \"timings\": [$x]"
+fi
+
+# ---- example-cli: tiny inputs through real mains, plus existing process/HTTP checks
+if want example-cli; then
+L=$V/example-cli.log; s=$(now); r=fail; cli_fields=
+if $PY tools/check_example_cli.py --compiler "$V/pystachy2" --json "$V/example-cli.json" > "$L" 2>&1; then
+  if cli_fields=$($PY - "$V/example-cli.json" 2>> "$L" <<'PYCLI'
+import json
+import sys
+sys.path.insert(0, "tools")
+import check_example_cli
+from merge_verification import unique_object, invalid_constant
+with open(sys.argv[1]) as stream:
+    report = json.load(stream, object_pairs_hook=unique_object, parse_constant=invalid_constant)
+check_example_cli.validate_report(report)
+print(', "example_cli": ' + json.dumps(report, sort_keys=True))
+PYCLI
+  ); then r=pass; fi
+fi
+step example-cli "$r" "$s" "$L" "$cli_fields"
 fi
 
 # ---- dynany-optin: full program corpus opts into dynamic Any in three disjoint shards
@@ -1091,10 +1148,15 @@ L=$V/container-eq.log; s=$(now); r=fail
 step container-eq $r "$s" "$L" ', "shared_levels": 32, "comparison_limit": 64'
 fi
 
-# ---- file-buffers: dropped files' buffers run collections; opens, closes and the exit balance the counts
+# ---- file-buffers: dropped files' buffers run collections; opens, closes and the exit balance the counts.
+# Text read/readline must also inline their per-byte helpers (no wall-clock threshold).
 if want file-buffers; then
 L=$V/file-buffers.log; s=$(now); r=fail
 { "${LLVM}clang" -O2 -S -emit-llvm tools/fileprobe.c -o "$V/fileprobe.ll" &&
+  if [ "$(grep -Ec '^define[^@]*@pys_file_read(line)?\(' "$V/fileprobe.ll")" != 2 ]; then
+    echo 'file-buffers: IR must define text read and readline'; false; fi &&
+  if grep -Eq '^define[^@]*@get(nl)?[.(]' "$V/fileprobe.ll"; then
+    echo 'file-buffers: text reads must inline per-byte get/getnl helpers'; false; fi &&
   "${LLVM}llvm-link" "$V/rt1.ll" "$V/fileprobe.ll" -o "$V/fileprobe.bc" &&
   "${LLVM}clang" -O2 "$V/fileprobe.bc" -o "$V/fileprobe" -lm &&
   "$V/fileprobe" && "$V/fileprobe" --lib && PYSTACHY_GC_STRESS=1 "$V/fileprobe" && r=pass; } > "$L" 2>&1

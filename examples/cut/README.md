@@ -31,31 +31,22 @@ Pystachy and CPython.
 <a id="speed"></a>
 <a id="tests"></a>
 
-## Recorded benchmark
+<a id="recorded-benchmark"></a>
+<a id="checks-and-reproduction"></a>
 
-Historical measurements on a 4-core x86-64 VM; the compiler commit was not
-recorded. 500,000 rows (31 MB); median wall time of five process runs, including startup;
-peak RSS of one run. Other jobs shared the host.
+## Checks and benchmarks
 
-| selection | CPython 3.13.16 | Pystachy AOT | speedup | CPython RSS | AOT RSS |
-|---|---:|---:|---:|---:|---:|
-| `-f 2,5-7` | 0.480 s | 0.376 s | 1.3x | 10.9 MB | 35.4 MB |
-| `-f 3 --complement` | 0.545 s | 0.335 s | 1.6x | 10.9 MB | 35.4 MB |
-| `-c 1-20` | 0.415 s | 0.270 s | 1.5x | 10.9 MB | 35.9 MB |
-| `-s -f 8,1` | 0.393 s | 0.238 s | 1.7x | 11.0 MB | 35.0 MB |
+[`example_cut.py`](../../tests/programs/apps/example_cut.py)
+compares range parsing, selection, options, generated input and errors with CPython.
 
-The baseline speedup is 1.3–1.7×; line reading and string operations dominate.
-Peak memory is about 3× CPython’s but remains bounded as input grows.
-
-## Checks and reproduction
-
-`tests/programs/apps/example_cut.py` compares range parsing, selection, options, generated
-input and errors with CPython.
+The benchmark generates 500,000 rows and exercises field and character selection,
+complement selection and skipped undelimited lines.
 
 ```sh
 python3 -I bench.py ../../pystachy 5
 ```
 
-The benchmark writes generated inputs and executables to `build/cut/` at the
-repository root. Results depend on workload and host; see
-[the performance guide](../../docs/performance.md).
+Generated inputs and executables go to `build/cut/` at the repository root.
+Earlier measurements without a compiler revision are preserved in
+[the historical table](https://github.com/den-run-ai/pystachy/blob/f7103067545b43cdcd8ce20dc66b1571425b3a8d/examples/cut/README.md#recorded-benchmark).
+See the [benchmark guidance](../README.md#benchmarks) when measuring a current build.

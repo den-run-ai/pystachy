@@ -4,7 +4,7 @@
 runtime.py is ordinary Python, so CPython runs it, with tools/rt_cpython/_rt.py standing in for
 the compiler's primitives: each pys_* function is called directly and compared with what CPython
 computes, on random inputs, with no compilation. Strs are ASCII here (where Pystachy behaves exactly
-as CPython) plus UTF-8 text for the width methods and replace("", x), which count characters; a
+as CPython) plus UTF-8 text for character classification, the width methods and replace("", x); a
 Pystachy str is given as its bytes, one character per byte. 64-bit overflow is not tested here
 (CPython's ints grow): the differential tests compile the same code and check it.
 
@@ -22,6 +22,9 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path[:0] = [os.path.join(ROOT, "tools", "rt_cpython"), ROOT]
 import runtime as rt  # noqa: E402
+from unicode_classification_tables import check as check_unicode_table, flags as unicode_flags  # noqa: E402
+
+rt.pys_unicode_flags = unicode_flags
 
 N = int(sys.argv[1]) if len(sys.argv) > 1 else 5000
 R = random.Random(int(sys.argv[2]) if len(sys.argv) > 2 else 1)
@@ -159,6 +162,18 @@ def data(n=12):
     return bytes(R.choice(alpha) for _ in range(R.randrange(n + 1)))
 
 
+def fuzz_unicode_classification():
+    # Exercise runtime.py's UTF-8 traversal separately from its C lookup. The table check
+    # regenerates every code point; unicode_audit.py also compares native lookup results.
+    check_unicode_table()
+    pool = "aZ09é界न\u0301\u0345²½Ⅳ四٩१२𝟘\U0001e4f0\U0002ebf0😀\ud800\udfff\x00"
+    for _ in range(N):
+        s = text(pool) if R.randrange(2) else "".join(chr(R.randrange(0x110000)) for _ in range(R.randrange(8)))
+        raw = s.encode("utf-8", "surrogatepass").decode("latin-1")
+        for name in "isalpha isalnum isdecimal isdigit isnumeric".split():
+            same(name, outcome(getattr(rt, "pys_str_" + name), raw), outcome(getattr(s, name)), (s,))
+
+
 def fuzz_bytes():
     # runtime.py's bytes operations against CPython's bytes methods and codecs
     for _ in range(N):
@@ -256,6 +271,15 @@ def fuzz_math():
             xs += [-x * R.choice([1.0, 0.5, 1.0000000000000002]) for x in xs]
             R.shuffle(xs)
         same("fsum", bits(outcome(rt.pys_m_fsum, xs)), bits(outcome(math.fsum, xs)), (xs,))
+        start = real()
+        same("sum-float", bits(outcome(rt.pys_sum_float, xs, start)), bits(outcome(sum, xs, start)), (xs, start))
+        same("sum-int-start", bits(outcome(rt.pys_sum_float_int, xs, a)),
+             bits(outcome(lambda: float(sum(xs, a)))), (xs, a))
+        for name, mine, ref in [("degrees", rt.pys_m_degrees, math.degrees), ("radians", rt.pys_m_radians, math.radians)]:
+            same(name, bits(outcome(mine, start)), bits(outcome(ref, start)), (start,))
+        other, rel, ab = real(), real(), real()
+        same("isclose", outcome(rt.pys_m_isclose, start, other, rel, ab),
+             outcome(lambda: int(math.isclose(start, other, rel_tol=rel, abs_tol=ab))), (start, other, rel, ab))
         same("prod", bits(outcome(rt.pys_m_prod_float, xs, 1.5)), bits(outcome(lambda: math.prod(xs, start=1.5))), (xs,))
         ns = [R.randrange(-1000, 1001) for _ in range(R.randrange(7))]
         st = R.choice([1, -1, a])
@@ -537,7 +561,49 @@ def fuzz_malformed():
         same("format_str", outcome(rt.pys_format_str, s, rs.decode("latin-1")), ref_raw(lambda: format(c, esc(rs))), (r, rs))
 
 
+def ascii_raw(r):
+    # Independently decode one UTF-8 character through CPython's codec, accepting encoded
+    # surrogates. Where no character starts, runtime.c's u8char treats the byte as its code
+    # point. ascii() transforms repr's non-ASCII only: quotes, controls and backslashes stay.
+    out = []
+    i = 0
+    while i < len(r):
+        c = chr(r[i])
+        n = 1
+        if r[i] >= 128:
+            for k in (2, 3, 4):
+                try:
+                    decoded = r[i : i + k].decode("utf-8", "surrogatepass")
+                except UnicodeDecodeError:
+                    continue
+                if len(decoded) == 1:
+                    c, n = decoded, k
+                    break
+        out.append(c.encode("ascii", "backslashreplace").decode("ascii"))
+        i += n
+    return "".join(out)
+
+
+def fuzz_ascii():
+    # Raw repr bytes include every escape width, valid surrogate sequences, overlong and
+    # truncated sequences, invalid continuations, NULs, and runs with no escaping required.
+    boundaries = [0x7F, 0x80, 0xFF, 0x100, 0x7FF, 0x800, 0xD7FF, 0xD800, 0xDBFF,
+                  0xDC00, 0xDCFF, 0xDFFF, 0xE000, 0xFFFF, 0x10000, 0x10FFFF]
+    pieces = PIECES + [b"", b"'\"\\\x00\n", b"ascii" * 32]
+    for cp in boundaries:
+        char = chr(cp).encode("utf-8", "surrogatepass")
+        pieces.extend([char, char[:-1], char[:1] + b"x" + char[2:]])
+    edges = pieces + [bytes([c]) for c in range(256)] + [bytes(range(256))]
+    for r in edges:
+        same("ascii-raw", outcome(rt.pys_ascii, bt(r)), ("ok", ascii_raw(r)), (r,))
+    for _ in range(N):
+        for r in [b"".join(R.choice(pieces) for _ in range(R.randrange(9))),
+                  bytes(R.randrange(256) for _ in range(R.randrange(25)))]:
+            same("ascii-raw", outcome(rt.pys_ascii, bt(r)), ("ok", ascii_raw(r)), (r,))
+
+
 fuzz_str()
+fuzz_unicode_classification()
 fuzz_replace()
 fuzz_bytes()
 fuzz_search()
@@ -545,5 +611,6 @@ fuzz_math()
 fuzz_hash()
 fuzz_format()
 fuzz_malformed()
+fuzz_ascii()
 print(f"{cases} cases, {fails} failed")
 sys.exit(1 if fails else 0)

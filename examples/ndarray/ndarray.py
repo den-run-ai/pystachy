@@ -15,9 +15,9 @@ adds the lines of the other axis one after another into one result. That is NumP
 and the tests find np.sum's results for such arrays, but the order of additions decides the
 rounding: ill-conditioned sums can differ by more than the last digit in another order.
 
-The subset has no slice objects, reflected operators or comparison methods that return arrays:
-a[1:3], 2.0 * a and a > x are written a.row(i), a * 2.0 and greater(a, x) here. a[i, j] = v
-needs a 2-D array (__setitem__ cannot be a template). See README.md.
+This example uses row views, right-hand scalars and named comparisons: a.row(i), a * 2.0
+and greater(a, x). Assignment a[i, j] = v expects a 2-D array because this example annotates
+__setitem__ with tuple[int, int]; that is an API choice here. See README.md.
 """
 import math
 
@@ -185,7 +185,7 @@ class NDArray:
         return self.data[self._pos(*key)]
 
     def __setitem__(self, key: tuple[int, int], v: float) -> None:
-        # a[i, j] = v, also through a view: the data is shared
+        # Assignment takes two indices here; views share the same data.
         self.data[self._pos(*key)] = v
 
     def __len__(self) -> int:

@@ -74,11 +74,22 @@ jobs:
       - name: Router benchmark validation tests
         run: python3 -m unittest discover -s tools -p test_route_bench.py
 
+      - name: Example benchmark validation tests
+        run: python3 -m unittest discover -s tools -p test_example_bench.py
+
+      - name: Example CLI smoke contract tests
+        run: python3 -m unittest discover -s tools -p test_check_example_cli.py
+
       - name: Install sanitizer runtime for generated-code controls
         run: sudo apt-get update && sudo apt-get install -y libclang-rt-18-dev
 
       - name: Runtime ABI, ASan and GC root checker controls
-        run: python3 -m unittest discover -s tools -p 'test_runtime_*.py'
+        run: |
+          python3 -m unittest discover -s tools -p 'test_runtime_*.py'
+          PY=python3 CC="$PYSTACHY_LLVM/clang" ASAN_OPTIONS=detect_leaks=1 \
+            tools/check_cpu_buffers.sh '-fsanitize=address,undefined'
+          PY=python3 CC="$PYSTACHY_LLVM/clang" ASAN_OPTIONS=detect_leaks=1 \
+            tools/check_cpu_buffers.sh --negative-control '-fsanitize=address,undefined'
 
       - name: pyperformance runner and port record tests
         run: python3 -m unittest discover -s tools -p test_bench_pyperformance.py
@@ -150,5 +161,11 @@ jobs:
 
       - name: Concurrency contract probes (docs/concurrency.md)
         run: python3 -m unittest discover -s tools -p test_concurrency_contract.py
+
+      - name: Native program cache manifests and tool inputs
+        run: |
+          python3 -m unittest discover -s tools -p 'test_program_cache*.py'
+          python3 -m unittest discover -s tools -p 'test_cached_run*.py'
+          python3 -m unittest discover -s tools -p test_cache_toolchain.py
 
       - run: make check-recordings

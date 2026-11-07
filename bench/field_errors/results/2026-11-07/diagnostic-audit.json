@@ -1,0 +1,6 @@
+{
+  "cases": 4239,
+  "byte_identical_raw_diagnostics": 4239,
+  "status_comparison": "The unchanged irsame.sh comparison checks every captured shell exit status; none differed. Individual numeric status values are not persisted by the maintained comparator.",
+  "normalization_needed": false
+}

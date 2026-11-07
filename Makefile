@@ -2,7 +2,7 @@
 # itself (stage 2) and must reproduce its own LLVM IR byte for byte (fixed point).
 PY ?= $(shell command -v python3.13 || command -v python3)
 export PYSTACHY_LLVM ?= $(shell $(PY) -c 'import pystachy; print(pystachy.llvm_dir())')
-COMPILER_SOURCES := pystachy.py $(wildcard src/*.py src/pystachy_compiler/*.py)
+COMPILER_SOURCES := pystachy.py lib/_pystachy_cache.py $(wildcard src/*.py src/pystachy_compiler/*.py)
 
 pystachy: $(COMPILER_SOURCES) runtime.c runtime.py $(wildcard ryu/*.c ryu/*.h mpz/*.c)
 	mkdir -p build
@@ -56,6 +56,14 @@ test-cache: pystachy
 	PY="$(PY)" tests/cache.sh ./pystachy
 	tests/cache.sh "$(PY) -m pystachy"
 
+# Linux native program cache: invalidation, effects, lifecycle and skipped work.
+PROGRAM_CACHE_COMPILER ?= ./pystachy
+test-program-cache: $(PROGRAM_CACHE_COMPILER)
+	$(PY) -m unittest discover -s tools -p 'test_program_cache*.py'
+	$(PY) -m unittest discover -s tools -p 'test_cached_run*.py'
+	$(PY) -m unittest discover -s tools -p test_cache_toolchain.py
+	$(PY) tools/program_cache_probe.py --compiler "$(PROGRAM_CACHE_COMPILER)" --llvm "$(PYSTACHY_LLVM)" --output build/program-cache-checks.json
+
 # the FFI's tests (docs/ffi.md): C calls, and with $(PY)'s libpython, CPython embedded and extension modules
 test-ffi: pystachy
 	PY="$(PY)" tests/ffi/run.sh ./pystachy "jit aot"
@@ -68,6 +76,12 @@ bench: pystachy
 # bootstrapping ./pystachy again. The default still builds the normal compiler.
 BENCH_COMPILER ?= ./pystachy
 BENCH_ARGS ?=
+
+# Tiny fixtures through the real CLIs, plus JSON repair and agent loopback HTTP.
+example-cli-check: $(BENCH_COMPILER)
+	$(PY) -m unittest discover -s tools -p test_check_example_cli.py
+	$(PY) tools/check_example_cli.py --compiler "$(BENCH_COMPILER)" --json build/example-cli-smoke.json
+
 bench-extended: $(BENCH_COMPILER)
 	$(PY) tools/bench_extended.py --compiler "$(BENCH_COMPILER)" $(BENCH_ARGS)
 
@@ -151,10 +165,13 @@ eqprobe: tools/eqprobe.c runtime.c runtime.py pystachy
 	PYSTACHY_GC_STRESS=1 build/eqprobe
 
 # Writable files' malloc'd buffers count as heap bytes: dropped files run collections, closes balance.
+# Text reads keep their per-byte helpers inline, including the EOF/error retry path.
 fileprobe: tools/fileprobe.c runtime.c runtime.py pystachy
 	mkdir -p build
 	./pystachy rt runtime.py -o build/fileprobe-rt.ll
 	$(LLVMBIN)clang -O2 -S -emit-llvm tools/fileprobe.c -o build/fileprobe.ll
+	@if [ "$$(grep -Ec '^define[^@]*@pys_file_read(line)?\(' build/fileprobe.ll)" != 2 ]; then echo 'fileprobe: IR must define text read and readline' >&2; exit 1; fi
+	@if grep -Eq '^define[^@]*@get(nl)?[.(]' build/fileprobe.ll; then echo 'fileprobe: text reads must inline per-byte get/getnl helpers' >&2; exit 1; fi
 	$(LLVMBIN)llvm-link build/fileprobe-rt.ll build/fileprobe.ll -o build/fileprobe.bc
 	$(LLVMBIN)clang -O2 build/fileprobe.bc -o build/fileprobe -lm
 	build/fileprobe
@@ -364,8 +381,11 @@ check-fast: lint-python typecheck check-repository
 	$(PY) -m unittest discover -s tools -p test_dynany_dict_kinds.py
 	$(PY) -m unittest discover -s tools -p test_diagnostic_capture.py
 	$(PY) -m unittest discover -s tools -p test_loader_preprocessing.py
+	$(PY) -m unittest discover -s tools -p test_ctypes_schema.py
 	$(PY) -m unittest discover -s tools -p test_parser_allocations.py
+	$(PY) -m unittest discover -s tools -p test_exception_bindings.py
 	$(PY) -m unittest discover -s tools -p test_inspect_compiler.py
+	$(PY) -m unittest discover -s tools -p test_source_lines.py
 	$(PY) -m unittest discover -s tools -p test_pystachy_toolchain.py
 
 check-repository:
@@ -394,4 +414,4 @@ uninstall:
 test-install:
 	$(PY) -m unittest discover -s tools -p test_install.py
 
-.PHONY: test test-py coverage runtime-coverage variants test-cache test-ffi bench bench-extended bench-extended-check blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe boxprobe streamprobe jitprobe aotprobe unicode-audit unicodeprobe bytescanprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz dynany-fuzz dynany-optin python-int-optin python-int-gate re-probe re-specialize-check typecheck lint-python check-repository check-fast lint clean install uninstall test-install
+.PHONY: test test-py coverage runtime-coverage variants test-cache test-program-cache test-ffi bench bench-extended bench-extended-check example-cli-check blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe boxprobe streamprobe jitprobe aotprobe unicode-audit unicodeprobe bytescanprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz dynany-fuzz dynany-optin python-int-optin python-int-gate re-probe re-specialize-check typecheck lint-python check-repository check-fast lint clean install uninstall test-install

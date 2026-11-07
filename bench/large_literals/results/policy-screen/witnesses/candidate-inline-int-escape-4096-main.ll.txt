@@ -1,0 +1,237 @@
+define noundef i32 @main(i32 %argc, ptr nocapture readonly %argv) local_unnamed_addr {
+  %sb = tail call ptr @llvm.frameaddress.p0(i32 0)
+  tail call void @pys_init(i32 %argc, ptr %argv, ptr %sb, ptr nonnull @pys.roots, i64 1)
+  %1 = load ptr, ptr getelementptr inbounds ([80 x ptr], ptr @pys_fl, i64 0, i64 4), align 16, !tbaa !5
+  %2 = icmp eq ptr %1, null
+  br i1 %2, label %7, label %3, !prof !9
+
+3:                                                ; preds = %0
+  %4 = load i64, ptr %1, align 8, !tbaa !10
+  %5 = xor i64 %4, -1
+  %6 = inttoptr i64 %5 to ptr
+  store ptr %6, ptr getelementptr inbounds ([80 x ptr], ptr @pys_fl, i64 0, i64 4), align 16, !tbaa !5
+  store i64 0, ptr %1, align 8, !tbaa !10
+  br label %9
+
+7:                                                ; preds = %0
+  %8 = tail call fastcc ptr @gc_slow(i64 noundef 31, i32 noundef 0)
+  br label %9
+
+9:                                                ; preds = %7, %3
+  %10 = phi ptr [ %1, %3 ], [ %8, %7 ]
+  %11 = getelementptr inbounds %struct.List, ptr %10, i64 0, i32 1
+  store i64 4, ptr %11, align 8, !tbaa !11
+  %12 = load ptr, ptr getelementptr inbounds ([80 x ptr], ptr @pys_fl, i64 0, i64 6), align 16, !tbaa !5
+  %13 = icmp eq ptr %12, null
+  br i1 %13, label %18, label %14, !prof !9
+
+14:                                               ; preds = %9
+  %15 = load i64, ptr %12, align 8, !tbaa !10
+  %16 = xor i64 %15, -1
+  %17 = inttoptr i64 %16 to ptr
+  store ptr %17, ptr getelementptr inbounds ([80 x ptr], ptr @pys_fl, i64 0, i64 6), align 16, !tbaa !5
+  store i64 0, ptr %12, align 8, !tbaa !10
+  br label %pys_list_new.exit.i
+
+18:                                               ; preds = %9
+  %19 = tail call fastcc ptr @gc_slow(i64 noundef 32, i32 noundef 0)
+  br label %pys_list_new.exit.i
+
+pys_list_new.exit.i:                              ; preds = %18, %14
+  %20 = phi ptr [ %12, %14 ], [ %19, %18 ]
+  %21 = getelementptr inbounds %struct.List, ptr %10, i64 0, i32 2
+  store ptr %20, ptr %21, align 8, !tbaa !14
+  store ptr %10, ptr @g.held, align 8
+  %22 = load ptr, ptr getelementptr inbounds ([80 x ptr], ptr @pys_fl, i64 0, i64 4), align 16, !tbaa !5
+  %23 = icmp eq ptr %22, null
+  br i1 %23, label %28, label %24, !prof !9
+
+24:                                               ; preds = %pys_list_new.exit.i
+  %25 = load i64, ptr %22, align 8, !tbaa !10
+  %26 = xor i64 %25, -1
+  %27 = inttoptr i64 %26 to ptr
+  store ptr %27, ptr getelementptr inbounds ([80 x ptr], ptr @pys_fl, i64 0, i64 4), align 16, !tbaa !5
+  store i64 0, ptr %22, align 8, !tbaa !10
+  br label %f.make_values.exit.i
+
+28:                                               ; preds = %pys_list_new.exit.i
+  %29 = tail call fastcc ptr @gc_slow(i64 noundef 31, i32 noundef 0)
+  br label %f.make_values.exit.i
+
+f.make_values.exit.i:                             ; preds = %28, %24
+  %30 = phi ptr [ %22, %24 ], [ %29, %28 ]
+  %31 = getelementptr inbounds %struct.List, ptr %30, i64 0, i32 1
+  store i64 4096, ptr %31, align 8, !tbaa !11
+  %32 = tail call fastcc ptr @gc_slow(i64 noundef 32768, i32 noundef 1)
+  %33 = getelementptr inbounds %struct.List, ptr %30, i64 0, i32 2
+  store ptr %32, ptr %33, align 8, !tbaa !14
+  tail call void @llvm.memcpy.p0.p0.i64(ptr noundef nonnull align 8 dereferenceable(32768) %32, ptr noundef nonnull align 8 dereferenceable(32768) @lc.0, i64 32768, i1 false)
+  store i64 4096, ptr %30, align 8, !tbaa !15
+  %t4.i = ptrtoint ptr %30 to i64
+  %t5.i = tail call ptr @pys_repr(i64 %t4.i, ptr nonnull @s.2)
+  tail call void @pys_write(ptr %t5.i, i64 1)
+  tail call void @pys_write(ptr nonnull @s.1, i64 1)
+  %34 = load ptr, ptr @args, align 8, !tbaa !5
+  %35 = load i64, ptr %34, align 8, !tbaa !15
+  %36 = icmp sgt i64 %35, 1
+  br i1 %36, label %pys_list_get.exit.i, label %37
+
+37:                                               ; preds = %f.make_values.exit.i
+  tail call void @pys_fail(ptr noundef nonnull @.str.85) #36
+  unreachable
+
+pys_list_get.exit.i:                              ; preds = %f.make_values.exit.i
+  %38 = getelementptr inbounds %struct.List, ptr %34, i64 0, i32 2
+  %39 = load ptr, ptr %38, align 8, !tbaa !14
+  %40 = getelementptr inbounds %struct.Slot, ptr %39, i64 1
+  %41 = load i64, ptr %40, align 8, !tbaa !16
+  %t12.i = inttoptr i64 %41 to ptr
+  %t13.i = tail call i64 @pys_int_str(ptr %t12.i, i64 10)
+  %t116.i.i = icmp sgt i64 %t13.i, 0
+  br i1 %t116.i.i, label %L7.i.i, label %main.init.exit
+
+L7.i.i:                                           ; preds = %pys_list_get.exit.i, %L8.i.i
+  %h.5.08.i.i = phi i64 [ %t492.i.i, %L8.i.i ], [ 0, %pys_list_get.exit.i ]
+  %checksum.3.07.i.i = phi i64 [ %t39.i.i, %L8.i.i ], [ 0, %pys_list_get.exit.i ]
+  %42 = load ptr, ptr getelementptr inbounds ([80 x ptr], ptr @pys_fl, i64 0, i64 4), align 16, !tbaa !5
+  %43 = icmp eq ptr %42, null
+  br i1 %43, label %48, label %44, !prof !9
+
+44:                                               ; preds = %L7.i.i
+  %45 = load i64, ptr %42, align 8, !tbaa !10
+  %46 = xor i64 %45, -1
+  %47 = inttoptr i64 %46 to ptr
+  store ptr %47, ptr getelementptr inbounds ([80 x ptr], ptr @pys_fl, i64 0, i64 4), align 16, !tbaa !5
+  store i64 0, ptr %42, align 8, !tbaa !10
+  br label %f.make_values.exit.i.i
+
+48:                                               ; preds = %L7.i.i
+  %49 = tail call fastcc ptr @gc_slow(i64 noundef 31, i32 noundef 0)
+  br label %f.make_values.exit.i.i
+
+f.make_values.exit.i.i:                           ; preds = %48, %44
+  %50 = phi ptr [ %42, %44 ], [ %49, %48 ]
+  %51 = getelementptr inbounds %struct.List, ptr %50, i64 0, i32 1
+  store i64 4096, ptr %51, align 8, !tbaa !11
+  %52 = tail call fastcc ptr @gc_slow(i64 noundef 32768, i32 noundef 1)
+  %53 = getelementptr inbounds %struct.List, ptr %50, i64 0, i32 2
+  store ptr %52, ptr %53, align 8, !tbaa !14
+  tail call void @llvm.memcpy.p0.p0.i64(ptr noundef nonnull align 8 dereferenceable(32768) %52, ptr noundef nonnull align 8 dereferenceable(32768) @lc.0, i64 32768, i1 false)
+  store i64 4096, ptr %50, align 8, !tbaa !15
+  %t15.i.i = load ptr, ptr @g.held, align 8
+  %t17.i.i = ptrtoint ptr %50 to i64
+  tail call void @pys_list_append(ptr %t15.i.i, i64 %t17.i.i)
+  %t20.i.i = load i64, ptr %50, align 4
+  %54 = icmp sgt i64 %t20.i.i, 0
+  br i1 %54, label %pys_list_get.exit.i.i, label %55
+
+55:                                               ; preds = %f.make_values.exit.i.i
+  tail call void @pys_fail(ptr noundef nonnull @.str.85) #36
+  unreachable
+
+pys_list_get.exit.i.i:                            ; preds = %f.make_values.exit.i.i
+  %56 = load ptr, ptr %53, align 8, !tbaa !14
+  %57 = getelementptr %struct.Slot, ptr %56, i64 %t20.i.i
+  %58 = getelementptr %struct.Slot, ptr %57, i64 -1
+  %59 = load i64, ptr %58, align 8, !tbaa !16
+  %t33.i.i = tail call { i64, i1 } @llvm.sadd.with.overflow.i64(i64 %t20.i.i, i64 %59)
+  %t35.i.i = extractvalue { i64, i1 } %t33.i.i, 1
+  br i1 %t35.i.i, label %L36.i.i, label %L37.i.i
+
+L37.i.i:                                          ; preds = %pys_list_get.exit.i.i
+  %t34.i.i = extractvalue { i64, i1 } %t33.i.i, 0
+  %t38.i.i = tail call { i64, i1 } @llvm.sadd.with.overflow.i64(i64 %checksum.3.07.i.i, i64 %t34.i.i)
+  %t39.i.i = extractvalue { i64, i1 } %t38.i.i, 0
+  %t40.i.i = extractvalue { i64, i1 } %t38.i.i, 1
+  br i1 %t40.i.i, label %L36.i.i, label %L41.i.i
+
+L41.i.i:                                          ; preds = %L37.i.i
+  %t42.i.i = load ptr, ptr @g.held, align 8
+  %t43.i.i = load i64, ptr %t42.i.i, align 4
+  %t44.i.i = icmp eq i64 %t43.i.i, 32
+  br i1 %t44.i.i, label %L45.i.i, label %L8.i.i
+
+L45.i.i:                                          ; preds = %L41.i.i
+  %60 = getelementptr inbounds %struct.List, ptr %t42.i.i, i64 0, i32 2
+  %61 = load ptr, ptr %60, align 8, !tbaa !14
+  tail call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(256) %61, i8 0, i64 256, i1 false)
+  %62 = getelementptr inbounds %struct.List, ptr %t42.i.i, i64 0, i32 3
+  %63 = load ptr, ptr %62, align 8, !tbaa !18
+  %64 = icmp eq ptr %63, null
+  br i1 %64, label %66, label %65
+
+65:                                               ; preds = %L45.i.i
+  tail call fastcc void @opt_in_trap() #37
+  unreachable
+
+66:                                               ; preds = %L45.i.i
+  store i64 0, ptr %t42.i.i, align 8, !tbaa !15
+  %67 = getelementptr inbounds %struct.List, ptr %t42.i.i, i64 0, i32 1
+  %68 = load i64, ptr %67, align 8, !tbaa !11
+  %69 = icmp eq i64 %68, 0
+  br i1 %69, label %L8.i.i, label %70
+
+70:                                               ; preds = %66
+  store i64 0, ptr %67, align 8, !tbaa !11
+  %71 = load ptr, ptr %60, align 8, !tbaa !14
+  %72 = ptrtoint ptr %71 to i64
+  %73 = icmp eq ptr %71, @empty_atomic
+  br i1 %73, label %99, label %74
+
+74:                                               ; preds = %70
+  %75 = load i64, ptr @gc_lo, align 8, !tbaa !19
+  %76 = sub i64 %72, %75
+  %77 = load i64, ptr @gc_hi, align 8, !tbaa !19
+  %78 = sub i64 %77, %75
+  %79 = icmp ult i64 %76, %78
+  br i1 %79, label %80, label %98
+
+80:                                               ; preds = %74
+  %81 = load ptr, ptr @pmap, align 8, !tbaa !5
+  %82 = lshr i64 %72, 30
+  %83 = getelementptr inbounds ptr, ptr %81, i64 %82
+  %84 = load ptr, ptr %83, align 8, !tbaa !5
+  %85 = icmp eq ptr %84, null
+  br i1 %85, label %98, label %86
+
+86:                                               ; preds = %80
+  %87 = lshr i64 %72, 12
+  %88 = and i64 %87, 262143
+  %89 = getelementptr inbounds ptr, ptr %84, i64 %88
+  %90 = load ptr, ptr %89, align 8, !tbaa !5
+  %91 = icmp eq ptr %90, null
+  br i1 %91, label %98, label %92
+
+92:                                               ; preds = %86
+  %93 = getelementptr inbounds %struct.Seg, ptr %90, i64 0, i32 13
+  %94 = load i32, ptr %93, align 8, !tbaa !20
+  %95 = freeze i32 %94
+  %96 = and i32 %95, 1
+  %97 = icmp eq i32 %96, 0
+  br i1 %97, label %98, label %99
+
+98:                                               ; preds = %92, %86, %80, %74
+  br label %99
+
+99:                                               ; preds = %98, %92, %70
+  %100 = phi ptr [ @empty_list, %98 ], [ @empty_atomic, %92 ], [ @empty_atomic, %70 ]
+  store ptr %100, ptr %60, align 8, !tbaa !14
+  br label %L8.i.i
+
+L8.i.i:                                           ; preds = %99, %66, %L41.i.i
+  %t492.i.i = add nuw nsw i64 %h.5.08.i.i, 1
+  %exitcond.not.i.i = icmp eq i64 %t492.i.i, %t13.i
+  br i1 %exitcond.not.i.i, label %main.init.exit, label %L7.i.i
+
+L36.i.i:                                          ; preds = %L37.i.i, %pys_list_get.exit.i.i
+  tail call void @pys_raise(ptr nonnull @s.6, ptr nonnull @s.5)
+  unreachable
+
+main.init.exit:                                   ; preds = %L8.i.i, %pys_list_get.exit.i
+  %checksum.3.0.lcssa.i.i = phi i64 [ 0, %pys_list_get.exit.i ], [ %t39.i.i, %L8.i.i ]
+  %t15.i = tail call ptr @pys_str_int(i64 %checksum.3.0.lcssa.i.i)
+  tail call void @pys_write(ptr %t15.i, i64 1)
+  tail call void @pys_write(ptr nonnull @s.1, i64 1)
+  tail call void @pys_finish()
+  ret i32 0
+}

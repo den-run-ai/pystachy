@@ -1,0 +1,24 @@
+--- tools/irsame.sh
++++ build/irsame_capture.sh
+@@ -126,9 +126,10 @@
+     '' | *[!0-9]*) echo "tools/irsame.sh: no case times (PYSTACHY_CASE_TIMES needs date +%s%N, GNU date's)" >&2; TIMES= ;;
+   esac
+ fi
+-SHOW=3
++SHOW=10000
+ T=$(mktemp -d "${TMPDIR:-/tmp}/pystachy-irsame.XXXXXX") || exit 1
+-trap 'rm -rf "$T"' EXIT
++printf '%s\n' "$@" > "$T/cases.txt"
++printf '%s\n' "$T" > build/field-corpus-directory.txt
+ trap 'exit 130' INT TERM
+ 
+ # same FILE DIR: compile FILE with both compilers in DIR; DIR/report says what differs (empty: nothing)
+@@ -172,7 +173,7 @@
+     fi
+   } > "$2/report.part"
+   mv "$2/report.part" "$2/report"
+-  rm -f "$2/old.ll" "$2/new.ll"
++  if [ ! -s "$2/report" ]; then rm -f "$2/old.ll" "$2/new.ll"; fi
+ }
+ # a worker: each program whose directory it is the first to create (mkdir is atomic)
+ worker() {

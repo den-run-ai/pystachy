@@ -4,8 +4,8 @@ import os
 from src.pystachy_compiler.diagnostics import fail
 from src.pystachy_compiler.ir import IFn, Ins, Lookup, Val, Values
 from src.pystachy_compiler.ircheck import EffectSummaries
-from src.pystachy_compiler.specs import CANON_DEPTH, FXALL, FXBIT, LOOKUPS, RAWW, REACH
-from src.pystachy_compiler.utils import is_list, is_tuple, is_union, umembers
+from src.pystachy_compiler.specs import CANON_DEPTH, FXALL, FXBIT, LOOKUPS, NONEVAR, RAWW, REACH
+from src.pystachy_compiler.utils import is_list, is_opt, is_tuple, is_union, umembers
 
 
 # Every non-read summary effect: exceptions, allocation/GC, callbacks, runtime
@@ -37,7 +37,7 @@ PASS_CONTRACTS: list[PassContract] = [
     PassContract("charslots", ["uses", "predecessors", "reaching-stores"],
                  ["cfg", "loop-shape"],
                  ["values", "range-proofs", "alias-proofs", "slot-layout", "exact-effects"]),
-    PassContract("listget", ["predecessors", "loop-ranges"],
+    PassContract("listget", ["predecessors", "loop-ranges", "values", "invariant-slots"],
                  ["cfg", "loop-shape", "slot-layout"],
                  ["values", "range-proofs", "alias-proofs", "exact-effects"]),
     PassContract("dictfuse", ["predecessors", "values", "lookup-proofs"],
@@ -511,17 +511,20 @@ def gen_listget(self, fn: IFn) -> int:
     # whose code (after a landing block, which only unwind edges reach, see preds) joins
     # this path only after its try statement or at a loop's test, where paths meet. How
     # many reads it rewrote
+    bad = FXBIT["wL"] | FXBIT["U"]
+    ranges = False
     some = False
     for lp in fn.loops:
+        ranges = ranges or (lp.kind == "range" and lp.nonnegative)
         for s in lp.seqs:
             some = some or is_list(s.t)
-    if not some:
+    ranges = ranges and not fn.coro and fn.fx & bad == 0
+    if not some and not ranges:
         return 0
     at: dict[str, int] = {}
     for j in range(len(fn.blocks)):
         at[fn.blocks[j].label] = j
     pl = self.preds(fn)
-    bad = FXBIT["wL"] | FXBIT["U"]
     n = 0
     for lp in fn.loops:
         for k in range(len(lp.tests) if lp.kind == "seq" else 0):
@@ -545,6 +548,70 @@ def gen_listget(self, fn: IFn) -> int:
                         break
                     if j == len(code) - 1 and (i.op == "br" or i.op == "cbr" or i.op == "check") and len(pl[i.b[0]]) == 1:
                         l = i.b[0]  # (a cbr's: the next sequence's test, in a zip)
+    if not ranges:
+        return n
+    # range(k, len(xs), step) tests a captured length. Its positive constant step
+    # and nonnegative start keep the induction value nonnegative (overflow exits
+    # the loop), and no list write or unknown call anywhere in this function can
+    # invalidate the length, including before the loop or across its back edge.
+    # A suspended generator can let its caller mutate the list, so is excluded.
+    # Entry-only local bindings let the same list be recognized across that edge;
+    # every other value uses canon's existing, bounded forward-path proof.
+    vs = Values(fn, pl)
+    slots: dict[str, int] = {}
+    for slot in fn.slots:
+        if slot.k == 0 and is_list(slot.t):
+            slots[f"%{slot.s or 'h'}.{slot.r[0]}"] = 0
+    for b in range(len(fn.blocks)):
+        code = fn.blocks[b].code
+        for x in range(len(code)):
+            i = code[x]
+            for k in range(len(i.a)):
+                a = i.a[k].v
+                if a in slots and slots[a] >= 0 and (k != 0 or i.op != "mem.load"):
+                    slots[a] = x + 1 if k == 0 and i.op == "mem.store" and b == 0 else -1
+    for b in range(len(fn.blocks)):
+        code = fn.blocks[b].code
+        for x in range(len(code)):
+            i = code[x]
+            if i.op == "mem.load" and i.a[0].v in slots:
+                a = i.a[0].v
+                if slots[a] >= 0 and (b > 0 or x >= slots[a]):
+                    vs.cn[f"%t{i.r[0]}"] = "slot " + a
+    for lp in fn.loops:
+        if lp.kind != "range" or not lp.nonnegative or len(lp.idx) != 1 or len(pl[lp.body]) != 1:
+            continue
+        stop = self.canon(vs, lp.stop.v)
+        w = vs.at[int(stop[2:])] if stop.startswith("%t") and stop[2:].isdigit() else -1
+        if w < 0:
+            continue
+        length = fn.blocks[w // vs.stride].code[w % vs.stride]
+        if length.op != "list.len":
+            continue
+        # The semantic length records its list owner without reconstructing
+        # layout from a generic machine load.
+        seq = self.canon(vs, length.a[0].v)
+        idx = self.canon(vs, lp.idx[0])
+        l = lp.body
+        steps = 0
+        while l != "" and steps < len(fn.blocks):
+            steps += 1
+            b = at[l]
+            code = fn.blocks[b].code
+            l = ""
+            for j in range(len(code)):
+                i = code[j]
+                if i.op == "rt" and i.s == "list.get" and self.canon(vs, i.a[0].v) == seq and self.canon(vs, i.a[1].v) == idx:
+                    i.op = "list.load"
+                    i.s = ""
+                    i.r = [i.r[0], fn.n + 1, fn.n + 2, fn.n + 3]
+                    fn.n += 3
+                    n += 1
+                    break
+                if self.opfx(i, fn.fa) & bad != 0:
+                    break
+                if j == len(code) - 1 and (i.op == "br" or i.op == "cbr" or i.op == "check") and len(pl[i.b[0]]) == 1 and at[i.b[0]] > b:
+                    l = i.b[0]
     return n
 
 def gen_dictfuse(self, fn: IFn) -> int:
@@ -702,17 +769,20 @@ def gen_dictfuse(self, fn: IFn) -> int:
         if i.s == "dict.has":
             self.runtime("pys_dict_find")
             fi = Ins("rt", "int", "dict.find")
+            fi.line = i.line
             fi.a = [i.a[0], i.a[1]]
             fi.x = i.x
             fi.r = [f.e]
             code[x] = fi
             ad = Ins("scalar.bin", "int", "add")
+            ad.line = i.line
             ad.a = [Val(f"%t{f.e}", "int"), Val("1", "int")]
             ad.r = [i.r[0]]
             code.insert(x + 1, ad)
         else:
             self.runtime("pys_dict_entry")
             en = Ins("rt", "int", "dict.entry")
+            en.line = i.line
             en.a = [i.a[0], i.a[1]]
             en.x = i.x
             en.r = [f.e]
@@ -736,12 +806,17 @@ def gen_unionslots(self, fn: IFn) -> int:
     # more boxes than before, also where a store's box was made elsewhere (a call's, a
     # parameter's), which a load that leaves would box again. A ubox, slot.pack, union read or
     # union phi that nothing uses any more goes: a loop that adds floats to an int | float local
-    # allocates nothing. A generator's locals stay (its frame keeps them). How many slots it split
+    # allocates nothing. Private optional scalars also use two slots: presence and payload,
+    # only for None, scalar boxes or their phis, with no use beyond null tests and payload reads.
+    # Inferred None-first locals can retain NONEVAR on their slots: the same producer/use
+    # checks prove scalar storage without depending on that provisional annotation.
+    # Unknown producers and escaping optionals stay boxed; no nullable pointer is dereferenced
+    # to take it apart. A generator's locals stay (its frame keeps them). How many slots it split
     if fn.coro:
         return 0
-    cands = [s for s in fn.slots if s.k == 0 and is_union(s.t) and len([m for m in umembers(s.t) if m != "int" and m != "float" and m != "bool"]) == 0]
+    cands = [s for s in fn.slots if s.k == 0 and ((is_union(s.t) and len([m for m in umembers(s.t) if m != "int" and m != "float" and m != "bool"]) == 0) or s.t in ["opt[int]", "opt[float]", "opt[bool]", NONEVAR])]
     if len(cands) == 0:
-        return 0  # (no local of a union of numbers: defs and uses would go unread)
+        return 0  # (no scalar union or optional local: defs and uses would go unread)
     defs: dict[str, list[int]] = {}  # a value -> the block and position of the op that makes it
     uses: dict[str, list[list[int]]] = {}  # a value -> the block, position and operand of each use
     for j in range(len(fn.blocks)):
@@ -760,9 +835,11 @@ def gen_unionslots(self, fn: IFn) -> int:
         ok = addr in uses
         for u in uses.get(addr, []):
             i = fn.blocks[u[0]].code[u[1]]
-            if u[2] != 0 or (i.op != "mem.load" and i.op != "mem.store") or (i.op == "mem.store" and not self.usplits(fn, defs, i.a[1].v, {})):
+            if u[2] != 0 or (i.op != "mem.load" and i.op != "mem.store") or (i.op == "mem.store" and not self.usplits(fn, defs, i.a[1].v, {}, is_opt(s.t))):
                 ok = False
             elif i.op == "mem.load":
+                if is_opt(s.t) and self.uleaves(fn, uses, i, {}):
+                    ok = False  # (optional copies and identity-sensitive uses also stay boxed)
                 for w in uses.get(f"%t{i.r[0]}", []):
                     o = fn.blocks[w[0]].code[w[1]]
                     if (o.op == "union.payload" or o.op == "union.raw") and f"%t{o.r[0]}" in uses:
@@ -805,23 +882,31 @@ def gen_unionslots(self, fn: IFn) -> int:
             for half in halves[addr]:
                 fn.n += 1
                 ld = Ins("mem.load", "int", "")
+                ld.line = i.line
                 ld.a = [Val(half, "*int")]
                 ld.r = [fn.n]
                 ops.append(ld)
             parts[v] = [f"%t{ops[0].r[0]}", f"%t{ops[1].r[0]}"]
             for w in uses.get(v, []):
                 o = fn.blocks[w[0]].code[w[1]]
-                if o.op == "union.tag" or self.tag_read(o):
-                    ren[f"%t{o.r[0]}"] = parts[v][0]
+                if is_opt(split[addr].t) and o.op == "ptr.cmp":
+                    test = Ins("num.cmp", "bool", o.s)
+                    test.a = [Val(parts[v][0], "int"), Val("0", "int")]
+                    test.r = o.r
+                    repl[f"{w[0]}:{w[1]}"] = [test]
+                elif o.op == "union.tag" or self.tag_read(o):
+                    ren[f"%t{o.r[0]}"] = parts[v][1 if is_opt(split[addr].t) else 0]
                     repl[f"{w[0]}:{w[1]}"] = []
                 elif o.op == "union.payload" or o.op == "union.raw":
                     p = Ins("slot.pack", "%slot", "")
+                    p.line = o.line
                     p.a = [Val(parts[v][1], "int")]
                     p.r = [o.r[1]]
                     repl[f"{w[0]}:{w[1]}"] = [p]
             if self.uleaves(fn, uses, i, split):  # (a copy to a slot that splits stores the parts)
                 # (the box that leaves, as the value it replaces)
                 box = Ins("rt", "%ptr", "ubox")
+                box.line = i.line
                 box.a = [Val(parts[v][0], "int"), Val(parts[v][1], "*T")]
                 box.r = [i.r[0]]
                 ops.append(box)
@@ -835,6 +920,7 @@ def gen_unionslots(self, fn: IFn) -> int:
             ops = []
             for k in range(2):
                 st = Ins("mem.store", "", "")
+                st.line = i.line
                 st.a = [Val(halves[addr][k], "*int"), Val(q[k], "int")]
                 ops.append(st)
             repl[f"{u[0]}:{u[1]}"] = ops
@@ -872,7 +958,7 @@ def gen_unionslots(self, fn: IFn) -> int:
         for b in fn.blocks:
             code = []
             for i in b.code:
-                pure = (i.op == "rt" and i.s == "ubox") or i.op == "slot.pack" or i.op == "union.tag" or i.op == "union.payload" or i.op == "union.raw" or (i.op == "phi" and (is_union(i.t) or i.t == "int"))
+                pure = (i.op == "rt" and (i.s == "ubox" or i.s == "box")) or i.op == "slot.pack" or i.op == "union.tag" or i.op == "union.payload" or i.op == "union.raw" or (i.op == "phi" and (is_union(i.t) or is_opt(i.t) or i.t == "int"))
                 if pure and len([r for r in i.r if f"%t{r}" in used]) == 0:
                     gone += 1
                 else:
@@ -886,10 +972,12 @@ def gen_tag_read(self, i: Ins) -> bool:
     # equality and methods reads it (Gen.mload of the box)
     return i.op == "mach.load" and i.t == "int" and i.s == ""
 
-def gen_usplits(self, fn: IFn, defs: dict[str, list[int]], v: str, seen: dict[str, bool]) -> bool:
+def gen_usplits(self, fn: IFn, defs: dict[str, list[int]], v: str, seen: dict[str, bool], optional: bool = False) -> bool:
     # can unionslots take apart union value v: an op's (a phi's where its incoming values'
-    # are) or a parameter's
-    if v in seen or (v.startswith("%a") and v[2:].isdigit()):
+    # are) or a parameter's. An optional admits only known scalar boxes, None and their phis.
+    if optional and v == "null":
+        return True
+    if v in seen or (not optional and v.startswith("%a") and v[2:].isdigit()):
         return True
     if v not in defs:
         return False
@@ -897,8 +985,10 @@ def gen_usplits(self, fn: IFn, defs: dict[str, list[int]], v: str, seen: dict[st
     i = fn.blocks[defs[v][0]].code[defs[v][1]]
     if i.op == "phi":
         for a in i.a:
-            if not self.usplits(fn, defs, a.v, seen):
+            if not self.usplits(fn, defs, a.v, seen, optional):
                 return False
+    elif optional:
+        return i.op == "rt" and i.s == "box"
     return True
 
 def gen_uparts(self, fn: IFn, defs: dict[str, list[int]], v: str, t: str, parts: dict[str, list[str]], before: dict[str, list[Ins]], after: dict[str, list[Ins]], heads: dict[int, list[Ins]]) -> list[str]:
@@ -908,8 +998,13 @@ def gen_uparts(self, fn: IFn, defs: dict[str, list[int]], v: str, t: str, parts:
     # function begins), so that they are there wherever v is
     if v in parts:
         return parts[v]
+    if is_opt(t) and v == "null":
+        return ["0", "0"]
     d = defs[v] if v in defs else [0, -1]
     i = fn.blocks[d[0]].code[d[1]] if d[1] >= 0 else Ins("", "", "")
+    if is_opt(t) and i.op == "rt" and i.s == "box":
+        parts[v] = ["1", i.a[0].v]
+        return parts[v]
     if i.op == "rt" and i.s == "ubox":
         parts[v] = [i.a[0].v, i.a[1].v]
         return parts[v]
@@ -918,6 +1013,7 @@ def gen_uparts(self, fn: IFn, defs: dict[str, list[int]], v: str, t: str, parts:
         for k in range(2):
             fn.n += 1
             p = Ins("phi", "int", "")
+            p.line = i.line
             p.r = [fn.n]
             p.a = []
             p.b = []
@@ -934,9 +1030,11 @@ def gen_uparts(self, fn: IFn, defs: dict[str, list[int]], v: str, t: str, parts:
         return parts[v]
     fn.n += 1
     tg = Ins("union.tag", "int", "")
+    tg.line = i.line
     tg.a = [Val(v, t)]
     tg.r = [fn.n]
     pl = Ins("union.raw", "%slot", "")
+    pl.line = i.line
     pl.a = [Val(v, t)]
     pl.r = [fn.n + 1, fn.n + 2]
     fn.n += 2
@@ -953,6 +1051,10 @@ def gen_uleaves(self, fn: IFn, uses: dict[str, list[list[int]]], i: Ins, split: 
     # than its union.tag, its union.payload/raw, a tag read and a store to a slot that splits too
     for w in uses.get(f"%t{i.r[0]}", []):
         o = fn.blocks[w[0]].code[w[1]]
+        if is_opt(i.t):
+            if self.tag_read(o) or (o.op == "ptr.cmp" and len(o.a) == 2 and (o.a[0].v == "null" or o.a[1].v == "null")):
+                continue
+            return True
         if not (o.op == "union.tag" or o.op == "union.payload" or o.op == "union.raw" or self.tag_read(o) or (o.op == "mem.store" and w[2] == 1 and o.a[0].v in split)):
             return True
     return False
@@ -1360,6 +1462,7 @@ def gen_nullcheck(self, fn: IFn) -> int:
         code = fn.blocks[j].code
         t = code[len(code) - 1]
         br = Ins("br", "", "")
+        br.line = t.line
         br.b = [t.b[0]]
         code[len(code) - 1] = br
         brs[j] = True

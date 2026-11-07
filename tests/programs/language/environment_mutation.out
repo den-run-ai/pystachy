@@ -1,0 +1,26 @@
+initially absent
+None
+child one
+0
+replacement replacement missing
+0
+'' ''
+True
+OSError [Errno 22] Invalid argument
+ValueError illegal environment variable name
+ValueError embedded null byte
+ValueError embedded null byte
+ValueError embedded null byte
+missing missing
+missing missing
+missing missing
+missing missing
+tail=value
+'éléphant 漢字' 'éléphant 漢字' missing
+'a\udc80\udcffz' 'a\udc80\udcffz' missing
+UnicodeEncodeError 'utf-8' codec can't encode character '\ud800' in position 34: surrogates not allowed
+UnicodeEncodeError 'utf-8' codec can't encode character '\ud800' in position 0: surrogates not allowed
+UnicodeEncodeError 'utf-8' codec can't encode character '\ud800' in position 34: surrogates not allowed
+UnicodeEncodeError 'utf-8' codec can't encode character '\ud800' in position 34: surrogates not allowed
+finally absent
+[exit 0]

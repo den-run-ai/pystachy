@@ -1,0 +1,5 @@
+layout False
+NotImplementedError: FieldInitializer() through Any requires an ordinary class with a fixed initializer
+argument
+NotImplementedError: FieldInitializer() through Any requires an ordinary class with a fixed initializer
+[exit 0]
