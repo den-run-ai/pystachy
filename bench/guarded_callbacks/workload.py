@@ -1,9 +1,9 @@
-"""Runtime-selected batch scores; shared unchanged by both benchmark variants."""
+"""The identical runtime-selected scoring program for both compiler options."""
 from collections.abc import Callable
 import sys
 from time import perf_counter_ns, process_time_ns
 
-from scoring import absolute_error, squared_error
+from scoring import absolute_error, score, squared_error
 
 
 def weighted_error(scale: float) -> Callable[[float, float], float]:
@@ -44,7 +44,7 @@ def callbacks(scenario: str, batches: int) -> list[Callable[[float, float], floa
     return selected
 
 
-def run(scorer) -> None:
+def run() -> None:
     scenario = sys.argv[1]
     size = int(sys.argv[2])
     batches = int(sys.argv[3])
@@ -57,7 +57,7 @@ def run(scorer) -> None:
     selected = callbacks(scenario, batches)
     # One untimed call warms instruction/data access in every process. Measured
     # work includes selection, the length check, entry guard and complete loop.
-    scorer(selected[0], predicted, expected)
+    score(selected[0], predicted, expected)
     total = 0.0
     wall_start = perf_counter_ns()
     cpu_start = process_time_ns()
@@ -66,10 +66,14 @@ def run(scorer) -> None:
             # Construction-heavy control: include fresh input allocation and
             # conversion in the measured region, as an application would.
             predicted, expected = inputs(size, seed + batch % 97)
-        total += scorer(selected[batch], predicted, expected)
+        total += score(selected[batch], predicted, expected)
     cpu_elapsed = process_time_ns() - cpu_start
     wall_elapsed = perf_counter_ns() - wall_start
     print(total)
     print(size * batches)
     print("kernel_wall_ns", wall_elapsed, file=sys.stderr)
     print("kernel_cpu_ns", cpu_elapsed, file=sys.stderr)
+
+
+if __name__ == "__main__":
+    run()

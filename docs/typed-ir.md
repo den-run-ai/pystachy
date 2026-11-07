@@ -416,7 +416,27 @@ and focused alias, mutation and GC tests cover the exposed dynamic mutation path
 ## Optimizations
 
 `OPTS` lists the available switches. `charslots`, `listget`, `dictfuse`, `unionslots` and `nullcheck`
-are whole-function IR passes; the others select frontend or lowering choices.
+are whole-function IR passes. `callbacks` versions eligible functions after
+ordinary compilation and before effect summaries and recursion accounting;
+the remaining options select frontend or lowering choices.
+
+`callbacks` finds a loop that calls an erased `Callable` parameter through a
+private, write-once slot. It emits at most two precompiled copies, guarded by the
+exact immutable callable objects already materialized in the program. A matching
+copy calls the existing signature adapter directly; the ordinary body handles
+every miss. This exposes the callback to LLVM inlining without user-written
+guards, decorators, profiling or runtime compilation. Arguments are evaluated
+once before dispatch, and a selected body never restarts on an exception.
+
+The prototype considers module functions with the same callable signature in
+deterministic materialization order; it does not learn target frequencies or
+prove call-site reachability. Bodies are limited to 256 IR instructions, with
+4096 additional instructions per compilation. Reassigned/captured callback slots,
+multiple callback parameters, methods, generators, local exception handlers and
+dynamic identity ABIs retain ordinary compilation. Closures and bound methods
+remain valid fallback callbacks. The original entry owns the source recursion
+frame and its generated helpers add none. Disable this pass alone with
+`PYSTACHY_OPT=-callbacks` for identical-source comparisons.
 
 `PASS_CONTRACTS` declares their order, prerequisites, preserved facts and invalidation.
 They require typed IR before exception lowering and conservative bounds on

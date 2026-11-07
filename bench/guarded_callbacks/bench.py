@@ -1,7 +1,7 @@
-"""CPython controller for paired, same-compiler guarded-scoring measurements.
+"""Compare one ordinary scoring program with compiler callback guards off/on.
 
 Run on Linux with the repository's pinned CPython; --smoke checks correctness only.
-Generated drivers, binaries and raw IR are retained with --keep (alias --work-dir).
+Binaries, caches and raw IR are retained with --keep (alias --work-dir).
 """
 import argparse
 import hashlib
@@ -18,10 +18,12 @@ import time
 
 ROOT = Path(__file__).resolve().parents[2]
 HERE = Path(__file__).resolve().parent
+EXAMPLE = ROOT / "examples/guarded_score"
 sys.path.insert(0, str(ROOT / "tools"))
 from bench_extended import execute  # noqa: E402
 
 VARIANTS = ("generic", "guarded")
+OPTIONS = {"generic": "-callbacks", "guarded": ""}
 CASES = ("square", "absolute", "skew99", "mixed", "miss", "change", "short", "stream")
 
 
@@ -32,7 +34,7 @@ def digest(path):
 def source_hashes():
     paths = [ROOT / name for name in ("pystachy.py", "runtime.py", "runtime.c", "VERSION",
                                       "tools/bench_extended.py")]
-    for tree in ("src", "lib", "mpz", "ryu", "examples/guarded_score"):
+    for tree in ("src", "lib", "mpz", "ryu", "examples/guarded_score", "bench/guarded_callbacks"):
         paths.extend(p for p in (ROOT / tree).rglob("*") if p.suffix in (".py", ".c", ".h"))
     return {str(p.relative_to(ROOT)): digest(p) for p in sorted(set(paths))}
 
@@ -121,7 +123,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--compiler", type=Path, default=ROOT / "pystachy", help="one native compiler executable")
     parser.add_argument("--keep", "--work-dir", dest="keep", type=Path, help="new, owned artifact/cache directory")
-    parser.add_argument("--json", type=Path, default=ROOT / "build/guarded-score.json")
+    parser.add_argument("--json", type=Path, default=ROOT / "build/guarded-callbacks.json")
     parser.add_argument("--cases", nargs="+", choices=CASES, default=list(CASES))
     parser.add_argument("--samples", type=positive, default=7, help="paired process samples per case/mode")
     parser.add_argument("--size", type=positive, default=16384)
@@ -145,11 +147,15 @@ def main(argv=None):
         parser.error(f"CPU {cpu} is not in the current affinity")
     compiler, output = args.compiler.resolve(), args.json.resolve()
     samples, builds = (1, 1) if args.smoke else (args.samples, 3)
-    directory = args.keep.resolve() if args.keep else Path(tempfile.mkdtemp(prefix="pystachy-guarded-score-"))
+    directory = args.keep.resolve() if args.keep else Path(tempfile.mkdtemp(prefix="pystachy-guarded-callbacks-"))
     env = {k: v for k, v in os.environ.items() if not k.startswith("PYSTACHY_") or k == "PYSTACHY_LLVM"}
-    env.update(PYSTACHY_HOME=str(ROOT), PYSTACHY_PATH=str(HERE), PYSTACHY_CACHE=str(directory / "cache"),
-               PYTHONPATH=str(HERE), PYTHONHASHSEED="0", PYTHONDONTWRITEBYTECODE="1")
-    report = {"schema_version": 1, "status": "incomplete", "cases": [],
+    env.update(PYSTACHY_HOME=str(ROOT), PYSTACHY_PATH=str(EXAMPLE),
+               PYTHONPATH=str(EXAMPLE), PYTHONHASHSEED="0", PYTHONDONTWRITEBYTECODE="1")
+    environments = {variant: dict(env, PYSTACHY_OPT=OPTIONS[variant],
+                                  PYSTACHY_CACHE=str(directory / "cache" / variant))
+                    for variant in VARIANTS}
+    report = {"schema_version": 2, "status": "incomplete", "cases": [],
+              "program": str(HERE / "workload.py"), "compiler_options": OPTIONS,
               "measurement_kind": "correctness_only" if args.smoke else "paired_performance",
               "settings": {k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()},
               "work_dir": str(directory), "original_affinity": sorted(affinity),
@@ -160,30 +166,35 @@ def main(argv=None):
             directory.mkdir(parents=True, exist_ok=False)
         os.sched_setaffinity(0, {cpu})
         save(output, report)
-        drivers, binaries = {}, {}
-        for variant in VARIANTS:
-            drivers[variant] = directory / f"{variant}.py"
-            drivers[variant].write_text(f"from scoring import score_{variant}\nfrom workload import run\nrun(score_{variant})\n")
-            binaries[variant] = directory / f"{variant}.exe"
+        # Both variants compile the exact same file; only the compiler pass differs.
+        drivers = {variant: HERE / "workload.py" for variant in VARIANTS}
+        binaries = {variant: directory / f"{variant}.exe" for variant in VARIANTS}
         prime = directory / "prime.py"
         prime.write_text("pass\n")
         report["metadata"] = metadata(compiler, env, args.timeout, [*drivers.values(), prime])
-        # Exclude first runtime-cache construction and a warm build of each variant.
-        report["cold_runtime_prime"] = execute([str(compiler), "run", str(prime)], env, args.timeout)
+        report["metadata"]["variant_environment"] = {
+            variant: {key: environments[variant][key] for key in ("PYSTACHY_OPT", "PYSTACHY_CACHE")}
+            for variant in VARIANTS}
+        # Each compiler option gets its own cache, including on every JIT invocation.
+        report["cold_runtime_prime"] = {
+            variant: execute([str(compiler), "run", str(prime)], environments[variant], args.timeout)
+            for variant in VARIANTS}
         report["artifacts"], report["build_warmups"], report["build_pairs"] = {}, {}, []
         for variant in VARIANTS:
             ir = directory / f"{variant}.ll"
-            ir_run = execute([str(compiler), "ir", str(drivers[variant]), "-o", str(ir)], env, args.timeout)
+            ir_run = execute([str(compiler), "ir", str(drivers[variant]), "-o", str(ir)],
+                             environments[variant], args.timeout)
             report["artifacts"][variant] = {"raw_ir_bytes": ir.stat().st_size,
                                              "raw_ir_sha256": digest(ir), "ir_generation": ir_run}
             report["build_warmups"][variant] = execute(
-                [str(compiler), "build", str(drivers[variant]), "-o", str(binaries[variant])], env, args.timeout)
+                [str(compiler), "build", str(drivers[variant]), "-o", str(binaries[variant])],
+                environments[variant], args.timeout)
         for repeat in range(builds):
             pair = {"order": list(VARIANTS[::1 if repeat % 2 == 0 else -1])}
             report["build_pairs"].append(pair)
             for variant in pair["order"]:
                 pair[variant] = execute([str(compiler), "build", str(drivers[variant]),
-                                         "-o", str(binaries[variant])], env, args.timeout)
+                                         "-o", str(binaries[variant])], environments[variant], args.timeout)
                 pair[variant]["binary_bytes"] = binaries[variant].stat().st_size
         for variant in VARIANTS:
             report["artifacts"][variant].update(binary_bytes=binaries[variant].stat().st_size,
@@ -214,18 +225,18 @@ def main(argv=None):
             for mode in modes:
                 commands = {v: ([str(binaries[v])] if mode == "aot" else
                                 [str(compiler), "run", str(drivers[v])]) + runargs for v in VARIANTS}
-                case["warmups"][mode] = {v: checked(commands[v], env, args.timeout, size * batches, expected)
+                case["warmups"][mode] = {v: checked(commands[v], environments[v], args.timeout, size * batches, expected)
                                          for v in VARIANTS}
                 pairs = case["pairs"][mode] = []
                 for repeat in range(samples):
                     pair = {"order": list(VARIANTS[::1 if (repeat + index) % 2 == 0 else -1])}
                     pairs.append(pair)
                     for variant in pair["order"]:
-                        pair[variant] = checked(commands[variant], env, args.timeout, size * batches, expected)
+                        pair[variant] = checked(commands[variant], environments[variant], args.timeout, size * batches, expected)
                 if not args.smoke:
                     case["summary"][mode] = summarize(pairs)
             for variant in VARIANTS:
-                probe = checked([str(binaries[variant]), *runargs], dict(env, PYSTACHY_GC="stats"),
+                probe = checked([str(binaries[variant]), *runargs], dict(environments[variant], PYSTACHY_GC="stats"),
                                 args.timeout, size * batches, expected)
                 probe["environment_overrides"] = {"PYSTACHY_GC": "stats"}
                 case["gc_probes"][variant] = probe
@@ -239,7 +250,7 @@ def main(argv=None):
         if source_hashes() != report["metadata"]["source_sha256"] or digest(compiler) != report["metadata"]["compiler"]["sha256"]:
             raise ValueError("compiler or source inputs changed during measurement")
         if {p.name: digest(p) for p in [*drivers.values(), prime]} != report["metadata"]["driver_sha256"]:
-            raise ValueError("generated drivers changed during measurement")
+            raise ValueError("input program changed during measurement")
         report["load_average_end"] = os.getloadavg()
         report["status"] = "complete"
     except (OSError, RuntimeError, ValueError, KeyboardInterrupt) as exc:
