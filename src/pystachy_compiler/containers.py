@@ -62,10 +62,10 @@ def gen_list_item(self, o: Val, i: Val, keep: bool = False) -> Val:
     # Container comparisons retain the stored layout even in a fixed-width caller (keep).
     k = self.list_id_kind(o.t)
     if k != 0:
-        b = self.rt("pys_list_get_identity", "ptr", [f"ptr {o.v}", f"i64 {i.v}", f"i64 {k}"])
+        b = self.list_get("list.get_identity", [o, i, Val(str(k), "int")])
         t = BIG if keep and elem(o.t) == "int" and int_lists() else self.item_type(o.t)
         return self.dyn_unbox(Val(b, "dyn"), t)
-    return self.list_value(o, i.v, self.rt("pys_list_get", "i64", [f"ptr {o.v}", f"i64 {i.v}"]), keep)
+    return self.list_value(o, i.v, self.list_get("list.get", [o, i]), keep)
 
 
 def gen_list_value(self, o: Val, i: str, raw: str, keep: bool = False) -> Val:

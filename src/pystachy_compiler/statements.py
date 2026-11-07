@@ -1931,10 +1931,10 @@ def gen_for_seq(self, tgt: Node, seqs: list[Val], mode: str, body: list[Node], s
         elif mode == "reversed":
             j = self.scalar('sub', [Val(self.scalar('sub', [Val(st[k], 'int'), Val('1', 'int')]), 'int'), Val(i, 'int')])
             # 0 <= j < the current length, as CPython's reversed iterator checks
-            ok = self.int_ucmp('<', Val(j, "int"), Val(self.mload('int', s.v) if is_list(s.t) else st[k], "int")).v
+            ok = self.int_ucmp('<', Val(j, "int"), Val(self.list_len(s) if is_list(s.t) else st[k], "int")).v
         else:
             j = i
-            ok = self.num_cmp('<', Val(i, "int"), Val(self.mload('int', s.v) if not is_tuple(s.t) else st[k], "int")).v
+            ok = self.num_cmp('<', Val(i, "int"), Val(self.list_len(s) if is_list(s.t) else self.mload('int', s.v) if not is_tuple(s.t) else st[k], "int")).v
         go = self.label()
         self.cbr(ok, go, le)
         self.place(go)
@@ -2034,7 +2034,7 @@ def gen_seq_start(self, s: Val, mode: str, made: SeqStart) -> None:
         made.st.append("")
         made.used.append("")
         return
-    n0 = self.mload('int', s.v) if not is_tuple(s.t) else str(len(targs(s.t)))
+    n0 = self.list_len(s) if is_list(s.t) else self.mload('int', s.v) if not is_tuple(s.t) else str(len(targs(s.t)))
     made.used.append(n0)
     if s.t == "str" and not self.rtmode:
         pos = self.alloca("int", "")

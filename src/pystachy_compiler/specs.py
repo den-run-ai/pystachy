@@ -654,6 +654,9 @@ IROPS: dict[str, str] = {
     "gen.start": "T A", "gen.yield": "T U", "gen.ret": "T", "gen.promise": "", "gen.resume": "U",
     "gen.drop": "A I rL wL rD wD rO wO rG wG rF wF",
 }
+# Native list reads whose receiver and encoded result survive in IR.
+LIST_READS: list[str] = ["list.get", "list.get_identity"]
+
 # Native list writes whose concrete receiver and packed item types survive in IR.
 # RUNTIME remains authoritative for their signatures, effects and LLVM symbols.
 # The variant selects the storage contract checked by builders and verifiers.
@@ -718,7 +721,7 @@ LOOKUPS = 32
 # the ops whose values Values places, by the number each defines (its block and position there),
 # as how: 1, the value of one that defines one; 2, the payload of union.payload/raw and dyn.payload,
 # their second; 3, each value of tuple.load and tuple.store
-VALUE_AT: dict[str, int] = {"select": 1, "scalar.bin": 1, "scalar.cast": 1, "scalar.cmp": 1, "rt": 1, "slot.pack": 1, "slot.unpack": 1,
+VALUE_AT: dict[str, int] = {"list.len": 1, "select": 1, "scalar.bin": 1, "scalar.cast": 1, "scalar.cmp": 1, "rt": 1, "slot.pack": 1, "slot.unpack": 1,
                             "num.cast": 1, "num.cmp": 1, "mach.load": 1, "mach.addr": 1, "mem.load": 1, "field.addr": 1, "int.ucmp": 1,
                             "ptr.cmp": 1, "dyn.type": 1, "big.lo": 1, "big.hi": 1, "union.payload": 2, "union.raw": 2, "dyn.payload": 2,
                             "big.make": 2, "tuple.load": 3, "tuple.store": 3}

@@ -586,10 +586,10 @@ def gen_listget(self, fn: IFn) -> int:
         if w < 0:
             continue
         length = fn.blocks[w // vs.stride].code[w % vs.stride]
-        if length.op != "mach.load" or length.t != "int" or length.s != "":
+        if length.op != "list.len":
             continue
-        # len(list) is a load of its first field. A matching list.get proves the
-        # pointer is a list; a load of another object's length cannot match it.
+        # The semantic length records its list owner without reconstructing
+        # layout from a generic machine load.
         seq = self.canon(vs, length.a[0].v)
         idx = self.canon(vs, lp.idx[0])
         l = lp.body

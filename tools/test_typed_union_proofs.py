@@ -869,7 +869,7 @@ class UnionProofTests(unittest.TestCase):
                 with self.subTest(element=element, tag=tag):
                     c = Case("list_load_type", ["list[" + element + "]"])
                     c.g.runtime("pys_ubox")
-                    c.op("list.load", "*T", a=[("%a0", "S"), ("0", "int")])
+                    c.op("list.load", "*" + element, a=[("%a0", "list[" + element + "]"), ("0", "int")])
                     value = "%t" + str(c.b.code[-1].r[0])
                     c.op("rt", "%ptr", "ubox", [(str(c.g.utags[tag]), "int"), (value, "*T")])
                     c.ret()
@@ -898,10 +898,11 @@ class UnionProofTests(unittest.TestCase):
                     else:
                         receiver = "%a0" if source == "float" else c.op("rt", "list[T]", "list.new", [("1", "int")])
                         if source == "specialized":
-                            c.op("list.load", "*T", a=[(receiver, "S"), ("0", "int")])
+                            c.op("list.load", "*T", a=[(receiver, "list[T]"), ("0", "int")])
                             value = "%t" + str(c.b.code[-1].r[0])
                         else:
-                            value = c.op("rt", "*T", "list.get", [(receiver, "S"), ("0", "int")])
+                            element = "float" if source == "float" else "T"
+                            value = c.op("rt", "*" + element, "list.get", [(receiver, "list[" + element + "]"), ("0", "int")])
                     # Only the generic element is instantiated here. A concrete float
                     # or an opaque union payload cannot be relabelled by this annotation.
                     c.op("mem.store", a=[(address, "*int"), (value, "int")])

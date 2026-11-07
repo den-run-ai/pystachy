@@ -15,6 +15,7 @@ from src.pystachy_compiler.specs import (
     FXBIT,
     HEX,
     INERT,
+    LIST_READS,
     LIST_WRITES,
     METHODS,
     OPTS,
@@ -846,6 +847,57 @@ class ListLayout:
         self.dynamic_type: str = "pys_dyntype_list" if self.element == "dyn" else ("pys_dyntype_biglist" if self.wide else "pys_dyntype_intlist") if self.element == "int" else ""
 
 
+def list_receiver_error(t: str) -> str:
+    # The outer receiver must name one semantic item, not an erased ABI pointer.
+    element = elem(t)
+    if not is_list(t) or not t.endswith("]") or element == "":
+        return "native list operation needs a concrete list receiver"
+    depth = 0
+    for c in element:
+        if c == "[":
+            depth += 1
+        elif c == "]":
+            depth -= 1
+        if depth < 0 or (c == "," and depth == 0):
+            return "native list operation needs a concrete list receiver"
+    if depth != 0:
+        return "native list operation needs a concrete list receiver"
+    if element == BIG or element.startswith("%") or element.startswith("*") or element == "#":
+        return "native list operation needs a semantic item type, not a machine representation"
+    return ""
+
+
+def list_read_error(i: Ins, sig: list[str] | None = None) -> str:
+    # Runtime reads and inline loads return the encoded slot. Decoding it (and a
+    # promoting integer's companion) is a separate operation. list.len retains
+    # the owner of a captured bound. Result counts remain the IR registry's job.
+    runtime = i.op == "rt" and i.s in LIST_READS
+    if not runtime and i.op != "list.len" and i.op != "list.load":
+        return "expected a native list read"
+    if runtime and sig is None:
+        sig = rtsig(i.s)
+    count = len(sig) - 1 if sig is not None else 1 if i.op == "list.len" else 2
+    if len(i.a) != count:
+        return "native list read has invalid operands"
+    if i.x != "" or i.k != 0 or (len(i.b) != 0 and (not runtime or len(i.b) != 2)) or (not runtime and i.s != ""):
+        return "native list read has invalid metadata"
+    t = i.a[0].t
+    error = list_receiver_error(t)
+    if error != "":
+        return error
+    result = "int" if i.op == "list.len" else "dyn" if i.s == "list.get_identity" else "*" + elem(t)
+    if i.t != result:
+        return f"native list read result needs {result}, got {i.t}"
+    for j in range(1, len(i.a)):
+        if i.a[j].t != "int":
+            return f"native list read operand {j} needs int, got {i.a[j].t}"
+    if i.s == "list.get_identity":
+        identity = list_identity_kind(t)
+        if identity == 0 or i.a[-1].v != str(identity):
+            return "identity list read needs the receiver's numeric identity kind"
+    return ""
+
+
 def list_write_error(i: Ins, promoting: bool, sig: list[str] | None = None) -> str:
     # One contract for construction and post-pass verification. Packed operands
     # retain their semantic item (*int versus *dyn), although both lower to i64.
@@ -861,20 +913,9 @@ def list_write_error(i: Ins, promoting: bool, sig: list[str] | None = None) -> s
         return "native list write has invalid metadata"
     t = i.a[0].t
     element = elem(t)
-    if not is_list(t) or not t.endswith("]") or element == "":
-        return "native list write needs a concrete list receiver"
-    depth = 0
-    for c in element:
-        if c == "[":
-            depth += 1
-        elif c == "]":
-            depth -= 1
-        if depth < 0 or (c == "," and depth == 0):
-            return "native list write needs a concrete list receiver"
-    if depth != 0:
-        return "native list write needs a concrete list receiver"
-    if element == BIG or element.startswith("%") or element.startswith("*") or element == "#":
-        return "native list write needs a semantic item type, not a machine representation"
+    error = list_receiver_error(t)
+    if error != "":
+        return error
     variant = LIST_WRITES[i.s]
     if variant == "big" and not (element == "int" and promoting):
         return "big list write needs promoting list[int] storage"

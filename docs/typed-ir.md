@@ -375,7 +375,7 @@ Each `RUNTIME` entry has the form `result:params|effects|symbol`. Its type varia
 `pys_<key>` with dots replaced by underscores. Calls are checked against the entries;
 `tools/check_runtime.py` checks them against the C and subset runtime implementations.
 
-### Shared native-list write contract
+### Shared native-list storage contracts
 
 `LIST_WRITES` selects the append, indexed-assignment and insert adapters. Their
 signatures and effects remain in `RUNTIME`; `list_write_error` supplies the same
@@ -385,6 +385,21 @@ These `rt` instructions retain the receiver's list type and the packed item's ty
 storage. Existing inference holes, including the None-only `list[opt[?]]`, still
 belong to frontend refinement; this validator checks retained type agreement,
 not canonical type resolution. Other runtime families use their existing builders.
+
+`LIST_READS` selects the indexed-read adapters. `Gen.list_get` and the verifier
+share `list_read_error`: `list.get` and inline `list.load` retain a concrete list
+receiver, native integer index and encoded result `*element`. The identity adapter
+returns `dyn` and requires the receiver's numeric identity kind. Decoding the
+packed slot and reading a promoting integer's companion remain separate operations;
+the encoded result is not an address or an unpacked Python value. Union payload
+provenance continues to use the receiver definition's element type.
+
+`Gen.list_len` preserves the measured list as the operand of `list.len` for source
+`len`, sequence-loop bounds and unpacking. The value index records this operation
+so `listget` can connect a captured range stop to its owner without reconstructing
+list header pointer arithmetic. No length is cached across a mutation: each semantic
+operation still lowers to the same single LLVM load, and the bounds pass retains
+its conservative invalidation rules. Runtime signatures and lowering are unchanged.
 
 `ListLayout` records the outer list's semantic element and packed slot, scalar
 promoting-integer capability, numeric identity capability, payload-array GC policy
@@ -456,8 +471,8 @@ before the next pass. Normal compilation does not add these verification scans.
 Disable one with `PYSTACHY_OPT=-dictfuse`, several with a comma-separated list, or all with
 `PYSTACHY_OPT=-all`. Differential runs check that the choices preserve behavior.
 
-For `range(k, len(xs), step)`, `listget` requires a nonnegative constant start and a
-positive constant step. It proves the first matching read uses the same list and the
+For `range(k, len(xs), step)`, `listget` reads the owner from the captured `list.len`
+and requires a nonnegative constant start and a positive constant step. It proves the first matching read uses the same list and the
 unchanged induction value on a forward path without joins; entry-only local stores
 can establish invariant list bindings. The whole function must exclude list writes
 (`wL`) and unknown user code (`U`), so a captured length remains valid across iterations.

@@ -977,7 +977,9 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             return Val(self.mload('int', v.v, 'length.range'), "int")
         if t == "str":
             return Val(self.rt("pys_text_len", "i64", [f"ptr {v.v}"]), "int")
-        if t == "str" or t == "bytes" or is_list(t) or is_dict(t) or is_set(t) or is_vtuple(t):
+        if is_list(t):
+            return Val(self.list_len(v), "int")
+        if t == "str" or t == "bytes" or is_dict(t) or is_set(t) or is_vtuple(t):
             return Val(self.mload('int', v.v), "int")
         if is_tuple(t):
             return Val(str(len(targs(t))), "int")

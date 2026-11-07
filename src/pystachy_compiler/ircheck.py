@@ -3,8 +3,8 @@ from __future__ import annotations
 from src.pystachy_compiler.diagnostics import fail, int_lists, int_program
 from src.pystachy_compiler.ir import Blk, IFn, Ins, NOLABELS
 from src.pystachy_compiler.union_proof import UnionProof, simple_union_proof
-from src.pystachy_compiler.specs import BIG, FX, FXALL, FXBIT, ICMP, IROPS, LIST_WRITES, NONEVAR, RAWR, RAWW, RUNTIME
-from src.pystachy_compiler.utils import is_dict, is_gen, is_opt, is_set, is_tuple, is_union, list_write_error, lt, same_kind, targs, tslots, umembers
+from src.pystachy_compiler.specs import BIG, FX, FXALL, FXBIT, ICMP, IROPS, LIST_READS, LIST_WRITES, NONEVAR, RAWR, RAWW, RUNTIME
+from src.pystachy_compiler.utils import is_dict, is_gen, is_opt, is_set, is_tuple, is_union, list_read_error, list_write_error, lt, same_kind, targs, tslots, umembers
 
 # Fixed SSA result counts printed by each lowering (gen_nums handles calls).
 RESULT_NUMBERS: dict[str, int] = {
@@ -190,6 +190,10 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                     error = list_write_error(i, int_lists(), self.rtfns[i.s].sig)
                     if error != "":
                         self.bad_ir(fn, b, error)
+            if i.op == "list.len" or i.op == "list.load" or (i.op == "rt" and i.s in LIST_READS):
+                error = list_read_error(i, self.rtfns[i.s].sig if i.op == "rt" else None)
+                if error != "":
+                    self.bad_ir(fn, b, error)
             if i.op == "empty.kind":
                 if len(i.a) != 1 or i.t != "" or i.s != "" or i.x != "" or len(i.b) != 0 or i.k < 0 or i.k >= len(self.holes):
                     self.bad_ir(fn, b, "empty.kind needs one empty dict/set and a valid type hole")
