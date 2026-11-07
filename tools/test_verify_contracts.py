@@ -59,6 +59,9 @@ for barrier in [] if os.environ.get("MOCK_SERIAL") else BARRIERS:   # (MOCK_SERI
             time.sleep(0.02)
 if name == "compilelimits":
     Path("ended-compilelimits").write_text("")
+if name == "floatprobe":
+    with Path("floatprobe-modes").open("a") as f:
+        f.write(os.environ.get("PYSTACHY_GC_STRESS", "0") + "\\n")
 if mode.startswith("hang:") and name in mode[len("hang:"):].split(","):
     # (a tool that does not end, and a program it runs, until a signal ends them)
     child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(120)"])
@@ -191,6 +194,7 @@ else:
         self.assertEqual((steps["dynany-fuzz"]["cases"], steps["dynany-fuzz"]["parity_cases"]), (540, 90))
         self.assertEqual(steps["dict-probes"]["worst_average_slots"], 1.5)
         self.assertEqual(steps["ffi"]["passed"], 3)
+        self.assertEqual((self.root / "floatprobe-modes").read_text().splitlines(), ["0", "1"])
         for name in sum(BARRIERS, []):  # (each met the others of its phase: the lanes overlapped)
             self.assertTrue((self.root / f"started-{name}").exists(), name)
         self.assertFalse((self.root / "beside-limits").exists())  # (only the shell's lane beside it)
@@ -211,6 +215,15 @@ else:
                 self.assertEqual(report["result"], "fail")
                 self.assertEqual([s["name"] for s in report["steps"]], self.steps)
                 self.assertEqual([s["name"] for s in report["steps"] if s["result"] == "fail"], [step])
+
+    def test_float_probe_runs_both_modes_and_failure_fails_contract(self):
+        self.env["MOCK_SERIAL"] = "1"
+        result, report = self.run_contracts()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual((self.root / "floatprobe-modes").read_text().splitlines(), ["0", "1"])
+        result, report = self.run_contracts("fail:floatprobe")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual([step["name"] for step in report["steps"] if step["result"] == "fail"], ["unicode-audit"])
 
     def test_text_read_ir_must_exist_and_inline_both_byte_helpers(self):
         # This checks the IR guard, independently of the lane-overlap barriers above.

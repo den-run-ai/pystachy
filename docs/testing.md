@@ -748,6 +748,10 @@ stress. Its independent scalar oracle covers all byte values, alignments, tails,
 delimiter predicates and range boundaries. Guard pages expose reads outside the
 declared range, and deterministic word/scalar counts ensure long spans retain bulk
 scanning. Run it independently with `make bytescanprobe`; its timings are not gates.
+The same contract runs `tools/floatprobe.c` in both modes: six deterministic
+allocation checks and 64 exact-terminator guard-page spans. Suitable ASCII
+float strings need no parser temporary; trailing whitespace and underscores
+retain bounded copies. Run it independently with `make floatprobe`.
 The compiler-scaling check is split by shapes: `scaling-0` checks those of `SCALING_0`, about
 half of the lines the CPython-hosted compiler executes, and `scaling-1` every other shape of
 `tools/scaling.py` (its `-x`), so a new shape is checked as well; the gate requires the two to
