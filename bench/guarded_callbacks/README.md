@@ -37,8 +37,10 @@ mix, alternating known targets, all closure calls, a mid-run switch to closures,
 one-value batches and fresh input construction. Inputs and schedules are built
 before the timed region, except that the fresh-input case rebuilds both lists in
 every measured batch. The timed kernel includes callback selection from the
-schedule and the full score call, including validation. JIT process time includes
-compilation and startup; its kernel timing does not.
+schedule and the full score call, including validation. Runtime caches are warmed
+before measurement. Complete JIT command timings include program compilation
+and startup; kernel timings do not. Reported build costs exclude a cold runtime
+build.
 
 These measurements target repeated callbacks over typed lists. They do not
 establish a 2x improvement for an existing application, heterogeneous storage or
