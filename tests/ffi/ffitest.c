@@ -29,3 +29,26 @@ long ffi_deep(long n, long (*cb)(long, long)) {
   long r = n > 0 ? ffi_deep(n - 1, cb) : cb(n, (long)(intptr_t)buf);
   return r + buf[0] - (char)n;
 }
+
+/* Binary buffers and pointer cells used by the FFI and ctypes compatibility probes. */
+static unsigned char ffi_bytes_data[] = {0xff, 0x80, 0, 'A', 0};
+unsigned ffi_bytes_sum(const unsigned char *s, size_t n) {
+  unsigned sum = 0;
+  for (size_t i = 0; i < n; i++) sum += s[i];
+  return sum;
+}
+/* ctypes' prototype has signed32 lengths, so its probe declares this exact ABI. */
+unsigned ffi_ctypes_bytes_sum(const unsigned char *s, int n) {
+  return ffi_bytes_sum(s, (size_t)n);
+}
+const char *ffi_bytes_result(int present) { return present ? (const char *)ffi_bytes_data : NULL; }
+int ffi_bytes_is_null(const char *s) { return s == NULL; }
+void ffi_bytes_change(int x) { ffi_bytes_data[0] = (unsigned char)x; }
+void *ffi_pointer_echo(void *p) { return p; }
+void ffi_pointer_set(void **p) { *p = ffi_bytes_data; }
+int ffi_pointer_alias(void **a, void **b) { return a == b; }
+int ffi_echo_int(int x) { return x; }
+unsigned ffi_echo_uint(unsigned x) { return x; }
+int64_t ffi_echo_int64(int64_t x) { return x; }
+float ffi_echo_float(float x) { return x; }
+double ffi_echo_double(double x) { return x; }

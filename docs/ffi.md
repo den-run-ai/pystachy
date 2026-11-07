@@ -13,6 +13,7 @@ Linux with glibc; both architectures run the FFI suite in native CI.
 Start with the examples, then use the contracts below for exact behavior:
 
 - [Call C](#calling-c), [C types](#c-types-and-conversions) and [pointer lifetimes](#pointer-lifetimes-and-foreign-control-flow).
+- [Static ctypes declarations](#static-ctypes-declarations) and the adapted llvmlite consumer.
 - [Call CPython](#calling-cpython), including [ownership and shutdown](#references-memory-and-program-end).
 - [Build an extension](#building-a-cpython-extension) and check its [threading contract](#threading-and-host-lifetime).
 - [Compare behavior](#checking-behavior-and-compatibility), [deviations](#deviations-from-cpython-and-the-twin) and [platform limits](#platform-and-api-limits).
@@ -90,7 +91,8 @@ Calls bind positional and keyword arguments and declared defaults using the
 function's normal signature. The compiler rejects:
 
 - Bare `int`, `bool`, classes, containers other than `list[float]` and
-  `list[ffi.c_int64]` arguments, and optionals other than a `str | None` return; every C
+  `list[ffi.c_int64]` arguments, and optionals other than `bytes | None` or a
+  `str | None` return; every C
   integer must specify its width, a list's items too (`list[ffi.c_int64]`, not `list[int]`).
 - Unannotated parameters, `*args`, a body other than `...`, or `@extern` on a method.
 - Nonliteral library/symbol names, embedded NULs and invalid decorator arguments.
@@ -113,17 +115,24 @@ The compiler does not read C headers or infer C calling conventions.
 | `float` | `double` | Preserves signed zero, infinities and NaN. |
 | `ffi.c_float` | 32-bit `float` | An argument is rounded to the nearest float, ties to even, and past the largest float to an infinity, as ctypes rounds it; a result widens to a `float` exactly. Declare C `float` parameters with it: passed as `float`, a C `float` parameter would read the wrong register bits. |
 | `str` argument | `const char *` | NUL-terminated UTF-8 bytes, valid during the call; NUL in the value raises `ValueError`. |
+| `bytes`, `bytes \| None` argument | `const char *` | Borrowed bytes, including NUL and non-UTF-8 data; `None` passes NULL. Pass a separate length for binary buffers. C must not write or retain the pointer. |
 | `ffi.c_buf` argument | `const char *` | Same bytes, NULs allowed; pass the length separately. |
 | `list[float]` argument | `double *` | The list's own items, for the call: C reads and writes them in place. Pass the length separately. |
 | `list[ffi.c_int64]` argument | `int64_t *` | The same, for a list of ints (`list[ffi.c_ssize_t]` too). Other item types, `list[ffi.c_float]` and `list[ffi.c_int]` among them, are rejected: a list's items are 8 bytes each. |
 | `ffi.at(xs, k)` argument | `double *`, `int64_t *` | Item `k` of the list's own items, for a list parameter: C may read and write the `len(xs) - k` items from there. `k` is checked as the call starts, after the other arguments: `IndexError` outside `0 <= k <= len(xs)`. Elsewhere `ffi.at()` is a compile error. |
 | `str` result | `char *` | Copied into a new string; NULL raises `ValueError`. |
 | `str \| None` result | `char *` | Copied into a new string; NULL becomes `None`. |
+| `bytes`, `bytes \| None` result | `char *` | Copy through the first NUL without decoding; NULL raises `ValueError` for required `bytes`, or becomes `None`. |
 | `None` result | `void` | No value. |
 
 C integer annotations are ordinary `int` inside a stub's subset signature.
 `ffi.string_at(addr, n)` copies `n` bytes into a string; negative `n` raises
 `ValueError` rather than reading to a NUL as ctypes would.
+`ffi.bytes_at(addr, n)` copies bytes, preserving NULs; `n=-1` reads to a NUL.
+Other negative lengths and NULL with a nonzero length raise `ValueError`.
+`ffi.load_library(path)` opens a library immediately with the same loader used
+by `extern` and returns its handle as an integer; `""` opens the process.
+Handles stay loaded for the process lifetime.
 
 ## Pointer lifetimes and foreign control flow
 
@@ -147,6 +156,65 @@ A declaration must match the real C prototype. A mismatch in widths or calling
 convention, C++ exception or `longjmp` across subset frames, or retained temporary
 string pointer causes undefined behavior, as with ctypes. Foreign calls are
 conservatively treated as having all effects; inside `try`, a call is an `invoke`.
+
+## Static ctypes declarations
+
+The experimental ctypes subset accepts an immutable module declaration block
+and lowers it to ordinary `@ffi.extern` stubs. It uses the existing native loader,
+ABI checks and call lowering, without libffi or an embedded CPython.
+The same source runs with CPython's real ctypes:
+
+```python
+import ctypes
+
+lib = ctypes.CDLL("libm.so.6")
+lib.fabs.argtypes = [ctypes.c_double]
+lib.fabs.restype = ctypes.c_double
+
+print(lib.fabs(-2.5))
+```
+
+`CDLL` takes one literal library name or `None`. Imports, docstrings and `pass`
+may precede or separate declarations, but each function's `argtypes` and `restype`
+must form a complete pair before another declaration or import. Both are
+mandatory, assigned once, before function definitions or executable statements.
+Library loading occurs at `CDLL`; symbol lookup occurs at its first signature
+assignment. A missing unused library still raises `OSError`.
+
+| ctypes spelling | Accepted values and behavior |
+|---|---|
+| `c_int`, `c_int32` | Python integers; low 32 bits interpreted as signed. |
+| `c_uint`, `c_uint32` | Python integers; low 32 bits interpreted as unsigned. |
+| `c_int64`, `c_longlong`, `c_long`, `c_ssize_t` | Signed 64-bit integers on the supported LP64 targets. |
+| `c_double`, `c_float` | Python floats; C double or float ABI, respectively. |
+| `c_char_p` | `bytes` or `None`; borrowed input, copied NUL-terminated result. |
+| `c_void_p` | Scalar arguments/results are integer addresses or `None`; use a cell's `.value` as a scalar argument. Addresses must be below `2**63`. |
+| `POINTER(c_void_p)` argument | `byref(c_void_p(...))`, borrowing one stable pointer-sized cell for the call. Shared cells preserve native aliasing. |
+| `None` restype | C void. |
+
+`c_void_p()` creates a cell whose `.value` is `None`; C writes through `byref`
+update that same cell. `string_at(address, size=-1)` returns a bytes copy, using
+the copying rules above. Negative/high-bit pointer values raise `OverflowError`
+instead of ctypes' unsigned wrapping. Scalar type objects are declaration markers,
+not general ctypes scalar instances; `c_void_p` is the supported cell constructor.
+
+Calls must name `lib.symbol` directly and supply exactly the declared positional
+arguments. Imports and library bindings must remain stable. Function/library
+objects cannot escape, and signatures cannot change after declaration.
+Classes, lambdas and comprehensions containing library calls are rejected in this
+prototype. Private CDLL attributes are not interpreted as C symbols.
+
+Dynamic library names, loader options, `find_library`, `errcheck`, `use_errno`,
+structures, arrays, callbacks, variadic calls, `c_bool`, unsigned 64-bit types,
+arbitrary pointers/casts and `byref` offsets remain unsupported. C must not retain
+borrowed bytes or output-cell storage after returning. Owning native pointers
+still require the library's matching destructor.
+
+The [llvmlite example](../examples/ctypes_llvmlite/README.md) exercises LLVM context
+creation, assembly parsing, verification, canonical printing and disposal through
+the real `libllvmlite.so`. It compares exact IR and diagnostics with unmodified
+llvmlite 0.46.0 under CPython. This is an adapted binding slice; it does not make
+`import llvmlite.binding` or Numba compile unchanged.
 
 <a id="next-pystachy-calls-cpython-libpyobjpy"></a>
 <a id="calling-cpython-libpyobjpy"></a>

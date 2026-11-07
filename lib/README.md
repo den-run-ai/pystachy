@@ -150,6 +150,7 @@ which `threading` and `_thread` describe.
 
 | Module | Origin | Supported APIs | Main limitation |
 |---|---|---|---|
+| 🧪 `ctypes` | Static declaration lowering over `ffi`, with Python pointer-cell helpers | Literal `CDLL`, immutable `argtypes`/`restype`, selected scalar types, bytes, opaque pointers, `byref(c_void_p)`, `string_at` | Fixed positional calls; no structures, callbacks or dynamic signatures. [Contract and llvmlite consumer](../docs/ffi.md#static-ctypes-declarations) |
 | 🧪 `pyobj` | Subset implementation over CPython's stable ABI (`@ffi.extern`), with its twin in `tools/rt_cpython` | Python objects through an embedded CPython, or an extension module's host: `Object`, `import_module`, `of_int`, `of_float`, `of_str`, `of_list` | Needs `PYSTACHY_LIBPYTHON` (CPython 3.12+); scalar conversions only; see [FFI](../docs/ffi.md#calling-cpython) |
 
 CPython VM adapters `opcode`, `_opcode`, `_imp` and `_ast` are not shipped; see the

@@ -23,6 +23,7 @@ from src.pystachy_compiler.specs import (
     GLUE,
     IMPLEMENTATION,
     ITERS,
+    LINKDL,
     TEXTVIEW,
     METHODS,
     MODATTRS,
@@ -943,6 +944,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             point = Val(str(codepoint(literal, 0, width)), "int")
             return Val(self.scalar("add", [point, Val("0", "int")]), "int")
     if key in CALLS:
+        if name == "ffi.load_library" and len(LINKDL) == 0:
+            LINKDL.append("dl")
         spec = CALLS[key].split(":")
         r = spec[1] if spec[1] != "" else vals[0].t
         return self.rres(self.rt(spec[0], rtt(r), [self.rarg(v) for v in vals]), r)

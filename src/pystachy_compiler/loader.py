@@ -52,6 +52,7 @@ from src.pystachy_compiler.analysis import (
     walrus_names,
 )
 from src.pystachy_compiler.argparse_schema import lower_argparse, parser_import
+from src.pystachy_compiler.ctypes_schema import ctypes_import, lower_ctypes
 from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, IDPRAGMA, INTFILES, INTSPANS, LINES, MODDUNDERS, RAW, dynamic_pragma, fail, int_pragma, leading_pragma
 from src.pystachy_compiler.lexer import KEYWORDS, Lexer
 from src.pystachy_compiler.module import Mod
@@ -784,6 +785,7 @@ class Loader:
         cm_methods(m.body, cm_names(m.body))
         enum_classes(m.body, enum_names(m.body))
         self.argparse(m.body)
+        self.ctypes(m.body)
         self.prescan(m)
         self.simplify(m, m.body, {})
         self.docstring(m)
@@ -1145,11 +1147,16 @@ class Loader:
         cm_methods(self.parsed[path], cm_names(self.parsed[path]))
         enum_classes(self.parsed[path], enum_names(self.parsed[path]))
         self.argparse(self.parsed[path])
+        self.ctypes(self.parsed[path])
         return self.parsed[path]
 
     def argparse(self, body: Node) -> None:
         if any([parser_import(st) != "" for st in body.kids]) and len(self.dirs) > 0 and self.modpath("argparse") == self.dirs[-1] + "/argparse.py":
             lower_argparse(body)
+
+    def ctypes(self, body: Node) -> None:
+        if any([ctypes_import(st) for st in body.kids]) and len(self.dirs) > 0 and self.modpath("ctypes") == self.dirs[-1] + "/ctypes.py":
+            lower_ctypes(body)
 
     def pragmas(self, src: str, k: int, line: int) -> None:
         # the opt-ins of file k, whose source is src: dynamic Any, and promoting ints

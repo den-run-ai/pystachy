@@ -1,0 +1,15 @@
+bytes argument
+length argument
+448
+1 0 0
+None None None
+b'' b''
+None None
+1 0
+None
+None
+None
+b'\xff\x80' b'\xff\x80\x00A' b'\xff\x80'
+b'\xff\x80' b'\xff\x80\x00A' b'A\x80\x00A'
+30 pointer cells survived allocations
+[exit 0]

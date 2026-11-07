@@ -8480,11 +8480,20 @@ static int printable(I c) {            /* c >= 0x80: printable unless an odd num
   while (lo < hi) { I m = (lo + hi) / 2; if (pchange[m] <= c) lo = m + 1; else hi = m; }
   return !(lo & 1);
 }
-/* @ffi.extern: a char * a C function returned, as a str (NULL: None, or an error if must) */
-Str *pys_cstr(const char *p, I must) { if (!p && must) pys_fail("ValueError: a C function declared -> str returned NULL"); return p ? cstr(p) : 0; }
+/* @ffi.extern: copy a returned char * into str/bytes storage (must: 0 optional, 1 str, 2 bytes). */
+Str *pys_cstr(const char *p, I must) {
+  if (!p && must) pys_fail(must == 2 ? "ValueError: a C function declared -> bytes returned NULL" : "ValueError: a C function declared -> str returned NULL");
+  return p ? cstr(p) : 0;
+}
 Str *pys_string_at(I a, I n) {         /* ffi.string_at: n bytes at a, as ctypes.string_at */
   if (n < 0) pys_fail("ValueError: ffi.string_at() takes a length >= 0");
   return pys_str((const char *)a, n);
+}
+Str *pys_bytes_at(I a, I n) {          /* copy foreign bytes; only -1 scans for a NUL */
+  if (n < -1) pys_fail("ValueError: ffi.bytes_at() takes a length >= -1");
+  if (!a && n != 0) pys_fail("ValueError: ffi.bytes_at() cannot read a NULL pointer");
+  const char *p = a ? (const char *)a : "";
+  return pys_str(p, n == -1 ? (I)strlen(p) : n);
 }
 /* ffi.track (lib/pyobj.py): a value, a PyObject *, that object o owns. The table is malloc'd, out
    of the collector's sight: once a collection finds o unmarked, the value moves to a queue that
@@ -8547,7 +8556,7 @@ void *pys_c_at(List *l, I k) {         /* ffi.at(xs, k), a list passed from its 
    ctypes.CDLL(lib or None) finds it: dlopen(RTLD_NOW | RTLD_LOCAL), then dlsym; a failure raises what
    ctypes raises, OSError or AttributeError with dlerror's text. Under pystachy run, lli's own libraries
    (libLLVM's dependencies) are in the global scope: RTLD_DEEPBIND keeps lib and its dependencies first */
-void pys_c_bind(void **slot, const char *lib, const char *sym) {
+static void *c_library(const char *lib) {
   pys_c_numeric();                     /* (a C function may call setlocale) */
 #ifdef RTLD_DEEPBIND
   int deep = jit ? RTLD_DEEPBIND : 0;
@@ -8556,6 +8565,14 @@ void pys_c_bind(void **slot, const char *lib, const char *sym) {
 #endif
   void *h = dlopen(*lib ? lib : 0, RTLD_NOW | RTLD_LOCAL | deep);
   if (!h) failf("OSError: %s", dlerror());
+  return h;                           /* dlopen caches handles; retained for the process lifetime */
+}
+I pys_load_library(Str *lib) {
+  pys_c_str(lib);
+  return (I)c_library(lib->s);
+}
+void pys_c_bind(void **slot, const char *lib, const char *sym) {
+  void *h = c_library(lib);
   dlerror();
   void *p = dlsym(h, sym);
   const char *e = p ? 0 : dlerror();

@@ -330,7 +330,8 @@ def lower_data(d: Data) -> str:
 def gen_cextern(self, f: FnInfo, at: bool = False) -> None:
     # @ffi.extern: the program calls @f.<name> as any function, an internal stub that checks and
     # narrows C integers (OverflowError), passes a str as its bytes (const char *, NUL-terminated;
-    # ValueError for a NUL in it) and a list[float] or list[c_int64] as its items (double *,
+    # ValueError for a NUL in it), bytes as their raw bytes (NULs allowed; None as NULL), and
+    # a list[float] or list[c_int64] as its items (double *,
     # int64_t *: runtime.c's List.a, which C reads and writes in place for the call; the collector
     # moves nothing, and no subset code runs until the call returns, so the list cannot grow
     # meanwhile), and copies a returned char * (NULL: None, or ValueError). It calls
@@ -357,11 +358,17 @@ def gen_cextern(self, f: FnInfo, at: bool = False) -> None:
         t = f.ptypes[j]
         ps.append(f"{lt(t)} %a{j}")
         c = self.externtype(f.node.kids[0].kids[j].kids[0], t, "takes", f)
-        if c == "str" or c == "c_buf":
+        if c in ("str", "c_buf", "bytes", "opt[bytes]"):
             if c == "str":
                 self.runtime("pys_c_str")
                 code.append(f"  call void @pys_c_str(ptr %a{j})")
-            code.append(f"  %p{j} = getelementptr i8, ptr %a{j}, i64 {STR_HEADER_SIZE}")  # (bytes after Str's byte length, hash and character-count cache)
+            # The call only borrows immutable bytes; the same stable Str storage backs str and bytes.
+            if c == "opt[bytes]":
+                code.append(f"  %b{j} = getelementptr i8, ptr %a{j}, i64 {STR_HEADER_SIZE}")
+                code.append(f"  %n{j} = icmp eq ptr %a{j}, null")
+                code.append(f"  %p{j} = select i1 %n{j}, ptr null, ptr %b{j}")
+            else:
+                code.append(f"  %p{j} = getelementptr i8, ptr %a{j}, i64 {STR_HEADER_SIZE}")  # (bytes after Str's byte length, hash and character-count cache)
             cts.append("ptr")
         elif (c == "list[float]" or c == "list[c_int64]") and at:
             self.runtime("pys_c_at")
@@ -393,16 +400,16 @@ def gen_cextern(self, f: FnInfo, at: bool = False) -> None:
             cts.append(ll)
         args.append(f"{cts[-1]} %p{j}")
     c = self.externtype(f.node.kids[1], f.ret, "returns", f)
-    r = "ptr" if c in ("str", "opt[str]") else "double" if c == "float" else "float" if c == "c_float" else "void" if c == "None" else CTYPES[c].split(":")[0]
+    r = "ptr" if c in ("str", "opt[str]", "bytes", "opt[bytes]") else "double" if c == "float" else "float" if c == "c_float" else "void" if c == "None" else CTYPES[c].split(":")[0]
     rr = r[r.find(" ") + 1 :] + " " + r[: r.find(" ")] if " " in r else r  # (a result's attribute comes first: zeroext i32)
     cl = f"call {rr} {f.csym if direct else '%fp'}({', '.join(args)})"
     if not direct:
         code.insert(0, f"  %fp = load ptr, ptr @ffi.fp.{f.ll[1:]}")
     if r == "void":
         code.extend([f"  {cl}", "  ret void"])
-    elif c == "str" or c == "opt[str]":
+    elif c in ("str", "opt[str]", "bytes", "opt[bytes]"):
         self.runtime("pys_cstr")
-        code.extend([f"  %r = {cl}", f"  %s = call ptr @pys_cstr(ptr %r, i64 {1 if c == 'str' else 0})", "  ret ptr %s"])
+        code.extend([f"  %r = {cl}", f"  %s = call ptr @pys_cstr(ptr %r, i64 {1 if c == 'str' else 2 if c == 'bytes' else 0})", "  ret ptr %s"])
     elif c == "float":
         code.extend([f"  %r = {cl}", "  ret double %r"])
     elif c == "c_float":
