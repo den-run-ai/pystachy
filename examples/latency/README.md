@@ -25,29 +25,23 @@ and reports are deterministic across the tested runtimes.
 <a id="what-compiling-buys"></a>
 <a id="tests"></a>
 
-## Recorded benchmark
+<a id="recorded-benchmark"></a>
+<a id="checks-and-reproduction"></a>
 
-Historical measurements on a 4-core x86-64 VM; the compiler commit was not
-recorded. Logs of 1M (55 MB) and 4M (218 MB) requests; median of seven alternating
-process runs, including startup; peak RSS of one run. Other jobs shared the host.
+## Checks and benchmarks
 
-| Log | CPython 3.13.16 | Pystachy AOT | Speedup | CPython RSS | AOT RSS |
-|---|---:|---:|---:|---:|---:|
-| 1M requests | 2.322 s | 1.489 s | 1.56× | 137.2 MB | 162.3 MB |
-| 4M requests | 12.223 s | 8.519 s | 1.43× | 512.5 MB | 668.2 MB |
+[`example_latency.py`](../../tests/programs/apps/example_latency.py)
+compares 3,000 generated requests, malformed rows, single-request endpoints,
+timeouts and empty responses with CPython.
 
-Repeated sorting for medians and quantiles dominates calculation. The compiled
-program uses more peak memory despite storing floats unboxed.
-
-## Checks and reproduction
-
-`tests/programs/apps/example_latency.py` compares 3,000 generated requests, malformed rows,
-single-request endpoints, timeouts and empty responses with CPython.
+The benchmark generates logs of one and four million requests. The program retains
+latencies for each endpoint and sorts them for medians and quantiles.
 
 ```sh
 python3 -I bench.py ../../pystachy 7
 ```
 
-The benchmark writes generated inputs and executables to `build/latency/` at the
-repository root. Results depend on workload and host; see
-[the performance guide](../../docs/performance.md).
+Generated inputs and executables go to `build/latency/` at the repository root.
+Earlier measurements without a compiler revision are preserved in
+[the historical table](https://github.com/den-run-ai/pystachy/blob/f7103067545b43cdcd8ce20dc66b1571425b3a8d/examples/latency/README.md#recorded-benchmark).
+See the [benchmark guidance](../README.md#benchmarks) when measuring a current build.

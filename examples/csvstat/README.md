@@ -18,41 +18,31 @@ pystachy build csvstat.py -o csvstat
 
 The default is a text report; `--csv` emits the same statistics as CSV.
 `gencsv.py` produces deterministic input. Both runtimes produce the same report
-for the tested data. The compiled reader eagerly retains parsed rows; CPython
-reads them incrementally.
+for the tested data. Both readers consume rows incrementally. The report still
+retains per-column value counts and numeric samples for its statistics.
 
 <a id="csvstat-the-statistics-of-each-column-of-a-csv-file"></a>
 <a id="what-compiling-buys"></a>
 <a id="tests"></a>
 
-## Recorded benchmark
+<a id="recorded-benchmark"></a>
+<a id="checks-and-reproduction"></a>
 
-Historical measurements on a 4-core x86-64 VM; the compiler commit was not
-recorded. 200,000 orders (16.1 MB); median of 11 alternating process runs after warmup,
-including startup; peak RSS of one run. Reader/writer rows are medians from
-`rwbench.py`. Runs on the shared host varied by 20% or more.
+## Checks and benchmarks
 
-| | CPython 3.13.16 | Pystachy AOT | speedup |
-|---|---:|---:|---:|
-| `csvstat.py orders.csv` | 0.825 s | 0.414 s | 2.0× |
-| `csvstat.py orders.csv --csv` | 0.774 s | 0.373 s | 2.1× |
-| peak RSS | 65.7 MB | 162.2 MB | |
-| `csv.reader`, from the file | 1.333 µs/row | 0.850 µs/row | 1.6× |
-| `csv.reader`, from lines in memory | 1.221 µs/row | 0.713 µs/row | 1.7× |
-| `csv.writer`, to a file | 1.207 µs/row | 0.755 µs/row | 1.6× |
+[`example_csvstat.py`](../../tests/programs/apps/example_csvstat.py)
+compares reports for 3,000 generated orders and rows shorter or longer than their
+header with CPython.
 
-The CSV report was about 2× faster in this baseline, with about 2.5× peak
-memory because the subset reader materializes the file.
-
-## Checks and reproduction
-
-`tests/programs/apps/example_csvstat.py` compares reports for 3,000 generated orders and rows
-shorter or longer than their header with CPython.
+The benchmark generates 200,000 orders, times text and CSV reports, and uses
+[`rwbench.py`](rwbench.py) to time the reader and writer separately, including parsing
+lines already in memory.
 
 ```sh
 python3 -I bench.py ../../pystachy 11
 ```
 
-The benchmark writes generated inputs and executables to `build/csvstat/` at the
-repository root. Results depend on workload and host; see
-[the performance guide](../../docs/performance.md).
+Generated inputs and executables go to `build/csvstat/` at the repository root.
+Earlier measurements without a compiler revision are preserved in
+[the historical table](https://github.com/den-run-ai/pystachy/blob/f7103067545b43cdcd8ce20dc66b1571425b3a8d/examples/csvstat/README.md#recorded-benchmark).
+See the [benchmark guidance](../README.md#benchmarks) when measuring a current build.

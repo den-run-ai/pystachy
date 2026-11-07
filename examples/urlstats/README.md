@@ -27,31 +27,24 @@ text and encoding edge cases. Tested reports match CPython.
 <a id="speed"></a>
 <a id="tests"></a>
 
-## Recorded benchmark
+<a id="recorded-benchmark"></a>
+<a id="checks-and-reproduction"></a>
 
-Historical measurements on a 4-core x86-64 VM; the compiler commit was not
-recorded. Logs of 200k (26 MB) and 1M (131 MB) requests; median wall time of seven
-process runs, including startup; peak RSS of one run. Other jobs shared the host.
+## Checks and benchmarks
 
-| Log | Mode | CPython 3.13.16 | Pystachy AOT | CPython RSS | AOT RSS |
-|---|---|---:|---:|---:|---:|
-| 200k | report | 2.389 s | 0.433 s | 21.5 MB | 43.1 MB |
-| 200k | `--canon` | 2.514 s | 0.462 s | 16.9 MB | 40.8 MB |
-| 1M | report | 12.926 s | 2.196 s | 40.8 MB | 58.2 MB |
-| 1M | `--canon` | 13.369 s | 2.482 s | 28.4 MB | 50.5 MB |
+[`example_urlstats.py`](../../tests/programs/apps/example_urlstats.py)
+compares 400 generated requests, malformed lines, and URL escaping and
+canonicalization edge cases with CPython.
 
-The baseline is 5.4–5.9× faster compiled with higher peak memory. CPython
-caches `urlsplit` results; the port does not.
-
-## Checks and reproduction
-
-`tests/programs/apps/example_urlstats.py` compares 400 generated requests, malformed lines
-and URL escaping/canonicalization edge cases with CPython.
+The benchmark generates logs of 200,000 and one million requests and exercises
+summary and canonical-output modes. Both CPython and the port cache `urlsplit()`
+results; the workload determines how often that cache can help.
 
 ```sh
 python3 -I bench.py ../../pystachy 7
 ```
 
-The benchmark writes generated inputs and executables to `build/urlstats/` at the
-repository root. Results depend on workload and host; see
-[the performance guide](../../docs/performance.md).
+Generated inputs and executables go to `build/urlstats/` at the repository root.
+Earlier measurements without a compiler revision are preserved in
+[the historical table](https://github.com/den-run-ai/pystachy/blob/f7103067545b43cdcd8ce20dc66b1571425b3a8d/examples/urlstats/README.md#recorded-benchmark).
+See the [benchmark guidance](../README.md#benchmarks) when measuring a current build.

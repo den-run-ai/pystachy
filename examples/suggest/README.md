@@ -27,29 +27,23 @@ deterministic.
 <a id="speed"></a>
 <a id="tests"></a>
 
-## Recorded benchmark
+<a id="recorded-benchmark"></a>
+<a id="checks-and-reproduction"></a>
 
-Historical measurements on a 4-core x86-64 VM; the compiler commit was not
-recorded. A 20,000-word vocabulary with 25- and 100-line texts; median wall time of five
-process runs, including startup; peak RSS of one run.
+## Checks and benchmarks
 
-| text | unknown words | CPython 3.13.16 | Pystachy AOT | speedup | CPython RSS | AOT RSS |
-|---|---:|---:|---:|---:|---:|---:|
-| 25 lines | 17 | 0.425 s | 0.119 s | 3.6x | 13.7 MB | 40.2 MB |
-| 100 lines | 72 | 1.686 s | 0.331 s | 5.1x | 13.7 MB | 41.1 MB |
+[`example_suggest.py`](../../tests/programs/apps/example_suggest.py)
+compares tokenization, generated vocabularies and text, small cases, options and
+errors with CPython.
 
-The baseline end-to-end speedup is 3.6–5.1×. Matching dominates as the number
-of unknown words grows; the executable uses about 3× peak memory.
-
-## Checks and reproduction
-
-`tests/programs/apps/example_suggest.py` compares tokenization, generated vocabularies/text,
-small cases, options and errors with CPython.
+The benchmark uses a 20,000-word vocabulary and texts of 25 and 100 lines.
+Each unknown word is matched against the vocabulary.
 
 ```sh
 python3 -I bench.py ../../pystachy 5
 ```
 
-The benchmark writes generated inputs and executables to `build/suggest/` at the
-repository root. Results depend on workload and host; see
-[the performance guide](../../docs/performance.md).
+Generated inputs and executables go to `build/suggest/` at the repository root.
+Earlier measurements without a compiler revision are preserved in
+[the historical table](https://github.com/den-run-ai/pystachy/blob/f7103067545b43cdcd8ce20dc66b1571425b3a8d/examples/suggest/README.md#recorded-benchmark).
+See the [benchmark guidance](../README.md#benchmarks) when measuring a current build.
