@@ -88,7 +88,7 @@ jobs:
 
       - name: Runtime ABI, ASan and GC root checker controls
         run: |
-          python3 -m unittest discover -s tools -p 'test_runtime_*.py'
+          PYSTACHY_CACHE_TEST_LLVM="$PYSTACHY_LLVM" python3 -m unittest discover -s tools -p 'test_runtime_*.py'
           PY=python3 CC="$PYSTACHY_LLVM/clang" ASAN_OPTIONS=detect_leaks=1 \
             tools/check_cpu_buffers.sh '-fsanitize=address,undefined'
           PY=python3 CC="$PYSTACHY_LLVM/clang" ASAN_OPTIONS=detect_leaks=1 \
