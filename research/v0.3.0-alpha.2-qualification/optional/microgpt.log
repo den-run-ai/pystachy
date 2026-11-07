@@ -1,0 +1,5 @@
+original_cpython repetition1: verified; train=1.220454479000182; wall=1.650s
+adapted_cpython repetition1: verified; train=1.1923190699999395; wall=1.657s
+pystachy_jit repetition1: verified; train=0.1181725259993982; wall=0.430s
+pystachy_aot repetition1: verified; train=0.10779355699924054; wall=0.132s
+Results: $WORK/optional-evidence/microgpt.json

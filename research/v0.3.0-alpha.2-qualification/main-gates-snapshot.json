@@ -1,0 +1,44 @@
+{
+  "snapshot_date_utc": "2026-11-07",
+  "commit": "26f61d57ea857b3210ce7501ff6eb3743b39f91c",
+  "tree": "e8ebc8a8f84b150f4047f85b830297f2d701c5a3",
+  "observation_source": "Root agent verified exact-commit GitHub run/job results and supplied this snapshot during evidence packaging. Packaging agent did not poll these runs independently.",
+  "workflows": {
+    "Installation": {
+      "run": 42385691872,
+      "result": "success",
+      "passed_jobs": 7,
+      "expected_jobs": 7,
+      "macos_intel_seconds": 742
+    },
+    "Lint": {
+      "run": 42385691878,
+      "result": "success"
+    },
+    "Packages": {
+      "run": 42385692047,
+      "result": "success"
+    },
+    "Performance smoke": {
+      "run": 42385691840,
+      "result": "success"
+    },
+    "Coverage": {
+      "run": 42385691815,
+      "result": "success",
+      "passed_jobs": 20,
+      "expected_jobs": 20,
+      "advisory": true
+    },
+    "CI": {
+      "run": 42385691788,
+      "status": "in_progress"
+    },
+    "Variants": {
+      "run": 42385691927,
+      "status": "in_progress"
+    }
+  },
+  "qualification": "Full exact-main CI was still running; no full-main release qualification or alpha.2 publication is asserted.",
+  "publication": "pending at this snapshot"
+}

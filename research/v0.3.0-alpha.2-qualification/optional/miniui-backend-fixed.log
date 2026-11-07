@@ -1,0 +1,7 @@
+CPython FFI twin: miniui backend: scalar ABI, input, RGBA, clip batching/order, caret, cleanup passed
+miniui demo rendering: 167 draws, 15 clips, 184 FFI calls
+JIT: matches
+AOT: matches
+AOT GC witness: 1187 collections
+AOT GC stress: matches
+Mock only: real raylib/window/font/rendering validation is separate.

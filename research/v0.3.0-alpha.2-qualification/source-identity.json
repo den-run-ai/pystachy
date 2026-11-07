@@ -1,0 +1,70 @@
+{
+  "repository": "https://github.com/den-run-ai/pystachy",
+  "pr": 1140,
+  "version": "v0.3.0-alpha.2",
+  "identities": {
+    "baseline": {
+      "commit": "2556085e7165a34465e6cede5d93c895e416cad8",
+      "tree": "603280df000457e48724644e51c51e3b52379811"
+    },
+    "audited_candidate": {
+      "commit": "eeca23bbc8c2aa6c37ce904e3d2bf79a2a94e789",
+      "tree": "31c775bcf5eb3212deabeaad8777c8df25ec6c6f"
+    },
+    "final_pr_head": {
+      "commit": "c4f85144fb5652ef2e5998d36163421fa8fd4557",
+      "tree": "e8ebc8a8f84b150f4047f85b830297f2d701c5a3"
+    },
+    "tested_pr_merge": {
+      "commit": "49e1f0e9a0d86cfc97ab9a386bbe4ab1110d80fc",
+      "tree": "e8ebc8a8f84b150f4047f85b830297f2d701c5a3",
+      "tree_evidence": "Recorded final-checks.json verification; synthetic merge object is not in this local object database."
+    },
+    "merged_main": {
+      "commit": "26f61d57ea857b3210ce7501ff6eb3743b39f91c",
+      "tree": "e8ebc8a8f84b150f4047f85b830297f2d701c5a3"
+    }
+  },
+  "audited_to_merged_delta": [
+    ".github/workflows/ci.yml",
+    ".github/workflows/lint.yml",
+    "docs/ffi.md",
+    "docs/testing.md",
+    "examples/miniui/README.md",
+    "examples/miniui/check_backend.py",
+    "tests/verify.sh",
+    "tools/merge_verification.py",
+    "tools/test_merge_verification.py",
+    "tools/test_runtime_miniui.py",
+    "tools/test_verify_shards.py"
+  ],
+  "protected_compiler_runtime_library_corpus_paths": 8019,
+  "protected_paths_unchanged": true,
+  "protected_paths_manifest_sha256": "b9b7340234d5842f356a9c47e28a84a01058ee90162f5158c40280d334c7cc89",
+  "final_pr_head_test_merge_and_main_trees_equal": true,
+  "main_release_gate_status": "Not asserted by this PR qualification bundle; full exact-main release gates and publication are separate.",
+  "protected_paths_definition": {
+    "source": "git ls-tree -r --name-only eeca23bbc8c2aa6c37ce904e3d2bf79a2a94e789",
+    "prefixes": [
+      "src/",
+      "lib/",
+      "mpz/",
+      "ryu/",
+      "tests/programs/",
+      "tests/errors/",
+      "tests/deviations/",
+      "tests/ir/",
+      "bench/"
+    ],
+    "exact_paths": [
+      "pystachy.py",
+      "runtime.c",
+      "runtime.py",
+      "pyembed.c",
+      "pyext.c",
+      "Makefile",
+      "VERSION"
+    ],
+    "manifest_encoding": "Selected paths in git ls-tree order, one LF-terminated path per line, UTF-8."
+  }
+}

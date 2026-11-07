@@ -1,0 +1,46 @@
+{
+  "purpose": "Isolated exact published alpha2 audit inputs with final freshly bootstrapped native compiler",
+  "build_root": "$WORK/pystachy-v030",
+  "build_head": "322946839e6ef7d93aff2e5f2b44c74296b233a1",
+  "published_head": "eeca23bbc8c2aa6c37ce904e3d2bf79a2a94e789",
+  "tree": "31c775bcf5eb3212deabeaad8777c8df25ec6c6f",
+  "binary_sha256": "a825851e234039fbe6c97aa0ba460b9e5484c7f7ba53e4ec3ae61f5b5b1f0756",
+  "reported_fixed_points": {
+    "compiler_ir_lines": 875344,
+    "runtime_ir_lines": 19907
+  },
+  "source": "root-reported successful final make, native binary copied without rebuilding, both checkout trees match",
+  "independently_checked_fixed_point_witnesses": {
+    "stage1.ll": {
+      "sha256": "8f449bbeae553a39df0ea0cb4f418a7f89d694328f3d5bf87111d43072ab542b",
+      "bytes": 32940319,
+      "lines": 875344
+    },
+    "stage2.ll": {
+      "sha256": "8f449bbeae553a39df0ea0cb4f418a7f89d694328f3d5bf87111d43072ab542b",
+      "bytes": 32940319,
+      "lines": 875344
+    },
+    "stage3.ll": {
+      "sha256": "8f449bbeae553a39df0ea0cb4f418a7f89d694328f3d5bf87111d43072ab542b",
+      "bytes": 32940319,
+      "lines": 875344
+    },
+    "rt1.ll": {
+      "sha256": "2b8d9d6f2fa04a8d46aefa88b54c52348daf53428ea04973c3f5e8ede421b02d",
+      "bytes": 579360,
+      "lines": 19907
+    },
+    "rt2.ll": {
+      "sha256": "2b8d9d6f2fa04a8d46aefa88b54c52348daf53428ea04973c3f5e8ede421b02d",
+      "bytes": 579360,
+      "lines": 19907
+    },
+    "rt3.ll": {
+      "sha256": "2b8d9d6f2fa04a8d46aefa88b54c52348daf53428ea04973c3f5e8ede421b02d",
+      "bytes": 579360,
+      "lines": 19907
+    }
+  },
+  "build_log_sha256": "61f378d3a791d238d6506d0924455e385f96b9246570f705fa94743e1152071c"
+}

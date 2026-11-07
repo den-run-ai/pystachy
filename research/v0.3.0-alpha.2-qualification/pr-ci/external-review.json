@@ -1,0 +1,26 @@
+{
+  "pr": 1140,
+  "summary_comment": 6708776938,
+  "comment_url": "https://github.com/den-run-ai/pystachy/pull/1140#issuecomment-6708776938",
+  "review_commit": "c4f85144fb5652ef2e5998d36163421fa8fd4557",
+  "updated_at": "2026-11-07T15:16:42Z",
+  "state": {
+    "code_review": {
+      "commit_sha": "c4f85144fb5652ef2e5998d36163421fa8fd4557",
+      "has_any_findings": false,
+      "has_unresolved_findings": false,
+      "status": "completed"
+    },
+    "security_review": {
+      "commit_sha": null,
+      "has_any_findings": null,
+      "has_unresolved_findings": null,
+      "status": null
+    }
+  },
+  "submitted_reviews": [],
+  "review_threads": [],
+  "inline_comments": [],
+  "review_page2_empty": true,
+  "inline_comment_page2_empty": true
+}

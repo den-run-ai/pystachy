@@ -1,0 +1,219 @@
+{
+  "commit": "eeca23bbc8c2aa6c37ce904e3d2bf79a2a94e789",
+  "tree": "31c775bcf5eb3212deabeaad8777c8df25ec6c6f",
+  "compiler_sha256": "a825851e234039fbe6c97aa0ba460b9e5484c7f7ba53e4ec3ae61f5b5b1f0756",
+  "compiler_origin": "Copied unchanged from root bootstrap after its 443s GC stress pass",
+  "python": "Python 3.13.16",
+  "numpy": "2.3.5",
+  "llvm": "$WORK/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/bin",
+  "clang_sha256": "8ef402d453d1ba4902e4ee0f0f847f6cfa01400c95aa43c24e97818b9c0e3f45",
+  "dataset_sha256": "0a30b5557f192f32ab962680889aac5f6fda0f4cecf40a6d0b5694f58ea8cc4d",
+  "dataset_url": "https://raw.githubusercontent.com/karpathy/makemore/988aa59/names.txt",
+  "runs": [
+    {
+      "name": "dlpack-units",
+      "command": [
+        "$WORK/optional-venv/bin/python",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools",
+        "-p",
+        "test_runtime_dlpack.py",
+        "-v"
+      ],
+      "log": "$WORK/optional-evidence/dlpack-units.log",
+      "status": "pass",
+      "returncode": 0,
+      "elapsed_s": 0.501,
+      "sampled_own_group_peak_rss_kib": 0,
+      "sampled_shared_cgroup_peak_bytes": 5071175680,
+      "log_sha256": "49ed8f58a0cb5d469bdbd0e808c5980759f2437692c02b63728f59801ff888f3"
+    },
+    {
+      "name": "dlpack-native",
+      "command": [
+        "$WORK/optional-venv/bin/python",
+        "examples/cpu_dlpack/check.py",
+        "--compiler",
+        "$WORK/optional-qualification/pystachy"
+      ],
+      "log": "$WORK/optional-evidence/dlpack-native.log",
+      "status": "pass",
+      "returncode": 0,
+      "elapsed_s": 17.525,
+      "sampled_own_group_peak_rss_kib": 0,
+      "sampled_shared_cgroup_peak_bytes": 5291708416,
+      "log_sha256": "bf5197d72b528614a8b7a918d445c8cc924f2110f66730837a9dea0b020aa528"
+    },
+    {
+      "name": "cpu-buffers-sanitized",
+      "command": [
+        "sh",
+        "tools/check_cpu_buffers.sh",
+        "-fsanitize=address,undefined"
+      ],
+      "log": "$WORK/optional-evidence/cpu-buffers-sanitized.log",
+      "status": "fail",
+      "returncode": 1,
+      "elapsed_s": 1.004,
+      "sampled_own_group_peak_rss_kib": 836,
+      "sampled_shared_cgroup_peak_bytes": 5106233344,
+      "log_sha256": "a3131fb56b1cd0e17a99a36ae835a2e69b8820a8fdf4319c34673a43a2203f5f"
+    },
+    {
+      "name": "cpu-buffers-negative",
+      "command": [
+        "sh",
+        "tools/check_cpu_buffers.sh",
+        "--negative-control",
+        "-fsanitize=address,undefined"
+      ],
+      "log": "$WORK/optional-evidence/cpu-buffers-negative.log",
+      "status": "pass",
+      "returncode": 0,
+      "elapsed_s": 1.002,
+      "sampled_own_group_peak_rss_kib": 0,
+      "sampled_shared_cgroup_peak_bytes": 5066457088,
+      "log_sha256": "996fd79b3a6bc993fbf9b9251a495fececb5cf3cc66531abe499e019664cdbc7"
+    },
+    {
+      "name": "miniui-backend",
+      "command": [
+        "$WORK/optional-venv/bin/python",
+        "examples/miniui/check_backend.py",
+        "--compiler",
+        "$WORK/optional-qualification/pystachy"
+      ],
+      "log": "$WORK/optional-evidence/miniui-backend.log",
+      "status": "pass",
+      "returncode": 0,
+      "elapsed_s": 14.522,
+      "sampled_own_group_peak_rss_kib": 0,
+      "sampled_shared_cgroup_peak_bytes": 5224677376,
+      "log_sha256": "d16d4c3d65054e531bd3094e05787aeb658acdf7fde32ac73c585b8a3424d056"
+    },
+    {
+      "name": "issue-closure",
+      "command": [
+        "sh",
+        "$WORK/release-freeze-closure.sh",
+        "$WORK/optional-qualification",
+        "$WORK/optional-qualification/pystachy"
+      ],
+      "log": "$WORK/optional-evidence/issue-closure.log",
+      "status": "pass",
+      "returncode": 0,
+      "elapsed_s": 13.024,
+      "sampled_own_group_peak_rss_kib": 51140,
+      "sampled_shared_cgroup_peak_bytes": 5064044544,
+      "log_sha256": "3c10407cf16f963485267c8c4e4f544f5394aaa6f71ca3ad83c224996075459f"
+    },
+    {
+      "name": "microgpt",
+      "command": [
+        "$WORK/optional-venv/bin/python",
+        "tools/bench_microgpt.py",
+        "--input",
+        "$WORK/optional-evidence/names.txt",
+        "--compiler",
+        "$WORK/optional-qualification/pystachy",
+        "--steps",
+        "10",
+        "--samples",
+        "3",
+        "--repeats",
+        "1",
+        "--all-gradients",
+        "--json",
+        "$WORK/optional-evidence/microgpt.json"
+      ],
+      "log": "$WORK/optional-evidence/microgpt.log",
+      "status": "pass",
+      "returncode": 0,
+      "elapsed_s": 7.508,
+      "sampled_own_group_peak_rss_kib": 0,
+      "sampled_shared_cgroup_peak_bytes": 5016907776,
+      "log_sha256": "20e3737f15c62c7910cf4a8bfd9c72aee9be9bdc2723f1f9795efa9269339e90"
+    }
+  ],
+  "limit": "Maximum two native fixture workers; sequential suites; measurements are correctness evidence, not performance claims.",
+  "final_status": "",
+  "final_compiler_sha256": "a825851e234039fbe6c97aa0ba460b9e5484c7f7ba53e4ec3ae61f5b5b1f0756",
+  "all_passed": false,
+  "environment_limitations": [
+    {
+      "check": "LeakSanitizer",
+      "log": "cpu-buffers-sanitized.log",
+      "reason": "LeakSanitizer cannot open /proc/119/task and aborts. No restricted-access workaround attempted. AddressSanitizer and UndefinedBehaviorSanitizer rerun below; export/refcount cleanup assertions retained."
+    }
+  ],
+  "followup_runs": [
+    {
+      "name": "cpu-buffers-asan-ubsan-no-lsan",
+      "command": [
+        "sh",
+        "tools/check_cpu_buffers.sh",
+        "-fsanitize=address,undefined"
+      ],
+      "settings": {
+        "ASAN_OPTIONS": "detect_leaks=0"
+      },
+      "returncode": 0,
+      "elapsed_s": 0.666,
+      "status": "pass",
+      "log": "$WORK/optional-evidence/cpu-buffers-asan-ubsan-no-lsan.log",
+      "log_sha256": "c8c2d4a589124b2477b07c95aa54e5845d51a718e9223c97867b4657adbe82ee"
+    },
+    {
+      "name": "cpu-buffers-negative-no-lsan",
+      "command": [
+        "sh",
+        "tools/check_cpu_buffers.sh",
+        "--negative-control",
+        "-fsanitize=address,undefined"
+      ],
+      "settings": {
+        "ASAN_OPTIONS": "detect_leaks=0"
+      },
+      "returncode": 0,
+      "elapsed_s": 0.716,
+      "status": "pass",
+      "log": "$WORK/optional-evidence/cpu-buffers-negative-no-lsan.log",
+      "log_sha256": "996fd79b3a6bc993fbf9b9251a495fececb5cf3cc66531abe499e019664cdbc7"
+    },
+    {
+      "name": "miniui-backend-fixed",
+      "status": "pass",
+      "log": "$WORK/optional-evidence/miniui-backend-fixed.log",
+      "log_sha256": "d0689b4342925eced55569f6ff93572258142527c08873df58af3700c9a460ce"
+    },
+    {
+      "name": "miniui-gc-negative-control",
+      "status": "pass",
+      "log": "$WORK/optional-evidence/miniui-gc-negative-control.log",
+      "log_sha256": "91867713b84ac60ba730bc439803f1b0a831d4b3ac2528b13ab5798fa3ce0f3a"
+    },
+    {
+      "name": "workflow-limits-fixed",
+      "status": "pass",
+      "log": "$WORK/optional-evidence/workflow-limits-fixed.log",
+      "log_sha256": "e8aa9e6b2f8af802a7a5f27bea1857e56fb4fcc0c544085b826015e7a27bda55"
+    }
+  ],
+  "memory_observation_note": "Shared cgroup memory sampled successfully (maximum 5291708416 bytes). Per-process-group RSS is unreliable in this environment: /proc membership visibility yields zero for most live groups. Raw observations retained; do not treat them as allocation or peak-memory measurements.",
+  "qualified_result": "DLPack 10 units and 7 executions, corrected miniui backend with 1187 observed collections, 44 native closure comparisons and 8 field-error units, and microGPT four tiers all pass. Address/undefined sanitizers and missing-release negative control pass with leak detection disabled. Initial LeakSanitizer environment failure remains recorded; LeakSanitizer is unverified locally and is now required with detect_leaks=1 in the existing Lint step.",
+  "corrected_verification_claims": [
+    {
+      "original_check": "miniui-backend",
+      "reason": "The original runner passed the driver-only PYSTACHY_GC_STRESS_PROGRAM alias to a directly executed AOT binary. Matching outputs did not establish collection. The corrected runner uses PYSTACHY_GC_STRESS and requires a positive GC-statistics witness.",
+      "fix_commit": "6e8e6a20678ac1e45b344bd1913ab779627f5ee9",
+      "fix_tree": "b89e1a5a13fb4f0cc80dadd48098b7b5c8868f00",
+      "native_inputs_unchanged_from": "eeca23bbc8c2aa6c37ce904e3d2bf79a2a94e789",
+      "fixed_collection_count": 1187,
+      "fixed_outcomes": "CPython twin, native JIT, ordinary AOT and stressed AOT match; adapter bundle relocation passes.",
+      "regression": "Two units pass; running the direct-AOT contract against the pre-fix runner fails as required."
+    }
+  ]
+}

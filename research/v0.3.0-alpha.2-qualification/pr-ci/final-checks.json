@@ -1,0 +1,271 @@
+{
+  "head": "c4f85144fb5652ef2e5998d36163421fa8fd4557",
+  "tested_merge": "49e1f0e9a0d86cfc97ab9a386bbe4ab1110d80fc",
+  "tree": "e8ebc8a8f84b150f4047f85b830297f2d701c5a3",
+  "head_and_merge_and_tested_trees_equal": true,
+  "bootstrap_logs_confirmed_exact_merge": true,
+  "ci": {
+    "run": 42383313528,
+    "result": "success",
+    "jobs": [
+      {
+        "id": 128435335446,
+        "name": "verify (bootstrap, x86_64)",
+        "result": "success",
+        "seconds": 240
+      },
+      {
+        "id": 128435335624,
+        "name": "verify (bootstrap, aarch64)",
+        "result": "success",
+        "seconds": 499
+      },
+      {
+        "id": 128437291309,
+        "name": "distribution (macos-15)",
+        "result": "success",
+        "seconds": 400
+      },
+      {
+        "id": 128437291310,
+        "name": "native JIT and variants (worker 0)",
+        "result": "success",
+        "seconds": 271
+      },
+      {
+        "id": 128437291323,
+        "name": "native JIT and variants (worker 1)",
+        "result": "success",
+        "seconds": 227
+      },
+      {
+        "id": 128437291327,
+        "name": "verify (hosted, x86_64)",
+        "result": "success",
+        "seconds": 399
+      },
+      {
+        "id": 128437291331,
+        "name": "distribution (ubuntu-24.04)",
+        "result": "success",
+        "seconds": 221
+      },
+      {
+        "id": 128437291341,
+        "name": "verify (contracts, x86_64)",
+        "result": "success",
+        "seconds": 650
+      },
+      {
+        "id": 128437291353,
+        "name": "verify (benchmarks, x86_64)",
+        "result": "success",
+        "seconds": 521
+      },
+      {
+        "id": 128437291361,
+        "name": "verify (cache-gc, x86_64)",
+        "result": "success",
+        "seconds": 629
+      },
+      {
+        "id": 128437291391,
+        "name": "verify (safety-1, x86_64)",
+        "result": "success",
+        "seconds": 207
+      },
+      {
+        "id": 128437291394,
+        "name": "verify (opt-in, x86_64)",
+        "result": "success",
+        "seconds": 137
+      },
+      {
+        "id": 128437291398,
+        "name": "verify (native-aot-1, x86_64)",
+        "result": "success",
+        "seconds": 800
+      },
+      {
+        "id": 128437291403,
+        "name": "verify (safety-0, x86_64)",
+        "result": "success",
+        "seconds": 261
+      },
+      {
+        "id": 128437291410,
+        "name": "verify (native-aot-0, x86_64)",
+        "result": "success",
+        "seconds": 580
+      },
+      {
+        "id": 128440579127,
+        "name": "Verification",
+        "result": "success",
+        "seconds": 26
+      }
+    ],
+    "job_page2_empty": true
+  },
+  "lint": {
+    "run": 42383313555,
+    "result": "success",
+    "seconds": 501,
+    "detect_leaks": 1,
+    "exports_released": 19,
+    "negative_control": "Expected missing-release assertion failure detected"
+  },
+  "performance_smoke": {
+    "run": 42383313651,
+    "result": "success"
+  },
+  "artifact_evidence": "$WORK/release-audit/mode-ci/qualification.json",
+  "checks": [
+    {
+      "id": 128440967642,
+      "name": "Check title and description",
+      "status": "completed",
+      "result": "success"
+    },
+    {
+      "id": 128440963207,
+      "name": "Check title and description",
+      "status": "completed",
+      "result": "cancelled"
+    },
+    {
+      "id": 128440579127,
+      "name": "Verification",
+      "status": "completed",
+      "result": "success"
+    },
+    {
+      "id": 128437291410,
+      "name": "verify (native-aot-0, x86_64)",
+      "status": "completed",
+      "result": "success"
+    },
+    {
+      "id": 128437291403,
+      "name": "verify (safety-0, x86_64)",
+      "status": "completed",
+      "result": "success"
+    },
+    {
+      "id": 128437291398,
+      "name": "verify (native-aot-1, x86_64)",
+      "status": "completed",
+      "result": "success"
+    },
+    {
+      "id": 128437291394,
+      "name": "verify (opt-in, x86_64)",
+      "status": "completed",
+      "result": "success"
+    },
+    {
+      "id": 128437291391,
+      "name": "verify (safety-1, x86_64)",
+      "status": "completed",
+      "result": "success"
+    },
+    {
+      "id": 128437291361,
+      "name": "verify (cache-gc, x86_64)",
+      "status": "completed",
+      "result": "success"
+    },
+    {
+      "id": 128437291353,
+      "name": "verify (benchmarks, x86_64)",
+      "status": "completed",
+      "result": "success"
+    },
+    {
+      "id": 128437291341,
+      "name": "verify (contracts, x86_64)",
+      "status": "completed",
+      "result": "success"
+    },
+    {
+      "id": 128437291331,
+      "name": "distribution (ubuntu-24.04)",
+      "status": "completed",
+      "result": "success"
+    },
+    {
+      "id": 128437291327,
+      "name": "verify (hosted, x86_64)",
+      "status": "completed",
+      "result": "success"
+    },
+    {
+      "id": 128437291323,
+      "name": "native JIT and variants (worker 1)",
+      "status": "completed",
+      "result": "success"
+    },
+    {
+      "id": 128437291310,
+      "name": "native JIT and variants (worker 0)",
+      "status": "completed",
+      "result": "success"
+    },
+    {
+      "id": 128437291309,
+      "name": "distribution (macos-15)",
+      "status": "completed",
+      "result": "success"
+    },
+    {
+      "id": 128435450170,
+      "name": "Check title and description",
+      "status": "completed",
+      "result": "success"
+    },
+    {
+      "id": 128435335995,
+      "name": "smoke",
+      "status": "completed",
+      "result": "success"
+    },
+    {
+      "id": 128435335624,
+      "name": "verify (bootstrap, aarch64)",
+      "status": "completed",
+      "result": "success"
+    },
+    {
+      "id": 128435335514,
+      "name": "make lint (ruff, shellcheck, clang -Wall -Wextra)",
+      "status": "completed",
+      "result": "success"
+    },
+    {
+      "id": 128435335446,
+      "name": "verify (bootstrap, x86_64)",
+      "status": "completed",
+      "result": "success"
+    },
+    {
+      "id": 128435332242,
+      "name": "DCO certified (fork pull requests)",
+      "status": "completed",
+      "result": "skipped"
+    },
+    {
+      "id": 128435331469,
+      "name": "Check title and description",
+      "status": "completed",
+      "result": "success"
+    }
+  ],
+  "check_page2_empty": true,
+  "legacy_status_page2_empty": true,
+  "ready_metadata_cancellation": {
+    "job": 128440963207,
+    "cause": "Body-edit Submission format run superseded by ready trigger",
+    "superseded_by_success": 128440967642
+  },
+  "limitation": "PR-profile evidence only. Parent is observing newly triggered review; verified merged-main full release gates remain required."
+}

@@ -1,0 +1,62 @@
+{
+  "case": "tests/programs/inference/dynany_graph.py",
+  "original_source_commit": "2556085e7165a34465e6cede5d93c895e416cad8",
+  "candidate_commit": "eeca23bbc8c2aa6c37ce904e3d2bf79a2a94e789",
+  "source_sha256": "eb41b19e8073761d3745d14581c87268359d325cc07610fc954c21b384889539",
+  "recorded_stdout_sha256": "f54812ed3d6beba79231b120261d475346d94e50e7343fe4760d8c63d4e68b90",
+  "runs": [
+    {
+      "side": "old",
+      "command": [
+        "$WORK/alpha1-audit/pystachy",
+        "ir",
+        "tests/programs/inference/dynany_graph.py",
+        "-o",
+        "$WORK/release-audit/legacy-graph-8xnf2uf2/old.ll"
+      ],
+      "home": "$WORK/alpha1-audit",
+      "status": 0,
+      "ir_sha256": "898fcce09792e06f8c0b83e670084f1ffc8736c0082638b41aee3cf6dae0fb34"
+    },
+    {
+      "side": "new",
+      "command": [
+        "$WORK/alpha2-audit/pystachy",
+        "ir",
+        "tests/programs/inference/dynany_graph.py",
+        "-o",
+        "$WORK/release-audit/legacy-graph-8xnf2uf2/new.ll"
+      ],
+      "home": "$WORK/alpha2-audit",
+      "status": 0,
+      "ir_sha256": "898fcce09792e06f8c0b83e670084f1ffc8736c0082638b41aee3cf6dae0fb34"
+    },
+    {
+      "kind": "native JIT/AOT",
+      "stress_program": "0",
+      "command": [
+        "tests/run.sh",
+        "$WORK/alpha2-audit/pystachy",
+        "jit aot",
+        "tests/programs/inference/dynany_graph.py"
+      ],
+      "home": "$WORK/alpha2-audit",
+      "status": 0,
+      "log": "$WORK/release-audit/legacy-graph-8xnf2uf2/native-0.log"
+    },
+    {
+      "kind": "native JIT/AOT",
+      "stress_program": "1",
+      "command": [
+        "tests/run.sh",
+        "$WORK/alpha2-audit/pystachy",
+        "jit aot",
+        "tests/programs/inference/dynany_graph.py"
+      ],
+      "home": "$WORK/alpha2-audit",
+      "status": 0,
+      "log": "$WORK/release-audit/legacy-graph-8xnf2uf2/native-1.log"
+    }
+  ],
+  "passed": true
+}

@@ -1,0 +1,17 @@
+selected 11 cases
+22 passed, 0 failed
+selected 11 cases
+22 passed, 0 failed
+test_error_ir_scales_linearly_with_inherited_methods (test_typed_field_errors.FieldErrorTests.test_error_ir_scales_linearly_with_inherited_methods) ... ok
+test_exact_class_missing_field_needs_no_table (test_typed_field_errors.FieldErrorTests.test_exact_class_missing_field_needs_no_table) ... ok
+test_exact_names_share_one_static_table_across_families (test_typed_field_errors.FieldErrorTests.test_exact_names_share_one_static_table_across_families) ... ok
+test_excluded_imported_classes_leave_unreused_tag_holes (test_typed_field_errors.FieldErrorTests.test_excluded_imported_classes_leave_unreused_tag_holes) ... ok
+test_first_table_created_in_dry_run_is_retained (test_typed_field_errors.FieldErrorTests.test_first_table_created_in_dry_run_is_retained) ... ok
+test_fresh_generators_emit_identical_ir (test_typed_field_errors.FieldErrorTests.test_fresh_generators_emit_identical_ir) ... ok
+test_hierarchy_without_field_reads_needs_no_name_table (test_typed_field_errors.FieldErrorTests.test_hierarchy_without_field_reads_needs_no_name_table) ... ok
+test_template_specializations_do_not_change_class_tags (test_typed_field_errors.FieldErrorTests.test_template_specializations_do_not_change_class_tags) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.081s
+
+OK

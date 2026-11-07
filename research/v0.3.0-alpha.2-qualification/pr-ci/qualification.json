@@ -1,0 +1,105 @@
+{
+  "profile": "pr",
+  "group": "pr",
+  "result": "pass",
+  "commit": "49e1f0e9a0d86cfc97ab9a386bbe4ab1110d80fc",
+  "bundle": "7430ba7bd4b438518bf87a3aafb37d93f1b4f8fa5c044e5f90b1d0dd4caad643",
+  "corpus_cases": 4241,
+  "exact_case_mode_pairs": 8482,
+  "native": [
+    {
+      "name": "tests-native-jit-0",
+      "seconds": 79.576,
+      "modes": [
+        "jit"
+      ],
+      "passed": 2241,
+      "expected": 2241,
+      "failed": 0,
+      "cases": 2120
+    },
+    {
+      "name": "tests-native-jit-1",
+      "seconds": 92.512,
+      "modes": [
+        "jit"
+      ],
+      "passed": 2246,
+      "expected": 2246,
+      "failed": 0,
+      "cases": 2121
+    },
+    {
+      "name": "tests-native-aot-0",
+      "seconds": 551.518,
+      "modes": [
+        "aot"
+      ],
+      "passed": 2241,
+      "expected": 2241,
+      "failed": 0,
+      "cases": 2120
+    },
+    {
+      "name": "tests-native-aot-1",
+      "seconds": 763.939,
+      "modes": [
+        "aot"
+      ],
+      "passed": 2246,
+      "expected": 2246,
+      "failed": 0,
+      "cases": 2121
+    }
+  ],
+  "variants": [
+    {
+      "worker": 0,
+      "variants": [
+        "opt-1",
+        "opt-2",
+        "opt-3",
+        "opt-4"
+      ],
+      "seconds": 167.471,
+      "checks_per_variant": 294,
+      "cases": 158,
+      "bundle": "7430ba7bd4b438518bf87a3aafb37d93f1b4f8fa5c044e5f90b1d0dd4caad643"
+    },
+    {
+      "worker": 1,
+      "variants": [
+        "opt-5",
+        "opt-6",
+        "cflags-O0"
+      ],
+      "seconds": 108.551,
+      "checks_per_variant": 294,
+      "cases": 158,
+      "bundle": "7430ba7bd4b438518bf87a3aafb37d93f1b4f8fa5c044e5f90b1d0dd4caad643"
+    }
+  ],
+  "runtime_cache": {
+    "name": "runtime-cache",
+    "result": "pass",
+    "seconds": 210.94,
+    "log": "build/verify/runtime-cache.log",
+    "compilers": [
+      "stage2",
+      "CPython-hosted"
+    ],
+    "passed": 134,
+    "failed": 0,
+    "expected": 134,
+    "failures": []
+  },
+  "gc_self": {
+    "name": "gc-self",
+    "result": "pass",
+    "seconds": 392.038,
+    "log": "build/verify/gc-self-check.log",
+    "compiler_interval": 5000,
+    "ir_identical": true
+  },
+  "gc_log": "gc-self: started 2026-11-07T15:00:42Z, limit 10m\ngc: 5149 collections, 387530.0 ms; heap peak 513.3 MiB; live 181.0 MiB at the last\ngc-self: finished after 392s, exit 0\n"
+}

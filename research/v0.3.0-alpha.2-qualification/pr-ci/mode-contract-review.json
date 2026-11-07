@@ -1,0 +1,111 @@
+{
+  "repository": "$WORK/native-modes",
+  "files": {
+    "tools/merge_verification.py": "54977a1b97adc72e2e6f2fface547ec323889bc9df23873123dc424bccc28d4e",
+    "tools/test_merge_verification.py": "367b0a066b0d00df731b8db7e0f34b96e4d59acf4c37248e90d6d341a0aeceb2",
+    "tests/verify.sh": "1a16d0d0b833c46a0800b641dfef14323ef90792a49c944c7774432d82cad44a",
+    "tools/test_verify_shards.py": "42881faa3e93b3b11136971ee4be670ac4cb20fb574e1d6f6258675fac03c3db"
+  },
+  "positive": {
+    "native_corpus_cases": 4241,
+    "JIT_checks": 4487,
+    "AOT_checks": 4487,
+    "exact_case_mode_pairs": 8482,
+    "optin_deferrals": [
+      "dynany-optin-0",
+      "python-int-optin-0"
+    ]
+  },
+  "negative_controls": [
+    {
+      "control": "JIT mislabeled AOT",
+      "rejected": true,
+      "reason": "native-jit-0.tests-native-jit-0: expected the stage-2 compiler in jit only"
+    },
+    {
+      "control": "AOT claims both modes",
+      "rejected": true,
+      "reason": "native-aot-0.tests-native-aot-0: expected the stage-2 compiler in aot only"
+    },
+    {
+      "control": "wrong compiler label",
+      "rejected": true,
+      "reason": "native-aot-1.tests-native-aot-1: expected the stage-2 compiler in aot only"
+    },
+    {
+      "control": "short successful count",
+      "rejected": true,
+      "reason": "native-jit-0.tests-native-jit-0: check count differs from its exact selected cases"
+    },
+    {
+      "control": "wrong deterministic half",
+      "rejected": true,
+      "reason": "native-jit-0.tests-native-jit-0: selected cases differ from the checkout's tests-native-jit-0 selection"
+    },
+    {
+      "control": "commit drift",
+      "rejected": true,
+      "reason": "native-jit-0: git.commit identity differs between groups"
+    },
+    {
+      "control": "source identity drift",
+      "rejected": true,
+      "reason": "native-aot-0: sources identity differs between groups"
+    },
+    {
+      "control": "toolchain drift",
+      "rejected": true,
+      "reason": "native-jit-1: toolchain identity differs between groups"
+    },
+    {
+      "control": "bootstrap IR drift",
+      "rejected": true,
+      "reason": "native-aot-1: bootstrap IR hash differs between groups"
+    },
+    {
+      "control": "bootstrap bundle drift",
+      "rejected": true,
+      "reason": "native-jit-0: bootstrap bundle identity differs from producer"
+    },
+    {
+      "control": "consumer fails to attest reuse",
+      "rejected": true,
+      "reason": "native-aot-0: must validate and reuse the producer's bootstrap"
+    },
+    {
+      "control": "producer falsely attests reuse",
+      "rejected": true,
+      "reason": "bootstrap: producer must perform the fixed-point bootstrap"
+    },
+    {
+      "control": "jit duplicate case replaces omitted case at same count",
+      "rejected": true,
+      "reason": "PR native halves must cover every corpus case and mode exactly once"
+    },
+    {
+      "control": "aot duplicate case replaces omitted case at same count",
+      "rejected": true,
+      "reason": "PR native halves must cover every corpus case and mode exactly once"
+    },
+    {
+      "control": "missing jit half with active opt-in deferrals",
+      "rejected": true,
+      "reason": "PR native coverage requires both complete JIT and AOT halves"
+    },
+    {
+      "control": "missing aot half with active opt-in deferrals",
+      "rejected": true,
+      "reason": "PR native coverage requires both complete JIT and AOT halves"
+    },
+    {
+      "control": "duplicate step substitutes missing AOT half",
+      "rejected": true,
+      "reason": "PR native coverage requires both complete JIT and AOT halves"
+    },
+    {
+      "control": "all evidence from wrong expected commit",
+      "rejected": true,
+      "reason": "report commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa differs from checkout ffffffffffffffffffffffffffffffffffffffff"
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "wrong_metatype_guard_rejected": true,
+  "changed_existing_callable_target_rejected": true,
+  "changed_class_rejection_message_rejected": true,
+  "changed_existing_error_continuation_rejected": true,
+  "changed_global_layout_rejected": true,
+  "extra_global_mutation_rejected": true
+}
