@@ -471,7 +471,10 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
     if name == "hash":
         if len(args) != 1 or args[0].kind == "kw":
             self.err(f"hash() takes exactly one argument ({len(args)} given)")
-        return self.hash_value(self.expr(args[0], ""))
+        hasharg = self.expr(args[0], "")
+        if self.dyn_policy(self.line) and self.refl_builtin_class(hasharg.t) != "":
+            hasharg = self.dyn_box(hasharg)
+        return self.hash_value(hasharg)
     if name == "format" and 1 <= len(args) <= 2 and len([a for a in args if a.kind == "kw"]) == 0:
         # format(v, spec): what the f-string field {v:spec} gives, v.__format__(spec)
         return self.format_(self.expr(args[0], ""), args[1] if len(args) == 2 else mk("str", "", self.line, []))
@@ -503,6 +506,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         tv = self.expr(args[0], "")
         if tv.t == "exc" or tv.t == "opt[exc]" or (tv.t in self.classes and self.classes[tv.t].exc != ""):
             return self.exc_type_of(tv)  # (type(e) of an exception, as a value: its class's class object)
+        if self.dyn_policy(self.line):
+            return self.refl_type_value(tv)
         if tv.t == "exc" or (tv.t in self.classes and self.classes[tv.t].exc != ""):
             self.err(f"unsupported call type({tv.t}): type(e) of an exception is supported as type(e).__name__ (and isinstance(e, C) tests its class)")
         self.err("type(x) as a value (a class object) is not supported (#7); type(x).__name__, x.__class__.__name__, type(x) is C and type(a) == type(b) are (#486)")
@@ -510,6 +515,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         # decided by the static type: an object is callable where its class defines __call__
         # and it is not None
         v = self.expr(args[0], "")
+        if v.t == "dyn":
+            return self.dyn_call(self.dyn_dispatcher("callable", ["dyn"], "bool", ""), [v])
         known = self.callable_type(v.t)
         if known == -2:
             return Val("true", "bool") if v.v in self.nn else self.ptr_cmp('!=', v, Val('null', 'None'))
@@ -772,6 +779,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         elif kvals[j].t != "None":
             keyv = kvals[j]  # (key=None: the items themselves)
             self.key_check(keyv, f"{name}()")
+    if len(vals) == 1 and len(kws) == 0 and name in ["str", "repr", "bool", "id"] and self.dyn_policy(self.line) and self.refl_builtin_class(vals[0].t) != "":
+        vals[0] = self.dyn_box(vals[0])
     if len(vals) == 1 and len(kws) == 0 and vals[0].t == "dyn" and name in ["len", "str", "repr", "int", "float", "bool", "id", "abs"]:
         return self.dyn_builtin(name, vals[0])  # (by its box's type: dynamic.py)
     if name == "sum" and len(kws) == 0 and 1 <= len(vals) <= 2 and (vals[0].t == "dyn" or vals[0].t == "list[dyn]" or (len(vals) == 2 and vals[1].t == "dyn")):

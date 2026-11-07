@@ -5,7 +5,7 @@ One memo holds every value the traversal reaches (lists, dicts, tuples, scalars 
 six unrelated classes), keyed by identity. The graph has repeated references, cycles, fields
 whose types change, and a copier chosen at run time by each object's type.
 """
-from typing import Any, Callable
+from typing import Any
 
 
 class Node:
@@ -80,7 +80,7 @@ def copy_value(x: Any, memo: dict[int, Any]) -> Any:
         t = tuple(items)
         memo[k] = t
         return t
-    copier = COPIERS.get(type(x).__name__)
+    copier = COPIERS.get(type(x))
     if copier is None:
         raise TypeError("cannot copy a " + type(x).__name__)
     return copier(x, memo)
@@ -131,10 +131,19 @@ def copy_event(x: Any, memo: dict[int, Any]) -> Any:
     return n
 
 
-COPIERS: dict[str, Callable[[Any, dict[int, Any]], Any]] = {
-    "Node": copy_node, "Leaf": copy_leaf, "Pair": copy_pair,
-    "Counter": copy_counter, "Registry": copy_registry, "Event": copy_event,
-}
+COPIERS: dict[Any, Any] = {}
+
+
+def register(cls: Any, copier: Any) -> None:
+    COPIERS[cls] = copier
+
+
+register(Node, copy_node)
+register(Leaf, copy_leaf)
+register(Pair, copy_pair)
+register(Counter, copy_counter)
+register(Registry, copy_registry)
+register(Event, copy_event)
 
 
 def render(x: Any, seen: dict[int, int], out: list[str]) -> None:

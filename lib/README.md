@@ -16,8 +16,9 @@ Compiler-provided `sys.setrecursionlimit()` bounds recursive native calls with
 catchable `RecursionError`; [its depth policy](../docs/language/compatibility.md#errors-and-control-flow)
 also applies to compiled library functions. Ports that opt in to
 [dynamic `Any`](../docs/dynamic-any.md) rely on its [operation](../docs/dynamic-any.md#operations)
-and [iteration](../docs/dynamic-any.md#iteration) contracts; that protocol support alone does
-not establish whole-module compatibility.
+and [iteration](../docs/dynamic-any.md#iteration) contracts, including
+[class values, type-keyed registries, generic calls and annotated factories](../docs/dynamic-any.md#class-values-and-type-keyed-registries).
+That protocol support alone does not establish whole-module compatibility.
 
 ## Module guide
 

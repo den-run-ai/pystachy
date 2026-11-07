@@ -1028,6 +1028,8 @@ def gen_none_arg(self, m: str, k: int) -> str:
     return f"TypeError: {m}() argument {k} must be str, not None"
 
 def gen_to_str(self, v: Val) -> Val:
+    if self.dyn_policy(self.line) and self.refl_builtin_class(v.t) != "":
+        return self.dyn_str(self.dyn_box(v))
     t = v.t
     if t == "dyn":
         return self.dyn_str(v)  # (by its box's type: dynamic.py)
@@ -1230,6 +1232,8 @@ def gen_hashable(self, t: str) -> bool:
     return (is_tuple(u) or is_vtuple(u)) and all(self.hashable(x) for x in targs(u))
 
 def gen_repr(self, v: Val) -> Val:
+    if self.dyn_policy(self.line) and self.refl_builtin_class(v.t) != "":
+        return self.dyn_repr(self.dyn_box(v))
     if is_kw(v.t):
         return self.kw_repr(v)
     if v.t == BIG:

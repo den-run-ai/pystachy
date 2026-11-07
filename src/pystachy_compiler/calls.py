@@ -244,6 +244,25 @@ def gen_star_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: 
         f = mk("attr", f.s, f.line, [self.vnode(receiver)])
     elif f.kind != "attr" and f.kind != "val" and not self.static_callee(f):
         f = self.vnode(self.expr(f, ""))
+    # Keep the existing static call shapes. Only an erased callable needs the
+    # runtime binder when a star's length or mapping's keys are unknown.
+    dynamic_value = f.kind == "val" and self.vnodes[int(f.s)].t == "dyn"
+    if dynamic_value or receiver.t == "dyn":
+        runtime_args = False
+        for a in args:
+            if a.kind == "starred":
+                display = a.kids[0].kind in ["list", "tuple"] and not any(x.kind == "starred" for x in a.kids[0].kids)
+                if not display and not is_tuple(unopt(self.dry(a.kids[0]))):
+                    runtime_args = True
+            elif a.kind == "dstar":
+                display = a.kids[0].kind == "dict" and all(a.kids[0].kids[i].kind == "str" for i in range(0, len(a.kids[0].kids), 2))
+                if not display and not is_kw(self.dry(a.kids[0])):
+                    runtime_args = True
+        if runtime_args:
+            if dynamic_value:
+                return self.dyn_star_call(self.vnodes[int(f.s)], args)
+            found = self.dyn_lookup(receiver, f.s, 0, [])
+            return self.dyn_star_call(receiver, args, f.s, found)
     dynh = Val("", "")
     if f.kind == "attr" and receiver.t == "dyn":
         # (o.m(*t, **d) of an Any o: the method is found first, as CPython's LOAD_ATTR finds it,

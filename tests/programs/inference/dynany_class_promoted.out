@@ -1,0 +1,11 @@
+True True True
+True True
+int integer True
+int integer True
+int integer True
+bool boolean False
+bool boolean False
+True True
+sequence sequence 3
+True True
+[exit 0]

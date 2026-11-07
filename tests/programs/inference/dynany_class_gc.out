@@ -1,0 +1,8 @@
+192
+number:3
+text:hello
+empty:None
+192
+number:4 replacement:5 text:world
+True True
+[exit 0]

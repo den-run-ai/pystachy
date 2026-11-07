@@ -1,0 +1,10 @@
+True False
+base True [7, 'state', [1, 2]]
+True False
+child True [7, 'state', [1, 2]]
+True True
+True
+[7, 'state', [1, 2], 'shared'] [7, 'state', [1, 2], 'shared'] [7, 'state', [1, 2], 'shared']
+True
+True
+[exit 0]
