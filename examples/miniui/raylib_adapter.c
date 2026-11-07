@@ -5,6 +5,7 @@
 #include "raylib.h"
 
 static int live;
+static int clipping;
 static char *window_title;
 
 static Color color(unsigned int rgba) {
@@ -68,10 +69,15 @@ int miniui_keys(void) {
 int miniui_character(void) { return GetCharPressed(); }
 double miniui_dt(void) { return (double)GetFrameTime(); }
 void miniui_begin(unsigned int rgba) { BeginDrawing(); ClearBackground(color(rgba)); }
-void miniui_end(void) { EndScissorMode(); EndDrawing(); }
+void miniui_end(void) {
+    if (clipping) EndScissorMode();
+    clipping = 0;
+    EndDrawing();
+}
 void miniui_clip(int x, int y, int w, int h) {
-    EndScissorMode();
+    /* BeginScissorMode flushes the old batch before replacing the clip. */
     BeginScissorMode(x, y, w, h);
+    clipping = 1;
 }
 void miniui_rect(int x, int y, int w, int h, unsigned int rgba) {
     DrawRectangle(x, y, w, h, color(rgba));

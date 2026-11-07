@@ -191,6 +191,133 @@ def focus_loss() -> None:
     print("focus loss: window blur, disappearing control, escape cancellation")
 
 
+def clipped_focus() -> None:
+    ui = UI(240, 50)
+    ui.begin(Input())
+    ui.button("shown", "Shown")
+    ui.button("hidden", "Hidden")
+    ui.end()
+    assert ui.order == ["shown"]
+    for reverse in [False, True]:
+        events = Input()
+        events.tab = True
+        events.shift = reverse
+        events.enter = True
+        ui.begin(events)
+        assert ui.button("shown", "Shown")
+        assert not ui.button("hidden", "Hidden")
+        ui.end()
+        assert ui.focus == "shown"
+
+    # Becoming completely clipped cancels capture before a slider can update.
+    ui.begin(Input(20, 20, True, True))
+    value = ui.slider("drag", 0.3, 0.0, 1.0)
+    ui.end()
+    assert ui.active == "drag" and ui.focus == "drag"
+    ui.begin(Input(200, 20, True))
+    ui.clip = Rect(10, 10, 0, 30)
+    assert ui.slider("drag", value, 0.0, 1.0) == value
+    ui.end()
+    assert ui.order == [] and ui.active == "" and ui.focus == ""
+
+    # A control selected using last frame's order cannot consume keys if hidden now.
+    ui.begin(Input())
+    ui.textbox("text", "unchanged")
+    ui.end()
+    events = Input(text="lost")
+    events.tab = True
+    events.backspace = True
+    ui.begin(events)
+    ui.clip = Rect(10, 100, 220, 30)
+    assert ui.textbox("text", "unchanged") == "unchanged"
+    ui.end()
+    assert ui.order == [] and ui.focus == ""
+
+    # Partial visibility remains focusable; hit testing uses only the visible part.
+    ui.begin(Input(20, 20, False, True, True))
+    ui.clip = Rect(10, 10, 220, 1)
+    assert not ui.button("partial", "Partial")
+    ui.end()
+    assert ui.order == ["partial"]
+    events = Input()
+    events.tab = True
+    events.enter = True
+    ui.begin(events)
+    ui.clip = Rect(10, 10, 220, 1)
+    assert ui.button("partial", "Partial")
+    ui.end()
+    assert ui.focus == "partial"
+    ui.begin(Input(20, 10, False, True, True))
+    ui.clip = Rect(10, 10, 220, 1)
+    assert ui.button("partial", "Partial")
+    ui.end()
+    print("clipped focus: hidden navigation, stale focus/capture, partial visibility")
+
+
+def cancelled_input(blur: bool) -> Input:
+    events = Input(20, 20, True, True, True, "unexpected")
+    events.focused = not blur
+    events.escape = not blur
+    events.tab = True
+    events.shift = True
+    events.enter = True
+    events.space = True
+    events.home = True
+    events.end = True
+    events.left = True
+    events.right = True
+    events.backspace = True
+    events.delete = True
+    return events
+
+
+def cancellation_priority() -> None:
+    for blur in [False, True]:
+        ui = UI(240, 200)
+        ui.begin(Input(20, 20, True, True))
+        ui.button("button", "Button")
+        ui.end()
+        events = cancelled_input(blur)
+        ui.begin(events)
+        assert not ui.button("button", "Button")
+        ui.end()
+        assert ui.focus == "" and ui.active == ""
+        # The input snapshot belongs to the caller and must not be mutated.
+        assert events.pressed and events.enter and events.text == "unexpected"
+        ui.begin(Input(20, 20, True))
+        assert not ui.button("button", "Button")
+        ui.end()
+        assert ui.focus == "" and ui.active == ""
+        ui.begin(Input(20, 20, False, True, True))
+        assert ui.button("button", "Button")
+        ui.end()
+
+        ui.begin(Input(20, 20, True, True))
+        ui.checkbox("check", "Check", False)
+        ui.end()
+        ui.begin(cancelled_input(blur))
+        assert not ui.checkbox("check", "Check", False)
+        ui.end()
+        assert ui.focus == "" and ui.active == ""
+
+        ui.begin(Input(20, 20, True, True))
+        value = ui.slider("slider", 0.3, 0.0, 1.0)
+        ui.end()
+        ui.begin(cancelled_input(blur))
+        assert ui.slider("slider", value, 0.0, 1.0) == value
+        ui.end()
+        assert ui.focus == "" and ui.active == ""
+
+        ui.begin(Input(20, 20, False, True, True))
+        ui.textbox("text", "untouched")
+        ui.end()
+        ui.begin(cancelled_input(blur))
+        assert ui.textbox("text", "untouched") == "untouched"
+        ui.end()
+        assert ui.focus == "" and ui.active == "" and ui.edit_id == ""
+    print("cancellation: Escape/blur win over click, keys, edits and navigation")
+
+
 def layout_and_drawing() -> None:
     ui = UI(240, 90)
     ui.begin(Input(20, 86, False, True, True))
@@ -264,7 +391,25 @@ def invalid_usage() -> None:
         ui.end()
     except RuntimeError:
         failed += 1
-    assert failed == 11
+    # Disabled and clipped controls still reserve their IDs within the frame.
+    ui.begin(Input())
+    ui.button("disabled", "Disabled", False)
+    try:
+        ui.button("disabled", "Duplicate")
+    except ValueError:
+        failed += 1
+    ui.clip = Rect(0, 0, 0, 0)
+    ui.button("hidden", "Hidden")
+    try:
+        ui.button("hidden", "Duplicate")
+    except ValueError:
+        failed += 1
+    ui.end()
+    ui.begin(Input())
+    ui.button("disabled", "Available again")
+    ui.button("hidden", "Visible again")
+    ui.end()
+    assert failed == 13
     print("validation: lifecycle, IDs, layout, finite values, NUL")
 
 
@@ -274,6 +419,8 @@ checkbox_and_identity()
 sliders()
 text_editing()
 focus_loss()
+clipped_focus()
+cancellation_priority()
 layout_and_drawing()
 invalid_usage()
-print("miniui: 8 headless scenarios passed")
+print("miniui: 10 headless scenarios passed")

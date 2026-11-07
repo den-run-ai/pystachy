@@ -4,7 +4,9 @@ checkbox and identity: release-only toggle; IDs survive reordered layout
 sliders: capture, clamp, keyboard step, equal bounds, disabled
 text: Unicode code points, insertion, deletion, capacity, commit
 focus loss: window blur, disappearing control, escape cancellation
+clipped focus: hidden navigation, stale focus/capture, partial visibility
+cancellation: Escape/blur win over click, keys, edits and navigation
 drawing: flexible rows, clipping, progress, rectangle, RGBA
 validation: lifecycle, IDs, layout, finite values, NUL
-miniui: 8 headless scenarios passed
+miniui: 10 headless scenarios passed
 [exit 0]

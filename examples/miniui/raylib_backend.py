@@ -1,69 +1,69 @@
-"""Optional raylib adapter. Run from the repository root after build_backend.sh."""
+"""Optional raylib adapter. Use the built run.sh to locate its shared library."""
 from ffi import extern, c_int, c_uint
 from miniui import Input, UI
 
 
-@extern("./build/miniui/libminiui.so", "miniui_init")
+@extern("libminiui.so", "miniui_init")
 def _init(width: c_int, height: c_int, title: str) -> c_int: ...
 
 
-@extern("./build/miniui/libminiui.so", "miniui_close")
+@extern("libminiui.so", "miniui_close")
 def _close() -> None: ...
 
 
-@extern("./build/miniui/libminiui.so", "miniui_open")
+@extern("libminiui.so", "miniui_open")
 def _open() -> c_int: ...
 
 
-@extern("./build/miniui/libminiui.so", "miniui_focused")
+@extern("libminiui.so", "miniui_focused")
 def _focused() -> c_int: ...
 
 
-@extern("./build/miniui/libminiui.so", "miniui_mouse_x")
+@extern("libminiui.so", "miniui_mouse_x")
 def _mouse_x() -> c_int: ...
 
 
-@extern("./build/miniui/libminiui.so", "miniui_mouse_y")
+@extern("libminiui.so", "miniui_mouse_y")
 def _mouse_y() -> c_int: ...
 
 
-@extern("./build/miniui/libminiui.so", "miniui_mouse")
+@extern("libminiui.so", "miniui_mouse")
 def _mouse() -> c_int: ...
 
 
-@extern("./build/miniui/libminiui.so", "miniui_keys")
+@extern("libminiui.so", "miniui_keys")
 def _keys() -> c_int: ...
 
 
-@extern("./build/miniui/libminiui.so", "miniui_character")
+@extern("libminiui.so", "miniui_character")
 def _character() -> c_int: ...
 
 
-@extern("./build/miniui/libminiui.so", "miniui_dt")
+@extern("libminiui.so", "miniui_dt")
 def _dt() -> float: ...
 
 
-@extern("./build/miniui/libminiui.so", "miniui_begin")
+@extern("libminiui.so", "miniui_begin")
 def _begin(color: c_uint) -> None: ...
 
 
-@extern("./build/miniui/libminiui.so", "miniui_end")
+@extern("libminiui.so", "miniui_end")
 def _end() -> None: ...
 
 
-@extern("./build/miniui/libminiui.so", "miniui_clip")
+@extern("libminiui.so", "miniui_clip")
 def _clip(x: c_int, y: c_int, w: c_int, h: c_int) -> None: ...
 
 
-@extern("./build/miniui/libminiui.so", "miniui_rect")
+@extern("libminiui.so", "miniui_rect")
 def _rect(x: c_int, y: c_int, w: c_int, h: c_int, color: c_uint) -> None: ...
 
 
-@extern("./build/miniui/libminiui.so", "miniui_text")
+@extern("libminiui.so", "miniui_text")
 def _text(text: str, x: c_int, y: c_int, size: c_int, color: c_uint) -> None: ...
 
 
-@extern("./build/miniui/libminiui.so", "miniui_width")
+@extern("libminiui.so", "miniui_width")
 def _width(text: str, size: c_int) -> c_int: ...
 
 
@@ -117,13 +117,23 @@ class Window:
         if self.closed or ui.started:
             raise RuntimeError("draw requires an open window and an ended UI frame")
         _begin(ui.style.background)
+        last_x = last_y = last_w = last_h = -1
         try:
             for command in ui.commands:
                 rect = command.rect
-                clip = command.clip.intersect(rect)
-                if clip.w == 0 or clip.h == 0:
+                clip = command.clip
+                if (rect.w == 0 or rect.h == 0 or clip.w == 0 or clip.h == 0
+                        or rect.x >= clip.x + clip.w or rect.x + rect.w <= clip.x
+                        or rect.y >= clip.y + clip.h or rect.y + rect.h <= clip.y):
                     continue
-                _clip(clip.x, clip.y, clip.w, clip.h)
+                # Rectangles share the container clip; text still needs its own
+                # bounds, including a horizontally scrolled textbox and caret.
+                if command.kind != 0:
+                    clip = clip.intersect(rect)
+                if (clip.x != last_x or clip.y != last_y
+                        or clip.w != last_w or clip.h != last_h):
+                    _clip(clip.x, clip.y, clip.w, clip.h)
+                    last_x, last_y, last_w, last_h = clip.x, clip.y, clip.w, clip.h
                 if command.kind == 0:
                     _rect(rect.x, rect.y, rect.w, rect.h, command.color)
                 else:

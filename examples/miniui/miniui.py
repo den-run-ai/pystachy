@@ -23,6 +23,8 @@ class Rect:
 
 
 class Input:
+    """Frame snapshot, not an ordered event stream; Escape/blur cancel the frame."""
+
     def __init__(self, x: int = 0, y: int = 0, down: bool = False,
                  pressed: bool = False, released: bool = False, text: str = ""):
         self.x = x
@@ -86,9 +88,10 @@ class UI:
         self.edit_id = ""
         self.cursor = 0
         self.input = Input()
+        self.accept_input = True
         self.clip = Rect(0, 0, width, height)
         self.area = Rect(0, 0, width, height)
-        self.ids: list[str] = []
+        self.ids: set[str] = set()
         self.order: list[str] = []
         self.widths: list[int] = []
         self.column = 0
@@ -107,12 +110,11 @@ class UI:
         if self.width - 2 * pad < 8 or self.height - 2 * pad < 8:
             raise ValueError("padding leaves no content area")
         self.input = events
-        if not events.focused:
+        self.accept_input = events.focused and not events.escape
+        if not self.accept_input:
             self.focus = ""
             self.active = ""
-        elif events.escape:
-            self.focus = ""
-            self.active = ""
+            self.edit_id = ""
         elif events.pressed:
             self.focus = ""
         elif events.tab and self.order:
@@ -128,7 +130,7 @@ class UI:
         if not events.down and not events.released:
             self.active = ""
         self.commands = []
-        self.ids = []
+        self.ids.clear()
         self.order = []
         self.area = Rect(pad, pad, self.width - 2 * pad, self.height - 2 * pad)
         self.clip = self.area
@@ -210,22 +212,23 @@ class UI:
     def _control(self, key: str, rect: Rect, enabled: bool) -> bool:
         if not key or key in self.ids:
             raise ValueError("interactive IDs must be nonempty and unique per frame")
-        self.ids.append(key)
-        if not enabled:
+        self.ids.add(key)
+        visible = self.clip.intersect(rect)
+        if not enabled or visible.w == 0 or visible.h == 0:
             if self.active == key:
                 self.active = ""
             if self.focus == key:
                 self.focus = ""
             return False
         self.order.append(key)
-        hot = self.input.focused and self.clip.intersect(rect).contains(self.input.x, self.input.y)
+        hot = self.accept_input and visible.contains(self.input.x, self.input.y)
         if hot and self.input.pressed and not self.active:
             self.active = key
             self.focus = key
         return hot
 
     def _clicked(self, key: str, hot: bool, enabled: bool) -> bool:
-        if not enabled or not self.input.focused:
+        if not enabled or not self.accept_input:
             return False
         mouse = self.active == key and self.input.released and hot
         keyboard = self.focus == key and (self.input.enter or self.input.space)
@@ -328,6 +331,7 @@ class UI:
                 self.cursor = len(value)
             self.edit_id = key
             self.cursor = min(self.cursor, len(value))
+            # Snapshot priority: navigation, deletion, text, then Enter.
             if self.input.home:
                 self.cursor = 0
             if self.input.end:
