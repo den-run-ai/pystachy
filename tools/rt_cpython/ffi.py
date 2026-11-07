@@ -1,7 +1,8 @@
 """CPython's version of Pystachy's ffi module, so that a program that declares C functions with
 @extern runs under CPython too (put this directory on PYTHONPATH): ctypes calls the same C
 function, with the checks Pystachy's stubs make. A str goes in as its UTF-8 bytes (const char *,
-NUL-terminated; a NUL in it is a ValueError) and a returned char * comes back as a str (NULL:
+NUL-terminated; a NUL in it is a ValueError); bytes pass unchanged with NULs allowed, and
+a returned char * is copied into str or bytes (NULL:
 None, or a ValueError for -> str); C integers are range-checked (OverflowError), as Pystachy
 checks them. A list[float] or list[c_int64] goes in as a C array of its items (double *,
 int64_t *), copied back into the list when the call returns, since Pystachy passes the list's own
@@ -55,7 +56,7 @@ class c_float(float):
 
 _C = {c_int: ctypes.c_int, c_uint: ctypes.c_uint, c_int64: ctypes.c_int64, c_ssize_t: ctypes.c_ssize_t,
       c_uint64: ctypes.c_uint64, c_size_t: ctypes.c_size_t, c_void_p: ctypes.c_void_p,
-      c_buf: ctypes.c_char_p, float: ctypes.c_double, c_float: ctypes.c_float, str: ctypes.c_char_p, type(None): None, typing.Optional[str]: ctypes.c_char_p}
+      c_buf: ctypes.c_char_p, float: ctypes.c_double, c_float: ctypes.c_float, str: ctypes.c_char_p, type(None): None, typing.Optional[str]: ctypes.c_char_p, bytes: ctypes.c_char_p, typing.Optional[bytes]: ctypes.c_char_p}
 
 
 # the lists an @extern function takes: their item type in a C array
@@ -99,6 +100,21 @@ def _s(b):
     return None if b is None else b.decode("utf-8", "surrogatepass")
 
 
+_LIBRARIES = {}
+
+
+def _library(path):
+    if "\0" in path:
+        raise ValueError("embedded null character")
+    if path not in _LIBRARIES:
+        _LIBRARIES[path] = ctypes.CDLL(path or None)
+    return _LIBRARIES[path]
+
+
+def load_library(path):
+    return _library(path)._handle
+
+
 def extern(lib, symbol=""):
     # the def's own signature binds a call's arguments (keywords and defaults as for any def), then
     # ctypes calls the C function, found when the def runs, as Pystachy finds it then
@@ -112,7 +128,7 @@ def extern(lib, symbol=""):
                 raise TypeError(f"C function {f.__name__}() takes or returns int: say which C integer type")
         for t in [x for x in ts if typing.get_origin(x) is list and x not in _LISTS] + ([ret] if typing.get_origin(ret) is list else []):
             raise TypeError(f"C function {f.__name__}() takes or returns {t}: a list goes only as an argument, list[float] or list[c_int64]")
-        cf = getattr(ctypes.CDLL(lib or None), symbol or f.__name__)
+        cf = _library(lib)[symbol or f.__name__]  # (a fresh function keeps each declaration's signature)
         cf.argtypes = [ctypes.POINTER(_LISTS[t]) if t in _LISTS else _C[t] for t in ts]
         cf.restype = _C[ret]
 
@@ -141,8 +157,8 @@ def extern(lib, symbol=""):
             r = cf(*cargs)
             for v, a in arrays.values():
                 v[:] = list(a)  # (what C wrote, once for each list)
-            if ret is str and r is None:
-                raise ValueError("a C function declared -> str returned NULL")
+            if ret in (str, bytes) and r is None:
+                raise ValueError(f"a C function declared -> {ret.__name__} returned NULL")
             if ret is c_void_p:
                 return r or 0  # (ctypes gives None for NULL)
             if ret in (c_uint64, c_size_t) and r >= 2**63:
@@ -159,6 +175,14 @@ def string_at(addr, n):
     if n < 0:
         raise ValueError("ffi.string_at() takes a length >= 0")  # (ctypes reads up to a NUL)
     return _s(ctypes.string_at(addr, n))
+
+
+def bytes_at(addr, n):
+    if n < -1:
+        raise ValueError("ffi.bytes_at() takes a length >= -1")
+    if addr == 0 and n != 0:
+        raise ValueError("ffi.bytes_at() cannot read a NULL pointer")
+    return b"" if n == 0 else ctypes.string_at(addr, n)
 
 
 # @export: a function of a module that `pystachy ext` compiles into a CPython extension module.

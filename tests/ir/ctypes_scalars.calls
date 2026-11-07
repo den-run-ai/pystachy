@@ -1,0 +1,32 @@
+@init._pystachy_ctypes: pys_list_new pys_list_append
+@init.ctypes:
+@main.init: pys_load_library pys_c_bind pys_c_bind pys_c_bind pys_c_bind pys_c_bind pys_c_bind pys_str_int pys_write pys_write pys_str_float pys_write pys_write pys_repr pys_write pys_write pys_raise
+@f.ctypes$_signed32.1: pys_raise
+@f._pys_ctypes_fn0.1: pys_raise
+@f.ctypes$_unsigned32.1:
+@f._pys_ctypes_fn1.1: pys_raise
+@f.ctypes$_integer.1:
+@f._pys_ctypes_fn2.1: pys_raise
+@f.integers: pys_raise
+@f.ctypes$_floating.1:
+@f._pys_ctypes_fn3.1: pys_raise
+@f.ctypes$_floating.2:
+@f._pys_ctypes_fn4.1: pys_raise
+@f.ctypes$_floating.3:
+@f._pys_ctypes_fn4.2: pys_raise
+@f.floating:
+@f.ctypes$_address.1: pys_raise
+@f._pys_ctypes_fn5.1: pys_raise
+@f.pointer:
+@f.ctypes$_pointer_value: pys_box
+@pys_obj_eq:
+@pys_obj_cmp:
+@pys_obj_repr:
+@f._pys_ctypes_fn0_raw: pys_c_check
+@f._pys_ctypes_fn1_raw: pys_c_check
+@f._pys_ctypes_fn2_raw:
+@f._pys_ctypes_fn3_raw:
+@f._pys_ctypes_fn4_raw:
+@f._pys_ctypes_fn5_raw:
+@pys.recursion.enter: pys_recursion_error pys_recursion_stack_error
+@main: pys_init pys_finish

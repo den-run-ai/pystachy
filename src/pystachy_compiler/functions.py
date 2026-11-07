@@ -485,7 +485,7 @@ def gen_extern_args(self, x: Node, more: bool) -> list[str]:
     return r
 
 def gen_externtype(self, a: Node, t: str, what: str, f: FnInfo) -> str:
-    # an @extern signature's type: "float", "c_float", "str", "None", "opt[str]" or a CTYPES name, or a list
+    # an @extern signature's type: "float", "c_float", "str", "bytes", their optional results, "None" or a CTYPES name, or a list
     # taken as its items, "list[float]" (double *) or "list[c_int64]" (int64_t *): the 8-byte slots
     # of runtime.c's List hold a float's bits and an int as they are, so C sees them in place
     ref = self.imported_ref(a)
@@ -506,7 +506,7 @@ def gen_externtype(self, a: Node, t: str, what: str, f: FnInfo) -> str:
             self.err(f"C function {f.name}() takes list[{e}]: C gets a list's items in place, 8 bytes each, as a double * (list[float]) or an int64_t * (list[ffi.c_int64]); copy them into the C type with a shim")
     if t == "int":
         self.err(f"C function {f.name}() {what} int: say which C integer type (ffi.c_int, c_uint, c_int64, c_uint64, c_size_t, c_ssize_t or c_void_p)")
-    if t in ("float", "str") or (what == "returns" and t in ("None", "opt[str]")):
+    if t in ("float", "str", "bytes", "opt[bytes]") or (what == "returns" and t in ("None", "opt[str]")):
         return t
     self.err(f"C function {f.name}() {what} {typestr(t)}: an @extern function {'takes a C integer type, float, str, list[float] or list[ffi.c_int64]' if what == 'takes' else 'returns a C integer type, float or str, str | None or None'}")
     return ""

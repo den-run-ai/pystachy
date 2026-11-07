@@ -81,8 +81,9 @@ are opt-in. Dynamic `Any` includes a bounded prototype for
 
 Check the [language guide](docs/language.md#support-at-a-glance) and
 [library support table](docs/stdlib.md#library-support-at-a-glance) for the
-features and APIs your code uses. The library includes bounded `argparse` and
-`enum` support. Some packages compile from installed sources, and others need
+features and APIs your code uses. The library includes bounded `argparse`, `enum`
+and experimental [static ctypes declarations](docs/ffi.md#static-ctypes-declarations).
+Some packages compile from installed sources, and others need
 adaptations like the [maintained ports](ports/README.md). The optional
 [CPython bridge](docs/ffi.md#calling-cpython) lets native code call
 packages that need CPython at runtime.
