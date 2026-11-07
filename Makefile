@@ -151,10 +151,13 @@ eqprobe: tools/eqprobe.c runtime.c runtime.py pystachy
 	PYSTACHY_GC_STRESS=1 build/eqprobe
 
 # Writable files' malloc'd buffers count as heap bytes: dropped files run collections, closes balance.
+# Text reads keep their per-byte helpers inline, including the EOF/error retry path.
 fileprobe: tools/fileprobe.c runtime.c runtime.py pystachy
 	mkdir -p build
 	./pystachy rt runtime.py -o build/fileprobe-rt.ll
 	$(LLVMBIN)clang -O2 -S -emit-llvm tools/fileprobe.c -o build/fileprobe.ll
+	@if [ "$$(grep -Ec '^define[^@]*@pys_file_read(line)?\(' build/fileprobe.ll)" != 2 ]; then echo 'fileprobe: IR must define text read and readline' >&2; exit 1; fi
+	@if grep -Eq '^define[^@]*@get(nl)?[.(]' build/fileprobe.ll; then echo 'fileprobe: text reads must inline per-byte get/getnl helpers' >&2; exit 1; fi
 	$(LLVMBIN)llvm-link build/fileprobe-rt.ll build/fileprobe.ll -o build/fileprobe.bc
 	$(LLVMBIN)clang -O2 build/fileprobe.bc -o build/fileprobe -lm
 	build/fileprobe
