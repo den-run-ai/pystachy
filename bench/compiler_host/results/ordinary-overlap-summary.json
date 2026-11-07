@@ -1,0 +1,210 @@
+{
+  "schema_version": 1,
+  "complete": true,
+  "method": "One initial pair followed by two additional interleaved pairs; identical frozen compiler sources and controller hashes. Preserve both cohorts and all samples.",
+  "cohorts": [
+    {
+      "file": "ordinary-overlap-initial.json",
+      "sha256": "6958fa271f77ba009f9f9eb01cd14eb001b23518c4cd46bc721d50ade80ff6fa",
+      "samples_per_policy": 1
+    },
+    {
+      "file": "ordinary-overlap-followup.json",
+      "sha256": "246525b8e9f2e33fc5d3d4284df0de6025a27eea36d29aac26eb5653cdaa3d09",
+      "samples_per_policy": 2
+    }
+  ],
+  "source_sha256": "ed4b4d2c0ccaba398a31b93a5a2c862ed7d191a0e574a1fba56b0bc6aacbffe1",
+  "harness_sha256": {
+    "bench/compiler_host/bootstrap_followup.py": "7120243c6115e7695a3008ceb6466bd973292623b2e8de127f6ddb6e78e4f8ce",
+    "tools/bootstrap_pipeline.py": "9df526ee0e080a0c0ebc0a9a18473eefaf6fd8485bf567bede747e41e137e525",
+    "bench/compiler_host/self_pipeline.py": "9067f45b45048b7ba0dd9c7c37a2d2e30c6a6c11cacce4d975f36981072d87ee"
+  },
+  "checks": {
+    "source_identical": true,
+    "harnesses_identical": true,
+    "temporary_compilers_identical": true,
+    "final_compilers_identical": true,
+    "compiler_ir_identical": true,
+    "runtime_ir_identical": true,
+    "completed_bootstraps": 6,
+    "actual_native_builds": 12,
+    "compiler_ir_witnesses": 18,
+    "runtime_ir_witnesses": 18
+  },
+  "identities": {
+    "pystachy1": "ce4f4a0122f8a60c33951bb6f3676156630734df1e08095ffe4ede7a42ea937f",
+    "pystachy2": "89afd61f94c64cf1058a9cddd22f465be04b69a1a9774efddcd2d3e06b326fd0",
+    "stage_ir": "abe74425a180ae7243b56ebe5c35224b07f296ef17001b01dc8fa30bba870dd3",
+    "rt_ir": "940a694da5ea93214d1308a8eb635b47d8d0a9d4256c63d084c24f5099f8aa5f"
+  },
+  "runs": [
+    {
+      "cohort": "ordinary-overlap-initial.json",
+      "sample": 0,
+      "policy": "driver-o0",
+      "wall_s": 133.00218064100045,
+      "cpu_s": 134.442203,
+      "sampled_process_tree_peak_rss_kib": 942572,
+      "build_steps": {
+        "build1": 46.32625436299713,
+        "build2": 80.89363114300068
+      }
+    },
+    {
+      "cohort": "ordinary-overlap-initial.json",
+      "sample": 0,
+      "policy": "driver-overlap",
+      "wall_s": 126.05416005000006,
+      "cpu_s": 147.90058,
+      "sampled_process_tree_peak_rss_kib": 961696,
+      "build_steps": {
+        "build1": 38.80319250500179,
+        "build2": 81.35504785100056
+      }
+    },
+    {
+      "cohort": "ordinary-overlap-followup.json",
+      "sample": 0,
+      "policy": "driver-overlap",
+      "wall_s": 120.86719296099909,
+      "cpu_s": 140.598357,
+      "sampled_process_tree_peak_rss_kib": 961700,
+      "build_steps": {
+        "build1": 36.664254840994545,
+        "build2": 77.34771478699986
+      }
+    },
+    {
+      "cohort": "ordinary-overlap-followup.json",
+      "sample": 0,
+      "policy": "driver-o0",
+      "wall_s": 129.45036932900257,
+      "cpu_s": 130.41947,
+      "sampled_process_tree_peak_rss_kib": 942784,
+      "build_steps": {
+        "build1": 45.52049796599749,
+        "build2": 78.37058369399892
+      }
+    },
+    {
+      "cohort": "ordinary-overlap-followup.json",
+      "sample": 1,
+      "policy": "driver-o0",
+      "wall_s": 123.66493099900254,
+      "cpu_s": 124.580633,
+      "sampled_process_tree_peak_rss_kib": 942792,
+      "build_steps": {
+        "build1": 42.426017454999965,
+        "build2": 75.61320039300335
+      }
+    },
+    {
+      "cohort": "ordinary-overlap-followup.json",
+      "sample": 1,
+      "policy": "driver-overlap",
+      "wall_s": 116.63764567999897,
+      "cpu_s": 136.241288,
+      "sampled_process_tree_peak_rss_kib": 961580,
+      "build_steps": {
+        "build1": 36.022330494000926,
+        "build2": 75.07314703900192
+      }
+    }
+  ],
+  "pairs": [
+    {
+      "cohort": "ordinary-overlap-initial.json",
+      "sample": 0,
+      "order": [
+        "driver-o0",
+        "driver-overlap"
+      ],
+      "wall_s_baseline": 133.00218064100045,
+      "wall_s_overlap": 126.05416005000006,
+      "wall_reduction_percent": 5.223989980851885,
+      "cpu_increase_percent": 10.010529952413805,
+      "rss_increase_percent": 2.0289166238759426
+    },
+    {
+      "cohort": "ordinary-overlap-followup.json",
+      "sample": 0,
+      "order": [
+        "driver-overlap",
+        "driver-o0"
+      ],
+      "wall_s_baseline": 129.45036932900257,
+      "wall_s_overlap": 120.86719296099909,
+      "wall_reduction_percent": 6.630476538996222,
+      "cpu_increase_percent": 7.804729615907813,
+      "rss_increase_percent": 2.006398072092863
+    },
+    {
+      "cohort": "ordinary-overlap-followup.json",
+      "sample": 1,
+      "order": [
+        "driver-o0",
+        "driver-overlap"
+      ],
+      "wall_s_baseline": 123.66493099900254,
+      "wall_s_overlap": 116.63764567999897,
+      "wall_reduction_percent": 5.682520713216787,
+      "cpu_increase_percent": 9.359925952535498,
+      "rss_increase_percent": 1.9928043513309346
+    }
+  ],
+  "summary": {
+    "driver-o0": {
+      "n": 3,
+      "wall_s": {
+        "median": 129.45036932900257,
+        "min": 123.66493099900254,
+        "max": 133.00218064100045
+      },
+      "cpu_s": {
+        "median": 130.41947,
+        "min": 124.580633,
+        "max": 134.442203
+      },
+      "sampled_process_tree_peak_rss_kib": {
+        "median": 942784,
+        "min": 942572,
+        "max": 942792
+      },
+      "build1_wall_s_median": 45.52049796599749,
+      "build2_wall_s_median": 78.37058369399892
+    },
+    "driver-overlap": {
+      "n": 3,
+      "wall_s": {
+        "median": 120.86719296099909,
+        "min": 116.63764567999897,
+        "max": 126.05416005000006
+      },
+      "cpu_s": {
+        "median": 140.598357,
+        "min": 136.241288,
+        "max": 147.90058
+      },
+      "sampled_process_tree_peak_rss_kib": {
+        "median": 961696,
+        "min": 961580,
+        "max": 961700
+      },
+      "build1_wall_s_median": 36.664254840994545,
+      "build2_wall_s_median": 77.34771478699986
+    }
+  },
+  "wall_reduction_from_medians_percent": 6.630476538996222,
+  "median_paired_wall_reduction_percent": 5.682520713216787,
+  "cpu_increase_from_medians_percent": 7.804729615907813,
+  "rss_increase_from_medians_percent": 2.005973796755134,
+  "limits": [
+    "Three paired observations on one shared Linux host; heavy work within this team was serialized.",
+    "Fresh private runtime caches; OS caches were not flushed.",
+    "Wall time includes runtime prewarm tiny builds, controller, hashing and cache settling overhead.",
+    "RSS is sampled aggregate process-tree RSS and may count shared pages more than once.",
+    "Different revisions/inputs from the separate main-based compiler optimization prototypes; gains cannot be added.",
+    "Warm-cache gains, broader application builds, macOS overlap execution and remote workers are unmeasured."
+  ]
+}
