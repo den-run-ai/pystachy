@@ -6,9 +6,15 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'New release tag, for example v0.1.0-alpha.1'
+        description: 'Release tag, for example v0.2.0'
         required: true
         type: string
+      pypi:
+        description: 'Verify or publish source packages from an existing GitHub release'
+        required: true
+        type: choice
+        default: 'off'
+        options: ['off', verify, publish]
 
 concurrency:
   group: release-${{ inputs.version || github.ref_name }}
@@ -18,7 +24,114 @@ permissions:
   contents: read
 
 jobs:
+  pypi-build:
+    if: github.event_name == 'workflow_dispatch' && (inputs.pypi == 'verify' || inputs.pypi == 'publish')
+    name: Verify PyPI source packages
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      package_version: ${{ steps.gate.outputs.package_version }}
+      commit: ${{ steps.gate.outputs.commit }}
+    env:
+      RELEASE_VERSION: ${{ inputs.version }}
+      PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: refs/tags/${{ inputs.version }}
+          path: source
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version-file: source/.python-version
+      - name: Install pinned packaging tools
+        run: python3 -m pip install -r source/tools/requirements-packaging.txt 'twine==7.0.0'
+      - name: Require the published tag and its exact successful main checks
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 tools/pypi_release.py --repository "$GITHUB_REPOSITORY" \
+            --version "$RELEASE_VERSION" --source source
+      - name: Install LLVM for installed-package checks
+        working-directory: source
+        run: tools/setup.sh --minimal
+      - name: Build wheel from the release source distribution
+        working-directory: source
+        run: |
+          SOURCE_DATE_EPOCH=$(git show -s --format=%ct HEAD)
+          export SOURCE_DATE_EPOCH
+          uv build --no-build-isolation --out-dir "$GITHUB_WORKSPACE/pypi/dist"
+      - name: Check distribution identity and PyPI metadata
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 tools/pypi_release.py --repository "$GITHUB_REPOSITORY" \
+            --version "$RELEASE_VERSION" --source source --dist pypi/dist
+          python3 -m twine check --strict pypi/dist/*
+      - name: Verify clean pip and uv installs, JIT and standalone AOT
+        run: |
+          wheels=("$GITHUB_WORKSPACE"/pypi/dist/*.whl)
+          python3 source/tools/compiler_install_smoke.py --source "${wheels[0]}"
+      - name: Record source and distribution checksums
+        env:
+          SOURCE_COMMIT: ${{ steps.gate.outputs.commit }}
+          PACKAGE_VERSION: ${{ steps.gate.outputs.package_version }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          record = {key: os.environ[key] for key in
+                    ('RELEASE_VERSION', 'SOURCE_COMMIT', 'PACKAGE_VERSION', 'GITHUB_SHA')}
+          Path('pypi/SOURCE.json').write_text(json.dumps(record, indent=2) + '\n')
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as output:
+              output.write('Verified pystachy ' + record['PACKAGE_VERSION'] + '\n\n')
+              output.write('Source commit: ' + record['SOURCE_COMMIT'] + '\n\n')
+              output.write('Wheel and sdist metadata, clean pip/uv installs, JIT and AOT passed.\n')
+          PY
+          cd pypi
+          sha256sum dist/* > SHA256SUMS
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: pypi-${{ steps.gate.outputs.package_version }}
+          path: pypi/
+          if-no-files-found: error
+          retention-days: 14
+
+  pypi-publish:
+    if: inputs.pypi == 'publish'
+    needs: pypi-build
+    name: Publish verified packages to PyPI
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment:
+      name: pypi
+      url: https://pypi.org/project/pystachy/${{ needs.pypi-build.outputs.package_version }}/
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8
+        with:
+          name: pypi-${{ needs.pypi-build.outputs.package_version }}
+          path: pypi
+      - name: Verify the exact distributions tested by this run
+        working-directory: pypi
+        run: sha256sum --check SHA256SUMS
+      - name: Publish with PyPI Trusted Publishing
+        uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086  # v1.14.3
+        with:
+          packages-dir: pypi/dist/
+
   prepare:
+    if: inputs.pypi != 'verify' && inputs.pypi != 'publish'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
