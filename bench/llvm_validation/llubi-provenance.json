@@ -1,0 +1,150 @@
+{
+  "source": "https://github.com/dtcxzyw/llvm-ub-aware-interpreter",
+  "commit": "a0500882b13b33d076edb80de44be680ccd972c1",
+  "kind": "locally adapted standalone interpreter; not an official LLVM release binary",
+  "license": {
+    "spdx": "Apache-2.0",
+    "text": "                                 Apache License\n                           Version 2.0, January 2004\n                        http://www.apache.org/licenses/\n\n   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION\n\n   1. Definitions.\n\n      \"License\" shall mean the terms and conditions for use, reproduction,\n      and distribution as defined by Sections 1 through 9 of this document.\n\n      \"Licensor\" shall mean the copyright owner or entity authorized by\n      the copyright owner that is granting the License.\n\n      \"Legal Entity\" shall mean the union of the acting entity and all\n      other entities that control, are controlled by, or are under common\n      control with that entity. For the purposes of this definition,\n      \"control\" means (i) the power, direct or indirect, to cause the\n      direction or management of such entity, whether by contract or\n      otherwise, or (ii) ownership of fifty percent (50%) or more of the\n      outstanding shares, or (iii) beneficial ownership of such entity.\n\n      \"You\" (or \"Your\") shall mean an individual or Legal Entity\n      exercising permissions granted by this License.\n\n      \"Source\" form shall mean the preferred form for making modifications,\n      including but not limited to software source code, documentation\n      source, and configuration files.\n\n      \"Object\" form shall mean any form resulting from mechanical\n      transformation or translation of a Source form, including but\n      not limited to compiled object code, generated documentation,\n      and conversions to other media types.\n\n      \"Work\" shall mean the work of authorship, whether in Source or\n      Object form, made available under the License, as indicated by a\n      copyright notice that is included in or attached to the work\n      (an example is provided in the Appendix below).\n\n      \"Derivative Works\" shall mean any work, whether in Source or Object\n      form, that is based on (or derived from) the Work and for which the\n      editorial revisions, annotations, elaborations, or other modifications\n      represent, as a whole, an original work of authorship. For the purposes\n      of this License, Derivative Works shall not include works that remain\n      separable from, or merely link (or bind by name) to the interfaces of,\n      the Work and Derivative Works thereof.\n\n      \"Contribution\" shall mean any work of authorship, including\n      the original version of the Work and any modifications or additions\n      to that Work or Derivative Works thereof, that is intentionally\n      submitted to Licensor for inclusion in the Work by the copyright owner\n      or by an individual or Legal Entity authorized to submit on behalf of\n      the copyright owner. For the purposes of this definition, \"submitted\"\n      means any form of electronic, verbal, or written communication sent\n      to the Licensor or its representatives, including but not limited to\n      communication on electronic mailing lists, source code control systems,\n      and issue tracking systems that are managed by, or on behalf of, the\n      Licensor for the purpose of discussing and improving the Work, but\n      excluding communication that is conspicuously marked or otherwise\n      designated in writing by the copyright owner as \"Not a Contribution.\"\n\n      \"Contributor\" shall mean Licensor and any individual or Legal Entity\n      on behalf of whom a Contribution has been received by Licensor and\n      subsequently incorporated within the Work.\n\n   2. Grant of Copyright License. Subject to the terms and conditions of\n      this License, each Contributor hereby grants to You a perpetual,\n      worldwide, non-exclusive, no-charge, royalty-free, irrevocable\n      copyright license to reproduce, prepare Derivative Works of,\n      publicly display, publicly perform, sublicense, and distribute the\n      Work and such Derivative Works in Source or Object form.\n\n   3. Grant of Patent License. Subject to the terms and conditions of\n      this License, each Contributor hereby grants to You a perpetual,\n      worldwide, non-exclusive, no-charge, royalty-free, irrevocable\n      (except as stated in this section) patent license to make, have made,\n      use, offer to sell, sell, import, and otherwise transfer the Work,\n      where such license applies only to those patent claims licensable\n      by such Contributor that are necessarily infringed by their\n      Contribution(s) alone or by combination of their Contribution(s)\n      with the Work to which such Contribution(s) was submitted. If You\n      institute patent litigation against any entity (including a\n      cross-claim or counterclaim in a lawsuit) alleging that the Work\n      or a Contribution incorporated within the Work constitutes direct\n      or contributory patent infringement, then any patent licenses\n      granted to You under this License for that Work shall terminate\n      as of the date such litigation is filed.\n\n   4. Redistribution. You may reproduce and distribute copies of the\n      Work or Derivative Works thereof in any medium, with or without\n      modifications, and in Source or Object form, provided that You\n      meet the following conditions:\n\n      (a) You must give any other recipients of the Work or\n          Derivative Works a copy of this License; and\n\n      (b) You must cause any modified files to carry prominent notices\n          stating that You changed the files; and\n\n      (c) You must retain, in the Source form of any Derivative Works\n          that You distribute, all copyright, patent, trademark, and\n          attribution notices from the Source form of the Work,\n          excluding those notices that do not pertain to any part of\n          the Derivative Works; and\n\n      (d) If the Work includes a \"NOTICE\" text file as part of its\n          distribution, then any Derivative Works that You distribute must\n          include a readable copy of the attribution notices contained\n          within such NOTICE file, excluding those notices that do not\n          pertain to any part of the Derivative Works, in at least one\n          of the following places: within a NOTICE text file distributed\n          as part of the Derivative Works; within the Source form or\n          documentation, if provided along with the Derivative Works; or,\n          within a display generated by the Derivative Works, if and\n          wherever such third-party notices normally appear. The contents\n          of the NOTICE file are for informational purposes only and\n          do not modify the License. You may add Your own attribution\n          notices within Derivative Works that You distribute, alongside\n          or as an addendum to the NOTICE text from the Work, provided\n          that such additional attribution notices cannot be construed\n          as modifying the License.\n\n      You may add Your own copyright statement to Your modifications and\n      may provide additional or different license terms and conditions\n      for use, reproduction, or distribution of Your modifications, or\n      for any such Derivative Works as a whole, provided Your use,\n      reproduction, and distribution of the Work otherwise complies with\n      the conditions stated in this License.\n\n   5. Submission of Contributions. Unless You explicitly state otherwise,\n      any Contribution intentionally submitted for inclusion in the Work\n      by You to the Licensor shall be under the terms and conditions of\n      this License, without any additional terms or conditions.\n      Notwithstanding the above, nothing herein shall supersede or modify\n      the terms of any separate license agreement you may have executed\n      with Licensor regarding such Contributions.\n\n   6. Trademarks. This License does not grant permission to use the trade\n      names, trademarks, service marks, or product names of the Licensor,\n      except as required for reasonable and customary use in describing the\n      origin of the Work and reproducing the content of the NOTICE file.\n\n   7. Disclaimer of Warranty. Unless required by applicable law or\n      agreed to in writing, Licensor provides the Work (and each\n      Contributor provides its Contributions) on an \"AS IS\" BASIS,\n      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or\n      implied, including, without limitation, any warranties or conditions\n      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A\n      PARTICULAR PURPOSE. You are solely responsible for determining the\n      appropriateness of using or redistributing the Work and assume any\n      risks associated with Your exercise of permissions under this License.\n\n   8. Limitation of Liability. In no event and under no legal theory,\n      whether in tort (including negligence), contract, or otherwise,\n      unless required by applicable law (such as deliberate and grossly\n      negligent acts) or agreed to in writing, shall any Contributor be\n      liable to You for damages, including any direct, indirect, special,\n      incidental, or consequential damages of any character arising as a\n      result of this License or out of the use or inability to use the\n      Work (including but not limited to damages for loss of goodwill,\n      work stoppage, computer failure or malfunction, or any and all\n      other commercial damages or losses), even if such Contributor\n      has been advised of the possibility of such damages.\n\n   9. Accepting Warranty or Additional Liability. While redistributing\n      the Work or Derivative Works thereof, You may choose to offer,\n      and charge a fee for, acceptance of support, warranty, indemnity,\n      or other liability obligations and/or rights consistent with this\n      License. However, in accepting such obligations, You may act only\n      on Your own behalf and on Your sole responsibility, not on behalf\n      of any other Contributor, and only if You agree to indemnify,\n      defend, and hold each Contributor harmless for any liability\n      incurred by, or claims asserted against, such Contributor by reason\n      of your accepting any such warranty or additional liability.\n\n   END OF TERMS AND CONDITIONS\n\n   APPENDIX: How to apply the Apache License to your work.\n\n      To apply the Apache License to your work, attach the following\n      boilerplate notice, with the fields enclosed by brackets \"[]\"\n      replaced with your own identifying information. (Don't include\n      the brackets!)  The text should be enclosed in the appropriate\n      comment syntax for the file format. We also recommend that a\n      file or class name and description of purpose be included on the\n      same \"printed page\" as the copyright notice for easier\n      identification within third-party archives.\n\n   Copyright [yyyy] [name of copyright owner]\n\n   Licensed under the Apache License, Version 2.0 (the \"License\");\n   you may not use this file except in compliance with the License.\n   You may obtain a copy of the License at\n\n       http://www.apache.org/licenses/LICENSE-2.0\n\n   Unless required by applicable law or agreed to in writing, software\n   distributed under the License is distributed on an \"AS IS\" BASIS,\n   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n   See the License for the specific language governing permissions and\n   limitations under the License.\n"
+  },
+  "patch": {
+    "sha256": "c6ac97778c3b305a1319f722354484f4d85c35fd4c6d6879cb62fecd27d8adc7",
+    "text": "diff --git a/ubi.cpp b/ubi.cpp\nindex cc7fc43..fd293cf 100644\n--- a/ubi.cpp\n+++ b/ubi.cpp\n@@ -3373,8 +3373,8 @@ AnyValue UBAwareInterpreter::call(Function *Func, CallBase *CB,\n     PostProcessArgs();\n     return callIntrinsic(*cast<IntrinsicInst>(CB), Args);\n   } else {\n-    LibFunc F = TLI.getLibFunc(*Func);\n-    if (F != NotLibFunc) {\n+    LibFunc F;\n+    if (TLI.getLibFunc(*Func, F)) {\n       Frame CallFrame{Func, nullptr, TLI, CurrentFrame, ME};\n       llvm::scope_exit Scope([&, Frame = CurrentFrame] { ExitFunc(Frame); });\n       CurrentFrame = &CallFrame;\n@@ -3904,6 +3904,10 @@ public:\n     return visit(E->getOperand());\n   }\n \n+  SCEVEvalRes visitPtrToIntExpr(const SCEVPtrToIntExpr *E) {\n+    return visit(E->getOperand());\n+  }\n+\n   SCEVEvalRes visitTruncateExpr(const SCEVTruncateExpr *S) {\n     const SCEV *Op = S->getOperand();\n     auto OpRes = visit(Op);\n",
+    "purpose": "LLVM 23 API adaptations: TargetLibraryInfo getLibFunc output argument and SCEVPtrToIntExpr visitor. No arithmetic-engine changes."
+  },
+  "build_command": [
+    "g++",
+    "/workspace/scratch/6a879c771ae4/llubi-src/llubi.cpp",
+    "/workspace/scratch/6a879c771ae4/llubi-src/ubi.cpp",
+    "-I/workspace/scratch/6a879c771ae4/llvm23-tools/usr/lib/llvm-23/include",
+    "-std=c++17",
+    "-D_GNU_SOURCE",
+    "-D_GLIBCXX_USE_CXX11_ABI=1",
+    "-D__STDC_CONSTANT_MACROS",
+    "-D__STDC_FORMAT_MACROS",
+    "-D__STDC_LIMIT_MACROS",
+    "-fno-exceptions",
+    "-L/workspace/scratch/6a879c771ae4/llvm23-tools/usr/lib/llvm-23/lib",
+    "-lLLVM-23",
+    "-std=c++20",
+    "-O1",
+    "-o",
+    "/workspace/scratch/6a879c771ae4/llubi-legacy",
+    "-Wl,-rpath,/workspace/scratch/6a879c771ae4/llvm23-tools/usr/lib/x86_64-linux-gnu"
+  ],
+  "build_compiler": "g++ (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0\nCopyright (C) 2023 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",
+  "binary_sha256": "d521753dd5b21fb7a81ec09e5c04566af6fbe6b55b094d59e6a6f89e78685029",
+  "wrapper": {
+    "text": "#!/bin/sh\nexport LD_LIBRARY_PATH=/workspace/scratch/6a879c771ae4/llvm23-tools/usr/lib/x86_64-linux-gnu${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}\nexec /workspace/scratch/6a879c771ae4/llubi-legacy \"$@\"\n",
+    "sha256": "e30a57502b889c8aa3a57faa785fbbda6206420dabe2a1422521807e015d41b7"
+  },
+  "packages": {
+    "libllvm23": {
+      "Package": "libllvm23",
+      "Source": "llvm-toolchain-23",
+      "Version": "1:23.1.6~++20261103094202+2875c6073a7e-1~exp1~20261103214217.95",
+      "Architecture": "amd64",
+      "Filename": "pool/main/l/llvm-toolchain-23/libllvm23_23.1.6~++20261103094202+2875c6073a7e-1~exp1~20261103214217.95_amd64.deb",
+      "Size": "33747668",
+      "SHA256": "770347325410758e89c7233152b8af685be82623721fcde3f971fdd7073c0a37"
+    },
+    "llvm-23": {
+      "Package": "llvm-23",
+      "Source": "llvm-toolchain-23",
+      "Version": "1:23.1.6~++20261103094202+2875c6073a7e-1~exp1~20261103214217.95",
+      "Architecture": "amd64",
+      "Filename": "pool/main/l/llvm-toolchain-23/llvm-23_23.1.6~++20261103094202+2875c6073a7e-1~exp1~20261103214217.95_amd64.deb",
+      "Size": "21332766",
+      "SHA256": "9374021ed95fbc07eb52f35f8eb063acad166b46499203e564a0de856a889fde"
+    },
+    "llvm-23-runtime": {
+      "Package": "llvm-23-runtime",
+      "Source": "llvm-toolchain-23",
+      "Version": "1:23.1.6~++20261103094202+2875c6073a7e-1~exp1~20261103214217.95",
+      "Architecture": "amd64",
+      "Filename": "pool/main/l/llvm-toolchain-23/llvm-23-runtime_23.1.6~++20261103094202+2875c6073a7e-1~exp1~20261103214217.95_amd64.deb",
+      "Size": "679720",
+      "SHA256": "c5b05968a6655f284277e8a98586caf7ce1de0cd1a83ea396f439c82e66c3378"
+    },
+    "llvm-23-tools": {
+      "Package": "llvm-23-tools",
+      "Source": "llvm-toolchain-23",
+      "Version": "1:23.1.6~++20261103094202+2875c6073a7e-1~exp1~20261103214217.95",
+      "Architecture": "amd64",
+      "Filename": "pool/main/l/llvm-toolchain-23/llvm-23-tools_23.1.6~++20261103094202+2875c6073a7e-1~exp1~20261103214217.95_amd64.deb",
+      "Size": "541472",
+      "SHA256": "62732515ad0681a948a4ad4bdae8db4ed4b5390a74d1685ccacbf3a52911a50a"
+    },
+    "llvm-23-dev": {
+      "Package": "llvm-23-dev",
+      "Source": "llvm-toolchain-23",
+      "Version": "1:23.1.6~++20261103094202+2875c6073a7e-1~exp1~20261103214217.95",
+      "Architecture": "amd64",
+      "Filename": "pool/main/l/llvm-toolchain-23/llvm-23-dev_23.1.6~++20261103094202+2875c6073a7e-1~exp1~20261103214217.95_amd64.deb",
+      "Size": "57202702",
+      "SHA256": "5fe0a2e0b3a5c5eb7aff14de44341d7040c618f26461ce7a8b0d51cf3340d432"
+    }
+  },
+  "execution": {
+    "opt": {
+      "path": "/workspace/scratch/c154e74884e5/llvm-cache/ubuntu-18.1.3-1ubuntu1-amd64/bin/opt",
+      "status": "ok",
+      "version": "Ubuntu LLVM version 18.1.3\n  Optimized build.\n  Default target: x86_64-pc-linux-gnu\n  Host CPU: znver4",
+      "executable_sha256": "67ebe8635087b5ebe22d8f085d5e5857e431f86be9ed76576e59b86b9743c0fb"
+    },
+    "llvm-extract": {
+      "path": "/workspace/scratch/c154e74884e5/llvm-cache/ubuntu-18.1.3-1ubuntu1-amd64/bin/llvm-extract",
+      "status": "ok",
+      "version": "Ubuntu LLVM version 18.1.3\n  Optimized build.",
+      "executable_sha256": "3cfade75adc3e242b235b17960d8a729eb2fc6db855275c91cccc536a2b514c6"
+    },
+    "clang": {
+      "path": "/workspace/scratch/c154e74884e5/llvm-cache/ubuntu-18.1.3-1ubuntu1-amd64/bin/clang",
+      "status": "ok",
+      "version": "Ubuntu clang version 18.1.3 (1ubuntu1)\nTarget: x86_64-pc-linux-gnu\nThread model: posix\nInstalledDir: /workspace/scratch/c154e74884e5/llvm-cache/ubuntu-18.1.3-1ubuntu1-amd64/bin",
+      "executable_sha256": "8ef402d453d1ba4902e4ee0f0f847f6cfa01400c95aa43c24e97818b9c0e3f45"
+    },
+    "llubi": {
+      "path": "/workspace/scratch/6a879c771ae4/llubi",
+      "status": "ok",
+      "version": "Ubuntu LLVM version 23.1.6\n  Optimized build.",
+      "executable_sha256": "e30a57502b889c8aa3a57faa785fbbda6206420dabe2a1422521807e015d41b7"
+    },
+    "alive-tv": {
+      "path": null,
+      "status": "unavailable"
+    }
+  },
+  "diagnostics": {
+    "malformed": {
+      "status": "error",
+      "returncode": 1,
+      "stdout": "",
+      "stderr": "/workspace/scratch/c154e74884e5/llvm-cache/ubuntu-18.1.3-1ubuntu1-amd64/bin/opt: /workspace/scratch/6a879c771ae4/llvm-probe/final-check/malformed.ll:1:29: error: value doesn't match function result type 'i64'\ndefine i64 @invalid() { ret i32 0 }\n                            ^\n"
+    },
+    "llubi-before": {
+      "status": "ok",
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    "llubi-after": {
+      "status": "ok",
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    "llubi-wrong": {
+      "status": "error",
+      "returncode": 86,
+      "stdout": "",
+      "stderr": ""
+    },
+    "llubi-poison": {
+      "status": "error",
+      "returncode": 1,
+      "stdout": "",
+      "stderr": "\nUB triggered: Branch on poison\nExited with immediate UB.\nStacktrace:\n    br i1 %c, label %yes, label %no at @main\n"
+    }
+  },
+  "raw_result_directory": "/workspace/scratch/6a879c771ae4/llvm-probe/final-check"
+}

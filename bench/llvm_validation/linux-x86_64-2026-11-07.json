@@ -1,0 +1,562 @@
+{
+  "schema": 1,
+  "status": "native_checks_passed",
+  "refinement_checked": false,
+  "scope": "three extracted Pystachy scalar functions; finite native cases",
+  "pipeline": "function(mem2reg,instcombine,simplifycfg)",
+  "python": "3.13.16 (main, Oct 14 2026, 01:04:01) [Clang 23.1.3 ]",
+  "steps": [
+    {
+      "name": "git-revision",
+      "command": [
+        "git",
+        "rev-parse",
+        "HEAD"
+      ],
+      "status": "ok",
+      "returncode": 0,
+      "stdout": "git-revision.stdout.txt",
+      "stderr": "git-revision.stderr.txt"
+    },
+    {
+      "name": "opt-version",
+      "command": [
+        "/workspace/scratch/c154e74884e5/llvm-cache/ubuntu-18.1.3-1ubuntu1-amd64/bin/opt",
+        "--version"
+      ],
+      "status": "ok",
+      "returncode": 0,
+      "stdout": "opt-version.stdout.txt",
+      "stderr": "opt-version.stderr.txt"
+    },
+    {
+      "name": "llvm-extract-version",
+      "command": [
+        "/workspace/scratch/c154e74884e5/llvm-cache/ubuntu-18.1.3-1ubuntu1-amd64/bin/llvm-extract",
+        "--version"
+      ],
+      "status": "ok",
+      "returncode": 0,
+      "stdout": "llvm-extract-version.stdout.txt",
+      "stderr": "llvm-extract-version.stderr.txt"
+    },
+    {
+      "name": "clang-version",
+      "command": [
+        "/workspace/scratch/c154e74884e5/llvm-cache/ubuntu-18.1.3-1ubuntu1-amd64/bin/clang",
+        "--version"
+      ],
+      "status": "ok",
+      "returncode": 0,
+      "stdout": "clang-version.stdout.txt",
+      "stderr": "clang-version.stderr.txt"
+    },
+    {
+      "name": "llubi-version",
+      "command": [
+        "/workspace/scratch/6a879c771ae4/llubi",
+        "--version"
+      ],
+      "status": "ok",
+      "returncode": 0,
+      "stdout": "llubi-version.stdout.txt",
+      "stderr": "llubi-version.stderr.txt"
+    },
+    {
+      "name": "emit",
+      "command": [
+        "/workspace/scratch/c154e74884e5/venv/bin/python",
+        "/workspace/scratch/6a879c771ae4/llvm-validation/pystachy.py",
+        "ir",
+        "/workspace/scratch/6a879c771ae4/llvm-probe/final-check/kernels.py",
+        "-o",
+        "/workspace/scratch/6a879c771ae4/llvm-probe/final-check/emitted.ll"
+      ],
+      "status": "ok",
+      "returncode": 0,
+      "stdout": "emit.stdout.txt",
+      "stderr": "emit.stderr.txt"
+    },
+    {
+      "name": "extract",
+      "command": [
+        "/workspace/scratch/c154e74884e5/llvm-cache/ubuntu-18.1.3-1ubuntu1-amd64/bin/llvm-extract",
+        "-S",
+        "--func=f.affine",
+        "--func=f.masked_add",
+        "--func=f.signed_min",
+        "/workspace/scratch/6a879c771ae4/llvm-probe/final-check/emitted.ll",
+        "-o",
+        "/workspace/scratch/6a879c771ae4/llvm-probe/final-check/before.ll"
+      ],
+      "status": "ok",
+      "returncode": 0,
+      "stdout": "extract.stdout.txt",
+      "stderr": "extract.stderr.txt"
+    },
+    {
+      "name": "verify-before",
+      "command": [
+        "/workspace/scratch/c154e74884e5/llvm-cache/ubuntu-18.1.3-1ubuntu1-amd64/bin/opt",
+        "-passes=verify",
+        "-disable-output",
+        "/workspace/scratch/6a879c771ae4/llvm-probe/final-check/before.ll"
+      ],
+      "status": "ok",
+      "returncode": 0,
+      "stdout": "verify-before.stdout.txt",
+      "stderr": "verify-before.stderr.txt"
+    },
+    {
+      "name": "optimize",
+      "command": [
+        "/workspace/scratch/c154e74884e5/llvm-cache/ubuntu-18.1.3-1ubuntu1-amd64/bin/opt",
+        "-S",
+        "-verify-each",
+        "-passes=function(mem2reg,instcombine,simplifycfg)",
+        "/workspace/scratch/6a879c771ae4/llvm-probe/final-check/before.ll",
+        "-o",
+        "/workspace/scratch/6a879c771ae4/llvm-probe/final-check/after.ll"
+      ],
+      "status": "ok",
+      "returncode": 0,
+      "stdout": "optimize.stdout.txt",
+      "stderr": "optimize.stderr.txt"
+    },
+    {
+      "name": "verify-after",
+      "command": [
+        "/workspace/scratch/c154e74884e5/llvm-cache/ubuntu-18.1.3-1ubuntu1-amd64/bin/opt",
+        "-passes=verify",
+        "-disable-output",
+        "/workspace/scratch/6a879c771ae4/llvm-probe/final-check/after.ll"
+      ],
+      "status": "ok",
+      "returncode": 0,
+      "stdout": "verify-after.stdout.txt",
+      "stderr": "verify-after.stderr.txt"
+    },
+    {
+      "name": "before-build",
+      "command": [
+        "/workspace/scratch/c154e74884e5/llvm-cache/ubuntu-18.1.3-1ubuntu1-amd64/bin/clang",
+        "-shared",
+        "-fPIC",
+        "-O0",
+        "-ffp-contract=off",
+        "/workspace/scratch/6a879c771ae4/llvm-probe/final-check/before.ll",
+        "/workspace/scratch/6a879c771ae4/llvm-probe/final-check/probe.c",
+        "-o",
+        "/workspace/scratch/6a879c771ae4/llvm-probe/final-check/before.so"
+      ],
+      "status": "ok",
+      "returncode": 0,
+      "stdout": "before-build.stdout.txt",
+      "stderr": "before-build.stderr.txt"
+    },
+    {
+      "name": "before-run",
+      "command": [
+        "/workspace/scratch/c154e74884e5/venv/bin/python",
+        "/workspace/scratch/6a879c771ae4/llvm-validation/tools/llvm_validation.py",
+        "--worker",
+        "/workspace/scratch/6a879c771ae4/llvm-probe/final-check/before.so"
+      ],
+      "status": "ok",
+      "returncode": 0,
+      "stdout": "before-run.stdout.txt",
+      "stderr": "before-run.stderr.txt"
+    },
+    {
+      "name": "after-build",
+      "command": [
+        "/workspace/scratch/c154e74884e5/llvm-cache/ubuntu-18.1.3-1ubuntu1-amd64/bin/clang",
+        "-shared",
+        "-fPIC",
+        "-O0",
+        "-ffp-contract=off",
+        "/workspace/scratch/6a879c771ae4/llvm-probe/final-check/after.ll",
+        "/workspace/scratch/6a879c771ae4/llvm-probe/final-check/probe.c",
+        "-o",
+        "/workspace/scratch/6a879c771ae4/llvm-probe/final-check/after.so"
+      ],
+      "status": "ok",
+      "returncode": 0,
+      "stdout": "after-build.stdout.txt",
+      "stderr": "after-build.stderr.txt"
+    },
+    {
+      "name": "after-run",
+      "command": [
+        "/workspace/scratch/c154e74884e5/venv/bin/python",
+        "/workspace/scratch/6a879c771ae4/llvm-validation/tools/llvm_validation.py",
+        "--worker",
+        "/workspace/scratch/6a879c771ae4/llvm-probe/final-check/after.so"
+      ],
+      "status": "ok",
+      "returncode": 0,
+      "stdout": "after-run.stdout.txt",
+      "stderr": "after-run.stderr.txt"
+    },
+    {
+      "name": "wrong-build",
+      "command": [
+        "/workspace/scratch/c154e74884e5/llvm-cache/ubuntu-18.1.3-1ubuntu1-amd64/bin/clang",
+        "-shared",
+        "-fPIC",
+        "-O0",
+        "-ffp-contract=off",
+        "/workspace/scratch/6a879c771ae4/llvm-probe/final-check/wrong.ll",
+        "/workspace/scratch/6a879c771ae4/llvm-probe/final-check/probe.c",
+        "-o",
+        "/workspace/scratch/6a879c771ae4/llvm-probe/final-check/wrong.so"
+      ],
+      "status": "ok",
+      "returncode": 0,
+      "stdout": "wrong-build.stdout.txt",
+      "stderr": "wrong-build.stderr.txt"
+    },
+    {
+      "name": "wrong-run",
+      "command": [
+        "/workspace/scratch/c154e74884e5/venv/bin/python",
+        "/workspace/scratch/6a879c771ae4/llvm-validation/tools/llvm_validation.py",
+        "--worker",
+        "/workspace/scratch/6a879c771ae4/llvm-probe/final-check/wrong.so"
+      ],
+      "status": "ok",
+      "returncode": 0,
+      "stdout": "wrong-run.stdout.txt",
+      "stderr": "wrong-run.stderr.txt"
+    },
+    {
+      "name": "malformed",
+      "command": [
+        "/workspace/scratch/c154e74884e5/llvm-cache/ubuntu-18.1.3-1ubuntu1-amd64/bin/opt",
+        "-passes=verify",
+        "-disable-output",
+        "/workspace/scratch/6a879c771ae4/llvm-probe/final-check/malformed.ll"
+      ],
+      "status": "error",
+      "returncode": 1,
+      "stdout": "malformed.stdout.txt",
+      "stderr": "malformed.stderr.txt"
+    },
+    {
+      "name": "verify-llubi-before",
+      "command": [
+        "/workspace/scratch/c154e74884e5/llvm-cache/ubuntu-18.1.3-1ubuntu1-amd64/bin/opt",
+        "-passes=verify",
+        "-disable-output",
+        "/workspace/scratch/6a879c771ae4/llvm-probe/final-check/llubi-before.ll"
+      ],
+      "status": "ok",
+      "returncode": 0,
+      "stdout": "verify-llubi-before.stdout.txt",
+      "stderr": "verify-llubi-before.stderr.txt"
+    },
+    {
+      "name": "llubi-before",
+      "command": [
+        "/workspace/scratch/6a879c771ae4/llubi",
+        "--max-steps=100000",
+        "/workspace/scratch/6a879c771ae4/llvm-probe/final-check/llubi-before.ll"
+      ],
+      "status": "ok",
+      "returncode": 0,
+      "stdout": "llubi-before.stdout.txt",
+      "stderr": "llubi-before.stderr.txt"
+    },
+    {
+      "name": "verify-llubi-after",
+      "command": [
+        "/workspace/scratch/c154e74884e5/llvm-cache/ubuntu-18.1.3-1ubuntu1-amd64/bin/opt",
+        "-passes=verify",
+        "-disable-output",
+        "/workspace/scratch/6a879c771ae4/llvm-probe/final-check/llubi-after.ll"
+      ],
+      "status": "ok",
+      "returncode": 0,
+      "stdout": "verify-llubi-after.stdout.txt",
+      "stderr": "verify-llubi-after.stderr.txt"
+    },
+    {
+      "name": "llubi-after",
+      "command": [
+        "/workspace/scratch/6a879c771ae4/llubi",
+        "--max-steps=100000",
+        "/workspace/scratch/6a879c771ae4/llvm-probe/final-check/llubi-after.ll"
+      ],
+      "status": "ok",
+      "returncode": 0,
+      "stdout": "llubi-after.stdout.txt",
+      "stderr": "llubi-after.stderr.txt"
+    },
+    {
+      "name": "verify-llubi-wrong",
+      "command": [
+        "/workspace/scratch/c154e74884e5/llvm-cache/ubuntu-18.1.3-1ubuntu1-amd64/bin/opt",
+        "-passes=verify",
+        "-disable-output",
+        "/workspace/scratch/6a879c771ae4/llvm-probe/final-check/llubi-wrong.ll"
+      ],
+      "status": "ok",
+      "returncode": 0,
+      "stdout": "verify-llubi-wrong.stdout.txt",
+      "stderr": "verify-llubi-wrong.stderr.txt"
+    },
+    {
+      "name": "llubi-wrong",
+      "command": [
+        "/workspace/scratch/6a879c771ae4/llubi",
+        "--max-steps=100000",
+        "/workspace/scratch/6a879c771ae4/llvm-probe/final-check/llubi-wrong.ll"
+      ],
+      "status": "error",
+      "returncode": 86,
+      "stdout": "llubi-wrong.stdout.txt",
+      "stderr": "llubi-wrong.stderr.txt"
+    },
+    {
+      "name": "verify-poison",
+      "command": [
+        "/workspace/scratch/c154e74884e5/llvm-cache/ubuntu-18.1.3-1ubuntu1-amd64/bin/opt",
+        "-passes=verify",
+        "-disable-output",
+        "/workspace/scratch/6a879c771ae4/llvm-probe/final-check/llubi-poison.ll"
+      ],
+      "status": "ok",
+      "returncode": 0,
+      "stdout": "verify-poison.stdout.txt",
+      "stderr": "verify-poison.stderr.txt"
+    },
+    {
+      "name": "llubi-poison",
+      "command": [
+        "/workspace/scratch/6a879c771ae4/llubi",
+        "--max-steps=100000",
+        "/workspace/scratch/6a879c771ae4/llvm-probe/final-check/llubi-poison.ll"
+      ],
+      "status": "error",
+      "returncode": 1,
+      "stdout": "llubi-poison.stdout.txt",
+      "stderr": "llubi-poison.stderr.txt"
+    }
+  ],
+  "alive2": {
+    "status": "unavailable",
+    "refinement_checked": false
+  },
+  "llubi": {
+    "status": "checked_paths",
+    "cases_per_module": 386,
+    "modules_checked": 2,
+    "controls": {
+      "wrong_mask": "detected",
+      "overflow_poison": "detected"
+    }
+  },
+  "compiler_sources": {
+    "pystachy.py": "a413782632f88d4746a81fd7cfb529d695ab36a35618522a83be1e25e1e31f29",
+    "src/pystachy_compiler/__init__.py": "f60cd281f8ed4fd35776c9f4d40d6a1313c49a3cae5df61841028f711b9f13c8",
+    "src/pystachy_compiler/analysis.py": "0ed995ce65b1e1f364ba5a91a6650d067f5802871f86f96cf1ea08c14599a41e",
+    "src/pystachy_compiler/argparse_schema.py": "8cfb408e9066ddb51d89be371cab2c4b769c1108da3d1554391bc799a83082a5",
+    "src/pystachy_compiler/bigints.py": "1d00ba32bc6052944e552864375e2a0b390ba1ddb001208167056d87199bab61",
+    "src/pystachy_compiler/builtins.py": "16ef3fdc37e154e1b3d928b02c0e15d2335eb3ae1d1d935b981bfb72c61fea67",
+    "src/pystachy_compiler/calls.py": "6efdf96768d973faf8eeeb9bfd3faea0009d3b2d2516f7ea4b337fb3da39f71b",
+    "src/pystachy_compiler/containers.py": "0a75f833f7916fd05d5076c1a88393a203c97166ebc77d1048028fdac5716b50",
+    "src/pystachy_compiler/conversions.py": "79aed0912984999deb696242db22d39e3af32c4e74a7021d5794f662dcf6ddf2",
+    "src/pystachy_compiler/declarations.py": "195b04cf677118403e86c64b5d8e50d3bb1e738120c08ee796be1094b9fb1372",
+    "src/pystachy_compiler/diagnostics.py": "529f5423decb512a61505a289bf3a5fb9b59c3bb1bfaf512b8059893fd79b131",
+    "src/pystachy_compiler/driver.py": "461adebff12636e0db62a1b7656620760cc5143529f23c982e16285bf1e57aef",
+    "src/pystachy_compiler/dynamic.py": "7dc56b48f92da70aacb87c1236822f6df21fd079b5f1f59cd0c26f396f67072e",
+    "src/pystachy_compiler/emission.py": "de4f8c78b0d86b96f6c32a13186738e86ddfa3b55000ef9f4b8ff1aeffd0b8d4",
+    "src/pystachy_compiler/exceptions.py": "3fce23a767a24651c5658b48759e44ee66817fa931dd2251011c44b1b33d26d3",
+    "src/pystachy_compiler/expressions.py": "1e2ec3721e8ba3c5cd930f74a0790933b0c393089304f546d88dc26c853cbf5d",
+    "src/pystachy_compiler/flow.py": "cb6238905238d5dcd042b568f56243e9b407723a6e047d5f0cad478b060439c9",
+    "src/pystachy_compiler/functions.py": "3743e405f03039b4d5d0fb98a31473bb2f203857624d188e350f2700b23f28c2",
+    "src/pystachy_compiler/gen.py": "033c662f41f22dd9ce3eb4378acddaab2f4913a45bfc5f8ff3de3cf42af654ad",
+    "src/pystachy_compiler/generators.py": "e6dde0b55178adeca943b596f8f108915e652726954c9675aae04ea1454bc96c",
+    "src/pystachy_compiler/ir.py": "c3e499869f2bc7487d1a5466fc299a0d15f1939d3176dd5b2f0990a2a9d0b75c",
+    "src/pystachy_compiler/ircheck.py": "127dc1eb765afee724446f00c481b53ed80af396f064dd9112c1f189482be514",
+    "src/pystachy_compiler/lexer.py": "5d727507498549788d7d428b067e4bf794dbe49199286577cd1cd2d47d0b16f7",
+    "src/pystachy_compiler/llvm_abi.py": "7485f63097d4abac3de8b1fbfb782944ff7e3b68989d2fb266e40ebb8f8889ae",
+    "src/pystachy_compiler/loader.py": "270afd42d89c59fee9af0eaf16ff8f7d5166c9429ef026258dabc24097724d06",
+    "src/pystachy_compiler/local_versions.py": "10bb0f2f0fb57c442af0807b5b4af6c95e8b950a97430161c97f766a3dc4b375",
+    "src/pystachy_compiler/lower_module.py": "373c2fd810b3e08312a51d59f6ed05307819300ccad286d5c33cb48790923562",
+    "src/pystachy_compiler/lowering.py": "9332b28da9729b702054f57ef0f8463621d112725e097b437e04c3ec230590b8",
+    "src/pystachy_compiler/memory_ir.py": "c2544eda0bdb89ccb99ac1330c95d99974983cc7bdfa0d3a2b39a993c9f62bc1",
+    "src/pystachy_compiler/module.py": "3349556dee4dcda00013d770743f27d5dc3525b76cbd5e2ab312b14506e1f601",
+    "src/pystachy_compiler/names.py": "1b114c50d950b971dc4e72afd87fa0daa3e71c653101747733ceb89777d07e1c",
+    "src/pystachy_compiler/optimizations.py": "8b922ea6e743908cd6c59983838ac2392df36fd3502bdc0a226a31092dc8be8e",
+    "src/pystachy_compiler/parser.py": "0ebba19e45b2d0396ce427894463c61fc41834aca13ba8e8383efa6ec634d6bc",
+    "src/pystachy_compiler/program.py": "2deb10404234f8e97c1c2ce4a9d3c4f1313ef7142de42d3bc0689918d36b8625",
+    "src/pystachy_compiler/reflection.py": "8628b10c2fd1fbe5b1751724d5ae5ffdaf28e72696677a87860d29efd53981cc",
+    "src/pystachy_compiler/scalar_ir.py": "14bc0ce71b4cbf066e8a4cab2ea0bb5c0a53880997484d74f5ea3e9a6d30c05a",
+    "src/pystachy_compiler/scope.py": "d9af25da84ba62a17a6a1a0b7d48d078977dd364528c8ec8e4135cc438f10a97",
+    "src/pystachy_compiler/specs.py": "d142ea175c11adde4a99126cb9fa173b6413a8c010a34cb93598c86e17b37af6",
+    "src/pystachy_compiler/statements.py": "36aa56f0e46156072be24236e242cf83825dc2feee4c77d6cdfee4ffc1deeffd",
+    "src/pystachy_compiler/structs.py": "e873fd6a6aeaebf39f740de2859a5de9a2da316d7a8993c728889677125c3090",
+    "src/pystachy_compiler/syntax.py": "9d4da3abe7447fa31031ba44936be765240dc60ab51d74728a9ed80c9a7674c3",
+    "src/pystachy_compiler/templates.py": "7e4b9422752d4a5ad1757a06d97ab4a8e39bb1f388a32ca49b5cc40628fc2f01",
+    "src/pystachy_compiler/union_arithmetic.py": "6d6892c0d97667d7e8ffeb5293ccbbe24c76529328e4761ffec6831229c416dd",
+    "src/pystachy_compiler/union_proof.py": "85e40039059975749ffe64f21e5c116ca7e3e6a26f6e0ce22ade4f398c74e568",
+    "src/pystachy_compiler/union_state.py": "b845af16073f24e1e1245bdcb00d4324dbf1d657874604cb4b991d852a07b026",
+    "src/pystachy_compiler/unions.py": "64d737b7405bec833d453f9b25211f947dab82cb1da54e3012f1dde61acf0e28",
+    "src/pystachy_compiler/utils.py": "2f2a4833264131f5b8bceb22fb6cdb215f14a310e84d79bfd80f93880d3119ef",
+    "src/pystachy_compiler/variables.py": "0a25bf8b786471a1c51f54bf92998489f5c8215c391e7f446615b9b11f12f670"
+  },
+  "harness_sha256": "ec250ffe6e0840262dbb03bc13457352eee8a349c1ee51fcc0f5525bd8fa4ddf",
+  "revision": "e2a432801a54f9046b203b8be6e9e3251d3922b6",
+  "tools": {
+    "opt": {
+      "path": "/workspace/scratch/c154e74884e5/llvm-cache/ubuntu-18.1.3-1ubuntu1-amd64/bin/opt",
+      "status": "ok",
+      "version": "Ubuntu LLVM version 18.1.3\n  Optimized build.\n  Default target: x86_64-pc-linux-gnu\n  Host CPU: znver4",
+      "executable_sha256": "67ebe8635087b5ebe22d8f085d5e5857e431f86be9ed76576e59b86b9743c0fb"
+    },
+    "llvm-extract": {
+      "path": "/workspace/scratch/c154e74884e5/llvm-cache/ubuntu-18.1.3-1ubuntu1-amd64/bin/llvm-extract",
+      "status": "ok",
+      "version": "Ubuntu LLVM version 18.1.3\n  Optimized build.",
+      "executable_sha256": "3cfade75adc3e242b235b17960d8a729eb2fc6db855275c91cccc536a2b514c6"
+    },
+    "clang": {
+      "path": "/workspace/scratch/c154e74884e5/llvm-cache/ubuntu-18.1.3-1ubuntu1-amd64/bin/clang",
+      "status": "ok",
+      "version": "Ubuntu clang version 18.1.3 (1ubuntu1)\nTarget: x86_64-pc-linux-gnu\nThread model: posix\nInstalledDir: /workspace/scratch/c154e74884e5/llvm-cache/ubuntu-18.1.3-1ubuntu1-amd64/bin",
+      "executable_sha256": "8ef402d453d1ba4902e4ee0f0f847f6cfa01400c95aa43c24e97818b9c0e3f45"
+    },
+    "alive-tv": {
+      "path": null,
+      "status": "unavailable"
+    },
+    "llubi": {
+      "path": "/workspace/scratch/6a879c771ae4/llubi",
+      "status": "ok",
+      "version": "Ubuntu LLVM version 23.1.6\n  Optimized build.",
+      "executable_sha256": "e30a57502b889c8aa3a57faa785fbbda6206420dabe2a1422521807e015d41b7"
+    }
+  },
+  "llvm_structure": "valid",
+  "cases": {
+    "masked_add": 121,
+    "signed_min": 121,
+    "affine": 144
+  },
+  "input_values": {
+    "int": [
+      -9223372036854775808,
+      -9223372036854775807,
+      -65537,
+      -65536,
+      -1,
+      0,
+      1,
+      65535,
+      65536,
+      9223372036854775806,
+      9223372036854775807
+    ],
+    "float_hex": [
+      "-inf",
+      "-0x1.7e43c8800759cp+996",
+      "-0x1.0000000000000p+0",
+      "-0x0.0p+0",
+      "0x0.0p+0",
+      "0x0.0000000000001p-1022",
+      "0x1.0000000000000p-1022",
+      "0x1.0000000000000p+0",
+      "0x1.0000000000001p+0",
+      "0x1.7e43c8800759cp+996",
+      "inf",
+      "nan"
+    ]
+  },
+  "differential": {
+    "before": {
+      "status": "matched",
+      "mismatches": []
+    },
+    "after": {
+      "status": "matched",
+      "mismatches": []
+    }
+  },
+  "controls": {
+    "wrong_mask": {
+      "status": "detected",
+      "mismatches": 60
+    },
+    "malformed_ir": {
+      "status": "detected"
+    }
+  },
+  "artifacts": {
+    "after-build.stderr.txt": "48039da247e1a8a23378c1c14be1456d540d28a2c01409ef938236f17df7f996",
+    "after-build.stdout.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "after-run.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "after-run.stdout.txt": "ad8be3ca344be9277143b23c86e61ff92e30978c96146f0780a23e613828eefd",
+    "after.ll": "c9e273f279cb65ef98efe24ed09c4899a5fdea38138575ef92d595c3bbd25ce6",
+    "after.so": "ab5f6a6260cf132385f733f84324068fbdf6d10201652ab542a1b53040648382",
+    "before-build.stderr.txt": "48039da247e1a8a23378c1c14be1456d540d28a2c01409ef938236f17df7f996",
+    "before-build.stdout.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "before-run.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "before-run.stdout.txt": "ad8be3ca344be9277143b23c86e61ff92e30978c96146f0780a23e613828eefd",
+    "before.ll": "35f369abb9d6d15000a1af417e7fb4846f77f30e1fcf5fa81537548b638afd1b",
+    "before.so": "ddecf09a6ad0c092a62416ad674086c983af921392ecca88012f243f7a33a655",
+    "clang-version.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "clang-version.stdout.txt": "d56e40c015ced4d8c566285b777821ed13d84110cf7813dfaba8180af1a1f45f",
+    "emit.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "emit.stdout.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "emitted.ll": "4cabb4aa03c75cc38929838f3fc993ee84ea10da829119f92776f1744c30580f",
+    "expected.json": "578d7cf718862b5d138c9d237e3fa6bf7afec5188ef1f2d5658a90d5d9d62c02",
+    "extract.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "extract.stdout.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "git-revision.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "git-revision.stdout.txt": "be511dbcb65d125d5ecb93b0ffcdcdf4c495993a4d10180f4b8c6bbeb7bf92a7",
+    "kernels.py": "b34386e0a8cfafe3c30741635f3ab99b8932cf05ec2a3b1bef79fca061d91a8e",
+    "llubi-after.ll": "1997e6912e50aee9b0862217a0a811e90c8b83ad980d0b2201194375ab209d55",
+    "llubi-after.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "llubi-after.stdout.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "llubi-before.ll": "b1dc34ee67ecc180cfc747dda3cc4d32e9f86932dfa07c317595d1668fcde4d3",
+    "llubi-before.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "llubi-before.stdout.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "llubi-poison.ll": "01d3c3f5c2f42410dcdfd843818069edeb716e973ceb8906a3ed3940771b5d96",
+    "llubi-poison.stderr.txt": "eac9e470c744d3544c1e1dbe5af2f2f75dad5d264697d03f704d04620747aa36",
+    "llubi-poison.stdout.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "llubi-version.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "llubi-version.stdout.txt": "045b7731619a3d1198800062e8393f9cbfe127ce6fcfaa19051e1fa25896184f",
+    "llubi-wrong.ll": "c06b958e7d6d1ba7787ac556f22eed06df0adb76bf26cb248a26c350003cc130",
+    "llubi-wrong.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "llubi-wrong.stdout.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "llvm-extract-version.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "llvm-extract-version.stdout.txt": "cfb9286322cccef53a692448cf4007a998d186dfb8e8313d317390a95eeb10f1",
+    "malformed.ll": "3dcea62f38c1e0b0f712490d14315ed195f98c582f75311a014024f8893ed389",
+    "malformed.stderr.txt": "076367cd53791b18186c66ec839d6b7cc4f1c68141821978a46db8928ad163cf",
+    "malformed.stdout.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "opt-version.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "opt-version.stdout.txt": "318dc09d7e0c5740f6d5ad7884b69c1b62448d89333938379356e22fe4613055",
+    "optimize.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "optimize.stdout.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "probe.c": "8ede890ab67b9ce1068f625170fbfb14319c9f8e40e3dac723ba24d2f195edea",
+    "verify-after.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "verify-after.stdout.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "verify-before.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "verify-before.stdout.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "verify-llubi-after.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "verify-llubi-after.stdout.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "verify-llubi-before.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "verify-llubi-before.stdout.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "verify-llubi-wrong.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "verify-llubi-wrong.stdout.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "verify-poison.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "verify-poison.stdout.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "wrong-build.stderr.txt": "48039da247e1a8a23378c1c14be1456d540d28a2c01409ef938236f17df7f996",
+    "wrong-build.stdout.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "wrong-run.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "wrong-run.stdout.txt": "cb8701b0d59c27e1530547cb3e1d7a0754314e72228454222a6cf39c63f658a2",
+    "wrong.ll": "29de545f3decc28a2184a4e3c00a4d3a38d2e513c7d4450d01c04de316277ad8",
+    "wrong.so": "55ac09ee05ede79bb8fee9d1737d9afb1fc50b3be865dc8c1aa5aaf416859039"
+  }
+}
