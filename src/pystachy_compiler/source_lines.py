@@ -15,6 +15,34 @@ def file_quote(s: str) -> str:
     return llstr(s).replace("!", "\\21")
 
 
+def remap_refs(text: str, offset: int) -> str:
+    # Replace whole placeholder IDs, not decimal prefixes (1 is not 10), and
+    # leave strings/comments untouched. LLVM quotes escape bytes as backslash
+    # hex pairs, so an actual quote always starts or ends a string.
+    parts: list[str] = []
+    start = 0
+    i = 0
+    quoted = False
+    while i < len(text):
+        if text[i] == '"':
+            quoted = not quoted
+        elif not quoted and text[i] == ";":
+            break
+        elif not quoted and text.startswith("!pysdi", i):
+            end = i + 6
+            while end < len(text) and "0" <= text[end] <= "9":
+                end += 1
+            if end > i + 6 and (end == len(text) or not (text[end].isalnum() or text[end] in "$._-")):
+                parts.append(text[start:i])
+                parts.append("!" + str(offset + int(text[i + 6:end])))
+                i = end
+                start = end
+                continue
+        i += 1
+    parts.append(text[start:])
+    return "".join(parts)
+
+
 class SourceLines:
     def __init__(self, enabled: bool):
         self.enabled = enabled
@@ -103,21 +131,33 @@ class SourceLines:
                 synthetic = ""
             elif synthetic != "" and line.startswith("  "):
                 out[j] = line + ", !dbg " + self.location(synthetic, 0)
-        # TBAA is numbered during lowering. Allocate a disjoint decimal prefix
-        # after its final highest ID, avoiding fixed ranges and another Gen counter.
-        # Only known metadata references are rewritten, never program constants.
+        # TBAA is numbered during lowering. Add each debug-node index to an
+        # offset after the highest existing ID. Decimal concatenation can exceed
+        # LLVM's 32-bit ID range even for a tiny module with sparse existing IDs.
         largest = 0
+        existing: list[int] = []
         for line in out:
             if line.startswith("!") and " = " in line:
                 number = line[1:line.find(" = ")]
                 if number.isdigit():
                     largest = max(largest, int(number))
-        prefix = "!" + str(largest + 1)
+                    existing.append(int(number))
+        offset = largest + 1
+        if offset + len(self.nodes) > 4294967296:
+            # A legal node can already occupy the maximum ID. Reuse a free
+            # contiguous gap without changing the module's existing metadata.
+            offset = 0
+            for number in sorted(existing):
+                if number >= offset + len(self.nodes):
+                    break
+                offset = number + 1
+            if offset + len(self.nodes) > 4294967296:
+                diagnostics.fail("too many LLVM metadata nodes for source locations", 0)
         for j in range(len(out)):
             if out[j].startswith("define ") or out[j].startswith("  "):
-                out[j] = out[j].replace("!pysdi", prefix)
+                out[j] = remap_refs(out[j], offset)
         out.append("; pystachy source locations")
-        out.append(("!llvm.dbg.cu = !{" + self.unit + "}").replace("!pysdi", prefix))
-        out.append(("!llvm.module.flags = !{" + ", ".join(self.flags) + "}").replace("!pysdi", prefix))
-        out.extend([node.replace("!pysdi", prefix) for node in self.nodes])
+        out.append(remap_refs("!llvm.dbg.cu = !{" + self.unit + "}", offset))
+        out.append(remap_refs("!llvm.module.flags = !{" + ", ".join(self.flags) + "}", offset))
+        out.extend([remap_refs(node, offset) for node in self.nodes])
         return "\n".join(out) + "\n"

@@ -67,6 +67,45 @@ class SourceLinesTests(unittest.TestCase):
     def run_tool(self, command):
         return subprocess.run(command, capture_output=True, text=True, check=True, timeout=90)
 
+    def test_sparse_and_maximum_existing_metadata_ids_assemble(self):
+        from unittest.mock import patch
+        from src.pystachy_compiler import diagnostics
+        from src.pystachy_compiler.source_lines import SourceLines
+
+        assembler = self.tool('llvm-as')
+        for existing in ((500000000,), (0, 2, 8, 4294967295)):
+            with self.subTest(existing=existing):
+                lines = []
+                for i in range(40):
+                    lines.extend([f'define i32 @f{i}() {{', 'entry:', '  ret i32 0', '}'])
+                definitions = [f'!{node} = !{{!"existing !pysdi0"}}' for node in existing]
+                lines.extend(definitions)
+                lines.append('!keep = !{' + ', '.join(f'!{node}' for node in existing) + '}')
+                before = lines.copy()
+                with patch.object(diagnostics, 'FILES', []), patch.object(diagnostics, 'SRC', 'sparse.py'):
+                    enabled = SourceLines(True).finish(lines)
+                    self.assertEqual(enabled, SourceLines(True).finish(lines))
+                    disabled = SourceLines(False).finish(lines)
+                self.assertEqual(lines, before)
+                ids = [int(number) for number in re.findall(r'^!(\d+) =', enabled, re.MULTILINE)]
+                self.assertEqual(len(ids), len(set(ids)))
+                self.assertTrue(all(0 <= number <= 4294967295 for number in ids))
+                for definition in definitions:
+                    self.assertIn(definition + '\n', enabled)
+                for setting, text in (('enabled', enabled), ('disabled', disabled)):
+                    ir = self.directory / f'sparse-{setting}.ll'
+                    ir.write_text(text)
+                    self.run_tool([assembler, str(ir), '-o', os.devnull])
+
+    def test_metadata_remapping_preserves_strings_comments_and_whole_ids(self):
+        from src.pystachy_compiler.source_lines import remap_refs
+
+        text = '!pysdi1 = !{!pysdi10, !pysdi100, !"!pysdi0", !pysdi12suffix} ; !pysdi2'
+        self.assertEqual(remap_refs(text, 300),
+                         '!301 = !{!310, !400, !"!pysdi0", !pysdi12suffix} ; !pysdi2')
+        self.assertEqual(remap_refs('define void @"!pysdi0"() !dbg !pysdi10 {', 300),
+                         'define void @"!pysdi0"() !dbg !310 {')
+
     def test_disabled_output_and_enabled_instructions(self):
         off = self.compile_ir()
         self.assertEqual(off, self.compile_ir('0'))

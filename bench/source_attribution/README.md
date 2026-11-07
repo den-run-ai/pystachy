@@ -43,13 +43,12 @@ in the same source context is deterministic, while moving the checkout changes
 that directory. A future path-remapping option would be needed for byte-identical
 debug artifacts across checkout locations.
 
-The current placeholder remapping concatenates a prefix above the highest TBAA
-ID with each debug-node index. That creates an artificial scale limit: sufficiently
-high pre-existing metadata IDs can exceed LLVM's 32-bit metadata-ID range even
-when the number of nodes would fit. The measured compiler stays below this limit
-(maximum ID 99,758,800). Numeric-offset remapping is a follow-up before claiming
-support for arbitrary module metadata-ID layouts; the current prototype can
-produce IR rejected by LLVM for those high-ID layouts.
+Debug-node IDs use a numeric offset after the existing metadata IDs. If the
+highest existing ID leaves insufficient room in LLVM's unsigned 32-bit range,
+the emitter finds a free contiguous gap. Existing metadata, quoted strings and
+comments remain unchanged. This repairs the earlier decimal-prefix overflow;
+the historical measurements below predate that repair. Sparse IDs and an
+existing maximum ID are covered by LLVM assembly regression tests.
 
 The default LLVM 18 Linux ORC JIT was tested with its actual GDB registration
 interface. A native callback reads the running process's `__jit_debug_descriptor`,

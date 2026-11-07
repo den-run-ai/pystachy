@@ -214,9 +214,9 @@ The native subset commands and exact cases are preserved in
 [validation.txt](validation.txt). The full corpus check above is the disabled
 comparison; it should run with `PYSTACHY_DEBUG_LINES` unset.
 
-### Known metadata-ID limit
+### Historical metadata-ID limit
 
-This draft uses decimal-prefix placeholder remapping. Sparse existing metadata
+The original draft used decimal-prefix placeholder remapping. Sparse existing metadata
 IDs can make new debug IDs exceed LLVM's unsigned 32-bit range. A five-line
 synthetic module with an existing legal `!500000000` node assembles without debug
 metadata. Passing it through enabled `SourceLines.finish` creates
@@ -224,9 +224,11 @@ metadata. Passing it through enabled `SourceLines.finish` creates
 `expected 32-bit integer (too large)`. The measured compiler's maximum ID is
 99,758,800, so the recorded workloads are unaffected.
 
-This is a reproduced limitation, not a passing boundary test. Numeric-offset
-remapping should replace the current scheme before treating arbitrary metadata-ID
-layouts as supported. The minimal reproduction is:
+This was a reproduced limitation, not a passing boundary test. The current
+implementation uses numeric offsets, with a free-gap fallback when the highest
+existing ID leaves insufficient 32-bit space. Both sparse and maximum existing
+IDs now have assembly regressions in `tools/test_source_lines.py`; the original
+performance measurements above have not been rerun. The minimal reproduction was:
 
 ```python
 from src.pystachy_compiler import diagnostics
@@ -241,8 +243,9 @@ for enabled in (False, True):
         stream.write(SourceLines(enabled).finish(lines))
 ```
 
-Run `llvm-as metadata-id-False.ll -o /dev/null` (passes) and
-`llvm-as metadata-id-True.ll -o /dev/null` (expected failure on this prototype).
+Run `llvm-as metadata-id-False.ll -o /dev/null` and
+`llvm-as metadata-id-True.ll -o /dev/null`. Both pass after the remapping repair;
+the original `88a66bec` feature head rejects the enabled case.
 
 ## Validation boundaries
 
