@@ -162,6 +162,7 @@ The exact operation table is `IROPS`; its current groups are:
 | Scalar arithmetic, bitwise operations and machine conversions | `scalar.bin`, `scalar.cast`, `scalar.cmp` |
 | Native memory access | `mem.load`, `mem.store` |
 | Fixed-layout allocation | `alloc.fixed` |
+| Known-arity runtime-length tuple construction | `vtuple.make` |
 | Fixed tuple slots | `tuple.load`, `tuple.store` |
 | Object layout addresses | `field.addr` |
 | Container payload conversions | `slot.pack`, `slot.unpack` |
@@ -206,6 +207,18 @@ initialization, field and tuple stores, stack tuple promotion, and the runtime A
 retain their existing behavior. The verifier checks the layout type, one result,
 runtime declaration and absence of unused operands or metadata. Variable-sized
 allocations and closure/cell layouts still use runtime calls.
+
+`vtuple.make` constructs the final runtime-length tuple from already evaluated,
+coerced homogeneous elements. Its result is `vtuple[T]` and every operand has native
+type `T`; it owns one semantic result and an allocation effect. A fresh tuple display
+can use it directly, while conversion from an existing fixed tuple first reads that
+tuple without changing its storage. Literal constant displays keep their existing
+constant path. Lowering allocates the existing scanned layout (length followed by
+eight-byte elements), retaining native references across that allocation; address
+and bool-widening temporaries are local to the emitter. This removes intermediate
+fixed tuples and the copy through `vtuple.from` without a new runtime API, allocator
+attributes, or specialization on runtime lengths. The verifier checks the supported
+element representations, operand agreement, result count and allocation declaration.
 
 `tuple.load` and `tuple.store` retain a fixed tuple's type, constant item index and
 declared item type while transferring an opaque `%slot`. The verifier checks that the

@@ -151,8 +151,7 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
         return self.dyn_box(v)
     if is_tuple(v.t) and BIG in v.t and is_vtuple(unopt(t)) and targs(unopt(t))[0] == "dyn":
         vals = [self.dyn_box(self.tget(v, i)) for i in range(len(targs(v.t)))]
-        raw = self.tuple_(vals)
-        return Val(self.rt("pys_vtuple_from", "ptr", [f"ptr {raw.v}", f"i64 {len(vals)}"]), t)
+        return Val(self.vtuple_make(vals, unopt(t)).v, t)
     if is_tuple(v.t) and BIG in v.t and "dyn" in t and self.reboxes(v.t, t):
         return self.tuple_([self.coerce(self.tget(v, i), targs(t)[i], what) for i in range(len(targs(t)))])
     if t == BIG and v.t == "int":
@@ -192,8 +191,7 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
     if is_vtuple(unopt(t)) and is_tuple(v.t):
         et = targs(unopt(t))[0]
         vals = [self.coerce(self.tget(v, i), et) for i in range(len(targs(v.t)))]
-        raw = self.tuple_(vals)
-        return Val(self.rt("pys_vtuple_from", "ptr", [f"ptr {raw.v}", f"i64 {len(vals)}"]), t)
+        return Val(self.vtuple_make(vals, unopt(t)).v, t)
     if is_vtuple(unopt(t)) and is_vtuple(v.t):
         et = targs(unopt(t))[0]
         if is_sopt(et) and targs(v.t)[0] == unopt(et):

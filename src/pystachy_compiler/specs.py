@@ -632,7 +632,7 @@ IROPS: dict[str, str] = {
     "slot": "", "rt": "*", "call": "*", "icall": "*", "init": "*", "br": "T", "cbr": "T", "switch": "T", "check": "T R",
     "ret": "T", "ret.none": "T", "raise": "T R N", "unreachable": "T", "phi": "", "select": "", "ovf": "",
     "list.load": "rL", "list.len": "rL",
-    "alloc.fixed": "A",
+    "alloc.fixed": "A", "vtuple.make": "A",
     "mem.load": "*", "mem.store": "*",
     "mach.load": "*", "mach.store": "*", "mach.addr": "",
     "tuple.load": "rL rD rO", "tuple.store": "wL wD wO",

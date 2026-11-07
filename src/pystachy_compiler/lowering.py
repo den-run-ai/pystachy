@@ -283,6 +283,23 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         size = str(8 * tslots(i.t)) if is_tuple(i.t) else f"ptrtoint (ptr getelementptr (%C.{i.t}, ptr null, i32 1) to i64)"
         if f"%t{i.r[0]}" not in self.vtuples:  # (a tuple returned by value is never made: tupleret)
             o.append(f"  %t{i.r[0]} = {self.alloc_call(size, i.t)}")
+    elif op == "vtuple.make":
+        # The runtime VTuple layout is a length followed by 8-byte item slots.
+        # Keep the scanned allocator and its GC boundary, including for scalar
+        # items. References remain native pointer operands live across that call.
+        # Address and bool-widening temporaries belong only to this emitter.
+        p = f"%t{i.r[0]}"
+        o.append(f"  {p} = {self.alloc_call(str(8 * (len(i.a) + 1)), i.t)}")
+        o.append(f"  store i64 {len(i.a)}, ptr {p}")
+        for k in range(len(i.a)):
+            v = i.a[k]
+            a = f"%vt.{i.r[0]}.{k}"
+            o.append(f"  {a} = getelementptr i64, ptr {p}, i64 {k + 1}")
+            if v.t == "bool":
+                o.append(f"  {a}.value = zext i1 {v.v} to i64")
+                o.append(f"  store i64 {a}.value, ptr {a}")
+            else:
+                o.append(f"  store {'ptr' if v.t == 'None' else lt(v.t)} {v.v}, ptr {a}")
     elif op == "tuple.store" and i.a[0].v in self.vtuples:
         self.vslots[f"{i.a[0].v} {i.k}"] = i.a[1].v  # (the slot its ret returns)
     elif op == "tuple.load" and i.a[0].v in self.vaggs:

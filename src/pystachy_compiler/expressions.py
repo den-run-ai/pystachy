@@ -1244,6 +1244,13 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         tconst = self.tuple_const(n, vals)
         if tconst.v != "":
             return tconst  # (a display of literals: CPython's constant, the same object at each run)
+        if is_vtuple(want) and not resultsoft:
+            # Every item has been evaluated before conversion starts. want is also
+            # an operand hint: concatenation may widen it (int plus int | None).
+            # Comparisons preserve each side's own element representation.
+            et = targs(want)[0]
+            if all(self.widens(v.t, et) or self.boxes(v.t, et) or (v.t == BIG and et == "int") for v in vals):
+                return self.vtuple_make([self.coerce(v, et) for v in vals], want)
         return self.stack_tuple(vals) if n is self.stkkey else self.tuple_(vals)
     if k == "listcomp":
         if n.s == "gen":
@@ -2395,6 +2402,19 @@ def gen_tuple_(self, vals: list[Val]) -> Val:
     for i in range(len(vals)):
         self.tput(Val(p, t), i, vals[i])
     return Val(p, t)
+
+def gen_vtuple_make(self, vals: list[Val], t: str) -> Val:
+    # Already evaluated and coerced homogeneous items. Keep their native types,
+    # including references, until lowering allocates the final scanned VTuple.
+    # This is also the copy boundary for an existing fixed tuple: it never edits
+    # or reinterprets the source tuple's storage.
+    if self.rtmode and self.curfn.ll == "@pys_alloc":
+        self.err("pys_alloc() implements an operation that it uses: write it without that operation")
+    self.runtime("pys_alloc")
+    i = Ins("vtuple.make", t, "")
+    i.a = vals
+    self.put(i, 1)
+    return Val(f"%t{i.r[0]}", t)
 
 def gen_tuple_const(self, n: Node, vals: list[Val]) -> Val:
     # a tuple display of literals that the source writes (n.src), whose items are vals: the
