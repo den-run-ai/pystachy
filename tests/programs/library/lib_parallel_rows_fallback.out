@@ -1,0 +1,8 @@
+error [1.0, 2.0, 3.0] third
+mutation [3.0, 12.0] [1.0, 2.0, 3.0, 9.0]
+divide float division by zero
+invalid 0 0 True workers must be between 1 and 64
+invalid 0 1 True width must be positive
+invalid 3 1 True values length must be a multiple of width
+invalid 2 65 True workers must be between 1 and 64
+[exit 0]

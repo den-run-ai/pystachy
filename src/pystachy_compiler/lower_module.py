@@ -89,7 +89,7 @@ def uses_parallel_runtime(ir: str) -> bool:
     # The generated module declares used runtime functions on their own lines.
     # Symbol text in a string constant (including the compiler's own source)
     # must not opt into the native worker backend or change its cache identity.
-    return "\ndeclare ptr @pys_parallel_map_f64(" in ir
+    return "\ndeclare ptr @pys_parallel_map_f64(" in ir or "\ndeclare ptr @pys_parallel_rows_f64(" in ir
 
 
 def gen_lower_comments(self, notes: list[str]) -> None:
@@ -97,13 +97,14 @@ def gen_lower_comments(self, notes: list[str]) -> None:
         self.out.append("; " + note)
 
 
-def gen_parallel_kernels(self, kernels: list[str]) -> None:
+def gen_parallel_kernels(self, kernels: list[str], rows: list[str]) -> None:
     # The runtime owns the two buffers and proves 0 <= begin <= end <= length.
-    # Every output index has exactly one writer. No fast-math, reduction, runtime
-    # callback, allocation, exception or GC operation is introduced in workers.
+    # Every output index has exactly one writer. Worker code accesses only raw
+    # buffers and proven scalar functions: no fast-math, allocation, exception
+    # or GC operation is introduced.
     for target in kernels:
         self.out.extend([
-            f"define internal void @pys.parallel.{target[1:]}(ptr %src, ptr %dst, i64 %begin, i64 %end) nounwind {{",
+            f"define internal void @pys.parallel.{target[1:]}(ptr %src, ptr %dst, i64 %begin, i64 %end, i64 %width) nounwind {{",
             "entry:",
             "  br label %test",
             "test:",
@@ -118,6 +119,44 @@ def gen_parallel_kernels(self, kernels: list[str]) -> None:
             "  store double %y, ptr %out, align 8",
             "  %next = add i64 %i, 1",
             "  br label %test",
+            "done:",
+            "  ret void",
+            "}",
+        ])
+
+    # Each row's multiply/index arithmetic stays within the owner-checked input
+    # length. No reduction is split across threads. The ordered fadd has no fast
+    # math/reassociation flags and starts at +0.0, like the Python fallback.
+    for target in rows:
+        self.out.extend([
+            f"define internal void @pys.parallel.rows.{target[1:]}(ptr %src, ptr %dst, i64 %begin, i64 %end, i64 %width) nounwind {{",
+            "entry:",
+            "  br label %row.test",
+            "row.test:",
+            "  %row = phi i64 [ %begin, %entry ], [ %next.row, %row.store ]",
+            "  %more.rows = icmp slt i64 %row, %end",
+            "  br i1 %more.rows, label %row.begin, label %done",
+            "row.begin:",
+            "  %base = mul i64 %row, %width",
+            "  br label %column.test",
+            "column.test:",
+            "  %column = phi i64 [ 0, %row.begin ], [ %next.column, %column.body ]",
+            "  %sum = phi double [ 0.0, %row.begin ], [ %next.sum, %column.body ]",
+            "  %more.columns = icmp slt i64 %column, %width",
+            "  br i1 %more.columns, label %column.body, label %row.store",
+            "column.body:",
+            "  %index = add i64 %base, %column",
+            "  %in = getelementptr double, ptr %src, i64 %index",
+            "  %x = load double, ptr %in, align 8",
+            f"  %y = call double {target}(double %x)",
+            "  %next.sum = fadd double %sum, %y",
+            "  %next.column = add i64 %column, 1",
+            "  br label %column.test",
+            "row.store:",
+            "  %out = getelementptr double, ptr %dst, i64 %row",
+            "  store double %sum, ptr %out, align 8",
+            "  %next.row = add i64 %row, 1",
+            "  br label %row.test",
             "done:",
             "  ret void",
             "}",

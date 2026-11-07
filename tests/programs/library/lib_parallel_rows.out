@@ -1,0 +1,19 @@
+rows 0 7 0 True
+rows 21 7 3 True
+rows 32767 7 4681 True
+rows 32774 7 4682 True
+rows 65541 7 9363 True
+rows 65536 65536 1 True
+ordered 0000000000000000
+ordered 3ff0000000000000
+ordered 0000000000000000
+special ['0000000000000000', '0000000000000000', '7ff0000000000000', 'fff0000000000000', '7ff8000000000000']
+default [0.75, -1.5]
+alias [0.75, -1.5]
+invalid 0 0 workers must be between 1 and 64
+invalid 0 1 width must be positive
+invalid -1 1 width must be positive
+invalid 3 1 values length must be a multiple of width
+invalid 2 65 workers must be between 1 and 64
+empty []
+[exit 0]

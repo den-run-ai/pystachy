@@ -230,6 +230,43 @@ class RuntimeMapVerifierTests(unittest.TestCase):
         self.assert_bad(g, caller, "unsafe kernel")
 
 
+class RuntimeRowsVerifierTests(RuntimeMapVerifierTests):
+    def mapped(self):
+        g, caller, kernel, op = super().mapped()
+        op.s = g.runtime("pys_parallel_rows_f64")
+        op.a = [Val("%a0", "list[float]"), Val("2", "int"), Val("%a1", "int"),
+                Val("@pys.parallel.rows.work", "%ptr")]
+        return g, caller, kernel, op
+
+    def assert_bad(self, g, caller, reason):
+        err = StringIO()
+        with redirect_stderr(err), self.assertRaises(SystemExit):
+            g.verify(caller, False)
+        self.assertIn("parallel.rows_f64", err.getvalue())
+        self.assertIn(reason, err.getvalue())
+
+    def test_raw_and_missing_thunks_are_rejected(self):
+        for name in ("%raw_pointer", "null", "@work", "@pys.parallel.work",
+                     "@pys.parallel.rows.missing"):
+            with self.subTest(name=name):
+                g, caller, _, op = self.mapped()
+                op.a[3].v = name
+                self.assert_bad(g, caller, "compiled kernel thunk")
+
+    def test_operand_shapes_and_result_layout_are_checked(self):
+        for field, value in (("t", "list[int]"), ("r", []), ("k", 1), ("x", "float"),
+                             ("a", [])):
+            with self.subTest(field=field):
+                g, caller, _, op = self.mapped()
+                setattr(op, field, value)
+                self.assert_bad(g, caller, "proven kernel pointer")
+        for index, typename in ((0, "list[int]"), (1, "float"), (2, "float"), (3, "int")):
+            with self.subTest(index=index):
+                g, caller, _, op = self.mapped()
+                op.a[index].t = typename
+                self.assert_bad(g, caller, "proven kernel pointer")
+
+
 class NativeMapIRTests(unittest.TestCase):
     def compile(self, text):
         path = str(ROOT / "parallel_test.py")
@@ -278,6 +315,46 @@ print(map_float(square, [1.0, 2.0], 4))
         self.assertNotIn(" fast ", ir)
         self.assertNotIn(" contract ", ir)
 
+    def test_rows_keep_one_ordered_reduction_per_output(self):
+        ir = self.compile("""
+from parallel import map_float, sum_rows_float
+
+def square(x: float) -> float:
+    return x * x + 0.25
+
+print(map_float(square, [1.0, 2.0], 4))
+print(sum_rows_float(square, [1.0, 2.0], 2, 4))
+""")
+        self.assertIn("@pys_parallel_rows_f64", ir)
+        self.assertIn("@pys.parallel.f.square(", ir)
+        chunk = ir.split("define internal void @pys.parallel.rows.f.square", 1)[1].split("\n}", 1)[0]
+        self.assertIn("%sum = phi double [ 0.0, %row.begin ]", chunk)
+        self.assertIn("%next.sum = fadd double %sum, %y", chunk)
+        self.assertIn("getelementptr double, ptr %dst, i64 %row", chunk)
+        self.assertNotIn(" fast ", chunk)
+        self.assertNotIn(" contract ", chunk)
+        self.assertNotIn(" reassoc ", chunk)
+        self.assertEqual(chunk.count("call "), 1)
+
+    def test_rows_unknown_callback_keeps_serial_path(self):
+        ir = self.compile("""
+from parallel import sum_rows_float
+from typing import Callable
+
+def plus(x: float) -> float:
+    return x + 1.0
+
+def minus(x: float) -> float:
+    return x - 1.0
+
+def choose(flag: bool) -> Callable[[float], float]:
+    return plus if flag else minus
+
+print(sum_rows_float(choose(True), [1.0, 2.0], 2, 4))
+""")
+        self.assertNotIn("@pys_parallel_rows_f64", ir)
+        self.assertIn("parallel.sum_rows_float: serial", ir)
+
     def test_unsafe_callbacks_keep_original_call(self):
         bodies = (
             "return x / 2.0",
@@ -300,10 +377,20 @@ def work(x: float) -> float:
     """ + body + "\nprint(map_float(work, [1.0, 2.0], 4))\n")
                 self.assertNotIn("@pys_parallel_map_f64", ir)
                 self.assertNotIn("define internal void @pys.parallel.", ir)
+                rows_ir = self.compile("""
+from parallel import sum_rows_float
+seen: list[float] = []
+factor = 2.0
+def helper(x: float) -> float:
+    return x * x
+def work(x: float) -> float:
+    """ + body + "\nprint(sum_rows_float(work, [1.0, 2.0], 2, 4))\n")
+                self.assertNotIn("@pys_parallel_rows_f64", rows_ir)
+                self.assertNotIn("define internal void @pys.parallel.rows.", rows_ir)
 
     def test_dynamic_identity_graph_stays_sequential(self):
         ir = self.compile("""# pystachy: dynamic-any
-from parallel import map_float
+from parallel import map_float, sum_rows_float
 from typing import Any
 def same(x: float) -> float:
     return x
@@ -311,15 +398,18 @@ x = float('1234.5')
 values = map_float(same, [x], 4)
 result: Any = values[0]
 print(result is x)
+print(sum_rows_float(same, [x], 1, 4))
 """)
         self.assertNotIn("@pys_parallel_map_f64", ir)
+        self.assertNotIn("@pys_parallel_rows_f64", ir)
 
     def test_plain_program_does_not_gain_parallel_symbols(self):
         ir = self.compile("def square(x: float) -> float:\n    return x * x\nprint(square(2.0))\n")
         self.assertNotIn("parallel", ir)
 
     def test_symbol_text_does_not_link_the_parallel_backend(self):
-        for text in ("@pys_parallel_map_f64(", "\ndeclare ptr @pys_parallel_map_f64("):
+        for text in ("@pys_parallel_map_f64(", "\ndeclare ptr @pys_parallel_map_f64(",
+                     "@pys_parallel_rows_f64(", "\ndeclare ptr @pys_parallel_rows_f64("):
             with self.subTest(text=text):
                 self.assertEqual(self.runtime_flags("print(" + repr(text) + ")\n"), [])
         self.assertEqual(self.runtime_flags("""
@@ -327,6 +417,14 @@ from parallel import map_float
 def square(x: float) -> float:
     return x * x
 print(map_float(square, [1.0], 4))
+"""), ["-DPYSTACHY_PARALLEL", "-pthread"])
+
+    def test_row_site_selects_parallel_runtime_flags(self):
+        self.assertEqual(self.runtime_flags("""
+from parallel import sum_rows_float
+def square(x: float) -> float:
+    return x * x
+print(sum_rows_float(square, [1.0], 1, 4))
 """), ["-DPYSTACHY_PARALLEL", "-pthread"])
 
     def test_shadowing_module_is_not_replaced_by_a_runtime_intrinsic(self):
@@ -347,6 +445,25 @@ print(map_float(square, [1.0], 4))
                 ir = compile_program(path, source, [tmp, str(ROOT / "lib")], "")
             self.assertNotIn("@pys_parallel_map_f64", ir)
             self.assertNotIn("define internal void @pys.parallel.", ir)
+
+    def test_shadowing_row_module_keeps_its_own_semantics(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "parallel.py").write_text("""
+from typing import Callable
+def sum_rows_float(fn: Callable[[float], float], values: list[float], width: int, workers: int = 1) -> list[float]:
+    return [123.0]
+""")
+            source = """
+from parallel import sum_rows_float
+def square(x: float) -> float:
+    return x * x
+print(sum_rows_float(square, [1.0], 1, 4))
+"""
+            path = str(Path(tmp) / "main.py")
+            with patch.object(diagnostics, "SRC", path), redirect_stderr(StringIO()):
+                ir = compile_program(path, source, [tmp, str(ROOT / "lib")], "")
+            self.assertNotIn("@pys_parallel_rows_f64", ir)
+            self.assertNotIn("define internal void @pys.parallel.rows.", ir)
 
 
 if __name__ == "__main__":

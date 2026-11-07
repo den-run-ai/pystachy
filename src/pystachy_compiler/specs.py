@@ -786,6 +786,7 @@ RUNTIME: dict[str, str] = {
     # wL conservatively covers the raw callback's pointer arguments in the C
     # checker; the dedicated kernel proof and fresh output keep src read-only.
     "parallel.map_f64": "list[float]:list[float],int,%ptr|R A I rL wL|",
+    "parallel.rows_f64": "list[float]:list[float],int,int,%ptr|R A I rL wL|",
     # Explicit arbitrary-precision integers. Handles are immutable atomic objects;
     # the library's scanned wrapper keeps their pointer alive.
     "mpz.from_int": "%ptr:int|R A|", "mpz.from_str": "%ptr:str,int|R A|",

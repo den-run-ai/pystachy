@@ -1269,9 +1269,9 @@ def gen_program(self, mods: list[Mod]) -> str:
             self.effects()  # (what the passes left: tests/ir/*.fx pin them)
     # Prove worker safety on the completed, optimized IR, after recursion policy
     # has removed leaf-function accounting. Failed proofs retain ordinary calls.
-    kernels, notes = self.parallel_maps()
+    kernels, rows, notes = self.parallel_maps()
     self.lower_comments(notes)
-    if len(kernels) > 0:
+    if len(kernels) > 0 or len(rows) > 0:
         self.effects()
         if chk:
             for fn in self.fns:
@@ -1294,7 +1294,7 @@ def gen_program(self, mods: list[Mod]) -> str:
         fn.loops = []
         fn.cold = {}
         fn.fa = {}
-    self.parallel_kernels(kernels)
+    self.parallel_kernels(kernels, rows)
     for op in ["eq", "cmp", "repr"] if not self.rtmode else []:
         self.dispatch(op)  # (each program defines them: runtime.py calls them like runtime.c)
     ir = self.lower_module()

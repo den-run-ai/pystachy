@@ -344,6 +344,21 @@ direct scalar call, without fast-math flags. The runtime owns allocation, partit
 disjoint result slots and joins before returning. Its pthread backend is linked only
 when a proven site exists. See the [execution contract](concurrency.md#experimental-float-map).
 
+`parallel.sum_rows_float` uses the same scalar callback proof and a separate
+`rt parallel.rows_f64(list[float], int, int, %ptr) -> list[float]` operation. Its
+arguments are input, width, workers and an `@pys.parallel.rows.*` thunk. The verifier
+requires this distinct pointer provenance, checks every argument's type, and repeats
+the scalar proof. Its conservative effects match `parallel.map_f64`.
+
+The runtime validates `width > 0` and `input_length % width == 0` before dividing
+or allocating. The generated outer loop owns whole result rows; the inner loop adds
+mapped values into a scalar accumulator with ordered `fadd`, starting at `+0.0`.
+`row * width + column` is within the checked input length; every increment and
+product fits its nonnegative signed length. Width is passed through the shared
+chunk dispatcher as an immutable scalar. Neither source nor worker code can change
+list length or backing storage during the synchronous region. This is a trusted
+compiler-generated loop template, not an eligibility proof for arbitrary loop IR.
+
 ## Effects
 
 `IROPS` defines fixed operation effects. `RUNTIME` defines runtime signatures and effects;
