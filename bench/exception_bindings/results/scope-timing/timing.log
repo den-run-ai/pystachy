@@ -1,0 +1,9 @@
+handlers 500 {"hosted-baseline": 0.503861853001581, "hosted-candidate": 0.19423505599843338, "native-baseline": 0.1020717780047562, "native-candidate": 0.028767576004611328}
+handlers 1000 {"hosted-baseline": 1.6662597140020807, "hosted-candidate": 0.3144075249947491, "native-baseline": 0.3202107019969844, "native-candidate": 0.051729281003645156}
+handlers 2000 {"hosted-baseline": 5.8223377440008335, "hosted-candidate": 0.5946297949994914, "native-baseline": 1.3661570269978256, "native-candidate": 0.11141673800011631}
+samehandlers 500 {"hosted-baseline": 0.1660261509969132, "hosted-candidate": 0.170631057000719, "native-baseline": 0.02648854300059611, "native-candidate": 0.026658622999093495}
+samehandlers 1000 {"hosted-baseline": 0.3016865579993464, "hosted-candidate": 0.3042237890040269, "native-baseline": 0.05386283400002867, "native-candidate": 0.05353366700001061}
+samehandlers 2000 {"hosted-baseline": 0.5531316150008934, "hosted-candidate": 0.5612107869965257, "native-baseline": 0.11230665699986275, "native-candidate": 0.11142947000189452}
+nohandlers 500 {"hosted-baseline": 0.2895788769965293, "hosted-candidate": 0.2742173980004736, "native-baseline": 0.04633867699885741, "native-candidate": 0.04512207899824716}
+nohandlers 1000 {"hosted-baseline": 0.5938613690013881, "hosted-candidate": 0.5386202930021682, "native-baseline": 0.12103226400358835, "native-candidate": 0.09500486199976876}
+nohandlers 2000 {"hosted-baseline": 1.208256596000865, "hosted-candidate": 1.199249236000469, "native-baseline": 0.21197685600054683, "native-candidate": 0.22382877099880716}

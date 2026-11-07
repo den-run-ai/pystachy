@@ -1,0 +1,77 @@
+{
+  "artifacts": {
+    "build/pystachy1": {
+      "bytes": 5215608,
+      "sha256": "641200a9ab8f7f74045a58d416d978715293b9714b1c4f9670b7bfe3d64c05f2"
+    },
+    "build/pystachy2": {
+      "bytes": 5215608,
+      "sha256": "641200a9ab8f7f74045a58d416d978715293b9714b1c4f9670b7bfe3d64c05f2"
+    },
+    "build/rt1.ll": {
+      "bytes": 549411,
+      "sha256": "940a694da5ea93214d1308a8eb635b47d8d0a9d4256c63d084c24f5099f8aa5f"
+    },
+    "build/rt2.ll": {
+      "bytes": 549411,
+      "sha256": "940a694da5ea93214d1308a8eb635b47d8d0a9d4256c63d084c24f5099f8aa5f"
+    },
+    "build/rt3.ll": {
+      "bytes": 549411,
+      "sha256": "940a694da5ea93214d1308a8eb635b47d8d0a9d4256c63d084c24f5099f8aa5f"
+    },
+    "build/stage1.ll": {
+      "bytes": 31429223,
+      "sha256": "2a2863bf10de37307db7182063b83fee6446a5d0156d7825546ef47a5850eaba"
+    },
+    "build/stage2.ll": {
+      "bytes": 31429223,
+      "sha256": "2a2863bf10de37307db7182063b83fee6446a5d0156d7825546ef47a5850eaba"
+    },
+    "build/stage3.ll": {
+      "bytes": 31429223,
+      "sha256": "2a2863bf10de37307db7182063b83fee6446a5d0156d7825546ef47a5850eaba"
+    },
+    "pystachy": {
+      "bytes": 5215608,
+      "sha256": "641200a9ab8f7f74045a58d416d978715293b9714b1c4f9670b7bfe3d64c05f2"
+    }
+  },
+  "fixed_points": {
+    "rt": true,
+    "stage": true
+  },
+  "limitations": [
+    "Shared-host external compilation was observed during initial bootstrap; no performance claim from its duration.",
+    "Initial native fixture run was 14 passed, 2 failed because direct typed-float is was unsupported. An Any-typed identity helper corrected the fixture without changing production code; both corrected native runs were 16 passed.",
+    "Initial growth negative-control script had an IndexError after expected failures; its corrected run fails only the intended baseline growth assertions.",
+    "Full local make verify, macOS and final-source full corpus checks were not part of this initial validation."
+  ],
+  "logs": {
+    "baseline-growth-test-corrected.log": "a4d511c5be3194d9a09d3d72362742eb36715efd5812142f450f4f512f18b6fd",
+    "baseline-growth-test.log": "af9c04aee3a6e35cb0e0c8e23b001bd288918221e934f0dcf62c899354b221ae",
+    "baseline-ir.json": "a2bb02efe225064c121ecbbddc297b3bb6ce18a5fb48225c2d38d0c48b02a0ab",
+    "bootstrap.log": "6e850cb85e5e50104094fde70ff8f7e56bfd3e6438e72d506f60544850aad8c9",
+    "candidate-gate-hosted-ir.json": "5fd7a90fa8f96c81384289ae79911720221fb5e5fc1f8988d6be6efc1637d40f",
+    "candidate-ir.json": "c5c351e73ca17cc334c72decada3df8d90efe2505811de6913c484546869382e",
+    "check-fast.log": "fc5e2fa7d777699e94f368236308e42914a0b0842fc8ce6dfdbd3aff9b1c2235",
+    "frame-fields.log": "38e654c7ffddf7c2af98e739471b7c8740911e17f8e9f71b55e60047b58b26c6",
+    "ir-library-inputs.json": "38c799c98978ebd39b90b809d1d25ad4fd9ffdfc69e06bf27dba737d0b7b3f7a",
+    "native-focused-corrected.log": "8901fedadbf71f2be158e53c5c9717d87b89258150e0b034692af4f74ea2ae77",
+    "native-focused-gc1.log": "8901fedadbf71f2be158e53c5c9717d87b89258150e0b034692af4f74ea2ae77",
+    "native-focused.log": "e01c6d0039c50d81c99c5a645d826a550da630f7f82ee820c2c117857aa5747d",
+    "new-ir-validation.log": "f838a87c0788dc880b28257d8e2cf216a88f7c0fa4465df7a8306a7cab972cbc",
+    "runtime-checks.log": "61e3aa212850e8903e20eae951d3eb1cbae29f34d584abc4276273d74cb4e88a"
+  },
+  "native_builds_identical": true,
+  "note": "Initial validation before the f969e355 caller guard; final frozen-source validation will be recorded separately. Original source was held fixed during make. This retrospective artifact record does not replace a pre/post source manifest.",
+  "production_commit": "8ba1bc7928cdef48db1c59a8219c029d018b7b2a",
+  "validation": {
+    "check_fast": true,
+    "corrected_native_gc1_tests": 16,
+    "corrected_native_tests": 16,
+    "frame_state_tests": 18,
+    "runtime_entries": 645,
+    "scalar_hosted_native_ir_matches": 9
+  }
+}

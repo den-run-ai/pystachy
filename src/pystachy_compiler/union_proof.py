@@ -485,6 +485,10 @@ class UnionProof:
         receiver = self.native.get(i.a[0].v, "")
         if t == "S":
             return receiver if receiver != "" else t
+        if receiver.startswith("list[") and (i.op == "list.load" or (i.op == "rt" and i.s == "list.get")):
+            # The packed result still carries the receiver definition's semantic
+            # element, independently of narrowed operand or result annotations.
+            return targs(receiver)[0]
         if receiver.startswith("dict[") and (t == "*K" or t == "*V"):
             return targs(receiver)[0 if t == "*K" else 1]
         if (receiver.startswith("list[") or receiver.startswith("set[") or receiver.startswith("frozenset[")) and t == "*T":

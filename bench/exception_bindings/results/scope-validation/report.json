@@ -1,0 +1,131 @@
+{
+  "baseline_sha256": "3b59b4e875a89f15777395f5993ccf2e6d51e934dbc7a4e45228d622c7f1cff7",
+  "compiler_sha256": "59ef960437bb56f269855714ee9c98cbabac8c7ee2c34a106526ec8ac80d84bc",
+  "complete": false,
+  "steps": [
+    {
+      "command": [
+        "tests/run.sh",
+        "./pystachy",
+        "jit aot",
+        "tests/programs/exceptions/exc_binding_index_cleanup.py",
+        "tests/programs/exceptions/exc_binding_index_scopes.py",
+        "tests/programs/exceptions/exc_as_rebind.py",
+        "tests/programs/exceptions/exc_as_unbound.py",
+        "tests/programs/exceptions/exc_nested.py",
+        "tests/programs/exceptions/exc_finally_break.py",
+        "tests/programs/exceptions/exc_finally.py",
+        "tests/programs/exceptions/exc_finally_nested.py",
+        "tests/programs/exceptions/exc_as_subclass.py",
+        "tests/programs/exceptions/exc_base_shadow_walrus.py",
+        "tests/programs/exceptions/exc_classmethod_lazy.py",
+        "tests/programs/exceptions/exc_import_unbound.py",
+        "tests/programs/imports/import_try_binding.py",
+        "tests/programs/imports/import_try_binding_local.py",
+        "tests/errors/exceptions/except_as_global.py",
+        "tests/errors/exceptions/except_as_global_read.py"
+      ],
+      "environment": {},
+      "name": "native",
+      "returncode": 0,
+      "wall_s": 15.854449951002607
+    },
+    {
+      "command": [
+        "tests/run.sh",
+        "./pystachy",
+        "jit aot",
+        "tests/programs/exceptions/exc_binding_index_cleanup.py",
+        "tests/programs/exceptions/exc_binding_index_scopes.py",
+        "tests/programs/exceptions/exc_as_rebind.py",
+        "tests/programs/exceptions/exc_as_unbound.py",
+        "tests/programs/exceptions/exc_nested.py",
+        "tests/programs/exceptions/exc_finally_break.py",
+        "tests/programs/exceptions/exc_finally.py",
+        "tests/programs/exceptions/exc_finally_nested.py",
+        "tests/programs/exceptions/exc_as_subclass.py",
+        "tests/programs/exceptions/exc_base_shadow_walrus.py",
+        "tests/programs/exceptions/exc_classmethod_lazy.py",
+        "tests/programs/exceptions/exc_import_unbound.py",
+        "tests/programs/imports/import_try_binding.py",
+        "tests/programs/imports/import_try_binding_local.py",
+        "tests/errors/exceptions/except_as_global.py",
+        "tests/errors/exceptions/except_as_global_read.py"
+      ],
+      "environment": {
+        "PYSTACHY_GC_STRESS_PROGRAM": "1"
+      },
+      "name": "program-stress",
+      "returncode": 0,
+      "wall_s": 5.091139198993915
+    },
+    {
+      "command": [
+        "./pystachy",
+        "ir",
+        "tests/programs/exceptions/exc_binding_index_cleanup.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/scope-validation/exc_binding_index_cleanup-normal.ll"
+      ],
+      "environment": {},
+      "name": "exc_binding_index_cleanup-normal",
+      "returncode": 0,
+      "wall_s": 0.00795578199904412
+    },
+    {
+      "command": [
+        "./pystachy",
+        "ir",
+        "tests/programs/exceptions/exc_binding_index_cleanup.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/scope-validation/exc_binding_index_cleanup-stress.ll"
+      ],
+      "environment": {
+        "PYSTACHY_GC_STRESS": "1"
+      },
+      "name": "exc_binding_index_cleanup-compiler-stress",
+      "returncode": 0,
+      "wall_s": 0.9672920200027875
+    },
+    {
+      "command": [
+        "./pystachy",
+        "ir",
+        "tests/programs/exceptions/exc_binding_index_scopes.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/scope-validation/exc_binding_index_scopes-normal.ll"
+      ],
+      "environment": {},
+      "name": "exc_binding_index_scopes-normal",
+      "returncode": 0,
+      "wall_s": 0.0037984360023983754
+    },
+    {
+      "command": [
+        "./pystachy",
+        "ir",
+        "tests/programs/exceptions/exc_binding_index_scopes.py",
+        "-o",
+        "/workspace/scratch/5798eb31a437/baseline-evidence/scope-validation/exc_binding_index_scopes-stress.ll"
+      ],
+      "environment": {
+        "PYSTACHY_GC_STRESS": "1"
+      },
+      "name": "exc_binding_index_scopes-compiler-stress",
+      "returncode": 0,
+      "wall_s": 0.515703297998698
+    },
+    {
+      "command": [
+        "tools/irsame.sh",
+        "/workspace/scratch/5798eb31a437/compiler-work/pystachy",
+        "./pystachy"
+      ],
+      "environment": {},
+      "error": "RuntimeError('corpus failed with 1')",
+      "name": "corpus",
+      "returncode": 1,
+      "wall_s": 119.6555749140025
+    }
+  ]
+}

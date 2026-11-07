@@ -1,0 +1,1070 @@
+{
+  "schema": "pystachy-program-cache-default-correction-1",
+  "created_at": "2026-11-06T23:50:01.254966+00:00",
+  "compiler_code_commit": "9a3cc0594ed2d5d638e2278478c1aa9256557aac",
+  "compiler_code_tree": "32800654827cd3edc1ecf43f7419c09ab4cb507a",
+  "compiler_sha256": "4730996f292007b7b89de26a5ee2a6a186f7b012ce762d6693fa5e9b4a986c8e",
+  "correction": {
+    "summary": "Validate repeated static paths against their first snapshot, preserving its settled/content-check policy.",
+    "changed_implementation_file": "src/pystachy_compiler/program_cache.py",
+    "confirmed_defect": "An unchanged path captured before and after the two-second settling threshold could conflict solely because its settled flag changed from 0 to 1.",
+    "confirmed_scope": "Hosted regression and direct native module regression demonstrate the defect and correction.",
+    "ci_release_cause": "The observed 5ed9 release miss/frontend/bypass trace is consistent with the confirmed defect, but attributing that CI event to this defect remains an inference. A later successful distribution run would validate the corrected head; it would not reconstruct the old trace's inaccessible internal state.",
+    "performance_scope": "This six-line fix changes repeated-input capture on misses. Differences between independently measured tiny-hit timings are not attributed to it."
+  },
+  "completed_local_gates": {
+    "compiler_fixed_point": {
+      "stages": 3,
+      "ir_lines": 846369
+    },
+    "runtime_fixed_point": {
+      "stages": 3,
+      "ir_lines": 18805
+    },
+    "focused_units_and_state_controls": {
+      "total": 264,
+      "passed": 263,
+      "skipped": 1,
+      "failed": 0,
+      "groups": {
+        "units-test_program_cacheall": {
+          "total": 89,
+          "passed": 88,
+          "skipped": 1,
+          "failed": 0
+        },
+        "units-test_cached_runall": {
+          "total": 30,
+          "passed": 30,
+          "skipped": 0,
+          "failed": 0
+        },
+        "units-test_cache_toolchain": {
+          "total": 24,
+          "passed": 24,
+          "skipped": 0,
+          "failed": 0
+        },
+        "units-test_compiler_stateall": {
+          "total": 121,
+          "passed": 121,
+          "skipped": 0,
+          "failed": 0
+        }
+      },
+      "skip": "Wrong-owner fixture cannot change owner to UID 1 in this user namespace (EINVAL)."
+    },
+    "native_probe_assertions": 498,
+    "native_probe_groups": [
+      {
+        "name": "reuse",
+        "assertions": 15,
+        "passed": true
+      },
+      {
+        "name": "source",
+        "assertions": 33,
+        "passed": true
+      },
+      {
+        "name": "imports",
+        "assertions": 126,
+        "passed": true
+      },
+      {
+        "name": "semantics",
+        "assertions": 71,
+        "passed": true
+      },
+      {
+        "name": "corruption",
+        "assertions": 68,
+        "passed": true
+      },
+      {
+        "name": "bypass",
+        "assertions": 41,
+        "passed": true
+      },
+      {
+        "name": "tool",
+        "assertions": 23,
+        "passed": true
+      },
+      {
+        "name": "compiler",
+        "assertions": 24,
+        "passed": true
+      },
+      {
+        "name": "runtime",
+        "assertions": 23,
+        "passed": true
+      },
+      {
+        "name": "failures",
+        "assertions": 24,
+        "passed": true
+      },
+      {
+        "name": "concurrency",
+        "assertions": 11,
+        "passed": true
+      },
+      {
+        "name": "signals",
+        "assertions": 12,
+        "passed": true
+      },
+      {
+        "name": "source-race",
+        "assertions": 15,
+        "passed": true
+      },
+      {
+        "name": "interruption",
+        "assertions": 12,
+        "passed": true
+      }
+    ],
+    "timing_probe_assertions": 328,
+    "timed_hits_without_frontend_or_llvm": 20,
+    "fast_lint": {
+      "passed": true,
+      "scope": "Ruff, mypy (52 source files), repository hygiene and selected units, static GC roots, ShellCheck and C syntax checks; not full CI Lint."
+    },
+    "relocated_release_smoke": {
+      "passed": true,
+      "archive_name": "pystachy-native-cache-settle-fix-linux-x86_64.tar.gz",
+      "archive_sha256": "fd80e80713a7cc11ca4f0ed229271b9cc1d77b14c51b0bfb6c5600bba1e46182",
+      "archive_source_commit": "9a3cc0594ed2d5d638e2278478c1aa9256557aac",
+      "compiler_sha256": "4730996f292007b7b89de26a5ee2a6a186f7b012ce762d6693fa5e9b4a986c8e",
+      "inherited_environment": {
+        "LD_LIBRARY_PATH": "/workspace/scratch/e98dc1e3e6cd/dev/lib"
+      },
+      "scope": "Version, default fill/hit, ordinary and GC-stressed JIT/AOT, warm runtime reuse; Python-free PATH, relocated read-only resources, external cache."
+    }
+  },
+  "raw_evidence": {
+    "2026-11-06-program-cache-default-9a3cc059-checks.json": {
+      "sha256": "c3a158826fa297b7cc229bc3d134433b10b0c157ff34e147e3e2d25ff4bd2855",
+      "assertions": 498,
+      "passed": true
+    },
+    "2026-11-06-program-cache-default-9a3cc059-times.json": {
+      "sha256": "d9b98f24beaf153a3a475d336a46c00965ab83b808e543b7596d3edc2a0ee09e",
+      "assertions": 328,
+      "passed": true
+    }
+  },
+  "measurements": [
+    {
+      "name": "tiny",
+      "source": "/tmp/pystachy-program-cache-kt0fazbg/sources/bench-tiny/main.py",
+      "source_sha256": "cc42155088fca5730758db72b2a5bca33112a941dfaa2d43098ec422ce4ea213",
+      "arguments": [],
+      "samples_seconds": {
+        "uncached-run": [
+          0.046944677000283264,
+          0.04584157600038452,
+          0.04428748800273752,
+          0.04882645799807506,
+          0.0440108449984109
+        ],
+        "cold-program": [
+          0.4958016989985481,
+          0.5158724190041539,
+          0.49503045200253837,
+          0.5176323630003026,
+          0.5100701659976039
+        ],
+        "cache-hit": [
+          0.037272211004165,
+          0.05824688199936645,
+          0.04191951399843674,
+          0.05551799800014123,
+          0.03603345900046406
+        ],
+        "prebuilt-aot": [
+          0.0022812419992987998,
+          0.0007851609989302233,
+          0.0021423069993034005,
+          0.0019973419985035434,
+          0.0019994350004708394
+        ]
+      },
+      "median_seconds": {
+        "uncached-run": 0.04584157600038452,
+        "cold-program": 0.5100701659976039,
+        "cache-hit": 0.04191951399843674,
+        "prebuilt-aot": 0.0019994350004708394
+      },
+      "first_use_fill_seconds": 0.6830897769978037,
+      "first_use_fill_tools": {
+        "clang": 7,
+        "opt": 1
+      },
+      "aot_build_seconds": 0.3477809710020665,
+      "paired_hit_speedup": 1.0564885843950644
+    },
+    {
+      "name": "padded-helper",
+      "source": "/tmp/pystachy-program-cache-kt0fazbg/sources/bench-padded/main.py",
+      "source_sha256": "2d1d45b12572ecf1956add197e3a7f2fb14d04cc485c314d74e8120af209423f",
+      "arguments": [],
+      "samples_seconds": {
+        "uncached-run": [
+          0.08150575900071999,
+          0.08457303799514193,
+          0.08653286499611568,
+          0.07647857000119984,
+          0.08135606899304548
+        ],
+        "cold-program": [
+          0.5657408549959655,
+          0.611048025006312,
+          0.48456286000146065,
+          0.4760624470000039,
+          0.5084253720051493
+        ],
+        "cache-hit": [
+          0.05319836900162045,
+          0.05125511700316565,
+          0.03565494899521582,
+          0.03492062399891438,
+          0.037702196001191624
+        ],
+        "prebuilt-aot": [
+          0.0024579029995948076,
+          0.0012109499948564917,
+          0.001946726995811332,
+          0.0008280639958684333,
+          0.002134244998160284
+        ]
+      },
+      "median_seconds": {
+        "uncached-run": 0.08150575900071999,
+        "cold-program": 0.5084253720051493,
+        "cache-hit": 0.037702196001191624,
+        "prebuilt-aot": 0.001946726995811332
+      },
+      "first_use_fill_seconds": 0.7411115240029176,
+      "first_use_fill_tools": {
+        "clang": 7,
+        "opt": 1
+      },
+      "aot_build_seconds": 0.3653474540042225,
+      "paired_hit_speedup": 2.1578602209397597
+    },
+    {
+      "name": "import-heavy",
+      "source": "/tmp/pystachy-program-cache-kt0fazbg/sources/bench-imports/main.py",
+      "source_sha256": "3ef08c74f1794f4f058593e0a8183ce8d4c43fdb3425ca722519e5d3b78515f8",
+      "arguments": [],
+      "samples_seconds": {
+        "uncached-run": [
+          1.5735821580019547,
+          1.6475554019998526,
+          1.542091294999409,
+          1.6255652230029227,
+          1.6758048470001086
+        ],
+        "cold-program": [
+          2.052533822999976,
+          2.0277485760016134,
+          2.135338955995394,
+          2.3390000209983555,
+          1.9397924180011614
+        ],
+        "cache-hit": [
+          0.038572942998143844,
+          0.0449640000006184,
+          0.03979460799746448,
+          0.039086202006728854,
+          0.061257360997842625
+        ],
+        "prebuilt-aot": [
+          0.002434248002828099,
+          0.0012019569985568523,
+          0.002318777005712036,
+          0.0011300500045763329,
+          0.0018077819986501709
+        ]
+      },
+      "median_seconds": {
+        "uncached-run": 1.6255652230029227,
+        "cold-program": 2.052533822999976,
+        "cache-hit": 0.03979460799746448,
+        "prebuilt-aot": 0.0018077819986501709
+      },
+      "first_use_fill_seconds": 2.275479253999947,
+      "first_use_fill_tools": {
+        "clang": 7,
+        "opt": 1
+      },
+      "aot_build_seconds": 6.456397766996815,
+      "paired_hit_speedup": 38.751262359404656
+    },
+    {
+      "name": "router-1000-events",
+      "source": "/workspace/scratch/b766795aa447/pystachy/examples/route/route.py",
+      "source_sha256": "352f80197e02e796f889a8b6a7789db6487b6e28f35d435b2c04d4eea6314c0d",
+      "arguments": [
+        "/tmp/pystachy-program-cache-kt0fazbg/rules.txt",
+        "/tmp/pystachy-program-cache-kt0fazbg/events.txt",
+        "--names"
+      ],
+      "samples_seconds": {
+        "uncached-run": [
+          1.2007458220032277,
+          1.2247176070013666,
+          1.155193357000826,
+          1.4258474070011289,
+          1.3672259230006603
+        ],
+        "cold-program": [
+          1.5901458629959961,
+          1.7388687249986106,
+          1.791390639002202,
+          1.8220289620003314,
+          1.6656975459991372
+        ],
+        "cache-hit": [
+          0.04095704799692612,
+          0.039341818999673706,
+          0.039776413002982736,
+          0.0428439419993083,
+          0.0407226899988018
+        ],
+        "prebuilt-aot": [
+          0.0026404829986859113,
+          0.0013948109990451485,
+          0.0023123680002754554,
+          0.0022818329962319694,
+          0.0023406890031765215
+        ]
+      },
+      "median_seconds": {
+        "uncached-run": 1.2247176070013666,
+        "cold-program": 1.7388687249986106,
+        "cache-hit": 0.0407226899988018,
+        "prebuilt-aot": 0.0023123680002754554
+      },
+      "first_use_fill_seconds": 1.8107634219995816,
+      "first_use_fill_tools": {
+        "clang": 7,
+        "opt": 1
+      },
+      "aot_build_seconds": 5.275300555993454,
+      "paired_hit_speedup": 31.130172374884957
+    }
+  ],
+  "measurement_refresh_reason": "One prescribed five-round refresh after rebuilding the corrected code pin; earlier e3b samples are retained, without selecting favorable rounds or replacing their tiny-program regression.",
+  "orchestrator": {
+    "code_commit": "9a3cc0594ed2d5d638e2278478c1aa9256557aac",
+    "compiler_sha256": "4730996f292007b7b89de26a5ee2a6a186f7b012ce762d6693fa5e9b4a986c8e",
+    "steps": [
+      {
+        "name": "units-test_program_cacheall",
+        "command": [
+          "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+          "-m",
+          "unittest",
+          "discover",
+          "-v",
+          "-s",
+          "tools",
+          "-p",
+          "test_program_cache*.py"
+        ],
+        "environment": {
+          "PYSTACHY_LLVM": "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin"
+        },
+        "status": 0,
+        "expected_status": 0,
+        "seconds": 18.4686598777771,
+        "log": "/workspace/scratch/b766795aa447/settle-fix-units-test_program_cacheall.log",
+        "passed": true
+      },
+      {
+        "name": "units-test_cached_runall",
+        "command": [
+          "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+          "-m",
+          "unittest",
+          "discover",
+          "-v",
+          "-s",
+          "tools",
+          "-p",
+          "test_cached_run*.py"
+        ],
+        "environment": {
+          "PYSTACHY_LLVM": "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin"
+        },
+        "status": 0,
+        "expected_status": 0,
+        "seconds": 0.9141128063201904,
+        "log": "/workspace/scratch/b766795aa447/settle-fix-units-test_cached_runall.log",
+        "passed": true
+      },
+      {
+        "name": "units-test_cache_toolchain",
+        "command": [
+          "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+          "-m",
+          "unittest",
+          "discover",
+          "-v",
+          "-s",
+          "tools",
+          "-p",
+          "test_cache_toolchain.py"
+        ],
+        "environment": {
+          "PYSTACHY_LLVM": "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin"
+        },
+        "status": 0,
+        "expected_status": 0,
+        "seconds": 0.0876007080078125,
+        "log": "/workspace/scratch/b766795aa447/settle-fix-units-test_cache_toolchain.log",
+        "passed": true
+      },
+      {
+        "name": "units-test_compiler_stateall",
+        "command": [
+          "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+          "-m",
+          "unittest",
+          "discover",
+          "-v",
+          "-s",
+          "tools",
+          "-p",
+          "test_compiler_state*.py"
+        ],
+        "environment": {
+          "PYSTACHY_LLVM": "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin"
+        },
+        "status": 0,
+        "expected_status": 0,
+        "seconds": 108.13186025619507,
+        "log": "/workspace/scratch/b766795aa447/settle-fix-units-test_compiler_stateall.log",
+        "passed": true
+      },
+      {
+        "name": "native-threshold-old",
+        "command": [
+          "/workspace/scratch/b766795aa447/pystachy/pystachy",
+          "run",
+          "/workspace/scratch/b766795aa447/settle-native-regression/old/fixture.py",
+          "/workspace/scratch/b766795aa447/settle-native-regression/old-output"
+        ],
+        "environment": {
+          "PYSTACHY_LLVM": "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin",
+          "PYSTACHY_PROGRAM_CACHE": "0",
+          "PYSTACHY_HOME": "/workspace/scratch/b766795aa447/pystachy"
+        },
+        "status": 1,
+        "expected_status": 1,
+        "seconds": 15.788502931594849,
+        "log": "/workspace/scratch/b766795aa447/settle-fix-native-threshold-old.log",
+        "passed": true
+      },
+      {
+        "name": "native-threshold-fixed",
+        "command": [
+          "/workspace/scratch/b766795aa447/pystachy/pystachy",
+          "run",
+          "/workspace/scratch/b766795aa447/settle-native-regression/fixed/fixture.py",
+          "/workspace/scratch/b766795aa447/settle-native-regression/fixed-output"
+        ],
+        "environment": {
+          "PYSTACHY_LLVM": "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin",
+          "PYSTACHY_PROGRAM_CACHE": "0",
+          "PYSTACHY_HOME": "/workspace/scratch/b766795aa447/pystachy"
+        },
+        "status": 0,
+        "expected_status": 0,
+        "seconds": 4.544692754745483,
+        "log": "/workspace/scratch/b766795aa447/settle-fix-native-threshold-fixed.log",
+        "passed": true
+      },
+      {
+        "name": "native-checks",
+        "command": [
+          "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+          "tools/program_cache_probe.py",
+          "--compiler",
+          "/workspace/scratch/b766795aa447/pystachy/pystachy",
+          "--llvm",
+          "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin",
+          "--output",
+          "/workspace/scratch/b766795aa447/settle-fix-native-checks.json"
+        ],
+        "environment": {
+          "PYSTACHY_LLVM": "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin"
+        },
+        "status": 0,
+        "expected_status": 0,
+        "seconds": 134.20052647590637,
+        "log": "/workspace/scratch/b766795aa447/settle-fix-native-checks.log",
+        "passed": true
+      },
+      {
+        "name": "release-build",
+        "command": [
+          "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+          "tools/release.py",
+          "--version",
+          "native-cache-settle-fix",
+          "--commit",
+          "9a3cc0594ed2d5d638e2278478c1aa9256557aac",
+          "--target",
+          "linux-x86_64",
+          "--output-dir",
+          "/workspace/scratch/b766795aa447/settle-fix-release"
+        ],
+        "environment": {
+          "PYSTACHY_LLVM": "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin"
+        },
+        "status": 0,
+        "expected_status": 0,
+        "seconds": 1.433830738067627,
+        "log": "/workspace/scratch/b766795aa447/settle-fix-release-build.log",
+        "passed": true
+      },
+      {
+        "name": "release-smoke",
+        "command": [
+          "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+          "tools/release_smoke.py",
+          "/workspace/scratch/b766795aa447/settle-fix-release/pystachy-native-cache-settle-fix-linux-x86_64.tar.gz",
+          "--llvm",
+          "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin"
+        ],
+        "environment": {
+          "PYSTACHY_LLVM": "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin",
+          "LD_LIBRARY_PATH": "/workspace/scratch/e98dc1e3e6cd/dev/lib"
+        },
+        "status": 0,
+        "expected_status": 0,
+        "seconds": 58.61856436729431,
+        "log": "/workspace/scratch/b766795aa447/settle-fix-release-smoke.log",
+        "passed": true
+      },
+      {
+        "name": "native-times",
+        "command": [
+          "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+          "tools/program_cache_probe.py",
+          "--compiler",
+          "/workspace/scratch/b766795aa447/pystachy/pystachy",
+          "--llvm",
+          "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin",
+          "--benchmark-only",
+          "--rounds",
+          "5",
+          "--cpu",
+          "0",
+          "--output",
+          "/workspace/scratch/b766795aa447/settle-fix-native-times.json"
+        ],
+        "environment": {
+          "PYSTACHY_LLVM": "/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin"
+        },
+        "status": 0,
+        "expected_status": 0,
+        "seconds": 90.17342495918274,
+        "log": "/workspace/scratch/b766795aa447/settle-fix-native-times.log",
+        "passed": true
+      }
+    ],
+    "completed": true,
+    "passed": true
+  },
+  "orchestrator_source": {
+    "sha256": "7dd437daf24d325c06dbd6b82ce909d04765caae44ebf26664eb5c40f1e7bc57",
+    "text": "import hashlib, json, os, pathlib, subprocess, time\nroot=pathlib.Path('/workspace/scratch/b766795aa447/pystachy')\nout=root.parent\npy='/workspace/scratch/e98dc1e3e6cd/dev/bin/python'\nllvm='/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin'\nenv=os.environ.copy()\nenv['PATH']=str(pathlib.Path(py).parent)+':'+env['PATH']\nenv['PYSTACHY_LLVM']=llvm\nhead=subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip()\nassert head=='9a3cc0594ed2d5d638e2278478c1aa9256557aac',head\nreport={'code_commit':head,'compiler_sha256':hashlib.sha256((root/'pystachy').read_bytes()).hexdigest(),'steps':[],'completed':False}\nsummary=out/'settle-fix-validation.json'\ndef run(name,cmd,expected=0,changes=None):\n    e=env.copy()\n    if changes:e.update(changes)\n    log=out/('settle-fix-'+name+'.log')\n    start=time.time()\n    print('START',name,flush=True)\n    with log.open('w') as f:\n        r=subprocess.run(cmd,cwd=root,env=e,stdout=f,stderr=subprocess.STDOUT)\n    row={'name':name,'command':cmd,'environment':{'PYSTACHY_LLVM':llvm,**(changes or {})},'status':r.returncode,'expected_status':expected,'seconds':time.time()-start,'log':str(log),'passed':r.returncode==expected}\n    report['steps'].append(row)\n    summary.write_text(json.dumps(report,indent=2)+'\\n')\n    print('END',name,r.returncode,round(row['seconds'],3),flush=True)\n    if not row['passed']:raise SystemExit(1)\nfor pattern in ['test_program_cache*.py','test_cached_run*.py','test_cache_toolchain.py','test_compiler_state*.py']:\n    run('units-'+pattern.replace('*','all').replace('.py',''),[py,'-m','unittest','discover','-v','-s','tools','-p',pattern])\nfor variant,expected in [('old',1),('fixed',0)]:\n    directory=out/'settle-native-regression'\n    run('native-threshold-'+variant,[str(root/'pystachy'),'run',str(directory/variant/'fixture.py'),str(directory/(variant+'-output'))],expected,{'PYSTACHY_PROGRAM_CACHE':'0','PYSTACHY_HOME':str(root)})\nrun('native-checks',[py,'tools/program_cache_probe.py','--compiler',str(root/'pystachy'),'--llvm',llvm,'--output',str(out/'settle-fix-native-checks.json')])\nrun('release-build',[py,'tools/release.py','--version','native-cache-settle-fix','--commit',head,'--target','linux-x86_64','--output-dir',str(out/'settle-fix-release')])\nrun('release-smoke',[py,'tools/release_smoke.py',str(out/'settle-fix-release'/'pystachy-native-cache-settle-fix-linux-x86_64.tar.gz'),'--llvm',llvm],changes={'LD_LIBRARY_PATH':'/workspace/scratch/e98dc1e3e6cd/dev/lib'})\nrun('native-times',[py,'tools/program_cache_probe.py','--compiler',str(root/'pystachy'),'--llvm',llvm,'--benchmark-only','--rounds','5','--cpu','0','--output',str(out/'settle-fix-native-times.json')])\nreport['completed']=True\nreport['passed']=all(s['passed'] for s in report['steps'])\nsummary.write_text(json.dumps(report,indent=2)+'\\n')\nprint('ALL SETTLE FIX VALIDATION PASSED',flush=True)\n"
+  },
+  "native_threshold_regression": {
+    "compiler_sha256": "4730996f292007b7b89de26a5ee2a6a186f7b012ce762d6693fa5e9b4a986c8e",
+    "scope": "The current native compiler runs the identical fixture against isolated old/fixed module copies. This compares module revisions, not two compiler binaries. /usr/bin/true is publication/lookup payload and is not executed.",
+    "manifest": {
+      "old": {
+        "revision": "5ed9fcbc820cf7117bb3f2d1e183988cef11a10b",
+        "fixture": "/workspace/scratch/b766795aa447/settle-native-regression/old/fixture.py",
+        "fixture_sha256": "3f4bcfb26b9562d8e8d11e5c879f1fe5e65d9c37af0b5e06b7e1274fba6066f9",
+        "sources_sha256": {
+          "src/__init__.py": "c443ed6062edae246598189fb20f12799a5e87a04049acb855894652e3875af7",
+          "src/pystachy_compiler/__init__.py": "f60cd281f8ed4fd35776c9f4d40d6a1313c49a3cae5df61841028f711b9f13c8",
+          "src/pystachy_compiler/program_cache.py": "b36b66224a2ad81f2814bf229bdf9c267a14615484011fd67e35723af037ae06",
+          "src/pystachy_compiler/cache_toolchain.py": "2b179901cb2dafb543359828afe83c5b5f9b869a3ca0c7dfafc7f0306e0f03f7",
+          "src/pystachy_compiler/diagnostics.py": "529f5423decb512a61505a289bf3a5fb9b59c3bb1bfaf512b8059893fd79b131",
+          "src/pystachy_compiler/names.py": "1b114c50d950b971dc4e72afd87fa0daa3e71c653101747733ceb89777d07e1c"
+        }
+      },
+      "fixed": {
+        "revision": "9a3cc0594ed2d5d638e2278478c1aa9256557aac",
+        "fixture": "/workspace/scratch/b766795aa447/settle-native-regression/fixed/fixture.py",
+        "fixture_sha256": "3f4bcfb26b9562d8e8d11e5c879f1fe5e65d9c37af0b5e06b7e1274fba6066f9",
+        "sources_sha256": {
+          "src/__init__.py": "c443ed6062edae246598189fb20f12799a5e87a04049acb855894652e3875af7",
+          "src/pystachy_compiler/__init__.py": "f60cd281f8ed4fd35776c9f4d40d6a1313c49a3cae5df61841028f711b9f13c8",
+          "src/pystachy_compiler/program_cache.py": "7f897798616fa4a08b4413b2d7af9650b677b979ff4bca5c1fd92e8a9e2d153f",
+          "src/pystachy_compiler/cache_toolchain.py": "2b179901cb2dafb543359828afe83c5b5f9b869a3ca0c7dfafc7f0306e0f03f7",
+          "src/pystachy_compiler/diagnostics.py": "529f5423decb512a61505a289bf3a5fb9b59c3bb1bfaf512b8059893fd79b131",
+          "src/pystachy_compiler/names.py": "1b114c50d950b971dc4e72afd87fa0daa3e71c653101747733ceb89777d07e1c"
+        }
+      }
+    },
+    "fixture": {
+      "sha256": "3f4bcfb26b9562d8e8d11e5c879f1fe5e65d9c37af0b5e06b7e1274fba6066f9",
+      "text": "\"\"\"Native duplicate-static settling regression; sources are copied per variant.\n\nRun with PROGRAM_CACHE=0 so this executable tests the copied module directly.\nThe /usr/bin/true payload tests publication/lookup only; it is never executed.\n\"\"\"\nimport os\nimport sys\nimport time\nfrom src.pystachy_compiler import program_cache as pc\n\nfailures: list[int] = [0]\n\n\ndef check(value: bool, label: str) -> None:\n    print(\"PASS\" if value else \"FAIL\", label, flush=True)\n    if not value:\n        failures[0] += 1\n\n\ndef write(path: str, text: str) -> None:\n    with open(path, \"w\", encoding=\"latin-1\", newline=\"\") as stream:\n        stream.write(text)\n\n\ndef prepare(root: str, name: str) -> tuple[str, str, str, str]:\n    directory = root + \"/\" + name\n    os.mkdir(directory, 0o700)\n    static = directory + \"/compiler\"\n    source = directory + \"/source.py\"\n    write(static, \"first native compiler\\n\")\n    write(source, \"print(42)\\n\")\n    pc.STATIC_MEMO.clear()\n    pc.MEMO_ROOT[0] = \"\"\n    pc.start()\n    pc.track_source(source, \"print(42)\\n\")\n    pc.track_static(static)\n    return (directory + \"/cache\", static, source, name)\n\n\ndef cross_threshold(snapshot: str) -> None:\n    fields = pc._unpack(snapshot)\n    check(len(fields) == 4 and fields[3] == \"0\", \"first capture is unsettled\")\n    # Sleeping after the first capture makes this independent of compilation\n    # speed. The following assertion proves the actual threshold was crossed.\n    time.sleep(2.1)\n    check(pc._settled(fields[1]), \"same timestamps are now settled\")\n\n\nroot = sys.argv[1]\nos.mkdir(root, 0o700)\nprint(\"runtime\", sys.implementation.name, \"native_hash\", pc.NATIVE, flush=True)\ncheck(pc.NATIVE == (sys.implementation.name == \"pystachy\"), \"native primitive selection\")\npayload = \"/usr/bin/true\"\n\ncache, static, source, context = prepare(root, \"unchanged\")\nfirst = pc.STATICS[static]\ncross_threshold(first)\npc.track_static(static)\ncheck(pc.VALID[0], \"unchanged duplicate remains valid\")\ncheck(pc.STATICS[static] == first, \"unchanged duplicate preserves original snapshot\")\ncheck(pc._unpack(pc.STATICS[static])[3] == \"0\", \"unsettled validation policy is retained\")\ntarget = pc.publish(cache, context, payload)\ncheck(target != \"\", \"unchanged duplicate publishes\")\nhit = pc.lookup(cache, context)\ncheck(target != \"\" and hit == target, \"unchanged duplicate is a cache hit\")\n\ncache, static, source, context = prepare(root, \"changed-static\")\nfirst = pc.STATICS[static]\nwrite(static, \"other native compiler\\n\")\ncross_threshold(first)\npc.track_static(static)\ncheck(not pc.VALID[0], \"changed duplicate invalidates capture\")\ncheck(pc.STATICS[static] == first, \"changed duplicate cannot replace original snapshot\")\ncheck(pc.publish(cache, context, payload) == \"\", \"changed static cannot publish\")\ncheck(pc.lookup(cache, context) == \"\", \"changed static cannot hit\")\n\ncache, static, source, context = prepare(root, \"changed-source\")\ntarget = pc.publish(cache, context, payload)\ncheck(target != \"\" and pc.lookup(cache, context) == target, \"source control initially publishes and hits\")\nwrite(source, \"print(43)\\n\")\ncheck(pc.lookup(cache, context) == \"\", \"changed source invalidates existing hit\")\ncheck(pc.publish(cache, context, payload) == \"\", \"old source capture cannot republish\")\npc.stop()\nprint(\"failures\", failures[0], flush=True)\nsys.exit(1 if failures[0] else 0)\n"
+    },
+    "old": {
+      "revision": "5ed9fcbc820cf7117bb3f2d1e183988cef11a10b",
+      "exit_code": 1,
+      "expected_exit_code": 1,
+      "checks": 17,
+      "passed": 14,
+      "failed": 3,
+      "expected_failures": [
+        "unchanged duplicate remains valid",
+        "unchanged duplicate publishes",
+        "unchanged duplicate is a cache hit"
+      ]
+    },
+    "fixed": {
+      "revision": "9a3cc0594ed2d5d638e2278478c1aa9256557aac",
+      "exit_code": 0,
+      "expected_exit_code": 0,
+      "checks": 17,
+      "passed": 17,
+      "failed": 0
+    },
+    "mutation_controls_passed_in_both_variants": true,
+    "sources_resolve_at_recorded_git_revisions": true
+  },
+  "ci_before_correction": {
+    "head_sha": "5ed9fcbc820cf7117bb3f2d1e183988cef11a10b",
+    "pr_snapshot": {
+      "captured_at": "2026-11-06T23:35:11.373Z",
+      "repository": "den-run-ai/pystachy",
+      "run_id": 42310101672,
+      "total_count": 16,
+      "jobs": [
+        {
+          "id": 128209241903,
+          "name": "verify (bootstrap, aarch64)",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "5ed9fcbc820cf7117bb3f2d1e183988cef11a10b",
+          "started_at": "2026-11-06T23:11:18Z",
+          "completed_at": "2026-11-06T23:19:02Z",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/42310101672/job/128209241903",
+          "failed_steps": []
+        },
+        {
+          "id": 128209242352,
+          "name": "verify (bootstrap, x86_64)",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "5ed9fcbc820cf7117bb3f2d1e183988cef11a10b",
+          "started_at": "2026-11-06T23:11:17Z",
+          "completed_at": "2026-11-06T23:15:44Z",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/42310101672/job/128209242352",
+          "failed_steps": []
+        },
+        {
+          "id": 128212329033,
+          "name": "distribution (ubuntu-24.04)",
+          "status": "completed",
+          "conclusion": "failure",
+          "head_sha": "5ed9fcbc820cf7117bb3f2d1e183988cef11a10b",
+          "started_at": "2026-11-06T23:19:05Z",
+          "completed_at": "2026-11-06T23:23:03Z",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/42310101672/job/128212329033",
+          "failed_steps": [
+            {
+              "name": "Source packages and native release archive smoke",
+              "number": 10
+            }
+          ]
+        },
+        {
+          "id": 128212329056,
+          "name": "variants (worker 0)",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "5ed9fcbc820cf7117bb3f2d1e183988cef11a10b",
+          "started_at": "2026-11-06T23:19:05Z",
+          "completed_at": "2026-11-06T23:20:41Z",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/42310101672/job/128212329056",
+          "failed_steps": []
+        },
+        {
+          "id": 128212329086,
+          "name": "verify (safety-1, x86_64)",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "5ed9fcbc820cf7117bb3f2d1e183988cef11a10b",
+          "started_at": "2026-11-06T23:19:05Z",
+          "completed_at": "2026-11-06T23:23:09Z",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/42310101672/job/128212329086",
+          "failed_steps": []
+        },
+        {
+          "id": 128212329154,
+          "name": "variants (worker 1)",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "5ed9fcbc820cf7117bb3f2d1e183988cef11a10b",
+          "started_at": "2026-11-06T23:19:06Z",
+          "completed_at": "2026-11-06T23:20:46Z",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/42310101672/job/128212329154",
+          "failed_steps": []
+        },
+        {
+          "id": 128212329169,
+          "name": "verify (hosted, x86_64)",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "5ed9fcbc820cf7117bb3f2d1e183988cef11a10b",
+          "started_at": "2026-11-06T23:19:05Z",
+          "completed_at": "2026-11-06T23:24:07Z",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/42310101672/job/128212329169",
+          "failed_steps": []
+        },
+        {
+          "id": 128212329183,
+          "name": "verify (safety-0, x86_64)",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "5ed9fcbc820cf7117bb3f2d1e183988cef11a10b",
+          "started_at": "2026-11-06T23:19:05Z",
+          "completed_at": "2026-11-06T23:21:41Z",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/42310101672/job/128212329183",
+          "failed_steps": []
+        },
+        {
+          "id": 128212329218,
+          "name": "verify (cache-gc, x86_64)",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "5ed9fcbc820cf7117bb3f2d1e183988cef11a10b",
+          "started_at": "2026-11-06T23:19:05Z",
+          "completed_at": "2026-11-06T23:28:27Z",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/42310101672/job/128212329218",
+          "failed_steps": []
+        },
+        {
+          "id": 128212329250,
+          "name": "verify (opt-in, x86_64)",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "5ed9fcbc820cf7117bb3f2d1e183988cef11a10b",
+          "started_at": "2026-11-06T23:19:05Z",
+          "completed_at": "2026-11-06T23:20:55Z",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/42310101672/job/128212329250",
+          "failed_steps": []
+        },
+        {
+          "id": 128212329286,
+          "name": "verify (native-1, x86_64)",
+          "status": "completed",
+          "conclusion": "cancelled",
+          "head_sha": "5ed9fcbc820cf7117bb3f2d1e183988cef11a10b",
+          "started_at": "2026-11-06T23:19:05Z",
+          "completed_at": "2026-11-06T23:34:20Z",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/42310101672/job/128212329286",
+          "failed_steps": []
+        },
+        {
+          "id": 128212329377,
+          "name": "distribution (macos-15)",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "5ed9fcbc820cf7117bb3f2d1e183988cef11a10b",
+          "started_at": "2026-11-06T23:19:07Z",
+          "completed_at": "2026-11-06T23:27:11Z",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/42310101672/job/128212329377",
+          "failed_steps": []
+        },
+        {
+          "id": 128212329387,
+          "name": "verify (contracts, x86_64)",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "5ed9fcbc820cf7117bb3f2d1e183988cef11a10b",
+          "started_at": "2026-11-06T23:19:05Z",
+          "completed_at": "2026-11-06T23:25:25Z",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/42310101672/job/128212329387",
+          "failed_steps": []
+        },
+        {
+          "id": 128212329441,
+          "name": "verify (benchmarks, x86_64)",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "5ed9fcbc820cf7117bb3f2d1e183988cef11a10b",
+          "started_at": "2026-11-06T23:19:06Z",
+          "completed_at": "2026-11-06T23:25:02Z",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/42310101672/job/128212329441",
+          "failed_steps": []
+        },
+        {
+          "id": 128212330077,
+          "name": "verify (native-0, x86_64)",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "5ed9fcbc820cf7117bb3f2d1e183988cef11a10b",
+          "started_at": "2026-11-06T23:19:05Z",
+          "completed_at": "2026-11-06T23:28:12Z",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/42310101672/job/128212330077",
+          "failed_steps": []
+        },
+        {
+          "id": 128218069479,
+          "name": "Verification",
+          "status": "completed",
+          "conclusion": "failure",
+          "head_sha": "5ed9fcbc820cf7117bb3f2d1e183988cef11a10b",
+          "started_at": "2026-11-06T23:34:22Z",
+          "completed_at": "2026-11-06T23:34:40Z",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/42310101672/job/128218069479",
+          "failed_steps": [
+            {
+              "name": "Require every verification group",
+              "number": 6
+            }
+          ]
+        }
+      ],
+      "pr": {
+        "number": 1103,
+        "state": "open",
+        "draft": true,
+        "title": "Enable persistent native program caching by default",
+        "url": "https://github.com/den-run-ai/pystachy/pull/1103",
+        "head_ref": "research/native-program-cache",
+        "head_sha": "5ed9fcbc820cf7117bb3f2d1e183988cef11a10b",
+        "base_ref": "main",
+        "base_sha": "f7103067545b43cdcd8ce20dc66b1571425b3a8d",
+        "merged": false,
+        "mergeable": true,
+        "mergeable_state": "blocked",
+        "requested_reviewers": [],
+        "requested_teams": [],
+        "comments": 0,
+        "review_comments": 0
+      },
+      "current_main": "f7103067545b43cdcd8ce20dc66b1571425b3a8d",
+      "reviews": [],
+      "comments": [],
+      "review_threads": []
+    },
+    "native_1_timeout_analysis": {
+      "repository": "den-run-ai/pystachy",
+      "head_sha": "5ed9fcbc820cf7117bb3f2d1e183988cef11a10b",
+      "tested_merge_sha": "0a66b1a60e617cf054fa635c1a9c420cba0fee4d",
+      "run_id": 42310101672,
+      "run_url": "https://github.com/den-run-ai/pystachy/actions/runs/42310101672",
+      "native_0": {
+        "job_id": 128212330077,
+        "job_url": "https://github.com/den-run-ai/pystachy/actions/runs/42310101672/job/128212330077",
+        "job_conclusion": "success",
+        "artifact_id": 13548896208,
+        "artifact_url": "https://github.com/den-run-ai/pystachy/actions/runs/42310101672/artifacts/13548896208",
+        "selected_cases": 2073,
+        "expected_checks": 3328,
+        "passed": 3328,
+        "failed": 0,
+        "suite_seconds": 519.325,
+        "case_time_sum_seconds": 2011.612,
+        "median_program_ms": 1232.0
+      },
+      "native_1": {
+        "job_id": 128212329286,
+        "job_url": "https://github.com/den-run-ai/pystachy/actions/runs/42310101672/job/128212329286",
+        "job_conclusion": "cancelled",
+        "artifact_id": 13549611465,
+        "artifact_url": "https://github.com/den-run-ai/pystachy/actions/runs/42310101672/artifacts/13549611465",
+        "selected_cases": 2073,
+        "expected_checks": 3330,
+        "passed": 3330,
+        "failed": 0,
+        "suite_seconds": 886.122,
+        "case_time_sum_seconds": 3450.875,
+        "median_program_ms": 2010.0,
+        "job_started_at": "2026-11-06T23:19:05Z",
+        "suite_pass_logged_at": "2026-11-06T23:34:12.9636259Z",
+        "verification_pass_logged_at": "2026-11-06T23:34:17.2228652Z",
+        "cancellation_logged_at": "2026-11-06T23:34:17.2341104Z",
+        "job_completed_at": "2026-11-06T23:34:20Z",
+        "artifact_verification_result": "pass",
+        "artifact_verification_steps_passed": 2,
+        "artifact_verification_steps_total": 2,
+        "cancellation_text": "The operation was canceled.",
+        "timeout_minutes": 15,
+        "cause_interpretation": "Cancellation at the configured 15-minute job boundary, after all suite checks and report generation passed; log does not name a failing test."
+      },
+      "cache_fill_hypothesis": {
+        "finding": "Not supported: no native program-cache fills in this corpus invocation.",
+        "evidence": [
+          "tests/run.sh exports PYSTACHY_IRCHECK=${PYSTACHY_IRCHECK:-1}; tests/verify.sh clears an inherited override before calling it.",
+          "cached_run.prepare rejects compiler diagnostics before declared_tools, toolchain capture, lock acquisition, or cache lookup.",
+          "CI also supplied setup-python LD_LIBRARY_PATH, an independent cache bypass.",
+          "Native shard command and tests/run.sh are unchanged versus f7103067545b43cdcd8ce20dc66b1571425b3a8d."
+        ]
+      },
+      "scheduling_study": {
+        "corpus_cases": 4146,
+        "old_shard_sizes": [
+          2073,
+          2073
+        ],
+        "disjoint": true,
+        "union_matches_full_corpus": true,
+        "existing_explicit_weights": 3753,
+        "previously_unweighted_cases": 393,
+        "normalization": "Each artifact divided by its median corpus program time, as tools/case_weights.py specifies.",
+        "median_program_time_ratio_native_1_over_0": 1.6314935064935066,
+        "old_normalized_work": [
+          1632801.948051948,
+          1716853.2338308457
+        ],
+        "missing_only_candidate_normalized_work": [
+          1668460.939,
+          1681194.243
+        ],
+        "missing_only_candidate_historical_case_seconds": [
+          2767.482,
+          2695.005
+        ],
+        "missing_only_heavier_shard_improvement_percent": 2.0769970390118386,
+        "full_refresh_candidate_normalized_work": [
+          1674831.1413710667,
+          1674824.040511727
+        ],
+        "full_refresh_heavier_shard_improvement_percent": 2.447622873739437,
+        "candidate_shard_sizes": [
+          2073,
+          2073
+        ],
+        "candidate_disjoint": true,
+        "candidate_union_matches_full_corpus": true,
+        "caution": "Runner-speed variation and case mix are not independently measured. Historical raw totals mix different runners; neither candidate establishes a sub-14-minute bound.",
+        "decision": "No scheduling change. The modeled 2.08%/2.45% gains are too small to justify unrelated weight changes for this cache fix."
+      },
+      "previous_run": {
+        "head_sha": "1a33fcf1b1a0f0b7d0399638adda96a799a3479e",
+        "run_id": 42307710748,
+        "native_1_job_id": 128204385462,
+        "native_1_job_url": "https://github.com/den-run-ai/pystachy/actions/runs/42307710748/job/128204385462",
+        "started_at": "2026-11-06T22:58:59Z",
+        "completed_at": "2026-11-06T23:11:13Z",
+        "conclusion": "cancelled",
+        "artifact_id": 13547168839,
+        "artifact_has_completed_report_or_timings": false,
+        "interpretation": "Earlier cancellation at about 12m14s coincided with the newer run; it does not provide a completed native-1 duration."
+      },
+      "recommendation": "Preserve the cancelled job status as unsuccessful CI despite the passing test report. Require a successful native-1 job in the new CI run for the real static-snapshot fix. Do not raise timeouts, change worker/job counts, disable tests, or alter weights on this evidence.",
+      "repository_changes_made": []
+    },
+    "native_1_timeout_analysis_sha256": "759a022dd1e37b645152171f73293b58159e7edc36039313f30d4c83aaca40ad",
+    "pr_snapshot_sha256": "b121cf82ae12c8ddb9706bdce1d32ad8284a7f35d70b030eadbb43ebb0c24ca6",
+    "status": "Earlier CI was unsuccessful: distribution failed and native-1 was cancelled. Passing artifacts do not make a cancelled job successful."
+  },
+  "new_publication_gates": {
+    "status": "Final-head CI is not evaluated by this local bundle; consult the checks on the final published PR head.",
+    "checks_url": "https://github.com/den-run-ai/pystachy/pull/1103/checks",
+    "repository_scheduling_changes": [],
+    "policy": "Require successful applicable workflows including Linux distribution and native-1; retain previous failed/cancelled conclusions."
+  },
+  "historical_evidence": {
+    "compiler_code_commit": "e3b1b3a8d4ee810cb8215fd986f9e83526f71dba",
+    "compiler_sha256": "ed36895dd2e15bdc5a9f88de553e19cfe51ab42d5d04d6c39941bf79b202ab21",
+    "raw_files": {
+      "2026-11-06-program-cache-default-checks.json": {
+        "sha256": "f1fbef2377eeb68929b8f473cdb0f62fefdffcfeffae5e844639ecc7d4966d1c",
+        "preserved_byte_for_byte": true
+      },
+      "2026-11-06-program-cache-default-times.json": {
+        "sha256": "0dff817c76b67a5a5b113a70c502163dc7fa250622e5270b90d9cdb8c25bcbbc",
+        "preserved_byte_for_byte": true
+      },
+      "2026-11-06-program-cache-default-profile.json": {
+        "sha256": "f287b9288a4e175b5dbd66a3fdc9ede6c78c672808c8a6d27ecfbcdaa83dca4e",
+        "preserved_byte_for_byte": true
+      }
+    },
+    "validation_snapshot_at_code_commit": {
+      "revision": "9a3cc0594ed2d5d638e2278478c1aa9256557aac",
+      "path": "bench/startup/results/2026-11-06-program-cache-default-validation.json",
+      "sha256": "65fd243d0c1921cca52d72886bc13758aea6d9514570fda55798d86f2f4c9b60"
+    },
+    "report_before_refresh": {
+      "revision": "9a3cc0594ed2d5d638e2278478c1aa9256557aac",
+      "path": "bench/startup/results/2026-11-06-program-cache-default.md",
+      "sha256": "a0b25b2cd68d47ea11663f60ae98eef42571dc073991a9aa7d3a6aa683309d17"
+    },
+    "not_rerun_as_latest_local_gates": [
+      "Broad default-mode corpus",
+      "Pinned-base IR oracle/full-diff review",
+      "Full runtime-contract inventory",
+      "Existing native/hosted runtime-cache suites",
+      "Pinned CPython recordings"
+    ]
+  },
+  "logs": {
+    "settle-fix-units-test_program_cacheall.log": {
+      "sha256": "2fc7a7c6aa1c04a6efbb94b5f4cdd8a744914a0f043fc52ca6596801ee85dd6b",
+      "text": "test_actual_read_snapshot_is_checked_before_publication (test_program_cache.ProgramCacheTests.test_actual_read_snapshot_is_checked_before_publication) ... ok\ntest_binary_checksum_rejects_same_size_preserved_mtime_damage (test_program_cache.ProgramCacheTests.test_binary_checksum_rejects_same_size_preserved_mtime_damage) ... ok\ntest_changed_persistent_static_memo_dependency_is_rehashed (test_program_cache.ProgramCacheTests.test_changed_persistent_static_memo_dependency_is_rehashed) ... ok\ntest_concurrent_publishers_leave_one_complete_reusable_entry (test_program_cache.ProgramCacheTests.test_concurrent_publishers_leave_one_complete_reusable_entry) ... ok\ntest_context_collision_cannot_reuse_another_identity (test_program_cache.ProgramCacheTests.test_context_collision_cannot_reuse_another_identity) ... ok\ntest_corrupt_persistent_static_memo_rehashes_instead_of_poisoning_entry (test_program_cache.ProgramCacheTests.test_corrupt_persistent_static_memo_rehashes_instead_of_poisoning_entry) ... ok\ntest_corrupt_truncated_and_oversized_manifest_miss (test_program_cache.ProgramCacheTests.test_corrupt_truncated_and_oversized_manifest_miss) ... ok\ntest_deleted_or_changed_import_misses (test_program_cache.ProgramCacheTests.test_deleted_or_changed_import_misses) ... ok\ntest_disabled_tracking_has_no_hash_or_realpath_work (test_program_cache.ProgramCacheTests.test_disabled_tracking_has_no_hash_or_realpath_work) ... ok\ntest_duplicate_static_capture_crossing_settle_threshold_can_publish (test_program_cache.ProgramCacheTests.test_duplicate_static_capture_crossing_settle_threshold_can_publish) ... ok\ntest_duplicate_static_capture_still_rejects_changed_inputs (test_program_cache.ProgramCacheTests.test_duplicate_static_capture_still_rejects_changed_inputs) ... ok\ntest_existing_probe_removed_misses (test_program_cache.ProgramCacheTests.test_existing_probe_removed_misses) ... ok\ntest_hit_skips_optional_hash_memo_but_miss_loads_it (test_program_cache.ProgramCacheTests.test_hit_skips_optional_hash_memo_but_miss_loads_it) ... ok\ntest_inference_retries_preserve_conflicting_probe_snapshots (test_program_cache.ProgramCacheTests.test_inference_retries_preserve_conflicting_probe_snapshots) ... ok\ntest_inference_retries_preserve_conflicting_source_snapshots (test_program_cache.ProgramCacheTests.test_inference_retries_preserve_conflicting_source_snapshots) ... ok\ntest_io_failure_falls_open_and_cleans_own_stage (test_program_cache.ProgramCacheTests.test_io_failure_falls_open_and_cleans_own_stage) ... ok\ntest_malformed_lengths_and_artifact_paths_cannot_escape_entry (test_program_cache.ProgramCacheTests.test_malformed_lengths_and_artifact_paths_cannot_escape_entry) ... ok\ntest_missing_empty_or_nonexecutable_binary_misses (test_program_cache.ProgramCacheTests.test_missing_empty_or_nonexecutable_binary_misses) ... ok\ntest_negative_probe_realpath_changes_when_symlink_retargets (test_program_cache.ProgramCacheTests.test_negative_probe_realpath_changes_when_symlink_retargets) ... ok\ntest_new_previously_missing_module_or_package_misses (test_program_cache.ProgramCacheTests.test_new_previously_missing_module_or_package_misses) ... ok\ntest_no_source_or_unknown_duplicate_records_miss (test_program_cache.ProgramCacheTests.test_no_source_or_unknown_duplicate_records_miss) ... ok\ntest_path_and_identity_serialization_preserves_special_characters (test_program_cache.ProgramCacheTests.test_path_and_identity_serialization_preserves_special_characters) ... ok\ntest_persistent_static_memo_avoids_rehash_for_another_program (test_program_cache.ProgramCacheTests.test_persistent_static_memo_avoids_rehash_for_another_program) ... ok\ntest_reader_observes_old_complete_entry_until_manifest_replacement (test_program_cache.ProgramCacheTests.test_reader_observes_old_complete_entry_until_manifest_replacement) ... ok\ntest_source_change_while_copying_prevents_publication (test_program_cache.ProgramCacheTests.test_source_change_while_copying_prevents_publication) ... ok\ntest_source_same_size_and_preserved_mtime_misses (test_program_cache.ProgramCacheTests.test_source_same_size_and_preserved_mtime_misses) ... ok\ntest_static_dependencies_invalidate_on_content_or_realpath_change (test_program_cache.ProgramCacheTests.test_static_dependencies_invalidate_on_content_or_realpath_change) ... ok\ntest_static_realpath_aliases_hash_only_once_when_settled (test_program_cache.ProgramCacheTests.test_static_realpath_aliases_hash_only_once_when_settled) ... ok\ntest_stop_retains_dependencies_but_start_resets_them (test_program_cache.ProgramCacheTests.test_stop_retains_dependencies_but_start_resets_them) ... ok\ntest_streamed_binary_hash_matches_raw_bytes_across_chunk_boundaries (test_program_cache.ProgramCacheTests.test_streamed_binary_hash_matches_raw_bytes_across_chunk_boundaries) ... ok\ntest_symlink_cache_directory_manifest_and_binary_bypass (test_program_cache.ProgramCacheTests.test_symlink_cache_directory_manifest_and_binary_bypass) ... ok\ntest_symlink_directory_retarget_misses_even_for_identical_text (test_program_cache.ProgramCacheTests.test_symlink_directory_retarget_misses_even_for_identical_text) ... ok\ntest_symlink_inside_cache_path_and_private_subdirectory_bypass (test_program_cache.ProgramCacheTests.test_symlink_inside_cache_path_and_private_subdirectory_bypass) ... ok\ntest_unchanged_program_reuses_exact_executable (test_program_cache.ProgramCacheTests.test_unchanged_program_reuses_exact_executable) ... ok\ntest_universal_newlines_match_exact_consumed_source (test_program_cache.ProgramCacheTests.test_universal_newlines_match_exact_consumed_source) ... ok\ntest_unsafe_private_directory_is_not_repaired (test_program_cache.ProgramCacheTests.test_unsafe_private_directory_is_not_repaired) ... ok\ntest_unsettled_static_capture_keeps_content_check_after_time_passes (test_program_cache.ProgramCacheTests.test_unsettled_static_capture_keeps_content_check_after_time_passes) ... ok\ntest_fnv_snapshot_keeps_its_algorithm_when_helper_becomes_available (test_program_cache_hashing.ProgramCacheHashingTests.test_fnv_snapshot_keeps_its_algorithm_when_helper_becomes_available) ... ok\ntest_helper_output_directory_is_private_and_always_removed (test_program_cache_hashing.ProgramCacheHashingTests.test_helper_output_directory_is_private_and_always_removed) ... ok\ntest_invalid_helper_output_is_never_accepted (test_program_cache_hashing.ProgramCacheHashingTests.test_invalid_helper_output_is_never_accepted) ... ok\ntest_large_static_input_uses_exact_byte_sha256 (test_program_cache_hashing.ProgramCacheHashingTests.test_large_static_input_uses_exact_byte_sha256) ... ok\ntest_memo_accepts_tagged_sha_and_rejects_invalid_digests (test_program_cache_hashing.ProgramCacheHashingTests.test_memo_accepts_tagged_sha_and_rejects_invalid_digests) ... ok\ntest_missing_fifo_and_oversized_inputs_are_rejected_before_helper (test_program_cache_hashing.ProgramCacheHashingTests.test_missing_fifo_and_oversized_inputs_are_rejected_before_helper) ... ok\ntest_missing_helper_falls_back_to_existing_content_hash (test_program_cache_hashing.ProgramCacheHashingTests.test_missing_helper_falls_back_to_existing_content_hash) ... ok\ntest_persistent_sha_memo_reuses_digest_without_another_helper (test_program_cache_hashing.ProgramCacheHashingTests.test_persistent_sha_memo_reuses_digest_without_another_helper) ... ok\ntest_quoted_newline_and_shell_metacharacters_in_filename (test_program_cache_hashing.ProgramCacheHashingTests.test_quoted_newline_and_shell_metacharacters_in_filename) ... ok\ntest_settled_sha_aliases_use_one_hash (test_program_cache_hashing.ProgramCacheHashingTests.test_settled_sha_aliases_use_one_hash) ... ok\ntest_settled_snapshot_rejects_invalid_digest (test_program_cache_hashing.ProgramCacheHashingTests.test_settled_snapshot_rejects_invalid_digest) ... ok\ntest_small_static_input_retains_in_process_fnv (test_program_cache_hashing.ProgramCacheHashingTests.test_small_static_input_retains_in_process_fnv) ... ok\ntest_stat_change_during_fast_hash_disables_capture (test_program_cache_hashing.ProgramCacheHashingTests.test_stat_change_during_fast_hash_disables_capture) ... ok\ntest_unsettled_sha_cannot_be_validated_when_helper_is_missing (test_program_cache_hashing.ProgramCacheHashingTests.test_unsettled_sha_cannot_be_validated_when_helper_is_missing) ... ok\ntest_unsettled_sha_capture_rechecks_content_after_timestamp_ages (test_program_cache_hashing.ProgramCacheHashingTests.test_unsettled_sha_capture_rechecks_content_after_timestamp_ages) ... ok\ntest_active_entry_is_retained_and_new_entry_declines (test_program_cache_lifecycle.ProgramCacheLifecycleTests.test_active_entry_is_retained_and_new_entry_declines) ... ok\ntest_active_other_stage_is_skipped_then_reclaimed (test_program_cache_lifecycle.ProgramCacheLifecycleTests.test_active_other_stage_is_skipped_then_reclaimed) ... ok\ntest_byte_limit_includes_manifest_and_executable (test_program_cache_lifecycle.ProgramCacheLifecycleTests.test_byte_limit_includes_manifest_and_executable) ... ok\ntest_concurrent_publication_finishes_with_bounded_entries (test_program_cache_lifecycle.ProgramCacheLifecycleTests.test_concurrent_publication_finishes_with_bounded_entries) ... ok\ntest_corrupt_manifest_does_not_retain_unreferenced_executables (test_program_cache_lifecycle.ProgramCacheLifecycleTests.test_corrupt_manifest_does_not_retain_unreferenced_executables) ... ok\ntest_descriptor_identity_matches_only_held_bucket (test_program_cache_lifecycle.ProgramCacheLifecycleTests.test_descriptor_identity_matches_only_held_bucket) ... ok\ntest_entry_limit_evicts_least_recently_used_after_hit (test_program_cache_lifecycle.ProgramCacheLifecycleTests.test_entry_limit_evicts_least_recently_used_after_hit) ... ok\ntest_failed_manifest_publications_do_not_accumulate_orphan_binaries (test_program_cache_lifecycle.ProgramCacheLifecycleTests.test_failed_manifest_publications_do_not_accumulate_orphan_binaries) ... ok\ntest_failed_new_digest_replacement_preserves_previous_entry (test_program_cache_lifecycle.ProgramCacheLifecycleTests.test_failed_new_digest_replacement_preserves_previous_entry) ... ok\ntest_failed_post_publication_census_removes_new_entry (test_program_cache_lifecycle.ProgramCacheLifecycleTests.test_failed_post_publication_census_removes_new_entry) ... ok\ntest_failed_same_digest_replacement_preserves_previous_entry (test_program_cache_lifecycle.ProgramCacheLifecycleTests.test_failed_same_digest_replacement_preserves_previous_entry) ... ok\ntest_identical_binary_contents_are_owned_by_each_context (test_program_cache_lifecycle.ProgramCacheLifecycleTests.test_identical_binary_contents_are_owned_by_each_context) ... ok\ntest_interrupted_stage_is_cleaned_on_next_bucket_lookup (test_program_cache_lifecycle.ProgramCacheLifecycleTests.test_interrupted_stage_is_cleaned_on_next_bucket_lookup) ... ok\ntest_killed_owner_releases_lock_and_its_stage_is_recovered (test_program_cache_lifecycle.ProgramCacheLifecycleTests.test_killed_owner_releases_lock_and_its_stage_is_recovered) ... ok\ntest_locks_are_stable_and_bucket_count_is_bounded (test_program_cache_lifecycle.ProgramCacheLifecycleTests.test_locks_are_stable_and_bucket_count_is_bounded) ... ok\ntest_open_executable_remains_readable_after_eviction (test_program_cache_lifecycle.ProgramCacheLifecycleTests.test_open_executable_remains_readable_after_eviction) ... ok\ntest_oversized_artifact_declines_without_copying_stage (test_program_cache_lifecycle.ProgramCacheLifecycleTests.test_oversized_artifact_declines_without_copying_stage) ... ok\ntest_stage_symlink_never_removes_outside_files (test_program_cache_lifecycle.ProgramCacheLifecycleTests.test_stage_symlink_never_removes_outside_files) ... ok\ntest_symlink_lock_does_not_truncate_target (test_program_cache_lifecycle.ProgramCacheLifecycleTests.test_symlink_lock_does_not_truncate_target) ... ok\ntest_acquired_lock_replaces_descriptor_nine (test_program_cache_native.NativeProgramCacheLockTests.test_acquired_lock_replaces_descriptor_nine) ... ok\ntest_acquisition_closes_temporary_descriptor_and_releases_previous_lock (test_program_cache_native.NativeProgramCacheLockTests.test_acquisition_closes_temporary_descriptor_and_releases_previous_lock) ... ok\ntest_busy_lock_preserves_existing_descriptor_nine (test_program_cache_native.NativeProgramCacheLockTests.test_busy_lock_preserves_existing_descriptor_nine) ... ok\ntest_exec_releases_the_lock_while_process_remains_alive (test_program_cache_native.NativeProgramCacheLockTests.test_exec_releases_the_lock_while_process_remains_alive) ... ok\ntest_failed_acquisition_retains_the_previous_lock (test_program_cache_native.NativeProgramCacheLockTests.test_failed_acquisition_retains_the_previous_lock) ... ok\ntest_killed_owner_releases_the_lock (test_program_cache_native.NativeProgramCacheLockTests.test_killed_owner_releases_the_lock) ... ok\ntest_native_hash_follows_regular_symlinks_and_rejects_unusable_paths (test_program_cache_native.NativeProgramCacheLockTests.test_native_hash_follows_regular_symlinks_and_rejects_unusable_paths) ... ok\ntest_native_hash_preserves_binary_digest_and_size_limits (test_program_cache_native.NativeProgramCacheLockTests.test_native_hash_preserves_binary_digest_and_size_limits) ... ok\ntest_open_returning_descriptor_nine_keeps_the_lock (test_program_cache_native.NativeProgramCacheLockTests.test_open_returning_descriptor_nine_keeps_the_lock) ... ok\ntest_primitive_rejects_direct_and_shadow_module_calls (test_program_cache_native.NativeProgramCacheLockTests.test_primitive_rejects_direct_and_shadow_module_calls) ... ok\ntest_unusable_paths_preserve_existing_descriptor_nine (test_program_cache_native.NativeProgramCacheLockTests.test_unusable_paths_preserve_existing_descriptor_nine) ... ok\ntest_wrong_owner_is_unusable (test_program_cache_native.NativeProgramCacheLockTests.test_wrong_owner_is_unusable) ... skipped \"fixture ownership cannot change in this namespace: [Errno 22] Invalid argument: '/tmp/pystachy-native-cache-lock-a0khwgj_/case-3fe718j_/lock'\"\ntest_changed_link_resolution_or_order_declines (test_program_cache_publication.ProgramCachePublicationTests.test_changed_link_resolution_or_order_declines) ... ok\ntest_missing_or_unreadable_link_trace_declines (test_program_cache_publication.ProgramCachePublicationTests.test_missing_or_unreadable_link_trace_declines) ... ok\ntest_native_link_input_replaced_after_final_link_cannot_publish (test_program_cache_publication.ProgramCachePublicationTests.test_native_link_input_replaced_after_final_link_cannot_publish) ... ok\ntest_noexec_mount_rejects_cold_publication_and_cleans_stage (test_program_cache_publication.ProgramCachePublicationTests.test_noexec_mount_rejects_cold_publication_and_cleans_stage) ... ok\ntest_same_paths_with_changed_bytes_after_discovery_cannot_publish (test_program_cache_publication.ProgramCachePublicationTests.test_same_paths_with_changed_bytes_after_discovery_cannot_publish) ... ok\ntest_unchanged_link_inputs_allow_publication (test_program_cache_publication.ProgramCachePublicationTests.test_unchanged_link_inputs_allow_publication) ... ok\n\n----------------------------------------------------------------------\nRan 89 tests in 18.360s\n\nOK (skipped=1)\n"
+    },
+    "settle-fix-units-test_cached_runall.log": {
+      "sha256": "e66c5d2e4cec8298fdbd59ec240359aedd71299120be3d89d97a428c0c508288",
+      "text": "test_bad_target_or_unterminated_escape_does_not_supply_inputs (test_cached_run.DependencyInputsTests.test_bad_target_or_unterminated_escape_does_not_supply_inputs) ... ok\ntest_incomplete_or_unsupported_link_trace_cannot_validate (test_cached_run.DependencyInputsTests.test_incomplete_or_unsupported_link_trace_cannot_validate) ... ok\ntest_link_trace_keeps_opened_inputs_and_excludes_ephemeral_objects (test_cached_run.DependencyInputsTests.test_link_trace_keeps_opened_inputs_and_excludes_ephemeral_objects) ... ok\ntest_make_escaped_prerequisites (test_cached_run.DependencyInputsTests.test_make_escaped_prerequisites) ... ok\ntest_disabled_and_other_commands_never_look_up_or_collect (test_cached_run.EligibilityTests.test_disabled_and_other_commands_never_look_up_or_collect) ... ok\ntest_hit_needs_no_llvm_collection_or_frontend_state (test_cached_run.EligibilityTests.test_hit_needs_no_llvm_collection_or_frontend_state) ... ok\ntest_miss_collects_actual_inputs_and_collection_failure_bypasses (test_cached_run.EligibilityTests.test_miss_collects_actual_inputs_and_collection_failure_bypasses) ... ok\ntest_nondefault_settings_fail_closed (test_cached_run.EligibilityTests.test_nondefault_settings_fail_closed) ... ok\ntest_platform_hosted_relative_tools_and_configurations_bypass (test_cached_run.EligibilityTests.test_platform_hosted_relative_tools_and_configurations_bypass) ... ok\ntest_runtime_inputs_do_not_change_identity (test_cached_run.EligibilityTests.test_runtime_inputs_do_not_change_identity) ... ok\ntest_source_spelling_directory_order_flags_and_generated_inputs_change_identity (test_cached_run.EligibilityTests.test_source_spelling_directory_order_flags_and_generated_inputs_change_identity) ... ok\ntest_unavailable_cpu_identity_bypasses (test_cached_run.EligibilityTests.test_unavailable_cpu_identity_bypasses) ... ok\ntest_unset_and_empty_setting_enable_the_default (test_cached_run.EligibilityTests.test_unset_and_empty_setting_enable_the_default) ... ok\ntest_busy_native_lock_waits_for_the_existing_writer (test_cached_run.NativeLockTests.test_busy_native_lock_waits_for_the_existing_writer) ... ok\ntest_timeout_and_unusable_lock_bypass_without_restart (test_cached_run.NativeLockTests.test_timeout_and_unusable_lock_bypass_without_restart) ... ok\ntest_uncontended_native_lock_needs_no_restart_or_wait (test_cached_run.NativeLockTests.test_uncontended_native_lock_needs_no_restart_or_wait) ... ok\ntest_execution_keeps_shell_metacharacters_as_data_and_maps_program_gc (test_cached_run.ProcessTests.test_execution_keeps_shell_metacharacters_as_data_and_maps_program_gc) ... ok\ntest_missing_and_failed_exec_retry_preserves_user_cache_setting (test_cached_run.ProcessTests.test_missing_and_failed_exec_retry_preserves_user_cache_setting) ... ok\ntest_native_execution_leaves_unlock_to_close_on_exec (test_cached_run.ProcessTests.test_native_execution_leaves_unlock_to_close_on_exec) ... ok\ntest_native_identity_requires_the_running_file (test_cached_run.ProcessTests.test_native_identity_requires_the_running_file) ... ok\ntest_bucket_lock_is_released_before_the_program_runs (test_cached_run_exec.CachedRunExecTests.test_bucket_lock_is_released_before_the_program_runs) ... ok\ntest_executable_open_for_writing_retries_once (test_cached_run_exec.CachedRunExecTests.test_executable_open_for_writing_retries_once) ... ok\ntest_failure_restores_absent_and_empty_cache_and_gc_settings (test_cached_run_exec.CachedRunExecTests.test_failure_restores_absent_and_empty_cache_and_gc_settings) ... ok\ntest_missing_elf_interpreter_retries_once (test_cached_run_exec.CachedRunExecTests.test_missing_elf_interpreter_retries_once) ... ok\ntest_missing_nonexecutable_and_malformed_elf_retry_once (test_cached_run_exec.CachedRunExecTests.test_missing_nonexecutable_and_malformed_elf_retry_once) ... ok\ntest_native_argv0_arguments_environment_and_streams (test_cached_run_exec.CachedRunExecTests.test_native_argv0_arguments_environment_and_streams) ... ok\ntest_open_entry_survives_unlink_at_the_unlock_boundary (test_cached_run_exec.CachedRunExecTests.test_open_entry_survives_unlink_at_the_unlock_boundary) ... ok\ntest_program_exit_126_and_127_never_trigger_a_second_execution (test_cached_run_exec.CachedRunExecTests.test_program_exit_126_and_127_never_trigger_a_second_execution) ... ok\ntest_stdin_and_stdout_bytes_cross_a_real_exec (test_cached_run_exec.CachedRunExecTests.test_stdin_and_stdout_bytes_cross_a_real_exec) ... ok\ntest_success_preserves_unset_empty_and_explicit_runtime_settings (test_cached_run_exec.CachedRunExecTests.test_success_preserves_unset_empty_and_explicit_runtime_settings) ... ok\n\n----------------------------------------------------------------------\nRan 30 tests in 0.817s\n\nOK\n"
+    },
+    "settle-fix-units-test_cache_toolchain.log": {
+      "sha256": "7718dbe07b1ee0f58bc74677ecb908c06a9a167df1d74fe0e7e812936482a322",
+      "text": "test_capture_tracks_distro_files_and_missing_configuration (test_cache_toolchain.SearchCapture.test_capture_tracks_distro_files_and_missing_configuration) ... ok\ntest_configuration_appearing_during_discovery_bypasses (test_cache_toolchain.SearchCapture.test_configuration_appearing_during_discovery_bypasses) ... ok\ntest_linker_failure_bypasses (test_cache_toolchain.SearchCapture.test_linker_failure_bypasses) ... ok\ntest_loader_failure_without_declared_wrapper_bypasses (test_cache_toolchain.SearchCapture.test_loader_failure_without_declared_wrapper_bypasses) ... ok\ntest_successful_ldd_status_does_not_hide_missing_library (test_cache_toolchain.SearchCapture.test_successful_ldd_status_does_not_hide_missing_library) ... ok\ntest_actual_configuration_paths (test_cache_toolchain.SearchDiscovery.test_actual_configuration_paths) ... ok\ntest_custom_sysroot_bypasses_standard_discovery (test_cache_toolchain.SearchDiscovery.test_custom_sysroot_bypasses_standard_discovery) ... ok\ntest_existing_gentoo_configuration_bypasses_without_tools (test_cache_toolchain.SearchDiscovery.test_existing_gentoo_configuration_bypasses_without_tools) ... ok\ntest_gcc_candidates_include_unselected_versions (test_cache_toolchain.SearchDiscovery.test_gcc_candidates_include_unselected_versions) ... ok\ntest_header_roots_include_missing_candidates (test_cache_toolchain.SearchDiscovery.test_header_roots_include_missing_candidates) ... ok\ntest_library_roots_fail_closed (test_cache_toolchain.SearchDiscovery.test_library_roots_fail_closed) ... ok\ntest_linker_and_loader_search_roots (test_cache_toolchain.SearchDiscovery.test_linker_and_loader_search_roots) ... ok\ntest_parent_uses_supported_string_operations (test_cache_toolchain.SearchDiscovery.test_parent_uses_supported_string_operations) ... ok\ntest_add_shadow_header (test_cache_toolchain.SearchSnapshots.test_add_shadow_header) ... ok\ntest_chmod_candidate_and_dangling_symlink (test_cache_toolchain.SearchSnapshots.test_chmod_candidate_and_dangling_symlink) ... ok\ntest_config_addition_and_existing_config_bypass (test_cache_toolchain.SearchSnapshots.test_config_addition_and_existing_config_bypass) ... ok\ntest_directory_symlink_cycle_is_bounded (test_cache_toolchain.SearchSnapshots.test_directory_symlink_cycle_is_bounded) ... ok\ntest_in_place_candidate_replacement (test_cache_toolchain.SearchSnapshots.test_in_place_candidate_replacement) ... ok\ntest_invalid_roots_and_read_failures_bypass (test_cache_toolchain.SearchSnapshots.test_invalid_roots_and_read_failures_bypass) ... ok\ntest_loader_file_and_stable_token (test_cache_toolchain.SearchSnapshots.test_loader_file_and_stable_token) ... ok\ntest_missing_root_and_new_gcc_version (test_cache_toolchain.SearchSnapshots.test_missing_root_and_new_gcc_version) ... ok\ntest_root_ancestor_symlink_retarget (test_cache_toolchain.SearchSnapshots.test_root_ancestor_symlink_retarget) ... ok\ntest_shallow_libraries_exclude_unrelated_package_subtrees (test_cache_toolchain.SearchSnapshots.test_shallow_libraries_exclude_unrelated_package_subtrees) ... ok\ntest_snapshot_keeps_symlink_identity_with_equal_metadata (test_cache_toolchain.SearchSnapshots.test_snapshot_keeps_symlink_identity_with_equal_metadata) ... ok\n\n----------------------------------------------------------------------\nRan 24 tests in 0.013s\n\nOK\n"
+    },
+    "settle-fix-units-test_compiler_stateall.log": {
+      "sha256": "cb0b37760be7a01e63b551ae00820b1409236de28248e060df3ae366780b8fce",
+      "text": "test_annotation_only_frame_initialization (test_compiler_state_contract.FrameContractTests.test_annotation_only_frame_initialization) ... ok\ntest_annotation_only_gen_initialization (test_compiler_state_contract.FrameContractTests.test_annotation_only_gen_initialization) ... ok\ntest_conditional_frame_initialization (test_compiler_state_contract.FrameContractTests.test_conditional_frame_initialization) ... ok\ntest_conditional_gen_initialization (test_compiler_state_contract.FrameContractTests.test_conditional_gen_initialization) ... ok\ntest_conditional_transfer_is_not_unconditional_save (test_compiler_state_contract.FrameContractTests.test_conditional_transfer_is_not_unconditional_save) ... ok\ntest_current_tree (test_compiler_state_contract.FrameContractTests.test_current_tree) ... ok\ntest_duplicate_frame_field (test_compiler_state_contract.FrameContractTests.test_duplicate_frame_field) ... ok\ntest_duplicate_transfer (test_compiler_state_contract.FrameContractTests.test_duplicate_transfer) ... ok\ntest_missing_frame_field (test_compiler_state_contract.FrameContractTests.test_missing_frame_field) ... ok\ntest_missing_restore (test_compiler_state_contract.FrameContractTests.test_missing_restore) ... ok\ntest_new_frame_field_without_gen_initialization (test_compiler_state_contract.FrameContractTests.test_new_frame_field_without_gen_initialization) ... ok\ntest_new_gen_only_field_is_outside_contract (test_compiler_state_contract.FrameContractTests.test_new_gen_only_field_is_outside_contract) ... ok\ntest_wrong_constructor_argument (test_compiler_state_contract.FrameContractTests.test_wrong_constructor_argument) ... ok\ntest_wrong_constructor_assignment (test_compiler_state_contract.FrameContractTests.test_wrong_constructor_assignment) ... ok\ntest_wrong_restored_source (test_compiler_state_contract.FrameContractTests.test_wrong_restored_source) ... ok\ntest_wrong_saved_source (test_compiler_state_contract.FrameContractTests.test_wrong_saved_source) ... ok\ntest_both_opt_in_directions_after_success_and_failure (test_compiler_state_files.FileStateTests.test_both_opt_in_directions_after_success_and_failure) ... ok\ntest_each_missing_reset_is_detected (test_compiler_state_files.FileStateTests.test_each_missing_reset_is_detected) ... ok\ntest_identity_hints_are_reindexed_after_success_and_failure (test_compiler_state_files.FileStateTests.test_identity_hints_are_reindexed_after_success_and_failure) ... ok\ntest_import_int_opt_ins_are_reindexed (test_compiler_state_files.FileStateTests.test_import_int_opt_ins_are_reindexed) ... ok\ntest_import_opt_ins_and_diagnostics_are_reindexed (test_compiler_state_files.FileStateTests.test_import_opt_ins_and_diagnostics_are_reindexed) ... ok\ntest_program_replaces_both_tables (test_compiler_state_files.FileStateTests.test_program_replaces_both_tables) ... ok\ntest_restart_rebuilds_file_indices_and_opt_ins (test_compiler_state_files.FileStateTests.test_restart_rebuilds_file_indices_and_opt_ins) ... ok\ntest_runtime_program_interleaving_and_failures (test_compiler_state_files.FileStateTests.test_runtime_program_interleaving_and_failures) ... ok\ntest_declaration_readiness_and_context_survive_failure (test_compiler_state_generics.GenericStateTests.test_declaration_readiness_and_context_survive_failure) ... ok\ntest_dormant_template_and_unselected_branch_stay_lazy (test_compiler_state_generics.GenericStateTests.test_dormant_template_and_unselected_branch_stay_lazy) ... ok\ntest_failed_then_valid_requests_preserve_observer_diagnostics (test_compiler_state_generics.GenericStateTests.test_failed_then_valid_requests_preserve_observer_diagnostics) ... ok\ntest_missing_canonical_reservation_is_detected (test_compiler_state_generics.GenericStateTests.test_missing_canonical_reservation_is_detected) ... ok\ntest_missing_declaration_scope_or_early_readiness_is_detected (test_compiler_state_generics.GenericStateTests.test_missing_declaration_scope_or_early_readiness_is_detected) ... ok\ntest_missing_or_inexact_scope_restoration_is_detected (test_compiler_state_generics.GenericStateTests.test_missing_or_inexact_scope_restoration_is_detected) ... ok\ntest_nested_rejoin_discards_semantic_state_and_restores_context (test_compiler_state_generics.GenericStateTests.test_nested_rejoin_discards_semantic_state_and_restores_context) ... ok\ntest_private_generic_keeps_native_and_boxed_list_layouts_distinct (test_compiler_state_generics.GenericStateTests.test_private_generic_keeps_native_and_boxed_list_layouts_distinct) ... ok\ntest_private_recursive_specialization_survives_failed_then_valid_requests (test_compiler_state_generics.GenericStateTests.test_private_recursive_specialization_survives_failed_then_valid_requests) ... ok\ntest_recursive_annotation_and_call_share_one_layout (test_compiler_state_generics.GenericStateTests.test_recursive_annotation_and_call_share_one_layout) ... ok\ntest_repeated_private_recursive_requests_do_not_grow_specialization_caches (test_compiler_state_generics.GenericStateTests.test_repeated_private_recursive_requests_do_not_grow_specialization_caches) ... ok\ntest_same_binding_does_not_merge_different_native_layouts (test_compiler_state_generics.GenericStateTests.test_same_binding_does_not_merge_different_native_layouts) ... ok\ntest_terminal_failure_restores_context_after_diagnostic_capture (test_compiler_state_generics.GenericStateTests.test_terminal_failure_restores_context_after_diagnostic_capture) ... ok\ntest_alias_exception_cannot_hide_direct_sentinel_write (test_compiler_state_globals.GlobalOwnershipTests.test_alias_exception_cannot_hide_direct_sentinel_write) ... ok\ntest_aliases_do_not_oscillate_or_drop_possible_origins (test_compiler_state_globals.GlobalOwnershipTests.test_aliases_do_not_oscillate_or_drop_possible_origins) ... ok\ntest_annotation_import_order (test_compiler_state_globals.GlobalOwnershipTests.test_annotation_import_order) ... ok\ntest_annotation_only_does_not_declare_containers (test_compiler_state_globals.GlobalOwnershipTests.test_annotation_only_does_not_declare_containers) ... ok\ntest_annotation_only_full_source (test_compiler_state_globals.GlobalOwnershipTests.test_annotation_only_full_source) ... ok\ntest_annotation_only_is_not_a_store_but_shadows_locals (test_compiler_state_globals.GlobalOwnershipTests.test_annotation_only_is_not_a_store_but_shadows_locals) ... ok\ntest_annotation_only_preserves_existing_origins (test_compiler_state_globals.GlobalOwnershipTests.test_annotation_only_preserves_existing_origins) ... ok\ntest_annotation_wrappers_and_import_aliases (test_compiler_state_globals.GlobalOwnershipTests.test_annotation_wrappers_and_import_aliases) ... ok\ntest_anonymous_scope_exclusion (test_compiler_state_globals.GlobalOwnershipTests.test_anonymous_scope_exclusion) ... ok\ntest_binding_targets_rebind_globals_and_shadow_locals (test_compiler_state_globals.GlobalOwnershipTests.test_binding_targets_rebind_globals_and_shadow_locals) ... ok\ntest_builtin_mutator_binding_edges (test_compiler_state_globals.GlobalOwnershipTests.test_builtin_mutator_binding_edges) ... ok\ntest_builtin_mutator_shadows_and_copies (test_compiler_state_globals.GlobalOwnershipTests.test_builtin_mutator_shadows_and_copies) ... ok\ntest_conditional_alias_origins (test_compiler_state_globals.GlobalOwnershipTests.test_conditional_alias_origins) ... ok\ntest_conditional_container_initializers (test_compiler_state_globals.GlobalOwnershipTests.test_conditional_container_initializers) ... ok\ntest_conditional_function_and_method_definitions (test_compiler_state_globals.GlobalOwnershipTests.test_conditional_function_and_method_definitions) ... ok\ntest_conditional_initialization_and_module_aliases (test_compiler_state_globals.GlobalOwnershipTests.test_conditional_initialization_and_module_aliases) ... ok\ntest_control_flow_nested_function_writer_owner (test_compiler_state_globals.GlobalOwnershipTests.test_control_flow_nested_function_writer_owner) ... ok\ntest_current_tree_and_disjoint_ownership (test_compiler_state_globals.GlobalOwnershipTests.test_current_tree_and_disjoint_ownership) ... ok\ntest_default_captures_follow_argument_order (test_compiler_state_globals.GlobalOwnershipTests.test_default_captures_follow_argument_order) ... ok\ntest_default_parameter_aliases (test_compiler_state_globals.GlobalOwnershipTests.test_default_parameter_aliases) ... ok\ntest_diagnostic_observation_does_not_allow_additional_writers (test_compiler_state_globals.GlobalOwnershipTests.test_diagnostic_observation_does_not_allow_additional_writers) ... ok\ntest_function_annotations_keep_lexical_shadows_without_runtime_aliases (test_compiler_state_globals.GlobalOwnershipTests.test_function_annotations_keep_lexical_shadows_without_runtime_aliases) ... ok\ntest_global_rebinding_and_augmented_mutation (test_compiler_state_globals.GlobalOwnershipTests.test_global_rebinding_and_augmented_mutation) ... ok\ntest_import_alias_and_module_qualified_writer (test_compiler_state_globals.GlobalOwnershipTests.test_import_alias_and_module_qualified_writer) ... ok\ntest_imported_noncontainers_are_not_writers (test_compiler_state_globals.GlobalOwnershipTests.test_imported_noncontainers_are_not_writers) ... ok\ntest_initialization_is_not_a_post_import_write (test_compiler_state_globals.GlobalOwnershipTests.test_initialization_is_not_a_post_import_write) ... ok\ntest_inplace_and_reinitializing_mutator_calls (test_compiler_state_globals.GlobalOwnershipTests.test_inplace_and_reinitializing_mutator_calls) ... ok\ntest_inventory_annotation_alias_shadows_and_restores (test_compiler_state_globals.GlobalOwnershipTests.test_inventory_annotation_alias_shadows_and_restores) ... ok\ntest_inventory_constructor_shadow_full_source (test_compiler_state_globals.GlobalOwnershipTests.test_inventory_constructor_shadow_full_source) ... ok\ntest_inventory_constructor_shadows (test_compiler_state_globals.GlobalOwnershipTests.test_inventory_constructor_shadows) ... ok\ntest_later_builtin_imports_in_nested_bodies (test_compiler_state_globals.GlobalOwnershipTests.test_later_builtin_imports_in_nested_bodies) ... ok\ntest_local_alias_chain_and_nested_container (test_compiler_state_globals.GlobalOwnershipTests.test_local_alias_chain_and_nested_container) ... ok\ntest_local_import_shadowing_and_scope (test_compiler_state_globals.GlobalOwnershipTests.test_local_import_shadowing_and_scope) ... ok\ntest_local_imports_and_import_aliases (test_compiler_state_globals.GlobalOwnershipTests.test_local_imports_and_import_aliases) ... ok\ntest_local_shadow_and_copy_are_not_global_writes (test_compiler_state_globals.GlobalOwnershipTests.test_local_shadow_and_copy_are_not_global_writes) ... ok\ntest_match_case_declarations (test_compiler_state_globals.GlobalOwnershipTests.test_match_case_declarations) ... ok\ntest_method_and_nested_function_owners (test_compiler_state_globals.GlobalOwnershipTests.test_method_and_nested_function_owners) ... ok\ntest_method_default_assignment_expressions (test_compiler_state_globals.GlobalOwnershipTests.test_method_default_assignment_expressions) ... ok\ntest_method_defaults_use_class_namespace (test_compiler_state_globals.GlobalOwnershipTests.test_method_defaults_use_class_namespace) ... ok\ntest_missing_or_reclassified_ownership_fails (test_compiler_state_globals.GlobalOwnershipTests.test_missing_or_reclassified_ownership_fails) ... ok\ntest_module_alias_reexport_cycles_are_bounded (test_compiler_state_globals.GlobalOwnershipTests.test_module_alias_reexport_cycles_are_bounded) ... ok\ntest_module_subscript_alias_origins_without_new_declarations (test_compiler_state_globals.GlobalOwnershipTests.test_module_subscript_alias_origins_without_new_declarations) ... ok\ntest_module_subscript_and_reexport_full_source_controls (test_compiler_state_globals.GlobalOwnershipTests.test_module_subscript_and_reexport_full_source_controls) ... ok\ntest_named_expression_aliases_and_inventory (test_compiler_state_globals.GlobalOwnershipTests.test_named_expression_aliases_and_inventory) ... ok\ntest_nested_local_class_methods (test_compiler_state_globals.GlobalOwnershipTests.test_nested_local_class_methods) ... ok\ntest_new_conditional_alias_and_starred_writer_controls (test_compiler_state_globals.GlobalOwnershipTests.test_new_conditional_alias_and_starred_writer_controls) ... ok\ntest_new_container_declaration_forms (test_compiler_state_globals.GlobalOwnershipTests.test_new_container_declaration_forms) ... ok\ntest_new_direct_writer_of_lookup_table (test_compiler_state_globals.GlobalOwnershipTests.test_new_direct_writer_of_lookup_table) ... ok\ntest_new_initializer_forms_report_container_and_writer (test_compiler_state_globals.GlobalOwnershipTests.test_new_initializer_forms_report_container_and_writer) ... ok\ntest_nonlocal_alias_augmented_mutation (test_compiler_state_globals.GlobalOwnershipTests.test_nonlocal_alias_augmented_mutation) ... ok\ntest_parameterized_container_constructors (test_compiler_state_globals.GlobalOwnershipTests.test_parameterized_container_constructors) ... ok\ntest_reexport_cycles_do_not_invent_containers (test_compiler_state_globals.GlobalOwnershipTests.test_reexport_cycles_do_not_invent_containers) ... ok\ntest_reexported_container_imports (test_compiler_state_globals.GlobalOwnershipTests.test_reexported_container_imports) ... ok\ntest_reset_registry_has_existing_executable_controls (test_compiler_state_globals.GlobalOwnershipTests.test_reset_registry_has_existing_executable_controls) ... ok\ntest_rewound_registry_has_existing_executable_controls (test_compiler_state_globals.GlobalOwnershipTests.test_rewound_registry_has_existing_executable_controls) ... ok\ntest_separate_annotation_and_initialization (test_compiler_state_globals.GlobalOwnershipTests.test_separate_annotation_and_initialization) ... ok\ntest_separate_annotation_full_source (test_compiler_state_globals.GlobalOwnershipTests.test_separate_annotation_full_source) ... ok\ntest_separate_annotation_uses_declaration_bindings (test_compiler_state_globals.GlobalOwnershipTests.test_separate_annotation_uses_declaration_bindings) ... ok\ntest_starred_unpack_declarations (test_compiler_state_globals.GlobalOwnershipTests.test_starred_unpack_declarations) ... ok\ntest_starred_unpack_preserves_literal_outer_aliases (test_compiler_state_globals.GlobalOwnershipTests.test_starred_unpack_preserves_literal_outer_aliases) ... ok\ntest_swapping_reexport_cycle_converges (test_compiler_state_globals.GlobalOwnershipTests.test_swapping_reexport_cycle_converges) ... ok\ntest_unbound_builtin_mutators (test_compiler_state_globals.GlobalOwnershipTests.test_unbound_builtin_mutators) ... ok\ntest_union_container_annotations (test_compiler_state_globals.GlobalOwnershipTests.test_union_container_annotations) ... ok\ntest_union_declaration_and_unbound_writer_full_source (test_compiler_state_globals.GlobalOwnershipTests.test_union_declaration_and_unbound_writer_full_source) ... ok\ntest_depth_is_bounded (test_compiler_state_nested_probe.NestedBoundaryProbeTests.test_depth_is_bounded) ... ok\ntest_entry_leak_is_detected (test_compiler_state_nested_probe.NestedBoundaryProbeTests.test_entry_leak_is_detected) ... ok\ntest_equal_value_replacement_and_in_place_mutation_are_detected (test_compiler_state_nested_probe.NestedBoundaryProbeTests.test_equal_value_replacement_and_in_place_mutation_are_detected) ... ok\ntest_established_frame_fields_at_increasing_depth (test_compiler_state_nested_probe.NestedBoundaryProbeTests.test_established_frame_fields_at_increasing_depth) ... ok\ntest_missing_attributes_are_reported (test_compiler_state_nested_probe.NestedBoundaryProbeTests.test_missing_attributes_are_reported) ... ok\ntest_missing_restore_is_detected (test_compiler_state_nested_probe.NestedBoundaryProbeTests.test_missing_restore_is_detected) ... ok\ntest_alias_replacement_and_cycles (test_compiler_state_probe.StateProbeTests.test_alias_replacement_and_cycles) ... ok\ntest_corrupted_dry_restore_is_detected (test_compiler_state_probe.StateProbeTests.test_corrupted_dry_restore_is_detected) ... ok\ntest_each_missing_rewind_is_detected (test_compiler_state_probe.StateProbeTests.test_each_missing_rewind_is_detected) ... ok\ntest_global_inference_reproducer_keeps_valid_method (test_compiler_state_probe.StateProbeTests.test_global_inference_reproducer_keeps_valid_method) ... ok\ntest_identity_hint_retry_precedes_full_tracking (test_compiler_state_probe.StateProbeTests.test_identity_hint_retry_precedes_full_tracking) ... ok\ntest_identity_restart_starts_over_tracking_everywhere (test_compiler_state_probe.StateProbeTests.test_identity_restart_starts_over_tracking_everywhere) ... ok\ntest_real_dry_calls_preserve_emission_and_ir (test_compiler_state_probe.StateProbeTests.test_real_dry_calls_preserve_emission_and_ir) ... ok\ntest_restart_rewinds_known_globals_and_uses_fresh_gen (test_compiler_state_probe.StateProbeTests.test_restart_rewinds_known_globals_and_uses_fresh_gen) ... ok\ntest_same_size_and_nested_mutations (test_compiler_state_probe.StateProbeTests.test_same_size_and_nested_mutations) ... ok\ntest_same_size_list_mutation (test_compiler_state_probe.StateProbeTests.test_same_size_list_mutation) ... ok\ntest_unknown_snapshot_type_fails_closed (test_compiler_state_probe.StateProbeTests.test_unknown_snapshot_type_fails_closed) ... ok\ntest_failed_runtime_compile_does_not_admit_internal_module (test_compiler_state_runtime.RuntimeStateTests.test_failed_runtime_compile_does_not_admit_internal_module) ... ok\ntest_missing_or_inexact_restoration_is_detected (test_compiler_state_runtime.RuntimeStateTests.test_missing_or_inexact_restoration_is_detected) ... ok\ntest_success_and_every_failure_restore_exact_configuration (test_compiler_state_runtime.RuntimeStateTests.test_success_and_every_failure_restore_exact_configuration) ... ok\n\n----------------------------------------------------------------------\nRan 121 tests in 108.014s\n\nOK\n"
+    },
+    "settle-fix-native-threshold-old.log": {
+      "sha256": "984d0582c06d9cf53759627ebca43c98db6b533e9ced6c74c3f30daabbd742f8",
+      "text": "runtime pystachy native_hash True\nPASS native primitive selection\nPASS first capture is unsettled\nPASS same timestamps are now settled\nFAIL unchanged duplicate remains valid\nPASS unchanged duplicate preserves original snapshot\nPASS unsettled validation policy is retained\nFAIL unchanged duplicate publishes\nFAIL unchanged duplicate is a cache hit\nPASS first capture is unsettled\nPASS same timestamps are now settled\nPASS changed duplicate invalidates capture\nPASS changed duplicate cannot replace original snapshot\nPASS changed static cannot publish\nPASS changed static cannot hit\nPASS source control initially publishes and hits\nPASS changed source invalidates existing hit\nPASS old source capture cannot republish\nfailures 3\n"
+    },
+    "settle-fix-native-threshold-fixed.log": {
+      "sha256": "2d95a979935dd66ac282012ba9beae17456a53d728f05553182a365bc9fffa14",
+      "text": "runtime pystachy native_hash True\nPASS native primitive selection\nPASS first capture is unsettled\nPASS same timestamps are now settled\nPASS unchanged duplicate remains valid\nPASS unchanged duplicate preserves original snapshot\nPASS unsettled validation policy is retained\nPASS unchanged duplicate publishes\nPASS unchanged duplicate is a cache hit\nPASS first capture is unsettled\nPASS same timestamps are now settled\nPASS changed duplicate invalidates capture\nPASS changed duplicate cannot replace original snapshot\nPASS changed static cannot publish\nPASS changed static cannot hit\nPASS source control initially publishes and hits\nPASS changed source invalidates existing hit\nPASS old source capture cannot republish\nfailures 0\n"
+    },
+    "settle-fix-native-checks.log": {
+      "sha256": "f4a2498c77a8567e63b51a4dfad71e9118d92dfbfb5729cb6e4e90ce6c56add9",
+      "text": "PASS reuse\nPASS source\nPASS imports\nPASS semantics\nPASS corruption\nPASS bypass\nPASS tool\nPASS compiler\nPASS runtime\nPASS failures\nPASS concurrency\nPASS signals\nPASS source-race\nPASS interruption\nPASS: 498 assertions; /workspace/scratch/b766795aa447/settle-fix-native-checks.json\n"
+    },
+    "settle-fix-release-build.log": {
+      "sha256": "0b650bda829d9ccc5d747b874a928f53fcd1abd23fe417658846411c5ae35cf7",
+      "text": "/workspace/scratch/b766795aa447/settle-fix-release/pystachy-native-cache-settle-fix-linux-x86_64.tar.gz\n/workspace/scratch/b766795aa447/settle-fix-release/pystachy-native-cache-settle-fix-linux-x86_64.tar.gz.sha256\n"
+    },
+    "settle-fix-release-smoke.log": {
+      "sha256": "4143010f326fb33b8540068d6ae2e8f8a5c321f7e5acf6e5bf80f6358ebfbd88",
+      "text": "pystachy native-cache-settle-fix (commit 9a3cc0594ed2d5d638e2278478c1aa9256557aac): native and installed --version, without LLVM or Python\nrelocated release default cache: fill and hit match CPython; hit skips the frontend\nrelocated release JIT/AOT: CPython output matches\nrelocated release JIT/AOT with GC stress: CPython output matches\nrelocated release warm JIT: CPython output matches, cached runtime reused\nrelease native-cache-settle-fix linux-x86_64: Python-free PATH, read-only resources, external cache\n"
+    },
+    "settle-fix-native-times.log": {
+      "sha256": "db8160518e71e98967b0e757f551b621d5a6b10d146394ef621b0c7b351b6dc3",
+      "text": "BENCH tiny: {'uncached-run': 0.04584157600038452, 'cold-program': 0.5100701659976039, 'cache-hit': 0.04191951399843674, 'prebuilt-aot': 0.0019994350004708394}\nBENCH padded-helper: {'uncached-run': 0.08150575900071999, 'cold-program': 0.5084253720051493, 'cache-hit': 0.037702196001191624, 'prebuilt-aot': 0.001946726995811332}\nBENCH import-heavy: {'uncached-run': 1.6255652230029227, 'cold-program': 2.052533822999976, 'cache-hit': 0.03979460799746448, 'prebuilt-aot': 0.0018077819986501709}\nBENCH router-1000-events: {'uncached-run': 1.2247176070013666, 'cold-program': 1.7388687249986106, 'cache-hit': 0.0407226899988018, 'prebuilt-aot': 0.0023123680002754554}\nPASS: 328 assertions; /workspace/scratch/b766795aa447/settle-fix-native-times.json\n"
+    },
+    "build-settle-fix.log": {
+      "sha256": "f2f5cde41fd4af9e36a89843e53d1046b195f475fe39f455148f7a5cf0608f6b",
+      "text": "mkdir -p build\n/workspace/scratch/e98dc1e3e6cd/dev/bin/python pystachy.py build pystachy.py -o build/pystachy1\nbuild/pystachy1 build pystachy.py -o build/pystachy2\n/workspace/scratch/e98dc1e3e6cd/dev/bin/python pystachy.py ir pystachy.py -o build/stage1.ll\nbuild/pystachy1 ir pystachy.py -o build/stage2.ll\nbuild/pystachy2 ir pystachy.py -o build/stage3.ll\ncmp build/stage1.ll build/stage2.ll && cmp build/stage2.ll build/stage3.ll\nfixed point: stage1 == stage2 == stage3 (846369 lines of IR)\n/workspace/scratch/e98dc1e3e6cd/dev/bin/python pystachy.py rt runtime.py -o build/rt1.ll\nbuild/pystachy1 rt runtime.py -o build/rt2.ll\nbuild/pystachy2 rt runtime.py -o build/rt3.ll\ncmp build/rt1.ll build/rt2.ll && cmp build/rt2.ll build/rt3.ll\nfixed point: runtime.py's IR, rt1 == rt2 == rt3 (18805 lines)\ncp build/pystachy2 pystachy\n"
+    },
+    "settle-fix-fast-lint.log": {
+      "sha256": "52b29df6c6e07b42b600eea36a1463b7a88785fce354d673aa90dc94765610c8",
+      "text": "ruff check\nAll checks passed!\nmypy --config-file mypy.ini\nSuccess: no issues found in 52 source files\n/workspace/scratch/e98dc1e3e6cd/dev/bin/python tools/check_repository_hygiene.py\nrepository hygiene: tracked paths are clean\n/workspace/scratch/e98dc1e3e6cd/dev/bin/python -m unittest discover -s tools -p test_repository_hygiene.py\n...........\n----------------------------------------------------------------------\nRan 11 tests in 0.193s\n\nOK\n/workspace/scratch/e98dc1e3e6cd/dev/bin/python -m unittest discover -s tools -p test_function_summaries.py\n.......\n----------------------------------------------------------------------\nRan 7 tests in 0.043s\n\nOK\n/workspace/scratch/e98dc1e3e6cd/dev/bin/python -m unittest discover -s tools -p 'test_typed*.py'\n......................................................................................................................................................................................\n----------------------------------------------------------------------\nRan 182 tests in 6.937s\n\nOK\n/workspace/scratch/e98dc1e3e6cd/dev/bin/python -m unittest discover -s tools -p 'test_json*.py'\n..................................\n----------------------------------------------------------------------\nRan 34 tests in 1.468s\n\nOK\n/workspace/scratch/e98dc1e3e6cd/dev/bin/python -m unittest discover -s tools -p test_numeric_identity.py\n........................................................\n----------------------------------------------------------------------\nRan 56 tests in 0.417s\n\nOK\n/workspace/scratch/e98dc1e3e6cd/dev/bin/python -m unittest discover -s tools -p test_identity_scope.py\n.................\n----------------------------------------------------------------------\nRan 17 tests in 4.386s\n\nOK\n/workspace/scratch/e98dc1e3e6cd/dev/bin/python -m unittest discover -s tools -p test_dynany_comparisons.py\n..................................................\n----------------------------------------------------------------------\nRan 50 tests in 7.401s\n\nOK\n/workspace/scratch/e98dc1e3e6cd/dev/bin/python -m unittest discover -s tools -p test_dynany_dict_kinds.py\n...\n----------------------------------------------------------------------\nRan 3 tests in 0.007s\n\nOK\n/workspace/scratch/e98dc1e3e6cd/dev/bin/python -m unittest discover -s tools -p test_diagnostic_capture.py\n........\n----------------------------------------------------------------------\nRan 8 tests in 0.104s\n\nOK\n/workspace/scratch/e98dc1e3e6cd/dev/bin/python -m unittest discover -s tools -p test_loader_preprocessing.py\n............\n----------------------------------------------------------------------\nRan 12 tests in 0.014s\n\nOK\n/workspace/scratch/e98dc1e3e6cd/dev/bin/python -m unittest discover -s tools -p test_parser_allocations.py\n........\n----------------------------------------------------------------------\nRan 8 tests in 0.007s\n\nOK\n/workspace/scratch/e98dc1e3e6cd/dev/bin/python -m unittest discover -s tools -p test_inspect_compiler.py\n......................\n----------------------------------------------------------------------\nRan 22 tests in 4.722s\n\nOK\n/workspace/scratch/e98dc1e3e6cd/dev/bin/python -m unittest discover -s tools -p test_pystachy_toolchain.py\n..\n----------------------------------------------------------------------\nRan 2 tests in 0.010s\n\nOK\n/workspace/scratch/e98dc1e3e6cd/dev/bin/python tools/runtime_roots.py\n67 static pointer stores: 0 GC root problems\nshellcheck -s sh -S warning tests/cache.sh tests/corpus.sh tests/prepare_path.sh tests/record.sh tests/run.sh tests/verify.sh tests/ffi/run.sh tools/abi_check.sh tools/check_ir.sh tools/coverage.sh tools/docker_smoke.sh tools/irsame.sh tools/runtime_coverage.sh tools/setup.sh tools/shard_cases.sh tools/variants.sh bench/run.sh\n\"/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/\"clang -fsyntax-only -Wall -Wextra -Werror runtime.c tools/dictprobe.c tools/listprobe.c tools/eqprobe.c tools/fileprobe.c tools/selectprobe.c tools/weakrefprobe.c tools/boxprobe.c tools/unicodeprobe.c tools/bytescanprobe.c pyext.c pyembed.c\n\"/workspace/scratch/e98dc1e3e6cd/toolchains/ubuntu-18.1.3-1ubuntu1-amd64/usr/lib/llvm-18/bin/\"clang -fsyntax-only -Wall -Wextra -Werror -DPYX_ABI3T pyext.c\n"
+    }
+  }
+}

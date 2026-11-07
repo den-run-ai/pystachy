@@ -3,8 +3,8 @@ from __future__ import annotations
 from src.pystachy_compiler.diagnostics import fail, int_lists, int_program
 from src.pystachy_compiler.ir import Blk, IFn, Ins, NOLABELS
 from src.pystachy_compiler.union_proof import UnionProof, simple_union_proof
-from src.pystachy_compiler.specs import BIG, FX, FXALL, FXBIT, ICMP, IROPS, LIST_WRITES, NONEVAR, RAWR, RAWW, RUNTIME
-from src.pystachy_compiler.utils import is_dict, is_gen, is_opt, is_set, is_tuple, is_union, list_write_error, lt, same_kind, targs, tslots, umembers
+from src.pystachy_compiler.specs import BIG, FX, FXALL, FXBIT, ICMP, IROPS, LIST_READS, LIST_WRITES, NONEVAR, RAWR, RAWW, RUNTIME
+from src.pystachy_compiler.utils import is_dict, is_gen, is_opt, is_set, is_tuple, is_union, is_vtuple, list_read_error, list_write_error, lt, same_kind, targs, tslots, umembers
 
 # Fixed SSA result counts printed by each lowering (gen_nums handles calls).
 RESULT_NUMBERS: dict[str, int] = {
@@ -14,7 +14,7 @@ RESULT_NUMBERS: dict[str, int] = {
     "tuple.load": 2, "dyn.payload": 2, "dyn.type": 1, "phi": 1,
     "select": 1, "list.len": 1, "slot.pack": 1, "slot.unpack": 1,
     "union.tag": 1, "num.cast": 1, "num.cmp": 1, "alloc.fixed": 1,
-    "tuple.store": 1, "mem.load": 1, "int.ucmp": 1, "ptr.cmp": 1,
+    "vtuple.make": 1, "tuple.store": 1, "mem.load": 1, "int.ucmp": 1, "ptr.cmp": 1,
     "empty.kind": 1, "gen.yield": 2, "gen.ret": 2, "gen.promise": 1,
     "big.make": 2, "big.lo": 1, "big.hi": 1,
 }
@@ -190,6 +190,10 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                     error = list_write_error(i, int_lists(), self.rtfns[i.s].sig)
                     if error != "":
                         self.bad_ir(fn, b, error)
+            if i.op == "list.len" or i.op == "list.load" or (i.op == "rt" and i.s in LIST_READS):
+                error = list_read_error(i, self.rtfns[i.s].sig if i.op == "rt" else None)
+                if error != "":
+                    self.bad_ir(fn, b, error)
             if i.op == "empty.kind":
                 if len(i.a) != 1 or i.t != "" or i.s != "" or i.x != "" or len(i.b) != 0 or i.k < 0 or i.k >= len(self.holes):
                     self.bad_ir(fn, b, "empty.kind needs one empty dict/set and a valid type hole")
@@ -260,6 +264,19 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                     self.bad_ir(fn, b, "alloc.fixed needs a declared class or fixed tuple type")
                 if "alloc" not in self.rtfns:
                     self.bad_ir(fn, b, "alloc.fixed needs the alloc runtime declaration")
+            if i.op == "vtuple.make":
+                if i.s != "" or i.x != "" or i.k != 0 or len(i.b) != 0:
+                    self.bad_ir(fn, b, "vtuple.make needs no extra metadata")
+                ts = targs(i.t) if is_vtuple(i.t) and i.t.endswith("]") and i.t.count("[") == i.t.count("]") else []
+                if len(ts) != 1:
+                    self.bad_ir(fn, b, "vtuple.make needs one declared native element type")
+                et = ts[0]
+                if i.t != "vtuple[" + et + "]" or et not in ["int", "float", "bool", "str", "dyn", "opt[int]", "opt[float]", "opt[bool]", "opt[str]", "opt[dyn]"]:
+                    self.bad_ir(fn, b, "vtuple.make needs one declared native element type")
+                if any(a.t != et for a in i.a):
+                    self.bad_ir(fn, b, "vtuple.make needs elements of its declared native type")
+                if "alloc" not in self.rtfns:
+                    self.bad_ir(fn, b, "vtuple.make needs the alloc runtime declaration")
             if i.op == "field.addr":
                 if len(i.a) != 1 or i.s != "" or i.x != "" or len(i.b) != 0:
                     self.bad_ir(fn, b, "field.addr needs one object and no extra metadata")

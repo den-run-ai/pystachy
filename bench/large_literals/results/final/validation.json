@@ -1,0 +1,44 @@
+{
+  "comparator_note": "The maintained diff preview emitted a sed broken-pipe warning while truncating an intentional large diff. All 4241 case reports completed. Exit 1 denotes the seven reviewed IR differences; no compiler exit-status or diagnostic differences occurred.",
+  "corpus_cases": 4241,
+  "diagnostics_and_exit_statuses_unchanged": true,
+  "frame_ownership_tests": 18,
+  "fully_matching_cases": 4234,
+  "gc1_native_comparisons": 16,
+  "hosted_fast_tests": 418,
+  "intended_ir_differences": 7,
+  "listprobe": "normal and PYSTACHY_GC_STRESS=1 passed",
+  "mypy_source_files": 49,
+  "native_binary": {
+    "bytes": 5215608,
+    "sha256": "585893e88cd1f04aefeb6bb52aceb8cb33bf7b4f0f53594029bef00b15d5b88a"
+  },
+  "native_builds_identical": true,
+  "normal_native_comparisons": 26,
+  "not_run": [
+    "full local make verify",
+    "complete native-execution corpus",
+    "macOS",
+    "aarch64"
+  ],
+  "payload_audit": {
+    "all_other_function_bodies_exact": true,
+    "all_other_module_scope_exact_ignoring_line_order": true,
+    "all_slot_bits_preserved": true,
+    "replaced_appends": 1358,
+    "replaced_constructors": 27
+  },
+  "production_commit": "6ad66566a826e1acef0da4601d698b121ad5662e",
+  "ruff": "passed",
+  "runtime_abi_effects": "passed",
+  "runtime_entries": 645,
+  "setup_attempts": [
+    "Initial path witness omitted the case .path sidecar and rejected gentext; its original stderr is retained. Corrected witness uses tests/prepare_path.sh and passes. The corpus comparator used sidecars correctly throughout.",
+    "A check_runtime.py preflight after the policy edit omitted PYSTACHY_LLVM and failed before clang execution with FileNotFoundError for clang. Final make check-runtime uses the pinned LLVM environment and passes."
+  ],
+  "six_fixed_points": {
+    "rt": true,
+    "stage": true
+  },
+  "validation_head": "6f51dd2d47a7ebb6f032dca6698d869df5aafda3"
+}

@@ -1,0 +1,18 @@
+FAIL dynany_large_scalar_literal_identity (jit)
+1,6c1
+< False True True True False
+< True False 1000.25
+< 32 True True True
+< 16 16 True True
+< True True True
+< [exit 0]
+---
+> [exit 1]
+  stderr: want none (CPython wrote none), got:
+tests/programs/inference/dynany_large_scalar_literal_identity.py:14: error: 'is' is only supported for objects and None
+FAIL dynany_large_scalar_literal_identity (aot)
+diff: /tmp/pystachy-tests.BrMOGD/dynany_large_scalar_literal_identity.aot: No such file or directory
+  build's stderr:
+tests/programs/inference/dynany_large_scalar_literal_identity.py:14: error: 'is' is only supported for objects and None
+selected 8 cases
+14 passed, 2 failed

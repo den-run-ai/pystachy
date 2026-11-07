@@ -1,0 +1,44 @@
+{
+  "repository": "python/pyperformance",
+  "tag": "1.14.0",
+  "commit": "2ab96f98f98274d07ebfdfd66e4f021723179706",
+  "retrieved_at": "2026-11-06",
+  "files": [
+    {
+      "path": "run_benchmark.py",
+      "blob": "2a544ac7ffc6fb5b5d47ed399d61570fa89ad757",
+      "url": "https://github.com/python/pyperformance/blob/1.14.0/pyperformance/data-files/benchmarks/bm_bpe_tokeniser/run_benchmark.py",
+      "ends_newline": true,
+      "chars": 5240,
+      "sha256": "c7255345499e118181785370b0996e8cc1056491b9678b3fbeb02421e3f9b2df",
+      "bytes": 5240
+    },
+    {
+      "path": "data/frankenstein_intro.txt",
+      "blob": "07ec91e301d23919d885eead5bcb31321a901d6e",
+      "url": "https://github.com/python/pyperformance/blob/1.14.0/pyperformance/data-files/benchmarks/bm_bpe_tokeniser/data/frankenstein_intro.txt",
+      "ends_newline": true,
+      "chars": 31073,
+      "sha256": "6607193e67b7b459d082f5f2aea724e470615643d63ad2e205123b3076223da4",
+      "bytes": 31206
+    },
+    {
+      "path": "COPYING",
+      "blob": "24dc0adf68ec81f0bfe7ef6994d9f47e777c1973",
+      "url": "https://github.com/python/pyperformance/blob/1.14.0/COPYING",
+      "ends_newline": true,
+      "chars": 1040,
+      "sha256": "6eb6aa6a2f338578b10f3bd929857690ad257284dfcd21c9d5e279d0b30b102b",
+      "bytes": 1040
+    },
+    {
+      "path": "AUTHORS",
+      "blob": "f5886f80511daa18bc86dfcb48da9788c1ce2467",
+      "url": "https://github.com/python/pyperformance/blob/1.14.0/AUTHORS",
+      "ends_newline": true,
+      "chars": 607,
+      "sha256": "fc6c6c7f09091130207c460fe32e4fc2a49dc78bf53fd5d785206e4790f1e238",
+      "bytes": 607
+    }
+  ]
+}

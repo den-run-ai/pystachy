@@ -163,6 +163,7 @@ def gen_function(self, f: FnInfo, body: list[Node]) -> None:
     del self.building[f.ll]
     self.selfcls = sel
     self.fn.n = self.n
+    self.fn.otherbinds = None  # the binding index is needed only while building this function
     self.fns.append(self.fn)
 
 def gen_numeric_proof(self, f: FnInfo, body: list[Node]) -> None:

@@ -39,6 +39,7 @@
 #endif
 #ifdef __linux__
 #include <sys/auxv.h>
+#include <sys/file.h>
 #endif
 #include <time.h>
 #include <unistd.h>
@@ -3041,6 +3042,16 @@ static List *list_new(I cap, int atomic) {
 }
 List *pys_list_new(I cap) { return list_new(cap, 0); }
 List *pys_list_new_atomic(I cap) { return list_new(cap, 1); }   /* a list[int], list[float] or list[bool] */
+/* Large scalar literals emit one copy operation plus immutable pointer-free slots, never
+   a live list's storage or an identity companion. LLVM may inline this helper and expand
+   memcpy as appropriate; the header and atomic item array are freshly allocated each time. */
+List *pys_list_from_const(const I *values, I n) {
+  if ((uint64_t)n > INT64_MAX / sizeof(I)) oom();
+  List *l = list_new(n, 1);
+  if (n) memcpy(l->a, values, n * sizeof(I));
+  l->len = n;
+  return l;
+}
 /* Only dynamic program graphs request this companion. The numeric array remains raw and
    atomic, preserving its C ABI. A raw in-place store clears its companion without allocating;
    a later observation or sharing operation materializes that new object. Pure moves carry
@@ -6489,6 +6500,13 @@ __attribute__((noinline)) static int writing(dev_t dev, ino_t ino) {
     if (files[i]->wr && !files[i]->closed && files[i]->dev == dev && files[i]->ino == ino) return 1;
   return 0;
 }
+/* CPython opens ordinary text and binary files as non-inheritable. An exec
+   through /proc/self/fd/N can therefore pin an inode without leaking N into the program. */
+static void file_cloexec(FILE *f, Str *path) {
+  if (fcntl(fileno(f), F_SETFD, FD_CLOEXEC) == -1) {
+    int saved = errno; fclose(f); errno = saved; oserr(path->s);
+  }
+}
 File *pys_open(Str *path, Str *mode, Str *enc, Str *nl, I buffering) {   /* CPython's checks, in its order */
   int x = 0, r = 0, w = 0, a = 0, plus = 0, t = 0, b = 0, lat = 1;
   if (nul(mode) || (enc && nul(enc)) || (nl && nul(nl))) pys_fail("ValueError: embedded null character");
@@ -6512,6 +6530,7 @@ File *pys_open(Str *path, Str *mode, Str *enc, Str *nl, I buffering) {   /* CPyt
   FILE *f = fopen(path->s, m);
   if (!f && (errno == EMFILE || errno == ENFILE) && !gc_off) { collect(); f = fopen(path->s, m); }   /* unreachable files closed */
   if (!f) oserr(path->s);
+  file_cloexec(f, path);
   if (fstat(fileno(f), &st)) memset(&st, 0, sizeof st);
   else if (S_ISDIR(st.st_mode)) { fclose(f); errno = EISDIR; oserr(path->s); }
   if (!buffering) { fclose(f); pys_fail("ValueError: can't have unbuffered text I/O"); }   /* the file is created by now */
@@ -6770,6 +6789,7 @@ File *pys_bopen(Str *path, Str *mode, Str *enc, Str *errs, Str *nl, I buffering)
   FILE *f = fopen(path->s, m);
   if (!f && (errno == EMFILE || errno == ENFILE) && !gc_off) { collect(); f = fopen(path->s, m); }
   if (!f) oserr(path->s);
+  file_cloexec(f, path);
   if (fstat(fileno(f), &st)) memset(&st, 0, sizeof st);
   else if (S_ISDIR(st.st_mode)) { fclose(f); errno = EISDIR; oserr(path->s); }
   File *o = pys_alloc(sizeof(File));
@@ -6940,6 +6960,67 @@ _Noreturn void pys_execv(Str *path, List *args) {   /* os.execv: the process bec
   execv(path->s, v);
   ioerr(errno);
 }
+/* Private native-program cache primitive: no wait and no diagnostics. FD9
+   changes only after the new lock is acquired, and exec releases it atomically. */
+I pys_cache_lock(Str *path) {
+#ifdef __linux__
+  if (nul(path)) return -1;
+  int fd = open(path->s, O_RDONLY | O_CLOEXEC | O_NOFOLLOW | O_NONBLOCK);
+  if (fd < 0) return -1;
+  struct stat st;
+  if (fstat(fd, &st) || !S_ISREG(st.st_mode) || st.st_uid != geteuid()) {
+    close(fd); return -1;
+  }
+  if (flock(fd, LOCK_EX | LOCK_NB)) {
+    int saved = errno; close(fd);
+    return saved == EWOULDBLOCK || saved == EAGAIN ? 0 : -1;
+  }
+  if (fd != 9 && dup2(fd, 9) < 0) { close(fd); return -1; }
+  if (fcntl(9, F_SETFD, FD_CLOEXEC) < 0) {
+    if (fd != 9) close(fd);
+    close(9); return -1;
+  }
+  if (fd != 9) close(fd);
+  return 1;
+#else
+  (void)path;
+  return -1;
+#endif
+}
+/* Private cache helper: FNV-1a over raw file bytes, matching the compiler's
+   Latin-1 loop exactly. Failures return an empty string so callers can miss. */
+Str *pys_cache_file_hash(Str *path, I limit) {
+  if (nul(path) || limit < 0) return cstr("");
+  int fd;
+  do fd = open(path->s, O_RDONLY | O_NONBLOCK | O_CLOEXEC);
+  while (fd < 0 && errno == EINTR);
+  if (fd < 0) return cstr("");
+  struct stat st;
+  int ok = !fstat(fd, &st) && S_ISREG(st.st_mode) && st.st_size >= 0
+    && (uint64_t)st.st_size <= (uint64_t)limit;
+  uint64_t hash = UINT64_C(0xcbf29ce484222325), total = 0;
+  unsigned char bytes[16384];
+  while (ok) {
+    ssize_t n;
+    do n = read(fd, bytes, sizeof bytes); while (n < 0 && errno == EINTR);
+    if (n < 0) { ok = 0; break; }
+    if (!n) break;
+    if ((uint64_t)n > (uint64_t)limit - total) { ok = 0; break; }
+    total += (uint64_t)n;
+    for (ssize_t i = 0; i < n; ++i)
+      hash = (hash ^ bytes[i]) * UINT64_C(0x100000001b3);
+  }
+  if (close(fd)) ok = 0;
+  if (!ok) return cstr("");
+  char text[17];
+  for (int i = 15; i >= 0; --i) {
+    text[i] = "0123456789abcdef"[hash & 15];
+    hash >>= 4;
+  }
+  text[16] = 0;
+  return cstr(text);
+}
+
 I pys_getpid(void) { return getpid(); }
 Str *pys_getcwd(void) {          /* os.getcwd(): CPython's posix_getcwd(), whose buffer grows by 1024 bytes while getcwd() fails with ERANGE */
   size_t size = 1024;
@@ -7168,7 +7249,39 @@ Str *pys_path_join(Str *a, Str *b) {     /* os.path.join(a, b), as posixpath.joi
   s->len = a->len + 1 + b->len; memcpy(s->s, a->s, a->len); s->s[a->len] = '/'; memcpy(s->s + a->len + 1, b->s, b->len);
   return s;
 }
-Str *pys_getenv(Str *k, Str *dflt) { char *v = nul(k) ? 0 : getenv(k->s); return v ? cstr(v) : dflt; }
+/* POSIX environment text uses UTF-8 with surrogateescape, as CPython's os.environ.
+   Keep the common ASCII paths allocation-free until a value is returned. These
+   codec functions are implemented in runtime.py and share the ordinary codec checks. */
+Str *pys_str_encode(Str *, Str *, Str *);
+Str *pys_bytes_decode(Str *, Str *, Str *);
+static Str *env_encoded(Str *s) {
+  return memchr(s->s, 0xed, s->len) ? pys_str_encode(s, 0, cstr("surrogateescape")) : s;
+}
+static Str *env_decoded(const char *v) {
+  Str *s = cstr(v);
+  for (I i = 0; i < s->len; i++)
+    if ((unsigned char)s->s[i] >= 0x80) return pys_bytes_decode(s, 0, cstr("surrogateescape"));
+  return s;
+}
+Str *pys_getenv(Str *k, Str *dflt) {
+  k = env_encoded(k);
+  char *v = nul(k) || strchr(k->s, '=') ? 0 : getenv(k->s);
+  return v ? env_decoded(v) : dflt;
+}
+void pys_environ_set(Str *k, Str *v) {
+  k = env_encoded(k); v = env_encoded(v);
+  if (nul(k) || nul(v)) pys_fail("ValueError: embedded null byte");
+  if (strchr(k->s, '=')) pys_fail("ValueError: illegal environment variable name");
+  if (setenv(k->s, v->s, 1)) ioerr(errno);
+}
+Str *pys_environ_pop(Str *k, Str *dflt) {
+  k = env_encoded(k);
+  char *v = nul(k) || strchr(k->s, '=') ? 0 : getenv(k->s);
+  if (!v) return dflt;
+  Str *old = env_decoded(v);  /* copy the value before unsetenv invalidates it */
+  if (unsetenv(k->s)) ioerr(errno);
+  return old;
+}
 
 /* ---------- exceptions: table-driven unwinding (the Itanium C++ ABI's) ----------
    A program that has try or with calls pys_eh_on when it starts. From then on a raise (pys_fail,

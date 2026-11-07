@@ -1,0 +1,201 @@
+--- a/tests/programs/containers/large_scalar_literals.py.ll
++++ b/tests/programs/containers/large_scalar_literals.py.ll
+@@ -22,6 +22,9 @@
+ @s.7 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1, i64 0, i64 2, [2 x i8] c"b\00"}, align 8
+ @s.8 = private unnamed_addr global {i64, i64, i64, [27 x i8]} {i64 26, i64 0, i64 27, [27 x i8] c"name 'math' is not defined\00"}, align 8
+ @s.9 = private unnamed_addr global {i64, i64, i64, [10 x i8]} {i64 9, i64 0, i64 10, [10 x i8] c"NameError\00"}, align 8
++@lc.0 = private unnamed_addr constant [32 x i64] [i64 -9223372036854775808, i64 9223372036854775807, i64 0, i64 -1, i64 4, i64 5, i64 6, i64 7, i64 8, i64 9, i64 10, i64 11, i64 12, i64 13, i64 14, i64 15, i64 16, i64 17, i64 18, i64 19, i64 20, i64 21, i64 22, i64 23, i64 24, i64 25, i64 26, i64 27, i64 28, i64 29, i64 30, i64 31], align 8
++@lc.1 = private unnamed_addr constant [32 x i64] [i64 bitcast (double 0x8000000000000000 to i64), i64 bitcast (double 0x0000000000000000 to i64), i64 bitcast (double 0x7FF0000000000000 to i64), i64 bitcast (double 0xFFF0000000000000 to i64), i64 bitcast (double 0x0000000000000001 to i64), i64 bitcast (double 0x8000000000000001 to i64), i64 bitcast (double 0x3FF4000000000000 to i64), i64 bitcast (double 0xBFF4000000000000 to i64), i64 bitcast (double 0x4020000000000000 to i64), i64 bitcast (double 0x4022000000000000 to i64), i64 bitcast (double 0x4024000000000000 to i64), i64 bitcast (double 0x4026000000000000 to i64), i64 bitcast (double 0x4028000000000000 to i64), i64 bitcast (double 0x402A000000000000 to i64), i64 bitcast (double 0x402C000000000000 to i64), i64 bitcast (double 0x402E000000000000 to i64), i64 bitcast (double 0x4030000000000000 to i64), i64 bitcast (double 0x4031000000000000 to i64), i64 bitcast (double 0x4032000000000000 to i64), i64 bitcast (double 0x4033000000000000 to i64), i64 bitcast (double 0x4034000000000000 to i64), i64 bitcast (double 0x4035000000000000 to i64), i64 bitcast (double 0x4036000000000000 to i64), i64 bitcast (double 0x4037000000000000 to i64), i64 bitcast (double 0x4038000000000000 to i64), i64 bitcast (double 0x4039000000000000 to i64), i64 bitcast (double 0x403A000000000000 to i64), i64 bitcast (double 0x403B000000000000 to i64), i64 bitcast (double 0x403C000000000000 to i64), i64 bitcast (double 0x403D000000000000 to i64), i64 bitcast (double 0x403E000000000000 to i64), i64 bitcast (double 0x403F000000000000 to i64)], align 8
++@lc.2 = private unnamed_addr constant [32 x i64] [i64 1, i64 0, i64 1, i64 0, i64 1, i64 0, i64 1, i64 0, i64 1, i64 1, i64 0, i64 0, i64 1, i64 1, i64 0, i64 0, i64 0, i64 0, i64 1, i64 1, i64 0, i64 0, i64 1, i64 1, i64 0, i64 1, i64 0, i64 1, i64 0, i64 1, i64 0, i64 1], align 8
+ define internal void @main.init() {
+ entry:
+   %h.135 = alloca i64
+@@ -469,177 +472,17 @@
+ }
+ define internal ptr @f.integers() {
+ entry:
+-  %t2 = call ptr @pys_list_new_atomic(i64 32)
+-  call void @pys_list_append(ptr %t2, i64 -9223372036854775808)
+-  call void @pys_list_append(ptr %t2, i64 9223372036854775807)
+-  call void @pys_list_append(ptr %t2, i64 0)
+-  call void @pys_list_append(ptr %t2, i64 -1)
+-  call void @pys_list_append(ptr %t2, i64 4)
+-  call void @pys_list_append(ptr %t2, i64 5)
+-  call void @pys_list_append(ptr %t2, i64 6)
+-  call void @pys_list_append(ptr %t2, i64 7)
+-  call void @pys_list_append(ptr %t2, i64 8)
+-  call void @pys_list_append(ptr %t2, i64 9)
+-  call void @pys_list_append(ptr %t2, i64 10)
+-  call void @pys_list_append(ptr %t2, i64 11)
+-  call void @pys_list_append(ptr %t2, i64 12)
+-  call void @pys_list_append(ptr %t2, i64 13)
+-  call void @pys_list_append(ptr %t2, i64 14)
+-  call void @pys_list_append(ptr %t2, i64 15)
+-  call void @pys_list_append(ptr %t2, i64 16)
+-  call void @pys_list_append(ptr %t2, i64 17)
+-  call void @pys_list_append(ptr %t2, i64 18)
+-  call void @pys_list_append(ptr %t2, i64 19)
+-  call void @pys_list_append(ptr %t2, i64 20)
+-  call void @pys_list_append(ptr %t2, i64 21)
+-  call void @pys_list_append(ptr %t2, i64 22)
+-  call void @pys_list_append(ptr %t2, i64 23)
+-  call void @pys_list_append(ptr %t2, i64 24)
+-  call void @pys_list_append(ptr %t2, i64 25)
+-  call void @pys_list_append(ptr %t2, i64 26)
+-  call void @pys_list_append(ptr %t2, i64 27)
+-  call void @pys_list_append(ptr %t2, i64 28)
+-  call void @pys_list_append(ptr %t2, i64 29)
+-  call void @pys_list_append(ptr %t2, i64 30)
+-  call void @pys_list_append(ptr %t2, i64 31)
++  %t2 = call ptr @pys_list_from_const(ptr @lc.0, i64 32)
+   ret ptr %t2
+ }
+ define internal ptr @f.floats() {
+ entry:
+-  %t2 = call ptr @pys_list_new_atomic(i64 32)
+-  %t3 = bitcast double 0x8000000000000000 to i64
+-  call void @pys_list_append(ptr %t2, i64 %t3)
+-  %t4 = bitcast double 0x0000000000000000 to i64
+-  call void @pys_list_append(ptr %t2, i64 %t4)
+-  %t5 = bitcast double 0x7FF0000000000000 to i64
+-  call void @pys_list_append(ptr %t2, i64 %t5)
+-  %t6 = bitcast double 0xFFF0000000000000 to i64
+-  call void @pys_list_append(ptr %t2, i64 %t6)
+-  %t7 = bitcast double 0x0000000000000001 to i64
+-  call void @pys_list_append(ptr %t2, i64 %t7)
+-  %t8 = bitcast double 0x8000000000000001 to i64
+-  call void @pys_list_append(ptr %t2, i64 %t8)
+-  %t9 = bitcast double 0x3FF4000000000000 to i64
+-  call void @pys_list_append(ptr %t2, i64 %t9)
+-  %t10 = bitcast double 0xBFF4000000000000 to i64
+-  call void @pys_list_append(ptr %t2, i64 %t10)
+-  %t11 = bitcast double 0x4020000000000000 to i64
+-  call void @pys_list_append(ptr %t2, i64 %t11)
+-  %t12 = bitcast double 0x4022000000000000 to i64
+-  call void @pys_list_append(ptr %t2, i64 %t12)
+-  %t13 = bitcast double 0x4024000000000000 to i64
+-  call void @pys_list_append(ptr %t2, i64 %t13)
+-  %t14 = bitcast double 0x4026000000000000 to i64
+-  call void @pys_list_append(ptr %t2, i64 %t14)
+-  %t15 = bitcast double 0x4028000000000000 to i64
+-  call void @pys_list_append(ptr %t2, i64 %t15)
+-  %t16 = bitcast double 0x402A000000000000 to i64
+-  call void @pys_list_append(ptr %t2, i64 %t16)
+-  %t17 = bitcast double 0x402C000000000000 to i64
+-  call void @pys_list_append(ptr %t2, i64 %t17)
+-  %t18 = bitcast double 0x402E000000000000 to i64
+-  call void @pys_list_append(ptr %t2, i64 %t18)
+-  %t19 = bitcast double 0x4030000000000000 to i64
+-  call void @pys_list_append(ptr %t2, i64 %t19)
+-  %t20 = bitcast double 0x4031000000000000 to i64
+-  call void @pys_list_append(ptr %t2, i64 %t20)
+-  %t21 = bitcast double 0x4032000000000000 to i64
+-  call void @pys_list_append(ptr %t2, i64 %t21)
+-  %t22 = bitcast double 0x4033000000000000 to i64
+-  call void @pys_list_append(ptr %t2, i64 %t22)
+-  %t23 = bitcast double 0x4034000000000000 to i64
+-  call void @pys_list_append(ptr %t2, i64 %t23)
+-  %t24 = bitcast double 0x4035000000000000 to i64
+-  call void @pys_list_append(ptr %t2, i64 %t24)
+-  %t25 = bitcast double 0x4036000000000000 to i64
+-  call void @pys_list_append(ptr %t2, i64 %t25)
+-  %t26 = bitcast double 0x4037000000000000 to i64
+-  call void @pys_list_append(ptr %t2, i64 %t26)
+-  %t27 = bitcast double 0x4038000000000000 to i64
+-  call void @pys_list_append(ptr %t2, i64 %t27)
+-  %t28 = bitcast double 0x4039000000000000 to i64
+-  call void @pys_list_append(ptr %t2, i64 %t28)
+-  %t29 = bitcast double 0x403A000000000000 to i64
+-  call void @pys_list_append(ptr %t2, i64 %t29)
+-  %t30 = bitcast double 0x403B000000000000 to i64
+-  call void @pys_list_append(ptr %t2, i64 %t30)
+-  %t31 = bitcast double 0x403C000000000000 to i64
+-  call void @pys_list_append(ptr %t2, i64 %t31)
+-  %t32 = bitcast double 0x403D000000000000 to i64
+-  call void @pys_list_append(ptr %t2, i64 %t32)
+-  %t33 = bitcast double 0x403E000000000000 to i64
+-  call void @pys_list_append(ptr %t2, i64 %t33)
+-  %t34 = bitcast double 0x403F000000000000 to i64
+-  call void @pys_list_append(ptr %t2, i64 %t34)
++  %t2 = call ptr @pys_list_from_const(ptr @lc.1, i64 32)
+   ret ptr %t2
+ }
+ define internal ptr @f.flags() {
+ entry:
+-  %t2 = call ptr @pys_list_new_atomic(i64 32)
+-  %t3 = zext i1 true to i64
+-  call void @pys_list_append(ptr %t2, i64 %t3)
+-  %t4 = zext i1 false to i64
+-  call void @pys_list_append(ptr %t2, i64 %t4)
+-  %t5 = zext i1 true to i64
+-  call void @pys_list_append(ptr %t2, i64 %t5)
+-  %t6 = zext i1 false to i64
+-  call void @pys_list_append(ptr %t2, i64 %t6)
+-  %t7 = zext i1 true to i64
+-  call void @pys_list_append(ptr %t2, i64 %t7)
+-  %t8 = zext i1 false to i64
+-  call void @pys_list_append(ptr %t2, i64 %t8)
+-  %t9 = zext i1 true to i64
+-  call void @pys_list_append(ptr %t2, i64 %t9)
+-  %t10 = zext i1 false to i64
+-  call void @pys_list_append(ptr %t2, i64 %t10)
+-  %t11 = zext i1 true to i64
+-  call void @pys_list_append(ptr %t2, i64 %t11)
+-  %t12 = zext i1 true to i64
+-  call void @pys_list_append(ptr %t2, i64 %t12)
+-  %t13 = zext i1 false to i64
+-  call void @pys_list_append(ptr %t2, i64 %t13)
+-  %t14 = zext i1 false to i64
+-  call void @pys_list_append(ptr %t2, i64 %t14)
+-  %t15 = zext i1 true to i64
+-  call void @pys_list_append(ptr %t2, i64 %t15)
+-  %t16 = zext i1 true to i64
+-  call void @pys_list_append(ptr %t2, i64 %t16)
+-  %t17 = zext i1 false to i64
+-  call void @pys_list_append(ptr %t2, i64 %t17)
+-  %t18 = zext i1 false to i64
+-  call void @pys_list_append(ptr %t2, i64 %t18)
+-  %t19 = zext i1 false to i64
+-  call void @pys_list_append(ptr %t2, i64 %t19)
+-  %t20 = zext i1 false to i64
+-  call void @pys_list_append(ptr %t2, i64 %t20)
+-  %t21 = zext i1 true to i64
+-  call void @pys_list_append(ptr %t2, i64 %t21)
+-  %t22 = zext i1 true to i64
+-  call void @pys_list_append(ptr %t2, i64 %t22)
+-  %t23 = zext i1 false to i64
+-  call void @pys_list_append(ptr %t2, i64 %t23)
+-  %t24 = zext i1 false to i64
+-  call void @pys_list_append(ptr %t2, i64 %t24)
+-  %t25 = zext i1 true to i64
+-  call void @pys_list_append(ptr %t2, i64 %t25)
+-  %t26 = zext i1 true to i64
+-  call void @pys_list_append(ptr %t2, i64 %t26)
+-  %t27 = zext i1 false to i64
+-  call void @pys_list_append(ptr %t2, i64 %t27)
+-  %t28 = zext i1 true to i64
+-  call void @pys_list_append(ptr %t2, i64 %t28)
+-  %t29 = zext i1 false to i64
+-  call void @pys_list_append(ptr %t2, i64 %t29)
+-  %t30 = zext i1 true to i64
+-  call void @pys_list_append(ptr %t2, i64 %t30)
+-  %t31 = zext i1 false to i64
+-  call void @pys_list_append(ptr %t2, i64 %t31)
+-  %t32 = zext i1 true to i64
+-  call void @pys_list_append(ptr %t2, i64 %t32)
+-  %t33 = zext i1 false to i64
+-  call void @pys_list_append(ptr %t2, i64 %t33)
+-  %t34 = zext i1 true to i64
+-  call void @pys_list_append(ptr %t2, i64 %t34)
++  %t2 = call ptr @pys_list_from_const(ptr @lc.2, i64 32)
+   ret ptr %t2
+ }
+ define i64 @pys_obj_eq(i64 %c, i64 %a, i64 %b) {
+@@ -687,6 +530,7 @@
+ declare void @pys_list_extend(ptr, ptr)
+ declare {i64, i1} @llvm.sadd.with.overflow.i64(i64, i64)
+ declare void @pys_raise(ptr, ptr)
++declare ptr @pys_list_from_const(ptr, i64)
+ @pys_recursion_state = external global [3 x i64]
+ !16 = !{!"pystachy fields"}
+ !9 = !{!"recursion depth", !16, i64 0}

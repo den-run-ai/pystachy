@@ -11,9 +11,11 @@ The extra requirements below are in addition to the compiler and its build toolc
 | Example | Purpose | Maintained checks | Extra requirements |
 |---|---|---|---|
 | [agent](agent/README.md) | Typed tool loop, JSON messages and recorded repair | [App corpus](../tests/programs/apps/example_agent.py); HTTP smoke in its guide | Linux and GNU coreutils; `curl` and a model server for live HTTP |
+| [byte_bpe](byte_bpe/README.md) | Educational byte tokenizer training and Unicode encode/decode | [App corpus](../tests/programs/apps/byte_bpe.py); pyperformance smoke | None |
 | [column](column/README.md) | Table alignment with `io.StringIO` | [App corpus](../tests/programs/apps/example_column.py) | None |
 | [csvstat](csvstat/README.md) | CSV parsing, reports and numeric statistics | [App corpus](../tests/programs/apps/example_csvstat.py) | None |
 | [cut](cut/README.md) | Field and character selection with `getopt` | [App corpus](../tests/programs/apps/example_cut.py) | None |
+| [id_filter](id_filter/README.md) | Dense bounded ID masks and faceted document filtering | [App corpus](../tests/programs/apps/example_id_filter.py) with independent set oracles | None |
 | [json_repair](json_repair/README.md) | CPython companion for the native JSON-repair port | [Extension replay](../tests/upstream/json_repair/extension.py) in the FFI suite | Linux and GIL-enabled CPython 3.12+ for the companion |
 | [latency](latency/README.md) | Access-log statistics with `statistics` | [App corpus](../tests/programs/apps/example_latency.py) | None |
 | [linediff](linediff/README.md) | Unified and word diffs with `difflib` | [App corpus](../tests/programs/apps/example_linediff.py) | None |
@@ -34,7 +36,7 @@ The app corpus compares JIT and AOT execution with recorded CPython output and
 exit status. From the repository root, run all example fixtures with:
 
 ```sh
-make test FILES="tests/programs/apps/example_*.py"
+make test FILES="tests/programs/apps/example_*.py tests/programs/apps/byte_bpe.py"
 ```
 
 These fixtures cover representative behavior and errors. The individual guides

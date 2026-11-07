@@ -1,0 +1,18 @@
+0.0 5.0
+0 2
+7.5
+-1 0 2
+1.25 [2.5, 3.75] 5.0
+3 4 8.0
+1.0 4
+2.0 4
+3.0 3
+-4 IndexError
+-3 one
+-1 three
+0 one
+2 three
+3 IndexError
+-1 IndexError
+0 IndexError
+[exit 0]

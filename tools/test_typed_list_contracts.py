@@ -1,10 +1,11 @@
-"""Native list writes share semantic, storage and identity checks before LLVM.
+"""Native list reads and writes share semantic, storage and identity checks before LLVM.
 
 Run with python3 -m unittest discover -s tools -p test_typed_list_contracts.py.
 """
 from contextlib import redirect_stderr
 from io import StringIO
 from pathlib import Path
+import os
 import sys
 import unittest
 from unittest.mock import patch
@@ -15,9 +16,9 @@ from src.pystachy_compiler import diagnostics, utils
 from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler.ir import FnInfo, IFn, Ins, Val
 from src.pystachy_compiler.loader import Loader
-from src.pystachy_compiler.specs import LIST_WRITES
+from src.pystachy_compiler.specs import LIST_READS, LIST_WRITES
 from src.pystachy_compiler.syntax import Node
-from src.pystachy_compiler.utils import ListLayout, list_write_error, rtsym
+from src.pystachy_compiler.utils import ListLayout, list_read_error, list_write_error, rtsym
 
 
 def list_write(key="list.append", element="int"):
@@ -237,6 +238,205 @@ class ListWriteContractTests(unittest.TestCase):
                 g.runtime(rtsym(i.s))
                 g.lower_ins(function_with(i), i)
                 self.assertEqual(g.out, ["  call void @pys_list_append(ptr %a0, i64 %a1)"])
+
+
+def list_read(op="rt", element="float", identity=False):
+    key = "list.get_identity" if identity else "list.get"
+    i = Ins(op, "int" if op == "list.len" else "dyn" if identity else "*" + element,
+            key if op == "rt" else "")
+    i.a = [Val("%a0", "list[" + element + "]")]
+    if op != "list.len":
+        i.a.append(Val("0", "int"))
+    if identity:
+        i.a.append(Val("2" if element == "float" else "1", "int"))
+    i.r = [1, 2, 3, 4] if op == "list.load" else [1]
+    return i
+
+
+class ListReadContractTests(unittest.TestCase):
+    def verify(self, i):
+        g = Gen()
+        if i.op == "rt":
+            g.runtime(rtsym(i.s))
+        fn = function_with(i)
+        fn.n = max(i.r or [0])
+        g.verify(fn, False)
+
+    def assert_rejected(self, i, fragment):
+        self.assertIn(fragment, list_read_error(i))
+        with redirect_stderr(StringIO()), self.assertRaises(SystemExit):
+            self.verify(i)
+
+    def test_checked_and_inline_reads_preserve_encoded_storage(self):
+        for op in ("rt", "list.load", "list.len"):
+            for element in ("int", "float", "bool", "str", "dyn", "list[int]", "opt[?]"):
+                with self.subTest(op=op, element=element):
+                    i = list_read(op, element)
+                    self.assertEqual(list_read_error(i), "")
+                    self.verify(i)
+                    if op != "list.len":
+                        for wrong in (element, "*T", "%slot"):
+                            i.t = wrong
+                            self.assert_rejected(i, "result needs *" + element)
+
+    def test_read_receivers_indexes_and_metadata_are_checked(self):
+        for op in ("rt", "list.load", "list.len"):
+            for receiver in ("S", "%ptr", "dyn", "list[]", "list[int,float]", "list[int", "list[int][float]", "list[%ptr]", "list[int+]"):
+                with self.subTest(op=op, receiver=receiver):
+                    i = list_read(op)
+                    i.a[0].t = receiver
+                    self.assert_rejected(i, "list operation needs")
+            for field, value in (("x", "float"), ("k", 1)):
+                i = list_read(op)
+                setattr(i, field, value)
+                self.assert_rejected(i, "metadata")
+            i = list_read(op)
+            i.a = []
+            self.assert_rejected(i, "operands")
+        for wrong in ("bool", "float", "int+", "*int"):
+            i = list_read()
+            i.a[1].t = wrong
+            self.assert_rejected(i, "operand 1 needs int")
+
+    def test_numeric_identity_reads_keep_original_box_and_kind(self):
+        for element in ("int", "float"):
+            i = list_read(element=element, identity=True)
+            self.assertEqual(list_read_error(i), "")
+            self.verify(i)
+            i.a[-1].v = "2" if element == "int" else "1"
+            self.assert_rejected(i, "numeric identity kind")
+        self.assert_rejected(list_read(element="dyn", identity=True), "numeric identity kind")
+
+    def test_read_builder_reuses_declared_signature_and_refuses_erasure(self):
+        g = Gen()
+        i = list_read()
+        with patch.object(utils, "rtsig", wraps=utils.rtsig) as parsed:
+            for _ in range(16):
+                g.list_get(i.s, i.a)
+            self.assertLessEqual(parsed.call_count, 2)
+        for emitted in g.fn.blocks[0].code:
+            self.assertEqual((emitted.t, [a.t for a in emitted.a]), ("*float", ["list[float]", "int"]))
+        i.a[0].t = "S"
+        with redirect_stderr(StringIO()), self.assertRaises(SystemExit):
+            g.list_get(i.s, i.a)
+        with redirect_stderr(StringIO()), self.assertRaises(SystemExit):
+            g.rt("pys_list_get", "i64", ["ptr %a0", "i64 0"])
+
+    def test_read_builder_retains_runtime_self_recursion_guard(self):
+        g = Gen()
+        g.rtmode = True
+        g.curfn.ll = "@pys_list_get"
+        i = list_read()
+        errors = StringIO()
+        with redirect_stderr(errors), self.assertRaises(SystemExit):
+            g.list_get(i.s, i.a)
+        self.assertIn("pys_list_get() implements an operation that it uses", errors.getvalue())
+        self.assertEqual(g.fn.blocks[0].code, [])
+
+    def test_read_contract_preserves_abi_and_length_load(self):
+        for element in ("int", "float", "str", "dyn"):
+            i = list_read(element=element)
+            g = Gen()
+            g.runtime(rtsym(i.s))
+            g.lower_ins(function_with(i), i)
+            self.assertEqual(g.out, ["  %t1 = call i64 @pys_list_get(ptr %a0, i64 0)"])
+        i = list_read("list.len")
+        g = Gen()
+        g.lower_ins(function_with(i), i)
+        self.assertEqual(g.out, ["  %t1 = load i64, ptr %a0"])
+
+    def test_result_count_registry_rejects_missing_semantic_result(self):
+        for op in ("rt", "list.load", "list.len"):
+            i = list_read(op)
+            i.r = []
+            with redirect_stderr(StringIO()), self.assertRaises(SystemExit):
+                self.verify(i)
+
+
+class ListReadEmissionTests(unittest.TestCase):
+    def test_integer_fast_path_merges_slots_as_i64_not_pointers(self):
+        source = "def first(xs: list[int]) -> int:\n    return xs[0]\n"
+        seen = []
+        original = Gen.lower
+
+        def observe(g, fn):
+            if fn.f.name == "first":
+                ops = [i for b in fn.blocks for i in b.code]
+                self.assertEqual([i.t for i in ops if i.op == "phi"], ["%slot"])
+                self.assertEqual([i.t for i in ops if i.op == "list.load"], ["*int"])
+                seen.append(True)
+            original(g, fn)
+
+        with patch.dict(os.environ, {"PYSTACHY_IRCHECK": "1", "PYSTACHY_OPT": ""}), \
+                patch.object(Gen, "lower", observe):
+            ll = Gen().program(Loader([]).program("fast_slot.py", source))
+        self.assertEqual(seen, [True])
+        self.assertIn(" = phi i64 ", ll)
+        self.assertNotIn(" = phi ptr ", ll)
+
+    def test_length_owner_and_packed_read_survive_range_rewrite(self):
+        source = """def stride(xs: list[float]) -> float:
+    total = 0.0
+    for i in range(1, len(xs), 2):
+        total += xs[i]
+    return total
+"""
+        captured = []
+        original = Gen.listget
+
+        def observe(g, fn):
+            if fn.f.name == "stride":
+                ops = [i for b in fn.blocks for i in b.code]
+                lengths = [i for i in ops if i.op == "list.len"]
+                reads = [i for i in ops if i.op == "rt" and i.s == "list.get"]
+                self.assertEqual(len(lengths), 1)
+                self.assertEqual(lengths[0].a[0].t, "list[float]")
+                self.assertEqual([(i.t, [a.t for a in i.a]) for i in reads],
+                                 [("*float", ["list[float]", "int"])])
+                changed = original(g, fn)
+                self.assertEqual(changed, 1)
+                self.assertEqual(reads[0].op, "list.load")
+                self.assertEqual(list_read_error(reads[0]), "")
+                captured.append(True)
+                return changed
+            return original(g, fn)
+
+        with patch.dict(os.environ, {"PYSTACHY_IRCHECK": "1", "PYSTACHY_OPT": ""}), \
+                patch.object(Gen, "listget", observe):
+            Gen().program(Loader([]).program("length_owner.py", source))
+        self.assertEqual(captured, [True])
+
+    def test_source_reads_keep_native_promoting_and_identity_contracts(self):
+        function = """def first(xs: list[int]) -> int:
+    return xs[0]
+print(first([1234]))
+"""
+        original = Gen.lower
+        for name, pragma, receiver in (("native", "", "list[int]"),
+                                       ("promoting", diagnostics.INTPRAGMA, "list[int]"),
+                                       ("identity", diagnostics.DYNPRAGMA, "list[int]"),
+                                       ("dynamic", diagnostics.DYNPRAGMA, "list[dyn]")):
+            seen = []
+
+            def observe(g, fn, seen=seen):
+                if fn.f.name == "first":
+                    for b in fn.blocks:
+                        for i in b.code:
+                            if i.op == "rt" and i.s in LIST_READS:
+                                self.assertEqual(list_read_error(i), "")
+                                seen.append((i.s, i.t, i.a[0].t))
+                original(g, fn)
+
+            source = pragma + "\n" + function
+            if name == "dynamic":
+                source = pragma + "\nfrom typing import Any\n" + function.replace("list[int]", "list[Any]").replace(" -> int:", " -> Any:")
+            with self.subTest(name=name), patch.dict(os.environ, {"PYSTACHY_OPT": "-listfast", "PYSTACHY_IRCHECK": "1"}), \
+                    patch.dict(diagnostics.INTFILES, {}, clear=True), \
+                    patch.dict(diagnostics.DYNFILES, {}, clear=True), patch.object(Gen, "lower", observe):
+                Gen().program(Loader([]).program(name + ".py", source))
+                self.assertTrue(seen)
+                self.assertTrue(all(t == receiver for _, _, t in seen))
+                self.assertEqual(seen[0][1], "dyn" if seen[0][0].endswith("_identity") else "*" + receiver[5:-1])
 
 
 class ListWriteEmissionTests(unittest.TestCase):
