@@ -84,7 +84,12 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libclang-rt-18-dev
 
       - name: Runtime ABI, ASan and GC root checker controls
-        run: python3 -m unittest discover -s tools -p 'test_runtime_*.py'
+        run: |
+          python3 -m unittest discover -s tools -p 'test_runtime_*.py'
+          PY=python3 CC="$PYSTACHY_LLVM/clang" ASAN_OPTIONS=detect_leaks=1 \
+            tools/check_cpu_buffers.sh '-fsanitize=address,undefined'
+          PY=python3 CC="$PYSTACHY_LLVM/clang" ASAN_OPTIONS=detect_leaks=1 \
+            tools/check_cpu_buffers.sh --negative-control '-fsanitize=address,undefined'
 
       - name: pyperformance runner and port record tests
         run: python3 -m unittest discover -s tools -p test_bench_pyperformance.py

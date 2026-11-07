@@ -165,7 +165,9 @@ python3 examples/miniui/check_backend.py --compiler ./pystachy
 ```
 
 The second command also compares native JIT, AOT and program-only GC-stress
-execution. A missing compiler does not count as a native pass. The fake backend
+execution. The stressed AOT run must report a positive collection count; a label
+or matching output alone is insufficient. A missing compiler does not count as a
+native pass. The fake backend
 checks scalar widths, UTF-8 input, unsigned RGBA, retained title ownership, clip
 batching, draw order, text/caret bounds and cleanup after empty or failed frames.
 It also launches a relocated adapter through `run.sh` from an unrelated working

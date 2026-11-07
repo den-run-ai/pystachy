@@ -6,6 +6,7 @@ checks native JIT, AOT and program-only GC stress. This is NOT a real-raylib tes
 """
 import argparse
 import os
+import re
 import shutil
 from pathlib import Path
 import subprocess
@@ -145,12 +146,17 @@ int mock_title_copy(void) {
 """
 
 
-def run(command: list[str], cwd: Path, env: dict[str, str]) -> str:
+def run(command: list[str], cwd: Path, env: dict[str, str], require_gc: bool = False) -> str:
     result = subprocess.run(command, cwd=cwd, env=env, text=True,
                             capture_output=True, timeout=180)
     if result.returncode:
         raise RuntimeError(f"{command!r} failed ({result.returncode})\n"
                            f"{result.stdout}{result.stderr}")
+    if require_gc:
+        witness = re.search(r"^gc: ([0-9]+) collections,", result.stderr, re.MULTILINE)
+        if witness is None or int(witness[1]) == 0:
+            raise AssertionError(f"AOT stress did not report collections: {result.stderr!r}")
+        print(f"AOT GC witness: {witness[1]} collections")
     return result.stdout
 
 
@@ -193,17 +199,20 @@ def main() -> None:
                 raise AssertionError(f"JIT output mismatch: {actual!r} != {expected!r}")
             print("JIT: matches")
             for stress in (False, True):
-                native_env = dict(env)
-                if stress:
-                    native_env["PYSTACHY_GC_STRESS_PROGRAM"] = "1"
                 exe = str(bundle / ("probe-stress" if stress else "demo"))
-                run([launcher, str(compiler), "build", probe, "-o", exe], caller, native_env)
+                run([launcher, str(compiler), "build", probe, "-o", exe], caller, env)
                 moved = work / ("stress bundle" if stress else "aot bundle")
                 bundle.rename(moved)
                 bundle = moved
                 launcher = str(bundle / "run.sh")
                 exe = str(bundle / ("probe-stress" if stress else "demo"))
-                actual = run([launcher, exe] if stress else [launcher], caller, native_env)
+                # Direct AOT execution reads the runtime setting. PROGRAM is
+                # translated by the driver for JIT only, not by this launcher.
+                native_env = dict(env, PYSTACHY_GC_STRESS="1" if stress else "0")
+                if stress:
+                    native_env["PYSTACHY_GC"] = "stats"
+                actual = run([launcher, exe] if stress else [launcher], caller,
+                             native_env, require_gc=stress)
                 if actual != expected:
                     raise AssertionError(f"AOT output mismatch: {actual!r} != {expected!r}")
                 print("AOT GC stress: matches" if stress else "AOT: matches")

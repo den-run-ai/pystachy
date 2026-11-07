@@ -352,7 +352,8 @@ collector charges each handle a conservative pressure estimate: 512 bytes plus
 the descriptor and up to 1 GiB of the retained root export. Multiple views can
 charge the same backing span repeatedly. This estimate is neither unique retained
 memory nor physical allocation/RSS. The Linux-only fault probe
-`tools/check_cpu_buffers.sh` tests malformed metadata and allocation cleanup;
+`tools/check_cpu_buffers.sh` tests malformed metadata and allocation cleanup.
+Lint runs its address/undefined-sanitized probe and missing-release negative control.
 `tests/ffi/py_cpu_buffer.py` and `tests/ffi/ext/cbclient.py` cover normal ownership,
 GC, aliases and numerical behavior.
 
