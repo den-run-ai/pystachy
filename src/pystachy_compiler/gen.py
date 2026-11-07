@@ -881,6 +881,7 @@ from src.pystachy_compiler.expressions import (
     gen_tslot as expressions_tslot,
     gen_truth as expressions_truth,
     gen_tuple_ as expressions_tuple_,
+    gen_list_const as expressions_list_const,
     gen_tuple_const as expressions_tuple_const,
     gen_dict_merge as expressions_dict_merge,
     gen_unroll as expressions_unroll,
@@ -1279,6 +1280,9 @@ class Gen:
         # by its module and items, and each one's Data, by its name (tupleret reads its slots)
         self.tconsts: dict[str, str] = {}
         self.tconstdata: dict[str, Data] = {}
+        # Immutable scalar list data, shared across functions/dry runs like the string pool.
+        # Frame save/restore leaves this module state in place; a Rejoin creates a fresh Gen.
+        self.lconsts: dict[str, str] = {}
         self.strs: dict[str, str] = {}
         self.bstrs: dict[str, str] = {}  # the name of each bytes constant (@b.N), by its bytes
         self.strvals: list[str] = []  # the text of each @s.N
@@ -4312,6 +4316,9 @@ class Gen:
 
     def tuple_const(self, n: Node, vals: list[Val]) -> Val:
         return expressions_tuple_const(self, n, vals)
+
+    def list_const(self, n: Node, vals: list[Val], t: str) -> Val:
+        return expressions_list_const(self, n, vals, t)
 
     def dict_merge(self, n: Node, want: str) -> Val:
         return expressions_dict_merge(self, n, want)

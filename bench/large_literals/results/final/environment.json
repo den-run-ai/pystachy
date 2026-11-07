@@ -1,0 +1,33 @@
+{
+  "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+  "available_affinity": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+  ],
+  "benchmark_affinity": [
+    3
+  ],
+  "bootstrap_affinity": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "host": [
+    "Linux",
+    "48ab3fa653bc",
+    "6.18.57",
+    "#1 SMP Tue Oct 20 21:56:04 UTC 2026",
+    "x86_64"
+  ],
+  "capture_note": "Hardware metadata captured after measurements in the same still-running container; timing report records each process affinity and host identity.",
+  "cpu.max": "800000 100000",
+  "memory.max": "8589934592"
+}

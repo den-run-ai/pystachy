@@ -501,6 +501,22 @@ at each run, as CPython's is. `tests/programs/containers/tuple_constant_identity
 `tests/programs/imports/tuple_constant_modules.py` check identity, and
 `tests/ir/tuple_const.calls` pins that such displays allocate nothing.
 
+Scalar list displays with at least 32 literal `int`, `float` or `bool` items use
+immutable `Data("listdata")` slots and one `list.from_const` operation. The normal
+item typing and coercion runs first. The runtime helper always allocates a fresh
+scanned header and pointer-free item array, then copies the exact eight-byte
+slots; float signed zeros and other bit patterns are not converted. The frontend
+emits one copy operation regardless of the item count. The helper remains
+eligible for LLVM inlining, preserving small-constant simplifications; LLVM
+controls the eventual copy expansion and optimized code size.
+Small, mixed, pointer-bearing, tuple and computed displays retain ordinary
+construction, as do all dynamic-Any and promoting-int program graphs. The data
+pool is module state like string constants: function save/restore and dry typing
+may retain immutable entries; a whole-program retry constructs a new `Gen`.
+`test_typed_list_constants.py` guards instruction growth and these boundaries;
+the differential literal fixtures and `listprobe` check fresh storage, mutations,
+exact slot bits, allocation kind and collection.
+
 A field's TBAA tag names the class whose struct lays the field out. A derived class's struct
 begins with its base's, flags included, so an inherited field has its base's tag whichever class
 a reference names, and two references to one object agree (the rule of `Gen.disjoint`). The

@@ -1,0 +1,95 @@
+{
+  "compiler_commit": "8ba1bc7928cdef48db1c59a8219c029d018b7b2a",
+  "records": [
+    {
+      "shape": "int",
+      "n": 32,
+      "bytes": 3569,
+      "sha256": "1322ba2df4f95260e8003a0f1837bec719a71bd143da29275916b8effb7f0361",
+      "instructions": 57,
+      "append_calls": 0,
+      "from_const_calls": 1,
+      "native_hosted_identical": true
+    },
+    {
+      "shape": "int",
+      "n": 1024,
+      "bytes": 12830,
+      "sha256": "9fe9e05b447dee370b41028664d894acd53abce51a8ab405a0183218713968c1",
+      "instructions": 57,
+      "append_calls": 0,
+      "from_const_calls": 1,
+      "native_hosted_identical": true
+    },
+    {
+      "shape": "int",
+      "n": 4096,
+      "bytes": 44111,
+      "sha256": "f743516bb7dcf91adb526ecd39d6c35c66a50c8d52ed79d533c13fef8d180ed0",
+      "instructions": 57,
+      "append_calls": 0,
+      "from_const_calls": 1,
+      "native_hosted_identical": true
+    },
+    {
+      "shape": "float",
+      "n": 32,
+      "bytes": 4238,
+      "sha256": "60e5095aa226dfb837e33e6ca151534d4501e9694a9a1a67a19e4b60c089aea8",
+      "instructions": 39,
+      "append_calls": 0,
+      "from_const_calls": 1,
+      "native_hosted_identical": true
+    },
+    {
+      "shape": "float",
+      "n": 1024,
+      "bytes": 51858,
+      "sha256": "40d81e1374a035f9e3362f76a5ddae2b48acf2d838352e19d330cb95c64a61d7",
+      "instructions": 39,
+      "append_calls": 0,
+      "from_const_calls": 1,
+      "native_hosted_identical": true
+    },
+    {
+      "shape": "float",
+      "n": 4096,
+      "bytes": 199314,
+      "sha256": "8a62ccb6f7b1473fa4bd1c63880ba10c6c20d5b41352b8c0b12e24563a85a4cb",
+      "instructions": 39,
+      "append_calls": 0,
+      "from_const_calls": 1,
+      "native_hosted_identical": true
+    },
+    {
+      "shape": "bool",
+      "n": 32,
+      "bytes": 3102,
+      "sha256": "9ce70de48527e1fdafe20bcfc71c1089d058c32c3dd8fe7500f7d8a4578de7f3",
+      "instructions": 39,
+      "append_calls": 0,
+      "from_const_calls": 1,
+      "native_hosted_identical": true
+    },
+    {
+      "shape": "bool",
+      "n": 1024,
+      "bytes": 10050,
+      "sha256": "c4f1dbf3b3e83682035d0e704f65526f2274257e8a84f4c12c8116c4856c2b6b",
+      "instructions": 39,
+      "append_calls": 0,
+      "from_const_calls": 1,
+      "native_hosted_identical": true
+    },
+    {
+      "shape": "bool",
+      "n": 4096,
+      "bytes": 31554,
+      "sha256": "7b0be9208b097fd8be3590571ebc6652065b96cb1f262e1f0f3c1d9cd1c9f085",
+      "instructions": 39,
+      "append_calls": 0,
+      "from_const_calls": 1,
+      "native_hosted_identical": true
+    }
+  ]
+}

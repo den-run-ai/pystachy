@@ -1,0 +1,6 @@
+{"label": "baseline", "input": "int-local-32", "sample": 0, "wall_s": 0.6830007750031655, "max_phase_rss_kib": 99892, "binary_bytes": 68872}
+{"label": "candidate", "input": "int-local-32", "sample": 0, "wall_s": 0.619092687004013, "max_phase_rss_kib": 100820, "binary_bytes": 68872}
+{"label": "candidate", "input": "int-local-32", "sample": 1, "wall_s": 0.5962761460032198, "max_phase_rss_kib": 100148, "binary_bytes": 68872}
+{"label": "baseline", "input": "int-local-32", "sample": 1, "wall_s": 0.5953310010008863, "max_phase_rss_kib": 100440, "binary_bytes": 68872}
+{"label": "baseline", "input": "int-local-32", "sample": 2, "wall_s": 0.5985004410031252, "max_phase_rss_kib": 100640, "binary_bytes": 68872}
+{"label": "candidate", "input": "int-local-32", "sample": 2, "wall_s": 0.5382568089989945, "max_phase_rss_kib": 99836, "binary_bytes": 68872}

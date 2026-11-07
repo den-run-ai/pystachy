@@ -57,7 +57,7 @@ NOT_RESET = {
 # and the function it interrupts sees what it added. Only Gen.__init__ assigns them of the lists.
 PROGRAM = """
     classes tmpl compiling utags specdone funcs aliases imports fglobals mvars gtypes globs gcroots
-    consts bconsts tconsts tconstdata strs bstrs strvals vnodes cmexit rtfns opfxs out fns fll summaries xcls xvals
+    consts bconsts tconsts tconstdata lconsts strs bstrs strvals vnodes cmexit rtfns opfxs out fns fll summaries xcls xvals
     xmods xsigs xctors xtypes exctree eh opts reds lazy lazyat wake called gflag ocls ocmp hcls one
     xobj impg wide nokey nonereads noneglobalpending attrvals attrown hints newhints final xnot newx retseen
     template_instances template_retained retainers unsupported cnodes hooks chooks flagged unraised

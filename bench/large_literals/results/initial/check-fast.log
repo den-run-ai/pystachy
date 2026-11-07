@@ -1,0 +1,84 @@
+ruff check
+All checks passed!
+mypy --config-file mypy.ini
+Success: no issues found in 49 source files
+/workspace/scratch/e98dc1e3e6cd/dev/bin/python tools/check_repository_hygiene.py
+repository hygiene: tracked paths are clean
+/workspace/scratch/e98dc1e3e6cd/dev/bin/python -m unittest discover -s tools -p test_repository_hygiene.py
+...........
+----------------------------------------------------------------------
+Ran 11 tests in 0.180s
+
+OK
+/workspace/scratch/e98dc1e3e6cd/dev/bin/python -m unittest discover -s tools -p test_function_summaries.py
+.......
+----------------------------------------------------------------------
+Ran 7 tests in 0.040s
+
+OK
+/workspace/scratch/e98dc1e3e6cd/dev/bin/python -m unittest discover -s tools -p 'test_typed*.py'
+............................................................................................................................................................................................
+----------------------------------------------------------------------
+Ran 188 tests in 5.585s
+
+OK
+/workspace/scratch/e98dc1e3e6cd/dev/bin/python -m unittest discover -s tools -p 'test_json*.py'
+..................................
+----------------------------------------------------------------------
+Ran 34 tests in 1.092s
+
+OK
+/workspace/scratch/e98dc1e3e6cd/dev/bin/python -m unittest discover -s tools -p test_numeric_identity.py
+........................................................
+----------------------------------------------------------------------
+Ran 56 tests in 0.312s
+
+OK
+/workspace/scratch/e98dc1e3e6cd/dev/bin/python -m unittest discover -s tools -p test_identity_scope.py
+.................
+----------------------------------------------------------------------
+Ran 17 tests in 3.952s
+
+OK
+/workspace/scratch/e98dc1e3e6cd/dev/bin/python -m unittest discover -s tools -p test_dynany_comparisons.py
+..................................................
+----------------------------------------------------------------------
+Ran 50 tests in 8.163s
+
+OK
+/workspace/scratch/e98dc1e3e6cd/dev/bin/python -m unittest discover -s tools -p test_dynany_dict_kinds.py
+...
+----------------------------------------------------------------------
+Ran 3 tests in 0.005s
+
+OK
+/workspace/scratch/e98dc1e3e6cd/dev/bin/python -m unittest discover -s tools -p test_diagnostic_capture.py
+........
+----------------------------------------------------------------------
+Ran 8 tests in 0.148s
+
+OK
+/workspace/scratch/e98dc1e3e6cd/dev/bin/python -m unittest discover -s tools -p test_loader_preprocessing.py
+............
+----------------------------------------------------------------------
+Ran 12 tests in 0.015s
+
+OK
+/workspace/scratch/e98dc1e3e6cd/dev/bin/python -m unittest discover -s tools -p test_parser_allocations.py
+........
+----------------------------------------------------------------------
+Ran 8 tests in 0.008s
+
+OK
+/workspace/scratch/e98dc1e3e6cd/dev/bin/python -m unittest discover -s tools -p test_inspect_compiler.py
+......................
+----------------------------------------------------------------------
+Ran 22 tests in 4.860s
+
+OK
+/workspace/scratch/e98dc1e3e6cd/dev/bin/python -m unittest discover -s tools -p test_pystachy_toolchain.py
+..
+----------------------------------------------------------------------
+Ran 2 tests in 0.012s
+
+OK

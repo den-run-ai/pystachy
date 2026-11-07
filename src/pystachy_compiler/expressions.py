@@ -1143,6 +1143,10 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         if lty == "list[dyn]":
             et = "dyn"  # (where the items are Any values or containers: ctype)
         items = [self.list_hold(kept[i] if i in kept else items[i], et) for i in range(len(items))]
+        if len(items) >= 32:
+            constant = self.list_const(n, items, lty)
+            if constant.v != "":
+                return constant
         r = self.rt("pys_list_new_atomic" if atomic_list(lty) else "pys_list_new", "ptr", [f"i64 {len(items)}"])
         for v in items:
             self.list_store(Val(r, lty), v, "append")
@@ -2395,6 +2399,28 @@ def gen_tuple_(self, vals: list[Val]) -> Val:
     for i in range(len(vals)):
         self.tput(Val(p, t), i, vals[i])
     return Val(p, t)
+
+def gen_list_const(self, n: Node, vals: list[Val], t: str) -> Val:
+    # Large all-scalar literal displays copy immutable data into a fresh atomic item array.
+    # Keep small displays, pointer-bearing items and graphs with numeric identity or promoting
+    # ints on the ordinary path. All items have already passed the usual typing/coercion rules.
+    if len(vals) < 32 or self.rtmode or dynamic_program() or int_lists() or not atomic_list(t):
+        return Val("", "")
+    for j in range(len(vals)):
+        e = n.kids[j]
+        if e.kind == "unary" and e.s == "-":
+            e = e.kids[0]
+        v = vals[j]
+        ok = (e.kind == "int" and v.t == "int" and v.lit and int_fits(v.v)) or (e.kind == "float" and v.t == "float" and v.lit and v.v.startswith("0x")) or (e.kind in ["True", "False"] and v.t == "bool" and v.v in ["true", "false"])
+        if not ok or v.t != elem(t):
+            return Val("", "")
+    key = t + "(" + ",".join([v.v for v in vals]) + ")"
+    if key not in self.lconsts:
+        d = Data("listdata", f"@lc.{len(self.lconsts)}")
+        d.items = [Val(v.v, v.t) for v in vals]
+        self.consts.append(d)
+        self.lconsts[key] = d.name
+    return Val(self.rt("pys_list_from_const", "ptr", [f"ptr {self.lconsts[key]}", f"i64 {len(vals)}"]), t)
 
 def gen_tuple_const(self, n: Node, vals: list[Val]) -> Val:
     # a tuple display of literals that the source writes (n.src), whose items are vals: the

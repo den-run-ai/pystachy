@@ -3041,6 +3041,16 @@ static List *list_new(I cap, int atomic) {
 }
 List *pys_list_new(I cap) { return list_new(cap, 0); }
 List *pys_list_new_atomic(I cap) { return list_new(cap, 1); }   /* a list[int], list[float] or list[bool] */
+/* Large scalar literals emit one copy operation plus immutable pointer-free slots, never
+   a live list's storage or an identity companion. LLVM may inline this helper and expand
+   memcpy as appropriate; the header and atomic item array are freshly allocated each time. */
+List *pys_list_from_const(const I *values, I n) {
+  if ((uint64_t)n > INT64_MAX / sizeof(I)) oom();
+  List *l = list_new(n, 1);
+  if (n) memcpy(l->a, values, n * sizeof(I));
+  l->len = n;
+  return l;
+}
 /* Only dynamic program graphs request this companion. The numeric array remains raw and
    atomic, preserving its C ABI. A raw in-place store clears its companion without allocating;
    a later observation or sharing operation materializes that new object. Pure moves carry

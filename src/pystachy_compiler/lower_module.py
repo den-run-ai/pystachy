@@ -265,6 +265,11 @@ def lower_data(d: Data) -> str:
         # reads, so that no other constant can share its address
         slots = ["i64 " + const_slot(v) for v in d.items] if len(d.items) > 0 else ["i64 0"]
         return f"{d.name} = private constant [{len(slots)} x i64] [{', '.join(slots)}], align 8"
+    if d.kind == "listdata":
+        # An immutable source array, never a Python object. Its address has no identity and
+        # copying its exact slots preserves float bits, including negative zero.
+        slots = ["i64 " + const_slot(v) for v in d.items]
+        return f"{d.name} = private unnamed_addr constant [{len(slots)} x i64] [{', '.join(slots)}], align 8"
     if d.kind == "callable" or d.kind == "exception":
         # (an ExcClass whose displayed name the program assigns, d.text, is written: exc_set_module)
         how = "global" if d.text == "global" else "constant"

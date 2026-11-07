@@ -1,0 +1,9 @@
+#!/bin/sh
+set -e
+cd /workspace/scratch/5798eb31a437/literal-init
+sh tests/run.sh ./pystachy "jit aot" tests/programs/containers/large_scalar_literal_order.py tests/programs/containers/large_scalar_literals.py tests/programs/containers/tuple_constant_identity.py tests/programs/inference/dynany_identity_list_items.py tests/programs/inference/dynany_identity_list_mutations.py tests/programs/inference/dynany_large_scalar_literal_identity.py tests/programs/language/summary_worklist.py tests/programs/library/lib_urllib_parse.py tests/programs/library/re_specialize.py tests/programs/library/re_specialize_recursion.py tests/programs/numbers/float_repr.py tests/programs/numbers/python_int_lists.py tests/programs/numbers/python_int_tuple_lists.py > /workspace/scratch/5798eb31a437/literal-evidence/final-validation/native.log 2>&1
+PYSTACHY_GC_STRESS_PROGRAM=1 sh tests/run.sh ./pystachy "jit aot" tests/programs/containers/large_scalar_literals.py tests/programs/containers/large_scalar_literal_order.py tests/programs/inference/dynany_large_scalar_literal_identity.py tests/programs/containers/tuple_constant_identity.py tests/programs/inference/dynany_identity_list_items.py tests/programs/inference/dynany_identity_list_mutations.py tests/programs/numbers/python_int_lists.py tests/programs/numbers/python_int_tuple_lists.py > /workspace/scratch/5798eb31a437/literal-evidence/final-validation/native-gc1.log 2>&1
+make check-runtime listprobe PY=/workspace/scratch/e98dc1e3e6cd/dev/bin/python > /workspace/scratch/5798eb31a437/literal-evidence/final-validation/runtime.log 2>&1
+make check-fast PY=/workspace/scratch/e98dc1e3e6cd/dev/bin/python > /workspace/scratch/5798eb31a437/literal-evidence/final-validation/check-fast.log 2>&1
+/workspace/scratch/e98dc1e3e6cd/dev/bin/python tools/test_frame_fields.py > /workspace/scratch/5798eb31a437/literal-evidence/final-validation/frame-fields.log 2>&1
+printf "final focused validation complete\n"
