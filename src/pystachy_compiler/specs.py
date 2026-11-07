@@ -213,6 +213,16 @@ IOMOD = "_pystachy_io"
 CALLS[IOMOD + ".default_encoding()"] = "pys_io_defenc:str"
 CALLS[IOMOD + ".locale_encoding()"] = "pys_io_locenc:str"
 CALLS[IOMOD + ".unsupported(str)"] = "pys_io_unsupported:None"
+# process.py's explicit owned-process API; CPython uses the Python twin of this
+# private module, while native programs enter the runtime without embedded Python.
+PROCESSMOD = "_pystachy_process"
+CALLS[PROCESSMOD + ".spawn(list[str])"] = "pys_process_spawn:int"
+CALLS[PROCESSMOD + ".pid(int)"] = "pys_process_pid:int"
+CALLS[PROCESSMOD + ".poll(int)"] = "pys_process_poll:int"
+CALLS[PROCESSMOD + ".wait(int,float)"] = "pys_process_wait:int"
+CALLS[PROCESSMOD + ".communicate(int,bytes,float,int)"] = "pys_process_communicate:tuple[bytes,bytes]"
+CALLS[PROCESSMOD + ".signal(int,int)"] = "pys_process_signal:None"
+CALLS[PROCESSMOD + ".close(int)"] = "pys_process_close:None"
 # the functions of the builtin modules, which a program may also use as values (Gen.call_value): those
 # of CALLS, and those Gen.builtin compiles itself
 MODFUNCS: dict[str, bool] = {}
@@ -275,6 +285,7 @@ for _k in ("AsyncGeneratorType BuiltinFunctionType BuiltinMethodType CapsuleType
     MODATTRS[TYPESMOD + "." + _k] = True
 MODULES[TYPESMOD] = True
 MODULES[IOMOD] = True
+MODULES[PROCESSMOD] = True
 GALIAS = TYPESMOD + ".GenericAlias"
 GALIASUSE = "types.GenericAlias is supported only as a class body's __class_getitem__ = classmethod(GenericAlias), CPython's idiom for a generic class: Pystachy has no generic aliases"
 TYPESUSE = "types.NAME is not supported: of the types module's names, Pystachy has MappingProxyType, TracebackType and GenericAlias, for a class body's __class_getitem__ = classmethod(GenericAlias)"
@@ -1056,6 +1067,11 @@ RUNTIME: dict[str, str] = {
     "gen.ignored": "None:str,%ptr|A I|", "gen.unraisable": "None:exc,str,%ptr|U|", "gen.closed": "exc:|I|",
     "personality": "%i32:%i32,%i32,int,%ptr,%ptr|I|",
     "init": "None:%i32,%ptr,%ptr,%ptr,int|A I|", "finish": "None:|U|", "exit_hook": "None:%ptr|I|", "frameaddress": "%ptr:%i32||llvm.frameaddress.p0",
+    # explicit owned-process workers (process.py): all handle access is stateful
+    "process.spawn": "int:list[str]|R A I rL|", "process.pid": "int:int|R I|",
+    "process.poll": "int:int|R I|", "process.wait": "int:int,float|R I|",
+    "process.communicate": "tuple[bytes,bytes]:int,bytes,float,int|R A I|",
+    "process.signal": "None:int,int|R I|", "process.close": "None:int|R I|",
     # files and the standard streams
     "write": "None:str,int|R I rF wF|", "input": "str:str|R A I rF wF|", "open": "file:str,str,str,str,int|R A I rF|", "std": "file:int||",
     "file.read": "str:S,int|R A I rF wF|", "file.readline": "str:S|R A I rF wF|", "file.readlines": "list[str]:S|R A I rF wF|",

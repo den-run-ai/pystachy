@@ -121,7 +121,11 @@ which a file's `fileno()` gives; other `select` APIs remain unsupported.
 ### Processes and threads
 
 `multiprocessing`, `subprocess` and `asyncio` are not shipped; a program runs on one thread,
-which `threading` and `_thread` describe.
+which `threading` and `_thread` describe. The experimental [`process`](../docs/process-workers.md)
+module lets Linux executable/JIT programs supervise separate processes with explicit argv,
+bounded binary communication, exit status and owned group cleanup. It is an experimental
+Pystachy-specific API, with a CPython twin in `tools/rt_cpython`. Compiled extension hosts
+reject native spawning; they retain the existing CPython-managed process path.
 
 | Module | Origin | Supported APIs | Main limitation |
 |---|---|---|---|

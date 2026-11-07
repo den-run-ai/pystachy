@@ -3,9 +3,12 @@
 This page is the execution contract for concurrency: what holds today, the guarantees that
 later features must keep, and the probes that check them. It specifies observable behavior;
 schedulers, threading backends and object representations remain free to change. Today each
-runtime runs on one thread, and parallel work runs in separate processes that CPython starts
-and that import [extension modules](ffi.md#extension-modules) compiled by
-`pystachy ext`. Native parallel loops ([#714](https://github.com/den-run-ai/pystachy/issues/714))
+runtime runs on one thread. CPython can start parallel processes that import
+[extension modules](ffi.md#extension-modules) compiled by `pystachy ext`. The Linux
+[`process.Popen` prototype](process-workers.md) also lets native programs start and
+supervise separate processes with explicit argv, binary pipes and owned cleanup. Its
+native spawn is limited to executables/JIT, not compiled-extension hosts. Native parallel
+loops ([#714](https://github.com/den-run-ai/pystachy/issues/714))
 and `async def` ([#12](https://github.com/den-run-ai/pystachy/issues/12)) are proposals, not
 features. [#754](https://github.com/den-run-ai/pystachy/issues/754) records the evidence behind
 this contract and tracks its plan.
@@ -47,8 +50,11 @@ code that their suite executes, not only named by a comment. The baseline is the
 
 A compiled program cannot import `queue`, `asyncio`, `concurrent.futures`, `multiprocessing`,
 `subprocess`, `contextvars`, `selectors`, `socket` or `signal`: the compiler reports that the
-module is not supported. Of process control it has `os.system()` and `os.execv()`, with no
-`fork`, pipe or spawn. Importing a module is not functional support: `_thread` and `threading`
+module is not supported. Standard-library process control has `os.system()` and
+`os.execv()`. The separate experimental `process` API supplies native spawn and
+communicate on Linux; it does not expose a general `fork` or pipe API. Its
+correctness and cleanup probes run in `tools/test_native_process_workers.py` in Lint.
+Importing a module is not functional support: `_thread` and `threading`
 import and run one thread, whose `Thread` objects do not start. An `abi3t` module refuses import under `PYTHON_GIL=0`;
 that check needs a free-threaded CPython 3.15, which CI does not run.
 
