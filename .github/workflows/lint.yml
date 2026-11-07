@@ -159,6 +159,9 @@ jobs:
       - name: Linux ELF compatibility audit controls
         run: python3 -m unittest discover -s tools -p test_linux_abi.py
 
+      - name: Installed JSON repair wheel validation controls
+        run: python3 -m unittest discover -s tools -p test_json_repair_wheel.py
+
       - name: Generated regex matcher tests
         run: python3 -m unittest discover -s tools -p test_re_specialize.py
 
