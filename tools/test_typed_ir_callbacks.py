@@ -9,7 +9,10 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.pystachy_compiler.gen import Gen
+from src.pystachy_compiler.callbacks import callback_clone
+from src.pystachy_compiler.ir import FnInfo, IFn, Loop, Val
 from src.pystachy_compiler.loader import Loader
+from src.pystachy_compiler.syntax import Node
 from src.pystachy_compiler.utils import identity_abi
 
 
@@ -68,6 +71,35 @@ def target_guards(fn):
 
 
 class CallbackSpecializationTests(unittest.TestCase):
+    def test_cloning_preserves_every_loop_fact_without_sharing_lists(self):
+        fn = IFn(FnInfo("kernel", "@kernel", Node("def", "kernel", 1), ""))
+        loop = Loop("range", "head", "body", "step", "exit")
+        loop.mode, loop.ctr, loop.nonnegative = "enumerate", "%counter.1", True
+        loop.stop = Val("%t8", "int")
+        loop.seqs = [Val("%a1", "list[float]")]
+        loop.tests, loop.idx = ["body"], ["%t9"]
+        fn.loops = [loop]
+        cloned = callback_clone(fn, 0, "@target", "@code", "callable[float,float]", {}, 0).loops[0]
+        # New facts must receive a nondefault witness here and a cloning rule.
+        self.assertEqual(set(vars(loop)), {"kind", "head", "body", "step", "exit", "mode", "ctr",
+                                          "nonnegative", "stop", "seqs", "tests", "idx"})
+        self.assertEqual(vars(cloned).keys(), vars(loop).keys())
+        for field, value in vars(loop).items():
+            other = getattr(cloned, field)
+            with self.subTest(field=field):
+                if isinstance(value, Val):
+                    self.assertEqual(vars(other), vars(value))
+                    self.assertIsNot(other, value)
+                elif isinstance(value, list):
+                    self.assertEqual([vars(v) if isinstance(v, Val) else v for v in other],
+                                     [vars(v) if isinstance(v, Val) else v for v in value])
+                    self.assertIsNot(other, value)
+                    for original, copied in zip(value, other):
+                        if isinstance(original, Val):
+                            self.assertIsNot(copied, original)
+                else:
+                    self.assertEqual(other, value)
+
     def test_two_entry_guards_keep_fallback_and_call_the_matching_adapters(self):
         # The kernel is first compiled before negative/third acquire adapters.
         # Discovery must see the completed program, but keep only two versions.
