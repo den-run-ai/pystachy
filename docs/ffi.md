@@ -263,7 +263,7 @@ host interpreter.
 ### The API
 
 A program may use what the twin's `__all__` names. Importing another name of
-`pyobj`, calling `Object(...)`, using an `Object`'s fields, or reflecting on one
+`pyobj`, calling `Object(...)` or `Buffer(...)`, using their fields, or reflecting on one
 (`dir()`, `vars()`, `hasattr()`, `getattr()` with a default) is a compile-time
 error: the twin's `Object` is another class.
 
@@ -276,9 +276,85 @@ error: the twin's `Object` is another class.
 | `len(o)`, `bool(o)`, `str(o)`, `repr(o)` | The same operations. |
 | `o.to_int()`, `o.to_float()` | `PyLong_AsLongLong` (`__index__`, signed 64-bit) and `PyFloat_AsDouble` (no str). |
 | `o.close()` | Releases the reference; a closed `Object` raises `ValueError`. |
+| `o.buffer_f64(writable=False)` | Retains a one-dimensional native float64 CPU buffer; see the prototype below. |
 
 No container converts implicitly; Pystachy code reaches Python's containers as
 `Object`s ([#108](https://github.com/den-run-ai/pystachy/issues/108)).
+
+### Retained CPU buffer prototype
+
+`Object.buffer_f64()` acquires a [CPython buffer export](https://docs.python.org/3/c-api/buffer.html)
+and returns an opaque `Buffer`. This is a bounded ownership experiment for
+[#493](https://github.com/den-run-ai/pystachy/issues/493) and
+[#582](https://github.com/den-run-ai/pystachy/issues/582): the first consumer is a
+native dot product over existing host arrays. Imports require one dimension,
+native format `d`, eight-byte items, a positive eight-byte stride and direct
+storage. Empty and unaligned buffers are supported. Wrong formats, dimensions,
+indirection and noncontiguous imports are rejected before reading payload data.
+An [optional CPython DLPack adapter](../examples/cpu_dlpack/README.md) uses
+NumPy to expose a compatible CPU view. Arrow, device memory and general ndarray
+operations remain outside this native buffer API.
+
+```python
+from pyobj import import_module
+
+batch = import_module("host_batches").attr("batch")  # e.g. array.array('d')
+values = batch.buffer_f64()
+batch.close()
+reverse = values.view(len(values) - 1, len(values), -1)  # nonempty batch
+values.close()
+score = reverse.dot(reverse)
+reverse.close()
+```
+
+The complete across-call scoring consumer is
+[`tests/ffi/ext/cb.py`](../tests/ffi/ext/cb.py); the Python host creates arrays once
+and calls `retain()`, `score()` repeatedly, then `release()`. Its extension test
+also drops the host's array reference between calls. Reproduction and measured
+results are in [`bench/cpu_buffers`](../bench/cpu_buffers/README.md).
+
+| Buffer operation | Contract |
+|---|---|
+| `len(b)`, `b.dtype()`, `b.shape()` | Logical item count, `"float64"`, and `[count]`. |
+| `b.strides()`, `b.offset()` | Signed byte stride and byte offset from the imported export's logical start. An imported memoryview slice starts at offset zero in its own export. |
+| `b.nbytes()`, `b.storage_nbytes()` | Logical payload bytes and the retained root export's span. The latter is not necessarily the original allocation's full size. |
+| `b.readonly()` | Whether this handle forbids writes; the default is `True` even for mutable exporters. |
+| `b.view(start, count, step=1)` | An independently retained view. `start` and `count` are nonnegative; `step` is nonzero. Both endpoints must be in the parent, with checked signed 64-bit offset/stride arithmetic. Reverse views are supported. An empty view permits `start == len(b)` and normalizes offset to zero. |
+| `b.get(index)`, `b.set(index, value)` | One indexed load/store; negative indices follow Python indexing. `set` requires a writable handle. |
+| `b.dot(other)` | Equal-length sequential binary64 multiplication and addition, starting at positive zero. No fused multiply-add or reassociation; NaN and infinity propagate. Empty dot returns positive zero. |
+| `b.close()` | Idempotent release of this handle. All other operations on it then raise `ValueError`. |
+
+The root descriptor keeps the `Py_buffer` in a
+[PyCapsule](https://docs.python.org/3/c-api/capsule.html). Derived descriptors retain
+that root capsule, so closing a source `Object` or a parent `Buffer` cannot
+invalidate a live child. The last capsule release calls `PyBuffer_Release`
+exactly once; the exporter owns and frees its storage. A compliant export pins
+its address and size, which makes resizing an exported `array.array` fail with
+`BufferError`. Dropped buffers use the existing deferred foreign-reference
+release path, including collection and shutdown. Descriptor/capsule allocation
+failures release any acquired export or owner reference.
+
+Every operation holds the GIL, and the dot loop runs without Python callbacks or
+releasing it. Read-only access does not freeze aliases: host writes between calls
+are visible. External threads that write without the GIL need synchronization
+outside this API. The native extension's existing owner-thread restriction still
+applies. Exporter metadata is an ABI contract: validation cannot verify the
+allocation size of a malicious exporter.
+
+Acquisition requests `PyBUF_FULL_RO`, like the CPython twin's `memoryview`.
+`writable=True` permits stores only when that returned export is writable; it
+does not issue a separate `PyBUF_WRITABLE` request. Exporters that expose writable
+storage only on an explicit writable request are outside this prototype. Derived
+views inherit the handle's permission.
+
+Dot reads the payload directly, without copying it or boxing each element. The
+collector charges each handle a conservative pressure estimate: 512 bytes plus
+the descriptor and up to 1 GiB of the retained root export. Multiple views can
+charge the same backing span repeatedly. This estimate is neither unique retained
+memory nor physical allocation/RSS. The Linux-only fault probe
+`tools/check_cpu_buffers.sh` tests malformed metadata and allocation cleanup;
+`tests/ffi/py_cpu_buffer.py` and `tests/ffi/ext/cbclient.py` cover normal ownership,
+GC, aliases and numerical behavior.
 
 ### Startup, output and exceptions
 
