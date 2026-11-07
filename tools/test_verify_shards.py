@@ -64,7 +64,7 @@ class ShardVerificationTests(unittest.TestCase):
         for name in ("tests", "tests/programs", "tests/programs/x", "tests/deviations", "tests/errors",
                      "tests/errors/x", "src", "lib", "ryu", "mpz", "bin", "tools"):
             (self.root / name).mkdir()
-        for name in ("tests/verify.sh", "tests/corpus.sh", "tools/irsame.sh"):
+        for name in ("tests/verify.sh", "tests/corpus.sh", "tools/irsame.sh", "tools/ci_sample.py"):
             shutil.copy(ROOT / name, self.root / name)
         for name in ("pystachy.py", "runtime.py", "runtime.c", "tests/programs/x/example.py",
                      "tests/programs/x/syntax_example.py", "tests/deviations/example.py"):
@@ -79,12 +79,16 @@ from pathlib import Path
 import shutil
 import sys
 args = sys.argv[1:]
+if args and args[0] == "tools/ci_sample.py":
+    os.execv(sys.executable, [sys.executable, *args])
 if args == ["-"]:
     os.execv(sys.executable, [sys.executable, "-"])
 if args == ["--version"]:
     print("mock compiler")
     sys.exit(0)
 if args and args[0] == "-c":  # (the hosted step's py_compile of the compiler's modules)
+    if "selected_cases" in args[1]:
+        os.execv(sys.executable, [sys.executable, *args])
     sys.exit(0)
 hosted = args[:2] == ["-m", "pystachy"]  # (tests-cpython's: $PY -m pystachy)
 if hosted:
@@ -144,7 +148,12 @@ case "$compiler $mode" in
   */pystachy2" jit aot") [ -z "$PYSTACHY_CFLAGS" ] || exit 9; m=2 ;;
   */pystachy-nopy" jit aot") [ -z "$PYSTACHY_CFLAGS" ] && [ -z "$PY" ] || exit 9; m=2 ;;
   */pystachy-ubsan" aot") case $PYSTACHY_CFLAGS in *-fsanitize=undefined*) ;; *) exit 9 ;; esac; m=1 ;;
-  */pystachy2" jit") case $UBSAN_OPTIONS in *handle_segv=0*) ;; *) exit 9 ;; esac; m=1 ;;
+  */pystachy2" jit")
+    if [ "$VERIFY_PROFILE" != pr ]; then
+      case $UBSAN_OPTIONS in *handle_segv=0*) ;; *) exit 9 ;; esac
+    fi
+    m=1 ;;
+  */pystachy2" aot") [ "$VERIFY_PROFILE" = pr ] || exit 9; m=1 ;;
   *) echo "unexpected suite: $compiler $mode"; exit 9 ;;
 esac
 [ $# -gt 0 ] || exit 9
@@ -170,10 +179,10 @@ esac
         self.env = {**os.environ, "PY": str(compiler), "LC_ALL": "C.UTF-8", "PYSTACHY_LLVM": str(self.root / "bin"),
                     "PATH": str(self.root / "bin") + os.pathsep + os.environ["PATH"]}
 
-    def run_group(self, group, mode="pass"):
+    def run_group(self, group, mode="pass", profile="full"):
         (self.root / "mock-mode").write_text(mode)
         result = subprocess.run(["sh", "tests/verify.sh", group], cwd=self.root,
-                                env={**self.env, "VERIFY_MOCK_MODE": mode},
+                                env={**self.env, "VERIFY_MOCK_MODE": mode, "VERIFY_PROFILE": profile, "CI_BASE_SHA": ""},
                                 text=True, capture_output=True, timeout=60)
         report = json.loads((self.root / "build/verification.json").read_text())
         logs = {step["name"]: (self.root / step["log"]).read_text() for step in report["steps"]}
@@ -181,6 +190,33 @@ esac
 
     def selected(self, log):
         return [line.removeprefix("selected: ") for line in log.splitlines() if line.startswith("selected: ")]
+
+    def test_pr_native_modes_run_complete_disjoint_halves_with_exact_single_mode_counts(self):
+        halves = reference_shards(CASES, WEIGHTS, DEFAULTS, 2)[0]
+        pairs = []
+        for mode in ("jit", "aot"):
+            for index in range(2):
+                group = f"native-{mode}-{index}"
+                name = f"tests-{group}"
+                with self.subTest(group=group):
+                    result, report, logs = self.run_group(group, profile="pr")
+                    self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                    self.assertEqual([step["name"] for step in report["steps"]], ["bootstrap", name])
+                    step = report["steps"][1]
+                    self.assertEqual(step["modes"], [mode])
+                    self.assertEqual(step["compiler"], "stage2")
+                    self.assertEqual((step["shard_index"], step["shard_count"]), (index, 2))
+                    self.assertEqual(step["selected_cases"], halves[index])
+                    self.assertEqual(self.selected(logs[name]), halves[index])
+                    self.assertEqual((step["passed"], step["failed"], step["expected"]),
+                                     (checks(halves[index], mode), 0, checks(halves[index], mode)))
+                    self.assertIn(f"/pystachy2 {mode}\n", logs[name])
+                    pairs.extend((case, mode) for case in halves[index])
+                    for failure in ("suite-failure", "short-suite"):
+                        failed, failed_report, _ = self.run_group(group, failure, profile="pr")
+                        self.assertNotEqual(failed.returncode, 0)
+                        self.assertEqual(failed_report["result"], "fail")
+        self.assertCountEqual(pairs, [(case, mode) for case in CASES for mode in ("jit", "aot")])
 
     def test_each_shard_runs_its_share_of_the_corpus(self):
         observed = {}

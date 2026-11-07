@@ -130,7 +130,7 @@ cd "$(dirname "$0")/.." || exit 1
 # shellcheck disable=SC3045 # (ulimit -c is not POSIX, but dash, bash, ksh and busybox have it)
 ulimit -c 0 2> /dev/null  # (no core file of a crashing compiler or test program in the tree)
 ROOT=$(pwd)
-# PRs keep the complete native corpus in two workers and sample the alternate configurations.
+# PRs keep the complete native corpus in two workers per execution mode and sample alternate configurations.
 # Full verification remains the default for main, releases and local runs. The report gate binds
 # this explicit profile and the independently reproduced sample; a PR report is never full evidence.
 PROFILE=${VERIFY_PROFILE:-full}
@@ -144,13 +144,14 @@ esac
 plan() {
   if [ "$PROFILE" = pr ]; then
     case $1 in
-      all) echo 'bootstrap tests-cpython tests-native-0 tests-native-1 tests-opt-off-0 runtime-cache python-free-0 ubsan-0 gc-self gc-jit-0 gc-aot-0 benchmarks example-cli dynany-optin-0 python-int-optin-0 annotation-widening check-ir runtime-table rtcheck re-fuzz dynany-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code aot-dead-code unicode-audit scaling-0 scaling-1'; return ;;
+      all) echo 'bootstrap tests-cpython tests-native-jit-0 tests-native-jit-1 tests-native-aot-0 tests-native-aot-1 tests-opt-off-0 runtime-cache python-free-0 ubsan-0 gc-self gc-jit-0 gc-aot-0 benchmarks example-cli dynany-optin-0 python-int-optin-0 annotation-widening check-ir runtime-table rtcheck re-fuzz dynany-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code aot-dead-code unicode-audit scaling-0 scaling-1'; return ;;
+      native-jit-[01]|native-aot-[01]) echo "bootstrap tests-$1"; return ;;
       safety-0) echo 'bootstrap tests-opt-off-0 python-free-0 gc-jit-0'; return ;;
       safety-1) echo 'bootstrap ubsan-0 gc-aot-0'; return ;;
       opt-in) echo 'bootstrap dynany-optin-0 python-int-optin-0 annotation-widening'; return ;;
       cache-gc) echo 'bootstrap runtime-cache gc-self'; return ;;
       benchmarks) echo 'bootstrap benchmarks example-cli scaling-0 scaling-1'; return ;;
-      bootstrap|hosted|native-0|native-1|contracts) ;; # shared names and steps below
+      bootstrap|hosted|contracts) ;; # shared names and steps below
       *) echo "verify: unknown PR group: $1" >&2; return 2 ;;
     esac
   fi
@@ -203,7 +204,7 @@ plan() {
 GROUP=${1:-all}
 if [ "$GROUP" = --list ]; then
   groups='all bootstrap hosted native-0 native-1 native-2 opt-off-0 opt-off-1 opt-off-2 python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 ubsan-3 gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 runtime-cache dynany-optin-0 dynany-optin-1 dynany-optin-2 python-int-optin-0 python-int-optin-1 python-int-optin-2 contracts benchmarks scaling'
-  [ "$PROFILE" != pr ] || groups='all bootstrap hosted native-0 native-1 safety-0 safety-1 opt-in contracts cache-gc benchmarks'
+  [ "$PROFILE" != pr ] || groups='all bootstrap hosted native-jit-0 native-jit-1 native-aot-0 native-aot-1 safety-0 safety-1 opt-in contracts cache-gc benchmarks'
   for g in $groups; do
     printf '%s %s\n' "$g" "$(plan "$g")"
   done
@@ -573,17 +574,25 @@ if want tests-cpython; then
   done < "$V/tests-cpython-strata.log")
   step tests-cpython $r "$s" "$L" ', "compiler": "CPython-hosted", "reference": "stage2", "ir_cases": '"${ir_n:-0}"', "ir_identical": '"$ir_ok"', "check_cases": '"$chk_n"', "check_identical": '"$chk_ok"', "modes": ["jit", "aot"], "sample_index": 0, "sample_count": '"$HOSTED_SAMPLE_OF"', "sample_cases": '"$#"', "sample": ['"${sample#, }"'], "sample_strata": {'"${strata#, }"'}'"$x"
 fi
-for shard in 0 1 2; do
-  want tests-native-$shard || continue
-  L=$V/tests-native-$shard.log; s=$(now); r=fail
-  shard_cases $shard "$NATIVE_SHARDS" "$V/tests-native-$shard-cases.log"
+native_steps='tests-native-0 tests-native-1 tests-native-2'
+[ "$PROFILE" != pr ] || native_steps='tests-native-jit-0 tests-native-jit-1 tests-native-aot-0 tests-native-aot-1'
+for native_step in $native_steps; do
+  want "$native_step" || continue
+  shard=${native_step##*-}; modes='jit aot'; mode_json='["jit", "aot"]'
+  case $native_step in
+    tests-native-jit-*) modes=jit; mode_json='["jit"]' ;;
+    tests-native-aot-*) modes=aot; mode_json='["aot"]' ;;
+  esac
+  L=$V/$native_step.log; s=$(now); r=fail
+  shard_cases "$shard" "$NATIVE_SHARDS" "$V/$native_step-cases.log"
   set --
-  while IFS= read -r f; do set -- "$@" "$f"; done < "$V/tests-native-$shard-cases.log"
+  while IFS= read -r f; do set -- "$@" "$f"; done < "$V/$native_step-cases.log"
   # An empty shard must not silently invoke run.sh's whole-suite default.
-  [ $# != 0 ] || { echo 'empty native shard' > "$L"; step tests-native-$shard fail "$s" "$L" ""; continue; }
-  PYSTACHY_CASE_TIMES="$V/tests-native-$shard-times.log" tests/run.sh "$V/pystachy2" "jit aot" "$@" > "$L" 2>&1
-  x=$(tests "$(checks "jit aot" "$@")" "$L" 2>> "$L") && r=pass
-  step tests-native-$shard $r "$s" "$L" ', "compiler": "stage2", "modes": ["jit", "aot"], "shard_index": '"$shard"', "shard_count": '"$NATIVE_SHARDS$x$(case_fields "$V/tests-native-$shard-cases.log")"
+  # One-mode PR groups repeat the cheap rejection/parser checks; no corpus case is filtered out.
+  [ $# != 0 ] || { echo 'empty native shard' > "$L"; step "$native_step" fail "$s" "$L" ""; continue; }
+  PYSTACHY_CASE_TIMES="$V/$native_step-times.log" tests/run.sh "$V/pystachy2" "$modes" "$@" > "$L" 2>&1
+  x=$(tests "$(checks "$modes" "$@")" "$L" 2>> "$L") && r=pass
+  step "$native_step" $r "$s" "$L" ', "compiler": "stage2", "modes": '"$mode_json"', "shard_index": '"$shard"', "shard_count": '"$NATIVE_SHARDS$x$(case_fields "$V/$native_step-cases.log")"
 done
 for shard in 0 1 2; do
   want tests-opt-off-$shard || continue
