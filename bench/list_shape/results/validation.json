@@ -1,0 +1,68 @@
+{
+  "compiler_commit": "1e4359a0cffd15fc330c9038cb75163a063f5c3f",
+  "baseline_published_commit": "1dc2a4bb3db43a5c0f1e8ab02b12c8aeecd5fb9d",
+  "toolchain": {
+    "python": "3.13.16",
+    "llvm": "18.1.3"
+  },
+  "native_fixed_points": {
+    "compiler_ir_lines": 834805,
+    "runtime_ir_lines": 18805,
+    "stages": 3
+  },
+  "fast_checks": {
+    "tests": 426,
+    "typed_ir_tests": 196,
+    "ruff": "pass",
+    "mypy_source_files": 49,
+    "hygiene": "pass"
+  },
+  "lint": {
+    "ruff": "pass",
+    "shellcheck": "pass",
+    "clang_syntax": "both modes pass",
+    "static_pointer_stores": 67,
+    "gc_root_problems": 0
+  },
+  "runtime_registry": {
+    "entries": 644,
+    "exception_classes": 70,
+    "subset_functions": 172
+  },
+  "native": {
+    "ordinary_jit_aot_checks": 30,
+    "program_gc_checks": 12,
+    "disabled_listget_checks": 6,
+    "extra_changed_corpus_jit_aot_checks": 6,
+    "total_ordinary_checks": 36,
+    "failures": 0
+  },
+  "commands": {
+    "bootstrap": "make -B pystachy PY=python3.13",
+    "fast": "make check-fast PY=python3.13",
+    "lint": "make lint PY=python3.13",
+    "runtime": "make check-runtime PY=python3.13",
+    "native": "PYSTACHY_JOBS=2 PYSTACHY_IRCHECK=1 tests/run.sh ./pystachy \"jit aot\" tests/programs/optimizations/opt_listget*.py tests/programs/optimizations/opt_list_read_contracts.py tests/programs/numbers/python_int_lists.py tests/programs/inference/dynany_identity_list_*.py tests/programs/inference/dynany_native_int_list_slice_*.py",
+    "gc": "PYSTACHY_JOBS=2 PYSTACHY_IRCHECK=1 PYSTACHY_GC_STRESS_PROGRAM=1 tests/run.sh ./pystachy \"jit aot\" tests/programs/optimizations/opt_listget_shape.py tests/programs/optimizations/opt_list_read_contracts.py tests/programs/numbers/python_int_lists.py tests/programs/inference/dynany_identity_list_scalar_reads.py tests/programs/inference/dynany_identity_list_mutations.py tests/programs/inference/dynany_identity_list_transfers.py",
+    "disabled": "PYSTACHY_JOBS=2 PYSTACHY_IRCHECK=1 PYSTACHY_OPT=-listget tests/run.sh ./pystachy \"jit aot\" tests/programs/optimizations/opt_listget_shape.py tests/programs/optimizations/opt_listget_range.py tests/programs/optimizations/opt_list_read_contracts.py",
+    "changed_corpus_programs": "PYSTACHY_JOBS=1 PYSTACHY_IRCHECK=1 tests/run.sh ./pystachy \"jit aot\" tests/programs/apps/example_nanogpt.py tests/programs/apps/ouro2_sorts.py tests/programs/strings/unicode_codepoints.py",
+    "corpus": "PYSTACHY_JOBS=1 tools/irsame.sh /path/to/contracts/pystachy ./pystachy",
+    "corpus_environment": "First compare separate homes. After verifying identical libraries/runtime, rerun the 265 changed cases with one explicit PYSTACHY_HOME. Retained-output copies of the oracle changed only logging/retention, not comparison semantics."
+  },
+  "independent_reviews": {
+    "trusted_primitive_bodies_audited": 10,
+    "adversarial_hosted_probes": 6,
+    "combined_hosted_tests": 104,
+    "combined_commit": "30fb9ee61da3b97b34f8c4e395a5c50fb55bd95e",
+    "combined_tree": "4c8c914129418e745190cdc3ec3f3486057bb36e",
+    "combined_global_inventory_modules": 48,
+    "combined_global_inventory_errors": 0
+  },
+  "limits": [
+    "Full local make verify and sanitizer builds were not run.",
+    "Full corpus comparison does not execute the full corpus.",
+    "Warm JIT update gain is specific to this benchmark; read-only process control regresses 10.6%.",
+    "No end-to-end ndarray, SciMark or nanoGPT performance gain is claimed.",
+    "All subsequent evidence edits leave compiler/runtime sources unchanged."
+  ]
+}

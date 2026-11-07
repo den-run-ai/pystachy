@@ -344,6 +344,15 @@ analysis facts for already compiled functions, not runtime type profiles or new 
 support. `tools/test_function_summaries.py` compares incremental updates against a full
 fixed-point oracle; `tests/programs/language/summary_worklist.py` also executes the solver natively.
 
+For local bounds proofs, `LIST_STABLE_SHAPE` refines audited list primitives into
+element writes, identity-companion writes and fresh-result construction. These
+operations preserve every input list's length and element-storage pointer. They
+retain their normal `wL`, allocation and exception effects; `list.copy`, in
+particular, may initialize the source's identity companion and is not pure.
+The bounds pass does not propagate this refinement through arbitrary functions
+or infer disjoint buffers. Missing contracts, raw writes, resizing operations and
+unknown callbacks remain barriers.
+
 | Letter | Meaning |
 |---|---|
 | `R` | May raise; includes exception allocation on that path |
@@ -445,7 +454,7 @@ rerun `Gen.effects`; exact effect reporting already does so after a rewrite.
 | Pass | Analyses built locally | Additional invalidation after a rewrite |
 |---|---|---|
 | `charslots` | Use counts, private slot accesses and predecessor reachability | Slot layout and instruction-derived proofs |
-| `listget` | Predecessors, loop bounds, values and invariant slots | Instruction-derived value, range and alias proofs |
+| `listget` | Predecessors, loop bounds, values, invariant slots and primitive shape effects | Instruction-derived value, range and alias proofs |
 | `dictfuse` | Predecessors, values and lookup proofs | Instruction-derived value, range and alias proofs |
 | `unionslots` | Values, uses, aliases and reaching stores | Read-effect bounds, slot layout and instruction-derived proofs |
 | `nullcheck` | Predecessors, dominators, values and reaching stores | CFG, dominance and instruction-derived proofs |
@@ -472,10 +481,14 @@ Disable one with `PYSTACHY_OPT=-dictfuse`, several with a comma-separated list, 
 `PYSTACHY_OPT=-all`. Differential runs check that the choices preserve behavior.
 
 For `range(k, len(xs), step)`, `listget` reads the owner from the captured `list.len`
-and requires a nonnegative constant start and a positive constant step. It proves the first matching read uses the same list and the
+and requires a nonnegative constant start and a positive constant step. It proves
+matching reads use the same list and the
 unchanged induction value on a forward path without joins; entry-only local stores
 can establish invariant list bindings. The whole function must exclude list writes
-(`wL`) and unknown user code (`U`), so a captured length remains valid across iterations.
+without an audited shape-preserving contract and unknown user code (`U`), so a
+captured length remains valid across iterations. Indexed updates, reversal, copies
+and slices can preserve that proof. Element loads remain in their original order,
+including separate reads before and after a write; bounds do not imply unchanged values.
 Coroutines are excluded because their callers can mutate a list while they are suspended.
 Other range reads retain their bounds checks.
 

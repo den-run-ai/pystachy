@@ -1,0 +1,121 @@
+{
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.39",
+  "cpu": 0,
+  "python": "3.13.16 (main, Oct 14 2026, 01:04:01) [Clang 23.1.3 ]",
+  "mode": "aot-process",
+  "size": 8192,
+  "rounds": 10000,
+  "pairs": 9,
+  "source_sha256": "cac6c14a2fb5b9a946ee1a3d3c4264c8bdd8e4925930e8ef37cff7d569711822",
+  "binaries": {
+    "baseline": {
+      "path": "/workspace/scratch/773660c98364/list-shape-final-baseline",
+      "bytes": 90760,
+      "sha256": "a3c4767d0167d32b3c5513eda2c5064fe944790de888228f8e32307e46f6b9f8"
+    },
+    "candidate": {
+      "path": "/workspace/scratch/773660c98364/list-shape-final-candidate",
+      "bytes": 90760,
+      "sha256": "f6b1cbac3d180be648109788efe89ddf835aea4fd3e6d0ee820bbba050be7303"
+    }
+  },
+  "workloads": {
+    "update": {
+      "expected": "81930752.00000009\n",
+      "samples_s": {
+        "baseline": [
+          0.07288728799903765,
+          0.07558147099916823,
+          0.07392227899981663,
+          0.07487647399830166,
+          0.07798373900004663,
+          0.07251380699744914,
+          0.07410915099899285,
+          0.08071422899956815,
+          0.07513884699437767
+        ],
+        "candidate": [
+          0.07693150799605064,
+          0.08065418098703958,
+          0.08742266200715676,
+          0.0705960620107362,
+          0.0788229030004004,
+          0.07498655200470239,
+          0.07574443799967412,
+          0.0745447189983679,
+          0.08319843201024923
+        ]
+      },
+      "medians_s": {
+        "baseline": 0.07487647399830166,
+        "candidate": 0.07693150799605064
+      },
+      "speedup": 0.9732874858262953,
+      "sample_ranges_s": {
+        "baseline": [
+          0.07251380699744914,
+          0.08071422899956815
+        ],
+        "candidate": [
+          0.0705960620107362,
+          0.08742266200715676
+        ]
+      },
+      "candidate_faster_pairs": 2
+    },
+    "read": {
+      "expected": "76800000.0\n",
+      "samples_s": {
+        "baseline": [
+          0.07201108599838335,
+          0.07495366600051057,
+          0.0759164979972411,
+          0.07503681900561787,
+          0.07656286298879422,
+          0.07418125300318934,
+          0.07478963398898486,
+          0.0742819829902146,
+          0.07394413299334701
+        ],
+        "candidate": [
+          0.07280241600528825,
+          0.07096670300234109,
+          0.071375027007889,
+          0.07193306600674987,
+          0.10601586299890187,
+          0.07702564800274558,
+          0.07455088999995496,
+          0.07420431800710503,
+          0.07493969499773812
+        ]
+      },
+      "medians_s": {
+        "baseline": 0.07478963398898486,
+        "candidate": 0.07420431800710503
+      },
+      "speedup": 1.0078878965213829,
+      "sample_ranges_s": {
+        "baseline": [
+          0.07201108599838335,
+          0.07656286298879422
+        ],
+        "candidate": [
+          0.07096670300234109,
+          0.10601586299890187
+        ]
+      },
+      "candidate_faster_pairs": 5
+    }
+  },
+  "provenance": {
+    "baseline_published_commit": "1dc2a4bb3db43a5c0f1e8ab02b12c8aeecd5fb9d",
+    "baseline_local_complete_commit": "8a1c5b5eb1700522028efd51faac00bf2c37828d",
+    "baseline_native_core_commit": "4fd481b061be50b16943e28aa5861c09c6951c6c",
+    "candidate_local_compiler_commit": "1e4359a0cffd15fc330c9038cb75163a063f5c3f",
+    "candidate_tree_before_final_evidence": "c6a57c01a798ae7836fe8dc3e22900b72fa611cc",
+    "llvm": "18.1.3",
+    "cpu_model": "AMD EPYC 9V74",
+    "team_workload_isolation": "Other team builds and tests paused during all measured pairs",
+    "compiler_source_changes_since_bootstrap": false
+  }
+}
