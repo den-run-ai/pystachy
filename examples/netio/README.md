@@ -91,15 +91,29 @@ inherited worker-output pipes. It enforces an overall deadline and a per-pipe
 output bound, emits completed streams as EOF is observed, and closes all its
 descriptors on exit. The launcher still owns spawning, exit-status collection and
 termination of workers. Native process lifecycle integration is separate from
-this pipe consumer.
+this pipe consumer. Deadlines are checked before waiting, before each ready event,
+and after preparing an EOF message, so a late readiness result cannot be accepted
+as a successful completion. The launcher still bounds a child that stalls while
+writing its completion output.
+
+The consumer retains fragments in batches of 256, joining each completed batch
+once and joining the blocks at EOF. For that single final result, each byte is
+copied at most twice by accumulation. No append recopies an earlier block.
+Batching also bounds retained fragment metadata for one-byte reads: at most one
+completed block per 256 bytes, plus an unfinished batch. Native receive copies
+and hexadecimal output are separate costs.
 
 `make netio-check` also runs `check_drain.py` in all six modes. The checker
 withholds the first pipe's bytes until it observes the second pipe's completed
-output, so the consumer must make progress independently of input order.
+output, so the consumer must make progress independently of input order. A small
+probe exercises empty, partial and multiple fragment batches, including keeping
+an earlier result alive while more bytes arrive. The same probes run under both
+GC-stress modes. Controlled tests also cover exact limits, one-byte overflow,
+would-block, read failures and late EOF cleanup.
 
 ## Compiler dogfood and performance
 
-`compiler_dogfood.py` reuses that unchanged drain to collect **real compiler IR
+`compiler_dogfood.py` reuses that same drain to collect **real compiler IR
 and diagnostics** from three existing corpus programs: a small successful
 program, a container program, and a deliberate syntax error. The same worker
 compiler runs in every collector mode. Every stdout/stderr byte and exit status
@@ -155,11 +169,42 @@ checking tracer availability. Profiling runs are excluded from timings.
 
 All timings are advisory. These local socket pairs do not establish TCP/WAN
 throughput. Compiler dogfood includes actual compilation, buffering and hex
-encoding; the unchanged drain can copy accumulated output repeatedly and doubles
-it when encoding. Its bounded small-corpus results are not a compiler speedup
+encoding; hex output doubles the payload size. Its bounded small-corpus results are not a compiler speedup
 claim or a production scheduler integration. No timing threshold is added to CI.
 The [recorded Linux results](results/README.md) include all runtime comparisons,
 profiles, native GC smoke and the real compiler collection witnesses.
+
+## Drain accumulation comparison
+
+`benchmark_drain.py` compares a saved consumer revision with the current consumer
+using the existing owned-process, bounded-capture and exact-output helpers. It
+replays the same freshly captured compiler output for `runtime.py`, an 8 MiB
+binary stream and a 64-byte control. CPython uses unmodified stdlib pipe I/O;
+Pystachy compiles each whole consumer with the same native wrapper. Compiler
+work and AOT builds precede timing. Each sample includes writer/consumer startup,
+pipe collection, hex encoding and parent capture/parsing. Before/after variants
+are interleaved, and every byte must match before a sample is accepted.
+
+```sh
+mkdir -p build
+git show b9ab8d9d3065b94c85952c79bada1de43a021c49:examples/netio/drain.py > build/drain-before.py
+python3.13 examples/netio/benchmark_drain.py --before build/drain-before.py \
+  --compiler ./pystachy --cpu 0 --samples 7 --json build/netio-drain-benchmark.json
+```
+
+The report separately models native accumulation-copy volume for deterministic
+fragment sizes. It executes each consumer with sized byte proxies whose addition
+and join operations count the full result length, matching the current native
+bytes operations. This is an algorithmic byte-volume model, not a measured
+allocation count, instruction profile or time estimate. CI checks the linear-copy
+budget without a timing threshold; the original consumer fails that control.
+The [drain results](results/2026-11-08-drain.md) preserve the measurements,
+negative controls and limits.
+
+The extra native receive-buffer-to-managed-bytes copy remains. The current
+[FFI contract](../../docs/ffi.md#c-types-and-conversions) forbids modifying borrowed
+`bytes`, and Pystachy has no mutable byte-buffer type. This consumer change adds
+no buffer-ownership API and makes no claim to fix the bulk socket timing gap.
 
 ## Standalone native ownership check
 

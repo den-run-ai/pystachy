@@ -110,3 +110,13 @@ and its small fixtures do not model a production scheduler or full self-compile.
 [`2026-11-07-native-smoke.json`](2026-11-07-native-smoke.json) separately records
 the four new socket cases in JIT/AOT and both GC modes; its tiny-input times are
 correctness-only and must not be used as benchmark results.
+
+
+## Bounded drain follow-up
+
+The [November 8, 2026 UTC drain follow-up](2026-11-08-drain.md) fixes late EOF
+acceptance and quadratic accumulation. Its interleaved 8 MiB replay measured
+native AOT medians of 243.322 to 65.489 ms (3.72x); the 64-byte and real-IR
+controls do not demonstrate a material improvement. That report includes
+before-failing deadline and copy-volume controls, all six correctness modes,
+and explicit timing boundaries. The native socket receive copy is unchanged.

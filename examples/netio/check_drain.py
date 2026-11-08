@@ -79,16 +79,19 @@ def verify(args, report):
     compiler = check.compiler_command(args.compiler)
     original = (check.HERE / "drain.py").read_bytes()
     checker_source = Path(__file__).read_bytes()
+    probe_source = (check.HERE / "drain_probe.py").read_bytes()
     before = check.hashes()
     report.update(python=pinned, platform=platform.platform(), compiler=compiler, source_sha256=before,
                   drain_sha256=hashlib.sha256(original).hexdigest(),
-                  checker_sha256=hashlib.sha256(checker_source).hexdigest(), modes=[])
+                  checker_sha256=hashlib.sha256(checker_source).hexdigest(),
+                  probe_sha256=hashlib.sha256(probe_source).hexdigest(), modes=[])
     with tempfile.TemporaryDirectory(prefix="pystachy-netio-drain-") as temporary:
         directory = Path(temporary)
         env = check.environment(directory)
         check.build_bridge(directory, env, check.c_compiler(args.cc, env), 60)
-        source = directory / "drain.py"
-        source.write_bytes(original)
+        (directory / "drain.py").write_bytes(original)
+        source = directory / "drain_probe.py"
+        source.write_bytes(probe_source)
         modes = [
             ("cpython_oracle", [sys.executable, str(source)], check.environment(directory, oracle=True)),
             ("cpython_bridge", [sys.executable, str(source)], env),
@@ -113,9 +116,10 @@ def verify(args, report):
             else:
                 check.compare("drain/" + mode, result, reference)
             report["modes"].append(mode)
-            print(f"{mode}: later pipe completion observed first; all binary output matches", flush=True)
+            print(f"{mode}: fragment batches verified; later pipe completed first; binary output matches", flush=True)
     if (check.hashes() != before or (check.HERE / "drain.py").read_bytes() != original
-            or Path(__file__).read_bytes() != checker_source):
+            or Path(__file__).read_bytes() != checker_source
+            or (check.HERE / "drain_probe.py").read_bytes() != probe_source):
         raise RuntimeError("prototype sources changed during drain validation; rerun on the final tree")
     expected = list(check.CPYTHON_MODES + (() if args.cpython_only else check.NATIVE_MODES))
     if report["modes"] != expected:

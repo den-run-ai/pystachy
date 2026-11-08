@@ -1,15 +1,18 @@
 """Compiler I/O dogfood must preserve failures and bound every owned child."""
 
 import contextlib
+import hashlib
 import importlib.util
 import io
 import json
 import os
+import selectors
 from pathlib import Path
 import signal
 import subprocess
 import sys
 import tempfile
+import types
 import unittest
 from unittest import mock
 
@@ -22,6 +25,174 @@ SPEC = importlib.util.spec_from_file_location("netio_compiler_dogfood", HERE / "
 dogfood = importlib.util.module_from_spec(SPEC)
 with mock.patch.dict(sys.modules, {"check": check}):
     SPEC.loader.exec_module(dogfood)
+
+SPEC = importlib.util.spec_from_file_location("netio_drain_benchmark", HERE / "benchmark_drain.py")
+drain_benchmark = importlib.util.module_from_spec(SPEC)
+with mock.patch.dict(sys.modules, {"check": check, "compiler_dogfood": dogfood}):
+    SPEC.loader.exec_module(drain_benchmark)
+DRAIN_SOURCE = (HERE / "drain.py").read_bytes()
+
+SPEC = importlib.util.spec_from_file_location("netio_oracle", HERE / "oracle/netio.py")
+oracle = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(oracle)
+SPEC = importlib.util.spec_from_file_location("netio_drain", HERE / "drain.py")
+drain = importlib.util.module_from_spec(SPEC)
+with mock.patch.dict(sys.modules, {"netio": oracle}):
+    SPEC.loader.exec_module(drain)
+
+
+class DrainTests(unittest.TestCase):
+    def test_fragmented_accumulation_copy_volume_is_linear(self):
+        # This is a native concat/join byte-volume model, separate from timings.
+        # The real bridge/oracle/native probes independently check binary data.
+        for size, fragment in ((4096, 1), (8388608, 8192)):
+            with self.subTest(size=size, fragment=fragment):
+                counted = drain_benchmark.copy_volume(DRAIN_SOURCE, size, fragment)
+                self.assertEqual(counted["reads"], size // fragment + 1)
+                self.assertGreaterEqual(counted["payload_copy_bytes"], size)
+                self.assertLessEqual(counted["payload_copy_bytes"], 2 * size)
+
+    def run_drain(self, events, chunks, maximum, *, clock=None, fds=(90, 91)):
+        """Drive exact read boundaries without depending on OS pipe coalescing."""
+        ready = mock.MagicMock()
+        ready.__enter__.return_value = ready
+        ready.select.side_effect = events
+        self.output = io.StringIO()
+        with mock.patch.object(drain, "DefaultSelector", return_value=ready), \
+                mock.patch.object(drain, "read", side_effect=chunks) as reads, \
+                mock.patch.object(drain, "set_blocking"), \
+                mock.patch.object(drain, "close_fd") as closes, \
+                mock.patch.object(drain.time, "monotonic", side_effect=clock, return_value=0), \
+                contextlib.redirect_stdout(self.output):
+            self.reads = reads
+            self.closes = closes
+            drain.drain(list(fds), 5, maximum)
+        return ready
+
+    def test_fragmented_binary_stream_at_bound_and_empty_completion(self):
+        first = selectors.SelectorKey(90, 90, selectors.EVENT_READ, 0)
+        empty = selectors.SelectorKey(91, 91, selectors.EVENT_READ, 1)
+        payload = bytes(range(256)) * 3 + b"\x00\xff"
+        fragments = [payload[i:i + 1] for i in range(len(payload))]
+        events = [[(first, 1)], [(empty, 1)]] + [[(first, 1)]] * (len(fragments) + 1)
+        ready = self.run_drain(events, [BlockingIOError(), b""] + fragments + [b""], len(payload))
+        self.assertEqual(self.output.getvalue(), f"done 1 \ndone 0 {payload.hex()}\n")
+        self.assertEqual(self.reads.call_args_list, [mock.call(90, len(payload) + 1),
+                                                   mock.call(91, len(payload) + 1)]
+                         + [mock.call(90, value) for value in range(len(payload) + 1, 0, -1)])
+        self.assertEqual(ready.unregister.call_args_list, [mock.call(91), mock.call(90)])
+        self.assertEqual(self.closes.call_args_list, [mock.call(90), mock.call(91)])
+
+    def test_output_overflow_by_one_closes_every_pipe(self):
+        key = selectors.SelectorKey(90, 90, selectors.EVENT_READ, 0)
+        with self.assertRaisesRegex(ValueError, "exceeds configured bound"):
+            self.run_drain([[(key, 1)]] * 2, [b"abc", b"x"], 3)
+        self.assertEqual(self.reads.call_args_list, [mock.call(90, 4), mock.call(90, 1)])
+        self.assertEqual(self.output.getvalue(), "")
+        self.assertEqual(self.closes.call_args_list, [mock.call(90), mock.call(91)])
+
+    def test_read_failure_after_partial_output_closes_every_pipe(self):
+        key = selectors.SelectorKey(90, 90, selectors.EVENT_READ, 0)
+        with self.assertRaisesRegex(OSError, "read failed"):
+            self.run_drain([[(key, 1)]] * 2, [b"partial", OSError("read failed")], 64)
+        self.assertEqual(self.output.getvalue(), "")
+        self.assertEqual(self.closes.call_args_list, [mock.call(90), mock.call(91)])
+
+    def test_deadline_after_partial_output_closes_every_pipe(self):
+        key = selectors.SelectorKey(90, 90, selectors.EVENT_READ, 0)
+        now = 0
+
+        def partial_read(fd, maximum):
+            nonlocal now
+            now = 6
+            return b"partial"
+
+        with self.assertRaisesRegex(TimeoutError, "deadline expired"):
+            self.run_drain([[(key, 1)]], partial_read, 64, clock=lambda: now)
+        self.assertEqual(self.output.getvalue(), "")
+        self.assertEqual(self.closes.call_args_list, [mock.call(90), mock.call(91)])
+
+    def test_final_eof_after_selector_deadline_is_rejected(self):
+        key = selectors.SelectorKey(90, 90, selectors.EVENT_READ, 0)
+        now = 0
+
+        def late_ready(timeout):
+            nonlocal now
+            self.assertEqual(timeout, 5)
+            now = 6
+            return [(key, 1)]
+
+        with self.assertRaisesRegex(TimeoutError, "deadline expired"):
+            self.run_drain(late_ready, [b""], 64, clock=lambda: now, fds=(90,))
+        self.reads.assert_not_called()
+        self.assertEqual(self.output.getvalue(), "")
+        self.assertEqual(self.closes.call_args_list, [mock.call(90)])
+
+    def test_eof_read_crossing_deadline_is_rejected(self):
+        key = selectors.SelectorKey(90, 90, selectors.EVENT_READ, 0)
+        now = 0
+
+        def late_eof(fd, maximum):
+            nonlocal now
+            now = 6
+            return b""
+
+        with self.assertRaisesRegex(TimeoutError, "deadline expired"):
+            self.run_drain([[(key, 1)]], late_eof, 64, clock=lambda: now, fds=(90,))
+        self.assertEqual(self.output.getvalue(), "")
+        self.assertEqual(self.closes.call_args_list, [mock.call(90)])
+
+    def test_deadline_is_checked_within_a_ready_batch(self):
+        first = selectors.SelectorKey(90, 90, selectors.EVENT_READ, 0)
+        second = selectors.SelectorKey(91, 91, selectors.EVENT_READ, 1)
+        now = 0
+
+        def delayed_read(fd, maximum):
+            nonlocal now
+            if fd == 90:
+                now = 6
+                return b"partial"
+            return b""
+
+        with self.assertRaisesRegex(TimeoutError, "deadline expired"):
+            self.run_drain([[(first, 1), (second, 1)]], delayed_read, 64, clock=lambda: now)
+        self.assertEqual(self.reads.call_args_list, [mock.call(90, 65)])
+        self.assertEqual(self.output.getvalue(), "")
+        self.assertEqual(self.closes.call_args_list, [mock.call(90), mock.call(91)])
+
+
+class DrainBenchmarkTests(unittest.TestCase):
+    def test_changed_consumer_between_snapshot_and_inventory_is_rejected(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            before = directory / "before.py"
+            after = directory / "drain.py"
+            bridge = directory / "bridge.so"
+            before.write_bytes(DRAIN_SOURCE)
+            after.write_bytes(DRAIN_SOURCE)
+            bridge.write_bytes(b"bridge control")
+            changed = DRAIN_SOURCE + b"\n# changed after the consumed snapshot\n"
+
+            def sources():
+                after.write_bytes(changed)
+                return {"examples/netio/drain.py": hashlib.sha256(changed).hexdigest()}
+
+            def collect(commands, *args):
+                payload = Path(commands[0][-1]).read_bytes()
+                return [subprocess.CompletedProcess(commands[0], 0, payload, b"")], {"end_to_end_s": 1.0}
+
+            args = types.SimpleNamespace(before=before, compiler=sys.executable, samples=1, warmups=0,
+                                         cpu=None, cc=None, cpython_only=True, timeout=10, json=None)
+            with mock.patch.object(check, "HERE", directory), \
+                    mock.patch.object(check, "build_bridge", return_value=bridge), \
+                    mock.patch.object(dogfood, "sources", side_effect=sources), \
+                    mock.patch.object(dogfood, "artifacts", return_value={}), \
+                    mock.patch.object(dogfood, "serial", return_value=(subprocess.CompletedProcess([], 0, b"IR", b""), 0.1)), \
+                    mock.patch.object(dogfood, "collect", side_effect=collect), \
+                    mock.patch.object(drain_benchmark, "copy_volume", return_value={}), \
+                    contextlib.redirect_stdout(io.StringIO()), \
+                    self.assertRaisesRegex(RuntimeError, "consumer snapshot differs from source inventory"):
+                drain_benchmark.verify(args, {})
 
 
 class CompilerPipeTests(unittest.TestCase):
