@@ -83,6 +83,9 @@ jobs:
       - name: Example CLI smoke contract tests
         run: python3 -m unittest discover -s tools -p test_check_example_cli.py
 
+      - name: Native text reads on open pipes
+        run: PYSTACHY_TEXT_READ_COMPILER='python3 -m pystachy' python3 -m unittest discover -s tools -p test_text_read_progress.py
+
       - name: Install sanitizer runtime for generated-code controls
         run: sudo apt-get update && sudo apt-get install -y libclang-rt-18-dev
 
