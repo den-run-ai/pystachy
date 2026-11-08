@@ -215,6 +215,7 @@ streamprobe: pystachy
 # Inspect the bitcode passed to lli, then run it: dead functions must not reach code generation.
 jitprobe: pystachy
 	$(PY) tools/jitprobe.py
+	$(PY) tools/jitfdprobe.py
 
 # AOT drops opt-in runtime code only when neither the program nor an import opts in.
 aotprobe: pystachy
@@ -399,6 +400,7 @@ check-fast: lint-python typecheck check-repository
 	$(PY) -m unittest discover -s tools -p test_source_lines.py
 	$(PY) -m unittest discover -s tools -p test_pystachy_toolchain.py
 	$(PY) -m unittest discover -s tools -p test_retained_ir.py
+	$(PY) -m unittest discover -s tools -p test_jitfdprobe.py
 
 check-repository:
 	$(PY) tools/check_repository_hygiene.py

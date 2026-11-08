@@ -29,7 +29,7 @@ retry = os.getenv("PYSTACHY_PROGRAM_CACHE_LOCK") == "bypass"
 if os.getenv("PC_EXEC_LOCK") and not retry:
     lock = open(os.environ["PC_EXEC_LOCK"], "a+b")
     fcntl.flock(lock, fcntl.LOCK_EX)
-    os.dup2(lock.fileno(), 9, inheritable=True)
+    assert not os.get_inheritable(lock.fileno())
 settings = {key: os.getenv(key) for key in (
     "PYSTACHY_PROGRAM_CACHE", "PYSTACHY_GC_STRESS", "PYSTACHY_GC_STRESS_PROGRAM",
     "PYSTACHY_PROGRAM_CACHE_LOCK", "PYSTACHY_ARGV0", "PC_EXEC_VALUE")}
@@ -42,12 +42,13 @@ if retry:
     os.write(2, b"ordinary compiler stderr\n")
     raise SystemExit(23)
 if os.getenv("PC_EXEC_UNLINK") == "1":
-    unlock = cached_run.pc._sh
-    def after_unlock(command):
-        result = unlock(command)
+    execute = os.execv
+    def after_pin(path, arguments):
+        assert path.startswith("/proc/self/fd/"), path
+        assert os.path.samefile(path, os.environ["PC_EXEC_ENTRY"])
         os.unlink(os.environ["PC_EXEC_ENTRY"])
-        return result
-    cached_run.pc._sh = after_unlock
+        execute(path, arguments)
+    os.execv = after_pin
 cached_run.execute(os.environ["PC_EXEC_ENTRY"], source, arguments)
 raise AssertionError("exec returned")
 '''
@@ -224,7 +225,7 @@ class CachedRunExecTests(unittest.TestCase):
         self.assertEqual((len(runs), executions), (1, "executed\n"))
 
     @unittest.skipUnless(CAT, "cat is required for the pinned-entry control")
-    def test_open_entry_survives_unlink_at_the_unlock_boundary(self):
+    def test_open_entry_survives_unlink_after_pin_before_exec(self):
         entry = self.root / "pinned"
         shutil.copy2(CAT, entry)
         result, runs, _, _, _ = self.launch(entry, data=b"pinned bytes\n", changes={"PC_EXEC_UNLINK": "1"})

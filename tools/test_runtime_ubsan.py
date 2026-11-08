@@ -130,7 +130,11 @@ class RuntimeUBSan(unittest.TestCase):
                 self.assertEqual((good.returncode, good.stdout, good.stderr),
                                  (0, "wide builtin and UBSan: ok\n", ""))
                 args = json.loads(self.args.read_text())
-                self.assertIn("-dlopen=/dev/fd/8" if mode == "shared" else "-extra-object=/dev/fd/8", args)
+                prefix = "-dlopen=/dev/fd/" if mode == "shared" else "-extra-object=/dev/fd/"
+                descriptors = [argument[len(prefix):] for argument in args if argument.startswith(prefix)]
+                self.assertEqual(len(descriptors), 1, args)
+                self.assertTrue(descriptors[0].isdigit(), args)
+                self.assertGreaterEqual(int(descriptors[0]), 3)
                 if mode == "object":
                     self.assertEqual(len([a for a in args if a.startswith("-extra-archive=")]), 1)
                 bad = self.run_probe(mode, overflow=True)

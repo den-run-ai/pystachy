@@ -10,6 +10,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <langinfo.h>
+#include <limits.h>
 #include <locale.h>
 #include <pthread.h>
 #ifdef __APPLE__
@@ -7180,8 +7181,18 @@ _Noreturn void pys_execv(Str *path, List *args) {   /* os.execv: the process bec
   execv(path->s, v);
   ioerr(errno);
 }
-/* Private native-program cache primitive: no wait and no diagnostics. FD9
-   changes only after the new lock is acquired, and exec releases it atomically. */
+void pys_set_inheritable(I fd, I inheritable) {
+  if (fd < INT_MIN || fd > INT_MAX || inheritable < INT_MIN || inheritable > INT_MAX)
+    pys_fail("OverflowError: Python int too large to convert to C int");
+  int flags = fcntl((int)fd, F_GETFD);
+  if (flags < 0 || fcntl((int)fd, F_SETFD, inheritable ? flags & ~FD_CLOEXEC : flags | FD_CLOEXEC) < 0)
+    ioerr(errno);
+}
+/* Private native-program cache primitives: no wait and no diagnostics. Retain
+   only descriptors we allocated; inherited descriptors belong to the caller.
+   Successful replacement releases our previous lock, and exec closes the new one. */
+static int cache_lock_fd = -1;
+I pys_cache_lock_fd(void) { return cache_lock_fd; }
 I pys_cache_lock(Str *path) {
 #ifdef __linux__
   if (nul(path)) return -1;
@@ -7195,12 +7206,8 @@ I pys_cache_lock(Str *path) {
     int saved = errno; close(fd);
     return saved == EWOULDBLOCK || saved == EAGAIN ? 0 : -1;
   }
-  if (fd != 9 && dup2(fd, 9) < 0) { close(fd); return -1; }
-  if (fcntl(9, F_SETFD, FD_CLOEXEC) < 0) {
-    if (fd != 9) close(fd);
-    close(9); return -1;
-  }
-  if (fd != 9) close(fd);
+  if (cache_lock_fd >= 0) close(cache_lock_fd);
+  cache_lock_fd = fd;
   return 1;
 #else
   (void)path;

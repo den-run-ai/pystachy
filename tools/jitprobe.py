@@ -140,7 +140,7 @@ def main():
             if name != "lli":
                 (bindir / name).symlink_to(real[name])
         wrapper = bindir / "lli"
-        wrapper.write_text(f"#!/bin/sh\nprintf '%s\\n' \"$@\" > {shlex.quote(str(invocation))}\n{shlex.quote(real['opt'])} -S -passes=verify /dev/fd/9 -o {shlex.quote(str(capture))} || exit $?\nexec {shlex.quote(real['lli'])} \"$@\"\n")
+        wrapper.write_text(f"#!/bin/sh\nprintf '%s\\n' \"$@\" > {shlex.quote(str(invocation))}\nfor arg do\n  case $arg in /dev/fd/*) input=$arg; break;; esac\ndone\n{shlex.quote(real['opt'])} -S -passes=verify \"$input\" -o {shlex.quote(str(capture))} || exit $?\nexec {shlex.quote(real['lli'])} \"$@\"\n")
         wrapper.chmod(0o755)
         # Native program caching skips the lli wrapper even when filling an entry.
         env = os.environ | {"PYSTACHY_LLVM": str(bindir), "PYSTACHY_PATH": str(temp),

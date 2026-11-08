@@ -1117,36 +1117,57 @@ def main() -> None:
                         cached_run.execute(pcexe, diagnostics.SRC, rest)
                 cached_run.trace("bypass native artifact unavailable")
                 program_cache.stop()
-            # then this process becomes lli, through a shell that opens the bitcode and the runtime
-            # for it (the cache's, or this run's own: the shared library, or else the machine code that
-            # lli links) and removes the files: the program's end is pystachy run's own, a signal that
-            # kills it too. lli opens the library as /dev/fd/8 (dlopen follows Linux's descriptor
-            # link to the file, also where it was removed).
+            # This process becomes lli with its inputs on allocated descriptors.
+            # Keep those files open while unlinking temporary artifacts; inherited
+            # descriptors belong to the caller and must never be replaced.
             # PYSTACHY_GC_STRESS_PROGRAM: the program's own collection interval, apart from the
             # compiler's (PYSTACHY_GC_STRESS), so that the tests can stress programs without stressing
             # their compilation
             for p in [ll, obj, pcout, pclink, pclink2, pcerror, rcc, rll, rsl, rcb, rpl, rpb, lnk, part, hp, rso, tmp + "/runtime.i", tmp + "/runtime-preprocess.err", tmp + "/pyembed.c"] + [g[3] for g in glue]:
                 if os.path.exists(p):
                     os.remove(p)
-            gsp = os.getenv("PYSTACHY_GC_STRESS_PROGRAM", "")
-            env = f"PYSTACHY_GC_STRESS={q(gsp)} " if gsp != "" else ""
-            # A program that embeds CPython (lib/pyobj.py) has lli load its libpython (-dlopen) and
-            # pyembed.c's machine code, as the runtime's (on descriptor 7)
-            pe = "".join([" -dlopen=" + q(x) for x in LIBS]) + (" -extra-object=/dev/fd/7" if embed else "")
-            rt = " -dlopen=/dev/fd/8" if useso != "" else " -extra-object=/dev/fd/8"
-            archive = ""
-            if useso == "" and any([a.startswith("--rtlib=") or a.startswith("-rtlib=") for a in flags]):
-                # A shared runtime's native link includes the selected compiler builtins. When
-                # lli instead links the object (e.g. a noexec cache), it needs that archive too:
-                # compiler-rt supplies checked wide arithmetic that libgcc/UBSan do not export.
-                archive = f"jit_rtlib=$({tc[0]} -print-libgcc-file-name{ccflags}) || exit 1; "
-                archive += '[ -f "$jit_rtlib" ] || { echo "cannot find compiler runtime archive: $jit_rtlib" >&2; exit 1; }; '
-                rt += ' -extra-archive="$jit_rtlib"'
-            run = f"unset PYSTACHY_PROGRAM_CACHE_LOCK; {archive}{env}PYSTACHY_ARGV0={q(diagnostics.SRC)} exec {llvm}lli{jitflags}{pe}{rt} /dev/fd/9 {' '.join([q(a) for a in rest])}"
-            fds = f" 7< {q(peo[1])}" if embed else ""
-            parts = q(parto) + " " + q(partso) + (" " + q(peo[2]) if peo[2] != "" else "")
-            timing_end("driver.prepare_run", total)
-            os.execv("/bin/sh", ["sh", "-c", f"exec 9< {q(bc)} 8< {q(useso if useso != '' else useo)}{fds} && rm -f {q(bc)} {parts} && rmdir {q(tmp)} && {run}"])
+            # Reserve any closed standard streams while opening the JIT inputs,
+            # then restore them before exec. The input fds are always at least 3.
+            reserved = []
+            inputs = []
+            try:
+                try:
+                    for i in range(3):
+                        stream = open(os.devnull, "rb")
+                        if stream.fileno() >= 3:
+                            stream.close()
+                            break
+                        reserved.append(stream)
+                    for p in [bc, useso if useso != "" else useo] + ([peo[1]] if embed else []):
+                        inputs.append(open(p, "rb"))
+                finally:
+                    for stream in reserved:
+                        stream.close()
+                for stream in inputs:
+                    os.set_inheritable(stream.fileno(), True)
+                gsp = os.getenv("PYSTACHY_GC_STRESS_PROGRAM", "")
+                env = f"PYSTACHY_GC_STRESS={q(gsp)} " if gsp != "" else ""
+                # Embedding also loads libpython and the pyembed machine code.
+                pe = "".join([" -dlopen=" + q(x) for x in LIBS]) + (" -extra-object=/dev/fd/" + str(inputs[2].fileno()) if embed else "")
+                rt = (" -dlopen=" if useso != "" else " -extra-object=") + "/dev/fd/" + str(inputs[1].fileno())
+                archive = ""
+                if useso == "" and any([a.startswith("--rtlib=") or a.startswith("-rtlib=") for a in flags]):
+                    # A shared runtime's native link includes the selected compiler builtins. When
+                    # lli instead links the object (e.g. a noexec cache), it needs that archive too:
+                    # compiler-rt supplies checked wide arithmetic that libgcc/UBSan do not export.
+                    archive = f"jit_rtlib=$({tc[0]} -print-libgcc-file-name{ccflags}) || exit 1; "
+                    archive += '[ -f "$jit_rtlib" ] || { echo "cannot find compiler runtime archive: $jit_rtlib" >&2; exit 1; }; '
+                    rt += ' -extra-archive="$jit_rtlib"'
+                run = f"unset PYSTACHY_PROGRAM_CACHE_LOCK; {archive}{env}PYSTACHY_ARGV0={q(diagnostics.SRC)} exec {llvm}lli{jitflags}{pe}{rt} /dev/fd/{inputs[0].fileno()} {' '.join([q(a) for a in rest])}"
+                for p in [bc, parto, partso, peo[2]]:
+                    if p != "" and os.path.exists(p):
+                        os.remove(p)
+                os.rmdir(tmp)
+                timing_end("driver.prepare_run", total)
+                os.execv("/bin/sh", ["sh", "-c", run])
+            finally:
+                for stream in inputs:
+                    stream.close()
     for p in [ll, bc, obj, obc, lbc, pcout, pclink, pclink2, pcerror, rcc, rll, rsl, rcb, rpl, rpb, lnk, part, parto, partso, hp, rso, tmp + "/runtime.i", tmp + "/runtime-preprocess.err", tmp + "/pyembed.c", tmp + "/pyext.c", peo[2]] + [g[3] for g in glue]:
         if os.path.exists(p):
             os.remove(p)

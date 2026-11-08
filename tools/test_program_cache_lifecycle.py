@@ -22,24 +22,13 @@ def bucket_lock(cache: Path, context: str):
     path = pc.lock_path(str(cache), context)
     if not path:
         raise AssertionError("no safe cache lock")
-    saved = -1
+    fd = os.open(path, os.O_RDWR | os.O_CLOEXEC)
     try:
-        saved = os.dup(9)
-    except OSError:
-        pass
-    fd = os.open(path, os.O_RDWR)
-    if fd != 9:
-        os.dup2(fd, 9)
-        os.close(fd)
-    fcntl.flock(9, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    try:
-        yield path
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        with patch.object(pc, "lock_fd", return_value=fd):
+            yield path
     finally:
-        fcntl.flock(9, fcntl.LOCK_UN)
-        os.close(9)
-        if saved >= 0:
-            os.dup2(saved, 9)
-            os.close(saved)
+        os.close(fd)
 
 
 def concurrent_publish(cache: str, context: str, source: str, executable: str, gate):

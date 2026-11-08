@@ -187,6 +187,12 @@ class NativeLockTests(unittest.TestCase):
         self.stack.enter_context(patch.object(cached_run.pc, "_sh", side_effect=AssertionError("unexpected shell")))
         self.stack.enter_context(patch.object(cached_run.os, "execv", side_effect=AssertionError("unexpected restart")))
 
+    def test_missing_native_primitive_bypasses_without_descriptor_redirects(self):
+        with patch.object(cached_run, "NATIVE", False):
+            self.assertFalse(cached_run.acquire("/cache", "context"))
+        self.lock.assert_not_called()
+        self.sleep.assert_not_called()
+
     def test_uncontended_native_lock_needs_no_restart_or_wait(self):
         self.assertTrue(cached_run.acquire("/cache", "context"))
         self.lock.assert_called_once_with("/cache/lock-aa")
