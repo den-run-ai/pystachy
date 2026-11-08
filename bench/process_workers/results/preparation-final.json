@@ -1,0 +1,36 @@
+[
+  {
+    "kind": "json",
+    "command": [
+      "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+      "pystachy.py",
+      "build",
+      "bench/process_workers/json_batch.py",
+      "-o",
+      "/workspace/scratch/8c7ef878d89d/evidence/json-batch"
+    ],
+    "imports": "/workspace/scratch/8c7ef878d89d/pystachy-workers/ports",
+    "wall_s": 14.74020552598813,
+    "exit_code": 0,
+    "stdout": "",
+    "stderr": "",
+    "binary_sha256": "d4811d9acd28b62f12672663e348464c5b3ebb161e7d6ad01e08e8ddd9415cf2"
+  },
+  {
+    "kind": "bpe",
+    "command": [
+      "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+      "pystachy.py",
+      "build",
+      "bench/process_workers/bpe_batch.py",
+      "-o",
+      "/workspace/scratch/8c7ef878d89d/evidence/bpe-batch"
+    ],
+    "imports": "/workspace/scratch/1d4aec3744ed/pystachy/bench/pyperformance",
+    "wall_s": 6.877822037989972,
+    "exit_code": 0,
+    "stdout": "",
+    "stderr": "",
+    "binary_sha256": "39baf765f084d46aabebf2dd46b6d23c789160427bf9e4d27d783c5a4b4f1d91"
+  }
+]

@@ -1,0 +1,18 @@
+[
+  {
+    "kind": "json",
+    "command": [
+      "/workspace/scratch/e98dc1e3e6cd/dev/bin/python",
+      "pystachy.py",
+      "build",
+      "bench/process_workers/json_batch.py",
+      "-o",
+      "/workspace/scratch/8c7ef878d89d/evidence/json-batch"
+    ],
+    "imports": "/workspace/scratch/8c7ef878d89d/pystachy-workers/ports",
+    "wall_s": 0.5036677919997601,
+    "exit_code": 1,
+    "stdout": "",
+    "stderr": "bench/process_workers/json_batch.py:28: error: expected bool | dict[str,JSONValue] | float | int | list[JSONValue] | str | None, got list[str]\n"
+  }
+]

@@ -1,0 +1,3613 @@
+{
+  "binary_sha256": "d4811d9acd28b62f12672663e348464c5b3ebb161e7d6ad01e08e8ddd9415cf2",
+  "complete": true,
+  "cpus": "0-3",
+  "host": {
+    "affinity": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
+    ],
+    "cpu_quota": "800000 100000",
+    "load": [
+      3.3232421875,
+      3.23095703125,
+      3.22216796875
+    ]
+  },
+  "import_sha256": {
+    "convertdate/__init__.py": "58694fcfc3439cf29fb59f44e37cf97e74e2760b62b711e8cc6d544092f0c923",
+    "convertdate/_calendar.py": "b91b65c757c69e84dfc6f42fa86358292ce20efda8e78da7f683f86d17a38c56",
+    "convertdate/armenian.py": "17e307ab3cafd6f91da7a8e912c07ca7c01a603c237cb50f8501a06908878d3d",
+    "convertdate/coptic.py": "708c59f6ded28f4203e13c673ab9eede2f37df8370c3133e05f3a2b7d27443a2",
+    "convertdate/data/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "convertdate/data/positivist.py": "1008b71b7ce4d8f910dbb5ac075a100d6f7f9ff145a0b41496c49a1a8fb87df2",
+    "convertdate/daycount.py": "4a27c7e2fd2c0a95187364fd3b535ea622d1671bee08da55fbfbf7a3d1880b32",
+    "convertdate/dublin.py": "e79f1f026263a9e0de4cef7ae4131a1cffbdf392d08a1b2af9c2481e52d3dd9a",
+    "convertdate/gregorian.py": "faf0fb2ef1ebfd95e5a7741dcf6d535bb393b4f97683f4707fade59e58a726c3",
+    "convertdate/hebrew.py": "06a9045e6411a152a8dca703391d8d1f953fc9104df358c8d72bf7450ad5fc8c",
+    "convertdate/holidays.py": "271475e377c7d4128754c8f68397b29922b4711b8119d02a40df61713ab48beb",
+    "convertdate/indian_civil.py": "b74f37f5b5a0b62e892eb028354a61261db66fa034aa4912f284c3aeff0f0cc8",
+    "convertdate/islamic.py": "07ed8f5cebab7eda274153f28f32fc572469444fcf71e28f2d4ef41303813871",
+    "convertdate/iso.py": "1325e95ed843beb9ae7657d6cddc0a2a5d2e5619e326d32ade3f26ba4c01b2c3",
+    "convertdate/julian.py": "4649c2fb898fc32862728feafe072d0ea5ea64aa04f1f94796adba0b90f246dc",
+    "convertdate/julianday.py": "46eb3e618a0e5932acfe32b3861a95f9c354c19e9bd85d49943ae1c9902bbd0a",
+    "convertdate/mayan.py": "ca03d084245e06e8156eb1f5941977e395467fc24e52d1fcbc0bf26de2ca3178",
+    "convertdate/ordinal.py": "dfabf911e2fd81031e04695e94b0bd0177d2fc6243810c680aff3f5474825dea",
+    "convertdate/positivist.py": "a9a9aa838a3ce9f8786328a344c728b28c6fce13e871f392509d1e3f5cf89495",
+    "convertdate/utils.py": "af00824f8d47ef2bd29e08bf9e025c506e911b8f24acf8f1ffbb4b02b11178f5",
+    "iniconfig/__init__.py": "1c9d19c311e4b33c7974ae1353aae36bdb70a6e78a6407ce606a204fe70e1c7d",
+    "iniconfig/_parse.py": "8b5586212d89254f73959e527e437d5833b08b407ea20c79a4f012afd1e65f51",
+    "iniconfig/exceptions.py": "9a2a50fda3310fd0af4af156375a135d8e10b919ca00c6757f7b027668c34d4d",
+    "jdcal/__init__.py": "a10276d98617e91747e51b757019f327629c7ecc360b5ecc8ce957ab62129568",
+    "json_repair/__init__.py": "deddc9953db96ba6a1cb1e746b7192be1473d10d794341746fd53a30387a459a",
+    "json_repair/__main__.py": "b0993590a3edb2484bbdbf5da3f766d598736a0d0a12839eb0ad876381c82698",
+    "json_repair/json_parser.py": "d87f6e025b12f73bfcb6bac2b0b6876aa9906718f97aea59c24d823c4972e16d",
+    "json_repair/json_repair.py": "e77c02623aeac49798a65c8999955af3e42ea7176d3fe920fb03a1f521edf9ef",
+    "json_repair/parse_array.py": "176e5b609f499bcd5ee8fece5b1b808af780f1dde9b5ab2ab558eb5dfa186a36",
+    "json_repair/parse_comment.py": "16dc04e6907711cf39a8f0ffc90fb6db3d0d98513f9af44df9d2ff8333af380f",
+    "json_repair/parse_number.py": "76dd529dda1d707cde65d0451dd46c4413f023cb024caf33d21df5789fedf6fa",
+    "json_repair/parse_object.py": "38af981b1b59b3a06408ae6c59c06c2ceb31b37bc903e7c76447cdcb3bae1557",
+    "json_repair/parse_string.py": "7feae0a451f350b0f5a1fd950a3eb19cd0f67cd9934442986415d387d4aa67d1",
+    "json_repair/parse_string_helpers/__init__.py": "80495d283364a02756b0412700c6f427ba59cdc8e2cc47d8444a2dcb5743376b",
+    "json_repair/parse_string_helpers/object_value_context.py": "4bc9b19ec4e30a879fead92cc16190ee4af6b4bd97477209018916b7b101eb7c",
+    "json_repair/parse_string_helpers/parse_boolean_or_null.py": "47ee308c3fd48ab02e930d7db8482da3523a4f5cf6f45996f163af173bd4e6b2",
+    "json_repair/parse_string_helpers/parse_json_llm_block.py": "3664c2a861bcdcdfdd44d406ea5c342ea19a144f93ddf4125b273b3659b271ae",
+    "json_repair/parser_parenthesized.py": "7510aea0ba96d2a530b6b8cf4adfacf0e21a0f89926ce6380f5304b6e0d22955",
+    "json_repair/utils/__init__.py": "c22cc24de539293ce30af6057e9a8e4b1796de6a83657eb47f9b3be4a427e305",
+    "json_repair/utils/constants.py": "a71043131270e50a28a2b9d14a6e60c79c7dae502223da19a4434923388a9889",
+    "json_repair/utils/json_context.py": "84a8016d4167ac042ef8289b3c49b4e32cfe43a232ba9fc9dfed86a98e88424c",
+    "json_repair/utils/object_comparer.py": "eb4f926a48f689fa3bbbb581858ab8a0507d029b0bcc154eb32ebcab65588ded",
+    "ordered_set/__init__.py": "07bec65c1b02e2eaab9ab50dbd086ef0369abf28ce804eeac61ad41837698f0b",
+    "pylev/__init__.py": "abd7f780829ad3ef0dd4f4eeb01ccd048e4dead3bc73a646f0fa5a8461e12463",
+    "pylev/classic.py": "b2205250a290e2cf7f125e127bec28c1ea0f7a7387ad3559a841fec40a25d248",
+    "pylev/damerau.py": "848dce63d9af59a47302e510c943fba66809a60bab7b3c8c147c29ab1e97e583",
+    "pylev/recursive.py": "a7c26e5f825ac03d23f4d291b1f2d3281fc1788d53ae31e68e0dfdca591d68c6",
+    "pylev/wf.py": "b9c4317aa2515130469fd26f278e264304782915c92ce18de06f0a33a848c490",
+    "qrcode/LUT.py": "3635ca3df1d24c56282e51a45e11637f6394abf1060fa9ab772607206ddd35c9",
+    "qrcode/__init__.py": "d97230bd29481887e7fbb17f4b74c0ac39f231e1005aa4bf25060e1f074585b2",
+    "qrcode/base.py": "82f2a450ce1626a3c09a99977c7188364526e54b62185ed9cac8c7cbcd979f13",
+    "qrcode/constants.py": "d02b1af1861d790f0d685ad19ade3799a560d763bcf5dfa82a088a01520edace",
+    "qrcode/exceptions.py": "2f67d9b9838ab1cbdd9fbdab6bec05f06c2caf6641f5e4595aba757f4203c781",
+    "qrcode/main.py": "bb43cde0edd34b0b9d195c1aec4c707e31180f15c0493bc772ec3b6b8eecd4d8",
+    "qrcode/util.py": "4da30a571d84be7bfd5c4bfbd8091c50eb597173aee1fa5977fe68673ced6309",
+    "roman/__init__.py": "d588a8934b7c53b6443434f78fcc7431f8ed8011a69923365a2e6faa91ae0018",
+    "sgp4/__init__.py": "8f01018363382658c82ae05408e8fb00e077c02be3b6a857478205f887da6b0e",
+    "sgp4/alpha5.py": "98b6a004d971f25f837a0efa1f073e6bc6a36314fd1448b3078473db9ab4267a",
+    "sgp4/api.py": "e61f7a4b1ddd026a0cfd147ef18cf2eaf1aee9e05eae9098677cbd811f519bf3",
+    "sgp4/earth_gravity.py": "b31c9072c57e0c118b14bcaf4e06a9144d622d3fa709fcec6b18a65644a4901a",
+    "sgp4/ext.py": "6366f6a2323fee993b3da1dc8240e2077a2b1ab2f4ee8d90f9de41def592062c",
+    "sgp4/functions.py": "8947e790097ae705f35244a3233a8b0ec61b214873618a241488686993b79e40",
+    "sgp4/io.py": "664b02c3ed45c87ce8fa79cd435d2812986ee4a3f95e2fa52b35b503e92c8118",
+    "sgp4/model.py": "4b01a757a1920baee6872e5fd9039e9fca8283b2132e458baf0103c7d910b432",
+    "sgp4/propagation.py": "bf86adb6cdaebee92bb8ed6f88f3e8543f138d65cd98ea4bda2dae6b7dffab03",
+    "snowballstemmer/__init__.py": "f13cbea66c714230434fd03e02d8fbffb2d3d4e8fde3fd6c20dc7c1fb8915dee",
+    "snowballstemmer/among.py": "cb0eb8335ef88c705c9a98f9b8b0165f4d9012a1cf491a07f8ee0ffed7ad2d6c",
+    "snowballstemmer/basestemmer.py": "b8564e4b86bea54f194458d901b53760476e4058e7a4c4661a96423bcb98a354",
+    "snowballstemmer/english_stemmer.py": "acfd371ce0950df7137f8d468e4a254cdc1a2d7f28811a183e63260d9a2e9b38",
+    "snowballstemmer/porter_stemmer.py": "c3cc305c9009f92738ed43f937aa8811b2a897428ea756555c6d0c4ce485484d",
+    "sortedcontainers/__init__.py": "ee5585b74ff953bc71d7fcb05a296211c163adac60322f28288308b1e0e23fc4",
+    "sortedcontainers/sortedlist.py": "9c3c178c8247befa3d22dbb7f2909979a5b81df338d3e71c39fec2b0fc74e6dd",
+    "sqids/__init__.py": "dec511d0fd42c1fb20907eba8161abdadf6278c31d1d0b341038e242a204eaa1",
+    "sqids/constants.py": "9b0e801cfcd48c0d028669d84a73a174a99f51da57ecc250e464a92eaf8ac1ae",
+    "sqids/sqids.py": "3be667df1de8faa83fdb1151493008e64f70ca8cfa146b5d1772004bd3fea69d",
+    "tomli_w/__init__.py": "b85ea5a4b65f3f974a6a0327ece2d7d5702256eff8847315b8fba162afa3f410",
+    "tomli_w/_writer.py": "b38b1da012a06793524491a1f3b139d4e28b97fd74f875a56d6d1429684efce8",
+    "wcwidth/__init__.py": "09b9e031a0c10fa813946498486704ccc5cf024888b5d2121fec4b44eb6c1c28",
+    "wcwidth/_constants.py": "6baf51acd9bcbcc9fe95acb45d0c305869f873ceac270a8c3e4b456658217a6f",
+    "wcwidth/_wcswidth.py": "be0611ffde64b6d5ac77d08172dca70a9166894142fb3b02babe92f720a14d1f",
+    "wcwidth/_wcwidth.py": "4b4a400268786df98644845ad66a48de7b9949cd3697eb139e7ce0bf7ad19a7c",
+    "wcwidth/bisearch.py": "d135bc60fefa9bb848ac52acbf833855914f1c2b7817bebfdd175885a359d3ff",
+    "wcwidth/table_ambiguous.py": "762d8dfbdd8ad6a71bf50015e89d4dd4dbc5b3d270560e1c3c90130fda98657d",
+    "wcwidth/table_grapheme.py": "7704a8ddd911289e24fd5d872289eeaa99f7234ce5bbaff84ba95f687e16f7e3",
+    "wcwidth/table_mc.py": "f084236a9b43821968521672ec34c79c336f224c352c17b0eb82afbfcdb1fa61",
+    "wcwidth/table_vs15.py": "9af55c5c6801b678a4c110126f8032309ac8610640b1ca74be4ea0a3585e478b",
+    "wcwidth/table_vs16.py": "16371e2db996fd6e60ac63905f9d9e8323429b71742c765b83a4a5d7519ab0c6",
+    "wcwidth/table_wide.py": "a167dfa17738fb939b8157193fc9d11f70b1e1ed0385e1a6faee07c8d5ad5085",
+    "wcwidth/table_zero.py": "03d61051c69f286fe77acca5583be371fa674f86cff61a6abdc57fa1a5156cc6",
+    "wcwidth/unicode_versions.py": "43517349abc42accdf546942961e6041e9b113ce95d23f28d4d176eae6984f38"
+  },
+  "input_sha256": {
+    "input-0.txt": "e130734ea4f00c47cc9b57bbcc8220dd2635945373a3881960df61e5d365a9de",
+    "input-1.txt": "10b54159b2c437a3996b148b919c99fa9f81a00049f50d3e57871b32d04d8dd7",
+    "input-2.txt": "a4456b2787e3118272b2ad12827a0bc635ef1feb48709f465917545a1f3f1758",
+    "input-3.txt": "618a039d03ff95f16eb56c8af99abe4e71410a2721fda96fb73b450085ba87da",
+    "input-4.txt": "67317b32279f30405f1bc96c00e85ced3d8da380fbecaaa2f3b5e9aa26b0fc47",
+    "input-5.txt": "63556b4e831e96d3744523597d2211134641f1f9fceff57a32540c9ddd1a09b9",
+    "input-6.txt": "06b97218de09eb28c8cff2d33e99470728554ed4a971ff3dc68f467b5e51ed5e",
+    "input-7.txt": "380c7839cea3e3f743456c8069ff96f7dd32a6159e148ca595ee14973927d5d5"
+  },
+  "kind": "json",
+  "medians": {
+    "1": {
+      "cpu_s": 0.057977,
+      "sampled_process_tree_peak_rss_kib": 15780,
+      "wall_s": 0.09273128899803851
+    },
+    "2": {
+      "cpu_s": 0.057279,
+      "sampled_process_tree_peak_rss_kib": 15648,
+      "wall_s": 0.07075949000136461
+    },
+    "4": {
+      "cpu_s": 0.052194,
+      "sampled_process_tree_peak_rss_kib": 15776,
+      "wall_s": 0.06062170799123123
+    }
+  },
+  "oracles": {
+    "batch-0": "92\n[\"{\\\"index\\\": 0, \\\"message\\\": \\\"worker batch\\\", \\\"ok\\\": true, \\\"scores\\\": [1, 0.5, 3], \\\"task\\\": \\\"repair\\\"}\"]\n",
+    "batch-1": "92\n[\"{\\\"index\\\": 1, \\\"message\\\": \\\"worker batch\\\", \\\"ok\\\": true, \\\"scores\\\": [1, 0.5, 3], \\\"task\\\": \\\"repair\\\"}\"]\n",
+    "batch-2": "92\n[\"{\\\"index\\\": 2, \\\"message\\\": \\\"worker batch\\\", \\\"ok\\\": true, \\\"scores\\\": [1, 0.5, 3], \\\"task\\\": \\\"repair\\\"}\"]\n",
+    "batch-3": "92\n[\"{\\\"index\\\": 3, \\\"message\\\": \\\"worker batch\\\", \\\"ok\\\": true, \\\"scores\\\": [1, 0.5, 3], \\\"task\\\": \\\"repair\\\"}\"]\n",
+    "batch-4": "92\n[\"{\\\"index\\\": 4, \\\"message\\\": \\\"worker batch\\\", \\\"ok\\\": true, \\\"scores\\\": [1, 0.5, 3], \\\"task\\\": \\\"repair\\\"}\"]\n",
+    "batch-5": "92\n[\"{\\\"index\\\": 5, \\\"message\\\": \\\"worker batch\\\", \\\"ok\\\": true, \\\"scores\\\": [1, 0.5, 3], \\\"task\\\": \\\"repair\\\"}\"]\n",
+    "batch-6": "92\n[\"{\\\"index\\\": 6, \\\"message\\\": \\\"worker batch\\\", \\\"ok\\\": true, \\\"scores\\\": [1, 0.5, 3], \\\"task\\\": \\\"repair\\\"}\"]\n",
+    "batch-7": "92\n[\"{\\\"index\\\": 7, \\\"message\\\": \\\"worker batch\\\", \\\"ok\\\": true, \\\"scores\\\": [1, 0.5, 3], \\\"task\\\": \\\"repair\\\"}\"]\n"
+  },
+  "rounds": 1,
+  "rows": 1,
+  "samples": [
+    {
+      "coordinator_wall_s": 0.04971356800524518,
+      "cpu_s": 0.057977,
+      "jobs": [
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-0.txt",
+            "1"
+          ],
+          "cpu_s": 0.001379,
+          "exit_code": 0,
+          "finished_monotonic_s": 67468.773783284,
+          "key": "batch-0",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 0.00027145100466441363,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67468.768051003,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "3c63c593d41f536a5f8a9527be6debb3b4c34a9b7039e92e8f6d8d9d5aa4cb22",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15520,
+          "wall_s": 0.0057313599972985685
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-1.txt",
+            "1"
+          ],
+          "cpu_s": 0.0011359999999999999,
+          "exit_code": 0,
+          "finished_monotonic_s": 67468.779637696,
+          "key": "batch-1",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 5.7043987908400595e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67468.773995948,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "4d8b8ec5f5de4b609f19e7fdb61c35443b5900cc1b029b0faca3e08a0696eda0",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15648,
+          "wall_s": 0.005640646006213501
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-2.txt",
+            "1"
+          ],
+          "cpu_s": 0.001068,
+          "exit_code": 0,
+          "finished_monotonic_s": 67468.785368215,
+          "key": "batch-2",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 7.470999844372272e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67468.779847215,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "2ecea303b8cb1e7994933dc229283937108d5556201b8e3c78b636d5ce38485c",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15648,
+          "wall_s": 0.005520349004655145
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-3.txt",
+            "1"
+          ],
+          "cpu_s": 0.0011049999999999999,
+          "exit_code": 0,
+          "finished_monotonic_s": 67468.791236256,
+          "key": "batch-3",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 5.775500903837383e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67468.785549983,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "866637774ef6ed46b459eae218688cf3e3862e87e46f41764905419cb52d8326",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15648,
+          "wall_s": 0.005685591997462325
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-4.txt",
+            "1"
+          ],
+          "cpu_s": 0.001045,
+          "exit_code": 0,
+          "finished_monotonic_s": 67468.797012793,
+          "key": "batch-4",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 5.39900065632537e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67468.791469381,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "f7aed885e3a6c0e32cda796e69505e1ec17b6b798d4f80390cd1f4e0a2b18cb9",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15648,
+          "wall_s": 0.005542661005165428
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-5.txt",
+            "1"
+          ],
+          "cpu_s": 0.001063,
+          "exit_code": 0,
+          "finished_monotonic_s": 67468.802827361,
+          "key": "batch-5",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 5.2688003052026033e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67468.797254781,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "aaa57b6a03915021a7083cea16a40ca31511ff9564f55096687e2d7854d02c5d",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15648,
+          "wall_s": 0.005571657995460555
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-6.txt",
+            "1"
+          ],
+          "cpu_s": 0.00112,
+          "exit_code": 0,
+          "finished_monotonic_s": 67468.808679464,
+          "key": "batch-6",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 7.73840001784265e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67468.803159722,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "c78381c1541b02c33a96951f4e9b3540bcbc8dbd402a22370c539c5d0506c2f5",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15648,
+          "wall_s": 0.0055185810051625594
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-7.txt",
+            "1"
+          ],
+          "cpu_s": 0.0013269999999999998,
+          "exit_code": 0,
+          "finished_monotonic_s": 67468.81448213,
+          "key": "batch-7",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 7.612199988216162e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67468.808992637,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "be84fbdaf88fdb6c93498a53fe0488b162fcb5e3b03f5035a3e4840c23f1e5f5",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15648,
+          "wall_s": 0.005488601003889926
+        }
+      ],
+      "peak_reserved": {
+        "cpu": 1,
+        "input_bytes": 84,
+        "memory_bytes": 134217728
+      },
+      "sample": 0,
+      "sampled_process_tree_peak_rss_kib": 15780,
+      "wall_s": 0.09273128899803851,
+      "workers": 1
+    },
+    {
+      "coordinator_wall_s": 0.02790976500546094,
+      "cpu_s": 0.057279,
+      "jobs": [
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-0.txt",
+            "1"
+          ],
+          "cpu_s": 0.001222,
+          "exit_code": 0,
+          "finished_monotonic_s": 67468.868314214,
+          "key": "batch-0",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 0.00025612799800001085,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67468.862123795,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "3c63c593d41f536a5f8a9527be6debb3b4c34a9b7039e92e8f6d8d9d5aa4cb22",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15520,
+          "wall_s": 0.0061894569953437895
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-1.txt",
+            "1"
+          ],
+          "cpu_s": 0.001289,
+          "exit_code": 0,
+          "finished_monotonic_s": 67468.868370367,
+          "key": "batch-1",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 6.600699271075428e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67468.862730902,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "4d8b8ec5f5de4b609f19e7fdb61c35443b5900cc1b029b0faca3e08a0696eda0",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15648,
+          "wall_s": 0.00563878400134854
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-2.txt",
+            "1"
+          ],
+          "cpu_s": 0.0010199999999999999,
+          "exit_code": 0,
+          "finished_monotonic_s": 67468.874549989,
+          "key": "batch-2",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 5.6052012951113284e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67468.868574588,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "2ecea303b8cb1e7994933dc229283937108d5556201b8e3c78b636d5ce38485c",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15648,
+          "wall_s": 0.005974739993689582
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-3.txt",
+            "1"
+          ],
+          "cpu_s": 0.001171,
+          "exit_code": 0,
+          "finished_monotonic_s": 67468.874594635,
+          "key": "batch-3",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 5.288800457492471e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67468.869093365,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "866637774ef6ed46b459eae218688cf3e3862e87e46f41764905419cb52d8326",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15648,
+          "wall_s": 0.005500758998095989
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-4.txt",
+            "1"
+          ],
+          "cpu_s": 0.000958,
+          "exit_code": 0,
+          "finished_monotonic_s": 67468.880703923,
+          "key": "batch-4",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 5.308799154590815e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67468.874785707,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "f7aed885e3a6c0e32cda796e69505e1ec17b6b798d4f80390cd1f4e0a2b18cb9",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15648,
+          "wall_s": 0.005917504997341894
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-5.txt",
+            "1"
+          ],
+          "cpu_s": 0.0012749999999999999,
+          "exit_code": 0,
+          "finished_monotonic_s": 67468.880747257,
+          "key": "batch-5",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 5.525100277736783e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67468.875290433,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "aaa57b6a03915021a7083cea16a40ca31511ff9564f55096687e2d7854d02c5d",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15648,
+          "wall_s": 0.005456423998111859
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-6.txt",
+            "1"
+          ],
+          "cpu_s": 0.001081,
+          "exit_code": 0,
+          "finished_monotonic_s": 67468.88688624,
+          "key": "batch-6",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 8.658799924887717e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67468.880977678,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "c78381c1541b02c33a96951f4e9b3540bcbc8dbd402a22370c539c5d0506c2f5",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15648,
+          "wall_s": 0.00590776999888476
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-7.txt",
+            "1"
+          ],
+          "cpu_s": 0.001163,
+          "exit_code": 0,
+          "finished_monotonic_s": 67468.886956333,
+          "key": "batch-7",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 5.740400229115039e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67468.881470746,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "be84fbdaf88fdb6c93498a53fe0488b162fcb5e3b03f5035a3e4840c23f1e5f5",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15648,
+          "wall_s": 0.005485005996888503
+        }
+      ],
+      "peak_reserved": {
+        "cpu": 2,
+        "input_bytes": 168,
+        "memory_bytes": 268435456
+      },
+      "sample": 0,
+      "sampled_process_tree_peak_rss_kib": 15780,
+      "wall_s": 0.07075949000136461,
+      "workers": 2
+    },
+    {
+      "coordinator_wall_s": 0.020295813999837264,
+      "cpu_s": 0.054006,
+      "jobs": [
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-0.txt",
+            "1"
+          ],
+          "cpu_s": 0.001629,
+          "exit_code": 0,
+          "finished_monotonic_s": 67468.939913309,
+          "key": "batch-0",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 0.00020476299687288702,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67468.931528117,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "3c63c593d41f536a5f8a9527be6debb3b4c34a9b7039e92e8f6d8d9d5aa4cb22",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15648,
+          "wall_s": 0.00838429099530913
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-1.txt",
+            "1"
+          ],
+          "cpu_s": 0.001207,
+          "exit_code": 0,
+          "finished_monotonic_s": 67468.939962321,
+          "key": "batch-1",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 5.7505007134750485e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67468.932184587,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "4d8b8ec5f5de4b609f19e7fdb61c35443b5900cc1b029b0faca3e08a0696eda0",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15776,
+          "wall_s": 0.007777142993290909
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-2.txt",
+            "1"
+          ],
+          "cpu_s": 0.001135,
+          "exit_code": 0,
+          "finished_monotonic_s": 67468.939994489,
+          "key": "batch-2",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 4.370399983599782e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67468.932529597,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "2ecea303b8cb1e7994933dc229283937108d5556201b8e3c78b636d5ce38485c",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15776,
+          "wall_s": 0.007464430993422866
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-3.txt",
+            "1"
+          ],
+          "cpu_s": 0.000948,
+          "exit_code": 0,
+          "finished_monotonic_s": 67468.940058023,
+          "key": "batch-3",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 4.996299685444683e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67468.933615061,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "866637774ef6ed46b459eae218688cf3e3862e87e46f41764905419cb52d8326",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15776,
+          "wall_s": 0.0064426309982081875
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-4.txt",
+            "1"
+          ],
+          "cpu_s": 0.001054,
+          "exit_code": 0,
+          "finished_monotonic_s": 67468.948828063,
+          "key": "batch-4",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 4.871199780609459e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67468.940229666,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "f7aed885e3a6c0e32cda796e69505e1ec17b6b798d4f80390cd1f4e0a2b18cb9",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15776,
+          "wall_s": 0.008597595995524898
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-5.txt",
+            "1"
+          ],
+          "cpu_s": 0.001155,
+          "exit_code": 0,
+          "finished_monotonic_s": 67468.948870546,
+          "key": "batch-5",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 4.366399662103504e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67468.940623448,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "aaa57b6a03915021a7083cea16a40ca31511ff9564f55096687e2d7854d02c5d",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15776,
+          "wall_s": 0.008246597004472278
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-6.txt",
+            "1"
+          ],
+          "cpu_s": 0.001067,
+          "exit_code": 0,
+          "finished_monotonic_s": 67468.948968591,
+          "key": "batch-6",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 4.34139947174117e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67468.940964362,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "c78381c1541b02c33a96951f4e9b3540bcbc8dbd402a22370c539c5d0506c2f5",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15776,
+          "wall_s": 0.00800383799651172
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-7.txt",
+            "1"
+          ],
+          "cpu_s": 0.000936,
+          "exit_code": 0,
+          "finished_monotonic_s": 67468.949000839,
+          "key": "batch-7",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 5.2256989874877036e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67468.943402155,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "be84fbdaf88fdb6c93498a53fe0488b162fcb5e3b03f5035a3e4840c23f1e5f5",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15776,
+          "wall_s": 0.005598463001661003
+        }
+      ],
+      "peak_reserved": {
+        "cpu": 4,
+        "input_bytes": 336,
+        "memory_bytes": 536870912
+      },
+      "sample": 0,
+      "sampled_process_tree_peak_rss_kib": 15776,
+      "wall_s": 0.06062170799123123,
+      "workers": 4
+    },
+    {
+      "coordinator_wall_s": 0.027917568004340865,
+      "cpu_s": 0.046697,
+      "jobs": [
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-0.txt",
+            "1"
+          ],
+          "cpu_s": 0.001238,
+          "exit_code": 0,
+          "finished_monotonic_s": 67468.997659377,
+          "key": "batch-0",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 0.0001765810011420399,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67468.991675354,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "3c63c593d41f536a5f8a9527be6debb3b4c34a9b7039e92e8f6d8d9d5aa4cb22",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15520,
+          "wall_s": 0.005983362003462389
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-1.txt",
+            "1"
+          ],
+          "cpu_s": 0.0009159999999999999,
+          "exit_code": 0,
+          "finished_monotonic_s": 67468.997704083,
+          "key": "batch-1",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 5.297799361869693e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67468.99223453,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "4d8b8ec5f5de4b609f19e7fdb61c35443b5900cc1b029b0faca3e08a0696eda0",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15520,
+          "wall_s": 0.005469062001793645
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-2.txt",
+            "1"
+          ],
+          "cpu_s": 0.001046,
+          "exit_code": 0,
+          "finished_monotonic_s": 67469.003639004,
+          "key": "batch-2",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 4.579800588544458e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67468.997866834,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "2ecea303b8cb1e7994933dc229283937108d5556201b8e3c78b636d5ce38485c",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15648,
+          "wall_s": 0.0057715489965630695
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-3.txt",
+            "1"
+          ],
+          "cpu_s": 0.001006,
+          "exit_code": 0,
+          "finished_monotonic_s": 67469.003671281,
+          "key": "batch-3",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 4.3173000449314713e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67468.998288917,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "866637774ef6ed46b459eae218688cf3e3862e87e46f41764905419cb52d8326",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15648,
+          "wall_s": 0.005381993993069045
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-4.txt",
+            "1"
+          ],
+          "cpu_s": 0.0009109999999999999,
+          "exit_code": 0,
+          "finished_monotonic_s": 67469.010316742,
+          "key": "batch-4",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 4.7339999582618475e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67469.003824007,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "f7aed885e3a6c0e32cda796e69505e1ec17b6b798d4f80390cd1f4e0a2b18cb9",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15648,
+          "wall_s": 0.00649205400259234
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-5.txt",
+            "1"
+          ],
+          "cpu_s": 0.001042,
+          "exit_code": 0,
+          "finished_monotonic_s": 67469.010356421,
+          "key": "batch-5",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 4.180200630798936e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67469.004203728,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "aaa57b6a03915021a7083cea16a40ca31511ff9564f55096687e2d7854d02c5d",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15648,
+          "wall_s": 0.006152311994810589
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-6.txt",
+            "1"
+          ],
+          "cpu_s": 0.0009839999999999998,
+          "exit_code": 0,
+          "finished_monotonic_s": 67469.017313773,
+          "key": "batch-6",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 4.999400698579848e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67469.010576586,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "c78381c1541b02c33a96951f4e9b3540bcbc8dbd402a22370c539c5d0506c2f5",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15648,
+          "wall_s": 0.006736224997439422
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-7.txt",
+            "1"
+          ],
+          "cpu_s": 0.00104,
+          "exit_code": 0,
+          "finished_monotonic_s": 67469.017351999,
+          "key": "batch-7",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 4.69390070065856e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67469.011838541,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "be84fbdaf88fdb6c93498a53fe0488b162fcb5e3b03f5035a3e4840c23f1e5f5",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15648,
+          "wall_s": 0.00551310800074134
+        }
+      ],
+      "peak_reserved": {
+        "cpu": 2,
+        "input_bytes": 168,
+        "memory_bytes": 268435456
+      },
+      "sample": 1,
+      "sampled_process_tree_peak_rss_kib": 15648,
+      "wall_s": 0.0664445180009352,
+      "workers": 2
+    },
+    {
+      "coordinator_wall_s": 0.01795257999037858,
+      "cpu_s": 0.045685,
+      "jobs": [
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-0.txt",
+            "1"
+          ],
+          "cpu_s": 0.001298,
+          "exit_code": 0,
+          "finished_monotonic_s": 67469.062849616,
+          "key": "batch-0",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 0.00018399198597762734,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67469.055123348,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "3c63c593d41f536a5f8a9527be6debb3b4c34a9b7039e92e8f6d8d9d5aa4cb22",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15520,
+          "wall_s": 0.007725687013589777
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-1.txt",
+            "1"
+          ],
+          "cpu_s": 0.000975,
+          "exit_code": 0,
+          "finished_monotonic_s": 67469.062917457,
+          "key": "batch-1",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 5.0054004532285035e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67469.055711477,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "4d8b8ec5f5de4b609f19e7fdb61c35443b5900cc1b029b0faca3e08a0696eda0",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15648,
+          "wall_s": 0.007205499001429416
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-2.txt",
+            "1"
+          ],
+          "cpu_s": 0.0008619999999999999,
+          "exit_code": 0,
+          "finished_monotonic_s": 67469.062954892,
+          "key": "batch-2",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 4.573700425680727e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67469.056150526,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "2ecea303b8cb1e7994933dc229283937108d5556201b8e3c78b636d5ce38485c",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15648,
+          "wall_s": 0.006804054995882325
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-3.txt",
+            "1"
+          ],
+          "cpu_s": 0.000883,
+          "exit_code": 0,
+          "finished_monotonic_s": 67469.062992978,
+          "key": "batch-3",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 4.8501009587198496e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67469.0568706,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "866637774ef6ed46b459eae218688cf3e3862e87e46f41764905419cb52d8326",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15648,
+          "wall_s": 0.00612205799552612
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-4.txt",
+            "1"
+          ],
+          "cpu_s": 0.0009549999999999999,
+          "exit_code": 0,
+          "finished_monotonic_s": 67469.070553882,
+          "key": "batch-4",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 4.67589998152107e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67469.063154627,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "f7aed885e3a6c0e32cda796e69505e1ec17b6b798d4f80390cd1f4e0a2b18cb9",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15648,
+          "wall_s": 0.007398674002615735
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-5.txt",
+            "1"
+          ],
+          "cpu_s": 0.000967,
+          "exit_code": 0,
+          "finished_monotonic_s": 67469.070589534,
+          "key": "batch-5",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 4.081000224687159e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67469.063541829,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "aaa57b6a03915021a7083cea16a40ca31511ff9564f55096687e2d7854d02c5d",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15648,
+          "wall_s": 0.00704736499756109
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-6.txt",
+            "1"
+          ],
+          "cpu_s": 0.001122,
+          "exit_code": 0,
+          "finished_monotonic_s": 67469.070619098,
+          "key": "batch-6",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 3.6775003536604345e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67469.063852198,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "c78381c1541b02c33a96951f4e9b3540bcbc8dbd402a22370c539c5d0506c2f5",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15648,
+          "wall_s": 0.006766649996279739
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-7.txt",
+            "1"
+          ],
+          "cpu_s": 0.000851,
+          "exit_code": 0,
+          "finished_monotonic_s": 67469.070645728,
+          "key": "batch-7",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 5.624299228657037e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67469.065216494,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "be84fbdaf88fdb6c93498a53fe0488b162fcb5e3b03f5035a3e4840c23f1e5f5",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15648,
+          "wall_s": 0.005428992997622117
+        }
+      ],
+      "peak_reserved": {
+        "cpu": 4,
+        "input_bytes": 336,
+        "memory_bytes": 536870912
+      },
+      "sample": 1,
+      "sampled_process_tree_peak_rss_kib": 15780,
+      "wall_s": 0.0526208189985482,
+      "workers": 4
+    },
+    {
+      "coordinator_wall_s": 0.049205147006432526,
+      "cpu_s": 0.050775999999999995,
+      "jobs": [
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-0.txt",
+            "1"
+          ],
+          "cpu_s": 0.001201,
+          "exit_code": 0,
+          "finished_monotonic_s": 67469.115691006,
+          "key": "batch-0",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 0.00021069200010970235,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67469.110092994,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "3c63c593d41f536a5f8a9527be6debb3b4c34a9b7039e92e8f6d8d9d5aa4cb22",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15520,
+          "wall_s": 0.0055972209956962615
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-1.txt",
+            "1"
+          ],
+          "cpu_s": 0.001109,
+          "exit_code": 0,
+          "finished_monotonic_s": 67469.121480902,
+          "key": "batch-1",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 5.989900091663003e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67469.115884032,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "4d8b8ec5f5de4b609f19e7fdb61c35443b5900cc1b029b0faca3e08a0696eda0",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15520,
+          "wall_s": 0.005596218994469382
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-2.txt",
+            "1"
+          ],
+          "cpu_s": 0.00137,
+          "exit_code": 0,
+          "finished_monotonic_s": 67469.128473336,
+          "key": "batch-2",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 5.213699478190392e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67469.121659026,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "2ecea303b8cb1e7994933dc229283937108d5556201b8e3c78b636d5ce38485c",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15648,
+          "wall_s": 0.006813658997998573
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-3.txt",
+            "1"
+          ],
+          "cpu_s": 0.001026,
+          "exit_code": 0,
+          "finished_monotonic_s": 67469.134108734,
+          "key": "batch-3",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 5.420998786576092e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67469.128656066,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "866637774ef6ed46b459eae218688cf3e3862e87e46f41764905419cb52d8326",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15648,
+          "wall_s": 0.005452068013255484
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-4.txt",
+            "1"
+          ],
+          "cpu_s": 0.00095,
+          "exit_code": 0,
+          "finished_monotonic_s": 67469.139659507,
+          "key": "batch-4",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 5.0394999561831355e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67469.1342816,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "f7aed885e3a6c0e32cda796e69505e1ec17b6b798d4f80390cd1f4e0a2b18cb9",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15648,
+          "wall_s": 0.005377366003813222
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-5.txt",
+            "1"
+          ],
+          "cpu_s": 0.001155,
+          "exit_code": 0,
+          "finished_monotonic_s": 67469.145338039,
+          "key": "batch-5",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 5.0444999942556024e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67469.13983036,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "aaa57b6a03915021a7083cea16a40ca31511ff9564f55096687e2d7854d02c5d",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15648,
+          "wall_s": 0.005506988003617153
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-6.txt",
+            "1"
+          ],
+          "cpu_s": 0.001228,
+          "exit_code": 0,
+          "finished_monotonic_s": 67469.150956342,
+          "key": "batch-6",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 4.899200575891882e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67469.145505847,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "c78381c1541b02c33a96951f4e9b3540bcbc8dbd402a22370c539c5d0506c2f5",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15648,
+          "wall_s": 0.00544967400492169
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-7.txt",
+            "1"
+          ],
+          "cpu_s": 0.001014,
+          "exit_code": 0,
+          "finished_monotonic_s": 67469.156626421,
+          "key": "batch-7",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 4.7690002247691154e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67469.151118311,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "be84fbdaf88fdb6c93498a53fe0488b162fcb5e3b03f5035a3e4840c23f1e5f5",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15648,
+          "wall_s": 0.005507478999788873
+        }
+      ],
+      "peak_reserved": {
+        "cpu": 1,
+        "input_bytes": 84,
+        "memory_bytes": 134217728
+      },
+      "sample": 1,
+      "sampled_process_tree_peak_rss_kib": 15648,
+      "wall_s": 0.08722302000387572,
+      "workers": 1
+    },
+    {
+      "coordinator_wall_s": 0.020418053987668827,
+      "cpu_s": 0.052194,
+      "jobs": [
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-0.txt",
+            "1"
+          ],
+          "cpu_s": 0.001181,
+          "exit_code": 0,
+          "finished_monotonic_s": 67469.210246422,
+          "key": "batch-0",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 0.00017735200526658446,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67469.201307261,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "3c63c593d41f536a5f8a9527be6debb3b4c34a9b7039e92e8f6d8d9d5aa4cb22",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15648,
+          "wall_s": 0.00893831999565009
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-1.txt",
+            "1"
+          ],
+          "cpu_s": 0.001076,
+          "exit_code": 0,
+          "finished_monotonic_s": 67469.210293061,
+          "key": "batch-1",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 5.435000639408827e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67469.201837695,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "4d8b8ec5f5de4b609f19e7fdb61c35443b5900cc1b029b0faca3e08a0696eda0",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15648,
+          "wall_s": 0.008454854993033223
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-2.txt",
+            "1"
+          ],
+          "cpu_s": 0.001027,
+          "exit_code": 0,
+          "finished_monotonic_s": 67469.210327432,
+          "key": "batch-2",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 4.943300154991448e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67469.202725107,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "2ecea303b8cb1e7994933dc229283937108d5556201b8e3c78b636d5ce38485c",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15648,
+          "wall_s": 0.007601974008139223
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-3.txt",
+            "1"
+          ],
+          "cpu_s": 0.0009469999999999999,
+          "exit_code": 0,
+          "finished_monotonic_s": 67469.210363755,
+          "key": "batch-3",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 5.31190016772598e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67469.204735137,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "866637774ef6ed46b459eae218688cf3e3862e87e46f41764905419cb52d8326",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15776,
+          "wall_s": 0.0056283480080310255
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-4.txt",
+            "1"
+          ],
+          "cpu_s": 0.000958,
+          "exit_code": 0,
+          "finished_monotonic_s": 67469.21866258,
+          "key": "batch-4",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 4.585699934978038e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67469.210524713,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "f7aed885e3a6c0e32cda796e69505e1ec17b6b798d4f80390cd1f4e0a2b18cb9",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15776,
+          "wall_s": 0.008137025011819787
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-5.txt",
+            "1"
+          ],
+          "cpu_s": 0.0009019999999999999,
+          "exit_code": 0,
+          "finished_monotonic_s": 67469.218704452,
+          "key": "batch-5",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 6.449499051086605e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67469.210944814,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "aaa57b6a03915021a7083cea16a40ca31511ff9564f55096687e2d7854d02c5d",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15776,
+          "wall_s": 0.007759277010336518
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-6.txt",
+            "1"
+          ],
+          "cpu_s": 0.0008749999999999999,
+          "exit_code": 0,
+          "finished_monotonic_s": 67469.218738742,
+          "key": "batch-6",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 3.813600051216781e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67469.211257396,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "c78381c1541b02c33a96951f4e9b3540bcbc8dbd402a22370c539c5d0506c2f5",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15776,
+          "wall_s": 0.0074809959915000945
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-7.txt",
+            "1"
+          ],
+          "cpu_s": 0.000937,
+          "exit_code": 0,
+          "finished_monotonic_s": 67469.218770269,
+          "key": "batch-7",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 5.200700252316892e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67469.213247587,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "be84fbdaf88fdb6c93498a53fe0488b162fcb5e3b03f5035a3e4840c23f1e5f5",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15776,
+          "wall_s": 0.005522491002921015
+        }
+      ],
+      "peak_reserved": {
+        "cpu": 4,
+        "input_bytes": 336,
+        "memory_bytes": 536870912
+      },
+      "sample": 2,
+      "sampled_process_tree_peak_rss_kib": 15776,
+      "wall_s": 0.06313443600083701,
+      "workers": 4
+    },
+    {
+      "coordinator_wall_s": 0.0691232210083399,
+      "cpu_s": 0.061231999999999995,
+      "jobs": [
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-0.txt",
+            "1"
+          ],
+          "cpu_s": 0.0016309999999999999,
+          "exit_code": 0,
+          "finished_monotonic_s": 67469.287035156,
+          "key": "batch-0",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 0.00019531800353433937,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67469.266653526,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "3c63c593d41f536a5f8a9527be6debb3b4c34a9b7039e92e8f6d8d9d5aa4cb22",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15520,
+          "wall_s": 0.02038064898806624
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-1.txt",
+            "1"
+          ],
+          "cpu_s": 0.0013729999999999999,
+          "exit_code": 0,
+          "finished_monotonic_s": 67469.292845143,
+          "key": "batch-1",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 6.983400089666247e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67469.287263284,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "4d8b8ec5f5de4b609f19e7fdb61c35443b5900cc1b029b0faca3e08a0696eda0",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15520,
+          "wall_s": 0.005580957003985532
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-2.txt",
+            "1"
+          ],
+          "cpu_s": 0.00122,
+          "exit_code": 0,
+          "finished_monotonic_s": 67469.301407366,
+          "key": "batch-2",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 6.0860009398311377e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67469.29307979,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "2ecea303b8cb1e7994933dc229283937108d5556201b8e3c78b636d5ce38485c",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15648,
+          "wall_s": 0.008326884999405593
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-3.txt",
+            "1"
+          ],
+          "cpu_s": 0.0016849999999999999,
+          "exit_code": 0,
+          "finished_monotonic_s": 67469.30720916,
+          "key": "batch-3",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 5.421000241767615e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67469.301592399,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "866637774ef6ed46b459eae218688cf3e3862e87e46f41764905419cb52d8326",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15648,
+          "wall_s": 0.005616030000965111
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-4.txt",
+            "1"
+          ],
+          "cpu_s": 0.001527,
+          "exit_code": 0,
+          "finished_monotonic_s": 67469.313026858,
+          "key": "batch-4",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 5.0794988055713475e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67469.307386462,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "f7aed885e3a6c0e32cda796e69505e1ec17b6b798d4f80390cd1f4e0a2b18cb9",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15648,
+          "wall_s": 0.005639675000566058
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-5.txt",
+            "1"
+          ],
+          "cpu_s": 0.001406,
+          "exit_code": 0,
+          "finished_monotonic_s": 67469.318963321,
+          "key": "batch-5",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 7.482100045308471e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67469.31329904,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "aaa57b6a03915021a7083cea16a40ca31511ff9564f55096687e2d7854d02c5d",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15648,
+          "wall_s": 0.005663338990416378
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-6.txt",
+            "1"
+          ],
+          "cpu_s": 0.0020659999999999997,
+          "exit_code": 0,
+          "finished_monotonic_s": 67469.326730519,
+          "key": "batch-6",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 8.038899977691472e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67469.319228653,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "c78381c1541b02c33a96951f4e9b3540bcbc8dbd402a22370c539c5d0506c2f5",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15648,
+          "wall_s": 0.007501034997403622
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-7.txt",
+            "1"
+          ],
+          "cpu_s": 0.001437,
+          "exit_code": 0,
+          "finished_monotonic_s": 67469.332576398,
+          "key": "batch-7",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 7.694399391766638e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67469.327009191,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "be84fbdaf88fdb6c93498a53fe0488b162fcb5e3b03f5035a3e4840c23f1e5f5",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15648,
+          "wall_s": 0.00556648601195775
+        }
+      ],
+      "peak_reserved": {
+        "cpu": 1,
+        "input_bytes": 84,
+        "memory_bytes": 134217728
+      },
+      "sample": 2,
+      "sampled_process_tree_peak_rss_kib": 16780,
+      "wall_s": 0.1119189149903832,
+      "workers": 1
+    },
+    {
+      "coordinator_wall_s": 0.028147892997367308,
+      "cpu_s": 0.058915999999999996,
+      "jobs": [
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-0.txt",
+            "1"
+          ],
+          "cpu_s": 0.0013549999999999999,
+          "exit_code": 0,
+          "finished_monotonic_s": 67469.393192643,
+          "key": "batch-0",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 0.00029317800363060087,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67469.387116153,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "3c63c593d41f536a5f8a9527be6debb3b4c34a9b7039e92e8f6d8d9d5aa4cb22",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15520,
+          "wall_s": 0.006075719007640146
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-1.txt",
+            "1"
+          ],
+          "cpu_s": 0.001018,
+          "exit_code": 0,
+          "finished_monotonic_s": 67469.393234635,
+          "key": "batch-1",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 4.999400698579848e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67469.387644364,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "4d8b8ec5f5de4b609f19e7fdb61c35443b5900cc1b029b0faca3e08a0696eda0",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15648,
+          "wall_s": 0.00558984000235796
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-2.txt",
+            "1"
+          ],
+          "cpu_s": 0.001147,
+          "exit_code": 0,
+          "finished_monotonic_s": 67469.399160232,
+          "key": "batch-2",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 4.8802001401782036e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67469.393401231,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "2ecea303b8cb1e7994933dc229283937108d5556201b8e3c78b636d5ce38485c",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15648,
+          "wall_s": 0.0057583799934946
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-3.txt",
+            "1"
+          ],
+          "cpu_s": 0.000879,
+          "exit_code": 0,
+          "finished_monotonic_s": 67469.39919286,
+          "key": "batch-3",
+          "load_after": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 4.068099951837212e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67469.393790617,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "866637774ef6ed46b459eae218688cf3e3862e87e46f41764905419cb52d8326",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15648,
+          "wall_s": 0.005401913003879599
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-4.txt",
+            "1"
+          ],
+          "cpu_s": 0.000936,
+          "exit_code": 0,
+          "finished_monotonic_s": 67469.405118568,
+          "key": "batch-4",
+          "load_after": [
+            3.45751953125,
+            3.2607421875,
+            3.23193359375
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 4.494700988288969e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67469.399346698,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "f7aed885e3a6c0e32cda796e69505e1ec17b6b798d4f80390cd1f4e0a2b18cb9",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15648,
+          "wall_s": 0.005771308991825208
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-5.txt",
+            "1"
+          ],
+          "cpu_s": 0.0008929999999999999,
+          "exit_code": 0,
+          "finished_monotonic_s": 67469.40515409,
+          "key": "batch-5",
+          "load_after": [
+            3.45751953125,
+            3.2607421875,
+            3.23193359375
+          ],
+          "load_before": [
+            3.3232421875,
+            3.23095703125,
+            3.22216796875
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 4.1050996514968574e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67469.399746959,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "aaa57b6a03915021a7083cea16a40ca31511ff9564f55096687e2d7854d02c5d",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15648,
+          "wall_s": 0.005406780997873284
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-6.txt",
+            "1"
+          ],
+          "cpu_s": 0.001077,
+          "exit_code": 0,
+          "finished_monotonic_s": 67469.412201505,
+          "key": "batch-6",
+          "load_after": [
+            3.45751953125,
+            3.2607421875,
+            3.23193359375
+          ],
+          "load_before": [
+            3.45751953125,
+            3.2607421875,
+            3.23193359375
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 5.2247007261030376e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67469.40543183,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "c78381c1541b02c33a96951f4e9b3540bcbc8dbd402a22370c539c5d0506c2f5",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15648,
+          "wall_s": 0.006769023995730095
+        },
+        {
+          "cancelled": false,
+          "command": [
+            "/workspace/scratch/8c7ef878d89d/evidence/json-batch",
+            "/workspace/scratch/8c7ef878d89d/evidence/json-tiny/input-7.txt",
+            "1"
+          ],
+          "cpu_s": 0.0009549999999999999,
+          "exit_code": 0,
+          "finished_monotonic_s": 67469.412236917,
+          "key": "batch-7",
+          "load_after": [
+            3.45751953125,
+            3.2607421875,
+            3.23193359375
+          ],
+          "load_before": [
+            3.45751953125,
+            3.2607421875,
+            3.23193359375
+          ],
+          "output_limit_exceeded": false,
+          "proc_pid_resolved": false,
+          "queue_s": 4.758000432047993e-05,
+          "resources": {
+            "cpu": 1,
+            "input_bytes": 84,
+            "memory_bytes": 134217728
+          },
+          "sampled_max_processes": 0,
+          "sampled_process_tree_peak_rss_kib": null,
+          "started_monotonic_s": 67469.406788655,
+          "stderr_bytes": 0,
+          "stderr_hashed_bytes": 0,
+          "stderr_prefix_sha256": null,
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_truncated": false,
+          "stdout_bytes": 114,
+          "stdout_hashed_bytes": 114,
+          "stdout_prefix_sha256": null,
+          "stdout_sha256": "be84fbdaf88fdb6c93498a53fe0488b162fcb5e3b03f5035a3e4840c23f1e5f5",
+          "stdout_truncated": false,
+          "timed_out": false,
+          "wait4_max_process_rss_kib": 15648,
+          "wall_s": 0.005447931995149702
+        }
+      ],
+      "peak_reserved": {
+        "cpu": 2,
+        "input_bytes": 168,
+        "memory_bytes": 268435456
+      },
+      "sample": 2,
+      "sampled_process_tree_peak_rss_kib": 15648,
+      "wall_s": 0.0744131140090758,
+      "workers": 2
+    }
+  ],
+  "samples_per_policy": 3,
+  "source_sha256": {
+    "/workspace/scratch/8c7ef878d89d/pystachy-workers/bench/process_workers/json_batch.py": "cb228a0d60fbfb496bfc23f7694d8f97f38e0337f617f3b1658f785e0683ddac",
+    "/workspace/scratch/8c7ef878d89d/pystachy-workers/bench/process_workers/run.py": "087815ebf5ccce0a42b778501b5d7dd7658c9f7cc17b255cc3298072f3f6e6cf",
+    "/workspace/scratch/8c7ef878d89d/pystachy-workers/tools/application_workers.py": "d76f570bd95f3923ba09eb5f681ab922fd5919510136ebd6559298d473051006",
+    "/workspace/scratch/8c7ef878d89d/pystachy-workers/tools/process_workers.py": "15f5fbe0eafdb7112546ce7a821e6e0a233630f466f17cb77c35c1ead93b7d6e"
+  },
+  "tasks": 8
+}

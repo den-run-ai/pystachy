@@ -168,6 +168,17 @@ Proposed capabilities, each to add a row above with the probes listed here:
 
 ## Reusing LLVM
 
+The [bounded process-worker prototype](../bench/process_workers/README.md) factors
+the compiler research scheduler into a CPython execution layer used by both LLVM
+backend jobs and native application executables. It bounds CPU reservations,
+estimated memory and active/queued input bytes, owns process groups, and stops
+queued work after a reported failure. Detached workers add explicit artifacts,
+validated result publication, leases and opt-in retries for idempotent jobs.
+The committed pilot uses two local endpoints on one physical host. This does
+not add a native language process API, shared-heap threads, or a global fleet
+admission service. The numerical and native-process prototypes remain separate
+branches with their own execution contracts.
+
 LLVM supplies mechanisms; the Python semantics stay Pystachy's.
 
 - **Coroutines:** generators already lower to LLVM's switched-resume coroutines, and CoroSplit and

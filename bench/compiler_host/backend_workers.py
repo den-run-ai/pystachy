@@ -22,13 +22,12 @@ import importlib.util
 import json
 import math
 import os
+import platform
 from pathlib import Path
 import resource
 import shutil
-import signal
 import subprocess
 import sys
-import tempfile
 import time
 
 
@@ -48,208 +47,25 @@ def write_json(path, value):
 
 
 def identity(llvm):
-    return {name: digest(llvm / name) for name in ("clang", "opt", "ld.lld")}
+    names = ["clang", "opt"]
+    if (llvm / "ld.lld").is_file():
+        names.append("ld.lld")
+    return {name: digest(llvm / name) for name in names}
 
 
-def group_members():
-    """Living members of our own group, in the caller's PID namespace.
-
-    Hosted Linux sessions can expose an outer /proc mount. Never pass its outer
-    PID directly to kill(): NSpid maps it to the namespace used by os.kill().
-    Workers must stay in this group; deliberate daemonization is unsupported.
-    """
-    if Path("/proc/self/stat").is_file():
-        own = Path("/proc/self/stat").read_text()
-        group = int(own[own.rfind(")") + 2:].split()[2])
-        status = Path("/proc/self/status").read_text().splitlines()
-        ids = next(line.split()[1:] for line in status if line.startswith("NSpid:"))
-        depth = len(ids)
-        members = []
-        for entry in Path("/proc").iterdir():
-            if not entry.name.isdigit():
-                continue
-            try:
-                stat = (entry / "stat").read_text()
-                fields = stat[stat.rfind(")") + 2:].split()
-                if fields[0] == "Z" or int(fields[2]) != group:
-                    continue
-                status = (entry / "status").read_text().splitlines()
-                ids = next(line.split()[1:] for line in status if line.startswith("NSpid:"))
-                if len(ids) == depth and int(ids[-1]) != os.getpid():
-                    members.append(int(ids[-1]))
-            except (OSError, ValueError, IndexError, StopIteration):
-                continue
-        return members
-    with subprocess.Popen(["ps", "-A", "-o", "pid=,pgid="], stdout=subprocess.PIPE,
-                          stderr=subprocess.PIPE, text=True) as listing:
-        output, error = listing.communicate()
-        if listing.returncode:
-            raise RuntimeError(f"cannot enumerate owned process group: {error}")
-        rows = output.splitlines()
-    return [int(pid) for row in rows for pid, group in [row.split()]
-            if int(group) == os.getpgrp() and int(pid) not in (os.getpid(), listing.pid)]
-
-
-class Commands:
-    """Bounded subprocess ownership without detached per-worker sessions.
-
-    The coordinator owns one process group. LLVM commands inherit it, so an
-    outer controller can still kill the entire build. Local cancellation also
-    terminates/reaps siblings before returning and never starts queued work.
-    """
-
-    def __init__(self, measure=None, owns_group=True, cleanup_grace=0.25):
-        if not math.isfinite(cleanup_grace) or not 0 <= cleanup_grace <= 5:
-            raise ValueError("cleanup grace must be finite and from 0 to 5 seconds")
-        self.measure = measure
-        self.owns_group = owns_group
-        self.cleanup_grace = cleanup_grace
-        self.running = {}
-        self.results = []
-        self.interrupted = 0
-        self.handlers = {}
-
-    def __enter__(self):
-        if self.owns_group and os.getpgrp() != os.getpid():
-            os.setpgid(0, 0)
-        # Prove enumeration is available before starting work.
-        if self.owns_group:
-            group_members()
-        self.handlers = {sig: signal.signal(sig, self.stop) for sig in (signal.SIGINT, signal.SIGTERM)}
-        return self
-
-    def stop(self, signum, frame):
-        # A signal during Popen must wait until the returned child is owned.
-        self.interrupted = signum
-
-    def check_signal(self):
-        if self.interrupted:
-            raise InterruptedError(f"backend interrupted by signal {self.interrupted}")
-
-    def start(self, key, command, env, cwd):
-        out, err = tempfile.TemporaryFile(), tempfile.TemporaryFile()
-        start = time.monotonic()
-        try:
-            proc = subprocess.Popen(command, cwd=cwd, env=env, stdin=subprocess.DEVNULL,
-                                    stdout=out, stderr=err)
-        except BaseException:
-            out.close()
-            err.close()
-            raise
-        self.running[proc.pid] = {"process": proc, "key": key, "command": command, "out": out, "err": err,
-                                  "start": start, "peak": 0, "processes": 0, "sampled": 0,
-                                  "proc_pid": None, "load": list(os.getloadavg()),
-                                  "timed_out": False, "cancelled": False}
-        self.check_signal()
-        if self.measure:
-            self.running[proc.pid]["proc_pid"] = self.measure.proc_child_pid(proc.pid)
-
-    def finish(self, pid, status, usage):
-        state = self.running.pop(pid)
-        proc = state["process"]
-        proc.returncode = os.waitstatus_to_exitcode(status)
-        data = {}
-        for name in ("out", "err"):
-            stream = state[name]
-            stream.seek(0)
-            data[name] = stream.read()
-            stream.close()
-        result = {"key": state["key"], "command": state["command"], "exit_code": proc.returncode,
-                "timed_out": state["timed_out"], "cancelled": state["cancelled"],
-                "wall_s": time.monotonic() - state["start"],
-                "cpu_s": usage.ru_utime + usage.ru_stime,
-                "sampled_process_tree_peak_rss_kib": state["peak"] or None,
-                "wait4_max_process_rss_kib": usage.ru_maxrss,
-                "sampled_max_processes": state["processes"], "load_before": state["load"],
-                "proc_pid_resolved": state["proc_pid"] is not None, "load_after": list(os.getloadavg()),
-                "stdout_sha256": hashlib.sha256(data["out"]).hexdigest(),
-                "stderr_sha256": hashlib.sha256(data["err"]).hexdigest(),
-                "stdout": data["out"].decode("utf-8", "backslashreplace"),
-                "stderr": data["err"].decode("utf-8", "backslashreplace")}
-        self.results.append(result)
-        return result
-
-    def run(self, commands, env, timeout, jobs=1, cwd=None):
-        if not 1 <= jobs <= 8 or not math.isfinite(timeout) or timeout <= 0:
-            raise ValueError("require 1..8 jobs and a positive finite timeout")
-        pending = iter(commands)
-        exhausted = False
-        while self.running or not exhausted:
-            self.check_signal()
-            # Observe every completion before launching more work. The caller
-            # can reject a failed result without any queued job being launched.
-            ready = []
-            for pid, state in list(self.running.items()):
-                now = time.monotonic()
-                if state["proc_pid"] is not None and now - state["sampled"] >= 0.01:
-                    rss, count = self.measure.process_tree_rss(state["proc_pid"])
-                    state["peak"] = max(state["peak"], rss)
-                    state["processes"] = max(state["processes"], count)
-                    state["sampled"] = now
-                waited, status, usage = os.wait4(pid, os.WNOHANG)
-                if waited:
-                    ready.append(self.finish(pid, status, usage))
-                elif now - state["start"] >= timeout:
-                    state["timed_out"] = True
-                    raise TimeoutError(f"backend command {state['key']} exceeded {timeout:g} seconds")
-            yield from ready
-            self.check_signal()
-            while not exhausted and len(self.running) < jobs:
-                try:
-                    key, command = next(pending)
-                except StopIteration:
-                    exhausted = True
-                    break
-                self.start(key, command, env, cwd)
-            if self.running:
-                time.sleep(0.005)
-
-    def execute(self, command, env, timeout, cwd=None):
-        return next(self.run([(0, command)], env, timeout, cwd=cwd))
-
-    def __exit__(self, exc_type, exc, tb):
-        # All descendants share this exclusively owned group. TERM reaches
-        # grandchildren even if their worker already exited. Keep the parent
-        # alive to save a failure report and escalate only remaining members.
-        for sig in self.handlers:
-            signal.signal(sig, signal.SIG_IGN)
-        try:
-            for state in self.running.values():
-                state["cancelled"] = True
-            members = group_members() if self.owns_group else list(self.running)
-            if members and self.owns_group:
-                os.killpg(os.getpgrp(), signal.SIGTERM)
-            elif members:
-                for state in self.running.values():
-                    try:
-                        state["process"].terminate()
-                    except ProcessLookupError:
-                        pass
-            if members:
-                deadline = time.monotonic() + self.cleanup_grace
-                while members and time.monotonic() < deadline:
-                    time.sleep(0.01)
-                    if self.owns_group:
-                        members = group_members()
-                    else:
-                        for pid in list(self.running):
-                            waited, status, usage = os.wait4(pid, os.WNOHANG)
-                            if waited:
-                                self.finish(pid, status, usage)
-                        members = list(self.running)
-                for pid in members:
-                    try:
-                        os.kill(pid, signal.SIGKILL)
-                    except ProcessLookupError:
-                        pass
-            for pid in list(self.running):
-                _, status, usage = os.wait4(pid, 0)
-                self.finish(pid, status, usage)
-        finally:
-            for sig, handler in self.handlers.items():
-                signal.signal(sig, handler)
-        if self.interrupted and exc is None:
-            raise InterruptedError(f"backend interrupted by signal {self.interrupted}")
+# Transfer the lifecycle and process_worker_child.py with detached worker scripts. Loading
+# by an explicit path also works with Python -I and without a repository install.
+_support = Path(__file__).resolve().with_name("process_workers.py")
+if not _support.is_file():
+    _support = Path(__file__).resolve().parents[2] / "tools/process_workers.py"
+_spec = importlib.util.spec_from_file_location("pystachy_process_workers", _support)
+_support_module = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_support_module)
+Commands = _support_module.Commands
+Resources = _support_module.Resources
+Budget = _support_module.Budget
+Job = _support_module.Job
+group_members = _support_module.group_members
 
 
 def validate_result(directory, expected_job_sha256):
@@ -268,7 +84,7 @@ def validate_result(directory, expected_job_sha256):
     return result
 
 
-def worker(work, llvm):
+def uncached_worker(work, llvm, tool_env=None):
     work, llvm = work.resolve(), llvm.resolve()
     # Retrying a directory must never expose an earlier successful output if
     # this attempt is rejected, interrupted or fails before its first step.
@@ -290,18 +106,19 @@ def worker(work, llvm):
         raise RuntimeError("worker inlining policy/version mismatch")
     inline_flags = [] if inline_threshold is None else ["-mllvm", "-inline-threshold=" + str(inline_threshold)]
     clang, opt, level = str(llvm / "clang"), str(llvm / "opt"), "-O" + str(job["opt"])
+    config_flags = ["--no-default-config"] if tool_env is not None else []
     steps = [
-        ("optimize", [clang, level, *inline_flags, "-c", "-emit-llvm", "input.bc", "-o", "optimized.bc"]),
+        ("optimize", [clang, *config_flags, level, *inline_flags, "-c", "-emit-llvm", "input.bc", "-o", "optimized.bc"]),
         ("late_inline", [opt, "-passes=forceattrs,always-inline", *LATE, "optimized.bc", "-o", "late.bc"]),
     ]
     if job["emit"] == "object":
-        steps.append(("codegen", [clang, level, "-c", "-Xclang", "-disable-llvm-passes", "late.bc", "-o", "output.tmp.o"]))
+        steps.append(("codegen", [clang, *config_flags, level, "-c", "-Xclang", "-disable-llvm-passes", "late.bc", "-o", "output.tmp.o"]))
     report = {"job_sha256": digest(work / "job.json"), "steps": [], "complete": False}
     for name, command in steps:
         before = resource.getrusage(resource.RUSAGE_CHILDREN)
         start = time.monotonic()
         with (work / f"{name}.stdout").open("wb") as out, (work / f"{name}.stderr").open("wb") as err:
-            completed = subprocess.run(command, cwd=work, stdout=out, stderr=err, check=False)
+            completed = subprocess.run(command, cwd=work, env=tool_env, stdout=out, stderr=err, check=False)
         after = resource.getrusage(resource.RUSAGE_CHILDREN)
         report["steps"].append({"name": name, "command": command, "wall_s": time.monotonic() - start,
                                 "cpu_s": after.ru_utime + after.ru_stime - before.ru_utime - before.ru_stime,
@@ -317,13 +134,99 @@ def worker(work, llvm):
     write_json(work / "result.json", report)
 
 
+def artifact_module():
+    path = Path(__file__).resolve().with_name("worker_artifacts.py")
+    if not path.is_file():
+        path = Path(__file__).resolve().parents[2] / "tools/worker_artifacts.py"
+    spec = importlib.util.spec_from_file_location("pystachy_worker_artifacts", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module, path
+
+
+def cache_identity(llvm, env):
+    """Conservative same-host cache; no remote/toolchain-closure claim.
+
+    This path only consumes standalone LLVM bitcode, never a ThinLTO index or
+    implicit imports. Clang configuration is disabled. Hash its resolved native
+    shared libraries as well as executables and the semantic worker source.
+    """
+    if sys.platform != "linux":
+        raise ValueError("prototype LLVM object cache is Linux-only")
+    dependencies = {}
+    for name in identity(llvm):
+        path = (llvm / name).resolve()
+        listing = subprocess.run(["/usr/bin/ldd", str(path)], env=env, capture_output=True,
+                                 text=True, timeout=10)
+        if listing.returncode or "not found" in listing.stdout:
+            raise ValueError("cannot validate LLVM shared-library closure")
+        for line in listing.stdout.splitlines():
+            value = line.split("=>", 1)[-1].strip().split(" ", 1)[0]
+            if value.startswith("/"):
+                library = Path(value).resolve()
+                dependencies[str(library)] = digest(library)
+    return {"scope": "same-host-standalone-bitcode-v1", "host": list(platform.uname()),
+            "boot_id": Path("/proc/sys/kernel/random/boot_id").read_text().strip(),
+            "tools": identity(llvm), "shared_libraries": dependencies,
+            "worker_sha256": digest(__file__), "environment": env,
+            "clang_default_config": False}
+
+
+def worker(work, llvm, cache_root=None):
+    if cache_root is None:
+        return uncached_worker(work, llvm)
+    work, llvm = work.resolve(), llvm.resolve()
+    # A rejected retry must never expose output left by an older attempt.
+    for name in ("result.json", "output.o", "output.tmp.o"):
+        (work / name).unlink(missing_ok=True)
+    job = json.loads((work / "job.json").read_text())
+    if (job.get("input_sha256") != digest(work / "input.bc")
+            or job.get("tool_sha256") != identity(llvm)):
+        raise RuntimeError("worker input/tool identity mismatch")
+    env = {"PATH": str(llvm) + ":/usr/bin:/bin", "LANG": "C", "LC_ALL": "C"}
+    if "LD_LIBRARY_PATH" in os.environ:
+        env["LD_LIBRARY_PATH"] = os.environ["LD_LIBRARY_PATH"]
+    artifacts, support_path = artifact_module()
+    context = cache_identity(llvm, env)
+    expected_job = digest(work / "job.json")
+    support_digest = digest(support_path)
+    key = artifacts.key_for({"job": job, "context": context, "cache_code": support_digest})
+    cache = artifacts.ArtifactCache(cache_root)
+    with cache.locked(key) as waited:
+        found = cache.lookup(key)
+        if found:
+            artifact, entry = found
+            artifacts.atomic_copy(artifact, work / "output.o")
+            report = {"job_sha256": digest(work / "job.json"), "steps": [], "complete": True,
+                      "output_sha256": entry["sha256"], "output_bytes": entry["bytes"]}
+        else:
+            uncached_worker(work, llvm, tool_env=env)
+            report = validate_result(work, expected_job)
+            if cache_identity(llvm, env) != context or digest(support_path) != support_digest:
+                raise RuntimeError("worker execution identity changed before publication")
+            cache.publish(key, work / "output.o")
+        if (digest(work / "job.json") != expected_job
+                or digest(work / "input.bc") != job["input_sha256"]
+                or digest(work / "output.o") != report["output_sha256"]):
+            raise RuntimeError("worker artifacts changed during cache use")
+        report["cache"] = {"key": key, "hit": found is not None, "wait_s": waited,
+                           "scope": context["scope"]}
+        write_json(work / "result.json", report)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--worker", type=Path)
+    parser.add_argument("--object-cache", type=Path, help="opt-in same-host cache for standalone backend jobs")
     parser.add_argument("--llvm", type=Path, required=True)
     parser.add_argument("--input", type=Path)
     parser.add_argument("--partitions", type=int, default=1)
     parser.add_argument("--jobs", type=int, default=1)
+    parser.add_argument("--cpu-budget", type=int, help="total CPU reservations; defaults to jobs")
+    parser.add_argument("--memory-budget-mib", type=int, help="estimated in-flight memory; defaults to jobs * 512 MiB")
+    parser.add_argument("--worker-memory-mib", type=int, default=512, help="estimated memory per LLVM worker")
+    parser.add_argument("--input-budget-mib", type=int, default=256, help="maximum active input artifact bytes")
+    parser.add_argument("--queued-input-mib", type=int, default=256, help="maximum bytes in one queued input descriptor")
     parser.add_argument("--lto-partitions", type=int, default=0)
     parser.add_argument("--opt", type=int, choices=(0, 1, 2, 3), default=2)
     parser.add_argument("--inline-threshold", type=int, help="research: optimizer inlining threshold (0..10000); default uses LLVM policy")
@@ -342,12 +245,14 @@ def main():
         if args.inline_threshold is not None:
             parser.error("worker replay takes its inlining policy from job.json")
         if args.managed_worker:
-            worker(args.worker, args.llvm)
+            worker(args.worker, args.llvm, args.object_cache)
         else:
             # A detached replay has the same cancellation ownership as the
             # coordinator, without importing anything from the repository.
             command = [sys.executable, str(Path(__file__).resolve()), "--worker", str(args.worker),
                        "--llvm", str(args.llvm), "--managed-worker"]
+            if args.object_cache is not None:
+                command += ["--object-cache", str(args.object_cache.resolve())]
             with Commands(owns_group=not args.inherited_group) as scope:
                 result = scope.execute(command, dict(os.environ), args.timeout)
                 if result["exit_code"]:
@@ -357,8 +262,18 @@ def main():
         parser.error("managed-worker requires worker")
     if not args.input or not args.work or not args.report or not 1 <= args.jobs <= 8 or not 1 <= args.partitions <= 8:
         parser.error("coordinator needs input/work/report and jobs/partitions in 1..8")
+    if args.lto_partitions and not (args.llvm / "ld.lld").is_file():
+        parser.error("LTO partitioning requires matching ld.lld")
     if not 0 <= args.lto_partitions <= args.jobs or (args.lto_partitions and args.partitions != 1):
         parser.error("LTO needs one whole input and no more codegen partitions than jobs")
+    cpu_budget = args.cpu_budget if args.cpu_budget is not None else args.jobs
+    memory_budget = args.memory_budget_mib if args.memory_budget_mib is not None else args.jobs * 512
+    if min(cpu_budget, memory_budget, args.worker_memory_mib, args.input_budget_mib, args.queued_input_mib) < 1:
+        parser.error("resource budgets must be positive")
+    if args.lto_partitions > cpu_budget:
+        parser.error("LTO partitions exceed CPU budget")
+    budget = Budget(cpu_budget, memory_budget * 1024 ** 2, args.input_budget_mib * 1024 ** 2,
+                    args.queued_input_mib * 1024 ** 2)
     root = Path(__file__).resolve().parents[2]
     spec = importlib.util.spec_from_file_location("measure", root / "bench/compiler_parallel/llvm_partitions.py")
     measure = importlib.util.module_from_spec(spec)
@@ -373,7 +288,10 @@ def main():
               "lto_partitions": args.lto_partitions, "opt": args.opt, "inline_threshold": args.inline_threshold,
               "timeout_s": args.timeout,
               "input_bytes": source.stat().st_size, "tool_sha256": identity(llvm),
-              "worker_script_sha256": digest(__file__), "workers": [], "complete": False}
+              "worker_script_sha256": digest(__file__), "lifecycle_sha256": digest(_support),
+              "supervisor_sha256": digest(_support_module.CHILD_SCRIPT),
+              "resource_budget": budget.limit.as_dict(), "queued_input_bytes": budget.queued_bytes,
+              "workers": [], "complete": False}
     write_json(args.report, report)
     scope = Commands(measure, owns_group=not args.inherited_group)
     code = 1
@@ -399,9 +317,13 @@ def main():
                 jobs.append(directory)
             report["transferred_input_bytes"] = sum((job / "input.bc").stat().st_size for job in jobs)
             write_json(args.report, report)
-            commands = [(i, [sys.executable, str(Path(__file__).resolve()), "--worker", str(directory),
-                              "--llvm", str(llvm), "--managed-worker"]) for i, directory in enumerate(jobs)]
-            for result in scope.run(commands, env, args.timeout, jobs=args.jobs):
+            commands = (Job(i, [sys.executable, str(Path(__file__).resolve()), "--worker", str(directory),
+                              "--llvm", str(llvm), "--managed-worker",
+                              *([] if args.object_cache is None else ["--object-cache", str(args.object_cache.resolve())])],
+                            Resources(1, args.worker_memory_mib * 1024 ** 2,
+                                      (directory / "input.bc").stat().st_size))
+                        for i, directory in enumerate(jobs))
+            for result in scope.run(commands, env, args.timeout, jobs=args.jobs, budget=budget):
                 i = result.pop("key")
                 directory = jobs[i]
                 result["partition"] = i
@@ -417,7 +339,7 @@ def main():
             if args.lto_partitions:
                 command += ["-fuse-ld=" + str(llvm / "ld.lld"), "-flto=full", "-Wl,--lto-newpm-passes=verify",
                             "-Wl,--lto-CGO" + str(args.opt), "-Wl,--lto-partitions=" + str(args.lto_partitions),
-                            "-Wl,--threads=" + str(args.jobs)]
+                            "-Wl,--threads=" + str(min(args.jobs, cpu_budget))]
             report["link"] = scope.execute(command, env, args.timeout)
             measure.successful(report["link"])
             report.update({"complete": True, "compiler_sha256": digest(work / "compiler"),
@@ -431,6 +353,7 @@ def main():
     finally:
         report["wall_s"] = time.monotonic() - start
         report["commands"] = scope.results
+        report["peak_reserved"] = scope.peak_reserved
         write_json(args.report, report)
         print(json.dumps({key: report[key] for key in ("wall_s", "complete")}), flush=True)
     return code

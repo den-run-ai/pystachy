@@ -219,6 +219,8 @@ class WorkerTests(unittest.TestCase):
         expected = workers.digest(directory / "output.o")
         detached = self.root / "detached.py"
         detached.write_bytes(SCRIPT.read_bytes())
+        for name in ("process_workers.py", "process_worker_child.py"):
+            (self.root / name).write_bytes((ROOT / "tools" / name).read_bytes())
         result = subprocess.run([sys.executable, "-I", str(detached), "--worker", str(directory),
                                  "--llvm", str(self.llvm)], capture_output=True, text=True,
                                 timeout=10, start_new_session=True)
@@ -236,6 +238,26 @@ class WorkerTests(unittest.TestCase):
         self.assertFalse(result["complete"])
         self.assertEqual(result["steps"][-1]["exit_code"], 7)
         self.assertFalse((directory / "output.o").exists())
+
+    def test_object_jobs_do_not_require_unused_lld(self):
+        (self.llvm / "ld.lld").unlink()
+        directory, _ = self.job()
+        workers.worker(directory, self.llvm)
+        self.assertTrue(workers.validate_result(directory, workers.digest(directory / "job.json"))["complete"])
+
+    def test_lto_linker_threads_obey_total_cpu_budget(self):
+        source = self.root / "source.bc"
+        source.write_bytes(b"synthetic module\n")
+        report = self.root / "report.json"
+        result = subprocess.run([sys.executable, str(SCRIPT), "--llvm", str(self.llvm),
+            "--input", str(source), "--partitions", "1", "--jobs", "4", "--cpu-budget", "2",
+            "--lto-partitions", "2", "--work", str(self.root / "run"), "--report", str(report)],
+            capture_output=True, text=True, timeout=15, start_new_session=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        data = json.loads(report.read_text())
+        self.assertTrue(data["complete"])
+        self.assertIn("-Wl,--threads=2", data["link"]["command"])
+        self.assertNotIn("-Wl,--threads=4", data["link"]["command"])
 
     def test_opt_selection_and_deterministic_link_order(self):
         source = self.root / "source.bc"

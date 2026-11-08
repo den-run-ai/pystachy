@@ -11,10 +11,13 @@ workers remain the default. Full bootstraps use
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shutil
+import stat
 import sys
 import tempfile
 import time
@@ -70,14 +73,23 @@ def same_file(first, second):
 
 def validate_outputs(args, root, work, compiler):
     # Output publication must not replace a consumed input or another artifact.
-    outputs = [p.resolve() for p in (args.output, args.emit_ir, args.report) if p is not None]
+    manifest = getattr(args, "publish_manifest", None)
+    producer_manifest = getattr(args, "compiler_manifest", None)
+    outputs = [p.resolve() for p in (args.output, args.emit_ir, args.report, manifest) if p is not None]
     protected = [Path(p) for p in compiler]
+    if producer_manifest:
+        protected += [producer_manifest, Path(compiler[0]).parent / "raw.ll"]
     for directory in ("src", "lib", "ryu", "mpz"):
         protected.extend(p for p in (root / directory).rglob("*") if p.is_file())
     protected.extend(root / p for p in ("pystachy.py", "runtime.py", "runtime.c"))
     for index, output in enumerate(outputs):
         if output.is_relative_to(work) or any(same_file(output, p) for p in protected + outputs[:index]):
             raise ValueError("published outputs must be distinct from inputs and the private work directory")
+    for pointer in (manifest, producer_manifest):
+        if pointer is not None:
+            store = pointer.parent.resolve() / (pointer.name + ".generations")
+            if any(output.is_relative_to(store) for output in outputs):
+                raise ValueError("published outputs must not modify immutable build generations")
 
 
 def publish(source, destination):
@@ -89,6 +101,115 @@ def publish(source, destination):
         os.replace(temporary, destination)
     finally:
         Path(temporary).unlink(missing_ok=True)
+
+
+PUBLICATION_FILES = {"compiler": "compiler", "raw_ir": "raw.ll"}
+
+
+def publication_path(path):
+    # Resolve the parent, not a final symlink that could name another output.
+    return path.parent.resolve() / path.name
+
+
+def resolve_publication_data(destination, payload, require_witnesses=False):
+    """Resolve one pointer snapshot, never rereading a concurrently replaced one.
+
+    Generations are private copies and never modified by this publisher. Hashes
+    detect accidental edits; this is trusted local storage, not a sandbox for
+    another account that can mutate the files while they are being consumed.
+    """
+    record = json.loads(payload)
+    if (not isinstance(record, dict)
+            or set(record) != {"version", "complete", "generation", "source_sha256", "validation", "artifacts"}
+            or type(record["version"]) is not int or record["version"] != 1 or record["complete"] is not True
+            or not isinstance(record["generation"], str)
+            or not re.fullmatch(r"generation-[a-zA-Z0-9_-]{8,64}", record["generation"])
+            or not isinstance(record["source_sha256"], str)
+            or not re.fullmatch(r"[0-9a-f]{64}", record["source_sha256"])
+            or record["validation"] not in ("local-witnesses", "caller-witnesses")
+            or not isinstance(record["artifacts"], dict)
+            or set(record["artifacts"]) != set(PUBLICATION_FILES)):
+        raise ValueError("invalid build publication manifest")
+    if require_witnesses and record["validation"] != "local-witnesses":
+        raise ValueError("build publication still requires the caller's IR witnesses")
+    store = destination.parent / (destination.name + ".generations")
+    generation = store / record["generation"]
+    if any(path.is_symlink() or not path.is_dir() for path in (store, generation)):
+        raise ValueError("build publication generation is missing or symlinked")
+    resolved = {"manifest": record, "manifest_sha256": hashlib.sha256(payload).hexdigest()}
+    for name, filename in PUBLICATION_FILES.items():
+        artifact = record["artifacts"][name]
+        if (not isinstance(artifact, dict) or set(artifact) != {"sha256", "bytes"}
+                or type(artifact["bytes"]) is not int or artifact["bytes"] < 0
+                or not isinstance(artifact["sha256"], str)
+                or not re.fullmatch(r"[0-9a-f]{64}", artifact["sha256"])):
+            raise ValueError("invalid build publication artifact description")
+        path = generation / filename
+        info = path.lstat()
+        if (not stat.S_ISREG(info.st_mode) or info.st_size != artifact["bytes"]
+                or (name == "compiler" and not info.st_mode & 0o111)
+                or sha(path) != artifact["sha256"]):
+            raise ValueError("build publication artifact is missing, altered or symlinked")
+        resolved[name] = path
+    return resolved
+
+
+def resolve_publication(path, require_witnesses=False):
+    """Return validated compiler/raw_ir paths pinned to one immutable generation."""
+    destination = publication_path(path)
+    if destination.is_symlink() or not destination.is_file():
+        raise ValueError("build publication manifest is missing or symlinked")
+    return resolve_publication_data(destination, destination.read_bytes(), require_witnesses)
+
+
+def publish_generation(compiler, raw_ir, destination, *, expected, source_sha256, validation):
+    """Copy and validate both artifacts, then atomically publish one manifest.
+
+    Once replacement is attempted, keep the complete generation even on an
+    interrupted/ambiguous result: a reader may already have observed it. Old
+    generations also remain available to readers holding an earlier snapshot.
+    """
+    destination = publication_path(destination)
+    if destination.is_symlink() or (destination.exists() and not destination.is_file()):
+        raise ValueError("build publication manifest must be a regular file")
+    store = destination.parent / (destination.name + ".generations")
+    if store.is_symlink():
+        raise ValueError("build publication store must not be a symlink")
+    store.mkdir(exist_ok=True)
+    generation = Path(tempfile.mkdtemp(prefix="generation-", dir=store))
+    temporary = None
+    keep_generation = False
+    try:
+        artifacts = {}
+        for name, source in (("compiler", compiler), ("raw_ir", raw_ir)):
+            artifact = generation / PUBLICATION_FILES[name]
+            shutil.copy2(source, artifact)
+            artifact.chmod(0o555 if name == "compiler" else 0o444)
+            if sha(artifact) != expected[name]:
+                raise ValueError("build artifact changed before publication")
+            artifacts[name] = {"sha256": expected[name], "bytes": artifact.stat().st_size}
+        record = {"version": 1, "complete": True, "generation": generation.name,
+                  "source_sha256": source_sha256, "validation": validation, "artifacts": artifacts}
+        payload = (json.dumps(record, indent=2, sort_keys=True) + "\n").encode()
+        resolved = resolve_publication_data(destination, payload)
+        fd, temporary = tempfile.mkstemp(prefix=destination.name + ".", suffix=".pending", dir=destination.parent)
+        with os.fdopen(fd, "wb") as stream:
+            stream.write(payload)
+            stream.flush()
+            os.fsync(stream.fileno())
+        # This is the only visibility commit. No fallible artifact operation
+        # follows it; a signal between replace and return cannot remove the data.
+        keep_generation = True
+        os.replace(temporary, destination)
+        return resolved
+    finally:
+        if temporary is not None:
+            try:
+                Path(temporary).unlink(missing_ok=True)
+            except OSError:
+                pass
+        if not keep_generation:
+            shutil.rmtree(generation, ignore_errors=True)
 
 
 def wait_for_settled(paths):
@@ -121,6 +242,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     producer = parser.add_mutually_exclusive_group(required=True)
     producer.add_argument("--compiler", type=Path)
+    producer.add_argument("--compiler-manifest", type=Path, help="consume one validated immutable compiler generation")
     producer.add_argument("--hosted", action="store_true", help="use this Python interpreter as the first producer")
     parser.add_argument("--root", type=Path, default=ROOT)
     parser.add_argument("--llvm", type=Path, required=True)
@@ -135,6 +257,8 @@ def main():
     parser.add_argument("--cache", type=Path, help="private bootstrap cache shared with the next stage")
     parser.add_argument("--output", type=Path, help="publish the built executable here")
     parser.add_argument("--emit-ir", type=Path, help="publish the exact frontend witness here")
+    parser.add_argument("--publish-manifest", type=Path,
+                        help="atomically publish compiler and retained IR through an immutable generation")
     parser.add_argument("--caller-witnesses", action="store_true", help="the full bootstrap controller supplies all six witnesses")
     args = parser.parse_args()
     if not 1 <= args.jobs <= 8 or not 1 <= args.partitions <= 8 or (args.overlap and args.jobs < 2):
@@ -150,7 +274,9 @@ def main():
 
 def run_pipeline(args):
     work, root, llvm = args.work.resolve(), args.root.resolve(), args.llvm.resolve()
-    compiler = [sys.executable, str(root / "pystachy.py")] if args.hosted else [str(args.compiler.resolve())]
+    producer_publication = resolve_publication(args.compiler_manifest) if args.compiler_manifest else None
+    compiler = ([str(producer_publication["compiler"])] if producer_publication else
+                [sys.executable, str(root / "pystachy.py")] if args.hosted else [str(args.compiler.resolve())])
     validate_outputs(args, root, work, compiler)
     work.mkdir(parents=True, exist_ok=False)
     env = {k: v for k, v in os.environ.items() if not k.startswith("PYSTACHY_")}
@@ -171,6 +297,12 @@ def run_pipeline(args):
               "partitions": args.partitions, "jobs": args.jobs, "opt": args.opt, "inline_threshold": args.inline_threshold,
               "backend_policy": args.backend,
               "caller_witnesses": args.caller_witnesses, "complete": False, "stages": {}}
+    if producer_publication:
+        report["producer_publication"] = {
+            "path": str(publication_path(args.compiler_manifest)),
+            "manifest_sha256": producer_publication["manifest_sha256"],
+            "generation": producer_publication["manifest"]["generation"],
+            "validation": producer_publication["manifest"]["validation"]}
     runner = Commands(measure)
     try:
         with runner:
@@ -254,6 +386,15 @@ def run_pipeline(args):
                 for source_path, destination in ((built, args.output), (work / "raw.ll", args.emit_ir)):
                     if destination:
                         publish(source_path, destination.resolve())
+                if args.publish_manifest:
+                    publication = publish_generation(
+                        built, work / "raw.ll", args.publish_manifest,
+                        expected={"compiler": report["backend"]["compiler_sha256"], "raw_ir": report["raw_ir_sha256"]},
+                        source_sha256=source["sha256"],
+                        validation="caller-witnesses" if args.caller_witnesses else "local-witnesses")
+                    report["publication"] = {"path": str(publication_path(args.publish_manifest)),
+                                             "manifest_sha256": publication["manifest_sha256"],
+                                             "generation": publication["manifest"]["generation"]}
             atomic_json(args.report, report)
             print(json.dumps({k: report[k] for k in ("build_wall_s", "frontend_runtime_wall_s", "complete")}), flush=True)
             return 0 if report["complete"] else 1
