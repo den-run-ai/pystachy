@@ -1,0 +1,687 @@
+{
+  "scope": "CPython ctypes bridge only; native Pystachy and stdlib baseline are unchanged",
+  "created_utc": "2026-11-08T04:14:42Z",
+  "python": "3.13.16 (main, Oct 14 2026, 01:04:01) [Clang 23.1.3 ]",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.39",
+  "cpu_affinity": [
+    0
+  ],
+  "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+  "source_sha256": {
+    "netio.c": "722e7a8b714fe7787c6f63ce564b08260da97130cc7ff88dde89d8b9105ef620",
+    "netio.h": "cb008b4893980e6f52c11036138186f353b1edd41f601158bbe1490896aeaaf4",
+    "netio.py": "893ad3096f4ee227bde46dddd9f6426cbf7faafd69dc95aa44ff151d2fe1c9be",
+    "probe.py": "7dc3272e0d6022771815f1447d958f64af4499b9889c7b9774015e14421358bc",
+    "oracle/netio.py": "0ed47d2c24bd75c5b96c0b4bdb9583bb16710e6afae5cda7a17088f830fa1826",
+    "check.py": "35ce4670c5a1d33396265e0f7b66e27be3438acdc53eecdff7717b56d7943861",
+    "examples/netio/bench_workload.py": "ad7522fb02d0247cea0e702e9c8c9a06cd3d5a9db240333e0fd7353b19d42280",
+    "examples/netio/bench_driver.py": "f978ac7b1106a069dc93568bf1b40c9a85271944107966493ebbb3d3e5ae1ec0",
+    "examples/netio/benchmark.py": "06a6526cff4d258538e9166c4dd2e8f93cb44cf3ff9a98c723f8871ddd363bfd",
+    "tools/bench_extended.py": "a5adc91fe7cee60a3c88f6f99806103d8f20acd76901388c9860c6f8d1f0c900",
+    "tools/rt_cpython/ffi.py": "0d065918b07fcbfc214c5840e555ec020bc0ff46db8c0d2033e79cadfe704b4f"
+  },
+  "ffi_sha256": {
+    "baseline": "0d065918b07fcbfc214c5840e555ec020bc0ff46db8c0d2033e79cadfe704b4f",
+    "candidate": "897efdfc009a19b67f43a10aa6693772aa3b784894f6824fd8b15b7fa316cddf"
+  },
+  "controller_sha256": "31aec9fcb2eff6e4262307aeca1f810a1e24d922ed8aef8ff56cc3c38792de50",
+  "python_executable_sha256": "6e9b7d27499f26dbec3c8687728f3a0500b9b61688664f03678242744567c461",
+  "netio_revision": "b9ab8d9d3065b94c85952c79bada1de43a021c49",
+  "rounds": 4,
+  "warmups": 3,
+  "samples": 5,
+  "iterations": {
+    "pair_64": 2000,
+    "fanin_4k": 400,
+    "sparse_64": 2000,
+    "bulk_64k": 250
+  },
+  "cases": {
+    "pair_64": {
+      "baseline": {
+        "runs": [
+          {
+            "checksum": 128000,
+            "first_s": 0.051914028,
+            "samples_s": [
+              0.077916697,
+              0.069924767,
+              0.050019396,
+              0.049600509,
+              0.051701017
+            ],
+            "process_wall_s": 0.5486315810048836
+          },
+          {
+            "checksum": 128000,
+            "first_s": 0.057329364,
+            "samples_s": [
+              0.052221681,
+              0.051903731,
+              0.049523758,
+              0.051123924,
+              0.050255262
+            ],
+            "process_wall_s": 0.5086173770032474
+          },
+          {
+            "checksum": 128000,
+            "first_s": 0.050295874,
+            "samples_s": [
+              0.050641937,
+              0.051738022,
+              0.05000253,
+              0.050654075,
+              0.049686044
+            ],
+            "process_wall_s": 0.4905693010005052
+          },
+          {
+            "checksum": 128000,
+            "first_s": 0.057961408,
+            "samples_s": [
+              0.052937372,
+              0.054665862,
+              0.057138406,
+              0.053877632,
+              0.052225127
+            ],
+            "process_wall_s": 0.5332689650022076
+          }
+        ],
+        "median_s": 2.585975975e-05,
+        "min_s": 2.4761879e-05,
+        "max_s": 3.89583485e-05,
+        "mad_s": 7.910952500000003e-07
+      },
+      "candidate": {
+        "runs": [
+          {
+            "checksum": 128000,
+            "first_s": 0.038573633,
+            "samples_s": [
+              0.030430245,
+              0.031124693,
+              0.031117832,
+              0.031423735,
+              0.032061168
+            ],
+            "process_wall_s": 0.3640144769960898
+          },
+          {
+            "checksum": 128000,
+            "first_s": 0.034572985,
+            "samples_s": [
+              0.033971993,
+              0.031394901,
+              0.032375041,
+              0.033684804,
+              0.032663391
+            ],
+            "process_wall_s": 0.3587247089963057
+          },
+          {
+            "checksum": 128000,
+            "first_s": 0.032334273,
+            "samples_s": [
+              0.030396157,
+              0.030823221,
+              0.03106084,
+              0.031244006,
+              0.032180501
+            ],
+            "process_wall_s": 0.3173681670014048
+          },
+          {
+            "checksum": 128000,
+            "first_s": 0.031605152,
+            "samples_s": [
+              0.030248904,
+              0.03116045,
+              0.031358409,
+              0.0314119,
+              0.030898104
+            ],
+            "process_wall_s": 0.31676346399763133
+          }
+        ],
+        "median_s": 1.565060375e-05,
+        "min_s": 1.5124452e-05,
+        "max_s": 1.69859965e-05,
+        "mad_s": 2.2027250000000002e-07
+      },
+      "speedup": 1.6523170711545234
+    },
+    "fanin_4k": {
+      "baseline": {
+        "runs": [
+          {
+            "checksum": 26214400,
+            "first_s": 0.126065892,
+            "samples_s": [
+              0.136374741,
+              0.119870008,
+              0.121365628,
+              0.126663549,
+              0.123647824
+            ],
+            "process_wall_s": 1.19215117800195
+          },
+          {
+            "checksum": 26214400,
+            "first_s": 0.132985428,
+            "samples_s": [
+              0.123859935,
+              0.126277336,
+              0.126402625,
+              0.123356855,
+              0.120629756
+            ],
+            "process_wall_s": 1.1758260170026915
+          },
+          {
+            "checksum": 26214400,
+            "first_s": 0.124962921,
+            "samples_s": [
+              0.12705452,
+              0.124021359,
+              0.123658641,
+              0.125170464,
+              0.124165887
+            ],
+            "process_wall_s": 1.1569456300057936
+          },
+          {
+            "checksum": 26214400,
+            "first_s": 0.133370775,
+            "samples_s": [
+              0.124017442,
+              0.124952965,
+              0.126577468,
+              0.127774005,
+              0.128045724
+            ],
+            "process_wall_s": 1.1878057659996557
+          }
+        ],
+        "median_s": 0.000311398565,
+        "min_s": 0.00029967502,
+        "max_s": 0.00034093685249999997,
+        "mad_s": 4.451386249999963e-06
+      },
+      "candidate": {
+        "runs": [
+          {
+            "checksum": 26214400,
+            "first_s": 0.076777883,
+            "samples_s": [
+              0.090517786,
+              0.076988661,
+              0.07923194,
+              0.081135445,
+              0.083700709
+            ],
+            "process_wall_s": 0.8075271580019034
+          },
+          {
+            "checksum": 26214400,
+            "first_s": 0.07799388,
+            "samples_s": [
+              0.078968451,
+              0.080028233,
+              0.081247304,
+              0.07661682,
+              0.078101252
+            ],
+            "process_wall_s": 0.756645857996773
+          },
+          {
+            "checksum": 26214400,
+            "first_s": 0.077953539,
+            "samples_s": [
+              0.077237215,
+              0.075786505,
+              0.07462419,
+              0.075328264,
+              0.07594198
+            ],
+            "process_wall_s": 0.7260698509999202
+          },
+          {
+            "checksum": 26214400,
+            "first_s": 0.077620485,
+            "samples_s": [
+              0.07747847,
+              0.07624701,
+              0.07627944,
+              0.075561055,
+              0.080646063
+            ],
+            "process_wall_s": 0.73102066499996
+          }
+        ],
+        "median_s": 0.00019339460625,
+        "min_s": 0.00018656047500000003,
+        "max_s": 0.000226294465,
+        "mad_s": 4.259244999999984e-06
+      },
+      "speedup": 1.6101719227756386
+    },
+    "sparse_64": {
+      "baseline": {
+        "runs": [
+          {
+            "checksum": 128000,
+            "first_s": 0.23472086,
+            "samples_s": [
+              0.224079709,
+              0.227930846,
+              0.221743441,
+              0.23136887,
+              0.22687451
+            ],
+            "process_wall_s": 2.0987061910054763
+          },
+          {
+            "checksum": 128000,
+            "first_s": 0.222316941,
+            "samples_s": [
+              0.221598874,
+              0.222178359,
+              0.218643902,
+              0.224988602,
+              0.222260974
+            ],
+            "process_wall_s": 2.0459441740022157
+          },
+          {
+            "checksum": 128000,
+            "first_s": 0.224921511,
+            "samples_s": [
+              0.228032318,
+              0.236312191,
+              0.231288636,
+              0.226832026,
+              0.228604563
+            ],
+            "process_wall_s": 2.107012904001749
+          },
+          {
+            "checksum": 128000,
+            "first_s": 0.241504714,
+            "samples_s": [
+              0.235448158,
+              0.215761458,
+              0.21486151,
+              0.220916834,
+              0.308112352
+            ],
+            "process_wall_s": 2.189501722001296
+          }
+        ],
+        "median_s": 0.000112955157,
+        "min_s": 0.000107430755,
+        "max_s": 0.000154056176,
+        "mad_s": 2.119578249999998e-06
+      },
+      "candidate": {
+        "runs": [
+          {
+            "checksum": 128000,
+            "first_s": 0.125499751,
+            "samples_s": [
+              0.139190536,
+              0.125297469,
+              0.127188086,
+              0.127520488,
+              0.131992703
+            ],
+            "process_wall_s": 1.2002604349981993
+          },
+          {
+            "checksum": 128000,
+            "first_s": 0.130929127,
+            "samples_s": [
+              0.130113525,
+              0.131709826,
+              0.12532731,
+              0.121566775,
+              0.122622039
+            ],
+            "process_wall_s": 1.1938821420044405
+          },
+          {
+            "checksum": 128000,
+            "first_s": 0.132769598,
+            "samples_s": [
+              0.131046813,
+              0.134131471,
+              0.134835364,
+              0.127992079,
+              0.133023267
+            ],
+            "process_wall_s": 1.2284201619986561
+          },
+          {
+            "checksum": 128000,
+            "first_s": 0.126250409,
+            "samples_s": [
+              0.12966781,
+              0.135285894,
+              0.125670705,
+              0.129805257,
+              0.130731517
+            ],
+            "process_wall_s": 1.1978713119970053
+          }
+        ],
+        "median_s": 6.49796955e-05,
+        "min_s": 6.07833875e-05,
+        "max_s": 6.9595268e-05,
+        "mad_s": 1.458795249999999e-06
+      },
+      "speedup": 1.7383146555372824
+    },
+    "bulk_64k": {
+      "baseline": {
+        "runs": [
+          {
+            "checksum": 65536000,
+            "first_s": 0.042879021,
+            "samples_s": [
+              0.032058841,
+              0.030929727,
+              0.032501921,
+              0.041306738,
+              0.03966703
+            ],
+            "process_wall_s": 0.37118795700371265
+          },
+          {
+            "checksum": 65536000,
+            "first_s": 0.0350309,
+            "samples_s": [
+              0.053729296,
+              0.036206985,
+              0.027306485,
+              0.02709136,
+              0.027447438
+            ],
+            "process_wall_s": 0.39178671300032875
+          },
+          {
+            "checksum": 65536000,
+            "first_s": 0.028807743,
+            "samples_s": [
+              0.027401679,
+              0.028028946,
+              0.026775934,
+              0.026908905,
+              0.027486017
+            ],
+            "process_wall_s": 0.28424014800111763
+          },
+          {
+            "checksum": 65536000,
+            "first_s": 0.027333665,
+            "samples_s": [
+              0.028254277,
+              0.027622582,
+              0.027092742,
+              0.027169969,
+              0.028105832
+            ],
+            "process_wall_s": 0.28359290099615464
+          }
+        ],
+        "median_s": 0.000111303056,
+        "min_s": 0.00010710373600000001,
+        "max_s": 0.000214917184,
+        "mad_s": 2.934852e-06
+      },
+      "candidate": {
+        "runs": [
+          {
+            "checksum": 65536000,
+            "first_s": 0.021893431,
+            "samples_s": [
+              0.023184751,
+              0.024774131,
+              0.019847641,
+              0.019176969,
+              0.01917111
+            ],
+            "process_wall_s": 0.22666277099779109
+          },
+          {
+            "checksum": 65536000,
+            "first_s": 0.0208004,
+            "samples_s": [
+              0.020801692,
+              0.022376831,
+              0.024974134,
+              0.026101225,
+              0.02357475
+            ],
+            "process_wall_s": 0.25348742800269974
+          },
+          {
+            "checksum": 65536000,
+            "first_s": 0.019665497,
+            "samples_s": [
+              0.020070438,
+              0.019503522,
+              0.019477914,
+              0.021254076,
+              0.020524313
+            ],
+            "process_wall_s": 0.21638042400445556
+          },
+          {
+            "checksum": 65536000,
+            "first_s": 0.02069416,
+            "samples_s": [
+              0.024452355,
+              0.019986672,
+              0.019517933,
+              0.020019041,
+              0.019413015
+            ],
+            "process_wall_s": 0.2243376089973026
+          }
+        ],
+        "median_s": 8.1189502e-05,
+        "min_s": 7.668444e-05,
+        "max_s": 0.0001044049,
+        "mad_s": 3.6821220000000034e-06
+      },
+      "speedup": 1.3709045290116448
+    }
+  },
+  "measurement_order": [
+    [
+      "pair_64",
+      0,
+      "baseline"
+    ],
+    [
+      "pair_64",
+      0,
+      "candidate"
+    ],
+    [
+      "pair_64",
+      1,
+      "candidate"
+    ],
+    [
+      "pair_64",
+      1,
+      "baseline"
+    ],
+    [
+      "pair_64",
+      2,
+      "baseline"
+    ],
+    [
+      "pair_64",
+      2,
+      "candidate"
+    ],
+    [
+      "pair_64",
+      3,
+      "candidate"
+    ],
+    [
+      "pair_64",
+      3,
+      "baseline"
+    ],
+    [
+      "fanin_4k",
+      0,
+      "baseline"
+    ],
+    [
+      "fanin_4k",
+      0,
+      "candidate"
+    ],
+    [
+      "fanin_4k",
+      1,
+      "candidate"
+    ],
+    [
+      "fanin_4k",
+      1,
+      "baseline"
+    ],
+    [
+      "fanin_4k",
+      2,
+      "baseline"
+    ],
+    [
+      "fanin_4k",
+      2,
+      "candidate"
+    ],
+    [
+      "fanin_4k",
+      3,
+      "candidate"
+    ],
+    [
+      "fanin_4k",
+      3,
+      "baseline"
+    ],
+    [
+      "sparse_64",
+      0,
+      "baseline"
+    ],
+    [
+      "sparse_64",
+      0,
+      "candidate"
+    ],
+    [
+      "sparse_64",
+      1,
+      "candidate"
+    ],
+    [
+      "sparse_64",
+      1,
+      "baseline"
+    ],
+    [
+      "sparse_64",
+      2,
+      "baseline"
+    ],
+    [
+      "sparse_64",
+      2,
+      "candidate"
+    ],
+    [
+      "sparse_64",
+      3,
+      "candidate"
+    ],
+    [
+      "sparse_64",
+      3,
+      "baseline"
+    ],
+    [
+      "bulk_64k",
+      0,
+      "baseline"
+    ],
+    [
+      "bulk_64k",
+      0,
+      "candidate"
+    ],
+    [
+      "bulk_64k",
+      1,
+      "candidate"
+    ],
+    [
+      "bulk_64k",
+      1,
+      "baseline"
+    ],
+    [
+      "bulk_64k",
+      2,
+      "baseline"
+    ],
+    [
+      "bulk_64k",
+      2,
+      "candidate"
+    ],
+    [
+      "bulk_64k",
+      3,
+      "candidate"
+    ],
+    [
+      "bulk_64k",
+      3,
+      "baseline"
+    ]
+  ],
+  "load_average_start": [
+    0.40478515625,
+    1.0908203125,
+    1.45849609375
+  ],
+  "bridge_sha256": "56d6d2bf2c93a6c0034d6b90d79e170860a9efb344067d36b164b44fb4a5954a",
+  "profiles": {
+    "baseline": {
+      "total_calls": 736216,
+      "signature_binding_calls": 12788,
+      "summary": "Sun Nov  8 05:15:10 2026    /tmp/ffi-twin-bench-877obj69/baseline.pstats\n\n         736216 function calls (736123 primitive calls) in 0.327 seconds\n\n   Ordered by: cumulative time\n   List reduced from 443 to 20 due to restriction <20>\n\n   ncalls  tottime  percall  cumtime  percall filename:lineno(function)\n     11/1    0.000    0.000    0.327    0.327 {built-in method builtins.exec}\n        1    0.000    0.000    0.327    0.327 bench_driver.py:1(<module>)\n        1    0.000    0.000    0.316    0.316 bench_workload.py:56(run)\n        3    0.005    0.002    0.309    0.103 bench_workload.py:12(transfer)\n     6394    0.139    0.000    0.294    0.000 ffi.py:135(call)\n     1500    0.008    0.000    0.227    0.000 netio.py:428(select)\n   399905    0.088    0.000    0.088    0.000 ffi.py:79(_check)\n     1500    0.002    0.000    0.050    0.000 netio.py:249(recv)\n     6394    0.002    0.000    0.043    0.000 inspect.py:3311(bind)\n     6394    0.027    0.000    0.041    0.000 inspect.py:3169(_bind)\n     1500    0.001    0.000    0.027    0.000 netio.py:243(send)\n     6394    0.008    0.000    0.011    0.000 inspect.py:2983(apply_defaults)\n     12/1    0.000    0.000    0.010    0.010 <frozen importlib._bootstrap>:1358(_find_and_load)\n     12/1    0.000    0.000    0.010    0.010 <frozen importlib._bootstrap>:1306(_find_and_load_unlocked)\n     12/1    0.000    0.000    0.010    0.010 <frozen importlib._bootstrap>:911(_load_unlocked)\n      9/1    0.000    0.000    0.010    0.010 <frozen importlib._bootstrap_external>:1021(exec_module)\n     27/3    0.000    0.000    0.010    0.003 <frozen importlib._bootstrap>:480(_call_with_frames_removed)\n        1    0.000    0.000    0.009    0.009 bench_workload.py:1(<module>)\n        1    0.000    0.000    0.006    0.006 netio.py:1(<module>)\n    47470    0.006    0.000    0.006    0.000 {built-in method builtins.next}\n\n\n"
+    },
+    "candidate": {
+      "total_calls": 538457,
+      "signature_binding_calls": 0,
+      "summary": "Sun Nov  8 05:15:10 2026    /tmp/ffi-twin-bench-877obj69/candidate.pstats\n\n         538457 function calls (538364 primitive calls) in 0.198 seconds\n\n   Ordered by: cumulative time\n   List reduced from 441 to 20 due to restriction <20>\n\n   ncalls  tottime  percall  cumtime  percall filename:lineno(function)\n     11/1    0.000    0.000    0.198    0.198 {built-in method builtins.exec}\n        1    0.000    0.000    0.198    0.198 bench_driver.py:1(<module>)\n        1    0.000    0.000    0.189    0.189 bench_workload.py:56(run)\n        3    0.004    0.001    0.185    0.062 bench_workload.py:12(transfer)\n     6394    0.127    0.000    0.168    0.000 ffi.py:145(call)\n     1500    0.007    0.000    0.147    0.000 netio.py:428(select)\n   385628    0.027    0.000    0.027    0.000 ffi.py:79(_check_int64)\n     1500    0.002    0.000    0.022    0.000 netio.py:249(recv)\n     1500    0.001    0.000    0.012    0.000 netio.py:243(send)\n     12/1    0.000    0.000    0.010    0.010 <frozen importlib._bootstrap>:1358(_find_and_load)\n     12/1    0.000    0.000    0.009    0.009 <frozen importlib._bootstrap>:1306(_find_and_load_unlocked)\n     12/1    0.000    0.000    0.009    0.009 <frozen importlib._bootstrap>:911(_load_unlocked)\n      9/1    0.000    0.000    0.009    0.009 <frozen importlib._bootstrap_external>:1021(exec_module)\n     27/3    0.000    0.000    0.009    0.003 <frozen importlib._bootstrap>:480(_call_with_frames_removed)\n        1    0.000    0.000    0.009    0.009 bench_workload.py:1(<module>)\n        1    0.000    0.000    0.005    0.005 netio.py:1(<module>)\n        9    0.000    0.000    0.005    0.001 <frozen importlib._bootstrap_external>:1094(get_code)\n    14277    0.004    0.000    0.004    0.000 ffi.py:85(_check)\n        2    0.000    0.000    0.004    0.002 <frozen importlib._bootstrap_external>:1086(source_to_code)\n        2    0.004    0.002    0.004    0.002 {built-in method builtins.compile}\n\n\n"
+    }
+  },
+  "load_average_end": [
+    0.787109375,
+    1.1142578125,
+    1.45361328125
+  ],
+  "result": "pass"
+}
