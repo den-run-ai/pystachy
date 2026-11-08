@@ -72,6 +72,10 @@ combined stdout/stderr per job. `--jobs` and `--cpus` cannot exceed two;
 `--timeout` must be finite, positive and at most 900 seconds. The output limit
 must remain positive. Output sizes are polled, so a fast writer can exceed the
 limit before cancellation; cleanup reads and captured prefixes remain bounded.
+Deadlines run from supervisor launch until the coordinator observes completion
+of the whole job tree; delayed observation fails closed. Startup waits continue
+checking existing jobs' deadlines and output limits. Each startup handshake is
+also bounded by the smaller of the job deadline and five seconds.
 
 Each job reserves `cpu` (default one), `memory_bytes` and `input_bytes` (default
 zero) for its whole child tree. Memory is an admission estimate, not an enforced

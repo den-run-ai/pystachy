@@ -254,13 +254,15 @@ class Commands:
             if "launch_error" in state:
                 error = state["launch_error"]
                 raise OSError(error.get("errno") or 5, error.get("message", "worker launch failed"))
+            # A buffered heartbeat cannot revive an expired startup. The
+            # deadline includes launching the supervisor and observing it.
+            if time.monotonic() - start >= min(timeout, 5):
+                state["timed_out"] = True
+                raise TimeoutError(f"command {key} exceeded its startup deadline")
             if state["started"]:
                 break
             if state["control_eof"]:
                 raise RuntimeError("worker supervisor exited before command startup")
-            if time.monotonic() - start >= min(timeout, 5):
-                state["timed_out"] = True
-                raise TimeoutError(f"command {key} exceeded its startup deadline")
             time.sleep(0.005)
 
     def finish(self, pid, status, usage, *, cleanup=False):
@@ -330,26 +332,36 @@ class Commands:
             budget = Budget(jobs, 0, 0)
         pending = iter(commands)
         exhausted, waiting, queued_at = False, None, 0.0
-        while self.running or waiting is not None or not exhausted:
+        ready = []
+
+        def poll(pids):
             self.check_signal()
-            # Yield every observed completion before any queued launch. Callers
-            # reject failed results here, so no later job starts after failure.
-            ready = []
-            for pid, state in list(self.running.items()):
-                now = time.monotonic()
+            for pid in pids:
+                state = self.running.get(pid)
+                if state is None:
+                    continue  # An earlier startup tick already finished it.
+                # Check before reaping: a success observed after its deadline
+                # must not bypass the limit merely because it is now waitable.
+                if time.monotonic() - state["start"] >= timeout:
+                    state["timed_out"] = True
+                    raise TimeoutError(f"command {state['key']} exceeded {timeout:g} seconds")
                 waited, status, usage = os.wait4(pid, os.WNOHANG)
                 if waited:
-                    ready.append(self.finish(pid, status, usage))
+                    result = self.finish(pid, status, usage)
+                    ready.append(result)
+                    if result["output_limit_exceeded"]:
+                        raise RuntimeError(f"command {result['key']} exceeded output byte limit")
                 elif sum(
                         os.fstat(state[name].fileno()).st_size for name in ("out", "err")) > self.output_limit_bytes:
                     raise RuntimeError(f"command {state['key']} exceeded output byte limit")
-                elif now - state["start"] >= timeout:
-                    state["timed_out"] = True
-                    raise TimeoutError(f"command {state['key']} exceeded {timeout:g} seconds")
+
+        while self.running or ready or waiting is not None or not exhausted:
+            poll(tuple(self.running))
+            # Startup ticks also collect completions. Yield them before any
+            # further admission so callers can reject failures first.
             for result in ready:
-                if result["output_limit_exceeded"]:
-                    raise RuntimeError(f"command {result['key']} exceeded output byte limit")
                 yield result
+            ready.clear()
             self.check_signal()
             while not exhausted and len(self.running) < jobs:
                 if waiting is None:
@@ -361,16 +373,27 @@ class Commands:
                     waiting = item if isinstance(item, Job) else Job(*item)
                     queued_at = time.monotonic()
                     budget.validate(waiting.resources)
+                # A caller or command iterator can pause between scheduler
+                # turns. Recheck existing work before launching anything else.
+                active = tuple(self.running)
+                poll(active)
+                if ready:
+                    break
                 used = {name: sum(getattr(state["resources"], name) for state in self.running.values())
                         for name in self.peak_reserved}
                 if not budget.fits(waiting.resources, used):
                     break  # FIFO keeps placement and starvation behavior simple.
+                # start() owns the new worker's handshake and control channel.
+                # Keep supervising only previously admitted workers meanwhile.
                 self.start(waiting.key, waiting.argv,
                            env if waiting.env is None else waiting.env,
                            cwd if waiting.cwd is None else waiting.cwd,
-                           waiting.resources, waiting.stdin, queued_at, timeout)
+                           waiting.resources, waiting.stdin, queued_at, timeout,
+                           on_tick=lambda active=active: poll(active))
                 waiting = None
-            if self.running:
+                if ready:
+                    break
+            if self.running and not ready:
                 time.sleep(0.005)
 
     def __exit__(self, exc_type, exc, tb):
