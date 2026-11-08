@@ -63,8 +63,10 @@ jobs:
       - name: Retained IR and failed native build controls
         run: PYSTACHY_TEST_LLVM="$PYSTACHY_LLVM" python3 -m unittest discover -s tools -p test_retained_ir.py
 
-      - name: CI verification harness and report gate tests
-        run: python3 -m unittest discover -s tools -p 'test_*verif*.py'
+      - name: Verification harness and compiler state controls
+        run: |
+          python3 -m unittest discover -s tools -p test_lint_controls.py
+          python3 tools/lint_controls.py 'test_*verif*.py' 'test_compiler_state*.py'
 
       - name: Compact CI sampling and variant controls
         run: |
@@ -141,9 +143,6 @@ jobs:
 
       - name: Compiler function-state lists (Gen, Frame, gen_save, gen_restore, gen_enter)
         run: python3 -m unittest discover -s tools -p test_frame_fields.py
-
-      - name: Compiler state contract controls
-        run: python3 -m unittest discover -s tools -p 'test_compiler_state*.py'
 
       - name: JSON benchmark evidence tests
         run: python3 -m unittest discover -s tools -p test_bench_json.py
