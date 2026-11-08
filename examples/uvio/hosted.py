@@ -89,6 +89,55 @@ def main():
         while not results:
             results = loop.run_once()
         assert [(event.request_id, event.status, event.data) for event in results] == [(request, 0, b"reused")]
+    with uvio.Loop(capacity=3) as loop:
+        requests = [loop.submit("127.0.0.1", port, b"wait") for _ in range(3)]
+        for request in requests:
+            assert loop.cancel(request)
+        assert uvio.uvio_step(loop._handle, 1) == 3
+        original_copy = uvio.bytes_at
+        copies = 0
+
+        def fail_second(address, size):
+            nonlocal copies
+            copies += 1
+            if copies == 2:
+                raise MemoryError("second copy fails")
+            return original_copy(address, size)
+
+        uvio.bytes_at = fail_second
+        try:
+            try:
+                loop.run_once()
+            except MemoryError as error:
+                assert str(error) == "second copy fails"
+            else:
+                raise AssertionError("expected second-copy failure")
+        finally:
+            uvio.bytes_at = original_copy
+        assert copies == 2
+        original_step = uvio.uvio_step
+
+        def unexpected_step(handle, block):
+            raise AssertionError("buffered completions must not wait for native progress")
+
+        uvio.uvio_step = unexpected_step
+        try:
+            recovered = loop.run_once()
+        finally:
+            uvio.uvio_step = original_step
+        assert len(recovered) == 1
+        first = recovered[0]
+        assert first.request_id in requests and first.error_name() == "ECANCELED" and first.data == b""
+        # The unvisited third event remains native-owned and is delivered once.
+        remaining = loop.run_once()
+        assert len(remaining) == 1
+        last = remaining[0]
+        assert last.request_id in requests and last.request_id != first.request_id
+        assert last.error_name() == "ECANCELED" and last.data == b""
+        assert loop.run_once(False) == []
+        # The failed event was released, so all three request slots can be reused.
+        for _ in range(3):
+            loop.submit("127.0.0.1", port, b"wait")
     print("hosted owner-thread, interrupted close, reentrancy and copy-failure cleanup passed")
 
 

@@ -112,13 +112,16 @@ handles, timers, write buffers and read buffers keep stable native addresses.
 Callbacks only update that native state. Completion becomes visible after
 both handles close and all in-flight connect/write/shutdown callbacks finish.
 Managed execution then copies the result with `ffi.bytes_at`; a `finally`
-block releases its native slot even if that copy fails.
+block releases its native slot even if that copy fails. If a later copy in a
+batch raises, earlier copied completions remain buffered; the next `run_once`
+returns them without waiting. The failed event itself is discarded, and
+unvisited native completions retain their slots until a subsequent turn.
 
 Every accepted request reserves one slot through result consumption. Both
 active and completed-but-unconsumed requests count toward admission. Each
 slot produces exactly one terminal completion, so the event ring is bounded
 by the same capacity. Canceling or failing a request does not immediately
-reuse its slot. At the hard limits, payload storage is at most 128 MiB per
+reuse its slot. At the hard limits, native payload storage is at most 128 MiB per
 loop (64 input and 64 output buffers of 1 MiB), plus fixed handles, metadata
 and 4 KiB scratch storage per slot. Libuv/kernel buffering is additional.
 
@@ -148,7 +151,8 @@ Pystachy's runtime or an externally installed libuv itself. Add
 inspection; this must be reported separately from descriptor cleanup.
 The CPython-only `hosted.py` probe checks Python thread guards, an exception
 immediately after native close frees the loop, reentrant close rejection,
-and slot reuse after a failed managed result copy. Cancellation checks cover
+slot reuse after a failed managed result copy, and delivery of earlier copied
+events when a later copy in the same batch raises. Cancellation checks cover
 submission, read waits and active close; deterministic cancellation of an
 incomplete queued write and allocation-failure injection remain future work.
 
