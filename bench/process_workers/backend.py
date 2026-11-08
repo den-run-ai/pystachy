@@ -47,7 +47,8 @@ def main():
               "input_sha256": sha256(args.input), "input_bytes": args.input.stat().st_size,
               "controller_sha256": {str(p.relative_to(ROOT)): sha256(p) for p in
                     (Path(__file__).resolve(), ROOT / "bench/compiler_host/backend_workers.py",
-                     ROOT / "tools/process_workers.py", ROOT / "tools/worker_artifacts.py")},
+                     ROOT / "tools/process_workers.py", ROOT / "tools/process_worker_child.py",
+                     ROOT / "tools/worker_artifacts.py")},
               "scope": "fixed four early-split partitions; backend only; same-host object cache"}
     env = {k: v for k, v in os.environ.items() if not k.startswith("PYSTACHY_")}
     binary_hash, partition_hashes, built = None, None, None

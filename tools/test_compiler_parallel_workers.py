@@ -219,7 +219,8 @@ class WorkerTests(unittest.TestCase):
         expected = workers.digest(directory / "output.o")
         detached = self.root / "detached.py"
         detached.write_bytes(SCRIPT.read_bytes())
-        (self.root / "process_workers.py").write_bytes((ROOT / "tools/process_workers.py").read_bytes())
+        for name in ("process_workers.py", "process_worker_child.py"):
+            (self.root / name).write_bytes((ROOT / "tools" / name).read_bytes())
         result = subprocess.run([sys.executable, "-I", str(detached), "--worker", str(directory),
                                  "--llvm", str(self.llvm)], capture_output=True, text=True,
                                 timeout=10, start_new_session=True)

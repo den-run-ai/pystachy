@@ -7,27 +7,41 @@ demonstrate allocating application jobs. Coordination still runs under CPython.
 Every native compiler request starts a fresh process, so this does not assume
 that `Gen` can be reset or shared safely.
 
-[Measured results and raw evidence](results/README.md) show a 2.71x scheduling gain
+[Earlier measured results and raw evidence](results/README.md) show a 2.71x scheduling gain
 for the same four compiler bitcode partitions, 2.11x JSON-repair batch throughput,
 and 2.29x byte-BPE throughput at four workers. These are separate cohorts. They
 do not establish a full-bootstrap speedup, an ordinary-O2 quality comparison,
-or a physical two-host speedup.
+or a physical two-host speedup. These measurements predate the per-job Linux
+supervisor and do not measure its startup or memory cost.
 
 ## Implementation boundaries
 
 | Component | Contract |
 |---|---|
 | `tools/process_workers.py` | Extracted process-group ownership, timeouts, deferred signals, fail-fast admission, TERM/KILL cleanup and `wait4` reaping. Adds CPU, estimated-memory and input reservations, one lazy pending descriptor, bounded captures and output-limit checks. |
+| `tools/process_worker_child.py` | Linux child subreaper for each job. Retains the command's exit status and waits for every descendant before reporting completion. |
 | `tools/application_workers.py` | Explicit argv/file jobs using that lifecycle, ordered results and common BLAS/OpenMP thread caps. No shell or object-graph serialization. |
 | `bench/compiler_host/backend_workers.py` | Existing LLVM adapter now uses the shared scheduler; optional same-host object cache deduplicates concurrent misses and validates inputs, tools, native dependencies and outputs. |
 | `tools/worker_artifacts.py` | Private local POSIX cache: per-key OS lock, validated immutable content, manifest published last. Corruption is a miss; a failed writer cannot replace valid bytes with a misnamed object. |
 | `tools/worker_transport.py` | Trusted native jobs over a bounded full-duplex stdio channel, with checked input/output files, exact execution identity, heartbeat leases, EOF cancellation, cache opt-in and idempotent-only transport retries. |
 | `bench/compiler_host/self_pipeline.py` | [Atomic executable/IR generation publication](../compiler_host/ARTIFACT_PUBLICATION.md), plus a real next-stage manifest consumer. Legacy file destinations retain their earlier per-file contract. |
 
-`Commands` owns signal handlers and an exclusive process group. Use it in a
-dedicated coordinator's main thread, as these CLI adapters do. It is not an
-arbitrary-thread `Executor` replacement. Children must not deliberately daemonize
-or leave the owned group.
+`Commands` owns signal handlers and an exclusive process group. Use it on Linux
+in a dedicated coordinator's main thread, with no pre-existing children and the
+default SIGCHLD handler, as these CLI adapters do. It is not an arbitrary-thread
+`Executor` replacement. Children must not deliberately daemonize or leave the
+owned group. The coordinator restores the caller's subreaper setting and signal
+handlers after cleanup.
+
+Each job starts a small CPython supervisor in that same group. The supervisor
+adopts orphaned descendants and retains the job's reservations, deadline and
+output limit until the kernel reports that no children remain. Successful
+leader exit alone never releases resources or finalizes output. Cancellation
+terminates and reaps descendants repeatedly, including children forked during
+cleanup; a process snapshot is not proof of completion. If a supervisor dies,
+the coordinator adopts its children, aborts admission and cleans them up before
+returning. Signal exit codes remain those of the requested command; CPU and
+process-tree measurements also include supervisor overhead.
 
 Memory reservations are estimates, not enforced RSS limits. The coordinator
 bounds the sum of admitted CPU, memory and input reservations. One descriptor is
@@ -139,7 +153,7 @@ Prepare a spec with explicit argv commands and immutable file inputs:
 python3 tools/worker_transport.py prepare --spec spec.json \
   --directory input-files --output bundle.json
 
-# Local detached replay; transfer these same three support files to a remote
+# Local detached replay; transfer these same four support files to a remote
 # endpoint before using an authenticated SSH command in its place.
 python3 tools/worker_transport.py relay --bundle bundle.json --result result.json \
   -- python3 -I tools/worker_transport.py serve
@@ -149,7 +163,8 @@ python3 tools/worker_transport.py relay --bundle bundle.json --result result.jso
   -- ssh -T worker-host python3 /opt/pystachy-worker/worker_transport.py serve
 ```
 
-Copy `worker_transport.py`, `process_workers.py` and `worker_artifacts.py` together.
+Copy `worker_transport.py`, `process_workers.py`, `process_worker_child.py` and
+`worker_artifacts.py` together.
 Use `--tool name=/absolute/executable` on both prepare and serve for external tools.
 Execution identity checks exact implementation bytes, ELF tools, loader-resolved
 native libraries, machine/kernel and CPU-feature fingerprint. Heterogeneous hosts
@@ -202,7 +217,7 @@ checks each object byte-for-byte, then links in stable order and checks the fina
 compiler bytes. It does not distribute ThinLTO importing or claim network speedup.
 
 Correctness, corruption, resource and lifecycle tests run in the existing Lint
-job through `test_process_workers.py`, `test_worker_transport.py` and the existing
+job through `test_process_worker*.py`, `test_worker_transport.py` and the existing
 `test_compiler_parallel*.py` suites. No timing gates, CI jobs or shards are added.
 Timing campaigns remain explicit local experiments. Native subprocess supervision,
 numeric threads, general shared-heap threading and native async are separate work.

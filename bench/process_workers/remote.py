@@ -62,7 +62,7 @@ def main():
     for i in range(2):
         endpoint = work / f"endpoint-{i}"
         endpoint.mkdir()
-        for filename in ("worker_transport.py", "worker_artifacts.py", "process_workers.py"):
+        for filename in ("worker_transport.py", "worker_artifacts.py", "process_workers.py", "process_worker_child.py"):
             shutil.copyfile(ROOT / "tools" / filename, endpoint / filename)
         endpoints.append(endpoint)
     bundles, keys = [], []

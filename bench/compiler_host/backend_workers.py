@@ -53,7 +53,7 @@ def identity(llvm):
     return {name: digest(llvm / name) for name in names}
 
 
-# Transfer this small sibling dependency with detached worker scripts. Loading
+# Transfer the lifecycle and process_worker_child.py with detached worker scripts. Loading
 # by an explicit path also works with Python -I and without a repository install.
 _support = Path(__file__).resolve().with_name("process_workers.py")
 if not _support.is_file():
@@ -289,6 +289,7 @@ def main():
               "timeout_s": args.timeout,
               "input_bytes": source.stat().st_size, "tool_sha256": identity(llvm),
               "worker_script_sha256": digest(__file__), "lifecycle_sha256": digest(_support),
+              "supervisor_sha256": digest(_support_module.CHILD_SCRIPT),
               "resource_budget": budget.limit.as_dict(), "queued_input_bytes": budget.queued_bytes,
               "workers": [], "complete": False}
     write_json(args.report, report)

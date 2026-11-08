@@ -67,7 +67,8 @@ def main():
                      "cpu": 1, "memory_bytes": 128 * 1024 ** 2, "input_bytes": source.stat().st_size})
     manifest = work / "jobs.json"
     manifest.write_text(json.dumps({"version": 1, "jobs": jobs}))
-    source_files = [Path(__file__), program, ROOT / "tools/application_workers.py", ROOT / "tools/process_workers.py"]
+    source_files = [Path(__file__), program, ROOT / "tools/application_workers.py", ROOT / "tools/process_workers.py",
+                    ROOT / "tools/process_worker_child.py"]
     imported = {str(p.relative_to(args.import_path.resolve())): digest(p)
                 for p in sorted(args.import_path.resolve().rglob("*.py"))}
     report = {"complete": False, "kind": args.kind, "rounds": args.rounds, "rows": args.rows,

@@ -92,7 +92,7 @@ def execution_identity(tools, bundled, on_tick=None):
     flags = next((line.split(":", 1)[1].strip() for line in Path("/proc/cpuinfo").read_text().splitlines()
                   if line.startswith(("flags", "Features"))), "")
     code = {name: sha256(Path(__file__).with_name(name))
-            for name in ("worker_transport.py", "process_workers.py", "worker_artifacts.py")}
+            for name in ("worker_transport.py", "process_workers.py", "process_worker_child.py", "worker_artifacts.py")}
     return {"system": platform.system(), "machine": platform.machine(), "kernel": platform.release(),
             "cpu_features": key_for(sorted(flags.split())), "protocol_code": code,
             "tools": {name: native_identity(path, on_tick) for name, path in sorted(tools.items())},

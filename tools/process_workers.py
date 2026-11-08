@@ -1,4 +1,4 @@
-"""Bounded POSIX process jobs shared by compiler and application coordinators.
+"""Bounded Linux process jobs shared by compiler and application coordinators.
 
 Run this scope in a dedicated coordinator's main thread. It owns a process group;
 children must not daemonize or detach. Memory is an admission estimate, not a
@@ -7,13 +7,22 @@ kernel-enforced RSS limit. Numeric libraries must honor the declared CPU budget.
 from __future__ import annotations
 
 import hashlib
+import importlib.util
+import json
 import math
 import os
 from pathlib import Path
 import signal
 import subprocess
+import sys
 import tempfile
 import time
+
+
+CHILD_SCRIPT = Path(__file__).resolve().with_name("process_worker_child.py")
+_spec = importlib.util.spec_from_file_location("process_worker_child", CHILD_SCRIPT)
+child_owner = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(child_owner)
 
 
 class Resources:
@@ -108,8 +117,10 @@ class Commands:
     """Bounded subprocess ownership without detached per-worker sessions.
 
     The coordinator owns one process group. LLVM commands inherit it, so an
-    outer controller can still kill the entire build. Local cancellation also
-    terminates/reaps siblings before returning and never starts queued work.
+    outer controller can still kill the entire build. Each job has a subreaper
+    that stays alive until its entire tree is reaped. Reservations, deadlines
+    and output collection cover that lifetime, including an exited leader's
+    descendants. The dedicated coordinator must have no other child processes.
     """
 
     def __init__(self, measure=None, owns_group=True, cleanup_grace=0.25,
@@ -129,14 +140,34 @@ class Commands:
         self.results = []
         self.interrupted = 0
         self.handlers = {}
+        self.previous_subreaper = None
 
     def __enter__(self):
+        if sys.platform != "linux":
+            raise RuntimeError("process workers require Linux child subreapers")
+        if signal.getsignal(signal.SIGCHLD) != signal.SIG_DFL:
+            raise RuntimeError("process workers require the default SIGCHLD handler")
+        # Cleanup may adopt children of a failed supervisor. An exclusively
+        # owned child set is necessary before enabling this process-wide role.
+        try:
+            os.waitid(os.P_ALL, 0, os.WEXITED | os.WNOHANG | os.WNOWAIT)
+        except ChildProcessError:
+            pass
+        else:
+            raise RuntimeError("process workers require a coordinator without existing children")
         if self.owns_group and os.getpgrp() != os.getpid():
             os.setpgid(0, 0)
-        # Prove enumeration is available before starting work.
-        if self.owns_group:
-            group_members()
-        self.handlers = {sig: signal.signal(sig, self.stop) for sig in (signal.SIGINT, signal.SIGTERM)}
+        self.previous_subreaper = child_owner.get_subreaper()
+        try:
+            child_owner.direct_children()  # Fail before spawning if /proc is unavailable.
+            child_owner.set_subreaper(True)
+            for sig in (signal.SIGINT, signal.SIGTERM):
+                self.handlers[sig] = signal.signal(sig, self.stop)
+        except BaseException:
+            child_owner.set_subreaper(self.previous_subreaper)
+            for sig, handler in self.handlers.items():
+                signal.signal(sig, handler)
+            raise
         return self
 
     def stop(self, signum, frame):
@@ -147,43 +178,105 @@ class Commands:
         if self.interrupted:
             raise InterruptedError(f"backend interrupted by signal {self.interrupted}")
 
-    def start(self, key, command, env, cwd, resources=None, stdin=None, queued_at=None):
+    def read_control(self, state):
+        """Read a bounded private channel; workers never inherit its descriptor."""
+        while not state["control_eof"]:
+            try:
+                data = os.read(state["control"], 4096)
+            except BlockingIOError:
+                break
+            if not data:
+                state["control_eof"] = True
+                break
+            state["control_data"] += data
+            if len(state["control_data"]) > 8192:
+                raise RuntimeError("worker supervisor exceeded control message limit")
+        while b"\n" in state["control_data"]:
+            line, state["control_data"] = state["control_data"].split(b"\n", 1)
+            message = json.loads(line)
+            event = message.get("event") if isinstance(message, dict) else None
+            if event == "started" and not state["started"]:
+                state["started"] = True
+            elif event == "finished" and "worker_status" not in state and type(message.get("status")) is int:
+                state["worker_status"] = message["status"]
+            elif event == "error" and "launch_error" not in state:
+                state["launch_error"] = message
+            else:
+                raise RuntimeError("invalid worker supervisor control message")
+
+    def start(self, key, command, env, cwd, resources=None, stdin=None, queued_at=None, timeout=60, on_tick=None):
         out, err = tempfile.TemporaryFile(), tempfile.TemporaryFile()
+        control, writer = os.pipe()
+        os.set_blocking(control, False)
         start = time.monotonic()
         input_stream = None
+        # The helper inherits this mask, installs its handlers, then unmasks.
+        # Register it before restoring our mask, including a signal in Popen.
+        mask = signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGINT, signal.SIGTERM})
         try:
             if stdin is not None:
                 input_stream = open(stdin, "rb")
-            proc = subprocess.Popen(command, cwd=cwd, env=env,
+            proc = subprocess.Popen([sys.executable, "-I", str(CHILD_SCRIPT), str(writer),
+                                     str(self.cleanup_grace), *command], cwd=cwd, env=env,
                                     stdin=input_stream if input_stream is not None else subprocess.DEVNULL,
-                                    stdout=out, stderr=err)
+                                    stdout=out, stderr=err, pass_fds=(writer,))
+            state = {"process": proc, "key": key, "command": command, "out": out, "err": err,
+                     "start": start, "peak": 0, "processes": 0, "sampled": 0,
+                     "proc_pid": None, "load": list(os.getloadavg()),
+                     "timed_out": False, "cancelled": False,
+                     "resources": resources or Resources(), "queued_at": queued_at or start,
+                     "control": control, "control_data": b"", "control_eof": False, "started": False}
+            self.running[proc.pid] = state
         except BaseException:
             out.close()
             err.close()
+            os.close(control)
             raise
         finally:
+            os.close(writer)
             if input_stream is not None:
                 input_stream.close()
-        self.running[proc.pid] = {"process": proc, "key": key, "command": command, "out": out, "err": err,
-                                  "start": start, "peak": 0, "processes": 0, "sampled": 0,
-                                  "proc_pid": None, "load": list(os.getloadavg()),
-                                  "timed_out": False, "cancelled": False,
-                                  "resources": resources or Resources(), "queued_at": queued_at or start}
+            signal.pthread_sigmask(signal.SIG_SETMASK, mask)
         for name in self.peak_reserved:
             used = sum(getattr(s["resources"], name) for s in self.running.values())
             self.peak_reserved[name] = max(self.peak_reserved[name], used)
-        self.check_signal()
+        # Preserve synchronous exec failure: do not admit the next job until
+        # the real command is owned, even though Popen launched its supervisor.
+        while True:
+            self.check_signal()
+            if on_tick is not None:
+                on_tick()
+            self.read_control(state)
+            if "launch_error" in state:
+                error = state["launch_error"]
+                raise OSError(error.get("errno") or 5, error.get("message", "worker launch failed"))
+            if state["started"]:
+                break
+            if state["control_eof"]:
+                raise RuntimeError("worker supervisor exited before command startup")
+            if time.monotonic() - start >= min(timeout, 5):
+                state["timed_out"] = True
+                raise TimeoutError(f"command {key} exceeded its startup deadline")
+            time.sleep(0.005)
         if self.measure:
             self.running[proc.pid]["proc_pid"] = self.measure.proc_child_pid(proc.pid)
 
-    def finish(self, pid, status, usage):
-        state = self.running.pop(pid)
+    def finish(self, pid, status, usage, *, cleanup=False):
+        state = self.running[pid]
+        state["reaped"] = (status, usage)
         proc = state["process"]
         proc.returncode = os.waitstatus_to_exitcode(status)
+        self.read_control(state)
+        supervisor_complete = proc.returncode == 0 and "worker_status" in state
+        if not supervisor_complete and not cleanup:
+            raise RuntimeError(f"command {state['key']} lost its worker supervisor")
+        self.running.pop(pid)
+        os.close(state["control"])
+        exit_code = os.waitstatus_to_exitcode(state["worker_status"]) if supervisor_complete else proc.returncode or 1
         # A completed child can leave a huge sparse file in a single syscall.
         # Check sizes before hashing: output limits also bound cleanup work.
-        # Snapshot each size so a surviving descendant cannot keep this reader
-        # busy indefinitely by appending while its parent is being reaped.
+        # The supervisor has reaped every descendant before reporting complete;
+        # fallback cleanup likewise reaches ECHILD before calling finish.
         sizes = {name: os.fstat(state[name].fileno()).st_size for name in ("out", "err")}
         oversized = self.output_limit_bytes is not None and sum(sizes.values()) > self.output_limit_bytes
         remaining = self.output_limit_bytes if oversized else sum(sizes.values())
@@ -206,7 +299,8 @@ class Commands:
             hashes[name] = digest.hexdigest() if complete else None
             prefixes[name] = None if complete else digest.hexdigest()
             stream.close()
-        result = {"key": state["key"], "command": state["command"], "exit_code": proc.returncode,
+        result = {"key": state["key"], "command": state["command"], "exit_code": exit_code,
+                "supervisor_failed": not supervisor_complete,
                 "timed_out": state["timed_out"], "cancelled": state["cancelled"],
                 "wall_s": time.monotonic() - state["start"],
                 "queue_s": state["start"] - state["queued_at"],
@@ -281,7 +375,7 @@ class Commands:
                 self.start(waiting.key, waiting.argv,
                            env if waiting.env is None else waiting.env,
                            cwd if waiting.cwd is None else waiting.cwd,
-                           waiting.resources, waiting.stdin, queued_at)
+                           waiting.resources, waiting.stdin, queued_at, timeout, on_tick)
                 waiting = None
             if self.running:
                 time.sleep(0.005)
@@ -290,44 +384,56 @@ class Commands:
         return next(self.run([(0, command)], env, timeout, cwd=cwd))
 
     def __exit__(self, exc_type, exc, tb):
-        # All descendants share this exclusively owned group. TERM reaches
-        # grandchildren even if their worker already exited. Keep the parent
-        # alive to save a failure report and escalate only remaining members.
+        # Supervisors reap their own complete trees. If one dies unexpectedly,
+        # this subreaper adopts its children and drains them before returning.
+        # ECHILD, never an empty process snapshot, proves cleanup is complete.
         for sig in self.handlers:
             signal.signal(sig, signal.SIG_IGN)
         try:
             for state in self.running.values():
                 state["cancelled"] = True
-            members = group_members() if self.owns_group else list(self.running)
-            if members and self.owns_group:
+            if self.running and self.owns_group:
                 os.killpg(os.getpgrp(), signal.SIGTERM)
-            elif members:
-                for state in self.running.values():
+            deadline = time.monotonic() + self.cleanup_grace + 1
+            empty = False
+            notified = set()
+            while not empty:
+                # Allow helpers to finish their own TERM/KILL sequence first.
+                # A failed/hung helper is then killed and its children adopted.
+                signum = signal.SIGKILL if time.monotonic() >= deadline else signal.SIGTERM
+                for pid in child_owner.direct_children():
+                    if signum == signal.SIGTERM and pid in notified:
+                        continue
                     try:
-                        state["process"].terminate()
+                        os.kill(pid, signum)
                     except ProcessLookupError:
                         pass
-            if members:
-                deadline = time.monotonic() + self.cleanup_grace
-                while members and time.monotonic() < deadline:
-                    time.sleep(0.01)
-                    if self.owns_group:
-                        members = group_members()
-                    else:
-                        for pid in list(self.running):
-                            waited, status, usage = os.wait4(pid, os.WNOHANG)
-                            if waited:
-                                self.finish(pid, status, usage)
-                        members = list(self.running)
-                for pid in members:
+                    notified.add(pid)
+                while True:
                     try:
-                        os.kill(pid, signal.SIGKILL)
-                    except ProcessLookupError:
-                        pass
-            for pid in list(self.running):
-                _, status, usage = os.wait4(pid, 0)
-                self.finish(pid, status, usage)
+                        pid, status, usage = os.wait4(-1, os.WNOHANG)
+                    except ChildProcessError:
+                        empty = True
+                        break
+                    if not pid:
+                        break
+                    notified.discard(pid)
+                    if pid in self.running:
+                        self.running[pid]["process"].returncode = os.waitstatus_to_exitcode(status)
+                        self.running[pid]["reaped"] = (status, usage)
+                if not empty:
+                    time.sleep(0.005)
+            for pid, state in list(self.running.items()):
+                self.read_control(state)
+                if "launch_error" in state and not state["started"]:
+                    self.running.pop(pid)
+                    os.close(state["control"])
+                    state["out"].close()
+                    state["err"].close()
+                else:
+                    self.finish(pid, *state["reaped"], cleanup=True)
         finally:
+            child_owner.set_subreaper(self.previous_subreaper)
             for sig, handler in self.handlers.items():
                 signal.signal(sig, handler)
         if self.interrupted and exc is None:

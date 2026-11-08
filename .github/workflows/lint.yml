@@ -154,7 +154,7 @@ jobs:
       - name: Compiler process coordination controls
         run: |
           python3 -m unittest discover -s tools -p 'test_compiler_parallel*.py'
-          python3 -m unittest discover -s tools -p test_process_workers.py
+          python3 -m unittest discover -s tools -p 'test_process_worker*.py'
           python3 -m unittest discover -s tools -p test_worker_transport.py
 
       - run: make check-recordings
