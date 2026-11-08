@@ -1,0 +1,74 @@
+[
+  {
+    "fd": 8,
+    "mode": "cpython",
+    "stdout": "50495045\n",
+    "stderr": "",
+    "returncode": 0,
+    "wall_s": 0.013526643000659533
+  },
+  {
+    "fd": 8,
+    "mode": "aot",
+    "stdout": "50495045\n",
+    "stderr": "",
+    "returncode": 0,
+    "wall_s": 0.0012963650005985983
+  },
+  {
+    "fd": 8,
+    "mode": "jit",
+    "stdout": "7f454c46\n",
+    "stderr": "",
+    "returncode": 0,
+    "wall_s": 4.986580224001955
+  },
+  {
+    "fd": 9,
+    "mode": "cpython",
+    "stdout": "50495045\n",
+    "stderr": "",
+    "returncode": 0,
+    "wall_s": 0.010755945004348177
+  },
+  {
+    "fd": 9,
+    "mode": "aot",
+    "stdout": "50495045\n",
+    "stderr": "",
+    "returncode": 0,
+    "wall_s": 0.0013747050033998676
+  },
+  {
+    "fd": 9,
+    "mode": "jit",
+    "stdout": "4243c0de\n",
+    "stderr": "",
+    "returncode": 0,
+    "wall_s": 0.08912575300200842
+  },
+  {
+    "fd": 64,
+    "mode": "cpython",
+    "stdout": "50495045\n",
+    "stderr": "",
+    "returncode": 0,
+    "wall_s": 0.010238789000140969
+  },
+  {
+    "fd": 64,
+    "mode": "aot",
+    "stdout": "50495045\n",
+    "stderr": "",
+    "returncode": 0,
+    "wall_s": 0.0012733320036204532
+  },
+  {
+    "fd": 64,
+    "mode": "jit",
+    "stdout": "50495045\n",
+    "stderr": "",
+    "returncode": 0,
+    "wall_s": 0.09295754200138617
+  }
+]
