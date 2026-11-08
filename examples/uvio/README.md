@@ -162,3 +162,81 @@ full compiler verification, or a portable runtime I/O backend. A broader
 libuv backend would still need process/pipe ownership, task cancellation and
 an independently measured workload before replacing the direct readiness
 prototype.
+
+## Compiler-source transfer workload
+
+[`source_exchange.py`](source_exchange.py) dogfoods the unchanged `Loop` wrapper
+by sending chunks of the compiler's own `src/pystachy_compiler/lexer.py` through
+the checker's existing loopback echo peer. It keeps at most the requested number
+of exchanges outstanding, refills on completion, matches IDs to original source
+chunks, and compares every reply byte before counting it. Empty inputs, embedded
+NULs and partial final chunks use the same protocol. This exercises the shape of
+a bounded source or artifact transfer; it does not integrate a remote compiler
+or fetch source from a production service.
+
+[`socket_exchange.py`](socket_exchange.py) implements the same exchange using
+independent stdlib `socket` and `selectors` calls. [`dogfood.py`](dogfood.py)
+compares it with the CPython FFI twin and Pystachy AOT consumer, using the same
+source, request sizes, concurrency limit and CPython peer. The client reads its
+input and completes one warmup round before its internal timer. Measured time
+includes creating and closing the loop/selector, fresh TCP connections,
+write-side shutdown, transfer through EOF, and exact byte checks. Bridge build,
+AOT compilation, and complete subprocess duration are reported separately;
+subprocess duration includes imports, source loading and the warmup.
+
+The controller requires the repository's exact `.python-version` CPython;
+additional interpreters are selected independently with `--interpreter`. Children
+use deterministic Python settings, a private temporary Pystachy cache, and a
+disabled program cache. The report records those settings and bridge compiler
+flags. Profiling output must pass the same transfer-count validation as samples.
+
+```sh
+python3.13 examples/uvio/dogfood.py --compiler ./pystachy \
+  --libuv-prefix /tmp/pystachy-libuv --samples 5 --rounds 64 \
+  --chunks 256 4096 32768 --concurrency 1 8 \
+  --profile build/uvio-profiles --json build/uvio-dogfood.json
+
+# Use an installed PyPy with exactly the same Python consumer and FFI twin.
+python3.13 examples/uvio/dogfood.py --cpython-only \
+  --libuv-prefix /tmp/pystachy-libuv --interpreter pypy=pypy3 \
+  --samples 5 --rounds 64 --json build/uvio-pypy-dogfood.json
+
+# Stdlib-only harness tests require neither a compiled bridge nor libuv headers.
+python3.13 -m unittest tools/test_uvio_dogfood.py
+```
+
+`--source` selects another local input (at most 1 MiB); `--chunks` must be
+1–65535 bytes to fit the reused peer's 64 KiB request bound including its opcode.
+`--concurrency` is 1–64 and `--rounds` is 1–1000. A consumer may receive several
+completions in one turn or no completions while libuv makes progress. The tests
+cover those cases, reordered IDs, duplicate/unknown IDs, corrupt/error replies,
+fragmented binary socket replies, failure cleanup and invalid result reports.
+Native runs also validate JIT and both native modes with GC stress before timing
+AOT. `--cpython-only` omits those native checks while retaining every explicitly
+requested additional interpreter.
+
+The JSON result records individual samples, median/minimum/maximum internal
+time, subprocess time, throughput, source hashes, input hash and tool versions.
+Mode order reverses between repetitions. `--cpu` optionally pins both the peer
+and its children to one allowed CPU; this changes scheduling and must be stated
+when interpreting the result. The caller's original affinity is restored after
+success or failure. `--profile` writes separate CPython `cProfile`
+records and a compact cumulative-time summary; profile runs do not supply timing
+samples. A changed consumed source or failed correctness check invalidates the
+whole run and leaves `result: fail` instead of a stale pass.
+
+The eight-thread CPython peer, loopback TCP setup and kernel scheduling can
+limit this workload. The FFI twin also pays ctypes marshalling overhead that
+native Pystachy does not pay. Compare both the same-wrapper result and the
+independent stdlib result, retain the spread of repeated samples, and increase
+rounds for very short runs. One warmup round does not establish a fully warmed
+PyPy JIT. This workload is not an upstream pyperformance or CPython socket-suite
+pass, and its transfer timings do not measure compiler throughput. Compiling
+FFI declarations with mypyc/Cython can change their runtime annotations and
+introspection; those configurations need an explicit declaration-boundary
+comparison before their numbers are comparable.
+
+The [recorded Linux results](results/README.md) include the size/concurrency sweep,
+exact-byte native/GC validation, profiles and measured limits. The optional make
+targets are `uvio-dogfood-check` for small correctness inputs and `bench-uvio`
+for the full harness; pass its arguments through `UVIO_DOGFOOD_ARGS`.
