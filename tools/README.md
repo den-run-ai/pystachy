@@ -17,6 +17,7 @@ which checks each kind of change needs.
 | Check runtime declarations and ABI | `make check-runtime` | Runtime signatures, effects, implementation inventory and recursion through runtime calls. The verification plan also runs native ABI probes. |
 | Check retained CPU-buffer failure paths | [check_cpu_buffers.sh](check_cpu_buffers.sh) | Linux CPython-buffer metadata, bounds and allocation cleanup; optional sanitizers and a missing-release negative control. See [the prototype](../bench/cpu_buffers/README.md). |
 | Adapt CPU DLPack batches | [pystachy_dlpack.py](pystachy_dlpack.py) | Optional NumPy bridge to retained read-only float64 buffers; [native scoring and lifetime checks](../examples/cpu_dlpack/README.md). |
+| Run local executable batches | [application_workers.py](application_workers.py) | Optional CPython coordinator with at most two workers, declared resource admission, deadlines and process-group cleanup. See [local application workers](#local-application-workers). |
 | Measure standard-library import coverage | [import_sweep.py](import_sweep.py) | Actual compilation of one import per module; import success does not establish API behavior. |
 | Refresh the top-PyPI inventory | [pypi_inventory.py](pypi_inventory.py) | Resolve ranked releases, scan pinned wheels and replay the same stdlib dependencies against two compiler builds ([method](../tests/upstream/pypi/inventory.md)). |
 | Grow the CPython-derived corpus | [cpython_test_methods.py](cpython_test_methods.py) | Which unittest methods of a `Lib/test` file pass natively once their scaffolding is rewritten by fixed rules, and one program of the passing ones; record its output with `tests/record.sh` ([guide](../tests/upstream/core-sweep.md#mechanical-method-extraction-2026-11-02)). |
@@ -44,6 +45,69 @@ stubs and the limits of each measurement.
 The metadata-only [submission check](check_submission.py) enforces the
 [issue/PR format](../CONTRIBUTING.md#issues-and-pull-requests) without running PR
 code. Its format/API controls run in Lint (`test_submission.py`).
+
+## Local application workers
+
+`application_workers.py` runs explicit argument arrays from a JSON manifest.
+Use it for independent local executable jobs. Replace the executable below
+with an absolute path and place the input files beside `jobs.json`:
+
+```json
+{"version": 1, "jobs": [
+  {"key": "first", "argv": ["/absolute/path/to/program"],
+   "memory_bytes": 134217728, "input_bytes": 4096, "stdin": "first.txt"},
+  {"key": "second", "argv": ["/absolute/path/to/program"],
+   "memory_bytes": 134217728, "input_bytes": 4096, "stdin": "second.txt"}
+]}
+```
+
+```sh
+python3 tools/application_workers.py jobs.json --report results.json \
+  --jobs 2 --cpus 2 --memory-mib 256 --input-mib 1 --timeout 60
+```
+
+The defaults allow one worker and one reserved CPU, a 60-second deadline per
+job, 1 GiB of estimated memory, 64 MiB of active/queued input, and 1 MiB of
+combined stdout/stderr per job. `--jobs` and `--cpus` cannot exceed two;
+`--timeout` must be finite, positive and at most 900 seconds. The output limit
+must remain positive. Output sizes are polled, so a fast writer can exceed the
+limit before cancellation; cleanup reads and captured prefixes remain bounded.
+
+Each job reserves `cpu` (default one), `memory_bytes` and `input_bytes` (default
+zero) for its whole child tree. Memory is an admission estimate, not an enforced
+RSS limit. Keep inputs stable while jobs run and include all their bytes in the
+reservation; the tool checks the size of `stdin` files. Input and `cwd` paths
+are relative to the manifest, with its directory as the default working
+directory. An optional `env` object adds string environment values. Standard
+BLAS/OpenMP thread settings are capped to the job's CPU reservation; other
+programs must honor that reservation themselves. The manifest is limited to
+1 MiB and 10,000 jobs; the scheduler prefetches only one waiting descriptor.
+
+Run the Linux coordinator in its own main thread, with no pre-existing children
+and the default SIGCHLD handler. Each job starts a small CPython supervisor in
+the same process group; children must remain in that group and must not daemonize.
+The supervisor adopts orphaned descendants and keeps the job's reservations,
+deadline and output limit active until every descendant has been reaped. Leader
+exit alone never releases resources or finalizes output.
+
+On an observed failure, timeout, output overflow or signal, the coordinator stops
+queued work. Cleanup repeatedly terminates and reaps children until the kernel
+confirms none remain, including children forked during shutdown. If a supervisor
+dies, the coordinator adopts and cleans its children and reports failure. Caller
+signal handlers and the previous subreaper setting are restored afterward.
+The report retains submission order,
+exit status, output sizes/hashes, bounded text and timing; `complete` is false
+on failure. Reports cannot replace the manifest, declared stdin files or
+executables. They are published atomically in an existing parent directory.
+
+The reusable lifecycle is in [process_workers.py](process_workers.py). Its
+scope belongs in a dedicated coordinator's main thread; the CLI supplies its
+resource budget and rejects failed results before resuming queued work.
+The supervisor in [process_worker_child.py](process_worker_child.py) adds one
+small CPython process per admitted job; CPU measurements include its overhead.
+`python3 -m unittest discover -s tools -p 'test_process_worker*.py'` checks
+admission, output limits, report publication, launch races and descendant
+cleanup without LLVM. Other operating systems are rejected before work starts.
 
 ## Focused checks and measurements
 
