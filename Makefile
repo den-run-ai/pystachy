@@ -3,11 +3,13 @@
 PY ?= $(shell command -v python3.13 || command -v python3)
 export PYSTACHY_LLVM ?= $(shell $(PY) -c 'import pystachy; print(pystachy.llvm_dir())')
 COMPILER_SOURCES := pystachy.py lib/_pystachy_cache.py $(wildcard src/*.py src/pystachy_compiler/*.py)
+# Experimental: lower only the temporary first-stage compiler's AOT tier.
+BOOTSTRAP_AOT_OPT ?= 2
 
 pystachy: $(COMPILER_SOURCES) runtime.c runtime.py $(wildcard ryu/*.c ryu/*.h mpz/*.c)
 	mkdir -p build
-	$(PY) pystachy.py build pystachy.py -o build/pystachy1 --emit-ir build/stage1.ll
-	build/pystachy1 build pystachy.py -o build/pystachy2 --emit-ir build/stage2.ll
+	PYSTACHY_AOT_OPT="$(BOOTSTRAP_AOT_OPT)" $(PY) pystachy.py build pystachy.py -o build/pystachy1 --emit-ir build/stage1.ll
+	PYSTACHY_AOT_OPT=2 build/pystachy1 build pystachy.py -o build/pystachy2 --emit-ir build/stage2.ll
 	build/pystachy2 ir pystachy.py -o build/stage3.ll
 	cmp build/stage1.ll build/stage2.ll && cmp build/stage2.ll build/stage3.ll
 	@echo "fixed point: stage1 == stage2 == stage3 ($$(wc -l < build/stage1.ll) lines of IR)"
