@@ -63,10 +63,11 @@ def half(case):
 
 GC_STEPS = ["gc-self", "gc-ir-0", "gc-ir-1", "gc-jit-0", "gc-jit-1", "gc-aot-0", "gc-aot-1", "gc-aot-2"]
 # group, mode and its steps after bootstrap
-SUITES = [("gc-jit-0", "jit", ["gc-ir-0", "gc-jit-0"]), ("gc-jit-1", "jit", ["gc-ir-1", "gc-jit-1"]),
+SUITES = [("gc-jit-0", "jit", ["gc-jit-0"]), ("gc-jit-1", "jit", ["gc-jit-1"]),
           ("gc-aot-0", "aot", ["gc-aot-0"]), ("gc-aot-1", "aot", ["gc-aot-1"]), ("gc-aot-2", "aot", ["gc-aot-2"])]
 # The gate's contract for these groups alone (tests/verify.sh --list's, without the other groups)
 CONTRACT = ("all bootstrap gc-ir-0 gc-ir-1 gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2\n" +
+            "gc-ir-0 bootstrap gc-ir-0\ngc-ir-1 bootstrap gc-ir-1\n" +
             "".join(f"{group} bootstrap {' '.join(steps)}\n" for group, _, steps in SUITES))
 
 
@@ -259,18 +260,22 @@ os.execv({TIMEOUT!r}, [{TIMEOUT!r}, "--verbose", "--kill-after=0.2s", limit, *sy
             self.assertNotEqual(shard, sorted(shard), group)
 
     def test_gc_weights_change_identity_placement_but_preserve_jit_partition_and_sample(self):
-        result, report, _ = self.run_group("gc-jit-0")
+        result, report, _ = self.run_group("gc-ir-0")
         self.assertEqual((result.returncode, report["result"]), (0, "pass"), result.stdout + result.stderr)
         compiled = [case for command, case, stress in self.compiles() if command == "ir" and stress == "1000"]
         self.assertCountEqual(compiled, shards(2, gc=True)[0])
         self.assertNotEqual(set(compiled), set(shards(2)[0]))
+        result, report, _ = self.run_group("gc-jit-0")
+        self.assertEqual((result.returncode, report["result"]), (0, "pass"), result.stdout + result.stderr)
         weighted_runs = self.runs()
         (self.root / "tests/gc_case_weights.txt").unlink()
-        result, report, _ = self.run_group("gc-jit-0")
+        result, report, _ = self.run_group("gc-ir-0")
         self.assertEqual((result.returncode, report["result"]), (0, "pass"), result.stdout + result.stderr)
         expected = shards(2)[0]
         compiled = [case for command, case, stress in self.compiles() if command == "ir" and stress == "1000"]
         self.assertCountEqual(compiled, expected)
+        result, report, _ = self.run_group("gc-jit-0")
+        self.assertEqual((result.returncode, report["result"]), (0, "pass"), result.stdout + result.stderr)
         self.assertEqual(self.runs(), weighted_runs)
         sample, rest = (cases for _, _, cases in self.runs())
         self.assertEqual(sample, expected[merge.GC_SAMPLE_OFFSETS["jit"]::merge.GC_SAMPLE_EVERY])
@@ -279,12 +284,14 @@ os.execv({TIMEOUT!r}, [{TIMEOUT!r}, "--verbose", "--kill-after=0.2s", limit, *sy
     def test_missing_gc_reserve_balances_identity_without_changing_jit(self):
         path = self.root / "tests/gc_case_weights.txt"
         path.write_text("\n".join(line for line in path.read_text().splitlines() if not line.startswith("reserve ")) + "\n")
-        result, report, _ = self.run_group("gc-jit-0")
+        result, report, _ = self.run_group("gc-ir-0")
         self.assertEqual((result.returncode, report["result"]), (0, "pass"), result.stdout + result.stderr)
         expected = reference_shards(CASES, GC_WEIGHTS, DEFAULTS, 2)[0][0]
         compiled = [case for command, case, stress in self.compiles() if command == "ir" and stress == "1000"]
         self.assertCountEqual(compiled, expected)
         self.assertNotEqual(set(compiled), set(shards(2, gc=True)[0]))
+        result, report, _ = self.run_group("gc-jit-0")
+        self.assertEqual((result.returncode, report["result"]), (0, "pass"), result.stdout + result.stderr)
         _, _, sample, rest = split("gc-jit-0")
         self.assertEqual(self.runs(), [("jit", "sample", sample), ("jit", "suite", rest)])
 
@@ -358,6 +365,7 @@ print((66 if name == "native" else 68), "passed, 0 failed")
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 self.assertEqual(report["result"], "pass")
                 self.assertEqual([step["name"] for step in report["steps"]], ["bootstrap", *steps])
+                self.assertEqual(self.compiles(), [])  # Identity has its own jobs and time budget.
                 step = report["steps"][-1]
                 self.assertEqual(step["modes"], [mode])
                 self.assertEqual((step["tests_compiler_interval"], step["tests_interval"]), (0, 1))
@@ -393,6 +401,10 @@ print((66 if name == "native" else 68), "passed, 0 failed")
         for mode, cases in observed.items():  # each case once in each mode
             self.assertEqual(Counter(cases), Counter(CASES), mode)
         self.assertFalse(samples["jit"] & samples["aot"])   # (the modes stress different cases here)
+        for group in ("gc-ir-0", "gc-ir-1"):
+            result, report, _ = self.run_group(group)
+            self.assertEqual((result.returncode, report["result"]), (0, "pass"), result.stdout + result.stderr)
+            reports[group] = report
         self.gate(reports)   # the reports together pass the CI gate
 
     def test_negative_controls_a_sample_outside_its_shard_or_a_case_run_twice_or_never(self):
@@ -427,10 +439,12 @@ print((66 if name == "native" else 68), "passed, 0 failed")
 
     def test_gc_ir_halves_compile_every_case_once_stressed_as_stage2_does(self):
         compiled = []
-        for group, index in (("gc-jit-0", 0), ("gc-jit-1", 1)):
+        for group, index in (("gc-ir-0", 0), ("gc-ir-1", 1)):
             with self.subTest(group=group):
                 result, report, logs = self.run_group(group)
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertEqual([step["name"] for step in report["steps"]], ["bootstrap", group])
+                self.assertEqual(self.runs(), [])  # Identity must not also spend this job's budget on JIT.
                 step = report["steps"][1]
                 cases = shards(2, gc=True)[index]
                 syntax = [case for case in cases if "/syntax_" in case]
@@ -473,7 +487,7 @@ print((66 if name == "native" else 68), "passed, 0 failed")
                 ("gc-ir-missing", None, "ir_identical", "programs identical")):
             with self.subTest(mode=mode):
                 index = half(target) if target else 1
-                group, cases = f"gc-jit-{index}", shards(2, gc=True)[index]
+                group, cases = f"gc-ir-{index}", shards(2, gc=True)[index]
                 irsame = self.root / "tools/irsame.sh"
                 if mode == "gc-ir-missing":   # irsame drops the half's last case and finds the others identical
                     irsame.rename(self.root / "tools/irsame-real.sh")
@@ -495,7 +509,10 @@ print((66 if name == "native" else 68), "passed, 0 failed")
                     self.assertIn(f"{len(cases) - 1} programs identical", logs[step["name"]])
                     self.assertEqual(sum(1 for command, _, stress in self.compiles()
                                          if command == "ir" and stress == "1000"), len(cases) - 1)
-                self.assertEqual(report["steps"][-1]["result"], "pass")   # (the suite still runs)
+                self.assertEqual([item["name"] for item in report["steps"]], ["bootstrap", group])
+                self.assertEqual(self.runs(), [])
+                with self.assertRaises(ValueError):
+                    merge.validate_report({**report, "git": {"commit": "a" * 40}}, group, ["bootstrap", group])
 
     def test_local_aliases_run_all_selected_gc_checks(self):
         for group, expected in (("gc-stress", GC_STEPS), ("gc-ir", GC_STEPS[1:3]), ("gc-jit", GC_STEPS[1:5]),

@@ -526,7 +526,7 @@ the compact cache/GC group's budget for runtime-cache and compiler GC verificati
 
 ### Full verification
 
-Pushes to `main` and manual runs execute all thirty verification groups on both Linux
+Pushes to `main` and manual runs execute all thirty-two verification groups on both Linux
 architectures. They provide the exact-commit evidence required for releases. Local groups build
 their own bootstrap; CI builds it once per architecture. Large upstream regex runs alongside
 benchmark correctness, and Lint checks CPython port preservation. The full groups are:
@@ -539,7 +539,8 @@ benchmark correctness, and Lint checks CPython port preservation. The full group
 | `python-free-0`, `python-free-1`, `python-free-2` | Rebuild with no Python on `PATH`; three disjoint thirds of the suite with that compiler. |
 | `ubsan-0`, `ubsan-1`, `ubsan-2`, `ubsan-3` | Sanitized compiler/runtime; four disjoint quarters of the JIT/AOT suite. |
 | `gc-self` | Collector-stressed self-compilation and identical-IR check. |
-| `gc-jit-0`, `gc-jit-1` | Two disjoint halves of the corpus: the compiler collecting every 1,000 allocations gives stage 2's IR, messages and exit status for every case and stage 2's `check` results (`gc-ir-0`, `gc-ir-1`); then the half's JIT suite with program GC stress, one case in 16 of the half with the compiler stressed too. |
+| `gc-ir-0`, `gc-ir-1` | Two disjoint halves of the corpus: the compiler collecting every 1,000 allocations gives stage 2's IR, messages and exit status for every case and stage 2's `check` results. Both halves also compare `runtime.py`. |
+| `gc-jit-0`, `gc-jit-1` | Two disjoint halves of the JIT suite with program GC stress, one case in 16 of each half with the compiler stressed too. Execution uses its own weighted partition, independently of the identity halves. |
 | `gc-aot-0`, `gc-aot-1`, `gc-aot-2` | Three disjoint thirds of the AOT suite with program GC stress, one case in 16 of each third with the compiler stressed too. |
 | `dynany-optin-0` through `dynany-optin-2` | Three disjoint thirds of `tests/programs/`, opted into dynamic `Any`, compared with a fresh pinned-CPython oracle in JIT and AOT. |
 | `python-int-optin-0` through `python-int-optin-2` | Three disjoint thirds of `tests/programs/`, opted into promoting ints, with a fresh pinned-CPython oracle in JIT and AOT and exact reviewed limitations. |
@@ -548,6 +549,9 @@ benchmark correctness, and Lint checks CPython port preservation. The full group
 | `benchmarks` | Benchmark correctness/timings, real example CLI parity, JSON repair process cases and agent loopback HTTP; extended correctness checks reuse the verified compiler. |
 | `scaling` | Every compiler-scaling shape, in two steps, shapes measured side by side. |
 
+GC identity and JIT execution have separate job budgets. The aggregate still requires
+both identity halves and every execution shard; case selection and stress intervals
+are unchanged. The PR matrix retains its existing groups and budget.
 A failed group leaves the others running. The aggregate checks are
 `make verify (Linux x86-64, LLVM 18, Python 3.13)` and
 `make verify (Linux ARM64, LLVM 18, Python 3.13)`. For pull requests, maintainers
@@ -636,13 +640,11 @@ execution partition, order and sample unchanged. Each partition covers the full
 corpus; the aggregate requires both identity halves and every execution shard.
 The PR profile retains its sparse selection. Weight changes affect placement and
 order, never coverage or stress intervals.
-The GC table's `reserve W0 W1` row reserves the JIT work already assigned to each
-combined job before balancing identity cases. Its values use the table's weight
-units; a missing table or reserve row means zero reserve. The initial 20,736,500-unit
-reserve for job 0 comes from the unchanged JIT phases in full x86-64 run
-`41959892750`, normalized by each runner's identity time per weight. This accounts
-for job 0's heavier execution work without assigning the runner's speed difference
-to the workload. The table records the calculation and compiler revision.
+The GC table's `reserve W0 W1` row supplies initial weights before balancing identity
+cases. The current table retains the reserve and partition from the earlier combined
+identity/JIT schedule; separating the jobs does not rebalance or remove cases. Values
+use the table's weight units, and a missing table or reserve row means zero reserve.
+The table records the original calculation and compiler revision.
 The initial GC table profiles all 4,144 cases at `99f3451e` with the native compiler,
 collection every 1,000 allocations and `PYSTACHY_IRCHECK=1`. It uses CPU time from
 one stressed compilation per case, scaled to the median corpus program; its header
@@ -654,15 +656,16 @@ comparison.
 Refresh GC weights with `tools/case_weights.py -o tests/gc_case_weights.txt` and
 both halves' `gc-ir-N-times.log` files from one completed run; runtime, syntax and
 execution timings describe different work and should not be mixed into that table.
-Recalibrate and record the reserve after refreshing: `tools/case_weights.py` writes
-case weights only, so it does not carry a reserve into potentially different units.
-Check combined job times as well as identity balance before adopting the refresh.
+`tools/case_weights.py` writes case weights only, so it does not carry a reserve into
+potentially different units. Identity now has its own jobs; do not reserve JIT work
+when refreshing its weights. Check identity balance and each independent job's time
+before adopting the refresh.
 
 GC self-compilation collects every 5,000 allocations and has a separate ten-minute bound.
 At the former interval of 1,000, it spent 23 minutes on 15,543 full-heap collections;
 the wider interval still exercises thousands of collections without dominating CI.
 The compiler collecting every 1,000 allocations is checked by identity, once a run: `gc-ir-0`
-and `gc-ir-1` (in `gc-jit-0` and `gc-jit-1`) compile the cases of two disjoint halves of the
+and `gc-ir-1` run independently of JIT and compile the cases of two disjoint halves of the
 corpus (`gc_shard_cases`, balanced as above) with it and with stage 2 unstressed, through
 `tools/irsame.sh` (`rt` for `rtmode_*` cases, with the IR check on), and require the same IR byte
 for byte, the same messages and the same exit status for every case, the same IR of `runtime.py`,
@@ -686,8 +689,9 @@ empty), so the stressed compiler builds the runtime that the job's GC tests use,
 cache, `opt`/`lli` and `clang`/link paths after the IR run under stress; the program-stressed run
 takes the shard's other cases. AOT keeps three jobs: projected from the same measurements, two
 would each take about 11.2 minutes of work, over the ten-minute target, and three take about 7.7.
-Self-compilation and the five suites use separate runners and report their own durations.
-The final gate requires all six groups, both execution modes, the intervals (1,000 for `gc-ir`
+Self-compilation, both identity halves and the five execution suites use separate runners
+and report their own durations.
+The final gate requires all eight groups, both execution modes, the intervals (1,000 for `gc-ir`
 and the samples' compiler, 0 for the program-stressed runs' compiler, 1 for every program),
 distinct shard identities, each sample's identity (its period and its mode's offset, as many
 cases as its shard has positions at that offset, and with the program-stressed run's cases as

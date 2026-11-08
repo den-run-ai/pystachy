@@ -17,8 +17,9 @@
 # duration by its IR pair-time sum per weight gives reserves 70.945M / 50.208M,
 # normalizing by each runner's identity cost per weight. Their difference is rounded
 # to the nearest weight unit: 20,736,500.
-# Reserve that extra execution work on shard 0 before assigning identity cases.
-# Recalibrate this row with every weight refresh; absence means zero reserve.
+# Historical reserve for the former combined identity/JIT jobs, retained so
+# separating the jobs leaves this table's partition unchanged. Future refreshes
+# measure identity jobs alone; absence of a reserve row means zero reserve.
 reserve 20736500 0
 default program 1006
 default rejection 222
