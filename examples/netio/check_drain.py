@@ -7,7 +7,6 @@ import os
 from pathlib import Path
 import platform
 import selectors
-import shlex
 import signal
 import subprocess
 import sys
@@ -77,9 +76,7 @@ def verify(args, report):
         raise RuntimeError(f"use pinned CPython {pinned}; running {platform.python_version()}")
     if sys.platform not in ("linux", "darwin"):
         raise RuntimeError("this prototype check supports Linux and macOS only")
-    compiler = shlex.split(args.compiler)
-    if not compiler:
-        raise ValueError("--compiler must not be empty")
+    compiler = check.compiler_command(args.compiler)
     original = (check.HERE / "drain.py").read_bytes()
     checker_source = Path(__file__).read_bytes()
     before = check.hashes()

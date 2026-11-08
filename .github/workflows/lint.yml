@@ -34,7 +34,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
         with:
           python-version-file: .python-version   # the CPython the tests' expected output was recorded with
           cache: pip
@@ -60,6 +60,9 @@ jobs:
       - name: Fast hosted checks and full lint
         run: make check-fast lint
 
+      - name: Retained IR and failed native build controls
+        run: PYSTACHY_TEST_LLVM="$PYSTACHY_LLVM" python3 -m unittest discover -s tools -p test_retained_ir.py
+
       - name: CI verification harness and report gate tests
         run: python3 -m unittest discover -s tools -p 'test_*verif*.py'
 
@@ -80,12 +83,15 @@ jobs:
       - name: Example CLI smoke contract tests
         run: python3 -m unittest discover -s tools -p test_check_example_cli.py
 
+      - name: Native text reads on open pipes
+        run: PYSTACHY_TEXT_READ_COMPILER='python3 -m pystachy' python3 -m unittest discover -s tools -p test_text_read_progress.py
+
       - name: Install sanitizer runtime for generated-code controls
         run: sudo apt-get update && sudo apt-get install -y libclang-rt-18-dev
 
       - name: Runtime ABI, ASan and GC root checker controls
         run: |
-          python3 -m unittest discover -s tools -p 'test_runtime_*.py'
+          PYSTACHY_CACHE_TEST_LLVM="$PYSTACHY_LLVM" python3 -m unittest discover -s tools -p 'test_runtime_*.py'
           PY=python3 CC="$PYSTACHY_LLVM/clang" ASAN_OPTIONS=detect_leaks=1 \
             tools/check_cpu_buffers.sh '-fsanitize=address,undefined'
           PY=python3 CC="$PYSTACHY_LLVM/clang" ASAN_OPTIONS=detect_leaks=1 \
@@ -155,6 +161,9 @@ jobs:
 
       - name: Linux ELF compatibility audit controls
         run: python3 -m unittest discover -s tools -p test_linux_abi.py
+
+      - name: Installed JSON repair wheel validation controls
+        run: python3 -m unittest discover -s tools -p test_json_repair_wheel.py
 
       - name: Generated regex matcher tests
         run: python3 -m unittest discover -s tools -p test_re_specialize.py

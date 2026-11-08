@@ -112,6 +112,7 @@
 #                  reuse, ASCII/Unicode controls and GC-stress exception paths, both compilers;
 #                  unicodeprobe checks code-point cache/locality, mutation and GC invalidation
 #                  bytescanprobe checks bounded delimiter scans, guard pages and bulk-work counts
+#                  floatprobe checks float-parser allocations and exact-terminator guard pages
 #   scaling-0/-1   tools/scaling.py --check: both compilers compile its generated programs (500 and 1000
 #                  functions, globals, classes, modules, chained imports, breaks, elifs, ...), and the
 #                  lines the CPython-hosted compiler executes, and the items its builtin calls copy or
@@ -241,7 +242,7 @@ export PYSTACHY_HOME="$ROOT"
 # The steps set the knobs they test themselves: one left in the caller's environment would weaken a
 # step (PYSTACHY_GC=off: gc-stress collects nothing) or fail it falsely (PYSTACHY_OPT=-all), so they
 # are dropped, and the report lists them (PYSTACHY_LLVM and PYSTACHY_JOBS are kept)
-ign=$(env | sed -nE 's/^(PYSTACHY_(PATH|CFLAGS|GC|GC_MIN|GC_STRESS|GC_STRESS_PROGRAM|IRCHECK|IRFX|OPT|JIT_INLINE|JIT_CODEGEN|PROGRAM_CACHE|PROGRAM_CACHE_TRACE|PROGRAM_CACHE_INPUTS|PROGRAM_CACHE_LOCK|UNICODE_AUDIT|DEBUG_LINES|ARGV0|CASE_TIMES))=.*$/\1/p' | sort -u)
+ign=$(env | sed -nE 's/^(PYSTACHY_(PATH|CFLAGS|RUNTIME_C_CACHE|GC|GC_MIN|GC_STRESS|GC_STRESS_PROGRAM|IRCHECK|IRFX|TIMING|OPT|JIT_INLINE|JIT_CODEGEN|PROGRAM_CACHE|PROGRAM_CACHE_TRACE|PROGRAM_CACHE_INPUTS|PROGRAM_CACHE_LOCK|UNICODE_AUDIT|DEBUG_LINES|ARGV0|CASE_TIMES))=.*$/\1/p' | sort -u)
 for e in $ign; do echo "verify: ignoring $e=$(printenv "$e")"; unset "$e"; done
 LLVM=${PYSTACHY_LLVM:+${PYSTACHY_LLVM%/}/}
 
@@ -1073,7 +1074,11 @@ L=$V/unicode-audit.log; s=$(now); r=fail
   "${LLVM}clang" -O2 -S -emit-llvm tools/bytescanprobe.c -o "$V/bytescanprobe.ll" &&
   "${LLVM}llvm-link" "$V/rt2.ll" "$V/bytescanprobe.ll" -o "$V/bytescanprobe.bc" &&
   "${LLVM}clang" -O2 "$V/bytescanprobe.bc" -o "$V/bytescanprobe" -lm &&
-  "$V/bytescanprobe" && PYSTACHY_GC_STRESS=1 "$V/bytescanprobe" && r=pass; } > "$L" 2>&1
+  "$V/bytescanprobe" && PYSTACHY_GC_STRESS=1 "$V/bytescanprobe" &&
+  "${LLVM}clang" -O2 -S -emit-llvm tools/floatprobe.c -o "$V/floatprobe.ll" &&
+  "${LLVM}llvm-link" "$V/rt2.ll" "$V/floatprobe.ll" -o "$V/floatprobe.bc" &&
+  "${LLVM}clang" -O2 "$V/floatprobe.bc" -o "$V/floatprobe" -lm &&
+  "$V/floatprobe" && PYSTACHY_GC_STRESS=1 "$V/floatprobe" && r=pass; } > "$L" 2>&1
 step unicode-audit $r "$s" "$L" ', "compilers": ["CPython-hosted", "stage2"], "codepoint_probe_gc_modes": ["normal", "stress"]'
 fi
 }

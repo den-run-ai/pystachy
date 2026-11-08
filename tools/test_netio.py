@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import selectors
+import shlex
 import socket
 import subprocess
 import sys
@@ -29,6 +30,37 @@ def passed_report(cpython_only=False):
 
 
 class CheckerTests(unittest.TestCase):
+    def test_hosted_compiler_runs_from_private_working_directory(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            command = check.compiler_command(shlex.join([sys.executable, "pystachy.py"]))
+            result = check.run("hosted/version", command + ["--version"],
+                               check.environment(directory), directory)
+            self.assertIn((ROOT / "VERSION").read_text().strip().encode(), result.stdout)
+            self.assertEqual(result.stderr, b"")
+
+    def test_relative_executable_with_spaces_runs_from_private_cwd(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            executable = directory / "compiler with spaces"
+            executable.write_text(f"#!{sys.executable}\nprint('compiler control')\n")
+            executable.chmod(0o755)
+            work = directory / "private"
+            work.mkdir()
+            with mock.patch.object(check, "ROOT", directory):
+                command = check.compiler_command(shlex.join(["./compiler with spaces"]))
+            result = check.run("native/path", command, os.environ.copy(), work)
+            self.assertEqual(result.stdout, b"compiler control\n")
+            self.assertEqual(result.stderr, b"")
+
+    def test_compiler_command_preserves_python_module_and_code_arguments(self):
+        for flag, argument in (("-m", "pystachy"), ("-c", "pystachy.py")):
+            with self.subTest(flag=flag):
+                command = check.compiler_command(shlex.join([sys.executable, flag, argument]))
+                self.assertEqual(command[1:], [flag, argument])
+        with self.assertRaisesRegex(ValueError, "must not be empty"):
+            check.compiler_command(" ")
+
     def test_oracle_uses_unmodified_stdlib_implementations(self):
         spec = importlib.util.spec_from_file_location("netio_oracle", check.HERE / "oracle/netio.py")
         oracle = importlib.util.module_from_spec(spec)

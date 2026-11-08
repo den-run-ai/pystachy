@@ -6,10 +6,8 @@ COMPILER_SOURCES := pystachy.py lib/_pystachy_cache.py $(wildcard src/*.py src/p
 
 pystachy: $(COMPILER_SOURCES) runtime.c runtime.py $(wildcard ryu/*.c ryu/*.h mpz/*.c)
 	mkdir -p build
-	$(PY) pystachy.py build pystachy.py -o build/pystachy1
-	build/pystachy1 build pystachy.py -o build/pystachy2
-	$(PY) pystachy.py ir pystachy.py -o build/stage1.ll
-	build/pystachy1 ir pystachy.py -o build/stage2.ll
+	$(PY) pystachy.py build pystachy.py -o build/pystachy1 --emit-ir build/stage1.ll
+	build/pystachy1 build pystachy.py -o build/pystachy2 --emit-ir build/stage2.ll
 	build/pystachy2 ir pystachy.py -o build/stage3.ll
 	cmp build/stage1.ll build/stage2.ll && cmp build/stage2.ll build/stage3.ll
 	@echo "fixed point: stage1 == stage2 == stage3 ($$(wc -l < build/stage1.ll) lines of IR)"
@@ -253,6 +251,16 @@ bytescanprobe: tools/bytescanprobe.c runtime.c runtime.py pystachy
 	build/bytescanprobe
 	PYSTACHY_GC_STRESS=1 build/bytescanprobe
 
+# Float conversion retains terminator bounds and avoids suitable ASCII temporaries.
+floatprobe: tools/floatprobe.c runtime.c runtime.py pystachy
+	mkdir -p build
+	./pystachy rt runtime.py -o build/floatprobe-rt.ll
+	$(LLVMBIN)clang -O2 -S -emit-llvm tools/floatprobe.c -o build/floatprobe.ll
+	$(LLVMBIN)llvm-link build/floatprobe-rt.ll build/floatprobe.ll -o build/floatprobe.bc
+	$(LLVMBIN)clang -O2 build/floatprobe.bc -o build/floatprobe -lm
+	build/floatprobe
+	PYSTACHY_GC_STRESS=1 build/floatprobe
+
 # Full verification (bootstrap, both compilers, the runtime cache, Python-free stage, UBSan, GC stress, IR check,
 # benchmarks, dict probes, scaling) -> build/verification.json
 verify:
@@ -396,6 +404,7 @@ check-fast: lint-python typecheck check-repository
 	$(PY) -m unittest discover -s tools -p test_inspect_compiler.py
 	$(PY) -m unittest discover -s tools -p test_source_lines.py
 	$(PY) -m unittest discover -s tools -p test_pystachy_toolchain.py
+	$(PY) -m unittest discover -s tools -p test_retained_ir.py
 
 check-repository:
 	$(PY) tools/check_repository_hygiene.py
@@ -406,7 +415,7 @@ check-repository:
 lint: lint-python
 	$(PY) tools/runtime_roots.py
 	shellcheck -s sh -S warning $(wildcard tests/*.sh tests/ffi/*.sh tools/*.sh bench/*.sh)
-	$(LLVMBIN)clang -fsyntax-only -Wall -Wextra -Werror runtime.c tools/dictprobe.c tools/listprobe.c tools/eqprobe.c tools/fileprobe.c tools/selectprobe.c tools/weakrefprobe.c tools/boxprobe.c tools/unicodeprobe.c tools/bytescanprobe.c pyext.c pyembed.c
+	$(LLVMBIN)clang -fsyntax-only -Wall -Wextra -Werror runtime.c tools/dictprobe.c tools/listprobe.c tools/eqprobe.c tools/fileprobe.c tools/selectprobe.c tools/weakrefprobe.c tools/boxprobe.c tools/unicodeprobe.c tools/bytescanprobe.c tools/floatprobe.c pyext.c pyembed.c
 	$(LLVMBIN)clang -fsyntax-only -Wall -Wextra -Werror -DPYX_ABI3T pyext.c
 
 clean:
@@ -423,4 +432,4 @@ uninstall:
 test-install:
 	$(PY) -m unittest discover -s tools -p test_install.py
 
-.PHONY: test test-py coverage runtime-coverage variants test-cache test-program-cache test-ffi bench bench-extended bench-extended-check example-cli-check netio-check blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe boxprobe streamprobe jitprobe aotprobe unicode-audit unicodeprobe bytescanprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz dynany-fuzz dynany-optin python-int-optin python-int-gate re-probe re-specialize-check typecheck lint-python check-repository check-fast lint clean install uninstall test-install
+.PHONY: test test-py coverage runtime-coverage variants test-cache test-program-cache test-ffi bench bench-extended bench-extended-check example-cli-check netio-check blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe boxprobe streamprobe jitprobe aotprobe unicode-audit unicodeprobe bytescanprobe floatprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz dynany-fuzz dynany-optin python-int-optin python-int-gate re-probe re-specialize-check typecheck lint-python check-repository check-fast lint clean install uninstall test-install

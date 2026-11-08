@@ -87,6 +87,16 @@ def quiet(label, result):
         raise ValueError(f"{label}: unexpected build diagnostics: {result.stdout!r}, {result.stderr!r}")
 
 
+def compiler_command(value: str) -> list[str]:
+    """Keep checkout-relative executables and hosted scripts valid in private cwd."""
+    command = shlex.split(value)
+    if not command:
+        raise ValueError("--compiler must not be empty")
+    return [str((ROOT / word).resolve())
+            if (not index or command[index - 1] not in ("-m", "-c")) and (ROOT / word).is_file()
+            else word for index, word in enumerate(command)]
+
+
 def c_compiler(value: str | None, env: dict[str, str]) -> list[str]:
     if value is not None:
         command = shlex.split(value)
@@ -173,9 +183,7 @@ def check(args, report):
         raise RuntimeError(f"use pinned CPython {pinned}; running {platform.python_version()}")
     if sys.platform not in ("linux", "darwin"):
         raise RuntimeError("this prototype check supports Linux and macOS only")
-    compiler = shlex.split(args.compiler)
-    if not compiler:
-        raise ValueError("--compiler must not be empty")
+    compiler = compiler_command(args.compiler)
     before = hashes()
     report.update(python=platform.python_version(), platform=platform.platform(), source_sha256=before,
                   repeat=args.repeat, compiler=compiler, cases=list(CASES), runs={}, modes=[])

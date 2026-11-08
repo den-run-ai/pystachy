@@ -1490,23 +1490,45 @@ double pys_float_str(Str *s) {
   const char *p = t->s, *e = t->s + t->len;
   while (p < e && aws(*p)) p++;
   while (e > p && aws(e[-1])) e--;
-  Buf b = {0}; const char *q = p;
-  if (q < e && (*q == '+' || *q == '-')) put(&b, q++, 1);
+  const char *q = p;
+  if (q < e && (*q == '+' || *q == '-')) q++;
   I n = e - q;
-  if ((n == 3 && !strncasecmp(q, "inf", 3)) || (n == 8 && !strncasecmp(q, "infinity", 8)) || (n == 3 && !strncasecmp(q, "nan", 3))) {
-    put(&b, q, n); put(&b, "", 1); return fstrtod(b.p, 0);
-  }
-  int digits = 0, prev = 0;                    /* prev: 1 after a digit; underscores only between digits */
-  for (; q < e; q++) {
+  int special = (n == 3 && !strncasecmp(q, "inf", 3)) ||
+                (n == 8 && !strncasecmp(q, "infinity", 8)) ||
+                (n == 3 && !strncasecmp(q, "nan", 3));
+  int digits = 0, prev = 0, underscores = 0;
+  /* Preserve Python's lexical checks before asking libc to validate decimal
+     syntax. In particular, reject NUL, hex floats and misplaced underscores. */
+  if (!special) for (; q < e; q++) {
     char c = *q;
-    if (c >= '0' && c <= '9') { digits = 1; prev = 1; put(&b, q, 1); continue; }
-    if (c == '_' && prev && q + 1 < e && q[1] >= '0' && q[1] <= '9') { prev = 0; continue; }
-    if (c == '.' || c == 'e' || c == 'E' || ((c == '+' || c == '-') && q > p && (q[-1] | 32) == 'e')) { prev = 0; put(&b, q, 1); continue; }
+    if (c >= '0' && c <= '9') { digits = 1; prev = 1; continue; }
+    if (c == '_' && prev && q + 1 < e && q[1] >= '0' && q[1] <= '9') {
+      prev = 0; underscores = 1; continue;
+    }
+    if (c == '.' || c == 'e' || c == 'E' ||
+        ((c == '+' || c == '-') && q > p && (q[-1] | 32) == 'e')) { prev = 0; continue; }
     badlit("ValueError: could not convert string to float", -1, s);
   }
-  put(&b, "", 1);
-  char *end; double v = fstrtod(b.p, &end);
-  if (!digits || *end) badlit("ValueError: could not convert string to float", -1, s);
+  if (!special && !digits) badlit("ValueError: could not convert string to float", -1, s);
+  const char *parse = p, *limit = e;
+  Buf b = {0};
+  if (underscores) {
+    /* Filtering remains necessary, but reserve once instead of growing for
+       individual characters. Never pass the unfiltered source to strtod. */
+    b.cap = e - p + 1; b.p = gc_raw(b.cap);
+    for (q = p; q < e; q++) if (*q != '_') b.p[b.n++] = *q;
+    b.p[b.n] = 0;
+    parse = b.p; limit = b.p + b.n;
+  } else if (e != t->s + t->len) {
+    /* A trimmed end is not a terminator. Copy exactly the validated span so
+       strtod cannot consume a suffix beyond its logical end. */
+    put(&b, p, e - p); put(&b, "", 1);
+    parse = b.p; limit = b.p + b.n - 1;
+  }
+  /* Direct only when e is the real string terminator. All bytes up to it were
+     validated above; Str owns that terminator even for embedded/sliced text. */
+  char *end; double v = fstrtod(parse, &end);
+  if (end != limit) badlit("ValueError: could not convert string to float", -1, s);
   return v;
 }
 
@@ -6813,13 +6835,24 @@ static Str *read1(File *f, I n) {      /* n < 0: to the end; else n characters (
   }
   /* n characters: their bytes gather in t, and go to b only when t is full, as readline's do (a
      put() per byte took most of the time); a read that fits in t becomes its str without b */
-  char t[4096]; I m = 0;
-  for (I k = 0;;) {
+  char t[4096]; I m = 0; int trailing = 0;
+  for (I k = 0; k < n || trailing;) {
     int c = get(f);
     if (c == EOF) break;
-    if ((f->lat || (c & 0xC0) != 0x80) && k++ == n) { unget(f, c); break; }   /* the next character starts */
+    if (f->lat || (c & 0xC0) != 0x80) {
+      if (k == n) { unget(f, c); break; }   /* malformed UTF-8 ended before its expected continuation */
+      k++;
+      trailing = !f->lat && c >= 0xC2 && c <= 0xF4 ? c >= 0xF0 ? 3 : c >= 0xE0 ? 2 : 1 : 0;
+    } else if (trailing) trailing--;
     t[m++] = (char)getnl(f, c);
     if (m == (I)sizeof t) { put(&b, t, m); m = 0; }
+    /* A completed character satisfies read(n) without probing the next one:
+       that probe blocks on live pipes, even for read(0). Universal newline=""
+       still needs to resolve a final CR, like getnl does for newline=None. */
+    if (k == n && !trailing && c == '\r' && f->nl == 1) {
+      int d = get(f);
+      if (d != EOF) unget(f, d);
+    }
   }
   if (b.n) put(&b, t, m);
   else b = (Buf){t, m, m};
