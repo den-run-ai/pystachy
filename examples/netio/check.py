@@ -112,12 +112,12 @@ def c_compiler(value: str | None, env: dict[str, str]) -> list[str]:
     return [executable]
 
 
-def build_bridge(directory, env, cc, timeout):
+def build_bridge(directory, env, cc, timeout, *, runner=None):
     output = directory / "libpystachy_netio.so"
     linkage = "-dynamiclib" if sys.platform == "darwin" else "-shared"
     command = cc + ["-std=c11", "-O2", "-g", "-fPIC", linkage, "-Wall", "-Wextra", "-Werror",
                     "-Wpedantic", str(HERE / "netio.c"), "-o", str(output)]
-    quiet("bridge/build", run("bridge/build", command, env, ROOT, timeout=timeout))
+    quiet("bridge/build", (run if runner is None else runner)("bridge/build", command, env, ROOT, timeout=timeout))
     if not output.is_file() or output.stat().st_size == 0:
         raise ValueError("bridge/build: compiler did not create the shared library")
     return output

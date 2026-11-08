@@ -84,6 +84,15 @@ netio-check: $(BENCH_COMPILER)
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -Wpedantic examples/netio/netio.c examples/netio/ownership.c -o build/netio/ownership
 	build/netio/ownership
 
+# Actual compiler output collection and verified socket consumers; advisory timings.
+netio-dogfood-check: $(BENCH_COMPILER)
+	$(PY) -m unittest discover -s tools -p 'test_netio*.py'
+	$(PY) examples/netio/compiler_dogfood.py --compiler "$(BENCH_COMPILER)" --json build/netio-compiler-dogfood.json
+	$(PY) examples/netio/benchmark.py --compiler "$(BENCH_COMPILER)" --smoke --json build/netio-benchmark-smoke.json
+
+bench-netio: $(BENCH_COMPILER)
+	$(PY) examples/netio/benchmark.py --compiler "$(BENCH_COMPILER)" $(BENCH_ARGS)
+
 # Tiny fixtures through the real CLIs, plus JSON repair and agent loopback HTTP.
 example-cli-check: $(BENCH_COMPILER)
 	$(PY) -m unittest discover -s tools -p test_check_example_cli.py
@@ -432,4 +441,4 @@ uninstall:
 test-install:
 	$(PY) -m unittest discover -s tools -p test_install.py
 
-.PHONY: test test-py coverage runtime-coverage variants test-cache test-program-cache test-ffi bench bench-extended bench-extended-check example-cli-check netio-check blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe boxprobe streamprobe jitprobe aotprobe unicode-audit unicodeprobe bytescanprobe floatprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz dynany-fuzz dynany-optin python-int-optin python-int-gate re-probe re-specialize-check typecheck lint-python check-repository check-fast lint clean install uninstall test-install
+.PHONY: test test-py coverage runtime-coverage variants test-cache test-program-cache test-ffi bench bench-extended bench-extended-check example-cli-check netio-check netio-dogfood-check bench-netio blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe boxprobe streamprobe jitprobe aotprobe unicode-audit unicodeprobe bytescanprobe floatprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz dynany-fuzz dynany-optin python-int-optin python-int-gate re-probe re-specialize-check typecheck lint-python check-repository check-fast lint clean install uninstall test-install

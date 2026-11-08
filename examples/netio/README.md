@@ -97,6 +97,70 @@ this pipe consumer.
 withholds the first pipe's bytes until it observes the second pipe's completed
 output, so the consumer must make progress independently of input order.
 
+## Compiler dogfood and performance
+
+`compiler_dogfood.py` reuses that unchanged drain to collect **real compiler IR
+and diagnostics** from three existing corpus programs: a small successful
+program, a container program, and a deliberate syntax error. The same worker
+compiler runs in every collector mode. Every stdout/stderr byte and exit status
+must match an independent serial capture from the CPython-hosted compiler.
+The host owns subprocesses; the consumer owns only its inherited descriptors.
+The launcher duplicates those descriptors to 64 and above and records the
+mapping: the current JIT launcher overwrites descriptors 7–9 for its own inputs
+([#1154](https://github.com/den-run-ai/pystachy/issues/1154)). This is an explicit
+dogfood workaround; arbitrary inherited descriptors remain a separate driver bug.
+
+```sh
+make netio-dogfood-check
+python3.13 examples/netio/compiler_dogfood.py --compiler ./pystachy \
+  --samples 3 --json build/netio-compiler-dogfood.json
+```
+
+The socket benchmark reuses the same bridge and stdlib oracle. Four original
+workloads exercise a small binary message, 16 ready streams, one ready stream
+among 64 registrations, and four 64 KiB transfers. Sockets and registrations
+persist across timed samples. Nonblocking partial writes and fragmented reads
+are handled, and every received fragment must match its stream's binary data.
+These are focused stdlib comparisons, not an import or port of CPython's full
+`test_socket`/`test_selectors` suites.
+
+```sh
+make bench-netio BENCH_ARGS='--cpu 0 --profile --json build/netio-benchmark.json'
+# Optional comparison tools in an isolated CPython 3.13 environment:
+python -m pip install mypy==2.4.1 Cython==3.3.1 pyperf==2.10.0 setuptools
+python examples/netio/benchmark.py --compiler ./pystachy --cpu 0 \
+  --pypy /path/to/pypy3 --extension-python /path/to/comparison-venv/bin/python \
+  --profile --json build/netio-benchmark.json --pyperf-json build/netio-pyperf.json
+python -m pyperf show build/netio-pyperf.json
+```
+
+Select a CPU in the current affinity mask, or omit `--cpu` where affinity is
+unavailable. Missing explicitly requested runtimes or failed extension builds
+fail the run; they are never silently reported as successful comparisons.
+The optional pyperf file exports the verified samples; it does not imply use
+of pyperf's calibration or worker controller.
+
+Pystachy compiles the consumer **and** native wrapper. CPython/PyPy baselines use
+unmodified `socket`/`selectors`. mypyc and Cython compile the unchanged consumer
+while retaining the CPython stdlib; the harness verifies that the extension,
+rather than its source fallback, was loaded. A separate CPython-bridge mode
+measures the existing ctypes twin. No Python runtime is embedded in native modes.
+
+Reports preserve source/compiler/library hashes, runtime versions, build cost,
+first and warmed transfer times, complete process times, affinity, host load,
+and rotated execution order. JIT process time includes compilation with the
+private runtime cache already populated by the preceding AOT build. cProfile
+examines Python wrapper costs; optional `strace -c` counts native syscalls after
+checking tracer availability. Profiling runs are excluded from timings.
+
+All timings are advisory. These local socket pairs do not establish TCP/WAN
+throughput. Compiler dogfood includes actual compilation, buffering and hex
+encoding; the unchanged drain can copy accumulated output repeatedly and doubles
+it when encoding. Its bounded small-corpus results are not a compiler speedup
+claim or a production scheduler integration. No timing threshold is added to CI.
+The [recorded Linux results](results/README.md) include all runtime comparisons,
+profiles, native GC smoke and the real compiler collection witnesses.
+
 ## Standalone native ownership check
 
 The C probe covers 300 lifecycle cycles, binary buffer ownership across later
