@@ -1,0 +1,108 @@
+group_members: exact source unchanged = True
+Commands.start: exact source unchanged = False
+--- 4d7881039dee54a0f798efe8ebae03fc33b88afa/Commands.start
++++ 21f322a00550843052b4b4d186ec7d865ae4d29b/Commands.start
+@@ -16,13 +16,10 @@
+             if input_stream is not None:
+                 input_stream.close()
+         self.running[proc.pid] = {"process": proc, "key": key, "command": command, "out": out, "err": err,
+-                                  "start": start, "peak": 0, "processes": 0, "sampled": 0,
+-                                  "proc_pid": None, "load": list(os.getloadavg()),
++                                  "start": start,
+                                   "timed_out": False, "cancelled": False,
+                                   "resources": resources or Resources(), "queued_at": queued_at or start}
+         for name in self.peak_reserved:
+             used = sum(getattr(s["resources"], name) for s in self.running.values())
+             self.peak_reserved[name] = max(self.peak_reserved[name], used)
+         self.check_signal()
+-        if self.measure:
+-            self.running[proc.pid]["proc_pid"] = self.measure.proc_child_pid(proc.pid)
+Commands.finish: exact source unchanged = False
+--- 4d7881039dee54a0f798efe8ebae03fc33b88afa/Commands.finish
++++ 21f322a00550843052b4b4d186ec7d865ae4d29b/Commands.finish
+@@ -7,7 +7,7 @@
+         # Snapshot each size so a surviving descendant cannot keep this reader
+         # busy indefinitely by appending while its parent is being reaped.
+         sizes = {name: os.fstat(state[name].fileno()).st_size for name in ("out", "err")}
+-        oversized = self.output_limit_bytes is not None and sum(sizes.values()) > self.output_limit_bytes
++        oversized = sum(sizes.values()) > self.output_limit_bytes
+         remaining = self.output_limit_bytes if oversized else sum(sizes.values())
+         data, hashes, hashed, prefixes = {}, {}, {}, {}
+         for name in ("out", "err"):
+@@ -39,10 +39,6 @@
+                 "stdout_truncated": sizes["out"] > len(data["out"]),
+                 "stderr_truncated": sizes["err"] > len(data["err"]),
+                 "cpu_s": usage.ru_utime + usage.ru_stime,
+-                "sampled_process_tree_peak_rss_kib": state["peak"] or None,
+-                "wait4_max_process_rss_kib": usage.ru_maxrss,
+-                "sampled_max_processes": state["processes"], "load_before": state["load"],
+-                "proc_pid_resolved": state["proc_pid"] is not None, "load_after": list(os.getloadavg()),
+                 "stdout_sha256": hashes["out"],
+                 "stderr_sha256": hashes["err"],
+                 "stdout_hashed_bytes": hashed["out"], "stderr_hashed_bytes": hashed["err"],
+Commands.run: exact source unchanged = False
+--- 4d7881039dee54a0f798efe8ebae03fc33b88afa/Commands.run
++++ 21f322a00550843052b4b4d186ec7d865ae4d29b/Commands.run
+@@ -1,31 +1,27 @@
+-def run(self, commands, env, timeout, jobs=1, cwd=None, *, budget=None, on_tick=None):
+-        if type(jobs) is not int or not 1 <= jobs <= 64 or not math.isfinite(timeout) or timeout <= 0:
+-            raise ValueError("require 1..64 jobs and a positive finite timeout")
++def run(self, commands, env, timeout=60, jobs=1, cwd=None, *, budget=None):
++        if (type(jobs) is not int or not 1 <= jobs <= MAX_JOBS
++                or not math.isfinite(timeout) or not 0 < timeout <= MAX_TIMEOUT):
++            raise ValueError(f"require 1..{MAX_JOBS} jobs and a finite timeout in (0, {MAX_TIMEOUT}] seconds")
++        if budget is None:
++            budget = Budget(jobs, 0, 0)
+         pending = iter(commands)
+         exhausted, waiting, queued_at = False, None, 0.0
+         while self.running or waiting is not None or not exhausted:
+             self.check_signal()
+-            if on_tick is not None:
+-                on_tick()
+             # Yield every observed completion before any queued launch. Callers
+             # reject failed results here, so no later job starts after failure.
+             ready = []
+             for pid, state in list(self.running.items()):
+                 now = time.monotonic()
+-                if state["proc_pid"] is not None and now - state["sampled"] >= 0.01:
+-                    rss, count = self.measure.process_tree_rss(state["proc_pid"])
+-                    state["peak"] = max(state["peak"], rss)
+-                    state["processes"] = max(state["processes"], count)
+-                    state["sampled"] = now
+                 waited, status, usage = os.wait4(pid, os.WNOHANG)
+                 if waited:
+                     ready.append(self.finish(pid, status, usage))
+-                elif self.output_limit_bytes is not None and sum(
++                elif sum(
+                         os.fstat(state[name].fileno()).st_size for name in ("out", "err")) > self.output_limit_bytes:
+                     raise RuntimeError(f"command {state['key']} exceeded output byte limit")
+                 elif now - state["start"] >= timeout:
+                     state["timed_out"] = True
+-                    raise TimeoutError(f"backend command {state['key']} exceeded {timeout:g} seconds")
++                    raise TimeoutError(f"command {state['key']} exceeded {timeout:g} seconds")
+             for result in ready:
+                 if result["output_limit_exceeded"]:
+                     raise RuntimeError(f"command {result['key']} exceeded output byte limit")
+@@ -40,11 +36,10 @@
+                         break
+                     waiting = item if isinstance(item, Job) else Job(*item)
+                     queued_at = time.monotonic()
+-                    if budget is not None:
+-                        budget.validate(waiting.resources)
++                    budget.validate(waiting.resources)
+                 used = {name: sum(getattr(state["resources"], name) for state in self.running.values())
+                         for name in self.peak_reserved}
+-                if budget is not None and not budget.fits(waiting.resources, used):
++                if not budget.fits(waiting.resources, used):
+                     break  # FIFO keeps placement and starvation behavior simple.
+                 self.start(waiting.key, waiting.argv,
+                            env if waiting.env is None else waiting.env,
+Commands.__exit__: exact source unchanged = False
+--- 4d7881039dee54a0f798efe8ebae03fc33b88afa/Commands.__exit__
++++ 21f322a00550843052b4b4d186ec7d865ae4d29b/Commands.__exit__
+@@ -40,4 +40,4 @@
+             for sig, handler in self.handlers.items():
+                 signal.signal(sig, handler)
+         if self.interrupted and exc is None:
+-            raise InterruptedError(f"backend interrupted by signal {self.interrupted}")
++            raise InterruptedError(f"worker coordinator interrupted by signal {self.interrupted}")

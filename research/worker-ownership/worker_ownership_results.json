@@ -1,0 +1,91 @@
+{
+  "persisted_at_utc": "2026-11-08T02:01:46.982875+00:00",
+  "candidate": {
+    "repository": "den-run-ai/pystachy",
+    "commit": "21f322a00550843052b4b4d186ec7d865ae4d29b",
+    "base": "6e5544cfa3eecb8329e4f4cb19d2e0ac3e99b1bf",
+    "source_sha256": {
+      "tools/process_workers.py": "72f062867a646e61d46dc2737eac82f6e3e36d63efc3999935d9bd315642f55a",
+      "tools/application_workers.py": "2cd278b530604be1063c049fdd3210623404084af631030784a28cbd1cd50b9b",
+      "tools/test_process_workers.py": "03b5679607ab971dc8bd29204e29615e686cc0012bd05ef3907f02ba23f32a8e",
+      "tools/README.md": "8e728798b750b0e9f72060f5acd594fe9271b3813537c885ae5a58f223e9b5db",
+      ".github/workflows/lint.yml": "dd19a783a62ce5ea0d5e191e8ab79af0592318c2f6703d427c924e0ae6faf3c6"
+    },
+    "working_tree_clean": true,
+    "published_equivalent_commit": "7f6fa595c42ff7898c512b8c98549dac4ad0817f"
+  },
+  "runtime": {
+    "executable": "python",
+    "version": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+    "platform": "linux"
+  },
+  "probe_provenance": {
+    "executed_command": "python - (the two scenario bodies are preserved in worker_ownership_repro.py)",
+    "reproduction_command": "python research/worker-ownership/worker_ownership_repro.py tools",
+    "saved_script_executed_after_stop": false,
+    "saved_script_syntax_checked_only": true,
+    "script_sha256": "03c35d8662578a066ca0d9bd3a5688221725c769f9f99f9ced1f6667dbbecad1"
+  },
+  "observations": {
+    "reservation": {
+      "runner_exit": 0,
+      "coordinator_pid": 6,
+      "coordinator_pgid": 6,
+      "complete": true,
+      "peak_cpu": 1,
+      "leader_finished": 49550.432540662,
+      "next_admitted": 49550.432632008,
+      "proof": {
+        "next_pid": 9,
+        "next_pgid": 6,
+        "started": 49550.449748356,
+        "descendant": {
+          "pid": 8,
+          "pgid": 6,
+          "after": 49550.450588664
+        }
+      }
+    },
+    "escalation_race": {
+      "runner_exit": 0,
+      "coordinator_pid": 10,
+      "coordinator_pgid": 10,
+      "last_snapshot": [
+        11
+      ],
+      "leader_pid": 11,
+      "child_started": {
+        "pid": 12,
+        "pgid": 10,
+        "started": 49550.637289545
+      },
+      "scope_exit": 49550.938605161,
+      "proof_after_scope_exit": {
+        "pid": 12,
+        "pgid": 10,
+        "after": 49550.939387148
+      },
+      "cleanup_enumerations": 2,
+      "direct_results": 1
+    }
+  },
+  "interpretation": {
+    "reservation": "A leader exiting zero releases its declared whole-tree reservation even while its in-group descendant is still executing. With one reserved CPU and jobs=1 the next job runs concurrently with that descendant, and the batch reports complete=true and peak_cpu=1.",
+    "escalation_race": "The normal 0.25s grace ends after an enumeration is delayed past its deadline. A worker forked a normal in-group child after that enumeration snapshot. Final per-PID SIGKILL uses the stale list, leaving the child alive. The child performed a handshake write after Commands.__exit__ returned; this is not a zombie-only observation.",
+    "contract": "Neither worker nor descendant calls setsid/setpgid or daemonizes. The harness gives each independent coordinator a private session solely for safe ownership and fallback cleanup."
+  },
+  "original_pr1133": {
+    "commit": "4d7881039dee54a0f798efe8ebae03fc33b88afa",
+    "file": "tools/process_workers.py",
+    "file_sha256": "d800e7520ba5aaef71263897d3742b5233c46e48a9fad8b9fb7f1405b873fa2e",
+    "verification": "Source comparison only; no new worker probes were executed on the original branch. group_members is identical; __exit__ differs only in final interruption wording. finish pops the direct leader immediately and run admits against self.running in both revisions. Removed measurement/on_tick hooks do not correct either mechanism.",
+    "comparison_file": "research/worker-ownership/worker_ownership_comparison.txt"
+  },
+  "cleanup": {
+    "completed": true,
+    "method": "Every test coordinator was launched with start_new_session=True. A finally block unconditionally sent SIGKILL to that exact owned group (or accepted ProcessLookupError), then waited for the coordinator. No cleanup exception occurred, and the tool command exited zero. No owned worker/background process remains.",
+    "pid_warning": "Recorded PIDs are scoped to those finished probe namespaces; never reuse them for cleanup."
+  },
+  "scope": "Read-only review; no candidate edits, remote changes or native builds. Preserved evidence only after the major-blocker stop.",
+  "publication_note": "Local paths normalized for publication; observed results, consumed-source hashes and the probe script are unchanged. The published equivalent commit has the identical reviewed candidate tree."
+}
