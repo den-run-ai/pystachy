@@ -1,6 +1,7 @@
 """Real process failure/ordering controls for the compiler dogfood coordinator."""
 
 import ctypes
+from contextlib import contextmanager
 import importlib.util
 import os
 from pathlib import Path
@@ -10,6 +11,7 @@ import sys
 import tempfile
 import threading
 import time
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
@@ -32,6 +34,151 @@ class CompilerBatchTests(unittest.TestCase):
     def job(self, index, source, expected_status=0):
         return BATCH.Job(index, [sys.executable, "-c", source], self.directory / f"{index}.ll",
                          expected_status=expected_status)
+
+    @contextmanager
+    def deadline_clock(self):
+        # Advance only the coordinator clock at the boundary under test; child
+        # execution and pipe readiness remain real and do not depend on sleeps.
+        now = [0.0]
+        processes = []
+        previous = {signum: signal.getsignal(signum) for signum in (signal.SIGINT, signal.SIGTERM)}
+        original_popen = subprocess.Popen
+        wall_deadline = time.monotonic() + 5
+
+        def clock():
+            if time.monotonic() >= wall_deadline:
+                self.fail("real child did not reach the controlled deadline boundary")
+            return now[0]
+
+        def spawn(*args, **kwargs):
+            process = original_popen(*args, **kwargs)
+            processes.append(process)
+            return process
+
+        try:
+            with patch.object(BATCH.time, "perf_counter", side_effect=clock):
+                with patch.object(BATCH.subprocess, "Popen", side_effect=spawn):
+                    yield now, processes
+        finally:
+            for process in processes:
+                self.assertIsNotNone(process.returncode)
+                with self.assertRaises(ChildProcessError):
+                    os.waitpid(process.pid, os.WNOHANG)
+            for signum, handler in previous.items():
+                self.assertIs(signal.getsignal(signum), handler)
+
+    def test_completion_construction_must_finish_before_deadline(self):
+        original = BATCH.record_for
+        for index, finished in enumerate((1.0, 1.5)):
+            with self.subTest(finished=finished), self.deadline_clock() as (now, _):
+                def delayed_record(state, finished=finished):
+                    record = original(state)
+                    now[0] = finished
+                    return record
+
+                with patch.object(BATCH, "record_for", side_effect=delayed_record) as construction:
+                    with self.assertRaisesRegex(TimeoutError, "including completion ack"):
+                        BATCH.run_batch([self.job(index, "print('artifact')")], timeout=1.0)
+                    construction.assert_called_once()
+
+    def test_local_transfer_must_finish_before_deadline(self):
+        closed = []
+        with self.deadline_clock() as (now, _):
+            def delayed_transfer(context, record, job_id):
+                now[0] = 1.0
+                return record
+
+            context = SimpleNamespace(close=lambda: closed.append(True))
+            modules = {"comm": SimpleNamespace(Context=lambda **kwargs: context),
+                       "record_worker": SimpleNamespace(transfer_record=delayed_transfer)}
+            with patch.dict(sys.modules, modules):
+                with self.assertRaisesRegex(TimeoutError, "including completion ack"):
+                    BATCH.run_batch([self.job(0, "print('artifact')")], transport="comm", timeout=1.0)
+        self.assertEqual(closed, [True])
+
+    def test_handler_ack_read_must_finish_before_deadline(self):
+        handler = [sys.executable, "-u", "-c",
+                   "import sys\nfor line in sys.stdin.buffer:\n sys.stdout.buffer.write(line); sys.stdout.buffer.flush()"]
+        original_read = os.read
+        received = []
+        with self.deadline_clock() as (now, processes):
+            def delayed_ack_read(fd, count):
+                chunk = original_read(fd, count)
+                if chunk and processes and fd == processes[0].stdout.fileno():
+                    received.append(chunk)
+                    now[0] = 1.0
+                return chunk
+
+            with patch.object(BATCH.os, "read", side_effect=delayed_ack_read):
+                with self.assertRaisesRegex(TimeoutError, "including completion ack"):
+                    BATCH.run_batch([self.job(0, "print('artifact')")], transport="handler",
+                                    handler_command=handler, timeout=1.0)
+        self.assertTrue(received)
+
+    def test_ack_decoding_must_finish_before_deadline(self):
+        original_loads = BATCH.json.loads
+        with self.deadline_clock() as (now, _):
+            def delayed_decode(record):
+                decoded = original_loads(record)
+                now[0] = 1.0
+                return decoded
+
+            with patch.object(BATCH.json, "loads", side_effect=delayed_decode) as decode:
+                with self.assertRaisesRegex(TimeoutError, "including completion ack"):
+                    BATCH.run_batch([self.job(0, "print('artifact')")], timeout=1.0)
+                decode.assert_called_once()
+
+    def test_sibling_expiry_prevents_ack_and_queued_admission(self):
+        original_record = BATCH.record_for
+        original_running = BATCH.Running
+        original_loads = BATCH.json.loads
+        built = []
+        with self.deadline_clock() as (now, processes):
+            def staggered_start(*args, **kwargs):
+                state = original_running(*args, **kwargs)
+                if state.job.job_id == 1:
+                    state.started = now[0] = 0.5
+                return state
+
+            def delayed_record(state):
+                record = original_record(state)
+                built.append(state.job.job_id)
+                # The newer job remains within its deadline, but the older
+                # live child has expired. Its reservation must stop admission.
+                now[0] = 1.25
+                return record
+
+            jobs = [self.job(0, "import time; time.sleep(60)"),
+                    self.job(1, "print('artifact')"), self.job(2, "print('must not start')")]
+            with patch.object(BATCH, "Running", side_effect=staggered_start):
+                with patch.object(BATCH, "record_for", side_effect=delayed_record):
+                    with patch.object(BATCH.json, "loads", wraps=original_loads) as decode:
+                        with self.assertRaisesRegex(TimeoutError, "job 0"):
+                            BATCH.run_batch(jobs, workers=2, timeout=1.0)
+                        decode.assert_not_called()
+            self.assertEqual(built, [1])
+            self.assertEqual(len(processes), 2)
+            self.assertFalse(jobs[2].artifact.exists())
+
+    def test_completion_before_deadline_is_accepted(self):
+        original = BATCH.record_for
+        for index, transport in enumerate(("direct", "comm", "handler")):
+            with self.subTest(transport=transport), self.deadline_clock() as (now, _):
+                def finish_record(state):
+                    record = original(state)
+                    now[0] = 0.5
+                    return record
+
+                context = SimpleNamespace(close=lambda: None)
+                modules = {"comm": SimpleNamespace(Context=lambda context=context, **kwargs: context),
+                           "record_worker": SimpleNamespace(transfer_record=lambda context, record, job_id: record)}
+                handler = [sys.executable, "-u", "-c",
+                           "import sys\nfor line in sys.stdin.buffer:\n sys.stdout.buffer.write(line); sys.stdout.buffer.flush()"]
+                with patch.object(BATCH, "record_for", side_effect=finish_record), patch.dict(sys.modules, modules):
+                    result = BATCH.run_batch([self.job(index, "print('artifact')")], transport=transport,
+                                             handler_command=handler, timeout=1.0)
+                self.assertEqual(result["completion_order"], [index])
+                self.assertEqual(result["records"][0]["status"], 0)
 
     def test_later_job_completes_while_earlier_job_is_blocked(self):
         # Job 1 releases job 0 only after its own stderr was drained.  Both

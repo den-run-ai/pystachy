@@ -138,6 +138,8 @@ def run_batch(jobs, *, workers=2, transport="direct", handler_command=None,
 
     One or two workers admit jobs, including completed jobs awaiting
     acknowledgment. The timeout must be finite, positive and at most 900 seconds.
+    Completion construction, transfer and decoding all count toward that deadline;
+    every active job is checked before an acknowledgment releases its slot.
     Each job owns a separate process group. At most one completion
     record is in flight to the handler. All owned groups are killed and direct
     children reaped on failures, SIGINT or SIGTERM. This POSIX coordinator must
@@ -183,11 +185,22 @@ def _run_batch(jobs, *, workers, transport, handler_command, timeout,
     started = time.perf_counter()
     selector = selectors.DefaultSelector()
 
-    def accept(state, received):
+    def check_active():
         check_cancelled()
+        now = time.perf_counter()
+        for state in active.values():
+            if now - state.started >= timeout:
+                raise TimeoutError(f"job {state.job.job_id} exceeded {timeout}s including completion ack")
+
+    def accept(state, received):
+        check_active()
         if received != state.record:
             raise AssertionError("completion handler changed or truncated a record")
-        records.append(json.loads(received))
+        record = json.loads(received)
+        # Transfer and decoding may take time. Check all jobs immediately before
+        # accepting the acknowledgment, while their admission slots remain held.
+        check_active()
+        records.append(record)
         del active[state.job.job_id]
 
     try:
@@ -207,15 +220,16 @@ def _run_batch(jobs, *, workers, transport, handler_command, timeout,
                 os.set_blocking(stream.fileno(), False)
                 selector.register(stream, selectors.EVENT_READ, (name, None))
         while waiting or active or inflight is not None:
-            check_cancelled()
+            check_active()
             while waiting and len(active) < workers:
-                check_cancelled()
+                check_active()
                 job = waiting.popleft()
                 job.artifact.parent.mkdir(parents=True, exist_ok=True)
                 if job.artifact.exists():
                     raise FileExistsError(f"refusing stale artifact: {job.artifact}")
                 artifact_file = job.artifact.open("xb") if job.mode == "ir" else None
                 try:
+                    check_active()
                     process = subprocess.Popen(job.command, stdin=subprocess.DEVNULL,
                                                stdout=artifact_file or subprocess.PIPE,
                                                stderr=subprocess.PIPE, cwd=cwd,
@@ -231,7 +245,7 @@ def _run_batch(jobs, *, workers, transport, handler_command, timeout,
                 state = Running(job, process, time.perf_counter(), len(streams),
                                 artifact_file=artifact_file)
                 active[job.job_id] = state
-                check_cancelled()
+                check_active()
                 peak_admitted = max(peak_admitted, len(active))
                 for name, stream in streams:
                     state.stream_hashes[name] = hashlib.sha256()
@@ -239,23 +253,25 @@ def _run_batch(jobs, *, workers, transport, handler_command, timeout,
                     os.set_blocking(stream.fileno(), False)
                     selector.register(stream, selectors.EVENT_READ, (name, state))
 
-            now = time.perf_counter()
             for state in list(active.values()):
-                if now - state.started > timeout:
-                    raise TimeoutError(f"job {state.job.job_id} exceeded {timeout}s including completion ack")
+                check_active()
                 if state.record is None and state.streams == 0 and state.process.poll() is not None:
                     if state.artifact_file:
                         state.artifact_file.close()
                         state.artifact_file = None
-                    state.record = record_for(state)
+                    record = record_for(state)
+                    check_active()
+                    state.record = record
                     pending.append(state)
 
             while pending and inflight is None:
+                check_active()
                 state = pending.popleft()
                 if transport == "handler":
                     # <= PIPE_BUF, with at most one record outstanding: this write
                     # cannot fill a fresh pipe even while the handler starts up.
                     written = os.write(handler.stdin.fileno(), state.record)
+                    check_active()
                     if written != len(state.record):
                         raise RuntimeError("short completion record write")
                     inflight = state
@@ -270,7 +286,7 @@ def _run_batch(jobs, *, workers, transport, handler_command, timeout,
             if handler is not None and handler.poll() is not None:
                 raise RuntimeError(f"completion handler exited early ({handler.returncode})")
             for key, _ in selector.select(0.02):
-                check_cancelled()
+                check_active()
                 name, state = key.data
                 chunk = os.read(key.fileobj.fileno(), 16384)
                 if not chunk:
