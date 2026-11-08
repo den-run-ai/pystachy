@@ -12,6 +12,8 @@ import sys
 import sysconfig
 import tempfile
 
+from program_cache_probe import TOOL_ENV
+
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = '''import os
 import sys
@@ -194,7 +196,12 @@ def main():
                     raise AssertionError(f"{label}/dense-or-stress: {result.stdout!r} != {expected!r}")
                 checks += 1
             if len(compiler) == 1 and Path(compiler[0]).is_file():
-                env = environment | {"PYSTACHY_LLVM": str(Path(real["clang"]).parent),
+                # Build overrides deliberately bypass the program cache; setup-python
+                # supplies LD_LIBRARY_PATH in CI. Keep this control eligible, as in
+                # the dedicated program-cache probe, without changing driver policy.
+                cache_environment = {key: value for key, value in environment.items()
+                                     if key not in TOOL_ENV}
+                env = cache_environment | {"PYSTACHY_LLVM": str(Path(real["clang"]).parent),
                                      "PYSTACHY_CACHE": str(work / (label + "-program")),
                                      "PYSTACHY_PROGRAM_CACHE": "1", "PYSTACHY_PROGRAM_CACHE_TRACE": "1"}
                 arguments = ["7", "8", "9", "64"]
