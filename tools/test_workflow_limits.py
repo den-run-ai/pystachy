@@ -254,6 +254,18 @@ class LimitTests(unittest.TestCase):
     def test_worst_case_pr_job_and_worker_budget(self):
         self.assertTrue(require_pr_budget(workflows()))
 
+    def test_gc_identity_and_jit_jobs_are_separate_only_in_full_verification(self):
+        job = workflows()["ci.yml"]["jobs"]["verification"]
+        groups = {f"gc-{kind}-{shard}" for kind in ("ir", "jit") for shard in (0, 1)}
+        for event in ("push", "workflow_dispatch"):
+            with self.subTest(event=event):
+                selected = [(row["machine"], row["group"]) for row in matrix_rows(job, event)
+                            if row["group"] in groups]
+                self.assertCountEqual(selected, itertools.product(("x86_64", "aarch64"), groups))
+        self.assertFalse(groups & {row["group"] for row in matrix_rows(job, "pull_request")})
+        self.assertEqual(job["env"]["VERIFY_PROFILE"],
+                         "${{ github.event_name == 'pull_request' && 'pr' || 'full' }}")
+
     def test_o1_bootstrap_qualification_follows_standard_export_in_existing_x86_job(self):
         job = workflows()["ci.yml"]["jobs"]["bootstrap"]
         steps = job["steps"]
