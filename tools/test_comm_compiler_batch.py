@@ -260,6 +260,91 @@ class CompilerBatchTests(unittest.TestCase):
                     BATCH.run_batch([self.job(index, "print('ok')")], transport="handler",
                                     handler_command=[sys.executable, "-u", "-c", source])
 
+    def check_handler_shutdown_bound(self, name, prefix=0):
+        limit = 100 if name == "stderr" else BATCH.RECORD_LIMIT
+        marker = self.directory / "shutdown"
+        prefix_read = self.directory / "prefix-read"
+        source = (
+            "import sys,time\nfrom pathlib import Path\n"
+            f"stream = sys.{name}.buffer\n"
+            "for line in sys.stdin.buffer:\n"
+        )
+        if prefix:
+            # Force the coordinator to consume this diagnostic prefix before
+            # the last acknowledgment; shutdown must preserve its byte budget.
+            source += (
+                f" stream.write(b'x' * {prefix}); stream.flush()\n"
+                f" while not Path({str(prefix_read)!r}).exists(): time.sleep(0.001)\n"
+            )
+        source += (
+            " sys.stdout.buffer.write(line); sys.stdout.buffer.flush()\n"
+            f"Path({str(marker)!r}).write_text('ready')\n"
+            "stream.write(b'x' * (2 * 1024 * 1024)); stream.flush()\n"
+        )
+        processes = []
+        handler_fds = []
+        consumed = []
+        previous = {signum: signal.getsignal(signum) for signum in (signal.SIGINT, signal.SIGTERM)}
+        original_popen, original_read = subprocess.Popen, os.read
+
+        def spawn(*args, **kwargs):
+            process = original_popen(*args, **kwargs)
+            processes.append(process)
+            if len(processes) == 1:
+                handler_fds.append(getattr(process, name).fileno())
+            return process
+
+        def read(fd, size):
+            chunk = original_read(fd, size)
+            if handler_fds and fd == handler_fds[0]:
+                if name == "stderr" or marker.exists():
+                    consumed.append(len(chunk))
+                if prefix and sum(consumed) >= prefix:
+                    prefix_read.write_text('ready')
+            return chunk
+
+        message = "diagnostics exceed bound" if name == "stderr" else "output exceeds record bound"
+        with patch.object(BATCH.subprocess, "Popen", side_effect=spawn):
+            with patch.object(BATCH.os, "read", side_effect=read):
+                with self.assertRaisesRegex(RuntimeError, message) as raised:
+                    BATCH.run_batch([self.job(0, "print('ok')")], transport="handler",
+                                    handler_command=[sys.executable, "-u", "-c", source],
+                                    diagnostic_limit=100, timeout=2)
+        self.assertLessEqual(sum(consumed), limit + 1)
+        self.assertLess(len(str(raised.exception)), limit + 100)
+        self.assertTrue(marker.exists())
+        for process in processes:
+            self.assertIsNotNone(process.returncode)
+            with self.assertRaises(ChildProcessError):
+                os.waitpid(process.pid, os.WNOHANG)
+        for signum, handler in previous.items():
+            self.assertIs(signal.getsignal(signum), handler)
+
+    def test_handler_shutdown_stderr_limit_is_enforced_while_draining(self):
+        self.check_handler_shutdown_bound("stderr")
+
+    def test_handler_shutdown_stdout_limit_is_enforced_while_draining(self):
+        self.check_handler_shutdown_bound("stdout")
+
+    def test_handler_shutdown_diagnostic_budget_includes_earlier_output(self):
+        self.check_handler_shutdown_bound("stderr", prefix=60)
+
+    def test_handler_shutdown_nonzero_exit_is_rejected(self):
+        source = ("import sys\nfor line in sys.stdin.buffer:\n"
+                  " sys.stdout.buffer.write(line); sys.stdout.buffer.flush()\n"
+                  "raise SystemExit(7)\n")
+        with self.assertRaisesRegex(RuntimeError, "completion handler failed"):
+            BATCH.run_batch([self.job(0, "print('ok')")], transport="handler",
+                            handler_command=[sys.executable, "-u", "-c", source])
+
+    def test_handler_shutdown_deadline_survives_closed_output_pipes(self):
+        source = ("import os,sys,time\nfor line in sys.stdin.buffer:\n"
+                  " sys.stdout.buffer.write(line); sys.stdout.buffer.flush()\n"
+                  "os.close(1); os.close(2); time.sleep(60)\n")
+        with self.assertRaises(subprocess.TimeoutExpired):
+            BATCH.run_batch([self.job(0, "print('ok')")], transport="handler",
+                            handler_command=[sys.executable, "-u", "-c", source], timeout=0.3)
+
     def test_previous_signal_handlers_are_restored(self):
         previous = {signum: signal.getsignal(signum) for signum in (signal.SIGINT, signal.SIGTERM)}
         custom_calls = []
