@@ -76,6 +76,12 @@ def at(xs, k):
     return _At(xs, k)  # (k is checked against len(xs) as the call starts, after the other arguments)
 
 
+def _check_int64(v):
+    if not -2**63 <= v < 2**63:
+        raise OverflowError("int too big to convert")
+    return v
+
+
 def _check(t, v):
     if t is str:
         if "\0" in v:
@@ -131,25 +137,34 @@ def extern(lib, symbol=""):
         cf = _library(lib)[symbol or f.__name__]  # (a fresh function keeps each declaration's signature)
         cf.argtypes = [ctypes.POINTER(_LISTS[t]) if t in _LISTS else _C[t] for t in ts]
         cf.restype = _C[ret]
+        parameters = tuple(sig.parameters.values())
+        positional = all(p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD) for p in parameters)
+        fields = tuple((t, p.name, _LISTS.get(t)) for t, p in zip(ts, parameters))
+        arity = len(fields)
 
         def call(*args, **kwargs):
-            b = sig.bind(*args, **kwargs)
-            b.apply_defaults()
+            # A complete positional call already has the declared binding. Keep
+            # inspect's binding/errors for keywords, defaults and other signatures.
+            if positional and not kwargs and len(args) == arity:
+                values = args
+            else:
+                b = sig.bind(*args, **kwargs)
+                b.apply_defaults()
+                values = tuple(b.arguments[p.name] for p in parameters)
             arrays = {}  # (id of a list: the list and its C array)
             cargs = []
-            for t, p in zip(ts, sig.parameters):
-                v = b.arguments[p]
-                if t in _LISTS:
+            for (t, p, item_type), v in zip(fields, values):
+                if item_type is not None:
                     k = 0
                     if isinstance(v, _At):
                         v, k = v.xs, _operator.index(v.k)  # (True is 1)
                         if k < 0 or k > len(v):
                             raise IndexError(f"ffi.at() index {k} is out of range for a list of {len(v)} items")
                     if id(v) not in arrays:
-                        items = [float(x) for x in v] if _LISTS[t] is ctypes.c_double else [_check(c_int64, x) for x in v]
-                        arrays[id(v)] = (v, (_LISTS[t] * len(v))(*items))
+                        items = [float(x) for x in v] if item_type is ctypes.c_double else [_check_int64(x) for x in v]
+                        arrays[id(v)] = (v, (item_type * len(v))(*items))
                     a = arrays[id(v)][1]
-                    cargs.append(ctypes.cast(ctypes.addressof(a) + k * ctypes.sizeof(_LISTS[t]), ctypes.POINTER(_LISTS[t])) if k != 0 else a)
+                    cargs.append(ctypes.cast(ctypes.addressof(a) + k * ctypes.sizeof(item_type), ctypes.POINTER(item_type)) if k != 0 else a)
                 elif isinstance(v, _At):
                     raise TypeError(f"ffi.at() passes a list from an index, but parameter '{p}' of {f.__name__}() takes no list")
                 else:

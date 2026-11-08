@@ -9,6 +9,7 @@ import tempfile
 import unittest
 from unittest import mock
 
+import check_bootstrap_tier as tier
 import verification_bootstrap as bundle
 
 
@@ -272,6 +273,102 @@ class BootstrapBundleTests(unittest.TestCase):
         self.work.symlink_to(elsewhere, target_is_directory=True)
         self.assert_rejected_without_restore(ValueError, "destination must not be a symlink")
         self.assertEqual(list(elsewhere.iterdir()), [])
+
+    def tier_outputs(self, root, env, log):
+        # Only the expensive Make invocation is replaced. Bundle validation still
+        # uses a real Git checkout, source hashes and the fixture LLVM executables.
+        for prefix in ("stage", "rt"):
+            for index in (1, 2, 3):
+                (root / f"build/{prefix}{index}.ll").write_text(prefix + " IR\n")
+        for name in ("pystachy", "build/pystachy2"):
+            (root / name).write_bytes(b"candidate native compiler\n")
+        log.write("fixture Make completed\n")
+
+    def run_tier(self, action=None):
+        with mock.patch.object(tier, "make_bootstrap", side_effect=action or self.tier_outputs):
+            return tier.qualify(self.directory, self.root)
+
+    def test_tier_qualification_preserves_standard_bundle_and_records_scope(self):
+        bundle_id = bundle.export_bundle(self.directory, self.root)
+        standard = {path: path.read_bytes() for parent in (self.directory, self.work)
+                    for path in parent.rglob("*") if path.is_file()}
+        standard[self.root / "build/verification.json"] = (self.root / "build/verification.json").read_bytes()
+        inherited = {"PYSTACHY_AOT_OPT": "0", "PYSTACHY_CFLAGS": "-O0", "PYSTACHY_OPT": "-all",
+                     "MAKEFLAGS": "n", "MAKEFILES": "/missing/makefile"}
+
+        def build(root, env, log):
+            self.assertEqual(env["PYSTACHY_HOME"], str(root))
+            self.assertEqual(env["PYSTACHY_LLVM"], os.environ["PYSTACHY_LLVM"])
+            self.assertEqual(env["PYSTACHY_JOBS"], "2")
+            self.assertTrue(Path(env["PYSTACHY_CACHE"]).is_dir())
+            self.assertEqual(Path(env["PYSTACHY_CACHE"]).parent, root / "build/bootstrap-tier")
+            for key in inherited:
+                self.assertNotIn(key, env)
+            self.tier_outputs(root, env, log)
+
+        with mock.patch.dict(os.environ, inherited):
+            report = self.run_tier(build)
+        self.assertEqual(report["result"], "pass")
+        self.assertEqual(report["identity"], self.current)
+        self.assertEqual(report["standard_bootstrap_bundle_id"], bundle_id)
+        self.assertEqual(report["temporary_aot_opt"], "1")
+        self.assertEqual(report["final_aot_opt"], "2")
+        self.assertEqual(len(report["witnesses"]), 6)
+        self.assertFalse(report["final_compiler_bytes_identical"])
+        self.assertEqual(report["performance_conclusion"], "inconclusive")
+        self.assertEqual(json.loads((self.root / "build/bootstrap-tier/report.json").read_bytes()), report)
+        for path, data in standard.items():
+            self.assertEqual(path.read_bytes(), data, path)
+        self.assertFalse((self.work / "bootstrap-reuse.json").exists())
+
+    def test_tier_qualification_rejects_stale_identity_before_make(self):
+        bundle.export_bundle(self.directory, self.root)
+        (self.root / "test-input.txt").write_text("edited\n")
+        with mock.patch.object(tier, "make_bootstrap") as build:
+            with self.assertRaisesRegex(ValueError, "identity differs"):
+                tier.qualify(self.directory, self.root)
+            build.assert_not_called()
+        self.assertEqual(json.loads((self.root / "build/bootstrap-tier/report.json").read_bytes())["result"], "fail")
+
+    def test_tier_qualification_requires_all_witnesses_and_the_installed_final(self):
+        bundle.export_bundle(self.directory, self.root)
+        paths = [f"build/{prefix}{index}.ll" for prefix in ("stage", "rt") for index in (1, 2, 3)]
+        for name in (*paths, "pystachy"):
+            def build(root, env, log, name=name):
+                self.tier_outputs(root, env, log)
+                (root / name).write_bytes(b"wrong result\n")
+            with self.subTest(file=name), self.assertRaisesRegex(ValueError, "differs"):
+                self.run_tier(build)
+
+    def test_tier_qualification_build_failure_cannot_reuse_previous_success(self):
+        bundle.export_bundle(self.directory, self.root)
+        self.run_tier()
+        with mock.patch.object(tier, "make_bootstrap", side_effect=subprocess.CalledProcessError(9, ["make"])):
+            with self.assertRaises(subprocess.CalledProcessError):
+                tier.qualify(self.directory, self.root)
+        report = json.loads((self.root / "build/bootstrap-tier/report.json").read_bytes())
+        self.assertEqual(report["result"], "fail")
+        self.assertIn("exit status 9", report["error"])
+
+    def test_tier_qualification_rechecks_source_bundle_and_producer_report(self):
+        bundle.export_bundle(self.directory, self.root)
+        original = {path: path.read_bytes() for path in self.directory.iterdir()}
+        original.update({self.root / "runtime.c": b"source\n",
+                         self.root / "build/verification.json": (self.root / "build/verification.json").read_bytes()})
+        for change, error in (("source", "identity differs"), ("bundle", "bundle changed"),
+                              ("report", "verification report changed")):
+            def build(root, env, log, change=change):
+                self.tier_outputs(root, env, log)
+                if change == "source":
+                    (root / "runtime.c").write_text("edited\n")
+                elif change == "bundle":
+                    self.rewrite_bundle_report(lambda report: report["steps"][0].update(seconds=121))
+                else:
+                    (root / "build/verification.json").write_text("changed report\n")
+            with self.subTest(change=change), self.assertRaisesRegex(ValueError, error):
+                self.run_tier(build)
+            for path, data in original.items():
+                path.write_bytes(data)
 
 
 if __name__ == "__main__":

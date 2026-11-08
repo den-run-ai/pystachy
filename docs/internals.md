@@ -711,6 +711,17 @@ reports an error but does not roll back the executable. They are not an atomic p
 `make` uses these retained modules for its first two compiler witnesses; the final
 compiler and all three runtime witnesses still run separately.
 
+Experimental `make BOOTSTRAP_AOT_OPT=1` selects `-O1` for the temporary stage-1
+compiler's ordinary AOT program optimization and code generation. `0` also selects
+an experimental tier; the default is `2`. Stage 1 always builds the final compiler
+with `PYSTACHY_AOT_OPT=2`, and both compiler and runtime fixed-point comparisons
+remain required. This setting does not change runtime compilation, JIT or extension
+tiers. `PYSTACHY_CFLAGS` retains its existing precedence, including an explicit
+`-O0` override. Use a clean build when changing the Make setting; Make does not
+track variable values as dependencies. Lower tiers are not yet qualified for
+general application use; full tier coverage and final-compiler performance evidence
+are required before promotion. `make verify` keeps the standard tier.
+
 ## Environment variables
 
 | Variable | Effect |
@@ -721,6 +732,7 @@ compiler and all three runtime witnesses still run separately.
 | `PYSTACHY_PATH` | Additional import directories, separated by `:` |
 | `PYSTACHY_RUNTIME_C_CACHE=1` | Opt in to Linux default-flag C-runtime bitcode reuse across compiler producers; `0` (default) disables it |
 | `PYSTACHY_CFLAGS` | Extra clang flags for runtime compilation and AOT linking; part of the cache key |
+| `PYSTACHY_AOT_OPT=0\|1\|2` | Experimental ordinary `build` program optimization/codegen tier; `2` is the default. Runtime compilation, raw IR, JIT and extensions keep their existing tiers. Use `make BOOTSTRAP_AOT_OPT=1` for the temporary bootstrap stage only. |
 | `PYSTACHY_DEBUG_LINES=1` | Emit deterministic Python file, function and instruction line metadata in LLVM IR; AOT retains DWARF line tables. No local variable descriptions; part of the runtime cache key. See [source attribution](../bench/source_attribution/README.md) for JIT and profiler limits. |
 | `PYSTACHY_TIMING=1` | Print monotonic compiler [stage durations](#compiler-stage-timings) to stderr; nested totals overlap |
 | `PYSTACHY_IRCHECK=1` | Verify typed IR before lowering and after transforming passes |

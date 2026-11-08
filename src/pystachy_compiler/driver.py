@@ -438,6 +438,13 @@ def publish_retained_ir(path: str, source: str, output: str, ir: str, own: str) 
         os.rmdir(staging)
 
 
+def aot_optimization() -> str:
+    value = os.getenv("PYSTACHY_AOT_OPT", "2")
+    if value != "0" and value != "1" and value != "2":
+        fail("PYSTACHY_AOT_OPT must be 0, 1 or 2", 0)
+    return value
+
+
 def main() -> None:
     # the parser and the code generator recurse for each level of nesting (at most MAXNEST), a
     # dozen calls deep each: more than CPython's default limit of 1,000 calls when it runs this file
@@ -462,6 +469,7 @@ def main() -> None:
     if not os.path.exists(diagnostics.SRC):
         fail("file not found", 0)
     retained = retained_ir_path(cmd, diagnostics.SRC, argv[3:])
+    aotopt = aot_optimization() if cmd == "build" else "2"
     jitflags = ""
     if cmd == "run":
         codegen = os.getenv("PYSTACHY_JIT_CODEGEN", "2")
@@ -988,19 +996,20 @@ def main() -> None:
                   + f" && {llvm}opt -passes='internalize,default<O2>' -internalize-public-api-list={public} {q(bc)} -o {q(bc)}" + inline
                   + f" && {llvm}clang -O2 -fPIC -c {q(bc)} -o {q(obj)} -Wno-unused-command-line-argument{ccflags} && {llvm}clang -shared {q(obj)} -o {q(out)}{libs} -lm{cflags}")
     elif cmd == "build":
-        # AOT tier: full -O2 over program + runtime as one module (whole-program optimization).
+        # AOT tier: default -O2 over program + runtime as one module. Experimental
+        # lower tiers trade optimization time for execution speed of temporary builds.
         # With allocelide, clang optimizes it to bitcode, the late step inlines pys_new, the
-        # allocator's fast path, into the calls that -O2 left, and clang compiles that without
+        # allocator's fast path, into the remaining calls, and clang compiles that without
         # optimizing it again (the same code generation: a module without pys_new keeps the one step)
         if out == "":
             out = diagnostics.SRC[:-3] if diagnostics.SRC.endswith(".py") else diagnostics.SRC + ".exe"
         code = timed_sh("program.llvm_link", link)
         if code == 0 and newalloc:
-            code = timed_sh("program.llvm_optimize", f"{llvm}clang -O2 -c -emit-llvm {q(bc)} -o {q(obc)} -Wno-unused-command-line-argument{ccflags}")
+            code = timed_sh("program.llvm_optimize", f"{llvm}clang -O{aotopt} -c -emit-llvm {q(bc)} -o {q(obc)} -Wno-unused-command-line-argument{ccflags}")
         if code == 0 and newalloc:
             code = timed_sh("program.late_inline", f"{llvm}opt -passes=forceattrs,always-inline {LATE_INLINE} {q(obc)} -o {q(lbc)}")
         if code == 0:
-            cc = f"{llvm}clang -O2 -c -Xclang -disable-llvm-passes {q(lbc)}" if newalloc else f"{llvm}clang -O2 -c {q(bc)}"
+            cc = f"{llvm}clang -O{aotopt} -c -Xclang -disable-llvm-passes {q(lbc)}" if newalloc else f"{llvm}clang -O{aotopt} -c {q(bc)}"
             code = timed_sh("program.codegen" if newalloc else "program.optimize_codegen", cc + f" -o {q(obj)} -Wno-unused-command-line-argument{ccflags}")
         if code == 0:
             code = timed_sh("program.link", f"{llvm}clang {q(obj)} -o {q(out)}{libs} -lm{cflags}")

@@ -254,6 +254,24 @@ class LimitTests(unittest.TestCase):
     def test_worst_case_pr_job_and_worker_budget(self):
         self.assertTrue(require_pr_budget(workflows()))
 
+    def test_o1_bootstrap_qualification_follows_standard_export_in_existing_x86_job(self):
+        job = workflows()["ci.yml"]["jobs"]["bootstrap"]
+        steps = job["steps"]
+        probes = [step for step in steps if "tools/check_bootstrap_tier.py" in step.get("run", "")]
+        self.assertEqual(len(probes), 1)
+        probe = probes[0]
+        self.assertEqual(probe["if"], "steps.plan.outputs.kind == 'code' && matrix.machine == 'x86_64'")
+        self.assertIn("build/ci-bootstrap", probe["run"])
+        self.assertNotIn("continue-on-error", probe)
+        self.assertNotIn("continue-on-error", job)
+        exports = [step for step in steps if "verification_bootstrap.py export build/ci-bootstrap" in step.get("run", "")]
+        self.assertEqual(len(exports), 1)
+        self.assertLess(steps.index(exports[0]), steps.index(probe))
+        reports = [step for step in steps if "build/bootstrap-tier/report.json" in step.get("with", {}).get("path", "")]
+        self.assertEqual(len(reports), 1)
+        self.assertIn("build/bootstrap-tier/make.log", reports[0]["with"]["path"])
+        self.assertIn("!cancelled()", reports[0]["if"])
+
     def test_lint_overlaps_exactly_two_control_suites_on_every_event(self):
         steps = workflows()["lint.yml"]["jobs"]["lint"]["steps"]
         controls = [step for step in steps if "test_*verif*.py" in step.get("run", "")]

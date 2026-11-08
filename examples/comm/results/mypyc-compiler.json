@@ -1,0 +1,530 @@
+{
+  "schema_version": 1,
+  "scope": "Executed full-compiler compatibility probe; not an optimized performance benchmark",
+  "source_commit": "418979ba3456d7b4e188dbe30340a7fc1368c229",
+  "source_count": 55,
+  "toolchain": {
+    "python": "3.13.16 (main, Oct 14 2026, 01:04:01) [Clang 23.1.3 ]",
+    "mypy_mypyc": "2.4.0",
+    "setuptools": "84.2.1",
+    "c_compiler": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+    "platform": "Linux x86-64",
+    "note": "mypy 2.4.0 was available in the local cache; repository development pin is 2.4.1, which was not tested."
+  },
+  "build": {
+    "c_generation": "mypycify([\"--config-file=mypy.ini\", \"pystachy.py\", *sorted_src_python_paths], target_dir=\"build/mypyc\")",
+    "c_generation_returned_extensions": 56,
+    "c_generation_seconds": null,
+    "generated_native_c": {
+      "path": "build/mypyc/__native_8e6d44d29ef261cf016f.c",
+      "bytes": 115658975,
+      "sha256": "f12f058dd4c38809030db79085570383d07f504db5eb4462b6fa01e5d8ea865f"
+    },
+    "c_flags": [
+      "-shared",
+      "-pthread",
+      "-fPIC",
+      "-O0",
+      "-g0"
+    ],
+    "includes": [
+      "CPython sysconfig include",
+      "mypyc/lib-rt",
+      "build/mypyc"
+    ],
+    "parallelism": 1,
+    "c_build_seconds": 55.41631225900346,
+    "timeout_seconds": 600,
+    "extension_count": 56,
+    "output_layout_note": "After compilation, the native group and two package shims were renamed to their required import paths. Hashes identify the executed files; this report records final relative paths, not the original output-path spellings."
+  },
+  "failed_attempt": {
+    "phase": "Second C generation with multi_file=True, opt_level=2, debug_level=0 before C compilation",
+    "exit_status": 137,
+    "native_bootstrap_concurrent": true,
+    "cgroup_memory_limit_bytes": 8589934592,
+    "oom_kill_counter_observed_after": 1,
+    "assessment": "Killed during shared-memory pressure; OOM counter observed afterwards. Reused successful prior generated C in a separate process."
+  },
+  "sources": {
+    "pystachy.py": "a413782632f88d4746a81fd7cfb529d695ab36a35618522a83be1e25e1e31f29",
+    "src/__init__.py": "c443ed6062edae246598189fb20f12799a5e87a04049acb855894652e3875af7",
+    "src/pystachy_compiler/__init__.py": "f60cd281f8ed4fd35776c9f4d40d6a1313c49a3cae5df61841028f711b9f13c8",
+    "src/pystachy_compiler/analysis.py": "29c2f37070a8f802a768f90b086c2c469dda1643130ec08dee2f9c0d4f476b64",
+    "src/pystachy_compiler/argparse_schema.py": "8cfb408e9066ddb51d89be371cab2c4b769c1108da3d1554391bc799a83082a5",
+    "src/pystachy_compiler/bigints.py": "1d00ba32bc6052944e552864375e2a0b390ba1ddb001208167056d87199bab61",
+    "src/pystachy_compiler/builtins.py": "d14ca1bd92620d2d7c9204e987c18d67692f9fb09593a93147326a7d9f430cbf",
+    "src/pystachy_compiler/cache_toolchain.py": "2b179901cb2dafb543359828afe83c5b5f9b869a3ca0c7dfafc7f0306e0f03f7",
+    "src/pystachy_compiler/cached_run.py": "e85ce939edb6482ea0a08f69eb51be2c33be3293a850f8fd696ba9af1dcb6678",
+    "src/pystachy_compiler/callbacks.py": "d550f36feb3670adba7de42f63c1f03bb31132067bb33b88bc45e0ff5253ea79",
+    "src/pystachy_compiler/calls.py": "220a1b34e3935020afc8570d23fc7ca28a61cab38251077adcfa0b65568e6210",
+    "src/pystachy_compiler/containers.py": "a60d8c504bde351666f39b6f6e93ecd5dd8bd351d791dbf51d0a17160b9ce691",
+    "src/pystachy_compiler/conversions.py": "5d5c2373859a0dd5c6160788fc040418fe35c4afbe6156715fc58de40b3c7c2a",
+    "src/pystachy_compiler/ctypes_schema.py": "9152db34ca5a236c5305938cf222e1a0d875948e64bfbdfb87c67939a51e3fe4",
+    "src/pystachy_compiler/declarations.py": "091d7c5bfe304ab90d36405fc43c415b6e609cba6d260c02c8fa6a299f2392ec",
+    "src/pystachy_compiler/diagnostics.py": "529f5423decb512a61505a289bf3a5fb9b59c3bb1bfaf512b8059893fd79b131",
+    "src/pystachy_compiler/driver.py": "8c73f71e18e1c64a8a2bbbfae12fd76353f55009de0be2da41a06e0297f79e38",
+    "src/pystachy_compiler/dynamic.py": "b8aa697a9a6379c820ee87691b55293c232acd85d66466c3f0ea474b1c063553",
+    "src/pystachy_compiler/emission.py": "f64d14977943ad1eafd8dce21f9548ee22a1529db1692257270280038527e535",
+    "src/pystachy_compiler/exceptions.py": "c9f0fb0866a2149a8b5af7d64d86a5d1683c08f45a09823a25f62b284c2429c9",
+    "src/pystachy_compiler/expressions.py": "034648cb297fdc3cb1b8c17f892a29e64b23d19c1f110b9a216d13f9ac0d0985",
+    "src/pystachy_compiler/flow.py": "cb6238905238d5dcd042b568f56243e9b407723a6e047d5f0cad478b060439c9",
+    "src/pystachy_compiler/functions.py": "909be9e207959b61cbe5dd4fe948b33cd473b8e49aa5e7b0e18ebd4539e25aa6",
+    "src/pystachy_compiler/gen.py": "3c11749159fa62f1de8c7b5f6f033051d2286af7934ddd48985235afb7b143a5",
+    "src/pystachy_compiler/generators.py": "e6dde0b55178adeca943b596f8f108915e652726954c9675aae04ea1454bc96c",
+    "src/pystachy_compiler/ir.py": "cf7c6b49ae2a36eb0ce17f173527bcd6f202a60466697a3ba9656f4a35eb1b2e",
+    "src/pystachy_compiler/ircheck.py": "d7a6a0c77c9c90271bd9aed0fbe685e9cd2ea2eadee44dda98ac52901dc153d5",
+    "src/pystachy_compiler/lexer.py": "5d727507498549788d7d428b067e4bf794dbe49199286577cd1cd2d47d0b16f7",
+    "src/pystachy_compiler/llvm_abi.py": "7485f63097d4abac3de8b1fbfb782944ff7e3b68989d2fb266e40ebb8f8889ae",
+    "src/pystachy_compiler/loader.py": "3c60cba2ff2d4c24478bac89b19d59383d44e53ab1bb8d7fd143b4f4dd4832f7",
+    "src/pystachy_compiler/local_versions.py": "10bb0f2f0fb57c442af0807b5b4af6c95e8b950a97430161c97f766a3dc4b375",
+    "src/pystachy_compiler/lower_module.py": "a7c727aa0a4c4d2e958b43ae2960da1d1c3dc10c284bd0afe63d5e4665a3c410",
+    "src/pystachy_compiler/lowering.py": "2b2387ed6705b976f63476e448c27c80c0af0852da2f23afbdf7ac9f970ab23e",
+    "src/pystachy_compiler/memory_ir.py": "c2544eda0bdb89ccb99ac1330c95d99974983cc7bdfa0d3a2b39a993c9f62bc1",
+    "src/pystachy_compiler/module.py": "3349556dee4dcda00013d770743f27d5dc3525b76cbd5e2ab312b14506e1f601",
+    "src/pystachy_compiler/names.py": "1b114c50d950b971dc4e72afd87fa0daa3e71c653101747733ceb89777d07e1c",
+    "src/pystachy_compiler/optimizations.py": "e474e6b1deedadf9cc24dccc50226155aa016e39602ada0e6365ceaf049c5ac1",
+    "src/pystachy_compiler/parser.py": "0ebba19e45b2d0396ce427894463c61fc41834aca13ba8e8383efa6ec634d6bc",
+    "src/pystachy_compiler/program.py": "7da5b302fa3c378d574a4bdcb1024ba0f6c8cc7090bb404ed9089d2929ac94a7",
+    "src/pystachy_compiler/program_cache.py": "7f897798616fa4a08b4413b2d7af9650b677b979ff4bca5c1fd92e8a9e2d153f",
+    "src/pystachy_compiler/reflection.py": "055e92213ca76ef43d2c84b40439a499a59fcdfa5039b5614a98a05e87e2016f",
+    "src/pystachy_compiler/scalar_ir.py": "14bc0ce71b4cbf066e8a4cab2ea0bb5c0a53880997484d74f5ea3e9a6d30c05a",
+    "src/pystachy_compiler/scope.py": "d9af25da84ba62a17a6a1a0b7d48d078977dd364528c8ec8e4135cc438f10a97",
+    "src/pystachy_compiler/source_lines.py": "29b49e6e94513ab66452b019b4b5b0f991d4ae1555c421c9134add318e13d7c2",
+    "src/pystachy_compiler/specs.py": "da61e4a81d368599e8de0299f618587ddaa7d061625eb1350cd26f12cbca7ac1",
+    "src/pystachy_compiler/statements.py": "7a4bd8be0c1834cc82516088e4dd42eb76624672b3156ff68230c7625c6e70b2",
+    "src/pystachy_compiler/structs.py": "e873fd6a6aeaebf39f740de2859a5de9a2da316d7a8993c728889677125c3090",
+    "src/pystachy_compiler/syntax.py": "9d4da3abe7447fa31031ba44936be765240dc60ab51d74728a9ed80c9a7674c3",
+    "src/pystachy_compiler/templates.py": "7e4b9422752d4a5ad1757a06d97ab4a8e39bb1f388a32ca49b5cc40628fc2f01",
+    "src/pystachy_compiler/union_arithmetic.py": "6d6892c0d97667d7e8ffeb5293ccbbe24c76529328e4761ffec6831229c416dd",
+    "src/pystachy_compiler/union_proof.py": "3f7e490f6b4e320fd23f8419c6e3cd3d823fd3c2f61ccdbb9e0602c56bfb69ad",
+    "src/pystachy_compiler/union_state.py": "b845af16073f24e1e1245bdcb00d4324dbf1d657874604cb4b991d852a07b026",
+    "src/pystachy_compiler/unions.py": "64d737b7405bec833d453f9b25211f947dab82cb1da54e3012f1dde61acf0e28",
+    "src/pystachy_compiler/utils.py": "dcb9f260034ebd84953af4123906ce42406e38a7f652ac59ee1809dea61be93b",
+    "src/pystachy_compiler/variables.py": "a089fc27e8471bc00331699b07b8069b7a17ed04669993de958d3504d943dd3b"
+  },
+  "extensions": [
+    {
+      "path": "8e6d44d29ef261cf016f__mypyc.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "2288c71e67697ca97a4464a7a560bf2b1c7e1d0ea30d11071161bdfc1f3195ba",
+      "bytes": 44309712,
+      "compile_seconds": 45.3045545749992
+    },
+    {
+      "path": "pystachy.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "5bbe0b294db5509d68e70db257e347ed6e18b407500bdb03faefd576e30ad368",
+      "bytes": 15792,
+      "compile_seconds": 0.2523045109992381
+    },
+    {
+      "path": "src/__init__.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "2d535a0b418022332182ec9d88f59b9bf9ca1ca3fde84f6362057807e40698fa",
+      "bytes": 15776,
+      "compile_seconds": 0.1786904569962644
+    },
+    {
+      "path": "src/pystachy_compiler/__init__.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "99051ba58cdc94ea9a5c98944262e65a7acaef10fff94f14dc2c191a74b51b7a",
+      "bytes": 15816,
+      "compile_seconds": 0.14182031100062886
+    },
+    {
+      "path": "src/pystachy_compiler/analysis.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "fb03cddcbfc5a716b7737381e24965f9042628033d9c4d7e3e10b9bd96f16db9",
+      "bytes": 15792,
+      "compile_seconds": 0.2026459580010851
+    },
+    {
+      "path": "src/pystachy_compiler/argparse_schema.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "a80c186f25e8ae82115a6e1b9100a986ff5b11638fcbc3d5d6e6df5fcba9c465",
+      "bytes": 15816,
+      "compile_seconds": 0.204407077995711
+    },
+    {
+      "path": "src/pystachy_compiler/bigints.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "c64c6c89efdf93bc9615bf562758a9248b08b6757dbf0488a9d84a8aa0ed4ecb",
+      "bytes": 15792,
+      "compile_seconds": 0.24388913300208515
+    },
+    {
+      "path": "src/pystachy_compiler/builtins.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "4e8883ada2bfe6c0880c9e2a88098998d2b72c84c01272690f3389d618c3d06a",
+      "bytes": 15792,
+      "compile_seconds": 0.16159126900311094
+    },
+    {
+      "path": "src/pystachy_compiler/cache_toolchain.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "12a23a500b0ac5300e24f93e45981e4cf5e839646ff0fdd31d239f2fe6d9f8ff",
+      "bytes": 15816,
+      "compile_seconds": 0.1774438900029054
+    },
+    {
+      "path": "src/pystachy_compiler/cached_run.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "0eb992cf7d08a36697b39bf40160589c6277d12e6293fdd0b46cef958a065224",
+      "bytes": 15800,
+      "compile_seconds": 0.12971518100675894
+    },
+    {
+      "path": "src/pystachy_compiler/callbacks.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "08cb6b28edd5c9d5436bb8a4ed69e9f095c69818f5e8061ec089eb39dea07f70",
+      "bytes": 15792,
+      "compile_seconds": 0.11643168600130593
+    },
+    {
+      "path": "src/pystachy_compiler/calls.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "c255fc31c2e5dbace55a8339e478a157e0f462c58c43d00ae983ee45039a8da9",
+      "bytes": 15784,
+      "compile_seconds": 0.12385170700144954
+    },
+    {
+      "path": "src/pystachy_compiler/containers.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "da4159848144a849e15a0ee6172a0de324121108c6aef635c5dea3d0598e2376",
+      "bytes": 15800,
+      "compile_seconds": 0.17032098699564813
+    },
+    {
+      "path": "src/pystachy_compiler/conversions.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "6c6b97642988f2734f527f44a65232c1677b3bab358e6718abb0f4ad25f96348",
+      "bytes": 15800,
+      "compile_seconds": 0.1464704950049054
+    },
+    {
+      "path": "src/pystachy_compiler/ctypes_schema.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "7e62826f3bcea5102fb10857317c1fc626f44998a63840e0ed1282232fd5f775",
+      "bytes": 15808,
+      "compile_seconds": 0.1124451199939358
+    },
+    {
+      "path": "src/pystachy_compiler/declarations.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "634437639c9738f52809e9be901584f47121a3bc429091349b7b73b1ea53a440",
+      "bytes": 15800,
+      "compile_seconds": 0.11686368299706373
+    },
+    {
+      "path": "src/pystachy_compiler/diagnostics.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "8f8db9e3c319da0de1fed585bea0e9121ee13e9b2241eb3026ef7ccbd7174f95",
+      "bytes": 15800,
+      "compile_seconds": 0.13711460599733982
+    },
+    {
+      "path": "src/pystachy_compiler/driver.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "582d6df6d97d697aa9fcb2e1ffe76ad6489e5e30ef36f6de1fa0324d7763ab1e",
+      "bytes": 15784,
+      "compile_seconds": 0.12164517299970612
+    },
+    {
+      "path": "src/pystachy_compiler/dynamic.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "26b6f8cc40510296760e7286014d951656fb686f13aea6e5ffa8342b45f6051b",
+      "bytes": 15792,
+      "compile_seconds": 0.15095583999936935
+    },
+    {
+      "path": "src/pystachy_compiler/emission.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "286b5bfd91d41bf23cc0a7b03cfa3133d51c18fa17512c2d92cd4745ad488d1b",
+      "bytes": 15792,
+      "compile_seconds": 0.12696649000281468
+    },
+    {
+      "path": "src/pystachy_compiler/exceptions.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "41c1bb8686816d7a3516551438d3c69e43e326fcd33a1bfef364482adbf5ebec",
+      "bytes": 15800,
+      "compile_seconds": 0.1389109589945292
+    },
+    {
+      "path": "src/pystachy_compiler/expressions.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "99a7d1138d133b6e586c0458c51b076e0322a6073f4f49ac7ab512162b1726b4",
+      "bytes": 15800,
+      "compile_seconds": 0.1640934970055241
+    },
+    {
+      "path": "src/pystachy_compiler/flow.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "ae9c92e5cc4410783b87c4cad97ca64c76d734fe5609d7291d4516747abc472d",
+      "bytes": 15776,
+      "compile_seconds": 0.18544183300400618
+    },
+    {
+      "path": "src/pystachy_compiler/functions.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "1f97288fc85168dbf2e8e8e4db8a5fb221ec6e70d06c10454ca574ee2200e157",
+      "bytes": 15792,
+      "compile_seconds": 0.1552519469987601
+    },
+    {
+      "path": "src/pystachy_compiler/gen.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "6e1f28f7dc573661f781e63487822247b1603a1f7f3662b8e139c1293cd5b9f9",
+      "bytes": 15776,
+      "compile_seconds": 0.16987543800496496
+    },
+    {
+      "path": "src/pystachy_compiler/generators.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "2c73b30ccc53888dd5bd8ce7677968cf49e70157569e62097daf59c3dd99b5de",
+      "bytes": 15800,
+      "compile_seconds": 0.17456277499877615
+    },
+    {
+      "path": "src/pystachy_compiler/ir.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "55ba860327820a2d159a6f1b381e8bc48ac14f4a48092fc3d943ba3f1a424b02",
+      "bytes": 15776,
+      "compile_seconds": 0.14455460399767617
+    },
+    {
+      "path": "src/pystachy_compiler/ircheck.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "50956e1065efa1f60a2fb3c561e7154aa36da5024d48e4e601e84493de7ea594",
+      "bytes": 15792,
+      "compile_seconds": 0.11914724900270812
+    },
+    {
+      "path": "src/pystachy_compiler/lexer.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "1b638dccc6c726639e512e2b1d81f7fcfab8ba2fd52f0611796212eaba17b0f1",
+      "bytes": 15784,
+      "compile_seconds": 0.17177624800388003
+    },
+    {
+      "path": "src/pystachy_compiler/llvm_abi.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "08e73d8fc8d0855545fb636ad7fcaa572641df21522f0592c45f834aea944597",
+      "bytes": 15792,
+      "compile_seconds": 0.17904445299791405
+    },
+    {
+      "path": "src/pystachy_compiler/loader.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "b814d1b2f62d55b8c249184ef8365cfe3db52f54c3b1113d65149e64f5fe1e1c",
+      "bytes": 15784,
+      "compile_seconds": 0.18572186499659438
+    },
+    {
+      "path": "src/pystachy_compiler/local_versions.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "446c2bdda8ccd6e44debdc35f0082dcb0511f71758b5fba01d190427a298c3d7",
+      "bytes": 15808,
+      "compile_seconds": 0.15842186300142203
+    },
+    {
+      "path": "src/pystachy_compiler/lower_module.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "7c36749074682e6986d849be211666fa28fb8eeca5ea76c634b29e269fe897f1",
+      "bytes": 15800,
+      "compile_seconds": 0.17303885500587057
+    },
+    {
+      "path": "src/pystachy_compiler/lowering.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "d018efe86716aa85e4479a5f52cb5fd0ead1d48fbef69c91782512ee0b095f30",
+      "bytes": 15792,
+      "compile_seconds": 0.16460644100152422
+    },
+    {
+      "path": "src/pystachy_compiler/memory_ir.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "d7beafd60b98293319d2af515c3d2729410eecb842407efa5df789ee84e3f09c",
+      "bytes": 15792,
+      "compile_seconds": 0.19866108400310623
+    },
+    {
+      "path": "src/pystachy_compiler/module.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "9608b3258b4871e5a8b6c7271745cfb5dc226d16edd28ae8d9e043387492917e",
+      "bytes": 15784,
+      "compile_seconds": 0.22757808699680027
+    },
+    {
+      "path": "src/pystachy_compiler/names.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "d016d2802613d0c83bcd3d86400323eabf5145f77f1037004bce7fc204981365",
+      "bytes": 15784,
+      "compile_seconds": 0.13174876799894264
+    },
+    {
+      "path": "src/pystachy_compiler/optimizations.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "51cb7b8e0225e4a8262843ddd9429d21512d6dc2467cc287816cd885c769d51d",
+      "bytes": 15808,
+      "compile_seconds": 0.20560313099849736
+    },
+    {
+      "path": "src/pystachy_compiler/parser.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "71f152031055d458b243fdd0ee70a1a39f75413146d3fcebece2bb66beedd9ef",
+      "bytes": 15784,
+      "compile_seconds": 0.1492897290008841
+    },
+    {
+      "path": "src/pystachy_compiler/program.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "9c75493d66a5b52a9f334d361a789542626a4baf934adfce7721b425798777e6",
+      "bytes": 15792,
+      "compile_seconds": 0.24861039600364165
+    },
+    {
+      "path": "src/pystachy_compiler/program_cache.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "6f68d63e9bc2c7141b5547b9c7829ac08f82099051d48a563ef9e35a7711761d",
+      "bytes": 15808,
+      "compile_seconds": 0.3687607489991933
+    },
+    {
+      "path": "src/pystachy_compiler/reflection.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "8c33d198315ceba0d25f79bf012094d99ef320758b8e393790143ac4fe2efcbe",
+      "bytes": 15800,
+      "compile_seconds": 0.1539049929997418
+    },
+    {
+      "path": "src/pystachy_compiler/scalar_ir.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "54807f0ce00e2155ecb5fd6d19fca4d9c3d9f78e31c9e0e1bb63276e5675dbba",
+      "bytes": 15792,
+      "compile_seconds": 0.29305650800233707
+    },
+    {
+      "path": "src/pystachy_compiler/scope.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "ecfa4f67a3d07f450d6e93bdc2a4e5b099e3cb6fde7dd83b66351db87c64e28b",
+      "bytes": 15784,
+      "compile_seconds": 0.27319252400047844
+    },
+    {
+      "path": "src/pystachy_compiler/source_lines.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "381ac41a9b9f94b9284e9a83acd12e43df6bfee95c8fa1184e9e40479b38f14b",
+      "bytes": 15800,
+      "compile_seconds": 0.25576895499398233
+    },
+    {
+      "path": "src/pystachy_compiler/specs.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "ae7f299507effdd5079f36968254088b2332cc28ba8ffa28fbe5e72426e985d5",
+      "bytes": 15784,
+      "compile_seconds": 0.2383716749973246
+    },
+    {
+      "path": "src/pystachy_compiler/statements.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "0f92b10efd29cda5cb1f821cfbc13383c3049622e0cd576146dd5145afda084a",
+      "bytes": 15800,
+      "compile_seconds": 0.20202312099718256
+    },
+    {
+      "path": "src/pystachy_compiler/structs.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "ff957978661339d47e7ab09009f1d42551cba0a42d25e526619d837b8bafad55",
+      "bytes": 15792,
+      "compile_seconds": 0.21123904600244714
+    },
+    {
+      "path": "src/pystachy_compiler/syntax.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "9c0d2d174c52b74f0abdcf9556e33f476f6b6f6f9589c759f1b6c1122440e36c",
+      "bytes": 15784,
+      "compile_seconds": 0.1782122860022355
+    },
+    {
+      "path": "src/pystachy_compiler/templates.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "1aeab1a99602a0b3140b93217a4c748b273892bf3efb1b6b91970f0721a461e7",
+      "bytes": 15792,
+      "compile_seconds": 0.1984040349998395
+    },
+    {
+      "path": "src/pystachy_compiler/union_arithmetic.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "300769609308c585d35e32edfdb827f049cce113d0dbbfff8d7907c48e37f002",
+      "bytes": 15816,
+      "compile_seconds": 0.24207185299746925
+    },
+    {
+      "path": "src/pystachy_compiler/union_proof.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "0a5321fd4c9321ff8b6cc45911cfb36395ed49f0c66bffcae24cc0ffbdbd7429",
+      "bytes": 15800,
+      "compile_seconds": 0.19234495599812362
+    },
+    {
+      "path": "src/pystachy_compiler/union_state.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "d62a01b83baa84e25c9b2689c7fce5864b5f7d0f43098ce23c08914a2c4cb642",
+      "bytes": 15800,
+      "compile_seconds": 0.1370563119999133
+    },
+    {
+      "path": "src/pystachy_compiler/unions.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "d2a2c84b68f028c4b74e8bfc1d5ae4dbffa2b4c72f7347f35f38859a1c0edc2e",
+      "bytes": 15784,
+      "compile_seconds": 0.20468815400090534
+    },
+    {
+      "path": "src/pystachy_compiler/utils.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "0b67d28a3ddb04d131c9a514e378aa48cf1704ab7bf1fdd7a560cfac67b84287",
+      "bytes": 15784,
+      "compile_seconds": 0.2353060470049968
+    },
+    {
+      "path": "src/pystachy_compiler/variables.cpython-313-x86_64-linux-gnu.so",
+      "sha256": "08c65c55d81a220f83ba761dc52e086f657efab81528e70c2da2831545b689ed",
+      "bytes": 15792,
+      "compile_seconds": 0.149540402002458
+    }
+  ],
+  "validation": {
+    "compiled_origin_check": "Launcher imported all 55 Python source/package modules and asserted importlib.machinery.EXTENSION_SUFFIXES for each __file__.",
+    "parity": {
+      "result": "pass",
+      "cases": [
+        {
+          "source": "tests/programs/containers/lists.py",
+          "source_sha256": "c243296824eca18110aa4561d46dca54b311e11ab59ee45785ee6fd691fbe86f",
+          "results": [
+            {
+              "mode": "cpython",
+              "returncode": 0,
+              "stderr": "",
+              "seconds": 0.0626574019988766,
+              "bytes": 42017,
+              "sha256": "df0ac0322dd403d7cf162a5cd46dc0f7fc404b4dd2f8dd7d3d76205466728461"
+            },
+            {
+              "mode": "mypyc",
+              "returncode": 0,
+              "stderr": "",
+              "seconds": 0.05952895699738292,
+              "bytes": 42017,
+              "sha256": "df0ac0322dd403d7cf162a5cd46dc0f7fc404b4dd2f8dd7d3d76205466728461"
+            }
+          ],
+          "exact": true
+        },
+        {
+          "source": "tests/programs/containers/dicts.py",
+          "source_sha256": "4ac6ab09faee7241031348842eb068a9f3d5440f025b8ed8725b0bd69c8e2722",
+          "results": [
+            {
+              "mode": "cpython",
+              "returncode": 0,
+              "stderr": "",
+              "seconds": 0.05820707999373553,
+              "bytes": 32967,
+              "sha256": "d7900673f86049a67971557c53279e113d79605fac8e670566daaf01b81dc00a"
+            },
+            {
+              "mode": "mypyc",
+              "returncode": 0,
+              "stderr": "",
+              "seconds": 0.05888565700297477,
+              "bytes": 32967,
+              "sha256": "d7900673f86049a67971557c53279e113d79605fac8e670566daaf01b81dc00a"
+            }
+          ],
+          "exact": true
+        },
+        {
+          "source": "pystachy.py",
+          "source_sha256": "a413782632f88d4746a81fd7cfb529d695ab36a35618522a83be1e25e1e31f29",
+          "results": [
+            {
+              "mode": "cpython",
+              "returncode": 0,
+              "stderr": "",
+              "seconds": 31.957775537004636,
+              "bytes": 33019357,
+              "sha256": "cf9787318ac7f2822c5e6bfb0ec771b67a8d1abf0e01e8821fed238173112361"
+            },
+            {
+              "mode": "mypyc",
+              "returncode": 0,
+              "stderr": "",
+              "seconds": 33.78883239400602,
+              "bytes": 33019357,
+              "sha256": "cf9787318ac7f2822c5e6bfb0ec771b67a8d1abf0e01e8821fed238173112361"
+            }
+          ],
+          "exact": true
+        }
+      ]
+    }
+  },
+  "limitations": [
+    "Only Linux x86-64 was exercised.",
+    "Full compiler C was built at -O0; optimized mypyc compiler performance was not measured.",
+    "Parity timings are one diagnostic execution per case, with unrelated work possible on the shared host.",
+    "Code-generation time was not recorded.",
+    "The successful recipe uses separate C generation and compilation; the official combined multi-file attempt was resource-killed."
+  ],
+  "main_source_revision": "07999aec1c5b49f292a7700ec7d6187d73b69d2c",
+  "source_identity_note": "source_commit records the local integration checkout; every one of the 55 compiler sources also exactly matches main_source_revision."
+}
