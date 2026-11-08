@@ -7,6 +7,7 @@ it is not the interprocess transport or scheduler.
 
 import argparse
 from collections import deque
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 import hashlib
 import json
@@ -19,6 +20,7 @@ import signal
 import statistics
 import subprocess
 import sys
+import threading
 import time
 
 
@@ -61,6 +63,39 @@ def kill_group(process):
         pass
 
 
+@contextmanager
+def cancellation_signals():
+    """Defer cancellation until every launched process has an owner.
+
+    Raising inside a Python signal handler can interrupt Popen after the child
+    starts but before its PID is returned/registered. Keep these non-raising
+    handlers installed through cleanup so repeated signals cannot interrupt it.
+    """
+    if threading.current_thread() is not threading.main_thread():
+        raise RuntimeError("compiler batches must run on the main thread")
+    received = None
+    previous = {}
+
+    def request_cancel(signum, _frame):
+        nonlocal received
+        if received is None:
+            received = signum
+
+    def check_cancelled():
+        if received is not None:
+            raise SystemExit(128 + received)
+
+    try:
+        for signum in (signal.SIGINT, signal.SIGTERM):
+            previous[signum] = signal.signal(signum, request_cancel)
+        yield check_cancelled
+        # Also catch cancellation received during the final resource cleanup.
+        check_cancelled()
+    finally:
+        for signum, handler in previous.items():
+            signal.signal(signum, handler)
+
+
 def record_for(state):
     job = state.job
     if state.process.returncode != job.expected_status:
@@ -93,9 +128,21 @@ def run_batch(jobs, *, workers=2, transport="direct", handler_command=None,
 
     At most ``workers`` jobs are admitted, including completed jobs awaiting
     acknowledgment.  Each owns a separate process group.  At most one completion
-    record is in flight to the handler.  All owned groups are reaped on failures.
+    record is in flight to the handler. All owned groups are killed and direct
+    children reaped on failures, SIGINT or SIGTERM. This POSIX coordinator must
+    run on the main thread; cancellation raises SystemExit(128 + signal number)
+    after cleanup and restores the caller's signal handlers.
     ``diagnostic_limit`` bounds combined stdout/stderr per job (IR is an artifact).
     """
+    with cancellation_signals() as check_cancelled:
+        return _run_batch(jobs, workers=workers, transport=transport,
+                          handler_command=handler_command, timeout=timeout,
+                          diagnostic_limit=diagnostic_limit, cwd=cwd, env=env,
+                          check_cancelled=check_cancelled)
+
+
+def _run_batch(jobs, *, workers, transport, handler_command, timeout,
+               diagnostic_limit, cwd, env, check_cancelled):
     if workers < 1 or workers > 8 or timeout <= 0 or diagnostic_limit < 1:
         raise ValueError("invalid worker, timeout or diagnostic bound")
     if transport not in ("direct", "comm", "handler"):
@@ -125,26 +172,32 @@ def run_batch(jobs, *, workers=2, transport="direct", handler_command=None,
     selector = selectors.DefaultSelector()
 
     def accept(state, received):
+        check_cancelled()
         if received != state.record:
             raise AssertionError("completion handler changed or truncated a record")
         records.append(json.loads(received))
         del active[state.job.job_id]
 
     try:
+        check_cancelled()
         if transport == "comm":
             from comm import Context
             from record_worker import transfer_record
             context = Context(capacity=1, byte_limit=2 * RECORD_LIMIT)
         if transport == "handler":
+            check_cancelled()
             handler = subprocess.Popen(handler_command, stdin=subprocess.PIPE,
                                        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                        cwd=cwd, env=environment, start_new_session=True)
             all_processes.append(handler)
+            check_cancelled()
             for name, stream in (("handler", handler.stdout), ("handler_error", handler.stderr)):
                 os.set_blocking(stream.fileno(), False)
                 selector.register(stream, selectors.EVENT_READ, (name, None))
         while waiting or active or inflight is not None:
+            check_cancelled()
             while waiting and len(active) < workers:
+                check_cancelled()
                 job = waiting.popleft()
                 job.artifact.parent.mkdir(parents=True, exist_ok=True)
                 if job.artifact.exists():
@@ -166,6 +219,7 @@ def run_batch(jobs, *, workers=2, transport="direct", handler_command=None,
                 state = Running(job, process, time.perf_counter(), len(streams),
                                 artifact_file=artifact_file)
                 active[job.job_id] = state
+                check_cancelled()
                 peak_admitted = max(peak_admitted, len(active))
                 for name, stream in streams:
                     state.stream_hashes[name] = hashlib.sha256()
@@ -204,6 +258,7 @@ def run_batch(jobs, *, workers=2, transport="direct", handler_command=None,
             if handler is not None and handler.poll() is not None:
                 raise RuntimeError(f"completion handler exited early ({handler.returncode})")
             for key, _ in selector.select(0.02):
+                check_cancelled()
                 name, state = key.data
                 chunk = os.read(key.fileobj.fileno(), 16384)
                 if not chunk:
@@ -238,6 +293,7 @@ def run_batch(jobs, *, workers=2, transport="direct", handler_command=None,
                     if first_diagnostic is None:
                         first_diagnostic = time.perf_counter() - started
         if handler is not None:
+            check_cancelled()
             handler.stdin.close()
             # Drain any trailing data; fail closed on extra output or diagnostics.
             for key in list(selector.get_map().values()):
@@ -247,10 +303,22 @@ def run_batch(jobs, *, workers=2, transport="direct", handler_command=None,
             os.set_blocking(handler.stdout.fileno(), True)
             os.set_blocking(handler.stderr.fileno(), True)
             handler.stdin = None
-            stdout, stderr = handler.communicate(timeout=min(timeout, 5.0))
+            deadline = time.perf_counter() + min(timeout, 5.0)
+            while True:
+                check_cancelled()
+                try:
+                    remaining = max(0.0, deadline - time.perf_counter())
+                    stdout, stderr = handler.communicate(timeout=min(0.02, remaining))
+                    break
+                except subprocess.TimeoutExpired:
+                    check_cancelled()
+                    if time.perf_counter() >= deadline:
+                        raise
+            check_cancelled()
             if handler.returncode or stdout or stderr or handler_errors or handler_buffer:
                 raise RuntimeError("completion handler failed or produced unexpected output: "
                                    + (bytes(handler_errors) + stderr).decode("utf-8", "replace"))
+        check_cancelled()
         return {"seconds": time.perf_counter() - started, "records": records,
                 "completion_order": [record["job"] for record in records],
                 "diagnostic_order": diagnostics_order, "first_diagnostic_seconds": first_diagnostic,

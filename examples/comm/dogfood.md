@@ -5,7 +5,15 @@ IR/AOT jobs. It drains diagnostic pipes while compilers run, bounds admitted job
 and diagnostic bytes, writes large artifacts directly to files, and delivers
 at most one 4096-byte ASCII JSON completion record at a time. Completed jobs still
 occupy their admission slot until the record is acknowledged. Every child has a
-private process group; failure/deadline cleanup terminates and reaps owned groups.
+private process group; failure/deadline cleanup kills owned groups and reaps direct
+children. During `run_batch`, SIGINT/SIGTERM request cancellation at safe points,
+including immediately after each child is registered. Cleanup finishes before
+`SystemExit(128 + signal number)` propagates (130 for SIGINT, 143 for SIGTERM);
+repeated signals cannot interrupt cleanup. This POSIX coordinator runs on the
+main thread and restores the caller's signal handlers on return or failure.
+Workers and the persistent handler must stay in their assigned process groups.
+SIGKILL, descendants that create another session/group, and the benchmark's
+separate CPython/AOT validation subprocesses are outside this cancellation scope.
 
 `record_worker.py` is a persistent consumer compiled without source changes by
 Pystachy or mypyc. Its context owns each record until copy completion and explicit
