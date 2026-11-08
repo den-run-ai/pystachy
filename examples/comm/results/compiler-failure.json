@@ -1,0 +1,30 @@
+{
+  "seconds": 0.003089819998422172,
+  "records": [
+    {
+      "artifact": "/tmp/tmpgv0zzy1m/failed.ll",
+      "diagnostics": {
+        "stderr": {
+          "bytes": 53,
+          "sha256": "52a0f1a162621d495b5b9760427b305c31c8b3b8a670f97bbe22f027bef993a0"
+        }
+      },
+      "job": 9,
+      "mode": "ir",
+      "sha256": null,
+      "status": 1
+    }
+  ],
+  "completion_order": [
+    9
+  ],
+  "diagnostic_order": [
+    9
+  ],
+  "first_diagnostic_seconds": 0.0023242729948833585,
+  "peak_admitted": 1,
+  "workers": 2,
+  "transport": "handler",
+  "source": "def broken(:\n    pass\n",
+  "cpython_status": 1
+}

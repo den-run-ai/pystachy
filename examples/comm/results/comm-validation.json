@@ -1,0 +1,117 @@
+{
+  "result": "pass",
+  "runs": {
+    "cpython": {
+      "stdout_sha256": "9bc5636d09c5e7250315f1e3bc9f201c2820f75d6dff41ed2ab3de454f52b7a6",
+      "gc": {}
+    },
+    "jit": {
+      "stdout_sha256": "9bc5636d09c5e7250315f1e3bc9f201c2820f75d6dff41ed2ab3de454f52b7a6",
+      "gc": {}
+    },
+    "aot": {
+      "stdout_sha256": "9bc5636d09c5e7250315f1e3bc9f201c2820f75d6dff41ed2ab3de454f52b7a6",
+      "gc": {}
+    },
+    "jit_gc": {
+      "stdout_sha256": "9bc5636d09c5e7250315f1e3bc9f201c2820f75d6dff41ed2ab3de454f52b7a6",
+      "gc": {
+        "PYSTACHY_GC_STRESS_PROGRAM": "1"
+      }
+    },
+    "aot_gc": {
+      "stdout_sha256": "9bc5636d09c5e7250315f1e3bc9f201c2820f75d6dff41ed2ab3de454f52b7a6",
+      "gc": {
+        "PYSTACHY_GC_STRESS": "1"
+      }
+    },
+    "compatibility_probe/cpython": {
+      "stdout_sha256": "913914d70a17ee2ba7d4d3799f0c7f5d8ce698900b97fb061f6a48117226eac2",
+      "gc": {}
+    },
+    "compatibility_probe/jit": {
+      "stdout_sha256": "913914d70a17ee2ba7d4d3799f0c7f5d8ce698900b97fb061f6a48117226eac2",
+      "gc": {}
+    },
+    "compatibility_probe/aot": {
+      "stdout_sha256": "913914d70a17ee2ba7d4d3799f0c7f5d8ce698900b97fb061f6a48117226eac2",
+      "gc": {}
+    },
+    "compatibility_probe/jit_gc": {
+      "stdout_sha256": "913914d70a17ee2ba7d4d3799f0c7f5d8ce698900b97fb061f6a48117226eac2",
+      "gc": {
+        "PYSTACHY_GC_STRESS_PROGRAM": "1"
+      }
+    },
+    "compatibility_probe/aot_gc": {
+      "stdout_sha256": "913914d70a17ee2ba7d4d3799f0c7f5d8ce698900b97fb061f6a48117226eac2",
+      "gc": {
+        "PYSTACHY_GC_STRESS": "1"
+      }
+    },
+    "record_worker/cpython": {
+      "stdout_sha256": "2fef3af04d66ef08006d308ca19cadce89e4e7c6ba8f481847abfdbfe7d41218",
+      "gc": {}
+    },
+    "record_worker/jit": {
+      "stdout_sha256": "2fef3af04d66ef08006d308ca19cadce89e4e7c6ba8f481847abfdbfe7d41218",
+      "gc": {}
+    },
+    "record_worker/aot": {
+      "stdout_sha256": "2fef3af04d66ef08006d308ca19cadce89e4e7c6ba8f481847abfdbfe7d41218",
+      "gc": {}
+    },
+    "record_worker/jit_gc": {
+      "stdout_sha256": "2fef3af04d66ef08006d308ca19cadce89e4e7c6ba8f481847abfdbfe7d41218",
+      "gc": {
+        "PYSTACHY_GC_STRESS_PROGRAM": "1"
+      }
+    },
+    "record_worker/aot_gc": {
+      "stdout_sha256": "2fef3af04d66ef08006d308ca19cadce89e4e7c6ba8f481847abfdbfe7d41218",
+      "gc": {
+        "PYSTACHY_GC_STRESS": "1"
+      }
+    },
+    "hosted_lifetime": {
+      "stdout_sha256": "8bd7ff3dd9c2c1b8f8ea1468b591d96a699132e753047a5a3b52fd266981573e"
+    },
+    "ownership": {
+      "sanitizers": true,
+      "leak_check": false,
+      "stdout_sha256": "d17ae19aa128d4d30c54a3e6c7d77cc9afde2d024ab831954084ce5e68aeba7b"
+    }
+  },
+  "sources_before": {
+    "examples/comm/bridge.c": "c5ab6ca21b3ceea273341b454df36427906434b087d80154d4a30c83500b72f1",
+    "examples/comm/bridge.h": "35632d4cd15b9a6982c37fc917043704d675fc9d932de0ed446cc4b0df2dd8ed",
+    "examples/comm/comm.py": "c73f3ff0964cdf57f3d7418de84784f811e560d555c81f99ec188f6e31dbfdc7",
+    "examples/comm/exercise.py": "d238b17be0901fb094cc6a783d3df0c3113750999ec4c17c3052e203afaa0d07",
+    "examples/comm/ownership.c": "a491d40d6247e83a763402ec8f30eb9345d8d41e8d23b158626d112a0c59ac05",
+    "examples/comm/check.py": "95803c99e3a68f437fdf7babd8aeddd0a44b6b7a2cad24a008a7e176bfdc7304",
+    "examples/comm/compatibility_probe.py": "939637e628ad9fc5cadbccf0d056130cf4134f3bf3c5d766c4b346bc2226b862",
+    "examples/comm/record_worker.py": "df199000d19a348421e9ec15d3985892390233e1d35f00a90d8ad7c7a0a2267b",
+    "tools/rt_cpython/ffi.py": "0d065918b07fcbfc214c5840e555ec020bc0ff46db8c0d2033e79cadfe704b4f"
+  },
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.39",
+  "python": "3.13.16 (main, Oct 14 2026, 01:04:01) [Clang 23.1.3 ]",
+  "commit": "1f9dff01d4c37981be3e612def3c6fcff683b94a",
+  "repeat": 8,
+  "cc_version": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+  "compiler_command": [
+    "./pystachy"
+  ],
+  "compiler_sha256": "867009465e202a92f8e7dc19f9c6c7732ca13c9888d24d9ca43bf644aae87f30",
+  "bridge_sha256": "3fef974c80a44256aa9fba2790f18a6fc96c883347b95194bf90b5293008cfa2",
+  "sources_after": {
+    "examples/comm/bridge.c": "c5ab6ca21b3ceea273341b454df36427906434b087d80154d4a30c83500b72f1",
+    "examples/comm/bridge.h": "35632d4cd15b9a6982c37fc917043704d675fc9d932de0ed446cc4b0df2dd8ed",
+    "examples/comm/comm.py": "c73f3ff0964cdf57f3d7418de84784f811e560d555c81f99ec188f6e31dbfdc7",
+    "examples/comm/exercise.py": "d238b17be0901fb094cc6a783d3df0c3113750999ec4c17c3052e203afaa0d07",
+    "examples/comm/ownership.c": "a491d40d6247e83a763402ec8f30eb9345d8d41e8d23b158626d112a0c59ac05",
+    "examples/comm/check.py": "95803c99e3a68f437fdf7babd8aeddd0a44b6b7a2cad24a008a7e176bfdc7304",
+    "examples/comm/compatibility_probe.py": "939637e628ad9fc5cadbccf0d056130cf4134f3bf3c5d766c4b346bc2226b862",
+    "examples/comm/record_worker.py": "df199000d19a348421e9ec15d3985892390233e1d35f00a90d8ad7c7a0a2267b",
+    "tools/rt_cpython/ffi.py": "0d065918b07fcbfc214c5840e555ec020bc0ff46db8c0d2033e79cadfe704b4f"
+  }
+}

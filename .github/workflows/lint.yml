@@ -87,6 +87,10 @@ jobs:
 
       - name: Native text reads on open pipes
         run: PYSTACHY_TEXT_READ_COMPILER='python3 -m pystachy' python3 -m unittest discover -s tools -p test_text_read_progress.py
+      - name: Owned communication buffer and completion checks
+        run: |
+          python3 -m unittest discover -s tools -p 'test_comm_*.py'
+          python3 examples/comm/check.py --compiler 'python3 -m pystachy' --cc "$PYSTACHY_LLVM/clang" --sanitizers --leak-check
 
       - name: Install sanitizer runtime for generated-code controls
         run: sudo apt-get update && sudo apt-get install -y libclang-rt-18-dev
