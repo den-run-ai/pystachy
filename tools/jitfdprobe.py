@@ -46,7 +46,7 @@ for target in fds:
         os.set_inheritable(target, True)
         if reader != target:
             os.close(reader)
-os.execv(sys.argv[2], sys.argv[2:])
+os.execvp(sys.argv[2], sys.argv[2:])
 '''
 
 EXEC_FAILURE = r'''import builtins

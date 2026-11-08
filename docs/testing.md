@@ -857,6 +857,11 @@ compilation overhead and does not establish that lookup tables are deeply immuta
 
 The [Lint workflow](../.github/workflows/lint.yml) runs alongside CI: `make check-fast lint`,
 report-gate tests and recording checks use the pinned CPython and require no compiler bootstrap.
+The verification-harness and compiler-state control suites overlap as two isolated
+unittest processes. Lint waits for both, prints their logs separately and fails if
+either suite fails; the same coverage runs for documentation PRs, main and manual runs.
+The coordinator preserves normal SIGINT handling, cancels both process groups and
+reaps the suite processes before returning from SIGINT or SIGTERM cancellation.
 `make check-repository`, included in `check-fast`, rejects root `research` paths in
 the Git index and tests the gate against temporary repositories. It checks tracked
 files even when ignored; local untracked experiments are outside the merge gate.
