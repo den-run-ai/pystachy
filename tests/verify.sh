@@ -100,7 +100,8 @@
 #                  finite controls and reuse at the retained-instance boundary still compile
 #   jit-dead-code  tools/jitprobe.py: unused functions never reach lli, and a small helper reaches it
 #                  inlined (not with PYSTACHY_JIT_INLINE=0); live code and runtime callbacks still
-#                  execute as in CPython, with both compilers
+#                  execute as in CPython, with both compilers; jitfdprobe.py preserves inherited
+#                  pipes across shared/object runtime, embedding and cached launches
 #   aot-dead-code  tools/aotprobe.py: an AOT build defines pys_plain; a program that opts in to
 #                  neither dynamic Any nor promoting ints keeps none of their runtime helpers, and
 #                  its list stores none of their companion code; direct and imported opt-ins
@@ -1111,7 +1112,8 @@ contracts_d() {
 # ---- JIT dead code: inspect the actual execution module, without a timing threshold
 if want jit-dead-code; then
 L=$V/jit-dead-code.log; s=$(now); r=fail
-$PY tools/jitprobe.py -c "hosted=$PY -m pystachy" -c "native=$V/pystachy2" > "$L" 2>&1 && r=pass
+$PY tools/jitprobe.py -c "hosted=$PY -m pystachy" -c "native=$V/pystachy2" > "$L" 2>&1 &&
+$PY tools/jitfdprobe.py -c "hosted=$PY -m pystachy" -c "native=$V/pystachy2" >> "$L" 2>&1 && r=pass
 step jit-dead-code $r "$s" "$L" ', "unused_functions": 35, "compilers": ["CPython-hosted", "stage2"]'
 fi
 

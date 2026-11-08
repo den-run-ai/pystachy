@@ -14,9 +14,12 @@ from src.pystachy_compiler.diagnostics import RAW
 from src.pystachy_compiler import cache_toolchain
 try:
     # Shipped native-only primitives; CPython uses the bounded reference loops.
-    from _pystachy_cache import NATIVE, file_hash as native_file_hash  # type: ignore[import-not-found]
+    from _pystachy_cache import NATIVE, lock_fd, file_hash as native_file_hash  # type: ignore[import-not-found]
 except ImportError:
     NATIVE = False
+
+    def lock_fd() -> int:
+        return -1
 
     def native_file_hash(path: str, limit: int) -> str:
         return ""
@@ -375,7 +378,7 @@ def _bucket_lock(root: str, bucket: str) -> str:
 
 
 def lock_held(cache_root: str, context: str) -> bool:
-    # The launch layer proves kernel lock ownership before using this inherited
+    # The launch layer proves kernel lock ownership before using this owned
     # descriptor. No successful-launch marker enters the program environment.
     root = _cache_dir(cache_root)
     return root != "" and _holds_bucket(root, fnv(context)[:2])
@@ -383,7 +386,7 @@ def lock_held(cache_root: str, context: str) -> bool:
 
 def _holds_bucket(root: str, bucket: str) -> bool:
     try:
-        return os.path.samefile(root + "/lock-" + bucket, "/proc/self/fd/9")
+        return lock_fd() >= 0 and os.path.samefile(root + "/lock-" + bucket, "/proc/self/fd/" + str(lock_fd()))
     except (OSError, ValueError):
         return False
 
@@ -520,8 +523,8 @@ def _bucket_action(root: str, bucket: str, held: str, command: str) -> bool:
     lock = _bucket_lock(root, bucket)
     if lock == "":
         return False
-    # The child has its own descriptor, while FD9 belongs to the running
-    # compiler. Nonblocking acquisition avoids a lock-order cycle between two
+    # The shell child has its own descriptor; it cannot replace descriptors in
+    # the running compiler. Nonblocking acquisition avoids a lock-order cycle between two
     # different compilers pruning each other's entries.
     return _sh("(exec 7> " + _q(lock) + " && /usr/bin/flock -n 7 && " + command + ")")
 

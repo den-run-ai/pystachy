@@ -179,7 +179,7 @@ Here `/tmp/program.raw.ll` must be emitted from the same source and settings as
 the captured build. The Clang command replays the default AOT optimizer; preserve
 any extra compilation flags when investigating a non-default build. It does not
 capture machine-code instructions. For executed JIT bitcode, the `lli` wrapper
-in [`tools/jitprobe.py`](../tools/jitprobe.py) reads `/dev/fd/9` before execution;
+in [`tools/jitprobe.py`](../tools/jitprobe.py) reads lli's bitcode input descriptor before execution;
 do not label raw-IR `opt -O2` output as the JIT pipeline.
 
 Read `modules[LABEL].functions[NAME].calls` for a specific function, and compare

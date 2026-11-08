@@ -1,18 +1,24 @@
 """Private native-program cache operations for the CLI compiler.
 
-The native lock is nonblocking and stays on descriptor 9 until process exit or
-exec. The compiler supplies the bounded wait and its CPython-hosted fallback.
+The native lock is nonblocking and owns an allocated descriptor until process exit
+or exec; it never replaces a descriptor inherited from the caller. The compiler
+supplies the bounded wait; the CPython-hosted compiler bypasses this cache.
 Programs do not call the private runtime primitive directly.
 """
 import sys
 
-__all__ = ["NATIVE", "try_lock", "file_hash"]
+__all__ = ["NATIVE", "try_lock", "lock_fd", "file_hash"]
 NATIVE: bool = sys.implementation.name == "pystachy"
 
 
 def try_lock(path: str) -> int:
     """Return 1 for an acquired lock, 0 for busy, and -1 for an unusable path."""
     return __pys_cache_lock(path)
+
+
+def lock_fd() -> int:
+    """Return our current lock descriptor, or -1 before acquiring any lock."""
+    return __pys_cache_lock_fd()
 
 
 def file_hash(path: str, limit: int) -> str:

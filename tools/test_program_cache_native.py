@@ -19,7 +19,7 @@ HAVE_LLVM = all(shutil.which(str(Path(LLVM) / tool) if LLVM else tool)
                 for tool in ("clang", "opt", "lli", "llvm-link", "llvm-as"))
 PROGRAM = '''import os
 import sys
-from _pystachy_cache import file_hash, try_lock
+from _pystachy_cache import file_hash, lock_fd, try_lock
 
 path, previous, mode = sys.argv[1], sys.argv[2], sys.argv[3]
 if mode == "nul" or mode == "hash-nul":
@@ -34,14 +34,24 @@ elif mode == "hash-repeat":
         file_hash(path + "/missing", int(previous))
     print(before == sorted(os.listdir("/proc/self/fd")))
 else:
+    try:
+        inherited = os.path.samefile("/proc/self/fd/9", previous)
+    except OSError:
+        inherited = False
+    if mode == "replace" or mode == "retain":
+        assert try_lock(previous) == 1
+    owned = lock_fd()
     status = try_lock(path)
+    if inherited:
+        assert os.path.samefile("/proc/self/fd/9", previous)
     expected = path if status == 1 else previous
     try:
-        correct_descriptor = os.path.samefile("/proc/self/fd/9", expected)
+        correct_descriptor = (lock_fd() == -1 if status != 1 and owned == -1
+                              else os.path.samefile("/proc/self/fd/" + str(lock_fd()), expected))
     except OSError:
         correct_descriptor = False
     print(status, correct_descriptor, flush=True)
-    if mode == "hold":
+    if mode == "hold" or mode == "replace" or mode == "retain":
         copies = 0
         for name in os.listdir("/proc/self/fd"):
             try:
@@ -52,7 +62,7 @@ else:
         print("copies", copies, flush=True)
         input()
     elif mode == "exec":
-        os.execv("/bin/sh", ["sh", "-c", "if [ -e /proc/self/fd/9 ]; then printf 'leaked\\\\n'; else printf 'exec-ready\\\\n'; fi; IFS= read -r line; exit 0"])
+        os.execv("/bin/sh", ["sh", "-c", "if [ -e /proc/self/fd/" + str(lock_fd()) + " ]; then printf 'leaked\\\\n'; else printf 'exec-ready\\\\n'; fi; IFS= read -r line; exit 0"])
 '''
 
 # Independent reference: CPython's public descriptor and flock operations.
@@ -68,7 +78,13 @@ def file_hash(path, limit):
     with patch.object(pc, \"MAX_BINARY\", limit):
         return pc._file_hash(path)
 
+_lock_fd = -1
+
+def lock_fd():
+    return _lock_fd
+
 def try_lock(path):
+    global _lock_fd
     descriptor = -1
     acquired = False
     try:
@@ -80,16 +96,15 @@ def try_lock(path):
             fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
             return 0
-        if descriptor != 9:
-            os.dup2(descriptor, 9, inheritable=False)
-        else:
-            os.set_inheritable(9, False)
+        if _lock_fd >= 0:
+            os.close(_lock_fd)
+        _lock_fd = descriptor
         acquired = True
         return 1
     except (OSError, ValueError):
         return -1
     finally:
-        if descriptor >= 0 and (descriptor != 9 or not acquired):
+        if descriptor >= 0 and not acquired:
             os.close(descriptor)
 '''
 # Set inherited descriptors in a separate process, without changing the test runner's.
@@ -188,7 +203,7 @@ class NativeProgramCacheLockTests(unittest.TestCase):
         output, error = child.communicate("done\n", timeout=10)
         self.assertEqual((child.returncode, output, error), (0, "", ""))
 
-    def test_acquired_lock_replaces_descriptor_nine(self):
+    def test_acquired_lock_retains_its_allocated_descriptor(self):
         self.compare("1 True")
 
     def test_open_returning_descriptor_nine_keeps_the_lock(self):
@@ -217,20 +232,29 @@ class NativeProgramCacheLockTests(unittest.TestCase):
             self.skipTest("fixture ownership cannot change in this namespace: " + str(error))
         self.compare("-1 True")
 
-    def test_acquisition_closes_temporary_descriptor_and_releases_previous_lock(self):
+    def test_acquisition_keeps_inherited_descriptors_and_locks(self):
         for native in (False, True):
             with self.subTest(native=native), self.spawn(native, mode="hold", setup="locked") as child:
                 self.assertEqual(self.line(child), "1 True\n")
                 self.assertTrue(self.busy(self.lock))
-                self.assertFalse(self.busy(self.previous))
+                self.assertTrue(self.busy(self.previous))
                 self.assertEqual(self.line(child), "copies 1\n")
                 self.finish(child)
 
     def test_failed_acquisition_retains_the_previous_lock(self):
         for native in (False, True):
-            with self.subTest(native=native), self.spawn(native, self.base / "missing", "hold", "locked") as child:
+            with self.subTest(native=native), self.spawn(native, self.base / "missing", "retain") as child:
                 self.assertEqual(self.line(child), "-1 True\n")
                 self.assertTrue(self.busy(self.previous))
+                self.assertEqual(self.line(child), "copies 2\n")
+                self.finish(child)
+
+    def test_replacement_releases_only_our_previous_lock(self):
+        for native in (False, True):
+            with self.subTest(native=native), self.spawn(native, mode="replace") as child:
+                self.assertEqual(self.line(child), "1 True\n")
+                self.assertTrue(self.busy(self.lock))
+                self.assertFalse(self.busy(self.previous))
                 self.assertEqual(self.line(child), "copies 1\n")
                 self.finish(child)
 
@@ -282,16 +306,19 @@ class NativeProgramCacheLockTests(unittest.TestCase):
         directory = self.base / "shadow"
         directory.mkdir()
         program = directory / "probe.py"
-        for source in ('print(__pys_cache_lock("path"))\n',
-                       'from _pystachy_cache import try_lock\nprint(try_lock("path"))\n'):
-            program.write_text(source)
-            (directory / "_pystachy_cache.py").write_text(
-                'def try_lock(path: str) -> int:\n    return __pys_cache_lock(path)\n')
-            result = subprocess.run([sys.executable, str(ROOT / "pystachy.py"), "ir", str(program),
-                                     "-o", str(directory / "probe.ll")], cwd=ROOT, capture_output=True,
-                                    text=True, env=self.environment, timeout=30)
-            self.assertEqual(result.returncode, 1)
-            self.assertIn("name '__pys_cache_lock' is not defined", result.stderr)
+        for primitive, arguments, definition, call in (
+                ("__pys_cache_lock", '"path"', 'def try_lock(path: str) -> int:\n    return __pys_cache_lock(path)\n', 'try_lock("path")'),
+                ("__pys_cache_lock_fd", '', 'def lock_fd() -> int:\n    return __pys_cache_lock_fd()\n', 'lock_fd()')):
+            for source in (f'print({primitive}({arguments}))\n',
+                           f'from _pystachy_cache import {call.split("(")[0]}\nprint({call})\n'):
+                program.write_text(source)
+                (directory / "_pystachy_cache.py").write_text(definition)
+                result = subprocess.run([sys.executable, str(ROOT / "pystachy.py"), "ir", str(program),
+                                         "-o", str(directory / "probe.ll")], cwd=ROOT, capture_output=True,
+                                        text=True, env=self.environment, timeout=30)
+                self.assertEqual(result.returncode, 1)
+                self.assertIn("name '" + primitive + "' is not defined", result.stderr)
+
 
 
 if __name__ == "__main__":

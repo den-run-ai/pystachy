@@ -213,6 +213,7 @@ streamprobe: pystachy
 # Inspect the bitcode passed to lli, then run it: dead functions must not reach code generation.
 jitprobe: pystachy
 	$(PY) tools/jitprobe.py
+	$(PY) tools/jitfdprobe.py
 
 # AOT drops opt-in runtime code only when neither the program nor an import opts in.
 aotprobe: pystachy

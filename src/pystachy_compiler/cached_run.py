@@ -74,21 +74,8 @@ def acquire(program_root: str, context: str) -> bool:
             if result != 0:
                 return result == 1
         return False
-    if not os.path.isfile("/usr/bin/flock"):
-        return False
-    if pc._holds_bucket(program_root, bucket):
-        # The inherited descriptor and real kernel lock establish ownership;
-        # no successful-launch marker needs to enter the program environment.
-        return pc._sh("/usr/bin/flock -n 9")
-    command = " ".join([quote(a) for a in sys.argv])
-    # A failed open/acquisition restarts with caching disabled. Restore stderr
-    # before the compiler runs so all of its diagnostics remain visible.
-    run = "exec " + command
-    fallback = "PYSTACHY_PROGRAM_CACHE_LOCK=bypass exec " + command
-    script = ("if { /usr/bin/flock -w 30 9 && { exec 2>&7 7>&-; " + run
-              + "; }; } 7>&2 2>/dev/null 9< " + quote(lock)
-              + "; then exit 0; fi; " + fallback)
-    os.execv("/bin/sh", ["sh", "-c", script])
+    # prepare() already requires the native compiler. Without its private
+    # lock primitive, bypass caching rather than assigning an inherited fd.
     return False
 
 
@@ -289,10 +276,8 @@ def execute(executable: str, source: str, args: list[str]) -> None:
     try:
         f = open(executable, "r", encoding="latin-1", newline="")
         try:
-            # Native acquisition marks FD9 close-on-exec. The kernel opens the
-            # pinned ELF before closing that lock, with no child launch needed.
-            if not NATIVE:
-                pc._sh("/usr/bin/flock -u 9")
+            # Acquisition marks its own lock descriptor close-on-exec. The
+            # kernel opens the pinned ELF before closing the lock.
             os.environ.pop("PYSTACHY_PROGRAM_CACHE_LOCK", "")
             if stress != "":
                 os.environ.__setitem__("PYSTACHY_GC_STRESS", stress)

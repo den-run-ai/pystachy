@@ -151,6 +151,8 @@ check complements the full opt-in corpus sweep, `make dynany-optin`), `make dict
 store's `-O2` code, plain or not, the allocations `allocelide` lets `-O2` delete and those it
 keeps, with the objects they hold, and the allocation window between collections that
 `PYSTACHY_GC_MIN` sets).
+`make jitprobe` also checks inherited descriptor preservation, closed stdin, shared/object
+runtime inputs, embedding, temporary cleanup and native program-cache miss/hit launches.
 They use deterministic operation or allocation limits where possible; shared CI runners do
 not gate on benchmark speed.
 

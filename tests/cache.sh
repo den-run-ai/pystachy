@@ -80,7 +80,7 @@ for t in clang llvm-as llvm-link opt lli; do
     llvm-link) hook="if [ \"\$1\" != --only-needed ]; then [ -z \"\$CACHE_FAIL\" ] || exit 1; [ -z \"\$CACHE_EDIT\" ] || sh '$T/edit.sh'; fi" ;;
     opt) hook="if [ \"\$1\" = -O2 ] && [ -n \"\$CACHE_KILL\" ]; then '$real' \"\$@\"; p=\$PPID
   case \$(ps -o comm= -p \$p) in sh | dash | bash) p=\"\$p \$(ps -o ppid= -p \$p)\" ;; esac; kill -9 \$p; exit 1; fi" ;;
-    lli) hook="case \" \$* \" in *\" -dlopen=/dev/fd/8 \"*) echo so ;; *) echo o ;; esac >> '$T/loaded'" ;;
+    lli) hook="kind=o; for arg do case \"\$arg\" in -dlopen=/dev/fd/[0-9]*) kind=so ;; esac; done; echo \"\$kind\" >> '$T/loaded'" ;;
     clang) hook=:; realdir=$(dirname "$real") ;;
     *) hook=: ;;
   esac
