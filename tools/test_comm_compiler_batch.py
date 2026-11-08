@@ -179,9 +179,42 @@ class CompilerBatchTests(unittest.TestCase):
         self.assertFalse((self.directory / "0.ll").exists())
 
     def test_invalid_bounds_fail_before_launch(self):
-        for bounds in [{"workers": 0}, {"workers": 9}, {"timeout": 0}, {"diagnostic_limit": 0}]:
-            with self.subTest(bounds=bounds), self.assertRaises(ValueError):
-                BATCH.run_batch([], **bounds)
+        invalid = [
+            {"workers": 0}, {"workers": 3}, {"workers": 8},
+            {"workers": True}, {"workers": 1.5},
+            {"timeout": 0}, {"timeout": -1}, {"timeout": 900.01},
+            {"timeout": float("inf")}, {"timeout": float("-inf")},
+            {"timeout": float("nan")}, {"diagnostic_limit": 0},
+        ]
+        for index, bounds in enumerate(invalid):
+            job = self.job(index, "print('must not start')")
+            with self.subTest(bounds=bounds):
+                with patch.object(BATCH.subprocess, "Popen", side_effect=AssertionError("unexpected launch")) as launch:
+                    with self.assertRaises(ValueError):
+                        BATCH.run_batch([job], **bounds)
+                    launch.assert_not_called()
+                self.assertFalse(job.artifact.exists())
+
+    def test_worker_and_timeout_bounds_accept_valid_edges(self):
+        for workers in (1, 2):
+            for timeout in (.001, 900):
+                with self.subTest(workers=workers, timeout=timeout):
+                    result = BATCH.run_batch([], workers=workers, timeout=timeout)
+                    self.assertEqual(result["workers"], workers)
+                    self.assertEqual(result["records"], [])
+
+    def test_cli_bounds_fail_before_validation_or_output_creation(self):
+        invalid = ["--workers=0", "--workers=3", "--timeout=0", "--timeout=900.01",
+                   "--timeout=inf", "--timeout=-inf", "--timeout=nan"]
+        for index, option in enumerate(invalid):
+            output = self.directory / f"invalid_{index}"
+            with self.subTest(option=option), patch("sys.stderr"):
+                with patch.object(BATCH.subprocess, "run", side_effect=AssertionError("unexpected validation")) as run:
+                    with self.assertRaises(SystemExit) as raised:
+                        BATCH.main(["--directory", str(output), option])
+                    self.assertEqual(raised.exception.code, 2)
+                    run.assert_not_called()
+                self.assertFalse(output.exists())
 
 
 @unittest.skipUnless(os.name == "posix", "coordinator signal ownership is POSIX-only")

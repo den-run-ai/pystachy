@@ -6,7 +6,10 @@ and diagnostic bytes, writes large artifacts directly to files, and delivers
 at most one 4096-byte ASCII JSON completion record at a time. Completed jobs still
 occupy their admission slot until the record is acknowledged. Every child has a
 private process group; failure/deadline cleanup kills owned groups and reaps direct
-children. During `run_batch`, SIGINT/SIGTERM request cancellation at safe points,
+children. Admission allows one or two compiler jobs. The per-job timeout must be
+finite, positive and at most 900 seconds (default 120), including completion
+acknowledgment. Invalid CLI limits fail before validation work or output creation.
+During `run_batch`, SIGINT/SIGTERM request cancellation at safe points,
 including immediately after each child is registered. Cleanup finishes before
 `SystemExit(128 + signal number)` propagates (130 for SIGINT, 143 for SIGTERM);
 repeated signals cannot interrupt cleanup. This POSIX coordinator runs on the

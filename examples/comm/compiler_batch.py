@@ -11,6 +11,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import platform
@@ -26,6 +27,8 @@ import time
 
 ROOT = Path(__file__).resolve().parents[2]
 RECORD_LIMIT = 4096
+MAX_WORKERS = 2
+MAX_TIMEOUT = 900
 
 
 @dataclass
@@ -122,12 +125,20 @@ def record_for(state):
     return encoded
 
 
+def validate_worker_limits(workers, timeout):
+    if type(workers) is not int or not 1 <= workers <= MAX_WORKERS:
+        raise ValueError(f"workers must be an integer between 1 and {MAX_WORKERS}")
+    if not math.isfinite(timeout) or not 0 < timeout <= MAX_TIMEOUT:
+        raise ValueError(f"timeout must be finite, positive and at most {MAX_TIMEOUT} seconds")
+
+
 def run_batch(jobs, *, workers=2, transport="direct", handler_command=None,
               timeout=120.0, diagnostic_limit=1048576, cwd=ROOT, env=None):
     """Run jobs with bounded admission, concurrent diagnostics and ordered acks.
 
-    At most ``workers`` jobs are admitted, including completed jobs awaiting
-    acknowledgment.  Each owns a separate process group.  At most one completion
+    One or two workers admit jobs, including completed jobs awaiting
+    acknowledgment. The timeout must be finite, positive and at most 900 seconds.
+    Each job owns a separate process group. At most one completion
     record is in flight to the handler. All owned groups are killed and direct
     children reaped on failures, SIGINT or SIGTERM. This POSIX coordinator must
     run on the main thread; cancellation raises SystemExit(128 + signal number)
@@ -143,8 +154,9 @@ def run_batch(jobs, *, workers=2, transport="direct", handler_command=None,
 
 def _run_batch(jobs, *, workers, transport, handler_command, timeout,
                diagnostic_limit, cwd, env, check_cancelled):
-    if workers < 1 or workers > 8 or timeout <= 0 or diagnostic_limit < 1:
-        raise ValueError("invalid worker, timeout or diagnostic bound")
+    validate_worker_limits(workers, timeout)
+    if diagnostic_limit < 1:
+        raise ValueError("invalid diagnostic bound")
     if transport not in ("direct", "comm", "handler"):
         raise ValueError("unknown completion transport")
     if transport == "handler" and not handler_command:
@@ -413,17 +425,22 @@ def main(argv=None):
     parser.add_argument("--compiler", default=str(ROOT / "pystachy"))
     parser.add_argument("--compiler-command", help="JSON argv overrides --compiler")
     parser.add_argument("--directory", required=True, type=Path, help="fresh output directory")
-    parser.add_argument("--workers", type=int, default=2)
+    parser.add_argument("--workers", type=int, default=2, help="parallel compiler jobs (1 or 2)")
     parser.add_argument("--samples", type=int, default=3)
     parser.add_argument("--warmups", type=int, default=1)
     parser.add_argument("--mode", choices=("ir", "aot", "both"), default="both")
     parser.add_argument("--transport", choices=("comm", "handler"), default="comm")
     parser.add_argument("--handler-command", help="JSON argv for persistent newline record echo worker")
-    parser.add_argument("--timeout", type=float, default=120)
+    parser.add_argument("--timeout", type=float, default=120,
+                        help="positive seconds per job including acknowledgment, at most 900")
     parser.add_argument("--sources", nargs="*", type=Path)
     args = parser.parse_args(argv)
     if args.samples < 1 or args.samples > 30 or args.warmups < 1 or args.warmups > 3:
         parser.error("samples must be 1–30 and warmups must be 1–3")
+    try:
+        validate_worker_limits(args.workers, args.timeout)
+    except ValueError as error:
+        parser.error(str(error))
     directory = args.directory.resolve()
     directory.mkdir(parents=True, exist_ok=False)
     report = {"result": "fail", "samples": [], "warmups": [], "python": sys.version,
