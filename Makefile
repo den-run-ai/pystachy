@@ -98,9 +98,17 @@ bench-pyperformance: $(BENCH_COMPILER)
 
 # Optional libuv TCP prototype; no libuv dependency for ordinary builds/check-fast.
 UVIO_CHECK_ARGS ?=
-.PHONY: uvio-check
+UVIO_DOGFOOD_ARGS ?=
+.PHONY: uvio-check uvio-dogfood-check bench-uvio
 uvio-check: $(BENCH_COMPILER)
 	$(PY) examples/uvio/check.py --compiler "$(BENCH_COMPILER)" $(UVIO_CHECK_ARGS)
+
+uvio-dogfood-check: $(BENCH_COMPILER)
+	$(PY) -m unittest discover -s tools -p test_uvio_dogfood.py
+	$(PY) examples/uvio/dogfood.py --compiler "$(BENCH_COMPILER)" --samples 1 --rounds 2 --chunks 4096 --concurrency 2 --json build/uvio-dogfood-smoke.json $(UVIO_DOGFOOD_ARGS)
+
+bench-uvio: $(BENCH_COMPILER)
+	$(PY) examples/uvio/dogfood.py --compiler "$(BENCH_COMPILER)" $(UVIO_DOGFOOD_ARGS)
 
 # The optional cblas_dgemm adapter (examples/ndarray/README.md) and nanoGPT's fused-bias linear:
 # correctness only, no timings. Needs an LP64 libblas.so.3 (Ubuntu: libopenblas0-pthread or libblas3;
@@ -394,6 +402,7 @@ check-fast: lint-python typecheck check-repository
 	$(PY) -m unittest discover -s tools -p test_source_lines.py
 	$(PY) -m unittest discover -s tools -p test_pystachy_toolchain.py
 	$(PY) -m unittest discover -s tools -p test_check_uvio.py
+	$(PY) -m unittest discover -s tools -p test_uvio_dogfood.py
 
 check-repository:
 	$(PY) tools/check_repository_hygiene.py
