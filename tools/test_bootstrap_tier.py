@@ -15,6 +15,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+import check_bootstrap_tier
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src.pystachy_compiler import driver
 
@@ -118,6 +120,19 @@ driver.main()
 
 
 class MakeBootstrapControls(unittest.TestCase):
+    def test_qualification_forces_rebuild_of_a_newer_existing_target(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "source").touch()
+            (root / "pystachy").write_text("stale compiler\n")
+            os.utime(root / "source", (1, 1))
+            (root / "Makefile").write_text(
+                'pystachy: source\n\ttest "$(BOOTSTRAP_AOT_OPT)" = 1\n'
+                '\tprintf "rebuilt\\n" > pystachy\n')
+            with (root / "make.log").open("w") as log:
+                check_bootstrap_tier.make_bootstrap(root, environment(root), log)
+            self.assertEqual((root / "pystachy").read_text(), "rebuilt\n")
+
     def run_make(self, tier=None, mismatch=""):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

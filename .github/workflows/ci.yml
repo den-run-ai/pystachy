@@ -90,6 +90,9 @@ jobs:
           if-no-files-found: error
           retention-days: 7
           overwrite: true  # allow a producer rerun; consumers still validate this run and commit
+      - name: Compare O1 temporary compiler with verified O2 bootstrap
+        if: steps.plan.outputs.kind == 'code' && matrix.machine == 'x86_64'
+        run: python3 tools/check_bootstrap_tier.py build/ci-bootstrap
       - name: ARM64 installation, FFI and ABI smoke
         if: steps.plan.outputs.kind == 'code' && github.event_name == 'pull_request' && matrix.machine == 'aarch64'
         run: |
@@ -115,6 +118,8 @@ jobs:
             build/verify/bootstrap.log
             build/verify/arm-ffi.log
             build/verify/arm-program-cache.json
+            build/bootstrap-tier/report.json
+            build/bootstrap-tier/make.log
           if-no-files-found: error
           retention-days: 7
           overwrite: true

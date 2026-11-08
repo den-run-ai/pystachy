@@ -499,6 +499,17 @@ The two variant workers and Linux distribution job reuse the same verified boots
 verification groups. Every consumer checks source bytes, commit, architecture, toolchain,
 workflow run and artifact hashes. Runtime caches stay private; Python-free and sanitized builds
 remain independent. Pip downloads are cached by the pinned dependency files.
+The x86-64 bootstrap job then runs `python3 tools/check_bootstrap_tier.py build/ci-bootstrap`.
+It forces the production Make recipe to rebuild with an O1 temporary compiler and an O2 final
+compiler, using the same checkout and a private runtime cache. All three compiler and all three
+runtime witnesses must match the standard bundle byte for byte; no path normalization is used.
+The check revalidates source, toolchain and run identity after the build and requires the standard
+bundle and verification report to remain unchanged. Consumers continue using the standard O2
+bundle. The separate `build/bootstrap-tier/report.json` and `make.log` are uploaded with the
+bootstrap report. Build durations and final executable hashes are diagnostic; performance remains
+inconclusive until controlled measurements. Lint separately executes scalar and allocating native
+programs at O0, O1 and O2, both normally and with program GC stress. These checks preserve the
+existing job/worker/time limits and do not qualify lower tiers for general application use.
 PR native work uses two JIT halves and two AOT halves, each with one execution mode.
 Both modes retain every corpus case; the inexpensive rejection and parser checks repeat.
 The aggregate requires every exact case/mode pair once and the producer's bootstrap identity,

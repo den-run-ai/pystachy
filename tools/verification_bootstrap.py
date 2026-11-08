@@ -160,7 +160,8 @@ def export_bundle(directory, root=ROOT):
     return bundle_id
 
 
-def restore_bundle(directory, root=ROOT):
+def load_bundle(directory, root=ROOT):
+    """Validate and read payload/restore fields without changing the checkout."""
     manifest_bytes = read_file(directory / "manifest.json")
     manifest = read_json(manifest_bytes)
     if not isinstance(manifest, dict) or manifest.get("schema") != 1:
@@ -183,6 +184,11 @@ def restore_bundle(directory, root=ROOT):
               if key not in ("name", "result", "seconds", "log")}
     fields.update(bootstrap_bundle_id=digest(manifest_bytes), bootstrap_reused=True,
                   producer_seconds=report["steps"][0]["seconds"])
+    return files, fields
+
+
+def restore_bundle(directory, root=ROOT):
+    files, fields = load_bundle(directory, root)
     work = root / "build/verify"
     if work.parent.is_symlink() or work.is_symlink():
         raise ValueError("bootstrap destination must not be a symlink")
