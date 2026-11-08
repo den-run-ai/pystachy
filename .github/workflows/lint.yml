@@ -172,8 +172,10 @@ jobs:
       - name: Generated regex matcher tests
         run: python3 -m unittest discover -s tools -p test_re_specialize.py
 
-      - name: Concurrency contract probes (docs/concurrency.md)
-        run: python3 -m unittest discover -s tools -p test_concurrency_contract.py
+      - name: Concurrency contract and local process ownership controls
+        run: |
+          python3 -m unittest discover -s tools -p test_concurrency_contract.py
+          python3 -m unittest discover -s tools -p 'test_process_worker*.py'
 
       - name: Native program cache manifests and tool inputs
         run: |
