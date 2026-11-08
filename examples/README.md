@@ -13,6 +13,7 @@ The extra requirements below are in addition to the compiler and its build toolc
 | [agent](agent/README.md) | Typed tool loop, JSON messages and recorded repair | [App corpus](../tests/programs/apps/example_agent.py); HTTP smoke in its guide | Linux and GNU coreutils; `curl` and a model server for live HTTP |
 | [byte_bpe](byte_bpe/README.md) | Educational byte tokenizer training and Unicode encode/decode | [App corpus](../tests/programs/apps/byte_bpe.py); pyperformance smoke | None |
 | [column](column/README.md) | Table alignment with `io.StringIO` | [App corpus](../tests/programs/apps/example_column.py) | None |
+| [comm](comm/README.md) | Owned host buffers, bounded completions and local reference collectives | CPython/native comparison and C ownership probe in its guide | Linux and a C compiler |
 | [csvstat](csvstat/README.md) | CSV parsing, reports and numeric statistics | [App corpus](../tests/programs/apps/example_csvstat.py) | None |
 | [cut](cut/README.md) | Field and character selection with `getopt` | [App corpus](../tests/programs/apps/example_cut.py) | None |
 | [id_filter](id_filter/README.md) | Dense bounded ID masks and faceted document filtering | [App corpus](../tests/programs/apps/example_id_filter.py) with independent set oracles | None |

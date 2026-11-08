@@ -65,8 +65,10 @@ jobs:
           PYSTACHY_TEST_LLVM="$PYSTACHY_LLVM" python3 -m unittest discover -s tools -p test_retained_ir.py
           PYSTACHY_TEST_LLVM="$PYSTACHY_LLVM" python3 -m unittest discover -s tools -p test_bootstrap_tier.py
 
-      - name: CI verification harness and report gate tests
-        run: python3 -m unittest discover -s tools -p 'test_*verif*.py'
+      - name: Verification harness and compiler state controls
+        run: |
+          python3 -m unittest discover -s tools -p test_lint_controls.py
+          python3 tools/lint_controls.py 'test_*verif*.py' 'test_compiler_state*.py'
 
       - name: Compact CI sampling and variant controls
         run: |
@@ -87,6 +89,10 @@ jobs:
 
       - name: Native text reads on open pipes
         run: PYSTACHY_TEXT_READ_COMPILER='python3 -m pystachy' python3 -m unittest discover -s tools -p test_text_read_progress.py
+      - name: Owned communication buffer and completion checks
+        run: |
+          python3 -m unittest discover -s tools -p 'test_comm_*.py'
+          python3 examples/comm/check.py --compiler 'python3 -m pystachy' --cc "$PYSTACHY_LLVM/clang" --sanitizers --leak-check
 
       - name: Install sanitizer runtime for generated-code controls
         run: sudo apt-get update && sudo apt-get install -y libclang-rt-18-dev
@@ -140,9 +146,6 @@ jobs:
       - name: Compiler function-state lists (Gen, Frame, gen_save, gen_restore, gen_enter)
         run: python3 -m unittest discover -s tools -p test_frame_fields.py
 
-      - name: Compiler state contract controls
-        run: python3 -m unittest discover -s tools -p 'test_compiler_state*.py'
-
       - name: JSON benchmark evidence tests
         run: python3 -m unittest discover -s tools -p test_bench_json.py
 
@@ -170,8 +173,10 @@ jobs:
       - name: Generated regex matcher tests
         run: python3 -m unittest discover -s tools -p test_re_specialize.py
 
-      - name: Concurrency contract probes (docs/concurrency.md)
-        run: python3 -m unittest discover -s tools -p test_concurrency_contract.py
+      - name: Concurrency contract and local process ownership controls
+        run: |
+          python3 -m unittest discover -s tools -p test_concurrency_contract.py
+          python3 -m unittest discover -s tools -p 'test_process_worker*.py'
 
       - name: Native program cache manifests and tool inputs
         run: |

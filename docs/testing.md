@@ -866,6 +866,11 @@ compilation overhead and does not establish that lookup tables are deeply immuta
 
 The [Lint workflow](../.github/workflows/lint.yml) runs alongside CI: `make check-fast lint`,
 report-gate tests and recording checks use the pinned CPython and require no compiler bootstrap.
+The verification-harness and compiler-state control suites overlap as two isolated
+unittest processes. Lint waits for both, prints their logs separately and fails if
+either suite fails; the same coverage runs for documentation PRs, main and manual runs.
+The coordinator preserves normal SIGINT handling, cancels both process groups and
+reaps the suite processes before returning from SIGINT or SIGTERM cancellation.
 `make check-repository`, included in `check-fast`, rejects root `research` paths in
 the Git index and tests the gate against temporary repositories. It checks tracked
 files even when ignored; local untracked experiments are outside the merge gate.
@@ -916,6 +921,9 @@ does the [Variants workflow](../.github/workflows/variants.yml), which
 Every job, including release jobs, has a time limit of at most 15 minutes. Release preparation
 waits at most ten minutes for its exact-commit CI evidence. Expensive new checks must fit the
 existing PR budget or run in the full matrix; raising limits or adding matrix axes is not a fix.
+
+Lint also runs the optional [communication buffer/completion probe](../examples/comm/README.md)
+with the hosted compiler, JIT/AOT, GC stress and a sanitized standalone C probe.
 
 The [DCO workflow](../.github/workflows/dco.yml) checks that the author of a pull request from a
 fork is listed in `.github/dco-signers.txt`, on main or in the pull request; pull requests from

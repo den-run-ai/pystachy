@@ -272,6 +272,21 @@ class LimitTests(unittest.TestCase):
         self.assertIn("build/bootstrap-tier/make.log", reports[0]["with"]["path"])
         self.assertIn("!cancelled()", reports[0]["if"])
 
+    def test_lint_overlaps_exactly_two_control_suites_on_every_event(self):
+        steps = workflows()["lint.yml"]["jobs"]["lint"]["steps"]
+        controls = [step for step in steps if "test_*verif*.py" in step.get("run", "")]
+        self.assertEqual(len(controls), 1)
+        control = controls[0]
+        self.assertNotIn("if", control)  # Includes docs-only PRs, main and manual runs.
+        self.assertNotIn("continue-on-error", control)
+        commands = "\n".join(step.get("run", "") for step in steps)
+        for pattern in ("test_*verif*.py", "test_compiler_state*.py"):
+            self.assertEqual(commands.count(pattern), 1)
+        self.assertEqual(control["run"].splitlines(), [
+            "python3 -m unittest discover -s tools -p test_lint_controls.py",
+            "python3 tools/lint_controls.py 'test_*verif*.py' 'test_compiler_state*.py'",
+        ])
+
     def test_program_cache_probe_runs_once_per_machine_outside_compact_gc(self):
         job = workflows()["ci.yml"]["jobs"]["verification"]
         probes = [step for step in job["steps"] if "make test-program-cache " in step.get("run", "")]
