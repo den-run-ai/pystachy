@@ -71,6 +71,7 @@ class Loop:
             raise ValueError("byte_limit must be between 1 and 1048576")
         self._owner = get_ident()
         self._busy = False
+        self._ready: list[Completion] = []
         self._handle = uvio_create(capacity, byte_limit)
         if self._handle == 0:
             raise OSError("could not initialize libuv loop")
@@ -121,16 +122,23 @@ class Loop:
         try:
             self._busy = True
             handle = self._open()
-            checked(uvio_step(handle, int(block)))
-            results: list[Completion] = []
-            info: list[c_int64] = [0, 0, 0, 0]
-            while checked(uvio_peek(handle, info, len(info))) == 1:
-                request_id = info[0]
-                try:
-                    data = bytes_at(info[2], info[3])
-                    results.append(Completion(request_id, info[1], data))
-                finally:
-                    checked(uvio_release(handle, request_id))
+            # Keep copied events if a later copy in this batch raises. Deliver that
+            # bounded batch before another native turn, even when block is True.
+            results = self._ready
+            if not results:
+                count = checked(uvio_step(handle, int(block)))
+                info: list[c_int64] = [0, 0, 0, 0]
+                # Only step runs callbacks; peek/release cannot add events here.
+                for _ in range(count):
+                    if checked(uvio_peek(handle, info, len(info))) != 1:
+                        raise RuntimeError("completion queue changed during drain")
+                    request_id = info[0]
+                    try:
+                        data = bytes_at(info[2], info[3])
+                        results.append(Completion(request_id, info[1], data))
+                    finally:
+                        checked(uvio_release(handle, request_id))
+            self._ready = []
             return results
         finally:
             self._busy = False
@@ -148,6 +156,7 @@ class Loop:
                 if status < 0:
                     self._handle = handle  # C preserves the allocation on a close error.
                     checked(status)
+            self._ready.clear()
         finally:
             self._busy = False
 
