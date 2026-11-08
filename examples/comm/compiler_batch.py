@@ -145,7 +145,9 @@ def run_batch(jobs, *, workers=2, transport="direct", handler_command=None,
     children reaped on failures, SIGINT or SIGTERM. This POSIX coordinator must
     run on the main thread; cancellation raises SystemExit(128 + signal number)
     after cleanup and restores the caller's signal handlers.
-    ``diagnostic_limit`` bounds combined stdout/stderr per job (IR is an artifact).
+    ``diagnostic_limit`` bounds combined stdout/stderr per job (IR is an artifact)
+    and separately bounds handler stderr across acknowledgments and shutdown.
+    Handler stdout records and trailing output are bounded by ``RECORD_LIMIT``.
     """
     with cancellation_signals() as check_cancelled:
         return _run_batch(jobs, workers=workers, transport=transport,
@@ -202,6 +204,27 @@ def _run_batch(jobs, *, workers, transport, handler_command, timeout,
         check_active()
         records.append(record)
         del active[state.job.job_id]
+
+    def read_handler(key):
+        name, _ = key.data
+        if name == "handler":
+            buffer, limit = handler_buffer, RECORD_LIMIT
+            message = "completion handler output exceeds record bound"
+        else:
+            buffer, limit = handler_errors, diagnostic_limit
+            message = "completion handler diagnostics exceed bound"
+        remaining = limit - len(buffer)
+        # Read at most one byte beyond the remaining budget, and reject it
+        # before retaining it. The same buffers and limits apply through EOF.
+        chunk = os.read(key.fileobj.fileno(), min(16384, remaining + 1))
+        if len(chunk) > remaining:
+            raise RuntimeError(message)
+        if chunk:
+            buffer.extend(chunk)
+        else:
+            selector.unregister(key.fileobj)
+            key.fileobj.close()
+        return bool(chunk)
 
     try:
         check_cancelled()
@@ -288,64 +311,53 @@ def _run_batch(jobs, *, workers, transport, handler_command, timeout,
             for key, _ in selector.select(0.02):
                 check_active()
                 name, state = key.data
-                chunk = os.read(key.fileobj.fileno(), 16384)
-                if not chunk:
-                    selector.unregister(key.fileobj)
-                    key.fileobj.close()
-                    if state is not None:
-                        state.streams -= 1
-                    elif name == "handler" and active:
-                        raise RuntimeError("completion handler closed stdout early")
-                    continue
-                if name == "handler":
-                    handler_buffer.extend(chunk)
-                    if len(handler_buffer) > RECORD_LIMIT:
-                        raise RuntimeError("completion handler output exceeds record bound")
-                    if b"\n" in handler_buffer:
+                if state is None:
+                    if not read_handler(key):
+                        if name == "handler" and active:
+                            raise RuntimeError("completion handler closed stdout early")
+                    elif name == "handler" and b"\n" in handler_buffer:
                         if inflight is None or not handler_buffer.endswith(b"\n") or handler_buffer.count(b"\n") != 1:
                             raise RuntimeError("unsolicited completion handler output")
                         accept(inflight, bytes(handler_buffer))
                         inflight = None
                         handler_buffer.clear()
-                elif name == "handler_error":
-                    handler_errors.extend(chunk)
-                    if len(handler_errors) > diagnostic_limit:
-                        raise RuntimeError("completion handler diagnostics exceed bound")
-                else:
-                    state.diagnostics.extend(chunk)
-                    if len(state.diagnostics) > diagnostic_limit:
-                        raise RuntimeError(f"job {state.job.job_id} diagnostics exceed {diagnostic_limit} bytes")
-                    state.stream_hashes[name].update(chunk)
-                    state.stream_sizes[name] += len(chunk)
-                    diagnostics_order.append(state.job.job_id)
-                    if first_diagnostic is None:
-                        first_diagnostic = time.perf_counter() - started
+                    continue
+                chunk = os.read(key.fileobj.fileno(), 16384)
+                if not chunk:
+                    selector.unregister(key.fileobj)
+                    key.fileobj.close()
+                    state.streams -= 1
+                    continue
+                state.diagnostics.extend(chunk)
+                if len(state.diagnostics) > diagnostic_limit:
+                    raise RuntimeError(f"job {state.job.job_id} diagnostics exceed {diagnostic_limit} bytes")
+                state.stream_hashes[name].update(chunk)
+                state.stream_sizes[name] += len(chunk)
+                diagnostics_order.append(state.job.job_id)
+                if first_diagnostic is None:
+                    first_diagnostic = time.perf_counter() - started
         if handler is not None:
             check_cancelled()
             handler.stdin.close()
-            # Drain any trailing data; fail closed on extra output or diagnostics.
-            for key in list(selector.get_map().values()):
-                selector.unregister(key.fileobj)
+            handler.stdin = None
             if handler.stdout.closed or handler.stderr.closed:
                 raise RuntimeError("completion handler closed a stream before shutdown")
-            os.set_blocking(handler.stdout.fileno(), True)
-            os.set_blocking(handler.stderr.fileno(), True)
-            handler.stdin = None
-            deadline = time.perf_counter() + min(timeout, 5.0)
-            while True:
+            # Keep bounded, nonblocking reads until both pipes reach EOF and the
+            # child exits. Closing pipes does not release the shutdown deadline.
+            shutdown_timeout = min(timeout, 5.0)
+            deadline = time.perf_counter() + shutdown_timeout
+            while selector.get_map() or handler.poll() is None:
                 check_cancelled()
-                try:
-                    remaining = max(0.0, deadline - time.perf_counter())
-                    stdout, stderr = handler.communicate(timeout=min(0.02, remaining))
-                    break
-                except subprocess.TimeoutExpired:
+                remaining = deadline - time.perf_counter()
+                if remaining <= 0:
+                    raise subprocess.TimeoutExpired(handler.args, shutdown_timeout)
+                for key, _ in selector.select(min(0.02, remaining)):
                     check_cancelled()
-                    if time.perf_counter() >= deadline:
-                        raise
+                    read_handler(key)
             check_cancelled()
-            if handler.returncode or stdout or stderr or handler_errors or handler_buffer:
+            if handler.returncode or handler_errors or handler_buffer:
                 raise RuntimeError("completion handler failed or produced unexpected output: "
-                                   + (bytes(handler_errors) + stderr).decode("utf-8", "replace"))
+                                   + handler_errors.decode("utf-8", "replace"))
         check_cancelled()
         return {"seconds": time.perf_counter() - started, "records": records,
                 "completion_order": [record["job"] for record in records],
@@ -395,15 +407,59 @@ def compiler_jobs(command, sources, directory, mode):
     return jobs
 
 
+def compiler_home(command):
+    """Match driver.compiler_home for direct native and hosted invocations.
+
+    Arbitrary interpreter options or wrapper commands can change argv[0] or the
+    environment. Require an explicit home instead of guessing their library root.
+    The benchmark compiler must use this checkout's loader semantics.
+    """
+    configured = os.environ.get("PYSTACHY_HOME")
+    if configured:
+        home = Path(configured)
+        return home if home.is_absolute() else ROOT / home
+    executable = Path(command[0]).name
+    if executable.startswith(("python", "pypy")):
+        if len(command) == 2 and not command[1].startswith("-"):
+            entrypoint = command[1]
+        elif command[1:] == ["-m", "pystachy"]:
+            if os.environ.get("PYTHONSAFEPATH"):
+                raise ValueError("set PYSTACHY_HOME for python -m pystachy with PYTHONSAFEPATH")
+            entrypoint = str(ROOT / "pystachy.py")
+        else:
+            raise ValueError("set PYSTACHY_HOME for this hosted compiler command")
+    elif len(command) == 1:
+        entrypoint = command[0]
+    else:
+        raise ValueError("set PYSTACHY_HOME for a wrapped compiler command")
+    home = ROOT / Path(entrypoint).parent
+    return home if (home / "runtime.c").exists() else home / ".."
+
+
 def input_manifest(command, handler, sources):
     """Conservatively hash compiler/library inputs, including hosted compilers.
 
     Executable identities alone do not identify ``python -m pystachy`` or the
     library/runtime files read by a native compiler.  Hash the complete source
     families as well as explicit command files and locally discoverable bridges.
+    The checkout's hosted loader discovers workload imports before measurement;
+    its negative probes and search path are checked again with the file hashes.
     """
+    # Compiler jobs run from ROOT, including when the coordinator was started
+    # elsewhere. Relative search paths and PYSTACHY_HOME use that same directory.
+    home = compiler_home(command)
     paths = set(sources)
-    for base in {ROOT, Path(os.environ.get("PYSTACHY_HOME", str(ROOT))).resolve()}:
+    workloads = {}
+    for source in sources:
+        result = subprocess.run([sys.executable, "-I", str(ROOT / "examples" / "comm" / "compiler_inputs.py"),
+                                 str(source), str(home)], cwd=ROOT, capture_output=True, text=True,
+                                timeout=MAX_TIMEOUT)
+        if result.returncode:
+            raise RuntimeError(f"cannot resolve workload imports for {source}: {result.stderr.strip()}")
+        workload = json.loads(result.stdout)
+        workloads[str(source)] = workload
+        paths.update(Path(path) for path in workload["files"])
+    for base in {ROOT, home.resolve()}:
         for family in ("src", "lib", "mpz", "ryu"):
             for path in (base / family).rglob("*"):
                 if path.suffix in (".py", ".c", ".h", ".so") and path.is_file():
@@ -433,7 +489,14 @@ def input_manifest(command, handler, sources):
         bridge = directory / "libpystachy_comm.so"
         if bridge.is_file():
             paths.add(bridge.resolve())
-    return {str(path): digest(path) for path in sorted(paths)}
+    files = {str(path): digest(path) for path in sorted(paths)}
+    for workload in workloads.values():
+        for path, before in workload["files"].items():
+            if files[path] != before:
+                raise RuntimeError(f"workload input changed while capturing inputs: {path}")
+    return {"files": files, "workloads": workloads,
+            "environment": {name: value for name, value in os.environ.items()
+                            if name.startswith("PYSTACHY_") or name in ("PYTHONPATH", "PYTHONSAFEPATH", "LD_LIBRARY_PATH")}}
 
 
 def main(argv=None):
@@ -463,7 +526,7 @@ def main(argv=None):
               "platform": platform.platform(), "machine": platform.machine(), "cpu_count": os.cpu_count(),
               "affinity": sorted(os.sched_getaffinity(0)) if hasattr(os, "sched_getaffinity") else None,
               "environment": {name: value for name, value in os.environ.items()
-                              if name.startswith("PYSTACHY_") or name in ("PYTHONPATH", "LD_LIBRARY_PATH", "OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS")},
+                              if name.startswith("PYSTACHY_") or name in ("PYTHONPATH", "PYTHONSAFEPATH", "LD_LIBRARY_PATH", "OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS")},
               "cache_policy": "inherited private/shared cache; one warmup per variant before measured samples",
               "scope": "CPython process coordinator; local owned completion records; no native process transport"}
     try:

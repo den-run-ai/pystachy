@@ -23,6 +23,13 @@ Workers and the persistent handler must stay in their assigned process groups.
 SIGKILL, descendants that create another session/group, and the benchmark's
 separate CPython/AOT validation subprocesses are outside this cancellation scope.
 
+After the final acknowledgment, the coordinator closes handler stdin and keeps
+both output pipes nonblocking until EOF and child exit. Handler stderr shares one
+`diagnostic_limit` budget across acknowledgments and shutdown; trailing stdout
+remains bounded to 4096 bytes. Extra output, diagnostics and nonzero exits fail the
+batch. Shutdown has a separate deadline of `min(timeout, 5)` seconds, including
+handlers that close their output pipes before exiting.
+
 `record_worker.py` is a persistent consumer compiled without source changes by
 Pystachy or mypyc. Its context owns each record until copy completion and explicit
 acknowledgment. The worker checks identity, status and exact bytes before echoing
@@ -48,6 +55,27 @@ Use `--transport comm` to handle records inside the CPython coordinator, or supp
 a CPython/mypyc handler command. `--compiler-command` accepts a JSON argv to test
 a hosted compiler. The report records all samples, completion order, admission,
 source/binary hashes, affinity and relevant environment settings.
+
+Before measurement, a fresh hosted loader process resolves each workload's imports
+without executing workload code. The input manifest groups file hashes, per-workload
+resolution probes and relevant environment settings. It includes untracked and
+ignored transitive imports, packages, relative and namespace imports, and the
+ordered source-directory/`PYSTACHY_PATH`/compiler-library search path. The same
+capture runs after measurement; differences in source bytes, resolved symlinks,
+search choices or environment settings reject the report. Existing compiler diagnostics
+are retained when import discovery fails.
+
+The native or hosted compiler under test must use this checkout's loader semantics;
+this preflight does not introspect an unrelated compiler binary. Direct native,
+`python FILE.py` and `python -m pystachy` commands use the driver's library-home
+rules. Set `PYSTACHY_HOME` explicitly for other interpreter or wrapper command
+forms, whose effective compiler entry point cannot be inferred safely. A nonempty
+`PYTHONSAFEPATH` also requires an explicit home for `python -m pystachy`, because
+module lookup can select a compiler on `PYTHONPATH` instead of this checkout. Relative
+compiler search paths are resolved from the repository root, where compiler jobs
+run. The separate CPython output oracle uses CPython's ordinary import path, so
+workloads found only through `PYSTACHY_PATH` also need an appropriate `PYTHONPATH`
+for that oracle.
 
 Local API timings are separate from compiler throughput:
 
