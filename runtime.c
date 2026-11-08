@@ -6835,13 +6835,24 @@ static Str *read1(File *f, I n) {      /* n < 0: to the end; else n characters (
   }
   /* n characters: their bytes gather in t, and go to b only when t is full, as readline's do (a
      put() per byte took most of the time); a read that fits in t becomes its str without b */
-  char t[4096]; I m = 0;
-  for (I k = 0;;) {
+  char t[4096]; I m = 0; int trailing = 0;
+  for (I k = 0; k < n || trailing;) {
     int c = get(f);
     if (c == EOF) break;
-    if ((f->lat || (c & 0xC0) != 0x80) && k++ == n) { unget(f, c); break; }   /* the next character starts */
+    if (f->lat || (c & 0xC0) != 0x80) {
+      if (k == n) { unget(f, c); break; }   /* malformed UTF-8 ended before its expected continuation */
+      k++;
+      trailing = !f->lat && c >= 0xC2 && c <= 0xF4 ? c >= 0xF0 ? 3 : c >= 0xE0 ? 2 : 1 : 0;
+    } else if (trailing) trailing--;
     t[m++] = (char)getnl(f, c);
     if (m == (I)sizeof t) { put(&b, t, m); m = 0; }
+    /* A completed character satisfies read(n) without probing the next one:
+       that probe blocks on live pipes, even for read(0). Universal newline=""
+       still needs to resolve a final CR, like getnl does for newline=None. */
+    if (k == n && !trailing && c == '\r' && f->nl == 1) {
+      int d = get(f);
+      if (d != EOF) unget(f, d);
+    }
   }
   if (b.n) put(&b, t, m);
   else b = (Buf){t, m, m};
