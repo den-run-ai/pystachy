@@ -83,9 +83,11 @@ jobs:
       - name: Example CLI smoke contract tests
         run: python3 -m unittest discover -s tools -p test_check_example_cli.py
 
+      - name: Native text reads on open pipes
+        run: PYSTACHY_TEXT_READ_COMPILER='python3 -m pystachy' python3 -m unittest discover -s tools -p test_text_read_progress.py
       - name: Owned communication buffer and completion checks
         run: |
-          python3 -m unittest discover -s tools -p test_comm_example.py
+          python3 -m unittest discover -s tools -p 'test_comm_*.py'
           python3 examples/comm/check.py --compiler 'python3 -m pystachy' --cc "$PYSTACHY_LLVM/clang" --sanitizers --leak-check
 
       - name: Install sanitizer runtime for generated-code controls
@@ -93,7 +95,7 @@ jobs:
 
       - name: Runtime ABI, ASan and GC root checker controls
         run: |
-          python3 -m unittest discover -s tools -p 'test_runtime_*.py'
+          PYSTACHY_CACHE_TEST_LLVM="$PYSTACHY_LLVM" python3 -m unittest discover -s tools -p 'test_runtime_*.py'
           PY=python3 CC="$PYSTACHY_LLVM/clang" ASAN_OPTIONS=detect_leaks=1 \
             tools/check_cpu_buffers.sh '-fsanitize=address,undefined'
           PY=python3 CC="$PYSTACHY_LLVM/clang" ASAN_OPTIONS=detect_leaks=1 \
@@ -163,6 +165,9 @@ jobs:
 
       - name: Linux ELF compatibility audit controls
         run: python3 -m unittest discover -s tools -p test_linux_abi.py
+
+      - name: Installed JSON repair wheel validation controls
+        run: python3 -m unittest discover -s tools -p test_json_repair_wheel.py
 
       - name: Generated regex matcher tests
         run: python3 -m unittest discover -s tools -p test_re_specialize.py

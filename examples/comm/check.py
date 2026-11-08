@@ -18,11 +18,12 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 
 
-def run(command, env, timeout=180):
+def run(command, env, timeout=180, input_data=None):
     process = subprocess.Popen(command, cwd=ROOT, env=env, stdout=subprocess.PIPE,
+                               stdin=subprocess.PIPE if input_data is not None else subprocess.DEVNULL,
                                stderr=subprocess.PIPE, start_new_session=True)
     try:
-        stdout, stderr = process.communicate(timeout=timeout)
+        stdout, stderr = process.communicate(input=input_data, timeout=timeout)
     except BaseException as error:
         try:
             os.killpg(process.pid, signal.SIGKILL)
@@ -78,7 +79,8 @@ def compare_output(name, actual, expected):
 
 def source_hashes():
     paths = [HERE / name for name in ["bridge.c", "bridge.h", "comm.py", "exercise.py",
-                                     "ownership.c", "check.py"]]
+                                     "ownership.c", "check.py", "compatibility_probe.py",
+                                     "record_worker.py"]]
     paths += [ROOT / "tools" / "rt_cpython" / "ffi.py"]
     return {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest()
             for path in paths}
@@ -283,6 +285,38 @@ def check(args, report):
             compare_output(name, actual, expected)
             report["runs"][name] = {"stdout_sha256": hashlib.sha256(actual).hexdigest(), "gc": settings}
             print(f"{name}: collectives, leases, cancellation, bounds and cleanup passed", flush=True)
+        probes = [
+            ("compatibility_probe", None,
+             b"source-order sums 0.0 1.0\nnonfinite IEEE results\n"
+             b"signed tag limits, failed-submit atomicity, cancellation leases\n"),
+            ("record_worker", b'{"job":2,"status":0}\n' + b"x" * 4095 + b"\n",
+             b'{"job":2,"status":0}\n' + b"x" * 4095 + b"\n"),
+        ]
+        for probe_name, input_data, probe_expected in probes:
+            script = HERE / (probe_name + ".py")
+            native = build / probe_name
+            probe_commands = [("cpython", [sys.executable, str(script)], {})]
+            if not args.cpython_only:
+                run(compiler + ["build", str(script), "-o", str(native)], env)
+                probe_commands += [
+                    ("jit", compiler + ["run", str(script)], {}),
+                    ("aot", [str(native)], {}),
+                    ("jit_gc", compiler + ["run", str(script)], {"PYSTACHY_GC_STRESS_PROGRAM": "1"}),
+                    ("aot_gc", [str(native)], {"PYSTACHY_GC_STRESS": "1"}),
+                ]
+            for name, command, settings in probe_commands:
+                actual = run(command, env | settings, input_data=input_data)
+                compare_output(probe_name + "/" + name, actual, probe_expected)
+                if probe_name == "record_worker":
+                    for rejected in [b"x" * 4096 + b"\n{\"job\":3}\n", b"partial"]:
+                        failure = subprocess.run(command, cwd=ROOT, env=env | settings,
+                                                 input=rejected, capture_output=True, timeout=20)
+                        if failure.returncode == 0 or failure.stdout:
+                            raise AssertionError("invalid record was acknowledged by " + name)
+                report["runs"][probe_name + "/" + name] = {
+                    "stdout_sha256": hashlib.sha256(actual).hexdigest(), "gc": settings,
+                }
+            print(f"{probe_name}: all requested modes passed", flush=True)
         output = run([sys.executable, "-c", HOSTED_PROBE], env)
         print(output.decode().strip(), flush=True)
         report["runs"]["hosted_lifetime"] = {"stdout_sha256": hashlib.sha256(output).hexdigest()}

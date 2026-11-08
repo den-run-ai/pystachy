@@ -6,9 +6,11 @@ sum all-reduce across buffers representing ranks **in one process**. It does not
 communicate between workers. No compiler/runtime changes or external dependencies
 are required beyond the existing C/LLVM toolchain.
 
-The verified consumer in [exercise.py](exercise.py) reduces four independent rank
-vectors, gathers rank-ordered vectors and broadcasts binary packets. This is an
-ownership/completion experiment, not a throughput benchmark or MPI binding.
+The consumer in [exercise.py](exercise.py) reduces four independent rank vectors,
+gathers rank-ordered vectors and broadcasts binary packets.
+[Compiler dogfood](dogfood.md) runs real bounded compiler jobs, validates artifacts,
+and handles small completion records through the same API under CPython, native
+Pystachy and mypyc. OS pipes transport records; this backend remains local.
 
 ## Use
 
@@ -114,13 +116,14 @@ failure handling claim. Linux x86-64 is the locally validated platform.
 
 ```sh
 python3.13 examples/comm/check.py --compiler ./pystachy --cc clang --sanitizers
-python3.13 -m unittest discover -s tools -p test_comm_example.py
+python3.13 -m unittest discover -s tools -p 'test_comm_*.py'
 ```
 
 The harness compares independent Python arithmetic/bytes with CPython's FFI twin,
 native JIT/AOT and both modes under GC stress. It checks views, cancellation,
 leases, completed-but-unconsumed capacity, bad shapes/types, stale IDs, pending
-shutdown, owner-thread rejection and completion conversion failure. The standalone
+shutdown, owner-thread rejection, completion conversion failure, numerical edge
+cases and bounded record framing. The standalone
 C ownership probe runs under ASan/UBSan; `--leak-check` adds LeakSanitizer where
 supported. Each run hashes consumed inputs and fails if they change mid-run.
 `--report PATH` records the compiler hash, source hashes and executed modes.

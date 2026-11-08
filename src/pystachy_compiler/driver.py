@@ -14,7 +14,7 @@ from src.pystachy_compiler.names import RENAMED
 from src.pystachy_compiler.parser import Parser
 from src.pystachy_compiler.specs import JIT_INLINE, LIBS, LINKDL, MODULES, OPTS, PLATFORM
 from src.pystachy_compiler.syntax import LAMBDAS
-from src.pystachy_compiler.utils import optimizations
+from src.pystachy_compiler.utils import optimizations, timing_end, timing_start
 
 
 JOINS = 8  # the passes after the first that a program's joins may take (see compile_program)
@@ -108,6 +108,7 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
     idtry = True
     slice_eh = False
     while True:
+        attempt = timing_start()
         g = Gen()
         g.ext = ext
         g.eh = slice_eh
@@ -121,7 +122,10 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
         ld = Loader(dirs)
         ld.ext = ext
         try:
-            return g.program(ld.program(path, src))
+            loaded = timing_start()
+            mods = ld.program(path, src)
+            timing_end("program.load", loaded)
+            return g.program(mods)
         except Rejoin as retry:
             if isinstance(retry, NeedSliceEH):
                 slice_eh = True
@@ -148,6 +152,8 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
                 LIBS.pop()
             while len(LINKDL) > linkdl:
                 LINKDL.pop()
+        finally:
+            timing_end("program.attempt", attempt)
 
 
 def runtime_ir(path: str, src: str, cache: bool) -> str:
@@ -164,7 +170,10 @@ def runtime_ir(path: str, src: str, cache: bool) -> str:
     try:
         ld = Loader([])
         ld.rtmode = True
-        return g.program(ld.program(path, src))
+        loaded = timing_start()
+        mods = ld.program(path, src)
+        timing_end("runtime.load", loaded)
+        return g.program(mods)
     finally:
         # A failed hosted compilation must not admit runtime-only imports in the
         # next program. Nested callers retain their own temporary configuration.
@@ -193,6 +202,13 @@ def q(s: str) -> str:
 def sh(cmd: str) -> int:
     st = os.system(cmd)
     return st >> 8 if st & 255 == 0 else 1
+
+
+def timed_sh(name: str, cmd: str) -> int:
+    started = timing_start()
+    code = sh(cmd)
+    timing_end(name, started)
+    return code
 
 
 # the lines of /proc/cpuinfo that tell which CPU -march=native compiles for (x86-64's, AArch64's)
@@ -248,6 +264,44 @@ def stat3(p: str) -> str:
         return f"{os.path.getsize(p)} {os.path.getmtime(p)} {os.path.getctime(p)}"
     except OSError:
         return ""
+
+
+def runtime_c_cache_enabled(flags: list[str]) -> bool:
+    value = os.getenv("PYSTACHY_RUNTIME_C_CACHE", "0")
+    if value != "0" and value != "1":
+        fail("PYSTACHY_RUNTIME_C_CACHE must be 0 or 1", 0)
+    # Keep custom flags, instrumentation and their diagnostic ordering on the
+    # existing path. This first cache is deliberately limited to Linux defaults.
+    return value == "1" and PLATFORM == "linux" and len(flags) == 0
+
+
+def runtime_c_snapshot(source: str, directory: str) -> str:
+    # Normalize only preprocessor line markers for our captured source tree.
+    # An expanded __FILE__/__BASE_FILE__ containing that directory is semantic:
+    # retain the ordinary build rather than rewriting a C string literal.
+    # Unlike __FILE__, these expand during semantic analysis, after -E.
+    # Their filename still depends on the original line markers.
+    if "__builtin_FILE" in source or "__builtin_source_location" in source:
+        return ""
+    out: list[str] = []
+    directory = directory.replace("\\", "\\\\").replace('"', '\\"')
+    for line in source.split("\n"):
+        if directory + "/" in line:
+            if not line.startswith("# "):
+                return ""
+            line = line.replace('"' + directory + "/", '"')
+        out.append(line)
+    return "\n".join(out)
+
+
+def runtime_c_key(source: str, paths: list[str], times: list[str], strip: str) -> str:
+    # Preprocessing captures included headers, environment include paths and
+    # target macros. Compile those exact bytes, rather than reopening headers.
+    # No Pystachy executable, hosted source, runtime.py or typed-IR option belongs
+    # here: they do not produce this C bitcode. Bump the schema for recipe changes.
+    identity = ["runtime-c-v2", PLATFORM, "-O2 -fexceptions -x cpp-output", strip]
+    identity = identity + [os.path.realpath(p) for p in paths[:2]] + times[:2]
+    return fnv("\n".join(identity) + "\n" + source)
 
 
 def settled(st: str, now: float) -> bool:
@@ -387,6 +441,7 @@ def publish_retained_ir(path: str, source: str, output: str, ir: str, own: str) 
 def main() -> None:
     # the parser and the code generator recurse for each level of nesting (at most MAXNEST), a
     # dozen calls deep each: more than CPython's default limit of 1,000 calls when it runs this file
+    total = timing_start()
     sys.setrecursionlimit(MAXNEST * 40)
     argv = sys.argv
     if len(argv) == 2 and (argv[1] == "--version" or argv[1] == "-V"):
@@ -424,10 +479,13 @@ def main() -> None:
         f = open(diagnostics.SRC, "r", encoding=RAW)
         Parser(Lexer(f.read(), 1).file()).module()
         f.close()
+        timing_end("driver.total", total)
         return
     if cmd == "rt":
         f = open(diagnostics.SRC, "r", encoding=RAW)
+        frontend = timing_start()
         ir = runtime_ir(diagnostics.SRC, f.read(), False)
+        timing_end("runtime.frontend", frontend)
         f.close()
         if len(argv) == 5 and argv[3] == "-o":
             f = open(argv[4], "w", encoding=RAW)
@@ -435,6 +493,7 @@ def main() -> None:
             f.close()
         else:
             print(ir, end="")
+        timing_end("driver.total", total)
         return
     # the compiler that runs, for the runtime's cache (below): when named by its path, or a script
     # that CPython runs, its file's stat3() as the driver starts, and when that is
@@ -463,8 +522,11 @@ def main() -> None:
         if d != "":
             dirs.append(d)
     dirs.append(home + "/lib")
+    cache_start = timing_start()
     pcroot, pccontext, pcexe = cached_run.prepare(cmd, diagnostics.SRC, me, home, dirs, llvm_dir(), RTPARTS)
+    timing_end("program.cache_lookup", cache_start)
     if pcexe != "":
+        timing_end("driver.prepare_run", total)
         cached_run.execute(pcexe, diagnostics.SRC, argv[3:])
     for d in dirs[:-1]:
         if program_cache.tracked_exists(d + "/ffi.py") or program_cache.tracked_exists(d + "/ffi/__init__.py"):
@@ -474,7 +536,9 @@ def main() -> None:
     ext = diagnostics.SRC[diagnostics.SRC.rfind("/") + 1 : -3] if cmd == "ext" and diagnostics.SRC.endswith(".py") else ""
     if pcroot != "":
         cached_run.trace("frontend")
+    frontend = timing_start()
     ir = compile_program(diagnostics.SRC, f.read(), dirs, ext)
+    timing_end("program.frontend", frontend)
     f.close()
     # a program that opts in to neither dynamic Any nor promoting ints: pys_plain, below (read now, as
     # building the runtime compiles runtime.py as a program of its own, which has no opt-in)
@@ -520,7 +584,9 @@ def main() -> None:
             f = open(out, "w", encoding=RAW)
             f.write(ir)
             f.close()
+        timing_end("driver.total", total)
         return
+    cache_start = timing_start()
     rtc = home + "/runtime.c"
     rtpy = home + "/runtime.py"
     if not os.path.exists(rtc) or not os.path.exists(rtpy):
@@ -531,6 +597,7 @@ def main() -> None:
     # if clang marked them nounwind. runtime.py goes through the optimizations on the IR as programs
     # do, so the ones PYSTACHY_OPT turns off count too: the cached runtime's key (below) has both
     flags = os.getenv("PYSTACHY_CFLAGS", "").split()
+    cache_c = runtime_c_cache_enabled(flags)
     asan = address_sanitized(flags)
     on = optimizations()
     off = [o for o in OPTS if o not in on]
@@ -645,6 +712,7 @@ def main() -> None:
     key = fnv("\n".join(lines + times + [rc[1], rp[1], rm[1]] + component_hashes + [x[1] for x in rs] + runtime_inputs))
     rtb = f"{cache}/runtime-py-{lin}-{key}.bc"
     rtir = ""
+    timing_end("runtime.cache_lookup", cache_start)
     if not trusted or not os.path.exists(rtb):
         # the bytes of runtime.c, of the files it includes and of runtime.py, read once: the runtime is
         # built from them, and named by their hash, so that an edit while it is built names another
@@ -659,7 +727,9 @@ def main() -> None:
             os.rmdir(tmp)
             src = diagnostics.SRC
             diagnostics.SRC = rtpy
+            frontend = timing_start()
             rtir = runtime_ir(rtpy, rp[0].replace("\r\n", "\n").replace("\r", "\n"), True)
+            timing_end("runtime.frontend", frontend)
             diagnostics.SRC = src
             tmp = tempfile.mkdtemp()
     ll = tmp + "/prog.ll"
@@ -746,7 +816,44 @@ def main() -> None:
             # only the ungrouped subset constructor may be renamed by llvm-link.
             modules = f"{q(rcb)} {q(rpb)}"
             sanitize = f"{tc[0]} -O2 -emit-llvm -c -x ir {q(rpl)} -o {q(rpb)} -Wno-override-module -Wno-unused-command-line-argument{cflags} -mllvm -asan-with-comdat=0 -fexceptions && "
-        code = sh(sanitize + f"{tc[0]} -O2 -S -emit-llvm -x c {q(rcc)} -o {q(rll)} -Wno-unused-command-line-argument{cflags} -fexceptions && {strip} {q(rll)} > {q(rsl)} && {tc[1]} {q(rsl)} -o {q(rcb)} && {tc[2]} {modules} -o {q(lnk)} && {tc[3]} -O2 {q(lnk)} -o {q(part)}")
+        cstarted = timing_start()
+        cbuild = f"{tc[0]} -O2 -S -emit-llvm -x c {q(rcc)} -o {q(rll)} -Wno-unused-command-line-argument{cflags} -fexceptions && {strip} {q(rll)} > {q(rsl)} && {tc[1]} {q(rsl)} -o {q(rcb)}"
+        ccached = ""
+        cline = ""
+        chit = False
+        if cache_c and "" not in paths[:2] and "" not in times[:2] and all(settled(t, now) for t in times[:2]):
+            # Capture headers and target macros once; compile those same bytes.
+            # Warnings, semantic temporary paths and unstable tools use the
+            # original path so diagnostics and instrumentation stay unchanged.
+            pre = tmp + "/runtime.i"
+            perr = tmp + "/runtime-preprocess.err"
+            prepared = timed_sh("runtime.c_preprocess", f"{tc[0]} -O2 -E -x c {q(rcc)} -o {q(pre)} -fexceptions 2> {q(perr)}")
+            if prepared == 0 and os.path.getsize(perr) == 0 and [stat3(p) for p in paths[:2]] == times[:2]:
+                f = open(pre, "r", encoding=RAW, newline="")
+                captured = runtime_c_snapshot(f.read(), tmp)
+                f.close()
+                if captured != "":
+                    cline = fnv("\n".join([os.path.realpath(p) for p in paths[:2]]))
+                    ccached = cache + "/runtime-c-" + cline + "-" + runtime_c_key(captured, paths, times, strip) + ".bc"
+                    f = open(pre, "w", encoding=RAW, newline="")
+                    f.write(captured)
+                    f.close()
+                    # Readers take a private copy before validation; another
+                    # build may replace/prune the entry at any point. A missing,
+                    # unreadable or malformed entry is a miss, not a build error.
+                    chit = timed_sh("runtime.c_cache_read", f"(test -f {q(ccached)} && test ! -L {q(ccached)} && cp {q(ccached)} {q(rcb)} && {tc[3]} -passes=verify -disable-output {q(rcb)}) 2> /dev/null") == 0
+                    cbuild = f"{tc[0]} -O2 -S -emit-llvm -x cpp-output {q(pre)} -o {q(rll)} -Wno-unused-command-line-argument -fexceptions && {strip} {q(rll)} > {q(rsl)} && {tc[1]} {q(rsl)} -o {q(rcb)}"
+        code = 0 if chit else timed_sh("runtime.c", sanitize + cbuild)
+        if code == 0:
+            code = timed_sh("runtime.link_optimize", f"{tc[2]} {modules} -o {q(lnk)} && {tc[3]} -O2 {q(lnk)} -o {q(part)}")
+        if code == 0 and ccached != "" and not chit and [stat3(p) for p in paths[:2]] == times[:2]:
+            # Stage privately on the cache filesystem; rename only a complete
+            # file. Publication failure cannot invalidate the successful build.
+            # Keep one entry per tool pair; concurrent readers tolerate pruning.
+            stage = ccached + "." + own
+            old = q(cache) + "/runtime-c-" + cline + "-" + "?" * 16 + ".bc"
+            sh(f"""(umask 077; mkdir {q(stage)} && {{ test ! -d {q(ccached)} && cp {q(rcb)} {q(stage + '/entry')} && mv -f {q(stage + '/entry')} {q(ccached)} && for f in {old}; do [ "$f" = {q(ccached)} ] || rm -f "$f"; done; rm -f {q(stage + '/entry')}; rmdir {q(stage)}; }}) 2> /dev/null""")
+        timing_end("runtime.llvm_build", cstarted)
         for p in RTPARTS:
             os.remove(tmp + "/" + p)
         for d in sub:
@@ -757,7 +864,7 @@ def main() -> None:
     if code == 0 and cmd == "run" and (rtir != "" or not os.path.exists(rto)):
         # (from the bitcode, so runtime.py's part is in it; sanitizer passes instrumented the runtime already.
         # -x ir: clang would take a name not ending in .bc, as part's, for a linker input, and do nothing)
-        code = sh(f"{tc[0]} -O2 -fPIC -c -x ir {q(usebc)} -o {q(parto)} -Wno-unused-command-line-argument{ccflags}")
+        code = timed_sh("runtime.codegen", f"{tc[0]} -O2 -fPIC -c -x ir {q(usebc)} -o {q(parto)} -Wno-unused-command-line-argument{ccflags}")
         useo = parto
     if code == 0 and cmd == "run" and PLATFORM == "linux" and pcroot == "":
         # the shared library: the cache's, made from the cache's .o, or one of this run's (from its own
@@ -774,7 +881,7 @@ def main() -> None:
             f.write(RTSO)
             f.close()
             xp = f"{rts}.x.{os.getpid()}.{own}"
-            useso = partso if sh(f"{{ printf '#!/bin/sh\\n' > {q(xp)} && chmod +x {q(xp)} && {q(xp)} && {tc[0]} -shared -fPIC -O2 -x c {q(rso)} -x none {q(useo)} -o {q(partso)} -Wl,-Bsymbolic -lm -ldl -Wno-unused-command-line-argument{ccflags}; }} 2> /dev/null") == 0 else ""
+            useso = partso if timed_sh("runtime.shared_link", f"{{ printf '#!/bin/sh\\n' > {q(xp)} && chmod +x {q(xp)} && {q(xp)} && {tc[0]} -shared -fPIC -O2 -x c {q(rso)} -x none {q(useo)} -o {q(partso)} -Wl,-Bsymbolic -lm -ldl -Wno-unused-command-line-argument{ccflags}; }} 2> /dev/null") == 0 else ""
             sh(f"rm -f {q(xp)}")
     # pystachy ext links two more C files, compiled as runtime.c is and cached beside it by the same
     # rules: pyembed.c (CPython in the process, hosting an extension module: its stdio hooks) and
@@ -877,7 +984,7 @@ def main() -> None:
         public = f"{entry}{ext}" + (",pys_new" if newalloc else "")
         inline = (f" && {llvm}opt -passes='forceattrs,always-inline,internalize,globaldce' {LATE_INLINE}"
                   f" -internalize-public-api-list={entry}{ext} {q(bc)} -o {q(bc)}") if newalloc else ""
-        code = sh(f"{llvm}llvm-link {q(ll)} {q(glue[1][2])} {q(glue[0][2])} -o {q(lnk)} && {llvm}llvm-link --only-needed {q(lnk)} {q(usebc)} -o {q(bc)}"
+        code = timed_sh("extension.backend", f"{llvm}llvm-link {q(ll)} {q(glue[1][2])} {q(glue[0][2])} -o {q(lnk)} && {llvm}llvm-link --only-needed {q(lnk)} {q(usebc)} -o {q(bc)}"
                   + f" && {llvm}opt -passes='internalize,default<O2>' -internalize-public-api-list={public} {q(bc)} -o {q(bc)}" + inline
                   + f" && {llvm}clang -O2 -fPIC -c {q(bc)} -o {q(obj)} -Wno-unused-command-line-argument{ccflags} && {llvm}clang -shared {q(obj)} -o {q(out)}{libs} -lm{cflags}")
     elif cmd == "build":
@@ -887,12 +994,16 @@ def main() -> None:
         # optimizing it again (the same code generation: a module without pys_new keeps the one step)
         if out == "":
             out = diagnostics.SRC[:-3] if diagnostics.SRC.endswith(".py") else diagnostics.SRC + ".exe"
-        cc = f"{llvm}clang -O2 -c {q(bc)} -o {q(obj)} -Wno-unused-command-line-argument{ccflags}"
-        if newalloc:
-            cc = (f"{llvm}clang -O2 -c -emit-llvm {q(bc)} -o {q(obc)} -Wno-unused-command-line-argument{ccflags}"
-                  f" && {llvm}opt -passes=forceattrs,always-inline {LATE_INLINE} {q(obc)} -o {q(lbc)}"
-                  f" && {llvm}clang -O2 -c -Xclang -disable-llvm-passes {q(lbc)} -o {q(obj)} -Wno-unused-command-line-argument{ccflags}")
-        code = sh(f"{link} && {cc} && {llvm}clang {q(obj)} -o {q(out)}{libs} -lm{cflags}")
+        code = timed_sh("program.llvm_link", link)
+        if code == 0 and newalloc:
+            code = timed_sh("program.llvm_optimize", f"{llvm}clang -O2 -c -emit-llvm {q(bc)} -o {q(obc)} -Wno-unused-command-line-argument{ccflags}")
+        if code == 0 and newalloc:
+            code = timed_sh("program.late_inline", f"{llvm}opt -passes=forceattrs,always-inline {LATE_INLINE} {q(obc)} -o {q(lbc)}")
+        if code == 0:
+            cc = f"{llvm}clang -O2 -c -Xclang -disable-llvm-passes {q(lbc)}" if newalloc else f"{llvm}clang -O2 -c {q(bc)}"
+            code = timed_sh("program.codegen" if newalloc else "program.optimize_codegen", cc + f" -o {q(obj)} -Wno-unused-command-line-argument{ccflags}")
+        if code == 0:
+            code = timed_sh("program.link", f"{llvm}clang {q(obj)} -o {q(out)}{libs} -lm{cflags}")
     else:
         # Match the precompiled runtime's target before instcombine folds sizeof/GEP.
         # LLVM's default layout gives i64 only four-byte alignment; ORC later installs
@@ -965,13 +1076,13 @@ def main() -> None:
             # there), from which lli could map nothing: the shell that runs opt first asks whether this
             # run may execute it (Linux's access(X_OK) fails on such a mount), and exits 3 if not, when
             # the program is written again without the callbacks' constructor, for lli to link the .o
-            code = sh((f"[ -x {q(useso)} ] || exit 3; " if useso != "" else "") + f"{fast} {q(ll)} -o {q(bc)}")
+            code = timed_sh("program.jit_optimize", (f"[ -x {q(useso)} ] || exit 3; " if useso != "" else "") + f"{fast} {q(ll)} -o {q(bc)}")
             if code == 3 and useso != "":
                 useso = ""
                 f = open(ll, "w", encoding=RAW)
                 f.write(layout + jir)
                 f.close()
-                code = sh(f"{fast} {q(ll)} -o {q(bc)}")
+                code = timed_sh("program.jit_optimize", f"{fast} {q(ll)} -o {q(bc)}")
         if code == 0:
             if pcroot != "":
                 # The ordinary JIT cleanup above already ran. Disable further
@@ -993,6 +1104,7 @@ def main() -> None:
                                 os.remove(p)
                         os.rmdir(tmp)
                         cached_run.trace("stored")
+                        timing_end("driver.prepare_run", total)
                         cached_run.execute(pcexe, diagnostics.SRC, rest)
                 cached_run.trace("bypass native artifact unavailable")
                 program_cache.stop()
@@ -1004,7 +1116,7 @@ def main() -> None:
             # PYSTACHY_GC_STRESS_PROGRAM: the program's own collection interval, apart from the
             # compiler's (PYSTACHY_GC_STRESS), so that the tests can stress programs without stressing
             # their compilation
-            for p in [ll, obj, pcout, pclink, pclink2, pcerror, rcc, rll, rsl, rcb, rpl, rpb, lnk, part, hp, rso, tmp + "/pyembed.c"] + [g[3] for g in glue]:
+            for p in [ll, obj, pcout, pclink, pclink2, pcerror, rcc, rll, rsl, rcb, rpl, rpb, lnk, part, hp, rso, tmp + "/runtime.i", tmp + "/runtime-preprocess.err", tmp + "/pyembed.c"] + [g[3] for g in glue]:
                 if os.path.exists(p):
                     os.remove(p)
             gsp = os.getenv("PYSTACHY_GC_STRESS_PROGRAM", "")
@@ -1024,8 +1136,9 @@ def main() -> None:
             run = f"unset PYSTACHY_PROGRAM_CACHE_LOCK; {archive}{env}PYSTACHY_ARGV0={q(diagnostics.SRC)} exec {llvm}lli{jitflags}{pe}{rt} /dev/fd/9 {' '.join([q(a) for a in rest])}"
             fds = f" 7< {q(peo[1])}" if embed else ""
             parts = q(parto) + " " + q(partso) + (" " + q(peo[2]) if peo[2] != "" else "")
+            timing_end("driver.prepare_run", total)
             os.execv("/bin/sh", ["sh", "-c", f"exec 9< {q(bc)} 8< {q(useso if useso != '' else useo)}{fds} && rm -f {q(bc)} {parts} && rmdir {q(tmp)} && {run}"])
-    for p in [ll, bc, obj, obc, lbc, pcout, pclink, pclink2, pcerror, rcc, rll, rsl, rcb, rpl, rpb, lnk, part, parto, partso, hp, rso, tmp + "/pyembed.c", tmp + "/pyext.c", peo[2]] + [g[3] for g in glue]:
+    for p in [ll, bc, obj, obc, lbc, pcout, pclink, pclink2, pcerror, rcc, rll, rsl, rcb, rpl, rpb, lnk, part, parto, partso, hp, rso, tmp + "/runtime.i", tmp + "/runtime-preprocess.err", tmp + "/pyembed.c", tmp + "/pyext.c", peo[2]] + [g[3] for g in glue]:
         if os.path.exists(p):
             os.remove(p)
     os.rmdir(tmp)
@@ -1034,6 +1147,7 @@ def main() -> None:
             publish_retained_ir(retained, diagnostics.SRC, out, ir, own)
         except OSError:
             fail("cannot write --emit-ir output: " + retained, 0)
+    timing_end("driver.total", total)
     if msg != "":
         fail(msg, 0)
     sys.exit(code)

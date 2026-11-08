@@ -52,17 +52,30 @@ The optional companion wheel packages the [schema-free repair example](../exampl
 as `pystachy_json_repair` and installs its AOT executable as `json-repair-native`.
 The distinct names let an application also install upstream `json-repair` for schema or file APIs.
 
-From the checkout on Linux x86-64 with glibc, install Pystachy's LLVM prerequisites
-and use a Python environment with the pinned [wheel tool](../tools/requirements-packaging.txt).
+From the checkout on Linux x86-64 with glibc, install Pystachy's LLVM prerequisites,
+GNU `readelf` (binutils), CPython's venv/ensurepip support, and the pinned
+[wheel tool](../tools/requirements-packaging.txt).
 The builder runs the source compiler under Python. In a GIL-enabled CPython 3.12+ environment:
 
 ```sh
 python -m pip install -r tools/requirements-packaging.txt
 python tools/build_json_repair_wheel.py --out build/json-repair-wheel
-python -m pip install ./build/json-repair-wheel/*.whl
+python -m pip install build/json-repair-wheel/pystachy_json_repair-0.1.0.dev3-cp312-abi3-linux_x86_64.whl
 python -I -c 'from pystachy_json_repair import loads; print(loads("{answer:42,}"))'
 printf '%s' '{answer:42,}' | json-repair-native
 python -I tests/upstream/json_repair/extension.py
+```
+
+The builder audits both ELF payloads and installs the completed wheel offline in
+a fresh virtual environment outside the checkout. It checks the maintained API
+corpus normally and with forced GC, CLI behavior without Python/LLVM on `PATH`,
+two spawned workers and foreign-thread rejection before publishing the wheel.
+Failed validation leaves a previous wheel intact. The wheel includes
+`native-abi.json`; the adjacent `.validation.json` records its checksum and checks.
+To repeat validation on another compatible CPython environment:
+
+```sh
+python tools/json_repair_wheel_smoke.py build/json-repair-wheel/pystachy_json_repair-0.1.0.dev3-cp312-abi3-linux_x86_64.whl
 ```
 
 The wheel uses the local platform tag `cp312-abi3-linux_x86_64`. Use it on the build

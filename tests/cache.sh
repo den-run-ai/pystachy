@@ -35,6 +35,7 @@ case $PYS in
   *) PY=; CPY=${CPY:-python3}; me=pystachy; from=$PYS ;;
 esac
 unset PYSTACHY_CFLAGS PYSTACHY_OPT PYSTACHY_PATH PYSTACHY_GC PYSTACHY_GC_STRESS PYSTACHY_IRFX PYSTACHY_CACHE
+unset PYSTACHY_RUNTIME_C_CACHE
 unset PYSTACHY_PROGRAM_CACHE_TRACE PYSTACHY_PROGRAM_CACHE_INPUTS
 # This suite must exercise runtime-object reuse, including actual lli launches.
 export PYSTACHY_PROGRAM_CACHE=0
