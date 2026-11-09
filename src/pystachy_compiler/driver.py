@@ -9,7 +9,7 @@ from src.pystachy_compiler.diagnostics import MAXNEST, RAW, NeedSliceEH, Rejoin,
 from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler.lexer import Lexer
 from src.pystachy_compiler.loader import Loader
-from src.pystachy_compiler.lower_module import OBJHOOKS, address_runtime_ir, jit_alloc
+from src.pystachy_compiler.lower_module import OBJHOOKS, OBJHOOKS_MAIN, address_runtime_ir, jit_alloc
 from src.pystachy_compiler.names import RENAMED
 from src.pystachy_compiler.parser import Parser
 from src.pystachy_compiler.specs import JIT_INLINE, LIBS, LINKDL, MODULES, OPTS, PLATFORM
@@ -236,7 +236,8 @@ RTPARTS: list[str] = ["ryu/d2s.c", "ryu/ryu.h", "ryu/common.h", "ryu/digit_table
 # library is the cached runtime's .o, linked with RTSO: the runtime calls back into the program
 # for objects' ==, order and repr (pys_obj_eq, pys_obj_cmp, pys_obj_repr, which every program defines,
 # lower_module), which no library can name, so RTSO's stand-ins call what the program hands them first,
-# from a constructor that each run adds to the program's IR (lower_module's OBJHOOKS)
+# from a constructor that each run adds to the program's IR (lower_module's OBJHOOKS), or to lli's main
+# module where llc compiles the program (OBJHOOKS_MAIN)
 RTSO = """typedef long long I;
 static I (*eq)(I, I, I);
 static I (*cmp)(I, I, I, I);
@@ -491,12 +492,12 @@ def main() -> None:
     retained = retained_ir_path(cmd, diagnostics.SRC, argv[3:])
     aotopt = aot_optimization() if cmd == "build" else "2"
     jitflags = ""
-    mcjit = False
+    llcobj = False
     jitinline = JIT_INLINE
     if cmd == "run":
         codegen = os.getenv("PYSTACHY_JIT_CODEGEN", "2")
         if codegen != "0" and codegen != "2":
-            fail(f"PYSTACHY_JIT_CODEGEN: {codegen} is not 0 (MCJIT) or 2 (default ORC)", 0)
+            fail(f"PYSTACHY_JIT_CODEGEN: {codegen} is not 0 (llc -O0) or 2 (default ORC)", 0)
         # Reject settings before acquiring cache locks or creating temporary files.
         # Keep both checks: isdigit() and int() accept different Unicode digits.
         lim = os.getenv("PYSTACHY_JIT_INLINE", str(JIT_INLINE))
@@ -507,11 +508,10 @@ def main() -> None:
         # went to .text.unlikely, lli's ORC in LLVM 18 lost the landing pads that the inliner had
         # moved into main, and a try statement there missed what it should have caught
         jitflags = " -profile-guided-section-prefix=false"
-        if codegen == "0":
-            # lli's default ORC path ignores -O0 in LLVM 18. MCJIT honors it; keep this
-            # startup/execution tradeoff opt-in, independently of the IR inlining budget.
-            jitflags += " -jit-kind=mcjit -O0"
-            mcjit = True
+        # lli's ORC ignores -O (it generates code at LLVM's default level): for -O0, llc compiles
+        # the program and ORC links its object (below). Keep this startup/execution tradeoff
+        # opt-in, independently of the IR inlining budget.
+        llcobj = codegen == "0"
     if cmd == "check":
         f = open(diagnostics.SRC, "r", encoding=RAW)
         Parser(Lexer(f.read(), 1).file()).module()
@@ -772,6 +772,8 @@ def main() -> None:
     ll = tmp + "/prog.ll"
     bc = tmp + "/prog.bc"
     obj = tmp + "/prog.o"
+    jobj = tmp + "/prog-O0.o"  # (PYSTACHY_JIT_CODEGEN=0: llc's object, and lli's main module beside it)
+    jmain = tmp + "/main.ll"
     obc = tmp + "/prog-opt.bc"  # (allocelide's late step, below: -O2's module, and that module once
     lbc = tmp + "/prog-late.bc"  # pys_new is inlined into it)
     pcout = tmp + "/program"
@@ -1079,7 +1081,8 @@ def main() -> None:
         jir = jit_alloc(ir)  # (with the allocator's fast path: JITFAST)
         if code == 0:
             f = open(ll, "w", encoding=RAW)
-            f.write(layout + jir + (OBJHOOKS if useso != "" else ""))  # (the shared library's callbacks: RTSO)
+            # (the shared library's callbacks: RTSO; with llc, lli's main module holds them, below)
+            f.write(layout + jir + (OBJHOOKS if useso != "" and not llcobj else ""))
             f.close()
         # JIT tier: discard unused internal functions before SSA cleanup and ORC's module-wide
         # code generation. The frontend still checks their bodies; external pys_obj_* dispatch
@@ -1109,7 +1112,7 @@ def main() -> None:
         # an identical PHI of the invoke's normal successor, whose copies follow the call: an except
         # clause then read values its loop never set or had since changed. Splitting critical edges
         # last gives such successors predecessors of their own, and the landing pad its own copies
-        split = ",function(break-crit-edges)" if mcjit else ""
+        split = ",function(break-crit-edges)" if llcobj else ""
         fast = f"{llvm}opt -passes='{passes},function(early-cse,adce){late}{split}'" + (JITLATE if late != "" else "")
         if code == 0:
             # the cache's library may lie on a file system mounted noexec since it was made (or copied
@@ -1148,6 +1151,18 @@ def main() -> None:
                         cached_run.execute(pcexe, diagnostics.SRC, rest)
                 cached_run.trace("bypass native artifact unavailable")
                 program_cache.stop()
+            if llcobj:
+                # PYSTACHY_JIT_CODEGEN=0: llc's -O0 code generation, for the CPU lli's ORC compiles
+                # for (the module's triple with LLVM's default CPU: neither tool is given -mcpu, and
+                # no function names one), with lli's flag above, in position-independent code, which
+                # ORC's JITLink links. ORC runs the constructors of IR modules alone, so lli's main
+                # module holds the program's target and the shared library's callbacks, if any
+                code = timed_sh("program.jit_codegen", f"{llvm}llc -O0 -filetype=obj -relocation-model=pic -profile-guided-section-prefix=false {q(bc)} -o {q(jobj)}")
+                if code == 0:
+                    f = open(jmain, "w", encoding=RAW)
+                    f.write(layout + (OBJHOOKS_MAIN if useso != "" else ""))
+                    f.close()
+        if code == 0:
             # This process becomes lli with its inputs on allocated descriptors.
             # Keep those files open while unlinking temporary artifacts; inherited
             # descriptors belong to the caller and must never be replaced.
@@ -1158,14 +1173,13 @@ def main() -> None:
                 if os.path.exists(p):
                     os.remove(p)
             # Each standard stream the caller closed holds /dev/null until the program starts, so
-            # that neither the inputs (always at least 3) nor lli's own files (MCJIT's perf jitdump)
-            # take it. Before any of its code runs, the program's runtime closes these and the
-            # inputs, restores the signal dispositions that LLVM's handlers replaced in lli and
-            # removes MCJIT's dump directory (PYSTACHY_JIT_HANDOFF, runtime.c's jit_handoff): the
-            # program and its children see the caller's descriptors and dispositions.
+            # that neither the inputs (always at least 3) nor lli's own files take it. Before any
+            # of its code runs, the program's runtime closes these and the inputs and restores the
+            # signal dispositions that LLVM's handlers replaced in lli (PYSTACHY_JIT_HANDOFF,
+            # runtime.c's jit_handoff): the program and its children see the caller's descriptors
+            # and dispositions.
             reserved = []
             inputs = []
-            dump = ""
             try:
                 for i in range(3):
                     stream = open(os.devnull, "r+b")
@@ -1173,23 +1187,20 @@ def main() -> None:
                         stream.close()
                         break
                     reserved.append(stream)
-                for p in [bc, useso if useso != "" else useo] + ([peo[1]] if embed else []):
+                # lli's main module (the program's bitcode, or the module beside llc's object), the
+                # runtime, the embedding's object and llc's object
+                for p in [jmain if llcobj else bc, useso if useso != "" else useo] + ([peo[1]] if embed else []) + ([jobj] if llcobj else []):
                     inputs.append(open(p, "rb"))
                 for stream in reserved + inputs:
                     os.set_inheritable(stream.fileno(), True)
                 gsp = os.getenv("PYSTACHY_GC_STRESS_PROGRAM", "")
                 env = f"PYSTACHY_GC_STRESS={q(gsp)} " if gsp != "" else ""
-                if mcjit and os.getenv("JITDUMPDIR") is None:
-                    # LLVM's MCJIT always writes a perf jitdump where LLVM has perf support (as
-                    # Ubuntu's does), under JITDUMPDIR or else TMPDIR: here a private directory.
-                    # An explicit JITDUMPDIR keeps LLVM's own behavior.
-                    dump = tempfile.mkdtemp()
-                    env += f"JITDUMPDIR={q(dump)} "
-                handoff = str(ignored_signals()) + ";" + ",".join([str(stream.fileno()) for stream in reserved + inputs]) + ";" + dump
+                handoff = str(ignored_signals()) + ";" + ",".join([str(stream.fileno()) for stream in reserved + inputs])
                 env += f"PYSTACHY_JIT_HANDOFF={q(handoff)} "
                 # Embedding also loads libpython and the pyembed machine code.
                 pe = "".join([" -dlopen=" + q(x) for x in LIBS]) + (" -extra-object=/dev/fd/" + str(inputs[2].fileno()) if embed else "")
                 rt = (" -dlopen=" if useso != "" else " -extra-object=") + "/dev/fd/" + str(inputs[1].fileno())
+                prog = " -extra-object=/dev/fd/" + str(inputs[-1].fileno()) if llcobj else ""
                 archive = ""
                 if useso == "" and any([a.startswith("--rtlib=") or a.startswith("-rtlib=") for a in flags]):
                     # A shared runtime's native link includes the selected compiler builtins. When
@@ -1198,8 +1209,8 @@ def main() -> None:
                     archive = f"jit_rtlib=$({tc[0]} -print-libgcc-file-name{ccflags}) || exit 1; "
                     archive += '[ -f "$jit_rtlib" ] || { echo "cannot find compiler runtime archive: $jit_rtlib" >&2; exit 1; }; '
                     rt += ' -extra-archive="$jit_rtlib"'
-                run = f"unset PYSTACHY_PROGRAM_CACHE_LOCK; {archive}{env}PYSTACHY_ARGV0={q(diagnostics.SRC)} exec {llvm}lli{jitflags}{pe}{rt} /dev/fd/{inputs[0].fileno()} {' '.join([q(a) for a in rest])}"
-                for p in [bc, parto, partso, peo[2]]:
+                run = f"unset PYSTACHY_PROGRAM_CACHE_LOCK; {archive}{env}PYSTACHY_ARGV0={q(diagnostics.SRC)} exec {llvm}lli{jitflags}{pe}{rt}{prog} /dev/fd/{inputs[0].fileno()} {' '.join([q(a) for a in rest])}"
+                for p in [bc, jobj, jmain, parto, partso, peo[2]]:
                     if p != "" and os.path.exists(p):
                         os.remove(p)
                 os.rmdir(tmp)
@@ -1208,12 +1219,7 @@ def main() -> None:
             finally:
                 for stream in reserved + inputs:
                     stream.close()
-                if dump != "":
-                    try:
-                        os.rmdir(dump)
-                    except OSError:
-                        pass
-    for p in [ll, bc, obj, obc, lbc, pcout, pclink, pclink2, pcerror, rcc, rll, rsl, rcb, rpl, rpb, lnk, part, parto, partso, hp, rso, tmp + "/runtime.i", tmp + "/runtime-preprocess.err", tmp + "/pyembed.c", tmp + "/pyext.c", peo[2]] + [g[3] for g in glue]:
+    for p in [ll, bc, obj, jobj, jmain, obc, lbc, pcout, pclink, pclink2, pcerror, rcc, rll, rsl, rcb, rpl, rpb, lnk, part, parto, partso, hp, rso, tmp + "/runtime.i", tmp + "/runtime-preprocess.err", tmp + "/pyembed.c", tmp + "/pyext.c", peo[2]] + [g[3] for g in glue]:
         if os.path.exists(p):
             os.remove(p)
     os.rmdir(tmp)

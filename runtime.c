@@ -6616,44 +6616,21 @@ static int handoff_number(const char **p, unsigned long max, unsigned long *v) {
   for (; *s >= '0' && *s <= '9'; s++) if ((x = x * 10 + (unsigned long)(*s - '0')) > max) return 0;
   *v = x; *p = s; return 1;
 }
-static void jitdump_remove(const char *dir) {   /* LLVM's perf jitdump, dir/.debug/jit/llvm-IR-jit-DATE-XXXXXX/jit-PID.dump
-                                                   (PerfJITEventListener.cpp), then each directory once empty: nothing
-                                                   else, and no link followed */
-  char path[PATH_MAX], dump[32];
-  snprintf(dump, sizeof dump, "jit-%ld.dump", (long)getpid());   /* (lli's process, the program's) */
-  if (snprintf(path, sizeof path, "%s/.debug/jit", dir) >= (int)sizeof path) return;
-  int fd = open(path, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
-  DIR *d = fd < 0 ? NULL : fdopendir(fd);
-  if (d) {
-    for (struct dirent *e; (e = readdir(d));) {
-      if (strncmp(e->d_name, "llvm-IR-jit-", 12)) continue;
-      int sub = openat(dirfd(d), e->d_name, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
-      if (sub >= 0) { unlinkat(sub, dump, 0); close(sub); }
-      unlinkat(dirfd(d), e->d_name, AT_REMOVEDIR);
-    }
-    closedir(d);
-  } else if (fd >= 0) close(fd);
-  rmdir(path);
-  path[strlen(path) - 4] = 0;            /* (dir/.debug) */
-  rmdir(path);
-  rmdir(dir);
-}
 /* pystachy run: lli runs the program in its own process, where LLVM's start-up replaced the dispositions of
    the signals it handles (llvm/lib/Support/Unix/Signals.inc: IntSigs, KillSigs, InfoSigs and SIGPIPE) with
    handlers of its own, which print lli's stack (SIGQUIT's, then let the program run on), ignore SIGUSR1,
    and hide an inherited ignored SIGINT from pys_init's test. The driver (driver.py, where it becomes lli)
-   hands the program what it needs to start as a built one does, in PYSTACHY_JIT_HANDOFF="MASK;FD,...;DIR",
+   hands the program what it needs to start as a built one does, in PYSTACHY_JIT_HANDOFF="MASK;FD,...",
    consumed here before any of the program's code runs and removed from the environment, so that no child
    sees it:
    - MASK: the standard signals the driver ignored, bit s-1 for signal s. An exec keeps ignored signals
      ignored and sets caught ones to their defaults, so these are all that lli inherited: each signal that
      LLVM caught is ignored or default again (lli's crash handlers dropped: the program dies by the signal);
-   - FD,...: the descriptors the driver opened for lli, its inputs (the program's bitcode, the runtime and
-     the embedding's object) and /dev/null on each standard stream that the caller had closed, which then
-     neither the inputs nor lli's own files could take. All are closed: the program and its children see
-     the caller's descriptors;
-   - DIR: MCJIT's private directory for LLVM's perf jitdump (JITDUMPDIR), removed with the dump. lli keeps
-     writing it through its own close-on-exec descriptor, which it closes at exit.
+   - FD,...: the descriptors the driver opened for lli, its inputs (lli's main module, which is the
+     program's bitcode, or the module beside llc's object of the program with PYSTACHY_JIT_CODEGEN=0; the
+     runtime; the embedding's object; that object of llc's) and /dev/null on each standard stream that the
+     caller had closed, which then neither the inputs nor lli's own files could take. All are closed: the
+     program and its children see the caller's descriptors.
    A value not of that form is ignored as a whole; LLVM's handlers are dropped all the same. */
 __attribute__((minsize)) static void jit_handoff(void) {
   static const int llvm[] = {SIGHUP, SIGINT, SIGTERM, SIGUSR2, SIGILL, SIGTRAP, SIGABRT, SIGFPE, SIGBUS, SIGSEGV, SIGQUIT,
@@ -6665,23 +6642,21 @@ __attribute__((minsize)) static void jit_handoff(void) {
                              , SIGINFO
 #endif
   };
-  const char *p = getenv("PYSTACHY_JIT_HANDOFF"), *dir = 0;
+  const char *p = getenv("PYSTACHY_JIT_HANDOFF");
   unsigned long ign = 0, fd;
   int fds[8], n = 0;
   if (p) {
     int ok = handoff_number(&p, 0x7fffffffUL, &ign) && *p++ == ';';
-    if (ok && *p != ';')
+    if (ok && *p)
       for (;;) {
         if (n == 8 || !handoff_number(&p, INT_MAX, &fd)) { ok = 0; break; }
         fds[n++] = (int)fd;
         if (*p != ',') break;
         p++;
       }
-    if (ok && *p++ == ';') dir = p;
-    else { ign = 0; n = 0; }
+    if (!ok || *p) { ign = 0; n = 0; }
   }
   for (int i = 0; i < n; i++) close(fds[i]);
-  if (dir && *dir) { jitdump_remove(dir); unsetenv("JITDUMPDIR"); }
   for (size_t i = 0; i < sizeof llvm / sizeof *llvm; i++) {
     struct sigaction sa;
     if (!sigaction(llvm[i], 0, &sa) && sa.sa_handler != SIG_IGN && sa.sa_handler != SIG_DFL)

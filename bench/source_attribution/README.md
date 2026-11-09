@@ -56,8 +56,9 @@ writes a registered ELF object, and verifies the object's Python line table with
 `llvm-dwarfdump`; the disabled-mode control registers no such Python table. This
 uses LLVM's existing listener and makes no JIT linker changes. It establishes
 registration on that tested toolchain, not compatibility with every debugger,
-JIT mode, or operating system. In particular, Pystachy's `PYSTACHY_JIT_CODEGEN=0` MCJIT
-fallback and macOS debug registration are not covered by this experiment.
+JIT mode, or operating system. In particular, Pystachy's `PYSTACHY_JIT_CODEGEN=0` mode,
+whose program object `llc` compiles, and macOS debug registration are not covered by this
+experiment.
 
 ## Optional data counters
 
