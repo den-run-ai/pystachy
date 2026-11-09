@@ -40,7 +40,8 @@ def repair_json(json_str: str = "", return_objects: bool = False,
         return parsed_json, repair_log
     if return_objects:
         return parsed_json
-    if parsed_json == "":
+    # Preserve the empty result used when repair could not find a value.
+    if parsed_json == "" and not is_valid_json:
         return ""
     return json.dumps(parsed_json, ensure_ascii=ensure_ascii)
 

@@ -1,7 +1,7 @@
 """Ircheck component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import fail, int_lists, int_program
-from src.pystachy_compiler.ir import Blk, IFn, Ins, NOLABELS
+from src.pystachy_compiler.ir import Blk, IFn, Ins, NOLABELS, tmpname
 from src.pystachy_compiler.union_proof import UnionProof, simple_union_proof
 from src.pystachy_compiler.specs import BIG, FX, FXALL, FXBIT, ICMP, IROPS, LIST_READS, LIST_WRITES, NONEVAR, RAWR, RAWW, RUNTIME
 from src.pystachy_compiler.utils import is_dict, is_gen, is_opt, is_set, is_tuple, is_union, is_vtuple, list_read_error, list_write_error, lt, same_kind, targs, tslots, umembers
@@ -463,7 +463,7 @@ def gen_effects(self) -> None:
         snap: Ins | None = None
         if fn.rdepth != "" and len(fn.blocks) > 0 and len(fn.blocks[0].code) > 0:
             first = fn.blocks[0].code[0]
-            if first.op == "rt" and first.s == "recursion.depth" and len(first.r) == 1 and f"%t{first.r[0]}" == fn.rdepth:
+            if first.op == "rt" and first.s == "recursion.depth" and len(first.r) == 1 and tmpname(first.r[0]) == fn.rdepth:
                 snap = first
         for b in fn.blocks:
             for i in b.code:

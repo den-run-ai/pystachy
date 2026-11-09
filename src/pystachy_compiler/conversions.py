@@ -2,7 +2,7 @@
 from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, umembers
 from src.pystachy_compiler.diagnostics import shown
-from src.pystachy_compiler.ir import Ins, Val
+from src.pystachy_compiler.ir import Ins, Val, tmpname
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.specs import BIG, BIGOPT, DUNDER, NONEVAR, ORDOP, REFL
 from src.pystachy_compiler.bigints import big_viewable, held
@@ -43,7 +43,7 @@ def gen_to_slot(self, v: Val, keep: bool = False) -> str:
     i = Ins("slot.pack", "%slot", "")
     i.a = [v]
     self.put(i, 1)
-    return f"%t{i.r[0]}"
+    return tmpname(i.r[0])
 
 def gen_from_slot(self, s: str, t: str) -> Val:
     # Recursive container slots hold the existing union-box pointer. Expose one
@@ -54,7 +54,7 @@ def gen_from_slot(self, s: str, t: str) -> Val:
     i = Ins("slot.unpack", t, "")
     i.a = [Val(s, "%slot")]
     self.put(i, 1)
-    return Val(f"%t{i.r[0]}", t)
+    return Val(tmpname(i.r[0]), t)
 
 def gen_rarg(self, v: Val) -> str:
     if v.t == "bool":
@@ -87,14 +87,14 @@ def gen_num_cast(self, v: Val, t: str) -> Val:
     i = Ins("num.cast", t, "")
     i.a = [v]
     self.put(i, 1)
-    return Val(f"%t{i.r[0]}", t)
+    return Val(tmpname(i.r[0]), t)
 
 def gen_num_cmp(self, op: str, a: Val, b: Val) -> Val:
     # The frontend normalizes bools and handles exact mixed int/float comparisons first.
     i = Ins("num.cmp", "bool", op)
     i.a = [a, b]
     self.put(i, 1)
-    return Val(f"%t{i.r[0]}", "bool")
+    return Val(tmpname(i.r[0]), "bool")
 
 def gen_int_ucmp(self, op: str, a: Val, b: Val) -> Val:
     # Bounds checks interpret native int bits as unsigned, also rejecting negatives.
@@ -102,14 +102,14 @@ def gen_int_ucmp(self, op: str, a: Val, b: Val) -> Val:
     i = Ins("int.ucmp", "bool", op)
     i.a = [a, b]
     self.put(i, 1)
-    return Val(f"%t{i.r[0]}", "bool")
+    return Val(tmpname(i.r[0]), "bool")
 
 def gen_ptr_cmp(self, op: str, a: Val, b: Val) -> Val:
     # Native reference identity/null tests, including boxed optional scalars.
     i = Ins("ptr.cmp", "bool", op)
     i.a = [a, b]
     self.put(i, 1)
-    return Val(f"%t{i.r[0]}", "bool")
+    return Val(tmpname(i.r[0]), "bool")
 
 def gen_floats(self, v: Val) -> Val:
     # a number, or a list of numbers, as float(s)

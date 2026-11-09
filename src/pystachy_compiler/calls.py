@@ -4,7 +4,7 @@ from src.pystachy_compiler.analysis import local_names, numeric_statement
 from src.pystachy_compiler.bigints import converts
 from src.pystachy_compiler.diagnostics import dynamic_program, shown, where
 from src.pystachy_compiler.generators import fresh_yield_context
-from src.pystachy_compiler.ir import Data, FnInfo, Ins, Val
+from src.pystachy_compiler.ir import Data, FnInfo, Ins, Val, tmpname
 from src.pystachy_compiler.names import ENUMCLASSES, short
 from src.pystachy_compiler.reflection import VARS_USES, refl_attr_fields, refl_formatter
 from src.pystachy_compiler.specs import BFILE, BIG, EXCEPTIONS, GLUE, HASATTR, MODATTRS, PYBUILTINS, RANGEC
@@ -672,7 +672,7 @@ def gen_call_callable(self, o: Val, args: list[Node]) -> Val:
         self.add(c)
         return Val("null", "None")
     self.put(c, 1)
-    result = Val(f"%t{c.r[0]}", ts[0])
+    result = Val(tmpname(c.r[0]), ts[0])
     if idresult != "" and numeric_identity(ts[0]) and self.idhere():
         result.idexact = result.t == "int" or result.t == BIG or result.t == "float"
         result.idslot = idresult
@@ -1572,7 +1572,7 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
     if f.ll in self.guessed and f.ll != self.curfn.ll:
         self.guessed[self.curfn.ll] = self.guessed[f.ll]  # (what it returns may hold a guess)
     self.put(c, 1)
-    self.gencall = f"%t{c.r[0]}" if f.gen else ""  # (a new generator: a loop over it owns it, see owned_gen)
+    self.gencall = tmpname(c.r[0]) if f.gen else ""  # (a new generator: a loop over it owns it, see owned_gen)
     self.gencallf = f if f.gen else None
     if "?" in f.ret:
         # f returns an open empty result: its own, or also that of the call cycle's functions
@@ -1581,12 +1581,12 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
         known = ""
         for g in chain:
             if known == "" and g.ret != "" and "?" not in g.ret:
-                v = self.typed_empty(Val(f"%t{c.r[0]}", f.ret), g.ret, f)
+                v = self.typed_empty(Val(tmpname(c.r[0]), f.ret), g.ret, f)
                 if v.t != g.ret:
                     self.err(f"cannot infer what {short(f.name)}() returns: it returns what {short(g.name)}() does, {typestr(g.ret)}; annotate its return type")
                 known = g.ret
         if known == "":
-            v = self.typed_empty(Val(f"%t{c.r[0]}", f.ret), want, f)
+            v = self.typed_empty(Val(tmpname(c.r[0]), f.ret), want, f)
         if "?" not in v.t:
             # A recursive call may already consume a concrete layout. Later
             # inference can adopt exactly that layout, never a different one.
@@ -1596,7 +1596,7 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
                     old = self.qused.get(g.ll, v.t)
                     self.qused[g.ll] = v.t if old == v.t else "?"
         return v
-    result = Val(f"%t{c.r[0]}", f.ret)
+    result = Val(tmpname(c.r[0]), f.ret)
     if idresult != "" and numeric_identity(f.ret) and self.fn_identity(f):  # (code that does not track identity gives none)
         result.idexact = result.t == "int" or result.t == BIG or result.t == "float"
         result.idslot = idresult

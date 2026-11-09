@@ -1,20 +1,23 @@
 # json_repair parity corpus
 
-Inputs derive from `mangiucugna/json_repair` **v0.64.1**, commit
-`ace9b23cb7fc6757775d5fafbfaaa9a88363a573`, under its [MIT license](LICENSE).
-`manifest.json` records all 22 Python source hashes and the seven test-file
-hashes used to extract inputs.
+Inputs derive from `mangiucugna/json_repair` **v0.64.8**, commit
+`dc6d02b168656aa3dcaac6a119ecc47594d3526e`, under its [MIT license](LICENSE).
+`manifest.json` records all 22 Python source hashes and the hashes of the seven
+test modules and one shared case module used to extract inputs.
 
-The **837 distinct input/API/option combinations** comprise 438 extracted
-upstream schema-free calls and 399 task-focused cases. The original 645 cases are
-unchanged; 192 additional combinations cover multilingual repair. This is an API replay
+The **943 distinct input/API/option combinations** comprise 544 extracted
+upstream schema-free calls and 399 task-focused cases, 192 of which cover
+multilingual repair. This is an API replay
 corpus, **not execution of the complete upstream test suite**. The extractor
 resolves literal calls, simple string construction, local literal assignments
-and loops, literal conditions and string interpolation, literal `pytest.mark.parametrize` decorators, and the upstream
-`_assert_object_repairs` helper. It never executes test source to discover inputs.
-The two resource-dependent calls that remain unresolved are listed in the
-manifest: Python's configurable integer conversion limit and a runtime recursion
-depth search. Schema, file, CLI and internal-parser tests are outside its scope.
+and loops, literal conditions and string interpolation, literal tables whose items
+may interpolate strings, literal `pytest.mark.parametrize` decorators (including
+tables they import from upstream's `tests/utils` case module), and the upstream
+`_assert_object_repairs` helper. It parses but never executes or imports test source
+to discover inputs. The manifest lists the unresolved calls: two resource-dependent
+calls (Python's configurable integer conversion limit and a runtime recursion
+depth search) and five that pass a schema. Schema, file, CLI and internal-parser
+tests are outside its scope.
 
 Extracted calls retain their API, serialization defaults, parsing options,
 `ensure_ascii=False` and repair logging. Unsupported keywords are reported rather
@@ -34,16 +37,22 @@ API. The native runner emits round-trip float
 representations, which the host checker converts to exact `float.hex()` values,
 including negative zero. Error classes and exact messages are also compared.
 
-**Case 59 exceeds signed 64-bit integer range.** It stays in the corpus and now
+**Case 67 exceeds signed 64-bit integer range.** It stays in the corpus and
 passes through the native dynamic JSON decoder's token-promotion path. Additional
 Unicode cases cover numeric suffixes, wide integers, combining marks, non-BMP
 letters, whitespace, surrogates, nonletters and all supported parsing modes.
 There is no silent exclusion or automatic known-failure allowance.
 
-The expanded corpus passes **837/837** under pristine and adapted CPython
-3.13.16, native JIT, native AOT, and both native modes with program GC stress.
+The corpus passes **943/943** under pristine 0.64.8 and the adapted port on
+CPython 3.13.16, native JIT, native AOT, both native modes with program GC stress,
+and the CPython companion extension under GC stress.
 These results cover the recorded combinations; the separate Unicode audit checks
 the five corrected character predicates across every Unicode code point.
+
+CI replays the corpus natively in JIT and AOT (the `example-cli` verification step)
+and through the CPython companion extension under GC stress (the `ffi` step). The
+extension replay needs the pinned CPython as its oracle; under another interpreter
+the FFI report lists it as skipped, which CI's FFI coverage check rejects.
 
 ## Replay
 
@@ -69,7 +78,7 @@ content/type/error mismatch. It does not treat an early exit as a partial pass.
 Use a pristine upstream checkout and an isolated Python process:
 
 ```sh
-git clone --depth 1 --branch v0.64.1 https://github.com/mangiucugna/json_repair.git /tmp/json_repair_upstream
+git clone --depth 1 --branch v0.64.8 https://github.com/mangiucugna/json_repair.git /tmp/json_repair_upstream
 python3.13 tools/build_json_repair_corpus.py --upstream /tmp/json_repair_upstream --output tests/upstream/json_repair
 PYTHONPATH=/tmp/json_repair_upstream/src python3.13 tests/upstream/json_repair/replay.py /tmp/json_repair_inputs.jsonl > /tmp/json_repair_pristine.out
 python3.13 tools/json_repair_parity.py /tmp/json_repair_pristine.out

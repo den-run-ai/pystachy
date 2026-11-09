@@ -4,14 +4,14 @@ Native mem.load/store retain the stronger *<native> address contract. These
 operations also cover closure environments, runtime headers and byte buffers.
 """
 from __future__ import annotations
-from src.pystachy_compiler.ir import Ins, Val
+from src.pystachy_compiler.ir import Ins, Val, tmpname
 
 
 def gen_mload(self, t: str, p: str, metadata: str = "") -> str:
     i = Ins("mach.load", t, metadata)
     i.a = [Val(p, "%ptr")]
     self.put(i, 1)
-    return f"%t{i.r[0]}"
+    return tmpname(i.r[0])
 
 
 def gen_mstore(self, t: str, v: str, p: str, metadata: str = "") -> None:
@@ -25,4 +25,4 @@ def gen_maddr(self, t: str, p: str, index: str, inbounds: bool = False) -> str:
     i.a = [Val(p, "%ptr"), Val(index, "int")]
     i.k = 1 if inbounds else 0
     self.put(i, 1)
-    return f"%t{i.r[0]}"
+    return tmpname(i.r[0])

@@ -24,7 +24,7 @@ from src.pystachy_compiler.analysis import (
 )
 from src.pystachy_compiler.diagnostics import FILES, LINES, MODDUNDERS, Rejoin, dynamic_program, where
 from src.pystachy_compiler.dynamic import XCMP, boxed_list_items, comparison_record_write, comparison_storage_key
-from src.pystachy_compiler.ir import Blk, Closure, FnInfo, Frame, Ins, IterArg, Val
+from src.pystachy_compiler.ir import Blk, Closure, FnInfo, Frame, Ins, IterArg, Val, tmpname, one_num
 from src.pystachy_compiler.names import ENUMCLASSES, owner, short
 from src.pystachy_compiler.specs import BIG, BIGOPT, INERT_DECOS, NONE_ITEM, NONEVAR, OPTTYPES, PYBUILTINS, RANGEC, RANGES, UNSUPPORTED, is_excname
 from src.pystachy_compiler.syntax import NOKIDS, Node, comp_names, made_var, mk, name_targets, starred_target
@@ -796,7 +796,7 @@ def gen_imp_flag(self, x: str, glob: bool) -> str:
         self.n += 1
         i = Ins("slot", "bool", x)
         i.k = 1
-        i.r = [self.n]
+        i.r = one_num(self.n)
         self.fn.slots.append(i)
         self.iflag[x] = f"%{x}.def.{self.n}"
     return self.iflag[x]
@@ -1159,7 +1159,7 @@ def gen_empty(self, kind: str, name: str) -> Val:
         self.gkk[name] = self.gkk.get(name, "") + f" {i.k}"
     else:
         self.lkk[name] = self.lkk.get(name, "") + f" {i.k}"
-    return Val(f"%t{i.r[0]}", i.t)
+    return Val(tmpname(i.r[0]), i.t)
 
 def gen_none_extend(self, name: str) -> None:
     # name, a list of None so far, extended by the items of another list, which keeps them as
@@ -1316,7 +1316,7 @@ def gen_retval(self, e: Node, want: str) -> Val:
         if self.curfn.ll not in self.qholes:
             self.qholes[self.curfn.ll] = []
         self.qholes[self.curfn.ll].append(i.k)
-        return Val(f"%t{i.r[0]}", i.t)
+        return Val(tmpname(i.r[0]), i.t)
     known = e.kind == "name" and e.s in q.split() and "?" in self.ltype.get(e.s, "")  # (and still so)
     if e.kind == "name" and (want == "" or "?" in want) and (known or self.unfilled(e.s)):
         self.qret[self.curfn.ll] = q if known else q + " " + e.s
@@ -2285,7 +2285,7 @@ def gen_list_slot(self, o: Val, i: str) -> str:
     read = Ins("list.load", "*" + elem(o.t), "")
     read.a = [o, Val(i, "int")]
     self.put(read, 4)
-    return f"%t{read.r[0]}"
+    return tmpname(read.r[0])
 
 def gen_unpack_next(self, t: Node, it: Val) -> None:
     # a, b = o of an object whose __iter__ returns iterator object it: an item from __next__ for

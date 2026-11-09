@@ -300,29 +300,41 @@ class LimitTests(unittest.TestCase):
         ])
 
     def test_program_cache_probe_runs_once_per_machine_outside_compact_gc(self):
-        job = workflows()["ci.yml"]["jobs"]["verification"]
-        probes = [step for step in job["steps"] if "make test-program-cache " in step.get("run", "")]
-        self.assertEqual(len(probes), 1)
-        probe = probes[0]
-        self.assertIn("PROGRAM_CACHE_COMPILER=build/verify/pystachy2", probe["run"])
-        self.assertNotIn("continue-on-error", probe)
-        self.assertEqual(probe["env"]["PYSTACHY_HOME"], "${{ github.workspace }}")
+        # Full runs probe on both architectures' runtime-cache jobs; a pull request probes once,
+        # in the first native JIT worker, outside the contracts and compact cache/GC jobs.
+        jobs = workflows()["ci.yml"]["jobs"]
         for event in ("pull_request", "push", "workflow_dispatch"):
             selected = []
-            for row in matrix_rows(job, event):
-                # Evaluate only this condition's literal comparisons and boolean operators.
-                condition = probe["if"].replace("github.event_name", repr(event))
-                condition = condition.replace("matrix.group", repr(row["group"]))
-                condition = condition.replace("&&", " and ").replace("||", " or ")
-                expression = ast.parse(condition, mode="eval")
-                allowed = (ast.Expression, ast.BoolOp, ast.Compare, ast.Constant, ast.And, ast.Or, ast.Eq)
-                self.assertTrue(all(isinstance(node, allowed) for node in ast.walk(expression)), condition)
-                if eval(compile(expression, "<program-cache condition>", "eval"), {"__builtins__": {}}, {}):
-                    selected.append((row["machine"], row["group"]))
-            expected = [("x86_64", "contracts")] if event == "pull_request" else [
-                ("x86_64", "runtime-cache"), ("aarch64", "runtime-cache")]
+            for name in ("verification", "pr-variants"):
+                job = jobs[name]
+                probes = [step for step in job["steps"] if "make test-program-cache " in step.get("run", "")]
+                self.assertEqual(len(probes), 1, name)
+                probe = probes[0]
+                self.assertIn("PROGRAM_CACHE_COMPILER=build/verify/pystachy2", probe["run"])
+                self.assertNotIn("continue-on-error", probe)
+                self.assertEqual(probe["env"]["PYSTACHY_HOME"], "${{ github.workspace }}")
+                # (the job's own condition: pr-variants' first test, which names the event; the
+                # rest of it, and verification's, is the bootstrap's plan, the same for both)
+                job_condition = job["if"].split("&&")[0] if name == "pr-variants" else "True"
+                for row in matrix_rows(job, event):
+                    # Evaluate only this condition's literal comparisons and boolean operators.
+                    condition = "(" + job_condition + ") && (" + probe["if"] + ")"
+                    condition = condition.replace("github.event_name", repr(event))
+                    condition = condition.replace("matrix.group", repr(row.get("group")))
+                    condition = condition.replace("matrix.worker", str(row.get("worker")))  # (a number)
+                    condition = condition.replace("&&", " and ").replace("||", " or ")
+                    expression = ast.parse(condition, mode="eval")
+                    allowed = (ast.Expression, ast.BoolOp, ast.Compare, ast.Constant, ast.And, ast.Or, ast.Eq)
+                    self.assertTrue(all(isinstance(node, allowed) for node in ast.walk(expression)), condition)
+                    if eval(compile(expression, "<program-cache condition>", "eval"), {"__builtins__": {}}, {}):
+                        selected.append((name, row.get("machine"), row.get("group"), row.get("worker")))
+            expected = [("pr-variants", None, None, "0")] if event == "pull_request" else [
+                ("verification", "x86_64", "runtime-cache", None), ("verification", "aarch64", "runtime-cache", None)]
             with self.subTest(event=event):
                 self.assertCountEqual(selected, expected)
+            uploads = [step for step in jobs["pr-variants"]["steps"] if step.get("uses", "").startswith("actions/upload-artifact")
+                       and "build/program-cache-checks.json" in step["with"]["path"]]
+            self.assertEqual(len(uploads), 1)
 
 
 if __name__ == "__main__":

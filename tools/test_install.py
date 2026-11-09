@@ -18,7 +18,7 @@ class InstallTests(unittest.TestCase):
         self.root = Path(temporary.name)
         self.source = self.root / "source"
         self.source.mkdir()
-        for name in ("runtime.c", "runtime.py", "pyext.c", "pyembed.c", "LICENSE", "THIRD_PARTY_NOTICES"):
+        for name in ("runtime.c", "runtime.py", "pyext.c", "pyembed.c", "lljit.c", "LICENSE", "THIRD_PARTY_NOTICES"):
             (self.source / name).write_text(f"fixture: {name}\n")
         (self.source / "VERSION").write_text("v0.1.0-alpha.1\n")
         for name in ("lib", "ryu", "mpz"):

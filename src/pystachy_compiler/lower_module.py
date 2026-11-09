@@ -9,7 +9,7 @@ from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Val
 from src.pystachy_compiler.llvm_abi import llstr
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.specs import CTYPES, DYNTYPE_LL, GENCLEAN, GENCMD, GENDONE, GENNAME, GENRUN, GENSTATE, GLUE, LIBS, LINKDL, OBJECTC, RANGEC, RECURSION_BRANCH, RTDATA, RTSYM, STR_HEADER_SIZE, STRLEN_RANGE, TBAA_BYTES, TBAA_DEPTH, TBAA_DEPTH_TYPE, TBAA_FIELDS, TBAA_FLOOR, TBAA_FLOOR_TYPE, TBAA_LEN, TBAA_LIMIT, TBAA_LIMIT_TYPE, TBAA_NAMES, TBAA_SIZES
-from src.pystachy_compiler.utils import RtFn, lt, runtime_decl, typestr
+from src.pystachy_compiler.utils import RtFn, float_slot, lt, runtime_decl, typestr
 
 # pystachy run on Linux, which loads the runtime as a shared library (the driver's RTSO, #704): a
 # constructor, which the driver adds to the program's module, that hands the library the program's
@@ -21,6 +21,13 @@ define internal void @pys.obj.hooks() {
 }
 @llvm.global_ctors = appending global [1 x { i32, ptr, ptr }] [{ i32, ptr, ptr } { i32 0, ptr @pys.obj.hooks, ptr null }]
 """
+# PYSTACHY_JIT_CODEGEN=0: llc compiles the program to an object, whose constructors lli's ORC does
+# not run (its platform runs those of IR modules), so lli's main module, which holds no code of the
+# program, is this constructor, with the callbacks gen_dispatch defines in the object declared
+OBJHOOKS_MAIN = """declare i64 @pys_obj_eq(i64, i64, i64)
+declare i64 @pys_obj_cmp(i64, i64, i64, i64)
+declare ptr @pys_obj_repr(i64, i64, i64)
+""" + OBJHOOKS
 
 
 # The JIT tier's allocations: runtime.c's fast path (gc_alloc), here in the program's module, since
@@ -238,7 +245,7 @@ def const_slot(v: Val) -> str:
     if v.t == "int":
         return v.v
     if v.t == "float":
-        return f"bitcast (double {v.v} to i64)"
+        return float_slot(v.v)
     if v.t == "bool":
         return "1" if v.v == "true" else "0"
     if v.v == "null":
@@ -320,7 +327,7 @@ def lower_data(d: Data) -> str:
     if d.kind == "dynfloat":
         # A float literal's dynamic value: preserve the exact bits in its i64 payload and
         # retain its address as object identity, including separate positive/negative zero.
-        return f"{d.name} = internal constant {{ptr, i64}} {{ptr {d.refs[0]}, i64 bitcast (double {d.items[0].v} to i64)}}, align 8"
+        return f"{d.name} = internal constant {{ptr, i64}} {{ptr {d.refs[0]}, i64 {float_slot(d.items[0].v)}}}, align 8"
     if d.kind == "classfields":
         # the fields of an object's __dict__ in their order: name, type descriptor, byte offset in
         # the class's layout (d.text) and that of its "is assigned" flag (-1: always assigned)
@@ -608,7 +615,7 @@ def gen_gen_module(self) -> list[str]:
         "declare token @llvm.coro.id(i32, ptr, ptr, ptr)", "declare i1 @llvm.coro.alloc(token)",
         "declare i64 @llvm.coro.size.i64()", "declare ptr @llvm.coro.begin(token, ptr)",
         "declare i8 @llvm.coro.suspend(token, i1)", "declare ptr @llvm.coro.free(token, ptr)",
-        "declare i1 @llvm.coro.end(ptr, i1, token)", "declare void @llvm.coro.resume(ptr)",
+        "declare i1 @llvm.coro.end(ptr, i1)", "declare void @llvm.coro.resume(ptr)",  # (lowering's coro.ret)
         "declare void @llvm.coro.destroy(ptr)", "declare ptr @llvm.coro.promise(ptr, i32, i1)"]
     if self.gendrops:
         o.extend([

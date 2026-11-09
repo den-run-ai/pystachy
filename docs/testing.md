@@ -31,7 +31,7 @@ Run these from the repository root:
 | `make irsame REF=<commit>` | Compare IR, diagnostics and exit status with a reference compiler for a refactor. |
 | `make bench-extended-check` | Check the extended benchmark runner and CPython/JIT/AOT checksums; no timing thresholds. |
 | `make bench-pyperformance-check` | Check the pyperformance runner and the ported benchmarks' CPython/JIT/AOT output; no timing thresholds. |
-| `make example-cli-check` | Check real example command lines against pinned CPython, JIT and AOT, plus JSON repair process cases and the agent's loopback HTTP transport. |
+| `make example-cli-check` | Check real example command lines against pinned CPython, JIT and AOT, plus JSON repair process cases, a native replay of the JSON repair corpus and the agent's loopback HTTP transport. |
 | `make blas-check` | Check the optional `cblas_dgemm` adapter (`examples/ndarray`) against NumPy and nanoGPT's BLAS backend against its scalar one, under CPython, JIT, AOT and GC stress; needs an LP64 `libblas.so.3` and NumPy. `LD_LIBRARY_PATH` selects the provider; CI checks OpenBLAS and the reference BLAS. |
 
 For quick local feedback, activate the environment with the dependencies from
@@ -152,10 +152,15 @@ check complements the full opt-in corpus sweep, `make dynany-optin`), `make dict
 store's `-O2` code, plain or not, the allocations `allocelide` lets `-O2` delete and those it
 keeps, with the objects they hold, and the allocation window between collections that
 `PYSTACHY_GC_MIN` sets).
-`make jitprobe` also compares JIT launches with CPython: inherited descriptors, the program's
-and its child's whole descriptor tables, closed standard streams, inherited SIGINT dispositions
-(sent once the program waits), shared/object runtime inputs, MCJIT, embedding, temporary
-cleanup, failed exec and native program-cache miss/hit and AOT launches.
+`make jitprobe` also checks the [JIT runner](internals.md#the-jit-runner) on small C programs
+(`tools/test_lljit.py`: its first-use build, cache and `lli` fallback, constructors, `argv`,
+status, libraries, objects, archives, errors and signal dispositions; `PYSTACHY_TEST_LLJIT_LLVMS`
+adds toolchains of other LLVM versions), and compares JIT launches with CPython under the runner
+and under `lli`: inherited descriptors, the program's and its child's whole descriptor tables,
+closed standard streams, inherited SIGINT dispositions (sent once the program waits),
+shared/object runtime inputs, `-O0` code generation (the runner's, and `llc`'s objects for
+`lli`), embedding, temporary cleanup, failed exec and native program-cache miss/hit and AOT
+launches.
 They use deterministic operation or allocation limits where possible; shared CI runners do
 not gate on benchmark speed.
 
@@ -350,7 +355,7 @@ and AOT, in configurations that `make verify` does not test and that must change
 | Variant | Configuration |
 |---|---|
 | `opt-1` … `opt-6` | `PYSTACHY_OPT` turning off the IR passes that each row of a covering array of their pairs leaves off. Verification runs every pass on and all of them off (`-all`); with these six rows, every two passes run in each of their four on/off combinations. A pass added to `OPTS` gets a column of its own; the rows have room for fifteen passes (`tools/variants.sh`). |
-| `cflags-O0` | `PYSTACHY_CFLAGS=-O0`: the runtime unoptimized, and with it an AOT program's whole module, whose IR then runs as the compiler emitted it. The runtime's frames keep every local in memory, which changes the dead words that the conservative collector scans as roots. |
+| `cflags-O0` | `PYSTACHY_CFLAGS=-O0`: the runtime unoptimized, and with it an AOT program's whole module, whose IR then runs as the compiler emitted it. The runtime's frames keep every local in memory, which changes the dead words that the conservative collector scans as roots. Its JIT runs in `lli` (`PYSTACHY_JIT_LAUNCHER=lli`), the fallback of the [JIT runner](internals.md#the-jit-runner) that verification and the other variants use. |
 
 `make runtime-coverage` is another variant: clang's instrumentation changes the runtime's register
 allocation, and only that build showed `open()` keeping alive the writer it collected to close
@@ -409,8 +414,11 @@ elapsed time are excluded, apart from the router's empty in-memory batch with it
 defined zero-time report.
 
 The step also invokes the existing `tests/upstream/json_repair/cli.py` checks (20
-process cases, including output-file effects, compared with CPython in JIT and AOT)
-and `examples/agent/http_smoke.py` with CPython, JIT and AOT launchers. The latter
+process cases, including output-file effects, compared with CPython in JIT and AOT),
+replays the 943 recorded calls of the [JSON repair corpus](../tests/upstream/json_repair/README.md)
+through native JIT and AOT builds of the port, each checked by `tools/json_repair_parity.py`
+against the recorded CPython outcomes, and runs
+`examples/agent/http_smoke.py` with CPython, JIT and AOT launchers. The latter
 validates five requests against a local HTTP server, the response transcript and
 the resulting workspace repair; it needs `curl` but no model service or credentials.
 This is deterministic transport and execution coverage, with no performance threshold.
@@ -483,13 +491,13 @@ from the budget. Each test runner uses at most four processes within its worker.
 
 | PR work | Jobs | Coverage |
 |---|---:|---|
-| Linux bootstrap | 2 | x86-64 and ARM64 compiler/runtime fixed points; ARM64 installer, FFI, thread, stack and sanitizer linkage smoke. |
+| Linux bootstrap | 2 | x86-64 and ARM64 compiler/runtime fixed points; ARM64 installer, FFI, thread, stack, JIT runner and sanitizer linkage smoke. |
 | Hosted | 1 | Every corpus case: hosted/native IR, diagnostics and check parity; hosted driver end-to-end strata. |
 | Native AOT | 2 | Disjoint halves of the **complete** corpus in AOT. |
-| Native JIT and variants | 2 | Disjoint halves of the **complete** corpus in JIT, then seven sampled configurations split across the same workers. |
+| Native JIT and variants | 2 | Disjoint halves of the **complete** corpus in JIT, then seven sampled configurations split across the same workers; the first then checks native program-cache invalidation and execution. |
 | Safety | 2 | Representative and changed cases: optimizer off, Python-free rebuild, UBSan rebuild, JIT/AOT GC stress. |
 | Opt-in compatibility | 1 | Selected programs with dynamic `Any` and promoting ints, against fresh CPython oracles. |
-| Contracts | 1 | Complete IR/runtime/FFI and behavioral contract checks, then native program-cache invalidation and execution. |
+| Contracts | 1 | Complete IR/runtime/FFI and behavioral contract checks. |
 | Cache and compiler GC | 1 | Both runtime-cache checks, then stressed self-compilation. |
 | Benchmarks and scaling | 1 | Correctness, both scaling halves, BLAS and large upstream regex. |
 | Distribution | 2 | Linux x86-64 and macOS ARM64 installation, including pip/uv; Linux source packages and native archive smoke. |
@@ -527,8 +535,9 @@ reports before running their existing sampled configurations in sequence. This k
 The compact cache/GC group finishes both parallel cache checks before starting its
 collector-stressed self-compilation, preserving the latter's ten-minute bound without
 three competing compiler processes.
-Native program-cache checks follow the contracts group's own checks, leaving
-the compact cache/GC group's budget for runtime-cache and compiler GC verification.
+Native program-cache checks run last in the first JIT worker, with the stage-2 compiler
+its corpus half restored: on EPYC 7763 runners the JIT workers took about 3.5 minutes,
+the contracts and cache/GC groups up to 13.5 (#1178).
 
 ### Full verification
 

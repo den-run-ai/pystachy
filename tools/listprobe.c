@@ -2,7 +2,8 @@
    lists and of pys_list_new_atomic's lists (the compiler's list[int], list[float] and list[bool])
    are pointer-free, and so are the arrays that growth, copies, slices, + and * make of them, and
    a cleared one's sentinel; headers and other lists' arrays are scanned, and stay so through the
-   same operations. Ints in a pointer-free array that are the addresses of objects keep none of
+   same operations. A short scanned list keeps its items inline in its header's object, until
+   it grows past them, and an emptied one keeps none of them. Ints in a pointer-free array that are the addresses of objects keep none of
    them alive. Dropped pointer-free large item arrays that are most of what is allocated start
    collections of their own, every max(4 MiB, live bytes) of them; small objects, large arrays
    among more small objects and arrays of pointers keep the 32 MiB window. These are
@@ -111,6 +112,46 @@ static void vacated(void) {
       I want = i >= n ? 0 : 7 + 2 * (i + (how != 0));
       if (backing[i] != want) bad("vacated backing slot retains removed value");
     }
+  }
+}
+/* A scanned list made for at most INLINE_CAP items keeps them in its header's own object (one
+   allocation, under stress one collection), and only while they fit: growth moves them to an
+   array of their own and clears the inline slots. An emptied list keeps none of them (vacated),
+   and its next items go back inline. Like vacated, this reads the slots, not finalizer timing. A
+   list made for more items, and a pointer-free one, keep arrays of their own */
+static void inline_lists(void) {
+  I before = gc_n;
+  List *l = pys_list_new(0);
+  if (gc_stress == 1 && gc_n - before != 1) bad("a short list takes more than one allocation");
+  if (l->a != inline_items(l) || l->cap != INLINE_CAP || gc_seg(l)->size != 72) bad("a short list's items are not inline");
+  kinds(l, 0);
+  List *wide = pys_list_new(INLINE_CAP + 1), *numbers = pys_list_new_atomic(0);
+  if (wide->a == inline_items(wide) || numbers->a == inline_items(numbers)) bad("a long or pointer-free list's items are inline");
+  kinds(wide, 0); kinds(numbers, 1);
+  for (I i = 0; i < INLINE_CAP; i++) pys_list_append(l, 7 + i);
+  I *in = l->a;
+  if (in != inline_items(l) || l->cap != INLINE_CAP) bad("items within the inline capacity moved");
+  pys_list_append(l, 11);
+  kinds(l, 0);
+  if (l->a == in || l->len != INLINE_CAP + 1 || l->a[0] != 7 || l->a[INLINE_CAP - 1] != 6 + INLINE_CAP || l->a[INLINE_CAP] != 11) bad("growth past the inline items");
+  for (I i = 0; i < INLINE_CAP; i++) if (in[i]) bad("growth leaves the moved items in the header");
+  for (I how = 0; how < 3; how++) {    /* clear, pop and slice deletion that empty an inline list */
+    List *m = pys_list_new(2);
+    pys_list_append(m, 5); pys_list_append(m, 6);
+    I *items = m->a;
+    if (how == 0) pys_list_clear(m);
+    else if (how == 1) { pys_list_pop(m, -1); pys_list_pop(m, -1); }
+    else pys_list_del_slice(m, NONE, NONE, 1);
+    check_empty(m);
+    if (m->a != empty_inline || items[0] || items[1]) bad("an emptied inline list keeps its items");
+    pys_list_append(m, 8);
+    if (m->a != items || m->cap != INLINE_CAP || m->len != 1 || m->a[0] != 8) bad("an emptied inline list's next item is not inline");
+    pys_list_clear(m);
+    for (I i = 0; i < INLINE_CAP + 2; i++) pys_list_append(wide, i);
+    pys_list_extend(m, wide);            /* (more than fit inline: an array of its own) */
+    kinds(m, 0);
+    if (m->a == items || m->len != wide->len || m->a[INLINE_CAP + 1] != INLINE_CAP + 1) bad("an emptied inline list's growth");
+    pys_list_clear(wide);
   }
 }
 static void ranges(void) {
@@ -594,6 +635,7 @@ int main(void) {
   for (I i = 0; i < buffers->len; i++) check_empty((List *)buffers->a[i]);
   operations();
   vacated();
+  inline_lists();
   ranges();
   scalar_constants();
   numeric();
@@ -609,6 +651,6 @@ int main(void) {
     bad("native companion did not retain distinct wide boxes through collection");
   checked_boundary_rejection();
   budgets();
-  puts("listprobe: empty-list reuse, range-list storage/mutation, pointer-free list kinds, numeric identity, promoting storage, native Any boundaries and large-object collections passed");
+  puts("listprobe: empty-list reuse, inline short lists, range-list storage/mutation, pointer-free list kinds, numeric identity, promoting storage, native Any boundaries and large-object collections passed");
   return 0;
 }

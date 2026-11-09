@@ -47,7 +47,8 @@
 #                  unstressed, whose IR gc-ir shows to be the stressed compiler's
 #   benchmarks     bench/*.py print exactly what CPython prints, JIT and AOT; timings recorded
 #   example-cli    real example command lines match CPython's status/stdout/stderr, JIT and AOT;
-#                  existing JSON repair process cases and agent loopback-HTTP checks also pass
+#                  existing JSON repair process cases and agent loopback-HTTP checks also pass, and
+#                  the recorded JSON repair corpus replays natively, JIT and AOT
 #   rtcheck        tools/rtcheck.py: runtime.py, run by CPython, gives what CPython's str methods and
 #                  math functions give on random inputs
 #   re-fuzz        tools/re_fuzz.py: lib/re, run by CPython, compiles random patterns to the code and
@@ -98,11 +99,14 @@
 #                  specialization breadth and the signature bytes specializations retain under
 #                  256 MiB / ten CPU seconds, with short diagnostics;
 #                  finite controls and reuse at the retained-instance boundary still compile
-#   jit-dead-code  tools/jitprobe.py: unused functions never reach lli, and a small helper reaches it
-#                  inlined (not with PYSTACHY_JIT_INLINE=0); live code and runtime callbacks still
-#                  execute as in CPython, with both compilers; jitfdprobe.py preserves inherited
-#                  pipes, CPython's descriptor tables and SIGINT dispositions across shared/object
-#                  runtime, MCJIT, embedding, cached and AOT launches
+#   jit-dead-code  tools/jitprobe.py: unused functions never reach the JIT runner (lljit.c) or lli,
+#                  and a small helper reaches them inlined (not with PYSTACHY_JIT_INLINE=0); live code
+#                  and runtime callbacks still execute as in CPython, with both compilers, both
+#                  runners and both levels of code generation; jitfdprobe.py preserves inherited
+#                  pipes, CPython's descriptor tables and SIGINT dispositions across both runners,
+#                  shared/object runtime, -O0 code generation, embedding, cached and AOT launches;
+#                  tools/test_lljit.py: the runner is built and cached once, falls back to lli where
+#                  it cannot be, and keeps lli's contract on small C programs
 #   aot-dead-code  tools/aotprobe.py: an AOT build defines pys_plain; a program that opts in to
 #                  neither dynamic Any nor promoting ints keeps none of their runtime helpers, and
 #                  its list stores none of their companion code; direct and imported opt-ins
@@ -238,15 +242,15 @@ if [ "$PROFILE" = pr ]; then
   grep '^tests/programs/' "$V/pr-cases.log" > "$V/pr-programs.log"
   [ -s "$V/pr-programs.log" ] || { echo 'verify: empty PR program sample' >&2; exit 2; }
 fi
-cp runtime.c runtime.py "$V/home/"
-cp runtime.c runtime.py "$V/ubsan-home/"
+cp runtime.c runtime.py lljit.c "$V/home/"
+cp runtime.c runtime.py lljit.c "$V/ubsan-home/"
 cp -R lib ryu mpz "$V/home/"
 cp -R lib ryu mpz "$V/ubsan-home/"
 export PYSTACHY_HOME="$ROOT"
 # The steps set the knobs they test themselves: one left in the caller's environment would weaken a
 # step (PYSTACHY_GC=off: gc-stress collects nothing) or fail it falsely (PYSTACHY_OPT=-all), so they
 # are dropped, and the report lists them (PYSTACHY_LLVM and PYSTACHY_JOBS are kept)
-ign=$(env | sed -nE 's/^(PYSTACHY_(PATH|CFLAGS|AOT_OPT|RUNTIME_C_CACHE|GC|GC_MIN|GC_STRESS|GC_STRESS_PROGRAM|IRCHECK|IRFX|TIMING|OPT|JIT_INLINE|JIT_CODEGEN|PROGRAM_CACHE|PROGRAM_CACHE_TRACE|PROGRAM_CACHE_INPUTS|PROGRAM_CACHE_LOCK|UNICODE_AUDIT|DEBUG_LINES|ARGV0|CASE_TIMES))=.*$/\1/p' | sort -u)
+ign=$(env | sed -nE 's/^(PYSTACHY_(PATH|CFLAGS|AOT_OPT|RUNTIME_C_CACHE|GC|GC_MIN|GC_STRESS|GC_STRESS_PROGRAM|IRCHECK|IRFX|TIMING|OPT|JIT_INLINE|JIT_CODEGEN|JIT_LAUNCHER|PROGRAM_CACHE|PROGRAM_CACHE_TRACE|PROGRAM_CACHE_INPUTS|PROGRAM_CACHE_LOCK|UNICODE_AUDIT|DEBUG_LINES|ARGV0|CASE_TIMES))=.*$/\1/p' | sort -u)
 for e in $ign; do echo "verify: ignoring $e=$(printenv "$e")"; unset "$e"; done
 LLVM=${PYSTACHY_LLVM:+${PYSTACHY_LLVM%/}/}
 
@@ -619,8 +623,8 @@ for shard in 0 1 2; do
 done
 
 # ---- runtime-cache: the cached runtime's rules, each compiler with a private home (tests/cache.sh,
-# whose checks are 66 with the native compiler and 68 with CPython's, including mpz/component edits and,
-# on Linux, which verification runs on, the JIT tier's shared library)
+# whose checks are 82 with the native compiler and 84 with CPython's, including mpz/component edits and,
+# on Linux, which verification runs on, the JIT tier's shared library and the JIT runner's 16)
 # Each run has its own home, LLVM wrappers and directory ($TMPDIR/pystachy-cache.PID) and builds the
 # runtime in one process at a time, so the two run side by side (the native one as a background job:
 # neither sends SIGINT, which a background job would ignore; one after another without bgjobs)
@@ -635,7 +639,7 @@ fi
 tests/cache.sh "$PY -m pystachy" > "$V/cache-cpython.log" 2>&1
 [ -z "${cachepid:-}" ] || wait "$cachepid"; cachepid=
 for l in native cpython; do echo "== $l"; cat "$V/cache-$l.log"; done > "$L"
-x=$(tests $((66 + 68)) "$V/cache-native.log" "$V/cache-cpython.log" 2>> "$L") && r=pass || r=fail
+x=$(tests $((82 + 84)) "$V/cache-native.log" "$V/cache-cpython.log" 2>> "$L") && r=pass || r=fail
 step runtime-cache $r "$s" "$L" ', "compilers": ["stage2", "CPython-hosted"]'"$x"
 fi
 
@@ -1116,8 +1120,9 @@ contracts_d() {
 if want jit-dead-code; then
 L=$V/jit-dead-code.log; s=$(now); r=fail
 $PY tools/jitprobe.py -c "hosted=$PY -m pystachy" -c "native=$V/pystachy2" > "$L" 2>&1 &&
-$PY tools/jitfdprobe.py -c "hosted=$PY -m pystachy" -c "native=$V/pystachy2" >> "$L" 2>&1 && r=pass
-step jit-dead-code $r "$s" "$L" ', "unused_functions": 35, "compilers": ["CPython-hosted", "stage2"]'
+$PY tools/jitfdprobe.py -c "hosted=$PY -m pystachy" -c "native=$V/pystachy2" >> "$L" 2>&1 &&
+$PY tools/test_lljit.py >> "$L" 2>&1 && r=pass
+step jit-dead-code $r "$s" "$L" ', "unused_functions": 35, "compilers": ["CPython-hosted", "stage2"], "runners": ["lljit", "lli"]'
 fi
 
 # ---- AOT dead code: the runtime's opt-in code in the executables, by symbol, without a size threshold

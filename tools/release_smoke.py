@@ -14,7 +14,7 @@ import sys
 import tarfile
 import tempfile
 
-from install_smoke import PROGRAM, execute
+from install_smoke import PROGRAM, execute, jit_runners
 from release import binary_target, sha256
 
 # Match cached_run.BUILD_ENV: the default-cache check needs an ordinary build
@@ -104,8 +104,8 @@ def llvm_directory(override):
 
 
 def runtime_files(cache):
-    """Name, inode and modification time of each cached runtime file."""
-    return {path.name: (path.stat().st_ino, path.stat().st_mtime_ns) for path in cache.glob("runtime-py-*")}
+    """Name, inode and modification time of each cached runtime file, and of the JIT runner's."""
+    return {path.name: (path.stat().st_ino, path.stat().st_mtime_ns) for path in [*cache.glob("runtime-py-*"), *cache.glob("lljit-*")]}
 
 
 def program_cache_run(command, directory, environment, expected, *, hit):
@@ -206,6 +206,8 @@ def smoke(archive, llvm=None):
             raise RuntimeError("release compiler did not use its external runtime cache")
         if manifest["target"].startswith("linux-") and not list(cache.glob("runtime-*.so")):
             raise RuntimeError("release JIT did not cache its shared runtime library")
+        if manifest["target"].startswith("linux-") and len(jit_runners(cache)) != 1:
+            raise RuntimeError(f"release JIT did not build its JIT runner: {jit_runners(cache)}")
         runtime = runtime_files(cache)
         if execute(["pystachy", "run", str(program)], work, uncached) != expected:
             raise RuntimeError("release warm JIT output differs from CPython")

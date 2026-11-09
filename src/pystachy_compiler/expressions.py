@@ -5,7 +5,7 @@ from src.pystachy_compiler.bigints import TSLOT_BIG, big_tree, big_viewable, hel
 from src.pystachy_compiler.analysis import collect, comp_shared, comp_unbound, comp_vars, deleted, key_reads, local_names, only_none, stack_aliases, stack_kept, walrus_names
 from src.pystachy_compiler.diagnostics import LINES, dynamic_program, int_lists, shown
 from src.pystachy_compiler.dynamic import boxed_list_items, comparison_container_pair, comparison_invalid, comparison_property_type
-from src.pystachy_compiler.ir import ClassInfo, Data, FmtArgs, FnInfo, Ins, IterArg, Loop, Val
+from src.pystachy_compiler.ir import ClassInfo, Data, FmtArgs, FnInfo, Ins, IterArg, Loop, Val, tmpname, one_num
 from src.pystachy_compiler.names import ENUMCLASSES, short
 from src.pystachy_compiler.reflection import VARS_USES, refl_annotated, refl_body, refl_fold, refl_reflective
 from src.pystachy_compiler.specs import (
@@ -48,6 +48,7 @@ from src.pystachy_compiler.utils import (
     disjoint_sets,
     elem,
     fbits,
+    fconst,
     fmt_index,
     folds,
     folded_int,
@@ -2260,15 +2261,15 @@ def gen_numkey(self, v: Val, t: str) -> list[str]:
         fv = self.as_float(v).v
         if not v.v.startswith("%") and -9007199254740992 <= int(v.v) <= 9007199254740992:
             return [fv, "true"]
-        inr = self.scalar_cmp('olt', Val(fv, 'float'), Val('0x43E0000000000000', 'float'))  # (2**63, where an int's float may round to)
+        inr = self.scalar_cmp('olt', Val(fv, 'float'), Val(fbits('9223372036854775808.0'), 'float'))  # (2**63, where an int's float may round to)
         back = self.select(inr, Val(self.scalar_cast('fptosi', Val(fv, 'float'), 'int'), "int"), Val("0", "int"))
         exact = self.num_cmp("==", Val(back, "int"), Val(v.v, "int")).v
         return [fv, self.scalar('and', [Val(inr, 'bool'), Val(exact, 'bool')])]
     iv = v.v
     ok = "true"
     if v.t == "float":
-        lo = self.scalar_cmp('oge', Val(v.v, 'float'), Val('0xC3E0000000000000', 'float'))
-        inr = self.scalar('and', [Val(lo, 'bool'), Val(self.scalar_cmp('olt', Val(v.v, 'float'), Val('0x43E0000000000000', 'float')), 'bool')])
+        lo = self.scalar_cmp('oge', Val(v.v, 'float'), Val(fbits('-9223372036854775808.0'), 'float'))
+        inr = self.scalar('and', [Val(lo, 'bool'), Val(self.scalar_cmp('olt', Val(v.v, 'float'), Val(fbits('9223372036854775808.0'), 'float')), 'bool')])
         iv = self.select(inr, Val(self.scalar_cast('fptosi', Val(v.v, 'float'), 'int'), "int"), Val("0", "int"))
         back = self.scalar_cast('sitofp', Val(iv, 'int'), 'float')
         ok = self.scalar('and', [Val(inr, 'bool'), Val(self.scalar_cmp('oeq', Val(back, 'float'), Val(v.v, 'float')), 'bool')])
@@ -2442,7 +2443,7 @@ def gen_list_const(self, n: Node, vals: list[Val], t: str) -> Val:
         if e.kind == "unary" and e.s == "-":
             e = e.kids[0]
         v = vals[j]
-        ok = (e.kind == "int" and v.t == "int" and v.lit and int_fits(v.v)) or (e.kind == "float" and v.t == "float" and v.lit and v.v.startswith("0x")) or (e.kind in ["True", "False"] and v.t == "bool" and v.v in ["true", "false"])
+        ok = (e.kind == "int" and v.t == "int" and v.lit and int_fits(v.v)) or (e.kind == "float" and v.t == "float" and v.lit and fconst(v.v)) or (e.kind in ["True", "False"] and v.t == "bool" and v.v in ["true", "false"])
         if not ok or v.t != elem(t):
             return Val("", "")
     key = t + "(" + ",".join([v.v for v in vals]) + ")"
@@ -2464,7 +2465,7 @@ def gen_vtuple_make(self, vals: list[Val], t: str) -> Val:
     i = Ins("vtuple.make", t, "")
     i.a = vals
     self.put(i, 1)
-    return Val(f"%t{i.r[0]}", t)
+    return Val(tmpname(i.r[0]), t)
 
 def gen_tuple_const(self, n: Node, vals: list[Val]) -> Val:
     # a tuple display of literals that the source writes (n.src), whose items are vals: the
@@ -2490,7 +2491,7 @@ def gen_tuple_const(self, n: Node, vals: list[Val]) -> Val:
                 v = self.expr(n.kids[i], "")  # (its 64-bit literal, as it is but where the module promotes)
             ok = v.t == "int" and v.lit and int_fits(v.v) and (vals[i].t != BIG or v.v != TSLOT_BIG)
         elif x.kind == "float":
-            ok = v.t == "float" and v.v.startswith("0x")
+            ok = v.t == "float" and fconst(v.v)
         elif x.kind == "str":
             ok = v.t == "str" and v.v.startswith("@s.")
         elif x.kind == "bytes":
@@ -2520,7 +2521,7 @@ def gen_stack_tuple(self, vals: list[Val]) -> Val:
     self.n += 1
     i = Ins("slot", t, "")
     i.k = 2
-    i.r = [self.n]
+    i.r = one_num(self.n)
     self.fn.slots.append(i)
     p = f"%stk.{self.n}"
     for j in range(len(vals)):
@@ -2738,8 +2739,8 @@ def gen_tget(self, v: Val, i: int) -> Val:
     item.a = [v]
     self.put(item, 2)
     if item.s == BIG:
-        return self.big_item(v, self.from_slot(f"%t{item.r[1]}", "int"), hislot(v.t, i), "")  # (a promoting int item: bigints.py)
-    return self.from_slot(f"%t{item.r[1]}", item.s)
+        return self.big_item(v, self.from_slot(tmpname(item.r[1]), "int"), hislot(v.t, i), "")  # (a promoting int item: bigints.py)
+    return self.from_slot(tmpname(item.r[1]), item.s)
 
 def gen_tslot(self, v: Val, k: int) -> Val:
     # slot k of tuple v, past its items: a promoting int item's Mpz word, as an int (tslots)
@@ -2747,7 +2748,7 @@ def gen_tslot(self, v: Val, k: int) -> Val:
     w.k = k
     w.a = [v]
     self.put(w, 2)
-    return self.from_slot(f"%t{w.r[1]}", "int")
+    return self.from_slot(tmpname(w.r[1]), "int")
 
 def gen_tstore(self, v: Val, index: int, slot: str) -> None:
     # slot index of tuple v (an item's, or past them a promoting int item's Mpz word: tslots)
@@ -2966,7 +2967,7 @@ def gen_list_read(self, o: Val, i: Val) -> Val:
     read = Ins("list.load", "*int", "")
     read.a = [o, i]
     self.put(read, 4)
-    self.incoming(ph, f"%t{read.r[0]}", self.cur)
+    self.incoming(ph, tmpname(read.r[0]), self.cur)
     self.br(done)
     self.place(slow)
     v = self.list_get("list.get", [o, i])
@@ -3092,7 +3093,7 @@ def gen_iter_ret(self, e: Node) -> Val:
     if (is_tuple(v.t) and v.t != "tuple[]") or v.t == RANGEC:
         v = self.as_list(v, "iter")  # (of the items, which share one type; a range's numbers)
     last = self.blk.code[-1] if len(self.blk.code) > 0 else Ins("", "", "")
-    if last.op == "rt" and (last.s == "dict.keys" or last.s == "dict.values" or last.s == "dict.items" or last.s == "dict.big_items") and v.v == f"%t{last.r[0]}":
+    if last.op == "rt" and (last.s == "dict.keys" or last.s == "dict.values" or last.s == "dict.items" or last.s == "dict.big_items") and v.v == tmpname(last.r[0]):
         # (keys() is a list here; CPython's view iterator raises if the dict changes size; big_items:
         # the items() of tuples of promoting ints, bigints.big_items)
         self.err(f"iter() of a dict's {'items' if last.s == 'dict.big_items' else last.s[5:]}() in {self.curfn.name} is not supported: its iterator raises if the dict changes size; return iter(list(...)) of a copy")
@@ -3122,7 +3123,7 @@ def gen_listcomp(self, n: Node, want: str, mode: str = "", into: str = "", arg: 
         res = into
     else:
         h = self.hole(kind)
-        res = f"%t{h.r[0]}"
+        res = tmpname(h.r[0])
     names: list[str] = []
     comp_names(n, names)
     if comp_unbound(n, names) != "":

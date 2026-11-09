@@ -96,5 +96,7 @@ tests pass; the compiler core also passed `make check-fast`, hosted self-compila
 and 58 hosted IR checks before the unbound-only test addition.
 
 Full `make verify` and an exact-main full-corpus `irsame` were not run for this
-branch. This remains research evidence for draft review; broader required CI is
-still needed before merge.
+branch. It merged on 2026-11-07 with v0.3.0-alpha.1
+([#1131](https://github.com/den-run-ai/pystachy/pull/1131) through
+[#1139](https://github.com/den-run-ai/pystachy/pull/1139)), whose main CI covered it;
+the BPE timings above establish no tokenizer speedup.

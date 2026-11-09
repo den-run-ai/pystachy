@@ -34,7 +34,8 @@ position or name), `join`, `split`, `rsplit`,
 `startswith` and `endswith` (also of a tuple), `replace`, `partition`, `rpartition`,
 `removeprefix`, `removesuffix`, `upper`, `lower`, `swapcase`, `capitalize`, `ljust`, `rjust`,
 `center`, `zfill`, `isalpha`, `isalnum`, `isdigit`, `isspace`, `isupper`, `islower` and
-`isascii`, with CPython's ASCII whitespace and case. `str.encode()`, `bytes.decode()` and
+`isascii`, with CPython's ASCII whitespace and case. `str.encode()` and `bytes.decode()` take
+`encoding` and `errors` by position or name (named in that order). They and
 `bytes(s, encoding)` have CPython's UTF-8, Latin-1 and ASCII codecs, found by their names and
 aliases as `codecs.lookup()` finds them, with the `strict`, `replace`, `ignore`,
 `backslashreplace`, `surrogateescape`, `surrogatepass` and (encoding) `xmlcharrefreplace`

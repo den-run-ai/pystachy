@@ -19,12 +19,12 @@ from __future__ import annotations
 from src.pystachy_compiler.analysis import bind_count, comp_vars, deleted, globals_in, lazy_block, lazy_sites, local_names, name_bits, nonlocal_decls, targets, walrus_names
 from src.pystachy_compiler.bigints import held
 from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, INTFILES, LINES, NeedSliceEH, Rejoin, dynamic_file, dynamic_program, int_lists, int_program
-from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Reduce, Val
+from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Reduce, Val, tmpname
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import ENUMCLASSES, owner, retoken, short
 from src.pystachy_compiler.specs import BIG, GLUE, ITERS, JSONANY, METHODS, NONEVAR, RANGEC, RANGES, RTDATA
 from src.pystachy_compiler.syntax import Node, has_kind, made_var, mk
-from src.pystachy_compiler.utils import ListLayout, builtin_key, closure_default_slots, disjoint_sets, elem, fbits, gelem, holds_dyn, identity_abi, identity_default, int_fits, int_lit, is_callable, is_const, is_dict, is_fn, is_gen, is_kw, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, kw_names, numeric_identity, selem, takes_self, targs, tname, typestr, umembers, unopt
+from src.pystachy_compiler.utils import ListLayout, builtin_key, closure_default_slots, disjoint_sets, elem, fbits, float_slot, gelem, holds_dyn, identity_abi, identity_default, int_fits, int_lit, is_callable, is_const, is_dict, is_fn, is_gen, is_kw, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, kw_names, numeric_identity, selem, takes_self, targs, tname, typestr, umembers, unopt
 
 DYN = "dyn"
 # what isinstance(x, int) narrows a dyn local to: still the box (a bool passes the test too),
@@ -1502,7 +1502,7 @@ def gen_dyn_box(self, v: Val) -> Val:
         # As with int literals, equal constants in one compiled module share an object.
         # Key by exact IEEE bits: 0.0 and -0.0 are distinct constants, while 1.5 and 15e-1
         # share one. A computed float (including NaN) is not a literal and stays a new box.
-        g = "@dbf." + self.curfn.mod + "$" + v.v
+        g = "@dbf." + self.curfn.mod + "$" + float_slot(v.v).replace("-", "m")
         if g not in self.dynboxes:
             self.dynboxes[g] = True
             d = Data("dynfloat", g)
@@ -2281,7 +2281,7 @@ def gen_dyn_typeof(self, v: Val) -> str:
     i = Ins("dyn.type", "dyntype", "")
     i.a = [Val(v.v, DYN)]
     self.put(i, 1)
-    return f"%t{i.r[0]}"
+    return tmpname(i.r[0])
 
 
 def gen_dyn_payload(self, v: Val, t: str) -> Val:
@@ -2295,7 +2295,7 @@ def gen_dyn_payload(self, v: Val, t: str) -> Val:
     i = Ins("dyn.payload", "%slot", t)
     i.a = [Val(v.v, DYN)]
     self.put(i, 2)
-    return self.from_slot(f"%t{i.r[1]}", t)
+    return self.from_slot(tmpname(i.r[1]), t)
 
 
 def gen_dyn_unbox(self, v: Val, t: str, what: str = "") -> Val:
@@ -3114,7 +3114,7 @@ def gen_dyn_call(self, f: FnInfo, args: list[Val]) -> Val:
         self.add(c)
         return Val("null", "None")
     self.put(c, 1)
-    return Val(f"%t{c.r[0]}", f.ret)
+    return Val(tmpname(c.r[0]), f.ret)
 
 
 def gen_dyn_body(self, key: str) -> None:

@@ -1,9 +1,10 @@
 # json_repair
 
-Adapted from [json_repair v0.64.1](https://github.com/mangiucugna/json_repair/tree/v0.64.1),
-commit `ace9b23cb7fc6757775d5fafbfaaa9a88363a573`, by Stefano Baccianella and contributors
-under the [MIT license](LICENSE). Pristine files were committed before adaptation;
-[the manifest](../../tests/upstream/json_repair/manifest.json) pins their SHA-256 hashes.
+Adapted from [json_repair v0.64.8](https://github.com/mangiucugna/json_repair/tree/v0.64.8),
+commit `dc6d02b168656aa3dcaac6a119ecc47594d3526e`, by Stefano Baccianella and contributors
+under the [MIT license](LICENSE). Pristine 0.64.1 files were committed before adaptation,
+and upstream's 0.64.2–0.64.8 source changes were then merged into the adapted files;
+[the manifest](../../tests/upstream/json_repair/manifest.json) pins the 0.64.8 SHA-256 hashes.
 
 This bounded port is included in the `pystachy-ports` wheel.
 It repairs individual strings into native heterogeneous Python values.
@@ -39,6 +40,10 @@ Forced repair (`skip_json_loads=True`) can discard standalone primitive roots, a
 can a primitive surrounded by comments/prose. Keep the default decoder path for
 valid scalar documents. Comments at array and object boundaries are consumed
 before parsing the next key or value, matching the upstream 0.64.3 comment fix.
+Later upstream repairs are included: an even backslash run before a closing quote
+keeps its backslashes (0.64.5), a valid empty string serializes as `""` (0.64.6),
+and in 0.64.8 consecutive commas no longer join an object number and a dangling
+exponent such as `[1e, 2]` is discarded; strict mode raises `ValueError` for both.
 Split trace records before repair and validate types and content afterward.
 
 For accelerated calls from CPython, build the [native companion module](../../examples/json_repair/README.md).
@@ -98,6 +103,8 @@ python3.13 tests/upstream/json_repair/cli.py ./pystachy
   retain the original scan for other targets and negative offsets.
 - Update brace/bracket state incrementally after replacing a trailing escape,
   preserving decoded structural characters without rescanning accumulated text.
+  Upstream 0.64.4 adopted the same update as `_replace_trailing_backslash`; the
+  port keeps its `_replace_last_escape` name and chunked storage.
   With logging off, a nearby second simple control escape lets the parser decode
   a bounded run in one pass. Ambiguous escapes and quoted character classes
   retain the original handling.
@@ -122,7 +129,10 @@ python3.13 tests/upstream/json_repair/cli.py ./pystachy
   bounded windows for the earliest context-dependent terminator. Log text is
   sliced from the source only when requested. As before, at the start of an
   array item or object value the port skips a stray slash and recovers the
-  value that follows. Top-level comments resume the
+  value that follows. Upstream 0.64.1 through 0.64.8 drop that value instead:
+  `[/1,2]` repairs to `[2]` there and `[1, 2]` here, and `{"k":/42}` to
+  `{'k': ''}` there and `{'k': 42}` here. The replay corpus does not cover
+  this difference. Top-level comments resume the
   main parse loop so alternating comments and prose do not grow the native stack.
 
 The string-repair implementation remains upstream's roughly 900-line heuristic
@@ -130,23 +140,24 @@ parser. Changes are marked with `Pystachy port` comments or described above.
 
 ## Validation and limits
 
-The [replay corpus](../../tests/upstream/json_repair/README.md) contains **837**
+The [replay corpus](../../tests/upstream/json_repair/README.md) contains **943**
 input/API/option combinations, with type-sensitive comparisons, dictionary order,
 exact Unicode codepoints, serialized output, logs and error messages. It is not
 the complete upstream suite. The checker retains all cases and fails on every
 mismatch; it does not silently waive known limitations.
 
-On the Unicode-classification implementation, pristine and adapted CPython
-3.13.16 and native JIT/AOT each pass all 837 cases. Both native modes also pass
-with program GC stress enabled. The separate classification audit compares all
+Pristine 0.64.8 and the adapted port on CPython 3.13.16 and native JIT/AOT each
+pass all 943 cases. Both native modes also pass with program GC stress enabled.
+The separate classification audit compares all
 1,114,112 Unicode code points exactly against CPython 3.13's Unicode 15.1 data.
 
-The original 645 cases retain their IDs, inputs and expected outcomes. Another
-192 cases cover multilingual keys and values, combining marks, non-BMP letters,
-Unicode numeric classes, whitespace, unassigned/private-use characters, surrogate
-code points, strict/streaming behavior and repair logs. Separate differential
-regressions cover wide primitive-root loss, overflow fallback and comment-related
-value loss. The dynamic native JSON
+The corpus holds 544 calls extracted from upstream 0.64.8's schema-free tests and
+399 task-focused cases. Of the latter, 192 cover multilingual keys and values,
+combining marks, non-BMP letters, Unicode numeric classes, whitespace,
+unassigned/private-use characters, surrogate code points, strict/streaming
+behavior and repair logs. Separate differential regressions cover wide
+primitive-root loss, overflow fallback, comment-related value loss and the
+0.64.5–0.64.8 repairs. The dynamic native JSON
 decoder promotes a wide token directly, so valid documents keep the normal
 decoder's semantics instead of entering heuristic repair; the facade and both
 `raw_decode` probes keep upstream's exception handling. The number parser
@@ -168,7 +179,7 @@ for frames that do not count. Integer tokens beyond the runtime's 4,300-digit
 conversion limit follow upstream: valid-JSON decoding falls back to repair, the
 missing-brace probe declines, and the number parser keeps the token as a string,
 so forced repair can drop such a top-level number. Forced-repair primitive-root
-heuristics described above remain. The replay establishes these 837 cases, not
+heuristics described above remain. The replay establishes these 943 cases, not
 full-package parity.
 
 The small [native regression](../../tests/programs/apps/port_json_repair.py)
@@ -180,7 +191,9 @@ make test FILES='tests/programs/apps/port_json_repair*.py tests/programs/library
 
 See the replay README for the complete corpus commands and original input provenance.
 
-The [benchmark guide](../../bench/json_repair/README.md) contains current measurements,
-reproduction commands, deterministic copy-work checks and historical evidence.
+The [benchmark guide](../../bench/json_repair/README.md) contains the latest committed
+measurements, reproduction commands, deterministic copy-work checks and historical evidence.
+Its numbers compare the port with pristine 0.64.1 and remain so until they are re-measured
+against 0.64.8.
 The [completion report](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/reports/json-repair-port.md)
 records validation and the minimal upstream contribution strategy.

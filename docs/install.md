@@ -2,9 +2,9 @@
 
 Choose a native release package, the Docker image, a GitHub source install with
 pip or uv, or a manual source build. The compiler uses **LLVM 18 on Linux /
-LLVM 20 on macOS**. Docker includes LLVM, and GitHub source installs can fetch
-it on first use. The native release package and Docker image run the compiler
-without Python.
+LLVM 20 on macOS** ([other releases](#other-llvm-releases)). Docker includes LLVM,
+and GitHub source installs can fetch it on first use. The native release package and
+Docker image run the compiler without Python.
 
 ## Native release packages
 
@@ -217,11 +217,25 @@ tools/setup.sh --minimal     # install missing build dependencies with apt/Homeb
 An explicit `PYSTACHY_LLVM` takes precedence over discovery; it must point to a complete
 platform's LLVM `bin` directory. Set it to an empty string to explicitly select `PATH`.
 If no standard installation exists, Pystachy uses the unversioned
-`clang`, `opt`, `lli`, `llvm-link` and `llvm-as` on `PATH`.
+`clang`, `opt`, `lli`, `llvm-link` and `llvm-as` on `PATH`, and `llc` where `lli` runs a
+program with `PYSTACHY_JIT_CODEGEN=0`. On Linux, `pystachy run` builds its
+[JIT runner](internals.md#the-jit-runner) at first use with that `clang`, linked to the shared
+`libLLVM` that `lli` loads (LLVM 18 to 23; no LLVM headers are needed); without one it runs `lli`.
 
 On other Linux distributions, install LLVM 18, Python 3.11+ and `make` using the system
 package manager, then run `tools/setup.sh --check`. The script does not configure package
 repositories or replace the system Python.
+
+### Other LLVM releases
+
+On Linux, `PYSTACHY_LLVM` may also name the complete `bin` directory of one LLVM release
+from 19 to 23, such as `/usr/lib/llvm-23/bin` from [apt.llvm.org](https://apt.llvm.org);
+`tools/setup.sh --check` accepts it. The emitted IR is the same for every release
+([internals](internals.md#typed-ir-and-llvm)), and each toolchain keeps its own runtime
+cache entries. CI verifies only the defaults, LLVM 18 on Linux and LLVM 20 on macOS.
+On Linux x86-64, LLVM 23 has also passed the bootstrap and the full differential tests,
+and LLVM 20 and 22 the bootstrap and a sample of those tests. LLVM 19 and 21, and other
+releases on macOS, are untested.
 
 ## Python and development tools with uv
 

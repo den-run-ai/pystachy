@@ -2,7 +2,7 @@
 from __future__ import annotations
 import os
 from src.pystachy_compiler.diagnostics import fail
-from src.pystachy_compiler.ir import IFn, Ins, Lookup, Val, Values
+from src.pystachy_compiler.ir import IFn, Ins, Lookup, Val, Values, tmpname, one_num
 from src.pystachy_compiler.ircheck import EffectSummaries
 from src.pystachy_compiler.specs import CANON_DEPTH, FXALL, FXBIT, LOOKUPS, NONEVAR, RAWW, REACH
 from src.pystachy_compiler.utils import is_list, is_opt, is_tuple, is_union, umembers
@@ -68,7 +68,7 @@ def gen_pass_check(self, fn: IFn, contract: PassContract, after: bool) -> None:
                 fail(f"internal error: {contract.name} requires pre-EH IR in {fn.f.ll}", 0)
             # Like effects(): an entry snapshot itself adds no observable effect.
             # recursionscope gives counted entries their real R/I effects instead.
-            snapshot = b is fn.blocks[0] and i is b.code[0] and i.op == "rt" and i.s == "recursion.depth" and len(i.r) == 1 and f"%t{i.r[0]}" == fn.rdepth
+            snapshot = b is fn.blocks[0] and i is b.code[0] and i.op == "rt" and i.s == "recursion.depth" and len(i.r) == 1 and tmpname(i.r[0]) == fn.rdepth
             if "effect-safety-bounds" in checks and not snapshot:
                 actual |= self.opfx(i, fn.fa) & PASS_SAFETY_EFFECTS
     if "effect-safety-bounds" in checks and actual & ~fn.fx != 0:
@@ -141,7 +141,7 @@ def recursion_snapshot(fn: IFn) -> int:
     code = fn.blocks[0].code
     for at in range(len(code)):
         i = code[at]
-        if i.op == "rt" and i.s == "recursion.depth" and len(i.r) == 1 and f"%t{i.r[0]}" == fn.rdepth:
+        if i.op == "rt" and i.s == "recursion.depth" and len(i.r) == 1 and tmpname(i.r[0]) == fn.rdepth:
             return at
     fail(f"internal error: {fn.f.ll} has no entry depth for its recursion accounting", 0)
     return -1
@@ -164,11 +164,11 @@ def recursion_resume_site(code: list[Ins], at: int) -> list[int]:
         return []
     sub = code[enter + 1]
     if (sub.op != "scalar.bin" or sub.s != "sub" or len(sub.r) != 1 or len(sub.a) != 2
-            or sub.a[0].v != f"%t{code[enter].r[0]}" or sub.a[1].v != "1"):
+            or sub.a[0].v != tmpname(code[enter].r[0]) or sub.a[1].v != "1"):
         return []
     for after in range(at + 1, len(code)):
         i = code[after]
-        if i.op == "rt" and i.s == "recursion.restore" and len(i.a) == 1 and i.a[0].v == f"%t{sub.r[0]}":
+        if i.op == "rt" and i.s == "recursion.restore" and len(i.a) == 1 and i.a[0].v == tmpname(sub.r[0]):
             return [enter, enter + 1, after]
     return []
 
@@ -308,14 +308,14 @@ def gen_recursionscope(self) -> int:
         base = Ins("scalar.bin", "int", "sub")
         base.a = [Val(fn.rdepth, "int"), Val("1", "int")]
         fn.n += 1
-        base.r = [fn.n]
+        base.r = one_num(fn.n)
         fn.blocks[0].code.insert(at + 1, base)
         for b in fn.blocks:
             code: list[Ins] = []
             for i in b.code:
                 if i.op == "ret" or i.op == "ret.none":
                     restore = Ins("rt", "None", "recursion.restore")
-                    restore.a = [Val(f"%t{base.r[0]}", "int")]
+                    restore.a = [Val(tmpname(base.r[0]), "int")]
                     code.append(restore)
                 code.append(i)
             b.code = code
@@ -391,7 +391,7 @@ def ascii_char_test(code: list[Ins], x: int, counts: dict[str, int], literals: l
     load, pack, literal, eq, truth = code[x], code[x + 1], code[x + 2], code[x + 3], code[x + 4]
     if pack.op != "slot.pack" or literal.op != "slot.pack" or eq.op != "rt" or eq.s != "eq" or eq.x != "s":
         return -1
-    if pack.a[0].v != f"%t{load.r[0]}" or eq.a[0].v != f"%t{pack.r[0]}" or eq.a[1].v != f"%t{literal.r[0]}":
+    if pack.a[0].v != tmpname(load.r[0]) or eq.a[0].v != tmpname(pack.r[0]) or eq.a[1].v != tmpname(literal.r[0]):
         return -1
     if literal.a[0].t != "str" or not literal.a[0].v.startswith("@s."):
         return -1
@@ -400,10 +400,10 @@ def ascii_char_test(code: list[Ins], x: int, counts: dict[str, int], literals: l
     raw = literals[int(literal.a[0].v[3:])]
     if len(raw) != 1 or ord(raw) >= 128:
         return -1
-    if truth.op != "num.cmp" or truth.s != "!=" or truth.a[0].t != "int" or truth.a[0].v != f"%t{eq.r[0]}" or truth.a[1].v != "0":
+    if truth.op != "num.cmp" or truth.s != "!=" or truth.a[0].t != "int" or truth.a[0].v != tmpname(eq.r[0]) or truth.a[1].v != "0":
         return -1
     for intermediate in [load, pack, literal, eq]:
-        if counts[f"%t{intermediate.r[0]}"] != 1:
+        if counts[tmpname(intermediate.r[0])] != 1:
             return -1
     return ord(raw)
 
@@ -429,7 +429,7 @@ def gen_charslots(self, fn: IFn) -> int:
             i = code[x]
             if i.op == "mem.store" and i.a[0].v in slots:
                 index = code[x - 1]
-                if index.op == "rt" and index.s == "text.get" and i.a[1].v == f"%t{index.r[0]}":
+                if index.op == "rt" and index.s == "text.get" and i.a[1].v == tmpname(index.r[0]):
                     storeblock, storepos, addr = j, x, i.a[0].v
                     break
         if addr != "":
@@ -457,7 +457,7 @@ def gen_charslots(self, fn: IFn) -> int:
                     elif k != 0 or j != storeblock or x != storepos:
                         return 0
     index = fn.blocks[storeblock].code[storepos - 1]
-    point = f"%t{index.r[0]}"
+    point = tmpname(index.r[0])
     if counts[point] != 1 or not reads:
         return 0
 
@@ -577,7 +577,7 @@ def gen_listget(self, fn: IFn) -> int:
             if i.op == "mem.load" and i.a[0].v in slots:
                 a = i.a[0].v
                 if slots[a] >= 0 and (b > 0 or x >= slots[a]):
-                    vs.cn[f"%t{i.r[0]}"] = "slot " + a
+                    vs.cn[tmpname(i.r[0])] = "slot " + a
     for lp in fn.loops:
         if lp.kind != "range" or not lp.nonnegative or len(lp.idx) != 1 or len(pl[lp.body]) != 1:
             continue
@@ -702,7 +702,7 @@ def gen_dictfuse(self, fn: IFn) -> int:
                     if looks[m].e == 0:
                         fn.n += 1
                         looks[m].e = fn.n
-                    ev = Val(f"%t{looks[m].e}", "int")
+                    ev = Val(tmpname(looks[m].e), "int")
                     if i.s == "dict.getitem":
                         self.runtime("pys_dict_val")
                         i.s = "dict.val"
@@ -728,20 +728,20 @@ def gen_dictfuse(self, fn: IFn) -> int:
                         st.pop(o)
                     st[len(looks)] = i.s == "dict.getitem"
                     if i.s == "dict.has":
-                        has[f"%t{i.r[0]}"] = len(looks)
+                        has[tmpname(i.r[0])] = len(looks)
                     looks.append(Lookup(i, j, x, d, k))
             elif i.op == "num.cmp" and i.a[0].t == "int" and i.a[1].v == "0" and (i.s == "==" or i.s == "!="):
                 # A typed membership truth test carries the same has-result fact as
                 # a membership result; not/branch handling below stays shared.
                 r = i.a[0].v
                 if r in has:
-                    cond[f"%t{i.r[0]}"] = has[r]
-                    pos[f"%t{i.r[0]}"] = i.s == "!="
+                    cond[tmpname(i.r[0])] = has[r]
+                    pos[tmpname(i.r[0])] = i.s == "!="
             elif i.op == "scalar.bin" and i.s == "xor" and i.t == "bool" and i.a[1].v == "true":
                 r = i.a[0].v
                 if r in cond:
-                    cond[f"%t{i.r[0]}"] = cond[r]
-                    pos[f"%t{i.r[0]}"] = not pos[r]
+                    cond[tmpname(i.r[0])] = cond[r]
+                    pos[tmpname(i.r[0])] = not pos[r]
             elif len(st) > 0 and self.opfx(i, vs.fn.fa) & bad != 0:
                 st = none
                 own = False
@@ -772,12 +772,12 @@ def gen_dictfuse(self, fn: IFn) -> int:
             fi.line = i.line
             fi.a = [i.a[0], i.a[1]]
             fi.x = i.x
-            fi.r = [f.e]
+            fi.r = one_num(f.e)
             code[x] = fi
             ad = Ins("scalar.bin", "int", "add")
             ad.line = i.line
-            ad.a = [Val(f"%t{f.e}", "int"), Val("1", "int")]
-            ad.r = [i.r[0]]
+            ad.a = [Val(tmpname(f.e), "int"), Val("1", "int")]
+            ad.r = one_num(i.r[0])
             code.insert(x + 1, ad)
         else:
             self.runtime("pys_dict_entry")
@@ -785,11 +785,11 @@ def gen_dictfuse(self, fn: IFn) -> int:
             en.line = i.line
             en.a = [i.a[0], i.a[1]]
             en.x = i.x
-            en.r = [f.e]
+            en.r = one_num(f.e)
             code.insert(x, en)
             self.runtime("pys_dict_val")
             i.s = "dict.val"
-            i.a = [i.a[0], Val(f"%t{f.e}", "int")]
+            i.a = [i.a[0], Val(tmpname(f.e), "int")]
             i.x = ""
         n += 1
     return n
@@ -824,7 +824,7 @@ def gen_unionslots(self, fn: IFn) -> int:
         for x in range(len(code)):
             i = code[x]
             for r in i.r:
-                defs[f"%t{r}"] = [j, x]
+                defs[tmpname(r)] = [j, x]
             for k in range(len(i.a)):
                 if i.a[k].v not in uses:
                     uses[i.a[k].v] = []
@@ -840,9 +840,9 @@ def gen_unionslots(self, fn: IFn) -> int:
             elif i.op == "mem.load":
                 if is_opt(s.t) and self.uleaves(fn, uses, i, {}):
                     ok = False  # (optional copies and identity-sensitive uses also stay boxed)
-                for w in uses.get(f"%t{i.r[0]}", []):
+                for w in uses.get(tmpname(i.r[0]), []):
                     o = fn.blocks[w[0]].code[w[1]]
-                    if (o.op == "union.payload" or o.op == "union.raw") and f"%t{o.r[0]}" in uses:
+                    if (o.op == "union.payload" or o.op == "union.raw") and tmpname(o.r[0]) in uses:
                         ok = False  # (its address taken: nothing does)
         if ok:
             split[addr] = s
@@ -863,7 +863,7 @@ def gen_unionslots(self, fn: IFn) -> int:
         for half in ["tag", "pay"]:
             fn.n += 1
             h = Ins("slot", "int", f"{s.s or 'h'}.{half}")
-            h.r = [fn.n]
+            h.r = one_num(fn.n)
             fn.slots.append(h)
             halves[addr].append(f"%{h.s}.{fn.n}")
     parts: dict[str, list[str]] = {}  # a union value -> its tag and its payload's bits (uparts)
@@ -877,16 +877,16 @@ def gen_unionslots(self, fn: IFn) -> int:
             i = fn.blocks[u[0]].code[u[1]]
             if i.op != "mem.load":
                 continue
-            v = f"%t{i.r[0]}"
+            v = tmpname(i.r[0])
             ops: list[Ins] = []
             for half in halves[addr]:
                 fn.n += 1
                 ld = Ins("mem.load", "int", "")
                 ld.line = i.line
                 ld.a = [Val(half, "*int")]
-                ld.r = [fn.n]
+                ld.r = one_num(fn.n)
                 ops.append(ld)
-            parts[v] = [f"%t{ops[0].r[0]}", f"%t{ops[1].r[0]}"]
+            parts[v] = [tmpname(ops[0].r[0]), tmpname(ops[1].r[0])]
             for w in uses.get(v, []):
                 o = fn.blocks[w[0]].code[w[1]]
                 if is_opt(split[addr].t) and o.op == "ptr.cmp":
@@ -895,20 +895,20 @@ def gen_unionslots(self, fn: IFn) -> int:
                     test.r = o.r
                     repl[f"{w[0]}:{w[1]}"] = [test]
                 elif o.op == "union.tag" or self.tag_read(o):
-                    ren[f"%t{o.r[0]}"] = parts[v][1 if is_opt(split[addr].t) else 0]
+                    ren[tmpname(o.r[0])] = parts[v][1 if is_opt(split[addr].t) else 0]
                     repl[f"{w[0]}:{w[1]}"] = []
                 elif o.op == "union.payload" or o.op == "union.raw":
                     p = Ins("slot.pack", "%slot", "")
                     p.line = o.line
                     p.a = [Val(parts[v][1], "int")]
-                    p.r = [o.r[1]]
+                    p.r = one_num(o.r[1])
                     repl[f"{w[0]}:{w[1]}"] = [p]
             if self.uleaves(fn, uses, i, split):  # (a copy to a slot that splits stores the parts)
                 # (the box that leaves, as the value it replaces)
                 box = Ins("rt", "%ptr", "ubox")
                 box.line = i.line
                 box.a = [Val(parts[v][0], "int"), Val(parts[v][1], "*T")]
-                box.r = [i.r[0]]
+                box.r = one_num(i.r[0])
                 ops.append(box)
             repl[f"{u[0]}:{u[1]}"] = ops
     for addr in split:
@@ -959,7 +959,7 @@ def gen_unionslots(self, fn: IFn) -> int:
             code = []
             for i in b.code:
                 pure = (i.op == "rt" and (i.s == "ubox" or i.s == "box")) or i.op == "slot.pack" or i.op == "union.tag" or i.op == "union.payload" or i.op == "union.raw" or (i.op == "phi" and (is_union(i.t) or is_opt(i.t) or i.t == "int"))
-                if pure and len([r for r in i.r if f"%t{r}" in used]) == 0:
+                if pure and len([r for r in i.r if tmpname(r) in used]) == 0:
                     gone += 1
                 else:
                     code.append(i)
@@ -1014,11 +1014,11 @@ def gen_uparts(self, fn: IFn, defs: dict[str, list[int]], v: str, t: str, parts:
             fn.n += 1
             p = Ins("phi", "int", "")
             p.line = i.line
-            p.r = [fn.n]
+            p.r = one_num(fn.n)
             p.a = []
             p.b = []
             ph.append(p)
-        parts[v] = [f"%t{ph[0].r[0]}", f"%t{ph[1].r[0]}"]  # (first: a loop's phi meets itself)
+        parts[v] = [tmpname(ph[0].r[0]), tmpname(ph[1].r[0])]  # (first: a loop's phi meets itself)
         for k in range(len(i.a)):
             q = self.uparts(fn, defs, i.a[k].v, t, parts, before, after, heads)
             for h in range(2):
@@ -1032,13 +1032,13 @@ def gen_uparts(self, fn: IFn, defs: dict[str, list[int]], v: str, t: str, parts:
     tg = Ins("union.tag", "int", "")
     tg.line = i.line
     tg.a = [Val(v, t)]
-    tg.r = [fn.n]
+    tg.r = one_num(fn.n)
     pl = Ins("union.raw", "%slot", "")
     pl.line = i.line
     pl.a = [Val(v, t)]
     pl.r = [fn.n + 1, fn.n + 2]
     fn.n += 2
-    parts[v] = [f"%t{tg.r[0]}", f"%t{pl.r[1]}"]
+    parts[v] = [tmpname(tg.r[0]), tmpname(pl.r[1])]
     key = f"{d[0]}:{d[1]}" if d[1] >= 0 else "0:0"
     at = after if d[1] >= 0 else before
     if key not in at:
@@ -1049,7 +1049,7 @@ def gen_uparts(self, fn: IFn, defs: dict[str, list[int]], v: str, t: str, parts:
 def gen_uleaves(self, fn: IFn, uses: dict[str, list[list[int]]], i: Ins, split: dict[str, Ins]) -> bool:
     # does the value of load i of a slot that unionslots splits leave the local: go to an op other
     # than its union.tag, its union.payload/raw, a tag read and a store to a slot that splits too
-    for w in uses.get(f"%t{i.r[0]}", []):
+    for w in uses.get(tmpname(i.r[0]), []):
         o = fn.blocks[w[0]].code[w[1]]
         if is_opt(i.t):
             if self.tag_read(o) or (o.op == "ptr.cmp" and len(o.a) == 2 and (o.a[0].v == "null" or o.a[1].v == "null")):
@@ -1155,11 +1155,11 @@ def gen_canon(self, vs: Values, v: str) -> str:
         elif i.op == "dyn.type":
             r = self.same(vs, v, f"dyn.type {self.canon(vs, i.a[0].v)}")
         elif i.op == "tuple.load" or i.op == "tuple.store":
-            if v == f"%t{i.r[0]}":
+            if v == tmpname(i.r[0]):
                 # Fixed and traversed tuple slots share one semantic address key.
                 r = self.same(vs, v, f"address int 0 {self.canon(vs, i.a[0].v)} {i.k}")
             else:
-                x = self.reaching(vs, self.addr(vs, f"%t{i.r[0]}"), w // vs.stride, w % vs.stride)
+                x = self.reaching(vs, self.addr(vs, tmpname(i.r[0])), w // vs.stride, w % vs.stride)
                 if x != "":
                     r = self.canon(vs, x)
     vs.depth -= 1
@@ -1206,15 +1206,15 @@ def gen_reaching(self, vs: Values, a: str, j: int, x: int) -> str:
                 p = i.a[0].v
                 q = self.addr(vs, p)
                 if q == a:
-                    return i.a[1].v if i.op == "mem.store" or i.op == "mach.store" else f"%t{i.r[0]}"
+                    return i.a[1].v if i.op == "mem.store" or i.op == "mach.store" else tmpname(i.r[0])
                 if (i.op == "mem.store" or i.op == "mach.store") and heap and not p.startswith("@") and "." not in p and not self.disjoint(vs, a, q):
                     return ""
                 continue
             if i.op == "tuple.load" or i.op == "tuple.store":
-                p = f"%t{i.r[0]}"
+                p = tmpname(i.r[0])
                 q = self.addr(vs, p)
                 if q == a:
-                    return i.a[1].v if i.op == "tuple.store" else f"%t{i.r[1]}"
+                    return i.a[1].v if i.op == "tuple.store" else tmpname(i.r[1])
                 if i.op == "tuple.store" and heap and not self.disjoint(vs, a, q):
                     return ""
                 continue
@@ -1283,7 +1283,7 @@ def gen_nullcheck(self, fn: IFn) -> int:
                 if len(i.r) == 1 and i.r[0] < len(lds):
                     lds[i.r[0]] = j * stride + x
             elif i.op == "ptr.cmp" and (i.s == "==" or i.s == "!=") and (i.a[0].v == "null") != (i.a[1].v == "null"):
-                v = f"%t{i.r[0]}"
+                v = tmpname(i.r[0])
                 tests[v] = i
                 tblk[v] = j
             for k in range(len(i.a)):

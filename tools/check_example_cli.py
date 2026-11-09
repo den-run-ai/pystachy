@@ -2,7 +2,8 @@
 
 The corpus also checks the examples' helpers. Here file loading, argument parsing,
 stdout, stderr and exit status run through the actual command lines, JIT and AOT.
-The existing JSON repair process and agent loopback-HTTP checks run unchanged.
+The existing JSON repair process and agent loopback-HTTP checks run unchanged, and the
+recorded JSON repair corpus is replayed through native JIT and AOT builds of the port.
 """
 import argparse
 from dataclasses import dataclass
@@ -92,7 +93,8 @@ def detail(label, command, timeout, status, stdout, stderr):
 
 
 def run(label, command, env, cwd, status=0, timeout=120):
-    """Kill the whole owned process group on timeout, including a driver's children."""
+    """Kill the whole owned process group on timeout, including a driver's children.
+    status=None leaves the exit status to the caller."""
     try:
         with subprocess.Popen(command, env=env, cwd=cwd, stdin=subprocess.DEVNULL,
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE,
@@ -111,7 +113,7 @@ def run(label, command, env, cwd, status=0, timeout=120):
     except OSError as exc:
         raise RuntimeError(f"{label}: command={command!r}, timeout={timeout}s: {exc}") from exc
     result = subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
-    if result.returncode != status:
+    if status is not None and result.returncode != status:
         raise RuntimeError(detail(label, command, timeout, result.returncode, stdout, stderr) +
                            f"\nexpected exit={status}")
     return result
@@ -136,10 +138,15 @@ def case_names():
     return [f"{example}/{case.name}" for example, cases in CASES.items() for case in cases]
 
 
+REPAIR_MODES = ["jit", "aot"]
+
+
 def integrations():
     # Read the trusted check's case list without invoking main, so adding a case updates the gate.
     repair_cases = runpy.run_path(str(ROOT / "tests/upstream/json_repair/cli.py"))["CASES"]
-    return {"json_repair": len(repair_cases), "agent_http": MODES}
+    replay_cases = json.loads((ROOT / "tests/upstream/json_repair/cases.json").read_text())
+    return {"json_repair": len(repair_cases), "agent_http": MODES,
+            "json_repair_replay": {"cases": len(replay_cases), "modes": REPAIR_MODES}}
 
 
 def validate_report(report):
@@ -147,7 +154,8 @@ def validate_report(report):
                 "modes": MODES, "cases": case_names(), "integrations": integrations()}
     if (not isinstance(report, dict) or type(report.get("schema")) is not int or
             any(report.get(key) != value for key, value in expected.items()) or report.get("error") or
-            type(report["integrations"]["json_repair"]) is not int):
+            type(report["integrations"]["json_repair"]) is not int or
+            type(report["integrations"]["json_repair_replay"]["cases"]) is not int):
         raise ValueError("example-cli: missing, duplicated or incomplete CPython/JIT/AOT checks")
 
 
@@ -193,6 +201,7 @@ def check(compiler, cache, report):
                              f"\nexpected stdout={expected!r}, stderr=b''")
         report["integrations"]["json_repair"] = count
         print(result.stdout.decode(), end="", flush=True)
+        replay_json_repair(compiler, env, directory, report)
 
         source = ROOT / "examples/agent/agent.py"
         exe = build("agent", source, compiler, directory, env)
@@ -209,6 +218,35 @@ def check(compiler, cache, report):
                                  f"\nexpected final line={expected!r}, stderr=b''")
             report["integrations"]["agent_http"].append(mode)
             print(f"ok {label}: {requests} loopback requests and checked repair", flush=True)
+
+
+def replay_json_repair(compiler, env, directory, report):
+    """The recorded JSON repair corpus through native JIT and AOT builds of the port, checked
+    against the pinned-CPython outcomes in cases.json by the corpus checker."""
+    count = integrations()["json_repair_replay"]["cases"]
+    replay = ROOT / "tests/upstream/json_repair/replay.py"
+    checker = ROOT / "tools/json_repair_parity.py"
+    inputs = directory / "json_repair_inputs.jsonl"
+    run("json_repair/replay/inputs", [sys.executable, str(checker), "--write-inputs", str(inputs)], env, ROOT)
+    port = dict(env, PYSTACHY_PATH=str(ROOT / "ports"))
+    exe = build("json_repair_replay", replay, compiler, directory, port)
+    commands = {"jit": [str(compiler), "run", str(replay), str(inputs)], "aot": [exe, str(inputs)]}
+    report["integrations"]["json_repair_replay"] = {"cases": count, "modes": []}
+    expected = f"{count}/{count} match; 0 problems\n".encode()
+    for mode in REPAIR_MODES:
+        label = "json_repair/replay/" + mode
+        result = run(label, commands[mode], port, ROOT, timeout=300)
+        if result.stderr:
+            raise ValueError(detail(label, result.args, 300, result.returncode, b"<replay output>", result.stderr) +
+                             "\nexpected stderr=b''")
+        output = directory / f"json_repair_{mode}.out"
+        output.write_bytes(result.stdout)
+        checked = run(label + "/check", [sys.executable, str(checker), str(output)], env, ROOT, status=None)
+        if (checked.returncode, checked.stdout, checked.stderr) != (0, expected, b""):
+            raise ValueError(detail(label + "/check", checked.args, 120, checked.returncode, checked.stdout[:4000],
+                                    checked.stderr) + f"\nexpected stdout={expected!r}, stderr=b''")
+        report["integrations"]["json_repair_replay"]["modes"].append(mode)
+        print(f"ok {label}: {count}/{count} recorded cases match CPython {report['python']}", flush=True)
 
 
 def main(argv=None):

@@ -21,13 +21,20 @@ find_llvm() {
 
 major=18
 [ "$(uname -s)" != Darwin ] || major=20
+releases="LLVM $major"
 LLVM=$(find_llvm)
+if [ -n "${PYSTACHY_LLVM:-}" ] && [ $major = 18 ]; then
+  # An explicit Linux toolchain may be any release from 18 to 23 (docs/install.md#other-llvm-releases)
+  releases="one LLVM release from 18 to 23"
+  found=$("$LLVM/clang" --version 2> /dev/null | sed -n '1s/.* version \([0-9][0-9]*\)\..*/\1/p')
+  case $found in 19 | 20 | 21 | 22 | 23) major=$found ;; esac
+fi
 valid=true
 for t in clang opt lli llvm-link llvm-as; do
   "${LLVM:+$LLVM/}$t" --version 2> /dev/null | grep -q "version $major\." || valid=false
 done
 if [ -n "${PYSTACHY_LLVM:-}" ] && [ "$valid" = false ]; then
-  echo "tools/setup.sh: PYSTACHY_LLVM=$PYSTACHY_LLVM must contain a complete LLVM $major toolchain" >&2
+  echo "tools/setup.sh: PYSTACHY_LLVM=$PYSTACHY_LLVM must contain a complete toolchain of $releases" >&2
   exit 1
 fi
 
@@ -39,7 +46,7 @@ if [ "$mode" != --check ]; then
       }
       PKGS="git make python3"
       if [ "$valid" = false ]; then PKGS="$PKGS clang-18 llvm-18 llvm-18-runtime"; fi
-      if [ "$mode" = --verify ]; then PKGS="$PKGS libclang-rt-18-dev libblas3 libopenblas0-pthread"; fi
+      if [ "$mode" = --verify ]; then PKGS="$PKGS libclang-rt-$major-dev libblas3 libopenblas0-pthread"; fi
       miss=
       for p in $PKGS; do
         dpkg-query -W -f '${Status}' "$p" 2> /dev/null | grep -q 'install ok installed' || miss="$miss $p"

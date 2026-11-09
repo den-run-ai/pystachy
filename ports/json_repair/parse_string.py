@@ -205,6 +205,7 @@ def _remove_trailing_backslash(state: StringParseState) -> None:
 def _replace_last_escape(state: StringParseState, content: str) -> None:
     # Every caller replaces a trailing backslash. Removing it leaves the
     # brace/bracket metadata valid; only the decoded replacement is new.
+    # Pystachy port: upstream 0.64.4 calls this _replace_trailing_backslash.
     _remove_trailing_backslash(state)
     _append_string_content(state, content)
 
@@ -404,7 +405,8 @@ def _normalize_escape_sequence(
             run_end += 1
         run_length = run_end - run_start
         next_char = self.get_char_at(run_end - self.index)
-        if run_length % 2 == 0 and next_char != active_rstring_delimiter:
+        after_quote = self.get_char_at(self.scroll_whitespaces(idx=run_end - self.index + 1))
+        if run_length % 2 == 0 and (next_char != active_rstring_delimiter or after_quote in [",", ":", "}", "]", None]):
             _replace_last_escape(state, "\\" * (run_length // 2))
             self.index = run_end
             return True, self.get_char_at()
@@ -431,7 +433,7 @@ def _normalize_escape_sequence(
             _replace_last_escape(state, chr(int(next_chars, 16)))
             self.index += 1 + num_chars
             return True, self.get_char_at()
-    elif char == "„" or char in STRING_DELIMITERS and char != active_rstring_delimiter:
+    elif char == "„" or (char in STRING_DELIMITERS and char != active_rstring_delimiter):
         self.log("Found a delimiter that was escaped but shouldn't be escaped, removing the escape")
         _replace_last_escape(state, char)
         self.index += 1

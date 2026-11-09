@@ -1,0 +1,23 @@
+"" ''
+{"path": "C:\\"}
+["R\\"]
+["R\\\\"]
+{"a": 1, "b": 2}
+{"a": 1}
+{"a": -1.5, "b": 2}
+{"a": 1, "b": 3}
+{"a": 1, "b": 3}
+{"a": 1, "2": 3}
+['Found consecutive commas after an object number', 'Discarded stray number between object fields']
+Consecutive commas after an object number in strict mode.
+[1, 2] {"n": 1, "next": 2}
+[1, 2] {"n": 1, "next": 2}
+[1, 2] {"n": 1, "next": 2}
+[1, 2] {"n": 1, "next": 2}
+[1, 2] {"n": 1, "next": 2}
+[1, 2]
+["1.1.1e"]
+{"value": 10000000000.0}
+[6.02e+23, 2]
+{"value": "105,12"}
+[exit 0]

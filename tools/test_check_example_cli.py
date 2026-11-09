@@ -25,6 +25,8 @@ class SmokeTests(unittest.TestCase):
         self.assertEqual(set(cli.CASES), {"csvstat", "latency", "mailmerge", "topk", "urlstats", "route"})
         self.assertEqual(len(cli.case_names()), 24)
         self.assertEqual(len(set(cli.case_names())), 24)
+        replay = cli.integrations()["json_repair_replay"]
+        self.assertEqual(replay, {"cases": 943, "modes": ["jit", "aot"]})
         with tempfile.TemporaryDirectory() as temporary:
             directory = Path(temporary)
             original = cli.fixtures(directory)
@@ -64,6 +66,9 @@ class SmokeTests(unittest.TestCase):
             cli.run("usage/jit", command, os.environ.copy(), cli.ROOT)
         for required in ("usage/jit", "timeout=120s", "exit=2", "expected exit=0", "stdout=b'", "stderr=b'diagnostic"):
             self.assertIn(required, str(caught.exception))
+        # status=None returns any exit status to the caller, e.g. a checker whose report it inspects.
+        result = cli.run("replay/check", command, os.environ.copy(), cli.ROOT, status=None)
+        self.assertEqual((result.returncode, result.stdout), (2, b"\xff\n"))
 
     def test_timeout_terminates_owned_grandchildren_and_retains_partial_output(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -116,6 +121,32 @@ class SmokeTests(unittest.TestCase):
             self.assertEqual(report["cases"], [])
             self.assertIn("csvstat/table/aot", report["error"])
 
+    def test_json_repair_replay_fails_closed_on_any_unmatched_case(self):
+        count = cli.integrations()["json_repair_replay"]["cases"]
+        passed = f"{count}/{count} match; 0 problems\n".encode()
+
+        def fake_run(mode, checker_stdout, replay_stderr):
+            # Every command succeeds except the given mode's replay or check.
+            def run(label, command, env, cwd, status=0, timeout=120):
+                if label.endswith("/check"):
+                    failed = label == f"json_repair/replay/{mode}/check"
+                    return subprocess.CompletedProcess(command, int(failed), checker_stdout if failed else passed, b"")
+                err = replay_stderr if label == f"json_repair/replay/{mode}" else b""
+                return subprocess.CompletedProcess(command, 0, b"{}\n", err)
+            return run
+
+        for mode, checker_stdout, replay_stderr in (
+                ("jit", f"{count - 1}/{count} match; 1 problems\n".encode(), b""),
+                ("aot", passed, b"warning\n")):
+            report = {"python": "3.13.16", "integrations": {}}
+            with tempfile.TemporaryDirectory() as temporary, \
+                    mock.patch.object(cli, "run", fake_run(mode, checker_stdout, replay_stderr)), \
+                    mock.patch.object(cli, "build", lambda *args: "exe"):
+                with self.subTest(mode=mode), self.assertRaises(ValueError) as caught:
+                    cli.replay_json_repair(Path("pystachy"), {}, Path(temporary), report)
+            self.assertIn(f"json_repair/replay/{mode}", str(caught.exception))
+            self.assertNotIn(mode, report["integrations"]["json_repair_replay"]["modes"])
+
     def test_report_and_aggregate_reject_missing_modes_cases_and_integrations(self):
         valid = passed_report()
         cli.validate_report(valid)
@@ -125,7 +156,11 @@ class SmokeTests(unittest.TestCase):
                      lambda r: r.update(cases=[]), lambda r: r.pop("integrations"),
                      lambda r: r["integrations"].update(json_repair=0),
                      lambda r: r["integrations"].update(json_repair=20.0),
-                     lambda r: r["integrations"]["agent_http"].pop(), lambda r: r.update(error="skipped")]
+                     lambda r: r["integrations"]["agent_http"].pop(), lambda r: r.update(error="skipped"),
+                     lambda r: r["integrations"].pop("json_repair_replay"),
+                     lambda r: r["integrations"]["json_repair_replay"]["modes"].pop(),
+                     lambda r: r["integrations"]["json_repair_replay"].update(cases=942),
+                     lambda r: r["integrations"]["json_repair_replay"].update(cases=943.0)]
         for mutate in mutations:
             data = copy.deepcopy(valid)
             mutate(data)

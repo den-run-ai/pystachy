@@ -115,14 +115,14 @@ os.write(1, f"{os.path.exists('/proc/self/fd/0')} {os.path.exists('/proc/self/fd
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 self.assertEqual(result.stdout, f"False False {ignored} False")
 
-    def test_reports_ignore_process_ids_and_only_a_removed_jitdump(self):
+    def test_reports_ignore_process_ids_and_keep_every_descriptor(self):
+        # Every JIT launch must match CPython's table exactly: a deleted file that lli kept open,
+        # such as a perf jitdump, stays in the report and fails the comparison.
+        report = b"fd 1 /proc/123/fd/pipe:[456]\nfd 3 /proc/123/fd/3\n"
+        self.assertEqual(normalized(report), b"fd 1 /proc/PID/fd/pipe:[]\nfd 3 /proc/PID/fd/3\n")
         dump = b"fd 5 /tmp/tmpx/.debug/jit/llvm-IR-jit-20261109-abcdef/jit-123.dump (deleted)\n"
-        report = b"fd 1 /proc/123/fd/pipe:[456]\nfd 3 /proc/123/fd/3\n" + dump
-        self.assertEqual(normalized(report, mcjit=True), b"fd 1 /proc/PID/fd/pipe:[]\nfd 3 /proc/PID/fd/3\n")
-        self.assertIn(b"jit-123.dump", normalized(report))
-        self.assertIn(b"jit-123.dump", normalized(report.replace(b" (deleted)", b""), mcjit=True))
-        with self.assertRaises(AssertionError):
-            normalized(report + dump.replace(b"fd 5", b"fd 6"), mcjit=True)
+        self.assertEqual(normalized(report + dump), normalized(report) + dump)
+        self.assertNotEqual(normalized(report + dump), normalized(report))
 
 
 if __name__ == "__main__":

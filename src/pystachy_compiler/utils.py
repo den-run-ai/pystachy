@@ -15,7 +15,6 @@ from src.pystachy_compiler.specs import (
     FX,
     FXALL,
     FXBIT,
-    HEX,
     INERT,
     LIST_READS,
     LIST_WRITES,
@@ -1046,31 +1045,48 @@ def hpop(h: list[int]) -> int:
     return top
 
 
-def hexn(v: int, n: int) -> str:
-    s = ""
-    for i in range(n):
-        s = HEX[v & 15] + s
-        v = v >> 4
-    return s
+def float_bits(text: str) -> int:
+    # the IEEE-754 bits of float(text), via float.hex(), as a signed 64-bit int (an i64 slot's
+    # value). Every NaN's are 0x7FF8000000000000, CPython's float("nan"): float.hex() shows a NaN
+    # without its sign or payload
+    h = float(text).hex()
+    neg = h.startswith("-")
+    if neg:
+        h = h[1:]
+    if h == "nan":
+        return 9221120237041090560
+    bits = 2047 << 52  # (an infinity)
+    if h != "inf":
+        dot = h.find(".")
+        p = h.find("p")
+        frac = h[dot + 1 : p] if dot >= 0 else ""
+        e = 0 if h[2] == "0" else int(h[p + 1 :]) + 1023
+        bits = (e << 52) | int(frac + "0" * (13 - len(frac)), 16)
+    return bits - 9223372036854775807 - 1 if neg else bits
 
 
 def fbits(text: str) -> str:
-    # exact IEEE-754 bits of a float literal, via float.hex(), as an LLVM hex constant
-    h = float(text).hex()
-    sign = 0
-    if h.startswith("-"):
-        sign = 2048
-        h = h[1:]
-    if h == "inf":
-        return "0x" + hexn(sign + 2047, 3) + "0" * 13
-    if h == "nan":
-        return "0x7FF8000000000000"
-    dot = h.find(".")
-    p = h.find("p")
-    frac = h[dot + 1 : p] if dot >= 0 else ""
-    frac = frac + "0" * (13 - len(frac))
-    e = 0 if h[2] == "0" else int(h[p + 1 :]) + 1023
-    return "0x" + hexn(sign + e, 3) + frac.upper()
+    # a float literal's exact IEEE-754 double as an LLVM constant that LLVM 18 to 23 all read as
+    # the same bits (LLVM 23 deprecates the hexadecimal 0x form for its f0x, which older ones cannot
+    # read): a finite value as repr()'s shortest decimal, which reads back as it, with the point that
+    # LLVM's syntax needs (1e-09 as 1.0e-09), and an infinity or a NaN, which no decimal spells, as a
+    # bitcast of its bits (float_bits). fconst() recognizes these, float_slot() gives their bits
+    x = float(text)
+    if x - x != 0.0:
+        return f"bitcast (i64 {float_bits(text)} to double)"
+    r = repr(x)
+    e = r.find("e")
+    return r[:e] + ".0" + r[e:] if e >= 0 and r.find(".") < 0 else r
+
+
+def fconst(v: str) -> bool:
+    # is v a float constant as fbits() spells it, not a value computed at run time
+    return v.startswith("bitcast (i64 ") or (v != "" and (v[0].isdigit() or (v[0] == "-" and v[1:2].isdigit())))
+
+
+def float_slot(v: str) -> str:
+    # the bits of fbits() constant v as an i64 slot's value (a constant tuple's item, a dynamic box)
+    return v[13 : v.find(" to ")] if v.startswith("bitcast (i64 ") else str(float_bits(v))
 
 
 def template_ok(name: str) -> bool:

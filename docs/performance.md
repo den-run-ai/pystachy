@@ -178,8 +178,8 @@ python3 tools/ir_cost_report.py --ir raw=/tmp/program.raw.ll \
 Here `/tmp/program.raw.ll` must be emitted from the same source and settings as
 the captured build. The Clang command replays the default AOT optimizer; preserve
 any extra compilation flags when investigating a non-default build. It does not
-capture machine-code instructions. For executed JIT bitcode, the `lli` wrapper
-in [`tools/jitprobe.py`](../tools/jitprobe.py) reads lli's bitcode input descriptor before execution;
+capture machine-code instructions. For executed JIT bitcode, the wrappers of the JIT runner and `lli`
+in [`tools/jitprobe.py`](../tools/jitprobe.py) read their bitcode input descriptor before execution;
 do not label raw-IR `opt -O2` output as the JIT pipeline.
 
 Read `modules[LABEL].functions[NAME].calls` for a specific function, and compare
@@ -243,10 +243,12 @@ AOT optimizes the program and runtime together. The measured tradeoffs are recor
 JIT execution includes frontend and LLVM work; a built AOT executable starts directly.
 The first JIT run after a runtime rebuild also pays for compiling the runtime cache.
 Separate process startup, first calls and warmed execution when reporting results.
-For startup-sensitive runs, `PYSTACHY_JIT_CODEGEN=0` opts into MCJIT `-O0` code
-generation. It can reduce large-program startup while slowing execution; benchmark
-the complete workload. Unset or `2` retains the default ORC path. See [#430](https://github.com/den-run-ai/pystachy/issues/430)
-for the measured tradeoff; it is independent of `PYSTACHY_JIT_INLINE`.
+For startup-sensitive runs, `PYSTACHY_JIT_CODEGEN=0` opts into `-O0` code generation, which
+the [JIT runner](internals.md#the-jit-runner) does itself (with `lli`, an object of `llc`'s,
+whose extra process costs tiny programs). It can reduce large-program startup while slowing
+execution; benchmark the complete workload. Unset or `2` retains ORC's own level of code
+generation. See [#430](https://github.com/den-run-ai/pystachy/issues/430) for the measured
+tradeoff; it is independent of `PYSTACHY_JIT_INLINE`.
 
 A program that builds `list(range(4194305))` peaks at **34.1 MiB RSS in v0.1.0-alpha.4's AOT
 executable, against 171.1 MiB in CPython 3.13.18**, a 5.0× reduction. The JIT's processes,

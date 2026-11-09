@@ -20,7 +20,7 @@ ctypes_schema.SCALARS ctypes_schema.MARKERS
 bigints.BIGOPS bigints.BKEY bigints.PROMOTES bigints.NUMOPS bigints.NUMCALLS
 cached_run.BUILD_ENV cached_run.CPU_FIELDS cached_run.KEYED_ENV
 cache_toolchain.SYSTEM_INPUTS
-driver.COMPILER_SOURCES driver.CPUID driver.RTPARTS
+driver.COMPILER_SOURCES driver.CPUID driver.LLJIT_LLVM driver.RTPARTS
 dynamic.XCMP dynamic.XOPS dynamic.BINOPS dynamic.UNOPS dynamic.CMPOPS
 dynamic.BINDUNDERS dynamic.BUILTIN expressions.ORDERS
 ir.NONUMS ir.NOVALS ir.NOLABELS ircheck.RESULT_NUMBERS
@@ -79,6 +79,11 @@ RETAINED = {
     "specs.GLUE": "loader public-name discoveries; currently retained across restarts",
     "specs.SPECSHOW": "specialization display names; currently retained across restarts",
     "specs.MODULES": "driver builtin-module configuration; runtime_ir restores its temporary _rt entry on every exit",
+    # Interned IR fragments: each entry is a pure function of its index, so retaining them across
+    # dry runs, retries and compilations changes no output. one_num's lists are shared and must not
+    # be mutated; ircheck verifies them after lowering.
+    "ir.TMPNAMES": "process-lifetime memo of %t<n> value names; entry n is always '%t<n>'",
+    "ir.ONENUMS": "process-lifetime memo of single-number lists; entry n is always [n], checked after lowering",
 }
 # Retained means observed policy, not proof that retaining semantic state is safe.
 # Keep #767 open for those contracts and for indirect mutation/alias effects.
@@ -113,6 +118,8 @@ WRITERS = {
     "specs.GLUE": {"loader.Loader.load"},
     "specs.SPECSHOW": {"templates.gen_specialize"},
     "specs.MODULES": {"driver.runtime_ir", "driver.main"},
+    "ir.TMPNAMES": {"ir.tmpname"},
+    "ir.ONENUMS": {"ir.one_num"},
 }
 # gen_verify borrows NOLABELS as out, then copies before append/extend.
 # The conservative alias scan cannot prove that control flow; this local is a

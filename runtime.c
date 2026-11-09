@@ -1954,7 +1954,11 @@ __attribute__((no_builtin("pow"))) double pys_m_pow(double x, double y) {   /* (
   if (x == 0 && y < 0 && isfinite(y)) pys_fail("ValueError: math domain error");
   return mchk(pow(x, y), x, y, 1);
 }
-double pys_m_fmod(double x, double y) {
+/* no_builtin("fmod") keeps fmod a call of libm's. Once the guard below shows x is not infinite and y
+   not zero, LLVM 20 to 22 rewrite fmod(x, y) as an frem marked as never NaN, although a NaN x or y still
+   reaches it. Without the attribute the AOT tier inlines this function into the program, where
+   math.isnan() of the result then folds to false (LLVM 23 no longer marks it; see pys_fpow for pow) */
+__attribute__((no_builtin("fmod"))) double pys_m_fmod(double x, double y) {
   /* A NaN in either argument propagates even with an infinite dividend or zero divisor. */
   if ((isinf(x) || y == 0) && !isnan(x) && !isnan(y)) pys_fail("ValueError: math domain error");
   return fmod(x, y);
@@ -3059,25 +3063,43 @@ I pys_vtuple_count(VTuple *t, I v, Str *d) { I c = 0; for (I i = 0; i < t->len; 
    type never changes (lists are invariant, and only an empty result whose type is still open
    is typed later: its array is scanned). Growth, copies, slices, + and * make new arrays of
    the kind of the arrays they copy (atomic_items), so a list keeps its kind for its lifetime,
-   and an emptied list keeps it in the sentinel it is left with. */
+   and an emptied list keeps it in the sentinel it is left with.
+   A scanned list made for at most INLINE_CAP items keeps them in its header's own object,
+   right after the header (l->a == inline_items(l)): one 72-byte allocation instead of a 32-byte
+   header and a 40-byte array, so the many short lists of a program (a compiler's operand and
+   child lists) cost one allocation and one object to mark each. Growth past INLINE_CAP moves
+   the items to an array of their own and clears the inline ones. An emptied list is left the
+   sentinel empty_inline, so that its next items go back inline. */
+#define INLINE_CAP 4                   /* the inline items' capacity, the least that any list has */
 static I empty_list[1];                /* valid even for zero-byte copies; distinct from sort's sentinel */
 static I empty_identity_int[1] = {1}, empty_identity_float[1] = {2}, empty_identity_big[1] = {3};
 static I *empty_identity(I kind) { return (kind & 3) == 1 ? empty_identity_int : (kind & 3) == 2 ? empty_identity_float : empty_identity_big; }
 static I empty_atomic[1];              /* the same, for a list whose array was atomic */
+static I empty_inline[1];              /* and for one whose items were inline (scanned) */
+static I *inline_items(List *l) { return (I *)(l + 1); }
 static int atomic_items(const I *a) {  /* is the item array a atomic? its kind, from the page map */
   uintptr_t w = (uintptr_t)a; Seg **m, *s;
   if (a == empty_atomic) return 1;
   return w - gc_lo < gc_hi - gc_lo && (m = pmap[w >> 30]) && (s = m[w >> 12 & 0x3ffff]) && (s->k & 1);
 }
 static void empty(List *l) {           /* detach an empty list's historical storage without allocating */
-  if (l->cap) { l->cap = 0; l->a = atomic_items(l->a) ? empty_atomic : empty_list; if (l->ids && opt_in()) l->ids = empty_identity(l->ids[0]); }   /* cap 0 during sort: preserve its mutation marker */
+  if (l->cap) {                        /* cap 0 during sort: preserve its mutation marker */
+    if (l->a == inline_items(l)) l->a = empty_inline;   /* (whoever removed its items cleared their slots) */
+    else l->a = atomic_items(l->a) ? empty_atomic : empty_list;
+    l->cap = 0;
+    if (l->ids && opt_in()) l->ids = empty_identity(l->ids[0]);
+  }
 }
 static I *item_array(I n, int atomic) { return atomic ? pys_alloc_atomic(n * 8) : pys_alloc(n * 8); }
 static List *list_new(I cap, int atomic) {
+  if (!atomic && cap <= INLINE_CAP) {  /* 64 bytes: the slack byte falls in the 72-byte class's last 8 */
+    List *l = pys_alloc(sizeof(List) + INLINE_CAP * sizeof(I));
+    l->cap = INLINE_CAP; l->a = inline_items(l); return l;
+  }
   /* The allocator adds one slack byte. Request the full 32-byte header without
      promoting it to the next size class; the former 24-byte header used 32 too. */
   List *l = pys_alloc(sizeof(List) - 1);
-  l->cap = cap > 4 ? cap : 4;
+  l->cap = cap > INLINE_CAP ? cap : INLINE_CAP;
   l->a = item_array(l->cap, atomic); return l;
 }
 List *pys_list_new(I cap) { return list_new(cap, 0); }
@@ -3181,10 +3203,15 @@ List *pys_vtuple_list(VTuple *t) {
 }
 static void reserve(List *l, I n) {
   if (n <= l->cap) return;
-  I c = l->cap * 2 > n ? l->cap * 2 : n;
-  if (c < 4) c = 4;
-  I *a = item_array(c, atomic_items(l->a));
-  memcpy(a, l->a, l->len * 8); l->a = a;
+  I c = l->cap * 2 > n ? l->cap * 2 : n, *a;
+  if (c < INLINE_CAP) c = INLINE_CAP;
+  if (l->a == empty_inline && c == INLINE_CAP) a = inline_items(l);   /* (emptied, and its items fit inline again) */
+  else {
+    a = item_array(c, atomic_items(l->a));
+    memcpy(a, l->a, l->len * 8);
+    if (l->a == inline_items(l)) memset(l->a, 0, INLINE_CAP * sizeof(I));   /* (moved: the header keeps none of them) */
+  }
+  l->a = a;
   if (l->ids && opt_in()) {
     if (c > INT64_MAX / (I)sizeof(I) - 1) oom();
     I *ids = pys_alloc((c + 1) * sizeof(I));
@@ -6604,7 +6631,7 @@ static void setbuf1(File *f, I bs) {   /* CPython's write layers: 8 KiB of pendi
   f->buf = f->pb + pend; f->bs = bs; f->emu = 1;
   setvbuf(f->f, f->buf, _IOFBF, bs);
 }
-static int jit;                        /* pystachy run: the program runs in lli's process */
+static int jit;                        /* pystachy run: the program runs in the JIT runner's or lli's process */
 I pys_jit(void) { return jit; }
 static int lost;                       /* bit i: descriptor i (stdin, stdout, stderr) was not open when the program
                                           started. CPython's sys.stdin, sys.stdout or sys.stderr is None then, for
@@ -6616,44 +6643,21 @@ static int handoff_number(const char **p, unsigned long max, unsigned long *v) {
   for (; *s >= '0' && *s <= '9'; s++) if ((x = x * 10 + (unsigned long)(*s - '0')) > max) return 0;
   *v = x; *p = s; return 1;
 }
-static void jitdump_remove(const char *dir) {   /* LLVM's perf jitdump, dir/.debug/jit/llvm-IR-jit-DATE-XXXXXX/jit-PID.dump
-                                                   (PerfJITEventListener.cpp), then each directory once empty: nothing
-                                                   else, and no link followed */
-  char path[PATH_MAX], dump[32];
-  snprintf(dump, sizeof dump, "jit-%ld.dump", (long)getpid());   /* (lli's process, the program's) */
-  if (snprintf(path, sizeof path, "%s/.debug/jit", dir) >= (int)sizeof path) return;
-  int fd = open(path, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
-  DIR *d = fd < 0 ? NULL : fdopendir(fd);
-  if (d) {
-    for (struct dirent *e; (e = readdir(d));) {
-      if (strncmp(e->d_name, "llvm-IR-jit-", 12)) continue;
-      int sub = openat(dirfd(d), e->d_name, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
-      if (sub >= 0) { unlinkat(sub, dump, 0); close(sub); }
-      unlinkat(dirfd(d), e->d_name, AT_REMOVEDIR);
-    }
-    closedir(d);
-  } else if (fd >= 0) close(fd);
-  rmdir(path);
-  path[strlen(path) - 4] = 0;            /* (dir/.debug) */
-  rmdir(path);
-  rmdir(dir);
-}
-/* pystachy run: lli runs the program in its own process, where LLVM's start-up replaced the dispositions of
-   the signals it handles (llvm/lib/Support/Unix/Signals.inc: IntSigs, KillSigs, InfoSigs and SIGPIPE) with
-   handlers of its own, which print lli's stack (SIGQUIT's, then let the program run on), ignore SIGUSR1,
-   and hide an inherited ignored SIGINT from pys_init's test. The driver (driver.py, where it becomes lli)
-   hands the program what it needs to start as a built one does, in PYSTACHY_JIT_HANDOFF="MASK;FD,...;DIR",
-   consumed here before any of the program's code runs and removed from the environment, so that no child
-   sees it:
+/* pystachy run: the JIT runner (lljit.c) or lli runs the program in its own process. In lli, LLVM's start-up
+   replaced the dispositions of the signals it handles (llvm/lib/Support/Unix/Signals.inc: IntSigs, KillSigs,
+   InfoSigs and SIGPIPE) with handlers of its own, which print lli's stack (SIGQUIT's, then let the program
+   run on), ignore SIGUSR1, and hide an inherited ignored SIGINT from pys_init's test; the JIT runner sets
+   none. The driver (driver.py, where it becomes the runner or lli) hands the program what it needs to start
+   as a built one does, in PYSTACHY_JIT_HANDOFF="MASK;FD,...", consumed here before any of the program's
+   code runs and removed from the environment, so that no child sees it:
    - MASK: the standard signals the driver ignored, bit s-1 for signal s. An exec keeps ignored signals
      ignored and sets caught ones to their defaults, so these are all that lli inherited: each signal that
      LLVM caught is ignored or default again (lli's crash handlers dropped: the program dies by the signal);
-   - FD,...: the descriptors the driver opened for lli, its inputs (the program's bitcode, the runtime and
-     the embedding's object) and /dev/null on each standard stream that the caller had closed, which then
-     neither the inputs nor lli's own files could take. All are closed: the program and its children see
-     the caller's descriptors;
-   - DIR: MCJIT's private directory for LLVM's perf jitdump (JITDUMPDIR), removed with the dump. lli keeps
-     writing it through its own close-on-exec descriptor, which it closes at exit.
+   - FD,...: the descriptors the driver opened for the runner or lli, its inputs (the main module, which is
+     the program's bitcode, or with lli and PYSTACHY_JIT_CODEGEN=0 the module beside llc's object of the
+     program; the runtime; the embedding's object; that object of llc's), the runner's own file, and
+     /dev/null on each standard stream that the caller had closed, which then neither the inputs nor lli's
+     own files could take. All are closed: the program and its children see the caller's descriptors.
    A value not of that form is ignored as a whole; LLVM's handlers are dropped all the same. */
 __attribute__((minsize)) static void jit_handoff(void) {
   static const int llvm[] = {SIGHUP, SIGINT, SIGTERM, SIGUSR2, SIGILL, SIGTRAP, SIGABRT, SIGFPE, SIGBUS, SIGSEGV, SIGQUIT,
@@ -6665,23 +6669,21 @@ __attribute__((minsize)) static void jit_handoff(void) {
                              , SIGINFO
 #endif
   };
-  const char *p = getenv("PYSTACHY_JIT_HANDOFF"), *dir = 0;
+  const char *p = getenv("PYSTACHY_JIT_HANDOFF");
   unsigned long ign = 0, fd;
   int fds[8], n = 0;
   if (p) {
     int ok = handoff_number(&p, 0x7fffffffUL, &ign) && *p++ == ';';
-    if (ok && *p != ';')
+    if (ok && *p)
       for (;;) {
         if (n == 8 || !handoff_number(&p, INT_MAX, &fd)) { ok = 0; break; }
         fds[n++] = (int)fd;
         if (*p != ',') break;
         p++;
       }
-    if (ok && *p++ == ';') dir = p;
-    else { ign = 0; n = 0; }
+    if (!ok || *p) { ign = 0; n = 0; }
   }
   for (int i = 0; i < n; i++) close(fds[i]);
-  if (dir && *dir) { jitdump_remove(dir); unsetenv("JITDUMPDIR"); }
   for (size_t i = 0; i < sizeof llvm / sizeof *llvm; i++) {
     struct sigaction sa;
     if (!sigaction(llvm[i], 0, &sa) && sa.sa_handler != SIG_IGN && sa.sa_handler != SIG_DFL)
@@ -7413,8 +7415,8 @@ _Noreturn void pys_recursion_stack_error(void) {
    fails), where the bounds are unknown or do not hold this frame (a switched stack).
    A frame already within the margin gets the floor too: the next counted entry below it raises,
    and those from higher frames, once it has returned, are checked as usual. Set by pys_init on the
-   program's thread (lli's main thread under the JIT) and by pys_init_lib on the thread that
-   imports an extension module, the only one that may call it (pyext.c). Linux's main thread's
+   program's thread (the main thread of the JIT runner or lli under the JIT) and by pys_init_lib on
+   the thread that imports an extension module, the only one that may call it (pyext.c). Linux's main thread's
    bounds from exec assume that its stack can grow to RLIMIT_STACK. Extension initialization and
    glibc's fallback also inspect mappings below the stack, which can stop it sooner (#1032); maps
    and limits changed after initialization remain outside this check. */
@@ -9164,8 +9166,9 @@ void *pys_c_at(List *l, I k) {         /* ffi.at(xs, k), a list passed from its 
 }
 /* @ffi.extern("lib"): when the def statement runs, the C function is looked up in lib's own handle, as
    ctypes.CDLL(lib or None) finds it: dlopen(RTLD_NOW | RTLD_LOCAL), then dlsym; a failure raises what
-   ctypes raises, OSError or AttributeError with dlerror's text. Under pystachy run, lli's own libraries
-   (libLLVM's dependencies) are in the global scope: RTLD_DEEPBIND keeps lib and its dependencies first */
+   ctypes raises, OSError or AttributeError with dlerror's text. Under pystachy run, the JIT runner's or
+   lli's own libraries (libLLVM's dependencies) are in the global scope: RTLD_DEEPBIND keeps lib and its
+   dependencies first */
 static void *c_library(const char *lib) {
   pys_c_numeric();                     /* (a C function may call setlocale) */
 #ifdef RTLD_DEEPBIND

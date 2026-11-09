@@ -12,7 +12,7 @@ from src.pystachy_compiler.analysis import (
     reads,
 )
 from src.pystachy_compiler.diagnostics import dynamic_program, shown
-from src.pystachy_compiler.ir import Data, Exit, FnInfo, Ins, Try, Val
+from src.pystachy_compiler.ir import Data, Exit, FnInfo, Ins, Try, Val, tmpname
 from src.pystachy_compiler.names import owner, short
 from src.pystachy_compiler.specs import (
     BIG,
@@ -476,7 +476,7 @@ def gen_exc_match(self, e: Val, names: str) -> str:
     i.a = [e, Val(self.sconst(names), "str")]
     self.runtime("pys_exc_in")
     self.put(i, 2)
-    return f"%t{i.r[1]}"
+    return tmpname(i.r[1])
 
 def gen_unbind(self, name: str) -> None:
     # the end of except ... as name: name is unbound, as after del name (but nothing is read),
@@ -1516,7 +1516,7 @@ def gen_exc_call(self, c: Val, args: list[Node], how: int = 0) -> Val:
     self.br(l3)
     self.place(l3)
     ph = Ins("phi", "exc", "")
-    self.incoming(ph, f"%t{i.r[0]}", e1)
+    self.incoming(ph, tmpname(i.r[0]), e1)
     self.incoming(ph, r2.v, e2)
     r = self.phi(ph)
     self.nn[r] = True
