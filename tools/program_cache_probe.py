@@ -332,13 +332,17 @@ print(input())
 ''')
     arguments = ["space here", "'quoted$argument`", "--", "-o"]
     p.pair(source, "fresh effects", arguments=arguments, stdin=b"first input\n",
-           changes={"CACHE_PROBE_VALUE": "first"})
+           changes={"CACHE_PROBE_VALUE": "first", "PYSTACHY_ARGV0": "/caller/not-the-compiler"})
     changes = {"CACHE_PROBE_VALUE": "second", "PYSTACHY_GC_STRESS_PROGRAM": "1"}
     expected = p.oracle(source, ["changed argument"], stdin=b"second input\n", changes=changes)
     result = p.run("fresh runtime inputs", source, ["changed argument"],
                    stdin=b"second input\n", changes=changes)
     p.matches(result, expected, "fresh argv, stdin, environment and GC setting")
     p.hit(result, "runtime inputs do not invalidate native code")
+    inherited = p.run("inherited argv0 on a hit", source, ["changed argument"], stdin=b"second input\n",
+                      changes={**changes, "PYSTACHY_ARGV0": "/caller/not-the-program"})
+    p.matches(inherited, expected, "inherited argv0 cannot replace the source path")
+    p.hit(inherited, "inherited argv0 does not invalidate native code")
 
 
 def check_source_content(p: Probe) -> None:
@@ -431,6 +435,49 @@ except ImportError:
     missing = p.run("import removed", source)
     p.check(missing.status != 0 and "hit" not in missing.events,
             "removed import used stale native code")
+
+
+def check_regular_import_files(p: Probe) -> None:
+    # Both source spellings must ignore directories/FIFOs and accept symlinks to
+    # regular files (#1183). Every kind flip invalidates the previous executable.
+    source = p.source("regular-import-files", "import chosenmod\nimport chosenpkg\n"
+                      "print(chosenmod.VALUE, chosenpkg.VALUE)\n")
+    lower = p.directory / "regular-import-lower"
+    p.write(lower / "chosenmod.py", "VALUE = 31\n")
+    p.write(lower / "chosenpkg" / "__init__.py", "VALUE = 32\n")
+    target = p.write(p.directory / "regular-import-target.py", "VALUE = 33\n")
+    candidates = [source.parent / "chosenmod.py", source.parent / "chosenpkg" / "__init__.py"]
+    for candidate in candidates:
+        candidate.mkdir(parents=True)
+    environment = {"PYSTACHY_PATH": str(lower), "PYTHONPATH": str(lower)}
+    p.pair(source, "source candidates are directories", changes=environment)
+    for candidate in candidates:
+        candidate.rmdir()
+        os.mkfifo(candidate)
+    p.pair(source, "source candidates become FIFOs", changes=environment)
+    for candidate in candidates:
+        candidate.unlink()
+        candidate.symlink_to(target)
+    p.pair(source, "source candidates become regular-file symlinks", changes=environment)
+
+    # A non-regular ffi source must not remove the compiler's builtin module.
+    # Its independent reference is an ordinary uncached launch with no shadow.
+    ffi = p.source("regular-ffi-files", 'import ffi\nprint("ok")\n')
+    reference = p.run("unshadowed builtin ffi", ffi, changes={"PYSTACHY_PROGRAM_CACHE": "0"})
+    p.check(reference.status == 0 and reference.stdout == b"ok\n", "builtin ffi reference failed")
+    candidates = [ffi.parent / "ffi.py", ffi.parent / "ffi" / "__init__.py"]
+    for candidate in candidates:
+        candidate.mkdir(parents=True)
+    p.pair(ffi, "ffi candidates are directories", reference=reference)
+    for candidate in candidates:
+        candidate.rmdir()
+        os.mkfifo(candidate)
+    p.pair(ffi, "ffi candidates become FIFOs", reference=reference)
+    target = p.write(p.directory / "regular-ffi-target.py", 'print("shadow")\n')
+    for candidate in candidates:
+        candidate.unlink()
+        candidate.symlink_to(target)
+    p.pair(ffi, "ffi candidates become regular-file symlinks")
 
 
 def check_semantics(p: Probe) -> None:
@@ -564,7 +611,7 @@ sys.exit(7)
 
 
 def check_bypass(p: Probe) -> None:
-    source = p.source("bypass", "print(63)\n")
+    source = p.source("bypass", "import sys\nprint(sys.argv)\nprint(63)\n")
     expected = p.oracle(source)
     p.pair(source, "bypass prime", reference=expected)
     default = p.run("enabled by default", source, changes={"PYSTACHY_PROGRAM_CACHE": None})
@@ -575,10 +622,10 @@ def check_bypass(p: Probe) -> None:
         p.matches(selected, expected, "explicit cache setting")
         p.hit(selected, "empty and explicit settings keep caching enabled")
     variants = [
-        ("disabled", {"PYSTACHY_PROGRAM_CACHE": "0"}),
+        ("disabled", {"PYSTACHY_PROGRAM_CACHE": "0", "PYSTACHY_ARGV0": "/caller/not-the-compiler"}),
         ("custom C flags", {"PYSTACHY_CFLAGS": "-DCACHE_PROBE=1"}),
         ("IR checker", {"PYSTACHY_IRCHECK": "1"}),
-        ("-O0 code generation", {"PYSTACHY_JIT_CODEGEN": "0"}),
+        ("-O0 code generation", {"PYSTACHY_JIT_CODEGEN": "0", "PYSTACHY_ARGV0": "/caller/not-the-compiler"}),
     ]
     for label, env in variants:
         result = p.run(label, source, changes=env)
@@ -589,7 +636,11 @@ def check_bypass(p: Probe) -> None:
     built = p.launch("build bypass", p.command + ["build", str(source), "-o", str(output)])
     p.check(built.status == 0 and "hit" not in built.events and bool(built.tools),
             "ordinary build did not bypass the program cache")
-    p.matches(p.launch("ordinary AOT", [str(output)]), expected, "ordinary AOT")
+    arguments = ["space here", "'quoted$argument`", ""]
+    aot = p.launch("ordinary AOT", [str(output), *arguments], changes={"PYSTACHY_ARGV0": "/caller/not-the-program"})
+    reference = p.launch("ordinary AOT argv reference", p.python + [
+        "-c", "import sys; print(sys.argv[1:]); print(63)", str(output), *arguments])
+    p.matches(aot, reference, "ordinary AOT keeps its actual argv with inherited PYSTACHY_ARGV0")
     extension = p.directory / "main.abi3.so"
     built = p.launch("extension bypass", p.command + ["ext", str(source), "-o", str(extension)])
     p.check(built.status == 0 and extension.is_file() and "hit" not in built.events and bool(built.tools),
@@ -611,14 +662,16 @@ def check_settings(p: Probe) -> None:
     scratch = p.directory / "settings-tmp"
     scratch.mkdir()
     for key in ("PYSTACHY_JIT_INLINE", "PYSTACHY_RUNTIME_C_CACHE"):
-        # A rejected setting can leave the driver's temporary directory behind.
         changes = {key: "", "TMPDIR": str(scratch)}
-        uncached = p.run(f"empty {key} uncached", source, changes={**changes, "PYSTACHY_PROGRAM_CACHE": "0"})
-        p.check(uncached.status == 1 and key.encode() in uncached.stderr,
-                f"uncached compilation accepted an empty {key}: {uncached.observable!r}")
-        result = p.run(f"empty {key}", source, changes=changes)
-        p.matches(result, uncached, f"empty {key}")
-        p.check("hit" not in result.events, f"empty {key}: a hit hid the uncached error")
+        for attempt in range(2):
+            uncached = p.run(f"empty {key} uncached {attempt}", source, changes={**changes, "PYSTACHY_PROGRAM_CACHE": "0"})
+            p.check(uncached.status == 1 and key.encode() in uncached.stderr,
+                    f"uncached compilation accepted an empty {key}: {uncached.observable!r}")
+            p.check(not list(scratch.iterdir()), f"empty {key} uncached: temporary files remain")
+            result = p.run(f"empty {key} {attempt}", source, changes=changes)
+            p.matches(result, uncached, f"empty {key}")
+            p.check("hit" not in result.events, f"empty {key}: a hit hid the uncached error")
+            p.check(not list(scratch.iterdir()), f"empty {key}: temporary files remain")
 
 
 def check_tool_identity(p: Probe) -> None:
@@ -810,6 +863,7 @@ CHECKS = {
     "reuse": check_reuse,
     "source": check_source_content,
     "imports": check_imports,
+    "regular-import-files": check_regular_import_files,
     "semantics": check_semantics,
     "corruption": check_corruption,
     "bypass": check_bypass,

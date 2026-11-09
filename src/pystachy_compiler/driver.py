@@ -638,6 +638,7 @@ def main() -> None:
     jitflags = ""
     codegen = "2"
     runner = ""
+    jitinline = JIT_INLINE
     if cmd == "run":
         # PYSTACHY_JIT_CODEGEN=0: -O0 code generation, which the JIT runner does itself, and for which
         # lli's ORC, which ignores -O, links an object of llc's (below). Keep this startup/execution
@@ -650,6 +651,12 @@ def main() -> None:
         runner = os.getenv("PYSTACHY_JIT_LAUNCHER", "auto")
         if runner != "auto" and runner != "lli":
             fail(f"PYSTACHY_JIT_LAUNCHER: {runner} is not auto (Pystachy's JIT runner where it can be built, else lli) or lli", 0)
+        # Reject settings before acquiring cache locks or creating temporary files.
+        # Keep both checks: isdigit() and int() accept different Unicode digits.
+        lim = os.getenv("PYSTACHY_JIT_INLINE", str(JIT_INLINE))
+        if not lim.isdigit():
+            fail(f"PYSTACHY_JIT_INLINE: {lim} is no number of lines (0 turns the JIT's inliner off)", 0)
+        jitinline = int(lim)
         # cold functions (a function that only raises: cold noinline) stay in .text: where some
         # went to .text.unlikely, lli's ORC in LLVM 18 lost the landing pads that the inliner had
         # moved into main, and a try statement there missed what it should have caught (the JIT
@@ -709,7 +716,7 @@ def main() -> None:
         timing_end("driver.prepare_run", total)
         cached_run.execute(pcexe, diagnostics.SRC, argv[3:])
     for d in dirs[:-1]:
-        if program_cache.tracked_exists(d + "/ffi.py") or program_cache.tracked_exists(d + "/ffi/__init__.py"):
+        if program_cache.tracked_isfile(d + "/ffi.py") or program_cache.tracked_isfile(d + "/ffi/__init__.py"):
             del MODULES["ffi"]  # (the program's own ffi module comes first, as under CPython: Pystachy's is not imported then)
             break
     f = open(diagnostics.SRC, "r", encoding=RAW)
@@ -1248,11 +1255,8 @@ def main() -> None:
         # callbacks stay visible to the precompiled runtime (which this tier never inlines). A
         # program of up to JIT_INLINE lines of IR has its own functions inlined into their callers
         # first, bottom-up (cgscc), each then cleaned up as before
-        lim = os.getenv("PYSTACHY_JIT_INLINE", str(JIT_INLINE))
-        if not lim.isdigit():
-            fail(f"PYSTACHY_JIT_INLINE: {lim} is no number of lines (0 turns the JIT's inliner off)", 0)
         clean = "function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg)"
-        if ir.split("; pystachy source locations\n")[0].count("\n") <= int(lim):
+        if ir.split("; pystachy source locations\n")[0].count("\n") <= jitinline:
             clean = f"cgscc(inline,{clean})"
         # Recursion accounting helpers belong to the program module, even when the
         # runtime is a separate library. Inline only those explicitly marked helpers

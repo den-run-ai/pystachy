@@ -447,7 +447,11 @@ dispositions of the signals LLVM handles, an inherited ignored SIGINT among them
 its own; the runner sets none. Before any of the program's code runs, the runtime closes those
 descriptors and restores each signal that LLVM caught to the disposition the driver had (ignored
 or default). It reads this from `PYSTACHY_JIT_HANDOFF`, which it then removes from the environment
-(`jit_handoff` in `runtime.c`). The program and its children see the caller's descriptors and
+(`jit_handoff` in `runtime.c`).
+The paired `PYSTACHY_ARGV0` supplies the source spelling for `sys.argv[0]` and is consumed too.
+Without the JIT handoff, an inherited `PYSTACHY_ARGV0` is ordinary environment data: it cannot
+replace the native compiler's, a cached program's or an AOT executable's argument zero.
+The program and its children see the caller's descriptors and
 dispositions, as cached and built programs do; [`tools/jitfdprobe.py`](../tools/jitfdprobe.py)
 compares both with CPython's, under the runner and under `lli`.
 A module that holds generators (coroutines, which ORC cannot run before they are

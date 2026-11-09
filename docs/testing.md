@@ -567,8 +567,11 @@ A failed group leaves the others running. The aggregate checks are
 `make verify (Linux x86-64, LLVM 18, Python 3.13)` and
 `make verify (Linux ARM64, LLVM 18, Python 3.13)`. For pull requests, maintainers
 verify `Verification` and `make lint (ruff, shellcheck, clang -Wall -Wextra)` on the
-current revision before merging. [Issue #766](https://github.com/den-run-ai/pystachy/issues/766)
-tracks requiring both checks for all merge credentials in GitHub branch protection.
+current revision before merging. Branch protection requires both checks, including
+for administrators, and the fork DCO check.
+[Issue #766](https://github.com/den-run-ai/pystachy/issues/766) records the enforcement
+work; [CONTRIBUTING.md](../CONTRIBUTING.md#ai-assistance-and-review) describes the
+review and submission requirements.
 Each report gate requires every group to succeed. It rejects missing or unexpected stages,
 inconsistent source revisions or toolchains, different bootstrap IR, and missing or
 inconsistent bootstrap provenance.
