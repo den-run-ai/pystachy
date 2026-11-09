@@ -1,10 +1,12 @@
-# PR ledger, 2026-11-09 (19:20 UTC)
+# PR ledger, 2026-11-09 (19:58 UTC)
 
-Main is `f60df76d`: v0.4.0-alpha.2 merged at 14:19 UTC and its release gate is green. The tag and
-publication are left to the maintainer. Every PR below needs the maintainer's explicit go-ahead to
-merge.
+All ten PRs below landed on main at 19:56 UTC as `c1796654` ("Merge verified PRs #1188 through
+#1197", through #1198), with the maintainer's approval. Its second parent is `b1b21a75`, the tree
+PR CI passed 18/18 and Codex reviewed without findings; GitHub marks each PR merged. Main's CI on
+`c1796654` started at 19:56 UTC. The v0.4.0-alpha.2 tag and publication are still left to the
+maintainer.
 
-## Ready to merge
+## Landed
 
 All have green CI at their heads and a Codex review there with no findings.
 
