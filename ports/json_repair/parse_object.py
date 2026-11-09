@@ -355,7 +355,6 @@ def parse_object(
             )
             self.index -= 1
             break
-
     self.index += 1
 
     repaired_empty_object, repaired_value = _repair_empty_object_result(

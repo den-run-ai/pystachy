@@ -8,7 +8,7 @@ import sys
 import tempfile
 import unittest
 
-from build_json_repair_corpus import calls_with_env, request
+from build_json_repair_corpus import calls_with_env, module_constants, request, value
 from json_repair_parity import replay_input
 
 
@@ -68,6 +68,36 @@ for fenced in (False, True):
         for source in ("repair_json('{}', indent=2)", "repair_json('{}', True)"):
             with self.subTest(source=source), self.assertRaises(ValueError):
                 self.extract(source)
+
+    def test_literal_tables_may_interpolate_loop_variables(self):
+        self.assertEqual(self.extract('''
+for suffix in ("e", "E-"):
+    for raw, expected in [(f"[1{suffix}, 2]", [1, 2]), (f'{{"n": 1{suffix}}}', {"n": 1})]:
+        repair_json(raw, logging=True)
+'''), [
+            (raw, {'return_objects': False, 'logging': True}, 'repair_json')
+            for raw in ('[1e, 2]', '{"n": 1e}', '[1E-, 2]', '{"n": 1E-}')
+        ])
+
+    def test_shared_case_tables_are_parsed_not_imported(self):
+        with tempfile.TemporaryDirectory() as directory:
+            tests = Path(directory)
+            (tests / "utils").mkdir()
+            (tests / "utils" / "cases.py").write_text(
+                "raise SystemExit('never imported')\n"
+                "CASES = [('{a: 1}', {'a': 1}), (PREFIX + '[1,', [1])]\n"
+                "PREFIX = 'x'\n"
+                "TABLE = [(PREFIX + '[1,', [1])]\n"
+                "DYNAMIC = open('cases.json').read()\n")
+            tree = ast.parse("from tests.utils.cases import TABLE as ROWS, DYNAMIC, CASES\n"
+                             "from other.cases import OUTSIDE\n")
+            shared = {}
+            constants = module_constants(tree, tests, shared)
+        # A name that needs execution, a later definition or another package stays unresolved.
+        self.assertEqual(constants, {"ROWS": [("x[1,", [1])]})
+        self.assertEqual(list(shared), ["utils/cases.py"])
+        table = ast.parse("ROWS", mode="eval").body
+        self.assertEqual(value(table, constants), [("x[1,", [1])])
 
 
 class JsonRepairParityTests(unittest.TestCase):
