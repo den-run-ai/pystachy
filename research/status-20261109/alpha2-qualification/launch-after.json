@@ -1,0 +1,69 @@
+[
+  {
+    "label": "normal version",
+    "status": 0,
+    "stdout": "pystachy v0.4.0-alpha.2 (commit unknown)\n",
+    "stderr": "",
+    "seconds": 0.002
+  },
+  {
+    "label": "stray argv0 version",
+    "status": 0,
+    "stdout": "pystachy v0.4.0-alpha.2 (commit unknown)\n",
+    "stderr": "",
+    "seconds": 0.002
+  },
+  {
+    "label": "CPython argv reference",
+    "status": 0,
+    "stdout": "['/workspace/scratch/1f038228ff5b/alpha2-after-3_954fp2/main.py', \"quoted ' argument\", '']\n42\n",
+    "stderr": "",
+    "seconds": 0.01
+  },
+  {
+    "label": "normal launch",
+    "status": 0,
+    "stdout": "['/workspace/scratch/1f038228ff5b/alpha2-after-3_954fp2/main.py', \"quoted ' argument\", '']\n42\n",
+    "stderr": "",
+    "seconds": 10.842
+  },
+  {
+    "label": "stray argv0 launch",
+    "status": 0,
+    "stdout": "['/workspace/scratch/1f038228ff5b/alpha2-after-3_954fp2/main.py', \"quoted ' argument\", '']\n42\n",
+    "stderr": "",
+    "seconds": 0.037
+  },
+  {
+    "label": "invalid inline cache=0 attempt=0",
+    "status": 1,
+    "stdout": "",
+    "stderr": "/workspace/scratch/1f038228ff5b/alpha2-after-3_954fp2/main.py:0: error: PYSTACHY_JIT_INLINE:  is no number of lines (0 turns the JIT's inliner off)\n",
+    "seconds": 0.004,
+    "leftovers": []
+  },
+  {
+    "label": "invalid inline cache=0 attempt=1",
+    "status": 1,
+    "stdout": "",
+    "stderr": "/workspace/scratch/1f038228ff5b/alpha2-after-3_954fp2/main.py:0: error: PYSTACHY_JIT_INLINE:  is no number of lines (0 turns the JIT's inliner off)\n",
+    "seconds": 0.002,
+    "leftovers": []
+  },
+  {
+    "label": "invalid inline cache=1 attempt=0",
+    "status": 1,
+    "stdout": "",
+    "stderr": "/workspace/scratch/1f038228ff5b/alpha2-after-3_954fp2/main.py:0: error: PYSTACHY_JIT_INLINE:  is no number of lines (0 turns the JIT's inliner off)\n",
+    "seconds": 0.003,
+    "leftovers": []
+  },
+  {
+    "label": "invalid inline cache=1 attempt=1",
+    "status": 1,
+    "stdout": "",
+    "stderr": "/workspace/scratch/1f038228ff5b/alpha2-after-3_954fp2/main.py:0: error: PYSTACHY_JIT_INLINE:  is no number of lines (0 turns the JIT's inliner off)\n",
+    "seconds": 0.002,
+    "leftovers": []
+  }
+]

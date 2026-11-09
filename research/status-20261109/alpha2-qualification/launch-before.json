@@ -1,0 +1,36 @@
+[
+  {
+    "label": "normal version",
+    "status": 0,
+    "stdout": "pystachy v0.4.0-alpha.1 (commit unknown)\n",
+    "stderr": ""
+  },
+  {
+    "label": "stray argv0 version",
+    "status": 0,
+    "stdout": "pystachy unknown (commit unknown)\n",
+    "stderr": ""
+  },
+  {
+    "label": "stray argv0 launch",
+    "status": 1,
+    "stdout": "",
+    "stderr": "/tmp/alpha2-before-09m081tj/main.py:0: error: cannot find runtime.c and runtime.py next to the compiler; set PYSTACHY_HOME to the directory that holds them\n"
+  },
+  {
+    "label": "invalid inline cache=0",
+    "status": 1,
+    "stderr": "/tmp/alpha2-before-09m081tj/main.py:0: error: PYSTACHY_JIT_INLINE:  is no number of lines (0 turns the JIT's inliner off)\n",
+    "leftovers": [
+      "tmp_lspithm"
+    ]
+  },
+  {
+    "label": "invalid inline cache=1",
+    "status": 1,
+    "stderr": "/tmp/alpha2-before-09m081tj/main.py:0: error: PYSTACHY_JIT_INLINE:  is no number of lines (0 turns the JIT's inliner off)\n",
+    "leftovers": [
+      "tmpxkukunor"
+    ]
+  }
+]

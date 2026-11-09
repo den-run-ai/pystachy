@@ -1,0 +1,28 @@
+{
+  "status": "invalid_full_run_environment_integrity_failure",
+  "pending_args": [
+    "ir",
+    "tests/programs/classes/class_constants.py",
+    "-o"
+  ],
+  "matching_pending_records": [
+    {
+      "index": 202,
+      "variant": "old",
+      "status": 0,
+      "completed_ns": 1794206293903391135
+    },
+    {
+      "index": 203,
+      "variant": "new",
+      "status": 0,
+      "completed_ns": 1794206294001627088
+    }
+  ],
+  "logged_completed_pairs": 122,
+  "logged_output_or_status_differences": 0,
+  "completed_full_compilation_pairs_before_failure": 115,
+  "timed_cases_including_failed_harness_calls": 119,
+  "later_completed_pairs_after_stale_pending": 20,
+  "inference": "An already completed OLD/NEW pair reappeared as pending after multiple later pairs; stale pending filesystem state is consistent with managed filesystem synchronization. It is not evidence of compiler mismatch."
+}

@@ -1,0 +1,34 @@
+DIFF tests/programs/apps/byte_bpe.py
+  IR from line 995:
+@@ -992,7 +992,7 @@
+ @s.78 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1, i64 0, i64 2, [2 x i8] c"a\00"}, align 8
+ @s.79 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1, i64 0, i64 2, [2 x i8] c"u\00"}, align 8
+ @s.80 = private unnamed_addr global {i64, i64, i64, [6 x i8]} {i64 5, i64 0, i64 6, [6 x i8] c"T3sis\00"}, align 8
+-@s.81 = private unnamed_addr global {i64, i64, i64, [103 x i8]} {i64 102, i64 0, i64 103, [103 x i8] c"cannot import name 'GenericAlias' from 'types' (/workspace/scratch/1f038228ff5b/baseline/lib/types.py)\00"}, align 8
++@s.81 = private unnamed_addr global {i64, i64, i64, [103 x i8]} {i64 102, i64 0, i64 103, [103 x i8] c"cannot import name 'GenericAlias' from 'types' (/workspace/scratch/1f038228ff5b/pystachy/lib/types.py)\00"}, align 8
+ @s.82 = private unnamed_addr global {i64, i64, i64, [12 x i8]} {i64 11, i64 0, i64 12, [12 x i8] c"ImportError\00"}, align 8
+ @s.83 = private unnamed_addr global {i64, i64, i64, [73 x i8]} {i64 72, i64 0, i64 73, [73 x i8] c"'s|'t|'re|'ve|'m|'ll|'d| ?[a-zA-Z]+| ?\5Cd+| ?[^\5Csa-zA-Z\5Cd]+|\5Cs+(?!\5CS)|\5Cs+\00"}, align 8
+ @s.84 = private unnamed_addr global {i64, i64, i64, [3 x i8]} {i64 2, i64 0, i64 3, [3 x i8] c"Li\00"}, align 8
+DIFF tests/programs/apps/example_linediff.py
+  IR from line 1060:
+@@ -1057,7 +1057,7 @@
+ @s.129 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1, i64 0, i64 2, [2 x i8] c"a\00"}, align 8
+ @s.130 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1, i64 0, i64 2, [2 x i8] c"u\00"}, align 8
+ @s.131 = private unnamed_addr global {i64, i64, i64, [6 x i8]} {i64 5, i64 0, i64 6, [6 x i8] c"T3sis\00"}, align 8
+-@s.132 = private unnamed_addr global {i64, i64, i64, [103 x i8]} {i64 102, i64 0, i64 103, [103 x i8] c"cannot import name 'GenericAlias' from 'types' (/workspace/scratch/1f038228ff5b/baseline/lib/types.py)\00"}, align 8
++@s.132 = private unnamed_addr global {i64, i64, i64, [103 x i8]} {i64 102, i64 0, i64 103, [103 x i8] c"cannot import name 'GenericAlias' from 'types' (/workspace/scratch/1f038228ff5b/pystachy/lib/types.py)\00"}, align 8
+ @s.133 = private unnamed_addr global {i64, i64, i64, [12 x i8]} {i64 11, i64 0, i64 12, [12 x i8] c"ImportError\00"}, align 8
+ @s.134 = private unnamed_addr global {i64, i64, i64, [18 x i8]} {i64 17, i64 0, i64 18, [18 x i8] c"get_close_matches\00"}, align 8
+ @s.135 = private unnamed_addr global {i64, i64, i64, [6 x i8]} {i64 5, i64 0, i64 6, [6 x i8] c"ndiff\00"}, align 8
+DIFF tests/programs/apps/example_mailmerge.py
+  IR from line 992:
+@@ -989,7 +989,7 @@
+ @s.75 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1, i64 0, i64 2, [2 x i8] c"a\00"}, align 8
+ @s.76 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1, i64 0, i64 2, [2 x i8] c"u\00"}, align 8
+ @s.77 = private unnamed_addr global {i64, i64, i64, [6 x i8]} {i64 5, i64 0, i64 6, [6 x i8] c"T3sis\00"}, align 8
+-@s.78 = private unnamed_addr global {i64, i64, i64, [103 x i8]} {i64 102, i64 0, i64 103, [103 x i8] c"cannot import name 'GenericAlias' from 'types' (/workspace/scratch/1f038228ff5b/baseline/lib/types.py)\00"}, align 8
++@s.78 = private unnamed_addr global {i64, i64, i64, [103 x i8]} {i64 102, i64 0, i64 103, [103 x i8] c"cannot import name 'GenericAlias' from 'types' (/workspace/scratch/1f038228ff5b/pystachy/lib/types.py)\00"}, align 8
+ @s.79 = private unnamed_addr global {i64, i64, i64, [12 x i8]} {i64 11, i64 0, i64 12, [12 x i8] c"ImportError\00"}, align 8
+ @s.80 = private unnamed_addr global {i64, i64, i64, [14 x i8]} {i64 13, i64 0, i64 14, [14 x i8] c"ascii_letters\00"}, align 8
+ @s.81 = private unnamed_addr global {i64, i64, i64, [16 x i8]} {i64 15, i64 0, i64 16, [16 x i8] c"ascii_lowercase\00"}, align 8
+264 of 4354 differ

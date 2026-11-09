@@ -1,0 +1,32 @@
+{
+  "key": {
+    "args": [
+      "ir",
+      "tests/programs/classes/class_constants.py",
+      "-o"
+    ],
+    "cwd": "/workspace/scratch/1f038228ff5b/pystachy",
+    "path": ""
+  },
+  "old": {
+    "active": "/workspace/scratch/1f038228ff5b/irsame-relocation-freshmtime/active",
+    "args": [
+      "ir",
+      "tests/programs/classes/class_constants.py",
+      "-o"
+    ],
+    "compiler_sha256": "cbdca38e5f5b522e5309a51f960f4ab1729a5e9f3e282845cd55c35794b22e93",
+    "completed_ns": 1794206293903391135,
+    "copied_files": 2,
+    "cwd": "/workspace/scratch/1f038228ff5b/pystachy",
+    "home_manifest": "6e9fcb7d05373fae94d223b998ed369244a8be463d96cc23449b6502b03b99fa",
+    "output_sha256": "0a34f99a6d890b8d601003dfe5c2584b7aa003216dcff3ec3542aed9acab2c9b",
+    "path": "",
+    "post_home_verified": true,
+    "post_snapshot_verified": true,
+    "retained_files": 106,
+    "source_sha256": "bdcb91606d9d07cec6f0acf7efba32b96d478ad688ecb6a4e69c3846ae24be1b",
+    "status": 0,
+    "variant": "old"
+  }
+}

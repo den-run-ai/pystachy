@@ -1,0 +1,27 @@
+{
+  "command": [
+    "timeout",
+    "--foreground",
+    "90s",
+    "tools/irsame.sh",
+    "/workspace/scratch/1f038228ff5b/irsame-relocation-freshmtime/old",
+    "/workspace/scratch/1f038228ff5b/irsame-relocation-freshmtime/new",
+    "pystachy.py",
+    "runtime.py",
+    "tests/programs/apps/byte_bpe.py",
+    "tests/programs/apps/example_linediff.py",
+    "tests/programs/apps/example_mailmerge.py"
+  ],
+  "cwd": "/workspace/scratch/1f038228ff5b/pystachy",
+  "jobs": 1,
+  "oracle_exit": 0,
+  "duration_seconds": 14.038,
+  "execution": "exec_command yield_time_ms=1000, then resumed via session",
+  "python": "Python 3.13.16",
+  "path_prefix": [
+    "/workspace/scratch/852c147126de/resume-venv/bin",
+    "/workspace/scratch/1f038228ff5b/toolchain/usr/lib/llvm-18/bin"
+  ],
+  "PYSTACHY_LLVM": "/workspace/scratch/1f038228ff5b/toolchain/usr/lib/llvm-18/bin",
+  "LD_LIBRARY_PATH": null
+}

@@ -1,0 +1,28 @@
+{
+  "command": [
+    "timeout",
+    "--foreground",
+    "1800s",
+    "tools/irsame.sh",
+    "/workspace/scratch/1f038228ff5b/irsame-relocation-freshmtime/old",
+    "/workspace/scratch/1f038228ff5b/irsame-relocation-freshmtime/new"
+  ],
+  "cwd": "/workspace/scratch/1f038228ff5b/pystachy",
+  "oracle_exit": 130,
+  "audit_exit": null,
+  "expected_corpus_cases": 4354,
+  "completed_case_times": 122,
+  "qualified": false,
+  "integrity_error": "populated-home harness old failure: RuntimeError: unpaired old invocation; expected strict OLD/NEW order",
+  "duration_seconds": 59.029,
+  "path_prefix": [
+    "/workspace/scratch/852c147126de/resume-venv/bin",
+    "/workspace/scratch/1f038228ff5b/toolchain/usr/lib/llvm-18/bin"
+  ],
+  "PYSTACHY_LLVM": "/workspace/scratch/1f038228ff5b/toolchain/usr/lib/llvm-18/bin",
+  "LD_LIBRARY_PATH": null,
+  "PYSTACHY_JOBS": "1",
+  "oracle_sha256": "7baa4d09a86103485f6b6c87a739162347b97542051d80b6cfb57c8a108587d5",
+  "harness_sha256": "5c96bbb2c851c6ae28ebdadbe9728a72b8c84be71e67dfd65ed146a080491b3e",
+  "audit": null
+}

@@ -1,0 +1,3 @@
+hosted: inherited pipes and descriptor tables, closed standard streams, SIGINT dispositions, shared/object runtimes, MCJIT, embedding, cleanup and GC passed
+native: inherited pipes and descriptor tables, closed standard streams, SIGINT dispositions, shared/object runtimes, MCJIT, embedding, cleanup and GC passed
+jitfdprobe: 55 checks passed
