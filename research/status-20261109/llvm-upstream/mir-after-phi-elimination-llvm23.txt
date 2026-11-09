@@ -1,0 +1,22 @@
+bb.0.entry:
+  EH_LABEL <mcsymbol .Ltmp0>
+  $rdi = COPY %4:gr64
+  CALL64pcrel32 @may_throw
+  EH_LABEL <mcsymbol .Ltmp1>
+  %11:gr64 = COPY %4:gr64
+bb.1.loop:
+  %0:gr64 = COPY %11:gr64
+  EH_LABEL <mcsymbol .Ltmp2>
+  $rdi = COPY %1:gr64
+  CALL64pcrel32 @may_throw
+  EH_LABEL <mcsymbol .Ltmp3>
+  %11:gr64 = COPY %1:gr64
+bb.2.lpad (landing-pad):
+  EH_LABEL <mcsymbol .Ltmp4>
+  %2:gr64 = COPY %11:gr64
+  %10:gr32 = COPY %6.sub_32bit:gr64
+  %9:gr64 = COPY %5:gr64
+  $rdi = COPY %9:gr64
+  CALL64pcrel32 @__cxa_begin_catch
+  CALL64pcrel32 @__cxa_end_catch
+  $rax = COPY %2:gr64
