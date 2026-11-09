@@ -608,7 +608,7 @@ def gen_gen_module(self) -> list[str]:
         "declare token @llvm.coro.id(i32, ptr, ptr, ptr)", "declare i1 @llvm.coro.alloc(token)",
         "declare i64 @llvm.coro.size.i64()", "declare ptr @llvm.coro.begin(token, ptr)",
         "declare i8 @llvm.coro.suspend(token, i1)", "declare ptr @llvm.coro.free(token, ptr)",
-        "declare i1 @llvm.coro.end(ptr, i1, token)", "declare void @llvm.coro.resume(ptr)",
+        "declare i1 @llvm.coro.end(ptr, i1)", "declare void @llvm.coro.resume(ptr)",  # (lowering's coro.ret)
         "declare void @llvm.coro.destroy(ptr)", "declare ptr @llvm.coro.promise(ptr, i32, i1)"]
     if self.gendrops:
         o.extend([

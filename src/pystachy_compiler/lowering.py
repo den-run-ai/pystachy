@@ -71,7 +71,12 @@ def gen_lower(self, fn: IFn) -> None:
         o.append("  %coro.free = call ptr @llvm.coro.free(token %coro.id, ptr %coro.hdl)")
         o.append("  br label %coro.ret")
         o.append("coro.ret:")
-        o.append("  %coro.end = call i1 @llvm.coro.end(ptr %coro.hdl, i1 false, token none)")
+        # coro.end's older two-argument form, its result unnamed: LLVM 18 to 23 upgrade it as they
+        # read it to their own (ptr, i1, token), which returns i1 up to LLVM 21 and void from 22
+        # (which rejects the three-argument form returning i1). Only an LLVM 22 or 23 built with
+        # assertions would stop at that upgrade, where the result's type changes; LLVM's main
+        # branch upgrades either form explicitly
+        o.append("  call i1 @llvm.coro.end(ptr %coro.hdl, i1 false)")
         o.append("  ret ptr %coro.hdl")
         o.append("coro.unreach:")
         o.append("  unreachable")
