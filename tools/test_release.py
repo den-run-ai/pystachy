@@ -18,6 +18,9 @@ from unittest.mock import patch
 import release
 import release_smoke
 
+# A JIT runner's cache entry, as the driver names it (lljit-<L>-<K>; driver.jit_launcher)
+RUNNER = "lljit-0123abcd-0123456789abcdef"
+
 
 class ReleaseTests(unittest.TestCase):
     def setUp(self):
@@ -211,10 +214,17 @@ class ReleaseTests(unittest.TestCase):
     @unittest.skipUnless(sys.platform.startswith("linux"), "Linux default program cache")
     def test_smoke_primes_ordinary_runtime_before_checking_reuse(self):
         archive = self.package()
-        for rebuild in (False, True):
+        linux = self.target.startswith("linux-")
+        # (rebuilt: the file the warm run writes again; runner: whether the uncached JIT builds the
+        # JIT runner, lljit.c, which Linux releases must; error: what the smoke then reports)
+        cases = [(None, True, None), ("runtime-py-ordinary.so", True, "warm JIT rebuilt its cached runtime")]
+        if linux:
+            cases += [(RUNNER, True, "warm JIT rebuilt its cached runtime"),
+                      (None, False, "release JIT did not build its JIT runner")]
+        for rebuilt, runner, error in cases:
             uncached_runs = []
 
-            def execute(command, directory, environment, *, rebuild=rebuild, uncached_runs=uncached_runs):
+            def execute(command, directory, environment, *, rebuilt=rebuilt, runner=runner, uncached_runs=uncached_runs):
                 if command[0] == sys.executable:
                     return "ok\n"
                 if command[-1] in ("--version", "-V"):
@@ -228,12 +238,13 @@ class ReleaseTests(unittest.TestCase):
                 if command[0] == "pystachy" and command[1] == "run":
                     if environment.get("PYSTACHY_PROGRAM_CACHE") == "0":
                         uncached_runs.append(command)
-                        for suffix in ("bc", "o", "so"):
-                            path = cache / ("runtime-py-ordinary." + suffix)
+                        # (the ordinary JIT's runtime, and on Linux the JIT runner, built at first use)
+                        for name in [f"runtime-py-ordinary.{suffix}" for suffix in ("bc", "o", "so")] + ([RUNNER] if runner and linux else []):
+                            path = cache / name
                             if not path.exists():
                                 path.write_bytes(b"ordinary runtime")
-                        if rebuild and len(uncached_runs) == 2:
-                            path = cache / "runtime-py-ordinary.so"
+                        if rebuilt and len(uncached_runs) == 2:
+                            path = cache / rebuilt
                             before = path.stat()
                             os.utime(path, ns=(before.st_atime_ns, before.st_mtime_ns + 1_000_000))
                     return "ok\n"
@@ -251,17 +262,18 @@ class ReleaseTests(unittest.TestCase):
                 for suffix in ("bc", "o"):
                     (cache / ("runtime-py-checked." + suffix)).touch()
 
-            with self.subTest(rebuild=rebuild), \
+            with self.subTest(rebuilt=rebuilt, runner=runner), \
                     patch("release_smoke.llvm_directory", return_value=self.root), \
                     patch("release_smoke.execute", side_effect=execute), \
                     patch("release_smoke.program_cache_run", side_effect=program_cache_run), \
                     contextlib.redirect_stdout(io.StringIO()):
-                if rebuild:
-                    with self.assertRaisesRegex(RuntimeError, "warm JIT rebuilt its cached runtime"):
+                if error:
+                    with self.assertRaisesRegex(RuntimeError, error):
                         release_smoke.smoke(archive)
                 else:
                     release_smoke.smoke(archive)
-                self.assertEqual(len(uncached_runs), 2)
+                # (a missing runner is reported after the first uncached run, before the warm one)
+                self.assertEqual(len(uncached_runs), 1 if not runner and linux else 2)
 
     def test_only_runtime_sources_and_provenance_are_packaged(self):
         (self.source / "lib/__pycache__").mkdir()
