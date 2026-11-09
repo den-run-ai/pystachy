@@ -6604,7 +6604,7 @@ static void setbuf1(File *f, I bs) {   /* CPython's write layers: 8 KiB of pendi
   f->buf = f->pb + pend; f->bs = bs; f->emu = 1;
   setvbuf(f->f, f->buf, _IOFBF, bs);
 }
-static int jit;                        /* pystachy run: the program runs in lli's process */
+static int jit;                        /* pystachy run: the program runs in the JIT runner's or lli's process */
 I pys_jit(void) { return jit; }
 static int lost;                       /* bit i: descriptor i (stdin, stdout, stderr) was not open when the program
                                           started. CPython's sys.stdin, sys.stdout or sys.stderr is None then, for
@@ -6616,21 +6616,21 @@ static int handoff_number(const char **p, unsigned long max, unsigned long *v) {
   for (; *s >= '0' && *s <= '9'; s++) if ((x = x * 10 + (unsigned long)(*s - '0')) > max) return 0;
   *v = x; *p = s; return 1;
 }
-/* pystachy run: lli runs the program in its own process, where LLVM's start-up replaced the dispositions of
-   the signals it handles (llvm/lib/Support/Unix/Signals.inc: IntSigs, KillSigs, InfoSigs and SIGPIPE) with
-   handlers of its own, which print lli's stack (SIGQUIT's, then let the program run on), ignore SIGUSR1,
-   and hide an inherited ignored SIGINT from pys_init's test. The driver (driver.py, where it becomes lli)
-   hands the program what it needs to start as a built one does, in PYSTACHY_JIT_HANDOFF="MASK;FD,...",
-   consumed here before any of the program's code runs and removed from the environment, so that no child
-   sees it:
+/* pystachy run: the JIT runner (lljit.c) or lli runs the program in its own process. In lli, LLVM's start-up
+   replaced the dispositions of the signals it handles (llvm/lib/Support/Unix/Signals.inc: IntSigs, KillSigs,
+   InfoSigs and SIGPIPE) with handlers of its own, which print lli's stack (SIGQUIT's, then let the program
+   run on), ignore SIGUSR1, and hide an inherited ignored SIGINT from pys_init's test; the JIT runner sets
+   none. The driver (driver.py, where it becomes the runner or lli) hands the program what it needs to start
+   as a built one does, in PYSTACHY_JIT_HANDOFF="MASK;FD,...", consumed here before any of the program's
+   code runs and removed from the environment, so that no child sees it:
    - MASK: the standard signals the driver ignored, bit s-1 for signal s. An exec keeps ignored signals
      ignored and sets caught ones to their defaults, so these are all that lli inherited: each signal that
      LLVM caught is ignored or default again (lli's crash handlers dropped: the program dies by the signal);
-   - FD,...: the descriptors the driver opened for lli, its inputs (lli's main module, which is the
-     program's bitcode, or the module beside llc's object of the program with PYSTACHY_JIT_CODEGEN=0; the
-     runtime; the embedding's object; that object of llc's) and /dev/null on each standard stream that the
-     caller had closed, which then neither the inputs nor lli's own files could take. All are closed: the
-     program and its children see the caller's descriptors.
+   - FD,...: the descriptors the driver opened for the runner or lli, its inputs (the main module, which is
+     the program's bitcode, or with lli and PYSTACHY_JIT_CODEGEN=0 the module beside llc's object of the
+     program; the runtime; the embedding's object; that object of llc's), the runner's own file, and
+     /dev/null on each standard stream that the caller had closed, which then neither the inputs nor lli's
+     own files could take. All are closed: the program and its children see the caller's descriptors.
    A value not of that form is ignored as a whole; LLVM's handlers are dropped all the same. */
 __attribute__((minsize)) static void jit_handoff(void) {
   static const int llvm[] = {SIGHUP, SIGINT, SIGTERM, SIGUSR2, SIGILL, SIGTRAP, SIGABRT, SIGFPE, SIGBUS, SIGSEGV, SIGQUIT,
@@ -7388,8 +7388,8 @@ _Noreturn void pys_recursion_stack_error(void) {
    fails), where the bounds are unknown or do not hold this frame (a switched stack).
    A frame already within the margin gets the floor too: the next counted entry below it raises,
    and those from higher frames, once it has returned, are checked as usual. Set by pys_init on the
-   program's thread (lli's main thread under the JIT) and by pys_init_lib on the thread that
-   imports an extension module, the only one that may call it (pyext.c). Linux's main thread's
+   program's thread (the main thread of the JIT runner or lli under the JIT) and by pys_init_lib on
+   the thread that imports an extension module, the only one that may call it (pyext.c). Linux's main thread's
    bounds from exec assume that its stack can grow to RLIMIT_STACK. Extension initialization and
    glibc's fallback also inspect mappings below the stack, which can stop it sooner (#1032); maps
    and limits changed after initialization remain outside this check. */
@@ -9139,8 +9139,9 @@ void *pys_c_at(List *l, I k) {         /* ffi.at(xs, k), a list passed from its 
 }
 /* @ffi.extern("lib"): when the def statement runs, the C function is looked up in lib's own handle, as
    ctypes.CDLL(lib or None) finds it: dlopen(RTLD_NOW | RTLD_LOCAL), then dlsym; a failure raises what
-   ctypes raises, OSError or AttributeError with dlerror's text. Under pystachy run, lli's own libraries
-   (libLLVM's dependencies) are in the global scope: RTLD_DEEPBIND keeps lib and its dependencies first */
+   ctypes raises, OSError or AttributeError with dlerror's text. Under pystachy run, the JIT runner's or
+   lli's own libraries (libLLVM's dependencies) are in the global scope: RTLD_DEEPBIND keeps lib and its
+   dependencies first */
 static void *c_library(const char *lib) {
   pys_c_numeric();                     /* (a C function may call setlocale) */
 #ifdef RTLD_DEEPBIND

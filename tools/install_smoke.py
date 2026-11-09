@@ -7,6 +7,7 @@ deliberately removed to exercise discovery and the installed launcher's defaults
 import argparse
 import os
 from pathlib import Path
+import re
 import shlex
 import subprocess
 import sys
@@ -62,6 +63,11 @@ os.remove(path)
 os.rmdir(directory)
 print("removed", not os.path.exists(directory))
 '''
+
+
+def jit_runners(cache):
+    """The JIT runners (lljit.c, built at first use on Linux) in a runtime cache."""
+    return sorted(path.name for path in cache.glob("lljit-*") if re.fullmatch(r"lljit-[0-9a-f]{8}-[0-9a-f]{16}", path.name))
 
 
 def execute(command, directory, environment, *, timeout=180):

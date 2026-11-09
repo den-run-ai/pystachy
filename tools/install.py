@@ -10,7 +10,7 @@ import subprocess
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
-FILES = ("pystachy", "runtime.c", "runtime.py", "pyext.c", "pyembed.c", "LICENSE", "THIRD_PARTY_NOTICES", "VERSION")
+FILES = ("pystachy", "runtime.c", "runtime.py", "pyext.c", "pyembed.c", "lljit.c", "LICENSE", "THIRD_PARTY_NOTICES", "VERSION")
 DIRS = ("lib", "ryu", "mpz")
 MARKER = "# Installed by Pystachy tools/install.py"
 

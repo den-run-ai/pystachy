@@ -464,7 +464,7 @@ def input_manifest(command, handler, sources):
             for path in (base / family).rglob("*"):
                 if path.suffix in (".py", ".c", ".h", ".so") and path.is_file():
                     paths.add(path)
-        for name in ("runtime.py", "runtime.c", "pyembed.c", "pyext.c", "pystachy.py",
+        for name in ("runtime.py", "runtime.c", "pyembed.c", "pyext.c", "lljit.c", "pystachy.py",
                      "pystachy_cli.py", "pystachy_toolchain.py"):
             if (base / name).is_file():
                 paths.add(base / name)

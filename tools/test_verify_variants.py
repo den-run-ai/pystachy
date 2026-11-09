@@ -31,7 +31,7 @@ class VariantTests(unittest.TestCase):
             runner = root / "tests/run.sh"
             runner.parent.mkdir()
             runner.write_text('''#!/bin/sh
-printf '%s|%s|%s\\n' "${PYSTACHY_CACHE##*/}" "${PYSTACHY_OPT-}" "${PYSTACHY_CFLAGS-}" >> calls
+printf '%s|%s|%s|%s\\n' "${PYSTACHY_CACHE##*/}" "${PYSTACHY_OPT-}" "${PYSTACHY_CFLAGS-}" "${PYSTACHY_JIT_LAUNCHER-}" >> calls
 echo '1 passed, 0 failed'
 ''')
             runner.chmod(0o755)
@@ -47,16 +47,17 @@ echo '1 passed, 0 failed'
         self.assertIsNotNone(matrix)
         variants = matrix.group(1).replace(",", " ").split()
         # CI may reorder rows to balance work; each configuration must still run once.
-        self.assertCountEqual([cache.removeprefix("cache-") for cache, _, _ in calls], variants)
+        self.assertCountEqual([cache.removeprefix("cache-") for cache, _, _, _ in calls], variants)
         self.assertEqual(len(set(variants)), len(variants))
         rows = [{name: True for name in OPTS}]  # default all-on row, run by verification
-        for cache, disabled, cflags in calls:
+        for cache, disabled, cflags, runner in calls:
             variant = cache.removeprefix("cache-")
             if variant == "cflags-O0":
-                self.assertEqual((disabled, cflags), ("", "-O0"))
+                # (whose JIT runs in lli, the JIT runner's fallback, which every other row leaves alone)
+                self.assertEqual((disabled, cflags, runner), ("", "-O0", "lli"))
                 continue
             self.assertTrue(variant.startswith("opt-"), cache)
-            self.assertEqual(cflags, "")
+            self.assertEqual((cflags, runner), ("", ""))
             tokens = disabled.split(",") if disabled else []
             self.assertTrue(all(token.startswith("-") and token[1:] in OPTS for token in tokens), disabled)
             off = {token[1:] for token in tokens}

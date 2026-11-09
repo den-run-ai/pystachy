@@ -29,7 +29,7 @@ version = { file = "VERSION" }
 
 [tool.setuptools.package-data]
 _pystachy_source = [
-    "VERSION", "runtime.c", "pyext.c", "pyembed.c",
+    "VERSION", "runtime.c", "pyext.c", "pyembed.c", "lljit.c",
     "src/__init__.py", "src/pystachy_compiler/*.py",
     "lib/**/*.py", "lib/*.py", "mpz/*.c", "mpz/*.h", "ryu/*.c", "ryu/*.h",
 ]
