@@ -5,4 +5,4 @@ Full IR qualification completed for `52da3b8f` against main `d6b9b3f1` (Linux x8
 - Each compiler with its own home at one real path: 4,354 of 4,354 byte-identical (raw IR, messages, exit status), with no normalization.
 - Integrity: checkout and home inventories unchanged across runs; reruns identical (full corpus twice, 441 cases three times).
 
-Not run: `irsame-py`, `--check` mode. Evidence: <link to published evidence>.
+Not run: `irsame-py`, `--check` mode. [Evidence](https://github.com/den-run-ai/pystachy/blob/5b233bd2620ea81ce4abb03b074592cef7b7689e/research/status-20261109/alpha2-ir-qualification/README.md).
