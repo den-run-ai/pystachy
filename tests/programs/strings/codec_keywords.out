@@ -1,0 +1,19 @@
+'café �!'
+'café !'
+'cafÃ© ÿ!'
+'caf\\xc3\\xa9 \\xff!'
+evaluate encoding
+evaluate errors
+'café \udcff!'
+evaluate errors alone
+'café �!'
+UnicodeDecodeError: 'utf-8' codec can't decode byte 0xff in position 6: invalid start byte
+b'caf\xc3\xa9 \xe2\x82\xac'
+b'caf&#233; &#8364;'
+b'caf\xe9 ?'
+evaluate encoding
+evaluate errors
+b'caf '
+b'\xed\xa0\x80'
+UnicodeEncodeError: 'ascii' codec can't encode character '\xe9' in position 3: ordinal not in range(128)
+[exit 0]
