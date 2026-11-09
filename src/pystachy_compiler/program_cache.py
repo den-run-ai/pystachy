@@ -272,6 +272,10 @@ def tracked_isdir(path: str) -> bool:
     return tracked_kind(path) == "d"
 
 
+def tracked_isfile(path: str) -> bool:
+    return tracked_kind(path) == "f"
+
+
 def track_source(path: str, text: str) -> None:
     if ACTIVE[0]:
         try:

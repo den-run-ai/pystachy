@@ -6698,9 +6698,14 @@ __attribute__((minsize)) void pys_init(int argc, char **argv, char *sb, I **root
   stack_floor(0);
   args = pys_list_new(argc); for (int i = 0; i < argc; i++) pys_list_append(args, (I)cstr(argv[i]));
   char *a0 = getenv("PYSTACHY_ARGV0");  /* pystachy run: sys.argv[0] is the script, as in CPython */
-  jit = a0 != 0;
-  if (a0 && argc) { args->a[0] = (I)cstr(a0); unsetenv("PYSTACHY_ARGV0"); }
-  if (a0) jit_handoff();               /* and it starts with the caller's descriptors and signal dispositions */
+  /* A caller's stray ARGV0 is ordinary environment data for the native compiler,
+     cached executables and AOT programs. Only the driver's JIT handoff consumes it. */
+  jit = a0 != 0 && getenv("PYSTACHY_JIT_HANDOFF") != 0;
+  if (jit) {
+    if (argc) args->a[0] = (I)cstr(a0);
+    unsetenv("PYSTACHY_ARGV0");
+    jit_handoff();                    /* and it starts with the caller's descriptors and signal dispositions */
+  }
   std_in.f = stdin; std_in.rd = 1; std_in.nl = 2; std_in.std = 1;   /* CPython's stdin: newline="\n" */
   std_out.f = stdout; std_out.wr = 1; std_out.std = 1;
   std_err.f = stderr; std_err.wr = 1; std_err.std = 1;
