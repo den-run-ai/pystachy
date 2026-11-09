@@ -143,6 +143,7 @@ class ProgramCacheTests(unittest.TestCase):
             with self.subTest(path=path.name):
                 self.assertEqual(pc.tracked_kind(str(path)), kind)
                 self.assertEqual(pc.tracked_isdir(str(path)), kind == "d")
+                self.assertEqual(pc.tracked_isfile(str(path)), kind == "f")
                 self.assertEqual(pc.tracked_exists(str(path)), kind != "0")
         self.assertTrue(pc.VALID[0])
         self.assertEqual(pc._unpack(pc.PROBES[str(linked_directory)]), ["d", str(directory.resolve())])
@@ -163,13 +164,17 @@ class ProgramCacheTests(unittest.TestCase):
                 candidate.write_text("not a module\n")
             elif kind == "directory":
                 candidate.mkdir()
+            elif kind == "fifo":
+                os.mkfifo(candidate)
 
         for before, after in (("file", "directory"), ("directory", "file"), ("missing", "file"),
-                              ("missing", "directory"), ("file", "missing"), ("directory", "missing")):
+                              ("missing", "directory"), ("file", "missing"), ("directory", "missing"),
+                              ("file", "fifo"), ("fifo", "file")):
             with self.subTest(before=before, after=after):
                 make(before)
                 pc.start()
                 self.assertEqual(pc.tracked_isdir(str(candidate)), before == "directory")
+                self.assertEqual(pc.tracked_isfile(str(candidate)), before == "file")
                 target = self.publish()
                 self.assertEqual(self.lookup(), str(target))
                 make(after)
