@@ -437,13 +437,13 @@ which no shared library can name: the library holds stand-ins that call through 
 constructor the driver adds to the program's IR sets before `main` (`RTSO` in the driver).
 Where the library cannot be linked or cached, or a run may not execute it (a cache on a file
 system mounted `noexec`, also one mounted so after the library was cached), `lli` links the object.
-The driver becomes `lli` in the same process, which gets the program's bitcode, the runtime and
-the embedding's object as descriptors of files the driver has already removed; `/dev/null` holds
-each standard stream that the caller closed, so that neither these nor `lli`'s own files take
-one. `lli`'s start-up also replaces the dispositions of the signals LLVM handles, an inherited
-ignored SIGINT among them, with handlers of its own. Before any of the program's code runs, the
-runtime closes those descriptors, restores each signal that LLVM caught to the disposition the
-driver had (ignored or default), and removes MCJIT's dump directory (below). It reads this from
+The driver becomes `lli` in the same process, which gets the program's bitcode (or `llc`'s object
+and a main module, below), the runtime and the embedding's object as descriptors of files the
+driver has already removed; `/dev/null` holds each standard stream that the caller closed, so that
+neither these nor `lli`'s own files take one. `lli`'s start-up also replaces the dispositions of
+the signals LLVM handles, an inherited ignored SIGINT among them, with handlers of its own. Before
+any of the program's code runs, the runtime closes those descriptors and restores each signal that
+LLVM caught to the disposition the driver had (ignored or default). It reads this from
 `PYSTACHY_JIT_HANDOFF`, which it then removes from the environment (`jit_handoff` in `runtime.c`).
 The program and its children see the caller's descriptors and dispositions, as cached and built
 programs do; [`tools/jitfdprobe.py`](../tools/jitfdprobe.py) compares both with CPython's.
@@ -601,15 +601,19 @@ including 4 KiB and 64 KiB pages, and runs deep recursion in JIT and AOT under a
 `RLIMIT_STACK`. Its extension probe also maps an obstacle before import and verifies catchable
 errors and recovery under finite and unlimited host limits, with program GC stress.
 
-`PYSTACHY_JIT_CODEGEN=0` selects MCJIT with `-O0` code generation. This can reduce
-startup for large programs, but the generated code can run slower. The default (`2`)
-keeps ORC and its normal code generation. This choice does not change the IR cleanup
-or inlining pipeline, and does not affect `build` or `ext`. Where LLVM is built with perf
-support, as Ubuntu's is, `lli`'s MCJIT writes a perf jitdump on every run, which no option
-turns off. The driver gives it a private directory (`JITDUMPDIR`, unless the environment sets
-one), which the runtime removes before the program starts; `lli` keeps the removed dump's
-close-on-exec descriptor open until it exits, the one descriptor that such a program has and
-CPython does not.
+`PYSTACHY_JIT_CODEGEN=0` selects `-O0` code generation. This can reduce startup for large
+programs, but the generated code can run slower. The default (`2`) keeps ORC's own code
+generation. `lli`'s ORC ignores `-O` and generates code at LLVM's default level, so for `0` the
+driver runs the selected toolchain's `llc -O0` on the cleaned-up module, in position-independent
+code for ORC's JITLink, and `lli` links that object (`-extra-object`) as it links the runtime's.
+Neither tool is given `-mcpu`, and no function names a CPU: both generate code for the default
+CPU of the runtime's target triple, which the module carries. ORC runs only an IR module's
+constructors, so `lli`'s main module holds the program's target and, with the shared runtime
+library, the constructor that hands it the program's callbacks (`OBJHOOKS_MAIN` in
+`lower_module.py`). `llc` is one more process, which tiny programs notice
+(`program.jit_codegen` in the [stage timings](#compiler-stage-timings)). This choice does not
+change the IR cleanup or inlining pipeline, bypasses the [program cache](program-cache.md), and
+does not affect `build` or `ext`.
 
 The [native program cache](program-cache.md) is enabled by default for supported
 native Linux CLI runs. Validated hits execute a previously linked JIT-tier
@@ -701,8 +705,9 @@ is one record. Failed commands retain their status and report elapsed time;
 a frontend failure can omit unfinished phases.
 
 `driver.total` ends when compilation finishes. For `run`, `driver.prepare_run`
-ends before execution and excludes application execution and LLVM JIT code
-generation. A program-cache hit reports lookup and preparation only. Set
+ends before execution and excludes application execution and ORC's code generation
+in `lli`. With `PYSTACHY_JIT_CODEGEN=0` it includes `llc`'s, recorded as
+`program.jit_codegen`. A program-cache hit reports lookup and preparation only. Set
 `PYSTACHY_PROGRAM_CACHE=0` to measure ordinary JIT preparation. Totals contain
 smaller intervals: do not add nested records together. Timing leaves stdout IR
 unchanged and reads no clock when disabled.
@@ -756,7 +761,7 @@ are required before promotion. `make verify` keeps the standard tier.
 | `PYSTACHY_UNICODE_AUDIT=1` | Compile the [Unicode audit](language/compatibility.md#unicode-audit) checks into the program and its imported library code |
 | `PYSTACHY_OPT` | Disable named optimizations with `-name`, comma-separated, or all with `-all`; see [IR passes](typed-ir.md#optimizations) |
 | `PYSTACHY_JIT_INLINE=N` | IR-line threshold for JIT user-function inlining, including the recursion entry helper; `0` disables it (the scalar recursion helpers remain inlined) |
-| `PYSTACHY_JIT_CODEGEN=0\|2` | `0` selects MCJIT `-O0`; `2` (default) keeps ORC code generation |
+| `PYSTACHY_JIT_CODEGEN=0\|2` | `0` compiles the program with `llc -O0` for ORC to link; `2` (default) keeps ORC's code generation |
 | `PYSTACHY_PROGRAM_CACHE=0` | Disable the default Linux native [program cache](program-cache.md); unset, empty or `1` enables it where supported. Its [settings](program-cache.md#settings) section lists the variables that key or bypass it |
 | `PYSTACHY_PROGRAM_CACHE_TRACE=1` | Print cache decisions and frontend entry to stderr |
 | `PYSTACHY_PROGRAM_CACHE_INPUTS` | Additional files whose changes invalidate the program cache, separated by `:` |

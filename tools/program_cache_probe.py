@@ -42,7 +42,7 @@ from jitprobe import COROUTINE_SOURCE, SOURCE
 
 ROOT = Path(__file__).resolve().parent.parent
 TRACE = b"pystachy program cache: "
-TOOLS = ("clang", "opt", "lli", "llvm-link", "llvm-as")
+TOOLS = ("clang", "opt", "lli", "llvm-link", "llvm-as", "llc")
 TOOL_ENV = ("CPATH", "C_INCLUDE_PATH", "CPLUS_INCLUDE_PATH", "OBJC_INCLUDE_PATH",
             "LIBRARY_PATH", "COMPILER_PATH", "GCC_EXEC_PREFIX", "SDKROOT",
             "CCC_OVERRIDE_OPTIONS", "CLANG_CONFIG_FILE_SYSTEM_DIR",
@@ -578,7 +578,7 @@ def check_bypass(p: Probe) -> None:
         ("disabled", {"PYSTACHY_PROGRAM_CACHE": "0"}),
         ("custom C flags", {"PYSTACHY_CFLAGS": "-DCACHE_PROBE=1"}),
         ("IR checker", {"PYSTACHY_IRCHECK": "1"}),
-        ("MCJIT", {"PYSTACHY_JIT_CODEGEN": "0"}),
+        ("-O0 code generation", {"PYSTACHY_JIT_CODEGEN": "0"}),
     ]
     for label, env in variants:
         result = p.run(label, source, changes=env)

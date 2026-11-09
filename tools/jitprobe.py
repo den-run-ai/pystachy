@@ -5,8 +5,10 @@ A transparent lli wrapper inspects the bitcode the driver actually executes: unu
 never reach it, and a small live helper reaches it inlined into its caller, unless
 PYSTACHY_JIT_INLINE=0 turns the JIT's inliner off (#211).
 Unused loop feedback must also disappear after SSA promotion, while live loop results
-and side effects remain. The same boundary checks cover opt-in MCJIT -O0 code generation
-(#430), including argv, exception unwinding, coroutine lowering, GC stress and signal status.
+and side effects remain. The same boundary checks cover opt-in -O0 code generation (#430),
+where llc compiles that bitcode and lli's ORC links the object beside a main module that holds
+only the runtime callbacks' constructor, including argv, exception unwinding, coroutine
+lowering, GC stress and signal status.
 """
 import argparse
 import os
@@ -129,18 +131,24 @@ def main():
         (temp / "jitprobe_module.py").write_text('print("import")\n')
         capture = temp / "executed.ll"
         invocation = temp / "lli-args"
+        compiled = temp / "compiled.ll"
+        codegen = temp / "llc-args"
         bindir = temp / "bin"
         bindir.mkdir()
         real = {}
-        for name in ("clang", "opt", "lli", "llvm-link", "llvm-as"):
+        for name in ("clang", "opt", "lli", "llvm-link", "llvm-as", "llc"):
             path = shutil.which(str(Path(llvm) / name) if llvm else name)
             if path is None:
                 raise RuntimeError(f"cannot find {name}; set PYSTACHY_LLVM")
             real[name] = str(Path(path).absolute())
-            if name != "lli":
+            if name not in ("lli", "llc"):
                 (bindir / name).symlink_to(real[name])
+        # lli's main module (its first bare /dev/fd input), and the bitcode that llc compiles for it
         wrapper = bindir / "lli"
         wrapper.write_text(f"#!/bin/sh\nprintf '%s\\n' \"$@\" > {shlex.quote(str(invocation))}\nfor arg do\n  case $arg in /dev/fd/*) input=$arg; break;; esac\ndone\n{shlex.quote(real['opt'])} -S -passes=verify \"$input\" -o {shlex.quote(str(capture))} || exit $?\nexec {shlex.quote(real['lli'])} \"$@\"\n")
+        wrapper.chmod(0o755)
+        wrapper = bindir / "llc"
+        wrapper.write_text(f"#!/bin/sh\nprintf '%s\\n' \"$@\" > {shlex.quote(str(codegen))}\nout=\nfor arg do\n  if [ -n \"$out\" ]; then out=; continue; fi\n  case $arg in -o) out=1;; -*) ;; *) input=$arg;; esac\ndone\n{shlex.quote(real['opt'])} -S -passes=verify \"$input\" -o {shlex.quote(str(compiled))} || exit $?\nexec {shlex.quote(real['llc'])} \"$@\"\n")
         wrapper.chmod(0o755)
         # Native program caching skips the lli wrapper even when filling an entry.
         env = os.environ | {"PYSTACHY_LLVM": str(bindir), "PYSTACHY_PATH": str(temp),
@@ -165,10 +173,11 @@ def main():
             if len(unused) != 35 or len(dead) != 37:
                 raise RuntimeError(f"{label}: expected 35 emitted unused functions in 37 definitions, got {len(unused)} in {len(dead)}")
             capture.unlink(missing_ok=True)
+            codegen.unlink(missing_ok=True)
             if run(cmd + ["run", str(source), *arguments], env) != expected:
                 raise RuntimeError(f"{label}: JIT output differs from CPython")
-            if any(arg.startswith("-jit-kind=") or arg == "-O0" for arg in invocation.read_text().splitlines()):
-                raise RuntimeError(f"{label}: default code generation no longer uses ORC")
+            if any(arg.startswith("-jit-kind=") or arg == "-O0" for arg in invocation.read_text().splitlines()) or codegen.exists():
+                raise RuntimeError(f"{label}: default code generation no longer uses ORC alone")
             executed = capture.read_text()
             if 'target datalayout = ' not in executed or 'target triple = ' not in executed:
                 raise RuntimeError(f"{label}: JIT optimization ran without the runtime's target")
@@ -204,27 +213,48 @@ def main():
             print(f"{label}: 35 unused functions removed; live calls, defaults, imports and runtime callbacks preserved; live_leaf() inlined, and not with PYSTACHY_JIT_INLINE=0; unused loop feedback removed")
             for mode in ("2", "0"):
                 selected = env | {"PYSTACHY_JIT_CODEGEN": mode, "PYSTACHY_GC_STRESS_PROGRAM": "1"}
+                codegen.unlink(missing_ok=True)
                 if run(cmd + ["run", str(source), *arguments], selected) != expected:
                     raise RuntimeError(f"{label}: codegen={mode} output/argv/callback exception differs")
                 if run(cmd + ["run", str(coroutine)], selected) != coroutine_expected:
                     raise RuntimeError(f"{label}: codegen={mode} coroutine output/finally differs under GC stress")
-                if re.search(r"\b(?:call|invoke)\b[^\n]*@llvm\.coro\.", capture.read_text()):
-                    raise RuntimeError(f"{label}: codegen={mode} unlowered coroutine operation reached lli")
+                # (-O0: llc compiles the cleaned-up module, and lli links that object beside a main
+                # module of the program's target that defines no function but the callbacks' constructor)
+                program = (compiled if mode == "0" else capture).read_text()
+                if re.search(r"\b(?:call|invoke)\b[^\n]*@llvm\.coro\.", program):
+                    raise RuntimeError(f"{label}: codegen={mode} unlowered coroutine operation reached code generation")
                 flags = invocation.read_text().splitlines()
-                if ("-jit-kind=mcjit" in flags) != (mode == "0") or ("-O0" in flags) != (mode == "0"):
+                shared = any(arg.startswith("-dlopen=/dev/fd/") for arg in flags)
+                objects = len([arg for arg in flags if arg.startswith("-extra-object=/dev/fd/")])
+                if any(arg.startswith("-jit-kind=") or arg == "-O0" for arg in flags) or objects != (not shared) + (mode == "0"):
                     raise RuntimeError(f"{label}: codegen={mode} selected unexpected lli flags: {flags}")
+                if mode == "2" and codegen.exists():
+                    raise RuntimeError(f"{label}: default code generation ran llc")
+                if mode == "0":
+                    llc = codegen.read_text().splitlines()
+                    if any(arg not in llc for arg in ("-O0", "-filetype=obj", "-relocation-model=pic",
+                                                      "-profile-guided-section-prefix=false")) or \
+                            any(arg.startswith(("-mcpu", "-mattr", "-march")) for arg in llc):
+                        raise RuntimeError(f"{label}: codegen=0 selected unexpected llc flags: {llc}")
+                    main = capture.read_text()
+                    defined = re.findall(r"^define [^@]*@([^(]*)\(", main, re.MULTILINE)
+                    if 'target datalayout = ' not in main or 'target triple = ' not in main or \
+                            defined != (["pys.obj.hooks"] if shared else []) or \
+                            not re.search(r"^define [^\n]*@pys_obj_repr\(", program, re.MULTILINE):
+                        raise RuntimeError(f"{label}: codegen=0 main module or object differs: {defined}")
                 signal_case = subprocess.run(cmd + ["run", str(ROOT / "tests/programs/language/exec_signal.py")], cwd=ROOT,
                                              env=selected, capture_output=True, timeout=60, check=False)
                 if signal_case.returncode != -signal.SIGTERM or not signal_case.stdout.endswith(b"out\n") or signal_case.stderr != b"last\n":
                     raise RuntimeError(f"{label}: codegen={mode} changed signal status/output: {signal_case}")
             for invalid in ("", "1", "-O0", "0;false"):
                 invocation.unlink(missing_ok=True)
+                codegen.unlink(missing_ok=True)
                 rejected = subprocess.run(cmd + ["run", str(source)], cwd=ROOT,
                                           env=env | {"PYSTACHY_JIT_CODEGEN": invalid}, capture_output=True,
                                           timeout=60, check=False)
-                if rejected.returncode == 0 or rejected.stdout or b"PYSTACHY_JIT_CODEGEN:" not in rejected.stderr or invocation.exists():
+                if rejected.returncode == 0 or rejected.stdout or b"PYSTACHY_JIT_CODEGEN:" not in rejected.stderr or invocation.exists() or codegen.exists():
                     raise RuntimeError(f"{label}: invalid codegen={invalid!r} was not rejected before lli")
-            print(f"{label}: default ORC and opt-in MCJIT -O0 preserve argv, callback exceptions, GC stress and SIGTERM; invalid modes rejected")
+            print(f"{label}: default ORC and opt-in llc -O0 objects preserve argv, callback exceptions, GC stress and SIGTERM; invalid modes rejected")
     return 0
 
 

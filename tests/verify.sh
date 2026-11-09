@@ -102,7 +102,7 @@
 #                  inlined (not with PYSTACHY_JIT_INLINE=0); live code and runtime callbacks still
 #                  execute as in CPython, with both compilers; jitfdprobe.py preserves inherited
 #                  pipes, CPython's descriptor tables and SIGINT dispositions across shared/object
-#                  runtime, MCJIT, embedding, cached and AOT launches
+#                  runtime, -O0 code generation, embedding, cached and AOT launches
 #   aot-dead-code  tools/aotprobe.py: an AOT build defines pys_plain; a program that opts in to
 #                  neither dynamic Any nor promoting ints keeps none of their runtime helpers, and
 #                  its list stores none of their companion code; direct and imported opt-ins

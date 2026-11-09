@@ -21,6 +21,13 @@ define internal void @pys.obj.hooks() {
 }
 @llvm.global_ctors = appending global [1 x { i32, ptr, ptr }] [{ i32, ptr, ptr } { i32 0, ptr @pys.obj.hooks, ptr null }]
 """
+# PYSTACHY_JIT_CODEGEN=0: llc compiles the program to an object, whose constructors lli's ORC does
+# not run (its platform runs those of IR modules), so lli's main module, which holds no code of the
+# program, is this constructor, with the callbacks gen_dispatch defines in the object declared
+OBJHOOKS_MAIN = """declare i64 @pys_obj_eq(i64, i64, i64)
+declare i64 @pys_obj_cmp(i64, i64, i64, i64)
+declare ptr @pys_obj_repr(i64, i64, i64)
+""" + OBJHOOKS
 
 
 # The JIT tier's allocations: runtime.c's fast path (gc_alloc), here in the program's module, since

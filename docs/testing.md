@@ -154,8 +154,9 @@ keeps, with the objects they hold, and the allocation window between collections
 `PYSTACHY_GC_MIN` sets).
 `make jitprobe` also compares JIT launches with CPython: inherited descriptors, the program's
 and its child's whole descriptor tables, closed standard streams, inherited SIGINT dispositions
-(sent once the program waits), shared/object runtime inputs, MCJIT, embedding, temporary
-cleanup, failed exec and native program-cache miss/hit and AOT launches.
+(sent once the program waits), shared/object runtime inputs, `-O0` code generation (`llc`'s
+objects), embedding, temporary cleanup, failed exec and native program-cache miss/hit and AOT
+launches.
 They use deterministic operation or allocation limits where possible; shared CI runners do
 not gate on benchmark speed.
 

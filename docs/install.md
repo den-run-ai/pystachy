@@ -217,7 +217,8 @@ tools/setup.sh --minimal     # install missing build dependencies with apt/Homeb
 An explicit `PYSTACHY_LLVM` takes precedence over discovery; it must point to a complete
 platform's LLVM `bin` directory. Set it to an empty string to explicitly select `PATH`.
 If no standard installation exists, Pystachy uses the unversioned
-`clang`, `opt`, `lli`, `llvm-link` and `llvm-as` on `PATH`.
+`clang`, `opt`, `lli`, `llvm-link` and `llvm-as` on `PATH`, and `llc` with
+`PYSTACHY_JIT_CODEGEN=0`.
 
 On other Linux distributions, install LLVM 18, Python 3.11+ and `make` using the system
 package manager, then run `tools/setup.sh --check`. The script does not configure package
