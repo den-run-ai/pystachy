@@ -1,0 +1,77 @@
+{
+ "tiny.py": {
+  "wall_ms": 30.1,
+  "stage_median_ms": {
+   "program.cache_lookup": 0.0,
+   "program.load": 0.1,
+   "program.prepare": 0.0,
+   "program.discover": 0.1,
+   "program.analysis": 0.0,
+   "program.optimize": 0.0,
+   "program.finalize": 0.0,
+   "program.lower": 0.0,
+   "program.attempt": 0.4,
+   "program.frontend": 0.4,
+   "runtime.cache_lookup": 0.2,
+   "program.jit_optimize": 12.3,
+   "driver.prepare_run": 13.6,
+   "launcher.dlopen": 0.1,
+   "launcher.init": 0.1,
+   "launcher.parse": 0.3,
+   "launcher.jit": 0.2,
+   "launcher.add": 0.0,
+   "launcher.materialize": 1.6,
+   "launcher.main": 0.4
+  }
+ },
+ "import_heavy.py": {
+  "wall_ms": 726.7,
+  "stage_median_ms": {
+   "program.cache_lookup": 0.0,
+   "program.load": 94.6,
+   "program.prepare": 28.2,
+   "program.discover": 57.8,
+   "program.analysis": 7.0,
+   "program.optimize": 17.3,
+   "program.finalize": 19.3,
+   "program.lower": 20.0,
+   "program.attempt": 243.8,
+   "program.frontend": 243.8,
+   "runtime.cache_lookup": 0.3,
+   "program.jit_optimize": 239.9,
+   "driver.prepare_run": 508.1,
+   "launcher.dlopen": 0.1,
+   "launcher.init": 0.2,
+   "launcher.parse": 28.1,
+   "launcher.jit": 0.3,
+   "launcher.add": 0.1,
+   "launcher.materialize": 163.4,
+   "launcher.main": 1.5
+  }
+ },
+ "regex_effbot.py 1": {
+  "wall_ms": 583.1,
+  "stage_median_ms": {
+   "program.cache_lookup": 0.0,
+   "program.load": 65.0,
+   "program.prepare": 21.9,
+   "program.discover": 39.8,
+   "program.analysis": 5.6,
+   "program.optimize": 25.1,
+   "program.finalize": 4.3,
+   "program.lower": 16.9,
+   "program.attempt": 179.0,
+   "program.frontend": 179.0,
+   "runtime.cache_lookup": 0.3,
+   "program.jit_optimize": 193.3,
+   "driver.prepare_run": 388.5,
+   "launcher.dlopen": 0.1,
+   "launcher.init": 0.2,
+   "launcher.parse": 22.1,
+   "launcher.jit": 0.3,
+   "launcher.add": 0.1,
+   "launcher.materialize": 122.5,
+   "launcher.main": 27.6
+  }
+ }
+}

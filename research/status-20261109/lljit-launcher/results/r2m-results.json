@@ -1,0 +1,22 @@
+{
+ "import_heavy.py": {
+  "plain": {
+   "wall_ms": 216.1,
+   "codegen_ms": 169.4
+  },
+  "reg2mem": {
+   "wall_ms": 387.8,
+   "codegen_ms": 313.9
+  }
+ },
+ "regex_effbot.py 20": {
+  "plain": {
+   "wall_ms": 647.4,
+   "codegen_ms": 112.3
+  },
+  "reg2mem": {
+   "wall_ms": 852.6,
+   "codegen_ms": 195.4
+  }
+ }
+}

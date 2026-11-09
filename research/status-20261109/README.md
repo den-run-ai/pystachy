@@ -89,6 +89,14 @@ Filed on 9 November (UTC) from the drafts in [followups/](followups/), all passi
 The `irsame` draft was not filed: #527 already tracks library paths in IR strings. They now make
 about 264 of 4,345 programs differ when nothing changed, against 194 at `9c8bc746`.
 
+## Retiring MCJIT
+
+Agents worked from `56678df4` on replacing MCJIT with `llc -O0` and ORC, on newer LLVM
+releases and on an in-process LLJIT launcher. The [launcher evaluation](lljit-launcher/report.md)
+recommends the `llc -O0` route now and the launcher later under #707. It also found that
+`-O0` code generation, main's `PYSTACHY_JIT_CODEGEN=0` included, gives an `except` clause
+stale or unset values from its loop: an LLVM PHI-elimination bug in LLVM 18, 20 and 23.
+
 ## Release planning
 
 An agent mapped the 26 open PRs, 235 open issues and the milestones onto v0.4.0 releases, from
