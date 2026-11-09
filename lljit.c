@@ -262,8 +262,9 @@ static void *lookup(LLVMOrcLLJITRef jit, const char *name) {
 }
 
 /* -self-check's module: two constructors, listed out of their priorities' order (1 then 2 makes x 12),
-   main, which writes its last argument through the C library (a process symbol) and returns x + argc,
-   and a destructor, which writes after main has returned */
+   main, which writes its last argument through the C library (a process symbol) and returns x + argc
+   if argv ends with a null pointer, as C's does (else 0), and a destructor, which writes after main
+   has returned */
 static const char check_ir[] =
   "@x = internal global i32 0\n"
   "@m = private constant [6 x i8] c\"lljit\\00\"\n"
@@ -278,7 +279,9 @@ static const char check_ir[] =
   "define internal void @fini() {\n  %r = call i32 @puts(ptr @m)\n  ret void\n}\n"
   "define i32 @main(i32 %argc, ptr %argv) {\n  %n = sub i32 %argc, 1\n  %i = sext i32 %n to i64\n"
   "  %p = getelementptr ptr, ptr %argv, i64 %i\n  %a = load ptr, ptr %p\n  %r = call i32 @puts(ptr %a)\n"
-  "  %v = load i32, ptr @x\n  %s = add i32 %v, %argc\n  ret i32 %s\n}\n";
+  "  %e = sext i32 %argc to i64\n  %q = getelementptr ptr, ptr %argv, i64 %e\n  %z = load ptr, ptr %q\n"
+  "  %ok = icmp eq ptr %z, null\n  %v = load i32, ptr @x\n  %s = add i32 %v, %argc\n"
+  "  %t = select i1 %ok, i32 %s, i32 0\n  ret i32 %t\n}\n";
 
 int main(int argc, char **argv) {
   const char *t = getenv("PYSTACHY_TIMING");
@@ -382,7 +385,8 @@ int main(int argc, char **argv) {
   void (*fini)(void) = dtors ? (void (*)(void))lookup(jit, "__pystachy_lljit_fini") : NULL;
   stage("program.jit_codegen");
 
-  char **args = calloc((size_t)(argc - i) + 2, sizeof *args);
+  /* the input's name, -self-check's two arguments, the program's, then argv's null pointer */
+  char **args = calloc(1 + (selfcheck ? 2 : 0) + (size_t)(argc - i) + 1, sizeof *args);
   if (!args) fail("out of memory", NULL);
   int n = 0;
   args[n++] = (char *)input;   /* (lli's runAsMain: argv[0] is the input's name) */
