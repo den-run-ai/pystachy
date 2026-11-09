@@ -3059,25 +3059,43 @@ I pys_vtuple_count(VTuple *t, I v, Str *d) { I c = 0; for (I i = 0; i < t->len; 
    type never changes (lists are invariant, and only an empty result whose type is still open
    is typed later: its array is scanned). Growth, copies, slices, + and * make new arrays of
    the kind of the arrays they copy (atomic_items), so a list keeps its kind for its lifetime,
-   and an emptied list keeps it in the sentinel it is left with. */
+   and an emptied list keeps it in the sentinel it is left with.
+   A scanned list made for at most INLINE_CAP items keeps them in its header's own object,
+   right after the header (l->a == inline_items(l)): one 72-byte allocation instead of a 32-byte
+   header and a 40-byte array, so the many short lists of a program (a compiler's operand and
+   child lists) cost one allocation and one object to mark each. Growth past INLINE_CAP moves
+   the items to an array of their own and clears the inline ones. An emptied list is left the
+   sentinel empty_inline, so that its next items go back inline. */
+#define INLINE_CAP 4                   /* the inline items' capacity, the least that any list has */
 static I empty_list[1];                /* valid even for zero-byte copies; distinct from sort's sentinel */
 static I empty_identity_int[1] = {1}, empty_identity_float[1] = {2}, empty_identity_big[1] = {3};
 static I *empty_identity(I kind) { return (kind & 3) == 1 ? empty_identity_int : (kind & 3) == 2 ? empty_identity_float : empty_identity_big; }
 static I empty_atomic[1];              /* the same, for a list whose array was atomic */
+static I empty_inline[1];              /* and for one whose items were inline (scanned) */
+static I *inline_items(List *l) { return (I *)(l + 1); }
 static int atomic_items(const I *a) {  /* is the item array a atomic? its kind, from the page map */
   uintptr_t w = (uintptr_t)a; Seg **m, *s;
   if (a == empty_atomic) return 1;
   return w - gc_lo < gc_hi - gc_lo && (m = pmap[w >> 30]) && (s = m[w >> 12 & 0x3ffff]) && (s->k & 1);
 }
 static void empty(List *l) {           /* detach an empty list's historical storage without allocating */
-  if (l->cap) { l->cap = 0; l->a = atomic_items(l->a) ? empty_atomic : empty_list; if (l->ids && opt_in()) l->ids = empty_identity(l->ids[0]); }   /* cap 0 during sort: preserve its mutation marker */
+  if (l->cap) {                        /* cap 0 during sort: preserve its mutation marker */
+    if (l->a == inline_items(l)) l->a = empty_inline;   /* (whoever removed its items cleared their slots) */
+    else l->a = atomic_items(l->a) ? empty_atomic : empty_list;
+    l->cap = 0;
+    if (l->ids && opt_in()) l->ids = empty_identity(l->ids[0]);
+  }
 }
 static I *item_array(I n, int atomic) { return atomic ? pys_alloc_atomic(n * 8) : pys_alloc(n * 8); }
 static List *list_new(I cap, int atomic) {
+  if (!atomic && cap <= INLINE_CAP) {  /* 64 bytes: the slack byte falls in the 72-byte class's last 8 */
+    List *l = pys_alloc(sizeof(List) + INLINE_CAP * sizeof(I));
+    l->cap = INLINE_CAP; l->a = inline_items(l); return l;
+  }
   /* The allocator adds one slack byte. Request the full 32-byte header without
      promoting it to the next size class; the former 24-byte header used 32 too. */
   List *l = pys_alloc(sizeof(List) - 1);
-  l->cap = cap > 4 ? cap : 4;
+  l->cap = cap > INLINE_CAP ? cap : INLINE_CAP;
   l->a = item_array(l->cap, atomic); return l;
 }
 List *pys_list_new(I cap) { return list_new(cap, 0); }
@@ -3181,10 +3199,15 @@ List *pys_vtuple_list(VTuple *t) {
 }
 static void reserve(List *l, I n) {
   if (n <= l->cap) return;
-  I c = l->cap * 2 > n ? l->cap * 2 : n;
-  if (c < 4) c = 4;
-  I *a = item_array(c, atomic_items(l->a));
-  memcpy(a, l->a, l->len * 8); l->a = a;
+  I c = l->cap * 2 > n ? l->cap * 2 : n, *a;
+  if (c < INLINE_CAP) c = INLINE_CAP;
+  if (l->a == empty_inline && c == INLINE_CAP) a = inline_items(l);   /* (emptied, and its items fit inline again) */
+  else {
+    a = item_array(c, atomic_items(l->a));
+    memcpy(a, l->a, l->len * 8);
+    if (l->a == inline_items(l)) memset(l->a, 0, INLINE_CAP * sizeof(I));   /* (moved: the header keeps none of them) */
+  }
+  l->a = a;
   if (l->ids && opt_in()) {
     if (c > INT64_MAX / (I)sizeof(I) - 1) oom();
     I *ids = pys_alloc((c + 1) * sizeof(I));

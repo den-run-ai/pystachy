@@ -177,7 +177,9 @@ do not by themselves make storage dynamic. Experimental opt-in `Any` uses the
 The collector is conservative, non-moving mark-and-sweep. It scans stack/register roots and
 registered program globals; buffers that cannot contain pointers are not scanned. Marking
 prefetches each object a few objects before it scans it (`MQ`), so the cache misses of a big
-heap overlap; the objects it marks do not depend on that order. Its 64 KiB chunks of small
+heap overlap; the objects it marks do not depend on that order. A list made for at most four
+items that may be pointers keeps them in its header's object, until it grows past them: one
+allocation, and one object to mark, rather than two. The collector's 64 KiB chunks of small
 objects and its large objects take whole pages from a page heap that the runtime maps itself
 in 2 MiB regions, not from `malloc`. A region's bitmaps record which pages are used and which
 may be dirty, so a zeroed allocation clears only dirty pages, and a new string's bytes, which
