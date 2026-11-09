@@ -5,7 +5,7 @@ already-emitted immutable function objects are candidates. No source is inferred
 again, and no code or profiling state is created while the program runs.
 """
 from __future__ import annotations
-from src.pystachy_compiler.ir import Blk, FnInfo, IFn, Ins, Loop, Val
+from src.pystachy_compiler.ir import Blk, FnInfo, IFn, Ins, Loop, Val, tmpname, one_num
 from src.pystachy_compiler.utils import identity_abi, is_callable
 
 
@@ -29,7 +29,7 @@ def callback_codes(fn: IFn, param: int) -> dict[str, bool]:
                 if i.op == "mem.store" and j == 0 and i.a[1].v == arg and b is fn.blocks[0]:
                     stores += 1
                 elif i.op == "mem.load" and j == 0:
-                    values[f"%t{i.r[0]}"] = True
+                    values[tmpname(i.r[0])] = True
                 else:
                     return {}
     if stores != 1:
@@ -39,7 +39,7 @@ def callback_codes(fn: IFn, param: int) -> dict[str, bool]:
     for b in fn.blocks:
         for i in b.code:
             if i.op == "mach.load" and i.t == "%ptr" and i.a[0].v in values:
-                codes[f"%t{i.r[0]}"] = True
+                codes[tmpname(i.r[0])] = True
     # A direct use inside a loop pays for one guard per function activation.
     predecessors: dict[str, list[str]] = {}
     for b in fn.blocks:
@@ -143,17 +143,17 @@ def callback_guards(fn: IFn, param: int, targets: list[str], variants: list[IFn]
         compare = Ins("ptr.cmp", "bool", "==")
         compare.a = [Val(f"%a{param}", fn.f.ptypes[param]), Val(targets[j], fn.f.ptypes[param])]
         fn.n += 1
-        compare.r = [fn.n]
+        compare.r = one_num(fn.n)
         branch = Ins("cbr", "", "")
-        branch.a, branch.b = [Val(f"%t{fn.n}", "bool")], [hit.label, miss.label]
+        branch.a, branch.b = [Val(tmpname(fn.n), "bool")], [hit.label, miss.label]
         current.code.extend([compare, branch])
         call = Ins("call", fn.f.ret, variants[j].f.ll)
         call.a = [Val(f"%a{p}", fn.f.ptypes[p]) for p in fn.ps]
         ret = Ins("ret", "", "")
         if fn.f.ret != "None":
             fn.n += 1
-            call.r = [fn.n]
-            ret.a = [Val(f"%t{fn.n}", fn.f.ret)]
+            call.r = one_num(fn.n)
+            ret.a = [Val(tmpname(fn.n), fn.f.ret)]
         hit.code = [call, ret]
         added.append(hit)
         if miss is not fallback:

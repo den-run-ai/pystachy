@@ -4,7 +4,7 @@ from src.pystachy_compiler.utils import is_union, unionnames
 from src.pystachy_compiler.bigints import narrows
 from src.pystachy_compiler.diagnostics import Rejoin, fail, int_lists
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.ir import Blk, Data, Frame, Ins, Val
+from src.pystachy_compiler.ir import Blk, Data, Frame, Ins, Val, tmpname, one_num
 from src.pystachy_compiler.specs import BIGOPT, CHECKED, LIST_READS, LIST_WRITES, NARROWED, RTL, RTSYM, STR_HEADER_SIZE, TEXT_OPS, UNICODE_AUDIT
 from src.pystachy_compiler.utils import (
     RtFn,
@@ -158,7 +158,7 @@ def gen_restore(self, fr: Frame) -> None:
 
 def gen_tmp(self) -> str:
     self.n += 1
-    return f"%t{self.n}"
+    return tmpname(self.n)
 
 def gen_label(self) -> str:
     self.n += 1
@@ -174,9 +174,10 @@ def gen_add(self, i: Ins) -> None:
     self.blk.code.append(i)
 
 def gen_put(self, i: Ins, k: int) -> None:
-    # add i, which defines k values, numbered as k separate instructions would have been
+    # add i, which defines k values, numbered as k separate instructions would have been (one
+    # value: the shared list of its number, one_num, which nothing appends to)
     self.n += 1
-    i.r = [self.n]
+    i.r = one_num(self.n) if k == 1 else [self.n]
     self.add(i)
     for _ in range(k - 1):
         self.n += 1
@@ -188,7 +189,7 @@ def gen_mem_load(self, a: Val) -> Val:
     i = Ins("mem.load", a.t[1:], "")
     i.a = [a]
     self.put(i, 1)
-    return Val(f"%t{i.r[0]}", i.t)
+    return Val(tmpname(i.r[0]), i.t)
 
 def gen_mem_store(self, a: Val, v: Val) -> None:
     i = Ins("mem.store", "", "")
@@ -265,14 +266,14 @@ def gen_incoming(self, ph: Ins, v: str, l: str) -> None:
 
 def gen_phi(self, ph: Ins) -> str:
     self.put(ph, 1)
-    return f"%t{ph.r[0]}"
+    return tmpname(ph.r[0])
 
 def gen_select(self, c: str, x: Val, y: Val) -> str:
     # c ? x : y, where x and y have the same type
     i = Ins("select", x.t, "")
     i.a = [Val(c, "bool"), x, y]
     self.put(i, 1)
-    return f"%t{i.r[0]}"
+    return tmpname(i.r[0])
 
 def gen_rt(self, name: str, ret: str, args: list[str], x: str = "") -> str:
     # an rt op: a call of runtime function name (its LLVM symbol), whose LLVM result type is
@@ -326,7 +327,7 @@ def gen_rt(self, name: str, ret: str, args: list[str], x: str = "") -> str:
         self.add(i)
         return ""
     self.put(i, 1)
-    result = f"%t{i.r[0]}"
+    result = tmpname(i.r[0])
     # Native producers of fresh numeric lists have no source boxes to preserve.
     # Establish their item objects before a later copy can alias those objects.
     if self.list_id_kind(ts[0]) != 0:
@@ -342,7 +343,7 @@ def gen_list_len(self, o: Val) -> str:
     if error != "":
         fail(f"internal error: list.len: {error}", 0)
     self.put(i, 1)
-    return f"%t{i.r[0]}"
+    return tmpname(i.r[0])
 
 
 def gen_list_get(self, key: str, args: list[Val]) -> str:
@@ -357,7 +358,7 @@ def gen_list_get(self, key: str, args: list[Val]) -> str:
         self.err(f"{name}() implements an operation that it uses: write it without that operation")
     self.runtime(name)
     self.put(i, 1)
-    return f"%t{i.r[0]}"
+    return tmpname(i.r[0])
 
 
 def gen_list_write(self, key: str, args: list[Val]) -> None:
@@ -384,7 +385,7 @@ def gen_alloc_fixed(self, t: str) -> Val:
     self.runtime("pys_alloc")
     i = Ins("alloc.fixed", t, "")
     self.put(i, 1)
-    return Val(f"%t{i.r[0]}", t)
+    return Val(tmpname(i.r[0]), t)
 
 def gen_runtime(self, name: str) -> str:
     # declare runtime function name (its LLVM symbol) from its RUNTIME entry; its key
@@ -413,7 +414,7 @@ def gen_checked(self, op: str, a: str, b: str) -> list[str]:
     i = Ins("ovf", "int", op)
     i.a = [Val(a, "int"), Val(b, "int")]
     self.put(i, 3)  # (the call's {i64, i1}, then the two extractvalues)
-    return [f"%t{i.r[1]}", f"%t{i.r[2]}"]
+    return [tmpname(i.r[1]), tmpname(i.r[2])]
 
 def gen_guard(self, bad: str, msg: str) -> None:
     # if bad, jump to a block (one per function and message) that raises msg ("Kind: text"); in a
@@ -654,14 +655,14 @@ def gen_alloca(self, t: str, name: str) -> str:
             self.lflag[name] = f"%{name}.def.{self.n}"
             i = Ins("slot", "bool", name)
             i.k = 1
-            i.r = [self.n]
+            i.r = one_num(self.n)
             self.fn.slots.append(i)
         return self.cells[name]
     self.n += 1
     r = f"%{name or 'h'}.{self.n}"
     self.anyopt = self.anyopt or is_opt(t) or is_union(t) or t == "dyn" or t in self.classes
     i = Ins("slot", t, name)
-    i.r = [self.n]
+    i.r = one_num(self.n)
     self.fn.slots.append(i)
     if name != "":
         self.ltype[name] = t
@@ -671,13 +672,13 @@ def gen_alloca(self, t: str, name: str) -> str:
             self.lflag[name] = f"%{name}.def.{self.n}"
             i = Ins("slot", "bool", name)
             i.k = 1
-            i.r = [self.n]
+            i.r = one_num(self.n)
             self.fn.slots.append(i)
         if t == "str" and name in self.appends and name not in self.owned and name not in self.compvars:
             # the owned flag of a str local that the function appends to (str_append): one for
             # the name, which its later slots share, as every read and store of it clears the flag
             i = Ins("slot", "int", name + ".own")
-            i.r = [self.n]
+            i.r = one_num(self.n)
             self.fn.slots.append(i)
             self.owned[name] = f"%{name}.own.{self.n}"
         self.idbox.pop(name, "")
@@ -685,13 +686,13 @@ def gen_alloca(self, t: str, name: str) -> str:
             # the box of its binding as an Any value (idbox): null, as each slot is where the
             # function begins, until a store or its first crossing gives it one (dyn_box)
             i = Ins("slot", "dyn", name + ".box")
-            i.r = [self.n]
+            i.r = one_num(self.n)
             self.fn.slots.append(i)
             self.idbox[name] = f"%{name}.box.{self.n}"
             # Local generations distinguish an emitted store from one that actually runs.
             # This stack-only counter is dead when the value never needs identity.
             i = Ins("slot", "int", name + ".boxgen")
-            i.r = [self.n]
+            i.r = one_num(self.n)
             self.fn.slots.append(i)
     return r
 

@@ -2,7 +2,7 @@
 from __future__ import annotations
 from src.pystachy_compiler.analysis import ann_target
 from src.pystachy_compiler.diagnostics import dynamic_program, int_lists
-from src.pystachy_compiler.ir import ClassInfo, FnInfo, Ins, Val
+from src.pystachy_compiler.ir import ClassInfo, FnInfo, Ins, Val, tmpname
 from src.pystachy_compiler.names import owner
 from src.pystachy_compiler.syntax import Node, mk
 from src.pystachy_compiler.specs import BIG, BIGOPT, NONEVAR, OPTTYPES
@@ -174,7 +174,7 @@ def gen_uget(self, u: Val, m: str) -> Val:
     i = Ins("union.payload", "%slot", m)
     i.a = [u]
     self.put(i, 2)
-    return self.from_slot(f"%t{i.r[1]}", m).identity(u)
+    return self.from_slot(tmpname(i.r[1]), m).identity(u)
 
 def gen_utest(self, u: Val, ms: list[str], may_none: bool) -> str:
     # i1: does the union's box u (null where it is None, if may_none) hold a value of one of types ms
@@ -189,7 +189,7 @@ def gen_utest(self, u: Val, ms: list[str], may_none: bool) -> str:
     i = Ins("union.tag", "int", "")
     i.a = [Val(u.v, unopt(u.t))]  # (the existing guard, or narrowing, excludes None)
     self.put(i, 1)
-    tag = f"%t{i.r[0]}"
+    tag = tmpname(i.r[0])
     r = ""
     for m in ms:
         x = self.num_cmp('==', Val(tag, "int"), Val(str(self.utag(m)), "int")).v

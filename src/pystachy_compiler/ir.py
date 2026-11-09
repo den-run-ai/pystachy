@@ -229,6 +229,39 @@ class Closure:
 NONUMS: list[int] = []
 NOVALS: list[Val] = []
 NOLABELS: list[str] = []
+# Value n's name, %t<n>, and the numbers of an op that defines value n alone, [n]: each made at
+# its first use and shared from then on. No code changes an op's numbers in place (a pass gives
+# an op a new list), and a str never changes, so sharing them changes nothing the IR says; but
+# an op and the values that name it no longer make a list and strs of their own. The program's
+# IR stays until it is lowered, and every collection marks all of it: with the collector
+# running every 5,000 allocations (gc-self), those objects made its cost grow with the square
+# of the compiler's size (#1181)
+TMPNAMES: list[str] = []
+ONENUMS: list[list[int]] = []
+
+
+def tmpname(n: int) -> str:
+    if n < 0:
+        return f"%t{n}"
+    while len(TMPNAMES) <= n:
+        TMPNAMES.append(f"%t{len(TMPNAMES)}")
+    return TMPNAMES[n]
+
+
+def one_num(n: int) -> list[int]:
+    if n < 0:
+        return [n]
+    while len(ONENUMS) <= n:
+        ONENUMS.append([len(ONENUMS)])
+    return ONENUMS[n]
+
+
+def one_nums_intact() -> bool:
+    # (what Gen.program checks once the program is lowered: no op changed a shared list)
+    for n in range(len(ONENUMS)):
+        if len(ONENUMS[n]) != 1 or ONENUMS[n][0] != n:
+            return False
+    return True
 
 
 class Ins:

@@ -11,7 +11,7 @@ that reach such a site, which LLVM's globaldce and llvm-link --only-needed drop 
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import dynamic_program, int_program, shown
 from src.pystachy_compiler.analysis import clean_doc, local_names
-from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Loop, Val
+from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Loop, Val, tmpname
 from src.pystachy_compiler.names import ENUMCLASSES, short
 from src.pystachy_compiler.specs import BIG, BIGOPT, GLUE, HASATTR, ITERS, NONEVAR, OBJECTC, RANGEC, TYPEMODS, is_excname
 from src.pystachy_compiler.syntax import Node, mk
@@ -131,7 +131,7 @@ def gen_refl_split(self, v: Val, nonnull: bool = False, guarded: bool = False) -
             hit = self.label()
             miss = self.label() if guarded or i + 1 < len(ms) else ""
             if miss != "":
-                self.cbr(self.num_cmp('==', Val(f"%t{tag.r[0]}", "int"), Val(str(self.utag(ms[i])), "int")).v, hit, miss)
+                self.cbr(self.num_cmp('==', Val(tmpname(tag.r[0]), "int"), Val(str(self.utag(ms[i])), "int")).v, hit, miss)
             else:
                 self.br(hit)
             self.place(hit)

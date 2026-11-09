@@ -5,7 +5,7 @@ from src.pystachy_compiler.bigints import TSLOT_BIG, big_tree, big_viewable, hel
 from src.pystachy_compiler.analysis import collect, comp_shared, comp_unbound, comp_vars, deleted, key_reads, local_names, only_none, stack_aliases, stack_kept, walrus_names
 from src.pystachy_compiler.diagnostics import LINES, dynamic_program, int_lists, shown
 from src.pystachy_compiler.dynamic import boxed_list_items, comparison_container_pair, comparison_invalid, comparison_property_type
-from src.pystachy_compiler.ir import ClassInfo, Data, FmtArgs, FnInfo, Ins, IterArg, Loop, Val
+from src.pystachy_compiler.ir import ClassInfo, Data, FmtArgs, FnInfo, Ins, IterArg, Loop, Val, tmpname, one_num
 from src.pystachy_compiler.names import ENUMCLASSES, short
 from src.pystachy_compiler.reflection import VARS_USES, refl_annotated, refl_body, refl_fold, refl_reflective
 from src.pystachy_compiler.specs import (
@@ -2464,7 +2464,7 @@ def gen_vtuple_make(self, vals: list[Val], t: str) -> Val:
     i = Ins("vtuple.make", t, "")
     i.a = vals
     self.put(i, 1)
-    return Val(f"%t{i.r[0]}", t)
+    return Val(tmpname(i.r[0]), t)
 
 def gen_tuple_const(self, n: Node, vals: list[Val]) -> Val:
     # a tuple display of literals that the source writes (n.src), whose items are vals: the
@@ -2520,7 +2520,7 @@ def gen_stack_tuple(self, vals: list[Val]) -> Val:
     self.n += 1
     i = Ins("slot", t, "")
     i.k = 2
-    i.r = [self.n]
+    i.r = one_num(self.n)
     self.fn.slots.append(i)
     p = f"%stk.{self.n}"
     for j in range(len(vals)):
@@ -2738,8 +2738,8 @@ def gen_tget(self, v: Val, i: int) -> Val:
     item.a = [v]
     self.put(item, 2)
     if item.s == BIG:
-        return self.big_item(v, self.from_slot(f"%t{item.r[1]}", "int"), hislot(v.t, i), "")  # (a promoting int item: bigints.py)
-    return self.from_slot(f"%t{item.r[1]}", item.s)
+        return self.big_item(v, self.from_slot(tmpname(item.r[1]), "int"), hislot(v.t, i), "")  # (a promoting int item: bigints.py)
+    return self.from_slot(tmpname(item.r[1]), item.s)
 
 def gen_tslot(self, v: Val, k: int) -> Val:
     # slot k of tuple v, past its items: a promoting int item's Mpz word, as an int (tslots)
@@ -2747,7 +2747,7 @@ def gen_tslot(self, v: Val, k: int) -> Val:
     w.k = k
     w.a = [v]
     self.put(w, 2)
-    return self.from_slot(f"%t{w.r[1]}", "int")
+    return self.from_slot(tmpname(w.r[1]), "int")
 
 def gen_tstore(self, v: Val, index: int, slot: str) -> None:
     # slot index of tuple v (an item's, or past them a promoting int item's Mpz word: tslots)
@@ -2966,7 +2966,7 @@ def gen_list_read(self, o: Val, i: Val) -> Val:
     read = Ins("list.load", "*int", "")
     read.a = [o, i]
     self.put(read, 4)
-    self.incoming(ph, f"%t{read.r[0]}", self.cur)
+    self.incoming(ph, tmpname(read.r[0]), self.cur)
     self.br(done)
     self.place(slow)
     v = self.list_get("list.get", [o, i])
@@ -3092,7 +3092,7 @@ def gen_iter_ret(self, e: Node) -> Val:
     if (is_tuple(v.t) and v.t != "tuple[]") or v.t == RANGEC:
         v = self.as_list(v, "iter")  # (of the items, which share one type; a range's numbers)
     last = self.blk.code[-1] if len(self.blk.code) > 0 else Ins("", "", "")
-    if last.op == "rt" and (last.s == "dict.keys" or last.s == "dict.values" or last.s == "dict.items" or last.s == "dict.big_items") and v.v == f"%t{last.r[0]}":
+    if last.op == "rt" and (last.s == "dict.keys" or last.s == "dict.values" or last.s == "dict.items" or last.s == "dict.big_items") and v.v == tmpname(last.r[0]):
         # (keys() is a list here; CPython's view iterator raises if the dict changes size; big_items:
         # the items() of tuples of promoting ints, bigints.big_items)
         self.err(f"iter() of a dict's {'items' if last.s == 'dict.big_items' else last.s[5:]}() in {self.curfn.name} is not supported: its iterator raises if the dict changes size; return iter(list(...)) of a copy")
@@ -3122,7 +3122,7 @@ def gen_listcomp(self, n: Node, want: str, mode: str = "", into: str = "", arg: 
         res = into
     else:
         h = self.hole(kind)
-        res = f"%t{h.r[0]}"
+        res = tmpname(h.r[0])
     names: list[str] = []
     comp_names(n, names)
     if comp_unbound(n, names) != "":

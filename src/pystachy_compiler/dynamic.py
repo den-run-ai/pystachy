@@ -19,7 +19,7 @@ from __future__ import annotations
 from src.pystachy_compiler.analysis import bind_count, comp_vars, deleted, globals_in, lazy_block, lazy_sites, local_names, name_bits, nonlocal_decls, targets, walrus_names
 from src.pystachy_compiler.bigints import held
 from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, INTFILES, LINES, NeedSliceEH, Rejoin, dynamic_file, dynamic_program, int_lists, int_program
-from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Reduce, Val
+from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Reduce, Val, tmpname
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import ENUMCLASSES, owner, retoken, short
 from src.pystachy_compiler.specs import BIG, GLUE, ITERS, JSONANY, METHODS, NONEVAR, RANGEC, RANGES, RTDATA
@@ -2281,7 +2281,7 @@ def gen_dyn_typeof(self, v: Val) -> str:
     i = Ins("dyn.type", "dyntype", "")
     i.a = [Val(v.v, DYN)]
     self.put(i, 1)
-    return f"%t{i.r[0]}"
+    return tmpname(i.r[0])
 
 
 def gen_dyn_payload(self, v: Val, t: str) -> Val:
@@ -2295,7 +2295,7 @@ def gen_dyn_payload(self, v: Val, t: str) -> Val:
     i = Ins("dyn.payload", "%slot", t)
     i.a = [Val(v.v, DYN)]
     self.put(i, 2)
-    return self.from_slot(f"%t{i.r[1]}", t)
+    return self.from_slot(tmpname(i.r[1]), t)
 
 
 def gen_dyn_unbox(self, v: Val, t: str, what: str = "") -> Val:
@@ -3114,7 +3114,7 @@ def gen_dyn_call(self, f: FnInfo, args: list[Val]) -> Val:
         self.add(c)
         return Val("null", "None")
     self.put(c, 1)
-    return Val(f"%t{c.r[0]}", f.ret)
+    return Val(tmpname(c.r[0]), f.ret)
 
 
 def gen_dyn_body(self, key: str) -> None:

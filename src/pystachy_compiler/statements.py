@@ -3,7 +3,7 @@ from __future__ import annotations
 from src.pystachy_compiler.utils import identity_abi, identity_default, is_union
 from src.pystachy_compiler.analysis import appends_to, builtin_has, local_names, none_display
 from src.pystachy_compiler.diagnostics import shown
-from src.pystachy_compiler.ir import Blk, ClassInfo, Exit, FnInfo, Ins, IterArg, Loop, SeqStart, StopCatch, Val
+from src.pystachy_compiler.ir import Blk, ClassInfo, Exit, FnInfo, Ins, IterArg, Loop, SeqStart, StopCatch, Val, tmpname
 from src.pystachy_compiler.names import ENUMCLASSES, owner, short
 from src.pystachy_compiler.specs import (
     STR_HEADER_SIZE,
@@ -2107,7 +2107,7 @@ def gen_drain(self, it: Val) -> Val:
     # a new list of the items of iterator object it, which list(it) takes at once: its __next__
     # until StopIteration (the list's type is decided by the first item's, see listcomp)
     h = self.hole("list")
-    res = f"%t{h.r[0]}"
+    res = tmpname(h.r[0])
     c = self.stop_catch()
     lc = self.label()
     le = self.label()

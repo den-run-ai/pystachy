@@ -13,7 +13,7 @@ docs/internals.md#generators.
 from __future__ import annotations
 from src.pystachy_compiler.analysis import closure_free, comp_shared, comp_unbound
 from src.pystachy_compiler.diagnostics import int_program
-from src.pystachy_compiler.ir import Exit, FnInfo, Ins, IterArg, SeqStart, Try, Val
+from src.pystachy_compiler.ir import Exit, FnInfo, Ins, IterArg, SeqStart, Try, Val, tmpname
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.specs import (
     BIG,
@@ -389,7 +389,7 @@ def gen_gen_promise(self, h: Val) -> str:
     if h.v != "":
         i.a = [h]
     self.put(i, 1)
-    return f"%t{i.r[0]}"
+    return tmpname(i.r[0])
 
 
 def gen_gen_unhandle(self) -> None:
