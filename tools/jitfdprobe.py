@@ -4,6 +4,7 @@ closed standard streams, runtime variants, MCJIT, cleanup and native cache launc
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
 import os
 from pathlib import Path
 import re
@@ -146,7 +147,8 @@ def fail_exec(path, arguments):
     raise OSError("injected exec failure")
 
 os.execv = fail_exec
-sys.argv = ["pystachy", "run", sys.argv[2]]
+# (as the hosted compiler's own path, so that this compilation reuses its runtime cache)
+sys.argv = [os.path.join(sys.argv[1], "pystachy.py"), "run", sys.argv[2]]
 try:
     driver.main()
 except OSError as error:
@@ -234,97 +236,117 @@ def main():
         waiting.write_text(SIGNAL_SOURCE)
         child = work / "child.py"
         child.write_text(CHILD)
-        report = work / "report"
-        temp = work / "tmp"
-        temp.mkdir()
+        failure = work / "failed-exec.py"
+        failure.write_text(EXEC_FAILURE)
         environment = {key: value for key, value in os.environ.items()
                        if not key.startswith("PYSTACHY_") and key not in {"PYTHONPATH", "PYTHONHOME", "JITDUMPDIR"}
                        and not key.startswith("JITFD_")}
-        environment.update(PYSTACHY_HOME=str(ROOT), PYSTACHY_PROGRAM_CACHE="0", TMPDIR=str(temp),
+        environment.update(PYSTACHY_HOME=str(ROOT), PYSTACHY_PROGRAM_CACHE="0",
                            JITFD_CHILD=shlex.join([sys.executable, "-I", str(child)]))
         library = Path(sysconfig.get_config_var("LIBDIR")) / sysconfig.get_config_var("LDLIBRARY")
         environment.update(PYSTACHY_LIBPYTHON=str(library), PYTHONHOME=sys.base_prefix,
                            PYTHONPATH=str(ROOT / "tools" / "rt_cpython"))
-        trace = work / "lli-inputs"
         real = {name: shutil.which(str(Path(llvm) / name) if llvm else name)
                 for name in ("clang", "opt", "lli", "llvm-link", "llvm-as")}
         if not all(real.values()):
             raise RuntimeError("complete LLVM toolchain required; set PYSTACHY_LLVM")
-        for kind in ("shared", "object"):
-            directory = work / kind
-            directory.mkdir()
-            for name, target in real.items():
-                if name == "lli":
-                    wrapper = directory / name
-                    wrapper.write_text(
-                        f"#!{sys.executable}\nimport os, sys\n"
-                        f"with open({str(trace)!r}, 'w') as output:\n"
-                        " for value in sys.argv[1:]:\n"
-                        "  path = value.split('=', 1)[-1]\n"
-                        "  if path.startswith('/dev/fd/'):\n"
-                        "   output.write(value + '\\n')\n"
-                        "   target = os.readlink(path)\n"
-                        f"   if target.startswith({str(temp)!r}):\n"
-                        "    assert target.endswith(' (deleted)'), target\n"
-                        "    assert not os.path.exists(os.path.dirname(target)), target\n"
-                        f"os.execv({target!r}, [{target!r}, *sys.argv[1:]])\n")
-                    wrapper.chmod(0o755)
-                elif name == "clang" and kind == "object":
-                    wrapper = directory / name
-                    wrapper.write_text(f"#!/bin/sh\nfor arg do [ \"$arg\" != -shared ] || exit 1; done\nexec {shlex.quote(target)} \"$@\"\n")
-                    wrapper.chmod(0o755)
-                else:
-                    (directory / name).symlink_to(target)
+        if not library.is_file():
+            raise RuntimeError("embedding regression requires a shared libpython")
+        controls = {}
 
-        def clean(what):
-            if any(temp.iterdir()):
-                raise AssertionError(f"{what}: temporary artifacts remain: {sorted(temp.rglob('*'))}")
+        def control(key, compute):
+            # CPython's result, the same for every compiler, runtime variant and launch setting
+            if key not in controls:
+                controls[key] = compute()
+            return controls[key]
 
-        def compare(what, descriptors, compiler, env, *, mcjit=False):
-            # Standard streams that the caller closes are closed in the program and its child too.
-            arguments = [str(value) for value in descriptors]
-            env = env | ({"PYSTACHY_JIT_CODEGEN": "0"} if mcjit else {})
-            closed = any(value < 3 for value in descriptors)
-            if closed:
-                env = env | {"JITFD_REPORT": str(report), "JITFD_CHILD": env["JITFD_CHILD"] + " " + shlex.quote(str(report))}
-            outputs = []
-            for command in ([sys.executable], compiler + ["run"]):
-                report.unlink(missing_ok=True)
-                result = run([sys.executable, str(launch), ",".join(arguments), *command, str(source), *arguments], env)
-                outputs.append(normalized(report.read_bytes() if closed else result.stdout, mcjit))
-            if outputs[1] != outputs[0]:
-                raise AssertionError(f"{what}: {outputs[1]!r} != {outputs[0]!r}")
-            clean(what)
-
-        def interrupt(what, disposition, command, env, number=signal.SIGINT):
-            # SIGINT ignored by the caller stays ignored, also in the program's child; a default or
-            # caught one (exec resets a handler) raises KeyboardInterrupt, as in CPython. Another
-            # signal that LLVM handles in lli (SIGUSR1) has its default action, as in CPython.
-            env = env | {"JITFD_SIGINT": disposition}
-            launched = [sys.executable, str(launch), ""]
-            expected = interrupted(launched + [sys.executable, str(waiting)], env, number)[:3]
-            result = interrupted(launched + command, env, number)
-            what += f"/{disposition}/{signal.Signals(number).name}"
-            if result[:3] != expected:
-                raise AssertionError(f"{what}: {result} != {expected}")
-            if expected[0] != (0 if disposition == "ignore" and number == signal.SIGINT else -number):
-                raise AssertionError(f"{what}: CPython's control {expected}")
-            clean(what)
-            return result
-
-        checks = 0
-        for spec in commands:
+        def check(spec, first):
+            # One compiler's checks, in its own directories, temporary files and runtime caches, so
+            # that compilers run side by side (most of the time goes to building their runtimes)
             label, command = spec.split("=", 1)
             compiler = shlex.split(command)
+            base = work / label
+            temp = base / "tmp"
+            temp.mkdir(parents=True)
+            trace = base / "lli-inputs"
+            report = base / "report"
             for kind in ("shared", "object"):
-                env = environment | {"PYSTACHY_LLVM": str(work / kind), "PYSTACHY_CACHE": str(work / (label + "-" + kind))}
+                directory = base / kind
+                directory.mkdir()
+                for name, target in real.items():
+                    if name == "lli":
+                        wrapper = directory / name
+                        wrapper.write_text(
+                            f"#!{sys.executable}\nimport os, sys\n"
+                            f"with open({str(trace)!r}, 'w') as output:\n"
+                            " for value in sys.argv[1:]:\n"
+                            "  path = value.split('=', 1)[-1]\n"
+                            "  if path.startswith('/dev/fd/'):\n"
+                            "   output.write(value + '\\n')\n"
+                            "   target = os.readlink(path)\n"
+                            f"   if target.startswith({str(temp)!r}):\n"
+                            "    assert target.endswith(' (deleted)'), target\n"
+                            "    assert not os.path.exists(os.path.dirname(target)), target\n"
+                            f"os.execv({target!r}, [{target!r}, *sys.argv[1:]])\n")
+                        wrapper.chmod(0o755)
+                    elif name == "clang" and kind == "object":
+                        wrapper = directory / name
+                        wrapper.write_text(f"#!/bin/sh\nfor arg do [ \"$arg\" != -shared ] || exit 1; done\nexec {shlex.quote(target)} \"$@\"\n")
+                        wrapper.chmod(0o755)
+                    else:
+                        (directory / name).symlink_to(target)
+
+            def clean(what):
+                if any(temp.iterdir()):
+                    raise AssertionError(f"{what}: temporary artifacts remain: {sorted(temp.rglob('*'))}")
+
+            def compare(what, descriptors, env, *, mcjit=False):
+                # Standard streams that the caller closes are closed in the program and its child too.
+                arguments = [str(value) for value in descriptors]
+                env = env | ({"PYSTACHY_JIT_CODEGEN": "0"} if mcjit else {})
+                closed = any(value < 3 for value in descriptors)
+                if closed:
+                    env = env | {"JITFD_REPORT": str(report), "JITFD_CHILD": env["JITFD_CHILD"] + " " + shlex.quote(str(report))}
+
+                def output(command):
+                    report.unlink(missing_ok=True)
+                    result = run([sys.executable, str(launch), ",".join(arguments), *command, str(source), *arguments], env)
+                    return normalized(report.read_bytes() if closed else result.stdout, mcjit)
+                expected = control(("compare", tuple(descriptors)), lambda: output([sys.executable]))
+                result = output(compiler + ["run"])
+                if result != expected:
+                    raise AssertionError(f"{what}: {result!r} != {expected!r}")
+                clean(what)
+
+            def interrupt(what, disposition, command, env, number=signal.SIGINT):
+                # SIGINT ignored by the caller stays ignored, also in the program's child; a default or
+                # caught one (exec resets a handler) raises KeyboardInterrupt, as in CPython. Another
+                # signal that LLVM handles in lli (SIGUSR1) has its default action, as in CPython.
+                env = env | {"JITFD_SIGINT": disposition}
+                launched = [sys.executable, str(launch), ""]
+                expected = control(("interrupt", disposition, number),
+                                   lambda: interrupted(launched + [sys.executable, str(waiting)], env, number)[:3])
+                result = interrupted(launched + command, env, number)
+                what += f"/{disposition}/{signal.Signals(number).name}"
+                if result[:3] != expected:
+                    raise AssertionError(f"{what}: {result} != {expected}")
+                if expected[0] != (0 if disposition == "ignore" and number == signal.SIGINT else -number):
+                    raise AssertionError(f"{what}: CPython's control {expected}")
+                clean(what)
+                return result
+
+            def pipes(program, env):
+                # CPython's output for PROGRAM, given pipes on descriptors 7, 8, 9 and 64
+                return control(("pipes", program.stem), lambda: normalized(run(
+                    [sys.executable, str(launch), "7,8,9,64", sys.executable, str(program), "7", "8", "9", "64"], env).stdout))
+
+            checks = 0
+            environment_here = environment | {"TMPDIR": str(temp)}
+            for kind in ("shared", "object"):
+                env = environment_here | {"PYSTACHY_LLVM": str(base / kind), "PYSTACHY_CACHE": str(base / ("cache-" + kind))}
                 for program in (source, embedded):
-                    if program == embedded and not library.is_file():
-                        raise RuntimeError("embedding regression requires a shared libpython")
-                    descriptors = [7, 8, 9, 64]
-                    arguments = [str(value) for value in descriptors]
-                    expected = normalized(run([sys.executable, str(launch), ",".join(arguments),
-                                               sys.executable, str(program), *arguments], env).stdout)
+                    arguments = ["7", "8", "9", "64"]
+                    expected = pipes(program, env)
                     for warm in range(2):
                         result = run([sys.executable, str(launch), ",".join(arguments),
                                       *compiler, "run", str(program), *arguments], env)
@@ -337,16 +359,16 @@ def main():
                         clean(f"{label}/{kind}/{program.stem}/{warm}")
                         checks += 1
             # (the shared runtime's SIGINT cases follow; the object runtime's restores it the same way)
-            env = environment | {"PYSTACHY_LLVM": str(work / "object"), "PYSTACHY_CACHE": str(work / (label + "-object"))}
+            env = environment_here | {"PYSTACHY_LLVM": str(base / "object"), "PYSTACHY_CACHE": str(base / "cache-object")}
             interrupt(f"{label}/object", "ignore", compiler + ["run", str(waiting)], env)
             checks += 1
-            env = environment | {"PYSTACHY_LLVM": str(work / "shared"), "PYSTACHY_CACHE": str(work / (label + "-shared"))}
+            env = environment_here | {"PYSTACHY_LLVM": str(base / "shared"), "PYSTACHY_CACHE": str(base / "cache-shared")}
             for descriptors, stress in [(list(range(3, 40)) + [64], ""), ([0, 7, 8, 9], ""),
                                         ([7, 8, 9], "1"), ([7, 8, 9], "7")]:
-                compare(f"{label}/dense-or-stress", descriptors, compiler, env | {"PYSTACHY_GC_STRESS_PROGRAM": stress})
+                compare(f"{label}/dense-or-stress", descriptors, env | {"PYSTACHY_GC_STRESS_PROGRAM": stress})
                 checks += 1
             for descriptors, mcjit in [([1, 2, 7, 8, 9], False), ([0, 1, 2, 7, 8, 9], True)]:
-                compare(f"{label}/closed-mcjit-{mcjit}", descriptors, compiler, env, mcjit=mcjit)
+                compare(f"{label}/closed-mcjit-{mcjit}", descriptors, env, mcjit=mcjit)
                 checks += 1
             for disposition, codegen, number in [("ignore", "2", signal.SIGINT), ("default", "2", signal.SIGINT),
                                                  ("handler", "2", signal.SIGINT), ("ignore", "2", signal.SIGINT),
@@ -355,18 +377,27 @@ def main():
                 interrupt(f"{label}/codegen-{codegen}", disposition, compiler + ["run", str(waiting)],
                           env | {"PYSTACHY_JIT_CODEGEN": codegen}, number)
                 checks += 1
+            if first:
+                # A failed exec closes the launch's descriptors and removes MCJIT's dump directory.
+                for closed, codegen, disposition in [("", "2", "default"), ("0", "0", "ignore")]:
+                    result = run([sys.executable, str(launch), closed, sys.executable, str(failure), str(ROOT), str(source)],
+                                 env | {"JITFD_CLOSED": closed, "PYSTACHY_JIT_CODEGEN": codegen, "JITFD_SIGINT": disposition,
+                                        "JITFD_IGNORED": "1" if disposition == "ignore" else "0"})
+                    if result.stdout != b"failed exec closed inputs\n":
+                        raise AssertionError(f"failed exec cleanup: {result.stdout!r}")
+                    clean("failed exec")
+                    checks += 1
             if len(compiler) == 1 and Path(compiler[0]).is_file():
                 # Build overrides deliberately bypass the program cache; setup-python
                 # supplies LD_LIBRARY_PATH in CI. Keep this control eligible, as in
                 # the dedicated program-cache probe, without changing driver policy.
-                cache_environment = {key: value for key, value in environment.items()
+                cache_environment = {key: value for key, value in environment_here.items()
                                      if key not in TOOL_ENV}
                 env = cache_environment | {"PYSTACHY_LLVM": str(Path(real["clang"]).parent),
-                                           "PYSTACHY_CACHE": str(work / (label + "-program")),
+                                           "PYSTACHY_CACHE": str(base / "cache-program"),
                                            "PYSTACHY_PROGRAM_CACHE": "1", "PYSTACHY_PROGRAM_CACHE_TRACE": "1"}
                 arguments = ["7", "8", "9", "64"]
-                expected = normalized(run([sys.executable, str(launch), ",".join(arguments),
-                                           sys.executable, str(source), *arguments], env).stdout)
+                expected = pipes(source, env)
                 for state in (b"stored", b"hit"):
                     result = run([sys.executable, str(launch), ",".join(arguments),
                                   *compiler, "run", str(source), *arguments], env, stderr=True)
@@ -378,25 +409,20 @@ def main():
                     if b"pystachy program cache: " + state not in result[3]:
                         raise AssertionError(f"{label}/cache-{state!r}: {result[3]!r}")
                     checks += 1
-                executable = work / (label + "-waits")
+                executable = base / "waits"
                 run([*compiler, "build", str(waiting), "-o", str(executable)], env, stderr=True)
                 for disposition in ("ignore", "default", "handler"):
                     interrupt(f"{label}/aot", disposition, [str(executable)], env)
                     checks += 1
-            print(f"{label}: inherited pipes and descriptor tables, closed standard streams, SIGINT dispositions,"
-                  " shared/object runtimes, MCJIT, embedding, cleanup and GC passed")
-        failure = work / "failed-exec.py"
-        failure.write_text(EXEC_FAILURE)
-        env = environment | {"PYSTACHY_LLVM": str(work / "shared"), "PYSTACHY_CACHE": str(work / (commands[0].split("=", 1)[0] + "-shared"))}
-        for closed, codegen, disposition in [("", "2", "default"), ("0", "0", "ignore")]:
-            result = run([sys.executable, str(launch), closed, sys.executable, str(failure), str(ROOT), str(source)],
-                         env | {"JITFD_CLOSED": closed, "PYSTACHY_JIT_CODEGEN": codegen, "JITFD_SIGINT": disposition,
-                                "JITFD_IGNORED": "1" if disposition == "ignore" else "0"})
-            if result.stdout != b"failed exec closed inputs\n":
-                raise AssertionError(f"failed exec cleanup: {result.stdout!r}")
-            clean("failed exec")
-            checks += 1
-        print(f"jitfdprobe: {checks} checks passed")
+            return (f"{label}: inherited pipes and descriptor tables, closed standard streams, SIGINT dispositions,"
+                    " shared/object runtimes, MCJIT, embedding, cleanup and GC passed"), checks
+
+        # A small bounded pool: each compiler's launches run in order, beside the other compiler's.
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+            results = list(pool.map(check, commands, [index == 0 for index in range(len(commands))]))
+        for line, checks in results:
+            print(line)
+        print(f"jitfdprobe: {sum(checks for line, checks in results)} checks passed")
 
 
 if __name__ == "__main__":
