@@ -131,6 +131,14 @@ Locals start in entry-block `alloca` slots. LLVM's `mem2reg` builds SSA form; ex
 also use explicit `phi` instructions. Each function's typed IR is released after lowering,
 while its effect summary remains available.
 
+The emitted LLVM text does not depend on the LLVM release, which the compiler never asks:
+LLVM 18 through 23 read it alike. A float constant is its shortest decimal, which reads back
+as the same bits, or the `bitcast` of its bits for an infinity or a NaN. LLVM 23 deprecates
+the hexadecimal form, and releases before 23 cannot read its `f0x` replacement. A generator's
+`llvm.coro.end` uses the older two-argument form, which each release upgrades to its own
+signature as it reads it: returning `i1` through LLVM 21 and `void` from LLVM 22. An LLVM 22
+or 23 built with assertions would stop at that upgrade; release builds complete it.
+
 <a id="one-value-model"></a>
 <a id="type-descriptors"></a>
 <a id="memory"></a>
@@ -741,7 +749,7 @@ are required before promotion. `make verify` keeps the standard tier.
 
 | Variable | Effect |
 |---|---|
-| `PYSTACHY_LLVM` | Override the LLVM tool directory (Linux 18, macOS 20); standard apt/Homebrew locations are discovered before falling back to `PATH` |
+| `PYSTACHY_LLVM` | Override the LLVM tool directory (defaults: Linux 18, macOS 20; Linux also [19 to 23](install.md#other-llvm-releases)); standard apt/Homebrew locations are discovered before falling back to `PATH` |
 | `PYSTACHY_HOME` | Directory holding the runtime and `lib/`; set by the installed launcher |
 | `PYSTACHY_CACHE` | Runtime and program cache directory; checkout default is `build/`, installed default is `${XDG_CACHE_HOME:-$HOME/.cache}/pystachy` |
 | `PYSTACHY_PATH` | Additional import directories, separated by `:` |
