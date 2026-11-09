@@ -90,3 +90,22 @@ Notes are in [merge-1188-1189.txt](merge-1188-1189.txt).
 | [pr1187-comment-draft.txt](pr1187-comment-draft.txt) | A draft for #1187; not posted |
 
 The raw IR archives (825 MB) stayed in the session's scratch directory and are not kept.
+
+## Outcome (2026-11-09, 14:19–14:50 UTC)
+
+With the maintainer's approval, #1187's description was updated, the qualification comment posted
+and the PR marked ready. Codex re-reviewed `52da3b8` without findings at 14:18:55 UTC. The PR was
+then merged with an expected-head check as `f60df76d2bcef35dd11142c5f1219ca3bc6f53f6`. Its parents
+are `d6b9b3f1` and `52da3b8f`, and its tree `0e84b32e` is the qualified tree.
+
+- Main's release-gate workflows on `f60df76d` all succeeded:
+  - [CI](https://github.com/den-run-ai/pystachy/actions/runs/42633594969): 70 jobs, 68 succeeded
+    and 2 skipped. The skipped entries are the PR-only `native JIT and variants` and
+    `distribution` matrices, as on `d6b9b3f1`. The longest jobs were ubsan-1 at 12:46 and ubsan-3
+    at 12:29.
+  - Packages, Installation, Lint and Performance smoke.
+- #1183 closed on merge. #1184 had to be closed by hand: in "Closes #1183 and #1184" GitHub only
+  acts on the issue right after the keyword. Its acceptance tests are the `program_cache_probe`
+  rows for inherited `PYSTACHY_ARGV0` and settings temporary files, which passed in the PR's CI on
+  this same tree.
+- Not done here: the `v0.4.0-alpha.2` tag and publication, which are left to the maintainer.
